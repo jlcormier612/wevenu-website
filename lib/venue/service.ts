@@ -9,11 +9,20 @@
 import { createClient } from "@/integrations/supabase/server";
 import { isSupabaseConfigured } from "@/lib/env";
 import * as repository from "@/lib/venue/repository";
-import type { Venue, VenueSetupErrors, VenueSetupInput } from "@/lib/venue/types";
-import { validateVenueSetup } from "@/lib/venue/validation";
+import type {
+  Venue,
+  VenueSetupErrors,
+  VenueSetupInput,
+} from "@/lib/venue/types";
+import { validateStep, validateVenueSetup } from "@/lib/venue/validation";
 
 export type SubmitSetupResult =
   | { ok: true; venueId: string }
+  | { ok: false; errors: VenueSetupErrors; message?: string };
+
+/** Result type returned by each settings section save. */
+export type SaveSectionResult =
+  | { ok: true }
   | { ok: false; errors: VenueSetupErrors; message?: string };
 
 /**
@@ -90,4 +99,172 @@ export async function submitVenueSetup(
         : "We couldn't save your venue. Please try again.";
     return { ok: false, errors: {}, message };
   }
+}
+
+// ---- Settings ---------------------------------------------------------------
+
+/**
+ * Shared auth + venue guard for all settings saves. Calls `fn` only if the
+ * current user is authenticated and has a venue.
+ */
+async function withVenue(
+  fn: (
+    supabase: Awaited<ReturnType<typeof createClient>>,
+    venueId: string,
+  ) => Promise<SaveSectionResult>,
+): Promise<SaveSectionResult> {
+  if (!isSupabaseConfigured)
+    return { ok: false, errors: {}, message: "Backend not configured." };
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user)
+    return { ok: false, errors: {}, message: "Session expired. Please sign in again." };
+  const venue = await repository.getVenueForCurrentUser(supabase);
+  if (!venue)
+    return { ok: false, errors: {}, message: "Venue not found." };
+  return fn(supabase, venue.id);
+}
+
+function normalizeUrl(value: string): string {
+  const v = value.trim();
+  if (!v) return "";
+  return /^https?:\/\//i.test(v) ? v : `https://${v}`;
+}
+
+/**
+ * Load the venue plus its hours and owner staff record, mapped to
+ * VenueSetupInput so the settings form can reuse the wizard step components.
+ */
+export async function getVenueSettings(): Promise<{
+  input: VenueSetupInput;
+  venueId: string;
+} | null> {
+  if (!isSupabaseConfigured) return null;
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return null;
+  const details = await repository.getVenueFullDetails(supabase);
+  if (!details) return null;
+  const { venue, hours, ownerName, ownerTitle, ownerEmail } = details;
+  const input: VenueSetupInput = {
+    name: venue.name,
+    businessName: venue.businessName ?? "",
+    email: venue.email ?? "",
+    phone: venue.phone ?? "",
+    website: venue.website ?? "",
+    addressLine1: venue.addressLine1 ?? "",
+    addressLine2: venue.addressLine2 ?? "",
+    city: venue.city ?? "",
+    stateRegion: venue.stateRegion ?? "",
+    postalCode: venue.postalCode ?? "",
+    country: venue.country ?? "",
+    venueType: venue.venueType ?? "",
+    capacity: venue.capacity != null ? String(venue.capacity) : "",
+    timezone: venue.timezone,
+    businessHours: hours,
+    logoUrl: venue.logoUrl ?? "",
+    primaryColor: venue.primaryColor,
+    secondaryColor: venue.secondaryColor,
+    ownerFullName: ownerName,
+    ownerEmail: ownerEmail || venue.email || "",
+    ownerTitle: ownerTitle || "Owner",
+    currency: venue.currency,
+    weekStartsOn: venue.weekStartsOn,
+    stripeOnboardingStatus: venue.stripeOnboardingStatus,
+  };
+  return { input, venueId: venue.id };
+}
+
+/** Save: venue name, business name, contact details, and address. */
+export async function saveVenueInfoSection(
+  input: VenueSetupInput,
+): Promise<SaveSectionResult> {
+  const errors = validateStep("venue-info", input);
+  if (Object.keys(errors).length > 0) return { ok: false, errors };
+  return withVenue(async (supabase, venueId) => {
+    await repository.updateVenueFields(supabase, venueId, {
+      name: input.name.trim(),
+      business_name: input.businessName.trim() || null,
+      email: input.email.trim() || null,
+      phone: input.phone.trim() || null,
+      website: normalizeUrl(input.website) || null,
+      address_line1: input.addressLine1.trim() || null,
+      address_line2: input.addressLine2.trim() || null,
+      city: input.city.trim() || null,
+      state_region: input.stateRegion.trim() || null,
+      postal_code: input.postalCode.trim() || null,
+      country: input.country.trim() || null,
+    });
+    return { ok: true };
+  });
+}
+
+/** Save: venue type, capacity, time zone. */
+export async function saveVenueProfileSection(
+  input: VenueSetupInput,
+): Promise<SaveSectionResult> {
+  const errors = validateStep("venue-details", input);
+  if (Object.keys(errors).length > 0) return { ok: false, errors };
+  return withVenue(async (supabase, venueId) => {
+    await repository.updateVenueFields(supabase, venueId, {
+      venue_type: input.venueType || null,
+      capacity: input.capacity.trim() ? parseInt(input.capacity, 10) : null,
+      timezone: input.timezone,
+    });
+    return { ok: true };
+  });
+}
+
+/** Save: all seven business-hours rows via upsert. */
+export async function saveBusinessHoursSection(
+  input: VenueSetupInput,
+): Promise<SaveSectionResult> {
+  const errors = validateStep("business-hours", input);
+  if (Object.keys(errors).length > 0) return { ok: false, errors };
+  return withVenue(async (supabase, venueId) => {
+    await repository.upsertBusinessHours(supabase, venueId, input.businessHours);
+    return { ok: true };
+  });
+}
+
+/** Save: logo URL and brand colors. */
+export async function saveBrandSection(
+  input: VenueSetupInput,
+): Promise<SaveSectionResult> {
+  const errors = validateStep("brand", input);
+  if (Object.keys(errors).length > 0) return { ok: false, errors };
+  return withVenue(async (supabase, venueId) => {
+    await repository.updateVenueFields(supabase, venueId, {
+      logo_url: input.logoUrl.trim() || null,
+      primary_color: input.primaryColor,
+      secondary_color: input.secondaryColor,
+    });
+    return { ok: true };
+  });
+}
+
+/** Save: owner name/title/email and general settings (currency, week start). */
+export async function saveOwnerSection(
+  input: VenueSetupInput,
+): Promise<SaveSectionResult> {
+  const errors = validateStep("owner", input);
+  if (Object.keys(errors).length > 0) return { ok: false, errors };
+  return withVenue(async (supabase, venueId) => {
+    await Promise.all([
+      repository.updateOwnerStaff(supabase, venueId, {
+        full_name: input.ownerFullName.trim(),
+        title: input.ownerTitle.trim() || null,
+        email: input.ownerEmail.trim() || null,
+      }),
+      repository.updateVenueFields(supabase, venueId, {
+        currency: input.currency,
+        week_starts_on: input.weekStartsOn,
+      }),
+    ]);
+    return { ok: true };
+  });
 }

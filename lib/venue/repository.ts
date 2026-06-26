@@ -6,7 +6,12 @@
  * imported exclusively by the application service layer.
  */
 import { createClient } from "@/integrations/supabase/server";
-import type { Venue, VenueSetupInput } from "@/lib/venue/types";
+import { DAYS_OF_WEEK } from "@/lib/venue/constants";
+import type {
+  BusinessHourInput,
+  Venue,
+  VenueSetupInput,
+} from "@/lib/venue/types";
 
 type DbClient = Awaited<ReturnType<typeof createClient>>;
 
@@ -75,7 +80,7 @@ function mapVenue(r: VenueRow): Venue {
   };
 }
 
-function normalizeUrl(value: string): string {
+export function normalizeVenueUrl(value: string): string {
   const v = value.trim();
   if (!v) return "";
   return /^https?:\/\//i.test(v) ? v : `https://${v}`;
@@ -88,7 +93,7 @@ function toSetupPayload(input: VenueSetupInput) {
     business_name: input.businessName.trim(),
     email: input.email.trim(),
     phone: input.phone.trim(),
-    website: normalizeUrl(input.website),
+    website: normalizeVenueUrl(input.website),
     address_line1: input.addressLine1.trim(),
     address_line2: input.addressLine2.trim(),
     city: input.city.trim(),
@@ -140,4 +145,117 @@ export async function insertVenueSetup(
   });
   if (error) throw error;
   return data as string;
+}
+
+// ---- Settings data access ---------------------------------------------------
+
+export type VenueFullDetails = {
+  venue: Venue;
+  hours: BusinessHourInput[];
+  ownerName: string;
+  ownerTitle: string;
+  ownerEmail: string;
+};
+
+/**
+ * Loads the venue, all business-hours rows, and the owner staff record in
+ * three round-trips. Used exclusively by the Settings page.
+ */
+export async function getVenueFullDetails(
+  client: DbClient,
+): Promise<VenueFullDetails | null> {
+  const venue = await getVenueForCurrentUser(client);
+  if (!venue) return null;
+
+  const { data: hourRows, error: hoursErr } = await client
+    .from("venue_business_hours")
+    .select("day_of_week, is_open, open_time, close_time")
+    .eq("venue_id", venue.id)
+    .order("day_of_week");
+  if (hoursErr) throw hoursErr;
+
+  const { data: ownerRow, error: staffErr } = await client
+    .from("venue_staff")
+    .select("full_name, title, email")
+    .eq("venue_id", venue.id)
+    .eq("is_owner", true)
+    .maybeSingle<{ full_name: string; title: string | null; email: string | null }>();
+  if (staffErr) throw staffErr;
+
+  const byDay = new Map(
+    (hourRows ?? []).map((r) => [
+      r.day_of_week as number,
+      {
+        dayOfWeek: r.day_of_week as number,
+        isOpen: r.is_open as boolean,
+        openTime: ((r.open_time as string | null) ?? "").slice(0, 5),
+        closeTime: ((r.close_time as string | null) ?? "").slice(0, 5),
+      } satisfies BusinessHourInput,
+    ]),
+  );
+
+  // Guarantee all 7 days are present; fill missing with sensible defaults.
+  const hours = DAYS_OF_WEEK.map(
+    (d) =>
+      byDay.get(d.value) ?? {
+        dayOfWeek: d.value,
+        isOpen: d.value !== 1,
+        openTime: "09:00",
+        closeTime: "22:00",
+      },
+  );
+
+  return {
+    venue,
+    hours,
+    ownerName: ownerRow?.full_name ?? "",
+    ownerTitle: ownerRow?.title ?? "",
+    ownerEmail: ownerRow?.email ?? "",
+  };
+}
+
+/** Update arbitrary columns on the owning user's venue row (RLS enforced). */
+export async function updateVenueFields(
+  client: DbClient,
+  venueId: string,
+  patch: Record<string, unknown>,
+): Promise<void> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error } = await (client.from("venues") as any)
+    .update(patch)
+    .eq("id", venueId);
+  if (error) throw error;
+}
+
+/** Upsert all seven business-hours rows (RLS enforced via venue ownership). */
+export async function upsertBusinessHours(
+  client: DbClient,
+  venueId: string,
+  hours: BusinessHourInput[],
+): Promise<void> {
+  const rows = hours.map((h) => ({
+    venue_id: venueId,
+    day_of_week: h.dayOfWeek,
+    is_open: h.isOpen,
+    open_time: h.isOpen && h.openTime ? h.openTime : null,
+    close_time: h.isOpen && h.closeTime ? h.closeTime : null,
+  }));
+  const { error } = await client
+    .from("venue_business_hours")
+    .upsert(rows, { onConflict: "venue_id,day_of_week" });
+  if (error) throw error;
+}
+
+/** Update the venue's owner staff record (name, title, email). */
+export async function updateOwnerStaff(
+  client: DbClient,
+  venueId: string,
+  patch: { full_name: string; title: string | null; email: string | null },
+): Promise<void> {
+  const { error } = await client
+    .from("venue_staff")
+    .update(patch)
+    .eq("venue_id", venueId)
+    .eq("is_owner", true);
+  if (error) throw error;
 }
