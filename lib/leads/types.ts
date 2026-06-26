@@ -92,6 +92,8 @@ export type LeadWithDetails = Lead & {
   notes: LeadNote[];
   tasks: LeadTask[];
   activities: LeadActivity[];
+  /** ID of the client record converted from this lead, if one exists. */
+  linkedClientId: string | null;
 };
 
 /** Form model for creating or editing a lead. All fields are strings for controlled inputs. */

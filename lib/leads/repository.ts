@@ -123,7 +123,7 @@ export async function getLead(
   venueId: string,
   leadId: string,
 ): Promise<LeadWithDetails | null> {
-  const [leadRes, notesRes, tasksRes, activitiesRes] = await Promise.all([
+  const [leadRes, notesRes, tasksRes, activitiesRes, clientRes] = await Promise.all([
     client.from("leads").select("*").eq("id", leadId).eq("venue_id", venueId).maybeSingle<LeadRow>(),
     client.from("lead_notes").select("*").eq("lead_id", leadId).order("created_at", { ascending: false }),
     client.from("lead_tasks").select("*").eq("lead_id", leadId)
@@ -132,6 +132,9 @@ export async function getLead(
       .order("created_at", { ascending: true }),
     client.from("lead_activities").select("*").eq("lead_id", leadId).eq("venue_id", venueId)
       .order("created_at", { ascending: false }),
+    // Check whether this lead has already been converted to a client.
+    client.from("clients").select("id").eq("lead_id", leadId).eq("venue_id", venueId)
+      .maybeSingle<{ id: string }>(),
   ]);
   if (leadRes.error) throw leadRes.error;
   if (notesRes.error) throw notesRes.error;
@@ -143,6 +146,7 @@ export async function getLead(
     notes: (notesRes.data as NoteRow[]).map(mapNote),
     tasks: (tasksRes.data as TaskRow[]).map(mapTask),
     activities: (activitiesRes.data as ActivityRow[]).map(mapActivity),
+    linkedClientId: clientRes.data?.id ?? null,
   };
 }
 

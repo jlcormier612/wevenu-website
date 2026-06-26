@@ -16,7 +16,14 @@ import {
 } from "lucide-react";
 
 import { formatRelative } from "@/lib/leads/constants";
-import type { LeadActivity } from "@/lib/leads/types";
+/** Minimal shape the timeline needs — compatible with LeadActivity and ClientActivity. */
+export type ActivityRecord = {
+  id: string;
+  type: string;
+  title: string;
+  description: string | null;
+  createdAt: string;
+};
 
 const TYPE_ICON: Record<string, React.ElementType> = {
   lead_created:        UserPlus,
@@ -46,7 +53,7 @@ const TYPE_COLOR: Record<string, string> = {
   relationship_updated: "bg-muted text-muted-foreground",
 };
 
-function ActivityItem({ activity }: { activity: LeadActivity }) {
+function ActivityItem({ activity }: { activity: ActivityRecord }) {
   const Icon = TYPE_ICON[activity.type] ?? Circle;
   const colorClass = TYPE_COLOR[activity.type] ?? "bg-muted text-muted-foreground";
 
@@ -79,7 +86,7 @@ function ActivityItem({ activity }: { activity: LeadActivity }) {
 export function ActivityTimeline({
   activities,
 }: {
-  activities: LeadActivity[];
+  activities: ActivityRecord[];
 }) {
   if (activities.length === 0) {
     return (

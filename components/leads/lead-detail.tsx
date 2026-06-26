@@ -6,8 +6,10 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   ArrowLeft,
+  ArrowRight,
   Calendar,
   DollarSign,
+  Loader2,
   Mail,
   Pencil,
   Phone,
@@ -15,6 +17,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 
+import { convertLeadToClientAction } from "@/app/(app)/clients/actions";
 import { updateLeadStatusAction } from "@/app/(app)/leads/[id]/actions";
 import { ActivityTimeline } from "@/components/leads/activity-timeline";
 import { LeadStatusBadge } from "@/components/leads/lead-status-badge";
@@ -78,6 +81,19 @@ function InfoRow({
 export function LeadDetail({ lead }: { lead: LeadWithDetails }) {
   const router = useRouter();
   const [statusPending, startStatus] = React.useTransition();
+  const [convertPending, startConvert] = React.useTransition();
+
+  function handleConvert() {
+    startConvert(async () => {
+      const result = await convertLeadToClientAction(lead);
+      if (result.ok) {
+        toast.success("Converted to client.");
+        router.push(`/clients/${result.clientId}`);
+      } else {
+        toast.error(result.message ?? "Could not convert to client.");
+      }
+    });
+  }
 
   const displayName = leadDisplayName(
     lead.firstName, lead.lastName,
@@ -177,6 +193,20 @@ export function LeadDetail({ lead }: { lead: LeadWithDetails }) {
             <Pencil className="mr-1 h-3.5 w-3.5" />
             Edit
           </Button>
+          {/* Convert / View Client — only on won leads */}
+          {lead.status === "won" && (
+            lead.linkedClientId ? (
+              <Button size="sm" render={<Link href={`/clients/${lead.linkedClientId}`} />}>
+                View Client →
+              </Button>
+            ) : (
+              <Button size="sm" disabled={convertPending} onClick={handleConvert}>
+                {convertPending
+                  ? <><Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />Converting…</>
+                  : <><ArrowRight className="mr-1 h-3.5 w-3.5" />Convert to Client</>}
+              </Button>
+            )
+          )}
         </div>
       </div>
 
