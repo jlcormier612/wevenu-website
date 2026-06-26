@@ -87,8 +87,8 @@ export function LeadDetail({ lead }: { lead: LeadWithDetails }) {
     startConvert(async () => {
       const result = await convertLeadToClientAction(lead);
       if (result.ok) {
-        toast.success("Converted to client.");
-        router.push(`/clients/${result.clientId}`);
+        // Route to the celebration page — the client detail is one step away from there.
+        router.push(`/clients/${result.clientId}/booked`);
       } else {
         toast.error(result.message ?? "Could not convert to client.");
       }

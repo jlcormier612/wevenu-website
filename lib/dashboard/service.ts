@@ -14,7 +14,9 @@ import { getCurrentVenue } from "@/lib/venue/service";
 import type {
   ActivityItem,
   AttentionLead,
+  DashboardClient,
   DashboardData,
+  DashboardKeyDate,
   OnboardingStatus,
   OnboardingStep,
   PipelineStage,
@@ -79,6 +81,38 @@ function embeddedName(row: EmbeddedLeadName): string {
   return [row.first_name, row.last_name].filter(Boolean).join(" ");
 }
 
+// ---- Client row types (dashboard queries) -----------------------------------
+
+type DashClientRow = {
+  id: string;
+  first_name: string;
+  last_name: string;
+  partner_first_name: string | null;
+  partner_last_name: string | null;
+  event_type: string | null;
+  event_date: string | null;
+  guest_count: number | null;
+  status: string;
+  created_at: string;
+};
+
+type DashKDRow = {
+  id: string;
+  client_id: string;
+  label: string;
+  date: string;
+  clients: { first_name: string; last_name: string } | null;
+};
+
+function mapDashClient(r: DashClientRow): DashboardClient {
+  return {
+    id: r.id, firstName: r.first_name, lastName: r.last_name,
+    partnerFirstName: r.partner_first_name, partnerLastName: r.partner_last_name,
+    eventType: r.event_type, eventDate: r.event_date, guestCount: r.guest_count,
+    status: r.status, createdAt: r.created_at,
+  };
+}
+
 const CLOSED = new Set(["won", "lost", "cancelled"]);
 
 function attentionReason(lead: Lead, today: string): string {
@@ -103,11 +137,10 @@ export async function getDashboardData(): Promise<DashboardData | null> {
 
   const today = new Date().toISOString().slice(0, 10);
   const twoDaysAgoMs = Date.now() - 48 * 60 * 60 * 1000;
-  const twoWeeksOut = new Date(Date.now() + 14 * 86_400_000)
-    .toISOString()
-    .slice(0, 10);
+  const twoWeeksOut = new Date(Date.now() + 14 * 86_400_000).toISOString().slice(0, 10);
+  const sixtyDaysOut = new Date(Date.now() + 60 * 86_400_000).toISOString().slice(0, 10);
 
-  const [leadsRes, tasksRes, activityRes] = await Promise.all([
+  const [leadsRes, tasksRes, activityRes, clientsRes, keyDatesRes] = await Promise.all([
     supabase
       .from("leads")
       .select("*")
@@ -129,11 +162,31 @@ export async function getDashboardData(): Promise<DashboardData | null> {
       .eq("venue_id", venue.id)
       .order("created_at", { ascending: false })
       .limit(15),
+
+    // Booked clients (all non-cancelled, minimal columns for dashboard)
+    supabase
+      .from("clients")
+      .select("id, first_name, last_name, partner_first_name, partner_last_name, event_type, event_date, guest_count, status, created_at")
+      .eq("venue_id", venue.id)
+      .neq("status", "cancelled")
+      .order("event_date", { ascending: true, nullsFirst: false }),
+
+    // Key dates in the next 14 days with embedded client names
+    supabase
+      .from("client_key_dates")
+      .select("id, client_id, label, date, clients(first_name, last_name)")
+      .eq("venue_id", venue.id)
+      .gte("date", today)
+      .lte("date", twoWeeksOut)
+      .order("date", { ascending: true })
+      .limit(10),
   ]);
 
   if (leadsRes.error) throw leadsRes.error;
   if (tasksRes.error) throw tasksRes.error;
   if (activityRes.error) throw activityRes.error;
+  if (clientsRes.error) throw clientsRes.error;
+  if (keyDatesRes.error) throw keyDatesRes.error;
 
   const leads = (leadsRes.data as LeadRow[]).map(mapLead);
 
@@ -202,6 +255,29 @@ export async function getDashboardData(): Promise<DashboardData | null> {
     leadName: embeddedName(r.leads),
   }));
 
+  // ---- Client data ----------------------------------------------------------
+  const clients = (clientsRes.data as DashClientRow[]).map(mapDashClient);
+
+  const upcomingClientEvents = clients
+    .filter((c) => c.eventDate && c.eventDate >= today && c.eventDate <= sixtyDaysOut)
+    .slice(0, 8);
+
+  const recentBookings = [...clients]
+    .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+    .slice(0, 5);
+
+  const upcomingKeyDates: DashboardKeyDate[] = (keyDatesRes.data as unknown as DashKDRow[]).map(
+    (r) => ({
+      id: r.id,
+      clientId: r.client_id,
+      label: r.label,
+      date: r.date,
+      clientName: r.clients
+        ? [r.clients.first_name, r.clients.last_name].filter(Boolean).join(" ")
+        : "Unknown client",
+    }),
+  );
+
   return {
     venueName: venue.name,
     todayIso: today,
@@ -215,6 +291,10 @@ export async function getDashboardData(): Promise<DashboardData | null> {
     openTasks,
     openTaskCount: (tasksRes.data as DashTaskRow[]).length,
     recentActivity,
+    upcomingClientEvents,
+    recentBookings,
+    upcomingKeyDates,
+    totalClients: clients.length,
   };
 }
 

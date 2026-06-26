@@ -1,12 +1,15 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
+import { ClientEventsWidget } from "@/components/dashboard/client-events-widget";
 import { FollowupsWidget } from "@/components/dashboard/followups-widget";
 import { GettingStartedCard } from "@/components/dashboard/getting-started";
 import { Greeting } from "@/components/dashboard/greeting";
+import { KeyDatesWidget } from "@/components/dashboard/key-dates-widget";
 import { NeedsAttentionWidget } from "@/components/dashboard/needs-attention";
 import { PipelineSnapshot } from "@/components/dashboard/pipeline-snapshot";
 import { RecentActivityWidget } from "@/components/dashboard/recent-activity-widget";
+import { RecentBookingsWidget } from "@/components/dashboard/recent-bookings-widget";
 import { StatBar } from "@/components/dashboard/stat-bar";
 import { TasksWidget } from "@/components/dashboard/tasks-widget";
 import { UpcomingToursWidget } from "@/components/dashboard/upcoming-tours";
@@ -49,7 +52,35 @@ export default async function DashboardPage() {
       {/* Quick-count stat bar */}
       <StatBar data={data} />
 
-      {/* Main 2-column grid */}
+      {/* ── Booked Clients ─────────────────────────────────────────────── */}
+      {data.totalClients > 0 && (
+        <>
+          <div className="flex items-center gap-3">
+            <p className="shrink-0 text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+              Booked Clients
+            </p>
+            <div className="h-px flex-1 bg-border" />
+          </div>
+          <div className="grid gap-6 lg:grid-cols-3">
+            <div className="space-y-6 lg:col-span-2">
+              <ClientEventsWidget events={data.upcomingClientEvents} />
+            </div>
+            <div className="space-y-6">
+              <RecentBookingsWidget bookings={data.recentBookings} />
+              <KeyDatesWidget keyDates={data.upcomingKeyDates} />
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* ── Pipeline ───────────────────────────────────────────────────── */}
+      <div className="flex items-center gap-3">
+        <p className="shrink-0 text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+          Pipeline
+        </p>
+        <div className="h-px flex-1 bg-border" />
+      </div>
+
       <div className="grid gap-6 lg:grid-cols-3">
         {/* Left column — primary urgency */}
         <div className="space-y-6 lg:col-span-2">

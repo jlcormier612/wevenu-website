@@ -199,3 +199,10 @@
     @apply font-heading text-heading;
   }
 }
+
+/* ---- Confetti animation (booking celebration) ----------------------------- */
+@keyframes confetti-fall {
+  0%   { opacity: 1;   transform: translateY(-12px) rotate(0deg); }
+  85%  { opacity: 0.9; }
+  100% { opacity: 0;   transform: translateY(90vh)  rotate(540deg); }
+}
