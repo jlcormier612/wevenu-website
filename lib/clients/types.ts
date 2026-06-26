@@ -66,6 +66,8 @@ export type ClientWithDetails = Client & {
   notes: ClientNote[];
   keyDates: ClientKeyDate[];
   activities: ClientActivity[];
+  /** ID of an event linked to this client, if one exists. */
+  linkedEventId: string | null;
 };
 
 /** Form model — all fields as strings for controlled inputs. */

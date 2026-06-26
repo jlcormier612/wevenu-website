@@ -204,6 +204,18 @@ export function ClientDetail({ client }: { client: ClientWithDetails }) {
               <Link href={`/leads/${client.leadId}`} className="font-medium text-primary hover:underline">View original inquiry →</Link>
             </div>
           )}
+          {/* Event link — shows once an event exists, or offers to create one */}
+          <div className="mt-4 flex items-center gap-2">
+            {client.linkedEventId ? (
+              <Button size="sm" render={<Link href={`/events/${client.linkedEventId}`} />}>
+                View Event →
+              </Button>
+            ) : (
+              <Button size="sm" variant="outline" render={<Link href={`/events/new?clientId=${client.id}`} />}>
+                + Create Event
+              </Button>
+            )}
+          </div>
         </TabsContent>
 
         {/* ── Key Dates ──────────────────────────────────────────────────── */}

@@ -57,11 +57,13 @@ export async function getClients(client: DbClient, venueId: string): Promise<Cli
 }
 
 export async function getClient(client: DbClient, venueId: string, clientId: string): Promise<ClientWithDetails | null> {
-  const [cRes, nRes, kdRes, aRes] = await Promise.all([
+  const [cRes, nRes, kdRes, aRes, evRes] = await Promise.all([
     client.from("clients").select("*").eq("id", clientId).eq("venue_id", venueId).maybeSingle<ClientRow>(),
     client.from("client_notes").select("*").eq("client_id", clientId).order("created_at", { ascending: false }),
     client.from("client_key_dates").select("*").eq("client_id", clientId).order("date", { ascending: true }),
     client.from("client_activities").select("*").eq("client_id", clientId).eq("venue_id", venueId).order("created_at", { ascending: false }),
+    // Check whether this client has an event linked to them.
+    client.from("events").select("id").eq("client_id", clientId).eq("venue_id", venueId).maybeSingle<{ id: string }>(),
   ]);
   if (cRes.error) throw cRes.error;
   if (nRes.error) throw nRes.error;
@@ -73,6 +75,7 @@ export async function getClient(client: DbClient, venueId: string, clientId: str
     notes: (nRes.data as NoteRow[]).map(mapNote),
     keyDates: (kdRes.data as KDRow[]).map(mapKD),
     activities: (aRes.data as ActRow[]).map(mapAct),
+    linkedEventId: evRes.data?.id ?? null,
   };
 }
 
