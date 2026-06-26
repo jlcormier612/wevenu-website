@@ -2,7 +2,7 @@
 
 import * as React from "react";
 
-import { Menu } from "lucide-react";
+import { Building2, Menu } from "lucide-react";
 
 import { Wordmark } from "@/components/brand/wordmark";
 import { ThemeToggle } from "@/components/providers/theme-toggle";
@@ -24,9 +24,11 @@ import {
  */
 export function WorkspaceShell({
   email,
+  venueName,
   children,
 }: {
   email: string;
+  venueName?: string;
   children: React.ReactNode;
 }) {
   const [mobileNavOpen, setMobileNavOpen] = React.useState(false);
@@ -78,6 +80,15 @@ export function WorkspaceShell({
           <div className="lg:hidden">
             <Wordmark showText={false} />
           </div>
+
+          {venueName ? (
+            <div className="hidden min-w-0 items-center gap-2 lg:flex">
+              <Building2 className="h-4 w-4 shrink-0 text-muted-foreground" />
+              <span className="truncate text-sm font-medium text-heading">
+                {venueName}
+              </span>
+            </div>
+          ) : null}
 
           <div className="ml-auto flex items-center gap-1">
             <ThemeToggle />
