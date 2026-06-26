@@ -7,27 +7,20 @@ import { useRouter } from "next/navigation";
 import {
   ArrowLeft,
   Calendar,
-  Check,
-  Clock,
   DollarSign,
   Mail,
-  MessageSquare,
+  Pencil,
   Phone,
-  Plus,
-  Trash2,
   Users,
 } from "lucide-react";
 import { toast } from "sonner";
 
-import {
-  addNoteAction,
-  addTaskAction,
-  deleteNoteAction,
-  deleteTaskAction,
-  setTaskCompletedAction,
-  updateLeadStatusAction,
-} from "@/app/(app)/leads/[id]/actions";
+import { updateLeadStatusAction } from "@/app/(app)/leads/[id]/actions";
+import { ActivityTimeline } from "@/components/leads/activity-timeline";
 import { LeadStatusBadge } from "@/components/leads/lead-status-badge";
+import { NotesSection } from "@/components/leads/notes-section";
+import { RelationshipCard } from "@/components/leads/relationship-card";
+import { TasksSection } from "@/components/leads/tasks-section";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -42,11 +35,9 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Textarea } from "@/components/ui/textarea";
 import {
   LEAD_STATUSES,
   eventTypeLabel,
@@ -57,7 +48,7 @@ import {
 } from "@/lib/leads/constants";
 import type { LeadWithDetails } from "@/lib/leads/types";
 
-// ---- contact + inquiry overview ---------------------------------------------
+// ---- info row (overview tab) ------------------------------------------------
 
 function InfoRow({
   icon: Icon,
@@ -82,326 +73,6 @@ function InfoRow({
   );
 }
 
-// ---- notes section ----------------------------------------------------------
-
-function NotesSection({
-  leadId,
-  initialNotes,
-}: {
-  leadId: string;
-  initialNotes: LeadWithDetails["notes"];
-}) {
-  const router = useRouter();
-  const [notes, setNotes] = React.useState(initialNotes);
-  const [body, setBody] = React.useState("");
-  const [addPending, startAdd] = React.useTransition();
-  const [deletingId, setDeletingId] = React.useState<string | null>(null);
-
-  async function handleAdd() {
-    if (!body.trim()) return;
-    startAdd(async () => {
-      const result = await addNoteAction(leadId, body);
-      if (result.ok) {
-        setBody("");
-        router.refresh();
-        // optimistic: add immediately
-        setNotes((prev) => [
-          {
-            id: crypto.randomUUID(),
-            venueId: "",
-            leadId,
-            body: body.trim(),
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-          },
-          ...prev,
-        ]);
-      } else {
-        toast.error(result.message ?? "Could not add note.");
-      }
-    });
-  }
-
-  async function handleDelete(noteId: string) {
-    setDeletingId(noteId);
-    const result = await deleteNoteAction(noteId);
-    setDeletingId(null);
-    if (result.ok) {
-      setNotes((prev) => prev.filter((n) => n.id !== noteId));
-      router.refresh();
-    } else {
-      toast.error(result.message ?? "Could not delete note.");
-    }
-  }
-
-  return (
-    <div className="space-y-4">
-      {/* Add note */}
-      <div className="space-y-2">
-        <Textarea
-          value={body}
-          onChange={(e) => setBody(e.target.value)}
-          placeholder="Add a note…"
-          rows={3}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) handleAdd();
-          }}
-        />
-        <div className="flex justify-end">
-          <Button
-            type="button"
-            size="sm"
-            disabled={!body.trim() || addPending}
-            onClick={handleAdd}
-          >
-            {addPending ? "Saving…" : "Add note"}
-          </Button>
-        </div>
-      </div>
-
-      {notes.length === 0 && (
-        <p className="text-sm text-muted-foreground py-4 text-center">
-          No notes yet. Add one above.
-        </p>
-      )}
-
-      <div className="space-y-3">
-        {notes.map((note) => (
-          <div
-            key={note.id}
-            className="group relative rounded-lg border border-border bg-card p-4"
-          >
-            <p className="whitespace-pre-wrap text-sm text-foreground">
-              {note.body}
-            </p>
-            <div className="mt-2 flex items-center justify-between">
-              <p className="text-xs text-muted-foreground">
-                {new Date(note.createdAt).toLocaleString("en-US", {
-                  month: "short",
-                  day: "numeric",
-                  hour: "numeric",
-                  minute: "2-digit",
-                })}
-              </p>
-              <button
-                type="button"
-                onClick={() => handleDelete(note.id)}
-                disabled={deletingId === note.id}
-                className="text-muted-foreground opacity-0 transition-opacity hover:text-destructive group-hover:opacity-100"
-                aria-label="Delete note"
-              >
-                <Trash2 className="h-3.5 w-3.5" />
-              </button>
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-// ---- tasks section ----------------------------------------------------------
-
-function TasksSection({
-  leadId,
-  initialTasks,
-}: {
-  leadId: string;
-  initialTasks: LeadWithDetails["tasks"];
-}) {
-  const router = useRouter();
-  const [tasks, setTasks] = React.useState(initialTasks);
-  const [title, setTitle] = React.useState("");
-  const [dueDate, setDueDate] = React.useState("");
-  const [addPending, startAdd] = React.useTransition();
-
-  async function handleAdd() {
-    if (!title.trim()) return;
-    startAdd(async () => {
-      const result = await addTaskAction(leadId, { title, dueDate });
-      if (result.ok) {
-        setTitle("");
-        setDueDate("");
-        router.refresh();
-        setTasks((prev) => [
-          ...prev,
-          {
-            id: crypto.randomUUID(),
-            venueId: "",
-            leadId,
-            title: title.trim(),
-            dueDate: dueDate || null,
-            completed: false,
-            completedAt: null,
-            createdAt: new Date().toISOString(),
-          },
-        ]);
-      } else {
-        toast.error(result.message ?? "Could not add task.");
-      }
-    });
-  }
-
-  async function handleToggle(taskId: string, completed: boolean) {
-    setTasks((prev) =>
-      prev.map((t) => (t.id === taskId ? { ...t, completed: !completed } : t)),
-    );
-    const result = await setTaskCompletedAction(taskId, !completed);
-    if (!result.ok) {
-      setTasks((prev) =>
-        prev.map((t) => (t.id === taskId ? { ...t, completed } : t)),
-      );
-      toast.error(result.message ?? "Could not update task.");
-    } else {
-      router.refresh();
-    }
-  }
-
-  async function handleDelete(taskId: string) {
-    setTasks((prev) => prev.filter((t) => t.id !== taskId));
-    const result = await deleteTaskAction(taskId);
-    if (!result.ok) {
-      router.refresh();
-      toast.error(result.message ?? "Could not delete task.");
-    }
-  }
-
-  const open = tasks.filter((t) => !t.completed);
-  const done = tasks.filter((t) => t.completed);
-
-  return (
-    <div className="space-y-4">
-      {/* Add task */}
-      <div className="flex items-center gap-2">
-        <Input
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          placeholder="New task…"
-          onKeyDown={(e) => e.key === "Enter" && handleAdd()}
-          className="flex-1"
-        />
-        <Input
-          type="date"
-          value={dueDate}
-          onChange={(e) => setDueDate(e.target.value)}
-          className="w-36 shrink-0"
-        />
-        <Button
-          type="button"
-          size="icon"
-          disabled={!title.trim() || addPending}
-          onClick={handleAdd}
-          aria-label="Add task"
-        >
-          <Plus className="h-4 w-4" />
-        </Button>
-      </div>
-
-      {tasks.length === 0 && (
-        <p className="py-4 text-center text-sm text-muted-foreground">
-          No tasks yet. Add one above.
-        </p>
-      )}
-
-      {/* Open tasks */}
-      {open.length > 0 && (
-        <div className="space-y-1.5">
-          {open.map((task) => (
-            <TaskRow
-              key={task.id}
-              task={task}
-              onToggle={handleToggle}
-              onDelete={handleDelete}
-            />
-          ))}
-        </div>
-      )}
-
-      {/* Completed tasks */}
-      {done.length > 0 && (
-        <div className="space-y-1.5">
-          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-            Completed
-          </p>
-          {done.map((task) => (
-            <TaskRow
-              key={task.id}
-              task={task}
-              onToggle={handleToggle}
-              onDelete={handleDelete}
-            />
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
-function TaskRow({
-  task,
-  onToggle,
-  onDelete,
-}: {
-  task: LeadWithDetails["tasks"][number];
-  onToggle: (id: string, completed: boolean) => void;
-  onDelete: (id: string) => void;
-}) {
-  return (
-    <div className="group flex items-center gap-3 rounded-lg border border-border bg-card px-3 py-2.5">
-      <button
-        type="button"
-        onClick={() => onToggle(task.id, task.completed)}
-        aria-label={task.completed ? "Mark incomplete" : "Mark complete"}
-        className={`flex h-5 w-5 shrink-0 items-center justify-center rounded border transition-colors ${
-          task.completed
-            ? "border-primary bg-primary text-primary-foreground"
-            : "border-border hover:border-primary"
-        }`}
-      >
-        {task.completed && <Check className="h-3 w-3" />}
-      </button>
-      <span
-        className={`flex-1 text-sm ${task.completed ? "text-muted-foreground line-through" : "text-foreground"}`}
-      >
-        {task.title}
-      </span>
-      {task.dueDate && (
-        <span className="flex items-center gap-1 text-xs text-muted-foreground">
-          <Calendar className="h-3 w-3" />
-          {formatDate(task.dueDate)}
-        </span>
-      )}
-      <button
-        type="button"
-        onClick={() => onDelete(task.id)}
-        aria-label="Delete task"
-        className="text-muted-foreground opacity-0 transition-opacity hover:text-destructive group-hover:opacity-100"
-      >
-        <Trash2 className="h-3.5 w-3.5" />
-      </button>
-    </div>
-  );
-}
-
-// ---- timeline placeholder ---------------------------------------------------
-
-function TimelinePlaceholder() {
-  return (
-    <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border py-16 text-center">
-      <span className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-muted text-muted-foreground">
-        <MessageSquare className="h-5 w-5" />
-      </span>
-      <p className="font-heading text-base font-medium text-heading">
-        Conversation timeline
-      </p>
-      <p className="mt-1 max-w-xs text-sm text-muted-foreground">
-        Email threads, SMS, and call logs will appear here once messaging is
-        connected in a future sprint.
-      </p>
-    </div>
-  );
-}
-
 // ---- main component ---------------------------------------------------------
 
 export function LeadDetail({ lead }: { lead: LeadWithDetails }) {
@@ -409,10 +80,8 @@ export function LeadDetail({ lead }: { lead: LeadWithDetails }) {
   const [statusPending, startStatus] = React.useTransition();
 
   const displayName = leadDisplayName(
-    lead.firstName,
-    lead.lastName,
-    lead.partnerFirstName,
-    lead.partnerLastName,
+    lead.firstName, lead.lastName,
+    lead.partnerFirstName, lead.partnerLastName,
   );
 
   function handleStatusChange(status: string) {
@@ -430,13 +99,12 @@ export function LeadDetail({ lead }: { lead: LeadWithDetails }) {
   const openTaskCount = lead.tasks.filter((t) => !t.completed).length;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="space-y-1.5">
           <Button
-            variant="ghost"
-            size="sm"
+            variant="ghost" size="sm"
             className="-ml-2 text-muted-foreground"
             render={<Link href="/leads" />}
           >
@@ -447,9 +115,7 @@ export function LeadDetail({ lead }: { lead: LeadWithDetails }) {
             {displayName}
           </h1>
           <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-            {lead.eventType && (
-              <span>{eventTypeLabel(lead.eventType)}</span>
-            )}
+            {lead.eventType && <span>{eventTypeLabel(lead.eventType)}</span>}
             {lead.eventDate && (
               <>
                 <span className="text-border">·</span>
@@ -480,18 +146,11 @@ export function LeadDetail({ lead }: { lead: LeadWithDetails }) {
           </div>
         </div>
 
-        {/* Status badge + change */}
         <div className="flex shrink-0 items-center gap-2">
           <LeadStatusBadge status={lead.status} />
           <DropdownMenu>
             <DropdownMenuTrigger
-              render={
-                <Button
-                  variant="outline"
-                  size="sm"
-                  disabled={statusPending}
-                />
-              }
+              render={<Button variant="outline" size="sm" disabled={statusPending} />}
             >
               Change status
             </DropdownMenuTrigger>
@@ -510,8 +169,19 @@ export function LeadDetail({ lead }: { lead: LeadWithDetails }) {
               ))}
             </DropdownMenuContent>
           </DropdownMenu>
+          <Button
+            variant="outline"
+            size="sm"
+            render={<Link href={`/leads/${lead.id}/edit`} />}
+          >
+            <Pencil className="mr-1 h-3.5 w-3.5" />
+            Edit
+          </Button>
         </div>
       </div>
+
+      {/* Relationship card */}
+      <RelationshipCard lead={lead} />
 
       {/* Tabs */}
       <Tabs defaultValue="overview">
@@ -533,7 +203,14 @@ export function LeadDetail({ lead }: { lead: LeadWithDetails }) {
               </span>
             )}
           </TabsTrigger>
-          <TabsTrigger value="timeline">Timeline</TabsTrigger>
+          <TabsTrigger value="activity">
+            Activity
+            {lead.activities.length > 0 && (
+              <span className="ml-1 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground">
+                {lead.activities.length}
+              </span>
+            )}
+          </TabsTrigger>
         </TabsList>
 
         {/* ── Overview ─────────────────────────────────────────────── */}
@@ -550,15 +227,11 @@ export function LeadDetail({ lead }: { lead: LeadWithDetails }) {
                   <>
                     <Separator />
                     <p className="text-xs font-medium text-muted-foreground">Partner</p>
-                    <InfoRow
-                      icon={Mail}
-                      label={[lead.partnerFirstName, lead.partnerLastName].filter(Boolean).join(" ")}
-                      value={lead.partnerEmail ?? undefined}
-                    />
-                    {!lead.partnerEmail && (
-                      <p className="text-sm text-muted-foreground">
-                        {[lead.partnerFirstName, lead.partnerLastName].filter(Boolean).join(" ")}
-                      </p>
+                    <p className="text-sm font-medium text-foreground">
+                      {[lead.partnerFirstName, lead.partnerLastName].filter(Boolean).join(" ")}
+                    </p>
+                    {lead.partnerEmail && (
+                      <InfoRow icon={Mail} label="Partner email" value={lead.partnerEmail} />
                     )}
                   </>
                 )}
@@ -578,7 +251,7 @@ export function LeadDetail({ lead }: { lead: LeadWithDetails }) {
               </CardHeader>
               <CardContent className="space-y-3">
                 <InfoRow icon={Calendar} label="Event type" value={eventTypeLabel(lead.eventType)} />
-                <InfoRow icon={Clock} label="Event date" value={formatDate(lead.eventDate)} />
+                <InfoRow icon={Calendar} label="Event date" value={formatDate(lead.eventDate)} />
                 <InfoRow
                   icon={Users}
                   label="Guest count"
@@ -611,7 +284,7 @@ export function LeadDetail({ lead }: { lead: LeadWithDetails }) {
             <CardHeader>
               <CardTitle className="text-base">Notes</CardTitle>
               <CardDescription>
-                Internal notes about this lead. Not visible to the client.
+                Internal notes. Not visible to the client.
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -626,7 +299,7 @@ export function LeadDetail({ lead }: { lead: LeadWithDetails }) {
             <CardHeader>
               <CardTitle className="text-base">Tasks</CardTitle>
               <CardDescription>
-                Action items for this lead. Press Enter or ⌘↵ to save.
+                Action items for this lead. Click a title to edit. Press Enter or ⌘↵ to save.
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -635,9 +308,19 @@ export function LeadDetail({ lead }: { lead: LeadWithDetails }) {
           </Card>
         </TabsContent>
 
-        {/* ── Timeline ──────────────────────────────────────────────── */}
-        <TabsContent value="timeline">
-          <TimelinePlaceholder />
+        {/* ── Activity ──────────────────────────────────────────────── */}
+        <TabsContent value="activity">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Activity</CardTitle>
+              <CardDescription>
+                A chronological record of everything that has happened with this lead.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ActivityTimeline activities={lead.activities} />
+            </CardContent>
+          </Card>
         </TabsContent>
       </Tabs>
     </div>

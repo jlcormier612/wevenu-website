@@ -14,6 +14,7 @@ import type {
   LeadInput,
   LeadStatus,
   LeadWithDetails,
+  RelationshipInput,
   TaskInput,
 } from "@/lib/leads/types";
 import {
@@ -67,6 +68,7 @@ export async function createLead(input: LeadInput): Promise<CreateLeadResult> {
   if (Object.keys(errors).length > 0) return { ok: false, errors };
   const result = await withVenue(async (supabase, venueId) => {
     const leadId = await repo.insertLead(supabase, venueId, input);
+    // Activity is logged by the DB trigger (log_lead_created).
     return { ok: true, leadId } as CreateLeadResult;
   });
   if ("ok" in result && result.ok === false) return result as CreateLeadResult;
@@ -83,6 +85,7 @@ export async function updateLeadStatus(
     return { ok: false, message: `"${status}" is not a valid status.` };
   const result = await withVenue(async (supabase, venueId) => {
     await repo.updateLeadStatus(supabase, venueId, leadId, status as LeadStatus);
+    // Activity is logged by the DB trigger (log_lead_status_changed).
     return { ok: true } as LeadActionResult;
   });
   return result as LeadActionResult;
@@ -97,6 +100,21 @@ export async function addNote(
   if (!body.trim()) return { ok: false, message: "Note cannot be empty." };
   const result = await withVenue(async (supabase, venueId) => {
     await repo.insertNote(supabase, venueId, leadId, body);
+    await repo.insertActivity(supabase, venueId, leadId, "note_added", "Note added");
+    return { ok: true } as LeadActionResult;
+  });
+  return result as LeadActionResult;
+}
+
+export async function updateNote(
+  noteId: string,
+  leadId: string,
+  body: string,
+): Promise<LeadActionResult> {
+  if (!body.trim()) return { ok: false, message: "Note cannot be empty." };
+  const result = await withVenue(async (supabase, venueId) => {
+    await repo.updateNote(supabase, venueId, noteId, body);
+    await repo.insertActivity(supabase, venueId, leadId, "note_updated", "Note edited");
     return { ok: true } as LeadActionResult;
   });
   return result as LeadActionResult;
@@ -121,6 +139,19 @@ export async function addTask(
     return { ok: false, errors, message: errors.title };
   const result = await withVenue(async (supabase, venueId) => {
     await repo.insertTask(supabase, venueId, leadId, input);
+    await repo.insertActivity(supabase, venueId, leadId, "task_created", `Task added: ${input.title.trim()}`);
+    return { ok: true } as LeadActionResult;
+  });
+  return result as LeadActionResult;
+}
+
+export async function updateTask(
+  taskId: string,
+  input: { title: string; dueDate: string },
+): Promise<LeadActionResult> {
+  if (!input.title.trim()) return { ok: false, message: "Task title is required." };
+  const result = await withVenue(async (supabase, venueId) => {
+    await repo.updateTask(supabase, venueId, taskId, input);
     return { ok: true } as LeadActionResult;
   });
   return result as LeadActionResult;
@@ -129,9 +160,14 @@ export async function addTask(
 export async function setTaskCompleted(
   taskId: string,
   completed: boolean,
+  leadId?: string,
+  taskTitle?: string,
 ): Promise<LeadActionResult> {
   const result = await withVenue(async (supabase, venueId) => {
     await repo.setTaskCompleted(supabase, venueId, taskId, completed);
+    if (completed && leadId && taskTitle) {
+      await repo.insertActivity(supabase, venueId, leadId, "task_completed", `Task completed: ${taskTitle}`);
+    }
     return { ok: true } as LeadActionResult;
   });
   return result as LeadActionResult;
@@ -140,6 +176,50 @@ export async function setTaskCompleted(
 export async function deleteTask(taskId: string): Promise<LeadActionResult> {
   const result = await withVenue(async (supabase, venueId) => {
     await repo.deleteTask(supabase, venueId, taskId);
+    return { ok: true } as LeadActionResult;
+  });
+  return result as LeadActionResult;
+}
+
+// ---- Sprint 6: lead info + relationship -------------------------------------
+
+export async function updateLeadInfo(
+  leadId: string,
+  input: LeadInput,
+): Promise<LeadActionResult> {
+  const errors = validateLeadInput(input);
+  if (Object.keys(errors).length > 0) return { ok: false, errors };
+  const result = await withVenue(async (supabase, venueId) => {
+    await repo.updateLeadInfo(supabase, venueId, leadId, input);
+    await repo.insertActivity(supabase, venueId, leadId, "lead_updated", "Lead information updated");
+    return { ok: true } as LeadActionResult;
+  });
+  return result as LeadActionResult;
+}
+
+export async function updateRelationshipFields(
+  leadId: string,
+  input: RelationshipInput,
+  activityHints: { tourScheduled?: boolean; followUpSet?: boolean; contactedSet?: boolean },
+): Promise<LeadActionResult> {
+  const result = await withVenue(async (supabase, venueId) => {
+    await repo.updateRelationshipFields(supabase, venueId, leadId, input);
+    // Log specific meaningful events rather than a generic "updated".
+    if (activityHints.tourScheduled && input.tourDate) {
+      const { formatDate } = await import("@/lib/leads/constants");
+      await repo.insertActivity(supabase, venueId, leadId, "tour_scheduled",
+        `Tour scheduled for ${formatDate(input.tourDate)}`);
+    } else if (activityHints.followUpSet && input.followUpDate) {
+      const { formatDate } = await import("@/lib/leads/constants");
+      await repo.insertActivity(supabase, venueId, leadId, "follow_up_set",
+        `Follow-up set for ${formatDate(input.followUpDate)}`);
+    } else if (activityHints.contactedSet && input.lastContactedAt) {
+      await repo.insertActivity(supabase, venueId, leadId, "last_contacted",
+        "Marked as last contacted");
+    } else {
+      await repo.insertActivity(supabase, venueId, leadId, "relationship_updated",
+        "Relationship details updated");
+    }
     return { ok: true } as LeadActionResult;
   });
   return result as LeadActionResult;

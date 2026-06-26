@@ -2,7 +2,7 @@
  * Leads reference data: statuses, event types, sources, and defaults.
  * Pure data — no imports beyond the types file.
  */
-import type { LeadInput, LeadStatus } from "@/lib/leads/types";
+import type { ActivityType, Lead, LeadInput, LeadStatus, RelationshipInput } from "@/lib/leads/types";
 
 export type StatusMeta = {
   value: LeadStatus;
@@ -122,4 +122,64 @@ export function formatCurrency(amount: number | null | undefined): string {
     currency: "USD",
     maximumFractionDigits: 0,
   }).format(amount);
+}
+
+/** Relative timestamp ("just now", "2 hours ago", "Jun 26") for activity feeds. */
+export function formatRelative(iso: string): string {
+  const diff = Date.now() - new Date(iso).getTime();
+  const mins = Math.floor(diff / 60_000);
+  if (mins < 1) return "Just now";
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  const days = Math.floor(hrs / 24);
+  if (days < 7) return `${days}d ago`;
+  return formatDate(iso.slice(0, 10));
+}
+
+/** True when a date string (ISO date or datetime) is before today. */
+export function isOverdue(iso: string | null | undefined): boolean {
+  if (!iso) return false;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return new Date(iso.slice(0, 10)) < today;
+}
+
+/** True when a date string is today. */
+export function isDueToday(iso: string | null | undefined): boolean {
+  if (!iso) return false;
+  return iso.slice(0, 10) === new Date().toISOString().slice(0, 10);
+}
+
+/** Build the initial RelationshipInput from an existing lead (or blank). */
+export function createInitialRelationshipInput(lead?: Lead | null): RelationshipInput {
+  return {
+    nextActionText: lead?.nextActionText ?? "",
+    nextActionDue: lead?.nextActionDue ?? "",
+    followUpDate: lead?.followUpDate ?? "",
+    lastContactedAt: lead?.lastContactedAt ?? "",
+    tourDate: lead?.tourDate ?? "",
+    tourTime: lead?.tourTime ?? "",
+    tourCompleted: lead?.tourCompleted ?? false,
+    tourNotes: lead?.tourNotes ?? "",
+  };
+}
+
+/** Human-readable label for an activity type. */
+const ACTIVITY_LABELS: Partial<Record<ActivityType | string, string>> = {
+  lead_created: "Inquiry received",
+  status_changed: "Status updated",
+  note_added: "Note added",
+  note_updated: "Note edited",
+  task_created: "Task added",
+  task_completed: "Task completed",
+  tour_scheduled: "Tour scheduled",
+  follow_up_set: "Follow-up set",
+  last_contacted: "Marked as contacted",
+  lead_updated: "Lead info updated",
+  relationship_updated: "Relationship details updated",
+};
+
+export function activityLabel(type: string): string {
+  return ACTIVITY_LABELS[type] ?? type;
 }

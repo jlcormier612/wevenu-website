@@ -6,11 +6,13 @@
 import { createClient } from "@/integrations/supabase/server";
 import type {
   Lead,
+  LeadActivity,
   LeadInput,
   LeadNote,
   LeadStatus,
   LeadTask,
   LeadWithDetails,
+  RelationshipInput,
   TaskInput,
 } from "@/lib/leads/types";
 
@@ -37,8 +39,22 @@ type LeadRow = {
   estimated_budget: number | null;
   inquiry_message: string | null;
   inquiry_date: string;
+  // Sprint 6 relationship fields
+  next_action_text: string | null;
+  next_action_due: string | null;
+  follow_up_date: string | null;
+  last_contacted_at: string | null;
+  tour_date: string | null;
+  tour_time: string | null;
+  tour_completed: boolean;
+  tour_notes: string | null;
   created_at: string;
   updated_at: string;
+};
+
+type ActivityRow = {
+  id: string; venue_id: string; lead_id: string;
+  type: string; title: string; description: string | null; created_at: string;
 };
 
 type NoteRow = {
@@ -60,7 +76,18 @@ function mapLead(r: LeadRow): Lead {
     partnerEmail: r.partner_email, eventType: r.event_type, eventDate: r.event_date,
     endDate: r.end_date, guestCount: r.guest_count, estimatedBudget: r.estimated_budget,
     inquiryMessage: r.inquiry_message, inquiryDate: r.inquiry_date,
+    nextActionText: r.next_action_text, nextActionDue: r.next_action_due,
+    followUpDate: r.follow_up_date, lastContactedAt: r.last_contacted_at,
+    tourDate: r.tour_date, tourTime: r.tour_time,
+    tourCompleted: r.tour_completed, tourNotes: r.tour_notes,
     createdAt: r.created_at, updatedAt: r.updated_at,
+  };
+}
+
+function mapActivity(r: ActivityRow): LeadActivity {
+  return {
+    id: r.id, venueId: r.venue_id, leadId: r.lead_id,
+    type: r.type, title: r.title, description: r.description, createdAt: r.created_at,
   };
 }
 
@@ -96,22 +123,26 @@ export async function getLead(
   venueId: string,
   leadId: string,
 ): Promise<LeadWithDetails | null> {
-  const [leadRes, notesRes, tasksRes] = await Promise.all([
+  const [leadRes, notesRes, tasksRes, activitiesRes] = await Promise.all([
     client.from("leads").select("*").eq("id", leadId).eq("venue_id", venueId).maybeSingle<LeadRow>(),
     client.from("lead_notes").select("*").eq("lead_id", leadId).order("created_at", { ascending: false }),
     client.from("lead_tasks").select("*").eq("lead_id", leadId)
       .order("completed", { ascending: true })
       .order("due_date", { ascending: true, nullsFirst: false })
       .order("created_at", { ascending: true }),
+    client.from("lead_activities").select("*").eq("lead_id", leadId).eq("venue_id", venueId)
+      .order("created_at", { ascending: false }),
   ]);
   if (leadRes.error) throw leadRes.error;
   if (notesRes.error) throw notesRes.error;
   if (tasksRes.error) throw tasksRes.error;
+  if (activitiesRes.error) throw activitiesRes.error;
   if (!leadRes.data) return null;
   return {
     ...mapLead(leadRes.data),
     notes: (notesRes.data as NoteRow[]).map(mapNote),
     tasks: (tasksRes.data as TaskRow[]).map(mapTask),
+    activities: (activitiesRes.data as ActivityRow[]).map(mapActivity),
   };
 }
 
@@ -243,5 +274,109 @@ export async function deleteTask(
     .delete()
     .eq("id", taskId)
     .eq("venue_id", venueId);
+  if (error) throw error;
+}
+
+// ---- Sprint 6: edit + relationship + activities ------------------------------
+
+/** Update the core inquiry data fields on an existing lead. */
+export async function updateLeadInfo(
+  client: DbClient,
+  venueId: string,
+  leadId: string,
+  input: LeadInput,
+): Promise<void> {
+  const { error } = await client
+    .from("leads")
+    .update({
+      first_name: input.firstName.trim(),
+      last_name: input.lastName.trim(),
+      email: input.email.trim() || null,
+      phone: input.phone.trim() || null,
+      partner_first_name: input.partnerFirstName.trim() || null,
+      partner_last_name: input.partnerLastName.trim() || null,
+      partner_email: input.partnerEmail.trim() || null,
+      event_type: input.eventType || null,
+      event_date: input.eventDate || null,
+      end_date: input.endDate || null,
+      guest_count: input.guestCount.trim() ? parseInt(input.guestCount, 10) : null,
+      estimated_budget: input.estimatedBudget.trim()
+        ? parseFloat(input.estimatedBudget.replace(/[$,]/g, ""))
+        : null,
+      source: input.source || null,
+      inquiry_message: input.inquiryMessage.trim() || null,
+      inquiry_date: input.inquiryDate || null,
+    })
+    .eq("id", leadId)
+    .eq("venue_id", venueId);
+  if (error) throw error;
+}
+
+/** Update the relationship-management fields (next action, follow-up, tour, etc.). */
+export async function updateRelationshipFields(
+  client: DbClient,
+  venueId: string,
+  leadId: string,
+  input: RelationshipInput,
+): Promise<void> {
+  const { error } = await client
+    .from("leads")
+    .update({
+      next_action_text: input.nextActionText.trim() || null,
+      next_action_due: input.nextActionDue || null,
+      follow_up_date: input.followUpDate || null,
+      last_contacted_at: input.lastContactedAt || null,
+      tour_date: input.tourDate || null,
+      tour_time: input.tourTime || null,
+      tour_completed: input.tourCompleted,
+      tour_notes: input.tourNotes.trim() || null,
+    })
+    .eq("id", leadId)
+    .eq("venue_id", venueId);
+  if (error) throw error;
+}
+
+/** Edit an existing note's body. */
+export async function updateNote(
+  client: DbClient,
+  venueId: string,
+  noteId: string,
+  body: string,
+): Promise<void> {
+  const { error } = await client
+    .from("lead_notes")
+    .update({ body: body.trim() })
+    .eq("id", noteId)
+    .eq("venue_id", venueId);
+  if (error) throw error;
+}
+
+/** Edit an existing task's title and/or due date. */
+export async function updateTask(
+  client: DbClient,
+  venueId: string,
+  taskId: string,
+  input: { title: string; dueDate: string },
+): Promise<void> {
+  const { error } = await client
+    .from("lead_tasks")
+    .update({ title: input.title.trim(), due_date: input.dueDate || null })
+    .eq("id", taskId)
+    .eq("venue_id", venueId);
+  if (error) throw error;
+}
+
+/** Log an activity record from the service layer (notes, tasks, relationship events). */
+export async function insertActivity(
+  client: DbClient,
+  venueId: string,
+  leadId: string,
+  type: string,
+  title: string,
+  description?: string,
+): Promise<void> {
+  const { error } = await client
+    .from("lead_activities")
+    .insert({ venue_id: venueId, lead_id: leadId, type, title, description: description ?? null });
   if (error) throw error;
 }
