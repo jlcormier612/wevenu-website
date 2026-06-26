@@ -88,6 +88,7 @@ export type Venue = {
   stripeOnboardingStatus: StripeOnboardingStatus;
   setupCompleted: boolean;
   setupCompletedAt: string | null;
+  onboardingDismissed: boolean;
   createdAt: string;
   updatedAt: string;
 };

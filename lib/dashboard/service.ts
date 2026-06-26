@@ -15,9 +15,12 @@ import type {
   ActivityItem,
   AttentionLead,
   DashboardData,
+  OnboardingStatus,
+  OnboardingStep,
   PipelineStage,
   TaskItem,
 } from "@/lib/dashboard/types";
+import type { Venue } from "@/lib/venue/types";
 
 // ---- row types for embedded selects -----------------------------------------
 
@@ -202,6 +205,7 @@ export async function getDashboardData(): Promise<DashboardData | null> {
   return {
     venueName: venue.name,
     todayIso: today,
+    onboarding: computeOnboarding(venue, leads),
     needsAttention,
     followupsDue,
     upcomingTours,
@@ -211,5 +215,74 @@ export async function getDashboardData(): Promise<DashboardData | null> {
     openTasks,
     openTaskCount: (tasksRes.data as DashTaskRow[]).length,
     recentActivity,
+  };
+}
+
+// ---- Getting Started onboarding ---------------------------------------------
+
+/**
+ * Derives the onboarding checklist state entirely from existing venue + lead
+ * data. No separate progress table — the DB is always the source of truth.
+ */
+function computeOnboarding(venue: Venue, leads: Lead[]): OnboardingStatus {
+  const steps: OnboardingStep[] = [
+    {
+      id: "venue_setup",
+      title: "Set up your venue",
+      description: "Your venue profile is live and ready.",
+      completed: true, // Always true — they're past Setup
+    },
+    {
+      id: "first_inquiry",
+      title: "Create your first inquiry",
+      description:
+        "Add a lead to start building your pipeline and tracking inquiries.",
+      completed: leads.length > 0,
+      ctaLabel: "New Inquiry",
+      ctaHref: "/leads/new",
+    },
+    {
+      id: "work_lead",
+      title: "Set a next action on a lead",
+      description:
+        "Open a lead and add a follow-up date or next action to keep momentum.",
+      completed: leads.some(
+        (l) =>
+          l.followUpDate != null ||
+          l.nextActionText != null ||
+          l.status !== "new",
+      ),
+      ctaLabel: "View Leads",
+      ctaHref: "/leads",
+    },
+    {
+      id: "schedule_tour",
+      title: "Schedule a venue tour",
+      description:
+        "Tours are the key step between an initial inquiry and a confirmed booking.",
+      completed: leads.some((l) => l.tourDate != null),
+      ctaLabel: "View Leads",
+      ctaHref: "/leads",
+    },
+    {
+      id: "first_booking",
+      title: "Book your first couple",
+      description:
+        "Mark a lead as Won to record your first confirmed booking.",
+      completed: leads.some((l) => l.status === "won"),
+      ctaLabel: "View Leads",
+      ctaHref: "/leads",
+    },
+  ];
+
+  const completedCount = steps.filter((s) => s.completed).length;
+  const allComplete = completedCount === steps.length;
+
+  return {
+    show: !venue.onboardingDismissed && !allComplete,
+    steps,
+    completedCount,
+    totalSteps: steps.length,
+    allComplete,
   };
 }

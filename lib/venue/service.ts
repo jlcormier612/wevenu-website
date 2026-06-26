@@ -268,3 +268,14 @@ export async function saveOwnerSection(
     return { ok: true };
   });
 }
+
+/** Permanently hides the Getting Started card for this venue. */
+export async function dismissOnboarding(): Promise<void> {
+  if (!isSupabaseConfigured) return;
+  const supabase = await createClient();
+  const venue = await getCurrentVenue();
+  if (!venue) return;
+  await repository.updateVenueFields(supabase, venue.id, {
+    onboarding_dismissed: true,
+  });
+}

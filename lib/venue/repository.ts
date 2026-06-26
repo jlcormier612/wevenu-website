@@ -43,6 +43,7 @@ type VenueRow = {
   stripe_onboarding_status: Venue["stripeOnboardingStatus"];
   setup_completed: boolean;
   setup_completed_at: string | null;
+  onboarding_dismissed: boolean;
   created_at: string;
   updated_at: string;
 };
@@ -75,6 +76,7 @@ function mapVenue(r: VenueRow): Venue {
     stripeOnboardingStatus: r.stripe_onboarding_status,
     setupCompleted: r.setup_completed,
     setupCompletedAt: r.setup_completed_at,
+    onboardingDismissed: r.onboarding_dismissed,
     createdAt: r.created_at,
     updatedAt: r.updated_at,
   };

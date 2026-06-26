@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { FollowupsWidget } from "@/components/dashboard/followups-widget";
+import { GettingStartedCard } from "@/components/dashboard/getting-started";
 import { Greeting } from "@/components/dashboard/greeting";
 import { NeedsAttentionWidget } from "@/components/dashboard/needs-attention";
 import { PipelineSnapshot } from "@/components/dashboard/pipeline-snapshot";
@@ -39,6 +40,11 @@ export default async function DashboardPage() {
           + New Inquiry
         </Button>
       </div>
+
+      {/* Getting Started onboarding card (new venues only) */}
+      {data.onboarding.show && (
+        <GettingStartedCard onboarding={data.onboarding} />
+      )}
 
       {/* Quick-count stat bar */}
       <StatBar data={data} />

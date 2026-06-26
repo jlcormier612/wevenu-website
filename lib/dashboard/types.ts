@@ -36,9 +36,30 @@ export type PipelineStage = {
   count: number;
 };
 
+/** A single step in the Getting Started checklist. */
+export type OnboardingStep = {
+  id: string;
+  title: string;
+  description: string;
+  completed: boolean;
+  ctaLabel?: string;
+  ctaHref?: string;
+};
+
+export type OnboardingStatus = {
+  /** Whether to render the Getting Started card at all. */
+  show: boolean;
+  steps: OnboardingStep[];
+  completedCount: number;
+  totalSteps: number;
+  /** True when every step is done — the card auto-hides. */
+  allComplete: boolean;
+};
+
 export type DashboardData = {
   venueName: string;
   todayIso: string;
+  onboarding: OnboardingStatus;
   needsAttention: AttentionLead[];
   followupsDue: Lead[];
   upcomingTours: Lead[];
