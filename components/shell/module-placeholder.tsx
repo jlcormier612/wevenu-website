@@ -19,7 +19,7 @@ export function PageHeader({
   return (
     <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
       <div className="space-y-1.5">
-        <h1 className="text-3xl font-medium tracking-tight text-foreground">
+        <h1 className="text-3xl font-medium tracking-tight text-heading">
           {title}
         </h1>
         {description ? (

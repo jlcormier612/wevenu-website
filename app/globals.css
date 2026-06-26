@@ -7,6 +7,7 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-heading: var(--heading);
   --font-sans: var(--font-sans);
   --font-mono: var(--font-geist-mono);
   --font-heading: var(--font-heading);
@@ -56,137 +57,129 @@
 }
 
 /*
- * WEVENU DESIGN FOUNDATION
+ * WEVENU DESIGN FOUNDATION — founder-locked palette
  * ---------------------------------------------------------------------------
- * Brand palette = Wevenu Brand Foundation v1.1 (official, single source of
- * truth). Semantic tokens reference brand tokens so adjustments change values
- * here only, never component code.
+ * The nine swatches below are the ONLY colors used across the product (plus
+ * pure black for body/print copy, per founder direction). No tinted variations
+ * are introduced; the only non-solid usage is ALPHA (opacity) of these exact
+ * colors — for focus rings, overlays, hairline borders and hover feedback.
  *
- * Dark theme = official "Venue Evening Theme" (v1.1).
- * One derived value (--brand-ink-muted) provides accessible muted body text;
- * v1.1 defines muted text for the dark theme only.
+ * Light theme  = Forest Sage + black on True White.
+ * Dark theme   = True White on Forest Sage (Heritage Sage surfaces).
+ *
+ * Status colors are mapped onto the palette (no separate red/amber/green):
+ *   Error → Dusty Rose · Success → Heritage Sage · Warning → Taupe Beige Dark
+ *   Info  → Soft Sage
+ *
+ * Components reference only the SEMANTIC tokens below, so any future palette
+ * change happens here and nowhere else.
  */
 :root {
-  /* Official color palette (v1.1) */
-  --brand-heritage-sage: #5d6f5d; /* primary */
-  --brand-forest-sage: #4f5f4f; /* secondary */
-  --brand-fresh-sage: #b8cec1; /* light accent */
-  --brand-linen: #f5f4f2; /* background */
-  --brand-natural-cream: #f7f5f1; /* background alt */
-  --brand-true-white: #ffffff;
-  --brand-soft-taupe: #ded7cb; /* neutral */
-  --brand-warm-taupe: #b7aea1; /* neutral dark */
-  --brand-dusty-rose: #d8a7aa; /* accent */
+  /* Official palette (the only allowed colors) */
+  --heritage-sage: #5d6f5d; /* primary */
+  --forest-sage: #4f5f4f; /* brand text / headings (light) · background (dark) */
+  --soft-sage: #b9d1c2; /* light accent / info */
+  --linen: #f5f4f2; /* surface */
+  --natural-cream: #f7f5f1; /* surface alt */
+  --true-white: #ffffff; /* background (light) · text (dark) */
+  --taupe-light: #ded6ca; /* neutral / border */
+  --taupe-dark: #b8aea1; /* neutral dark / warning */
+  --dusty-rose: #d8a7aa; /* accent / error */
+  --black: #000000; /* regular body / print copy (light) */
 
-  /* Application status colors (v1.1) */
-  --brand-success: #6f8b6b;
-  --brand-warning: #c7a66a;
-  --brand-error: #b85c57;
-  --brand-info: #6f8898;
+  /* Semantic tokens — LIGHT (Forest Sage + black on True White) */
+  --background: var(--true-white);
+  --foreground: var(--black);
+  --heading: var(--forest-sage);
+  --card: var(--true-white);
+  --card-foreground: var(--black);
+  --popover: var(--true-white);
+  --popover-foreground: var(--black);
+  --primary: var(--heritage-sage);
+  --primary-foreground: var(--true-white);
+  --secondary: var(--natural-cream);
+  --secondary-foreground: var(--forest-sage);
+  --muted: var(--natural-cream);
+  --muted-foreground: color-mix(in oklch, var(--forest-sage) 70%, transparent);
+  --accent: var(--soft-sage);
+  --accent-foreground: var(--forest-sage);
+  --destructive: var(--dusty-rose);
+  --destructive-foreground: var(--forest-sage);
+  --success: var(--heritage-sage);
+  --success-foreground: var(--true-white);
+  --warning: var(--taupe-dark);
+  --warning-foreground: var(--forest-sage);
+  --info: var(--soft-sage);
+  --info-foreground: var(--forest-sage);
+  --border: var(--taupe-light);
+  --input: var(--taupe-light);
+  --ring: var(--heritage-sage);
 
-  /* Derived: accessible muted body text (v1.1 specifies muted text for dark only) */
-  --brand-ink-muted: #6e7468;
-
-  /* Semantic tokens — LIGHT */
-  --background: var(--brand-linen);
-  --foreground: var(--brand-forest-sage);
-  --card: var(--brand-true-white);
-  --card-foreground: var(--brand-forest-sage);
-  --popover: var(--brand-true-white);
-  --popover-foreground: var(--brand-forest-sage);
-  --primary: var(--brand-heritage-sage);
-  --primary-foreground: var(--brand-true-white);
-  --secondary: var(--brand-natural-cream);
-  --secondary-foreground: var(--brand-forest-sage);
-  --muted: var(--brand-natural-cream);
-  --muted-foreground: var(--brand-ink-muted);
-  --accent: var(--brand-fresh-sage);
-  --accent-foreground: var(--brand-forest-sage);
-  --destructive: var(--brand-error);
-  --destructive-foreground: var(--brand-true-white);
-  --success: var(--brand-success);
-  --success-foreground: var(--brand-true-white);
-  --warning: var(--brand-warning);
-  --warning-foreground: var(--brand-forest-sage);
-  --info: var(--brand-info);
-  --info-foreground: var(--brand-true-white);
-  --border: var(--brand-soft-taupe);
-  --input: var(--brand-soft-taupe);
-  --ring: var(--brand-heritage-sage);
-
-  --chart-1: var(--brand-heritage-sage);
-  --chart-2: var(--brand-success);
-  --chart-3: var(--brand-warning);
-  --chart-4: var(--brand-dusty-rose);
-  --chart-5: var(--brand-warm-taupe);
+  --chart-1: var(--heritage-sage);
+  --chart-2: var(--forest-sage);
+  --chart-3: var(--taupe-dark);
+  --chart-4: var(--dusty-rose);
+  --chart-5: var(--soft-sage);
 
   --radius: 1rem; /* 16px */
 
-  --sidebar: var(--brand-natural-cream);
-  --sidebar-foreground: var(--brand-forest-sage);
-  --sidebar-primary: var(--brand-heritage-sage);
-  --sidebar-primary-foreground: var(--brand-true-white);
-  --sidebar-accent: #ece6dc; /* active surface, derived from cream */
-  --sidebar-accent-foreground: var(--brand-forest-sage);
-  --sidebar-border: var(--brand-soft-taupe);
-  --sidebar-ring: var(--brand-heritage-sage);
+  --sidebar: var(--natural-cream);
+  --sidebar-foreground: var(--forest-sage);
+  --sidebar-primary: var(--heritage-sage);
+  --sidebar-primary-foreground: var(--true-white);
+  --sidebar-accent: var(--linen);
+  --sidebar-accent-foreground: var(--forest-sage);
+  --sidebar-border: var(--taupe-light);
+  --sidebar-ring: var(--heritage-sage);
 }
 
 /*
- * DARK PALETTE — official "Venue Evening Theme" (v1.1).
- * Status colors are lightened for contrast against the dark surfaces.
+ * DARK THEME — True White on Forest Sage.
+ * Surfaces step up to Heritage Sage; structure is drawn with alpha-white
+ * hairlines. No new colors — only the palette and its opacities.
  */
 .dark {
-  /* Venue Evening Theme (v1.1) */
-  --brand-forest-900: #161b16; /* background */
-  --brand-forest-850: #1c221c; /* sidebar */
-  --brand-forest-800: #222a22; /* surface */
-  --brand-forest-700: #2c352c; /* elevated */
-  --brand-sage-300: #9fbb9a; /* primary */
-  --brand-sage-200: #b9cdb4; /* hover */
-  --brand-evening-text: #f5f4f2; /* text */
-  --brand-evening-muted: #a7a899; /* muted text */
+  --background: var(--forest-sage);
+  --foreground: var(--true-white);
+  --heading: var(--true-white);
+  --card: var(--heritage-sage);
+  --card-foreground: var(--true-white);
+  --popover: var(--heritage-sage);
+  --popover-foreground: var(--true-white);
+  --primary: var(--soft-sage);
+  --primary-foreground: var(--forest-sage);
+  --secondary: var(--heritage-sage);
+  --secondary-foreground: var(--true-white);
+  --muted: var(--heritage-sage);
+  --muted-foreground: color-mix(in oklch, var(--true-white) 78%, transparent);
+  --accent: var(--heritage-sage);
+  --accent-foreground: var(--true-white);
+  --destructive: var(--dusty-rose);
+  --destructive-foreground: var(--forest-sage);
+  --success: var(--soft-sage);
+  --success-foreground: var(--forest-sage);
+  --warning: var(--taupe-dark);
+  --warning-foreground: var(--forest-sage);
+  --info: var(--soft-sage);
+  --info-foreground: var(--forest-sage);
+  --border: color-mix(in oklch, var(--true-white) 20%, transparent);
+  --input: color-mix(in oklch, var(--true-white) 24%, transparent);
+  --ring: var(--soft-sage);
 
-  --background: var(--brand-forest-900);
-  --foreground: var(--brand-evening-text);
-  --card: var(--brand-forest-800);
-  --card-foreground: var(--brand-evening-text);
-  --popover: var(--brand-forest-800);
-  --popover-foreground: var(--brand-evening-text);
-  --primary: var(--brand-sage-300);
-  --primary-foreground: var(--brand-forest-900);
-  --secondary: var(--brand-forest-700);
-  --secondary-foreground: var(--brand-evening-text);
-  --muted: var(--brand-forest-700);
-  --muted-foreground: var(--brand-evening-muted);
-  --accent: var(--brand-forest-700);
-  --accent-foreground: var(--brand-evening-text);
-  --destructive: #d97b75;
-  --destructive-foreground: var(--brand-forest-900);
-  --success: #86a781;
-  --success-foreground: var(--brand-forest-900);
-  --warning: #d4b87a;
-  --warning-foreground: var(--brand-forest-900);
-  --info: #8aa6b4;
-  --info-foreground: var(--brand-forest-900);
-  --border: oklch(1 0 0 / 12%);
-  --input: oklch(1 0 0 / 16%);
-  --ring: var(--brand-sage-300);
+  --chart-1: var(--soft-sage);
+  --chart-2: var(--true-white);
+  --chart-3: var(--taupe-dark);
+  --chart-4: var(--dusty-rose);
+  --chart-5: var(--taupe-light);
 
-  --chart-1: var(--brand-sage-300);
-  --chart-2: var(--brand-success);
-  --chart-3: var(--brand-warning);
-  --chart-4: var(--brand-dusty-rose);
-  --chart-5: var(--brand-warm-taupe);
-
-  --sidebar: var(--brand-forest-850);
-  --sidebar-foreground: var(--brand-evening-text);
-  --sidebar-primary: var(--brand-sage-300);
-  --sidebar-primary-foreground: var(--brand-forest-900);
-  --sidebar-accent: var(--brand-forest-700);
-  --sidebar-accent-foreground: var(--brand-evening-text);
-  --sidebar-border: oklch(1 0 0 / 12%);
-  --sidebar-ring: var(--brand-sage-300);
+  --sidebar: var(--heritage-sage);
+  --sidebar-foreground: var(--true-white);
+  --sidebar-primary: var(--soft-sage);
+  --sidebar-primary-foreground: var(--forest-sage);
+  --sidebar-accent: color-mix(in oklch, var(--true-white) 14%, transparent);
+  --sidebar-accent-foreground: var(--true-white);
+  --sidebar-border: color-mix(in oklch, var(--true-white) 18%, transparent);
+  --sidebar-ring: var(--soft-sage);
 }
 
 @layer base {
@@ -203,6 +196,6 @@
   h2,
   h3,
   h4 {
-    @apply font-heading;
+    @apply font-heading text-heading;
   }
 }
