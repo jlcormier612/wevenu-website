@@ -8,6 +8,7 @@
  */
 import { createClient } from "@/integrations/supabase/server";
 import { isSupabaseConfigured } from "@/lib/env";
+import { getLuvObservations } from "@/lib/luv/observations";
 import { LEAD_STATUSES } from "@/lib/leads/constants";
 import type { Lead } from "@/lib/leads/types";
 import { getCurrentVenue } from "@/lib/venue/service";
@@ -352,6 +353,9 @@ export async function getDashboardData(): Promise<DashboardData | null> {
   const ownerFullName = staffRes.data?.full_name ?? null;
   const ownerFirstName = ownerFullName ? ownerFullName.split(" ")[0] : null;
 
+  // Luv observations — run after primary data (non-blocking; returns [] on error)
+  const luvObservations = await getLuvObservations(supabase, venue.id, today).catch(() => []);
+
   return {
     venueName: venue.name,
     ownerFirstName,
@@ -372,6 +376,7 @@ export async function getDashboardData(): Promise<DashboardData | null> {
     recentBookings,
     upcomingKeyDates,
     totalClients: clients.length,
+    luvObservations,
   };
 }
 

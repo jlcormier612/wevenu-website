@@ -132,4 +132,6 @@ export type DashboardData = {
   recentBookings: DashboardClient[];
   upcomingKeyDates: DashboardKeyDate[];
   totalClients: number;
+  // ---- Luv observations (Phase 1: data pattern matching, no AI) ----
+  luvObservations: import("@/lib/luv/types").LuvObservation[];
 };
