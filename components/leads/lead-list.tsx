@@ -3,7 +3,7 @@
 import * as React from "react";
 
 import Link from "next/link";
-import { Search } from "lucide-react";
+import { ArrowUpDown, Search, SlidersHorizontal } from "lucide-react";
 
 import { LeadStatusBadge } from "@/components/leads/lead-status-badge";
 import { Badge } from "@/components/ui/badge";
@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/table";
 import {
   LEAD_STATUSES,
+  EVENT_TYPES,
   eventTypeLabel,
   formatDate,
   formatCurrency,
@@ -30,6 +31,7 @@ import {
 import type { Lead, LeadStatus } from "@/lib/leads/types";
 
 type FilterKey = "all" | LeadStatus;
+type EventTypeFilter = "all" | string;
 type SortKey = "newest" | "oldest" | "az" | "za" | "event_asc" | "event_desc" | "budget_high" | "budget_low" | "last_contacted";
 
 const SORT_OPTIONS: { value: SortKey; label: string }[] = [
@@ -62,13 +64,15 @@ function sortLeads(leads: Lead[], sort: SortKey): Lead[] {
 
 export function LeadList({ leads }: { leads: Lead[] }) {
   const [query, setQuery] = React.useState("");
-  const [filter, setFilter] = React.useState<FilterKey>("all");
+  const [statusFilter, setStatusFilter] = React.useState<FilterKey>("all");
+  const [eventTypeFilter, setEventTypeFilter] = React.useState<EventTypeFilter>("all");
   const [sort, setSort] = React.useState<SortKey>("newest");
 
   const filtered = React.useMemo(() => {
     const q = query.toLowerCase().trim();
     const base = leads.filter((l) => {
-      if (filter !== "all" && l.status !== filter) return false;
+      if (statusFilter !== "all" && l.status !== statusFilter) return false;
+      if (eventTypeFilter !== "all" && l.eventType !== eventTypeFilter) return false;
       if (!q) return true;
       return [
         l.firstName, l.lastName, l.partnerFirstName, l.partnerLastName,
@@ -76,19 +80,29 @@ export function LeadList({ leads }: { leads: Lead[] }) {
       ].some((v) => v?.toLowerCase().includes(q));
     });
     return sortLeads(base, sort);
-  }, [leads, query, filter, sort]);
+  }, [leads, query, statusFilter, eventTypeFilter, sort]);
 
-  // Count per status for filter tabs.
-  const counts = React.useMemo(() => {
+  // Count per status (from all leads, not filtered)
+  const statusCounts = React.useMemo(() => {
     const map = new Map<FilterKey, number>([["all", leads.length]]);
     LEAD_STATUSES.forEach((s) => map.set(s.value, 0));
     leads.forEach((l) => map.set(l.status, (map.get(l.status) ?? 0) + 1));
     return map;
   }, [leads]);
 
+  // Event types that actually appear in this lead set
+  const activeEventTypes = React.useMemo(() => {
+    const seen = new Map<string, number>();
+    leads.forEach((l) => { if (l.eventType) seen.set(l.eventType, (seen.get(l.eventType) ?? 0) + 1); });
+    return [...seen.entries()].sort((a, b) => b[1] - a[1]); // most common first
+  }, [leads]);
+
+  const hasActiveFilters = statusFilter !== "all" || eventTypeFilter !== "all" || query;
+
   return (
     <div className="space-y-4">
-      {/* Search + sort */}
+    <div className="space-y-3">
+      {/* Row 1: Search + Sort */}
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground pointer-events-none" />
@@ -99,27 +113,32 @@ export function LeadList({ leads }: { leads: Lead[] }) {
             className="pl-9"
           />
         </div>
-        <Select value={sort} onValueChange={(v) => setSort(v as SortKey)}>
-          <SelectTrigger className="h-9 w-full sm:w-48 text-sm text-muted-foreground">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {SORT_OPTIONS.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
-          </SelectContent>
-        </Select>
+        {/* Sort control — labeled so it's always legible */}
+        <div className="flex items-center gap-1.5 shrink-0">
+          <ArrowUpDown className="h-3.5 w-3.5 text-muted-foreground" />
+          <Select value={sort} onValueChange={(v) => setSort(v as SortKey)}>
+            <SelectTrigger className="h-9 w-44 text-sm border-border">
+              <SelectValue placeholder="Most Recent" />
+            </SelectTrigger>
+            <SelectContent>
+              {SORT_OPTIONS.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
-      {/* Status filter pills */}
-      <div className="flex flex-wrap gap-1.5">
+      {/* Row 2: Status filter pills */}
+      <div className="flex flex-wrap gap-1.5 items-center">
+        <span className="text-xs text-muted-foreground font-medium mr-0.5">Status:</span>
         {(["all", ...LEAD_STATUSES.map((s) => s.value)] as FilterKey[]).map((key) => {
           const label = key === "all" ? "All" : LEAD_STATUSES.find((s) => s.value === key)?.label ?? key;
-          const count = counts.get(key) ?? 0;
-          const active = filter === key;
+          const count = statusCounts.get(key) ?? 0;
+          const active = statusFilter === key;
           return (
             <button
               key={key}
               type="button"
-              onClick={() => setFilter(key)}
+              onClick={() => setStatusFilter(key)}
               className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
                 active
                   ? "border-primary bg-primary text-primary-foreground"
@@ -134,6 +153,34 @@ export function LeadList({ leads }: { leads: Lead[] }) {
           );
         })}
       </div>
+
+      {/* Row 3: Event type filter pills (only when multiple types exist) */}
+      {activeEventTypes.length > 1 && (
+        <div className="flex flex-wrap gap-1.5 items-center">
+          <span className="text-xs text-muted-foreground font-medium mr-0.5">
+            <SlidersHorizontal className="inline h-3 w-3 mr-1" />Type:
+          </span>
+          <button type="button" onClick={() => setEventTypeFilter("all")}
+            className={`inline-flex items-center rounded-full border px-3 py-1 text-xs font-medium transition-colors ${eventTypeFilter === "all" ? "border-primary bg-primary text-primary-foreground" : "border-border bg-background text-muted-foreground hover:border-primary/40 hover:text-foreground"}`}>
+            All
+          </button>
+          {activeEventTypes.map(([type, count]) => (
+            <button key={type} type="button" onClick={() => setEventTypeFilter(type)}
+              className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium transition-colors ${eventTypeFilter === type ? "border-primary bg-primary text-primary-foreground" : "border-border bg-background text-muted-foreground hover:border-primary/40 hover:text-foreground"}`}>
+              {eventTypeLabel(type)}
+              <span className={`rounded-full px-1.5 py-px text-[10px] font-semibold ${eventTypeFilter === type ? "bg-primary-foreground/20 text-primary-foreground" : "bg-muted text-muted-foreground"}`}>{count}</span>
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* Clear filters */}
+      {hasActiveFilters && (
+        <button type="button" onClick={() => { setQuery(""); setStatusFilter("all"); setEventTypeFilter("all"); }}
+          className="text-xs text-muted-foreground hover:text-foreground transition-colors underline-offset-2 hover:underline">
+          Clear all filters
+        </button>
+      )}
 
       {/* Empty state */}
       {leads.length === 0 && (
@@ -151,7 +198,7 @@ export function LeadList({ leads }: { leads: Lead[] }) {
       {leads.length > 0 && filtered.length === 0 && (
         <div className="rounded-xl border border-dashed border-border py-10 text-center">
           <p className="text-sm text-muted-foreground">No leads match your filters.</p>
-          <Button variant="link" size="sm" className="mt-1" onClick={() => { setQuery(""); setFilter("all"); }}>
+          <Button variant="link" size="sm" className="mt-1" onClick={() => { setQuery(""); setStatusFilter("all"); setEventTypeFilter("all"); }}>
             Clear filters
           </Button>
         </div>
@@ -217,6 +264,7 @@ export function LeadList({ leads }: { leads: Lead[] }) {
           </Table>
         </div>
       )}
+    </div>
     </div>
   );
 }
