@@ -13,6 +13,7 @@ import type {
   VenueEvent,
 } from "@/lib/events/types";
 
+import { getFloorPlanByEvent } from "@/lib/floor-plans/repository";
 import { getTimelineEntries } from "@/lib/timeline/repository";
 import { getEventVendorAssignments } from "@/lib/vendors/repository";
 
@@ -69,7 +70,7 @@ export async function getEvents(client: DbClient, venueId: string): Promise<Venu
 }
 
 export async function getEvent(client: DbClient, venueId: string, eventId: string): Promise<EventWithDetails | null> {
-  const [evRes, nRes, tRes, aRes, timeline, vendorAssignments] = await Promise.all([
+  const [evRes, nRes, tRes, aRes, timeline, vendorAssignments, floorPlan] = await Promise.all([
     client.from("events")
       .select("*, clients(first_name, last_name, partner_first_name, partner_last_name)")
       .eq("id", eventId).eq("venue_id", venueId).maybeSingle<EventRow>(),
@@ -78,6 +79,7 @@ export async function getEvent(client: DbClient, venueId: string, eventId: strin
     client.from("event_activities").select("*").eq("event_id", eventId).order("created_at", { ascending: false }),
     getTimelineEntries(client, venueId, eventId),
     getEventVendorAssignments(client, venueId, eventId),
+    getFloorPlanByEvent(client, venueId, eventId),
   ]);
   if (evRes.error) throw evRes.error;
   if (nRes.error) throw nRes.error;
@@ -92,6 +94,7 @@ export async function getEvent(client: DbClient, venueId: string, eventId: strin
     activities: (aRes.data as ActRow[]).map(mapAct),
     timeline,
     vendorAssignments,
+    floorPlan,
   };
 }
 

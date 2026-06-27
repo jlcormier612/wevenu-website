@@ -70,6 +70,7 @@ export type EventWithDetails = VenueEvent & {
   activities: EventActivity[];
   timeline: import("@/lib/timeline/types").TimelineEntry[];
   vendorAssignments: import("@/lib/vendors/types").EventVendorAssignment[];
+  floorPlan: import("@/lib/floor-plans/types").FloorPlanWithObjects | null;
 };
 
 /** Form model for create and edit. */

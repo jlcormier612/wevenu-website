@@ -32,6 +32,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { FloorPlanEditor } from "@/components/floor-plan/floor-plan-editor";
 import {
   EVENT_STATUSES,
   daysUntil,
@@ -225,6 +226,7 @@ export function EventDetail({
               </span>
             )}
           </TabsTrigger>
+          <TabsTrigger value="floor-plan">Floor Plan</TabsTrigger>
           <TabsTrigger value="activity">Activity</TabsTrigger>
         </TabsList>
 
@@ -339,6 +341,27 @@ export function EventDetail({
                 eventId={event.id}
                 initialAssignments={event.vendorAssignments}
                 availableVendors={availableVendors}
+              />
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* ── Floor Plan ────────────────────────────────────────────── */}
+        <TabsContent value="floor-plan">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Floor Plan</CardTitle>
+              <CardDescription>
+                Visualize and communicate the event layout. Click a toolbar item then click
+                the canvas to place objects. Drag to reposition.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <FloorPlanEditor
+                initialPlan={event.floorPlan}
+                eventId={event.id}
+                eventName={event.name}
+                venueId={event.venueId}
               />
             </CardContent>
           </Card>
