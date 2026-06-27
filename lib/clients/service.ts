@@ -35,11 +35,11 @@ async function withVenue<T>(
 
 // ---- read -------------------------------------------------------------------
 
-export async function getClients(): Promise<Client[]> {
+export async function getClients(filters?: { q?: string; status?: string }): Promise<Client[]> {
   if (!isSupabaseConfigured) return [];
   const venue = await getCurrentVenue();
   if (!venue) return [];
-  return repo.getClients(await createClient(), venue.id);
+  return repo.getClients(await createClient(), venue.id, filters);
 }
 
 export async function getClient(clientId: string): Promise<ClientWithDetails | null> {

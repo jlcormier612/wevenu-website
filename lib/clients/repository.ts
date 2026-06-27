@@ -49,9 +49,14 @@ const mapAct  = (r: ActRow):  ClientActivity => ({ id: r.id, venueId: r.venue_id
 
 // ---- queries ----------------------------------------------------------------
 
-export async function getClients(client: DbClient, venueId: string): Promise<Client[]> {
-  const { data, error } = await client.from("clients").select("*").eq("venue_id", venueId)
-    .order("event_date", { ascending: true, nullsFirst: false });
+export async function getClients(client: DbClient, venueId: string, filters?: { q?: string; status?: string }): Promise<Client[]> {
+  let q = client.from("clients").select("*").eq("venue_id", venueId);
+  if (filters?.status) q = q.eq("status", filters.status);
+  if (filters?.q) {
+    const term = `%${filters.q}%`;
+    q = q.or(`first_name.ilike.${term},last_name.ilike.${term},email.ilike.${term},partner_first_name.ilike.${term},partner_last_name.ilike.${term}`);
+  }
+  const { data, error } = await q.order("event_date", { ascending: true, nullsFirst: false });
   if (error) throw error;
   return (data as ClientRow[]).map(mapClient);
 }

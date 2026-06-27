@@ -45,12 +45,12 @@ async function withVenue<T>(
 
 // ---- read -------------------------------------------------------------------
 
-export async function getLeads(): Promise<Lead[]> {
+export async function getLeads(filters?: { q?: string; status?: string }): Promise<Lead[]> {
   if (!isSupabaseConfigured) return [];
   const venue = await getCurrentVenue();
   if (!venue) return [];
   const supabase = await createClient();
-  return repo.getLeads(supabase, venue.id);
+  return repo.getLeads(supabase, venue.id, filters);
 }
 
 export async function getLead(leadId: string): Promise<LeadWithDetails | null> {

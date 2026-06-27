@@ -1,3 +1,14 @@
+export type PackageItem = {
+  id: string;
+  packageId: string;
+  venueId: string;
+  description: string;
+  quantity: number;
+  unit: string | null;
+  sortOrder: number;
+  createdAt: string;
+};
+
 export type Package = {
   id: string;
   venueId: string;
@@ -10,6 +21,10 @@ export type Package = {
   createdAt: string;
   updatedAt: string;
 };
+
+export type PackageWithItems = Package & { items: PackageItem[] };
+
+export type PackageItemInput = { description: string; quantity: string; unit: string };
 
 export type PackageInput = {
   name: string;

@@ -107,13 +107,15 @@ function mapTask(r: TaskRow): LeadTask {
 export async function getLeads(
   client: DbClient,
   venueId: string,
+  filters?: { q?: string; status?: string },
 ): Promise<Lead[]> {
-  const { data, error } = await client
-    .from("leads")
-    .select("*")
-    .eq("venue_id", venueId)
-    .order("inquiry_date", { ascending: false })
-    .order("created_at", { ascending: false });
+  let q = client.from("leads").select("*").eq("venue_id", venueId);
+  if (filters?.status) q = q.eq("status", filters.status);
+  if (filters?.q) {
+    const term = `%${filters.q}%`;
+    q = q.or(`first_name.ilike.${term},last_name.ilike.${term},email.ilike.${term},partner_first_name.ilike.${term},partner_last_name.ilike.${term}`);
+  }
+  const { data, error } = await q.order("inquiry_date", { ascending: false }).order("created_at", { ascending: false });
   if (error) throw error;
   return (data as LeadRow[]).map(mapLead);
 }

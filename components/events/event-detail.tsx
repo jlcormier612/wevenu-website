@@ -22,6 +22,7 @@ import { EventStatusBadge } from "@/components/events/event-status-badge";
 import { EventTeamSection } from "@/components/events/event-team-section";
 import { EventVendorsSection } from "@/components/events/vendors/event-vendors-section";
 import { TimelineView } from "@/components/events/timeline/timeline-view";
+import { InvoiceStatusBadge } from "@/components/invoices/invoice-status-badge";
 import { ActivityTimeline } from "@/components/leads/activity-timeline";
 import { Button } from "@/components/ui/button";
 import {
@@ -33,6 +34,8 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { FloorPlanEditor } from "@/components/floor-plan/floor-plan-editor";
+import { formatCurrency } from "@/lib/invoices/constants";
+import type { Invoice } from "@/lib/invoices/types";
 import {
   EVENT_STATUSES,
   daysUntil,
@@ -133,9 +136,11 @@ function ComingSoonTab({
 export function EventDetail({
   event,
   availableVendors = [],
+  invoices = [],
 }: {
   event: EventWithDetails;
   availableVendors?: import("@/lib/vendors/types").Vendor[];
+  invoices?: Invoice[];
 }) {
   const router = useRouter();
   const [statusPending, startStatus] = React.useTransition();
@@ -227,6 +232,10 @@ export function EventDetail({
             )}
           </TabsTrigger>
           <TabsTrigger value="floor-plan">Floor Plan</TabsTrigger>
+          <TabsTrigger value="invoice">
+            Invoice
+            {invoices.length > 0 && <span className="ml-1 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground">{invoices.length}</span>}
+          </TabsTrigger>
           <TabsTrigger value="activity">Activity</TabsTrigger>
         </TabsList>
 
@@ -368,6 +377,55 @@ export function EventDetail({
         </TabsContent>
 
         {/* ── Activity ───────────────────────────────────────────────── */}
+        {/* ── Invoice ─────────────────────────────────────────────────── */}
+        <TabsContent value="invoice">
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between gap-4">
+                <div>
+                  <CardTitle className="text-base">Invoice</CardTitle>
+                  <CardDescription>Financial summary for this event.</CardDescription>
+                </div>
+                <Button type="button" size="sm"
+                  render={<Link href={`/invoices/new?eventId=${event.id}${event.clientId ? `&clientId=${event.clientId}` : ""}`} />}>
+                  + New Invoice
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {invoices.length === 0 ? (
+                <p className="py-6 text-center text-sm text-muted-foreground">
+                  No invoice yet.{" "}
+                  <Link href={`/invoices/new?eventId=${event.id}${event.clientId ? `&clientId=${event.clientId}` : ""}`}
+                    className="text-primary hover:underline">
+                    Create one →
+                  </Link>
+                </p>
+              ) : (
+                <div className="space-y-2">
+                  {invoices.map((inv) => (
+                    <Link key={inv.id} href={`/invoices/${inv.id}`}
+                      className="flex items-center justify-between gap-4 rounded-lg border border-border bg-card px-4 py-3 hover:bg-muted/30 transition-colors">
+                      <div className="space-y-0.5 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <p className="text-sm font-medium text-heading">{inv.invoiceNumber}</p>
+                          <InvoiceStatusBadge status={inv.status} />
+                        </div>
+                      </div>
+                      <div className="text-right shrink-0">
+                        <p className="text-sm font-semibold text-heading">{formatCurrency(inv.total)}</p>
+                        {inv.balanceDue > 0 && inv.status !== "paid" && (
+                          <p className="text-xs text-destructive">{formatCurrency(inv.balanceDue)} due</p>
+                        )}
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
         <TabsContent value="activity">
           <Card>
             <CardHeader>

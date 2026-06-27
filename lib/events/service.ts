@@ -30,11 +30,11 @@ async function withVenue<T>(
 
 // ---- read -------------------------------------------------------------------
 
-export async function getEvents(): Promise<VenueEvent[]> {
+export async function getEvents(filters?: { q?: string; status?: string }): Promise<VenueEvent[]> {
   if (!isSupabaseConfigured) return [];
   const venue = await getCurrentVenue();
   if (!venue) return [];
-  return repo.getEvents(await createClient(), venue.id);
+  return repo.getEvents(await createClient(), venue.id, filters);
 }
 
 export async function getEvent(eventId: string): Promise<EventWithDetails | null> {

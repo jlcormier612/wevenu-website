@@ -23,11 +23,11 @@ async function withVenue<T>(fn: (c: Awaited<ReturnType<typeof createClient>>, ve
   return fn(supabase, venue.id);
 }
 
-export async function getInvoices(): Promise<Invoice[]> {
+export async function getInvoices(filters?: { q?: string; status?: string }): Promise<Invoice[]> {
   if (!isSupabaseConfigured) return [];
   const venue = await getCurrentVenue();
   if (!venue) return [];
-  return repo.getInvoices(await createClient(), venue.id);
+  return repo.getInvoices(await createClient(), venue.id, filters);
 }
 
 export async function getInvoice(id: string): Promise<InvoiceWithLineItems | null> {

@@ -17,9 +17,9 @@ import {
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { EMPTY_PACKAGE_INPUT, PACKAGE_CATEGORIES } from "@/lib/packages/constants";
-import type { Package, PackageErrors, PackageInput } from "@/lib/packages/types";
+import type { PackageErrors, PackageInput, PackageWithItems } from "@/lib/packages/types";
 
-export function PackageForm({ existing }: { existing?: Package }) {
+export function PackageForm({ existing }: { existing?: PackageWithItems }) {
   const router = useRouter();
   const [input, setInput] = React.useState<PackageInput>(
     existing

@@ -17,6 +17,7 @@ import type { Package } from "@/lib/packages/types";
 
 const EMPTY_INPUT: InvoiceLineItemInput = {
   type: "item", description: "", quantity: "1", unitPrice: "", packageId: "",
+  discountType: "fixed", discountValue: "",
 };
 
 function LineItemRow({
@@ -122,30 +123,70 @@ export function InvoiceLineItemsEditor({
       {/* Add form */}
       {isEditable && showAdd && (
         <div className="rounded-lg border border-ring bg-card p-4 space-y-3">
-          <div className="grid gap-3 sm:grid-cols-2">
-            <div className="space-y-1.5">
-              <label className="text-xs font-medium text-muted-foreground">Type</label>
-              <Select value={input.type} onValueChange={(v) => setInput((p) => ({ ...p, type: v as InvoiceLineItemType }))}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>{LINE_ITEM_TYPES.map((t) => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}</SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-1.5">
-              <label className="text-xs font-medium text-muted-foreground">Description *</label>
-              <Input value={input.description} onChange={(e) => setInput((p) => ({ ...p, description: e.target.value }))} placeholder="Item description…" autoFocus />
-            </div>
-            <div className="space-y-1.5">
-              <label className="text-xs font-medium text-muted-foreground">Quantity</label>
-              <Input type="number" value={input.quantity} onChange={(e) => setInput((p) => ({ ...p, quantity: e.target.value }))} min="0" step="0.01" className="w-24" />
-            </div>
-            <div className="space-y-1.5">
-              <label className="text-xs font-medium text-muted-foreground">Unit price</label>
-              <Input value={input.unitPrice} onChange={(e) => setInput((p) => ({ ...p, unitPrice: e.target.value }))} placeholder="8,500" />
-            </div>
-          </div>
+          {/* Discount type toggle — only for discount/deposit items */}
+          {(() => {
+            const isDiscount = input.type === "discount" || input.type === "deposit";
+            return (
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-muted-foreground">Type</label>
+                  <Select value={input.type} onValueChange={(v) => setInput((p) => ({ ...p, type: v as InvoiceLineItemType, discountType: "fixed", discountValue: "", unitPrice: "" }))}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>{LINE_ITEM_TYPES.map((t) => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}</SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-muted-foreground">Description *</label>
+                  <Input value={input.description} onChange={(e) => setInput((p) => ({ ...p, description: e.target.value }))} placeholder="Item description…" autoFocus />
+                </div>
+                {!isDiscount && (
+                  <>
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-medium text-muted-foreground">Quantity</label>
+                      <Input type="number" value={input.quantity} onChange={(e) => setInput((p) => ({ ...p, quantity: e.target.value }))} min="0" step="0.01" className="w-24" />
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-medium text-muted-foreground">Unit price</label>
+                      <Input value={input.unitPrice} onChange={(e) => setInput((p) => ({ ...p, unitPrice: e.target.value }))} placeholder="8,500" />
+                    </div>
+                  </>
+                )}
+                {isDiscount && (
+                  <>
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-medium text-muted-foreground">Discount type</label>
+                      <div className="flex gap-1">
+                        {([["fixed","$ Amount"],["percent","% of Subtotal"]] as const).map(([val, label]) => (
+                          <button key={val} type="button" onClick={() => setInput((p) => ({ ...p, discountType: val, unitPrice: "", discountValue: "" }))}
+                            className={`flex-1 rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors ${input.discountType === val ? "border-primary bg-primary text-primary-foreground" : "border-border bg-background text-foreground hover:border-primary/40"}`}>
+                            {label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-medium text-muted-foreground">
+                        {input.discountType === "percent" ? "Percentage (%)" : "Amount ($)"}
+                      </label>
+                      <Input
+                        value={input.discountType === "percent" ? (input.discountValue ?? "") : input.unitPrice}
+                        onChange={(e) => input.discountType === "percent"
+                          ? setInput((p) => ({ ...p, discountValue: e.target.value }))
+                          : setInput((p) => ({ ...p, unitPrice: e.target.value }))}
+                        placeholder={input.discountType === "percent" ? "10" : "1,000"}
+                      />
+                      {input.discountType === "percent" && (
+                        <p className="text-xs text-muted-foreground">Applied to current invoice subtotal at time of adding.</p>
+                      )}
+                    </div>
+                  </>
+                )}
+              </div>
+            );
+          })()}
           <div className="flex items-center justify-end gap-2">
             <Button type="button" variant="ghost" size="sm" onClick={() => { setShowAdd(false); setInput(EMPTY_INPUT); }} disabled={addPending}>Cancel</Button>
-            <Button type="button" size="sm" disabled={!input.description.trim() || !input.unitPrice || addPending} onClick={handleAdd}>
+            <Button type="button" size="sm" disabled={!input.description.trim() || (input.type !== "discount" && input.type !== "deposit" && !input.unitPrice) || ((input.type === "discount" || input.type === "deposit") && input.discountType === "percent" && !input.discountValue) || ((input.type === "discount" || input.type === "deposit") && input.discountType === "fixed" && !input.unitPrice) || addPending} onClick={handleAdd}>
               {addPending ? <><Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />Adding…</> : "Add Line Item"}
             </Button>
           </div>

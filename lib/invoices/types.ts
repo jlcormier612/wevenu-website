@@ -60,6 +60,8 @@ export type InvoiceLineItemInput = {
   quantity: string;
   unitPrice: string;
   packageId: string;
+  discountType?: "fixed" | "percent";
+  discountValue?: string;  // the raw % or fixed amount entered
 };
 
 export type InvoiceInput = {

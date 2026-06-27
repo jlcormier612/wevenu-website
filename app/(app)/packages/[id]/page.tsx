@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
 import { PackageForm } from "@/components/packages/package-form";
+import { PackageInclusionsEditor } from "@/components/packages/package-inclusions-editor";
 import { PageHeader } from "@/components/shell/module-placeholder";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { getPackage } from "@/lib/packages/service";
@@ -27,6 +28,15 @@ export default async function EditPackagePage({ params }: Props) {
           <CardDescription>Changes apply to future invoices — existing line items are not updated.</CardDescription>
         </CardHeader>
         <CardContent><PackageForm existing={pkg} /></CardContent>
+      </Card>
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">What&apos;s Included</CardTitle>
+          <CardDescription>List everything a client receives in this package. Inclusions appear on invoices and print documents.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <PackageInclusionsEditor packageId={pkg.id} initialItems={pkg.items} />
+        </CardContent>
       </Card>
     </div>
   );

@@ -60,11 +60,11 @@ const mapAct  = (r: ActRow):  EventActivity    => ({ id: r.id, venueId: r.venue_
 
 // ---- queries ----------------------------------------------------------------
 
-export async function getEvents(client: DbClient, venueId: string): Promise<VenueEvent[]> {
-  const { data, error } = await client
-    .from("events").select("*")
-    .eq("venue_id", venueId)
-    .order("event_date", { ascending: true });
+export async function getEvents(client: DbClient, venueId: string, filters?: { q?: string; status?: string }): Promise<VenueEvent[]> {
+  let q = client.from("events").select("*").eq("venue_id", venueId);
+  if (filters?.status) q = q.eq("status", filters.status);
+  if (filters?.q) q = q.ilike("name", `%${filters.q}%`);
+  const { data, error } = await q.order("event_date", { ascending: true });
   if (error) throw error;
   return (data as EventRow[]).map(mapEvent);
 }

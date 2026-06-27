@@ -34,10 +34,13 @@ const mapActivity = (r: ActivityRow): InvoiceActivity => ({ id: r.id, venueId: r
 
 // ---- Invoices ---------------------------------------------------------------
 
-export async function getInvoices(client: DbClient, venueId: string): Promise<Invoice[]> {
-  const { data, error } = await client.from("invoices")
+export async function getInvoices(client: DbClient, venueId: string, filters?: { q?: string; status?: string }): Promise<Invoice[]> {
+  let q = client.from("invoices")
     .select("*, clients(first_name, last_name, partner_first_name, partner_last_name), events(name, event_date)")
-    .eq("venue_id", venueId).order("created_at", { ascending: false });
+    .eq("venue_id", venueId);
+  if (filters?.status) q = q.eq("status", filters.status);
+  if (filters?.q) q = q.ilike("invoice_number", `%${filters.q}%`);
+  const { data, error } = await q.order("created_at", { ascending: false });
   if (error) throw error;
   return (data as unknown as InvoiceRow[]).map(mapInvoice);
 }
@@ -78,14 +81,23 @@ export async function insertActivity(client: DbClient, venueId: string, invoiceI
 }
 
 export async function addLineItem(client: DbClient, venueId: string, invoiceId: string, input: InvoiceLineItemInput): Promise<InvoiceLineItem> {
+  const isDiscount = input.type === "discount" || input.type === "deposit";
   const qty = parseFloat(input.quantity) || 1;
-  const price = parseFloat(input.unitPrice.replace(/[$,]/g, "")) || 0;
+  let price = parseFloat(input.unitPrice.replace(/[$,]/g, "")) || 0;
+
+  // For percentage discounts: compute dollar amount from current invoice subtotal
+  if (isDiscount && input.discountType === "percent" && input.discountValue) {
+    const pct = parseFloat(input.discountValue) || 0;
+    const { data: inv } = await client.from("invoices").select("subtotal").eq("id", invoiceId).maybeSingle<{ subtotal: number }>();
+    price = parseFloat(((Number(inv?.subtotal ?? 0) * pct) / 100).toFixed(2));
+  }
+
   const amount = parseFloat((qty * price).toFixed(2));
   // Get current sort order max
   const { data: existing } = await client.from("invoice_line_items").select("sort_order").eq("invoice_id", invoiceId).order("sort_order", { ascending: false }).limit(1);
   const sortOrder = ((existing?.[0] as { sort_order: number } | undefined)?.sort_order ?? -1) + 1;
   const { data, error } = await client.from("invoice_line_items")
-    .insert({ invoice_id: invoiceId, venue_id: venueId, package_id: input.packageId || null, type: input.type, description: input.description.trim(), quantity: qty, unit_price: price, amount, sort_order: sortOrder })
+    .insert({ invoice_id: invoiceId, venue_id: venueId, package_id: input.packageId || null, type: input.type, description: input.description.trim(), quantity: qty, unit_price: price, amount, sort_order: sortOrder, discount_type: input.discountType ?? null, discount_value: input.discountValue ? parseFloat(input.discountValue) : null })
     .select().single<LineItemRow>();
   if (error) throw error;
   await recomputeInvoiceTotals(client, venueId, invoiceId);
