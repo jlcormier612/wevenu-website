@@ -114,11 +114,13 @@ export async function getSchedule(client: DbClient, venueId: string, id: string)
 
 export async function insertSchedule(client: DbClient, venueId: string, input: {
   title: string; clientId: string; eventId: string; totalAmount: number; notes: string;
+  invoiceId?: string | null;
 }): Promise<string> {
   const { data, error } = await client.from("payment_schedules")
     .insert({
       venue_id: venueId, client_id: input.clientId || null, event_id: input.eventId || null,
       title: input.title.trim(), total_amount: input.totalAmount, notes: input.notes.trim() || null,
+      invoice_id: input.invoiceId ?? null,
     }).select("id").single<{ id: string }>();
   if (error) throw error;
   return data.id;

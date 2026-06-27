@@ -111,6 +111,7 @@ export async function createPaymentSchedule(
   input: ScheduleInput,
   presetId?: string,
   eventDate?: string | null,
+  invoiceId?: string | null,
 ): Promise<CreateScheduleResult> {
   const errors = validateScheduleInput(input);
   if (Object.keys(errors).length > 0) return { ok: false, errors };
@@ -118,7 +119,7 @@ export async function createPaymentSchedule(
   const result = await withVenue(async (supabase, venueId) => {
     const scheduleId = await repo.insertSchedule(supabase, venueId, {
       title: input.title, clientId: input.clientId, eventId: input.eventId,
-      totalAmount, notes: input.notes,
+      totalAmount, notes: input.notes, invoiceId: invoiceId ?? null,
     });
     // Apply preset line items
     if (presetId && presetId !== "custom") {

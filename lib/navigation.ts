@@ -4,6 +4,7 @@ import {
   ClipboardList,
   CreditCard,
   FileSignature,
+  FileText,
   LayoutDashboard,
   LayoutTemplate,
   type LucideIcon,
@@ -70,7 +71,8 @@ export const NAV_SECTIONS: NavSection[] = [
     label: "Finance",
     items: [
       { title: "Contracts", href: "/contracts", icon: FileSignature },
-      { title: "Payments", href: "/payments", icon: CreditCard },
+      { title: "Invoices",  href: "/invoices",  icon: FileText },
+      { title: "Payments",  href: "/payments",  icon: CreditCard },
     ],
   },
   {
