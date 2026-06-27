@@ -62,6 +62,17 @@ export async function createClient_(input: ClientInput): Promise<CreateClientRes
 }
 
 /** Convert a won lead to a client. Pre-populates from lead data. */
+// Imported lazily to avoid circular deps between client and availability modules
+async function convertLeadHolds(venueId: string, leadId: string, supabase: Parameters<typeof repo.insertClient>[0]) {
+  // Convert all active date holds for this lead to "converted" status
+  const { error } = await supabase.from("date_holds")
+    .update({ status: "converted" })
+    .eq("venue_id", venueId)
+    .eq("lead_id", leadId)
+    .eq("status", "active");
+  if (error) console.error("Could not convert holds:", error.message);
+}
+
 export async function convertLeadToClient(lead: Lead): Promise<CreateClientResult> {
   const input: ClientInput = {
     firstName: lead.firstName,
@@ -84,6 +95,8 @@ export async function convertLeadToClient(lead: Lead): Promise<CreateClientResul
     const clientId = await repo.insertClient(supabase, venueId, input, lead.id);
     await repo.insertClientActivity(supabase, venueId, clientId, "note_added",
       "Welcome note", `Converted from lead inquiry — ${lead.firstName} ${lead.lastName}`);
+    // Auto-convert any active date holds for this lead
+    await convertLeadHolds(venueId, lead.id, supabase);
     return { ok: true, clientId } as CreateClientResult;
   });
   return result as CreateClientResult;

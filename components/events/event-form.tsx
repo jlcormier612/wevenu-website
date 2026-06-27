@@ -7,6 +7,7 @@ import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { createEventAction } from "@/app/(app)/events/actions";
+import { ConflictWarning } from "@/components/availability/conflict-warning";
 import { Field } from "@/components/setup/field";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -17,9 +18,11 @@ import { Separator } from "@/components/ui/separator";
 import { eventInputFromVenueEvent } from "@/lib/events/constants";
 import type { EventErrors, EventInput, VenueEvent } from "@/lib/events/types";
 import { EVENT_TYPES } from "@/lib/leads/constants";
+import type { VenueSpace } from "@/lib/availability/types";
 
 export function EventFormFields({
   input, errors, set, onSubmit, pending, submitLabel = "Create event",
+  spaces = [], existingEventId,
 }: {
   input: EventInput;
   errors: EventErrors;
@@ -27,6 +30,8 @@ export function EventFormFields({
   onSubmit: () => void;
   pending: boolean;
   submitLabel?: string;
+  spaces?: VenueSpace[];
+  existingEventId?: string; // exclude self when editing
 }) {
   const router = useRouter();
   return (
@@ -46,6 +51,33 @@ export function EventFormFields({
           <Input id="ed" type="date" value={input.eventDate} onChange={(e) => set("eventDate", e.target.value)} aria-invalid={errors.eventDate ? true : undefined} />
         </Field>
       </div>
+
+      {/* Space assignment + availability check */}
+      {spaces.length > 0 && (
+        <Field label="Event space" htmlFor="sp" hint="Optional — assign this event to a specific space.">
+          <Select value={input.spaceId} onValueChange={(v) => set("spaceId", v)}>
+            <SelectTrigger id="sp"><SelectValue placeholder="No specific space" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="">No specific space</SelectItem>
+              {spaces.filter((s) => s.isActive).map((s) => (
+                <SelectItem key={s.id} value={s.id}>
+                  {s.name}{s.capacity != null ? ` — ${s.capacity.toLocaleString()} guests` : ""}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </Field>
+      )}
+
+      {/* Availability conflict advisory */}
+      {input.eventDate && (
+        <ConflictWarning
+          date={input.eventDate}
+          spaceId={input.spaceId || undefined}
+          type="event"
+          excludeId={existingEventId}
+        />
+      )}
 
       <Separator />
       <p className="text-sm font-medium text-heading">Day-of schedule</p>
@@ -80,7 +112,7 @@ export function EventFormFields({
   );
 }
 
-export function EventForm({ initial }: { initial: EventInput }) {
+export function EventForm({ initial, spaces = [] }: { initial: EventInput; spaces?: VenueSpace[] }) {
   const router = useRouter();
   const [input, setInput] = React.useState<EventInput>(initial);
   const [errors, setErrors] = React.useState<EventErrors>({});
@@ -100,5 +132,5 @@ export function EventForm({ initial }: { initial: EventInput }) {
     });
   }
 
-  return <EventFormFields input={input} errors={errors} set={set} onSubmit={handleSubmit} pending={pending} />;
+  return <EventFormFields input={input} errors={errors} set={set} onSubmit={handleSubmit} pending={pending} spaces={spaces} />;
 }

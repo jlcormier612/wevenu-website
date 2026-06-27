@@ -22,7 +22,7 @@ type DbClient = Awaited<ReturnType<typeof createClient>>;
 // ---- row types --------------------------------------------------------------
 
 type EventRow = {
-  id: string; venue_id: string; client_id: string | null;
+  id: string; venue_id: string; client_id: string | null; space_id: string | null;
   status: EventStatus; name: string; event_type: string | null;
   event_date: string; start_time: string | null; end_time: string | null;
   setup_time: string | null; teardown_time: string | null;
@@ -36,7 +36,7 @@ type ActRow    = { id: string; venue_id: string; event_id: string; type: string;
 
 function mapEvent(r: EventRow): VenueEvent {
   return {
-    id: r.id, venueId: r.venue_id, clientId: r.client_id,
+    id: r.id, venueId: r.venue_id, clientId: r.client_id, spaceId: r.space_id,
     status: r.status, name: r.name, eventType: r.event_type,
     eventDate: r.event_date, startTime: r.start_time, endTime: r.end_time,
     setupTime: r.setup_time, teardownTime: r.teardown_time,
@@ -112,6 +112,7 @@ function toEventRow(venueId: string, input: EventInput): Record<string, unknown>
   return {
     venue_id: venueId,
     client_id: input.clientId || null,
+    space_id: input.spaceId || null,
     name: input.name.trim(),
     event_type: input.eventType || null,
     event_date: input.eventDate,

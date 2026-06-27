@@ -49,6 +49,7 @@ export function createInitialEventInput(
     eventDate: string;
     guestCount: number | null;
     clientId: string;
+    spaceId: string | null;
   }> | null,
 ): EventInput {
   return {
@@ -61,6 +62,7 @@ export function createInitialEventInput(
     teardownTime: "",
     guestCount: source?.guestCount != null ? String(source.guestCount) : "",
     clientId: source?.clientId ?? "",
+    spaceId: source?.spaceId ?? "",
   };
 }
 
@@ -75,5 +77,6 @@ export function eventInputFromVenueEvent(ev: VenueEvent): EventInput {
     teardownTime: ev.teardownTime ?? "",
     guestCount: ev.guestCount != null ? String(ev.guestCount) : "",
     clientId: ev.clientId ?? "",
+    spaceId: ev.spaceId ?? "",
   };
 }

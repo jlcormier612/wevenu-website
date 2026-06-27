@@ -20,6 +20,7 @@ export type VenueEvent = {
   id: string;
   venueId: string;
   clientId: string | null;
+  spaceId: string | null;     // nullable FK to venue_spaces (Sprint 20)
   status: EventStatus;
   name: string;
   eventType: string | null;
@@ -84,6 +85,7 @@ export type EventInput = {
   teardownTime: string;
   guestCount: string;
   clientId: string;
+  spaceId: string;   // empty string = no space assigned
 };
 
 export type TeamMemberInput = {

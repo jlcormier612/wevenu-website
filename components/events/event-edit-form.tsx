@@ -9,8 +9,9 @@ import { updateEventAction } from "@/app/(app)/events/[id]/actions";
 import { EventFormFields } from "@/components/events/event-form";
 import { eventInputFromVenueEvent } from "@/lib/events/constants";
 import type { EventErrors, EventInput, VenueEvent } from "@/lib/events/types";
+import type { VenueSpace } from "@/lib/availability/types";
 
-export function EventEditForm({ event }: { event: VenueEvent }) {
+export function EventEditForm({ event, spaces = [] }: { event: VenueEvent; spaces?: VenueSpace[] }) {
   const router = useRouter();
   const [input, setInput] = React.useState<EventInput>(() => eventInputFromVenueEvent(event));
   const [errors, setErrors] = React.useState<EventErrors>({});
@@ -30,5 +31,5 @@ export function EventEditForm({ event }: { event: VenueEvent }) {
     });
   }
 
-  return <EventFormFields input={input} errors={errors} set={set} onSubmit={handleSubmit} pending={pending} submitLabel="Save changes" />;
+  return <EventFormFields input={input} errors={errors} set={set} onSubmit={handleSubmit} pending={pending} submitLabel="Save changes" spaces={spaces} existingEventId={event.id} />;
 }

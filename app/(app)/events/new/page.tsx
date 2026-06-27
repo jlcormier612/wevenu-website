@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { EventForm } from "@/components/events/event-form";
 import { PageHeader } from "@/components/shell/module-placeholder";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { getSpaces } from "@/lib/availability/service";
 import { clientDisplayName } from "@/lib/clients/constants";
 import { getClient } from "@/lib/clients/service";
 import { createInitialEventInput } from "@/lib/events/constants";
@@ -13,6 +14,7 @@ type Props = { searchParams: Promise<{ clientId?: string }> };
 
 export default async function NewEventPage({ searchParams }: Props) {
   const { clientId } = await searchParams;
+  const spaces = await getSpaces();
   let prefill = createInitialEventInput();
 
   if (clientId) {
@@ -46,7 +48,7 @@ export default async function NewEventPage({ searchParams }: Props) {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <EventForm initial={prefill} />
+          <EventForm initial={prefill} spaces={spaces} />
         </CardContent>
       </Card>
     </div>

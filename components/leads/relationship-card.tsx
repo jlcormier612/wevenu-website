@@ -6,6 +6,7 @@ import { Calendar, Clock, Loader2, Phone } from "lucide-react";
 import { toast } from "sonner";
 
 import { updateRelationshipAction } from "@/app/(app)/leads/[id]/actions";
+import { ConflictWarning } from "@/components/availability/conflict-warning";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -215,6 +216,9 @@ export function RelationshipCard({
                   />
                 </EditRow>
               </div>
+              {input.tourDate && !input.tourCompleted && (
+                <ConflictWarning date={input.tourDate} type="tour" excludeId={lead.id} />
+              )}
               <div className="flex items-center gap-2">
                 <Switch
                   checked={input.tourCompleted}
