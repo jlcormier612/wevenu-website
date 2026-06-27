@@ -4,7 +4,7 @@ import * as React from "react";
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Mail, Pencil, Phone, Globe, Star, Trash2 } from "lucide-react";
+import { ArrowLeft, ExternalLink, Globe, Mail, Pencil, Phone, Star, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { deleteVendorAction } from "@/app/(app)/vendors/actions";
@@ -92,7 +92,30 @@ export function VendorDetail({ vendor }: { vendor: VendorWithEvents }) {
                 <p className="text-sm font-medium text-foreground">{vendor.contactName}</p>
               </div>
             )}
-            {!vendor.email && !vendor.phone && !vendor.website && !vendor.contactName && (
+            {/* Social media links */}
+            {[
+              { label: "Instagram", value: vendor.instagramUrl },
+              { label: "Facebook",  value: vendor.facebookUrl  },
+              { label: "Pinterest", value: vendor.pinterestUrl },
+              { label: "TikTok",   value: vendor.tiktokUrl    },
+            ].filter((s) => s.value).map(({ label, value }) => {
+              const href = value!.startsWith("http") ? value! : `https://${value}`;
+              return (
+                <div key={label} className="flex items-start gap-3">
+                  <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground mt-0.5">
+                    <ExternalLink className="h-3.5 w-3.5" />
+                  </span>
+                  <div>
+                    <p className="text-xs text-muted-foreground">{label}</p>
+                    <a href={href} target="_blank" rel="noopener noreferrer"
+                      className="text-sm font-medium text-primary hover:underline break-all">
+                      {value}
+                    </a>
+                  </div>
+                </div>
+              );
+            })}
+            {!vendor.email && !vendor.phone && !vendor.website && !vendor.contactName && !vendor.instagramUrl && (
               <p className="text-sm text-muted-foreground">No contact details recorded.</p>
             )}
           </CardContent>

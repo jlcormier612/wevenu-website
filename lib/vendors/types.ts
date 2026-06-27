@@ -11,6 +11,10 @@ export type Vendor = {
   email: string | null;
   phone: string | null;
   website: string | null;
+  instagramUrl: string | null;
+  facebookUrl: string | null;
+  pinterestUrl: string | null;
+  tiktokUrl: string | null;
   isPreferred: boolean;
   notes: string | null;
   createdAt: string;
@@ -53,6 +57,10 @@ export type VendorInput = {
   email: string;
   phone: string;
   website: string;
+  instagramUrl: string;
+  facebookUrl: string;
+  pinterestUrl: string;
+  tiktokUrl: string;
   isPreferred: boolean;
   notes: string;
 };

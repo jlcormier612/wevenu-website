@@ -42,6 +42,10 @@ export function createInitialVendorInput(source?: Vendor | null): VendorInput {
     email: source?.email ?? "",
     phone: source?.phone ?? "",
     website: source?.website ?? "",
+    instagramUrl: source?.instagramUrl ?? "",
+    facebookUrl: source?.facebookUrl ?? "",
+    pinterestUrl: source?.pinterestUrl ?? "",
+    tiktokUrl: source?.tiktokUrl ?? "",
     isPreferred: source?.isPreferred ?? false,
     notes: source?.notes ?? "",
   };

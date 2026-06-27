@@ -16,7 +16,10 @@ type DbClient = Awaited<ReturnType<typeof createClient>>;
 type VendorRow = {
   id: string; venue_id: string; name: string; category: string | null;
   contact_name: string | null; email: string | null; phone: string | null;
-  website: string | null; is_preferred: boolean; notes: string | null;
+  website: string | null;
+  instagram_url: string | null; facebook_url: string | null;
+  pinterest_url: string | null; tiktok_url: string | null;
+  is_preferred: boolean; notes: string | null;
   created_at: string; updated_at: string;
 };
 
@@ -35,7 +38,10 @@ function mapVendor(r: VendorRow): Vendor {
   return {
     id: r.id, venueId: r.venue_id, name: r.name, category: r.category,
     contactName: r.contact_name, email: r.email, phone: r.phone,
-    website: r.website, isPreferred: r.is_preferred, notes: r.notes,
+    website: r.website,
+    instagramUrl: r.instagram_url, facebookUrl: r.facebook_url,
+    pinterestUrl: r.pinterest_url, tiktokUrl: r.tiktok_url,
+    isPreferred: r.is_preferred, notes: r.notes,
     createdAt: r.created_at, updatedAt: r.updated_at,
   };
 }
@@ -87,7 +93,12 @@ function toVendorRow(venueId: string, input: VendorInput): Record<string, unknow
     venue_id: venueId, name: input.name.trim(),
     category: input.category || null, contact_name: input.contactName.trim() || null,
     email: input.email.trim() || null, phone: input.phone.trim() || null,
-    website: input.website.trim() || null, is_preferred: input.isPreferred,
+    website: input.website.trim() || null,
+    instagram_url: input.instagramUrl.trim() || null,
+    facebook_url: input.facebookUrl.trim() || null,
+    pinterest_url: input.pinterestUrl.trim() || null,
+    tiktok_url: input.tiktokUrl.trim() || null,
+    is_preferred: input.isPreferred,
     notes: input.notes.trim() || null,
   };
 }

@@ -83,6 +83,25 @@ export function VendorFormFields({
       </div>
 
       <Separator />
+      <p className="text-sm font-medium text-heading">
+        Social media <span className="font-normal text-muted-foreground">(optional)</span>
+      </p>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Field label="Instagram" htmlFor="vig">
+          <Input id="vig" value={input.instagramUrl} onChange={(e) => set("instagramUrl", e.target.value)} placeholder="instagram.com/vendor or @vendor" />
+        </Field>
+        <Field label="Facebook" htmlFor="vfb">
+          <Input id="vfb" value={input.facebookUrl} onChange={(e) => set("facebookUrl", e.target.value)} placeholder="facebook.com/vendor" />
+        </Field>
+        <Field label="Pinterest" htmlFor="vpin">
+          <Input id="vpin" value={input.pinterestUrl} onChange={(e) => set("pinterestUrl", e.target.value)} placeholder="pinterest.com/vendor" />
+        </Field>
+        <Field label="TikTok" htmlFor="vtt">
+          <Input id="vtt" value={input.tiktokUrl} onChange={(e) => set("tiktokUrl", e.target.value)} placeholder="tiktok.com/@vendor" />
+        </Field>
+      </div>
+
+      <Separator />
       <Field label="Internal notes" htmlFor="vnotes"
         hint="Arrival preferences, setup requirements, past experiences. Not visible to vendors.">
         <Textarea id="vnotes" value={input.notes} rows={3} onChange={(e) => set("notes", e.target.value)}
