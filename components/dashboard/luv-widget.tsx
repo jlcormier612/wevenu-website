@@ -78,9 +78,10 @@ export function LuvWidget({ observations }: { observations: LuvObservation[] }) 
             {observations.map((obs) => (
               <ObservationRow key={obs.id} obs={obs} />
             ))}
-            <p className="text-[10px] text-muted-foreground pt-3 pb-0.5 text-right">
-              Luv — your venue assistant
-            </p>
+            <div className="flex items-center justify-end gap-1 pt-3 pb-0.5">
+              <LuvHeart size={10} />
+              <p className="text-[10px] text-muted-foreground">Luv — your venue assistant</p>
+            </div>
           </div>
         )}
       </CardContent>
