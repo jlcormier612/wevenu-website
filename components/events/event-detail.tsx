@@ -10,6 +10,7 @@ import {
   Clock,
   MessageSquare,
   Pencil,
+  Printer,
   Users,
   Wrench,
 } from "lucide-react";
@@ -182,6 +183,9 @@ export function EventDetail({ event }: { event: EventWithDetails }) {
           </DropdownMenu>
           <Button variant="outline" size="sm" render={<Link href={`/events/${event.id}/edit`} />}>
             <Pencil className="mr-1 h-3.5 w-3.5" /> Edit
+          </Button>
+          <Button variant="outline" size="sm" render={<Link href={`/events/${event.id}/day-sheet`} />}>
+            <Printer className="mr-1 h-3.5 w-3.5" /> Day-of Sheet
           </Button>
         </div>
       </div>

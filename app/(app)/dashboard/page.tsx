@@ -63,7 +63,7 @@ export default async function DashboardPage() {
           </div>
           <div className="grid gap-6 lg:grid-cols-3">
             <div className="space-y-6 lg:col-span-2">
-              <ClientEventsWidget events={data.upcomingClientEvents} />
+              <ClientEventsWidget events={data.upcomingEvents} />
             </div>
             <div className="space-y-6">
               <RecentBookingsWidget bookings={data.recentBookings} />

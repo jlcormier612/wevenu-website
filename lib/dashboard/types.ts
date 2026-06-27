@@ -38,7 +38,7 @@ export type PipelineStage = {
 
 // ---- Client dashboard types ------------------------------------------------
 
-/** Minimal client shape needed by the dashboard widgets. */
+/** Minimal client shape needed by the recent-bookings widget. */
 export type DashboardClient = {
   id: string;
   firstName: string;
@@ -50,6 +50,21 @@ export type DashboardClient = {
   guestCount: number | null;
   status: string;
   createdAt: string;
+};
+
+/**
+ * Upcoming event from the events table (canonical source for event dates/times).
+ * Replaces the previous client-based approach; events are now the source of truth.
+ */
+export type DashboardEvent = {
+  id: string;
+  name: string;
+  eventDate: string;
+  startTime: string | null;
+  status: string;
+  guestCount: number | null;
+  clientId: string | null;
+  clientName: string | null;
 };
 
 /** Key date enriched with the owning client's display name. */
@@ -95,8 +110,10 @@ export type DashboardData = {
   openTasks: TaskItem[];
   openTaskCount: number;
   recentActivity: ActivityItem[];
-  // ---- booked clients ----
-  upcomingClientEvents: DashboardClient[];
+  // ---- booked clients + events ----
+  /** Upcoming events from the events table (canonical source). */
+  upcomingEvents: DashboardEvent[];
+  /** Recently booked clients (by booking date, from the clients table). */
   recentBookings: DashboardClient[];
   upcomingKeyDates: DashboardKeyDate[];
   totalClients: number;

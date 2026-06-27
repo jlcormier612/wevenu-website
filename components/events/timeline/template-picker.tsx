@@ -2,7 +2,7 @@
 
 import * as React from "react";
 
-import { Loader2, Wand2 } from "lucide-react";
+import { AlertTriangle, Loader2, Wand2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { applyTemplateAction } from "@/app/(app)/events/[id]/timeline-actions";
@@ -68,6 +68,20 @@ export function TemplatePicker({
             )}
           </p>
         </SheetHeader>
+
+        {/* Warning: no start time set */}
+        {!eventStartTime && (
+          <div className="flex items-start gap-2.5 rounded-lg border border-warning/40 bg-warning/10 px-3.5 py-3 text-sm">
+            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-warning-foreground" />
+            <div className="space-y-0.5">
+              <p className="font-medium text-warning-foreground">No start time set</p>
+              <p className="text-xs text-muted-foreground">
+                Template times will be calculated from noon. Set a start time on the event
+                for accurate scheduling.
+              </p>
+            </div>
+          </div>
+        )}
 
         <div className="space-y-3">
           {TIMELINE_TEMPLATES.map((template) => (

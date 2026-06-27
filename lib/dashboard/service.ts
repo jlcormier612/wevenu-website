@@ -16,6 +16,7 @@ import type {
   AttentionLead,
   DashboardClient,
   DashboardData,
+  DashboardEvent,
   DashboardKeyDate,
   OnboardingStatus,
   OnboardingStep,
@@ -140,7 +141,7 @@ export async function getDashboardData(): Promise<DashboardData | null> {
   const twoWeeksOut = new Date(Date.now() + 14 * 86_400_000).toISOString().slice(0, 10);
   const sixtyDaysOut = new Date(Date.now() + 60 * 86_400_000).toISOString().slice(0, 10);
 
-  const [leadsRes, tasksRes, activityRes, clientsRes, keyDatesRes] = await Promise.all([
+  const [leadsRes, tasksRes, activityRes, clientsRes, keyDatesRes, eventsRes] = await Promise.all([
     supabase
       .from("leads")
       .select("*")
@@ -163,13 +164,13 @@ export async function getDashboardData(): Promise<DashboardData | null> {
       .order("created_at", { ascending: false })
       .limit(15),
 
-    // Booked clients (all non-cancelled, minimal columns for dashboard)
+    // Booked clients — still needed for recentBookings (booking date) and totalClients
     supabase
       .from("clients")
       .select("id, first_name, last_name, partner_first_name, partner_last_name, event_type, event_date, guest_count, status, created_at")
       .eq("venue_id", venue.id)
       .neq("status", "cancelled")
-      .order("event_date", { ascending: true, nullsFirst: false }),
+      .order("created_at", { ascending: false }),
 
     // Key dates in the next 14 days with embedded client names
     supabase
@@ -180,6 +181,17 @@ export async function getDashboardData(): Promise<DashboardData | null> {
       .lte("date", twoWeeksOut)
       .order("date", { ascending: true })
       .limit(10),
+
+    // Upcoming events (canonical source) — replaces client-based event dates
+    supabase
+      .from("events")
+      .select("id, name, event_date, start_time, status, guest_count, client_id, clients(first_name, last_name, partner_first_name, partner_last_name)")
+      .eq("venue_id", venue.id)
+      .neq("status", "cancelled")
+      .gte("event_date", today)
+      .lte("event_date", sixtyDaysOut)
+      .order("event_date", { ascending: true })
+      .limit(8),
   ]);
 
   if (leadsRes.error) throw leadsRes.error;
@@ -187,6 +199,7 @@ export async function getDashboardData(): Promise<DashboardData | null> {
   if (activityRes.error) throw activityRes.error;
   if (clientsRes.error) throw clientsRes.error;
   if (keyDatesRes.error) throw keyDatesRes.error;
+  if (eventsRes.error) throw eventsRes.error;
 
   const leads = (leadsRes.data as LeadRow[]).map(mapLead);
 
@@ -258,13 +271,28 @@ export async function getDashboardData(): Promise<DashboardData | null> {
   // ---- Client data ----------------------------------------------------------
   const clients = (clientsRes.data as DashClientRow[]).map(mapDashClient);
 
-  const upcomingClientEvents = clients
-    .filter((c) => c.eventDate && c.eventDate >= today && c.eventDate <= sixtyDaysOut)
-    .slice(0, 8);
+  // recentBookings: ordered by when the couple booked (clients.created_at)
+  const recentBookings = clients.slice(0, 5);
 
-  const recentBookings = [...clients]
-    .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
-    .slice(0, 5);
+  // ---- Upcoming events (from events table — canonical source) ---------------
+  type DashEventRow = {
+    id: string; name: string; event_date: string; start_time: string | null;
+    status: string; guest_count: number | null; client_id: string | null;
+    clients: { first_name: string; last_name: string; partner_first_name: string | null; partner_last_name: string | null } | null;
+  };
+  const upcomingEvents: DashboardEvent[] = (eventsRes.data as unknown as DashEventRow[]).map((r) => {
+    const cn = r.clients
+      ? [r.clients.first_name, r.clients.last_name].filter(Boolean).join(" ") +
+        (r.clients.partner_first_name
+          ? ` & ${[r.clients.partner_first_name, r.clients.partner_last_name].filter(Boolean).join(" ")}`
+          : "")
+      : null;
+    return {
+      id: r.id, name: r.name, eventDate: r.event_date,
+      startTime: r.start_time?.slice(0, 5) ?? null, status: r.status,
+      guestCount: r.guest_count, clientId: r.client_id, clientName: cn,
+    };
+  });
 
   const upcomingKeyDates: DashboardKeyDate[] = (keyDatesRes.data as unknown as DashKDRow[]).map(
     (r) => ({
@@ -291,7 +319,7 @@ export async function getDashboardData(): Promise<DashboardData | null> {
     openTasks,
     openTaskCount: (tasksRes.data as DashTaskRow[]).length,
     recentActivity,
-    upcomingClientEvents,
+    upcomingEvents,
     recentBookings,
     upcomingKeyDates,
     totalClients: clients.length,
