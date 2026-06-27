@@ -39,7 +39,7 @@ export default async function DashboardPage() {
     <div className="space-y-6">
       {/* Header */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-        <Greeting venueName={data.venueName} />
+        <Greeting venueName={data.venueName} ownerFirstName={data.ownerFirstName} />
         <Button render={<Link href="/leads/new" />} className="sm:shrink-0">
           + New Inquiry
         </Button>

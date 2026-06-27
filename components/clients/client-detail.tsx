@@ -153,7 +153,7 @@ export function ClientDetail({ client, invoices = [] }: { client: ClientWithDeta
               <span className="ml-1 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground">{client.notes.length}</span>
             )}
           </TabsTrigger>
-          <TabsTrigger value="timeline">Timeline</TabsTrigger>
+          <TabsTrigger value="timeline">Activity</TabsTrigger>
           <TabsTrigger value="finance">
             Finance
             {invoices.length > 0 && (

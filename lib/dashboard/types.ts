@@ -109,6 +109,7 @@ export type DashboardPayment = {
 
 export type DashboardData = {
   venueName: string;
+  ownerFirstName: string | null;
   todayIso: string;
   onboarding: OnboardingStatus;
   // ---- pipeline (leads) ----

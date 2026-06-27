@@ -146,7 +146,7 @@ export async function getDashboardData(): Promise<DashboardData | null> {
   // Auto-mark overdue (non-fatal — don't block dashboard load on failure)
   void supabase.rpc("mark_overdue_payments", { p_venue_id: venue.id });
 
-  const [leadsRes, tasksRes, activityRes, clientsRes, keyDatesRes, eventsRes, paymentsRes] = await Promise.all([
+  const [leadsRes, tasksRes, activityRes, clientsRes, keyDatesRes, eventsRes, paymentsRes, staffRes] = await Promise.all([
     supabase
       .from("leads")
       .select("*")
@@ -207,6 +207,14 @@ export async function getDashboardData(): Promise<DashboardData | null> {
       .not("due_date", "is", null)
       .order("due_date", { ascending: true })
       .limit(15),
+
+    // Owner's name for the dashboard greeting
+    supabase
+      .from("venue_staff")
+      .select("full_name")
+      .eq("venue_id", venue.id)
+      .eq("is_owner", true)
+      .maybeSingle<{ full_name: string }>(),
   ]);
 
   if (leadsRes.error) throw leadsRes.error;
@@ -340,8 +348,13 @@ export async function getDashboardData(): Promise<DashboardData | null> {
   const overduePayments = allPaymentItems.filter((r) => r.status === "overdue" || (r.due_date < today && r.status === "pending")).map(mapDashPayment);
   const upcomingPayments = allPaymentItems.filter((r) => r.due_date >= today && r.status === "pending").slice(0, 8).map(mapDashPayment);
 
+  // Extract first name from "Jordan Rivera" → "Jordan"
+  const ownerFullName = staffRes.data?.full_name ?? null;
+  const ownerFirstName = ownerFullName ? ownerFullName.split(" ")[0] : null;
+
   return {
     venueName: venue.name,
+    ownerFirstName,
     todayIso: today,
     onboarding: computeOnboarding(venue, leads),
     needsAttention,
