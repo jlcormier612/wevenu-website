@@ -65,10 +65,22 @@ export function VendorDetail({ vendor }: { vendor: VendorWithEvents }) {
         <Card>
           <CardHeader><CardTitle className="text-base">Contact information</CardTitle></CardHeader>
           <CardContent className="space-y-3">
+            {/* Website URL — primary, shown prominently before other contact fields */}
+            {vendor.website && (
+              <a
+                href={vendor.website.startsWith("http") ? vendor.website : `https://${vendor.website}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-2 rounded-lg border border-border bg-muted/40 px-4 py-2.5 text-sm font-medium text-primary hover:border-primary/40 hover:bg-muted/60 transition-colors"
+              >
+                <Globe className="h-4 w-4 shrink-0" />
+                <span className="truncate">{vendor.website}</span>
+                <ExternalLink className="ml-auto h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+              </a>
+            )}
             {[
               { icon: Mail, label: "Email", value: vendor.email, href: vendor.email ? `mailto:${vendor.email}` : null },
               { icon: Phone, label: "Phone", value: vendor.phone, href: vendor.phone ? `tel:${vendor.phone}` : null },
-              { icon: Globe, label: "Website", value: vendor.website, href: vendor.website },
             ].map(({ icon: Icon, label, value, href }) =>
               value ? (
                 <div key={label} className="flex items-start gap-3">
@@ -115,7 +127,7 @@ export function VendorDetail({ vendor }: { vendor: VendorWithEvents }) {
                 </div>
               );
             })}
-            {!vendor.email && !vendor.phone && !vendor.website && !vendor.contactName && !vendor.instagramUrl && (
+            {!vendor.website && !vendor.email && !vendor.phone && !vendor.contactName && !vendor.instagramUrl && (
               <p className="text-sm text-muted-foreground">No contact details recorded.</p>
             )}
           </CardContent>

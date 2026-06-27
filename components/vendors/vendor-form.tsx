@@ -67,6 +67,12 @@ export function VendorFormFields({
 
       <Separator />
       <p className="text-sm font-medium text-heading">Contact information</p>
+      {/* Website URL — shown first as the primary reference link */}
+      <Field label="Website URL" htmlFor="vw"
+        hint="The vendor's primary website or portfolio. Shown prominently on their record.">
+        <Input id="vw" value={input.website} onChange={(e) => set("website", e.target.value)}
+          placeholder="https://vendor.com" inputMode="url" />
+      </Field>
       <div className="grid gap-4 sm:grid-cols-2">
         <Field label="Contact name" htmlFor="vcn">
           <Input id="vcn" value={input.contactName} onChange={(e) => set("contactName", e.target.value)} placeholder="Jane Bloom" />
@@ -76,9 +82,6 @@ export function VendorFormFields({
         </Field>
         <Field label="Email" htmlFor="vem" error={errors.email}>
           <Input id="vem" type="email" value={input.email} onChange={(e) => set("email", e.target.value)} placeholder="contact@vendor.com" />
-        </Field>
-        <Field label="Website" htmlFor="vw">
-          <Input id="vw" value={input.website} onChange={(e) => set("website", e.target.value)} placeholder="vendor.com" />
         </Field>
       </div>
 
