@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
 
 import { PageHeader } from "@/components/shell/module-placeholder";
+import { StripeConnectSection } from "@/components/settings/stripe-connect-section";
 import { VenueSettings } from "@/components/settings/venue-settings";
-import { getVenueSettings } from "@/lib/venue/service";
+import { getCurrentVenue, getVenueSettings } from "@/lib/venue/service";
 
 export const metadata: Metadata = { title: "Settings" };
 
@@ -13,7 +14,7 @@ export const metadata: Metadata = { title: "Settings" };
  * Route is protected by the (app) layout (venue existence already confirmed).
  */
 export default async function SettingsPage() {
-  const settings = await getVenueSettings();
+  const [settings, venue] = await Promise.all([getVenueSettings(), getCurrentVenue()]);
 
   if (!settings) {
     return (
@@ -35,7 +36,8 @@ export default async function SettingsPage() {
         title="Settings"
         description="Edit your venue information, hours, brand, and preferences."
       />
-      <VenueSettings initial={settings.input} />
+      <VenueSettings initial={settings.input} venueId={settings.venueId} />
+      {venue && <StripeConnectSection venue={venue} />}
     </div>
   );
 }

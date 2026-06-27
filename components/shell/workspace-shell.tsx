@@ -25,10 +25,12 @@ import {
 export function WorkspaceShell({
   email,
   venueName,
+  venueLogo,
   children,
 }: {
   email: string;
   venueName?: string;
+  venueLogo?: string | null;
   children: React.ReactNode;
 }) {
   const [mobileNavOpen, setMobileNavOpen] = React.useState(false);
@@ -38,7 +40,7 @@ export function WorkspaceShell({
       {/* Desktop sidebar */}
       <aside className="hidden w-64 shrink-0 flex-col border-r bg-sidebar lg:flex">
         <div className="flex h-16 items-center border-b px-5">
-          <Wordmark />
+          <Wordmark logoUrl={venueLogo} venueName={venueName} />
         </div>
         <div className="flex-1 overflow-y-auto">
           <SidebarNav />
@@ -68,7 +70,7 @@ export function WorkspaceShell({
             >
               <SheetHeader className="h-16 justify-center border-b px-5 text-left">
                 <SheetTitle>
-                  <Wordmark />
+                  <Wordmark logoUrl={venueLogo} venueName={venueName} />
                 </SheetTitle>
               </SheetHeader>
               <div className="overflow-y-auto">

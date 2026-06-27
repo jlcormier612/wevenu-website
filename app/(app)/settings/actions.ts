@@ -50,3 +50,26 @@ export async function saveOwnerAction(
 ): Promise<SaveSectionResult> {
   return saveOwnerSection(input);
 }
+
+import {
+  connectStripeAccount,
+  disconnectStripeAccount,
+  updateVenueLogo,
+} from "@/lib/venue/service";
+
+export async function updateLogoAction(url: string | null): Promise<void> {
+  await updateVenueLogo(url);
+  revalidatePath("/", "layout");
+}
+
+export async function connectStripeAction(accountId: string): Promise<void> {
+  await connectStripeAccount(accountId);
+  revalidatePath("/settings");
+  revalidatePath("/", "layout");
+}
+
+export async function disconnectStripeAction(): Promise<void> {
+  await disconnectStripeAccount();
+  revalidatePath("/settings");
+  revalidatePath("/", "layout");
+}

@@ -279,3 +279,38 @@ export async function dismissOnboarding(): Promise<void> {
     onboarding_dismissed: true,
   });
 }
+
+/** Update the venue logo URL (or clear it when url is null). */
+export async function updateVenueLogo(url: string | null): Promise<void> {
+  if (!isSupabaseConfigured) return;
+  const supabase = await createClient();
+  const venue = await getCurrentVenue();
+  if (!venue) return;
+  await repository.updateVenueFields(supabase, venue.id, { logo_url: url ?? null });
+}
+
+/** Store a confirmed Stripe Connect account. */
+export async function connectStripeAccount(accountId: string): Promise<void> {
+  if (!isSupabaseConfigured) return;
+  const supabase = await createClient();
+  const venue = await getCurrentVenue();
+  if (!venue) return;
+  await repository.updateVenueFields(supabase, venue.id, {
+    stripe_account_id: accountId,
+    stripe_onboarding_status: "connected",
+    stripe_charges_enabled: true,
+  });
+}
+
+/** Revoke the Stripe Connect account from the venue record. */
+export async function disconnectStripeAccount(): Promise<void> {
+  if (!isSupabaseConfigured) return;
+  const supabase = await createClient();
+  const venue = await getCurrentVenue();
+  if (!venue) return;
+  await repository.updateVenueFields(supabase, venue.id, {
+    stripe_account_id: null,
+    stripe_onboarding_status: "not_started",
+    stripe_charges_enabled: false,
+  });
+}

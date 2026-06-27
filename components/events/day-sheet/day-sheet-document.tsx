@@ -65,11 +65,21 @@ export function DaySheetDocument({
         style={{ backgroundColor: venue.primaryColor }}
       >
         <div className="flex items-end justify-between">
-          <div className="text-white">
-            <p className="text-[10px] font-semibold uppercase tracking-widest opacity-70">
-              Day-of Sheet
-            </p>
-            <p className="mt-0.5 text-xl font-bold">{venue.name}</p>
+          <div className="flex items-center gap-4 text-white">
+            {venue.logoUrl && (
+              <img
+                src={venue.logoUrl}
+                alt={venue.name}
+                className="h-12 w-12 rounded-lg object-contain"
+                style={{ background: "rgba(255,255,255,0.15)" }}
+              />
+            )}
+            <div>
+              <p className="text-[10px] font-semibold uppercase tracking-widest opacity-70">
+                Day-of Sheet
+              </p>
+              <p className="mt-0.5 text-xl font-bold">{venue.name}</p>
+            </div>
           </div>
           <div className="text-right text-white">
             <p className="text-base font-semibold">{formatDate(event.eventDate)}</p>

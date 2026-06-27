@@ -408,11 +408,11 @@ export function PaymentScheduleDetail({ schedule }: { schedule: PaymentScheduleW
           <div className="min-w-0 flex-1">
             <p className="text-sm font-medium text-heading">Accept online payments with Stripe</p>
             <p className="text-xs text-muted-foreground mt-0.5">
-              Connect your Stripe account to accept deposits and installments directly through Wevenu.
-              Live integration coming soon.
+              Connect your Stripe account in Settings to accept deposits and installments online.
             </p>
           </div>
-          <Button type="button" variant="outline" size="sm" disabled>
+          <Button type="button" variant="outline" size="sm"
+            render={<Link href="/settings#stripe" />}>
             Set up Stripe →
           </Button>
         </CardContent>

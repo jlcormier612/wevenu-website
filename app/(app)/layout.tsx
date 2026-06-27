@@ -35,7 +35,11 @@ export default async function WorkspaceLayout({
   }
 
   return (
-    <WorkspaceShell email={user.email ?? ""} venueName={venue.name}>
+    <WorkspaceShell
+      email={user.email ?? ""}
+      venueName={venue.name}
+      venueLogo={venue.logoUrl}
+    >
       {children}
     </WorkspaceShell>
   );

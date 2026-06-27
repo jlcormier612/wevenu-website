@@ -11,7 +11,9 @@ import {
   saveOwnerAction,
   saveVenueInfoAction,
   saveVenueProfileAction,
+  updateLogoAction,
 } from "@/app/(app)/settings/actions";
+import { ImageUpload } from "@/components/ui/image-upload";
 import {
   BrandStep,
   BusinessHoursStep,
@@ -86,7 +88,13 @@ function SettingsSection({
 
 // ---- Main component ---------------------------------------------------------
 
-export function VenueSettings({ initial }: { initial: VenueSetupInput }) {
+export function VenueSettings({
+  initial,
+  venueId,
+}: {
+  initial: VenueSetupInput;
+  venueId: string;
+}) {
   const [input, setInput] = React.useState<VenueSetupInput>(initial);
   const [errors, setErrors] = React.useState<VenueSetupErrors>({});
 
@@ -168,10 +176,39 @@ export function VenueSettings({ initial }: { initial: VenueSetupInput }) {
         <BusinessHoursStep {...stepProps} />
       </SettingsSection>
 
-      {/* 4 — Brand settings (logo placeholder, primary & secondary colors) */}
+      {/* 4a — Logo upload (functional, uses Supabase Storage) */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg">Venue Logo</CardTitle>
+          <CardDescription>
+            Shown in your workspace sidebar, on day-of sheets, and in contract headers.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <ImageUpload
+            currentUrl={input.logoUrl || null}
+            bucket="uploads"
+            path={`${venueId}/logo`}
+            label="Logo"
+            hint="Square or horizontal format. PNG, SVG or JPG, up to 5 MB."
+            onUpload={async (url) => {
+              set("logoUrl", url);
+              await updateLogoAction(url);
+              toast.success("Logo updated.");
+            }}
+            onRemove={async () => {
+              set("logoUrl", "");
+              await updateLogoAction(null);
+              toast.success("Logo removed.");
+            }}
+          />
+        </CardContent>
+      </Card>
+
+      {/* 4b — Brand settings (primary & secondary colors) */}
       <SettingsSection
-        title="Brand settings"
-        description="Logo and brand colors displayed throughout your workspace."
+        title="Brand colors"
+        description="Primary and secondary brand colors displayed throughout your workspace."
         onSave={() => save(saveBrandAction)}
       >
         <BrandStep {...stepProps} />
