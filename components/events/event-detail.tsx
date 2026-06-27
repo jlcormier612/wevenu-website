@@ -19,6 +19,7 @@ import { updateEventStatusAction } from "@/app/(app)/events/[id]/actions";
 import { EventNotesSection } from "@/components/events/event-notes-section";
 import { EventStatusBadge } from "@/components/events/event-status-badge";
 import { EventTeamSection } from "@/components/events/event-team-section";
+import { TimelineView } from "@/components/events/timeline/timeline-view";
 import { ActivityTimeline } from "@/components/leads/activity-timeline";
 import { Button } from "@/components/ui/button";
 import {
@@ -287,13 +288,23 @@ export function EventDetail({ event }: { event: EventWithDetails }) {
           </Card>
         </TabsContent>
 
-        {/* ── Timeline (placeholder) ─────────────────────────────────── */}
+        {/* ── Timeline ──────────────────────────────────────────────── */}
         <TabsContent value="timeline">
-          <ComingSoonTab
-            icon={Clock}
-            title="Day-of Timeline"
-            description="The moment-by-moment schedule — ceremony timing, vendor arrivals, photo sessions, and key milestones — all in one organized view. Coming in a future sprint."
-          />
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Day-of Timeline</CardTitle>
+              <CardDescription>
+                The moment-by-moment schedule your team needs to run the day.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <TimelineView
+                eventId={event.id}
+                eventStartTime={event.startTime}
+                initialEntries={event.timeline ?? []}
+              />
+            </CardContent>
+          </Card>
         </TabsContent>
 
         {/* ── Vendors (placeholder) ──────────────────────────────────── */}
