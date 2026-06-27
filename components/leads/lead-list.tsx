@@ -10,6 +10,9 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
+import {
   Table,
   TableBody,
   TableCell,
@@ -27,14 +30,44 @@ import {
 import type { Lead, LeadStatus } from "@/lib/leads/types";
 
 type FilterKey = "all" | LeadStatus;
+type SortKey = "newest" | "oldest" | "az" | "za" | "event_asc" | "event_desc" | "budget_high" | "budget_low" | "last_contacted";
+
+const SORT_OPTIONS: { value: SortKey; label: string }[] = [
+  { value: "newest",        label: "Most Recent" },
+  { value: "oldest",        label: "Oldest" },
+  { value: "az",            label: "A → Z" },
+  { value: "za",            label: "Z → A" },
+  { value: "event_asc",     label: "Event Date (Soonest)" },
+  { value: "event_desc",    label: "Event Date (Latest)" },
+  { value: "budget_high",   label: "Budget (Highest)" },
+  { value: "budget_low",    label: "Budget (Lowest)" },
+  { value: "last_contacted","label": "Last Contacted" },
+];
+
+function sortLeads(leads: Lead[], sort: SortKey): Lead[] {
+  return [...leads].sort((a, b) => {
+    switch (sort) {
+      case "oldest":        return (a.inquiryDate ?? "") < (b.inquiryDate ?? "") ? -1 : 1;
+      case "az":            return (a.firstName ?? "").localeCompare(b.firstName ?? "");
+      case "za":            return (b.firstName ?? "").localeCompare(a.firstName ?? "");
+      case "event_asc":     return (a.eventDate ?? "9999") < (b.eventDate ?? "9999") ? -1 : 1;
+      case "event_desc":    return (b.eventDate ?? "") < (a.eventDate ?? "") ? -1 : 1;
+      case "budget_high":   return (b.estimatedBudget ?? 0) - (a.estimatedBudget ?? 0);
+      case "budget_low":    return (a.estimatedBudget ?? 0) - (b.estimatedBudget ?? 0);
+      case "last_contacted":return (b.lastContactedAt ?? "") < (a.lastContactedAt ?? "") ? -1 : 1;
+      default:              return (b.inquiryDate ?? "") < (a.inquiryDate ?? "") ? -1 : 1; // newest
+    }
+  });
+}
 
 export function LeadList({ leads }: { leads: Lead[] }) {
   const [query, setQuery] = React.useState("");
   const [filter, setFilter] = React.useState<FilterKey>("all");
+  const [sort, setSort] = React.useState<SortKey>("newest");
 
   const filtered = React.useMemo(() => {
     const q = query.toLowerCase().trim();
-    return leads.filter((l) => {
+    const base = leads.filter((l) => {
       if (filter !== "all" && l.status !== filter) return false;
       if (!q) return true;
       return [
@@ -42,7 +75,8 @@ export function LeadList({ leads }: { leads: Lead[] }) {
         l.email, l.phone, l.eventType, l.source,
       ].some((v) => v?.toLowerCase().includes(q));
     });
-  }, [leads, query, filter]);
+    return sortLeads(base, sort);
+  }, [leads, query, filter, sort]);
 
   // Count per status for filter tabs.
   const counts = React.useMemo(() => {
@@ -54,8 +88,8 @@ export function LeadList({ leads }: { leads: Lead[] }) {
 
   return (
     <div className="space-y-4">
-      {/* Search + filter bar */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+      {/* Search + sort */}
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground pointer-events-none" />
           <Input
@@ -65,6 +99,14 @@ export function LeadList({ leads }: { leads: Lead[] }) {
             className="pl-9"
           />
         </div>
+        <Select value={sort} onValueChange={(v) => setSort(v as SortKey)}>
+          <SelectTrigger className="h-9 w-full sm:w-48 text-sm text-muted-foreground">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {SORT_OPTIONS.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+          </SelectContent>
+        </Select>
       </div>
 
       {/* Status filter pills */}

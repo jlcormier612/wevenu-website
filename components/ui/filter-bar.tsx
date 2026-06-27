@@ -10,7 +10,7 @@
 import * as React from "react";
 
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { Search, SlidersHorizontal, X } from "lucide-react";
+import { ArrowUpDown, Search, X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -82,12 +82,12 @@ export function FilterBar({
 
       {statusOptions && (
         <Select value={currentStatus || "__all__"} onValueChange={handleStatusChange}>
-          <SelectTrigger className="h-8 text-sm w-40">
-            <SlidersHorizontal className="mr-1.5 h-3.5 w-3.5 text-muted-foreground" />
+          <SelectTrigger className="h-8 text-sm w-44">
+            <ArrowUpDown className="mr-1.5 h-3.5 w-3.5 text-muted-foreground shrink-0" />
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="__all__">All statuses</SelectItem>
+            <SelectItem value="__all__">Sort by…</SelectItem>
             {statusOptions.map((o) => (
               <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
             ))}

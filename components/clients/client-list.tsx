@@ -9,6 +9,7 @@ import { ClientStatusBadge } from "@/components/clients/client-status-badge";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   Table,
   TableBody,
@@ -26,20 +27,39 @@ import {
 import type { Client } from "@/lib/clients/types";
 
 type FilterKey = "all" | Client["status"];
+type SortKey = "event_asc" | "event_desc" | "az" | "za" | "newest";
+
+const SORT_OPTIONS: { value: SortKey; label: string }[] = [
+  { value: "event_asc",  label: "Event Date (Soonest)" },
+  { value: "event_desc", label: "Event Date (Latest)" },
+  { value: "az",         label: "A → Z" },
+  { value: "za",         label: "Z → A" },
+  { value: "newest",     label: "Most Recent" },
+];
 
 export function ClientList({ clients }: { clients: Client[] }) {
   const [query, setQuery] = React.useState("");
   const [filter, setFilter] = React.useState<FilterKey>("all");
+  const [sort, setSort] = React.useState<SortKey>("event_asc");
 
   const filtered = React.useMemo(() => {
     const q = query.toLowerCase().trim();
-    return clients.filter((c) => {
+    const base = clients.filter((c) => {
       if (filter !== "all" && c.status !== filter) return false;
       if (!q) return true;
       return [c.firstName, c.lastName, c.partnerFirstName, c.partnerLastName, c.email, c.eventType]
         .some((v) => v?.toLowerCase().includes(q));
     });
-  }, [clients, query, filter]);
+    return [...base].sort((a, b) => {
+      switch (sort) {
+        case "event_desc": return (b.eventDate ?? "") < (a.eventDate ?? "") ? -1 : 1;
+        case "az":         return (a.firstName ?? "").localeCompare(b.firstName ?? "");
+        case "za":         return (b.firstName ?? "").localeCompare(a.firstName ?? "");
+        case "newest":     return (b.createdAt ?? "") < (a.createdAt ?? "") ? -1 : 1;
+        default:           return (a.eventDate ?? "9999") < (b.eventDate ?? "9999") ? -1 : 1;
+      }
+    });
+  }, [clients, query, filter, sort]);
 
   const counts = React.useMemo(() => {
     const m = new Map<FilterKey, number>([["all", clients.length]]);
@@ -50,12 +70,18 @@ export function ClientList({ clients }: { clients: Client[] }) {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground pointer-events-none" />
           <Input value={query} onChange={(e) => setQuery(e.target.value)}
             placeholder="Search by name or event type…" className="pl-9" />
         </div>
+        <Select value={sort} onValueChange={(v) => setSort(v as SortKey)}>
+          <SelectTrigger className="h-9 w-full sm:w-52 text-sm text-muted-foreground">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>{SORT_OPTIONS.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent>
+        </Select>
       </div>
       {/* Status filter pills */}
       <div className="flex flex-wrap gap-1.5">

@@ -9,6 +9,7 @@ import { EventStatusBadge } from "@/components/events/event-status-badge";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
@@ -18,19 +19,38 @@ import { eventTypeLabel } from "@/lib/leads/constants";
 import { cn } from "@/lib/utils";
 
 type FilterKey = "all" | EventStatus;
+type SortKey = "event_asc" | "event_desc" | "az" | "za" | "newest";
+
+const SORT_OPTIONS: { value: SortKey; label: string }[] = [
+  { value: "event_asc",  label: "Event Date (Soonest)" },
+  { value: "event_desc", label: "Event Date (Latest)" },
+  { value: "az",         label: "A → Z" },
+  { value: "za",         label: "Z → A" },
+  { value: "newest",     label: "Recently Added" },
+];
 
 export function EventList({ events }: { events: VenueEvent[] }) {
   const [query, setQuery] = React.useState("");
   const [filter, setFilter] = React.useState<FilterKey>("all");
+  const [sort, setSort] = React.useState<SortKey>("event_asc");
 
   const filtered = React.useMemo(() => {
     const q = query.toLowerCase();
-    return events.filter((e) => {
+    const base = events.filter((e) => {
       if (filter !== "all" && e.status !== filter) return false;
       if (!q) return true;
       return [e.name, e.eventType].some((v) => v?.toLowerCase().includes(q));
     });
-  }, [events, query, filter]);
+    return [...base].sort((a, b) => {
+      switch (sort) {
+        case "event_desc": return (b.eventDate ?? "") < (a.eventDate ?? "") ? -1 : 1;
+        case "az":         return a.name.localeCompare(b.name);
+        case "za":         return b.name.localeCompare(a.name);
+        case "newest":     return (b.createdAt ?? "") < (a.createdAt ?? "") ? -1 : 1;
+        default:           return (a.eventDate ?? "9999") < (b.eventDate ?? "9999") ? -1 : 1;
+      }
+    });
+  }, [events, query, filter, sort]);
 
   const counts = React.useMemo(() => {
     const m = new Map<FilterKey, number>([["all", events.length]]);
@@ -41,9 +61,17 @@ export function EventList({ events }: { events: VenueEvent[] }) {
 
   return (
     <div className="space-y-4">
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground pointer-events-none" />
-        <Input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search events…" className="pl-9" />
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+          <Input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search events…" className="pl-9" />
+        </div>
+        <Select value={sort} onValueChange={(v) => setSort(v as SortKey)}>
+          <SelectTrigger className="h-9 w-full sm:w-52 text-sm text-muted-foreground">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>{SORT_OPTIONS.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent>
+        </Select>
       </div>
 
       <div className="flex flex-wrap gap-1.5">
