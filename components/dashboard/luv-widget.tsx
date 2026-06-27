@@ -1,12 +1,13 @@
 /**
  * LuvWidget — "What Luv noticed today"
  *
- * Phase 1: Notice only. All observations are derived from existing data —
- * no AI calls, no external services, no new DB tables.
- *
- * Brand: Dusty Rose (#D8A7AA) heart. Warm, calm, encouraging tone.
- * Not a chatbot. Not "AI software." An experienced venue coordinator
- * quietly helping in the background.
+ * Luv Typography System:
+ *   Heart size always matches adjacent text size so it feels natural:
+ *     text-sm (14px) → Heart size 14
+ *     text-xs (12px) → Heart size 12
+ *     text-[10px]    → Heart size 10
+ *   Observation message: text-sm text-heading (warm, readable, consistent)
+ *   Detail / meta:      text-xs text-muted-foreground
  */
 
 import Link from "next/link";
@@ -17,7 +18,8 @@ import type { LuvObservation } from "@/lib/luv/types";
 
 const DUSTY_ROSE = "#D8A7AA";
 
-function LuvHeart({ size = 14 }: { size?: number }) {
+/** Heart icon sized to match adjacent text. Pass px size matching the font. */
+export function LuvHeart({ size = 14 }: { size?: number }) {
   return (
     <Heart
       aria-hidden
@@ -29,10 +31,12 @@ function LuvHeart({ size = 14 }: { size?: number }) {
 
 function ObservationRow({ obs }: { obs: LuvObservation }) {
   return (
-    <div className="flex items-start gap-3 py-3 border-b border-border last:border-0">
-      <LuvHeart />
+    <div className="flex items-start gap-3 py-3 border-b border-border/60 last:border-0">
+      {/* Heart at 14px matches text-sm (14px) */}
+      <LuvHeart size={14} />
       <div className="min-w-0 flex-1 space-y-0.5">
-        <p className="text-sm text-foreground leading-snug">{obs.message}</p>
+        {/* text-heading: consistent warm color, same weight as surrounding UI */}
+        <p className="text-sm text-heading leading-snug">{obs.message}</p>
         {obs.detail && (
           <p className="text-xs text-muted-foreground">{obs.detail}</p>
         )}
@@ -53,14 +57,16 @@ export function LuvWidget({ observations }: { observations: LuvObservation[] }) 
       className="border-[#D8A7AA]/25"
       style={{ background: "color-mix(in oklch, #D8A7AA 4%, var(--card))" }}
     >
-      <CardHeader className="pb-1">
-        <div className="flex items-center gap-2">
-          <LuvHeart size={16} />
+      <CardHeader className="pb-2">
+        {/* Header: heart at 14px matches text-sm font-semibold (~14px) */}
+        <div className="flex items-center gap-1.5">
+          <LuvHeart size={14} />
           <h2 className="font-heading text-sm font-semibold text-heading">
             What Luv noticed today
           </h2>
         </div>
-        <p className="text-xs text-muted-foreground mt-0.5">
+        {/* Subtitle: text-xs, no heart needed */}
+        <p className="text-xs text-muted-foreground">
           Your venue assistant is keeping an eye out for you.
         </p>
       </CardHeader>
@@ -68,7 +74,7 @@ export function LuvWidget({ observations }: { observations: LuvObservation[] }) 
       <CardContent className="pt-0">
         {observations.length === 0 ? (
           <div className="flex items-center gap-2 py-4">
-            <LuvHeart />
+            <LuvHeart size={14} />
             <p className="text-sm text-muted-foreground">
               Everything looks good today — nothing needs your attention right now.
             </p>
@@ -78,6 +84,7 @@ export function LuvWidget({ observations }: { observations: LuvObservation[] }) 
             {observations.map((obs) => (
               <ObservationRow key={obs.id} obs={obs} />
             ))}
+            {/* Signature: heart at 10px matches text-[10px] */}
             <div className="flex items-center justify-end gap-1 pt-3 pb-0.5">
               <LuvHeart size={10} />
               <p className="text-[10px] text-muted-foreground">Luv — your venue assistant</p>

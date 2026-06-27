@@ -43,6 +43,7 @@ import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DateHoldsSection } from "@/components/availability/date-holds-section";
 import { DocumentsSection } from "@/components/documents/documents-section";
+import { LuvDraftPanel } from "@/components/luv/luv-draft-panel";
 import {
   LEAD_STATUSES,
   eventTypeLabel,
@@ -54,6 +55,7 @@ import {
 import type { LeadWithDetails } from "@/lib/leads/types";
 import type { DateHold, VenueSpace } from "@/lib/availability/types";
 import type { Document } from "@/lib/documents/types";
+import type { LuvDraft } from "@/lib/luv/drafts";
 
 // ---- info row (overview tab) ------------------------------------------------
 
@@ -82,7 +84,7 @@ function InfoRow({
 
 // ---- main component ---------------------------------------------------------
 
-export function LeadDetail({ lead, holds = [], spaces = [], documents = [] }: { lead: LeadWithDetails; holds?: DateHold[]; spaces?: VenueSpace[]; documents?: Document[] }) {
+export function LeadDetail({ lead, holds = [], spaces = [], documents = [], luvDrafts = [] }: { lead: LeadWithDetails; holds?: DateHold[]; spaces?: VenueSpace[]; documents?: Document[]; luvDrafts?: LuvDraft[] }) {
   const router = useRouter();
   const [statusPending, startStatus] = React.useTransition();
   const [convertPending, startConvert] = React.useTransition();
@@ -251,6 +253,9 @@ export function LeadDetail({ lead, holds = [], spaces = [], documents = [] }: { 
               <span className="ml-1 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground">{documents.length}</span>
             )}
           </TabsTrigger>
+          <TabsTrigger value="luv" className="gap-1">
+            <span style={{ color: "#D8A7AA" }}>♥</span> Luv
+          </TabsTrigger>
         </TabsList>
 
         {/* ── Overview ─────────────────────────────────────────────── */}
@@ -395,6 +400,19 @@ export function LeadDetail({ lead, holds = [], spaces = [], documents = [] }: { 
                 venueId={lead.venueId}
                 initialDocuments={documents}
               />
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* ── Luv ──────────────────────────────────────────────────── */}
+        <TabsContent value="luv">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">♥ Luv</CardTitle>
+              <CardDescription>Your venue assistant can help draft a follow-up. You review, edit, and send it yourself.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <LuvDraftPanel lead={lead} initialDrafts={luvDrafts} />
             </CardContent>
           </Card>
         </TabsContent>

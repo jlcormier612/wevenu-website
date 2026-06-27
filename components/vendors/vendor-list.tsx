@@ -3,7 +3,7 @@
 import * as React from "react";
 
 import Link from "next/link";
-import { Search, Star } from "lucide-react";
+import { ArrowUpDown, Search, Star } from "lucide-react";
 
 import { VendorCategoryBadge } from "@/components/vendors/vendor-category-badge";
 import { Badge } from "@/components/ui/badge";
@@ -12,14 +12,26 @@ import { Input } from "@/components/ui/input";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
 import { VENDOR_CATEGORIES, vendorCategoryLabel } from "@/lib/vendors/constants";
 import type { Vendor } from "@/lib/vendors/types";
 
 type FilterKey = "all" | string;
+type SortKey = "az" | "za" | "newest" | "preferred";
+
+const SORT_OPTIONS: { value: SortKey; label: string }[] = [
+  { value: "az",        label: "A → Z" },
+  { value: "za",        label: "Z → A" },
+  { value: "preferred", label: "Preferred First" },
+  { value: "newest",    label: "Recently Added" },
+];
 
 export function VendorList({ vendors }: { vendors: Vendor[] }) {
   const [query, setQuery] = React.useState("");
   const [filter, setFilter] = React.useState<FilterKey>("all");
+  const [sort, setSort] = React.useState<SortKey>("az");
 
   const categories = React.useMemo(() => {
     const used = new Set(vendors.map((v) => v.category).filter(Boolean));
@@ -28,20 +40,41 @@ export function VendorList({ vendors }: { vendors: Vendor[] }) {
 
   const filtered = React.useMemo(() => {
     const q = query.toLowerCase();
-    return vendors.filter((v) => {
+    const base = vendors.filter((v) => {
       if (filter !== "all" && v.category !== filter) return false;
       if (!q) return true;
       return [v.name, v.contactName, v.email, v.category]
         .some((s) => s?.toLowerCase().includes(q));
     });
-  }, [vendors, query, filter]);
+    return [...base].sort((a, b) => {
+      switch (sort) {
+        case "za":        return b.name.localeCompare(a.name);
+        case "preferred": return (b.isPreferred ? 1 : 0) - (a.isPreferred ? 1 : 0) || a.name.localeCompare(b.name);
+        case "newest":    return (b.createdAt ?? "") < (a.createdAt ?? "") ? -1 : 1;
+        default:          return a.name.localeCompare(b.name);
+      }
+    });
+  }, [vendors, query, filter, sort]);
 
   return (
     <div className="space-y-4">
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground pointer-events-none" />
-        <Input value={query} onChange={(e) => setQuery(e.target.value)}
-          placeholder="Search vendors…" className="pl-9" />
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+          <Input value={query} onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search vendors…" className="pl-9" />
+        </div>
+        <div className="flex items-center gap-1.5 shrink-0">
+          <ArrowUpDown className="h-3.5 w-3.5 text-muted-foreground" />
+          <Select value={sort} onValueChange={(v) => setSort(v as SortKey)}>
+            <SelectTrigger className="h-9 w-40 text-sm border-border">
+              <SelectValue placeholder="A → Z" />
+            </SelectTrigger>
+            <SelectContent>
+              {SORT_OPTIONS.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
       {/* Category filter */}

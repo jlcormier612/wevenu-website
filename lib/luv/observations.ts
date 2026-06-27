@@ -129,7 +129,7 @@ export async function getLuvObservations(
       observations.push({
         id: `timeline-${ev.id}`,
         priority: daysAgo(ev.event_date) < -7 ? "high" : "medium",
-        message: `${ev.name} is ${inDays(ev.event_date)} and doesn't have a day-of timeline yet.`,
+        message: `${ev.name} is ${inDays(ev.event_date)} — it might be time to build the day-of timeline.`,
         link: `/events/${ev.id}`,
         actionLabel: "Build Timeline →",
       });
@@ -138,7 +138,7 @@ export async function getLuvObservations(
       observations.push({
         id: `floorplan-${ev.id}`,
         priority: "low",
-        message: `${ev.name} is ${inDays(ev.event_date)} without a floor plan.`,
+        message: `${ev.name} is ${inDays(ev.event_date)} — a floor plan could help the team prepare.`,
         link: `/events/${ev.id}`,
         actionLabel: "Add Floor Plan →",
       });
@@ -153,8 +153,8 @@ export async function getLuvObservations(
     observations.push({
       id: `tour-${lead.id}`,
       priority: "medium",
-      message: `${name} is ${lead.status === "proposal_sent" ? "in proposal" : "qualified"} but hasn't scheduled a tour yet.`,
-      detail: `In the pipeline for ${days} day${days !== 1 ? "s" : ""}.`,
+      message: `${name} may be ready to schedule a tour.`,
+      detail: `${lead.status === "proposal_sent" ? "Proposal sent" : "Qualified"} · ${days} day${days !== 1 ? "s" : ""} in the pipeline.`,
       link: `/leads/${lead.id}`,
       actionLabel: "Schedule Tour →",
     });
@@ -172,8 +172,8 @@ export async function getLuvObservations(
       id: `contract-${contract.id}`,
       priority: days >= 7 ? "high" : "medium",
       message: clientName
-        ? `The contract for ${clientName} was sent ${days} day${days !== 1 ? "s" : ""} ago and hasn't been signed yet.`
-        : `"${contract.title}" was sent ${days} day${days !== 1 ? "s" : ""} ago and is still awaiting a signature.`,
+        ? `${clientName}'s contract has been out for ${days} day${days !== 1 ? "s" : ""} — a gentle nudge might help.`
+        : `"${contract.title}" has been waiting for a signature for ${days} day${days !== 1 ? "s" : ""}.`,
       link: `/contracts`,
       actionLabel: "View Contract →",
     });
@@ -191,8 +191,9 @@ export async function getLuvObservations(
     observations.push({
       id: `doc-${doc.id}`,
       priority: daysUntil <= 7 ? "high" : "medium",
-      message: `"${doc.name}" expires ${inDays(doc.expires_at)}.`,
-      detail: daysUntil <= 7 ? "This may need renewal soon." : undefined,
+      message: daysUntil <= 7
+        ? `"${doc.name}" expires ${inDays(doc.expires_at)} — it may be worth renewing soon.`
+        : `"${doc.name}" is coming up for renewal ${inDays(doc.expires_at)}.`,
       link: entityLink,
       actionLabel: "View Document →",
     });
@@ -206,7 +207,7 @@ export async function getLuvObservations(
     observations.push({
       id: `followup-${lead.id}`,
       priority: "low",
-      message: `${name}'s inquiry came in ${days} day${days !== 1 ? "s" : ""} ago without a follow-up scheduled.`,
+      message: `${name} reached out ${days} day${days !== 1 ? "s" : ""} ago — they might appreciate hearing from you.`,
       link: `/leads/${lead.id}`,
       actionLabel: "Set Follow-up →",
     });
