@@ -24,7 +24,7 @@ export async function getCalendarData(
   const end = `${year}-${String(month).padStart(2, "0")}-${String(lastDay).padStart(2, "0")}`;
 
   // Five parallel queries across existing tables
-  const [eventsRes, toursRes, followUpsRes, paymentsRes, keyDatesRes] = await Promise.all([
+  const [eventsRes, toursRes, followUpsRes, paymentsRes, keyDatesRes, holdsRes, blocksRes] = await Promise.all([
     // 1. Booked events
     supabase.from("events")
       .select("id, name, event_date, start_time, event_type, status, client_id, clients(first_name, last_name)")
@@ -66,6 +66,21 @@ export async function getCalendarData(
       .eq("venue_id", venue.id)
       .gte("date", start)
       .lte("date", end),
+
+    // 6. Active date holds (Sprint 20)
+    supabase.from("date_holds")
+      .select("id, title, hold_date, start_time, lead_id, leads(first_name, last_name)")
+      .eq("venue_id", venue.id)
+      .eq("status", "active")
+      .gte("hold_date", start)
+      .lte("hold_date", end),
+
+    // 7. Calendar blocks (Sprint 20) — overlapping with the month range
+    supabase.from("calendar_blocks")
+      .select("id, title, reason, start_date, end_date, is_all_day")
+      .eq("venue_id", venue.id)
+      .lte("start_date", end)
+      .gte("end_date", start),
   ]);
 
   const items: CalendarItem[] = [];
@@ -147,6 +162,41 @@ export async function getCalendarData(
       time: null,
       link: `/clients/${k.client_id}`,
     });
+  }
+
+  // Date holds (Sprint 20)
+  for (const h of (holdsRes.data ?? []) as any[]) {
+    const ln = h.leads ? `${h.leads.first_name} ${h.leads.last_name}` : null;
+    items.push({
+      id: `hold-${h.id}`,
+      type: "date_hold",
+      date: h.hold_date,
+      title: h.title,
+      subtitle: ln ? `Hold for ${ln}` : null,
+      time: h.start_time?.slice(0, 5) ?? null,
+      link: h.lead_id ? `/leads/${h.lead_id}` : "/calendar",
+    });
+  }
+
+  // Calendar blocks (Sprint 20) — expand multi-day blocks into individual day entries
+  for (const b of (blocksRes.data ?? []) as any[]) {
+    let cursor = new Date(b.start_date + "T12:00:00");
+    const endD = new Date(b.end_date + "T12:00:00");
+    while (cursor <= endD) {
+      const dateStr = cursor.toISOString().slice(0, 10);
+      if (dateStr >= start && dateStr <= end) {
+        items.push({
+          id: `block-${b.id}-${dateStr}`,
+          type: "calendar_block",
+          date: dateStr,
+          title: b.title,
+          subtitle: b.reason,
+          time: null,
+          link: "/calendar",
+        });
+      }
+      cursor.setDate(cursor.getDate() + 1);
+    }
   }
 
   // Sort by date then time

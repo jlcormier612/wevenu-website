@@ -4,11 +4,13 @@
  */
 
 export type CalendarItemType =
-  | "event"        // booked event (events table)
-  | "tour"         // venue tour (leads.tour_date)
-  | "follow_up"    // lead follow-up (leads.follow_up_date)
-  | "payment_due"  // payment line item (payment_line_items.due_date)
-  | "key_date";    // client milestone (client_key_dates.date)
+  | "event"          // booked event (events table)
+  | "tour"           // venue tour (leads.tour_date)
+  | "follow_up"      // lead follow-up (leads.follow_up_date)
+  | "payment_due"    // payment line item (payment_line_items.due_date)
+  | "key_date"       // client milestone (client_key_dates.date)
+  | "date_hold"      // soft reservation (date_holds table)
+  | "calendar_block"; // administrative closure (calendar_blocks table)
 
 export type CalendarItem = {
   id: string;

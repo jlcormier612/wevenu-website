@@ -1,8 +1,18 @@
 import type { Metadata } from "next";
 
+import { CapacityRulesSection } from "@/components/availability/capacity-rules-section";
+import { VenueSpacesSection } from "@/components/availability/venue-spaces-section";
 import { PageHeader } from "@/components/shell/module-placeholder";
 import { StripeConnectSection } from "@/components/settings/stripe-connect-section";
 import { VenueSettings } from "@/components/settings/venue-settings";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { getCapacityRules, getSpaces } from "@/lib/availability/service";
 import { getCurrentVenue, getVenueSettings } from "@/lib/venue/service";
 
 export const metadata: Metadata = { title: "Settings" };
@@ -14,7 +24,9 @@ export const metadata: Metadata = { title: "Settings" };
  * Route is protected by the (app) layout (venue existence already confirmed).
  */
 export default async function SettingsPage() {
-  const [settings, venue] = await Promise.all([getVenueSettings(), getCurrentVenue()]);
+  const [settings, venue, spaces, capacityRules] = await Promise.all([
+    getVenueSettings(), getCurrentVenue(), getSpaces(), getCapacityRules(),
+  ]);
 
   if (!settings) {
     return (
@@ -38,6 +50,33 @@ export default async function SettingsPage() {
       />
       <VenueSettings initial={settings.input} venueId={settings.venueId} />
       {venue && <StripeConnectSection venue={venue} />}
+
+      {/* ── Availability & Spaces ───────────────────────────────────── */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Event Spaces</CardTitle>
+          <CardDescription>
+            Define the named spaces within your venue (Ballroom, Garden, Barn…).
+            Each space can have its own capacity and be assigned to events.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <VenueSpacesSection initialSpaces={spaces} />
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Scheduling Capacity</CardTitle>
+          <CardDescription>
+            Configure your venue{"'"}s operating limits. The system will warn when
+            these thresholds are approached.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <CapacityRulesSection initialRules={capacityRules} />
+        </CardContent>
+      </Card>
     </div>
   );
 }

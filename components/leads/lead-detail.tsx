@@ -41,6 +41,7 @@ import {
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { DateHoldsSection } from "@/components/availability/date-holds-section";
 import {
   LEAD_STATUSES,
   eventTypeLabel,
@@ -50,6 +51,7 @@ import {
   sourceLabel,
 } from "@/lib/leads/constants";
 import type { LeadWithDetails } from "@/lib/leads/types";
+import type { DateHold, VenueSpace } from "@/lib/availability/types";
 
 // ---- info row (overview tab) ------------------------------------------------
 
@@ -78,7 +80,7 @@ function InfoRow({
 
 // ---- main component ---------------------------------------------------------
 
-export function LeadDetail({ lead }: { lead: LeadWithDetails }) {
+export function LeadDetail({ lead, holds = [], spaces = [] }: { lead: LeadWithDetails; holds?: DateHold[]; spaces?: VenueSpace[] }) {
   const router = useRouter();
   const [statusPending, startStatus] = React.useTransition();
   const [convertPending, startConvert] = React.useTransition();
@@ -323,9 +325,26 @@ export function LeadDetail({ lead }: { lead: LeadWithDetails }) {
           </Card>
         </TabsContent>
 
-        {/* ── Tasks ─────────────────────────────────────────────────── */}
+        {/* ── Date Holds ────────────────────────────────────────────── */}
         <TabsContent value="tasks">
-          <Card>
+          <div className="space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Date Holds</CardTitle>
+                <CardDescription>
+                  Reserve a date for this lead without committing to a booking. Holds appear on the calendar and can be released or converted to an event.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <DateHoldsSection
+                  leadId={lead.id}
+                  leadName={leadDisplayName(lead.firstName, lead.lastName, lead.partnerFirstName, lead.partnerLastName)}
+                  initialHolds={holds}
+                  spaces={spaces}
+                />
+              </CardContent>
+            </Card>
+            <Card>
             <CardHeader>
               <CardTitle className="text-base">Tasks</CardTitle>
               <CardDescription>
@@ -336,6 +355,7 @@ export function LeadDetail({ lead }: { lead: LeadWithDetails }) {
               <TasksSection leadId={lead.id} initialTasks={lead.tasks} />
             </CardContent>
           </Card>
+          </div>
         </TabsContent>
 
         {/* ── Activity ──────────────────────────────────────────────── */}

@@ -5,6 +5,7 @@ import * as React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
+  AlertTriangle,
   CalendarDays,
   ChevronLeft,
   ChevronRight,
@@ -12,12 +13,21 @@ import {
   DollarSign,
   MapPin,
   Phone,
+  Plus,
   Star,
 } from "lucide-react";
 
+import { createBlockAction } from "@/app/(app)/availability/actions";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
+import { BLOCK_REASONS } from "@/lib/availability/constants";
+import { toast } from "sonner";
 import type { CalendarItem, CalendarItemType } from "@/lib/calendar/types";
 import { cn } from "@/lib/utils";
 
@@ -29,11 +39,13 @@ const TYPE_META: Record<CalendarItemType, {
   dotColor: string;  // exact palette hex
   textClass: string;
 }> = {
-  event:       { label: "Event",       icon: CalendarDays, dotColor: "#5D6F5D", textClass: "text-primary" },
-  tour:        { label: "Tour",        icon: MapPin,       dotColor: "#B9D1C2", textClass: "text-muted-foreground" },
-  follow_up:   { label: "Follow-up",   icon: Phone,        dotColor: "#B8AEA1", textClass: "text-muted-foreground" },
-  payment_due: { label: "Payment Due", icon: DollarSign,   dotColor: "#D8A7AA", textClass: "text-destructive" },
-  key_date:    { label: "Key Date",    icon: Star,         dotColor: "#4F5F4F", textClass: "text-heading" },
+  event:          { label: "Event",          icon: CalendarDays, dotColor: "#5D6F5D", textClass: "text-primary" },
+  tour:           { label: "Tour",           icon: MapPin,       dotColor: "#B9D1C2", textClass: "text-muted-foreground" },
+  follow_up:      { label: "Follow-up",      icon: Phone,        dotColor: "#B8AEA1", textClass: "text-muted-foreground" },
+  payment_due:    { label: "Payment Due",    icon: DollarSign,   dotColor: "#D8A7AA", textClass: "text-destructive" },
+  key_date:       { label: "Key Date",       icon: Star,         dotColor: "#4F5F4F", textClass: "text-heading" },
+  date_hold:      { label: "Date Hold",      icon: Clock,        dotColor: "#C7A66A", textClass: "text-warning-foreground" },
+  calendar_block: { label: "Blocked",        icon: AlertTriangle, dotColor: "#B85C57", textClass: "text-destructive" },
 };
 
 const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -242,6 +254,36 @@ export function CalendarView({
 }) {
   const router = useRouter();
   const [selectedDate, setSelectedDate] = React.useState<string>(today);
+  const [showBlockForm, setShowBlockForm] = React.useState(false);
+  const [blockTitle, setBlockTitle] = React.useState("");
+  const [blockReason, setBlockReason] = React.useState<string>("other");
+  const [blockStart, setBlockStart] = React.useState(today);
+  const [blockEnd, setBlockEnd] = React.useState(today);
+  const [blockPending, startBlock] = React.useTransition();
+
+  function handleAddBlock() {
+    if (!blockTitle.trim() || !blockStart) return;
+    startBlock(async () => {
+      const result = await createBlockAction({
+        title: blockTitle.trim(),
+        reason: blockReason as import("@/lib/availability/types").BlockReason,
+        startDate: blockStart,
+        endDate: blockEnd || blockStart,
+        isAllDay: true,
+        startTime: "",
+        endTime: "",
+        notes: "",
+      });
+      if (result.ok) {
+        toast.success("Block added.");
+        setShowBlockForm(false);
+        setBlockTitle("");
+        router.refresh();
+      } else {
+        toast.error("ok" in result && !result.ok ? result.message ?? "Could not add block." : "Could not add block.");
+      }
+    });
+  }
 
   function navigate(delta: number) {
     let newMonth = month + delta;
@@ -279,7 +321,44 @@ export function CalendarView({
             Today
           </Button>
         )}
+        <Button type="button" variant="outline" size="sm" onClick={() => setShowBlockForm(!showBlockForm)}>
+          <Plus className="mr-1 h-3.5 w-3.5" /> Add Block
+        </Button>
       </div>
+
+      {/* Add Block inline form */}
+      {showBlockForm && (
+        <div className="rounded-xl border border-destructive/20 bg-destructive/5 p-4 space-y-3">
+          <p className="text-sm font-medium text-heading">Add Calendar Block</p>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="space-y-1.5">
+              <Label className="text-xs">Title *</Label>
+              <Input value={blockTitle} onChange={(e) => setBlockTitle(e.target.value)} placeholder="Closed for maintenance…" autoFocus />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Reason</Label>
+              <Select value={blockReason} onValueChange={setBlockReason}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>{BLOCK_REASONS.map((r) => <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>)}</SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Start date *</Label>
+              <Input type="date" value={blockStart} onChange={(e) => setBlockStart(e.target.value)} />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">End date (leave blank for single day)</Label>
+              <Input type="date" value={blockEnd} onChange={(e) => setBlockEnd(e.target.value)} />
+            </div>
+          </div>
+          <div className="flex items-center justify-end gap-2">
+            <Button type="button" variant="ghost" size="sm" onClick={() => setShowBlockForm(false)} disabled={blockPending}>Cancel</Button>
+            <Button type="button" size="sm" disabled={!blockTitle.trim() || !blockStart || blockPending} onClick={handleAddBlock}>
+              {blockPending ? "Adding…" : "Add Block"}
+            </Button>
+          </div>
+        </div>
+      )}
 
       {/* Legend */}
       <Legend />
