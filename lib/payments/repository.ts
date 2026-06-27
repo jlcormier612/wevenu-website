@@ -1,0 +1,191 @@
+/**
+ * Payments data access layer. Server-only.
+ */
+import { createClient } from "@/integrations/supabase/server";
+import type {
+  LineItemInput,
+  MarkPaidInput,
+  PaymentActivity,
+  PaymentLineItem,
+  PaymentSchedule,
+  PaymentScheduleWithDetails,
+} from "@/lib/payments/types";
+import { computeTotalPaid, deriveScheduleStatus } from "@/lib/payments/constants";
+
+type DbClient = Awaited<ReturnType<typeof createClient>>;
+
+type ScheduleRow = {
+  id: string; venue_id: string; client_id: string | null; event_id: string | null;
+  title: string; total_amount: number; currency: string; notes: string | null;
+  created_at: string; updated_at: string;
+  clients?: { first_name: string; last_name: string; partner_first_name: string | null; partner_last_name: string | null } | null;
+  events?: { event_date: string | null } | null;
+};
+
+type ItemRow = {
+  id: string; venue_id: string; schedule_id: string; label: string;
+  amount: number; due_date: string | null; status: PaymentLineItem["status"];
+  paid_at: string | null; paid_amount: number | null; payment_method: string | null;
+  reference_number: string | null; notes: string | null; sort_order: number;
+  created_at: string; updated_at: string;
+};
+
+type ActRow = {
+  id: string; venue_id: string; schedule_id: string;
+  type: string; title: string; description: string | null; created_at: string;
+};
+
+function mapSchedule(r: ScheduleRow): PaymentSchedule {
+  const cn = r.clients
+    ? [r.clients.first_name, r.clients.last_name].join(" ") +
+      (r.clients.partner_first_name
+        ? ` & ${[r.clients.partner_first_name, r.clients.partner_last_name].filter(Boolean).join(" ")}`
+        : "")
+    : null;
+  return {
+    id: r.id, venueId: r.venue_id, clientId: r.client_id, eventId: r.event_id,
+    title: r.title, totalAmount: Number(r.total_amount), currency: r.currency, notes: r.notes,
+    createdAt: r.created_at, updatedAt: r.updated_at,
+    clientName: cn, eventDate: r.events?.event_date ?? null,
+  };
+}
+
+function mapItem(r: ItemRow): PaymentLineItem {
+  return {
+    id: r.id, venueId: r.venue_id, scheduleId: r.schedule_id, label: r.label,
+    amount: Number(r.amount), dueDate: r.due_date, status: r.status,
+    paidAt: r.paid_at, paidAmount: r.paid_amount != null ? Number(r.paid_amount) : null,
+    paymentMethod: r.payment_method, referenceNumber: r.reference_number,
+    notes: r.notes, sortOrder: r.sort_order, createdAt: r.created_at, updatedAt: r.updated_at,
+  };
+}
+
+// ---- queries ----------------------------------------------------------------
+
+export async function getSchedules(client: DbClient, venueId: string): Promise<PaymentSchedule[]> {
+  const { data, error } = await client.from("payment_schedules")
+    .select("*, clients(first_name, last_name, partner_first_name, partner_last_name), events(event_date)")
+    .eq("venue_id", venueId).order("created_at", { ascending: false });
+  if (error) throw error;
+  return (data as unknown as ScheduleRow[]).map(mapSchedule);
+}
+
+export async function getAllLineItems(client: DbClient, venueId: string): Promise<PaymentLineItem[]> {
+  const { data, error } = await client.from("payment_line_items").select("*")
+    .eq("venue_id", venueId).order("due_date", { ascending: true, nullsFirst: false });
+  if (error) throw error;
+  return (data as ItemRow[]).map(mapItem);
+}
+
+export async function getSchedule(client: DbClient, venueId: string, id: string): Promise<PaymentScheduleWithDetails | null> {
+  const [sRes, iRes, aRes] = await Promise.all([
+    client.from("payment_schedules")
+      .select("*, clients(first_name, last_name, partner_first_name, partner_last_name), events(event_date)")
+      .eq("id", id).eq("venue_id", venueId).maybeSingle<ScheduleRow>(),
+    client.from("payment_line_items").select("*")
+      .eq("schedule_id", id).eq("venue_id", venueId)
+      .order("sort_order").order("due_date", { ascending: true, nullsFirst: false }),
+    client.from("payment_activities").select("*")
+      .eq("schedule_id", id).order("created_at", { ascending: false }),
+  ]);
+  if (sRes.error) throw sRes.error;
+  if (iRes.error) throw iRes.error;
+  if (aRes.error) throw aRes.error;
+  if (!sRes.data) return null;
+  const schedule = mapSchedule(sRes.data as unknown as ScheduleRow);
+  const lineItems = (iRes.data as ItemRow[]).map(mapItem);
+  const activities: PaymentActivity[] = (aRes.data as ActRow[]).map((r) => ({
+    id: r.id, venueId: r.venue_id, scheduleId: r.schedule_id,
+    type: r.type, title: r.title, description: r.description, createdAt: r.created_at,
+  }));
+  const totalPaid = computeTotalPaid(lineItems);
+  return {
+    ...schedule,
+    lineItems,
+    activities,
+    totalPaid,
+    balance: schedule.totalAmount - totalPaid,
+    overdueCount: lineItems.filter((i) => i.status === "overdue").length,
+    scheduleStatus: deriveScheduleStatus(lineItems),
+  };
+}
+
+// ---- mutations --------------------------------------------------------------
+
+export async function insertSchedule(client: DbClient, venueId: string, input: {
+  title: string; clientId: string; eventId: string; totalAmount: number; notes: string;
+}): Promise<string> {
+  const { data, error } = await client.from("payment_schedules")
+    .insert({
+      venue_id: venueId, client_id: input.clientId || null, event_id: input.eventId || null,
+      title: input.title.trim(), total_amount: input.totalAmount, notes: input.notes.trim() || null,
+    }).select("id").single<{ id: string }>();
+  if (error) throw error;
+  return data.id;
+}
+
+export async function updateScheduleTotalAmount(client: DbClient, venueId: string, scheduleId: string, totalAmount: number): Promise<void> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error } = await (client.from("payment_schedules") as any).update({ total_amount: totalAmount }).eq("id", scheduleId).eq("venue_id", venueId);
+  if (error) throw error;
+}
+
+export async function insertLineItem(client: DbClient, venueId: string, scheduleId: string, input: LineItemInput, sortOrder: number): Promise<PaymentLineItem> {
+  const { data, error } = await client.from("payment_line_items")
+    .insert({
+      venue_id: venueId, schedule_id: scheduleId,
+      label: input.label.trim(),
+      amount: parseFloat(input.amount.replace(/[$,]/g, "")),
+      due_date: input.dueDate || null,
+      sort_order: sortOrder,
+    }).select().single<ItemRow>();
+  if (error) throw error;
+  return mapItem(data);
+}
+
+export async function updateLineItem(client: DbClient, venueId: string, itemId: string, input: LineItemInput): Promise<void> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error } = await (client.from("payment_line_items") as any)
+    .update({
+      label: input.label.trim(),
+      amount: parseFloat(input.amount.replace(/[$,]/g, "")),
+      due_date: input.dueDate || null,
+    }).eq("id", itemId).eq("venue_id", venueId);
+  if (error) throw error;
+}
+
+export async function markItemPaid(client: DbClient, venueId: string, itemId: string, input: MarkPaidInput): Promise<void> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error } = await (client.from("payment_line_items") as any)
+    .update({
+      status: "paid",
+      paid_at: input.paidDate ? new Date(input.paidDate).toISOString() : new Date().toISOString(),
+      paid_amount: parseFloat(input.paidAmount.replace(/[$,]/g, "")),
+      payment_method: input.paymentMethod || null,
+      reference_number: input.referenceNumber.trim() || null,
+      notes: input.notes.trim() || null,
+    }).eq("id", itemId).eq("venue_id", venueId);
+  if (error) throw error;
+}
+
+export async function cancelLineItem(client: DbClient, venueId: string, itemId: string): Promise<void> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error } = await (client.from("payment_line_items") as any).update({ status: "cancelled" }).eq("id", itemId).eq("venue_id", venueId);
+  if (error) throw error;
+}
+
+export async function deleteLineItem(client: DbClient, venueId: string, itemId: string): Promise<void> {
+  const { error } = await client.from("payment_line_items").delete().eq("id", itemId).eq("venue_id", venueId);
+  if (error) throw error;
+}
+
+export async function deleteSchedule(client: DbClient, venueId: string, scheduleId: string): Promise<void> {
+  const { error } = await client.from("payment_schedules").delete().eq("id", scheduleId).eq("venue_id", venueId);
+  if (error) throw error;
+}
+
+export async function insertPaymentActivity(client: DbClient, venueId: string, scheduleId: string, type: string, title: string, description?: string): Promise<void> {
+  const { error } = await client.from("payment_activities")
+    .insert({ venue_id: venueId, schedule_id: scheduleId, type, title, description: description ?? null });
+  if (error) throw error;
+}

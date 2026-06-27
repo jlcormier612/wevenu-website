@@ -1,14 +1,23 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 
-import { ModulePlaceholder } from "@/components/shell/module-placeholder";
+import { PaymentScheduleList } from "@/components/payments/payment-schedule-list";
+import { PageHeader } from "@/components/shell/module-placeholder";
+import { Button } from "@/components/ui/button";
+import { getPaymentSchedules } from "@/lib/payments/service";
 
 export const metadata: Metadata = { title: "Payments" };
 
-export default function PaymentsPage() {
+export default async function PaymentsPage() {
+  const schedules = await getPaymentSchedules();
   return (
-    <ModulePlaceholder
-      title="Payments"
-      description="Track deposits, installments and balances via Stripe Connect."
-    />
+    <div className="space-y-6">
+      <PageHeader
+        title="Payments"
+        description="Track deposits, installments, and outstanding balances."
+        actions={<Button render={<Link href="/payments/new" />}>+ New Schedule</Button>}
+      />
+      <PaymentScheduleList schedules={schedules} />
+    </div>
   );
 }

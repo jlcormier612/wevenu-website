@@ -96,6 +96,17 @@ export type OnboardingStatus = {
   allComplete: boolean;
 };
 
+/** Payment due item for the dashboard. */
+export type DashboardPayment = {
+  id: string;        // line item id
+  scheduleId: string;
+  label: string;
+  amount: number;
+  dueDate: string;
+  isOverdue: boolean;
+  clientName: string | null;
+};
+
 export type DashboardData = {
   venueName: string;
   todayIso: string;
@@ -110,6 +121,9 @@ export type DashboardData = {
   openTasks: TaskItem[];
   openTaskCount: number;
   recentActivity: ActivityItem[];
+  // ---- payments ----
+  overduePayments: DashboardPayment[];
+  upcomingPayments: DashboardPayment[];
   // ---- booked clients + events ----
   /** Upcoming events from the events table (canonical source). */
   upcomingEvents: DashboardEvent[];

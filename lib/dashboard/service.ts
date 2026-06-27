@@ -18,6 +18,7 @@ import type {
   DashboardData,
   DashboardEvent,
   DashboardKeyDate,
+  DashboardPayment,
   OnboardingStatus,
   OnboardingStep,
   PipelineStage,
@@ -141,7 +142,11 @@ export async function getDashboardData(): Promise<DashboardData | null> {
   const twoWeeksOut = new Date(Date.now() + 14 * 86_400_000).toISOString().slice(0, 10);
   const sixtyDaysOut = new Date(Date.now() + 60 * 86_400_000).toISOString().slice(0, 10);
 
-  const [leadsRes, tasksRes, activityRes, clientsRes, keyDatesRes, eventsRes] = await Promise.all([
+  // Auto-mark overdue payments for this venue before the dashboard loads
+  // Auto-mark overdue (non-fatal — don't block dashboard load on failure)
+  void supabase.rpc("mark_overdue_payments", { p_venue_id: venue.id });
+
+  const [leadsRes, tasksRes, activityRes, clientsRes, keyDatesRes, eventsRes, paymentsRes] = await Promise.all([
     supabase
       .from("leads")
       .select("*")
@@ -192,6 +197,16 @@ export async function getDashboardData(): Promise<DashboardData | null> {
       .lte("event_date", sixtyDaysOut)
       .order("event_date", { ascending: true })
       .limit(8),
+
+    // Payment line items with schedule title + client name (for dashboard widgets)
+    supabase
+      .from("payment_line_items")
+      .select("id, schedule_id, label, amount, due_date, status, payment_schedules(title, client_id, clients(first_name, last_name))")
+      .eq("venue_id", venue.id)
+      .in("status", ["pending", "overdue"])
+      .not("due_date", "is", null)
+      .order("due_date", { ascending: true })
+      .limit(15),
   ]);
 
   if (leadsRes.error) throw leadsRes.error;
@@ -200,6 +215,7 @@ export async function getDashboardData(): Promise<DashboardData | null> {
   if (clientsRes.error) throw clientsRes.error;
   if (keyDatesRes.error) throw keyDatesRes.error;
   if (eventsRes.error) throw eventsRes.error;
+  // payments error is non-fatal for the dashboard
 
   const leads = (leadsRes.data as LeadRow[]).map(mapLead);
 
@@ -306,6 +322,24 @@ export async function getDashboardData(): Promise<DashboardData | null> {
     }),
   );
 
+  // ---- Payment dashboard data -----------------------------------------------
+  type PaymentItemDash = {
+    id: string; schedule_id: string; label: string; amount: number;
+    due_date: string; status: string;
+    payment_schedules: { title: string; client_id: string | null; clients: { first_name: string; last_name: string } | null } | null;
+  };
+  const allPaymentItems = (paymentsRes.data ?? []) as unknown as PaymentItemDash[];
+  const mapDashPayment = (r: PaymentItemDash): DashboardPayment => ({
+    id: r.id, scheduleId: r.schedule_id, label: r.label,
+    amount: Number(r.amount), dueDate: r.due_date,
+    isOverdue: r.status === "overdue" || (r.due_date < today && r.status === "pending"),
+    clientName: r.payment_schedules?.clients
+      ? `${r.payment_schedules.clients.first_name} ${r.payment_schedules.clients.last_name}`.trim()
+      : r.payment_schedules?.title ?? null,
+  });
+  const overduePayments = allPaymentItems.filter((r) => r.status === "overdue" || (r.due_date < today && r.status === "pending")).map(mapDashPayment);
+  const upcomingPayments = allPaymentItems.filter((r) => r.due_date >= today && r.status === "pending").slice(0, 8).map(mapDashPayment);
+
   return {
     venueName: venue.name,
     todayIso: today,
@@ -319,6 +353,8 @@ export async function getDashboardData(): Promise<DashboardData | null> {
     openTasks,
     openTaskCount: (tasksRes.data as DashTaskRow[]).length,
     recentActivity,
+    overduePayments,
+    upcomingPayments,
     upcomingEvents,
     recentBookings,
     upcomingKeyDates,

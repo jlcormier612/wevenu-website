@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { ClientEventsWidget } from "@/components/dashboard/client-events-widget";
+import { OverduePaymentsWidget, UpcomingPaymentsWidget } from "@/components/dashboard/payments-widget";
 import { FollowupsWidget } from "@/components/dashboard/followups-widget";
 import { GettingStartedCard } from "@/components/dashboard/getting-started";
 import { Greeting } from "@/components/dashboard/greeting";
@@ -51,6 +52,20 @@ export default async function DashboardPage() {
 
       {/* Quick-count stat bar */}
       <StatBar data={data} />
+
+      {/* ── Payments ───────────────────────────────────────────────────── */}
+      {(data.overduePayments.length > 0 || data.upcomingPayments.length > 0) && (
+        <>
+          <div className="flex items-center gap-3">
+            <p className="shrink-0 text-xs font-semibold uppercase tracking-widest text-muted-foreground">Payments</p>
+            <div className="h-px flex-1 bg-border" />
+          </div>
+          <div className="grid gap-6 lg:grid-cols-2">
+            <OverduePaymentsWidget payments={data.overduePayments} />
+            <UpcomingPaymentsWidget payments={data.upcomingPayments} />
+          </div>
+        </>
+      )}
 
       {/* ── Booked Clients ─────────────────────────────────────────────── */}
       {data.totalClients > 0 && (
