@@ -181,6 +181,14 @@ export async function markLineItemPaid(itemId: string, scheduleId: string, input
     await repo.insertPaymentActivity(supabase, venueId, scheduleId, "payment_received",
       `Payment received: $${amount.toLocaleString()}`,
       input.paymentMethod ? `Via ${input.paymentMethod}` : undefined);
+
+    // Reconcile the linked invoice's balance_due, if any
+    const { data: sch } = await supabase.from("payment_schedules")
+      .select("invoice_id").eq("id", scheduleId).maybeSingle<{ invoice_id: string | null }>();
+    if (sch?.invoice_id) {
+      await repo.reconcileInvoiceBalance(supabase, venueId, sch.invoice_id);
+    }
+
     return { ok: true } as PaymentActionResult;
   });
   return result as PaymentActionResult;

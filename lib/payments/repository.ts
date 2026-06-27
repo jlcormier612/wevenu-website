@@ -16,6 +16,7 @@ type DbClient = Awaited<ReturnType<typeof createClient>>;
 
 type ScheduleRow = {
   id: string; venue_id: string; client_id: string | null; event_id: string | null;
+  invoice_id: string | null;
   title: string; total_amount: number; currency: string; notes: string | null;
   created_at: string; updated_at: string;
   clients?: { first_name: string; last_name: string; partner_first_name: string | null; partner_last_name: string | null } | null;
@@ -44,6 +45,7 @@ function mapSchedule(r: ScheduleRow): PaymentSchedule {
     : null;
   return {
     id: r.id, venueId: r.venue_id, clientId: r.client_id, eventId: r.event_id,
+    invoiceId: r.invoice_id,
     title: r.title, totalAmount: Number(r.total_amount), currency: r.currency, notes: r.notes,
     createdAt: r.created_at, updatedAt: r.updated_at,
     clientName: cn, eventDate: r.events?.event_date ?? null,
@@ -168,6 +170,35 @@ export async function markItemPaid(client: DbClient, venueId: string, itemId: st
       notes: input.notes.trim() || null,
     }).eq("id", itemId).eq("venue_id", venueId);
   if (error) throw error;
+}
+
+/**
+ * After marking a payment paid, reconcile the linked invoice's balance_due.
+ * Sums all paid amounts across every schedule linked to the same invoice,
+ * then writes balance_due = invoice.total - totalPaid.
+ * Auto-updates invoice status to "paid" when balance_due reaches zero.
+ */
+export async function reconcileInvoiceBalance(client: DbClient, venueId: string, invoiceId: string): Promise<void> {
+  // Get invoice total
+  const { data: inv } = await client.from("invoices").select("total").eq("id", invoiceId).eq("venue_id", venueId).maybeSingle<{ total: number }>();
+  if (!inv) return;
+
+  // Sum all paid line items across all schedules linked to this invoice
+  const { data: schedules } = await client.from("payment_schedules").select("id").eq("invoice_id", invoiceId).eq("venue_id", venueId);
+  const scheduleIds = (schedules ?? []).map((s: { id: string }) => s.id);
+  if (scheduleIds.length === 0) return;
+
+  const { data: paidItems } = await client.from("payment_line_items").select("amount, paid_amount").in("schedule_id", scheduleIds).eq("status", "paid");
+  const totalPaid = (paidItems ?? []).reduce((sum: number, item: { amount: number; paid_amount: number | null }) => sum + (item.paid_amount != null ? Number(item.paid_amount) : Number(item.amount)), 0);
+
+  const invoiceTotal = Number(inv.total);
+  const balanceDue = Math.max(0, invoiceTotal - totalPaid);
+  const newStatus = balanceDue <= 0 ? "paid" : undefined;
+
+  const patch: Record<string, unknown> = { balance_due: balanceDue };
+  if (newStatus) patch.status = newStatus;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  await (client.from("invoices") as any).update(patch).eq("id", invoiceId).eq("venue_id", venueId);
 }
 
 export async function cancelLineItem(client: DbClient, venueId: string, itemId: string): Promise<void> {

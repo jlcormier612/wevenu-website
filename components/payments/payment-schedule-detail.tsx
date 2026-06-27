@@ -54,6 +54,8 @@ import type {
   PaymentLineItem,
   PaymentScheduleWithDetails,
 } from "@/lib/payments/types";
+import type { Invoice } from "@/lib/invoices/types";
+import { formatCurrency } from "@/lib/invoices/constants";
 import { cn } from "@/lib/utils";
 
 // ---- Inline add/edit form ---------------------------------------------------
@@ -74,6 +76,17 @@ function LineItemForm({
   const [label, setLabel] = React.useState(initial.label);
   const [amount, setAmount] = React.useState(initial.amount);
   const [dueDate, setDueDate] = React.useState(initial.dueDate);
+
+  // Listen for "Fill remaining balance" events from the parent
+  React.useEffect(() => {
+    function handler(e: Event) {
+      const value = (e as CustomEvent<string>).detail;
+      setAmount(value);
+    }
+    window.addEventListener("fill-remaining", handler);
+    return () => window.removeEventListener("fill-remaining", handler);
+  }, []);
+
   return (
     <div className="grid gap-3 sm:grid-cols-[1fr_auto_auto] items-end rounded-lg border border-ring bg-card p-3">
       <div className="space-y-1.5">
@@ -289,7 +302,7 @@ function LineItemRow({
 
 // ---- Main component ---------------------------------------------------------
 
-export function PaymentScheduleDetail({ schedule }: { schedule: PaymentScheduleWithDetails }) {
+export function PaymentScheduleDetail({ schedule, invoice }: { schedule: PaymentScheduleWithDetails; invoice?: Invoice | null }) {
   const router = useRouter();
   const [items, setItems] = React.useState(schedule.lineItems);
   const [showAdd, setShowAdd] = React.useState(false);
@@ -298,6 +311,11 @@ export function PaymentScheduleDetail({ schedule }: { schedule: PaymentScheduleW
   const totalPaid = items.filter((i) => i.status === "paid").reduce((s, i) => s + (i.paidAmount ?? i.amount), 0);
   const balance = schedule.totalAmount - totalPaid;
   const pctPaid = schedule.totalAmount > 0 ? Math.min(100, (totalPaid / schedule.totalAmount) * 100) : 0;
+
+  // Allocation tracking (all active installments, whether paid or not)
+  const allocated = items.filter((i) => i.status !== "cancelled").reduce((s, i) => s + i.amount, 0);
+  const remaining = Math.max(0, schedule.totalAmount - allocated);
+  const overAllocated = allocated > schedule.totalAmount + 0.005; // 0.5¢ tolerance
 
   function handleAdd(input: LineItemInput) {
     startAdd(async () => {
@@ -343,6 +361,27 @@ export function PaymentScheduleDetail({ schedule }: { schedule: PaymentScheduleW
         <ScheduleStatusBadge status={schedule.scheduleStatus} />
       </div>
 
+      {/* Invoice context banner */}
+      {invoice && (
+        <div className="rounded-xl border border-primary/20 bg-primary/5 px-4 py-3">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="space-y-0.5">
+              <p className="text-xs font-semibold text-primary uppercase tracking-wide">Linked Invoice</p>
+              <div className="flex flex-wrap gap-x-4 gap-y-0.5 text-sm">
+                <span className="font-medium text-heading">{invoice.invoiceNumber}</span>
+                <span className="text-muted-foreground">Invoice total: <span className="font-medium text-foreground">{formatCurrency(invoice.total)}</span></span>
+                <span className={invoice.balanceDue > 0 ? "text-destructive" : "text-success"}>
+                  Balance due: <span className="font-medium">{formatCurrency(invoice.balanceDue)}</span>
+                </span>
+              </div>
+            </div>
+            <Button type="button" variant="outline" size="sm" render={<Link href={`/invoices/${invoice.id}`} />}>
+              View Invoice →
+            </Button>
+          </div>
+        </div>
+      )}
+
       {/* Summary */}
       <Card>
         <CardContent className="pt-5">
@@ -372,9 +411,18 @@ export function PaymentScheduleDetail({ schedule }: { schedule: PaymentScheduleW
       {/* Line items */}
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-base">Payment Schedule</CardTitle>
-            <Button type="button" size="sm" variant="outline" onClick={() => setShowAdd(true)}>
+          <div className="flex items-start justify-between gap-3">
+            <div className="space-y-1">
+              <CardTitle className="text-base">Payment Schedule</CardTitle>
+              {/* Allocation summary */}
+              <div className="flex flex-wrap gap-x-4 gap-y-0.5 text-xs text-muted-foreground">
+                <span>Allocated: <span className="font-medium text-foreground">{formatMoney(allocated)}</span> of <span className="font-medium text-foreground">{formatMoney(schedule.totalAmount)}</span></span>
+                {remaining > 0 && <span className="text-primary font-medium">Remaining: {formatMoney(remaining)}</span>}
+                {overAllocated && <span className="text-destructive font-medium">⚠ Over-allocated by {formatMoney(allocated - schedule.totalAmount)}</span>}
+                {!overAllocated && remaining <= 0 && allocated > 0 && <span className="text-success font-medium">✓ Fully allocated</span>}
+              </div>
+            </div>
+            <Button type="button" size="sm" variant="outline" onClick={() => setShowAdd(true)} disabled={showAdd}>
               <Plus className="mr-1 h-3.5 w-3.5" /> Add Payment
             </Button>
           </div>
@@ -391,10 +439,25 @@ export function PaymentScheduleDetail({ schedule }: { schedule: PaymentScheduleW
               onUpdate={handleItemUpdate} onMarkPaid={handleMarkPaid} onDelete={handleDelete} />
           ))}
           {showAdd && (
-            <LineItemForm
-              initial={{ label: "", amount: "", dueDate: "" }}
-              onSave={handleAdd} onCancel={() => setShowAdd(false)}
-              pending={addPending} submitLabel="Add" />
+            <div className="space-y-2">
+              {remaining > 0 && (
+                <div className="flex items-center gap-2 rounded-lg border border-primary/20 bg-primary/5 px-3 py-2">
+                  <span className="text-xs text-muted-foreground flex-1">Remaining balance: <span className="font-semibold text-primary">{formatMoney(remaining)}</span></span>
+                  <button type="button"
+                    className="text-xs font-medium text-primary hover:text-primary/80 transition-colors"
+                    onClick={() => {
+                      // Dispatch a custom event that LineItemForm listens for
+                      window.dispatchEvent(new CustomEvent("fill-remaining", { detail: remaining.toFixed(2) }));
+                    }}>
+                    Fill remaining ↗
+                  </button>
+                </div>
+              )}
+              <LineItemForm
+                initial={{ label: "", amount: "", dueDate: "" }}
+                onSave={handleAdd} onCancel={() => setShowAdd(false)}
+                pending={addPending} submitLabel="Add" />
+            </div>
           )}
         </CardContent>
       </Card>

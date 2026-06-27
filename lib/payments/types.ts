@@ -9,6 +9,7 @@ export type PaymentSchedule = {
   venueId: string;
   clientId: string | null;
   eventId: string | null;
+  invoiceId: string | null;   // links schedule to its source invoice (Sprint 22)
   title: string;
   totalAmount: number;
   currency: string;

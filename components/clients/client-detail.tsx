@@ -30,6 +30,9 @@ import {
   formatTime,
 } from "@/lib/clients/constants";
 import type { ClientWithDetails } from "@/lib/clients/types";
+import { InvoiceStatusBadge } from "@/components/invoices/invoice-status-badge";
+import { formatCurrency } from "@/lib/invoices/constants";
+import type { Invoice } from "@/lib/invoices/types";
 
 // ---- Event Date Hero (client-side for real-time countdown) ------------------
 
@@ -65,7 +68,7 @@ function ContactCard({ name, email, phone, role }: { name: string; email?: strin
 
 // ---- Main component ---------------------------------------------------------
 
-export function ClientDetail({ client }: { client: ClientWithDetails }) {
+export function ClientDetail({ client, invoices = [] }: { client: ClientWithDetails; invoices?: Invoice[] }) {
   const router = useRouter();
   const [statusPending, startStatus] = React.useTransition();
 
@@ -151,6 +154,12 @@ export function ClientDetail({ client }: { client: ClientWithDetails }) {
             )}
           </TabsTrigger>
           <TabsTrigger value="timeline">Timeline</TabsTrigger>
+          <TabsTrigger value="finance">
+            Finance
+            {invoices.length > 0 && (
+              <span className="ml-1 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground">{invoices.length}</span>
+            )}
+          </TabsTrigger>
         </TabsList>
 
         {/* ── Couple ────────────────────────────────────────────────────── */}
@@ -253,6 +262,58 @@ export function ClientDetail({ client }: { client: ClientWithDetails }) {
             </CardHeader>
             <CardContent>
               <ActivityTimeline activities={client.activities} />
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* ── Finance ────────────────────────────────────────────────────── */}
+        <TabsContent value="finance">
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between gap-4">
+                <div>
+                  <CardTitle className="text-base">Invoices</CardTitle>
+                  <CardDescription>All invoices linked to this client.</CardDescription>
+                </div>
+                <Button type="button" size="sm" render={<Link href={`/invoices/new?clientId=${client.id}`} />}>
+                  + New Invoice
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {invoices.length === 0 ? (
+                <p className="py-6 text-center text-sm text-muted-foreground">
+                  No invoices yet.{" "}
+                  <Link href={`/invoices/new?clientId=${client.id}`} className="text-primary hover:underline">
+                    Create the first one →
+                  </Link>
+                </p>
+              ) : (
+                <div className="space-y-2">
+                  {invoices.map((inv) => (
+                    <Link key={inv.id} href={`/invoices/${inv.id}`}
+                      className="flex items-center justify-between gap-4 rounded-lg border border-border bg-card px-4 py-3 hover:bg-muted/30 transition-colors">
+                      <div className="space-y-0.5 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <p className="text-sm font-medium text-heading">{inv.invoiceNumber}</p>
+                          <InvoiceStatusBadge status={inv.status} />
+                        </div>
+                        {inv.dueDate && (
+                          <p className="text-xs text-muted-foreground">
+                            Due {new Date(inv.dueDate + "T12:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                          </p>
+                        )}
+                      </div>
+                      <div className="text-right shrink-0">
+                        <p className="text-sm font-semibold text-heading">{formatCurrency(inv.total)}</p>
+                        {inv.balanceDue > 0 && inv.status !== "paid" && (
+                          <p className="text-xs text-destructive">{formatCurrency(inv.balanceDue)} due</p>
+                        )}
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>

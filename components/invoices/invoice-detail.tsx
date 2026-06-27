@@ -4,7 +4,7 @@ import * as React from "react";
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Receipt } from "lucide-react";
+import { ArrowLeft, Printer, Receipt } from "lucide-react";
 import { toast } from "sonner";
 
 import { updateInvoiceStatusAction } from "@/app/(app)/invoices/actions";
@@ -60,6 +60,9 @@ export function InvoiceDetail({ invoice, packages }: { invoice: InvoiceWithLineI
           )}
         </div>
         <div className="flex items-center gap-2 shrink-0">
+          <Button type="button" variant="outline" size="sm" render={<Link href={`/invoices/${invoice.id}/print`} target="_blank" />}>
+            <Printer className="mr-1 h-3.5 w-3.5" /> Print
+          </Button>
           {status !== "void" && status !== "paid" && (
             <Button type="button" variant="outline" size="sm"
               onClick={() => { if (confirm("Void this invoice?")) handleStatusChange("void"); }}
