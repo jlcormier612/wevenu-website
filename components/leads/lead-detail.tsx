@@ -42,6 +42,7 @@ import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DateHoldsSection } from "@/components/availability/date-holds-section";
+import { DocumentsSection } from "@/components/documents/documents-section";
 import {
   LEAD_STATUSES,
   eventTypeLabel,
@@ -52,6 +53,7 @@ import {
 } from "@/lib/leads/constants";
 import type { LeadWithDetails } from "@/lib/leads/types";
 import type { DateHold, VenueSpace } from "@/lib/availability/types";
+import type { Document } from "@/lib/documents/types";
 
 // ---- info row (overview tab) ------------------------------------------------
 
@@ -80,7 +82,7 @@ function InfoRow({
 
 // ---- main component ---------------------------------------------------------
 
-export function LeadDetail({ lead, holds = [], spaces = [] }: { lead: LeadWithDetails; holds?: DateHold[]; spaces?: VenueSpace[] }) {
+export function LeadDetail({ lead, holds = [], spaces = [], documents = [] }: { lead: LeadWithDetails; holds?: DateHold[]; spaces?: VenueSpace[]; documents?: Document[] }) {
   const router = useRouter();
   const [statusPending, startStatus] = React.useTransition();
   const [convertPending, startConvert] = React.useTransition();
@@ -243,6 +245,12 @@ export function LeadDetail({ lead, holds = [], spaces = [] }: { lead: LeadWithDe
               </span>
             )}
           </TabsTrigger>
+          <TabsTrigger value="documents">
+            Documents
+            {documents.length > 0 && (
+              <span className="ml-1 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground">{documents.length}</span>
+            )}
+          </TabsTrigger>
         </TabsList>
 
         {/* ── Overview ─────────────────────────────────────────────── */}
@@ -369,6 +377,24 @@ export function LeadDetail({ lead, holds = [], spaces = [] }: { lead: LeadWithDe
             </CardHeader>
             <CardContent>
               <ActivityTimeline activities={lead.activities} />
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* ── Documents ────────────────────────────────────────────── */}
+        <TabsContent value="documents">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Documents</CardTitle>
+              <CardDescription>Contracts, inspiration photos, questionnaires, and other files for this lead.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <DocumentsSection
+                entityType="lead"
+                entityId={lead.id}
+                venueId={lead.venueId}
+                initialDocuments={documents}
+              />
             </CardContent>
           </Card>
         </TabsContent>

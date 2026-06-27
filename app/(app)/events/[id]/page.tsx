@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
 import { EventDetail } from "@/components/events/event-detail";
+import { getDocuments } from "@/lib/documents/service";
 import { getInvoices } from "@/lib/invoices/service";
 import { getEvent } from "@/lib/events/service";
 import { getVendors } from "@/lib/vendors/service";
@@ -17,9 +18,10 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function EventDetailPage({ params }: Props) {
   const { id } = await params;
-  const [event, availableVendors] = await Promise.all([getEvent(id), getVendors()]);
+  const [event, availableVendors, allInvoices, documents] = await Promise.all([
+    getEvent(id), getVendors(), getInvoices({}), getDocuments("event", id),
+  ]);
   if (!event) notFound();
-  const invoices = await getInvoices({ q: "", status: "" });
-  const eventInvoices = invoices.filter((inv) => inv.eventId === id || (event.clientId && inv.clientId === event.clientId));
-  return <EventDetail event={event} availableVendors={availableVendors} invoices={eventInvoices} />;
+  const eventInvoices = allInvoices.filter((inv) => inv.eventId === id || (event.clientId && inv.clientId === event.clientId));
+  return <EventDetail event={event} availableVendors={availableVendors} invoices={eventInvoices} documents={documents} />;
 }

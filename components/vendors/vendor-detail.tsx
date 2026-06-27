@@ -8,15 +8,18 @@ import { ArrowLeft, ExternalLink, Globe, Mail, Pencil, Phone, Star, Trash2 } fro
 import { toast } from "sonner";
 
 import { deleteVendorAction } from "@/app/(app)/vendors/actions";
+import { DocumentsSection } from "@/components/documents/documents-section";
 import { VendorCategoryBadge } from "@/components/vendors/vendor-category-badge";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { formatTime } from "@/lib/vendors/constants";
 import type { VendorWithEvents } from "@/lib/vendors/types";
+import type { Document } from "@/lib/documents/types";
 
-export function VendorDetail({ vendor }: { vendor: VendorWithEvents }) {
+export function VendorDetail({ vendor, documents = [] }: { vendor: VendorWithEvents; documents?: Document[] }) {
   const router = useRouter();
   const [deletePending, startDelete] = React.useTransition();
 
@@ -60,6 +63,16 @@ export function VendorDetail({ vendor }: { vendor: VendorWithEvents }) {
         </div>
       </div>
 
+      <Tabs defaultValue="overview">
+        <TabsList>
+          <TabsTrigger value="overview">Overview</TabsTrigger>
+          <TabsTrigger value="documents">
+            Documents
+            {documents.length > 0 && <span className="ml-1 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground">{documents.length}</span>}
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="overview">
       <div className="grid gap-6 lg:grid-cols-2">
         {/* Contact info */}
         <Card>
@@ -171,6 +184,25 @@ export function VendorDetail({ vendor }: { vendor: VendorWithEvents }) {
           </CardContent>
         </Card>
       )}
+        </TabsContent>
+
+        <TabsContent value="documents">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Documents</CardTitle>
+              <CardDescription>Contracts, insurance certificates, menus, and other vendor files.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <DocumentsSection
+                entityType="vendor"
+                entityId={vendor.id}
+                venueId={vendor.venueId}
+                initialDocuments={documents}
+              />
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

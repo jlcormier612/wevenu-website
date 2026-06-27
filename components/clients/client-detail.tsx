@@ -11,6 +11,7 @@ import { updateClientStatusAction } from "@/app/(app)/clients/[id]/actions";
 import { ClientNotesSection } from "@/components/clients/client-notes-section";
 import { ClientStatusBadge } from "@/components/clients/client-status-badge";
 import { KeyDatesSection } from "@/components/clients/key-dates-section";
+import { DocumentsSection } from "@/components/documents/documents-section";
 import { ActivityTimeline } from "@/components/leads/activity-timeline";
 import { Button } from "@/components/ui/button";
 import {
@@ -33,6 +34,7 @@ import type { ClientWithDetails } from "@/lib/clients/types";
 import { InvoiceStatusBadge } from "@/components/invoices/invoice-status-badge";
 import { formatCurrency } from "@/lib/invoices/constants";
 import type { Invoice } from "@/lib/invoices/types";
+import type { Document } from "@/lib/documents/types";
 
 // ---- Event Date Hero (client-side for real-time countdown) ------------------
 
@@ -68,7 +70,7 @@ function ContactCard({ name, email, phone, role }: { name: string; email?: strin
 
 // ---- Main component ---------------------------------------------------------
 
-export function ClientDetail({ client, invoices = [] }: { client: ClientWithDetails; invoices?: Invoice[] }) {
+export function ClientDetail({ client, invoices = [], documents = [] }: { client: ClientWithDetails; invoices?: Invoice[]; documents?: Document[] }) {
   const router = useRouter();
   const [statusPending, startStatus] = React.useTransition();
 
@@ -154,6 +156,12 @@ export function ClientDetail({ client, invoices = [] }: { client: ClientWithDeta
             )}
           </TabsTrigger>
           <TabsTrigger value="timeline">Activity</TabsTrigger>
+          <TabsTrigger value="documents">
+            Documents
+            {documents.length > 0 && (
+              <span className="ml-1 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground">{documents.length}</span>
+            )}
+          </TabsTrigger>
           <TabsTrigger value="finance">
             Finance
             {invoices.length > 0 && (
@@ -267,6 +275,24 @@ export function ClientDetail({ client, invoices = [] }: { client: ClientWithDeta
         </TabsContent>
 
         {/* ── Finance ────────────────────────────────────────────────────── */}
+        {/* ── Documents ────────────────────────────────────────────── */}
+        <TabsContent value="documents">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Documents</CardTitle>
+              <CardDescription>Contracts, inspiration photos, COIs, permits, and files for this client.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <DocumentsSection
+                entityType="client"
+                entityId={client.id}
+                venueId={client.venueId}
+                initialDocuments={documents}
+              />
+            </CardContent>
+          </Card>
+        </TabsContent>
+
         <TabsContent value="finance">
           <Card>
             <CardHeader>

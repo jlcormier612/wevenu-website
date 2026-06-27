@@ -22,6 +22,7 @@ import { EventStatusBadge } from "@/components/events/event-status-badge";
 import { EventTeamSection } from "@/components/events/event-team-section";
 import { EventVendorsSection } from "@/components/events/vendors/event-vendors-section";
 import { TimelineView } from "@/components/events/timeline/timeline-view";
+import { DocumentsSection } from "@/components/documents/documents-section";
 import { InvoiceStatusBadge } from "@/components/invoices/invoice-status-badge";
 import { ActivityTimeline } from "@/components/leads/activity-timeline";
 import { Button } from "@/components/ui/button";
@@ -36,6 +37,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { FloorPlanEditor } from "@/components/floor-plan/floor-plan-editor";
 import { formatCurrency } from "@/lib/invoices/constants";
 import type { Invoice } from "@/lib/invoices/types";
+import type { Document } from "@/lib/documents/types";
 import {
   EVENT_STATUSES,
   daysUntil,
@@ -137,10 +139,12 @@ export function EventDetail({
   event,
   availableVendors = [],
   invoices = [],
+  documents = [],
 }: {
   event: EventWithDetails;
   availableVendors?: import("@/lib/vendors/types").Vendor[];
   invoices?: Invoice[];
+  documents?: Document[];
 }) {
   const router = useRouter();
   const [statusPending, startStatus] = React.useTransition();
@@ -235,6 +239,10 @@ export function EventDetail({
           <TabsTrigger value="invoice">
             Invoice
             {invoices.length > 0 && <span className="ml-1 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground">{invoices.length}</span>}
+          </TabsTrigger>
+          <TabsTrigger value="documents">
+            Documents
+            {documents.length > 0 && <span className="ml-1 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground">{documents.length}</span>}
           </TabsTrigger>
           <TabsTrigger value="activity">Activity</TabsTrigger>
         </TabsList>
@@ -422,6 +430,24 @@ export function EventDetail({
                   ))}
                 </div>
               )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* ── Documents ────────────────────────────────────────────── */}
+        <TabsContent value="documents">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Documents</CardTitle>
+              <CardDescription>COIs, permits, vendor agreements, floor plans, and other event files.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <DocumentsSection
+                entityType="event"
+                entityId={event.id}
+                venueId={event.venueId}
+                initialDocuments={documents}
+              />
             </CardContent>
           </Card>
         </TabsContent>
