@@ -69,6 +69,7 @@ export type EventWithDetails = VenueEvent & {
   team: EventTeamMember[];
   activities: EventActivity[];
   timeline: import("@/lib/timeline/types").TimelineEntry[];
+  vendorAssignments: import("@/lib/vendors/types").EventVendorAssignment[];
 };
 
 /** Form model for create and edit. */

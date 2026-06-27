@@ -20,6 +20,7 @@ import { updateEventStatusAction } from "@/app/(app)/events/[id]/actions";
 import { EventNotesSection } from "@/components/events/event-notes-section";
 import { EventStatusBadge } from "@/components/events/event-status-badge";
 import { EventTeamSection } from "@/components/events/event-team-section";
+import { EventVendorsSection } from "@/components/events/vendors/event-vendors-section";
 import { TimelineView } from "@/components/events/timeline/timeline-view";
 import { ActivityTimeline } from "@/components/leads/activity-timeline";
 import { Button } from "@/components/ui/button";
@@ -128,7 +129,13 @@ function ComingSoonTab({
 
 // ---- Main component ---------------------------------------------------------
 
-export function EventDetail({ event }: { event: EventWithDetails }) {
+export function EventDetail({
+  event,
+  availableVendors = [],
+}: {
+  event: EventWithDetails;
+  availableVendors?: import("@/lib/vendors/types").Vendor[];
+}) {
   const router = useRouter();
   const [statusPending, startStatus] = React.useTransition();
 
@@ -210,7 +217,14 @@ export function EventDetail({ event }: { event: EventWithDetails }) {
             )}
           </TabsTrigger>
           <TabsTrigger value="timeline">Timeline</TabsTrigger>
-          <TabsTrigger value="vendors">Vendors</TabsTrigger>
+          <TabsTrigger value="vendors">
+            Vendors
+            {event.vendorAssignments.length > 0 && (
+              <span className="ml-1 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground">
+                {event.vendorAssignments.length}
+              </span>
+            )}
+          </TabsTrigger>
           <TabsTrigger value="activity">Activity</TabsTrigger>
         </TabsList>
 
@@ -311,13 +325,23 @@ export function EventDetail({ event }: { event: EventWithDetails }) {
           </Card>
         </TabsContent>
 
-        {/* ── Vendors (placeholder) ──────────────────────────────────── */}
+        {/* ── Vendors ────────────────────────────────────────────────── */}
         <TabsContent value="vendors">
-          <ComingSoonTab
-            icon={Users}
-            title="Vendors"
-            description="Caterers, photographers, florists, and all your event partners — contacts and assignments — will live here. Coming in a future sprint."
-          />
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Vendors</CardTitle>
+              <CardDescription>
+                Who is involved in this event and when they arrive.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <EventVendorsSection
+                eventId={event.id}
+                initialAssignments={event.vendorAssignments}
+                availableVendors={availableVendors}
+              />
+            </CardContent>
+          </Card>
         </TabsContent>
 
         {/* ── Activity ───────────────────────────────────────────────── */}

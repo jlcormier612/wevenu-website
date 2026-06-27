@@ -10,6 +10,14 @@ import type { EventWithDetails } from "@/lib/events/types";
 import { formatDate, formatTime } from "@/lib/events/constants";
 import { eventTypeLabel } from "@/lib/leads/constants";
 import type { Venue } from "@/lib/venue/types";
+import { vendorCategoryLabel } from "@/lib/vendors/constants";
+
+function formatVendorTime(hhmm: string): string {
+  const [h, m] = hhmm.split(":");
+  return new Date(0, 0, 0, Number(h), Number(m)).toLocaleTimeString("en-US", {
+    hour: "numeric", minute: "2-digit",
+  });
+}
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
@@ -130,6 +138,26 @@ export function DaySheetDocument({
                 </div>
               );
             })}
+          </div>
+        </div>
+      )}
+
+      {/* ── Vendors ──────────────────────────────────────────────────────── */}
+      {event.vendorAssignments.length > 0 && (
+        <div className="px-10 py-2">
+          <Rule />
+          <SectionLabel>Vendors</SectionLabel>
+          <div className="space-y-1.5">
+            {[...event.vendorAssignments]
+              .sort((a, b) => (a.arrivalTime ?? "99:99").localeCompare(b.arrivalTime ?? "99:99"))
+              .map((v) => (
+                <div key={v.id} className="flex flex-wrap items-baseline gap-x-2 text-sm">
+                  <span className="font-medium text-gray-800">{v.vendorName}</span>
+                  {v.vendorCategory && <span className="text-gray-400 text-xs">{vendorCategoryLabel(v.vendorCategory)}</span>}
+                  {v.arrivalTime && <span className="text-gray-500 text-xs">· Arriving {formatVendorTime(v.arrivalTime)}</span>}
+                  {v.vendorPhone && <span className="text-gray-400 text-xs">{v.vendorPhone}</span>}
+                </div>
+              ))}
           </div>
         </div>
       )}
