@@ -131,6 +131,15 @@
   --sidebar-accent-foreground: var(--forest-sage);
   --sidebar-border: var(--taupe-light);
   --sidebar-ring: var(--heritage-sage);
+
+  /* Calendar item dot colors (light mode — dark dots on light surface) */
+  --cal-event:          var(--heritage-sage);   /* #5D6F5D — dark green  */
+  --cal-tour:           var(--soft-sage);        /* #B9D1C2 — light sage  */
+  --cal-follow-up:      var(--taupe-dark);       /* #B8AEA1 — taupe       */
+  --cal-payment-due:    var(--dusty-rose);       /* #D8A7AA — rose        */
+  --cal-key-date:       var(--forest-sage);      /* #4F5F4F — dark green  */
+  --cal-date-hold:      #C7A66A;                 /* amber (tint, same hue as taupe) */
+  --cal-blocked:        #B85C57;                 /* muted red (tint of dusty rose)  */
 }
 
 /*
@@ -180,6 +189,10 @@
   --sidebar-accent-foreground: var(--true-white);
   --sidebar-border: color-mix(in oklch, var(--true-white) 18%, transparent);
   --sidebar-ring: var(--soft-sage);
+
+  /* Calendar item dot colors (dark mode — light dots on dark surface) */
+  --cal-event:       var(--true-white);     /* white — most important, stands out    */
+  --cal-key-date:    var(--taupe-light);    /* #DED6CA warm cream — visible, distinct */
 }
 
 @layer base {

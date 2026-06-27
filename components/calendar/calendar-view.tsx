@@ -33,19 +33,21 @@ import { cn } from "@/lib/utils";
 
 // ---- type meta ---------------------------------------------------------------
 
+// dotColor uses CSS custom properties (defined in globals.css) so dark-mode
+// overrides in .dark { } work automatically — no JS dark-mode detection needed.
 const TYPE_META: Record<CalendarItemType, {
   label: string;
   icon: React.ElementType;
-  dotColor: string;  // exact palette hex
+  dotColor: string;  // CSS var reference, e.g. "var(--cal-event)"
   textClass: string;
 }> = {
-  event:          { label: "Event",          icon: CalendarDays, dotColor: "#5D6F5D", textClass: "text-primary" },
-  tour:           { label: "Tour",           icon: MapPin,       dotColor: "#B9D1C2", textClass: "text-muted-foreground" },
-  follow_up:      { label: "Follow-up",      icon: Phone,        dotColor: "#B8AEA1", textClass: "text-muted-foreground" },
-  payment_due:    { label: "Payment Due",    icon: DollarSign,   dotColor: "#D8A7AA", textClass: "text-destructive" },
-  key_date:       { label: "Key Date",       icon: Star,         dotColor: "#4F5F4F", textClass: "text-heading" },
-  date_hold:      { label: "Date Hold",      icon: Clock,        dotColor: "#C7A66A", textClass: "text-warning-foreground" },
-  calendar_block: { label: "Blocked",        icon: AlertTriangle, dotColor: "#B85C57", textClass: "text-destructive" },
+  event:          { label: "Event",       icon: CalendarDays,  dotColor: "var(--cal-event)",       textClass: "text-primary" },
+  tour:           { label: "Tour",        icon: MapPin,        dotColor: "var(--cal-tour)",        textClass: "text-muted-foreground" },
+  follow_up:      { label: "Follow-up",   icon: Phone,         dotColor: "var(--cal-follow-up)",   textClass: "text-muted-foreground" },
+  payment_due:    { label: "Payment Due", icon: DollarSign,    dotColor: "var(--cal-payment-due)", textClass: "text-destructive" },
+  key_date:       { label: "Key Date",    icon: Star,          dotColor: "var(--cal-key-date)",    textClass: "text-heading" },
+  date_hold:      { label: "Date Hold",   icon: Clock,         dotColor: "var(--cal-date-hold)",   textClass: "text-warning-foreground" },
+  calendar_block: { label: "Blocked",     icon: AlertTriangle, dotColor: "var(--cal-blocked)",     textClass: "text-destructive" },
 };
 
 const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -193,13 +195,13 @@ function DayDetail({ date, items }: { date: string | null; items: CalendarItem[]
               >
                 <span
                   className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg"
-                  style={{ backgroundColor: `${TYPE_META[item.type].dotColor}20`, color: TYPE_META[item.type].dotColor }}
+                  style={{ backgroundColor: `color-mix(in oklch, ${TYPE_META[item.type].dotColor} 18%, transparent)`, color: TYPE_META[item.type].dotColor }}
                 >
                   <Icon className="h-3.5 w-3.5" />
                 </span>
                 <div className="min-w-0 flex-1 space-y-0.5">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: meta.dotColor }}>
+                    <p className={cn("text-xs font-semibold uppercase tracking-wide", meta.textClass)}>
                       {meta.label}
                     </p>
                     {item.time && (
