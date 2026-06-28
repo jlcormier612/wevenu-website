@@ -11,7 +11,7 @@
  */
 
 import Link from "next/link";
-import { AlertTriangle, CheckCircle, Circle, Heart } from "lucide-react";
+import { AlertTriangle, ArrowRight, CheckCircle, Circle, Heart } from "lucide-react";
 
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import type { LuvBriefingItem, LuvObservation } from "@/lib/luv/types";
@@ -69,23 +69,40 @@ function CoordinatorBriefingCard({ obs }: { obs: LuvObservation }) {
 
 function ObservationRow({ obs }: { obs: LuvObservation }) {
   if (obs.briefingItems) return <CoordinatorBriefingCard obs={obs} />;
+
+  const DUSTY_ROSE = "#D8A7AA";
+
   return (
-    <div className="flex items-start gap-3 py-3 border-b border-border/60 last:border-0">
-      {/* Heart at 14px matches text-sm (14px) */}
-      <LuvHeart size={14} />
-      <div className="min-w-0 flex-1 space-y-0.5">
-        {/* text-heading: consistent warm color, same weight as surrounding UI */}
-        <p className="text-sm text-heading leading-snug">{obs.message}</p>
-        {obs.detail && (
-          <p className="text-xs text-muted-foreground">{obs.detail}</p>
-        )}
+    <div className="py-3 border-b border-border/60 last:border-0 space-y-2">
+      <div className="flex items-start gap-3">
+        <LuvHeart size={14} />
+        <div className="min-w-0 flex-1 space-y-0.5">
+          <p className="text-sm text-heading leading-snug">{obs.message}</p>
+          {obs.detail && (
+            <p className="text-xs text-muted-foreground">{obs.detail}</p>
+          )}
+        </div>
+        <Link href={obs.link}
+          className="shrink-0 text-xs text-muted-foreground hover:text-foreground whitespace-nowrap mt-0.5 transition-colors">
+          {obs.actionLabel ?? "View →"}
+        </Link>
       </div>
-      <Link
-        href={obs.link}
-        className="shrink-0 text-xs font-medium text-primary hover:underline whitespace-nowrap mt-0.5"
-      >
-        {obs.actionLabel ?? "View →"}
-      </Link>
+      {/* Recommendation — the suggested next step */}
+      {obs.recommendation && (
+        <div className="ml-5">
+          <Link href={obs.recommendation.link}
+            className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium transition-colors hover:opacity-90"
+            style={{
+              background: `color-mix(in oklch, ${DUSTY_ROSE} 12%, var(--card))`,
+              border: `1px solid ${DUSTY_ROSE}30`,
+              color: "#8B5A5C",
+            }}>
+            <LuvHeart size={11} />
+            <span>{obs.recommendation.label}</span>
+            <ArrowRight className="h-3 w-3 shrink-0" />
+          </Link>
+        </div>
+      )}
     </div>
   );
 }

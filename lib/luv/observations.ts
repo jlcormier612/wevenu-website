@@ -166,6 +166,7 @@ export async function getLuvObservations(
     ];
 
     const incompleteCount = briefingItems.filter((i) => i.status !== "complete").length;
+    const firstIncomplete = briefingItems.find((i) => i.status === "incomplete");
     observations.push({
       id: `briefing-${ev.id}`,
       priority: du <= 14 ? "high" : "medium",
@@ -175,6 +176,13 @@ export async function getLuvObservations(
       actionLabel: "View Event →",
       briefingItems,
       daysUntil: du,
+      recommendation: !hasTimeline
+        ? { label: "Build the day-of timeline", link: `/events/${ev.id}`, type: "navigate" }
+        : !hasFloorPlan
+        ? { label: "Create a floor plan", link: `/events/${ev.id}`, type: "navigate" }
+        : firstIncomplete
+        ? { label: firstIncomplete.label, link: firstIncomplete.link ?? `/events/${ev.id}`, type: "navigate" }
+        : undefined,
     });
   }
 
@@ -189,7 +197,8 @@ export async function getLuvObservations(
       message: `${name} may be ready to schedule a tour.`,
       detail: `${lead.status === "proposal_sent" ? "Proposal sent" : "Qualified"} · ${days} day${days !== 1 ? "s" : ""} in the pipeline.`,
       link: `/leads/${lead.id}`,
-      actionLabel: "Schedule Tour →",
+      actionLabel: "View Lead →",
+      recommendation: { label: "Invite them to schedule a tour", link: `/leads/${lead.id}`, type: "navigate" },
     });
   }
 
@@ -209,6 +218,7 @@ export async function getLuvObservations(
         : `"${contract.title}" has been waiting for a signature for ${days} day${days !== 1 ? "s" : ""}.`,
       link: `/contracts`,
       actionLabel: "View Contract →",
+      recommendation: { label: "Send a gentle reminder", link: `/contracts`, type: "navigate" },
     });
   }
 
@@ -229,6 +239,7 @@ export async function getLuvObservations(
         : `"${doc.name}" is coming up for renewal ${inDays(doc.expires_at)}.`,
       link: entityLink,
       actionLabel: "View Document →",
+      recommendation: { label: "Review before it lapses", link: entityLink, type: "navigate" },
     });
   }
 
@@ -242,7 +253,8 @@ export async function getLuvObservations(
       priority: "low",
       message: `${name} reached out ${days} day${days !== 1 ? "s" : ""} ago — they might appreciate hearing from you.`,
       link: `/leads/${lead.id}`,
-      actionLabel: "Set Follow-up →",
+      actionLabel: "View Lead →",
+      recommendation: { label: "Ask Luv to draft a follow-up", link: `/leads/${lead.id}?luv=follow_up_email`, type: "draft" },
     });
   }
 
@@ -260,7 +272,8 @@ export async function getLuvObservations(
           priority: du <= 14 ? "high" : "medium",
           message: `${q.events.name} is ${inDays(q.events.event_date)} — the final details form hasn't been sent yet.`,
           link: `/events/${q.event_id}`,
-          actionLabel: "Send Questionnaire →",
+          actionLabel: "View Event →",
+          recommendation: { label: "Send the form to the couple", link: `/events/${q.event_id}`, type: "navigate" },
         });
       }
     } else if (q.status === "sent") {
@@ -274,6 +287,7 @@ export async function getLuvObservations(
             message: `The couple opened their final details form ${openedDaysAgo} day${openedDaysAgo !== 1 ? "s" : ""} ago — a gentle reminder might help them finish.`,
             link: `/events/${q.event_id}`,
             actionLabel: "View Event →",
+            recommendation: { label: "Send a gentle reminder", link: `/events/${q.event_id}`, type: "navigate" },
           });
         }
       } else {
@@ -286,6 +300,7 @@ export async function getLuvObservations(
             message: `The final details form was sent ${sentDaysAgo} day${sentDaysAgo !== 1 ? "s" : ""} ago and hasn't been opened yet.`,
             link: `/events/${q.event_id}`,
             actionLabel: "View Event →",
+            recommendation: { label: "Send a follow-up message", link: `/events/${q.event_id}`, type: "navigate" },
           });
         }
       }
@@ -306,6 +321,7 @@ export async function getLuvObservations(
       detail: daysUntil <= 7 ? "This may need renewal or follow-up." : undefined,
       link: "/contracts",
       actionLabel: "View Contract →",
+      recommendation: { label: "Review the contract", link: "/contracts", type: "navigate" },
     });
   }
 
@@ -357,9 +373,10 @@ export async function getLuvObservations(
           id: `momentum-hot-${lead.id}`,
           priority: "medium",
           message: `${name} is showing strong interest right now.`,
-          detail: commitScore >= 50 ? "They're well along in the booking journey." : "Good signal — may be a good time to follow up.",
+          detail: commitScore >= 50 ? "They're well along in the booking journey." : "Good timing — may be worth following up while the interest is fresh.",
           link: `/leads/${lead.id}`,
           actionLabel: "View Lead →",
+          recommendation: { label: "Ask Luv to draft a follow-up", link: `/leads/${lead.id}?luv=follow_up_email`, type: "draft" },
         });
       }
       // High commitment but recent signals fading — may be slipping
@@ -371,6 +388,7 @@ export async function getLuvObservations(
           detail: `${daysSinceContact} days without contact.`,
           link: `/leads/${lead.id}`,
           actionLabel: "View Lead →",
+          recommendation: { label: "Send a warm check-in", link: `/leads/${lead.id}?luv=follow_up_email`, type: "draft" },
         });
       }
     }
@@ -418,6 +436,7 @@ export async function getLuvObservations(
           detail: "Good timing to follow up while the interest is fresh.",
           link: `/leads/${lead.id}`,
           actionLabel: "View Lead →",
+          recommendation: { label: "Ask Luv to draft a follow-up", link: `/leads/${lead.id}?luv=follow_up_email`, type: "draft" },
         });
       }
       // Gone quiet after recent activity
@@ -429,6 +448,7 @@ export async function getLuvObservations(
           detail: "A brief check-in might help reignite the conversation.",
           link: `/leads/${lead.id}`,
           actionLabel: "View Lead →",
+          recommendation: { label: "Send a warm follow-up", link: `/leads/${lead.id}?luv=follow_up_email`, type: "draft" },
         });
       }
     }

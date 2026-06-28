@@ -15,6 +15,17 @@ export type LuvBriefingItem = {
   link?: string;
 };
 
+/**
+ * A structured recommended action attached to a Luv observation.
+ * Always a suggestion — coordinator remains in control.
+ * type='draft' routes to the Luv tab with a draft pre-selected.
+ */
+export type LuvRecommendation = {
+  label: string;  // "Ask Luv to draft a follow-up", "Build the timeline", etc.
+  link: string;   // destination URL (may include ?luv= param for draft routing)
+  type: "navigate" | "draft" | "task";
+};
+
 export type LuvObservation = {
   id: string;            // stable key for React rendering
   priority: LuvPriority;
@@ -25,4 +36,6 @@ export type LuvObservation = {
   // When present: render as a grouped coordinator briefing card
   briefingItems?: LuvBriefingItem[];
   daysUntil?: number;
+  // The suggested next step — what to do with this intelligence
+  recommendation?: LuvRecommendation;
 };

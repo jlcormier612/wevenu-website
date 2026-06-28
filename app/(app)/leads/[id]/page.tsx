@@ -9,7 +9,7 @@ import { getThreadsForEntity } from "@/lib/messaging/service";
 import { leadDisplayName } from "@/lib/leads/constants";
 import { getLead } from "@/lib/leads/service";
 
-type Props = { params: Promise<{ id: string }> };
+type Props = { params: Promise<{ id: string }>; searchParams: Promise<{ luv?: string }> };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { id } = await params;
@@ -25,8 +25,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   };
 }
 
-export default async function LeadDetailPage({ params }: Props) {
+export default async function LeadDetailPage({ params, searchParams }: Props) {
   const { id } = await params;
+  const { luv: autoLuvDraft } = await searchParams;
   const [lead, holds, spaces, documents, luvDrafts, threads] = await Promise.all([
     getLead(id),
     getHolds({ leadId: id }),
@@ -36,5 +37,5 @@ export default async function LeadDetailPage({ params }: Props) {
     getThreadsForEntity("lead", id),
   ]);
   if (!lead) notFound();
-  return <LeadDetail lead={lead} holds={holds} spaces={spaces} documents={documents} luvDrafts={luvDrafts} threads={threads} />;
+  return <LeadDetail lead={lead} holds={holds} spaces={spaces} documents={documents} luvDrafts={luvDrafts} threads={threads} autoLuvDraft={autoLuvDraft} />;
 }
