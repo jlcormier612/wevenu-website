@@ -17,6 +17,7 @@ export type EmailPayload = {
   text: string;       // plain text body
   html?: string;      // optional rich HTML body
   replyTo?: string;   // venue contact email
+  threadId?: string;  // when set, Reply-To routes through inbound for thread matching
 };
 
 export type SendResult =
@@ -36,7 +37,12 @@ export async function sendEmail(payload: EmailPayload): Promise<SendResult> {
       text: payload.text,
     };
     if (payload.html) body.html = payload.html;
-    if (payload.replyTo) body.reply_to = payload.replyTo;
+    // Reply-To: route through inbound address if configured, otherwise venue email
+    const inboundAddress = process.env.RESEND_INBOUND_ADDRESS;
+    const replyTo = payload.threadId && inboundAddress
+      ? `thread+${payload.threadId}@${inboundAddress.replace(/^.*@/, "")}` // subaddressing for thread matching
+      : (payload.replyTo ?? null);
+    if (replyTo) body.reply_to = replyTo;
 
     const res = await fetch("https://api.resend.com/emails", {
       method: "POST",

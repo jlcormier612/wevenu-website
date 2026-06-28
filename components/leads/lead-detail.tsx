@@ -88,6 +88,14 @@ function InfoRow({
 // ---- main component ---------------------------------------------------------
 
 export function LeadDetail({ lead, holds = [], spaces = [], documents = [], luvDrafts = [], threads = [] }: { lead: LeadWithDetails; holds?: DateHold[]; spaces?: VenueSpace[]; documents?: Document[]; luvDrafts?: LuvDraft[]; threads?: ThreadWithMessages[] }) {
+  // Controlled tabs so the Luv → Messages bridge can switch programmatically
+  const [activeTab, setActiveTab] = React.useState("overview");
+  const [messagePrefill, setMessagePrefill] = React.useState<{ subject: string; body: string } | null>(null);
+
+  function handleUseDraft(subject: string | null, body: string) {
+    setMessagePrefill({ subject: subject ?? "", body });
+    setActiveTab("messages");
+  }
   const router = useRouter();
   const [statusPending, startStatus] = React.useTransition();
   const [convertPending, startConvert] = React.useTransition();
@@ -223,7 +231,7 @@ export function LeadDetail({ lead, holds = [], spaces = [], documents = [], luvD
       <RelationshipCard lead={lead} />
 
       {/* Tabs */}
-      <Tabs defaultValue="overview">
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList>
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="messages">
@@ -346,6 +354,9 @@ export function LeadDetail({ lead, holds = [], spaces = [], documents = [], luvD
                 entityEmail={lead.email}
                 entityName={leadDisplayName(lead.firstName, lead.lastName, lead.partnerFirstName, lead.partnerLastName)}
                 initialThreads={threads}
+                prefillSubject={messagePrefill?.subject}
+                prefillBody={messagePrefill?.body}
+                onPrefillUsed={() => setMessagePrefill(null)}
               />
             </CardContent>
           </Card>
@@ -440,7 +451,7 @@ export function LeadDetail({ lead, holds = [], spaces = [], documents = [], luvD
               <CardDescription>Your venue assistant can help draft a follow-up. You review, edit, and send it yourself.</CardDescription>
             </CardHeader>
             <CardContent>
-              <LuvDraftPanel lead={lead} initialDrafts={luvDrafts} />
+              <LuvDraftPanel lead={lead} initialDrafts={luvDrafts} onUseDraft={handleUseDraft} />
             </CardContent>
           </Card>
         </TabsContent>

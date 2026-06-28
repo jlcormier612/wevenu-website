@@ -74,6 +74,7 @@ export async function sendMessage(
         subject: input.subject,
         text: input.body,
         replyTo: venue.email ?? undefined,
+        threadId,
       });
 
       if (emailResult.ok && emailResult.method === "resend") {
@@ -85,6 +86,21 @@ export async function sendMessage(
     } else {
       // No API key — mark as sent anyway (user is expected to use mailto fallback UI)
       await repo.updateMessageStatus(supabase, venue.id, messageId, "sent");
+    }
+
+    // 3. Save attachments
+    if (input.attachments?.length) {
+      await supabase.from("message_attachments").insert(
+        input.attachments.map((a) => ({
+          message_id: messageId,
+          venue_id: venue.id,
+          name: a.name,
+          storage_path: a.storagePath,
+          storage_url: a.storageUrl,
+          mime_type: a.mimeType,
+          file_size: a.fileSize,
+        })),
+      );
     }
 
     return { ok: true, threadId, messageId };

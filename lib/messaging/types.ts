@@ -50,12 +50,21 @@ export type ThreadWithMessages = MessageThread & {
   messages: Message[];
 };
 
+export type MessageAttachmentInput = {
+  name: string;
+  storagePath: string;
+  storageUrl: string;
+  mimeType: string;
+  fileSize: number;
+};
+
 export type ComposeInput = {
   toEmail: string;
   toName: string;
   subject: string;
   body: string;
   luvDraftId?: string;
+  attachments?: MessageAttachmentInput[];
 };
 
 export type SendResult =

@@ -10,7 +10,7 @@
 
 import * as React from "react";
 
-import { Check, ChevronDown, ChevronRight, ClipboardCopy, Loader2, RefreshCw, RotateCcw, Trash2 } from "lucide-react";
+import { ArrowRight, Check, ChevronDown, ChevronRight, ClipboardCopy, Loader2, RefreshCw, RotateCcw, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 import {
@@ -31,10 +31,12 @@ function DraftCard({
   draft,
   leadId,
   onDiscard,
+  onUseDraft,
 }: {
   draft: LuvDraft;
   leadId: string;
   onDiscard: (id: string) => void;
+  onUseDraft?: (subject: string | null, body: string) => void;
 }) {
   const [subject, setSubject] = React.useState(draft.subject ?? "");
   const [body, setBody] = React.useState(draft.content);
@@ -94,12 +96,20 @@ function DraftCard({
         💗 Review, personalize, and copy to your email client. Luv does not send anything.
       </p>
 
-      <div className="flex items-center gap-2">
-        <Button type="button" size="sm" onClick={handleCopy}
-          className={copied ? "bg-success text-success-foreground" : ""}>
+      <div className="flex flex-wrap items-center gap-2">
+        {onUseDraft && (
+          <Button type="button" size="sm"
+            style={{ borderColor: `${DUSTY_ROSE}60`, backgroundColor: `${DUSTY_ROSE}15`, color: "#8B5A5C" }}
+            className="hover:opacity-90"
+            onClick={() => onUseDraft(draft.subject, body)}>
+            <ArrowRight className="mr-1 h-3.5 w-3.5" /> Send this →
+          </Button>
+        )}
+        <Button type="button" size="sm" variant="outline" onClick={handleCopy}
+          className={copied ? "border-success text-success" : ""}>
           {copied
             ? <><Check className="mr-1 h-3.5 w-3.5" />Copied!</>
-            : <><ClipboardCopy className="mr-1 h-3.5 w-3.5" />Copy to clipboard</>}
+            : <><ClipboardCopy className="mr-1 h-3.5 w-3.5" />Copy</>}
         </Button>
         <Button type="button" size="sm" variant="ghost" onClick={handleDiscard} disabled={discarding}
           className="text-muted-foreground">
@@ -151,9 +161,11 @@ function PastDraftRow({
 export function LuvDraftPanel({
   lead,
   initialDrafts,
+  onUseDraft,
 }: {
   lead: Lead;
   initialDrafts: LuvDraft[];
+  onUseDraft?: (subject: string | null, body: string) => void;
 }) {
   const [allDrafts, setAllDrafts] = React.useState(initialDrafts);
   const [generating, startGenerate] = React.useTransition();
@@ -218,7 +230,7 @@ export function LuvDraftPanel({
           <Separator />
           <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Pending review</p>
           {pendingDrafts.map((draft) => (
-            <DraftCard key={draft.id} draft={draft} leadId={lead.id} onDiscard={handleDiscard} />
+            <DraftCard key={draft.id} draft={draft} leadId={lead.id} onDiscard={handleDiscard} onUseDraft={onUseDraft} />
           ))}
         </div>
       )}

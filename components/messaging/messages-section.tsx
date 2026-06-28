@@ -130,15 +130,26 @@ export function MessagesSection({
   entityEmail,
   entityName,
   initialThreads,
+  prefillSubject,
+  prefillBody,
+  onPrefillUsed,
 }: {
   entityType: MessageEntityType;
   entityId: string;
   entityEmail: string | null;
   entityName: string;
   initialThreads: ThreadWithMessages[];
+  prefillSubject?: string;
+  prefillBody?: string;
+  onPrefillUsed?: () => void;
 }) {
   const [threads, setThreads] = React.useState(initialThreads);
-  const [composing, setComposing] = React.useState(false);
+  const [composing, setComposing] = React.useState(!!(prefillSubject || prefillBody));
+
+  // When prefill arrives (from Luv bridge), open compose automatically
+  React.useEffect(() => {
+    if (prefillSubject || prefillBody) setComposing(true);
+  }, [prefillSubject, prefillBody]);
 
   function handleSent(result: SendResult) {
     setComposing(false);
@@ -171,8 +182,10 @@ export function MessagesSection({
             entityId={entityId}
             defaultToEmail={entityEmail ?? ""}
             defaultToName={entityName}
-            onSent={handleSent}
-            onCancel={() => setComposing(false)}
+            prefillSubject={prefillSubject}
+            prefillBody={prefillBody}
+            onSent={(result) => { onPrefillUsed?.(); handleSent(result); }}
+            onCancel={() => { setComposing(false); onPrefillUsed?.(); }}
           />
           {threads.length > 0 && <Separator />}
         </>
