@@ -6,6 +6,7 @@ import { PageHeader } from "@/components/shell/module-placeholder";
 import { LuvSettingsSection } from "@/components/settings/luv-settings-section";
 import { NotificationsSection } from "@/components/settings/notifications-section";
 import { PlaybooksSection } from "@/components/settings/playbooks-section";
+import { TourSettingsSection } from "@/components/settings/tour-settings-section";
 import { WebsiteFormsSection } from "@/components/settings/website-forms-section";
 import { LuvHeart } from "@/components/dashboard/luv-widget";
 import { StripeConnectSection } from "@/components/settings/stripe-connect-section";
@@ -22,6 +23,7 @@ import { getLuvSettings } from "@/lib/luv/settings";
 import { getTemplates } from "@/lib/playbooks/service";
 import { getCurrentVenue, getVenueSettings } from "@/lib/venue/service";
 import { getNotificationStats } from "@/lib/notifications/stats";
+import { getTourSettings } from "@/lib/tours/service";
 
 export const metadata: Metadata = { title: "Settings" };
 
@@ -32,8 +34,8 @@ export const metadata: Metadata = { title: "Settings" };
  * Route is protected by the (app) layout (venue existence already confirmed).
  */
 export default async function SettingsPage() {
-  const [settings, venue, spaces, capacityRules, luvSettings, playbookTemplates, notifStats] = await Promise.all([
-    getVenueSettings(), getCurrentVenue(), getSpaces(), getCapacityRules(), getLuvSettings(), getTemplates(), getNotificationStats(),
+  const [settings, venue, spaces, capacityRules, luvSettings, playbookTemplates, notifStats, tourSettings] = await Promise.all([
+    getVenueSettings(), getCurrentVenue(), getSpaces(), getCapacityRules(), getLuvSettings(), getTemplates(), getNotificationStats(), getTourSettings(),
   ]);
 
   if (!settings) {
@@ -87,6 +89,21 @@ export default async function SettingsPage() {
               embedKey={venue.embedKey}
               appUrl={process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"}
             />
+          </CardContent>
+        </Card>
+      )}
+
+      {/* ── Tour Scheduling ────────────────────────────────────────── */}
+      {tourSettings && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Tour Scheduling</CardTitle>
+            <CardDescription>
+              Let couples schedule a tour directly from your website. Every booking creates a lead in Wevenu automatically.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <TourSettingsSection initialSettings={tourSettings} />
           </CardContent>
         </Card>
       )}

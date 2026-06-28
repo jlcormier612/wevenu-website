@@ -54,6 +54,8 @@ export async function getLuvObservations(
   const threeDaysAgo = new Date(Date.now() - 3 * 86_400_000).toISOString();
   const twoDaysAgo   = new Date(Date.now() - 2 * 86_400_000).toISOString();
 
+  const soon7 = new Date(Date.now() + 7 * 86_400_000).toISOString().slice(0, 10);
+
   // Run all observation queries in parallel
   const [
     upcomingEventsRes,
@@ -65,6 +67,7 @@ export async function getLuvObservations(
     newNoFollowUpRes,
     sentQuestionnaireRes,
     expiringContractsRes,
+    upcomingToursRes,
   ] = await Promise.all([
     // 1+2: Events within 21 days (not cancelled)
     supabase.from("events")
@@ -138,6 +141,15 @@ export async function getLuvObservations(
       .gte("expires_at", today)
       .lte("expires_at", soon30)
       .order("expires_at"),
+
+    // 10: Upcoming tours (within 7 days) — high-value observation
+    supabase.from("tour_appointments")
+      .select("id, scheduled_at, contact_name, contact_email, duration_minutes, lead_id")
+      .eq("venue_id", venueId)
+      .in("status", ["scheduled", "confirmed"])
+      .gte("scheduled_at", today)
+      .lte("scheduled_at", soon7 + "T23:59:59")
+      .order("scheduled_at"),
   ]);
 
   // ── 1 & 2: Events approaching — grouped coordinator briefing ─────────────
@@ -322,6 +334,26 @@ export async function getLuvObservations(
       link: "/contracts",
       actionLabel: "View Contract →",
       recommendation: { label: "Review the contract", link: "/contracts", type: "navigate" },
+    });
+  }
+
+  // ── Upcoming tour appointments ───────────────────────────────────────────
+  // Tours are high-intent moments. Coordinator should know what's coming up.
+  for (const tour of (upcomingToursRes.data ?? []) as { id: string; scheduled_at: string; contact_name: string | null; duration_minutes: number; lead_id: string | null }[]) {
+    const tourDate = new Date(tour.scheduled_at);
+    const du = Math.ceil((tourDate.getTime() - Date.now()) / 86_400_000);
+    const timeStr = tourDate.toLocaleString("en-US", { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+    const name = tour.contact_name ?? "A couple";
+    observations.push({
+      id: `tour-upcoming-${tour.id}`,
+      priority: du === 0 ? "high" : "medium",
+      message: du === 0
+        ? `${name} has a tour today at ${tourDate.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}.`
+        : `${name} has a tour scheduled for ${timeStr}.`,
+      detail: `${tour.duration_minutes}-minute tour. ${du === 0 ? "Make sure everything is ready." : `In ${du} day${du !== 1 ? "s" : ""}.`}`,
+      link: tour.lead_id ? `/leads/${tour.lead_id}` : "/leads",
+      actionLabel: "View Lead →",
+      recommendation: { label: "Prepare for the tour", link: tour.lead_id ? `/leads/${tour.lead_id}` : "/leads", type: "navigate" },
     });
   }
 
