@@ -45,6 +45,7 @@ import { DateHoldsSection } from "@/components/availability/date-holds-section";
 import { DocumentsSection } from "@/components/documents/documents-section";
 import { LuvDraftPanel } from "@/components/luv/luv-draft-panel";
 import { LuvHeart } from "@/components/dashboard/luv-widget";
+import { MessagesSection } from "@/components/messaging/messages-section";
 import {
   LEAD_STATUSES,
   eventTypeLabel,
@@ -57,6 +58,7 @@ import type { LeadWithDetails } from "@/lib/leads/types";
 import type { DateHold, VenueSpace } from "@/lib/availability/types";
 import type { Document } from "@/lib/documents/types";
 import type { LuvDraft } from "@/lib/luv/drafts";
+import type { ThreadWithMessages } from "@/lib/messaging/types";
 
 // ---- info row (overview tab) ------------------------------------------------
 
@@ -85,7 +87,7 @@ function InfoRow({
 
 // ---- main component ---------------------------------------------------------
 
-export function LeadDetail({ lead, holds = [], spaces = [], documents = [], luvDrafts = [] }: { lead: LeadWithDetails; holds?: DateHold[]; spaces?: VenueSpace[]; documents?: Document[]; luvDrafts?: LuvDraft[] }) {
+export function LeadDetail({ lead, holds = [], spaces = [], documents = [], luvDrafts = [], threads = [] }: { lead: LeadWithDetails; holds?: DateHold[]; spaces?: VenueSpace[]; documents?: Document[]; luvDrafts?: LuvDraft[]; threads?: ThreadWithMessages[] }) {
   const router = useRouter();
   const [statusPending, startStatus] = React.useTransition();
   const [convertPending, startConvert] = React.useTransition();
@@ -224,6 +226,12 @@ export function LeadDetail({ lead, holds = [], spaces = [], documents = [], luvD
       <Tabs defaultValue="overview">
         <TabsList>
           <TabsTrigger value="overview">Overview</TabsTrigger>
+          <TabsTrigger value="messages">
+            Messages
+            {threads.length > 0 && (
+              <span className="ml-1 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground">{threads.reduce((s, t) => s + t.messageCount, 0)}</span>
+            )}
+          </TabsTrigger>
           <TabsTrigger value="notes">
             Notes
             {lead.notes.length > 0 && (
@@ -322,6 +330,25 @@ export function LeadDetail({ lead, holds = [], spaces = [], documents = [], luvD
               </CardContent>
             </Card>
           </div>
+        </TabsContent>
+
+        {/* ── Messages ─────────────────────────────────────────────── */}
+        <TabsContent value="messages">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Messages</CardTitle>
+              <CardDescription>Email history with this lead. All correspondence is logged here automatically.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <MessagesSection
+                entityType="lead"
+                entityId={lead.id}
+                entityEmail={lead.email}
+                entityName={leadDisplayName(lead.firstName, lead.lastName, lead.partnerFirstName, lead.partnerLastName)}
+                initialThreads={threads}
+              />
+            </CardContent>
+          </Card>
         </TabsContent>
 
         {/* ── Notes ─────────────────────────────────────────────────── */}

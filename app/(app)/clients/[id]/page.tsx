@@ -6,6 +6,7 @@ import { clientDisplayName } from "@/lib/clients/constants";
 import { getClient } from "@/lib/clients/service";
 import { getDocuments } from "@/lib/documents/service";
 import { getInvoicesForClient } from "@/lib/invoices/service";
+import { getThreadsForEntity } from "@/lib/messaging/service";
 
 type Props = { params: Promise<{ id: string }> };
 
@@ -18,7 +19,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function ClientDetailPage({ params }: Props) {
   const { id } = await params;
-  const [client, invoices, documents] = await Promise.all([getClient(id), getInvoicesForClient(id), getDocuments("client", id)]);
+  const [client, invoices, documents, threads] = await Promise.all([getClient(id), getInvoicesForClient(id), getDocuments("client", id), getThreadsForEntity("client", id)]);
   if (!client) notFound();
-  return <ClientDetail client={client} invoices={invoices} documents={documents} />;
+  return <ClientDetail client={client} invoices={invoices} documents={documents} threads={threads} />;
 }

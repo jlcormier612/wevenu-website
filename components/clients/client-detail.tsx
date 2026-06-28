@@ -32,9 +32,11 @@ import {
 } from "@/lib/clients/constants";
 import type { ClientWithDetails } from "@/lib/clients/types";
 import { InvoiceStatusBadge } from "@/components/invoices/invoice-status-badge";
+import { MessagesSection } from "@/components/messaging/messages-section";
 import { formatCurrency } from "@/lib/invoices/constants";
 import type { Invoice } from "@/lib/invoices/types";
 import type { Document } from "@/lib/documents/types";
+import type { ThreadWithMessages } from "@/lib/messaging/types";
 
 // ---- Event Date Hero (client-side for real-time countdown) ------------------
 
@@ -70,7 +72,7 @@ function ContactCard({ name, email, phone, role }: { name: string; email?: strin
 
 // ---- Main component ---------------------------------------------------------
 
-export function ClientDetail({ client, invoices = [], documents = [] }: { client: ClientWithDetails; invoices?: Invoice[]; documents?: Document[] }) {
+export function ClientDetail({ client, invoices = [], documents = [], threads = [] }: { client: ClientWithDetails; invoices?: Invoice[]; documents?: Document[]; threads?: ThreadWithMessages[] }) {
   const router = useRouter();
   const [statusPending, startStatus] = React.useTransition();
 
@@ -147,6 +149,12 @@ export function ClientDetail({ client, invoices = [], documents = [] }: { client
             Key Dates
             {client.keyDates.length > 0 && (
               <span className="ml-1 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground">{client.keyDates.length}</span>
+            )}
+          </TabsTrigger>
+          <TabsTrigger value="messages">
+            Messages
+            {threads.reduce((s, t) => s + t.messageCount, 0) > 0 && (
+              <span className="ml-1 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground">{threads.reduce((s, t) => s + t.messageCount, 0)}</span>
             )}
           </TabsTrigger>
           <TabsTrigger value="notes">
@@ -249,6 +257,25 @@ export function ClientDetail({ client, invoices = [], documents = [] }: { client
         </TabsContent>
 
         {/* ── Notes ──────────────────────────────────────────────────────── */}
+        {/* ── Messages ─────────────────────────────────────────────── */}
+        <TabsContent value="messages">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Messages</CardTitle>
+              <CardDescription>Email history with this client. All correspondence is logged here automatically.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <MessagesSection
+                entityType="client"
+                entityId={client.id}
+                entityEmail={client.email}
+                entityName={clientDisplayName(client.firstName, client.lastName, client.partnerFirstName, client.partnerLastName)}
+                initialThreads={threads}
+              />
+            </CardContent>
+          </Card>
+        </TabsContent>
+
         <TabsContent value="notes">
           <Card>
             <CardHeader>

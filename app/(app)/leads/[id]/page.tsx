@@ -5,6 +5,7 @@ import { LeadDetail } from "@/components/leads/lead-detail";
 import { getHolds, getSpaces } from "@/lib/availability/service";
 import { getDocuments } from "@/lib/documents/service";
 import { getDraftsForLead } from "@/lib/luv/drafts";
+import { getThreadsForEntity } from "@/lib/messaging/service";
 import { leadDisplayName } from "@/lib/leads/constants";
 import { getLead } from "@/lib/leads/service";
 
@@ -26,13 +27,14 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function LeadDetailPage({ params }: Props) {
   const { id } = await params;
-  const [lead, holds, spaces, documents, luvDrafts] = await Promise.all([
+  const [lead, holds, spaces, documents, luvDrafts, threads] = await Promise.all([
     getLead(id),
     getHolds({ leadId: id }),
     getSpaces(),
     getDocuments("lead", id),
     getDraftsForLead(id),
+    getThreadsForEntity("lead", id),
   ]);
   if (!lead) notFound();
-  return <LeadDetail lead={lead} holds={holds} spaces={spaces} documents={documents} luvDrafts={luvDrafts} />;
+  return <LeadDetail lead={lead} holds={holds} spaces={spaces} documents={documents} luvDrafts={luvDrafts} threads={threads} />;
 }
