@@ -61,6 +61,7 @@ export async function getLuvObservations(
     awaitingSignaturesRes,
     expiringDocsRes,
     newNoFollowUpRes,
+    sentQuestionnaireRes,
     expiringContractsRes,
   ] = await Promise.all([
     // 1+2: Events within 21 days (not cancelled)
@@ -118,7 +119,15 @@ export async function getLuvObservations(
       .lt("created_at", twoDaysAgo)
       .order("created_at"),
 
-    // 7. Contracts expiring within 30 days
+    // 7. Questionnaire: sent but not submitted for approaching events
+    supabase.from("event_questionnaires")
+      .select("id, event_id, status, sent_at, opened_at, access_key, events(name, event_date)")
+      .eq("venue_id", venueId)
+      .in("status", ["sent"])       // sent but not yet submitted
+      .gte("events.event_date", today)
+      .lte("events.event_date", soon30),
+
+    // 8. Contracts expiring within 30 days
     supabase.from("contracts")
       .select("id, title, expires_at, clients(first_name, last_name)")
       .eq("venue_id", venueId)
@@ -235,7 +244,37 @@ export async function getLuvObservations(
     });
   }
 
-  // ── 7: Expiring contracts ─────────────────────────────────────────────────
+  // ── 7: Questionnaire sent but not submitted ───────────────────────────────
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  for (const q of (sentQuestionnaireRes.data ?? []) as any[]) {
+    if (!q.events) continue;
+    const du = Math.ceil((new Date(q.events.event_date + "T12:00:00").getTime() - Date.now()) / 86_400_000);
+    if (q.opened_at) {
+      // They opened it but haven't submitted — gentle reminder
+      const openedDaysAgo = Math.floor((Date.now() - new Date(q.opened_at).getTime()) / 86_400_000);
+      observations.push({
+        id: `questionnaire-opened-${q.id}`,
+        priority: du <= 14 ? "high" : "medium",
+        message: `${q.events.name} opened their final details form${openedDaysAgo >= 2 ? ` ${openedDaysAgo} days ago` : " recently"} — a reminder might help them finish.`,
+        link: `/events/${q.event_id}`,
+        actionLabel: "View Event →",
+      });
+    } else {
+      // Sent but not even opened
+      const sentDaysAgo = q.sent_at ? Math.floor((Date.now() - new Date(q.sent_at).getTime()) / 86_400_000) : null;
+      if (sentDaysAgo !== null && sentDaysAgo >= 3) {
+        observations.push({
+          id: `questionnaire-sent-${q.id}`,
+          priority: du <= 14 ? "high" : "low",
+          message: `The final details form was sent to ${q.events.name} ${sentDaysAgo} day${sentDaysAgo !== 1 ? "s" : ""} ago and hasn't been opened yet.`,
+          link: `/events/${q.event_id}`,
+          actionLabel: "View Event →",
+        });
+      }
+    }
+  }
+
+  // ── 8: Expiring contracts ─────────────────────────────────────────────────
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   for (const c of (expiringContractsRes.data ?? []) as any[]) {
     const daysUntil = Math.round((new Date(c.expires_at + "T12:00:00").getTime() - Date.now()) / 86_400_000);

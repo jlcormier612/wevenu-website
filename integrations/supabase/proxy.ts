@@ -10,7 +10,8 @@ import { getSupabaseConfig, isSupabaseConfigured } from "@/lib/env";
 const PUBLIC_PATHS = [
   "/login",
   "/form",           // public venue inquiry forms — /form/{embedKey}
-  "/api/public",     // public API routes — /api/public/inquire
+  "/questionnaire",  // public final details forms — /questionnaire/{accessKey}
+  "/api/public",     // public API routes — /api/public/inquire, /api/public/questionnaire
   "/api/messaging/inbound",  // Resend inbound email webhook (no user session)
   "/api/messaging/webhook",  // Resend delivery webhook (no user session)
   "/sign",           // public contract signing — /sign/{token}

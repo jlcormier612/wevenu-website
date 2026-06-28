@@ -143,12 +143,14 @@ export function EventDetail({
   invoices = [],
   documents = [],
   questionnaire = null,
+  coupleEmail = null,
 }: {
   event: EventWithDetails;
   availableVendors?: import("@/lib/vendors/types").Vendor[];
   invoices?: Invoice[];
   documents?: Document[];
   questionnaire?: Questionnaire | null;
+  coupleEmail?: string | null;
 }) {
   const router = useRouter();
   const [statusPending, startStatus] = React.useTransition();
@@ -453,7 +455,13 @@ export function EventDetail({
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <FinalDetailsForm eventId={event.id} initial={questionnaire} />
+              <FinalDetailsForm
+                eventId={event.id}
+                initial={questionnaire}
+                coupleEmail={coupleEmail}
+                coupleName={event.clientName}
+                eventName={event.name}
+              />
             </CardContent>
           </Card>
         </TabsContent>

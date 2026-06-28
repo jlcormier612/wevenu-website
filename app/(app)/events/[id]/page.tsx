@@ -24,5 +24,15 @@ export default async function EventDetailPage({ params }: Props) {
   ]);
   if (!event) notFound();
   const eventInvoices = allInvoices.filter((inv) => inv.eventId === id || (event.clientId && inv.clientId === event.clientId));
-  return <EventDetail event={event} availableVendors={availableVendors} invoices={eventInvoices} documents={documents} questionnaire={questionnaire} />;
+
+  // Fetch client email for questionnaire send-to-couple
+  let coupleEmail: string | null = null;
+  if (event.clientId) {
+    const { createClient: mkClient } = await import("@/integrations/supabase/server");
+    const sb = await mkClient();
+    const { data: cl } = await sb.from("clients").select("email").eq("id", event.clientId).maybeSingle<{ email: string | null }>();
+    coupleEmail = cl?.email ?? null;
+  }
+
+  return <EventDetail event={event} availableVendors={availableVendors} invoices={eventInvoices} documents={documents} questionnaire={questionnaire} coupleEmail={coupleEmail} />;
 }

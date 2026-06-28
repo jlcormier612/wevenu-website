@@ -10,10 +10,10 @@
 
 import * as React from "react";
 
-import { CheckCircle, Loader2 } from "lucide-react";
+import { CheckCircle, Copy, ExternalLink, Loader2, Send } from "lucide-react";
 import { toast } from "sonner";
 
-import { saveQuestionnaireAction } from "@/app/(app)/events/[id]/questionnaire-actions";
+import { saveQuestionnaireAction, sendQuestionnaireAction } from "@/app/(app)/events/[id]/questionnaire-actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -40,9 +40,15 @@ function Field({ label, hint, children }: { label: string; hint?: string; childr
 export function FinalDetailsForm({
   eventId,
   initial,
+  coupleEmail,
+  coupleName,
+  eventName,
 }: {
   eventId: string;
   initial: Questionnaire | null;
+  coupleEmail?: string | null;
+  coupleName?: string | null;
+  eventName?: string | null;
 }) {
   const [fields, setFields] = React.useState<QFields>({
     ceremonyStartTime:    initial?.ceremonyStartTime    ?? "",
@@ -62,7 +68,31 @@ export function FinalDetailsForm({
   });
   const [saving, startSave] = React.useTransition();
   const [submitting, startSubmit] = React.useTransition();
+  const [sending, startSend] = React.useTransition();
+  const [formUrl, setFormUrl] = React.useState<string | null>(null);
+  const [copiedUrl, setCopiedUrl] = React.useState(false);
   const isSubmitted = initial?.status === "submitted" || initial?.status === "reviewed";
+
+  const appUrl = typeof window !== "undefined" ? window.location.origin : "";
+  const currentFormUrl = formUrl ?? (initial?.accessKey ? `${appUrl}/questionnaire/${initial.accessKey}` : null);
+
+  function handleSend() {
+    if (!coupleEmail) return;
+    startSend(async () => {
+      const result = await sendQuestionnaireAction(eventId, coupleEmail, coupleName ?? "there", eventName ?? "your event");
+      if (result.ok) {
+        toast.success("Questionnaire link sent!");
+        if (result.formUrl) setFormUrl(result.formUrl);
+      } else toast.error(result.message ?? "Could not send.");
+    });
+  }
+
+  function handleCopyUrl() {
+    if (!currentFormUrl) return;
+    navigator.clipboard.writeText(currentFormUrl);
+    setCopiedUrl(true);
+    setTimeout(() => setCopiedUrl(false), 2000);
+  }
 
   const set = (key: keyof QFields, value: string | number | undefined) =>
     setFields((p) => ({ ...p, [key]: value }));
@@ -105,6 +135,45 @@ export function FinalDetailsForm({
 
   return (
     <div className="space-y-5">
+      {/* Status + Send banner */}
+      <div className="rounded-xl border border-border bg-muted/30 p-4 space-y-3">
+        {/* Status row */}
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="space-y-0.5">
+            <p className="text-sm font-medium text-heading">Questionnaire status</p>
+            <p className="text-xs text-muted-foreground">
+              {!initial?.sentAt ? "Not yet sent to the couple."
+                : initial.openedAt ? `Opened${initial.status === "submitted" ? " and submitted" : " — awaiting submission"}.`
+                : "Sent — waiting for the couple to open it."}
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            {coupleEmail && initial?.status !== "submitted" && initial?.status !== "reviewed" && (
+              <Button type="button" size="sm" onClick={handleSend} disabled={sending}>
+                {sending ? <><Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />Sending…</> : <><Send className="mr-1 h-3.5 w-3.5" />Send to couple</>}
+              </Button>
+            )}
+          </div>
+        </div>
+        {/* Form URL (shown after sending or if already sent) */}
+        {(currentFormUrl && (initial?.sentAt || formUrl)) && (
+          <div className="flex items-center gap-2">
+            <code className="flex-1 rounded-md bg-muted border border-border px-3 py-1.5 text-xs font-mono truncate text-foreground">
+              {currentFormUrl}
+            </code>
+            <Button type="button" variant="outline" size="sm" onClick={handleCopyUrl}>
+              {copiedUrl ? <CheckCircle className="h-3.5 w-3.5 text-success" /> : <Copy className="h-3.5 w-3.5" />}
+            </Button>
+            <a href={currentFormUrl} target="_blank" rel="noopener noreferrer">
+              <Button type="button" variant="outline" size="sm"><ExternalLink className="h-3.5 w-3.5" /></Button>
+            </a>
+          </div>
+        )}
+        {!coupleEmail && (
+          <p className="text-xs text-muted-foreground">Add the couple's email to their client record to send the questionnaire link.</p>
+        )}
+      </div>
+
       {/* Logistics */}
       <SectionHeader>Day-of logistics</SectionHeader>
       <div className="grid gap-4 sm:grid-cols-2">
