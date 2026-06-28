@@ -5,12 +5,55 @@ import { useRouter } from "next/navigation";
 import { Copy, ExternalLink, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import type { TourSettings } from "@/lib/tours/types";
+
+function SlotPreview({ tourKey }: { tourKey: string }) {
+  const [slots, setSlots] = React.useState<{ start: string; time: string; date: string }[]>([]);
+  const [loading, setLoading] = React.useState(false);
+  React.useEffect(() => {
+    setLoading(true);
+    const today = new Date();
+    const start = today.toISOString().slice(0, 10);
+    const end = new Date(today.getTime() + 14 * 86400000).toISOString().slice(0, 10);
+    fetch(`/api/tours/slots?key=${tourKey}&start=${start}&end=${end}`)
+      .then(r => r.json())
+      .then((d: { slots: { start: string; time: string; date: string }[] }) => setSlots(d.slots ?? []))
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, [tourKey]);
+
+  if (loading) return <p className="text-xs text-muted-foreground">Loading available slots…</p>;
+  if (!slots.length) return <p className="text-xs text-muted-foreground">No slots available in the next 14 days. Check your business hours in Settings → Hours.</p>;
+
+  const grouped = slots.reduce<Record<string, string[]>>((acc, s) => {
+    if (!acc[s.date]) acc[s.date] = [];
+    acc[s.date].push(s.time);
+    return acc;
+  }, {});
+
+  return (
+    <div className="space-y-2">
+      <p className="text-xs text-muted-foreground">Preview: slots couples would see in the next 14 days ({slots.length} total)</p>
+      <div className="space-y-1.5 max-h-32 overflow-y-auto">
+        {Object.entries(grouped).slice(0, 5).map(([date, times]) => (
+          <div key={date} className="flex items-center gap-2 flex-wrap">
+            <span className="text-xs font-medium text-heading min-w-[90px]">
+              {new Date(date + "T12:00:00").toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })}
+            </span>
+            {times.map(t => <Badge key={t} variant="outline" className="text-[10px] h-5">{t}</Badge>)}
+          </div>
+        ))}
+        {Object.keys(grouped).length > 5 && <p className="text-[10px] text-muted-foreground">+ {Object.keys(grouped).length - 5} more days…</p>}
+      </div>
+    </div>
+  );
+}
 
 type Props = { initialSettings: TourSettings };
 
@@ -101,6 +144,12 @@ export function TourSettingsSection({ initialSettings }: Props) {
               <Input type="number" min="1" max="365" value={s.tourMaxAdvanceDays}
                 onChange={(e) => set("tourMaxAdvanceDays", parseInt(e.target.value) || 90)} />
             </div>
+          </div>
+
+          {/* Available slot preview */}
+          <div className="rounded-xl border border-border bg-muted/20 p-4 space-y-2">
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Available Slot Preview</p>
+            <SlotPreview tourKey={s.tourEmbedKey} />
           </div>
         </>
       )}

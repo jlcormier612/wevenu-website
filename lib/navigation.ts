@@ -1,5 +1,6 @@
 import {
   Boxes,
+  CalendarCheck,
   CalendarDays,
   ClipboardList,
   CreditCard,
@@ -56,6 +57,7 @@ export const NAV_SECTIONS: NavSection[] = [
     label: "Events",
     items: [
       { title: "Events", href: "/events", icon: PartyPopper },
+      { title: "Tours", href: "/tours", icon: CalendarCheck },
       { title: "Tasks", href: "/tasks", icon: ClipboardList },
       { title: "Timeline", href: "/timeline", icon: CalendarDays },
       { title: "Floor Plan", href: "/floor-plan", icon: LayoutTemplate },

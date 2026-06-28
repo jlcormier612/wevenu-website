@@ -37,6 +37,15 @@ export default async function PublicFormPage({ params }: Props) {
   const venue = data?.[0];
   if (!venue) notFound();
 
+  // Check if this venue has tour scheduling enabled — look up by venue_id from embed key
+  const { data: tourData } = await supabase
+    .from("venues")
+    .select("tour_embed_key, tour_scheduling_enabled")
+    .eq("id", venue.id)
+    .maybeSingle<{ tour_embed_key: string | null; tour_scheduling_enabled: boolean }>();
+
+  const tourKey = tourData?.tour_scheduling_enabled ? tourData.tour_embed_key : null;
+
   return (
     <InquiryForm
       embedKey={key}
@@ -47,6 +56,7 @@ export default async function PublicFormPage({ params }: Props) {
         secondaryColor: venue.secondary_color ?? "#4F5F4F",
         email: venue.email ?? null,
       }}
+      tourKey={tourKey}
     />
   );
 }

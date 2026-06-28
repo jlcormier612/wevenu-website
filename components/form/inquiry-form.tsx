@@ -36,9 +36,11 @@ type FormState = "idle" | "submitting" | "success" | "error";
 export function InquiryForm({
   embedKey,
   venue,
+  tourKey = null,
 }: {
   embedKey: string;
   venue: VenueBranding;
+  tourKey?: string | null;
 }) {
   const [state, setState] = React.useState<FormState>("idle");
   const [refCode, setRefCode] = React.useState("");
@@ -145,6 +147,27 @@ export function InquiryForm({
         <h1 className="text-white text-xl font-semibold">{venue.name}</h1>
         <p className="text-white/70 text-sm mt-1">Inquiry Form</p>
       </div>
+
+      {/* Two-path choice — shown when tour scheduling is enabled */}
+      {tourKey && (
+        <div className="max-w-xl mx-auto px-4 pt-6">
+          <div className="grid grid-cols-2 gap-3">
+            <a href={`/book/${tourKey}`}
+              className="block rounded-2xl border-2 p-4 text-center space-y-1.5 transition-colors hover:border-current"
+              style={{ borderColor: primary, background: `${primary}08` }}>
+              <p className="text-2xl">📅</p>
+              <p className="text-sm font-semibold" style={{ color: primary }}>Schedule a Tour</p>
+              <p className="text-xs text-gray-500">Pick a date and time to visit us.</p>
+            </a>
+            <div className="rounded-2xl border-2 p-4 text-center space-y-1.5" style={{ borderColor: "#DED6CA", background: "#F5F4F2" }}>
+              <p className="text-2xl">✉️</p>
+              <p className="text-sm font-semibold text-gray-700">Request Information</p>
+              <p className="text-xs text-gray-500">Tell us about your event below.</p>
+            </div>
+          </div>
+          <div className="mt-4 h-px bg-gray-100" />
+        </div>
+      )}
 
       {/* Form card */}
       <div className="max-w-xl mx-auto px-4 py-8">

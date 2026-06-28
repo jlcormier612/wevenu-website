@@ -42,17 +42,20 @@ export async function processReminders(): Promise<ProcessResult> {
   const supabase = getServiceClient();
   const now = new Date().toISOString();
 
-  // Fetch batch of due reminders
+  // Fetch batch of due reminders (both task and tour reminders)
   const { data: reminders, error } = await supabase
     .from("task_reminders")
     .select(`
-      id, venue_id, event_task_id, reminder_type, notify_role, scheduled_for,
+      id, venue_id, event_task_id, tour_appointment_id, reminder_type, notify_role, scheduled_for,
       event_tasks (
         id, title, event_id, visibility, owner_type, status, due_date,
         reminder_interval_days,
         event_tasks_event:events ( id, name, event_date, client_id,
           clients ( id, first_name, partner_first_name, email )
         )
+      ),
+      tour_appointment:tour_appointments (
+        id, scheduled_at, duration_minutes, contact_name, contact_email, status
       )
     `)
     .eq("status", "pending")
@@ -68,22 +71,30 @@ export async function processReminders(): Promise<ProcessResult> {
     result.processed++;
 
     try {
-      const task = reminder.event_tasks;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const tourAppt = (reminder as any).tour_appointment;
+      const isTourReminder = !!tourAppt || !!(reminder as any).tour_appointment_id;
+
+      const task = isTourReminder ? null : reminder.event_tasks;
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const event = (task as any)?.event_tasks_event;
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const client = (event as any)?.clients;
 
-      // Skip if task is already complete or waived — cancel remaining reminders
+      // Skip if task is already complete or waived
       if (task?.status === "complete" || task?.status === "waived") {
-        await supabase.from("task_reminders")
-          .update({ status: "skipped" })
-          .eq("id", reminder.id);
+        await supabase.from("task_reminders").update({ status: "skipped" }).eq("id", reminder.id);
+        result.skipped++;
+        continue;
+      }
+      // Skip if tour is cancelled
+      if (isTourReminder && tourAppt?.status === "cancelled") {
+        await supabase.from("task_reminders").update({ status: "skipped" }).eq("id", reminder.id);
         result.skipped++;
         continue;
       }
 
-      if (!event || !task) { result.skipped++; continue; }
+      if (!isTourReminder && (!event || !task)) { result.skipped++; continue; }
 
       const role = reminder.notify_role as NotificationRole;
       const channel = determineChannel(role, "task_reminder");
@@ -97,51 +108,51 @@ export async function processReminders(): Promise<ProcessResult> {
 
       if (channel === "email") {
         // Determine recipient email
+        // Determine recipient email
         if (role === "coordinator") {
-          // Coordinator email from venue settings
-          const { data: venue } = await supabase
-            .from("venues")
-            .select("email")
-            .eq("id", reminder.venue_id)
-            .maybeSingle<{ email: string | null }>();
+          const { data: venue } = await supabase.from("venues").select("email").eq("id", reminder.venue_id).maybeSingle<{ email: string | null }>();
           recipientEmail = venue?.email ?? null;
         } else if (role === "couple") {
-          recipientEmail = client?.email ?? null;
+          recipientEmail = isTourReminder ? (tourAppt?.contact_email ?? null) : (client?.email ?? null);
         }
 
         if (!recipientEmail) { result.skipped++; continue; }
 
-        // Get portal token for couple links
+        // Get portal token for couple links (task reminders only)
         let portalToken: string | undefined;
-        if (role === "couple" && event.client_id) {
-          const { data: session } = await supabase
-            .from("client_portal_sessions")
-            .select("access_token")
-            .eq("client_id", event.client_id)
-            .eq("venue_id", reminder.venue_id)
-            .maybeSingle<{ access_token: string }>();
+        if (!isTourReminder && role === "couple" && event?.client_id) {
+          const { data: session } = await supabase.from("client_portal_sessions").select("access_token").eq("client_id", event.client_id).eq("venue_id", reminder.venue_id).maybeSingle<{ access_token: string }>();
           portalToken = session?.access_token;
         }
 
-        // Get venue name
-        const { data: venueRow } = await supabase
-          .from("venues")
-          .select("name")
-          .eq("id", reminder.venue_id)
-          .maybeSingle<{ name: string }>();
+        const { data: venueRow } = await supabase.from("venues").select("name").eq("id", reminder.venue_id).maybeSingle<{ name: string }>();
+        const venueName = venueRow?.name ?? "Your Venue";
 
-        const coupleName = [client?.first_name, client?.partner_first_name].filter(Boolean).join(" & ");
-        const emailContent = buildReminderEmail({
-          taskTitle: task.title,
-          eventName: event.name ?? `${coupleName} — Event`,
-          eventDate: event.event_date,
-          dueDate: task.due_date,
-          role,
-          reminderType: reminder.reminder_type,
-          portalToken,
-          venueBaseUrl: getBaseUrl(),
-          venueName: venueRow?.name ?? "Your Venue",
-        });
+        let emailContent: { subject: string; html: string; text: string };
+        if (isTourReminder && tourAppt) {
+          // Tour reminder email
+          const tourDate = new Date(tourAppt.scheduled_at);
+          const dateStr = tourDate.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" });
+          const timeStr = tourDate.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+          const subj = role === "coordinator"
+            ? `Tour reminder: ${tourAppt.contact_name ?? "Upcoming tour"} — ${dateStr} at ${timeStr}`
+            : `Your tour at ${venueName} is tomorrow — ${dateStr} at ${timeStr}`;
+          const body = role === "coordinator"
+            ? `You have a venue tour tomorrow at ${timeStr} with ${tourAppt.contact_name ?? "a prospective couple"}. Duration: ${tourAppt.duration_minutes} minutes.`
+            : `Just a reminder that your tour at ${venueName} is tomorrow at ${timeStr}. We look forward to meeting you!`;
+          emailContent = { subject: subj, html: `<p>${body}</p><p>— ${venueName}</p>`, text: body };
+        } else {
+          // Task reminder email
+          const coupleName = [client?.first_name, client?.partner_first_name].filter(Boolean).join(" & ");
+          emailContent = buildReminderEmail({
+            taskTitle: task!.title,
+            eventName: event?.name ?? `${coupleName} — Event`,
+            eventDate: event?.event_date ?? "",
+            dueDate: task!.due_date,
+            role, reminderType: reminder.reminder_type,
+            portalToken, venueBaseUrl: getBaseUrl(), venueName,
+          });
+        }
         subject = emailContent.subject;
         bodyPreview = emailContent.html.replace(/<[^>]+>/g, "").slice(0, 500);
 
@@ -194,8 +205,8 @@ export async function processReminders(): Promise<ProcessResult> {
         .eq("id", reminder.id);
 
       // Recurring: if task still pending and interval is set, schedule next reminder
-      const intervalDays = (task as ReminderRow["event_tasks"] & { reminder_interval_days?: number })?.reminder_interval_days;
-      if (intervalDays && task.status === "pending") {
+      const intervalDays = !isTourReminder ? (task as ReminderRow["event_tasks"] & { reminder_interval_days?: number })?.reminder_interval_days : null;
+      if (intervalDays && task?.status === "pending") {
         const nextDate = new Date(reminder.scheduled_for);
         nextDate.setDate(nextDate.getDate() + intervalDays);
         if (nextDate > new Date()) {

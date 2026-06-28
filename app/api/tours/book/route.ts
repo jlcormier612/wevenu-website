@@ -21,15 +21,56 @@ export async function POST(request: Request) {
       eventDate: body.eventDate ?? "", guestCount: body.guestCount ?? null, notes: body.notes ?? "",
     });
 
-    // Fire coordinator notification (non-blocking)
-    if (result.ok && result.leadId) {
+    // Fire coordinator notification + schedule reminders (non-blocking)
+    if (result.ok && result.appointmentId) {
       void sendBookingNotification(result).catch(() => {});
+      void scheduleTourReminders(result).catch(() => {});
     }
 
     return NextResponse.json(result, { status: result.ok ? 200 : 422 });
   } catch {
     return NextResponse.json({ ok: false, error: "Internal error." }, { status: 500 });
   }
+}
+
+async function scheduleTourReminders(result: BookingResult): Promise<void> {
+  if (!result.appointmentId || !result.scheduledAt) return;
+  const { createClient } = await import("@supabase/supabase-js");
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !key) return;
+
+  const supabase = createClient(url, key, { auth: { autoRefreshToken: false, persistSession: false } });
+  const { data: appt } = await supabase.from("tour_appointments")
+    .select("venue_id, contact_email")
+    .eq("id", result.appointmentId)
+    .maybeSingle<{ venue_id: string; contact_email: string | null }>();
+  if (!appt) return;
+
+  const tourTime = new Date(result.scheduledAt);
+  const remindAt = new Date(tourTime.getTime() - 24 * 3600 * 1000); // 24h before
+
+  const reminders: Array<Record<string, unknown>> = [
+    {
+      venue_id: appt.venue_id,
+      tour_appointment_id: result.appointmentId,
+      reminder_type: "upcoming",
+      notify_role: "coordinator",
+      scheduled_for: remindAt.toISOString(),
+      status: "pending",
+    },
+  ];
+  if (appt.contact_email) {
+    reminders.push({
+      venue_id: appt.venue_id,
+      tour_appointment_id: result.appointmentId,
+      reminder_type: "upcoming",
+      notify_role: "couple",
+      scheduled_for: remindAt.toISOString(),
+      status: "pending",
+    });
+  }
+  await supabase.from("task_reminders").insert(reminders);
 }
 
 async function sendBookingNotification(result: BookingResult): Promise<void> {
