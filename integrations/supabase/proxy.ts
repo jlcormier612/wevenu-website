@@ -7,7 +7,14 @@ import { getSupabaseConfig, isSupabaseConfigured } from "@/lib/env";
 /**
  * Routes that do not require an authenticated session.
  */
-const PUBLIC_PATHS = ["/login"];
+const PUBLIC_PATHS = [
+  "/login",
+  "/form",           // public venue inquiry forms — /form/{embedKey}
+  "/api/public",     // public API routes — /api/public/inquire
+  "/api/messaging/inbound",  // Resend inbound email webhook (no user session)
+  "/api/messaging/webhook",  // Resend delivery webhook (no user session)
+  "/sign",           // public contract signing — /sign/{token}
+];
 
 function isPublicPath(pathname: string): boolean {
   return PUBLIC_PATHS.some(

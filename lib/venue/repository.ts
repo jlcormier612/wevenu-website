@@ -44,6 +44,7 @@ type VenueRow = {
   setup_completed: boolean;
   setup_completed_at: string | null;
   onboarding_dismissed: boolean;
+  embed_key: string;
   created_at: string;
   updated_at: string;
 };
@@ -77,6 +78,7 @@ function mapVenue(r: VenueRow): Venue {
     setupCompleted: r.setup_completed,
     setupCompletedAt: r.setup_completed_at,
     onboardingDismissed: r.onboarding_dismissed,
+    embedKey: r.embed_key ?? "",
     createdAt: r.created_at,
     updatedAt: r.updated_at,
   };

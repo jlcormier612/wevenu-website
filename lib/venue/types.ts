@@ -89,6 +89,7 @@ export type Venue = {
   setupCompleted: boolean;
   setupCompletedAt: string | null;
   onboardingDismissed: boolean;
+  embedKey: string;   // public key for the venue's inquiry form — /form/{embedKey}
   createdAt: string;
   updatedAt: string;
 };

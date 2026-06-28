@@ -4,6 +4,7 @@ import { CapacityRulesSection } from "@/components/availability/capacity-rules-s
 import { VenueSpacesSection } from "@/components/availability/venue-spaces-section";
 import { PageHeader } from "@/components/shell/module-placeholder";
 import { LuvSettingsSection } from "@/components/settings/luv-settings-section";
+import { WebsiteFormsSection } from "@/components/settings/website-forms-section";
 import { LuvHeart } from "@/components/dashboard/luv-widget";
 import { StripeConnectSection } from "@/components/settings/stripe-connect-section";
 import { VenueSettings } from "@/components/settings/venue-settings";
@@ -67,6 +68,24 @@ export default async function SettingsPage() {
           <VenueSpacesSection initialSpaces={spaces} />
         </CardContent>
       </Card>
+
+      {/* ── Website Forms ──────────────────────────────────────────── */}
+      {venue && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Website Forms</CardTitle>
+            <CardDescription>
+              Share your inquiry form or embed it on your website. Every submission becomes a lead in Wevenu automatically.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <WebsiteFormsSection
+              embedKey={venue.embedKey}
+              appUrl={process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"}
+            />
+          </CardContent>
+        </Card>
+      )}
 
       {/* ── Luv ────────────────────────────────────────────────────── */}
       <Card>
