@@ -18,6 +18,7 @@ import {
   updateDraftStatusAction,
 } from "@/app/(app)/leads/[id]/luv-actions";
 import { LuvHeart } from "@/components/dashboard/luv-widget";
+import { LeadMomentumCard } from "@/components/luv/lead-momentum-card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
@@ -167,6 +168,7 @@ export function LuvDraftPanel({
   initialDrafts: LuvDraft[];
   onUseDraft?: (subject: string | null, body: string) => void;
 }) {
+  // Relationship Health card at the top
   const [allDrafts, setAllDrafts] = React.useState(initialDrafts);
   const [generating, startGenerate] = React.useTransition();
 
@@ -195,6 +197,15 @@ export function LuvDraftPanel({
 
   return (
     <div className="space-y-5">
+      {/* Relationship Health momentum card */}
+      <LeadMomentumCard
+        firstName={lead.firstName}
+        commitmentScore={lead.commitmentScore}
+        responsivenessScore={lead.responsivenessScore}
+        interestScore={lead.interestScore}
+        lastContactedAt={lead.lastContactedAt}
+      />
+
       {/* Generate button */}
       <div className="rounded-xl border border-[#D8A7AA]/25 bg-[#D8A7AA]/5 px-4 py-4">
         <div className="flex items-start gap-3">

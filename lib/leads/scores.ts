@@ -1,3 +1,6 @@
+// Re-export pure utilities from the client-safe momentum module
+export { generateMomentumLanguage, getMomentumTier, type MomentumTier } from "@/lib/leads/momentum";
+
 /**
  * Lead commitment score engine — Sprint 36.
  *
@@ -166,3 +169,126 @@ export function momentumLabel(score: number, status: string): {
   if (score >= 20) return { label: "Early stages", tier: "growing" };
   return { label: "New inquiry", tier: "early" };
 }
+
+/**
+ * Compute responsiveness score (0–100) from message thread data.
+ * Measures how quickly and consistently the lead responds.
+ *
+ * Signals considered:
+ *   - Inbound messages in last 7 days → active engagement
+ *   - Average reply speed (outbound → next inbound)
+ *   - Days since any interaction (decay)
+ */
+export async function computeLeadResponsivenessScore(
+  supabase: DbClient,
+  venueId: string,
+  leadId: string,
+): Promise<number> {
+  // Get threads linked to this lead
+  const { data: threads } = await supabase.from("message_threads")
+    .select("id, last_message_at").eq("venue_id", venueId).eq("lead_id", leadId);
+  if (!threads?.length) return 0;
+
+  const threadIds = (threads as { id: string; last_message_at: string | null }[]).map((t) => t.id);
+  const sevenDaysAgo = new Date(Date.now() - 7 * 86_400_000).toISOString();
+
+  // Count recent inbound messages (replies from the lead)
+  const { data: recentInbound } = await supabase.from("messages")
+    .select("id, created_at")
+    .in("thread_id", threadIds)
+    .eq("direction", "inbound")
+    .gte("created_at", sevenDaysAgo);
+  const recentReplies = recentInbound?.length ?? 0;
+
+  // Days since last interaction (any message in any thread)
+  const lastActivity = (threads as { last_message_at: string | null }[])
+    .map((t) => t.last_message_at)
+    .filter(Boolean)
+    .sort()
+    .reverse()[0];
+  const daysSinceActivity = lastActivity
+    ? Math.floor((Date.now() - new Date(lastActivity).getTime()) / 86_400_000)
+    : 999;
+
+  // Base score from recent replies
+  let score = 0;
+  if (recentReplies >= 3) score += 50;
+  else if (recentReplies === 2) score += 35;
+  else if (recentReplies === 1) score += 20;
+
+  // Bonus for very recent activity (last 48h)
+  if (daysSinceActivity <= 2) score += 30;
+  else if (daysSinceActivity <= 5) score += 15;
+
+  // Decay for silence
+  if (daysSinceActivity > 21) score = Math.max(0, score - 40);
+  else if (daysSinceActivity > 14) score = Math.max(0, score - 20);
+  else if (daysSinceActivity > 7) score = Math.max(0, score - 5);
+
+  return Math.min(100, Math.max(0, score));
+}
+
+/**
+ * Compute interest score (0–100) from behavioral signal events.
+ * Uses the time-decay formula from lib/leads/signals.ts.
+ */
+export async function computeLeadInterestScore(
+  supabase: DbClient,
+  venueId: string,
+  leadId: string,
+): Promise<number> {
+  const fourteenDaysAgo = new Date(Date.now() - 14 * 86_400_000).toISOString();
+  const { data: signals } = await supabase.from("lead_signal_events")
+    .select("signal_strength, occurred_at")
+    .eq("venue_id", venueId).eq("lead_id", leadId)
+    .gte("occurred_at", fourteenDaysAgo)
+    .order("occurred_at", { ascending: false });
+
+  if (!signals?.length) return 0;
+
+  const { computeInterestFromSignals } = await import("@/lib/leads/signals");
+  return computeInterestFromSignals(signals as { signal_strength: number; occurred_at: string }[]);
+}
+
+/**
+ * Full score refresh — computes all three dimensions for a lead.
+ */
+export async function computeAllScores(
+  supabase: DbClient,
+  venueId: string,
+  leadId: string,
+): Promise<{ commitment: number; responsiveness: number; interest: number }> {
+  const [commitment, responsiveness, interest] = await Promise.all([
+    computeLeadCommitmentScore(supabase, venueId, leadId),
+    computeLeadResponsivenessScore(supabase, venueId, leadId),
+    computeLeadInterestScore(supabase, venueId, leadId),
+  ]);
+  return { commitment, responsiveness, interest };
+}
+
+/** Refresh all three scores for all active leads in a venue. */
+export async function refreshAllLeadScores(
+  supabase: DbClient,
+  venueId: string,
+): Promise<void> {
+  const { data: leads } = await supabase.from("leads")
+    .select("id").eq("venue_id", venueId)
+    .not("status", "in", "(lost,cancelled)");
+  if (!leads?.length) return;
+
+  const BATCH = 5; // smaller batch since we run 3 score queries per lead
+  for (let i = 0; i < leads.length; i += BATCH) {
+    const batch = leads.slice(i, i + BATCH) as { id: string }[];
+    await Promise.all(batch.map(async (l) => {
+      const scores = await computeAllScores(supabase, venueId, l.id);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await (supabase.from("leads") as any).update({
+        commitment_score:    scores.commitment,
+        responsiveness_score: scores.responsiveness,
+        interest_score:      scores.interest,
+        scores_updated_at:   new Date().toISOString(),
+      }).eq("id", l.id).eq("venue_id", venueId);
+    }));
+  }
+}
+

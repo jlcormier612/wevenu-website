@@ -35,6 +35,11 @@ export async function sendEmail(payload: EmailPayload): Promise<SendResult> {
       to: [payload.to],
       subject: payload.subject,
       text: payload.text,
+      // Enable delivery + engagement tracking so signals flow back into Wevenu
+      // via the /api/messaging/webhook route. These fire email.opened and
+      // email.clicked events which become lead_signal_events entries.
+      open_tracking: true,
+      click_tracking: true,
     };
     if (payload.html) body.html = payload.html;
     // Reply-To: route through inbound address if configured, otherwise venue email

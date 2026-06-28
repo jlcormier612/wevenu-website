@@ -49,6 +49,8 @@ type LeadRow = {
   tour_completed: boolean;
   tour_notes: string | null;
   commitment_score: number;
+  responsiveness_score: number;
+  interest_score: number;
   scores_updated_at: string | null;
   source_data: Record<string, unknown> | null;
   created_at: string;
@@ -84,6 +86,8 @@ function mapLead(r: LeadRow): Lead {
     tourDate: r.tour_date, tourTime: r.tour_time,
     tourCompleted: r.tour_completed, tourNotes: r.tour_notes,
     commitmentScore: r.commitment_score ?? 0,
+    responsivenessScore: r.responsiveness_score ?? 0,
+    interestScore: r.interest_score ?? 0,
     scoresUpdatedAt: r.scores_updated_at ?? null,
     sourceData: r.source_data ?? null,
     createdAt: r.created_at, updatedAt: r.updated_at,

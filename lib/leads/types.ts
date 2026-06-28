@@ -53,7 +53,9 @@ export type Lead = {
   tourTime: string | null;
   tourCompleted: boolean;
   tourNotes: string | null;
-  commitmentScore: number;    // 0–100, computed from milestone data
+  commitmentScore: number;      // 0–100, computed from milestone data
+  responsivenessScore: number;  // 0–100, computed from message reply patterns
+  interestScore: number;        // 0–100, computed from time-decayed signal events
   scoresUpdatedAt: string | null;
   sourceData: Record<string, unknown> | null;
   createdAt: string;

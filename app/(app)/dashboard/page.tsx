@@ -7,6 +7,7 @@ import { FollowupsWidget } from "@/components/dashboard/followups-widget";
 import { GettingStartedCard } from "@/components/dashboard/getting-started";
 import { Greeting } from "@/components/dashboard/greeting";
 import { LuvWidget } from "@/components/dashboard/luv-widget";
+import { MomentumWidget } from "@/components/dashboard/momentum-widget";
 import { KeyDatesWidget } from "@/components/dashboard/key-dates-widget";
 import { NeedsAttentionWidget } from "@/components/dashboard/needs-attention";
 import { PipelineSnapshot } from "@/components/dashboard/pipeline-snapshot";
@@ -48,6 +49,12 @@ export default async function DashboardPage() {
 
       {/* 💗 Luv — venue assistant (Phase 1: notice) */}
       <LuvWidget observations={data.luvObservations} />
+
+      {/* 💗 Momentum intelligence — who needs attention today? */}
+      <MomentumWidget
+        heatingUp={data.momentumSegments.heatingUp}
+        coolingOff={data.momentumSegments.coolingOff}
+      />
 
       {/* Getting Started onboarding card (new venues only) */}
       {data.onboarding.show && (
