@@ -19,11 +19,24 @@ function revalidateEvent(eventId: string) {
   revalidatePath(`/events/${eventId}`);
 }
 
+async function triggerTimelineAutoComplete(eventId: string) {
+  try {
+    const { createClient } = await import("@/integrations/supabase/server");
+    const { getCurrentVenue } = await import("@/lib/venue/service");
+    const { triggerAutoComplete } = await import("@/lib/playbooks/service");
+    const [sb, venue] = await Promise.all([createClient(), getCurrentVenue()]);
+    if (venue) await triggerAutoComplete(sb, venue.id, eventId, "timeline_created");
+  } catch { /* non-blocking */ }
+}
+
 export async function addEntryAction(
   eventId: string, input: TimelineEntryInput,
 ): Promise<AddEntryResult> {
   const result = await addEntry(eventId, input);
-  if (result.ok) revalidateEvent(eventId);
+  if (result.ok) {
+    revalidateEvent(eventId);
+    void triggerTimelineAutoComplete(eventId);
+  }
   return result;
 }
 

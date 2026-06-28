@@ -12,6 +12,18 @@ export async function saveQuestionnaireAction(
   const result = await saveQuestionnaire(eventId, fields, submit);
   if (result.ok) {
     revalidatePath(`/events/${eventId}`);
+    // Questionnaire submitted → auto-complete matching playbook tasks
+    if (submit) {
+      void (async () => {
+        try {
+          const { createClient: mk } = await import("@/integrations/supabase/server");
+          const { getCurrentVenue } = await import("@/lib/venue/service");
+          const { triggerAutoComplete } = await import("@/lib/playbooks/service");
+          const [sb, venue] = await Promise.all([mk(), getCurrentVenue()]);
+          if (venue) await triggerAutoComplete(sb, venue.id, eventId, "questionnaire_submitted");
+        } catch { /* non-blocking */ }
+      })();
+    }
     // Questionnaire submitted = commitment milestone — refresh linked lead's scores
     if (submit) {
       void (async () => {

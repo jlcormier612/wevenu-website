@@ -24,6 +24,7 @@ import { EventVendorsSection } from "@/components/events/vendors/event-vendors-s
 import { TimelineView } from "@/components/events/timeline/timeline-view";
 import { DocumentsSection } from "@/components/documents/documents-section";
 import { FinalDetailsForm } from "@/components/events/final-details-form";
+import { EventTaskList } from "@/components/playbooks/event-task-list";
 import { InvoiceStatusBadge } from "@/components/invoices/invoice-status-badge";
 import { ActivityTimeline } from "@/components/leads/activity-timeline";
 import { Button } from "@/components/ui/button";
@@ -40,6 +41,7 @@ import { formatCurrency } from "@/lib/invoices/constants";
 import type { Invoice } from "@/lib/invoices/types";
 import type { Document } from "@/lib/documents/types";
 import type { Questionnaire } from "@/lib/events/questionnaire";
+import type { EventTask, PlaybookTemplate } from "@/lib/playbooks/types";
 import {
   EVENT_STATUSES,
   daysUntil,
@@ -144,6 +146,8 @@ export function EventDetail({
   documents = [],
   questionnaire = null,
   coupleEmail = null,
+  eventTasks = [],
+  playbookTemplates = [],
 }: {
   event: EventWithDetails;
   availableVendors?: import("@/lib/vendors/types").Vendor[];
@@ -151,6 +155,8 @@ export function EventDetail({
   documents?: Document[];
   questionnaire?: Questionnaire | null;
   coupleEmail?: string | null;
+  eventTasks?: EventTask[];
+  playbookTemplates?: PlaybookTemplate[];
 }) {
   const router = useRouter();
   const [statusPending, startStatus] = React.useTransition();
@@ -230,6 +236,12 @@ export function EventDetail({
             Team
             {event.team.length > 0 && (
               <span className="ml-1 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground">{event.team.length}</span>
+            )}
+          </TabsTrigger>
+          <TabsTrigger value="playbook">
+            Playbook
+            {eventTasks.filter((t) => t.status === "overdue").length > 0 && (
+              <span className="ml-1 rounded-full bg-destructive/15 px-1.5 py-0.5 text-[10px] font-semibold text-destructive">{eventTasks.filter((t) => t.status === "overdue").length}</span>
             )}
           </TabsTrigger>
           <TabsTrigger value="timeline">Timeline</TabsTrigger>
@@ -440,6 +452,25 @@ export function EventDetail({
                   ))}
                 </div>
               )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* ── Playbook ─────────────────────────────────────────────── */}
+        <TabsContent value="playbook">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Event Playbook</CardTitle>
+              <CardDescription>All tasks for this event, organized by status and due date. Tasks auto-complete as milestones are hit.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <EventTaskList
+                eventId={event.id}
+                eventDate={event.eventDate}
+                initialTasks={eventTasks}
+                readiness={null}
+                templates={playbookTemplates}
+              />
             </CardContent>
           </Card>
         </TabsContent>

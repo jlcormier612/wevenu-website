@@ -4,6 +4,7 @@ import { CapacityRulesSection } from "@/components/availability/capacity-rules-s
 import { VenueSpacesSection } from "@/components/availability/venue-spaces-section";
 import { PageHeader } from "@/components/shell/module-placeholder";
 import { LuvSettingsSection } from "@/components/settings/luv-settings-section";
+import { PlaybooksSection } from "@/components/settings/playbooks-section";
 import { WebsiteFormsSection } from "@/components/settings/website-forms-section";
 import { LuvHeart } from "@/components/dashboard/luv-widget";
 import { StripeConnectSection } from "@/components/settings/stripe-connect-section";
@@ -17,6 +18,7 @@ import {
 } from "@/components/ui/card";
 import { getCapacityRules, getSpaces } from "@/lib/availability/service";
 import { getLuvSettings } from "@/lib/luv/settings";
+import { getTemplates } from "@/lib/playbooks/service";
 import { getCurrentVenue, getVenueSettings } from "@/lib/venue/service";
 
 export const metadata: Metadata = { title: "Settings" };
@@ -28,8 +30,8 @@ export const metadata: Metadata = { title: "Settings" };
  * Route is protected by the (app) layout (venue existence already confirmed).
  */
 export default async function SettingsPage() {
-  const [settings, venue, spaces, capacityRules, luvSettings] = await Promise.all([
-    getVenueSettings(), getCurrentVenue(), getSpaces(), getCapacityRules(), getLuvSettings(),
+  const [settings, venue, spaces, capacityRules, luvSettings, playbookTemplates] = await Promise.all([
+    getVenueSettings(), getCurrentVenue(), getSpaces(), getCapacityRules(), getLuvSettings(), getTemplates(),
   ]);
 
   if (!settings) {
@@ -86,6 +88,20 @@ export default async function SettingsPage() {
           </CardContent>
         </Card>
       )}
+
+      {/* ── Playbooks ──────────────────────────────────────────────── */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Event Playbooks</CardTitle>
+          <CardDescription>
+            Templates that auto-generate event tasks with real due dates when an event is created.
+            Tasks can auto-complete as milestones are hit.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <PlaybooksSection initialTemplates={playbookTemplates} />
+        </CardContent>
+      </Card>
 
       {/* ── Luv ────────────────────────────────────────────────────── */}
       <Card>
