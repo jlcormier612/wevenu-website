@@ -15,6 +15,8 @@ const PUBLIC_PATHS = [
   "/api/messaging/inbound",  // Resend inbound email webhook (no user session)
   "/api/messaging/webhook",  // Resend delivery webhook (no user session)
   "/sign",           // public contract signing — /sign/{token}
+  "/p",              // client portal workspace — /p/{access_token}
+  "/api/portal",     // portal API endpoints — complete tasks, etc.
 ];
 
 function isPublicPath(pathname: string): boolean {

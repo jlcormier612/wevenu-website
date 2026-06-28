@@ -43,6 +43,8 @@ import type { ClientDraft } from "@/lib/luv/client-drafts";
 import type { EventReadiness } from "@/lib/luv/event-readiness";
 import type { EventReadiness as PlaybookEventReadiness } from "@/lib/playbooks/types";
 import type { Questionnaire } from "@/lib/events/questionnaire";
+import type { PortalSession } from "@/lib/portal/types";
+import { PortalLinkWidget } from "@/components/portal/portal-link-widget";
 
 // ---- Event Date Hero (client-side for real-time countdown) ------------------
 
@@ -78,7 +80,7 @@ function ContactCard({ name, email, phone, role }: { name: string; email?: strin
 
 // ---- Main component ---------------------------------------------------------
 
-export function ClientDetail({ client, invoices = [], documents = [], threads = [], luvDrafts = [], readiness = null, questionnaire = null, playbookReadiness = null }: { client: ClientWithDetails; invoices?: Invoice[]; documents?: Document[]; threads?: ThreadWithMessages[]; luvDrafts?: ClientDraft[]; readiness?: EventReadiness | null; questionnaire?: Questionnaire | null; playbookReadiness?: PlaybookEventReadiness | null }) {
+export function ClientDetail({ client, invoices = [], documents = [], threads = [], luvDrafts = [], readiness = null, questionnaire = null, playbookReadiness = null, portalSessions = [] }: { client: ClientWithDetails; invoices?: Invoice[]; documents?: Document[]; threads?: ThreadWithMessages[]; luvDrafts?: ClientDraft[]; readiness?: EventReadiness | null; questionnaire?: Questionnaire | null; playbookReadiness?: PlaybookEventReadiness | null; portalSessions?: PortalSession[] }) {
   const router = useRouter();
   const [statusPending, startStatus] = React.useTransition();
 
@@ -250,6 +252,21 @@ export function ClientDetail({ client, invoices = [], documents = [], threads = 
               </Button>
             )}
           </div>
+
+          {/* Portal access */}
+          <Card className="mt-4">
+            <CardHeader>
+              <CardTitle className="text-base">Wedding Workspace</CardTitle>
+              <CardDescription>Share a link so {[client.firstName, client.partnerFirstName].filter(Boolean).join(" & ")} can access their planning workspace.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <PortalLinkWidget
+                clientId={client.id}
+                coupleName={[client.firstName, client.partnerFirstName].filter(Boolean).join(" & ")}
+                initialSessions={portalSessions}
+              />
+            </CardContent>
+          </Card>
         </TabsContent>
 
         {/* ── Key Dates ──────────────────────────────────────────────────── */}
