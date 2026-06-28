@@ -29,6 +29,11 @@ export type PlaybookTask = {
   isRequired: boolean;
   sortOrder: number;
   createdAt: string;
+  // Notification rules (Sprint 43)
+  reminderBeforeDays: number[] | null;   // [7, 3, 1] = remind 7, 3, 1 days before due
+  escalationAfterDays: number | null;    // escalate to coordinator N days after overdue
+  notifyOnAssign: boolean;
+  notifyOnComplete: boolean;
 };
 
 export type EventTask = {
@@ -47,7 +52,6 @@ export type EventTask = {
   isRequired: boolean;
   status: TaskStatus;
   dependsOnEventTaskId: string | null;
-  // Embedded: dependency task details for "blocked" display
   dependsOnTitle: string | null;
   completedAt: string | null;
   completedBy: string | null;
@@ -55,6 +59,27 @@ export type EventTask = {
   sortOrder: number;
   createdAt: string;
   updatedAt: string;
+  // Notification rules (Sprint 43)
+  reminderBeforeDays: number[] | null;
+  escalationAfterDays: number | null;
+  notifyOnAssign: boolean;
+  notifyOnComplete: boolean;
+};
+
+export type TaskReminderType = "upcoming" | "due_today" | "overdue" | "escalation";
+export type TaskReminderStatus = "pending" | "sent" | "cancelled" | "skipped";
+export type TaskReminderRole = "coordinator" | "couple" | "vendor" | "team";
+
+export type TaskReminder = {
+  id: string;
+  venueId: string;
+  eventTaskId: string;
+  reminderType: TaskReminderType;
+  notifyRole: TaskReminderRole;
+  scheduledFor: string;    // ISO timestamp
+  status: TaskReminderStatus;
+  sentAt: string | null;
+  createdAt: string;
 };
 
 export type EventReadiness = {

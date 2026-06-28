@@ -5,18 +5,23 @@ import type {
   PlaybookActionResult,
   PlaybookTask,
   PlaybookTemplate,
+  TaskReminderRole,
   TaskStatus,
 } from "@/lib/playbooks/types";
+
+// Default reminder schedule when playbook_task has no reminderBeforeDays set.
+// Venues can customize this per-task in a future sprint.
+const DEFAULT_REMINDER_BEFORE_DAYS = [7, 3, 1];
 
 type DbClient = Awaited<ReturnType<typeof createClient>>;
 
 type TemplateRow = { id: string; venue_id: string; name: string; event_type: string | null; is_default: boolean; description: string | null; created_at: string; updated_at: string; };
-type TaskRow = { id: string; template_id: string; venue_id: string; title: string; description: string | null; owner_type: string; visibility: string; days_offset: number; category: string; auto_complete_trigger: string | null; depends_on_task_id: string | null; is_required: boolean; sort_order: number; created_at: string; };
-type EventTaskRow = { id: string; venue_id: string; event_id: string; template_task_id: string | null; title: string; description: string | null; owner_type: string; visibility: string; due_date: string; days_offset: number; category: string; auto_complete_trigger: string | null; is_required: boolean; status: string; depends_on_event_task_id: string | null; depends_on_title?: string | null; completed_at: string | null; completed_by: string | null; notes: string | null; sort_order: number; created_at: string; updated_at: string; };
+type TaskRow = { id: string; template_id: string; venue_id: string; title: string; description: string | null; owner_type: string; visibility: string; days_offset: number; category: string; auto_complete_trigger: string | null; depends_on_task_id: string | null; is_required: boolean; sort_order: number; created_at: string; reminder_before_days: number[] | null; escalation_after_days: number | null; notify_on_assign: boolean; notify_on_complete: boolean; };
+type EventTaskRow = { id: string; venue_id: string; event_id: string; template_task_id: string | null; title: string; description: string | null; owner_type: string; visibility: string; due_date: string; days_offset: number; category: string; auto_complete_trigger: string | null; is_required: boolean; status: string; depends_on_event_task_id: string | null; depends_on_title?: string | null; completed_at: string | null; completed_by: string | null; notes: string | null; sort_order: number; created_at: string; updated_at: string; reminder_before_days: number[] | null; escalation_after_days: number | null; notify_on_assign: boolean; notify_on_complete: boolean; };
 
 const mapTemplate = (r: TemplateRow): PlaybookTemplate => ({ id: r.id, venueId: r.venue_id, name: r.name, eventType: r.event_type, isDefault: r.is_default, description: r.description, createdAt: r.created_at, updatedAt: r.updated_at });
-const mapTask = (r: TaskRow): PlaybookTask => ({ id: r.id, templateId: r.template_id, venueId: r.venue_id, title: r.title, description: r.description, ownerType: r.owner_type as PlaybookTask["ownerType"], visibility: r.visibility as PlaybookTask["visibility"], daysOffset: r.days_offset, category: r.category as PlaybookTask["category"], autoCompleteTrigger: r.auto_complete_trigger, dependsOnTaskId: r.depends_on_task_id, isRequired: r.is_required, sortOrder: r.sort_order, createdAt: r.created_at });
-const mapEventTask = (r: EventTaskRow): EventTask => ({ id: r.id, venueId: r.venue_id, eventId: r.event_id, templateTaskId: r.template_task_id, title: r.title, description: r.description, ownerType: r.owner_type as EventTask["ownerType"], visibility: r.visibility as EventTask["visibility"], dueDate: r.due_date, daysOffset: r.days_offset, category: r.category as EventTask["category"], autoCompleteTrigger: r.auto_complete_trigger, isRequired: r.is_required, status: computeStatus(r), dependsOnEventTaskId: r.depends_on_event_task_id, dependsOnTitle: r.depends_on_title ?? null, completedAt: r.completed_at, completedBy: r.completed_by, notes: r.notes, sortOrder: r.sort_order, createdAt: r.created_at, updatedAt: r.updated_at });
+const mapTask = (r: TaskRow): PlaybookTask => ({ id: r.id, templateId: r.template_id, venueId: r.venue_id, title: r.title, description: r.description, ownerType: r.owner_type as PlaybookTask["ownerType"], visibility: r.visibility as PlaybookTask["visibility"], daysOffset: r.days_offset, category: r.category as PlaybookTask["category"], autoCompleteTrigger: r.auto_complete_trigger, dependsOnTaskId: r.depends_on_task_id, isRequired: r.is_required, sortOrder: r.sort_order, createdAt: r.created_at, reminderBeforeDays: r.reminder_before_days ?? null, escalationAfterDays: r.escalation_after_days ?? null, notifyOnAssign: r.notify_on_assign, notifyOnComplete: r.notify_on_complete });
+const mapEventTask = (r: EventTaskRow): EventTask => ({ id: r.id, venueId: r.venue_id, eventId: r.event_id, templateTaskId: r.template_task_id, title: r.title, description: r.description, ownerType: r.owner_type as EventTask["ownerType"], visibility: r.visibility as EventTask["visibility"], dueDate: r.due_date, daysOffset: r.days_offset, category: r.category as EventTask["category"], autoCompleteTrigger: r.auto_complete_trigger, isRequired: r.is_required, status: computeStatus(r), dependsOnEventTaskId: r.depends_on_event_task_id, dependsOnTitle: r.depends_on_title ?? null, completedAt: r.completed_at, completedBy: r.completed_by, notes: r.notes, sortOrder: r.sort_order, createdAt: r.created_at, updatedAt: r.updated_at, reminderBeforeDays: r.reminder_before_days ?? null, escalationAfterDays: r.escalation_after_days ?? null, notifyOnAssign: r.notify_on_assign, notifyOnComplete: r.notify_on_complete });
 
 function computeStatus(r: EventTaskRow): TaskStatus {
   if (r.status === "complete" || r.status === "waived") return r.status as TaskStatus;
@@ -112,17 +117,11 @@ export async function applyPlaybookToEvent(
   const tasks = await getTemplateTasks(client, venueId, templateId);
   if (!tasks.length) return;
 
-  // Build a map of template_task_id → event_task_id for dependency linking
   const idMap = new Map<string, string>();
 
-  // Insert in order (sort_order), so dependencies can be resolved
   for (const t of tasks.sort((a, b) => a.sortOrder - b.sortOrder)) {
-    const date = new Date(eventDate + "T12:00:00");
-    date.setDate(date.getDate() + t.daysOffset);
-    const dueDate = date.toISOString().slice(0, 10);
-
+    const dueDate = offsetDate(eventDate, t.daysOffset);
     const dependsOnEventTaskId = t.dependsOnTaskId ? idMap.get(t.dependsOnTaskId) ?? null : null;
-    const isBlocked = dependsOnEventTaskId !== null; // initially blocked if has dependency
 
     const { data: inserted, error } = await client.from("event_tasks")
       .insert({
@@ -132,12 +131,105 @@ export async function applyPlaybookToEvent(
         category: t.category, auto_complete_trigger: t.autoCompleteTrigger,
         depends_on_event_task_id: dependsOnEventTaskId,
         is_required: t.isRequired, sort_order: t.sortOrder,
-        status: isBlocked ? "blocked" : "pending",
+        status: dependsOnEventTaskId !== null ? "blocked" : "pending",
+        // Propagate notification rules from template
+        reminder_before_days: t.reminderBeforeDays,
+        escalation_after_days: t.escalationAfterDays,
+        notify_on_assign: t.notifyOnAssign,
+        notify_on_complete: t.notifyOnComplete,
       })
       .select("id").single<{ id: string }>();
     if (error) throw error;
+
     idMap.set(t.id, inserted.id);
+
+    // Generate reminder records immediately — pending until Sprint 44 delivery engine
+    await createRemindersForTask(client, venueId, inserted.id, dueDate, t);
   }
+}
+
+/** Generate task_reminder records for a newly-created event task.
+ *  All reminders are created in 'pending' status — the Sprint 44 delivery engine will process them.
+ */
+async function createRemindersForTask(
+  client: DbClient,
+  venueId: string,
+  eventTaskId: string,
+  dueDate: string,          // "YYYY-MM-DD"
+  task: Pick<PlaybookTask, "ownerType" | "reminderBeforeDays" | "escalationAfterDays" | "notifyOnAssign">,
+): Promise<void> {
+  const reminders: Array<{
+    venue_id: string; event_task_id: string;
+    reminder_type: string; notify_role: string; scheduled_for: string;
+  }> = [];
+
+  const notifyRole: TaskReminderRole = task.ownerType === "couple" ? "couple"
+    : task.ownerType === "vendor" ? "vendor"
+    : "coordinator";
+
+  const beforeDays = task.reminderBeforeDays ?? DEFAULT_REMINDER_BEFORE_DAYS;
+  const dueMidnight = dueDate + "T08:00:00Z"; // send reminder at 8am UTC on that day
+
+  // Pre-due-date reminders (e.g., 7 days before, 3 days before, 1 day before)
+  for (const days of beforeDays) {
+    const scheduledFor = offsetDatetime(dueMidnight, -days);
+    // Only schedule if the reminder is in the future
+    if (new Date(scheduledFor) > new Date()) {
+      reminders.push({
+        venue_id: venueId, event_task_id: eventTaskId,
+        reminder_type: "upcoming", notify_role: notifyRole,
+        scheduled_for: scheduledFor,
+      });
+    }
+  }
+
+  // Day-of reminder
+  reminders.push({
+    venue_id: venueId, event_task_id: eventTaskId,
+    reminder_type: "due_today", notify_role: notifyRole,
+    scheduled_for: dueMidnight,
+  });
+
+  // Overdue escalation (always to coordinator regardless of task owner)
+  if (task.escalationAfterDays) {
+    reminders.push({
+      venue_id: venueId, event_task_id: eventTaskId,
+      reminder_type: "escalation", notify_role: "coordinator",
+      scheduled_for: offsetDatetime(dueMidnight, task.escalationAfterDays),
+    });
+  } else {
+    // Default: escalate to coordinator 3 days after overdue if no custom rule
+    reminders.push({
+      venue_id: venueId, event_task_id: eventTaskId,
+      reminder_type: "overdue", notify_role: "coordinator",
+      scheduled_for: offsetDatetime(dueMidnight, 3),
+    });
+  }
+
+  if (!reminders.length) return;
+  await client.from("task_reminders").insert(reminders);
+}
+
+/** Cancel all pending reminders for a task (called when task is completed or waived). */
+export async function cancelRemindersForTask(client: DbClient, venueId: string, eventTaskId: string): Promise<void> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  await (client.from("task_reminders") as any)
+    .update({ status: "cancelled" })
+    .eq("event_task_id", eventTaskId)
+    .eq("venue_id", venueId)
+    .eq("status", "pending");
+}
+
+function offsetDate(dateStr: string, days: number): string {
+  const d = new Date(dateStr + "T12:00:00");
+  d.setDate(d.getDate() + days);
+  return d.toISOString().slice(0, 10);
+}
+
+function offsetDatetime(datetimeStr: string, days: number): string {
+  const d = new Date(datetimeStr);
+  d.setDate(d.getDate() + days);
+  return d.toISOString();
 }
 
 export async function completeEventTask(
@@ -155,6 +247,8 @@ export async function completeEventTask(
   if (sourceId) patch.source_id = sourceId;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   await (client.from("event_tasks") as any).update(patch).eq("id", taskId).eq("venue_id", venueId);
+  // Cancel pending reminders — task is done, no more notifications needed
+  await cancelRemindersForTask(client, venueId, taskId);
   // Unblock dependent tasks
   await unblockedependents(client, venueId, taskId);
 }

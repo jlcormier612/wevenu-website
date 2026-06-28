@@ -7,6 +7,7 @@ import { getSpaces } from "@/lib/availability/service";
 import { clientDisplayName } from "@/lib/clients/constants";
 import { getClient } from "@/lib/clients/service";
 import { createInitialEventInput } from "@/lib/events/constants";
+import { getTemplates } from "@/lib/playbooks/service";
 
 export const metadata: Metadata = { title: "New Event" };
 
@@ -14,7 +15,7 @@ type Props = { searchParams: Promise<{ clientId?: string }> };
 
 export default async function NewEventPage({ searchParams }: Props) {
   const { clientId } = await searchParams;
-  const spaces = await getSpaces();
+  const [spaces, playbookTemplates] = await Promise.all([getSpaces(), getTemplates()]);
   let prefill = createInitialEventInput();
 
   if (clientId) {
@@ -48,7 +49,7 @@ export default async function NewEventPage({ searchParams }: Props) {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <EventForm initial={prefill} spaces={spaces} />
+          <EventForm initial={prefill} spaces={spaces} playbookTemplates={playbookTemplates} />
         </CardContent>
       </Card>
     </div>

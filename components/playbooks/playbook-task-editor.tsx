@@ -175,6 +175,7 @@ export function PlaybookTaskEditor({
         daysOffset: parseInt(f.daysOffset, 10) || 0,
         category: f.category, autoCompleteTrigger: f.autoCompleteTrigger || null,
         dependsOnTaskId: f.dependsOnTaskId || null, isRequired: f.isRequired, sortOrder: tasks.length,
+        reminderBeforeDays: null, escalationAfterDays: null, notifyOnAssign: false, notifyOnComplete: false,
       });
       if (result.ok) { toast.success("Task added."); setShowAdd(false); router.refresh(); }
       else toast.error(result.message ?? "Could not add task.");

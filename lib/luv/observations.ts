@@ -454,6 +454,42 @@ export async function getLuvObservations(
     }
   }
 
+  // ── Overdue required tasks ───────────────────────────────────────────────
+  // "Coordinator manages exceptions, not steps." Overdue required tasks are
+  // the primary exception. Surface at high priority for events within 90 days.
+  const soon90 = new Date(Date.now() + 90 * 86_400_000).toISOString().slice(0, 10);
+  const { data: overdueTasks } = await supabase.from("event_tasks")
+    .select("id, title, event_id, due_date, events(name, event_date)")
+    .eq("venue_id", venueId)
+    .eq("status", "overdue")
+    .eq("is_required", true)
+    .gte("events.event_date", today)
+    .lte("events.event_date", soon90)
+    .order("events.event_date");
+
+  if (overdueTasks?.length) {
+    const eventCounts = new Map<string, { name: string; eventDate: string; eventId: string; count: number }>();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    for (const t of (overdueTasks as any[]).filter((t) => t.events)) {
+      const existing = eventCounts.get(t.event_id);
+      if (existing) { existing.count++; }
+      else { eventCounts.set(t.event_id, { name: t.events.name, eventDate: t.events.event_date, eventId: t.event_id, count: 1 }); }
+    }
+    for (const ev of eventCounts.values()) {
+      const du = Math.ceil((new Date(ev.eventDate + "T12:00:00").getTime() - Date.now()) / 86_400_000);
+      const n = ev.count;
+      observations.push({
+        id: `overdue-tasks-${ev.eventId}`,
+        priority: du <= 30 ? "high" : "medium",
+        message: `${ev.name} has ${n} overdue required ${n === 1 ? "task" : "tasks"}.`,
+        detail: `${n === 1 ? "A required task has" : `${n} required tasks have`} passed ${n === 1 ? "its" : "their"} due date and still ${n === 1 ? "needs" : "need"} attention.`,
+        link: `/events/${ev.eventId}`,
+        actionLabel: "View Playbook →",
+        recommendation: { label: "Review overdue tasks", link: `/events/${ev.eventId}`, type: "navigate" },
+      });
+    }
+  }
+
   // ── Blocked playbook tasks ────────────────────────────────────────────────
   // Surfaces dependency-blocked tasks for approaching events.
   // "The Carter Wedding is blocked because the questionnaire hasn't been submitted."

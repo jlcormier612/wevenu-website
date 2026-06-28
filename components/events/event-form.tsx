@@ -7,6 +7,8 @@ import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { createEventAction } from "@/app/(app)/events/actions";
+import { applyPlaybookAction } from "@/app/(app)/playbooks/actions";
+import type { PlaybookTemplate } from "@/lib/playbooks/types";
 import { ConflictWarning } from "@/components/availability/conflict-warning";
 import { Field } from "@/components/setup/field";
 import { Button } from "@/components/ui/button";
@@ -112,11 +114,20 @@ export function EventFormFields({
   );
 }
 
-export function EventForm({ initial, spaces = [] }: { initial: EventInput; spaces?: VenueSpace[] }) {
+export function EventForm({
+  initial, spaces = [], playbookTemplates = [],
+}: {
+  initial: EventInput;
+  spaces?: VenueSpace[];
+  playbookTemplates?: PlaybookTemplate[];
+}) {
   const router = useRouter();
   const [input, setInput] = React.useState<EventInput>(initial);
   const [errors, setErrors] = React.useState<EventErrors>({});
   const [pending, startTransition] = React.useTransition();
+  const [selectedTemplate, setSelectedTemplate] = React.useState<string>(
+    playbookTemplates[0]?.id ?? "",
+  );
 
   const set = <K extends keyof EventInput>(key: K, v: EventInput[K]) => {
     setInput((p) => ({ ...p, [key]: v }));
@@ -126,11 +137,54 @@ export function EventForm({ initial, spaces = [] }: { initial: EventInput; space
   function handleSubmit() {
     startTransition(async () => {
       const result = await createEventAction(input);
-      if (result.ok) { toast.success("Event created."); router.push(`/events/${result.eventId}`); return; }
-      if (result.errors) setErrors(result.errors);
-      toast.error(result.message ?? "Please fix the highlighted fields.");
+      if (!result.ok) {
+        if (result.errors) setErrors(result.errors);
+        toast.error(result.message ?? "Please fix the highlighted fields.");
+        return;
+      }
+      // Apply playbook immediately if a template was selected and event has a date
+      if (selectedTemplate && input.eventDate) {
+        const applyResult = await applyPlaybookAction(result.eventId, selectedTemplate, input.eventDate);
+        if (applyResult.ok) {
+          toast.success("Event created and playbook applied — tasks and reminders are ready.");
+        } else {
+          toast.success("Event created.");
+          toast.error("Playbook could not be applied. You can apply it from the event's Playbook tab.");
+        }
+      } else {
+        toast.success("Event created.");
+      }
+      router.push(`/events/${result.eventId}`);
     });
   }
 
-  return <EventFormFields input={input} errors={errors} set={set} onSubmit={handleSubmit} pending={pending} spaces={spaces} />;
+  return (
+    <div className="space-y-6">
+      <EventFormFields input={input} errors={errors} set={set} onSubmit={handleSubmit} pending={pending} spaces={spaces} />
+      {/* Playbook application — shown after core fields */}
+      {playbookTemplates.length > 0 && (
+        <div className="rounded-xl border border-border bg-muted/30 p-4 space-y-2">
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <p className="text-sm font-medium text-heading">Apply a Playbook</p>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Tasks and reminders are generated automatically from the event date.
+              </p>
+            </div>
+            <Select value={selectedTemplate} onValueChange={setSelectedTemplate}>
+              <SelectTrigger className="h-8 w-52 text-sm shrink-0">
+                <SelectValue placeholder="Select playbook…" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="">No playbook</SelectItem>
+                {playbookTemplates.map((t) => (
+                  <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+      )}
+    </div>
+  );
 }
