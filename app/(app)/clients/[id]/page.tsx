@@ -9,6 +9,7 @@ import { getInvoicesForClient } from "@/lib/invoices/service";
 import { getThreadsForEntity } from "@/lib/messaging/service";
 import { getClientDrafts } from "@/lib/luv/client-drafts";
 import { computeEventReadiness } from "@/lib/luv/event-readiness";
+import { getQuestionnaire } from "@/lib/events/questionnaire";
 import { createClient } from "@/integrations/supabase/server";
 import { getCurrentVenue } from "@/lib/venue/service";
 
@@ -31,9 +32,15 @@ export default async function ClientDetailPage({ params }: Props) {
 
   // Compute event readiness (Planning Progress)
   const venue = await getCurrentVenue();
+  const supabase = await createClient();
   const readiness = venue
-    ? await computeEventReadiness(await createClient(), venue.id, id).catch(() => null)
+    ? await computeEventReadiness(supabase, venue.id, id).catch(() => null)
     : null;
 
-  return <ClientDetail client={client} invoices={invoices} documents={documents} threads={threads} luvDrafts={luvDrafts} readiness={readiness} />;
+  // Fetch questionnaire for the client's linked event (for Messages shortcut)
+  const questionnaire = client.linkedEventId
+    ? await getQuestionnaire(client.linkedEventId).catch(() => null)
+    : null;
+
+  return <ClientDetail client={client} invoices={invoices} documents={documents} threads={threads} luvDrafts={luvDrafts} readiness={readiness} questionnaire={questionnaire} />;
 }

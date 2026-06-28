@@ -18,8 +18,9 @@ export async function sendQuestionnaireAction(
   coupleEmail: string,
   coupleName: string,
   eventName: string,
+  threadId?: string,
 ): Promise<{ ok: boolean; formUrl?: string; message?: string }> {
-  const result = await sendQuestionnaireToCouple(eventId, coupleEmail, coupleName, eventName);
+  const result = await sendQuestionnaireToCouple(eventId, coupleEmail, coupleName, eventName, threadId);
   if (result.ok) revalidatePath(`/events/${eventId}`);
   return result;
 }

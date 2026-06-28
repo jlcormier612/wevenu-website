@@ -123,7 +123,7 @@ export async function getLuvObservations(
     supabase.from("event_questionnaires")
       .select("id, event_id, status, sent_at, opened_at, access_key, events(name, event_date)")
       .eq("venue_id", venueId)
-      .in("status", ["sent"])       // sent but not yet submitted
+      .in("status", ["sent", "draft"])   // approaching events missing questionnaire submission
       .gte("events.event_date", today)
       .lte("events.event_date", soon30),
 
@@ -249,27 +249,43 @@ export async function getLuvObservations(
   for (const q of (sentQuestionnaireRes.data ?? []) as any[]) {
     if (!q.events) continue;
     const du = Math.ceil((new Date(q.events.event_date + "T12:00:00").getTime() - Date.now()) / 86_400_000);
-    if (q.opened_at) {
-      // They opened it but haven't submitted — gentle reminder
-      const openedDaysAgo = Math.floor((Date.now() - new Date(q.opened_at).getTime()) / 86_400_000);
-      observations.push({
-        id: `questionnaire-opened-${q.id}`,
-        priority: du <= 14 ? "high" : "medium",
-        message: `${q.events.name} opened their final details form${openedDaysAgo >= 2 ? ` ${openedDaysAgo} days ago` : " recently"} — a reminder might help them finish.`,
-        link: `/events/${q.event_id}`,
-        actionLabel: "View Event →",
-      });
-    } else {
-      // Sent but not even opened
-      const sentDaysAgo = q.sent_at ? Math.floor((Date.now() - new Date(q.sent_at).getTime()) / 86_400_000) : null;
-      if (sentDaysAgo !== null && sentDaysAgo >= 3) {
+
+    if (q.status === "draft") {
+      // Not even sent yet — approaching event needs questionnaire
+      if (du <= 30) {
         observations.push({
-          id: `questionnaire-sent-${q.id}`,
-          priority: du <= 14 ? "high" : "low",
-          message: `The final details form was sent to ${q.events.name} ${sentDaysAgo} day${sentDaysAgo !== 1 ? "s" : ""} ago and hasn't been opened yet.`,
+          id: `questionnaire-unsent-${q.id}`,
+          priority: du <= 14 ? "high" : "medium",
+          message: `${q.events.name} is ${inDays(q.events.event_date)} — the final details form hasn't been sent yet.`,
           link: `/events/${q.event_id}`,
-          actionLabel: "View Event →",
+          actionLabel: "Send Questionnaire →",
         });
+      }
+    } else if (q.status === "sent") {
+      if (q.opened_at) {
+        // Opened but not submitted
+        const openedDaysAgo = Math.floor((Date.now() - new Date(q.opened_at).getTime()) / 86_400_000);
+        if (openedDaysAgo >= 2) {
+          observations.push({
+            id: `questionnaire-opened-${q.id}`,
+            priority: du <= 14 ? "high" : "medium",
+            message: `The couple opened their final details form ${openedDaysAgo} day${openedDaysAgo !== 1 ? "s" : ""} ago — a gentle reminder might help them finish.`,
+            link: `/events/${q.event_id}`,
+            actionLabel: "View Event →",
+          });
+        }
+      } else {
+        // Sent but not opened after 3+ days
+        const sentDaysAgo = q.sent_at ? Math.floor((Date.now() - new Date(q.sent_at).getTime()) / 86_400_000) : null;
+        if (sentDaysAgo !== null && sentDaysAgo >= 3) {
+          observations.push({
+            id: `questionnaire-sent-${q.id}`,
+            priority: du <= 14 ? "high" : "low",
+            message: `The final details form was sent ${sentDaysAgo} day${sentDaysAgo !== 1 ? "s" : ""} ago and hasn't been opened yet.`,
+            link: `/events/${q.event_id}`,
+            actionLabel: "View Event →",
+          });
+        }
       }
     }
   }

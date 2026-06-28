@@ -6,6 +6,7 @@ import { DaySheetDocument } from "@/components/events/day-sheet/day-sheet-docume
 import { PrintButton } from "@/components/events/day-sheet/print-button";
 import { Button } from "@/components/ui/button";
 import { getEvent } from "@/lib/events/service";
+import { getQuestionnaire } from "@/lib/events/questionnaire";
 import { getCurrentVenue } from "@/lib/venue/service";
 
 type Props = { params: Promise<{ id: string }> };
@@ -28,7 +29,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
  */
 export default async function DaySheetPage({ params }: Props) {
   const { id } = await params;
-  const [event, venue] = await Promise.all([getEvent(id), getCurrentVenue()]);
+  const [event, venue, questionnaire] = await Promise.all([getEvent(id), getCurrentVenue(), getQuestionnaire(id)]);
   if (!event || !venue) notFound();
 
   return (
@@ -65,7 +66,7 @@ export default async function DaySheetPage({ params }: Props) {
         {/* Document — Letter-width preview on screen, full-page on print */}
         <div className="flex justify-center py-8 px-4 print:p-0 print:block">
           <div className="w-full max-w-[794px] overflow-hidden rounded-xl shadow-xl print:rounded-none print:shadow-none">
-            <DaySheetDocument event={event} venue={venue} />
+            <DaySheetDocument event={event} venue={venue} questionnaire={questionnaire} />
           </div>
         </div>
       </div>

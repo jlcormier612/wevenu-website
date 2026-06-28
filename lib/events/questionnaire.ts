@@ -17,6 +17,7 @@ export type Questionnaire = {
   accessKey: string;
   sentAt: string | null;
   openedAt: string | null;
+  threadId: string | null;
   ceremonyStartTime: string | null;
   receptionStartTime: string | null;
   ceremonyLocation: string | null;
@@ -38,7 +39,7 @@ export type Questionnaire = {
 
 type QRow = {
   id: string; venue_id: string; event_id: string; status: string;
-  access_key: string; sent_at: string | null; opened_at: string | null;
+  access_key: string; sent_at: string | null; opened_at: string | null; thread_id: string | null;
   ceremony_start_time: string | null; reception_start_time: string | null;
   ceremony_location: string | null; reception_location: string | null;
   final_guest_count: number | null; meal_notes: string | null;
@@ -53,7 +54,7 @@ function mapQ(r: QRow): Questionnaire {
   return {
     id: r.id, venueId: r.venue_id, eventId: r.event_id,
     status: r.status as QuestionnaireStatus,
-    accessKey: r.access_key, sentAt: r.sent_at, openedAt: r.opened_at,
+    accessKey: r.access_key, sentAt: r.sent_at, openedAt: r.opened_at, threadId: r.thread_id,
     ceremonyStartTime: r.ceremony_start_time, receptionStartTime: r.reception_start_time,
     ceremonyLocation: r.ceremony_location, receptionLocation: r.reception_location,
     finalGuestCount: r.final_guest_count, mealNotes: r.meal_notes,
@@ -80,6 +81,7 @@ export async function sendQuestionnaireToCouple(
   coupleEmail: string,
   coupleName: string,
   eventName: string,
+  threadId?: string,   // when sending via Messages, link the thread
 ): Promise<{ ok: boolean; formUrl?: string; message?: string }> {
   if (!isSupabaseConfigured) return { ok: false, message: "Backend not configured." };
   const venue = await getCurrentVenue();
@@ -104,11 +106,11 @@ export async function sendQuestionnaireToCouple(
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
   const formUrl = `${appUrl}/questionnaire/${accessKey}`;
 
-  // Mark as sent
+  // Mark as sent (and link thread if provided)
+  const patch: Record<string, unknown> = { status: "sent", sent_at: new Date().toISOString() };
+  if (threadId) patch.thread_id = threadId;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  await (supabase.from("event_questionnaires") as any).update({
-    status: "sent", sent_at: new Date().toISOString(),
-  }).eq("event_id", eventId).eq("venue_id", venue.id);
+  await (supabase.from("event_questionnaires") as any).update(patch).eq("event_id", eventId).eq("venue_id", venue.id);
 
   // Send email if Resend is configured
   if (process.env.RESEND_API_KEY && process.env.FROM_EMAIL) {

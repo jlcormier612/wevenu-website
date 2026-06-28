@@ -11,6 +11,7 @@ import { formatDate, formatTime } from "@/lib/events/constants";
 import { eventTypeLabel } from "@/lib/leads/constants";
 import type { Venue } from "@/lib/venue/types";
 import { vendorCategoryLabel } from "@/lib/vendors/constants";
+import type { Questionnaire } from "@/lib/events/questionnaire";
 
 function formatVendorTime(hhmm: string): string {
   const [h, m] = hhmm.split(":");
@@ -31,12 +32,31 @@ function Rule() {
   return <hr className="my-6 border-gray-100" />;
 }
 
+function DetailRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <span className="text-[10px] font-semibold uppercase tracking-wide text-gray-500">{label}</span>
+      <p className="text-sm text-gray-800">{value}</p>
+    </div>
+  );
+}
+
+function fmt12h(hhmm: string | null | undefined): string {
+  if (!hhmm) return "";
+  const [h, m] = hhmm.split(":").map(Number);
+  const ampm = h >= 12 ? "PM" : "AM";
+  const h12 = h % 12 || 12;
+  return m === 0 ? `${h12} ${ampm}` : `${h12}:${String(m).padStart(2, "0")} ${ampm}`;
+}
+
 export function DaySheetDocument({
   event,
   venue,
+  questionnaire = null,
 }: {
   event: EventWithDetails;
   venue: Venue;
+  questionnaire?: Questionnaire | null;
 }) {
   const startTime5 = event.startTime?.slice(0, 5) ?? null;
 
@@ -168,6 +188,56 @@ export function DaySheetDocument({
                   {v.vendorPhone && <span className="text-gray-400 text-xs">{v.vendorPhone}</span>}
                 </div>
               ))}
+          </div>
+        </div>
+      )}
+
+      {/* ── Final Details (from questionnaire) ─────────────────────────── */}
+      {questionnaire && questionnaire.status !== "draft" && (
+        <div className="px-10 py-2">
+          <div className="border-t border-gray-200 pt-4">
+            <SectionLabel>Final Details</SectionLabel>
+            <div className="grid gap-x-8 gap-y-2 sm:grid-cols-2 text-sm">
+              {questionnaire.ceremonyStartTime && (
+                <DetailRow label="Ceremony" value={fmt12h(questionnaire.ceremonyStartTime)} />
+              )}
+              {questionnaire.receptionStartTime && (
+                <DetailRow label="Reception" value={fmt12h(questionnaire.receptionStartTime)} />
+              )}
+              {questionnaire.finalGuestCount && (
+                <DetailRow label="Guest count" value={String(questionnaire.finalGuestCount)} />
+              )}
+              {questionnaire.processionalSong && (
+                <DetailRow label="Processional" value={questionnaire.processionalSong} />
+              )}
+              {questionnaire.firstDanceSong && (
+                <DetailRow label="First dance" value={questionnaire.firstDanceSong} />
+              )}
+              {questionnaire.recessionalSong && (
+                <DetailRow label="Recessional" value={questionnaire.recessionalSong} />
+              )}
+              {questionnaire.parentDances && (
+                <DetailRow label="Parent dances" value={questionnaire.parentDances} />
+              )}
+              {questionnaire.emergencyContactName && (
+                <DetailRow
+                  label="Emergency contact"
+                  value={`${questionnaire.emergencyContactName}${questionnaire.emergencyContactPhone ? ` · ${questionnaire.emergencyContactPhone}` : ""}`}
+                />
+              )}
+            </div>
+            {questionnaire.mealNotes && (
+              <div className="mt-2">
+                <span className="text-[10px] font-semibold uppercase tracking-wide text-gray-500">Meal notes</span>
+                <p className="text-sm text-gray-700 mt-0.5">{questionnaire.mealNotes}</p>
+              </div>
+            )}
+            {questionnaire.specialRequests && (
+              <div className="mt-2">
+                <span className="text-[10px] font-semibold uppercase tracking-wide text-gray-500">Special requests</span>
+                <p className="text-sm text-gray-700 mt-0.5">{questionnaire.specialRequests}</p>
+              </div>
+            )}
           </div>
         </div>
       )}

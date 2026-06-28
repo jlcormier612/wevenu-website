@@ -9,10 +9,11 @@
 
 import * as React from "react";
 
-import { ArrowUpRight, ChevronDown, ChevronRight, Mail, Plus } from "lucide-react";
+import { ArrowUpRight, ChevronDown, ChevronRight, ClipboardList, Loader2, Mail, Plus } from "lucide-react";
 import { toast } from "sonner";
 
 import { sendMessageAction } from "@/app/(app)/messaging/actions";
+import { sendQuestionnaireAction } from "@/app/(app)/events/[id]/questionnaire-actions";
 import { MessageCompose } from "@/components/messaging/message-compose";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -124,6 +125,13 @@ function ThreadRow({
   );
 }
 
+type QuestionnaireInfo = {
+  eventId: string;
+  eventName: string;
+  accessKey: string;
+  status: string; // draft | sent | submitted | reviewed
+};
+
 export function MessagesSection({
   entityType,
   entityId,
@@ -133,6 +141,7 @@ export function MessagesSection({
   prefillSubject,
   prefillBody,
   onPrefillUsed,
+  questionnaireInfo,
 }: {
   entityType: MessageEntityType;
   entityId: string;
@@ -142,14 +151,41 @@ export function MessagesSection({
   prefillSubject?: string;
   prefillBody?: string;
   onPrefillUsed?: () => void;
+  questionnaireInfo?: QuestionnaireInfo | null;
 }) {
   const [threads, setThreads] = React.useState(initialThreads);
   const [composing, setComposing] = React.useState(!!(prefillSubject || prefillBody));
+  const [sendingQuestionnaire, setSendingQuestionnaire] = React.useState(false);
 
   // When prefill arrives (from Luv bridge), open compose automatically
   React.useEffect(() => {
     if (prefillSubject || prefillBody) setComposing(true);
   }, [prefillSubject, prefillBody]);
+
+  async function handleSendQuestionnaire() {
+    if (!questionnaireInfo || !entityEmail) return;
+    setSendingQuestionnaire(true);
+    const appUrl = window.location.origin;
+    const formUrl = `${appUrl}/questionnaire/${questionnaireInfo.accessKey}`;
+    const body = `Hi ${entityName},\n\nYour final details form for ${questionnaireInfo.eventName} is ready!\n\nPlease take a few minutes to share your guest count, song selections, meal preferences, and any special requests:\n\n${formUrl}\n\nEverything goes directly to us — no PDFs, no attachments.\n\nWe can't wait for your event!`;
+
+    // Send as a normal message first to create the thread
+    const result = await sendMessageAction(entityType, entityId, {
+      toEmail: entityEmail, toName: entityName,
+      subject: `Final details form — ${questionnaireInfo.eventName}`,
+      body,
+    });
+
+    if (result.ok) {
+      // Link the thread to the questionnaire and mark as sent
+      await sendQuestionnaireAction(questionnaireInfo.eventId, entityEmail, entityName, questionnaireInfo.eventName, result.threadId);
+      toast.success("Questionnaire link sent!");
+      window.location.reload();
+    } else {
+      toast.error(result.message ?? "Could not send questionnaire link.");
+    }
+    setSendingQuestionnaire(false);
+  }
 
   function handleSent(result: SendResult) {
     setComposing(false);
@@ -173,6 +209,32 @@ export function MessagesSection({
           </Button>
         )}
       </div>
+
+      {/* Questionnaire shortcut */}
+      {questionnaireInfo && entityEmail && !composing &&
+        (questionnaireInfo.status === "draft" || questionnaireInfo.status === "sent") && (
+        <div className="flex items-center gap-2 rounded-lg border border-border bg-muted/30 px-3 py-2.5">
+          <ClipboardList className="h-4 w-4 shrink-0 text-muted-foreground" />
+          <div className="flex-1 min-w-0 space-y-0.5">
+            <p className="text-xs font-medium text-heading">
+              {questionnaireInfo.status === "sent" ? "Questionnaire already sent" : "Send final details questionnaire"}
+            </p>
+            <p className="text-xs text-muted-foreground">
+              {questionnaireInfo.status === "sent"
+                ? "The couple has been sent the form. You can send a reminder below."
+                : "Send the couple a link to complete their final details directly in Wevenu."}
+            </p>
+          </div>
+          {questionnaireInfo.status !== "sent" && (
+            <Button type="button" size="sm" variant="outline" onClick={handleSendQuestionnaire}
+              disabled={sendingQuestionnaire} className="shrink-0">
+              {sendingQuestionnaire
+                ? <><Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />Sending…</>
+                : <><ClipboardList className="mr-1 h-3.5 w-3.5" />Send form</>}
+            </Button>
+          )}
+        </div>
+      )}
 
       {/* Compose new message */}
       {composing && (

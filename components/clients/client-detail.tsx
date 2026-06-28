@@ -41,6 +41,7 @@ import type { Document } from "@/lib/documents/types";
 import type { ThreadWithMessages } from "@/lib/messaging/types";
 import type { ClientDraft } from "@/lib/luv/client-drafts";
 import type { EventReadiness } from "@/lib/luv/event-readiness";
+import type { Questionnaire } from "@/lib/events/questionnaire";
 
 // ---- Event Date Hero (client-side for real-time countdown) ------------------
 
@@ -76,7 +77,7 @@ function ContactCard({ name, email, phone, role }: { name: string; email?: strin
 
 // ---- Main component ---------------------------------------------------------
 
-export function ClientDetail({ client, invoices = [], documents = [], threads = [], luvDrafts = [], readiness = null }: { client: ClientWithDetails; invoices?: Invoice[]; documents?: Document[]; threads?: ThreadWithMessages[]; luvDrafts?: ClientDraft[]; readiness?: EventReadiness | null }) {
+export function ClientDetail({ client, invoices = [], documents = [], threads = [], luvDrafts = [], readiness = null, questionnaire = null }: { client: ClientWithDetails; invoices?: Invoice[]; documents?: Document[]; threads?: ThreadWithMessages[]; luvDrafts?: ClientDraft[]; readiness?: EventReadiness | null; questionnaire?: Questionnaire | null }) {
   const router = useRouter();
   const [statusPending, startStatus] = React.useTransition();
 
@@ -278,6 +279,12 @@ export function ClientDetail({ client, invoices = [], documents = [], threads = 
                 entityEmail={client.email}
                 entityName={clientDisplayName(client.firstName, client.lastName, client.partnerFirstName, client.partnerLastName)}
                 initialThreads={threads}
+                questionnaireInfo={questionnaire && client.linkedEventId ? {
+                  eventId: client.linkedEventId,
+                  eventName: `${clientDisplayName(client.firstName, client.lastName, client.partnerFirstName, client.partnerLastName)} — Event`,
+                  accessKey: questionnaire.accessKey,
+                  status: questionnaire.status,
+                } : null}
               />
             </CardContent>
           </Card>
