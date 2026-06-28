@@ -122,6 +122,9 @@ export async function POST(request: NextRequest) {
           await logSignalEvent(supabase, message.venue_id, thread.lead_id, signalType, {
             message_id: message.id, email_id: emailId,
           }).catch(() => {}); // non-blocking
+          // Immediately refresh interest score — email engagement is a real-time signal
+          const { computeAndSaveLeadScores } = await import("@/lib/leads/scores");
+          void computeAndSaveLeadScores(supabase, message.venue_id, thread.lead_id).catch(() => {});
         }
       }
     }

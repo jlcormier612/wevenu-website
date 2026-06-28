@@ -266,6 +266,27 @@ export async function computeAllScores(
   return { commitment, responsiveness, interest };
 }
 
+/**
+ * Compute and persist all three scores for a single lead.
+ * Called immediately after any milestone event to keep intelligence current.
+ * Uses the provided supabase client directly — no getCurrentVenue() call,
+ * so it works from webhooks and server actions alike.
+ */
+export async function computeAndSaveLeadScores(
+  supabase: DbClient,
+  venueId: string,
+  leadId: string,
+): Promise<void> {
+  const scores = await computeAllScores(supabase, venueId, leadId);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  await (supabase.from("leads") as any).update({
+    commitment_score:     scores.commitment,
+    responsiveness_score: scores.responsiveness,
+    interest_score:       scores.interest,
+    scores_updated_at:    new Date().toISOString(),
+  }).eq("id", leadId).eq("venue_id", venueId);
+}
+
 /** Refresh all three scores for all active leads in a venue. */
 export async function refreshAllLeadScores(
   supabase: DbClient,

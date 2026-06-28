@@ -173,5 +173,11 @@ export async function POST(request: NextRequest) {
     message_count: (thread?.message_count ?? 0) + 1,
   }).eq("id", threadId);
 
+  // Inbound reply = responsiveness signal — refresh scores immediately
+  if (entityType === "lead" && entityId) {
+    const { computeAndSaveLeadScores } = await import("@/lib/leads/scores");
+    void computeAndSaveLeadScores(supabase, venueId, entityId).catch(() => {});
+  }
+
   return NextResponse.json({ ok: true });
 }

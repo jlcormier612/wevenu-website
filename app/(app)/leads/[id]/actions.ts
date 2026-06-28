@@ -14,6 +14,7 @@ import {
   updateRelationshipFields,
   updateTask,
 } from "@/lib/leads/service";
+import { refreshLeadScore } from "@/lib/leads/scores";
 import type {
   LeadActionResult,
   RelationshipInput,
@@ -31,7 +32,10 @@ export async function updateLeadStatusAction(
   status: string,
 ): Promise<LeadActionResult> {
   const result = await updateLeadStatus(leadId, status);
-  if (result.ok) revalidateLead(leadId);
+  if (result.ok) {
+    revalidateLead(leadId);
+    void refreshLeadScore(leadId).catch(() => {}); // immediate score refresh on status change
+  }
   return result;
 }
 
@@ -110,6 +114,10 @@ export async function updateRelationshipAction(
   hints: { tourScheduled?: boolean; followUpSet?: boolean; contactedSet?: boolean },
 ): Promise<LeadActionResult> {
   const result = await updateRelationshipFields(leadId, input, hints);
-  if (result.ok) revalidateLead(leadId);
+  if (result.ok) {
+    revalidateLead(leadId);
+    // Tour scheduling is a commitment milestone — refresh scores immediately
+    if (hints.tourScheduled) void refreshLeadScore(leadId).catch(() => {});
+  }
   return result;
 }

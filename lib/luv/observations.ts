@@ -23,6 +23,7 @@ import { createClient } from "@/integrations/supabase/server";
 import type { LuvBriefingItem, LuvObservation } from "@/lib/luv/types";
 import type { LuvSettings } from "@/lib/luv/settings";
 import { computeInterestFromSignals } from "@/lib/leads/signals";
+import { generateMomentumLanguage } from "@/lib/leads/momentum";
 
 type DbClient = Awaited<ReturnType<typeof createClient>>;
 
@@ -368,6 +369,64 @@ export async function getLuvObservations(
           priority: "low",
           message: `${name} may be losing momentum.`,
           detail: `${daysSinceContact} days without contact.`,
+          link: `/leads/${lead.id}`,
+          actionLabel: "View Lead →",
+        });
+      }
+    }
+  }
+
+  // ── Momentum change observations ─────────────────────────────────────────
+  // Detect significant CHANGES in engagement — not just current state.
+  // Compares signal density in the last 7 days vs. the 7 days before that.
+
+  const fourteenDaysAgo = new Date(Date.now() - 14 * 86_400_000).toISOString();
+  const sevenDaysAgo   = new Date(Date.now() - 7  * 86_400_000).toISOString();
+
+  if (momentumLeads?.length) {
+    const leadIds = (momentumLeads as { id: string }[]).map((l) => l.id);
+    // Fetch all signals in the last 14 days for these leads
+    const { data: changeSignals } = await supabase.from("lead_signal_events")
+      .select("lead_id, signal_strength, occurred_at")
+      .in("lead_id", leadIds)
+      .gte("occurred_at", fourteenDaysAgo);
+
+    const recentByLead  = new Map<string, number>(); // last 7 days
+    const priorByLead   = new Map<string, number>(); // 7–14 days ago
+
+    for (const s of (changeSignals ?? []) as { lead_id: string; signal_strength: number; occurred_at: string }[]) {
+      const isRecent = s.occurred_at >= sevenDaysAgo;
+      const map = isRecent ? recentByLead : priorByLead;
+      map.set(s.lead_id, (map.get(s.lead_id) ?? 0) + s.signal_strength);
+    }
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    for (const lead of (momentumLeads as any[]) as { id: string; first_name: string; last_name: string; status: string; commitment_score: number; responsiveness_score: number; interest_score: number; last_contacted_at: string | null }[]) {
+      const name = [lead.first_name, lead.last_name].filter(Boolean).join(" ");
+      const recent = recentByLead.get(lead.id) ?? 0;
+      const prior  = priorByLead.get(lead.id) ?? 0;
+      const alreadyCovered = observations.some((o) => o.id.includes(lead.id));
+      if (alreadyCovered) continue;
+      if (lead.status === "won" || lead.status === "lost" || lead.status === "cancelled") continue;
+
+      // Significant INCREASE in signals this week
+      if (recent >= 4 && prior === 0) {
+        observations.push({
+          id: `momentum-surge-${lead.id}`,
+          priority: "high",
+          message: `${name}'s engagement has increased significantly this week.`,
+          detail: "Good timing to follow up while the interest is fresh.",
+          link: `/leads/${lead.id}`,
+          actionLabel: "View Lead →",
+        });
+      }
+      // Gone quiet after recent activity
+      else if (prior >= 3 && recent === 0) {
+        observations.push({
+          id: `momentum-drop-${lead.id}`,
+          priority: "medium",
+          message: `${name} has gone quiet after showing strong interest last week.`,
+          detail: "A brief check-in might help reignite the conversation.",
           link: `/leads/${lead.id}`,
           actionLabel: "View Lead →",
         });

@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 
+import { createClient } from "@/integrations/supabase/server";
 import {
   buildContractMergeData,
   cancelContract,
@@ -70,9 +71,27 @@ export async function previewMergedContentAction(opts: {
   }
 }
 
+/** Find the lead linked to a contract (via client) and refresh their scores. */
+async function refreshContractLeadScore(contractId: string): Promise<void> {
+  try {
+    const supabase = await createClient();
+    const { data } = await supabase.from("contracts")
+      .select("client_id").eq("id", contractId).maybeSingle<{ client_id: string | null }>();
+    if (!data?.client_id) return;
+    const { data: client } = await supabase.from("clients")
+      .select("lead_id").eq("id", data.client_id).maybeSingle<{ lead_id: string | null }>();
+    if (!client?.lead_id) return;
+    const { refreshLeadScore } = await import("@/lib/leads/scores");
+    await refreshLeadScore(client.lead_id);
+  } catch { /* non-blocking */ }
+}
+
 export async function sendContractAction(id: string): Promise<ContractActionResult> {
   const result = await sendContract(id);
-  if (result.ok) revalidatePath(`/contracts/${id}`);
+  if (result.ok) {
+    revalidatePath(`/contracts/${id}`);
+    void refreshContractLeadScore(id);
+  }
   return result;
 }
 

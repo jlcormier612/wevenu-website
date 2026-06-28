@@ -35,7 +35,24 @@ export async function updateLineItemAction(itemId: string, scheduleId: string, i
 
 export async function markPaidAction(itemId: string, scheduleId: string, input: MarkPaidInput): Promise<PaymentActionResult> {
   const result = await markLineItemPaid(itemId, scheduleId, input);
-  if (result.ok) revalidate(scheduleId);
+  if (result.ok) {
+    revalidate(scheduleId);
+    // Payment received = commitment milestone — find lead and refresh
+    void (async () => {
+      try {
+        const { createClient } = await import("@/integrations/supabase/server");
+        const supabase = await createClient();
+        const { data: sched } = await supabase.from("payment_schedules")
+          .select("client_id").eq("id", scheduleId).maybeSingle<{ client_id: string | null }>();
+        if (!sched?.client_id) return;
+        const { data: client } = await supabase.from("clients")
+          .select("lead_id").eq("id", sched.client_id).maybeSingle<{ lead_id: string | null }>();
+        if (!client?.lead_id) return;
+        const { refreshLeadScore } = await import("@/lib/leads/scores");
+        await refreshLeadScore(client.lead_id);
+      } catch { /* non-blocking */ }
+    })();
+  }
   return result;
 }
 

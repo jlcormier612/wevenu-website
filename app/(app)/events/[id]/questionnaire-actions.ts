@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { createClient } from "@/integrations/supabase/server";
 import { saveQuestionnaire, sendQuestionnaireToCouple, type Questionnaire } from "@/lib/events/questionnaire";
 
 export async function saveQuestionnaireAction(
@@ -9,7 +10,25 @@ export async function saveQuestionnaireAction(
   submit = false,
 ): Promise<{ ok: boolean; message?: string }> {
   const result = await saveQuestionnaire(eventId, fields, submit);
-  if (result.ok) revalidatePath(`/events/${eventId}`);
+  if (result.ok) {
+    revalidatePath(`/events/${eventId}`);
+    // Questionnaire submitted = commitment milestone — refresh linked lead's scores
+    if (submit) {
+      void (async () => {
+        try {
+          const supabase = await createClient();
+          const { data: ev } = await supabase.from("events")
+            .select("client_id").eq("id", eventId).maybeSingle<{ client_id: string | null }>();
+          if (!ev?.client_id) return;
+          const { data: client } = await supabase.from("clients")
+            .select("lead_id").eq("id", ev.client_id).maybeSingle<{ lead_id: string | null }>();
+          if (!client?.lead_id) return;
+          const { refreshLeadScore } = await import("@/lib/leads/scores");
+          await refreshLeadScore(client.lead_id);
+        } catch { /* non-blocking */ }
+      })();
+    }
+  }
   return result;
 }
 
