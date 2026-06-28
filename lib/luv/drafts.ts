@@ -45,7 +45,13 @@ function mapDraft(r: DraftRow): LuvDraft {
 
 // ---- Prompt builder --------------------------------------------------------
 
-function buildFollowUpPrompt(lead: Lead, venueName: string, ownerName: string | null): string {
+const TONE_INSTRUCTION: Record<string, string> = {
+  warm:         "Write in a warm, friendly, personal tone — like a real person at a boutique venue who genuinely cares.",
+  professional: "Write in a professional, polished, and respectful tone appropriate for a business context.",
+  formal:       "Write in a formal, precise tone — best for corporate clients or high-profile events.",
+};
+
+function buildFollowUpPrompt(lead: Lead, venueName: string, ownerName: string | null, tone = "warm"): string {
   const coupleName = [lead.firstName, lead.partnerFirstName].filter(Boolean).join(" and ");
   const daysSinceContact = lead.lastContactedAt
     ? Math.floor((Date.now() - new Date(lead.lastContactedAt).getTime()) / 86_400_000)
@@ -69,13 +75,14 @@ ${daysSinceInquiry != null ? `- Days since initial inquiry: ${daysSinceInquiry}`
 ${daysSinceContact != null ? `- Days since last contact: ${daysSinceContact}` : ""}
 ${lead.inquiryMessage ? `- Their original message: "${lead.inquiryMessage}"` : ""}
 
+**Tone:** ${TONE_INSTRUCTION[tone] ?? TONE_INSTRUCTION.warm}
+
 **How to write this email:**
-- Address them by first name(s) — warmly, like you know them a little
+- Address them by first name(s) — like you know them a little
 - Keep it short: 2–3 paragraphs maximum
 - Acknowledge where they are in the process naturally
 - Offer one gentle, specific next step (schedule a tour, answer questions, arrange a call)
 - Do NOT be pushy, salesy, or use corporate/template-sounding language
-- Sound like a real person at a boutique venue who genuinely cares
 - The subject line should be friendly, not promotional
 
 Format your response EXACTLY as:
@@ -153,7 +160,10 @@ export async function generateFollowUpDraft(lead: Lead): Promise<
       .select("full_name").eq("venue_id", venue.id).eq("is_owner", true).maybeSingle<{ full_name: string }>();
     const ownerName = staff?.full_name?.split(" ")[0] ?? null;
 
-    const prompt = buildFollowUpPrompt(lead, venue.name, ownerName);
+    const { data: luvSettingsRow } = await supabase.from("luv_settings")
+      .select("preferred_tone, drafting_enabled").eq("venue_id", venue.id).maybeSingle<{ preferred_tone: string; drafting_enabled: boolean }>();
+    if (luvSettingsRow?.drafting_enabled === false) return { ok: false, message: "Luv drafting is disabled in Settings." };
+    const prompt = buildFollowUpPrompt(lead, venue.name, ownerName, luvSettingsRow?.preferred_tone ?? "warm");
     const raw = await callClaude(prompt);
     const { subject, body } = parseEmailDraft(raw);
 

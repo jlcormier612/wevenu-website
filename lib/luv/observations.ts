@@ -21,6 +21,7 @@
 
 import { createClient } from "@/integrations/supabase/server";
 import type { LuvObservation } from "@/lib/luv/types";
+import type { LuvSettings } from "@/lib/luv/settings";
 
 type DbClient = Awaited<ReturnType<typeof createClient>>;
 
@@ -41,7 +42,9 @@ export async function getLuvObservations(
   supabase: DbClient,
   venueId: string,
   today: string,
+  settings?: Pick<LuvSettings, "observationsEnabled">,
 ): Promise<LuvObservation[]> {
+  if (settings?.observationsEnabled === false) return [];
   const observations: LuvObservation[] = [];
 
   const soon21 = new Date(Date.now() + 21 * 86_400_000).toISOString().slice(0, 10);
@@ -58,6 +61,7 @@ export async function getLuvObservations(
     awaitingSignaturesRes,
     expiringDocsRes,
     newNoFollowUpRes,
+    expiringContractsRes,
   ] = await Promise.all([
     // 1+2: Events within 21 days (not cancelled)
     supabase.from("events")
@@ -113,6 +117,16 @@ export async function getLuvObservations(
       .is("follow_up_date", null)
       .lt("created_at", twoDaysAgo)
       .order("created_at"),
+
+    // 7. Contracts expiring within 30 days
+    supabase.from("contracts")
+      .select("id, title, expires_at, clients(first_name, last_name)")
+      .eq("venue_id", venueId)
+      .not("expires_at", "is", null)
+      .not("status", "in", "(cancelled,void)")
+      .gte("expires_at", today)
+      .lte("expires_at", soon30)
+      .order("expires_at"),
   ]);
 
   // ── 1 & 2: Events approaching without timeline / floor plan ──────────────
@@ -210,6 +224,23 @@ export async function getLuvObservations(
       message: `${name} reached out ${days} day${days !== 1 ? "s" : ""} ago — they might appreciate hearing from you.`,
       link: `/leads/${lead.id}`,
       actionLabel: "Set Follow-up →",
+    });
+  }
+
+  // ── 7: Expiring contracts ─────────────────────────────────────────────────
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  for (const c of (expiringContractsRes.data ?? []) as any[]) {
+    const daysUntil = Math.round((new Date(c.expires_at + "T12:00:00").getTime() - Date.now()) / 86_400_000);
+    const clientName = c.clients ? `${c.clients.first_name} ${c.clients.last_name}` : null;
+    observations.push({
+      id: `contract-expiry-${c.id}`,
+      priority: daysUntil <= 7 ? "high" : "medium",
+      message: clientName
+        ? `The contract for ${clientName} expires ${inDays(c.expires_at)}.`
+        : `"${c.title}" expires ${inDays(c.expires_at)}.`,
+      detail: daysUntil <= 7 ? "This may need renewal or follow-up." : undefined,
+      link: "/contracts",
+      actionLabel: "View Contract →",
     });
   }
 

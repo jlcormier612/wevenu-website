@@ -9,6 +9,7 @@
 import { createClient } from "@/integrations/supabase/server";
 import { isSupabaseConfigured } from "@/lib/env";
 import { getLuvObservations } from "@/lib/luv/observations";
+import { getLuvSettings } from "@/lib/luv/settings";
 import { LEAD_STATUSES } from "@/lib/leads/constants";
 import type { Lead } from "@/lib/leads/types";
 import { getCurrentVenue } from "@/lib/venue/service";
@@ -354,7 +355,8 @@ export async function getDashboardData(): Promise<DashboardData | null> {
   const ownerFirstName = ownerFullName ? ownerFullName.split(" ")[0] : null;
 
   // Luv observations — run after primary data (non-blocking; returns [] on error)
-  const luvObservations = await getLuvObservations(supabase, venue.id, today).catch(() => []);
+  const luvSettings = await getLuvSettings().catch(() => null);
+  const luvObservations = await getLuvObservations(supabase, venue.id, today, luvSettings ?? undefined).catch(() => []);
 
   return {
     venueName: venue.name,

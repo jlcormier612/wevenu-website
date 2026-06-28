@@ -44,6 +44,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DateHoldsSection } from "@/components/availability/date-holds-section";
 import { DocumentsSection } from "@/components/documents/documents-section";
 import { LuvDraftPanel } from "@/components/luv/luv-draft-panel";
+import { LuvHeart } from "@/components/dashboard/luv-widget";
 import {
   LEAD_STATUSES,
   eventTypeLabel,
@@ -253,8 +254,8 @@ export function LeadDetail({ lead, holds = [], spaces = [], documents = [], luvD
               <span className="ml-1 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground">{documents.length}</span>
             )}
           </TabsTrigger>
-          <TabsTrigger value="luv" className="gap-1">
-            <span style={{ color: "#D8A7AA" }}>♥</span> Luv
+          <TabsTrigger value="luv" className="gap-1.5">
+            <LuvHeart size={12} /> Luv
           </TabsTrigger>
         </TabsList>
 
@@ -408,7 +409,7 @@ export function LeadDetail({ lead, holds = [], spaces = [], documents = [], luvD
         <TabsContent value="luv">
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">♥ Luv</CardTitle>
+              <CardTitle className="text-base flex items-center gap-1.5"><LuvHeart size={14} /> Luv</CardTitle>
               <CardDescription>Your venue assistant can help draft a follow-up. You review, edit, and send it yourself.</CardDescription>
             </CardHeader>
             <CardContent>

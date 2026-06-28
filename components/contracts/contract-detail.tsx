@@ -106,6 +106,11 @@ export function ContractDetail({ contract }: { contract: ContractWithDetails }) 
             )}
             {contract.signedAt && <><span className="text-border">·</span><span className="text-success">Signed {formatContractDate(contract.signedAt.slice(0, 10))}</span></>}
             {contract.sentAt && !contract.signedAt && <><span className="text-border">·</span><span>Sent {formatContractDate(contract.sentAt.slice(0, 10))}</span></>}
+            {contract.expiresAt && (() => {
+              const days = Math.floor((new Date(contract.expiresAt + "T12:00:00").getTime() - Date.now()) / 86_400_000);
+              const expired = days < 0;
+              return <><span className="text-border">·</span><span className={expired ? "text-destructive font-medium" : days <= 14 ? "text-warning-foreground font-medium" : ""}>{expired ? `Expired ${Math.abs(days)}d ago` : `Expires ${formatContractDate(contract.expiresAt)}`}</span></>;
+            })()}
           </div>
         </div>
         <div className="flex shrink-0 flex-wrap items-center gap-2">

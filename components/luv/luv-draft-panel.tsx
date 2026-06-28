@@ -10,13 +10,14 @@
 
 import * as React from "react";
 
-import { Check, ClipboardCopy, Heart, Loader2, RefreshCw, Trash2 } from "lucide-react";
+import { Check, ChevronDown, ChevronRight, ClipboardCopy, Loader2, RefreshCw, RotateCcw, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 import {
   generateFollowUpDraftAction,
   updateDraftStatusAction,
 } from "@/app/(app)/leads/[id]/luv-actions";
+import { LuvHeart } from "@/components/dashboard/luv-widget";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
@@ -25,10 +26,6 @@ import type { LuvDraft } from "@/lib/luv/drafts";
 import type { Lead } from "@/lib/leads/types";
 
 const DUSTY_ROSE = "#D8A7AA";
-
-function LuvHeart({ size = 14 }: { size?: number }) {
-  return <Heart aria-hidden style={{ width: size, height: size, color: DUSTY_ROSE, fill: DUSTY_ROSE }} className="shrink-0" />;
-}
 
 function DraftCard({
   draft,
@@ -114,6 +111,43 @@ function DraftCard({
   );
 }
 
+function PastDraftRow({
+  draft, leadId, onRestore,
+}: { draft: LuvDraft; leadId: string; onRestore: (d: LuvDraft) => void }) {
+  const [expanded, setExpanded] = React.useState(false);
+  const [restoring, startRestore] = React.useTransition();
+  const date = new Date(draft.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+
+  function handleRestore() {
+    startRestore(async () => {
+      await updateDraftStatusAction(draft.id, leadId, "accepted");
+      onRestore({ ...draft, status: "pending_review" });
+    });
+  }
+
+  return (
+    <div className="rounded-lg border border-border bg-card">
+      <button type="button" onClick={() => setExpanded(!expanded)}
+        className="flex w-full items-center gap-2 px-3 py-2.5 text-left hover:bg-muted/30 transition-colors rounded-lg">
+        {expanded ? <ChevronDown className="h-3.5 w-3.5 shrink-0 text-muted-foreground" /> : <ChevronRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />}
+        <span className="flex-1 text-xs text-muted-foreground truncate">
+          {draft.subject ?? draft.content.slice(0, 60) + "…"}
+        </span>
+        <span className="shrink-0 text-[10px] text-muted-foreground">{date}</span>
+      </button>
+      {expanded && (
+        <div className="border-t border-border px-3 pb-3 pt-2 space-y-2">
+          {draft.subject && <p className="text-xs font-medium text-heading">Subject: {draft.subject}</p>}
+          <p className="text-xs text-muted-foreground whitespace-pre-line leading-relaxed">{draft.content}</p>
+          <Button type="button" variant="outline" size="sm" onClick={handleRestore} disabled={restoring}>
+            {restoring ? <><Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />Restoring…</> : <><RotateCcw className="mr-1 h-3.5 w-3.5" />Restore to review</>}
+          </Button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function LuvDraftPanel({
   lead,
   initialDrafts,
@@ -121,17 +155,17 @@ export function LuvDraftPanel({
   lead: Lead;
   initialDrafts: LuvDraft[];
 }) {
-  const [drafts, setDrafts] = React.useState(
-    initialDrafts.filter((d) => d.status === "pending_review"),
-  );
+  const [allDrafts, setAllDrafts] = React.useState(initialDrafts);
   const [generating, startGenerate] = React.useTransition();
-  const isEnabled = !!(process.env.NEXT_PUBLIC_LUV_DRAFTS_ENABLED ?? true);
+
+  const pendingDrafts = allDrafts.filter((d) => d.status === "pending_review");
+  const pastDrafts = allDrafts.filter((d) => d.status !== "pending_review");
 
   function handleGenerate() {
     startGenerate(async () => {
       const result = await generateFollowUpDraftAction(lead);
       if (result.ok) {
-        setDrafts((p) => [result.draft, ...p]);
+        setAllDrafts((p) => [result.draft, ...p]);
         toast.success("Luv drafted a follow-up for you to review.");
       } else {
         toast.error(result.message ?? "Luv couldn't generate a draft right now.");
@@ -140,12 +174,16 @@ export function LuvDraftPanel({
   }
 
   function handleDiscard(id: string) {
-    setDrafts((p) => p.filter((d) => d.id !== id));
+    setAllDrafts((p) => p.map((d) => d.id === id ? { ...d, status: "discarded" as const } : d));
+  }
+
+  function handleRestore(updated: LuvDraft) {
+    setAllDrafts((p) => p.map((d) => d.id === updated.id ? updated : d));
   }
 
   return (
     <div className="space-y-5">
-      {/* Intro */}
+      {/* Generate button */}
       <div className="rounded-xl border border-[#D8A7AA]/25 bg-[#D8A7AA]/5 px-4 py-4">
         <div className="flex items-start gap-3">
           <LuvHeart size={16} />
@@ -157,23 +195,16 @@ export function LuvDraftPanel({
             </p>
           </div>
         </div>
-        <div className="mt-3">
-          <Button
-            type="button"
-            size="sm"
-            onClick={handleGenerate}
-            disabled={generating}
+        <div className="mt-3 flex items-center gap-2">
+          <Button type="button" size="sm" onClick={handleGenerate} disabled={generating}
             style={{ borderColor: `${DUSTY_ROSE}60`, backgroundColor: `${DUSTY_ROSE}15`, color: "#8B5A5C" }}
-            className="hover:opacity-90"
-          >
-            {generating ? (
-              <><Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />Luv is drafting…</>
-            ) : (
-              <><LuvHeart size={12} /><span className="ml-1.5">Draft a follow-up email</span></>
-            )}
+            className="hover:opacity-90">
+            {generating
+              ? <><Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />Luv is drafting…</>
+              : <><LuvHeart size={12} /><span className="ml-1.5">Draft a follow-up email</span></>}
           </Button>
-          {drafts.length > 0 && (
-            <Button type="button" variant="ghost" size="sm" className="ml-2 text-muted-foreground"
+          {pendingDrafts.length > 0 && (
+            <Button type="button" variant="ghost" size="sm" className="text-muted-foreground"
               onClick={handleGenerate} disabled={generating}>
               <RefreshCw className="mr-1 h-3.5 w-3.5" /> Draft another
             </Button>
@@ -181,17 +212,26 @@ export function LuvDraftPanel({
         </div>
       </div>
 
-      {/* Generated drafts */}
-      {drafts.length > 0 && (
+      {/* Pending drafts */}
+      {pendingDrafts.length > 0 && (
         <div className="space-y-4">
           <Separator />
-          {drafts.map((draft) => (
-            <DraftCard
-              key={draft.id}
-              draft={draft}
-              leadId={lead.id}
-              onDiscard={handleDiscard}
-            />
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Pending review</p>
+          {pendingDrafts.map((draft) => (
+            <DraftCard key={draft.id} draft={draft} leadId={lead.id} onDiscard={handleDiscard} />
+          ))}
+        </div>
+      )}
+
+      {/* Past drafts (accepted + discarded) */}
+      {pastDrafts.length > 0 && (
+        <div className="space-y-2">
+          <Separator />
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            Draft history ({pastDrafts.length})
+          </p>
+          {pastDrafts.map((draft) => (
+            <PastDraftRow key={draft.id} draft={draft} leadId={lead.id} onRestore={handleRestore} />
           ))}
         </div>
       )}

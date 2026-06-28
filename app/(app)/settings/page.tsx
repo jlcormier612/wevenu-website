@@ -3,6 +3,8 @@ import type { Metadata } from "next";
 import { CapacityRulesSection } from "@/components/availability/capacity-rules-section";
 import { VenueSpacesSection } from "@/components/availability/venue-spaces-section";
 import { PageHeader } from "@/components/shell/module-placeholder";
+import { LuvSettingsSection } from "@/components/settings/luv-settings-section";
+import { LuvHeart } from "@/components/dashboard/luv-widget";
 import { StripeConnectSection } from "@/components/settings/stripe-connect-section";
 import { VenueSettings } from "@/components/settings/venue-settings";
 import {
@@ -13,6 +15,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { getCapacityRules, getSpaces } from "@/lib/availability/service";
+import { getLuvSettings } from "@/lib/luv/settings";
 import { getCurrentVenue, getVenueSettings } from "@/lib/venue/service";
 
 export const metadata: Metadata = { title: "Settings" };
@@ -24,8 +27,8 @@ export const metadata: Metadata = { title: "Settings" };
  * Route is protected by the (app) layout (venue existence already confirmed).
  */
 export default async function SettingsPage() {
-  const [settings, venue, spaces, capacityRules] = await Promise.all([
-    getVenueSettings(), getCurrentVenue(), getSpaces(), getCapacityRules(),
+  const [settings, venue, spaces, capacityRules, luvSettings] = await Promise.all([
+    getVenueSettings(), getCurrentVenue(), getSpaces(), getCapacityRules(), getLuvSettings(),
   ]);
 
   if (!settings) {
@@ -62,6 +65,21 @@ export default async function SettingsPage() {
         </CardHeader>
         <CardContent>
           <VenueSpacesSection initialSpaces={spaces} />
+        </CardContent>
+      </Card>
+
+      {/* ── Luv ────────────────────────────────────────────────────── */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-1.5">
+            <LuvHeart size={14} /> Luv — Venue Assistant
+          </CardTitle>
+          <CardDescription>
+            Control how Luv helps you and how much autonomy she has.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <LuvSettingsSection initialSettings={luvSettings} />
         </CardContent>
       </Card>
 

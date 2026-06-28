@@ -4,10 +4,10 @@ import * as React from "react";
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Printer, Receipt } from "lucide-react";
+import { ArrowLeft, Mail, Printer, Receipt } from "lucide-react";
 import { toast } from "sonner";
 
-import { updateInvoiceStatusAction } from "@/app/(app)/invoices/actions";
+import { sendInvoiceEmailAction, updateInvoiceStatusAction } from "@/app/(app)/invoices/actions";
 import { InvoiceLineItemsEditor } from "@/components/invoices/invoice-line-items-editor";
 import { InvoiceStatusBadge } from "@/components/invoices/invoice-status-badge";
 import { Button } from "@/components/ui/button";
@@ -30,6 +30,7 @@ export function InvoiceDetail({ invoice, packages }: { invoice: InvoiceWithLineI
   const router = useRouter();
   const [status, setStatus] = React.useState<InvoiceStatus>(invoice.status);
   const [pending, startTransition] = React.useTransition();
+  const [emailPending, startEmail] = React.useTransition();
   const transition = STATUS_TRANSITIONS[status];
 
   function handleStatusChange(next: InvoiceStatus) {
@@ -63,6 +64,21 @@ export function InvoiceDetail({ invoice, packages }: { invoice: InvoiceWithLineI
           <Button type="button" variant="outline" size="sm" render={<Link href={`/invoices/${invoice.id}/print`} target="_blank" />}>
             <Printer className="mr-1 h-3.5 w-3.5" /> Print
           </Button>
+          {invoice.clientId && status !== "void" && (
+            <Button type="button" variant="outline" size="sm" disabled={emailPending}
+              onClick={() => startEmail(async () => {
+                const result = await sendInvoiceEmailAction(invoice.id);
+                if (!result.ok) { toast.error(result.message ?? "Could not send."); return; }
+                if ("method" in result && result.method === "mailto" && result.mailtoUrl) {
+                  window.open(result.mailtoUrl, "_blank");
+                  toast.success("Opening your email client…");
+                } else {
+                  toast.success("Invoice emailed successfully.");
+                }
+              })}>
+              {emailPending ? <><span className="mr-1">⋯</span>Sending…</> : <><Mail className="mr-1 h-3.5 w-3.5" /> Email</>}
+            </Button>
+          )}
           {status !== "void" && status !== "paid" && (
             <Button type="button" variant="outline" size="sm"
               onClick={() => { if (confirm("Void this invoice?")) handleStatusChange("void"); }}
