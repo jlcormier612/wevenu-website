@@ -145,11 +145,16 @@ export async function completeEventTask(
   venueId: string,
   taskId: string,
   completedBy = "coordinator",
+  sourceType?: string,
+  sourceId?: string,
 ): Promise<void> {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  await (client.from("event_tasks") as any).update({
+  const patch: Record<string, unknown> = {
     status: "complete", completed_at: new Date().toISOString(), completed_by: completedBy,
-  }).eq("id", taskId).eq("venue_id", venueId);
+  };
+  if (sourceType) patch.source_type = sourceType;
+  if (sourceId) patch.source_id = sourceId;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  await (client.from("event_tasks") as any).update(patch).eq("id", taskId).eq("venue_id", venueId);
   // Unblock dependent tasks
   await unblockedependents(client, venueId, taskId);
 }
@@ -172,13 +177,15 @@ export async function autoCompleteTrigger(
   venueId: string,
   eventId: string,
   trigger: string,
+  sourceType?: string,
+  sourceId?: string,
 ): Promise<void> {
   const { data } = await client.from("event_tasks").select("id")
     .eq("venue_id", venueId).eq("event_id", eventId)
     .eq("auto_complete_trigger", trigger)
     .in("status", ["pending", "blocked", "overdue"]);
   for (const { id } of (data ?? []) as { id: string }[]) {
-    await completeEventTask(client, venueId, id, "system");
+    await completeEventTask(client, venueId, id, "system", sourceType, sourceId);
   }
 }
 

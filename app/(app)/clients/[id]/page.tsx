@@ -9,6 +9,7 @@ import { getInvoicesForClient } from "@/lib/invoices/service";
 import { getThreadsForEntity } from "@/lib/messaging/service";
 import { getClientDrafts } from "@/lib/luv/client-drafts";
 import { computeEventReadiness } from "@/lib/luv/event-readiness";
+import { getEventReadiness } from "@/lib/playbooks/service";
 import { getQuestionnaire } from "@/lib/events/questionnaire";
 import { createClient } from "@/integrations/supabase/server";
 import { getCurrentVenue } from "@/lib/venue/service";
@@ -33,7 +34,11 @@ export default async function ClientDetailPage({ params }: Props) {
   // Compute event readiness (Planning Progress)
   const venue = await getCurrentVenue();
   const supabase = await createClient();
-  const readiness = venue
+  // Try playbook-driven readiness first; fall back to hardcoded checklist
+  const playbookReadiness = await getEventReadiness(id).catch(() => null);
+  const readiness = playbookReadiness
+    ? null  // LuvClientPanel will use playbookReadiness instead
+    : venue
     ? await computeEventReadiness(supabase, venue.id, id).catch(() => null)
     : null;
 
@@ -42,5 +47,5 @@ export default async function ClientDetailPage({ params }: Props) {
     ? await getQuestionnaire(client.linkedEventId).catch(() => null)
     : null;
 
-  return <ClientDetail client={client} invoices={invoices} documents={documents} threads={threads} luvDrafts={luvDrafts} readiness={readiness} questionnaire={questionnaire} />;
+  return <ClientDetail client={client} invoices={invoices} documents={documents} threads={threads} luvDrafts={luvDrafts} readiness={readiness} questionnaire={questionnaire} playbookReadiness={playbookReadiness} />;
 }

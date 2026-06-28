@@ -12,7 +12,11 @@ import Link from "next/link";
 import { ArrowRight, CheckCircle, AlertTriangle, Circle } from "lucide-react";
 
 import { LuvHeart } from "@/components/dashboard/luv-widget";
-import type { EventReadiness, ReadinessItem } from "@/lib/luv/event-readiness";
+import type { ReadinessItem } from "@/lib/luv/event-readiness";
+
+// Accept both legacy (lib/luv) and playbook (lib/playbooks) readiness shapes
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type AnyReadiness = any;
 
 const DUSTY_ROSE = "#D8A7AA";
 
@@ -78,10 +82,11 @@ function ChecklistItem({ item }: { item: ReadinessItem }) {
   );
 }
 
-export function LuvEventBriefing({ readiness }: { readiness: EventReadiness }) {
+export function LuvEventBriefing({ readiness }: { readiness: AnyReadiness }) {
   const { eventName, daysUntil, score, completedCount, totalCount, items } = readiness;
 
-  const incompleteItems = items.filter((i) => i.status !== "complete" && i.actionLabel);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const incompleteItems = (items as any[]).filter((i: any) => i.status !== "complete" && i.actionLabel);
   const isClose = daysUntil <= 30;
 
   return (
@@ -129,8 +134,9 @@ export function LuvEventBriefing({ readiness }: { readiness: EventReadiness }) {
 
       {/* Checklist */}
       <div className="divide-y divide-border/50">
-        {items.map((item) => (
-          <ChecklistItem key={item.key} item={item} />
+        {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+        {(items as any[]).map((item: any) => (
+          <ChecklistItem key={item.key ?? item.id} item={item} />
         ))}
       </div>
 
@@ -147,7 +153,8 @@ export function LuvEventBriefing({ readiness }: { readiness: EventReadiness }) {
             </p>
           </div>
           <div className="space-y-1.5">
-            {incompleteItems.slice(0, 4).map((item) => (
+            {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+            {incompleteItems.slice(0, 4).map((item: any) => (
               <Link
                 key={item.key}
                 href={item.actionLink ?? "#"}

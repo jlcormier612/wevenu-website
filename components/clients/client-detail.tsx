@@ -41,6 +41,7 @@ import type { Document } from "@/lib/documents/types";
 import type { ThreadWithMessages } from "@/lib/messaging/types";
 import type { ClientDraft } from "@/lib/luv/client-drafts";
 import type { EventReadiness } from "@/lib/luv/event-readiness";
+import type { EventReadiness as PlaybookEventReadiness } from "@/lib/playbooks/types";
 import type { Questionnaire } from "@/lib/events/questionnaire";
 
 // ---- Event Date Hero (client-side for real-time countdown) ------------------
@@ -77,7 +78,7 @@ function ContactCard({ name, email, phone, role }: { name: string; email?: strin
 
 // ---- Main component ---------------------------------------------------------
 
-export function ClientDetail({ client, invoices = [], documents = [], threads = [], luvDrafts = [], readiness = null, questionnaire = null }: { client: ClientWithDetails; invoices?: Invoice[]; documents?: Document[]; threads?: ThreadWithMessages[]; luvDrafts?: ClientDraft[]; readiness?: EventReadiness | null; questionnaire?: Questionnaire | null }) {
+export function ClientDetail({ client, invoices = [], documents = [], threads = [], luvDrafts = [], readiness = null, questionnaire = null, playbookReadiness = null }: { client: ClientWithDetails; invoices?: Invoice[]; documents?: Document[]; threads?: ThreadWithMessages[]; luvDrafts?: ClientDraft[]; readiness?: EventReadiness | null; questionnaire?: Questionnaire | null; playbookReadiness?: PlaybookEventReadiness | null }) {
   const router = useRouter();
   const [statusPending, startStatus] = React.useTransition();
 
@@ -346,7 +347,7 @@ export function ClientDetail({ client, invoices = [], documents = [], threads = 
             <CardContent>
               <LuvClientPanel
                 clientId={client.id}
-                readiness={readiness}
+                readiness={playbookReadiness ?? readiness}
                 initialDrafts={luvDrafts}
               />
             </CardContent>

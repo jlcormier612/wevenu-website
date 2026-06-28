@@ -454,6 +454,38 @@ export async function getLuvObservations(
     }
   }
 
+  // ── Blocked playbook tasks ────────────────────────────────────────────────
+  // Surfaces dependency-blocked tasks for approaching events.
+  // "The Carter Wedding is blocked because the questionnaire hasn't been submitted."
+  const { data: blockedTasks } = await supabase.from("event_tasks")
+    .select("id, title, event_id, depends_on_event_task_id, events(name, event_date)")
+    .eq("venue_id", venueId)
+    .eq("status", "blocked")
+    .eq("is_required", true)
+    .gte("events.event_date", today)
+    .lte("events.event_date", soon30)
+    .order("events.event_date");
+
+  if (blockedTasks?.length) {
+    // Group by event — only surface the first blocker per event to avoid noise
+    const seenEvents = new Set<string>();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    for (const bt of (blockedTasks as any[]).filter((b) => b.events)) {
+      if (seenEvents.has(bt.event_id)) continue;
+      seenEvents.add(bt.event_id);
+      const du = Math.ceil((new Date(bt.events.event_date + "T12:00:00").getTime() - Date.now()) / 86_400_000);
+      observations.push({
+        id: `blocked-task-${bt.id}`,
+        priority: du <= 14 ? "high" : "medium",
+        message: `${bt.events.name} has a blocked planning task.`,
+        detail: `"${bt.title}" is waiting on its prerequisite to be completed.`,
+        link: `/events/${bt.event_id}`,
+        actionLabel: "View Playbook →",
+        recommendation: { label: "Review the blocked task", link: `/events/${bt.event_id}`, type: "navigate" },
+      });
+    }
+  }
+
   // Sort by priority (high → medium → low), cap at 8
   const order: Record<LuvObservation["priority"], number> = { high: 0, medium: 1, low: 2 };
   return observations

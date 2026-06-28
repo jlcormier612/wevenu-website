@@ -48,6 +48,13 @@ export async function deleteTemplate_(id: string): Promise<PlaybookActionResult>
 
 // ---- Template Tasks ----------------------------------------------------------
 
+export async function getTemplate(id: string): Promise<PlaybookTemplate | null> {
+  if (!isSupabaseConfigured) return null;
+  const venue = await getCurrentVenue();
+  if (!venue) return null;
+  return repo.getTemplate(await createClient(), venue.id, id);
+}
+
 export async function getTemplateTasks(templateId: string): Promise<PlaybookTask[]> {
   if (!isSupabaseConfigured) return [];
   const venue = await getCurrentVenue();
@@ -118,8 +125,10 @@ export async function triggerAutoComplete(
   venueId: string,
   eventId: string,
   trigger: string,
+  sourceType?: string,
+  sourceId?: string,
 ): Promise<void> {
-  await repo.autoCompleteTrigger(supabase, venueId, eventId, trigger);
+  await repo.autoCompleteTrigger(supabase, venueId, eventId, trigger, sourceType, sourceId);
 }
 
 // ---- Event Readiness (replaces hardcoded computeEventReadiness) -------------

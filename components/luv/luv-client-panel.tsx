@@ -23,7 +23,10 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
 import type { ClientDraft, ClientDraftType } from "@/lib/luv/client-drafts";
-import type { EventReadiness } from "@/lib/luv/event-readiness";
+import type { EventReadiness as LegacyReadiness } from "@/lib/luv/event-readiness";
+import type { EventReadiness as PlaybookReadiness } from "@/lib/playbooks/types";
+
+type AnyReadiness = LegacyReadiness | PlaybookReadiness | null;
 
 const DUSTY_ROSE = "#D8A7AA";
 
@@ -105,7 +108,7 @@ export function LuvClientPanel({
   initialDrafts,
 }: {
   clientId: string;
-  readiness: EventReadiness | null;
+  readiness: AnyReadiness;
   initialDrafts: ClientDraft[];
 }) {
   const [drafts, setDrafts] = React.useState(initialDrafts);
