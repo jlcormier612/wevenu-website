@@ -7,6 +7,10 @@ import { getClient } from "@/lib/clients/service";
 import { getDocuments } from "@/lib/documents/service";
 import { getInvoicesForClient } from "@/lib/invoices/service";
 import { getThreadsForEntity } from "@/lib/messaging/service";
+import { getClientDrafts } from "@/lib/luv/client-drafts";
+import { computeEventReadiness } from "@/lib/luv/event-readiness";
+import { createClient } from "@/integrations/supabase/server";
+import { getCurrentVenue } from "@/lib/venue/service";
 
 type Props = { params: Promise<{ id: string }> };
 
@@ -19,7 +23,17 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function ClientDetailPage({ params }: Props) {
   const { id } = await params;
-  const [client, invoices, documents, threads] = await Promise.all([getClient(id), getInvoicesForClient(id), getDocuments("client", id), getThreadsForEntity("client", id)]);
+  const [client, invoices, documents, threads, luvDrafts] = await Promise.all([
+    getClient(id), getInvoicesForClient(id), getDocuments("client", id),
+    getThreadsForEntity("client", id), getClientDrafts(id),
+  ]);
   if (!client) notFound();
-  return <ClientDetail client={client} invoices={invoices} documents={documents} threads={threads} />;
+
+  // Compute event readiness (Planning Progress)
+  const venue = await getCurrentVenue();
+  const readiness = venue
+    ? await computeEventReadiness(await createClient(), venue.id, id).catch(() => null)
+    : null;
+
+  return <ClientDetail client={client} invoices={invoices} documents={documents} threads={threads} luvDrafts={luvDrafts} readiness={readiness} />;
 }
