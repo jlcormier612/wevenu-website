@@ -19,6 +19,7 @@ import { createHmac } from "node:crypto";
 import { type NextRequest, NextResponse } from "next/server";
 
 import { createClient } from "@/integrations/supabase/server";
+import { logSignalEvent } from "@/lib/leads/signals";
 
 type ResendWebhookPayload = {
   type: string;
@@ -107,6 +108,23 @@ export async function POST(request: NextRequest) {
       occurred_at: payload.created_at ?? new Date().toISOString(),
       payload: payload as unknown as Record<string, unknown>,
     });
+
+    // For email opens and clicks, find the lead via the thread and log a signal
+    if (payload.type === "email.opened" || payload.type === "email.clicked") {
+      const signalType = payload.type === "email.opened" ? "email_opened" : "email_clicked";
+      // Find the thread → lead (via thread's lead_id)
+      const { data: threadLink } = await supabase.from("messages")
+        .select("thread_id").eq("id", message.id).maybeSingle<{ thread_id: string }>();
+      if (threadLink?.thread_id) {
+        const { data: thread } = await supabase.from("message_threads")
+          .select("lead_id").eq("id", threadLink.thread_id).maybeSingle<{ lead_id: string | null }>();
+        if (thread?.lead_id) {
+          await logSignalEvent(supabase, message.venue_id, thread.lead_id, signalType, {
+            message_id: message.id, email_id: emailId,
+          }).catch(() => {}); // non-blocking
+        }
+      }
+    }
 
     return NextResponse.json({ ok: true });
   } catch (err) {

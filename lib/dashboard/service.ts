@@ -10,6 +10,7 @@ import { createClient } from "@/integrations/supabase/server";
 import { isSupabaseConfigured } from "@/lib/env";
 import { getLuvObservations } from "@/lib/luv/observations";
 import { getLuvSettings } from "@/lib/luv/settings";
+import { refreshLeadScores } from "@/lib/leads/scores";
 import { LEAD_STATUSES } from "@/lib/leads/constants";
 import type { Lead } from "@/lib/leads/types";
 import { getCurrentVenue } from "@/lib/venue/service";
@@ -76,6 +77,7 @@ function mapLead(r: LeadRow): Lead {
     followUpDate: r.follow_up_date, lastContactedAt: r.last_contacted_at,
     tourDate: r.tour_date, tourTime: r.tour_time,
     tourCompleted: r.tour_completed, tourNotes: r.tour_notes,
+    commitmentScore: 0, scoresUpdatedAt: null, sourceData: null,
     createdAt: r.created_at, updatedAt: r.updated_at,
   };
 }
@@ -353,6 +355,9 @@ export async function getDashboardData(): Promise<DashboardData | null> {
   // Extract first name from "Jordan Rivera" → "Jordan"
   const ownerFullName = staffRes.data?.full_name ?? null;
   const ownerFirstName = ownerFullName ? ownerFullName.split(" ")[0] : null;
+
+  // Refresh lead commitment scores (non-blocking — runs in background)
+  void refreshLeadScores(supabase, venue.id).catch(() => {});
 
   // Luv observations — run after primary data (non-blocking; returns [] on error)
   const luvSettings = await getLuvSettings().catch(() => null);

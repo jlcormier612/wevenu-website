@@ -22,6 +22,7 @@
 import { createClient } from "@/integrations/supabase/server";
 import type { LuvBriefingItem, LuvObservation } from "@/lib/luv/types";
 import type { LuvSettings } from "@/lib/luv/settings";
+import { computeInterestFromSignals } from "@/lib/leads/signals";
 
 type DbClient = Awaited<ReturnType<typeof createClient>>;
 
@@ -305,6 +306,73 @@ export async function getLuvObservations(
       link: "/contracts",
       actionLabel: "View Contract →",
     });
+  }
+
+  // ── Momentum: relationship health language ────────────────────────────────
+  // Uses commitment_score + recent signals to surface warm observations.
+  // Avoids duplicating observations already covered by specific patterns above.
+
+  // Fetch leads with high or declining commitment for momentum observations
+  const { data: momentumLeads } = await supabase.from("leads")
+    .select("id, first_name, last_name, status, commitment_score, last_contacted_at, created_at")
+    .eq("venue_id", venueId)
+    .not("status", "in", "(won,lost,cancelled)")
+    .order("commitment_score", { ascending: false })
+    .limit(20);
+
+  // For leads with signals, compute interest
+  if (momentumLeads?.length) {
+    // Fetch recent signals for all these leads in one query
+    const leadIds = (momentumLeads as { id: string }[]).map((l) => l.id);
+    const { data: signals } = await supabase.from("lead_signal_events")
+      .select("lead_id, signal_strength, occurred_at")
+      .in("lead_id", leadIds)
+      .gte("occurred_at", new Date(Date.now() - 14 * 86_400_000).toISOString()) // last 14 days
+      .order("occurred_at", { ascending: false });
+
+    const signalsByLead = new Map<string, { signal_strength: number; occurred_at: string }[]>();
+    for (const s of (signals ?? []) as { lead_id: string; signal_strength: number; occurred_at: string }[]) {
+      const arr = signalsByLead.get(s.lead_id) ?? [];
+      arr.push(s);
+      signalsByLead.set(s.lead_id, arr);
+    }
+
+    for (const lead of momentumLeads as { id: string; first_name: string; last_name: string; status: string; commitment_score: number; last_contacted_at: string | null; created_at: string }[]) {
+      const name = [lead.first_name, lead.last_name].filter(Boolean).join(" ");
+      const leadSignals = signalsByLead.get(lead.id) ?? [];
+      const interestScore = computeInterestFromSignals(leadSignals);
+      const commitScore = lead.commitment_score ?? 0;
+      const daysSinceContact = lead.last_contacted_at
+        ? Math.floor((Date.now() - new Date(lead.last_contacted_at).getTime()) / 86_400_000)
+        : null;
+
+      // Skip if already covered by a more specific observation
+      const alreadyCovered = observations.some((o) => o.id.includes(lead.id));
+      if (alreadyCovered) continue;
+
+      // Highly engaged — recent signals + decent commitment
+      if (interestScore >= 30 && commitScore >= 20) {
+        observations.push({
+          id: `momentum-hot-${lead.id}`,
+          priority: "medium",
+          message: `${name} is showing strong interest right now.`,
+          detail: commitScore >= 50 ? "They're well along in the booking journey." : "Good signal — may be a good time to follow up.",
+          link: `/leads/${lead.id}`,
+          actionLabel: "View Lead →",
+        });
+      }
+      // High commitment but recent signals fading — may be slipping
+      else if (commitScore >= 30 && daysSinceContact !== null && daysSinceContact >= 10) {
+        observations.push({
+          id: `momentum-cooling-${lead.id}`,
+          priority: "low",
+          message: `${name} may be losing momentum.`,
+          detail: `${daysSinceContact} days without contact.`,
+          link: `/leads/${lead.id}`,
+          actionLabel: "View Lead →",
+        });
+      }
+    }
   }
 
   // Sort by priority (high → medium → low), cap at 8

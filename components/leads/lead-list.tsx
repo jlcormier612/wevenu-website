@@ -6,6 +6,15 @@ import Link from "next/link";
 import { ArrowUpDown, Search, SlidersHorizontal } from "lucide-react";
 
 import { LeadStatusBadge } from "@/components/leads/lead-status-badge";
+// Inline momentum label — avoids importing server-only scores.ts in a client component
+function momentumLabel(score: number, status: string): { tier: "hot" | "warm" | "growing" | "early" | "quiet" } {
+  if (status === "won") return { tier: "hot" };
+  if (status === "lost" || status === "cancelled") return { tier: "quiet" };
+  if (score >= 70) return { tier: "hot" };
+  if (score >= 45) return { tier: "warm" };
+  if (score >= 20) return { tier: "growing" };
+  return { tier: "early" };
+}
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -32,7 +41,7 @@ import type { Lead, LeadStatus } from "@/lib/leads/types";
 
 type FilterKey = "all" | LeadStatus;
 type EventTypeFilter = "all" | string;
-type SortKey = "newest" | "oldest" | "az" | "za" | "event_asc" | "event_desc" | "budget_high" | "budget_low" | "last_contacted";
+type SortKey = "newest" | "oldest" | "az" | "za" | "event_asc" | "event_desc" | "budget_high" | "budget_low" | "last_contacted" | "commitment_high";
 
 const SORT_OPTIONS: { value: SortKey; label: string }[] = [
   { value: "newest",        label: "Most Recent" },
@@ -44,6 +53,7 @@ const SORT_OPTIONS: { value: SortKey; label: string }[] = [
   { value: "budget_high",   label: "Budget (Highest)" },
   { value: "budget_low",    label: "Budget (Lowest)" },
   { value: "last_contacted","label": "Last Contacted" },
+  { value: "commitment_high", label: "Most Progress" },
 ];
 
 function sortLeads(leads: Lead[], sort: SortKey): Lead[] {
@@ -57,6 +67,7 @@ function sortLeads(leads: Lead[], sort: SortKey): Lead[] {
       case "budget_high":   return (b.estimatedBudget ?? 0) - (a.estimatedBudget ?? 0);
       case "budget_low":    return (a.estimatedBudget ?? 0) - (b.estimatedBudget ?? 0);
       case "last_contacted":return (b.lastContactedAt ?? "") < (a.lastContactedAt ?? "") ? -1 : 1;
+      case "commitment_high": return (b.commitmentScore ?? 0) - (a.commitmentScore ?? 0);
       default:              return (b.inquiryDate ?? "") < (a.inquiryDate ?? "") ? -1 : 1; // newest
     }
   });
@@ -248,7 +259,14 @@ export function LeadList({ leads }: { leads: Lead[] }) {
                     {lead.estimatedBudget != null ? formatCurrency(lead.estimatedBudget) : <span className="text-muted-foreground">—</span>}
                   </TableCell>
                   <TableCell>
-                    <LeadStatusBadge status={lead.status} />
+                    <div className="flex items-center gap-1.5">
+                      <LeadStatusBadge status={lead.status} />
+                      {lead.commitmentScore > 0 && (() => {
+                        const { tier } = momentumLabel(lead.commitmentScore, lead.status);
+                        const dot = tier === "hot" ? "bg-success" : tier === "warm" ? "bg-[#C7A66A]" : tier === "growing" ? "bg-primary/50" : null;
+                        return dot ? <span className={`h-1.5 w-1.5 rounded-full shrink-0 ${dot}`} title={`Commitment: ${lead.commitmentScore}`} /> : null;
+                      })()}
+                    </div>
                   </TableCell>
                   <TableCell className="text-sm text-muted-foreground">
                     {formatDate(lead.inquiryDate)}
