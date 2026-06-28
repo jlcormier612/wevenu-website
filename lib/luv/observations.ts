@@ -20,7 +20,7 @@
  */
 
 import { createClient } from "@/integrations/supabase/server";
-import type { LuvObservation } from "@/lib/luv/types";
+import type { LuvBriefingItem, LuvObservation } from "@/lib/luv/types";
 import type { LuvSettings } from "@/lib/luv/settings";
 
 type DbClient = Awaited<ReturnType<typeof createClient>>;
@@ -129,7 +129,10 @@ export async function getLuvObservations(
       .order("expires_at"),
   ]);
 
-  // ── 1 & 2: Events approaching without timeline / floor plan ──────────────
+  // ── 1 & 2: Events approaching — grouped coordinator briefing ─────────────
+  // Instead of individual observations, generate ONE briefing card per event
+  // that shows all open items together. This is the "experienced coordinator's
+  // morning briefing" pattern.
 
   const eventsWithTimelines = new Set(
     (timelineCountsRes.data ?? []).map((r: { event_id: string }) => r.event_id),
@@ -139,24 +142,29 @@ export async function getLuvObservations(
   );
 
   for (const ev of (upcomingEventsRes.data ?? []) as { id: string; name: string; event_date: string }[]) {
-    if (!eventsWithTimelines.has(ev.id)) {
-      observations.push({
-        id: `timeline-${ev.id}`,
-        priority: daysAgo(ev.event_date) < -7 ? "high" : "medium",
-        message: `${ev.name} is ${inDays(ev.event_date)} — it might be time to build the day-of timeline.`,
-        link: `/events/${ev.id}`,
-        actionLabel: "Build Timeline →",
-      });
-    }
-    if (!eventsWithFloorPlans.has(ev.id)) {
-      observations.push({
-        id: `floorplan-${ev.id}`,
-        priority: "low",
-        message: `${ev.name} is ${inDays(ev.event_date)} — a floor plan could help the team prepare.`,
-        link: `/events/${ev.id}`,
-        actionLabel: "Add Floor Plan →",
-      });
-    }
+    const du = Math.ceil((new Date(ev.event_date + "T12:00:00").getTime() - Date.now()) / 86_400_000);
+    const hasTimeline = eventsWithTimelines.has(ev.id);
+    const hasFloorPlan = eventsWithFloorPlans.has(ev.id);
+
+    // Only surface a briefing if there are open items to address
+    if (hasTimeline && hasFloorPlan) continue; // nothing to flag for this event
+
+    const briefingItems: LuvBriefingItem[] = [
+      { label: "Day-of timeline", status: hasTimeline ? "complete" : "incomplete", link: `/events/${ev.id}` },
+      { label: "Floor plan", status: hasFloorPlan ? "complete" : "incomplete", link: `/events/${ev.id}` },
+    ];
+
+    const incompleteCount = briefingItems.filter((i) => i.status !== "complete").length;
+    observations.push({
+      id: `briefing-${ev.id}`,
+      priority: du <= 14 ? "high" : "medium",
+      message: `${ev.name} is ${inDays(ev.event_date)}.`,
+      detail: `${incompleteCount} planning item${incompleteCount !== 1 ? "s" : ""} still need${incompleteCount === 1 ? "s" : ""} attention.`,
+      link: `/events/${ev.id}`,
+      actionLabel: "View Event →",
+      briefingItems,
+      daysUntil: du,
+    });
   }
 
   // ── 3: Qualified leads with no tour ──────────────────────────────────────

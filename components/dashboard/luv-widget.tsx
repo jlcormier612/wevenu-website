@@ -11,10 +11,10 @@
  */
 
 import Link from "next/link";
-import { Heart } from "lucide-react";
+import { AlertTriangle, CheckCircle, Circle, Heart } from "lucide-react";
 
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import type { LuvObservation } from "@/lib/luv/types";
+import type { LuvBriefingItem, LuvObservation } from "@/lib/luv/types";
 
 const DUSTY_ROSE = "#D8A7AA";
 
@@ -29,7 +29,46 @@ export function LuvHeart({ size = 14 }: { size?: number }) {
   );
 }
 
+function BriefingRow({ item }: { item: LuvBriefingItem }) {
+  const Icon = item.status === "complete" ? CheckCircle : item.status === "warning" ? AlertTriangle : Circle;
+  const iconClass = item.status === "complete" ? "text-success" : item.status === "warning" ? "text-warning-foreground" : "text-muted-foreground";
+  const content = (
+    <div className="flex items-center gap-2 py-0.5">
+      <Icon className={`h-3.5 w-3.5 shrink-0 ${iconClass}`} />
+      <span className={`text-xs ${item.status === "complete" ? "text-muted-foreground line-through" : "text-foreground"}`}>
+        {item.label}
+      </span>
+      {item.detail && <span className="text-[10px] text-muted-foreground">{item.detail}</span>}
+    </div>
+  );
+  return item.link && item.status !== "complete"
+    ? <Link href={item.link}>{content}</Link>
+    : content;
+}
+
+function CoordinatorBriefingCard({ obs }: { obs: LuvObservation }) {
+  return (
+    <div className="py-3 border-b border-border/60 last:border-0 space-y-2">
+      <div className="flex items-start gap-3">
+        <LuvHeart size={14} />
+        <div className="min-w-0 flex-1">
+          <p className="text-sm text-heading font-medium leading-snug">{obs.message}</p>
+        </div>
+        <Link href={obs.link} className="shrink-0 text-xs font-medium text-primary hover:underline whitespace-nowrap mt-0.5">
+          {obs.actionLabel ?? "View →"}
+        </Link>
+      </div>
+      {obs.briefingItems && (
+        <div className="ml-5 space-y-0.5">
+          {obs.briefingItems.map((item, i) => <BriefingRow key={i} item={item} />)}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function ObservationRow({ obs }: { obs: LuvObservation }) {
+  if (obs.briefingItems) return <CoordinatorBriefingCard obs={obs} />;
   return (
     <div className="flex items-start gap-3 py-3 border-b border-border/60 last:border-0">
       {/* Heart at 14px matches text-sm (14px) */}

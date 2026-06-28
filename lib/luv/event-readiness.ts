@@ -73,6 +73,7 @@ export async function computeEventReadiness(
     vendorsRes,
     paymentSchedulesRes,
     docsRes,
+    questionnaireRes,
   ] = await Promise.all([
     // Contract: is there a signed contract for this client?
     supabase.from("contracts").select("id, status")
@@ -104,6 +105,10 @@ export async function computeEventReadiness(
       .or(`client_id.eq.${clientId},event_id.eq.${event.id}`)
       .not("expires_at", "is", null)
       .lte("expires_at", new Date(Date.now() + 30 * 86_400_000).toISOString().slice(0, 10)),
+
+    // Questionnaire: has the final details form been submitted?
+    supabase.from("event_questionnaires").select("status")
+      .eq("venue_id", venueId).eq("event_id", event.id).maybeSingle<{ status: string }>(),
   ]);
 
   // Payment line items (overdue check) — needs schedule IDs from above
@@ -118,6 +123,7 @@ export async function computeEventReadiness(
   }
 
   const contract = contractRes.data?.[0] as { id: string; status: string } | undefined;
+  const questionnaireStatus = questionnaireRes.data?.status ?? null;
   const hasTimeline = (timelineRes.data?.length ?? 0) > 0;
   const hasFloorPlan = (floorPlanRes.data?.length ?? 0) > 0;
   const hasVendors = (vendorsRes.data?.length ?? 0) > 0;
@@ -182,6 +188,14 @@ export async function computeEventReadiness(
       actionLink: scheduleIds.length > 0 ? `/payments/${scheduleIds[0]}` : "/payments",
     },
     {
+      key: "questionnaire",
+      label: "Final details submitted",
+      status: questionnaireStatus === "submitted" || questionnaireStatus === "reviewed" ? "complete" : "incomplete",
+      detail: null,
+      actionLabel: !questionnaireStatus ? "Fill out final details" : null,
+      actionLink: `/events/${event.id}`,
+    },
+    {
       key: "documents",
       label: "Documents current",
       status: expiringDocs.some((d) => expiryStatus(d.expires_at) === "expired") ? "warning"
@@ -198,7 +212,7 @@ export async function computeEventReadiness(
   ];
 
   // Score: complete = 1 point, warning = 0.5 points, incomplete = 0
-  const totalCount = items.length;
+  const totalCount = items.length;  // now 8 items
   const rawScore = items.reduce((sum, item) => {
     if (item.status === "complete") return sum + 1;
     if (item.status === "warning") return sum + 0.5;

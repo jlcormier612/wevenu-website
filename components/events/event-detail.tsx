@@ -23,6 +23,7 @@ import { EventTeamSection } from "@/components/events/event-team-section";
 import { EventVendorsSection } from "@/components/events/vendors/event-vendors-section";
 import { TimelineView } from "@/components/events/timeline/timeline-view";
 import { DocumentsSection } from "@/components/documents/documents-section";
+import { FinalDetailsForm } from "@/components/events/final-details-form";
 import { InvoiceStatusBadge } from "@/components/invoices/invoice-status-badge";
 import { ActivityTimeline } from "@/components/leads/activity-timeline";
 import { Button } from "@/components/ui/button";
@@ -38,6 +39,7 @@ import { FloorPlanEditor } from "@/components/floor-plan/floor-plan-editor";
 import { formatCurrency } from "@/lib/invoices/constants";
 import type { Invoice } from "@/lib/invoices/types";
 import type { Document } from "@/lib/documents/types";
+import type { Questionnaire } from "@/lib/events/questionnaire";
 import {
   EVENT_STATUSES,
   daysUntil,
@@ -140,11 +142,13 @@ export function EventDetail({
   availableVendors = [],
   invoices = [],
   documents = [],
+  questionnaire = null,
 }: {
   event: EventWithDetails;
   availableVendors?: import("@/lib/vendors/types").Vendor[];
   invoices?: Invoice[];
   documents?: Document[];
+  questionnaire?: Questionnaire | null;
 }) {
   const router = useRouter();
   const [statusPending, startStatus] = React.useTransition();
@@ -239,6 +243,10 @@ export function EventDetail({
           <TabsTrigger value="invoice">
             Invoice
             {invoices.length > 0 && <span className="ml-1 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground">{invoices.length}</span>}
+          </TabsTrigger>
+          <TabsTrigger value="final-details">
+            Final Details
+            {questionnaire?.status === "submitted" && <span className="ml-1 h-1.5 w-1.5 rounded-full bg-success inline-block" />}
           </TabsTrigger>
           <TabsTrigger value="documents">
             Documents
@@ -430,6 +438,22 @@ export function EventDetail({
                   ))}
                 </div>
               )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* ── Final Details ────────────────────────────────────────── */}
+        <TabsContent value="final-details">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Final Details</CardTitle>
+              <CardDescription>
+                Ceremony timing, guest counts, music selections, vendor notes, and special requests.
+                Submitting this marks Planning Progress as complete.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <FinalDetailsForm eventId={event.id} initial={questionnaire} />
             </CardContent>
           </Card>
         </TabsContent>
