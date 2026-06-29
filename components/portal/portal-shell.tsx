@@ -146,45 +146,60 @@ function OverviewSection({
     ? Math.round(required.filter(t => t.status === "complete").length / required.length * 100)
     : 0;
   const actionNeeded = tasks.filter(t => t.canComplete && t.status !== "complete");
-  const firstName = context.client.firstName;
-  const partnerName = context.client.partnerFirstName;
-  const coupleName = [firstName, partnerName].filter(Boolean).join(" & ");
-
-  // Suggestions for "This Month"
+  const coupleName = [context.client.firstName, context.client.partnerFirstName].filter(Boolean).join(" & ");
   const bracket = getSuggestionBracket(du);
   const suggestions = (SUGGESTIONS_BY_BRACKET[bracket] ?? []).slice(0, 4);
 
-  // Recent wins (derive from available data)
   const wins: string[] = [];
-  if ((guestStats?.total ?? 0) > 0) wins.push(`👥 ${guestStats!.total} guest${guestStats!.total !== 1 ? "s" : ""} added to your wedding list`);
-  if (readinessScore >= 25) wins.push(`🌿 ${readinessScore}% of your event planning is complete`);
-  if ((guestStats?.attending ?? 0) > 0) wins.push(`💌 ${guestStats!.attending} guest${guestStats!.attending !== 1 ? "s have" : " has"} already confirmed attendance`);
+  if ((guestStats?.total ?? 0) > 0) wins.push(`👥 ${guestStats!.total} guest${guestStats!.total !== 1 ? "s" : ""} on your wedding list`);
+  if ((guestStats?.attending ?? 0) > 0) wins.push(`💌 ${guestStats!.attending} guest${guestStats!.attending !== 1 ? "s have" : " has"} confirmed attendance`);
+  if (readinessScore >= 25) wins.push(`🌿 ${readinessScore}% of your planning milestones are complete`);
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-6">
 
-      {/* ── Hero ── */}
-      <div className="rounded-3xl overflow-hidden" style={{
-        background: `linear-gradient(160deg, ${SAGE} 0%, #4F5F4F 60%, #3D4F3D 100%)`,
-        minHeight: "220px",
+      {/* ── HERO — The emotional anchor ── */}
+      <div className="rounded-3xl overflow-hidden relative" style={{
+        background: `linear-gradient(155deg, #3D4F3D 0%, ${SAGE} 40%, #6B8F6B 100%)`,
+        minHeight: "min(55vh, 440px)",
       }}>
-        <div className="px-6 pt-7 pb-3 text-white space-y-1">
-          <p className="text-xs font-medium uppercase tracking-widest opacity-50">{context.venue.name}</p>
-          <p className="text-[28px] font-semibold leading-tight tracking-tight">
-            Welcome back,<br />{coupleName}!
-          </p>
-        </div>
-        {context.event && du !== null && du >= 0 && (
-          <div className="px-6 pb-6 text-white space-y-2">
-            <div className="flex items-end gap-2">
-              <p className="text-5xl font-bold leading-none">{du}</p>
-              <p className="text-lg opacity-70 pb-1">days away</p>
-            </div>
-            <p className="text-sm opacity-70 leading-snug">
-              {new Date(context.event.eventDate + "T12:00:00").toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" })}
+        {/* Subtle texture overlay */}
+        <div className="absolute inset-0 opacity-5" style={{
+          backgroundImage: "radial-gradient(circle at 20% 50%, white 1px, transparent 1px), radial-gradient(circle at 80% 20%, white 1px, transparent 1px)",
+          backgroundSize: "80px 80px",
+        }} />
+        <div className="relative flex flex-col justify-between h-full p-7 sm:p-10" style={{ minHeight: "min(55vh, 440px)" }}>
+          {/* Top: venue name */}
+          <div>
+            <p className="text-xs uppercase tracking-[0.2em] text-white/50 font-medium">{context.venue.name}</p>
+          </div>
+          {/* Middle: couple names in beautiful serif */}
+          <div className="space-y-1">
+            <p className="text-white/60 text-sm">Welcome back,</p>
+            <p className="font-heading text-4xl sm:text-5xl md:text-6xl font-medium text-white leading-none tracking-tight">
+              {coupleName}
             </p>
           </div>
-        )}
+          {/* Bottom: countdown */}
+          {context.event && du !== null && du >= 0 ? (
+            <div className="space-y-2">
+              <div className="flex items-baseline gap-3">
+                <p className="font-heading text-7xl sm:text-8xl font-semibold text-white leading-none">{du}</p>
+                <div>
+                  <p className="text-white/80 text-lg font-light">days until</p>
+                  <p className="text-white/80 text-lg font-light">you say "I do"</p>
+                </div>
+              </div>
+              <p className="text-white/55 text-sm">
+                {new Date(context.event.eventDate + "T12:00:00").toLocaleDateString("en-US", {
+                  weekday: "long", month: "long", day: "numeric", year: "numeric",
+                })}
+              </p>
+            </div>
+          ) : (
+            <p className="text-white/50 text-sm">Your planning journey has begun.</p>
+          )}
+        </div>
       </div>
 
       {/* ── Planning Journey ── */}
@@ -192,118 +207,96 @@ function OverviewSection({
         <PlanningJourney du={du} readiness={readinessScore} />
       )}
 
-      {/* ── Rich section cards ── */}
-      <div className="grid grid-cols-2 gap-3">
-        <button type="button" onClick={() => onNavigate("guests")}
-          className="rounded-2xl border border-border bg-card p-4 text-left space-y-2 active:opacity-80 transition-opacity">
-          <p className="text-2xl">👥</p>
-          <div>
-            <p className="text-xl font-bold text-heading">{guestStats?.total ?? 0}</p>
-            <p className="text-xs text-muted-foreground mt-0.5">guests added</p>
-          </div>
-          {(guestStats?.attending ?? 0) > 0 && (
-            <p className="text-[11px] font-medium" style={{ color: SAGE }}>{guestStats!.attending} confirmed ✓</p>
-          )}
-          <p className="text-[11px] font-semibold" style={{ color: SAGE }}>View list →</p>
-        </button>
-
-        <button type="button" onClick={() => onNavigate("todos")}
-          className="rounded-2xl border border-border bg-card p-4 text-left space-y-2 active:opacity-80 transition-opacity">
-          <p className="text-2xl">📝</p>
-          <div>
-            <p className="text-xl font-bold text-heading">{todoCount}</p>
-            <p className="text-xs text-muted-foreground mt-0.5">to-do items</p>
-          </div>
-          <p className="text-[11px] font-semibold" style={{ color: SAGE }}>View list →</p>
-        </button>
-
-        <button type="button" onClick={() => onNavigate("website")}
-          className="rounded-2xl border border-border bg-card p-4 text-left space-y-2 active:opacity-80 transition-opacity">
-          <p className="text-2xl">🌐</p>
-          <div>
-            <p className="text-xl font-bold text-heading">Website</p>
-            <p className="text-xs text-muted-foreground mt-0.5">your wedding site</p>
-          </div>
-          <p className="text-[11px] font-semibold" style={{ color: SAGE }}>Manage →</p>
-        </button>
-
-        <button type="button" onClick={() => onNavigate("tasks")}
-          className="rounded-2xl border border-border bg-card p-4 text-left space-y-2 active:opacity-80 transition-opacity"
-          style={actionNeeded.length > 0 ? { borderColor: ROSE, background: `${ROSE}08` } : {}}>
-          <p className="text-2xl">📋</p>
-          <div>
-            <p className="text-xl font-bold text-heading">{actionNeeded.length}</p>
-            <p className="text-xs text-muted-foreground mt-0.5">tasks need attention</p>
-          </div>
-          {actionNeeded.length > 0
-            ? <p className="text-[11px] font-semibold" style={{ color: ROSE }}>Action needed →</p>
-            : <p className="text-[11px] font-semibold" style={{ color: SAGE }}>All on track ✓</p>}
-        </button>
+      {/* ── Mobile-only quick cards (hidden on desktop — sidebar handles it) ── */}
+      <div className="grid grid-cols-2 gap-3 lg:hidden">
+        {[
+          { id: "guests"  as PortalSection, emoji: "👥", n: guestStats?.total ?? 0,  sub: guestStats?.attending ? `${guestStats.attending} confirmed` : "Start your list", warn: false },
+          { id: "todos"   as PortalSection, emoji: "✨", n: todoCount,                 sub: "personal to-dos",  warn: false },
+          { id: "website" as PortalSection, emoji: "🌐", n: null,                      sub: "your wedding site", warn: false },
+          { id: "tasks"   as PortalSection, emoji: "📋", n: actionNeeded.length,       sub: actionNeeded.length > 0 ? "need attention" : "all on track", warn: actionNeeded.length > 0 },
+        ].map(card => (
+          <button key={card.id} type="button" onClick={() => onNavigate(card.id)}
+            className="rounded-2xl border bg-card p-4 text-left space-y-2 active:opacity-80 transition-all"
+            style={card.warn ? { borderColor: `${ROSE}60`, background: `${ROSE}06` } : { borderColor: "#E8E3DC" }}>
+            <p className="text-2xl">{card.emoji}</p>
+            <div>
+              {card.n !== null
+                ? <p className="text-2xl font-bold text-heading">{card.n}</p>
+                : <p className="text-sm font-semibold text-heading">Website</p>}
+              <p className="text-[11px] text-muted-foreground mt-0.5">{card.sub}</p>
+            </div>
+            <p className="text-[11px] font-semibold" style={{ color: card.warn ? ROSE : SAGE }}>
+              {card.warn ? "Action needed →" : "View →"}
+            </p>
+          </button>
+        ))}
       </div>
 
-      {/* ── Action-needed tasks (if any) ── */}
+      {/* ── Action needed (both mobile and desktop) ── */}
       {actionNeeded.length > 0 && (
-        <div className="rounded-2xl overflow-hidden" style={{ border: `1px solid ${ROSE}30`, background: `${ROSE}06` }}>
-          <div className="px-4 py-3 border-b" style={{ borderColor: `${ROSE}20` }}>
-            <p className="text-xs font-semibold" style={{ color: ROSE }}>Needs your attention</p>
+        <div className="rounded-2xl overflow-hidden" style={{ border: `1px solid ${ROSE}35`, background: `${ROSE}06` }}>
+          <div className="px-4 py-3">
+            <p className="text-xs font-semibold" style={{ color: ROSE }}>📋 Your venue has tasks waiting</p>
           </div>
-          {actionNeeded.slice(0, 2).map(t => (
+          {actionNeeded.slice(0, 3).map(t => (
             <button key={t.id} type="button" onClick={() => onNavigate("tasks")}
-              className="w-full text-left px-4 py-3 flex items-center justify-between gap-3 border-b last:border-0"
-              style={{ borderColor: `${ROSE}15` }}>
-              <p className="text-sm font-medium text-heading truncate">{t.title}</p>
-              <span className="shrink-0 text-[10px] px-2 py-0.5 rounded-full font-semibold"
-                style={{ background: ROSE, color: "white" }}>→</span>
+              className="w-full text-left px-4 py-3 flex items-center justify-between gap-3 border-t"
+              style={{ borderColor: `${ROSE}20` }}>
+              <p className="text-sm text-heading truncate">{t.title}</p>
+              <span className="shrink-0 text-[10px] px-2.5 py-1 rounded-full font-semibold text-white" style={{ background: ROSE }}>
+                Complete →
+              </span>
             </button>
           ))}
         </div>
       )}
 
-      {/* ── This Month ── */}
-      <div className="rounded-2xl overflow-hidden border border-border" style={{ background: "#FAFAF9" }}>
-        <div className="px-4 pt-4 pb-2">
-          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">✨ This Month</p>
-          <p className="text-sm font-medium text-heading mt-1">
-            {bracket === "12+" ? "Foundation planning — the most important decisions" :
-             bracket === "9-12" ? "Locking in your key vendors and decisions" :
-             bracket === "6-9"  ? "Invitations, attire, and the beautiful details" :
-             bracket === "3-6"  ? "Finalizing and confirming everything" :
-             bracket === "1-3"  ? "The final stretch — almost there!" :
-             "Last touches before your big day"}
+      {/* ── This Month — editorial style ── */}
+      <div className="rounded-3xl overflow-hidden" style={{ background: "linear-gradient(135deg, #F7F5F0 0%, #F0EDE6 100%)", border: "1px solid #E8E2D8" }}>
+        <div className="p-6 sm:p-8">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground mb-2">✨ This Month</p>
+          <p className="font-heading text-2xl text-heading mb-5 leading-snug">
+            {bracket === "12+" ? "Laying a beautiful foundation" :
+             bracket === "9-12" ? "Locking in your most important vendors" :
+             bracket === "6-9"  ? "The details that make it unforgettable" :
+             bracket === "3-6"  ? "Bringing it all together beautifully" :
+             bracket === "1-3"  ? "The final, wonderful stretch" :
+             "Last touches before the magic begins"}
           </p>
-        </div>
-        <div className="px-4 pb-4 space-y-2 mt-1">
-          {suggestions.map((s) => (
-            <button key={s.title} type="button" onClick={() => onNavigate("todos")}
-              className="w-full text-left flex items-center gap-3 py-2.5 px-3 rounded-xl hover:bg-white transition-colors">
-              <span className="text-lg shrink-0">{s.emoji}</span>
-              <span className="text-sm text-heading">{s.title}</span>
-              <span className="ml-auto text-muted-foreground text-xs shrink-0">+ Add</span>
-            </button>
-          ))}
+          <div className="space-y-3">
+            {suggestions.map(s => (
+              <button key={s.title} type="button" onClick={() => onNavigate("todos")}
+                className="w-full text-left flex items-center gap-4 group">
+                <span className="text-2xl shrink-0 group-hover:scale-110 transition-transform">{s.emoji}</span>
+                <div className="flex-1 border-b border-[#E8E2D8] pb-3">
+                  <p className="text-sm font-medium text-heading">{s.title}</p>
+                </div>
+                <span className="shrink-0 text-[11px] text-muted-foreground group-hover:text-heading transition-colors">+ Add</span>
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
       {/* ── Recent Wins ── */}
       {wins.length > 0 && (
-        <div className="rounded-2xl border border-border bg-card px-4 py-4 space-y-2">
-          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">🎉 Recent Wins</p>
+        <div className="rounded-2xl border border-border bg-card p-5 space-y-3">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">🎉 Your Progress</p>
           {wins.map((w, i) => (
             <p key={i} className="text-sm text-heading">{w}</p>
           ))}
         </div>
       )}
 
-      {/* ── From Luv ── */}
-      <div className="rounded-2xl px-5 py-4 space-y-2" style={{ background: `${ROSE}12`, border: `1px solid ${ROSE}25` }}>
-        <p className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: ROSE }}>
-          💗 From Luv
+      {/* ── From Luv — handwritten note feel ── */}
+      <div className="rounded-3xl p-6 sm:p-8 relative overflow-hidden"
+        style={{ background: `linear-gradient(135deg, ${ROSE}18 0%, ${ROSE}08 100%)`, border: `1px solid ${ROSE}30` }}>
+        <p className="text-[10px] font-semibold uppercase tracking-[0.2em] mb-3" style={{ color: ROSE }}>💗 From Luv</p>
+        <p className="font-heading text-xl sm:text-2xl text-heading leading-relaxed italic">
+          "{getLuvMessage(du, guestStats?.total ?? 0, readinessScore)}"
         </p>
-        <p className="text-sm leading-relaxed text-heading">
-          {getLuvMessage(du, guestStats?.total ?? 0, readinessScore)}
-        </p>
-        <p className="text-[10px] font-medium opacity-60" style={{ color: ROSE }}>
-          Luv · your venue's planning assistant
+        <p className="mt-4 text-[11px] font-medium" style={{ color: ROSE, opacity: 0.6 }}>
+          — Luv, your venue's planning companion
         </p>
       </div>
 
@@ -892,14 +885,22 @@ function ComingSoon({ label }: { label: string }) {
 
 // ── Shell ─────────────────────────────────────────────────────────────────────
 
-type NavGroup = { label: string; items: { id: PortalSection; icon: string; label: string; available: boolean }[] };
+const NAV_ITEMS: { id: PortalSection; icon: string; label: string; available: boolean; group: "yours" | "venue" }[] = [
+  { id: "overview",  icon: "🏠", label: "Home",       available: true,  group: "yours" },
+  { id: "guests",    icon: "👥", label: "Guests",     available: true,  group: "yours" },
+  { id: "todos",     icon: "✨", label: "Plans",      available: true,  group: "yours" },
+  { id: "website",   icon: "🌐", label: "Website",    available: true,  group: "yours" },
+  { id: "people",    icon: "💗", label: "People",     available: true,  group: "yours" },
+  { id: "tasks",     icon: "📋", label: "Tasks",      available: true,  group: "venue" },
+  { id: "payments",  icon: "💳", label: "Payments",   available: false, group: "venue" },
+  { id: "messages",  icon: "💬", label: "Messages",   available: false, group: "venue" },
+];
 
 export function PortalShell({ token, context, initialTasks }: { token: string; context: PortalContext; initialTasks: PortalTask[] }) {
   const [activeSection, setActiveSection] = React.useState<PortalSection>("overview");
   const [guestStats, setGuestStats] = React.useState<GuestStats | null>(null);
   const [todoCount, setTodoCount] = React.useState(0);
 
-  // Fetch guest stats for overview
   React.useEffect(() => {
     fetch(`/api/portal/guests?token=${token}`)
       .then(r => r.json())
@@ -907,92 +908,172 @@ export function PortalShell({ token, context, initialTasks }: { token: string; c
       .catch(() => {});
   }, [token]);
 
-  const coupleName = [context.client.firstName, context.client.partnerFirstName].filter(Boolean).join(" & ");
+  const firstName = context.client.firstName;
+  const partnerName = context.client.partnerFirstName;
+  const coupleName = [firstName, partnerName].filter(Boolean).join(" & ");
   const actionCount = initialTasks.filter(t => t.canComplete && t.status !== "complete").length;
-
-  const NAV_GROUPS: NavGroup[] = [
-    {
-      label: "Your Planning",
-      items: [
-        { id: "overview",  icon: "🏠", label: "Overview",   available: true },
-        { id: "guests",    icon: "👥", label: "Guests",     available: true },
-        { id: "todos",     icon: "✅", label: "To-Do",      available: true },
-        { id: "website",   icon: "🌐", label: "Website",    available: true },
-        { id: "people",    icon: "💗", label: "Our People", available: true },
-      ],
-    },
-    {
-      label: `With ${context.venue.name}`,
-      items: [
-        { id: "tasks",     icon: "📋", label: "Tasks",     available: true },
-        { id: "payments",  icon: "💳", label: "Payments",  available: false },
-        { id: "documents", icon: "📄", label: "Documents", available: false },
-        { id: "messages",  icon: "💬", label: "Messages",  available: false },
-      ],
-    },
-  ];
+  const isOverview = activeSection === "overview";
 
   return (
     <div className="min-h-screen flex flex-col" style={{ background: LINEN }}>
-      {/* Header */}
-      <header className="sticky top-0 z-20 bg-white border-b border-[#DED6CA]">
-        <div className="max-w-lg mx-auto px-4 py-3 flex items-center justify-between">
-          <div>
-            <p className="text-[11px]" style={{ color: SAGE }}>{context.venue.name}</p>
-            <p className="text-sm font-semibold text-heading leading-tight">{coupleName}</p>
+
+      {/* ── Sticky Header ── */}
+      <header className="sticky top-0 z-30 bg-white/95 backdrop-blur border-b border-[#DED6CA]">
+        {/* Venue + couple identity */}
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 py-2.5 flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            <p className="text-sm font-semibold text-heading leading-tight font-heading">{coupleName}</p>
+            <span className="text-muted-foreground/40 text-xs">·</span>
+            <p className="text-xs text-muted-foreground">{context.venue.name}</p>
           </div>
           {context.event && (
-            <p className="text-xs text-muted-foreground">
+            <p className="text-xs text-muted-foreground hidden sm:block">
               {new Date(context.event.eventDate + "T12:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
             </p>
           )}
         </div>
 
-        {/* Navigation — grouped with section labels */}
-        <div className="max-w-lg mx-auto overflow-x-auto scrollbar-hide">
-          {NAV_GROUPS.map((group, gi) => (
-            <div key={group.label} className={`flex items-center ${gi > 0 ? "border-t border-border/30" : ""}`}>
-              <span className="shrink-0 text-[9px] font-semibold uppercase tracking-widest text-muted-foreground/60 px-2 min-w-[72px]">
-                {gi === 0 ? "Yours" : "Venue"}
+        {/* Navigation */}
+        <div className="max-w-4xl mx-auto px-2 sm:px-4 overflow-x-auto scrollbar-hide">
+          <div className="flex items-center gap-0 py-0.5">
+            {/* Yours */}
+            <div className="flex items-center">
+              {NAV_ITEMS.filter(i => i.group === "yours").map(item => {
+                const isActive = activeSection === item.id;
+                return (
+                  <button key={item.id} type="button"
+                    onClick={() => item.available && setActiveSection(item.id)}
+                    className="relative flex-shrink-0 flex items-center gap-1.5 px-3 py-2.5 text-xs font-medium transition-all rounded-lg mx-0.5"
+                    style={{
+                      color: isActive ? SAGE : "#888",
+                      background: isActive ? `${SAGE}12` : "transparent",
+                      fontWeight: isActive ? 600 : 400,
+                    }}>
+                    <span className="text-sm">{item.icon}</span>
+                    <span className="hidden sm:inline">{item.label}</span>
+                    <span className="sm:hidden text-[11px]">{item.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Divider */}
+            <div className="h-5 w-px mx-2 shrink-0" style={{ background: "#E0D8D0" }} />
+
+            {/* Venue */}
+            <div className="flex items-center">
+              <span className="text-[9px] font-semibold uppercase tracking-widest text-muted-foreground/50 px-1.5 shrink-0 hidden sm:inline">
+                Venue
               </span>
-              {group.items.map(item => {
+              {NAV_ITEMS.filter(i => i.group === "venue").map(item => {
                 const isActive = activeSection === item.id;
                 const badge = item.id === "tasks" && actionCount > 0 ? actionCount : 0;
                 return (
                   <button key={item.id} type="button"
                     onClick={() => item.available && setActiveSection(item.id)}
-                    className="relative flex-shrink-0 flex flex-col items-center gap-0.5 px-3 pt-1.5 pb-1.5 text-[11px] font-medium transition-colors"
-                    style={{ color: isActive ? SAGE : TAUPE, borderBottom: isActive ? `2px solid ${SAGE}` : "2px solid transparent", opacity: !item.available ? 0.4 : 1 }}>
-                    <span>{item.icon}</span>
-                    {item.label}
+                    className="relative flex-shrink-0 flex items-center gap-1.5 px-3 py-2.5 text-xs font-medium transition-all rounded-lg mx-0.5"
+                    style={{
+                      color: isActive ? SAGE : "#aaa",
+                      background: isActive ? `${SAGE}12` : "transparent",
+                      opacity: !item.available ? 0.4 : 1,
+                      fontWeight: isActive ? 600 : 400,
+                    }}>
+                    <span className="text-sm">{item.icon}</span>
+                    <span className="hidden sm:inline">{item.label}</span>
+                    <span className="sm:hidden text-[11px]">{item.label}</span>
                     {badge > 0 && (
-                      <span className="absolute top-0.5 right-1 h-3.5 w-3.5 rounded-full text-[8px] font-bold text-white flex items-center justify-center"
+                      <span className="h-4 w-4 rounded-full text-[8px] font-bold text-white flex items-center justify-center"
                         style={{ background: ROSE }}>{badge}</span>
                     )}
                   </button>
                 );
               })}
             </div>
-          ))}
+          </div>
         </div>
       </header>
 
-      {/* Content */}
-      <main className="flex-1 max-w-lg mx-auto w-full px-4 py-5">
-        {activeSection === "overview"  && <OverviewSection context={context} tasks={initialTasks} guestStats={guestStats} todoCount={todoCount} onNavigate={setActiveSection} />}
-        {activeSection === "guests"    && <GuestListSection token={token} />}
-        {activeSection === "todos"     && <TodoSection token={token} onCountChange={setTodoCount} eventDate={context.event?.eventDate} />}
-        {activeSection === "website"   && <WebsiteSection token={token} context={context} />}
-        {activeSection === "people"    && <OurPeopleSection context={context} />}
-        {activeSection === "tasks"     && <VenueTasksSection token={token} initialTasks={initialTasks} />}
-        {activeSection === "payments"  && <ComingSoon label="Payments" />}
-        {activeSection === "documents" && <ComingSoon label="Documents" />}
-        {activeSection === "messages"  && <ComingSoon label="Messages" />}
+      {/* ── Content ── */}
+      <main className="flex-1 w-full">
+        {/* Overview gets a full-canvas layout */}
+        {isOverview ? (
+          <div className="max-w-4xl mx-auto px-4 sm:px-6 py-6">
+            {/* Desktop: 2-column hero layout */}
+            <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-6 items-start">
+              {/* Left: Hero + planning journey */}
+              <OverviewSection context={context} tasks={initialTasks} guestStats={guestStats} todoCount={todoCount} onNavigate={setActiveSection} />
+              {/* Right: Quick actions sidebar (desktop only) */}
+              <div className="hidden lg:flex flex-col gap-4">
+                <QuickActionsSidebar context={context} tasks={initialTasks} guestStats={guestStats} todoCount={todoCount} onNavigate={setActiveSection} />
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="max-w-2xl mx-auto px-4 sm:px-6 py-6">
+            {activeSection === "guests"    && <GuestListSection token={token} />}
+            {activeSection === "todos"     && <TodoSection token={token} onCountChange={setTodoCount} eventDate={context.event?.eventDate} />}
+            {activeSection === "website"   && <WebsiteSection token={token} context={context} />}
+            {activeSection === "people"    && <OurPeopleSection context={context} />}
+            {activeSection === "tasks"     && <VenueTasksSection token={token} initialTasks={initialTasks} />}
+            {activeSection === "payments"  && <ComingSoon label="Payments" />}
+            {activeSection === "documents" && <ComingSoon label="Documents" />}
+            {activeSection === "messages"  && <ComingSoon label="Messages" />}
+          </div>
+        )}
       </main>
 
-      <footer className="text-center py-3 text-[10px]" style={{ color: TAUPE }}>
+      <footer className="text-center py-4 text-[10px] border-t border-border/30" style={{ color: TAUPE }}>
         Powered by Wevenu · {context.venue.name}
       </footer>
     </div>
+  );
+}
+
+// ── Desktop Quick Actions Sidebar ─────────────────────────────────────────────
+
+function QuickActionsSidebar({
+  context, tasks, guestStats, todoCount, onNavigate,
+}: {
+  context: PortalContext; tasks: PortalTask[]; guestStats: GuestStats | null; todoCount: number; onNavigate: (s: PortalSection) => void;
+}) {
+  const actionNeeded = tasks.filter(t => t.canComplete && t.status !== "complete");
+  const du = context.event ? daysUntil(context.event.eventDate) : null;
+  const bracket = getSuggestionBracket(du);
+  const suggestions = (SUGGESTIONS_BY_BRACKET[bracket] ?? []).slice(0, 3);
+
+  return (
+    <>
+      {/* Section cards */}
+      {[
+        { id: "guests" as PortalSection, emoji: "👥", label: "Guest List", value: guestStats?.total ?? 0, sub: guestStats?.attending ? `${guestStats.attending} confirmed` : "Start your list", color: SAGE },
+        { id: "todos"  as PortalSection, emoji: "✨", label: "Planning",   value: todoCount,              sub: "personal to-dos",                                                                   color: SAGE },
+        { id: "tasks"  as PortalSection, emoji: "📋", label: "Venue Tasks", value: actionNeeded.length,   sub: actionNeeded.length > 0 ? "need attention" : "all on track",                        color: actionNeeded.length > 0 ? ROSE : SAGE },
+      ].map(card => (
+        <button key={card.id} type="button" onClick={() => onNavigate(card.id)}
+          className="w-full text-left rounded-2xl border border-border bg-card p-4 hover:shadow-sm transition-all group">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-xl">{card.emoji}</span>
+            <span className="text-[11px] font-medium group-hover:underline" style={{ color: card.color }}>View →</span>
+          </div>
+          <p className="text-2xl font-bold text-heading">{card.value}</p>
+          <p className="text-xs font-medium text-heading mt-0.5">{card.label}</p>
+          <p className="text-[11px] text-muted-foreground">{card.sub}</p>
+        </button>
+      ))}
+
+      {/* This Month — sidebar version */}
+      <div className="rounded-2xl border border-border bg-card p-4 space-y-3">
+        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">✨ This Month</p>
+        <div className="space-y-1.5">
+          {suggestions.map(s => (
+            <button key={s.title} type="button" onClick={() => onNavigate("todos")}
+              className="w-full text-left flex items-center gap-2 py-1.5 text-xs hover:text-heading transition-colors text-muted-foreground">
+              <span>{s.emoji}</span>
+              <span>{s.title}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+    </>
   );
 }
