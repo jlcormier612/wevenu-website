@@ -601,6 +601,8 @@ function TodoSection({ token, onCountChange, eventDate }: { token: string; onCou
 function WebsiteSection({ token, context }: { token: string; context: PortalContext }) {
   const [site, setSite] = React.useState<import("@/lib/wedding-website/types").CoupleWebsite | null>(null);
   const [loading, setLoading] = React.useState(true);
+  // Hooks must all be before any early returns (Rules of Hooks)
+  const [guestData, setGuestData] = React.useState<{ guests: { id: string; firstName: string; lastName: string | null; email: string | null; rsvpStatus: string; rsvpSentAt?: string | null }[] } | null>(null);
   const defaultSlug = [context.client.firstName, context.client.partnerFirstName]
     .filter(Boolean).join("-and-").toLowerCase().replace(/[^a-z0-9-]/g, "") + "-wedding";
 
@@ -608,7 +610,6 @@ function WebsiteSection({ token, context }: { token: string; context: PortalCont
     fetch(`/api/portal/website?token=${token}`)
       .then(r => r.json())
       .then((d: import("@/lib/wedding-website/types").CoupleWebsite) => {
-        // Initialize with default slug if new
         if (!d.exists || !d.slug) {
           fetch("/api/portal/website", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ token, slug: defaultSlug }) })
             .then(r => r.json())
@@ -620,6 +621,12 @@ function WebsiteSection({ token, context }: { token: string; context: PortalCont
       .finally(() => setLoading(false));
   }, [token, defaultSlug]);
 
+  React.useEffect(() => {
+    fetch(`/api/portal/guests?token=${token}`)
+      .then(r => r.json())
+      .then(setGuestData);
+  }, [token]);
+
   if (loading || !site) {
     return <div className="py-12 text-center"><p className="text-sm text-muted-foreground">Loading your website…</p></div>;
   }
@@ -628,7 +635,7 @@ function WebsiteSection({ token, context }: { token: string; context: PortalCont
   const origin = typeof window !== "undefined" ? window.location.origin : "";
 
   return (
-    <WebsiteEditor token={token} initialSite={site} origin={origin} />
+    <WebsiteEditor token={token} initialSite={site} origin={origin} initialGuests={guestData?.guests} />
   );
 }
 

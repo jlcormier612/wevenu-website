@@ -415,15 +415,20 @@ function AppearanceSection({ site, onUpdate }: { site: CoupleWebsite; onUpdate: 
 // ── Main editor ───────────────────────────────────────────────────────────────
 
 export function WebsiteEditor({
-  token, initialSite, origin,
-}: { token: string; initialSite: CoupleWebsite; origin: string }) {
+  token, initialSite, origin, initialGuests,
+}: { token: string; initialSite: CoupleWebsite; origin: string; initialGuests?: { id: string; firstName: string; lastName: string | null; email: string | null; rsvpStatus: string; rsvpSentAt?: string | null }[] }) {
   const [site, setSite] = React.useState(initialSite);
   const [content, setContent] = React.useState<WebsiteContent>(initialSite.content ?? {});
   const [saving, setSaving] = React.useState<string | null>(null);
   const [publishing, setPublishing] = React.useState(false);
   const [previewMode, setPreviewMode] = React.useState<"desktop" | "mobile">("mobile");
   const [showPreview, setShowPreview] = React.useState(false);
+  const [showQR, setShowQR] = React.useState(false);
+  const [showInvite, setShowInvite] = React.useState(false);
+  const [selectedGuests, setSelectedGuests] = React.useState<string[]>([]);
+  const [sendingInvites, setSendingInvites] = React.useState(false);
   const [views, setViews] = React.useState<{ totalViews: number; weekViews: number } | null>(null);
+  const guests = initialGuests ?? [];
 
   const websiteUrl = site.slug ? `${origin}/w/${site.slug}` : null;
   const completedSections = SECTIONS.filter(s => s.preview?.(content)).length;
@@ -578,7 +583,77 @@ export function WebsiteEditor({
               className={`flex items-center justify-center gap-1.5 rounded-xl border py-2.5 text-xs font-medium transition-colors ${showPreview ? "bg-[#5D6F5D] text-white border-[#5D6F5D]" : "border-border hover:bg-muted/40"}`}>
               <Smartphone className="h-3.5 w-3.5" /> {showPreview ? "Hide" : "Preview"}
             </button>
+            <button type="button" onClick={() => setShowQR(!showQR)}
+              className={`flex items-center justify-center gap-1.5 rounded-xl border py-2.5 text-xs font-medium transition-colors ${showQR ? "bg-[#5D6F5D] text-white border-[#5D6F5D]" : "border-border hover:bg-muted/40"}`}>
+              ▦ QR Code
+            </button>
           </div>
+
+          {/* QR Code */}
+          {showQR && websiteUrl && (
+            <div className="space-y-2 text-center">
+              <img src={`/api/portal/website/qr?url=${encodeURIComponent(websiteUrl)}`}
+                alt="Website QR code" className="h-40 w-40 mx-auto rounded-xl border border-border" />
+              <p className="text-xs text-muted-foreground">Share this QR code on save-the-dates, printed invitations, and signage.</p>
+              <a href={`/api/portal/website/qr?url=${encodeURIComponent(websiteUrl)}`} download="wedding-qr.svg"
+                className="inline-block text-xs font-medium px-4 py-2 rounded-xl border border-border hover:bg-muted/40 transition-colors">
+                Download QR Code
+              </a>
+            </div>
+          )}
+
+          {/* Send Invitations */}
+          {guests.filter(g => g.email).length > 0 && (
+            <div className="space-y-3">
+              <button type="button" onClick={() => setShowInvite(!showInvite)}
+                className={`w-full flex items-center justify-between px-4 py-3 rounded-xl border text-sm font-medium transition-colors ${showInvite ? "bg-[#5D6F5D] text-white border-[#5D6F5D]" : "border-border hover:bg-muted/40"}`}>
+                <span>💌 Send Invitations</span>
+                <span className="text-xs opacity-70">{guests.filter(g => g.email && !g.rsvpSentAt).length} guests not yet invited</span>
+              </button>
+              {showInvite && (
+                <div className="rounded-2xl border border-border bg-card p-4 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Select guests to invite</p>
+                    <button type="button" onClick={() => setSelectedGuests(
+                      selectedGuests.length === guests.filter(g => g.email).length
+                        ? [] : guests.filter(g => g.email).map(g => g.id)
+                    )} className="text-xs text-muted-foreground hover:text-foreground">
+                      {selectedGuests.length === guests.filter(g => g.email).length ? "Deselect all" : "Select all"}
+                    </button>
+                  </div>
+                  <div className="space-y-1 max-h-48 overflow-y-auto">
+                    {guests.filter(g => g.email).map(g => (
+                      <label key={g.id} className="flex items-center gap-3 py-2 px-2 rounded-lg hover:bg-muted/30 cursor-pointer">
+                        <input type="checkbox" checked={selectedGuests.includes(g.id)}
+                          onChange={e => setSelectedGuests(prev => e.target.checked ? [...prev, g.id] : prev.filter(id => id !== g.id))}
+                          className="rounded" />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-heading truncate">{[g.firstName, g.lastName].filter(Boolean).join(" ")}</p>
+                          <p className="text-xs text-muted-foreground truncate">{g.email}</p>
+                        </div>
+                        {g.rsvpSentAt && <span className="text-[10px] text-muted-foreground">Sent</span>}
+                        {g.rsvpStatus === "attending" && <span className="text-[10px] text-green-600">✓ Attending</span>}
+                      </label>
+                    ))}
+                  </div>
+                  <button type="button" disabled={selectedGuests.length === 0 || sendingInvites}
+                    onClick={async () => {
+                      setSendingInvites(true);
+                      try {
+                        const res = await fetch("/api/portal/invite", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ token, guestIds: selectedGuests }) });
+                        const data = await res.json() as { ok: boolean; sent?: number; failed?: number };
+                        if (data.ok) { toast.success(`${data.sent} invitation${data.sent !== 1 ? "s" : ""} sent!`); setShowInvite(false); setSelectedGuests([]); }
+                        else toast.error("Some invitations failed. Please try again.");
+                      } finally { setSendingInvites(false); }
+                    }}
+                    className="w-full rounded-xl py-2.5 text-sm font-semibold text-white disabled:opacity-50"
+                    style={{ background: "#5D6F5D" }}>
+                    {sendingInvites ? <Loader2 className="h-4 w-4 animate-spin mx-auto" /> : `Send ${selectedGuests.length > 0 ? selectedGuests.length + " " : ""}Invitation${selectedGuests.length !== 1 ? "s" : ""}`}
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Live preview iframe */}
           {showPreview && (

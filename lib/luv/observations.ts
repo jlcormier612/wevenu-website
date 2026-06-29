@@ -357,6 +357,44 @@ export async function getLuvObservations(
     });
   }
 
+  // ── Website missing content + unpublished ────────────────────────────────
+  // Events within 6 months with published website but missing travel info
+  const sixMonths = new Date(Date.now() + 180 * 86_400_000).toISOString().slice(0, 10);
+  const { data: sitesWithGaps } = await supabase
+    .from("couple_websites")
+    .select("client_id, slug, is_published, content, couple_guests(count)")
+    .eq("venue_id", venueId);
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  for (const site of (sitesWithGaps ?? []) as any[]) {
+    const { data: ev } = await supabase.from("events").select("event_date, name, clients(first_name, partner_first_name)")
+      .eq("client_id", site.client_id).eq("venue_id", venueId).order("event_date").limit(1).maybeSingle<any>();
+    if (!ev || ev.event_date > sixMonths) continue;
+
+    const coupleName = [ev.clients?.first_name, ev.clients?.partner_first_name].filter(Boolean).join(" & ");
+    const du = Math.ceil((new Date(ev.event_date + "T12:00:00").getTime() - Date.now()) / 86_400_000);
+
+    if (!site.is_published && du <= 120) {
+      observations.push({
+        id: `website-unpublished-${site.client_id}`,
+        priority: du <= 60 ? "medium" : "low",
+        message: `${coupleName}'s wedding website isn't published yet.`,
+        detail: `The event is in ${du} days. Couples typically publish their website 3-4 months out.`,
+        link: `/clients/${site.client_id}`,
+        actionLabel: "View Client →",
+      });
+    } else if (site.is_published && !site.content?.travel && du <= 120) {
+      observations.push({
+        id: `website-missing-travel-${site.client_id}`,
+        priority: "low",
+        message: `${coupleName}'s website is missing accommodations information.`,
+        detail: "Travel and hotel info helps out-of-town guests plan their trip.",
+        link: `/clients/${site.client_id}`,
+        actionLabel: "View Client →",
+      });
+    }
+  }
+
   // ── Wedding website milestones ───────────────────────────────────────────
   // "Emily & James just published their website." — coordinator awareness
   const websiteSince7d = new Date(Date.now() - 7 * 86_400_000).toISOString();
