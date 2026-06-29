@@ -45,6 +45,8 @@ import type { EventReadiness as PlaybookEventReadiness } from "@/lib/playbooks/t
 import type { Questionnaire } from "@/lib/events/questionnaire";
 import type { PortalSession } from "@/lib/portal/types";
 import { PortalLinkWidget } from "@/components/portal/portal-link-widget";
+import type { ClientContact } from "@/lib/contacts/types";
+import { ClientContactsTab } from "@/components/clients/client-contacts-tab";
 
 // ---- Event Date Hero (client-side for real-time countdown) ------------------
 
@@ -80,7 +82,7 @@ function ContactCard({ name, email, phone, role }: { name: string; email?: strin
 
 // ---- Main component ---------------------------------------------------------
 
-export function ClientDetail({ client, invoices = [], documents = [], threads = [], luvDrafts = [], readiness = null, questionnaire = null, playbookReadiness = null, portalSessions = [] }: { client: ClientWithDetails; invoices?: Invoice[]; documents?: Document[]; threads?: ThreadWithMessages[]; luvDrafts?: ClientDraft[]; readiness?: EventReadiness | null; questionnaire?: Questionnaire | null; playbookReadiness?: PlaybookEventReadiness | null; portalSessions?: PortalSession[] }) {
+export function ClientDetail({ client, invoices = [], documents = [], threads = [], luvDrafts = [], readiness = null, questionnaire = null, playbookReadiness = null, portalSessions = [], clientContacts = [] }: { client: ClientWithDetails; invoices?: Invoice[]; documents?: Document[]; threads?: ThreadWithMessages[]; luvDrafts?: ClientDraft[]; readiness?: EventReadiness | null; questionnaire?: Questionnaire | null; playbookReadiness?: PlaybookEventReadiness | null; portalSessions?: PortalSession[]; clientContacts?: ClientContact[] }) {
   const router = useRouter();
   const [statusPending, startStatus] = React.useTransition();
 
@@ -153,6 +155,12 @@ export function ClientDetail({ client, invoices = [], documents = [], threads = 
       <Tabs defaultValue="overview">
         <TabsList>
           <TabsTrigger value="overview">Couple</TabsTrigger>
+          <TabsTrigger value="people">
+            People
+            {clientContacts.length > 0 && (
+              <span className="ml-1 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground">{clientContacts.length}</span>
+            )}
+          </TabsTrigger>
           <TabsTrigger value="key-dates">
             Key Dates
             {client.keyDates.length > 0 && (
@@ -270,6 +278,29 @@ export function ClientDetail({ client, invoices = [], documents = [], threads = 
         </TabsContent>
 
         {/* ── Key Dates ──────────────────────────────────────────────────── */}
+        {/* ── People ───────────────────────────────────────────────── */}
+        <TabsContent value="people">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">People</CardTitle>
+              <CardDescription>
+                Everyone involved in this event. Each person has their own portal access level and notification preferences,
+                separate from their messaging visibility.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ClientContactsTab
+                clientId={client.id}
+                primaryPeople={[
+                  { name: `${client.firstName} ${client.lastName ?? ""}`.trim(), email: client.email, phone: client.phone, role: "Primary contact" },
+                  ...(client.partnerFirstName ? [{ name: [client.partnerFirstName, client.partnerLastName].filter(Boolean).join(" "), email: client.partnerEmail ?? null, role: "Partner" }] : []),
+                ]}
+                initialContacts={clientContacts}
+              />
+            </CardContent>
+          </Card>
+        </TabsContent>
+
         <TabsContent value="key-dates">
           <Card>
             <CardHeader>

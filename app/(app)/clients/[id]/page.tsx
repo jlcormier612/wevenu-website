@@ -11,6 +11,7 @@ import { getClientDrafts } from "@/lib/luv/client-drafts";
 import { computeEventReadiness } from "@/lib/luv/event-readiness";
 import { getEventReadiness } from "@/lib/playbooks/service";
 import { getPortalSessions } from "@/lib/portal/service";
+import { getClientContacts } from "@/lib/contacts/service";
 import { getQuestionnaire } from "@/lib/events/questionnaire";
 import { createClient } from "@/integrations/supabase/server";
 import { getCurrentVenue } from "@/lib/venue/service";
@@ -44,10 +45,11 @@ export default async function ClientDetailPage({ params }: Props) {
     : null;
 
   // Fetch questionnaire for the client's linked event (for Messages shortcut)
-  const [questionnaire, portalSessions] = await Promise.all([
+  const [questionnaire, portalSessions, clientContacts] = await Promise.all([
     client.linkedEventId ? getQuestionnaire(client.linkedEventId).catch(() => null) : Promise.resolve(null),
     getPortalSessions(id),
+    getClientContacts(id),
   ]);
 
-  return <ClientDetail client={client} invoices={invoices} documents={documents} threads={threads} luvDrafts={luvDrafts} readiness={readiness} questionnaire={questionnaire} playbookReadiness={playbookReadiness} portalSessions={portalSessions} />;
+  return <ClientDetail client={client} invoices={invoices} documents={documents} threads={threads} luvDrafts={luvDrafts} readiness={readiness} questionnaire={questionnaire} playbookReadiness={playbookReadiness} portalSessions={portalSessions} clientContacts={clientContacts} />;
 }

@@ -158,6 +158,15 @@ export async function sendMessage(
     .select("id").single<{ id: string }>();
   if (threadErr) throw threadErr;
 
+  // Auto-populate coordinator as thread participant (message_thread_participants foundation)
+  await client.from("message_thread_participants").insert({
+    venue_id: venueId, thread_id: thread.id,
+    participant_type: "coordinator",
+    contact_id: null,  // coordinator has no contact_id
+    can_view: true, can_reply: true, receives_notifications: true,
+    added_by: "system",
+  }); // non-blocking — participant creation is best-effort
+
   // Create the message
   const { data: msg, error: msgErr } = await client.from("messages")
     .insert({
