@@ -11,7 +11,16 @@ import { Button } from "@/components/ui/button";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import type { TourAppointment } from "@/lib/tours/types";
+import { Textarea } from "@/components/ui/textarea";
+import type { TourAppointment, TourOutcome } from "@/lib/tours/types";
+
+const OUTCOME_LABELS: Record<TourOutcome, string> = {
+  interested: "💚 Interested",
+  considering: "🤔 Considering",
+  not_a_fit: "❌ Not a fit",
+  booked: "🎉 Booked!",
+  unknown: "Unknown",
+};
 
 const STATUS_LABELS: Record<TourAppointment["status"], string> = {
   scheduled: "Scheduled",
@@ -31,7 +40,35 @@ const STATUS_COLORS: Record<TourAppointment["status"], string> = {
 
 function TourRow({ appt, onStatusChange }: { appt: TourAppointment; onStatusChange: (id: string, status: TourAppointment["status"]) => void }) {
   const [updating, setUpdating] = React.useState(false);
+  const [showOutcomeForm, setShowOutcomeForm] = React.useState(false);
+  const [outcome, setOutcome] = React.useState<string>(appt.outcome ?? "");
+  const [notes, setNotes] = React.useState(appt.notes ?? "");
+  const [savingOutcome, setSavingOutcome] = React.useState(false);
   const d = new Date(appt.scheduledAt);
+
+  async function handleSaveOutcome() {
+    setSavingOutcome(true);
+    try {
+      const res = await fetch("/api/tours/outcome", {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ appointmentId: appt.id, outcome: outcome || null, notes: notes || null }),
+      });
+      const data = await res.json() as { ok: boolean };
+      if (data.ok) { toast.success("Tour outcome saved."); setShowOutcomeForm(false); }
+      else toast.error("Could not save outcome.");
+    } catch { toast.error("Could not save outcome."); }
+    finally { setSavingOutcome(false); }
+  }
+
+  async function handleMarkFollowUp() {
+    await fetch("/api/tours/outcome", {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ appointmentId: appt.id, followUpSentAt: new Date().toISOString() }),
+    });
+    toast.success("Marked follow-up sent.");
+  }
 
   async function handleStatus(newStatus: string) {
     setUpdating(true);
@@ -93,6 +130,49 @@ function TourRow({ appt, onStatusChange }: { appt: TourAppointment; onStatusChan
           </Button>
         )}
       </div>
+
+      {/* Completed tour: outcome + notes + follow-up */}
+      {appt.status === "completed" && (
+        <div className="mt-2 ml-15 pl-1 space-y-2">
+          {appt.outcome && (
+            <p className="text-xs text-muted-foreground">
+              Outcome: <span className="font-medium text-heading">{OUTCOME_LABELS[appt.outcome as TourOutcome]}</span>
+              {appt.followUpSentAt && <span className="ml-2 text-green-600">· Follow-up sent</span>}
+            </p>
+          )}
+          <div className="flex items-center gap-2 flex-wrap">
+            <button type="button" onClick={() => setShowOutcomeForm(!showOutcomeForm)}
+              className="text-[11px] text-muted-foreground hover:text-foreground underline-offset-2 hover:underline">
+              {appt.outcome ? "Edit outcome" : "Record outcome"}
+            </button>
+            {!appt.followUpSentAt && (
+              <button type="button" onClick={handleMarkFollowUp}
+                className="text-[11px] text-muted-foreground hover:text-foreground underline-offset-2 hover:underline">
+                Mark follow-up sent
+              </button>
+            )}
+          </div>
+          {showOutcomeForm && (
+            <div className="rounded-lg border border-border bg-muted/20 p-3 space-y-2">
+              <Select value={outcome} onValueChange={setOutcome}>
+                <SelectTrigger className="h-7 text-xs"><SelectValue placeholder="Tour outcome…" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="interested">💚 Interested</SelectItem>
+                  <SelectItem value="considering">🤔 Considering</SelectItem>
+                  <SelectItem value="not_a_fit">❌ Not a fit</SelectItem>
+                  <SelectItem value="booked">🎉 Booked!</SelectItem>
+                  <SelectItem value="unknown">Unknown</SelectItem>
+                </SelectContent>
+              </Select>
+              <Textarea rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Notes from the tour…" className="text-xs" />
+              <div className="flex gap-2 justify-end">
+                <Button type="button" variant="ghost" size="sm" className="h-6 text-xs" onClick={() => setShowOutcomeForm(false)}>Cancel</Button>
+                <Button type="button" size="sm" className="h-6 text-xs" disabled={savingOutcome} onClick={handleSaveOutcome}>Save</Button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

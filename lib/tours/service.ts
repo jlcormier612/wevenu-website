@@ -102,5 +102,22 @@ export async function getTourAppointmentsForLead(leadId: string): Promise<import
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function mapAppointment(r: any): import("@/lib/tours/types").TourAppointment {
-  return { id: r.id, venueId: r.venue_id, leadId: r.lead_id ?? null, scheduledAt: r.scheduled_at, durationMinutes: r.duration_minutes, status: r.status, contactName: r.contact_name ?? null, contactEmail: r.contact_email ?? null, contactPhone: r.contact_phone ?? null, eventType: r.event_type ?? null, eventDate: r.event_date ?? null, guestCount: r.guest_count ?? null, notes: r.notes ?? null, createdAt: r.created_at };
+  return { id: r.id, venueId: r.venue_id, leadId: r.lead_id ?? null, scheduledAt: r.scheduled_at, durationMinutes: r.duration_minutes, status: r.status, contactName: r.contact_name ?? null, contactEmail: r.contact_email ?? null, contactPhone: r.contact_phone ?? null, eventType: r.event_type ?? null, eventDate: r.event_date ?? null, guestCount: r.guest_count ?? null, notes: r.notes ?? null, assignedTo: r.assigned_to ?? null, confirmedAt: r.confirmed_at ?? null, completedAt: r.completed_at ?? null, followUpSentAt: r.follow_up_sent_at ?? null, outcome: r.outcome ?? null, createdAt: r.created_at };
+}
+
+export async function updateTourOutcome(
+  appointmentId: string,
+  patch: { outcome?: string | null; notes?: string | null; followUpSentAt?: string | null },
+): Promise<{ ok: boolean }> {
+  if (!isSupabaseConfigured) return { ok: false };
+  const venue = await getCurrentVenue();
+  if (!venue) return { ok: false };
+  const supabase = await createClient();
+  const dbPatch: Record<string, unknown> = { updated_at: new Date().toISOString() };
+  if (patch.outcome !== undefined) dbPatch.outcome = patch.outcome;
+  if (patch.notes !== undefined) dbPatch.notes = patch.notes;
+  if (patch.followUpSentAt !== undefined) dbPatch.follow_up_sent_at = patch.followUpSentAt;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error } = await (supabase.from("tour_appointments") as any).update(dbPatch).eq("id", appointmentId).eq("venue_id", venue.id);
+  return { ok: !error };
 }

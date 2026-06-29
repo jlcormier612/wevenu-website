@@ -23,6 +23,8 @@ export type TourSettings = {
   tourPageDescription: string | null;
 };
 
+export type TourOutcome = "interested" | "considering" | "not_a_fit" | "booked" | "unknown";
+
 export type TourAppointment = {
   id: string;
   venueId: string;
@@ -37,6 +39,12 @@ export type TourAppointment = {
   eventDate: string | null;
   guestCount: number | null;
   notes: string | null;
+  // Lifecycle fields (Sprint 47)
+  assignedTo: string | null;
+  confirmedAt: string | null;
+  completedAt: string | null;
+  followUpSentAt: string | null;
+  outcome: TourOutcome | null;
   createdAt: string;
 };
 

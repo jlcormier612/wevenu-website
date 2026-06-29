@@ -68,6 +68,8 @@ export async function getLuvObservations(
     sentQuestionnaireRes,
     expiringContractsRes,
     upcomingToursRes,
+    completedNoFollowUpRes,
+    noShowRes,
   ] = await Promise.all([
     // 1+2: Events within 21 days (not cancelled)
     supabase.from("events")
@@ -150,6 +152,23 @@ export async function getLuvObservations(
       .gte("scheduled_at", today)
       .lte("scheduled_at", soon7 + "T23:59:59")
       .order("scheduled_at"),
+
+    // 11: Completed tours not yet followed up (within 7 days)
+    supabase.from("tour_appointments")
+      .select("id, scheduled_at, contact_name, lead_id, completed_at")
+      .eq("venue_id", venueId)
+      .eq("status", "completed")
+      .is("follow_up_sent_at", null)
+      .gte("scheduled_at", new Date(Date.now() - 7 * 86_400_000).toISOString())
+      .order("scheduled_at", { ascending: false }),
+
+    // 12: Recent no-shows (within 3 days)
+    supabase.from("tour_appointments")
+      .select("id, scheduled_at, contact_name, lead_id")
+      .eq("venue_id", venueId)
+      .eq("status", "no_show")
+      .gte("scheduled_at", new Date(Date.now() - 3 * 86_400_000).toISOString())
+      .order("scheduled_at", { ascending: false }),
   ]);
 
   // ── 1 & 2: Events approaching — grouped coordinator briefing ─────────────
@@ -484,6 +503,38 @@ export async function getLuvObservations(
         });
       }
     }
+  }
+
+  // ── Completed tours without follow-up ────────────────────────────────────
+  // The 48 hours after a tour determines conversion. Surface immediately.
+  for (const tour of (completedNoFollowUpRes.data ?? []) as { id: string; scheduled_at: string; contact_name: string | null; lead_id: string | null }[]) {
+    const hoursAgo = Math.round((Date.now() - new Date(tour.scheduled_at).getTime()) / 3_600_000);
+    const name = tour.contact_name ?? "A couple";
+    observations.push({
+      id: `tour-no-followup-${tour.id}`,
+      priority: hoursAgo <= 24 ? "high" : "medium",
+      message: hoursAgo < 48
+        ? `${name} completed their tour ${hoursAgo}h ago — follow up while it's fresh.`
+        : `${name} completed their tour and hasn't received a follow-up yet.`,
+      detail: "Send a thank-you and keep momentum alive.",
+      link: tour.lead_id ? `/leads/${tour.lead_id}` : "/leads",
+      actionLabel: "View Lead →",
+      recommendation: { label: "Ask Luv to draft a follow-up", link: tour.lead_id ? `/leads/${tour.lead_id}?luv=follow_up_email` : "/leads", type: "draft" },
+    });
+  }
+
+  // ── No-show tours ─────────────────────────────────────────────────────────
+  for (const tour of (noShowRes.data ?? []) as { id: string; scheduled_at: string; contact_name: string | null; lead_id: string | null }[]) {
+    const name = tour.contact_name ?? "A couple";
+    observations.push({
+      id: `tour-no-show-${tour.id}`,
+      priority: "medium",
+      message: `${name} didn't show for their tour.`,
+      detail: "Reach out to reschedule or understand why.",
+      link: tour.lead_id ? `/leads/${tour.lead_id}` : "/leads",
+      actionLabel: "View Lead →",
+      recommendation: { label: "Send a reschedule message", link: tour.lead_id ? `/leads/${tour.lead_id}` : "/leads", type: "navigate" },
+    });
   }
 
   // ── Overdue required tasks ───────────────────────────────────────────────
