@@ -13,7 +13,7 @@ type Props = {
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
   const supabase = await createClient();
-  const { data } = await supabase.rpc("get_wedding_website", { p_slug: slug, p_password: null });
+  const { data } = await supabase.rpc("get_wedding_website", { p_slug: slug, p_password: null, p_session_id: null, p_page: "home" });
   const site = data as PublicWebsite | null;
   if (!site || site.error === "not_found") return { title: "Wedding" };
   if (site.requires_password) return { title: "Private Wedding Website" };
@@ -28,7 +28,7 @@ export default async function WeddingWebsitePage({ params, searchParams }: Props
   const { slug } = await params;
   const { p: password } = await searchParams;
   const supabase = await createClient();
-  const { data } = await supabase.rpc("get_wedding_website", { p_slug: slug, p_password: password ?? null });
+  const { data } = await supabase.rpc("get_wedding_website", { p_slug: slug, p_password: password ?? null, p_session_id: null, p_page: "home" });
   const site = data as PublicWebsite | null;
 
   if (!site || site.error === "not_found") notFound();

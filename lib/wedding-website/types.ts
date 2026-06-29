@@ -44,6 +44,7 @@ export type PublicWebsite = {
   accentColor?: string;
   sectionsEnabled?: string[];
   content?: WebsiteContent;
+  totalViews?: number;
   couple?: {
     firstName: string;
     lastName: string | null;

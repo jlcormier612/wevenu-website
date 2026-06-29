@@ -12,7 +12,7 @@
  */
 
 import * as React from "react";
-import { Check, ChevronDown, ChevronUp, ExternalLink, Loader2, Palette, Plus, Smartphone, Trash2, X } from "lucide-react";
+import { Check, ChevronDown, ChevronUp, Copy, ExternalLink, Image, Loader2, Mail, Palette, Plus, Smartphone, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 
 import type { CoupleWebsite, WebsiteContent, WebsiteTheme } from "@/lib/wedding-website/types";
@@ -51,18 +51,67 @@ const ACCENT_COLORS = [
   { value: "#8B6E5A", label: "Warm Terracotta" },
 ];
 
+// ── Photo upload helper ───────────────────────────────────────────────────────
+
+function PhotoUpload({ token, type, label, currentUrl, onUploaded }: {
+  token: string; type: string; label: string;
+  currentUrl?: string; onUploaded: (url: string) => void;
+}) {
+  const [uploading, setUploading] = React.useState(false);
+  const inputRef = React.useRef<HTMLInputElement>(null);
+
+  async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    try {
+      const form = new FormData();
+      form.append("token", token);
+      form.append("file", file);
+      form.append("type", type);
+      const res = await fetch("/api/portal/upload", { method: "POST", body: form });
+      const data = await res.json() as { ok: boolean; url?: string; error?: string };
+      if (data.ok && data.url) { onUploaded(data.url); toast.success(`${label} uploaded!`); }
+      else toast.error(data.error ?? "Upload failed.");
+    } catch { toast.error("Upload failed. Please try again."); }
+    finally { setUploading(false); if (inputRef.current) inputRef.current.value = ""; }
+  }
+
+  return (
+    <div className="space-y-1.5">
+      <p className="text-[11px] font-medium text-muted-foreground">{label}</p>
+      {currentUrl && (
+        <div className="relative rounded-xl overflow-hidden h-24 bg-muted">
+          <img src={currentUrl} alt={label} className="w-full h-full object-cover" />
+          <div className="absolute inset-0 bg-black/20 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
+            <span className="text-white text-xs font-medium">Change photo</span>
+          </div>
+        </div>
+      )}
+      <label className="flex items-center gap-2 cursor-pointer px-3 py-2.5 rounded-xl border border-dashed border-border hover:bg-muted/40 transition-colors">
+        {uploading ? <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" /> : <Image className="h-4 w-4 text-muted-foreground" />}
+        <span className="text-sm text-muted-foreground">{uploading ? "Uploading…" : currentUrl ? "Change photo" : `Upload ${label.toLowerCase()}`}</span>
+        <input ref={inputRef} type="file" accept="image/*" className="sr-only" onChange={handleFile} disabled={uploading} />
+      </label>
+      <p className="text-[10px] text-muted-foreground">JPG, PNG, WebP up to 10MB</p>
+    </div>
+  );
+}
+
 // ── Section editors ───────────────────────────────────────────────────────────
 
-function HomeEditor({ content, onSave, onCancel }: { content: WebsiteContent; onSave: (v: object) => void; onCancel: () => void }) {
+function HomeEditor({ content, onSave, onCancel, token }: { content: WebsiteContent; onSave: (v: object) => void; onCancel: () => void; token: string }) {
   const [title, setTitle] = React.useState(content.home?.title ?? "");
   const [subtitle, setSubtitle] = React.useState(content.home?.subtitle ?? "");
   const [welcome, setWelcome] = React.useState(content.home?.welcomeMessage ?? "");
+  const [coverUrl, setCoverUrl] = React.useState(content.home?.coverImageUrl ?? "");
   return (
     <div className="space-y-3">
+      <PhotoUpload token={token} type="cover" label="Cover photo" currentUrl={coverUrl || undefined} onUploaded={url => setCoverUrl(url)} />
       <Field label="Page headline" value={title} onChange={setTitle} placeholder="Emily & James" />
       <Field label="Subtitle" value={subtitle} onChange={setSubtitle} placeholder="June 12, 2027 · Nashville, TN" />
       <TextareaField label="Welcome message" value={welcome} onChange={setWelcome} placeholder="We're so excited to celebrate with you! Join us for a day full of love, laughter, and joy." rows={3} />
-      <Actions onSave={() => onSave({ title, subtitle, welcomeMessage: welcome })} onCancel={onCancel} />
+      <Actions onSave={() => onSave({ title, subtitle, welcomeMessage: welcome, coverImageUrl: coverUrl || undefined })} onCancel={onCancel} />
     </div>
   );
 }
@@ -257,11 +306,12 @@ function Actions({ onSave, onCancel }: { onSave: () => void; onCancel: () => voi
 
 // ── Section accordion item ────────────────────────────────────────────────────
 
-function SectionAccordion({ section, content, onSaveSection, saving }: {
+function SectionAccordion({ section, content, onSaveSection, saving, token }: {
   section: Section;
   content: WebsiteContent;
   onSaveSection: (key: string, value: object) => Promise<void>;
   saving: string | null;
+  token: string;
 }) {
   const [open, setOpen] = React.useState(false);
   const previewText = section.preview?.(content);
@@ -274,7 +324,7 @@ function SectionAccordion({ section, content, onSaveSection, saving }: {
       onCancel: () => setOpen(false),
     };
     switch (section.key) {
-      case "home":     return <HomeEditor {...props} />;
+      case "home":     return <HomeEditor {...props} token={token} />;
       case "story":    return <StoryEditor {...props} />;
       case "event":    return <EventEditor {...props} />;
       case "schedule": return <ScheduleEditor {...props} />;
@@ -372,9 +422,22 @@ export function WebsiteEditor({
   const [saving, setSaving] = React.useState<string | null>(null);
   const [publishing, setPublishing] = React.useState(false);
   const [previewMode, setPreviewMode] = React.useState<"desktop" | "mobile">("mobile");
+  const [showPreview, setShowPreview] = React.useState(false);
+  const [views, setViews] = React.useState<{ totalViews: number; weekViews: number } | null>(null);
 
   const websiteUrl = site.slug ? `${origin}/w/${site.slug}` : null;
   const completedSections = SECTIONS.filter(s => s.preview?.(content)).length;
+
+  // Fetch analytics
+  React.useEffect(() => {
+    if (!site.isPublished) return;
+    fetch(`/api/portal/website/analytics?token=${token}`)
+      .then(r => r.json())
+      .then((d: { totalViews?: number; weekViews?: number }) => {
+        if (d.totalViews !== undefined) setViews({ totalViews: d.totalViews, weekViews: d.weekViews ?? 0 });
+      })
+      .catch(() => {});
+  }, [token, site.isPublished]);
 
   async function saveSection(key: string, value: object) {
     setSaving(key);
@@ -469,23 +532,84 @@ export function WebsiteEditor({
         </button>
       </div>
 
-      {/* Preview toggle */}
+      {/* Analytics — shown when published */}
+      {site.isPublished && views !== null && (
+        <div className="rounded-2xl border border-border bg-card p-4">
+          <div className="flex items-center gap-4">
+            <div className="text-center flex-1">
+              <p className="text-2xl font-bold text-heading">{views.totalViews}</p>
+              <p className="text-[10px] text-muted-foreground">Total visits</p>
+            </div>
+            <div className="text-center flex-1">
+              <p className="text-2xl font-bold text-heading">{views.weekViews}</p>
+              <p className="text-[10px] text-muted-foreground">This week</p>
+            </div>
+            <div className="text-center flex-1">
+              <p className="text-2xl font-bold text-heading">{completedSections}</p>
+              <p className="text-[10px] text-muted-foreground">Sections</p>
+            </div>
+          </div>
+          {views.totalViews > 0 && (
+            <p className="text-center text-xs mt-3" style={{ color: "#5D6F5D" }}>
+              ✨ {views.totalViews === 1 ? "1 guest has visited your website." : `${views.totalViews} guests have visited your website.`}
+            </p>
+          )}
+        </div>
+      )}
+
+      {/* Share & Preview */}
       {websiteUrl && (
-        <div className="flex items-center gap-2">
-          <div className="flex rounded-xl border border-border overflow-hidden">
-            <button type="button" onClick={() => setPreviewMode("mobile")}
-              className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium transition-colors ${previewMode === "mobile" ? "bg-[#5D6F5D] text-white" : "text-muted-foreground hover:bg-muted"}`}>
-              <Smartphone className="h-3.5 w-3.5" /> Mobile
+        <div className="rounded-2xl border border-border bg-card p-4 space-y-3">
+          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Share your website</p>
+          <div className="grid grid-cols-2 gap-2">
+            <button type="button" onClick={() => { navigator.clipboard.writeText(websiteUrl); toast.success("Link copied!"); }}
+              className="flex items-center justify-center gap-1.5 rounded-xl border border-border py-2.5 text-xs font-medium hover:bg-muted/40 transition-colors">
+              <Copy className="h-3.5 w-3.5" /> Copy link
             </button>
-            <button type="button" onClick={() => setPreviewMode("desktop")}
-              className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium transition-colors ${previewMode === "desktop" ? "bg-[#5D6F5D] text-white" : "text-muted-foreground hover:bg-muted"}`}>
-              🖥 Desktop
+            <a href={`mailto:?subject=Our Wedding Website&body=Join us for our wedding! ${websiteUrl}`}
+              className="flex items-center justify-center gap-1.5 rounded-xl border border-border py-2.5 text-xs font-medium hover:bg-muted/40 transition-colors">
+              <Mail className="h-3.5 w-3.5" /> Share via email
+            </a>
+            <button type="button" onClick={() => { navigator.clipboard.writeText(`${websiteUrl}#rsvp`); toast.success("RSVP link copied!"); }}
+              className="flex items-center justify-center gap-1.5 rounded-xl border border-border py-2.5 text-xs font-medium hover:bg-muted/40 transition-colors">
+              💗 Copy RSVP link
+            </button>
+            <button type="button" onClick={() => setShowPreview(!showPreview)}
+              className={`flex items-center justify-center gap-1.5 rounded-xl border py-2.5 text-xs font-medium transition-colors ${showPreview ? "bg-[#5D6F5D] text-white border-[#5D6F5D]" : "border-border hover:bg-muted/40"}`}>
+              <Smartphone className="h-3.5 w-3.5" /> {showPreview ? "Hide" : "Preview"}
             </button>
           </div>
-          <a href={websiteUrl} target="_blank" rel="noopener noreferrer"
-            className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground px-3 py-1.5 rounded-xl border border-border hover:bg-muted transition-colors">
-            <ExternalLink className="h-3.5 w-3.5" /> Open →
-          </a>
+
+          {/* Live preview iframe */}
+          {showPreview && (
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <div className="flex rounded-lg border border-border overflow-hidden text-xs">
+                  <button type="button" onClick={() => setPreviewMode("mobile")}
+                    className={`px-2.5 py-1 transition-colors ${previewMode === "mobile" ? "bg-[#5D6F5D] text-white" : "text-muted-foreground"}`}>
+                    📱
+                  </button>
+                  <button type="button" onClick={() => setPreviewMode("desktop")}
+                    className={`px-2.5 py-1 transition-colors ${previewMode === "desktop" ? "bg-[#5D6F5D] text-white" : "text-muted-foreground"}`}>
+                    🖥
+                  </button>
+                </div>
+                <a href={websiteUrl} target="_blank" rel="noopener noreferrer"
+                  className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1">
+                  <ExternalLink className="h-3 w-3" /> Open full site
+                </a>
+              </div>
+              <div className={`rounded-2xl overflow-hidden border border-border bg-muted/10 mx-auto transition-all ${previewMode === "mobile" ? "max-w-[320px]" : "w-full"}`}
+                style={{ height: previewMode === "mobile" ? "560px" : "400px" }}>
+                <iframe
+                  src={websiteUrl}
+                  className="w-full h-full border-0 rounded-2xl"
+                  title="Website preview"
+                  style={previewMode === "desktop" ? { transform: "scale(0.7)", transformOrigin: "top left", width: "143%", height: "143%" } : {}}
+                />
+              </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -493,7 +617,7 @@ export function WebsiteEditor({
       <div className="space-y-2">
         {SECTIONS.map(section => (
           <SectionAccordion key={section.key} section={section} content={content}
-            onSaveSection={saveSection} saving={saving} />
+            onSaveSection={saveSection} saving={saving} token={token} />
         ))}
         <AppearanceSection site={site} onUpdate={updateAppearance} />
       </div>

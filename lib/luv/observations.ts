@@ -357,6 +357,32 @@ export async function getLuvObservations(
     });
   }
 
+  // ── Wedding website milestones ───────────────────────────────────────────
+  // "Emily & James just published their website." — coordinator awareness
+  const websiteSince7d = new Date(Date.now() - 7 * 86_400_000).toISOString();
+  const { data: recentlyPublished } = await supabase
+    .from("couple_websites")
+    .select("client_id, slug, updated_at, clients(first_name, partner_first_name)")
+    .eq("venue_id", venueId)
+    .eq("is_published", true)
+    .gte("updated_at", websiteSince7d)
+    .order("updated_at", { ascending: false })
+    .limit(5);
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  for (const site of (recentlyPublished ?? []) as any[]) {
+    if (!site.clients) continue;
+    const name = [site.clients.first_name, site.clients.partner_first_name].filter(Boolean).join(" & ");
+    observations.push({
+      id: `website-published-${site.client_id}`,
+      priority: "low",
+      message: `${name} just published their wedding website.`,
+      detail: `Their website is live at /w/${site.slug}`,
+      link: `/clients/${site.client_id}`,
+      actionLabel: "View Client →",
+    });
+  }
+
   // ── Event readiness: strong momentum (no exceptions, high readiness) ─────
   // "The Carter Wedding has no overdue tasks and planning momentum looks strong."
   const { data: readyEvents } = await supabase

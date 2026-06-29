@@ -183,7 +183,9 @@ export function WeddingWebsite({ site, slug }: { site: PublicWebsite; slug: stri
 
       {/* Hero */}
       <div className="relative min-h-[60vh] flex flex-col items-center justify-center text-center px-6 py-16"
-        style={{ background: `linear-gradient(135deg, ${color} 0%, ${color}CC 100%)`, color: "white" }}>
+        style={content.home?.coverImageUrl
+          ? { backgroundImage: `url(${content.home.coverImageUrl})`, backgroundSize: "cover", backgroundPosition: "center", color: "white" }
+          : { background: `linear-gradient(135deg, ${color} 0%, ${color}CC 100%)`, color: "white" }}>
         {content.home?.coverImageUrl && (
           <div className="absolute inset-0 bg-black/40" />
         )}
