@@ -219,6 +219,18 @@ export function WeddingWebsite({ site, slug }: { site: PublicWebsite; slug: stri
 
       <div className="max-w-3xl mx-auto px-6 py-8 space-y-16">
 
+        {/* Our Story */}
+        {sections.includes("story") && (content as any).story?.text && (
+          <section>
+            <SectionHeader title={(content as any).story?.title ?? "Our Story"} accentColor={color} />
+            <div className="rounded-2xl p-6 text-center max-w-xl mx-auto" style={{ borderColor: `${color}30` }}>
+              <p className="font-heading text-lg leading-relaxed" style={{ color: `${color}CC` }}>
+                {(content as any).story.text}
+              </p>
+            </div>
+          </section>
+        )}
+
         {/* Event Details */}
         {sections.includes("event") && content.event && (
           <section>
