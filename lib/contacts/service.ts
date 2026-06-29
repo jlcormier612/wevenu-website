@@ -12,7 +12,13 @@ function mapContact(r: any): ClientContact {
     relationship: r.relationship ?? null, roleLabel: r.role_label ?? null,
     portalRole: r.portal_role ?? null, receivesReminders: r.receives_reminders,
     isPrimary: r.is_primary, notes: r.notes ?? null,
-    sortOrder: r.sort_order, createdAt: r.created_at, updatedAt: r.updated_at,
+    sortOrder: r.sort_order,
+    status: r.status ?? "active",
+    lastActivityAt: r.last_activity_at ?? null,
+    isPayer: r.is_payer ?? false,
+    isDecisionMaker: r.is_decision_maker ?? false,
+    isEmergencyContact: r.is_emergency_contact ?? false,
+    createdAt: r.created_at, updatedAt: r.updated_at,
   };
 }
 
@@ -53,6 +59,9 @@ export async function createClientContact(
       receives_reminders: input.receivesReminders ?? false,
       is_primary: input.isPrimary ?? false,
       notes: input.notes?.trim() || null,
+      is_payer: input.isPayer ?? false,
+      is_decision_maker: input.isDecisionMaker ?? false,
+      is_emergency_contact: input.isEmergencyContact ?? false,
     })
     .select("*")
     .single();
@@ -78,6 +87,9 @@ export async function updateClientContact(
   if (input.portalRole !== undefined) patch.portal_role = input.portalRole || null;
   if (input.receivesReminders !== undefined) patch.receives_reminders = input.receivesReminders;
   if (input.notes !== undefined) patch.notes = input.notes?.trim() || null;
+  if (input.isPayer !== undefined) patch.is_payer = input.isPayer;
+  if (input.isDecisionMaker !== undefined) patch.is_decision_maker = input.isDecisionMaker;
+  if (input.isEmergencyContact !== undefined) patch.is_emergency_contact = input.isEmergencyContact;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data, error } = await (supabase.from("client_contacts") as any)
     .update(patch).eq("id", contactId).eq("venue_id", venue.id).select("*").single();

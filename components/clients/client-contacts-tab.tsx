@@ -45,11 +45,13 @@ type ContactForm = {
   firstName: string; lastName: string; email: string; phone: string;
   relationship: string; roleLabel: string;
   portalRole: string; receivesReminders: boolean; notes: string;
+  isPayer: boolean; isDecisionMaker: boolean; isEmergencyContact: boolean;
 };
 
 const EMPTY_FORM: ContactForm = {
   firstName: "", lastName: "", email: "", phone: "",
   relationship: "", roleLabel: "", portalRole: "", receivesReminders: false, notes: "",
+  isPayer: false, isDecisionMaker: false, isEmergencyContact: false,
 };
 
 function PortalRoleBadge({ role }: { role: ContactPortalRole | null }) {
@@ -107,7 +109,10 @@ function ContactCard({
           {contact.email && <span className="flex items-center gap-1"><Mail className="h-3 w-3" />{contact.email}</span>}
           {contact.phone && <span className="flex items-center gap-1"><Phone className="h-3 w-3" />{contact.phone}</span>}
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
+          {contact.isPayer && <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200">Payer</span>}
+          {contact.isDecisionMaker && <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200">Decision maker</span>}
+          {contact.isEmergencyContact && <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-red-50 text-red-700 border border-red-200">Emergency contact</span>}
           <PortalRoleBadge role={contact.portalRole} />
           {contact.portalRole && contact.portalRole !== "reminders_only" && (
             <button type="button" onClick={handleCreatePortal} disabled={generatingLink}
@@ -191,6 +196,20 @@ function ContactFormPanel({
           <Switch checked={f.receivesReminders} onCheckedChange={v => set("receivesReminders", v)} />
           <Label className="text-xs cursor-pointer">Receives email reminders</Label>
         </div>
+        <div className="sm:col-span-2 grid grid-cols-3 gap-3">
+          <div className="flex items-center gap-2">
+            <Switch checked={f.isPayer} onCheckedChange={v => set("isPayer", v)} />
+            <Label className="text-xs cursor-pointer">Payer</Label>
+          </div>
+          <div className="flex items-center gap-2">
+            <Switch checked={f.isDecisionMaker} onCheckedChange={v => set("isDecisionMaker", v)} />
+            <Label className="text-xs cursor-pointer">Decision maker</Label>
+          </div>
+          <div className="flex items-center gap-2">
+            <Switch checked={f.isEmergencyContact} onCheckedChange={v => set("isEmergencyContact", v)} />
+            <Label className="text-xs cursor-pointer">Emergency contact</Label>
+          </div>
+        </div>
       </div>
       <div className="flex justify-end gap-2">
         <Button type="button" variant="ghost" size="sm" onClick={onCancel} disabled={pending}>Cancel</Button>
@@ -221,6 +240,7 @@ export function ClientContactsTab({
         roleLabel: f.roleLabel || undefined,
         portalRole: (f.portalRole as ContactPortalRole) || undefined,
         receivesReminders: f.receivesReminders,
+        isPayer: f.isPayer, isDecisionMaker: f.isDecisionMaker, isEmergencyContact: f.isEmergencyContact,
       });
       if (result.ok) { toast.success("Contact added."); setShowAdd(false); router.refresh(); }
       else toast.error(result.message ?? "Could not add contact.");
@@ -236,6 +256,7 @@ export function ClientContactsTab({
         roleLabel: f.roleLabel || undefined,
         portalRole: (f.portalRole as ContactPortalRole) || undefined,
         receivesReminders: f.receivesReminders,
+        isPayer: f.isPayer, isDecisionMaker: f.isDecisionMaker, isEmergencyContact: f.isEmergencyContact,
       });
       if (result.ok) { toast.success("Contact updated."); setEditingId(null); router.refresh(); }
       else toast.error(result.message ?? "Could not update contact.");
@@ -297,7 +318,8 @@ export function ClientContactsTab({
                       firstName: contact.firstName, lastName: contact.lastName ?? "",
                       email: contact.email ?? "", phone: contact.phone ?? "",
                       relationship: contact.relationship ?? "", roleLabel: contact.roleLabel ?? "",
-                      portalRole: contact.portalRole ?? "", receivesReminders: contact.receivesReminders, notes: "",
+                      portalRole: contact.portalRole ?? "", receivesReminders: contact.receivesReminders, notes: contact.notes ?? "",
+                      isPayer: contact.isPayer, isDecisionMaker: contact.isDecisionMaker, isEmergencyContact: contact.isEmergencyContact,
                     }}
                     onSave={f => handleEdit(contact.id, f)}
                     onCancel={() => setEditingId(null)}

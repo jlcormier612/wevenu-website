@@ -5,6 +5,8 @@ export type ContactRelationship =
 export type ContactPortalRole =
   | "full_access" | "planning" | "financial" | "view_only" | "reminders_only";
 
+export type ContactStatus = "invited" | "active" | "inactive" | "removed";
+
 export type ClientContact = {
   id: string;
   venueId: string;
@@ -14,12 +16,18 @@ export type ClientContact = {
   email: string | null;
   phone: string | null;
   relationship: ContactRelationship | null;
-  roleLabel: string | null;   // "Dad", "MOH", "Lisa (Planner)"
+  roleLabel: string | null;
   portalRole: ContactPortalRole | null;
   receivesReminders: boolean;
   isPrimary: boolean;
   notes: string | null;
   sortOrder: number;
+  // Enrichment fields (Sprint 49 follow-up)
+  status: ContactStatus;
+  lastActivityAt: string | null;
+  isPayer: boolean;
+  isDecisionMaker: boolean;
+  isEmergencyContact: boolean;
   createdAt: string;
   updatedAt: string;
 };
@@ -35,6 +43,10 @@ export type ClientContactInput = {
   receivesReminders?: boolean;
   isPrimary?: boolean;
   notes?: string;
+  // Enrichment
+  isPayer?: boolean;
+  isDecisionMaker?: boolean;
+  isEmergencyContact?: boolean;
 };
 
 export const RELATIONSHIP_LABELS: Record<ContactRelationship, string> = {
