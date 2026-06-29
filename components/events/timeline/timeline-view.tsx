@@ -27,7 +27,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { formatTime } from "@/lib/timeline/constants";
-import type { TimelineEntry, TimelineEntryInput } from "@/lib/timeline/types";
+import type { TimelineAudience, TimelineEntry, TimelineEntryInput } from "@/lib/timeline/types";
+import { TIMELINE_AUDIENCES } from "@/lib/timeline/types";
 import { cn } from "@/lib/utils";
 
 // ---- Entry form (shared for add and edit) -----------------------------------
@@ -48,6 +49,15 @@ function EntryForm({
   const [title, setTitle] = React.useState(initial.title);
   const [description, setDescription] = React.useState(initial.description);
   const [entryTime, setEntryTime] = React.useState(initial.entryTime);
+  const [audiences, setAudiences] = React.useState<TimelineAudience[]>(
+    initial.audiences ?? ["internal"]
+  );
+
+  function toggleAudience(a: TimelineAudience) {
+    setAudiences(prev =>
+      prev.includes(a) ? prev.filter(x => x !== a) : [...prev, a]
+    );
+  }
 
   return (
     <div className="space-y-3 rounded-xl border border-ring bg-card p-4">
@@ -62,7 +72,7 @@ function EntryForm({
             autoFocus
             onKeyDown={(e) => {
               if (e.key === "Enter" && (e.metaKey || e.ctrlKey))
-                onSave({ title, description, entryTime });
+                onSave({ title, description, entryTime, audiences });
             }}
           />
         </div>
@@ -89,6 +99,32 @@ function EntryForm({
           rows={2}
         />
       </div>
+      {/* Audience visibility */}
+      <div className="space-y-1.5">
+        <Label className="text-xs">Visible to</Label>
+        <div className="flex gap-1.5 flex-wrap">
+          {TIMELINE_AUDIENCES.map(a => (
+            <button
+              key={a.value}
+              type="button"
+              onClick={() => toggleAudience(a.value)}
+              className={`flex items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] font-medium transition-colors ${
+                audiences.includes(a.value)
+                  ? "text-white border-transparent"
+                  : "border-border text-muted-foreground hover:border-ring"
+              }`}
+              style={audiences.includes(a.value) ? { background: a.color } : {}}
+            >
+              {a.emoji} {a.label}
+            </button>
+          ))}
+        </div>
+        {audiences.includes("guest") && (
+          <p className="text-[10px] text-muted-foreground">
+            🌿 This entry will appear on the wedding website's Day-of Schedule.
+          </p>
+        )}
+      </div>
       <div className="flex items-center justify-end gap-2">
         <Button type="button" variant="ghost" size="sm" onClick={onCancel} disabled={pending}>
           <X className="mr-1 h-3.5 w-3.5" />Cancel
@@ -97,7 +133,7 @@ function EntryForm({
           type="button"
           size="sm"
           disabled={!title.trim() || pending}
-          onClick={() => onSave({ title, description, entryTime })}
+          onClick={() => onSave({ title, description, entryTime, audiences })}
         >
           <Check className="mr-1 h-3.5 w-3.5" />
           {pending ? "Saving…" : submitLabel}
@@ -176,6 +212,7 @@ function TimelineEntryRow({
               title: entry.title,
               description: entry.description ?? "",
               entryTime: entry.entryTime ?? "",
+              audiences: entry.audiences,
             }}
             onSave={handleUpdate}
             onCancel={() => setEditing(false)}
@@ -206,6 +243,17 @@ function TimelineEntryRow({
                   <p className="mt-0.5 whitespace-pre-wrap text-xs text-muted-foreground">
                     {entry.description}
                   </p>
+                )}
+                {/* Audience badges — only show non-internal audiences */}
+                {entry.audiences && entry.audiences.some(a => a !== "internal") && (
+                  <div className="mt-1.5 flex gap-1 flex-wrap">
+                    {TIMELINE_AUDIENCES.filter(a => a.value !== "internal" && entry.audiences.includes(a.value)).map(a => (
+                      <span key={a.value} className="rounded-full px-1.5 py-0.5 text-[9px] font-semibold text-white"
+                        style={{ background: a.color }}>
+                        {a.emoji} {a.label}
+                      </span>
+                    ))}
+                  </div>
                 )}
               </div>
 

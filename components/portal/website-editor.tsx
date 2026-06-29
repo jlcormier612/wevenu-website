@@ -155,29 +155,101 @@ function EventEditor({ content, onSave, onCancel }: { content: WebsiteContent; o
   );
 }
 
-function ScheduleEditor({ content, onSave, onCancel }: { content: WebsiteContent; onSave: (v: object) => void; onCancel: () => void }) {
+function ScheduleEditor({ content, onSave, onCancel, token, scheduleSync, onToggleSync }: { content: WebsiteContent; onSave: (v: object) => void; onCancel: () => void; token?: string; scheduleSync?: boolean; onToggleSync?: (v: boolean) => void }) {
   const [items, setItems] = React.useState<{ time: string; title: string; description: string }[]>(
     content.schedule?.map(i => ({ ...i, description: i.description ?? "" })) ?? []
   );
+  const [guestTimeline, setGuestTimeline] = React.useState<{ time: string; title: string }[]>([]);
+  const [loadingTimeline, setLoadingTimeline] = React.useState(false);
+
+  React.useEffect(() => {
+    if (!token || scheduleSync === false) return;
+    setLoadingTimeline(true);
+    fetch(`/api/portal/website/guest-timeline?token=${token}`)
+      .then(r => r.json())
+      .then((d: { entries?: { time: string; title: string }[] }) => setGuestTimeline(d.entries ?? []))
+      .catch(() => {})
+      .finally(() => setLoadingTimeline(false));
+  }, [token, scheduleSync]);
+
   function add() { setItems(p => [...p, { time: "", title: "", description: "" }]); }
   function remove(i: number) { setItems(p => p.filter((_, j) => j !== i)); }
   function set(i: number, k: string, v: string) { setItems(p => p.map((item, j) => j === i ? { ...item, [k]: v } : item)); }
+
+  const isSync = scheduleSync !== false;
+
   return (
-    <div className="space-y-3">
-      {items.map((item, i) => (
-        <div key={i} className="flex gap-2 items-start rounded-xl border border-border bg-muted/20 p-3">
-          <div className="flex-1 grid grid-cols-2 gap-2">
-            <input value={item.time} onChange={e => set(i, "time", e.target.value)} placeholder="4:00 PM" className="col-span-1 rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none" />
-            <input value={item.title} onChange={e => set(i, "title", e.target.value)} placeholder="Ceremony begins" className="col-span-1 rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none" />
-            <input value={item.description} onChange={e => set(i, "description", e.target.value)} placeholder="Description (optional)" className="col-span-2 rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none" />
+    <div className="space-y-4">
+      {/* Sync toggle */}
+      {onToggleSync && (
+        <div className="rounded-xl border border-border bg-muted/20 p-3 space-y-2">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-xs font-semibold text-heading">
+                {isSync ? "☑ Syncing from Event Timeline" : "○ Using custom content"}
+              </p>
+              <p className="text-[10px] text-muted-foreground mt-0.5">
+                {isSync
+                  ? "Timeline entries tagged 🌿 Guests appear here automatically."
+                  : "You've overridden with custom schedule items below."}
+              </p>
+            </div>
+            <button type="button" onClick={() => onToggleSync(!isSync)}
+              className="text-xs text-muted-foreground hover:text-foreground underline-offset-2 hover:underline shrink-0">
+              {isSync ? "Use custom" : "Sync from timeline"}
+            </button>
           </div>
-          <button type="button" onClick={() => remove(i)} className="shrink-0 p-1.5 text-muted-foreground hover:text-destructive"><Trash2 className="h-3.5 w-3.5" /></button>
+
+          {isSync && (
+            loadingTimeline ? (
+              <p className="text-[10px] text-muted-foreground">Loading timeline entries…</p>
+            ) : guestTimeline.length > 0 ? (
+              <div className="space-y-1">
+                {guestTimeline.map((e, i) => (
+                  <div key={i} className="flex items-center gap-2 text-xs">
+                    <span className="text-muted-foreground w-16 shrink-0">{e.time?.slice(0, 5) ?? ""}</span>
+                    <span className="text-heading">{e.title}</span>
+                  </div>
+                ))}
+                <a href="#" onClick={e => { e.preventDefault(); window.open(window.location.href.replace(/\/p\/.*/, "/timeline"), "_blank"); }}
+                  className="text-[10px] text-muted-foreground hover:text-foreground underline-offset-2 hover:underline block mt-1">
+                  Edit timeline to add more guest-facing items →
+                </a>
+              </div>
+            ) : (
+              <p className="text-[10px] text-muted-foreground">
+                No guest-facing timeline entries yet. Go to the event's Timeline tab and tag entries 🌿 Guests.
+              </p>
+            )
+          )}
         </div>
-      ))}
-      <button type="button" onClick={add} className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground">
-        <Plus className="h-3.5 w-3.5" /> Add schedule item
-      </button>
-      <Actions onSave={() => onSave(items.filter(i => i.title.trim()))} onCancel={onCancel} />
+      )}
+
+      {/* Custom items — only when not syncing */}
+      {!isSync && (
+        <>
+          {items.map((item, i) => (
+            <div key={i} className="flex gap-2 items-start rounded-xl border border-border bg-muted/20 p-3">
+              <div className="flex-1 grid grid-cols-2 gap-2">
+                <input value={item.time} onChange={e => set(i, "time", e.target.value)} placeholder="4:00 PM" className="col-span-1 rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none" />
+                <input value={item.title} onChange={e => set(i, "title", e.target.value)} placeholder="Ceremony begins" className="col-span-1 rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none" />
+                <input value={item.description} onChange={e => set(i, "description", e.target.value)} placeholder="Description (optional)" className="col-span-2 rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none" />
+              </div>
+              <button type="button" onClick={() => remove(i)} className="shrink-0 p-1.5 text-muted-foreground hover:text-destructive"><Trash2 className="h-3.5 w-3.5" /></button>
+            </div>
+          ))}
+          <button type="button" onClick={add} className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground">
+            <Plus className="h-3.5 w-3.5" /> Add schedule item
+          </button>
+          <Actions onSave={() => onSave(items.filter(i => i.title.trim()))} onCancel={onCancel} />
+        </>
+      )}
+
+      {isSync && (
+        <div className="flex justify-end">
+          <button type="button" onClick={onCancel} className="text-sm text-muted-foreground px-3 py-1.5 rounded-xl hover:bg-muted">Close</button>
+        </div>
+      )}
     </div>
   );
 }
@@ -306,12 +378,14 @@ function Actions({ onSave, onCancel }: { onSave: () => void; onCancel: () => voi
 
 // ── Section accordion item ────────────────────────────────────────────────────
 
-function SectionAccordion({ section, content, onSaveSection, saving, token }: {
+function SectionAccordion({ section, content, onSaveSection, saving, token, scheduleSync, onToggleSync }: {
   section: Section;
   content: WebsiteContent;
   onSaveSection: (key: string, value: object) => Promise<void>;
   saving: string | null;
   token: string;
+  scheduleSync?: boolean;
+  onToggleSync?: (v: boolean) => void;
 }) {
   const [open, setOpen] = React.useState(false);
   const previewText = section.preview?.(content);
@@ -327,7 +401,7 @@ function SectionAccordion({ section, content, onSaveSection, saving, token }: {
       case "home":     return <HomeEditor {...props} token={token} />;
       case "story":    return <StoryEditor {...props} />;
       case "event":    return <EventEditor {...props} />;
-      case "schedule": return <ScheduleEditor {...props} />;
+      case "schedule": return <ScheduleEditor {...props} token={token} scheduleSync={scheduleSync} onToggleSync={onToggleSync} />;
       case "travel":   return <TravelEditor {...props} />;
       case "registry": return <RegistryEditor {...props} />;
       case "faq":      return <FaqEditor {...props} />;
@@ -424,6 +498,9 @@ export function WebsiteEditor({
   const [previewMode, setPreviewMode] = React.useState<"desktop" | "mobile">("mobile");
   const [showPreview, setShowPreview] = React.useState(false);
   const [showQR, setShowQR] = React.useState(false);
+  const [scheduleSync, setScheduleSync] = React.useState(
+    (initialSite as CoupleWebsite & { scheduleSync?: boolean }).scheduleSync !== false
+  );
   const [showInvite, setShowInvite] = React.useState(false);
   const [selectedGuests, setSelectedGuests] = React.useState<string[]>([]);
   const [sendingInvites, setSendingInvites] = React.useState(false);
@@ -692,7 +769,16 @@ export function WebsiteEditor({
       <div className="space-y-2">
         {SECTIONS.map(section => (
           <SectionAccordion key={section.key} section={section} content={content}
-            onSaveSection={saveSection} saving={saving} token={token} />
+            onSaveSection={saveSection} saving={saving} token={token}
+            scheduleSync={section.key === "schedule" ? scheduleSync : undefined}
+            onToggleSync={section.key === "schedule" ? async (v) => {
+              setScheduleSync(v);
+              await fetch("/api/portal/website", {
+                method: "POST", headers: { "content-type": "application/json" },
+                body: JSON.stringify({ token, scheduleSync: v }),
+              });
+            } : undefined}
+          />
         ))}
         <AppearanceSection site={site} onUpdate={updateAppearance} />
       </div>

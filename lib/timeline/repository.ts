@@ -11,10 +11,13 @@ import type { TimelineEntry, TimelineEntryInput } from "@/lib/timeline/types";
 
 type DbClient = Awaited<ReturnType<typeof createClient>>;
 
+import type { TimelineAudience } from "@/lib/timeline/types";
+
 type EntryRow = {
   id: string; venue_id: string; event_id: string;
   title: string; description: string | null;
   entry_time: string | null; sort_order: number;
+  audiences: string[];
   created_at: string; updated_at: string;
 };
 
@@ -23,6 +26,7 @@ function mapEntry(r: EntryRow): TimelineEntry {
     id: r.id, venueId: r.venue_id, eventId: r.event_id,
     title: r.title, description: r.description,
     entryTime: r.entry_time?.slice(0, 5) ?? null,
+    audiences: (r.audiences ?? ["internal"]) as TimelineAudience[],
     sortOrder: r.sort_order,
     createdAt: r.created_at, updatedAt: r.updated_at,
   };
@@ -51,6 +55,7 @@ export async function insertEntry(
       title: input.title.trim(),
       description: input.description.trim() || null,
       entry_time: input.entryTime || null,
+      audiences: input.audiences ?? ["internal"],
       sort_order: 0,
     })
     .select().single<EntryRow>();
@@ -66,6 +71,7 @@ export async function updateEntry(
       title: input.title.trim(),
       description: input.description.trim() || null,
       entry_time: input.entryTime || null,
+      ...(input.audiences !== undefined ? { audiences: input.audiences } : {}),
     })
     .eq("id", entryId).eq("venue_id", venueId);
   if (error) throw error;

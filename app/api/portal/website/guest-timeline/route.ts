@@ -1,0 +1,10 @@
+import { NextResponse } from "next/server";
+import { createClient } from "@/integrations/supabase/server";
+
+export async function GET(request: Request) {
+  const token = new URL(request.url).searchParams.get("token") ?? "";
+  if (!token) return NextResponse.json({ entries: [] });
+  const supabase = await createClient();
+  const { data } = await supabase.rpc("get_guest_timeline", { p_token: token });
+  return NextResponse.json(data ?? { entries: [], count: 0 });
+}
