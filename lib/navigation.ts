@@ -59,7 +59,7 @@ export const NAV_SECTIONS: NavSection[] = [
     items: [
       { title: "Events", href: "/events", icon: PartyPopper },
       { title: "Tours", href: "/tours", icon: CalendarCheck },
-      { title: "Tasks", href: "/tasks", icon: ClipboardList },
+      { title: "Task Center", href: "/tasks", icon: ClipboardList },
       { title: "Timeline", href: "/timeline", icon: CalendarDays },
       { title: "Floor Plan", href: "/floor-plan", icon: LayoutTemplate },
     ],
@@ -67,7 +67,7 @@ export const NAV_SECTIONS: NavSection[] = [
   {
     label: "Library",
     items: [
-      { title: "Playbooks",           href: "/library/playbooks", icon: BookOpen },
+      { title: "Task Playbooks",       href: "/library/playbooks", icon: BookOpen },
       { title: "Contract Templates",  href: "/library/contracts", icon: FileSignature },
       { title: "Packages",            href: "/library/packages",  icon: Boxes },
     ],

@@ -239,7 +239,7 @@ export function EventDetail({
             )}
           </TabsTrigger>
           <TabsTrigger value="playbook">
-            Playbook
+            Task Playbook
             {eventTasks.filter((t) => t.status === "overdue").length > 0 && (
               <span className="ml-1 rounded-full bg-destructive/15 px-1.5 py-0.5 text-[10px] font-semibold text-destructive">{eventTasks.filter((t) => t.status === "overdue").length}</span>
             )}
@@ -460,7 +460,7 @@ export function EventDetail({
         <TabsContent value="playbook">
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">Event Playbook</CardTitle>
+              <CardTitle className="text-base">Task Playbook</CardTitle>
               <CardDescription>All tasks for this event, organized by status and due date. Tasks auto-complete as milestones are hit.</CardDescription>
             </CardHeader>
             <CardContent>

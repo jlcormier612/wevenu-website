@@ -24,7 +24,7 @@ export default async function PlaybookEditorPage({ params }: Props) {
     <div className="space-y-6 max-w-3xl mx-auto">
       <div className="space-y-1">
         <Link href="/library/playbooks" className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors">
-          <ArrowLeft className="h-3.5 w-3.5" /> Playbooks
+          <ArrowLeft className="h-3.5 w-3.5" /> Task Playbooks
         </Link>
         <h1 className="font-heading text-2xl font-medium text-heading">{template.name}</h1>
         <p className="text-sm text-muted-foreground">
