@@ -23,6 +23,8 @@ export default async function PortalPage({ params }: Props) {
     resolvePortalContext(token),
     resolvePortalTasks(token),
   ]);
+  // Log portal visit (non-blocking — get_portal_context already updates last_accessed_at)
+  // The SECURITY DEFINER log_couple_event fires the activity signal
   if (!context) notFound();
 
   return <PortalShell token={token} context={context} initialTasks={tasks} />;

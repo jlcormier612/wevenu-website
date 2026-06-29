@@ -505,6 +505,72 @@ export async function getLuvObservations(
     }
   }
 
+  // ── Couple portal engagement signals ─────────────────────────────────────
+  // Three patterns: recent activity (momentum), inactivity, guest list momentum
+  const since7d = new Date(Date.now() - 7 * 86_400_000).toISOString();
+  const { data: portalSessions } = await supabase
+    .from("client_portal_sessions")
+    .select("client_id, last_accessed_at, clients(first_name, partner_first_name, lead_id)")
+    .eq("venue_id", venueId)
+    .not("last_accessed_at", "is", null)
+    .order("last_accessed_at", { ascending: false })
+    .limit(20);
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  for (const sess of (portalSessions ?? []) as any[]) {
+    if (!sess.clients) continue;
+    const coupleName = [sess.clients.first_name, sess.clients.partner_first_name].filter(Boolean).join(" & ");
+    const accessedAt = new Date(sess.last_accessed_at);
+    const daysAgo = Math.round((Date.now() - accessedAt.getTime()) / 86_400_000);
+
+    if (daysAgo >= 21) {
+      // Inactive couple — hasn't visited in 3+ weeks
+      observations.push({
+        id: `portal-inactive-${sess.client_id}`,
+        priority: "low",
+        message: `${coupleName} hasn't visited their planning workspace in ${daysAgo} days.`,
+        detail: "Sending a check-in or updating their tasks may re-engage them.",
+        link: `/clients/${sess.client_id}`,
+        actionLabel: "View Client →",
+        recommendation: { label: "Send a check-in message", link: `/clients/${sess.client_id}`, type: "navigate" },
+      });
+    }
+  }
+
+  // Guest list momentum — significant guest additions recently
+  const { data: guestEvents } = await supabase
+    .from("couple_portal_events")
+    .select("client_id, event_data, occurred_at, clients(first_name, partner_first_name)")
+    .eq("venue_id", venueId)
+    .in("event_type", ["guests_added", "csv_imported"])
+    .gte("occurred_at", since7d)
+    .order("occurred_at", { ascending: false });
+
+  if (guestEvents?.length) {
+    // Group by client, sum counts
+    const guestCountByClient = new Map<string, { name: string; count: number }>();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    for (const ev of (guestEvents as any[]).filter(e => e.clients)) {
+      const count = (ev.event_data?.count as number) ?? 1;
+      const name = [ev.clients.first_name, ev.clients.partner_first_name].filter(Boolean).join(" & ");
+      const existing = guestCountByClient.get(ev.client_id);
+      if (existing) existing.count += count;
+      else guestCountByClient.set(ev.client_id, { name, count });
+    }
+    for (const [clientId, { name, count }] of guestCountByClient) {
+      if (count >= 10) {
+        observations.push({
+          id: `guest-momentum-${clientId}`,
+          priority: "low",
+          message: `${name} added ${count} guests this week. Planning momentum looks strong.`,
+          detail: count > 50 ? "Guest count increased significantly — the final payment or capacity may need a check." : undefined,
+          link: `/clients/${clientId}`,
+          actionLabel: "View Client →",
+        });
+      }
+    }
+  }
+
   // ── Completed tours without follow-up ────────────────────────────────────
   // The 48 hours after a tour determines conversion. Surface immediately.
   for (const tour of (completedNoFollowUpRes.data ?? []) as { id: string; scheduled_at: string; contact_name: string | null; lead_id: string | null }[]) {

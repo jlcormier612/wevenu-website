@@ -164,6 +164,30 @@ function OverviewSection({
 
 // ── Guest List ────────────────────────────────────────────────────────────────
 
+const RSVP_COLORS: Record<string, string> = { pending: TAUPE, attending: SAGE, declined: "#C0392B", maybe: "#C7A66A" };
+const RSVP_LABELS: Record<string, string> = { pending: "Pending", attending: "Coming", declined: "Declined", maybe: "Maybe" };
+
+function parseCSV(text: string): { firstName: string; lastName?: string; email?: string; groupLabel?: string }[] {
+  const lines = text.trim().split(/\r?\n/);
+  if (lines.length < 2) return [];
+  const headers = lines[0].toLowerCase().split(",").map(h => h.trim().replace(/[^a-z]/g, ""));
+  const fi = headers.findIndex(h => h.includes("first") || h === "name");
+  const li = headers.findIndex(h => h.includes("last"));
+  const ei = headers.findIndex(h => h.includes("email"));
+  const gi = headers.findIndex(h => h.includes("group"));
+  return lines.slice(1).map(line => {
+    const cols = line.split(",").map(c => c.trim().replace(/^["']|["']$/g, ""));
+    const firstName = fi >= 0 ? cols[fi] ?? "" : cols[0] ?? "";
+    const [fn, ...rest] = firstName.split(" ");
+    return {
+      firstName: fn || firstName,
+      lastName: li >= 0 ? cols[li] : rest.join(" ") || undefined,
+      email: ei >= 0 ? cols[ei] || undefined : undefined,
+      groupLabel: gi >= 0 ? cols[gi] || undefined : undefined,
+    };
+  }).filter(g => g.firstName);
+}
+
 function GuestListSection({ token }: { token: string }) {
   const [guests, setGuests] = React.useState<CoupleGuest[]>([]);
   const [stats, setStats] = React.useState<GuestStats | null>(null);
@@ -173,6 +197,17 @@ function GuestListSection({ token }: { token: string }) {
   const [addEmail, setAddEmail] = React.useState("");
   const [addGroup, setAddGroup] = React.useState("");
   const [adding, setAdding] = React.useState(false);
+  const [importing, setImporting] = React.useState(false);
+  const csvRef = React.useRef<HTMLInputElement>(null);
+
+  function reload() {
+    fetch(`/api/portal/guests?token=${token}`)
+      .then(r => r.json())
+      .then((d: { guests?: CoupleGuest[]; stats?: GuestStats }) => {
+        setGuests(d.guests ?? []);
+        setStats(d.stats ?? null);
+      });
+  }
 
   React.useEffect(() => {
     fetch(`/api/portal/guests?token=${token}`)
@@ -187,18 +222,22 @@ function GuestListSection({ token }: { token: string }) {
   async function handleAdd() {
     if (!addName.trim()) return;
     setAdding(true);
-    const res = await fetch("/api/portal/guests", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ token, firstName: addName.split(" ")[0], lastName: addName.split(" ").slice(1).join(" ") || undefined, email: addEmail || undefined, groupLabel: addGroup || undefined }),
-    });
+    const parts = addName.trim().split(" ");
+    const res = await fetch("/api/portal/guests", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ token, firstName: parts[0], lastName: parts.slice(1).join(" ") || undefined, email: addEmail || undefined, groupLabel: addGroup || undefined }) });
     const data = await res.json() as { ok: boolean; guestId?: string };
-    if (data.ok) {
-      setGuests(g => [...g, { id: data.guestId!, firstName: addName.split(" ")[0], lastName: addName.split(" ").slice(1).join(" ") || null, email: addEmail || null, plusOne: false, plusOneName: null, rsvpStatus: "pending", rsvpNote: null, dietary: null, groupLabel: addGroup || null, notes: null }]);
-      setStats(s => s ? { ...s, total: s.total + 1, pending: s.pending + 1 } : null);
-      setAddName(""); setAddEmail(""); setAddGroup(""); setShowAdd(false);
-    } else toast.error("Could not add guest.");
+    if (data.ok) { reload(); setAddName(""); setAddEmail(""); setAddGroup(""); setShowAdd(false); }
+    else toast.error("Could not add guest.");
     setAdding(false);
+  }
+
+  async function handleRsvp(guestId: string, status: string) {
+    await fetch("/api/portal/guests", { method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify({ token, guestId, rsvpStatus: status }) });
+    setGuests(g => g.map(x => x.id === guestId ? { ...x, rsvpStatus: status as CoupleGuest["rsvpStatus"] } : x));
+    setStats(s => {
+      if (!s) return s;
+      const prev = guests.find(x => x.id === guestId)?.rsvpStatus ?? "pending";
+      return { ...s, [prev]: Math.max(0, (s[prev as keyof GuestStats] as number) - 1), [status]: ((s[status as keyof GuestStats] as number) || 0) + 1 };
+    });
   }
 
   async function handleDelete(guestId: string) {
@@ -207,11 +246,23 @@ function GuestListSection({ token }: { token: string }) {
     setStats(s => s ? { ...s, total: Math.max(0, s.total - 1) } : null);
   }
 
-  const RSVP_COLORS = { pending: TAUPE, attending: SAGE, declined: "#C0392B", maybe: "#C7A66A" };
+  async function handleCSV(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setImporting(true);
+    try {
+      const text = await file.text();
+      const parsed = parseCSV(text);
+      if (!parsed.length) { toast.error("No guests found in CSV."); return; }
+      const res = await fetch("/api/portal/guests", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ token, guests: parsed }) });
+      const data = await res.json() as { ok: boolean; imported?: number };
+      if (data.ok) { toast.success(`${data.imported} guests imported.`); reload(); }
+      else toast.error("Import failed. Check your CSV format.");
+    } finally { setImporting(false); if (csvRef.current) csvRef.current.value = ""; }
+  }
 
   return (
     <div className="space-y-4">
-      {/* Stats */}
       {stats && stats.total > 0 && (
         <div className="grid grid-cols-4 gap-2">
           {[{ label: "Total", n: stats.total }, { label: "Coming", n: stats.attending }, { label: "Declined", n: stats.declined }, { label: "Pending", n: stats.pending }].map(({ label, n }) => (
@@ -223,26 +274,27 @@ function GuestListSection({ token }: { token: string }) {
         </div>
       )}
 
-      {/* Guest list */}
       {loading ? <p className="text-sm text-muted-foreground text-center py-6">Loading guests…</p>
       : guests.length === 0 && !showAdd ? (
-        <div className="rounded-2xl border border-dashed border-border py-10 text-center space-y-2">
+        <div className="rounded-2xl border border-dashed border-border py-10 text-center space-y-3 px-4">
           <Users className="h-8 w-8 text-muted-foreground mx-auto" />
-          <p className="text-sm font-medium text-heading">No guests added yet</p>
-          <p className="text-xs text-muted-foreground">Start building your guest list.</p>
+          <p className="text-sm font-medium text-heading">No guests yet</p>
+          <p className="text-xs text-muted-foreground">Add guests one at a time or import a CSV file.</p>
+          <p className="text-[10px] text-muted-foreground">CSV format: First Name, Last Name, Email, Group</p>
         </div>
       ) : (
         <div className="rounded-2xl border border-border bg-card divide-y divide-border/50">
           {guests.map(g => (
-            <div key={g.id} className="px-4 py-3 flex items-center gap-3">
+            <div key={g.id} className="px-4 py-3 flex items-center gap-2.5">
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-heading">{[g.firstName, g.lastName].filter(Boolean).join(" ")}</p>
-                <p className="text-xs text-muted-foreground">{g.email ?? g.groupLabel ?? ""}</p>
+                <p className="text-sm font-medium text-heading leading-tight">{[g.firstName, g.lastName].filter(Boolean).join(" ")}</p>
+                <p className="text-[11px] text-muted-foreground">{g.email ?? g.groupLabel ?? ""}</p>
               </div>
-              <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full"
-                style={{ background: `${RSVP_COLORS[g.rsvpStatus]}15`, color: RSVP_COLORS[g.rsvpStatus] }}>
-                {g.rsvpStatus === "attending" ? "Coming" : g.rsvpStatus === "declined" ? "Declined" : g.rsvpStatus === "maybe" ? "Maybe" : "Pending"}
-              </span>
+              <select value={g.rsvpStatus} onChange={e => handleRsvp(g.id, e.target.value)}
+                className="text-[10px] font-semibold rounded-full border px-1.5 py-0.5 focus:outline-none"
+                style={{ background: `${RSVP_COLORS[g.rsvpStatus]}15`, color: RSVP_COLORS[g.rsvpStatus], borderColor: `${RSVP_COLORS[g.rsvpStatus]}40` }}>
+                {Object.entries(RSVP_LABELS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+              </select>
               <button type="button" onClick={() => handleDelete(g.id)} className="shrink-0 p-1 text-muted-foreground hover:text-destructive rounded">
                 <Trash2 className="h-3.5 w-3.5" />
               </button>
@@ -253,26 +305,31 @@ function GuestListSection({ token }: { token: string }) {
 
       {showAdd ? (
         <div className="rounded-2xl border border-ring bg-card p-4 space-y-3">
-          <input value={addName} onChange={e => setAddName(e.target.value)} placeholder="Guest name *" autoFocus
+          <input value={addName} onChange={e => setAddName(e.target.value)} placeholder="Full name *" autoFocus
             className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring" />
           <input value={addEmail} onChange={e => setAddEmail(e.target.value)} placeholder="Email (optional)"
             className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring" />
-          <input value={addGroup} onChange={e => setAddGroup(e.target.value)} placeholder="Group (Family, College Friends…)"
+          <input value={addGroup} onChange={e => setAddGroup(e.target.value)} placeholder="Group — Family, College Friends…"
             className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring" />
           <div className="flex gap-2 justify-end">
             <button type="button" onClick={() => setShowAdd(false)} className="text-sm text-muted-foreground px-3 py-1.5 rounded-lg hover:bg-muted">Cancel</button>
             <button type="button" onClick={handleAdd} disabled={!addName.trim() || adding}
-              className="text-sm font-medium px-4 py-1.5 rounded-lg text-white disabled:opacity-50"
-              style={{ background: SAGE }}>
+              className="text-sm font-medium px-4 py-1.5 rounded-lg text-white disabled:opacity-50" style={{ background: SAGE }}>
               {adding ? "Adding…" : "Add Guest"}
             </button>
           </div>
         </div>
       ) : (
-        <button type="button" onClick={() => setShowAdd(true)}
-          className="flex items-center gap-1.5 text-sm font-medium px-4 py-2 rounded-xl border border-border hover:bg-muted/40 transition-colors">
-          <Plus className="h-4 w-4" /> Add Guest
-        </button>
+        <div className="flex items-center gap-2 flex-wrap">
+          <button type="button" onClick={() => setShowAdd(true)}
+            className="flex items-center gap-1.5 text-sm font-medium px-4 py-2 rounded-xl border border-border hover:bg-muted/40 transition-colors">
+            <Plus className="h-4 w-4" /> Add Guest
+          </button>
+          <label className="flex items-center gap-1.5 text-sm text-muted-foreground px-4 py-2 rounded-xl border border-border hover:bg-muted/40 transition-colors cursor-pointer">
+            {importing ? <Loader2 className="h-4 w-4 animate-spin" /> : "↑"} Import CSV
+            <input ref={csvRef} type="file" accept=".csv" className="sr-only" onChange={handleCSV} disabled={importing} />
+          </label>
+        </div>
       )}
     </div>
   );
@@ -413,6 +470,39 @@ function TodoSection({ token, onCountChange }: { token: string; onCountChange?: 
               className="flex items-center gap-1.5 text-sm font-medium px-4 py-2 rounded-xl border border-border hover:bg-muted/40 transition-colors">
               <Plus className="h-4 w-4" /> Add To-Do
             </button>
+          )}
+
+          {/* Suggested to-dos — shown when list is empty */}
+          {todos.length === 0 && !showAdd && (
+            <div className="rounded-2xl border border-border/50 bg-muted/20 p-4 space-y-2.5">
+              <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">Suggested tasks</p>
+              <div className="grid grid-cols-2 gap-2">
+                {[
+                  { title: "Book florist", category: "florals" },
+                  { title: "Schedule hair & makeup trial", category: "beauty" },
+                  { title: "Order wedding cake", category: "catering" },
+                  { title: "Book honeymoon travel", category: "travel" },
+                  { title: "Book hotel block for guests", category: "travel" },
+                  { title: "Address and mail invitations", category: "invitations" },
+                  { title: "Choose ceremony music", category: "music" },
+                  { title: "Create wedding website", category: "other" },
+                ].map(s => (
+                  <button key={s.title} type="button"
+                    onClick={async () => {
+                      const res = await fetch("/api/portal/todos", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ token, title: s.title, category: s.category }) });
+                      const data = await res.json() as { ok: boolean; todoId?: string };
+                      if (data.ok) {
+                        const newTodo: CoupleTodo = { id: data.todoId!, title: s.title, notes: null, dueDate: null, category: s.category as TodoCategory, completed: false, completedAt: null };
+                        setTodos(t => [...t, newTodo]);
+                        onCountChange?.(1);
+                      }
+                    }}
+                    className="text-left text-xs px-3 py-2 rounded-lg border border-border bg-card hover:bg-muted/40 transition-colors text-heading">
+                    + {s.title}
+                  </button>
+                ))}
+              </div>
+            </div>
           )}
         </>
       )}

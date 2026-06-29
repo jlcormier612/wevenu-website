@@ -18,6 +18,9 @@ export async function POST(request: Request) {
     p_token: token, p_title: title, p_notes: notes ?? "",
     p_due_date: dueDate ?? null, p_category: category ?? "",
   });
+  if ((data as { ok?: boolean })?.ok) {
+    void supabase.rpc("log_couple_event", { p_token: token, p_type: "todo_added", p_data: { title } });
+  }
   return NextResponse.json(data ?? { ok: false });
 }
 
@@ -30,6 +33,9 @@ export async function PATCH(request: Request) {
     p_token: token, p_todo_id: todoId,
     p_completed: completed ?? null, p_title: title ?? "", p_due_date: dueDate ?? null,
   });
+  if ((data as { ok?: boolean })?.ok && completed === true) {
+    void supabase.rpc("log_couple_event", { p_token: token, p_type: "todo_completed", p_data: { todoId } });
+  }
   return NextResponse.json(data ?? { ok: false });
 }
 
