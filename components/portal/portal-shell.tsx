@@ -86,30 +86,29 @@ function OverviewSection({
 
   return (
     <div className="space-y-4">
-      {/* Hero */}
-      {context.event && (
-        <div className="rounded-2xl overflow-hidden"
-          style={{ background: `linear-gradient(135deg, ${SAGE} 0%, #4F5F4F 100%)` }}>
-          <div className="px-5 py-5 text-white space-y-0.5">
-            <p className="text-xs opacity-60">{context.venue.name}</p>
-            <p className="text-xl font-semibold">{coupleName}'s Wedding</p>
-          </div>
-          <div className="bg-white/10 px-5 py-3 flex items-center justify-between">
-            <div>
-              <p className="text-white/60 text-[11px]">Event date</p>
-              <p className="text-white text-sm font-medium">
-                {new Date(context.event.eventDate + "T12:00:00").toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" })}
-              </p>
-            </div>
-            {du !== null && du >= 0 && (
-              <div className="text-right">
-                <p className="text-white text-2xl font-bold leading-none">{du}</p>
-                <p className="text-white/60 text-[11px]">days away</p>
-              </div>
-            )}
-          </div>
+      {/* Hero — warm, celebratory, personal */}
+      <div className="rounded-2xl overflow-hidden"
+        style={{ background: `linear-gradient(135deg, ${SAGE} 0%, #4F5F4F 100%)` }}>
+        <div className="px-5 py-5 text-white">
+          <p className="text-xs opacity-60 mb-1">{context.venue.name}</p>
+          <p className="text-xl font-semibold">Welcome back, {context.client.firstName}{context.client.partnerFirstName ? ` & ${context.client.partnerFirstName}` : ""}!</p>
+          {context.event && du !== null && du > 0 && (
+            <p className="text-sm opacity-80 mt-1.5">✨ {du} days until your wedding day.</p>
+          )}
+          {readinessScore > 0 && (
+            <p className="text-sm opacity-70 mt-0.5">
+              🌿 You're {readinessScore}% through your planning journey.
+            </p>
+          )}
         </div>
-      )}
+        {context.event && (
+          <div className="bg-white/10 px-5 py-2.5">
+            <p className="text-white text-sm font-medium">
+              {new Date(context.event.eventDate + "T12:00:00").toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" })}
+            </p>
+          </div>
+        )}
+      </div>
 
       {/* Quick stats grid */}
       <div className="grid grid-cols-3 gap-2">
@@ -345,7 +344,91 @@ const TODO_CATEGORIES: { value: TodoCategory; label: string }[] = [
   { value: "beauty", label: "Beauty" }, { value: "other", label: "Other" },
 ];
 
-function TodoSection({ token, onCountChange }: { token: string; onCountChange?: (n: number) => void }) {
+// Dynamic to-do suggestions by time bracket.
+// "No ML required. Just thoughtful, curated guidance."
+const SUGGESTIONS_BY_BRACKET: Record<string, { title: string; category: TodoCategory; emoji: string }[]> = {
+  "12+": [
+    { title: "Book photographer", category: "photography", emoji: "📷" },
+    { title: "Book videographer", category: "photography", emoji: "🎬" },
+    { title: "Choose ceremony venue", category: "venue", emoji: "🌿" },
+    { title: "Set a wedding budget", category: "other", emoji: "💰" },
+    { title: "Create your guest list", category: "other", emoji: "👥" },
+    { title: "Start venue research", category: "venue", emoji: "🏡" },
+    { title: "Schedule engagement photos", category: "photography", emoji: "💗" },
+    { title: "Choose your wedding date", category: "other", emoji: "📅" },
+  ],
+  "9-12": [
+    { title: "Book florist", category: "florals", emoji: "🌸" },
+    { title: "Book caterer or confirm venue catering", category: "catering", emoji: "🍽️" },
+    { title: "Book officiant", category: "other", emoji: "📜" },
+    { title: "Start dress shopping", category: "attire", emoji: "👗" },
+    { title: "Book transportation", category: "travel", emoji: "🚗" },
+    { title: "Research honeymoon destinations", category: "travel", emoji: "✈️" },
+    { title: "Choose your wedding party", category: "other", emoji: "💗" },
+    { title: "Schedule suit fittings", category: "attire", emoji: "🤵" },
+  ],
+  "6-9": [
+    { title: "Order wedding invitations", category: "invitations", emoji: "✉️" },
+    { title: "Reserve hotel block for guests", category: "travel", emoji: "🏨" },
+    { title: "Book hair & makeup", category: "beauty", emoji: "💄" },
+    { title: "Plan rehearsal dinner", category: "other", emoji: "🍷" },
+    { title: "Book honeymoon travel", category: "travel", emoji: "✈️" },
+    { title: "Order wedding cake", category: "catering", emoji: "🎂" },
+    { title: "Choose ceremony music", category: "music", emoji: "🎵" },
+    { title: "Schedule dress fitting", category: "attire", emoji: "👗" },
+  ],
+  "3-6": [
+    { title: "Address and mail invitations", category: "invitations", emoji: "📬" },
+    { title: "Finalize guest list", category: "other", emoji: "✅" },
+    { title: "Plan wedding day timeline", category: "other", emoji: "📋" },
+    { title: "Confirm all vendor bookings", category: "other", emoji: "📞" },
+    { title: "Schedule makeup trial", category: "beauty", emoji: "💄" },
+    { title: "Arrange guest transportation", category: "travel", emoji: "🚌" },
+    { title: "Create wedding website", category: "other", emoji: "🌐" },
+    { title: "Order wedding favors", category: "other", emoji: "🎁" },
+  ],
+  "1-3": [
+    { title: "Write personal vows", category: "other", emoji: "📝" },
+    { title: "Schedule rehearsal dinner", category: "other", emoji: "🍽️" },
+    { title: "Confirm vendor arrival times", category: "other", emoji: "⏰" },
+    { title: "Finalize seating arrangements", category: "other", emoji: "🪑" },
+    { title: "Send final guest count to caterer", category: "catering", emoji: "🍽️" },
+    { title: "Prepare ceremony programs", category: "invitations", emoji: "📄" },
+    { title: "Break in wedding shoes", category: "attire", emoji: "👠" },
+    { title: "Pack an emergency kit", category: "other", emoji: "🧴" },
+  ],
+  "<1": [
+    { title: "Write vows (final version)", category: "other", emoji: "💌" },
+    { title: "Pack overnight bag", category: "other", emoji: "🧳" },
+    { title: "Confirm wedding day timeline with all vendors", category: "other", emoji: "📋" },
+    { title: "Prepare tips for vendors", category: "other", emoji: "💵" },
+    { title: "Arrange day-of emergency contact list", category: "other", emoji: "📱" },
+    { title: "Get a good night's sleep the night before", category: "other", emoji: "😴" },
+  ],
+};
+
+function getSuggestionBracket(daysUntil: number | null): string {
+  if (daysUntil === null || daysUntil > 365) return "12+";
+  if (daysUntil > 270) return "9-12";
+  if (daysUntil > 180) return "6-9";
+  if (daysUntil > 90) return "3-6";
+  if (daysUntil > 30) return "1-3";
+  return "<1";
+}
+
+function getBracketLabel(bracket: string): string {
+  const labels: Record<string, string> = {
+    "12+": "12+ months out — laying the foundation",
+    "9-12": "9–12 months out — the big decisions",
+    "6-9": "6–9 months out — invitations and details",
+    "3-6": "3–6 months out — finalizing everything",
+    "1-3": "1–3 months out — the final stretch",
+    "<1": "Less than a month to go — last touches",
+  };
+  return labels[bracket] ?? "Suggested for your planning stage";
+}
+
+function TodoSection({ token, onCountChange, eventDate }: { token: string; onCountChange?: (n: number) => void; eventDate?: string | null }) {
   const [todos, setTodos] = React.useState<CoupleTodo[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [showAdd, setShowAdd] = React.useState(false);
@@ -472,21 +555,22 @@ function TodoSection({ token, onCountChange }: { token: string; onCountChange?: 
             </button>
           )}
 
-          {/* Suggested to-dos — shown when list is empty */}
+          {/* Dynamic to-do suggestions — time-bracket aware */}
           {todos.length === 0 && !showAdd && (
-            <div className="rounded-2xl border border-border/50 bg-muted/20 p-4 space-y-2.5">
-              <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">Suggested tasks</p>
+            <div className="rounded-2xl border border-border/50 bg-muted/20 p-4 space-y-3">
+              <div>
+                <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">Suggested for your stage</p>
+                {eventDate && (
+                  <p className="text-[10px] text-muted-foreground mt-0.5">
+                    💗 {getBracketLabel(getSuggestionBracket(daysUntil(eventDate)))}
+                  </p>
+                )}
+              </div>
               <div className="grid grid-cols-2 gap-2">
-                {[
-                  { title: "Book florist", category: "florals" },
-                  { title: "Schedule hair & makeup trial", category: "beauty" },
-                  { title: "Order wedding cake", category: "catering" },
-                  { title: "Book honeymoon travel", category: "travel" },
-                  { title: "Book hotel block for guests", category: "travel" },
-                  { title: "Address and mail invitations", category: "invitations" },
-                  { title: "Choose ceremony music", category: "music" },
-                  { title: "Create wedding website", category: "other" },
-                ].map(s => (
+                {(SUGGESTIONS_BY_BRACKET[getSuggestionBracket(eventDate ? daysUntil(eventDate) : null)] ?? SUGGESTIONS_BY_BRACKET["6-9"])
+                  .filter(s => !todos.some(t => t.title.toLowerCase().includes(s.title.toLowerCase().slice(0, 12))))
+                  .slice(0, 8)
+                  .map(s => (
                   <button key={s.title} type="button"
                     onClick={async () => {
                       const res = await fetch("/api/portal/todos", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ token, title: s.title, category: s.category }) });
@@ -497,8 +581,8 @@ function TodoSection({ token, onCountChange }: { token: string; onCountChange?: 
                         onCountChange?.(1);
                       }
                     }}
-                    className="text-left text-xs px-3 py-2 rounded-lg border border-border bg-card hover:bg-muted/40 transition-colors text-heading">
-                    + {s.title}
+                    className="text-left text-xs px-3 py-2.5 rounded-xl border border-border bg-card hover:bg-muted/40 transition-colors text-heading flex items-center gap-1.5">
+                    <span>{s.emoji}</span><span>+ {s.title}</span>
                   </button>
                 ))}
               </div>
@@ -813,7 +897,7 @@ export function PortalShell({ token, context, initialTasks }: { token: string; c
       <main className="flex-1 max-w-lg mx-auto w-full px-4 py-5">
         {activeSection === "overview"  && <OverviewSection context={context} tasks={initialTasks} guestStats={guestStats} todoCount={todoCount} onNavigate={setActiveSection} />}
         {activeSection === "guests"    && <GuestListSection token={token} />}
-        {activeSection === "todos"     && <TodoSection token={token} onCountChange={setTodoCount} />}
+        {activeSection === "todos"     && <TodoSection token={token} onCountChange={setTodoCount} eventDate={context.event?.eventDate} />}
         {activeSection === "website"   && <WebsiteSection token={token} context={context} />}
         {activeSection === "people"    && <OurPeopleSection context={context} />}
         {activeSection === "tasks"     && <VenueTasksSection token={token} initialTasks={initialTasks} />}

@@ -54,7 +54,8 @@ export async function getLuvObservations(
   const threeDaysAgo = new Date(Date.now() - 3 * 86_400_000).toISOString();
   const twoDaysAgo   = new Date(Date.now() - 2 * 86_400_000).toISOString();
 
-  const soon7 = new Date(Date.now() + 7 * 86_400_000).toISOString().slice(0, 10);
+  const soon7  = new Date(Date.now() + 7  * 86_400_000).toISOString().slice(0, 10);
+  const soon90 = new Date(Date.now() + 90 * 86_400_000).toISOString().slice(0, 10);
 
   // Run all observation queries in parallel
   const [
@@ -356,6 +357,55 @@ export async function getLuvObservations(
     });
   }
 
+  // ── Event readiness: strong momentum (no exceptions, high readiness) ─────
+  // "The Carter Wedding has no overdue tasks and planning momentum looks strong."
+  const { data: readyEvents } = await supabase
+    .from("events")
+    .select("id, name, event_date, clients(first_name, partner_first_name)")
+    .eq("venue_id", venueId)
+    .not("status", "in", "(cancelled,complete)")
+    .gte("event_date", today)
+    .lte("event_date", soon90);
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  for (const ev of (readyEvents ?? []) as any[]) {
+    // Check if this event has tasks and none are overdue/blocked
+    const { count: overdueCount } = await supabase
+      .from("event_tasks")
+      .select("id", { count: "exact", head: true })
+      .eq("event_id", ev.id)
+      .in("status", ["overdue", "blocked"])
+      .eq("is_required", true);
+
+    const { count: totalTasks } = await supabase
+      .from("event_tasks")
+      .select("id", { count: "exact", head: true })
+      .eq("event_id", ev.id)
+      .eq("is_required", true);
+
+    const { count: completedTasks } = await supabase
+      .from("event_tasks")
+      .select("id", { count: "exact", head: true })
+      .eq("event_id", ev.id)
+      .eq("status", "complete")
+      .eq("is_required", true);
+
+    const du = Math.ceil((new Date(ev.event_date + "T12:00:00").getTime() - Date.now()) / 86_400_000);
+    const name = [ev.clients?.first_name, ev.clients?.partner_first_name].filter(Boolean).join(" & ");
+    const readiness = totalTasks && totalTasks > 0 ? Math.round(((completedTasks ?? 0) / totalTasks) * 100) : 0;
+
+    if (totalTasks && totalTasks >= 5 && overdueCount === 0 && readiness >= 70) {
+      observations.push({
+        id: `strong-momentum-${ev.id}`,
+        priority: "low",
+        message: `The ${name || ev.name} has no exceptions and is ${readiness}% ready.`,
+        detail: du <= 30 ? "Everything is on track for the big day." : "Planning momentum looks strong.",
+        link: `/events/${ev.id}`,
+        actionLabel: "View Event →",
+      });
+    }
+  }
+
   // ── Upcoming tour appointments ───────────────────────────────────────────
   // Tours are high-intent moments. Coordinator should know what's coming up.
   for (const tour of (upcomingToursRes.data ?? []) as { id: string; scheduled_at: string; contact_name: string | null; duration_minutes: number; lead_id: string | null }[]) {
@@ -606,7 +656,6 @@ export async function getLuvObservations(
   // ── Overdue required tasks ───────────────────────────────────────────────
   // "Coordinator manages exceptions, not steps." Overdue required tasks are
   // the primary exception. Surface at high priority for events within 90 days.
-  const soon90 = new Date(Date.now() + 90 * 86_400_000).toISOString().slice(0, 10);
   const { data: overdueTasks } = await supabase.from("event_tasks")
     .select("id, title, event_id, due_date, events(name, event_date)")
     .eq("venue_id", venueId)
