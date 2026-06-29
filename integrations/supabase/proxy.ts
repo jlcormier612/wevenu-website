@@ -85,7 +85,9 @@ export async function updateSession(
     return NextResponse.redirect(loginUrl);
   }
 
-  if (user && isPublicPath(pathname)) {
+  // Only redirect logged-in users away from /login — not from public couple/guest surfaces.
+  // Coordinators need to be able to preview /p/{token}, /w/{slug}, /book/{key} etc.
+  if (user && pathname === "/login") {
     const dashboardUrl = request.nextUrl.clone();
     dashboardUrl.pathname = "/dashboard";
     return NextResponse.redirect(dashboardUrl);
