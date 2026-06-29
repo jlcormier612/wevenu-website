@@ -5,7 +5,6 @@ import { VenueSpacesSection } from "@/components/availability/venue-spaces-secti
 import { PageHeader } from "@/components/shell/module-placeholder";
 import { LuvSettingsSection } from "@/components/settings/luv-settings-section";
 import { NotificationsSection } from "@/components/settings/notifications-section";
-import { PlaybooksSection } from "@/components/settings/playbooks-section";
 import { TourSettingsSection } from "@/components/settings/tour-settings-section";
 import { WebsiteFormsSection } from "@/components/settings/website-forms-section";
 import { LuvHeart } from "@/components/dashboard/luv-widget";
@@ -20,10 +19,10 @@ import {
 } from "@/components/ui/card";
 import { getCapacityRules, getSpaces } from "@/lib/availability/service";
 import { getLuvSettings } from "@/lib/luv/settings";
-import { getTemplates } from "@/lib/playbooks/service";
 import { getCurrentVenue, getVenueSettings } from "@/lib/venue/service";
 import { getNotificationStats } from "@/lib/notifications/stats";
 import { getTourSettings } from "@/lib/tours/service";
+// Playbooks moved to Library (/library/playbooks)
 
 export const metadata: Metadata = { title: "Settings" };
 
@@ -34,8 +33,8 @@ export const metadata: Metadata = { title: "Settings" };
  * Route is protected by the (app) layout (venue existence already confirmed).
  */
 export default async function SettingsPage() {
-  const [settings, venue, spaces, capacityRules, luvSettings, playbookTemplates, notifStats, tourSettings] = await Promise.all([
-    getVenueSettings(), getCurrentVenue(), getSpaces(), getCapacityRules(), getLuvSettings(), getTemplates(), getNotificationStats(), getTourSettings(),
+  const [settings, venue, spaces, capacityRules, luvSettings, notifStats, tourSettings] = await Promise.all([
+    getVenueSettings(), getCurrentVenue(), getSpaces(), getCapacityRules(), getLuvSettings(), getNotificationStats(), getTourSettings(),
   ]);
 
   if (!settings) {
@@ -107,20 +106,6 @@ export default async function SettingsPage() {
           </CardContent>
         </Card>
       )}
-
-      {/* ── Playbooks ──────────────────────────────────────────────── */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Event Playbooks</CardTitle>
-          <CardDescription>
-            Templates that auto-generate event tasks with real due dates when an event is created.
-            Tasks can auto-complete as milestones are hit.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <PlaybooksSection initialTemplates={playbookTemplates} />
-        </CardContent>
-      </Card>
 
       {/* ── Notifications ──────────────────────────────────────────── */}
       <Card>

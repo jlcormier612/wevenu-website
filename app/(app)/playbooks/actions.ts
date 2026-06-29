@@ -10,31 +10,31 @@ import type { PlaybookActionResult, PlaybookTask, CreatePlaybookResult } from "@
 
 export async function createTemplateAction(name: string, eventType: string | null, description: string | null): Promise<CreatePlaybookResult> {
   const result = await createTemplate(name, eventType, description);
-  if (result.ok) revalidatePath("/settings");
+  if (result.ok) revalidatePath("/library/playbooks");
   return result;
 }
 
 export async function deleteTemplateAction(id: string): Promise<PlaybookActionResult> {
   const result = await deleteTemplate_(id);
-  if (result.ok) revalidatePath("/settings");
+  if (result.ok) revalidatePath("/library/playbooks");
   return result;
 }
 
 export async function addTemplateTaskAction(templateId: string, task: Omit<PlaybookTask, "id" | "templateId" | "venueId" | "createdAt">): Promise<PlaybookActionResult> {
   const result = await addTemplateTask(templateId, task);
-  if (result.ok) revalidatePath("/settings");
+  if (result.ok) revalidatePath("/library/playbooks");
   return result;
 }
 
 export async function updateTemplateTaskAction(taskId: string, patch: Partial<Omit<PlaybookTask, "id" | "templateId" | "venueId" | "createdAt">>): Promise<PlaybookActionResult> {
   const result = await updateTemplateTask_(taskId, patch);
-  if (result.ok) revalidatePath("/settings");
+  if (result.ok) revalidatePath("/library/playbooks");
   return result;
 }
 
 export async function deleteTemplateTaskAction(taskId: string): Promise<PlaybookActionResult> {
   const result = await deleteTemplateTask_(taskId);
-  if (result.ok) revalidatePath("/settings");
+  if (result.ok) revalidatePath("/library/playbooks");
   return result;
 }
 
@@ -58,6 +58,6 @@ export async function setTaskStatusAction(taskId: string, eventId: string, statu
 
 export async function seedDefaultTemplateAction(): Promise<PlaybookActionResult> {
   const result = await seedDefaultWeddingTemplate();
-  if (result.ok) revalidatePath("/settings");
+  if (result.ok) revalidatePath("/library/playbooks");
   return result;
 }

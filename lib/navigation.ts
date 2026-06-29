@@ -1,5 +1,6 @@
 import {
   Boxes,
+  BookOpen,
   CalendarCheck,
   CalendarDays,
   ClipboardList,
@@ -64,9 +65,11 @@ export const NAV_SECTIONS: NavSection[] = [
     ],
   },
   {
-    label: "Catalog",
+    label: "Library",
     items: [
-      { title: "Packages & Inventory", href: "/packages", icon: Boxes },
+      { title: "Playbooks",           href: "/library/playbooks", icon: BookOpen },
+      { title: "Contract Templates",  href: "/library/contracts", icon: FileSignature },
+      { title: "Packages",            href: "/library/packages",  icon: Boxes },
     ],
   },
   {

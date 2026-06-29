@@ -70,7 +70,7 @@ export function PlaybooksSection({ initialTemplates }: { initialTemplates: Playb
           {templates.map((t) => (
             <div key={t.id} className="group flex items-center gap-3 rounded-xl border border-border bg-card px-4 py-3 hover:bg-muted/20 transition-colors">
               <div className="flex-1 min-w-0">
-                <Link href={`/settings/playbooks/${t.id}`} className="text-sm font-medium text-heading hover:text-primary transition-colors">
+                <Link href={`/library/playbooks/${t.id}`} className="text-sm font-medium text-heading hover:text-primary transition-colors">
                   {t.name}
                 </Link>
                 {t.eventType && <span className="ml-2 text-xs text-muted-foreground">· {t.eventType.replace(/_/g, " ")}</span>}
