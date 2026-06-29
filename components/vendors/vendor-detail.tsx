@@ -19,7 +19,61 @@ import { formatTime } from "@/lib/vendors/constants";
 import type { VendorWithEvents } from "@/lib/vendors/types";
 import type { Document } from "@/lib/documents/types";
 
-export function VendorDetail({ vendor, documents = [] }: { vendor: VendorWithEvents; documents?: Document[] }) {
+function VendorPortalWidget({ vendorId, vendorName, sessions }: {
+  vendorId: string;
+  vendorName: string;
+  sessions: { id: string; access_token: string; label: string | null; last_accessed_at: string | null }[];
+}) {
+  const [list, setList] = React.useState(sessions);
+  const [creating, setCreating] = React.useState(false);
+  const session = list[0] ?? null;
+  const portalUrl = session ? `${typeof window !== "undefined" ? window.location.origin : ""}/v/${session.access_token}` : null;
+
+  async function handleCreate() {
+    setCreating(true);
+    try {
+      const { createVendorPortalSessionAction } = await import("@/app/(app)/vendors/[id]/vendor-portal-actions");
+      const result = await createVendorPortalSessionAction(vendorId, vendorName);
+      if (result.ok && result.token) { setList([{ id: "new", access_token: result.token, label: vendorName, last_accessed_at: null }, ...list]); }
+    } finally { setCreating(false); }
+  }
+
+  if (!session) {
+    return (
+      <div className="text-center py-6 space-y-3">
+        <p className="text-sm text-muted-foreground">No portal link yet.</p>
+        <Button type="button" size="sm" onClick={handleCreate} disabled={creating}>
+          {creating ? "Creating…" : "Create Vendor Portal Link"}
+        </Button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center gap-2">
+        <div className="flex-1 rounded-lg border border-border bg-muted/40 px-3 py-2">
+          <p className="text-[11px] font-mono text-muted-foreground break-all select-all">{portalUrl}</p>
+        </div>
+        <Button type="button" size="sm" variant="outline" onClick={() => { if (portalUrl) { navigator.clipboard.writeText(portalUrl); } }}>
+          Copy
+        </Button>
+        {portalUrl && (
+          <Button type="button" size="sm" variant="outline" onClick={() => window.open(portalUrl, "_blank")}>
+            Open
+          </Button>
+        )}
+      </div>
+      <p className="text-xs text-muted-foreground">
+        {session.last_accessed_at
+          ? `Last visited ${new Date(session.last_accessed_at).toLocaleDateString("en-US", { month: "short", day: "numeric" })}`
+          : "Not yet visited"}
+      </p>
+    </div>
+  );
+}
+
+export function VendorDetail({ vendor, documents = [], portalSessions = [] }: { vendor: VendorWithEvents; documents?: Document[]; portalSessions?: { id: string; access_token: string; label: string | null; last_accessed_at: string | null }[] }) {
   const router = useRouter();
   const [deletePending, startDelete] = React.useTransition();
 
@@ -187,6 +241,18 @@ export function VendorDetail({ vendor, documents = [] }: { vendor: VendorWithEve
         </TabsContent>
 
         <TabsContent value="documents">
+          {/* Vendor portal link */}
+          <Card className="mb-4">
+            <CardHeader>
+              <CardTitle className="text-base">Vendor Portal</CardTitle>
+              <CardDescription>
+                Share a private link so {vendor.name} can view their timeline, complete tasks, and upload documents.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <VendorPortalWidget vendorId={vendor.id} vendorName={vendor.name} sessions={portalSessions} />
+            </CardContent>
+          </Card>
           <Card>
             <CardHeader>
               <CardTitle className="text-base">Documents</CardTitle>

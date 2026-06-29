@@ -16,10 +16,12 @@ const PUBLIC_PATHS = [
   "/api/messaging/webhook",  // Resend delivery webhook (no user session)
   "/sign",           // public contract signing — /sign/{token}
   "/p",              // client portal workspace — /p/{access_token}
+  "/v",              // vendor portal workspace — /v/{access_token}
   "/book",           // public tour scheduling — /book/{tour_embed_key}
   "/w",              // public wedding website — /w/{slug}
   "/rsvp",           // public RSVP submission — /rsvp/{rsvp_token}
   "/api/portal",        // portal API endpoints — complete tasks, invites, etc.
+  "/api/vendor",        // vendor portal API endpoints
   "/api/notifications", // notification delivery engine — secret-guarded, not session-guarded
   "/api/tours",         // public tour slot queries and bookings
 ];
