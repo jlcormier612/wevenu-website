@@ -512,6 +512,115 @@ function TodoSection({ token, onCountChange }: { token: string; onCountChange?: 
 
 // ── Our People ────────────────────────────────────────────────────────────────
 
+// ── Website Section ───────────────────────────────────────────────────────────
+
+function WebsiteSection({ token, context }: { token: string; context: PortalContext }) {
+  const [site, setSite] = React.useState<{ exists: boolean; slug?: string; isPublished?: boolean; hasPassword?: boolean; theme?: string; accentColor?: string } | null>(null);
+  const [loading, setLoading] = React.useState(true);
+  const [saving, setSaving] = React.useState(false);
+  const [slug, setSlug] = React.useState("");
+  const [published, setPublished] = React.useState(false);
+
+  const defaultSlug = [context.client.firstName, context.client.partnerFirstName].filter(Boolean).join("-and-").toLowerCase().replace(/[^a-z0-9-]/g, "") + "-wedding";
+
+  React.useEffect(() => {
+    fetch(`/api/portal/website?token=${token}`)
+      .then(r => r.json())
+      .then((d: { exists: boolean; slug?: string; isPublished?: boolean }) => {
+        setSite(d);
+        if (d.slug) setSlug(d.slug);
+        else setSlug(defaultSlug);
+        setPublished(d.isPublished ?? false);
+      })
+      .finally(() => setLoading(false));
+  }, [token, defaultSlug]);
+
+  async function handleSave() {
+    setSaving(true);
+    try {
+      const res = await fetch("/api/portal/website", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ token, slug: slug.trim() || defaultSlug, isPublished: published }),
+      });
+      const data = await res.json() as { ok: boolean; error?: string };
+      if (data.ok) { toast.success(published ? "Website published!" : "Website saved."); setSite(s => ({ ...s!, exists: true, slug: slug.trim() || defaultSlug, isPublished: published })); }
+      else toast.error(data.error ?? "Could not save website settings.");
+    } finally { setSaving(false); }
+  }
+
+  if (loading) return <p className="text-sm text-muted-foreground text-center py-8">Loading website settings…</p>;
+
+  const websiteUrl = site?.slug ? `${typeof window !== "undefined" ? window.location.origin : ""}/w/${site.slug}` : null;
+
+  return (
+    <div className="space-y-5">
+      <p className="text-xs text-muted-foreground">
+        Your wedding website is your public invitation — share your details, schedule, and RSVP link with guests.
+      </p>
+
+      {/* Publish status */}
+      <div className="rounded-2xl border border-border bg-card p-5 space-y-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-sm font-medium text-heading">Your wedding website</p>
+            <p className="text-xs text-muted-foreground">
+              {published ? "Live — guests can see your website" : "Not published yet — only you can see it"}
+            </p>
+          </div>
+          <span className={`text-[10px] font-semibold px-2.5 py-1 rounded-full ${published ? "bg-green-50 text-green-700" : "bg-muted text-muted-foreground"}`}>
+            {published ? "Live" : "Draft"}
+          </span>
+        </div>
+
+        {/* URL */}
+        <div className="space-y-1.5">
+          <p className="text-xs font-medium text-muted-foreground">Your website address</p>
+          <div className="flex gap-2">
+            <div className="flex items-center gap-1 flex-1 rounded-xl border border-border bg-muted/30 px-3 py-2">
+              <span className="text-xs text-muted-foreground shrink-0">{typeof window !== "undefined" ? window.location.host : "wevenu.com"}/w/</span>
+              <input value={slug} onChange={e => setSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ""))}
+                className="flex-1 text-xs bg-transparent text-heading focus:outline-none min-w-0"
+                placeholder={defaultSlug} />
+            </div>
+          </div>
+        </div>
+
+        {/* Preview link */}
+        {websiteUrl && (
+          <a href={websiteUrl} target="_blank" rel="noopener noreferrer"
+            className="block text-xs text-center py-2 rounded-xl border border-border hover:bg-muted/40 transition-colors text-muted-foreground">
+            Preview your website →
+          </a>
+        )}
+
+        {/* Publish toggle */}
+        <div className="flex items-center gap-3 pt-1">
+          <button type="button" onClick={() => setPublished(!published)}
+            className={`relative h-6 w-10 rounded-full transition-colors ${published ? "bg-green-500" : "bg-muted"}`}>
+            <span className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform ${published ? "translate-x-4" : "translate-x-0.5"}`} />
+          </button>
+          <span className="text-sm font-medium text-heading">{published ? "Published" : "Publish website"}</span>
+        </div>
+
+        <button type="button" onClick={handleSave} disabled={saving}
+          className="w-full rounded-xl py-2.5 text-sm font-semibold text-white disabled:opacity-50"
+          style={{ background: SAGE }}>
+          {saving ? "Saving…" : "Save Website Settings"}
+        </button>
+      </div>
+
+      {/* Content reminder */}
+      <div className="rounded-2xl border border-dashed border-border p-4 text-center space-y-1">
+        <p className="text-xs font-medium text-heading">Add content to your website</p>
+        <p className="text-[11px] text-muted-foreground">
+          Event details, schedule, travel info, registry links, and FAQ editing coming in your next update.
+        </p>
+      </div>
+    </div>
+  );
+}
+
 function OurPeopleSection({ context }: { context: PortalContext }) {
   const coupleName = [context.client.firstName, context.client.partnerFirstName].filter(Boolean).join(" & ");
   return (
@@ -638,8 +747,9 @@ export function PortalShell({ token, context, initialTasks }: { token: string; c
       label: "Your Planning",
       items: [
         { id: "overview",  icon: "🏠", label: "Overview",   available: true },
-        { id: "guests",    icon: "👥", label: "Guest List", available: true },
+        { id: "guests",    icon: "👥", label: "Guests",     available: true },
         { id: "todos",     icon: "✅", label: "To-Do",      available: true },
+        { id: "website",   icon: "🌐", label: "Website",    available: true },
         { id: "people",    icon: "💗", label: "Our People", available: true },
       ],
     },
@@ -704,6 +814,7 @@ export function PortalShell({ token, context, initialTasks }: { token: string; c
         {activeSection === "overview"  && <OverviewSection context={context} tasks={initialTasks} guestStats={guestStats} todoCount={todoCount} onNavigate={setActiveSection} />}
         {activeSection === "guests"    && <GuestListSection token={token} />}
         {activeSection === "todos"     && <TodoSection token={token} onCountChange={setTodoCount} />}
+        {activeSection === "website"   && <WebsiteSection token={token} context={context} />}
         {activeSection === "people"    && <OurPeopleSection context={context} />}
         {activeSection === "tasks"     && <VenueTasksSection token={token} initialTasks={initialTasks} />}
         {activeSection === "payments"  && <ComingSoon label="Payments" />}

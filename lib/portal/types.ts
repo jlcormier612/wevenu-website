@@ -47,7 +47,7 @@ export type PortalTask = {
   canComplete: boolean;  // true only for client_owned tasks the couple can act on
 };
 
-export type PortalSection = "overview" | "guests" | "todos" | "people" | "tasks" | "payments" | "documents" | "messages";
+export type PortalSection = "overview" | "guests" | "todos" | "people" | "website" | "tasks" | "payments" | "documents" | "messages";
 
 export type CoupleGuest = {
   id: string;

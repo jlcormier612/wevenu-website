@@ -17,6 +17,8 @@ const PUBLIC_PATHS = [
   "/sign",           // public contract signing — /sign/{token}
   "/p",              // client portal workspace — /p/{access_token}
   "/book",           // public tour scheduling — /book/{tour_embed_key}
+  "/w",              // public wedding website — /w/{slug}
+  "/rsvp",           // public RSVP submission — /rsvp/{rsvp_token}
   "/api/portal",        // portal API endpoints — complete tasks, etc.
   "/api/notifications", // notification delivery engine — secret-guarded, not session-guarded
   "/api/tours",         // public tour slot queries and bookings
