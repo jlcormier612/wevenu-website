@@ -65,6 +65,70 @@ function ReadinessRing({ score, size = 64 }: { score: number; size?: number }) {
   );
 }
 
+// ── Luv message generator (contextual, warm) ─────────────────────────────────
+
+function getLuvMessage(du: number | null, guestTotal: number, readiness: number): string {
+  if (du === null) return "Your wedding planning is underway. You're doing beautifully.";
+  if (du > 365) return "You have a beautiful journey ahead. The earlier you start, the more you can enjoy every moment.";
+  if (du > 270) return "This is such an exciting time. Most couples at your stage are locking in their venue and photographer.";
+  if (du > 180 && guestTotal === 0) return "Your guest list is the heart of your celebration. Now is a wonderful time to start building it.";
+  if (du > 180) return `With ${guestTotal} guests on your list, you're building something beautiful. Invitations typically go out 2–3 months out.`;
+  if (du > 90 && readiness < 50) return "You have everything you need to make this incredible. A few focused weeks of planning will bring it all together.";
+  if (du > 90) return "You're making wonderful progress. The details are coming together exactly as they should.";
+  if (du > 30) return "The final weeks before a wedding are often the most magical. Your special day is almost here.";
+  return "Your wedding day is so close. Breathe, celebrate, and enjoy every moment of this journey.";
+}
+
+// ── Planning journey milestone path ──────────────────────────────────────────
+
+const MILESTONES = [
+  { label: "12 mo", threshold: 365 },
+  { label: "9 mo",  threshold: 270 },
+  { label: "6 mo",  threshold: 180 },
+  { label: "3 mo",  threshold: 90  },
+  { label: "1 mo",  threshold: 30  },
+  { label: "Day",   threshold: 0   },
+];
+
+function PlanningJourney({ du, readiness }: { du: number | null; readiness: number }) {
+  if (du === null) return null;
+  const activeIdx = MILESTONES.findIndex(m => du > m.threshold);
+  const pct = readiness;
+
+  return (
+    <div className="rounded-2xl border border-border bg-card px-4 py-4 space-y-2">
+      <div className="flex items-center justify-between">
+        <p className="text-xs font-semibold text-heading">Planning Journey</p>
+        <p className="text-xs font-semibold" style={{ color: SAGE }}>{pct}% complete</p>
+      </div>
+      {/* Milestone dots */}
+      <div className="flex items-center gap-0">
+        {MILESTONES.map((m, i) => {
+          const isPast = activeIdx > 0 && i < activeIdx;
+          const isCurrent = i === activeIdx || activeIdx === -1 && i === MILESTONES.length - 1;
+          return (
+            <React.Fragment key={m.label}>
+              <div className="flex flex-col items-center gap-1">
+                <div className={`h-3 w-3 rounded-full border-2 transition-all ${
+                  isCurrent ? "scale-125" : ""
+                }`}
+                  style={{
+                    background: isPast || isCurrent ? SAGE : "white",
+                    borderColor: isPast || isCurrent ? SAGE : "#DED6CA",
+                  }} />
+                <p className="text-[9px] font-medium" style={{ color: isCurrent ? SAGE : "#B8AEA1" }}>{m.label}</p>
+              </div>
+              {i < MILESTONES.length - 1 && (
+                <div className="flex-1 h-0.5 mb-3" style={{ background: isPast ? SAGE : "#DED6CA" }} />
+              )}
+            </React.Fragment>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 // ── Overview ─────────────────────────────────────────────────────────────────
 
 function OverviewSection({
@@ -82,81 +146,167 @@ function OverviewSection({
     ? Math.round(required.filter(t => t.status === "complete").length / required.length * 100)
     : 0;
   const actionNeeded = tasks.filter(t => t.canComplete && t.status !== "complete");
-  const coupleName = [context.client.firstName, context.client.partnerFirstName].filter(Boolean).join(" & ");
+  const firstName = context.client.firstName;
+  const partnerName = context.client.partnerFirstName;
+  const coupleName = [firstName, partnerName].filter(Boolean).join(" & ");
+
+  // Suggestions for "This Month"
+  const bracket = getSuggestionBracket(du);
+  const suggestions = (SUGGESTIONS_BY_BRACKET[bracket] ?? []).slice(0, 4);
+
+  // Recent wins (derive from available data)
+  const wins: string[] = [];
+  if ((guestStats?.total ?? 0) > 0) wins.push(`👥 ${guestStats!.total} guest${guestStats!.total !== 1 ? "s" : ""} added to your wedding list`);
+  if (readinessScore >= 25) wins.push(`🌿 ${readinessScore}% of your event planning is complete`);
+  if ((guestStats?.attending ?? 0) > 0) wins.push(`💌 ${guestStats!.attending} guest${guestStats!.attending !== 1 ? "s have" : " has"} already confirmed attendance`);
 
   return (
-    <div className="space-y-4">
-      {/* Hero — warm, celebratory, personal */}
-      <div className="rounded-2xl overflow-hidden"
-        style={{ background: `linear-gradient(135deg, ${SAGE} 0%, #4F5F4F 100%)` }}>
-        <div className="px-5 py-5 text-white">
-          <p className="text-xs opacity-60 mb-1">{context.venue.name}</p>
-          <p className="text-xl font-semibold">Welcome back, {context.client.firstName}{context.client.partnerFirstName ? ` & ${context.client.partnerFirstName}` : ""}!</p>
-          {context.event && du !== null && du > 0 && (
-            <p className="text-sm opacity-80 mt-1.5">✨ {du} days until your wedding day.</p>
-          )}
-          {readinessScore > 0 && (
-            <p className="text-sm opacity-70 mt-0.5">
-              🌿 You're {readinessScore}% through your planning journey.
-            </p>
-          )}
+    <div className="space-y-5">
+
+      {/* ── Hero ── */}
+      <div className="rounded-3xl overflow-hidden" style={{
+        background: `linear-gradient(160deg, ${SAGE} 0%, #4F5F4F 60%, #3D4F3D 100%)`,
+        minHeight: "220px",
+      }}>
+        <div className="px-6 pt-7 pb-3 text-white space-y-1">
+          <p className="text-xs font-medium uppercase tracking-widest opacity-50">{context.venue.name}</p>
+          <p className="text-[28px] font-semibold leading-tight tracking-tight">
+            Welcome back,<br />{coupleName}!
+          </p>
         </div>
-        {context.event && (
-          <div className="bg-white/10 px-5 py-2.5">
-            <p className="text-white text-sm font-medium">
+        {context.event && du !== null && du >= 0 && (
+          <div className="px-6 pb-6 text-white space-y-2">
+            <div className="flex items-end gap-2">
+              <p className="text-5xl font-bold leading-none">{du}</p>
+              <p className="text-lg opacity-70 pb-1">days away</p>
+            </div>
+            <p className="text-sm opacity-70 leading-snug">
               {new Date(context.event.eventDate + "T12:00:00").toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" })}
             </p>
           </div>
         )}
       </div>
 
-      {/* Quick stats grid */}
-      <div className="grid grid-cols-3 gap-2">
+      {/* ── Planning Journey ── */}
+      {context.event && du !== null && (
+        <PlanningJourney du={du} readiness={readinessScore} />
+      )}
+
+      {/* ── Rich section cards ── */}
+      <div className="grid grid-cols-2 gap-3">
         <button type="button" onClick={() => onNavigate("guests")}
-          className="rounded-2xl border border-border bg-card p-3 text-center space-y-1 active:bg-muted/40 transition-colors">
-          <p className="text-xl font-bold text-heading">{guestStats?.total ?? 0}</p>
-          <p className="text-[11px] text-muted-foreground">Guests</p>
-          {guestStats && guestStats.attending > 0 && (
-            <p className="text-[10px]" style={{ color: SAGE }}>{guestStats.attending} confirmed</p>
+          className="rounded-2xl border border-border bg-card p-4 text-left space-y-2 active:opacity-80 transition-opacity">
+          <p className="text-2xl">👥</p>
+          <div>
+            <p className="text-xl font-bold text-heading">{guestStats?.total ?? 0}</p>
+            <p className="text-xs text-muted-foreground mt-0.5">guests added</p>
+          </div>
+          {(guestStats?.attending ?? 0) > 0 && (
+            <p className="text-[11px] font-medium" style={{ color: SAGE }}>{guestStats!.attending} confirmed ✓</p>
           )}
+          <p className="text-[11px] font-semibold" style={{ color: SAGE }}>View list →</p>
         </button>
+
         <button type="button" onClick={() => onNavigate("todos")}
-          className="rounded-2xl border border-border bg-card p-3 text-center space-y-1 active:bg-muted/40 transition-colors">
-          <p className="text-xl font-bold text-heading">{todoCount}</p>
-          <p className="text-[11px] text-muted-foreground">To-do items</p>
+          className="rounded-2xl border border-border bg-card p-4 text-left space-y-2 active:opacity-80 transition-opacity">
+          <p className="text-2xl">📝</p>
+          <div>
+            <p className="text-xl font-bold text-heading">{todoCount}</p>
+            <p className="text-xs text-muted-foreground mt-0.5">to-do items</p>
+          </div>
+          <p className="text-[11px] font-semibold" style={{ color: SAGE }}>View list →</p>
         </button>
+
+        <button type="button" onClick={() => onNavigate("website")}
+          className="rounded-2xl border border-border bg-card p-4 text-left space-y-2 active:opacity-80 transition-opacity">
+          <p className="text-2xl">🌐</p>
+          <div>
+            <p className="text-xl font-bold text-heading">Website</p>
+            <p className="text-xs text-muted-foreground mt-0.5">your wedding site</p>
+          </div>
+          <p className="text-[11px] font-semibold" style={{ color: SAGE }}>Manage →</p>
+        </button>
+
         <button type="button" onClick={() => onNavigate("tasks")}
-          className="rounded-2xl border border-border bg-card p-3 text-center space-y-1 active:bg-muted/40 transition-colors">
-          <ReadinessRing score={readinessScore} size={44} />
-          <p className="text-[11px] text-muted-foreground">Event ready</p>
+          className="rounded-2xl border border-border bg-card p-4 text-left space-y-2 active:opacity-80 transition-opacity"
+          style={actionNeeded.length > 0 ? { borderColor: ROSE, background: `${ROSE}08` } : {}}>
+          <p className="text-2xl">📋</p>
+          <div>
+            <p className="text-xl font-bold text-heading">{actionNeeded.length}</p>
+            <p className="text-xs text-muted-foreground mt-0.5">tasks need attention</p>
+          </div>
+          {actionNeeded.length > 0
+            ? <p className="text-[11px] font-semibold" style={{ color: ROSE }}>Action needed →</p>
+            : <p className="text-[11px] font-semibold" style={{ color: SAGE }}>All on track ✓</p>}
         </button>
       </div>
 
-      {/* Action needed */}
+      {/* ── Action-needed tasks (if any) ── */}
       {actionNeeded.length > 0 && (
-        <div className="rounded-2xl border border-border bg-card divide-y divide-border/50">
-          <div className="px-4 py-2.5">
-            <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-              Needs your attention
-            </p>
+        <div className="rounded-2xl overflow-hidden" style={{ border: `1px solid ${ROSE}30`, background: `${ROSE}06` }}>
+          <div className="px-4 py-3 border-b" style={{ borderColor: `${ROSE}20` }}>
+            <p className="text-xs font-semibold" style={{ color: ROSE }}>Needs your attention</p>
           </div>
-          {actionNeeded.slice(0, 3).map(t => (
+          {actionNeeded.slice(0, 2).map(t => (
             <button key={t.id} type="button" onClick={() => onNavigate("tasks")}
-              className="w-full text-left px-4 py-3 flex items-center justify-between gap-3">
-              <div>
-                <p className="text-sm font-medium text-heading">{t.title}</p>
-                <p className="text-xs text-muted-foreground">
-                  Due {new Date(t.dueDate + "T12:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric" })}
-                </p>
-              </div>
-              <span className="shrink-0 text-xs px-2 py-1 rounded-full font-medium"
-                style={{ background: `${ROSE}20`, color: ROSE }}>
-                Action needed
-              </span>
+              className="w-full text-left px-4 py-3 flex items-center justify-between gap-3 border-b last:border-0"
+              style={{ borderColor: `${ROSE}15` }}>
+              <p className="text-sm font-medium text-heading truncate">{t.title}</p>
+              <span className="shrink-0 text-[10px] px-2 py-0.5 rounded-full font-semibold"
+                style={{ background: ROSE, color: "white" }}>→</span>
             </button>
           ))}
         </div>
       )}
+
+      {/* ── This Month ── */}
+      <div className="rounded-2xl overflow-hidden border border-border" style={{ background: "#FAFAF9" }}>
+        <div className="px-4 pt-4 pb-2">
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">✨ This Month</p>
+          <p className="text-sm font-medium text-heading mt-1">
+            {bracket === "12+" ? "Foundation planning — the most important decisions" :
+             bracket === "9-12" ? "Locking in your key vendors and decisions" :
+             bracket === "6-9"  ? "Invitations, attire, and the beautiful details" :
+             bracket === "3-6"  ? "Finalizing and confirming everything" :
+             bracket === "1-3"  ? "The final stretch — almost there!" :
+             "Last touches before your big day"}
+          </p>
+        </div>
+        <div className="px-4 pb-4 space-y-2 mt-1">
+          {suggestions.map((s) => (
+            <button key={s.title} type="button" onClick={() => onNavigate("todos")}
+              className="w-full text-left flex items-center gap-3 py-2.5 px-3 rounded-xl hover:bg-white transition-colors">
+              <span className="text-lg shrink-0">{s.emoji}</span>
+              <span className="text-sm text-heading">{s.title}</span>
+              <span className="ml-auto text-muted-foreground text-xs shrink-0">+ Add</span>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* ── Recent Wins ── */}
+      {wins.length > 0 && (
+        <div className="rounded-2xl border border-border bg-card px-4 py-4 space-y-2">
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">🎉 Recent Wins</p>
+          {wins.map((w, i) => (
+            <p key={i} className="text-sm text-heading">{w}</p>
+          ))}
+        </div>
+      )}
+
+      {/* ── From Luv ── */}
+      <div className="rounded-2xl px-5 py-4 space-y-2" style={{ background: `${ROSE}12`, border: `1px solid ${ROSE}25` }}>
+        <p className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: ROSE }}>
+          💗 From Luv
+        </p>
+        <p className="text-sm leading-relaxed text-heading">
+          {getLuvMessage(du, guestStats?.total ?? 0, readinessScore)}
+        </p>
+        <p className="text-[10px] font-medium opacity-60" style={{ color: ROSE }}>
+          Luv · your venue's planning assistant
+        </p>
+      </div>
+
     </div>
   );
 }
