@@ -11,6 +11,13 @@ export type PortalContext = {
     partnerLastName: string | null;
     eventType: string | null;
   };
+  contact?: {
+    id: string;
+    firstName: string;
+    lastName?: string | null;
+    roleLabel?: string | null;
+    portalRole?: string | null;
+  } | null;
   event: {
     id: string;
     eventDate: string;
@@ -40,7 +47,41 @@ export type PortalTask = {
   canComplete: boolean;  // true only for client_owned tasks the couple can act on
 };
 
-export type PortalSection = "overview" | "tasks" | "payments" | "documents" | "messages";
+export type PortalSection = "overview" | "guests" | "todos" | "people" | "tasks" | "payments" | "documents" | "messages";
+
+export type CoupleGuest = {
+  id: string;
+  firstName: string;
+  lastName: string | null;
+  email: string | null;
+  plusOne: boolean;
+  plusOneName: string | null;
+  rsvpStatus: "pending" | "attending" | "declined" | "maybe";
+  rsvpNote: string | null;
+  dietary: string | null;
+  groupLabel: string | null;
+  notes: string | null;
+};
+
+export type GuestStats = {
+  total: number;
+  attending: number;
+  declined: number;
+  pending: number;
+  withPlusOnes: number;
+};
+
+export type TodoCategory = "venue" | "attire" | "florals" | "music" | "catering" | "photography" | "travel" | "invitations" | "beauty" | "other";
+
+export type CoupleTodo = {
+  id: string;
+  title: string;
+  notes: string | null;
+  dueDate: string | null;
+  category: TodoCategory | null;
+  completed: boolean;
+  completedAt: string | null;
+};
 
 export type PortalSession = {
   id: string;

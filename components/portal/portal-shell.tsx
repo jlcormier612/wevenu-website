@@ -1,141 +1,160 @@
 "use client";
 
 /**
- * PortalShell — the couple's wedding workspace.
+ * PortalShell — the couple's wedding planning workspace.
  *
- * Design principles:
- *   • No coordinator sidebar — this is their space, not a client view of ours
- *   • Mobile-first — couples plan on phones
- *   • Venue-branded header — logo, venue name, Heritage Sage palette
- *   • Warm and personal — their names, their event, their workspace
- *   • Architecture assumes: Tasks, Payments, Documents, Messages, Timeline, Luv
- *     Each section is stubbed so the navigation shell is already correct
+ * Navigation model (Sprint 50):
+ *
+ * COUPLE-OWNED (their space):
+ *   Overview    — combined dashboard: guests, todos, upcoming milestones
+ *   Guest List  — their guest list with RSVP tracking
+ *   To-Do       — personal planning tasks (separate from venue tasks)
+ *   Our People  — who else has access to their planning workspace
+ *
+ * SHARED WITH VENUE:
+ *   Tasks       — venue-assigned tasks requiring couple action
+ *   Payments    — invoices + payment schedule
+ *   Documents   — shared documents
+ *   Messages    — shared communication thread
+ *
+ * Design: mobile-first, Heritage Sage palette, venue-branded header.
+ * "The client portal is not the venue portal filtered for the couple."
  */
 
 import * as React from "react";
 
-import { Check, Clock, Lock, AlertTriangle, ChevronRight, CalendarDays, ListChecks, CreditCard, FileText, MessageCircle, Loader2 } from "lucide-react";
+import {
+  CalendarDays, Check, CheckSquare, Clock, Loader2,
+  Lock, Plus, Trash2, Users, X,
+} from "lucide-react";
 import { toast } from "sonner";
 
-import type { PortalContext, PortalSection, PortalTask } from "@/lib/portal/types";
+import type {
+  CoupleTodo, CoupleGuest, GuestStats,
+  PortalContext, PortalSection, PortalTask, TodoCategory,
+} from "@/lib/portal/types";
 
 const SAGE = "#5D6F5D";
-const SAGE_SOFT = "#B9D1C2";
 const LINEN = "#F7F5F1";
 const TAUPE = "#B8AEA1";
-const ROSE = "#D8A7AA";
+const ROSE  = "#D8A7AA";
 const CREAM = "#F5F4F2";
 
-const NAV_ITEMS: { id: PortalSection; label: string; icon: React.ElementType; available: boolean }[] = [
-  { id: "overview",   label: "Overview",   icon: CalendarDays,   available: true },
-  { id: "tasks",      label: "Tasks",       icon: ListChecks,     available: true },
-  { id: "payments",   label: "Payments",    icon: CreditCard,     available: false },
-  { id: "documents",  label: "Documents",   icon: FileText,       available: false },
-  { id: "messages",   label: "Messages",    icon: MessageCircle,  available: false },
-];
+// ── Shared utilities ──────────────────────────────────────────────────────────
 
-function daysUntil(dateStr: string): number {
-  const d = new Date(dateStr + "T12:00:00");
-  return Math.ceil((d.getTime() - Date.now()) / 86_400_000);
+function formatDate(iso: string) {
+  return new Date(iso + "T12:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 }
 
-function formatDate(dateStr: string): string {
-  return new Date(dateStr + "T12:00:00").toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric" });
+function daysUntil(iso: string) {
+  return Math.ceil((new Date(iso + "T12:00:00").getTime() - Date.now()) / 86_400_000);
 }
 
-function ReadinessRing({ score, size = 72 }: { score: number; size?: number }) {
-  const r = (size - 10) / 2;
+function ReadinessRing({ score, size = 64 }: { score: number; size?: number }) {
+  const r = (size - 8) / 2;
   const circ = 2 * Math.PI * r;
   const dash = (score / 100) * circ;
   return (
     <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
-      <circle cx={size/2} cy={size/2} r={r} fill="none" stroke={CREAM} strokeWidth={6} />
-      <circle cx={size/2} cy={size/2} r={r} fill="none" stroke={SAGE} strokeWidth={6}
+      <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke={CREAM} strokeWidth={5} />
+      <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke={SAGE} strokeWidth={5}
         strokeDasharray={`${dash} ${circ}`} strokeLinecap="round"
-        transform={`rotate(-90 ${size/2} ${size/2})`} />
-      <text x={size/2} y={size/2 + 5} textAnchor="middle" fontSize={14} fontWeight={600} fill={SAGE}>{score}%</text>
+        transform={`rotate(-90 ${size / 2} ${size / 2})`} />
+      <text x={size / 2} y={size / 2 + 4} textAnchor="middle" fontSize={11} fontWeight={600} fill={SAGE}>{score}%</text>
     </svg>
   );
 }
 
-// ---- Overview Section -------------------------------------------------------
+// ── Overview ─────────────────────────────────────────────────────────────────
 
-function OverviewSection({ context, tasks }: { context: PortalContext; tasks: PortalTask[] }) {
+function OverviewSection({
+  context, tasks, guestStats, todoCount, onNavigate,
+}: {
+  context: PortalContext;
+  tasks: PortalTask[];
+  guestStats: GuestStats | null;
+  todoCount: number;
+  onNavigate: (s: PortalSection) => void;
+}) {
   const du = context.event ? daysUntil(context.event.eventDate) : null;
-  const required = tasks.filter((t) => t.isRequired);
-  const completed = required.filter((t) => t.status === "complete").length;
-  const score = required.length > 0 ? Math.round((completed / required.length) * 100) : 0;
-  const actionNeeded = tasks.filter((t) => t.canComplete && t.status !== "complete");
-  const upcoming = tasks.filter((t) => t.status !== "complete").slice(0, 3);
-
+  const required = tasks.filter(t => t.isRequired);
+  const readinessScore = required.length > 0
+    ? Math.round(required.filter(t => t.status === "complete").length / required.length * 100)
+    : 0;
+  const actionNeeded = tasks.filter(t => t.canComplete && t.status !== "complete");
   const coupleName = [context.client.firstName, context.client.partnerFirstName].filter(Boolean).join(" & ");
 
   return (
-    <div className="space-y-5">
-      {/* Event hero */}
-      {context.event ? (
-        <div className="rounded-2xl overflow-hidden" style={{ background: `linear-gradient(135deg, ${SAGE} 0%, #4F5F4F 100%)` }}>
-          <div className="px-6 py-6 text-white space-y-1">
-            <p className="text-sm opacity-75">{context.venue.name}</p>
-            <h2 className="text-2xl font-semibold tracking-tight">{coupleName}</h2>
-            <p className="text-sm opacity-80">{context.event.eventType?.replace(/_/g, " ") ?? "Wedding"}</p>
+    <div className="space-y-4">
+      {/* Hero */}
+      {context.event && (
+        <div className="rounded-2xl overflow-hidden"
+          style={{ background: `linear-gradient(135deg, ${SAGE} 0%, #4F5F4F 100%)` }}>
+          <div className="px-5 py-5 text-white space-y-0.5">
+            <p className="text-xs opacity-60">{context.venue.name}</p>
+            <p className="text-xl font-semibold">{coupleName}'s Wedding</p>
           </div>
-          <div className="bg-white/10 px-6 py-4 flex items-center justify-between">
+          <div className="bg-white/10 px-5 py-3 flex items-center justify-between">
             <div>
-              <p className="text-white/60 text-xs">Event date</p>
-              <p className="text-white font-medium text-sm">{formatDate(context.event.eventDate)}</p>
+              <p className="text-white/60 text-[11px]">Event date</p>
+              <p className="text-white text-sm font-medium">
+                {new Date(context.event.eventDate + "T12:00:00").toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" })}
+              </p>
             </div>
-            {du !== null && (
+            {du !== null && du >= 0 && (
               <div className="text-right">
-                <p className="text-white text-2xl font-bold">{Math.abs(du)}</p>
-                <p className="text-white/60 text-xs">{du >= 0 ? "days away" : "days ago"}</p>
+                <p className="text-white text-2xl font-bold leading-none">{du}</p>
+                <p className="text-white/60 text-[11px]">days away</p>
               </div>
             )}
           </div>
         </div>
-      ) : (
-        <div className="rounded-2xl bg-card border border-border p-6 text-center">
-          <p className="text-sm text-muted-foreground">No upcoming event found. Contact your venue coordinator.</p>
-        </div>
       )}
 
-      {/* Planning progress */}
-      {required.length > 0 && (
-        <div className="rounded-2xl border border-border bg-card p-5">
-          <div className="flex items-center gap-4">
-            <ReadinessRing score={score} />
-            <div className="flex-1">
-              <p className="font-semibold text-heading">Event Readiness</p>
-              <p className="text-sm text-muted-foreground mt-0.5">
-                {completed} of {required.length} planning steps complete
-              </p>
-              {actionNeeded.length > 0 && (
-                <p className="text-xs mt-1.5" style={{ color: ROSE }}>
-                  {actionNeeded.length} item{actionNeeded.length !== 1 ? "s" : ""} need your attention
-                </p>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Quick stats grid */}
+      <div className="grid grid-cols-3 gap-2">
+        <button type="button" onClick={() => onNavigate("guests")}
+          className="rounded-2xl border border-border bg-card p-3 text-center space-y-1 active:bg-muted/40 transition-colors">
+          <p className="text-xl font-bold text-heading">{guestStats?.total ?? 0}</p>
+          <p className="text-[11px] text-muted-foreground">Guests</p>
+          {guestStats && guestStats.attending > 0 && (
+            <p className="text-[10px]" style={{ color: SAGE }}>{guestStats.attending} confirmed</p>
+          )}
+        </button>
+        <button type="button" onClick={() => onNavigate("todos")}
+          className="rounded-2xl border border-border bg-card p-3 text-center space-y-1 active:bg-muted/40 transition-colors">
+          <p className="text-xl font-bold text-heading">{todoCount}</p>
+          <p className="text-[11px] text-muted-foreground">To-do items</p>
+        </button>
+        <button type="button" onClick={() => onNavigate("tasks")}
+          className="rounded-2xl border border-border bg-card p-3 text-center space-y-1 active:bg-muted/40 transition-colors">
+          <ReadinessRing score={readinessScore} size={44} />
+          <p className="text-[11px] text-muted-foreground">Event ready</p>
+        </button>
+      </div>
 
-      {/* What's next */}
-      {upcoming.length > 0 && (
+      {/* Action needed */}
+      {actionNeeded.length > 0 && (
         <div className="rounded-2xl border border-border bg-card divide-y divide-border/50">
-          <div className="px-4 py-3">
-            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">What's next</p>
+          <div className="px-4 py-2.5">
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+              Needs your attention
+            </p>
           </div>
-          {upcoming.map((t) => (
-            <div key={t.id} className="px-4 py-3 flex items-center justify-between gap-3">
-              <div className="min-w-0">
-                <p className="text-sm font-medium text-heading truncate">{t.title}</p>
+          {actionNeeded.slice(0, 3).map(t => (
+            <button key={t.id} type="button" onClick={() => onNavigate("tasks")}
+              className="w-full text-left px-4 py-3 flex items-center justify-between gap-3">
+              <div>
+                <p className="text-sm font-medium text-heading">{t.title}</p>
                 <p className="text-xs text-muted-foreground">
-                  {new Date(t.dueDate + "T12:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric" })}
-                  {t.canComplete ? " · Your action needed" : ""}
+                  Due {new Date(t.dueDate + "T12:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric" })}
                 </p>
               </div>
-              {t.canComplete && <ChevronRight className="shrink-0 h-4 w-4 text-muted-foreground" />}
-            </div>
+              <span className="shrink-0 text-xs px-2 py-1 rounded-full font-medium"
+                style={{ background: `${ROSE}20`, color: ROSE }}>
+                Action needed
+              </span>
+            </button>
           ))}
         </div>
       )}
@@ -143,167 +162,466 @@ function OverviewSection({ context, tasks }: { context: PortalContext; tasks: Po
   );
 }
 
-// ---- Tasks Section ----------------------------------------------------------
+// ── Guest List ────────────────────────────────────────────────────────────────
 
-function TaskStatusIcon({ status }: { status: PortalTask["status"] }) {
-  if (status === "complete") return <Check className="h-4 w-4" style={{ color: SAGE }} />;
-  if (status === "blocked")  return <Lock className="h-4 w-4" style={{ color: TAUPE }} />;
-  if (status === "overdue")  return <AlertTriangle className="h-4 w-4 text-destructive" />;
-  return <Clock className="h-4 w-4" style={{ color: TAUPE }} />;
-}
+function GuestListSection({ token }: { token: string }) {
+  const [guests, setGuests] = React.useState<CoupleGuest[]>([]);
+  const [stats, setStats] = React.useState<GuestStats | null>(null);
+  const [loading, setLoading] = React.useState(true);
+  const [showAdd, setShowAdd] = React.useState(false);
+  const [addName, setAddName] = React.useState("");
+  const [addEmail, setAddEmail] = React.useState("");
+  const [addGroup, setAddGroup] = React.useState("");
+  const [adding, setAdding] = React.useState(false);
 
-function TasksSection({ token, initialTasks }: { token: string; initialTasks: PortalTask[] }) {
-  const [tasks, setTasks] = React.useState(initialTasks);
-  const [completing, setCompleting] = React.useState<string | null>(null);
+  React.useEffect(() => {
+    fetch(`/api/portal/guests?token=${token}`)
+      .then(r => r.json())
+      .then((d: { guests?: CoupleGuest[]; stats?: GuestStats }) => {
+        setGuests(d.guests ?? []);
+        setStats(d.stats ?? null);
+      })
+      .finally(() => setLoading(false));
+  }, [token]);
 
-  const actionNeeded = tasks.filter((t) => t.canComplete && t.status !== "complete" && t.status !== "blocked");
-  const inProgress   = tasks.filter((t) => !t.canComplete && t.status !== "complete" && t.status !== "blocked");
-  const done         = tasks.filter((t) => t.status === "complete");
-
-  async function handleComplete(taskId: string) {
-    setCompleting(taskId);
-    const res = await fetch(`/api/portal/complete-task`, {
+  async function handleAdd() {
+    if (!addName.trim()) return;
+    setAdding(true);
+    const res = await fetch("/api/portal/guests", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ token, taskId }),
+      body: JSON.stringify({ token, firstName: addName.split(" ")[0], lastName: addName.split(" ").slice(1).join(" ") || undefined, email: addEmail || undefined, groupLabel: addGroup || undefined }),
     });
-    const json = await res.json();
-    setCompleting(null);
-    if (json.ok) {
-      setTasks((p) => p.map((t) => t.id === taskId ? { ...t, status: "complete", canComplete: false } : t));
-      toast.success("Task marked complete.");
-    } else {
-      toast.error("Could not complete task. Please try again.");
-    }
+    const data = await res.json() as { ok: boolean; guestId?: string };
+    if (data.ok) {
+      setGuests(g => [...g, { id: data.guestId!, firstName: addName.split(" ")[0], lastName: addName.split(" ").slice(1).join(" ") || null, email: addEmail || null, plusOne: false, plusOneName: null, rsvpStatus: "pending", rsvpNote: null, dietary: null, groupLabel: addGroup || null, notes: null }]);
+      setStats(s => s ? { ...s, total: s.total + 1, pending: s.pending + 1 } : null);
+      setAddName(""); setAddEmail(""); setAddGroup(""); setShowAdd(false);
+    } else toast.error("Could not add guest.");
+    setAdding(false);
   }
 
-  const TaskGroup = ({ label, groupTasks }: { label: string; groupTasks: PortalTask[] }) => {
-    if (!groupTasks.length) return null;
-    return (
-      <div>
-        <p className="text-[11px] font-semibold uppercase tracking-wide mb-2" style={{ color: TAUPE }}>{label}</p>
-        <div className="rounded-2xl border border-border bg-card divide-y divide-border/50">
-          {groupTasks.map((t) => (
-            <div key={t.id} className="px-4 py-4 flex items-start gap-3">
-              <div className="shrink-0 mt-0.5"><TaskStatusIcon status={t.status} /></div>
-              <div className="flex-1 min-w-0">
-                <p className={`text-sm font-medium ${t.status === "complete" ? "text-muted-foreground line-through" : "text-heading"}`}>
-                  {t.title}
-                </p>
-                {t.description && <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">{t.description}</p>}
-                <p className="text-xs mt-1" style={{ color: TAUPE }}>
-                  Due {new Date(t.dueDate + "T12:00:00").toLocaleDateString("en-US", { month: "long", day: "numeric" })}
-                </p>
-              </div>
-              {t.canComplete && t.status !== "complete" && (
-                <button type="button" onClick={() => handleComplete(t.id)} disabled={completing === t.id}
-                  className="shrink-0 mt-0.5 h-8 px-3 rounded-xl text-xs font-semibold transition-colors"
-                  style={{ background: SAGE, color: "white", opacity: completing === t.id ? 0.7 : 1 }}>
-                  {completing === t.id ? <Loader2 className="h-3 w-3 animate-spin" /> : "Done"}
-                </button>
-              )}
+  async function handleDelete(guestId: string) {
+    await fetch("/api/portal/guests", { method: "DELETE", headers: { "content-type": "application/json" }, body: JSON.stringify({ token, guestId }) });
+    setGuests(g => g.filter(x => x.id !== guestId));
+    setStats(s => s ? { ...s, total: Math.max(0, s.total - 1) } : null);
+  }
+
+  const RSVP_COLORS = { pending: TAUPE, attending: SAGE, declined: "#C0392B", maybe: "#C7A66A" };
+
+  return (
+    <div className="space-y-4">
+      {/* Stats */}
+      {stats && stats.total > 0 && (
+        <div className="grid grid-cols-4 gap-2">
+          {[{ label: "Total", n: stats.total }, { label: "Coming", n: stats.attending }, { label: "Declined", n: stats.declined }, { label: "Pending", n: stats.pending }].map(({ label, n }) => (
+            <div key={label} className="rounded-xl border border-border bg-card p-2.5 text-center">
+              <p className="text-lg font-bold text-heading">{n}</p>
+              <p className="text-[10px] text-muted-foreground">{label}</p>
             </div>
           ))}
         </div>
-      </div>
-    );
-  };
+      )}
 
-  if (!tasks.length) {
-    return (
-      <div className="rounded-2xl border border-dashed border-border py-12 text-center px-6">
-        <p className="text-sm font-medium text-heading">Your planning tasks will appear here.</p>
-        <p className="text-xs text-muted-foreground mt-1">Your venue coordinator is setting this up for you.</p>
-      </div>
-    );
-  }
+      {/* Guest list */}
+      {loading ? <p className="text-sm text-muted-foreground text-center py-6">Loading guests…</p>
+      : guests.length === 0 && !showAdd ? (
+        <div className="rounded-2xl border border-dashed border-border py-10 text-center space-y-2">
+          <Users className="h-8 w-8 text-muted-foreground mx-auto" />
+          <p className="text-sm font-medium text-heading">No guests added yet</p>
+          <p className="text-xs text-muted-foreground">Start building your guest list.</p>
+        </div>
+      ) : (
+        <div className="rounded-2xl border border-border bg-card divide-y divide-border/50">
+          {guests.map(g => (
+            <div key={g.id} className="px-4 py-3 flex items-center gap-3">
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-heading">{[g.firstName, g.lastName].filter(Boolean).join(" ")}</p>
+                <p className="text-xs text-muted-foreground">{g.email ?? g.groupLabel ?? ""}</p>
+              </div>
+              <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full"
+                style={{ background: `${RSVP_COLORS[g.rsvpStatus]}15`, color: RSVP_COLORS[g.rsvpStatus] }}>
+                {g.rsvpStatus === "attending" ? "Coming" : g.rsvpStatus === "declined" ? "Declined" : g.rsvpStatus === "maybe" ? "Maybe" : "Pending"}
+              </span>
+              <button type="button" onClick={() => handleDelete(g.id)} className="shrink-0 p-1 text-muted-foreground hover:text-destructive rounded">
+                <Trash2 className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
 
-  return (
-    <div className="space-y-5">
-      <TaskGroup label="Your action needed" groupTasks={actionNeeded} />
-      <TaskGroup label="In progress" groupTasks={inProgress} />
-      <TaskGroup label="Completed" groupTasks={done} />
+      {showAdd ? (
+        <div className="rounded-2xl border border-ring bg-card p-4 space-y-3">
+          <input value={addName} onChange={e => setAddName(e.target.value)} placeholder="Guest name *" autoFocus
+            className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring" />
+          <input value={addEmail} onChange={e => setAddEmail(e.target.value)} placeholder="Email (optional)"
+            className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring" />
+          <input value={addGroup} onChange={e => setAddGroup(e.target.value)} placeholder="Group (Family, College Friends…)"
+            className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring" />
+          <div className="flex gap-2 justify-end">
+            <button type="button" onClick={() => setShowAdd(false)} className="text-sm text-muted-foreground px-3 py-1.5 rounded-lg hover:bg-muted">Cancel</button>
+            <button type="button" onClick={handleAdd} disabled={!addName.trim() || adding}
+              className="text-sm font-medium px-4 py-1.5 rounded-lg text-white disabled:opacity-50"
+              style={{ background: SAGE }}>
+              {adding ? "Adding…" : "Add Guest"}
+            </button>
+          </div>
+        </div>
+      ) : (
+        <button type="button" onClick={() => setShowAdd(true)}
+          className="flex items-center gap-1.5 text-sm font-medium px-4 py-2 rounded-xl border border-border hover:bg-muted/40 transition-colors">
+          <Plus className="h-4 w-4" /> Add Guest
+        </button>
+      )}
     </div>
   );
 }
 
-// ---- Coming Soon placeholder ------------------------------------------------
+// ── Personal To-Do ────────────────────────────────────────────────────────────
 
-function ComingSoonSection({ section }: { section: string }) {
+const TODO_CATEGORIES: { value: TodoCategory; label: string }[] = [
+  { value: "venue", label: "Venue" }, { value: "attire", label: "Attire" },
+  { value: "florals", label: "Florals" }, { value: "music", label: "Music" },
+  { value: "catering", label: "Catering" }, { value: "photography", label: "Photography" },
+  { value: "travel", label: "Travel" }, { value: "invitations", label: "Invitations" },
+  { value: "beauty", label: "Beauty" }, { value: "other", label: "Other" },
+];
+
+function TodoSection({ token, onCountChange }: { token: string; onCountChange?: (n: number) => void }) {
+  const [todos, setTodos] = React.useState<CoupleTodo[]>([]);
+  const [loading, setLoading] = React.useState(true);
+  const [showAdd, setShowAdd] = React.useState(false);
+  const [addTitle, setAddTitle] = React.useState("");
+  const [addCategory, setAddCategory] = React.useState<string>("");
+  const [addDue, setAddDue] = React.useState("");
+  const [adding, setAdding] = React.useState(false);
+
+  React.useEffect(() => {
+    fetch(`/api/portal/todos?token=${token}`)
+      .then(r => r.json())
+      .then((d: { todos?: CoupleTodo[] }) => {
+        const t = d.todos ?? [];
+        setTodos(t);
+        onCountChange?.(t.filter(x => !x.completed).length);
+      })
+      .finally(() => setLoading(false));
+  }, [token, onCountChange]);
+
+  async function handleAdd() {
+    if (!addTitle.trim()) return;
+    setAdding(true);
+    const res = await fetch("/api/portal/todos", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ token, title: addTitle.trim(), category: addCategory || undefined, dueDate: addDue || undefined }) });
+    const data = await res.json() as { ok: boolean; todoId?: string };
+    if (data.ok) {
+      const newTodo: CoupleTodo = { id: data.todoId!, title: addTitle.trim(), notes: null, dueDate: addDue || null, category: (addCategory as TodoCategory) || null, completed: false, completedAt: null };
+      setTodos(t => [newTodo, ...t]);
+      onCountChange?.(todos.filter(x => !x.completed).length + 1);
+      setAddTitle(""); setAddCategory(""); setAddDue(""); setShowAdd(false);
+    }
+    setAdding(false);
+  }
+
+  async function handleToggle(todo: CoupleTodo) {
+    const next = !todo.completed;
+    setTodos(t => t.map(x => x.id === todo.id ? { ...x, completed: next, completedAt: next ? new Date().toISOString() : null } : x));
+    onCountChange?.(todos.filter(x => !x.completed).length + (next ? -1 : 1));
+    await fetch("/api/portal/todos", { method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify({ token, todoId: todo.id, completed: next }) });
+  }
+
+  async function handleDelete(todoId: string) {
+    setTodos(t => t.filter(x => x.id !== todoId));
+    await fetch("/api/portal/todos", { method: "DELETE", headers: { "content-type": "application/json" }, body: JSON.stringify({ token, todoId }) });
+  }
+
+  const open = todos.filter(t => !t.completed);
+  const done = todos.filter(t => t.completed);
+
   return (
-    <div className="rounded-2xl border border-dashed border-border py-16 text-center px-6">
-      <p className="text-2xl mb-3">💗</p>
-      <p className="text-sm font-medium text-heading capitalize">{section} coming soon</p>
-      <p className="text-xs text-muted-foreground mt-1 max-w-xs mx-auto">
-        Your coordinator will share access when this section is ready.
+    <div className="space-y-4">
+      <p className="text-xs text-muted-foreground">Your personal planning checklist — separate from tasks assigned by the venue.</p>
+
+      {loading ? <p className="text-sm text-muted-foreground text-center py-6">Loading…</p> : (
+        <>
+          {todos.length === 0 && !showAdd ? (
+            <div className="rounded-2xl border border-dashed border-border py-10 text-center space-y-2">
+              <CheckSquare className="h-8 w-8 text-muted-foreground mx-auto" />
+              <p className="text-sm font-medium text-heading">Your planning list is empty</p>
+              <p className="text-xs text-muted-foreground">Add "Book florist", "Choose dress", or anything you need to track.</p>
+            </div>
+          ) : (
+            <div className="space-y-1">
+              {open.map(t => (
+                <div key={t.id} className="flex items-center gap-3 py-2.5 px-3 rounded-xl hover:bg-muted/30 group">
+                  <button type="button" onClick={() => handleToggle(t)}
+                    className="shrink-0 h-5 w-5 rounded border border-border flex items-center justify-center hover:border-primary transition-colors">
+                  </button>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-heading">{t.title}</p>
+                    {(t.dueDate || t.category) && (
+                      <p className="text-[11px] text-muted-foreground">
+                        {t.category && <span className="capitalize">{t.category}</span>}
+                        {t.category && t.dueDate && <span> · </span>}
+                        {t.dueDate && <span>Due {formatDate(t.dueDate)}</span>}
+                      </p>
+                    )}
+                  </div>
+                  <button type="button" onClick={() => handleDelete(t.id)} className="opacity-0 group-hover:opacity-100 p-1 text-muted-foreground hover:text-destructive rounded">
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              ))}
+              {done.length > 0 && (
+                <div className="pt-2 border-t border-border/50 space-y-1">
+                  <p className="text-[10px] text-muted-foreground uppercase tracking-wide px-3 py-1">Completed ({done.length})</p>
+                  {done.map(t => (
+                    <div key={t.id} className="flex items-center gap-3 py-2 px-3 rounded-xl opacity-50">
+                      <button type="button" onClick={() => handleToggle(t)} className="shrink-0 h-5 w-5 rounded border flex items-center justify-center" style={{ background: SAGE, borderColor: SAGE }}>
+                        <Check className="h-3 w-3 text-white" />
+                      </button>
+                      <p className="text-sm text-muted-foreground line-through">{t.title}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {showAdd ? (
+            <div className="rounded-2xl border border-ring bg-card p-4 space-y-3">
+              <input value={addTitle} onChange={e => setAddTitle(e.target.value)} placeholder="What needs to get done? *" autoFocus
+                className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring" />
+              <div className="flex gap-2">
+                <select value={addCategory} onChange={e => setAddCategory(e.target.value)}
+                  className="flex-1 rounded-lg border border-border bg-background px-3 py-2 text-sm">
+                  <option value="">Category…</option>
+                  {TODO_CATEGORIES.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
+                </select>
+                <input type="date" value={addDue} onChange={e => setAddDue(e.target.value)}
+                  className="flex-1 rounded-lg border border-border bg-background px-3 py-2 text-sm" />
+              </div>
+              <div className="flex gap-2 justify-end">
+                <button type="button" onClick={() => setShowAdd(false)} className="text-sm text-muted-foreground px-3 py-1.5 rounded-lg hover:bg-muted">Cancel</button>
+                <button type="button" onClick={handleAdd} disabled={!addTitle.trim() || adding}
+                  className="text-sm font-medium px-4 py-1.5 rounded-lg text-white disabled:opacity-50" style={{ background: SAGE }}>
+                  {adding ? "Adding…" : "Add To-Do"}
+                </button>
+              </div>
+            </div>
+          ) : (
+            <button type="button" onClick={() => setShowAdd(true)}
+              className="flex items-center gap-1.5 text-sm font-medium px-4 py-2 rounded-xl border border-border hover:bg-muted/40 transition-colors">
+              <Plus className="h-4 w-4" /> Add To-Do
+            </button>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
+// ── Our People ────────────────────────────────────────────────────────────────
+
+function OurPeopleSection({ context }: { context: PortalContext }) {
+  const coupleName = [context.client.firstName, context.client.partnerFirstName].filter(Boolean).join(" & ");
+  return (
+    <div className="space-y-4">
+      <p className="text-xs text-muted-foreground">
+        Everyone who has access to your planning workspace and their permissions.
+      </p>
+      <div className="rounded-2xl border border-border bg-card divide-y divide-border/50">
+        <div className="px-4 py-3 flex items-center justify-between">
+          <div>
+            <p className="text-sm font-medium text-heading">{coupleName}</p>
+            <p className="text-xs text-muted-foreground">Couple · Primary</p>
+          </div>
+          <span className="text-[10px] font-semibold px-2 py-1 rounded-full" style={{ background: `${SAGE}15`, color: SAGE }}>Full access</span>
+        </div>
+        {context.contact && (
+          <div className="px-4 py-3 flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-heading">{[context.contact.firstName, context.contact.lastName].filter(Boolean).join(" ")}</p>
+              <p className="text-xs text-muted-foreground">{context.contact.roleLabel ?? "Additional contact"}</p>
+            </div>
+            <span className="text-[10px] font-semibold px-2 py-1 rounded-full" style={{ background: `${SAGE}15`, color: SAGE }}>
+              {context.contact.portalRole?.replace("_", " ") ?? "Access"}
+            </span>
+          </div>
+        )}
+      </div>
+      <p className="text-xs text-muted-foreground">
+        To add family members or your wedding planner, contact your venue coordinator.
       </p>
     </div>
   );
 }
 
-// ---- Shell ------------------------------------------------------------------
+// ── Venue tasks ───────────────────────────────────────────────────────────────
+
+function VenueTasksSection({ token, initialTasks }: { token: string; initialTasks: PortalTask[] }) {
+  const [tasks, setTasks] = React.useState(initialTasks);
+  const [completing, setCompleting] = React.useState<string | null>(null);
+
+  async function handleComplete(taskId: string) {
+    setCompleting(taskId);
+    const res = await fetch("/api/portal/complete-task", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ token, taskId }) });
+    const data = await res.json() as { ok: boolean };
+    setCompleting(null);
+    if (data.ok) setTasks(p => p.map(t => t.id === taskId ? { ...t, status: "complete" as const, canComplete: false } : t));
+    else toast.error("Could not complete task.");
+  }
+
+  const actionNeeded = tasks.filter(t => t.canComplete && t.status !== "complete");
+  const tracking = tasks.filter(t => !t.canComplete && t.status !== "complete");
+  const done = tasks.filter(t => t.status === "complete");
+
+  if (tasks.length === 0) {
+    return <p className="text-sm text-muted-foreground text-center py-8">No tasks from your venue yet.</p>;
+  }
+
+  const Group = ({ label, items }: { label: string; items: PortalTask[] }) => items.length === 0 ? null : (
+    <div className="space-y-1">
+      <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide px-1 py-1">{label}</p>
+      {items.map(t => (
+        <div key={t.id} className={`flex items-center gap-3 py-3 px-3 rounded-xl ${t.status === "complete" ? "opacity-50" : "bg-card border border-border/60"}`}>
+          {t.status === "complete" ? <Check className="h-4 w-4 shrink-0" style={{ color: SAGE }} /> : t.status === "blocked" ? <Lock className="h-4 w-4 shrink-0" style={{ color: TAUPE }} /> : <Clock className="h-4 w-4 shrink-0" style={{ color: TAUPE }} />}
+          <div className="flex-1 min-w-0">
+            <p className={`text-sm font-medium ${t.status === "complete" ? "text-muted-foreground line-through" : "text-heading"}`}>{t.title}</p>
+            <p className="text-[11px] text-muted-foreground">Due {formatDate(t.dueDate)}</p>
+          </div>
+          {t.canComplete && (
+            <button type="button" onClick={() => handleComplete(t.id)} disabled={completing === t.id}
+              className="shrink-0 text-xs font-semibold px-3 py-1.5 rounded-xl text-white"
+              style={{ background: SAGE, opacity: completing === t.id ? 0.7 : 1 }}>
+              {completing === t.id ? <Loader2 className="h-3 w-3 animate-spin" /> : "Done"}
+            </button>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+
+  return (
+    <div className="space-y-4">
+      <p className="text-xs text-muted-foreground">Tasks assigned by {""}<span className="font-medium">{""}</span> that need your attention or are in progress.</p>
+      <Group label="Your action needed" items={actionNeeded} />
+      <Group label="In progress" items={tracking} />
+      <Group label="Completed" items={done} />
+    </div>
+  );
+}
+
+// ── Coming soon ───────────────────────────────────────────────────────────────
+
+function ComingSoon({ label }: { label: string }) {
+  return (
+    <div className="rounded-2xl border border-dashed border-border py-16 text-center px-6 space-y-2">
+      <p className="text-2xl">💗</p>
+      <p className="text-sm font-medium text-heading capitalize">{label} coming soon</p>
+      <p className="text-xs text-muted-foreground max-w-xs mx-auto">Your coordinator will share access when this section is ready.</p>
+    </div>
+  );
+}
+
+// ── Shell ─────────────────────────────────────────────────────────────────────
+
+type NavGroup = { label: string; items: { id: PortalSection; icon: string; label: string; available: boolean }[] };
 
 export function PortalShell({ token, context, initialTasks }: { token: string; context: PortalContext; initialTasks: PortalTask[] }) {
   const [activeSection, setActiveSection] = React.useState<PortalSection>("overview");
+  const [guestStats, setGuestStats] = React.useState<GuestStats | null>(null);
+  const [todoCount, setTodoCount] = React.useState(0);
+
+  // Fetch guest stats for overview
+  React.useEffect(() => {
+    fetch(`/api/portal/guests?token=${token}`)
+      .then(r => r.json())
+      .then((d: { stats?: GuestStats }) => setGuestStats(d.stats ?? null))
+      .catch(() => {});
+  }, [token]);
+
   const coupleName = [context.client.firstName, context.client.partnerFirstName].filter(Boolean).join(" & ");
-  const actionCount = initialTasks.filter((t) => t.canComplete && t.status !== "complete").length;
+  const actionCount = initialTasks.filter(t => t.canComplete && t.status !== "complete").length;
+
+  const NAV_GROUPS: NavGroup[] = [
+    {
+      label: "Your Planning",
+      items: [
+        { id: "overview",  icon: "🏠", label: "Overview",   available: true },
+        { id: "guests",    icon: "👥", label: "Guest List", available: true },
+        { id: "todos",     icon: "✅", label: "To-Do",      available: true },
+        { id: "people",    icon: "💗", label: "Our People", available: true },
+      ],
+    },
+    {
+      label: `With ${context.venue.name}`,
+      items: [
+        { id: "tasks",     icon: "📋", label: "Tasks",     available: true },
+        { id: "payments",  icon: "💳", label: "Payments",  available: false },
+        { id: "documents", icon: "📄", label: "Documents", available: false },
+        { id: "messages",  icon: "💬", label: "Messages",  available: false },
+      ],
+    },
+  ];
 
   return (
     <div className="min-h-screen flex flex-col" style={{ background: LINEN }}>
       {/* Header */}
-      <header className="sticky top-0 z-20 border-b border-[#DED6CA]" style={{ background: "white" }}>
+      <header className="sticky top-0 z-20 bg-white border-b border-[#DED6CA]">
         <div className="max-w-lg mx-auto px-4 py-3 flex items-center justify-between">
           <div>
-            <p className="text-xs" style={{ color: SAGE }}>{context.venue.name}</p>
+            <p className="text-[11px]" style={{ color: SAGE }}>{context.venue.name}</p>
             <p className="text-sm font-semibold text-heading leading-tight">{coupleName}</p>
           </div>
           {context.event && (
-            <div className="text-right">
-              <p className="text-xs" style={{ color: TAUPE }}>
-                {new Date(context.event.eventDate + "T12:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
-              </p>
-            </div>
+            <p className="text-xs text-muted-foreground">
+              {new Date(context.event.eventDate + "T12:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+            </p>
           )}
         </div>
 
-        {/* Tab nav */}
-        <div className="max-w-lg mx-auto flex overflow-x-auto scrollbar-hide">
-          {NAV_ITEMS.map((item) => {
-            const Icon = item.icon;
-            const isActive = activeSection === item.id;
-            const badge = item.id === "tasks" && actionCount > 0 ? actionCount : 0;
-            return (
-              <button key={item.id} type="button"
-                onClick={() => item.available && setActiveSection(item.id)}
-                className="relative flex-shrink-0 flex flex-col items-center gap-1 px-4 pt-2 pb-2 text-[11px] font-medium transition-colors"
-                style={{
-                  color: isActive ? SAGE : TAUPE,
-                  borderBottom: isActive ? `2px solid ${SAGE}` : "2px solid transparent",
-                  opacity: !item.available ? 0.5 : 1,
-                }}>
-                <Icon className="h-4 w-4" />
-                {item.label}
-                {badge > 0 && (
-                  <span className="absolute top-1 right-2.5 h-4 w-4 rounded-full text-[9px] font-bold text-white flex items-center justify-center"
-                    style={{ background: ROSE }}>{badge}</span>
-                )}
-              </button>
-            );
-          })}
+        {/* Navigation — grouped with section labels */}
+        <div className="max-w-lg mx-auto overflow-x-auto scrollbar-hide">
+          {NAV_GROUPS.map((group, gi) => (
+            <div key={group.label} className={`flex items-center ${gi > 0 ? "border-t border-border/30" : ""}`}>
+              <span className="shrink-0 text-[9px] font-semibold uppercase tracking-widest text-muted-foreground/60 px-2 min-w-[72px]">
+                {gi === 0 ? "Yours" : "Venue"}
+              </span>
+              {group.items.map(item => {
+                const isActive = activeSection === item.id;
+                const badge = item.id === "tasks" && actionCount > 0 ? actionCount : 0;
+                return (
+                  <button key={item.id} type="button"
+                    onClick={() => item.available && setActiveSection(item.id)}
+                    className="relative flex-shrink-0 flex flex-col items-center gap-0.5 px-3 pt-1.5 pb-1.5 text-[11px] font-medium transition-colors"
+                    style={{ color: isActive ? SAGE : TAUPE, borderBottom: isActive ? `2px solid ${SAGE}` : "2px solid transparent", opacity: !item.available ? 0.4 : 1 }}>
+                    <span>{item.icon}</span>
+                    {item.label}
+                    {badge > 0 && (
+                      <span className="absolute top-0.5 right-1 h-3.5 w-3.5 rounded-full text-[8px] font-bold text-white flex items-center justify-center"
+                        style={{ background: ROSE }}>{badge}</span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          ))}
         </div>
       </header>
 
       {/* Content */}
-      <main className="flex-1 max-w-lg mx-auto w-full px-4 py-6">
-        {activeSection === "overview"  && <OverviewSection context={context} tasks={initialTasks} />}
-        {activeSection === "tasks"     && <TasksSection token={token} initialTasks={initialTasks} />}
-        {activeSection === "payments"  && <ComingSoonSection section="payments" />}
-        {activeSection === "documents" && <ComingSoonSection section="documents" />}
-        {activeSection === "messages"  && <ComingSoonSection section="messages" />}
+      <main className="flex-1 max-w-lg mx-auto w-full px-4 py-5">
+        {activeSection === "overview"  && <OverviewSection context={context} tasks={initialTasks} guestStats={guestStats} todoCount={todoCount} onNavigate={setActiveSection} />}
+        {activeSection === "guests"    && <GuestListSection token={token} />}
+        {activeSection === "todos"     && <TodoSection token={token} onCountChange={setTodoCount} />}
+        {activeSection === "people"    && <OurPeopleSection context={context} />}
+        {activeSection === "tasks"     && <VenueTasksSection token={token} initialTasks={initialTasks} />}
+        {activeSection === "payments"  && <ComingSoon label="Payments" />}
+        {activeSection === "documents" && <ComingSoon label="Documents" />}
+        {activeSection === "messages"  && <ComingSoon label="Messages" />}
       </main>
 
-      {/* Footer */}
-      <footer className="text-center py-4 text-[10px]" style={{ color: TAUPE }}>
+      <footer className="text-center py-3 text-[10px]" style={{ color: TAUPE }}>
         Powered by Wevenu · {context.venue.name}
       </footer>
     </div>
