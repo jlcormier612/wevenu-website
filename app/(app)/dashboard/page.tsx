@@ -49,8 +49,8 @@ export default async function DashboardPage({ searchParams }: Props) {
         </Button>
       </div>
 
-      {/* 💗 Luv — venue assistant (Phase 1: notice) */}
-      <LuvWidget observations={data.luvObservations} />
+      {/* 💗 Luv — venue assistant (observations + trend intelligence) */}
+      <LuvWidget observations={data.luvObservations} trendObservations={data.trendObservations} />
 
       {/* 💗 Momentum intelligence — who needs attention today? */}
       <MomentumWidget

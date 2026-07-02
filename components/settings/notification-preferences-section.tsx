@@ -141,31 +141,30 @@ export function NotificationPreferencesSection({
         </div>
       </div>
 
-      {/* Future channels — visible but inactive */}
+      {/* Future channels — clearly planned, not broken */}
       <div>
-        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">
-          Additional channels
-        </p>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+        <div className="flex items-center gap-2 mb-3">
+          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+            More channels coming
+          </p>
+          <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
+            Planned
+          </span>
+        </div>
+        <div className="rounded-xl border border-dashed border-border bg-muted/10 px-4 py-3.5 flex flex-wrap items-center gap-x-5 gap-y-2">
           {[
-            { icon: Mail,       label: "Email",       desc: "Coming soon" },
-            { icon: Smartphone, label: "SMS",         desc: "Coming soon" },
-            { icon: Zap,        label: "Push",        desc: "Coming soon" },
+            { icon: Mail,       label: "Email" },
+            { icon: Smartphone, label: "SMS" },
+            { icon: Zap,        label: "Push notifications" },
           ].map(ch => (
-            <div
-              key={ch.label}
-              className="flex items-center gap-3 rounded-xl border border-border/40 bg-muted/20 px-4 py-3 opacity-50"
-            >
-              <ch.icon className="h-4 w-4 text-muted-foreground shrink-0" />
-              <div>
-                <p className="text-sm font-medium text-heading">{ch.label}</p>
-                <p className="text-xs text-muted-foreground">{ch.desc}</p>
-              </div>
+            <div key={ch.label} className="flex items-center gap-1.5 text-muted-foreground">
+              <ch.icon className="h-3.5 w-3.5 shrink-0" />
+              <span className="text-xs">{ch.label}</span>
             </div>
           ))}
         </div>
         <p className="mt-2 text-[11px] text-muted-foreground">
-          Email, SMS, and push channels will respect these same per-type preferences when activated.
+          These channels will honor the same per-type preferences you configure above.
         </p>
       </div>
     </div>

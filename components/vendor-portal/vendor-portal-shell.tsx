@@ -21,14 +21,12 @@ import type {
   VendorDocument, VendorEvent, VendorPortalContext, VendorTask, VendorTimelineEntry,
 } from "@/lib/vendor-portal/types";
 
-// ── Palette ───────────────────────────────────────────────────────────────────
+// ── Palette (CSS variables — adapts to light/dark mode) ──────────────────────
 
-const SLATE  = "#1A1A1A";
-const MID    = "#555";
-const LIGHT  = "#F5F4F2";
-const BORDER = "#E5E5E5";
-const ACCENT = "#2C3E6B";  // professional navy
-const GREEN  = "#3D6B4F";
+const SLATE  = "var(--foreground)";
+const MID    = "var(--muted-foreground)";
+const ACCENT = "var(--primary)";
+const GREEN  = "var(--success)";
 
 type VendorSection = "dashboard" | "timeline" | "tasks" | "documents" | "messages";
 
@@ -107,51 +105,49 @@ function CheckInStation({
   const isToday = du === 0;
 
   return (
-    <div className="rounded-xl border-2 overflow-hidden"
-      style={{ borderColor: isToday ? ACCENT : BORDER }}>
+    <div className={`rounded-xl border-2 overflow-hidden ${isToday ? "border-primary" : "border-border"}`}>
       {isToday && (
-        <div className="px-4 py-2 text-center text-xs font-bold uppercase tracking-widest text-white"
-          style={{ background: ACCENT }}>
+        <div className="px-4 py-2 text-center text-xs font-bold uppercase tracking-widest bg-primary text-primary-foreground">
           Today's Event — Check In
         </div>
       )}
-      <div className="p-4 space-y-3" style={{ background: isToday ? "#F8F9FC" : "#FAFAFA" }}>
+      <div className={`p-4 space-y-3 ${isToday ? "bg-muted/30" : "bg-card"}`}>
         <div className="grid grid-cols-2 gap-3">
           <button type="button"
             onClick={() => toggle("checked_in")}
             disabled={!!loading}
-            className="flex flex-col items-center gap-2 rounded-xl border-2 p-4 transition-all disabled:opacity-60"
-            style={checkedIn
-              ? { borderColor: GREEN, background: `${GREEN}10` }
-              : { borderColor: BORDER, background: "white" }}>
+            aria-label={checkedIn ? "Clear arrival status" : "Mark yourself as arrived"}
+            className={`flex flex-col items-center gap-2 rounded-xl border-2 p-4 transition-all disabled:opacity-60 ${
+              checkedIn ? "border-success bg-success/5" : "border-border bg-card"
+            }`}>
             {loading === "checked_in"
               ? <Loader2 className="h-7 w-7 animate-spin" style={{ color: GREEN }} />
               : checkedIn
                 ? <CheckCircle className="h-7 w-7" style={{ color: GREEN }} />
-                : <Circle className="h-7 w-7" style={{ color: "#CCC" }} />}
-            <span className="text-sm font-semibold" style={{ color: checkedIn ? GREEN : SLATE }}>
+                : <Circle className="h-7 w-7 text-muted-foreground/30" />}
+            <span className="text-sm font-semibold" style={{ color: checkedIn ? GREEN : undefined }}>
               {checkedIn ? "Arrived ✓" : "I've Arrived"}
             </span>
           </button>
           <button type="button"
             onClick={() => toggle("setup_complete")}
             disabled={!!loading}
-            className="flex flex-col items-center gap-2 rounded-xl border-2 p-4 transition-all disabled:opacity-60"
-            style={setupDone
-              ? { borderColor: GREEN, background: `${GREEN}10` }
-              : { borderColor: BORDER, background: "white" }}>
+            aria-label={setupDone ? "Clear setup status" : "Mark setup as complete"}
+            className={`flex flex-col items-center gap-2 rounded-xl border-2 p-4 transition-all disabled:opacity-60 ${
+              setupDone ? "border-success bg-success/5" : "border-border bg-card"
+            }`}>
             {loading === "setup_complete"
               ? <Loader2 className="h-7 w-7 animate-spin" style={{ color: GREEN }} />
               : setupDone
                 ? <CheckCircle className="h-7 w-7" style={{ color: GREEN }} />
-                : <Circle className="h-7 w-7" style={{ color: "#CCC" }} />}
-            <span className="text-sm font-semibold" style={{ color: setupDone ? GREEN : SLATE }}>
+                : <Circle className="h-7 w-7 text-muted-foreground/30" />}
+            <span className="text-sm font-semibold" style={{ color: setupDone ? GREEN : undefined }}>
               {setupDone ? "Setup Done ✓" : "Setup Complete"}
             </span>
           </button>
         </div>
         {checkedIn && setupDone && (
-          <p className="text-xs text-center font-medium py-1" style={{ color: GREEN }}>
+          <p className="text-xs text-center font-medium py-1 text-success">
             You're all set. The venue coordinator has been notified.
           </p>
         )}
@@ -166,8 +162,8 @@ function ArrivalCard({ event }: { event: VendorEvent }) {
   if (!event.arrivalTime && !event.setupLocation && !event.loadInNotes) return null;
 
   return (
-    <div className="rounded-xl border p-4 space-y-3" style={{ borderColor: BORDER, background: "#FAFAFA" }}>
-      <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: "#999" }}>
+    <div className="rounded-xl border border-border bg-card p-4 space-y-3">
+      <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
         Your Arrival Details
       </p>
       <div className="space-y-2">
@@ -241,10 +237,10 @@ function DashboardSection({
       </div>
 
       {upcoming.length === 0 ? (
-        <div className="rounded-xl border border-dashed py-12 text-center" style={{ borderColor: BORDER }}>
-          <CalendarDays className="h-8 w-8 mx-auto mb-2" style={{ color: "#999" }} />
+        <div className="rounded-xl border border-dashed border-border py-12 text-center">
+          <CalendarDays className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
           <p className="text-sm font-medium" style={{ color: SLATE }}>No upcoming events</p>
-          <p className="text-xs mt-1" style={{ color: "#999" }}>
+          <p className="text-xs mt-1 text-muted-foreground">
             You'll see your assignments here when the venue adds them.
           </p>
         </div>
@@ -259,51 +255,47 @@ function DashboardSection({
             return (
               <div key={ev.eventId} className="space-y-3">
                 {/* Event header card */}
-                <div className="rounded-xl border overflow-hidden"
-                  style={{ borderColor: isToday ? ACCENT : BORDER }}>
+                <div className={`rounded-xl border-2 overflow-hidden ${isToday ? "border-primary" : "border-border"}`}>
                   {isToday && (
-                    <div className="px-4 py-1.5 text-center text-[11px] font-bold uppercase tracking-widest text-white"
-                      style={{ background: ACCENT }}>
+                    <div className="px-4 py-1.5 text-center text-[11px] font-bold uppercase tracking-widest bg-primary text-primary-foreground">
                       Today
                     </div>
                   )}
                   {isTomorrow && (
-                    <div className="px-4 py-1.5 text-center text-[11px] font-bold uppercase tracking-widest"
-                      style={{ background: "#FFF8E6", color: "#B8860B" }}>
+                    <div className="px-4 py-1.5 text-center text-[11px] font-bold uppercase tracking-widest bg-warning/20 text-warning-foreground">
                       Tomorrow
                     </div>
                   )}
-                  <div className="p-4 space-y-3">
+                  <div className="p-4 space-y-3 bg-card">
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
-                        <p className="text-base font-semibold" style={{ color: SLATE }}>
+                        <p className="text-base font-semibold text-foreground">
                           {ev.coupleNames || ev.eventName}
                         </p>
-                        <p className="text-sm mt-0.5" style={{ color: MID }}>{formatDate(ev.eventDate)}</p>
+                        <p className="text-sm mt-0.5 text-muted-foreground">{formatDate(ev.eventDate)}</p>
                       </div>
                       {!isToday && !isTomorrow && (
                         <div className="text-right shrink-0">
-                          <p className="text-xl font-bold"
-                            style={{ color: du <= 7 ? "#C0392B" : du <= 30 ? "#C7A66A" : ACCENT }}>
+                          <p className={`text-xl font-bold ${du <= 7 ? "text-destructive" : du <= 30 ? "text-warning-foreground" : "text-primary"}`}>
                             {du}
                           </p>
-                          <p className="text-[10px]" style={{ color: "#999" }}>days away</p>
+                          <p className="text-[10px] text-muted-foreground">days away</p>
                         </div>
                       )}
                     </div>
 
                     {/* Arrival info inline */}
                     {(ev.arrivalTime || ev.setupLocation) && (
-                      <div className="flex flex-wrap gap-3 text-xs" style={{ color: MID }}>
+                      <div className="flex flex-wrap gap-3 text-xs text-muted-foreground">
                         {ev.arrivalTime && (
                           <span className="flex items-center gap-1">
-                            <Clock className="h-3 w-3" style={{ color: ACCENT }} />
+                            <Clock className="h-3 w-3 text-primary" />
                             Arrive {formatTime(ev.arrivalTime)}
                           </span>
                         )}
                         {ev.setupLocation && (
                           <span className="flex items-center gap-1">
-                            <MapPin className="h-3 w-3" style={{ color: ACCENT }} />
+                            <MapPin className="h-3 w-3 text-primary" />
                             {ev.setupLocation}
                           </span>
                         )}
@@ -314,20 +306,17 @@ function DashboardSection({
                     <div className="flex items-center gap-2 pt-1">
                       <button type="button"
                         onClick={() => { onSelectEvent(ev); onNavigate("timeline"); }}
-                        className="flex-1 text-center text-xs font-semibold rounded-lg py-1.5 border transition-colors hover:bg-muted/20"
-                        style={{ borderColor: BORDER, color: ACCENT }}>
+                        className="flex-1 text-center text-xs font-semibold rounded-lg py-2 border border-border text-primary transition-colors hover:bg-muted/20">
                         Timeline
                       </button>
                       <button type="button"
                         onClick={() => { onSelectEvent(ev); onNavigate("tasks"); }}
-                        className="flex-1 text-center text-xs font-semibold rounded-lg py-1.5 border transition-colors hover:bg-muted/20"
-                        style={{ borderColor: BORDER, color: ACCENT }}>
+                        className="flex-1 text-center text-xs font-semibold rounded-lg py-2 border border-border text-primary transition-colors hover:bg-muted/20">
                         Tasks
                       </button>
                       <button type="button"
                         onClick={() => { onSelectEvent(ev); onNavigate("documents"); }}
-                        className="flex-1 text-center text-xs font-semibold rounded-lg py-1.5 border transition-colors hover:bg-muted/20"
-                        style={{ borderColor: BORDER, color: ACCENT }}>
+                        className="flex-1 text-center text-xs font-semibold rounded-lg py-2 border border-border text-primary transition-colors hover:bg-muted/20">
                         Docs
                       </button>
                     </div>
@@ -376,7 +365,7 @@ function TimelineSection({ token, event }: { token: string; event: VendorEvent |
       <EventHeader event={event} label="Day-of Timeline" />
       {loading ? <LoadingSpinner /> : entries.length === 0 ? (
         <EmptyState
-          icon={<Clock className="h-7 w-7 mx-auto mb-2" style={{ color: "#999" }} />}
+          icon={<Clock className="h-7 w-7 mx-auto mb-2 text-muted-foreground" />}
           title="No timeline items yet"
           body="The coordinator will mark timeline entries as vendor-relevant as the event approaches."
         />
@@ -385,17 +374,17 @@ function TimelineSection({ token, event }: { token: string; event: VendorEvent |
           {entries.map((e, i) => (
             <div key={e.id} className="flex gap-4 items-start">
               <div className="flex flex-col items-center shrink-0 w-16">
-                <p className="text-xs font-semibold" style={{ color: ACCENT }}>
+                <p className="text-xs font-semibold text-primary">
                   {e.time ? formatTime(e.time) : "—"}
                 </p>
                 {i < entries.length - 1 && (
-                  <div className="w-px flex-1 mt-1 min-h-[24px]" style={{ background: BORDER }} />
+                  <div className="w-px flex-1 mt-1 min-h-[24px] bg-border" />
                 )}
               </div>
               <div className="pb-4 flex-1 min-w-0">
-                <p className="text-sm font-medium" style={{ color: SLATE }}>{e.title}</p>
+                <p className="text-sm font-medium text-foreground">{e.title}</p>
                 {e.description && (
-                  <p className="text-xs mt-0.5 leading-relaxed" style={{ color: MID }}>{e.description}</p>
+                  <p className="text-xs mt-0.5 leading-relaxed text-muted-foreground">{e.description}</p>
                 )}
               </div>
             </div>
@@ -449,7 +438,7 @@ function TasksSection({ token, event }: { token: string; event: VendorEvent | nu
       <EventHeader event={event} label="Your Tasks" />
       {loading ? <LoadingSpinner /> : tasks.length === 0 ? (
         <EmptyState
-          icon={<Check className="h-7 w-7 mx-auto mb-2" style={{ color: "#999" }} />}
+          icon={<Check className="h-7 w-7 mx-auto mb-2 text-muted-foreground" />}
           title="No tasks assigned yet"
           body="Tasks assigned to vendors will appear here."
         />
@@ -457,25 +446,24 @@ function TasksSection({ token, event }: { token: string; event: VendorEvent | nu
         <div className="space-y-4">
           {actionNeeded.length > 0 && (
             <div>
-              <p className="text-[11px] font-semibold uppercase tracking-wide mb-2" style={{ color: "#C0392B" }}>
+              <p className="text-[11px] font-semibold uppercase tracking-wide mb-2 text-destructive">
                 Needs your action ({actionNeeded.length})
               </p>
               <div className="space-y-2">
                 {actionNeeded.map(t => (
                   <div key={t.id}
-                    className="flex items-start gap-3 rounded-xl border p-4"
-                    style={{ borderColor: "#C0392B30", background: "#FFF8F8" }}>
-                    <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" style={{ color: "#C0392B" }} />
+                    className="flex items-start gap-3 rounded-xl border border-destructive/20 bg-destructive/5 p-4">
+                    <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5 text-destructive" />
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium" style={{ color: SLATE }}>{t.title}</p>
-                      {t.description && <p className="text-xs mt-0.5" style={{ color: MID }}>{t.description}</p>}
-                      {t.dueDate && <p className="text-xs mt-1" style={{ color: "#888" }}>Due {formatDateShort(t.dueDate)}</p>}
+                      <p className="text-sm font-medium text-foreground">{t.title}</p>
+                      {t.description && <p className="text-xs mt-0.5 text-muted-foreground">{t.description}</p>}
+                      {t.dueDate && <p className="text-xs mt-1 text-muted-foreground">Due {formatDateShort(t.dueDate)}</p>}
                     </div>
                     <button type="button"
                       onClick={() => handleComplete(t.id)}
                       disabled={completing === t.id}
-                      className="shrink-0 px-3 py-1.5 rounded-lg text-xs font-semibold text-white disabled:opacity-60"
-                      style={{ background: ACCENT }}>
+                      aria-label={`Mark "${t.title}" as done`}
+                      className="shrink-0 px-3 py-1.5 rounded-lg text-xs font-semibold bg-primary text-primary-foreground disabled:opacity-60 min-h-[36px]">
                       {completing === t.id ? <Loader2 className="h-3 w-3 animate-spin" /> : "Done"}
                     </button>
                   </div>
@@ -485,18 +473,17 @@ function TasksSection({ token, event }: { token: string; event: VendorEvent | nu
           )}
           {tracking.length > 0 && (
             <div>
-              <p className="text-[11px] font-semibold uppercase tracking-wide mb-2" style={{ color: "#999" }}>
+              <p className="text-[11px] font-semibold uppercase tracking-wide mb-2 text-muted-foreground">
                 In Progress
               </p>
               <div className="space-y-2">
                 {tracking.map(t => (
                   <div key={t.id}
-                    className="flex items-start gap-3 rounded-xl border p-3.5"
-                    style={{ borderColor: BORDER }}>
-                    <Clock className="h-4 w-4 shrink-0 mt-0.5" style={{ color: "#999" }} />
+                    className="flex items-start gap-3 rounded-xl border border-border p-3.5">
+                    <Clock className="h-4 w-4 shrink-0 mt-0.5 text-muted-foreground" />
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium" style={{ color: SLATE }}>{t.title}</p>
-                      {t.dueDate && <p className="text-xs mt-0.5" style={{ color: "#888" }}>Due {formatDateShort(t.dueDate)}</p>}
+                      <p className="text-sm font-medium text-foreground">{t.title}</p>
+                      {t.dueDate && <p className="text-xs mt-0.5 text-muted-foreground">Due {formatDateShort(t.dueDate)}</p>}
                     </div>
                   </div>
                 ))}
@@ -505,14 +492,14 @@ function TasksSection({ token, event }: { token: string; event: VendorEvent | nu
           )}
           {done.length > 0 && (
             <div>
-              <p className="text-[11px] font-semibold uppercase tracking-wide mb-2" style={{ color: "#999" }}>
+              <p className="text-[11px] font-semibold uppercase tracking-wide mb-2 text-muted-foreground">
                 Completed ({done.length})
               </p>
               <div className="space-y-1.5">
                 {done.map(t => (
-                  <div key={t.id} className="flex items-center gap-3 px-3.5 py-2.5 rounded-xl" style={{ background: "#F5F5F5" }}>
-                    <CheckCircle className="h-4 w-4 shrink-0 text-green-600" />
-                    <p className="text-sm line-through" style={{ color: "#999" }}>{t.title}</p>
+                  <div key={t.id} className="flex items-center gap-3 px-3.5 py-2.5 rounded-xl bg-muted/30">
+                    <CheckCircle className="h-4 w-4 shrink-0 text-success" />
+                    <p className="text-sm line-through text-muted-foreground">{t.title}</p>
                   </div>
                 ))}
               </div>
@@ -546,7 +533,7 @@ function DocumentsSection({ token, event }: { token: string; event: VendorEvent 
       <EventHeader event={event} label="Shared Documents" />
       {loading ? <LoadingSpinner /> : docs.length === 0 ? (
         <EmptyState
-          icon={<FileText className="h-7 w-7 mx-auto mb-2" style={{ color: "#999" }} />}
+          icon={<FileText className="h-7 w-7 mx-auto mb-2 text-muted-foreground" />}
           title="No documents shared yet"
           body="The venue will share floor plans, menus, and other event documents here."
         />
@@ -557,14 +544,14 @@ function DocumentsSection({ token, event }: { token: string; event: VendorEvent 
               href={doc.storageUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center gap-3 p-3.5 rounded-xl border transition-colors hover:bg-muted/20"
-              style={{ borderColor: BORDER }}>
+              aria-label={`Open ${doc.name}`}
+              className="flex items-center gap-3 p-3.5 rounded-xl border border-border transition-colors hover:bg-muted/20">
               <span className="text-xl shrink-0">{docIcon(doc.category)}</span>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium truncate" style={{ color: SLATE }}>{doc.name}</p>
-                {doc.notes && <p className="text-xs truncate" style={{ color: MID }}>{doc.notes}</p>}
+                <p className="text-sm font-medium truncate text-foreground">{doc.name}</p>
+                {doc.notes && <p className="text-xs truncate text-muted-foreground">{doc.notes}</p>}
               </div>
-              <span className="text-xs font-medium shrink-0" style={{ color: ACCENT }}>Open →</span>
+              <span className="text-xs font-medium shrink-0 text-primary">Open →</span>
             </a>
           ))}
         </div>
@@ -578,16 +565,16 @@ function DocumentsSection({ token, event }: { token: string; event: VendorEvent 
 function EventHeader({ event, label }: { event: VendorEvent; label: string }) {
   return (
     <div>
-      <p className="text-[10px] font-bold uppercase tracking-widest mb-0.5" style={{ color: "#999" }}>{label}</p>
-      <p className="font-semibold" style={{ color: SLATE }}>{event.coupleNames || event.eventName}</p>
-      <p className="text-sm" style={{ color: MID }}>{formatDate(event.eventDate)}</p>
+      <p className="text-[10px] font-bold uppercase tracking-widest mb-0.5 text-muted-foreground">{label}</p>
+      <p className="font-semibold text-foreground">{event.coupleNames || event.eventName}</p>
+      <p className="text-sm text-muted-foreground">{formatDate(event.eventDate)}</p>
     </div>
   );
 }
 
 function EmptyEventPrompt() {
   return (
-    <p className="text-sm py-8 text-center" style={{ color: MID }}>
+    <p className="text-sm py-8 text-center text-muted-foreground">
       Select an event from the dashboard.
     </p>
   );
@@ -596,17 +583,17 @@ function EmptyEventPrompt() {
 function LoadingSpinner() {
   return (
     <div className="flex justify-center py-8">
-      <Loader2 className="h-5 w-5 animate-spin" style={{ color: "#999" }} />
+      <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
     </div>
   );
 }
 
 function EmptyState({ icon, title, body }: { icon: React.ReactNode; title: string; body: string }) {
   return (
-    <div className="rounded-xl border border-dashed py-10 text-center" style={{ borderColor: BORDER }}>
+    <div className="rounded-xl border border-dashed border-border py-10 text-center">
       {icon}
-      <p className="text-sm font-medium" style={{ color: SLATE }}>{title}</p>
-      <p className="text-xs mt-1 max-w-[240px] mx-auto leading-relaxed" style={{ color: "#999" }}>{body}</p>
+      <p className="text-sm font-medium text-foreground">{title}</p>
+      <p className="text-xs mt-1 max-w-[240px] mx-auto leading-relaxed text-muted-foreground">{body}</p>
     </div>
   );
 }
@@ -630,29 +617,31 @@ export function VendorPortalShell({ token, context }: { token: string; context: 
   );
 
   return (
-    <div className="min-h-screen flex flex-col" style={{ background: LIGHT }}>
+    <div className="min-h-screen flex flex-col bg-muted">
       {/* Header */}
-      <header className="bg-white border-b sticky top-0 z-10" style={{ borderColor: BORDER }}>
+      <header className="bg-card border-b border-border sticky top-0 z-10">
         <div className="max-w-lg mx-auto px-4 py-3">
-          <p className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: "#999" }}>
+          <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">
             {context.venue.name}
           </p>
-          <p className="text-base font-semibold leading-tight" style={{ color: SLATE }}>
+          <p className="text-base font-semibold leading-tight text-foreground">
             {context.vendor.name}
           </p>
         </div>
         {/* Nav */}
-        <div className="max-w-lg mx-auto flex border-t" style={{ borderColor: BORDER }}>
+        <div className="max-w-lg mx-auto flex border-t border-border">
           {NAV.map(item => {
             const Icon = item.icon;
             const isActive = section === item.id;
             return (
               <button key={item.id} type="button" onClick={() => setSection(item.id)}
-                className="flex-1 flex flex-col items-center gap-0.5 py-2 text-[11px] font-medium transition-colors"
-                style={{
-                  color: isActive ? ACCENT : "#999",
-                  borderBottom: isActive ? `2px solid ${ACCENT}` : "2px solid transparent",
-                }}>
+                aria-label={item.label}
+                aria-current={isActive ? "page" : undefined}
+                className={`flex-1 flex flex-col items-center gap-0.5 py-2 text-[11px] font-medium transition-colors border-b-2 ${
+                  isActive
+                    ? "text-primary border-primary"
+                    : "text-muted-foreground border-transparent hover:text-foreground"
+                }`}>
                 <Icon className="h-4 w-4" />
                 {item.label}
               </button>
@@ -676,16 +665,16 @@ export function VendorPortalShell({ token, context }: { token: string; context: 
         {section === "documents" && <DocumentsSection token={token} event={selectedEvent} />}
         {section === "messages"  && (
           <div className="py-10 text-center space-y-2">
-            <MessageCircle className="h-8 w-8 mx-auto" style={{ color: "#999" }} />
-            <p className="text-sm font-medium" style={{ color: SLATE }}>Messages coming soon</p>
-            <p className="text-xs" style={{ color: "#999" }}>
+            <MessageCircle className="h-8 w-8 mx-auto text-muted-foreground" />
+            <p className="text-sm font-medium text-foreground">Messages coming soon</p>
+            <p className="text-xs text-muted-foreground">
               Contact {context.venue.name} directly in the meantime.
             </p>
           </div>
         )}
       </main>
 
-      <footer className="text-center py-3 text-[10px]" style={{ color: "#bbb" }}>
+      <footer className="text-center py-3 text-[10px] text-muted-foreground/60">
         Powered by Wevenu · {context.venue.name}
       </footer>
     </div>

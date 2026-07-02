@@ -10,6 +10,7 @@ import { createClient } from "@/integrations/supabase/server";
 import { isSupabaseConfigured } from "@/lib/env";
 import { getLuvObservations } from "@/lib/luv/observations";
 import { getLuvSettings } from "@/lib/luv/settings";
+import { getVenueTrends, computeTrendObservations } from "@/lib/luv/trends-service";
 import { refreshAllLeadScores, generateMomentumLanguage, getMomentumTier } from "@/lib/leads/scores";
 import { LEAD_STATUSES } from "@/lib/leads/constants";
 import type { Lead } from "@/lib/leads/types";
@@ -364,9 +365,13 @@ export async function getDashboardData(): Promise<DashboardData | null> {
   // Refresh all three lead scores (commitment, responsiveness, interest) — non-blocking
   void refreshAllLeadScores(supabase, venue.id).catch(() => {});
 
-  // Luv observations — run after primary data (non-blocking; returns [] on error)
+  // Luv observations + trend intelligence — non-blocking; return [] on error
   const luvSettings = await getLuvSettings().catch(() => null);
-  const luvObservations = await getLuvObservations(supabase, venue.id, today, luvSettings ?? undefined).catch(() => []);
+  const [luvObservations, rawTrends] = await Promise.all([
+    getLuvObservations(supabase, venue.id, today, luvSettings ?? undefined).catch(() => []),
+    getVenueTrends().catch(() => null),
+  ]);
+  const trendObservations = rawTrends ? computeTrendObservations(rawTrends) : [];
 
   // Compute momentum segments from lead scores (post-refresh)
   const { data: scoredLeads } = await supabase.from("leads")
@@ -418,6 +423,7 @@ export async function getDashboardData(): Promise<DashboardData | null> {
     upcomingKeyDates,
     totalClients: clients.length,
     luvObservations,
+    trendObservations,
     momentumSegments: { heatingUp, coolingOff },
   };
 }

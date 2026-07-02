@@ -34,7 +34,7 @@ function QuestionField({ q, value, onChange }: {
   value: string;
   onChange: (v: string) => void;
 }) {
-  const base = "w-full rounded-xl border border-[#DED6CA] px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#5D6F5D]/20";
+  const base = "w-full rounded-xl border border-[#DED6CA] px-4 py-2.5 text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-[#5D6F5D]/40 focus-visible:border-[#5D6F5D]";
 
   if (q.inputType === "boolean") {
     return (

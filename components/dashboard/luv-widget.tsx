@@ -107,28 +107,35 @@ function ObservationRow({ obs }: { obs: LuvObservation }) {
   );
 }
 
-export function LuvWidget({ observations }: { observations: LuvObservation[] }) {
+export function LuvWidget({
+  observations,
+  trendObservations = [],
+}: {
+  observations: LuvObservation[];
+  trendObservations?: LuvObservation[];
+}) {
+  const hasToday = observations.length > 0;
+  const hasTrends = trendObservations.length > 0;
+
   return (
     <Card
       className="border-[#D8A7AA]/25"
       style={{ background: "color-mix(in oklch, #D8A7AA 4%, var(--card))" }}
     >
       <CardHeader className="pb-2">
-        {/* Header: heart at 14px matches text-sm font-semibold (~14px) */}
         <div className="flex items-center gap-1.5">
           <LuvHeart size={14} />
           <h2 className="font-heading text-sm font-semibold text-heading">
             What Luv noticed today
           </h2>
         </div>
-        {/* Subtitle: text-xs, no heart needed */}
         <p className="text-xs text-muted-foreground">
           Your venue assistant is keeping an eye out for you.
         </p>
       </CardHeader>
 
       <CardContent className="pt-0">
-        {observations.length === 0 ? (
+        {!hasToday ? (
           <div className="flex items-center gap-2 py-4">
             <LuvHeart size={14} />
             <p className="text-sm text-muted-foreground">
@@ -140,11 +147,29 @@ export function LuvWidget({ observations }: { observations: LuvObservation[] }) 
             {observations.map((obs) => (
               <ObservationRow key={obs.id} obs={obs} />
             ))}
-            {/* Signature: heart at 10px matches text-[10px] */}
-            <div className="flex items-center justify-end gap-1 pt-3 pb-0.5">
-              <LuvHeart size={10} />
-              <p className="text-[10px] text-muted-foreground">Luv — your venue assistant</p>
+          </div>
+        )}
+
+        {/* Trend intelligence — "What changed this month" */}
+        {hasTrends && (
+          <div className="mt-4 border-t border-[#D8A7AA]/20 pt-4">
+            <div className="flex items-center gap-1.5 mb-2">
+              <LuvHeart size={12} />
+              <p className="text-xs font-semibold text-heading tracking-wide">
+                What changed this month
+              </p>
             </div>
+            {trendObservations.map((obs) => (
+              <ObservationRow key={obs.id} obs={obs} />
+            ))}
+          </div>
+        )}
+
+        {/* Signature */}
+        {(hasToday || hasTrends) && (
+          <div className="flex items-center justify-end gap-1 pt-3 pb-0.5">
+            <LuvHeart size={10} />
+            <p className="text-[10px] text-muted-foreground">Luv — your venue assistant</p>
           </div>
         )}
       </CardContent>

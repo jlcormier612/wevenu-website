@@ -143,6 +143,8 @@ export type DashboardData = {
   totalClients: number;
   // ---- Luv observations (Phase 1: data pattern matching, no AI) ----
   luvObservations: import("@/lib/luv/types").LuvObservation[];
+  // ---- Luv trend intelligence (Sprint 93: period-over-period deltas) ----
+  trendObservations: import("@/lib/luv/types").LuvObservation[];
   // ---- Momentum segments (Sprint 37) ----
   momentumSegments: {
     heatingUp: { leadId: string; name: string; reason: string }[];

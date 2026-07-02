@@ -186,11 +186,15 @@ function ContactCard({
           </div>
         )}
       </div>
-      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0 mt-0.5">
-        <button type="button" onClick={onEdit} className="rounded p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground">
+      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity shrink-0 mt-0.5">
+        <button type="button" onClick={onEdit}
+          aria-label={`Edit ${[contact.firstName, contact.lastName].filter(Boolean).join(" ")}`}
+          className="rounded p-2 text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
           <Pencil className="h-3.5 w-3.5" />
         </button>
-        <button type="button" onClick={onDelete} className="rounded p-1.5 text-muted-foreground hover:bg-destructive/10 hover:text-destructive">
+        <button type="button" onClick={onDelete}
+          aria-label={`Delete ${[contact.firstName, contact.lastName].filter(Boolean).join(" ")}`}
+          className="rounded p-2 text-muted-foreground hover:bg-destructive/10 hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
           <Trash2 className="h-3.5 w-3.5" />
         </button>
       </div>

@@ -134,7 +134,7 @@ function GuestChip({
   const meal = mealEmoji(guest.mealChoice);
   const diet = dietaryBadge(guest.dietaryRestrictions);
   return (
-    <div className="flex items-center gap-1 px-1.5 py-0.5 bg-white rounded text-xs shadow-sm border border-gray-100 select-none">
+    <div className="flex items-center gap-1 px-1.5 py-0.5 bg-card rounded text-xs shadow-sm border border-border select-none">
       <span className="flex-1 truncate max-w-[90px]">
         {guest.isChild && <span className="mr-0.5">👶</span>}
         {guest.name.split(" ")[0]}
@@ -143,8 +143,9 @@ function GuestChip({
       {diet && <span className="opacity-70">{diet}</span>}
       <button
         onClick={e => { e.stopPropagation(); onRemove(guest.guestId); }}
-        className="text-gray-300 hover:text-red-400 ml-0.5 leading-none font-bold"
+        className="text-muted-foreground/40 hover:text-destructive ml-0.5 leading-none font-bold"
         title="Remove from table"
+        aria-label={`Remove ${guest.name.split(" ")[0]} from table`}
       >
         ×
       </button>
@@ -343,13 +344,13 @@ function TableConfigPanel({
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
-        <h3 className="text-sm font-semibold text-[#2D3D2D]">Table Settings</h3>
-        <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-lg leading-none">×</button>
+        <h3 className="text-sm font-semibold text-heading">Table Settings</h3>
+        <button onClick={onClose} aria-label="Close table settings" className="text-muted-foreground hover:text-foreground text-lg leading-none p-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded">×</button>
       </div>
 
       <div className="space-y-3">
         <div>
-          <Label className="text-xs text-gray-500">Name</Label>
+          <Label className="text-xs text-muted-foreground">Name</Label>
           <Input
             value={name}
             onChange={e => setName(e.target.value)}
@@ -358,7 +359,7 @@ function TableConfigPanel({
           />
         </div>
         <div>
-          <Label className="text-xs text-gray-500">Seats</Label>
+          <Label className="text-xs text-muted-foreground">Seats</Label>
           <Input
             type="number" min={1} max={100}
             value={capacity}

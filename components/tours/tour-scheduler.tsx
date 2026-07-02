@@ -66,9 +66,9 @@ function CalendarPicker({ availableDates, selectedDate, onSelect, month, year, o
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <button type="button" onClick={prevMonth} className="p-1.5 rounded-lg hover:bg-muted transition-colors"><ChevronLeft className="h-4 w-4" /></button>
+        <button type="button" onClick={prevMonth} aria-label="Previous month" className="p-2.5 rounded-lg hover:bg-muted transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"><ChevronLeft className="h-4 w-4" /></button>
         <p className="font-semibold text-heading">{MONTHS[month]} {year}</p>
-        <button type="button" onClick={nextMonth} className="p-1.5 rounded-lg hover:bg-muted transition-colors"><ChevronRight className="h-4 w-4" /></button>
+        <button type="button" onClick={nextMonth} aria-label="Next month" className="p-2.5 rounded-lg hover:bg-muted transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"><ChevronRight className="h-4 w-4" /></button>
       </div>
       <div className="grid grid-cols-7 gap-0.5">
         {DAYS.map((d) => <p key={d} className="text-center text-[11px] font-medium text-muted-foreground py-1">{d}</p>)}

@@ -275,8 +275,31 @@ export function PaymentSection({ token }: { token: string }) {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-24 text-muted-foreground text-sm">
-        <span className="animate-pulse">Loading payment details…</span>
+      <div className="space-y-6 px-1">
+        <div>
+          <div className="h-7 w-32 rounded-lg bg-muted/60 animate-pulse" />
+          <div className="h-4 w-56 rounded bg-muted/40 animate-pulse mt-2" />
+        </div>
+        <div className="rounded-2xl border border-border bg-card p-6 space-y-4">
+          <div className="grid grid-cols-3 gap-4">
+            {[1, 2, 3].map(i => (
+              <div key={i} className="rounded-xl border border-border bg-muted/20 p-4 space-y-2">
+                <div className="h-3 w-16 rounded bg-muted/60 animate-pulse" />
+                <div className="h-6 w-20 rounded bg-muted/60 animate-pulse" />
+              </div>
+            ))}
+          </div>
+          <div className="space-y-2 pt-2">
+            {[1, 2, 3].map(i => (
+              <div key={i} className="flex items-center gap-4 py-3 border-b border-border/50 last:border-0">
+                <div className="h-4 w-4 rounded-full bg-muted/60 animate-pulse" />
+                <div className="flex-1 h-4 rounded bg-muted/40 animate-pulse" />
+                <div className="h-4 w-16 rounded bg-muted/40 animate-pulse" />
+                <div className="h-4 w-14 rounded bg-muted/60 animate-pulse" />
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
     );
   }
@@ -288,10 +311,7 @@ export function PaymentSection({ token }: { token: string }) {
           <h2 className="font-heading text-2xl font-medium text-heading">Payments</h2>
           <p className="text-sm text-muted-foreground mt-1">Your payment schedule with your venue.</p>
         </div>
-        <div
-          className="rounded-2xl p-10 text-center"
-          style={{ background: "#F7F4F0", border: "1px solid #E8E2D8" }}
-        >
+        <div className="rounded-2xl border border-dashed border-border bg-muted/20 p-10 text-center">
           <p className="text-3xl mb-3">💳</p>
           <p className="text-sm font-medium text-heading mb-1">No payment schedule yet</p>
           <p className="text-xs text-muted-foreground max-w-xs mx-auto">

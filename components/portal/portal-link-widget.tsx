@@ -89,17 +89,20 @@ export function PortalLinkWidget({
           </div>
           <div className="flex items-center gap-1">
             <Button type="button" variant="ghost" size="sm" onClick={() => window.open(portalUrl(primarySession.accessToken), "_blank")}
-              className="h-8 w-8 p-0">
+              aria-label="Open portal in new tab"
+              className="h-9 w-9 p-0">
               <ExternalLink className="h-3.5 w-3.5" />
             </Button>
             <Button type="button" variant="ghost" size="sm" onClick={() => handleCopy(primarySession.accessToken)}
-              className="h-8 w-8 p-0">
+              aria-label="Copy portal link"
+              className="h-9 w-9 p-0">
               <Copy className="h-3.5 w-3.5" />
             </Button>
             <Button type="button" variant="ghost" size="sm"
               onClick={() => handleRevoke(primarySession.id)}
               disabled={revoking === primarySession.id}
-              className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive">
+              aria-label="Revoke portal access"
+              className="h-9 w-9 p-0 text-muted-foreground hover:text-destructive">
               {revoking === primarySession.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
             </Button>
           </div>
