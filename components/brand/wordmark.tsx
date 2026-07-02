@@ -1,6 +1,6 @@
 import { cn } from "@/lib/utils";
 
-const PLATFORM_LOGO = "/brand/wevenu-logo-final.png";
+const PLATFORM_LOGO = "/brand/wevenu-logo-transparent.png";
 
 /**
  * Renders the Wevenu platform logo everywhere platform branding appears.
@@ -21,8 +21,8 @@ export function Wordmark({
   const src = logoUrl ?? PLATFORM_LOGO;
   const alt = logoUrl ? (venueName ?? "Venue") : "Wevenu";
   const sizeClass = showText
-    ? "h-12 w-auto"
-    : "h-8 w-auto";
+    ? "h-14 w-auto"
+    : "h-10 w-auto";
 
   return (
     <span className={cn("inline-flex shrink-0 items-center", className)}>
