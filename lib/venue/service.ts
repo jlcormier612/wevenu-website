@@ -169,6 +169,8 @@ export async function getVenueSettings(): Promise<{
     logoUrl: venue.logoUrl ?? "",
     primaryColor: venue.primaryColor,
     secondaryColor: venue.secondaryColor,
+    accentColor: venue.accentColor ?? "#B8AEA1",
+    neutralColor: venue.neutralColor ?? "#F7F5F1",
     ownerFullName: ownerName,
     ownerEmail: ownerEmail || venue.email || "",
     ownerTitle: ownerTitle || "Owner",
@@ -242,6 +244,8 @@ export async function saveBrandSection(
       logo_url: input.logoUrl.trim() || null,
       primary_color: input.primaryColor,
       secondary_color: input.secondaryColor,
+      accent_color: input.accentColor,
+      neutral_color: input.neutralColor,
     });
     return { ok: true };
   });

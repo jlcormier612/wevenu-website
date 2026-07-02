@@ -86,6 +86,25 @@ export async function updateLeadStatus(
   const result = await withVenue(async (supabase, venueId) => {
     await repo.updateLeadStatus(supabase, venueId, leadId, status as LeadStatus);
     // Activity is logged by the DB trigger (log_lead_status_changed).
+
+    // Fire tour_converted signal when a lead with a tour moves to won
+    if (status === "won") {
+      const { data: tour } = await supabase
+        .from("tour_appointments")
+        .select("id")
+        .eq("lead_id", leadId)
+        .eq("venue_id", venueId)
+        .limit(1)
+        .maybeSingle<{ id: string }>();
+      if (tour) {
+        void supabase.from("lead_signal_events").insert({
+          venue_id: venueId, lead_id: leadId,
+          signal_type: "tour_converted", signal_strength: 3,
+          metadata: { appointment_id: tour.id },
+        }).then(null, () => {});
+      }
+    }
+
     return { ok: true } as LeadActionResult;
   });
   return result as LeadActionResult;

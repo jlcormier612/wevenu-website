@@ -1,0 +1,818 @@
+"use client";
+
+/**
+ * WeddingDayDashboard — Venue mission control for the wedding day.
+ *
+ * Sections:
+ *   Hero          — couple + date + ceremony countdown + live vendor stats
+ *   Luv           — operational observations (updated every 30s)
+ *   Guest Summary — headcount, meal choices, dietary notes, table estimate
+ *   [2-col grid]
+ *     Left:  Run of Show (timeline with status toggles) + Grouped Task Checklist
+ *     Right: Vendor Check-In + Key Contacts + Quick Documents
+ */
+
+import * as React from "react";
+
+import { CheckCircle, Circle, Clock, Phone, Mail, FileText, RefreshCw, Users, ChevronDown } from "lucide-react";
+
+import type { VenueEvent } from "@/lib/events/types";
+import type { Document } from "@/lib/documents/types";
+
+// ── Palette ───────────────────────────────────────────────────────────────────
+
+const SAGE      = "#5D6F5D";
+const ROSE      = "#D8A7AA";
+const ROSE_DEEP = "#C17F84";
+const GOLD      = "#C7A66A";
+const LINEN     = "#F7F5F1";
+
+// ── Types returned by get_wedding_day_ops RPC ─────────────────────────────────
+
+type TimelineEntry = {
+  id: string;
+  title: string;
+  description: string | null;
+  entryTime: string | null;
+  sortOrder: number;
+  status: "not_started" | "in_progress" | "complete";
+};
+
+type VendorAssignment = {
+  assignmentId: string;
+  vendorId: string;
+  vendorName: string;
+  category: string | null;
+  contactName: string | null;
+  phone: string | null;
+  arrivalTime: string | null;
+  notes: string | null;
+  checkedInAt: string | null;
+  setupCompleteAt: string | null;
+};
+
+type DayTask = {
+  id: string;
+  title: string;
+  description: string | null;
+  ownerType: string | null;
+  status: string;
+  completedAt: string | null;
+};
+
+type Contact = {
+  id: string;
+  firstName: string;
+  lastName: string | null;
+  phone: string | null;
+  email: string | null;
+  relationship: string | null;
+  roleLabel: string | null;
+  isEmergency?: boolean;
+};
+
+type DietaryRow = {
+  choice: string | null;
+  restriction: string | null;
+  count: number;
+};
+
+type OpsData = {
+  timeline: TimelineEntry[];
+  vendors:  VendorAssignment[];
+  tasks:    DayTask[];
+  contacts: Contact[];
+  dietary:  DietaryRow[];
+};
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+function fmtTime(t: string | null): string {
+  if (!t) return "";
+  const [h, m] = t.split(":");
+  const hNum = parseInt(h, 10);
+  return `${hNum % 12 || 12}:${m} ${hNum >= 12 ? "PM" : "AM"}`;
+}
+
+function fmtDate(iso: string): string {
+  return new Date(iso + "T12:00:00").toLocaleDateString("en-US", {
+    weekday: "long", month: "long", day: "numeric", year: "numeric",
+  });
+}
+
+function getCeremonyEntry(entries: TimelineEntry[]): TimelineEntry | null {
+  return entries.find(e =>
+    e.entryTime && /ceremony|processional|i do/i.test(e.title)
+  ) ?? entries.find(e => e.entryTime) ?? null;
+}
+
+function computeCountdown(entry: TimelineEntry | null): { mins: number; label: string } | null {
+  if (!entry?.entryTime) return null;
+  const [h, m] = entry.entryTime.split(":");
+  const target = new Date();
+  target.setHours(parseInt(h, 10), parseInt(m, 10), 0, 0);
+  const mins = Math.round((target.getTime() - Date.now()) / 60_000);
+  if (mins < 0) return null;
+  const label = mins === 0 ? "Now" : mins < 60 ? `${mins}m` : `${Math.floor(mins / 60)}h ${mins % 60}m`;
+  return { mins, label };
+}
+
+function relationshipLabel(rel: string | null): string {
+  const map: Record<string, string> = {
+    partner: "Partner", planner: "Wedding Planner",
+    maid_of_honor: "Maid of Honor", best_man: "Best Man",
+    parent: "Parent", sibling: "Sibling", family: "Family",
+  };
+  return rel ? (map[rel] ?? rel) : "Contact";
+}
+
+// Task grouping — maps ownerType values to display group
+const OWNER_GROUPS: { key: string; label: string; emoji: string; matches: string[] }[] = [
+  { key: "venue",  label: "Venue",   emoji: "🏛️", matches: ["coordinator", "team", "venue"] },
+  { key: "vendor", label: "Vendors", emoji: "🤝", matches: ["vendor"] },
+  { key: "couple", label: "Couple",  emoji: "💍", matches: ["couple", "client"] },
+];
+
+function groupTasks(tasks: DayTask[]): { group: typeof OWNER_GROUPS[0]; tasks: DayTask[] }[] {
+  const groups = OWNER_GROUPS.map(g => ({
+    group: g,
+    tasks: tasks.filter(t => {
+      const ot = (t.ownerType ?? "").toLowerCase();
+      return g.matches.some(m => ot.includes(m));
+    }),
+  }));
+  // Catch-all: tasks that didn't match any group → add to Venue
+  const matched = new Set(groups.flatMap(g => g.tasks.map(t => t.id)));
+  const unmatched = tasks.filter(t => !matched.has(t.id));
+  if (unmatched.length > 0) groups[0].tasks.push(...unmatched);
+  return groups.filter(g => g.tasks.length > 0);
+}
+
+// ── Status cycle ──────────────────────────────────────────────────────────────
+
+const STATUS_CYCLE: Record<TimelineEntry["status"], TimelineEntry["status"]> = {
+  not_started: "in_progress",
+  in_progress: "complete",
+  complete:    "not_started",
+};
+
+const STATUS_CONFIG: Record<TimelineEntry["status"], { icon: React.ReactNode; label: string; color: string }> = {
+  not_started: { icon: <Circle      className="h-5 w-5" />, label: "Not started", color: "#DED6CA" },
+  in_progress: { icon: <Clock       className="h-5 w-5" />, label: "In progress", color: GOLD },
+  complete:    { icon: <CheckCircle className="h-5 w-5" />, label: "Complete",    color: SAGE },
+};
+
+// ── Ceremony countdown chip ───────────────────────────────────────────────────
+
+function CeremonyCountdownChip({ entries }: { entries: TimelineEntry[] }) {
+  const [countdown, setCountdown] = React.useState(() => computeCountdown(getCeremonyEntry(entries)));
+
+  React.useEffect(() => {
+    const entry = getCeremonyEntry(entries);
+    setCountdown(computeCountdown(entry));
+    const t = setInterval(() => setCountdown(computeCountdown(entry)), 60_000);
+    return () => clearInterval(t);
+  }, [entries]);
+
+  if (!countdown) return null;
+
+  return (
+    <div className="flex items-center gap-2 rounded-full px-4 py-1.5 text-sm font-semibold text-white"
+      style={{ background: countdown.mins === 0 ? ROSE_DEEP : SAGE }}>
+      <Clock className="h-3.5 w-3.5 shrink-0" />
+      {countdown.mins === 0 ? "Ceremony starting now" : `Ceremony in ${countdown.label}`}
+    </div>
+  );
+}
+
+// ── Live Timeline ─────────────────────────────────────────────────────────────
+
+function LiveTimeline({
+  entries, onStatusChange,
+}: {
+  entries: TimelineEntry[];
+  onStatusChange: (id: string, status: TimelineEntry["status"]) => void;
+}) {
+  if (entries.length === 0) {
+    return (
+      <p className="text-sm text-muted-foreground py-4 text-center italic">
+        No timeline entries yet. Add them in the event's Timeline tab.
+      </p>
+    );
+  }
+
+  return (
+    <div className="divide-y divide-border/40">
+      {entries.map(entry => {
+        const cfg    = STATUS_CONFIG[entry.status];
+        const isActive = entry.status === "in_progress";
+        const isDone   = entry.status === "complete";
+
+        return (
+          <div key={entry.id}
+            className="flex items-start gap-4 py-3"
+            style={isActive ? { background: `${GOLD}0A` } : undefined}>
+            <div className="w-14 shrink-0 text-right pt-0.5">
+              <p className="text-xs font-semibold" style={{ color: isActive ? GOLD : "#9A938D" }}>
+                {fmtTime(entry.entryTime)}
+              </p>
+            </div>
+            <button type="button"
+              onClick={() => onStatusChange(entry.id, STATUS_CYCLE[entry.status])}
+              className="shrink-0 mt-0.5 transition-transform hover:scale-110"
+              style={{ color: cfg.color }}
+              title={`Mark ${STATUS_CYCLE[entry.status].replace(/_/g, " ")}`}>
+              {cfg.icon}
+            </button>
+            <div className="flex-1 min-w-0">
+              <p className={`text-sm font-medium leading-snug ${isDone ? "line-through text-muted-foreground" : "text-heading"}`}>
+                {entry.title}
+                {isActive && (
+                  <span className="ml-2 text-[10px] font-semibold px-2 py-0.5 rounded-full text-white align-middle"
+                    style={{ background: GOLD }}>
+                    In progress
+                  </span>
+                )}
+              </p>
+              {entry.description && !isDone && (
+                <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">{entry.description}</p>
+              )}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// ── Task Checklist (grouped by actor) ────────────────────────────────────────
+
+function GroupedTaskList({
+  tasks, onComplete,
+}: {
+  tasks: DayTask[];
+  onComplete: (id: string) => void;
+}) {
+  if (tasks.length === 0) {
+    return (
+      <p className="text-sm text-muted-foreground py-4 text-center italic">
+        No wedding day tasks. Add tasks with the "Wedding Day" phase in the playbook editor.
+      </p>
+    );
+  }
+
+  const pending  = tasks.filter(t => t.status !== "complete");
+  const complete = tasks.filter(t => t.status === "complete");
+  const groups   = groupTasks(pending);
+  const [showDone, setShowDone] = React.useState(false);
+
+  return (
+    <div className="space-y-4">
+      {groups.map(({ group, tasks: gTasks }) => (
+        <div key={group.key}>
+          <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground mb-2 flex items-center gap-1.5">
+            <span>{group.emoji}</span>
+            {group.label}
+          </p>
+          <div className="space-y-0.5">
+            {gTasks.map(t => (
+              <button key={t.id} type="button" onClick={() => onComplete(t.id)}
+                className="w-full text-left flex items-start gap-3 py-2.5 px-2 rounded-xl hover:bg-muted/30 group transition-colors">
+                <div className="h-4 w-4 rounded border-2 shrink-0 mt-0.5 group-hover:border-primary transition-colors"
+                  style={{ borderColor: "#DED6CA" }} />
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-heading">{t.title}</p>
+                  {t.description && <p className="text-xs text-muted-foreground mt-0.5">{t.description}</p>}
+                </div>
+                <span className="text-[10px] font-medium opacity-0 group-hover:opacity-100 transition-opacity shrink-0 mt-1"
+                  style={{ color: SAGE }}>
+                  Done
+                </span>
+              </button>
+            ))}
+          </div>
+        </div>
+      ))}
+
+      {complete.length > 0 && (
+        <div>
+          <button type="button"
+            onClick={() => setShowDone(s => !s)}
+            className="flex items-center gap-1.5 text-[11px] text-muted-foreground hover:text-foreground transition-colors">
+            <ChevronDown className={`h-3 w-3 transition-transform ${showDone ? "rotate-180" : ""}`} />
+            {complete.length} completed
+          </button>
+          {showDone && (
+            <div className="mt-2 space-y-0.5">
+              {complete.map(t => (
+                <div key={t.id} className="flex items-center gap-3 py-1.5 px-2 opacity-50">
+                  <CheckCircle className="h-4 w-4 shrink-0" style={{ color: SAGE }} />
+                  <p className="text-sm text-muted-foreground line-through">{t.title}</p>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Vendor Check-In ───────────────────────────────────────────────────────────
+
+function VendorCheckinList({
+  vendors, onToggle,
+}: {
+  vendors: VendorAssignment[];
+  onToggle: (assignmentId: string, field: "checked_in" | "setup_complete") => void;
+}) {
+  if (vendors.length === 0) {
+    return (
+      <p className="text-sm text-muted-foreground py-4 text-center italic">
+        No vendors assigned to this event yet.
+      </p>
+    );
+  }
+
+  return (
+    <div className="divide-y divide-border/40">
+      {vendors.map(v => {
+        const checkedIn = !!v.checkedInAt;
+        const setupDone = !!v.setupCompleteAt;
+        const allGood   = checkedIn && setupDone;
+
+        return (
+          <div key={v.assignmentId} className="py-3.5 space-y-2">
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <p className="text-sm font-semibold text-heading">{v.vendorName}</p>
+                  {v.category && (
+                    <span className="text-[10px] font-medium px-2 py-0.5 rounded-full"
+                      style={{ background: `${SAGE}15`, color: SAGE }}>
+                      {v.category}
+                    </span>
+                  )}
+                  {allGood && (
+                    <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full text-white"
+                      style={{ background: SAGE }}>
+                      ✓ Ready
+                    </span>
+                  )}
+                </div>
+                {v.contactName && (
+                  <p className="text-xs text-muted-foreground mt-0.5">{v.contactName}</p>
+                )}
+                {v.arrivalTime && (
+                  <p className="text-xs text-muted-foreground">ETA {fmtTime(v.arrivalTime)}</p>
+                )}
+              </div>
+              {v.phone && (
+                <a href={`tel:${v.phone}`}
+                  className="flex items-center gap-1 text-xs font-medium rounded-lg px-2.5 py-1.5 border transition-colors hover:bg-muted/40 shrink-0"
+                  style={{ color: SAGE, borderColor: `${SAGE}30` }}>
+                  <Phone className="h-3 w-3" />
+                  Call
+                </a>
+              )}
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button type="button"
+                onClick={() => onToggle(v.assignmentId, "checked_in")}
+                className="flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg border transition-all"
+                style={checkedIn
+                  ? { background: `${SAGE}15`, borderColor: `${SAGE}40`, color: SAGE }
+                  : { borderColor: "#DED6CA", color: "#8A837D" }}>
+                {checkedIn ? <CheckCircle className="h-3.5 w-3.5" /> : <Circle className="h-3.5 w-3.5" />}
+                Arrived
+              </button>
+              <button type="button"
+                onClick={() => onToggle(v.assignmentId, "setup_complete")}
+                className="flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg border transition-all"
+                style={setupDone
+                  ? { background: `${SAGE}15`, borderColor: `${SAGE}40`, color: SAGE }
+                  : { borderColor: "#DED6CA", color: "#8A837D" }}>
+                {setupDone ? <CheckCircle className="h-3.5 w-3.5" /> : <Circle className="h-3.5 w-3.5" />}
+                Setup done
+              </button>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// ── Guest Summary ─────────────────────────────────────────────────────────────
+
+function GuestSummary({
+  guestCount, dietary,
+}: {
+  guestCount: number;
+  dietary: DietaryRow[];
+}) {
+  const mealChoices    = dietary.filter(d => d.choice && !d.restriction);
+  const restrictions   = dietary.filter(d => d.restriction);
+  const estimatedTables = Math.ceil(guestCount / 8);
+
+  return (
+    <div className="grid gap-6 sm:grid-cols-3">
+      {/* Headcount + tables */}
+      <div className="space-y-3">
+        <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Attendance</p>
+        <div className="space-y-1.5">
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-muted-foreground flex items-center gap-1.5">
+              <Users className="h-3.5 w-3.5" />
+              Final count
+            </span>
+            <span className="text-sm font-semibold text-heading">{guestCount}</span>
+          </div>
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-muted-foreground">Estimated tables</span>
+            <span className="text-sm font-semibold text-heading">~{estimatedTables}</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Meal choices */}
+      {mealChoices.length > 0 && (
+        <div className="space-y-3">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Meal Choices</p>
+          <div className="space-y-1.5">
+            {mealChoices.map((d, i) => (
+              <div key={i} className="flex items-center justify-between">
+                <span className="text-sm text-muted-foreground">{d.choice}</span>
+                <span className="text-sm font-semibold text-heading">{d.count}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Dietary restrictions */}
+      <div className="space-y-3">
+        <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+          Dietary Notes {restrictions.length > 0 ? `(${restrictions.reduce((s, d) => s + d.count, 0)})` : ""}
+        </p>
+        {restrictions.length > 0 ? (
+          <div className="flex flex-wrap gap-1.5">
+            {restrictions.map((d, i) => (
+              <span key={i}
+                className="inline-flex items-center gap-1 text-xs font-medium rounded-full px-2.5 py-1"
+                style={{ background: `${GOLD}15`, color: "#8A6A30" }}>
+                {d.count}× {d.restriction}
+              </span>
+            ))}
+          </div>
+        ) : (
+          <p className="text-sm text-muted-foreground">None noted</p>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── Key Contacts ──────────────────────────────────────────────────────────────
+
+function KeyContacts({ contacts }: { contacts: Contact[] }) {
+  if (contacts.length === 0) {
+    return (
+      <p className="text-sm text-muted-foreground py-4 text-center italic">
+        No contacts listed. Add contacts in the client record.
+      </p>
+    );
+  }
+
+  return (
+    <div className="grid gap-3 sm:grid-cols-2">
+      {contacts.map(c => (
+        <div key={c.id} className="rounded-xl border bg-card p-3.5 space-y-2"
+          style={{ borderColor: c.isEmergency ? `${ROSE}50` : "#E8E3DC" }}>
+          <div>
+            <div className="flex items-center gap-1.5">
+              <p className="text-sm font-semibold text-heading">
+                {[c.firstName, c.lastName].filter(Boolean).join(" ")}
+              </p>
+              {c.isEmergency && (
+                <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full text-white"
+                  style={{ background: ROSE_DEEP }}>
+                  Emergency
+                </span>
+              )}
+            </div>
+            <p className="text-[11px] text-muted-foreground">
+              {c.roleLabel ?? relationshipLabel(c.relationship)}
+            </p>
+          </div>
+          <div className="flex items-center gap-2 flex-wrap">
+            {c.phone && (
+              <a href={`tel:${c.phone}`}
+                className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg text-white transition-opacity hover:opacity-90"
+                style={{ background: SAGE }}>
+                <Phone className="h-3 w-3" />
+                {c.phone}
+              </a>
+            )}
+            {c.email && (
+              <a href={`mailto:${c.email}`}
+                className="flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg border transition-colors hover:bg-muted/30"
+                style={{ borderColor: `${SAGE}30`, color: SAGE }}>
+                <Mail className="h-3 w-3" />
+                Email
+              </a>
+            )}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ── Quick Documents ───────────────────────────────────────────────────────────
+
+const DOC_PRIORITY = ["floor plan", "timeline", "contract", "rain", "catering", "coi"];
+
+function QuickDocuments({ documents }: { documents: Document[] }) {
+  const sorted = [...documents].sort((a, b) => {
+    const ai = DOC_PRIORITY.findIndex(k => a.name.toLowerCase().includes(k));
+    const bi = DOC_PRIORITY.findIndex(k => b.name.toLowerCase().includes(k));
+    return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi);
+  });
+
+  if (sorted.length === 0) {
+    return <p className="text-sm text-muted-foreground italic py-2">No documents uploaded yet.</p>;
+  }
+
+  return (
+    <div className="grid gap-2 sm:grid-cols-2">
+      {sorted.map(doc => (
+        <a key={doc.id} href={doc.storageUrl} target="_blank" rel="noopener noreferrer"
+          className="flex items-center gap-2.5 p-3 rounded-xl border bg-card text-sm font-medium text-heading hover:shadow-sm transition-all"
+          style={{ borderColor: "#E8E3DC" }}>
+          <FileText className="h-4 w-4 shrink-0" style={{ color: ROSE }} />
+          <span className="truncate">{doc.name}</span>
+        </a>
+      ))}
+    </div>
+  );
+}
+
+// ── Luv Observations ──────────────────────────────────────────────────────────
+
+function LuvObsPanel({ observations }: { observations: string[] }) {
+  if (observations.length === 0) return null;
+  return (
+    <section className="rounded-2xl border p-5 space-y-3"
+      style={{ background: "#FDF5F5", borderColor: `${ROSE}30` }}>
+      <p className="text-[10px] font-semibold uppercase tracking-[0.18em]" style={{ color: ROSE_DEEP }}>
+        💗 Luv
+      </p>
+      {observations.map((obs, i) => (
+        <p key={i} className="text-sm leading-relaxed" style={{ color: "#5A3235" }}>
+          {obs}
+        </p>
+      ))}
+    </section>
+  );
+}
+
+// ── Section wrapper ───────────────────────────────────────────────────────────
+
+function Section({ title, emoji, children }: { title: string; emoji: string; children: React.ReactNode }) {
+  return (
+    <section className="rounded-2xl border bg-card overflow-hidden" style={{ borderColor: "#E8E3DC" }}>
+      <div className="px-5 py-3.5 flex items-center gap-2 border-b" style={{ borderColor: "#E8E3DC", background: LINEN }}>
+        <span>{emoji}</span>
+        <h2 className="text-sm font-semibold text-heading">{title}</h2>
+      </div>
+      <div className="px-5 py-4">{children}</div>
+    </section>
+  );
+}
+
+// ── Main Dashboard ────────────────────────────────────────────────────────────
+
+export function WeddingDayDashboard({
+  event,
+  documents,
+  coupleName,
+}: {
+  event: VenueEvent;
+  documents: Document[];
+  coupleName: string;
+}) {
+  const [data, setData]               = React.useState<OpsData | null>(null);
+  const [loading, setLoading]         = React.useState(true);
+  const [lastRefresh, setLastRefresh] = React.useState(Date.now());
+
+  function fetchData() {
+    fetch(`/api/events/${event.id}/wedding-day`)
+      .then(r => r.json())
+      .then((d: OpsData) => { setData(d); setLastRefresh(Date.now()); })
+      .catch(console.error)
+      .finally(() => setLoading(false));
+  }
+
+  React.useEffect(() => {
+    fetchData();
+    const t = setInterval(fetchData, 30_000);
+    return () => clearInterval(t);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [event.id]);
+
+  // ── Optimistic mutations ──────────────────────────────────────────────────
+
+  async function handleTimelineStatus(entryId: string, status: TimelineEntry["status"]) {
+    setData(d => d ? { ...d, timeline: d.timeline.map(e => e.id === entryId ? { ...e, status } : e) } : d);
+    await fetch(`/api/events/${event.id}/wedding-day`, {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ action: "timeline_status", entryId, status }),
+    });
+  }
+
+  async function handleVendorToggle(assignmentId: string, field: "checked_in" | "setup_complete") {
+    const key = field === "checked_in" ? "checkedInAt" : "setupCompleteAt";
+    setData(d => d ? {
+      ...d,
+      vendors: d.vendors.map(v => v.assignmentId === assignmentId
+        ? { ...v, [key]: v[key] ? null : new Date().toISOString() }
+        : v),
+    } : d);
+    await fetch(`/api/events/${event.id}/wedding-day`, {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ action: "vendor_checkin", assignmentId, field }),
+    });
+  }
+
+  async function handleTaskComplete(taskId: string) {
+    setData(d => d ? {
+      ...d,
+      tasks: d.tasks.map(t => t.id === taskId
+        ? { ...t, status: "complete", completedAt: new Date().toISOString() }
+        : t),
+    } : d);
+    await fetch(`/api/events/${event.id}/wedding-day`, {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ action: "complete_task", taskId }),
+    });
+  }
+
+  // ── Luv observations ──────────────────────────────────────────────────────
+
+  const luvObs: string[] = React.useMemo(() => {
+    if (!data) return [];
+    const obs: string[] = [];
+
+    // Ceremony countdown — lead observation
+    const ceremony = getCeremonyEntry(data.timeline);
+    const countdown = computeCountdown(ceremony);
+    if (countdown) {
+      obs.push(countdown.mins === 0
+        ? "Ceremony is starting now."
+        : `${ceremony?.title ?? "Ceremony"} begins in ${countdown.label}.`);
+    }
+
+    // Vendor status
+    const totalVendors   = data.vendors.length;
+    const readyVendors   = data.vendors.filter(v => v.checkedInAt && v.setupCompleteAt).length;
+    const pendingVendors = data.vendors.filter(v => !v.checkedInAt);
+
+    if (totalVendors > 0 && readyVendors === totalVendors) {
+      obs.push(`All ${totalVendors} vendor${totalVendors === 1 ? "" : "s"} have checked in and are set up.`);
+    } else if (pendingVendors.length > 0) {
+      const names = pendingVendors.slice(0, 2).map(v => v.vendorName).join(", ");
+      obs.push(`Still waiting on ${names}${pendingVendors.length > 2 ? ` and ${pendingVendors.length - 2} more` : ""}.`);
+    }
+
+    // Guest count
+    if (event.guestCount) {
+      obs.push(`Final guest count is ${event.guestCount}.`);
+    }
+
+    // Dietary
+    const totalRestrictions = data.dietary.filter(d => d.restriction).reduce((s, d) => s + d.count, 0);
+    if (totalRestrictions > 0) {
+      obs.push(`${totalRestrictions} dietary note${totalRestrictions === 1 ? "" : "s"} for today's service. Confirm catering has the list.`);
+    }
+
+    // Tasks
+    const pendingTasks = data.tasks.filter(t => t.status !== "complete");
+    if (pendingTasks.length === 0 && data.tasks.length > 0) {
+      obs.push("All wedding day tasks are complete.");
+    } else if (pendingTasks.length > 0) {
+      obs.push(`${pendingTasks.length} task${pendingTasks.length === 1 ? "" : "s"} still on the checklist.`);
+    }
+
+    return obs;
+  }, [data, event.guestCount]);
+
+  const guestCount = event.guestCount ?? 0;
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <div className="h-8 w-8 rounded-full border-2 border-muted-foreground/20 border-t-muted-foreground animate-spin" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-5">
+
+      {/* ── Hero ── */}
+      <div className="rounded-2xl overflow-hidden"
+        style={{ background: `linear-gradient(135deg, #3D4F3D 0%, ${SAGE} 100%)` }}>
+        <div className="p-6 sm:p-8 text-white space-y-5">
+
+          <div className="flex items-start justify-between gap-4 flex-wrap">
+            <div>
+              <p className="text-[10px] font-semibold uppercase tracking-[0.25em] opacity-50">Today's Event</p>
+              <p className="font-heading text-3xl sm:text-4xl font-medium leading-tight mt-1">{coupleName}</p>
+              <p className="text-sm opacity-55 mt-1">{fmtDate(event.eventDate)}</p>
+            </div>
+            <button type="button" onClick={fetchData}
+              className="flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-full border border-white/20 text-white/50 hover:text-white/80 transition-colors">
+              <RefreshCw className="h-3 w-3" />
+              Refresh
+            </button>
+          </div>
+
+          {/* Live stats row */}
+          <div className="flex flex-wrap items-center gap-3">
+            {data && <CeremonyCountdownChip entries={data.timeline} />}
+            <div className="flex items-center gap-1.5 text-sm font-medium text-white/80">
+              <span>👥</span>
+              <span>{guestCount} attending</span>
+            </div>
+            {data && data.vendors.length > 0 && (
+              <div className="flex items-center gap-1.5 text-sm font-medium text-white/80">
+                <span>🤝</span>
+                <span>
+                  {data.vendors.filter(v => v.checkedInAt).length}/{data.vendors.length} vendors in
+                </span>
+              </div>
+            )}
+            {data && data.tasks.length > 0 && (
+              <div className="flex items-center gap-1.5 text-sm font-medium text-white/80">
+                <span>✅</span>
+                <span>
+                  {data.tasks.filter(t => t.status === "complete").length}/{data.tasks.length} tasks done
+                </span>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* ── Luv ── */}
+      <LuvObsPanel observations={luvObs} />
+
+      {/* ── Guest Summary ── */}
+      <Section title="Guest Summary" emoji="👥">
+        <GuestSummary guestCount={guestCount} dietary={data?.dietary ?? []} />
+      </Section>
+
+      {/* ── Two-column on desktop ── */}
+      <div className="grid gap-5 lg:grid-cols-[1fr_380px]">
+        <div className="space-y-5">
+
+          <Section title="Run of Show" emoji="📋">
+            <LiveTimeline entries={data?.timeline ?? []} onStatusChange={handleTimelineStatus} />
+          </Section>
+
+          <Section title="Wedding Day Tasks" emoji="✅">
+            <GroupedTaskList tasks={data?.tasks ?? []} onComplete={handleTaskComplete} />
+          </Section>
+
+        </div>
+
+        <div className="space-y-5">
+
+          <Section title="Vendor Check-In" emoji="🤝">
+            <VendorCheckinList vendors={data?.vendors ?? []} onToggle={handleVendorToggle} />
+          </Section>
+
+          <Section title="Key Contacts" emoji="📱">
+            <KeyContacts contacts={data?.contacts ?? []} />
+          </Section>
+
+          <Section title="Documents" emoji="📁">
+            <QuickDocuments documents={documents} />
+          </Section>
+
+        </div>
+      </div>
+
+      {/* ── Footer ── */}
+      <p className="text-center text-[10px] text-muted-foreground pb-2">
+        Auto-refreshes every 30 seconds · Last updated {new Date(lastRefresh).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}
+      </p>
+
+    </div>
+  );
+}

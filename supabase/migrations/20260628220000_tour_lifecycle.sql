@@ -62,7 +62,7 @@ create index tour_appointments_no_show_recent
 -- Extends the signal event system to capture post-tour moments.
 -- These feed into commitment score and Luv momentum observations.
 
-comment on column public.lead_signal_events.event_type is
+comment on column public.lead_signal_events.signal_type is
   'Canonical signal types: form_view, email_open, email_click, email_reply,
    proposal_click, payment_link_click, tour_scheduled, tour_completed,
    tour_no_show, tour_cancelled';

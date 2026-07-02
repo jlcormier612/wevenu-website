@@ -18,10 +18,13 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
+  PREFERENCE_LEVELS,
+  PRICING_TIERS,
   VENDOR_CATEGORIES,
   createInitialVendorInput,
 } from "@/lib/vendors/constants";
 import type { VendorErrors, VendorInput } from "@/lib/vendors/types";
+// VendorInput["preferenceLevel"] is used inline for the Select onValueChange cast
 
 export function VendorFormFields({
   input, errors, set, onSubmit, pending, submitLabel = "Save vendor",
@@ -51,18 +54,46 @@ export function VendorFormFields({
         </Field>
       </div>
 
-      <div className="flex items-center gap-3 rounded-lg border border-border bg-muted/30 px-4 py-3">
-        <Switch
-          checked={input.isPreferred}
-          onCheckedChange={(c) => set("isPreferred", c)}
-          id="vp"
-        />
-        <Label htmlFor="vp" className="cursor-pointer">
-          Preferred vendor
-          <span className="block text-xs font-normal text-muted-foreground mt-0.5">
-            Preferred vendors appear first in event assignment selects.
-          </span>
-        </Label>
+      {/* Preference level */}
+      <Field label="Recommendation level" htmlFor="vpref"
+        hint="Controls how this vendor appears to couples in their portal.">
+        <Select value={input.preferenceLevel} onValueChange={(v) => set("preferenceLevel", v as VendorInput["preferenceLevel"])}>
+          <SelectTrigger id="vpref"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            {PREFERENCE_LEVELS.map(l => (
+              <SelectItem key={l.value} value={l.value}>
+                <span className="font-medium">{l.label}</span>
+                <span className="text-muted-foreground ml-2 text-xs hidden sm:inline">— {l.description}</span>
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </Field>
+
+      {/* Couple-facing description + pricing */}
+      <Separator />
+      <p className="text-sm font-medium text-heading">Couple-facing details</p>
+      <Field label="Description" htmlFor="vdesc"
+        hint="Shown to couples in the Vendors section of their portal.">
+        <Textarea id="vdesc" value={input.description} rows={2}
+          onChange={(e) => set("description", e.target.value)}
+          placeholder="Award-winning photography duo specializing in documentary-style wedding storytelling…" />
+      </Field>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Field label="Photo URL" htmlFor="vphoto"
+          hint="Direct link to a photo or logo for this vendor.">
+          <Input id="vphoto" value={input.photoUrl} onChange={(e) => set("photoUrl", e.target.value)}
+            placeholder="https://…/photo.jpg" inputMode="url" />
+        </Field>
+        <Field label="Pricing tier" htmlFor="vprice">
+          <Select value={input.pricingTier} onValueChange={(v) => set("pricingTier", v)}>
+            <SelectTrigger id="vprice"><SelectValue placeholder="Select tier" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="">No pricing indicator</SelectItem>
+              {PRICING_TIERS.map(t => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        </Field>
       </div>
 
       <Separator />

@@ -25,6 +25,7 @@ import { Textarea } from "@/components/ui/textarea";
 import type { ClientDraft, ClientDraftType } from "@/lib/luv/client-drafts";
 import type { EventReadiness as LegacyReadiness } from "@/lib/luv/event-readiness";
 import type { EventReadiness as PlaybookReadiness } from "@/lib/playbooks/types";
+import type { Invoice } from "@/lib/invoices/types";
 
 type AnyReadiness = LegacyReadiness | PlaybookReadiness | null;
 
@@ -106,10 +107,12 @@ export function LuvClientPanel({
   clientId,
   readiness,
   initialDrafts,
+  invoices = [],
 }: {
   clientId: string;
   readiness: AnyReadiness;
   initialDrafts: ClientDraft[];
+  invoices?: Invoice[];
 }) {
   const [drafts, setDrafts] = React.useState(initialDrafts);
   const [generating, setGenerating] = React.useState<ClientDraftType | null>(null);
@@ -137,7 +140,19 @@ export function LuvClientPanel({
     <div className="space-y-6">
       {/* Planning Progress Briefing */}
       {readiness ? (
-        <LuvEventBriefing readiness={readiness} />
+        <LuvEventBriefing
+          readiness={readiness}
+          paymentStatus={
+            invoices.some(inv => inv.status === "sent" && inv.balanceDue > 0 && inv.dueDate && new Date(inv.dueDate) < new Date())
+              ? "overdue"
+              : invoices.some(inv => inv.status === "paid") && invoices.every(inv => inv.balanceDue <= 0)
+              ? "complete"
+              : invoices.length > 0
+              ? "on_track"
+              : "no_payments"
+          }
+          balanceDue={invoices.reduce((s, inv) => s + (inv.balanceDue ?? 0), 0)}
+        />
       ) : (
         <div
           className="rounded-xl p-4 flex items-center gap-3"

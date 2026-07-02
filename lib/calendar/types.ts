@@ -20,6 +20,7 @@ export type CalendarItem = {
   subtitle: string | null;
   time: string | null; // "HH:MM" if known
   link: string;        // route to navigate to on click
+  rawId?: string;      // underlying DB record id for actionable types (e.g. calendar_block)
 };
 
 export type CalendarData = {

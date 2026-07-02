@@ -1,9 +1,21 @@
 /**
  * Vendor reference data and display helpers (Sprint 14).
  */
-import type { Vendor, VendorInput } from "@/lib/vendors/types";
+import type { Vendor, VendorInput, VendorPreferenceLevel } from "@/lib/vendors/types";
 
 export type Option = { value: string; label: string };
+
+export const PREFERENCE_LEVELS: { value: VendorPreferenceLevel; label: string; description: string }[] = [
+  { value: "featured",    label: "Featured",    description: "Highlighted at the top of couple recommendations" },
+  { value: "preferred",   label: "Preferred",   description: "Vendors you actively recommend" },
+  { value: "recommended", label: "Recommended", description: "Quality vendors in your directory" },
+];
+
+export const PRICING_TIERS: Option[] = [
+  { value: "budget",   label: "$ — Budget-friendly" },
+  { value: "moderate", label: "$$ — Mid-range" },
+  { value: "luxury",   label: "$$$ — Luxury" },
+];
 
 export const VENDOR_CATEGORIES: Option[] = [
   { value: "caterer",        label: "Caterer" },
@@ -47,6 +59,10 @@ export function createInitialVendorInput(source?: Vendor | null): VendorInput {
     pinterestUrl: source?.pinterestUrl ?? "",
     tiktokUrl: source?.tiktokUrl ?? "",
     isPreferred: source?.isPreferred ?? false,
+    preferenceLevel: source?.preferenceLevel ?? "recommended",
+    description: source?.description ?? "",
+    photoUrl: source?.photoUrl ?? "",
+    pricingTier: source?.pricingTier ?? "",
     notes: source?.notes ?? "",
   };
 }

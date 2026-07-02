@@ -3,7 +3,7 @@
 import * as React from "react";
 
 import Link from "next/link";
-import { ArrowUpDown, Search, Star } from "lucide-react";
+import { ArrowUpDown, Search } from "lucide-react";
 
 import { VendorCategoryBadge } from "@/components/vendors/vendor-category-badge";
 import { Badge } from "@/components/ui/badge";
@@ -49,7 +49,10 @@ export function VendorList({ vendors }: { vendors: Vendor[] }) {
     return [...base].sort((a, b) => {
       switch (sort) {
         case "za":        return b.name.localeCompare(a.name);
-        case "preferred": return (b.isPreferred ? 1 : 0) - (a.isPreferred ? 1 : 0) || a.name.localeCompare(b.name);
+        case "preferred": {
+          const lvl = (v: Vendor) => v.preferenceLevel === "featured" ? 2 : v.preferenceLevel === "preferred" ? 1 : 0;
+          return lvl(b) - lvl(a) || a.name.localeCompare(b.name);
+        }
         case "newest":    return (b.createdAt ?? "") < (a.createdAt ?? "") ? -1 : 1;
         default:          return a.name.localeCompare(b.name);
       }
@@ -145,10 +148,14 @@ export function VendorList({ vendors }: { vendors: Vendor[] }) {
                     {vendor.phone ?? "—"}
                   </TableCell>
                   <TableCell>
-                    {vendor.isPreferred && (
-                      <Badge variant="default" className="gap-1">
-                        <Star className="h-3 w-3" />
-                        Preferred
+                    {vendor.preferenceLevel === "featured" && (
+                      <Badge className="gap-1 bg-amber-100 text-amber-800 border-amber-200 hover:bg-amber-100">
+                        ⭐ Featured
+                      </Badge>
+                    )}
+                    {vendor.preferenceLevel === "preferred" && (
+                      <Badge variant="outline" className="gap-1 text-[#3D5040] border-[#5D6F5D]/30">
+                        ✓ Preferred
                       </Badge>
                     )}
                   </TableCell>

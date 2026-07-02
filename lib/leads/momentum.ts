@@ -37,21 +37,51 @@ export function generateMomentumLanguage(
   return null;
 }
 
+export type ConfidenceStage = "new" | "observing" | "insights";
+
+export function getConfidenceStage(
+  interest: number,
+  responsiveness: number,
+  commitment: number,
+): ConfidenceStage {
+  if (interest >= 40 || responsiveness >= 40 || commitment >= 30) return "insights";
+  if (interest >= 15 || responsiveness >= 15 || commitment >= 15) return "observing";
+  return "new";
+}
+
 export function scoreDescriptor(dimension: "interest" | "responsiveness" | "commitment", score: number): string {
   if (dimension === "interest") {
-    if (score >= 70) return "Very high — showing strong signals";
-    if (score >= 40) return "Active — engaged recently";
-    if (score >= 15) return "Some signals";
-    return "Quiet — few signals yet";
+    if (score >= 70) return "Showing strong engagement signals";
+    if (score >= 40) return "Actively engaged";
+    if (score >= 15) return "Starting to show interest";
+    return "Still early — reading the signals";
   }
   if (dimension === "responsiveness") {
     if (score >= 60) return "Replies quickly and often";
     if (score >= 35) return "Generally responsive";
-    if (score >= 15) return "Occasionally responsive";
-    return "Has been quiet lately";
+    if (score >= 15) return "Some back-and-forth";
+    return "No pattern yet";
   }
   if (score >= 70) return "Several milestones completed";
   if (score >= 40) return "Progressing toward booking";
-  if (score >= 20) return "Early stages";
+  if (score >= 20) return "Some early steps taken";
   return "Just getting started";
+}
+
+export function getObservations(
+  firstName: string,
+  interest: number,
+  responsiveness: number,
+  commitment: number,
+  daysSinceContact: number | null,
+): string[] {
+  const obs: string[] = [];
+  if (interest >= 30) obs.push(`${firstName} has been actively exploring — solid engagement signals.`);
+  else if (interest >= 15) obs.push(`${firstName} is starting to show interest. I'll keep watching.`);
+  if (responsiveness >= 30) obs.push("They've been responsive when you've reached out.");
+  else if (responsiveness >= 15) obs.push("They've replied at least once — the door is open.");
+  if (commitment >= 20) obs.push("They've taken some early planning steps.");
+  if (daysSinceContact !== null && daysSinceContact <= 5) obs.push("You've connected recently — good momentum.");
+  else if (daysSinceContact !== null && daysSinceContact >= 10) obs.push("It's been a little while since you last connected.");
+  return obs;
 }

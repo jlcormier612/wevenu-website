@@ -150,7 +150,7 @@ export async function getDashboardData(): Promise<DashboardData | null> {
   // Auto-mark overdue (non-fatal — don't block dashboard load on failure)
   void supabase.rpc("mark_overdue_payments", { p_venue_id: venue.id });
 
-  const [leadsRes, tasksRes, activityRes, clientsRes, keyDatesRes, eventsRes, paymentsRes, staffRes] = await Promise.all([
+  const [leadsRes, tasksRes, activityRes, clientsRes, keyDatesRes, eventsRes, paymentsRes, staffRes, guideRes, vendorRes, playbookRes] = await Promise.all([
     supabase
       .from("leads")
       .select("*")
@@ -219,6 +219,11 @@ export async function getDashboardData(): Promise<DashboardData | null> {
       .eq("venue_id", venue.id)
       .eq("is_owner", true)
       .maybeSingle<{ full_name: string }>(),
+
+    // Onboarding signals — non-fatal; any error = not complete
+    supabase.from("venue_operational_info").select("venue_id").eq("venue_id", venue.id).maybeSingle<{ venue_id: string }>(),
+    supabase.from("vendors").select("*", { count: "exact", head: true }).eq("venue_id", venue.id),
+    supabase.from("playbook_templates").select("*", { count: "exact", head: true }).eq("venue_id", venue.id),
   ]);
 
   if (leadsRes.error) throw leadsRes.error;
@@ -389,7 +394,14 @@ export async function getDashboardData(): Promise<DashboardData | null> {
     venueName: venue.name,
     ownerFirstName,
     todayIso: today,
-    onboarding: computeOnboarding(venue, leads),
+    onboarding: computeOnboarding(venue, leads, {
+      hasGuideContent: !!(guideRes.data),
+      vendorCount: vendorRes.count ?? 0,
+      playbookCount: playbookRes.count ?? 0,
+      weeklyInquiries: leads.filter((l) => l.createdAt >= new Date(Date.now() - 7 * 86400000).toISOString()).length,
+      upcomingTourCount: upcomingTours.length,
+      openTaskCount: openTasks.length,
+    }),
     needsAttention,
     followupsDue,
     upcomingTours,
@@ -412,55 +424,92 @@ export async function getDashboardData(): Promise<DashboardData | null> {
 
 // ---- Getting Started onboarding ---------------------------------------------
 
-/**
- * Derives the onboarding checklist state entirely from existing venue + lead
- * data. No separate progress table — the DB is always the source of truth.
- */
-function computeOnboarding(venue: Venue, leads: Lead[]): OnboardingStatus {
+type OnboardingSignals = {
+  hasGuideContent: boolean;
+  vendorCount: number;
+  playbookCount: number;
+  weeklyInquiries: number;
+  upcomingTourCount: number;
+  openTaskCount: number;
+};
+
+const NUDGE_TEXT: Record<string, string> = {
+  profile_complete:  "Fill in your venue address, phone, and email. Couples and coordinators need this before anything else.",
+  tour_scheduling:   "Enabling tour scheduling turns your venue page into a 24/7 booking engine — couples book themselves while you sleep.",
+  venue_guide:       "Your Venue Guide is the #1 resource couples share with their families. Ten minutes here saves fifty future emails.",
+  preferred_vendors: "Add your preferred vendors. Couples ask about photographers and caterers before almost anything else.",
+  task_playbook:     "Create your first Task Playbook to automate your event workflow — it saves hours on every booking you make.",
+  first_inquiry:     "Add your first lead to start building your pipeline and tracking inquiries.",
+};
+
+/** Derives onboarding state from existing venue, leads, and lightweight counts — no separate progress table. */
+function computeOnboarding(venue: Venue, leads: Lead[], signals: OnboardingSignals): OnboardingStatus {
+  const profileFilled = !!(venue.addressLine1?.trim() && venue.phone?.trim() && venue.email?.trim());
+
   const steps: OnboardingStep[] = [
     {
-      id: "venue_setup",
-      title: "Set up your venue",
-      description: "Your venue profile is live and ready.",
-      completed: true, // Always true — they're past Setup
+      id: "setup_complete",
+      title: "Create your venue",
+      description: "Your venue workspace is live.",
+      completed: true,
+    },
+    {
+      id: "profile_complete",
+      title: "Fill in your venue profile",
+      description: "Add your address, phone, and email so couples can reach you.",
+      completed: profileFilled,
+      timeEstimate: "1 min",
+      ctaLabel: "Complete Profile",
+      ctaHref: "/settings",
+    },
+    {
+      id: "tour_scheduling",
+      title: "Enable tour scheduling",
+      description: "Let couples book a venue tour directly from your website — 24/7, no back-and-forth.",
+      completed: venue.tourSchedulingEnabled,
+      timeEstimate: "2 min",
+      ctaLabel: "Set Up Tours",
+      ctaHref: "/settings",
+    },
+    {
+      id: "venue_guide",
+      title: "Start your Venue Guide",
+      description: "Parking, hotels, policies, FAQs — the questions couples will ask you a hundred times.",
+      completed: signals.hasGuideContent,
+      timeEstimate: "10 min",
+      ctaLabel: "Open Guide",
+      ctaHref: "/guide",
+    },
+    {
+      id: "preferred_vendors",
+      title: "Add preferred vendors",
+      description: "Share your trusted caterers, photographers, and florists so couples have a starting point.",
+      completed: signals.vendorCount > 0,
+      timeEstimate: "5 min",
+      ctaLabel: "Add Vendors",
+      ctaHref: "/vendors",
+    },
+    {
+      id: "task_playbook",
+      title: "Create a Task Playbook",
+      description: "Build a reusable workflow template that auto-assigns tasks to every new event.",
+      completed: signals.playbookCount > 0,
+      timeEstimate: "5 min",
+      ctaLabel: "Create Playbook",
+      ctaHref: "/library/playbooks",
     },
     {
       id: "first_inquiry",
-      title: "Create your first inquiry",
-      description:
-        "Add a lead to start building your pipeline and tracking inquiries.",
+      title: "Receive your first inquiry",
+      description: "Add a lead to start building your pipeline.",
       completed: leads.length > 0,
       ctaLabel: "New Inquiry",
       ctaHref: "/leads/new",
     },
     {
-      id: "work_lead",
-      title: "Set a next action on a lead",
-      description:
-        "Open a lead and add a follow-up date or next action to keep momentum.",
-      completed: leads.some(
-        (l) =>
-          l.followUpDate != null ||
-          l.nextActionText != null ||
-          l.status !== "new",
-      ),
-      ctaLabel: "View Leads",
-      ctaHref: "/leads",
-    },
-    {
-      id: "schedule_tour",
-      title: "Schedule a venue tour",
-      description:
-        "Tours are the key step between an initial inquiry and a confirmed booking.",
-      completed: leads.some((l) => l.tourDate != null),
-      ctaLabel: "View Leads",
-      ctaHref: "/leads",
-    },
-    {
       id: "first_booking",
       title: "Book your first couple",
-      description:
-        "Mark a lead as Won to record your first confirmed booking.",
+      description: "Mark a lead as Won to record your first confirmed booking.",
       completed: leads.some((l) => l.status === "won"),
       ctaLabel: "View Leads",
       ctaHref: "/leads",
@@ -470,11 +519,21 @@ function computeOnboarding(venue: Venue, leads: Lead[]): OnboardingStatus {
   const completedCount = steps.filter((s) => s.completed).length;
   const allComplete = completedCount === steps.length;
 
+  // Priority order: get the profile right first, then open the revenue engine
+  const NUDGE_PRIORITY = ["profile_complete", "tour_scheduling", "venue_guide", "preferred_vendors", "task_playbook", "first_inquiry"];
+  const nudgeId = NUDGE_PRIORITY.find((id) => steps.find((s) => s.id === id && !s.completed));
+  const luvNudge = nudgeId ? (NUDGE_TEXT[nudgeId] ?? null) : null;
+
   return {
-    show: !venue.onboardingDismissed && !allComplete,
+    // Show the checklist while not dismissed; always show the graduation card when complete
+    show: allComplete || !venue.onboardingDismissed,
     steps,
     completedCount,
     totalSteps: steps.length,
     allComplete,
+    luvNudge,
+    summary: allComplete
+      ? { weeklyInquiries: signals.weeklyInquiries, upcomingTourCount: signals.upcomingTourCount, openTaskCount: signals.openTaskCount }
+      : null,
   };
 }

@@ -36,6 +36,7 @@ export function EventFormFields({
   existingEventId?: string; // exclude self when editing
 }) {
   const router = useRouter();
+  const [dateBlocked, setDateBlocked] = React.useState(false);
   return (
     <div className="space-y-6">
       <Field label="Event name" htmlFor="en" required error={errors.name}>
@@ -71,13 +72,14 @@ export function EventFormFields({
         </Field>
       )}
 
-      {/* Availability conflict advisory */}
+      {/* Availability conflict advisory — hard block disables save */}
       {input.eventDate && (
         <ConflictWarning
           date={input.eventDate}
           spaceId={input.spaceId || undefined}
           type="event"
           excludeId={existingEventId}
+          onStatusChange={setDateBlocked}
         />
       )}
 
@@ -106,7 +108,8 @@ export function EventFormFields({
 
       <div className="flex items-center justify-end gap-3">
         <Button type="button" variant="outline" onClick={() => router.back()} disabled={pending}>Cancel</Button>
-        <Button type="button" onClick={onSubmit} disabled={pending}>
+        <Button type="button" onClick={onSubmit} disabled={pending || dateBlocked}
+          title={dateBlocked ? "Remove the calendar block before saving." : undefined}>
           {pending ? <><Loader2 className="mr-1 h-4 w-4 animate-spin" />Saving…</> : submitLabel}
         </Button>
       </div>

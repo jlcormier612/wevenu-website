@@ -4,11 +4,12 @@ import * as React from "react";
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Clock, Plus, Star, Trash2 } from "lucide-react";
+import { Check, CheckCircle, Circle, Clock, Copy, ExternalLink, Link2, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 import {
   assignVendorAction,
+  createVendorPortalLinkAction,
   removeVendorAssignmentAction,
 } from "@/app/(app)/events/[id]/vendor-actions";
 import { VendorCategoryBadge } from "@/components/vendors/vendor-category-badge";
@@ -22,6 +23,72 @@ import { Textarea } from "@/components/ui/textarea";
 import { formatTime, vendorCategoryLabel } from "@/lib/vendors/constants";
 import type { EventVendorAssignment, Vendor } from "@/lib/vendors/types";
 
+// ── Portal Link button ────────────────────────────────────────────────────────
+
+function PortalLinkButton({ vendorId, vendorName }: { vendorId: string; vendorName: string }) {
+  const [loading, setLoading] = React.useState(false);
+  const [link, setLink]       = React.useState<string | null>(null);
+
+  async function handleCreate() {
+    setLoading(true);
+    const result = await createVendorPortalLinkAction(vendorId, vendorName);
+    setLoading(false);
+    if (result.ok) {
+      const url = `${window.location.origin}/v/${result.token}`;
+      setLink(url);
+    } else {
+      toast.error("Could not create portal link.");
+    }
+  }
+
+  async function handleCopy() {
+    if (!link) return;
+    await navigator.clipboard.writeText(link);
+    toast.success("Portal link copied.");
+  }
+
+  if (link) {
+    return (
+      <div className="flex items-center gap-1.5">
+        <a href={link} target="_blank" rel="noopener noreferrer"
+          className="flex items-center gap-1 text-xs font-medium text-primary hover:underline">
+          <ExternalLink className="h-3 w-3" />
+          Open
+        </a>
+        <button type="button" onClick={handleCopy}
+          className="flex items-center gap-1 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors">
+          <Copy className="h-3 w-3" />
+          Copy
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <button type="button" onClick={handleCreate} disabled={loading}
+      className="flex items-center gap-1 text-xs font-medium text-muted-foreground hover:text-primary transition-colors disabled:opacity-50">
+      <Link2 className="h-3 w-3" />
+      {loading ? "Creating…" : "Send Portal Link"}
+    </button>
+  );
+}
+
+// ── Check-in badge ────────────────────────────────────────────────────────────
+
+function CheckinBadge({ label, checked }: { label: string; checked: boolean }) {
+  return (
+    <span className="flex items-center gap-1 text-[10px] font-semibold"
+      style={{ color: checked ? "#3D6B4F" : "#AAA" }}>
+      {checked
+        ? <CheckCircle className="h-3 w-3" />
+        : <Circle className="h-3 w-3" />}
+      {label}
+    </span>
+  );
+}
+
+// ── Main section ──────────────────────────────────────────────────────────────
+
 export function EventVendorsSection({
   eventId,
   initialAssignments,
@@ -33,25 +100,33 @@ export function EventVendorsSection({
 }) {
   const router = useRouter();
   const [assignments, setAssignments] = React.useState(initialAssignments);
-  const [showForm, setShowForm] = React.useState(false);
-  const [vendorId, setVendorId] = React.useState("");
+  const [showForm, setShowForm]       = React.useState(false);
+  const [vendorId, setVendorId]       = React.useState("");
   const [arrivalTime, setArrivalTime] = React.useState("");
-  const [notes, setNotes] = React.useState("");
-  const [addPending, startAdd] = React.useTransition();
+  const [setupLocation, setSetupLocation] = React.useState("");
+  const [loadInNotes, setLoadInNotes] = React.useState("");
+  const [notes, setNotes]             = React.useState("");
+  const [addPending, startAdd]        = React.useTransition();
 
-  // Split into preferred / other for grouped display in the select
-  const preferred = availableVendors.filter((v) => v.isPreferred);
-  const others = availableVendors.filter((v) => !v.isPreferred);
-  const assignedIds = new Set(assignments.map((a) => a.vendorId));
-  const unassigned = availableVendors.filter((v) => !assignedIds.has(v.id));
+  const preferred    = availableVendors.filter(v => v.isPreferred);
+  const others       = availableVendors.filter(v => !v.isPreferred);
+  const assignedIds  = new Set(assignments.map(a => a.vendorId));
+  const unassigned   = availableVendors.filter(v => !assignedIds.has(v.id));
+
+  function resetForm() {
+    setVendorId(""); setArrivalTime(""); setSetupLocation("");
+    setLoadInNotes(""); setNotes(""); setShowForm(false);
+  }
 
   function handleAdd() {
     if (!vendorId) return;
     startAdd(async () => {
-      const result = await assignVendorAction(eventId, { vendorId, arrivalTime, notes });
+      const result = await assignVendorAction(eventId, {
+        vendorId, arrivalTime, setupLocation, loadInNotes, notes,
+      });
       if (result.ok && "assignment" in result) {
-        setAssignments((prev) => [...prev, result.assignment]);
-        setVendorId(""); setArrivalTime(""); setNotes(""); setShowForm(false);
+        setAssignments(prev => [...prev, result.assignment]);
+        resetForm();
         router.refresh();
       } else if (!result.ok) {
         toast.error(result.message ?? "Could not assign vendor.");
@@ -60,14 +135,14 @@ export function EventVendorsSection({
   }
 
   async function handleRemove(assignmentId: string) {
-    setAssignments((prev) => prev.filter((a) => a.id !== assignmentId));
+    setAssignments(prev => prev.filter(a => a.id !== assignmentId));
     const result = await removeVendorAssignmentAction(assignmentId, eventId);
     if (!result.ok) { toast.error("Could not remove vendor."); router.refresh(); }
   }
 
   return (
     <div className="space-y-4">
-      {/* Current assignments */}
+      {/* Assignment list */}
       {assignments.length === 0 && !showForm && (
         <p className="py-4 text-center text-sm text-muted-foreground">
           No vendors assigned. Assign vendors from your directory to track who's involved and when they arrive.
@@ -76,34 +151,50 @@ export function EventVendorsSection({
 
       {assignments.length > 0 && (
         <div className="space-y-2">
-          {assignments.map((a) => (
-            <div key={a.id} className="group flex items-start gap-3 rounded-lg border border-border bg-card p-3">
-              <div className="min-w-0 flex-1 space-y-1">
-                <div className="flex flex-wrap items-center gap-2">
-                  <Link href={`/vendors/${a.vendorId}`} className="text-sm font-medium text-foreground hover:text-primary">
-                    {a.vendorName}
-                  </Link>
-                  <VendorCategoryBadge category={a.vendorCategory} />
+          {assignments.map(a => (
+            <div key={a.id}
+              className="group rounded-lg border border-border bg-card p-3 space-y-2">
+
+              {/* Row 1: Name + remove */}
+              <div className="flex items-start gap-3">
+                <div className="min-w-0 flex-1 space-y-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Link href={`/vendors/${a.vendorId}`}
+                      className="text-sm font-medium text-foreground hover:text-primary">
+                      {a.vendorName}
+                    </Link>
+                    <VendorCategoryBadge category={a.vendorCategory} />
+                  </div>
+                  <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+                    {a.arrivalTime && (
+                      <span className="flex items-center gap-1">
+                        <Clock className="h-3 w-3" />
+                        Arriving {formatTime(a.arrivalTime)}
+                      </span>
+                    )}
+                    {a.setupLocation && (
+                      <span className="italic">{a.setupLocation}</span>
+                    )}
+                    {a.vendorPhone && <span>{a.vendorPhone}</span>}
+                    {a.notes && <span className="italic">{a.notes}</span>}
+                  </div>
                 </div>
-                <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
-                  {a.arrivalTime && (
-                    <span className="flex items-center gap-1">
-                      <Clock className="h-3 w-3" />
-                      Arriving {formatTime(a.arrivalTime)}
-                    </span>
-                  )}
-                  {a.vendorPhone && <span>{a.vendorPhone}</span>}
-                  {a.notes && <span className="italic">{a.notes}</span>}
-                </div>
+                <button type="button"
+                  onClick={() => handleRemove(a.id)}
+                  className="shrink-0 opacity-0 transition-opacity group-hover:opacity-100 text-muted-foreground hover:text-destructive"
+                  aria-label="Remove vendor">
+                  <Trash2 className="h-3.5 w-3.5" />
+                </button>
               </div>
-              <button
-                type="button"
-                onClick={() => handleRemove(a.id)}
-                className="shrink-0 opacity-0 transition-opacity group-hover:opacity-100 text-muted-foreground hover:text-destructive"
-                aria-label="Remove vendor"
-              >
-                <Trash2 className="h-3.5 w-3.5" />
-              </button>
+
+              {/* Row 2: Check-in status + portal link */}
+              <div className="flex items-center justify-between gap-3 pt-0.5 border-t border-border/50">
+                <div className="flex items-center gap-3">
+                  <CheckinBadge label="Arrived"       checked={!!a.checkedInAt} />
+                  <CheckinBadge label="Setup done"    checked={!!a.setupCompleteAt} />
+                </div>
+                <PortalLinkButton vendorId={a.vendorId} vendorName={a.vendorName} />
+              </div>
             </div>
           ))}
         </div>
@@ -112,6 +203,7 @@ export function EventVendorsSection({
       {/* Assign form */}
       {showForm ? (
         <div className="rounded-lg border border-border bg-muted/30 p-4 space-y-3">
+          {/* Vendor select */}
           <div className="space-y-1.5">
             <Label htmlFor="ev-vendor" className="text-xs">Vendor *</Label>
             <Select value={vendorId} onValueChange={setVendorId}>
@@ -119,24 +211,22 @@ export function EventVendorsSection({
                 <SelectValue placeholder="Select a vendor…" />
               </SelectTrigger>
               <SelectContent>
-                {/* Preferred vendors first */}
-                {preferred.filter((v) => !assignedIds.has(v.id)).length > 0 && (
+                {preferred.filter(v => !assignedIds.has(v.id)).length > 0 && (
                   <>
                     <SelectItem value="__pref__" disabled>⭐ Preferred Vendors</SelectItem>
-                    {preferred.filter((v) => !assignedIds.has(v.id)).map((v) => (
+                    {preferred.filter(v => !assignedIds.has(v.id)).map(v => (
                       <SelectItem key={v.id} value={v.id}>
                         {v.name}{v.category ? ` · ${vendorCategoryLabel(v.category)}` : ""}
                       </SelectItem>
                     ))}
                   </>
                 )}
-                {/* Others */}
-                {others.filter((v) => !assignedIds.has(v.id)).length > 0 && (
+                {others.filter(v => !assignedIds.has(v.id)).length > 0 && (
                   <>
-                    {preferred.filter((v) => !assignedIds.has(v.id)).length > 0 && (
+                    {preferred.filter(v => !assignedIds.has(v.id)).length > 0 && (
                       <SelectItem value="__other__" disabled>Other Vendors</SelectItem>
                     )}
-                    {others.filter((v) => !assignedIds.has(v.id)).map((v) => (
+                    {others.filter(v => !assignedIds.has(v.id)).map(v => (
                       <SelectItem key={v.id} value={v.id}>
                         {v.name}{v.category ? ` · ${vendorCategoryLabel(v.category)}` : ""}
                       </SelectItem>
@@ -149,22 +239,44 @@ export function EventVendorsSection({
               </SelectContent>
             </Select>
           </div>
+
+          {/* Arrival time + setup location */}
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="space-y-1.5">
-              <Label htmlFor="ev-arrival" className="text-xs">Arrival time <span className="font-normal text-muted-foreground">(optional)</span></Label>
-              <Input id="ev-arrival" type="time" value={arrivalTime} onChange={(e) => setArrivalTime(e.target.value)} />
+              <Label htmlFor="ev-arrival" className="text-xs">
+                Arrival time <span className="font-normal text-muted-foreground">(optional)</span>
+              </Label>
+              <Input id="ev-arrival" type="time" value={arrivalTime} onChange={e => setArrivalTime(e.target.value)} />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="ev-location" className="text-xs">
+                Setup location <span className="font-normal text-muted-foreground">(optional)</span>
+              </Label>
+              <Input id="ev-location" placeholder="e.g. Garden terrace, Ballroom north"
+                value={setupLocation} onChange={e => setSetupLocation(e.target.value)} />
             </div>
           </div>
+
+          {/* Load-in notes */}
           <div className="space-y-1.5">
-            <Label htmlFor="ev-notes" className="text-xs">Notes <span className="font-normal text-muted-foreground">(optional)</span></Label>
-            <Textarea id="ev-notes" value={notes} onChange={(e) => setNotes(e.target.value)}
-              placeholder="Setup instructions, special requirements…" rows={2} />
+            <Label htmlFor="ev-loadin" className="text-xs">
+              Load-in instructions <span className="font-normal text-muted-foreground">(optional)</span>
+            </Label>
+            <Textarea id="ev-loadin" value={loadInNotes} onChange={e => setLoadInNotes(e.target.value)}
+              placeholder="Entrance to use, elevator access, parking, setup window…" rows={2} />
           </div>
+
+          {/* Internal notes */}
+          <div className="space-y-1.5">
+            <Label htmlFor="ev-notes" className="text-xs">
+              Internal notes <span className="font-normal text-muted-foreground">(optional, not shown to vendor)</span>
+            </Label>
+            <Textarea id="ev-notes" value={notes} onChange={e => setNotes(e.target.value)}
+              placeholder="Coordinator reminders, special requirements…" rows={2} />
+          </div>
+
           <div className="flex items-center justify-end gap-2">
-            <Button type="button" variant="ghost" size="sm"
-              onClick={() => { setShowForm(false); setVendorId(""); setArrivalTime(""); setNotes(""); }}>
-              Cancel
-            </Button>
+            <Button type="button" variant="ghost" size="sm" onClick={resetForm}>Cancel</Button>
             <Button type="button" size="sm" disabled={!vendorId || addPending} onClick={handleAdd}>
               {addPending ? "Assigning…" : "Assign Vendor"}
             </Button>
@@ -179,8 +291,7 @@ export function EventVendorsSection({
             <p className="text-xs text-muted-foreground">
               <Link href="/vendors/new" className="font-medium text-primary hover:underline">
                 Add vendors to your directory
-              </Link>{" "}
-              first.
+              </Link>{" "}first.
             </p>
           )}
         </div>

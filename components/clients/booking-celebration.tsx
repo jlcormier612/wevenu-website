@@ -75,9 +75,65 @@ function Confetti() {
   );
 }
 
+// ---- Workspace checklist ----------------------------------------------------
+
+const WORKSPACE_ITEMS = [
+  { key: "event",   label: "Event workspace created" },
+  { key: "portal",  label: "Couple portal ready" },
+  { key: "website", label: "Wedding website ready" },
+  { key: "tools",   label: "Planning tools ready" },
+] as const;
+
+function WorkspaceChecklist({ eventId, portalToken }: { eventId?: string | null; portalToken?: string | null }) {
+  const active: Record<string, boolean> = {
+    event:   !!eventId,
+    portal:  !!portalToken,
+    website: !!portalToken,
+    tools:   !!eventId,
+  };
+
+  return (
+    <div
+      className="rounded-xl border px-6 py-5 text-left"
+      style={{ borderColor: "#D8A7AA40", background: "#FDF8F8" }}
+    >
+      <p className="mb-4 text-xs font-medium uppercase tracking-widest text-muted-foreground">
+        Workspace Ready
+      </p>
+      <ul className="space-y-2.5">
+        {WORKSPACE_ITEMS.map(({ key, label }) => (
+          <li key={key} className="flex items-center gap-3 text-sm">
+            <span
+              className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-xs font-semibold"
+              style={
+                active[key]
+                  ? { background: "#D8A7AA20", color: "#5A3235" }
+                  : { background: "transparent", color: "#9ca3af" }
+              }
+            >
+              {active[key] ? "✓" : "·"}
+            </span>
+            <span className={active[key] ? "text-foreground" : "text-muted-foreground"}>
+              {label}
+            </span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
 // ---- Celebration ------------------------------------------------------------
 
-export function BookingCelebration({ client }: { client: Client }) {
+export function BookingCelebration({
+  client,
+  eventId,
+  portalToken,
+}: {
+  client: Client;
+  eventId?: string | null;
+  portalToken?: string | null;
+}) {
   const displayName = clientDisplayName(
     client.firstName,
     client.lastName,
@@ -92,6 +148,8 @@ export function BookingCelebration({ client }: { client: Client }) {
       ? `${client.guestCount.toLocaleString()} guests`
       : null,
   ].filter(Boolean);
+
+  const hasWorkspace = !!eventId || !!portalToken;
 
   return (
     <div className="relative flex min-h-[80vh] flex-col items-center justify-center px-4 py-16 text-center">
@@ -112,7 +170,9 @@ export function BookingCelebration({ client }: { client: Client }) {
           <h1 className="font-heading text-4xl font-medium tracking-tight text-heading sm:text-5xl">
             {displayName}
           </h1>
-          <p className="text-xl text-muted-foreground">are officially booked.</p>
+          <p className="text-xl text-muted-foreground">
+            {hasWorkspace ? "have been added. Their workspace is ready." : "are officially booked."}
+          </p>
         </div>
 
         {/* Event summary */}
@@ -127,24 +187,50 @@ export function BookingCelebration({ client }: { client: Client }) {
           </div>
         )}
 
+        {/* Workspace checklist */}
+        {hasWorkspace && (
+          <WorkspaceChecklist eventId={eventId} portalToken={portalToken} />
+        )}
+
         {/* Divider + tagline */}
         <div className="space-y-3 border-t border-border pt-6">
           <p className="text-sm italic text-muted-foreground">
-            Thank you for helping another couple begin their story.
+            {hasWorkspace
+              ? "You entered them once. An entire wedding workspace appeared."
+              : "Thank you for helping another couple begin their story."}
           </p>
         </div>
 
         {/* Actions */}
         <div className="flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
-          <Button render={<Link href={`/clients/${client.id}`} />}>
-            View Client
-          </Button>
+          {eventId && (
+            <Button render={<Link href={`/events/${eventId}`} />}>
+              Open Event
+            </Button>
+          )}
+          {portalToken && (
+            <Button
+              variant="outline"
+              render={<Link href={`/portal/${portalToken}`} />}
+            >
+              Open Couple Portal
+            </Button>
+          )}
           <Button
-            variant="outline"
-            render={<Link href={`/clients/${client.id}/edit`} />}
+            variant={hasWorkspace ? "ghost" : "default"}
+            render={<Link href={`/clients/${client.id}`} />}
+            className={hasWorkspace ? "text-muted-foreground" : undefined}
           >
-            Start Planning
+            {hasWorkspace ? "Continue to Client" : "View Client"}
           </Button>
+          {!hasWorkspace && (
+            <Button
+              variant="outline"
+              render={<Link href={`/clients/${client.id}/edit`} />}
+            >
+              Start Planning
+            </Button>
+          )}
           <Button
             variant="ghost"
             render={<Link href="/dashboard" />}

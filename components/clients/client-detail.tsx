@@ -291,6 +291,7 @@ export function ClientDetail({ client, invoices = [], documents = [], threads = 
             <CardContent>
               <ClientContactsTab
                 clientId={client.id}
+                coupleName={[client.firstName, client.partnerFirstName].filter(Boolean).join(" & ")}
                 primaryPeople={[
                   { name: `${client.firstName} ${client.lastName ?? ""}`.trim(), email: client.email, phone: client.phone, role: "Primary contact" },
                   ...(client.partnerFirstName ? [{ name: [client.partnerFirstName, client.partnerLastName].filter(Boolean).join(" "), email: client.partnerEmail ?? null, role: "Partner" }] : []),
@@ -397,6 +398,7 @@ export function ClientDetail({ client, invoices = [], documents = [], threads = 
                 clientId={client.id}
                 readiness={playbookReadiness ?? readiness}
                 initialDrafts={luvDrafts}
+                invoices={invoices}
               />
             </CardContent>
           </Card>

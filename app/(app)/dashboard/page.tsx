@@ -21,13 +21,15 @@ import { getDashboardData } from "@/lib/dashboard/service";
 
 export const metadata: Metadata = { title: "Dashboard" };
 
+type Props = { searchParams: Promise<{ milestone?: string }> };
+
 /**
  * Today Dashboard — the venue owner's morning briefing.
  * All widget data is fetched in three parallel queries (leads, tasks,
  * activities) then shaped client-side with no additional round-trips.
  */
-export default async function DashboardPage() {
-  const data = await getDashboardData();
+export default async function DashboardPage({ searchParams }: Props) {
+  const [data, { milestone }] = await Promise.all([getDashboardData(), searchParams]);
 
   if (!data) {
     return (
@@ -58,7 +60,7 @@ export default async function DashboardPage() {
 
       {/* Getting Started onboarding card (new venues only) */}
       {data.onboarding.show && (
-        <GettingStartedCard onboarding={data.onboarding} />
+        <GettingStartedCard onboarding={data.onboarding} milestone={milestone} />
       )}
 
       {/* Quick-count stat bar */}

@@ -75,12 +75,11 @@ export async function getCalendarData(
       .gte("hold_date", start)
       .lte("hold_date", end),
 
-    // 7. Calendar blocks (Sprint 20) — overlapping with the month range
+    // 7. Calendar blocks — non-recurring blocks overlapping month, plus all active recurring blocks
     supabase.from("calendar_blocks")
-      .select("id, title, reason, start_date, end_date, is_all_day")
+      .select("id, title, reason, start_date, end_date, is_all_day, start_time, end_time, recurrence_rule, recurrence_ends_on")
       .eq("venue_id", venue.id)
-      .lte("start_date", end)
-      .gte("end_date", start),
+      .or(`and(start_date.lte.${end},end_date.gte.${start},recurrence_rule.eq.none),and(recurrence_rule.neq.none,or(recurrence_ends_on.is.null,recurrence_ends_on.gte.${start}))`),
   ]);
 
   const items: CalendarItem[] = [];
@@ -178,24 +177,67 @@ export async function getCalendarData(
     });
   }
 
-  // Calendar blocks (Sprint 20) — expand multi-day blocks into individual day entries
+  // Calendar blocks — expand into individual day entries, handling recurrence
+  const seenBlockDates = new Set<string>();
   for (const b of (blocksRes.data ?? []) as any[]) {
-    let cursor = new Date(b.start_date + "T12:00:00");
-    const endD = new Date(b.end_date + "T12:00:00");
-    while (cursor <= endD) {
-      const dateStr = cursor.toISOString().slice(0, 10);
-      if (dateStr >= start && dateStr <= end) {
-        items.push({
-          id: `block-${b.id}-${dateStr}`,
-          type: "calendar_block",
-          date: dateStr,
-          title: b.title,
-          subtitle: b.reason,
-          time: null,
-          link: "/calendar",
-        });
+    const rule: string = b.recurrence_rule ?? "none";
+    const origStart = new Date(b.start_date + "T12:00:00");
+    const origEnd   = new Date(b.end_date   + "T12:00:00");
+    const durationMs = origEnd.getTime() - origStart.getTime();
+    const recurrenceEndD = b.recurrence_ends_on ? new Date(b.recurrence_ends_on + "T23:59:59") : null;
+    const monthStartD = new Date(start + "T00:00:00");
+    const monthEndD   = new Date(end   + "T23:59:59");
+    const blockTime   = b.is_all_day ? null : (b.start_time?.slice(0, 5) ?? null);
+
+    const occurrenceStarts: Date[] = [];
+
+    if (rule === "none") {
+      occurrenceStarts.push(new Date(origStart));
+    } else if (rule === "daily") {
+      let cur = new Date(origStart);
+      while (cur <= monthEndD && (!recurrenceEndD || cur <= recurrenceEndD)) {
+        const occEnd = new Date(cur.getTime() + durationMs);
+        if (occEnd >= monthStartD) occurrenceStarts.push(new Date(cur));
+        cur.setDate(cur.getDate() + 1);
       }
-      cursor.setDate(cursor.getDate() + 1);
+    } else if (rule === "weekly") {
+      let cur = new Date(origStart);
+      while (cur <= monthEndD && (!recurrenceEndD || cur <= recurrenceEndD)) {
+        const occEnd = new Date(cur.getTime() + durationMs);
+        if (occEnd >= monthStartD) occurrenceStarts.push(new Date(cur));
+        cur.setDate(cur.getDate() + 7);
+      }
+    } else if (rule === "annual") {
+      for (let y = monthStartD.getFullYear() - 1; y <= monthEndD.getFullYear() + 1; y++) {
+        const occStart = new Date(y, origStart.getMonth(), origStart.getDate(), 12);
+        if (occStart < origStart) continue;
+        if (recurrenceEndD && occStart > recurrenceEndD) continue;
+        const occEnd = new Date(occStart.getTime() + durationMs);
+        if (occEnd >= monthStartD && occStart <= monthEndD) occurrenceStarts.push(occStart);
+      }
+    }
+
+    for (const occStart of occurrenceStarts) {
+      const occEnd = new Date(occStart.getTime() + durationMs);
+      let cursor = new Date(occStart);
+      while (cursor <= occEnd) {
+        const dateStr = cursor.toISOString().slice(0, 10);
+        const key = `${b.id}-${dateStr}`;
+        if (dateStr >= start && dateStr <= end && !seenBlockDates.has(key)) {
+          seenBlockDates.add(key);
+          items.push({
+            id: `block-${key}`,
+            type: "calendar_block",
+            date: dateStr,
+            title: b.title,
+            subtitle: b.reason,
+            time: blockTime,
+            link: "/calendar",
+            rawId: b.id,
+          });
+        }
+        cursor.setDate(cursor.getDate() + 1);
+      }
     }
   }
 

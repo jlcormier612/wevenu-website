@@ -3,6 +3,12 @@ import { createClient } from "@/integrations/supabase/server";
 import { getCurrentVenue } from "@/lib/venue/service";
 import { runPostTourAutomation } from "@/lib/tours/post-tour";
 
+const STATUS_TO_SIGNAL: Record<string, string> = {
+  completed: "tour_attended",
+  cancelled:  "tour_cancelled",
+  no_show:    "tour_cancelled",
+};
+
 const VALID_STATUSES = ["scheduled", "confirmed", "completed", "cancelled", "no_show"] as const;
 const POST_TOUR_STATUSES = new Set(["completed", "no_show", "cancelled"]);
 
@@ -42,12 +48,24 @@ export async function PATCH(request: Request) {
         .eq("status", "pending");
     }
 
-    // Post-tour automation — fire-and-forget, non-blocking
+    // Post-tour automation + analytics — fire-and-forget, non-blocking
     if (POST_TOUR_STATUSES.has(status) && appt.status !== status) {
       void runPostTourAutomation(
         { supabase, appointmentId, venueId: venue.id, leadId: appt.lead_id, contactName: appt.contact_name, scheduledAt: appt.scheduled_at },
         status,
       ).catch((err) => console.error("[post-tour]", err));
+
+      // Track conversion signal
+      const signalType = STATUS_TO_SIGNAL[status];
+      if (signalType && appt.lead_id) {
+        void supabase.from("lead_signal_events").insert({
+          venue_id: venue.id,
+          lead_id: appt.lead_id,
+          signal_type: signalType,
+          signal_strength: status === "completed" ? 3 : 1,
+          metadata: { appointment_id: appointmentId, status },
+        }).then(null, () => {});
+      }
     }
 
     return NextResponse.json({ ok: true });

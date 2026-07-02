@@ -153,24 +153,27 @@ export function InquiryForm({
         <div className="max-w-xl mx-auto px-4 pt-6">
           <div className="grid grid-cols-2 gap-3">
             <a href={`/book/${tourKey}`}
-              className="block rounded-2xl border-2 p-4 text-center space-y-1.5 transition-colors hover:border-current"
+              className="block rounded-2xl border-2 p-4 text-center space-y-1.5 transition-colors hover:opacity-90"
               style={{ borderColor: primary, background: `${primary}08` }}>
               <p className="text-2xl">📅</p>
               <p className="text-sm font-semibold" style={{ color: primary }}>Schedule a Tour</p>
               <p className="text-xs text-gray-500">Pick a date and time to visit us.</p>
             </a>
-            <div className="rounded-2xl border-2 p-4 text-center space-y-1.5" style={{ borderColor: "#DED6CA", background: "#F5F4F2" }}>
+            <a href="#inquiry-form"
+              onClick={(e) => { e.preventDefault(); document.getElementById("inquiry-form")?.scrollIntoView({ behavior: "smooth", block: "start" }); }}
+              className="block rounded-2xl border-2 p-4 text-center space-y-1.5 transition-colors hover:border-gray-400 cursor-pointer"
+              style={{ borderColor: "#DED6CA", background: "#F5F4F2" }}>
               <p className="text-2xl">✉️</p>
               <p className="text-sm font-semibold text-gray-700">Request Information</p>
-              <p className="text-xs text-gray-500">Tell us about your event below.</p>
-            </div>
+              <p className="text-xs text-gray-500">Tell us about your event below ↓</p>
+            </a>
           </div>
           <div className="mt-4 h-px bg-gray-100" />
         </div>
       )}
 
       {/* Form card */}
-      <div className="max-w-xl mx-auto px-4 py-8">
+      <div id="inquiry-form" className="max-w-xl mx-auto px-4 py-8 scroll-mt-6">
         <form onSubmit={handleSubmit} className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 md:p-8 space-y-5">
 
           {/* Honeypot — hidden from humans, catches bots */}

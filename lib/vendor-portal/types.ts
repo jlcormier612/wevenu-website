@@ -22,7 +22,13 @@ export type VendorEvent = {
   eventType: string | null;
   status: string;
   coupleNames: string;
+  // Assignment details (Sprint 82)
+  assignmentId: string;
   arrivalTime: string | null;
+  setupLocation: string | null;
+  loadInNotes: string | null;
+  checkedInAt: string | null;
+  setupCompleteAt: string | null;
   role: string | null;
 };
 
@@ -45,4 +51,13 @@ export type VendorTask = {
   isRequired: boolean;
   completedAt: string | null;
   canComplete: boolean;
+};
+
+export type VendorDocument = {
+  id: string;
+  name: string;
+  category: string;
+  storageUrl: string;
+  mimeType: string | null;
+  notes: string | null;
 };

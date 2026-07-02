@@ -2,10 +2,12 @@
 
 import * as React from "react";
 
-import { Building2, Menu } from "lucide-react";
+import { Building2, Menu, Search } from "lucide-react";
 
 import { Wordmark } from "@/components/brand/wordmark";
 import { ThemeToggle } from "@/components/providers/theme-toggle";
+import { CommandPalette } from "@/components/shell/command-palette";
+import { NotificationBell } from "@/components/shell/notification-bell";
 import { SidebarNav } from "@/components/shell/sidebar-nav";
 import { UserMenu } from "@/components/shell/user-menu";
 import { Button } from "@/components/ui/button";
@@ -33,14 +35,15 @@ export function WorkspaceShell({
   venueLogo?: string | null;
   children: React.ReactNode;
 }) {
-  const [mobileNavOpen, setMobileNavOpen] = React.useState(false);
+  const [mobileNavOpen, setMobileNavOpen]   = React.useState(false);
+  const [searchOpen,    setSearchOpen]      = React.useState(false);
 
   return (
     <div className="flex min-h-svh w-full">
       {/* Desktop sidebar */}
       <aside className="hidden w-64 shrink-0 flex-col border-r bg-sidebar lg:flex">
         <div className="flex h-16 items-center border-b px-5">
-          <Wordmark logoUrl={venueLogo} venueName={venueName} />
+          <Wordmark />
         </div>
         <div className="flex-1 overflow-y-auto">
           <SidebarNav />
@@ -70,7 +73,7 @@ export function WorkspaceShell({
             >
               <SheetHeader className="h-16 justify-center border-b px-5 text-left">
                 <SheetTitle>
-                  <Wordmark logoUrl={venueLogo} venueName={venueName} />
+                  <Wordmark />
                 </SheetTitle>
               </SheetHeader>
               <div className="overflow-y-auto">
@@ -83,16 +86,49 @@ export function WorkspaceShell({
             <Wordmark showText={false} />
           </div>
 
-          {venueName ? (
+          {/* Venue branding — logo when uploaded, name + icon otherwise */}
+          {(venueLogo || venueName) && (
             <div className="hidden min-w-0 items-center gap-2 lg:flex">
-              <Building2 className="h-4 w-4 shrink-0 text-muted-foreground" />
-              <span className="truncate text-sm font-medium text-heading">
-                {venueName}
-              </span>
+              {venueLogo ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={venueLogo}
+                  alt={venueName ?? "Venue"}
+                  className="h-8 w-auto max-w-[160px] rounded-md object-contain"
+                />
+              ) : (
+                <>
+                  <Building2 className="h-4 w-4 shrink-0 text-muted-foreground" />
+                  <span className="truncate text-sm font-medium text-heading">{venueName}</span>
+                </>
+              )}
             </div>
-          ) : null}
+          )}
 
           <div className="ml-auto flex items-center gap-1">
+            {/* Search button — also openable with ⌘K */}
+            <button
+              type="button"
+              onClick={() => setSearchOpen(true)}
+              className="hidden sm:flex h-9 items-center gap-2 rounded-md border border-border/60 bg-muted/40 px-3 text-xs text-muted-foreground hover:bg-muted transition-colors"
+              aria-label="Search"
+            >
+              <Search className="h-3.5 w-3.5" />
+              <span>Search</span>
+              <kbd className="ml-1 hidden md:inline-flex h-4 select-none items-center rounded bg-background px-1 text-[10px] font-medium border">
+                ⌘K
+              </kbd>
+            </button>
+            {/* Mobile search icon */}
+            <button
+              type="button"
+              onClick={() => setSearchOpen(true)}
+              className="sm:hidden inline-flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
+              aria-label="Search"
+            >
+              <Search className="h-[1.1rem] w-[1.1rem]" />
+            </button>
+            <NotificationBell />
             <ThemeToggle />
             <UserMenu email={email} />
           </div>
@@ -104,6 +140,8 @@ export function WorkspaceShell({
           </div>
         </main>
       </div>
+
+      <CommandPalette open={searchOpen} onOpenChange={setSearchOpen} />
     </div>
   );
 }

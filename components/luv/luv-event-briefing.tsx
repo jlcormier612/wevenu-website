@@ -12,6 +12,7 @@ import Link from "next/link";
 import { ArrowRight, CheckCircle, AlertTriangle, Circle } from "lucide-react";
 
 import { LuvHeart } from "@/components/dashboard/luv-widget";
+import { getCoordinatorObservations } from "@/lib/luv/portal-observations";
 import type { ReadinessItem } from "@/lib/luv/event-readiness";
 
 // Accept both legacy (lib/luv) and playbook (lib/playbooks) readiness shapes
@@ -82,8 +83,30 @@ function ChecklistItem({ item }: { item: ReadinessItem }) {
   );
 }
 
-export function LuvEventBriefing({ readiness }: { readiness: AnyReadiness }) {
+export function LuvEventBriefing({
+  readiness,
+  guestStats,
+  paymentStatus,
+  balanceDue,
+}: {
+  readiness: AnyReadiness;
+  guestStats?: { total: number; attending: number; pending: number; seatingCapacity?: number } | null;
+  paymentStatus?: "overdue" | "on_track" | "complete" | "no_payments" | null;
+  balanceDue?: number | null;
+}) {
   const { eventName, daysUntil, score, completedCount, totalCount, items } = readiness;
+
+  const coordObs = getCoordinatorObservations({
+    coupleName: eventName,
+    guestTotal: guestStats?.total ?? 0,
+    guestAttending: guestStats?.attending ?? 0,
+    guestPending: guestStats?.pending ?? 0,
+    seatingCapacity: guestStats?.seatingCapacity ?? 0,
+    readinessScore: score,
+    daysUntil: typeof daysUntil === "number" ? daysUntil : null,
+    paymentStatus: paymentStatus ?? null,
+    balanceDue: balanceDue ?? null,
+  });
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const incompleteItems = (items as any[]).filter((i: any) => i.status !== "complete" && i.actionLabel);
@@ -131,6 +154,25 @@ export function LuvEventBriefing({ readiness }: { readiness: AnyReadiness }) {
           />
         </div>
       </div>
+
+      {/* Luv coordinator observations */}
+      {coordObs.length > 0 && (
+        <div className="space-y-2">
+          {coordObs.map(obs => (
+            <div
+              key={obs.id}
+              className="rounded-lg px-3 py-2.5 flex items-start gap-2"
+              style={{
+                background: obs.kind === "flag" ? "#FDF5F5" : `${DUSTY_ROSE}08`,
+                border: `1px solid ${obs.kind === "flag" ? "#D8A7AA50" : `${DUSTY_ROSE}20`}`,
+              }}
+            >
+              <LuvHeart size={11} />
+              <p className="text-xs leading-relaxed" style={{ color: "#5A3235" }}>{obs.text}</p>
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* Checklist */}
       <div className="divide-y divide-border/50">

@@ -132,6 +132,8 @@ export function createInitialSetupInput(prefillEmail = ""): VenueSetupInput {
     logoUrl: "",
     primaryColor: DEFAULT_PRIMARY_COLOR,
     secondaryColor: DEFAULT_SECONDARY_COLOR,
+    accentColor: "#B8AEA1",
+    neutralColor: "#F7F5F1",
     ownerFullName: "",
     ownerEmail: prefillEmail,
     ownerTitle: "Owner",

@@ -15,9 +15,10 @@ import {
   Phone,
   Plus,
   Star,
+  Trash2,
 } from "lucide-react";
 
-import { createBlockAction } from "@/app/(app)/availability/actions";
+import { createBlockAction, deleteBlockAction } from "@/app/(app)/availability/actions";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -161,7 +162,24 @@ function CalendarGrid({
 
 // ---- Day detail panel -------------------------------------------------------
 
-function DayDetail({ date, items }: { date: string | null; items: CalendarItem[] }) {
+function DayDetail({ date, items, onBlockDeleted }: { date: string | null; items: CalendarItem[]; onBlockDeleted: () => void }) {
+  const [deletingId, setDeletingId] = React.useState<string | null>(null);
+  const [deletePending, startDelete] = React.useTransition();
+
+  function handleDeleteBlock(blockId: string) {
+    setDeletingId(blockId);
+    startDelete(async () => {
+      const result = await deleteBlockAction(blockId);
+      if (result.ok) {
+        toast.success("Block removed.");
+        onBlockDeleted();
+      } else {
+        toast.error("Could not remove block.");
+      }
+      setDeletingId(null);
+    });
+  }
+
   if (!date) {
     return (
       <div className="flex flex-col items-center justify-center py-12 text-center">
@@ -187,15 +205,13 @@ function DayDetail({ date, items }: { date: string | null; items: CalendarItem[]
           {dateItems.map((item) => {
             const meta = TYPE_META[item.type];
             const Icon = meta.icon;
-            return (
-              <Link
-                key={item.id}
-                href={item.link}
-                className="flex items-start gap-3 rounded-lg border border-border bg-card p-3 hover:bg-muted/40 transition-colors"
-              >
+            const isBlock = item.type === "calendar_block";
+
+            const inner = (
+              <>
                 <span
                   className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg"
-                  style={{ backgroundColor: `color-mix(in oklch, ${TYPE_META[item.type].dotColor} 18%, transparent)`, color: TYPE_META[item.type].dotColor }}
+                  style={{ backgroundColor: `color-mix(in oklch, ${meta.dotColor} 18%, transparent)`, color: meta.dotColor }}
                 >
                   <Icon className="h-3.5 w-3.5" />
                 </span>
@@ -215,6 +231,33 @@ function DayDetail({ date, items }: { date: string | null; items: CalendarItem[]
                     <p className="text-xs text-muted-foreground truncate">{item.subtitle}</p>
                   )}
                 </div>
+              </>
+            );
+
+            if (isBlock && item.rawId) {
+              return (
+                <div key={item.id} className="flex items-start gap-3 rounded-lg border border-border bg-card p-3">
+                  {inner}
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteBlock(item.rawId!)}
+                    disabled={deletePending && deletingId === item.rawId}
+                    className="ml-1 mt-0.5 shrink-0 rounded p-1 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+                    title="Delete block"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              );
+            }
+
+            return (
+              <Link
+                key={item.id}
+                href={item.link}
+                className="flex items-start gap-3 rounded-lg border border-border bg-card p-3 hover:bg-muted/40 transition-colors"
+              >
+                {inner}
               </Link>
             );
           })}
@@ -261,7 +304,18 @@ export function CalendarView({
   const [blockReason, setBlockReason] = React.useState<string>("other");
   const [blockStart, setBlockStart] = React.useState(today);
   const [blockEnd, setBlockEnd] = React.useState(today);
+  const [blockIsAllDay, setBlockIsAllDay] = React.useState(true);
+  const [blockStartTime, setBlockStartTime] = React.useState("09:00");
+  const [blockEndTime, setBlockEndTime] = React.useState("17:00");
+  const [blockRecurrence, setBlockRecurrence] = React.useState<string>("none");
+  const [blockRecurrenceEnd, setBlockRecurrenceEnd] = React.useState("");
   const [blockPending, startBlock] = React.useTransition();
+
+  function resetBlockForm() {
+    setBlockTitle(""); setBlockReason("other"); setBlockStart(today); setBlockEnd(today);
+    setBlockIsAllDay(true); setBlockStartTime("09:00"); setBlockEndTime("17:00");
+    setBlockRecurrence("none"); setBlockRecurrenceEnd("");
+  }
 
   function handleAddBlock() {
     if (!blockTitle.trim() || !blockStart) return;
@@ -271,15 +325,17 @@ export function CalendarView({
         reason: blockReason as import("@/lib/availability/types").BlockReason,
         startDate: blockStart,
         endDate: blockEnd || blockStart,
-        isAllDay: true,
-        startTime: "",
-        endTime: "",
+        isAllDay: blockIsAllDay,
+        startTime: blockIsAllDay ? "" : blockStartTime,
+        endTime: blockIsAllDay ? "" : blockEndTime,
         notes: "",
+        recurrenceRule: blockRecurrence as import("@/lib/availability/types").RecurrenceRule,
+        recurrenceEndsOn: blockRecurrence !== "none" && blockRecurrenceEnd ? blockRecurrenceEnd : null,
       });
       if (result.ok) {
         toast.success("Block added.");
         setShowBlockForm(false);
-        setBlockTitle("");
+        resetBlockForm();
         router.refresh();
       } else {
         toast.error("ok" in result && !result.ok ? result.message ?? "Could not add block." : "Could not add block.");
@@ -349,12 +405,56 @@ export function CalendarView({
               <Input type="date" value={blockStart} onChange={(e) => setBlockStart(e.target.value)} />
             </div>
             <div className="space-y-1.5">
-              <Label className="text-xs">End date (leave blank for single day)</Label>
-              <Input type="date" value={blockEnd} onChange={(e) => setBlockEnd(e.target.value)} />
+              <Label className="text-xs">End date</Label>
+              <Input type="date" value={blockEnd} onChange={(e) => setBlockEnd(e.target.value)} min={blockStart} />
             </div>
           </div>
+
+          {/* All-day toggle + time inputs */}
+          <div className="flex items-center gap-3">
+            <label className="flex items-center gap-2 cursor-pointer select-none">
+              <input type="checkbox" checked={blockIsAllDay} onChange={(e) => setBlockIsAllDay(e.target.checked)}
+                className="h-4 w-4 rounded border-border accent-primary" />
+              <span className="text-xs text-foreground">All day</span>
+            </label>
+          </div>
+          {!blockIsAllDay && (
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <Label className="text-xs">Start time</Label>
+                <Input type="time" value={blockStartTime} onChange={(e) => setBlockStartTime(e.target.value)} />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">End time</Label>
+                <Input type="time" value={blockEndTime} onChange={(e) => setBlockEndTime(e.target.value)} />
+              </div>
+            </div>
+          )}
+
+          {/* Recurrence */}
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="space-y-1.5">
+              <Label className="text-xs">Repeat</Label>
+              <Select value={blockRecurrence} onValueChange={setBlockRecurrence}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Does not repeat</SelectItem>
+                  <SelectItem value="daily">Every day</SelectItem>
+                  <SelectItem value="weekly">Every week (same day)</SelectItem>
+                  <SelectItem value="annual">Every year (same date)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            {blockRecurrence !== "none" && (
+              <div className="space-y-1.5">
+                <Label className="text-xs">Repeat until (optional)</Label>
+                <Input type="date" value={blockRecurrenceEnd} onChange={(e) => setBlockRecurrenceEnd(e.target.value)} min={blockStart} placeholder="No end date" />
+              </div>
+            )}
+          </div>
+
           <div className="flex items-center justify-end gap-2">
-            <Button type="button" variant="ghost" size="sm" onClick={() => setShowBlockForm(false)} disabled={blockPending}>Cancel</Button>
+            <Button type="button" variant="ghost" size="sm" onClick={() => { setShowBlockForm(false); resetBlockForm(); }} disabled={blockPending}>Cancel</Button>
             <Button type="button" size="sm" disabled={!blockTitle.trim() || !blockStart || blockPending} onClick={handleAddBlock}>
               {blockPending ? "Adding…" : "Add Block"}
             </Button>
@@ -380,7 +480,7 @@ export function CalendarView({
             <CardTitle className="text-base">Schedule</CardTitle>
           </CardHeader>
           <CardContent>
-            <DayDetail date={selectedDate || null} items={items} />
+            <DayDetail date={selectedDate || null} items={items} onBlockDeleted={() => router.refresh()} />
           </CardContent>
         </Card>
       </div>

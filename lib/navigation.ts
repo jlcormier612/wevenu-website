@@ -7,6 +7,7 @@ import {
   CreditCard,
   FileSignature,
   FileText,
+  Info,
   LayoutDashboard,
   LayoutTemplate,
   type LucideIcon,
@@ -15,8 +16,8 @@ import {
   Settings,
   ShieldCheck,
   Store,
+  TrendingUp,
   Users,
-  UserSquare2,
   Workflow,
 } from "lucide-react";
 
@@ -83,13 +84,14 @@ export const NAV_SECTIONS: NavSection[] = [
   {
     label: "Communication",
     items: [
-      { title: "Messaging", href: "/messaging", icon: MessagesSquare },
+      { title: "Messaging",    href: "/messaging", icon: MessagesSquare },
+      { title: "Venue Guide",  href: "/guide",     icon: Info },
     ],
   },
   {
     label: "Insights",
     items: [
-      { title: "Analytics", href: "/analytics", icon: UserSquare2 },
+      { title: "Insights", href: "/analytics", icon: TrendingUp },
     ],
   },
   {

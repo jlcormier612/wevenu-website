@@ -186,22 +186,87 @@ function ContactForm({ onSubmit, pending }: { onSubmit: (f: FormFields) => void;
 
 // ── Confirmation ─────────────────────────────────────────────────────────────
 
-function Confirmation({ venueName, scheduledAt, duration }: { venueName: string; scheduledAt: string; duration: number }) {
+function buildGoogleCalendarUrl(scheduledAt: string, duration: number, venueName: string): string {
+  const start = new Date(scheduledAt);
+  const end   = new Date(start.getTime() + duration * 60000);
+  const fmt   = (d: Date) => d.toISOString().replace(/[-:]/g, "").replace(/\.\d{3}Z$/, "Z");
+  return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(`Tour at ${venueName}`)}&dates=${fmt(start)}/${fmt(end)}&details=${encodeURIComponent(`Your ${duration}-minute venue tour at ${venueName}.`)}`;
+}
+
+function buildIcsDataUrl(scheduledAt: string, duration: number, venueName: string, address?: string | null): string {
+  const start    = new Date(scheduledAt);
+  const end      = new Date(start.getTime() + duration * 60000);
+  const fmt      = (d: Date) => d.toISOString().replace(/[-:]/g, "").replace(/\.\d{3}Z$/, "");
+  const uid      = `tour-${Date.now()}@wevenu.com`;
+  const ics = [
+    "BEGIN:VCALENDAR",
+    "VERSION:2.0",
+    "PRODID:-//Wevenu//Tour Scheduler//EN",
+    "BEGIN:VEVENT",
+    `UID:${uid}`,
+    `DTSTAMP:${fmt(new Date())}Z`,
+    `DTSTART:${fmt(start)}Z`,
+    `DTEND:${fmt(end)}Z`,
+    `SUMMARY:Tour at ${venueName}`,
+    address ? `LOCATION:${address}` : null,
+    `DESCRIPTION:Your ${duration}-minute venue tour at ${venueName}.`,
+    "END:VEVENT",
+    "END:VCALENDAR",
+  ].filter(Boolean).join("\r\n");
+  return `data:text/calendar;charset=utf-8,${encodeURIComponent(ics)}`;
+}
+
+type ConfirmationProps = {
+  venueName: string;
+  scheduledAt: string;
+  duration: number;
+  venuePhone?: string | null;
+  venueEmail?: string | null;
+  addressLine1?: string | null;
+  city?: string | null;
+  stateRegion?: string | null;
+};
+
+function Confirmation({ venueName, scheduledAt, duration, venuePhone, venueEmail, addressLine1, city, stateRegion }: ConfirmationProps) {
+  const addressLine = [addressLine1, [city, stateRegion].filter(Boolean).join(", ")].filter(Boolean).join(", ");
+  const gcalUrl  = buildGoogleCalendarUrl(scheduledAt, duration, venueName);
+  const icsUrl   = buildIcsDataUrl(scheduledAt, duration, venueName, addressLine || null);
+
   return (
-    <div className="py-8 text-center space-y-4">
+    <div className="py-8 text-center space-y-5">
       <div className="h-16 w-16 rounded-full mx-auto flex items-center justify-center" style={{ background: `${SAGE}20` }}>
         <span className="text-3xl">🌿</span>
       </div>
       <div>
-        <h2 className="font-heading text-2xl font-semibold text-heading">You're confirmed!</h2>
-        <p className="text-sm text-muted-foreground mt-1">We're looking forward to meeting you.</p>
+        <h2 className="font-heading text-2xl font-semibold text-heading">You&apos;re confirmed!</h2>
+        <p className="text-sm text-muted-foreground mt-1">We&apos;re looking forward to meeting you.</p>
       </div>
-      <div className="rounded-xl border border-border bg-muted/30 p-5 text-left space-y-1.5 max-w-xs mx-auto">
+
+      {/* Tour details card */}
+      <div className="rounded-xl border border-border bg-muted/30 p-5 text-left space-y-2 max-w-xs mx-auto">
         <p className="text-sm font-semibold text-heading">{venueName}</p>
-        <p className="text-sm text-muted-foreground">{formatReadable(scheduledAt.slice(0, 10))}</p>
-        <p className="text-sm text-muted-foreground">{formatTime(scheduledAt)} · {duration} minutes</p>
+        <p className="text-sm text-muted-foreground">📅 {formatReadable(scheduledAt.slice(0, 10))}</p>
+        <p className="text-sm text-muted-foreground">🕐 {formatTime(scheduledAt)} · {duration} minutes</p>
+        {addressLine && <p className="text-sm text-muted-foreground">📍 {addressLine}</p>}
+        {venuePhone  && <p className="text-sm text-muted-foreground">📞 {venuePhone}</p>}
+        {venueEmail  && <p className="text-sm text-muted-foreground">✉️ {venueEmail}</p>}
       </div>
-      <p className="text-xs text-muted-foreground">A confirmation has been sent to your email. We'll follow up with details about your tour.</p>
+
+      {/* Calendar links */}
+      <div className="flex items-center justify-center gap-3 flex-wrap">
+        <a href={gcalUrl} target="_blank" rel="noopener noreferrer"
+          className="inline-flex items-center gap-1.5 text-sm font-medium px-4 py-2 rounded-xl border transition-colors hover:opacity-80"
+          style={{ borderColor: SAGE, color: SAGE, background: `${SAGE}10` }}>
+          📅 Add to Google Calendar
+        </a>
+        <a href={icsUrl} download="tour.ics"
+          className="inline-flex items-center gap-1.5 text-sm font-medium px-4 py-2 rounded-xl border transition-colors hover:opacity-80"
+          style={{ borderColor: "#B8AEA1", color: "#5A5550", background: "#F5F4F2" }}>
+          📥 Download .ics
+        </a>
+      </div>
+
+      <p className="text-xs text-muted-foreground">A confirmation email has been sent to your inbox.</p>
     </div>
   );
 }
@@ -219,6 +284,7 @@ export function TourScheduler({ tourKey, venue }: { tourKey: string; venue: Tour
   const [selectedSlot, setSelectedSlot] = React.useState<TourSlot | null>(null);
   const [submitting, setSubmitting] = React.useState(false);
   const [confirmation, setConfirmation] = React.useState<{ scheduledAt: string; duration: number } | null>(null);
+
 
   // Fetch slots for the current month view
   React.useEffect(() => {
@@ -269,7 +335,16 @@ export function TourScheduler({ tourKey, venue }: { tourKey: string; venue: Tour
           <p className="text-sm font-semibold text-heading">{venue.name}</p>
         </header>
         <main className="flex-1 max-w-md mx-auto w-full px-4 py-8">
-          <Confirmation venueName={venue.name} scheduledAt={confirmation.scheduledAt} duration={confirmation.duration} />
+          <Confirmation
+            venueName={venue.name}
+            scheduledAt={confirmation.scheduledAt}
+            duration={confirmation.duration}
+            venuePhone={venue.phone}
+            venueEmail={venue.email}
+            addressLine1={venue.addressLine1}
+            city={venue.city}
+            stateRegion={venue.stateRegion}
+          />
         </main>
       </div>
     );

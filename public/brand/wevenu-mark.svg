@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-65 -65 130 130" width="512" height="512" role="img" aria-label="Wevenu">
+  <!-- 11 petals extracted from the brand logo, recolored cream -->
+  <g fill="#EDE8DF" stroke="#EDE8DF" stroke-width="0.5" stroke-linejoin="round">
+    <path d="M0 0 C-12.44 -18.96 -12.44 -50.95 0 -59.24 C12.44 -50.95 12.44 -18.96 0 0 Z" transform="rotate(0)" />
+    <path d="M0 0 C-12.44 -18.96 -12.44 -50.95 0 -59.24 C12.44 -50.95 12.44 -18.96 0 0 Z" transform="rotate(32.73)" />
+    <path d="M0 0 C-12.44 -18.96 -12.44 -50.95 0 -59.24 C12.44 -50.95 12.44 -18.96 0 0 Z" transform="rotate(65.45)" />
+    <path d="M0 0 C-12.44 -18.96 -12.44 -50.95 0 -59.24 C12.44 -50.95 12.44 -18.96 0 0 Z" transform="rotate(98.18)" />
+    <path d="M0 0 C-12.44 -18.96 -12.44 -50.95 0 -59.24 C12.44 -50.95 12.44 -18.96 0 0 Z" transform="rotate(130.91)" />
+    <path d="M0 0 C-12.44 -18.96 -12.44 -50.95 0 -59.24 C12.44 -50.95 12.44 -18.96 0 0 Z" transform="rotate(163.64)" />
+    <path d="M0 0 C-12.44 -18.96 -12.44 -50.95 0 -59.24 C12.44 -50.95 12.44 -18.96 0 0 Z" transform="rotate(196.36)" />
+    <path d="M0 0 C-12.44 -18.96 -12.44 -50.95 0 -59.24 C12.44 -50.95 12.44 -18.96 0 0 Z" transform="rotate(229.09)" />
+    <path d="M0 0 C-12.44 -18.96 -12.44 -50.95 0 -59.24 C12.44 -50.95 12.44 -18.96 0 0 Z" transform="rotate(261.82)" />
+    <path d="M0 0 C-12.44 -18.96 -12.44 -50.95 0 -59.24 C12.44 -50.95 12.44 -18.96 0 0 Z" transform="rotate(294.55)" />
+    <path d="M0 0 C-12.44 -18.96 -12.44 -50.95 0 -59.24 C12.44 -50.95 12.44 -18.96 0 0 Z" transform="rotate(327.27)" />
+  </g>
+  <!-- Sage green center -->
+  <circle cx="0" cy="0" r="17.77" fill="#5D6F5D" />
+</svg>

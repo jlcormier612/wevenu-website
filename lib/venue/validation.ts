@@ -65,7 +65,7 @@ export const STEP_FIELDS: Record<SetupStepId, string[]> = {
   ],
   "venue-details": ["venueType", "capacity", "timezone"],
   "business-hours": ["businessHours"],
-  brand: ["primaryColor", "secondaryColor"],
+  brand: ["primaryColor", "secondaryColor", "accentColor", "neutralColor"],
   owner: ["ownerFullName", "ownerEmail", "ownerTitle", "currency", "weekStartsOn"],
   payments: [],
   review: [],
@@ -127,6 +127,12 @@ export function validateVenueSetup(input: VenueSetupInput): VenueSetupErrors {
   }
   if (!isValidHexColor(input.secondaryColor)) {
     errors.secondaryColor = "Use a 6-digit hex color (e.g. #4F5F4F).";
+  }
+  if (!isValidHexColor(input.accentColor)) {
+    errors.accentColor = "Use a 6-digit hex color.";
+  }
+  if (!isValidHexColor(input.neutralColor)) {
+    errors.neutralColor = "Use a 6-digit hex color.";
   }
 
   // Owner + basic settings

@@ -11,7 +11,17 @@ export async function getVenueByTourKey(key: string): Promise<TourVenueInfo | nu
   const { data } = await supabase.rpc("get_venue_by_tour_key", { p_key: key });
   if (!data || (data as Record<string, unknown>).error) return null;
   const d = data as Record<string, unknown>;
-  return { name: d.name as string, headline: (d.headline as string) ?? "Schedule a Tour", description: (d.description as string | null) ?? null, duration: (d.duration as number) ?? 60 };
+  return {
+    name: d.name as string,
+    headline: (d.headline as string) ?? "Schedule a Tour",
+    description: (d.description as string | null) ?? null,
+    duration: (d.duration as number) ?? 60,
+    email: (d.email as string | null) ?? null,
+    phone: (d.phone as string | null) ?? null,
+    addressLine1: (d.addressLine1 as string | null) ?? null,
+    city: (d.city as string | null) ?? null,
+    stateRegion: (d.stateRegion as string | null) ?? null,
+  };
 }
 
 export async function getTourSlots(key: string, startDate: string, endDate: string): Promise<TourSlot[]> {
@@ -47,7 +57,27 @@ export async function bookTour(
     };
     return { ok: false, error: msg[d?.error as string] ?? "Could not book this slot. Please try again." };
   }
-  return { ok: true, leadId: d.leadId as string, appointmentId: d.appointmentId as string, scheduledAt: d.scheduledAt as string, venueName: d.venueName as string, duration: d.duration as number };
+  const appointmentId = d.appointmentId as string;
+
+  // Fetch venue email + id for coordinator notification (non-blocking if this fails)
+  const { data: apptRow } = await supabase
+    .from("tour_appointments")
+    .select("venue_id, contact_email, contact_name, venues(email)")
+    .eq("id", appointmentId)
+    .maybeSingle<{ venue_id: string; contact_email: string | null; contact_name: string | null; venues: { email: string | null } | null }>();
+
+  return {
+    ok: true,
+    leadId: d.leadId as string,
+    appointmentId,
+    scheduledAt: d.scheduledAt as string,
+    venueName: d.venueName as string,
+    duration: d.duration as number,
+    venueId: apptRow?.venue_id,
+    venueEmail: apptRow?.venues?.email ?? null,
+    contactEmail: apptRow?.contact_email ?? fields.email,
+    contactName: apptRow?.contact_name ?? `${fields.firstName} ${fields.lastName}`.trim(),
+  };
 }
 
 // ── Coordinator (authenticated) -----------------------------------------------

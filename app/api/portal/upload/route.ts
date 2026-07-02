@@ -70,7 +70,7 @@ export async function POST(request: Request) {
 
     const { data: urlData } = supabase.storage.from("couple-media").getPublicUrl(path);
 
-    return NextResponse.json({ ok: true, url: urlData.publicUrl });
+    return NextResponse.json({ ok: true, url: urlData.publicUrl, path });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";
     return NextResponse.json({ ok: false, error: message }, { status: 500 });

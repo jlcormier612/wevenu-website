@@ -2,6 +2,7 @@ export type TaskOwner = "coordinator" | "couple" | "vendor" | "team";
 export type TaskVisibility = "coordinator_only" | "client_visible" | "client_owned" | "vendor_visible" | "vendor_owned";
 export type TaskCategory = "communication" | "financial" | "planning" | "document" | "meeting" | "internal" | "custom";
 export type TaskStatus = "pending" | "blocked" | "complete" | "overdue" | "waived";
+export type TaskPhase = "planning" | "final_details" | "wedding_day" | "post_wedding";
 
 export type PlaybookTemplate = {
   id: string;
@@ -24,6 +25,7 @@ export type PlaybookTask = {
   visibility: TaskVisibility;
   daysOffset: number;   // negative = before event, positive = after event
   category: TaskCategory;
+  phase: TaskPhase | null;  // lifecycle stage; null = unset (treated as "planning")
   autoCompleteTrigger: string | null;
   dependsOnTaskId: string | null;
   isRequired: boolean;
@@ -48,6 +50,7 @@ export type EventTask = {
   dueDate: string;         // ISO date "YYYY-MM-DD"
   daysOffset: number;
   category: TaskCategory;
+  phase: TaskPhase | null;  // lifecycle stage; null = unset
   autoCompleteTrigger: string | null;
   isRequired: boolean;
   status: TaskStatus;
@@ -100,6 +103,7 @@ export type PlaybookTaskInput = {
   visibility: TaskVisibility;
   daysOffset: string;          // string in form, parsed to int
   category: TaskCategory;
+  phase: TaskPhase | null;
   autoCompleteTrigger: string;
   dependsOnTaskId: string;
   isRequired: boolean;

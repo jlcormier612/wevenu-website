@@ -18,8 +18,52 @@ import {
   validateClientStatus,
   validateKeyDateInput,
 } from "@/lib/clients/validation";
+import { clientDisplayName } from "@/lib/clients/constants";
+import { getEventIdForClient, insertEvent } from "@/lib/events/repository";
+import { createPortalSession } from "@/lib/portal/service";
 import type { Lead } from "@/lib/leads/types";
 import { getCurrentVenue } from "@/lib/venue/service";
+
+/**
+ * If the client has an event date, automatically create the linked event.
+ * Called inside the same withVenue callback as insertClient so both rows
+ * share the same authenticated Supabase client and venue context.
+ */
+async function autoCreateEvent(
+  supabase: Parameters<typeof insertEvent>[0],
+  venueId: string,
+  clientId: string,
+  opts: {
+    firstName: string;
+    lastName: string;
+    partnerFirstName?: string | null;
+    partnerLastName?: string | null;
+    eventDate: string;
+    eventType?: string | null;
+    guestCount?: string | null;
+    startTime?: string | null;
+    endTime?: string | null;
+  },
+): Promise<string> {
+  // Guard against duplicate events if someone edits the client or re-runs conversion
+  const existing = await getEventIdForClient(supabase, venueId, clientId);
+  if (existing) return existing;
+
+  const coupleName = clientDisplayName(opts.firstName, opts.lastName, opts.partnerFirstName, opts.partnerLastName);
+  const typeLabel = opts.eventType?.replace(/_/g, " ") ?? "Event";
+  return insertEvent(supabase, venueId, {
+    name: `${coupleName} — ${typeLabel}`,
+    eventType: opts.eventType ?? "",
+    eventDate: opts.eventDate,
+    startTime: opts.startTime ?? "",
+    endTime: opts.endTime ?? "",
+    setupTime: "",
+    teardownTime: "",
+    guestCount: opts.guestCount ?? "",
+    clientId,
+    spaceId: "",
+  });
+}
 
 async function withVenue<T>(
   fn: (supabase: Awaited<ReturnType<typeof createClient>>, venueId: string) => Promise<T>,
@@ -55,10 +99,37 @@ export async function createClient_(input: ClientInput): Promise<CreateClientRes
   const errors = validateClientInput(input);
   if (Object.keys(errors).length > 0) return { ok: false, errors };
   const result = await withVenue(async (supabase, venueId) => {
+    // Server-side hard block: refuse if the event date is calendar-blocked.
+    if (input.eventDate) {
+      const { data: blocks } = await supabase.from("calendar_blocks")
+        .select("title").eq("venue_id", venueId)
+        .lte("start_date", input.eventDate).gte("end_date", input.eventDate)
+        .limit(1);
+      if (blocks && blocks.length > 0) {
+        const title = (blocks[0] as { title: string }).title;
+        return { ok: false, message: `Cannot book this date — the calendar is blocked: "${title}". Remove the block first.` } as CreateClientResult;
+      }
+    }
     const clientId = await repo.insertClient(supabase, venueId, input);
-    return { ok: true, clientId } as CreateClientResult;
+    const eventId = input.eventDate
+      ? await autoCreateEvent(supabase, venueId, clientId, {
+          firstName: input.firstName,
+          lastName: input.lastName,
+          partnerFirstName: input.partnerFirstName,
+          partnerLastName: input.partnerLastName,
+          eventDate: input.eventDate,
+          eventType: input.eventType,
+          guestCount: input.guestCount,
+          startTime: input.ceremonyTime,
+        })
+      : null;
+    return { ok: true, clientId, eventId } as CreateClientResult;
   });
-  return result as CreateClientResult;
+  const r = result as CreateClientResult;
+  if (!r.ok) return r;
+  const coupleName = clientDisplayName(input.firstName, input.lastName, input.partnerFirstName, input.partnerLastName);
+  const portal = await createPortalSession(r.clientId, coupleName, "couple");
+  return { ok: true, clientId: r.clientId, eventId: r.eventId, portalToken: portal?.accessToken ?? null };
 }
 
 /** Convert a won lead to a client. Pre-populates from lead data. */
@@ -92,14 +163,39 @@ export async function convertLeadToClient(lead: Lead): Promise<CreateClientResul
     internalNotes: "",
   };
   const result = await withVenue(async (supabase, venueId) => {
+    // Server-side hard block: refuse if the lead's event date is calendar-blocked.
+    if (input.eventDate) {
+      const { data: blocks } = await supabase.from("calendar_blocks")
+        .select("title").eq("venue_id", venueId)
+        .lte("start_date", input.eventDate).gte("end_date", input.eventDate)
+        .limit(1);
+      if (blocks && blocks.length > 0) {
+        const title = (blocks[0] as { title: string }).title;
+        return { ok: false, message: `Cannot convert this lead — their event date is blocked: "${title}". Remove the block first, or update the event date.` } as CreateClientResult;
+      }
+    }
     const clientId = await repo.insertClient(supabase, venueId, input, lead.id);
     await repo.insertClientActivity(supabase, venueId, clientId, "note_added",
       "Welcome note", `Converted from lead inquiry — ${lead.firstName} ${lead.lastName}`);
-    // Auto-convert any active date holds for this lead
     await convertLeadHolds(venueId, lead.id, supabase);
-    return { ok: true, clientId } as CreateClientResult;
+    const eventId = input.eventDate
+      ? await autoCreateEvent(supabase, venueId, clientId, {
+          firstName: lead.firstName,
+          lastName: lead.lastName,
+          partnerFirstName: lead.partnerFirstName,
+          partnerLastName: lead.partnerLastName,
+          eventDate: input.eventDate,
+          eventType: input.eventType,
+          guestCount: input.guestCount,
+        })
+      : null;
+    return { ok: true, clientId, eventId } as CreateClientResult;
   });
-  return result as CreateClientResult;
+  const r = result as CreateClientResult;
+  if (!r.ok) return r;
+  const coupleName = clientDisplayName(lead.firstName, lead.lastName, lead.partnerFirstName, lead.partnerLastName);
+  const portal = await createPortalSession(r.clientId, coupleName, "couple");
+  return { ok: true, clientId: r.clientId, eventId: r.eventId, portalToken: portal?.accessToken ?? null };
 }
 
 // ---- update -----------------------------------------------------------------

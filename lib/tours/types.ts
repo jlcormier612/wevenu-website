@@ -10,6 +10,12 @@ export type TourVenueInfo = {
   headline: string;
   description: string | null;
   duration: number;  // minutes
+  // Contact & location (Sprint 91)
+  email: string | null;
+  phone: string | null;
+  addressLine1: string | null;
+  city: string | null;
+  stateRegion: string | null;
 };
 
 export type TourSettings = {
@@ -55,5 +61,9 @@ export type BookingResult = {
   appointmentId?: string;
   scheduledAt?: string;
   venueName?: string;
+  venueEmail?: string | null;
+  venueId?: string;
+  contactEmail?: string;
+  contactName?: string;
   duration?: number;
 };

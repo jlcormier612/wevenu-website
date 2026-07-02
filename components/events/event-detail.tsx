@@ -17,6 +17,8 @@ import {
 import { toast } from "sonner";
 
 import { updateEventStatusAction } from "@/app/(app)/events/[id]/actions";
+import { sendAnniversaryMessageAction } from "@/app/(app)/events/[id]/anniversary-actions";
+import { EventFeedbackSection } from "@/components/events/event-feedback-section";
 import { EventNotesSection } from "@/components/events/event-notes-section";
 import { EventStatusBadge } from "@/components/events/event-status-badge";
 import { EventTeamSection } from "@/components/events/event-team-section";
@@ -50,6 +52,55 @@ import {
 } from "@/lib/events/constants";
 import type { EventWithDetails } from "@/lib/events/types";
 import { eventTypeLabel } from "@/lib/leads/constants";
+
+// ---- Anniversary Banner (shown on anniversary milestones) ------------------
+
+function AnniversaryBanner({ eventId, ordinal }: { eventId: string; ordinal: string }) {
+  const [message, setMessage] = React.useState("");
+  const [sent, setSent]       = React.useState(false);
+  const [sending, setSending] = React.useState(false);
+
+  async function handleSend() {
+    if (!message.trim()) return;
+    setSending(true);
+    const result = await sendAnniversaryMessageAction(eventId, message.trim(), parseInt(ordinal) || 1);
+    setSending(false);
+    if (result.ok) { setSent(true); toast.success("Anniversary note sent to the couple's portal."); }
+    else toast.error("Could not send anniversary note.");
+  }
+
+  return (
+    <div className="rounded-2xl p-5 space-y-3"
+      style={{ background: "linear-gradient(135deg, #FDF5F5 0%, #F9F5F0 100%)", border: "1px solid #E8C8CA" }}>
+      <div className="flex items-center gap-2">
+        <span className="text-xl">💗</span>
+        <p className="text-sm font-semibold text-heading">{ordinal} Anniversary</p>
+      </div>
+      {sent ? (
+        <p className="text-sm text-muted-foreground">Anniversary note sent. It will appear in the couple&apos;s portal.</p>
+      ) : (
+        <>
+          <p className="text-xs text-muted-foreground">
+            Send a personal anniversary note — it will appear in the couple&apos;s keepsake portal.
+          </p>
+          <div className="flex gap-2">
+            <input
+              type="text"
+              value={message}
+              onChange={e => setMessage(e.target.value)}
+              placeholder={`Happy ${ordinal} anniversary! It was such a joy to be part of your day.`}
+              className="flex-1 text-sm rounded-lg border border-border px-3 py-2 bg-white focus:outline-none focus:ring-1 focus:ring-primary"
+            />
+            <Button size="sm" disabled={!message.trim() || sending} onClick={handleSend}
+              style={{ background: "#C17F84", color: "white" }}>
+              {sending ? "Sending…" : "Send"}
+            </Button>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
 
 // ---- Event Date Hero (client-side for live countdown) ----------------------
 
@@ -216,8 +267,41 @@ export function EventDetail({
           <Button variant="outline" size="sm" render={<Link href={`/events/${event.id}/day-sheet`} />}>
             <Printer className="mr-1 h-3.5 w-3.5" /> Day-of Sheet
           </Button>
+          {daysUntil(event.eventDate) === 0 && (
+            <Button size="sm" render={<Link href={`/events/${event.id}/today`} />}
+              style={{ background: "#5D6F5D", color: "white" }}>
+              ✦ Today&apos;s Dashboard
+            </Button>
+          )}
         </div>
       </div>
+
+      {/* ── Wedding Day banner — shows only on event date ─────────────── */}
+      {daysUntil(event.eventDate) === 0 && (
+        <Link href={`/events/${event.id}/today`}
+          className="flex items-center justify-between rounded-2xl px-5 py-4 text-white transition-opacity hover:opacity-90"
+          style={{ background: "linear-gradient(135deg, #3D4F3D 0%, #5D6F5D 100%)" }}>
+          <div className="flex items-center gap-3">
+            <span className="text-xl">✦</span>
+            <div>
+              <p className="text-sm font-semibold leading-snug">Today&apos;s Wedding Day Dashboard</p>
+              <p className="text-xs opacity-60 mt-0.5">Live timeline · Vendor check-in · Emergency contacts</p>
+            </div>
+          </div>
+          <span className="text-sm font-semibold opacity-80">Open →</span>
+        </Link>
+      )}
+
+      {/* ── Anniversary banner — shows on anniversary milestones ──────── */}
+      {daysUntil(event.eventDate) < 0 && (() => {
+        const daysSince = -daysUntil(event.eventDate);
+        const yearsNum  = Math.round(daysSince / 365);
+        const isAnniv   = yearsNum >= 1 && Math.abs(daysSince - yearsNum * 365) <= 3;
+        const ordinal   = yearsNum === 1 ? "1st" : yearsNum === 2 ? "2nd" : yearsNum === 3 ? "3rd" : `${yearsNum}th`;
+        return isAnniv ? (
+          <AnniversaryBanner eventId={event.id} ordinal={ordinal} />
+        ) : null;
+      })()}
 
       {/* ── Event Date Hero ────────────────────────────────────────────── */}
       <EventHeroCard event={event} />
@@ -267,6 +351,9 @@ export function EventDetail({
             {documents.length > 0 && <span className="ml-1 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground">{documents.length}</span>}
           </TabsTrigger>
           <TabsTrigger value="activity">Activity</TabsTrigger>
+          {daysUntil(event.eventDate) < 0 && (
+            <TabsTrigger value="feedback">Feedback</TabsTrigger>
+          )}
         </TabsList>
 
         {/* ── Overview ──────────────────────────────────────────────── */}
@@ -526,6 +613,20 @@ export function EventDetail({
             </CardContent>
           </Card>
         </TabsContent>
+
+        {/* ── Feedback — post-wedding only ──────────────────────────── */}
+        {daysUntil(event.eventDate) < 0 && (
+          <TabsContent value="feedback">
+            <div className="space-y-1 mb-4">
+              <p className="text-sm font-semibold text-heading">Feedback & Memories</p>
+              <p className="text-xs text-muted-foreground">
+                Private feedback from the couple, referrals they&apos;ve sent, and photos shared from their day.
+                Nothing is public until you explicitly approve it.
+              </p>
+            </div>
+            <EventFeedbackSection eventId={event.id} />
+          </TabsContent>
+        )}
       </Tabs>
     </div>
   );

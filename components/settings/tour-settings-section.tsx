@@ -74,8 +74,16 @@ export function TourSettingsSection({ initialSettings }: Props) {
     startSave(async () => {
       const { updateTourSettingsAction } = await import("@/app/(app)/settings/tour-actions");
       const result = await updateTourSettingsAction(s);
-      if (result.ok) { toast.success("Tour settings saved."); router.refresh(); }
-      else toast.error("Could not save settings.");
+      if (result.ok) {
+        toast.success("Tour settings saved.");
+        if (s.tourSchedulingEnabled) {
+          router.push("/dashboard?milestone=tour_scheduling");
+        } else {
+          router.refresh();
+        }
+      } else {
+        toast.error("Could not save settings.");
+      }
     });
   }
 

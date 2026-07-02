@@ -1,6 +1,7 @@
 import { createClient } from "@/integrations/supabase/server";
 import { isSupabaseConfigured } from "@/lib/env";
 import { getCurrentVenue } from "@/lib/venue/service";
+import { sendEmail } from "@/lib/email/send";
 import type { ClientContact, ClientContactInput } from "@/lib/contacts/types";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -18,6 +19,7 @@ function mapContact(r: any): ClientContact {
     isPayer: r.is_payer ?? false,
     isDecisionMaker: r.is_decision_maker ?? false,
     isEmergencyContact: r.is_emergency_contact ?? false,
+    invitedAt: r.invited_at ?? null,
     createdAt: r.created_at, updatedAt: r.updated_at,
   };
 }
@@ -126,4 +128,79 @@ export async function createContactPortalSession(
     .single<{ access_token: string }>();
   if (error) return null;
   return data.access_token;
+}
+
+/**
+ * Send a portal invitation email to a contact and mark them as invited.
+ * Returns the portal URL so the caller can display it as a fallback.
+ */
+export async function sendContactPortalInvite(
+  clientId: string,
+  contactId: string,
+  contact: { firstName: string; email: string; roleLabel?: string | null },
+  coupleName: string,
+): Promise<{ ok: boolean; portalUrl?: string; message?: string }> {
+  if (!isSupabaseConfigured) return { ok: false, message: "Not configured." };
+  const venue = await getCurrentVenue();
+  if (!venue) return { ok: false, message: "No venue found." };
+
+  const venueName = venue.name ?? "Your venue";
+  const label = contact.roleLabel ?? contact.firstName;
+  const token = await createContactPortalSession(clientId, contactId, label);
+  if (!token) return { ok: false, message: "Could not create portal session." };
+
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://app.wevenu.com";
+  const portalUrl = `${baseUrl}/p/${token}`;
+
+  const emailResult = await sendEmail({
+    to: contact.email,
+    subject: `You're invited to the ${coupleName} wedding portal`,
+    text: [
+      `Hi ${contact.firstName},`,
+      "",
+      `${coupleName} have invited you to access their wedding planning portal through ${venueName}.`,
+      "",
+      "You can view their planning details, documents, and more at:",
+      portalUrl,
+      "",
+      "This is a personal link — please don't share it.",
+      "",
+      venueName,
+    ].join("\n"),
+    html: [
+      `<p>Hi ${contact.firstName},</p>`,
+      `<p>${coupleName} have invited you to access their wedding planning portal through <strong>${venueName}</strong>.</p>`,
+      `<p><a href="${portalUrl}" style="background:#D8A7AA;color:#fff;padding:10px 20px;border-radius:8px;text-decoration:none;display:inline-block;">Open Planning Portal</a></p>`,
+      `<p style="color:#888;font-size:12px;">This is a personal link — please don't share it.</p>`,
+      `<p style="color:#888;font-size:12px;">${venueName}</p>`,
+    ].join(""),
+  });
+
+  if (!emailResult.ok) return { ok: false, message: emailResult.message };
+
+  // Mark as invited
+  const supabase = await createClient();
+  await supabase
+    .from("client_contacts")
+    .update({ status: "invited", invited_at: new Date().toISOString(), updated_at: new Date().toISOString() })
+    .eq("id", contactId)
+    .eq("venue_id", venue.id);
+
+  return { ok: true, portalUrl };
+}
+
+/** Revoke all portal sessions for a specific contact. */
+export async function revokeContactPortalAccess(
+  contactId: string,
+): Promise<void> {
+  if (!isSupabaseConfigured) return;
+  const venue = await getCurrentVenue();
+  if (!venue) return;
+  const supabase = await createClient();
+  await supabase.from("client_portal_sessions").delete().eq("contact_id", contactId);
+  await supabase
+    .from("client_contacts")
+    .update({ status: "inactive", updated_at: new Date().toISOString() })
+    .eq("id", contactId)
+    .eq("venue_id", venue.id);
 }

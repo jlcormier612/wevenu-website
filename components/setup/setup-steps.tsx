@@ -7,13 +7,13 @@ import {
   Building2,
   CalendarClock,
   CreditCard,
-  ImageUp,
   Sparkles,
   UserRound,
 } from "lucide-react";
 
 import { Field, SummaryRow } from "@/components/setup/field";
 import { Button } from "@/components/ui/button";
+import { ColorPickerTrigger } from "@/components/ui/color-picker";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -26,7 +26,6 @@ import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
 import {
-  BRAND_COLOR_SWATCHES,
   CURRENCIES,
   DAYS_OF_WEEK,
   type Option,
@@ -39,7 +38,7 @@ import type {
   VenueSetupErrors,
   VenueSetupInput,
 } from "@/lib/venue/types";
-import { isValidHexColor, type SetupStepId } from "@/lib/venue/validation";
+import { type SetupStepId } from "@/lib/venue/validation";
 
 export const STEP_META: Record<
   SetupStepId,
@@ -444,111 +443,67 @@ export function BusinessHoursStep({ input, errors, setHour }: StepProps) {
 
 // ---- Brand ------------------------------------------------------------------
 
-function ColorField({
-  label,
-  value,
-  onChange,
-  error,
-}: {
+const COLOR_ROLES: {
+  key: "primaryColor" | "secondaryColor" | "accentColor" | "neutralColor";
   label: string;
-  value: string;
-  onChange: (v: string) => void;
-  error?: string;
-}) {
-  return (
-    <Field label={label} error={error}>
-      <div className="space-y-2.5">
-        <div className="flex items-center gap-3">
-          <input
-            type="color"
-            value={isValidHexColor(value) ? value : "#000000"}
-            onChange={(e) => onChange(e.target.value.toUpperCase())}
-            aria-label={`${label} picker`}
-            className="h-9 w-12 shrink-0 cursor-pointer rounded-md border border-input bg-transparent p-1"
-          />
-          <Input
-            value={value}
-            aria-invalid={error ? true : undefined}
-            onChange={(e) => onChange(e.target.value.toUpperCase())}
-            className="w-32 font-mono uppercase"
-          />
-        </div>
-        <div className="flex flex-wrap gap-1.5">
-          {BRAND_COLOR_SWATCHES.map((c) => (
-            <button
-              key={c}
-              type="button"
-              onClick={() => onChange(c)}
-              aria-label={`Use ${c}`}
-              style={{ backgroundColor: c }}
-              className={cn(
-                "h-6 w-6 rounded-md border border-border transition-transform hover:scale-110",
-                value.toUpperCase() === c &&
-                  "ring-2 ring-ring ring-offset-1 ring-offset-background",
-              )}
-            />
-          ))}
-        </div>
-      </div>
-    </Field>
-  );
-}
+  hint: string;
+}[] = [
+  { key: "primaryColor",   label: "Primary",   hint: "Main brand color — buttons, headers, accents" },
+  { key: "secondaryColor", label: "Secondary",  hint: "Supports the primary — sidebar, badges" },
+  { key: "accentColor",    label: "Accent",     hint: "Warm tone — highlights, cards, hover states" },
+  { key: "neutralColor",   label: "Neutral",    hint: "Background tone — page canvas, section fills" },
+];
 
 export function BrandStep({ input, errors, set }: StepProps) {
   return (
     <div className="space-y-6">
-      <Field label="Logo" hint="You can add your logo any time from Settings.">
-        <div className="flex items-center gap-4 rounded-lg border border-dashed border-border bg-muted/40 p-4">
-          <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-accent/40 text-heading">
-            <ImageUp className="h-5 w-5" />
-          </span>
-          <div className="min-w-0 flex-1">
-            <p className="text-sm font-medium text-heading">Upload a logo</p>
-            <p className="text-xs text-muted-foreground">
-              PNG or SVG, square works best. Coming soon — skip for now.
-            </p>
-          </div>
-          <Button type="button" variant="outline" size="sm" disabled>
-            Upload
-          </Button>
-        </div>
-      </Field>
-
-      <div className="grid gap-6 sm:grid-cols-2">
-        <ColorField
-          label="Primary brand color"
-          value={input.primaryColor}
-          onChange={(v) => set("primaryColor", v)}
-          error={errors.primaryColor}
-        />
-        <ColorField
-          label="Secondary brand color"
-          value={input.secondaryColor}
-          onChange={(v) => set("secondaryColor", v)}
-          error={errors.secondaryColor}
-        />
+      {/* 4-color palette */}
+      <div className="grid gap-5 sm:grid-cols-2">
+        {COLOR_ROLES.map(({ key, label, hint }) => (
+          <Field key={key} label={label} hint={hint} error={errors[key]}>
+            <ColorPickerTrigger
+              value={input[key]}
+              onChange={(v) => set(key, v)}
+            />
+          </Field>
+        ))}
       </div>
 
-      <div className="rounded-lg border border-border p-4">
-        <p className="mb-3 text-xs font-medium tracking-wide text-muted-foreground uppercase">
+      {/* Live preview strip */}
+      <div className="rounded-lg border border-border p-4 space-y-3">
+        <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
           Preview
         </p>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 flex-wrap">
+          {COLOR_ROLES.map(({ key, label }) => (
+            <div key={key} className="flex flex-col items-center gap-1">
+              <span
+                className="h-10 w-10 rounded-lg border border-border shadow-sm"
+                style={{ backgroundColor: input[key] }}
+              />
+              <span className="text-[10px] text-muted-foreground">{label}</span>
+            </div>
+          ))}
           <span
-            className="h-10 w-10 rounded-lg border border-border"
-            style={{ backgroundColor: input.primaryColor }}
-          />
-          <span
-            className="h-10 w-10 rounded-lg border border-border"
-            style={{ backgroundColor: input.secondaryColor }}
-          />
-          <span
-            className="rounded-lg px-4 py-2 text-sm font-medium text-white"
+            className="ml-2 rounded-lg px-4 py-2 text-sm font-medium text-white shadow-sm"
             style={{ backgroundColor: input.primaryColor }}
           >
             {input.name.trim() || "Your venue"}
           </span>
+          <span
+            className="rounded-md px-3 py-1.5 text-xs font-medium border"
+            style={{
+              backgroundColor: input.neutralColor,
+              borderColor: input.accentColor,
+              color: input.primaryColor,
+            }}
+          >
+            Upcoming event
+          </span>
         </div>
+        <p className="text-xs text-muted-foreground">
+          Your logo can be added anytime from Settings after setup.
+        </p>
       </div>
     </div>
   );
@@ -735,18 +690,15 @@ export function ReviewStep({ input, goToStep }: StepProps) {
       <ReviewSection title="Brand" step="brand" goToStep={goToStep}>
         <div className="flex items-center justify-between py-1.5 text-sm">
           <span className="text-muted-foreground">Colors</span>
-          <span className="flex items-center gap-2">
-            <span
-              className="h-5 w-5 rounded-md border border-border"
-              style={{ backgroundColor: input.primaryColor }}
-            />
-            <span
-              className="h-5 w-5 rounded-md border border-border"
-              style={{ backgroundColor: input.secondaryColor }}
-            />
-            <span className="font-mono text-xs text-foreground">
-              {input.primaryColor} / {input.secondaryColor}
-            </span>
+          <span className="flex items-center gap-1.5">
+            {(["primaryColor","secondaryColor","accentColor","neutralColor"] as const).map(k => (
+              <span
+                key={k}
+                className="h-5 w-5 rounded-md border border-border"
+                style={{ backgroundColor: input[k] }}
+                title={input[k]}
+              />
+            ))}
           </span>
         </div>
       </ReviewSection>

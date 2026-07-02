@@ -28,6 +28,8 @@ export type ClientContact = {
   isPayer: boolean;
   isDecisionMaker: boolean;
   isEmergencyContact: boolean;
+  // Sprint 90: invite tracking
+  invitedAt: string | null;
   createdAt: string;
   updatedAt: string;
 };

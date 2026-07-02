@@ -26,10 +26,10 @@ import {
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import {
-  AUTO_COMPLETE_TRIGGERS, categoryColor, categoryLabel,
-  formatDaysOffset, TASK_CATEGORIES, TASK_OWNERS, TASK_VISIBILITY,
+  AUTO_COMPLETE_TRIGGERS, categoryColor, categoryLabel, phaseColor, phaseLabel,
+  formatDaysOffset, TASK_CATEGORIES, TASK_OWNERS, TASK_PHASES, TASK_VISIBILITY,
 } from "@/lib/playbooks/constants";
-import type { PlaybookTask, TaskCategory, TaskOwner, TaskVisibility } from "@/lib/playbooks/types";
+import type { PlaybookTask, TaskCategory, TaskOwner, TaskPhase, TaskVisibility } from "@/lib/playbooks/types";
 
 type TaskForm = {
   title: string;
@@ -38,6 +38,7 @@ type TaskForm = {
   visibility: TaskVisibility;
   daysOffset: string;
   category: TaskCategory;
+  phase: TaskPhase | null;
   autoCompleteTrigger: string;
   dependsOnTaskId: string;
   isRequired: boolean;
@@ -45,7 +46,7 @@ type TaskForm = {
 
 const EMPTY_FORM: TaskForm = {
   title: "", description: "", ownerType: "coordinator", visibility: "coordinator_only",
-  daysOffset: "-30", category: "custom", autoCompleteTrigger: "", dependsOnTaskId: "", isRequired: true,
+  daysOffset: "-30", category: "custom", phase: "planning", autoCompleteTrigger: "", dependsOnTaskId: "", isRequired: true,
 };
 
 function TaskRow({
@@ -60,6 +61,8 @@ function TaskRow({
           {!task.isRequired && <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">optional</span>}
         </div>
         <div className="flex flex-wrap items-center gap-x-2 text-xs text-muted-foreground">
+          <span style={{ color: phaseColor(task.phase) }}>{phaseLabel(task.phase)}</span>
+          <span>·</span>
           <span style={{ color: categoryColor(task.category) }}>{categoryLabel(task.category)}</span>
           <span>·</span>
           <span>{formatDaysOffset(task.daysOffset)}</span>
@@ -99,6 +102,13 @@ function TaskFormPanel({
           <p className="text-[10px] text-muted-foreground">Negative = before event · Positive = after event</p>
           <Input type="number" value={f.daysOffset} onChange={(e) => set("daysOffset", e.target.value)} placeholder="-30" className="w-28" />
           {f.daysOffset && <p className="text-xs text-muted-foreground">{formatDaysOffset(parseInt(f.daysOffset) || 0)}</p>}
+        </div>
+        <div className="space-y-1.5">
+          <Label className="text-xs">Phase</Label>
+          <Select value={f.phase ?? "planning"} onValueChange={(v) => set("phase", v as TaskPhase)}>
+            <SelectTrigger className="h-8 text-sm"><SelectValue /></SelectTrigger>
+            <SelectContent>{TASK_PHASES.map((p) => <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>)}</SelectContent>
+          </Select>
         </div>
         <div className="space-y-1.5">
           <Label className="text-xs">Category</Label>
@@ -173,7 +183,8 @@ export function PlaybookTaskEditor({
         title: f.title.trim(), description: f.description.trim() || null,
         ownerType: f.ownerType, visibility: f.visibility,
         daysOffset: parseInt(f.daysOffset, 10) || 0,
-        category: f.category, autoCompleteTrigger: f.autoCompleteTrigger || null,
+        category: f.category, phase: f.phase ?? null,
+        autoCompleteTrigger: f.autoCompleteTrigger || null,
         dependsOnTaskId: f.dependsOnTaskId || null, isRequired: f.isRequired, sortOrder: tasks.length,
         reminderBeforeDays: null, escalationAfterDays: null, notifyOnAssign: false, notifyOnComplete: false,
       });
@@ -188,7 +199,8 @@ export function PlaybookTaskEditor({
         title: f.title.trim(), description: f.description.trim() || null,
         ownerType: f.ownerType, visibility: f.visibility,
         daysOffset: parseInt(f.daysOffset, 10) || 0,
-        category: f.category, autoCompleteTrigger: f.autoCompleteTrigger || null,
+        category: f.category, phase: f.phase ?? null,
+        autoCompleteTrigger: f.autoCompleteTrigger || null,
         dependsOnTaskId: f.dependsOnTaskId || null, isRequired: f.isRequired,
       });
       if (result.ok) { toast.success("Task updated."); setEditingId(null); router.refresh(); }
@@ -215,7 +227,7 @@ export function PlaybookTaskEditor({
         {sortedTasks.map((task) =>
           editingId === task.id && editingTask ? (
             <TaskFormPanel key={task.id}
-              initial={{ title: task.title, description: task.description ?? "", ownerType: task.ownerType, visibility: task.visibility, daysOffset: String(task.daysOffset), category: task.category, autoCompleteTrigger: task.autoCompleteTrigger ?? "", dependsOnTaskId: task.dependsOnTaskId ?? "", isRequired: task.isRequired }}
+              initial={{ title: task.title, description: task.description ?? "", ownerType: task.ownerType, visibility: task.visibility, daysOffset: String(task.daysOffset), category: task.category, phase: task.phase ?? "planning", autoCompleteTrigger: task.autoCompleteTrigger ?? "", dependsOnTaskId: task.dependsOnTaskId ?? "", isRequired: task.isRequired }}
               allTasks={sortedTasks.filter((t) => t.id !== task.id)}
               onSave={(f) => handleEdit(task.id, f)} onCancel={() => setEditingId(null)}
               pending={editPending} submitLabel="Save task" />

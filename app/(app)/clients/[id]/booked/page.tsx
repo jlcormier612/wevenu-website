@@ -5,7 +5,10 @@ import { BookingCelebration } from "@/components/clients/booking-celebration";
 import { clientDisplayName } from "@/lib/clients/constants";
 import { getClient } from "@/lib/clients/service";
 
-type Props = { params: Promise<{ id: string }> };
+type Props = {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ eventId?: string; portalToken?: string }>;
+};
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { id } = await params;
@@ -16,14 +19,18 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   };
 }
 
-/**
- * Booking celebration page — shown immediately after converting a lead to
- * a client. Gives the venue owner a moment to acknowledge the milestone
- * before routing into the client workspace.
- */
-export default async function BookedPage({ params }: Props) {
+export default async function BookedPage({ params, searchParams }: Props) {
   const { id } = await params;
+  const { eventId, portalToken } = await searchParams;
   const client = await getClient(id);
   if (!client) notFound();
-  return <BookingCelebration client={client} />;
+  // Fall back to the linkedEventId on the client record if searchParams are missing
+  const resolvedEventId = eventId ?? client.linkedEventId ?? null;
+  return (
+    <BookingCelebration
+      client={client}
+      eventId={resolvedEventId}
+      portalToken={portalToken ?? null}
+    />
+  );
 }

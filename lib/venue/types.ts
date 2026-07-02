@@ -44,10 +44,12 @@ export type VenueSetupInput = {
   // Business hours
   businessHours: BusinessHourInput[];
 
-  // Brand (per-venue)
+  // Brand (per-venue) — four-color system
   logoUrl: string;
   primaryColor: string;
   secondaryColor: string;
+  accentColor: string;
+  neutralColor: string;
 
   // Staff owner + basic settings
   ownerFullName: string;
@@ -81,6 +83,8 @@ export type Venue = {
   logoUrl: string | null;
   primaryColor: string;
   secondaryColor: string;
+  accentColor: string;
+  neutralColor: string;
   currency: string;
   weekStartsOn: number;
   stripeAccountId: string | null;
@@ -90,6 +94,7 @@ export type Venue = {
   setupCompletedAt: string | null;
   onboardingDismissed: boolean;
   embedKey: string;   // public key for the venue's inquiry form — /form/{embedKey}
+  tourSchedulingEnabled: boolean;
   createdAt: string;
   updatedAt: string;
 };

@@ -12,7 +12,18 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  const body = await request.json() as { token: string; firstName?: string; lastName?: string; email?: string; plusOne?: boolean; groupLabel?: string; dietary?: string; guests?: { firstName: string; lastName?: string; email?: string; groupLabel?: string }[] };
+  const body = await request.json() as {
+    token: string;
+    firstName?: string;
+    lastName?: string;
+    email?: string;
+    plusOne?: boolean;
+    plusOneName?: string;
+    groupLabel?: string;
+    dietary?: string;
+    isChild?: boolean;
+    guests?: { firstName: string; lastName?: string; email?: string; groupLabel?: string }[];
+  };
   const { token } = body;
   if (!token) return NextResponse.json({ ok: false, error: "Missing token." }, { status: 400 });
   const supabase = await createClient();
@@ -26,9 +37,15 @@ export async function POST(request: Request) {
   // Single add
   if (!body.firstName) return NextResponse.json({ ok: false, error: "Missing firstName." }, { status: 400 });
   const { data } = await supabase.rpc("add_couple_guest", {
-    p_token: token, p_first_name: body.firstName, p_last_name: body.lastName ?? "",
-    p_email: body.email ?? "", p_plus_one: body.plusOne ?? false,
-    p_group_label: body.groupLabel ?? "", p_dietary: body.dietary ?? "",
+    p_token:          token,
+    p_first_name:     body.firstName,
+    p_last_name:      body.lastName ?? "",
+    p_email:          body.email ?? "",
+    p_plus_one:       body.plusOne ?? false,
+    p_plus_one_name:  body.plusOneName ?? "",
+    p_group_label:    body.groupLabel ?? "",
+    p_dietary:        body.dietary ?? "",
+    p_is_child:       body.isChild ?? false,
   });
   if ((data as { ok?: boolean })?.ok) {
     void supabase.rpc("log_couple_event", { p_token: token, p_type: "guests_added", p_data: { count: 1 } });

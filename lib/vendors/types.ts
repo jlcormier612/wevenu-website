@@ -2,6 +2,9 @@
  * Vendor domain types (Sprint 14 — Vendor Management).
  */
 
+export type VendorPreferenceLevel = "featured" | "preferred" | "recommended";
+export type VendorPricingTier = "budget" | "moderate" | "luxury";
+
 export type Vendor = {
   id: string;
   venueId: string;
@@ -16,9 +19,29 @@ export type Vendor = {
   pinterestUrl: string | null;
   tiktokUrl: string | null;
   isPreferred: boolean;
+  preferenceLevel: VendorPreferenceLevel;
+  description: string | null;
+  photoUrl: string | null;
+  pricingTier: VendorPricingTier | null;
+  displayOrder: number;
+  isActive: boolean;
   notes: string | null;
   createdAt: string;
   updatedAt: string;
+};
+
+/** Couple-facing vendor shape — no internal notes, sorted by venue preference. */
+export type PortalVendor = {
+  id: string;
+  name: string;
+  category: string | null;
+  preferenceLevel: VendorPreferenceLevel;
+  description: string | null;
+  photoUrl: string | null;
+  websiteUrl: string | null;
+  instagramUrl: string | null;
+  pricingTier: VendorPricingTier | null;
+  email: string | null;
 };
 
 /** A vendor assigned to a specific event, with event-specific details. */
@@ -32,8 +55,13 @@ export type EventVendorAssignment = {
   vendorCategory: string | null;
   vendorPhone: string | null;
   // Event-specific
-  arrivalTime: string | null; // "HH:MM"
+  arrivalTime: string | null;    // "HH:MM"
+  setupLocation: string | null;
+  loadInNotes: string | null;
   notes: string | null;
+  // Check-in state (set by coordinator or vendor self-check-in)
+  checkedInAt: string | null;
+  setupCompleteAt: string | null;
   createdAt: string;
 };
 
@@ -62,12 +90,18 @@ export type VendorInput = {
   pinterestUrl: string;
   tiktokUrl: string;
   isPreferred: boolean;
+  preferenceLevel: VendorPreferenceLevel;
+  description: string;
+  photoUrl: string;
+  pricingTier: string;
   notes: string;
 };
 
 export type VendorAssignmentInput = {
   vendorId: string;
   arrivalTime: string;
+  setupLocation: string;
+  loadInNotes: string;
   notes: string;
 };
 

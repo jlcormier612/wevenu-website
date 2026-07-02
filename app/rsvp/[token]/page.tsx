@@ -40,10 +40,22 @@ export type RsvpContext = {
     dietary: string | null;
     plusOne: boolean;
     plusOneName: string | null;
+    mealChoice: string | null;
+    plusOneMeal: string | null;
+    householdId: string | null;
   };
   couple: { firstName: string; partnerFirstName: string | null };
   event: { name: string; eventDate: string; eventType: string | null } | null;
   venue: { name: string };
   websiteSlug: string | null;
   accentColor: string;
+  questions: import("@/lib/portal/types").RsvpQuestion[];
+  guestAnswers: { questionId: string; answer: string }[];
+  householdMembers: {
+    id: string;
+    firstName: string;
+    lastName: string | null;
+    rsvpStatus: string;
+    mealChoice: string | null;
+  }[];
 };

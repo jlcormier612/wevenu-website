@@ -10,26 +10,48 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  const { token, slug, isPublished, password, clearPassword, theme, accentColor, contentKey, contentValue, sectionsEnabled, scheduleSync } =
-    await request.json() as { token: string; slug?: string; isPublished?: boolean; password?: string; clearPassword?: boolean; theme?: string; accentColor?: string; contentKey?: string; contentValue?: unknown; sectionsEnabled?: string[]; scheduleSync?: boolean };
+  const body = await request.json() as {
+    token: string;
+    slug?: string;
+    isPublished?: boolean;
+    password?: string;
+    clearPassword?: boolean;
+    theme?: string;
+    themePalette?: string;
+    accentColor?: string;
+    fontPairing?: string;
+    sectionOrder?: string[];
+    contentKey?: string;
+    contentValue?: unknown;
+    sectionsEnabled?: string[];
+    scheduleSync?: boolean;
+  };
+
+  const { token, slug, isPublished, password, clearPassword, theme, themePalette, accentColor,
+          fontPairing, sectionOrder, contentKey, contentValue, sectionsEnabled, scheduleSync } = body;
+
   if (!token) return NextResponse.json({ ok: false, error: "Missing token." }, { status: 400 });
+
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("update_my_website", {
-    p_token: token,
-    p_slug: slug ?? null,
-    p_is_published: isPublished ?? null,
-    p_password: password ?? null,
-    p_clear_password: clearPassword ?? false,
-    p_theme: theme ?? null,
-    p_accent_color: accentColor ?? null,
-    p_content_key: contentKey ?? null,
-    p_content_value: contentValue ? JSON.stringify(contentValue) : null,
-    p_sections_enabled: sectionsEnabled ?? null,
-    // scheduleSync handled via direct update below
+    p_token:            token,
+    p_slug:             slug             ?? null,
+    p_is_published:     isPublished      ?? null,
+    p_password:         password         ?? null,
+    p_clear_password:   clearPassword    ?? false,
+    p_theme:            theme            ?? null,
+    p_theme_palette:    themePalette     ?? null,
+    p_accent_color:     accentColor      ?? null,
+    p_font_pairing:     fontPairing      ?? null,
+    p_section_order:    sectionOrder     ?? null,
+    p_content_key:      contentKey       ?? null,
+    p_content_value:    contentValue     ? JSON.stringify(contentValue) : null,
+    p_sections_enabled: sectionsEnabled  ?? null,
   });
+
   if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 422 });
 
-  // Handle scheduleSync separately (not in the main SECURITY DEFINER yet)
+  // scheduleSync still handled via direct update (pre-Sprint-68 pattern)
   if (scheduleSync !== undefined && (data as Record<string, unknown>)?.siteId) {
     const siteId = (data as Record<string, unknown>).siteId as string;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any

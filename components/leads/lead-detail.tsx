@@ -104,8 +104,11 @@ export function LeadDetail({ lead, holds = [], spaces = [], documents = [], luvD
     startConvert(async () => {
       const result = await convertLeadToClientAction(lead);
       if (result.ok) {
-        // Route to the celebration page — the client detail is one step away from there.
-        router.push(`/clients/${result.clientId}/booked`);
+        const params = new URLSearchParams();
+        if (result.eventId) params.set("eventId", result.eventId);
+        if (result.portalToken) params.set("portalToken", result.portalToken);
+        const qs = params.toString();
+        router.push(`/clients/${result.clientId}/booked${qs ? `?${qs}` : ""}`);
       } else {
         toast.error(result.message ?? "Could not convert to client.");
       }

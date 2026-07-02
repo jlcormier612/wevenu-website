@@ -19,13 +19,20 @@ type VendorRow = {
   website: string | null;
   instagram_url: string | null; facebook_url: string | null;
   pinterest_url: string | null; tiktok_url: string | null;
-  is_preferred: boolean; notes: string | null;
+  is_preferred: boolean;
+  preference_level: string | null;
+  description: string | null; photo_url: string | null;
+  pricing_tier: string | null; display_order: number | null;
+  is_active: boolean | null;
+  notes: string | null;
   created_at: string; updated_at: string;
 };
 
 type EVARow = {
   id: string; venue_id: string; event_id: string; vendor_id: string;
-  arrival_time: string | null; notes: string | null; created_at: string;
+  arrival_time: string | null; setup_location: string | null; load_in_notes: string | null;
+  notes: string | null; created_at: string;
+  checked_in_at: string | null; setup_complete_at: string | null;
   vendors: { name: string; category: string | null; contact_name: string | null; phone: string | null } | null;
 };
 
@@ -41,7 +48,13 @@ function mapVendor(r: VendorRow): Vendor {
     website: r.website,
     instagramUrl: r.instagram_url, facebookUrl: r.facebook_url,
     pinterestUrl: r.pinterest_url, tiktokUrl: r.tiktok_url,
-    isPreferred: r.is_preferred, notes: r.notes,
+    isPreferred: r.is_preferred,
+    preferenceLevel: (r.preference_level ?? "recommended") as import("./types").VendorPreferenceLevel,
+    description: r.description, photoUrl: r.photo_url,
+    pricingTier: (r.pricing_tier ?? null) as import("./types").VendorPricingTier | null,
+    displayOrder: r.display_order ?? 0,
+    isActive: r.is_active ?? true,
+    notes: r.notes,
     createdAt: r.created_at, updatedAt: r.updated_at,
   };
 }
@@ -53,7 +66,12 @@ function mapEVA(r: EVARow): EventVendorAssignment {
     vendorCategory: r.vendors?.category ?? null,
     vendorPhone: r.vendors?.phone ?? null,
     arrivalTime: r.arrival_time?.slice(0, 5) ?? null,
-    notes: r.notes, createdAt: r.created_at,
+    setupLocation: r.setup_location ?? null,
+    loadInNotes: r.load_in_notes ?? null,
+    notes: r.notes,
+    checkedInAt: r.checked_in_at ?? null,
+    setupCompleteAt: r.setup_complete_at ?? null,
+    createdAt: r.created_at,
   };
 }
 
@@ -98,7 +116,11 @@ function toVendorRow(venueId: string, input: VendorInput): Record<string, unknow
     facebook_url: input.facebookUrl.trim() || null,
     pinterest_url: input.pinterestUrl.trim() || null,
     tiktok_url: input.tiktokUrl.trim() || null,
-    is_preferred: input.isPreferred,
+    is_preferred: input.isPreferred || input.preferenceLevel !== "recommended",
+    preference_level: input.preferenceLevel || "recommended",
+    description: input.description.trim() || null,
+    photo_url: input.photoUrl.trim() || null,
+    pricing_tier: input.pricingTier || null,
     notes: input.notes.trim() || null,
   };
 }
@@ -143,7 +165,10 @@ export async function insertVendorAssignment(
   const { data, error } = await client.from("event_vendor_assignments")
     .insert({
       venue_id: venueId, event_id: eventId, vendor_id: input.vendorId,
-      arrival_time: input.arrivalTime || null, notes: input.notes.trim() || null,
+      arrival_time: input.arrivalTime || null,
+      setup_location: input.setupLocation.trim() || null,
+      load_in_notes: input.loadInNotes.trim() || null,
+      notes: input.notes.trim() || null,
     })
     .select("*, vendors(name, category, contact_name, phone)").single<EVARow>();
   if (error) throw error;
@@ -160,10 +185,15 @@ export async function deleteVendorAssignment(
 
 export async function updateVendorAssignment(
   client: DbClient, venueId: string, assignmentId: string,
-  input: { arrivalTime: string; notes: string },
+  input: { arrivalTime: string; setupLocation: string; loadInNotes: string; notes: string },
 ): Promise<void> {
   const { error } = await client.from("event_vendor_assignments")
-    .update({ arrival_time: input.arrivalTime || null, notes: input.notes.trim() || null })
+    .update({
+      arrival_time: input.arrivalTime || null,
+      setup_location: input.setupLocation.trim() || null,
+      load_in_notes: input.loadInNotes.trim() || null,
+      notes: input.notes.trim() || null,
+    })
     .eq("id", assignmentId).eq("venue_id", venueId);
   if (error) throw error;
 }

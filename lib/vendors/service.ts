@@ -108,7 +108,7 @@ export async function removeVendorAssignment(assignmentId: string): Promise<Vend
 
 export async function updateVendorAssignment_(
   assignmentId: string,
-  input: { arrivalTime: string; notes: string },
+  input: { arrivalTime: string; setupLocation: string; loadInNotes: string; notes: string },
 ): Promise<VendorActionResult> {
   const result = await withVenue(async (supabase, venueId) => {
     await repo.updateVendorAssignment(supabase, venueId, assignmentId, input);

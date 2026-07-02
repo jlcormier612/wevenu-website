@@ -216,6 +216,7 @@ export function LuvDraftPanel({
         responsivenessScore={lead.responsivenessScore}
         interestScore={lead.interestScore}
         lastContactedAt={lead.lastContactedAt}
+        createdAt={lead.createdAt}
       />
 
       {/* Generate button */}

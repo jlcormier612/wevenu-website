@@ -82,6 +82,7 @@ export type OnboardingStep = {
   title: string;
   description: string;
   completed: boolean;
+  timeEstimate?: string;
   ctaLabel?: string;
   ctaHref?: string;
 };
@@ -92,8 +93,16 @@ export type OnboardingStatus = {
   steps: OnboardingStep[];
   completedCount: number;
   totalSteps: number;
-  /** True when every step is done — the card auto-hides. */
+  /** True when every step is done — graduation card replaces the checklist. */
   allComplete: boolean;
+  /** Luv's priority coaching message — the single most impactful next step. */
+  luvNudge: string | null;
+  /** Live operating summary shown in the graduation card. */
+  summary: {
+    weeklyInquiries: number;
+    upcomingTourCount: number;
+    openTaskCount: number;
+  } | null;
 };
 
 /** Payment due item for the dashboard. */

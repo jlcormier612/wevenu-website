@@ -17,12 +17,13 @@
 import * as React from "react";
 
 import { useRouter } from "next/navigation";
-import { Copy, Link, Loader2, Mail, Pencil, Phone, Plus, Trash2, X } from "lucide-react";
+import { Link, Loader2, Mail, Pencil, Phone, Plus, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 
 import {
   createContactAction, createContactPortalAction,
   deleteContactAction, updateContactAction,
+  sendContactInviteAction, revokeContactPortalAction,
 } from "@/app/(app)/clients/[id]/contact-actions";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -71,11 +72,16 @@ function PortalRoleBadge({ role }: { role: ContactPortalRole | null }) {
 }
 
 function ContactCard({
-  contact, clientId, onEdit, onDelete,
-}: { contact: ClientContact; clientId: string; onEdit: () => void; onDelete: () => void }) {
+  contact, clientId, coupleName, onEdit, onDelete, onStatusChange,
+}: {
+  contact: ClientContact; clientId: string; coupleName: string;
+  onEdit: () => void; onDelete: () => void; onStatusChange: () => void;
+}) {
   const [generatingLink, setGeneratingLink] = React.useState(false);
+  const [sendingInvite, setSendingInvite]   = React.useState(false);
+  const [revoking, setRevoking]             = React.useState(false);
 
-  async function handleCreatePortal() {
+  async function handleCopyLink() {
     setGeneratingLink(true);
     const label = contact.roleLabel ?? contact.firstName;
     const result = await createContactPortalAction(clientId, contact.id, label);
@@ -88,6 +94,35 @@ function ContactCard({
       toast.error("Could not generate portal link.");
     }
   }
+
+  async function handleSendInvite() {
+    if (!contact.email) { toast.error("This contact needs an email address to receive an invite."); return; }
+    setSendingInvite(true);
+    const result = await sendContactInviteAction(
+      clientId, contact.id,
+      { firstName: contact.firstName, email: contact.email, roleLabel: contact.roleLabel },
+      coupleName,
+    );
+    setSendingInvite(false);
+    if (result.ok) {
+      toast.success(`Invite sent to ${contact.email}.`);
+      onStatusChange();
+    } else {
+      toast.error(result.message ?? "Could not send invite.");
+    }
+  }
+
+  async function handleRevoke() {
+    if (!confirm(`Revoke portal access for ${contact.firstName}? Their portal link will stop working.`)) return;
+    setRevoking(true);
+    await revokeContactPortalAction(clientId, contact.id);
+    setRevoking(false);
+    toast.success("Portal access revoked.");
+    onStatusChange();
+  }
+
+  const hasPortalAccess = contact.portalRole && contact.portalRole !== "reminders_only";
+  const { invitedAt } = contact;
 
   return (
     <div className="group flex items-start gap-3 py-3 border-b border-border/50 last:border-0">
@@ -114,14 +149,42 @@ function ContactCard({
           {contact.isDecisionMaker && <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200">Decision maker</span>}
           {contact.isEmergencyContact && <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-red-50 text-red-700 border border-red-200">Emergency contact</span>}
           <PortalRoleBadge role={contact.portalRole} />
-          {contact.portalRole && contact.portalRole !== "reminders_only" && (
-            <button type="button" onClick={handleCreatePortal} disabled={generatingLink}
-              className="text-[10px] text-muted-foreground hover:text-foreground flex items-center gap-0.5">
-              {generatingLink ? <Loader2 className="h-3 w-3 animate-spin" /> : <Link className="h-3 w-3" />}
-              Generate portal link
-            </button>
+          {/* Invite status */}
+          {contact.status === "invited" && invitedAt && (
+            <span className="text-[10px] text-amber-600 font-medium">
+              Invited · awaiting first visit
+            </span>
+          )}
+          {contact.status === "active" && (
+            <span className="text-[10px] text-emerald-700 font-medium">Active</span>
           )}
         </div>
+        {/* Portal actions */}
+        {hasPortalAccess && (
+          <div className="flex items-center gap-2 flex-wrap pt-0.5">
+            <button type="button" onClick={handleSendInvite} disabled={sendingInvite || !contact.email}
+              className="text-[10px] text-muted-foreground hover:text-foreground flex items-center gap-0.5 disabled:opacity-50">
+              {sendingInvite ? <Loader2 className="h-3 w-3 animate-spin" /> : <Mail className="h-3 w-3" />}
+              {contact.status === "invited" ? "Resend invite" : "Send invite email"}
+            </button>
+            <span className="text-muted-foreground/30">·</span>
+            <button type="button" onClick={handleCopyLink} disabled={generatingLink}
+              className="text-[10px] text-muted-foreground hover:text-foreground flex items-center gap-0.5">
+              {generatingLink ? <Loader2 className="h-3 w-3 animate-spin" /> : <Link className="h-3 w-3" />}
+              Copy link
+            </button>
+            {(contact.status === "invited" || contact.status === "active") && (
+              <>
+                <span className="text-muted-foreground/30">·</span>
+                <button type="button" onClick={handleRevoke} disabled={revoking}
+                  className="text-[10px] text-muted-foreground hover:text-destructive flex items-center gap-0.5 disabled:opacity-50">
+                  {revoking ? <Loader2 className="h-3 w-3 animate-spin" /> : <X className="h-3 w-3" />}
+                  Revoke access
+                </button>
+              </>
+            )}
+          </div>
+        )}
       </div>
       <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0 mt-0.5">
         <button type="button" onClick={onEdit} className="rounded p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground">
@@ -222,8 +285,8 @@ function ContactFormPanel({
 }
 
 export function ClientContactsTab({
-  clientId, primaryPeople, initialContacts,
-}: { clientId: string; primaryPeople: PrimaryPerson[]; initialContacts: ClientContact[] }) {
+  clientId, primaryPeople, initialContacts, coupleName,
+}: { clientId: string; primaryPeople: PrimaryPerson[]; initialContacts: ClientContact[]; coupleName: string }) {
   const router = useRouter();
   const [contacts, setContacts] = React.useState(initialContacts);
   const [showAdd, setShowAdd] = React.useState(false);
@@ -330,8 +393,10 @@ export function ClientContactsTab({
               ) : (
                 <ContactCard
                   key={contact.id} contact={contact} clientId={clientId}
+                  coupleName={coupleName}
                   onEdit={() => setEditingId(contact.id)}
                   onDelete={() => handleDelete(contact.id, [contact.firstName, contact.lastName].filter(Boolean).join(" "))}
+                  onStatusChange={() => router.refresh()}
                 />
               )
             ))}

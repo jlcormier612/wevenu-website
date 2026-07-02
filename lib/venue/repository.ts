@@ -36,6 +36,8 @@ type VenueRow = {
   logo_url: string | null;
   primary_color: string;
   secondary_color: string;
+  accent_color: string;
+  neutral_color: string;
   currency: string;
   week_starts_on: number;
   stripe_account_id: string | null;
@@ -45,6 +47,7 @@ type VenueRow = {
   setup_completed_at: string | null;
   onboarding_dismissed: boolean;
   embed_key: string;
+  tour_scheduling_enabled: boolean;
   created_at: string;
   updated_at: string;
 };
@@ -70,6 +73,8 @@ function mapVenue(r: VenueRow): Venue {
     logoUrl: r.logo_url,
     primaryColor: r.primary_color,
     secondaryColor: r.secondary_color,
+    accentColor: r.accent_color ?? "#B8AEA1",
+    neutralColor: r.neutral_color ?? "#F7F5F1",
     currency: r.currency,
     weekStartsOn: r.week_starts_on,
     stripeAccountId: r.stripe_account_id,
@@ -79,6 +84,7 @@ function mapVenue(r: VenueRow): Venue {
     setupCompletedAt: r.setup_completed_at,
     onboardingDismissed: r.onboarding_dismissed,
     embedKey: r.embed_key ?? "",
+    tourSchedulingEnabled: r.tour_scheduling_enabled ?? false,
     createdAt: r.created_at,
     updatedAt: r.updated_at,
   };
@@ -110,6 +116,8 @@ function toSetupPayload(input: VenueSetupInput) {
     logo_url: input.logoUrl.trim(),
     primary_color: input.primaryColor,
     secondary_color: input.secondaryColor,
+    accent_color: input.accentColor,
+    neutral_color: input.neutralColor,
     currency: input.currency,
     week_starts_on: input.weekStartsOn,
     stripe_onboarding_status: input.stripeOnboardingStatus,

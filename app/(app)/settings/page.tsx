@@ -4,6 +4,7 @@ import { CapacityRulesSection } from "@/components/availability/capacity-rules-s
 import { VenueSpacesSection } from "@/components/availability/venue-spaces-section";
 import { PageHeader } from "@/components/shell/module-placeholder";
 import { LuvSettingsSection } from "@/components/settings/luv-settings-section";
+import { NotificationPreferencesSection } from "@/components/settings/notification-preferences-section";
 import { NotificationsSection } from "@/components/settings/notifications-section";
 import { TourSettingsSection } from "@/components/settings/tour-settings-section";
 import { WebsiteFormsSection } from "@/components/settings/website-forms-section";
@@ -21,6 +22,7 @@ import { getCapacityRules, getSpaces } from "@/lib/availability/service";
 import { getLuvSettings } from "@/lib/luv/settings";
 import { getCurrentVenue, getVenueSettings } from "@/lib/venue/service";
 import { getNotificationStats } from "@/lib/notifications/stats";
+import { getNotificationPreferences } from "@/lib/notifications/preferences";
 import { getTourSettings } from "@/lib/tours/service";
 // Playbooks moved to Library (/library/playbooks)
 
@@ -33,8 +35,8 @@ export const metadata: Metadata = { title: "Settings" };
  * Route is protected by the (app) layout (venue existence already confirmed).
  */
 export default async function SettingsPage() {
-  const [settings, venue, spaces, capacityRules, luvSettings, notifStats, tourSettings] = await Promise.all([
-    getVenueSettings(), getCurrentVenue(), getSpaces(), getCapacityRules(), getLuvSettings(), getNotificationStats(), getTourSettings(),
+  const [settings, venue, spaces, capacityRules, luvSettings, notifStats, notifPrefs, tourSettings] = await Promise.all([
+    getVenueSettings(), getCurrentVenue(), getSpaces(), getCapacityRules(), getLuvSettings(), getNotificationStats(), getNotificationPreferences(), getTourSettings(),
   ]);
 
   if (!settings) {
@@ -107,10 +109,23 @@ export default async function SettingsPage() {
         </Card>
       )}
 
+      {/* ── Notification Preferences ───────────────────────────────── */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Notification Preferences</CardTitle>
+          <CardDescription>
+            Choose which activity triggers an in-app notification. Changes take effect immediately — nothing is ever sent for disabled types.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <NotificationPreferencesSection initialPrefs={notifPrefs} />
+        </CardContent>
+      </Card>
+
       {/* ── Notifications ──────────────────────────────────────────── */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Notifications</CardTitle>
+          <CardTitle className="text-base">Notification Engine</CardTitle>
           <CardDescription>
             Reminder delivery engine. Pending reminders are processed on a schedule.
             Channel-agnostic: email active now, SMS and in-app coming soon.

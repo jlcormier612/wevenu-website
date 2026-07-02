@@ -52,6 +52,8 @@ export type BlockReason =
   | "staff_training"
   | "other";
 
+export type RecurrenceRule = "none" | "daily" | "weekly" | "annual";
+
 export type CalendarBlock = {
   id: string;
   venueId: string;
@@ -63,6 +65,8 @@ export type CalendarBlock = {
   startTime: string | null;
   endTime: string | null;
   notes: string | null;
+  recurrenceRule: RecurrenceRule;
+  recurrenceEndsOn: string | null;
   createdAt: string;
 };
 
@@ -121,6 +125,8 @@ export type CalendarBlockInput = {
   startTime: string;
   endTime: string;
   notes: string;
+  recurrenceRule: RecurrenceRule;
+  recurrenceEndsOn: string | null;
 };
 
 export type AvailabilityActionResult =

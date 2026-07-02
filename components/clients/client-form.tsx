@@ -36,8 +36,11 @@ export function ClientForm() {
     startTransition(async () => {
       const result = await createClientAction(input);
       if (result.ok) {
-        toast.success("Client created.");
-        router.push(`/clients/${result.clientId}`);
+        const params = new URLSearchParams();
+        if (result.eventId) params.set("eventId", result.eventId);
+        if (result.portalToken) params.set("portalToken", result.portalToken);
+        const qs = params.toString();
+        router.push(`/clients/${result.clientId}/booked${qs ? `?${qs}` : ""}`);
         return;
       }
       if (result.errors) setErrors(result.errors);
