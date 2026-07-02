@@ -1,6 +1,6 @@
 "use client";
 
-import { Monitor, Moon, Sun } from "lucide-react";
+import { Moon, Sun } from "lucide-react";
 import { useTheme } from "next-themes";
 
 import { Button } from "@/components/ui/button";
@@ -11,10 +11,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
-/**
- * Theme switcher (light / dark / system). The sun/moon icons swap purely via
- * Tailwind `dark:` classes, so no client-only mount guard is required.
- */
 export function ThemeToggle() {
   const { setTheme } = useTheme();
 
@@ -36,10 +32,6 @@ export function ThemeToggle() {
         <DropdownMenuItem onClick={() => setTheme("dark")}>
           <Moon className="mr-2 h-4 w-4" />
           Dark
-        </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => setTheme("system")}>
-          <Monitor className="mr-2 h-4 w-4" />
-          System
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
