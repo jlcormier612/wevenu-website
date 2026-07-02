@@ -643,19 +643,26 @@ function FeedbackFlow({
 
   async function handleFinalSubmit() {
     setSubmitting(true);
-    await fetch("/api/portal/feedback", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ token, rating, lovedMost, couldImprove, wouldRecommend, permission }),
-    });
-    await fetch("/api/portal/platform-feedback", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ token, npsScore, comments: wevenuComments, suggestions }),
-    });
-    setSubmitting(false);
-    setStep("done");
-    onDone(rating);
+    try {
+      await Promise.all([
+        fetch("/api/portal/feedback", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ token, rating, lovedMost, couldImprove, wouldRecommend, permission }),
+        }),
+        fetch("/api/portal/platform-feedback", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ token, npsScore, comments: wevenuComments, suggestions }),
+        }),
+      ]);
+      setStep("done");
+      onDone(rating);
+    } catch {
+      toast.error("Could not submit feedback. Please try again.");
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   const PERM_OPTS: { val: PermOption; label: string; sub: string }[] = [
@@ -1039,21 +1046,27 @@ function ReferralCard({
     setSubmitting(true);
 
     const isEmail = contact.includes("@");
-    await fetch("/api/portal/referral", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        token,
-        name:  name.trim(),
-        email: isEmail ? contact.trim() : undefined,
-        phone: !isEmail ? contact.trim() : undefined,
-        note:  note.trim() || undefined,
-      }),
-    });
-
-    setSubmitting(false);
-    setDone(true);
-    onDone();
+    try {
+      const res = await fetch("/api/portal/referral", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          token,
+          name:  name.trim(),
+          email: isEmail ? contact.trim() : undefined,
+          phone: !isEmail ? contact.trim() : undefined,
+          note:  note.trim() || undefined,
+        }),
+      });
+      const data = await res.json() as { ok?: boolean };
+      if (data.ok === false) throw new Error("Referral failed");
+      setDone(true);
+      onDone();
+    } catch {
+      toast.error("Could not send referral. Please try again.");
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   if (done) {
@@ -2096,19 +2109,37 @@ function GuestListSection({ token }: { token: string }) {
   }
 
   async function handleRsvp(guestId: string, status: string) {
-    await fetch("/api/portal/guests", { method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify({ token, guestId, rsvpStatus: status }) });
+    const prevGuests = guests;
+    const prevStats = stats;
     setGuests(g => g.map(x => x.id === guestId ? { ...x, rsvpStatus: status as CoupleGuest["rsvpStatus"] } : x));
     setStats(s => {
       if (!s) return s;
       const prev = guests.find(x => x.id === guestId)?.rsvpStatus ?? "pending";
       return { ...s, [prev]: Math.max(0, (s[prev as keyof GuestStats] as number) - 1), [status]: ((s[status as keyof GuestStats] as number) || 0) + 1 };
     });
+    try {
+      const res = await fetch("/api/portal/guests", { method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify({ token, guestId, rsvpStatus: status }) });
+      if (!res.ok) throw new Error("Update failed");
+    } catch {
+      setGuests(prevGuests);
+      setStats(prevStats);
+      toast.error("Could not update RSVP. Please try again.");
+    }
   }
 
   async function handleDelete(guestId: string) {
-    await fetch("/api/portal/guests", { method: "DELETE", headers: { "content-type": "application/json" }, body: JSON.stringify({ token, guestId }) });
+    const prevGuests = guests;
+    const prevStats = stats;
     setGuests(g => g.filter(x => x.id !== guestId));
     setStats(s => s ? { ...s, total: Math.max(0, s.total - 1) } : null);
+    try {
+      const res = await fetch("/api/portal/guests", { method: "DELETE", headers: { "content-type": "application/json" }, body: JSON.stringify({ token, guestId }) });
+      if (!res.ok) throw new Error("Delete failed");
+    } catch {
+      setGuests(prevGuests);
+      setStats(prevStats);
+      toast.error("Could not remove guest. Please try again.");
+    }
   }
 
   async function handleCSV(e: React.ChangeEvent<HTMLInputElement>) {
@@ -2331,14 +2362,28 @@ function TodoSection({ token, onCountChange, eventDate }: { token: string; onCou
 
   async function handleToggle(todo: CoupleTodo) {
     const next = !todo.completed;
+    const prevTodos = todos;
     setTodos(t => t.map(x => x.id === todo.id ? { ...x, completed: next, completedAt: next ? new Date().toISOString() : null } : x));
     onCountChange?.(todos.filter(x => !x.completed).length + (next ? -1 : 1));
-    await fetch("/api/portal/todos", { method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify({ token, todoId: todo.id, completed: next }) });
+    try {
+      const res = await fetch("/api/portal/todos", { method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify({ token, todoId: todo.id, completed: next }) });
+      if (!res.ok) throw new Error("Update failed");
+    } catch {
+      setTodos(prevTodos);
+      toast.error("Could not update task. Please try again.");
+    }
   }
 
   async function handleDelete(todoId: string) {
+    const prevTodos = todos;
     setTodos(t => t.filter(x => x.id !== todoId));
-    await fetch("/api/portal/todos", { method: "DELETE", headers: { "content-type": "application/json" }, body: JSON.stringify({ token, todoId }) });
+    try {
+      const res = await fetch("/api/portal/todos", { method: "DELETE", headers: { "content-type": "application/json" }, body: JSON.stringify({ token, todoId }) });
+      if (!res.ok) throw new Error("Delete failed");
+    } catch {
+      setTodos(prevTodos);
+      toast.error("Could not delete task. Please try again.");
+    }
   }
 
   const open = todos.filter(t => !t.completed);

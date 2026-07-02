@@ -31,9 +31,15 @@ export function UpcomingToursWidget({ leads }: { leads: Lead[] }) {
       </CardHeader>
       <CardContent>
         {leads.length === 0 ? (
-          <p className="py-4 text-center text-sm text-muted-foreground">
-            No tours scheduled in the next two weeks.
-          </p>
+          <div className="py-6 text-center space-y-2">
+            <p className="text-sm font-medium text-heading">No tours this fortnight</p>
+            <p className="text-xs text-muted-foreground">
+              Set a tour date on any lead to see it here.
+            </p>
+            <Link href="/leads" className="inline-block text-xs font-medium text-primary hover:underline underline-offset-2">
+              View all leads →
+            </Link>
+          </div>
         ) : (
           <div className="divide-y divide-border">
             {leads.map((lead) => {

@@ -197,7 +197,7 @@ function Actions({ onSave, onCancel }: { onSave: () => void; onCancel: () => voi
   return (
     <div className="flex justify-end gap-2 pt-1">
       <button type="button" onClick={onCancel} className="text-sm text-muted-foreground px-3 py-1.5 rounded-xl hover:bg-muted">Cancel</button>
-      <button type="button" onClick={onSave} className="text-sm font-medium px-4 py-1.5 rounded-xl bg-[#5D6F5D] text-white hover:opacity-90">Save</button>
+      <button type="button" onClick={onSave} className="text-sm font-medium px-4 py-1.5 rounded-xl bg-primary text-primary-foreground hover:opacity-90">Save</button>
     </div>
   );
 }
@@ -230,14 +230,14 @@ function HomeEditor({ content, onSave, onCancel, token, suggestions }: {
 
       {/* ── Cover photo suggestion ── */}
       {hasCoverSuggestions && (
-        <div className="rounded-xl border border-[#5D6F5D]/30 bg-[#5D6F5D]/5 p-3 space-y-2">
-          <p className="text-xs font-semibold text-[#5D6F5D]">
+        <div className="rounded-xl border border-primary/30 bg-primary/5 p-3 space-y-2">
+          <p className="text-xs font-semibold text-primary">
             📸 {engagementPhotos.length} engagement photo{engagementPhotos.length === 1 ? "" : "s"} found — tap one to use as your cover
           </p>
           <div className="flex gap-2 overflow-x-auto pb-1">
             {engagementPhotos.slice(0, 6).map((p, i) => (
               <button key={p.id} type="button" onClick={() => setCoverUrl(p.url)}
-                className={`shrink-0 h-16 w-16 rounded-xl overflow-hidden border-2 transition-all hover:scale-105 ${coverUrl === p.url ? "border-[#5D6F5D]" : "border-transparent"}`}>
+                className={`shrink-0 h-16 w-16 rounded-xl overflow-hidden border-2 transition-all hover:scale-105 ${coverUrl === p.url ? "border-primary" : "border-transparent"}`}>
                 <img src={p.url} alt={`Photo ${i + 1}`} className="w-full h-full object-cover" />
               </button>
             ))}
@@ -247,7 +247,7 @@ function HomeEditor({ content, onSave, onCancel, token, suggestions }: {
 
       {/* ── Pre-filled names notice ── */}
       {!content.home?.title && suggestedTitle && title === suggestedTitle && (
-        <div className="flex items-center gap-2 text-[10px] text-[#5D6F5D] bg-[#5D6F5D]/5 rounded-xl px-3 py-2">
+        <div className="flex items-center gap-2 text-[10px] text-primary bg-primary/5 rounded-xl px-3 py-2">
           <span>✦</span>
           <span>Headline pre-filled from your profile — customize it below.</span>
         </div>
@@ -294,21 +294,20 @@ function StoryEditor({ content, onSave, onCancel, suggestions }: {
 
       {/* ── Sync from Profile prompt ── */}
       {showSyncPrompt && (
-        <div className="rounded-xl border border-[#5D6F5D]/30 bg-[#5D6F5D]/5 p-3 space-y-2.5">
+        <div className="rounded-xl border border-primary/30 bg-primary/5 p-3 space-y-2.5">
           <div className="flex items-start gap-2">
             <span className="text-sm mt-0.5">✦</span>
             <div>
-              <p className="text-xs font-semibold text-[#5D6F5D]">Sync from Profile</p>
+              <p className="text-xs font-semibold text-primary">Sync from Profile</p>
               <p className="text-[10px] text-muted-foreground mt-0.5">You already wrote your story in your profile. Use it here.</p>
             </div>
           </div>
-          <div className="rounded-lg bg-white/60 border border-[#5D6F5D]/20 px-3 py-2.5">
+          <div className="rounded-lg bg-card/60 border border-primary/20 px-3 py-2.5">
             <p className="text-xs text-foreground/80 leading-relaxed line-clamp-3">{profileStory}</p>
           </div>
           <div className="flex gap-2">
             <button type="button" onClick={useProfileStory}
-              className="flex-1 text-xs font-semibold py-2 rounded-xl text-white transition-opacity hover:opacity-90"
-              style={{ background: "#5D6F5D" }}>
+              className="flex-1 text-xs font-semibold py-2 rounded-xl bg-primary text-primary-foreground transition-opacity hover:opacity-90">
               Use this story
             </button>
             <button type="button" onClick={() => setText("")}
@@ -379,19 +378,19 @@ function EventEditor({ content, onSave, onCancel, suggestions }: {
       {/* ── Venue pre-fill notice or button ── */}
       {suggestedLocation && (
         wasPreFilled ? (
-          <div className="flex items-center gap-2 text-[10px] text-[#5D6F5D] bg-[#5D6F5D]/5 rounded-xl px-3 py-2">
+          <div className="flex items-center gap-2 text-[10px] text-primary bg-primary/5 rounded-xl px-3 py-2">
             <span>✦</span>
             <span>Location pre-filled from your venue — customize the times below.</span>
           </div>
         ) : (
           !content.event?.ceremony?.location && (
             <button type="button" onClick={applyVenueSuggestion}
-              className="w-full flex items-center justify-between rounded-xl border border-[#5D6F5D]/30 bg-[#5D6F5D]/5 px-3 py-2.5 text-left hover:bg-[#5D6F5D]/10 transition-colors">
+              className="w-full flex items-center justify-between rounded-xl border border-primary/30 bg-primary/5 px-3 py-2.5 text-left hover:bg-primary/10 transition-colors">
               <div>
-                <p className="text-xs font-semibold text-[#5D6F5D]">Fill from venue details</p>
+                <p className="text-xs font-semibold text-primary">Fill from venue details</p>
                 <p className="text-[10px] text-muted-foreground mt-0.5">{suggestedLocation}{suggestedAddress ? ` · ${suggestedAddress}` : ""}</p>
               </div>
-              <span className="text-[#5D6F5D] text-xs font-medium">Use →</span>
+              <span className="text-primary text-xs font-medium">Use →</span>
             </button>
           )
         )
@@ -886,7 +885,7 @@ function SectionAccordion({
               {hasContent ? (
                 <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-green-50 text-green-700">✓ Added</span>
               ) : hasSuggestion ? (
-                <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full" style={{ background: "#5D6F5D18", color: "#5D6F5D" }}>✦ Ready to sync</span>
+                <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-primary/10 text-primary">✦ Ready to sync</span>
               ) : (
                 <span className="text-[10px] text-muted-foreground">Tap to add</span>
               )}
@@ -942,7 +941,7 @@ function CompletionMeter({ completed, total, syncableSections }: {
           <p className="text-xs text-muted-foreground mt-0.5">{sub}</p>
         </div>
         {completed > 0 && (
-          <span className="shrink-0 text-xs font-semibold tabular-nums" style={{ color: "#5D6F5D" }}>
+          <span className="shrink-0 text-xs font-semibold tabular-nums text-primary">
             {completed}/{total}
           </span>
         )}
@@ -951,7 +950,7 @@ function CompletionMeter({ completed, total, syncableSections }: {
         <div className="h-1.5 rounded-full bg-muted overflow-hidden">
           <div
             className="h-full rounded-full transition-all duration-500"
-            style={{ width: `${pct}%`, background: pct === 100 ? "#5D6F5D" : "linear-gradient(90deg, #5D6F5D, #D8A7AA)" }}
+            style={{ width: `${pct}%`, background: pct === 100 ? "var(--primary)" : "linear-gradient(90deg, var(--primary), #D8A7AA)" }}
           />
         </div>
       )}
@@ -1000,7 +999,7 @@ function ThemeStudio({
           <p className="text-[11px] text-muted-foreground mt-0.5 leading-snug">{currentCollection.mood}</p>
         </div>
 
-        <p className="text-xs font-medium shrink-0" style={{ color: "#5D6F5D" }}>
+        <p className="text-xs font-medium shrink-0 text-primary">
           {open ? "Close" : "Change →"}
         </p>
       </button>
@@ -1288,8 +1287,7 @@ export function WebsiteEditor({
           />
         )}
         <button type="button" onClick={togglePublish} disabled={publishing}
-          className={`w-full rounded-xl py-2.5 text-sm font-semibold transition-colors disabled:opacity-60 ${site.isPublished ? "border border-border text-muted-foreground hover:bg-muted/40" : "text-white"}`}
-          style={!site.isPublished ? { background: "#5D6F5D" } : {}}>
+          className={`w-full rounded-xl py-2.5 text-sm font-semibold transition-colors disabled:opacity-60 ${site.isPublished ? "border border-border text-muted-foreground hover:bg-muted/40" : "bg-primary text-primary-foreground"}`}>
           {publishing ? <Loader2 className="h-4 w-4 animate-spin mx-auto" />
             : site.isPublished ? "Unpublish website" : "🚀 Publish website"}
         </button>
@@ -1298,7 +1296,7 @@ export function WebsiteEditor({
       {/* ── "Already here" welcome banner ── */}
       {/* Shown on first open when the platform already knows things about the couple */}
       {!welcomeDismissed && completedSections === 0 && syncableSections > 0 && (
-        <div className="rounded-2xl border p-4 space-y-3" style={{ borderColor: "#5D6F5D40", background: "linear-gradient(135deg, #5D6F5D08 0%, #D8A7AA08 100%)" }}>
+        <div className="rounded-2xl border border-primary/25 bg-gradient-to-br from-primary/5 to-[#D8A7AA]/5 p-4 space-y-3">
           <div className="flex items-start gap-3">
             <span className="text-2xl mt-0.5">💗</span>
             <div className="flex-1">
@@ -1307,7 +1305,7 @@ export function WebsiteEditor({
                 We found your story, venue details
                 {(suggestions?.engagementPhotos?.length ?? 0) > 0 ? `, and ${suggestions!.engagementPhotos!.length} engagement photo${suggestions!.engagementPhotos!.length === 1 ? "" : "s"}` : ""}
                 {" "}already in Wevenu. Open any section marked{" "}
-                <span className="font-semibold" style={{ color: "#5D6F5D" }}>✦ Ready to sync</span>{" "}
+                <span className="font-semibold text-primary">✦ Ready to sync</span>{" "}
                 below to bring it in.
               </p>
             </div>
@@ -1320,25 +1318,25 @@ export function WebsiteEditor({
           {/* Quick preview of what's available */}
           <div className="flex gap-2 flex-wrap">
             {suggestions?.story?.text && (
-              <div className="flex items-center gap-1.5 rounded-xl bg-white/60 border border-[#5D6F5D]/20 px-2.5 py-1.5">
+              <div className="flex items-center gap-1.5 rounded-xl bg-card/60 border border-primary/20 px-2.5 py-1.5">
                 <span className="text-xs">💗</span>
                 <span className="text-[11px] font-medium text-heading">Your Story</span>
               </div>
             )}
             {suggestions?.venue?.name && (
-              <div className="flex items-center gap-1.5 rounded-xl bg-white/60 border border-[#5D6F5D]/20 px-2.5 py-1.5">
+              <div className="flex items-center gap-1.5 rounded-xl bg-card/60 border border-primary/20 px-2.5 py-1.5">
                 <span className="text-xs">📍</span>
                 <span className="text-[11px] font-medium text-heading">{suggestions.venue.name}</span>
               </div>
             )}
             {(suggestions?.engagementPhotos?.length ?? 0) > 0 && (
-              <div className="flex items-center gap-1.5 rounded-xl bg-white/60 border border-[#5D6F5D]/20 px-2.5 py-1.5">
+              <div className="flex items-center gap-1.5 rounded-xl bg-card/60 border border-primary/20 px-2.5 py-1.5">
                 <span className="text-xs">📸</span>
                 <span className="text-[11px] font-medium text-heading">{suggestions!.engagementPhotos!.length} photos</span>
               </div>
             )}
             {suggestions?.coupleNames && (
-              <div className="flex items-center gap-1.5 rounded-xl bg-white/60 border border-[#5D6F5D]/20 px-2.5 py-1.5">
+              <div className="flex items-center gap-1.5 rounded-xl bg-card/60 border border-primary/20 px-2.5 py-1.5">
                 <span className="text-xs">✨</span>
                 <span className="text-[11px] font-medium text-heading">{suggestions.coupleNames}</span>
               </div>
@@ -1365,7 +1363,7 @@ export function WebsiteEditor({
             </div>
           </div>
           {views.totalViews > 0 && (
-            <p className="text-center text-xs mt-3" style={{ color: "#5D6F5D" }}>
+            <p className="text-center text-xs mt-3 text-primary">
               ✨ {views.totalViews === 1 ? "1 guest has visited your website." : `${views.totalViews} guests have visited your website.`}
             </p>
           )}
@@ -1390,11 +1388,11 @@ export function WebsiteEditor({
               💗 Copy RSVP link
             </button>
             <button type="button" onClick={() => setShowPreview(!showPreview)}
-              className={`flex items-center justify-center gap-1.5 rounded-xl border py-2.5 text-xs font-medium transition-colors ${showPreview ? "bg-[#5D6F5D] text-white border-[#5D6F5D]" : "border-border hover:bg-muted/40"}`}>
+              className={`flex items-center justify-center gap-1.5 rounded-xl border py-2.5 text-xs font-medium transition-colors ${showPreview ? "bg-primary text-primary-foreground border-primary" : "border-border hover:bg-muted/40"}`}>
               <Smartphone className="h-3.5 w-3.5" /> {showPreview ? "Hide" : "Preview"}
             </button>
             <button type="button" onClick={() => setShowQR(!showQR)}
-              className={`flex items-center justify-center gap-1.5 rounded-xl border py-2.5 text-xs font-medium transition-colors ${showQR ? "bg-[#5D6F5D] text-white border-[#5D6F5D]" : "border-border hover:bg-muted/40"}`}>
+              className={`flex items-center justify-center gap-1.5 rounded-xl border py-2.5 text-xs font-medium transition-colors ${showQR ? "bg-primary text-primary-foreground border-primary" : "border-border hover:bg-muted/40"}`}>
               ▦ QR Code
             </button>
           </div>
@@ -1414,7 +1412,7 @@ export function WebsiteEditor({
           {guests.filter(g => g.email).length > 0 && (
             <div className="space-y-3">
               <button type="button" onClick={() => setShowInvite(!showInvite)}
-                className={`w-full flex items-center justify-between px-4 py-3 rounded-xl border text-sm font-medium transition-colors ${showInvite ? "bg-[#5D6F5D] text-white border-[#5D6F5D]" : "border-border hover:bg-muted/40"}`}>
+                className={`w-full flex items-center justify-between px-4 py-3 rounded-xl border text-sm font-medium transition-colors ${showInvite ? "bg-primary text-primary-foreground border-primary" : "border-border hover:bg-muted/40"}`}>
                 <span>💌 Send Invitations</span>
                 <span className="text-xs opacity-70">{guests.filter(g => g.email && !g.rsvpSentAt).length} guests not yet invited</span>
               </button>
@@ -1453,8 +1451,7 @@ export function WebsiteEditor({
                         else toast.error("Some invitations failed.");
                       } finally { setSendingInvites(false); }
                     }}
-                    className="w-full rounded-xl py-2.5 text-sm font-semibold text-white disabled:opacity-50"
-                    style={{ background: "#5D6F5D" }}>
+                    className="w-full rounded-xl py-2.5 text-sm font-semibold bg-primary text-primary-foreground disabled:opacity-50">
                     {sendingInvites ? <Loader2 className="h-4 w-4 animate-spin mx-auto" /> : `Send ${selectedGuests.length > 0 ? selectedGuests.length + " " : ""}Invitation${selectedGuests.length !== 1 ? "s" : ""}`}
                   </button>
                 </div>
@@ -1467,9 +1464,9 @@ export function WebsiteEditor({
               <div className="flex items-center gap-2">
                 <div className="flex rounded-lg border border-border overflow-hidden text-xs">
                   <button type="button" onClick={() => setPreviewMode("mobile")}
-                    className={`px-2.5 py-1 transition-colors ${previewMode === "mobile" ? "bg-[#5D6F5D] text-white" : "text-muted-foreground"}`}>📱</button>
+                    className={`px-2.5 py-1 transition-colors ${previewMode === "mobile" ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}>📱</button>
                   <button type="button" onClick={() => setPreviewMode("desktop")}
-                    className={`px-2.5 py-1 transition-colors ${previewMode === "desktop" ? "bg-[#5D6F5D] text-white" : "text-muted-foreground"}`}>🖥</button>
+                    className={`px-2.5 py-1 transition-colors ${previewMode === "desktop" ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}>🖥</button>
                 </div>
                 <a href={websiteUrl} target="_blank" rel="noopener noreferrer"
                   className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1">

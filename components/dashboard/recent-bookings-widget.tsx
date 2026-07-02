@@ -32,11 +32,14 @@ export function RecentBookingsWidget({
       </CardHeader>
       <CardContent>
         {bookings.length === 0 ? (
-          <div className="py-4 text-center">
-            <p className="text-sm text-muted-foreground">No clients yet.</p>
-            <p className="mt-1 text-xs text-muted-foreground">
-              Convert a Won lead to record your first booking.
+          <div className="py-6 text-center space-y-2">
+            <p className="text-sm font-medium text-heading">No bookings yet</p>
+            <p className="text-xs text-muted-foreground">
+              When you mark a lead as Won, they&apos;ll appear here.
             </p>
+            <Link href="/leads" className="inline-block text-xs font-medium text-primary hover:underline underline-offset-2">
+              View all leads →
+            </Link>
           </div>
         ) : (
           <div className="divide-y divide-border">

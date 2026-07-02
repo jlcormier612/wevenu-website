@@ -198,13 +198,13 @@ function SetupWizard({
             <div className="grid grid-cols-3 gap-2">
               {eng.slice(0, 9).map((p, i) => (
                 <button key={p.id} type="button" onClick={() => setSelectedPhoto(p.url)}
-                  className={`relative rounded-xl overflow-hidden transition-all hover:scale-[1.02] ${selectedPhoto === p.url ? "ring-2 ring-[#5D6F5D] ring-offset-2" : ""}`}
+                  className={`relative rounded-xl overflow-hidden transition-all hover:scale-[1.02] ${selectedPhoto === p.url ? "ring-2 ring-primary ring-offset-2" : ""}`}
                   style={{ aspectRatio: "1/1" }}>
                   <img src={p.url} alt={`Photo ${i + 1}`} className="w-full h-full object-cover" />
                   {selectedPhoto === p.url && (
-                    <div className="absolute inset-0 flex items-center justify-center bg-[#5D6F5D]/20">
-                      <div className="h-7 w-7 rounded-full bg-white flex items-center justify-center">
-                        <span className="text-[#5D6F5D] text-sm font-bold">✓</span>
+                    <div className="absolute inset-0 flex items-center justify-center bg-primary/20">
+                      <div className="h-7 w-7 rounded-full bg-card flex items-center justify-center">
+                        <span className="text-primary text-sm font-bold">✓</span>
                       </div>
                     </div>
                   )}
@@ -254,7 +254,7 @@ function SetupWizard({
             return (
               <button key={theme.value} type="button"
                 onClick={() => { setSelectedTheme(theme.value as StudioTheme); setSelectedPalette(""); }}
-                className={`relative rounded-2xl overflow-hidden text-left transition-all hover:scale-[1.01] ${isSelected ? "ring-2 ring-[#5D6F5D] ring-offset-2" : ""}`}>
+                className={`relative rounded-2xl overflow-hidden text-left transition-all hover:scale-[1.01] ${isSelected ? "ring-2 ring-primary ring-offset-2" : ""}`}>
                 <div className="h-20 relative" style={{ background: previewPalette.gradient }}>
                   <div className="absolute inset-0 flex flex-col items-center justify-center px-2 text-center">
                     <p className="text-[9px] uppercase tracking-[0.2em] mb-0.5" style={{ color: previewPalette.dark ? "rgba(255,255,255,0.5)" : "rgba(255,255,255,0.7)" }}>
@@ -664,11 +664,11 @@ export function WebsiteStudio({
         {/* Mobile view toggle */}
         <div className="lg:hidden flex items-center gap-1 px-4 py-2 border-b border-border bg-card">
           <button type="button" onClick={() => setMobileView("edit")}
-            className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-semibold transition-colors ${mobileView === "edit" ? "bg-[#5D6F5D] text-white" : "text-muted-foreground"}`}>
+            className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-semibold transition-colors ${mobileView === "edit" ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}>
             ✏ Edit
           </button>
           <button type="button" onClick={() => setMobileView("preview")}
-            className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-semibold transition-colors ${mobileView === "preview" ? "bg-[#5D6F5D] text-white" : "text-muted-foreground"}`}>
+            className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-semibold transition-colors ${mobileView === "preview" ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}>
             <Eye className="h-3.5 w-3.5" /> Preview
           </button>
         </div>
@@ -734,11 +734,11 @@ export function WebsiteStudio({
             <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Live Preview</p>
             <div className="flex items-center gap-1">
               <button type="button" onClick={() => setPreviewDevice("mobile")}
-                className={`p-1.5 rounded-lg transition-colors ${previewDevice === "mobile" ? "bg-[#5D6F5D] text-white" : "text-muted-foreground hover:bg-muted"}`}>
+                className={`p-1.5 rounded-lg transition-colors ${previewDevice === "mobile" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted"}`}>
                 <Smartphone className="h-3.5 w-3.5" />
               </button>
               <button type="button" onClick={() => setPreviewDevice("desktop")}
-                className={`p-1.5 rounded-lg transition-colors ${previewDevice === "desktop" ? "bg-[#5D6F5D] text-white" : "text-muted-foreground hover:bg-muted"}`}>
+                className={`p-1.5 rounded-lg transition-colors ${previewDevice === "desktop" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted"}`}>
                 <Monitor className="h-3.5 w-3.5" />
               </button>
               {previewSite.slug && (
@@ -780,8 +780,8 @@ export function WebsiteStudio({
             </div>
           ) : (
             // Mobile: centered phone frame
-            <div className="flex-1 overflow-y-auto py-6 flex justify-center" style={{ background: "#F0EDE8" }}>
-              <div className="w-[375px] shrink-0"
+            <div className="flex-1 overflow-y-auto py-6 px-3 flex justify-center" style={{ background: "#F0EDE8" }}>
+              <div className="w-full max-w-[375px] shrink-0"
                 style={{ boxShadow: "0 20px 60px rgba(0,0,0,0.2)", borderRadius: "40px", overflow: "hidden", border: "8px solid #1A1A1A", background: "white" }}>
                 {/* Phone notch */}
                 <div className="h-6 flex items-center justify-center" style={{ background: "#1A1A1A" }}>

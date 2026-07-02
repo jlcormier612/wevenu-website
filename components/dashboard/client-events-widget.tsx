@@ -41,9 +41,15 @@ export function ClientEventsWidget({
       </CardHeader>
       <CardContent>
         {events.length === 0 ? (
-          <p className="py-4 text-center text-sm text-muted-foreground">
-            No events in the next 60 days. Add event dates in the Events module.
-          </p>
+          <div className="py-6 text-center space-y-2">
+            <p className="text-sm font-medium text-heading">No events in the next 60 days</p>
+            <p className="text-xs text-muted-foreground">
+              Add an event date to a client record to track it here.
+            </p>
+            <Link href="/events" className="inline-block text-xs font-medium text-primary hover:underline underline-offset-2">
+              Go to Events →
+            </Link>
+          </div>
         ) : (
           <div className="divide-y divide-border">
             {events.map((event) => {

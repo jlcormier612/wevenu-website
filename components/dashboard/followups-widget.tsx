@@ -33,8 +33,8 @@ export function FollowupsWidget({
       </CardHeader>
       <CardContent>
         {leads.length === 0 ? (
-          <p className="py-4 text-center text-sm text-muted-foreground">
-            No follow-ups due today.
+          <p className="py-6 text-center text-sm text-muted-foreground">
+            No follow-ups due today — you&apos;re all caught up. 🌿
           </p>
         ) : (
           <div className="divide-y divide-border">
