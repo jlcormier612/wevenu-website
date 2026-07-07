@@ -32,15 +32,17 @@ interface Props {
 }
 
 const ROLE_LABELS: Record<StaffRole, string> = {
-  owner:   "Owner",
-  manager: "Manager",
-  staff:   "Staff",
+  owner:       "Owner",
+  manager:     "Manager",
+  coordinator: "Coordinator",
+  staff:       "Staff",
 };
 
 const ROLE_BADGE_CLASS: Record<StaffRole, string> = {
-  owner:   "bg-gray-900 text-white",
-  manager: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200",
-  staff:   "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300",
+  owner:       "bg-gray-900 text-white",
+  manager:     "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200",
+  coordinator: "bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200",
+  staff:       "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300",
 };
 
 function initials(name: string) {
@@ -56,7 +58,7 @@ export function TeamRoster({ initialMembers, venueId: _venueId }: Props) {
   const [members, setMembers] = React.useState(initialMembers);
   const [name, setName] = React.useState("");
   const [email, setEmail] = React.useState("");
-  const [role, setRole] = React.useState<StaffRole>("staff");
+  const [role, setRole] = React.useState<StaffRole>("coordinator");
   const [busy, setBusy] = React.useState(false);
 
   const accepted  = members.filter((m) => m.acceptedAt);
@@ -72,7 +74,7 @@ export function TeamRoster({ initialMembers, venueId: _venueId }: Props) {
         toast.success(`Invitation sent to ${email}`);
         setName("");
         setEmail("");
-        setRole("staff");
+        setRole("coordinator");
         // Add optimistic pending row
         setMembers((prev) => [
           ...prev,
@@ -151,7 +153,7 @@ export function TeamRoster({ initialMembers, venueId: _venueId }: Props) {
                     <MoreHorizontal className="h-4 w-4" />
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
-                    {(["manager", "staff"] as StaffRole[])
+                    {(["manager", "coordinator", "staff"] as StaffRole[])
                       .filter((r) => r !== member.role)
                       .map((r) => (
                         <DropdownMenuItem
@@ -245,6 +247,7 @@ export function TeamRoster({ initialMembers, venueId: _venueId }: Props) {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="manager">Manager</SelectItem>
+                <SelectItem value="coordinator">Coordinator</SelectItem>
                 <SelectItem value="staff">Staff</SelectItem>
               </SelectContent>
             </Select>

@@ -3,7 +3,7 @@
  */
 import { createClient } from "@/integrations/supabase/server";
 import { isSupabaseConfigured } from "@/lib/env";
-import { getCurrentVenue } from "@/lib/venue/service";
+import { getCurrentVenue, getCurrentUserRole } from "@/lib/venue/service";
 import { sendEmail } from "@/lib/email/send";
 import { buildTeamInviteHtml, buildTeamInviteText } from "@/lib/email/team-invite";
 import { recordEngagementEvent } from "@/lib/activation/service";
@@ -39,6 +39,28 @@ function rowToStaffMember(row: Record<string, unknown>): StaffMember {
   };
 }
 
+/**
+ * TR-G1: team/role management is Owner-only, except a Manager may invite,
+ * remove, or re-role Staff/Coordinator members — never another Manager or
+ * the Owner. `targetCurrentRole` is the role the target row has today (pass
+ * null when inviting a brand-new member); `targetNewRole` is the role being
+ * assigned. RLS enforces the same rule as a backstop — this just gives a
+ * clear message instead of a raw policy-violation error.
+ */
+function canManageStaff(
+  actingRole: string | null,
+  targetNewRole: StaffRole,
+  targetCurrentRole: StaffRole | null = null,
+): boolean {
+  if (actingRole === "owner") return true;
+  if (actingRole === "manager") {
+    const currentOk = targetCurrentRole === null || targetCurrentRole === "staff" || targetCurrentRole === "coordinator";
+    const newOk = targetNewRole === "staff" || targetNewRole === "coordinator";
+    return currentOk && newOk;
+  }
+  return false;
+}
+
 export async function getTeamMembers(venueId: string): Promise<StaffMember[]> {
   if (!isSupabaseConfigured) return [];
   const supabase = await createClient();
@@ -59,6 +81,11 @@ export async function inviteStaffMember(input: StaffInput): Promise<TeamActionRe
       data: { user },
     } = await supabase.auth.getUser();
     if (!user) return { ok: false, error: "Session expired." };
+
+    const actingRole = await getCurrentUserRole();
+    if (!canManageStaff(actingRole, input.role)) {
+      return { ok: false, error: "Only an Owner can invite a Manager. Managers can invite Staff or Coordinator members." };
+    }
 
     // Create pending venue_staff row with invite_token
     const { data, error } = await supabase
@@ -136,6 +163,12 @@ export async function acceptTeamInvitation(
 
 export async function removeStaffMember(staffId: string): Promise<TeamActionResult> {
   return withVenue(async (supabase) => {
+    const actingRole = await getCurrentUserRole();
+    const { data: target } = await supabase
+      .from("venue_staff").select("role").eq("id", staffId).maybeSingle<{ role: StaffRole }>();
+    if (!canManageStaff(actingRole, target?.role ?? "staff", target?.role ?? null)) {
+      return { ok: false, error: "Only an Owner can remove a Manager. Managers can remove Staff or Coordinator members." };
+    }
     // Soft delete — cannot remove owner
     const { error } = await supabase
       .from("venue_staff")
@@ -152,6 +185,12 @@ export async function updateStaffRole(
   role: StaffRole,
 ): Promise<TeamActionResult> {
   return withVenue(async (supabase) => {
+    const actingRole = await getCurrentUserRole();
+    const { data: target } = await supabase
+      .from("venue_staff").select("role").eq("id", staffId).maybeSingle<{ role: StaffRole }>();
+    if (!canManageStaff(actingRole, role, target?.role ?? null)) {
+      return { ok: false, error: "Only an Owner can assign or change a Manager. Managers can only manage Staff/Coordinator roles." };
+    }
     const { error } = await supabase
       .from("venue_staff")
       .update({ role })

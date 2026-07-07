@@ -39,6 +39,20 @@ export async function getCurrentVenue(): Promise<Venue | null> {
   return repository.getVenueForCurrentUser(supabase);
 }
 
+/**
+ * The current user's role on their venue ('owner' | 'manager' | 'coordinator'
+ * | 'staff'), or null if none. Mirrors the `current_user_role()` SQL helper
+ * (same source of truth used by RLS) — server actions call this for early,
+ * good-error-message rejections; RLS is the backstop if this check is ever
+ * bypassed or forgotten. See docs/trust-risk-register.md TR-G1.
+ */
+export async function getCurrentUserRole(): Promise<string | null> {
+  if (!isSupabaseConfigured) return null;
+  const supabase = await createClient();
+  const { data } = await supabase.rpc("current_user_role");
+  return (data as string | null) ?? null;
+}
+
 /** True when the current user has a venue with setup completed. */
 export async function hasCompletedVenueSetup(): Promise<boolean> {
   const venue = await getCurrentVenue();

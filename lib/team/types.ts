@@ -1,4 +1,4 @@
-export type StaffRole = 'owner' | 'manager' | 'staff'
+export type StaffRole = 'owner' | 'manager' | 'coordinator' | 'staff'
 
 export interface StaffMember {
   id: string
