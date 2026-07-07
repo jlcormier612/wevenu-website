@@ -89,7 +89,7 @@ export async function updateSession(
   }
 
   // Wevenu HQ (/admin/* and /api/admin/*) — defense in depth alongside the
-  // layout-level check in app/(app)/admin/layout.tsx. See
+  // layout-level check in app/admin/layout.tsx. See
   // docs/wevenu-hq-architecture.md §5.
   if (user && (pathname.startsWith("/admin") || pathname.startsWith("/api/admin"))) {
     const { data: isAdmin } = await supabase.rpc("is_hq_admin");
