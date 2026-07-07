@@ -145,9 +145,29 @@ export type DashboardData = {
   luvObservations: import("@/lib/luv/types").LuvObservation[];
   // ---- Luv trend intelligence (Sprint 93: period-over-period deltas) ----
   trendObservations: import("@/lib/luv/types").LuvObservation[];
+  // ---- Luv Story Mode (Sprint 95: named narrative archetype) ----
+  storyObservation: import("@/lib/luv/types").LuvObservation | null;
+  // ---- Luv Memory observations (Sprint 97: longitudinal venue intelligence) ----
+  memoryObservations: import("@/lib/luv/types").LuvObservation[];
+  // ---- Luv Insight observations (Sprint 98: pattern detection + confidence scoring) ----
+  insightObservations: import("@/lib/luv/types").LuvObservation[];
+  // ---- Venue Health Score (Sprint 99: composite operational score + explanation) ----
+  healthScore: import("@/lib/luv/health-types").VenueHealthScore | null;
+  // ---- Luv Recommendations (Sprint 100: advice + navigation, no AI generation yet) ----
+  recommendations: import("@/lib/luv/recommendation-types").VenueRecommendation[];
+  // ---- Luv Action Outcomes (Sprint 102: follow-through + outcome tracking) ----
+  actionObservations: import("@/lib/luv/types").LuvObservation[];
+  // ---- Luv Pending Actions (Sprint 103: what Luv is currently watching) ----
+  pendingActionObservations: import("@/lib/luv/types").LuvObservation[];
+  // ---- Luv Performance Intelligence (Sprint 104: what has worked over time) ----
+  performanceObservations: import("@/lib/luv/types").LuvObservation[];
   // ---- Momentum segments (Sprint 37) ----
   momentumSegments: {
     heatingUp: { leadId: string; name: string; reason: string }[];
     coolingOff: { leadId: string; name: string; reason: string }[];
   };
+  // ---- Activation Engine (Sprint 108) ----
+  activationScore: import("@/lib/activation/types").ActivationScore | null;
+  nextPendingMilestone: import("@/lib/activation/types").VenueMilestone | null;
+  showDigestCallout: boolean;
 };

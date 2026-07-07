@@ -5,6 +5,10 @@ import { ClientEventsWidget } from "@/components/dashboard/client-events-widget"
 import { OverduePaymentsWidget, UpcomingPaymentsWidget } from "@/components/dashboard/payments-widget";
 import { FollowupsWidget } from "@/components/dashboard/followups-widget";
 import { GettingStartedCard } from "@/components/dashboard/getting-started";
+import { ActivationWidget } from "@/components/dashboard/activation-widget";
+import { DigestCallout } from "@/components/dashboard/digest-callout";
+import { MilestoneToast } from "@/components/dashboard/milestone-toast";
+import { HealthScoreWidget } from "@/components/dashboard/health-score-widget";
 import { Greeting } from "@/components/dashboard/greeting";
 import { LuvWidget } from "@/components/dashboard/luv-widget";
 import { MomentumWidget } from "@/components/dashboard/momentum-widget";
@@ -41,6 +45,9 @@ export default async function DashboardPage({ searchParams }: Props) {
 
   return (
     <div className="space-y-6">
+      {/* Milestone celebration toast — fires once per venue per milestone */}
+      <MilestoneToast milestone={data.nextPendingMilestone} />
+
       {/* Header */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <Greeting venueName={data.venueName} ownerFirstName={data.ownerFirstName} />
@@ -49,8 +56,19 @@ export default async function DashboardPage({ searchParams }: Props) {
         </Button>
       </div>
 
+      {/* Daily digest intro callout — dismissible, shown until turned off or dismissed */}
+      {data.showDigestCallout && <DigestCallout />}
+
       {/* 💗 Luv — venue assistant (observations + trend intelligence) */}
-      <LuvWidget observations={data.luvObservations} trendObservations={data.trendObservations} />
+      <LuvWidget observations={data.luvObservations} trendObservations={data.trendObservations} storyObservation={data.storyObservation} memoryObservations={data.memoryObservations} insightObservations={data.insightObservations} recommendations={data.recommendations} actionObservations={data.actionObservations} pendingActionObservations={data.pendingActionObservations} performanceObservations={data.performanceObservations} />
+
+      {/* 🟢 Venue Health Score + 🚀 Activation */}
+      {(data.healthScore || data.activationScore) && (
+        <div className="grid gap-6 lg:grid-cols-2">
+          {data.healthScore && <HealthScoreWidget health={data.healthScore} />}
+          {data.activationScore && <ActivationWidget score={data.activationScore} />}
+        </div>
+      )}
 
       {/* 💗 Momentum intelligence — who needs attention today? */}
       <MomentumWidget

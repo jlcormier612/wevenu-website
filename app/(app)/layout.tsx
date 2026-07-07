@@ -3,7 +3,9 @@ import { redirect } from "next/navigation";
 import { WorkspaceShell } from "@/components/shell/workspace-shell";
 import { createClient } from "@/integrations/supabase/server";
 import { isSupabaseConfigured } from "@/lib/env";
+import { getVendorUser } from "@/lib/vendor-auth/service";
 import { getCurrentVenue } from "@/lib/venue/service";
+import { recordStaffActivity } from "@/lib/activation/service";
 
 /**
  * Protected layout for the venue workspace. Confirms an authenticated session
@@ -31,8 +33,12 @@ export default async function WorkspaceLayout({
 
   const venue = await getCurrentVenue();
   if (!venue?.setupCompleted) {
+    const vendorUser = await getVendorUser();
+    if (vendorUser) redirect("/vendor/dashboard");
     redirect("/setup");
   }
+
+  void recordStaffActivity(user.id);
 
   return (
     <WorkspaceShell

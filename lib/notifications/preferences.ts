@@ -12,6 +12,8 @@ export type NotificationPreferences = {
   channelEmail:         boolean;
   channelSms:           boolean;
   channelPush:          boolean;
+  dailyDigestEnabled:   boolean;
+  digestIntroDismissed: boolean;
 };
 
 const DEFAULTS: NotificationPreferences = {
@@ -25,6 +27,8 @@ const DEFAULTS: NotificationPreferences = {
   channelEmail:         false,
   channelSms:           false,
   channelPush:          false,
+  dailyDigestEnabled:   true,
+  digestIntroDismissed: false,
 };
 
 export async function getNotificationPreferences(): Promise<NotificationPreferences> {

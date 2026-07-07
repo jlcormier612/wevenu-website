@@ -17,6 +17,7 @@ const PUBLIC_PATHS = [
   "/sign",           // public contract signing — /sign/{token}
   "/p",              // client portal workspace — /p/{access_token}
   "/v",              // vendor portal workspace — /v/{access_token}
+  "/vendor/accept",  // vendor invitation claim — accessible before auth
   "/book",           // public tour scheduling — /book/{tour_embed_key}
   "/w",              // public wedding website — /w/{slug}
   "/rsvp",           // public RSVP submission — /rsvp/{rsvp_token}
@@ -87,12 +88,33 @@ export async function updateSession(
     return NextResponse.redirect(loginUrl);
   }
 
+  // Wevenu HQ (/admin/* and /api/admin/*) — defense in depth alongside the
+  // layout-level check in app/(app)/admin/layout.tsx. See
+  // docs/wevenu-hq-architecture.md §5.
+  if (user && (pathname.startsWith("/admin") || pathname.startsWith("/api/admin"))) {
+    const { data: isAdmin } = await supabase.rpc("is_hq_admin");
+    if (!isAdmin) {
+      if (pathname.startsWith("/api/admin")) {
+        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      }
+      const dashboardUrl = request.nextUrl.clone();
+      dashboardUrl.pathname = "/dashboard";
+      return NextResponse.redirect(dashboardUrl);
+    }
+  }
+
   // Only redirect logged-in users away from /login — not from public couple/guest surfaces.
   // Coordinators need to be able to preview /p/{token}, /w/{slug}, /book/{key} etc.
   if (user && pathname === "/login") {
-    const dashboardUrl = request.nextUrl.clone();
-    dashboardUrl.pathname = "/dashboard";
-    return NextResponse.redirect(dashboardUrl);
+    const { data: vu } = await supabase
+      .from("vendor_users")
+      .select("vendor_id")
+      .eq("user_id", user.id)
+      .eq("is_active", true)
+      .maybeSingle();
+    const destUrl = request.nextUrl.clone();
+    destUrl.pathname = vu ? "/vendor/dashboard" : "/dashboard";
+    return NextResponse.redirect(destUrl);
   }
 
   return supabaseResponse;

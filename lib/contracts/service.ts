@@ -5,6 +5,7 @@ import { createClient } from "@/integrations/supabase/server";
 import { isSupabaseConfigured } from "@/lib/env";
 import * as repo from "@/lib/contracts/repository";
 import { buildMergeData, mergeContent } from "@/lib/contracts/merge";
+import { recordEngagementEvent } from "@/lib/activation/service";
 import type {
   Contract,
   ContractActionResult,
@@ -180,12 +181,31 @@ export async function signContractByToken(token: string, signerName: string): Pr
   if (!isSupabaseConfigured) return { ok: false, message: "Backend not configured." };
   if (!signerName.trim()) return { ok: false, message: "Please enter your full name." };
   const supabase = await createClient();
+
+  // Look up venue_id before signing so we can fire the engagement event
+  const { data: contractRow } = await supabase
+    .from("contracts")
+    .select("id, venue_id")
+    .eq("sign_token", token)
+    .maybeSingle<{ id: string; venue_id: string }>();
+
   const { data, error } = await supabase.rpc("sign_contract", {
     p_token: token,
     p_signer: signerName.trim(),
   });
   if (error) return { ok: false, message: error.message };
   if (!data) return { ok: false, message: "This contract is not available for signing." };
+
+  if (contractRow?.venue_id) {
+    void recordEngagementEvent({
+      venueId:   contractRow.venue_id,
+      eventType: "contract.signed",
+      actorType: "couple",
+      entityType: "contract",
+      entityId:  contractRow.id,
+    });
+  }
+
   return { ok: true };
 }
 

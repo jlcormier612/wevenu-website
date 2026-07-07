@@ -12,6 +12,7 @@ import {
   LayoutTemplate,
   type LucideIcon,
   MessagesSquare,
+  MessageSquareDot,
   PartyPopper,
   Settings,
   ShieldCheck,
@@ -30,6 +31,7 @@ export type NavItem = {
 export type NavSection = {
   label: string;
   items: NavItem[];
+  adminOnly?: boolean;
 };
 
 /**
@@ -99,6 +101,13 @@ export const NAV_SECTIONS: NavSection[] = [
     items: [
       { title: "Operations", href: "/operations", icon: ShieldCheck },
       { title: "Settings", href: "/settings", icon: Settings },
+    ],
+  },
+  {
+    label: "Wevenu",
+    adminOnly: true,
+    items: [
+      { title: "Feedback Inbox", href: "/admin/feedback", icon: MessageSquareDot },
     ],
   },
 ];

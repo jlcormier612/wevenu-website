@@ -1,6 +1,7 @@
 import { createClient } from "@/integrations/supabase/server";
 import { isSupabaseConfigured } from "@/lib/env";
 import { getCurrentVenue } from "@/lib/venue/service";
+import { recordEngagementEvent } from "@/lib/activation/service";
 import type { PortalContext, PortalSession, PortalTask } from "@/lib/portal/types";
 
 // ---- Token resolution (uses server Supabase client; SECURITY DEFINER functions
@@ -11,7 +12,20 @@ export async function resolvePortalContext(token: string): Promise<PortalContext
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("get_portal_context", { p_token: token });
   if (error || !data || (data as Record<string, unknown>).error) return null;
-  return data as PortalContext;
+  const ctx = data as PortalContext;
+
+  // Fire engagement event (write-once in DB via COALESCE so this is idempotent)
+  if (ctx.venue?.id) {
+    void recordEngagementEvent({
+      venueId:   ctx.venue.id,
+      eventType: "couple.portal_opened",
+      actorType: "couple",
+      entityType: "client",
+      entityId:  ctx.client?.id ?? undefined,
+    });
+  }
+
+  return ctx;
 }
 
 export async function resolvePortalTasks(token: string): Promise<PortalTask[]> {

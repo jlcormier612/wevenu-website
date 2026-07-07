@@ -26,6 +26,7 @@ import {
   validateScheduleInput,
 } from "@/lib/payments/validation";
 import { getCurrentVenue } from "@/lib/venue/service";
+import { recordEngagementEvent } from "@/lib/activation/service";
 
 async function withVenue<T>(
   fn: (supabase: Awaited<ReturnType<typeof createClient>>, venueId: string) => Promise<T>,
@@ -188,6 +189,14 @@ export async function markLineItemPaid(itemId: string, scheduleId: string, input
     if (sch?.invoice_id) {
       await repo.reconcileInvoiceBalance(supabase, venueId, sch.invoice_id);
     }
+
+    void recordEngagementEvent({
+      venueId,
+      eventType: "invoice.paid",
+      actorType: "venue_user",
+      entityType: "payment_line_item",
+      entityId:  itemId,
+    });
 
     return { ok: true } as PaymentActionResult;
   });

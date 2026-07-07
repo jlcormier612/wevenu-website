@@ -10,7 +10,14 @@ import { createClient } from "@/integrations/supabase/server";
 import { isSupabaseConfigured } from "@/lib/env";
 import { getLuvObservations } from "@/lib/luv/observations";
 import { getLuvSettings } from "@/lib/luv/settings";
-import { getVenueTrends, computeTrendObservations } from "@/lib/luv/trends-service";
+import { getVenueTrends, computeTrendObservations, computeStoryMode } from "@/lib/luv/trends-service";
+import { getVenueMemories, computeMemoryObservations } from "@/lib/luv/memory-service";
+import { getVenueInsights, computeInsightObservations } from "@/lib/luv/insights-service";
+import { getVenueHealthScore } from "@/lib/luv/health-service";
+import { getVenueRecommendations } from "@/lib/luv/recommendation-service";
+import { getLuvActionObservations, getPendingLuvActions, getLuvPerformanceObservations } from "@/lib/luv/action-service";
+import { getActivationScore, getNextPendingMilestone } from "@/lib/activation/service";
+import { getNotificationPreferences } from "@/lib/notifications/preferences";
 import { refreshAllLeadScores, generateMomentumLanguage, getMomentumTier } from "@/lib/leads/scores";
 import { LEAD_STATUSES } from "@/lib/leads/constants";
 import type { Lead } from "@/lib/leads/types";
@@ -367,11 +374,27 @@ export async function getDashboardData(): Promise<DashboardData | null> {
 
   // Luv observations + trend intelligence — non-blocking; return [] on error
   const luvSettings = await getLuvSettings().catch(() => null);
-  const [luvObservations, rawTrends] = await Promise.all([
+  const [luvObservations, rawTrends, rawMemories, rawInsights, healthScore, recommendations, actionObservations, pendingActionObservations, performanceObservations, activationScore, nextPendingMilestone, notificationPrefs] = await Promise.all([
     getLuvObservations(supabase, venue.id, today, luvSettings ?? undefined).catch(() => []),
     getVenueTrends().catch(() => null),
+    getVenueMemories().catch(() => null),
+    getVenueInsights().catch(() => null),
+    getVenueHealthScore().catch(() => null),
+    getVenueRecommendations().catch(() => []),
+    getLuvActionObservations().catch(() => []),
+    getPendingLuvActions().catch(() => []),
+    getLuvPerformanceObservations().catch(() => []),
+    getActivationScore(venue.id).catch(() => null),
+    getNextPendingMilestone(venue.id).catch(() => null),
+    getNotificationPreferences().catch(() => null),
   ]);
-  const trendObservations = rawTrends ? computeTrendObservations(rawTrends) : [];
+  const showDigestCallout = !!notificationPrefs && notificationPrefs.dailyDigestEnabled && !notificationPrefs.digestIntroDismissed;
+  const trendObservations  = rawTrends   ? computeTrendObservations(rawTrends) : [];
+  const storyObservation   = rawTrends   ? computeStoryMode(rawTrends) : null;
+  const memoryObservations = rawMemories
+    ? computeMemoryObservations(rawMemories, new Date().getMonth() + 1)
+    : [];
+  const insightObservations = rawInsights ? computeInsightObservations(rawInsights) : [];
 
   // Compute momentum segments from lead scores (post-refresh)
   const { data: scoredLeads } = await supabase.from("leads")
@@ -424,7 +447,18 @@ export async function getDashboardData(): Promise<DashboardData | null> {
     totalClients: clients.length,
     luvObservations,
     trendObservations,
+    storyObservation,
+    memoryObservations,
+    insightObservations,
+    healthScore,
+    recommendations,
+    actionObservations,
+    pendingActionObservations,
+    performanceObservations,
     momentumSegments: { heatingUp, coolingOff },
+    activationScore,
+    nextPendingMilestone,
+    showDigestCallout,
   };
 }
 
