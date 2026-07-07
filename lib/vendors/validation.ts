@@ -5,7 +5,7 @@ import type { VendorAssignmentInput, VendorErrors, VendorInput } from "@/lib/ven
 
 export function validateVendorInput(input: VendorInput): VendorErrors {
   const errors: VendorErrors = {};
-  if (!input.name.trim()) errors.name = "Vendor name is required.";
+  if (!input.businessName.trim()) errors.businessName = "Vendor name is required.";
   if (input.email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(input.email))
     errors.email = "Enter a valid email address.";
   return errors;

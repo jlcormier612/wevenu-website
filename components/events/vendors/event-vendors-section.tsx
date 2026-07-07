@@ -216,7 +216,7 @@ export function EventVendorsSection({
                     <SelectItem value="__pref__" disabled>⭐ Preferred Vendors</SelectItem>
                     {preferred.filter(v => !assignedIds.has(v.id)).map(v => (
                       <SelectItem key={v.id} value={v.id}>
-                        {v.name}{v.category ? ` · ${vendorCategoryLabel(v.category)}` : ""}
+                        {v.businessName}{v.category ? ` · ${vendorCategoryLabel(v.category)}` : ""}
                       </SelectItem>
                     ))}
                   </>
@@ -228,7 +228,7 @@ export function EventVendorsSection({
                     )}
                     {others.filter(v => !assignedIds.has(v.id)).map(v => (
                       <SelectItem key={v.id} value={v.id}>
-                        {v.name}{v.category ? ` · ${vendorCategoryLabel(v.category)}` : ""}
+                        {v.businessName}{v.category ? ` · ${vendorCategoryLabel(v.category)}` : ""}
                       </SelectItem>
                     ))}
                   </>

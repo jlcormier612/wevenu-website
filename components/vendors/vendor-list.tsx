@@ -43,18 +43,18 @@ export function VendorList({ vendors }: { vendors: Vendor[] }) {
     const base = vendors.filter((v) => {
       if (filter !== "all" && v.category !== filter) return false;
       if (!q) return true;
-      return [v.name, v.contactName, v.email, v.category]
+      return [v.businessName, v.contactName, v.email, v.category]
         .some((s) => s?.toLowerCase().includes(q));
     });
     return [...base].sort((a, b) => {
       switch (sort) {
-        case "za":        return b.name.localeCompare(a.name);
+        case "za":        return b.businessName.localeCompare(a.businessName);
         case "preferred": {
           const lvl = (v: Vendor) => v.preferenceLevel === "featured" ? 2 : v.preferenceLevel === "preferred" ? 1 : 0;
-          return lvl(b) - lvl(a) || a.name.localeCompare(b.name);
+          return lvl(b) - lvl(a) || a.businessName.localeCompare(b.businessName);
         }
         case "newest":    return (b.createdAt ?? "") < (a.createdAt ?? "") ? -1 : 1;
-        default:          return a.name.localeCompare(b.name);
+        default:          return a.businessName.localeCompare(b.businessName);
       }
     });
   }, [vendors, query, filter, sort]);
@@ -137,7 +137,7 @@ export function VendorList({ vendors }: { vendors: Vendor[] }) {
                 <TableRow key={vendor.id} className="group">
                   <TableCell className="font-medium text-foreground">
                     <Link href={`/vendors/${vendor.id}`} className="hover:text-primary">
-                      {vendor.name}
+                      {vendor.businessName}
                     </Link>
                   </TableCell>
                   <TableCell><VendorCategoryBadge category={vendor.category} /></TableCell>

@@ -229,7 +229,7 @@ function DashboardSection({
     <div className="space-y-6">
       <div>
         <h2 className="text-xl font-semibold" style={{ color: SLATE }}>
-          Welcome, {context.vendor.name}
+          Welcome, {context.vendor.businessName}
         </h2>
         <p className="text-sm mt-0.5" style={{ color: MID }}>
           Your assignments at {context.venue.name}.
@@ -625,7 +625,7 @@ export function VendorPortalShell({ token, context }: { token: string; context: 
             {context.venue.name}
           </p>
           <p className="text-base font-semibold leading-tight text-foreground">
-            {context.vendor.name}
+            {context.vendor.businessName}
           </p>
         </div>
         {/* Nav */}

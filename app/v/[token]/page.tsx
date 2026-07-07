@@ -10,7 +10,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { token } = await params;
   const ctx = await resolveVendorPortalContext(token);
   if (!ctx) return { title: "Vendor Portal" };
-  return { title: `${ctx.vendor.name} — ${ctx.venue.name}` };
+  return { title: `${ctx.vendor.businessName} — ${ctx.venue.name}` };
 }
 
 export default async function VendorPortalPage({ params }: Props) {

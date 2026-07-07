@@ -11,7 +11,7 @@ type Props = { params: Promise<{ id: string }> };
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { id } = await params;
   const vendor = await getVendor(id);
-  return { title: vendor ? `Edit · ${vendor.name}` : "Edit Vendor" };
+  return { title: vendor ? `Edit · ${vendor.businessName}` : "Edit Vendor" };
 }
 
 export default async function EditVendorPage({ params }: Props) {
@@ -20,7 +20,7 @@ export default async function EditVendorPage({ params }: Props) {
   if (!vendor) notFound();
   return (
     <div className="space-y-6">
-      <PageHeader title={`Edit · ${vendor.name}`} description="Update vendor details." />
+      <PageHeader title={`Edit · ${vendor.businessName}`} description="Update vendor details." />
       <Card>
         <CardHeader>
           <CardTitle>Vendor details</CardTitle>

@@ -1,5 +1,8 @@
 /**
  * Vendor data access layer. Server-only.
+ * Sprint 104.5: vendors is now global; venue-specific state is in
+ * venue_vendor_relationships. getVendors/getVendor join through the
+ * relationship to return the flat Vendor shape the UI expects.
  */
 import { createClient } from "@/integrations/supabase/server";
 import type {
@@ -13,19 +16,28 @@ import type {
 
 type DbClient = Awaited<ReturnType<typeof createClient>>;
 
+// Raw DB row shapes ────────────────────────────────────────────────────────────
+
 type VendorRow = {
-  id: string; venue_id: string; name: string; category: string | null;
-  contact_name: string | null; email: string | null; phone: string | null;
-  website: string | null;
+  id: string; business_name: string; category: string | null;
+  description: string | null; contact_name: string | null;
+  email: string | null; phone: string | null; website_url: string | null;
   instagram_url: string | null; facebook_url: string | null;
   pinterest_url: string | null; tiktok_url: string | null;
-  is_preferred: boolean;
-  preference_level: string | null;
-  description: string | null; photo_url: string | null;
-  pricing_tier: string | null; display_order: number | null;
-  is_active: boolean | null;
-  notes: string | null;
-  created_at: string; updated_at: string;
+  logo_url: string | null; hero_image_url: string | null; cover_image_url: string | null;
+  service_area: string | null; insurance_expiry: string | null;
+  pricing_tier: string | null; profile_slug: string | null;
+  is_marketplace_listed: boolean; average_rating: number | null; review_count: number;
+  subscription_tier: string | null; subscription_status: string | null; trial_ends_at: string | null;
+  is_claimed: boolean; created_at: string; updated_at: string;
+  accepting_inquiries: boolean; availability_notes: string | null;
+};
+
+type VVRRow = {
+  venue_id: string; vendor_id: string; status: string; is_preferred: boolean;
+  preference_level: string; display_order: number; is_active: boolean;
+  notes: string | null; added_at: string; updated_at: string;
+  vendors: VendorRow | null;
 };
 
 type EVARow = {
@@ -33,7 +45,7 @@ type EVARow = {
   arrival_time: string | null; setup_location: string | null; load_in_notes: string | null;
   notes: string | null; created_at: string;
   checked_in_at: string | null; setup_complete_at: string | null;
-  vendors: { name: string; category: string | null; contact_name: string | null; phone: string | null } | null;
+  vendors: { business_name: string; category: string | null; contact_name: string | null; phone: string | null } | null;
 };
 
 type EVAEventRow = {
@@ -41,120 +53,209 @@ type EVAEventRow = {
   events: { name: string; event_date: string | null } | null;
 };
 
-function mapVendor(r: VendorRow): Vendor {
+// Mappers ─────────────────────────────────────────────────────────────────────
+
+function mapVendorProfile(r: VendorRow) {
   return {
-    id: r.id, venueId: r.venue_id, name: r.name, category: r.category,
-    contactName: r.contact_name, email: r.email, phone: r.phone,
-    website: r.website,
-    instagramUrl: r.instagram_url, facebookUrl: r.facebook_url,
-    pinterestUrl: r.pinterest_url, tiktokUrl: r.tiktok_url,
-    isPreferred: r.is_preferred,
+    id:                  r.id,
+    businessName:        r.business_name,
+    category:            r.category,
+    description:         r.description,
+    contactName:         r.contact_name,
+    email:               r.email,
+    phone:               r.phone,
+    websiteUrl:          r.website_url,
+    instagramUrl:        r.instagram_url,
+    facebookUrl:         r.facebook_url,
+    pinterestUrl:        r.pinterest_url,
+    tiktokUrl:           r.tiktok_url,
+    logoUrl:             r.logo_url,
+    heroImageUrl:        r.hero_image_url,
+    coverImageUrl:       r.cover_image_url,
+    serviceArea:         r.service_area,
+    insuranceExpiry:     r.insurance_expiry,
+    pricingTier:         (r.pricing_tier ?? null) as import("./types").VendorPricingTier | null,
+    profileSlug:         r.profile_slug,
+    isMarketplaceListed: r.is_marketplace_listed,
+    averageRating:       r.average_rating,
+    reviewCount:         r.review_count,
+    subscriptionTier:    (r.subscription_tier ?? null) as import("./types").VendorSubscriptionTier | null,
+    subscriptionStatus:  (r.subscription_status ?? null) as import("./types").VendorSubscriptionStatus | null,
+    trialEndsAt:         r.trial_ends_at,
+    isClaimed:           r.is_claimed,
+    acceptingInquiries:  r.accepting_inquiries !== false,
+    availabilityNotes:   r.availability_notes ?? null,
+    createdAt:           r.created_at,
+    updatedAt:           r.updated_at,
+  };
+}
+
+function mapVVR(r: VVRRow): Vendor | null {
+  if (!r.vendors) return null;
+  return {
+    ...mapVendorProfile(r.vendors),
+    venueId:         r.venue_id,
+    isPreferred:     r.is_preferred,
     preferenceLevel: (r.preference_level ?? "recommended") as import("./types").VendorPreferenceLevel,
-    description: r.description, photoUrl: r.photo_url,
-    pricingTier: (r.pricing_tier ?? null) as import("./types").VendorPricingTier | null,
-    displayOrder: r.display_order ?? 0,
-    isActive: r.is_active ?? true,
-    notes: r.notes,
-    createdAt: r.created_at, updatedAt: r.updated_at,
+    displayOrder:    r.display_order ?? 0,
+    isActive:        r.is_active ?? true,
+    notes:           r.notes,
   };
 }
 
 function mapEVA(r: EVARow): EventVendorAssignment {
   return {
-    id: r.id, venueId: r.venue_id, eventId: r.event_id, vendorId: r.vendor_id,
-    vendorName: r.vendors?.name ?? "Unknown vendor",
-    vendorCategory: r.vendors?.category ?? null,
-    vendorPhone: r.vendors?.phone ?? null,
-    arrivalTime: r.arrival_time?.slice(0, 5) ?? null,
-    setupLocation: r.setup_location ?? null,
-    loadInNotes: r.load_in_notes ?? null,
-    notes: r.notes,
-    checkedInAt: r.checked_in_at ?? null,
+    id:              r.id,
+    venueId:         r.venue_id,
+    eventId:         r.event_id,
+    vendorId:        r.vendor_id,
+    vendorName:      r.vendors?.business_name ?? "Unknown vendor",
+    vendorCategory:  r.vendors?.category ?? null,
+    vendorPhone:     r.vendors?.phone ?? null,
+    arrivalTime:     r.arrival_time?.slice(0, 5) ?? null,
+    setupLocation:   r.setup_location ?? null,
+    loadInNotes:     r.load_in_notes ?? null,
+    notes:           r.notes,
+    checkedInAt:     r.checked_in_at ?? null,
     setupCompleteAt: r.setup_complete_at ?? null,
-    createdAt: r.created_at,
+    createdAt:       r.created_at,
   };
 }
 
-// ---- vendor directory -------------------------------------------------------
+// ── Vendor directory ──────────────────────────────────────────────────────────
 
 export async function getVendors(client: DbClient, venueId: string): Promise<Vendor[]> {
-  const { data, error } = await client.from("vendors").select("*")
+  const { data, error } = await client
+    .from("venue_vendor_relationships")
+    .select("*, vendors(*)")
     .eq("venue_id", venueId)
-    .order("is_preferred", { ascending: false })
-    .order("name", { ascending: true });
+    .eq("is_active", true)
+    .neq("status", "removed")
+    .order("is_preferred",     { ascending: false })
+    .order("display_order",    { ascending: true })
+    .order("vendors(business_name)", { ascending: true });
   if (error) throw error;
-  return (data as VendorRow[]).map(mapVendor);
+  return (data as VVRRow[]).flatMap((r) => {
+    const v = mapVVR(r);
+    return v ? [v] : [];
+  });
 }
 
 export async function getVendor(client: DbClient, venueId: string, vendorId: string): Promise<VendorWithEvents | null> {
-  const [vRes, aRes] = await Promise.all([
-    client.from("vendors").select("*").eq("id", vendorId).eq("venue_id", venueId).maybeSingle<VendorRow>(),
-    client.from("event_vendor_assignments")
+  const [vvrRes, aRes] = await Promise.all([
+    client
+      .from("venue_vendor_relationships")
+      .select("*, vendors(*)")
+      .eq("venue_id", venueId)
+      .eq("vendor_id", vendorId)
+      .maybeSingle<VVRRow>(),
+    client
+      .from("event_vendor_assignments")
       .select("id, event_id, arrival_time, events(name, event_date)")
-      .eq("vendor_id", vendorId).eq("venue_id", venueId)
-      .order("created_at", { ascending: false }).limit(20),
+      .eq("vendor_id", vendorId)
+      .eq("venue_id", venueId)
+      .order("created_at", { ascending: false })
+      .limit(20),
   ]);
-  if (vRes.error) throw vRes.error;
-  if (aRes.error) throw aRes.error;
-  if (!vRes.data) return null;
+  if (vvrRes.error) throw vvrRes.error;
+  if (aRes.error)   throw aRes.error;
+  if (!vvrRes.data)  return null;
+  const vendor = mapVVR(vvrRes.data);
+  if (!vendor) return null;
   const assignments: VendorEventSummary[] = (aRes.data as unknown as EVAEventRow[]).map((r) => ({
-    id: r.id, eventId: r.event_id,
-    eventName: (r.events as { name: string } | null)?.name ?? "Unknown event",
-    eventDate: (r.events as { event_date: string | null } | null)?.event_date ?? null,
+    id:          r.id,
+    eventId:     r.event_id,
+    eventName:   (r.events as { name: string } | null)?.name ?? "Unknown event",
+    eventDate:   (r.events as { event_date: string | null } | null)?.event_date ?? null,
     arrivalTime: r.arrival_time?.slice(0, 5) ?? null,
   }));
-  return { ...mapVendor(vRes.data), assignments };
+  return { ...vendor, assignments };
 }
 
-function toVendorRow(venueId: string, input: VendorInput): Record<string, unknown> {
+function toVendorProfileRow(input: VendorInput): Record<string, unknown> {
   return {
-    venue_id: venueId, name: input.name.trim(),
-    category: input.category || null, contact_name: input.contactName.trim() || null,
-    email: input.email.trim() || null, phone: input.phone.trim() || null,
-    website: input.website.trim() || null,
-    instagram_url: input.instagramUrl.trim() || null,
-    facebook_url: input.facebookUrl.trim() || null,
-    pinterest_url: input.pinterestUrl.trim() || null,
-    tiktok_url: input.tiktokUrl.trim() || null,
-    is_preferred: input.isPreferred || input.preferenceLevel !== "recommended",
+    business_name:  input.businessName.trim(),
+    category:       input.category || null,
+    contact_name:   input.contactName.trim() || null,
+    email:          input.email.trim() || null,
+    phone:          input.phone.trim() || null,
+    website_url:    input.websiteUrl.trim() || null,
+    instagram_url:  input.instagramUrl.trim() || null,
+    facebook_url:   input.facebookUrl.trim() || null,
+    pinterest_url:  input.pinterestUrl.trim() || null,
+    tiktok_url:     input.tiktokUrl.trim() || null,
+    description:    input.description.trim() || null,
+    logo_url:       input.logoUrl.trim() || null,
+    pricing_tier:   input.pricingTier || null,
+  };
+}
+
+function toVVRRow(venueId: string, vendorId: string, input: VendorInput): Record<string, unknown> {
+  return {
+    venue_id:         venueId,
+    vendor_id:        vendorId,
+    status:           "active",
+    is_preferred:     input.isPreferred || input.preferenceLevel !== "recommended",
     preference_level: input.preferenceLevel || "recommended",
-    description: input.description.trim() || null,
-    photo_url: input.photoUrl.trim() || null,
-    pricing_tier: input.pricingTier || null,
-    notes: input.notes.trim() || null,
+    notes:            input.notes.trim() || null,
   };
 }
 
 export async function insertVendor(client: DbClient, venueId: string, input: VendorInput): Promise<string> {
-  const { data, error } = await client.from("vendors").insert(toVendorRow(venueId, input))
-    .select("id").single<{ id: string }>();
-  if (error) throw error;
-  return data.id;
+  // Create the global vendor profile first
+  const { data: vendorData, error: vendorErr } = await client
+    .from("vendors")
+    .insert(toVendorProfileRow(input))
+    .select("id")
+    .single<{ id: string }>();
+  if (vendorErr) throw vendorErr;
+
+  // Then create the venue relationship
+  const { error: vvrErr } = await client
+    .from("venue_vendor_relationships")
+    .insert(toVVRRow(venueId, vendorData.id, input));
+  if (vvrErr) throw vvrErr;
+
+  return vendorData.id;
 }
 
 export async function updateVendor(client: DbClient, venueId: string, vendorId: string, input: VendorInput): Promise<void> {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { error } = await (client.from("vendors") as any)
-    .update(toVendorRow(venueId, input)).eq("id", vendorId).eq("venue_id", venueId);
-  if (error) throw error;
+  const [profileErr, vvrErr] = await Promise.all([
+    client.from("vendors").update(toVendorProfileRow(input)).eq("id", vendorId).then(r => r.error),
+    client.from("venue_vendor_relationships")
+      .update({
+        is_preferred:     input.isPreferred || input.preferenceLevel !== "recommended",
+        preference_level: input.preferenceLevel || "recommended",
+        notes:            input.notes.trim() || null,
+      })
+      .eq("venue_id", venueId).eq("vendor_id", vendorId).then(r => r.error),
+  ]);
+  if (profileErr) throw profileErr;
+  if (vvrErr)     throw vvrErr;
 }
 
+/** Soft-delete: marks the venue relationship as removed. Vendor profile stays global. */
 export async function deleteVendor(client: DbClient, venueId: string, vendorId: string): Promise<void> {
-  const { error } = await client.from("vendors").delete().eq("id", vendorId).eq("venue_id", venueId);
+  const { error } = await client
+    .from("venue_vendor_relationships")
+    .update({ status: "removed", is_active: false })
+    .eq("venue_id", venueId)
+    .eq("vendor_id", vendorId);
   if (error) throw error;
 }
 
-// ---- event vendor assignments -----------------------------------------------
+// ── Event vendor assignments ──────────────────────────────────────────────────
 
 export async function getEventVendorAssignments(
   client: DbClient, venueId: string, eventId: string,
 ): Promise<EventVendorAssignment[]> {
   const { data, error } = await client
     .from("event_vendor_assignments")
-    .select("*, vendors(name, category, contact_name, phone)")
-    .eq("event_id", eventId).eq("venue_id", venueId)
+    .select("*, vendors(business_name, category, contact_name, phone)")
+    .eq("event_id", eventId)
+    .eq("venue_id", venueId)
     .order("arrival_time", { ascending: true, nullsFirst: false })
-    .order("created_at", { ascending: true });
+    .order("created_at",   { ascending: true });
   if (error) throw error;
   return (data as EVARow[]).map(mapEVA);
 }
@@ -162,15 +263,19 @@ export async function getEventVendorAssignments(
 export async function insertVendorAssignment(
   client: DbClient, venueId: string, eventId: string, input: VendorAssignmentInput,
 ): Promise<EventVendorAssignment> {
-  const { data, error } = await client.from("event_vendor_assignments")
+  const { data, error } = await client
+    .from("event_vendor_assignments")
     .insert({
-      venue_id: venueId, event_id: eventId, vendor_id: input.vendorId,
-      arrival_time: input.arrivalTime || null,
+      venue_id:       venueId,
+      event_id:       eventId,
+      vendor_id:      input.vendorId,
+      arrival_time:   input.arrivalTime || null,
       setup_location: input.setupLocation.trim() || null,
-      load_in_notes: input.loadInNotes.trim() || null,
-      notes: input.notes.trim() || null,
+      load_in_notes:  input.loadInNotes.trim() || null,
+      notes:          input.notes.trim() || null,
     })
-    .select("*, vendors(name, category, contact_name, phone)").single<EVARow>();
+    .select("*, vendors(business_name, category, contact_name, phone)")
+    .single<EVARow>();
   if (error) throw error;
   return mapEVA(data);
 }
@@ -178,7 +283,8 @@ export async function insertVendorAssignment(
 export async function deleteVendorAssignment(
   client: DbClient, venueId: string, assignmentId: string,
 ): Promise<void> {
-  const { error } = await client.from("event_vendor_assignments")
+  const { error } = await client
+    .from("event_vendor_assignments")
     .delete().eq("id", assignmentId).eq("venue_id", venueId);
   if (error) throw error;
 }
@@ -187,12 +293,13 @@ export async function updateVendorAssignment(
   client: DbClient, venueId: string, assignmentId: string,
   input: { arrivalTime: string; setupLocation: string; loadInNotes: string; notes: string },
 ): Promise<void> {
-  const { error } = await client.from("event_vendor_assignments")
+  const { error } = await client
+    .from("event_vendor_assignments")
     .update({
-      arrival_time: input.arrivalTime || null,
+      arrival_time:   input.arrivalTime || null,
       setup_location: input.setupLocation.trim() || null,
-      load_in_notes: input.loadInNotes.trim() || null,
-      notes: input.notes.trim() || null,
+      load_in_notes:  input.loadInNotes.trim() || null,
+      notes:          input.notes.trim() || null,
     })
     .eq("id", assignmentId).eq("venue_id", venueId);
   if (error) throw error;

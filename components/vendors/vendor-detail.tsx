@@ -7,7 +7,7 @@ import { useRouter } from "next/navigation";
 import { ArrowLeft, ExternalLink, Globe, Mail, Pencil, Phone, Star, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
-import { deleteVendorAction } from "@/app/(app)/vendors/actions";
+import { deleteVendorAction, sendVendorInviteAction } from "@/app/(app)/vendors/actions";
 import { DocumentsSection } from "@/components/documents/documents-section";
 import { VendorCategoryBadge } from "@/components/vendors/vendor-category-badge";
 import { Badge } from "@/components/ui/badge";
@@ -76,9 +76,23 @@ function VendorPortalWidget({ vendorId, vendorName, sessions }: {
 export function VendorDetail({ vendor, documents = [], portalSessions = [] }: { vendor: VendorWithEvents; documents?: Document[]; portalSessions?: { id: string; access_token: string; label: string | null; last_accessed_at: string | null }[] }) {
   const router = useRouter();
   const [deletePending, startDelete] = React.useTransition();
+  const [inviteSent, setInviteSent]   = React.useState(false);
+  const [invitePending, startInvite]  = React.useTransition();
+
+  function handleSendInvite() {
+    startInvite(async () => {
+      const result = await sendVendorInviteAction(vendor.id);
+      if (result.ok) {
+        toast.success("Invite sent to " + vendor.email + ".");
+        setInviteSent(true);
+      } else {
+        toast.error(result.message ?? "Could not send invite.");
+      }
+    });
+  }
 
   function handleDelete() {
-    if (!confirm(`Remove ${vendor.name} from your vendor directory?`)) return;
+    if (!confirm(`Remove ${vendor.businessName} from your vendor directory?`)) return;
     startDelete(async () => {
       const result = await deleteVendorAction(vendor.id);
       if (result.ok) { toast.success("Vendor removed."); router.push("/vendors"); router.refresh(); }
@@ -96,7 +110,7 @@ export function VendorDetail({ vendor, documents = [], portalSessions = [] }: { 
             <ArrowLeft className="mr-1 h-3.5 w-3.5" /> Vendors
           </Button>
           <div className="flex flex-wrap items-center gap-2">
-            <h1 className="font-heading text-2xl font-medium text-heading">{vendor.name}</h1>
+            <h1 className="font-heading text-2xl font-medium text-heading">{vendor.businessName}</h1>
             {vendor.isPreferred && (
               <Badge variant="default" className="gap-1">
                 <Star className="h-3 w-3" /> Preferred
@@ -106,6 +120,12 @@ export function VendorDetail({ vendor, documents = [], portalSessions = [] }: { 
           <VendorCategoryBadge category={vendor.category} />
         </div>
         <div className="flex shrink-0 items-center gap-2">
+          {vendor.email && !vendor.isClaimed && (
+            <Button variant="outline" size="sm" onClick={handleSendInvite} disabled={invitePending || inviteSent}>
+              <Mail className="mr-1 h-3.5 w-3.5" />
+              {inviteSent ? "Invite Sent" : invitePending ? "Sending…" : "Send Invite"}
+            </Button>
+          )}
           <Button variant="outline" size="sm" render={<Link href={`/vendors/${vendor.id}/edit`} />}>
             <Pencil className="mr-1 h-3.5 w-3.5" /> Edit
           </Button>
@@ -133,15 +153,15 @@ export function VendorDetail({ vendor, documents = [], portalSessions = [] }: { 
           <CardHeader><CardTitle className="text-base">Contact information</CardTitle></CardHeader>
           <CardContent className="space-y-3">
             {/* Website URL — primary, shown prominently before other contact fields */}
-            {vendor.website && (
+            {vendor.websiteUrl && (
               <a
-                href={vendor.website.startsWith("http") ? vendor.website : `https://${vendor.website}`}
+                href={vendor.websiteUrl.startsWith("http") ? vendor.websiteUrl : `https://${vendor.websiteUrl}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex items-center gap-2 rounded-lg border border-border bg-muted/40 px-4 py-2.5 text-sm font-medium text-primary hover:border-primary/40 hover:bg-muted/60 transition-colors"
               >
                 <Globe className="h-4 w-4 shrink-0" />
-                <span className="truncate">{vendor.website}</span>
+                <span className="truncate">{vendor.websiteUrl}</span>
                 <ExternalLink className="ml-auto h-3.5 w-3.5 shrink-0 text-muted-foreground" />
               </a>
             )}
@@ -194,7 +214,7 @@ export function VendorDetail({ vendor, documents = [], portalSessions = [] }: { 
                 </div>
               );
             })}
-            {!vendor.website && !vendor.email && !vendor.phone && !vendor.contactName && !vendor.instagramUrl && (
+            {!vendor.websiteUrl && !vendor.email && !vendor.phone && !vendor.contactName && !vendor.instagramUrl && (
               <p className="text-sm text-muted-foreground">No contact details recorded.</p>
             )}
           </CardContent>
@@ -246,11 +266,11 @@ export function VendorDetail({ vendor, documents = [], portalSessions = [] }: { 
             <CardHeader>
               <CardTitle className="text-base">Vendor Portal</CardTitle>
               <CardDescription>
-                Share a private link so {vendor.name} can view their timeline, complete tasks, and upload documents.
+                Share a private link so {vendor.businessName} can view their timeline, complete tasks, and upload documents.
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <VendorPortalWidget vendorId={vendor.id} vendorName={vendor.name} sessions={portalSessions} />
+              <VendorPortalWidget vendorId={vendor.id} vendorName={vendor.businessName} sessions={portalSessions} />
             </CardContent>
           </Card>
           <Card>

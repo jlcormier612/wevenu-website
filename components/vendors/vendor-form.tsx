@@ -40,9 +40,9 @@ export function VendorFormFields({
   return (
     <div className="space-y-5">
       <div className="grid gap-4 sm:grid-cols-2">
-        <Field label="Vendor name" htmlFor="vn" required error={errors.name}>
-          <Input id="vn" value={input.name} onChange={(e) => set("name", e.target.value)}
-            placeholder="Blossoms Floral Studio" aria-invalid={errors.name ? true : undefined} />
+        <Field label="Vendor name" htmlFor="vn" required error={errors.businessName}>
+          <Input id="vn" value={input.businessName} onChange={(e) => set("businessName", e.target.value)}
+            placeholder="Blossoms Floral Studio" aria-invalid={errors.businessName ? true : undefined} />
         </Field>
         <Field label="Category" htmlFor="vc">
           <Select value={input.category} onValueChange={(v) => set("category", v)}>
@@ -82,7 +82,7 @@ export function VendorFormFields({
       <div className="grid gap-4 sm:grid-cols-2">
         <Field label="Photo URL" htmlFor="vphoto"
           hint="Direct link to a photo or logo for this vendor.">
-          <Input id="vphoto" value={input.photoUrl} onChange={(e) => set("photoUrl", e.target.value)}
+          <Input id="vphoto" value={input.logoUrl} onChange={(e) => set("logoUrl", e.target.value)}
             placeholder="https://…/photo.jpg" inputMode="url" />
         </Field>
         <Field label="Pricing tier" htmlFor="vprice">
@@ -101,7 +101,7 @@ export function VendorFormFields({
       {/* Website URL — shown first as the primary reference link */}
       <Field label="Website URL" htmlFor="vw"
         hint="The vendor's primary website or portfolio. Shown prominently on their record.">
-        <Input id="vw" value={input.website} onChange={(e) => set("website", e.target.value)}
+        <Input id="vw" value={input.websiteUrl} onChange={(e) => set("websiteUrl", e.target.value)}
           placeholder="https://vendor.com" inputMode="url" />
       </Field>
       <div className="grid gap-4 sm:grid-cols-2">

@@ -3,7 +3,7 @@ export type VendorPortalContext = {
   accessLevel: "full" | "view_only";
   vendor: {
     id: string;
-    name: string;
+    businessName: string;
     category: string | null;
     email: string | null;
     phone: string | null;

@@ -1,7 +1,7 @@
 /**
  * Vendor reference data and display helpers (Sprint 14).
  */
-import type { Vendor, VendorInput, VendorPreferenceLevel } from "@/lib/vendors/types";
+import type { InquiryStatus, Vendor, VendorInput, VendorPreferenceLevel } from "@/lib/vendors/types";
 
 export type Option = { value: string; label: string };
 
@@ -13,8 +13,9 @@ export const PREFERENCE_LEVELS: { value: VendorPreferenceLevel; label: string; d
 
 export const PRICING_TIERS: Option[] = [
   { value: "budget",   label: "$ — Budget-friendly" },
-  { value: "moderate", label: "$$ — Mid-range" },
-  { value: "luxury",   label: "$$$ — Luxury" },
+  { value: "mid_range", label: "$$ — Mid-range" },
+  { value: "premium",  label: "$$$ — Premium" },
+  { value: "luxury",   label: "$$$$ — Luxury" },
 ];
 
 export const VENDOR_CATEGORIES: Option[] = [
@@ -46,23 +47,46 @@ export function formatTime(hhmm: string | null | undefined): string {
   });
 }
 
+export const INQUIRY_STATUSES: { value: InquiryStatus; label: string; description: string }[] = [
+  { value: "new",                    label: "New",                    description: "Just received, not yet reviewed" },
+  { value: "contacted",              label: "Contacted",              description: "You've replied or reached out" },
+  { value: "consultation_scheduled", label: "Consultation Scheduled", description: "Call or meeting on the calendar" },
+  { value: "proposal_sent",          label: "Proposal Sent",          description: "Quote or proposal delivered" },
+  { value: "booked",                 label: "Booked",                 description: "Confirmed booking" },
+  { value: "declined",               label: "Declined",               description: "You declined this booking" },
+  { value: "lost",                   label: "Lost",                   description: "Venue went another direction" },
+];
+
+export const ACTIVE_INQUIRY_STATUSES: InquiryStatus[] =
+  ["new", "contacted", "consultation_scheduled", "proposal_sent"];
+
+export const INQUIRY_STATUS_VARIANT: Record<InquiryStatus, "default" | "secondary" | "outline" | "destructive"> = {
+  new:                    "default",
+  contacted:              "secondary",
+  consultation_scheduled: "secondary",
+  proposal_sent:          "secondary",
+  booked:                 "default",
+  declined:               "destructive",
+  lost:                   "outline",
+};
+
 export function createInitialVendorInput(source?: Vendor | null): VendorInput {
   return {
-    name: source?.name ?? "",
-    category: source?.category ?? "",
-    contactName: source?.contactName ?? "",
-    email: source?.email ?? "",
-    phone: source?.phone ?? "",
-    website: source?.website ?? "",
-    instagramUrl: source?.instagramUrl ?? "",
-    facebookUrl: source?.facebookUrl ?? "",
-    pinterestUrl: source?.pinterestUrl ?? "",
-    tiktokUrl: source?.tiktokUrl ?? "",
-    isPreferred: source?.isPreferred ?? false,
+    businessName:    source?.businessName ?? "",
+    category:        source?.category ?? "",
+    contactName:     source?.contactName ?? "",
+    email:           source?.email ?? "",
+    phone:           source?.phone ?? "",
+    websiteUrl:      source?.websiteUrl ?? "",
+    instagramUrl:    source?.instagramUrl ?? "",
+    facebookUrl:     source?.facebookUrl ?? "",
+    pinterestUrl:    source?.pinterestUrl ?? "",
+    tiktokUrl:       source?.tiktokUrl ?? "",
+    isPreferred:     source?.isPreferred ?? false,
     preferenceLevel: source?.preferenceLevel ?? "recommended",
-    description: source?.description ?? "",
-    photoUrl: source?.photoUrl ?? "",
-    pricingTier: source?.pricingTier ?? "",
-    notes: source?.notes ?? "",
+    description:     source?.description ?? "",
+    logoUrl:         source?.logoUrl ?? "",
+    pricingTier:     source?.pricingTier ?? "",
+    notes:           source?.notes ?? "",
   };
 }
