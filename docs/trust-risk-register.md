@@ -73,8 +73,10 @@ Each entry has seven fields:
 - **Severity:** 🟠 High
 - **Temporary Mitigation:** None needed if the permanent fix ships promptly — this requires deliberate action to trigger (not silent/automatic like TR-M2), so it's lower urgency than TR-M1/M2 but should close in the same Phase 1 pass as the other Money items since the fix is small.
 - **Permanent Fix:** Add a server-side guard: refuse to hard-delete a line item with `status = 'paid'`, or any schedule containing one, without an explicit confirmation step; consider soft-delete (status flag) instead of `DELETE` for schedules/line items generally, matching the pattern already used elsewhere in the codebase (e.g. `venue_staff.is_active`).
-- **Status:** Identified
-- **Test Plan:** Attempt to delete a paid line item and a schedule containing a paid item directly via the server action (bypassing the UI); confirm both are rejected with a clear error.
+- **Status:** ✅ Resolved
+- **What shipped:** `lib/payments/repository.ts`'s `deleteLineItem` now reads the item's status first and rejects with `{ ok: false, message: "This payment has already been collected and can't be deleted..." }` for anything `status = 'paid'`; `deleteSchedule` rejects if the schedule contains *any* paid line item. `lib/payments/service.ts` propagates both results, and additionally gates both delete paths to `owner`/`manager` only (folded in from the TR-G1 permissions work landing in the same pass, since the two fixes touch the same functions).
+- **Test performed:** Live database test (rolled back) replicating the exact guard query: a schedule with one `paid` and one `pending` line item — confirmed the paid item's status check blocks deletion, the pending item's does not, and the schedule-level check correctly detects the paid item and blocks whole-schedule deletion; a second, all-pending schedule correctly showed no block. `tsc --noEmit` + `next build` both clean.
+- **Scorecard impact:** Closes the register's last unguarded hard-delete path on financial data — paired with TR-G1, a paid record can now neither be deleted by the wrong role nor deleted at all once collected, regardless of role.
 
 ---
 
@@ -117,8 +119,10 @@ Each entry has seven fields:
 - **Severity:** 🟠 High
 - **Temporary Mitigation:** None needed beyond awareness — flag to any current/alpha users that task-list "contract signed" status should be manually double-checked against the actual contract status page until fixed.
 - **Permanent Fix:** Move the `triggerAutoComplete(..., "contract_signed")` call from `sendContractAction` to `signContractByToken` (the real signing flow), so the trigger fires on actual signature.
-- **Status:** Identified
-- **Test Plan:** Send a contract; confirm the "contract signed" playbook task does *not* auto-complete on send. Sign it via the real `/sign/[token]` flow; confirm the task *does* auto-complete at that point.
+- **Status:** ✅ Resolved
+- **What shipped:** `lib/contracts/service.ts`'s `signContractByToken` now fetches the contract's `event_id` alongside `venue_id`, and — only after the `sign_contract` RPC actually confirms the signature — calls `triggerAutoComplete` via `createAdminClient()` (the couple has no `venue_staff` session at this point, same sanctioned service-role pattern already used in `lib/storage.ts` for portal-token-authenticated writes). The trigger call was removed from `app/(app)/contracts/actions.ts`'s `refreshContractLeadScore`, which now only refreshes lead score on send, as its name implies.
+- **Test performed:** `tsc --noEmit` + full `next build`, both clean. Code review confirms the trigger now fires exactly once, only from the real signing RPC's success path, never from `sendContractAction`. Live end-to-end QA (send a contract, confirm the task does *not* auto-complete, sign it via `/sign/[token]`, confirm it *does*) recommended as follow-up, same environment caveat as TR-L1/TR-L2 (no authenticated-browser-flow tool here).
+- **Scorecard impact:** Closes a misleading-signal risk of the same shape as TR-M2 (the invoice bug) — a coordinator can no longer be told "contract signed" before it's true. Contributes to Workflow Automation (#6) moving off its "confirmed dead/wrong trigger" finding.
 
 ---
 
@@ -163,8 +167,14 @@ Each entry has seven fields:
 - **Severity:** 🔴 Critical
 - **Temporary Mitigation:** Document clearly (support materials, maybe an in-app note on the Team settings page) that all invited team members currently have full access, so venue owners aren't surprised. This is honest-absence communication per Principle 2, not a fix.
 - **Permanent Fix:** Real server-side + RLS enforcement, gating at minimum: deletion of contracts/payments/clients/events, financial figure visibility, and team/role management, behind `owner`/`manager`. The vendor-side role system already gates correctly elsewhere in this codebase (`lib/vendor-packages/service.ts`) — replicate that proven pattern for venue staff rather than designing from scratch.
-- **Status:** Identified
-- **Test Plan:** As a `'staff'`-role user, attempt to delete a contract, delete a paid invoice line item, view venue-wide financial totals, and change another staff member's role. Confirm all four are rejected. Confirm the same actions succeed as `'owner'`/`'manager'` per the agreed scope.
+- **Status:** ✅ Resolved (model per `docs/permissions-model-proposal.md`: Owner, Manager, Coordinator, Staff)
+- **What shipped:**
+  - **Migration** `20260716000000_tr_g1_permissions_enforcement.sql`: widened `venue_staff.role` to add `'coordinator'`, backfilled existing `'staff'` rows to `'coordinator'` (per the proposal's recommendation — closest match to how "staff" was actually used), and added `current_user_role()` — a `SECURITY DEFINER` SQL helper mirroring `current_user_venue_id()`'s pattern so RLS can gate by role without recursion.
+  - **RLS (the backstop):** `contracts`/`payment_schedules`/`payment_line_items`/`invoices` each had their single `..._all` policy split into per-operation policies; `DELETE` is now restricted to `owner`/`manager` on all four, and `SELECT` on the three financial tables excludes `staff` (Coordinator+ keep full financial visibility per the agreed matrix). `venue_staff` INSERT/UPDATE (invite, remove, role-change) was widened from Owner-only to also allow Manager — but only for rows whose current *and* new role is `staff`/`coordinator`; a Manager can never create, touch, or promote to another Manager or the Owner.
+  - **Server-action guards (the first line, better error messages):** `lib/venue/service.ts` gained `getCurrentUserRole()` (calls the same `current_user_role()` RPC). `deleteContract_`, `deleteLineItem_`, and `deletePaymentSchedule` now reject with a clear message unless the caller is `owner`/`manager`. `lib/team/service.ts` gained a `canManageStaff()` helper applied to `inviteStaffMember`, `removeStaffMember`, and `updateStaffRole`, enforcing the same Manager-can't-touch-Manager/Owner rule with a readable error instead of a raw RLS violation.
+  - **UI:** `components/settings/team-roster.tsx` updated with the Coordinator role — label, badge color, invite-form dropdown, and the per-member "change role" menu; invite form now defaults to Coordinator (the typical day-to-day hire) instead of the old, now-narrower Staff.
+- **Test performed:** Two rolled-back database tests. (1) RLS, simulated as real `authenticated` sessions per role (not superuser): Coordinator could `SELECT` a payment schedule (visibility retained) but not `DELETE` a draft contract (blocked, 0 rows); Staff's `SELECT` on the same payment schedule returned 0 rows (blocked); Manager's `DELETE` on the draft contract succeeded (1 row); Manager successfully inserted a new Staff-role `venue_staff` row; Manager's attempt to insert a Manager-role row was rejected with a real RLS policy-violation error. All six assertions matched the agreed model exactly. (2) The `canManageStaff()` guard logic unit-tested in isolation against 9 role/target combinations (owner-does-anything, manager-can-touch-staff/coordinator, manager-blocked-from-manager/owner in both directions, coordinator/staff blocked entirely) — all 9 passed. `tsc --noEmit` + `next build` both clean.
+- **Scorecard impact:** Closes the register's widest-blast-radius item — permissions stop being cosmetic. Directly moves Notifications/Permissions/Reporting (#10) off its single biggest finding. Also closes the "reduces blast radius" notes on TR-M5 and TR-L1/TR-L2 from the original proposal: only Owner/Manager can now delete a contract or a payment record at all, on top of those items' own status guards.
 
 ### TR-G2 — No data export exists, venue or couple side
 - **Risk:** Confirmed absent everywhere in the codebase — the only "export" language anywhere refers to other tools' exports being imported *into* Wevenu, never the reverse, on either the venue or couple side.
@@ -189,11 +199,11 @@ Each entry has seven fields:
 | TR-L1 | Signed contracts editable, no guard/trail | Legal | 🔴 Critical | ✅ Resolved |
 | TR-L2 | Signed contracts permanently deletable | Legal | 🔴 Critical | ✅ Resolved |
 | TR-L3 | E-signature audit trail is thin | Legal | 🟠 High | Identified |
-| TR-L4 | "Contract signed" trigger fires on send | Legal | 🟠 High | Identified |
+| TR-L4 | "Contract signed" trigger fires on send | Legal | 🟠 High | ✅ Resolved |
 | TR-B1 | Double-booking not server-enforced | Booking | 🔴 Critical | ✅ Resolved |
 | TR-B2 | Tour confirmation emails fail silently | Booking | 🟡 Moderate–High | Identified |
 | TR-B3 | Questionnaire send reports false success | Booking | 🟡 Moderate | Identified |
-| TR-G1 | Permissions are cosmetic | Governance | 🔴 Critical | Identified |
+| TR-G1 | Permissions are cosmetic | Governance | 🔴 Critical | ✅ Resolved |
 | TR-G2 | No data export | Governance | 🔴 Critical | Identified |
 
-**Same-day batch complete: 4 of 14 Resolved, 1 Mitigated. 8 Critical, 4 High, 2 Moderate total — of the 8 Critical items, 4 are now closed (TR-M2, TR-L1, TR-L2, TR-B1) and 1 is mitigated (TR-M1).** Remaining: TR-G1 (permissions — design scoping starting in parallel per the roadmap), TR-M3/M4/M5, TR-L3/L4, TR-B2/B3, TR-G2. This table is the thing to re-run after the rest of Phase 1 closes — same IDs, updated Status column, alongside the category-level Trust Beta Scorecard re-run.
+**Track 1 ("Never Harm a Customer") complete: 7 of 14 Resolved, 1 Mitigated.** 8 Critical, 4 High, 2 Moderate total — of the 8 Critical items, 5 are now closed (TR-M2, TR-L1, TR-L2, TR-B1, TR-G1) and 1 is mitigated (TR-M1); of the 4 High items, 2 are closed (TR-M5, TR-L4). **Remaining is Track 2 ("Earn Long-Term Trust") plus the smaller Track-1-adjacent items:** TR-G2 (data export), TR-M3 (refund/void), TR-L3 (e-signature evidence), TR-M1's permanent fix (real Stripe charging) — the four Track 2 promises — and TR-M4/TR-B2/TR-B3, smaller items of the same misleading/unguarded character as Track 1. See `docs/product-completion-roadmap.md` Program 1 for the Track 1/Track 2 breakdown this table now maps to. Re-run this table again once Track 2 closes — same IDs, updated Status column, alongside the category-level Trust Beta Scorecard re-run.

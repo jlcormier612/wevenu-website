@@ -1,6 +1,6 @@
-# Permissions Model — Decided (TR-G1)
+# Permissions Model — Implemented (TR-G1)
 
-**Status:** Model agreed 2026-07-07. Not yet implemented — this doc is now the spec for Track B of Phase 1; the Implementation Sketch section below is ready to execute.
+**Status:** Model agreed and implemented 2026-07-07 — migration `20260716000000_tr_g1_permissions_enforcement.sql`, RLS policies, server-action guards (`lib/venue/service.ts`'s `getCurrentUserRole`, `lib/team/service.ts`'s `canManageStaff`), and `components/settings/team-roster.tsx` UI all shipped. See `docs/trust-risk-register.md` TR-G1 for the full test record. The Implementation Sketch below is now a historical record of what was built, not a pending plan.
 **Date:** 2026-07-07
 **Resolves:** `docs/trust-risk-register.md` TR-G1 — `StaffRole` (`owner`/`manager`/`staff`) currently exists only as a label; nothing server-side or at the RLS layer enforces it.
 
