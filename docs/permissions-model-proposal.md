@@ -1,8 +1,10 @@
-# Permissions Model Proposal (TR-G1)
+# Permissions Model — Decided (TR-G1)
 
-**Status:** Proposal — not yet implemented. This is Track B of Phase 1 (Trust Risk Remediation); implementation begins once this model is agreed.
+**Status:** Model agreed 2026-07-07. Not yet implemented — this doc is now the spec for Track B of Phase 1; the Implementation Sketch section below is ready to execute.
 **Date:** 2026-07-07
 **Resolves:** `docs/trust-risk-register.md` TR-G1 — `StaffRole` (`owner`/`manager`/`staff`) currently exists only as a label; nothing server-side or at the RLS layer enforces it.
+
+**Decided:** four roles for the initial build (Owner, Manager, Coordinator, Staff) — no custom/configurable roles, no Read-only, for now. Refunds are Owner-only once TR-M3 is built (Manager-optional held open as a future toggle, not built initially). Custom permissions are a real future direction, explicitly deferred — ship the four fixed roles first.
 
 ---
 
@@ -46,13 +48,13 @@
 
 | Role | Financial Visibility | Financial Mutation | Contracts | Vendor Management | Settings | User Management | Reporting |
 |---|---|---|---|---|---|---|---|
-| **Owner** | Full (all balances, all payment history) | Full (mark paid, void, refund once built, delete draft/cancelled payment records) | Full (create/send/cancel; edit/delete restricted to draft/cancelled for everyone, no exception) | Full (add/edit/remove vendors, manage invitations) | Full (branding, notifications, integrations, billing) | Full (invite, remove, change roles) | Full (analytics, Wevenu HQ if applicable) |
-| **Manager** | Full | Full, same as Owner *(open question below: should Manager have refund authority, or is that Owner-only?)* | Full, same as Owner | Full | Most — *not* billing/account-level settings | Can invite/remove Staff/Coordinator; cannot change Owner or promote to Manager | Full |
-| **Coordinator** | View only — sees balances, due dates, paid/unpaid status | None — cannot mark paid, cannot edit pricing, cannot delete anything financial | Can create/send contracts and cancel their own; **cannot delete** any contract (draft or cancelled) — only Manager+ | Can add/edit vendor assignments to events; cannot remove a vendor relationship entirely or manage vendor invitations | View own profile only | None | View own-relevant reporting (e.g. their events' status); not venue-wide financial reporting |
-| **Staff** | None | None | View only (e.g. to confirm a contract is signed before a wedding) | View only | View own profile only | None | None |
-| **Read-only** *(if built)* | Full (view) | None | Full (view) | Full (view) | View own profile only | None | Full (view) |
+| **Owner** | Full | Full — mark paid, void, **refund** (Owner-only, decided below), delete draft/cancelled payment records | Full (create/send/cancel; edit/delete restricted to draft/cancelled for everyone, no exception — see Principle 3, "historical artifact") | Full | Full — including billing/subscriptions, exports, integrations, delete venue, transfer ownership | Full (invite, remove, change roles, manage other Owner-level settings) | Full |
+| **Manager** | Full | Full **except refunds** — mark paid, void, delete draft/cancelled payment records; **cannot** issue a refund | Full, same as Owner (subject to the same historical-artifact rule) | Full | Operational settings only — **not** billing, subscriptions, exports, integrations, deleting the venue, transferring ownership, or managing the Owner's own account | Can invite/remove Staff/Coordinator; **cannot** manage Owner-level accounts | Full |
+| **Coordinator** | Full view (balances, due dates, paid/unpaid) | Operational only — can create invoices/contracts and mark a payment received as part of routine work (e.g. collecting a deposit at a tour); **cannot** void, refund, or delete any financial/contract record | Can create, send, and cancel contracts; **cannot delete** any contract (draft or cancelled) — Manager+ only | Can manage vendor assignments on events; cannot remove a vendor relationship entirely or manage vendor invitations | View own profile only | None | **None** — no venue-wide/analytics reporting |
+| **Staff** | None | None | View only (e.g. confirm a contract is signed before a wedding) | View only | View own profile only | None | None |
+| **Read-only** *(deferred — not part of the initial build)* | Full (view) | None | Full (view) | Full (view) | View own profile only | None | Full (view) |
 
-**Open question for you, not a recommendation:** should Manager have the same refund/void authority as Owner once TR-M3 is built, or should refunds specifically be Owner-only regardless of Manager's otherwise-full financial access? Refunds are the one financial action with real potential for abuse (a disgruntled manager refunding a couple who never asked for it) and no immediate operational urgency the way "mark paid" has. I'd lean Owner-only for refunds specifically, Manager-full for everything else financial — but this is a genuine judgment call about how much you trust a Manager-level hire, not something the codebase or this audit can answer for you.
+**Decided:** refunds are **Owner-only**. Manager gets everything else financial (mark paid, void, delete draft/cancelled records) but not refund authority — the one financial action with real potential for abuse (a Manager refunding a couple who never asked) and no operational urgency the way "mark paid" has. Held open as a possible future per-Manager toggle, not built initially.
 
 ---
 

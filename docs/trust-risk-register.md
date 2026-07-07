@@ -8,7 +8,8 @@
 
 1. **The Trust Risk Register supersedes all other roadmap work.** A feature that can cause a customer to lose money, lose a booking, create legal exposure, or lose trust takes priority over every other item on the Product Completion Roadmap — Operational Completeness and Delight & Polish (Phases 2–3) do not start until every item below is Resolved or has an approved Temporary Mitigation live.
 2. **Honestly absent is acceptable. Appears-to-work-but-doesn't is not.** A missing feature can be communicated as roadmap. A feature that looks functional and silently isn't is a trust risk regardless of how small the underlying gap is. Where an item below is "misleading," the required response is one of: fix it, disable it, or clearly label it — never leave it as-is.
-3. **Every item here was independently code-verified this session** — not inferred from a feature list. Several were confirmed hands-on (a rolled-back transaction test, a direct RPC call simulating a specific role), not just by reading source.
+3. **A signed contract is a historical artifact, not a living document.** Adopted from the TR-L1/TR-L2 fix: once signed, a contract is never edited — only amended, versioned, or replaced with a new contract. This is now a permanent product principle, not just a bug fix, and should inform how amendments/versioning are designed whenever that's built (a new contract record referencing the original, never a mutation of it).
+4. **Every item here was independently code-verified this session** — not inferred from a feature list. Several were confirmed hands-on (a rolled-back transaction test, a direct RPC call simulating a specific role), not just by reading source.
 
 ## How to read this register
 
