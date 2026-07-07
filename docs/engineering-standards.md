@@ -13,7 +13,7 @@
 
 ## 2. A business invariant enforced on one entry point must be enforced on every entry point
 
-The tour-booking widget correctly blocked double-booking; manual event creation — the everyday coordinator path — didn't (TR-B1). The rule existed; it just wasn't everywhere the effect it protects against could happen. The same shape resurfaced this session in the calendar/lead-dedup research: tour bookings write to `tour_appointments`, but the calendar's "tour" source still reads only the older `leads.tour_date` field, so a real booking can be structurally invisible on the calendar.
+The tour-booking widget correctly blocked double-booking; manual event creation — the everyday coordinator path — didn't (TR-B1). The rule existed; it just wasn't everywhere the effect it protects against could happen. The same shape resurfaced this session in the calendar/lead-dedup research: tour bookings write to `tour_appointments`, but the calendar's "tour" source still reads only the older `leads.tour_date` field, so a real booking can be structurally invisible on the calendar (TR-B4).
 
 **Standard:** when adding a guard, a trigger, or a piece of automation, explicitly enumerate every code path that can produce the effect it's meant to govern — not just the one being worked on. If a second entry point is added later (a new API route, a new form, a new automation), it inherits the same invariant by construction, not by remembering to copy a check.
 
@@ -43,7 +43,7 @@ Every fix in the Trust Risk Register was confirmed with an executed test — a r
 
 ## 7. When a new table becomes the real source of truth, update every reader that assumed the old one
 
-`tour_appointments` was added to properly model bookings, but the calendar's tour-visibility logic was never updated to read from it — it still reads the older, manually-set `leads.tour_date` field. Two representations of "does this lead have a tour" now exist, and they can silently disagree.
+`tour_appointments` was added to properly model bookings, but the calendar's tour-visibility logic was never updated to read from it — it still reads the older, manually-set `leads.tour_date` field. Two representations of "does this lead have a tour" now exist, and they can silently disagree. Registered as TR-B4 in `docs/trust-risk-register.md`.
 
 **Standard:** introducing a new table or field that supersedes an older one for representing some fact requires updating every existing reader in the same change, not as a follow-up. If that's not feasible in one pass, the old field must be explicitly marked deprecated and the divergence risk written down — silently leaving two sources of truth for the same fact is exactly how a feature ends up "appearing to work but not" for a subset of real usage.
 
