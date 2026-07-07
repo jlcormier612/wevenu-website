@@ -1,6 +1,6 @@
 # Wevenu HQ & Marketing Site — IA Proposal
 
-**Status:** Sprint 108.5 — steps 1–3 implemented (this revision documents what shipped, not just what was proposed)
+**Status:** Sprint 108.5 — steps 1–4 implemented (this revision documents what shipped, not just what was proposed)
 **Date:** 2026-07-06
 **Scope:** Internal operations center ("Wevenu HQ"), marketing site IA, shared design-system decision
 **Reference implementation:** QuickCloud (`/Users/jensmac/Downloads/quickcloud-website-main`, `apps/web`) — the complete, current QC monorepo. (`/Users/jensmac/website/quickcloud-nextjs` is a stale marketing-only snapshot; not used as a reference here.)
@@ -55,6 +55,8 @@ Wevenu HQ
 └── Settings
     └── HQ Admin Roster (who has HQ access)
 ```
+
+**As implemented** (`components/hq/hq-shell.tsx`), flattened to what actually has a page behind it: a "Beta" section (Beta Command Center, Feedback & Roadmap), an "Operations" section (Support — with a live badge count, Analytics, System Health), and a "Coming soon" section (Settings / HQ Admin Roster — not built, no CS/Customer-Success section as its own nav item since Venue Accounts already live under Beta Command Center's venue detail pages rather than a separate top-level area).
 
 Notes carried over deliberately from QC:
 - **Nav-item badge counts** (QC polls `/api/admin/tasks/urgent-count` on an interval and shows a count pill next to "Tasks"). Wevenu HQ's equivalent: a count pill on **Support** (open error/failed-import count) and **At-Risk Queue** (venues below 50% with no engagement in 7 days — already computable from `get_beta_adoption_overview()`'s `risk_flag`).
@@ -201,15 +203,23 @@ create table public.hq_admins (
 1. **Finalize and approve this doc** — done.
 2. **`hq_admins` + admin layout gate** — done. `supabase/migrations/20260710020000_sprint108_5_hq_admins.sql`, `lib/hq/service.ts`, `app/admin/layout.tsx`, `integrations/supabase/proxy.ts`.
 3. **Beta Command Center** — done, at `/admin` (the default HQ home page):
-   - `supabase/migrations/20260711000000_sprint108_5_beta_command_center.sql` — score history, HQ CRM tables, ten `*_hq_select` policies, four security-guard fixes (§2.6), expanded `get_beta_adoption_overview()`
+   - `supabase/migrations/20260711000001_sprint108_5_beta_command_center.sql` — score history, HQ CRM tables, ten `*_hq_select` policies, four security-guard fixes (§2.6), expanded `get_beta_adoption_overview()`
    - `lib/hq/beta-types.ts`, `lib/hq/beta-scoring.ts` — the documented, tunable scoring model (§2.6)
    - `lib/hq/beta-service.ts`, `lib/hq/venue-detail-service.ts`, `lib/hq/crm-service.ts` — services
    - `app/admin/actions.ts` — server actions (notes, tasks, next contact, View-As audit log)
    - `components/hq/*` — `HqShell`, `KpiStrip`, `BetaVenueTable`, `BetaCommandCenter`, `HealthBadge`/`TrendIndicator`, and `venue-detail/*` (Overview, Activity Timeline, Engagement, Luv Insights, Support, View-As button)
    - `app/admin/page.tsx` (home), `app/admin/venues/[venueId]/page.tsx` (detail), `app/admin/venues/[venueId]/view-as/page.tsx` (read-only snapshot — §2.5's Phase 1 scope)
    - **Not built in this pass:** cohort-wide analysis panels (§2.7) — reserved for step 4.
-4. **Expand into remaining HQ modules** — Support/Ops, Feedback/Roadmap consolidation, Analytics, System Health, cohort-analysis panels (nav placeholders reserved in §1 until their turn).
+4. **Expand into remaining HQ modules** — done, for Support/Ops, Analytics, and System Health:
+   - `supabase/migrations/20260712000001_sprint108_5_hq_ops_analytics.sql` — three more `*_hq_select` policies (`notification_log`, `task_reminders`, `venue_notification_preferences`) so these modules could read cross-venue without new bespoke RPCs, same pattern as step 3.
+   - **Analytics** (`/admin/analytics`, `lib/hq/analytics-service.ts`) — active-today/this-week, activation phase distribution, team/vendor/portal/import adoption %. Deliberately zero new SQL: every figure is a reduction over the same `BetaVenueSummary[]` the Beta Command Center already fetches via `getBetaOverview()`.
+   - **Support** (`/admin/support`, `lib/hq/support-service.ts`) — stuck vendor invitations (pending 5+ days) and stuck team invitations (invited, never accepted, 5+ days), plus notification/digest delivery failures from `notification_log`. A nav badge on "Support" shows the combined count (`components/hq/hq-shell.tsx`).
+   - **System Health** (`/admin/system-health`, `lib/hq/system-health-service.ts`) — cron "heartbeats" (most recent digest send / most recent reminder send, flagged stale past a threshold), delivery counts by channel over 7 days, and a raw recent delivery log.
+   - **Scope call, stated plainly:** "Recent Errors" and "Failed Imports" from the original ask are **not built**. Neither has real backing data today — there's no general application error log, and the CSV import wizard (`lib/import/`) runs synchronously from the client with no background job or failure record to read. Both pages say this explicitly rather than shipping an empty state that looks built but isn't; building either is a real (and separate) instrumentation project, not a UI task.
+   - **Feedback & Roadmap** — no changes needed; `/admin/feedback` already existed and was already in the HQ nav from step 3.
 
 **A route-structure correction made during implementation:** HQ routes moved from `app/(app)/admin/*` (as originally sketched) to a sibling `app/admin/*`, outside the `(app)` route group entirely — nesting inside `(app)` would have wrapped every HQ page in both the venue `WorkspaceShell` and `HqShell` at once. `HqShell` is a complete, independent layout.
+
+**A migration-numbering gotcha, twice:** two of this project's Sprint 108.5 migration files landed on the exact same timestamp prefix as pre-existing, unrelated migration files already sitting in the repo (`20260711000000` collided with `sprint87_venue_analytics.sql`; `20260712000000` collided with `fix_portal_helpers.sql`). Both had to be bumped by one second (`...000001`) — `supabase migration up`'s bookkeeping table primary-keys on the timestamp, so an exact collision fails silently-ish (the actual DDL applies, only the tracking insert errors). Worth grepping `ls supabase/migrations | grep <timestamp-prefix>` before naming a new migration file in this repo, since its migration history isn't in strict chronological/sprint order.
 
 **Marketing site (§3):** IA is finalized above; implementation remains deferred until the HQ foundation and activation work are complete, per your instruction. The repo-location question in §3 stays open until that work begins.

@@ -9,19 +9,21 @@ import {
 } from "lucide-react";
 
 import { Wordmark } from "@/components/brand/wordmark";
+import { getSupportOpsData } from "@/lib/hq/support-service";
 
 type NavItem =
   | { section: string }
-  | { href: string; label: string; icon: React.ComponentType<{ className?: string }>; soon?: boolean };
+  | { href: string; label: string; icon: React.ComponentType<{ className?: string }>; soon?: boolean; badgeKey?: "support" };
 
 const NAV: NavItem[] = [
   { section: "Beta" },
   { href: "/admin", label: "Beta Command Center", icon: Gauge },
   { href: "/admin/feedback", label: "Feedback & Roadmap", icon: MessageSquareHeart },
+  { section: "Operations" },
+  { href: "/admin/support", label: "Support", icon: Headset, badgeKey: "support" },
+  { href: "/admin/analytics", label: "Analytics", icon: LineChart },
+  { href: "/admin/system-health", label: "System Health", icon: Siren },
   { section: "Coming soon" },
-  { href: "/admin/support", label: "Support", icon: Headset, soon: true },
-  { href: "/admin/analytics", label: "Analytics", icon: LineChart, soon: true },
-  { href: "/admin/system-health", label: "System Health", icon: Siren, soon: true },
   { href: "/admin/settings", label: "Settings", icon: Settings, soon: true },
 ];
 
@@ -32,7 +34,12 @@ const NAV: NavItem[] = [
  * §6: beta health is the single most important thing happening in the
  * company for the next 6–12 months, so it's the home page, not a sub-page.
  */
-export function HqShell({ children }: { children: React.ReactNode }) {
+export async function HqShell({ children }: { children: React.ReactNode }) {
+  const supportData = await getSupportOpsData().catch(() => null);
+  const supportBadge = supportData
+    ? supportData.stuckVendorInvites.length + supportData.stuckTeamInvites.length + supportData.notificationFailureCount7d
+    : 0;
+
   return (
     <div className="flex min-h-svh w-full">
       <aside className="hidden w-64 shrink-0 flex-col border-r bg-sidebar lg:flex">
@@ -60,10 +67,17 @@ export function HqShell({ children }: { children: React.ReactNode }) {
                   ) : (
                     <Link
                       href={item.href}
-                      className="flex items-center gap-2 rounded-md px-2.5 py-2 text-sm font-medium text-sidebar-foreground hover:bg-sidebar-accent transition-colors"
+                      className="flex items-center justify-between gap-2 rounded-md px-2.5 py-2 text-sm font-medium text-sidebar-foreground hover:bg-sidebar-accent transition-colors"
                     >
-                      <item.icon className="h-4 w-4" />
-                      {item.label}
+                      <span className="flex items-center gap-2">
+                        <item.icon className="h-4 w-4" />
+                        {item.label}
+                      </span>
+                      {item.badgeKey === "support" && supportBadge > 0 && (
+                        <span className="rounded-full bg-destructive/20 px-1.5 py-0.5 text-[9px] font-semibold text-destructive">
+                          {supportBadge}
+                        </span>
+                      )}
                     </Link>
                   )}
                 </li>
