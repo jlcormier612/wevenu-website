@@ -38,4 +38,7 @@ export type LuvObservation = {
   daysUntil?: number;
   // The suggested next step — what to do with this intelligence
   recommendation?: LuvRecommendation;
+  // Story Mode — renders as a named narrative headline instead of a data row
+  variant?: "story";
+  storyEvidence?: string[]; // supporting data points shown beneath the headline
 };

@@ -57,6 +57,115 @@ function makeTrendObs(spec: TrendSpec): LuvObservation | null {
   };
 }
 
+// ── Story Mode ────────────────────────────────────────────────────────────────
+
+/**
+ * Picks ONE named narrative from the venue's trend data.
+ * "Here's the story of your business this month" — not a list of metrics.
+ *
+ * Archetypes (in priority order):
+ *   needs_attention  ⚠️  — leads down significantly, worth reviewing
+ *   building_momentum 🌟 — leads AND tours both climbing
+ *   strong_month     💗  — bookings up or strong revenue
+ *   couples_loving   ❤️  — high tour-to-booking conversion
+ *   steady           ✨  — neutral / not enough signal
+ */
+export function computeStoryMode(trends: VenueTrends): LuvObservation | null {
+  const { currentMonth: cm, priorMonth: pm, insights } = trends;
+
+  const leadDelta    = delta(cm.leads,              pm.leads);
+  const tourDelta    = delta(cm.tours,              pm.tours);
+  const bookingDelta = delta(cm.booked,             pm.booked);
+  const payDelta     = delta(cm.paymentsCollected,  pm.paymentsCollected);
+  const conversion   = insights.avgTourConversionRate;
+
+  // Not enough data — don't surface a story that can't be backed up
+  const hasSignal = cm.leads > 0 || cm.tours > 0 || cm.booked > 0;
+  if (!hasSignal) return null;
+
+  // Build evidence bullets regardless of archetype
+  const evidence: string[] = [];
+  if (cm.booked > 0)               evidence.push(`${cm.booked} booking${cm.booked !== 1 ? "s" : ""}`);
+  if (cm.tours > 0)                evidence.push(`${cm.tours} tour${cm.tours !== 1 ? "s" : ""}`);
+  if (cm.leads > 0)                evidence.push(`${cm.leads} new lead${cm.leads !== 1 ? "s" : ""}`);
+  if (cm.paymentsCollected > 0)    evidence.push(dollars(cm.paymentsCollected) + " collected");
+  if (conversion !== null && conversion > 0) evidence.push(`${Math.round(conversion)}% tour conversion`);
+
+  // ⚠️ Needs attention — lead volume dropped meaningfully
+  if (leadDelta !== null && leadDelta <= -20) {
+    return {
+      id:            "story_needs_attention",
+      priority:      "medium",
+      variant:       "story",
+      message:       "A few things need your attention.",
+      detail:        `Lead volume is down ${Math.abs(leadDelta)}% vs. last month. Worth checking your inquiry sources.`,
+      link:          "/leads",
+      actionLabel:   "Review leads →",
+      storyEvidence: evidence,
+    };
+  }
+
+  // 🌟 Building momentum — growth in both leads and tours
+  if (leadDelta !== null && leadDelta >= 15 && tourDelta !== null && tourDelta >= 15) {
+    return {
+      id:            "story_building_momentum",
+      priority:      "low",
+      variant:       "story",
+      message:       "You're building momentum.",
+      detail:        `Leads up ${leadDelta}% and tours up ${tourDelta}% — both moving in the right direction.`,
+      link:          "/dashboard",
+      actionLabel:   "View dashboard →",
+      storyEvidence: evidence,
+    };
+  }
+
+  // 💗 Strong month — notable bookings or revenue
+  if ((bookingDelta !== null && bookingDelta >= 25) || (payDelta !== null && payDelta >= 20)) {
+    const highlight = bookingDelta !== null && bookingDelta >= 25
+      ? `Bookings are up ${bookingDelta}% vs. last month.`
+      : `Revenue collected is up ${Math.abs(payDelta!)}% vs. last month.`;
+    return {
+      id:            "story_strong_month",
+      priority:      "low",
+      variant:       "story",
+      message:       "A strong month overall.",
+      detail:        highlight,
+      link:          "/clients",
+      actionLabel:   "View clients →",
+      storyEvidence: evidence,
+    };
+  }
+
+  // ❤️ Couples loving the experience — high conversion quality
+  if (conversion !== null && conversion >= 65 && cm.tours >= 3) {
+    return {
+      id:            "story_couples_loving",
+      priority:      "low",
+      variant:       "story",
+      message:       "Couples are loving the experience.",
+      detail:        `Your tour-to-booking rate is ${Math.round(conversion)}% — well above industry average.`,
+      link:          "/leads",
+      actionLabel:   "View tours →",
+      storyEvidence: evidence,
+    };
+  }
+
+  // ✨ Steady — positive signal but below named-story thresholds
+  if (cm.booked > 0 || (leadDelta !== null && leadDelta > 0)) {
+    return {
+      id:            "story_steady",
+      priority:      "low",
+      variant:       "story",
+      message:       "Things are moving steadily.",
+      detail:        cm.booked > 0 ? `${cm.booked} booking${cm.booked !== 1 ? "s" : ""} this month. Keep the momentum going.` : "Inquiries are up. Keep nurturing them.",
+      link:          "/dashboard",
+      storyEvidence: evidence,
+    };
+  }
+
+  return null;
+}
+
 // ── Main export ───────────────────────────────────────────────────────────────
 
 export function computeTrendObservations(trends: VenueTrends): LuvObservation[] {

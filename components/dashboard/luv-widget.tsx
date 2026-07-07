@@ -1,20 +1,25 @@
 /**
  * LuvWidget — "What Luv noticed today"
  *
+ * Sprint 95: Luv Story Mode added.
+ * When a storyObservation is present it renders FIRST as a named narrative
+ * headline ("💗 A strong month overall.") with evidence bullets beneath.
+ * Individual trend deltas follow in the "What changed" section.
+ *
  * Luv Typography System:
  *   Heart size always matches adjacent text size so it feels natural:
  *     text-sm (14px) → Heart size 14
  *     text-xs (12px) → Heart size 12
  *     text-[10px]    → Heart size 10
- *   Observation message: text-sm text-heading (warm, readable, consistent)
- *   Detail / meta:      text-xs text-muted-foreground
  */
 
 import Link from "next/link";
 import { AlertTriangle, ArrowRight, CheckCircle, Circle, Heart } from "lucide-react";
 
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { RecommendationsPanel } from "@/components/dashboard/recommendations-panel";
 import type { LuvBriefingItem, LuvObservation } from "@/lib/luv/types";
+import type { VenueRecommendation } from "@/lib/luv/recommendation-types";
 
 const DUSTY_ROSE = "#D8A7AA";
 
@@ -26,6 +31,54 @@ export function LuvHeart({ size = 14 }: { size?: number }) {
       style={{ width: size, height: size, color: DUSTY_ROSE, fill: DUSTY_ROSE }}
       className="shrink-0"
     />
+  );
+}
+
+const STORY_EMOJI: Record<string, string> = {
+  story_building_momentum: "🌟",
+  story_strong_month:      "💗",
+  story_couples_loving:    "❤️",
+  story_needs_attention:   "⚠️",
+  story_steady:            "✨",
+};
+
+function StoryCard({ obs }: { obs: LuvObservation }) {
+  const emoji = STORY_EMOJI[obs.id] ?? "✨";
+  return (
+    <div
+      className="rounded-xl p-4 mb-4 space-y-2.5"
+      style={{
+        background: `color-mix(in oklch, ${DUSTY_ROSE} 8%, var(--card))`,
+        border: `1px solid ${DUSTY_ROSE}30`,
+      }}
+    >
+      <div className="flex items-start gap-3">
+        <span className="text-xl mt-0.5 shrink-0" aria-hidden>{emoji}</span>
+        <div className="flex-1 min-w-0 space-y-1">
+          <p className="text-base font-semibold text-heading leading-snug">{obs.message}</p>
+          {obs.detail && (
+            <p className="text-xs text-muted-foreground leading-relaxed">{obs.detail}</p>
+          )}
+        </div>
+      </div>
+
+      {/* Evidence pills */}
+      {obs.storyEvidence && obs.storyEvidence.length > 0 && (
+        <div className="flex flex-wrap gap-1.5">
+          {obs.storyEvidence.map((e, i) => (
+            <span key={i} className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-background/60 text-muted-foreground border border-border/50">
+              {e}
+            </span>
+          ))}
+        </div>
+      )}
+
+      <Link href={obs.link}
+        className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline underline-offset-2">
+        {obs.actionLabel ?? "View →"}
+        <ArrowRight className="h-3 w-3" />
+      </Link>
+    </div>
   );
 }
 
@@ -70,8 +123,6 @@ function CoordinatorBriefingCard({ obs }: { obs: LuvObservation }) {
 function ObservationRow({ obs }: { obs: LuvObservation }) {
   if (obs.briefingItems) return <CoordinatorBriefingCard obs={obs} />;
 
-  const DUSTY_ROSE = "#D8A7AA";
-
   return (
     <div className="py-3 border-b border-border/60 last:border-0 space-y-2">
       <div className="flex items-start gap-3">
@@ -87,7 +138,6 @@ function ObservationRow({ obs }: { obs: LuvObservation }) {
           {obs.actionLabel ?? "View →"}
         </Link>
       </div>
-      {/* Recommendation — the suggested next step */}
       {obs.recommendation && (
         <div className="ml-5">
           <Link href={obs.recommendation.link}
@@ -110,12 +160,32 @@ function ObservationRow({ obs }: { obs: LuvObservation }) {
 export function LuvWidget({
   observations,
   trendObservations = [],
+  storyObservation = null,
+  memoryObservations = [],
+  insightObservations = [],
+  actionObservations = [],
+  pendingActionObservations = [],
+  performanceObservations = [],
+  recommendations = [],
 }: {
-  observations: LuvObservation[];
-  trendObservations?: LuvObservation[];
+  observations:               LuvObservation[];
+  trendObservations?:         LuvObservation[];
+  storyObservation?:          LuvObservation | null;
+  memoryObservations?:        LuvObservation[];
+  insightObservations?:       LuvObservation[];
+  actionObservations?:        LuvObservation[];
+  pendingActionObservations?: LuvObservation[];
+  performanceObservations?:   LuvObservation[];
+  recommendations?:           VenueRecommendation[];
 }) {
-  const hasToday = observations.length > 0;
-  const hasTrends = trendObservations.length > 0;
+  const hasToday       = observations.length > 0;
+  const hasTrends      = trendObservations.length > 0;
+  const hasStory       = storyObservation !== null;
+  const hasMemories    = memoryObservations.length > 0;
+  const hasInsights    = insightObservations.length > 0;
+  const hasActions     = actionObservations.length > 0;
+  const hasPending     = pendingActionObservations.length > 0;
+  const hasPerformance = performanceObservations.length > 0;
 
   return (
     <Card
@@ -135,6 +205,10 @@ export function LuvWidget({
       </CardHeader>
 
       <CardContent className="pt-0">
+        {/* Story Mode — named narrative headline, shown first when present */}
+        {hasStory && <StoryCard obs={storyObservation!} />}
+
+        {/* Today's observations */}
         {!hasToday ? (
           <div className="flex items-center gap-2 py-4">
             <LuvHeart size={14} />
@@ -150,7 +224,7 @@ export function LuvWidget({
           </div>
         )}
 
-        {/* Trend intelligence — "What changed this month" */}
+        {/* Trend details — "What changed this month" */}
         {hasTrends && (
           <div className="mt-4 border-t border-[#D8A7AA]/20 pt-4">
             <div className="flex items-center gap-1.5 mb-2">
@@ -165,8 +239,85 @@ export function LuvWidget({
           </div>
         )}
 
-        {/* Signature */}
-        {(hasToday || hasTrends) && (
+        {/* Memory observations — "What Luv remembers" */}
+        {hasMemories && (
+          <div className="mt-4 border-t border-[#D8A7AA]/20 pt-4">
+            <div className="flex items-center gap-1.5 mb-2">
+              <LuvHeart size={12} />
+              <p className="text-xs font-semibold text-heading tracking-wide">
+                What Luv remembers
+              </p>
+            </div>
+            {memoryObservations.map((obs) => (
+              <ObservationRow key={obs.id} obs={obs} />
+            ))}
+          </div>
+        )}
+
+        {/* Insight observations — "What Luv is learning" */}
+        {hasInsights && (
+          <div className="mt-4 border-t border-[#D8A7AA]/20 pt-4">
+            <div className="flex items-center gap-1.5 mb-2">
+              <LuvHeart size={12} />
+              <p className="text-xs font-semibold text-heading tracking-wide">
+                What Luv is learning
+              </p>
+            </div>
+            {insightObservations.map((obs) => (
+              <ObservationRow key={obs.id} obs={obs} />
+            ))}
+          </div>
+        )}
+
+        {/* Pending actions — "What Luv is watching" */}
+        {hasPending && (
+          <div className="mt-4 border-t border-[#D8A7AA]/20 pt-4">
+            <div className="flex items-center gap-1.5 mb-2">
+              <LuvHeart size={12} />
+              <p className="text-xs font-semibold text-heading tracking-wide">
+                What Luv is watching
+              </p>
+            </div>
+            {pendingActionObservations.map((obs) => (
+              <ObservationRow key={obs.id} obs={obs} />
+            ))}
+          </div>
+        )}
+
+        {/* Action outcomes — "What Luv tracked" */}
+        {hasActions && (
+          <div className="mt-4 border-t border-[#D8A7AA]/20 pt-4">
+            <div className="flex items-center gap-1.5 mb-2">
+              <LuvHeart size={12} />
+              <p className="text-xs font-semibold text-heading tracking-wide">
+                What Luv tracked
+              </p>
+            </div>
+            {actionObservations.map((obs) => (
+              <ObservationRow key={obs.id} obs={obs} />
+            ))}
+          </div>
+        )}
+
+        {/* Performance intelligence — "What Luv has learned" */}
+        {hasPerformance && (
+          <div className="mt-4 border-t border-[#D8A7AA]/20 pt-4">
+            <div className="flex items-center gap-1.5 mb-2">
+              <LuvHeart size={12} />
+              <p className="text-xs font-semibold text-heading tracking-wide">
+                What Luv has learned
+              </p>
+            </div>
+            {performanceObservations.map((obs) => (
+              <ObservationRow key={obs.id} obs={obs} />
+            ))}
+          </div>
+        )}
+
+        {/* Recommendations — "Recommended next steps" */}
+        <RecommendationsPanel recommendations={recommendations} />
+
+        {(hasToday || hasTrends || hasStory || hasMemories || hasInsights || hasPending || hasActions || hasPerformance || recommendations.length > 0) && (
           <div className="flex items-center justify-end gap-1 pt-3 pb-0.5">
             <LuvHeart size={10} />
             <p className="text-[10px] text-muted-foreground">Luv — your venue assistant</p>
