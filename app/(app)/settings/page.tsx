@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 
 import { CapacityRulesSection } from "@/components/availability/capacity-rules-section";
 import { VenueSpacesSection } from "@/components/availability/venue-spaces-section";
@@ -61,6 +62,36 @@ export default async function SettingsPage() {
       />
       <VenueSettings initial={settings.input} venueId={settings.venueId} />
       {venue && <StripeConnectSection venue={venue} />}
+
+      {/* ── Import Data ────────────────────────────────────────────── */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Import Existing Data</CardTitle>
+          <CardDescription>
+            Bring your couples, leads, and vendors into Wevenu from any CSV export. No template required — map your own column names.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-wrap gap-3">
+            <Link href="/settings/import?type=couples" className="text-sm font-medium text-primary hover:underline">Import Couples →</Link>
+            <Link href="/settings/import?type=leads" className="text-sm font-medium text-primary hover:underline">Import Leads →</Link>
+            <Link href="/settings/import?type=vendors" className="text-sm font-medium text-primary hover:underline">Import Vendors →</Link>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* ── Team ───────────────────────────────────────────────────── */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Team</CardTitle>
+          <CardDescription>
+            Invite coordinators and staff to access the workspace.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Link href="/settings/team" className="text-sm font-medium text-primary hover:underline">Manage Team →</Link>
+        </CardContent>
+      </Card>
 
       {/* ── Availability & Spaces ───────────────────────────────────── */}
       <Card>

@@ -67,6 +67,8 @@ export type EventTask = {
   escalationAfterDays: number | null;
   notifyOnAssign: boolean;
   notifyOnComplete: boolean;
+  assignedToStaffId: string | null;
+  assignedToName: string | null;
 };
 
 export type TaskReminderType = "upcoming" | "due_today" | "overdue" | "escalation";
