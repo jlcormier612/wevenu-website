@@ -24,7 +24,7 @@ Programs 2–5 absorb the old Bucket 2/3/4 gap-analysis findings below (Operatio
 
 If I were a former Weven customer, burned once already, evaluating Wevenu:
 
-1. **I can leave whenever I want, with all my data, and nothing feels held together with tape.** Portability isn't a nice-to-have for this audience — it's the whole psychological premise of trusting a platform again. Doesn't exist at all today (venue or couple side).
+1. **I can leave whenever I want, with all my data, and nothing feels held together with tape.** Portability isn't a nice-to-have for this audience — it's the whole psychological premise of trusting a platform again. ~~Doesn't exist at all today~~ — **shipped 2026-07-07** on both venue and couple sides (TR-G2).
 2. **Every document my clients and vendors see is polished.** Right now several aren't — see the Trust Risk Register and Gap Analysis below.
 3. **Wedding day cannot fail on my phone.** The 5 named mobile scenarios need to all pass, not 2 of 5.
 4. **My couples' planning data is portable too**, not just the venue's.
@@ -130,12 +130,12 @@ Track 1's three non-negotiable items are now all closed. TR-M4/B2/B3 remain as s
 
 | ID | Item | Status |
 |---|---|---|
-| TR-G2 | Data export — venue and couple side | Identified — highest-priority Track 2 item given this cohort's history |
-| TR-M3 | Refund/void capability | Identified |
-| TR-L3 | Enhanced e-signature evidence (IP/user-agent/consent capture) | Identified |
-| TR-M1 (permanent fix) | Real Stripe payment collection | Identified — genuine feature build, not a patch |
+| TR-G2 | Data export — venue and couple side | ✅ Resolved (2026-07-07) |
+| TR-M3 | Refund/void capability | ✅ Resolved (2026-07-07) — Owner-only per the decided permissions model |
+| TR-L3 | Enhanced e-signature evidence (IP/user-agent/consent capture) | ✅ Resolved (2026-07-07) |
+| TR-M1 (permanent fix) | Real Stripe payment collection | Not started — external-dependency checkpoint, needs a live Stripe test-mode account before it can be built and verified the way every other item in this register was |
 
-Track 2 doesn't block Track 1 and can be scoped/built in parallel once Track 1's active three items land — but per Program 1's own rule, none of Program 2 starts until both tracks are closed.
+Track 2 is substantially closed. The one open item, real Stripe payment collection, is a genuine feature build that needs external credentials this environment doesn't have — flagged back rather than built and merged unverified.
 
 **After Program 1 closes:** re-run the full Trust Beta Readiness Scorecard (below) category by category and update `docs/trust-risk-register.md`'s Status column for every item to Resolved. Comparing the before/after scorecard — how many of the 6 Red categories move to Yellow or Green — is the actual measure of whether Program 1 worked, not a feature count.
 
@@ -161,16 +161,16 @@ The original ten-category scorecard, kept as a reference view alongside the risk
 |---|---|:---:|---|
 | 1 | Messaging & Texting | 🔴 Red | Texting doesn't exist at all; two disconnected coordinator-facing messaging systems; no vendor channel |
 | 2 | Lead Capture & Consolidation | 🔴 Red | Zero external integrations exist (Facebook/WeddingWire/TheKnot are placeholder copy) |
-| 3 | Money | 🔴 Red *(2 of 5 Trust Risk items closed 2026-07-07 — see below)* | Stripe Connect facade now honestly labeled (permanent fix pending); invoice balance-reset bug fixed; refund capability, double-marking guard, hard-delete guards, and document branding remain |
+| 3 | Money | 🟡 Yellow *(moved from Red 2026-07-07 — 4 of 5 Trust Risk items closed/mitigated)* | Stripe Connect facade honestly labeled (permanent fix pending — the one open Trust Risk item, needs live credentials); invoice balance-reset bug fixed; hard-delete guard and refund/void capability both shipped and Owner-gated. Only TR-M4 (double-marking guard, small) and document branding remain |
 | 4 | Setup & Onboarding | 🟡 Yellow | Fast, real wizard + Getting Started checklist; "in-app help"/"easy support access" are just an async ticket form |
-| 5 | Client Experience (Couple Portal) | 🟢 Green→🟡 | Most mature area in the product; seating chart has zero mobile styling and there's no couple data export |
+| 5 | Client Experience (Couple Portal) | 🟢 Green | Most mature area in the product; couple data export shipped (TR-G2). Remaining gap: seating chart has zero mobile styling — Operational Completeness, not a Trust Risk |
 | 6 | End-to-End Workflow Automation | 🟡 Yellow→🔴 | Real automation exists but the flagship "at a glance" promise isn't delivered; confirmed dead trigger; contract-signed trigger fires on send |
 | 7 | White Labeling | 🔴 Red | Couple portal, all client-facing emails, and the contract-signing page all say "Wevenu," not the venue's name |
 | 8 | Calendar | 🟢 Green *(moved from Red 2026-07-07)* | Double-booking is now server-enforced on manual event create/update, matching the public tour widget. Remaining gaps (no team visibility on the grid, month-only view) are Operational Completeness / Honest V1 Limitation, not Trust Risks |
 | 9 | Pipeline & Lead Management | 🟡 Yellow→🔴 | Real, DB-backed reporting (a genuine strength); but pipeline stages are fixed and leads can't be assigned to a team member |
 | 10 | Notifications, Permissions & Reporting | 🟡 Yellow *(moved from Red 2026-07-07)* | Reporting is a real strength. Permissions are now real — role enforced server-side and at the RLS layer, not cosmetic (TR-G1 Resolved). Stays Yellow, not Green: "My Tasks" is still mislabeled (shows every open lead-task venue-wide) and SMS/push remain honestly "Planned" |
 
-**Original baseline: 6 of 10 Red, two of the three "Yellow" ratings leaning Red.** After Track 1 of Program 1 closed (2026-07-07): **Calendar moved Red → Green, Notifications/Permissions/Reporting moved Red → Yellow**, and Money's most dangerous findings closed (still Red overall — see Gap Analysis below — but the Stripe facade, the silent-erasure bug, and the last unguarded financial hard-delete are all gone). 4 of 10 remain Red. This is exactly the exercise to keep re-running as Program 1 continues — category movement, not ticket count, is the real measure.
+**Original baseline: 6 of 10 Red, two of the three "Yellow" ratings leaning Red.** After Program 1's Track 1 and Track 2 both closed (2026-07-07): **Calendar moved Red → Green, Notifications/Permissions/Reporting moved Red → Yellow, Money moved Red → Yellow, and Client Experience moved fully Green** (couple data export closed its one open gap). 3 of 10 are now solidly Red (Messaging & Texting, Lead Capture & Consolidation, White Labeling) — all three are Operational Completeness / Honest V1 Limitation gaps (Program 2/3 work), not Trust Risks; none of the remaining Red or Yellow ratings anywhere in this table trace back to an open Trust Risk Register item except TR-M1's permanent fix (real Stripe collection, the one item still open). This is exactly the exercise to keep re-running as new Programs close — category movement, not ticket count, is the real measure.
 
 ---
 
@@ -189,8 +189,8 @@ The original ten-category scorecard, kept as a reference view alongside the risk
 - What's solid: the one built channel (embeddable form + manual entry) works well — real-time notifications, inline reply, real lead scoring/momentum language.
 - Cheap bug: the automated form hardcodes `source = 'website_form'`, mismatching the `LEAD_SOURCES` dropdown's `'website'` — silently splits one channel into two in reporting.
 
-### 3. Money — 🔴 Red *(2026-07-07: invoice balance-reset bug and hard-delete guard Resolved, Stripe facade Mitigated — see register)*
-- See the Trust Risk Register above for the full, verified detail (Stripe facade, invoice balance-reset bug — both closed/mitigated — plus no refund capability and payment double-marking, still open).
+### 3. Money — 🟡 Yellow *(2026-07-07: invoice balance-reset bug, hard-delete guard, and refund/void capability all Resolved, Stripe facade Mitigated — see register)*
+- See the Trust Risk Register above for the full, verified detail. Only two Money items remain open: TR-M1's permanent fix (real Stripe collection — needs live credentials) and TR-M4 (payment double-marking guard — small, queued).
 - Additionally: the contract-signing page carries zero venue branding; no automated "please sign" email exists; invoice emails are plain text with zero HTML despite the invoice *document* itself being properly branded; the `/payments` list page has zero responsive styling.
 - What's solid: payment schedules/line items, invoice generation, and the underlying financial data model are mature and already power real reporting elsewhere.
 
@@ -199,9 +199,10 @@ The original ten-category scorecard, kept as a reference view alongside the risk
 - The wizard's own Payments step is a disabled "coming soon" placeholder — consistent with, and worth fixing alongside, the Money findings.
 - No help center, tooltips, guided tour, or live-chat widget anywhere (checked for Intercom/Crisp/Zendesk/Drift/HelpScout — none present). The only support channel is an async ticket form.
 
-### 5. Client Experience (Couple Portal) — 🟢 Green, leaning 🟡
+### 5. Client Experience (Couple Portal) — 🟢 Green *(moved fully Green 2026-07-07 — see register, TR-G2 Resolved)*
 - The most mature surface in the whole audit: 11,367 lines, 12 sections, 15 nav items, essentially no real "coming soon" stubs.
-- Two concrete gaps: the seating-chart component has zero responsive classes, and there's no export of the couple's own data (guest list, budget, seating) — only import.
+- ~~There's no export of the couple's own data~~ — **fixed:** guest list, budget, and seating are all downloadable on demand from the portal header. See `docs/trust-risk-register.md` TR-G2.
+- Remaining gap, not a trust risk: the seating-chart component has zero responsive classes.
 
 ### 6. End-to-End Workflow Automation — 🟡 Yellow, leaning 🔴
 - Real automation: playbook due dates computed relative to the event date, dependent-task blocking/unblocking, and 3 working auto-complete triggers, backed by a real cron-driven reminder engine.
