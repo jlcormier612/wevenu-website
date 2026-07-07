@@ -9,12 +9,14 @@
 | Program | Theme | Contains |
 |---|---|---|
 | **1 — Trust Foundation** | *(current focus — see below)* | Trust Risk Register, Permissions, Financial integrity, Contract integrity, Audit logging, Data export |
-| 2 — Venue Operations | Running the day-to-day | Calendar, Messaging, Floor plans, Documents, Workflows |
+| 2 — Venue Operations | Running the day-to-day *(broadened 2026-07-07 — see note below)* | Calendar as the backbone connecting availability, tours, events, planning meetings, payment due dates, walkthroughs, wedding-day ops, and internal team scheduling; unifying tour-request and info-request into one Lead object; Messaging, Floor plans, Documents, Workflows |
 | 3 — Customer Experience | What couples/vendors feel | Couple Portal, White labeling, Onboarding, Mobile polish, Notifications |
 | 4 — Intelligence | The differentiated moat | Luv, Analytics, Recommendations, Wevenu HQ |
 | 5 — Ecosystem | Beyond a single venue | Marketplace, Vendor network, Ecosystem Luv |
 
 Programs 2–5 absorb the old Bucket 2/3/4 gap-analysis findings below (Operational Completeness, Expectation Exceeders, Honest V1 Limitations) — that detail doesn't need to be redone, just re-homed under a Program instead of a numbered Phase when its turn comes.
+
+**Program 2 note (2026-07-07):** the venue lifecycle begins before a lead exists — a tour request and an info request should flow into the same Lead object rather than being treated as separate paths, and Calendar should become the backbone connecting availability, tours, events, planning meetings, payment due dates, walkthroughs, wedding-day operations, and internal team scheduling, not just the events grid it is today. This is a real scope expansion of Program 2, not yet designed — it deserves the same "design before code" pass as TR-M1 got (`docs/stripe-payment-architecture.md`) once Program 1 closes and Program 2 starts in earnest. Not started this pass.
 
 **Method:** Every claim below is grounded in code-level audits across this session — the Mobile & Trust Audit (5 named scenarios), a pass on Calendar/Floor Plans/Couple Portal/Email templates, a pass on Lead Capture/Pipeline/White Labeling/Automation/Permissions/Onboarding/SMS, and a final targeted pass hunting specifically for money-loss, booking-loss, and legal-exposure risks (contract immutability, staff-removal access revocation, payment reconciliation, silently-swallowed errors on financial/booking paths). Two of the highest-stakes findings — that Stripe Connect never actually charges a card, and that e-signatures capture no IP/consent trail — were verified hands-on, not just read. Nothing here is guessed; file paths and line numbers are in the session history if you want to verify a specific claim yourself.
 
@@ -133,9 +135,9 @@ Track 1's three non-negotiable items are now all closed. TR-M4/B2/B3 remain as s
 | TR-G2 | Data export — venue and couple side | ✅ Resolved (2026-07-07) |
 | TR-M3 | Refund/void capability | ✅ Resolved (2026-07-07) — Owner-only per the decided permissions model |
 | TR-L3 | Enhanced e-signature evidence (IP/user-agent/consent capture) | ✅ Resolved (2026-07-07) |
-| TR-M1 (permanent fix) | Real Stripe payment collection | Not started — external-dependency checkpoint, needs a live Stripe test-mode account before it can be built and verified the way every other item in this register was |
+| TR-M1 (permanent fix) | Real Stripe payment collection | Design complete (`docs/stripe-payment-architecture.md`) — implementation blocked on a live Stripe test-mode account |
 
-Track 2 is substantially closed. The one open item, real Stripe payment collection, is a genuine feature build that needs external credentials this environment doesn't have — flagged back rather than built and merged unverified.
+Track 2 is substantially closed. The one open item, real Stripe payment collection, is architected — Direct Charges on the venue's existing Standard Connect account, so money lands directly in the venue's own Stripe balance and never Wevenu's, satisfying the "facilitate, never hold funds" constraint — but building it needs external credentials this environment doesn't have. Note this is explicitly System B ("Venue Client Payments") only; Wevenu's own future SaaS billing (System A) is a separate, out-of-scope workstream, kept structurally isolated by design.
 
 **After Program 1 closes:** re-run the full Trust Beta Readiness Scorecard (below) category by category and update `docs/trust-risk-register.md`'s Status column for every item to Resolved. Comparing the before/after scorecard — how many of the 6 Red categories move to Yellow or Green — is the actual measure of whether Program 1 worked, not a feature count.
 
