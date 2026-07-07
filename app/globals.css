@@ -83,6 +83,7 @@
   --natural-cream: #f7f5f1; /* surface alt */
   --true-white: #ffffff; /* background (light) · text (dark) */
   --taupe-light: #ded6ca; /* neutral / border */
+  --taupe-medium: #d2cbbf; /* neutral mid */
   --taupe-dark: #b8aea1; /* neutral dark / warning */
   --dusty-rose: #d8a7aa; /* accent / error */
   --black: #000000; /* regular body / print copy (light) */
@@ -123,13 +124,13 @@
 
   --radius: 1rem; /* 16px */
 
-  --sidebar: var(--natural-cream);
+  --sidebar: var(--taupe-medium);
   --sidebar-foreground: var(--forest-sage);
   --sidebar-primary: var(--heritage-sage);
   --sidebar-primary-foreground: var(--true-white);
   --sidebar-accent: var(--linen);
   --sidebar-accent-foreground: var(--forest-sage);
-  --sidebar-border: var(--taupe-light);
+  --sidebar-border: color-mix(in oklch, var(--forest-sage) 25%, var(--taupe-dark));
   --sidebar-ring: var(--heritage-sage);
 
   /* Calendar item dot colors (light mode — dark dots on light surface) */
@@ -181,14 +182,14 @@
   --chart-4: var(--dusty-rose);
   --chart-5: var(--taupe-light);
 
-  --sidebar: var(--heritage-sage);
-  --sidebar-foreground: var(--true-white);
-  --sidebar-primary: var(--soft-sage);
-  --sidebar-primary-foreground: var(--forest-sage);
-  --sidebar-accent: color-mix(in oklch, var(--true-white) 14%, transparent);
-  --sidebar-accent-foreground: var(--true-white);
-  --sidebar-border: color-mix(in oklch, var(--true-white) 18%, transparent);
-  --sidebar-ring: var(--soft-sage);
+  --sidebar: var(--taupe-dark);
+  --sidebar-foreground: var(--forest-sage);
+  --sidebar-primary: var(--heritage-sage);
+  --sidebar-primary-foreground: var(--true-white);
+  --sidebar-accent: color-mix(in oklch, var(--forest-sage) 12%, transparent);
+  --sidebar-accent-foreground: var(--forest-sage);
+  --sidebar-border: color-mix(in oklch, var(--forest-sage) 20%, transparent);
+  --sidebar-ring: var(--heritage-sage);
 
   /* Calendar item dot colors (dark mode — light dots on dark surface) */
   --cal-event:       var(--true-white);     /* white — most important, stands out    */

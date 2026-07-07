@@ -1,7 +1,7 @@
 import { cn } from "@/lib/utils";
 
-const PLATFORM_LOGO_LIGHT = "/brand/wevenu-logo-transparent.png";
-const PLATFORM_LOGO_DARK  = "/brand/wevenu-logo-white.svg";
+const PLATFORM_LOGO_LIGHT = "/brand/Wevenu_Logo_Master_Transparent.png";
+const PLATFORM_LOGO_DARK  = "/brand/Wevenu_Dark_Mode_Primary.png";
 
 /**
  * Renders the Wevenu platform logo everywhere platform branding appears.
@@ -20,7 +20,7 @@ export function Wordmark({
   venueName?: string;
 }) {
   const alt = logoUrl ? (venueName ?? "Venue") : "Wevenu";
-  const sizeClass = showText ? "h-14 w-auto" : "h-10 w-auto";
+  const sizeClass = showText ? "h-11 w-auto" : "h-8 w-auto";
 
   if (logoUrl) {
     return (
