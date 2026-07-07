@@ -6,20 +6,23 @@ import { Loader2, PenLine } from "lucide-react";
 
 import { signContractAction } from "@/app/sign/[token]/actions";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
 export function SignForm({ token }: { token: string }) {
   const [name, setName] = React.useState("");
+  const [consent, setConsent] = React.useState(false);
   const [error, setError] = React.useState("");
   const [done, setDone] = React.useState(false);
   const [pending, startTransition] = React.useTransition();
 
   function handleSign() {
     if (!name.trim()) { setError("Please enter your full name."); return; }
+    if (!consent) { setError("Please confirm you agree this constitutes your legal signature."); return; }
     setError("");
     startTransition(async () => {
-      const result = await signContractAction(token, name);
+      const result = await signContractAction(token, name, consent);
       if (result.ok) {
         setDone(true);
       } else {
@@ -62,6 +65,17 @@ export function SignForm({ token }: { token: string }) {
           aria-invalid={error ? true : undefined}
         />
         {error && <p className="text-xs text-red-600">{error}</p>}
+      </div>
+      <div className="flex items-start gap-2">
+        <Checkbox
+          id="signer-consent"
+          checked={consent}
+          onCheckedChange={(checked) => setConsent(checked === true)}
+          className="mt-0.5 bg-white"
+        />
+        <Label htmlFor="signer-consent" className="text-xs font-normal text-gray-700 leading-snug">
+          I agree this constitutes my legal signature on this agreement.
+        </Label>
       </div>
       <div className="flex items-center gap-2 text-xs text-gray-500">
         <span>Today's date:</span>

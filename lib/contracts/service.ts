@@ -184,10 +184,21 @@ export async function deleteContract_(id: string): Promise<ContractActionResult>
 }
 
 /** Public action — signs via the SECURITY DEFINER RPC (no venue auth needed). */
-export async function signContractByToken(token: string, signerName: string): Promise<{ ok: boolean; message?: string }> {
+export async function signContractByToken(
+  token: string,
+  signerName: string,
+  consent: boolean,
+): Promise<{ ok: boolean; message?: string }> {
   if (!isSupabaseConfigured) return { ok: false, message: "Backend not configured." };
   if (!signerName.trim()) return { ok: false, message: "Please enter your full name." };
+  if (!consent) return { ok: false, message: "Please confirm you agree this constitutes your legal signature." };
   const supabase = await createClient();
+
+  const { headers } = await import("next/headers");
+  const headerList = await headers();
+  const forwardedFor = headerList.get("x-forwarded-for");
+  const ip = forwardedFor ? forwardedFor.split(",")[0].trim() : null;
+  const userAgent = headerList.get("user-agent");
 
   // Look up venue_id/event_id before signing so we can fire the engagement event
   // and the "contract signed" playbook trigger — this is the one place that
@@ -201,6 +212,9 @@ export async function signContractByToken(token: string, signerName: string): Pr
   const { data, error } = await supabase.rpc("sign_contract", {
     p_token: token,
     p_signer: signerName.trim(),
+    p_ip: ip,
+    p_user_agent: userAgent,
+    p_consent: consent,
   });
   if (error) return { ok: false, message: error.message };
   if (!data) return { ok: false, message: "This contract is not available for signing." };

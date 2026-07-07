@@ -6,8 +6,9 @@ import { createClient } from "@/integrations/supabase/server";
 export async function signContractAction(
   token: string,
   signerName: string,
+  consent: boolean,
 ): Promise<{ ok: boolean; message?: string }> {
-  const result = await signContractByToken(token, signerName);
+  const result = await signContractByToken(token, signerName, consent);
   if (result.ok) {
     // Refresh the linked lead's commitment score — contract signed = milestone
     void (async () => {
