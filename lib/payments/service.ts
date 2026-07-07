@@ -25,7 +25,7 @@ import {
   validateMarkPaidInput,
   validateScheduleInput,
 } from "@/lib/payments/validation";
-import { getCurrentVenue } from "@/lib/venue/service";
+import { getCurrentVenue, getCurrentUserRole } from "@/lib/venue/service";
 import { recordEngagementEvent } from "@/lib/activation/service";
 
 async function withVenue<T>(
@@ -213,7 +213,12 @@ export async function cancelLineItem_(itemId: string): Promise<PaymentActionResu
 
 export async function deleteLineItem_(itemId: string): Promise<PaymentActionResult> {
   const result = await withVenue(async (supabase, venueId) => {
-    await repo.deleteLineItem(supabase, venueId, itemId);
+    const role = await getCurrentUserRole();
+    if (role !== "owner" && role !== "manager") {
+      return { ok: false, message: "Only an Owner or Manager can delete a payment line item." } as PaymentActionResult;
+    }
+    const outcome = await repo.deleteLineItem(supabase, venueId, itemId);
+    if (!outcome.ok) return { ok: false, message: outcome.message } as PaymentActionResult;
     return { ok: true } as PaymentActionResult;
   });
   return result as PaymentActionResult;
@@ -221,7 +226,12 @@ export async function deleteLineItem_(itemId: string): Promise<PaymentActionResu
 
 export async function deletePaymentSchedule(scheduleId: string): Promise<PaymentActionResult> {
   const result = await withVenue(async (supabase, venueId) => {
-    await repo.deleteSchedule(supabase, venueId, scheduleId);
+    const role = await getCurrentUserRole();
+    if (role !== "owner" && role !== "manager") {
+      return { ok: false, message: "Only an Owner or Manager can delete a payment schedule." } as PaymentActionResult;
+    }
+    const outcome = await repo.deleteSchedule(supabase, venueId, scheduleId);
+    if (!outcome.ok) return { ok: false, message: outcome.message } as PaymentActionResult;
     return { ok: true } as PaymentActionResult;
   });
   return result as PaymentActionResult;

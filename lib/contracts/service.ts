@@ -2,6 +2,7 @@
  * Contracts application service. Server-only.
  */
 import { createClient } from "@/integrations/supabase/server";
+import { createAdminClient } from "@/integrations/supabase/admin";
 import { isSupabaseConfigured } from "@/lib/env";
 import * as repo from "@/lib/contracts/repository";
 import { buildMergeData, mergeContent } from "@/lib/contracts/merge";
@@ -22,7 +23,7 @@ import {
 } from "@/lib/contracts/validation";
 import { getClient } from "@/lib/clients/service";
 import { getEvent } from "@/lib/events/service";
-import { getCurrentVenue } from "@/lib/venue/service";
+import { getCurrentVenue, getCurrentUserRole } from "@/lib/venue/service";
 
 async function withVenue<T>(
   fn: (supabase: Awaited<ReturnType<typeof createClient>>, venueId: string) => Promise<T>,
@@ -171,6 +172,10 @@ export async function cancelContract(id: string): Promise<ContractActionResult> 
 
 export async function deleteContract_(id: string): Promise<ContractActionResult> {
   const result = await withVenue(async (supabase, venueId) => {
+    const role = await getCurrentUserRole();
+    if (role !== "owner" && role !== "manager") {
+      return { ok: false, message: "Only an Owner or Manager can delete a contract." } as ContractActionResult;
+    }
     const outcome = await repo.deleteContract(supabase, venueId, id);
     if (!outcome.ok) return { ok: false, message: outcome.message } as ContractActionResult;
     return { ok: true } as ContractActionResult;
@@ -184,12 +189,14 @@ export async function signContractByToken(token: string, signerName: string): Pr
   if (!signerName.trim()) return { ok: false, message: "Please enter your full name." };
   const supabase = await createClient();
 
-  // Look up venue_id before signing so we can fire the engagement event
+  // Look up venue_id/event_id before signing so we can fire the engagement event
+  // and the "contract signed" playbook trigger — this is the one place that
+  // should ever fire it (TR-L4: it previously fired on send, not on signature).
   const { data: contractRow } = await supabase
     .from("contracts")
-    .select("id, venue_id")
+    .select("id, venue_id, event_id")
     .eq("sign_token", token)
-    .maybeSingle<{ id: string; venue_id: string }>();
+    .maybeSingle<{ id: string; venue_id: string; event_id: string | null }>();
 
   const { data, error } = await supabase.rpc("sign_contract", {
     p_token: token,
@@ -206,6 +213,15 @@ export async function signContractByToken(token: string, signerName: string): Pr
       entityType: "contract",
       entityId:  contractRow.id,
     });
+
+    // The couple has no venue_staff session here, so use the admin client —
+    // the RPC above already validated the token and flipped status to signed.
+    if (contractRow.event_id) {
+      const { triggerAutoComplete } = await import("@/lib/playbooks/service");
+      const admin = createAdminClient();
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await triggerAutoComplete(admin as any, contractRow.venue_id, contractRow.event_id, "contract_signed");
+    }
   }
 
   return { ok: true };

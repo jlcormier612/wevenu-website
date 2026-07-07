@@ -71,25 +71,23 @@ export async function previewMergedContentAction(opts: {
   }
 }
 
-/** Find the lead linked to a contract (via client) and refresh their scores. */
+/**
+ * Find the lead linked to a contract (via client) and refresh their scores.
+ * Does NOT auto-complete the "contract signed" playbook trigger — that fires
+ * only from the actual signing flow (`signContractByToken`), not on send.
+ * See TR-L4 in docs/trust-risk-register.md.
+ */
 async function refreshContractLeadScore(contractId: string): Promise<void> {
   try {
     const supabase = await createClient();
     const { data } = await supabase.from("contracts")
-      .select("client_id, event_id").eq("id", contractId).maybeSingle<{ client_id: string | null; event_id: string | null }>();
+      .select("client_id").eq("id", contractId).maybeSingle<{ client_id: string | null }>();
     if (!data?.client_id) return;
     const { data: client } = await supabase.from("clients")
       .select("lead_id").eq("id", data.client_id).maybeSingle<{ lead_id: string | null }>();
     if (client?.lead_id) {
       const { refreshLeadScore } = await import("@/lib/leads/scores");
       await refreshLeadScore(client.lead_id);
-    }
-    // Auto-complete playbook tasks with trigger='contract_signed'
-    if (data.event_id) {
-      const { getCurrentVenue } = await import("@/lib/venue/service");
-      const { triggerAutoComplete } = await import("@/lib/playbooks/service");
-      const venue = await getCurrentVenue();
-      if (venue) await triggerAutoComplete(supabase, venue.id, data.event_id, "contract_signed");
     }
   } catch { /* non-blocking */ }
 }
