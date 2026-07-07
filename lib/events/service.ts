@@ -57,6 +57,9 @@ export async function createEvent(input: EventInput): Promise<CreateEventResult>
   const errors = validateEventInput(input);
   if (Object.keys(errors).length > 0) return { ok: false, errors };
   const result = await withVenue(async (supabase, venueId) => {
+    // TR-B1: hard double-booking guard — see lib/events/repository.ts
+    const conflict = await repo.checkEventSpaceConflict(supabase, venueId, input);
+    if (conflict.conflict) return { ok: false, message: conflict.message } as CreateEventResult;
     const eventId = await repo.insertEvent(supabase, venueId, input);
     return { ok: true, eventId } as CreateEventResult;
   });
@@ -69,6 +72,9 @@ export async function updateEvent_(eventId: string, input: EventInput): Promise<
   const errors = validateEventInput(input);
   if (Object.keys(errors).length > 0) return { ok: false, errors };
   const result = await withVenue(async (supabase, venueId) => {
+    // TR-B1: hard double-booking guard — see lib/events/repository.ts
+    const conflict = await repo.checkEventSpaceConflict(supabase, venueId, input, eventId);
+    if (conflict.conflict) return { ok: false, message: conflict.message } as EventActionResult;
     await repo.updateEvent(supabase, venueId, eventId, input);
     await repo.insertEventActivity(supabase, venueId, eventId, "event_updated", "Event details updated");
     return { ok: true } as EventActionResult;

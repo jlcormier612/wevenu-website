@@ -135,11 +135,31 @@ export async function insertContract(client: DbClient, venueId: string, input: N
   return data.id;
 }
 
-export async function updateContractContent(client: DbClient, venueId: string, id: string, title: string, content: string): Promise<void> {
+/**
+ * TR-L1 (Trust Risk Register): this used to have no status check at all —
+ * a signed contract's legally-binding text could be edited exactly like a
+ * draft, with no trace in the activity log. Now only draft contracts are
+ * editable, and every edit is logged.
+ */
+export async function updateContractContent(client: DbClient, venueId: string, id: string, title: string, content: string): Promise<{ ok: true } | { ok: false; message: string }> {
+  const { data: existing, error: fetchError } = await client
+    .from("contracts")
+    .select("status")
+    .eq("id", id).eq("venue_id", venueId)
+    .maybeSingle<{ status: Contract["status"] }>();
+  if (fetchError) throw fetchError;
+  if (!existing) return { ok: false, message: "Contract not found." };
+  if (existing.status !== "draft") {
+    return { ok: false, message: "This contract has already been sent and can no longer be edited." };
+  }
+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { error } = await (client.from("contracts") as any).update({ title: title.trim(), content })
     .eq("id", id).eq("venue_id", venueId);
   if (error) throw error;
+
+  await insertContractActivity(client, venueId, id, "edited", "Contract content edited");
+  return { ok: true };
 }
 
 export async function updateContractStatus(client: DbClient, venueId: string, id: string, status: Contract["status"], extra?: { sentAt?: boolean }): Promise<void> {
@@ -150,9 +170,28 @@ export async function updateContractStatus(client: DbClient, venueId: string, id
   if (error) throw error;
 }
 
-export async function deleteContract(client: DbClient, venueId: string, id: string): Promise<void> {
+/**
+ * TR-L2 (Trust Risk Register): this used to hard-delete any contract
+ * regardless of status — a signed contract (the actual legal record) could
+ * be permanently destroyed the same way a draft could. Now only draft or
+ * cancelled contracts can be deleted; sent/signed contracts must be
+ * cancelled first, preserving the record.
+ */
+export async function deleteContract(client: DbClient, venueId: string, id: string): Promise<{ ok: true } | { ok: false; message: string }> {
+  const { data: existing, error: fetchError } = await client
+    .from("contracts")
+    .select("status")
+    .eq("id", id).eq("venue_id", venueId)
+    .maybeSingle<{ status: Contract["status"] }>();
+  if (fetchError) throw fetchError;
+  if (!existing) return { ok: false, message: "Contract not found." };
+  if (existing.status !== "draft" && existing.status !== "cancelled") {
+    return { ok: false, message: "Only draft or cancelled contracts can be deleted. Cancel this contract first." };
+  }
+
   const { error } = await client.from("contracts").delete().eq("id", id).eq("venue_id", venueId);
   if (error) throw error;
+  return { ok: true };
 }
 
 export async function insertContractActivity(client: DbClient, venueId: string, contractId: string, type: string, title: string, description?: string): Promise<void> {

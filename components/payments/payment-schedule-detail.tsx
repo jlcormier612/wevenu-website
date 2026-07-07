@@ -462,22 +462,19 @@ export function PaymentScheduleDetail({ schedule, invoice }: { schedule: Payment
         </CardContent>
       </Card>
 
-      {/* Stripe Connect placeholder */}
+      {/* TR-M1: online payment collection isn't built yet — see docs/trust-risk-register.md */}
       <Card className="border-dashed border-muted-foreground/30">
         <CardContent className="py-6 flex items-center gap-4">
           <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-muted text-muted-foreground">
             <CreditCard className="h-5 w-5" />
           </span>
           <div className="min-w-0 flex-1">
-            <p className="text-sm font-medium text-heading">Accept online payments with Stripe</p>
+            <p className="text-sm font-medium text-heading">Online payment collection — coming soon</p>
             <p className="text-xs text-muted-foreground mt-0.5">
-              Connect your Stripe account in Settings to accept deposits and installments online.
+              Accepting deposits and installments directly through Wevenu isn&apos;t live yet. Keep recording
+              payments here as you collect them today.
             </p>
           </div>
-          <Button type="button" variant="outline" size="sm"
-            render={<Link href="/settings#stripe" />}>
-            Set up Stripe →
-          </Button>
         </CardContent>
       </Card>
 

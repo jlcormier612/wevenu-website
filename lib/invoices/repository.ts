@@ -118,11 +118,38 @@ export async function updateInvoiceStatus(client: DbClient, venueId: string, inv
   if (error) throw error;
 }
 
+/**
+ * TR-M2 (Trust Risk Register): this used to unconditionally set
+ * `balance_due = total`, silently erasing any payments already collected
+ * every time a line item was added or removed — a couple could pay a
+ * deposit, and a completely routine invoice edit later would reset the
+ * displayed balance back to the full amount. Now payment-aware: subtracts
+ * everything already paid toward this invoice, the same computation
+ * `reconcileInvoiceBalance` (lib/payments/repository.ts) uses after a
+ * payment is recorded, so the two can never disagree.
+ */
 async function recomputeInvoiceTotals(client: DbClient, venueId: string, invoiceId: string): Promise<void> {
   const { data } = await client.from("invoice_line_items").select("type, amount").eq("invoice_id", invoiceId);
   const { subtotal, discountAmount, taxAmount, total } = computeInvoiceTotals(
     (data ?? []) as { type: InvoiceLineItem["type"]; amount: number }[]
   );
+
+  const totalPaid = await getTotalPaidForInvoice(client, venueId, invoiceId);
+  const balanceDue = Math.max(0, total - totalPaid);
+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  await (client.from("invoices") as any).update({ subtotal, discount_amount: discountAmount, tax_amount: taxAmount, total, balance_due: total }).eq("id", invoiceId).eq("venue_id", venueId);
+  await (client.from("invoices") as any).update({ subtotal, discount_amount: discountAmount, tax_amount: taxAmount, total, balance_due: balanceDue }).eq("id", invoiceId).eq("venue_id", venueId);
+}
+
+/** Sums every `paid` payment_line_item across every schedule linked to this invoice. */
+async function getTotalPaidForInvoice(client: DbClient, venueId: string, invoiceId: string): Promise<number> {
+  const { data: schedules } = await client.from("payment_schedules").select("id").eq("invoice_id", invoiceId).eq("venue_id", venueId);
+  const scheduleIds = (schedules ?? []).map((s: { id: string }) => s.id);
+  if (scheduleIds.length === 0) return 0;
+
+  const { data: paidItems } = await client.from("payment_line_items").select("amount, paid_amount").in("schedule_id", scheduleIds).eq("status", "paid");
+  return (paidItems ?? []).reduce(
+    (sum: number, item: { amount: number; paid_amount: number | null }) => sum + (item.paid_amount != null ? Number(item.paid_amount) : Number(item.amount)),
+    0,
+  );
 }

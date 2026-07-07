@@ -144,7 +144,8 @@ export async function buildContractMergeData(opts: {
 export async function updateContractContent_(id: string, title: string, content: string): Promise<ContractActionResult> {
   if (!title.trim() || !content.trim()) return { ok: false, message: "Title and content are required." };
   const result = await withVenue(async (supabase, venueId) => {
-    await repo.updateContractContent(supabase, venueId, id, title, content);
+    const outcome = await repo.updateContractContent(supabase, venueId, id, title, content);
+    if (!outcome.ok) return { ok: false, message: outcome.message } as ContractActionResult;
     return { ok: true } as ContractActionResult;
   });
   return result as ContractActionResult;
@@ -170,7 +171,8 @@ export async function cancelContract(id: string): Promise<ContractActionResult> 
 
 export async function deleteContract_(id: string): Promise<ContractActionResult> {
   const result = await withVenue(async (supabase, venueId) => {
-    await repo.deleteContract(supabase, venueId, id);
+    const outcome = await repo.deleteContract(supabase, venueId, id);
+    if (!outcome.ok) return { ok: false, message: outcome.message } as ContractActionResult;
     return { ok: true } as ContractActionResult;
   });
   return result as ContractActionResult;
