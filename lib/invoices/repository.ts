@@ -141,15 +141,23 @@ async function recomputeInvoiceTotals(client: DbClient, venueId: string, invoice
   await (client.from("invoices") as any).update({ subtotal, discount_amount: discountAmount, tax_amount: taxAmount, total, balance_due: balanceDue }).eq("id", invoiceId).eq("venue_id", venueId);
 }
 
-/** Sums every `paid` payment_line_item across every schedule linked to this invoice. */
+/**
+ * Sums every payment_line_item across every schedule linked to this invoice
+ * that's been collected, net of any refund (TR-M3) — 'paid', 'partially_refunded',
+ * and 'refunded' all contribute paid_amount - refunded_amount, so a full refund
+ * naturally nets to zero without a separate branch.
+ */
 async function getTotalPaidForInvoice(client: DbClient, venueId: string, invoiceId: string): Promise<number> {
   const { data: schedules } = await client.from("payment_schedules").select("id").eq("invoice_id", invoiceId).eq("venue_id", venueId);
   const scheduleIds = (schedules ?? []).map((s: { id: string }) => s.id);
   if (scheduleIds.length === 0) return 0;
 
-  const { data: paidItems } = await client.from("payment_line_items").select("amount, paid_amount").in("schedule_id", scheduleIds).eq("status", "paid");
+  const { data: paidItems } = await client.from("payment_line_items")
+    .select("amount, paid_amount, refunded_amount")
+    .in("schedule_id", scheduleIds).in("status", ["paid", "partially_refunded", "refunded"]);
   return (paidItems ?? []).reduce(
-    (sum: number, item: { amount: number; paid_amount: number | null }) => sum + (item.paid_amount != null ? Number(item.paid_amount) : Number(item.amount)),
+    (sum: number, item: { amount: number; paid_amount: number | null; refunded_amount: number | null }) =>
+      sum + (item.paid_amount != null ? Number(item.paid_amount) : Number(item.amount)) - Number(item.refunded_amount ?? 0),
     0,
   );
 }

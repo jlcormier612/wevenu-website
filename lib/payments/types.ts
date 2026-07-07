@@ -2,7 +2,7 @@
  * Payments domain types (Sprint 16 — Payments Foundation).
  */
 
-export type PaymentItemStatus = "pending" | "overdue" | "paid" | "cancelled";
+export type PaymentItemStatus = "pending" | "overdue" | "paid" | "cancelled" | "partially_refunded" | "refunded";
 
 export type PaymentSchedule = {
   id: string;
@@ -35,6 +35,9 @@ export type PaymentLineItem = {
   referenceNumber: string | null;
   notes: string | null;
   sortOrder: number;
+  refundedAmount: number;
+  refundedAt: string | null;
+  refundReason: string | null;
   createdAt: string;
   updatedAt: string;
 };

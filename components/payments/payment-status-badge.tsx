@@ -3,10 +3,12 @@ import { STATUS_LABEL } from "@/lib/payments/constants";
 import type { PaymentItemStatus } from "@/lib/payments/types";
 
 const VARIANT: Record<PaymentItemStatus, BadgeVariant> = {
-  pending:   "muted",
-  overdue:   "destructive",
-  paid:      "success",
-  cancelled: "outline",
+  pending:            "muted",
+  overdue:            "destructive",
+  paid:               "success",
+  cancelled:          "outline",
+  partially_refunded: "warning",
+  refunded:           "warning",
 };
 
 export function PaymentStatusBadge({ status }: { status: PaymentItemStatus }) {

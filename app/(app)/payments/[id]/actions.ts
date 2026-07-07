@@ -7,6 +7,7 @@ import {
   cancelLineItem_,
   deleteLineItem_,
   markLineItemPaid,
+  refundLineItem_,
   updateLineItem_,
 } from "@/lib/payments/service";
 import type {
@@ -64,6 +65,17 @@ export async function cancelItemAction(itemId: string, scheduleId: string): Prom
 
 export async function deleteItemAction(itemId: string, scheduleId: string): Promise<PaymentActionResult> {
   const result = await deleteLineItem_(itemId);
+  if (result.ok) revalidate(scheduleId);
+  return result;
+}
+
+export async function refundItemAction(
+  itemId: string,
+  scheduleId: string,
+  refundAmount: number,
+  reason?: string,
+): Promise<PaymentActionResult> {
+  const result = await refundLineItem_(itemId, scheduleId, refundAmount, reason);
   if (result.ok) revalidate(scheduleId);
   return result;
 }

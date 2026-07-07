@@ -21,10 +21,12 @@ export function paymentMethodLabel(value: string | null): string {
 }
 
 export const STATUS_LABEL: Record<PaymentItemStatus, string> = {
-  pending:   "Pending",
-  overdue:   "Overdue",
-  paid:      "Paid",
-  cancelled: "Cancelled",
+  pending:            "Pending",
+  overdue:            "Overdue",
+  paid:               "Paid",
+  cancelled:          "Cancelled",
+  partially_refunded: "Partially Refunded",
+  refunded:           "Refunded",
 };
 
 export function formatMoney(
@@ -63,16 +65,16 @@ export function deriveScheduleStatus(
   if (items.length === 0) return "no_payments";
   const active = items.filter((i) => i.status !== "cancelled");
   if (active.length === 0) return "no_payments";
+  if (active.some((i) => i.status === "overdue" || i.status === "refunded" || i.status === "partially_refunded")) return "attention";
   if (active.every((i) => i.status === "paid")) return "complete";
-  if (active.some((i) => i.status === "overdue")) return "attention";
   return "on_track";
 }
 
-/** Compute the total amount paid across all paid line items. */
+/** Total amount actually retained across collected line items, net of any refund (TR-M3). */
 export function computeTotalPaid(items: PaymentLineItem[]): number {
   return items
-    .filter((i) => i.status === "paid")
-    .reduce((sum, i) => sum + (i.paidAmount ?? i.amount), 0);
+    .filter((i) => i.status === "paid" || i.status === "partially_refunded" || i.status === "refunded")
+    .reduce((sum, i) => sum + (i.paidAmount ?? i.amount) - (i.refundedAmount ?? 0), 0);
 }
 
 /** Schedule template presets for quick setup. */

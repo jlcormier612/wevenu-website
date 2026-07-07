@@ -23,6 +23,7 @@ import {
   cancelItemAction,
   deleteItemAction,
   markPaidAction,
+  refundItemAction,
   updateLineItemAction,
 } from "@/app/(app)/payments/[id]/actions";
 import {
@@ -43,6 +44,7 @@ import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
 import {
   PAYMENT_METHODS,
+  computeTotalPaid,
   daysUntil,
   formatDate,
   formatMoney,
@@ -171,6 +173,53 @@ function MarkPaidForm({
   );
 }
 
+// ---- Refund form -------------------------------------------------------------
+
+function RefundForm({
+  item,
+  onSave,
+  onCancel,
+  pending,
+}: {
+  item: PaymentLineItem;
+  onSave: (amount: number, reason: string) => void;
+  onCancel: () => void;
+  pending: boolean;
+}) {
+  const collected = item.paidAmount ?? item.amount;
+  const refundable = collected - (item.refundedAmount ?? 0);
+  const [amount, setAmount] = React.useState(String(refundable));
+  const [reason, setReason] = React.useState("");
+  const parsed = parseFloat(amount);
+  const valid = !Number.isNaN(parsed) && parsed > 0 && parsed <= refundable + 0.001;
+
+  return (
+    <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-4 space-y-3">
+      <p className="text-sm font-medium text-heading">Issue Refund</p>
+      <p className="text-xs text-muted-foreground">
+        Up to {formatMoney(refundable)} can be refunded on this payment.
+      </p>
+      <div className="grid gap-3 sm:grid-cols-2">
+        <div className="space-y-1.5">
+          <Label className="text-xs">Refund amount *</Label>
+          <Input value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="0.00" aria-invalid={!valid} />
+        </div>
+        <div className="space-y-1.5">
+          <Label className="text-xs">Reason <span className="font-normal text-muted-foreground">(optional)</span></Label>
+          <Input value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Cancellation, overpayment…" />
+        </div>
+      </div>
+      <div className="flex items-center justify-end gap-2">
+        <Button type="button" variant="ghost" size="sm" onClick={onCancel} disabled={pending}>Cancel</Button>
+        <Button type="button" size="sm" variant="destructive" disabled={!valid || pending}
+          onClick={() => onSave(parsed, reason)}>
+          {pending ? <><Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />Refunding…</> : "Issue Refund"}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 // ---- Single line item row ---------------------------------------------------
 
 function LineItemRow({
@@ -188,13 +237,18 @@ function LineItemRow({
 }) {
   const [editMode, setEditMode] = React.useState(false);
   const [payMode, setPayMode] = React.useState(false);
+  const [refundMode, setRefundMode] = React.useState(false);
   const [editPending, startEdit] = React.useTransition();
   const [payPending, startPay] = React.useTransition();
   const [cancelPending, startCancel] = React.useTransition();
+  const [refundPending, startRefund] = React.useTransition();
 
   const days = item.dueDate ? daysUntil(item.dueDate) : null;
   const isPaid = item.status === "paid";
   const isCancelled = item.status === "cancelled";
+  const isRefunded = item.status === "refunded";
+  const isPartiallyRefunded = item.status === "partially_refunded";
+  const canRefund = isPaid || isPartiallyRefunded;
 
   function handleEdit(input: LineItemInput) {
     startEdit(async () => {
@@ -217,6 +271,22 @@ function LineItemRow({
     });
   }
 
+  function handleRefund(amount: number, reason: string) {
+    startRefund(async () => {
+      const result = await refundItemAction(item.id, scheduleId, amount, reason);
+      if (result.ok) {
+        const collected = item.paidAmount ?? item.amount;
+        const newRefundedAmount = (item.refundedAmount ?? 0) + amount;
+        onUpdate(item.id, {
+          status: newRefundedAmount >= collected - 0.001 ? "refunded" : "partially_refunded",
+          refundedAmount: newRefundedAmount,
+        });
+        setRefundMode(false);
+        toast.success("Refund recorded.");
+      } else toast.error(result.message ?? "Could not issue refund.");
+    });
+  }
+
   async function handleCancel() {
     startCancel(async () => {
       const result = await cancelItemAction(item.id, scheduleId);
@@ -233,11 +303,13 @@ function LineItemRow({
   return (
     <div>
       <div className={cn("group flex items-center gap-3 rounded-lg border bg-card p-3 transition-colors",
-        isPaid ? "border-success/20 bg-success/5" : isCancelled ? "border-border opacity-50" : item.status === "overdue" ? "border-destructive/20 bg-destructive/5" : "border-border")}>
+        isRefunded || isPartiallyRefunded ? "border-amber-300/50 bg-amber-50 dark:bg-amber-950/20"
+          : isPaid ? "border-success/20 bg-success/5" : isCancelled ? "border-border opacity-50" : item.status === "overdue" ? "border-destructive/20 bg-destructive/5" : "border-border")}>
         {/* Status icon */}
         <span className={cn("flex h-7 w-7 shrink-0 items-center justify-center rounded-full border-2",
-          isPaid ? "border-success bg-success text-white" : item.status === "overdue" ? "border-destructive text-destructive" : "border-border text-muted-foreground")}>
-          {isPaid ? <Check className="h-3.5 w-3.5" /> : item.status === "overdue" ? <AlertTriangle className="h-3 w-3" /> : <Calendar className="h-3 w-3" />}
+          isRefunded || isPartiallyRefunded ? "border-amber-500 bg-amber-500 text-white"
+            : isPaid ? "border-success bg-success text-white" : item.status === "overdue" ? "border-destructive text-destructive" : "border-border text-muted-foreground")}>
+          {isPaid || isRefunded || isPartiallyRefunded ? <Check className="h-3.5 w-3.5" /> : item.status === "overdue" ? <AlertTriangle className="h-3 w-3" /> : <Calendar className="h-3 w-3" />}
         </span>
 
         {/* Content */}
@@ -264,11 +336,22 @@ function LineItemRow({
             {isPaid && item.paymentMethod && (
               <><span className="text-border">·</span><span>{paymentMethodLabel(item.paymentMethod)}</span></>
             )}
+            {(isRefunded || isPartiallyRefunded) && item.refundedAt && (
+              <>
+                <span className="text-border">·</span>
+                <span className="font-medium text-amber-700 dark:text-amber-400">
+                  {isRefunded ? "Fully refunded" : "Partially refunded"} {formatMoney(item.refundedAmount)} on {formatDate(item.refundedAt.slice(0, 10))}
+                </span>
+              </>
+            )}
+            {item.refundReason && (
+              <><span className="text-border">·</span><span>{item.refundReason}</span></>
+            )}
           </div>
         </div>
 
         {/* Actions */}
-        {!isPaid && !isCancelled && (
+        {!isPaid && !isCancelled && !isRefunded && !isPartiallyRefunded && (
           <div className="flex shrink-0 items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
             <Button type="button" size="sm" className="h-7 px-2 text-xs"
               onClick={() => setPayMode(true)} disabled={cancelPending}>
@@ -284,6 +367,14 @@ function LineItemRow({
             </button>
           </div>
         )}
+        {canRefund && (
+          <div className="flex shrink-0 items-center opacity-0 transition-opacity group-hover:opacity-100">
+            <Button type="button" size="sm" variant="outline" className="h-7 px-2 text-xs"
+              onClick={() => setRefundMode(true)} disabled={refundPending}>
+              Refund
+            </Button>
+          </div>
+        )}
         {isCancelled && (
           <button type="button" onClick={() => deleteItemAction(item.id, scheduleId)}
             className="opacity-0 transition-opacity group-hover:opacity-100 text-muted-foreground hover:text-destructive" aria-label="Delete">
@@ -294,6 +385,11 @@ function LineItemRow({
       {payMode && (
         <div className="mt-1.5">
           <MarkPaidForm item={item} onSave={handleMarkPaid} onCancel={() => setPayMode(false)} pending={payPending} />
+        </div>
+      )}
+      {refundMode && (
+        <div className="mt-1.5">
+          <RefundForm item={item} onSave={handleRefund} onCancel={() => setRefundMode(false)} pending={refundPending} />
         </div>
       )}
     </div>
@@ -308,7 +404,7 @@ export function PaymentScheduleDetail({ schedule, invoice }: { schedule: Payment
   const [showAdd, setShowAdd] = React.useState(false);
   const [addPending, startAdd] = React.useTransition();
 
-  const totalPaid = items.filter((i) => i.status === "paid").reduce((s, i) => s + (i.paidAmount ?? i.amount), 0);
+  const totalPaid = computeTotalPaid(items);
   const balance = schedule.totalAmount - totalPaid;
   const pctPaid = schedule.totalAmount > 0 ? Math.min(100, (totalPaid / schedule.totalAmount) * 100) : 0;
 

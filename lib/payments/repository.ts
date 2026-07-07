@@ -28,6 +28,7 @@ type ItemRow = {
   amount: number; due_date: string | null; status: PaymentLineItem["status"];
   paid_at: string | null; paid_amount: number | null; payment_method: string | null;
   reference_number: string | null; notes: string | null; sort_order: number;
+  refunded_amount: number | null; refunded_at: string | null; refund_reason: string | null;
   created_at: string; updated_at: string;
 };
 
@@ -58,7 +59,10 @@ function mapItem(r: ItemRow): PaymentLineItem {
     amount: Number(r.amount), dueDate: r.due_date, status: r.status,
     paidAt: r.paid_at, paidAmount: r.paid_amount != null ? Number(r.paid_amount) : null,
     paymentMethod: r.payment_method, referenceNumber: r.reference_number,
-    notes: r.notes, sortOrder: r.sort_order, createdAt: r.created_at, updatedAt: r.updated_at,
+    notes: r.notes, sortOrder: r.sort_order,
+    refundedAmount: r.refunded_amount != null ? Number(r.refunded_amount) : 0,
+    refundedAt: r.refunded_at, refundReason: r.refund_reason,
+    createdAt: r.created_at, updatedAt: r.updated_at,
   };
 }
 
@@ -188,8 +192,14 @@ export async function reconcileInvoiceBalance(client: DbClient, venueId: string,
   const scheduleIds = (schedules ?? []).map((s: { id: string }) => s.id);
   if (scheduleIds.length === 0) return;
 
-  const { data: paidItems } = await client.from("payment_line_items").select("amount, paid_amount").in("schedule_id", scheduleIds).eq("status", "paid");
-  const totalPaid = (paidItems ?? []).reduce((sum: number, item: { amount: number; paid_amount: number | null }) => sum + (item.paid_amount != null ? Number(item.paid_amount) : Number(item.amount)), 0);
+  const { data: paidItems } = await client.from("payment_line_items")
+    .select("amount, paid_amount, refunded_amount")
+    .in("schedule_id", scheduleIds).in("status", ["paid", "partially_refunded", "refunded"]);
+  const totalPaid = (paidItems ?? []).reduce(
+    (sum: number, item: { amount: number; paid_amount: number | null; refunded_amount: number | null }) =>
+      sum + (item.paid_amount != null ? Number(item.paid_amount) : Number(item.amount)) - Number(item.refunded_amount ?? 0),
+    0,
+  );
 
   const invoiceTotal = Number(inv.total);
   const balanceDue = Math.max(0, invoiceTotal - totalPaid);
@@ -199,6 +209,51 @@ export async function reconcileInvoiceBalance(client: DbClient, venueId: string,
   if (newStatus) patch.status = newStatus;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   await (client.from("invoices") as any).update(patch).eq("id", invoiceId).eq("venue_id", venueId);
+}
+
+/**
+ * TR-M3: record a refund against a collected payment. Only 'paid' or
+ * 'partially_refunded' items are eligible; the refund amount can't exceed
+ * what's still refundable (collected minus any prior refund). Sets status
+ * to 'refunded' once the full collected amount has been refunded, otherwise
+ * 'partially_refunded' — getTotalPaidForInvoice/reconcileInvoiceBalance treat
+ * both net of refunded_amount, so the invoice balance updates correctly
+ * without a separate code path.
+ */
+export async function refundLineItem(
+  client: DbClient,
+  venueId: string,
+  itemId: string,
+  refundAmount: number,
+  reason?: string,
+): Promise<{ ok: true; newStatus: PaymentLineItem["status"] } | { ok: false; message: string }> {
+  const { data: item } = await client.from("payment_line_items")
+    .select("status, paid_amount, amount, refunded_amount")
+    .eq("id", itemId).eq("venue_id", venueId)
+    .maybeSingle<{ status: string; paid_amount: number | null; amount: number; refunded_amount: number | null }>();
+  if (!item) return { ok: false, message: "Payment not found." };
+  if (item.status !== "paid" && item.status !== "partially_refunded") {
+    return { ok: false, message: "Only a collected payment can be refunded." };
+  }
+  const collected = item.paid_amount != null ? Number(item.paid_amount) : Number(item.amount);
+  const alreadyRefunded = Number(item.refunded_amount ?? 0);
+  const refundable = collected - alreadyRefunded;
+  if (!(refundAmount > 0) || refundAmount > refundable + 0.001) {
+    return { ok: false, message: `Refund amount must be between $0.01 and $${refundable.toFixed(2)}.` };
+  }
+  const newRefundedTotal = alreadyRefunded + refundAmount;
+  const newStatus: PaymentLineItem["status"] = newRefundedTotal >= collected - 0.001 ? "refunded" : "partially_refunded";
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error } = await (client.from("payment_line_items") as any)
+    .update({
+      status: newStatus,
+      refunded_amount: newRefundedTotal,
+      refunded_at: new Date().toISOString(),
+      refund_reason: reason?.trim() || null,
+    })
+    .eq("id", itemId).eq("venue_id", venueId);
+  if (error) throw error;
+  return { ok: true, newStatus };
 }
 
 export async function cancelLineItem(client: DbClient, venueId: string, itemId: string): Promise<void> {

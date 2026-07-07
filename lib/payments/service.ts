@@ -102,7 +102,10 @@ export async function getUpcomingPayments(daysAhead = 30): Promise<PaymentLineIt
     amount: Number(r.amount), dueDate: r.due_date, status: r.status as PaymentLineItem["status"],
     paidAt: r.paid_at, paidAmount: r.paid_amount != null ? Number(r.paid_amount) : null,
     paymentMethod: r.payment_method, referenceNumber: r.reference_number,
-    notes: r.notes, sortOrder: r.sort_order, createdAt: r.created_at, updatedAt: r.updated_at,
+    notes: r.notes, sortOrder: r.sort_order,
+    refundedAmount: r.refunded_amount != null ? Number(r.refunded_amount) : 0,
+    refundedAt: r.refunded_at ?? null, refundReason: r.refund_reason ?? null,
+    createdAt: r.created_at, updatedAt: r.updated_at,
   }));
 }
 
@@ -197,6 +200,42 @@ export async function markLineItemPaid(itemId: string, scheduleId: string, input
       entityType: "payment_line_item",
       entityId:  itemId,
     });
+
+    return { ok: true } as PaymentActionResult;
+  });
+  return result as PaymentActionResult;
+}
+
+/**
+ * TR-M3: refunds are Owner-only per docs/permissions-model-proposal.md — the
+ * one financial action with real potential for abuse and no operational
+ * urgency the way "mark paid" has. Manager gets every other financial
+ * mutation but not this one.
+ */
+export async function refundLineItem_(
+  itemId: string,
+  scheduleId: string,
+  refundAmount: number,
+  reason?: string,
+): Promise<PaymentActionResult> {
+  const result = await withVenue(async (supabase, venueId) => {
+    const role = await getCurrentUserRole();
+    if (role !== "owner") {
+      return { ok: false, message: "Only the venue Owner can issue a refund." } as PaymentActionResult;
+    }
+    const outcome = await repo.refundLineItem(supabase, venueId, itemId, refundAmount, reason);
+    if (!outcome.ok) return { ok: false, message: outcome.message } as PaymentActionResult;
+
+    await repo.insertPaymentActivity(supabase, venueId, scheduleId,
+      outcome.newStatus === "refunded" ? "refunded" : "partially_refunded",
+      `Refund issued: $${refundAmount.toLocaleString()}`,
+      reason?.trim() || undefined);
+
+    const { data: sch } = await supabase.from("payment_schedules")
+      .select("invoice_id").eq("id", scheduleId).maybeSingle<{ invoice_id: string | null }>();
+    if (sch?.invoice_id) {
+      await repo.reconcileInvoiceBalance(supabase, venueId, sch.invoice_id);
+    }
 
     return { ok: true } as PaymentActionResult;
   });
