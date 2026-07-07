@@ -9,6 +9,7 @@ import { NotificationPreferencesSection } from "@/components/settings/notificati
 import { NotificationsSection } from "@/components/settings/notifications-section";
 import { TourSettingsSection } from "@/components/settings/tour-settings-section";
 import { WebsiteFormsSection } from "@/components/settings/website-forms-section";
+import { DataExportSection } from "@/components/settings/data-export-section";
 import { LuvHeart } from "@/components/dashboard/luv-widget";
 import { StripeConnectSection } from "@/components/settings/stripe-connect-section";
 import { VenueSettings } from "@/components/settings/venue-settings";
@@ -77,6 +78,20 @@ export default async function SettingsPage() {
             <Link href="/settings/import?type=leads" className="text-sm font-medium text-primary hover:underline">Import Leads →</Link>
             <Link href="/settings/import?type=vendors" className="text-sm font-medium text-primary hover:underline">Import Vendors →</Link>
           </div>
+        </CardContent>
+      </Card>
+
+      {/* ── Export Data ────────────────────────────────────────────── */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Your Data</CardTitle>
+          <CardDescription>
+            Your data belongs to you. Download a complete copy of your clients, events, contracts,
+            invoices, and payment records at any time — no need to ask, no waiting.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <DataExportSection />
         </CardContent>
       </Card>
 

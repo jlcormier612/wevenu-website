@@ -11,6 +11,11 @@ import {
   type SaveSectionResult,
 } from "@/lib/venue/service";
 import type { VenueSetupInput } from "@/lib/venue/types";
+import { exportVenueData, type ExportResult } from "@/lib/export/service";
+
+export async function exportVenueDataAction(): Promise<ExportResult> {
+  return exportVenueData();
+}
 
 /** Revalidates the workspace layout so venue name changes appear immediately. */
 function revalidateWorkspace() {

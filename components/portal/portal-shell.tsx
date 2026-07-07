@@ -4011,11 +4011,21 @@ export function PortalShell({ token, context, initialTasks }: { token: string; c
             <span className="text-muted-foreground/40 text-xs">·</span>
             <p className="text-xs text-muted-foreground">{context.venue.name}</p>
           </div>
-          {context.event && (
-            <p className="text-xs text-muted-foreground hidden sm:block">
-              {new Date(context.event.eventDate + "T12:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
-            </p>
-          )}
+          <div className="flex items-center gap-3">
+            {context.event && (
+              <p className="text-xs text-muted-foreground hidden sm:block">
+                {new Date(context.event.eventDate + "T12:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+              </p>
+            )}
+            <a
+              href={`/api/portal/export?token=${encodeURIComponent(token)}`}
+              download
+              className="text-[11px] font-medium text-muted-foreground hover:text-foreground underline decoration-dotted underline-offset-2"
+              title="Download a copy of your guest list, budget, and seating data"
+            >
+              Export my data
+            </a>
+          </div>
         </div>
 
         {/* Navigation */}
