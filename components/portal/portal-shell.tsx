@@ -3056,6 +3056,11 @@ function VenueGuidePortalSection({ token, context }: { token: string; context: P
   return <VenueGuideSection token={token} context={context} />;
 }
 
+function PortalMessageSection({ token, venueName }: { token: string; venueName: string }) {
+  const { PortalMessageSection: MessageSection } = require("@/components/portal/message-section") as { PortalMessageSection: React.ComponentType<{ token: string; venueName: string }> };
+  return <MessageSection token={token} venueName={venueName} />;
+}
+
 // ── Payments ──────────────────────────────────────────────────────────────────
 
 function PaymentPortalSection({ token }: { token: string }) {
@@ -3963,7 +3968,7 @@ const NAV_ITEMS: { id: PortalSection; icon: string; label: string; shortLabel?: 
   { id: "tasks",     icon: "📋", label: "Tasks",       available: true,  group: "venue" },
   { id: "vendors",   icon: "🤝", label: "Vendors",     available: true,  group: "venue" },
   { id: "payments",  icon: "💳", label: "Payments",    available: true,  group: "venue" },
-  { id: "messages",  icon: "💬", label: "Messages",    available: false, group: "venue" },
+  { id: "messages",  icon: "💬", label: "Messages",    available: true,  group: "venue" },
 ];
 
 export function PortalShell({ token, context, initialTasks }: { token: string; context: PortalContext; initialTasks: PortalTask[] }) {
@@ -4109,7 +4114,7 @@ export function PortalShell({ token, context, initialTasks }: { token: string; c
             {activeSection === "ask"       && <LuvAskPortalSection token={token} onNavigateToGuide={() => setActiveSection("guide")} />}
             {activeSection === "documents" && <CoupleDocumentsPortalSection token={token} />}
             {activeSection === "payments"  && <PaymentPortalSection token={token} />}
-            {activeSection === "messages"  && <ComingSoon label="Messages" />}
+            {activeSection === "messages"  && <PortalMessageSection token={token} venueName={context.venue.name} />}
           </div>
         )}
       </main>

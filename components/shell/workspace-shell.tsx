@@ -5,6 +5,7 @@ import * as React from "react";
 import { Building2, Menu, Search } from "lucide-react";
 
 import { Wordmark } from "@/components/brand/wordmark";
+import { FeedbackSheet } from "@/components/feedback/feedback-sheet";
 import { ThemeToggle } from "@/components/providers/theme-toggle";
 import { CommandPalette } from "@/components/shell/command-palette";
 import { NotificationBell } from "@/components/shell/notification-bell";
@@ -47,6 +48,9 @@ export function WorkspaceShell({
         </div>
         <div className="flex-1 overflow-y-auto">
           <SidebarNav />
+        </div>
+        <div className="shrink-0 border-t px-3 py-3">
+          <FeedbackSheet />
         </div>
       </aside>
 
