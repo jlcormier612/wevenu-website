@@ -33,5 +33,6 @@ The question to ask before shipping anything: **does this violate one of our pro
 
 - **Feature proposals:** before scoping new work, ask whether it violates any promise above. If it does, the fix (or the disable/label decision) is part of the scope, not a follow-up.
 - **Code review:** a change that touches money, contracts, bookings, or permissions should be checked against the relevant promise explicitly, not just for correctness of the immediate diff.
-- **Roadmap sequencing:** [[product-completion-roadmap]] Program 1 (Trust Foundation) exists specifically to bring the current codebase into compliance with all six promises before any other Program gets sustained attention. The [[trust-risk-register]] is the tracked list of current violations.
+- **Roadmap sequencing:** `docs/product-completion-roadmap.md` Program 1 (Trust Foundation) exists specifically to bring the current codebase into compliance with all six promises before any other Program gets sustained attention. `docs/trust-risk-register.md` is the tracked list of current violations.
+- **Engineering practice:** `docs/engineering-standards.md` is the technical companion to this document — where this file says *what we owe the customer*, that one says *how we build so it stays true*, with each standard grounded in a specific bug this session found and fixed.
 - **New hires / contributors:** this document is the one-page version of "how we think about trust here" — read it before the detailed register.
