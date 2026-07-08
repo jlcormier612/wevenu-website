@@ -91,29 +91,38 @@ TR-B4 fix (depends on Phase 1a's tour unification) → `date_holds` expiry fix (
 
 ## Phase 2 — Conversation Foundation
 
-### Target architecture
-- **`conversations`** — one row per venue-to-person relationship. `venue_id`, and exactly one of `client_id` or `vendor_relationship_id` (check constraint), `status`, `last_message_at`, `created_at`. Vendor conversations are modeled from day one (nullable column, unused until Vendor messaging is built) so a second migration isn't needed later — this is the same "don't build a second door" lesson as Engineering Standard #5, applied to schema design instead of a security gate.
-- **`conversation_participants`** — one row per person who can see/send into a conversation (a venue Team Member, a Client, a Contact, a Vendor), so "who's in this conversation" is explicit rather than inferred.
-- **`conversation_messages`** — one row per message, any channel. `conversation_id`, `sender_type` (`venue_staff`/`client`/`contact`/`vendor`), `sender_id`, `channel` (`email`/`sms`/`portal`/`internal_note`/`phone_log`/`voicemail`/`push`, extensible), `body`, `body_html` (email only), `channel_metadata` (jsonb — provider IDs, phone numbers, whatever is channel-specific, so adding a channel doesn't mean a schema migration), `sent_at`, per-party read timestamps.
+**Target architecture superseded by `docs/conversation-lifecycle-design.md`** — modeled lifecycle-first, before this section's original transport-first sketch. Two corrections that document makes, both binding here:
+
+- **`conversations` anchors to `lead_id`** (or `vendor_relationship_id` for vendor conversations), not `client_id`. Lead is the identity that exists from first contact and persists through Client conversion (Phase 1's "one canonical Lead" work) — anchoring there means nothing needs to be reattached or merged when a Lead converts.
+- **No `status` column on `conversations`.** A relationship doesn't "close" the way a support ticket does — dormancy/activity is computed at read time from `last_message_at` and the linked Lead/Client's own status, the same projection discipline Calendar Entry established in Phase 1. A Conversation is provisioned automatically alongside its Lead/vendor relationship, never explicitly created or "reopened."
+
+Full reasoning, the Participants/multi-person model, the Messages-vs-relationship-milestones distinction (composed at the view layer via a Relationship Timeline, never merged into Conversation's own schema), and the corrected schema are in that document. Everything below this line still holds as written.
+
+### Target architecture (superseded fields marked)
+- ~~`conversations` — one row per venue-to-person relationship, `client_id` or `vendor_relationship_id`, `status`~~ — see correction above. `venue_id`, `lead_id` XOR `vendor_relationship_id`, `last_message_at`, unread counts, `created_at`. No `status`.
+- **`conversation_participants`** — one row per person who can see/send into a conversation (a venue Team Member, the Lead/Client, a Contact, a Vendor), so "who's in this conversation" is explicit rather than inferred. Multiple participants never fork the conversation — attribution lives on the message, not a separate thread.
+- **`conversation_messages`** — one row per message, any channel. `conversation_id`, `sender_type` (`venue_staff`/`lead_or_client`/`contact`/`vendor`/`system`), `sender_id`, `channel` (`email`/`sms`/`portal`/`internal_note`/`phone_log`/`voicemail`/`push`, extensible), `body`, `body_html` (email only), `channel_metadata` (jsonb — provider IDs, phone numbers, whatever is channel-specific, so adding a channel doesn't mean a schema migration), `sent_at`, per-party read timestamps.
 - **`conversation_message_events`** — replaces `message_events`; delivery/bounce/open/click tracking, one row per event, referencing `conversation_messages`.
 - No separate `channels` table — channel is a property of a message, not an object with its own lifecycle. This matches the Domain Model's framing exactly: "channels are transports," not entities.
 - **No attachments this phase** — by explicit agreement, attachments are retrofitted in Phase 4 once the Asset model exists in Phase 3.
 
 ### Migration strategy
 1. Create the new tables, RLS from day one using `current_user_venue_id()` (never repeat TR-C2's `owner_user_id`-only mistake).
-2. Write a one-time backfill: for every `client_id` with rows in either `message_threads`/`messages` or `couple_threads`/`couple_messages`, create one `conversations` row; migrate `messages` rows in as `channel='email'`, `couple_messages` rows in as `channel='portal'`; merge by `created_at` so the resulting conversation is genuinely chronological across both origins.
-3. Build `lib/conversations/repository.ts`/`service.ts` (real repository/service layering — TR-C2's couple-chat side skipped this; don't repeat that either) and the RPCs the couple portal needs (token-authenticated, mirroring `get_portal_context`).
-4. Cut the UI over: the coordinator's Client-detail "Messages" tab and the main-nav "Messaging" inbox become one Conversation view; the couple portal's message view becomes the couple-facing window into the same data.
-5. Retire `message_threads`/`messages`/`couple_threads`/`couple_messages` once verified — replace, don't layer. A short safety window (one release cycle, tables renamed/archived, not left live) is acceptable; an indefinite parallel system is not.
+2. Provision a `conversations` row for every existing Lead (and vendor relationship, once vendor messaging is in scope) — not just the ones with existing messages, per the "always exists" provisioning model.
+3. Write a one-time backfill: for every Lead with rows in either `message_threads`/`messages` or `couple_threads`/`couple_messages` (joined via the Lead's linked Client, since those legacy tables key off `client_id`), migrate `messages` rows in as `channel='email'`, `couple_messages` rows in as `channel='portal'`; merge by `created_at` so the resulting conversation is genuinely chronological across both origins.
+4. Build `lib/conversations/repository.ts`/`service.ts` (real repository/service layering — TR-C2's couple-chat side skipped this; don't repeat that either) and the RPCs the couple portal needs (token-authenticated, mirroring `get_portal_context`).
+5. Cut the UI over: the coordinator's Client-detail "Messages" tab and the main-nav "Messaging" inbox become one Conversation view; the couple portal's message view becomes the couple-facing window into the same data. Consider a composed Relationship Timeline view (Conversation + Lead/Contract/Payment activity, read-only) as a stretch within this phase or an immediate Phase 2 fast-follow.
+6. Retire `message_threads`/`messages`/`couple_threads`/`couple_messages` once verified — replace, don't layer. A short safety window (one release cycle, tables renamed/archived, not left live) is acceptable; an indefinite parallel system is not.
 
 ### Order of implementation
 Schema + RLS → repository/service layer → backfill script (tested against a copy of real data first) → couple-portal RPCs → coordinator UI cutover → couple portal UI cutover → retire old tables.
 
 ### Expected risks
-- **Backfill correctness** is the main risk — two independently-timestamped tables need to interleave into one true chronology. Test with the same rolled-back-transaction discipline used throughout Program 1, on real (copied) data, before running against production.
+- **Backfill correctness** is the main risk — two independently-timestamped tables need to interleave into one true chronology, joined via each Lead's linked Client (since the legacy tables key off `client_id`, and Conversation now anchors to `lead_id`). Test with the same rolled-back-transaction discipline used throughout Program 1, on real (copied) data, before running against production.
 - **RLS/access-level parity** — the couple-portal side must check `client_portal_sessions.access_level`/`client_contacts.portal_role` from day one; TR-G4 was exactly this check being added late to four RPCs. Build it in from the start here instead of retrofitting.
 - **UI consolidation effort** — coordinators are used to two separate surfaces; merging them is a real workflow change, not just a backend refactor. Worth a short internal dogfooding pass before wide release.
 - **Vendor messaging scope creep** — the schema supports it, but building the vendor-facing UI is explicitly out of scope for this pass unless the venue owner wants to pull it in.
+- **Resisting the urge to add a `status` column** once real usage patterns show up (e.g., wanting to mark something "needs follow-up") — that's a computed label per `docs/conversation-lifecycle-design.md`, not a stored state. Worth flagging in code review specifically, since it's an easy regression to reintroduce under time pressure.
 
 ### Opportunities to simplify
 - Retires two full systems (tables, RLS, RPCs, UI) down to one.
