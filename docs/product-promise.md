@@ -13,7 +13,7 @@ The question to ask before shipping anything: **does this violate one of our pro
 **We will never silently alter financial history.** A balance, total, or payment record only changes through an explicit, attributable action — never as a side effect of an unrelated edit. If money moved, there's a reason a human can point to.
 
 ### 2. Legal Integrity
-**A signed agreement becomes a permanent historical artifact.** Once signed, a contract is never edited — only amended, versioned, or replaced with a new contract that references the original. Editing history is not an option for any role, including Owner.
+**Executed contracts are permanent historical records. They are never edited or overwritten.** If changes are required, Wevenu creates a new version or amendment while preserving the complete history of every agreement — never a mutation of the original, and never an option for any role, including Owner. Records preserve history; relationships evolve. A contract becomes a permanent historical artifact the moment it's executed, while the client's planning journey continues through new versions or amendments when necessary. See `docs/contract-lifecycle-design.md` for the full lifecycle this promise is built on.
 
 ### 3. Operational Integrity
 **The platform will never knowingly allow a double booking.** If a space is already committed to an event on a given date and time, the system rejects the conflicting booking — it does not merely warn and let the user proceed.
