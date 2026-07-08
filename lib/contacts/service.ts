@@ -108,6 +108,24 @@ export async function deleteClientContact(contactId: string): Promise<void> {
 }
 
 /** Generate a portal link for a specific contact. */
+/**
+ * TR-G4: maps a contact's portal_role to the session's access_level. This
+ * used to be hardcoded to "couple" (full access) for every contact,
+ * regardless of the restrictive role a coordinator actually picked — every
+ * get_portal_* RPC checks access_level, not portal_role, so the restriction
+ * was never really applied.
+ */
+function accessLevelForPortalRole(portalRole: string | null): "couple" | "planning" | "financial" | "view_only" {
+  switch (portalRole) {
+    case "full_access": return "couple";
+    case "planning": return "planning";
+    case "financial": return "financial";
+    case "view_only": return "view_only";
+    case "reminders_only": return "view_only";
+    default: return "couple";
+  }
+}
+
 export async function createContactPortalSession(
   clientId: string,
   contactId: string,
@@ -117,12 +135,16 @@ export async function createContactPortalSession(
   const venue = await getCurrentVenue();
   if (!venue) return null;
   const supabase = await createClient();
+
+  const { data: contact } = await supabase.from("client_contacts")
+    .select("portal_role").eq("id", contactId).maybeSingle<{ portal_role: string | null }>();
+
   const { data, error } = await supabase
     .from("client_portal_sessions")
     .insert({
       venue_id: venue.id, client_id: clientId,
       contact_id: contactId, label,
-      access_level: "couple", // overridden by contact.portal_role at runtime
+      access_level: accessLevelForPortalRole(contact?.portal_role ?? null),
     })
     .select("access_token")
     .single<{ access_token: string }>();
