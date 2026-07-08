@@ -18,7 +18,7 @@
 import { createHmac } from "node:crypto";
 import { type NextRequest, NextResponse } from "next/server";
 
-import { createClient } from "@/integrations/supabase/server";
+import { createAdminClient } from "@/integrations/supabase/admin";
 import { logSignalEvent } from "@/lib/leads/signals";
 
 type ResendWebhookPayload = {
@@ -77,7 +77,9 @@ export async function POST(request: NextRequest) {
   if (!emailId) return NextResponse.json({ ok: true }); // Ignore events without email_id
 
   try {
-    const supabase = await createClient();
+    // TR-M7: webhook call, no Supabase session — the anon/cookie client's
+    // reads and writes were silently rejected by RLS here.
+    const supabase = createAdminClient();
 
     // Find the message by provider_id (Resend email ID)
     const { data: message } = await supabase.from("messages")
@@ -97,17 +99,19 @@ export async function POST(request: NextRequest) {
       if (payload.type === "email.delivered") patch.delivered_at = new Date().toISOString();
       if (payload.type === "email.bounced") patch.error_message = `Bounced at ${payload.data.bounced_at ?? payload.created_at}`;
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      await (supabase.from("messages") as any).update(patch).eq("id", message.id);
+      const { error: statusError } = await (supabase.from("messages") as any).update(patch).eq("id", message.id);
+      if (statusError) console.error("Message status update failed:", statusError.message);
     }
 
     // Always log the event for audit trail
-    await supabase.from("message_events").insert({
+    const { error: eventError } = await supabase.from("message_events").insert({
       venue_id: message.venue_id,
       message_id: message.id,
       event_type: payload.type,
       occurred_at: payload.created_at ?? new Date().toISOString(),
       payload: payload as unknown as Record<string, unknown>,
     });
+    if (eventError) console.error("message_events insert failed:", eventError.message);
 
     // For email opens and clicks, find the lead via the thread and log a signal
     if (payload.type === "email.opened" || payload.type === "email.clicked") {

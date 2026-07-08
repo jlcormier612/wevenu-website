@@ -27,7 +27,7 @@
  */
 
 import { type NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/integrations/supabase/server";
+import { createAdminClient } from "@/integrations/supabase/admin";
 
 type InboundPayload = {
   from: string;
@@ -71,7 +71,10 @@ export async function POST(request: NextRequest) {
   const body = payload.text ?? payload.html?.replace(/<[^>]+>/g, "") ?? "";
   if (!fromEmail || !body) return NextResponse.json({ ok: true });
 
-  const supabase = await createClient();
+  // TR-M7: this is a webhook call with no Supabase session, so it must use
+  // the admin client — the anon/cookie client's writes were silently
+  // rejected by RLS here, with every result ignored, so nothing ever worked.
+  const supabase = createAdminClient();
 
   // --- 1. Match by subaddressing (thread+{id}@domain) ---
   let threadId = extractThreadIdFromTo(payload.to ?? []);
@@ -148,7 +151,7 @@ export async function POST(request: NextRequest) {
   }
 
   // --- Create inbound message ---
-  await supabase.from("messages").insert({
+  const { error: insertError } = await supabase.from("messages").insert({
     thread_id: threadId,
     venue_id: venueId,
     direction: "inbound",
@@ -161,17 +164,21 @@ export async function POST(request: NextRequest) {
     status: "received",
     sent_at: new Date().toISOString(),
   });
+  if (insertError) {
+    console.error("Inbound message insert failed:", insertError.message);
+    return NextResponse.json({ error: "Failed to record message." }, { status: 500 });
+  }
 
   // Update thread message_count and last_message_at
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: thread } = await (supabase.from("message_threads") as any)
     .select("message_count").eq("id", threadId).maybeSingle() as { data: { message_count: number } | null };
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  await (supabase.from("message_threads") as any).update({
+  const { error: updateError } = await (supabase.from("message_threads") as any).update({
     last_message_at: new Date().toISOString(),
     message_count: (thread?.message_count ?? 0) + 1,
   }).eq("id", threadId);
+  if (updateError) console.error("Thread update failed:", updateError.message);
 
   // Inbound reply = responsiveness signal — refresh scores immediately
   if (entityType === "lead" && entityId) {
