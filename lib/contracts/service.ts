@@ -154,7 +154,8 @@ export async function updateContractContent_(id: string, title: string, content:
 
 export async function sendContract(id: string): Promise<ContractActionResult> {
   const result = await withVenue(async (supabase, venueId) => {
-    await repo.updateContractStatus(supabase, venueId, id, "sent", { sentAt: true });
+    const outcome = await repo.updateContractStatus(supabase, venueId, id, "sent", { sentAt: true });
+    if (!outcome.ok) return { ok: false, message: outcome.message } as ContractActionResult;
     await repo.insertContractActivity(supabase, venueId, id, "sent", "Contract sent for signing");
     return { ok: true } as ContractActionResult;
   });
@@ -163,7 +164,8 @@ export async function sendContract(id: string): Promise<ContractActionResult> {
 
 export async function cancelContract(id: string): Promise<ContractActionResult> {
   const result = await withVenue(async (supabase, venueId) => {
-    await repo.updateContractStatus(supabase, venueId, id, "cancelled");
+    const outcome = await repo.updateContractStatus(supabase, venueId, id, "cancelled");
+    if (!outcome.ok) return { ok: false, message: outcome.message } as ContractActionResult;
     await repo.insertContractActivity(supabase, venueId, id, "cancelled", "Contract cancelled");
     return { ok: true } as ContractActionResult;
   });
@@ -188,7 +190,7 @@ export async function signContractByToken(
   token: string,
   signerName: string,
   consent: boolean,
-): Promise<{ ok: boolean; message?: string }> {
+): Promise<{ ok: boolean; message?: string; clientId?: string | null }> {
   if (!isSupabaseConfigured) return { ok: false, message: "Backend not configured." };
   if (!signerName.trim()) return { ok: false, message: "Please enter your full name." };
   if (!consent) return { ok: false, message: "Please confirm you agree this constitutes your legal signature." };
@@ -200,14 +202,12 @@ export async function signContractByToken(
   const ip = forwardedFor ? forwardedFor.split(",")[0].trim() : null;
   const userAgent = headerList.get("user-agent");
 
-  // Look up venue_id/event_id before signing so we can fire the engagement event
-  // and the "contract signed" playbook trigger — this is the one place that
-  // should ever fire it (TR-L4: it previously fired on send, not on signature).
-  const { data: contractRow } = await supabase
-    .from("contracts")
-    .select("id, venue_id, event_id")
-    .eq("sign_token", token)
-    .maybeSingle<{ id: string; venue_id: string; event_id: string | null }>();
+  // Look up venue_id/event_id/client_id before signing so we can fire the
+  // engagement event and the "contract signed" playbook trigger — this is
+  // the one place that should ever fire it (TR-L4: it previously fired on
+  // send, not on signature). Goes through the token-validating RPC (TR-L6),
+  // not a direct table read.
+  const contractRow = await repo.getContractByToken(supabase, token);
 
   const { data, error } = await supabase.rpc("sign_contract", {
     p_token: token,
@@ -219,9 +219,9 @@ export async function signContractByToken(
   if (error) return { ok: false, message: error.message };
   if (!data) return { ok: false, message: "This contract is not available for signing." };
 
-  if (contractRow?.venue_id) {
+  if (contractRow?.venueId) {
     void recordEngagementEvent({
-      venueId:   contractRow.venue_id,
+      venueId:   contractRow.venueId,
       eventType: "contract.signed",
       actorType: "couple",
       entityType: "contract",
@@ -230,15 +230,15 @@ export async function signContractByToken(
 
     // The couple has no venue_staff session here, so use the admin client —
     // the RPC above already validated the token and flipped status to signed.
-    if (contractRow.event_id) {
+    if (contractRow.eventId) {
       const { triggerAutoComplete } = await import("@/lib/playbooks/service");
       const admin = createAdminClient();
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      await triggerAutoComplete(admin as any, contractRow.venue_id, contractRow.event_id, "contract_signed");
+      await triggerAutoComplete(admin as any, contractRow.venueId, contractRow.eventId, "contract_signed");
     }
   }
 
-  return { ok: true };
+  return { ok: true, clientId: contractRow?.clientId ?? null };
 }
 
 export { mergeContent };

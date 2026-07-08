@@ -117,11 +117,16 @@ export async function getContract(client: DbClient, venueId: string, id: string)
   return { ...mapContract(cRes.data as unknown as ContractRow), activities: (aRes.data as ActRow[]).map(r => ({ id: r.id, venueId: r.venue_id, contractId: r.contract_id, type: r.type, title: r.title, description: r.description, createdAt: r.created_at })) };
 }
 
-/** Read a contract by sign_token (for the public signing page). */
+/**
+ * Read a contract by sign_token (for the public signing page). Goes through
+ * a SECURITY DEFINER RPC rather than a direct table read — TR-L6: the table
+ * previously had a permissive RLS policy allowing any unauthenticated
+ * request to read a sent/signed contract by status alone, with no
+ * sign_token check at the database layer. The RPC validates the token
+ * server-side, the same pattern used by get_portal_context/sign_contract.
+ */
 export async function getContractByToken(client: DbClient, token: string): Promise<Contract | null> {
-  const { data, error } = await client.from("contracts")
-    .select("*, clients(first_name, last_name, partner_first_name, partner_last_name), events(event_date)")
-    .eq("sign_token", token).maybeSingle<ContractRow>();
+  const { data, error } = await client.rpc("get_contract_by_token", { p_token: token });
   if (error) throw error;
   return data ? mapContract(data as unknown as ContractRow) : null;
 }
@@ -162,12 +167,40 @@ export async function updateContractContent(client: DbClient, venueId: string, i
   return { ok: true };
 }
 
-export async function updateContractStatus(client: DbClient, venueId: string, id: string, status: Contract["status"], extra?: { sentAt?: boolean }): Promise<void> {
+/**
+ * TR-L5 (Trust Risk Register): sendContract/cancelContract previously had no
+ * status guard at all — calling send on an already-signed contract silently
+ * flipped it back to 'sent' and re-armed the still-valid sign_token for a
+ * second signature, overwriting the original signer name/timestamp/IP/
+ * consent. Now enforces the same transitions the UI already assumes:
+ * send only from 'draft', cancel only from 'draft' or 'sent'. Never signed,
+ * never already-cancelled — a signed contract's status cannot be changed by
+ * this function at all, full stop.
+ */
+export async function updateContractStatus(
+  client: DbClient,
+  venueId: string,
+  id: string,
+  status: Contract["status"],
+  extra?: { sentAt?: boolean },
+): Promise<{ ok: true } | { ok: false; message: string }> {
+  const { data: current } = await client.from("contracts")
+    .select("status").eq("id", id).eq("venue_id", venueId).maybeSingle<{ status: Contract["status"] }>();
+  if (!current) return { ok: false, message: "Contract not found." };
+
+  if (status === "sent" && current.status !== "draft") {
+    return { ok: false, message: "Only a draft contract can be sent for signing." };
+  }
+  if (status === "cancelled" && !["draft", "sent"].includes(current.status)) {
+    return { ok: false, message: "A signed contract cannot be cancelled this way — it's a permanent record." };
+  }
+
   const update: Record<string, unknown> = { status };
   if (extra?.sentAt) update.sent_at = new Date().toISOString();
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { error } = await (client.from("contracts") as any).update(update).eq("id", id).eq("venue_id", venueId);
   if (error) throw error;
+  return { ok: true };
 }
 
 /**

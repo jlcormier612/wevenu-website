@@ -9,16 +9,16 @@ export async function signContractAction(
   consent: boolean,
 ): Promise<{ ok: boolean; message?: string }> {
   const result = await signContractByToken(token, signerName, consent);
-  if (result.ok) {
-    // Refresh the linked lead's commitment score — contract signed = milestone
+  if (result.ok && result.clientId) {
+    // Refresh the linked lead's commitment score — contract signed = milestone.
+    // clientId comes from signContractByToken's own token-validated lookup
+    // (TR-L6) rather than a second anonymous read by sign_token here.
+    const clientId = result.clientId;
     void (async () => {
       try {
         const supabase = await createClient();
-        const { data: contract } = await supabase.from("contracts")
-          .select("client_id").eq("sign_token", token).maybeSingle<{ client_id: string | null }>();
-        if (!contract?.client_id) return;
         const { data: client } = await supabase.from("clients")
-          .select("lead_id").eq("id", contract.client_id).maybeSingle<{ lead_id: string | null }>();
+          .select("lead_id").eq("id", clientId).maybeSingle<{ lead_id: string | null }>();
         if (!client?.lead_id) return;
         const { refreshLeadScore } = await import("@/lib/leads/scores");
         await refreshLeadScore(client.lead_id);
