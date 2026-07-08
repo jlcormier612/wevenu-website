@@ -183,10 +183,10 @@ This isn't a build item; it's a standing review discipline for the whole of Prog
 
 | Phase | Contains | Depends on | Trust Risks closed |
 |---|---|---|---|
-| 1a — Lead Lifecycle | Canonical Lead dedup across entry points; tour-scheduling unified onto `tour_appointments` | None | (none directly — enables 1b's TR-B4 fix) |
-| 1b — Calendar Backbone | Calendar projection refactor; TR-B4 fix; `date_holds` expiry | Phase 1a (tour unification) | TR-B4; new TR-B5 |
+| 1a — Lead Lifecycle | ✅ Substantially complete 2026-07-08 — canonical Lead dedup across the two public entry points; tour-scheduling unified onto `tour_appointments`, legacy columns dropped. Manual-create/CSV dedup deferred (see `docs/architecture-delta-phase-1.md`) | None | (none directly — enables 1b's TR-B4 fix) |
+| 1b — Calendar Backbone | ✅ Core complete 2026-07-08 — TR-B4/TR-B5 fixed, tours' own calendar projection established. Refactoring the other 5 sources into the same pattern is a lower-urgency fast-follow | Phase 1a (tour unification) | TR-B4; TR-B5 (new) |
 | 2 — Conversation Foundation | Conversation, Participants, Messages, Channels, Delivery status, timeline — no attachments | None | TR-C1 |
 | 3 — Asset Foundation | Unified Asset model (contracts/invoices stay first-class, join via a sanctioned view); Floor Plan registry rows | Phase 2 (sequencing only) | Documents `category='contract'` gap; extends TR-G2; Floor Plan delete-guard fix |
 | 4 — Conversation + Assets Integration | Retrofit attachments onto Assets; Conversation references, never owns | Phases 2 and 3 | — |
 
-Each phase closes with an Architecture Delta (what became canonical, what legacy systems were removed, what sources of truth were eliminated, what Trust Risks closed, what complexity was reduced) before the next phase begins.
+Each phase closes with an Architecture Delta (what became canonical, what legacy systems were removed, what sources of truth were eliminated, what Trust Risks closed, what complexity was reduced) before the next phase begins. Phase 1's delta: `docs/architecture-delta-phase-1.md`.
