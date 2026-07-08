@@ -160,9 +160,12 @@ export async function checkAvailability(
     conflicts.push({ type: "calendar_blocked", message: `Date is blocked: ${(blocks[0] as { title: string }).title}`, severity: "error" });
   }
 
-  // 2. Check active holds on this date (informational)
+  // 2. Check active, non-expired holds on this date (informational). TR-B5:
+  // expires_at was never checked here, so an expired hold kept blocking
+  // indefinitely until a human manually released it.
   const { data: holds } = await client.from("date_holds").select("title")
-    .eq("venue_id", venueId).eq("hold_date", opts.date).eq("status", "active");
+    .eq("venue_id", venueId).eq("hold_date", opts.date).eq("status", "active")
+    .or(`expires_at.is.null,expires_at.gt.${new Date().toISOString()}`);
   if (holds && holds.length > 0) {
     conflicts.push({ type: "hold_exists", message: `${holds.length} active hold(s) on this date`, severity: "warning" });
   }
@@ -185,12 +188,26 @@ export async function checkAvailability(
       });
     }
     if (opts.type === "tour") {
-      const toursQuery = client.from("leads").select("id")
-        .eq("venue_id", venueId).eq("tour_date", opts.date).eq("tour_completed", false)
-        .not("status", "in", "(won,lost,cancelled)");
-      if (opts.excludeId) toursQuery.neq("id", opts.excludeId);
+      // Program 2 Phase 1a: tour_appointments is the canonical source —
+      // this used to read leads.tour_date/tour_completed directly, which
+      // silently undercounted tour capacity for any tour booked through the
+      // public widget rather than entered manually on the lead.
+      let toursQuery = client.from("tour_appointments").select("id, lead_id")
+        .eq("venue_id", venueId)
+        .gte("scheduled_at", `${opts.date}T00:00:00`)
+        .lte("scheduled_at", `${opts.date}T23:59:59`)
+        .not("status", "in", "(cancelled,completed,no_show)");
+      if (opts.excludeId) toursQuery = toursQuery.neq("lead_id", opts.excludeId);
       const { data: dayTours } = await toursQuery;
-      const tourCount = dayTours?.length ?? 0;
+      const leadIds = (dayTours ?? [])
+        .map((t) => (t as { lead_id: string | null }).lead_id)
+        .filter((id): id is string => !!id);
+      let tourCount = leadIds.length;
+      if (leadIds.length > 0) {
+        const { data: activeLeads } = await client.from("leads").select("id")
+          .in("id", leadIds).not("status", "in", "(won,lost,cancelled)");
+        tourCount = activeLeads?.length ?? 0;
+      }
       if (tourCount >= rules.maxSimultaneousTours) {
         conflicts.push({
           type: "tour_capacity_full",

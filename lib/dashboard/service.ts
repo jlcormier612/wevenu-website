@@ -21,6 +21,7 @@ import { getNotificationPreferences } from "@/lib/notifications/preferences";
 import { refreshAllLeadScores, generateMomentumLanguage, getMomentumTier } from "@/lib/leads/scores";
 import { LEAD_STATUSES } from "@/lib/leads/constants";
 import type { Lead } from "@/lib/leads/types";
+import { getCurrentToursForLeads, EMPTY_TOUR, type LeadTourInfo } from "@/lib/leads/repository";
 import { getCurrentVenue } from "@/lib/venue/service";
 import type {
   ActivityItem,
@@ -49,8 +50,6 @@ type LeadRow = Record<string, unknown> & {
   inquiry_message: string | null; inquiry_date: string;
   next_action_text: string | null; next_action_due: string | null;
   follow_up_date: string | null; last_contacted_at: string | null;
-  tour_date: string | null; tour_time: string | null;
-  tour_completed: boolean; tour_notes: string | null;
   created_at: string; updated_at: string;
 };
 
@@ -71,7 +70,7 @@ type DashActivityRow = {
   leads: EmbeddedLeadName;
 };
 
-function mapLead(r: LeadRow): Lead {
+function mapLead(r: LeadRow, tour: LeadTourInfo = EMPTY_TOUR): Lead {
   return {
     id: r.id, venueId: r.venue_id, status: r.status as Lead["status"],
     source: r.source, firstName: r.first_name, lastName: r.last_name,
@@ -83,8 +82,8 @@ function mapLead(r: LeadRow): Lead {
     inquiryMessage: r.inquiry_message, inquiryDate: r.inquiry_date,
     nextActionText: r.next_action_text, nextActionDue: r.next_action_due,
     followUpDate: r.follow_up_date, lastContactedAt: r.last_contacted_at,
-    tourDate: r.tour_date, tourTime: r.tour_time,
-    tourCompleted: r.tour_completed, tourNotes: r.tour_notes,
+    tourDate: tour.tourDate, tourTime: tour.tourTime,
+    tourCompleted: tour.tourCompleted, tourNotes: tour.tourNotes,
     commitmentScore: 0, responsivenessScore: 0, interestScore: 0, scoresUpdatedAt: null, sourceData: null,
     createdAt: r.created_at, updatedAt: r.updated_at,
   };
@@ -242,7 +241,9 @@ export async function getDashboardData(): Promise<DashboardData | null> {
   if (eventsRes.error) throw eventsRes.error;
   // payments error is non-fatal for the dashboard
 
-  const leads = (leadsRes.data as LeadRow[]).map(mapLead);
+  const leadRows = leadsRes.data as LeadRow[];
+  const leadTours = await getCurrentToursForLeads(supabase, venue.id, leadRows.map((r) => r.id));
+  const leads = leadRows.map((r) => mapLead(r, leadTours.get(r.id) ?? EMPTY_TOUR));
 
   // ---- Needs Attention -------------------------------------------------------
   // Leads that are slipping: overdue follow-up OR stale "new" inquiry (>48h, no follow-up set)

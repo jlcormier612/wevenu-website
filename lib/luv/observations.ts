@@ -62,7 +62,7 @@ export async function getLuvObservations(
     upcomingEventsRes,
     timelineCountsRes,
     floorPlansRes,
-    pendingToursRes,
+    qualifiedLeadsRes,
     awaitingSignaturesRes,
     expiringDocsRes,
     newNoFollowUpRes,
@@ -91,13 +91,13 @@ export async function getLuvObservations(
       .select("event_id")
       .eq("venue_id", venueId),
 
-    // 3: Qualified/proposal leads with no tour scheduled
+    // 3: Qualified/proposal leads — narrowed to "no tour scheduled" below,
+    // against tour_appointments (Program 2 Phase 1a's canonical source),
+    // since the query builder can't express a NOT EXISTS join inline here.
     supabase.from("leads")
       .select("id, first_name, last_name, partner_first_name, status, created_at")
       .eq("venue_id", venueId)
       .in("status", ["qualified", "proposal_sent"])
-      .is("tour_date", null)
-      .is("tour_completed", false)
       .order("created_at"),
 
     // 4: Contracts sent 3+ days ago, still awaiting signature
@@ -220,7 +220,19 @@ export async function getLuvObservations(
 
   // ── 3: Qualified leads with no tour ──────────────────────────────────────
 
-  for (const lead of (pendingToursRes.data ?? []) as { id: string; first_name: string; last_name: string; partner_first_name?: string | null; status: string; created_at: string }[]) {
+  const qualifiedLeads = (qualifiedLeadsRes.data ?? []) as { id: string; first_name: string; last_name: string; partner_first_name?: string | null; status: string; created_at: string }[];
+  const leadsWithActiveTours = new Set<string>();
+  if (qualifiedLeads.length > 0) {
+    const { data: activeTours } = await supabase.from("tour_appointments")
+      .select("lead_id").eq("venue_id", venueId)
+      .in("lead_id", qualifiedLeads.map((l) => l.id))
+      .not("status", "in", "(cancelled)");
+    for (const t of (activeTours ?? []) as { lead_id: string | null }[]) {
+      if (t.lead_id) leadsWithActiveTours.add(t.lead_id);
+    }
+  }
+
+  for (const lead of qualifiedLeads.filter((l) => !leadsWithActiveTours.has(l.id))) {
     const name = [lead.first_name, lead.last_name].filter(Boolean).join(" ");
     const days = daysAgo(lead.created_at);
     observations.push({

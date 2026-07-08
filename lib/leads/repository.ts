@@ -18,6 +18,109 @@ import type {
 
 type DbClient = Awaited<ReturnType<typeof createClient>>;
 
+// ---- tour appointments (canonical source — Program 2 Phase 1a) --------------
+//
+// tour_appointments is the single source of truth for "does this lead have a
+// tour scheduled," regardless of whether it was booked through the public
+// widget or scheduled manually by a coordinator. leads.tour_date/tour_time/
+// tour_completed/tour_notes no longer exist (dropped in
+// 20260718000000_program2_phase1a_canonical_tour_scheduling.sql) — every
+// reader and writer goes through the functions below instead.
+
+export type LeadTourInfo = {
+  tourDate: string | null;
+  tourTime: string | null;
+  tourCompleted: boolean;
+  tourNotes: string | null;
+};
+
+export const EMPTY_TOUR: LeadTourInfo = { tourDate: null, tourTime: null, tourCompleted: false, tourNotes: null };
+
+type TourAppointmentRow = { lead_id?: string | null; scheduled_at: string; status: string; notes: string | null };
+
+function tourInfoFromAppointment(row: TourAppointmentRow | null | undefined): LeadTourInfo {
+  if (!row) return EMPTY_TOUR;
+  const d = new Date(row.scheduled_at);
+  return {
+    tourDate: d.toISOString().slice(0, 10),
+    tourTime: d.toISOString().slice(11, 16),
+    tourCompleted: row.status === "completed",
+    tourNotes: row.notes,
+  };
+}
+
+/** The most recent non-cancelled tour appointment for a single lead. */
+export async function getCurrentTourForLead(client: DbClient, venueId: string, leadId: string): Promise<LeadTourInfo> {
+  const { data } = await client.from("tour_appointments")
+    .select("scheduled_at, status, notes")
+    .eq("venue_id", venueId).eq("lead_id", leadId)
+    .neq("status", "cancelled")
+    .order("scheduled_at", { ascending: false })
+    .limit(1).maybeSingle<TourAppointmentRow>();
+  return tourInfoFromAppointment(data);
+}
+
+/** Batch version for list views — one query for many leads instead of N+1. */
+export async function getCurrentToursForLeads(client: DbClient, venueId: string, leadIds: string[]): Promise<Map<string, LeadTourInfo>> {
+  const map = new Map<string, LeadTourInfo>();
+  if (leadIds.length === 0) return map;
+  const { data } = await client.from("tour_appointments")
+    .select("lead_id, scheduled_at, status, notes")
+    .eq("venue_id", venueId).in("lead_id", leadIds)
+    .neq("status", "cancelled")
+    .order("scheduled_at", { ascending: false });
+  for (const row of (data ?? []) as TourAppointmentRow[]) {
+    if (!row.lead_id || map.has(row.lead_id)) continue; // rows are ordered desc, so the first one seen per lead is the most recent
+    map.set(row.lead_id, tourInfoFromAppointment(row));
+  }
+  return map;
+}
+
+/**
+ * Create or update the lead's tour appointment from the relationship-card
+ * form. Clearing the date cancels the existing appointment rather than
+ * deleting history. This is the only write path for manually-scheduled
+ * tours — the public booking widget's book_tour() RPC writes the same
+ * table directly.
+ */
+export async function upsertLeadTour(
+  client: DbClient,
+  venueId: string,
+  leadId: string,
+  input: { tourDate: string; tourTime: string; tourCompleted: boolean; tourNotes: string },
+): Promise<void> {
+  const { data: existing } = await client.from("tour_appointments")
+    .select("id").eq("venue_id", venueId).eq("lead_id", leadId)
+    .neq("status", "cancelled")
+    .order("scheduled_at", { ascending: false }).limit(1).maybeSingle<{ id: string }>();
+
+  if (!input.tourDate.trim()) {
+    if (existing) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await (client.from("tour_appointments") as any).update({ status: "cancelled" }).eq("id", existing.id);
+    }
+    return;
+  }
+
+  const scheduledAt = new Date(`${input.tourDate}T${input.tourTime || "12:00"}:00`).toISOString();
+  const status = input.tourCompleted ? "completed" : "scheduled";
+  const completedAt = input.tourCompleted ? new Date().toISOString() : null;
+
+  if (existing) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error } = await (client.from("tour_appointments") as any).update({
+      scheduled_at: scheduledAt, status, notes: input.tourNotes.trim() || null, completed_at: completedAt,
+    }).eq("id", existing.id);
+    if (error) throw error;
+  } else {
+    const { error } = await client.from("tour_appointments").insert({
+      venue_id: venueId, lead_id: leadId, scheduled_at: scheduledAt, status,
+      notes: input.tourNotes.trim() || null, completed_at: completedAt,
+    });
+    if (error) throw error;
+  }
+}
+
 // ---- row mappers ------------------------------------------------------------
 
 type LeadRow = {
@@ -44,10 +147,6 @@ type LeadRow = {
   next_action_due: string | null;
   follow_up_date: string | null;
   last_contacted_at: string | null;
-  tour_date: string | null;
-  tour_time: string | null;
-  tour_completed: boolean;
-  tour_notes: string | null;
   commitment_score: number;
   responsiveness_score: number;
   interest_score: number;
@@ -73,7 +172,7 @@ type TaskRow = {
   completed: boolean; completed_at: string | null; created_at: string;
 };
 
-function mapLead(r: LeadRow): Lead {
+function mapLead(r: LeadRow, tour: LeadTourInfo = EMPTY_TOUR): Lead {
   return {
     id: r.id, venueId: r.venue_id, status: r.status, source: r.source,
     firstName: r.first_name, lastName: r.last_name, email: r.email, phone: r.phone,
@@ -83,8 +182,8 @@ function mapLead(r: LeadRow): Lead {
     inquiryMessage: r.inquiry_message, inquiryDate: r.inquiry_date,
     nextActionText: r.next_action_text, nextActionDue: r.next_action_due,
     followUpDate: r.follow_up_date, lastContactedAt: r.last_contacted_at,
-    tourDate: r.tour_date, tourTime: r.tour_time,
-    tourCompleted: r.tour_completed, tourNotes: r.tour_notes,
+    tourDate: tour.tourDate, tourTime: tour.tourTime,
+    tourCompleted: tour.tourCompleted, tourNotes: tour.tourNotes,
     commitmentScore: r.commitment_score ?? 0,
     responsivenessScore: r.responsiveness_score ?? 0,
     interestScore: r.interest_score ?? 0,
@@ -127,7 +226,9 @@ export async function getLeads(
   }
   const { data, error } = await q.order("inquiry_date", { ascending: false }).order("created_at", { ascending: false });
   if (error) throw error;
-  return (data as LeadRow[]).map(mapLead);
+  const rows = data as LeadRow[];
+  const tours = await getCurrentToursForLeads(client, venueId, rows.map((r) => r.id));
+  return rows.map((r) => mapLead(r, tours.get(r.id) ?? EMPTY_TOUR));
 }
 
 export async function getLead(
@@ -153,8 +254,9 @@ export async function getLead(
   if (tasksRes.error) throw tasksRes.error;
   if (activitiesRes.error) throw activitiesRes.error;
   if (!leadRes.data) return null;
+  const tour = await getCurrentTourForLead(client, venueId, leadId);
   return {
-    ...mapLead(leadRes.data),
+    ...mapLead(leadRes.data, tour),
     notes: (notesRes.data as NoteRow[]).map(mapNote),
     tasks: (tasksRes.data as TaskRow[]).map(mapTask),
     activities: (activitiesRes.data as ActivityRow[]).map(mapActivity),
@@ -328,7 +430,13 @@ export async function updateLeadInfo(
   if (error) throw error;
 }
 
-/** Update the relationship-management fields (next action, follow-up, tour, etc.). */
+/**
+ * Update the relationship-management fields (next action, follow-up, tour,
+ * etc.). Tour fields no longer write to the leads table directly — they
+ * upsert the lead's canonical tour_appointments row instead (Program 2
+ * Phase 1a), so a manually-scheduled tour and a publicly-booked one are the
+ * same kind of record regardless of entry point.
+ */
 export async function updateRelationshipFields(
   client: DbClient,
   venueId: string,
@@ -342,14 +450,15 @@ export async function updateRelationshipFields(
       next_action_due: input.nextActionDue || null,
       follow_up_date: input.followUpDate || null,
       last_contacted_at: input.lastContactedAt || null,
-      tour_date: input.tourDate || null,
-      tour_time: input.tourTime || null,
-      tour_completed: input.tourCompleted,
-      tour_notes: input.tourNotes.trim() || null,
     })
     .eq("id", leadId)
     .eq("venue_id", venueId);
   if (error) throw error;
+
+  await upsertLeadTour(client, venueId, leadId, {
+    tourDate: input.tourDate, tourTime: input.tourTime,
+    tourCompleted: input.tourCompleted, tourNotes: input.tourNotes,
+  });
 }
 
 /** Edit an existing note's body. */

@@ -9,6 +9,7 @@ import { isSupabaseConfigured } from "@/lib/env";
 import type { CalendarData, CalendarItem } from "@/lib/calendar/types";
 import { getCurrentVenue } from "@/lib/venue/service";
 import { eventTypeLabel } from "@/lib/leads/constants";
+import { getTourCalendarEntries } from "@/lib/tours/service";
 
 export async function getCalendarData(
   year: number,
@@ -23,8 +24,8 @@ export async function getCalendarData(
   const lastDay = new Date(year, month, 0).getDate();
   const end = `${year}-${String(month).padStart(2, "0")}-${String(lastDay).padStart(2, "0")}`;
 
-  // Five parallel queries across existing tables
-  const [eventsRes, toursRes, followUpsRes, paymentsRes, keyDatesRes, holdsRes, blocksRes] = await Promise.all([
+  // Six parallel queries across existing tables, plus tours' own projection
+  const [eventsRes, tourItems, followUpsRes, paymentsRes, keyDatesRes, holdsRes, blocksRes] = await Promise.all([
     // 1. Booked events
     supabase.from("events")
       .select("id, name, event_date, start_time, event_type, status, client_id, clients(first_name, last_name)")
@@ -33,14 +34,11 @@ export async function getCalendarData(
       .gte("event_date", start)
       .lte("event_date", end),
 
-    // 2. Venue tours (from leads)
-    supabase.from("leads")
-      .select("id, first_name, last_name, partner_first_name, tour_date, tour_time, event_type")
-      .eq("venue_id", venue.id)
-      .not("tour_date", "is", null)
-      .eq("tour_completed", false)
-      .gte("tour_date", start)
-      .lte("tour_date", end),
+    // 2. Venue tours — tours' own calendar projection (TR-B4: this used to
+    // read the legacy leads.tour_date field directly and silently never
+    // reflected publicly-booked tours; tour_appointments is now the single
+    // canonical source regardless of how the tour was scheduled).
+    getTourCalendarEntries(supabase, venue.id, start, end),
 
     // 3. Follow-up dates (from leads)
     supabase.from("leads")
@@ -67,11 +65,14 @@ export async function getCalendarData(
       .gte("date", start)
       .lte("date", end),
 
-    // 6. Active date holds (Sprint 20)
+    // 6. Active date holds (Sprint 20). TR-B5: expires_at was never checked
+    // here, so an expired hold kept showing (and blocking) indefinitely
+    // until a human manually released it.
     supabase.from("date_holds")
       .select("id, title, hold_date, start_time, lead_id, leads(first_name, last_name)")
       .eq("venue_id", venue.id)
       .eq("status", "active")
+      .or(`expires_at.is.null,expires_at.gt.${new Date().toISOString()}`)
       .gte("hold_date", start)
       .lte("hold_date", end),
 
@@ -98,20 +99,8 @@ export async function getCalendarData(
     });
   }
 
-  // Tours
-  for (const l of (toursRes.data ?? []) as any[]) {
-    const name = [l.first_name, l.last_name].join(" ") +
-      (l.partner_first_name ? ` & ${l.partner_first_name}` : "");
-    items.push({
-      id: `tour-${l.id}`,
-      type: "tour",
-      date: l.tour_date,
-      title: `Venue Tour — ${name}`,
-      subtitle: l.event_type ? eventTypeLabel(l.event_type) : null,
-      time: l.tour_time?.slice(0, 5) ?? null,
-      link: `/leads/${l.id}`,
-    });
-  }
+  // Tours — already-built CalendarItems from tours' own projection
+  items.push(...tourItems);
 
   // Follow-ups
   for (const l of (followUpsRes.data ?? []) as any[]) {

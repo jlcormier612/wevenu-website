@@ -5,7 +5,7 @@
 
 export type CalendarItemType =
   | "event"          // booked event (events table)
-  | "tour"           // venue tour (leads.tour_date)
+  | "tour"           // venue tour (tour_appointments — canonical regardless of entry point)
   | "follow_up"      // lead follow-up (leads.follow_up_date)
   | "payment_due"    // payment line item (payment_line_items.due_date)
   | "key_date"       // client milestone (client_key_dates.date)

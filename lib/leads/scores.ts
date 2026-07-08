@@ -30,7 +30,7 @@ const STATUS_POINTS: Record<string, number> = {
   contacted:     5,
   qualified:    10,
   proposal_sent: 20,
-  tour_scheduled: 0, // handled via tour_date field
+  tour_scheduled: 0, // handled via tour_appointments, not a status value
   won:          50,
   lost:          0,
   cancelled:     0,
@@ -47,11 +47,16 @@ export async function computeLeadCommitmentScore(
 ): Promise<number> {
   // Fetch lead + check for linked client
   const { data: lead } = await supabase.from("leads")
-    .select("status, tour_date, tour_completed, id")
-    .eq("id", leadId).eq("venue_id", venueId).maybeSingle<{
-      status: string; tour_date: string | null; tour_completed: boolean;
-    }>();
+    .select("status, id")
+    .eq("id", leadId).eq("venue_id", venueId).maybeSingle<{ status: string }>();
   if (!lead) return 0;
+
+  // Program 2 Phase 1a: tour_appointments is the canonical source, regardless
+  // of whether the tour was booked publicly or scheduled manually — reading
+  // leads.tour_date here (now dropped) previously under-scored any lead whose
+  // tour came through the public widget instead of manual entry.
+  const { getCurrentTourForLead } = await import("@/lib/leads/repository");
+  const tour = await getCurrentTourForLead(supabase, venueId, leadId);
 
   // Fetch linked client (if any) for contract + payment lookups
   const { data: client } = await supabase.from("clients")
@@ -101,8 +106,8 @@ export async function computeLeadCommitmentScore(
 
   // Compute score
   let score = STATUS_POINTS[lead.status] ?? 0;
-  if (lead.tour_date) score += 10;
-  if (lead.tour_completed) score += 15;
+  if (tour.tourDate) score += 10;
+  if (tour.tourCompleted) score += 15;
   if (contractStatus === "sent")   score += 10;
   if (contractStatus === "signed") score += 25;
   if (hasPaymentSchedule)          score += 5;

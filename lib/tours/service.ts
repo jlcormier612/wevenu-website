@@ -2,6 +2,50 @@ import { createClient } from "@/integrations/supabase/server";
 import { isSupabaseConfigured } from "@/lib/env";
 import { getCurrentVenue } from "@/lib/venue/service";
 import type { BookingResult, TourSettings, TourSlot, TourVenueInfo } from "@/lib/tours/types";
+import type { CalendarItem } from "@/lib/calendar/types";
+import { eventTypeLabel } from "@/lib/leads/constants";
+
+type DbClient = Awaited<ReturnType<typeof createClient>>;
+
+/**
+ * Tours' own calendar projection (Program 2 Phase 1b) — the Calendar
+ * aggregator composes this rather than reaching into tour_appointments
+ * directly, so tours' schema is only ever known here. This is also the fix
+ * for TR-B4: the calendar used to read the legacy leads.tour_date field
+ * (now dropped), which silently never reflected tours booked through the
+ * public widget.
+ */
+export async function getTourCalendarEntries(
+  client: DbClient,
+  venueId: string,
+  start: string,
+  end: string,
+): Promise<CalendarItem[]> {
+  const { data } = await client.from("tour_appointments")
+    .select("id, scheduled_at, lead_id, event_type, leads(first_name, last_name, partner_first_name)")
+    .eq("venue_id", venueId)
+    .not("status", "in", "(cancelled,completed,no_show)")
+    .gte("scheduled_at", `${start}T00:00:00`)
+    .lte("scheduled_at", `${end}T23:59:59`);
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return ((data ?? []) as any[]).map((t) => {
+    const lead = t.leads as { first_name: string; last_name: string; partner_first_name: string | null } | null;
+    const name = lead
+      ? [lead.first_name, lead.last_name].join(" ") + (lead.partner_first_name ? ` & ${lead.partner_first_name}` : "")
+      : (t.contact_name ?? "Unknown");
+    const scheduledAt = new Date(t.scheduled_at as string);
+    return {
+      id: `tour-${t.id}`,
+      type: "tour",
+      date: scheduledAt.toISOString().slice(0, 10),
+      title: `Venue Tour — ${name}`,
+      subtitle: t.event_type ? eventTypeLabel(t.event_type) : null,
+      time: scheduledAt.toISOString().slice(11, 16),
+      link: t.lead_id ? `/leads/${t.lead_id}` : "/tours",
+    };
+  });
+}
 
 // ── Public (no auth) ----------------------------------------------------------
 
