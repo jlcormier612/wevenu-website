@@ -43,10 +43,10 @@ export default function LoginPage() {
       className="flex min-h-svh flex-col items-center justify-center px-4 py-12"
       style={{
         // Plain --linen was too close in tone to the wordmark's flower
-        // petal accent, which nearly disappeared against it. A couple of
-        // shades darker (toward --taupe-light) keeps the page light while
-        // giving the logo real contrast.
-        background: "color-mix(in oklch, var(--linen), var(--taupe-light) 35%)",
+        // petal accent, which nearly disappeared against it. A few shades
+        // darker (toward --taupe-light) keeps the page light while giving
+        // the logo real contrast.
+        background: "color-mix(in oklch, var(--linen), var(--taupe-light) 60%)",
         ...LIGHT_THEME_VARS,
       }}
     >
