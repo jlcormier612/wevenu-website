@@ -8,25 +8,27 @@ import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
 import {
-  COUPLE_FIELDS, LEAD_FIELDS, VENDOR_FIELDS, ENTITY_FIELDS,
+  ENTITY_FIELDS,
   type EntityType, type FieldMapping, type ImportResult,
 } from "@/lib/import/types";
 import {
   buildTemplateCsv, getSampleValue, validateRequiredFields,
-  rowToClientInput, rowToLeadInput, rowToVendorInput,
+  rowToClientInput, rowToLeadInput, rowToVendorInput, rowToInventoryInput, rowToPackageInput,
   loadSavedMapping, saveMapping,
 } from "@/lib/import/utils";
 import {
-  importCouplesAction, importLeadsAction, importVendorsAction,
+  importCouplesAction, importLeadsAction, importVendorsAction, importInventoryAction, importPackagesAction,
   parseImportFileAction, parseImportTextAction,
 } from "@/app/(app)/settings/import/actions";
 
 type CsvRow = Record<string, string>;
 
 const ENTITY_META: Record<EntityType, { label: string; resultPath: string; description: string }> = {
-  couples: { label: "Clients",  resultPath: "/clients",  description: "Import existing bookings as clients with linked events." },
-  leads:   { label: "Leads",    resultPath: "/leads",    description: "Import prospect inquiries into your leads pipeline." },
-  vendors: { label: "Vendors",  resultPath: "/vendors",  description: "Import your existing vendor contacts and relationships." },
+  couples:   { label: "Clients",   resultPath: "/clients",          description: "Import existing bookings as clients with linked events." },
+  leads:     { label: "Leads",     resultPath: "/leads",            description: "Import prospect inquiries into your leads pipeline." },
+  vendors:   { label: "Vendors",   resultPath: "/vendors",          description: "Import your existing vendor contacts and relationships." },
+  inventory: { label: "Inventory", resultPath: "/library/inventory", description: "Import your tables, chairs, decor, and other physical inventory." },
+  packages:  { label: "Packages",  resultPath: "/library/packages",  description: "Import your existing service packages and pricing." },
 };
 
 const NEXT_STEP: Record<EntityType, { cta: string; href: string; detail: string }> = {
@@ -45,6 +47,16 @@ const NEXT_STEP: Record<EntityType, { cta: string; href: string; detail: string 
     href:   "/vendors",
     detail: "Assigned vendors can see their timeline, upload documents, and receive tasks through the Vendor Portal.",
   },
+  inventory: {
+    cta:    "Add photos and set shapes for Floor Plans",
+    href:   "/library/inventory",
+    detail: "A photo and the right shape make an item easy to recognize once it's placed on a Floor Plan.",
+  },
+  packages: {
+    cta:    "Review your packages",
+    href:   "/library/packages",
+    detail: "Double-check pricing and descriptions, then packages are ready to add to invoices.",
+  },
 };
 
 // ── Step 0: Entity selector ───────────────────────────────────────────────────
@@ -57,7 +69,7 @@ function StepEntitySelect({ onSelect }: { onSelect: (e: EntityType) => void }) {
         <p className="text-sm text-muted-foreground mt-1">Choose the type of data in your CSV file.</p>
       </div>
       <div className="grid gap-3 sm:grid-cols-3">
-        {(["couples", "leads", "vendors"] as EntityType[]).map((e) => (
+        {(["couples", "leads", "vendors", "inventory", "packages"] as EntityType[]).map((e) => (
           <button
             key={e}
             type="button"
@@ -615,9 +627,15 @@ export function ImportWizard({ initialEntity }: { initialEntity?: EntityType }) 
       } else if (entity === "leads") {
         const inputRows = rows.map((r) => rowToLeadInput(r, mapping));
         res = await importLeadsAction(inputRows);
-      } else {
+      } else if (entity === "vendors") {
         const inputRows = rows.map((r) => rowToVendorInput(r, mapping));
         res = await importVendorsAction(inputRows);
+      } else if (entity === "inventory") {
+        const inputRows = rows.map((r) => rowToInventoryInput(r, mapping));
+        res = await importInventoryAction(inputRows);
+      } else {
+        const inputRows = rows.map((r) => rowToPackageInput(r, mapping));
+        res = await importPackagesAction(inputRows);
       }
       setResult(res);
       setStep(4);

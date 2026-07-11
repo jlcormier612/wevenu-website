@@ -70,7 +70,7 @@ export default async function SettingsPage() {
         <CardHeader>
           <CardTitle className="text-base">Import Existing Data</CardTitle>
           <CardDescription>
-            Bring your clients, leads, and vendors into Wevenu from any CSV export. No template required — map your own column names.
+            Bring your clients, leads, vendors, inventory, and packages into Wevenu from any CSV export. No template required — map your own column names.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -78,6 +78,8 @@ export default async function SettingsPage() {
             <Link href="/settings/import?type=couples" className="text-sm font-medium text-primary hover:underline">Import Clients →</Link>
             <Link href="/settings/import?type=leads" className="text-sm font-medium text-primary hover:underline">Import Leads →</Link>
             <Link href="/settings/import?type=vendors" className="text-sm font-medium text-primary hover:underline">Import Vendors →</Link>
+            <Link href="/settings/import?type=inventory" className="text-sm font-medium text-primary hover:underline">Import Inventory →</Link>
+            <Link href="/settings/import?type=packages" className="text-sm font-medium text-primary hover:underline">Import Packages →</Link>
           </div>
         </CardContent>
       </Card>

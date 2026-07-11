@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 
 import { PageHeader } from "@/components/shell/module-placeholder";
+import { Button } from "@/components/ui/button";
 import { InventoryLibrarySection } from "@/components/inventory/inventory-library-section";
 import { getItemsForLibrary } from "@/lib/inventory/service";
 
@@ -13,6 +15,11 @@ export default async function InventoryLibraryPage() {
       <PageHeader
         title="Inventory"
         description="Reusable physical inventory — tables, chairs, decor, and anything else you set up for a booking."
+        actions={
+          <Button variant="outline" render={<Link href="/settings/import?type=inventory" />}>
+            Import Inventory
+          </Button>
+        }
       />
       <InventoryLibrarySection initialItems={items} />
     </div>

@@ -18,9 +18,14 @@ export default async function PackagesLibraryPage() {
           title="Packages"
           description="Define your venue offerings. Packages can be added as line items on invoices."
         />
-        <Button render={<Link href="/packages/new" />}>
-          <Plus className="mr-1.5 h-4 w-4" /> New Package
-        </Button>
+        <div className="flex items-center gap-2 shrink-0">
+          <Button variant="outline" render={<Link href="/settings/import?type=packages" />}>
+            Import Packages
+          </Button>
+          <Button render={<Link href="/packages/new" />}>
+            <Plus className="mr-1.5 h-4 w-4" /> New Package
+          </Button>
+        </div>
       </div>
       <PackageList initialPackages={packages} />
     </div>

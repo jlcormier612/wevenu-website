@@ -2,8 +2,20 @@ import { ENTITY_FIELDS, type EntityType, type FieldMapping, type ImportFieldDef 
 import type { ClientInput } from "@/lib/clients/types";
 import type { LeadInput } from "@/lib/leads/types";
 import type { VendorInput } from "@/lib/vendors/types";
+import type { PackageInput } from "@/lib/packages/types";
 
 type CsvRow = Record<string, string>;
+
+/**
+ * Inventory's categoryId is a resolved uuid, not free text — CSV rows only
+ * ever carry the category's name. Category resolution (find-or-create) needs
+ * a DB call, so it happens server-side in importInventoryAction; this stays
+ * a plain string here, the same shape every other row conversion uses.
+ */
+export type InventoryImportRow = {
+  name: string; categoryName: string; quantityAvailable: string;
+  width: string; length: string; height: string; shape: string; color: string; printableName: string;
+};
 
 function val(row: CsvRow, mapping: FieldMapping, key: string): string {
   const col = mapping[key];
@@ -71,6 +83,30 @@ export function rowToVendorInput(row: CsvRow, mapping: FieldMapping): VendorInpu
   };
 }
 
+export function rowToInventoryInput(row: CsvRow, mapping: FieldMapping): InventoryImportRow {
+  return {
+    name:              val(row, mapping, "name"),
+    categoryName:      val(row, mapping, "category"),
+    quantityAvailable: val(row, mapping, "quantity"),
+    width:             val(row, mapping, "width"),
+    length:            val(row, mapping, "length"),
+    height:            val(row, mapping, "height"),
+    shape:             val(row, mapping, "shape"),
+    color:             val(row, mapping, "color"),
+    printableName:     val(row, mapping, "printableName"),
+  };
+}
+
+export function rowToPackageInput(row: CsvRow, mapping: FieldMapping): PackageInput {
+  return {
+    name:        val(row, mapping, "name"),
+    description: val(row, mapping, "description"),
+    basePrice:   val(row, mapping, "basePrice"),
+    category:    val(row, mapping, "category"),
+    isActive:    true,
+  };
+}
+
 export function getSampleValue(
   rows: CsvRow[],
   header: string,
@@ -86,24 +122,51 @@ export function getSampleValue(
 // isn't just bare column headers — it shows the expected shape (date
 // format, what "Category" means for a vendor, etc.) without anyone having
 // to guess or reverse-engineer it from an error message after uploading.
-const TEMPLATE_SAMPLE_VALUES: Record<string, string> = {
-  firstName: "Emma", lastName: "Johnson",
-  partnerFirstName: "James", partnerLastName: "Smith",
-  email: "emma.johnson@example.com", phone: "555-0142",
-  eventDate: "2027-06-12", eventType: "Wedding", guestCount: "120",
-  internalNotes: "Prefers weekend tours", estimatedBudget: "15000",
-  source: "Website", inquiryMessage: "Interested in a June 2027 date",
-  businessName: "Bloom & Co Florals", category: "Florist",
-  contactName: "Maria Chen", websiteUrl: "https://example.com",
-  pricingTier: "$$", notes: "Preferred vendor, responsive",
+// One realistic example value per (entity, field key), so a downloaded
+// template isn't just bare column headers — it shows the expected shape
+// (date format, what "Category" means for a vendor vs. an inventory item,
+// etc.) without anyone having to guess or reverse-engineer it from an error
+// message after uploading. Scoped per entity — several entities share
+// generically-named keys (name, category) that mean very different things.
+const TEMPLATE_SAMPLE_VALUES: Record<EntityType, Record<string, string>> = {
+  couples: {
+    firstName: "Emma", lastName: "Johnson",
+    partnerFirstName: "James", partnerLastName: "Smith",
+    email: "emma.johnson@example.com", phone: "555-0142",
+    eventDate: "2027-06-12", eventType: "Wedding", guestCount: "120",
+    internalNotes: "Prefers weekend tours",
+  },
+  leads: {
+    firstName: "Emma", lastName: "Johnson",
+    email: "emma.johnson@example.com", phone: "555-0142",
+    eventDate: "2027-06-12", eventType: "Wedding",
+    estimatedBudget: "15000", source: "Website",
+    inquiryMessage: "Interested in a June 2027 date",
+  },
+  vendors: {
+    businessName: "Bloom & Co Florals", category: "Florist",
+    contactName: "Maria Chen", email: "maria@abcflorals.com", phone: "555-0142",
+    websiteUrl: "https://example.com", pricingTier: "$$",
+    notes: "Preferred vendor, responsive",
+  },
+  inventory: {
+    name: "60\" Round Table", category: "Tables", quantity: "20",
+    width: "60", length: "60", height: "30", shape: "round", color: "White",
+    printableName: "Round Table (Seats 8)",
+  },
+  packages: {
+    name: "Silver Package", description: "Includes linens, chairs, and centerpieces for up to 100 guests.",
+    basePrice: "2500", category: "Reception",
+  },
 };
 
 /** Builds a downloadable CSV template for an entity: header row + one example row. */
 export function buildTemplateCsv(entity: EntityType): string {
   const fields: ImportFieldDef[] = ENTITY_FIELDS[entity];
+  const samples = TEMPLATE_SAMPLE_VALUES[entity];
   const escape = (v: string) => (v.includes(",") || v.includes('"') ? `"${v.replace(/"/g, '""')}"` : v);
   const header = fields.map((f) => escape(f.label)).join(",");
-  const sample = fields.map((f) => escape(TEMPLATE_SAMPLE_VALUES[f.key] ?? "")).join(",");
+  const sample = fields.map((f) => escape(samples[f.key] ?? "")).join(",");
   return `${header}\n${sample}\n`;
 }
 

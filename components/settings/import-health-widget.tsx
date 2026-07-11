@@ -2,22 +2,28 @@ import Link from "next/link";
 import { Check, Minus } from "lucide-react";
 
 import { getClients } from "@/lib/clients/service";
+import { getItems } from "@/lib/inventory/service";
 import { getLeads } from "@/lib/leads/service";
+import { getPackages } from "@/lib/packages/service";
 import { getVendors } from "@/lib/vendors/service";
 
 const COMING_SOON = ["Events", "Contracts", "Invoices"];
 
 export async function ImportHealthWidget() {
-  const [clients, leads, vendors] = await Promise.all([
+  const [clients, leads, vendors, inventory, packages] = await Promise.all([
     getClients(),
     getLeads(),
     getVendors(),
+    getItems(),
+    getPackages(),
   ]);
 
   const stats = [
-    { label: "Clients",  count: clients.length, importPath: "/settings/import?type=couples", resultPath: "/clients"  },
-    { label: "Leads",    count: leads.length,   importPath: "/settings/import?type=leads",   resultPath: "/leads"    },
-    { label: "Vendors",  count: vendors.length, importPath: "/settings/import?type=vendors", resultPath: "/vendors"  },
+    { label: "Clients",   count: clients.length,   importPath: "/settings/import?type=couples",   resultPath: "/clients"          },
+    { label: "Leads",     count: leads.length,     importPath: "/settings/import?type=leads",     resultPath: "/leads"            },
+    { label: "Vendors",   count: vendors.length,   importPath: "/settings/import?type=vendors",   resultPath: "/vendors"          },
+    { label: "Inventory", count: inventory.length, importPath: "/settings/import?type=inventory", resultPath: "/library/inventory" },
+    { label: "Packages",  count: packages.length,  importPath: "/settings/import?type=packages",  resultPath: "/library/packages"  },
   ];
 
   if (stats.every((s) => s.count === 0)) return null;

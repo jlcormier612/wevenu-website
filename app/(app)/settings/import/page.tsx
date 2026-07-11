@@ -7,7 +7,7 @@ import type { EntityType } from "@/lib/import/types";
 
 export const metadata: Metadata = { title: "Import Data — Settings" };
 
-const VALID_TYPES = new Set<EntityType>(["couples", "leads", "vendors"]);
+const VALID_TYPES = new Set<EntityType>(["couples", "leads", "vendors", "inventory", "packages"]);
 
 export default async function ImportPage({
   searchParams,
