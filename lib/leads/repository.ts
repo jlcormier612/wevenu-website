@@ -152,6 +152,7 @@ type LeadRow = {
   interest_score: number;
   scores_updated_at: string | null;
   source_data: Record<string, unknown> | null;
+  relationship_id: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -189,6 +190,7 @@ function mapLead(r: LeadRow, tour: LeadTourInfo = EMPTY_TOUR): Lead {
     interestScore: r.interest_score ?? 0,
     scoresUpdatedAt: r.scores_updated_at ?? null,
     sourceData: r.source_data ?? null,
+    relationshipId: r.relationship_id ?? null,
     createdAt: r.created_at, updatedAt: r.updated_at,
   };
 }
@@ -271,6 +273,23 @@ export async function insertLead(
   venueId: string,
   input: LeadInput,
 ): Promise<string> {
+  // Program 2 Phase 2: every Lead-creating path resolves a Relationship
+  // (the enduring customer identity) through the same shared function the
+  // public entry points use — this is also the manual-create AND CSV-import
+  // path (importLeadsAction calls createLead per row), so one call here
+  // covers both, per Engineering Standard #2 (an invariant enforced on one
+  // entry point must be enforced on every entry point).
+  const { data: relationshipId, error: relationshipError } = await client.rpc(
+    "find_or_create_relationship",
+    {
+      p_venue_id: venueId,
+      p_email: input.email.trim() || null,
+      p_first_name: input.firstName.trim(),
+      p_last_name: input.lastName.trim(),
+    },
+  );
+  if (relationshipError) throw relationshipError;
+
   const { data, error } = await client
     .from("leads")
     .insert({
@@ -292,6 +311,7 @@ export async function insertLead(
       inquiry_message: input.inquiryMessage.trim() || null,
       inquiry_date: input.inquiryDate || new Date().toISOString().slice(0, 10),
       status: "new",
+      relationship_id: relationshipId,
     })
     .select("id")
     .single<{ id: string }>();

@@ -33,8 +33,14 @@ import type {
   ActivityItem, ClientMedia, CoupleProfile, CoupleTodo, CoupleGuest,
   GuestStats, JournalEntry, PortalContext, PortalSection, PortalTask,
   RecentActivity, TodoCategory, PortalParticipant, PortalActivity,
+  PortalTimelineEntry, PortalTimelineSection,
 } from "@/lib/portal/types";
 import { getAnniversaryObservations, getCountdownObservation, getOverviewObservation, getWeddingDayObservations } from "@/lib/luv/portal-observations";
+import {
+  type AccountState, getAccountStateAction, changePasswordAction, revokeSessionAction,
+  grantSupportAccessAction, revokeSupportGrantAction,
+} from "@/app/(portal)/p/[token]/account-actions";
+import { RequestsPortalSection, RequestsSummaryCard } from "@/components/portal/requests-section";
 
 const SAGE = "#5D6F5D";
 const LINEN = "#F7F5F1";
@@ -1434,7 +1440,7 @@ function WeddingDayPortal({
     return () => clearInterval(t);
   }, [entries]);
 
-  const weddingDayTasks = tasks.filter(t => t.phase === "wedding_day" && t.canComplete && t.status !== "complete");
+  const weddingDayTasks = tasks.filter(t => t.milestoneKind === "event_day" && t.canComplete && t.status !== "complete");
 
   // Key Luv messages for today
   const luvMessages = React.useMemo(() => {
@@ -1605,7 +1611,7 @@ function WeddingDaySection({
   }
 
   // ── Final Details phase (du 1–14) ─────────────────────────────────────────
-  const finalDetailsTasks = tasks.filter(t => t.phase === "final_details" && t.status !== "complete");
+  const finalDetailsTasks = tasks.filter(t => t.milestoneKind === "final_stretch" && t.status !== "complete");
   const countdownObs = getCountdownObservation(du);
 
   return (
@@ -2037,197 +2043,6 @@ function MemoryStrip({
         </p>
       </div>
     </button>
-  );
-}
-
-// ── Guest List ────────────────────────────────────────────────────────────────
-
-const RSVP_COLORS: Record<string, string> = { pending: TAUPE, attending: SAGE, declined: "#C0392B", maybe: "#C7A66A" };
-const RSVP_LABELS: Record<string, string> = { pending: "Pending", attending: "Coming", declined: "Declined", maybe: "Maybe" };
-
-function parseCSV(text: string): { firstName: string; lastName?: string; email?: string; groupLabel?: string }[] {
-  const lines = text.trim().split(/\r?\n/);
-  if (lines.length < 2) return [];
-  const headers = lines[0].toLowerCase().split(",").map(h => h.trim().replace(/[^a-z]/g, ""));
-  const fi = headers.findIndex(h => h.includes("first") || h === "name");
-  const li = headers.findIndex(h => h.includes("last"));
-  const ei = headers.findIndex(h => h.includes("email"));
-  const gi = headers.findIndex(h => h.includes("group"));
-  return lines.slice(1).map(line => {
-    const cols = line.split(",").map(c => c.trim().replace(/^["']|["']$/g, ""));
-    const firstName = fi >= 0 ? cols[fi] ?? "" : cols[0] ?? "";
-    const [fn, ...rest] = firstName.split(" ");
-    return {
-      firstName: fn || firstName,
-      lastName: li >= 0 ? cols[li] : rest.join(" ") || undefined,
-      email: ei >= 0 ? cols[ei] || undefined : undefined,
-      groupLabel: gi >= 0 ? cols[gi] || undefined : undefined,
-    };
-  }).filter(g => g.firstName);
-}
-
-function GuestListSection({ token }: { token: string }) {
-  const [guests, setGuests] = React.useState<CoupleGuest[]>([]);
-  const [stats, setStats] = React.useState<GuestStats | null>(null);
-  const [loading, setLoading] = React.useState(true);
-  const [showAdd, setShowAdd] = React.useState(false);
-  const [addName, setAddName] = React.useState("");
-  const [addEmail, setAddEmail] = React.useState("");
-  const [addGroup, setAddGroup] = React.useState("");
-  const [adding, setAdding] = React.useState(false);
-  const [importing, setImporting] = React.useState(false);
-  const csvRef = React.useRef<HTMLInputElement>(null);
-
-  function reload() {
-    fetch(`/api/portal/guests?token=${token}`)
-      .then(r => r.json())
-      .then((d: { guests?: CoupleGuest[]; stats?: GuestStats }) => {
-        setGuests(d.guests ?? []);
-        setStats(d.stats ?? null);
-      });
-  }
-
-  React.useEffect(() => {
-    fetch(`/api/portal/guests?token=${token}`)
-      .then(r => r.json())
-      .then((d: { guests?: CoupleGuest[]; stats?: GuestStats }) => {
-        setGuests(d.guests ?? []);
-        setStats(d.stats ?? null);
-      })
-      .finally(() => setLoading(false));
-  }, [token]);
-
-  async function handleAdd() {
-    if (!addName.trim()) return;
-    setAdding(true);
-    const parts = addName.trim().split(" ");
-    const res = await fetch("/api/portal/guests", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ token, firstName: parts[0], lastName: parts.slice(1).join(" ") || undefined, email: addEmail || undefined, groupLabel: addGroup || undefined }) });
-    const data = await res.json() as { ok: boolean; guestId?: string };
-    if (data.ok) { reload(); setAddName(""); setAddEmail(""); setAddGroup(""); setShowAdd(false); }
-    else toast.error("Could not add guest.");
-    setAdding(false);
-  }
-
-  async function handleRsvp(guestId: string, status: string) {
-    const prevGuests = guests;
-    const prevStats = stats;
-    setGuests(g => g.map(x => x.id === guestId ? { ...x, rsvpStatus: status as CoupleGuest["rsvpStatus"] } : x));
-    setStats(s => {
-      if (!s) return s;
-      const prev = guests.find(x => x.id === guestId)?.rsvpStatus ?? "pending";
-      return { ...s, [prev]: Math.max(0, (s[prev as keyof GuestStats] as number) - 1), [status]: ((s[status as keyof GuestStats] as number) || 0) + 1 };
-    });
-    try {
-      const res = await fetch("/api/portal/guests", { method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify({ token, guestId, rsvpStatus: status }) });
-      if (!res.ok) throw new Error("Update failed");
-    } catch {
-      setGuests(prevGuests);
-      setStats(prevStats);
-      toast.error("Could not update RSVP. Please try again.");
-    }
-  }
-
-  async function handleDelete(guestId: string) {
-    const prevGuests = guests;
-    const prevStats = stats;
-    setGuests(g => g.filter(x => x.id !== guestId));
-    setStats(s => s ? { ...s, total: Math.max(0, s.total - 1) } : null);
-    try {
-      const res = await fetch("/api/portal/guests", { method: "DELETE", headers: { "content-type": "application/json" }, body: JSON.stringify({ token, guestId }) });
-      if (!res.ok) throw new Error("Delete failed");
-    } catch {
-      setGuests(prevGuests);
-      setStats(prevStats);
-      toast.error("Could not remove guest. Please try again.");
-    }
-  }
-
-  async function handleCSV(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setImporting(true);
-    try {
-      const text = await file.text();
-      const parsed = parseCSV(text);
-      if (!parsed.length) { toast.error("No guests found in CSV."); return; }
-      const res = await fetch("/api/portal/guests", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ token, guests: parsed }) });
-      const data = await res.json() as { ok: boolean; imported?: number };
-      if (data.ok) { toast.success(`${data.imported} guests imported.`); reload(); }
-      else toast.error("Import failed. Check your CSV format.");
-    } finally { setImporting(false); if (csvRef.current) csvRef.current.value = ""; }
-  }
-
-  return (
-    <div className="space-y-4">
-      {stats && stats.total > 0 && (
-        <div className="grid grid-cols-4 gap-2">
-          {[{ label: "Total", n: stats.total }, { label: "Coming", n: stats.attending }, { label: "Declined", n: stats.declined }, { label: "Pending", n: stats.pending }].map(({ label, n }) => (
-            <div key={label} className="rounded-xl border border-border bg-card p-2.5 text-center">
-              <p className="text-lg font-bold text-heading">{n}</p>
-              <p className="text-[10px] text-muted-foreground">{label}</p>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {loading ? <p className="text-sm text-muted-foreground text-center py-6">Loading guests…</p>
-      : guests.length === 0 && !showAdd ? (
-        <div className="rounded-2xl border border-dashed border-border py-10 text-center space-y-3 px-4">
-          <Users className="h-8 w-8 text-muted-foreground mx-auto" />
-          <p className="text-sm font-medium text-heading">No guests yet</p>
-          <p className="text-xs text-muted-foreground">Add guests one at a time or import a CSV file.</p>
-          <p className="text-[10px] text-muted-foreground">CSV format: First Name, Last Name, Email, Group</p>
-        </div>
-      ) : (
-        <div className="rounded-2xl border border-border bg-card divide-y divide-border/50">
-          {guests.map(g => (
-            <div key={g.id} className="px-4 py-3 flex items-center gap-2.5">
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-heading leading-tight">{[g.firstName, g.lastName].filter(Boolean).join(" ")}</p>
-                <p className="text-[11px] text-muted-foreground">{g.email ?? g.groupLabel ?? ""}</p>
-              </div>
-              <select value={g.rsvpStatus} onChange={e => handleRsvp(g.id, e.target.value)}
-                className="text-[10px] font-semibold rounded-full border px-1.5 py-0.5 focus:outline-none"
-                style={{ background: `${RSVP_COLORS[g.rsvpStatus]}15`, color: RSVP_COLORS[g.rsvpStatus], borderColor: `${RSVP_COLORS[g.rsvpStatus]}40` }}>
-                {Object.entries(RSVP_LABELS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
-              </select>
-              <button type="button" onClick={() => handleDelete(g.id)} className="shrink-0 p-1 text-muted-foreground hover:text-destructive rounded">
-                <Trash2 className="h-3.5 w-3.5" />
-              </button>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {showAdd ? (
-        <div className="rounded-2xl border border-ring bg-card p-4 space-y-3">
-          <input value={addName} onChange={e => setAddName(e.target.value)} placeholder="Full name *" autoFocus
-            className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring" />
-          <input value={addEmail} onChange={e => setAddEmail(e.target.value)} placeholder="Email (optional)"
-            className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring" />
-          <input value={addGroup} onChange={e => setAddGroup(e.target.value)} placeholder="Group — Family, College Friends…"
-            className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring" />
-          <div className="flex gap-2 justify-end">
-            <button type="button" onClick={() => setShowAdd(false)} className="text-sm text-muted-foreground px-3 py-1.5 rounded-lg hover:bg-muted">Cancel</button>
-            <button type="button" onClick={handleAdd} disabled={!addName.trim() || adding}
-              className="text-sm font-medium px-4 py-1.5 rounded-lg text-white disabled:opacity-50" style={{ background: SAGE }}>
-              {adding ? "Adding…" : "Add Guest"}
-            </button>
-          </div>
-        </div>
-      ) : (
-        <div className="flex items-center gap-2 flex-wrap">
-          <button type="button" onClick={() => setShowAdd(true)}
-            className="flex items-center gap-1.5 text-sm font-medium px-4 py-2 rounded-xl border border-border hover:bg-muted/40 transition-colors">
-            <Plus className="h-4 w-4" /> Add Guest
-          </button>
-          <label className="flex items-center gap-1.5 text-sm text-muted-foreground px-4 py-2 rounded-xl border border-border hover:bg-muted/40 transition-colors cursor-pointer">
-            {importing ? <Loader2 className="h-4 w-4 animate-spin" /> : "↑"} Import CSV
-            <input ref={csvRef} type="file" accept=".csv" className="sr-only" onChange={handleCSV} disabled={importing} />
-          </label>
-        </div>
-      )}
-    </div>
   );
 }
 
@@ -3016,9 +2831,9 @@ function GuestPortalSection({ token }: { token: string }) {
 
 // ── Vendor recommendations ────────────────────────────────────────────────────
 
-function VendorPortalSection({ token }: { token: string }) {
-  const { VendorSection } = require("@/components/portal/vendor-section") as { VendorSection: React.ComponentType<{ token: string }> };
-  return <VendorSection token={token} />;
+function VendorPortalSection({ token, context }: { token: string; context: PortalContext }) {
+  const { VendorSection } = require("@/components/portal/vendor-section") as { VendorSection: React.ComponentType<{ token: string; clientId: string }> };
+  return <VendorSection token={token} clientId={context.client.id} />;
 }
 
 // ── Budget planner ────────────────────────────────────────────────────────────
@@ -3040,6 +2855,17 @@ function SeatingPortalSection({ token }: { token: string }) {
 function CoupleDocumentsPortalSection({ token }: { token: string }) {
   const CoupleDocumentsSection = require("@/components/portal/couple-documents-section").default as React.ComponentType<{ token: string }>;
   return <CoupleDocumentsSection token={token} />;
+}
+
+// ── Client Timeline (same Booking Timeline, visibility-filtered) ──────────────
+
+function TimelinePortalSection({
+  token, initialSections, initialEntries,
+}: { token: string; initialSections: PortalTimelineSection[]; initialEntries: PortalTimelineEntry[] }) {
+  const { TimelineSection } = require("@/components/portal/timeline-section") as {
+    TimelineSection: React.ComponentType<{ token: string; initialSections: PortalTimelineSection[]; initialEntries: PortalTimelineEntry[] }>;
+  };
+  return <TimelineSection token={token} initialSections={initialSections} initialEntries={initialEntries} />;
 }
 
 // ── Ask Luv ───────────────────────────────────────────────────────────────────
@@ -3951,6 +3777,176 @@ function OurStorySection({
   );
 }
 
+// ── Account — password, sessions, temporary venue support access ────────────
+
+const SUPPORT_ACCESS_DURATIONS = [
+  { hours: 1,  label: "1 hour" },
+  { hours: 24, label: "1 day" },
+  { hours: 72, label: "3 days" },
+];
+
+function AccountSection({ venueName }: { venueName: string }) {
+  const [state, setState] = React.useState<AccountState | null>(null);
+  const [loading, setLoading] = React.useState(true);
+  const [newPassword, setNewPassword] = React.useState("");
+  const [confirmPassword, setConfirmPassword] = React.useState("");
+  const [savingPassword, setSavingPassword] = React.useState(false);
+  const [revokingSessionId, setRevokingSessionId] = React.useState<string | null>(null);
+  const [grantHours, setGrantHours] = React.useState(24);
+  const [granting, setGranting] = React.useState(false);
+  const [revokingGrantId, setRevokingGrantId] = React.useState<string | null>(null);
+
+  const refresh = React.useCallback(() => {
+    getAccountStateAction().then((s) => { setState(s); setLoading(false); });
+  }, []);
+
+  React.useEffect(() => { refresh(); }, [refresh]);
+
+  async function handleChangePassword() {
+    if (newPassword.length < 8) { toast.error("Password must be at least 8 characters."); return; }
+    if (newPassword !== confirmPassword) { toast.error("Passwords do not match."); return; }
+    setSavingPassword(true);
+    const result = await changePasswordAction(newPassword);
+    setSavingPassword(false);
+    if (result.ok) { toast.success("Password updated."); setNewPassword(""); setConfirmPassword(""); }
+    else toast.error(result.error);
+  }
+
+  async function handleRevokeSession(sessionId: string) {
+    setRevokingSessionId(sessionId);
+    const result = await revokeSessionAction(sessionId);
+    setRevokingSessionId(null);
+    if (result.ok) { toast.success("Session signed out."); refresh(); }
+    else toast.error(result.error);
+  }
+
+  async function handleGrantAccess() {
+    setGranting(true);
+    const result = await grantSupportAccessAction(grantHours);
+    setGranting(false);
+    if (result.ok) { toast.success("Temporary support access granted."); refresh(); }
+    else toast.error(result.error);
+  }
+
+  async function handleRevokeGrant(grantId: string) {
+    setRevokingGrantId(grantId);
+    const result = await revokeSupportGrantAction(grantId);
+    setRevokingGrantId(null);
+    if (result.ok) { toast.success("Support access revoked."); refresh(); }
+    else toast.error(result.error);
+  }
+
+  if (loading) {
+    return <div className="py-6 text-center"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground mx-auto" /></div>;
+  }
+
+  if (!state?.loggedIn) {
+    return (
+      <div className="rounded-2xl border border-border bg-card p-6 text-center space-y-3">
+        <p className="text-sm font-semibold text-heading">Sign in to manage your account</p>
+        <p className="text-xs text-muted-foreground max-w-xs mx-auto">
+          Account settings — password, sessions, and support access — require signing in with your own account.
+        </p>
+        <a href="/client/login" className="inline-block text-xs font-semibold px-4 py-2 rounded-xl text-white" style={{ background: SAGE }}>
+          Sign In
+        </a>
+      </div>
+    );
+  }
+
+  const activeGrant = state.grants.find((g) => !g.revokedAt && new Date(g.expiresAt) > new Date()) ?? null;
+
+  return (
+    <div className="space-y-6">
+      <div className="rounded-3xl p-6" style={{ background: `linear-gradient(135deg, ${ROSE}10 0%, #FAF8F5 100%)`, border: `1px solid ${ROSE}25` }}>
+        <p className="text-[10px] font-semibold uppercase tracking-[0.2em] mb-1.5" style={{ color: ROSE_DEEP }}>⚙️ Account</p>
+        <p className="font-heading text-xl text-heading leading-snug">Your account, your workspace</p>
+        <p className="text-sm text-muted-foreground mt-1">You own this account. {venueName} can invite, resend, or revoke access, but never sign in as you.</p>
+      </div>
+
+      {/* Password */}
+      <div className="rounded-2xl border border-border bg-card p-4 space-y-3">
+        <p className="text-sm font-semibold text-heading">Password</p>
+        <div className="grid gap-2 sm:grid-cols-2">
+          <div className="space-y-1">
+            <p className="text-xs font-medium text-heading">New password</p>
+            <input type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)}
+              className="w-full h-9 rounded-lg border border-border bg-background px-3 text-sm" minLength={8} />
+          </div>
+          <div className="space-y-1">
+            <p className="text-xs font-medium text-heading">Confirm password</p>
+            <input type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)}
+              className="w-full h-9 rounded-lg border border-border bg-background px-3 text-sm" minLength={8} />
+          </div>
+        </div>
+        <button type="button" onClick={handleChangePassword} disabled={savingPassword}
+          className="text-xs font-semibold px-4 py-2 rounded-xl text-white disabled:opacity-60" style={{ background: SAGE }}>
+          {savingPassword ? "Saving…" : "Update Password"}
+        </button>
+      </div>
+
+      {/* Active sessions */}
+      <div className="rounded-2xl border border-border bg-card p-4 space-y-3">
+        <p className="text-sm font-semibold text-heading">Active Sessions</p>
+        {state.sessions.length === 0 ? (
+          <p className="text-xs text-muted-foreground">No other active sessions.</p>
+        ) : (
+          <div className="space-y-2">
+            {state.sessions.map((s) => (
+              <div key={s.id} className="flex items-center justify-between gap-2 rounded-xl border border-border/60 px-3 py-2.5">
+                <div className="min-w-0">
+                  <p className="text-xs font-medium text-heading truncate">{s.userAgent ?? "Unknown device"}</p>
+                  <p className="text-[10px] text-muted-foreground">
+                    Signed in {new Date(s.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                    {s.isCurrent ? " · This device" : ""}
+                  </p>
+                </div>
+                {!s.isCurrent && (
+                  <button type="button" onClick={() => handleRevokeSession(s.id)} disabled={revokingSessionId === s.id}
+                    className="text-[11px] text-muted-foreground hover:text-destructive shrink-0 disabled:opacity-50">
+                    {revokingSessionId === s.id ? "Signing out…" : "Sign out"}
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Temporary support access */}
+      <div className="rounded-2xl border border-border bg-card p-4 space-y-3">
+        <p className="text-sm font-semibold text-heading">Support Access</p>
+        <p className="text-xs text-muted-foreground leading-relaxed">
+          {venueName} cannot open your workspace unless you explicitly grant temporary access. Access expires
+          automatically, and every visit is logged here.
+        </p>
+        {activeGrant ? (
+          <div className="rounded-xl border border-border/60 px-3 py-2.5 flex items-center justify-between gap-2">
+            <p className="text-xs text-heading">
+              Active until {new Date(activeGrant.expiresAt).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}
+            </p>
+            <button type="button" onClick={() => handleRevokeGrant(activeGrant.id)} disabled={revokingGrantId === activeGrant.id}
+              className="text-[11px] text-muted-foreground hover:text-destructive shrink-0 disabled:opacity-50">
+              {revokingGrantId === activeGrant.id ? "Revoking…" : "Revoke now"}
+            </button>
+          </div>
+        ) : (
+          <div className="flex items-center gap-2 flex-wrap">
+            <select value={grantHours} onChange={(e) => setGrantHours(Number(e.target.value))}
+              className="h-9 rounded-lg border border-border bg-background px-2 text-xs">
+              {SUPPORT_ACCESS_DURATIONS.map((d) => <option key={d.hours} value={d.hours}>{d.label}</option>)}
+            </select>
+            <button type="button" onClick={handleGrantAccess} disabled={granting}
+              className="text-xs font-semibold px-4 py-2 rounded-xl text-white disabled:opacity-60" style={{ background: ROSE_DEEP }}>
+              {granting ? "Granting…" : "Grant Temporary Access"}
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ── Shell ─────────────────────────────────────────────────────────────────────
 
 const NAV_ITEMS: { id: PortalSection; icon: string; label: string; shortLabel?: string; available: boolean; group: "yours" | "venue" }[] = [
@@ -3964,14 +3960,25 @@ const NAV_ITEMS: { id: PortalSection; icon: string; label: string; shortLabel?: 
   { id: "journey",   icon: "📖", label: "Journey",     available: true,  group: "yours" },
   { id: "people",    icon: "👤", label: "People",      available: true,  group: "yours" },
   { id: "ask",       icon: "💗", label: "Ask Luv",     shortLabel: "Luv",    available: true,  group: "yours" },
+  { id: "account",   icon: "⚙️", label: "Account",     available: true,  group: "yours" },
+  { id: "requests",  icon: "📨", label: "Requests",    available: true,  group: "venue" },
   { id: "guide",     icon: "🏛️", label: "Venue Guide", shortLabel: "Guide",  available: true,  group: "venue" },
   { id: "tasks",     icon: "📋", label: "Tasks",       available: true,  group: "venue" },
+  { id: "timeline",  icon: "🕒", label: "Timeline",    available: true,  group: "venue" },
   { id: "vendors",   icon: "🤝", label: "Vendors",     available: true,  group: "venue" },
   { id: "payments",  icon: "💳", label: "Payments",    available: true,  group: "venue" },
   { id: "messages",  icon: "💬", label: "Messages",    available: true,  group: "venue" },
 ];
 
-export function PortalShell({ token, context, initialTasks }: { token: string; context: PortalContext; initialTasks: PortalTask[] }) {
+export function PortalShell({
+  token, context, initialTasks, initialTimelineSections = [], initialTimelineEntries = [],
+}: {
+  token: string;
+  context: PortalContext;
+  initialTasks: PortalTask[];
+  initialTimelineSections?: PortalTimelineSection[];
+  initialTimelineEntries?: PortalTimelineEntry[];
+}) {
   const [activeSection, setActiveSection] = React.useState<PortalSection>("overview");
   const [guestStats, setGuestStats] = React.useState<GuestStats | null>(null);
   const [todoCount, setTodoCount] = React.useState(0);
@@ -4098,7 +4105,7 @@ export function PortalShell({ token, context, initialTasks }: { token: string; c
               <OverviewSection token={token} context={context} tasks={initialTasks} guestStats={guestStats} todoCount={todoCount} heroPhotoUrl={profile?.heroPhotoUrl ?? null} latestJournalEntry={profile?.latestJournalEntry ?? null} onNavigate={setActiveSection} />
               {/* Right: Quick actions sidebar (desktop only) */}
               <div className="hidden lg:flex flex-col gap-4">
-                <QuickActionsSidebar context={context} tasks={initialTasks} guestStats={guestStats} todoCount={todoCount} onNavigate={setActiveSection} recentActivity={recentActivity} />
+                <QuickActionsSidebar token={token} context={context} tasks={initialTasks} guestStats={guestStats} todoCount={todoCount} onNavigate={setActiveSection} recentActivity={recentActivity} />
               </div>
             </div>
           </div>
@@ -4119,12 +4126,15 @@ export function PortalShell({ token, context, initialTasks }: { token: string; c
             {activeSection === "people"    && <OurPeopleSection token={token} context={context} />}
             {activeSection === "guide"     && <VenueGuidePortalSection token={token} context={context} />}
             {activeSection === "tasks"     && <VenueTasksSection token={token} initialTasks={initialTasks} />}
-            {activeSection === "vendors"   && <VendorPortalSection token={token} />}
+            {activeSection === "timeline"  && <TimelinePortalSection token={token} initialSections={initialTimelineSections} initialEntries={initialTimelineEntries} />}
+            {activeSection === "vendors"   && <VendorPortalSection token={token} context={context} />}
             {activeSection === "budget"    && <BudgetPortalSection token={token} />}
             {activeSection === "ask"       && <LuvAskPortalSection token={token} onNavigateToGuide={() => setActiveSection("guide")} />}
             {activeSection === "documents" && <CoupleDocumentsPortalSection token={token} />}
             {activeSection === "payments"  && <PaymentPortalSection token={token} />}
             {activeSection === "messages"  && <PortalMessageSection token={token} venueName={context.venue.name} />}
+            {activeSection === "account"   && <AccountSection venueName={context.venue.name} />}
+            {activeSection === "requests"  && <RequestsPortalSection token={token} onNavigate={setActiveSection} />}
           </div>
         )}
       </main>
@@ -4139,9 +4149,9 @@ export function PortalShell({ token, context, initialTasks }: { token: string; c
 // ── Desktop Quick Actions Sidebar ─────────────────────────────────────────────
 
 function QuickActionsSidebar({
-  context, tasks, guestStats, todoCount, onNavigate, recentActivity,
+  token, context, tasks, guestStats, todoCount, onNavigate, recentActivity,
 }: {
-  context: PortalContext; tasks: PortalTask[]; guestStats: GuestStats | null;
+  token: string; context: PortalContext; tasks: PortalTask[]; guestStats: GuestStats | null;
   todoCount: number; onNavigate: (s: PortalSection) => void;
   recentActivity: RecentActivity | null;
 }) {
@@ -4160,6 +4170,9 @@ function QuickActionsSidebar({
 
   return (
     <>
+      {/* ── Requests summary (Wedding Workspace – Request Experience, Phase 1) ── */}
+      <RequestsSummaryCard token={token} onNavigate={onNavigate} />
+
       {/* ── Guest List card — aspiration-first, milestone-aware ── */}
       <button type="button" onClick={() => onNavigate("guests")}
         className="w-full text-left rounded-2xl border bg-card p-5 hover:shadow-sm transition-all group"

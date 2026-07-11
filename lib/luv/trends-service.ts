@@ -142,7 +142,7 @@ export function computeStoryMode(trends: VenueTrends): LuvObservation | null {
       id:            "story_couples_loving",
       priority:      "low",
       variant:       "story",
-      message:       "Couples are loving the experience.",
+      message:       "Clients are loving the experience.",
       detail:        `Your tour-to-booking rate is ${Math.round(conversion)}% — well above industry average.`,
       link:          "/leads",
       actionLabel:   "View tours →",
@@ -231,7 +231,7 @@ export function computeTrendObservations(trends: VenueTrends): LuvObservation[] 
     prior:          pm.booked,
     higherIsBetter: true,
     threshold:      20,
-    positive: pct => `Conversion rate is up ${pct}% — you're booking couples faster than last month.`,
+    positive: pct => `Conversion rate is up ${pct}% — you're booking clients faster than last month.`,
     warning:  pct => `Conversions are down ${pct}% vs. last month.`,
     link:           "/leads",
   }));

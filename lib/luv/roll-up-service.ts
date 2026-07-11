@@ -101,7 +101,7 @@ export function buildPromptData(
       `• Budget: ${fa.budgetConfigured} configured (${Math.round(fa.budgetConfigured / n * 100)}%)`,
       `• Seating: ${fa.seatingStarted} started (${Math.round(fa.seatingStarted / n * 100)}%)`,
       `• Vendors linked: ${fa.vendorsLinked} events (${Math.round(fa.vendorsLinked / n * 100)}%)`,
-      `• Task Playbooks: ${fa.playbooksActive} active (${Math.round(fa.playbooksActive / n * 100)}%)`,
+      `• Planning Playbooks: ${fa.playbooksActive} active (${Math.round(fa.playbooksActive / n * 100)}%)`,
     ].join("\n"),
 
     [

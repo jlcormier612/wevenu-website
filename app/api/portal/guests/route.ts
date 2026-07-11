@@ -17,12 +17,13 @@ export async function POST(request: Request) {
     firstName?: string;
     lastName?: string;
     email?: string;
+    phone?: string;
     plusOne?: boolean;
     plusOneName?: string;
-    groupLabel?: string;
+    householdId?: string | null;
     dietary?: string;
     isChild?: boolean;
-    guests?: { firstName: string; lastName?: string; email?: string; groupLabel?: string }[];
+    guests?: { firstName: string; lastName?: string; email?: string; household?: string }[];
   };
   const { token } = body;
   if (!token) return NextResponse.json({ ok: false, error: "Missing token." }, { status: 400 });
@@ -41,9 +42,10 @@ export async function POST(request: Request) {
     p_first_name:     body.firstName,
     p_last_name:      body.lastName ?? "",
     p_email:          body.email ?? "",
+    p_phone:          body.phone ?? "",
     p_plus_one:       body.plusOne ?? false,
     p_plus_one_name:  body.plusOneName ?? "",
-    p_group_label:    body.groupLabel ?? "",
+    p_household_id:   body.householdId ?? null,
     p_dietary:        body.dietary ?? "",
     p_is_child:       body.isChild ?? false,
   });
@@ -54,14 +56,42 @@ export async function POST(request: Request) {
 }
 
 export async function PATCH(request: Request) {
-  // RSVP update
-  const { token, guestId, rsvpStatus, rsvpNote } = await request.json() as { token: string; guestId: string; rsvpStatus: string; rsvpNote?: string };
-  if (!token || !guestId || !rsvpStatus) return NextResponse.json({ ok: false }, { status: 400 });
+  const body = await request.json() as {
+    token: string; guestId: string;
+    // RSVP-status update (existing behavior, unchanged)
+    rsvpStatus?: string; rsvpNote?: string;
+    // Basic editing (Guest & Household Foundation) — any other field means a full edit
+    firstName?: string; lastName?: string; email?: string; phone?: string;
+    plusOne?: boolean; plusOneName?: string; householdId?: string | null;
+    dietary?: string; isChild?: boolean; notes?: string;
+  };
+  const { token, guestId } = body;
+  if (!token || !guestId) return NextResponse.json({ ok: false }, { status: 400 });
   const supabase = await createClient();
-  const { data } = await supabase.rpc("update_guest_rsvp", { p_token: token, p_guest_id: guestId, p_status: rsvpStatus, p_note: rsvpNote ?? "" });
-  if ((data as { ok?: boolean })?.ok) {
-    void supabase.rpc("log_couple_event", { p_token: token, p_type: "rsvp_updated", p_data: { guestId, status: rsvpStatus } });
+
+  if (body.rsvpStatus) {
+    const { data } = await supabase.rpc("update_guest_rsvp", { p_token: token, p_guest_id: guestId, p_status: body.rsvpStatus, p_note: body.rsvpNote ?? "" });
+    if ((data as { ok?: boolean })?.ok) {
+      void supabase.rpc("log_couple_event", { p_token: token, p_type: "rsvp_updated", p_data: { guestId, status: body.rsvpStatus } });
+    }
+    return NextResponse.json(data ?? { ok: false });
   }
+
+  if (!body.firstName) return NextResponse.json({ ok: false, error: "Missing firstName." }, { status: 400 });
+  const { data } = await supabase.rpc("update_couple_guest", {
+    p_token:          token,
+    p_guest_id:       guestId,
+    p_first_name:     body.firstName,
+    p_last_name:      body.lastName ?? "",
+    p_email:          body.email ?? "",
+    p_phone:          body.phone ?? "",
+    p_plus_one:       body.plusOne ?? false,
+    p_plus_one_name:  body.plusOneName ?? "",
+    p_household_id:   body.householdId ?? null,
+    p_dietary:        body.dietary ?? "",
+    p_is_child:       body.isChild ?? false,
+    p_notes:          body.notes ?? "",
+  });
   return NextResponse.json(data ?? { ok: false });
 }
 

@@ -2,11 +2,12 @@
 
 import * as React from "react";
 
-import { AlertTriangle, Clock, Download, ExternalLink, FileText, Loader2, Pencil, Trash2, X } from "lucide-react";
+import { AlertTriangle, Clock, Download, ExternalLink, Eye, FileText, Loader2, Pencil, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 
 import { deleteDocumentAction, updateDocumentAction } from "@/app/(app)/documents/actions";
 import { DocumentCategoryBadge } from "@/components/documents/document-category-badge";
+import { DocumentPreviewModal } from "@/components/documents/document-preview-modal";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -20,6 +21,7 @@ import {
   isImageMimeType,
 } from "@/lib/documents/constants";
 import { DOCUMENT_CATEGORIES } from "@/lib/documents/constants";
+import { downloadFile } from "@/lib/download-file";
 import type { Document, DocumentCategory, DocumentEntityType } from "@/lib/documents/types";
 
 function ExpiryBadge({ expiresAt }: { expiresAt: string | null }) {
@@ -60,6 +62,7 @@ export function DocumentCard({
   const [expiresAt, setExpiresAt] = React.useState(doc.expiresAt ?? "");
   const [savePending, startSave] = React.useTransition();
   const [deletePending, startDelete] = React.useTransition();
+  const [previewOpen, setPreviewOpen] = React.useState(false);
 
   const isImage = isImageMimeType(doc.mimeType);
 
@@ -74,6 +77,16 @@ export function DocumentCard({
         onUpdate(doc.id, { name, notes: notes || null, category, tags: tags.split(",").map((t) => t.trim()).filter(Boolean), expiresAt: expiresAt || null });
         setEditing(false);
       } else toast.error(result.message ?? "Could not save changes.");
+    });
+  }
+
+  function handleDownload() {
+    // A plain `<a download>` is silently ignored for cross-origin URLs
+    // (Supabase Storage is always a different origin from the app) — it
+    // just navigates/displays the file instead, indistinguishable from
+    // the preview action. Fetching as a blob forces a real download.
+    void downloadFile(doc.storageUrl, doc.fileName).catch(() => {
+      toast.error("Could not download this file.");
     });
   }
 
@@ -96,7 +109,7 @@ export function DocumentCard({
           </div>
           <div className="space-y-1.5">
             <Label className="text-xs">Category</Label>
-            <Select value={category} onValueChange={(v) => setCategory(v as DocumentCategory)}>
+            <Select value={category} onValueChange={(v) => setCategory(v as DocumentCategory)} items={DOCUMENT_CATEGORIES}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>{DOCUMENT_CATEGORIES.map((c) => <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>)}</SelectContent>
             </Select>
@@ -129,13 +142,20 @@ export function DocumentCard({
   return (
     <div className="group flex gap-4 rounded-xl border border-border bg-card p-4 hover:bg-muted/20 transition-colors">
       {/* Thumbnail / icon */}
-      <div className="shrink-0 flex h-12 w-12 items-center justify-center rounded-lg bg-muted overflow-hidden">
-        {isImage ? (
+      {isImage ? (
+        <button
+          type="button"
+          onClick={() => setPreviewOpen(true)}
+          className="shrink-0 flex h-12 w-12 items-center justify-center rounded-lg bg-muted overflow-hidden"
+          aria-label="Preview"
+        >
           <img src={doc.storageUrl} alt={doc.name} className="h-full w-full object-cover" />
-        ) : (
+        </button>
+      ) : (
+        <div className="shrink-0 flex h-12 w-12 items-center justify-center rounded-lg bg-muted overflow-hidden">
           <FileText className="h-5 w-5 text-muted-foreground" />
-        )}
-      </div>
+        </div>
+      )}
 
       {/* Info */}
       <div className="min-w-0 flex-1 space-y-1">
@@ -160,14 +180,21 @@ export function DocumentCard({
 
       {/* Actions */}
       <div className="flex items-start gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
-        <a href={doc.storageUrl} target="_blank" rel="noopener noreferrer"
-          className="rounded p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground" aria-label="Open">
-          <ExternalLink className="h-3.5 w-3.5" />
-        </a>
-        <a href={doc.storageUrl} download={doc.fileName}
+        {isImage ? (
+          <button type="button" onClick={() => setPreviewOpen(true)}
+            className="rounded p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground" aria-label="Preview">
+            <Eye className="h-3.5 w-3.5" />
+          </button>
+        ) : (
+          <a href={doc.storageUrl} target="_blank" rel="noopener noreferrer"
+            className="rounded p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground" aria-label="Open">
+            <ExternalLink className="h-3.5 w-3.5" />
+          </a>
+        )}
+        <button type="button" onClick={handleDownload}
           className="rounded p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground" aria-label="Download">
           <Download className="h-3.5 w-3.5" />
-        </a>
+        </button>
         <button type="button" onClick={() => setEditing(true)}
           className="rounded p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground" aria-label="Edit">
           <Pencil className="h-3.5 w-3.5" />
@@ -177,6 +204,16 @@ export function DocumentCard({
           {deletePending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
         </button>
       </div>
+
+      {isImage && (
+        <DocumentPreviewModal
+          open={previewOpen}
+          onOpenChange={setPreviewOpen}
+          name={doc.name}
+          fileName={doc.fileName}
+          storageUrl={doc.storageUrl}
+        />
+      )}
     </div>
   );
 }

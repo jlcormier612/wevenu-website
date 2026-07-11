@@ -20,9 +20,10 @@ import {
 } from "@/lib/clients/validation";
 import { clientDisplayName } from "@/lib/clients/constants";
 import { getEventIdForClient, insertEvent } from "@/lib/events/repository";
-import { createPortalSession } from "@/lib/portal/service";
+import { inviteClient } from "@/lib/client-auth/service";
 import type { Lead } from "@/lib/leads/types";
 import { getCurrentVenue } from "@/lib/venue/service";
+import { exitEnrollmentsForBooking } from "@/lib/message-sequences/service";
 
 /**
  * If the client has an event date, automatically create the linked event.
@@ -111,6 +112,15 @@ export async function createClient_(input: ClientInput): Promise<CreateClientRes
       }
     }
     const clientId = await repo.insertClient(supabase, venueId, input);
+
+    // Stop on booking (§3.3) — must never block client creation.
+    const { data: newClient } = await supabase.from("clients").select("relationship_id")
+      .eq("id", clientId).maybeSingle<{ relationship_id: string | null }>();
+    if (newClient?.relationship_id) {
+      void exitEnrollmentsForBooking(supabase, venueId, newClient.relationship_id)
+        .catch((e) => console.error("Series exit-on-booking failed:", e));
+    }
+
     const eventId = input.eventDate
       ? await autoCreateEvent(supabase, venueId, clientId, {
           firstName: input.firstName,
@@ -128,8 +138,10 @@ export async function createClient_(input: ClientInput): Promise<CreateClientRes
   const r = result as CreateClientResult;
   if (!r.ok) return r;
   const coupleName = clientDisplayName(input.firstName, input.lastName, input.partnerFirstName, input.partnerLastName);
-  const portal = await createPortalSession(r.clientId, coupleName, "couple");
-  return { ok: true, clientId: r.clientId, eventId: r.eventId, portalToken: portal?.accessToken ?? null };
+  const invitationSent = input.email.trim()
+    ? (await inviteClient(r.clientId, input.email, coupleName)).ok
+    : false;
+  return { ok: true, clientId: r.clientId, eventId: r.eventId, invitationSent };
 }
 
 /** Convert a won lead to a client. Pre-populates from lead data. */
@@ -178,6 +190,14 @@ export async function convertLeadToClient(lead: Lead): Promise<CreateClientResul
     await repo.insertClientActivity(supabase, venueId, clientId, "note_added",
       "Welcome note", `Converted from lead inquiry — ${lead.firstName} ${lead.lastName}`);
     await convertLeadHolds(venueId, lead.id, supabase);
+
+    // Stop on booking (§3.3) — must never block conversion.
+    const { data: newClient } = await supabase.from("clients").select("relationship_id")
+      .eq("id", clientId).maybeSingle<{ relationship_id: string | null }>();
+    if (newClient?.relationship_id) {
+      void exitEnrollmentsForBooking(supabase, venueId, newClient.relationship_id)
+        .catch((e) => console.error("Series exit-on-booking failed:", e));
+    }
     const eventId = input.eventDate
       ? await autoCreateEvent(supabase, venueId, clientId, {
           firstName: lead.firstName,
@@ -194,8 +214,10 @@ export async function convertLeadToClient(lead: Lead): Promise<CreateClientResul
   const r = result as CreateClientResult;
   if (!r.ok) return r;
   const coupleName = clientDisplayName(lead.firstName, lead.lastName, lead.partnerFirstName, lead.partnerLastName);
-  const portal = await createPortalSession(r.clientId, coupleName, "couple");
-  return { ok: true, clientId: r.clientId, eventId: r.eventId, portalToken: portal?.accessToken ?? null };
+  const invitationSent = input.email.trim()
+    ? (await inviteClient(r.clientId, input.email, coupleName)).ok
+    : false;
+  return { ok: true, clientId: r.clientId, eventId: r.eventId, invitationSent };
 }
 
 // ---- update -----------------------------------------------------------------

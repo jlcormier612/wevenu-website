@@ -27,6 +27,7 @@ import { getNotificationStats } from "@/lib/notifications/stats";
 import { getNotificationPreferences } from "@/lib/notifications/preferences";
 import { getTourSettings } from "@/lib/tours/service";
 // Playbooks moved to Library (/library/playbooks)
+// Pipeline Templates moved to Library (/library/pipeline-templates)
 
 export const metadata: Metadata = { title: "Settings" };
 
@@ -69,12 +70,12 @@ export default async function SettingsPage() {
         <CardHeader>
           <CardTitle className="text-base">Import Existing Data</CardTitle>
           <CardDescription>
-            Bring your couples, leads, and vendors into Wevenu from any CSV export. No template required — map your own column names.
+            Bring your clients, leads, and vendors into Wevenu from any CSV export. No template required — map your own column names.
           </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="flex flex-wrap gap-3">
-            <Link href="/settings/import?type=couples" className="text-sm font-medium text-primary hover:underline">Import Couples →</Link>
+            <Link href="/settings/import?type=couples" className="text-sm font-medium text-primary hover:underline">Import Clients →</Link>
             <Link href="/settings/import?type=leads" className="text-sm font-medium text-primary hover:underline">Import Leads →</Link>
             <Link href="/settings/import?type=vendors" className="text-sm font-medium text-primary hover:underline">Import Vendors →</Link>
           </div>
@@ -146,7 +147,7 @@ export default async function SettingsPage() {
           <CardHeader>
             <CardTitle className="text-base">Tour Scheduling</CardTitle>
             <CardDescription>
-              Let couples schedule a tour directly from your website. Every booking creates a lead in Wevenu automatically.
+              Let clients schedule a tour directly from your website. Every booking creates a lead in Wevenu automatically.
             </CardDescription>
           </CardHeader>
           <CardContent>

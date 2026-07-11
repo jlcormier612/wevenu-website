@@ -42,14 +42,39 @@ export type PortalTask = {
   visibility: "client_visible" | "client_owned";
   dueDate: string;
   daysOffset: number;
-  phase: "planning" | "final_details" | "wedding_day" | "post_wedding";
+  milestoneName: string;
+  milestoneKind: "event_day" | "final_stretch" | null;
   status: "pending" | "blocked" | "complete" | "overdue";
   isRequired: boolean;
   completedAt: string | null;
   canComplete: boolean;  // true only for client_owned tasks the couple can act on
 };
 
-export type PortalSection = "overview" | "guests" | "todos" | "budget" | "seating" | "people" | "website" | "story" | "journey" | "tasks" | "vendors" | "payments" | "documents" | "messages" | "ask" | "guide";
+export type PortalSection = "overview" | "guests" | "todos" | "budget" | "seating" | "people" | "website" | "story" | "journey" | "tasks" | "timeline" | "vendors" | "payments" | "documents" | "messages" | "ask" | "guide" | "account" | "requests";
+
+// A Timeline item as visible in the client portal — same timeline_entries
+// row the coordinator sees in the Booking Timeline, filtered to only what's
+// marked visible to the client.
+export type PortalTimelineLink = { id: string; url: string; label: string | null };
+export type PortalTimelineAttachment = { id: string; name: string; url: string };
+export type PortalTimelineSection = { id: string; name: string; sortOrder: number; clientCanAdd: boolean };
+
+export type PortalTimelineEntry = {
+  id: string;
+  title: string;
+  description: string | null;
+  entryTime: string | null;
+  sectionId: string | null;
+  sortOrder: number;
+  canEdit: boolean;
+  links: PortalTimelineLink[];
+  attachments: PortalTimelineAttachment[];
+};
+
+export type PortalTimeline = {
+  sections: PortalTimelineSection[];
+  entries: PortalTimelineEntry[];
+};
 
 export type BudgetContributor = {
   id: string;
@@ -134,18 +159,29 @@ export type CoupleGuest = {
   firstName: string;
   lastName: string | null;
   email: string | null;
+  phone: string | null;
   plusOne: boolean;
   plusOneName: string | null;
   rsvpStatus: "pending" | "attending" | "declined" | "maybe";
   rsvpNote: string | null;
   dietary: string | null;
-  groupLabel: string | null;
   notes: string | null;
   mealChoice: string | null;
   plusOneMeal: string | null;
   isChild: boolean;
+  /** A guest's organizational group (Guest & Household Foundation) — replaces the old free-text groupLabel. */
   householdId: string | null;
+  householdName: string | null;
+  rsvpToken: string | null;
   rsvpSentAt: string | null;
+};
+
+/** A couple-owned organizational unit guests belong to (Guest & Household Foundation). */
+export type CoupleHousehold = {
+  id: string;
+  name: string;
+  notes: string | null;
+  memberCount: number;
 };
 
 export type GuestStats = {

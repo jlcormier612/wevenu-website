@@ -395,7 +395,7 @@ export function CalendarView({
             </div>
             <div className="space-y-1.5">
               <Label className="text-xs">Reason</Label>
-              <Select value={blockReason} onValueChange={setBlockReason}>
+              <Select value={blockReason} onValueChange={setBlockReason} items={BLOCK_REASONS}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>{BLOCK_REASONS.map((r) => <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>)}</SelectContent>
               </Select>
@@ -435,7 +435,11 @@ export function CalendarView({
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="space-y-1.5">
               <Label className="text-xs">Repeat</Label>
-              <Select value={blockRecurrence} onValueChange={setBlockRecurrence}>
+              <Select
+                value={blockRecurrence}
+                onValueChange={setBlockRecurrence}
+                items={{ none: "Does not repeat", daily: "Every day", weekly: "Every week (same day)", annual: "Every year (same date)" }}
+              >
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="none">Does not repeat</SelectItem>

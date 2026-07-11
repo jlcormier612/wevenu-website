@@ -142,15 +142,15 @@ export function FinalDetailsForm({
           <div className="space-y-0.5">
             <p className="text-sm font-medium text-heading">Questionnaire status</p>
             <p className="text-xs text-muted-foreground">
-              {!initial?.sentAt ? "Not yet sent to the couple."
+              {!initial?.sentAt ? "Not yet sent to the client."
                 : initial.openedAt ? `Opened${initial.status === "submitted" ? " and submitted" : " — awaiting submission"}.`
-                : "Sent — waiting for the couple to open it."}
+                : "Sent — waiting for the client to open it."}
             </p>
           </div>
           <div className="flex items-center gap-2">
             {coupleEmail && initial?.status !== "submitted" && initial?.status !== "reviewed" && (
               <Button type="button" size="sm" onClick={handleSend} disabled={sending}>
-                {sending ? <><Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />Sending…</> : <><Send className="mr-1 h-3.5 w-3.5" />Send to couple</>}
+                {sending ? <><Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />Sending…</> : <><Send className="mr-1 h-3.5 w-3.5" />Send to client</>}
               </Button>
             )}
           </div>
@@ -170,7 +170,7 @@ export function FinalDetailsForm({
           </div>
         )}
         {!coupleEmail && (
-          <p className="text-xs text-muted-foreground">Add the couple's email to their client record to send the questionnaire link.</p>
+          <p className="text-xs text-muted-foreground">Add their email to the client record to send the questionnaire link.</p>
         )}
       </div>
 

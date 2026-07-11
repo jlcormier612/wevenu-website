@@ -6,7 +6,7 @@ import type { VenueMilestone, MilestoneId } from "@/lib/activation/types";
 import { markMilestoneShownAction } from "@/app/(app)/dashboard/actions";
 
 const MILESTONE_MESSAGES: Record<MilestoneId, string> = {
-  first_couple_portal_open:  "Your first couple just opened their portal.",
+  first_couple_portal_open:  "Your first client just opened their portal.",
   first_vendor_accepted:     "A vendor just accepted their invitation.",
   first_contract_signed:     "Your first contract was just signed.",
   first_payment_received:    "Your first payment just came in.",

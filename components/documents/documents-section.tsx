@@ -225,7 +225,7 @@ export function DocumentsSection({
               </div>
               <div className="space-y-1.5">
                 <Label className="text-xs">Category</Label>
-                <Select value={uploadCategory} onValueChange={(v) => setUploadCategory(v as DocumentCategory)}>
+                <Select value={uploadCategory} onValueChange={(v) => setUploadCategory(v as DocumentCategory)} items={DOCUMENT_CATEGORIES}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>{DOCUMENT_CATEGORIES.map((c) => <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>)}</SelectContent>
                 </Select>

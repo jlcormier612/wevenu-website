@@ -101,7 +101,7 @@ export function StripeConnectSection({ venue }: { venue: Venue }) {
             <Clock className="h-5 w-5 shrink-0 text-muted-foreground mt-0.5" />
             <p className="text-sm text-muted-foreground">
               We&apos;re building real online payment collection — a proper Stripe checkout your
-              couples can pay through, with balances that update automatically. Until that ships,
+              clients can pay through, with balances that update automatically. Until that ships,
               there&apos;s nothing to connect here.
             </p>
           </div>

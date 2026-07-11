@@ -64,14 +64,14 @@ function NewInquiryView({ firstName }: { firstName: string }) {
       <LuvCardHeader />
 
       <div className="space-y-1.5">
-        <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">New Couple</p>
+        <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">New Lead</p>
         <p className="text-sm text-heading leading-relaxed">
           {firstName} is just beginning their planning journey. There isn&apos;t enough activity yet for me to draw any conclusions.
         </p>
       </div>
 
       <LuvCallout>
-        No action needed yet — but couples who receive a warm, personal response early on tend to engage more deeply. This is a great moment to introduce yourself and share what makes your venue special.
+        No action needed yet — but leads who receive a warm, personal response early on tend to engage more deeply. This is a great moment to introduce yourself and share what makes your venue special.
       </LuvCallout>
     </LuvCard>
   );

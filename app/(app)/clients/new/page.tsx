@@ -11,7 +11,7 @@ export default function NewClientPage() {
     <div className="space-y-6">
       <PageHeader
         title="New Client"
-        description="Record a booked couple directly as a client."
+        description="Record a booked client directly."
       />
       <Card>
         <CardHeader>

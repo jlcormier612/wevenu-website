@@ -27,7 +27,7 @@ import type { VendorErrors, VendorInput } from "@/lib/vendors/types";
 // VendorInput["preferenceLevel"] is used inline for the Select onValueChange cast
 
 export function VendorFormFields({
-  input, errors, set, onSubmit, pending, submitLabel = "Save vendor",
+  input, errors, set, onSubmit, pending, submitLabel = "Save vendor", isClaimed = false,
 }: {
   input: VendorInput;
   errors: VendorErrors;
@@ -35,17 +35,25 @@ export function VendorFormFields({
   onSubmit: () => void;
   pending: boolean;
   submitLabel?: string;
+  /** Once a vendor claims their own profile, identity fields become theirs to manage — this form only edits your relationship to them. */
+  isClaimed?: boolean;
 }) {
   const router = useRouter();
   return (
     <div className="space-y-5">
+      {isClaimed && (
+        <div className="rounded-lg border border-border bg-muted/40 px-3.5 py-2.5 text-xs text-muted-foreground">
+          This vendor has claimed their own profile — their business details below are managed by their account and shown read-only here. Your preference level, notes, and pricing flag are still yours to edit.
+        </div>
+      )}
+      <fieldset disabled={isClaimed} className="space-y-5 disabled:opacity-60">
       <div className="grid gap-4 sm:grid-cols-2">
         <Field label="Vendor name" htmlFor="vn" required error={errors.businessName}>
           <Input id="vn" value={input.businessName} onChange={(e) => set("businessName", e.target.value)}
             placeholder="Blossoms Floral Studio" aria-invalid={errors.businessName ? true : undefined} />
         </Field>
         <Field label="Category" htmlFor="vc">
-          <Select value={input.category} onValueChange={(v) => set("category", v)}>
+          <Select value={input.category} onValueChange={(v) => set("category", v)} items={VENDOR_CATEGORIES}>
             <SelectTrigger id="vc"><SelectValue placeholder="Select category" /></SelectTrigger>
             <SelectContent>
               {VENDOR_CATEGORIES.map((c) => <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>)}
@@ -54,27 +62,11 @@ export function VendorFormFields({
         </Field>
       </div>
 
-      {/* Preference level */}
-      <Field label="Recommendation level" htmlFor="vpref"
-        hint="Controls how this vendor appears to couples in their portal.">
-        <Select value={input.preferenceLevel} onValueChange={(v) => set("preferenceLevel", v as VendorInput["preferenceLevel"])}>
-          <SelectTrigger id="vpref"><SelectValue /></SelectTrigger>
-          <SelectContent>
-            {PREFERENCE_LEVELS.map(l => (
-              <SelectItem key={l.value} value={l.value}>
-                <span className="font-medium">{l.label}</span>
-                <span className="text-muted-foreground ml-2 text-xs hidden sm:inline">— {l.description}</span>
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </Field>
-
-      {/* Couple-facing description + pricing */}
+      {/* Client-facing description + pricing */}
       <Separator />
-      <p className="text-sm font-medium text-heading">Couple-facing details</p>
+      <p className="text-sm font-medium text-heading">Client-facing details</p>
       <Field label="Description" htmlFor="vdesc"
-        hint="Shown to couples in the Vendors section of their portal.">
+        hint="Shown to clients in the Vendors section of their portal.">
         <Textarea id="vdesc" value={input.description} rows={2}
           onChange={(e) => set("description", e.target.value)}
           placeholder="Award-winning photography duo specializing in documentary-style wedding storytelling…" />
@@ -85,8 +77,12 @@ export function VendorFormFields({
           <Input id="vphoto" value={input.logoUrl} onChange={(e) => set("logoUrl", e.target.value)}
             placeholder="https://…/photo.jpg" inputMode="url" />
         </Field>
-        <Field label="Pricing tier" htmlFor="vprice">
-          <Select value={input.pricingTier} onValueChange={(v) => set("pricingTier", v)}>
+        <Field label="Pricing tier" htmlFor="vprice" hint="Set by the vendor once they've claimed their profile.">
+          <Select
+            value={input.pricingTier}
+            onValueChange={(v) => set("pricingTier", v)}
+            items={[{ value: "", label: "No pricing indicator" }, ...PRICING_TIERS]}
+          >
             <SelectTrigger id="vprice"><SelectValue placeholder="Select tier" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="">No pricing indicator</SelectItem>
@@ -134,8 +130,33 @@ export function VendorFormFields({
           <Input id="vtt" value={input.tiktokUrl} onChange={(e) => set("tiktokUrl", e.target.value)} placeholder="tiktok.com/@vendor" />
         </Field>
       </div>
+      </fieldset>
 
       <Separator />
+      <p className="text-sm font-medium text-heading">Your relationship with this vendor</p>
+      <Field label="Recommendation level" htmlFor="vpref"
+        hint="Controls how prominently this vendor appears to clients in their portal.">
+        <Select
+          value={input.preferenceLevel}
+          onValueChange={(v) => set("preferenceLevel", v as VendorInput["preferenceLevel"])}
+          items={PREFERENCE_LEVELS.map((l) => ({ value: l.value, label: l.label }))}
+        >
+          <SelectTrigger id="vpref"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            {PREFERENCE_LEVELS.map(l => (
+              <SelectItem key={l.value} value={l.value}>
+                <span className="font-medium">{l.label}</span>
+                <span className="text-muted-foreground ml-2 text-xs hidden sm:inline">— {l.description}</span>
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </Field>
+      <Field label="Special pricing or promotion" htmlFor="vspecial"
+        hint="A discount or arrangement specific to your venue — not shown to clients.">
+        <Input id="vspecial" value={input.specialPricingNote} onChange={(e) => set("specialPricingNote", e.target.value)}
+          placeholder="10% off for repeat bookings…" />
+      </Field>
       <Field label="Internal notes" htmlFor="vnotes"
         hint="Arrival preferences, setup requirements, past experiences. Not visible to vendors.">
         <Textarea id="vnotes" value={input.notes} rows={3} onChange={(e) => set("notes", e.target.value)}

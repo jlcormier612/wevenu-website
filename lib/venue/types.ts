@@ -95,6 +95,11 @@ export type Venue = {
   onboardingDismissed: boolean;
   embedKey: string;   // public key for the venue's inquiry form — /form/{embedKey}
   tourSchedulingEnabled: boolean;
+  // Program 2 Phase 2B rollout flag — per docs/conversation-experience-cutover.md's
+  // staged rollout (dogfood -> opt-in beta -> default-on -> retirement).
+  // Gates the new unified Conversation UI; false leaves the venue on the
+  // legacy Messages tab / Messaging inbox, untouched.
+  conversationExperienceEnabled: boolean;
   createdAt: string;
   updatedAt: string;
 };

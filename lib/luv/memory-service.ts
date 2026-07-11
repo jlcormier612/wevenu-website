@@ -66,7 +66,7 @@ export function computeMemoryObservations(
     if (hit) {
       const message = hit === totalBookings
         ? `You just reached ${hit} booking${hit !== 1 ? "s" : ""} — a milestone worth celebrating. 💗`
-        : `You've booked ${totalBookings} couples on Wevenu. ${totalBookings >= 50 ? "An incredible community you've built." : "Keep the momentum going."}`;
+        : `You've booked ${totalBookings} clients on Wevenu. ${totalBookings >= 50 ? "An incredible community you've built." : "Keep the momentum going."}`;
       obs.push({
         id:          "memory_total_bookings",
         priority:    "low",
@@ -83,10 +83,10 @@ export function computeMemoryObservations(
     const fast   = avgDays <= 14;
     const slow   = avgDays >= 60;
     const detail = fast
-      ? `Couples who inquire typically book within ${avgDays} days — that's a fast, decisive pipeline.`
+      ? `Leads who inquire typically book within ${avgDays} days — that's a fast, decisive pipeline.`
       : slow
       ? `Your average lead-to-booking time is ${avgDays} days. Nurturing earlier in the cycle may accelerate decisions.`
-      : `Couples at your venue typically take about ${avgDays} days from first inquiry to booking.`;
+      : `Leads at your venue typically take about ${avgDays} days from first inquiry to booking.`;
     obs.push({
       id:          "memory_avg_lead_time",
       priority:    "low",

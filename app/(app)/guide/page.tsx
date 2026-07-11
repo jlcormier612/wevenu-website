@@ -11,7 +11,7 @@ export default async function VenueGuidePage() {
     <div className="space-y-6">
       <PageHeader
         title="Venue Guide"
-        description="Everything your couples need to know — parking, policies, FAQs, and more. Couples browse this in their portal and Luv answers questions from it."
+        description="Everything your clients need to know — parking, policies, FAQs, and more. Clients browse this in their portal and Luv answers questions from it."
       />
       <VenueGuideEditor initial={initial} />
     </div>

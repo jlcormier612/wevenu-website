@@ -1,10 +1,15 @@
 import { createClient } from "@/integrations/supabase/server";
 import type {
+  EventPlaybookApplication,
   EventReadiness,
   EventTask,
-  PlaybookActionResult,
+  EventTaskContextLink,
+  EventTaskContextSourceType,
+  PlaybookMilestone,
   PlaybookTask,
+  PlaybookTaskAttachment,
   PlaybookTemplate,
+  PlaybookTemplateWithStats,
   TaskReminderRole,
   TaskStatus,
 } from "@/lib/playbooks/types";
@@ -15,13 +20,15 @@ const DEFAULT_REMINDER_BEFORE_DAYS = [7, 3, 1];
 
 type DbClient = Awaited<ReturnType<typeof createClient>>;
 
-type TemplateRow = { id: string; venue_id: string; name: string; event_type: string | null; is_default: boolean; description: string | null; created_at: string; updated_at: string; };
-type TaskRow = { id: string; template_id: string; venue_id: string; title: string; description: string | null; owner_type: string; visibility: string; days_offset: number; category: string; phase: string | null; auto_complete_trigger: string | null; depends_on_task_id: string | null; is_required: boolean; sort_order: number; created_at: string; reminder_before_days: number[] | null; escalation_after_days: number | null; notify_on_assign: boolean; notify_on_complete: boolean; };
-type EventTaskRow = { id: string; venue_id: string; event_id: string; template_task_id: string | null; title: string; description: string | null; owner_type: string; visibility: string; due_date: string; days_offset: number; category: string; phase: string | null; auto_complete_trigger: string | null; is_required: boolean; status: string; depends_on_event_task_id: string | null; depends_on_title?: string | null; completed_at: string | null; completed_by: string | null; notes: string | null; sort_order: number; created_at: string; updated_at: string; reminder_before_days: number[] | null; escalation_after_days: number | null; notify_on_assign: boolean; notify_on_complete: boolean; assigned_to_staff_id: string | null; assigned_to_name?: string | null; };
+type TemplateRow = { id: string; venue_id: string; name: string; kind: string; event_type: string | null; is_default: boolean; is_archived: boolean; description: string | null; created_at: string; updated_at: string; };
+type MilestoneRow = { id: string; template_id: string; venue_id: string; name: string; kind: string | null; sort_order: number; created_at: string; updated_at: string; };
+type TaskRow = { id: string; template_id: string; venue_id: string; title: string; description: string | null; owner_type: string; visibility: string; days_offset: number; due_date_rule_kind: string; category: string; milestone_id: string; auto_complete_trigger: string | null; depends_on_task_id: string | null; is_required: boolean; sort_order: number; created_at: string; reminder_before_days: number[] | null; escalation_after_days: number | null; notify_on_assign: boolean; notify_on_complete: boolean; action_type: string | null; action_label: string | null; };
+type EventTaskRow = { id: string; venue_id: string; event_id: string; template_task_id: string | null; title: string; description: string | null; owner_type: string; visibility: string; due_date: string; days_offset: number; due_date_rule_kind: string; due_date_locked: boolean; category: string; milestone_name: string; milestone_kind: string | null; auto_complete_trigger: string | null; is_required: boolean; status: string; depends_on_event_task_id: string | null; depends_on_title?: string | null; completed_at: string | null; completed_by: string | null; notes: string | null; sort_order: number; created_at: string; updated_at: string; reminder_before_days: number[] | null; escalation_after_days: number | null; notify_on_assign: boolean; notify_on_complete: boolean; assigned_to_staff_id: string | null; assigned_to_name?: string | null; action_type: string | null; action_label: string | null; request_id: string | null; };
 
-const mapTemplate = (r: TemplateRow): PlaybookTemplate => ({ id: r.id, venueId: r.venue_id, name: r.name, eventType: r.event_type, isDefault: r.is_default, description: r.description, createdAt: r.created_at, updatedAt: r.updated_at });
-const mapTask = (r: TaskRow): PlaybookTask => ({ id: r.id, templateId: r.template_id, venueId: r.venue_id, title: r.title, description: r.description, ownerType: r.owner_type as PlaybookTask["ownerType"], visibility: r.visibility as PlaybookTask["visibility"], daysOffset: r.days_offset, category: r.category as PlaybookTask["category"], phase: (r.phase as PlaybookTask["phase"]) ?? null, autoCompleteTrigger: r.auto_complete_trigger, dependsOnTaskId: r.depends_on_task_id, isRequired: r.is_required, sortOrder: r.sort_order, createdAt: r.created_at, reminderBeforeDays: r.reminder_before_days ?? null, escalationAfterDays: r.escalation_after_days ?? null, notifyOnAssign: r.notify_on_assign, notifyOnComplete: r.notify_on_complete });
-const mapEventTask = (r: EventTaskRow): EventTask => ({ id: r.id, venueId: r.venue_id, eventId: r.event_id, templateTaskId: r.template_task_id, title: r.title, description: r.description, ownerType: r.owner_type as EventTask["ownerType"], visibility: r.visibility as EventTask["visibility"], dueDate: r.due_date, daysOffset: r.days_offset, category: r.category as EventTask["category"], phase: (r.phase as EventTask["phase"]) ?? null, autoCompleteTrigger: r.auto_complete_trigger, isRequired: r.is_required, status: computeStatus(r), dependsOnEventTaskId: r.depends_on_event_task_id, dependsOnTitle: r.depends_on_title ?? null, completedAt: r.completed_at, completedBy: r.completed_by, notes: r.notes, sortOrder: r.sort_order, createdAt: r.created_at, updatedAt: r.updated_at, reminderBeforeDays: r.reminder_before_days ?? null, escalationAfterDays: r.escalation_after_days ?? null, notifyOnAssign: r.notify_on_assign, notifyOnComplete: r.notify_on_complete, assignedToStaffId: r.assigned_to_staff_id ?? null, assignedToName: r.assigned_to_name ?? null });
+const mapTemplate = (r: TemplateRow): PlaybookTemplate => ({ id: r.id, venueId: r.venue_id, name: r.name, kind: r.kind as PlaybookTemplate["kind"], eventType: r.event_type, isDefault: r.is_default, isArchived: r.is_archived, description: r.description, createdAt: r.created_at, updatedAt: r.updated_at });
+const mapMilestone = (r: MilestoneRow): PlaybookMilestone => ({ id: r.id, templateId: r.template_id, venueId: r.venue_id, name: r.name, kind: (r.kind as PlaybookMilestone["kind"]) ?? null, sortOrder: r.sort_order, createdAt: r.created_at, updatedAt: r.updated_at });
+const mapTask = (r: TaskRow): PlaybookTask => ({ id: r.id, templateId: r.template_id, venueId: r.venue_id, title: r.title, description: r.description, ownerType: r.owner_type as PlaybookTask["ownerType"], visibility: r.visibility as PlaybookTask["visibility"], daysOffset: r.days_offset, dueDateRuleKind: r.due_date_rule_kind as PlaybookTask["dueDateRuleKind"], category: r.category as PlaybookTask["category"], milestoneId: r.milestone_id, autoCompleteTrigger: r.auto_complete_trigger, dependsOnTaskId: r.depends_on_task_id, isRequired: r.is_required, sortOrder: r.sort_order, createdAt: r.created_at, reminderBeforeDays: r.reminder_before_days ?? null, escalationAfterDays: r.escalation_after_days ?? null, notifyOnAssign: r.notify_on_assign, notifyOnComplete: r.notify_on_complete, actionType: (r.action_type as PlaybookTask["actionType"]) ?? null, actionLabel: r.action_label ?? null });
+const mapEventTask = (r: EventTaskRow): EventTask => ({ id: r.id, venueId: r.venue_id, eventId: r.event_id, templateTaskId: r.template_task_id, title: r.title, description: r.description, ownerType: r.owner_type as EventTask["ownerType"], visibility: r.visibility as EventTask["visibility"], dueDate: r.due_date, daysOffset: r.days_offset, dueDateRuleKind: r.due_date_rule_kind as EventTask["dueDateRuleKind"], dueDateLocked: r.due_date_locked, category: r.category as EventTask["category"], milestoneName: r.milestone_name, milestoneKind: (r.milestone_kind as EventTask["milestoneKind"]) ?? null, autoCompleteTrigger: r.auto_complete_trigger, isRequired: r.is_required, status: computeStatus(r), dependsOnEventTaskId: r.depends_on_event_task_id, dependsOnTitle: r.depends_on_title ?? null, completedAt: r.completed_at, completedBy: r.completed_by, notes: r.notes, sortOrder: r.sort_order, createdAt: r.created_at, updatedAt: r.updated_at, reminderBeforeDays: r.reminder_before_days ?? null, escalationAfterDays: r.escalation_after_days ?? null, notifyOnAssign: r.notify_on_assign, notifyOnComplete: r.notify_on_complete, assignedToStaffId: r.assigned_to_staff_id ?? null, assignedToName: r.assigned_to_name ?? null, actionType: (r.action_type as EventTask["actionType"]) ?? null, actionLabel: r.action_label ?? null, requestId: r.request_id ?? null });
 
 function computeStatus(r: EventTaskRow): TaskStatus {
   if (r.status === "complete" || r.status === "waived") return r.status as TaskStatus;
@@ -32,8 +39,14 @@ function computeStatus(r: EventTaskRow): TaskStatus {
 
 // ---- Templates ---------------------------------------------------------------
 
-export async function getTemplates(client: DbClient, venueId: string): Promise<PlaybookTemplate[]> {
-  const { data, error } = await client.from("playbook_templates").select("*").eq("venue_id", venueId).order("name");
+// Archived templates are excluded by default — every existing caller (the
+// booking-apply flows in particular) gets Requirement 7's behavior for
+// free, with no call-site changes needed. Only the Library page opts into
+// includeArchived: true.
+export async function getTemplates(client: DbClient, venueId: string, opts?: { includeArchived?: boolean }): Promise<PlaybookTemplate[]> {
+  let query = client.from("playbook_templates").select("*").eq("venue_id", venueId);
+  if (!opts?.includeArchived) query = query.eq("is_archived", false);
+  const { data, error } = await query.order("name");
   if (error) throw error;
   return (data as TemplateRow[]).map(mapTemplate);
 }
@@ -43,14 +56,166 @@ export async function getTemplate(client: DbClient, venueId: string, id: string)
   return data ? mapTemplate(data) : null;
 }
 
-export async function insertTemplate(client: DbClient, venueId: string, name: string, eventType: string | null, description: string | null): Promise<string> {
-  const { data, error } = await client.from("playbook_templates").insert({ venue_id: venueId, name: name.trim(), event_type: eventType || null, description: description?.trim() || null }).select("id").single<{ id: string }>();
+// Library card grid needs task/usage counts alongside every template,
+// archived included. Counts are computed in JS from flat row fetches
+// rather than a PostgREST embedded-count select — this codebase has hit
+// real bugs from untested embedded-relationship syntax before.
+export async function getTemplatesWithStats(client: DbClient, venueId: string): Promise<PlaybookTemplateWithStats[]> {
+  const [{ data: templateRows, error: templateError }, { data: taskRows, error: taskError }, { data: applicationRows, error: applicationError }] = await Promise.all([
+    client.from("playbook_templates").select("*").eq("venue_id", venueId).order("name"),
+    client.from("playbook_tasks").select("template_id").eq("venue_id", venueId),
+    client.from("event_playbook_applications").select("template_id").eq("venue_id", venueId),
+  ]);
+  if (templateError) throw templateError;
+  if (taskError) throw taskError;
+  if (applicationError) throw applicationError;
+
+  const taskCounts = new Map<string, number>();
+  for (const row of taskRows as { template_id: string }[]) taskCounts.set(row.template_id, (taskCounts.get(row.template_id) ?? 0) + 1);
+
+  const usageCounts = new Map<string, number>();
+  for (const row of applicationRows as { template_id: string | null }[]) {
+    if (!row.template_id) continue;
+    usageCounts.set(row.template_id, (usageCounts.get(row.template_id) ?? 0) + 1);
+  }
+
+  return (templateRows as TemplateRow[]).map((r) => ({
+    ...mapTemplate(r),
+    taskCount: taskCounts.get(r.id) ?? 0,
+    usageCount: usageCounts.get(r.id) ?? 0,
+  }));
+}
+
+export async function insertTemplate(client: DbClient, venueId: string, name: string, kind: PlaybookTemplate["kind"], eventType: string | null, description: string | null): Promise<string> {
+  const { data, error } = await client.from("playbook_templates").insert({ venue_id: venueId, name: name.trim(), kind, event_type: eventType || null, description: description?.trim() || null }).select("id").single<{ id: string }>();
   if (error) throw error;
   return data.id;
 }
 
+export async function renameTemplate(client: DbClient, venueId: string, id: string, name: string): Promise<void> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error } = await (client.from("playbook_templates") as any).update({ name: name.trim() }).eq("id", id).eq("venue_id", venueId);
+  if (error) throw error;
+}
+
+// Clear-then-set within the same (venue, event_type, kind) group so the
+// unique partial index (playbook_templates_default) is never asked to hold
+// two defaults at once.
+export async function setTemplateDefault(client: DbClient, venueId: string, id: string, eventType: string | null, kind: PlaybookTemplate["kind"]): Promise<void> {
+  let clearQuery = client.from("playbook_templates").update({ is_default: false } as never).eq("venue_id", venueId).eq("kind", kind).neq("id", id);
+  clearQuery = eventType ? clearQuery.eq("event_type", eventType) : clearQuery.is("event_type", null);
+  const { error: clearError } = await clearQuery;
+  if (clearError) throw clearError;
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error } = await (client.from("playbook_templates") as any).update({ is_default: true }).eq("id", id).eq("venue_id", venueId);
+  if (error) throw error;
+}
+
+export async function setTemplateArchived(client: DbClient, venueId: string, id: string, isArchived: boolean): Promise<void> {
+  // Archiving a template can't leave it as the default — that would make
+  // it disappear from booking-apply flows while still being auto-selected.
+  const patch: Record<string, unknown> = { is_archived: isArchived };
+  if (isArchived) patch.is_default = false;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error } = await (client.from("playbook_templates") as any).update(patch).eq("id", id).eq("venue_id", venueId);
+  if (error) throw error;
+}
+
 export async function deleteTemplate(client: DbClient, venueId: string, id: string): Promise<void> {
   const { error } = await client.from("playbook_templates").delete().eq("id", id).eq("venue_id", venueId);
+  if (error) throw error;
+}
+
+/** Clone a template's milestones and tasks into a brand-new template — same kind as the source. */
+export async function duplicateTemplateInto(
+  client: DbClient, venueId: string, sourceTemplateId: string,
+  newName: string, kind: PlaybookTemplate["kind"], eventType: string | null, description: string | null,
+): Promise<string> {
+  const newTemplateId = await insertTemplate(client, venueId, newName, kind, eventType, description);
+
+  const [milestones, tasks] = await Promise.all([
+    getMilestones(client, venueId, sourceTemplateId),
+    getTemplateTasks(client, venueId, sourceTemplateId),
+  ]);
+
+  const milestoneIdMap = new Map<string, string>();
+  for (const m of milestones) {
+    const newId = await insertMilestone(client, venueId, newTemplateId, m.name, m.sortOrder, m.kind ?? undefined);
+    milestoneIdMap.set(m.id, newId);
+  }
+
+  // Two passes, same shape as applyPlaybookToEvent's idMap: insert every task
+  // first (dependencies temporarily dropped), then backfill dependsOnTaskId
+  // once every old-task-id -> new-task-id mapping is known.
+  const taskIdMap = new Map<string, string>();
+  for (const t of tasks) {
+    const newMilestoneId = milestoneIdMap.get(t.milestoneId);
+    if (!newMilestoneId) continue; // shouldn't happen; skip defensively rather than insert an orphaned task
+    const { data: inserted, error } = await client.from("playbook_tasks").insert({
+      template_id: newTemplateId, venue_id: venueId, title: t.title,
+      description: t.description, owner_type: t.ownerType, visibility: t.visibility,
+      days_offset: t.daysOffset, due_date_rule_kind: t.dueDateRuleKind, category: t.category, milestone_id: newMilestoneId,
+      auto_complete_trigger: t.autoCompleteTrigger, depends_on_task_id: null,
+      is_required: t.isRequired, sort_order: t.sortOrder,
+      reminder_before_days: t.reminderBeforeDays, escalation_after_days: t.escalationAfterDays,
+      notify_on_assign: t.notifyOnAssign, notify_on_complete: t.notifyOnComplete,
+      action_type: t.actionType, action_label: t.actionLabel,
+    }).select("id").single<{ id: string }>();
+    if (error) throw error;
+    taskIdMap.set(t.id, inserted.id);
+    await copyTaskAttachments(client, venueId, t.id, inserted.id);
+  }
+
+  for (const t of tasks) {
+    if (!t.dependsOnTaskId) continue;
+    const newTaskId = taskIdMap.get(t.id);
+    const newDependsOnId = taskIdMap.get(t.dependsOnTaskId);
+    if (!newTaskId || !newDependsOnId) continue;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await (client.from("playbook_tasks") as any).update({ depends_on_task_id: newDependsOnId }).eq("id", newTaskId).eq("venue_id", venueId);
+  }
+
+  return newTemplateId;
+}
+
+// ---- Milestones ---------------------------------------------------------------
+
+export async function getMilestones(client: DbClient, venueId: string, templateId: string): Promise<PlaybookMilestone[]> {
+  const { data, error } = await client.from("playbook_milestones").select("*").eq("template_id", templateId).eq("venue_id", venueId).order("sort_order");
+  if (error) throw error;
+  return (data as MilestoneRow[]).map(mapMilestone);
+}
+
+export async function insertMilestone(client: DbClient, venueId: string, templateId: string, name: string, sortOrder: number, kind?: PlaybookMilestone["kind"]): Promise<string> {
+  const { data, error } = await client.from("playbook_milestones")
+    .insert({ template_id: templateId, venue_id: venueId, name: name.trim(), sort_order: sortOrder, kind: kind ?? null })
+    .select("id").single<{ id: string }>();
+  if (error) throw error;
+  return data.id;
+}
+
+export async function renameMilestone(client: DbClient, venueId: string, milestoneId: string, name: string): Promise<void> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error } = await (client.from("playbook_milestones") as any).update({ name: name.trim() }).eq("id", milestoneId).eq("venue_id", venueId);
+  if (error) throw error;
+}
+
+export async function reorderMilestone(client: DbClient, venueId: string, templateId: string, milestoneId: string, direction: "up" | "down"): Promise<void> {
+  const milestones = await getMilestones(client, venueId, templateId);
+  const idx = milestones.findIndex((m) => m.id === milestoneId);
+  const swapIdx = direction === "up" ? idx - 1 : idx + 1;
+  if (idx < 0 || swapIdx < 0 || swapIdx >= milestones.length) return;
+  const a = milestones[idx];
+  const b = milestones[swapIdx];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const table = client.from("playbook_milestones") as any;
+  await table.update({ sort_order: b.sortOrder }).eq("id", a.id).eq("venue_id", venueId);
+  await table.update({ sort_order: a.sortOrder }).eq("id", b.id).eq("venue_id", venueId);
+}
+
+export async function deleteMilestone(client: DbClient, venueId: string, milestoneId: string): Promise<void> {
+  const { error } = await client.from("playbook_milestones").delete().eq("id", milestoneId).eq("venue_id", venueId);
   if (error) throw error;
 }
 
@@ -62,17 +227,21 @@ export async function getTemplateTasks(client: DbClient, venueId: string, templa
   return (data as TaskRow[]).map(mapTask);
 }
 
-export async function insertTemplateTask(client: DbClient, venueId: string, templateId: string, task: Omit<PlaybookTask, "id" | "templateId" | "venueId" | "createdAt">): Promise<void> {
-  const { error } = await client.from("playbook_tasks").insert({
+export async function insertTemplateTask(client: DbClient, venueId: string, templateId: string, task: Omit<PlaybookTask, "id" | "templateId" | "venueId" | "createdAt">): Promise<string> {
+  const { data, error } = await client.from("playbook_tasks").insert({
     template_id: templateId, venue_id: venueId, title: task.title.trim(),
     description: task.description?.trim() || null, owner_type: task.ownerType,
-    visibility: task.visibility, days_offset: task.daysOffset, category: task.category,
-    phase: task.phase ?? null,
+    visibility: task.visibility, days_offset: task.daysOffset, due_date_rule_kind: task.dueDateRuleKind, category: task.category,
+    milestone_id: task.milestoneId,
     auto_complete_trigger: task.autoCompleteTrigger || null,
     depends_on_task_id: task.dependsOnTaskId || null,
     is_required: task.isRequired, sort_order: task.sortOrder,
-  });
+    reminder_before_days: task.reminderBeforeDays, escalation_after_days: task.escalationAfterDays,
+    notify_on_assign: task.notifyOnAssign, notify_on_complete: task.notifyOnComplete,
+    action_type: task.actionType || null, action_label: task.actionLabel?.trim() || null,
+  }).select("id").single<{ id: string }>();
   if (error) throw error;
+  return data.id;
 }
 
 export async function updateTemplateTask(client: DbClient, venueId: string, taskId: string, task: Partial<Omit<PlaybookTask, "id" | "templateId" | "venueId" | "createdAt">>): Promise<void> {
@@ -83,10 +252,16 @@ export async function updateTemplateTask(client: DbClient, venueId: string, task
   if (task.visibility !== undefined) patch.visibility = task.visibility;
   if (task.daysOffset !== undefined) patch.days_offset = task.daysOffset;
   if (task.category !== undefined) patch.category = task.category;
-  if (task.phase !== undefined) patch.phase = task.phase ?? null;
+  if (task.milestoneId !== undefined) patch.milestone_id = task.milestoneId;
   if (task.autoCompleteTrigger !== undefined) patch.auto_complete_trigger = task.autoCompleteTrigger || null;
   if (task.dependsOnTaskId !== undefined) patch.depends_on_task_id = task.dependsOnTaskId || null;
   if (task.isRequired !== undefined) patch.is_required = task.isRequired;
+  if (task.reminderBeforeDays !== undefined) patch.reminder_before_days = task.reminderBeforeDays;
+  if (task.escalationAfterDays !== undefined) patch.escalation_after_days = task.escalationAfterDays;
+  if (task.notifyOnAssign !== undefined) patch.notify_on_assign = task.notifyOnAssign;
+  if (task.notifyOnComplete !== undefined) patch.notify_on_complete = task.notifyOnComplete;
+  if (task.actionType !== undefined) patch.action_type = task.actionType || null;
+  if (task.actionLabel !== undefined) patch.action_label = task.actionLabel?.trim() || null;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { error } = await (client.from("playbook_tasks") as any).update(patch).eq("id", taskId).eq("venue_id", venueId);
   if (error) throw error;
@@ -101,13 +276,27 @@ export async function deleteTemplateTask(client: DbClient, venueId: string, task
 
 export async function getEventTasks(client: DbClient, venueId: string, eventId: string): Promise<EventTask[]> {
   const { data, error } = await client.from("event_tasks")
-    .select("*, dep:depends_on_event_task_id(title), assignee:assigned_to_staff_id(name)")
+    .select("*, dep:depends_on_event_task_id(title), assignee:assigned_to_staff_id(full_name)")
     .eq("venue_id", venueId).eq("event_id", eventId)
     .order("sort_order").order("due_date");
   if (error) throw error;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return (data as any[]).map((r) => mapEventTask({ ...r, depends_on_title: r.dep?.title ?? null, assigned_to_name: r.assignee?.name ?? null }));
+  return (data as any[]).map((r) => mapEventTask({ ...r, depends_on_title: r.dep?.title ?? null, assigned_to_name: r.assignee?.full_name ?? null }));
 }
+
+export async function getEventPlaybookApplications(client: DbClient, venueId: string, eventId: string): Promise<EventPlaybookApplication[]> {
+  const { data, error } = await client.from("event_playbook_applications")
+    .select("event_id, kind, template_id, template_name, applied_at, released_at")
+    .eq("venue_id", venueId).eq("event_id", eventId);
+  if (error) throw error;
+  return (data ?? []).map((r) => ({
+    eventId: r.event_id, kind: r.kind as EventPlaybookApplication["kind"],
+    templateId: r.template_id, templateName: r.template_name, appliedAt: r.applied_at,
+    releasedAt: r.released_at ?? null,
+  }));
+}
+
+export type ApplyPlaybookResult = { ok: true } | { ok: false; reason: "already_applied" };
 
 export async function applyPlaybookToEvent(
   client: DbClient,
@@ -115,22 +304,60 @@ export async function applyPlaybookToEvent(
   eventId: string,
   templateId: string,
   eventDate: string,
-): Promise<void> {
-  const tasks = await getTemplateTasks(client, venueId, templateId);
-  if (!tasks.length) return;
+): Promise<ApplyPlaybookResult> {
+  const template = await getTemplate(client, venueId, templateId);
+  if (!template) throw new Error("Template not found.");
 
+  // Atomic, race-safe guard: this insert is the one and only place a playbook
+  // gets marked as applied to this event, and the primary key on (event_id,
+  // kind) means a concurrent second attempt at the *same* kind fails here
+  // rather than after already inserting duplicate tasks — while still
+  // allowing one Client Planning and one Venue Workflow application to
+  // coexist on the same event (Product Decisions, 2026-07-08). No
+  // replace/merge in V1 (docs/planning-playbook-evolution.md,
+  // docs/product-backlog.md).
+  // Venue Planning has no draft state — it's active the instant it's
+  // applied, so released_at is set to applied_at (i.e. now) right here.
+  // Client Planning starts in Draft (released_at null) until a coordinator
+  // explicitly releases it (Draft → Release workflow, 2026-07-10).
+  const { error: markerError } = await client.from("event_playbook_applications").insert({
+    event_id: eventId, venue_id: venueId, template_id: templateId, kind: template.kind,
+    template_name: template.name,
+    released_at: template.kind === "venue" ? new Date().toISOString() : null,
+  });
+  if (markerError) {
+    if (markerError.code === "23505") return { ok: false, reason: "already_applied" };
+    throw markerError;
+  }
+
+  const [tasks, milestones] = await Promise.all([
+    getTemplateTasks(client, venueId, templateId),
+    getMilestones(client, venueId, templateId),
+  ]);
+  if (!tasks.length) return { ok: true };
+
+  const milestoneById = new Map(milestones.map((m) => [m.id, m]));
   const idMap = new Map<string, string>();
 
   for (const t of tasks.sort((a, b) => a.sortOrder - b.sortOrder)) {
     const dueDate = offsetDate(eventDate, t.daysOffset);
     const dependsOnEventTaskId = t.dependsOnTaskId ? idMap.get(t.dependsOnTaskId) ?? null : null;
+    const milestone = milestoneById.get(t.milestoneId);
 
     const { data: inserted, error } = await client.from("event_tasks")
       .insert({
         venue_id: venueId, event_id: eventId, template_task_id: t.id,
         title: t.title, description: t.description, owner_type: t.ownerType,
         visibility: t.visibility, due_date: dueDate, days_offset: t.daysOffset,
-        category: t.category, phase: t.phase ?? null, auto_complete_trigger: t.autoCompleteTrigger,
+        due_date_rule_kind: t.dueDateRuleKind,
+        category: t.category,
+        // Snapshot the milestone's name/kind at apply-time — a copy, not a live
+        // reference, so editing the playbook later never silently alters an
+        // event already in progress (matches how every other task field here
+        // is already copied rather than referenced).
+        milestone_name: milestone?.name ?? "Planning",
+        milestone_kind: milestone?.kind ?? null,
+        auto_complete_trigger: t.autoCompleteTrigger,
         depends_on_event_task_id: dependsOnEventTaskId,
         is_required: t.isRequired, sort_order: t.sortOrder,
         status: dependsOnEventTaskId !== null ? "blocked" : "pending",
@@ -139,15 +366,53 @@ export async function applyPlaybookToEvent(
         escalation_after_days: t.escalationAfterDays,
         notify_on_assign: t.notifyOnAssign,
         notify_on_complete: t.notifyOnComplete,
+        action_type: t.actionType,
+        action_label: t.actionLabel,
       })
       .select("id").single<{ id: string }>();
     if (error) throw error;
 
     idMap.set(t.id, inserted.id);
+    await copyAttachmentsToContextLinks(client, venueId, t.id, inserted.id);
 
-    // Generate reminder records immediately — pending until Sprint 44 delivery engine
-    await createRemindersForTask(client, venueId, inserted.id, dueDate, t);
+    // Generate reminder records immediately — pending until Sprint 44 delivery
+    // engine. Client Planning is the one exception: a couple should never get
+    // a reminder for a checklist they can't see yet, so its reminders are
+    // deferred to release time instead (releasePlaybookApplication, below).
+    if (template.kind !== "client") {
+      await createRemindersForTask(client, venueId, inserted.id, dueDate, t);
+    }
   }
+
+  return { ok: true };
+}
+
+export type ReleasePlaybookResult = { ok: true } | { ok: false; reason: "not_found" | "already_released" };
+
+/** The deliberate second step for Client Planning: makes an already-applied
+ *  checklist visible to the couple and generates its reminders, which were
+ *  deliberately withheld at apply-time (Draft → Release workflow, 2026-07-10).
+ *  Venue Planning never calls this — it has no draft state to release from. */
+export async function releasePlaybookApplication(client: DbClient, venueId: string, eventId: string): Promise<ReleasePlaybookResult> {
+  const { data: appRow, error: fetchError } = await client.from("event_playbook_applications")
+    .select("released_at").eq("event_id", eventId).eq("venue_id", venueId).eq("kind", "client")
+    .maybeSingle<{ released_at: string | null }>();
+  if (fetchError) throw fetchError;
+  if (!appRow) return { ok: false, reason: "not_found" };
+  if (appRow.released_at) return { ok: false, reason: "already_released" };
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error } = await (client.from("event_playbook_applications") as any)
+    .update({ released_at: new Date().toISOString() })
+    .eq("event_id", eventId).eq("venue_id", venueId).eq("kind", "client");
+  if (error) throw error;
+
+  const tasks = await getEventTasks(client, venueId, eventId);
+  for (const t of tasks.filter((task) => task.ownerType === "couple")) {
+    await createRemindersForTask(client, venueId, t.id, t.dueDate, t);
+  }
+
+  return { ok: true };
 }
 
 /** Generate task_reminder records for a newly-created event task.
@@ -226,6 +491,73 @@ function offsetDate(dateStr: string, days: number): string {
   const d = new Date(dateStr + "T12:00:00");
   d.setDate(d.getDate() + days);
   return d.toISOString().slice(0, 10);
+}
+
+/**
+ * Event-date-change sync (Product Decisions, 2026-07-08): relative due dates
+ * stay synchronized with the event date automatically, until an individual
+ * task is explicitly overridden — recalculation skips locked tasks rather
+ * than silently discarding a deliberate manual change. Also re-derives
+ * reminders, since one scheduled against the old due date would otherwise
+ * fire at the wrong offset from the new one.
+ */
+export async function recalculateEventTaskDueDates(
+  client: DbClient,
+  venueId: string,
+  eventId: string,
+  newEventDate: string,
+): Promise<void> {
+  const { data, error } = await client.from("event_tasks")
+    .select("id, days_offset, reminder_before_days, escalation_after_days, owner_type")
+    .eq("venue_id", venueId).eq("event_id", eventId)
+    .eq("due_date_rule_kind", "relative_to_event")
+    .eq("due_date_locked", false)
+    .not("status", "in", "(complete,waived)");
+  if (error) throw error;
+
+  type Row = { id: string; days_offset: number; reminder_before_days: number[] | null; escalation_after_days: number | null; owner_type: string };
+  for (const t of (data ?? []) as Row[]) {
+    const newDueDate = offsetDate(newEventDate, t.days_offset);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await (client.from("event_tasks") as any).update({ due_date: newDueDate }).eq("id", t.id).eq("venue_id", venueId);
+    await cancelRemindersForTask(client, venueId, t.id);
+    await createRemindersForTask(client, venueId, t.id, newDueDate, {
+      ownerType: t.owner_type as PlaybookTask["ownerType"],
+      reminderBeforeDays: t.reminder_before_days,
+      escalationAfterDays: t.escalation_after_days,
+      notifyOnAssign: false,
+    });
+  }
+}
+
+/** Coordinator manually overrides one task's due date on this event — locks it out of future event-date recalculation. */
+export async function updateEventTaskDueDate(
+  client: DbClient,
+  venueId: string,
+  taskId: string,
+  newDueDate: string,
+): Promise<void> {
+  const { data, error: fetchError } = await client.from("event_tasks")
+    .select("owner_type, reminder_before_days, escalation_after_days")
+    .eq("id", taskId).eq("venue_id", venueId)
+    .maybeSingle<{ owner_type: string; reminder_before_days: number[] | null; escalation_after_days: number | null }>();
+  if (fetchError) throw fetchError;
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error } = await (client.from("event_tasks") as any)
+    .update({ due_date: newDueDate, due_date_locked: true })
+    .eq("id", taskId).eq("venue_id", venueId);
+  if (error) throw error;
+
+  await cancelRemindersForTask(client, venueId, taskId);
+  if (data) {
+    await createRemindersForTask(client, venueId, taskId, newDueDate, {
+      ownerType: data.owner_type as PlaybookTask["ownerType"],
+      reminderBeforeDays: data.reminder_before_days,
+      escalationAfterDays: data.escalation_after_days,
+      notifyOnAssign: false,
+    });
+  }
 }
 
 function offsetDatetime(datetimeStr: string, days: number): string {
@@ -327,4 +659,243 @@ export async function computeEventReadinessFromPlaybook(
     blockedCount: tasks.filter((t) => t.status === "blocked").length,
     overdueCount: tasks.filter((t) => t.status === "overdue").length,
   };
+}
+
+function readinessFromTasks(tasks: EventTask[]): EventReadiness | null {
+  if (!tasks.length) return null;
+  const required = tasks.filter((t) => t.isRequired);
+  const optional = tasks.filter((t) => !t.isRequired);
+  const completedRequired = required.filter((t) => t.status === "complete").length;
+  const completedOptional = optional.filter((t) => t.status === "complete").length;
+  return {
+    score: required.length > 0 ? Math.round((completedRequired / required.length) * 100) : 0,
+    completedRequired, totalRequired: required.length,
+    completedOptional, totalOptional: optional.length,
+    tasks,
+    blockedCount: tasks.filter((t) => t.status === "blocked").length,
+    overdueCount: tasks.filter((t) => t.status === "overdue").length,
+  };
+}
+
+// Client Planning and Venue Workflow readiness, computed independently and
+// never merged into one number (Planning Experience Review, 2026-07-08).
+// Kind is derived from ownerType rather than stored on EventTask directly —
+// the Builder guarantees 'couple' owner if-and-only-if the task came from a
+// Client Planning playbook, so this is a reliable split without a new column.
+export async function computeEventTaskReadinessByKind(
+  client: DbClient,
+  venueId: string,
+  eventId: string,
+): Promise<{ client: EventReadiness | null; venue: EventReadiness | null }> {
+  const tasks = await getEventTasks(client, venueId, eventId);
+  const clientTasks = tasks.filter((t) => t.ownerType === "couple");
+  const venueTasks = tasks.filter((t) => t.ownerType !== "couple");
+  return { client: readinessFromTasks(clientTasks), venue: readinessFromTasks(venueTasks) };
+}
+
+// ---- Internal Notes (event_tasks.notes) --------------------------------------
+// Venue-only, event-scoped coordinator annotation. The column has existed
+// since Sprint 43 but never had a real write path — see docs/product-backlog.md.
+
+export async function updateEventTaskNotes(client: DbClient, venueId: string, taskId: string, notes: string): Promise<void> {
+  const { error } = await client.from("event_tasks")
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    .update({ notes: notes.trim() || null } as any)
+    .eq("id", taskId).eq("venue_id", venueId);
+  if (error) throw error;
+}
+
+/** Links (or unlinks, when requestId is null) this task to a Request Framework record. Additive — does not affect task status. */
+export async function setEventTaskRequest(client: DbClient, venueId: string, taskId: string, requestId: string | null): Promise<void> {
+  const { error } = await client.from("event_tasks")
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    .update({ request_id: requestId } as any)
+    .eq("id", taskId).eq("venue_id", venueId);
+  if (error) throw error;
+}
+
+// ---- Related Context links ---------------------------------------------------
+
+type ContextLinkRow = {
+  id: string; event_task_id: string; created_at: string;
+  conversation_message_id: string | null; document_id: string | null; timeline_entry_id: string | null;
+  link_url: string | null; link_label: string | null;
+};
+
+const CONTEXT_LINK_COLUMNS = "id, event_task_id, created_at, conversation_message_id, document_id, timeline_entry_id, link_url, link_label";
+
+export async function getEventTaskContextLinks(client: DbClient, venueId: string, eventTaskId: string): Promise<EventTaskContextLink[]> {
+  const { data, error } = await client.from("event_task_context_links")
+    .select(CONTEXT_LINK_COLUMNS)
+    .eq("venue_id", venueId).eq("event_task_id", eventTaskId)
+    .order("created_at");
+  if (error) throw error;
+  return resolveContextLinkRows(client, (data ?? []) as ContextLinkRow[]);
+}
+
+/** All Related Context links for every task on an event, in one query per source type rather than one per task. */
+export async function getEventTaskContextLinksForEvent(client: DbClient, venueId: string, eventId: string): Promise<Record<string, EventTaskContextLink[]>> {
+  const { data, error } = await client.from("event_task_context_links")
+    .select(`${CONTEXT_LINK_COLUMNS}, event_tasks!inner(event_id)`)
+    .eq("venue_id", venueId).eq("event_tasks.event_id", eventId)
+    .order("created_at");
+  if (error) throw error;
+  const links = await resolveContextLinkRows(client, (data ?? []) as ContextLinkRow[]);
+  const byTask: Record<string, EventTaskContextLink[]> = {};
+  for (const link of links) {
+    (byTask[link.eventTaskId] ??= []).push(link);
+  }
+  return byTask;
+}
+
+async function resolveContextLinkRows(client: DbClient, rows: ContextLinkRow[]): Promise<EventTaskContextLink[]> {
+  if (!rows.length) return [];
+
+  const messageIds = rows.map((r) => r.conversation_message_id).filter((v): v is string => !!v);
+  const documentIds = rows.map((r) => r.document_id).filter((v): v is string => !!v);
+  const timelineIds = rows.map((r) => r.timeline_entry_id).filter((v): v is string => !!v);
+
+  const [messages, documents, timelineEntries] = await Promise.all([
+    messageIds.length
+      ? client.from("conversation_messages").select("id, sender_type, channel, body, sent_at").in("id", messageIds)
+      : Promise.resolve({ data: [] as { id: string; sender_type: string; channel: string; body: string; sent_at: string }[] }),
+    documentIds.length
+      ? client.from("documents").select("id, name, file_name").in("id", documentIds)
+      : Promise.resolve({ data: [] as { id: string; name: string; file_name: string }[] }),
+    timelineIds.length
+      ? client.from("timeline_entries").select("id, title, entry_time").in("id", timelineIds)
+      : Promise.resolve({ data: [] as { id: string; title: string; entry_time: string | null }[] }),
+  ]);
+
+  const messageById = new Map((messages.data ?? []).map((m) => [m.id, m]));
+  const documentById = new Map((documents.data ?? []).map((d) => [d.id, d]));
+  const timelineById = new Map((timelineEntries.data ?? []).map((t) => [t.id, t]));
+
+  return rows.map((r): EventTaskContextLink | null => {
+    if (r.conversation_message_id) {
+      const m = messageById.get(r.conversation_message_id);
+      if (!m) return null; // message deleted out from under the link; skip rather than render a broken row
+      return {
+        id: r.id, eventTaskId: r.event_task_id, sourceType: "conversation_message", sourceId: r.conversation_message_id,
+        createdAt: r.created_at,
+        label: m.channel === "internal_note" ? "Internal Note" : "Conversation",
+        detail: m.body.length > 80 ? `${m.body.slice(0, 80)}…` : m.body,
+      };
+    }
+    if (r.document_id) {
+      const d = documentById.get(r.document_id);
+      if (!d) return null;
+      return { id: r.id, eventTaskId: r.event_task_id, sourceType: "document", sourceId: r.document_id, createdAt: r.created_at, label: d.name || d.file_name, detail: null };
+    }
+    if (r.timeline_entry_id) {
+      const t = timelineById.get(r.timeline_entry_id);
+      if (!t) return null;
+      return { id: r.id, eventTaskId: r.event_task_id, sourceType: "timeline_entry", sourceId: r.timeline_entry_id, createdAt: r.created_at, label: t.title, detail: t.entry_time };
+    }
+    if (r.link_url) {
+      return { id: r.id, eventTaskId: r.event_task_id, sourceType: "link", sourceId: r.link_url, createdAt: r.created_at, label: r.link_label || r.link_url, detail: r.link_label ? r.link_url : null };
+    }
+    return null;
+  }).filter((l): l is EventTaskContextLink => l !== null);
+}
+
+export async function addEventTaskContextLink(
+  client: DbClient, venueId: string, eventTaskId: string,
+  sourceType: EventTaskContextSourceType, sourceId: string, linkLabel?: string,
+): Promise<void> {
+  const row: Record<string, unknown> = { venue_id: venueId, event_task_id: eventTaskId };
+  if (sourceType === "link") { row.link_url = sourceId; row.link_label = linkLabel?.trim() || null; }
+  else {
+    const column = sourceType === "conversation_message" ? "conversation_message_id" : sourceType === "document" ? "document_id" : "timeline_entry_id";
+    row[column] = sourceId;
+  }
+  const { error } = await client.from("event_task_context_links").insert(row);
+  if (error && error.code !== "23505") throw error; // 23505 = already linked, treat as a no-op
+}
+
+export async function removeEventTaskContextLink(client: DbClient, venueId: string, linkId: string): Promise<void> {
+  const { error } = await client.from("event_task_context_links").delete().eq("id", linkId).eq("venue_id", venueId);
+  if (error) throw error;
+}
+
+// ---- Template attachments (Definition time) -----------------------------------
+// What a task needs to get done — real multi-attachment support (an uploaded
+// file, an existing venue document, or a web link), replacing the old single
+// resource_url/resource_label field (Planning Templates UX Rebuild, 2026-07-09).
+
+type AttachmentRow = { id: string; playbook_task_id: string; document_id: string | null; link_url: string | null; link_label: string | null; sort_order: number; created_at: string; };
+
+export async function getPlaybookTaskAttachments(client: DbClient, venueId: string, playbookTaskId: string): Promise<PlaybookTaskAttachment[]> {
+  const { data, error } = await client.from("playbook_task_attachments")
+    .select("id, playbook_task_id, document_id, link_url, link_label, sort_order, created_at")
+    .eq("venue_id", venueId).eq("playbook_task_id", playbookTaskId)
+    .order("sort_order").order("created_at");
+  if (error) throw error;
+  return resolveAttachmentRows(client, (data ?? []) as AttachmentRow[]);
+}
+
+/** All attachments for every task in a template, in one query per source type rather than one per task. */
+export async function getPlaybookTaskAttachmentsForTemplate(client: DbClient, venueId: string, templateId: string): Promise<Record<string, PlaybookTaskAttachment[]>> {
+  const { data, error } = await client.from("playbook_task_attachments")
+    .select("id, playbook_task_id, document_id, link_url, link_label, sort_order, created_at, playbook_tasks!inner(template_id)")
+    .eq("venue_id", venueId).eq("playbook_tasks.template_id", templateId)
+    .order("sort_order").order("created_at");
+  if (error) throw error;
+  const attachments = await resolveAttachmentRows(client, (data ?? []) as AttachmentRow[]);
+  const byTask: Record<string, PlaybookTaskAttachment[]> = {};
+  for (const a of attachments) (byTask[a.playbookTaskId] ??= []).push(a);
+  return byTask;
+}
+
+async function resolveAttachmentRows(client: DbClient, rows: AttachmentRow[]): Promise<PlaybookTaskAttachment[]> {
+  if (!rows.length) return [];
+  const documentIds = rows.map((r) => r.document_id).filter((v): v is string => !!v);
+  const { data: documents } = documentIds.length
+    ? await client.from("documents").select("id, name, file_name").in("id", documentIds)
+    : { data: [] as { id: string; name: string; file_name: string }[] };
+  const documentById = new Map((documents ?? []).map((d) => [d.id, d]));
+
+  return rows.map((r): PlaybookTaskAttachment => ({
+    id: r.id, playbookTaskId: r.playbook_task_id, documentId: r.document_id,
+    linkUrl: r.link_url, linkLabel: r.link_label, sortOrder: r.sort_order, createdAt: r.created_at,
+    label: r.document_id ? (documentById.get(r.document_id)?.name || documentById.get(r.document_id)?.file_name || "Document") : (r.link_label || r.link_url || "Link"),
+  }));
+}
+
+export async function addPlaybookTaskAttachment(
+  client: DbClient, venueId: string, playbookTaskId: string,
+  attachment: { documentId: string } | { linkUrl: string; linkLabel: string | null },
+  sortOrder: number,
+): Promise<void> {
+  const row: Record<string, unknown> = { venue_id: venueId, playbook_task_id: playbookTaskId, sort_order: sortOrder };
+  if ("documentId" in attachment) row.document_id = attachment.documentId;
+  else { row.link_url = attachment.linkUrl; row.link_label = attachment.linkLabel?.trim() || null; }
+  const { error } = await client.from("playbook_task_attachments").insert(row);
+  if (error) throw error;
+}
+
+export async function removePlaybookTaskAttachment(client: DbClient, venueId: string, attachmentId: string): Promise<void> {
+  const { error } = await client.from("playbook_task_attachments").delete().eq("id", attachmentId).eq("venue_id", venueId);
+  if (error) throw error;
+}
+
+/** Duplicate a template: carry a source task's attachments over to its copy. */
+async function copyTaskAttachments(client: DbClient, venueId: string, sourceTaskId: string, newTaskId: string): Promise<void> {
+  const attachments = await getPlaybookTaskAttachments(client, venueId, sourceTaskId);
+  for (const a of attachments) {
+    await addPlaybookTaskAttachment(
+      client, venueId, newTaskId,
+      a.documentId ? { documentId: a.documentId } : { linkUrl: a.linkUrl!, linkLabel: a.linkLabel },
+      a.sortOrder,
+    );
+  }
+}
+
+/** Apply a playbook to an event: a template task's attachments become the event task's starting Related Context — same mechanism, not a copy of content (documents stay referenced, not duplicated). */
+async function copyAttachmentsToContextLinks(client: DbClient, venueId: string, playbookTaskId: string, eventTaskId: string): Promise<void> {
+  const attachments = await getPlaybookTaskAttachments(client, venueId, playbookTaskId);
+  for (const a of attachments) {
+    if (a.documentId) await addEventTaskContextLink(client, venueId, eventTaskId, "document", a.documentId);
+    else if (a.linkUrl) await addEventTaskContextLink(client, venueId, eventTaskId, "link", a.linkUrl, a.linkLabel ?? undefined);
+  }
 }

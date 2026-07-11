@@ -2,119 +2,184 @@
 
 import * as React from "react";
 
-import { Copy, ExternalLink, Link, Loader2, RefreshCw, Trash2 } from "lucide-react";
+import { Loader2, Mail, ShieldCheck, X } from "lucide-react";
 import { toast } from "sonner";
 
-import { createPortalSessionAction, revokePortalSessionAction } from "@/app/(app)/clients/[id]/portal-actions";
+import {
+  getClientInvitationAction, inviteClientAction, resendClientInvitationAction,
+  revokeClientInvitationAction, revokeClientAccessAction,
+  getSupportAccessGrantsAction, openSupportAccessAction,
+} from "@/app/(app)/clients/[id]/portal-actions";
 import { Button } from "@/components/ui/button";
-import type { PortalSession } from "@/lib/portal/types";
+import { Input } from "@/components/ui/input";
+import type { ClientInvitation, SupportAccessGrant } from "@/lib/client-auth/types";
 
 const ROSE = "#D8A7AA";
 
-function portalUrl(token: string): string {
-  return `${window.location.origin}/p/${token}`;
-}
-
+/**
+ * The client owns their workspace. This widget only lets the venue invite,
+ * resend, or revoke access — never open or copy a link into the client's
+ * workspace directly. The one exception is a client-granted, time-boxed
+ * "temporary support access" window (see the gated section below), which is
+ * logged every time it's used.
+ */
 export function PortalLinkWidget({
   clientId,
   coupleName,
-  initialSessions,
 }: {
   clientId: string;
   coupleName: string;
-  initialSessions: PortalSession[];
 }) {
-  const [sessions, setSessions] = React.useState(initialSessions);
-  const [creating, startCreate] = React.useTransition();
-  const [revoking, setRevoking] = React.useState<string | null>(null);
+  const [invitation, setInvitation] = React.useState<ClientInvitation | null>(null);
+  const [grants, setGrants] = React.useState<SupportAccessGrant[]>([]);
+  const [loading, setLoading] = React.useState(true);
+  const [email, setEmail] = React.useState("");
+  const [inviting, setInviting] = React.useState(false);
+  const [resending, setResending] = React.useState(false);
+  const [revoking, setRevoking] = React.useState(false);
+  const [opening, setOpening] = React.useState<string | null>(null);
 
-  const primarySession = sessions[0] ?? null;
+  const refresh = React.useCallback(() => {
+    Promise.all([
+      getClientInvitationAction(clientId),
+      getSupportAccessGrantsAction(clientId),
+    ]).then(([inv, g]) => { setInvitation(inv); setGrants(g); setLoading(false); });
+  }, [clientId]);
 
-  function handleCopy(token: string) {
-    navigator.clipboard.writeText(portalUrl(token));
-    toast.success("Portal link copied to clipboard.");
+  React.useEffect(() => { refresh(); }, [refresh]);
+
+  async function handleInvite() {
+    if (!email.trim()) { toast.error("An email address is required to invite the client."); return; }
+    setInviting(true);
+    const result = await inviteClientAction(clientId, email.trim(), coupleName);
+    setInviting(false);
+    if (result.ok) { toast.success(`Invitation sent to ${email.trim()}.`); setEmail(""); refresh(); }
+    else toast.error(result.error);
   }
 
-  function handleCreate() {
-    startCreate(async () => {
-      const session = await createPortalSessionAction(clientId, coupleName);
-      if (session) {
-        setSessions([session, ...sessions]);
-        toast.success("Portal link created.");
-      } else {
-        toast.error("Could not create portal link.");
-      }
-    });
+  async function handleResend() {
+    if (!invitation) return;
+    setResending(true);
+    const result = await resendClientInvitationAction(clientId, invitation.id);
+    setResending(false);
+    if (result.ok) { toast.success(`Invitation resent to ${invitation.email}.`); refresh(); }
+    else toast.error(result.error);
   }
 
-  async function handleRevoke(sessionId: string) {
-    if (!confirm("Revoke this portal link? The couple will no longer be able to access their workspace until a new link is created.")) return;
-    setRevoking(sessionId);
-    await revokePortalSessionAction(clientId, sessionId);
-    setSessions((p) => p.filter((s) => s.id !== sessionId));
-    setRevoking(null);
-    toast.success("Portal link revoked.");
+  async function handleRevokeInvitation() {
+    if (!invitation) return;
+    if (!confirm("Revoke this invitation? The link will stop working.")) return;
+    setRevoking(true);
+    const result = await revokeClientInvitationAction(clientId, invitation.id);
+    setRevoking(false);
+    if (result.ok) { toast.success("Invitation revoked."); refresh(); }
+    else toast.error(result.error);
   }
 
-  if (!primarySession) {
-    return (
-      <div className="rounded-xl border border-dashed border-border py-8 text-center space-y-3">
-        <div className="h-9 w-9 rounded-full mx-auto flex items-center justify-center" style={{ background: `${ROSE}20` }}>
-          <Link className="h-4 w-4" style={{ color: ROSE }} />
-        </div>
-        <div>
-          <p className="text-sm font-medium text-heading">No portal link yet</p>
-          <p className="text-xs text-muted-foreground mt-0.5 max-w-xs mx-auto">
-            Create a link to give {coupleName} access to their wedding workspace.
-          </p>
-        </div>
-        <Button type="button" size="sm" onClick={handleCreate} disabled={creating}>
-          {creating ? <><Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />Creating…</> : "Create Portal Link"}
-        </Button>
-      </div>
-    );
+  async function handleRevokeAccess() {
+    if (!confirm(`Revoke ${coupleName}'s access to their workspace? They will need a new invitation to get back in.`)) return;
+    setRevoking(true);
+    const result = await revokeClientAccessAction(clientId);
+    setRevoking(false);
+    if (result.ok) { toast.success("Access revoked."); refresh(); }
+    else toast.error(result.error);
+  }
+
+  const activeGrant = grants.find((g) => !g.revokedAt && new Date(g.expiresAt) > new Date()) ?? null;
+
+  async function handleOpenSupportAccess() {
+    if (!activeGrant) return;
+    setOpening(activeGrant.id);
+    const result = await openSupportAccessAction(activeGrant.id);
+    setOpening(null);
+    if (result.ok) window.open(result.url, "_blank");
+    else toast.error(result.error);
+  }
+
+  if (loading) {
+    return <div className="py-6 text-center"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground mx-auto" /></div>;
   }
 
   return (
     <div className="space-y-3">
-      <div className="rounded-xl border border-border bg-card p-4 space-y-3">
-        <div className="flex items-center justify-between">
+      {!invitation || invitation.status === "revoked" ? (
+        <div className="rounded-xl border border-dashed border-border p-4 space-y-3">
           <div>
-            <p className="text-sm font-medium text-heading">Wedding Workspace</p>
-            <p className="text-xs text-muted-foreground">
-              {primarySession.lastAccessedAt
-                ? `Last visited ${new Date(primarySession.lastAccessedAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}`
-                : "Not yet visited"}
+            <p className="text-sm font-medium text-heading">No account yet</p>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Invite {coupleName} to create their own account and own their planning workspace.
             </p>
           </div>
-          <div className="flex items-center gap-1">
-            <Button type="button" variant="ghost" size="sm" onClick={() => window.open(portalUrl(primarySession.accessToken), "_blank")}
-              aria-label="Open portal in new tab"
-              className="h-9 w-9 p-0">
-              <ExternalLink className="h-3.5 w-3.5" />
-            </Button>
-            <Button type="button" variant="ghost" size="sm" onClick={() => handleCopy(primarySession.accessToken)}
-              aria-label="Copy portal link"
-              className="h-9 w-9 p-0">
-              <Copy className="h-3.5 w-3.5" />
-            </Button>
-            <Button type="button" variant="ghost" size="sm"
-              onClick={() => handleRevoke(primarySession.id)}
-              disabled={revoking === primarySession.id}
-              aria-label="Revoke portal access"
-              className="h-9 w-9 p-0 text-muted-foreground hover:text-destructive">
-              {revoking === primarySession.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
+          <div className="flex items-center gap-2">
+            <Input type="email" placeholder="couple@example.com" value={email}
+              onChange={(e) => setEmail(e.target.value)} className="h-9" />
+            <Button type="button" size="sm" onClick={handleInvite} disabled={inviting}>
+              {inviting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Invite"}
             </Button>
           </div>
         </div>
-        <div className="rounded-lg bg-muted/40 px-3 py-2">
-          <p className="text-[11px] font-mono text-muted-foreground break-all select-all">
-            {typeof window !== "undefined" ? portalUrl(primarySession.accessToken) : `/p/${primarySession.accessToken}`}
-          </p>
+      ) : (
+        <div className="rounded-xl border border-border bg-card p-4 space-y-3">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-heading">{invitation.email}</p>
+              <p className="text-xs text-muted-foreground">
+                {invitation.status === "accepted"
+                  ? `Account created${invitation.acceptedAt ? ` ${new Date(invitation.acceptedAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}` : ""}`
+                  : "Invitation sent · awaiting account creation"}
+              </p>
+            </div>
+            {invitation.status === "pending" && (
+              <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full" style={{ background: `${ROSE}18`, color: "#8A4B4F" }}>
+                Pending
+              </span>
+            )}
+          </div>
+          <div className="flex items-center gap-2 flex-wrap">
+            {invitation.status === "pending" && (
+              <button type="button" onClick={handleResend} disabled={resending}
+                className="text-[11px] text-muted-foreground hover:text-foreground flex items-center gap-1 disabled:opacity-50">
+                {resending ? <Loader2 className="h-3 w-3 animate-spin" /> : <Mail className="h-3 w-3" />} Resend invite
+              </button>
+            )}
+            {invitation.status === "pending" && (
+              <button type="button" onClick={handleRevokeInvitation} disabled={revoking}
+                className="text-[11px] text-muted-foreground hover:text-destructive flex items-center gap-1 disabled:opacity-50">
+                <X className="h-3 w-3" /> Revoke invitation
+              </button>
+            )}
+            {invitation.status === "accepted" && (
+              <button type="button" onClick={handleRevokeAccess} disabled={revoking}
+                className="text-[11px] text-muted-foreground hover:text-destructive flex items-center gap-1 disabled:opacity-50">
+                {revoking ? <Loader2 className="h-3 w-3 animate-spin" /> : <X className="h-3 w-3" />} Revoke access
+              </button>
+            )}
+          </div>
         </div>
-        <Button type="button" variant="outline" size="sm" className="w-full" onClick={() => handleCopy(primarySession.accessToken)}>
-          <Copy className="mr-1.5 h-3.5 w-3.5" /> Copy Link to Share
-        </Button>
+      )}
+
+      {/* Temporary support access — only usable while the client has an active grant */}
+      <div className="rounded-xl border border-border/60 bg-muted/20 p-4 space-y-2">
+        <div className="flex items-center gap-1.5">
+          <ShieldCheck className="h-3.5 w-3.5 text-muted-foreground" />
+          <p className="text-xs font-semibold text-heading">Support Access</p>
+        </div>
+        {activeGrant ? (
+          <>
+            <p className="text-xs text-muted-foreground">
+              {coupleName} granted temporary access, expiring {new Date(activeGrant.expiresAt).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}.
+              Every use is logged.
+            </p>
+            <Button type="button" variant="outline" size="sm" onClick={handleOpenSupportAccess} disabled={opening === activeGrant.id}>
+              {opening === activeGrant.id ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : null}
+              View workspace (support access)
+            </Button>
+          </>
+        ) : (
+          <p className="text-xs text-muted-foreground">
+            No active support access grant. The venue cannot view {coupleName}&apos;s workspace unless they explicitly grant temporary access from their Account settings.
+          </p>
+        )}
       </div>
     </div>
   );

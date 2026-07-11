@@ -89,7 +89,7 @@ function ClientDraftCard({
       </p>
       <div className="flex flex-wrap items-center gap-2">
         <Button type="button" size="sm" onClick={handleCopy}
-          style={copied ? {} : { borderColor: `${DUSTY_ROSE}60`, backgroundColor: `${DUSTY_ROSE}15`, color: "#8B5A5C" }}
+          style={copied ? {} : { borderColor: `${DUSTY_ROSE}60`, background: `color-mix(in oklch, ${DUSTY_ROSE} 15%, var(--card))`, color: "var(--heading)" }}
           className={copied ? "bg-success text-success-foreground" : "hover:opacity-90"}>
           {copied ? <><Check className="mr-1 h-3.5 w-3.5" />Copied!</> : <><ClipboardCopy className="mr-1 h-3.5 w-3.5" />Copy</>}
         </Button>

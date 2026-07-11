@@ -54,7 +54,7 @@ function toObservation(row: RawActionOutcomeRow): LuvObservation | null {
     return {
       id:          "action_outcome_follow_up_messages",
       priority:    "medium",
-      message:     `${n} couple${n !== 1 ? "s" : ""} responded after your follow-up campaign`,
+      message:     `${n} lead${n !== 1 ? "s" : ""} responded after your follow-up campaign`,
       detail:      `${timeLabel} · ${before_value ?? 0} leads were overdue for contact`,
       link:        "/leads",
       actionLabel: "View leads →",

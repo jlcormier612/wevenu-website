@@ -99,6 +99,14 @@ export async function submitVenueSetup(
 
   try {
     const venueId = await repository.insertVenueSetup(supabase, input);
+    try {
+      const { seedStarterInventory } = await import("@/lib/inventory/service");
+      await seedStarterInventory(venueId);
+    } catch (seedError) {
+      // Non-fatal — a new venue without a seeded starter catalog can still
+      // add Inventory by hand; it should never block venue creation itself.
+      console.error("Could not seed starter inventory:", seedError);
+    }
     return { ok: true, venueId };
   } catch (error) {
     const code = (error as { code?: string } | null)?.code;

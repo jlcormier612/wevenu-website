@@ -52,8 +52,11 @@ export type CreateDocumentResult =
 
 // What the client uploads — used in the client component before hitting the server action
 export type DocumentUploadPayload = {
-  entityType: DocumentEntityType;
-  entityId: string;
+  // Omitted entirely for a venue-level (unscoped) document — a reusable file
+  // that isn't about one specific lead/client/event/vendor (e.g. a Planning
+  // Template attachment). See insertVenueDocument.
+  entityType?: DocumentEntityType;
+  entityId?: string;
   name: string;
   category: DocumentCategory;
   notes: string;

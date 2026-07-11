@@ -24,7 +24,7 @@ export default async function EditClientPage({ params }: Props) {
     <div className="space-y-6">
       <PageHeader
         title={`Edit · ${clientDisplayName(client.firstName, client.lastName, client.partnerFirstName, client.partnerLastName)}`}
-        description="Update couple information and event details."
+        description="Update client information and event details."
       />
       <Card>
         <CardHeader>

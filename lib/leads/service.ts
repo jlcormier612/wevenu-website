@@ -23,6 +23,9 @@ import {
   validateTaskInput,
 } from "@/lib/leads/validation";
 import { getCurrentVenue } from "@/lib/venue/service";
+import { triggerSequencesForRelationship } from "@/lib/message-sequences/service";
+import { CANONICAL_STAGE_TO_LEAD_STATUS } from "@/lib/leads/pipeline-stage-mapping";
+import type { CanonicalStage } from "@/lib/pipeline-templates/types";
 
 /** Shared auth + venue guard. Returns a typed error if anything is missing. */
 async function withVenue<T>(
@@ -69,6 +72,15 @@ export async function createLead(input: LeadInput): Promise<CreateLeadResult> {
   const result = await withVenue(async (supabase, venueId) => {
     const leadId = await repo.insertLead(supabase, venueId, input);
     // Activity is logged by the DB trigger (log_lead_created).
+
+    // Rule-based Series enrollment (§3.2) — must never block lead creation.
+    const { data: lead } = await supabase.from("leads").select("relationship_id")
+      .eq("id", leadId).maybeSingle<{ relationship_id: string | null }>();
+    if (lead?.relationship_id) {
+      void triggerSequencesForRelationship(supabase, venueId, lead.relationship_id, "lead_created")
+        .catch((e) => console.error("Series enrollment (lead_created) failed:", e));
+    }
+
     return { ok: true, leadId } as CreateLeadResult;
   });
   if ("ok" in result && result.ok === false) return result as CreateLeadResult;
@@ -104,6 +116,71 @@ export async function updateLeadStatus(
         }).then(null, () => {});
       }
     }
+
+    // Rule-based Series enrollment (§3.2) — must never block a status change.
+    const { data: lead } = await supabase.from("leads").select("relationship_id")
+      .eq("id", leadId).maybeSingle<{ relationship_id: string | null }>();
+    if (lead?.relationship_id) {
+      void triggerSequencesForRelationship(supabase, venueId, lead.relationship_id, "lead_stage_changed", status)
+        .catch((e) => console.error("Series enrollment (lead_stage_changed) failed:", e));
+    }
+
+    return { ok: true } as LeadActionResult;
+  });
+  return result as LeadActionResult;
+}
+
+// ---- Pipeline Stage (Phase 2 compatibility layer) ----------------------------
+// leads.status stays the enforced field everywhere else (analytics,
+// Automated Series, scoring, the status-change activity trigger — none of
+// that is touched here). pipeline_stage_id is purely additive: explicit
+// when a coordinator sets it, otherwise derived from status for display.
+
+/** Raw pipeline_stage_id for one lead — null if never explicitly set. Does not touch getLead/getLeads. */
+export async function getLeadPipelineStageId(leadId: string): Promise<string | null> {
+  if (!isSupabaseConfigured) return null;
+  const venue = await getCurrentVenue();
+  if (!venue) return null;
+  const supabase = await createClient();
+  const { data } = await supabase.from("leads").select("pipeline_stage_id")
+    .eq("id", leadId).eq("venue_id", venue.id).maybeSingle<{ pipeline_stage_id: string | null }>();
+  return data?.pipeline_stage_id ?? null;
+}
+
+/** pipeline_stage_id for every lead in the venue, keyed by lead id — for the list page's per-row display. */
+export async function getPipelineStageIdsForVenue(): Promise<Record<string, string | null>> {
+  if (!isSupabaseConfigured) return {};
+  const venue = await getCurrentVenue();
+  if (!venue) return {};
+  const supabase = await createClient();
+  const { data } = await supabase.from("leads").select("id, pipeline_stage_id").eq("venue_id", venue.id);
+  const map: Record<string, string | null> = {};
+  for (const row of (data ?? []) as { id: string; pipeline_stage_id: string | null }[]) map[row.id] = row.pipeline_stage_id;
+  return map;
+}
+
+/**
+ * A coordinator picked a Pipeline Stage. Maps its canonical stage to a real
+ * leads.status value and writes that through the existing, completely
+ * unchanged updateLeadStatus() — every side effect it already has (activity
+ * trigger, tour_converted signal, Automated Series enrollment) fires
+ * exactly as it does today. pipeline_stage_id is then set as a second,
+ * separate write, purely for "which exact stage" display fidelity.
+ */
+export async function updateLeadPipelineStage(leadId: string, stageId: string): Promise<LeadActionResult> {
+  const result = await withVenue(async (supabase, venueId) => {
+    const { data: stage } = await supabase.from("pipeline_stages").select("canonical_stage")
+      .eq("id", stageId).eq("venue_id", venueId).maybeSingle<{ canonical_stage: CanonicalStage }>();
+    if (!stage) return { ok: false, message: "That pipeline stage no longer exists." } as LeadActionResult;
+
+    const mappedStatus = CANONICAL_STAGE_TO_LEAD_STATUS[stage.canonical_stage];
+    const statusResult = await updateLeadStatus(leadId, mappedStatus);
+    if (!statusResult.ok) return statusResult;
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error } = await (supabase.from("leads") as any)
+      .update({ pipeline_stage_id: stageId }).eq("id", leadId).eq("venue_id", venueId);
+    if (error) return { ok: false, message: "Status updated, but could not save the exact stage." } as LeadActionResult;
 
     return { ok: true } as LeadActionResult;
   });

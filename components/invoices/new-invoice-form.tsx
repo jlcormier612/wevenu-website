@@ -50,7 +50,11 @@ export function NewInvoiceForm({
     <div className="space-y-5">
       <div className="grid gap-4 sm:grid-cols-2">
         <Field label="Client *" htmlFor="inv-client" error={errors.clientId}>
-          <Select value={input.clientId} onValueChange={(v) => setInput((p) => ({ ...p, clientId: v, eventId: "" }))}>
+          <Select
+            value={input.clientId}
+            onValueChange={(v) => setInput((p) => ({ ...p, clientId: v, eventId: "" }))}
+            items={clients.map((c) => ({ value: c.id, label: clientDisplayName(c.firstName, c.lastName, c.partnerFirstName, c.partnerLastName) }))}
+          >
             <SelectTrigger id="inv-client" aria-invalid={errors.clientId ? true : undefined}>
               <SelectValue placeholder="Select client" />
             </SelectTrigger>

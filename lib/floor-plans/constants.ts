@@ -21,7 +21,7 @@ export type ObjectTypeMeta = {
 
 export const OBJECT_TYPES: Record<ObjectType, ObjectTypeMeta> = {
   table_round:  { label: "Round Table",  defaultWidth: 72,  defaultHeight: 72,  defaultLabel: "T1",  defaultCapacity: 8,  shape: "circle" },
-  table_rect:   { label: "Rect. Table",  defaultWidth: 120, defaultHeight: 60,  defaultLabel: "T1",  defaultCapacity: 8,  shape: "rect"   },
+  table_rect:   { label: "Rectangular Table", defaultWidth: 120, defaultHeight: 60,  defaultLabel: "T1",  defaultCapacity: 8,  shape: "rect"   },
   table_oval:   { label: "Oval Table",   defaultWidth: 130, defaultHeight: 70,  defaultLabel: "T1",  defaultCapacity: 10, shape: "oval"   },
   stage:        { label: "Stage",        defaultWidth: 200, defaultHeight: 80,  defaultLabel: "Stage", defaultCapacity: null, shape: "rect" },
   dance_floor:  { label: "Dance Floor",  defaultWidth: 160, defaultHeight: 160, defaultLabel: "Dance Floor", defaultCapacity: null, shape: "rect" },

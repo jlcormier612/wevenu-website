@@ -163,12 +163,14 @@ export function LuvEventBriefing({
               key={obs.id}
               className="rounded-lg px-3 py-2.5 flex items-start gap-2"
               style={{
-                background: obs.kind === "flag" ? "#FDF5F5" : `${DUSTY_ROSE}08`,
+                background: obs.kind === "flag"
+                  ? `color-mix(in oklch, ${DUSTY_ROSE} 12%, var(--card))`
+                  : `color-mix(in oklch, ${DUSTY_ROSE} 8%, var(--card))`,
                 border: `1px solid ${obs.kind === "flag" ? "#D8A7AA50" : `${DUSTY_ROSE}20`}`,
               }}
             >
               <LuvHeart size={11} />
-              <p className="text-xs leading-relaxed" style={{ color: "#5A3235" }}>{obs.text}</p>
+              <p className="text-xs leading-relaxed" style={{ color: "var(--heading)" }}>{obs.text}</p>
             </div>
           ))}
         </div>
@@ -186,7 +188,7 @@ export function LuvEventBriefing({
       {incompleteItems.length > 0 && (
         <div
           className="rounded-lg px-3 py-3 space-y-2"
-          style={{ background: `${DUSTY_ROSE}10`, border: `1px solid ${DUSTY_ROSE}20` }}
+          style={{ background: `color-mix(in oklch, ${DUSTY_ROSE} 10%, var(--card))`, border: `1px solid ${DUSTY_ROSE}20` }}
         >
           <div className="flex items-center gap-1.5">
             <LuvHeart size={11} />
@@ -201,7 +203,7 @@ export function LuvEventBriefing({
                 key={item.key}
                 href={item.actionLink ?? "#"}
                 className="flex items-center gap-1.5 text-xs font-medium hover:underline"
-                style={{ color: "#8B5A5C" }}
+                style={{ color: "var(--heading)" }}
               >
                 <ArrowRight className="h-3 w-3 shrink-0" />
                 {item.actionLabel}

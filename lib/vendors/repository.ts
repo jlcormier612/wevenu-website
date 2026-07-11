@@ -11,6 +11,8 @@ import type {
   VendorAssignmentInput,
   VendorEventSummary,
   VendorInput,
+  VendorReview,
+  VendorReviewInput,
   VendorWithEvents,
 } from "@/lib/vendors/types";
 
@@ -34,10 +36,18 @@ type VendorRow = {
 };
 
 type VVRRow = {
-  venue_id: string; vendor_id: string; status: string; is_preferred: boolean;
-  preference_level: string; display_order: number; is_active: boolean;
-  notes: string | null; added_at: string; updated_at: string;
+  venue_id: string; vendor_id: string; status: string;
+  preference_level: string; display_order: number;
+  notes: string | null; special_pricing_note: string | null;
+  added_at: string; updated_at: string;
   vendors: VendorRow | null;
+};
+
+type VendorReviewRow = {
+  id: string; vendor_id: string; reviewer_type: string; venue_id: string | null;
+  event_id: string | null; client_id: string | null; rating: number;
+  body: string | null; is_public: boolean; created_at: string;
+  events?: { name: string } | null;
 };
 
 type EVARow = {
@@ -92,14 +102,18 @@ function mapVendorProfile(r: VendorRow) {
 
 function mapVVR(r: VVRRow): Vendor | null {
   if (!r.vendors) return null;
+  const preferenceLevel = (r.preference_level ?? "recommended") as import("./types").VendorPreferenceLevel;
   return {
     ...mapVendorProfile(r.vendors),
-    venueId:         r.venue_id,
-    isPreferred:     r.is_preferred,
-    preferenceLevel: (r.preference_level ?? "recommended") as import("./types").VendorPreferenceLevel,
-    displayOrder:    r.display_order ?? 0,
-    isActive:        r.is_active ?? true,
-    notes:           r.notes,
+    venueId:            r.venue_id,
+    status:             (r.status as import("./types").VendorRelationshipStatus) ?? "active",
+    // Computed convenience, not a second independently-writable fact (Standard #1) —
+    // preferenceLevel alone is the one owner of "how prominently featured."
+    isPreferred:        preferenceLevel !== "recommended",
+    preferenceLevel,
+    displayOrder:       r.display_order ?? 0,
+    notes:              r.notes,
+    specialPricingNote: r.special_pricing_note,
   };
 }
 
@@ -129,9 +143,10 @@ export async function getVendors(client: DbClient, venueId: string): Promise<Ven
     .from("venue_vendor_relationships")
     .select("*, vendors(*)")
     .eq("venue_id", venueId)
-    .eq("is_active", true)
-    .neq("status", "removed")
-    .order("is_preferred",     { ascending: false })
+    .neq("status", "inactive")
+    // "featured" < "preferred" < "recommended" alphabetically happens to match
+    // the intended priority order, so no CASE expression is needed here.
+    .order("preference_level", { ascending: true })
     .order("display_order",    { ascending: true })
     .order("vendors(business_name)", { ascending: true });
   if (error) throw error;
@@ -192,17 +207,18 @@ function toVendorProfileRow(input: VendorInput): Record<string, unknown> {
 
 function toVVRRow(venueId: string, vendorId: string, input: VendorInput): Record<string, unknown> {
   return {
-    venue_id:         venueId,
-    vendor_id:        vendorId,
-    status:           "active",
-    is_preferred:     input.isPreferred || input.preferenceLevel !== "recommended",
-    preference_level: input.preferenceLevel || "recommended",
-    notes:            input.notes.trim() || null,
+    venue_id:             venueId,
+    vendor_id:            vendorId,
+    status:               "active",
+    preference_level:     input.preferenceLevel || "recommended",
+    notes:                input.notes.trim() || null,
+    special_pricing_note: input.specialPricingNote.trim() || null,
   };
 }
 
 export async function insertVendor(client: DbClient, venueId: string, input: VendorInput): Promise<string> {
-  // Create the global vendor profile first
+  // Create the global vendor profile first. The venue is the de facto steward
+  // of identity fields until the vendor claims it (venues_update_unclaimed_vendors).
   const { data: vendorData, error: vendorErr } = await client
     .from("vendors")
     .insert(toVendorProfileRow(input))
@@ -219,28 +235,102 @@ export async function insertVendor(client: DbClient, venueId: string, input: Ven
   return vendorData.id;
 }
 
-export async function updateVendor(client: DbClient, venueId: string, vendorId: string, input: VendorInput): Promise<void> {
-  const [profileErr, vvrErr] = await Promise.all([
-    client.from("vendors").update(toVendorProfileRow(input)).eq("id", vendorId).then(r => r.error),
-    client.from("venue_vendor_relationships")
-      .update({
-        is_preferred:     input.isPreferred || input.preferenceLevel !== "recommended",
-        preference_level: input.preferenceLevel || "recommended",
-        notes:            input.notes.trim() || null,
-      })
-      .eq("venue_id", venueId).eq("vendor_id", vendorId).then(r => r.error),
-  ]);
-  if (profileErr) throw profileErr;
-  if (vvrErr)     throw vvrErr;
+/**
+ * Identity fields (name, category, pricing, etc.) are only written while the
+ * vendor is unclaimed — once claimed, identity belongs to the vendor's own
+ * account and RLS (venues_update_unclaimed_vendors) would reject it anyway.
+ * Checking here first gives the venue a clear message instead of a silent
+ * no-op (Engineering Standard #3 — enforcement in the service layer, RLS as
+ * the backstop, not the only layer).
+ */
+export async function updateVendor(client: DbClient, venueId: string, vendorId: string, input: VendorInput): Promise<{ identityUpdated: boolean }> {
+  const { data: vendorRow, error: fetchErr } = await client
+    .from("vendors").select("is_claimed").eq("id", vendorId).maybeSingle<{ is_claimed: boolean }>();
+  if (fetchErr) throw fetchErr;
+  const isClaimed = vendorRow?.is_claimed ?? true; // fail closed if the vendor can't be found
+
+  const writes: Promise<{ error: unknown }>[] = [
+    Promise.resolve(
+      client.from("venue_vendor_relationships")
+        .update({
+          preference_level:     input.preferenceLevel || "recommended",
+          notes:                input.notes.trim() || null,
+          special_pricing_note: input.specialPricingNote.trim() || null,
+        })
+        .eq("venue_id", venueId).eq("vendor_id", vendorId),
+    ).then(r => ({ error: r.error })),
+  ];
+  if (!isClaimed) {
+    writes.push(
+      Promise.resolve(client.from("vendors").update(toVendorProfileRow(input)).eq("id", vendorId))
+        .then(r => ({ error: r.error })),
+    );
+  }
+
+  const results = await Promise.all(writes);
+  for (const r of results) if (r.error) throw r.error;
+  return { identityUpdated: !isClaimed };
 }
 
-/** Soft-delete: marks the venue relationship as removed. Vendor profile stays global. */
+/** Soft-delete: marks the venue relationship as inactive. Vendor profile stays global. */
 export async function deleteVendor(client: DbClient, venueId: string, vendorId: string): Promise<void> {
   const { error } = await client
     .from("venue_vendor_relationships")
-    .update({ status: "removed", is_active: false })
+    .update({ status: "inactive" })
     .eq("venue_id", venueId)
     .eq("vendor_id", vendorId);
+  if (error) throw error;
+}
+
+/** Reactivate an inactive relationship — one click back, per "inactive is a pause, not a deletion." */
+export async function reactivateVendor(client: DbClient, venueId: string, vendorId: string): Promise<void> {
+  const { error } = await client
+    .from("venue_vendor_relationships")
+    .update({ status: "active" })
+    .eq("venue_id", venueId)
+    .eq("vendor_id", vendorId)
+    .eq("status", "inactive");
+  if (error) throw error;
+}
+
+// ── Reviews ────────────────────────────────────────────────────────────────────
+// Reuses the existing vendor_reviews model (rating, body, reviewer_type, RLS
+// already in place) per the approved "reuse before creating" direction — this
+// is the first real reader/writer, not a new mechanism.
+
+export async function getVendorReviews(client: DbClient, venueId: string, vendorId: string): Promise<VendorReview[]> {
+  const { data, error } = await client
+    .from("vendor_reviews")
+    .select("*, events(name)")
+    .eq("vendor_id", vendorId)
+    .eq("venue_id", venueId)
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+  return (data as VendorReviewRow[]).map((r) => ({
+    id:           r.id,
+    vendorId:     r.vendor_id,
+    reviewerType: r.reviewer_type as VendorReview["reviewerType"],
+    venueId:      r.venue_id,
+    eventId:      r.event_id,
+    clientId:     r.client_id,
+    rating:       r.rating,
+    body:         r.body,
+    isPublic:     r.is_public,
+    createdAt:    r.created_at,
+    eventName:    r.events?.name ?? null,
+  }));
+}
+
+export async function insertVendorReview(client: DbClient, venueId: string, vendorId: string, input: VendorReviewInput): Promise<void> {
+  const { error } = await client.from("vendor_reviews").insert({
+    vendor_id:     vendorId,
+    venue_id:      venueId,
+    reviewer_type: "venue",
+    event_id:      input.eventId || null,
+    rating:        input.rating,
+    body:          input.body.trim() || null,
+    is_public:     input.isPublic,
+  });
   if (error) throw error;
 }
 

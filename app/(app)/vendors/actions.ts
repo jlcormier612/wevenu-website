@@ -5,7 +5,7 @@ import { revalidatePath } from "next/cache";
 import { sendEmail } from "@/lib/email/send";
 import { buildVendorInviteHtml, buildVendorInviteText } from "@/lib/email/vendor-invite";
 import { createClient } from "@/integrations/supabase/server";
-import { createVendor, deleteVendor_ } from "@/lib/vendors/service";
+import { createVendor, deleteVendor_, reactivateVendor_ } from "@/lib/vendors/service";
 import { getCurrentVenue } from "@/lib/venue/service";
 import type { CreateVendorResult, VendorActionResult, VendorInput } from "@/lib/vendors/types";
 
@@ -17,7 +17,13 @@ export async function createVendorAction(input: VendorInput): Promise<CreateVend
 
 export async function deleteVendorAction(vendorId: string): Promise<VendorActionResult> {
   const result = await deleteVendor_(vendorId);
-  if (result.ok) revalidatePath("/vendors");
+  if (result.ok) { revalidatePath("/vendors"); revalidatePath(`/vendors/${vendorId}`); }
+  return result;
+}
+
+export async function reactivateVendorAction(vendorId: string): Promise<VendorActionResult> {
+  const result = await reactivateVendor_(vendorId);
+  if (result.ok) { revalidatePath("/vendors"); revalidatePath(`/vendors/${vendorId}`); }
   return result;
 }
 

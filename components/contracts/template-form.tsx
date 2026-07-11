@@ -26,7 +26,10 @@ function buildInitial(template?: ContractTemplate | null): TemplateInput {
 
 export function TemplateForm({ template }: { template?: ContractTemplate | null }) {
   const router = useRouter();
-  const isEdit = !!template;
+  // template is truthy even on the New Template page (it's seeded with starter
+  // content/isDefault so the form has something to show) — only a real,
+  // persisted template has an id, so that's the actual edit-vs-create signal.
+  const isEdit = !!template?.id;
   const [input, setInput] = React.useState<TemplateInput>(() => buildInitial(template));
   const [errors, setErrors] = React.useState<ContractErrors>({});
   const [pending, startTransition] = React.useTransition();

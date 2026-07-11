@@ -85,6 +85,7 @@ function mapLead(r: LeadRow, tour: LeadTourInfo = EMPTY_TOUR): Lead {
     tourDate: tour.tourDate, tourTime: tour.tourTime,
     tourCompleted: tour.tourCompleted, tourNotes: tour.tourNotes,
     commitmentScore: 0, responsivenessScore: 0, interestScore: 0, scoresUpdatedAt: null, sourceData: null,
+    relationshipId: (r.relationship_id as string | null) ?? null,
     createdAt: r.created_at, updatedAt: r.updated_at,
   };
 }
@@ -475,11 +476,11 @@ type OnboardingSignals = {
 };
 
 const NUDGE_TEXT: Record<string, string> = {
-  profile_complete:  "Fill in your venue address, phone, and email. Couples and coordinators need this before anything else.",
-  tour_scheduling:   "Enabling tour scheduling turns your venue page into a 24/7 booking engine — couples book themselves while you sleep.",
-  venue_guide:       "Your Venue Guide is the #1 resource couples share with their families. Ten minutes here saves fifty future emails.",
-  preferred_vendors: "Add your preferred vendors. Couples ask about photographers and caterers before almost anything else.",
-  task_playbook:     "Create your first Task Playbook to automate your event workflow — it saves hours on every booking you make.",
+  profile_complete:  "Fill in your venue address, phone, and email. Clients and coordinators need this before anything else.",
+  tour_scheduling:   "Enabling tour scheduling turns your venue page into a 24/7 booking engine — clients book themselves while you sleep.",
+  venue_guide:       "Your Venue Guide is the #1 resource clients share with their families. Ten minutes here saves fifty future emails.",
+  preferred_vendors: "Add your preferred vendors. Clients ask about photographers and caterers before almost anything else.",
+  task_playbook:     "Create your first Planning Playbook to automate your event workflow — it saves hours on every booking you make.",
   first_inquiry:     "Add your first lead to start building your pipeline and tracking inquiries.",
 };
 
@@ -497,7 +498,7 @@ function computeOnboarding(venue: Venue, leads: Lead[], signals: OnboardingSigna
     {
       id: "profile_complete",
       title: "Fill in your venue profile",
-      description: "Add your address, phone, and email so couples can reach you.",
+      description: "Add your address, phone, and email so clients can reach you.",
       completed: profileFilled,
       timeEstimate: "1 min",
       ctaLabel: "Complete Profile",
@@ -506,7 +507,7 @@ function computeOnboarding(venue: Venue, leads: Lead[], signals: OnboardingSigna
     {
       id: "tour_scheduling",
       title: "Enable tour scheduling",
-      description: "Let couples book a venue tour directly from your website — 24/7, no back-and-forth.",
+      description: "Let clients book a venue tour directly from your website — 24/7, no back-and-forth.",
       completed: venue.tourSchedulingEnabled,
       timeEstimate: "2 min",
       ctaLabel: "Set Up Tours",
@@ -515,7 +516,7 @@ function computeOnboarding(venue: Venue, leads: Lead[], signals: OnboardingSigna
     {
       id: "venue_guide",
       title: "Start your Venue Guide",
-      description: "Parking, hotels, policies, FAQs — the questions couples will ask you a hundred times.",
+      description: "Parking, hotels, policies, FAQs — the questions clients will ask you a hundred times.",
       completed: signals.hasGuideContent,
       timeEstimate: "10 min",
       ctaLabel: "Open Guide",
@@ -524,7 +525,7 @@ function computeOnboarding(venue: Venue, leads: Lead[], signals: OnboardingSigna
     {
       id: "preferred_vendors",
       title: "Add preferred vendors",
-      description: "Share your trusted caterers, photographers, and florists so couples have a starting point.",
+      description: "Share your trusted caterers, photographers, and florists so clients have a starting point.",
       completed: signals.vendorCount > 0,
       timeEstimate: "5 min",
       ctaLabel: "Add Vendors",
@@ -532,7 +533,7 @@ function computeOnboarding(venue: Venue, leads: Lead[], signals: OnboardingSigna
     },
     {
       id: "task_playbook",
-      title: "Create a Task Playbook",
+      title: "Create a Planning Playbook",
       description: "Build a reusable workflow template that auto-assigns tasks to every new event.",
       completed: signals.playbookCount > 0,
       timeEstimate: "5 min",
@@ -549,7 +550,7 @@ function computeOnboarding(venue: Venue, leads: Lead[], signals: OnboardingSigna
     },
     {
       id: "first_booking",
-      title: "Book your first couple",
+      title: "Book your first client",
       description: "Mark a lead as Won to record your first confirmed booking.",
       completed: leads.some((l) => l.status === "won"),
       ctaLabel: "View Leads",

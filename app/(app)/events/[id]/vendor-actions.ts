@@ -3,11 +3,27 @@
 import { revalidatePath } from "next/cache";
 
 import { assignVendor, removeVendorAssignment, updateVendorAssignment_ } from "@/lib/vendors/service";
-import { createVendorPortalSession } from "@/lib/vendor-portal/service";
+import { addRecommendation, removeRecommendation } from "@/lib/vendor-recommendations/service";
 import type { EventVendorAssignment, VendorActionResult, VendorAssignmentInput } from "@/lib/vendors/types";
+import type { RecommendationActionResult } from "@/lib/vendor-recommendations/types";
 
 function revalidateEvent(eventId: string) {
   revalidatePath(`/events/${eventId}`);
+}
+
+// ── Recommendations — venue-side ("choose vendors from the Library to
+// recommend to this specific client," Vendor Management Next Iteration) ───
+
+export async function recommendVendorAction(eventId: string, vendorId: string, note: string | null): Promise<RecommendationActionResult> {
+  const result = await addRecommendation(eventId, vendorId, note);
+  if (result.ok) revalidateEvent(eventId);
+  return result;
+}
+
+export async function unrecommendVendorAction(recommendationId: string, eventId: string): Promise<RecommendationActionResult> {
+  const result = await removeRecommendation(recommendationId);
+  if (result.ok) revalidateEvent(eventId);
+  return result;
 }
 
 export async function assignVendorAction(
@@ -33,11 +49,4 @@ export async function updateVendorAssignmentAction(
   const result = await updateVendorAssignment_(assignmentId, input);
   if (result.ok) revalidateEvent(eventId);
   return result;
-}
-
-export async function createVendorPortalLinkAction(
-  vendorId: string, vendorName: string,
-): Promise<{ ok: true; token: string } | { ok: false }> {
-  const token = await createVendorPortalSession(vendorId, vendorName);
-  return token ? { ok: true, token } : { ok: false };
 }

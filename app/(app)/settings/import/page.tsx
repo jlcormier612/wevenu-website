@@ -25,7 +25,7 @@ export default async function ImportPage({
       <div>
         <h1 className="text-xl font-bold text-foreground">Import Data</h1>
         <p className="text-sm text-muted-foreground mt-1">
-          Bring your existing couples, leads, and vendors into Wevenu from any CSV export.
+          Bring your existing clients, leads, and vendors into Wevenu from any CSV export.
         </p>
       </div>
       <Suspense fallback={null}>

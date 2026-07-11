@@ -57,7 +57,7 @@ const SECTIONS: SectionDef[] = [
     emoji: "📋",
     title: "Policies & Rules",
     description: "What's allowed and what isn't — sparklers, outside vendors, alcohol, candles, pets, decor.",
-    luvTip: "Clear policies now mean fewer surprises later. Couples who know the rules early plan with more confidence.",
+    luvTip: "Clear policies now mean fewer surprises later. Clients who know the rules early plan with more confidence.",
     weight: 2,
     isFilled: (d) => !!(d.policies?.trim()),
   },
@@ -73,7 +73,7 @@ const SECTIONS: SectionDef[] = [
     key: "things",
     emoji: "🍽️",
     title: "Things To Know",
-    description: "Anything else couples should know — setup rules, sound restrictions, cleanup expectations.",
+    description: "Anything else clients should know — setup rules, sound restrictions, cleanup expectations.",
     weight: 1,
     isFilled: (d) => !!(d.thingsToDo?.trim()),
   },
@@ -81,7 +81,7 @@ const SECTIONS: SectionDef[] = [
     key: "faqs",
     emoji: "❓",
     title: "FAQs",
-    description: "The questions you get asked most often — answered once, visible to every couple.",
+    description: "The questions you get asked most often — answered once, visible to every client.",
     luvTip: "FAQs are the most-used section of the Venue Guide. Each answer here means one fewer coordinator message.",
     weight: 3,
     isFilled: (d) => d.faqs.length > 0,
@@ -90,7 +90,7 @@ const SECTIONS: SectionDef[] = [
     key: "contacts",
     emoji: "📞",
     title: "Important Contacts",
-    description: "Day-of contacts for couples — coordinator, catering lead, security, etc.",
+    description: "Day-of contacts for clients — coordinator, catering lead, security, etc.",
     weight: 3,
     isFilled: (d) => d.importantContacts.length > 0,
   },
@@ -115,11 +115,11 @@ function CompletionMeter({ data }: { data: VenueGuideData }) {
   const color = pct === 100 ? "#5D6F5D" : pct >= 60 ? "#D8A7AA" : "#B8AEA1";
 
   function luvNudge() {
-    if (pct === 100) return "Your Guide is complete — couples have everything they need.";
+    if (pct === 100) return "Your Guide is complete — clients have everything they need.";
     if (topMissing.length === 0) return null;
     const names = topMissing.map(s => `${s.title}`).join(" and ");
     if (topMissing[0].weight === 3) {
-      return `Your guide is ${pct}% complete, but you're still missing ${names} — the section${topMissing.length > 1 ? "s" : ""} couples use most.`;
+      return `Your guide is ${pct}% complete, but you're still missing ${names} — the section${topMissing.length > 1 ? "s" : ""} clients use most.`;
     }
     return `${names} ${topMissing.length > 1 ? "are" : "is"} still empty. Each section you complete reduces day-of questions.`;
   }
@@ -287,7 +287,7 @@ function FaqsEditor({ faqs, onSave, saving }: {
   return (
     <div className="space-y-4">
       {items.length === 0 ? (
-        <p className="text-sm text-muted-foreground py-2">No FAQs yet. Add the questions couples ask most often.</p>
+        <p className="text-sm text-muted-foreground py-2">No FAQs yet. Add the questions clients ask most often.</p>
       ) : (
         <div className="space-y-4">
           {items.map((faq, i) => (
@@ -357,7 +357,7 @@ function HotelBlocksEditor({ hotels, onSave, saving }: {
   return (
     <div className="space-y-4">
       {items.length === 0 ? (
-        <p className="text-sm text-muted-foreground py-2">No hotel blocks yet. Add hotels you recommend to couples.</p>
+        <p className="text-sm text-muted-foreground py-2">No hotel blocks yet. Add hotels you recommend to clients.</p>
       ) : (
         <div className="space-y-3">
           {items.map((h, i) => (
@@ -418,7 +418,7 @@ function ContactsEditor({ contacts, onSave, saving }: {
   return (
     <div className="space-y-4">
       {items.length === 0 ? (
-        <p className="text-sm text-muted-foreground py-2">No contacts yet. Add the people couples might need to reach on their wedding day.</p>
+        <p className="text-sm text-muted-foreground py-2">No contacts yet. Add the people clients might need to reach on their wedding day.</p>
       ) : (
         <div className="space-y-3">
           {items.map((c, i) => (
@@ -583,7 +583,7 @@ export function VenueGuideEditor({ initial }: { initial: VenueGuideData | null }
         <TextSectionEditor
           label="Rain Plan"
           value={data.rainPlan ?? ""}
-          placeholder="How weather decisions are made, indoor backup location, when couples are notified…"
+          placeholder="How weather decisions are made, indoor backup location, when clients are notified…"
           saving={saving === "rain_plan"}
           onSave={async v => {
             setData(d => ({ ...d, rainPlan: v || null }));
@@ -625,7 +625,7 @@ export function VenueGuideEditor({ initial }: { initial: VenueGuideData | null }
         <TextSectionEditor
           label="Things To Know"
           value={data.thingsToDo ?? ""}
-          placeholder="Setup rules, load-in times, what's included vs. not, tips for the day, anything else couples should know…"
+          placeholder="Setup rules, load-in times, what's included vs. not, tips for the day, anything else clients should know…"
           saving={saving === "things_to_do"}
           onSave={async v => {
             setData(d => ({ ...d, thingsToDo: v || null }));

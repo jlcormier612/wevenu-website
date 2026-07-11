@@ -45,17 +45,33 @@
 
 ---
 
+## Relationship
+
+**Represents:** The enduring counterparty the venue has an ongoing relationship with — an individual, a couple, a family, a corporation, or a nonprofit. Not reducible to one person: a couple is inherently two people from the start, and a corporate account outlives any single employee who happens to be the point of contact this year. **Adopted principle (Program 2, from `docs/lead-identity-architectural-exploration.md`):** the venue's actual relationship with a customer persists across every Opportunity (Lead) that customer ever brings — a wedding, then an anniversary party; an annual corporate rebooking — the same way `venue_vendor_relationships` already persists across every Event a Vendor works, on the other side of the business. This entity is the deliberate mirror of that one.
+
+**Owned by:** The venue. Minimal by design for now — matched by email, the same heuristic `find_lead_by_email` already used before this entity existed.
+
+**Lifecycle:** Created the moment a customer is first identified (at or before their first Lead/Opportunity). Never closes — a Relationship with a years-quiet former client is still that Relationship, exactly like Conversation's own "provisioned once, dormant not archived" lifecycle, which anchors to this entity.
+
+**Relationships:** Has one or more **Lead** rows over time (each one an Opportunity). Has one **Conversation**. Contact's eventual scope (Client vs. Relationship) is an open question, not yet decided — see Contact, below.
+
+**Canonical source of truth:** `venue_customer_relationships` (planned, Program 2 Phase 2 — not yet built). **Explicitly deferred:** broader account modeling (multiple contacts as first-class members of a Relationship, precisely when repeat contact should open a new Opportunity vs. reuse an existing Lead, and whether this ever becomes a global identity with venue-scoped relationships beneath it, mirroring Vendor's `vendors`/`venue_vendor_relationships` split) — none of that is needed for Conversation or Activity History and isn't being built now.
+
+**Exposed through:** Not yet exposed independently — today, reached only via its Leads/Conversation. May eventually warrant its own detail view once account modeling (multiple Opportunities, multiple Contacts) becomes visible in the product.
+
+---
+
 ## Lead
 
-**Represents:** A person or couple who has expressed interest in the venue but hasn't yet committed — the pre-Client identity. **Adopted principle (Program 2):** every way a person can first reach the venue — Request Information, Schedule Tour, Manual Entry, Phone Call, Referral, Walk-In, CSV Import, Facebook Lead, The Knot, WeddingWire, and any future source — is a different *entry point* into the same Lead, not a different kind of object. The entry point differs; the identity and lifecycle do not.
+**Represents:** One specific opportunity — a particular ask, at a particular pipeline stage, for a particular event — belonging to a Relationship. **Adopted principle (Program 2):** every way an opportunity can first reach the venue — Request Information, Schedule Tour, Manual Entry, Phone Call, Referral, Walk-In, CSV Import, Facebook Lead, The Knot, WeddingWire, and any future source — is a different *entry point* into the same Opportunity for the same Relationship, not a different kind of object. **Revised (`docs/lead-identity-architectural-exploration.md`):** Lead used to also carry the enduring-identity job; that job now belongs to Relationship, above. Lead is scoped to one Opportunity — the pipeline word "Lead" is unchanged in the UI, but conceptually a customer can now have more than one Lead over time, one per Opportunity, all under the same Relationship.
 
-**Owned by:** The venue (specifically, whichever Team Member is working the relationship — though today nothing restricts visibility to an assigned owner; every team member sees every lead).
+**Owned by:** The venue (specifically, whichever Team Member is working the opportunity — though today nothing restricts visibility to an assigned owner; every team member sees every lead).
 
-**Lifecycle:** Created (via any entry point) → contacted/nurtured → tour scheduled/completed (optional) → won (converts into a Client) or lost. A Lead's activities, notes, scores, and tour history accumulate across its whole life, regardless of which entry point or how many touchpoints occurred.
+**Lifecycle:** Created (via any entry point) → contacted/nurtured → tour scheduled/completed (optional) → won (converts into a Client) or lost. A Lead's activities, notes, scores, and tour history accumulate across its own life; its Relationship's history spans across all of a customer's Leads, past and present.
 
-**Relationships:** May have Tour appointments, Tasks, Notes, and Activities. On conversion, produces exactly one Client (and the Lead record is retained as history, not deleted). Appears on the Calendar (as a tour or follow-up) prior to conversion.
+**Relationships:** Belongs to exactly one **Relationship** (`leads.relationship_id`). May have Tour appointments, Tasks, Notes, and Activities. On conversion, produces exactly one Client (and the Lead record is retained as history, not deleted). Appears on the Calendar (as a tour or follow-up) prior to conversion.
 
-**Canonical source of truth:** `leads`, today. **Known gap (Program 2, not a Trust Risk):** `create_public_lead()` (inquiry form) and `book_tour()` (tour booking) each unconditionally insert a *new* `leads` row with zero deduplication — the same person contacting the venue twice through two entry points becomes two separate Leads today, violating the adopted principle above until Program 2's Lead-unification work lands.
+**Canonical source of truth:** `leads`. Cross-entry-point deduplication into one Lead (`find_lead_by_email`) shipped in Program 2 Phase 1 for the two automatic public entry points (inquiry form, tour widget); manual-create and CSV import still create a new Lead unconditionally (named, not silently dropped, in `docs/architecture-delta-phase-1.md`). **Deliberately deferred:** precisely when a Relationship's repeat contact should reuse an existing (already-won) Lead versus open a fresh one is a real product decision, not yet made — see Relationship, above.
 
 **Exposed through:** the Leads pipeline in the coordinator app, the public inquiry form, the public tour-booking widget, CSV import, and (in the calendar-backbone future) the Calendar itself as a tour/follow-up entry.
 
@@ -85,7 +101,7 @@
 
 **Lifecycle:** Invited (with a chosen access scope) → active → removed. A Contact's portal access can be revoked independently of the couple's own.
 
-**Relationships:** Belongs to exactly one Client. Optionally has its own Portal Session with a scoped `access_level`, distinct from the couple's own full-access session.
+**Relationships:** Belongs to exactly one Client. Optionally has its own Portal Session with a scoped `access_level`, distinct from the couple's own full-access session. **Open question, not yet decided (`docs/lead-identity-architectural-exploration.md` §6):** whether Contact's scope should move from Client to the enduring Relationship — a planner or family member arguably belongs to the relationship, not to one specific won Opportunity. Deliberately out of scope for Program 2 Phase 2; Contact stays scoped to Client for now.
 
 **Canonical source of truth:** `client_contacts`, with `portal_role` describing the *intended* scope (`full_access`/`planning`/`financial`/`view_only`/`reminders_only`) and `client_portal_sessions.access_level` as the actual *enforced* scope on any session created for them. **These two must be kept in sync at session-creation time** — TR-G4 (fixed 2026-07-07) was exactly this synchronization missing, silently granting every Contact full access regardless of the role a coordinator chose for them.
 
@@ -147,11 +163,11 @@
 
 **Owned by:** Jointly the venue and the person/couple — both sides read and write to it (a Conversation is the one entity in this model that's inherently bilateral by nature, not primarily owned by one side with the other granted access). Multiple Participants (the Lead/Client, a Contact, a venue Team Member) can all contribute without forking the conversation — attribution lives on the message, not on a separate thread per person.
 
-**Lifecycle:** Provisioned automatically the moment its anchor (a Lead, or a vendor relationship) exists — never explicitly "created" by a person, never lazily created on first message. Accumulates Messages indefinitely. **Has no independent status of its own** — no open/resolved/closed states the way a support ticket would have. "Active" vs. "dormant" vs. "needs attention" are computed at read time from `last_message_at` and the linked Lead/Client's own status, the same projection discipline Calendar Entry uses — never a stored field a coordinator toggles. A Conversation with a years-quiet former client is still that Conversation, not archived, not requiring "reopening," ready the moment contact resumes.
+**Lifecycle:** Provisioned automatically the moment its anchor (a **Relationship**, or a vendor relationship) exists — never explicitly "created" by a person, never lazily created on first message. Accumulates Messages indefinitely. **Has no independent status of its own** — no open/resolved/closed states the way a support ticket would have. "Active" vs. "dormant" vs. "needs attention" are computed at read time from `last_message_at` and the linked Relationship/Lead's own status, the same projection discipline Calendar Entry uses — never a stored field a coordinator toggles. A Conversation with a years-quiet former client is still that Conversation, not archived, not requiring "reopening," ready the moment contact resumes.
 
-**Relationships:** Anchors to exactly one **Lead** (not Client) — Lead is the identity that exists from first contact and persists through Client conversion (see Lead, above; Program 2 Phase 1's "one canonical Lead" work is a direct prerequisite for this to hold), or to one Vendor relationship. Contains many Messages, each attributed to a Participant and a Channel. Deliberately does **not** absorb Lead/Contract/Payment activity history into its own schema — a separate, composed **Relationship Timeline** view interleaves Conversation messages with that activity log read-only, the same way Calendar composes without owning.
+**Relationships:** Anchors to exactly one **Relationship** (not Lead, not Client) — Relationship is the enduring counterparty identity that exists from first contact, persists through Client conversion, and outlives any single Lead/Opportunity (see Relationship, above; `docs/lead-identity-architectural-exploration.md` is where this anchor was decided, after an earlier pass anchored to Lead and found it still one level too low), or to one Vendor relationship. Contains many Messages, each attributed to a Participant and a Channel. Deliberately does **not** absorb Lead/Contract/Payment activity history into its own schema — a separate, composed **Relationship Timeline** view interleaves Conversation messages with that activity log read-only, the same way Calendar composes without owning.
 
-**Canonical source of truth:** *Not yet unified — this is the clearest gap between this model and today's implementation.* Two entirely disconnected systems currently each hold half of what should be one Conversation: `message_threads`/`messages` (an outbound-email log, keyed to `client_id`) and `couple_threads`/`couple_messages` (real bidirectional portal chat, also keyed to `client_id`, but never joined to the first system anywhere in the code). This is registered as TR-C1 — Identified, explicitly not a same-day patch, and is the single largest architectural project this domain model implies. The target schema (`conversations` anchored on `lead_id`, no `status` column) is designed in `docs/conversation-lifecycle-design.md`.
+**Canonical source of truth:** *Not yet unified — this is the clearest gap between this model and today's implementation.* Two entirely disconnected systems currently each hold half of what should be one Conversation: `message_threads`/`messages` (an outbound-email log, keyed to `client_id`) and `couple_threads`/`couple_messages` (real bidirectional portal chat, also keyed to `client_id`, but never joined to the first system anywhere in the code). This is registered as TR-C1 — Identified, explicitly not a same-day patch, and is the single largest architectural project this domain model implies. The target schema (`conversations` anchored on `relationship_id`, no `status` column) is designed in `docs/conversation-lifecycle-design.md`.
 
 **Exposed through:** the coordinator app's per-client "Messages" tab (email history only, today), the main-nav "Messaging" inbox (portal chat only, today), and the couple portal's own message view — three separate windows onto what should be one Conversation.
 
@@ -259,9 +275,10 @@ Ranked by how far today's implementation is from this model, most to least align
 
 1. **Contract** — already matches this model closely; only the versioning/amendment layer (`docs/contract-lifecycle-design.md`) is still to build.
 2. **Venue, Team Member, Client, Event, Invoice, Payment** — each has a genuinely clean, single canonical source of truth today; known gaps are narrow (Payment's schedule-total drift, Contact/portal_role sync) not structural.
-3. **Lead** — clean today for a single entry point; the cross-entry-point identity this model requires isn't built yet.
+3. **Lead** — cross-entry-point dedup shipped in Program 2 Phase 1 for the two automatic public entry points; manual-create/CSV import still don't dedup (named gap, not silently dropped). Now scoped to "one Opportunity," per Relationship, below.
 4. **Calendar Entry, Vendor** — conceptually sound splits, with specific, fixable staleness bugs (TR-B4, the vendor RPC break) rather than structural fragmentation.
 5. **Asset, Conversation** — the two entities where today's implementation doesn't match this model at all yet: each is genuinely 2-4 unrelated systems today, not one entity with known bugs. These are the real Program 2 architecture projects, not incremental fixes.
-6. **Luv Observation** — the computed layer matches this model; the persisted "learned" layer needs real repair before it can.
+6. **Relationship** — doesn't exist in the implementation at all yet; a new, deliberately minimal entity to be built in Phase 2 as Conversation's anchor (`docs/lead-identity-architectural-exploration.md`).
+7. **Luv Observation** — the computed layer matches this model; the persisted "learned" layer needs real repair before it can.
 
 This ranking, not a feature list, is what should determine Program 2's actual sequencing.

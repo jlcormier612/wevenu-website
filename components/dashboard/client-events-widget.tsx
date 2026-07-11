@@ -46,8 +46,8 @@ export function ClientEventsWidget({
             <p className="text-xs text-muted-foreground">
               Add an event date to a client record to track it here.
             </p>
-            <Link href="/events" className="inline-block text-xs font-medium text-primary hover:underline underline-offset-2">
-              Go to Events →
+            <Link href="/clients" className="inline-block text-xs font-medium text-primary hover:underline underline-offset-2">
+              Go to Bookings →
             </Link>
           </div>
         ) : (

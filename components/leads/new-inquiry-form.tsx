@@ -53,7 +53,10 @@ function SelectField({
 }) {
   return (
     <Field label={label} htmlFor={id} error={error} hint={hint}>
-      <Select value={value} onValueChange={onValueChange}>
+      {/* `items` makes Select.Value show the matched option's label
+          instead of the raw stored value (Base UI doesn't derive this
+          automatically the way Radix does). */}
+      <Select value={value} onValueChange={onValueChange} items={options}>
         <SelectTrigger id={id} aria-invalid={error ? true : undefined}>
           <SelectValue placeholder={placeholder ?? "Select…"} />
         </SelectTrigger>

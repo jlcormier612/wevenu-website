@@ -221,8 +221,8 @@ export function MessagesSection({
             </p>
             <p className="text-xs text-muted-foreground">
               {questionnaireInfo.status === "sent"
-                ? "The couple has been sent the form. You can send a reminder below."
-                : "Send the couple a link to complete their final details directly in Wevenu."}
+                ? "The client has been sent the form. You can send a reminder below."
+                : "Send the client a link to complete their final details directly in Wevenu."}
             </p>
           </div>
           {questionnaireInfo.status !== "sent" && (

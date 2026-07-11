@@ -14,7 +14,7 @@ export default async function ClientsPage() {
     <div className="space-y-6">
       <PageHeader
         title="Clients"
-        description="Booked couples and their events."
+        description="Booked clients and their events."
         actions={<Button render={<Link href="/clients/new" />}>+ New Client</Button>}
       />
       <ClientList clients={clients} />

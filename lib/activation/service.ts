@@ -35,6 +35,19 @@ export async function getActivationScore(venueId: string): Promise<ActivationSco
   return mapScore(data as Record<string, unknown>);
 }
 
+// The SQL RPC (compute_venue_activation_score) builds each gap object with
+// keys `action`/`pts`/`href` — this remaps to the ActivationGap shape
+// (`label`/`points`/`href`) the frontend actually reads. Without this, the
+// previous unchecked cast left `gap.label`/`gap.points` silently undefined,
+// which React renders as nothing — the exact "arrow + blank + '+ pts'" bug.
+function mapGap(g: Record<string, unknown>): ActivationScore["gaps"][number] {
+  return {
+    label:  (g.label ?? g.action) as string,
+    points: (g.points ?? g.pts) as number,
+    href:   g.href as string,
+  };
+}
+
 function mapScore(r: Record<string, unknown>): ActivationScore {
   return {
     score:            r.score as number,
@@ -42,7 +55,7 @@ function mapScore(r: Record<string, unknown>): ActivationScore {
     phase:            r.phase as ActivationScore["phase"],
     phaseLabel:       r.phase_label as string,
     dimensionScores:  (r.dimension_scores ?? {}) as Record<string, number>,
-    gaps:             (r.gaps ?? []) as ActivationScore["gaps"],
+    gaps:             ((r.gaps ?? []) as Record<string, unknown>[]).map(mapGap),
     computedAt:       r.computed_at as string,
   };
 }

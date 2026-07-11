@@ -28,6 +28,7 @@
 
 import { type NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/integrations/supabase/admin";
+import { exitActiveEnrollmentsForRelationship } from "@/lib/message-sequences/repository";
 
 type InboundPayload = {
   from: string;
@@ -184,6 +185,16 @@ export async function POST(request: NextRequest) {
   if (entityType === "lead" && entityId) {
     const { computeAndSaveLeadScores } = await import("@/lib/leads/scores");
     void computeAndSaveLeadScores(supabase, venueId, entityId).catch(() => {});
+  }
+
+  // Stop on reply (§3.3) — a reply means a human is handling this
+  // personally now, so any Series in progress should get out of the way.
+  const entityTable = entityType === "lead" ? "leads" : "clients";
+  const { data: repliedEntity } = await supabase.from(entityTable).select("relationship_id")
+    .eq("id", entityId).maybeSingle<{ relationship_id: string | null }>();
+  if (repliedEntity?.relationship_id) {
+    void exitActiveEnrollmentsForRelationship(supabase, venueId, repliedEntity.relationship_id, "exited_reply")
+      .catch((e) => console.error("Series exit-on-reply failed:", e));
   }
 
   return NextResponse.json({ ok: true });

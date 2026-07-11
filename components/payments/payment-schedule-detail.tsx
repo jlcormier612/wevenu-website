@@ -146,7 +146,7 @@ function MarkPaidForm({
         </div>
         <div className="space-y-1.5">
           <Label className="text-xs">Payment method</Label>
-          <Select value={method} onValueChange={setMethod}>
+          <Select value={method} onValueChange={setMethod} items={PAYMENT_METHODS}>
             <SelectTrigger><SelectValue placeholder="Select method" /></SelectTrigger>
             <SelectContent>
               {PAYMENT_METHODS.map((m) => <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>)}

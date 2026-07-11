@@ -3,7 +3,7 @@
 import * as React from "react";
 
 import { useRouter } from "next/navigation";
-import { Calendar, Check, Pencil, Plus, Trash2, X } from "lucide-react";
+import { Calendar, Check, Pencil, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 import {
@@ -63,12 +63,12 @@ function TaskRow({
           onChange={(e) => setDueDate(e.target.value)}
           className="w-32 h-7 shrink-0 text-sm"
         />
-        <button type="button" onClick={saveEdit} className="text-primary" aria-label="Save">
-          <Check className="h-4 w-4" />
-        </button>
-        <button type="button" onClick={() => { setTitle(task.title); setDueDate(task.dueDate ?? ""); setEditMode(false); }} className="text-muted-foreground" aria-label="Cancel">
-          <X className="h-4 w-4" />
-        </button>
+        <Button type="button" size="sm" disabled={!title.trim()} onClick={saveEdit}>
+          <Check className="mr-1 h-3.5 w-3.5" />Save
+        </Button>
+        <Button type="button" size="sm" variant="outline" onClick={() => { setTitle(task.title); setDueDate(task.dueDate ?? ""); setEditMode(false); }}>
+          Cancel
+        </Button>
       </div>
     );
   }
@@ -216,8 +216,8 @@ export function TasksSection({
           onChange={(e) => setDueDateInput(e.target.value)}
           className="w-36 shrink-0"
         />
-        <Button type="button" size="icon" disabled={!titleInput.trim() || addPending} onClick={handleAdd} aria-label="Add task">
-          <Plus className="h-4 w-4" />
+        <Button type="button" disabled={!titleInput.trim() || addPending} onClick={handleAdd}>
+          <Plus className="mr-1 h-4 w-4" />Add
         </Button>
       </div>
 

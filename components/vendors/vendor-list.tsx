@@ -69,7 +69,7 @@ export function VendorList({ vendors }: { vendors: Vendor[] }) {
         </div>
         <div className="flex items-center gap-1.5 shrink-0">
           <ArrowUpDown className="h-3.5 w-3.5 text-muted-foreground" />
-          <Select value={sort} onValueChange={(v) => setSort(v as SortKey)}>
+          <Select value={sort} onValueChange={(v) => setSort(v as SortKey)} items={SORT_OPTIONS}>
             <SelectTrigger className="h-9 w-40 text-sm border-border">
               <SelectValue placeholder="A → Z" />
             </SelectTrigger>

@@ -166,7 +166,7 @@ export async function computeEventReadiness(
       status: hasFloorPlan ? "complete" : "incomplete",
       detail: null,
       actionLabel: !hasFloorPlan ? "Create a floor plan" : null,
-      actionLink: `/events/${event.id}`,
+      actionLink: `/events/${event.id}#floorplan`,
     },
     {
       key: "vendors",

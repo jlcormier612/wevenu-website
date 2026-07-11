@@ -7,77 +7,25 @@ import { useRouter } from "next/navigation";
 import { ArrowLeft, ExternalLink, Globe, Mail, Pencil, Phone, Star, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
-import { deleteVendorAction, sendVendorInviteAction } from "@/app/(app)/vendors/actions";
+import { deleteVendorAction, reactivateVendorAction, sendVendorInviteAction } from "@/app/(app)/vendors/actions";
 import { DocumentsSection } from "@/components/documents/documents-section";
 import { VendorCategoryBadge } from "@/components/vendors/vendor-category-badge";
+import { VendorReviews } from "@/components/vendors/vendor-reviews";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { formatTime } from "@/lib/vendors/constants";
-import type { VendorWithEvents } from "@/lib/vendors/types";
+import type { VendorReview, VendorWithEvents } from "@/lib/vendors/types";
 import type { Document } from "@/lib/documents/types";
 
-function VendorPortalWidget({ vendorId, vendorName, sessions }: {
-  vendorId: string;
-  vendorName: string;
-  sessions: { id: string; access_token: string; label: string | null; last_accessed_at: string | null }[];
-}) {
-  const [list, setList] = React.useState(sessions);
-  const [creating, setCreating] = React.useState(false);
-  const session = list[0] ?? null;
-  const portalUrl = session ? `${typeof window !== "undefined" ? window.location.origin : ""}/v/${session.access_token}` : null;
-
-  async function handleCreate() {
-    setCreating(true);
-    try {
-      const { createVendorPortalSessionAction } = await import("@/app/(app)/vendors/[id]/vendor-portal-actions");
-      const result = await createVendorPortalSessionAction(vendorId, vendorName);
-      if (result.ok && result.token) { setList([{ id: "new", access_token: result.token, label: vendorName, last_accessed_at: null }, ...list]); }
-    } finally { setCreating(false); }
-  }
-
-  if (!session) {
-    return (
-      <div className="text-center py-6 space-y-3">
-        <p className="text-sm text-muted-foreground">No portal link yet.</p>
-        <Button type="button" size="sm" onClick={handleCreate} disabled={creating}>
-          {creating ? "Creating…" : "Create Vendor Portal Link"}
-        </Button>
-      </div>
-    );
-  }
-
-  return (
-    <div className="space-y-3">
-      <div className="flex items-center gap-2">
-        <div className="flex-1 rounded-lg border border-border bg-muted/40 px-3 py-2">
-          <p className="text-[11px] font-mono text-muted-foreground break-all select-all">{portalUrl}</p>
-        </div>
-        <Button type="button" size="sm" variant="outline" onClick={() => { if (portalUrl) { navigator.clipboard.writeText(portalUrl); } }}>
-          Copy
-        </Button>
-        {portalUrl && (
-          <Button type="button" size="sm" variant="outline" onClick={() => window.open(portalUrl, "_blank")}>
-            Open
-          </Button>
-        )}
-      </div>
-      <p className="text-xs text-muted-foreground">
-        {session.last_accessed_at
-          ? `Last visited ${new Date(session.last_accessed_at).toLocaleDateString("en-US", { month: "short", day: "numeric" })}`
-          : "Not yet visited"}
-      </p>
-    </div>
-  );
-}
-
-export function VendorDetail({ vendor, documents = [], portalSessions = [] }: { vendor: VendorWithEvents; documents?: Document[]; portalSessions?: { id: string; access_token: string; label: string | null; last_accessed_at: string | null }[] }) {
+export function VendorDetail({ vendor, documents = [], reviews = [] }: { vendor: VendorWithEvents; documents?: Document[]; reviews?: VendorReview[] }) {
   const router = useRouter();
   const [deletePending, startDelete] = React.useTransition();
+  const [reactivatePending, startReactivate] = React.useTransition();
   const [inviteSent, setInviteSent]   = React.useState(false);
   const [invitePending, startInvite]  = React.useTransition();
+  const isInactive = vendor.status === "inactive";
 
   function handleSendInvite() {
     startInvite(async () => {
@@ -92,16 +40,32 @@ export function VendorDetail({ vendor, documents = [], portalSessions = [] }: { 
   }
 
   function handleDelete() {
-    if (!confirm(`Remove ${vendor.businessName} from your vendor directory?`)) return;
+    if (!confirm(`Mark ${vendor.businessName} as inactive? You can reactivate them any time.`)) return;
     startDelete(async () => {
       const result = await deleteVendorAction(vendor.id);
-      if (result.ok) { toast.success("Vendor removed."); router.push("/vendors"); router.refresh(); }
-      else toast.error(result.message ?? "Could not remove vendor.");
+      if (result.ok) { toast.success("Vendor marked inactive."); router.refresh(); }
+      else toast.error(result.message ?? "Could not update vendor.");
+    });
+  }
+
+  function handleReactivate() {
+    startReactivate(async () => {
+      const result = await reactivateVendorAction(vendor.id);
+      if (result.ok) { toast.success("Vendor reactivated."); router.refresh(); }
+      else toast.error(result.message ?? "Could not reactivate vendor.");
     });
   }
 
   return (
     <div className="space-y-6">
+      {isInactive && (
+        <div className="flex items-center justify-between gap-3 rounded-xl border border-border bg-muted/40 px-4 py-3">
+          <p className="text-sm text-muted-foreground">This vendor is marked inactive — hidden from your directory and clients&rsquo; portals.</p>
+          <Button type="button" size="sm" variant="outline" onClick={handleReactivate} disabled={reactivatePending}>
+            {reactivatePending ? "Reactivating…" : "Reactivate"}
+          </Button>
+        </div>
+      )}
       {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="space-y-1.5">
@@ -129,17 +93,23 @@ export function VendorDetail({ vendor, documents = [], portalSessions = [] }: { 
           <Button variant="outline" size="sm" render={<Link href={`/vendors/${vendor.id}/edit`} />}>
             <Pencil className="mr-1 h-3.5 w-3.5" /> Edit
           </Button>
-          <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-destructive"
-            onClick={handleDelete} disabled={deletePending}>
-            <Trash2 className="mr-1 h-3.5 w-3.5" />
-            {deletePending ? "Removing…" : "Remove"}
-          </Button>
+          {!isInactive && (
+            <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-destructive"
+              onClick={handleDelete} disabled={deletePending}>
+              <Trash2 className="mr-1 h-3.5 w-3.5" />
+              {deletePending ? "Updating…" : "Mark Inactive"}
+            </Button>
+          )}
         </div>
       </div>
 
       <Tabs defaultValue="overview">
         <TabsList>
           <TabsTrigger value="overview">Overview</TabsTrigger>
+          <TabsTrigger value="reviews">
+            Reviews
+            {reviews.length > 0 && <span className="ml-1 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground">{reviews.length}</span>}
+          </TabsTrigger>
           <TabsTrigger value="documents">
             Documents
             {documents.length > 0 && <span className="ml-1 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground">{documents.length}</span>}
@@ -220,12 +190,23 @@ export function VendorDetail({ vendor, documents = [], portalSessions = [] }: { 
           </CardContent>
         </Card>
 
-        {/* Notes */}
-        {vendor.notes && (
+        {/* Notes + special pricing */}
+        {(vendor.notes || vendor.specialPricingNote) && (
           <Card>
-            <CardHeader><CardTitle className="text-base">Internal notes</CardTitle></CardHeader>
-            <CardContent>
-              <p className="whitespace-pre-wrap text-sm text-foreground">{vendor.notes}</p>
+            <CardHeader><CardTitle className="text-base">Your relationship with this vendor</CardTitle></CardHeader>
+            <CardContent className="space-y-3">
+              {vendor.specialPricingNote && (
+                <div>
+                  <p className="text-xs text-muted-foreground">Special pricing / promotion</p>
+                  <p className="text-sm font-medium text-foreground">{vendor.specialPricingNote}</p>
+                </div>
+              )}
+              {vendor.notes && (
+                <div>
+                  <p className="text-xs text-muted-foreground">Internal notes</p>
+                  <p className="whitespace-pre-wrap text-sm text-foreground">{vendor.notes}</p>
+                </div>
+              )}
             </CardContent>
           </Card>
         )}
@@ -260,19 +241,11 @@ export function VendorDetail({ vendor, documents = [], portalSessions = [] }: { 
       )}
         </TabsContent>
 
+        <TabsContent value="reviews">
+          <VendorReviews vendorId={vendor.id} reviews={reviews} events={vendor.assignments} />
+        </TabsContent>
+
         <TabsContent value="documents">
-          {/* Vendor portal link */}
-          <Card className="mb-4">
-            <CardHeader>
-              <CardTitle className="text-base">Vendor Portal</CardTitle>
-              <CardDescription>
-                Share a private link so {vendor.businessName} can view their timeline, complete tasks, and upload documents.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <VendorPortalWidget vendorId={vendor.id} vendorName={vendor.businessName} sessions={portalSessions} />
-            </CardContent>
-          </Card>
           <Card>
             <CardHeader>
               <CardTitle className="text-base">Documents</CardTitle>

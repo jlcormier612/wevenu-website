@@ -113,7 +113,7 @@ function TourRow({ appt, onStatusChange }: { appt: TourAppointment; onStatusChan
         {updating ? (
           <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
         ) : (
-          <Select value={appt.status} onValueChange={handleStatus}>
+          <Select value={appt.status} onValueChange={handleStatus} items={STATUS_LABELS}>
             <SelectTrigger className="h-7 w-32 text-xs"><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="scheduled">Scheduled</SelectItem>
@@ -154,7 +154,7 @@ function TourRow({ appt, onStatusChange }: { appt: TourAppointment; onStatusChan
           </div>
           {showOutcomeForm && (
             <div className="rounded-lg border border-border bg-muted/20 p-3 space-y-2">
-              <Select value={outcome} onValueChange={setOutcome}>
+              <Select value={outcome} onValueChange={setOutcome} items={OUTCOME_LABELS}>
                 <SelectTrigger className="h-7 text-xs"><SelectValue placeholder="Tour outcome…" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="interested">💚 Interested</SelectItem>

@@ -33,6 +33,7 @@ import {
 import type { ClientWithDetails } from "@/lib/clients/types";
 import { InvoiceStatusBadge } from "@/components/invoices/invoice-status-badge";
 import { MessagesSection } from "@/components/messaging/messages-section";
+import { RelationshipConversationTab } from "@/components/conversations/relationship-conversation-tab";
 import { LuvClientPanel } from "@/components/luv/luv-client-panel";
 import { LuvHeart } from "@/components/dashboard/luv-widget";
 import { formatCurrency } from "@/lib/invoices/constants";
@@ -43,7 +44,6 @@ import type { ClientDraft } from "@/lib/luv/client-drafts";
 import type { EventReadiness } from "@/lib/luv/event-readiness";
 import type { EventReadiness as PlaybookEventReadiness } from "@/lib/playbooks/types";
 import type { Questionnaire } from "@/lib/events/questionnaire";
-import type { PortalSession } from "@/lib/portal/types";
 import { PortalLinkWidget } from "@/components/portal/portal-link-widget";
 import type { ClientContact } from "@/lib/contacts/types";
 import { ClientContactsTab } from "@/components/clients/client-contacts-tab";
@@ -82,7 +82,7 @@ function ContactCard({ name, email, phone, role }: { name: string; email?: strin
 
 // ---- Main component ---------------------------------------------------------
 
-export function ClientDetail({ client, invoices = [], documents = [], threads = [], luvDrafts = [], readiness = null, questionnaire = null, playbookReadiness = null, portalSessions = [], clientContacts = [] }: { client: ClientWithDetails; invoices?: Invoice[]; documents?: Document[]; threads?: ThreadWithMessages[]; luvDrafts?: ClientDraft[]; readiness?: EventReadiness | null; questionnaire?: Questionnaire | null; playbookReadiness?: PlaybookEventReadiness | null; portalSessions?: PortalSession[]; clientContacts?: ClientContact[] }) {
+export function ClientDetail({ client, invoices = [], documents = [], threads = [], luvDrafts = [], readiness = null, questionnaire = null, playbookReadiness = null, clientContacts = [], conversationExperienceEnabled = false, conversationId = null }: { client: ClientWithDetails; invoices?: Invoice[]; documents?: Document[]; threads?: ThreadWithMessages[]; luvDrafts?: ClientDraft[]; readiness?: EventReadiness | null; questionnaire?: Questionnaire | null; playbookReadiness?: PlaybookEventReadiness | null; clientContacts?: ClientContact[]; conversationExperienceEnabled?: boolean; conversationId?: string | null }) {
   const router = useRouter();
   const [statusPending, startStatus] = React.useTransition();
 
@@ -154,7 +154,7 @@ export function ClientDetail({ client, invoices = [], documents = [], threads = 
       {/* Tabs */}
       <Tabs defaultValue="overview">
         <TabsList>
-          <TabsTrigger value="overview">Couple</TabsTrigger>
+          <TabsTrigger value="overview">Client</TabsTrigger>
           <TabsTrigger value="people">
             People
             {clientContacts.length > 0 && (
@@ -168,8 +168,8 @@ export function ClientDetail({ client, invoices = [], documents = [], threads = 
             )}
           </TabsTrigger>
           <TabsTrigger value="messages">
-            Messages
-            {threads.reduce((s, t) => s + t.messageCount, 0) > 0 && (
+            {conversationExperienceEnabled ? "Conversation" : "Messages"}
+            {!conversationExperienceEnabled && threads.reduce((s, t) => s + t.messageCount, 0) > 0 && (
               <span className="ml-1 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground">{threads.reduce((s, t) => s + t.messageCount, 0)}</span>
             )}
           </TabsTrigger>
@@ -265,13 +265,12 @@ export function ClientDetail({ client, invoices = [], documents = [], threads = 
           <Card className="mt-4">
             <CardHeader>
               <CardTitle className="text-base">Wedding Workspace</CardTitle>
-              <CardDescription>Share a link so {[client.firstName, client.partnerFirstName].filter(Boolean).join(" & ")} can access their planning workspace.</CardDescription>
+              <CardDescription>{[client.firstName, client.partnerFirstName].filter(Boolean).join(" & ")} own this workspace. Invite them to create their own account.</CardDescription>
             </CardHeader>
             <CardContent>
               <PortalLinkWidget
                 clientId={client.id}
                 coupleName={[client.firstName, client.partnerFirstName].filter(Boolean).join(" & ")}
-                initialSessions={portalSessions}
               />
             </CardContent>
           </Card>
@@ -315,36 +314,40 @@ export function ClientDetail({ client, invoices = [], documents = [], threads = 
         </TabsContent>
 
         {/* ── Notes ──────────────────────────────────────────────────────── */}
-        {/* ── Messages ─────────────────────────────────────────────── */}
+        {/* ── Conversation ─────────────────────────────────────────── */}
         <TabsContent value="messages">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Messages</CardTitle>
-              <CardDescription>Email history with this client. All correspondence is logged here automatically.</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <MessagesSection
-                entityType="client"
-                entityId={client.id}
-                entityEmail={client.email}
-                entityName={clientDisplayName(client.firstName, client.lastName, client.partnerFirstName, client.partnerLastName)}
-                initialThreads={threads}
-                questionnaireInfo={questionnaire && client.linkedEventId ? {
-                  eventId: client.linkedEventId,
-                  eventName: `${clientDisplayName(client.firstName, client.lastName, client.partnerFirstName, client.partnerLastName)} — Event`,
-                  accessKey: questionnaire.accessKey,
-                  status: questionnaire.status,
-                } : null}
-              />
-            </CardContent>
-          </Card>
+          {conversationExperienceEnabled ? (
+            <RelationshipConversationTab conversationId={conversationId} />
+          ) : (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Messages</CardTitle>
+                <CardDescription>Email history with this client. All correspondence is logged here automatically.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <MessagesSection
+                  entityType="client"
+                  entityId={client.id}
+                  entityEmail={client.email}
+                  entityName={clientDisplayName(client.firstName, client.lastName, client.partnerFirstName, client.partnerLastName)}
+                  initialThreads={threads}
+                  questionnaireInfo={questionnaire && client.linkedEventId ? {
+                    eventId: client.linkedEventId,
+                    eventName: `${clientDisplayName(client.firstName, client.lastName, client.partnerFirstName, client.partnerLastName)} — Event`,
+                    accessKey: questionnaire.accessKey,
+                    status: questionnaire.status,
+                  } : null}
+                />
+              </CardContent>
+            </Card>
+          )}
         </TabsContent>
 
         <TabsContent value="notes">
           <Card>
             <CardHeader>
               <CardTitle className="text-base">Notes</CardTitle>
-              <CardDescription>Internal notes about this booking. Not visible to the couple.</CardDescription>
+              <CardDescription>Internal notes about this booking. Not visible to the client.</CardDescription>
             </CardHeader>
             <CardContent>
               <ClientNotesSection clientId={client.id} initialNotes={client.notes} />

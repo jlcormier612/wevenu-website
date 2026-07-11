@@ -56,7 +56,7 @@ function CopyButton({
         fontSize:   isXs ? "10px" : "11px",
         padding:    isXs ? "2px 6px" : "3px 8px",
         background: `color-mix(in oklch, ${DUSTY_ROSE} 10%, transparent)`,
-        color:      "#8B5A5C",
+        color:      "var(--heading)",
       }}
     >
       {copied

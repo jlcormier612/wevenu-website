@@ -229,7 +229,7 @@ function ContactFormPanel({
         </div>
         <div className="space-y-1.5">
           <Label className="text-xs">Relationship</Label>
-          <Select value={f.relationship} onValueChange={v => set("relationship", v)}>
+          <Select value={f.relationship} onValueChange={v => set("relationship", v)} items={RELATIONSHIP_LABELS}>
             <SelectTrigger className="h-8 text-sm"><SelectValue placeholder="Select…" /></SelectTrigger>
             <SelectContent>
               {(Object.entries(RELATIONSHIP_LABELS) as [ContactRelationship, string][]).map(([v, l]) => (
@@ -244,7 +244,11 @@ function ContactFormPanel({
         </div>
         <div className="sm:col-span-2 space-y-1.5">
           <Label className="text-xs">Portal access</Label>
-          <Select value={f.portalRole || "__none__"} onValueChange={v => set("portalRole", v === "__none__" ? "" : v)}>
+          <Select
+            value={f.portalRole || "__none__"}
+            onValueChange={v => set("portalRole", v === "__none__" ? "" : v)}
+            items={{ __none__: "No portal access", ...PORTAL_ROLE_LABELS }}
+          >
             <SelectTrigger className="h-8 text-sm"><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="__none__">No portal access</SelectItem>
@@ -358,7 +362,7 @@ export function ClientContactsTab({
           ))}
         </div>
         <p className="text-[10px] text-muted-foreground mt-1.5 px-1">
-          Primary contacts are managed on the Couple tab. They always have full portal access.
+          Primary contacts are managed on the Client tab. They always have full portal access.
         </p>
       </div>
 

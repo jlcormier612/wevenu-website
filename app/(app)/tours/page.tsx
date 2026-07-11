@@ -36,7 +36,7 @@ export default async function ToursPage() {
             <CalendarCheck className="h-10 w-10 text-muted-foreground mx-auto" />
             <p className="text-sm font-medium text-heading">No tours yet</p>
             <p className="text-xs text-muted-foreground max-w-xs mx-auto">
-              Once tour scheduling is enabled and couples book a visit, their appointments will appear here.
+              Once tour scheduling is enabled and clients book a visit, their appointments will appear here.
             </p>
             {!tourSettings?.tourSchedulingEnabled && (
               <Button size="sm" variant="outline" render={<Link href="/settings" />}>

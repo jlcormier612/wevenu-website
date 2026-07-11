@@ -66,7 +66,7 @@ function PackageForm({
         </div>
         <div className="space-y-1.5">
           <Label htmlFor="pkg-price-type">Pricing type</Label>
-          <Select value={form.priceType} onValueChange={(v) => set("priceType", v as VendorPackageInput["priceType"])}>
+          <Select value={form.priceType} onValueChange={(v) => set("priceType", v as VendorPackageInput["priceType"])} items={PRICE_TYPE_LABELS}>
             <SelectTrigger id="pkg-price-type"><SelectValue /></SelectTrigger>
             <SelectContent>
               {(Object.entries(PRICE_TYPE_LABELS) as [VendorPackageInput["priceType"], string][]).map(([v, l]) => (

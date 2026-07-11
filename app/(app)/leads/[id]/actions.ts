@@ -9,6 +9,7 @@ import {
   deleteTask,
   setTaskCompleted,
   updateLeadInfo,
+  updateLeadPipelineStage,
   updateLeadStatus,
   updateNote,
   updateRelationshipFields,
@@ -35,6 +36,18 @@ export async function updateLeadStatusAction(
   if (result.ok) {
     revalidateLead(leadId);
     void refreshLeadScore(leadId).catch(() => {}); // immediate score refresh on status change
+  }
+  return result;
+}
+
+export async function updateLeadPipelineStageAction(
+  leadId: string,
+  stageId: string,
+): Promise<LeadActionResult> {
+  const result = await updateLeadPipelineStage(leadId, stageId);
+  if (result.ok) {
+    revalidateLead(leadId);
+    void refreshLeadScore(leadId).catch(() => {}); // same as status changes — the underlying status did change
   }
   return result;
 }

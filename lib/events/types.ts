@@ -71,7 +71,10 @@ export type EventWithDetails = VenueEvent & {
   activities: EventActivity[];
   timeline: import("@/lib/timeline/types").TimelineEntry[];
   vendorAssignments: import("@/lib/vendors/types").EventVendorAssignment[];
-  floorPlan: import("@/lib/floor-plans/types").FloorPlanWithObjects | null;
+  // A booking may hold many floor plans (Booking Floor Plan Workspace task) —
+  // metadata only here; the editor/print pages fetch a single plan's objects
+  // by its own id via getFloorPlan().
+  floorPlans: import("@/lib/floor-plans/types").FloorPlan[];
 };
 
 /** Form model for create and edit. */

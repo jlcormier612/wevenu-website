@@ -79,16 +79,16 @@ function Confetti() {
 
 const WORKSPACE_ITEMS = [
   { key: "event",   label: "Event workspace created" },
-  { key: "portal",  label: "Couple portal ready" },
+  { key: "portal",  label: "Client invited to their workspace" },
   { key: "website", label: "Wedding website ready" },
   { key: "tools",   label: "Planning tools ready" },
 ] as const;
 
-function WorkspaceChecklist({ eventId, portalToken }: { eventId?: string | null; portalToken?: string | null }) {
+function WorkspaceChecklist({ eventId, invited }: { eventId?: string | null; invited?: boolean }) {
   const active: Record<string, boolean> = {
     event:   !!eventId,
-    portal:  !!portalToken,
-    website: !!portalToken,
+    portal:  !!invited,
+    website: !!invited,
     tools:   !!eventId,
   };
 
@@ -128,11 +128,11 @@ function WorkspaceChecklist({ eventId, portalToken }: { eventId?: string | null;
 export function BookingCelebration({
   client,
   eventId,
-  portalToken,
+  invited,
 }: {
   client: Client;
   eventId?: string | null;
-  portalToken?: string | null;
+  invited?: boolean;
 }) {
   const displayName = clientDisplayName(
     client.firstName,
@@ -149,7 +149,7 @@ export function BookingCelebration({
       : null,
   ].filter(Boolean);
 
-  const hasWorkspace = !!eventId || !!portalToken;
+  const hasWorkspace = !!eventId || !!invited;
 
   return (
     <div className="relative flex min-h-[80vh] flex-col items-center justify-center px-4 py-16 text-center">
@@ -189,7 +189,7 @@ export function BookingCelebration({
 
         {/* Workspace checklist */}
         {hasWorkspace && (
-          <WorkspaceChecklist eventId={eventId} portalToken={portalToken} />
+          <WorkspaceChecklist eventId={eventId} invited={invited} />
         )}
 
         {/* Divider + tagline */}
@@ -197,7 +197,7 @@ export function BookingCelebration({
           <p className="text-sm italic text-muted-foreground">
             {hasWorkspace
               ? "You entered them once. An entire wedding workspace appeared."
-              : "Thank you for helping another couple begin their story."}
+              : "Thank you for helping another client begin their story."}
           </p>
         </div>
 
@@ -206,14 +206,6 @@ export function BookingCelebration({
           {eventId && (
             <Button render={<Link href={`/events/${eventId}`} />}>
               Open Event
-            </Button>
-          )}
-          {portalToken && (
-            <Button
-              variant="outline"
-              render={<Link href={`/portal/${portalToken}`} />}
-            >
-              Open Couple Portal
             </Button>
           )}
           <Button

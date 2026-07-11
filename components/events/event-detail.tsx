@@ -8,6 +8,7 @@ import {
   ArrowLeft,
   Calendar,
   Clock,
+  FileDown,
   MessageSquare,
   Pencil,
   Printer,
@@ -18,17 +19,31 @@ import { toast } from "sonner";
 
 import { updateEventStatusAction } from "@/app/(app)/events/[id]/actions";
 import { sendAnniversaryMessageAction } from "@/app/(app)/events/[id]/anniversary-actions";
+import { BookingOverviewSummary } from "@/components/events/booking-overview-summary";
+import { BookingSetupCard } from "@/components/events/booking-setup-card";
+import { TimelineSetupCard } from "@/components/events/timeline-setup-card";
 import { EventFeedbackSection } from "@/components/events/event-feedback-section";
 import { EventNotesSection } from "@/components/events/event-notes-section";
 import { EventStatusBadge } from "@/components/events/event-status-badge";
 import { EventTeamSection } from "@/components/events/event-team-section";
 import { EventVendorsSection } from "@/components/events/vendors/event-vendors-section";
+import { EventVendorRecommendationsSection } from "@/components/events/vendors/event-vendor-recommendations-section";
+import type { EventVendorRecommendation } from "@/lib/vendor-recommendations/types";
 import { TimelineView } from "@/components/events/timeline/timeline-view";
-import { DocumentsSection } from "@/components/documents/documents-section";
-import { FinalDetailsForm } from "@/components/events/final-details-form";
+import { FloorPlanWorkspace } from "@/components/events/floor-plan-workspace";
+import type { FloorPlanTemplate } from "@/lib/floor-plan-templates/types";
+import type { VenueSpace } from "@/lib/availability/types";
+import { BookingDocumentsTab } from "@/components/events/booking-documents-tab";
+import { RequestSummaryCard } from "@/components/events/request-summary-card";
 import { EventTaskList } from "@/components/playbooks/event-task-list";
+import type { LinkableConversationMessage } from "@/components/playbooks/event-task-list";
+import type { TimelineEntry, TimelineEntryAttachment, TimelineEntryLink, TimelineRelatedLink, TimelineSection } from "@/lib/timeline/types";
 import { InvoiceStatusBadge } from "@/components/invoices/invoice-status-badge";
-import { ActivityTimeline } from "@/components/leads/activity-timeline";
+import { MessagesSection } from "@/components/messaging/messages-section";
+import { RelationshipConversationTab } from "@/components/conversations/relationship-conversation-tab";
+import type { ThreadWithMessages } from "@/lib/messaging/types";
+import type { ConversationMessage } from "@/lib/conversations/types";
+import type { ClientStatus } from "@/lib/clients/types";
 import { Button } from "@/components/ui/button";
 import {
   Card, CardContent, CardDescription, CardHeader, CardTitle,
@@ -36,14 +51,13 @@ import {
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { FloorPlanEditor } from "@/components/floor-plan/floor-plan-editor";
 import { formatCurrency } from "@/lib/invoices/constants";
 import type { Invoice } from "@/lib/invoices/types";
 import type { Document } from "@/lib/documents/types";
 import type { Questionnaire } from "@/lib/events/questionnaire";
-import type { EventTask, PlaybookTemplate } from "@/lib/playbooks/types";
+import type { EventPlaybookApplication, EventReadiness, EventTask, EventTaskContextLink, PlaybookTemplate, TaskContact } from "@/lib/playbooks/types";
+import type { TimelineTemplate } from "@/lib/timeline-templates/types";
 import {
   EVENT_STATUSES,
   daysUntil,
@@ -65,7 +79,7 @@ function AnniversaryBanner({ eventId, ordinal }: { eventId: string; ordinal: str
     setSending(true);
     const result = await sendAnniversaryMessageAction(eventId, message.trim(), parseInt(ordinal) || 1);
     setSending(false);
-    if (result.ok) { setSent(true); toast.success("Anniversary note sent to the couple's portal."); }
+    if (result.ok) { setSent(true); toast.success("Anniversary note sent to the client's portal."); }
     else toast.error("Could not send anniversary note.");
   }
 
@@ -77,11 +91,11 @@ function AnniversaryBanner({ eventId, ordinal }: { eventId: string; ordinal: str
         <p className="text-sm font-semibold text-heading">{ordinal} Anniversary</p>
       </div>
       {sent ? (
-        <p className="text-sm text-muted-foreground">Anniversary note sent. It will appear in the couple&apos;s portal.</p>
+        <p className="text-sm text-muted-foreground">Anniversary note sent. It will appear in the client&apos;s portal.</p>
       ) : (
         <>
           <p className="text-xs text-muted-foreground">
-            Send a personal anniversary note — it will appear in the couple&apos;s keepsake portal.
+            Send a personal anniversary note — it will appear in the client&apos;s keepsake portal.
           </p>
           <div className="flex gap-2">
             <input
@@ -199,6 +213,34 @@ export function EventDetail({
   coupleEmail = null,
   eventTasks = [],
   playbookTemplates = [],
+  playbookApplications = [],
+  timelineTemplates = [],
+  timelineSections = [],
+  timelineLinksByEntry = {},
+  timelineAttachmentsByEntry = {},
+  timelineRelatedLinksByEntry = {},
+  readinessByKind = { client: null, venue: null },
+  contextLinksByTask = {},
+  taskContacts = {},
+  linkableDocuments = [],
+  linkableTimelineEntries = [],
+  linkableConversationMessages = [],
+  vendorRecommendations = [],
+  portalToken = null,
+  threads = [],
+  conversationExperienceEnabled = false,
+  conversationId = null,
+  conversationMessages = [],
+  spaceName = null,
+  clientStatus = null,
+  contractTemplates = [],
+  contracts = [],
+  floorPlanTemplates = [],
+  spaces = [],
+  inventoryUsage = [],
+  teamMembers = [],
+  requestsByTaskId = {},
+  requests = [],
 }: {
   event: EventWithDetails;
   availableVendors?: import("@/lib/vendors/types").Vendor[];
@@ -208,9 +250,49 @@ export function EventDetail({
   coupleEmail?: string | null;
   eventTasks?: EventTask[];
   playbookTemplates?: PlaybookTemplate[];
+  playbookApplications?: EventPlaybookApplication[];
+  timelineTemplates?: TimelineTemplate[];
+  timelineSections?: TimelineSection[];
+  timelineLinksByEntry?: Record<string, TimelineEntryLink[]>;
+  timelineAttachmentsByEntry?: Record<string, TimelineEntryAttachment[]>;
+  timelineRelatedLinksByEntry?: Record<string, TimelineRelatedLink[]>;
+  readinessByKind?: { client: EventReadiness | null; venue: EventReadiness | null };
+  contextLinksByTask?: Record<string, EventTaskContextLink[]>;
+  taskContacts?: Record<string, TaskContact>;
+  linkableDocuments?: Document[];
+  linkableTimelineEntries?: TimelineEntry[];
+  linkableConversationMessages?: LinkableConversationMessage[];
+  portalToken?: string | null;
+  vendorRecommendations?: EventVendorRecommendation[];
+  threads?: ThreadWithMessages[];
+  conversationExperienceEnabled?: boolean;
+  conversationId?: string | null;
+  conversationMessages?: ConversationMessage[];
+  spaceName?: string | null;
+  clientStatus?: ClientStatus | null;
+  contractTemplates?: import("@/lib/contracts/types").ContractTemplate[];
+  contracts?: import("@/lib/contracts/types").Contract[];
+  floorPlanTemplates?: FloorPlanTemplate[];
+  spaces?: VenueSpace[];
+  inventoryUsage?: import("@/lib/inventory/types").InventoryUsage[];
+  teamMembers?: import("@/lib/team/types").StaffMember[];
+  requestsByTaskId?: Record<string, import("@/lib/requests/types").Request>;
+  requests?: import("@/lib/requests/types").Request[];
 }) {
   const router = useRouter();
   const [statusPending, startStatus] = React.useTransition();
+  const [activeTab, setActiveTab] = React.useState("overview");
+  React.useEffect(() => {
+    const syncFromHash = () => {
+      const hash = window.location.hash.replace("#", "");
+      if (hash) setActiveTab(hash);
+    };
+    syncFromHash();
+    // An Interactive Planning Task's "Open X" button sets the hash while
+    // already on this page (no remount) — listen so the tab actually switches.
+    window.addEventListener("hashchange", syncFromHash);
+    return () => window.removeEventListener("hashchange", syncFromHash);
+  }, []);
 
   function handleStatusChange(status: string) {
     startStatus(async () => {
@@ -225,8 +307,8 @@ export function EventDetail({
       {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="space-y-1.5">
-          <Button variant="ghost" size="sm" className="-ml-2 text-muted-foreground" render={<Link href="/events" />}>
-            <ArrowLeft className="mr-1 h-3.5 w-3.5" /> Events
+          <Button variant="ghost" size="sm" className="-ml-2 text-muted-foreground" render={<Link href="/clients" />}>
+            <ArrowLeft className="mr-1 h-3.5 w-3.5" /> Bookings
           </Button>
           <h1 className="font-heading text-2xl font-medium text-heading">{event.name}</h1>
           <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
@@ -234,13 +316,7 @@ export function EventDetail({
             {event.clientName && (
               <>
                 <span className="text-border">·</span>
-                <span>
-                  {event.clientId ? (
-                    <Link href={`/clients/${event.clientId}`} className="font-medium text-primary hover:underline">
-                      {event.clientName} →
-                    </Link>
-                  ) : event.clientName}
-                </span>
+                <span>{event.clientName}</span>
               </>
             )}
           </div>
@@ -307,9 +383,54 @@ export function EventDetail({
       <EventHeroCard event={event} />
 
       {/* ── Tabs ──────────────────────────────────────────────────────── */}
-      <Tabs defaultValue="overview">
+      {/* URL-hash addressable so an Interactive Planning Task can navigate
+          straight to the right tab (e.g. #vendors) — "tasks become
+          navigation into the platform," Vendor Management Next Iteration,
+          2026-07-10 — rather than just landing on the event and leaving the
+          coordinator to find the right tab themselves. */}
+      <Tabs value={activeTab} onValueChange={(v) => { setActiveTab(v as string); window.location.hash = v as string; }}>
         <TabsList className="flex-wrap">
           <TabsTrigger value="overview">Overview</TabsTrigger>
+          <TabsTrigger value="playbook">
+            Planning
+            {eventTasks.filter((t) => t.status === "overdue").length > 0 && (
+              <span className="ml-1 rounded-full bg-destructive/15 px-1.5 py-0.5 text-[10px] font-semibold text-destructive">{eventTasks.filter((t) => t.status === "overdue").length}</span>
+            )}
+          </TabsTrigger>
+          <TabsTrigger value="timeline">
+            Timeline
+            {event.timeline.length > 0 && (
+              <span className="ml-1 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground">{event.timeline.length}</span>
+            )}
+          </TabsTrigger>
+          <TabsTrigger value="floorplan">
+            Floor Plans
+            {event.floorPlans.length > 0 && (
+              <span className="ml-1 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground">{event.floorPlans.length}</span>
+            )}
+          </TabsTrigger>
+          <TabsTrigger value="documents">
+            Documents
+            {documents.length > 0 && <span className="ml-1 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground">{documents.length}</span>}
+          </TabsTrigger>
+          <TabsTrigger value="vendors">
+            Vendors
+            {event.vendorAssignments.length > 0 && (
+              <span className="ml-1 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground">
+                {event.vendorAssignments.length}
+              </span>
+            )}
+          </TabsTrigger>
+          <TabsTrigger value="invoice">
+            Payments
+            {invoices.length > 0 && <span className="ml-1 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground">{invoices.length}</span>}
+          </TabsTrigger>
+          <TabsTrigger value="messages">
+            {conversationExperienceEnabled ? "Conversation" : "Messages"}
+            {!conversationExperienceEnabled && threads.reduce((s, t) => s + t.messageCount, 0) > 0 && (
+              <span className="ml-1 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground">{threads.reduce((s, t) => s + t.messageCount, 0)}</span>
+            )}
+          </TabsTrigger>
           <TabsTrigger value="notes">
             Notes
             {event.notes.length > 0 && (
@@ -322,42 +443,38 @@ export function EventDetail({
               <span className="ml-1 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground">{event.team.length}</span>
             )}
           </TabsTrigger>
-          <TabsTrigger value="playbook">
-            Task Playbook
-            {eventTasks.filter((t) => t.status === "overdue").length > 0 && (
-              <span className="ml-1 rounded-full bg-destructive/15 px-1.5 py-0.5 text-[10px] font-semibold text-destructive">{eventTasks.filter((t) => t.status === "overdue").length}</span>
-            )}
-          </TabsTrigger>
-          <TabsTrigger value="timeline">Timeline</TabsTrigger>
-          <TabsTrigger value="vendors">
-            Vendors
-            {event.vendorAssignments.length > 0 && (
-              <span className="ml-1 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground">
-                {event.vendorAssignments.length}
-              </span>
-            )}
-          </TabsTrigger>
-          <TabsTrigger value="floor-plan">Floor Plan</TabsTrigger>
-          <TabsTrigger value="invoice">
-            Invoice
-            {invoices.length > 0 && <span className="ml-1 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground">{invoices.length}</span>}
-          </TabsTrigger>
-          <TabsTrigger value="final-details">
-            Final Details
-            {questionnaire?.status === "submitted" && <span className="ml-1 h-1.5 w-1.5 rounded-full bg-success inline-block" />}
-          </TabsTrigger>
-          <TabsTrigger value="documents">
-            Documents
-            {documents.length > 0 && <span className="ml-1 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground">{documents.length}</span>}
-          </TabsTrigger>
-          <TabsTrigger value="activity">Activity</TabsTrigger>
           {daysUntil(event.eventDate) < 0 && (
             <TabsTrigger value="feedback">Feedback</TabsTrigger>
           )}
         </TabsList>
 
         {/* ── Overview ──────────────────────────────────────────────── */}
-        <TabsContent value="overview">
+        <TabsContent value="overview" className="space-y-4">
+          {clientStatus && (
+            <BookingOverviewSummary
+              clientName={event.clientName} eventType={event.eventType} eventDate={event.eventDate}
+              spaceName={spaceName} guestCount={event.guestCount} clientStatus={clientStatus}
+              readinessByKind={readinessByKind}
+              invoices={invoices}
+              timeline={event.timeline ?? []}
+              vendorAssignments={event.vendorAssignments} vendorRecommendations={vendorRecommendations}
+              conversationExperienceEnabled={conversationExperienceEnabled}
+              conversationMessages={conversationMessages} threads={threads}
+              documents={documents}
+            />
+          )}
+          <RequestSummaryCard requests={requests} />
+          <BookingSetupCard
+            eventId={event.id} clientId={event.clientId} eventDate={event.eventDate} eventName={event.name}
+            clientName={event.clientName} eventType={event.eventType}
+            templates={playbookTemplates} applications={playbookApplications} readinessByKind={readinessByKind}
+            portalToken={portalToken} onApplied={() => router.refresh()}
+          />
+          <TimelineSetupCard
+            eventId={event.id} eventType={event.eventType} spaceId={event.spaceId} eventStartTime={event.startTime}
+            templates={timelineTemplates} hasTimeline={(event.timeline ?? []).length > 0}
+            onApplied={() => router.refresh()}
+          />
           <div className="grid gap-4 lg:grid-cols-2">
             <Card>
               <CardHeader><CardTitle className="text-base">Event summary</CardTitle></CardHeader>
@@ -390,46 +507,36 @@ export function EventDetail({
                 )}
               </CardContent>
             </Card>
-
-            {event.clientName && event.clientId && (
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-base">Booked couple</CardTitle>
-                  <CardDescription>Client linked to this event.</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-sm font-medium text-foreground">{event.clientName}</p>
-                  <Link href={`/clients/${event.clientId}`} className="mt-2 inline-block text-xs font-medium text-primary hover:underline">
-                    View client record →
-                  </Link>
-                </CardContent>
-              </Card>
-            )}
           </div>
         </TabsContent>
 
-        {/* ── Notes ──────────────────────────────────────────────────── */}
-        <TabsContent value="notes">
+        {/* ── Playbook ─────────────────────────────────────────────── */}
+        <TabsContent value="playbook">
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">Notes</CardTitle>
-              <CardDescription>Operational notes for this event. Not visible to clients.</CardDescription>
+              <CardTitle className="text-base">Planning</CardTitle>
+              <CardDescription>All tasks for this event, organized by section and due date. Tasks auto-complete as work is done.</CardDescription>
             </CardHeader>
             <CardContent>
-              <EventNotesSection eventId={event.id} initialNotes={event.notes} />
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* ── Team ───────────────────────────────────────────────────── */}
-        <TabsContent value="team">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Event Team</CardTitle>
-              <CardDescription>Internal staff assigned to work this event.</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <EventTeamSection eventId={event.id} initialTeam={event.team} />
+              <EventTaskList
+                eventId={event.id}
+                clientId={event.clientId}
+                eventDate={event.eventDate}
+                eventName={event.name}
+                clientName={event.clientName}
+                eventType={event.eventType}
+                initialTasks={eventTasks}
+                readinessByKind={readinessByKind}
+                templates={playbookTemplates}
+                applications={playbookApplications}
+                contextLinksByTask={contextLinksByTask}
+                taskContacts={taskContacts}
+                linkableDocuments={linkableDocuments}
+                linkableTimelineEntries={linkableTimelineEntries}
+                linkableConversationMessages={linkableConversationMessages}
+                portalToken={portalToken}
+                requestsByTaskId={requestsByTaskId}
+              />
             </CardContent>
           </Card>
         </TabsContent>
@@ -438,28 +545,108 @@ export function EventDetail({
         <TabsContent value="timeline">
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">Day-of Timeline</CardTitle>
-              <CardDescription>
-                The moment-by-moment schedule your team needs to run the day.
-              </CardDescription>
+              <div className="flex items-start justify-between gap-2">
+                <div>
+                  <CardTitle className="text-base">Booking Timeline</CardTitle>
+                  <CardDescription>
+                    The moment-by-moment schedule your team needs to run the day.
+                  </CardDescription>
+                </div>
+                <div className="flex shrink-0 items-center gap-2">
+                  <Button
+                    variant="outline" size="sm"
+                    render={<Link href={`/events/${event.id}/timeline-print`} target="_blank" rel="noopener noreferrer" />}
+                  >
+                    <Printer className="mr-1.5 h-3.5 w-3.5" />Print Timeline
+                  </Button>
+                  <Button
+                    variant="outline" size="sm"
+                    render={<Link href={`/events/${event.id}/timeline-print`} target="_blank" rel="noopener noreferrer" />}
+                  >
+                    <FileDown className="mr-1.5 h-3.5 w-3.5" />Export Timeline (PDF)
+                  </Button>
+                </div>
+              </div>
             </CardHeader>
             <CardContent>
               <TimelineView
                 eventId={event.id}
+                venueId={event.venueId}
                 eventStartTime={event.startTime}
+                eventEndTime={event.endTime}
+                eventDate={event.eventDate}
                 initialEntries={event.timeline ?? []}
+                initialSections={timelineSections}
+                initialLinksByEntry={timelineLinksByEntry}
+                initialAttachmentsByEntry={timelineAttachmentsByEntry}
+                availableDocuments={documents}
+                initialRelatedLinksByEntry={timelineRelatedLinksByEntry}
+                eventTasks={eventTasks}
+                vendorAssignments={event.vendorAssignments}
+                floorPlans={event.floorPlans}
+                conversationId={conversationId}
+                invoices={invoices}
+                teamMembers={teamMembers}
               />
             </CardContent>
           </Card>
         </TabsContent>
 
-        {/* ── Vendors ────────────────────────────────────────────────── */}
-        <TabsContent value="vendors">
+        {/* ── Floor Plans ───────────────────────────────────────────── */}
+        <TabsContent value="floorplan">
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">Vendors</CardTitle>
+              <CardTitle className="text-base">Floor Plans</CardTitle>
               <CardDescription>
-                Who is involved in this event and when they arrive.
+                These floor plans belong to this booking.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <FloorPlanWorkspace
+                eventId={event.id}
+                floorPlans={event.floorPlans}
+                templates={floorPlanTemplates}
+                spaces={spaces}
+                eventSpaceId={event.spaceId}
+                inventoryUsage={inventoryUsage}
+              />
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* ── Documents ────────────────────────────────────────────── */}
+        <TabsContent value="documents">
+          <BookingDocumentsTab
+            entityType="event" entityId={event.id} venueId={event.venueId} documents={documents}
+            contractTemplates={contractTemplates} contracts={contracts} questionnaire={questionnaire}
+            eventId={event.id} eventName={event.name} coupleEmail={coupleEmail} coupleName={event.clientName}
+          />
+        </TabsContent>
+
+        {/* ── Vendors ────────────────────────────────────────────────── */}
+        <TabsContent value="vendors" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Recommended to {event.clientName || "the Client"}</CardTitle>
+              <CardDescription>
+                Vendors from your Library, suggested for this client to consider. They&apos;ll see these in their portal and can choose one — you&apos;ll see their pick here immediately.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <EventVendorRecommendationsSection
+                eventId={event.id}
+                clientName={event.clientName}
+                initialRecommendations={vendorRecommendations}
+                vendorLibrary={availableVendors}
+              />
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Assigned to This Event</CardTitle>
+              <CardDescription>
+                Who is operationally confirmed and working this event, and when they arrive — separate from what&apos;s recommended to the client above.
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -472,35 +659,13 @@ export function EventDetail({
           </Card>
         </TabsContent>
 
-        {/* ── Floor Plan ────────────────────────────────────────────── */}
-        <TabsContent value="floor-plan">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Floor Plan</CardTitle>
-              <CardDescription>
-                Visualize and communicate the event layout. Click a toolbar item then click
-                the canvas to place objects. Drag to reposition.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <FloorPlanEditor
-                initialPlan={event.floorPlan}
-                eventId={event.id}
-                eventName={event.name}
-                venueId={event.venueId}
-              />
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* ── Activity ───────────────────────────────────────────────── */}
-        {/* ── Invoice ─────────────────────────────────────────────────── */}
+        {/* ── Invoice / Payments ────────────────────────────────────── */}
         <TabsContent value="invoice">
           <Card>
             <CardHeader>
               <div className="flex items-center justify-between gap-4">
                 <div>
-                  <CardTitle className="text-base">Invoice</CardTitle>
+                  <CardTitle className="text-base">Payments</CardTitle>
                   <CardDescription>Financial summary for this event.</CardDescription>
                 </div>
                 <Button type="button" size="sm"
@@ -543,73 +708,57 @@ export function EventDetail({
           </Card>
         </TabsContent>
 
-        {/* ── Playbook ─────────────────────────────────────────────── */}
-        <TabsContent value="playbook">
+        {/* ── Messages ─────────────────────────────────────────────── */}
+        <TabsContent value="messages">
+          {conversationExperienceEnabled ? (
+            <RelationshipConversationTab conversationId={conversationId} />
+          ) : (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Messages</CardTitle>
+                <CardDescription>Email history with this client. All correspondence is logged here automatically.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <MessagesSection
+                  entityType="client"
+                  entityId={event.clientId ?? ""}
+                  entityEmail={coupleEmail}
+                  entityName={event.clientName ?? ""}
+                  initialThreads={threads}
+                  questionnaireInfo={questionnaire ? {
+                    eventId: event.id,
+                    eventName: event.name,
+                    accessKey: questionnaire.accessKey,
+                    status: questionnaire.status,
+                  } : null}
+                />
+              </CardContent>
+            </Card>
+          )}
+        </TabsContent>
+
+        {/* ── Notes ──────────────────────────────────────────────────── */}
+        <TabsContent value="notes">
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">Task Playbook</CardTitle>
-              <CardDescription>All tasks for this event, organized by status and due date. Tasks auto-complete as milestones are hit.</CardDescription>
+              <CardTitle className="text-base">Notes</CardTitle>
+              <CardDescription>Operational notes for this event. Not visible to clients.</CardDescription>
             </CardHeader>
             <CardContent>
-              <EventTaskList
-                eventId={event.id}
-                eventDate={event.eventDate}
-                initialTasks={eventTasks}
-                readiness={null}
-                templates={playbookTemplates}
-              />
+              <EventNotesSection eventId={event.id} initialNotes={event.notes} />
             </CardContent>
           </Card>
         </TabsContent>
 
-        {/* ── Final Details ────────────────────────────────────────── */}
-        <TabsContent value="final-details">
+        {/* ── Team ───────────────────────────────────────────────────── */}
+        <TabsContent value="team">
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">Final Details</CardTitle>
-              <CardDescription>
-                Ceremony timing, guest counts, music selections, vendor notes, and special requests.
-                Submitting this marks Planning Progress as complete.
-              </CardDescription>
+              <CardTitle className="text-base">Event Team</CardTitle>
+              <CardDescription>Internal staff assigned to work this event.</CardDescription>
             </CardHeader>
             <CardContent>
-              <FinalDetailsForm
-                eventId={event.id}
-                initial={questionnaire}
-                coupleEmail={coupleEmail}
-                coupleName={event.clientName}
-                eventName={event.name}
-              />
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* ── Documents ────────────────────────────────────────────── */}
-        <TabsContent value="documents">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Documents</CardTitle>
-              <CardDescription>COIs, permits, vendor agreements, floor plans, and other event files.</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <DocumentsSection
-                entityType="event"
-                entityId={event.id}
-                venueId={event.venueId}
-                initialDocuments={documents}
-              />
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="activity">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Activity</CardTitle>
-              <CardDescription>A record of everything that has happened with this event.</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <ActivityTimeline activities={event.activities} />
+              <EventTeamSection eventId={event.id} initialTeam={event.team} />
             </CardContent>
           </Card>
         </TabsContent>
@@ -620,7 +769,7 @@ export function EventDetail({
             <div className="space-y-1 mb-4">
               <p className="text-sm font-semibold text-heading">Feedback & Memories</p>
               <p className="text-xs text-muted-foreground">
-                Private feedback from the couple, referrals they&apos;ve sent, and photos shared from their day.
+                Private feedback from the client, referrals they&apos;ve sent, and photos shared from their day.
                 Nothing is public until you explicitly approve it.
               </p>
             </div>

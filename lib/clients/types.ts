@@ -29,6 +29,7 @@ export type Client = {
   receptionTime: string | null; // "HH:MM"
   rehearsalDate: string | null;
   internalNotes: string | null;
+  relationshipId: string | null; // Program 2 Phase 2 — the enduring customer identity, regardless of origin
   createdAt: string;
   updatedAt: string;
 };
@@ -102,5 +103,5 @@ export type ClientActionResult =
   | { ok: false; errors?: ClientErrors; message?: string };
 
 export type CreateClientResult =
-  | { ok: true; clientId: string; eventId: string | null; portalToken: string | null }
+  | { ok: true; clientId: string; eventId: string | null; invitationSent: boolean }
   | { ok: false; errors?: ClientErrors; message?: string };

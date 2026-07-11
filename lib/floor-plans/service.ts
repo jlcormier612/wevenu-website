@@ -4,13 +4,16 @@
 import { createClient } from "@/integrations/supabase/server";
 import { isSupabaseConfigured } from "@/lib/env";
 import * as repo from "@/lib/floor-plans/repository";
+import * as templatesRepo from "@/lib/floor-plan-templates/repository";
 import type {
   AddObjectInput,
   CreateFloorPlanResult,
   FloorPlan,
   FloorPlanActionResult,
   FloorPlanWithObjects,
+  ReorderDirection,
   UpdateObjectInput,
+  UpdateRoomSettingsInput,
 } from "@/lib/floor-plans/types";
 import { getCurrentVenue } from "@/lib/venue/service";
 
@@ -26,11 +29,19 @@ async function withVenue<T>(
   return fn(supabase, venue.id);
 }
 
-export async function getFloorPlanByEvent(eventId: string): Promise<FloorPlanWithObjects | null> {
+/** The Booking Floor Plan Workspace's card grid — every floor plan this booking owns. */
+export async function getFloorPlansByEvent(eventId: string): Promise<FloorPlan[]> {
+  if (!isSupabaseConfigured) return [];
+  const venue = await getCurrentVenue();
+  if (!venue) return [];
+  return repo.getFloorPlansByEvent(await createClient(), venue.id, eventId);
+}
+
+export async function getFloorPlan(id: string): Promise<FloorPlanWithObjects | null> {
   if (!isSupabaseConfigured) return null;
   const venue = await getCurrentVenue();
   if (!venue) return null;
-  return repo.getFloorPlanByEvent(await createClient(), venue.id, eventId);
+  return repo.getFloorPlan(await createClient(), venue.id, id);
 }
 
 export async function getAllFloorPlans(): Promise<FloorPlan[]> {
@@ -40,9 +51,49 @@ export async function getAllFloorPlans(): Promise<FloorPlan[]> {
   return repo.getAllFloorPlans(await createClient(), venue.id);
 }
 
-export async function createFloorPlan(eventId: string): Promise<CreateFloorPlanResult> {
+/** "Blank Floor Plan" — a booking may hold many; each gets its own name and optional venue space. */
+export async function createFloorPlan(eventId: string, name = "Floor Plan", spaceId: string | null = null): Promise<CreateFloorPlanResult> {
+  if (!name.trim()) return { ok: false, message: "Floor plan name is required." };
   const result = await withVenue(async (supabase, venueId) => {
-    const floorPlanId = await repo.createFloorPlan(supabase, venueId, eventId);
+    const floorPlanId = await repo.createFloorPlan(supabase, venueId, eventId, name.trim(), spaceId);
+    return { ok: true, floorPlanId } as CreateFloorPlanResult;
+  });
+  return result as CreateFloorPlanResult;
+}
+
+/**
+ * "Apply Template" (Booking Floor Plan Workspace task): copies a template's
+ * objects and background into a brand-new, independently-editable booking
+ * floor plan under its own name/space. A copy, not a link — the booking
+ * owns it from this point on, and neither side is ever touched by edits to
+ * the other. A booking may apply the same template more than once.
+ */
+export async function applyTemplate(eventId: string, templateId: string, name: string, spaceId: string | null): Promise<CreateFloorPlanResult> {
+  if (!name.trim()) return { ok: false, message: "Floor plan name is required." };
+  const result = await withVenue(async (supabase, venueId) => {
+    const template = await templatesRepo.getTemplate(supabase, venueId, templateId);
+    if (!template) return { ok: false, message: "Template not found." } as CreateFloorPlanResult;
+    const objects = await templatesRepo.getObjects(supabase, venueId, templateId);
+
+    const floorPlanId = await repo.createFloorPlan(supabase, venueId, eventId, name.trim(), spaceId);
+    if (template.backgroundImageUrl) {
+      await repo.updateFloorPlanBackground(supabase, venueId, floorPlanId, template.backgroundImageUrl, template.backgroundImageOpacity);
+    }
+    await repo.updateFloorPlanRoomSettings(supabase, venueId, floorPlanId, {
+      roomWidthFt: template.roomWidthFt, roomDepthFt: template.roomDepthFt, measurementUnit: template.measurementUnit,
+    });
+    await repo.insertObjects(supabase, venueId, floorPlanId, objects);
+
+    return { ok: true, floorPlanId } as CreateFloorPlanResult;
+  });
+  return result as CreateFloorPlanResult;
+}
+
+/** "Duplicate Existing Floor Plan" — clone another floor plan already on this booking. Never touches the source. */
+export async function duplicateFloorPlan(eventId: string, sourceFloorPlanId: string, name: string, spaceId: string | null): Promise<CreateFloorPlanResult> {
+  if (!name.trim()) return { ok: false, message: "Floor plan name is required." };
+  const result = await withVenue(async (supabase, venueId) => {
+    const floorPlanId = await repo.duplicateFloorPlanInto(supabase, venueId, eventId, sourceFloorPlanId, name, spaceId);
     return { ok: true, floorPlanId } as CreateFloorPlanResult;
   });
   return result as CreateFloorPlanResult;
@@ -53,6 +104,31 @@ export async function updateBackground(
 ): Promise<FloorPlanActionResult> {
   const result = await withVenue(async (supabase, venueId) => {
     await repo.updateFloorPlanBackground(supabase, venueId, planId, url, opacity);
+    return { ok: true } as FloorPlanActionResult;
+  });
+  return result as FloorPlanActionResult;
+}
+
+export async function setBackgroundLocked(planId: string, locked: boolean): Promise<FloorPlanActionResult> {
+  const result = await withVenue(async (supabase, venueId) => {
+    await repo.setFloorPlanBackgroundLocked(supabase, venueId, planId, locked);
+    return { ok: true } as FloorPlanActionResult;
+  });
+  return result as FloorPlanActionResult;
+}
+
+export async function updateRoomSettings(planId: string, input: UpdateRoomSettingsInput): Promise<FloorPlanActionResult> {
+  if (input.roomWidthFt <= 0 || input.roomDepthFt <= 0) return { ok: false, message: "Room dimensions must be greater than zero." };
+  const result = await withVenue(async (supabase, venueId) => {
+    await repo.updateFloorPlanRoomSettings(supabase, venueId, planId, input);
+    return { ok: true } as FloorPlanActionResult;
+  });
+  return result as FloorPlanActionResult;
+}
+
+export async function reorderObject(planId: string, objId: string, direction: ReorderDirection): Promise<FloorPlanActionResult> {
+  const result = await withVenue(async (supabase, venueId) => {
+    await repo.reorderObject(supabase, venueId, planId, objId, direction);
     return { ok: true } as FloorPlanActionResult;
   });
   return result as FloorPlanActionResult;

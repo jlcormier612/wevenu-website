@@ -4,12 +4,11 @@ import * as React from "react";
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Check, CheckCircle, Circle, Clock, Copy, ExternalLink, Link2, Plus, Trash2 } from "lucide-react";
+import { Check, CheckCircle, Circle, Clock, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 import {
   assignVendorAction,
-  createVendorPortalLinkAction,
   removeVendorAssignmentAction,
 } from "@/app/(app)/events/[id]/vendor-actions";
 import { VendorCategoryBadge } from "@/components/vendors/vendor-category-badge";
@@ -22,56 +21,6 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { formatTime, vendorCategoryLabel } from "@/lib/vendors/constants";
 import type { EventVendorAssignment, Vendor } from "@/lib/vendors/types";
-
-// ── Portal Link button ────────────────────────────────────────────────────────
-
-function PortalLinkButton({ vendorId, vendorName }: { vendorId: string; vendorName: string }) {
-  const [loading, setLoading] = React.useState(false);
-  const [link, setLink]       = React.useState<string | null>(null);
-
-  async function handleCreate() {
-    setLoading(true);
-    const result = await createVendorPortalLinkAction(vendorId, vendorName);
-    setLoading(false);
-    if (result.ok) {
-      const url = `${window.location.origin}/v/${result.token}`;
-      setLink(url);
-    } else {
-      toast.error("Could not create portal link.");
-    }
-  }
-
-  async function handleCopy() {
-    if (!link) return;
-    await navigator.clipboard.writeText(link);
-    toast.success("Portal link copied.");
-  }
-
-  if (link) {
-    return (
-      <div className="flex items-center gap-1.5">
-        <a href={link} target="_blank" rel="noopener noreferrer"
-          className="flex items-center gap-1 text-xs font-medium text-primary hover:underline">
-          <ExternalLink className="h-3 w-3" />
-          Open
-        </a>
-        <button type="button" onClick={handleCopy}
-          className="flex items-center gap-1 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors">
-          <Copy className="h-3 w-3" />
-          Copy
-        </button>
-      </div>
-    );
-  }
-
-  return (
-    <button type="button" onClick={handleCreate} disabled={loading}
-      className="flex items-center gap-1 text-xs font-medium text-muted-foreground hover:text-primary transition-colors disabled:opacity-50">
-      <Link2 className="h-3 w-3" />
-      {loading ? "Creating…" : "Send Portal Link"}
-    </button>
-  );
-}
 
 // ── Check-in badge ────────────────────────────────────────────────────────────
 
@@ -145,7 +94,7 @@ export function EventVendorsSection({
       {/* Assignment list */}
       {assignments.length === 0 && !showForm && (
         <p className="py-4 text-center text-sm text-muted-foreground">
-          No vendors assigned. Assign vendors from your directory to track who's involved and when they arrive.
+          No vendors assigned. Assign vendors from your directory to track who&apos;s involved and when they arrive.
         </p>
       )}
 
@@ -187,13 +136,10 @@ export function EventVendorsSection({
                 </button>
               </div>
 
-              {/* Row 2: Check-in status + portal link */}
-              <div className="flex items-center justify-between gap-3 pt-0.5 border-t border-border/50">
-                <div className="flex items-center gap-3">
-                  <CheckinBadge label="Arrived"       checked={!!a.checkedInAt} />
-                  <CheckinBadge label="Setup done"    checked={!!a.setupCompleteAt} />
-                </div>
-                <PortalLinkButton vendorId={a.vendorId} vendorName={a.vendorName} />
+              {/* Row 2: Check-in status */}
+              <div className="flex items-center gap-3 pt-0.5 border-t border-border/50">
+                <CheckinBadge label="Arrived"       checked={!!a.checkedInAt} />
+                <CheckinBadge label="Setup done"    checked={!!a.setupCompleteAt} />
               </div>
             </div>
           ))}
@@ -206,7 +152,13 @@ export function EventVendorsSection({
           {/* Vendor select */}
           <div className="space-y-1.5">
             <Label htmlFor="ev-vendor" className="text-xs">Vendor *</Label>
-            <Select value={vendorId} onValueChange={setVendorId}>
+            <Select
+              value={vendorId}
+              onValueChange={setVendorId}
+              items={[...preferred, ...others]
+                .filter(v => !assignedIds.has(v.id))
+                .map(v => ({ value: v.id, label: `${v.businessName}${v.category ? ` · ${vendorCategoryLabel(v.category)}` : ""}` }))}
+            >
               <SelectTrigger id="ev-vendor">
                 <SelectValue placeholder="Select a vendor…" />
               </SelectTrigger>

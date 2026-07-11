@@ -80,6 +80,37 @@ export async function insertDocument(
   return data.id;
 }
 
+// A reusable, venue-owned document — not about one specific lead/client/
+// event/vendor (all four entity columns stay null). Exists so Planning
+// Templates can attach a real file that outlives any single event.
+export async function getVenueDocuments(client: DbClient, venueId: string): Promise<Document[]> {
+  const { data, error } = await client.from("documents").select("*")
+    .eq("venue_id", venueId)
+    .is("lead_id", null).is("client_id", null).is("event_id", null).is("vendor_id", null)
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+  return (data as DocRow[]).map(mapDoc);
+}
+
+export async function insertVenueDocument(client: DbClient, venueId: string, payload: DocumentUploadPayload): Promise<string> {
+  const tags = payload.tags.split(",").map((t) => t.trim()).filter(Boolean);
+  const { data, error } = await client.from("documents").insert({
+    venue_id: venueId,
+    name: payload.name.trim() || payload.fileName,
+    file_name: payload.fileName,
+    file_size: payload.fileSize,
+    mime_type: payload.mimeType,
+    storage_path: payload.storagePath,
+    storage_url: payload.storageUrl,
+    category: payload.category,
+    notes: payload.notes.trim() || null,
+    tags,
+    expires_at: payload.expiresAt || null,
+  }).select("id").single<{ id: string }>();
+  if (error) throw error;
+  return data.id;
+}
+
 export async function updateDocumentMeta(
   client: DbClient,
   venueId: string,

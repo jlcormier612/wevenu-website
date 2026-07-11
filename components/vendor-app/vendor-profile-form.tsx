@@ -105,7 +105,7 @@ export function VendorProfileForm({ profile }: { profile: VendorProfile }) {
           <Input id="pf-biz" value={input.businessName} onChange={(e) => set("businessName", e.target.value)} />
         </Field>
         <Field label="Category" htmlFor="pf-cat">
-          <Select value={input.category} onValueChange={(v) => set("category", v)}>
+          <Select value={input.category} onValueChange={(v) => set("category", v)} items={VENDOR_CATEGORIES}>
             <SelectTrigger id="pf-cat"><SelectValue placeholder="Select category" /></SelectTrigger>
             <SelectContent>
               {VENDOR_CATEGORIES.map((c) => <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>)}
@@ -162,7 +162,11 @@ export function VendorProfileForm({ profile }: { profile: VendorProfile }) {
           <Input id="pf-area" value={input.serviceArea} onChange={(e) => set("serviceArea", e.target.value)} />
         </Field>
         <Field label="Pricing tier" htmlFor="pf-price">
-          <Select value={input.pricingTier} onValueChange={(v) => set("pricingTier", v)}>
+          <Select
+            value={input.pricingTier}
+            onValueChange={(v) => set("pricingTier", v)}
+            items={[{ value: "", label: "No indicator" }, ...PRICING_TIERS]}
+          >
             <SelectTrigger id="pf-price"><SelectValue placeholder="Select tier" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="">No indicator</SelectItem>

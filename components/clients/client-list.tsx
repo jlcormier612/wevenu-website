@@ -74,9 +74,9 @@ export function ClientList({ clients }: { clients: Client[] }) {
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground pointer-events-none" />
           <Input value={query} onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search by name or event type…" className="pl-9" />
+            placeholder="Search by couple or event type…" className="pl-9" />
         </div>
-        <Select value={sort} onValueChange={(v) => setSort(v as SortKey)}>
+        <Select value={sort} onValueChange={(v) => setSort(v as SortKey)} items={SORT_OPTIONS}>
           <SelectTrigger className="h-9 w-full sm:w-52 text-sm text-muted-foreground">
             <SelectValue />
           </SelectTrigger>
@@ -103,7 +103,7 @@ export function ClientList({ clients }: { clients: Client[] }) {
         <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border bg-card/40 py-16 text-center">
           <p className="font-heading text-lg font-medium text-heading">No clients yet</p>
           <p className="mt-1 mb-4 text-sm text-muted-foreground">
-            When you book a couple, convert their lead inquiry here — or add a client directly.
+            When you book a client, convert their lead inquiry here — or add a client directly.
           </p>
           <div className="flex flex-wrap items-center justify-center gap-2">
             <Button render={<Link href="/leads" />} variant="outline">View Leads</Button>
@@ -124,11 +124,11 @@ export function ClientList({ clients }: { clients: Client[] }) {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Couple</TableHead>
-                <TableHead>Event</TableHead>
+                <TableHead>Client</TableHead>
+                <TableHead>Event Type</TableHead>
                 <TableHead>Event Date</TableHead>
-                <TableHead>Guests</TableHead>
                 <TableHead>Status</TableHead>
+                <TableHead>Guests</TableHead>
                 <TableHead className="w-16" />
               </TableRow>
             </TableHeader>
@@ -149,10 +149,10 @@ export function ClientList({ clients }: { clients: Client[] }) {
                   <TableCell className="text-sm">
                     {client.eventDate ? formatDate(client.eventDate) : <span className="text-muted-foreground">TBD</span>}
                   </TableCell>
+                  <TableCell><ClientStatusBadge status={client.status} /></TableCell>
                   <TableCell className="text-sm">
                     {client.guestCount != null ? client.guestCount.toLocaleString() : <span className="text-muted-foreground">—</span>}
                   </TableCell>
-                  <TableCell><ClientStatusBadge status={client.status} /></TableCell>
                   <TableCell>
                     <Button variant="ghost" size="sm" render={<Link href={`/clients/${client.id}`} />}>View →</Button>
                   </TableCell>

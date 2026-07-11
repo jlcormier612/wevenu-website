@@ -39,7 +39,7 @@ function RingStat({ label, pct, sub, color }: { label: string; pct: number; sub:
 export function CoupleEngagementCard({ data }: { data: CoupleEngagement | null }) {
   if (!data) return (
     <Card>
-      <CardHeader><CardTitle className="text-base">Couple Engagement</CardTitle></CardHeader>
+      <CardHeader><CardTitle className="text-base">Client Engagement</CardTitle></CardHeader>
       <CardContent><p className="text-sm text-muted-foreground">No data yet.</p></CardContent>
     </Card>
   );
@@ -48,7 +48,7 @@ export function CoupleEngagementCard({ data }: { data: CoupleEngagement | null }
     <Card>
       <CardHeader className="pb-2">
         <div className="flex items-center justify-between">
-          <CardTitle className="text-base">Couple Engagement</CardTitle>
+          <CardTitle className="text-base">Client Engagement</CardTitle>
           <span className="text-xs text-muted-foreground">{data.totalActiveClients} active clients</span>
         </div>
       </CardHeader>
@@ -56,7 +56,7 @@ export function CoupleEngagementCard({ data }: { data: CoupleEngagement | null }
         <RingStat
           label="Portal Adoption"
           pct={data.portalAdoption}
-          sub="of upcoming couples have portal access"
+          sub="of upcoming clients have portal access"
         />
         <RingStat
           label="RSVP Completion"
@@ -69,7 +69,7 @@ export function CoupleEngagementCard({ data }: { data: CoupleEngagement | null }
           <span className="text-2xl font-bold tabular-nums text-heading">{data.activeThisWeek}</span>
           <div>
             <p className="text-xs font-medium text-heading">Active this week</p>
-            <p className="text-[11px] text-muted-foreground">couples with portal activity in last 7 days</p>
+            <p className="text-[11px] text-muted-foreground">clients with portal activity in last 7 days</p>
           </div>
         </div>
       </CardContent>

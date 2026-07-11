@@ -7,7 +7,7 @@ import { getClient } from "@/lib/clients/service";
 
 type Props = {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ eventId?: string; portalToken?: string }>;
+  searchParams: Promise<{ eventId?: string; invited?: string }>;
 };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
@@ -21,7 +21,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function BookedPage({ params, searchParams }: Props) {
   const { id } = await params;
-  const { eventId, portalToken } = await searchParams;
+  const { eventId, invited } = await searchParams;
   const client = await getClient(id);
   if (!client) notFound();
   // Fall back to the linkedEventId on the client record if searchParams are missing
@@ -30,7 +30,7 @@ export default async function BookedPage({ params, searchParams }: Props) {
     <BookingCelebration
       client={client}
       eventId={resolvedEventId}
-      portalToken={portalToken ?? null}
+      invited={invited === "1"}
     />
   );
 }

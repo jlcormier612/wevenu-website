@@ -39,7 +39,7 @@ function SlotPreview({ tourKey }: { tourKey: string }) {
 
   return (
     <div className="space-y-2">
-      <p className="text-xs text-muted-foreground">Preview: slots couples would see in the next 14 days ({slots.length} total)</p>
+      <p className="text-xs text-muted-foreground">Preview: slots clients would see in the next 14 days ({slots.length} total)</p>
       <div className="space-y-1.5 max-h-32 overflow-y-auto">
         {Object.entries(grouped).slice(0, 5).map(([date, times]) => (
           <div key={date} className="flex items-center gap-2 flex-wrap">
@@ -100,7 +100,7 @@ export function TourSettingsSection({ initialSettings }: Props) {
           {/* Booking link */}
           <div className="space-y-1.5">
             <Label className="text-xs">Booking link</Label>
-            <p className="text-xs text-muted-foreground">Share this on your website so couples can schedule a tour directly.</p>
+            <p className="text-xs text-muted-foreground">Share this on your website so clients can schedule a tour directly.</p>
             <div className="flex gap-2">
               <div className="flex-1 rounded-lg border border-border bg-muted/40 px-3 py-2">
                 <p className="text-[11px] font-mono text-muted-foreground break-all">{bookingUrl}</p>
@@ -142,13 +142,13 @@ export function TourSettingsSection({ initialSettings }: Props) {
             </div>
             <div className="space-y-1.5">
               <Label className="text-xs">Minimum notice (hours)</Label>
-              <p className="text-[10px] text-muted-foreground">Couples can't book tours less than N hours from now.</p>
+              <p className="text-[10px] text-muted-foreground">Clients can&apos;t book tours less than N hours from now.</p>
               <Input type="number" min="0" value={s.tourMinNoticeHours}
                 onChange={(e) => set("tourMinNoticeHours", parseInt(e.target.value) || 24)} />
             </div>
             <div className="space-y-1.5">
               <Label className="text-xs">Max advance booking (days)</Label>
-              <p className="text-[10px] text-muted-foreground">How far in advance couples can schedule.</p>
+              <p className="text-[10px] text-muted-foreground">How far in advance clients can schedule.</p>
               <Input type="number" min="1" max="365" value={s.tourMaxAdvanceDays}
                 onChange={(e) => set("tourMaxAdvanceDays", parseInt(e.target.value) || 90)} />
             </div>

@@ -194,7 +194,7 @@ export async function getLuvObservations(
 
     const briefingItems: LuvBriefingItem[] = [
       { label: "Day-of timeline", status: hasTimeline ? "complete" : "incomplete", link: `/events/${ev.id}` },
-      { label: "Floor plan", status: hasFloorPlan ? "complete" : "incomplete", link: `/events/${ev.id}` },
+      { label: "Floor plan", status: hasFloorPlan ? "complete" : "incomplete", link: `/events/${ev.id}#floorplan` },
     ];
 
     const incompleteCount = briefingItems.filter((i) => i.status !== "complete").length;
@@ -211,7 +211,7 @@ export async function getLuvObservations(
       recommendation: !hasTimeline
         ? { label: "Build the day-of timeline", link: `/events/${ev.id}`, type: "navigate" }
         : !hasFloorPlan
-        ? { label: "Create a floor plan", link: `/events/${ev.id}`, type: "navigate" }
+        ? { label: "Create a floor plan", link: `/events/${ev.id}#floorplan`, type: "navigate" }
         : firstIncomplete
         ? { label: firstIncomplete.label, link: firstIncomplete.link ?? `/events/${ev.id}`, type: "navigate" }
         : undefined,
@@ -317,7 +317,7 @@ export async function getLuvObservations(
           message: `${q.events.name} is ${inDays(q.events.event_date)} — the final details form hasn't been sent yet.`,
           link: `/events/${q.event_id}`,
           actionLabel: "View Event →",
-          recommendation: { label: "Send the form to the couple", link: `/events/${q.event_id}`, type: "navigate" },
+          recommendation: { label: "Send the form to the client", link: `/events/${q.event_id}`, type: "navigate" },
         });
       }
     } else if (q.status === "sent") {
@@ -328,7 +328,7 @@ export async function getLuvObservations(
           observations.push({
             id: `questionnaire-opened-${q.id}`,
             priority: du <= 14 ? "high" : "medium",
-            message: `The couple opened their final details form ${openedDaysAgo} day${openedDaysAgo !== 1 ? "s" : ""} ago — a gentle reminder might help them finish.`,
+            message: `The client opened their final details form ${openedDaysAgo} day${openedDaysAgo !== 1 ? "s" : ""} ago — a gentle reminder might help them finish.`,
             link: `/events/${q.event_id}`,
             actionLabel: "View Event →",
             recommendation: { label: "Send a gentle reminder", link: `/events/${q.event_id}`, type: "navigate" },
@@ -391,7 +391,7 @@ export async function getLuvObservations(
         id: `website-unpublished-${site.client_id}`,
         priority: du <= 60 ? "medium" : "low",
         message: `${coupleName}'s wedding website isn't published yet.`,
-        detail: `The event is in ${du} days. Couples typically publish their website 3-4 months out.`,
+        detail: `The event is in ${du} days. Clients typically publish their website 3-4 months out.`,
         link: `/clients/${site.client_id}`,
         actionLabel: "View Client →",
       });
@@ -488,7 +488,7 @@ export async function getLuvObservations(
     const tourDate = new Date(tour.scheduled_at);
     const du = Math.ceil((tourDate.getTime() - Date.now()) / 86_400_000);
     const timeStr = tourDate.toLocaleString("en-US", { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
-    const name = tour.contact_name ?? "A couple";
+    const name = tour.contact_name ?? "A prospective client";
     observations.push({
       id: `tour-upcoming-${tour.id}`,
       priority: du === 0 ? "high" : "medium",
@@ -701,7 +701,7 @@ export async function getLuvObservations(
   // The 48 hours after a tour determines conversion. Surface immediately.
   for (const tour of (completedNoFollowUpRes.data ?? []) as { id: string; scheduled_at: string; contact_name: string | null; lead_id: string | null }[]) {
     const hoursAgo = Math.round((Date.now() - new Date(tour.scheduled_at).getTime()) / 3_600_000);
-    const name = tour.contact_name ?? "A couple";
+    const name = tour.contact_name ?? "A prospective client";
     observations.push({
       id: `tour-no-followup-${tour.id}`,
       priority: hoursAgo <= 24 ? "high" : "medium",
@@ -717,7 +717,7 @@ export async function getLuvObservations(
 
   // ── No-show tours ─────────────────────────────────────────────────────────
   for (const tour of (noShowRes.data ?? []) as { id: string; scheduled_at: string; contact_name: string | null; lead_id: string | null }[]) {
-    const name = tour.contact_name ?? "A couple";
+    const name = tour.contact_name ?? "A prospective client";
     observations.push({
       id: `tour-no-show-${tour.id}`,
       priority: "medium",

@@ -71,7 +71,7 @@ export const PORTAL_ROLE_LABELS: Record<ContactPortalRole, string> = {
 };
 
 export const PORTAL_ROLE_DESCRIPTIONS: Record<ContactPortalRole, string> = {
-  full_access:    "Can see and do everything the couple can do.",
+  full_access:    "Can see and do everything the client can do.",
   planning:       "Can see and complete planning tasks and documents. No financial info.",
   financial:      "Can see invoices and make payments only.",
   view_only:      "Can view their permitted sections. Cannot complete tasks or pay.",

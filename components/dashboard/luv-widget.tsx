@@ -145,7 +145,7 @@ function ObservationRow({ obs }: { obs: LuvObservation }) {
             style={{
               background: `color-mix(in oklch, ${DUSTY_ROSE} 12%, var(--card))`,
               border: `1px solid ${DUSTY_ROSE}30`,
-              color: "#8B5A5C",
+              color: "var(--heading)",
             }}>
             <LuvHeart size={11} />
             <span>{obs.recommendation.label}</span>

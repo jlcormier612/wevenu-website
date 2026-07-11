@@ -100,7 +100,7 @@ function DraftCard({
       <div className="flex flex-wrap items-center gap-2">
         {onUseDraft && (
           <Button type="button" size="sm"
-            style={{ borderColor: `${DUSTY_ROSE}60`, backgroundColor: `${DUSTY_ROSE}15`, color: "#8B5A5C" }}
+            style={{ borderColor: `${DUSTY_ROSE}60`, background: `color-mix(in oklch, ${DUSTY_ROSE} 15%, var(--card))`, color: "var(--heading)" }}
             className="hover:opacity-90"
             onClick={() => onUseDraft(draft.subject, body)}>
             <ArrowRight className="mr-1 h-3.5 w-3.5" /> Send this →
@@ -233,7 +233,7 @@ export function LuvDraftPanel({
         </div>
         <div className="mt-3 flex items-center gap-2">
           <Button type="button" size="sm" onClick={handleGenerate} disabled={generating}
-            style={{ borderColor: `${DUSTY_ROSE}60`, backgroundColor: `${DUSTY_ROSE}15`, color: "#8B5A5C" }}
+            style={{ borderColor: `${DUSTY_ROSE}60`, background: `color-mix(in oklch, ${DUSTY_ROSE} 15%, var(--card))`, color: "var(--heading)" }}
             className="hover:opacity-90">
             {generating
               ? <><Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />Luv is drafting…</>

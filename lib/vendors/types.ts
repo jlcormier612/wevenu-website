@@ -11,7 +11,12 @@
 export type VendorPreferenceLevel = "featured" | "preferred" | "recommended";
 export type VendorPricingTier     = "budget" | "mid_range" | "premium" | "luxury";
 export type VendorRole            = "owner" | "manager" | "staff" | "contractor";
-export type VendorRelationshipStatus = "invited" | "active" | "preferred" | "removed";
+// Relationship is the sole authoritative owner of the vendor lifecycle (ADR-0001,
+// docs/vendor-relationship-lifecycle.md). "Preferred" is a ranking carried by
+// preferenceLevel, not a lifecycle stage — see the migration's note on why a
+// 4th 'preferred' status value would recreate the two-fields-one-concept
+// problem this model exists to remove.
+export type VendorRelationshipStatus = "invited" | "active" | "inactive";
 export type VendorSubscriptionTier   = "free" | "starter" | "pro" | "marketplace";
 export type VendorSubscriptionStatus = "active" | "trialing" | "past_due" | "canceled" | "none";
 
@@ -53,30 +58,32 @@ export type VendorProfile = {
 // ── Venue-specific relationship data ─────────────────────────────────────────
 
 export type VenueVendorRelationship = {
-  id:              string;
-  venueId:         string;
-  vendorId:        string;
-  status:          VendorRelationshipStatus;
-  isPreferred:     boolean;
-  preferenceLevel: VendorPreferenceLevel;
-  displayOrder:    number;
-  isActive:        boolean;
-  notes:           string | null;
-  addedAt:         string;
-  updatedAt:       string;
+  id:                 string;
+  venueId:            string;
+  vendorId:           string;
+  status:             VendorRelationshipStatus;
+  preferenceLevel:    VendorPreferenceLevel;
+  displayOrder:       number;
+  notes:              string | null;
+  specialPricingNote: string | null;
+  addedAt:            string;
+  updatedAt:          string;
 };
 
 // ── Flat vendor type used by venue UI ─────────────────────────────────────────
 // Merges VendorProfile + VenueVendorRelationship fields.
-// venueId, isPreferred, preferenceLevel, displayOrder, isActive, notes come from the relationship.
+// venueId, status, preferenceLevel, displayOrder, notes, specialPricingNote come
+// from the relationship. isPreferred is a computed convenience (Standard #1),
+// not a second independently-writable fact — see toVVRRow/mapVVR.
 
 export type Vendor = VendorProfile & {
-  venueId:         string;
-  isPreferred:     boolean;
-  preferenceLevel: VendorPreferenceLevel;
-  displayOrder:    number;
-  isActive:        boolean;
-  notes:           string | null;
+  venueId:            string;
+  status:             VendorRelationshipStatus;
+  isPreferred:         boolean;
+  preferenceLevel:    VendorPreferenceLevel;
+  displayOrder:       number;
+  notes:              string | null;
+  specialPricingNote: string | null;
 };
 
 // ── Vendor user / team member ─────────────────────────────────────────────────
@@ -147,6 +154,14 @@ export type VendorReview = {
   body:         string | null;
   isPublic:     boolean;
   createdAt:    string;
+  eventName:    string | null;
+};
+
+export type VendorReviewInput = {
+  eventId:  string;
+  rating:   number;
+  body:     string;
+  isPublic: boolean;
 };
 
 // ── Notification preferences ──────────────────────────────────────────────────
@@ -229,22 +244,22 @@ export type PortalVendor = {
 // ── Input / form types ────────────────────────────────────────────────────────
 
 export type VendorInput = {
-  businessName:    string;
-  category:        string;
-  contactName:     string;
-  email:           string;
-  phone:           string;
-  websiteUrl:      string;
-  instagramUrl:    string;
-  facebookUrl:     string;
-  pinterestUrl:    string;
-  tiktokUrl:       string;
-  isPreferred:     boolean;
-  preferenceLevel: VendorPreferenceLevel;
-  description:     string;
-  logoUrl:         string;
-  pricingTier:     string;
-  notes:           string;
+  businessName:       string;
+  category:           string;
+  contactName:        string;
+  email:              string;
+  phone:              string;
+  websiteUrl:         string;
+  instagramUrl:       string;
+  facebookUrl:        string;
+  pinterestUrl:       string;
+  tiktokUrl:          string;
+  preferenceLevel:    VendorPreferenceLevel;
+  description:        string;
+  logoUrl:            string;
+  pricingTier:        string;
+  notes:              string;
+  specialPricingNote: string;
 };
 
 export type VendorAssignmentInput = {
@@ -322,7 +337,7 @@ export type VendorDashboardData = {
 };
 
 export type VendorActionResult =
-  | { ok: true }
+  | { ok: true; message?: string }
   | { ok: false; errors?: VendorErrors; message?: string };
 
 export type CreateVendorResult =

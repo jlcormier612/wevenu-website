@@ -2,10 +2,10 @@
 
 import * as React from "react";
 import {
-  Users, Plus, Trash2, Loader2, X, Check, ChevronDown, ChevronUp, Copy, Mail,
+  Users, Plus, Trash2, Pencil, Loader2, X, Check, ChevronDown, ChevronUp, Copy, Mail,
 } from "lucide-react";
 import { toast } from "sonner";
-import type { CoupleGuest, GuestStats, RsvpInsights, RsvpQuestion } from "@/lib/portal/types";
+import type { CoupleGuest, CoupleHousehold, GuestStats, RsvpInsights, RsvpQuestion } from "@/lib/portal/types";
 import { getGuestObservations } from "@/lib/luv/portal-observations";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -18,6 +18,9 @@ const RSVP_COLORS: Record<string, string> = {
   pending: "#9CA3AF", attending: "#5D6F5D", declined: "#DC6A6A", maybe: "#D97706",
 };
 
+const NO_HOUSEHOLD = "";
+const NEW_HOUSEHOLD = "__new__";
+
 const QUESTION_TEMPLATES = [
   { key: "meal_choice",   text: "What meal would you prefer?",           type: "select"  as const, note: "Add meal options below"      },
   { key: "song_request",  text: "What song should we add to the playlist?", type: "text" as const,  note: ""                           },
@@ -27,15 +30,15 @@ const QUESTION_TEMPLATES = [
   { key: "message",       text: "Leave a message for the couple",         type: "textarea" as const, note: ""                          },
 ];
 
-function parseCSV(text: string): { firstName: string; lastName?: string; email?: string; groupLabel?: string }[] {
+function parseCSV(text: string): { firstName: string; lastName?: string; email?: string; household?: string }[] {
   return text.split("\n")
     .map(l => l.trim()).filter(Boolean)
     .slice(1)
     .map(l => {
-      const [firstName, lastName, email, groupLabel] = l.split(",").map(s => s.trim().replace(/^"|"$/g, ""));
+      const [firstName, lastName, email, household] = l.split(",").map(s => s.trim().replace(/^"|"$/g, ""));
       if (!firstName) return null;
-      return { firstName, lastName: lastName || undefined, email: email || undefined, groupLabel: groupLabel || undefined };
-    }).filter(Boolean) as { firstName: string; lastName?: string; email?: string; groupLabel?: string }[];
+      return { firstName, lastName: lastName || undefined, email: email || undefined, household: household || undefined };
+    }).filter(Boolean) as { firstName: string; lastName?: string; email?: string; household?: string }[];
 }
 
 // ── Progress ring (reused from budget-section) ────────────────────────────────
@@ -321,16 +324,88 @@ function QuestionManager({ token, questions, onUpdate }: {
   );
 }
 
+// ── Guest editor fields (shared shape between Add and Edit) ──────────────────
+
+type GuestFields = {
+  name: string; email: string; phone: string;
+  householdChoice: string; newHouseholdName: string;
+  isChild: boolean; plusOne: boolean; plusOneName: string; dietary: string;
+};
+
+function emptyGuestFields(): GuestFields {
+  return { name: "", email: "", phone: "", householdChoice: NO_HOUSEHOLD, newHouseholdName: "", isChild: false, plusOne: false, plusOneName: "", dietary: "" };
+}
+
+function GuestFieldsForm({ fields, setFields, households, autoFocus, onEnter }: {
+  fields: GuestFields;
+  setFields: React.Dispatch<React.SetStateAction<GuestFields>>;
+  households: CoupleHousehold[];
+  autoFocus?: boolean;
+  onEnter?: () => void;
+}) {
+  const set = <K extends keyof GuestFields>(key: K, v: GuestFields[K]) => setFields(p => ({ ...p, [key]: v }));
+
+  return (
+    <div className="space-y-2.5">
+      <input value={fields.name} onChange={e => set("name", e.target.value)} placeholder="Full name *" autoFocus={autoFocus}
+        onKeyDown={e => e.key === "Enter" && onEnter?.()}
+        className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring" />
+      <div className="grid grid-cols-2 gap-2">
+        <input value={fields.email} onChange={e => set("email", e.target.value)} placeholder="Email (optional)"
+          className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring" />
+        <input value={fields.phone} onChange={e => set("phone", e.target.value)} placeholder="Phone (optional)"
+          className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring" />
+      </div>
+
+      <div className="space-y-1.5">
+        <select value={fields.householdChoice} onChange={e => set("householdChoice", e.target.value)}
+          className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring">
+          <option value={NO_HOUSEHOLD}>No household</option>
+          {households.map(h => <option key={h.id} value={h.id}>{h.name}</option>)}
+          <option value={NEW_HOUSEHOLD}>+ New household…</option>
+        </select>
+        {fields.householdChoice === NEW_HOUSEHOLD && (
+          <input value={fields.newHouseholdName} onChange={e => set("newHouseholdName", e.target.value)}
+            placeholder="Household name — The Smiths, College Friends…"
+            className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring" />
+        )}
+      </div>
+
+      <input value={fields.dietary} onChange={e => set("dietary", e.target.value)} placeholder="Dietary restrictions (optional)"
+        className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring" />
+
+      <div className="flex flex-wrap gap-x-5 gap-y-2 pt-0.5">
+        <label className="flex items-center gap-2 text-sm cursor-pointer select-none">
+          <input type="checkbox" checked={fields.isChild} onChange={e => set("isChild", e.target.checked)}
+            className="h-3.5 w-3.5 rounded accent-[#5D6F5D]" />
+          <span className="text-muted-foreground">Child guest</span>
+        </label>
+        <label className="flex items-center gap-2 text-sm cursor-pointer select-none">
+          <input type="checkbox" checked={fields.plusOne} onChange={e => { set("plusOne", e.target.checked); if (!e.target.checked) set("plusOneName", ""); }}
+            className="h-3.5 w-3.5 rounded accent-[#5D6F5D]" />
+          <span className="text-muted-foreground">Brings a +1</span>
+        </label>
+      </div>
+
+      {fields.plusOne && (
+        <input value={fields.plusOneName} onChange={e => set("plusOneName", e.target.value)}
+          placeholder="+1 name (optional — leave blank if unknown)"
+          className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring" />
+      )}
+    </div>
+  );
+}
+
 // ── Guest row ─────────────────────────────────────────────────────────────────
 
-function GuestRow({ guest, token, onDelete, onStatusChange }: {
+function GuestRow({ guest, onDelete, onStatusChange, onEditStart }: {
   guest: CoupleGuest;
-  token: string;
   onDelete: (id: string) => void;
   onStatusChange: (id: string, status: string) => void;
+  onEditStart: (guest: CoupleGuest) => void;
 }) {
   const [expanded, setExpanded] = React.useState(false);
-  const rsvpLink = `${typeof window !== "undefined" ? window.location.origin : ""}/rsvp/${(guest as CoupleGuest & { rsvpToken?: string }).rsvpToken ?? ""}`;
+  const rsvpLink = `${typeof window !== "undefined" ? window.location.origin : ""}/rsvp/${guest.rsvpToken ?? ""}`;
 
   async function copyLink() {
     try {
@@ -341,7 +416,7 @@ function GuestRow({ guest, token, onDelete, onStatusChange }: {
     }
   }
 
-  const hasDetails = guest.dietary || guest.mealChoice || guest.plusOneName || guest.rsvpNote;
+  const hasDetails = guest.dietary || guest.mealChoice || guest.plusOneName || guest.rsvpNote || guest.phone;
 
   return (
     <div className="border-b border-border/50 last:border-0">
@@ -358,7 +433,7 @@ function GuestRow({ guest, token, onDelete, onStatusChange }: {
               </span>
             )}
           </p>
-          <p className="text-[11px] text-muted-foreground">{guest.email ?? guest.groupLabel ?? ""}</p>
+          <p className="text-[11px] text-muted-foreground">{guest.email ?? ""}</p>
         </div>
 
         {guest.mealChoice && (
@@ -381,6 +456,12 @@ function GuestRow({ guest, token, onDelete, onStatusChange }: {
           <Copy className="h-3.5 w-3.5" />
         </button>
 
+        <button type="button" onClick={() => onEditStart(guest)}
+          className="p-1 text-muted-foreground hover:text-foreground rounded transition-colors"
+          title="Edit guest">
+          <Pencil className="h-3.5 w-3.5" />
+        </button>
+
         {hasDetails && (
           <button type="button" onClick={() => setExpanded(p => !p)}
             className="p-1 text-muted-foreground hover:text-foreground rounded transition-colors">
@@ -396,6 +477,7 @@ function GuestRow({ guest, token, onDelete, onStatusChange }: {
 
       {expanded && hasDetails && (
         <div className="px-4 pb-3 flex flex-wrap gap-x-6 gap-y-1 text-xs text-muted-foreground">
+          {guest.phone && <span>📞 {guest.phone}</span>}
           {guest.mealChoice && <span>🍽️ {guest.mealChoice}</span>}
           {guest.plusOneName && <span>+1: {guest.plusOneName}{guest.plusOneMeal ? ` (${guest.plusOneMeal})` : ""}</span>}
           {guest.dietary && <span>⚠️ {guest.dietary}</span>}
@@ -406,36 +488,73 @@ function GuestRow({ guest, token, onDelete, onStatusChange }: {
   );
 }
 
+// ── Household group ────────────────────────────────────────────────────────────
+
+function HouseholdGroupHeader({ name, count, onRename, onDelete }: {
+  name: string; count: number;
+  onRename?: () => void; onDelete?: () => void;
+}) {
+  return (
+    <div className="flex items-center justify-between px-4 py-2 bg-muted/30 border-b border-border/50">
+      <p className="text-xs font-semibold text-heading">
+        {name} <span className="font-normal text-muted-foreground">· {count} guest{count !== 1 ? "s" : ""}</span>
+      </p>
+      {(onRename || onDelete) && (
+        <div className="flex items-center gap-1">
+          {onRename && (
+            <button type="button" onClick={onRename} className="p-1 text-muted-foreground hover:text-foreground rounded" title="Rename household">
+              <Pencil className="h-3 w-3" />
+            </button>
+          )}
+          {onDelete && (
+            <button type="button" onClick={onDelete} className="p-1 text-muted-foreground hover:text-destructive rounded" title="Delete household (guests stay, become unassigned)">
+              <Trash2 className="h-3 w-3" />
+            </button>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Main GuestSection export ──────────────────────────────────────────────────
 
 export function GuestSection({ token }: { token: string }) {
-  const [guests,    setGuests]    = React.useState<CoupleGuest[]>([]);
-  const [stats,     setStats]     = React.useState<GuestStats | null>(null);
-  const [insights,  setInsights]  = React.useState<RsvpInsights | null>(null);
-  const [questions, setQuestions] = React.useState<RsvpQuestion[]>([]);
-  const [loading,   setLoading]   = React.useState(true);
-  const [filter,    setFilter]    = React.useState<"all" | "attending" | "declined" | "pending">("all");
-  const [showAdd,        setShowAdd]        = React.useState(false);
-  const [addName,        setAddName]        = React.useState("");
-  const [addEmail,       setAddEmail]       = React.useState("");
-  const [addGroup,       setAddGroup]       = React.useState("");
-  const [addIsChild,     setAddIsChild]     = React.useState(false);
-  const [addPlusOne,     setAddPlusOne]     = React.useState(false);
-  const [addPlusOneName, setAddPlusOneName] = React.useState("");
-  const [adding,         setAdding]         = React.useState(false);
-  const [importing,      setImporting]      = React.useState(false);
+  const [guests,     setGuests]     = React.useState<CoupleGuest[]>([]);
+  const [households, setHouseholds] = React.useState<CoupleHousehold[]>([]);
+  const [stats,      setStats]      = React.useState<GuestStats | null>(null);
+  const [insights,   setInsights]   = React.useState<RsvpInsights | null>(null);
+  const [questions,  setQuestions]  = React.useState<RsvpQuestion[]>([]);
+  const [loading,    setLoading]    = React.useState(true);
+  const [filter,     setFilter]     = React.useState<"all" | "attending" | "declined" | "pending">("all");
+
+  const [showAdd,  setShowAdd]  = React.useState(false);
+  const [addFields, setAddFields] = React.useState<GuestFields>(emptyGuestFields);
+  const [adding,   setAdding]   = React.useState(false);
+
+  const [editingId,  setEditingId]  = React.useState<string | null>(null);
+  const [editFields, setEditFields] = React.useState<GuestFields>(emptyGuestFields);
+  const [saving,      setSaving]     = React.useState(false);
+
+  const [addingHousehold, setAddingHousehold] = React.useState(false);
+  const [newHouseholdName, setNewHouseholdName] = React.useState("");
+  const [renamingHouseholdId, setRenamingHouseholdId] = React.useState<string | null>(null);
+
+  const [importing, setImporting] = React.useState(false);
   const csvRef = React.useRef<HTMLInputElement>(null);
 
   async function loadAll() {
-    const [gRes, iRes, qRes] = await Promise.all([
+    const [gRes, iRes, qRes, hRes] = await Promise.all([
       fetch(`/api/portal/guests?token=${token}`).then(r => r.json()) as Promise<{ guests?: CoupleGuest[]; stats?: GuestStats }>,
       fetch(`/api/portal/rsvp-insights?token=${token}`).then(r => r.json()) as Promise<{ insights?: RsvpInsights }>,
       fetch(`/api/portal/rsvp-questions?token=${token}`).then(r => r.json()) as Promise<{ questions?: RsvpQuestion[] }>,
+      fetch(`/api/portal/households?token=${token}`).then(r => r.json()) as Promise<{ households?: CoupleHousehold[] }>,
     ]);
     setGuests(gRes.guests ?? []);
     setStats(gRes.stats ?? null);
     setInsights(iRes.insights ?? null);
     setQuestions(qRes.questions ?? []);
+    setHouseholds(hRes.households ?? []);
     setLoading(false);
   }
 
@@ -447,38 +566,109 @@ export function GuestSection({ token }: { token: string }) {
     setStats(d.stats ?? null);
   }
 
+  async function reloadHouseholds() {
+    const d = await fetch(`/api/portal/households?token=${token}`).then(r => r.json()) as { households?: CoupleHousehold[] };
+    setHouseholds(d.households ?? []);
+  }
+
   async function reloadInsights() {
     const d = await fetch(`/api/portal/rsvp-insights?token=${token}`).then(r => r.json()) as { insights?: RsvpInsights };
     setInsights(d.insights ?? null);
   }
 
+  /** Resolves a GuestFields' household choice into a real id, creating a new household first if needed. */
+  async function resolveHouseholdId(fields: GuestFields): Promise<string | null> {
+    if (fields.householdChoice === NEW_HOUSEHOLD) {
+      if (!fields.newHouseholdName.trim()) return null;
+      const res = await fetch("/api/portal/households", {
+        method: "POST", headers: { "content-type": "application/json" },
+        body: JSON.stringify({ token, name: fields.newHouseholdName.trim() }),
+      });
+      const data = await res.json() as { ok: boolean; householdId?: string };
+      if (data.ok && data.householdId) {
+        await reloadHouseholds();
+        return data.householdId;
+      }
+      return null;
+    }
+    return fields.householdChoice || null;
+  }
+
   async function handleAdd() {
-    if (!addName.trim()) return;
+    if (!addFields.name.trim()) return;
     setAdding(true);
-    const parts = addName.trim().split(" ");
+    const householdId = await resolveHouseholdId(addFields);
+    const parts = addFields.name.trim().split(" ");
     const res = await fetch("/api/portal/guests", {
       method: "POST", headers: { "content-type": "application/json" },
       body: JSON.stringify({
         token,
         firstName:   parts[0],
         lastName:    parts.slice(1).join(" ") || undefined,
-        email:       addEmail || undefined,
-        groupLabel:  addGroup || undefined,
-        isChild:     addIsChild,
-        plusOne:     addPlusOne,
-        plusOneName: addPlusOneName || undefined,
+        email:       addFields.email || undefined,
+        phone:       addFields.phone || undefined,
+        householdId,
+        isChild:     addFields.isChild,
+        plusOne:     addFields.plusOne,
+        plusOneName: addFields.plusOneName || undefined,
+        dietary:     addFields.dietary || undefined,
       }),
     });
     const data = await res.json() as { ok: boolean };
     if (data.ok) {
       await reloadGuests();
-      setAddName(""); setAddEmail(""); setAddGroup("");
-      setAddIsChild(false); setAddPlusOne(false); setAddPlusOneName("");
+      setAddFields(emptyGuestFields());
       setShowAdd(false);
     } else {
       toast.error("Could not add guest.");
     }
     setAdding(false);
+  }
+
+  function handleEditStart(guest: CoupleGuest) {
+    setEditingId(guest.id);
+    setEditFields({
+      name: [guest.firstName, guest.lastName].filter(Boolean).join(" "),
+      email: guest.email ?? "",
+      phone: guest.phone ?? "",
+      householdChoice: guest.householdId ?? NO_HOUSEHOLD,
+      newHouseholdName: "",
+      isChild: guest.isChild,
+      plusOne: guest.plusOne,
+      plusOneName: guest.plusOneName ?? "",
+      dietary: guest.dietary ?? "",
+    });
+  }
+
+  async function handleEditSave() {
+    if (!editingId || !editFields.name.trim()) return;
+    setSaving(true);
+    const householdId = await resolveHouseholdId(editFields);
+    const parts = editFields.name.trim().split(" ");
+    const res = await fetch("/api/portal/guests", {
+      method: "PATCH", headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        token, guestId: editingId,
+        firstName:   parts[0],
+        lastName:    parts.slice(1).join(" ") || undefined,
+        email:       editFields.email || undefined,
+        phone:       editFields.phone || undefined,
+        householdId,
+        isChild:     editFields.isChild,
+        plusOne:     editFields.plusOne,
+        plusOneName: editFields.plusOneName || undefined,
+        dietary:     editFields.dietary || undefined,
+      }),
+    });
+    const data = await res.json() as { ok: boolean };
+    if (data.ok) {
+      await reloadGuests();
+      setEditingId(null);
+      toast.success("Guest updated.");
+    } else {
+      toast.error("Could not save changes.");
+    }
+    setSaving(false);
   }
 
   async function handleRsvp(guestId: string, status: string) {
@@ -512,9 +702,41 @@ export function GuestSection({ token }: { token: string }) {
         body: JSON.stringify({ token, guests: parsed }),
       });
       const data = await res.json() as { ok: boolean; imported?: number };
-      if (data.ok) { toast.success(`${data.imported} guests imported.`); await reloadGuests(); }
+      if (data.ok) { toast.success(`${data.imported} guests imported.`); await reloadGuests(); await reloadHouseholds(); }
       else toast.error("Import failed. Check your CSV format.");
     } finally { setImporting(false); if (csvRef.current) csvRef.current.value = ""; }
+  }
+
+  async function handleCreateHousehold() {
+    if (!newHouseholdName.trim()) return;
+    const res = await fetch("/api/portal/households", {
+      method: "POST", headers: { "content-type": "application/json" },
+      body: JSON.stringify({ token, name: newHouseholdName.trim() }),
+    });
+    const data = await res.json() as { ok: boolean };
+    if (data.ok) { await reloadHouseholds(); setNewHouseholdName(""); setAddingHousehold(false); }
+    else toast.error("Could not create household.");
+  }
+
+  async function handleRenameHousehold(id: string, name: string) {
+    if (!name.trim()) return;
+    const res = await fetch("/api/portal/households", {
+      method: "POST", headers: { "content-type": "application/json" },
+      body: JSON.stringify({ token, id, name: name.trim() }),
+    });
+    const data = await res.json() as { ok: boolean };
+    if (data.ok) { await reloadHouseholds(); setRenamingHouseholdId(null); }
+    else toast.error("Could not rename household.");
+  }
+
+  async function handleDeleteHousehold(id: string) {
+    const res = await fetch("/api/portal/households", {
+      method: "DELETE", headers: { "content-type": "application/json" },
+      body: JSON.stringify({ token, householdId: id }),
+    });
+    const data = await res.json() as { ok: boolean };
+    if (data.ok) { await reloadHouseholds(); await reloadGuests(); toast.success("Household removed — guests were kept, just unassigned."); }
+    else toast.error("Could not delete household.");
   }
 
   async function sendReminders() {
@@ -530,6 +752,17 @@ export function GuestSection({ token }: { token: string }) {
   }
 
   const filtered = filter === "all" ? guests : guests.filter(g => g.rsvpStatus === filter);
+
+  // Organize by household — this is the primary organizational unit (Guest &
+  // Household Foundation), not a re-typed label. Every household appears even
+  // if none of its members survive the current filter, so the couple can see
+  // their households are still there; a household with zero matching guests
+  // just renders empty under the current filter.
+  const householdGroups = households.map(h => ({
+    household: h,
+    guests: filtered.filter(g => g.householdId === h.id),
+  }));
+  const unassigned = filtered.filter(g => !g.householdId);
 
   if (loading) {
     return (
@@ -581,63 +814,96 @@ export function GuestSection({ token }: { token: string }) {
         </div>
       )}
 
-      {/* Guest list */}
+      {/* Guest list — organized by household */}
       {guests.length === 0 && !showAdd ? (
         <div className="rounded-2xl border border-dashed border-border py-10 text-center space-y-3 px-4">
           <Users className="h-8 w-8 text-muted-foreground mx-auto" />
           <p className="text-sm font-medium text-heading">No guests yet</p>
           <p className="text-xs text-muted-foreground">Add guests one at a time or import a CSV file.</p>
-          <p className="text-[10px] text-muted-foreground">CSV format: First Name, Last Name, Email, Group</p>
-        </div>
-      ) : filtered.length > 0 ? (
-        <div className="rounded-2xl border border-border bg-card overflow-hidden">
-          {filtered.map(g => (
-            <GuestRow key={g.id} guest={g} token={token}
-              onDelete={handleDelete}
-              onStatusChange={handleRsvp} />
-          ))}
+          <p className="text-[10px] text-muted-foreground">CSV format: First Name, Last Name, Email, Household</p>
         </div>
       ) : (
-        <div className="rounded-xl border border-dashed border-border py-8 text-center">
-          <p className="text-sm text-muted-foreground">No {filter} guests.</p>
+        <div className="space-y-3">
+          {householdGroups.filter(hg => hg.guests.length > 0 || filter === "all").map(({ household, guests: hGuests }) => (
+            <div key={household.id} className="rounded-2xl border border-border bg-card overflow-hidden">
+              {renamingHouseholdId === household.id ? (
+                <div className="flex items-center gap-2 px-4 py-2 bg-muted/30 border-b border-border/50">
+                  <input
+                    defaultValue={household.name}
+                    autoFocus
+                    onKeyDown={e => { if (e.key === "Enter") handleRenameHousehold(household.id, (e.target as HTMLInputElement).value); if (e.key === "Escape") setRenamingHouseholdId(null); }}
+                    className="flex-1 rounded-lg border border-border bg-background px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-ring"
+                    id={`rename-${household.id}`}
+                  />
+                  <button type="button" onClick={() => handleRenameHousehold(household.id, (document.getElementById(`rename-${household.id}`) as HTMLInputElement).value)}
+                    className="p-1 text-muted-foreground hover:text-foreground"><Check className="h-3.5 w-3.5" /></button>
+                  <button type="button" onClick={() => setRenamingHouseholdId(null)}
+                    className="p-1 text-muted-foreground hover:text-foreground"><X className="h-3.5 w-3.5" /></button>
+                </div>
+              ) : (
+                <HouseholdGroupHeader
+                  name={household.name} count={hGuests.length}
+                  onRename={() => setRenamingHouseholdId(household.id)}
+                  onDelete={() => handleDeleteHousehold(household.id)}
+                />
+              )}
+              {hGuests.length === 0 ? (
+                <p className="px-4 py-3 text-xs text-muted-foreground">No guests in this household{filter !== "all" ? ` are ${filter}` : " yet"}.</p>
+              ) : hGuests.map(g => (
+                editingId === g.id ? (
+                  <div key={g.id} className="border-b border-border/50 last:border-0 p-4 space-y-2.5 bg-muted/10">
+                    <GuestFieldsForm fields={editFields} setFields={setEditFields} households={households} />
+                    <div className="flex gap-2 justify-end pt-1">
+                      <button type="button" onClick={() => setEditingId(null)} className="text-sm text-muted-foreground px-3 py-1.5 rounded-lg hover:bg-muted">Cancel</button>
+                      <button type="button" onClick={handleEditSave} disabled={!editFields.name.trim() || saving}
+                        className="text-sm font-medium px-4 py-1.5 rounded-lg text-white disabled:opacity-50" style={{ background: "#5D6F5D" }}>
+                        {saving ? "Saving…" : "Save Changes"}
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <GuestRow key={g.id} guest={g} onDelete={handleDelete} onStatusChange={handleRsvp} onEditStart={handleEditStart} />
+                )
+              ))}
+            </div>
+          ))}
+
+          {(unassigned.length > 0 || households.length === 0) && (
+            <div className="rounded-2xl border border-border bg-card overflow-hidden">
+              {households.length > 0 && (
+                <HouseholdGroupHeader name="Unassigned" count={unassigned.length} />
+              )}
+              {unassigned.length === 0 ? (
+                <p className="px-4 py-3 text-xs text-muted-foreground">No {filter !== "all" ? `${filter} ` : ""}guests here.</p>
+              ) : unassigned.map(g => (
+                editingId === g.id ? (
+                  <div key={g.id} className="border-b border-border/50 last:border-0 p-4 space-y-2.5 bg-muted/10">
+                    <GuestFieldsForm fields={editFields} setFields={setEditFields} households={households} />
+                    <div className="flex gap-2 justify-end pt-1">
+                      <button type="button" onClick={() => setEditingId(null)} className="text-sm text-muted-foreground px-3 py-1.5 rounded-lg hover:bg-muted">Cancel</button>
+                      <button type="button" onClick={handleEditSave} disabled={!editFields.name.trim() || saving}
+                        className="text-sm font-medium px-4 py-1.5 rounded-lg text-white disabled:opacity-50" style={{ background: "#5D6F5D" }}>
+                        {saving ? "Saving…" : "Save Changes"}
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <GuestRow key={g.id} guest={g} onDelete={handleDelete} onStatusChange={handleRsvp} onEditStart={handleEditStart} />
+                )
+              ))}
+            </div>
+          )}
         </div>
       )}
 
       {/* Add guest form */}
       {showAdd ? (
-        <div className="rounded-2xl border border-ring bg-card p-4 space-y-3">
-          <input value={addName} onChange={e => setAddName(e.target.value)} placeholder="Full name *" autoFocus
-            onKeyDown={e => e.key === "Enter" && handleAdd()}
-            className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring" />
-          <input value={addEmail} onChange={e => setAddEmail(e.target.value)} placeholder="Email (optional)"
-            className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring" />
-          <input value={addGroup} onChange={e => setAddGroup(e.target.value)} placeholder="Family or group — The Johnsons, College Friends…"
-            className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring" />
-
-          {/* Child + plus-one toggles */}
-          <div className="flex flex-wrap gap-x-5 gap-y-2 pt-0.5">
-            <label className="flex items-center gap-2 text-sm cursor-pointer select-none">
-              <input type="checkbox" checked={addIsChild} onChange={e => setAddIsChild(e.target.checked)}
-                className="h-3.5 w-3.5 rounded accent-[#5D6F5D]" />
-              <span className="text-muted-foreground">Child guest</span>
-            </label>
-            <label className="flex items-center gap-2 text-sm cursor-pointer select-none">
-              <input type="checkbox" checked={addPlusOne} onChange={e => { setAddPlusOne(e.target.checked); if (!e.target.checked) setAddPlusOneName(""); }}
-                className="h-3.5 w-3.5 rounded accent-[#5D6F5D]" />
-              <span className="text-muted-foreground">Brings a +1</span>
-            </label>
-          </div>
-
-          {addPlusOne && (
-            <input value={addPlusOneName} onChange={e => setAddPlusOneName(e.target.value)}
-              placeholder="+1 name (optional — leave blank if unknown)"
-              className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring" />
-          )}
-
+        <div className="rounded-2xl border border-ring bg-card p-4 space-y-2.5">
+          <GuestFieldsForm fields={addFields} setFields={setAddFields} households={households} autoFocus onEnter={handleAdd} />
           <div className="flex gap-2 justify-end pt-0.5">
-            <button type="button" onClick={() => { setShowAdd(false); setAddIsChild(false); setAddPlusOne(false); setAddPlusOneName(""); }}
+            <button type="button" onClick={() => { setShowAdd(false); setAddFields(emptyGuestFields()); }}
               className="text-sm text-muted-foreground px-3 py-1.5 rounded-lg hover:bg-muted">Cancel</button>
-            <button type="button" onClick={handleAdd} disabled={!addName.trim() || adding}
+            <button type="button" onClick={handleAdd} disabled={!addFields.name.trim() || adding}
               className="text-sm font-medium px-4 py-1.5 rounded-lg text-white disabled:opacity-50"
               style={{ background: "#5D6F5D" }}>
               {adding ? "Adding…" : "Add Guest"}
@@ -656,6 +922,33 @@ export function GuestSection({ token }: { token: string }) {
           </label>
         </div>
       )}
+
+      {/* Household management */}
+      <div className="border border-border rounded-2xl p-4 space-y-2.5">
+        <p className="text-sm font-medium text-heading">Households</p>
+        <p className="text-xs text-muted-foreground">
+          Group guests into households — families, friend groups, whoever comes together — so you can organize your list the way you actually think about it.
+        </p>
+        {addingHousehold ? (
+          <div className="flex gap-2">
+            <input value={newHouseholdName} onChange={e => setNewHouseholdName(e.target.value)}
+              onKeyDown={e => e.key === "Enter" && handleCreateHousehold()}
+              placeholder="Household name — The Smiths, College Friends…" autoFocus
+              className="flex-1 rounded-lg border border-border bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring" />
+            <button type="button" onClick={handleCreateHousehold} disabled={!newHouseholdName.trim()}
+              className="text-sm font-medium px-3 py-1.5 rounded-lg text-white disabled:opacity-50" style={{ background: "#5D6F5D" }}>
+              Add
+            </button>
+            <button type="button" onClick={() => { setAddingHousehold(false); setNewHouseholdName(""); }}
+              className="text-sm text-muted-foreground px-3 py-1.5 rounded-lg hover:bg-muted">Cancel</button>
+          </div>
+        ) : (
+          <button type="button" onClick={() => setAddingHousehold(true)}
+            className="flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg border border-border hover:bg-muted/40 transition-colors">
+            <Plus className="h-3.5 w-3.5" /> New Household
+          </button>
+        )}
+      </div>
 
       {/* RSVP Question Manager */}
       <QuestionManager token={token} questions={questions}

@@ -20,7 +20,7 @@ const PREF_ROWS: { key: PrefKey; emoji: string; label: string; desc: string }[] 
     key:   "prefNewLead",
     emoji: "✨",
     label: "New inquiry",
-    desc:  "A couple submits an inquiry form or is added manually.",
+    desc:  "A client submits an inquiry form or is added manually.",
   },
   {
     key:   "prefRsvpReceived",
@@ -32,7 +32,7 @@ const PREF_ROWS: { key: PrefKey; emoji: string; label: string; desc: string }[] 
     key:   "prefTaskCompleted",
     emoji: "✅",
     label: "Task completed",
-    desc:  "A couple or vendor marks a task as done.",
+    desc:  "A client or vendor marks a task as done.",
   },
   {
     key:   "prefVendorCheckedIn",
@@ -44,19 +44,19 @@ const PREF_ROWS: { key: PrefKey; emoji: string; label: string; desc: string }[] 
     key:   "prefFeedbackReceived",
     emoji: "💗",
     label: "Feedback received",
-    desc:  "A couple submits their post-wedding feedback.",
+    desc:  "A client submits their post-wedding feedback.",
   },
   {
     key:   "prefReferralReceived",
     emoji: "💍",
     label: "Referral received",
-    desc:  "A couple refers someone from their network.",
+    desc:  "A client refers someone from their network.",
   },
   {
     key:   "prefMessageReceived",
     emoji: "💬",
     label: "Message received",
-    desc:  "An inbound message arrives from a couple or lead.",
+    desc:  "An inbound message arrives from a client or lead.",
   },
 ];
 

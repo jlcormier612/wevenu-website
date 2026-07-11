@@ -338,7 +338,7 @@ export function EventFeedbackSection({ eventId }: { eventId: string }) {
         <p className="text-2xl mb-3">💗</p>
         <p className="text-sm font-semibold text-heading mb-1">No feedback yet</p>
         <p className="text-xs text-muted-foreground max-w-xs mx-auto">
-          Feedback, referrals, and shared memories from the couple will appear here
+          Feedback, referrals, and shared memories from the client will appear here
           after the wedding — when Luv gently prompts them in their portal.
         </p>
       </div>
@@ -353,7 +353,7 @@ export function EventFeedbackSection({ eventId }: { eventId: string }) {
         <div className="rounded-2xl border p-5 space-y-1">
           <div className="flex items-center gap-2 mb-4">
             <span className="text-base">💗</span>
-            <p className="text-sm font-semibold text-heading">Couple Feedback</p>
+            <p className="text-sm font-semibold text-heading">Client Feedback</p>
             <span className="ml-auto text-[10px] text-muted-foreground">Private · not public</span>
           </div>
           <FeedbackPanel

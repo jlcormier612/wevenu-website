@@ -34,7 +34,7 @@ export async function runPostTourAutomation(
   newStatus: string,
 ): Promise<void> {
   const { supabase, venueId, leadId, contactName, scheduledAt } = ctx;
-  const name = contactName ?? "the couple";
+  const name = contactName ?? "the prospective client";
 
   if (newStatus === "completed") {
     await handleCompleted(supabase, venueId, leadId, name, scheduledAt);

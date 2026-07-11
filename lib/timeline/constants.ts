@@ -116,3 +116,17 @@ export function formatTime(hhmm: string | null | undefined): string {
     minute: "2-digit",
   });
 }
+
+/**
+ * Upcoming / Today / Complete — a single-day event's timeline has no due
+ * dates of its own, so "due" only ever means relative to the event day
+ * itself (Timeline Experience Completion task).
+ */
+export function getDueStatus(
+  status: import("@/lib/timeline/types").TimelineEntryStatus,
+  eventDate: string | null,
+): import("@/lib/timeline/types").TimelineDueStatus {
+  if (status === "complete") return "complete";
+  if (eventDate && eventDate === new Date().toISOString().slice(0, 10)) return "today";
+  return "upcoming";
+}

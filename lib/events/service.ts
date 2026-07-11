@@ -4,6 +4,7 @@
 import { createClient } from "@/integrations/supabase/server";
 import { isSupabaseConfigured } from "@/lib/env";
 import * as repo from "@/lib/events/repository";
+import { recalculateEventTaskDueDates } from "@/lib/playbooks/service";
 import type {
   CreateEventResult,
   EventActionResult,
@@ -75,8 +76,18 @@ export async function updateEvent_(eventId: string, input: EventInput): Promise<
     // TR-B1: hard double-booking guard — see lib/events/repository.ts
     const conflict = await repo.checkEventSpaceConflict(supabase, venueId, input, eventId);
     if (conflict.conflict) return { ok: false, message: conflict.message } as EventActionResult;
+
+    const before = await repo.getEvent(supabase, venueId, eventId);
     await repo.updateEvent(supabase, venueId, eventId, input);
     await repo.insertEventActivity(supabase, venueId, eventId, "event_updated", "Event details updated");
+
+    // Product Decisions (2026-07-08): relative due dates stay synchronized
+    // with the event date automatically, until a task is explicitly
+    // overridden. lib/playbooks handles which tasks that applies to.
+    if (before && before.eventDate !== input.eventDate) {
+      await recalculateEventTaskDueDates(eventId, input.eventDate);
+    }
+
     return { ok: true } as EventActionResult;
   });
   return result as EventActionResult;

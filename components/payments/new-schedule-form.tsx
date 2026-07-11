@@ -75,7 +75,11 @@ export function NewScheduleForm({
       )}
       <div className="grid gap-4 sm:grid-cols-2">
         <Field label="Client *" htmlFor="ps-client" error={errors.clientId}>
-          <Select value={input.clientId} onValueChange={handleClientChange}>
+          <Select
+            value={input.clientId}
+            onValueChange={handleClientChange}
+            items={clients.map((c) => ({ value: c.id, label: clientDisplayName(c.firstName, c.lastName, c.partnerFirstName, c.partnerLastName) }))}
+          >
             <SelectTrigger id="ps-client" aria-invalid={errors.clientId ? true : undefined}>
               <SelectValue placeholder="Select a client" />
             </SelectTrigger>
@@ -98,7 +102,7 @@ export function NewScheduleForm({
       <Field label="Schedule title *" htmlFor="ps-title" error={errors.title}>
         <Input id="ps-title" value={input.title}
           onChange={(e) => { setInput((p) => ({ ...p, title: e.target.value })); setErrors((p) => { const n = {...p}; delete n.title; return n; }); }}
-          placeholder="Payment Schedule — Couple Name" aria-invalid={errors.title ? true : undefined} />
+          placeholder="Payment Schedule — Client Name" aria-invalid={errors.title ? true : undefined} />
       </Field>
 
       <Separator />

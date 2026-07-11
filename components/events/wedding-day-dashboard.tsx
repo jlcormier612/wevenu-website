@@ -130,7 +130,7 @@ function relationshipLabel(rel: string | null): string {
 const OWNER_GROUPS: { key: string; label: string; emoji: string; matches: string[] }[] = [
   { key: "venue",  label: "Venue",   emoji: "🏛️", matches: ["coordinator", "team", "venue"] },
   { key: "vendor", label: "Vendors", emoji: "🤝", matches: ["vendor"] },
-  { key: "couple", label: "Couple",  emoji: "💍", matches: ["couple", "client"] },
+  { key: "couple", label: "Client",  emoji: "💍", matches: ["couple", "client"] },
 ];
 
 function groupTasks(tasks: DayTask[]): { group: typeof OWNER_GROUPS[0]; tasks: DayTask[] }[] {

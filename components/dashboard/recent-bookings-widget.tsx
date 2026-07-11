@@ -28,7 +28,7 @@ export function RecentBookingsWidget({
           <PartyPopper className="h-4 w-4 text-primary" />
           Recent Bookings
         </CardTitle>
-        <CardDescription>Your most recently booked couples.</CardDescription>
+        <CardDescription>Your most recently booked clients.</CardDescription>
       </CardHeader>
       <CardContent>
         {bookings.length === 0 ? (

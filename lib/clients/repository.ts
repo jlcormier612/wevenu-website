@@ -26,7 +26,7 @@ type ClientRow = {
   event_date: string | null; end_date: string | null;
   guest_count: number | null; ceremony_time: string | null;
   reception_time: string | null; rehearsal_date: string | null;
-  internal_notes: string | null; created_at: string; updated_at: string;
+  internal_notes: string | null; relationship_id: string | null; created_at: string; updated_at: string;
 };
 type NoteRow  = { id: string; venue_id: string; client_id: string; body: string; created_at: string; updated_at: string; };
 type KDRow    = { id: string; venue_id: string; client_id: string; label: string; date: string; note: string | null; created_at: string; };
@@ -40,7 +40,8 @@ function mapClient(r: ClientRow): Client {
     partnerEmail: r.partner_email, eventType: r.event_type, eventDate: r.event_date,
     endDate: r.end_date, guestCount: r.guest_count, ceremonyTime: r.ceremony_time,
     receptionTime: r.reception_time, rehearsalDate: r.rehearsal_date,
-    internalNotes: r.internal_notes, createdAt: r.created_at, updatedAt: r.updated_at,
+    internalNotes: r.internal_notes, relationshipId: r.relationship_id ?? null,
+    createdAt: r.created_at, updatedAt: r.updated_at,
   };
 }
 const mapNote = (r: NoteRow): ClientNote => ({ id: r.id, venueId: r.venue_id, clientId: r.client_id, body: r.body, createdAt: r.created_at, updatedAt: r.updated_at });
@@ -109,8 +110,32 @@ function toClientRow(venueId: string, input: ClientInput, leadId?: string | null
 }
 
 export async function insertClient(client: DbClient, venueId: string, input: ClientInput, leadId?: string | null): Promise<string> {
+  // Program 2 Phase 2B: every Client resolves a relationship_id at create
+  // time, regardless of origin. Converted-from-a-Lead clients inherit the
+  // Lead's already-resolved relationship (no extra round trip); directly
+  // created clients (no Lead) resolve/create one via the same shared
+  // function every other entry point uses — this is the fix for the
+  // "Client with no Lead has no Conversation" gap named in
+  // docs/architecture-delta-phase-2a-backend.md.
+  let relationshipId: string | null = null;
+  if (leadId) {
+    const { data: lead, error: leadErr } = await client
+      .from("leads").select("relationship_id").eq("id", leadId).maybeSingle<{ relationship_id: string | null }>();
+    if (leadErr) throw leadErr;
+    relationshipId = lead?.relationship_id ?? null;
+  } else {
+    const { data: relId, error: relErr } = await client.rpc("find_or_create_relationship", {
+      p_venue_id: venueId,
+      p_email: input.email.trim() || null,
+      p_first_name: input.firstName.trim(),
+      p_last_name: input.lastName.trim(),
+    });
+    if (relErr) throw relErr;
+    relationshipId = relId;
+  }
+
   const { data, error } = await client.from("clients")
-    .insert(toClientRow(venueId, input, leadId))
+    .insert({ ...toClientRow(venueId, input, leadId), relationship_id: relationshipId })
     .select("id").single<{ id: string }>();
   if (error) throw error;
   return data.id;

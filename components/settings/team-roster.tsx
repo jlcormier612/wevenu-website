@@ -241,7 +241,11 @@ export function TeamRoster({ initialMembers, venueId: _venueId }: Props) {
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="team-role" className="text-xs">Role</Label>
-            <Select value={role} onValueChange={(v) => setRole(v as StaffRole)}>
+            <Select
+              value={role}
+              onValueChange={(v) => setRole(v as StaffRole)}
+              items={{ manager: "Manager", coordinator: "Coordinator", staff: "Staff" }}
+            >
               <SelectTrigger id="team-role">
                 <SelectValue />
               </SelectTrigger>

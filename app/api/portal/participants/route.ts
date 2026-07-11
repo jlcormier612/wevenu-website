@@ -12,6 +12,7 @@
 
 import { NextResponse } from "next/server";
 import { createClient } from "@/integrations/supabase/server";
+import { sendEmail } from "@/lib/email/send";
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -51,6 +52,33 @@ export async function POST(request: Request) {
     p_permission_level: permissionLevel ?? "planning",
   });
   if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
+  if (data?.ok && data?.inviteToken) {
+    const { data: preview } = await supabase.rpc("get_couple_participant_invitation_by_token", { p_token: data.inviteToken });
+    if (preview) {
+      const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://app.wevenu.com";
+      const acceptUrl = `${baseUrl}/client/accept-participant?token=${data.inviteToken}`;
+      await sendEmail({
+        to: email.trim(),
+        subject: `${preview.coupleName} invited you to their planning workspace`,
+        text: [
+          `Hi ${firstName.trim()},`,
+          "",
+          `${preview.coupleName} invited you to help plan their celebration with ${preview.venueName}.`,
+          "",
+          "Create your account here:",
+          acceptUrl,
+          "",
+          "This link is personal to you — please don't share it.",
+        ].join("\n"),
+        html: [
+          `<p>Hi ${firstName.trim()},</p>`,
+          `<p>${preview.coupleName} invited you to help plan their celebration with ${preview.venueName}.</p>`,
+          `<p><a href="${acceptUrl}" style="background:#D8A7AA;color:#fff;padding:10px 20px;border-radius:8px;text-decoration:none;display:inline-block;">Create Your Account</a></p>`,
+          `<p style="color:#888;font-size:12px;">This link is personal to you — please don't share it.</p>`,
+        ].join(""),
+      });
+    }
+  }
   return NextResponse.json(data ?? { ok: false, error: "Unknown error." });
 }
 

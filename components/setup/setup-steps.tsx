@@ -170,7 +170,10 @@ function SelectField({
       error={error}
       hint={hint}
     >
-      <Select value={value} onValueChange={onValueChange}>
+      {/* `items` is what makes Select.Value show the matched option's
+          label instead of the raw stored value — Base UI, unlike Radix,
+          doesn't derive that automatically from the rendered SelectItems. */}
+      <Select value={value} onValueChange={onValueChange} items={options}>
         <SelectTrigger id={id} aria-invalid={error ? true : undefined}>
           <SelectValue placeholder={placeholder ?? "Select…"} />
         </SelectTrigger>

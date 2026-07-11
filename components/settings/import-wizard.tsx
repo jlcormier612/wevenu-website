@@ -12,25 +12,28 @@ import {
   type EntityType, type FieldMapping, type ImportResult,
 } from "@/lib/import/types";
 import {
-  getSampleValue, validateRequiredFields,
+  buildTemplateCsv, getSampleValue, validateRequiredFields,
   rowToClientInput, rowToLeadInput, rowToVendorInput,
   loadSavedMapping, saveMapping,
 } from "@/lib/import/utils";
-import { importCouplesAction, importLeadsAction, importVendorsAction } from "@/app/(app)/settings/import/actions";
+import {
+  importCouplesAction, importLeadsAction, importVendorsAction,
+  parseImportFileAction, parseImportTextAction,
+} from "@/app/(app)/settings/import/actions";
 
 type CsvRow = Record<string, string>;
 
 const ENTITY_META: Record<EntityType, { label: string; resultPath: string; description: string }> = {
-  couples: { label: "Couples",  resultPath: "/clients",  description: "Import existing bookings as couples with linked events." },
+  couples: { label: "Clients",  resultPath: "/clients",  description: "Import existing bookings as clients with linked events." },
   leads:   { label: "Leads",    resultPath: "/leads",    description: "Import prospect inquiries into your leads pipeline." },
   vendors: { label: "Vendors",  resultPath: "/vendors",  description: "Import your existing vendor contacts and relationships." },
 };
 
 const NEXT_STEP: Record<EntityType, { cta: string; href: string; detail: string }> = {
   couples: {
-    cta:    "Invite couples to the portal",
+    cta:    "Invite clients to the portal",
     href:   "/clients",
-    detail: "Your first couple in the portal is your biggest activation milestone — and they'll love having a planning home.",
+    detail: "Your first client in the portal is your biggest activation milestone — and they'll love having a planning home.",
   },
   leads: {
     cta:    "Follow up with your leads",
@@ -71,6 +74,22 @@ function StepEntitySelect({ onSelect }: { onSelect: (e: EntityType) => void }) {
 }
 
 // ── Step 1: Upload ────────────────────────────────────────────────────────────
+// Five sources, one destination: headers + rows into the same map → preview
+// → import flow. CSV/Excel parse to real columns deterministically. A pasted
+// list that already looks columnar parses the same way. Word, PDF, and any
+// pasted text that doesn't look columnar all hand off to Luv, which proposes
+// structured rows for review — never saved until the coordinator confirms
+// them in the steps that follow (Vendor Management — Next Iteration, 2026-07-10).
+
+const ACCEPTED_EXTENSIONS = ".csv,.xlsx,.xls,.docx,.pdf";
+
+function looksTabular(text: string): boolean {
+  const lines = text.trim().split("\n").filter(Boolean);
+  if (lines.length < 2) return false;
+  const delimiterCount = (line: string) => Math.max((line.match(/\t/g) ?? []).length, (line.match(/,/g) ?? []).length);
+  const first = delimiterCount(lines[0]);
+  return first > 0 && lines.slice(1, 5).every((l) => delimiterCount(l) === first);
+}
 
 function StepUpload({
   entity,
@@ -78,18 +97,17 @@ function StepUpload({
   onBack,
 }: {
   entity: EntityType;
-  onParsed: (headers: string[], rows: CsvRow[], filename: string) => void;
+  onParsed: (headers: string[], rows: CsvRow[], filename: string, assisted: boolean) => void;
   onBack: () => void;
 }) {
   const [dragging, setDragging] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
+  const [working, setWorking] = React.useState(false);
+  const [pasteText, setPasteText] = React.useState("");
+  const [showPaste, setShowPaste] = React.useState(false);
   const inputRef = React.useRef<HTMLInputElement>(null);
 
-  function parseFile(file: File) {
-    if (!file.name.endsWith(".csv")) {
-      setError("Only CSV files are supported.");
-      return;
-    }
+  function parseCsv(file: File) {
     Papa.parse<CsvRow>(file, {
       header: true,
       skipEmptyLines: true,
@@ -97,31 +115,94 @@ function StepUpload({
         const headers = result.meta.fields ?? [];
         if (headers.length === 0) { setError("CSV has no column headers."); return; }
         if (result.data.length === 0) { setError("CSV has no data rows."); return; }
-        onParsed(headers, result.data, file.name);
+        onParsed(headers, result.data, file.name, false);
       },
       error(err) { setError(err.message); },
     });
   }
 
+  async function parseViaServer(file: File) {
+    setWorking(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const result = await parseImportFileAction(formData, entity);
+      if (!result.ok) { setError(result.message); return; }
+      onParsed(result.headers, result.rows as CsvRow[], file.name, result.assisted);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Couldn't read this file.");
+    } finally {
+      setWorking(false);
+    }
+  }
+
   function handleFiles(files: FileList | null) {
     if (!files || files.length === 0) return;
     setError(null);
-    parseFile(files[0]);
+    const file = files[0];
+    const name = file.name.toLowerCase();
+    if (name.endsWith(".csv")) parseCsv(file);
+    else if (name.endsWith(".xlsx") || name.endsWith(".xls") || name.endsWith(".docx") || name.endsWith(".pdf")) void parseViaServer(file);
+    else setError("That file type isn't supported. Try .csv, .xlsx, .docx, .pdf, or paste your list below.");
+  }
+
+  async function handlePasteSubmit() {
+    if (!pasteText.trim()) return;
+    setError(null);
+    if (looksTabular(pasteText)) {
+      const result = Papa.parse<CsvRow>(pasteText.trim(), { header: true, skipEmptyLines: true });
+      const headers = result.meta.fields ?? [];
+      if (headers.length > 0 && result.data.length > 0) {
+        onParsed(headers, result.data, "Pasted list", false);
+        return;
+      }
+    }
+    // Doesn't look like clean columns — hand off to Luv.
+    setWorking(true);
+    try {
+      const result = await parseImportTextAction(pasteText, entity);
+      if (!result.ok) { setError(result.message); return; }
+      onParsed(result.headers, result.rows as CsvRow[], "Pasted list", result.assisted);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Couldn't process this text.");
+    } finally {
+      setWorking(false);
+    }
+  }
+
+  function handleDownloadTemplate() {
+    const csv = buildTemplateCsv(entity);
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `wevenu-${entity}-template.csv`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
   }
 
   return (
     <div className="space-y-4">
       <div>
-        <h2 className="text-base font-semibold text-foreground">Upload your CSV</h2>
+        <h2 className="text-base font-semibold text-foreground">Bring in what you already have</h2>
         <p className="text-sm text-muted-foreground mt-1">
-          Importing <span className="font-medium text-foreground">{ENTITY_META[entity].label}</span>. Any CSV export works — column names don&apos;t need to match ours.
+          Importing <span className="font-medium text-foreground">{ENTITY_META[entity].label}</span>. CSV, Excel, Word, PDF, or just paste a list — column names don&apos;t need to match ours, you&apos;ll map (or confirm) them on the next step.
         </p>
+        <button
+          type="button"
+          onClick={handleDownloadTemplate}
+          className="mt-2 text-xs font-medium text-primary hover:underline"
+        >
+          Download a template CSV for {ENTITY_META[entity].label.toLowerCase()}
+        </button>
       </div>
 
       <div
         className={`rounded-xl border-2 border-dashed transition-colors cursor-pointer py-12 flex flex-col items-center gap-3 ${
           dragging ? "border-primary bg-accent" : "border-border hover:border-muted-foreground"
-        }`}
+        } ${working ? "pointer-events-none opacity-60" : ""}`}
         onClick={() => inputRef.current?.click()}
         onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
         onDragLeave={() => setDragging(false)}
@@ -129,16 +210,36 @@ function StepUpload({
       >
         <Upload className="h-8 w-8 text-muted-foreground" />
         <div className="text-center">
-          <p className="text-sm font-medium text-foreground">Drop your CSV here or click to browse</p>
-          <p className="text-xs text-muted-foreground mt-1">Exports from HoneyBook, Aisle Planner, or any spreadsheet</p>
+          <p className="text-sm font-medium text-foreground">{working ? "Reading your file…" : "Drop a file here or click to browse"}</p>
+          <p className="text-xs text-muted-foreground mt-1">CSV, Excel (.xlsx), Word (.docx), or PDF</p>
         </div>
         <input
           ref={inputRef}
           type="file"
-          accept=".csv"
+          accept={ACCEPTED_EXTENSIONS}
           className="hidden"
           onChange={(e) => handleFiles(e.target.files)}
         />
+      </div>
+
+      <div>
+        <button type="button" onClick={() => setShowPaste((v) => !v)} className="text-xs font-medium text-muted-foreground hover:text-foreground transition-colors">
+          {showPaste ? "Hide paste box" : "Or paste your list instead"}
+        </button>
+        {showPaste && (
+          <div className="mt-2 space-y-2">
+            <textarea
+              value={pasteText}
+              onChange={(e) => setPasteText(e.target.value)}
+              rows={6}
+              placeholder="Paste anything — a table copied from a spreadsheet, or a plain list like &quot;ABC Florals, Jane Smith, jane@abcflorals.com, 555-1234&quot;."
+              className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+            />
+            <Button type="button" size="sm" onClick={handlePasteSubmit} disabled={!pasteText.trim() || working}>
+              {working ? "Reading…" : "Use this list"}
+            </Button>
+          </div>
+        )}
       </div>
 
       {error && (
@@ -238,6 +339,7 @@ function StepPreview({
   entity,
   rows,
   mapping,
+  assisted,
   onImport,
   onBack,
   isPending,
@@ -245,6 +347,7 @@ function StepPreview({
   entity: EntityType;
   rows: CsvRow[];
   mapping: FieldMapping;
+  assisted: boolean;
   onImport: () => void;
   onBack: () => void;
   isPending: boolean;
@@ -261,6 +364,11 @@ function StepPreview({
           {readyCount} of {rows.length} rows are ready to import
           {issueCount > 0 && <span className="text-destructive"> · {issueCount} have missing required fields (will be skipped)</span>}
         </p>
+        {assisted && (
+          <p className="text-xs text-primary mt-1.5 rounded-md bg-primary/5 px-2 py-1 inline-block">
+            Luv helped structure this from your document — double-check each row before importing.
+          </p>
+        )}
       </div>
 
       <div className="overflow-x-auto rounded-xl border border-border">
@@ -461,6 +569,7 @@ export function ImportWizard({ initialEntity }: { initialEntity?: EntityType }) 
   const [rows, setRows]         = React.useState<CsvRow[]>([]);
   const [filename, setFilename] = React.useState("");
   const [mapping, setMapping]   = React.useState<FieldMapping>({});
+  const [assisted, setAssisted] = React.useState(false);
   const [result, setResult]     = React.useState<ImportResult | null>(null);
   const [pending, startTransition] = useTransition();
 
@@ -469,10 +578,11 @@ export function ImportWizard({ initialEntity }: { initialEntity?: EntityType }) 
     setStep(1);
   }
 
-  function handleParsed(h: string[], r: CsvRow[], name: string) {
+  function handleParsed(h: string[], r: CsvRow[], name: string, wasAssisted: boolean) {
     setHeaders(h);
     setRows(r);
     setFilename(name);
+    setAssisted(wasAssisted);
     // Auto-populate saved mapping if headers match
     const saved = loadSavedMapping(entity!, h);
     if (saved) {
@@ -521,6 +631,7 @@ export function ImportWizard({ initialEntity }: { initialEntity?: EntityType }) 
     setRows([]);
     setFilename("");
     setMapping({});
+    setAssisted(false);
     setResult(null);
   }
 
@@ -560,6 +671,7 @@ export function ImportWizard({ initialEntity }: { initialEntity?: EntityType }) 
           entity={entity}
           rows={rows}
           mapping={mapping}
+          assisted={assisted}
           onImport={handleImport}
           onBack={() => setStep(2)}
           isPending={pending}

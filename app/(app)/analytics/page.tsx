@@ -22,7 +22,7 @@ export default async function AnalyticsPage() {
     <div className="space-y-6">
       <PageHeader
         title="Insights"
-        description="Lead conversion, couple engagement, and venue performance."
+        description="Lead conversion, client engagement, and venue performance."
       />
 
       {/* Luv Roll-Up — synthesized AI observations at the top */}

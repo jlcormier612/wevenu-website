@@ -38,7 +38,7 @@ export function ClientForm() {
       if (result.ok) {
         const params = new URLSearchParams();
         if (result.eventId) params.set("eventId", result.eventId);
-        if (result.portalToken) params.set("portalToken", result.portalToken);
+        if (result.invitationSent) params.set("invited", "1");
         const qs = params.toString();
         router.push(`/clients/${result.clientId}/booked${qs ? `?${qs}` : ""}`);
         return;
@@ -106,7 +106,7 @@ export function ClientFormFields({
         <p className="text-sm font-medium text-heading">Event details</p>
         <div className="grid gap-4 sm:grid-cols-2">
           <Field label="Event type" htmlFor="et">
-            <Select value={input.eventType} onValueChange={(v) => set("eventType", v)}>
+            <Select value={input.eventType} onValueChange={(v) => set("eventType", v)} items={EVENT_TYPES}>
               <SelectTrigger id="et"><SelectValue placeholder="Select type" /></SelectTrigger>
               <SelectContent>{EVENT_TYPES.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent>
             </Select>

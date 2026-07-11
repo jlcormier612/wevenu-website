@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 
-import { deleteDocument, saveDocument, updateDocument } from "@/lib/documents/service";
+import { deleteDocument, saveDocument, saveVenueDocument, updateDocument } from "@/lib/documents/service";
 import type {
   CreateDocumentResult,
   Document,
@@ -21,10 +21,17 @@ function entityPath(entityType: DocumentEntityType, entityId: string): string {
   return map[entityType];
 }
 
-export async function saveDocumentAction(payload: DocumentUploadPayload): Promise<CreateDocumentResult> {
+export async function saveDocumentAction(payload: DocumentUploadPayload & { entityType: DocumentEntityType; entityId: string }): Promise<CreateDocumentResult> {
   const result = await saveDocument(payload);
   if (result.ok) revalidatePath(entityPath(payload.entityType, payload.entityId));
   return result;
+}
+
+// Venue-level document — not tied to a Lead/Client/Event/Vendor, so there's
+// no single entity page to revalidate. Callers (e.g. the Planning Template
+// editor) revalidate their own path after a successful upload.
+export async function saveVenueDocumentAction(payload: DocumentUploadPayload): Promise<CreateDocumentResult> {
+  return saveVenueDocument(payload);
 }
 
 export async function updateDocumentAction(

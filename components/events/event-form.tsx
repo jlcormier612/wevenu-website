@@ -8,7 +8,8 @@ import { toast } from "sonner";
 
 import { createEventAction } from "@/app/(app)/events/actions";
 import { applyPlaybookAction } from "@/app/(app)/playbooks/actions";
-import type { PlaybookTemplate } from "@/lib/playbooks/types";
+import { PLAYBOOK_KINDS } from "@/lib/playbooks/constants";
+import type { PlaybookKind, PlaybookTemplate } from "@/lib/playbooks/types";
 import { ConflictWarning } from "@/components/availability/conflict-warning";
 import { Field } from "@/components/setup/field";
 import { Button } from "@/components/ui/button";
@@ -45,7 +46,7 @@ export function EventFormFields({
 
       <div className="grid gap-4 sm:grid-cols-2">
         <Field label="Event type" htmlFor="et">
-          <Select value={input.eventType} onValueChange={(v) => set("eventType", v)}>
+          <Select value={input.eventType} onValueChange={(v) => set("eventType", v)} items={EVENT_TYPES}>
             <SelectTrigger id="et"><SelectValue placeholder="Select type" /></SelectTrigger>
             <SelectContent>{EVENT_TYPES.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent>
           </Select>
@@ -58,7 +59,17 @@ export function EventFormFields({
       {/* Space assignment + availability check */}
       {spaces.length > 0 && (
         <Field label="Event space" htmlFor="sp" hint="Optional — assign this event to a specific space.">
-          <Select value={input.spaceId} onValueChange={(v) => set("spaceId", v)}>
+          <Select
+            value={input.spaceId}
+            onValueChange={(v) => set("spaceId", v)}
+            items={[
+              { value: "", label: "No specific space" },
+              ...spaces.filter((s) => s.isActive).map((s) => ({
+                value: s.id,
+                label: `${s.name}${s.capacity != null ? ` — ${s.capacity.toLocaleString()} guests` : ""}`,
+              })),
+            ]}
+          >
             <SelectTrigger id="sp"><SelectValue placeholder="No specific space" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="">No specific space</SelectItem>
@@ -128,9 +139,11 @@ export function EventForm({
   const [input, setInput] = React.useState<EventInput>(initial);
   const [errors, setErrors] = React.useState<EventErrors>({});
   const [pending, startTransition] = React.useTransition();
-  const [selectedTemplate, setSelectedTemplate] = React.useState<string>(
-    playbookTemplates[0]?.id ?? "",
-  );
+  // Client Planning and Venue Planning are independent selections — a venue
+  // may apply one, both, or neither at creation time (Product Decisions,
+  // 2026-07-08). Each starts unselected; there's no meaningful "default"
+  // playbook to preselect when multiple exist per kind.
+  const [selected, setSelected] = React.useState<Record<PlaybookKind, string>>({ client: "", venue: "" });
 
   const set = <K extends keyof EventInput>(key: K, v: EventInput[K]) => {
     setInput((p) => ({ ...p, [key]: v }));
@@ -145,14 +158,17 @@ export function EventForm({
         toast.error(result.message ?? "Please fix the highlighted fields.");
         return;
       }
-      // Apply playbook immediately if a template was selected and event has a date
-      if (selectedTemplate && input.eventDate) {
-        const applyResult = await applyPlaybookAction(result.eventId, selectedTemplate, input.eventDate);
-        if (applyResult.ok) {
-          toast.success("Event created and playbook applied — tasks and reminders are ready.");
-        } else {
+      const toApply = PLAYBOOK_KINDS.map((k) => selected[k.value]).filter(Boolean);
+      if (toApply.length > 0 && input.eventDate) {
+        let allApplied = true;
+        for (const templateId of toApply) {
+          const applyResult = await applyPlaybookAction(result.eventId, templateId, input.eventDate);
+          if (!applyResult.ok) allApplied = false;
+        }
+        if (allApplied) toast.success("Event created and checklists applied — tasks and reminders are ready.");
+        else {
           toast.success("Event created.");
-          toast.error("Playbook could not be applied. You can apply it from the event's Playbook tab.");
+          toast.error("A checklist could not be applied. You can apply it from the event's Planning tab.");
         }
       } else {
         toast.success("Event created.");
@@ -161,31 +177,42 @@ export function EventForm({
     });
   }
 
+  const templatesByKind = (kind: PlaybookKind) => playbookTemplates.filter((t) => t.kind === kind);
+
   return (
     <div className="space-y-6">
       <EventFormFields input={input} errors={errors} set={set} onSubmit={handleSubmit} pending={pending} spaces={spaces} />
-      {/* Playbook application — shown after core fields */}
+      {/* Template application — shown after core fields; Client Planning and Venue Planning are separate systems, applied independently */}
       {playbookTemplates.length > 0 && (
-        <div className="rounded-xl border border-border bg-muted/30 p-4 space-y-2">
-          <div className="flex items-center justify-between gap-4">
-            <div>
-              <p className="text-sm font-medium text-heading">Apply a Playbook</p>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                Tasks and reminders are generated automatically from the event date.
-              </p>
-            </div>
-            <Select value={selectedTemplate} onValueChange={setSelectedTemplate}>
-              <SelectTrigger className="h-8 w-52 text-sm shrink-0">
-                <SelectValue placeholder="Select playbook…" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="">No playbook</SelectItem>
-                {playbookTemplates.map((t) => (
-                  <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+        <div className="rounded-xl border border-border bg-muted/30 p-4 space-y-3">
+          <p className="text-sm font-medium text-heading">Apply planning checklists</p>
+          <p className="text-xs text-muted-foreground -mt-2">
+            Tasks and reminders are generated automatically from the event date. Both are optional and independent.
+          </p>
+          {PLAYBOOK_KINDS.map((k) => {
+            const options = templatesByKind(k.value);
+            if (options.length === 0) return null;
+            return (
+              <div key={k.value} className="flex items-center justify-between gap-4">
+                <p className="text-xs text-muted-foreground">{k.emoji} {k.label}</p>
+                <Select
+                  value={selected[k.value]}
+                  onValueChange={(v) => setSelected((p) => ({ ...p, [k.value]: v }))}
+                  items={[{ value: "", label: `No ${k.label} checklist` }, ...options.map((t) => ({ value: t.id, label: t.name }))]}
+                >
+                  <SelectTrigger className="h-8 w-52 text-sm shrink-0">
+                    <SelectValue placeholder={`Select ${k.label}…`} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">{`No ${k.label} checklist`}</SelectItem>
+                    {options.map((t) => (
+                      <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            );
+          })}
         </div>
       )}
     </div>

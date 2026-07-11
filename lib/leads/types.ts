@@ -58,6 +58,7 @@ export type Lead = {
   interestScore: number;        // 0–100, computed from time-decayed signal events
   scoresUpdatedAt: string | null;
   sourceData: Record<string, unknown> | null;
+  relationshipId: string | null; // Program 2 Phase 2 — the enduring customer identity this Opportunity belongs to
   createdAt: string;
   updatedAt: string;
 };

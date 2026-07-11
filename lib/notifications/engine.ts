@@ -138,7 +138,7 @@ export async function processReminders(): Promise<ProcessResult> {
             ? `Tour reminder: ${tourAppt.contact_name ?? "Upcoming tour"} — ${dateStr} at ${timeStr}`
             : `Your tour at ${venueName} is tomorrow — ${dateStr} at ${timeStr}`;
           const body = role === "coordinator"
-            ? `You have a venue tour tomorrow at ${timeStr} with ${tourAppt.contact_name ?? "a prospective couple"}. Duration: ${tourAppt.duration_minutes} minutes.`
+            ? `You have a venue tour tomorrow at ${timeStr} with ${tourAppt.contact_name ?? "a prospective client"}. Duration: ${tourAppt.duration_minutes} minutes.`
             : `Just a reminder that your tour at ${venueName} is tomorrow at ${timeStr}. We look forward to meeting you!`;
           emailContent = { subject: subj, html: `<p>${body}</p><p>— ${venueName}</p>`, text: body };
         } else {

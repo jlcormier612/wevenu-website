@@ -186,7 +186,7 @@
   --sidebar-foreground: var(--forest-sage);
   --sidebar-primary: var(--heritage-sage);
   --sidebar-primary-foreground: var(--true-white);
-  --sidebar-accent: color-mix(in oklch, var(--forest-sage) 12%, transparent);
+  --sidebar-accent: color-mix(in oklch, var(--true-white) 38%, transparent);
   --sidebar-accent-foreground: var(--forest-sage);
   --sidebar-border: color-mix(in oklch, var(--forest-sage) 20%, transparent);
   --sidebar-ring: var(--heritage-sage);

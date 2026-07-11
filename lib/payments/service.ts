@@ -3,6 +3,7 @@
  */
 import { createClient } from "@/integrations/supabase/server";
 import { isSupabaseConfigured } from "@/lib/env";
+import { triggerAutoComplete } from "@/lib/playbooks/service";
 import * as repo from "@/lib/payments/repository";
 import {
   computeTotalPaid,
@@ -188,9 +189,16 @@ export async function markLineItemPaid(itemId: string, scheduleId: string, input
 
     // Reconcile the linked invoice's balance_due, if any
     const { data: sch } = await supabase.from("payment_schedules")
-      .select("invoice_id").eq("id", scheduleId).maybeSingle<{ invoice_id: string | null }>();
+      .select("invoice_id, event_id").eq("id", scheduleId).maybeSingle<{ invoice_id: string | null; event_id: string | null }>();
     if (sch?.invoice_id) {
       await repo.reconcileInvoiceBalance(supabase, venueId, sch.invoice_id);
+    }
+    // "Pay final payment"-style Planning tasks complete themselves the
+    // moment a payment actually lands — this was previously only logged as
+    // an activity string, never wired (Vendor Management — Next Iteration,
+    // 2026-07-10, item 4).
+    if (sch?.event_id) {
+      await triggerAutoComplete(supabase, venueId, sch.event_id, "payment_received", "payment_line_item", itemId);
     }
 
     void recordEngagementEvent({

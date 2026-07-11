@@ -81,7 +81,11 @@ export function FilterBar({
       </div>
 
       {statusOptions && (
-        <Select value={currentStatus || "__all__"} onValueChange={handleStatusChange}>
+        <Select
+          value={currentStatus || "__all__"}
+          onValueChange={handleStatusChange}
+          items={[{ value: "__all__", label: "Sort by…" }, ...statusOptions]}
+        >
           <SelectTrigger className="h-8 text-sm w-44">
             <ArrowUpDown className="mr-1.5 h-3.5 w-3.5 text-muted-foreground shrink-0" />
             <SelectValue />

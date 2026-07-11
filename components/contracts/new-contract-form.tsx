@@ -95,7 +95,11 @@ export function NewContractForm({
       {/* Template */}
       <div className="space-y-1.5">
         <Label htmlFor="nc-tmpl">Template</Label>
-        <Select value={templateId} onValueChange={handleTemplateChange}>
+        <Select
+          value={templateId}
+          onValueChange={handleTemplateChange}
+          items={templates.map((t) => ({ value: t.id, label: `${t.name}${t.isDefault ? " (default)" : ""}` }))}
+        >
           <SelectTrigger id="nc-tmpl"><SelectValue placeholder="Select a template" /></SelectTrigger>
           <SelectContent>
             {templates.map((t) => (
@@ -108,7 +112,11 @@ export function NewContractForm({
       {/* Client */}
       <div className="space-y-1.5">
         <Label htmlFor="nc-client">Client *</Label>
-        <Select value={clientId} onValueChange={handleClientChange}>
+        <Select
+          value={clientId}
+          onValueChange={handleClientChange}
+          items={clients.map((c) => ({ value: c.id, label: clientDisplayName(c.firstName, c.lastName, c.partnerFirstName, c.partnerLastName) }))}
+        >
           <SelectTrigger id="nc-client" aria-invalid={errors.clientId ? true : undefined}>
             <SelectValue placeholder="Select a client" />
           </SelectTrigger>
@@ -127,7 +135,7 @@ export function NewContractForm({
       <div className="space-y-1.5">
         <Label htmlFor="nc-title">Contract title *</Label>
         <Input id="nc-title" value={title} onChange={(e) => { setTitle(e.target.value); setErrors((p) => { const n = {...p}; delete n.title; return n; }); }}
-          placeholder="Venue Rental Agreement — Couple Name" aria-invalid={errors.title ? true : undefined} />
+          placeholder="Venue Rental Agreement — Client Name" aria-invalid={errors.title ? true : undefined} />
         {errors.title && <p className="text-xs text-destructive">{errors.title}</p>}
       </div>
 

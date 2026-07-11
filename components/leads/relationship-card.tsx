@@ -11,6 +11,9 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -18,6 +21,20 @@ import {
   formatDate,
 } from "@/lib/leads/constants";
 import type { Lead, RelationshipInput } from "@/lib/leads/types";
+
+// Common next steps, covering the inquiry -> tour -> booked lifecycle. Not
+// exhaustive on purpose — "Custom…" always drops back to free text, since
+// every relationship eventually needs something this list didn't predict.
+const NEXT_ACTION_PRESETS = [
+  "Send pricing / info packet",
+  "Schedule a tour",
+  "Send tour confirmation",
+  "Follow up after tour",
+  "Send proposal / contract",
+  "Follow up on contract",
+  "Confirm event details",
+] as const;
+const CUSTOM_ACTION = "__custom__";
 
 function DisplayRow({
   icon: Icon,
@@ -68,6 +85,11 @@ export function RelationshipCard({
     createInitialRelationshipInput(lead),
   );
   const [pending, startTransition] = React.useTransition();
+  const [nextActionMode, setNextActionMode] = React.useState<"preset" | "custom">(() =>
+    (NEXT_ACTION_PRESETS as readonly string[]).includes(lead.nextActionText ?? "") || !lead.nextActionText
+      ? "preset"
+      : "custom",
+  );
 
   // Track what changed relative to the saved lead values
   const prev = React.useRef(createInitialRelationshipInput(lead));
@@ -166,11 +188,41 @@ export function RelationshipCard({
           <div className="space-y-4">
             <div className="grid gap-3 sm:grid-cols-[1fr_auto]">
               <EditRow label="Next action">
-                <Input
-                  value={input.nextActionText}
-                  onChange={(e) => set("nextActionText", e.target.value)}
-                  placeholder="What's the next step?"
-                />
+                {nextActionMode === "preset" ? (
+                  <Select
+                    value={input.nextActionText || undefined}
+                    onValueChange={(v) => {
+                      if (v === CUSTOM_ACTION) {
+                        setNextActionMode("custom");
+                        set("nextActionText", "");
+                      } else {
+                        set("nextActionText", v);
+                      }
+                    }}
+                    items={[...NEXT_ACTION_PRESETS.map((p) => ({ value: p, label: p })), { value: CUSTOM_ACTION, label: "Custom…" }]}
+                  >
+                    <SelectTrigger><SelectValue placeholder="Choose a next step…" /></SelectTrigger>
+                    <SelectContent>
+                      {NEXT_ACTION_PRESETS.map((preset) => (
+                        <SelectItem key={preset} value={preset}>{preset}</SelectItem>
+                      ))}
+                      <SelectItem value={CUSTOM_ACTION}>Custom…</SelectItem>
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <div className="flex gap-1.5">
+                    <Input
+                      value={input.nextActionText}
+                      onChange={(e) => set("nextActionText", e.target.value)}
+                      placeholder="What's the next step?"
+                      autoFocus
+                    />
+                    <Button type="button" variant="ghost" size="sm"
+                      onClick={() => { setNextActionMode("preset"); set("nextActionText", ""); }}>
+                      Use list
+                    </Button>
+                  </div>
+                )}
               </EditRow>
               <EditRow label="Due date">
                 <Input

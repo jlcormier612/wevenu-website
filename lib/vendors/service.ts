@@ -11,6 +11,8 @@ import type {
   VendorActionResult,
   VendorAssignmentInput,
   VendorInput,
+  VendorReview,
+  VendorReviewInput,
   VendorWithEvents,
 } from "@/lib/vendors/types";
 import {
@@ -70,8 +72,11 @@ export async function updateVendor_(vendorId: string, input: VendorInput): Promi
   const errors = validateVendorInput(input);
   if (Object.keys(errors).length > 0) return { ok: false, errors };
   const result = await withVenue(async (supabase, venueId) => {
-    await repo.updateVendor(supabase, venueId, vendorId, input);
-    return { ok: true } as VendorActionResult;
+    const { identityUpdated } = await repo.updateVendor(supabase, venueId, vendorId, input);
+    return {
+      ok: true,
+      message: identityUpdated ? undefined : "Saved your notes and pricing flag. This vendor has claimed their profile, so their business details are managed by their own account.",
+    } as VendorActionResult;
   });
   return result as VendorActionResult;
 }
@@ -79,6 +84,32 @@ export async function updateVendor_(vendorId: string, input: VendorInput): Promi
 export async function deleteVendor_(vendorId: string): Promise<VendorActionResult> {
   const result = await withVenue(async (supabase, venueId) => {
     await repo.deleteVendor(supabase, venueId, vendorId);
+    return { ok: true } as VendorActionResult;
+  });
+  return result as VendorActionResult;
+}
+
+export async function reactivateVendor_(vendorId: string): Promise<VendorActionResult> {
+  const result = await withVenue(async (supabase, venueId) => {
+    await repo.reactivateVendor(supabase, venueId, vendorId);
+    return { ok: true } as VendorActionResult;
+  });
+  return result as VendorActionResult;
+}
+
+// ---- reviews ------------------------------------------------------------------
+
+export async function getVendorReviews(vendorId: string): Promise<VendorReview[]> {
+  if (!isSupabaseConfigured) return [];
+  const venue = await getCurrentVenue();
+  if (!venue) return [];
+  return repo.getVendorReviews(await createClient(), venue.id, vendorId);
+}
+
+export async function addVendorReview(vendorId: string, input: VendorReviewInput): Promise<VendorActionResult> {
+  if (input.rating < 1 || input.rating > 5) return { ok: false, message: "Rating must be between 1 and 5." };
+  const result = await withVenue(async (supabase, venueId) => {
+    await repo.insertVendorReview(supabase, venueId, vendorId, input);
     return { ok: true } as VendorActionResult;
   });
   return result as VendorActionResult;

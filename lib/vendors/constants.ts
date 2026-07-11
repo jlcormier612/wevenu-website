@@ -6,7 +6,7 @@ import type { InquiryStatus, Vendor, VendorInput, VendorPreferenceLevel } from "
 export type Option = { value: string; label: string };
 
 export const PREFERENCE_LEVELS: { value: VendorPreferenceLevel; label: string; description: string }[] = [
-  { value: "featured",    label: "Featured",    description: "Highlighted at the top of couple recommendations" },
+  { value: "featured",    label: "Featured",    description: "Highlighted at the top of client recommendations" },
   { value: "preferred",   label: "Preferred",   description: "Vendors you actively recommend" },
   { value: "recommended", label: "Recommended", description: "Quality vendors in your directory" },
 ];
@@ -72,21 +72,21 @@ export const INQUIRY_STATUS_VARIANT: Record<InquiryStatus, "default" | "secondar
 
 export function createInitialVendorInput(source?: Vendor | null): VendorInput {
   return {
-    businessName:    source?.businessName ?? "",
-    category:        source?.category ?? "",
-    contactName:     source?.contactName ?? "",
-    email:           source?.email ?? "",
-    phone:           source?.phone ?? "",
-    websiteUrl:      source?.websiteUrl ?? "",
-    instagramUrl:    source?.instagramUrl ?? "",
-    facebookUrl:     source?.facebookUrl ?? "",
-    pinterestUrl:    source?.pinterestUrl ?? "",
-    tiktokUrl:       source?.tiktokUrl ?? "",
-    isPreferred:     source?.isPreferred ?? false,
-    preferenceLevel: source?.preferenceLevel ?? "recommended",
-    description:     source?.description ?? "",
-    logoUrl:         source?.logoUrl ?? "",
-    pricingTier:     source?.pricingTier ?? "",
-    notes:           source?.notes ?? "",
+    businessName:       source?.businessName ?? "",
+    category:           source?.category ?? "",
+    contactName:        source?.contactName ?? "",
+    email:              source?.email ?? "",
+    phone:              source?.phone ?? "",
+    websiteUrl:         source?.websiteUrl ?? "",
+    instagramUrl:       source?.instagramUrl ?? "",
+    facebookUrl:        source?.facebookUrl ?? "",
+    pinterestUrl:       source?.pinterestUrl ?? "",
+    tiktokUrl:          source?.tiktokUrl ?? "",
+    preferenceLevel:    source?.preferenceLevel ?? "recommended",
+    description:        source?.description ?? "",
+    logoUrl:            source?.logoUrl ?? "",
+    pricingTier:        source?.pricingTier ?? "",
+    notes:              source?.notes ?? "",
+    specialPricingNote: source?.specialPricingNote ?? "",
   };
 }

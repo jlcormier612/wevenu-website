@@ -130,7 +130,11 @@ export function InvoiceLineItemsEditor({
               <div className="grid gap-3 sm:grid-cols-2">
                 <div className="space-y-1.5">
                   <label className="text-xs font-medium text-muted-foreground">Type</label>
-                  <Select value={input.type} onValueChange={(v) => setInput((p) => ({ ...p, type: v as InvoiceLineItemType, discountType: "fixed", discountValue: "", unitPrice: "" }))}>
+                  <Select
+                    value={input.type}
+                    onValueChange={(v) => setInput((p) => ({ ...p, type: v as InvoiceLineItemType, discountType: "fixed", discountValue: "", unitPrice: "" }))}
+                    items={LINE_ITEM_TYPES}
+                  >
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>{LINE_ITEM_TYPES.map((t) => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}</SelectContent>
                   </Select>

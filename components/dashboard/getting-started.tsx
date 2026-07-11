@@ -24,13 +24,13 @@ import type { OnboardingStatus } from "@/lib/dashboard/types";
  */
 
 const MILESTONE_COPY: Record<string, { headline: string; body: string }> = {
-  tour_scheduling:   { headline: "Tour scheduling enabled!", body: "Couples can now book appointments with you online, any time of day." },
-  venue_guide:       { headline: "Venue Guide started!", body: "Couples and their families will thank you for this." },
-  preferred_vendors: { headline: "Vendors added!", body: "Couples now have a trusted starting point when they ask about vendors." },
-  task_playbook:     { headline: "Task Playbook created!", body: "Every new event you create can now use this workflow automatically." },
-  profile_complete:  { headline: "Venue profile complete!", body: "Couples and coordinators can now find and reach you." },
+  tour_scheduling:   { headline: "Tour scheduling enabled!", body: "Clients can now book appointments with you online, any time of day." },
+  venue_guide:       { headline: "Venue Guide started!", body: "Clients and their families will thank you for this." },
+  preferred_vendors: { headline: "Vendors added!", body: "Clients now have a trusted starting point when they ask about vendors." },
+  task_playbook:     { headline: "Planning Playbook created!", body: "Every new event you create can now use this workflow automatically." },
+  profile_complete:  { headline: "Venue profile complete!", body: "Clients and coordinators can now find and reach you." },
   first_inquiry:     { headline: "First inquiry in!", body: "Your pipeline is live. Keep the momentum going." },
-  first_booking:     { headline: "First couple booked!", body: "This is what it's all about. Congratulations." },
+  first_booking:     { headline: "First client booked!", body: "This is what it's all about. Congratulations." },
 };
 
 export function GettingStartedCard({

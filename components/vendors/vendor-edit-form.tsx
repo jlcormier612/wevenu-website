@@ -30,5 +30,5 @@ export function VendorEditForm({ vendor }: { vendor: Vendor }) {
     });
   }
 
-  return <VendorFormFields input={input} errors={errors} set={set} onSubmit={handleSubmit} pending={pending} submitLabel="Save changes" />;
+  return <VendorFormFields input={input} errors={errors} set={set} onSubmit={handleSubmit} pending={pending} submitLabel="Save changes" isClaimed={vendor.isClaimed} />;
 }

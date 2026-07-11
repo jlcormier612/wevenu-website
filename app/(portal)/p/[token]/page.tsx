@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
 import { PortalShell } from "@/components/portal/portal-shell";
-import { resolvePortalContext, resolvePortalTasks } from "@/lib/portal/service";
+import { resolvePortalContext, resolvePortalTasks, resolvePortalTimeline } from "@/lib/portal/service";
 
 type Props = { params: Promise<{ token: string }> };
 
@@ -19,13 +19,19 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function PortalPage({ params }: Props) {
   const { token } = await params;
-  const [context, tasks] = await Promise.all([
+  const [context, tasks, timeline] = await Promise.all([
     resolvePortalContext(token),
     resolvePortalTasks(token),
+    resolvePortalTimeline(token),
   ]);
   // Log portal visit (non-blocking — get_portal_context already updates last_accessed_at)
   // The SECURITY DEFINER log_couple_event fires the activity signal
   if (!context) notFound();
 
-  return <PortalShell token={token} context={context} initialTasks={tasks} />;
+  return (
+    <PortalShell
+      token={token} context={context} initialTasks={tasks}
+      initialTimelineSections={timeline.sections} initialTimelineEntries={timeline.entries}
+    />
+  );
 }
