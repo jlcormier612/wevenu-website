@@ -154,6 +154,18 @@ export type PortalActivity = {
   createdAt: string;
 };
 
+export const DIETARY_TAGS = [
+  "vegetarian", "vegan", "gluten_free", "dairy_free",
+  "nut_allergy", "shellfish_allergy", "kosher", "halal",
+] as const;
+export type DietaryTag = (typeof DIETARY_TAGS)[number];
+
+export const ACCESSIBILITY_TAGS = [
+  "wheelchair", "limited_mobility", "hearing_assistance",
+  "vision_assistance", "service_animal", "special_seating",
+] as const;
+export type AccessibilityTag = (typeof ACCESSIBILITY_TAGS)[number];
+
 export type CoupleGuest = {
   id: string;
   firstName: string;
@@ -181,6 +193,17 @@ export type CoupleGuest = {
    * the invitation — it is not a duplicate of rsvpStatus's 'declined'.
    */
   invitationStatus: "draft" | "ready" | "sent" | "delivered" | "opened" | "responded" | "declined";
+  // Guest Experience — Phase 3
+  dietaryTags: DietaryTag[];
+  accessibilityTags: AccessibilityTag[];
+  accessibilityNotes: string | null;
+  /** Set once this guest is a real, converted plus-one record — points at who they're the plus-one of. */
+  plusOneOfGuestId: string | null;
+  age: number | null;
+  highChairRequired: boolean;
+  childNotes: string | null;
+  /** A vendor's meal, modeled as an ordinary guest record — not a second meal-tracking system. */
+  isVendorMeal: boolean;
 };
 
 /** A couple-owned organizational unit guests belong to (Guest & Household Foundation). */
@@ -189,6 +212,13 @@ export type CoupleHousehold = {
   name: string;
   notes: string | null;
   memberCount: number;
+};
+
+/** The couple's own meal-selection catalog (Guest Experience — Phase 3) — the one authoritative source of meal options. */
+export type CoupleMealOption = {
+  id: string;
+  name: string;
+  isActive: boolean;
 };
 
 /** Invitation & RSVP progress dashboard data (Guest Experience — Phase 2). */
@@ -213,6 +243,8 @@ export type GuestStats = {
   pending: number;
   children: number;
   withPlusOnes: number;
+  /** Vendor meals (Guest Experience — Phase 3) are excluded from every other stat above — a caterer isn't a social guest. */
+  vendorMeals: number;
 };
 
 export type RsvpQuestion = {

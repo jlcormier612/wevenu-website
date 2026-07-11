@@ -3,10 +3,13 @@
 import * as React from "react";
 import {
   Users, Plus, Trash2, Pencil, Loader2, X, Check, ChevronDown, ChevronUp, Copy, Mail, Send, Undo2, ClipboardList,
+  UserPlus, Link2,
 } from "lucide-react";
 import { toast } from "sonner";
-import type {
-  CoupleGuest, CoupleHousehold, GuestStats, InvitationProgress, RsvpInsights, RsvpQuestion,
+import {
+  ACCESSIBILITY_TAGS, DIETARY_TAGS,
+  type AccessibilityTag, type CoupleGuest, type CoupleHousehold, type CoupleMealOption, type DietaryTag,
+  type GuestStats, type InvitationProgress, type RsvpInsights, type RsvpQuestion,
 } from "@/lib/portal/types";
 import { getGuestObservations } from "@/lib/luv/portal-observations";
 
@@ -36,14 +39,31 @@ const INVITATION_COLORS: Record<CoupleGuest["invitationStatus"], string> = {
 const NO_HOUSEHOLD = "";
 const NEW_HOUSEHOLD = "__new__";
 
-const QUESTION_TEMPLATES = [
-  { key: "meal_choice",   text: "What meal would you prefer?",           type: "select"  as const, note: "Add meal options below"      },
+// Meal choice used to be smuggled in here via a magic "meal_choice" key —
+// it now has its own first-class catalog (couple_meal_options) and its own
+// UI, so this generic question system is only ever for things that
+// actually are one-off custom questions (Guest Experience — Phase 3).
+// Explicitly typed (rather than inferred) so "select" — no longer used by
+// any template here — stays a valid case for the option-builder UI below,
+// in case a future custom question ever needs it again.
+const QUESTION_TEMPLATES: { key: string; text: string; type: "text" | "textarea" | "boolean" | "select"; note: string }[] = [
   { key: "song_request",  text: "What song should we add to the playlist?", type: "text" as const,  note: ""                           },
   { key: "shuttle",       text: "Will you need shuttle transportation?",  type: "boolean" as const, note: ""                           },
   { key: "hotel_nights",  text: "Which nights are you staying at the hotel?", type: "text" as const, note: ""                          },
   { key: "sunday_brunch", text: "Will you be joining us for Sunday brunch?",  type: "boolean" as const, note: ""                       },
   { key: "message",       text: "Leave a message for the couple",         type: "textarea" as const, note: ""                          },
 ];
+
+// Guest Details (Guest Experience — Phase 3)
+const DIETARY_TAG_LABELS: Record<DietaryTag, string> = {
+  vegetarian: "Vegetarian", vegan: "Vegan", gluten_free: "Gluten Free", dairy_free: "Dairy Free",
+  nut_allergy: "Nut Allergy", shellfish_allergy: "Shellfish Allergy", kosher: "Kosher", halal: "Halal",
+};
+
+const ACCESSIBILITY_TAG_LABELS: Record<AccessibilityTag, string> = {
+  wheelchair: "Wheelchair", limited_mobility: "Limited Mobility", hearing_assistance: "Hearing Assistance",
+  vision_assistance: "Vision Assistance", service_animal: "Service Animal", special_seating: "Special Seating Request",
+};
 
 function parseCSV(text: string): { firstName: string; lastName?: string; email?: string; household?: string }[] {
   return text.split("\n")
@@ -453,26 +473,88 @@ function QuestionManager({ token, questions, onUpdate }: {
   );
 }
 
+// ── Progressive disclosure section ───────────────────────────────────────────
+// A common Add/Edit guest form would otherwise put meal/dietary/accessibility/
+// child fields in front of every couple for every guest, every time — exactly
+// the "long, intimidating form" Phase 3 asks to avoid. Each of these opens on
+// its own, defaulting open only when the guest already has something there.
+
+function DisclosureSection({ label, summary, defaultOpen = false, children }: {
+  label: string; summary?: string; defaultOpen?: boolean; children: React.ReactNode;
+}) {
+  const [open, setOpen] = React.useState(defaultOpen);
+  return (
+    <div className="rounded-lg border border-border/70">
+      <button type="button" onClick={() => setOpen(p => !p)}
+        className="w-full flex items-center justify-between px-3 py-2 text-left">
+        <span className="text-xs font-medium text-heading">{label}</span>
+        <span className="flex items-center gap-1.5">
+          {!open && summary && <span className="text-[11px] text-muted-foreground">{summary}</span>}
+          {open ? <ChevronUp className="h-3.5 w-3.5 text-muted-foreground" /> : <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />}
+        </span>
+      </button>
+      {open && <div className="px-3 pb-3 space-y-2.5">{children}</div>}
+    </div>
+  );
+}
+
+function TagCheckboxGrid<T extends string>({ tags, labels, selected, onToggle }: {
+  tags: readonly T[]; labels: Record<T, string>; selected: T[]; onToggle: (tag: T) => void;
+}) {
+  return (
+    <div className="grid grid-cols-2 gap-1.5">
+      {tags.map(tag => (
+        <label key={tag} className="flex items-center gap-1.5 text-xs cursor-pointer select-none">
+          <input type="checkbox" checked={selected.includes(tag)} onChange={() => onToggle(tag)}
+            className="h-3.5 w-3.5 rounded accent-[#5D6F5D]" />
+          <span className="text-muted-foreground">{labels[tag]}</span>
+        </label>
+      ))}
+    </div>
+  );
+}
+
 // ── Guest editor fields (shared shape between Add and Edit) ──────────────────
 
 type GuestFields = {
   name: string; email: string; phone: string;
   householdChoice: string; newHouseholdName: string;
   isChild: boolean; plusOne: boolean; plusOneName: string; dietary: string;
+  // Guest Experience — Phase 3
+  mealChoice: string;
+  dietaryTags: DietaryTag[];
+  accessibilityTags: AccessibilityTag[];
+  accessibilityNotes: string;
+  age: string; highChairRequired: boolean; childNotes: string;
+  notes: string;
 };
 
 function emptyGuestFields(): GuestFields {
-  return { name: "", email: "", phone: "", householdChoice: NO_HOUSEHOLD, newHouseholdName: "", isChild: false, plusOne: false, plusOneName: "", dietary: "" };
+  return {
+    name: "", email: "", phone: "", householdChoice: NO_HOUSEHOLD, newHouseholdName: "",
+    isChild: false, plusOne: false, plusOneName: "", dietary: "",
+    mealChoice: "", dietaryTags: [], accessibilityTags: [], accessibilityNotes: "",
+    age: "", highChairRequired: false, childNotes: "", notes: "",
+  };
 }
 
-function GuestFieldsForm({ fields, setFields, households, autoFocus, onEnter }: {
+function GuestFieldsForm({ fields, setFields, households, mealOptions, autoFocus, onEnter }: {
   fields: GuestFields;
   setFields: React.Dispatch<React.SetStateAction<GuestFields>>;
   households: CoupleHousehold[];
+  mealOptions: CoupleMealOption[];
   autoFocus?: boolean;
   onEnter?: () => void;
 }) {
   const set = <K extends keyof GuestFields>(key: K, v: GuestFields[K]) => setFields(p => ({ ...p, [key]: v }));
+  const toggleDietary = (tag: DietaryTag) => set("dietaryTags", fields.dietaryTags.includes(tag) ? fields.dietaryTags.filter(t => t !== tag) : [...fields.dietaryTags, tag]);
+  const toggleAccessibility = (tag: AccessibilityTag) => set("accessibilityTags", fields.accessibilityTags.includes(tag) ? fields.accessibilityTags.filter(t => t !== tag) : [...fields.accessibilityTags, tag]);
+
+  const dietarySummary = [
+    ...fields.dietaryTags.map(t => DIETARY_TAG_LABELS[t]),
+    ...(fields.dietary.trim() ? ["custom note"] : []),
+  ].join(", ") || undefined;
+  const accessibilitySummary = fields.accessibilityTags.map(t => ACCESSIBILITY_TAG_LABELS[t]).join(", ") || undefined;
 
   return (
     <div className="space-y-2.5">
@@ -500,9 +582,6 @@ function GuestFieldsForm({ fields, setFields, households, autoFocus, onEnter }: 
         )}
       </div>
 
-      <input value={fields.dietary} onChange={e => set("dietary", e.target.value)} placeholder="Dietary restrictions (optional)"
-        className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring" />
-
       <div className="flex flex-wrap gap-x-5 gap-y-2 pt-0.5">
         <label className="flex items-center gap-2 text-sm cursor-pointer select-none">
           <input type="checkbox" checked={fields.isChild} onChange={e => set("isChild", e.target.checked)}
@@ -521,6 +600,48 @@ function GuestFieldsForm({ fields, setFields, households, autoFocus, onEnter }: 
           placeholder="+1 name (optional — leave blank if unknown)"
           className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring" />
       )}
+
+      {fields.isChild && (
+        <div className="rounded-lg border border-border/70 p-3 space-y-2.5">
+          <p className="text-xs font-medium text-heading">Child Details</p>
+          <div className="grid grid-cols-2 gap-2">
+            <input value={fields.age} onChange={e => set("age", e.target.value.replace(/\D/g, ""))} placeholder="Age (optional)" inputMode="numeric"
+              className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring" />
+            <label className="flex items-center gap-2 text-sm cursor-pointer select-none px-1">
+              <input type="checkbox" checked={fields.highChairRequired} onChange={e => set("highChairRequired", e.target.checked)}
+                className="h-3.5 w-3.5 rounded accent-[#5D6F5D]" />
+              <span className="text-muted-foreground">High chair needed</span>
+            </label>
+          </div>
+          <input value={fields.childNotes} onChange={e => set("childNotes", e.target.value)} placeholder="Notes — nap time, allergies, etc. (optional)"
+            className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring" />
+        </div>
+      )}
+
+      <DisclosureSection label="Meal & Dietary" summary={dietarySummary} defaultOpen={!!dietarySummary || !!fields.mealChoice}>
+        {mealOptions.length > 0 && (
+          <select value={fields.mealChoice} onChange={e => set("mealChoice", e.target.value)}
+            className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring">
+            <option value="">Meal choice — not yet selected</option>
+            {mealOptions.map(m => <option key={m.id} value={m.name}>{m.name}</option>)}
+          </select>
+        )}
+        <TagCheckboxGrid tags={DIETARY_TAGS} labels={DIETARY_TAG_LABELS} selected={fields.dietaryTags} onToggle={toggleDietary} />
+        <input value={fields.dietary} onChange={e => set("dietary", e.target.value)} placeholder="Other dietary notes (optional)"
+          className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring" />
+      </DisclosureSection>
+
+      <DisclosureSection label="Accessibility" summary={accessibilitySummary} defaultOpen={!!accessibilitySummary}>
+        <TagCheckboxGrid tags={ACCESSIBILITY_TAGS} labels={ACCESSIBILITY_TAG_LABELS} selected={fields.accessibilityTags} onToggle={toggleAccessibility} />
+        <input value={fields.accessibilityNotes} onChange={e => set("accessibilityNotes", e.target.value)} placeholder="Details — e.g. what kind of special seating (optional)"
+          className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring" />
+      </DisclosureSection>
+
+      <DisclosureSection label="Private Notes" summary={fields.notes.trim() ? "has a note" : undefined} defaultOpen={!!fields.notes.trim()}>
+        <textarea value={fields.notes} onChange={e => set("notes", e.target.value)} rows={2}
+          placeholder="Only you can see this — never shared with your venue."
+          className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring resize-none" />
+      </DisclosureSection>
     </div>
   );
 }
@@ -586,14 +707,63 @@ function InvitationStatusControl({ guest, onMarkReady, onSend, onWithdraw, onRes
   );
 }
 
+// ── Plus One management ───────────────────────────────────────────────────────
+// A plus-one is always a real Guest record (Guest Experience — Phase 3) —
+// this never writes a name into a text field as a substitute for one.
+
+function PlusOneControl({ guest, linkedPlusOneName, onAssign, onConvert, onRemove }: {
+  guest: CoupleGuest;
+  linkedPlusOneName: string | null;
+  onAssign: () => void;
+  onConvert: () => void;
+  onRemove: () => void;
+}) {
+  if (!guest.plusOne) return null;
+
+  if (linkedPlusOneName) {
+    return (
+      <span className="inline-flex items-center gap-1 text-[9px] font-medium text-muted-foreground">
+        <Link2 className="h-2.5 w-2.5" /> +1: {linkedPlusOneName}
+        <button type="button" onClick={onRemove} className="ml-0.5 hover:text-destructive" title="Remove plus-one">
+          <X className="h-2.5 w-2.5" />
+        </button>
+      </span>
+    );
+  }
+
+  if (guest.plusOneName) {
+    return (
+      <button type="button" onClick={onConvert}
+        className="text-[9px] font-medium text-primary hover:underline whitespace-nowrap"
+        title={`Turn "${guest.plusOneName}" into their own guest record`}>
+        Convert &quot;{guest.plusOneName}&quot; to guest →
+      </button>
+    );
+  }
+
+  return (
+    <button type="button" onClick={onAssign}
+      className="inline-flex items-center gap-1 text-[9px] font-medium text-primary hover:underline whitespace-nowrap">
+      <UserPlus className="h-2.5 w-2.5" /> Assign +1
+    </button>
+  );
+}
+
 // ── Guest row ─────────────────────────────────────────────────────────────────
 
-function GuestRow({ guest, onDelete, onStatusChange, onEditStart, onInvitationAction }: {
+function GuestRow({ guest, linkedPlusOneName, primaryGuestName, onDelete, onStatusChange, onEditStart, onInvitationAction, onAssignPlusOne, onConvertPlusOne, onRemovePlusOne }: {
   guest: CoupleGuest;
+  /** If this guest brings a +1 that's already a real record, that record's name. */
+  linkedPlusOneName: string | null;
+  /** If this guest IS someone's converted plus-one, that primary guest's name. */
+  primaryGuestName: string | null;
   onDelete: (id: string) => void;
   onStatusChange: (id: string, status: string) => void;
   onEditStart: (guest: CoupleGuest) => void;
   onInvitationAction: (guestIds: string[], action: "ready" | "send" | "declined" | "draft") => void;
+  onAssignPlusOne: (guestId: string) => void;
+  onConvertPlusOne: (guestId: string) => void;
+  onRemovePlusOne: (guestId: string) => void;
 }) {
   const [expanded, setExpanded] = React.useState(false);
   const rsvpLink = `${typeof window !== "undefined" ? window.location.origin : ""}/rsvp/${guest.rsvpToken ?? ""}`;
@@ -607,7 +777,9 @@ function GuestRow({ guest, onDelete, onStatusChange, onEditStart, onInvitationAc
     }
   }
 
-  const hasDetails = guest.dietary || guest.mealChoice || guest.plusOneName || guest.rsvpNote || guest.phone;
+  const hasDetails = guest.dietary || guest.mealChoice || guest.plusOneName || guest.rsvpNote || guest.phone
+    || guest.dietaryTags.length > 0 || guest.accessibilityTags.length > 0 || guest.accessibilityNotes
+    || guest.childNotes || guest.age != null;
 
   return (
     <div className="border-b border-border/50 last:border-0">
@@ -618,13 +790,19 @@ function GuestRow({ guest, onDelete, onStatusChange, onEditStart, onInvitationAc
             {guest.isChild && (
               <span className="ml-1.5 inline-flex items-center rounded-full bg-amber-50 border border-amber-200 px-1.5 py-px text-[9px] font-medium text-amber-700">child</span>
             )}
-            {guest.plusOne && (
+            {primaryGuestName && (
               <span className="ml-1.5 inline-flex items-center rounded-full bg-muted border border-border px-1.5 py-px text-[9px] font-medium text-muted-foreground">
-                {guest.plusOneName ? `+1 ${guest.plusOneName}` : "+1"}
+                +1 of {primaryGuestName}
               </span>
             )}
           </p>
           <p className="text-[11px] text-muted-foreground">{guest.email ?? ""}</p>
+          {guest.plusOne && (
+            <div className="mt-0.5">
+              <PlusOneControl guest={guest} linkedPlusOneName={linkedPlusOneName}
+                onAssign={() => onAssignPlusOne(guest.id)} onConvert={() => onConvertPlusOne(guest.id)} onRemove={() => onRemovePlusOne(guest.id)} />
+            </div>
+          )}
         </div>
 
         {guest.mealChoice && (
@@ -678,9 +856,14 @@ function GuestRow({ guest, onDelete, onStatusChange, onEditStart, onInvitationAc
         <div className="px-4 pb-3 flex flex-wrap gap-x-6 gap-y-1 text-xs text-muted-foreground">
           {guest.phone && <span>📞 {guest.phone}</span>}
           {guest.mealChoice && <span>🍽️ {guest.mealChoice}</span>}
-          {guest.plusOneName && <span>+1: {guest.plusOneName}{guest.plusOneMeal ? ` (${guest.plusOneMeal})` : ""}</span>}
+          {guest.plusOneName && !linkedPlusOneName && <span>+1: {guest.plusOneName}{guest.plusOneMeal ? ` (${guest.plusOneMeal})` : ""}</span>}
           {guest.dietary && <span>⚠️ {guest.dietary}</span>}
-          {guest.rsvpNote && <span className="italic">"{guest.rsvpNote}"</span>}
+          {guest.dietaryTags.length > 0 && <span>🥗 {guest.dietaryTags.map(t => DIETARY_TAG_LABELS[t]).join(", ")}</span>}
+          {guest.accessibilityTags.length > 0 && <span>♿ {guest.accessibilityTags.map(t => ACCESSIBILITY_TAG_LABELS[t]).join(", ")}</span>}
+          {guest.accessibilityNotes && <span>{guest.accessibilityNotes}</span>}
+          {guest.age != null && <span>Age {guest.age}</span>}
+          {guest.childNotes && <span>{guest.childNotes}</span>}
+          {guest.rsvpNote && <span className="italic">&quot;{guest.rsvpNote}&quot;</span>}
         </div>
       )}
     </div>
@@ -735,6 +918,7 @@ function HouseholdGroupHeader({ name, count, onRename, onDelete, onMarkReady, on
 export function GuestSection({ token }: { token: string }) {
   const [guests,     setGuests]     = React.useState<CoupleGuest[]>([]);
   const [households, setHouseholds] = React.useState<CoupleHousehold[]>([]);
+  const [mealOptions, setMealOptions] = React.useState<CoupleMealOption[]>([]);
   const [stats,      setStats]      = React.useState<GuestStats | null>(null);
   const [insights,   setInsights]   = React.useState<RsvpInsights | null>(null);
   const [questions,  setQuestions]  = React.useState<RsvpQuestion[]>([]);
@@ -754,16 +938,26 @@ export function GuestSection({ token }: { token: string }) {
   const [newHouseholdName, setNewHouseholdName] = React.useState("");
   const [renamingHouseholdId, setRenamingHouseholdId] = React.useState<string | null>(null);
 
+  const [addingMealOption, setAddingMealOption] = React.useState(false);
+  const [newMealOptionName, setNewMealOptionName] = React.useState("");
+  const [renamingMealOptionId, setRenamingMealOptionId] = React.useState<string | null>(null);
+
+  const [showAddVendorMeal, setShowAddVendorMeal] = React.useState(false);
+  const [vendorMealName, setVendorMealName] = React.useState("");
+  const [vendorMealChoice, setVendorMealChoice] = React.useState("");
+  const [addingVendorMeal, setAddingVendorMeal] = React.useState(false);
+
   const [importing, setImporting] = React.useState(false);
   const csvRef = React.useRef<HTMLInputElement>(null);
 
   async function loadAll() {
-    const [gRes, iRes, qRes, hRes, pRes] = await Promise.all([
+    const [gRes, iRes, qRes, hRes, pRes, mRes] = await Promise.all([
       fetch(`/api/portal/guests?token=${token}`).then(r => r.json()) as Promise<{ guests?: CoupleGuest[]; stats?: GuestStats }>,
       fetch(`/api/portal/rsvp-insights?token=${token}`).then(r => r.json()) as Promise<{ insights?: RsvpInsights }>,
       fetch(`/api/portal/rsvp-questions?token=${token}`).then(r => r.json()) as Promise<{ questions?: RsvpQuestion[] }>,
       fetch(`/api/portal/households?token=${token}`).then(r => r.json()) as Promise<{ households?: CoupleHousehold[] }>,
       fetch(`/api/portal/invitation-progress?token=${token}`).then(r => r.json()) as Promise<InvitationProgress>,
+      fetch(`/api/portal/meal-options?token=${token}`).then(r => r.json()) as Promise<{ mealOptions?: CoupleMealOption[] }>,
     ]);
     setGuests(gRes.guests ?? []);
     setStats(gRes.stats ?? null);
@@ -771,6 +965,7 @@ export function GuestSection({ token }: { token: string }) {
     setQuestions(qRes.questions ?? []);
     setHouseholds(hRes.households ?? []);
     setProgress(pRes ?? null);
+    setMealOptions(mRes.mealOptions ?? []);
     setLoading(false);
   }
 
@@ -790,6 +985,11 @@ export function GuestSection({ token }: { token: string }) {
   async function reloadHouseholds() {
     const d = await fetch(`/api/portal/households?token=${token}`).then(r => r.json()) as { households?: CoupleHousehold[] };
     setHouseholds(d.households ?? []);
+  }
+
+  async function reloadMealOptions() {
+    const d = await fetch(`/api/portal/meal-options?token=${token}`).then(r => r.json()) as { mealOptions?: CoupleMealOption[] };
+    setMealOptions(d.mealOptions ?? []);
   }
 
   async function reloadInsights() {
@@ -833,6 +1033,13 @@ export function GuestSection({ token }: { token: string }) {
         plusOne:     addFields.plusOne,
         plusOneName: addFields.plusOneName || undefined,
         dietary:     addFields.dietary || undefined,
+        mealChoice:        addFields.mealChoice || undefined,
+        dietaryTags:       addFields.dietaryTags,
+        accessibilityTags: addFields.accessibilityTags,
+        accessibilityNotes: addFields.accessibilityNotes || undefined,
+        age:               addFields.age ? parseInt(addFields.age, 10) : undefined,
+        highChairRequired: addFields.highChairRequired,
+        childNotes:        addFields.childNotes || undefined,
       }),
     });
     const data = await res.json() as { ok: boolean };
@@ -858,6 +1065,14 @@ export function GuestSection({ token }: { token: string }) {
       plusOne: guest.plusOne,
       plusOneName: guest.plusOneName ?? "",
       dietary: guest.dietary ?? "",
+      mealChoice: guest.mealChoice ?? "",
+      dietaryTags: guest.dietaryTags,
+      accessibilityTags: guest.accessibilityTags,
+      accessibilityNotes: guest.accessibilityNotes ?? "",
+      age: guest.age != null ? String(guest.age) : "",
+      highChairRequired: guest.highChairRequired,
+      childNotes: guest.childNotes ?? "",
+      notes: guest.notes ?? "",
     });
   }
 
@@ -879,6 +1094,14 @@ export function GuestSection({ token }: { token: string }) {
         plusOne:     editFields.plusOne,
         plusOneName: editFields.plusOneName || undefined,
         dietary:     editFields.dietary || undefined,
+        notes:       editFields.notes || undefined,
+        mealChoice:        editFields.mealChoice || undefined,
+        dietaryTags:       editFields.dietaryTags,
+        accessibilityTags: editFields.accessibilityTags,
+        accessibilityNotes: editFields.accessibilityNotes || undefined,
+        age:               editFields.age ? parseInt(editFields.age, 10) : undefined,
+        highChairRequired: editFields.highChairRequired,
+        childNotes:        editFields.childNotes || undefined,
       }),
     });
     const data = await res.json() as { ok: boolean };
@@ -1017,6 +1240,93 @@ export function GuestSection({ token }: { token: string }) {
     else toast.error("Could not delete household.");
   }
 
+  // ── Plus One lifecycle (Guest Experience — Phase 3) ────────────────────────
+
+  async function handleAssignPlusOne(guestId: string) {
+    const name = window.prompt("Plus-one's name (leave blank if you don't know it yet)")?.trim();
+    const res = await fetch("/api/portal/plus-one", {
+      method: "POST", headers: { "content-type": "application/json" },
+      body: JSON.stringify({ token, guestId, action: "assign", name: name || undefined }),
+    });
+    const data = await res.json() as { ok: boolean };
+    if (data.ok) { await reloadGuests(); toast.success("Plus-one added as their own guest."); }
+    else toast.error("Could not add plus-one.");
+  }
+
+  async function handleConvertPlusOne(guestId: string) {
+    const res = await fetch("/api/portal/plus-one", {
+      method: "POST", headers: { "content-type": "application/json" },
+      body: JSON.stringify({ token, guestId, action: "convert" }),
+    });
+    const data = await res.json() as { ok: boolean };
+    if (data.ok) { await reloadGuests(); toast.success("Plus-one is now its own guest record."); }
+    else toast.error("Could not convert plus-one.");
+  }
+
+  async function handleRemovePlusOne(guestId: string) {
+    const res = await fetch("/api/portal/plus-one", {
+      method: "DELETE", headers: { "content-type": "application/json" },
+      body: JSON.stringify({ token, guestId }),
+    });
+    const data = await res.json() as { ok: boolean };
+    if (data.ok) { await reloadGuests(); toast.success("Plus-one removed."); }
+    else toast.error("Could not remove plus-one.");
+  }
+
+  // ── Meal options catalog ────────────────────────────────────────────────────
+
+  async function handleCreateMealOption() {
+    if (!newMealOptionName.trim()) return;
+    const res = await fetch("/api/portal/meal-options", {
+      method: "POST", headers: { "content-type": "application/json" },
+      body: JSON.stringify({ token, name: newMealOptionName.trim(), sortOrder: mealOptions.length }),
+    });
+    const data = await res.json() as { ok: boolean };
+    if (data.ok) { await reloadMealOptions(); setNewMealOptionName(""); setAddingMealOption(false); }
+    else toast.error("Could not add meal option.");
+  }
+
+  async function handleRenameMealOption(id: string, name: string) {
+    if (!name.trim()) return;
+    const res = await fetch("/api/portal/meal-options", {
+      method: "POST", headers: { "content-type": "application/json" },
+      body: JSON.stringify({ token, id, name: name.trim() }),
+    });
+    const data = await res.json() as { ok: boolean };
+    if (data.ok) { await reloadMealOptions(); setRenamingMealOptionId(null); }
+    else toast.error("Could not rename meal option.");
+  }
+
+  async function handleDeleteMealOption(id: string) {
+    const res = await fetch("/api/portal/meal-options", {
+      method: "DELETE", headers: { "content-type": "application/json" },
+      body: JSON.stringify({ token, id }),
+    });
+    const data = await res.json() as { ok: boolean };
+    if (data.ok) { await reloadMealOptions(); toast.success("Meal option removed."); }
+    else toast.error("Could not remove meal option.");
+  }
+
+  // ── Vendor Meals — first-class Guest records, lightweight add flow ─────────
+
+  async function handleAddVendorMeal() {
+    if (!vendorMealName.trim()) return;
+    setAddingVendorMeal(true);
+    const res = await fetch("/api/portal/guests", {
+      method: "POST", headers: { "content-type": "application/json" },
+      body: JSON.stringify({ token, firstName: vendorMealName.trim(), mealChoice: vendorMealChoice || undefined, isVendorMeal: true }),
+    });
+    const data = await res.json() as { ok: boolean };
+    if (data.ok) {
+      await reloadGuests();
+      setVendorMealName(""); setVendorMealChoice(""); setShowAddVendorMeal(false);
+      toast.success("Vendor meal added.");
+    } else {
+      toast.error("Could not add vendor meal.");
+    }
+    setAddingVendorMeal(false);
+  }
+
   async function sendReminders() {
     // Only guests actually invited (sent/delivered/opened) and still
     // pending — a draft was never invited in the first place, so a
@@ -1034,7 +1344,26 @@ export function GuestSection({ token }: { token: string }) {
     else toast.error("Could not send reminders.");
   }
 
-  const filtered = filter === "all" ? guests : guests.filter(g => g.rsvpStatus === filter);
+  // Vendor Meals (Guest Experience — Phase 3) are real guest records but
+  // not social guests — they get their own section, never mixed into
+  // households/Unassigned or the RSVP-status filter tabs above.
+  const socialGuests = guests.filter(g => !g.isVendorMeal);
+  const vendorMeals = guests.filter(g => g.isVendorMeal);
+
+  // Plus-one linkage lookups (Guest Experience — Phase 3) — a plus-one is
+  // its own full guest row (so it's independently editable/RSVP-able), plus
+  // a cross-reference on the primary's own row so the relationship is visible.
+  const plusOneByPrimaryId = new Map<string, CoupleGuest>();
+  const primaryNameByPlusOneId = new Map<string, string>();
+  for (const g of socialGuests) {
+    if (g.plusOneOfGuestId) {
+      plusOneByPrimaryId.set(g.plusOneOfGuestId, g);
+      const primary = socialGuests.find(p => p.id === g.plusOneOfGuestId);
+      if (primary) primaryNameByPlusOneId.set(g.id, [primary.firstName, primary.lastName].filter(Boolean).join(" "));
+    }
+  }
+
+  const filtered = filter === "all" ? socialGuests : socialGuests.filter(g => g.rsvpStatus === filter);
 
   // Organize by household — this is the primary organizational unit (Guest &
   // Household Foundation), not a re-typed label. Every household appears even
@@ -1091,7 +1420,7 @@ export function GuestSection({ token }: { token: string }) {
       )}
 
       {/* Filter tabs */}
-      {guests.length > 0 && (
+      {socialGuests.length > 0 && (
         <div className="flex gap-1.5 flex-wrap">
           {(["all", "attending", "declined", "pending"] as const).map(f => (
             <button key={f} onClick={() => setFilter(f)}
@@ -1099,14 +1428,14 @@ export function GuestSection({ token }: { token: string }) {
               style={filter === f
                 ? { background: "#5D6F5D", color: "white" }
                 : { background: "transparent", color: "#6A6460", border: "1px solid #E0DAD4" }}>
-              {f === "all" ? `All (${guests.length})` : `${RSVP_LABELS[f]} (${guests.filter(g => g.rsvpStatus === f).length})`}
+              {f === "all" ? `All (${socialGuests.length})` : `${RSVP_LABELS[f]} (${socialGuests.filter(g => g.rsvpStatus === f).length})`}
             </button>
           ))}
         </div>
       )}
 
       {/* Guest list — organized by household */}
-      {guests.length === 0 && !showAdd ? (
+      {socialGuests.length === 0 && !showAdd ? (
         <div className="rounded-2xl border border-dashed border-border py-10 text-center space-y-3 px-4">
           <Users className="h-8 w-8 text-muted-foreground mx-auto" />
           <p className="text-sm font-medium text-heading">No guests yet</p>
@@ -1145,7 +1474,7 @@ export function GuestSection({ token }: { token: string }) {
               ) : hGuests.map(g => (
                 editingId === g.id ? (
                   <div key={g.id} className="border-b border-border/50 last:border-0 p-4 space-y-2.5 bg-muted/10">
-                    <GuestFieldsForm fields={editFields} setFields={setEditFields} households={households} />
+                    <GuestFieldsForm fields={editFields} setFields={setEditFields} households={households} mealOptions={mealOptions} />
                     <div className="flex gap-2 justify-end pt-1">
                       <button type="button" onClick={() => setEditingId(null)} className="text-sm text-muted-foreground px-3 py-1.5 rounded-lg hover:bg-muted">Cancel</button>
                       <button type="button" onClick={handleEditSave} disabled={!editFields.name.trim() || saving}
@@ -1155,7 +1484,11 @@ export function GuestSection({ token }: { token: string }) {
                     </div>
                   </div>
                 ) : (
-                  <GuestRow key={g.id} guest={g} onDelete={handleDelete} onStatusChange={handleRsvp} onEditStart={handleEditStart} onInvitationAction={handleInvitationAction} />
+                  <GuestRow key={g.id} guest={g}
+                    linkedPlusOneName={(() => { const p = plusOneByPrimaryId.get(g.id); return p ? [p.firstName, p.lastName].filter(Boolean).join(" ") : null; })()}
+                    primaryGuestName={primaryNameByPlusOneId.get(g.id) ?? null}
+                    onDelete={handleDelete} onStatusChange={handleRsvp} onEditStart={handleEditStart} onInvitationAction={handleInvitationAction}
+                    onAssignPlusOne={handleAssignPlusOne} onConvertPlusOne={handleConvertPlusOne} onRemovePlusOne={handleRemovePlusOne} />
                 )
               ))}
             </div>
@@ -1171,7 +1504,7 @@ export function GuestSection({ token }: { token: string }) {
               ) : unassigned.map(g => (
                 editingId === g.id ? (
                   <div key={g.id} className="border-b border-border/50 last:border-0 p-4 space-y-2.5 bg-muted/10">
-                    <GuestFieldsForm fields={editFields} setFields={setEditFields} households={households} />
+                    <GuestFieldsForm fields={editFields} setFields={setEditFields} households={households} mealOptions={mealOptions} />
                     <div className="flex gap-2 justify-end pt-1">
                       <button type="button" onClick={() => setEditingId(null)} className="text-sm text-muted-foreground px-3 py-1.5 rounded-lg hover:bg-muted">Cancel</button>
                       <button type="button" onClick={handleEditSave} disabled={!editFields.name.trim() || saving}
@@ -1181,7 +1514,11 @@ export function GuestSection({ token }: { token: string }) {
                     </div>
                   </div>
                 ) : (
-                  <GuestRow key={g.id} guest={g} onDelete={handleDelete} onStatusChange={handleRsvp} onEditStart={handleEditStart} onInvitationAction={handleInvitationAction} />
+                  <GuestRow key={g.id} guest={g}
+                    linkedPlusOneName={(() => { const p = plusOneByPrimaryId.get(g.id); return p ? [p.firstName, p.lastName].filter(Boolean).join(" ") : null; })()}
+                    primaryGuestName={primaryNameByPlusOneId.get(g.id) ?? null}
+                    onDelete={handleDelete} onStatusChange={handleRsvp} onEditStart={handleEditStart} onInvitationAction={handleInvitationAction}
+                    onAssignPlusOne={handleAssignPlusOne} onConvertPlusOne={handleConvertPlusOne} onRemovePlusOne={handleRemovePlusOne} />
                 )
               ))}
             </div>
@@ -1189,10 +1526,31 @@ export function GuestSection({ token }: { token: string }) {
         </div>
       )}
 
+      {/* Vendor Meals (Guest Experience — Phase 3) — real guest records, kept
+          out of household/RSVP-status views since they're not social guests. */}
+      {vendorMeals.length > 0 && (
+        <div className="rounded-2xl border border-border bg-card overflow-hidden">
+          <div className="px-4 py-2 bg-muted/30 border-b border-border/50">
+            <p className="text-xs font-semibold text-heading">Vendor Meals <span className="font-normal text-muted-foreground">· {vendorMeals.length}</span></p>
+          </div>
+          {vendorMeals.map(g => (
+            <div key={g.id} className="px-4 py-2.5 flex items-center justify-between gap-2.5 border-b border-border/50 last:border-0">
+              <p className="text-sm text-heading">{g.firstName}</p>
+              <div className="flex items-center gap-2">
+                {g.mealChoice && <span className="text-xs text-muted-foreground">{g.mealChoice}</span>}
+                <button type="button" onClick={() => handleDelete(g.id)} className="p-1 text-muted-foreground hover:text-destructive rounded transition-colors">
+                  <Trash2 className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
       {/* Add guest form */}
       {showAdd ? (
         <div className="rounded-2xl border border-ring bg-card p-4 space-y-2.5">
-          <GuestFieldsForm fields={addFields} setFields={setAddFields} households={households} autoFocus onEnter={handleAdd} />
+          <GuestFieldsForm fields={addFields} setFields={setAddFields} households={households} mealOptions={mealOptions} autoFocus onEnter={handleAdd} />
           <div className="flex gap-2 justify-end pt-0.5">
             <button type="button" onClick={() => { setShowAdd(false); setAddFields(emptyGuestFields()); }}
               className="text-sm text-muted-foreground px-3 py-1.5 rounded-lg hover:bg-muted">Cancel</button>
@@ -1200,6 +1558,29 @@ export function GuestSection({ token }: { token: string }) {
               className="text-sm font-medium px-4 py-1.5 rounded-lg text-white disabled:opacity-50"
               style={{ background: "#5D6F5D" }}>
               {adding ? "Adding…" : "Add Guest"}
+            </button>
+          </div>
+        </div>
+      ) : showAddVendorMeal ? (
+        <div className="rounded-2xl border border-ring bg-card p-4 space-y-2.5">
+          <p className="text-xs font-medium text-heading">Add a Vendor Meal</p>
+          <p className="text-xs text-muted-foreground">For photographers, DJs, and other vendors who need a meal — not a social guest, so no RSVP or invitation is tracked.</p>
+          <input value={vendorMealName} onChange={e => setVendorMealName(e.target.value)} placeholder="Who's this for? — e.g. DJ, Photographer" autoFocus
+            className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring" />
+          {mealOptions.length > 0 && (
+            <select value={vendorMealChoice} onChange={e => setVendorMealChoice(e.target.value)}
+              className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring">
+              <option value="">Meal choice (optional)</option>
+              {mealOptions.map(m => <option key={m.id} value={m.name}>{m.name}</option>)}
+            </select>
+          )}
+          <div className="flex gap-2 justify-end pt-0.5">
+            <button type="button" onClick={() => { setShowAddVendorMeal(false); setVendorMealName(""); setVendorMealChoice(""); }}
+              className="text-sm text-muted-foreground px-3 py-1.5 rounded-lg hover:bg-muted">Cancel</button>
+            <button type="button" onClick={handleAddVendorMeal} disabled={!vendorMealName.trim() || addingVendorMeal}
+              className="text-sm font-medium px-4 py-1.5 rounded-lg text-white disabled:opacity-50"
+              style={{ background: "#5D6F5D" }}>
+              {addingVendorMeal ? "Adding…" : "Add Vendor Meal"}
             </button>
           </div>
         </div>
@@ -1213,6 +1594,10 @@ export function GuestSection({ token }: { token: string }) {
             {importing ? <Loader2 className="h-4 w-4 animate-spin" /> : "↑"} Import CSV
             <input ref={csvRef} type="file" accept=".csv" className="sr-only" onChange={handleCSV} disabled={importing} />
           </label>
+          <button type="button" onClick={() => setShowAddVendorMeal(true)}
+            className="flex items-center gap-1.5 text-xs text-muted-foreground px-4 py-2 rounded-xl border border-dashed border-border hover:bg-muted/40 transition-colors">
+            <Plus className="h-3.5 w-3.5" /> Add Vendor Meal
+          </button>
         </div>
       )}
 
@@ -1239,6 +1624,67 @@ export function GuestSection({ token }: { token: string }) {
           <button type="button" onClick={() => setAddingHousehold(true)}
             className="flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg border border-border hover:bg-muted/40 transition-colors">
             <Plus className="h-3.5 w-3.5" /> New Household
+          </button>
+        )}
+      </div>
+
+      {/* Meal options catalog (Guest Experience — Phase 3) — the one
+          authoritative source guests pick from, replacing the old
+          rsvp_questions "meal_choice" convention. */}
+      <div className="border border-border rounded-2xl p-4 space-y-2.5">
+        <p className="text-sm font-medium text-heading">Meal Options</p>
+        <p className="text-xs text-muted-foreground">
+          Build the menu your guests choose from — Chicken, Fish, Vegetarian, Kids Meal, whatever your caterer offers.
+        </p>
+        {mealOptions.length > 0 && (
+          <div className="space-y-1.5">
+            {mealOptions.map(m => (
+              renamingMealOptionId === m.id ? (
+                <div key={m.id} className="flex items-center gap-2">
+                  <input
+                    defaultValue={m.name} autoFocus
+                    onKeyDown={e => { if (e.key === "Enter") handleRenameMealOption(m.id, (e.target as HTMLInputElement).value); if (e.key === "Escape") setRenamingMealOptionId(null); }}
+                    className="flex-1 rounded-lg border border-border bg-background px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-ring"
+                    id={`rename-meal-${m.id}`}
+                  />
+                  <button type="button" onClick={() => handleRenameMealOption(m.id, (document.getElementById(`rename-meal-${m.id}`) as HTMLInputElement).value)}
+                    className="p-1 text-muted-foreground hover:text-foreground"><Check className="h-3.5 w-3.5" /></button>
+                  <button type="button" onClick={() => setRenamingMealOptionId(null)}
+                    className="p-1 text-muted-foreground hover:text-foreground"><X className="h-3.5 w-3.5" /></button>
+                </div>
+              ) : (
+                <div key={m.id} className="flex items-center justify-between gap-2 text-sm">
+                  <span className="text-foreground">{m.name}</span>
+                  <div className="flex items-center gap-1">
+                    <button type="button" onClick={() => setRenamingMealOptionId(m.id)} className="p-1 text-muted-foreground hover:text-foreground rounded" title="Rename">
+                      <Pencil className="h-3 w-3" />
+                    </button>
+                    <button type="button" onClick={() => handleDeleteMealOption(m.id)} className="p-1 text-muted-foreground hover:text-destructive rounded" title="Remove">
+                      <Trash2 className="h-3 w-3" />
+                    </button>
+                  </div>
+                </div>
+              )
+            ))}
+          </div>
+        )}
+        {addingMealOption ? (
+          <div className="flex gap-2">
+            <input value={newMealOptionName} onChange={e => setNewMealOptionName(e.target.value)}
+              onKeyDown={e => e.key === "Enter" && handleCreateMealOption()}
+              placeholder="Meal option — e.g. Chicken, Vegetarian, Kids Meal" autoFocus
+              className="flex-1 rounded-lg border border-border bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring" />
+            <button type="button" onClick={handleCreateMealOption} disabled={!newMealOptionName.trim()}
+              className="text-sm font-medium px-3 py-1.5 rounded-lg text-white disabled:opacity-50" style={{ background: "#5D6F5D" }}>
+              Add
+            </button>
+            <button type="button" onClick={() => { setAddingMealOption(false); setNewMealOptionName(""); }}
+              className="text-sm text-muted-foreground px-3 py-1.5 rounded-lg hover:bg-muted">Cancel</button>
+          </div>
+        ) : (
+          <button type="button" onClick={() => setAddingMealOption(true)}
+            className="flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg border border-border hover:bg-muted/40 transition-colors">
+            <Plus className="h-3.5 w-3.5" /> New Meal Option
           </button>
         )}
       </div>

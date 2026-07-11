@@ -49,6 +49,8 @@ export type RsvpContext = {
   venue: { name: string };
   websiteSlug: string | null;
   accentColor: string;
+  /** The one authoritative meal catalog (Guest Experience — Phase 3) — replaces the old rsvp_questions "meal_choice" convention. */
+  mealOptions: string[];
   questions: import("@/lib/portal/types").RsvpQuestion[];
   guestAnswers: { questionId: string; answer: string }[];
   householdMembers: {

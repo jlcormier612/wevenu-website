@@ -23,6 +23,15 @@ export async function POST(request: Request) {
     householdId?: string | null;
     dietary?: string;
     isChild?: boolean;
+    // Guest Experience — Phase 3
+    mealChoice?: string;
+    dietaryTags?: string[];
+    accessibilityTags?: string[];
+    accessibilityNotes?: string;
+    age?: number | null;
+    highChairRequired?: boolean;
+    childNotes?: string;
+    isVendorMeal?: boolean;
     guests?: { firstName: string; lastName?: string; email?: string; household?: string }[];
   };
   const { token } = body;
@@ -48,6 +57,14 @@ export async function POST(request: Request) {
     p_household_id:   body.householdId ?? null,
     p_dietary:        body.dietary ?? "",
     p_is_child:       body.isChild ?? false,
+    p_meal_choice:         body.mealChoice ?? "",
+    p_dietary_tags:        body.dietaryTags ?? [],
+    p_accessibility_tags:  body.accessibilityTags ?? [],
+    p_accessibility_notes: body.accessibilityNotes ?? "",
+    p_age:                 body.age ?? null,
+    p_high_chair_required: body.highChairRequired ?? false,
+    p_child_notes:         body.childNotes ?? "",
+    p_is_vendor_meal:      body.isVendorMeal ?? false,
   });
   if ((data as { ok?: boolean })?.ok) {
     void supabase.rpc("log_couple_event", { p_token: token, p_type: "guests_added", p_data: { count: 1 } });
@@ -64,6 +81,15 @@ export async function PATCH(request: Request) {
     firstName?: string; lastName?: string; email?: string; phone?: string;
     plusOne?: boolean; plusOneName?: string; householdId?: string | null;
     dietary?: string; isChild?: boolean; notes?: string;
+    // Guest Experience — Phase 3
+    mealChoice?: string;
+    dietaryTags?: string[];
+    accessibilityTags?: string[];
+    accessibilityNotes?: string;
+    age?: number | null;
+    highChairRequired?: boolean;
+    childNotes?: string;
+    isVendorMeal?: boolean;
     // Invitation lifecycle (Guest Experience — Phase 2) — bulk-capable, a
     // single guest is just an array of one. Same shape for one guest or a
     // whole household's worth.
@@ -104,6 +130,14 @@ export async function PATCH(request: Request) {
     p_dietary:        body.dietary ?? "",
     p_is_child:       body.isChild ?? false,
     p_notes:          body.notes ?? "",
+    p_meal_choice:         body.mealChoice ?? "",
+    p_dietary_tags:        body.dietaryTags ?? [],
+    p_accessibility_tags:  body.accessibilityTags ?? [],
+    p_accessibility_notes: body.accessibilityNotes ?? "",
+    p_age:                 body.age ?? null,
+    p_high_chair_required: body.highChairRequired ?? false,
+    p_child_notes:         body.childNotes ?? "",
+    p_is_vendor_meal:      body.isVendorMeal ?? false,
   });
   return NextResponse.json(data ?? { ok: false });
 }

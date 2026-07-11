@@ -125,14 +125,13 @@ function HouseholdMemberRow({ member, mealOptions, onChange }: {
 // ── Main component ────────────────────────────────────────────────────────────
 
 export function RsvpPage({ context, rsvpToken }: { context: RsvpContext; rsvpToken: string }) {
-  const { guest, couple, event, venue, websiteSlug, accentColor, questions = [], guestAnswers = [], householdMembers = [] } = context;
+  const { guest, couple, event, venue, websiteSlug, accentColor, mealOptions = [], questions = [], guestAnswers = [], householdMembers = [] } = context;
   const color      = accentColor ?? "#5D6F5D";
   const coupleName = [couple.firstName, couple.partnerFirstName].filter(Boolean).join(" & ");
 
-  // Derive meal question from questions list
-  const mealQuestion  = questions.find(q => q.questionKey === "meal_choice");
-  const mealOptions   = (mealQuestion?.options ?? []) as string[];
-  const otherQuestions = questions.filter(q => q.questionKey !== "meal_choice");
+  // Meal choice has its own first-class catalog now (Guest Experience —
+  // Phase 3) — every other custom question the couple built stays here.
+  const otherQuestions = questions;
 
   // Build initial answer map from prior answers
   const initialAnswers = React.useMemo(() => {
@@ -290,8 +289,7 @@ export function RsvpPage({ context, rsvpToken }: { context: RsvpContext; rsvpTok
                   {mealOptions.length > 0 && (
                     <div className="space-y-1">
                       <p className="text-xs font-medium text-[#666]">
-                        Meal preference{mealQuestion?.isRequired ? "" : " "}
-                        {!mealQuestion?.isRequired && <span className="font-normal text-[#999]">(optional)</span>}
+                        Meal preference <span className="font-normal text-[#999]">(optional)</span>
                       </p>
                       <div className="grid grid-cols-1 gap-2">
                         {mealOptions.map(opt => (
