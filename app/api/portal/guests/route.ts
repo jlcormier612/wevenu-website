@@ -32,6 +32,8 @@ export async function POST(request: Request) {
     highChairRequired?: boolean;
     childNotes?: string;
     isVendorMeal?: boolean;
+    // Seating Experience — Phase 1
+    isWeddingParty?: boolean;
     guests?: { firstName: string; lastName?: string; email?: string; household?: string }[];
   };
   const { token } = body;
@@ -65,6 +67,7 @@ export async function POST(request: Request) {
     p_high_chair_required: body.highChairRequired ?? false,
     p_child_notes:         body.childNotes ?? "",
     p_is_vendor_meal:      body.isVendorMeal ?? false,
+    p_is_wedding_party:    body.isWeddingParty ?? false,
   });
   if ((data as { ok?: boolean })?.ok) {
     void supabase.rpc("log_couple_event", { p_token: token, p_type: "guests_added", p_data: { count: 1 } });
@@ -90,6 +93,8 @@ export async function PATCH(request: Request) {
     highChairRequired?: boolean;
     childNotes?: string;
     isVendorMeal?: boolean;
+    // Seating Experience — Phase 1
+    isWeddingParty?: boolean;
     // Invitation lifecycle (Guest Experience — Phase 2) — bulk-capable, a
     // single guest is just an array of one. Same shape for one guest or a
     // whole household's worth.
@@ -138,6 +143,7 @@ export async function PATCH(request: Request) {
     p_high_chair_required: body.highChairRequired ?? false,
     p_child_notes:         body.childNotes ?? "",
     p_is_vendor_meal:      body.isVendorMeal ?? false,
+    p_is_wedding_party:    body.isWeddingParty ?? false,
   });
   return NextResponse.json(data ?? { ok: false });
 }

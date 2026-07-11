@@ -1,24 +1,26 @@
 # Floor Plans ↔ Seating — Architecture
 
-**Status:** Documentation only. No schema, code, or navigation changed as part of this task. Seating itself is explicitly not built here — this document exists so that when it is, it's built as one coherent system with Floor Plans rather than a second, disconnected one.
+**Status:** Built. Seating Experience — Phase 1 (Foundation & Floor Plan Integration) implemented exactly the relationship this document recommended: tables are `floor_plan_objects` rows, read live, never duplicated; the couple's only new data is `guest_seat_assignments` (guest ↔ table_object_id). The rest of this document is kept as-written — it was the correct call before implementation and every recommendation in it held — with inline notes marking what Phase 1 resolved. See §1 and §5.3 for what changed.
 **Companion document:** `docs/wedding-workspace-architecture.md` §3 (Ownership Model) and §7 (Seating Architecture) — this document goes deeper on the one relationship that doc flagged as a conflict and left unresolved by design.
 
 ---
 
 ## 1. Current state — two unconnected systems describing the same room
 
-Confirmed directly against both schemas, not inferred:
+*(As found before Seating Experience — Phase 1. A Seating feature already existed at this point — Sprint 74 — independently of this document, and had built exactly the second, disconnected system this document warns against. Confirmed directly against both schemas, not inferred.)*
 
-| | Floor Plans (this domain) | Seating (not built) |
+| | Floor Plans (this domain) | Seating (Sprint 74 — since retired) |
 |---|---|---|
 | Tables | `floor_plans` / `floor_plan_objects` | `couple_seating_arrangements` / `seating_tables` |
 | Canvas | `room_width_ft` × `room_depth_ft` (configurable per plan; canvas units = inches, 12 per foot) | Fixed `canvas_width`/`canvas_height` = 1200×800, uniform across every arrangement |
 | Table shape vocabulary | `display_shape` — round/square/rectangular/oval/cocktail plus Reception/Ceremony/Furniture shapes (this task) | `table_type` — round/rectangular/head/sweetheart/cocktail |
 | Position fields | `x`, `y` (center, canvas units) | `position_x`, `position_y` |
-| Owner | Venue (coordinator-authored, Booking Workspace) | Couple (Wedding Workspace, Client-Owned per the companion doc) |
+| Owner | Venue (coordinator-authored, Booking Workspace) | Couple, in principle — but carried `venue_rw_*` RLS policies granting venue staff full read/write, the same "Client-Owned in name only" bug found and fixed on Guests |
 | Guests | Not modeled here at all | `guest_seat_assignments` → `couple_guests` |
 
-No foreign key, shared table, or code path connects them. A coordinator laying out where the round tables go and a couple deciding who sits at each one are, today, two unrelated facts about the same reception.
+No foreign key, shared table, or code path connected them — exactly the "two unrelated facts about the same reception" problem this document was written to prevent, already realized once by the time Phase 1 traced it. Confirmed zero real rows existed in any of the three Sprint 74 tables before they were dropped — a correction, not data loss.
+
+**What Phase 1 built instead** (matching §2's recommendation below exactly): tables are `floor_plan_objects` rows, read live off the one Floor Plan the venue shares via `floor_plans.client_access` (reserved since Client Identity Foundation, unbuilt until now); the couple's only new data is `guest_seat_assignments` (`guest_id`, `table_object_id`, both nullable-safe per §5.3 below) — Client-Owned, RLS enabled with zero policies, access only through SECURITY DEFINER portal RPCs. No second canvas, no second table vocabulary, no venue read/write over who-sits-where.
 
 ---
 
@@ -68,7 +70,7 @@ Since sharing is one-way and read-only from Seating's side, the rules are about 
 
 1. **A table's position or shape changing** should never affect Seating — visually irrelevant to who's assigned there. Cosmetic Floor Plan edits should be silent to Seating.
 2. **A table's capacity decreasing below its current assigned-guest count** is the one case that matters and needs a real rule — not "prevent the coordinator from resizing a table" (Floor Plans is Venue-Owned; the coordinator's editing should never be gated by Seating's state), but Seating should surface an "over-capacity" signal the same way this task's Inventory Usage panel does: informational, never blocking, on the Seating side.
-3. **A table being deleted from the Floor Plan while guests are assigned to it in Seating** is the one case that needs an explicit decision before Seating is built: either (a) the deletion is blocked while assignments exist (a real constraint, the one place this relationship should NOT be purely informational), or (b) the assignments are orphaned with a visible "unassigned — table removed" state in Seating. This document does not resolve which; it flags that Phase 1 of Seating must decide it, because both are defensible and the choice has real data-loss implications.
+3. **A table being deleted from the Floor Plan while guests are assigned to it in Seating** — **resolved by Phase 1 as (b).** `guest_seat_assignments.table_object_id` is `on delete set null`, not `on delete cascade` and not a blocking constraint: deleting a table from the Floor Plan editor is never gated by Seating's state (the coordinator's editing is never blocked by the couple's planning, matching every other Venue-Owned/Client-Owned boundary in the product), and the guest's seating *decision* survives — the assignment row remains, pointing at no table, surfaced to the couple as a distinct "needs a new table" bucket (`get_seating_data`'s `needsReassignment`), never silently dropped and never conflated with a guest who was simply never assigned in the first place.
 4. **A brand-new table added to the Floor Plan** should simply become available in Seating the next time Seating reads the table list — no special handling needed.
 5. **None of this is real-time sync.** Given the ownership split (coordinator and couple are different people, editing at different times, on different sides of the product), Seating reading the Floor Plan's current table list at the moment the couple opens Seating is sufficient — there is no case established here that requires a live, bidirectional, concurrent-editing channel.
 
@@ -95,8 +97,10 @@ Requirement 2 of this task built live, informational Inventory Usage reporting i
 
 ## 8. What this document is not
 
-It is not a schema proposal, a migration plan, or an implementation sequence. It does not specify Seating's table structure, its RLS policies, or its UI. It exists to make sure that whenever Seating is built, the person building it starts from these six answered questions (relationship, ownership, shared data, sync rules, collaboration model, inventory stance) instead of re-deriving them from scratch or — worse — building a second Floor Plans by accident, which is exactly what happened the first time.
+It was not a schema proposal, a migration plan, or an implementation sequence — it existed to make sure that whenever Seating was built, the person building it started from these six answered questions (relationship, ownership, shared data, sync rules, collaboration model, inventory stance) instead of re-deriving them from scratch or — worse — building a second Floor Plans by accident, which is exactly what had already happened once (§1).
+
+**Seating Experience — Phase 1 is that implementation.** Every recommendation above held without needing to be revisited: Floor Plans → Seating stays one-way and read-only (§2, §4); ownership stayed split exactly as drawn (§3); the one open question (§5.3) resolved to option (b) with no other rule needing to change; the couple still cannot add, remove, resize, or reposition a table from within Seating (§6); capacity warnings are informational-only, matching Inventory Usage's own pattern (§7). What Phase 1 added beyond this document's scope: `is_wedding_party` on `couple_guests` (a seating-specific guest grouping this document never anticipated, since it predates Guest Experience's own household/child/vendor-meal vocabulary) and the couple-facing "Add Guests" / drag-to-seat interaction design, neither of which required touching Floor Plans.
 
 ---
 
-*End of document. No implementation, migration plan, or code is proposed — see task scope.*
+*Phase 1 implemented: `supabase/migrations/20260828000000_seating_phase1.sql`, `components/portal/seating-section.tsx`, `components/events/floor-plan-workspace.tsx` (the venue's "Share for Seating" control).*

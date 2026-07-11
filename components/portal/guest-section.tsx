@@ -527,6 +527,8 @@ type GuestFields = {
   accessibilityNotes: string;
   age: string; highChairRequired: boolean; childNotes: string;
   notes: string;
+  // Seating Experience — Phase 1
+  isWeddingParty: boolean;
 };
 
 function emptyGuestFields(): GuestFields {
@@ -535,6 +537,7 @@ function emptyGuestFields(): GuestFields {
     isChild: false, plusOne: false, plusOneName: "", dietary: "",
     mealChoice: "", dietaryTags: [], accessibilityTags: [], accessibilityNotes: "",
     age: "", highChairRequired: false, childNotes: "", notes: "",
+    isWeddingParty: false,
   };
 }
 
@@ -592,6 +595,11 @@ function GuestFieldsForm({ fields, setFields, households, mealOptions, autoFocus
           <input type="checkbox" checked={fields.plusOne} onChange={e => { set("plusOne", e.target.checked); if (!e.target.checked) set("plusOneName", ""); }}
             className="h-3.5 w-3.5 rounded accent-[#5D6F5D]" />
           <span className="text-muted-foreground">Brings a +1</span>
+        </label>
+        <label className="flex items-center gap-2 text-sm cursor-pointer select-none">
+          <input type="checkbox" checked={fields.isWeddingParty} onChange={e => set("isWeddingParty", e.target.checked)}
+            className="h-3.5 w-3.5 rounded accent-[#5D6F5D]" />
+          <span className="text-muted-foreground">Wedding party</span>
         </label>
       </div>
 
@@ -789,6 +797,9 @@ function GuestRow({ guest, linkedPlusOneName, primaryGuestName, onDelete, onStat
             {[guest.firstName, guest.lastName].filter(Boolean).join(" ")}
             {guest.isChild && (
               <span className="ml-1.5 inline-flex items-center rounded-full bg-amber-50 border border-amber-200 px-1.5 py-px text-[9px] font-medium text-amber-700">child</span>
+            )}
+            {guest.isWeddingParty && (
+              <span className="ml-1.5 inline-flex items-center rounded-full bg-primary/10 border border-primary/30 px-1.5 py-px text-[9px] font-medium text-primary">wedding party</span>
             )}
             {primaryGuestName && (
               <span className="ml-1.5 inline-flex items-center rounded-full bg-muted border border-border px-1.5 py-px text-[9px] font-medium text-muted-foreground">
@@ -1040,6 +1051,7 @@ export function GuestSection({ token }: { token: string }) {
         age:               addFields.age ? parseInt(addFields.age, 10) : undefined,
         highChairRequired: addFields.highChairRequired,
         childNotes:        addFields.childNotes || undefined,
+        isWeddingParty:    addFields.isWeddingParty,
       }),
     });
     const data = await res.json() as { ok: boolean };
@@ -1073,6 +1085,7 @@ export function GuestSection({ token }: { token: string }) {
       highChairRequired: guest.highChairRequired,
       childNotes: guest.childNotes ?? "",
       notes: guest.notes ?? "",
+      isWeddingParty: guest.isWeddingParty,
     });
   }
 
@@ -1102,6 +1115,7 @@ export function GuestSection({ token }: { token: string }) {
         age:               editFields.age ? parseInt(editFields.age, 10) : undefined,
         highChairRequired: editFields.highChairRequired,
         childNotes:        editFields.childNotes || undefined,
+        isWeddingParty:    editFields.isWeddingParty,
       }),
     });
     const data = await res.json() as { ok: boolean };

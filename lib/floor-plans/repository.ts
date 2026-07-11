@@ -147,6 +147,22 @@ export async function setFloorPlanBackgroundLocked(
   if (error) throw error;
 }
 
+/**
+ * Seating Experience — Phase 1: whether the couple can see this Floor Plan
+ * at all. 'hidden' (default) means Seating has nothing to show them yet;
+ * 'view' or 'edit' means the venue has decided the room is ready to share.
+ * Reserved since Client Identity Foundation, never wired to anything until
+ * Seating needed exactly this gate.
+ */
+export async function setFloorPlanClientAccess(
+  client: DbClient, venueId: string, planId: string, clientAccess: FloorPlanClientAccess,
+): Promise<void> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error } = await (client.from("floor_plans") as any)
+    .update({ client_access: clientAccess }).eq("id", planId).eq("venue_id", venueId);
+  if (error) throw error;
+}
+
 export async function updateFloorPlanRoomSettings(
   client: DbClient, venueId: string, planId: string, input: UpdateRoomSettingsInput,
 ): Promise<void> {

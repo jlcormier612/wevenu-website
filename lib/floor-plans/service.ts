@@ -117,6 +117,14 @@ export async function setBackgroundLocked(planId: string, locked: boolean): Prom
   return result as FloorPlanActionResult;
 }
 
+export async function setClientAccess(planId: string, clientAccess: FloorPlan["clientAccess"]): Promise<FloorPlanActionResult> {
+  const result = await withVenue(async (supabase, venueId) => {
+    await repo.setFloorPlanClientAccess(supabase, venueId, planId, clientAccess);
+    return { ok: true } as FloorPlanActionResult;
+  });
+  return result as FloorPlanActionResult;
+}
+
 export async function updateRoomSettings(planId: string, input: UpdateRoomSettingsInput): Promise<FloorPlanActionResult> {
   if (input.roomWidthFt <= 0 || input.roomDepthFt <= 0) return { ok: false, message: "Room dimensions must be greater than zero." };
   const result = await withVenue(async (supabase, venueId) => {

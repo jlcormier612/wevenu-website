@@ -11,6 +11,7 @@ import {
   duplicateFloorPlan,
   reorderObject,
   setBackgroundLocked,
+  setClientAccess,
   updateBackground,
   updateNotes,
   updateObject_,
@@ -19,6 +20,7 @@ import {
 import type {
   AddObjectInput,
   CreateFloorPlanResult,
+  FloorPlan,
   FloorPlanActionResult,
   FloorPlanObject,
   ReorderDirection,
@@ -108,6 +110,15 @@ export async function setBackgroundLockedAction(
   planId: string, eventId: string, locked: boolean,
 ): Promise<FloorPlanActionResult> {
   const result = await setBackgroundLocked(planId, locked);
+  if (result.ok) revalidateEvent(eventId);
+  return result;
+}
+
+/** Seating Experience — Phase 1: share (or hide) this Floor Plan with the couple. */
+export async function setClientAccessAction(
+  planId: string, eventId: string, clientAccess: FloorPlan["clientAccess"],
+): Promise<FloorPlanActionResult> {
+  const result = await setClientAccess(planId, clientAccess);
   if (result.ok) revalidateEvent(eventId);
   return result;
 }

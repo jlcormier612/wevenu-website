@@ -21,7 +21,7 @@ import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
 import {
-  applyTemplateAction, createFloorPlanAction, duplicateFloorPlanAction,
+  applyTemplateAction, createFloorPlanAction, duplicateFloorPlanAction, setClientAccessAction,
 } from "@/app/(app)/events/[id]/floor-plan-actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -42,14 +42,49 @@ function spaceName(spaces: VenueSpace[], spaceId: string | null): string | null 
   return spaceId ? spaces.find((s) => s.id === spaceId)?.name ?? null : null;
 }
 
+/**
+ * Seating Experience — Phase 1 resolves its one Floor Plan by
+ * clientAccess != 'hidden'. This toggle is the only UI that ever sets it —
+ * sharing here is what makes a Floor Plan's tables available to the
+ * couple's Seating experience at all.
+ */
+function ShareForSeatingToggle({ eventId, plan }: { eventId: string; plan: FloorPlan }) {
+  const router = useRouter();
+  const [access, setAccess] = React.useState(plan.clientAccess);
+  const [pending, startTransition] = React.useTransition();
+  const shared = access !== "hidden";
+
+  function toggle(e: React.MouseEvent) {
+    e.preventDefault();
+    e.stopPropagation();
+    const next = shared ? "hidden" : "view";
+    startTransition(async () => {
+      const result = await setClientAccessAction(plan.id, eventId, next);
+      if (result.ok) { setAccess(next); router.refresh(); }
+      else toast.error(result.message ?? "Could not update sharing.");
+    });
+  }
+
+  return (
+    <button type="button" onClick={toggle} disabled={pending}
+      className={`self-start text-[10px] font-medium px-2 py-0.5 rounded-full border transition-colors ${
+        shared ? "border-primary/40 bg-primary/10 text-primary" : "border-border text-muted-foreground hover:border-primary/40"
+      }`}
+      title={shared ? "Visible to the couple — tables here are available in Seating. Click to unshare." : "Not visible to the couple yet. Click to share for Seating."}>
+      {pending ? "…" : shared ? "Shared for Seating" : "Share for Seating"}
+    </button>
+  );
+}
+
 function FloorPlanCard({ eventId, plan, spaces }: { eventId: string; plan: FloorPlan; spaces: VenueSpace[] }) {
   return (
     <Link
       href={`/events/${eventId}/floor-plans/${plan.id}`}
-      className="flex flex-col gap-1 rounded-xl border border-border bg-card p-4 transition-colors hover:border-primary/40 hover:bg-muted/20"
+      className="flex flex-col gap-1.5 rounded-xl border border-border bg-card p-4 transition-colors hover:border-primary/40 hover:bg-muted/20"
     >
       <p className="truncate text-sm font-medium text-heading">{plan.name}</p>
       <p className="text-xs text-muted-foreground">{spaceName(spaces, plan.spaceId) ?? "No space assigned"}</p>
+      <ShareForSeatingToggle eventId={eventId} plan={plan} />
     </Link>
   );
 }

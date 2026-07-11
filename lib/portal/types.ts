@@ -1,3 +1,5 @@
+import type { DisplayShape } from "@/lib/floor-plans/types";
+
 // Portal context returned by get_portal_context()
 export type PortalContext = {
   sessionId: string;
@@ -204,6 +206,8 @@ export type CoupleGuest = {
   childNotes: string | null;
   /** A vendor's meal, modeled as an ordinary guest record — not a second meal-tracking system. */
   isVendorMeal: boolean;
+  /** Seating Experience — Phase 1: a "Wedding Party" seating filter grouping, distinct from Households. */
+  isWeddingParty: boolean;
 };
 
 /** A couple-owned organizational unit guests belong to (Guest & Household Foundation). */
@@ -234,6 +238,79 @@ export type InvitationProgress = {
   recentlyResponded: {
     id: string; name: string; rsvpStatus: string; respondedAt: string; householdName: string | null;
   }[];
+};
+
+/** A seated guest, as embedded in a SeatingTable or the unassigned/needsReassignment buckets (Seating Experience — Phase 1). */
+export type SeatingGuest = {
+  guestId: string;
+  name: string;
+  mealChoice: string | null;
+  dietaryTags: DietaryTag[];
+  accessibilityTags: AccessibilityTag[];
+  isChild: boolean;
+  isVendorMeal: boolean;
+  isWeddingParty: boolean;
+  householdId: string | null;
+  householdName: string | null;
+  plusOneOfGuestId: string | null;
+};
+
+/**
+ * A table for seating purposes — this IS a floor_plan_objects row, read
+ * live off the shared Floor Plan. Nothing here is a second table model:
+ * geometry/label/capacity are the Floor Plan's own fields, and "guests" is
+ * just guest_seat_assignments filtered by this table's id.
+ */
+export type SeatingTable = {
+  id: string;
+  label: string | null;
+  capacity: number | null;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  rotation: number;
+  /** Copied from floor_plan_objects.display_shape — null on tables placed before the shape library existed; renderer falls back to "round". */
+  displayShape: DisplayShape | null;
+  guests: SeatingGuest[];
+};
+
+export type SeatingFloorPlan = {
+  id: string;
+  name: string;
+  roomWidthFt: number;
+  roomDepthFt: number;
+  backgroundImageUrl: string | null;
+  backgroundImageOpacity: number;
+};
+
+export type SeatingStats = {
+  totalAttending: number;
+  totalAssigned: number;
+  tableCount: number;
+  totalCapacity: number;
+};
+
+/** Seating Experience — Phase 1. Null floorPlan means the venue hasn't shared one yet (client_access still 'hidden' on every plan). */
+export type SeatingData = {
+  floorPlan: SeatingFloorPlan | null;
+  tables: SeatingTable[];
+  unassignedGuests: SeatingGuest[];
+  /** A table this guest was seated at got deleted in the Floor Plan editor — the assignment survives, pointing nowhere. */
+  needsReassignment: SeatingGuest[];
+  stats: SeatingStats;
+};
+
+/** Household-aware auto-assign suggestions (Seating Experience — Phase 1), reusing the same packing idea as Guest Households. */
+export type SeatingSuggestionHousehold = {
+  householdKey: string;
+  guestIds: string[];
+  names: string[];
+  size: number;
+};
+
+export type SeatingSuggestions = {
+  households: SeatingSuggestionHousehold[];
 };
 
 export type GuestStats = {
