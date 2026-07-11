@@ -2,10 +2,12 @@
 
 import * as React from "react";
 import {
-  Users, Plus, Trash2, Pencil, Loader2, X, Check, ChevronDown, ChevronUp, Copy, Mail,
+  Users, Plus, Trash2, Pencil, Loader2, X, Check, ChevronDown, ChevronUp, Copy, Mail, Send, Undo2, ClipboardList,
 } from "lucide-react";
 import { toast } from "sonner";
-import type { CoupleGuest, CoupleHousehold, GuestStats, RsvpInsights, RsvpQuestion } from "@/lib/portal/types";
+import type {
+  CoupleGuest, CoupleHousehold, GuestStats, InvitationProgress, RsvpInsights, RsvpQuestion,
+} from "@/lib/portal/types";
 import { getGuestObservations } from "@/lib/luv/portal-observations";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -16,6 +18,19 @@ const RSVP_LABELS: Record<string, string> = {
 
 const RSVP_COLORS: Record<string, string> = {
   pending: "#9CA3AF", attending: "#5D6F5D", declined: "#DC6A6A", maybe: "#D97706",
+};
+
+// Invitation lifecycle (Guest Experience — Phase 2) — a separate concept
+// from rsvpStatus above. 'declined' here means the couple withdrew the
+// invitation, not that the guest said no (that's rsvpStatus's job).
+const INVITATION_LABELS: Record<CoupleGuest["invitationStatus"], string> = {
+  draft: "Draft", ready: "Ready to Send", sent: "Sent", delivered: "Delivered",
+  opened: "Opened", responded: "Responded", declined: "Withdrawn",
+};
+
+const INVITATION_COLORS: Record<CoupleGuest["invitationStatus"], string> = {
+  draft: "#9CA3AF", ready: "#5D6F5D", sent: "#5D6F5D", delivered: "#5D6F5D",
+  opened: "#5D6F5D", responded: "#3D5040", declined: "#B8AEA1",
 };
 
 const NO_HOUSEHOLD = "";
@@ -153,6 +168,120 @@ function InsightsPanel({ insights, onSendReminders }: {
             </button>
           </div>
         )}
+      </div>
+    </div>
+  );
+}
+
+// ── Invitation & RSVP progress (Guest Experience — Phase 2) ──────────────────
+// Households are the primary lens here, same as the guest list below — "2 of
+// 4 households still owe you an answer" reads like planning, not a database.
+
+function InvitationProgressPanel({ progress, onSendToHousehold }: {
+  progress: InvitationProgress;
+  onSendToHousehold: (householdId: string) => void;
+}) {
+  const { invitationStats: s, outstandingHouseholds, recentlyResponded, pendingCount } = progress;
+  const totalInvited = s.sent + s.delivered + s.opened + s.responded;
+  const notYetSent = s.draft + s.ready;
+
+  if (totalInvited === 0 && notYetSent === 0) return null;
+
+  return (
+    <div className="bg-card border border-border rounded-2xl p-4 space-y-4">
+      <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm">
+        <div>
+          <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Not Yet Sent</p>
+          <p className="text-lg font-bold text-heading">{notYetSent}</p>
+        </div>
+        <div>
+          <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Invited</p>
+          <p className="text-lg font-bold text-heading">{totalInvited}</p>
+        </div>
+        <div>
+          <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Awaiting Response</p>
+          <p className="text-lg font-bold" style={{ color: pendingCount > 0 ? "#D97706" : "inherit" }}>{pendingCount}</p>
+        </div>
+        <div>
+          <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Responded</p>
+          <p className="text-lg font-bold text-[#5D6F5D]">{s.responded}</p>
+        </div>
+        {s.declined > 0 && (
+          <div>
+            <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Withdrawn</p>
+            <p className="text-lg font-bold text-muted-foreground">{s.declined}</p>
+          </div>
+        )}
+      </div>
+
+      {outstandingHouseholds.length > 0 && (
+        <div className="pt-3 border-t border-border space-y-2">
+          <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Households Still Waiting</p>
+          <div className="space-y-1.5">
+            {outstandingHouseholds.slice(0, 6).map(h => (
+              <div key={h.id} className="flex items-center justify-between gap-2 text-sm">
+                <span className="text-foreground">{h.name} <span className="text-xs text-muted-foreground">({h.respondedMembers} of {h.totalMembers} responded)</span></span>
+                <button type="button" onClick={() => onSendToHousehold(h.id)}
+                  className="text-xs font-medium text-primary hover:underline shrink-0">
+                  Send / Remind →
+                </button>
+              </div>
+            ))}
+            {outstandingHouseholds.length > 6 && (
+              <p className="text-xs text-muted-foreground">…and {outstandingHouseholds.length - 6} more.</p>
+            )}
+          </div>
+        </div>
+      )}
+
+      {recentlyResponded.length > 0 && (
+        <div className="pt-3 border-t border-border space-y-2">
+          <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Recently Responded</p>
+          <div className="flex flex-wrap gap-1.5">
+            {recentlyResponded.slice(0, 6).map(g => (
+              <span key={g.id} className="text-xs px-2.5 py-1 rounded-full bg-muted"
+                style={{ color: RSVP_COLORS[g.rsvpStatus] ?? "inherit" }}>
+                {g.name} — {RSVP_LABELS[g.rsvpStatus] ?? g.rsvpStatus}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Guest-related open Requests (Guest Experience — Phase 2, Requirement 6) ──
+// Reuses the existing Request Framework's portal surface rather than
+// inventing a second reminder/notification mechanism — this is just a
+// pointer to what's already there when it's relevant to the guest list.
+
+type PortalRequestSummary = { id: string; title: string; status: string; sourceFeature: string | null };
+
+function GuestRequestsBanner({ token }: { token: string }) {
+  const [requests, setRequests] = React.useState<PortalRequestSummary[]>([]);
+
+  React.useEffect(() => {
+    fetch(`/api/portal/requests?token=${token}`)
+      .then(r => r.json())
+      .then((d: { requests?: PortalRequestSummary[] }) => {
+        setRequests((d.requests ?? []).filter(r =>
+          r.sourceFeature === "guests" && !["completed", "cancelled"].includes(r.status)
+        ));
+      })
+      .catch(() => {});
+  }, [token]);
+
+  if (requests.length === 0) return null;
+
+  return (
+    <div className="rounded-xl border border-primary/20 bg-primary/5 px-4 py-3 flex items-start gap-2.5">
+      <ClipboardList className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+      <div className="text-sm">
+        <p className="font-medium text-heading">Your venue has a question about your guest list</p>
+        {requests.map(r => (
+          <p key={r.id} className="text-xs text-muted-foreground mt-0.5">&quot;{r.title}&quot; — check your Requests tab to respond.</p>
+        ))}
       </div>
     </div>
   );
@@ -396,13 +525,75 @@ function GuestFieldsForm({ fields, setFields, households, autoFocus, onEnter }: 
   );
 }
 
+// ── Invitation status control ─────────────────────────────────────────────────
+// A contextual next-action, not a raw status editor — "what would you do
+// next with this invitation" rather than a dropdown of seven database
+// values, most of which the couple never sets directly.
+
+function InvitationStatusControl({ guest, onMarkReady, onSend, onWithdraw, onRestore }: {
+  guest: CoupleGuest;
+  onMarkReady: () => void;
+  onSend: () => void;
+  onWithdraw: () => void;
+  onRestore: () => void;
+}) {
+  const status = guest.invitationStatus;
+  const pill = (
+    <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full whitespace-nowrap"
+      style={{ background: `${INVITATION_COLORS[status]}15`, color: INVITATION_COLORS[status] }}>
+      {INVITATION_LABELS[status]}
+    </span>
+  );
+
+  if (status === "draft") {
+    return (
+      <div className="flex items-center gap-1">
+        {pill}
+        <button type="button" onClick={onMarkReady} className="text-[10px] font-medium text-primary hover:underline whitespace-nowrap">Mark Ready</button>
+      </div>
+    );
+  }
+  if (status === "ready") {
+    return (
+      <div className="flex items-center gap-1">
+        {pill}
+        <button type="button" onClick={onSend}
+          className="p-1 text-muted-foreground hover:text-primary rounded transition-colors"
+          title={guest.email ? "Send invitation email" : "Mark as sent (no email on file)"}>
+          <Send className="h-3.5 w-3.5" />
+        </button>
+      </div>
+    );
+  }
+  if (status === "declined") {
+    return (
+      <div className="flex items-center gap-1">
+        {pill}
+        <button type="button" onClick={onRestore} className="p-1 text-muted-foreground hover:text-foreground rounded transition-colors" title="Restore invitation">
+          <Undo2 className="h-3.5 w-3.5" />
+        </button>
+      </div>
+    );
+  }
+  // sent / delivered / opened / responded — system/RSVP-driven states
+  return (
+    <div className="flex items-center gap-1">
+      {pill}
+      <button type="button" onClick={onWithdraw} className="p-1 text-muted-foreground hover:text-destructive rounded transition-colors" title="Withdraw invitation">
+        <X className="h-3 w-3" />
+      </button>
+    </div>
+  );
+}
+
 // ── Guest row ─────────────────────────────────────────────────────────────────
 
-function GuestRow({ guest, onDelete, onStatusChange, onEditStart }: {
+function GuestRow({ guest, onDelete, onStatusChange, onEditStart, onInvitationAction }: {
   guest: CoupleGuest;
   onDelete: (id: string) => void;
   onStatusChange: (id: string, status: string) => void;
   onEditStart: (guest: CoupleGuest) => void;
+  onInvitationAction: (guestIds: string[], action: "ready" | "send" | "declined" | "draft") => void;
 }) {
   const [expanded, setExpanded] = React.useState(false);
   const rsvpLink = `${typeof window !== "undefined" ? window.location.origin : ""}/rsvp/${guest.rsvpToken ?? ""}`;
@@ -439,6 +630,14 @@ function GuestRow({ guest, onDelete, onStatusChange, onEditStart }: {
         {guest.mealChoice && (
           <span className="text-[10px] text-muted-foreground hidden sm:inline">{guest.mealChoice}</span>
         )}
+
+        <InvitationStatusControl
+          guest={guest}
+          onMarkReady={() => onInvitationAction([guest.id], "ready")}
+          onSend={() => onInvitationAction([guest.id], "send")}
+          onWithdraw={() => onInvitationAction([guest.id], "declined")}
+          onRestore={() => onInvitationAction([guest.id], "draft")}
+        />
 
         <select value={guest.rsvpStatus} onChange={e => onStatusChange(guest.id, e.target.value)}
           className="text-[10px] font-semibold rounded-full border px-1.5 py-0.5 focus:outline-none"
@@ -490,29 +689,43 @@ function GuestRow({ guest, onDelete, onStatusChange, onEditStart }: {
 
 // ── Household group ────────────────────────────────────────────────────────────
 
-function HouseholdGroupHeader({ name, count, onRename, onDelete }: {
+function HouseholdGroupHeader({ name, count, onRename, onDelete, onMarkReady, onSend }: {
   name: string; count: number;
   onRename?: () => void; onDelete?: () => void;
+  /** Household-wide invitation actions (Guest Experience — Phase 2) — only shown when there's a member they'd actually affect. */
+  onMarkReady?: () => void; onSend?: () => void;
 }) {
   return (
-    <div className="flex items-center justify-between px-4 py-2 bg-muted/30 border-b border-border/50">
+    <div className="flex items-center justify-between px-4 py-2 bg-muted/30 border-b border-border/50 gap-2">
       <p className="text-xs font-semibold text-heading">
         {name} <span className="font-normal text-muted-foreground">· {count} guest{count !== 1 ? "s" : ""}</span>
       </p>
-      {(onRename || onDelete) && (
-        <div className="flex items-center gap-1">
-          {onRename && (
-            <button type="button" onClick={onRename} className="p-1 text-muted-foreground hover:text-foreground rounded" title="Rename household">
-              <Pencil className="h-3 w-3" />
-            </button>
-          )}
-          {onDelete && (
-            <button type="button" onClick={onDelete} className="p-1 text-muted-foreground hover:text-destructive rounded" title="Delete household (guests stay, become unassigned)">
-              <Trash2 className="h-3 w-3" />
-            </button>
-          )}
-        </div>
-      )}
+      <div className="flex items-center gap-2 shrink-0">
+        {onMarkReady && (
+          <button type="button" onClick={onMarkReady} className="text-[10px] font-medium text-primary hover:underline whitespace-nowrap">
+            Mark Household Ready
+          </button>
+        )}
+        {onSend && (
+          <button type="button" onClick={onSend} className="text-[10px] font-medium text-primary hover:underline whitespace-nowrap">
+            Send Invitations
+          </button>
+        )}
+        {(onRename || onDelete) && (
+          <div className="flex items-center gap-1">
+            {onRename && (
+              <button type="button" onClick={onRename} className="p-1 text-muted-foreground hover:text-foreground rounded" title="Rename household">
+                <Pencil className="h-3 w-3" />
+              </button>
+            )}
+            {onDelete && (
+              <button type="button" onClick={onDelete} className="p-1 text-muted-foreground hover:text-destructive rounded" title="Delete household (guests stay, become unassigned)">
+                <Trash2 className="h-3 w-3" />
+              </button>
+            )}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -525,6 +738,7 @@ export function GuestSection({ token }: { token: string }) {
   const [stats,      setStats]      = React.useState<GuestStats | null>(null);
   const [insights,   setInsights]   = React.useState<RsvpInsights | null>(null);
   const [questions,  setQuestions]  = React.useState<RsvpQuestion[]>([]);
+  const [progress,   setProgress]   = React.useState<InvitationProgress | null>(null);
   const [loading,    setLoading]    = React.useState(true);
   const [filter,     setFilter]     = React.useState<"all" | "attending" | "declined" | "pending">("all");
 
@@ -544,17 +758,19 @@ export function GuestSection({ token }: { token: string }) {
   const csvRef = React.useRef<HTMLInputElement>(null);
 
   async function loadAll() {
-    const [gRes, iRes, qRes, hRes] = await Promise.all([
+    const [gRes, iRes, qRes, hRes, pRes] = await Promise.all([
       fetch(`/api/portal/guests?token=${token}`).then(r => r.json()) as Promise<{ guests?: CoupleGuest[]; stats?: GuestStats }>,
       fetch(`/api/portal/rsvp-insights?token=${token}`).then(r => r.json()) as Promise<{ insights?: RsvpInsights }>,
       fetch(`/api/portal/rsvp-questions?token=${token}`).then(r => r.json()) as Promise<{ questions?: RsvpQuestion[] }>,
       fetch(`/api/portal/households?token=${token}`).then(r => r.json()) as Promise<{ households?: CoupleHousehold[] }>,
+      fetch(`/api/portal/invitation-progress?token=${token}`).then(r => r.json()) as Promise<InvitationProgress>,
     ]);
     setGuests(gRes.guests ?? []);
     setStats(gRes.stats ?? null);
     setInsights(iRes.insights ?? null);
     setQuestions(qRes.questions ?? []);
     setHouseholds(hRes.households ?? []);
+    setProgress(pRes ?? null);
     setLoading(false);
   }
 
@@ -564,6 +780,11 @@ export function GuestSection({ token }: { token: string }) {
     const d = await fetch(`/api/portal/guests?token=${token}`).then(r => r.json()) as { guests?: CoupleGuest[]; stats?: GuestStats };
     setGuests(d.guests ?? []);
     setStats(d.stats ?? null);
+  }
+
+  async function reloadProgress() {
+    const d = await fetch(`/api/portal/invitation-progress?token=${token}`).then(r => r.json()) as InvitationProgress;
+    setProgress(d ?? null);
   }
 
   async function reloadHouseholds() {
@@ -689,6 +910,63 @@ export function GuestSection({ token }: { token: string }) {
     await reloadInsights();
   }
 
+  /**
+   * Dispatches every invitation-lifecycle action (Guest Experience — Phase
+   * 2). "send" is the only one that actually emails anyone — it splits the
+   * target guests by whether they have an email on file, sends real
+   * invitations to those who do, and marks the rest sent manually (a paper
+   * or verbal invite is still a real invitation). Everything else is a
+   * plain status change the couple is making about their own plans.
+   */
+  async function handleInvitationAction(guestIds: string[], action: "ready" | "send" | "declined" | "draft") {
+    if (guestIds.length === 0) return;
+
+    if (action === "send") {
+      const targets = guests.filter(g => guestIds.includes(g.id));
+      const withEmail = targets.filter(g => g.email);
+      const withoutEmail = targets.filter(g => !g.email);
+
+      if (withEmail.length > 0) {
+        await fetch("/api/portal/invite", {
+          method: "POST", headers: { "content-type": "application/json" },
+          body: JSON.stringify({ token, guestIds: withEmail.map(g => g.id), emailType: "invitation" }),
+        });
+      }
+      if (withoutEmail.length > 0) {
+        await fetch("/api/portal/guests", {
+          method: "PATCH", headers: { "content-type": "application/json" },
+          body: JSON.stringify({ token, guestIds: withoutEmail.map(g => g.id), invitationStatus: "sent" }),
+        });
+      }
+      if (withEmail.length > 0) toast.success(`Invitation sent to ${withEmail.length} guest${withEmail.length !== 1 ? "s" : ""}.`);
+      if (withoutEmail.length > 0) toast.success(`Marked ${withoutEmail.length} guest${withoutEmail.length !== 1 ? "s" : ""} sent (no email on file — invite them your own way).`);
+    } else {
+      await fetch("/api/portal/guests", {
+        method: "PATCH", headers: { "content-type": "application/json" },
+        body: JSON.stringify({ token, guestIds, invitationStatus: action }),
+      });
+      if (action === "ready") toast.success(`Marked ${guestIds.length} guest${guestIds.length !== 1 ? "s" : ""} ready to send.`);
+      else if (action === "declined") toast.success("Invitation withdrawn.");
+      else toast.success("Invitation restored to Draft.");
+    }
+    await reloadGuests();
+    await reloadProgress();
+  }
+
+  async function handleMarkHouseholdReady(householdId: string) {
+    const ids = guests.filter(g => g.householdId === householdId && g.invitationStatus === "draft").map(g => g.id);
+    if (!ids.length) { toast.info("Everyone in this household is already past Draft."); return; }
+    await handleInvitationAction(ids, "ready");
+  }
+
+  async function handleSendHousehold(householdId: string) {
+    const ids = guests
+      .filter(g => g.householdId === householdId && (g.invitationStatus === "draft" || g.invitationStatus === "ready"))
+      .map(g => g.id);
+    if (!ids.length) { toast.info("Everyone in this household has already been invited."); return; }
+    await handleInvitationAction(ids, "send");
+  }
+
   async function handleCSV(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -740,7 +1018,12 @@ export function GuestSection({ token }: { token: string }) {
   }
 
   async function sendReminders() {
-    const pendingWithEmail = guests.filter(g => g.rsvpStatus === "pending" && g.email);
+    // Only guests actually invited (sent/delivered/opened) and still
+    // pending — a draft was never invited in the first place, so a
+    // "reminder" would make no sense to send them.
+    const pendingWithEmail = guests.filter(g =>
+      g.rsvpStatus === "pending" && g.email && ["sent", "delivered", "opened"].includes(g.invitationStatus)
+    );
     if (!pendingWithEmail.length) { toast.info("No pending guests with email addresses."); return; }
     const res = await fetch("/api/portal/invite", {
       method: "POST", headers: { "content-type": "application/json" },
@@ -781,6 +1064,14 @@ export function GuestSection({ token }: { token: string }) {
 
   return (
     <div className="space-y-5">
+      {/* Guest-related Requests from the venue (Phase 2, Requirement 6) */}
+      <GuestRequestsBanner token={token} />
+
+      {/* Invitation & RSVP progress */}
+      {progress && (
+        <InvitationProgressPanel progress={progress} onSendToHousehold={handleSendHousehold} />
+      )}
+
       {/* RSVP Insights */}
       {insights && insights.total > 0 && (
         <InsightsPanel insights={insights} onSendReminders={sendReminders} />
@@ -845,6 +1136,8 @@ export function GuestSection({ token }: { token: string }) {
                   name={household.name} count={hGuests.length}
                   onRename={() => setRenamingHouseholdId(household.id)}
                   onDelete={() => handleDeleteHousehold(household.id)}
+                  onMarkReady={hGuests.some(g => g.invitationStatus === "draft") ? () => handleMarkHouseholdReady(household.id) : undefined}
+                  onSend={hGuests.some(g => g.invitationStatus === "draft" || g.invitationStatus === "ready") ? () => handleSendHousehold(household.id) : undefined}
                 />
               )}
               {hGuests.length === 0 ? (
@@ -862,7 +1155,7 @@ export function GuestSection({ token }: { token: string }) {
                     </div>
                   </div>
                 ) : (
-                  <GuestRow key={g.id} guest={g} onDelete={handleDelete} onStatusChange={handleRsvp} onEditStart={handleEditStart} />
+                  <GuestRow key={g.id} guest={g} onDelete={handleDelete} onStatusChange={handleRsvp} onEditStart={handleEditStart} onInvitationAction={handleInvitationAction} />
                 )
               ))}
             </div>
@@ -888,7 +1181,7 @@ export function GuestSection({ token }: { token: string }) {
                     </div>
                   </div>
                 ) : (
-                  <GuestRow key={g.id} guest={g} onDelete={handleDelete} onStatusChange={handleRsvp} onEditStart={handleEditStart} />
+                  <GuestRow key={g.id} guest={g} onDelete={handleDelete} onStatusChange={handleRsvp} onEditStart={handleEditStart} onInvitationAction={handleInvitationAction} />
                 )
               ))}
             </div>

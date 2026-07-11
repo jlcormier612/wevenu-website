@@ -174,6 +174,13 @@ export type CoupleGuest = {
   householdName: string | null;
   rsvpToken: string | null;
   rsvpSentAt: string | null;
+  /**
+   * Invitation lifecycle (Guest Experience — Phase 2). Separate from
+   * rsvpStatus: this tracks whether/how the invitation itself was sent,
+   * not what the guest said. 'declined' here means the couple withdrew
+   * the invitation — it is not a duplicate of rsvpStatus's 'declined'.
+   */
+  invitationStatus: "draft" | "ready" | "sent" | "delivered" | "opened" | "responded" | "declined";
 };
 
 /** A couple-owned organizational unit guests belong to (Guest & Household Foundation). */
@@ -182,6 +189,21 @@ export type CoupleHousehold = {
   name: string;
   notes: string | null;
   memberCount: number;
+};
+
+/** Invitation & RSVP progress dashboard data (Guest Experience — Phase 2). */
+export type InvitationProgress = {
+  invitationStats: {
+    draft: number; ready: number; sent: number;
+    delivered: number; opened: number; responded: number; declined: number;
+  };
+  pendingCount: number;
+  outstandingHouseholds: {
+    id: string; name: string; totalMembers: number; respondedMembers: number;
+  }[];
+  recentlyResponded: {
+    id: string; name: string; rsvpStatus: string; respondedAt: string; householdName: string | null;
+  }[];
 };
 
 export type GuestStats = {

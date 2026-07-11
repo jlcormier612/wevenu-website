@@ -73,6 +73,9 @@ export function TimelineTemplateStarterPicker({
 }: { existingTemplates?: TimelineTemplate[]; spaces?: VenueSpace[] }) {
   const router = useRouter();
   const [flow, setFlow] = React.useState<Flow | null>(null);
+  // Which flow to open once the dropdown menu has fully finished closing —
+  // see openFlow below for why this can't just call setFlow directly.
+  const pendingFlowRef = React.useRef<Flow | null>(null);
   const [name, setName] = React.useState("");
   const [eventType, setEventType] = React.useState(ANY_EVENT_TYPE);
   const [spaceId, setSpaceId] = React.useState(NO_SPACE);
@@ -89,7 +92,11 @@ export function TimelineTemplateStarterPicker({
   function openFlow(f: Flow) {
     reset();
     if (f === "duplicate" && existingTemplates.length > 0) setName("");
-    setFlow(f);
+    // See the matching comment in floor-plan-template-starter-picker.tsx's
+    // openFlow — opening the Sheet while the dropdown menu is still closing
+    // races with Base UI's own Menu close/focus-restoration and the Sheet
+    // never actually stays open.
+    pendingFlowRef.current = f;
   }
 
   function goToEditor(templateId: string) {
@@ -167,7 +174,12 @@ export function TimelineTemplateStarterPicker({
 
   return (
     <>
-      <DropdownMenu>
+      <DropdownMenu onOpenChangeComplete={(open) => {
+        if (!open && pendingFlowRef.current) {
+          setFlow(pendingFlowRef.current);
+          pendingFlowRef.current = null;
+        }
+      }}>
         <DropdownMenuTrigger render={<Button type="button" />}>
           New Template<ChevronDown className="ml-1.5 h-3.5 w-3.5" />
         </DropdownMenuTrigger>

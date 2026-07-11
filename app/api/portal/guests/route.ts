@@ -57,17 +57,30 @@ export async function POST(request: Request) {
 
 export async function PATCH(request: Request) {
   const body = await request.json() as {
-    token: string; guestId: string;
+    token: string; guestId?: string;
     // RSVP-status update (existing behavior, unchanged)
     rsvpStatus?: string; rsvpNote?: string;
     // Basic editing (Guest & Household Foundation) — any other field means a full edit
     firstName?: string; lastName?: string; email?: string; phone?: string;
     plusOne?: boolean; plusOneName?: string; householdId?: string | null;
     dietary?: string; isChild?: boolean; notes?: string;
+    // Invitation lifecycle (Guest Experience — Phase 2) — bulk-capable, a
+    // single guest is just an array of one. Same shape for one guest or a
+    // whole household's worth.
+    guestIds?: string[]; invitationStatus?: string;
   };
   const { token, guestId } = body;
-  if (!token || !guestId) return NextResponse.json({ ok: false }, { status: 400 });
+  if (!token) return NextResponse.json({ ok: false }, { status: 400 });
   const supabase = await createClient();
+
+  if (body.guestIds?.length && body.invitationStatus) {
+    const { data } = await supabase.rpc("set_guest_invitation_status", {
+      p_token: token, p_guest_ids: body.guestIds, p_status: body.invitationStatus,
+    });
+    return NextResponse.json(data ?? { ok: false });
+  }
+
+  if (!guestId) return NextResponse.json({ ok: false }, { status: 400 });
 
   if (body.rsvpStatus) {
     const { data } = await supabase.rpc("update_guest_rsvp", { p_token: token, p_guest_id: guestId, p_status: body.rsvpStatus, p_note: body.rsvpNote ?? "" });
