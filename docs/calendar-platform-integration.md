@@ -79,6 +79,27 @@ Every example from the task's own list, checked against what the owning feature 
 
 Note that `event_tasks` supplies both a Deadline-kind item (most tasks) and a Scheduled-Event-kind item (`category = 'meeting'` tasks) from the *same table* — the distinction is presentational, not structural, and Calendar can make it without owning anything new. ~~One honest limitation to name here rather than paper over: `event_tasks.due_date` is a plain `date` with no time-of-day column, so a "Final Walkthrough at 2pm" can only ever render as an all-day item until Planning itself adds a time field — Calendar cannot invent a time Planning doesn't track.~~ **Resolved at Calendar Integration Phase 1**: Planning now has `scheduled_date`/`scheduled_start_time`/`scheduled_end_time`/`location`, additive to `due_date`, exactly for this case.
 
+### 2a. Engineering Principle — Completion vs. Presence (added at Calendar Integration Phase 2)
+
+Phase 1 gave Planning two independent date concepts on the same row (`due_date`, `scheduled_date`). Their meanings must never blur into each other, in this or any future feature:
+
+> **A due date represents completion. A scheduled activity represents presence. They may exist on the same Planning item. They must never be treated as the same operational concept.**
+
+This is why `event_tasks.scheduled_date` was added *alongside* `due_date` rather than replacing or deriving from it, and it governs every date this document classifies from here forward. Concretely, this means:
+
+- **Reminders must not be a single mechanism.** A completion reminder ("this is due in 3 days") and an attendance reminder ("you're at the Final Walkthrough in 1 hour") answer different questions and will eventually need different timing, different urgency, and likely different delivery channels. `event_tasks.reminder_before_days` today is a completion reminder only (keyed to `due_date` — see the Phase 1 lifecycle finding: it does not yet fire off `scheduled_date` at all). When Notifications is built, this must become two mechanisms, not one mechanism reading two possible date fields.
+- **Every date this document classifies gets one of five labels**, not just the six-kind table's broader buckets:
+  | Label | Meaning | Requires |
+  |---|---|---|
+  | **Scheduled Event** | A specific time a person shows up somewhere | Presence |
+  | **Due Date** | Work must be finished by this point | Completion |
+  | **Milestone** | Marks that progress happened, not that something is owed | Nothing — it's a record, not an obligation |
+  | **Expiration** | Validity lapses after this point, with no action inherently attached | Nothing to complete — it's decay, not a task |
+  | **Reminder** | Notification timing only — it has no operational meaning of its own, only a target it points at | The thing it's reminding about |
+
+  This refines §2's six-kind table in one place: `Contract.expiresAt` / `Document.expiresAt` were previously grouped under "Deadlines" (row: *"Contract/Document `expiresAt`"*). They are re-classified here as **Expiration**, not **Due Date** — a lapsed contract isn't "incomplete," it's invalid, and nothing was owed on the day it expired. The distinction matters because a Due Date implies someone should act to complete something; an Expiration implies someone should have acted *before* this point, or should act now to renew/replace, not "finish" the original thing.
+- **Classify before integrating, every time.** Every subsequent phase of this document (Phase 2 onward) must state which of the five labels each newly-surfaced date carries, before deciding how Calendar aggregates or displays it. No differentiated UI is required yet — the classification is preserved so a future Notifications/Luv implementation inherits the right mental model instead of re-deriving it from scratch or, worse, inventing a sixth ad hoc meaning per feature.
+
 ---
 
 ## 3. Time-Based Views

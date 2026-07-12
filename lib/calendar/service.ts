@@ -1,7 +1,8 @@
 /**
- * Calendar application service (Sprint 17).
+ * Calendar application service (Sprint 17, extended through Calendar
+ * Integration Phase 1 and Phase 2).
  *
- * Aggregates data from five existing tables in parallel — no new DB tables.
+ * Aggregates data from existing tables in parallel — no new DB tables.
  * Returns a flat list of CalendarItems for the given month.
  */
 import { createClient } from "@/integrations/supabase/server";
@@ -23,9 +24,13 @@ export async function getCalendarData(
   const start = `${year}-${String(month).padStart(2, "0")}-01`;
   const lastDay = new Date(year, month, 0).getDate();
   const end = `${year}-${String(month).padStart(2, "0")}-${String(lastDay).padStart(2, "0")}`;
+  const todayIso = new Date().toISOString().slice(0, 10);
 
-  // Seven parallel queries across existing tables, plus tours' own projection
-  const [eventsRes, tourItems, followUpsRes, paymentsRes, keyDatesRes, holdsRes, blocksRes, scheduledTasksRes] = await Promise.all([
+  // Ten parallel queries across existing tables, plus tours' own projection
+  const [
+    eventsRes, tourItems, followUpsRes, paymentsRes, keyDatesRes, holdsRes, blocksRes, scheduledTasksRes,
+    requestsRes, contractsRes, documentsRes,
+  ] = await Promise.all([
     // 1. Booked events
     supabase.from("events")
       .select("id, name, event_date, start_time, event_type, status, client_id, clients(first_name, last_name)")
@@ -94,6 +99,47 @@ export async function getCalendarData(
       .not("scheduled_date", "is", null)
       .gte("scheduled_date", start)
       .lte("scheduled_date", end),
+
+    // 9. Requests — Due Date kind (Calendar Integration — Phase 2). Only
+    // in-flight requests (excludes draft — not yet sent to the client;
+    // completed/cancelled — no longer a live deadline). "Overdue" and
+    // "submitted, awaiting review" are annotated on this same item rather
+    // than queried as separate facts: Request has no dedicated overdue or
+    // submitted-at column, so both are derived the same way Luv already
+    // derives them (dueDate < today; status check) — reused, not reinvented.
+    supabase.from("requests")
+      .select("id, title, due_date, status, client_id, event_id, clients(first_name, last_name)")
+      .eq("venue_id", venue.id)
+      .not("status", "in", "(draft,completed,cancelled)")
+      .not("due_date", "is", null)
+      .gte("due_date", start)
+      .lte("due_date", end),
+
+    // 10. Contract expiration — Expiration kind, not Due Date (§2a): a lapsed
+    // contract wasn't "incomplete," it's invalid. Note: expires_at exists on
+    // every contract row but nothing in this codebase currently writes it —
+    // this query is correct and future-proof, but will surface zero items
+    // until Contracts itself starts populating the field (documented gap,
+    // not fixed here — out of this phase's scope).
+    supabase.from("contracts")
+      .select("id, title, expires_at, status, client_id, event_id, clients(first_name, last_name)")
+      .eq("venue_id", venue.id)
+      .not("status", "in", "(signed,cancelled)")
+      .not("expires_at", "is", null)
+      .gte("expires_at", start)
+      .lte("expires_at", end),
+
+    // 11. Document expiration — Expiration kind (§2a), same shape as
+    // Contracts. Only documents with a real workspace to link back into
+    // (client or event) — a lead/vendor-scoped or unattached document has no
+    // "owning workspace" for Calendar to navigate into (§8 Navigation).
+    supabase.from("documents")
+      .select("id, name, expires_at, client_id, event_id, clients(first_name, last_name), events(client_id, clients(first_name, last_name))")
+      .eq("venue_id", venue.id)
+      .not("expires_at", "is", null)
+      .or("client_id.not.is.null,event_id.not.is.null")
+      .gte("expires_at", start)
+      .lte("expires_at", end),
   ]);
 
   const items: CalendarItem[] = [];
@@ -256,6 +302,53 @@ export async function getCalendarData(
       subtitle: [cn, t.location].filter(Boolean).join(" — ") || null,
       time: t.scheduled_start_time?.slice(0, 5) ?? null,
       link: `/events/${t.event_id}#playbook`,
+    });
+  }
+
+  // Requests — Due Date kind (Calendar Integration — Phase 2). Calendar
+  // never edits these — it links back into the Request Center.
+  for (const r of (requestsRes.data ?? []) as any[]) {
+    const cn = r.clients ? `${r.clients.first_name} ${r.clients.last_name}` : null;
+    const overdue = r.due_date < todayIso;
+    const submitted = r.status === "submitted" || r.status === "reviewed";
+    const state = overdue ? "Overdue" : submitted ? "Submitted — awaiting review" : null;
+    items.push({
+      id: `request-${r.id}`,
+      type: "request_due",
+      date: r.due_date,
+      title: r.title,
+      subtitle: [cn, state].filter(Boolean).join(" — ") || null,
+      time: null,
+      link: `/requests/${r.id}`,
+    });
+  }
+
+  // Contract expiration — Expiration kind, not Due Date (§2a).
+  for (const c of (contractsRes.data ?? []) as any[]) {
+    const cn = c.clients ? `${c.clients.first_name} ${c.clients.last_name}` : null;
+    items.push({
+      id: `contract-${c.id}`,
+      type: "contract_expiration",
+      date: c.expires_at,
+      title: `${c.title} expires`,
+      subtitle: cn,
+      time: null,
+      link: `/contracts/${c.id}`,
+    });
+  }
+
+  // Document expiration — Expiration kind (§2a), same shape as Contracts.
+  for (const d of (documentsRes.data ?? []) as any[]) {
+    const clientRow = d.clients ?? d.events?.clients;
+    const cn = clientRow ? `${clientRow.first_name} ${clientRow.last_name}` : null;
+    items.push({
+      id: `document-${d.id}`,
+      type: "document_expiration",
+      date: d.expires_at,
+      title: `${d.name} expires`,
+      subtitle: cn,
+      time: null,
+      link: d.event_id ? `/events/${d.event_id}` : `/clients/${d.client_id}`,
     });
   }
 

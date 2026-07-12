@@ -11,7 +11,10 @@ export type CalendarItemType =
   | "key_date"       // client milestone (client_key_dates.date)
   | "date_hold"      // soft reservation (date_holds table)
   | "calendar_block" // administrative closure (calendar_blocks table)
-  | "planning_activity"; // scheduled Planning task (event_tasks.scheduled_date — Calendar Integration Phase 1)
+  | "planning_activity" // scheduled Planning task (event_tasks.scheduled_date — Calendar Integration Phase 1)
+  | "request_due" // Request Framework due date (requests.due_date — Due Date kind, Calendar Integration Phase 2)
+  | "contract_expiration" // Contract validity lapse (contracts.expires_at — Expiration kind, Calendar Integration Phase 2)
+  | "document_expiration"; // Document validity lapse (documents.expires_at — Expiration kind, Calendar Integration Phase 2)
 
 export type CalendarItem = {
   id: string;

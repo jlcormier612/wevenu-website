@@ -142,6 +142,9 @@
   --cal-date-hold:      #C7A66A;                 /* amber (tint, same hue as taupe) */
   --cal-blocked:        #B85C57;                 /* muted red (tint of dusty rose)  */
   --cal-planning-activity: #7A8FA6;              /* muted slate blue — distinct from every other item type */
+  --cal-request-due:       #B08D3E;              /* muted mustard gold — Due Date kind (§2a) */
+  --cal-contract-expiration: #8E6B8E;            /* muted plum — Expiration kind (§2a), distinct from Due Date colors */
+  --cal-document-expiration: #9C7A5B;            /* muted clay brown — Expiration kind (§2a) */
 }
 
 /*
