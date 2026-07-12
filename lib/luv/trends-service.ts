@@ -50,6 +50,7 @@ function makeTrendObs(spec: TrendSpec): LuvObservation | null {
 
   return {
     id:          spec.id,
+    kind:        isPositive ? "fact" : "risk",
     priority:    isPositive ? "low" : "medium",
     message:     isPositive ? spec.positive(absPct) : spec.warning(absPct),
     link:        spec.link,
@@ -95,6 +96,7 @@ export function computeStoryMode(trends: VenueTrends): LuvObservation | null {
   if (leadDelta !== null && leadDelta <= -20) {
     return {
       id:            "story_needs_attention",
+      kind:          "risk",
       priority:      "medium",
       variant:       "story",
       message:       "A few things need your attention.",
@@ -109,6 +111,7 @@ export function computeStoryMode(trends: VenueTrends): LuvObservation | null {
   if (leadDelta !== null && leadDelta >= 15 && tourDelta !== null && tourDelta >= 15) {
     return {
       id:            "story_building_momentum",
+      kind:          "fact",
       priority:      "low",
       variant:       "story",
       message:       "You're building momentum.",
@@ -126,6 +129,7 @@ export function computeStoryMode(trends: VenueTrends): LuvObservation | null {
       : `Revenue collected is up ${Math.abs(payDelta!)}% vs. last month.`;
     return {
       id:            "story_strong_month",
+      kind:          "fact",
       priority:      "low",
       variant:       "story",
       message:       "A strong month overall.",
@@ -140,6 +144,7 @@ export function computeStoryMode(trends: VenueTrends): LuvObservation | null {
   if (conversion !== null && conversion >= 65 && cm.tours >= 3) {
     return {
       id:            "story_couples_loving",
+      kind:          "fact",
       priority:      "low",
       variant:       "story",
       message:       "Clients are loving the experience.",
@@ -154,6 +159,7 @@ export function computeStoryMode(trends: VenueTrends): LuvObservation | null {
   if (cm.booked > 0 || (leadDelta !== null && leadDelta > 0)) {
     return {
       id:            "story_steady",
+      kind:          "fact",
       priority:      "low",
       variant:       "story",
       message:       "Things are moving steadily.",
@@ -263,6 +269,7 @@ export function computeTrendObservations(trends: VenueTrends): LuvObservation[] 
     const multiplier = (bestTourDayRate / avgTourConversionRate).toFixed(1);
     obs.push({
       id:          "trend_best_tour_day",
+      kind:        "inference",
       priority:    "low",
       message:     `${bestTourDay} tours convert at ${bestTourDayRate}% — ${multiplier}× better than your average. Consider prioritizing them.`,
       link:        "/settings",

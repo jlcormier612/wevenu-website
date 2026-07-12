@@ -53,6 +53,7 @@ function toObservation(row: RawActionOutcomeRow): LuvObservation | null {
     const n = after_value;
     return {
       id:          "action_outcome_follow_up_messages",
+      kind:        "fact",
       priority:    "medium",
       message:     `${n} lead${n !== 1 ? "s" : ""} responded after your follow-up campaign`,
       detail:      `${timeLabel} · ${before_value ?? 0} leads were overdue for contact`,
@@ -69,6 +70,7 @@ function toObservation(row: RawActionOutcomeRow): LuvObservation | null {
       : "";
     return {
       id:          "action_outcome_seasonal_promo",
+      kind:        "fact",
       priority:    "medium",
       message:     `Your seasonal promotion brought in ${n} new inquiries over 14 days${vs}`,
       detail:      timeLabel,
@@ -85,6 +87,7 @@ function toObservation(row: RawActionOutcomeRow): LuvObservation | null {
       : "";
     return {
       id:          "action_outcome_availability_plan",
+      kind:        "fact",
       priority:    "medium",
       message:     `After updating your availability plan, ${n} new inquiries came in over 14 days${vs}`,
       detail:      timeLabel,
@@ -109,6 +112,7 @@ function toPendingObservation(row: RawPendingActionRow): LuvObservation | null {
     case "follow_up_messages":
       return {
         id:          "pending_follow_up_messages",
+        kind:        "waiting",
         priority:    "medium",
         message:     "I'm tracking the follow-up messages you sent this week.",
         detail:      countdown,
@@ -119,6 +123,7 @@ function toPendingObservation(row: RawPendingActionRow): LuvObservation | null {
     case "seasonal_promo":
       return {
         id:          "pending_seasonal_promo",
+        kind:        "waiting",
         priority:    "medium",
         message:     "I'm watching whether your seasonal promotion brings in more inquiries.",
         detail:      countdown,
@@ -129,6 +134,7 @@ function toPendingObservation(row: RawPendingActionRow): LuvObservation | null {
     case "availability_plan":
       return {
         id:          "pending_availability_plan",
+        kind:        "waiting",
         priority:    "medium",
         message:     "I'll let you know if your availability update changes booking momentum.",
         detail:      countdown,
@@ -171,6 +177,7 @@ function toPerformanceObservation(row: RawPerformanceSummaryRow): LuvObservation
   if (action_type === "follow_up_messages") {
     return {
       id:          "perf_follow_up_messages",
+      kind:        "fact",
       priority:    "medium",
       message:     `Follow-up campaigns have contacted ${total} lead${total !== 1 ? "s" : ""} across ${total_actions} campaign${total_actions !== 1 ? "s" : ""}.`,
       detail:      hasSeasonal && ratio && ratio >= 1.3
@@ -184,6 +191,7 @@ function toPerformanceObservation(row: RawPerformanceSummaryRow): LuvObservation
   if (action_type === "seasonal_promo") {
     return {
       id:          "perf_seasonal_promo",
+      kind:        "fact",
       priority:    "medium",
       message:     `${total_actions} seasonal promotion${total_actions !== 1 ? "s" : ""} brought in ${total} new ${total !== 1 ? "inquiries" : "inquiry"}.`,
       detail:      hasSeasonal && ratio && ratio >= 1.3
@@ -197,6 +205,7 @@ function toPerformanceObservation(row: RawPerformanceSummaryRow): LuvObservation
   if (action_type === "availability_plan") {
     return {
       id:          "perf_availability_plan",
+      kind:        "fact",
       priority:    "medium",
       message:     `Availability updates have generated ${total} ${total !== 1 ? "inquiries" : "inquiry"} across ${total_actions} update${total_actions !== 1 ? "s" : ""}.`,
       detail:      hasSeasonal && ratio && ratio >= 1.3

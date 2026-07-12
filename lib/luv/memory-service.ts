@@ -69,6 +69,7 @@ export function computeMemoryObservations(
         : `You've booked ${totalBookings} clients on Wevenu. ${totalBookings >= 50 ? "An incredible community you've built." : "Keep the momentum going."}`;
       obs.push({
         id:          "memory_total_bookings",
+        kind:        "celebration",
         priority:    "low",
         message,
         link:        "/clients",
@@ -89,6 +90,7 @@ export function computeMemoryObservations(
       : `Leads at your venue typically take about ${avgDays} days from first inquiry to booking.`;
     obs.push({
       id:          "memory_avg_lead_time",
+      kind:        "fact",
       priority:    "low",
       message:     `Your average lead-to-booking time is ${avgDays} days.`,
       detail,
@@ -110,6 +112,7 @@ export function computeMemoryObservations(
       if (ratio >= 1.3) {
         obs.push({
           id:          "memory_seasonal_peak",
+          kind:        "inference",
           priority:    "low",
           message:     `${name} is historically one of your busiest months for inquiries.`,
           detail:      `Based on past years, you typically see ${Math.round(thisMonth.avg)} inquiries in ${name} — above your yearly average. Stay responsive.`,
@@ -119,6 +122,7 @@ export function computeMemoryObservations(
       } else if (ratio <= 0.7) {
         obs.push({
           id:          "memory_seasonal_slow",
+          kind:        "inference",
           priority:    "low",
           message:     `${name} is historically quieter for your venue.`,
           detail:      `Past years show about ${Math.round(thisMonth.avg)} inquiries in ${name}. A slower pace is normal — a good time for planning or marketing.`,
@@ -137,6 +141,7 @@ export function computeMemoryObservations(
       if (nextRatio >= 1.35) {
         obs.push({
           id:          "memory_next_month_peak",
+          kind:        "inference",
           priority:    "low",
           message:     `${nextName} is typically your peak inquiry season — get ready.`,
           detail:      `Historically you receive around ${Math.round(nextMonth.avg)} inquiries in ${nextName}. Make sure your availability and tour slots are set.`,
@@ -152,6 +157,7 @@ export function computeMemoryObservations(
   if (busiestEventMonth && totalBookings !== null && totalBookings >= 5) {
     obs.push({
       id:          "memory_busiest_event_month",
+      kind:        "fact",
       priority:    "low",
       message:     `${monthName(busiestEventMonth.month)} is your most popular month for events.`,
       detail:      `You've hosted ${busiestEventMonth.count} event${busiestEventMonth.count !== 1 ? "s" : ""} in ${monthName(busiestEventMonth.month)} — more than any other month.`,

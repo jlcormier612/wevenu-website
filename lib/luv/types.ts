@@ -8,6 +8,26 @@
 
 export type LuvPriority = "high" | "medium" | "low";
 
+/**
+ * The unified observation contract (Platform Intelligence Adoption — Phase 1,
+ * per docs/luv-platform-reconciliation.md §4). Exactly six kinds, no more —
+ * every observation is tagged with the single most specific one that
+ * applies, in this precedence order when more than one could:
+ * celebration > risk > waiting > recommendation > inference > fact.
+ *
+ *   fact           a direct, unadorned read of existing state
+ *   inference      a conclusion combining two or more facts (must be
+ *                  traceable back to them, never presented at fact-level certainty)
+ *   recommendation a suggested next action, always a link, never something
+ *                  Luv performs itself
+ *   celebration    a fact that is also the first occurrence of a real,
+ *                  one-time transition (see docs/luv-platform-intelligence-architecture.md §2)
+ *   waiting        depends on someone else's next action, no due-date urgency yet
+ *   risk           a fact plus an existing, feature-native threshold already
+ *                  crossed — never a threshold Luv invents itself
+ */
+export type ObservationKind = "fact" | "inference" | "recommendation" | "celebration" | "waiting" | "risk";
+
 export type LuvBriefingItem = {
   label: string;
   status: "complete" | "incomplete" | "warning";
@@ -28,6 +48,7 @@ export type LuvRecommendation = {
 
 export type LuvObservation = {
   id: string;            // stable key for React rendering
+  kind: ObservationKind;
   priority: LuvPriority;
   message: string;       // the observation, written warmly
   detail?: string;       // secondary line (optional)

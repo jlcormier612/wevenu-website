@@ -24,6 +24,11 @@ import type { LuvBriefingItem, LuvObservation } from "@/lib/luv/types";
 import type { LuvSettings } from "@/lib/luv/settings";
 import { computeInterestFromSignals } from "@/lib/leads/signals";
 import { generateMomentumLanguage } from "@/lib/leads/momentum";
+import { computeEventTaskReadinessByKind } from "@/lib/playbooks/repository";
+import { computePlanningReadiness } from "@/lib/readiness/compute";
+import { getRequests } from "@/lib/requests/service";
+import type { Request as PlatformRequest } from "@/lib/requests/types";
+import { computeWebsiteCompletenessGapTemporary } from "@/lib/luv/website-completeness-temporary";
 
 type DbClient = Awaited<ReturnType<typeof createClient>>;
 
@@ -201,6 +206,7 @@ export async function getLuvObservations(
     const firstIncomplete = briefingItems.find((i) => i.status === "incomplete");
     observations.push({
       id: `briefing-${ev.id}`,
+      kind: "risk",
       priority: du <= 14 ? "high" : "medium",
       message: `${ev.name} is ${inDays(ev.event_date)}.`,
       detail: `${incompleteCount} planning item${incompleteCount !== 1 ? "s" : ""} still need${incompleteCount === 1 ? "s" : ""} attention.`,
@@ -237,6 +243,7 @@ export async function getLuvObservations(
     const days = daysAgo(lead.created_at);
     observations.push({
       id: `tour-${lead.id}`,
+      kind: "recommendation",
       priority: "medium",
       message: `${name} may be ready to schedule a tour.`,
       detail: `${lead.status === "proposal_sent" ? "Proposal sent" : "Qualified"} · ${days} day${days !== 1 ? "s" : ""} in the pipeline.`,
@@ -256,6 +263,7 @@ export async function getLuvObservations(
       : null;
     observations.push({
       id: `contract-${contract.id}`,
+      kind: "waiting",
       priority: days >= 7 ? "high" : "medium",
       message: clientName
         ? `${clientName}'s contract has been out for ${days} day${days !== 1 ? "s" : ""} — a gentle nudge might help.`
@@ -277,6 +285,7 @@ export async function getLuvObservations(
       : "/";
     observations.push({
       id: `doc-${doc.id}`,
+      kind: "waiting",
       priority: daysUntil <= 7 ? "high" : "medium",
       message: daysUntil <= 7
         ? `"${doc.name}" expires ${inDays(doc.expires_at)} — it may be worth renewing soon.`
@@ -294,6 +303,7 @@ export async function getLuvObservations(
     const days = daysAgo(lead.created_at);
     observations.push({
       id: `followup-${lead.id}`,
+      kind: "risk",
       priority: "low",
       message: `${name} reached out ${days} day${days !== 1 ? "s" : ""} ago — they might appreciate hearing from you.`,
       link: `/leads/${lead.id}`,
@@ -313,6 +323,7 @@ export async function getLuvObservations(
       if (du <= 30) {
         observations.push({
           id: `questionnaire-unsent-${q.id}`,
+          kind: "risk",
           priority: du <= 14 ? "high" : "medium",
           message: `${q.events.name} is ${inDays(q.events.event_date)} — the final details form hasn't been sent yet.`,
           link: `/events/${q.event_id}`,
@@ -327,6 +338,7 @@ export async function getLuvObservations(
         if (openedDaysAgo >= 2) {
           observations.push({
             id: `questionnaire-opened-${q.id}`,
+            kind: "waiting",
             priority: du <= 14 ? "high" : "medium",
             message: `The client opened their final details form ${openedDaysAgo} day${openedDaysAgo !== 1 ? "s" : ""} ago — a gentle reminder might help them finish.`,
             link: `/events/${q.event_id}`,
@@ -340,6 +352,7 @@ export async function getLuvObservations(
         if (sentDaysAgo !== null && sentDaysAgo >= 3) {
           observations.push({
             id: `questionnaire-sent-${q.id}`,
+            kind: "waiting",
             priority: du <= 14 ? "high" : "low",
             message: `The final details form was sent ${sentDaysAgo} day${sentDaysAgo !== 1 ? "s" : ""} ago and hasn't been opened yet.`,
             link: `/events/${q.event_id}`,
@@ -358,6 +371,7 @@ export async function getLuvObservations(
     const clientName = c.clients ? `${c.clients.first_name} ${c.clients.last_name}` : null;
     observations.push({
       id: `contract-expiry-${c.id}`,
+      kind: "risk",
       priority: daysUntil <= 7 ? "high" : "medium",
       message: clientName
         ? `The contract for ${clientName} expires ${inDays(c.expires_at)}.`
@@ -386,18 +400,27 @@ export async function getLuvObservations(
     const coupleName = [ev.clients?.first_name, ev.clients?.partner_first_name].filter(Boolean).join(" & ");
     const du = Math.ceil((new Date(ev.event_date + "T12:00:00").getTime() - Date.now()) / 86_400_000);
 
-    if (!site.is_published && du <= 120) {
+    // See lib/luv/website-completeness-temporary.ts — Website doesn't yet
+    // expose its own status; this is an isolated, explicitly temporary
+    // stand-in, not something to extend here.
+    const gap = computeWebsiteCompletenessGapTemporary({
+      isPublished: site.is_published, hasTravelContent: !!site.content?.travel, daysUntilEvent: du,
+    });
+
+    if (gap?.kind === "unpublished") {
       observations.push({
         id: `website-unpublished-${site.client_id}`,
+        kind: "risk",
         priority: du <= 60 ? "medium" : "low",
         message: `${coupleName}'s wedding website isn't published yet.`,
         detail: `The event is in ${du} days. Clients typically publish their website 3-4 months out.`,
         link: `/clients/${site.client_id}`,
         actionLabel: "View Client →",
       });
-    } else if (site.is_published && !site.content?.travel && du <= 120) {
+    } else if (gap?.kind === "missing_travel_info") {
       observations.push({
         id: `website-missing-travel-${site.client_id}`,
+        kind: "fact",
         priority: "low",
         message: `${coupleName}'s website is missing accommodations information.`,
         detail: "Travel and hotel info helps out-of-town guests plan their trip.",
@@ -425,6 +448,7 @@ export async function getLuvObservations(
     const name = [site.clients.first_name, site.clients.partner_first_name].filter(Boolean).join(" & ");
     observations.push({
       id: `website-published-${site.client_id}`,
+      kind: "celebration",
       priority: "low",
       message: `${name} just published their wedding website.`,
       detail: `Their website is live at /w/${site.slug}`,
@@ -433,9 +457,14 @@ export async function getLuvObservations(
     });
   }
 
-  // ── Event readiness: strong momentum (no exceptions, high readiness) ─────
-  // "The Carter Wedding has no overdue tasks and planning momentum looks strong."
-  const { data: readyEvents } = await supabase
+  // ── Planning: overdue, blocked, and momentum — all from Event Readiness ──
+  // Luv never recomputes Planning's own readiness math (Platform Intelligence
+  // Adoption — Phase 1). computeEventTaskReadinessByKind is the exact same
+  // per-event source lib/readiness/compute.ts's computePlanningReadiness
+  // reads; this block calls both directly and narrates around whatever they
+  // already say, instead of re-deriving overdue/blocked counts or a
+  // readiness percentage from a second, independent event_tasks query.
+  const { data: planningCandidateEvents } = await supabase
     .from("events")
     .select("id, name, event_date, clients(first_name, partner_first_name)")
     .eq("venue_id", venueId)
@@ -443,38 +472,34 @@ export async function getLuvObservations(
     .gte("event_date", today)
     .lte("event_date", soon90);
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  for (const ev of (readyEvents ?? []) as any[]) {
-    // Check if this event has tasks and none are overdue/blocked
-    const { count: overdueCount } = await supabase
-      .from("event_tasks")
-      .select("id", { count: "exact", head: true })
-      .eq("event_id", ev.id)
-      .in("status", ["overdue", "blocked"])
-      .eq("is_required", true);
+  for (const ev of (planningCandidateEvents ?? []) as { id: string; name: string; event_date: string; clients?: { first_name?: string | null; partner_first_name?: string | null } | null }[]) {
+    const readinessByKind = await computeEventTaskReadinessByKind(supabase, venueId, ev.id);
+    if (!readinessByKind.client && !readinessByKind.venue) continue; // no tasks yet for this event
 
-    const { count: totalTasks } = await supabase
-      .from("event_tasks")
-      .select("id", { count: "exact", head: true })
-      .eq("event_id", ev.id)
-      .eq("is_required", true);
-
-    const { count: completedTasks } = await supabase
-      .from("event_tasks")
-      .select("id", { count: "exact", head: true })
-      .eq("event_id", ev.id)
-      .eq("status", "complete")
-      .eq("is_required", true);
+    const planning = computePlanningReadiness(readinessByKind);
+    const totalRequired = (readinessByKind.client?.totalRequired ?? 0) + (readinessByKind.venue?.totalRequired ?? 0);
+    const completedRequired = (readinessByKind.client?.completedRequired ?? 0) + (readinessByKind.venue?.completedRequired ?? 0);
 
     const du = Math.ceil((new Date(ev.event_date + "T12:00:00").getTime() - Date.now()) / 86_400_000);
-    const name = [ev.clients?.first_name, ev.clients?.partner_first_name].filter(Boolean).join(" & ");
-    const readiness = totalTasks && totalTasks > 0 ? Math.round(((completedTasks ?? 0) / totalTasks) * 100) : 0;
+    const name = [ev.clients?.first_name, ev.clients?.partner_first_name].filter(Boolean).join(" & ") || ev.name;
 
-    if (totalTasks && totalTasks >= 5 && overdueCount === 0 && readiness >= 70) {
+    if (planning.status === "needs_attention") {
+      observations.push({
+        id: `planning-attention-${ev.id}`,
+        kind: "risk",
+        priority: du <= 30 ? "high" : "medium",
+        message: `${name}'s planning needs attention.`,
+        detail: planning.detail,
+        link: `/events/${ev.id}#playbook`,
+        actionLabel: "View Playbook →",
+        recommendation: { label: "Review overdue or blocked tasks", link: `/events/${ev.id}#playbook`, type: "navigate" },
+      });
+    } else if (totalRequired >= 5 && completedRequired / totalRequired >= 0.7) {
       observations.push({
         id: `strong-momentum-${ev.id}`,
+        kind: "fact",
         priority: "low",
-        message: `The ${name || ev.name} has no exceptions and is ${readiness}% ready.`,
+        message: `${name} has no exceptions and is ${planning.metric ?? `${completedRequired}/${totalRequired}`} ready.`,
         detail: du <= 30 ? "Everything is on track for the big day." : "Planning momentum looks strong.",
         link: `/events/${ev.id}`,
         actionLabel: "View Event →",
@@ -491,6 +516,7 @@ export async function getLuvObservations(
     const name = tour.contact_name ?? "A prospective client";
     observations.push({
       id: `tour-upcoming-${tour.id}`,
+      kind: "fact",
       priority: du === 0 ? "high" : "medium",
       message: du === 0
         ? `${name} has a tour today at ${tourDate.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}.`
@@ -548,6 +574,7 @@ export async function getLuvObservations(
       if (interestScore >= 30 && commitScore >= 20) {
         observations.push({
           id: `momentum-hot-${lead.id}`,
+          kind: "inference",
           priority: "medium",
           message: `${name} is showing strong interest right now.`,
           detail: commitScore >= 50 ? "They're well along in the booking journey." : "Good timing — may be worth following up while the interest is fresh.",
@@ -560,6 +587,7 @@ export async function getLuvObservations(
       else if (commitScore >= 30 && daysSinceContact !== null && daysSinceContact >= 10) {
         observations.push({
           id: `momentum-cooling-${lead.id}`,
+          kind: "inference",
           priority: "low",
           message: `${name} may be losing momentum.`,
           detail: `${daysSinceContact} days without contact.`,
@@ -608,6 +636,7 @@ export async function getLuvObservations(
       if (recent >= 4 && prior === 0) {
         observations.push({
           id: `momentum-surge-${lead.id}`,
+          kind: "inference",
           priority: "high",
           message: `${name}'s engagement has increased significantly this week.`,
           detail: "Good timing to follow up while the interest is fresh.",
@@ -620,6 +649,7 @@ export async function getLuvObservations(
       else if (prior >= 3 && recent === 0) {
         observations.push({
           id: `momentum-drop-${lead.id}`,
+          kind: "inference",
           priority: "medium",
           message: `${name} has gone quiet after showing strong interest last week.`,
           detail: "A brief check-in might help reignite the conversation.",
@@ -653,6 +683,7 @@ export async function getLuvObservations(
       // Inactive couple — hasn't visited in 3+ weeks
       observations.push({
         id: `portal-inactive-${sess.client_id}`,
+        kind: "risk",
         priority: "low",
         message: `${coupleName} hasn't visited their planning workspace in ${daysAgo} days.`,
         detail: "Sending a check-in or updating their tasks may re-engage them.",
@@ -687,6 +718,7 @@ export async function getLuvObservations(
       if (count >= 10) {
         observations.push({
           id: `guest-momentum-${clientId}`,
+          kind: "celebration",
           priority: "low",
           message: `${name} added ${count} guests this week. Planning momentum looks strong.`,
           detail: count > 50 ? "Guest count increased significantly — the final payment or capacity may need a check." : undefined,
@@ -704,6 +736,7 @@ export async function getLuvObservations(
     const name = tour.contact_name ?? "A prospective client";
     observations.push({
       id: `tour-no-followup-${tour.id}`,
+      kind: "risk",
       priority: hoursAgo <= 24 ? "high" : "medium",
       message: hoursAgo < 48
         ? `${name} completed their tour ${hoursAgo}h ago — follow up while it's fresh.`
@@ -720,6 +753,7 @@ export async function getLuvObservations(
     const name = tour.contact_name ?? "A prospective client";
     observations.push({
       id: `tour-no-show-${tour.id}`,
+      kind: "risk",
       priority: "medium",
       message: `${name} didn't show for their tour.`,
       detail: "Reach out to reschedule or understand why.",
@@ -729,69 +763,69 @@ export async function getLuvObservations(
     });
   }
 
-  // ── Overdue required tasks ───────────────────────────────────────────────
-  // "Coordinator manages exceptions, not steps." Overdue required tasks are
-  // the primary exception. Surface at high priority for events within 90 days.
-  const { data: overdueTasks } = await supabase.from("event_tasks")
-    .select("id, title, event_id, due_date, events(name, event_date)")
-    .eq("venue_id", venueId)
-    .eq("status", "overdue")
-    .eq("is_required", true)
-    .gte("events.event_date", today)
-    .lte("events.event_date", soon90)
-    .order("events.event_date");
+  // Overdue and blocked required tasks are now narrated by the consolidated
+  // "Planning: overdue, blocked, and momentum" block above, sourced from
+  // computeEventTaskReadinessByKind/computePlanningReadiness — not
+  // recomputed here a second time.
 
-  if (overdueTasks?.length) {
-    const eventCounts = new Map<string, { name: string; eventDate: string; eventId: string; count: number }>();
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    for (const t of (overdueTasks as any[]).filter((t) => t.events)) {
-      const existing = eventCounts.get(t.event_id);
-      if (existing) { existing.count++; }
-      else { eventCounts.set(t.event_id, { name: t.events.name, eventDate: t.events.event_date, eventId: t.event_id, count: 1 }); }
+  // ── Requests: a primary observation source (Platform Intelligence Adoption — Phase 1) ──
+  // Reuses the existing Request Framework wholesale (getRequests()) — no
+  // independent query against the requests table, and no independently-
+  // invented status logic. Every classification below reads Request.status/
+  // dueDate/sourceFeature directly, matching
+  // docs/luv-platform-reconciliation.md §7's own mapping of Request states
+  // onto the six observation kinds.
+  const allRequests = await getRequests();
+  const sevenDaysAgoIso = new Date(Date.now() - 7 * 86_400_000).toISOString();
+
+  for (const req of allRequests as PlatformRequest[]) {
+    const link = req.eventId ? `/events/${req.eventId}` : `/clients/${req.clientId}`;
+
+    if (req.status === "completed") {
+      if (req.completedAt && req.completedAt >= sevenDaysAgoIso) {
+        observations.push({
+          id: `request-completed-${req.id}`,
+          kind: "celebration",
+          priority: "low",
+          message: `"${req.title}" was completed.`,
+          link,
+          actionLabel: "View →",
+        });
+      }
+      continue;
     }
-    for (const ev of eventCounts.values()) {
-      const du = Math.ceil((new Date(ev.eventDate + "T12:00:00").getTime() - Date.now()) / 86_400_000);
-      const n = ev.count;
+    if (req.status === "cancelled") continue;
+
+    const overdue = req.dueDate != null && req.dueDate < today;
+    if (overdue) {
       observations.push({
-        id: `overdue-tasks-${ev.eventId}`,
-        priority: du <= 30 ? "high" : "medium",
-        message: `${ev.name} has ${n} overdue required ${n === 1 ? "task" : "tasks"}.`,
-        detail: `${n === 1 ? "A required task has" : `${n} required tasks have`} passed ${n === 1 ? "its" : "their"} due date and still ${n === 1 ? "needs" : "need"} attention.`,
-        link: `/events/${ev.eventId}`,
-        actionLabel: "View Playbook →",
-        recommendation: { label: "Review overdue tasks", link: `/events/${ev.eventId}`, type: "navigate" },
+        id: `request-overdue-${req.id}`,
+        kind: "risk",
+        priority: "high",
+        message: `"${req.title}" is overdue.`,
+        detail: req.sourceFeature ? `Originated from ${req.sourceFeature}.` : undefined,
+        link,
+        actionLabel: "View →",
+        recommendation: { label: "Follow up with the client", link, type: "navigate" },
       });
-    }
-  }
-
-  // ── Blocked playbook tasks ────────────────────────────────────────────────
-  // Surfaces dependency-blocked tasks for approaching events.
-  // "The Carter Wedding is blocked because the questionnaire hasn't been submitted."
-  const { data: blockedTasks } = await supabase.from("event_tasks")
-    .select("id, title, event_id, depends_on_event_task_id, events(name, event_date)")
-    .eq("venue_id", venueId)
-    .eq("status", "blocked")
-    .eq("is_required", true)
-    .gte("events.event_date", today)
-    .lte("events.event_date", soon30)
-    .order("events.event_date");
-
-  if (blockedTasks?.length) {
-    // Group by event — only surface the first blocker per event to avoid noise
-    const seenEvents = new Set<string>();
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    for (const bt of (blockedTasks as any[]).filter((b) => b.events)) {
-      if (seenEvents.has(bt.event_id)) continue;
-      seenEvents.add(bt.event_id);
-      const du = Math.ceil((new Date(bt.events.event_date + "T12:00:00").getTime() - Date.now()) / 86_400_000);
+    } else if (req.status === "submitted" || req.status === "reviewed") {
       observations.push({
-        id: `blocked-task-${bt.id}`,
-        priority: du <= 14 ? "high" : "medium",
-        message: `${bt.events.name} has a blocked planning task.`,
-        detail: `"${bt.title}" is waiting on its prerequisite to be completed.`,
-        link: `/events/${bt.event_id}`,
-        actionLabel: "View Playbook →",
-        recommendation: { label: "Review the blocked task", link: `/events/${bt.event_id}`, type: "navigate" },
+        id: `request-review-${req.id}`,
+        kind: "recommendation",
+        priority: "medium",
+        message: `"${req.title}" is ready for your review.`,
+        link,
+        actionLabel: "Review →",
+        recommendation: { label: "Review the client's response", link, type: "navigate" },
+      });
+    } else if (req.status === "sent" || req.status === "viewed" || req.status === "in_progress") {
+      observations.push({
+        id: `request-waiting-${req.id}`,
+        kind: "waiting",
+        priority: "low",
+        message: `"${req.title}" is waiting on the client.`,
+        link,
+        actionLabel: "View →",
       });
     }
   }

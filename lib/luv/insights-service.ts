@@ -32,6 +32,7 @@ export function computeInsightObservations(rows: RawInsightRow[]): LuvObservatio
     .filter(r => r.confidence !== "low")
     .map(row => ({
       id:          `insight_${row.type}`,
+      kind:        "inference" as const,
       priority:    row.confidence === "high" ? ("medium" as const) : ("low" as const),
       message:     row.title,
       detail:      row.body,
