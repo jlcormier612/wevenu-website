@@ -1,18 +1,24 @@
 "use client";
 
 /**
- * Seating Experience — Phase 1: Foundation & Floor Plan Integration.
+ * Seating Experience.
  *
- * Replaces the disconnected Sprint-74 seating canvas (own 1200x800 grid,
- * own table vocabulary, couple-editable tables) entirely. Tables are no
- * longer created or moved here — they are floor_plan_objects rows on the
- * one Floor Plan the venue has shared (client_access != 'hidden'), read
- * live on every load. This component only ever creates/removes rows in
- * guest_seat_assignments (guest_id <-> table_object_id) — it draws the
- * room, it does not build it.
+ * Phase 1 (Foundation & Floor Plan Integration): tables are floor_plan_objects
+ * rows on the one Floor Plan the venue has shared (client_access != 'hidden'),
+ * read live on every load — never a second canvas, never a second table
+ * model. This component only ever creates/removes rows in
+ * guest_seat_assignments (guest_id <-> table_object_id).
+ *
+ * Phase 2 (Wedding Workspace User Experience): the same data model, presented
+ * so it feels like planning a wedding rather than operating software — a
+ * dashboard for orientation before editing, guests organized into collapsible
+ * groups instead of one long list, households and the wedding party seatable
+ * in one action, and both drag-and-drop and multi-select as first-class ways
+ * to assign. No new tables, no new RPCs — this phase is UI only.
  */
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
+import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -29,6 +35,11 @@ const DIETARY_EMOJI: Record<string, string> = {
 };
 const MEAL_EMOJI: Record<string, string> = {
   chicken: "🍗", beef: "🥩", fish: "🐟", vegetarian: "🥦", vegan: "🌱", kids: "🍕",
+};
+const ACCESSIBILITY_LABELS: Record<string, string> = {
+  wheelchair: "Wheelchair access", limited_mobility: "Limited mobility",
+  hearing_assistance: "Hearing assistance", vision_assistance: "Vision assistance",
+  service_animal: "Service animal", special_seating: "Special seating request",
 };
 
 function mealEmoji(choice: string | null) {
@@ -68,19 +79,56 @@ function computeAutoAssign(
   return results;
 }
 
-// ── Guest chip — draggable everywhere it appears (sidebar or a table's roster) ──
+// A guest as it appears anywhere in the Guest Workspace — Phase 1's SeatingGuest
+// plus where (if anywhere) they currently sit, so every group below can be
+// derived from one list instead of re-deriving assignment state per section.
+type AnyGuest = SeatingGuest & {
+  tableId: string | null;
+  tableLabel: string | null;
+  needsReassignment: boolean;
+};
+
+function buildAllGuests(data: SeatingData): AnyGuest[] {
+  return [
+    ...data.tables.flatMap((t) => t.guests.map((g) => ({ ...g, tableId: t.id, tableLabel: t.label, needsReassignment: false }))),
+    ...data.unassignedGuests.map((g) => ({ ...g, tableId: null, tableLabel: null, needsReassignment: false })),
+    ...data.needsReassignment.map((g) => ({ ...g, tableId: null, tableLabel: null, needsReassignment: true })),
+  ];
+}
+
+function summarizeMeals(guests: SeatingGuest[]): { label: string; count: number }[] {
+  const counts = new Map<string, number>();
+  for (const g of guests) {
+    const label = g.mealChoice?.trim() || "Not yet chosen";
+    counts.set(label, (counts.get(label) ?? 0) + 1);
+  }
+  return [...counts.entries()].map(([label, count]) => ({ label, count })).sort((a, b) => b.count - a.count);
+}
+
+function summarizeAccessibility(guests: SeatingGuest[]): { label: string; count: number }[] {
+  const counts = new Map<string, number>();
+  for (const g of guests) {
+    for (const tag of g.accessibilityTags) counts.set(tag, (counts.get(tag) ?? 0) + 1);
+  }
+  return [...counts.entries()].map(([tag, count]) => ({ label: ACCESSIBILITY_LABELS[tag] ?? tag, count }));
+}
+
+// ── Guest chip — draggable and (in the Guest Workspace) multi-selectable ───
 
 function GuestChip({
-  guest, onRemove, onDragStart, needsReassignment, highlight,
+  guest, onRemove, onDragStart, highlight, selected, onToggleSelect, tableLabel,
 }: {
-  guest: SeatingGuest;
+  guest: SeatingGuest & { needsReassignment?: boolean };
   onRemove?: (id: string) => void;
   onDragStart?: (id: string) => void;
-  needsReassignment?: boolean;
   highlight?: boolean;
+  selected?: boolean;
+  onToggleSelect?: (id: string) => void;
+  tableLabel?: string | null;
 }) {
   const meal = mealEmoji(guest.mealChoice);
   const diet = dietaryEmojis(guest.dietaryTags);
+  const selectable = !!onToggleSelect;
 
   return (
     <div
@@ -91,10 +139,18 @@ function GuestChip({
         onDragStart(guest.guestId);
       } : undefined}
       onDragEnd={onDragStart ? () => onDragStart("") : undefined}
+      onClick={selectable ? () => onToggleSelect(guest.guestId) : undefined}
       className={`flex items-center gap-1.5 px-2 py-1.5 rounded-lg border text-xs transition-colors select-none ${
         onDragStart ? "cursor-grab active:cursor-grabbing" : ""
-      } ${highlight ? "bg-primary/10 border-primary/40 shadow-sm" : "bg-card border-border hover:border-primary/30"}`}
+      } ${selected ? "bg-primary/10 border-primary/50 shadow-sm" : highlight ? "bg-primary/10 border-primary/40 shadow-sm" : "bg-card border-border hover:border-primary/30"}`}
     >
+      {selectable && (
+        <input
+          type="checkbox" checked={!!selected} onChange={() => onToggleSelect(guest.guestId)}
+          onClick={(e) => e.stopPropagation()}
+          className="h-3.5 w-3.5 rounded accent-[#5D6F5D] shrink-0"
+        />
+      )}
       <div className="flex-1 min-w-0">
         <div className="truncate font-medium text-foreground">
           {guest.isChild && <span className="mr-1">👶</span>}
@@ -103,9 +159,9 @@ function GuestChip({
           {guest.name}
           {guest.plusOneOfGuestId && <span className="text-[10px] text-muted-foreground ml-1">(+1)</span>}
         </div>
-        {(guest.householdName || needsReassignment) && (
+        {(guest.householdName || guest.needsReassignment || tableLabel) && (
           <div className="text-[10px] text-muted-foreground truncate">
-            {needsReassignment ? "⚠ needs a new table" : guest.householdName}
+            {guest.needsReassignment ? "⚠ needs a new table" : tableLabel ? `Seated at ${tableLabel}` : guest.householdName}
           </div>
         )}
       </div>
@@ -129,6 +185,15 @@ function GuestChip({
 
 // ── Table, drawn from the real Floor Plan object — read-only geometry ──────
 
+function occupancyFill(table: SeatingTable, defaultFill: string): string {
+  if (table.guests.length === 0) return defaultFill;
+  if (table.capacity == null) return "#EAF3EA";
+  const ratio = table.guests.length / table.capacity;
+  if (ratio > 1) return "#FBE0E0";
+  if (ratio === 1) return "#CFE3CF";
+  return "#EAF3EA";
+}
+
 function SeatingTableShape({
   table, isSelected, isDragOver, onSelect, onDragOver, onDragLeave, onDrop,
 }: {
@@ -144,6 +209,7 @@ function SeatingTableShape({
   const style = DISPLAY_SHAPE_STYLE[shape];
   const overCapacity = table.capacity != null && table.guests.length > table.capacity;
   const stroke = overCapacity ? "#ef4444" : isSelected ? "#3D5040" : isDragOver ? "#5D6F5D" : style.stroke;
+  const fill = isDragOver ? "#eef4ee" : isSelected ? "#f0f5f0" : occupancyFill(table, style.fill);
   const fontSize = Math.max(9, Math.min(14, table.width / 6));
 
   return (
@@ -157,8 +223,7 @@ function SeatingTableShape({
     >
       <FloorPlanShapeSvg
         shape={shape} x={table.x} y={table.y} width={table.width} height={table.height}
-        fill={isDragOver ? "#eef4ee" : isSelected ? "#f0f5f0" : style.fill}
-        stroke={stroke} strokeWidth={isSelected || isDragOver ? 2.5 : 1.5}
+        fill={fill} stroke={stroke} strokeWidth={isSelected || isDragOver ? 2.5 : 1.5}
       />
       <text x={table.x} y={table.y - fontSize * 0.4} textAnchor="middle" dominantBaseline="middle"
         fontSize={fontSize} fill={style.textFill} fontFamily="sans-serif" fontWeight="600"
@@ -181,7 +246,7 @@ function SeatingTableShape({
   );
 }
 
-// ── Filter tabs shared between the browse sidebar and a table's "Add Guests" section ──
+// ── Filter tabs used only inside a Table's "Add Guests" quick-add list ─────
 
 const GUEST_FILTERS = [
   { key: "unassigned", label: "Unassigned" },
@@ -192,9 +257,7 @@ const GUEST_FILTERS = [
 ] as const;
 type GuestFilter = (typeof GUEST_FILTERS)[number]["key"];
 
-type PoolGuest = SeatingGuest & { needsReassignment: boolean };
-
-function filterPool(pool: PoolGuest[], filter: GuestFilter, search: string): PoolGuest[] {
+function filterPool(pool: AnyGuest[], filter: GuestFilter, search: string): AnyGuest[] {
   let result = pool;
   if (filter === "unassigned") result = result.filter((g) => !g.needsReassignment);
   else if (filter === "wedding_party") result = result.filter((g) => g.isWeddingParty);
@@ -207,8 +270,8 @@ function filterPool(pool: PoolGuest[], filter: GuestFilter, search: string): Poo
   return result;
 }
 
-function groupByHousehold(pool: PoolGuest[]): { key: string; name: string; guests: PoolGuest[] }[] {
-  const groups = new Map<string, { key: string; name: string; guests: PoolGuest[] }>();
+function groupByHousehold(pool: AnyGuest[]): { key: string; name: string; guests: AnyGuest[] }[] {
+  const groups = new Map<string, { key: string; name: string; guests: AnyGuest[] }>();
   for (const g of pool) {
     const key = g.householdId ?? "__none__";
     const name = g.householdName ?? "No Household";
@@ -216,53 +279,6 @@ function groupByHousehold(pool: PoolGuest[]): { key: string; name: string; guest
     groups.get(key)!.guests.push(g);
   }
   return [...groups.values()].sort((a, b) => a.name.localeCompare(b.name));
-}
-
-function GuestPoolList({
-  pool, filter, search, draggingGuestId, onDragStart, onGuestClick, emptyMessage,
-}: {
-  pool: PoolGuest[];
-  filter: GuestFilter;
-  search: string;
-  draggingGuestId: string;
-  onDragStart: (id: string) => void;
-  onGuestClick?: (id: string) => void;
-  emptyMessage: string;
-}) {
-  const filtered = filterPool(pool, filter, search);
-
-  if (filtered.length === 0) {
-    return <div className="text-center py-8 text-xs text-muted-foreground">{emptyMessage}</div>;
-  }
-
-  if (filter === "household") {
-    return (
-      <div className="space-y-3">
-        {groupByHousehold(filtered).map((group) => (
-          <div key={group.key}>
-            <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground mb-1">{group.name}</p>
-            <div className="space-y-1">
-              {group.guests.map((g) => (
-                <div key={g.guestId} onClick={() => onGuestClick?.(g.guestId)}>
-                  <GuestChip guest={g} onDragStart={onDragStart} needsReassignment={g.needsReassignment} highlight={draggingGuestId === g.guestId} />
-                </div>
-              ))}
-            </div>
-          </div>
-        ))}
-      </div>
-    );
-  }
-
-  return (
-    <div className="space-y-1">
-      {filtered.map((g) => (
-        <div key={g.guestId} onClick={() => onGuestClick?.(g.guestId)}>
-          <GuestChip guest={g} onDragStart={onDragStart} needsReassignment={g.needsReassignment} highlight={draggingGuestId === g.guestId} />
-        </div>
-      ))}
-    </div>
-  );
 }
 
 function FilterTabs({ active, onChange }: { active: GuestFilter; onChange: (f: GuestFilter) => void }) {
@@ -283,23 +299,69 @@ function FilterTabs({ active, onChange }: { active: GuestFilter; onChange: (f: G
   );
 }
 
-// ── Table Info panel (selected table) — roster + collapsed Add Guests ──────
+function QuickAddList({ pool, draggingGuestId, onDragStart, onAssign }: {
+  pool: AnyGuest[];
+  draggingGuestId: string;
+  onDragStart: (id: string) => void;
+  onAssign: (guestId: string) => void;
+}) {
+  const [filter, setFilter] = useState<GuestFilter>("unassigned");
+  const [search, setSearch] = useState("");
+  const filtered = filterPool(pool, filter, search);
+
+  return (
+    <div className="space-y-2">
+      <Input placeholder="Search guests…" value={search} onChange={(e) => setSearch(e.target.value)} className="h-7 text-xs" />
+      <FilterTabs active={filter} onChange={setFilter} />
+      {filtered.length === 0 ? (
+        <div className="text-center py-4 text-xs text-muted-foreground">No guests match.</div>
+      ) : filter === "household" ? (
+        <div className="space-y-3">
+          {groupByHousehold(filtered).map((group) => (
+            <div key={group.key}>
+              <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground mb-1">{group.name}</p>
+              <div className="space-y-1">
+                {group.guests.map((g) => (
+                  <div key={g.guestId} onClick={() => onAssign(g.guestId)}>
+                    <GuestChip guest={g} onDragStart={onDragStart} highlight={draggingGuestId === g.guestId} />
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="space-y-1">
+          {filtered.map((g) => (
+            <div key={g.guestId} onClick={() => onAssign(g.guestId)}>
+              <GuestChip guest={g} onDragStart={onDragStart} highlight={draggingGuestId === g.guestId} />
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Table Info panel (selected table) — rich summary + roster + quick add ──
 
 function TableInfoPanel({
-  table, pool, draggingGuestId, onDragStart, onRemove, onAssign, onClose,
+  table, pool, selectedGuestIds, onToggleSelect, draggingGuestId, onDragStart, onRemove, onAssign, onClose,
 }: {
   table: SeatingTable;
-  pool: PoolGuest[];
+  pool: AnyGuest[];
+  selectedGuestIds: Set<string>;
+  onToggleSelect: (id: string) => void;
   draggingGuestId: string;
   onDragStart: (id: string) => void;
   onRemove: (guestId: string) => void;
   onAssign: (guestId: string) => void;
   onClose: () => void;
 }) {
-  const [filter, setFilter] = useState<GuestFilter>("unassigned");
-  const [search, setSearch] = useState("");
   const [addOpen, setAddOpen] = useState(false);
   const remaining = table.capacity != null ? Math.max(0, table.capacity - table.guests.length) : null;
+  const meals = summarizeMeals(table.guests);
+  const accessibility = summarizeAccessibility(table.guests);
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
@@ -314,6 +376,26 @@ function TableInfoPanel({
             <span className="text-destructive"> · over capacity</span>
           )}
         </p>
+
+        {(meals.length > 0 || accessibility.length > 0) && (
+          <div className="mt-2.5 space-y-1.5">
+            {meals.length > 0 && (
+              <p className="text-[11px] text-muted-foreground">
+                <span className="font-medium text-foreground">Meals: </span>
+                {meals.map((m) => `${m.label} × ${m.count}`).join(", ")}
+              </p>
+            )}
+            {accessibility.length > 0 && (
+              <>
+                <p className="text-[11px] text-muted-foreground">
+                  <span className="font-medium text-foreground">Accessibility: </span>
+                  {accessibility.map((a) => `${a.label} × ${a.count}`).join(", ")}
+                </p>
+                <p className="text-[11px] text-primary/80">💡 Worth a quick check with your venue about easy, step-free access to this table.</p>
+              </>
+            )}
+          </div>
+        )}
       </div>
 
       <div className="flex-1 overflow-y-auto px-3 py-3 space-y-1.5">
@@ -321,7 +403,11 @@ function TableInfoPanel({
           <div className="text-center py-6 text-xs text-muted-foreground">No one seated here yet. Drag a guest onto this table, or add one below.</div>
         ) : (
           table.guests.map((g) => (
-            <GuestChip key={g.guestId} guest={g} onRemove={onRemove} onDragStart={onDragStart} highlight={draggingGuestId === g.guestId} />
+            <GuestChip
+              key={g.guestId} guest={g} onRemove={onRemove} onDragStart={onDragStart}
+              highlight={draggingGuestId === g.guestId}
+              selected={selectedGuestIds.has(g.guestId)} onToggleSelect={onToggleSelect}
+            />
           ))
         )}
       </div>
@@ -335,15 +421,8 @@ function TableInfoPanel({
           <span className="text-muted-foreground">{addOpen ? "▲" : "▼"}</span>
         </button>
         {addOpen && (
-          <div className="px-3 pb-3 space-y-2 max-h-64 overflow-y-auto">
-            <Input placeholder="Search guests…" value={search} onChange={(e) => setSearch(e.target.value)} className="h-7 text-xs" />
-            <FilterTabs active={filter} onChange={setFilter} />
-            <GuestPoolList
-              pool={pool} filter={filter} search={search}
-              draggingGuestId={draggingGuestId} onDragStart={onDragStart}
-              onGuestClick={onAssign}
-              emptyMessage="No guests match."
-            />
+          <div className="px-3 pb-3 max-h-64 overflow-y-auto">
+            <QuickAddList pool={pool} draggingGuestId={draggingGuestId} onDragStart={onDragStart} onAssign={onAssign} />
           </div>
         )}
       </div>
@@ -351,58 +430,258 @@ function TableInfoPanel({
   );
 }
 
-// ── Browse sidebar (no table selected) ──────────────────────────────────────
+// ── Collapsible group — the Guest Workspace's organizing unit ─────────────
 
-function GuestBrowsePanel({
-  pool, draggingGuestId, onDragStart,
+function CollapsibleGroup({
+  icon, title, count, summary, defaultOpen = false, action, children,
 }: {
-  pool: PoolGuest[];
+  icon: string;
+  title: string;
+  count: number;
+  summary?: string;
+  defaultOpen?: boolean;
+  action?: React.ReactNode;
+  children: React.ReactNode;
+}) {
+  const [open, setOpen] = useState(defaultOpen);
+  return (
+    <div className="border-b border-border/60 last:border-0">
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className="w-full flex items-center justify-between px-4 py-2.5 text-left hover:bg-muted/20"
+      >
+        <span className="text-xs font-semibold text-heading flex items-center gap-1.5">
+          <span>{icon}</span>{title}
+          <span className="font-normal text-muted-foreground">({count})</span>
+        </span>
+        <span className="flex items-center gap-2">
+          {!open && summary && <span className="text-[10px] text-muted-foreground truncate max-w-[100px]">{summary}</span>}
+          <span className="text-muted-foreground text-[10px]">{open ? "▲" : "▼"}</span>
+        </span>
+      </button>
+      {open && (
+        <div className="px-3 pb-3 space-y-2">
+          {action}
+          {children}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Selects every member of a group at once, feeding the persistent
+// SelectionBar (below) — the one path for "seat this whole group at a
+// table," whether that's a household, the wedding party, or any other
+// group. There is deliberately no per-group "seat here" shortcut: the
+// Guest Workspace only ever renders when no table is selected (selecting
+// one swaps the panel to that table's own roster), so a group action tied
+// to "the selected table" could never actually fire.
+function GroupBulkActions({ members, onSelectAll }: { members: AnyGuest[]; onSelectAll: () => void }) {
+  return (
+    <button onClick={onSelectAll} className="text-[10px] px-2 py-0.5 rounded-full border border-border text-muted-foreground hover:border-primary/40 hover:text-foreground">
+      Select all ({members.length})
+    </button>
+  );
+}
+
+// ── Guest Workspace — the planning side of the split view ─────────────────
+
+function GuestWorkspacePanel({
+  allGuests, selectedGuestIds, draggingGuestId,
+  onToggleSelect, onSelectMany, onDragStart,
+}: {
+  allGuests: AnyGuest[];
+  selectedGuestIds: Set<string>;
   draggingGuestId: string;
+  onToggleSelect: (id: string) => void;
+  onSelectMany: (ids: string[]) => void;
   onDragStart: (id: string) => void;
 }) {
-  const [filter, setFilter] = useState<GuestFilter>("unassigned");
   const [search, setSearch] = useState("");
-  const needsReassignmentCount = pool.filter((g) => g.needsReassignment).length;
+  const q = search.trim().toLowerCase();
+  const matches = (g: AnyGuest) => !q || g.name.toLowerCase().includes(q);
+
+  const unassigned = allGuests.filter((g) => g.tableId === null && matches(g));
+  const assigned = allGuests.filter((g) => g.tableId !== null && matches(g));
+  const households = groupByHousehold(allGuests.filter((g) => g.householdId && matches(g)));
+  const weddingParty = allGuests.filter((g) => g.isWeddingParty && matches(g));
+  const children = allGuests.filter((g) => g.isChild && matches(g));
+  const vendorMeals = allGuests.filter((g) => g.isVendorMeal && matches(g));
+  const needsReassignmentCount = unassigned.filter((g) => g.needsReassignment).length;
+
+  const assignedByTable = new Map<string, { label: string; guests: AnyGuest[] }>();
+  for (const g of assigned) {
+    if (!g.tableId) continue;
+    if (!assignedByTable.has(g.tableId)) assignedByTable.set(g.tableId, { label: g.tableLabel ?? "Table", guests: [] });
+    assignedByTable.get(g.tableId)!.guests.push(g);
+  }
+
+  function renderChip(g: AnyGuest) {
+    return (
+      <GuestChip
+        key={g.guestId} guest={g} onDragStart={onDragStart}
+        highlight={draggingGuestId === g.guestId}
+        selected={selectedGuestIds.has(g.guestId)} onToggleSelect={onToggleSelect}
+        tableLabel={g.tableLabel}
+      />
+    );
+  }
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
-      <div className="px-4 pt-4 pb-2 border-b border-border">
-        <div className="flex items-center justify-between mb-2">
-          <h3 className="text-sm font-semibold text-heading">
-            Guests to Seat
-            <span className="ml-1.5 text-xs font-normal text-muted-foreground">({pool.length})</span>
-          </h3>
-        </div>
-        <Input placeholder="Search guests…" value={search} onChange={(e) => setSearch(e.target.value)} className="h-7 text-xs mb-2" />
-        <FilterTabs active={filter} onChange={setFilter} />
+      <div className="px-4 pt-4 pb-3 border-b border-border">
+        <h3 className="text-sm font-semibold text-heading mb-2">Guest Workspace</h3>
+        <Input placeholder="Search guests…" value={search} onChange={(e) => setSearch(e.target.value)} className="h-7 text-xs" />
       </div>
 
-      {needsReassignmentCount > 0 && (
-        <div className="mx-4 mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
-          {needsReassignmentCount} guest{needsReassignmentCount === 1 ? "" : "s"} need{needsReassignmentCount === 1 ? "s" : ""} a new table — their table was removed from the Floor Plan.
-        </div>
-      )}
-
-      <div className="flex-1 overflow-y-auto px-3 py-3">
-        {pool.length === 0 ? (
-          <div className="text-center py-8 text-muted-foreground">
-            <div className="text-2xl mb-2">🎉</div>
-            <p className="text-xs">Everyone is seated!</p>
+      <div className="flex-1 overflow-y-auto">
+        {needsReassignmentCount > 0 && (
+          <div className="mx-4 mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+            {needsReassignmentCount} guest{needsReassignmentCount === 1 ? "" : "s"} need{needsReassignmentCount === 1 ? "s" : ""} a new table — their table was removed from the Floor Plan.
           </div>
-        ) : (
-          <GuestPoolList
-            pool={pool} filter={filter} search={search}
-            draggingGuestId={draggingGuestId} onDragStart={onDragStart}
-            emptyMessage="No guests match this filter."
-          />
         )}
+
+        <CollapsibleGroup icon="🪑" title="Unassigned" count={unassigned.length} defaultOpen>
+          {unassigned.length === 0 ? (
+            <div className="text-center py-6 text-muted-foreground">
+              <div className="text-2xl mb-1">🎉</div>
+              <p className="text-xs">Everyone is seated!</p>
+            </div>
+          ) : (
+            <div className="space-y-1">{unassigned.map(renderChip)}</div>
+          )}
+        </CollapsibleGroup>
+
+        {households.length > 0 && (
+          <CollapsibleGroup icon="🏠" title="Households" count={households.length}>
+            <div className="space-y-4">
+              {households.map((h) => (
+                <div key={h.key}>
+                  <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground mb-1">{h.name} ({h.guests.length})</p>
+                  <GroupBulkActions members={h.guests} onSelectAll={() => onSelectMany(h.guests.map((g) => g.guestId))} />
+                  <div className="space-y-1 mt-1.5">{h.guests.map(renderChip)}</div>
+                  <p className="text-[10px] text-muted-foreground/70 mt-1">Tip: select or drag individual members to split them across tables.</p>
+                </div>
+              ))}
+            </div>
+          </CollapsibleGroup>
+        )}
+
+        {weddingParty.length > 0 && (
+          <CollapsibleGroup icon="💍" title="Wedding Party" count={weddingParty.length}>
+            <GroupBulkActions members={weddingParty} onSelectAll={() => onSelectMany(weddingParty.map((g) => g.guestId))} />
+            <div className="space-y-1">{weddingParty.map(renderChip)}</div>
+          </CollapsibleGroup>
+        )}
+
+        {children.length > 0 && (
+          <CollapsibleGroup icon="👶" title="Children" count={children.length}>
+            <GroupBulkActions members={children} onSelectAll={() => onSelectMany(children.map((g) => g.guestId))} />
+            <div className="space-y-1">{children.map(renderChip)}</div>
+          </CollapsibleGroup>
+        )}
+
+        {vendorMeals.length > 0 && (
+          <CollapsibleGroup icon="🧑‍🍳" title="Vendor Meals" count={vendorMeals.length}>
+            <GroupBulkActions members={vendorMeals} onSelectAll={() => onSelectMany(vendorMeals.map((g) => g.guestId))} />
+            <div className="space-y-1">{vendorMeals.map(renderChip)}</div>
+          </CollapsibleGroup>
+        )}
+
+        <CollapsibleGroup icon="✅" title="Assigned" count={assigned.length}>
+          {assigned.length === 0 ? (
+            <div className="text-center py-6 text-xs text-muted-foreground">No one seated yet.</div>
+          ) : (
+            <div className="space-y-3">
+              {[...assignedByTable.entries()].map(([tableId, group]) => (
+                <div key={tableId}>
+                  <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground mb-1">{group.label} ({group.guests.length})</p>
+                  <div className="space-y-1">{group.guests.map(renderChip)}</div>
+                </div>
+              ))}
+            </div>
+          )}
+        </CollapsibleGroup>
       </div>
 
-      {pool.length > 0 && (
-        <div className="px-4 py-3 border-t border-border text-xs text-muted-foreground">
-          Select a table, or drag a guest onto one, to seat them.
+      <div className="px-4 py-2.5 border-t border-border text-[11px] text-muted-foreground">
+        Select a table, then drag or check off guests to seat them.
+      </div>
+    </div>
+  );
+}
+
+// ── Selection bar — persistent whenever guests are multi-selected ─────────
+
+function SelectionBar({
+  count, tables, selectedTableId, onChangeTable, onAssign, onClear,
+}: {
+  count: number;
+  tables: SeatingTable[];
+  selectedTableId: string | null;
+  onChangeTable: (id: string) => void;
+  onAssign: () => void;
+  onClear: () => void;
+}) {
+  return (
+    <div className="mx-4 mt-3 flex items-center gap-2 flex-wrap rounded-lg border border-primary/30 bg-primary/5 px-3 py-2">
+      <span className="text-xs font-medium text-foreground">{count} guest{count === 1 ? "" : "s"} selected</span>
+      <select
+        value={selectedTableId ?? ""} onChange={(e) => onChangeTable(e.target.value)}
+        className="h-7 rounded-md border border-border bg-card px-2 text-xs"
+      >
+        <option value="">Choose a table…</option>
+        {tables.map((t) => <option key={t.id} value={t.id}>{t.label ?? "Table"}</option>)}
+      </select>
+      <Button size="sm" className="h-7 text-xs" disabled={!selectedTableId} onClick={onAssign}>Assign</Button>
+      <button onClick={onClear} className="text-xs text-muted-foreground hover:text-foreground ml-auto">Clear</button>
+    </div>
+  );
+}
+
+// ── Seating Dashboard — orientation before editing ─────────────────────────
+
+function SeatingDashboard({ data, onContinue }: { data: SeatingData; onContinue: () => void }) {
+  const { stats } = data;
+  const pct = stats.totalAttending > 0 ? Math.round((stats.totalAssigned / stats.totalAttending) * 100) : 0;
+  const tablesWithSpace = data.tables.filter((t) => t.capacity == null || t.guests.length < t.capacity).length;
+  const toSeat = data.unassignedGuests.length + data.needsReassignment.length;
+  const complete = pct === 100 && stats.totalAttending > 0;
+
+  return (
+    <div className="flex flex-col items-center justify-center h-full px-6 py-10 text-center">
+      <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground mb-1">{data.floorPlan?.name}</p>
+      <h2 className="text-lg font-semibold text-heading mb-4">
+        {complete ? "Everyone's seated! 🎉" : stats.totalAssigned > 0 ? "Continue seating your guests" : "Let's start seating your guests"}
+      </h2>
+
+      <div className="w-full max-w-xs mb-6">
+        <div className="h-2.5 rounded-full bg-muted overflow-hidden">
+          <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, background: complete ? "#3D5040" : "#5D6F5D" }} />
         </div>
+        <p className="text-xs text-muted-foreground mt-1.5">{stats.totalAssigned} of {stats.totalAttending} guests seated · {pct}%</p>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3 w-full max-w-xs mb-6">
+        <div className="rounded-xl border border-border bg-card p-3">
+          <p className="text-xl font-semibold text-heading">{tablesWithSpace}</p>
+          <p className="text-[11px] text-muted-foreground">Tables with space</p>
+        </div>
+        <div className="rounded-xl border border-border bg-card p-3">
+          <p className="text-xl font-semibold text-heading">{toSeat}</p>
+          <p className="text-[11px] text-muted-foreground">Guests to seat</p>
+        </div>
+      </div>
+
+      {data.needsReassignment.length > 0 && (
+        <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mb-4 max-w-xs">
+          {data.needsReassignment.length} guest{data.needsReassignment.length === 1 ? "" : "s"} need a new table since their table was removed.
+        </p>
       )}
+
+      <Button onClick={onContinue}>
+        {complete ? "View Seating Chart" : stats.totalAssigned > 0 ? "Continue Seating" : "Start Seating"}
+      </Button>
     </div>
   );
 }
@@ -412,9 +691,16 @@ function GuestBrowsePanel({
 export default function SeatingSection({ token }: { token: string }) {
   const [data, setData] = useState<SeatingData | null>(null);
   const [loading, setLoading] = useState(true);
+  // Remembered per browser tab, not just per component mount — switching to
+  // another portal section and back to Seating should resume exactly where
+  // the couple left off, not force them through the dashboard again.
+  const [view, setView] = useState<"dashboard" | "workspace">(() => (
+    typeof window !== "undefined" && sessionStorage.getItem(`seating-continued-${token}`) ? "workspace" : "dashboard"
+  ));
   const [selectedTableId, setSelectedTableId] = useState<string | null>(null);
   const [dragOverTableId, setDragOverTableId] = useState<string | null>(null);
   const [draggingGuestId, setDraggingGuestId] = useState<string>("");
+  const [selectedGuestIds, setSelectedGuestIds] = useState<Set<string>>(new Set());
   const [autoAssigning, setAutoAssigning] = useState(false);
   const [showAutoPreview, setShowAutoPreview] = useState<Array<{ guestId: string; tableId: string }>>([]);
 
@@ -454,6 +740,14 @@ export default function SeatingSection({ token }: { token: string }) {
     });
   };
 
+  const assignMany = async (guestIds: string[], tableId: string) => {
+    if (guestIds.length === 0) return;
+    for (const guestId of guestIds) await assignGuest(guestId, tableId);
+    const tableLabel = data?.tables.find((t) => t.id === tableId)?.label ?? "the table";
+    toast.success(`Seated ${guestIds.length} guest${guestIds.length === 1 ? "" : "s"} at ${tableLabel}`);
+    setSelectedGuestIds(new Set());
+  };
+
   const removeGuest = async (guestId: string) => {
     if (!data) return;
     const assigned = data.tables.flatMap((t) => t.guests).find((g) => g.guestId === guestId);
@@ -474,6 +768,18 @@ export default function SeatingSection({ token }: { token: string }) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ token, guestId }),
     });
+  };
+
+  const toggleSelect = (guestId: string) => {
+    setSelectedGuestIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(guestId)) next.delete(guestId); else next.add(guestId);
+      return next;
+    });
+  };
+
+  const selectMany = (ids: string[]) => {
+    setSelectedGuestIds((prev) => new Set([...prev, ...ids]));
   };
 
   const handleAutoAssign = async () => {
@@ -502,13 +808,9 @@ export default function SeatingSection({ token }: { token: string }) {
     setShowAutoPreview([]);
   };
 
-  const selectedTable = data?.tables.find((t) => t.id === selectedTableId) ?? null;
-  const pool: PoolGuest[] = data
-    ? [
-        ...data.unassignedGuests.map((g) => ({ ...g, needsReassignment: false })),
-        ...data.needsReassignment.map((g) => ({ ...g, needsReassignment: true })),
-      ]
-    : [];
+  const selectedTable: SeatingTable | null = data?.tables.find((t) => t.id === selectedTableId) ?? null;
+  const allGuests = useMemo(() => (data ? buildAllGuests(data) : []), [data]);
+  const unassignedPool = useMemo(() => allGuests.filter((g) => g.tableId === null), [allGuests]);
 
   const stats = data?.stats;
   const pctAssigned = stats && stats.totalAttending > 0 ? Math.round((stats.totalAssigned / stats.totalAttending) * 100) : 0;
@@ -528,6 +830,18 @@ export default function SeatingSection({ token }: { token: string }) {
         <p className="text-sm font-medium">No floor plan shared for seating yet.</p>
         <p className="text-xs mt-1">Check with your venue — seating opens up once they share the room layout.</p>
       </div>
+    );
+  }
+
+  if (view === "dashboard") {
+    return (
+      <SeatingDashboard
+        data={data}
+        onContinue={() => {
+          sessionStorage.setItem(`seating-continued-${token}`, "1");
+          setView("workspace");
+        }}
+      />
     );
   }
 
@@ -552,30 +866,52 @@ export default function SeatingSection({ token }: { token: string }) {
       )}
 
       <div className="flex items-center gap-3 px-4 py-3 border-b border-border flex-wrap">
+        <button onClick={() => setView("dashboard")} className="text-xs text-muted-foreground hover:text-foreground shrink-0" title="Back to seating overview">
+          ← Dashboard
+        </button>
         <p className="text-sm font-medium text-heading truncate">{data.floorPlan.name}</p>
         <div className="ml-auto flex items-center gap-2">
-          {stats && (
-            <div className="flex items-center gap-3 text-xs text-muted-foreground">
-              <span><strong className={pctAssigned === 100 ? "text-primary" : "text-foreground"}>{stats.totalAssigned}</strong>/{stats.totalAttending} seated</span>
-              <span><strong className="text-foreground">{stats.tableCount}</strong> tables</span>
-              <span><strong className="text-foreground">{stats.totalCapacity}</strong> seats</span>
-              {stats.totalCapacity > 0 && stats.totalCapacity < stats.totalAttending && (
-                <Badge variant="outline" className="text-amber-600 border-amber-200 bg-amber-50">
-                  Need {stats.totalAttending - stats.totalCapacity} more seats
-                </Badge>
-              )}
-              {pctAssigned === 100 && stats.totalAttending > 0 && <Badge>Everyone seated 🎉</Badge>}
+          {pctAssigned === 100 && stats && stats.totalAttending > 0 ? (
+            <Badge>Everyone seated 🎉</Badge>
+          ) : (
+            <div className="flex items-center gap-2 w-40">
+              <div className="h-1.5 flex-1 rounded-full bg-muted overflow-hidden">
+                <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${pctAssigned}%` }} />
+              </div>
+              <span className="text-[11px] text-muted-foreground whitespace-nowrap">{pctAssigned}%</span>
             </div>
           )}
           <Button
             size="sm" variant="outline" className="text-xs"
-            disabled={autoAssigning || pool.length === 0 || !data.tables.length}
+            disabled={autoAssigning || unassignedPool.length === 0 || !data.tables.length}
             onClick={handleAutoAssign}
           >
             {autoAssigning ? "Calculating…" : "✨ Auto-assign"}
           </Button>
         </div>
       </div>
+
+      <div className="flex items-center gap-3 px-4 pb-1 flex-wrap text-xs text-muted-foreground">
+        <span><strong className="text-foreground">{stats?.totalAssigned}</strong>/{stats?.totalAttending} seated</span>
+        <span><strong className="text-foreground">{stats?.tableCount}</strong> tables</span>
+        <span><strong className="text-foreground">{stats?.totalCapacity}</strong> seats</span>
+        {stats && stats.totalCapacity > 0 && stats.totalCapacity < stats.totalAttending && (
+          <Badge variant="outline" className="text-amber-600 border-amber-200 bg-amber-50">
+            Need {stats.totalAttending - stats.totalCapacity} more seats
+          </Badge>
+        )}
+      </div>
+
+      {selectedGuestIds.size > 0 && (
+        <SelectionBar
+          count={selectedGuestIds.size}
+          tables={data.tables}
+          selectedTableId={selectedTableId}
+          onChangeTable={setSelectedTableId}
+          onAssign={() => selectedTableId && assignMany([...selectedGuestIds], selectedTableId)}
+          onClear={() => setSelectedGuestIds(new Set())}
+        />
+      )}
 
       {stats && (() => {
         const obs = getSeatingObservation(stats);
@@ -630,11 +966,13 @@ export default function SeatingSection({ token }: { token: string }) {
           )}
         </div>
 
-        <div className="w-72 border-l border-border flex flex-col bg-card overflow-hidden">
+        <div className="w-80 border-l border-border flex flex-col bg-card overflow-hidden">
           {selectedTable ? (
             <TableInfoPanel
               table={selectedTable}
-              pool={pool}
+              pool={unassignedPool}
+              selectedGuestIds={selectedGuestIds}
+              onToggleSelect={toggleSelect}
               draggingGuestId={draggingGuestId}
               onDragStart={setDraggingGuestId}
               onRemove={removeGuest}
@@ -642,7 +980,14 @@ export default function SeatingSection({ token }: { token: string }) {
               onClose={() => setSelectedTableId(null)}
             />
           ) : (
-            <GuestBrowsePanel pool={pool} draggingGuestId={draggingGuestId} onDragStart={setDraggingGuestId} />
+            <GuestWorkspacePanel
+              allGuests={allGuests}
+              selectedGuestIds={selectedGuestIds}
+              draggingGuestId={draggingGuestId}
+              onToggleSelect={toggleSelect}
+              onSelectMany={selectMany}
+              onDragStart={setDraggingGuestId}
+            />
           )}
         </div>
       </div>
