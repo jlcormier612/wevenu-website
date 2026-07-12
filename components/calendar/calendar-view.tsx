@@ -2,24 +2,12 @@
 
 import * as React from "react";
 
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
-  AlertTriangle,
-  CalendarClock,
   CalendarDays,
   ChevronLeft,
   ChevronRight,
-  Clock,
-  ClipboardList,
-  DollarSign,
-  FileClock,
-  FileSignature,
-  MapPin,
-  Phone,
   Plus,
-  Star,
-  Trash2,
 } from "lucide-react";
 
 import { createBlockAction, deleteBlockAction } from "@/app/(app)/availability/actions";
@@ -35,29 +23,12 @@ import { BLOCK_REASONS } from "@/lib/availability/constants";
 import { toast } from "sonner";
 import type { CalendarItem, CalendarItemType } from "@/lib/calendar/types";
 import { cn } from "@/lib/utils";
+import { formatTime, ItemRow, TYPE_META } from "@/components/calendar/calendar-shared";
+import { WeekView } from "@/components/calendar/week-view";
+import { DayView } from "@/components/calendar/day-view";
+import { AgendaView } from "@/components/calendar/agenda-view";
 
-// ---- type meta ---------------------------------------------------------------
-
-// dotColor uses CSS custom properties (defined in globals.css) so dark-mode
-// overrides in .dark { } work automatically — no JS dark-mode detection needed.
-const TYPE_META: Record<CalendarItemType, {
-  label: string;
-  icon: React.ElementType;
-  dotColor: string;  // CSS var reference, e.g. "var(--cal-event)"
-  textClass: string;
-}> = {
-  event:          { label: "Event",       icon: CalendarDays,  dotColor: "var(--cal-event)",       textClass: "text-primary" },
-  tour:           { label: "Tour",        icon: MapPin,        dotColor: "var(--cal-tour)",        textClass: "text-muted-foreground" },
-  follow_up:      { label: "Follow-up",   icon: Phone,         dotColor: "var(--cal-follow-up)",   textClass: "text-muted-foreground" },
-  payment_due:    { label: "Payment Due", icon: DollarSign,    dotColor: "var(--cal-payment-due)", textClass: "text-destructive" },
-  key_date:       { label: "Key Date",    icon: Star,          dotColor: "var(--cal-key-date)",    textClass: "text-heading" },
-  date_hold:      { label: "Date Hold",   icon: Clock,         dotColor: "var(--cal-date-hold)",   textClass: "text-warning-foreground" },
-  calendar_block: { label: "Blocked",     icon: AlertTriangle, dotColor: "var(--cal-blocked)",     textClass: "text-destructive" },
-  planning_activity: { label: "Planning", icon: CalendarClock, dotColor: "var(--cal-planning-activity)", textClass: "text-heading" },
-  request_due:          { label: "Request",           icon: ClipboardList, dotColor: "var(--cal-request-due)",          textClass: "text-heading" },
-  contract_expiration:  { label: "Contract Expires",  icon: FileSignature, dotColor: "var(--cal-contract-expiration)",  textClass: "text-warning-foreground" },
-  document_expiration:  { label: "Document Expires",  icon: FileClock,     dotColor: "var(--cal-document-expiration)",  textClass: "text-warning-foreground" },
-};
+export { TYPE_META, formatTime, ItemRow };
 
 const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const MONTH_NAMES = [
@@ -65,10 +36,35 @@ const MONTH_NAMES = [
   "July","August","September","October","November","December",
 ];
 
-function formatTime(hhmm: string | null): string {
-  if (!hhmm) return "";
-  const [h, m] = hhmm.split(":").map(Number);
-  return new Date(0, 0, 0, h, m).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+// ---- View switcher (Calendar Integration Phase 3) ----------------------------
+// Same underlying items, only the window/layout changes — switching views
+// should feel like looking through a different window onto the same
+// platform, never a different tool (closing instruction of Phase 3).
+
+function ViewSwitcher({ current, onChange }: { current: "month" | "week" | "day" | "agenda"; onChange: (v: "month" | "week" | "day" | "agenda") => void }) {
+  const views: { value: "month" | "week" | "day" | "agenda"; label: string }[] = [
+    { value: "month", label: "Month" },
+    { value: "week", label: "Week" },
+    { value: "day", label: "Day" },
+    { value: "agenda", label: "Agenda" },
+  ];
+  return (
+    <div className="inline-flex rounded-lg border border-border p-0.5">
+      {views.map((v) => (
+        <button
+          key={v.value}
+          type="button"
+          onClick={() => onChange(v.value)}
+          className={cn(
+            "rounded-md px-3 py-1 text-sm font-medium transition-colors",
+            current === v.value ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground",
+          )}
+        >
+          {v.label}
+        </button>
+      ))}
+    </div>
+  );
 }
 
 // ---- Calendar grid ----------------------------------------------------------
@@ -210,65 +206,12 @@ function DayDetail({ date, items, onBlockDeleted }: { date: string | null; items
         <p className="text-sm text-muted-foreground py-4 text-center">Nothing scheduled.</p>
       ) : (
         <div className="space-y-2">
-          {dateItems.map((item) => {
-            const meta = TYPE_META[item.type];
-            const Icon = meta.icon;
-            const isBlock = item.type === "calendar_block";
-
-            const inner = (
-              <>
-                <span
-                  className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg"
-                  style={{ backgroundColor: `color-mix(in oklch, ${meta.dotColor} 18%, transparent)`, color: meta.dotColor }}
-                >
-                  <Icon className="h-3.5 w-3.5" />
-                </span>
-                <div className="min-w-0 flex-1 space-y-0.5">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <p className={cn("text-xs font-semibold uppercase tracking-wide", meta.textClass)}>
-                      {meta.label}
-                    </p>
-                    {item.time && (
-                      <span className="flex items-center gap-0.5 text-xs text-muted-foreground">
-                        <Clock className="h-3 w-3" />{formatTime(item.time)}
-                      </span>
-                    )}
-                  </div>
-                  <p className="text-sm font-medium text-foreground truncate">{item.title}</p>
-                  {item.subtitle && (
-                    <p className="text-xs text-muted-foreground truncate">{item.subtitle}</p>
-                  )}
-                </div>
-              </>
-            );
-
-            if (isBlock && item.rawId) {
-              return (
-                <div key={item.id} className="flex items-start gap-3 rounded-lg border border-border bg-card p-3">
-                  {inner}
-                  <button
-                    type="button"
-                    onClick={() => handleDeleteBlock(item.rawId!)}
-                    disabled={deletePending && deletingId === item.rawId}
-                    className="ml-1 mt-0.5 shrink-0 rounded p-1 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
-                    title="Delete block"
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </button>
-                </div>
-              );
-            }
-
-            return (
-              <Link
-                key={item.id}
-                href={item.link}
-                className="flex items-start gap-3 rounded-lg border border-border bg-card p-3 hover:bg-muted/40 transition-colors"
-              >
-                {inner}
-              </Link>
-            );
-          })}
+          {dateItems.map((item) => (
+            <ItemRow
+              key={item.id} item={item} onDeleteBlock={handleDeleteBlock}
+              deleting={deletePending && deletingId === item.rawId}
+            />
+          ))}
         </div>
       )}
     </div>
@@ -295,13 +238,19 @@ function Legend() {
 // ---- Main CalendarView ------------------------------------------------------
 
 export function CalendarView({
+  view = "month",
   year,
   month,
+  weekStart,
+  dayDate,
   items,
   today,
 }: {
+  view?: "month" | "week" | "day" | "agenda";
   year: number;
   month: number;
+  weekStart?: string;
+  dayDate?: string;
   items: CalendarItem[];
   today: string;
 }) {
@@ -363,8 +312,23 @@ export function CalendarView({
   const isCurrentMonth =
     year === new Date().getFullYear() && month === new Date().getMonth() + 1;
 
+  function switchView(next: "month" | "week" | "day" | "agenda") {
+    if (next === "week") router.push(`/calendar?view=week&weekStart=${selectedDate || today}`);
+    else if (next === "day") router.push(`/calendar?view=day&date=${selectedDate || today}`);
+    else if (next === "agenda") router.push(`/calendar?view=agenda&year=${year}&month=${month}`);
+    else router.push(`/calendar?year=${year}&month=${month}`);
+  }
+
   return (
     <div className="space-y-5">
+      <ViewSwitcher current={view} onChange={switchView} />
+
+      {view === "week" && <WeekView weekStart={weekStart || today} items={items} today={today} />}
+      {view === "day" && <DayView date={dayDate || today} items={items} today={today} />}
+      {view === "agenda" && <AgendaView items={items} today={today} />}
+
+      {view === "month" && (
+      <>
       {/* Month navigation */}
       <div className="flex items-center justify-between gap-4">
         <div className="flex items-center gap-2">
@@ -529,6 +493,8 @@ export function CalendarView({
             </div>
           </CardContent>
         </Card>
+      )}
+      </>
       )}
     </div>
   );

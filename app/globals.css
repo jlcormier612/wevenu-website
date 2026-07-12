@@ -145,6 +145,8 @@
   --cal-request-due:       #B08D3E;              /* muted mustard gold — Due Date kind (§2a) */
   --cal-contract-expiration: #8E6B8E;            /* muted plum — Expiration kind (§2a), distinct from Due Date colors */
   --cal-document-expiration: #9C7A5B;            /* muted clay brown — Expiration kind (§2a) */
+  --cal-planning-task:  #8A9A5B;                  /* muted olive — Due Date kind, Booking Schedule lens only (Phase 3) */
+  --cal-timeline-entry: #B06A3A;                  /* muted copper — day-of run-of-show, Booking Schedule lens only (Phase 3) */
 }
 
 /*

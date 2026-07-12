@@ -1,8 +1,12 @@
 /**
  * Calendar application service (Sprint 17, extended through Calendar
- * Integration Phase 1 and Phase 2).
+ * Integration Phase 1, Phase 2, and Phase 3).
  *
- * Aggregates data from existing tables in parallel — no new DB tables.
+ * getCalendarData() aggregates data from existing tables in parallel for one
+ * venue-wide month — no new DB tables, and this function's own behavior is
+ * unchanged by Phase 3 (see booking-schedule.ts for the new booking-scoped
+ * lens, which reuses each feature's own service functions rather than
+ * querying tables directly).
  * Returns a flat list of CalendarItems for the given month.
  */
 import { createClient } from "@/integrations/supabase/server";
@@ -56,7 +60,7 @@ export async function getCalendarData(
 
     // 4. Payment due dates (pending + overdue)
     supabase.from("payment_line_items")
-      .select("id, label, amount, due_date, schedule_id, payment_schedules(title, clients(first_name, last_name))")
+      .select("id, label, amount, due_date, schedule_id, payment_schedules(title, client_id, event_id, clients(first_name, last_name))")
       .eq("venue_id", venue.id)
       .in("status", ["pending", "overdue"])
       .not("due_date", "is", null)
@@ -155,6 +159,8 @@ export async function getCalendarData(
       subtitle: e.event_type ? eventTypeLabel(e.event_type) : null,
       time: e.start_time?.slice(0, 5) ?? null,
       link: `/events/${e.id}`,
+      eventId: e.id,
+      clientId: e.client_id ?? null,
     });
   }
 
@@ -192,6 +198,8 @@ export async function getCalendarData(
       subtitle: cn,
       time: null,
       link: `/payments/${p.schedule_id}`,
+      eventId: p.payment_schedules?.event_id ?? null,
+      clientId: p.payment_schedules?.client_id ?? null,
     });
   }
 
@@ -208,6 +216,7 @@ export async function getCalendarData(
       subtitle: cn,
       time: null,
       link: `/clients/${k.client_id}`,
+      clientId: k.client_id ?? null,
     });
   }
 
@@ -302,6 +311,8 @@ export async function getCalendarData(
       subtitle: [cn, t.location].filter(Boolean).join(" — ") || null,
       time: t.scheduled_start_time?.slice(0, 5) ?? null,
       link: `/events/${t.event_id}#playbook`,
+      eventId: t.event_id,
+      clientId: t.events?.client_id ?? null,
     });
   }
 
@@ -320,6 +331,8 @@ export async function getCalendarData(
       subtitle: [cn, state].filter(Boolean).join(" — ") || null,
       time: null,
       link: `/requests/${r.id}`,
+      eventId: r.event_id ?? null,
+      clientId: r.client_id ?? null,
     });
   }
 
@@ -334,6 +347,8 @@ export async function getCalendarData(
       subtitle: cn,
       time: null,
       link: `/contracts/${c.id}`,
+      eventId: c.event_id ?? null,
+      clientId: c.client_id ?? null,
     });
   }
 
@@ -349,6 +364,8 @@ export async function getCalendarData(
       subtitle: cn,
       time: null,
       link: d.event_id ? `/events/${d.event_id}` : `/clients/${d.client_id}`,
+      eventId: d.event_id ?? null,
+      clientId: d.client_id ?? null,
     });
   }
 
