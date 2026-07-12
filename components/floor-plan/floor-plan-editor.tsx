@@ -65,6 +65,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { createClient } from "@/integrations/supabase/client";
 import {
   DISPLAY_SHAPES, DISPLAY_SHAPE_LABELS, DISPLAY_SHAPE_STYLE, FloorPlanShapeSvg,
@@ -174,7 +175,13 @@ function SvgObject({
     >
       {/* Shape */}
       {obj.objectType === "text_label" ? (
-        null // text-only, rendered below
+        // Invisible (transparent fill/stroke, per OBJECT_STYLE.text_label) but
+        // still a real, hit-testable rect — a Text Label has no drawn shape,
+        // and its own <text> below is pointerEvents:none for crisp rendering,
+        // so without this the object had nothing in it a click could ever
+        // land on: it could never be selected, moved, or deleted.
+        <rect x={obj.x - hw} y={obj.y - hh} width={obj.width} height={obj.height}
+          fill={fill} stroke={style.stroke} strokeWidth={selected ? 2 : 1} />
       ) : obj.displayShape ? (
         <FloorPlanShapeSvg
           shape={obj.displayShape} x={obj.x} y={obj.y} width={obj.width} height={obj.height}
@@ -323,14 +330,24 @@ function PropertiesPanel({
           onClick={() => onDuplicate(obj.id)} disabled={obj.locked} title="Duplicate this object">
           <Copy className="h-3 w-3 mr-1" /> Duplicate
         </Button>
-        <Button type="button" variant="outline" size="sm" className="h-7 w-7 p-0" title="Bring forward (in front of overlapping objects)"
-          onClick={() => onReorder(obj.id, "forward")}>
-          <ChevronUp className="h-3.5 w-3.5" />
-        </Button>
-        <Button type="button" variant="outline" size="sm" className="h-7 w-7 p-0" title="Send backward (behind overlapping objects)"
-          onClick={() => onReorder(obj.id, "backward")}>
-          <ChevronDown className="h-3.5 w-3.5" />
-        </Button>
+        <Tooltip>
+          <TooltipTrigger render={
+            <Button type="button" variant="outline" size="sm" className="h-7 w-7 p-0"
+              onClick={() => onReorder(obj.id, "forward")}>
+              <ChevronUp className="h-3.5 w-3.5" />
+            </Button>
+          } />
+          <TooltipContent>Bring forward (in front of overlapping objects)</TooltipContent>
+        </Tooltip>
+        <Tooltip>
+          <TooltipTrigger render={
+            <Button type="button" variant="outline" size="sm" className="h-7 w-7 p-0"
+              onClick={() => onReorder(obj.id, "backward")}>
+              <ChevronDown className="h-3.5 w-3.5" />
+            </Button>
+          } />
+          <TooltipContent>Send backward (behind overlapping objects)</TooltipContent>
+        </Tooltip>
       </div>
 
       {/* Details */}
@@ -489,9 +506,14 @@ function RoomSettingsPanel({
     <div className="absolute right-0 top-full mt-1 z-10 w-72 space-y-3 rounded-xl border border-border bg-card p-3 shadow-lg">
       <div className="flex items-center justify-between">
         <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Room Settings</p>
-        <button type="button" onClick={onClose} title="Close room settings" className="text-muted-foreground hover:text-foreground">
-          <X className="h-3.5 w-3.5" />
-        </button>
+        <Tooltip>
+          <TooltipTrigger render={
+            <button type="button" onClick={onClose} className="text-muted-foreground hover:text-foreground">
+              <X className="h-3.5 w-3.5" />
+            </button>
+          } />
+          <TooltipContent>Close room settings</TooltipContent>
+        </Tooltip>
       </div>
       <div className="grid grid-cols-2 gap-2">
         <div className="space-y-1">
@@ -1014,6 +1036,7 @@ export function FloorPlanEditor({
   const viewBox = `${pan.x} ${pan.y} ${canvasWidth / zoom} ${canvasHeight / zoom}`;
 
   return (
+    <TooltipProvider>
     <div className="space-y-4">
       {/* Palette: category chips */}
       <div className="flex flex-wrap items-center gap-1.5">
@@ -1078,10 +1101,15 @@ export function FloorPlanEditor({
       {mode === "add" && (
         <div className="flex items-center gap-2 rounded-lg border border-primary/30 bg-primary/5 px-3 py-2 text-sm text-heading">
           <span>Click anywhere on the canvas to place a <strong>{addSource!.toolbarLabel}</strong>.</span>
-          <button type="button" onClick={() => { setMode("select"); setAddSource(null); }}
-            title="Cancel placing object" className="ml-auto text-muted-foreground hover:text-foreground">
-            <X className="h-4 w-4" />
-          </button>
+          <Tooltip>
+            <TooltipTrigger render={
+              <button type="button" onClick={() => { setMode("select"); setAddSource(null); }}
+                className="ml-auto text-muted-foreground hover:text-foreground">
+                <X className="h-4 w-4" />
+              </button>
+            } />
+            <TooltipContent>Cancel placing object</TooltipContent>
+          </Tooltip>
         </div>
       )}
 
@@ -1095,39 +1123,66 @@ export function FloorPlanEditor({
 
         <Separator orientation="vertical" className="h-6 mx-0.5" />
 
-        <button type="button" onClick={() => setZoom((z) => Math.max(ZOOM_MIN, Number((z - 0.25).toFixed(2))))}
-          className="rounded-lg border border-border bg-background p-1.5 text-muted-foreground hover:text-foreground" title="Zoom out">
-          <ZoomOut className="h-3.5 w-3.5" />
-        </button>
+        <Tooltip>
+          <TooltipTrigger render={
+            <button type="button" onClick={() => setZoom((z) => Math.max(ZOOM_MIN, Number((z - 0.25).toFixed(2))))}
+              className="rounded-lg border border-border bg-background p-1.5 text-muted-foreground hover:text-foreground">
+              <ZoomOut className="h-3.5 w-3.5" />
+            </button>
+          } />
+          <TooltipContent>Zoom out</TooltipContent>
+        </Tooltip>
         <span className="text-xs text-muted-foreground w-10 text-center">{Math.round(zoom * 100)}%</span>
-        <button type="button" onClick={() => setZoom((z) => Math.min(ZOOM_MAX, Number((z + 0.25).toFixed(2))))}
-          className="rounded-lg border border-border bg-background p-1.5 text-muted-foreground hover:text-foreground" title="Zoom in">
-          <ZoomIn className="h-3.5 w-3.5" />
-        </button>
-        <button type="button" onClick={() => { setZoom(1); setPan({ x: 0, y: 0 }); }}
-          className="rounded-lg border border-border bg-background p-1.5 text-muted-foreground hover:text-foreground" title="Reset view">
-          <Maximize2 className="h-3.5 w-3.5" />
-        </button>
+        <Tooltip>
+          <TooltipTrigger render={
+            <button type="button" onClick={() => setZoom((z) => Math.min(ZOOM_MAX, Number((z + 0.25).toFixed(2))))}
+              className="rounded-lg border border-border bg-background p-1.5 text-muted-foreground hover:text-foreground">
+              <ZoomIn className="h-3.5 w-3.5" />
+            </button>
+          } />
+          <TooltipContent>Zoom in</TooltipContent>
+        </Tooltip>
+        <Tooltip>
+          <TooltipTrigger render={
+            <button type="button" onClick={() => { setZoom(1); setPan({ x: 0, y: 0 }); }}
+              className="rounded-lg border border-border bg-background p-1.5 text-muted-foreground hover:text-foreground">
+              <Maximize2 className="h-3.5 w-3.5" />
+            </button>
+          } />
+          <TooltipContent>Reset view (100% zoom, centered)</TooltipContent>
+        </Tooltip>
 
         <Separator orientation="vertical" className="h-6 mx-0.5" />
 
-        <button type="button" onClick={() => setShowGrid((v) => !v)}
-          className={cn("rounded-lg border p-1.5 transition-colors", showGrid ? "border-primary bg-primary/10 text-primary" : "border-border bg-background text-muted-foreground hover:text-foreground")}
-          title="Show/hide grid">
-          <Grid3x3 className="h-3.5 w-3.5" />
-        </button>
-        <button type="button" onClick={() => setSnapToGrid((v) => !v)}
-          className={cn("rounded-lg border p-1.5 transition-colors", snapToGrid ? "border-primary bg-primary/10 text-primary" : "border-border bg-background text-muted-foreground hover:text-foreground")}
-          title="Snap to grid">
-          <Magnet className="h-3.5 w-3.5" />
-        </button>
+        <Tooltip>
+          <TooltipTrigger render={
+            <button type="button" onClick={() => setShowGrid((v) => !v)}
+              className={cn("rounded-lg border p-1.5 transition-colors", showGrid ? "border-primary bg-primary/10 text-primary" : "border-border bg-background text-muted-foreground hover:text-foreground")}>
+              <Grid3x3 className="h-3.5 w-3.5" />
+            </button>
+          } />
+          <TooltipContent>{showGrid ? "Hide grid" : "Show grid"}</TooltipContent>
+        </Tooltip>
+        <Tooltip>
+          <TooltipTrigger render={
+            <button type="button" onClick={() => setSnapToGrid((v) => !v)}
+              className={cn("rounded-lg border p-1.5 transition-colors", snapToGrid ? "border-primary bg-primary/10 text-primary" : "border-border bg-background text-muted-foreground hover:text-foreground")}>
+              <Magnet className="h-3.5 w-3.5" />
+            </button>
+          } />
+          <TooltipContent>{snapToGrid ? "Snap to grid: on" : "Snap to grid: off"}</TooltipContent>
+        </Tooltip>
 
         <div className="relative">
-          <button type="button" onClick={() => setShowRoomSettings((v) => !v)}
-            className={cn("rounded-lg border p-1.5 transition-colors", showRoomSettings ? "border-primary bg-primary/10 text-primary" : "border-border bg-background text-muted-foreground hover:text-foreground")}
-            title="Room settings">
-            <Settings2 className="h-3.5 w-3.5" />
-          </button>
+          <Tooltip>
+            <TooltipTrigger render={
+              <button type="button" onClick={() => setShowRoomSettings((v) => !v)}
+                className={cn("rounded-lg border p-1.5 transition-colors", showRoomSettings ? "border-primary bg-primary/10 text-primary" : "border-border bg-background text-muted-foreground hover:text-foreground")}>
+                <Settings2 className="h-3.5 w-3.5" />
+              </button>
+            } />
+            <TooltipContent>Room settings — size, units, grid spacing</TooltipContent>
+          </Tooltip>
           {showRoomSettings && (
             <RoomSettingsPanel
               roomWidthFt={plan.roomWidthFt} roomDepthFt={plan.roomDepthFt}
@@ -1161,16 +1216,25 @@ export function FloorPlanEditor({
             <input type="range" min={0} max={1} step={0.05} value={plan.backgroundImageOpacity}
               onChange={(e) => handleOpacityChange(Number(e.target.value))}
               disabled={plan.backgroundLocked} className="w-20" title="Background image opacity" />
-            <button type="button" onClick={handleToggleBackgroundLock}
-              className="rounded-lg border border-border bg-background px-2 py-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
-              title={plan.backgroundLocked ? "Unlock background image (allow moving/removing it)" : "Lock background image in place"}>
-              {plan.backgroundLocked ? <Lock className="h-3.5 w-3.5" /> : <Unlock className="h-3.5 w-3.5" />}
-            </button>
+            <Tooltip>
+              <TooltipTrigger render={
+                <button type="button" onClick={handleToggleBackgroundLock}
+                  className="rounded-lg border border-border bg-background px-2 py-1 text-xs text-muted-foreground hover:text-foreground transition-colors">
+                  {plan.backgroundLocked ? <Lock className="h-3.5 w-3.5" /> : <Unlock className="h-3.5 w-3.5" />}
+                </button>
+              } />
+              <TooltipContent>{plan.backgroundLocked ? "Unlock background image (allow moving/removing it)" : "Lock background image in place"}</TooltipContent>
+            </Tooltip>
             {!plan.backgroundLocked && (
-              <button type="button" onClick={handleRemoveBackground} title="Remove background image"
-                className="rounded-lg border border-border bg-background px-2 py-1 text-xs text-muted-foreground hover:text-destructive transition-colors">
-                <X className="h-3.5 w-3.5" />
-              </button>
+              <Tooltip>
+                <TooltipTrigger render={
+                  <button type="button" onClick={handleRemoveBackground}
+                    className="rounded-lg border border-border bg-background px-2 py-1 text-xs text-muted-foreground hover:text-destructive transition-colors">
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                } />
+                <TooltipContent>Remove background image</TooltipContent>
+              </Tooltip>
             )}
           </>
         )}
@@ -1296,5 +1360,6 @@ export function FloorPlanEditor({
         {" · "}Tip: click an object to select, drag to move, use the handles to resize/rotate. Drag empty canvas to pan. Delete/Backspace removes the selection.
       </p>
     </div>
+    </TooltipProvider>
   );
 }
