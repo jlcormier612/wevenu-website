@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * Booking Schedule — Calendar Integration Phase 3.
+ * Booking Schedule — Calendar Integration Phase 3, extended Phase 4.
  *
  * Calendar's booking-specific lens: one wedding's entire dated footprint,
  * chronological, read-only. Not Timeline (day-of run-of-show) and not
@@ -10,6 +10,9 @@
  * item still links back to its true owning workspace.
  */
 import * as React from "react";
+
+import Link from "next/link";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 
 import { ItemRow } from "@/components/calendar/calendar-shared";
 import type { BookingScheduleData } from "@/lib/calendar/booking-schedule";
@@ -24,8 +27,30 @@ export function BookingScheduleView({ data }: { data: BookingScheduleData }) {
     return [...map.entries()].sort(([a], [b]) => (a < b ? -1 : 1));
   }, [data]);
 
+  // Operational cue (Phase 4) — deliberately NOT a Readiness recomputation:
+  // Readiness's full score needs Guest/Seating/Conversation data this page
+  // never fetches. This is a distinct, honestly cheaper signal: how many of
+  // the items Calendar already has in hand for this booking are overdue.
+  // "View full readiness" below links to the real one instead of
+  // approximating it further.
+  const overdueCount = data.items.filter((i) => i.subtitle === "Overdue").length;
+
   return (
     <div className="space-y-6">
+      {/* Quick navigation between bookings (Phase 4) */}
+      <div className="flex items-center justify-between gap-4">
+        {data.previousBooking ? (
+          <Link href={`/calendar/booking/${data.previousBooking.eventId}`} className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
+            <ChevronLeft className="h-4 w-4" /> {data.previousBooking.name}
+          </Link>
+        ) : <span />}
+        {data.nextBooking ? (
+          <Link href={`/calendar/booking/${data.nextBooking.eventId}`} className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
+            {data.nextBooking.name} <ChevronRight className="h-4 w-4" />
+          </Link>
+        ) : <span />}
+      </div>
+
       <div>
         <h1 className="font-heading text-xl font-medium text-heading">
           {data.clientName ?? data.eventName} — Booking Schedule
@@ -34,6 +59,16 @@ export function BookingScheduleView({ data }: { data: BookingScheduleData }) {
           Every dated item for this wedding, in one chronological list. Click anything to open it where it actually lives —
           this page never edits.
         </p>
+        <div className="mt-2 flex items-center gap-3 text-xs">
+          {overdueCount > 0 && (
+            <span className="rounded-full bg-destructive/10 px-2 py-0.5 font-medium text-destructive">
+              {overdueCount} item{overdueCount !== 1 ? "s" : ""} overdue
+            </span>
+          )}
+          <Link href={`/events/${data.eventId}#overview`} className="text-primary hover:underline">
+            View full readiness →
+          </Link>
+        </div>
       </div>
 
       {byDate.length === 0 ? (

@@ -34,6 +34,16 @@ export type CalendarItem = {
   // just carrying along IDs the query already selected.
   eventId?: string | null;
   clientId?: string | null;
+  // Filter metadata (Calendar Integration Phase 4) — same passthrough
+  // principle as eventId/clientId above, not a new computation. Only
+  // Planning items (event_tasks.assigned_to_staff_id) and the wedding-day
+  // event item (events.space_id) carry these today; every other type
+  // leaves them undefined, which the filter UI treats as "no assignment"/
+  // "no space," never as an error.
+  assignedToStaffId?: string | null;
+  assignedToName?: string | null;
+  spaceId?: string | null;
+  spaceName?: string | null;
 };
 
 export type CalendarData = {

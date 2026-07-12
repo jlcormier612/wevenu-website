@@ -14,15 +14,17 @@ import { useRouter } from "next/navigation";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { ItemRow } from "@/components/calendar/calendar-shared";
+import { FilterBar, ItemRow } from "@/components/calendar/calendar-shared";
+import { useCalendarFilters } from "@/components/calendar/use-calendar-filters";
 import type { CalendarItem } from "@/lib/calendar/types";
 
 export function DayView({ date, items, today }: { date: string; items: CalendarItem[]; today: string }) {
   const router = useRouter();
+  const { filters, setFilters, filteredItems, presentTypes, staffOptions, spaceOptions } = useCalendarFilters(items, "day");
   const [y, m, d] = date.split("-").map(Number);
   const dateObj = new Date(y, m - 1, d);
   const label = dateObj.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" });
-  const dayItems = items.filter((it) => it.date === date)
+  const dayItems = filteredItems.filter((it) => it.date === date)
     .sort((a, b) => (a.time ?? "99:99") < (b.time ?? "99:99") ? -1 : 1);
 
   function navigate(deltaDays: number) {
@@ -50,6 +52,8 @@ export function DayView({ date, items, today }: { date: string; items: CalendarI
           </Button>
         )}
       </div>
+
+      <FilterBar filters={filters} onChange={setFilters} presentTypes={presentTypes} staffOptions={staffOptions} spaceOptions={spaceOptions} />
 
       {dayItems.length === 0 ? (
         <p className="text-sm text-muted-foreground py-12 text-center">Nothing scheduled.</p>

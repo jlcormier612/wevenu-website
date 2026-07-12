@@ -23,7 +23,8 @@ import { BLOCK_REASONS } from "@/lib/availability/constants";
 import { toast } from "sonner";
 import type { CalendarItem, CalendarItemType } from "@/lib/calendar/types";
 import { cn } from "@/lib/utils";
-import { formatTime, ItemRow, TYPE_META } from "@/components/calendar/calendar-shared";
+import { FilterBar, formatTime, ItemRow, TYPE_META } from "@/components/calendar/calendar-shared";
+import { useCalendarFilters } from "@/components/calendar/use-calendar-filters";
 import { WeekView } from "@/components/calendar/week-view";
 import { DayView } from "@/components/calendar/day-view";
 import { AgendaView } from "@/components/calendar/agenda-view";
@@ -255,6 +256,7 @@ export function CalendarView({
   today: string;
 }) {
   const router = useRouter();
+  const { filters, setFilters, filteredItems, presentTypes, staffOptions, spaceOptions } = useCalendarFilters(items, "month");
   const [selectedDate, setSelectedDate] = React.useState<string>(today);
   const [showBlockForm, setShowBlockForm] = React.useState(false);
   const [blockTitle, setBlockTitle] = React.useState("");
@@ -318,6 +320,65 @@ export function CalendarView({
     else if (next === "agenda") router.push(`/calendar?view=agenda&year=${year}&month=${month}`);
     else router.push(`/calendar?year=${year}&month=${month}`);
   }
+
+  // ---- Keyboard navigation (Calendar Integration Phase 4) --------------------
+  // Plain document-level onKeyDown, same idiom as the app's only other
+  // keyboard-nav precedent (components/shell/command-palette.tsx) — no new
+  // hotkey library. Ignored while typing in any input/select/textarea, or
+  // with a modifier held (so browser/OS shortcuts like Cmd+Left aren't
+  // hijacked).
+  React.useEffect(() => {
+    function isTypingContext(target: EventTarget | null): boolean {
+      const el = target as HTMLElement | null;
+      if (!el) return false;
+      return el.tagName === "INPUT" || el.tagName === "TEXTAREA" || el.tagName === "SELECT" || el.isContentEditable;
+    }
+    function toIso(d: Date): string {
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    }
+
+    function onKeyDown(e: KeyboardEvent) {
+      if (isTypingContext(e.target) || e.metaKey || e.ctrlKey || e.altKey) return;
+
+      if (e.key === "ArrowLeft" || e.key === "ArrowRight") {
+        const delta = e.key === "ArrowLeft" ? -1 : 1;
+        if (view === "month") { navigate(delta); return; }
+        if (view === "week" && weekStart) {
+          const [wy, wm, wd] = weekStart.split("-").map(Number);
+          const d = new Date(wy, wm - 1, wd);
+          d.setDate(d.getDate() + delta * 7);
+          router.push(`/calendar?view=week&weekStart=${toIso(d)}`);
+          return;
+        }
+        if (view === "day" && dayDate) {
+          const [dy, dm, dd] = dayDate.split("-").map(Number);
+          const d = new Date(dy, dm - 1, dd);
+          d.setDate(d.getDate() + delta);
+          router.push(`/calendar?view=day&date=${toIso(d)}`);
+          return;
+        }
+        if (view === "agenda") {
+          let newMonth = month + delta, newYear = year;
+          if (newMonth > 12) { newMonth = 1; newYear++; }
+          if (newMonth < 1)  { newMonth = 12; newYear--; }
+          router.push(`/calendar?view=agenda&year=${newYear}&month=${newMonth}`);
+        }
+      } else if (e.key.toLowerCase() === "t") {
+        const now = new Date();
+        if (view === "week") router.push(`/calendar?view=week&weekStart=${toIso(now)}`);
+        else if (view === "day") router.push(`/calendar?view=day&date=${toIso(now)}`);
+        else if (view === "agenda") router.push(`/calendar?view=agenda&year=${now.getFullYear()}&month=${now.getMonth() + 1}`);
+        else router.push(`/calendar?year=${now.getFullYear()}&month=${now.getMonth() + 1}`);
+      } else if (["1", "2", "3", "4"].includes(e.key)) {
+        const map = { "1": "month", "2": "week", "3": "day", "4": "agenda" } as const;
+        switchView(map[e.key as "1" | "2" | "3" | "4"]);
+      }
+    }
+
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [view, year, month, weekStart, dayDate]);
 
   return (
     <div className="space-y-5">
@@ -441,11 +502,14 @@ export function CalendarView({
       {/* Legend */}
       <Legend />
 
+      {/* Filters (Calendar Integration Phase 4) */}
+      <FilterBar filters={filters} onChange={setFilters} presentTypes={presentTypes} staffOptions={staffOptions} spaceOptions={spaceOptions} />
+
       {/* Main grid + detail */}
       <div className="grid gap-6 xl:grid-cols-[1fr_300px]">
         {/* Calendar grid */}
         <CalendarGrid
-          year={year} month={month} items={items}
+          year={year} month={month} items={filteredItems}
           selectedDate={selectedDate} today={today}
           onSelectDate={setSelectedDate}
         />
@@ -456,23 +520,31 @@ export function CalendarView({
             <CardTitle className="text-base">Schedule</CardTitle>
           </CardHeader>
           <CardContent>
-            <DayDetail date={selectedDate || null} items={items} onBlockDeleted={() => router.refresh()} />
+            <DayDetail date={selectedDate || null} items={filteredItems} onBlockDeleted={() => router.refresh()} />
           </CardContent>
         </Card>
       </div>
 
       {/* This month summary */}
-      {items.length > 0 && (
+      {filteredItems.length > 0 && (
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm text-muted-foreground">
-              {MONTH_NAMES[month - 1]} at a glance — {items.length} item{items.length !== 1 ? "s" : ""}
+            <CardTitle className="text-sm text-muted-foreground flex items-center gap-2 flex-wrap">
+              {MONTH_NAMES[month - 1]} at a glance — {filteredItems.length} item{filteredItems.length !== 1 ? "s" : ""}
+              {/* Operational cue (Phase 4) — a count of items Calendar already
+                  knows are overdue, not a Readiness recomputation. See
+                  BookingScheduleView for the same convention. */}
+              {filteredItems.filter((i) => i.subtitle === "Overdue").length > 0 && (
+                <span className="rounded-full bg-destructive/10 px-2 py-0.5 text-xs font-medium text-destructive">
+                  {filteredItems.filter((i) => i.subtitle === "Overdue").length} overdue
+                </span>
+              )}
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
               {(Object.keys(TYPE_META) as CalendarItemType[]).map((type) => {
-                const count = items.filter((i) => i.type === type).length;
+                const count = filteredItems.filter((i) => i.type === type).length;
                 if (count === 0) return null;
                 const meta = TYPE_META[type];
                 const Icon = meta.icon;

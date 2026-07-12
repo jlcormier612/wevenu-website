@@ -15,7 +15,7 @@
  * through the exact same code path a coordinator visiting those features
  * directly would hit, not a second copy of their logic.
  */
-import { getEvent } from "@/lib/events/service";
+import { getEvent, getEvents } from "@/lib/events/service";
 import { getEventTasks } from "@/lib/playbooks/service";
 import { isScheduledActivity } from "@/lib/playbooks/constants";
 import { getRequests } from "@/lib/requests/service";
@@ -24,12 +24,20 @@ import { getPaymentSchedules, getPaymentSchedule } from "@/lib/payments/service"
 import { getDocuments } from "@/lib/documents/service";
 import type { CalendarItem } from "@/lib/calendar/types";
 
+export type AdjacentBooking = { eventId: string; name: string; eventDate: string };
+
 export type BookingScheduleData = {
   eventId: string;
   eventName: string;
   clientName: string | null;
   eventDate: string;
   items: CalendarItem[];
+  /** Quick navigation between bookings (Calendar Integration Phase 4) —
+   * the previous/next confirmed booking on this venue's calendar,
+   * chronologically, not filtered by client. Reuses getEvents() (already
+   * venue-scoped) rather than a new query. */
+  previousBooking: AdjacentBooking | null;
+  nextBooking: AdjacentBooking | null;
   /**
    * Capabilities Phase 3 was asked to combine but that own no date-bearing
    * field today — named honestly rather than invented, same discipline as
@@ -53,13 +61,27 @@ export async function getBookingScheduleData(eventId: string): Promise<BookingSc
   const clientId = event.clientId;
   const todayIso = new Date().toISOString().slice(0, 10);
 
-  const [tasks, requests, allContracts, allSchedules, documents] = await Promise.all([
+  const [tasks, requests, allContracts, allSchedules, documents, allEvents] = await Promise.all([
     getEventTasks(eventId),
     getRequests({ eventId }),
     getContracts(),
     getPaymentSchedules(),
     getDocuments("event", eventId),
+    getEvents(),
   ]);
+
+  // Quick navigation between bookings (Phase 4) — chronological neighbors
+  // on this venue's whole calendar, not scoped to the same client.
+  const orderedEvents = allEvents
+    .filter((e) => e.status !== "cancelled")
+    .sort((a, b) => (a.eventDate < b.eventDate ? -1 : a.eventDate > b.eventDate ? 1 : 0));
+  const currentIndex = orderedEvents.findIndex((e) => e.id === eventId);
+  const previousBooking: AdjacentBooking | null = currentIndex > 0
+    ? { eventId: orderedEvents[currentIndex - 1].id, name: orderedEvents[currentIndex - 1].name, eventDate: orderedEvents[currentIndex - 1].eventDate }
+    : null;
+  const nextBooking: AdjacentBooking | null = currentIndex >= 0 && currentIndex < orderedEvents.length - 1
+    ? { eventId: orderedEvents[currentIndex + 1].id, name: orderedEvents[currentIndex + 1].name, eventDate: orderedEvents[currentIndex + 1].eventDate }
+    : null;
 
   const items: CalendarItem[] = [];
 
@@ -223,5 +245,7 @@ export async function getBookingScheduleData(eventId: string): Promise<BookingSc
     eventDate: event.eventDate,
     items,
     gaps: GAPS,
+    previousBooking,
+    nextBooking,
   };
 }

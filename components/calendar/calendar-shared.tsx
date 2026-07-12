@@ -121,3 +121,92 @@ export function ItemRow({
     </Link>
   );
 }
+
+// ---- Filter bar (Calendar Integration Phase 4) -------------------------------
+// Multi-filtering by type + assignee + space, shared by Month/Week/Day/
+// Agenda. Selections persist via useCalendarFilters (localStorage), so this
+// is deliberately dumb/presentational — all state lives in the hook.
+
+export function FilterBar({
+  filters, onChange, presentTypes, staffOptions, spaceOptions,
+}: {
+  filters: import("@/components/calendar/use-calendar-filters").CalendarFilterState;
+  onChange: (next: import("@/components/calendar/use-calendar-filters").CalendarFilterState) => void;
+  presentTypes: CalendarItemType[];
+  staffOptions: [string, string][];
+  spaceOptions: [string, string][];
+}) {
+  const UNASSIGNED = "__unassigned__";
+  const activeTypes = filters.types ?? presentTypes;
+
+  function toggleType(type: CalendarItemType) {
+    const current = filters.types ?? presentTypes;
+    const next = current.includes(type) ? current.filter((t) => t !== type) : [...current, type];
+    // Selecting everything is equivalent to "no filter" — collapses back to null
+    // so a newly-appearing type on a future navigation defaults to visible.
+    onChange({ ...filters, types: next.length === presentTypes.length ? null : next });
+  }
+
+  const hasActiveFilter = filters.types !== null || filters.staffId !== null || filters.spaceId !== null;
+
+  return (
+    <div className="space-y-2">
+      <div className="flex flex-wrap items-center gap-1.5">
+        {presentTypes.map((type) => {
+          const meta = TYPE_META[type];
+          const active = activeTypes.includes(type);
+          return (
+            <button
+              key={type}
+              type="button"
+              onClick={() => toggleType(type)}
+              className={cn(
+                "flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs transition-colors",
+                active ? "border-transparent bg-muted text-foreground" : "border-border text-muted-foreground opacity-50",
+              )}
+            >
+              <span className="h-2 w-2 rounded-full shrink-0" style={{ backgroundColor: meta.dotColor }} />
+              {meta.label}
+            </button>
+          );
+        })}
+      </div>
+
+      {(staffOptions.length > 0 || spaceOptions.length > 0) && (
+        <div className="flex flex-wrap items-center gap-2">
+          {staffOptions.length > 0 && (
+            <select
+              value={filters.staffId ?? ""}
+              onChange={(e) => onChange({ ...filters, staffId: e.target.value || null })}
+              className="h-7 rounded-md border border-border bg-background px-2 text-xs"
+            >
+              <option value="">Everyone</option>
+              <option value={UNASSIGNED}>Unassigned</option>
+              {staffOptions.map(([id, name]) => <option key={id} value={id}>{name}</option>)}
+            </select>
+          )}
+          {spaceOptions.length > 0 && (
+            <select
+              value={filters.spaceId ?? ""}
+              onChange={(e) => onChange({ ...filters, spaceId: e.target.value || null })}
+              className="h-7 rounded-md border border-border bg-background px-2 text-xs"
+            >
+              <option value="">Every space</option>
+              <option value={UNASSIGNED}>No space set</option>
+              {spaceOptions.map(([id, name]) => <option key={id} value={id}>{name}</option>)}
+            </select>
+          )}
+          {hasActiveFilter && (
+            <button
+              type="button"
+              onClick={() => onChange({ types: null, staffId: null, spaceId: null })}
+              className="text-xs text-muted-foreground hover:text-foreground underline"
+            >
+              Clear filters
+            </button>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}

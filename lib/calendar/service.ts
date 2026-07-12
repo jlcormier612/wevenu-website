@@ -37,7 +37,7 @@ export async function getCalendarData(
   ] = await Promise.all([
     // 1. Booked events
     supabase.from("events")
-      .select("id, name, event_date, start_time, event_type, status, client_id, clients(first_name, last_name)")
+      .select("id, name, event_date, start_time, event_type, status, client_id, space_id, clients(first_name, last_name), venue_spaces(name)")
       .eq("venue_id", venue.id)
       .neq("status", "cancelled")
       .gte("event_date", start)
@@ -97,7 +97,7 @@ export async function getCalendarData(
     // own concern and are deliberately not surfaced here. Waived tasks are
     // excluded: a waived scheduled activity isn't happening.
     supabase.from("event_tasks")
-      .select("id, title, event_id, scheduled_date, scheduled_start_time, location, status, events(name, client_id, clients(first_name, last_name))")
+      .select("id, title, event_id, scheduled_date, scheduled_start_time, location, status, assigned_to_staff_id, assignee:assigned_to_staff_id(full_name), events(name, client_id, clients(first_name, last_name))")
       .eq("venue_id", venue.id)
       .neq("status", "waived")
       .not("scheduled_date", "is", null)
@@ -161,6 +161,8 @@ export async function getCalendarData(
       link: `/events/${e.id}`,
       eventId: e.id,
       clientId: e.client_id ?? null,
+      spaceId: e.space_id ?? null,
+      spaceName: e.venue_spaces?.name ?? null,
     });
   }
 
@@ -313,6 +315,8 @@ export async function getCalendarData(
       link: `/events/${t.event_id}#playbook`,
       eventId: t.event_id,
       clientId: t.events?.client_id ?? null,
+      assignedToStaffId: t.assigned_to_staff_id ?? null,
+      assignedToName: t.assignee?.full_name ?? null,
     });
   }
 
