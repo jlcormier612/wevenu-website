@@ -20,6 +20,8 @@ import { toast } from "sonner";
 import { updateEventStatusAction } from "@/app/(app)/events/[id]/actions";
 import { sendAnniversaryMessageAction } from "@/app/(app)/events/[id]/anniversary-actions";
 import { BookingOverviewSummary } from "@/components/events/booking-overview-summary";
+import { EventReadinessCard } from "@/components/events/event-readiness-card";
+import type { EventReadinessSummary } from "@/lib/readiness/types";
 import { BookingSetupCard } from "@/components/events/booking-setup-card";
 import { TimelineSetupCard } from "@/components/events/timeline-setup-card";
 import { EventFeedbackSection } from "@/components/events/event-feedback-section";
@@ -241,6 +243,7 @@ export function EventDetail({
   teamMembers = [],
   requestsByTaskId = {},
   requests = [],
+  readinessSummary,
 }: {
   event: EventWithDetails;
   availableVendors?: import("@/lib/vendors/types").Vendor[];
@@ -278,6 +281,7 @@ export function EventDetail({
   teamMembers?: import("@/lib/team/types").StaffMember[];
   requestsByTaskId?: Record<string, import("@/lib/requests/types").Request>;
   requests?: import("@/lib/requests/types").Request[];
+  readinessSummary: EventReadinessSummary;
 }) {
   const router = useRouter();
   const [statusPending, startStatus] = React.useTransition();
@@ -450,6 +454,11 @@ export function EventDetail({
 
         {/* ── Overview ──────────────────────────────────────────────── */}
         <TabsContent value="overview" className="space-y-4">
+          <EventReadinessCard
+            summary={readinessSummary}
+            portalToken={portalToken}
+            onNavigateTab={(tab) => { setActiveTab(tab); window.location.hash = tab; }}
+          />
           {clientStatus && (
             <BookingOverviewSummary
               clientName={event.clientName} eventType={event.eventType} eventDate={event.eventDate}
@@ -463,7 +472,9 @@ export function EventDetail({
               documents={documents}
             />
           )}
-          <RequestSummaryCard requests={requests} />
+          <div id="requests-summary-card">
+            <RequestSummaryCard requests={requests} />
+          </div>
           <BookingSetupCard
             eventId={event.id} clientId={event.clientId} eventDate={event.eventDate} eventName={event.name}
             clientName={event.clientName} eventType={event.eventType}

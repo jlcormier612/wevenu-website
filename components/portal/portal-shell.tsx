@@ -3985,6 +3985,18 @@ export function PortalShell({
   const [profile, setProfile] = React.useState<CoupleProfile | null>(null);
   const [recentActivity, setRecentActivity] = React.useState<RecentActivity | null>(null);
 
+  // Deep-linkable by #hash (e.g. #guests, #seating) — same pattern the
+  // Booking Workspace's own tabs already use — so the venue-side Event
+  // Readiness card's "open in the couple's portal" links land on the
+  // relevant section instead of always Overview (Event Readiness — Phase 1).
+  React.useEffect(() => {
+    const syncFromHash = () => {
+      const hash = window.location.hash.replace("#", "");
+      if (hash) setActiveSection(hash as PortalSection);
+    };
+    syncFromHash();
+  }, []);
+
   React.useEffect(() => {
     fetch(`/api/portal/guests?token=${token}`)
       .then(r => r.json())

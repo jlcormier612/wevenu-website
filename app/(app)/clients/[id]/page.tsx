@@ -16,6 +16,7 @@ import { getDocuments } from "@/lib/documents/service";
 import { getEvent } from "@/lib/events/service";
 import { getQuestionnaire } from "@/lib/events/questionnaire";
 import { getTemplates as getFloorPlanTemplates } from "@/lib/floor-plan-templates/service";
+import { getGuestReadinessSummary } from "@/lib/guests/service";
 import { getUsageForEvent } from "@/lib/inventory/service";
 import { getInvoices } from "@/lib/invoices/service";
 import { getThreadsForEntity } from "@/lib/messaging/service";
@@ -24,8 +25,10 @@ import {
   getEventTasks, getTaskContactsByStaffIds, getTemplates,
 } from "@/lib/playbooks/service";
 import { getPortalSessions } from "@/lib/portal/service";
+import { buildEventReadiness } from "@/lib/readiness/compute";
 import { getRequests, getRequestsByIds } from "@/lib/requests/service";
 import type { Request } from "@/lib/requests/types";
+import { getSeatingReadinessSummary } from "@/lib/seating/service";
 import { getTeamMembers } from "@/lib/team/service";
 import {
   getEntryAttachmentsForEvent, getEntryLinksForEvent, getRelatedLinksForEvent, getSections, getTimelineEntries,
@@ -131,7 +134,26 @@ export default async function BookingWorkspacePage({ params }: Props) {
     }
   }
   const sessions = await getPortalSessions(id);
-  const portalToken = sessions[0]?.accessToken ?? null;
+  // Prefer a non-financial session — a 'financial' session's own RPCs
+  // (e.g. get_seating_data) deliberately return zeroed-out stats for that
+  // access level, and it's also the wrong link to hand a coordinator who
+  // just wants "open the couple's portal."
+  const portalSession = sessions.find((s) => s.accessLevel !== "financial") ?? sessions[0] ?? null;
+  const portalToken = portalSession?.accessToken ?? null;
+
+  // Event Readiness — Phase 1: Platform Integration. Two small, additive
+  // reads alongside everything already fetched above; every other
+  // capability's readiness is computed from data already on this page.
+  const [guestSummary, seatingSummary] = await Promise.all([
+    getGuestReadinessSummary(id),
+    getSeatingReadinessSummary(portalToken),
+  ]);
+  const readinessSummary = buildEventReadiness({
+    readinessByKind, timelineEntries, guestSummary, seatingSummary,
+    floorPlans: event.floorPlans, inventoryUsage, requests: eventRequests,
+    contracts, invoices: eventInvoices, documents,
+    conversationExperienceEnabled, conversationMessages, threads,
+  });
 
   return (
     <EventDetail
@@ -153,6 +175,7 @@ export default async function BookingWorkspacePage({ params }: Props) {
       teamMembers={teamMembers}
       requestsByTaskId={requestsByTaskId}
       requests={eventRequests}
+      readinessSummary={readinessSummary}
     />
   );
 }
