@@ -23,12 +23,12 @@ type DbClient = Awaited<ReturnType<typeof createClient>>;
 type TemplateRow = { id: string; venue_id: string; name: string; kind: string; event_type: string | null; is_default: boolean; is_archived: boolean; description: string | null; created_at: string; updated_at: string; };
 type MilestoneRow = { id: string; template_id: string; venue_id: string; name: string; kind: string | null; sort_order: number; created_at: string; updated_at: string; };
 type TaskRow = { id: string; template_id: string; venue_id: string; title: string; description: string | null; owner_type: string; visibility: string; days_offset: number; due_date_rule_kind: string; category: string; milestone_id: string; auto_complete_trigger: string | null; depends_on_task_id: string | null; is_required: boolean; sort_order: number; created_at: string; reminder_before_days: number[] | null; escalation_after_days: number | null; notify_on_assign: boolean; notify_on_complete: boolean; action_type: string | null; action_label: string | null; };
-type EventTaskRow = { id: string; venue_id: string; event_id: string; template_task_id: string | null; title: string; description: string | null; owner_type: string; visibility: string; due_date: string; days_offset: number; due_date_rule_kind: string; due_date_locked: boolean; category: string; milestone_name: string; milestone_kind: string | null; auto_complete_trigger: string | null; is_required: boolean; status: string; depends_on_event_task_id: string | null; depends_on_title?: string | null; completed_at: string | null; completed_by: string | null; notes: string | null; sort_order: number; created_at: string; updated_at: string; reminder_before_days: number[] | null; escalation_after_days: number | null; notify_on_assign: boolean; notify_on_complete: boolean; assigned_to_staff_id: string | null; assigned_to_name?: string | null; action_type: string | null; action_label: string | null; request_id: string | null; };
+type EventTaskRow = { id: string; venue_id: string; event_id: string; template_task_id: string | null; title: string; description: string | null; owner_type: string; visibility: string; due_date: string; days_offset: number; due_date_rule_kind: string; due_date_locked: boolean; category: string; milestone_name: string; milestone_kind: string | null; auto_complete_trigger: string | null; is_required: boolean; status: string; depends_on_event_task_id: string | null; depends_on_title?: string | null; completed_at: string | null; completed_by: string | null; notes: string | null; sort_order: number; created_at: string; updated_at: string; reminder_before_days: number[] | null; escalation_after_days: number | null; notify_on_assign: boolean; notify_on_complete: boolean; assigned_to_staff_id: string | null; assigned_to_name?: string | null; action_type: string | null; action_label: string | null; request_id: string | null; scheduled_date: string | null; scheduled_start_time: string | null; scheduled_end_time: string | null; location: string | null; };
 
 const mapTemplate = (r: TemplateRow): PlaybookTemplate => ({ id: r.id, venueId: r.venue_id, name: r.name, kind: r.kind as PlaybookTemplate["kind"], eventType: r.event_type, isDefault: r.is_default, isArchived: r.is_archived, description: r.description, createdAt: r.created_at, updatedAt: r.updated_at });
 const mapMilestone = (r: MilestoneRow): PlaybookMilestone => ({ id: r.id, templateId: r.template_id, venueId: r.venue_id, name: r.name, kind: (r.kind as PlaybookMilestone["kind"]) ?? null, sortOrder: r.sort_order, createdAt: r.created_at, updatedAt: r.updated_at });
 const mapTask = (r: TaskRow): PlaybookTask => ({ id: r.id, templateId: r.template_id, venueId: r.venue_id, title: r.title, description: r.description, ownerType: r.owner_type as PlaybookTask["ownerType"], visibility: r.visibility as PlaybookTask["visibility"], daysOffset: r.days_offset, dueDateRuleKind: r.due_date_rule_kind as PlaybookTask["dueDateRuleKind"], category: r.category as PlaybookTask["category"], milestoneId: r.milestone_id, autoCompleteTrigger: r.auto_complete_trigger, dependsOnTaskId: r.depends_on_task_id, isRequired: r.is_required, sortOrder: r.sort_order, createdAt: r.created_at, reminderBeforeDays: r.reminder_before_days ?? null, escalationAfterDays: r.escalation_after_days ?? null, notifyOnAssign: r.notify_on_assign, notifyOnComplete: r.notify_on_complete, actionType: (r.action_type as PlaybookTask["actionType"]) ?? null, actionLabel: r.action_label ?? null });
-const mapEventTask = (r: EventTaskRow): EventTask => ({ id: r.id, venueId: r.venue_id, eventId: r.event_id, templateTaskId: r.template_task_id, title: r.title, description: r.description, ownerType: r.owner_type as EventTask["ownerType"], visibility: r.visibility as EventTask["visibility"], dueDate: r.due_date, daysOffset: r.days_offset, dueDateRuleKind: r.due_date_rule_kind as EventTask["dueDateRuleKind"], dueDateLocked: r.due_date_locked, category: r.category as EventTask["category"], milestoneName: r.milestone_name, milestoneKind: (r.milestone_kind as EventTask["milestoneKind"]) ?? null, autoCompleteTrigger: r.auto_complete_trigger, isRequired: r.is_required, status: computeStatus(r), dependsOnEventTaskId: r.depends_on_event_task_id, dependsOnTitle: r.depends_on_title ?? null, completedAt: r.completed_at, completedBy: r.completed_by, notes: r.notes, sortOrder: r.sort_order, createdAt: r.created_at, updatedAt: r.updated_at, reminderBeforeDays: r.reminder_before_days ?? null, escalationAfterDays: r.escalation_after_days ?? null, notifyOnAssign: r.notify_on_assign, notifyOnComplete: r.notify_on_complete, assignedToStaffId: r.assigned_to_staff_id ?? null, assignedToName: r.assigned_to_name ?? null, actionType: (r.action_type as EventTask["actionType"]) ?? null, actionLabel: r.action_label ?? null, requestId: r.request_id ?? null });
+const mapEventTask = (r: EventTaskRow): EventTask => ({ id: r.id, venueId: r.venue_id, eventId: r.event_id, templateTaskId: r.template_task_id, title: r.title, description: r.description, ownerType: r.owner_type as EventTask["ownerType"], visibility: r.visibility as EventTask["visibility"], dueDate: r.due_date, daysOffset: r.days_offset, dueDateRuleKind: r.due_date_rule_kind as EventTask["dueDateRuleKind"], dueDateLocked: r.due_date_locked, category: r.category as EventTask["category"], milestoneName: r.milestone_name, milestoneKind: (r.milestone_kind as EventTask["milestoneKind"]) ?? null, autoCompleteTrigger: r.auto_complete_trigger, isRequired: r.is_required, status: computeStatus(r), dependsOnEventTaskId: r.depends_on_event_task_id, dependsOnTitle: r.depends_on_title ?? null, completedAt: r.completed_at, completedBy: r.completed_by, notes: r.notes, sortOrder: r.sort_order, createdAt: r.created_at, updatedAt: r.updated_at, reminderBeforeDays: r.reminder_before_days ?? null, escalationAfterDays: r.escalation_after_days ?? null, notifyOnAssign: r.notify_on_assign, notifyOnComplete: r.notify_on_complete, assignedToStaffId: r.assigned_to_staff_id ?? null, assignedToName: r.assigned_to_name ?? null, actionType: (r.action_type as EventTask["actionType"]) ?? null, actionLabel: r.action_label ?? null, requestId: r.request_id ?? null, scheduledDate: r.scheduled_date ?? null, scheduledStartTime: r.scheduled_start_time ?? null, scheduledEndTime: r.scheduled_end_time ?? null, location: r.location ?? null });
 
 function computeStatus(r: EventTaskRow): TaskStatus {
   if (r.status === "complete" || r.status === "waived") return r.status as TaskStatus;
@@ -701,6 +701,37 @@ export async function updateEventTaskNotes(client: DbClient, venueId: string, ta
   const { error } = await client.from("event_tasks")
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     .update({ notes: notes.trim() || null } as any)
+    .eq("id", taskId).eq("venue_id", venueId);
+  if (error) throw error;
+}
+
+// ---- Scheduled Activity (Calendar Integration — Phase 1) ---------------------
+// Additive to due-date behavior, never a replacement — dueDate/dueDateLocked
+// are untouched by this. Clearing (all four null) is a normal, expected call
+// shape, not an edge case: a coordinator un-marking a task as a scheduled
+// activity should return it to plain due-date-only exactly as it started.
+
+export type ScheduleInput = {
+  scheduledDate: string | null;
+  scheduledStartTime: string | null;
+  scheduledEndTime: string | null;
+  location: string | null;
+};
+
+export async function updateEventTaskSchedule(
+  client: DbClient,
+  venueId: string,
+  taskId: string,
+  input: ScheduleInput,
+): Promise<void> {
+  const { error } = await client.from("event_tasks")
+    .update({
+      scheduled_date: input.scheduledDate,
+      scheduled_start_time: input.scheduledStartTime,
+      scheduled_end_time: input.scheduledEndTime,
+      location: input.location?.trim() || null,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } as any)
     .eq("id", taskId).eq("venue_id", venueId);
   if (error) throw error;
 }

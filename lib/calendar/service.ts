@@ -24,8 +24,8 @@ export async function getCalendarData(
   const lastDay = new Date(year, month, 0).getDate();
   const end = `${year}-${String(month).padStart(2, "0")}-${String(lastDay).padStart(2, "0")}`;
 
-  // Six parallel queries across existing tables, plus tours' own projection
-  const [eventsRes, tourItems, followUpsRes, paymentsRes, keyDatesRes, holdsRes, blocksRes] = await Promise.all([
+  // Seven parallel queries across existing tables, plus tours' own projection
+  const [eventsRes, tourItems, followUpsRes, paymentsRes, keyDatesRes, holdsRes, blocksRes, scheduledTasksRes] = await Promise.all([
     // 1. Booked events
     supabase.from("events")
       .select("id, name, event_date, start_time, event_type, status, client_id, clients(first_name, last_name)")
@@ -81,6 +81,19 @@ export async function getCalendarData(
       .select("id, title, reason, start_date, end_date, is_all_day, start_time, end_time, recurrence_rule, recurrence_ends_on")
       .eq("venue_id", venue.id)
       .or(`and(start_date.lte.${end},end_date.gte.${start},recurrence_rule.eq.none),and(recurrence_rule.neq.none,or(recurrence_ends_on.is.null,recurrence_ends_on.gte.${start}))`),
+
+    // 8. Scheduled Planning activities (Calendar Integration — Phase 1). Only
+    // tasks a coordinator explicitly marked as "I show up somewhere for
+    // this" (scheduled_date set) — plain due-date-only tasks are Planning's
+    // own concern and are deliberately not surfaced here. Waived tasks are
+    // excluded: a waived scheduled activity isn't happening.
+    supabase.from("event_tasks")
+      .select("id, title, event_id, scheduled_date, scheduled_start_time, location, status, events(name, client_id, clients(first_name, last_name))")
+      .eq("venue_id", venue.id)
+      .neq("status", "waived")
+      .not("scheduled_date", "is", null)
+      .gte("scheduled_date", start)
+      .lte("scheduled_date", end),
   ]);
 
   const items: CalendarItem[] = [];
@@ -228,6 +241,22 @@ export async function getCalendarData(
         cursor.setDate(cursor.getDate() + 1);
       }
     }
+  }
+
+  // Scheduled Planning activities (Calendar Integration — Phase 1). Calendar
+  // never edits these — it links back into Planning, the same "reveal,
+  // don't duplicate" pattern as every other item type here.
+  for (const t of (scheduledTasksRes.data ?? []) as any[]) {
+    const cn = t.events?.clients ? `${t.events.clients.first_name} ${t.events.clients.last_name}` : t.events?.name ?? null;
+    items.push({
+      id: `planning-${t.id}`,
+      type: "planning_activity",
+      date: t.scheduled_date,
+      title: t.title,
+      subtitle: [cn, t.location].filter(Boolean).join(" — ") || null,
+      time: t.scheduled_start_time?.slice(0, 5) ?? null,
+      link: `/events/${t.event_id}#playbook`,
+    });
   }
 
   // Sort by date then time

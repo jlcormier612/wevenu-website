@@ -7,8 +7,10 @@ import {
   deleteMilestone, deleteTemplate_, deleteTemplateTask_, duplicateTemplate,
   releasePlaybookApplication,
   removeEventTaskContextLink, removePlaybookTaskAttachment, renameMilestone, renameTemplate_, reorderMilestone,
-  setEventTaskRequest, setEventTaskStatus, setTemplateArchived_, setTemplateDefault_, updateEventTaskDueDate, updateEventTaskNotes, updateTemplateTask_,
+  setEventTaskRequest, setEventTaskStatus, setTemplateArchived_, setTemplateDefault_, updateEventTaskDueDate, updateEventTaskNotes,
+  updateEventTaskSchedule, updateTemplateTask_,
 } from "@/lib/playbooks/service";
+import type { ScheduleInput } from "@/lib/playbooks/repository";
 import type { EventTaskContextSourceType, ImportPlaybookResult, PlaybookActionResult, PlaybookKind, PlaybookTask, CreatePlaybookResult } from "@/lib/playbooks/types";
 import { createRequest } from "@/lib/requests/service";
 
@@ -117,6 +119,12 @@ export async function updateEventTaskDueDateAction(taskId: string, eventId: stri
 export async function updateEventTaskNotesAction(taskId: string, eventId: string, notes: string): Promise<PlaybookActionResult> {
   const result = await updateEventTaskNotes(taskId, notes);
   if (result.ok) revalidatePath(`/events/${eventId}`);
+  return result;
+}
+
+export async function updateEventTaskScheduleAction(taskId: string, eventId: string, input: ScheduleInput): Promise<PlaybookActionResult> {
+  const result = await updateEventTaskSchedule(taskId, input);
+  if (result.ok) { revalidatePath(`/events/${eventId}`); revalidatePath("/calendar"); }
   return result;
 }
 

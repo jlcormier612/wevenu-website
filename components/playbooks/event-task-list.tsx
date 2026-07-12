@@ -15,15 +15,19 @@ import {
   createRequestForTaskAction,
   releasePlaybookAction,
   removeEventTaskContextLinkAction, setTaskStatusAction, updateEventTaskNotesAction,
+  updateEventTaskScheduleAction,
 } from "@/app/(app)/playbooks/actions";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import {
-  categoryColor, categoryLabel, formatClientPlanningTitle, PLAYBOOK_KINDS, STATUS_CONFIG, taskActionHref, taskActionLabel,
+  categoryColor, categoryLabel, formatClientPlanningTitle, formatScheduledTime, isScheduledActivity,
+  PLAYBOOK_KINDS, STATUS_CONFIG, taskActionHref, taskActionLabel,
 } from "@/lib/playbooks/constants";
 import type {
   EventPlaybookApplication, EventTask, EventTaskContextLink, EventReadiness, PlaybookKind, PlaybookTemplate, TaskContact,
@@ -121,6 +125,68 @@ function AttachContextPicker({
   );
 }
 
+// ---- Scheduled Activity (Calendar Integration — Phase 1) ---------------------
+// Venue-only, progressive disclosure: unchecked, a task stays exactly what it
+// is today (due-date only). Checking the box reveals date/time/location and
+// is the one moment a coordinator declares "this is something I show up to."
+
+function TaskScheduleSection({ task, eventId }: { task: EventTask; eventId: string }) {
+  const [enabled, setEnabled] = React.useState(isScheduledActivity(task));
+  const [date, setDate] = React.useState(task.scheduledDate ?? "");
+  const [startTime, setStartTime] = React.useState(task.scheduledStartTime ?? "");
+  const [endTime, setEndTime] = React.useState(task.scheduledEndTime ?? "");
+  const [location, setLocation] = React.useState(task.location ?? "");
+  const [saving, startSave] = React.useTransition();
+
+  const isDirty = enabled !== isScheduledActivity(task)
+    || date !== (task.scheduledDate ?? "")
+    || startTime !== (task.scheduledStartTime ?? "")
+    || endTime !== (task.scheduledEndTime ?? "")
+    || location !== (task.location ?? "");
+
+  function handleToggle(checked: boolean) {
+    setEnabled(checked);
+    if (!checked) { setDate(""); setStartTime(""); setEndTime(""); setLocation(""); }
+  }
+
+  function handleSave() {
+    startSave(async () => {
+      const result = await updateEventTaskScheduleAction(task.id, eventId, {
+        scheduledDate: enabled ? (date || null) : null,
+        scheduledStartTime: enabled ? (startTime || null) : null,
+        scheduledEndTime: enabled ? (endTime || null) : null,
+        location: enabled ? (location || null) : null,
+      });
+      if (result.ok) toast.success("Scheduled activity saved.");
+      else toast.error(result.message ?? "Could not save schedule.");
+    });
+  }
+
+  return (
+    <div className="space-y-1.5">
+      <label className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground cursor-pointer">
+        <Checkbox checked={enabled} onCheckedChange={(v) => handleToggle(v === true)} />
+        Scheduled Activity
+      </label>
+      {enabled && (
+        <div className="space-y-1.5 pl-0.5">
+          <div className="flex gap-1.5">
+            <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="h-7 flex-1 text-xs" />
+            <Input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} className="h-7 w-28 text-xs" placeholder="Start" />
+            <Input type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)} className="h-7 w-28 text-xs" placeholder="End" />
+          </div>
+          <Input value={location} onChange={(e) => setLocation(e.target.value)} placeholder="Location (optional)" className="h-7 text-xs" />
+        </div>
+      )}
+      {isDirty && (
+        <Button type="button" size="sm" variant="outline" onClick={handleSave} disabled={saving} className="h-7 px-2 text-xs">
+          {saving ? <Loader2 className="h-3 w-3 animate-spin" /> : "Save schedule"}
+        </Button>
+      )}
+    </div>
+  );
+}
+
 // ---- Task detail — "the place someone finds everything needed to do the work" --
 
 function TaskDetailPanel({
@@ -201,6 +267,8 @@ function TaskDetailPanel({
           />
         )}
       </div>
+
+      {isVenue && <TaskScheduleSection task={task} eventId={eventId} />}
 
       {isVenue && (
         <div className="space-y-1">
@@ -295,6 +363,16 @@ function TaskRow({
             <span>{task.ownerType === "couple" ? "Client" : task.ownerType === "vendor" ? "Vendor" : "Coordinator"}</span>
             <span>·</span>
             <span>{new Date(task.dueDate + "T12:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric" })}</span>
+            {isScheduledActivity(task) && (
+              <>
+                <span>·</span>
+                <span className="inline-flex items-center gap-0.5 text-heading">
+                  <Clock3 className="h-3 w-3" />
+                  {formatScheduledTime(task.scheduledStartTime) ?? "Scheduled"}
+                  {task.location && ` @ ${task.location}`}
+                </span>
+              </>
+            )}
             {contextLinks.length > 0 && <><span>·</span><span>{contextLinks.length} attached</span></>}
           </div>
           {isBlocked && task.dependsOnTitle && (

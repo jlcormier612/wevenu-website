@@ -93,6 +93,25 @@ export function categoryColor(cat: TaskCategory): string {
   return TASK_CATEGORIES.find((c) => c.value === cat)?.color ?? "#B8AEA1";
 }
 
+// Scheduled Activity (Calendar Integration — Phase 1) — presentation helpers
+// only; the underlying rule is always EventTask.scheduledDate/scheduledStartTime/
+// scheduledEndTime/location, set directly, never derived. A due date answers
+// "when should this be finished"; a scheduled activity answers "when does
+// this actually happen" — most tasks have only the former.
+export function isScheduledActivity(task: { scheduledDate: string | null }): boolean {
+  return task.scheduledDate !== null;
+}
+
+// Postgres `time` comes back as "HH:MM:SS" — presentation-only conversion
+// to "2:00 PM", same spirit as formatDaysOffset below.
+export function formatScheduledTime(time: string | null): string | null {
+  if (!time) return null;
+  const [h, m] = time.split(":").map(Number);
+  const period = h >= 12 ? "PM" : "AM";
+  const hour12 = h % 12 === 0 ? 12 : h % 12;
+  return `${hour12}:${String(m).padStart(2, "0")} ${period}`;
+}
+
 // Presentation only — the underlying rule is always daysOffset (Product
 // Decisions, 2026-07-08: "keep the existing days_offset implementation; the
 // natural-language phrasing is presentation only"). A venue never sees or

@@ -315,6 +315,16 @@ export async function setEventTaskStatus(taskId: string, status: "waived" | "pen
   return result as PlaybookActionResult;
 }
 
+// ---- Scheduled Activity (Calendar Integration — Phase 1) ---------------------
+
+export async function updateEventTaskSchedule(taskId: string, input: repo.ScheduleInput): Promise<PlaybookActionResult> {
+  const result = await withVenue(async (c, venueId) => {
+    await repo.updateEventTaskSchedule(c, venueId, taskId, input);
+    return { ok: true } as PlaybookActionResult;
+  });
+  return result as PlaybookActionResult;
+}
+
 // ---- Internal Notes ------------------------------------------------------------
 
 export async function updateEventTaskNotes(taskId: string, notes: string): Promise<PlaybookActionResult> {

@@ -149,6 +149,17 @@ export type EventTask = {
   // a coordinator has chosen to turn this task into a client-facing Request.
   // Independent lifecycle: completing the Request never completes this task.
   requestId: string | null;
+  // Scheduled Activity (Calendar Integration — Phase 1): a due date answers
+  // "when should this be finished"; these answer "when does this actually
+  // happen." All four are independently nullable — most tasks stay due-date
+  // only. Only set when a coordinator would actually travel somewhere, meet
+  // someone, or need to be present at a specific time (a Final Walkthrough,
+  // Client/Vendor Meeting, Rehearsal, Venue Visit — or any custom task
+  // marked this way). scheduledStartTime/scheduledEndTime are "HH:MM:SS".
+  scheduledDate: string | null;
+  scheduledStartTime: string | null;
+  scheduledEndTime: string | null;
+  location: string | null;
 };
 
 // A task's Related Context: a pointer into Conversation, Documents, the

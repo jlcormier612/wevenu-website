@@ -10,7 +10,8 @@ export type CalendarItemType =
   | "payment_due"    // payment line item (payment_line_items.due_date)
   | "key_date"       // client milestone (client_key_dates.date)
   | "date_hold"      // soft reservation (date_holds table)
-  | "calendar_block"; // administrative closure (calendar_blocks table)
+  | "calendar_block" // administrative closure (calendar_blocks table)
+  | "planning_activity"; // scheduled Planning task (event_tasks.scheduled_date — Calendar Integration Phase 1)
 
 export type CalendarItem = {
   id: string;
