@@ -9,6 +9,8 @@ import type {
   FloorPlanCanvasObject,
   FloorPlanClientAccess,
   FloorPlanObject,
+  FloorPlanReconciliationItem,
+  FloorPlanSectionReconciliation,
   FloorPlanWithObjects,
   MeasurementUnit,
   ObjectType,
@@ -24,6 +26,7 @@ type PlanRow = {
   client_access: FloorPlanClientAccess;
   background_image_url: string | null; background_image_opacity: number; background_locked: boolean;
   room_width_ft: number; room_depth_ft: number; measurement_unit: MeasurementUnit;
+  finalized_at: string | null;
   notes: string | null; created_at: string; updated_at: string;
 };
 
@@ -45,6 +48,7 @@ const mapPlan = (r: PlanRow): FloorPlan => ({
   backgroundLocked: r.background_locked,
   roomWidthFt: Number(r.room_width_ft), roomDepthFt: Number(r.room_depth_ft),
   measurementUnit: r.measurement_unit,
+  finalizedAt: r.finalized_at,
   notes: r.notes, createdAt: r.created_at, updatedAt: r.updated_at,
 });
 
@@ -163,6 +167,101 @@ export async function setFloorPlanClientAccess(
   if (error) throw error;
 }
 
+/**
+ * Phase 4 — the "Final" checkpoint reconciliation is anchored to. Reversible
+ * (clear it to reopen) — mirrors event_orders.finalized_at exactly. Never
+ * gates placement editing; it's a coordinator's own print-ready checkpoint,
+ * not a lock.
+ */
+export async function setFloorPlanFinalized(
+  client: DbClient, venueId: string, planId: string, finalized: boolean,
+): Promise<void> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error } = await (client.from("floor_plans") as any)
+    .update({ finalized_at: finalized ? new Date().toISOString() : null })
+    .eq("id", planId).eq("venue_id", venueId);
+  if (error) throw error;
+}
+
+/**
+ * Phase 4 reconciliation — fact-based only. Compares each Event Order
+ * Section linked to this Floor Plan (floor_plan_id) against the Floor
+ * Plan's own placed objects, matched exclusively by shared inventory_item_id
+ * — never by description/label text. Sections or lines with no Inventory
+ * provenance simply have nothing to compare and never appear. Placed counts
+ * are a fact about the room, not attributable to one Section over another
+ * when more than one Section links to the same Floor Plan — each Section's
+ * committed quantity is compared against the Floor Plan's full placed count
+ * for that item, not a guessed split. See
+ * docs/booking-financial-architecture-phase4-floor-plan-design.md §3-4.
+ */
+export async function getFloorPlanReconciliation(
+  client: DbClient, venueId: string, floorPlanId: string,
+): Promise<FloorPlanSectionReconciliation[]> {
+  const { data: sectionRows, error: sErr } = await client
+    .from("event_order_sections")
+    .select("id, name")
+    .eq("venue_id", venueId)
+    .eq("floor_plan_id", floorPlanId);
+  if (sErr) throw sErr;
+  const sections = (sectionRows ?? []) as { id: string; name: string }[];
+  if (sections.length === 0) return [];
+
+  const sectionIds = sections.map((s) => s.id);
+
+  const [linesRes, objectsRes] = await Promise.all([
+    client.from("event_order_lines")
+      .select("section_id, inventory_item_id, quantity")
+      .eq("venue_id", venueId)
+      .eq("provenance", "inventory")
+      .in("section_id", sectionIds)
+      .not("inventory_item_id", "is", null),
+    client.from("floor_plan_objects")
+      .select("inventory_item_id")
+      .eq("venue_id", venueId)
+      .eq("floor_plan_id", floorPlanId)
+      .not("inventory_item_id", "is", null),
+  ]);
+  if (linesRes.error) throw linesRes.error;
+  if (objectsRes.error) throw objectsRes.error;
+
+  const lineRows = (linesRes.data ?? []) as { section_id: string; inventory_item_id: string; quantity: number }[];
+  const objectRows = (objectsRes.data ?? []) as { inventory_item_id: string }[];
+
+  const placedByItem = new Map<string, number>();
+  for (const o of objectRows) {
+    placedByItem.set(o.inventory_item_id, (placedByItem.get(o.inventory_item_id) ?? 0) + 1);
+  }
+
+  const itemIds = new Set<string>([...placedByItem.keys(), ...lineRows.map((l) => l.inventory_item_id)]);
+  let nameById = new Map<string, string>();
+  if (itemIds.size > 0) {
+    const { data: itemsData, error: iErr } = await client
+      .from("inventory_items").select("id, name").in("id", Array.from(itemIds));
+    if (iErr) throw iErr;
+    nameById = new Map((itemsData ?? []).map((i) => [i.id as string, i.name as string]));
+  }
+
+  return sections
+    .map((s) => {
+      const committedByItem = new Map<string, number>();
+      for (const l of lineRows) {
+        if (l.section_id !== s.id) continue;
+        committedByItem.set(l.inventory_item_id, (committedByItem.get(l.inventory_item_id) ?? 0) + Number(l.quantity));
+      }
+      const items: FloorPlanReconciliationItem[] = [];
+      for (const itemId of new Set([...committedByItem.keys(), ...placedByItem.keys()])) {
+        const committed = committedByItem.get(itemId) ?? 0;
+        const placed = placedByItem.get(itemId) ?? 0;
+        if (committed !== placed) {
+          items.push({ inventoryItemId: itemId, itemName: nameById.get(itemId) ?? "Item", committed, placed });
+        }
+      }
+      return { sectionId: s.id, sectionName: s.name, items };
+    })
+    .filter((s) => s.items.length > 0);
+}
+
 export async function updateFloorPlanRoomSettings(
   client: DbClient, venueId: string, planId: string, input: UpdateRoomSettingsInput,
 ): Promise<void> {
@@ -180,6 +279,29 @@ export async function updateFloorPlanNotes(
   const { error } = await (client.from("floor_plans") as any)
     .update({ notes: notes.trim() || null })
     .eq("id", planId).eq("venue_id", venueId);
+  if (error) throw error;
+}
+
+export async function renameFloorPlan(
+  client: DbClient, venueId: string, planId: string, name: string,
+): Promise<void> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error } = await (client.from("floor_plans") as any)
+    .update({ name })
+    .eq("id", planId).eq("venue_id", venueId);
+  if (error) throw error;
+}
+
+// floor_plan_objects cascades on floor_plans deletion (ON DELETE CASCADE);
+// guest_seat_assignments.table_object_id already sets null rather than
+// cascading (Seating Experience Phase 1), so deleting a plan a couple has
+// seated guests against never drops their seating decisions — the same
+// "coordinator editing is never gated by Seating's state" rule the
+// architecture doc already establishes for individual object deletes.
+export async function deleteFloorPlan(
+  client: DbClient, venueId: string, planId: string,
+): Promise<void> {
+  const { error } = await client.from("floor_plans").delete().eq("id", planId).eq("venue_id", venueId);
   if (error) throw error;
 }
 

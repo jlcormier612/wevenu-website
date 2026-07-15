@@ -51,8 +51,32 @@ export type FloorPlan = {
   roomWidthFt: number;
   roomDepthFt: number;
   measurementUnit: MeasurementUnit;
+  // Phase 4 — the print-ready checkpoint reconciliation is anchored to.
+  // Mirrors event_orders.finalized_at's shape exactly. Never gates editing
+  // — placement stays open before, during, and after Final.
+  finalizedAt: string | null;
   createdAt: string;
   updatedAt: string;
+};
+
+// Phase 4 — Floor Plan reconciliation against Event Order. Fact-based only:
+// an item only appears here when this Floor Plan and its linked Section
+// both reference the same Inventory item and disagree on count. Lines with
+// no inventoryItemId (package/custom provenance) never appear — there is
+// nothing on the Floor Plan side to count them against, and this never
+// guesses a match from descriptions/labels. See
+// docs/booking-financial-architecture-phase4-floor-plan-design.md §4.
+export type FloorPlanReconciliationItem = {
+  inventoryItemId: string;
+  itemName: string;
+  committed: number;
+  placed: number;
+};
+
+export type FloorPlanSectionReconciliation = {
+  sectionId: string;
+  sectionName: string;
+  items: FloorPlanReconciliationItem[];
 };
 
 export type FloorPlanObject = {
@@ -175,6 +199,9 @@ export type FloorPlanCanvasPlan = {
   roomDepthFt: number;
   measurementUnit: MeasurementUnit;
   objects: FloorPlanCanvasObject[];
+  // Booking floor plans only — Templates have no notes field, so this is
+  // optional rather than duplicating FloorPlanCanvasPlan for the two modes.
+  notes?: string | null;
 };
 
 // The editor calls these instead of importing a fixed set of server actions
@@ -193,4 +220,6 @@ export type FloorPlanEditorActions = {
   setBackgroundLocked: (planId: string, locked: boolean) => Promise<FloorPlanActionResult>;
   updateRoomSettings: (planId: string, input: UpdateRoomSettingsInput) => Promise<FloorPlanActionResult>;
   clear: (planId: string) => Promise<FloorPlanActionResult>;
+  // Booking mode only — Templates have no notes field to update.
+  updateNotes?: (planId: string, notes: string) => Promise<FloorPlanActionResult>;
 };

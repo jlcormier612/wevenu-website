@@ -7,11 +7,15 @@ import {
   applyTemplate,
   clearFloorPlan,
   createFloorPlan,
+  deleteFloorPlan,
   deleteObject_,
   duplicateFloorPlan,
+  getFloorPlanReconciliation,
+  renameFloorPlan,
   reorderObject,
   setBackgroundLocked,
   setClientAccess,
+  setFinalized,
   updateBackground,
   updateNotes,
   updateObject_,
@@ -23,6 +27,7 @@ import type {
   FloorPlan,
   FloorPlanActionResult,
   FloorPlanObject,
+  FloorPlanSectionReconciliation,
   ReorderDirection,
   UpdateObjectInput,
   UpdateRoomSettingsInput,
@@ -33,9 +38,12 @@ function revalidateEvent(eventId: string) {
 }
 
 // The workspace's card grid lives on the event's floor-plans index — revalidate
-// it whenever a new floor plan is created so the new card shows up.
+// it whenever a new floor plan is created so the new card shows up. The
+// day-of dashboard also lists floor plans (Quick Floor Plans) and needs the
+// same treatment whenever a plan's name or existence changes.
 function revalidateWorkspace(eventId: string) {
   revalidatePath(`/events/${eventId}/floor-plans`);
+  revalidatePath(`/events/${eventId}/today`);
 }
 
 export async function createFloorPlanAction(eventId: string, name?: string, spaceId?: string | null): Promise<CreateFloorPlanResult> {
@@ -73,6 +81,22 @@ export async function updateNotesAction(
 ): Promise<FloorPlanActionResult> {
   const result = await updateNotes(planId, notes);
   if (result.ok) revalidateEvent(eventId);
+  return result;
+}
+
+export async function renameFloorPlanAction(
+  planId: string, eventId: string, name: string,
+): Promise<FloorPlanActionResult> {
+  const result = await renameFloorPlan(planId, name);
+  if (result.ok) { revalidateEvent(eventId); revalidateWorkspace(eventId); }
+  return result;
+}
+
+export async function deleteFloorPlanAction(
+  planId: string, eventId: string,
+): Promise<FloorPlanActionResult> {
+  const result = await deleteFloorPlan(planId);
+  if (result.ok) { revalidateEvent(eventId); revalidateWorkspace(eventId); }
   return result;
 }
 
@@ -137,4 +161,24 @@ export async function reorderObjectAction(
   const result = await reorderObject(planId, objId, direction);
   if (result.ok) revalidateEvent(eventId);
   return result;
+}
+
+/**
+ * Phase 4 — the coordinator's own "print-ready" checkpoint. Reversible
+ * (Reopen clears it), and never gates placement editing before, during, or
+ * after — a coordinator can keep editing a Final floor plan freely.
+ */
+export async function setFloorPlanFinalizedAction(
+  planId: string, eventId: string, finalized: boolean,
+): Promise<FloorPlanActionResult> {
+  const result = await setFinalized(planId, finalized);
+  if (result.ok) revalidateEvent(eventId);
+  return result;
+}
+
+/** Phase 4 — read-only, fact-based comparison. Never writes to either side. */
+export async function getFloorPlanReconciliationAction(
+  planId: string,
+): Promise<FloorPlanSectionReconciliation[]> {
+  return getFloorPlanReconciliation(planId);
 }

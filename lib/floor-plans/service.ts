@@ -10,12 +10,14 @@ import type {
   CreateFloorPlanResult,
   FloorPlan,
   FloorPlanActionResult,
+  FloorPlanSectionReconciliation,
   FloorPlanWithObjects,
   ReorderDirection,
   UpdateObjectInput,
   UpdateRoomSettingsInput,
 } from "@/lib/floor-plans/types";
 import { getCurrentVenue } from "@/lib/venue/service";
+import { triggerAutoComplete } from "@/lib/playbooks/service";
 
 async function withVenue<T>(
   fn: (supabase: Awaited<ReturnType<typeof createClient>>, venueId: string) => Promise<T>,
@@ -56,6 +58,7 @@ export async function createFloorPlan(eventId: string, name = "Floor Plan", spac
   if (!name.trim()) return { ok: false, message: "Floor plan name is required." };
   const result = await withVenue(async (supabase, venueId) => {
     const floorPlanId = await repo.createFloorPlan(supabase, venueId, eventId, name.trim(), spaceId);
+    await triggerAutoComplete(supabase, venueId, eventId, "floor_plan_created", "floor_plan", floorPlanId);
     return { ok: true, floorPlanId } as CreateFloorPlanResult;
   });
   return result as CreateFloorPlanResult;
@@ -83,6 +86,7 @@ export async function applyTemplate(eventId: string, templateId: string, name: s
       roomWidthFt: template.roomWidthFt, roomDepthFt: template.roomDepthFt, measurementUnit: template.measurementUnit,
     });
     await repo.insertObjects(supabase, venueId, floorPlanId, objects);
+    await triggerAutoComplete(supabase, venueId, eventId, "floor_plan_created", "floor_plan", floorPlanId);
 
     return { ok: true, floorPlanId } as CreateFloorPlanResult;
   });
@@ -94,6 +98,7 @@ export async function duplicateFloorPlan(eventId: string, sourceFloorPlanId: str
   if (!name.trim()) return { ok: false, message: "Floor plan name is required." };
   const result = await withVenue(async (supabase, venueId) => {
     const floorPlanId = await repo.duplicateFloorPlanInto(supabase, venueId, eventId, sourceFloorPlanId, name, spaceId);
+    await triggerAutoComplete(supabase, venueId, eventId, "floor_plan_created", "floor_plan", floorPlanId);
     return { ok: true, floorPlanId } as CreateFloorPlanResult;
   });
   return result as CreateFloorPlanResult;
@@ -125,6 +130,23 @@ export async function setClientAccess(planId: string, clientAccess: FloorPlan["c
   return result as FloorPlanActionResult;
 }
 
+/** Phase 4 — the print-ready checkpoint. Never gates editing; reversible. */
+export async function setFinalized(planId: string, finalized: boolean): Promise<FloorPlanActionResult> {
+  const result = await withVenue(async (supabase, venueId) => {
+    await repo.setFloorPlanFinalized(supabase, venueId, planId, finalized);
+    return { ok: true } as FloorPlanActionResult;
+  });
+  return result as FloorPlanActionResult;
+}
+
+/** Phase 4 — fact-based comparison only. See repo.getFloorPlanReconciliation. */
+export async function getFloorPlanReconciliation(planId: string): Promise<FloorPlanSectionReconciliation[]> {
+  if (!isSupabaseConfigured) return [];
+  const venue = await getCurrentVenue();
+  if (!venue) return [];
+  return repo.getFloorPlanReconciliation(await createClient(), venue.id, planId);
+}
+
 export async function updateRoomSettings(planId: string, input: UpdateRoomSettingsInput): Promise<FloorPlanActionResult> {
   if (input.roomWidthFt <= 0 || input.roomDepthFt <= 0) return { ok: false, message: "Room dimensions must be greater than zero." };
   const result = await withVenue(async (supabase, venueId) => {
@@ -145,6 +167,23 @@ export async function reorderObject(planId: string, objId: string, direction: Re
 export async function updateNotes(planId: string, notes: string): Promise<FloorPlanActionResult> {
   const result = await withVenue(async (supabase, venueId) => {
     await repo.updateFloorPlanNotes(supabase, venueId, planId, notes);
+    return { ok: true } as FloorPlanActionResult;
+  });
+  return result as FloorPlanActionResult;
+}
+
+export async function renameFloorPlan(planId: string, name: string): Promise<FloorPlanActionResult> {
+  if (!name.trim()) return { ok: false, message: "Name is required." };
+  const result = await withVenue(async (supabase, venueId) => {
+    await repo.renameFloorPlan(supabase, venueId, planId, name.trim());
+    return { ok: true } as FloorPlanActionResult;
+  });
+  return result as FloorPlanActionResult;
+}
+
+export async function deleteFloorPlan(planId: string): Promise<FloorPlanActionResult> {
+  const result = await withVenue(async (supabase, venueId) => {
+    await repo.deleteFloorPlan(supabase, venueId, planId);
     return { ok: true } as FloorPlanActionResult;
   });
   return result as FloorPlanActionResult;
