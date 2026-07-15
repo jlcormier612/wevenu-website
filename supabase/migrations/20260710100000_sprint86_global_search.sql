@@ -26,7 +26,7 @@ create index if not exists idx_events_search
 
 create index if not exists idx_vendors_search
   on public.vendors using gin (
-    (lower(name || ' ' || coalesce(category, '') || ' ' || coalesce(contact_name, ''))) gin_trgm_ops
+    (lower(business_name || ' ' || coalesce(category, '') || ' ' || coalesce(contact_name, ''))) gin_trgm_ops
   );
 
 create index if not exists idx_couple_guests_search
@@ -132,21 +132,29 @@ begin
       union all
 
       -- ── Vendors ────────────────────────────────────────────────────────────
+      -- vendors is a global entity (Sprint 104.5) — venue scoping goes
+      -- through venue_vendor_relationships, not a vendors.venue_id column
+      -- that no longer exists; name was also renamed to business_name in
+      -- the same migration. Mirrors the join shape already established in
+      -- get_couple_recommended_vendors (20260706110000, lines ~748-753).
       (select
         'vendor'                                                     as kind,
-        id::text,
-        name                                                         as title,
-        coalesce(category, contact_name, 'Vendor')                   as subtitle,
-        '/vendors/' || id::text                                      as link,
+        v.id::text,
+        v.business_name                                              as title,
+        coalesce(v.category, v.contact_name, 'Vendor')                as subtitle,
+        '/vendors/' || v.id::text                                    as link,
         '🤝'                                                         as emoji,
         3                                                            as sort_order
-      from public.vendors
-      where venue_id = v_venue_id
+      from public.vendors v
+      join public.venue_vendor_relationships vvr
+        on vvr.vendor_id = v.id and vvr.venue_id = v_venue_id
+      where vvr.is_active = true
+        and vvr.status != 'removed'
         and (
-          lower(name)                                                like v_term
-          or lower(coalesce(category, ''))                           like v_term
-          or lower(coalesce(contact_name, ''))                       like v_term
-          or lower(coalesce(email, ''))                              like v_term
+          lower(v.business_name)                                     like v_term
+          or lower(coalesce(v.category, ''))                         like v_term
+          or lower(coalesce(v.contact_name, ''))                     like v_term
+          or lower(coalesce(v.email, ''))                            like v_term
         )
       limit p_limit)
 
