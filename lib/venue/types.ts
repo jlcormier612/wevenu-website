@@ -100,6 +100,11 @@ export type Venue = {
   // Gates the new unified Conversation UI; false leaves the venue on the
   // legacy Messages tab / Messaging inbox, untouched.
   conversationExperienceEnabled: boolean;
+  // Booking Financial Architecture rollout flag (docs/booking-financial-
+  // architecture-roadmap.md's cross-cutting strategy) — same staged-rollout
+  // posture as conversationExperienceEnabled above. False leaves a venue's
+  // Booking Workspace with no Event Order tab at all; nothing else changes.
+  eventOrderEnabled: boolean;
   createdAt: string;
   updatedAt: string;
 };

@@ -49,6 +49,7 @@ type VenueRow = {
   embed_key: string;
   tour_scheduling_enabled: boolean;
   conversation_experience_enabled: boolean;
+  event_order_enabled: boolean;
   created_at: string;
   updated_at: string;
 };
@@ -87,6 +88,7 @@ function mapVenue(r: VenueRow): Venue {
     embedKey: r.embed_key ?? "",
     tourSchedulingEnabled: r.tour_scheduling_enabled ?? false,
     conversationExperienceEnabled: r.conversation_experience_enabled ?? false,
+    eventOrderEnabled: r.event_order_enabled ?? false,
     createdAt: r.created_at,
     updatedAt: r.updated_at,
   };
