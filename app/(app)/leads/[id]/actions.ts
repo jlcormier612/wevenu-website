@@ -22,6 +22,13 @@ import type {
   LeadInput,
   TaskInput,
 } from "@/lib/leads/types";
+import {
+  getCoordinatorTourSlots,
+  rescheduleTour,
+  scheduleTourForLead,
+  updateTourStatus,
+} from "@/lib/tours/service";
+import type { CoordinatorTourResult, SimpleTourResult, TourSlot } from "@/lib/tours/types";
 
 function revalidateLead(leadId: string) {
   revalidatePath(`/leads/${leadId}`);
@@ -132,5 +139,44 @@ export async function updateRelationshipAction(
     // Tour scheduling is a commitment milestone — refresh scores immediately
     if (hints.tourScheduled) void refreshLeadScore(leadId).catch(() => {});
   }
+  return result;
+}
+
+// ── Coordinator Tour Scheduling ────────────────────────────────────────────────
+//
+// "Open Lead → Schedule Tour → choose an available slot → Save → Done."
+// Everything downstream (Calendar, confirmation email, notification,
+// automation, Luv) already happens on its own once tour_appointments has a
+// real row — see lib/tours/service.ts and lib/tours/communication.ts.
+// These actions only ever call into that one engine, never touch
+// tour_appointments directly.
+
+export async function getCoordinatorTourSlotsAction(startDate: string, endDate: string): Promise<TourSlot[]> {
+  return getCoordinatorTourSlots(startDate, endDate);
+}
+
+export async function scheduleTourAction(leadId: string, slotStart: string, notes?: string): Promise<CoordinatorTourResult> {
+  const result = await scheduleTourForLead(leadId, slotStart, notes);
+  if (result.ok) {
+    revalidateLead(leadId);
+    void refreshLeadScore(leadId).catch(() => {});
+  }
+  return result;
+}
+
+export async function rescheduleTourAction(appointmentId: string, leadId: string, newSlotStart: string): Promise<CoordinatorTourResult> {
+  const result = await rescheduleTour(appointmentId, newSlotStart);
+  if (result.ok) revalidateLead(leadId);
+  return result;
+}
+
+export async function updateTourStatusAction(
+  appointmentId: string,
+  leadId: string,
+  status: "confirmed" | "completed" | "cancelled" | "no_show",
+  reason?: string,
+): Promise<SimpleTourResult> {
+  const result = await updateTourStatus(appointmentId, status, reason);
+  if (result.ok) revalidateLead(leadId);
   return result;
 }

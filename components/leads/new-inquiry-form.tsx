@@ -7,6 +7,7 @@ import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { createLeadAction } from "@/app/(app)/leads/actions";
+import { markScheduleItemConvertedAction } from "@/app/(app)/availability/actions";
 import { Field } from "@/components/setup/field";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -70,9 +71,16 @@ function SelectField({
   );
 }
 
-export function NewInquiryForm() {
+export function NewInquiryForm({
+  initial, fromBlockId,
+}: {
+  /** Calendar Booking Placeholder — "Convert to Booking" pre-fill. Merged over the usual blank defaults; every field stays editable. */
+  initial?: Partial<LeadInput>;
+  /** Set only when arriving via "Convert to Booking" — marks the originating placeholder converted once this Lead is actually created. */
+  fromBlockId?: string;
+}) {
   const router = useRouter();
-  const [input, setInput] = React.useState<LeadInput>(createInitialLeadInput);
+  const [input, setInput] = React.useState<LeadInput>(() => ({ ...createInitialLeadInput(), ...initial }));
   const [errors, setErrors] = React.useState<LeadErrors>({});
   const [pending, startTransition] = React.useTransition();
 
@@ -85,6 +93,11 @@ export function NewInquiryForm() {
     startTransition(async () => {
       const result = await createLeadAction(input);
       if (result.ok) {
+        if (fromBlockId) {
+          // Best-effort — the Lead is the source of truth either way; if
+          // this fails, the placeholder just stays un-marked, not broken.
+          await markScheduleItemConvertedAction(fromBlockId, result.leadId).catch(() => {});
+        }
         toast.success("Inquiry saved.");
         router.push(`/leads/${result.leadId}`);
         return;

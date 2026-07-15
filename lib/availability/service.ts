@@ -135,6 +135,13 @@ export async function getBlocks(): Promise<CalendarBlock[]> {
   return repo.getBlocks(await createClient(), venue.id);
 }
 
+export async function getBlock(blockId: string): Promise<CalendarBlock | null> {
+  if (!isSupabaseConfigured) return null;
+  const venue = await getCurrentVenue();
+  if (!venue) return null;
+  return repo.getBlock(await createClient(), venue.id, blockId);
+}
+
 export async function createBlock(input: CalendarBlockInput): Promise<{ ok: true; blockId: string } | AvailabilityActionResult> {
   if (!input.title.trim()) return { ok: false, message: "Title is required." };
   if (!input.startDate) return { ok: false, message: "Start date is required." };
@@ -148,6 +155,18 @@ export async function createBlock(input: CalendarBlockInput): Promise<{ ok: true
 export async function deleteBlock_(blockId: string): Promise<AvailabilityActionResult> {
   const result = await withVenue(async (supabase, venueId) => {
     await repo.deleteBlock(supabase, venueId, blockId);
+    return { ok: true } as AvailabilityActionResult;
+  });
+  return result as AvailabilityActionResult;
+}
+
+// "Convert to Booking" — Calendar never creates the Lead itself (that stays
+// entirely lib/leads' own business logic, invoked the same way the New
+// Inquiry form already does); this only records that a placeholder became
+// one, once the Lead already exists.
+export async function markBlockConverted_(blockId: string, leadId: string): Promise<AvailabilityActionResult> {
+  const result = await withVenue(async (supabase, venueId) => {
+    await repo.markBlockConverted(supabase, venueId, blockId, leadId);
     return { ok: true } as AvailabilityActionResult;
   });
   return result as AvailabilityActionResult;

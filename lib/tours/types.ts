@@ -51,6 +51,7 @@ export type TourAppointment = {
   completedAt: string | null;
   followUpSentAt: string | null;
   outcome: TourOutcome | null;
+  cancellationReason: string | null;
   createdAt: string;
 };
 
@@ -58,6 +59,7 @@ export type BookingResult = {
   ok: boolean;
   error?: string;
   leadId?: string;
+  relationshipId?: string | null;
   appointmentId?: string;
   scheduledAt?: string;
   venueName?: string;
@@ -65,5 +67,28 @@ export type BookingResult = {
   venueId?: string;
   contactEmail?: string;
   contactName?: string;
+  contactPhone?: string;
   duration?: number;
 };
+
+// Coordinator Tour Scheduling — the Lead already exists, so there's no
+// contact form; the RPC resolves everything from the Lead and returns the
+// same shape a booking result needs to send a confirmation.
+export type CoordinatorTourResult =
+  | {
+      ok: true;
+      appointmentId: string;
+      leadId: string;
+      relationshipId: string | null;
+      scheduledAt: string;
+      venueName: string;
+      venueId: string;
+      duration: number;
+      contactName: string | null;
+      contactEmail: string | null;
+      contactPhone: string | null;
+      oldScheduledAt?: string; // present on reschedule
+    }
+  | { ok: false; error: string };
+
+export type SimpleTourResult = { ok: true } | { ok: false; error: string };

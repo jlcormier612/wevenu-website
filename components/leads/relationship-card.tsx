@@ -85,6 +85,11 @@ export function RelationshipCard({
     createInitialRelationshipInput(lead),
   );
   const [pending, startTransition] = React.useTransition();
+  // Mirrors event-form.tsx's own dateBlocked wiring exactly — a hard
+  // conflict (e.g. a calendar_blocked date) must disable Save here the same
+  // way it already does for event creation, not just show an ignorable
+  // advisory (Scheduling Release Readiness Phase 1).
+  const [tourDateBlocked, setTourDateBlocked] = React.useState(false);
   const [nextActionMode, setNextActionMode] = React.useState<"preset" | "custom">(() =>
     (NEXT_ACTION_PRESETS as readonly string[]).includes(lead.nextActionText ?? "") || !lead.nextActionText
       ? "preset"
@@ -146,7 +151,7 @@ export function RelationshipCard({
               <Button type="button" variant="ghost" size="sm" onClick={handleCancel} disabled={pending}>
                 Cancel
               </Button>
-              <Button type="button" size="sm" disabled={pending} onClick={handleSave}>
+              <Button type="button" size="sm" disabled={pending || tourDateBlocked} onClick={handleSave}>
                 {pending ? <><Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />Saving…</> : "Save"}
               </Button>
             </div>
@@ -269,7 +274,7 @@ export function RelationshipCard({
                 </EditRow>
               </div>
               {input.tourDate && !input.tourCompleted && (
-                <ConflictWarning date={input.tourDate} type="tour" excludeId={lead.id} />
+                <ConflictWarning date={input.tourDate} type="tour" excludeId={lead.id} onStatusChange={setTourDateBlocked} />
               )}
               <div className="flex items-center gap-2">
                 <Switch

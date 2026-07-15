@@ -1,7 +1,7 @@
 /**
  * Availability reference data and display helpers (Sprint 20).
  */
-import type { BlockReason, HoldStatus } from "@/lib/availability/types";
+import type { BlockReason, HoldStatus, ManualScheduleType } from "@/lib/availability/types";
 
 export const BLOCK_REASONS: { value: BlockReason; label: string }[] = [
   { value: "maintenance",    label: "Maintenance / Renovation" },
@@ -13,6 +13,29 @@ export const BLOCK_REASONS: { value: BlockReason; label: string }[] = [
 
 export function blockReasonLabel(reason: BlockReason): string {
   return BLOCK_REASONS.find((r) => r.value === reason)?.label ?? reason;
+}
+
+// Calendar Manual Type Redesign — every option a coordinator sees in "+ Add
+// Schedule Item"'s Type selector. Order matters: the most commonly manually
+// scheduled activities first, "Blocked Time" (the old, single-purpose
+// "Block" concept) and "Other" last, since neither is the primary case
+// anymore.
+export const MANUAL_SCHEDULE_TYPE_OPTIONS: { value: ManualScheduleType; label: string }[] = [
+  { value: "tour",                  label: "Tour" },
+  { value: "consultation",          label: "Consultation" },
+  { value: "client_meeting",        label: "Client Meeting" },
+  { value: "walkthrough",           label: "Walkthrough" },
+  { value: "tasting",               label: "Tasting" },
+  { value: "vendor_meeting",        label: "Vendor Meeting" },
+  { value: "wedding_event_booking", label: "Wedding / Event Booking" },
+  { value: "private_event",         label: "Private Event" },
+  { value: "personal_appointment",  label: "Personal Appointment" },
+  { value: "blocked_time",          label: "Blocked Time" },
+  { value: "other",                 label: "Other" },
+];
+
+export function manualScheduleTypeLabel(type: ManualScheduleType): string {
+  return MANUAL_SCHEDULE_TYPE_OPTIONS.find((t) => t.value === type)?.label ?? type;
 }
 
 export const HOLD_STATUS_LABEL: Record<HoldStatus, string> = {

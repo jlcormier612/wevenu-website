@@ -48,6 +48,7 @@ import { LuvDraftPanel } from "@/components/luv/luv-draft-panel";
 import { LuvHeart } from "@/components/dashboard/luv-widget";
 import { MessagesSection } from "@/components/messaging/messages-section";
 import { RelationshipConversationTab } from "@/components/conversations/relationship-conversation-tab";
+import { TourPanel } from "@/components/leads/tour-panel";
 import {
   LEAD_STATUSES,
   eventTypeLabel,
@@ -90,7 +91,7 @@ function InfoRow({
 
 // ---- main component ---------------------------------------------------------
 
-export function LeadDetail({ lead, holds = [], spaces = [], documents = [], luvDrafts = [], threads = [], autoLuvDraft, tourAppointments = [], conversationExperienceEnabled = false, conversationId = null, pipelineStages = [], currentPipelineStage = null }: { lead: LeadWithDetails; holds?: DateHold[]; spaces?: VenueSpace[]; documents?: Document[]; luvDrafts?: LuvDraft[]; threads?: ThreadWithMessages[]; autoLuvDraft?: string; tourAppointments?: import("@/lib/tours/types").TourAppointment[]; conversationExperienceEnabled?: boolean; conversationId?: string | null; pipelineStages?: PipelineStage[]; currentPipelineStage?: PipelineStage | null }) {
+export function LeadDetail({ lead, holds = [], spaces = [], documents = [], luvDrafts = [], threads = [], autoLuvDraft, tourAppointments = [], conversationExperienceEnabled = false, conversationId = null, pipelineStages = [], currentPipelineStage = null, now }: { lead: LeadWithDetails; holds?: DateHold[]; spaces?: VenueSpace[]; documents?: Document[]; luvDrafts?: LuvDraft[]; threads?: ThreadWithMessages[]; autoLuvDraft?: string; tourAppointments?: import("@/lib/tours/types").TourAppointment[]; conversationExperienceEnabled?: boolean; conversationId?: string | null; pipelineStages?: PipelineStage[]; currentPipelineStage?: PipelineStage | null; now: string }) {
   // Controlled tabs — supports Luv→Messages bridge and ?luv= URL param routing
   const [activeTab, setActiveTab] = React.useState(autoLuvDraft ? "luv" : "overview");
   const [messagePrefill, setMessagePrefill] = React.useState<{ subject: string; body: string } | null>(null);
@@ -393,37 +394,10 @@ export function LeadDetail({ lead, holds = [], spaces = [], documents = [], luvD
             </Card>
           </div>
 
-          {/* Tour appointments linked to this lead */}
-          {tourAppointments.length > 0 && (
-            <div className="mt-4">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-base">Scheduled Tours</CardTitle>
-                </CardHeader>
-                <CardContent className="divide-y divide-border/50">
-                  {tourAppointments.map((appt) => {
-                    const d = new Date(appt.scheduledAt);
-                    const statusColors: Record<string, string> = { scheduled: "#C7A66A", confirmed: "#5D6F5D", completed: "#B9D1C2", cancelled: "#B8AEA1", no_show: "#C0392B" };
-                    return (
-                      <div key={appt.id} className="py-3 flex items-center justify-between gap-3">
-                        <div>
-                          <p className="text-sm font-medium text-heading">
-                            {d.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}
-                          </p>
-                          <p className="text-xs text-muted-foreground">
-                            {d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })} · {appt.durationMinutes} min
-                          </p>
-                        </div>
-                        <span className="text-[11px] font-semibold px-2 py-1 rounded-full" style={{ background: `${statusColors[appt.status] ?? "#B8AEA1"}20`, color: statusColors[appt.status] ?? "#B8AEA1" }}>
-                          {appt.status.replace("_", " ")}
-                        </span>
-                      </div>
-                    );
-                  })}
-                </CardContent>
-              </Card>
-            </div>
-          )}
+          {/* Coordinator Tour Scheduling — always visible, not just when a
+              tour already exists: this is the entry point, not a display-only
+              summary. */}
+          <TourPanel leadId={lead.id} tourAppointments={tourAppointments} now={now} />
         </TabsContent>
 
         {/* ── Conversation ─────────────────────────────────────────── */}

@@ -56,9 +56,14 @@ export default async function LeadDetailPage({ params, searchParams }: Props) {
   const currentPipelineStage = pipelineStages.length > 0
     ? resolvePipelineStageForLead(lead.status, explicitStageId, pipelineStages)
     : null;
+  // Computed server-side, not inside the client component — React Compiler
+  // treats Date.now() as impure during render; see the identical pattern in
+  // app/(app)/leads/page.tsx and app/(app)/clients/page.tsx.
+  const now = new Date().toISOString();
   return (
     <LeadDetail
       lead={lead}
+      now={now}
       holds={holds}
       spaces={spaces}
       documents={documents}

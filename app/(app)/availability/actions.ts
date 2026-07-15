@@ -11,6 +11,7 @@ import {
   deleteBlock_,
   deleteHold_,
   deleteSpace_,
+  markBlockConverted_,
   releaseHold,
   saveCapacityRules,
   updateSpace_,
@@ -81,6 +82,12 @@ export async function createBlockAction(input: CalendarBlockInput): Promise<{ ok
 
 export async function deleteBlockAction(blockId: string): Promise<AvailabilityActionResult> {
   const result = await deleteBlock_(blockId);
+  if (result.ok) revalidatePath("/calendar");
+  return result;
+}
+
+export async function markScheduleItemConvertedAction(blockId: string, leadId: string): Promise<AvailabilityActionResult> {
+  const result = await markBlockConverted_(blockId, leadId);
   if (result.ok) revalidatePath("/calendar");
   return result;
 }
