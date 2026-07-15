@@ -22,7 +22,7 @@ import { getInvoices } from "@/lib/invoices/service";
 import { getThreadsForEntity } from "@/lib/messaging/service";
 import {
   getEventPlaybookApplications, getEventTaskContextLinksForEvent, getEventTaskReadinessByKind,
-  getEventTasks, getTaskContactsByStaffIds, getTemplates,
+  getEventTasks, getTaskContactsByStaffIds, getTemplatesForLibrary,
 } from "@/lib/playbooks/service";
 import { getPortalSessions } from "@/lib/portal/service";
 import { buildEventReadiness } from "@/lib/readiness/compute";
@@ -38,6 +38,9 @@ import { createClient } from "@/integrations/supabase/server";
 import { getCurrentVenue } from "@/lib/venue/service";
 import { getEventRecommendations } from "@/lib/vendor-recommendations/service";
 import { getVendors } from "@/lib/vendors/service";
+import { getEventOrder } from "@/lib/event-orders/service";
+import { getPackages } from "@/lib/packages/service";
+import { getItems as getInventoryItems } from "@/lib/inventory/service";
 
 type Props = { params: Promise<{ id: string }> };
 
@@ -78,20 +81,23 @@ export default async function BookingWorkspacePage({ params }: Props) {
 
   const eventId = client.linkedEventId;
   const [
-    event, availableVendors, allInvoices, documents, questionnaire, eventTasks, playbookTemplates,
+    event, availableVendors, allInvoices, documents, questionnaire, eventTasks, allPlaybookTemplates,
     playbookApplications, readinessByKind, contextLinksByTask, timelineEntries, venue, vendorRecommendations,
     threads, spaces, contractTemplates, allContracts, timelineTemplates,
     timelineSections, timelineLinksByEntry, timelineAttachmentsByEntry, timelineRelatedLinksByEntry,
     floorPlanTemplates, inventoryUsage,
   ] = await Promise.all([
     getEvent(eventId), getVendors(), getInvoices({}), getDocuments("event", eventId), getQuestionnaire(eventId),
-    getEventTasks(eventId), getTemplates(), getEventPlaybookApplications(eventId), getEventTaskReadinessByKind(eventId),
+    getEventTasks(eventId), getTemplatesForLibrary(), getEventPlaybookApplications(eventId), getEventTaskReadinessByKind(eventId),
     getEventTaskContextLinksForEvent(eventId), getTimelineEntries(eventId), getCurrentVenue(), getEventRecommendations(eventId),
     getThreadsForEntity("client", id), getSpaces(), getContractTemplates(), getContracts(), getTimelineTemplates(),
     getSections(eventId), getEntryLinksForEvent(eventId), getEntryAttachmentsForEvent(eventId), getRelatedLinksForEvent(eventId),
     getFloorPlanTemplates(), getUsageForEvent(eventId),
   ]);
   if (!event) notFound();
+  // Archived templates aren't valid choices for applying to a booking —
+  // same exclusion the old getTemplates() applied by default.
+  const playbookTemplates = allPlaybookTemplates.filter((t) => !t.isArchived);
   const eventInvoices = allInvoices.filter((inv) => inv.eventId === eventId || inv.clientId === id);
   const spaceName = spaces.find((s) => s.id === event.spaceId)?.name ?? null;
   const contracts = allContracts.filter((c) => c.eventId === eventId || c.clientId === id);
@@ -148,7 +154,16 @@ export default async function BookingWorkspacePage({ params }: Props) {
     getGuestReadinessSummary(id),
     getSeatingReadinessSummary(portalToken),
   ]);
+
+  // Booking Financial Architecture Phase 2 — gated by venues.event_order_enabled;
+  // false skips these entirely rather than fetching and simply not rendering,
+  // since most venues won't have the flag on.
+  const eventOrderEnabled = venue?.eventOrderEnabled ?? false;
+  const [eventOrder, packages, inventoryItems] = eventOrderEnabled
+    ? await Promise.all([getEventOrder(eventId), getPackages(), getInventoryItems()])
+    : [null, [], []];
   const readinessSummary = buildEventReadiness({
+    eventId: event.id,
     readinessByKind, timelineEntries, guestSummary, seatingSummary,
     floorPlans: event.floorPlans, inventoryUsage, requests: eventRequests,
     contracts, invoices: eventInvoices, documents,
@@ -158,6 +173,7 @@ export default async function BookingWorkspacePage({ params }: Props) {
   return (
     <EventDetail
       event={event} availableVendors={availableVendors} invoices={eventInvoices} documents={documents}
+      originatingLeadId={client.leadId}
       questionnaire={questionnaire} coupleEmail={coupleEmail} eventTasks={eventTasks}
       playbookTemplates={playbookTemplates} playbookApplications={playbookApplications}
       timelineTemplates={timelineTemplates}
@@ -176,6 +192,10 @@ export default async function BookingWorkspacePage({ params }: Props) {
       requestsByTaskId={requestsByTaskId}
       requests={eventRequests}
       readinessSummary={readinessSummary}
+      eventOrderEnabled={eventOrderEnabled}
+      eventOrder={eventOrder}
+      packages={packages}
+      inventoryItems={inventoryItems}
     />
   );
 }
