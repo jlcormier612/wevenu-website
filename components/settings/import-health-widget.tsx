@@ -22,8 +22,8 @@ export async function ImportHealthWidget() {
     { label: "Clients",   count: clients.length,   importPath: "/settings/import?type=couples",   resultPath: "/clients"          },
     { label: "Leads",     count: leads.length,     importPath: "/settings/import?type=leads",     resultPath: "/leads"            },
     { label: "Vendors",   count: vendors.length,   importPath: "/settings/import?type=vendors",   resultPath: "/vendors"          },
-    { label: "Inventory", count: inventory.length, importPath: "/settings/import?type=inventory", resultPath: "/library/inventory" },
-    { label: "Packages",  count: packages.length,  importPath: "/settings/import?type=packages",  resultPath: "/library/packages"  },
+    { label: "Inventory Templates", count: inventory.length, importPath: "/settings/import?type=inventory", resultPath: "/library/inventory" },
+    { label: "Package Templates",   count: packages.length,  importPath: "/settings/import?type=packages",  resultPath: "/library/packages"  },
   ];
 
   if (stats.every((s) => s.count === 0)) return null;

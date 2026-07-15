@@ -34,6 +34,7 @@ import {
   removePlaybookTaskAttachmentAction,
   renameMilestoneAction,
   reorderMilestoneAction,
+  setMilestoneKindAction,
   updateTemplateTaskAction,
 } from "@/app/(app)/playbooks/actions";
 import { saveVenueDocumentAction } from "@/app/(app)/documents/actions";
@@ -570,7 +571,7 @@ function MilestoneChapter({
     if (!name.trim() || name.trim() === milestone.name) { setRenaming(false); setName(milestone.name); return; }
     startRename(async () => {
       const result = await renameMilestoneAction(templateId, milestone.id, name.trim());
-      if (result.ok) { toast.success("Section renamed."); setRenaming(false); router.refresh(); }
+      if (result.ok) { toast.success("Milestone renamed."); setRenaming(false); router.refresh(); }
       else { toast.error(result.message ?? "Could not rename."); setName(milestone.name); }
     });
   }
@@ -584,13 +585,28 @@ function MilestoneChapter({
 
   async function handleDeleteMilestone() {
     if (tasks.length > 0) {
-      toast.error(`Move or remove the ${tasks.length} task${tasks.length === 1 ? "" : "s"} in this section first.`);
+      toast.error(`Move or remove the ${tasks.length} task${tasks.length === 1 ? "" : "s"} in this milestone first.`);
       return;
     }
-    if (!confirm(`Remove the "${milestone.name}" section?`)) return;
+    if (!confirm(`Remove the "${milestone.name}" milestone?`)) return;
     const result = await deleteMilestoneAction(templateId, milestone.id);
     if (result.ok) router.refresh();
-    else toast.error(result.message ?? "Could not delete section.");
+    else toast.error(result.message ?? "Could not delete milestone.");
+  }
+
+  // Wedding Day designation (Planning Execution — Release Completion).
+  // Every task in this milestone inherits milestone_kind='event_day' the
+  // moment a coordinator applies this template — the exact fact
+  // get_wedding_day_ops already reads. Before this, only the two seed
+  // templates could ever have a Wedding Day chapter; a coordinator building
+  // their own template had no way to mark one at all. At most one milestone
+  // per template can hold it (playbook_milestones_one_event_day) — toggling
+  // it on here moves the designation, it never stacks a second one.
+  async function handleToggleWeddingDay() {
+    const next = milestone.kind === "event_day" ? null : "event_day";
+    const result = await setMilestoneKindAction(templateId, milestone.id, next);
+    if (result.ok) { toast.success(next ? "Marked as Wedding Day." : "No longer Wedding Day."); router.refresh(); }
+    else toast.error(result.message ?? "Could not update.");
   }
 
   function handleAdd(f: TaskForm) {
@@ -665,6 +681,18 @@ function MilestoneChapter({
           </button>
         )}
         <span className="text-xs text-muted-foreground shrink-0">{tasks.length} task{tasks.length !== 1 ? "s" : ""}</span>
+        <button
+          type="button" onClick={handleToggleWeddingDay}
+          title={milestone.kind === "event_day" ? "This is the Wedding Day chapter — click to unmark" : "Mark this milestone as Wedding Day"}
+          className={cn(
+            "flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium shrink-0 border transition-colors",
+            milestone.kind === "event_day"
+              ? "border-transparent bg-primary text-primary-foreground"
+              : "border-border text-muted-foreground opacity-50 hover:opacity-100",
+          )}
+        >
+          💍 Wedding Day
+        </button>
         <div className="flex items-center gap-0.5 shrink-0">
           {!isFirst && (
             <button type="button" onClick={() => handleReorder("up")} className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground" aria-label="Move up">
@@ -676,7 +704,7 @@ function MilestoneChapter({
               <ChevronDown className="h-3.5 w-3.5" />
             </button>
           )}
-          <button type="button" onClick={handleDeleteMilestone} className="rounded p-1 text-muted-foreground hover:bg-destructive/10 hover:text-destructive" aria-label="Delete section">
+          <button type="button" onClick={handleDeleteMilestone} className="rounded p-1 text-muted-foreground hover:bg-destructive/10 hover:text-destructive" aria-label="Delete milestone">
             <Trash2 className="h-3.5 w-3.5" />
           </button>
         </div>
@@ -760,8 +788,8 @@ export function PlaybookBuilder({
     if (!newMilestoneName.trim()) return;
     startAddMilestone(async () => {
       const result = await addMilestoneAction(templateId, newMilestoneName.trim(), milestones.length);
-      if (result.ok) { toast.success("Section added."); setNewMilestoneName(""); setAddingMilestone(false); router.refresh(); }
-      else toast.error(result.message ?? "Could not add section.");
+      if (result.ok) { toast.success("Milestone added."); setNewMilestoneName(""); setAddingMilestone(false); router.refresh(); }
+      else toast.error(result.message ?? "Could not add milestone.");
     });
   }
 
@@ -823,7 +851,7 @@ export function PlaybookBuilder({
         </div>
       ) : (
         <Button type="button" variant="outline" size="sm" onClick={() => setAddingMilestone(true)}>
-          <Plus className="mr-1 h-3.5 w-3.5" /> Add Section
+          <Plus className="mr-1 h-3.5 w-3.5" /> Add Milestone
         </Button>
       )}
     </div>

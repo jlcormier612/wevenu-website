@@ -7,7 +7,7 @@ import { DISPLAY_SHAPES } from "@/components/floor-plan/floor-plan-shapes";
 import { extractDocxText, extractPdfText, parseExcelFile } from "@/lib/import/file-parsing";
 import type { InventoryImportRow } from "@/lib/import/utils";
 import { createCategory, createItem as createInventoryItem, getCategories } from "@/lib/inventory/service";
-import { createLead } from "@/lib/leads/service";
+import { createLead, findActiveDuplicateLead } from "@/lib/leads/service";
 import { proposeStructuredRows } from "@/lib/luv/import-assist";
 import { createPackage } from "@/lib/packages/service";
 import { createVendor } from "@/lib/vendors/service";
@@ -100,6 +100,20 @@ export async function importLeadsAction(rows: LeadInput[]): Promise<ImportResult
     if (!row.firstName?.trim() || !row.lastName?.trim()) {
       errors.push({ row: i + 1, message: "Missing required fields: first name, last name", kind: "skipped" });
       continue;
+    }
+    // Release Readiness Blocker #1 — find_or_create_relationship dedupes
+    // the enduring Relationship, never the Lead/Opportunity row itself, so
+    // a re-run import (or a CSV that already contains an active lead)
+    // silently doubled the pipeline. Skipped, not silently created —
+    // reported the same way a missing-field row already is.
+    try {
+      const duplicate = await findActiveDuplicateLead(row.email ?? "", row.firstName, row.lastName);
+      if (duplicate) {
+        errors.push({ row: i + 1, message: "Skipped — matches an already-active lead", kind: "skipped" });
+        continue;
+      }
+    } catch {
+      // Duplicate check failing must never block a legitimate import.
     }
     try {
       const result = await createLead(row);

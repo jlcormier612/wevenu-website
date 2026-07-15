@@ -58,8 +58,8 @@ function ItemCard({
               {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <MoreHorizontal className="h-3.5 w-3.5" />}
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuItem onSelect={() => router.push(`/library/inventory/${item.id}/edit`)}>Edit</DropdownMenuItem>
-              <DropdownMenuItem onSelect={onArchiveToggle}>{item.isArchived ? "Unarchive" : "Archive"}</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => router.push(`/library/inventory/${item.id}/edit`)}>Edit</DropdownMenuItem>
+              <DropdownMenuItem onClick={onArchiveToggle}>{item.isArchived ? "Unarchive" : "Archive"}</DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>

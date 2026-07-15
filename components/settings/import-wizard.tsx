@@ -27,8 +27,8 @@ const ENTITY_META: Record<EntityType, { label: string; resultPath: string; descr
   couples:   { label: "Clients",   resultPath: "/clients",          description: "Import existing bookings as clients with linked events." },
   leads:     { label: "Leads",     resultPath: "/leads",            description: "Import prospect inquiries into your leads pipeline." },
   vendors:   { label: "Vendors",   resultPath: "/vendors",          description: "Import your existing vendor contacts and relationships." },
-  inventory: { label: "Inventory", resultPath: "/library/inventory", description: "Import your tables, chairs, decor, and other physical inventory." },
-  packages:  { label: "Packages",  resultPath: "/library/packages",  description: "Import your existing service packages and pricing." },
+  inventory: { label: "Inventory Templates", resultPath: "/library/inventory", description: "Import your tables, chairs, decor, and other physical inventory." },
+  packages:  { label: "Package Templates",   resultPath: "/library/packages",  description: "Import your existing service packages and pricing." },
 };
 
 const NEXT_STEP: Record<EntityType, { cta: string; href: string; detail: string }> = {
@@ -485,7 +485,7 @@ function StepResults({
         </div>
         {skipped > 0 && (
           <div className="flex items-center justify-between px-4 py-2.5">
-            <span className="text-sm text-foreground">Skipped <span className="text-xs text-muted-foreground ml-1">missing required fields</span></span>
+            <span className="text-sm text-foreground">Skipped <span className="text-xs text-muted-foreground ml-1">missing fields or already active — see below</span></span>
             <span className="text-sm font-medium text-muted-foreground">{skipped}</span>
           </div>
         )}
