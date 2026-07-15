@@ -23,6 +23,7 @@ import {
   reorderSections,
   setEntryStatus,
   setSectionClientCanAdd,
+  shiftEntriesAfter,
   updateEntry,
 } from "@/lib/timeline/service";
 import type {
@@ -83,6 +84,14 @@ export async function setEntryStatusAction(
   entryId: string, eventId: string, status: TimelineEntryStatus,
 ): Promise<TimelineActionResult> {
   const result = await setEntryStatus(entryId, status);
+  if (result.ok) revalidateEvent(eventId);
+  return result;
+}
+
+export async function shiftEntriesAfterAction(
+  eventId: string, afterEntryId: string, minutesDelta: number,
+): Promise<TimelineActionResult & { shiftedCount?: number }> {
+  const result = await shiftEntriesAfter(eventId, afterEntryId, minutesDelta);
   if (result.ok) revalidateEvent(eventId);
   return result;
 }

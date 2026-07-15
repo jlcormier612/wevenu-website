@@ -57,6 +57,7 @@ import {
   reorderObjectAction,
   setBackgroundLockedAction,
   updateBackgroundAction,
+  updateNotesAction,
   updateObjectAction,
   updateRoomSettingsAction,
 } from "@/app/(app)/events/[id]/floor-plan-actions";
@@ -332,7 +333,7 @@ function PropertiesPanel({
         </Button>
         <Tooltip>
           <TooltipTrigger render={
-            <Button type="button" variant="outline" size="sm" className="h-7 w-7 p-0"
+            <Button type="button" variant="outline" size="sm" className="h-7 w-7 p-0" aria-label="Bring forward"
               onClick={() => onReorder(obj.id, "forward")}>
               <ChevronUp className="h-3.5 w-3.5" />
             </Button>
@@ -341,7 +342,7 @@ function PropertiesPanel({
         </Tooltip>
         <Tooltip>
           <TooltipTrigger render={
-            <Button type="button" variant="outline" size="sm" className="h-7 w-7 p-0"
+            <Button type="button" variant="outline" size="sm" className="h-7 w-7 p-0" aria-label="Send backward"
               onClick={() => onReorder(obj.id, "backward")}>
               <ChevronDown className="h-3.5 w-3.5" />
             </Button>
@@ -488,15 +489,20 @@ function PropertiesPanel({
 function RoomSettingsPanel({
   roomWidthFt, roomDepthFt, measurementUnit, gridIntervalFt,
   onChangeSize, onChangeUnit, onChangeGridInterval, onClose,
+  notes, onChangeNotes,
 }: {
   roomWidthFt: number; roomDepthFt: number; measurementUnit: MeasurementUnit; gridIntervalFt: number;
   onChangeSize: (widthFt: number, depthFt: number) => void;
   onChangeUnit: (unit: MeasurementUnit) => void;
   onChangeGridInterval: (ft: number) => void;
   onClose: () => void;
+  /** Booking mode only — undefined in Templates, which have no notes field. */
+  notes?: string;
+  onChangeNotes?: (notes: string) => void;
 }) {
   const [width, setWidth] = React.useState(roomWidthFt);
   const [depth, setDepth] = React.useState(roomDepthFt);
+  const [notesValue, setNotesValue] = React.useState(notes ?? "");
 
   function commit() {
     if (width > 0 && depth > 0) onChangeSize(width, depth);
@@ -508,7 +514,7 @@ function RoomSettingsPanel({
         <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Room Settings</p>
         <Tooltip>
           <TooltipTrigger render={
-            <button type="button" onClick={onClose} className="text-muted-foreground hover:text-foreground">
+            <button type="button" onClick={onClose} className="text-muted-foreground hover:text-foreground" aria-label="Close room settings">
               <X className="h-3.5 w-3.5" />
             </button>
           } />
@@ -551,6 +557,17 @@ function RoomSettingsPanel({
           {GRID_INTERVALS_FT.map((ft) => <option key={ft} value={ft}>{ft} ft</option>)}
         </select>
       </div>
+      {onChangeNotes && (
+        <div className="space-y-1">
+          <Label className="text-xs">Notes</Label>
+          <Textarea
+            value={notesValue} onChange={(e) => setNotesValue(e.target.value)}
+            onBlur={() => { if (notesValue !== (notes ?? "")) onChangeNotes(notesValue); }}
+            rows={3} placeholder="Setup notes for your team — appears on the printed plan."
+            className="text-xs"
+          />
+        </div>
+      )}
     </div>
   );
 }
@@ -606,6 +623,7 @@ export function FloorPlanEditor({
     setBackgroundLocked: (planId, locked) => setBackgroundLockedAction(planId, eventId!, locked),
     updateRoomSettings: (planId, input) => updateRoomSettingsAction(planId, eventId!, input),
     clear: (planId) => clearFloorPlanAction(planId, eventId!),
+    updateNotes: (planId, notes) => updateNotesAction(planId, eventId!, notes),
   };
   const [plan, setPlan] = React.useState<FloorPlanCanvasPlan | null>(initialPlan);
   const [objects, setObjects] = React.useState<FloorPlanCanvasObject[]>(initialPlan?.objects ?? []);
@@ -877,6 +895,12 @@ export function FloorPlanEditor({
   }
 
   async function handleDelete(id: string) {
+    // No undo exists in this editor — a confirmation is the one safety net
+    // for the single most destructive one-click action here (matching the
+    // same native-confirm precedent "Clear all objects" already uses).
+    const obj = objects.find((o) => o.id === id);
+    if (!confirm(`Delete ${obj?.label ? `"${obj.label}"` : "this object"}? This can't be undone.`)) return;
+
     setObjects((prev) => prev.filter((o) => o.id !== id));
     setSelectedId(null);
     await boundActions.deleteObject(id);
@@ -987,6 +1011,12 @@ export function FloorPlanEditor({
     if (!plan) return;
     setPlan((prev) => prev ? { ...prev, measurementUnit: unit } : prev);
     await boundActions.updateRoomSettings(plan.id, { roomWidthFt: plan.roomWidthFt, roomDepthFt: plan.roomDepthFt, measurementUnit: unit });
+  }
+
+  async function handleNotesChange(notes: string) {
+    if (!plan || !boundActions.updateNotes) return;
+    setPlan((prev) => prev ? { ...prev, notes } : prev);
+    await boundActions.updateNotes(plan.id, notes);
   }
 
   async function handleClear() {
@@ -1104,7 +1134,7 @@ export function FloorPlanEditor({
           <Tooltip>
             <TooltipTrigger render={
               <button type="button" onClick={() => { setMode("select"); setAddSource(null); }}
-                className="ml-auto text-muted-foreground hover:text-foreground">
+                className="ml-auto text-muted-foreground hover:text-foreground" aria-label="Cancel placing object">
                 <X className="h-4 w-4" />
               </button>
             } />
@@ -1126,7 +1156,7 @@ export function FloorPlanEditor({
         <Tooltip>
           <TooltipTrigger render={
             <button type="button" onClick={() => setZoom((z) => Math.max(ZOOM_MIN, Number((z - 0.25).toFixed(2))))}
-              className="rounded-lg border border-border bg-background p-1.5 text-muted-foreground hover:text-foreground">
+              className="rounded-lg border border-border bg-background p-1.5 text-muted-foreground hover:text-foreground" aria-label="Zoom out">
               <ZoomOut className="h-3.5 w-3.5" />
             </button>
           } />
@@ -1136,7 +1166,7 @@ export function FloorPlanEditor({
         <Tooltip>
           <TooltipTrigger render={
             <button type="button" onClick={() => setZoom((z) => Math.min(ZOOM_MAX, Number((z + 0.25).toFixed(2))))}
-              className="rounded-lg border border-border bg-background p-1.5 text-muted-foreground hover:text-foreground">
+              className="rounded-lg border border-border bg-background p-1.5 text-muted-foreground hover:text-foreground" aria-label="Zoom in">
               <ZoomIn className="h-3.5 w-3.5" />
             </button>
           } />
@@ -1145,7 +1175,7 @@ export function FloorPlanEditor({
         <Tooltip>
           <TooltipTrigger render={
             <button type="button" onClick={() => { setZoom(1); setPan({ x: 0, y: 0 }); }}
-              className="rounded-lg border border-border bg-background p-1.5 text-muted-foreground hover:text-foreground">
+              className="rounded-lg border border-border bg-background p-1.5 text-muted-foreground hover:text-foreground" aria-label="Reset view">
               <Maximize2 className="h-3.5 w-3.5" />
             </button>
           } />
@@ -1157,7 +1187,8 @@ export function FloorPlanEditor({
         <Tooltip>
           <TooltipTrigger render={
             <button type="button" onClick={() => setShowGrid((v) => !v)}
-              className={cn("rounded-lg border p-1.5 transition-colors", showGrid ? "border-primary bg-primary/10 text-primary" : "border-border bg-background text-muted-foreground hover:text-foreground")}>
+              className={cn("rounded-lg border p-1.5 transition-colors", showGrid ? "border-primary bg-primary/10 text-primary" : "border-border bg-background text-muted-foreground hover:text-foreground")}
+              aria-label={showGrid ? "Hide grid" : "Show grid"}>
               <Grid3x3 className="h-3.5 w-3.5" />
             </button>
           } />
@@ -1166,7 +1197,8 @@ export function FloorPlanEditor({
         <Tooltip>
           <TooltipTrigger render={
             <button type="button" onClick={() => setSnapToGrid((v) => !v)}
-              className={cn("rounded-lg border p-1.5 transition-colors", snapToGrid ? "border-primary bg-primary/10 text-primary" : "border-border bg-background text-muted-foreground hover:text-foreground")}>
+              className={cn("rounded-lg border p-1.5 transition-colors", snapToGrid ? "border-primary bg-primary/10 text-primary" : "border-border bg-background text-muted-foreground hover:text-foreground")}
+              aria-label={snapToGrid ? "Turn off snap to grid" : "Turn on snap to grid"}>
               <Magnet className="h-3.5 w-3.5" />
             </button>
           } />
@@ -1177,7 +1209,8 @@ export function FloorPlanEditor({
           <Tooltip>
             <TooltipTrigger render={
               <button type="button" onClick={() => setShowRoomSettings((v) => !v)}
-                className={cn("rounded-lg border p-1.5 transition-colors", showRoomSettings ? "border-primary bg-primary/10 text-primary" : "border-border bg-background text-muted-foreground hover:text-foreground")}>
+                className={cn("rounded-lg border p-1.5 transition-colors", showRoomSettings ? "border-primary bg-primary/10 text-primary" : "border-border bg-background text-muted-foreground hover:text-foreground")}
+                aria-label="Room settings">
                 <Settings2 className="h-3.5 w-3.5" />
               </button>
             } />
@@ -1191,6 +1224,8 @@ export function FloorPlanEditor({
               onChangeUnit={handleUnitChange}
               onChangeGridInterval={setGridIntervalFt}
               onClose={() => setShowRoomSettings(false)}
+              notes={boundActions.updateNotes ? (plan.notes ?? "") : undefined}
+              onChangeNotes={boundActions.updateNotes ? handleNotesChange : undefined}
             />
           )}
         </div>
@@ -1219,7 +1254,8 @@ export function FloorPlanEditor({
             <Tooltip>
               <TooltipTrigger render={
                 <button type="button" onClick={handleToggleBackgroundLock}
-                  className="rounded-lg border border-border bg-background px-2 py-1 text-xs text-muted-foreground hover:text-foreground transition-colors">
+                  className="rounded-lg border border-border bg-background px-2 py-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                  aria-label={plan.backgroundLocked ? "Unlock background image" : "Lock background image"}>
                   {plan.backgroundLocked ? <Lock className="h-3.5 w-3.5" /> : <Unlock className="h-3.5 w-3.5" />}
                 </button>
               } />
@@ -1229,7 +1265,8 @@ export function FloorPlanEditor({
               <Tooltip>
                 <TooltipTrigger render={
                   <button type="button" onClick={handleRemoveBackground}
-                    className="rounded-lg border border-border bg-background px-2 py-1 text-xs text-muted-foreground hover:text-destructive transition-colors">
+                    className="rounded-lg border border-border bg-background px-2 py-1 text-xs text-muted-foreground hover:text-destructive transition-colors"
+                    aria-label="Remove background image">
                     <X className="h-3.5 w-3.5" />
                   </button>
                 } />

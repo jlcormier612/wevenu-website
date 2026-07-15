@@ -41,6 +41,11 @@ import { EventTaskList } from "@/components/playbooks/event-task-list";
 import type { LinkableConversationMessage } from "@/components/playbooks/event-task-list";
 import type { TimelineEntry, TimelineEntryAttachment, TimelineEntryLink, TimelineRelatedLink, TimelineSection } from "@/lib/timeline/types";
 import { InvoiceStatusBadge } from "@/components/invoices/invoice-status-badge";
+import { CreateRetainerSheet } from "@/components/payments/create-retainer-sheet";
+import { EventOrderPanel } from "@/components/event-orders/event-order-panel";
+import type { EventOrderWithDetails } from "@/lib/event-orders/types";
+import type { InventoryItem } from "@/lib/inventory/types";
+import type { Package } from "@/lib/packages/types";
 import { MessagesSection } from "@/components/messaging/messages-section";
 import { RelationshipConversationTab } from "@/components/conversations/relationship-conversation-tab";
 import type { ThreadWithMessages } from "@/lib/messaging/types";
@@ -58,7 +63,7 @@ import { formatCurrency } from "@/lib/invoices/constants";
 import type { Invoice } from "@/lib/invoices/types";
 import type { Document } from "@/lib/documents/types";
 import type { Questionnaire } from "@/lib/events/questionnaire";
-import type { EventPlaybookApplication, EventReadiness, EventTask, EventTaskContextLink, PlaybookTemplate, TaskContact } from "@/lib/playbooks/types";
+import type { EventPlaybookApplication, EventReadiness, EventTask, EventTaskContextLink, PlaybookTemplateWithStats, TaskContact } from "@/lib/playbooks/types";
 import type { TimelineTemplate } from "@/lib/timeline-templates/types";
 import {
   EVENT_STATUSES,
@@ -241,9 +246,14 @@ export function EventDetail({
   spaces = [],
   inventoryUsage = [],
   teamMembers = [],
+  eventOrderEnabled = false,
+  eventOrder = null,
+  packages = [],
+  inventoryItems = [],
   requestsByTaskId = {},
   requests = [],
   readinessSummary,
+  originatingLeadId = null,
 }: {
   event: EventWithDetails;
   availableVendors?: import("@/lib/vendors/types").Vendor[];
@@ -252,7 +262,7 @@ export function EventDetail({
   questionnaire?: Questionnaire | null;
   coupleEmail?: string | null;
   eventTasks?: EventTask[];
-  playbookTemplates?: PlaybookTemplate[];
+  playbookTemplates?: PlaybookTemplateWithStats[];
   playbookApplications?: EventPlaybookApplication[];
   timelineTemplates?: TimelineTemplate[];
   timelineSections?: TimelineSection[];
@@ -279,9 +289,20 @@ export function EventDetail({
   spaces?: VenueSpace[];
   inventoryUsage?: import("@/lib/inventory/types").InventoryUsage[];
   teamMembers?: import("@/lib/team/types").StaffMember[];
+  // Booking Financial Architecture Phase 2 — gated by venues.event_order_enabled,
+  // same staged-rollout posture as conversationExperienceEnabled above.
+  eventOrderEnabled?: boolean;
+  eventOrder?: EventOrderWithDetails | null;
+  packages?: Package[];
+  inventoryItems?: InventoryItem[];
   requestsByTaskId?: Record<string, import("@/lib/requests/types").Request>;
   requests?: import("@/lib/requests/types").Request[];
   readinessSummary: EventReadinessSummary;
+  // Sales → Booking Journey walkthrough — before this, nothing on the
+  // Client Workspace pointed back to the inquiry it came from, so the
+  // Lead's own activity history (status changes, prior notes) had no
+  // reachable path once converted, even though it was never deleted.
+  originatingLeadId?: string | null;
 }) {
   const router = useRouter();
   const [statusPending, startStatus] = React.useTransition();
@@ -323,6 +344,14 @@ export function EventDetail({
                 <span>{event.clientName}</span>
               </>
             )}
+            {originatingLeadId && (
+              <>
+                <span className="text-border">·</span>
+                <Link href={`/leads/${originatingLeadId}`} className="hover:text-foreground hover:underline">
+                  View original inquiry
+                </Link>
+              </>
+            )}
           </div>
         </div>
 
@@ -346,6 +375,9 @@ export function EventDetail({
           </Button>
           <Button variant="outline" size="sm" render={<Link href={`/events/${event.id}/day-sheet`} />}>
             <Printer className="mr-1 h-3.5 w-3.5" /> Day-of Sheet
+          </Button>
+          <Button variant="outline" size="sm" render={<Link href={`/calendar/booking/${event.id}`} />}>
+            <Calendar className="mr-1 h-3.5 w-3.5" /> Booking Schedule
           </Button>
           {daysUntil(event.eventDate) === 0 && (
             <Button size="sm" render={<Link href={`/events/${event.id}/today`} />}
@@ -425,6 +457,14 @@ export function EventDetail({
               </span>
             )}
           </TabsTrigger>
+          {eventOrderEnabled && (
+            <TabsTrigger value="event-order">
+              Event Order
+              {eventOrder && eventOrder.lines.length > 0 && (
+                <span className="ml-1 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground">{eventOrder.lines.length}</span>
+              )}
+            </TabsTrigger>
+          )}
           <TabsTrigger value="invoice">
             Payments
             {invoices.length > 0 && <span className="ml-1 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground">{invoices.length}</span>}
@@ -479,7 +519,7 @@ export function EventDetail({
             eventId={event.id} clientId={event.clientId} eventDate={event.eventDate} eventName={event.name}
             clientName={event.clientName} eventType={event.eventType}
             templates={playbookTemplates} applications={playbookApplications} readinessByKind={readinessByKind}
-            portalToken={portalToken} onApplied={() => router.refresh()}
+            onApplied={() => router.refresh()}
           />
           <TimelineSetupCard
             eventId={event.id} eventType={event.eventType} spaceId={event.spaceId} eventStartTime={event.startTime}
@@ -545,8 +585,8 @@ export function EventDetail({
                 linkableDocuments={linkableDocuments}
                 linkableTimelineEntries={linkableTimelineEntries}
                 linkableConversationMessages={linkableConversationMessages}
-                portalToken={portalToken}
                 requestsByTaskId={requestsByTaskId}
+                staffOptions={teamMembers.map((m) => ({ id: m.id, name: m.name }))}
               />
             </CardContent>
           </Card>
@@ -670,6 +710,13 @@ export function EventDetail({
           </Card>
         </TabsContent>
 
+        {/* ── Event Order ──────────────────────────────────────────── */}
+        {eventOrderEnabled && (
+          <TabsContent value="event-order">
+            <EventOrderPanel eventId={event.id} clientId={event.clientId} eventOrder={eventOrder} packages={packages} inventoryItems={inventoryItems} invoices={invoices} floorPlans={event.floorPlans} />
+          </TabsContent>
+        )}
+
         {/* ── Invoice / Payments ────────────────────────────────────── */}
         <TabsContent value="invoice">
           <Card>
@@ -687,13 +734,16 @@ export function EventDetail({
             </CardHeader>
             <CardContent>
               {invoices.length === 0 ? (
-                <p className="py-6 text-center text-sm text-muted-foreground">
-                  No invoice yet.{" "}
-                  <Link href={`/invoices/new?eventId=${event.id}${event.clientId ? `&clientId=${event.clientId}` : ""}`}
-                    className="text-primary hover:underline">
-                    Create one →
-                  </Link>
-                </p>
+                <div className="flex flex-col items-center justify-center gap-3 py-10 text-center">
+                  <p className="text-sm text-muted-foreground">No invoice yet.</p>
+                  <div className="flex items-center gap-2">
+                    {event.clientId && <CreateRetainerSheet eventId={event.id} clientId={event.clientId} />}
+                    <Button type="button" variant="outline" size="sm"
+                      render={<Link href={`/invoices/new?eventId=${event.id}${event.clientId ? `&clientId=${event.clientId}` : ""}`} />}>
+                      Create Full Invoice
+                    </Button>
+                  </div>
+                </div>
               ) : (
                 <div className="space-y-2">
                   {invoices.map((inv) => (
