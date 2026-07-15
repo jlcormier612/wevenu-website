@@ -1,0 +1,72 @@
+@import "tailwindcss";
+
+@theme inline {
+  --font-sans: var(--font-sans);
+  --font-heading: var(--font-heading);
+  --font-script: var(--font-script);
+}
+
+:root {
+  --heritage-sage: #5d6f5d;
+  --forest-sage: #4f5f4f;
+  --soft-sage: #b9d1c2;
+  --linen: #f5f4f2;
+  --warm-gray: #f8f7f4;
+  --natural-cream: #fefefc;
+  --true-white: #ffffff;
+  --taupe-light: #ded6ca;
+  --taupe-medium: #d2cbbf;
+  --taupe-dark: #b8aea1;
+  --dusty-rose: #d8a7aa;
+  --black: #000000;
+  /* Header-only — mid linen between dark flower-contrast and white */
+  --header-linen: #ddd5c8;
+}
+
+@layer base {
+  body {
+    @apply bg-[var(--true-white)] text-[var(--black)] antialiased;
+  }
+  html {
+    @apply font-sans;
+  }
+  h1,
+  h2,
+  h3,
+  h4 {
+    @apply font-heading text-[var(--forest-sage)];
+  }
+}
+
+.marketing-surface {
+  background: var(--true-white);
+  color: var(--black);
+  color-scheme: light;
+}
+
+.font-script {
+  font-family: var(--font-script), cursive;
+}
+
+@keyframes marketing-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.marketing-fade-up {
+  animation: marketing-fade-up 0.8s ease-out both;
+}
+
+.marketing-fade-up-delay {
+  animation: marketing-fade-up 0.9s ease-out 0.12s both;
+}
+
+.marketing-fade-up-delay-2 {
+  animation: marketing-fade-up 1s ease-out 0.22s both;
+}
