@@ -77,6 +77,14 @@ export async function deleteTemplate_(id: string): Promise<PipelineTemplateActio
   return result as PipelineTemplateActionResult;
 }
 
+export async function duplicateTemplate_(id: string, newName: string): Promise<CreatePipelineTemplateResult> {
+  const result = await withVenue(async (supabase, venueId) => {
+    const templateId = await repo.duplicateTemplate(supabase, venueId, id, newName);
+    return { ok: true, templateId } as CreatePipelineTemplateResult;
+  });
+  return result as CreatePipelineTemplateResult;
+}
+
 export async function setTemplateActive_(id: string, isActive: boolean): Promise<PipelineTemplateActionResult> {
   const result = await withVenue(async (supabase, venueId) => {
     await repo.setTemplateActive(supabase, venueId, id, isActive);

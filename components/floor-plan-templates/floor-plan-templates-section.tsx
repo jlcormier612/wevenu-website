@@ -64,17 +64,17 @@ function TemplateCard({
         <p className="min-w-0 truncate text-sm font-medium text-heading">{template.name}</p>
         <div onClick={(e) => e.stopPropagation()} className="shrink-0">
           <DropdownMenu>
-            <DropdownMenuTrigger render={<Button variant="ghost" size="icon" className="h-7 w-7" disabled={busy} />}>
+            <DropdownMenuTrigger render={<Button variant="ghost" size="icon" className="h-7 w-7" disabled={busy} aria-label="Template actions" />}>
               {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <MoreHorizontal className="h-3.5 w-3.5" />}
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuItem onSelect={onDuplicate}>Duplicate</DropdownMenuItem>
-              <DropdownMenuItem onSelect={onRename}>Rename</DropdownMenuItem>
+              <DropdownMenuItem onClick={onDuplicate}>Duplicate</DropdownMenuItem>
+              <DropdownMenuItem onClick={onRename}>Rename</DropdownMenuItem>
               {!template.isArchived && !template.isDefault && (
-                <DropdownMenuItem onSelect={onSetDefault}>Set as Default</DropdownMenuItem>
+                <DropdownMenuItem onClick={onSetDefault}>Set as Default</DropdownMenuItem>
               )}
               <DropdownMenuSeparator />
-              <DropdownMenuItem onSelect={onArchiveToggle}>{template.isArchived ? "Unarchive" : "Archive"}</DropdownMenuItem>
+              <DropdownMenuItem onClick={onArchiveToggle}>{template.isArchived ? "Unarchive" : "Archive"}</DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
@@ -156,6 +156,10 @@ export function FloorPlanTemplatesSection({
     if (search.trim() && !t.name.toLowerCase().includes(search.trim().toLowerCase())) return false;
     return true;
   }), [sorted, search, eventTypeFilter]);
+  // "Duplicate Existing Template" should offer the same candidates the
+  // booking-facing Apply Template flow does — archived templates are
+  // retired on purpose, never a valid duplication source.
+  const activeTemplates = React.useMemo(() => templates.filter((t) => !t.isArchived), [templates]);
 
   if (templates.length === 0) {
     return (
@@ -163,7 +167,7 @@ export function FloorPlanTemplatesSection({
         <Sparkles className="h-8 w-8 text-muted-foreground mx-auto" />
         <p className="text-sm font-medium text-heading">No floor plan templates yet</p>
         <p className="text-xs text-muted-foreground">Reusable room layouts a venue builds once and applies to any booking.</p>
-        <div className="flex justify-center pt-1"><FloorPlanTemplateStarterPicker existingTemplates={templates} spaces={spaces} venueId={venueId} /></div>
+        <div className="flex justify-center pt-1"><FloorPlanTemplateStarterPicker existingTemplates={activeTemplates} spaces={spaces} venueId={venueId} /></div>
       </div>
     );
   }
@@ -190,7 +194,7 @@ export function FloorPlanTemplatesSection({
             </SelectContent>
           </Select>
         </div>
-        <FloorPlanTemplateStarterPicker existingTemplates={templates} spaces={spaces} venueId={venueId} />
+        <FloorPlanTemplateStarterPicker existingTemplates={activeTemplates} spaces={spaces} venueId={venueId} />
       </div>
       {filtered.length === 0 ? (
         <div className="rounded-xl border border-dashed border-border py-10 text-center">

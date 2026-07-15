@@ -10,8 +10,10 @@ import {
   createTemplate,
   deleteContract_,
   deleteTemplate_,
+  duplicateTemplate_,
   mergeContent,
   sendContract,
+  setTemplateArchived_,
   updateContractContent_,
   updateTemplate_,
 } from "@/lib/contracts/service";
@@ -40,6 +42,18 @@ export async function updateTemplateAction(id: string, input: TemplateInput): Pr
 
 export async function deleteTemplateAction(id: string): Promise<ContractActionResult> {
   const result = await deleteTemplate_(id);
+  if (result.ok) revalidatePath("/contracts/templates");
+  return result;
+}
+
+export async function setTemplateArchivedAction(id: string, isArchived: boolean): Promise<ContractActionResult> {
+  const result = await setTemplateArchived_(id, isArchived);
+  if (result.ok) revalidatePath("/contracts/templates");
+  return result;
+}
+
+export async function duplicateTemplateAction(id: string, newName: string): Promise<CreateTemplateResult> {
+  const result = await duplicateTemplate_(id, newName);
   if (result.ok) revalidatePath("/contracts/templates");
   return result;
 }

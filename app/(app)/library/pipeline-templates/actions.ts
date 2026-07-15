@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 
 import {
-  createTemplate, deleteTemplate_, setTemplateActive_, updateTemplate_,
+  createTemplate, deleteTemplate_, duplicateTemplate_, setTemplateActive_, updateTemplate_,
 } from "@/lib/pipeline-templates/service";
 import type {
   CreatePipelineTemplateResult, PipelineTemplateActionResult, PipelineTemplateInput,
@@ -29,6 +29,12 @@ export async function deletePipelineTemplateAction(id: string): Promise<Pipeline
 
 export async function setPipelineTemplateActiveAction(id: string, isActive: boolean): Promise<PipelineTemplateActionResult> {
   const result = await setTemplateActive_(id, isActive);
+  if (result.ok) revalidatePath("/library/pipeline-templates");
+  return result;
+}
+
+export async function duplicatePipelineTemplateAction(id: string, newName: string): Promise<CreatePipelineTemplateResult> {
+  const result = await duplicateTemplate_(id, newName);
   if (result.ok) revalidatePath("/library/pipeline-templates");
   return result;
 }

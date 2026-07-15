@@ -184,10 +184,10 @@ export function TimelineTemplateStarterPicker({
           New Template<ChevronDown className="ml-1.5 h-3.5 w-3.5" />
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
-          <DropdownMenuItem onSelect={() => openFlow("blank")}>Blank Timeline</DropdownMenuItem>
-          <DropdownMenuItem disabled={existingTemplates.length === 0} onSelect={() => openFlow("duplicate")}>Duplicate Existing Timeline</DropdownMenuItem>
-          <DropdownMenuItem onSelect={() => openFlow("upload")}>Upload Existing Timeline</DropdownMenuItem>
-          <DropdownMenuItem onSelect={() => openFlow("paste")}>Paste Existing Timeline</DropdownMenuItem>
+          <DropdownMenuItem onClick={() => openFlow("blank")}>Blank Timeline</DropdownMenuItem>
+          <DropdownMenuItem disabled={existingTemplates.length === 0} onClick={() => openFlow("duplicate")}>Duplicate Existing Timeline</DropdownMenuItem>
+          <DropdownMenuItem onClick={() => openFlow("upload")}>Upload Existing Timeline</DropdownMenuItem>
+          <DropdownMenuItem onClick={() => openFlow("paste")}>Paste Existing Timeline</DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
 

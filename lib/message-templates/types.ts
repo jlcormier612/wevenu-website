@@ -23,6 +23,10 @@ export type MessageTemplate = {
   emailBody: string | null;
   // SMS variant — no subject, by design (§2.5). Null if no SMS version.
   smsBody: string | null;
+  // Archive, not hard-delete, is the default removal path — matching
+  // Planning/Timeline/Floor Plan Templates (Template Platform — Release
+  // Readiness parity pass).
+  isArchived: boolean;
   createdAt: string;
   updatedAt: string;
 };

@@ -1,16 +1,21 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
+import { ContractTemplateList } from "@/components/contracts/contract-template-list";
 import { PageHeader } from "@/components/shell/module-placeholder";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { getTemplates } from "@/lib/contracts/service";
 
 export const metadata: Metadata = { title: "Contract Templates" };
 
+// The one page the sidebar's "Contracts" nav item actually links to
+// (lib/navigation.ts) — /contracts/templates is the same data, the same
+// CRUD routes, and (as of this pass) the same ContractTemplateList
+// component; the two pages were an isolated-implementation duplicate found
+// during the Template Platform audit, not a deliberate second surface, so
+// both are kept in sync here rather than removing either route outright.
 export default async function ContractTemplatesLibraryPage() {
-  const templates = await getTemplates();
+  const templates = await getTemplates(true);
   return (
     <div className="space-y-6">
       <PageHeader
@@ -30,29 +35,7 @@ export default async function ContractTemplatesLibraryPage() {
           <Button render={<Link href="/contracts/templates/new" />}>+ New Template</Button>
         </div>
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {templates.map((t) => (
-            <Card key={t.id} className={t.isDefault ? "border-primary/30" : ""}>
-              <CardHeader>
-                <div className="flex items-start justify-between gap-2">
-                  <CardTitle className="text-base">{t.name}</CardTitle>
-                  {t.isDefault && <Badge variant="default">Default</Badge>}
-                </div>
-                {t.description && <CardDescription>{t.description}</CardDescription>}
-              </CardHeader>
-              <CardContent>
-                <div className="flex items-center gap-2">
-                  <Button size="sm" variant="outline" render={<Link href={`/contracts/templates/${t.id}/edit`} />}>
-                    Edit
-                  </Button>
-                  <Button size="sm" render={<Link href="/contracts/new" />}>
-                    Use
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+        <ContractTemplateList initialTemplates={templates} />
       )}
     </div>
   );

@@ -113,6 +113,24 @@ export async function deleteTemplate(client: DbClient, venueId: string, id: stri
   if (error) throw error;
 }
 
+// Template Platform — Release Readiness: Duplicate, mirroring the identical
+// pattern Playbooks/Timeline Templates/Floor Plan Templates already use — a
+// fresh, independent copy, always starting active (never inheriting the
+// source's archived state, matching those three systems' own convention).
+export async function duplicateTemplate(client: DbClient, venueId: string, sourceId: string, newName: string): Promise<string> {
+  const source = await getTemplateWithStages(client, venueId, sourceId);
+  if (!source) throw new Error("Template not found.");
+  return insertTemplate(client, venueId, {
+    name: newName,
+    description: source.description ?? "",
+    isActive: true,
+    stages: source.stages.map((s) => ({
+      name: s.name, color: s.color, canonicalStage: s.canonicalStage,
+      probability: s.probability != null ? String(s.probability) : "",
+    })),
+  });
+}
+
 export async function setTemplateActive(client: DbClient, venueId: string, id: string, isActive: boolean): Promise<void> {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { error } = await (client.from("pipeline_templates") as any)

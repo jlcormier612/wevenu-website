@@ -25,11 +25,11 @@ async function withVenue<T>(
   return fn(supabase, venue.id);
 }
 
-export async function getTemplates(): Promise<MessageTemplate[]> {
+export async function getTemplates(includeArchived = false): Promise<MessageTemplate[]> {
   if (!isSupabaseConfigured) return [];
   const venue = await getCurrentVenue();
   if (!venue) return [];
-  return repo.getTemplates(await createClient(), venue.id);
+  return repo.getTemplates(await createClient(), venue.id, includeArchived);
 }
 
 export async function getTemplate(id: string): Promise<MessageTemplate | null> {
@@ -60,9 +60,22 @@ export async function updateTemplate_(id: string, input: MessageTemplateInput): 
 }
 
 export async function deleteTemplate_(id: string): Promise<MessageTemplateActionResult> {
+  const result = await withVenue(async (supabase, venueId) => repo.deleteTemplate(supabase, venueId, id));
+  return result as MessageTemplateActionResult;
+}
+
+export async function setTemplateArchived_(id: string, isArchived: boolean): Promise<MessageTemplateActionResult> {
   const result = await withVenue(async (supabase, venueId) => {
-    await repo.deleteTemplate(supabase, venueId, id);
+    await repo.setTemplateArchived(supabase, venueId, id, isArchived);
     return { ok: true } as MessageTemplateActionResult;
   });
   return result as MessageTemplateActionResult;
+}
+
+export async function duplicateTemplate_(id: string, newName: string): Promise<CreateMessageTemplateResult> {
+  const result = await withVenue(async (supabase, venueId) => {
+    const templateId = await repo.duplicateTemplate(supabase, venueId, id, newName);
+    return { ok: true, templateId } as CreateMessageTemplateResult;
+  });
+  return result as CreateMessageTemplateResult;
 }

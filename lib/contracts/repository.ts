@@ -15,7 +15,7 @@ type DbClient = Awaited<ReturnType<typeof createClient>>;
 
 type TemplateRow = {
   id: string; venue_id: string; name: string; description: string | null;
-  content: string; is_default: boolean; created_at: string; updated_at: string;
+  content: string; is_default: boolean; is_archived: boolean; created_at: string; updated_at: string;
 };
 type ContractRow = {
   id: string; venue_id: string; client_id: string | null; event_id: string | null;
@@ -29,7 +29,8 @@ type ActRow = { id: string; venue_id: string; contract_id: string; type: string;
 
 function mapTemplate(r: TemplateRow): ContractTemplate {
   return { id: r.id, venueId: r.venue_id, name: r.name, description: r.description,
-    content: r.content, isDefault: r.is_default, createdAt: r.created_at, updatedAt: r.updated_at };
+    content: r.content, isDefault: r.is_default, isArchived: r.is_archived,
+    createdAt: r.created_at, updatedAt: r.updated_at };
 }
 
 function mapContract(r: ContractRow): Contract {
@@ -50,9 +51,10 @@ function mapContract(r: ContractRow): Contract {
 
 // ---- templates --------------------------------------------------------------
 
-export async function getTemplates(client: DbClient, venueId: string): Promise<ContractTemplate[]> {
-  const { data, error } = await client.from("contract_templates").select("*")
-    .eq("venue_id", venueId).order("is_default", { ascending: false }).order("name");
+export async function getTemplates(client: DbClient, venueId: string, includeArchived = false): Promise<ContractTemplate[]> {
+  let q = client.from("contract_templates").select("*").eq("venue_id", venueId);
+  if (!includeArchived) q = q.eq("is_archived", false);
+  const { data, error } = await q.order("is_default", { ascending: false }).order("name");
   if (error) throw error;
   return (data as TemplateRow[]).map(mapTemplate);
 }
@@ -92,6 +94,24 @@ export async function updateTemplate(client: DbClient, venueId: string, id: stri
 export async function deleteTemplate(client: DbClient, venueId: string, id: string): Promise<void> {
   const { error } = await client.from("contract_templates").delete().eq("id", id).eq("venue_id", venueId);
   if (error) throw error;
+}
+
+export async function setTemplateArchived(client: DbClient, venueId: string, id: string, isArchived: boolean): Promise<void> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error } = await (client.from("contract_templates") as any)
+    .update({ is_archived: isArchived }).eq("id", id).eq("venue_id", venueId);
+  if (error) throw error;
+}
+
+// Template Platform — Release Readiness: Duplicate, matching the identical
+// pattern Playbooks/Timeline Templates/Floor Plan Templates already use — a
+// fresh, independent, always-unarchived, never-default copy.
+export async function duplicateTemplate(client: DbClient, venueId: string, sourceId: string, newName: string): Promise<string> {
+  const source = await getTemplate(client, venueId, sourceId);
+  if (!source) throw new Error("Template not found.");
+  return insertTemplate(client, venueId, {
+    name: newName, description: source.description ?? "", content: source.content, isDefault: false,
+  });
 }
 
 // ---- contracts --------------------------------------------------------------

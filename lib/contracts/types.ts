@@ -11,6 +11,10 @@ export type ContractTemplate = {
   description: string | null;
   content: string; // plain text with {{merge_field}} tokens
   isDefault: boolean;
+  // Archive, not hard-delete, is the default removal path — matching
+  // Planning/Timeline/Floor Plan Templates (Template Platform — Release
+  // Readiness parity pass).
+  isArchived: boolean;
   createdAt: string;
   updatedAt: string;
 };

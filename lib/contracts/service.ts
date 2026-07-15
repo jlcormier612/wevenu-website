@@ -39,11 +39,11 @@ async function withVenue<T>(
 
 // ---- templates --------------------------------------------------------------
 
-export async function getTemplates(): Promise<ContractTemplate[]> {
+export async function getTemplates(includeArchived = false): Promise<ContractTemplate[]> {
   if (!isSupabaseConfigured) return [];
   const venue = await getCurrentVenue();
   if (!venue) return [];
-  return repo.getTemplates(await createClient(), venue.id);
+  return repo.getTemplates(await createClient(), venue.id, includeArchived);
 }
 
 export async function getTemplate(id: string): Promise<ContractTemplate | null> {
@@ -79,6 +79,22 @@ export async function deleteTemplate_(id: string): Promise<ContractActionResult>
     return { ok: true } as ContractActionResult;
   });
   return result as ContractActionResult;
+}
+
+export async function setTemplateArchived_(id: string, isArchived: boolean): Promise<ContractActionResult> {
+  const result = await withVenue(async (supabase, venueId) => {
+    await repo.setTemplateArchived(supabase, venueId, id, isArchived);
+    return { ok: true } as ContractActionResult;
+  });
+  return result as ContractActionResult;
+}
+
+export async function duplicateTemplate_(id: string, newName: string): Promise<CreateTemplateResult> {
+  const result = await withVenue(async (supabase, venueId) => {
+    const templateId = await repo.duplicateTemplate(supabase, venueId, id, newName);
+    return { ok: true, templateId } as CreateTemplateResult;
+  });
+  return result as CreateTemplateResult;
 }
 
 // ---- contracts --------------------------------------------------------------

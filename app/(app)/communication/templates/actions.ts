@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 
 import {
-  createTemplate, deleteTemplate_, updateTemplate_,
+  createTemplate, deleteTemplate_, duplicateTemplate_, setTemplateArchived_, updateTemplate_,
 } from "@/lib/message-templates/service";
 import type {
   CreateMessageTemplateResult, MessageTemplateActionResult, MessageTemplateCategory, MessageTemplateInput,
@@ -25,6 +25,18 @@ export async function updateTemplateAction(id: string, input: MessageTemplateInp
 
 export async function deleteTemplateAction(id: string): Promise<MessageTemplateActionResult> {
   const result = await deleteTemplate_(id);
+  if (result.ok) revalidatePath("/communication/templates");
+  return result;
+}
+
+export async function setTemplateArchivedAction(id: string, isArchived: boolean): Promise<MessageTemplateActionResult> {
+  const result = await setTemplateArchived_(id, isArchived);
+  if (result.ok) revalidatePath("/communication/templates");
+  return result;
+}
+
+export async function duplicateTemplateAction(id: string, newName: string): Promise<CreateMessageTemplateResult> {
+  const result = await duplicateTemplate_(id, newName);
   if (result.ok) revalidatePath("/communication/templates");
   return result;
 }
