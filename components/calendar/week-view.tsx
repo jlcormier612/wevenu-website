@@ -17,7 +17,8 @@ import { useRouter } from "next/navigation";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { FilterBar, formatTime, ItemRow, TYPE_META } from "@/components/calendar/calendar-shared";
+import { FilterBar, formatTime, ItemRow, PerspectiveSwitcher, resolveItemMeta } from "@/components/calendar/calendar-shared";
+import { activePerspectiveId, applyPerspectiveLinkOverrides } from "@/components/calendar/perspectives";
 import { useCalendarFilters } from "@/components/calendar/use-calendar-filters";
 import type { CalendarItem } from "@/lib/calendar/types";
 import { cn } from "@/lib/utils";
@@ -38,6 +39,7 @@ export function WeekView({
 }) {
   const router = useRouter();
   const { filters, setFilters, filteredItems, presentTypes, staffOptions, spaceOptions } = useCalendarFilters(items, "week");
+  const displayItems = applyPerspectiveLinkOverrides(filteredItems, activePerspectiveId(filters));
   const [y, m, d] = weekStart.split("-").map(Number);
   const start = new Date(y, m - 1, d);
 
@@ -45,7 +47,7 @@ export function WeekView({
     const date = new Date(start);
     date.setDate(date.getDate() + i);
     const dateStr = toIso(date);
-    const dayItems = filteredItems.filter((it) => it.date === dateStr)
+    const dayItems = displayItems.filter((it) => it.date === dateStr)
       .sort((a, b) => (a.time ?? "99:99") < (b.time ?? "99:99") ? -1 : 1);
     return { date, dateStr, dayItems };
   });
@@ -57,6 +59,7 @@ export function WeekView({
   }
 
   const rangeLabel = `${start.toLocaleDateString("en-US", { month: "short", day: "numeric" })} – ${days[6].date.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}`;
+  const isCurrentWeek = days.some((d) => d.dateStr === today);
 
   return (
     <div className="space-y-4">
@@ -70,8 +73,14 @@ export function WeekView({
             <ChevronRight className="h-4 w-4" />
           </Button>
         </div>
+        {!isCurrentWeek && (
+          <Button type="button" variant="ghost" size="sm" onClick={() => router.push(`/calendar?view=week&weekStart=${today}`)}>
+            Today
+          </Button>
+        )}
       </div>
 
+      <PerspectiveSwitcher filters={filters} onChange={setFilters} />
       <FilterBar filters={filters} onChange={setFilters} presentTypes={presentTypes} staffOptions={staffOptions} spaceOptions={spaceOptions} />
 
       <div className="grid gap-3 md:grid-cols-7">
@@ -93,7 +102,7 @@ export function WeekView({
                 <p className="text-center text-[11px] text-muted-foreground py-2">—</p>
               )}
               {dayItems.map((item) => {
-                const meta = TYPE_META[item.type];
+                const meta = resolveItemMeta(item);
                 const Icon = meta.icon;
                 return (
                   <Link

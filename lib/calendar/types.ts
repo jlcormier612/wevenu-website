@@ -44,6 +44,18 @@ export type CalendarItem = {
   assignedToName?: string | null;
   spaceId?: string | null;
   spaceName?: string | null;
+  // Calendar Manual Type Redesign — only calendar_block items carry this.
+  // "Block" is now one of several manual schedule types a coordinator can
+  // pick (Tour, Consultation, Client Meeting, Walkthrough, Tasting, Vendor
+  // Meeting, Personal Appointment, Blocked Time, Other); this is what
+  // rendering resolves icon/color/label from instead of the generic
+  // "calendar_block" treatment. Never set on any other item type — a
+  // system-generated item's own type already says everything it needs to.
+  manualType?: import("@/lib/availability/types").ManualScheduleType | null;
+  // Calendar Booking Placeholder — only set for calendar_block items whose
+  // manualType is a Bookings type (wedding_event_booking/private_event).
+  // Null/undefined for every other item, including every other manualType.
+  convertedLeadId?: string | null;
 };
 
 export type CalendarData = {

@@ -38,19 +38,32 @@ function monthOf(dateIso: string): { year: number; month: number } {
   return { year: y, month: m };
 }
 
+function safeYearMonth(yearParam: string | undefined, monthParam: string | undefined, now: Date): { year: number; month: number } {
+  const year = Number(yearParam ?? now.getFullYear());
+  const month = Number(monthParam ?? now.getMonth() + 1);
+  return {
+    year: Number.isFinite(year) && year >= 2020 && year <= 2040 ? year : now.getFullYear(),
+    month: Number.isFinite(month) && month >= 1 && month <= 12 ? month : now.getMonth() + 1,
+  };
+}
+
 export async function resolveCalendarView(params: CalendarViewParams) {
   const now = new Date();
   const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
   const view: ViewMode = (["month", "week", "day", "agenda"] as const).includes(params.view as ViewMode) ? (params.view as ViewMode) : "month";
 
-  const year = Number(params.year ?? now.getFullYear());
-  const month = Number(params.month ?? now.getMonth() + 1);
-  const safeYear = Number.isFinite(year) && year >= 2020 && year <= 2040 ? year : now.getFullYear();
-  const safeMonth = Number.isFinite(month) && month >= 1 && month <= 12 ? month : now.getMonth() + 1;
-
   let items: CalendarItem[];
   let weekStart = params.weekStart ?? today;
   const dayDate = params.date ?? today;
+  // The returned year/month must always describe whatever period is
+  // actually being viewed — for Week/Day that's derived from weekStart/
+  // dayDate, never from params.year/month, which Week/Day navigation never
+  // sets. Deriving it from the URL's own generic year/month params here
+  // was the bug: switching to Month/Agenda from a Week/Day view that had
+  // navigated away from the current month silently landed back on today's
+  // real month instead of the one being viewed.
+  let safeYear: number;
+  let safeMonth: number;
 
   if (view === "week") {
     // Normalize to the Sunday of whatever week was requested.
@@ -62,6 +75,8 @@ export async function resolveCalendarView(params: CalendarViewParams) {
     end.setDate(end.getDate() + 6);
     const startMonth = monthOf(weekStart);
     const endMonth = { year: end.getFullYear(), month: end.getMonth() + 1 };
+    safeYear = startMonth.year;
+    safeMonth = startMonth.month;
     const data1 = await getCalendarData(startMonth.year, startMonth.month);
     const data2 = startMonth.month === endMonth.month && startMonth.year === endMonth.year
       ? null
@@ -69,9 +84,12 @@ export async function resolveCalendarView(params: CalendarViewParams) {
     items = mergeItems(data1.items, data2?.items ?? []);
   } else if (view === "day") {
     const { year: dy, month: dm } = monthOf(dayDate);
+    safeYear = dy;
+    safeMonth = dm;
     const data = await getCalendarData(dy, dm);
     items = data.items;
   } else if (view === "agenda") {
+    ({ year: safeYear, month: safeMonth } = safeYearMonth(params.year, params.month, now));
     // Rolling ~60-day upcoming window: current month plus next.
     const data1 = await getCalendarData(safeYear, safeMonth);
     const nextMonth = safeMonth === 12 ? 1 : safeMonth + 1;
@@ -79,6 +97,7 @@ export async function resolveCalendarView(params: CalendarViewParams) {
     const data2 = await getCalendarData(nextYear, nextMonth);
     items = mergeItems(data1.items, data2.items);
   } else {
+    ({ year: safeYear, month: safeMonth } = safeYearMonth(params.year, params.month, now));
     const data = await getCalendarData(safeYear, safeMonth);
     items = data.items;
   }

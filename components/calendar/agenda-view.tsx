@@ -11,15 +11,44 @@
  */
 import * as React from "react";
 
-import { FilterBar, ItemRow } from "@/components/calendar/calendar-shared";
+import { useRouter } from "next/navigation";
+import { ChevronLeft, ChevronRight } from "lucide-react";
+
+import { Button } from "@/components/ui/button";
+import { FilterBar, ItemRow, PerspectiveSwitcher } from "@/components/calendar/calendar-shared";
+import { activePerspectiveId, applyPerspectiveLinkOverrides } from "@/components/calendar/perspectives";
 import { useCalendarFilters } from "@/components/calendar/use-calendar-filters";
 import type { CalendarItem } from "@/lib/calendar/types";
 import { cn } from "@/lib/utils";
 
-export function AgendaView({ items, today }: { items: CalendarItem[]; today: string }) {
-  const { filters, setFilters, filteredItems, presentTypes, staffOptions, spaceOptions } = useCalendarFilters(items, "agenda");
+const MONTH_NAMES = [
+  "January", "February", "March", "April", "May", "June",
+  "July", "August", "September", "October", "November", "December",
+];
 
-  const upcoming = filteredItems.filter((i) => i.date >= today);
+export function AgendaView({
+  items, today, year, month,
+}: { items: CalendarItem[]; today: string; year: number; month: number }) {
+  const router = useRouter();
+  const { filters, setFilters, filteredItems, presentTypes, staffOptions, spaceOptions } = useCalendarFilters(items, "agenda");
+  const displayItems = applyPerspectiveLinkOverrides(filteredItems, activePerspectiveId(filters));
+
+  // Same ±1-month semantics as the "ArrowLeft"/"ArrowRight" keyboard
+  // shortcut already uses for this view (calendar-view.tsx) — the on-screen
+  // controls this adds are a second way to trigger the identical navigation,
+  // not a new one.
+  function navigate(delta: number) {
+    let newMonth = month + delta;
+    let newYear = year;
+    if (newMonth > 12) { newMonth = 1; newYear++; }
+    if (newMonth < 1)  { newMonth = 12; newYear--; }
+    router.push(`/calendar?view=agenda&year=${newYear}&month=${newMonth}`);
+  }
+
+  const now = new Date();
+  const isCurrentWindow = year === now.getFullYear() && month === now.getMonth() + 1;
+
+  const upcoming = displayItems.filter((i) => i.date >= today);
   const byDate = React.useMemo(() => {
     const map = new Map<string, CalendarItem[]>();
     for (const item of upcoming) {
@@ -31,6 +60,26 @@ export function AgendaView({ items, today }: { items: CalendarItem[]; today: str
 
   return (
     <div className="space-y-4">
+      <div className="flex items-center justify-between gap-4">
+        <div className="flex items-center gap-2">
+          <Button type="button" variant="outline" size="icon" onClick={() => navigate(-1)} aria-label="Previous month">
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+          <h2 className="font-heading text-lg font-medium text-heading min-w-[160px] text-center">
+            {MONTH_NAMES[month - 1]} {year}
+          </h2>
+          <Button type="button" variant="outline" size="icon" onClick={() => navigate(1)} aria-label="Next month">
+            <ChevronRight className="h-4 w-4" />
+          </Button>
+        </div>
+        {!isCurrentWindow && (
+          <Button type="button" variant="ghost" size="sm" onClick={() => router.push(`/calendar?view=agenda&year=${now.getFullYear()}&month=${now.getMonth() + 1}`)}>
+            Today
+          </Button>
+        )}
+      </div>
+
+      <PerspectiveSwitcher filters={filters} onChange={setFilters} />
       <FilterBar filters={filters} onChange={setFilters} presentTypes={presentTypes} staffOptions={staffOptions} spaceOptions={spaceOptions} />
 
       {byDate.length === 0 ? (

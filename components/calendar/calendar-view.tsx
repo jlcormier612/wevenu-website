@@ -19,11 +19,15 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
-import { BLOCK_REASONS } from "@/lib/availability/constants";
+import { BLOCK_REASONS, MANUAL_SCHEDULE_TYPE_OPTIONS } from "@/lib/availability/constants";
+import { MANUAL_SCHEDULE_TYPE_GROUPS, isBookingPlaceholder } from "@/lib/availability/types";
+import type { ManualScheduleType } from "@/lib/availability/types";
+import { EVENT_TYPES } from "@/lib/leads/constants";
 import { toast } from "sonner";
 import type { CalendarItem, CalendarItemType } from "@/lib/calendar/types";
 import { cn } from "@/lib/utils";
-import { FilterBar, formatTime, ItemRow, TYPE_META } from "@/components/calendar/calendar-shared";
+import { FilterBar, formatTime, ItemRow, MANUAL_TYPE_META, PerspectiveSwitcher, resolveItemMeta, TYPE_META } from "@/components/calendar/calendar-shared";
+import { activePerspectiveId, applyPerspectiveLinkOverrides } from "@/components/calendar/perspectives";
 import { useCalendarFilters } from "@/components/calendar/use-calendar-filters";
 import { WeekView } from "@/components/calendar/week-view";
 import { DayView } from "@/components/calendar/day-view";
@@ -142,14 +146,17 @@ function CalendarGrid({
               {/* Item dots */}
               {cell.items.length > 0 && (
                 <div className="mt-1 flex flex-wrap gap-0.5">
-                  {cell.items.slice(0, 4).map((item) => (
-                    <span
-                      key={item.id}
-                      className="block h-1.5 w-1.5 rounded-full"
-                      style={{ backgroundColor: TYPE_META[item.type].dotColor }}
-                      title={`${TYPE_META[item.type].label}: ${item.title}`}
-                    />
-                  ))}
+                  {cell.items.slice(0, 4).map((item) => {
+                    const meta = resolveItemMeta(item);
+                    return (
+                      <span
+                        key={item.id}
+                        className="block h-1.5 w-1.5 rounded-full"
+                        style={{ backgroundColor: meta.dotColor }}
+                        title={`${meta.label}: ${item.title}`}
+                      />
+                    );
+                  })}
                   {cell.items.length > 4 && (
                     <span className="text-[9px] text-muted-foreground leading-none mt-0.5">
                       +{cell.items.length - 4}
@@ -176,10 +183,10 @@ function DayDetail({ date, items, onBlockDeleted }: { date: string | null; items
     startDelete(async () => {
       const result = await deleteBlockAction(blockId);
       if (result.ok) {
-        toast.success("Block removed.");
+        toast.success("Schedule item removed.");
         onBlockDeleted();
       } else {
-        toast.error("Could not remove block.");
+        toast.error("Could not remove schedule item.");
       }
       setDeletingId(null);
     });
@@ -220,6 +227,17 @@ function DayDetail({ date, items, onBlockDeleted }: { date: string | null; items
 }
 
 // ---- Legend -----------------------------------------------------------------
+// Manual types that reuse an existing TYPE_META color (tour, blocked_time)
+// are skipped here — they already appear once via the main loop below, and
+// a duplicate same-colored swatch with a different label would undercut the
+// whole point of "one color, one thing" (Calendar Manual Type Redesign).
+const LEGEND_MANUAL_EXTRAS: { label: string; dotColor: string }[] = [
+  { label: "Meeting", dotColor: "var(--cal-meeting)" },
+  { label: "Walkthrough", dotColor: "var(--cal-walkthrough)" },
+  { label: "Tasting", dotColor: "var(--cal-date-hold)" },
+  { label: "Personal Appointment", dotColor: "var(--cal-follow-up)" },
+  { label: "Other (manual)", dotColor: "var(--cal-other)" },
+];
 
 function Legend() {
   return (
@@ -232,6 +250,12 @@ function Legend() {
           </div>
         ),
       )}
+      {LEGEND_MANUAL_EXTRAS.map((extra) => (
+        <div key={extra.label} className="flex items-center gap-1.5">
+          <span className="h-2.5 w-2.5 rounded-full shrink-0" style={{ backgroundColor: extra.dotColor }} />
+          <span className="text-xs text-muted-foreground">{extra.label}</span>
+        </div>
+      ))}
     </div>
   );
 }
@@ -257,9 +281,15 @@ export function CalendarView({
 }) {
   const router = useRouter();
   const { filters, setFilters, filteredItems, presentTypes, staffOptions, spaceOptions } = useCalendarFilters(items, "month");
+  const displayItems = applyPerspectiveLinkOverrides(filteredItems, activePerspectiveId(filters));
   const [selectedDate, setSelectedDate] = React.useState<string>(today);
   const [showBlockForm, setShowBlockForm] = React.useState(false);
   const [blockTitle, setBlockTitle] = React.useState("");
+  // "Blocked Time" is the default only because it's the closest analog to
+  // the old single-purpose form this replaces — it is no longer the
+  // primary concept, just the last item in MANUAL_SCHEDULE_TYPE_OPTIONS
+  // (Calendar Manual Type Redesign).
+  const [blockType, setBlockType] = React.useState<ManualScheduleType>("tour");
   const [blockReason, setBlockReason] = React.useState<string>("other");
   const [blockStart, setBlockStart] = React.useState(today);
   const [blockEnd, setBlockEnd] = React.useState(today);
@@ -268,12 +298,20 @@ export function CalendarView({
   const [blockEndTime, setBlockEndTime] = React.useState("17:00");
   const [blockRecurrence, setBlockRecurrence] = React.useState<string>("none");
   const [blockRecurrenceEnd, setBlockRecurrenceEnd] = React.useState("");
+  // Calendar Booking Placeholder — only read/sent when blockType is a
+  // Bookings type (isBookingPlaceholder); every other Schedule Item leaves
+  // these untouched and unsent.
+  const [blockEventType, setBlockEventType] = React.useState("wedding");
+  const [blockClientName, setBlockClientName] = React.useState("");
+  const [blockGuestCount, setBlockGuestCount] = React.useState("");
+  const [blockEstimatedRevenue, setBlockEstimatedRevenue] = React.useState("");
   const [blockPending, startBlock] = React.useTransition();
 
   function resetBlockForm() {
-    setBlockTitle(""); setBlockReason("other"); setBlockStart(today); setBlockEnd(today);
+    setBlockTitle(""); setBlockType("tour"); setBlockReason("other"); setBlockStart(today); setBlockEnd(today);
     setBlockIsAllDay(true); setBlockStartTime("09:00"); setBlockEndTime("17:00");
     setBlockRecurrence("none"); setBlockRecurrenceEnd("");
+    setBlockEventType("wedding"); setBlockClientName(""); setBlockGuestCount(""); setBlockEstimatedRevenue("");
   }
 
   function handleAddBlock() {
@@ -281,7 +319,8 @@ export function CalendarView({
     startBlock(async () => {
       const result = await createBlockAction({
         title: blockTitle.trim(),
-        reason: blockReason as import("@/lib/availability/types").BlockReason,
+        type: blockType,
+        reason: blockType === "blocked_time" ? (blockReason as import("@/lib/availability/types").BlockReason) : null,
         startDate: blockStart,
         endDate: blockEnd || blockStart,
         isAllDay: blockIsAllDay,
@@ -290,14 +329,18 @@ export function CalendarView({
         notes: "",
         recurrenceRule: blockRecurrence as import("@/lib/availability/types").RecurrenceRule,
         recurrenceEndsOn: blockRecurrence !== "none" && blockRecurrenceEnd ? blockRecurrenceEnd : null,
+        eventType: blockEventType,
+        clientName: blockClientName,
+        guestCount: blockGuestCount,
+        estimatedRevenue: blockEstimatedRevenue,
       });
       if (result.ok) {
-        toast.success("Block added.");
+        toast.success(isBookingPlaceholder(blockType) ? "Date booked." : "Schedule item added.");
         setShowBlockForm(false);
         resetBlockForm();
         router.refresh();
       } else {
-        toast.error("ok" in result && !result.ok ? result.message ?? "Could not add block." : "Could not add block.");
+        toast.error("ok" in result && !result.ok ? result.message ?? "Could not add schedule item." : "Could not add schedule item.");
       }
     });
   }
@@ -386,7 +429,7 @@ export function CalendarView({
 
       {view === "week" && <WeekView weekStart={weekStart || today} items={items} today={today} />}
       {view === "day" && <DayView date={dayDate || today} items={items} today={today} />}
-      {view === "agenda" && <AgendaView items={items} today={today} />}
+      {view === "agenda" && <AgendaView items={items} today={today} year={year} month={month} />}
 
       {view === "month" && (
       <>
@@ -413,26 +456,71 @@ export function CalendarView({
           </Button>
         )}
         <Button type="button" variant="outline" size="sm" onClick={() => setShowBlockForm(!showBlockForm)}>
-          <Plus className="mr-1 h-3.5 w-3.5" /> Add Block
+          <Plus className="mr-1 h-3.5 w-3.5" /> Add Schedule Item
         </Button>
       </div>
 
-      {/* Add Block inline form */}
+      {/* Add Schedule Item inline form (Calendar Manual Type Redesign —
+          "Block" is now one type among several, not the primary concept;
+          neutral styling, not the old alarm-red treatment). */}
       {showBlockForm && (
-        <div className="rounded-xl border border-destructive/20 bg-destructive/5 p-4 space-y-3">
-          <p className="text-sm font-medium text-heading">Add Calendar Block</p>
+        <div className="rounded-xl border border-border bg-muted/20 p-4 space-y-3">
+          <p className="text-sm font-medium text-heading">Add Schedule Item</p>
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="space-y-1.5">
-              <Label className="text-xs">Title *</Label>
-              <Input value={blockTitle} onChange={(e) => setBlockTitle(e.target.value)} placeholder="Closed for maintenance…" autoFocus />
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs">Reason</Label>
-              <Select value={blockReason} onValueChange={setBlockReason} items={BLOCK_REASONS}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>{BLOCK_REASONS.map((r) => <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>)}</SelectContent>
+              <Label className="text-xs">Schedule Item *</Label>
+              <Select value={blockType} onValueChange={(v) => setBlockType(v as ManualScheduleType)} items={MANUAL_SCHEDULE_TYPE_OPTIONS}>
+                <SelectTrigger>
+                  <span className="flex items-center gap-1.5">
+                    <span className="h-2 w-2 rounded-full shrink-0" style={{ backgroundColor: MANUAL_TYPE_META[blockType].dotColor }} />
+                    <SelectValue />
+                  </span>
+                </SelectTrigger>
+                <SelectContent>
+                  {MANUAL_SCHEDULE_TYPE_GROUPS.map((group) => (
+                    <React.Fragment key={group.label}>
+                      <div className="px-2 pt-2 pb-1 text-[0.6875rem] font-semibold uppercase tracking-[0.08em] text-muted-foreground first:pt-1.5">
+                        {group.label}
+                      </div>
+                      {group.types.map((v) => {
+                        const t = MANUAL_SCHEDULE_TYPE_OPTIONS.find((o) => o.value === v)!;
+                        return (
+                          <SelectItem key={t.value} value={t.value}>
+                            <span className="flex items-center gap-1.5">
+                              <span className="h-2 w-2 rounded-full shrink-0" style={{ backgroundColor: MANUAL_TYPE_META[t.value].dotColor }} />
+                              {t.label}
+                            </span>
+                          </SelectItem>
+                        );
+                      })}
+                    </React.Fragment>
+                  ))}
+                </SelectContent>
               </Select>
             </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Title *</Label>
+              <Input value={blockTitle} onChange={(e) => setBlockTitle(e.target.value)}
+                placeholder={isBookingPlaceholder(blockType) ? "e.g. Smith Wedding" : "e.g. Tour with the Smith family"} autoFocus />
+            </div>
+            {blockType === "blocked_time" && (
+              <div className="space-y-1.5">
+                <Label className="text-xs">Reason</Label>
+                <Select value={blockReason} onValueChange={setBlockReason} items={BLOCK_REASONS}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>{BLOCK_REASONS.map((r) => <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>)}</SelectContent>
+                </Select>
+              </div>
+            )}
+            {isBookingPlaceholder(blockType) && (
+              <div className="space-y-1.5">
+                <Label className="text-xs">Event type</Label>
+                <Select value={blockEventType} onValueChange={setBlockEventType} items={EVENT_TYPES}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>{EVENT_TYPES.map((e) => <SelectItem key={e.value} value={e.value}>{e.label}</SelectItem>)}</SelectContent>
+                </Select>
+              </div>
+            )}
             <div className="space-y-1.5">
               <Label className="text-xs">Start date *</Label>
               <Input type="date" value={blockStart} onChange={(e) => setBlockStart(e.target.value)} />
@@ -441,7 +529,28 @@ export function CalendarView({
               <Label className="text-xs">End date</Label>
               <Input type="date" value={blockEnd} onChange={(e) => setBlockEnd(e.target.value)} min={blockStart} />
             </div>
+            {isBookingPlaceholder(blockType) && (
+              <>
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Client <span className="font-normal text-muted-foreground">(optional)</span></Label>
+                  <Input value={blockClientName} onChange={(e) => setBlockClientName(e.target.value)} placeholder="e.g. Emma & James Smith" />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Guest count <span className="font-normal text-muted-foreground">(optional)</span></Label>
+                  <Input type="number" min="0" value={blockGuestCount} onChange={(e) => setBlockGuestCount(e.target.value)} placeholder="120" />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Estimated revenue <span className="font-normal text-muted-foreground">(optional)</span></Label>
+                  <Input value={blockEstimatedRevenue} onChange={(e) => setBlockEstimatedRevenue(e.target.value)} placeholder="$8,500" />
+                </div>
+              </>
+            )}
           </div>
+          {isBookingPlaceholder(blockType) && (
+            <p className="text-xs text-muted-foreground">
+              This reserves the date without creating a Lead yet — enough to say &quot;booked&quot; today. You can convert it to a real Lead whenever you&apos;re ready, with nothing to retype.
+            </p>
+          )}
 
           {/* All-day toggle + time inputs */}
           <div className="flex items-center gap-3">
@@ -493,7 +602,7 @@ export function CalendarView({
           <div className="flex items-center justify-end gap-2">
             <Button type="button" variant="ghost" size="sm" onClick={() => { setShowBlockForm(false); resetBlockForm(); }} disabled={blockPending}>Cancel</Button>
             <Button type="button" size="sm" disabled={!blockTitle.trim() || !blockStart || blockPending} onClick={handleAddBlock}>
-              {blockPending ? "Adding…" : "Add Block"}
+              {blockPending ? "Adding…" : "Add Schedule Item"}
             </Button>
           </div>
         </div>
@@ -502,6 +611,9 @@ export function CalendarView({
       {/* Legend */}
       <Legend />
 
+      {/* Perspectives (Calendar Release Completion) */}
+      <PerspectiveSwitcher filters={filters} onChange={setFilters} />
+
       {/* Filters (Calendar Integration Phase 4) */}
       <FilterBar filters={filters} onChange={setFilters} presentTypes={presentTypes} staffOptions={staffOptions} spaceOptions={spaceOptions} />
 
@@ -509,7 +621,7 @@ export function CalendarView({
       <div className="grid gap-6 xl:grid-cols-[1fr_300px]">
         {/* Calendar grid */}
         <CalendarGrid
-          year={year} month={month} items={filteredItems}
+          year={year} month={month} items={displayItems}
           selectedDate={selectedDate} today={today}
           onSelectDate={setSelectedDate}
         />
@@ -520,7 +632,7 @@ export function CalendarView({
             <CardTitle className="text-base">Schedule</CardTitle>
           </CardHeader>
           <CardContent>
-            <DayDetail date={selectedDate || null} items={filteredItems} onBlockDeleted={() => router.refresh()} />
+            <DayDetail date={selectedDate || null} items={displayItems} onBlockDeleted={() => router.refresh()} />
           </CardContent>
         </Card>
       </div>
@@ -543,25 +655,38 @@ export function CalendarView({
           </CardHeader>
           <CardContent>
             <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-              {(Object.keys(TYPE_META) as CalendarItemType[]).map((type) => {
-                const count = filteredItems.filter((i) => i.type === type).length;
-                if (count === 0) return null;
-                const meta = TYPE_META[type];
-                const Icon = meta.icon;
-                return (
-                  <div key={type} className="flex items-center gap-2">
-                    <span
-                      className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md"
-                      style={{ backgroundColor: `${meta.dotColor}20`, color: meta.dotColor }}
-                    >
-                      <Icon className="h-3 w-3" />
-                    </span>
-                    <span className="text-sm text-foreground">
-                      {count} {meta.label}{count !== 1 ? "s" : ""}
-                    </span>
-                  </div>
-                );
-              })}
+              {(() => {
+                // Grouped by resolved label, not raw CalendarItemType — a
+                // manually-scheduled "Tour" and a real booked tour must
+                // merge into one "Tour" count, and calendar_block items
+                // must split back out into their own manual types (Tour,
+                // Walkthrough, Blocked Time, ...) rather than all counting
+                // as one misleading "Blocked Time" bucket (Calendar Manual
+                // Type Redesign).
+                const groups = new Map<string, { meta: ReturnType<typeof resolveItemMeta>; count: number }>();
+                for (const item of filteredItems) {
+                  const meta = resolveItemMeta(item);
+                  const existing = groups.get(meta.label);
+                  if (existing) existing.count++;
+                  else groups.set(meta.label, { meta, count: 1 });
+                }
+                return [...groups.entries()].map(([label, { meta, count }]) => {
+                  const Icon = meta.icon;
+                  return (
+                    <div key={label} className="flex items-center gap-2">
+                      <span
+                        className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md"
+                        style={{ backgroundColor: `${meta.dotColor}20`, color: meta.dotColor }}
+                      >
+                        <Icon className="h-3 w-3" />
+                      </span>
+                      <span className="text-sm text-foreground">
+                        {count} {label}{count !== 1 ? "s" : ""}
+                      </span>
+                    </div>
+                  );
+                });
+              })()}
             </div>
           </CardContent>
         </Card>

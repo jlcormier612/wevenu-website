@@ -13,8 +13,22 @@ import { createClient } from "@/integrations/supabase/server";
 import { isSupabaseConfigured } from "@/lib/env";
 import type { CalendarData, CalendarItem } from "@/lib/calendar/types";
 import { getCurrentVenue } from "@/lib/venue/service";
-import { eventTypeLabel } from "@/lib/leads/constants";
+import { eventTypeLabel, formatCurrency } from "@/lib/leads/constants";
 import { getTourCalendarEntries } from "@/lib/tours/service";
+import { blockReasonLabel } from "@/lib/availability/constants";
+import { isBookingPlaceholder } from "@/lib/availability/types";
+import type { ManualScheduleType } from "@/lib/availability/types";
+
+// Calendar Booking Placeholder — the same "is this date available" answer
+// a real Event's own subtitle would carry, built from whatever the
+// coordinator actually filled in (all three fields are optional).
+function bookingPlaceholderSubtitle(guestCount: number | null, estimatedRevenue: number | string | null, convertedLeadId: string | null): string | null {
+  const parts: string[] = [];
+  if (guestCount != null) parts.push(`${guestCount} guest${guestCount === 1 ? "" : "s"}`);
+  if (estimatedRevenue != null) parts.push(formatCurrency(Number(estimatedRevenue)));
+  if (convertedLeadId) parts.push("→ Lead");
+  return parts.length > 0 ? parts.join(" · ") : "Booked";
+}
 
 export async function getCalendarData(
   year: number,
@@ -87,7 +101,7 @@ export async function getCalendarData(
 
     // 7. Calendar blocks — non-recurring blocks overlapping month, plus all active recurring blocks
     supabase.from("calendar_blocks")
-      .select("id, title, reason, start_date, end_date, is_all_day, start_time, end_time, recurrence_rule, recurrence_ends_on")
+      .select("id, title, type, reason, start_date, end_date, is_all_day, start_time, end_time, recurrence_rule, recurrence_ends_on, event_type, client_name, guest_count, estimated_revenue, converted_lead_id")
       .eq("venue_id", venue.id)
       .or(`and(start_date.lte.${end},end_date.gte.${start},recurrence_rule.eq.none),and(recurrence_rule.neq.none,or(recurrence_ends_on.is.null,recurrence_ends_on.gte.${start}))`),
 
@@ -289,10 +303,24 @@ export async function getCalendarData(
             type: "calendar_block",
             date: dateStr,
             title: b.title,
-            subtitle: b.reason,
+            // The manual type itself (Tour, Walkthrough, etc.) is already
+            // conveyed by icon/color/label once rendered — reason is only
+            // ever a Blocked Time sub-classification, and guest count/
+            // revenue are the Booking placeholder's own equivalent, so
+            // those are the only two things worth a subtitle here.
+            subtitle: b.type === "blocked_time" && b.reason
+              ? blockReasonLabel(b.reason)
+              : isBookingPlaceholder(b.type as ManualScheduleType)
+                ? bookingPlaceholderSubtitle(b.guest_count, b.estimated_revenue, b.converted_lead_id)
+                : null,
             time: blockTime,
-            link: "/calendar",
+            // Once converted, the placeholder's own real destination is the
+            // Lead it became — the one case a calendar_block item routes
+            // anywhere other than back to Calendar itself.
+            link: b.converted_lead_id ? `/leads/${b.converted_lead_id}` : "/calendar",
             rawId: b.id,
+            manualType: b.type ?? "blocked_time",
+            convertedLeadId: b.converted_lead_id ?? null,
           });
         }
         cursor.setDate(cursor.getDate() + 1);

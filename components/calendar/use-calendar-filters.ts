@@ -13,11 +13,19 @@
 import * as React from "react";
 
 import type { CalendarItem, CalendarItemType } from "@/lib/calendar/types";
+import type { ManualScheduleType } from "@/lib/availability/types";
 
 export type CalendarFilterState = {
   types: CalendarItemType[] | null; // null = "all types," never persisted as an explicit exclusion list
   staffId: string | null;           // null = "all," "unassigned" = the literal sentinel below
   spaceId: string | null;
+  // Narrows within calendar_block items specifically, by their manualType
+  // (Consultation, Walkthrough, ...) — never affects any other item type.
+  // Only meaningful alongside types including "calendar_block"; a fourth
+  // axis on the same shape staffId/spaceId already established, not a
+  // second filtering mechanism (Calendar Release Completion — Operational
+  // Perspectives).
+  manualTypes: ManualScheduleType[] | null;
 };
 
 export const UNASSIGNED = "__unassigned__";
@@ -36,7 +44,7 @@ function loadSaved(key: string): CalendarFilterState | null {
 
 export function useCalendarFilters(items: CalendarItem[], storageKey: string) {
   const [filters, setFiltersState] = React.useState<CalendarFilterState>(
-    () => loadSaved(storageKey) ?? { types: null, staffId: null, spaceId: null },
+    () => loadSaved(storageKey) ?? { types: null, staffId: null, spaceId: null, manualTypes: null },
   );
 
   const setFilters = React.useCallback((next: CalendarFilterState) => {
@@ -72,6 +80,12 @@ export function useCalendarFilters(items: CalendarItem[], storageKey: string) {
       if (filters.spaceId === UNASSIGNED) {
         if (i.spaceId) return false;
       } else if (i.spaceId !== filters.spaceId) return false;
+    }
+    // Only narrows calendar_block items — every other type has no
+    // manualType of its own and is unaffected, exactly like staffId/spaceId
+    // narrow only the items that carry them.
+    if (filters.manualTypes && i.type === "calendar_block") {
+      if (!i.manualType || !filters.manualTypes.includes(i.manualType)) return false;
     }
     return true;
   }), [items, filters]);

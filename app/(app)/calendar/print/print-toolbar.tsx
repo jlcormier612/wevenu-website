@@ -11,11 +11,16 @@
  */
 import { Download, Printer } from "lucide-react";
 
+import { resolveItemMeta } from "@/components/calendar/calendar-shared";
 import type { CalendarItem } from "@/lib/calendar/types";
 
 function toCsv(items: CalendarItem[]): string {
   const header = ["Date", "Time", "Type", "Title", "Subtitle"];
-  const rows = items.map((i) => [i.date, i.time ?? "", i.type, i.title, i.subtitle ?? ""]);
+  // The resolved label (e.g. "Walkthrough"), not the raw CalendarItemType
+  // ("calendar_block") — otherwise every manually-scheduled Tour, Meeting,
+  // or Walkthrough would export as the generic, now-inaccurate
+  // "calendar_block" (Calendar Manual Type Redesign).
+  const rows = items.map((i) => [i.date, i.time ?? "", resolveItemMeta(i).label, i.title, i.subtitle ?? ""]);
   const escape = (v: string) => (/[",\n]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v);
   return [header, ...rows].map((row) => row.map(escape).join(",")).join("\n");
 }

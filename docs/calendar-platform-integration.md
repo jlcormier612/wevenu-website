@@ -223,4 +223,10 @@ This document's every recommendation is answerable against one test: does it hel
 
 ---
 
-*End of document. No implementation, migration plan, or code is proposed — see task scope.*
+### Addendum — Calendar Manual Type Redesign
+
+§0/§1's characterization of `calendar_blocks` as "administrative closures" is superseded, not the ownership boundary itself. Venues think in terms of scheduling activities, not "blocks" — so the same table (same ownership: still the one thing Calendar itself authors; same architecture: no new tables, no write path into any other feature) now carries a `type` a coordinator picks from "+ Add Schedule Item": Tour, Consultation, Client Meeting, Walkthrough, Tasting, Vendor Meeting, Personal Appointment, Blocked Time, or Other. "Blocked Time" is what "block" always meant — it's simply no longer the only, or the default, option. A manually-scheduled "Tour" or "Client Meeting" is still a Calendar-owned record, not a real `tour_appointments` row or a real Planning task — a coordinator who wants either of those *tracked* against a lead or a booking's checklist still uses those features' own real workflows, unchanged. Visually, manual "Tour" entries deliberately share the exact same color/icon as real booked tours (and manual "Blocked Time" the exact same treatment the old single-purpose block always had) — one glance should answer "what kind of thing is this," regardless of which system originated it.
+
+---
+
+*End of document. No implementation, migration plan, or code is proposed — see task scope. (Addendum above is the one exception, describing a change already made.)*

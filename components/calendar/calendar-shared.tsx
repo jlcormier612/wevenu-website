@@ -10,28 +10,38 @@ import * as React from "react";
 
 import Link from "next/link";
 import {
-  AlertTriangle, CalendarClock, CalendarDays, Clock, ClipboardList, DollarSign,
-  FileClock, FileSignature, GanttChart, ListTodo, MapPin, Phone, Star, Trash2,
+  Ban, CalendarClock, CalendarDays, Clock, ClipboardList, DollarSign,
+  FileClock, FileSignature, Footprints, GanttChart, Handshake, ListTodo, MapPin,
+  MoreHorizontal, Phone, Star, Trash2, User, Users, Utensils,
 } from "lucide-react";
 
 import type { CalendarItem, CalendarItemType } from "@/lib/calendar/types";
+import { isBookingPlaceholder } from "@/lib/availability/types";
+import type { ManualScheduleType } from "@/lib/availability/types";
+import { activePerspectiveId, PERSPECTIVES } from "@/components/calendar/perspectives";
 import { cn } from "@/lib/utils";
 
-// dotColor uses CSS custom properties (defined in globals.css) so dark-mode
-// overrides in .dark { } work automatically — no JS dark-mode detection needed.
-export const TYPE_META: Record<CalendarItemType, {
+type ItemMeta = {
   label: string;
   icon: React.ElementType;
   dotColor: string;  // CSS var reference, e.g. "var(--cal-event)"
   textClass: string;
-}> = {
+};
+
+// dotColor uses CSS custom properties (defined in globals.css) so dark-mode
+// overrides in .dark { } work automatically — no JS dark-mode detection needed.
+export const TYPE_META: Record<CalendarItemType, ItemMeta> = {
   event:          { label: "Event",       icon: CalendarDays,  dotColor: "var(--cal-event)",       textClass: "text-primary" },
   tour:           { label: "Tour",        icon: MapPin,        dotColor: "var(--cal-tour)",        textClass: "text-muted-foreground" },
   follow_up:      { label: "Follow-up",   icon: Phone,         dotColor: "var(--cal-follow-up)",   textClass: "text-muted-foreground" },
   payment_due:    { label: "Payment Due", icon: DollarSign,    dotColor: "var(--cal-payment-due)", textClass: "text-destructive" },
   key_date:       { label: "Key Date",    icon: Star,          dotColor: "var(--cal-key-date)",    textClass: "text-heading" },
   date_hold:      { label: "Date Hold",   icon: Clock,         dotColor: "var(--cal-date-hold)",   textClass: "text-warning-foreground" },
-  calendar_block: { label: "Blocked",     icon: AlertTriangle, dotColor: "var(--cal-blocked)",     textClass: "text-destructive" },
+  // "Blocked Time" — no longer the primary manual concept, just one of
+  // several a coordinator can pick from "+ Add Schedule Item" (Calendar
+  // Manual Type Redesign). Charcoal, not red — a closed date is a neutral
+  // fact, not an alarm.
+  calendar_block: { label: "Blocked Time", icon: Ban,           dotColor: "var(--cal-blocked)",     textClass: "text-muted-foreground" },
   planning_activity: { label: "Planning", icon: CalendarClock, dotColor: "var(--cal-planning-activity)", textClass: "text-heading" },
   request_due:          { label: "Request",           icon: ClipboardList, dotColor: "var(--cal-request-due)",          textClass: "text-heading" },
   contract_expiration:  { label: "Contract Expires",  icon: FileSignature, dotColor: "var(--cal-contract-expiration)",  textClass: "text-warning-foreground" },
@@ -39,6 +49,43 @@ export const TYPE_META: Record<CalendarItemType, {
   planning_task:  { label: "Planning Task", icon: ListTodo,   dotColor: "var(--cal-planning-task)",  textClass: "text-heading" },
   timeline_entry: { label: "Timeline",      icon: GanttChart, dotColor: "var(--cal-timeline-entry)", textClass: "text-heading" },
 };
+
+// Calendar Manual Type Redesign — one visual identity per manual type, so a
+// coordinator recognizes "Tour," "Meeting," "Walkthrough," and "Blocked
+// Time" at a glance regardless of whether the item is system-generated or
+// manually scheduled. Tour and Blocked Time deliberately reuse TYPE_META's
+// own entries rather than duplicating them — a manually-scheduled "Tour" on
+// Calendar should look exactly like a real booked tour, not a lookalike.
+export const MANUAL_TYPE_META: Record<ManualScheduleType, ItemMeta> = {
+  tour:                 TYPE_META.tour,
+  // Consultation/Client Meeting/Vendor Meeting share one color on purpose —
+  // "orange" means "someone's talking to someone," the icon carries the
+  // rest of the distinction.
+  consultation:         { label: "Consultation",         icon: Phone,     dotColor: "var(--cal-meeting)", textClass: "text-heading" },
+  client_meeting:       { label: "Client Meeting",       icon: Users,     dotColor: "var(--cal-meeting)", textClass: "text-heading" },
+  vendor_meeting:       { label: "Vendor Meeting",       icon: Handshake, dotColor: "var(--cal-meeting)", textClass: "text-heading" },
+  walkthrough:          { label: "Walkthrough",          icon: Footprints, dotColor: "var(--cal-walkthrough)", textClass: "text-heading" },
+  tasting:              { label: "Tasting",              icon: Utensils,  dotColor: "var(--cal-date-hold)", textClass: "text-warning-foreground" },
+  personal_appointment: { label: "Personal Appointment", icon: User,      dotColor: "var(--cal-follow-up)", textClass: "text-muted-foreground" },
+  blocked_time:         TYPE_META.calendar_block,
+  // Calendar Booking Placeholder — deliberately reuses the real Event's own
+  // visual identity, not a lookalike: "is this date available" must read
+  // identically whether the answer is a real booking or a placeholder one
+  // (a coordinator scanning the month shouldn't have to know which).
+  wedding_event_booking: TYPE_META.event,
+  private_event:         TYPE_META.event,
+  other:                { label: "Other",                icon: MoreHorizontal, dotColor: "var(--cal-other)", textClass: "text-muted-foreground" },
+};
+
+/** Resolves the correct visual identity for any item — manual schedule items
+ * (calendar_block) resolve by their own manualType; every system-generated
+ * item resolves the same way it always has, by its CalendarItemType. */
+export function resolveItemMeta(item: CalendarItem): ItemMeta {
+  if (item.type === "calendar_block" && item.manualType) {
+    return MANUAL_TYPE_META[item.manualType];
+  }
+  return TYPE_META[item.type];
+}
 
 export function formatTime(hhmm: string | null): string {
   if (!hhmm) return "";
@@ -59,9 +106,16 @@ export function ItemRow({
   /** Agenda/Booking Schedule span many days — show each row's own date. */
   showDate?: boolean;
 }) {
-  const meta = TYPE_META[item.type];
+  const meta = resolveItemMeta(item);
   const Icon = meta.icon;
   const isBlock = item.type === "calendar_block";
+  // Calendar Booking Placeholder — a not-yet-converted one still gets the
+  // block treatment (delete stays available) plus a "Convert to Booking"
+  // link; once converted, it behaves like any other item — a plain link,
+  // now pointed at the real Lead it became (item.link already reflects
+  // this, set once in lib/calendar/service.ts).
+  const isPlaceholder = isBlock && !!item.manualType && isBookingPlaceholder(item.manualType);
+  const isConverted = isPlaceholder && !!item.convertedLeadId;
 
   const inner = (
     <>
@@ -91,23 +145,42 @@ export function ItemRow({
         {item.subtitle && (
           <p className="text-xs text-muted-foreground truncate">{item.subtitle}</p>
         )}
+        {/* Room/staff already flow onto the item for filtering (Calendar
+            Integration Phase 4) — this is the first place either renders as
+            visible text, so "what room/what staff member" is answerable by
+            glancing at the item, not only by using the filter dropdown. */}
+        {(item.spaceName || item.assignedToName) && (
+          <p className="text-xs text-muted-foreground truncate">
+            {[item.spaceName, item.assignedToName].filter(Boolean).join(" · ")}
+          </p>
+        )}
       </div>
     </>
   );
 
-  if (isBlock && item.rawId && onDeleteBlock) {
+  if (isBlock && !isConverted && item.rawId && onDeleteBlock) {
     return (
       <div className="flex items-start gap-3 rounded-lg border border-border bg-card p-3">
         {inner}
-        <button
-          type="button"
-          onClick={() => onDeleteBlock(item.rawId!)}
-          disabled={deleting}
-          className="ml-1 mt-0.5 shrink-0 rounded p-1 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
-          title="Delete block"
-        >
-          <Trash2 className="h-3.5 w-3.5" />
-        </button>
+        <div className="ml-1 mt-0.5 flex shrink-0 items-center gap-1">
+          {isPlaceholder && (
+            <Link
+              href={`/leads/new?fromBlockId=${item.rawId}`}
+              className="rounded px-2 py-1 text-xs font-medium text-primary hover:bg-primary/10 transition-colors whitespace-nowrap"
+            >
+              Convert to Booking
+            </Link>
+          )}
+          <button
+            type="button"
+            onClick={() => onDeleteBlock(item.rawId!)}
+            disabled={deleting}
+            className="shrink-0 rounded p-1 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+            title="Delete schedule item"
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+          </button>
+        </div>
       </div>
     );
   }
@@ -199,7 +272,7 @@ export function FilterBar({
           {hasActiveFilter && (
             <button
               type="button"
-              onClick={() => onChange({ types: null, staffId: null, spaceId: null })}
+              onClick={() => onChange({ types: null, staffId: null, spaceId: null, manualTypes: null })}
               className="text-xs text-muted-foreground hover:text-foreground underline"
             >
               Clear filters
@@ -207,6 +280,48 @@ export function FilterBar({
           )}
         </div>
       )}
+    </div>
+  );
+}
+
+// ---- Perspective switcher (Calendar Release Completion) ---------------------
+// "What am I doing right now," not "what filter do I need." Every button
+// here does exactly one thing: call the same setFilters the manual chips
+// above already call, with a predefined preset — never a second filtering
+// mechanism, never a separate persisted "mode." The switcher's own
+// highlighted state is derived by comparing the live filters against each
+// preset (components/calendar/perspectives.ts's activePerspectiveId), so it
+// can never drift out of sync with what's actually being shown, and a
+// coordinator who further adjusts filters after picking one sees that
+// reflected honestly (nothing highlighted) rather than a stale label.
+
+export function PerspectiveSwitcher({
+  filters, onChange,
+}: {
+  filters: import("@/components/calendar/use-calendar-filters").CalendarFilterState;
+  onChange: (next: import("@/components/calendar/use-calendar-filters").CalendarFilterState) => void;
+}) {
+  const active = activePerspectiveId(filters);
+
+  return (
+    <div className="flex flex-wrap items-center gap-1.5">
+      {PERSPECTIVES.map((p) => (
+        <button
+          key={p.id}
+          type="button"
+          title={p.description}
+          onClick={() => onChange(p.filters)}
+          className={cn(
+            "flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors",
+            active === p.id
+              ? "border-transparent bg-primary text-primary-foreground"
+              : "border-border text-muted-foreground hover:text-foreground hover:border-ring",
+          )}
+        >
+          <span>{p.emoji}</span>
+          {p.label}
+        </button>
+      ))}
     </div>
   );
 }
