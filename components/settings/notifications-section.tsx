@@ -7,6 +7,7 @@ import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { useSyncedState } from "@/lib/hooks/use-synced-state";
 
 type NotificationStats = {
   pendingReminders: number;
@@ -34,7 +35,11 @@ function StatusChip({ label, count, variant }: { label: string; count: number; v
 }
 
 export function NotificationsSection({ initialStats }: { initialStats: NotificationStats }) {
-  const [stats, setStats] = React.useState(initialStats);
+  // See lib/hooks/use-synced-state.ts — sibling sections on this same flat
+  // Settings page (VenueSpacesSection, TourSettingsSection) call
+  // router.refresh() on save, which would otherwise leave these counts
+  // stale without a full reload.
+  const [stats, setStats] = useSyncedState(initialStats);
   const [processing, setProcessing] = React.useState(false);
   const [lastResult, setLastResult] = React.useState<{ processed: number; sent: number; failed: number } | null>(null);
 

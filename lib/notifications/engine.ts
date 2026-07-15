@@ -49,7 +49,6 @@ export async function processReminders(): Promise<ProcessResult> {
       id, venue_id, event_task_id, tour_appointment_id, reminder_type, notify_role, scheduled_for,
       event_tasks (
         id, title, event_id, visibility, owner_type, status, due_date,
-        reminder_interval_days,
         event_tasks_event:events ( id, name, event_date, client_id,
           clients ( id, first_name, partner_first_name, email )
         )
@@ -66,7 +65,6 @@ export async function processReminders(): Promise<ProcessResult> {
   if (error) { result.errors.push(`Fetch error: ${error.message}`); return result; }
   if (!reminders?.length) return result;
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   for (const reminder of reminders as unknown as ReminderRow[]) {
     result.processed++;
 
@@ -204,23 +202,6 @@ export async function processReminders(): Promise<ProcessResult> {
         .update({ status: "sent", sent_at: new Date().toISOString() })
         .eq("id", reminder.id);
 
-      // Recurring: if task still pending and interval is set, schedule next reminder
-      const intervalDays = !isTourReminder ? (task as ReminderRow["event_tasks"] & { reminder_interval_days?: number })?.reminder_interval_days : null;
-      if (intervalDays && task?.status === "pending") {
-        const nextDate = new Date(reminder.scheduled_for);
-        nextDate.setDate(nextDate.getDate() + intervalDays);
-        if (nextDate > new Date()) {
-          await supabase.from("task_reminders").insert({
-            venue_id: reminder.venue_id,
-            event_task_id: reminder.event_task_id,
-            reminder_type: reminder.reminder_type,
-            notify_role: reminder.notify_role,
-            scheduled_for: nextDate.toISOString(),
-            status: "pending",
-          });
-        }
-      }
-
       result.sent++;
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
@@ -246,6 +227,72 @@ export async function processReminders(): Promise<ProcessResult> {
 
   return result;
 }
+
+/**
+ * Escalation sweep (Planning Release Readiness Fixes, Fix #2).
+ *
+ * escalation_after_days has been settable on a Planning task for a while,
+ * but nothing ever read it. This finds tasks that are N days past due
+ * (N = escalation_after_days), still not complete/waived, and not yet
+ * escalated — and raises one venue-wide notification per task via the
+ * existing coordinator inbox (create_venue_notification), the same
+ * mechanism Automation and the Platform Event framework already use.
+ * escalated_at makes this idempotent: a task escalates exactly once.
+ */
+export async function processEscalations(): Promise<ProcessResult> {
+  const result: ProcessResult = { processed: 0, sent: 0, failed: 0, skipped: 0, errors: [] };
+  const supabase = getServiceClient();
+  const today = new Date().toISOString().slice(0, 10);
+
+  const { data: tasks, error } = await supabase
+    .from("event_tasks")
+    .select("id, venue_id, event_id, title, due_date, escalation_after_days")
+    .not("escalation_after_days", "is", null)
+    .is("escalated_at", null)
+    .not("status", "in", "(complete,waived)")
+    .limit(BATCH_SIZE);
+
+  if (error) { result.errors.push(`Fetch error: ${error.message}`); return result; }
+  if (!tasks?.length) return result;
+
+  for (const task of tasks as EscalationTaskRow[]) {
+    result.processed++;
+    try {
+      const escalateOn = new Date(task.due_date);
+      escalateOn.setDate(escalateOn.getDate() + task.escalation_after_days);
+      if (escalateOn.toISOString().slice(0, 10) > today) { result.skipped++; continue; }
+
+      const { error: notifyError } = await supabase.rpc("create_venue_notification", {
+        p_venue_id: task.venue_id,
+        p_event_id: task.event_id,
+        p_type: "task_escalated",
+        p_title: "Task overdue and escalated",
+        p_body: `"${task.title}" is still open ${task.escalation_after_days} day${task.escalation_after_days === 1 ? "" : "s"} past its due date.`,
+        p_link: `/events/${task.event_id}`,
+        p_emoji: "⏰",
+      });
+      if (notifyError) throw new Error(notifyError.message);
+
+      await supabase.from("event_tasks").update({ escalated_at: new Date().toISOString() }).eq("id", task.id);
+      result.sent++;
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      result.errors.push(`Escalation ${task.id}: ${msg}`);
+      result.failed++;
+    }
+  }
+
+  return result;
+}
+
+type EscalationTaskRow = {
+  id: string;
+  venue_id: string;
+  event_id: string;
+  title: string;
+  due_date: string;
+  escalation_after_days: number;
+};
 
 // Type helpers for the reminder query shape
 type ReminderRow = {

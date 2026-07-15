@@ -3,6 +3,7 @@
 import * as React from "react";
 import { Bell, Mail, Smartphone, Zap } from "lucide-react";
 import { toast } from "sonner";
+import { useSyncedState } from "@/lib/hooks/use-synced-state";
 import type { NotificationPreferences } from "@/lib/notifications/preferences";
 
 type PrefKey = keyof Pick<NotificationPreferences,
@@ -90,7 +91,10 @@ export function NotificationPreferencesSection({
 }: {
   initialPrefs: NotificationPreferences;
 }) {
-  const [prefs, setPrefs] = React.useState(initialPrefs);
+  // See lib/hooks/use-synced-state.ts — sibling sections on this same flat
+  // Settings page call router.refresh() on save; every toggle here
+  // auto-saves immediately (no draft to protect), so syncing is safe.
+  const [prefs, setPrefs] = useSyncedState(initialPrefs);
   const [saving, setSaving] = React.useState<PrefKey | null>(null);
 
   async function handleToggle(key: PrefKey, value: boolean) {

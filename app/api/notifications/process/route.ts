@@ -14,7 +14,18 @@
 
 import { NextResponse } from "next/server";
 
-import { processReminders } from "@/lib/notifications/engine";
+import { processEscalations, processReminders } from "@/lib/notifications/engine";
+import type { ProcessResult } from "@/lib/notifications/types";
+
+function mergeResults(a: ProcessResult, b: ProcessResult): ProcessResult {
+  return {
+    processed: a.processed + b.processed,
+    sent: a.sent + b.sent,
+    failed: a.failed + b.failed,
+    skipped: a.skipped + b.skipped,
+    errors: [...a.errors, ...b.errors],
+  };
+}
 
 function isCronAuthorized(request: Request): boolean {
   const cronSecret = process.env.CRON_SECRET;
@@ -35,7 +46,7 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
   try {
-    const result = await processReminders();
+    const result = mergeResults(await processReminders(), await processEscalations());
     console.log(`[cron] notifications processed: ${result.sent} sent, ${result.failed} failed`);
     return NextResponse.json(result);
   } catch (err) {
@@ -51,7 +62,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
   try {
-    const result = await processReminders();
+    const result = mergeResults(await processReminders(), await processEscalations());
     return NextResponse.json(result);
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";
