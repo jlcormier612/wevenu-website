@@ -14,6 +14,10 @@ import * as scheduledMessages from "@/lib/scheduled-messages/service";
 import type {
   ScheduleMessageResult, ScheduledMessage, ScheduledMessageActionResult, ScheduledMessageChannel,
 } from "@/lib/scheduled-messages/types";
+import { getCommunicationReadiness, sendTestEmail, sendTestSms } from "@/lib/communication/readiness";
+import type { CommunicationReadiness, TestSendResult } from "@/lib/communication/readiness";
+import { getMessageTimeline } from "@/lib/communication/timeline";
+import type { TimelineStep } from "@/lib/communication/timeline";
 
 export async function sendMessageAction(
   entityType: MessageEntityType,
@@ -100,4 +104,24 @@ export async function cancelScheduledMessageAction(id: string): Promise<Schedule
 /** "Scheduled Today" tile on the Communication Dashboard. */
 export async function getScheduledCountForTodayAction(): Promise<number> {
   return scheduledMessages.getScheduledCountForToday();
+}
+
+// ── Communication Trust Experience, Phase 6 — Communication Readiness ────────
+
+export async function getCommunicationReadinessAction(): Promise<CommunicationReadiness> {
+  return getCommunicationReadiness();
+}
+
+export async function sendTestEmailAction(): Promise<TestSendResult> {
+  return sendTestEmail();
+}
+
+export async function sendTestSmsAction(): Promise<TestSendResult> {
+  return sendTestSms();
+}
+
+// ── Communication Trust Experience — Message Timeline ────────────────────────
+
+export async function getMessageTimelineAction(messageId: string, source: "legacy" | "conversation"): Promise<TimelineStep[]> {
+  return getMessageTimeline(messageId, source);
 }

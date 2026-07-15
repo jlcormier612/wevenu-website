@@ -15,6 +15,7 @@ import { toast } from "sonner";
 import { sendMessageAction } from "@/app/(app)/messaging/actions";
 import { sendQuestionnaireAction } from "@/app/(app)/events/[id]/questionnaire-actions";
 import { MessageCompose } from "@/components/messaging/message-compose";
+import { MessageTimelinePopover } from "@/components/messaging/message-timeline-popover";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import type { ComposeInput, Message, MessageEntityType, SendResult, ThreadWithMessages } from "@/lib/messaging/types";
@@ -44,8 +45,7 @@ function MessageBubble({ message }: { message: Message }) {
         <span>{isOutbound ? "You" : (message.fromName ?? "Contact")}</span>
         <span>·</span>
         <span>{time}</span>
-        {message.status === "failed" && <span className="text-destructive font-medium">· Failed</span>}
-        {message.status === "sent" && isOutbound && <span>· Sent</span>}
+        <MessageTimelinePopover messageId={message.id} source="legacy" status={message.status} failureReason={message.errorMessage} isOutbound={isOutbound} />
       </div>
     </div>
   );

@@ -181,7 +181,7 @@ export async function sendMessage(
       channel: "email",
       status,
       provider_id: providerId,
-      sent_at: status === "sent" ? new Date().toISOString() : null,
+      sent_at: status === "accepted" ? new Date().toISOString() : null,
       luv_draft_id: input.luvDraftId ?? null,
     })
     .select("id").single<{ id: string }>();
@@ -201,7 +201,7 @@ export async function updateMessageStatus(
   const patch: Record<string, unknown> = { status };
   if (providerId) patch.provider_id = providerId;
   if (errorMessage) patch.error_message = errorMessage;
-  if (status === "sent") patch.sent_at = new Date().toISOString();
+  if (status === "accepted") patch.sent_at = new Date().toISOString();
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   await (client.from("messages") as any).update(patch).eq("id", messageId).eq("venue_id", venueId);
 }

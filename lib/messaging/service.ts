@@ -4,6 +4,7 @@
 import { createClient } from "@/integrations/supabase/server";
 import { isSupabaseConfigured } from "@/lib/env";
 import { sendEmail } from "@/lib/email/send";
+import { translateEmailFailure } from "@/lib/communication/failure-messages";
 import * as repo from "@/lib/messaging/repository";
 import type {
   ComposeInput,
@@ -66,26 +67,32 @@ export async function sendMessage(
       fromName, fromEmail, input, null, "sending",
     );
 
-    // 2. Send via Resend (or mailto fallback — not suitable for logging)
-    const apiKey = process.env.RESEND_API_KEY;
-    if (apiKey) {
-      const emailResult = await sendEmail({
-        to: input.toEmail,
-        subject: input.subject,
-        text: input.body,
-        replyTo: venue.email ?? undefined,
-        threadId,
-      });
+    // 2. Send for real. Communication Trust Experience — this used to check
+    // for an API key itself and mark the message "sent" without ever
+    // calling sendEmail() when one was missing, which meant COMMUNICATION_
+    // MODE and even a fully unconfigured venue could both silently claim
+    // success with no attempt ever made. sendEmail() already owns every one
+    // of those decisions (disabled mode, missing key → mailto); trust its
+    // answer instead of duplicating the check here. A mailto result has no
+    // meaning for a message composed and "sent" from inside the app itself
+    // (there's no browser here to open a mail client), so it's treated as
+    // not actually sent, same as any other failure.
+    const emailResult = await sendEmail({
+      to: input.toEmail,
+      subject: input.subject,
+      text: input.body,
+      replyTo: venue.email ?? undefined,
+      threadId,
+    });
 
-      if (emailResult.ok && emailResult.method === "resend") {
-        await repo.updateMessageStatus(supabase, venue.id, messageId, "sent");
-      } else if (!emailResult.ok) {
-        await repo.updateMessageStatus(supabase, venue.id, messageId, "failed", undefined, emailResult.message);
-        return { ok: false, message: emailResult.message };
-      }
+    if (emailResult.ok && (emailResult.method === "resend" || emailResult.method === "disabled")) {
+      await repo.updateMessageStatus(supabase, venue.id, messageId, "accepted", emailResult.providerId);
     } else {
-      // No API key — mark as sent anyway (user is expected to use mailto fallback UI)
-      await repo.updateMessageStatus(supabase, venue.id, messageId, "sent");
+      const failMessage = emailResult.ok
+        ? "Email isn't fully configured for this venue yet — add a Resend API key in Settings to send from here."
+        : translateEmailFailure(emailResult.message);
+      await repo.updateMessageStatus(supabase, venue.id, messageId, "failed", undefined, failMessage);
+      return { ok: false, message: failMessage };
     }
 
     // 3. Save attachments

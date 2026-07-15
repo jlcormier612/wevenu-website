@@ -29,6 +29,7 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/integrations/supabase/admin";
 import { exitActiveEnrollmentsForRelationship } from "@/lib/message-sequences/repository";
+import { shouldAdvanceStatus } from "@/lib/communication/status";
 
 type InboundPayload = {
   from: string;
@@ -180,6 +181,24 @@ export async function POST(request: NextRequest) {
     message_count: (thread?.message_count ?? 0) + 1,
   }).eq("id", threadId);
   if (updateError) console.error("Thread update failed:", updateError.message);
+
+  // Communication Trust Experience — the most recent outbound message in
+  // this thread just got a reply; that's real news for a venue owner
+  // wondering whether their message landed. Rank-guarded so a message
+  // already marked "failed" (it never went) can't be overwritten.
+  const { data: lastOutbound } = await supabase.from("messages")
+    .select("id, status").eq("thread_id", threadId).eq("direction", "outbound")
+    .order("created_at", { ascending: false }).limit(1).maybeSingle<{ id: string; status: string }>();
+  if (lastOutbound && shouldAdvanceStatus(lastOutbound.status, "replied")) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await (supabase.from("messages") as any).update({ status: "replied" }).eq("id", lastOutbound.id);
+    // Message Timeline needs a timestamp for every transition — status
+    // webhooks log their own event, but this transition happens here in
+    // application code, so it must log its own event the same way.
+    await supabase.from("message_events").insert({
+      venue_id: venueId, message_id: lastOutbound.id, event_type: "replied", occurred_at: new Date().toISOString(),
+    });
+  }
 
   // Inbound reply = responsiveness signal — refresh scores immediately
   if (entityType === "lead" && entityId) {

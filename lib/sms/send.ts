@@ -17,7 +17,13 @@
  *   TWILIO_FROM_NUMBER               — fallback if no Messaging Service is
  *                                      set up yet; opt-out handling must be
  *                                      built separately if used long-term.
+ *
+ * See lib/communication/mode.ts for COMMUNICATION_MODE (real/sandbox/
+ * disabled) and COMMUNICATION_SANDBOX_PHONE — Communication Infrastructure
+ * Readiness, Phase 2.
  */
+
+import { getCommunicationMode, sandboxPhoneRecipient } from "@/lib/communication/mode";
 
 export type SmsPayload = {
   to: string;      // E.164 format, e.g. "+16155551234"
@@ -25,7 +31,7 @@ export type SmsPayload = {
 };
 
 export type SmsSendResult =
-  | { ok: true; providerId: string }
+  | { ok: true; providerId: string; sandboxRedirectedFrom?: string }
   | { ok: false; message: string };
 
 function isConfigured(): boolean {
@@ -34,6 +40,11 @@ function isConfigured(): boolean {
 }
 
 export async function sendSms(payload: SmsPayload): Promise<SmsSendResult> {
+  const mode = getCommunicationMode();
+  if (mode === "disabled") {
+    return { ok: true, providerId: "disabled" };
+  }
+
   const accountSid = process.env.TWILIO_ACCOUNT_SID;
   const authToken = process.env.TWILIO_AUTH_TOKEN;
   const messagingServiceSid = process.env.TWILIO_MESSAGING_SERVICE_SID;
@@ -46,12 +57,28 @@ export async function sendSms(payload: SmsPayload): Promise<SmsSendResult> {
     return { ok: false, message: "No phone number on file to text." };
   }
 
+  let recipient = payload.to;
+  let sandboxRedirectedFrom: string | undefined;
+  if (mode === "sandbox") {
+    const sandboxTo = sandboxPhoneRecipient();
+    if (sandboxTo) {
+      sandboxRedirectedFrom = payload.to;
+      recipient = sandboxTo;
+    }
+  }
+
   const params = new URLSearchParams({
-    To: payload.to,
+    To: recipient,
     Body: payload.body,
   });
   if (messagingServiceSid) params.set("MessagingServiceSid", messagingServiceSid);
   else params.set("From", fromNumber!);
+
+  // Communication Trust Experience — without this, Twilio has nothing to
+  // call back to, so a "sent" text can never be told apart from one that
+  // silently failed at the carrier. See app/api/messaging/sms-status/route.ts.
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL;
+  if (appUrl) params.set("StatusCallback", `${appUrl}/api/messaging/sms-status`);
 
   const res = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`, {
     method: "POST",
@@ -66,7 +93,7 @@ export async function sendSms(payload: SmsPayload): Promise<SmsSendResult> {
   if (!res.ok) {
     return { ok: false, message: data?.message ?? `Text send failed (${res.status}).` };
   }
-  return { ok: true, providerId: data?.sid ?? "" };
+  return { ok: true, providerId: data?.sid ?? "", sandboxRedirectedFrom };
 }
 
 export { isConfigured as isSmsConfigured };

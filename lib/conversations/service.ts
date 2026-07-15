@@ -19,6 +19,7 @@ import type {
 import { sendSms } from "@/lib/sms/send";
 import { toE164 } from "@/lib/sms/phone";
 import { sendEmail } from "@/lib/email/send";
+import { translateEmailFailure, translateSmsFailure } from "@/lib/communication/failure-messages";
 
 export async function getConversationInbox(): Promise<{ conversations: ConversationSummary[]; totalUnread: number }> {
   if (!isSupabaseConfigured) return { conversations: [], totalUnread: 0 };
@@ -55,6 +56,13 @@ export async function sendConversationMessage(
   // Real" for how that was found. conversation_messages has no subject
   // column (true for every channel, not just email) — the subject is used
   // for the real outbound send only, same as Scheduled Sends already does.
+  // Communication Trust Experience — capture what the provider actually
+  // said (its id, whether it was accepted at all) instead of throwing that
+  // answer away the moment the send succeeds. Without a provider_id here,
+  // no delivery/open/click/bounce webhook could ever find this row again —
+  // see docs/communication-trust-experience.md, Phase 1.
+  let providerId: string | undefined;
+  let status: string | undefined;
   if (channel === "sms") {
     const phone = await repo.getConversationRecipientPhone(supabase, conversationId);
     const e164 = phone ? toE164(phone) : null;
@@ -62,7 +70,9 @@ export async function sendConversationMessage(
       return { ok: false, message: "This client has no phone number on file — add one to their record to send a text." };
     }
     const smsResult = await sendSms({ to: e164, body: trimmed });
-    if (!smsResult.ok) return { ok: false, message: smsResult.message };
+    if (!smsResult.ok) return { ok: false, message: translateSmsFailure(smsResult.message) };
+    providerId = smsResult.providerId;
+    status = "accepted";
   } else if (channel === "email") {
     if (!emailSubject?.trim()) {
       return { ok: false, message: "An email needs a subject line." };
@@ -72,10 +82,12 @@ export async function sendConversationMessage(
       return { ok: false, message: "This client has no email address on file — add one to their record to send an email." };
     }
     const emailResult = await sendEmail({ to: email, subject: emailSubject.trim(), text: trimmed });
-    if (!emailResult.ok) return { ok: false, message: emailResult.message };
+    if (!emailResult.ok) return { ok: false, message: translateEmailFailure(emailResult.message) };
+    providerId = emailResult.providerId;
+    status = "accepted";
   }
 
-  const result = await repo.sendConversationMessage(supabase, conversationId, trimmed, channel);
+  const result = await repo.sendConversationMessage(supabase, conversationId, trimmed, channel, providerId, status);
   if (!result.ok) return { ok: false, message: result.error ?? "Could not send message." };
   return { ok: true, messageId: result.messageId! };
 }

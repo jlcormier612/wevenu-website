@@ -20,6 +20,7 @@
  */
 
 import * as React from "react";
+import Link from "next/link";
 import { Search } from "lucide-react";
 
 import { getConversationInboxAction, getScheduledCountForTodayAction } from "@/app/(app)/messaging/actions";
@@ -143,9 +144,14 @@ export function ConversationInbox({ teamMembers = [] }: { teamMembers?: StaffMem
 
   return (
     <div className="space-y-4">
-      <div>
-        <h1 className="font-heading text-2xl font-medium text-heading">Inbox</h1>
-        <p className="text-sm text-muted-foreground">Every conversation with a lead or booked client, in one place.</p>
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h1 className="font-heading text-2xl font-medium text-heading">Inbox</h1>
+          <p className="text-sm text-muted-foreground">Every conversation with a lead or booked client, in one place.</p>
+        </div>
+        <Link href="/messaging/health" className="shrink-0 text-xs text-muted-foreground hover:text-foreground hover:underline">
+          Communication Health →
+        </Link>
       </div>
 
       {/* Communication Dashboard */}

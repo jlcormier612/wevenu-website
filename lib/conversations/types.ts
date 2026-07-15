@@ -43,6 +43,10 @@ export type ConversationMessage = {
   sentAt: string;
   venueReadAt: string | null;
   contactReadAt: string | null;
+  // Communication Trust Experience — null for record-only channels (portal,
+  // internal_note, phone_log, voicemail) where no provider is ever involved.
+  status: string | null;
+  failureReason: string | null;
 };
 
 export type ConversationDetail = {

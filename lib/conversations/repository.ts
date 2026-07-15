@@ -76,10 +76,12 @@ export async function getConversation(
   type Row = {
     id: string; sender_type: ConversationMessage["senderType"]; channel: ConversationMessage["channel"];
     body: string; sent_at: string; venue_read_at: string | null; contact_read_at: string | null;
+    status: string | null; failure_reason: string | null;
   };
   const messages = ((data.messages ?? []) as Row[]).map((m): ConversationMessage => ({
     id: m.id, senderType: m.sender_type, channel: m.channel, body: m.body,
     sentAt: m.sent_at, venueReadAt: m.venue_read_at, contactReadAt: m.contact_read_at,
+    status: m.status, failureReason: m.failure_reason,
   }));
   return { conversationId: data.conversation_id, messages };
 }
@@ -89,11 +91,15 @@ export async function sendConversationMessage(
   conversationId: string,
   body: string,
   channel: string = "portal",
+  providerId?: string | null,
+  status?: string | null,
 ): Promise<{ ok: boolean; messageId?: string; error?: string }> {
   const { data, error } = await client.rpc("send_conversation_message", {
     p_conversation_id: conversationId,
     p_body: body,
     p_channel: channel,
+    p_provider_id: providerId ?? null,
+    p_status: status ?? null,
   });
   if (error) throw error;
   return { ok: data?.ok ?? false, messageId: data?.message_id, error: data?.error };

@@ -1,6 +1,11 @@
 export type MessageChannel = "email" | "sms" | "system" | "internal";
 export type MessageDirection = "outbound" | "inbound" | "system";
-export type MessageStatus = "draft" | "sending" | "sent" | "delivered" | "failed" | "received";
+// Communication Trust Experience — one shared lifecycle across messages and
+// conversation_messages. "accepted" replaces the old "sent" (the provider
+// took it; that is not the same claim as delivered — see
+// docs/communication-trust-experience.md).
+export type MessageStatus =
+  | "draft" | "sending" | "accepted" | "delivered" | "opened" | "clicked" | "replied" | "failed" | "received";
 export type ThreadStatus = "active" | "archived";
 export type MessageEntityType = "lead" | "client" | "event";
 

@@ -10,6 +10,7 @@
  */
 
 import * as React from "react";
+import Link from "next/link";
 import {
   ArrowLeft, FileText, Image as ImageIcon, MessageSquare,
   Paperclip, RotateCcw, Send, X,
@@ -583,6 +584,9 @@ export function LegacyMessagingInbox() {
                 : "Loading…"}
             </p>
           </div>
+          <Link href="/messaging/health" className="shrink-0 text-xs text-muted-foreground hover:text-foreground hover:underline">
+            Communication Health →
+          </Link>
         </div>
       </div>
 

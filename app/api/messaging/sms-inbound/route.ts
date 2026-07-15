@@ -29,6 +29,7 @@ import { type NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/integrations/supabase/admin";
 import { verifyTwilioSignature } from "@/lib/sms/verify";
 import { exitActiveEnrollmentsForRelationship } from "@/lib/message-sequences/repository";
+import { shouldAdvanceStatus } from "@/lib/communication/status";
 
 export async function POST(request: NextRequest) {
   const rawBody = await request.text();
@@ -89,6 +90,21 @@ export async function POST(request: NextRequest) {
   if (insertError) {
     console.error("Inbound SMS insert failed:", insertError.message);
     return NextResponse.json({ error: "Failed to record message." }, { status: 500 });
+  }
+
+  // Communication Trust Experience — same "replied" marking as the email
+  // inbound route, for the most recent outbound text in this conversation.
+  const { data: lastOutbound } = await supabase.from("conversation_messages")
+    .select("id, status").eq("conversation_id", conversationId).eq("channel", "sms")
+    .neq("sender_type", "lead_or_client").order("sent_at", { ascending: false }).limit(1).maybeSingle<{ id: string; status: string | null }>();
+  if (lastOutbound && shouldAdvanceStatus(lastOutbound.status, "replied")) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await (supabase.from("conversation_messages") as any).update({ status: "replied" }).eq("id", lastOutbound.id);
+    // Message Timeline needs a timestamp for every transition — see the
+    // identical comment in app/api/messaging/inbound/route.ts.
+    await supabase.from("conversation_message_events").insert({
+      message_id: lastOutbound.id, event_type: "replied", occurred_at: new Date().toISOString(),
+    });
   }
 
   // Stop on reply (§3.3) — a reply means a human is handling this

@@ -13,7 +13,7 @@
 import * as React from "react";
 import Link from "next/link";
 import {
-  ArrowLeft, Calendar, Clock, Mail, MessageSquare, Phone, Send, Smartphone, StickyNote, User, Voicemail, Workflow, X,
+  ArrowLeft, Calendar, Clock, ListTodo, Mail, MessageSquare, Phone, RotateCcw, Send, Smartphone, StickyNote, User, Voicemail, Workflow, X,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -21,6 +21,8 @@ import {
   cancelScheduledMessageAction, getActiveEnrollmentsForConversationAction, getComposeTemplatesAction, getConversationAction,
   getScheduledForConversationAction, scheduleMessageAction, sendConversationMessageAction, setConversationAssignedStaffAction,
 } from "@/app/(app)/messaging/actions";
+import { addTaskAction } from "@/app/(app)/leads/[id]/actions";
+import { MessageTimelinePopover } from "@/components/messaging/message-timeline-popover";
 import type { ConversationChannel, ConversationMessage, ConversationSummary } from "@/lib/conversations/types";
 import type { SequenceEnrollment } from "@/lib/message-sequences/types";
 import type { MessageTemplate } from "@/lib/message-templates/types";
@@ -75,7 +77,48 @@ function ChannelIcon({ channel }: { channel: ConversationChannel }) {
   );
 }
 
-function Bubble({ msg }: { msg: ConversationMessage }) {
+// Communication Trust Experience, Phase 5 — a failed message is never a
+// dead end. "Retry" and "Send as X instead" prefill the compose box rather
+// than silently re-sending — the coordinator confirms before anything goes
+// out a second time, same "system proposes, human confirms" principle used
+// elsewhere in this codebase, and email in particular has no stored subject
+// to safely resend without a look.
+function RecoveryActions({
+  msg, leadId, onPrefill, onCreateTask,
+}: {
+  msg: ConversationMessage;
+  leadId: string | null;
+  onPrefill: (body: string, channel: ConversationChannel) => void;
+  onCreateTask: () => void;
+}) {
+  const altChannel: ConversationChannel | null = msg.channel === "email" ? "sms" : msg.channel === "sms" ? "email" : null;
+  return (
+    <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] text-muted-foreground">
+      <button type="button" onClick={() => onPrefill(msg.body, msg.channel)} className="inline-flex items-center gap-1 hover:text-foreground hover:underline">
+        <RotateCcw className="h-2.5 w-2.5" /> Retry
+      </button>
+      {altChannel && (
+        <button type="button" onClick={() => onPrefill(msg.body, altChannel)} className="inline-flex items-center gap-1 hover:text-foreground hover:underline">
+          Send as {altChannel === "sms" ? "text" : "email"} instead
+        </button>
+      )}
+      {leadId && (
+        <button type="button" onClick={onCreateTask} className="inline-flex items-center gap-1 hover:text-foreground hover:underline">
+          <ListTodo className="h-2.5 w-2.5" /> Follow up later
+        </button>
+      )}
+    </div>
+  );
+}
+
+function Bubble({
+  msg, leadId, onPrefill, onCreateTask,
+}: {
+  msg: ConversationMessage;
+  leadId: string | null;
+  onPrefill: (body: string, channel: ConversationChannel) => void;
+  onCreateTask: (msg: ConversationMessage) => void;
+}) {
   const isVenue = msg.senderType === "venue_staff" || msg.senderType === "system";
   return (
     <div className={`flex flex-col ${isVenue ? "items-end" : "items-start"}`}>
@@ -88,8 +131,12 @@ function Bubble({ msg }: { msg: ConversationMessage }) {
         <span className={`mt-1 flex items-center gap-1 text-[10px] ${isVenue ? "text-primary-foreground/60 justify-end" : "text-muted-foreground"}`}>
           <ChannelIcon channel={msg.channel} />
           {formatTime(msg.sentAt)}
+          <MessageTimelinePopover messageId={msg.id} source="conversation" status={msg.status} failureReason={msg.failureReason} isOutbound={isVenue} />
         </span>
       </div>
+      {isVenue && msg.status === "failed" && (
+        <RecoveryActions msg={msg} leadId={leadId} onPrefill={onPrefill} onCreateTask={() => onCreateTask(msg)} />
+      )}
     </div>
   );
 }
@@ -243,6 +290,27 @@ export function ConversationThread({
     setSending(false);
   }
 
+  // Communication Trust Experience, Phase 5 — loads a failed message back
+  // into the compose box (same or an alternate channel) rather than
+  // silently re-sending; the coordinator reviews and hits Send themselves.
+  function prefillFromFailed(text: string, targetChannel: ConversationChannel) {
+    setChannel(targetChannel);
+    setBody(text);
+    if (targetChannel !== "email") setEmailSubject("");
+    toast.info(targetChannel === channel ? "Loaded back into the compose box — review and send." : `Loaded into the compose box as ${CHANNEL_META[targetChannel].label} — review and send.`);
+  }
+
+  async function createFollowUpTask(msg: ConversationMessage) {
+    if (!summary?.leadId) return;
+    const dueDate = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+    const result = await addTaskAction(summary.leadId, {
+      title: `Follow up — ${CHANNEL_META[msg.channel]?.label ?? msg.channel} didn't reach ${summary.displayName ?? "this lead"}`,
+      dueDate,
+    });
+    if (result.ok) toast.success("Follow-up task created.");
+    else toast.error(result.message ?? "Could not create the task.");
+  }
+
   async function confirmSchedule() {
     const text = body.trim();
     if (!text || scheduling) return;
@@ -335,7 +403,9 @@ export function ConversationThread({
             <div key={g.label}>
               <DateSep label={g.label} />
               <div className="space-y-2">
-                {g.msgs.map((m) => <Bubble key={m.id} msg={m} />)}
+                {g.msgs.map((m) => (
+                  <Bubble key={m.id} msg={m} leadId={summary?.leadId ?? null} onPrefill={prefillFromFailed} onCreateTask={createFollowUpTask} />
+                ))}
               </div>
             </div>
           ))
