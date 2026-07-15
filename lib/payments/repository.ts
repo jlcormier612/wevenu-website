@@ -18,6 +18,7 @@ type ScheduleRow = {
   id: string; venue_id: string; client_id: string | null; event_id: string | null;
   invoice_id: string | null;
   title: string; total_amount: number; currency: string; notes: string | null;
+  acknowledged_invoice_total: number | null;
   created_at: string; updated_at: string;
   clients?: { first_name: string; last_name: string; partner_first_name: string | null; partner_last_name: string | null } | null;
   events?: { event_date: string | null } | null;
@@ -48,6 +49,7 @@ function mapSchedule(r: ScheduleRow): PaymentSchedule {
     id: r.id, venueId: r.venue_id, clientId: r.client_id, eventId: r.event_id,
     invoiceId: r.invoice_id,
     title: r.title, totalAmount: Number(r.total_amount), currency: r.currency, notes: r.notes,
+    acknowledgedInvoiceTotal: r.acknowledged_invoice_total != null ? Number(r.acknowledged_invoice_total) : null,
     createdAt: r.created_at, updatedAt: r.updated_at,
     clientName: cn, eventDate: r.events?.event_date ?? null,
   };
@@ -119,22 +121,71 @@ export async function getSchedule(client: DbClient, venueId: string, id: string)
 // ---- mutations --------------------------------------------------------------
 
 export async function insertSchedule(client: DbClient, venueId: string, input: {
-  title: string; clientId: string; eventId: string; totalAmount: number; notes: string;
-  invoiceId?: string | null;
+  title: string; clientId: string | null; eventId: string | null; totalAmount: number; notes: string;
+  invoiceId: string;
 }): Promise<string> {
   const { data, error } = await client.from("payment_schedules")
     .insert({
       venue_id: venueId, client_id: input.clientId || null, event_id: input.eventId || null,
       title: input.title.trim(), total_amount: input.totalAmount, notes: input.notes.trim() || null,
-      invoice_id: input.invoiceId ?? null,
+      invoice_id: input.invoiceId,
     }).select("id").single<{ id: string }>();
   if (error) throw error;
   return data.id;
 }
 
+/**
+ * Booking Financial Architecture Phase 1: a Payment Schedule's total is
+ * always derived from its Invoice, never independently entered — this reads
+ * the invoice's own total plus its client/event so insertSchedule never has
+ * to trust a client-submitted number for any of the three. Scoped to
+ * venueId the same way every other read here is.
+ */
+export async function getInvoiceSummaryForSchedule(
+  client: DbClient, venueId: string, invoiceId: string,
+): Promise<{ total: number; clientId: string | null; eventId: string | null } | null> {
+  const { data } = await client.from("invoices")
+    .select("total, client_id, event_id").eq("id", invoiceId).eq("venue_id", venueId)
+    .maybeSingle<{ total: number; client_id: string | null; event_id: string | null }>();
+  if (!data) return null;
+  return { total: Number(data.total), clientId: data.client_id, eventId: data.event_id };
+}
+
+/**
+ * Booking Financial Architecture Phase 3c — "Keep Existing Schedule" and
+ * "Collect Remaining Balance Manually" both resolve a Needs Review state
+ * by recording which Invoice total was reviewed and accepted, exactly the
+ * same "dismissal is scoped to what was reviewed" pattern Event Order
+ * drift already uses one layer up — never a blanket "stop telling me."
+ */
+export async function setAcknowledgedInvoiceTotal(client: DbClient, venueId: string, scheduleId: string, total: number): Promise<void> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error } = await (client.from("payment_schedules") as any).update({ acknowledged_invoice_total: total }).eq("id", scheduleId).eq("venue_id", venueId);
+  if (error) throw error;
+}
+
+/**
+ * Booking Financial Architecture Phase 3c — "Regenerate Schedule" and "Add
+ * Additional Installment" both resolve a Needs Review state by making the
+ * numbers genuinely agree again, so this is a real, legitimate caller for
+ * updating total_amount (unlike the free-text field this same function
+ * name used to back before Phase 1 removed it as dead code).
+ */
 export async function updateScheduleTotalAmount(client: DbClient, venueId: string, scheduleId: string, totalAmount: number): Promise<void> {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { error } = await (client.from("payment_schedules") as any).update({ total_amount: totalAmount }).eq("id", scheduleId).eq("venue_id", venueId);
+  if (error) throw error;
+}
+
+/**
+ * Booking Financial Architecture Phase 3c — "Regenerate Schedule" clears
+ * only the installments that haven't happened yet (pending/overdue).
+ * Anything already collected, refunded, or explicitly cancelled is a real,
+ * permanent decision and is never touched here.
+ */
+export async function deleteUnresolvedLineItems(client: DbClient, venueId: string, scheduleId: string): Promise<void> {
+  const { error } = await client.from("payment_line_items").delete()
+    .eq("schedule_id", scheduleId).eq("venue_id", venueId).in("status", ["pending", "overdue"]);
   if (error) throw error;
 }
 

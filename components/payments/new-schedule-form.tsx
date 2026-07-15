@@ -10,49 +10,33 @@ import { createScheduleAction } from "@/app/(app)/payments/actions";
 import { Field } from "@/components/setup/field";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
-import { clientDisplayName } from "@/lib/clients/constants";
-import type { Client } from "@/lib/clients/types";
 import { formatCurrency } from "@/lib/invoices/constants";
 import type { Invoice } from "@/lib/invoices/types";
 import { SCHEDULE_PRESETS } from "@/lib/payments/constants";
 import type { PaymentErrors, ScheduleInput } from "@/lib/payments/types";
 
-export function NewScheduleForm({
-  clients, linkedInvoice, prefillClientId, prefillAmount,
-}: {
-  clients: Client[];
-  linkedInvoice?: Invoice | null;
-  prefillClientId?: string;
-  prefillAmount?: string;
-}) {
+/**
+ * Booking Financial Architecture Phase 1: a Payment Schedule always belongs
+ * to exactly one Invoice, and its total is that invoice's total — never a
+ * client dropdown, never a free-typed amount. The page that renders this
+ * form guarantees `linkedInvoice` is always present.
+ */
+export function NewScheduleForm({ linkedInvoice }: { linkedInvoice: Invoice }) {
   const router = useRouter();
   const [input, setInput] = React.useState<ScheduleInput>({
-    title: "", clientId: prefillClientId ?? "", eventId: "", totalAmount: prefillAmount ?? "", notes: "",
+    title: linkedInvoice.clientName ? `Payment Schedule — ${linkedInvoice.clientName}` : `Payment Schedule — ${linkedInvoice.invoiceNumber}`,
+    invoiceId: linkedInvoice.id,
+    notes: "",
   });
   const [presetId, setPresetId] = React.useState("fifty_fifty");
   const [errors, setErrors] = React.useState<PaymentErrors>({});
   const [pending, startTransition] = React.useTransition();
 
-  function handleClientChange(id: string) {
-    const c = clients.find((c) => c.id === id);
-    setInput((p) => ({
-      ...p, clientId: id,
-      title: c
-        ? `Payment Schedule — ${clientDisplayName(c.firstName, c.lastName, c.partnerFirstName, c.partnerLastName)}`
-        : p.title,
-      totalAmount: p.totalAmount,
-    }));
-  }
-
   function handleSubmit() {
     startTransition(async () => {
-      const selectedClient = clients.find((c) => c.id === input.clientId);
-      const result = await createScheduleAction(input, presetId, selectedClient?.eventDate ?? null, linkedInvoice?.id ?? null);
+      const result = await createScheduleAction(input, presetId, linkedInvoice.eventDate ?? null);
       if (result.ok) { toast.success("Payment schedule created."); router.push(`/payments/${result.scheduleId}`); return; }
       if (result.errors) setErrors(result.errors);
       toast.error(result.message ?? "Please fix the highlighted fields.");
@@ -61,42 +45,16 @@ export function NewScheduleForm({
 
   return (
     <div className="space-y-5">
-      {/* Invoice context banner */}
-      {linkedInvoice && (
-        <div className="rounded-lg border border-primary/20 bg-primary/5 px-4 py-3 space-y-1">
-          <p className="text-xs font-semibold text-primary uppercase tracking-wide">Invoice linked</p>
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-0.5 text-sm">
-            <span className="font-medium text-heading">{linkedInvoice.invoiceNumber}</span>
-            <span className="text-muted-foreground">Total: <span className="font-medium text-foreground">{formatCurrency(linkedInvoice.total)}</span></span>
-            <span className="text-muted-foreground">Balance due: <span className="font-medium text-foreground">{formatCurrency(linkedInvoice.balanceDue)}</span></span>
-          </div>
-          <p className="text-xs text-muted-foreground">The invoice total has been pre-filled below. Your payment installments should sum to this amount.</p>
+      <div className="rounded-lg border border-primary/20 bg-primary/5 px-4 py-3 space-y-1">
+        <p className="text-xs font-semibold text-primary uppercase tracking-wide">Invoice linked</p>
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-0.5 text-sm">
+          <span className="font-medium text-heading">{linkedInvoice.invoiceNumber}</span>
+          <span className="text-muted-foreground">Total: <span className="font-medium text-foreground">{formatCurrency(linkedInvoice.total)}</span></span>
+          <span className="text-muted-foreground">Balance due: <span className="font-medium text-foreground">{formatCurrency(linkedInvoice.balanceDue)}</span></span>
         </div>
-      )}
-      <div className="grid gap-4 sm:grid-cols-2">
-        <Field label="Client *" htmlFor="ps-client" error={errors.clientId}>
-          <Select
-            value={input.clientId}
-            onValueChange={handleClientChange}
-            items={clients.map((c) => ({ value: c.id, label: clientDisplayName(c.firstName, c.lastName, c.partnerFirstName, c.partnerLastName) }))}
-          >
-            <SelectTrigger id="ps-client" aria-invalid={errors.clientId ? true : undefined}>
-              <SelectValue placeholder="Select a client" />
-            </SelectTrigger>
-            <SelectContent>
-              {clients.map((c) => (
-                <SelectItem key={c.id} value={c.id}>
-                  {clientDisplayName(c.firstName, c.lastName, c.partnerFirstName, c.partnerLastName)}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </Field>
-        <Field label="Total contract amount *" htmlFor="ps-total" error={errors.totalAmount}>
-          <Input id="ps-total" value={input.totalAmount}
-            onChange={(e) => { setInput((p) => ({ ...p, totalAmount: e.target.value })); setErrors((p) => { const n = {...p}; delete n.totalAmount; return n; }); }}
-            placeholder="18,000" aria-invalid={errors.totalAmount ? true : undefined} />
-        </Field>
+        <p className="text-xs text-muted-foreground">
+          This payment plan always tracks the invoice&apos;s total — {formatCurrency(linkedInvoice.total)} isn&apos;t editable here. Change the invoice&apos;s line items to change it.
+        </p>
       </div>
 
       <Field label="Schedule title *" htmlFor="ps-title" error={errors.title}>
@@ -122,7 +80,7 @@ export function NewScheduleForm({
           ))}
         </div>
         <p className="text-xs text-muted-foreground">
-          Dates are calculated from the event date (if set on the client). You can adjust everything after creation.
+          Dates are calculated from the event date, when known. You can adjust everything after creation.
         </p>
       </div>
 

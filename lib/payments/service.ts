@@ -4,6 +4,7 @@
 import { createClient } from "@/integrations/supabase/server";
 import { isSupabaseConfigured } from "@/lib/env";
 import { triggerAutoComplete } from "@/lib/playbooks/service";
+import { createInvoice, addLineItem as addInvoiceLineItem, getInvoice } from "@/lib/invoices/service";
 import * as repo from "@/lib/payments/repository";
 import {
   computeTotalPaid,
@@ -12,6 +13,7 @@ import {
 } from "@/lib/payments/constants";
 import type {
   AddLineItemResult,
+  CreateRetainerResult,
   CreateScheduleResult,
   LineItemInput,
   MarkPaidInput,
@@ -116,15 +118,19 @@ export async function createPaymentSchedule(
   input: ScheduleInput,
   presetId?: string,
   eventDate?: string | null,
-  invoiceId?: string | null,
 ): Promise<CreateScheduleResult> {
   const errors = validateScheduleInput(input);
   if (Object.keys(errors).length > 0) return { ok: false, errors };
-  const totalAmount = parseFloat(input.totalAmount.replace(/[$,]/g, ""));
   const result = await withVenue(async (supabase, venueId) => {
+    // Never trust a client-submitted total — always read it from the
+    // invoice itself, the same discipline applied everywhere else in this
+    // phase (Booking Financial Architecture Decision 5).
+    const invoice = await repo.getInvoiceSummaryForSchedule(supabase, venueId, input.invoiceId);
+    if (!invoice) return { ok: false, message: "Invoice not found." } as CreateScheduleResult;
+    const totalAmount = invoice.total;
     const scheduleId = await repo.insertSchedule(supabase, venueId, {
-      title: input.title, clientId: input.clientId, eventId: input.eventId,
-      totalAmount, notes: input.notes, invoiceId: invoiceId ?? null,
+      title: input.title, clientId: invoice.clientId, eventId: invoice.eventId,
+      totalAmount, notes: input.notes, invoiceId: input.invoiceId,
     });
     // Apply preset line items
     if (presetId && presetId !== "custom") {
@@ -149,6 +155,45 @@ export async function createPaymentSchedule(
     return { ok: true, scheduleId } as CreateScheduleResult;
   });
   return result as CreateScheduleResult;
+}
+
+/**
+ * Booking Financial Architecture Phase 1 (docs/booking-financial-architecture-
+ * roadmap.md): the "booking-confirmation moment" shortcut. A coordinator can
+ * collect a deposit before Package/Event Order exist — this creates a real,
+ * linked Invoice (a single "Retainer" line) and a matching one-installment
+ * Payment Schedule in one action, rather than the three separate steps
+ * (create invoice → add line item → create schedule) this used to take.
+ * The invoice starts in draft and grows from here over the life of the
+ * booking; nothing about this is a special, parallel record.
+ */
+export async function createRetainerInvoiceAndSchedule(input: {
+  clientId: string; eventId: string; amount: string; dueDate?: string;
+}): Promise<CreateRetainerResult> {
+  const amount = parseFloat(input.amount.replace(/[$,]/g, ""));
+  if (!(amount > 0)) return { ok: false, message: "Enter a valid retainer amount." };
+
+  const invoiceResult = await createInvoice({
+    clientId: input.clientId, eventId: input.eventId, notes: "", dueDate: input.dueDate ?? "",
+  });
+  if (!invoiceResult.ok) return { ok: false, message: invoiceResult.message ?? "Could not create the invoice." };
+
+  const lineResult = await addInvoiceLineItem(invoiceResult.invoiceId, {
+    type: "item", description: "Retainer", quantity: "1", unitPrice: input.amount, packageId: "",
+  });
+  if (!lineResult.ok) return { ok: false, message: lineResult.message ?? "Could not add the retainer line item." };
+
+  const scheduleResult = await createPaymentSchedule({
+    title: "Retainer", invoiceId: invoiceResult.invoiceId, notes: "",
+  }, "custom");
+  if (!scheduleResult.ok) return { ok: false, message: scheduleResult.message ?? "Could not create the payment schedule." };
+
+  const scheduleLineResult = await addLineItem(scheduleResult.scheduleId, {
+    label: "Retainer", amount: input.amount, dueDate: input.dueDate ?? "",
+  });
+  if (!scheduleLineResult.ok) return { ok: false, message: scheduleLineResult.message ?? "Could not add the retainer installment." };
+
+  return { ok: true, invoiceId: invoiceResult.invoiceId, scheduleId: scheduleResult.scheduleId };
 }
 
 // ---- line items -------------------------------------------------------------
@@ -282,4 +327,100 @@ export async function deletePaymentSchedule(scheduleId: string): Promise<Payment
     return { ok: true } as PaymentActionResult;
   });
   return result as PaymentActionResult;
+}
+
+// ---- Phase 3c: Payment Plan review resolutions -------------------------------
+//
+// "Payment Plans should NEVER update automatically. Surface a clear Needs
+// Review state. Let the coordinator explicitly choose." Every function below
+// requires the schedule to actually be linked to an Invoice — a Payment Plan
+// with nothing to compare against is never "Needs Review," it just has
+// nothing to check.
+
+async function scheduleInvoiceTotal(scheduleId: string): Promise<{ schedule: PaymentScheduleWithDetails; invoiceTotal: number } | PaymentActionResult> {
+  const schedule = await getPaymentSchedule(scheduleId);
+  if (!schedule) return { ok: false, message: "Payment schedule not found." };
+  if (!schedule.invoiceId) return { ok: false, message: "This payment plan isn't linked to an invoice." };
+  const invoice = await getInvoice(schedule.invoiceId);
+  if (!invoice) return { ok: false, message: "Linked invoice not found." };
+  return { schedule, invoiceTotal: invoice.total };
+}
+
+/** "Keep Existing Schedule" — the plan is fine as-is; records which invoice total was reviewed so a later, real change still re-surfaces Needs Review. */
+export async function keepExistingSchedule(scheduleId: string): Promise<PaymentActionResult> {
+  const ctx = await scheduleInvoiceTotal(scheduleId);
+  if ("ok" in ctx) return ctx;
+  const result = await withVenue(async (supabase, venueId) => {
+    await repo.setAcknowledgedInvoiceTotal(supabase, venueId, scheduleId, ctx.invoiceTotal);
+    await repo.insertPaymentActivity(supabase, venueId, scheduleId, "review_kept", "Kept as-is after the invoice total changed — no change to the schedule.");
+    return { ok: true } as PaymentActionResult;
+  });
+  return result as PaymentActionResult;
+}
+
+/** "Collect Remaining Balance Manually" — same mechanism as Keep, distinct wording: there IS a difference, it just won't be tracked as a formal installment. */
+export async function collectRemainingBalanceManually(scheduleId: string): Promise<PaymentActionResult> {
+  const ctx = await scheduleInvoiceTotal(scheduleId);
+  if ("ok" in ctx) return ctx;
+  const result = await withVenue(async (supabase, venueId) => {
+    await repo.setAcknowledgedInvoiceTotal(supabase, venueId, scheduleId, ctx.invoiceTotal);
+    await repo.insertPaymentActivity(supabase, venueId, scheduleId, "review_collect_manually", "The difference will be collected outside this formal schedule.");
+    return { ok: true } as PaymentActionResult;
+  });
+  return result as PaymentActionResult;
+}
+
+/**
+ * "Regenerate Schedule" — replaces only the installments that haven't
+ * happened yet. Whatever's already been collected (or refunded, or
+ * explicitly cancelled) is a real, permanent decision and is never
+ * touched; the new pending installments are computed from what's actually
+ * still owed (the new total minus what's already been collected), split
+ * per the coordinator's chosen preset — the same math createPaymentSchedule
+ * already uses, applied to the remaining balance instead of the full total.
+ */
+export async function regeneratePaymentSchedule(scheduleId: string, presetId: string): Promise<PaymentActionResult> {
+  const ctx = await scheduleInvoiceTotal(scheduleId);
+  if ("ok" in ctx) return ctx;
+  const { schedule, invoiceTotal } = ctx;
+  const result = await withVenue(async (supabase, venueId) => {
+    const alreadyCollected = computeTotalPaid(schedule.lineItems);
+    const remaining = Math.max(0, invoiceTotal - alreadyCollected);
+
+    await repo.deleteUnresolvedLineItems(supabase, venueId, scheduleId);
+
+    const preset = SCHEDULE_PRESETS.find((p) => p.id === presetId);
+    if (preset && preset.items.length > 0) {
+      for (let i = 0; i < preset.items.length; i++) {
+        const pi = preset.items[i];
+        const amt = Math.round((remaining * pi.pctOfTotal) / 100 * 100) / 100;
+        let dueDate: string | undefined;
+        if (schedule.eventDate && pi.offsetDaysFromEvent != null) {
+          const d = new Date(schedule.eventDate + "T12:00:00");
+          d.setDate(d.getDate() + pi.offsetDaysFromEvent);
+          dueDate = d.toISOString().slice(0, 10);
+        }
+        await repo.insertLineItem(supabase, venueId, scheduleId, { label: pi.label, amount: String(amt), dueDate: dueDate ?? "" }, i);
+      }
+    }
+    await repo.updateScheduleTotalAmount(supabase, venueId, scheduleId, invoiceTotal);
+    await repo.insertPaymentActivity(supabase, venueId, scheduleId, "review_regenerated",
+      `Schedule regenerated for the new total — ${alreadyCollected > 0 ? `remaining balance of $${remaining.toLocaleString()} split across new installments.` : "new installments created."}`);
+    return { ok: true } as PaymentActionResult;
+  });
+  return result as PaymentActionResult;
+}
+
+/** "Add Additional Installment" — the surgical option: one new pending installment, then the schedule's total is set to match the invoice exactly (it now genuinely does). */
+export async function addReviewInstallment(scheduleId: string, input: LineItemInput): Promise<AddLineItemResult> {
+  const ctx = await scheduleInvoiceTotal(scheduleId);
+  if ("ok" in ctx) return ctx as AddLineItemResult;
+  const addResult = await addLineItem(scheduleId, input);
+  if (!addResult.ok) return addResult;
+  const result = await withVenue(async (supabase, venueId) => {
+    await repo.updateScheduleTotalAmount(supabase, venueId, scheduleId, ctx.invoiceTotal);
+    await repo.insertPaymentActivity(supabase, venueId, scheduleId, "review_installment_added", `Additional installment added to match the invoice's new total: ${input.label.trim()}`);
+    return { ok: true, item: addResult.item } as AddLineItemResult;
+  });
+  return result as AddLineItemResult;
 }

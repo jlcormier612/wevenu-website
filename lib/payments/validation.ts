@@ -6,13 +6,7 @@ import type { LineItemInput, MarkPaidInput, PaymentErrors, ScheduleInput } from 
 export function validateScheduleInput(input: ScheduleInput): PaymentErrors {
   const errors: PaymentErrors = {};
   if (!input.title.trim()) errors.title = "Schedule title is required.";
-  if (!input.clientId) errors.clientId = "Select a client.";
-  if (!input.totalAmount.trim()) {
-    errors.totalAmount = "Enter the total amount.";
-  } else {
-    const n = Number(input.totalAmount.replace(/[$,]/g, ""));
-    if (isNaN(n) || n < 0) errors.totalAmount = "Enter a valid amount.";
-  }
+  if (!input.invoiceId) errors.invoiceId = "A payment plan must be linked to an invoice.";
   return errors;
 }
 

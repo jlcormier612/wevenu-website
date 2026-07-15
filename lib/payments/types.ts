@@ -19,7 +19,18 @@ export type PaymentSchedule = {
   // Embedded from joins
   clientName: string | null;
   eventDate: string | null;
+  /**
+   * Booking Financial Architecture Phase 3c — the Invoice total a
+   * coordinator last explicitly reviewed and accepted via "Keep Existing
+   * Schedule" or "Collect Remaining Balance Manually." Null = never
+   * acknowledged. A Payment Plan's total never moves on its own; this only
+   * ever remembers what a human already looked at and decided was fine.
+   */
+  acknowledgedInvoiceTotal: number | null;
 };
+
+/** Booking Financial Architecture Phase 3c — never derived from a timestamp; a direct comparison of the schedule's own total against its Invoice's current total. */
+export type PaymentPlanReviewStatus = "current" | "needs_review";
 
 export type PaymentLineItem = {
   id: string;
@@ -72,11 +83,15 @@ export type PaymentScheduleSummary = PaymentSchedule & {
   scheduleStatus: "complete" | "attention" | "on_track" | "no_payments";
 };
 
+/**
+ * Booking Financial Architecture Phase 1 (docs/booking-financial-architecture-
+ * roadmap.md): a Payment Schedule is always linked to an Invoice — its total
+ * is derived server-side from invoice.total, never typed here. `clientId`/
+ * `eventId` are likewise derived from the invoice, not re-entered.
+ */
 export type ScheduleInput = {
   title: string;
-  clientId: string;
-  eventId: string;
-  totalAmount: string;
+  invoiceId: string;
   notes: string;
 };
 
@@ -104,6 +119,13 @@ export type CreateScheduleResult =
   | { ok: true; scheduleId: string }
   | { ok: false; errors?: PaymentErrors; message?: string };
 
+export type CreateRetainerResult =
+  | { ok: true; invoiceId: string; scheduleId: string }
+  | { ok: false; message: string };
+
 export type AddLineItemResult =
   | { ok: true; item: PaymentLineItem }
   | { ok: false; errors?: PaymentErrors; message?: string };
+
+/** Booking Financial Architecture Phase 3c — the four resolution paths for a Needs Review Payment Plan. Always a human choice; the system never picks one. */
+export type ScheduleReviewAction = "keep" | "regenerate" | "add_installment" | "collect_manually";

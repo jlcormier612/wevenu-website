@@ -1,7 +1,7 @@
 /**
  * Payments reference data and display helpers (Sprint 16).
  */
-import type { PaymentItemStatus, PaymentSchedule, PaymentLineItem } from "@/lib/payments/types";
+import type { PaymentItemStatus, PaymentPlanReviewStatus, PaymentSchedule, PaymentLineItem } from "@/lib/payments/types";
 
 export type Option = { value: string; label: string };
 
@@ -75,6 +75,23 @@ export function computeTotalPaid(items: PaymentLineItem[]): number {
   return items
     .filter((i) => i.status === "paid" || i.status === "partially_refunded" || i.status === "refunded")
     .reduce((sum, i) => sum + (i.paidAmount ?? i.amount) - (i.refundedAmount ?? 0), 0);
+}
+
+/**
+ * Booking Financial Architecture Phase 3c — "Payment Plans should NEVER
+ * automatically move... surface a clear Needs Review state." A direct
+ * comparison, not a timestamp or revision counter: current whenever the
+ * schedule's own total matches its Invoice's total right now, or whenever
+ * a coordinator already reviewed and accepted this exact mismatch.
+ */
+export function paymentPlanReviewStatus(
+  schedule: Pick<PaymentSchedule, "totalAmount" | "acknowledgedInvoiceTotal">,
+  invoiceTotal: number | null,
+): PaymentPlanReviewStatus {
+  if (invoiceTotal == null) return "current"; // no linked invoice — nothing to compare against
+  if (schedule.totalAmount === invoiceTotal) return "current";
+  if (schedule.acknowledgedInvoiceTotal === invoiceTotal) return "current";
+  return "needs_review";
 }
 
 /** Schedule template presets for quick setup. */
