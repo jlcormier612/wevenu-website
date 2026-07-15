@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { formatDate, HOLD_STATUS_LABEL } from "@/lib/availability/constants";
+import { useSyncedState } from "@/lib/hooks/use-synced-state";
 import type { DateHold, DateHoldInput } from "@/lib/availability/types";
 import type { VenueSpace } from "@/lib/availability/types";
 
@@ -29,7 +30,10 @@ export function DateHoldsSection({
   spaces: VenueSpace[];
 }) {
   const router = useRouter();
-  const [holds, setHolds] = React.useState(initialHolds);
+  // See lib/hooks/use-synced-state.ts — TasksSection is a true sibling on
+  // this same tab and calls router.refresh() on its own task actions,
+  // which would otherwise leave this list stale without a full reload.
+  const [holds, setHolds] = useSyncedState(initialHolds);
   const [showForm, setShowForm] = React.useState(false);
   const [holdDate, setHoldDate] = React.useState("");
   const [holdTitle, setHoldTitle] = React.useState(`Hold — ${leadName}`);

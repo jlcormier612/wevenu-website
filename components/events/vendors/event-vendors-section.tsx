@@ -19,6 +19,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { useSyncedState } from "@/lib/hooks/use-synced-state";
 import { formatTime, vendorCategoryLabel } from "@/lib/vendors/constants";
 import type { EventVendorAssignment, Vendor } from "@/lib/vendors/types";
 
@@ -48,7 +49,8 @@ export function EventVendorsSection({
   availableVendors: Vendor[];
 }) {
   const router = useRouter();
-  const [assignments, setAssignments] = React.useState(initialAssignments);
+  // See lib/hooks/use-synced-state.ts.
+  const [assignments, setAssignments] = useSyncedState(initialAssignments);
   const [showForm, setShowForm]       = React.useState(false);
   const [vendorId, setVendorId]       = React.useState("");
   const [arrivalTime, setArrivalTime] = React.useState("");

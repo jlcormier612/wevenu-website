@@ -48,6 +48,7 @@ import { ALL_FILTER, TimelineFilterBar, type TimelineStatusFilter } from "@/comp
 import { TimelineSummaryBar } from "@/components/events/timeline/timeline-summary-bar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useSyncedState } from "@/lib/hooks/use-synced-state";
 import { formatTime, getDueStatus } from "@/lib/timeline/constants";
 import type { Document } from "@/lib/documents/types";
 import type { FloorPlan } from "@/lib/floor-plans/types";
@@ -60,6 +61,14 @@ import { TIMELINE_AUDIENCES } from "@/lib/timeline/types";
 import type { StaffMember } from "@/lib/team/types";
 import { cn } from "@/lib/utils";
 import type { EventVendorAssignment } from "@/lib/vendors/types";
+
+// Stable empty fallbacks — a fresh `[]`/`{}` literal on every render would
+// make useSyncedState below think the value changed on every render (since
+// referential equality would never hold), causing an infinite render loop.
+const EMPTY_SECTIONS: TimelineSection[] = [];
+const EMPTY_LINKS: Record<string, TimelineEntryLink[]> = {};
+const EMPTY_ATTACHMENTS: Record<string, TimelineEntryAttachment[]> = {};
+const EMPTY_RELATED_LINKS: Record<string, TimelineRelatedLink[]> = {};
 
 const UNSECTIONED = "__unsectioned__";
 const DUE_STATUS_LABEL: Record<"upcoming" | "today" | "complete", string> = {
@@ -486,11 +495,22 @@ export function TimelineView({
   teamMembers?: StaffMember[];
 }) {
   const router = useRouter();
-  const [entries, setEntries] = React.useState(initialEntries);
-  const [sections, setSections] = React.useState(initialSections ?? []);
-  const [linksByEntry, setLinksByEntry] = React.useState(initialLinksByEntry ?? {});
-  const [attachmentsByEntry, setAttachmentsByEntry] = React.useState(initialAttachmentsByEntry ?? {});
-  const [relatedLinksByEntry, setRelatedLinksByEntry] = React.useState(initialRelatedLinksByEntry ?? {});
+  // useSyncedState (not a plain useState(initial...)) — a real bug confirmed
+  // directly against production data: applying a Timeline Template
+  // (TemplatePicker, a sibling component) writes real rows and calls
+  // router.refresh(), which gives this already-mounted component fresh
+  // `initial*` props — but a plain useState only reads its initializer on
+  // first mount, so those fresh props were never looked at again. The
+  // Timeline tab's own badge count (event.timeline.length, read directly in
+  // event-detail.tsx) showed the new entries correctly; this component's
+  // internal state didn't, because nothing ever re-synced it. Any
+  // router.refresh()-driven update — not just template application — was
+  // silently invisible until a hard reload.
+  const [entries, setEntries] = useSyncedState(initialEntries);
+  const [sections, setSections] = useSyncedState(initialSections ?? EMPTY_SECTIONS);
+  const [linksByEntry, setLinksByEntry] = useSyncedState(initialLinksByEntry ?? EMPTY_LINKS);
+  const [attachmentsByEntry, setAttachmentsByEntry] = useSyncedState(initialAttachmentsByEntry ?? EMPTY_ATTACHMENTS);
+  const [relatedLinksByEntry, setRelatedLinksByEntry] = useSyncedState(initialRelatedLinksByEntry ?? EMPTY_RELATED_LINKS);
   const relatedContext: RelatedContext = React.useMemo(
     () => ({ eventTasks: eventTasks ?? [], vendorAssignments: vendorAssignments ?? [], floorPlans: floorPlans ?? [], conversationId: conversationId ?? null, invoices: invoices ?? [] }),
     [eventTasks, vendorAssignments, floorPlans, conversationId, invoices],
@@ -806,6 +826,7 @@ export function TimelineView({
             eventId={eventId}
             eventStartTime={eventStartTime}
             onApplied={() => router.refresh()}
+            existingEntryCount={totalCount}
           />
           {addingSection ? (
             <div className="flex items-center gap-1">

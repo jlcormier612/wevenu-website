@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/select";
 import { createClient } from "@/integrations/supabase/client";
 import { categoryHasExpiry, DOCUMENT_CATEGORIES } from "@/lib/documents/constants";
+import { useSyncedState } from "@/lib/hooks/use-synced-state";
 import type {
   Document,
   DocumentCategory,
@@ -62,7 +63,8 @@ export function DocumentsSection({
   venueId: string;
   initialDocuments: Document[];
 }) {
-  const [docs, setDocs] = React.useState(initialDocuments);
+  // See lib/hooks/use-synced-state.ts.
+  const [docs, setDocs] = useSyncedState(initialDocuments);
   const [showUpload, setShowUpload] = React.useState(false);
   const [categoryFilter, setCategoryFilter] = React.useState<DocumentCategory | "">("");
 

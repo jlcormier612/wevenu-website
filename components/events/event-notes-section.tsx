@@ -13,6 +13,7 @@ import {
 } from "@/app/(app)/events/[id]/actions";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { useSyncedState } from "@/lib/hooks/use-synced-state";
 import type { EventNote } from "@/lib/events/types";
 
 function relativeTime(iso: string): string {
@@ -28,7 +29,8 @@ function relativeTime(iso: string): string {
 
 export function EventNotesSection({ eventId, initialNotes }: { eventId: string; initialNotes: EventNote[] }) {
   const router = useRouter();
-  const [notes, setNotes] = React.useState(initialNotes);
+  // See lib/hooks/use-synced-state.ts.
+  const [notes, setNotes] = useSyncedState(initialNotes);
   const [body, setBody] = React.useState("");
   const [editingId, setEditingId] = React.useState<string | null>(null);
   const [editBody, setEditBody] = React.useState("");

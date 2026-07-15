@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { useSyncedState } from "@/lib/hooks/use-synced-state";
 import type { SpaceInput, VenueSpace } from "@/lib/availability/types";
 
 function SpaceForm({
@@ -67,7 +68,9 @@ function SpaceForm({
 
 export function VenueSpacesSection({ initialSpaces }: { initialSpaces: VenueSpace[] }) {
   const router = useRouter();
-  const [spaces, setSpaces] = React.useState(initialSpaces);
+  // See lib/hooks/use-synced-state.ts — TourSettingsSection is a sibling on
+  // this same flat Settings page and calls router.refresh() on save.
+  const [spaces, setSpaces] = useSyncedState(initialSpaces);
   const [showAdd, setShowAdd] = React.useState(false);
   const [editingId, setEditingId] = React.useState<string | null>(null);
   const [addPending, startAdd] = React.useTransition();

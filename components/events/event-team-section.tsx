@@ -10,11 +10,15 @@ import { addTeamMemberAction, removeTeamMemberAction } from "@/app/(app)/events/
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { useSyncedState } from "@/lib/hooks/use-synced-state";
 import type { EventTeamMember } from "@/lib/events/types";
 
 export function EventTeamSection({ eventId, initialTeam }: { eventId: string; initialTeam: EventTeamMember[] }) {
   const router = useRouter();
-  const [team, setTeam] = React.useState(initialTeam);
+  // See lib/hooks/use-synced-state.ts — keeps this tab's list in sync with
+  // server data after a router.refresh() triggered elsewhere on this page,
+  // instead of a plain useState silently freezing at its first-mount value.
+  const [team, setTeam] = useSyncedState(initialTeam);
   const [showForm, setShowForm] = React.useState(false);
   const [name, setName] = React.useState("");
   const [role, setRole] = React.useState("");

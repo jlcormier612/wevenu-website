@@ -22,6 +22,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useSyncedState } from "@/lib/hooks/use-synced-state";
 import { vendorCategoryLabel } from "@/lib/vendors/constants";
 import type { EventVendorRecommendation } from "@/lib/vendor-recommendations/types";
 import type { Vendor } from "@/lib/vendors/types";
@@ -38,7 +39,8 @@ export function EventVendorRecommendationsSection({
   vendorLibrary: Vendor[];
 }) {
   const router = useRouter();
-  const [recommendations, setRecommendations] = React.useState(initialRecommendations);
+  // See lib/hooks/use-synced-state.ts.
+  const [recommendations, setRecommendations] = useSyncedState(initialRecommendations);
   const [showForm, setShowForm] = React.useState(false);
   const [vendorId, setVendorId] = React.useState("");
   const [note, setNote] = React.useState("");

@@ -9,6 +9,7 @@ import { addPackageItemAction, removePackageItemAction } from "@/app/(app)/packa
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { useSyncedState } from "@/lib/hooks/use-synced-state";
 import type { PackageItem } from "@/lib/packages/types";
 
 export function PackageInclusionsEditor({
@@ -18,7 +19,9 @@ export function PackageInclusionsEditor({
   packageId: string;
   initialItems: PackageItem[];
 }) {
-  const [items, setItems] = React.useState(initialItems);
+  // See lib/hooks/use-synced-state.ts — PackageForm is an always-mounted
+  // sibling on this same page and calls router.refresh() on save.
+  const [items, setItems] = useSyncedState(initialItems);
   const [showAdd, setShowAdd] = React.useState(false);
   const [description, setDescription] = React.useState("");
   const [quantity, setQuantity] = React.useState("1");

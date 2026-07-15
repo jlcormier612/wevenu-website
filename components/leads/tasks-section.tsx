@@ -14,6 +14,7 @@ import {
 } from "@/app/(app)/leads/[id]/actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useSyncedState } from "@/lib/hooks/use-synced-state";
 import { formatDate, isOverdue, isDueToday } from "@/lib/leads/constants";
 import type { LeadTask } from "@/lib/leads/types";
 import { cn } from "@/lib/utils";
@@ -143,7 +144,11 @@ export function TasksSection({
   initialTasks: LeadTask[];
 }) {
   const router = useRouter();
-  const [tasks, setTasks] = React.useState(initialTasks);
+  // See lib/hooks/use-synced-state.ts — DateHoldsSection is a true sibling
+  // on this same tab and calls router.refresh() on its own hold create/
+  // release, which would otherwise leave this list stale without a full
+  // reload.
+  const [tasks, setTasks] = useSyncedState(initialTasks);
   const [titleInput, setTitleInput] = React.useState("");
   const [dueDateInput, setDueDateInput] = React.useState("");
   const [addPending, startAdd] = React.useTransition();

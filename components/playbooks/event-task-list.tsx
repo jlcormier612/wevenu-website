@@ -14,7 +14,7 @@ import {
   addEventTaskContextLinkAction, applyPlaybookAction, completeTaskAction,
   createRequestForTaskAction,
   releasePlaybookAction,
-  removeEventTaskContextLinkAction, setTaskStatusAction, updateEventTaskNotesAction,
+  removeEventTaskContextLinkAction, setTaskStatusAction, updateEventTaskAssignmentAction, updateEventTaskNotesAction,
   updateEventTaskScheduleAction,
 } from "@/app/(app)/playbooks/actions";
 import { Badge } from "@/components/ui/badge";
@@ -25,12 +25,13 @@ import { Textarea } from "@/components/ui/textarea";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
+import { useSyncedState } from "@/lib/hooks/use-synced-state";
 import {
   categoryColor, categoryLabel, formatClientPlanningTitle, formatScheduledTime, isScheduledActivity,
   PLAYBOOK_KINDS, STATUS_CONFIG, taskActionHref, taskActionLabel,
 } from "@/lib/playbooks/constants";
 import type {
-  EventPlaybookApplication, EventTask, EventTaskContextLink, EventReadiness, PlaybookKind, PlaybookTemplate, TaskContact,
+  EventPlaybookApplication, EventTask, EventTaskContextLink, EventReadiness, PlaybookKind, PlaybookTemplateWithStats, TaskContact,
 } from "@/lib/playbooks/types";
 import type { Document } from "@/lib/documents/types";
 import { STATUS_LABELS as REQUEST_STATUS_LABELS } from "@/lib/requests/constants";
@@ -39,6 +40,7 @@ import type { TimelineEntry } from "@/lib/timeline/types";
 import { cn } from "@/lib/utils";
 
 export type LinkableConversationMessage = { id: string; label: string; detail: string };
+export type StaffOption = { id: string; name: string };
 
 // A waiting task is still just a task — CircleDashed reads as "not yet
 // actionable," never "restricted" (Planning Templates - Remaining Product
@@ -187,13 +189,48 @@ function TaskScheduleSection({ task, eventId }: { task: EventTask; eventId: stri
   );
 }
 
+// ---- Staff assignment (Planning Release Readiness Fixes) --------------------
+// Venue-only — a Client Planning task's "owner" is the couple, never a staff
+// member. assigned_to_staff_id already drove Calendar's staff filter and the
+// couple-facing contact line; this closes the one gap where nothing on the
+// team side could actually set it.
+
+function TaskAssignmentSection({ task, eventId, staffOptions }: { task: EventTask; eventId: string; staffOptions: StaffOption[] }) {
+  const [staffId, setStaffId] = React.useState(task.assignedToStaffId ?? "");
+  const [saving, startSave] = React.useTransition();
+  const options = [{ value: "", label: "Unassigned" }, ...staffOptions.map((s) => ({ value: s.id, label: s.name }))];
+
+  function handleChange(value: string) {
+    setStaffId(value);
+    startSave(async () => {
+      const result = await updateEventTaskAssignmentAction(task.id, eventId, value || null);
+      if (result.ok) toast.success(value ? "Task assigned." : "Task unassigned.");
+      else toast.error(result.message ?? "Could not update assignment.");
+    });
+  }
+
+  return (
+    <div className="space-y-1">
+      <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Assigned To</p>
+      <div className="flex items-center gap-1.5">
+        <Select value={staffId} onValueChange={handleChange} items={options}>
+          <SelectTrigger className="h-7 w-48 text-xs"><SelectValue placeholder="Unassigned" /></SelectTrigger>
+          <SelectContent>{options.map((o) => <SelectItem key={o.value || "unassigned"} value={o.value}>{o.label}</SelectItem>)}</SelectContent>
+        </Select>
+        {saving && <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />}
+      </div>
+    </div>
+  );
+}
+
 // ---- Task detail — "the place someone finds everything needed to do the work" --
 
 function TaskDetailPanel({
-  task, kind, eventId, contextLinks, contact, documents, timelineEntries, conversationMessages, onNotesUpdated,
+  task, kind, eventId, contextLinks, contact, documents, timelineEntries, conversationMessages, staffOptions, onNotesUpdated,
 }: {
   task: EventTask; kind: PlaybookKind; eventId: string; contextLinks: EventTaskContextLink[]; contact: TaskContact | null;
   documents: Document[]; timelineEntries: TimelineEntry[]; conversationMessages: LinkableConversationMessage[];
+  staffOptions: StaffOption[];
   onNotesUpdated: () => void;
 }) {
   const router = useRouter();
@@ -270,6 +307,8 @@ function TaskDetailPanel({
 
       {isVenue && <TaskScheduleSection task={task} eventId={eventId} />}
 
+      {isVenue && <TaskAssignmentSection task={task} eventId={eventId} staffOptions={staffOptions} />}
+
       {isVenue && (
         <div className="space-y-1">
           <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Internal Notes</p>
@@ -292,13 +331,14 @@ function TaskDetailPanel({
 // ---- Task row -----------------------------------------------------------------
 
 function TaskRow({
-  task, kind, eventId, clientId, clientName, request, expanded, onToggleExpand, onUpdate, contextLinks, contact, documents, timelineEntries, conversationMessages,
+  task, kind, eventId, clientId, clientName, request, expanded, onToggleExpand, onUpdate, contextLinks, contact, documents, timelineEntries, conversationMessages, staffOptions,
 }: {
   task: EventTask; kind: PlaybookKind; eventId: string; clientId: string | null; clientName: string | null;
   request: Request | null; expanded: boolean; onToggleExpand: () => void;
   onUpdate: (id: string, status: EventTask["status"]) => void;
   contextLinks: EventTaskContextLink[]; contact: TaskContact | null;
   documents: Document[]; timelineEntries: TimelineEntry[]; conversationMessages: LinkableConversationMessage[];
+  staffOptions: StaffOption[];
 }) {
   const router = useRouter();
   const [pending, startAction] = React.useTransition();
@@ -322,6 +362,19 @@ function TaskRow({
       const result = await setTaskStatusAction(task.id, eventId, next);
       if (result.ok) { onUpdate(task.id, next); }
       else toast.error(result.message ?? "Could not update task.");
+    });
+  }
+
+  // A completed task had no way back — a coordinator who completed
+  // something by mistake, or whose couple undid something in real life,
+  // could not undo it through the product (Planning Release Readiness
+  // Fixes). Reuses the same pending-transition the waive/restore toggle
+  // already uses; nothing new at the data layer.
+  function handleReopen() {
+    startAction(async () => {
+      const result = await setTaskStatusAction(task.id, eventId, "pending");
+      if (result.ok) { onUpdate(task.id, "pending"); }
+      else toast.error(result.message ?? "Could not reopen task.");
     });
   }
 
@@ -356,6 +409,15 @@ function TaskRow({
           <p className={`text-sm font-medium ${isComplete ? "text-muted-foreground line-through" : "text-heading"}`}>
             {task.title}
             {!task.isRequired && <span className="ml-1.5 text-[10px] font-normal text-muted-foreground uppercase tracking-wide">optional</span>}
+            {/* Wedding-Day Visibility (Planning Execution — Release
+                Completion) — same milestone_kind get_wedding_day_ops
+                already reads; this is the first place a coordinator sees
+                it while planning, not only after opening Wedding Day Ops. */}
+            {task.milestoneKind === "event_day" && (
+              <span className="ml-1.5 inline-flex items-center gap-0.5 rounded-full bg-primary px-1.5 py-0.5 text-[9px] font-semibold text-primary-foreground align-middle">
+                💍 Wedding Day
+              </span>
+            )}
           </p>
           <div className="flex flex-wrap items-center gap-x-2 text-xs text-muted-foreground">
             <span style={{ color: categoryColor(task.category) }}>{categoryLabel(task.category)}</span>
@@ -431,12 +493,21 @@ function TaskRow({
             </Button>
           </div>
         )}
+
+        {isComplete && (
+          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+            <Button type="button" size="sm" variant="ghost" onClick={handleReopen} disabled={pending} className="h-7 px-2 text-xs text-muted-foreground">
+              {pending ? <Loader2 className="h-3 w-3 animate-spin" /> : "Reopen"}
+            </Button>
+          </div>
+        )}
       </div>
 
       {expanded && (
         <TaskDetailPanel
           task={task} kind={kind} eventId={eventId} contextLinks={contextLinks} contact={contact}
           documents={documents} timelineEntries={timelineEntries} conversationMessages={conversationMessages}
+          staffOptions={staffOptions}
           onNotesUpdated={() => router.refresh()}
         />
       )}
@@ -454,10 +525,20 @@ function TaskRow({
 // Client Planning has three states, all distinguishable at a glance (Draft →
 // Release workflow, 2026-07-10): Not Applied (the dashed picker below),
 // Draft (applied, private — "Edit Draft" / "Release to [Client]"), and
-// Released ("View Client Portal"). Venue Planning only ever has two — Not
-// Applied and Active — it has no draft state to show.
+// Released (progress bar + milestone stepper, both already venue-side).
+// Venue Planning only ever has two — Not Applied and Active — it has no
+// draft state to show.
+//
+// "View Client Portal" was removed here (Planning Execution — Release
+// Completion, Navigation Review): every capability it offered — milestone
+// progress, task-level status, the readiness percentage — was already
+// rendered venue-side (§2 of docs/planning-execution-release-readiness.md
+// confirmed no coordinator workflow depended on it). Its continued
+// existence was the one standing, unaudited path into a couple's own
+// workspace that Client Identity Foundation's consented-access model was
+// built to replace (docs/wedding-workspace-architecture.md §5, §15).
 export function PlaybookApplyRow({
-  kind, eventId, clientId, eventDate, eventName, clientName, eventType, templates, application, readiness, portalToken, onApplied,
+  kind, eventId, clientId, eventDate, eventName, clientName, eventType, templates, application, readiness, onApplied,
   preselectTemplateId,
 }: {
   kind: PlaybookKind;
@@ -467,10 +548,9 @@ export function PlaybookApplyRow({
   eventName: string;
   clientName: string | null;
   eventType: string | null;
-  templates: PlaybookTemplate[];
+  templates: PlaybookTemplateWithStats[];
   application: EventPlaybookApplication | undefined;
   readiness: EventReadiness | null;
-  portalToken: string | null;
   onApplied: () => void;
   /** Preselect the venue's default template for this kind/event type, when one exists — falls back to today's behavior (first template) when not given. */
   preselectTemplateId?: string;
@@ -569,34 +649,63 @@ export function PlaybookApplyRow({
             )}
           </div>
         )}
-        {kind === "client" && application.releasedAt && portalToken && (
-          <div className="mt-2 pl-6">
-            <Button
-              size="sm" variant="outline" className="h-7 px-2 text-xs"
-              render={<Link href={`/p/${portalToken}`} target="_blank" rel="noopener noreferrer" />}
-            >
-              View Client Portal
-              <ArrowUpRight className="h-3 w-3" />
-            </Button>
-          </div>
-        )}
       </div>
     );
   }
 
-  if (templates.length === 0) return null;
+  // No Planning Templates of this kind exist at the venue yet — this used
+  // to silently render nothing, which left the empty-state message below
+  // ("Apply a checklist above") pointing at a control that didn't exist.
+  // Confirmed directly: a fresh venue with zero Playbook templates renders
+  // both PlaybookApplyRow instances as null, leaving that message the only
+  // thing on screen with no way to act on it.
+  if (templates.length === 0) {
+    return (
+      <div className="rounded-lg border border-dashed border-border px-3 py-2">
+        <div className="flex items-center gap-2">
+          <span className="text-sm">{meta.emoji}</span>
+          <p className="text-xs text-muted-foreground flex-1">
+            No {meta.label} checklists yet — create one to apply here.
+          </p>
+          <Button type="button" size="sm" variant="outline" className="h-7 px-2 text-xs shrink-0"
+            render={<Link href="/library/playbooks" />}>
+            Create a Template
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  // Picking between two similarly-named templates ("Standard" vs "Standard —
+  // Copy") with no way to tell them apart was a real gap — counts are the
+  // cheapest possible differentiator, reusing the Library page's own stats
+  // (Planning Release Readiness Fixes, UX Improvements).
+  const selectedStats = templates.find((t) => t.id === selectedTemplate);
 
   return (
-    <div className="flex items-center gap-2 rounded-lg border border-dashed border-border px-3 py-2">
-      <span className="text-sm">{meta.emoji}</span>
-      <p className="text-xs text-muted-foreground flex-1">No {meta.label} checklist applied</p>
-      <Select value={selectedTemplate} onValueChange={setSelectedTemplate} items={templates.map((t) => ({ value: t.id, label: t.name }))}>
-        <SelectTrigger className="h-7 w-40 text-xs shrink-0"><SelectValue /></SelectTrigger>
-        <SelectContent>{templates.map((t) => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}</SelectContent>
-      </Select>
-      <Button type="button" size="sm" onClick={handleApply} disabled={applying} className="h-7 px-2 text-xs shrink-0">
-        {applying ? <Loader2 className="h-3 w-3 animate-spin" /> : <><Plus className="mr-1 h-3 w-3" />Apply</>}
-      </Button>
+    <div className="rounded-lg border border-dashed border-border px-3 py-2">
+      <div className="flex items-center gap-2">
+        <span className="text-sm">{meta.emoji}</span>
+        <p className="text-xs text-muted-foreground flex-1">No {meta.label} checklist applied</p>
+        <Select value={selectedTemplate} onValueChange={setSelectedTemplate} items={templates.map((t) => ({ value: t.id, label: t.name }))}>
+          <SelectTrigger className="h-7 w-40 text-xs shrink-0"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            {templates.map((t) => (
+              <SelectItem key={t.id} value={t.id}>
+                {t.name} <span className="text-muted-foreground">— {t.milestoneCount} milestone{t.milestoneCount === 1 ? "" : "s"}, {t.taskCount} task{t.taskCount === 1 ? "" : "s"}</span>
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Button type="button" size="sm" onClick={handleApply} disabled={applying} className="h-7 px-2 text-xs shrink-0">
+          {applying ? <Loader2 className="h-3 w-3 animate-spin" /> : <><Plus className="mr-1 h-3 w-3" />Apply</>}
+        </Button>
+      </div>
+      {selectedStats && (
+        <p className="mt-1 pl-6 text-[11px] text-muted-foreground">
+          {selectedStats.milestoneCount} milestone{selectedStats.milestoneCount === 1 ? "" : "s"} · {selectedStats.taskCount} task{selectedStats.taskCount === 1 ? "" : "s"}
+        </p>
+      )}
     </div>
   );
 }
@@ -654,8 +763,8 @@ export function EventTaskList({
   linkableDocuments,
   linkableTimelineEntries,
   linkableConversationMessages,
-  portalToken,
   requestsByTaskId = {},
+  staffOptions = [],
 }: {
   eventId: string;
   clientId: string | null;
@@ -665,18 +774,23 @@ export function EventTaskList({
   eventType: string | null;
   initialTasks: EventTask[];
   readinessByKind: { client: EventReadiness | null; venue: EventReadiness | null };
-  templates: PlaybookTemplate[];
+  templates: PlaybookTemplateWithStats[];
   applications: EventPlaybookApplication[];
   contextLinksByTask: Record<string, EventTaskContextLink[]>;
   taskContacts: Record<string, TaskContact>;
   linkableDocuments: Document[];
   linkableTimelineEntries: TimelineEntry[];
   linkableConversationMessages: LinkableConversationMessage[];
-  portalToken: string | null;
   requestsByTaskId?: Record<string, Request>;
+  staffOptions?: StaffOption[];
 }) {
   const router = useRouter();
-  const [tasks, setTasks] = React.useState(initialTasks);
+  // useSyncedState (not a plain useState(initialTasks)) — applying a
+  // Playbook checklist (PlaybookApplyRow, below) writes real task rows and
+  // calls router.refresh(); a plain useState would never look at the
+  // refreshed initialTasks prop again once mounted. Same confirmed bug
+  // shape as Timeline's entries state — see lib/hooks/use-synced-state.ts.
+  const [tasks, setTasks] = useSyncedState(initialTasks);
   const [expandedId, setExpandedId] = React.useState<string | null>(null);
 
   function handleUpdate(id: string, status: EventTask["status"]) {
@@ -703,6 +817,7 @@ export function EventTaskList({
         contextLinks={contextLinksByTask[task.id] ?? []}
         contact={kind === "client" ? (taskContacts[task.assignedToStaffId ?? ""] ?? null) : null}
         documents={linkableDocuments} timelineEntries={linkableTimelineEntries} conversationMessages={linkableConversationMessages}
+        staffOptions={staffOptions}
       />
     );
   };
@@ -731,7 +846,6 @@ export function EventTaskList({
             templates={templates.filter((t) => t.kind === k.value)}
             application={applications.find((a) => a.kind === k.value)}
             readiness={k.value === "client" ? readinessByKind.client : readinessByKind.venue}
-            portalToken={portalToken}
             onApplied={() => router.refresh()}
           />
         ))}

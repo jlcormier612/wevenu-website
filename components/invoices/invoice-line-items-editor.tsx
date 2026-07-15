@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
+import { useSyncedState } from "@/lib/hooks/use-synced-state";
 import { formatCurrency, LINE_ITEM_TYPES } from "@/lib/invoices/constants";
 import type { InvoiceLineItem, InvoiceLineItemInput, InvoiceLineItemType } from "@/lib/invoices/types";
 import type { Package } from "@/lib/packages/types";
@@ -23,16 +24,28 @@ const EMPTY_INPUT: InvoiceLineItemInput = {
 function LineItemRow({
   item, onRemove, removing,
 }: { item: InvoiceLineItem; onRemove: () => void; removing: boolean }) {
+  // Booking Financial Architecture Phase 3a: a line traced back to an Event
+  // Order is a live projection, not something this editor owns — it isn't
+  // even a real invoice_line_items row yet. Never removable from here;
+  // that decision belongs to Event Order.
+  const isProjected = !!item.eventOrderLineId;
   return (
     <div className="group grid grid-cols-[1fr_auto_auto_auto_auto] gap-2 items-center py-2 border-b border-border last:border-0 text-sm">
-      <span className="text-foreground">{item.description}</span>
+      <span className="text-foreground">
+        {item.description}
+        {isProjected && <span className="ml-2 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground align-middle">Event Order</span>}
+      </span>
       <span className="text-muted-foreground text-right w-12">{item.quantity}×</span>
       <span className="text-muted-foreground text-right w-20">{formatCurrency(item.unitPrice)}</span>
       <span className="font-medium text-right w-20">{formatCurrency(item.amount)}</span>
-      <button type="button" onClick={onRemove} disabled={removing}
-        className="opacity-0 group-hover:opacity-100 rounded p-1 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-opacity" aria-label="Remove">
-        {removing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
-      </button>
+      {isProjected ? (
+        <span className="w-7" />
+      ) : (
+        <button type="button" onClick={onRemove} disabled={removing}
+          className="opacity-0 group-hover:opacity-100 rounded p-1 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-opacity" aria-label="Remove">
+          {removing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
+        </button>
+      )}
     </div>
   );
 }
@@ -45,7 +58,10 @@ export function InvoiceLineItemsEditor({
   packages: Package[];
   invoiceStatus: string;
 }) {
-  const [items, setItems] = React.useState(initialItems);
+  // See lib/hooks/use-synced-state.ts — the invoice-status control on this
+  // same page calls router.refresh() on status change, and Event-Order-
+  // projected lines can also change from outside this component entirely.
+  const [items, setItems] = useSyncedState(initialItems);
   const [showAdd, setShowAdd] = React.useState(false);
   const [input, setInput] = React.useState<InvoiceLineItemInput>(EMPTY_INPUT);
   const [addPending, startAdd] = React.useTransition();
