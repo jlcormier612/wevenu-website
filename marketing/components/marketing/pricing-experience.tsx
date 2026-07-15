@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { OurFirstFriends } from "@/components/marketing/our-first-friends";
 import { PricingCheckoutButton } from "@/components/marketing/pricing-checkout-button";
 import { PRICING_PAGE } from "@/lib/marketing/pricing-page";
 
@@ -99,7 +100,10 @@ export function PricingExperience({ canceled }: { canceled?: boolean }) {
         </div>
       </section>
 
-      {/* ── Philosophy ── */}
+      {/* ── Founding Venue Program ── */}
+      <OurFirstFriends programOnly />
+
+      {/* ── Concise philosophy — full belief lives on Why Wevenu ── */}
       <section className="px-6 py-28 md:py-36">
         <div className="mx-auto max-w-3xl">
           <p className="text-xs tracking-[0.22em] uppercase text-[var(--heritage-sage)]">
@@ -107,11 +111,22 @@ export function PricingExperience({ canceled }: { canceled?: boolean }) {
           </p>
           <div className="mt-10 space-y-6 text-base leading-relaxed text-[var(--forest-sage)]/75 md:text-lg">
             {page.philosophy.lines.map((line) => (
-              <p key={line} className="font-heading text-2xl leading-[1.35] text-[var(--forest-sage)] md:text-3xl">
+              <p
+                key={line}
+                className="font-heading text-2xl leading-[1.35] text-[var(--forest-sage)] md:text-3xl"
+              >
                 {line}
               </p>
             ))}
           </div>
+          <p className="mt-12">
+            <Link
+              href="/why-wevenu#pricing-philosophy"
+              className="font-heading text-xl text-[var(--forest-sage)] underline-offset-8 hover:underline md:text-2xl"
+            >
+              Read our full pricing philosophy →
+            </Link>
+          </p>
         </div>
       </section>
     </div>

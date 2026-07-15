@@ -37,7 +37,7 @@ export const PRICING_PAGE = {
       id: "professional" as const,
       name: "Professional",
       capacity: "Up to 200 annual events",
-      price: "$399",
+      price: "$349",
       period: "/month",
       cta: "Get Started",
       kind: "subscription" as const,

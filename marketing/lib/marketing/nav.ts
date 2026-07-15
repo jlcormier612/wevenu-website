@@ -4,11 +4,30 @@ export const PRODUCT_APP_URL =
 
 export const MARKETING_NAV = [
   { href: "/", label: "Home" },
+  { href: "/why-wevenu", label: "Why Wevenu" },
   { href: "/product", label: "Product" },
   { href: "/features", label: "Features" },
   { href: "/pricing", label: "Pricing" },
-  { href: "/about", label: "About" },
   { href: "/contact", label: "Contact" },
+] as const;
+
+/** Explore column in the site footer */
+export const FOOTER_EXPLORE = [
+  { href: "/why-wevenu", label: "Why Wevenu" },
+  { href: "/product", label: "Product" },
+  { href: "/features", label: "Features" },
+  { href: "/pricing", label: "Pricing" },
+  { href: "/resources", label: "Resources" },
+  { href: "/contact", label: "Contact" },
+] as const;
+
+/** Trust & legal column in the site footer */
+export const FOOTER_TRUST = [
+  { href: "/trust", label: "Trust" },
+  { href: "/privacy", label: "Privacy Policy" },
+  { href: "/terms", label: "Terms of Service" },
+  { href: "/cookies", label: "Cookie Preferences" },
+  { href: "/status", label: "System Status" },
 ] as const;
 
 export const PRIMARY_CTA = {

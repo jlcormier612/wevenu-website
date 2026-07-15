@@ -66,6 +66,12 @@ export const FILM = {
   aboutPlanning:
     "https://images.unsplash.com/photo-1519225421980-715cb0215aed?auto=format&fit=crop&w=1800&q=80",
 
+  // Our First Friends — gratitude memories (local still)
+  firstFriendsMemory: "/marketing/first-friends-memory.jpg",
+
+  // Why Wevenu — Our Promise editorial still
+  whyCarePrep: "/marketing/why-our-promise.jpg",
+
   // Inquiry journey — welcoming, hopeful (unique to this chapter)
   inquiryWelcome:
     "https://images.unsplash.com/photo-1768777278552-80bf6516c793?auto=format&fit=crop&w=2000&q=80",

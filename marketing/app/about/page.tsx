@@ -1,13 +1,6 @@
-import type { Metadata } from "next";
+import { redirect } from "next/navigation";
 
-import { AboutExperience } from "@/components/marketing/about-experience";
-
-export const metadata: Metadata = {
-  title: "About Wevenu",
-  description:
-    "We didn't set out to build software. We set out to protect hospitality—for independent venues that believe the work is personal.",
-};
-
+/** About is no longer a primary destination — belief lives on Why Wevenu. */
 export default function AboutPage() {
-  return <AboutExperience />;
+  redirect("/why-wevenu");
 }
