@@ -42,11 +42,13 @@ export default function LoginPage() {
     <main
       className="flex min-h-svh flex-col items-center justify-center px-4 py-12"
       style={{
-        // Plain --linen was too close in tone to the wordmark's flower
-        // petal accent, which nearly disappeared against it. A few shades
-        // darker (toward --taupe-light) keeps the page light while giving
-        // the logo real contrast.
-        background: "color-mix(in oklch, var(--linen), var(--taupe-light) 60%)",
+        // Plain --linen — and even a --taupe-light mix, tried previously —
+        // was still too close in tone to the wordmark's flower petal
+        // accent, which nearly disappeared against it. --taupe-dark is a
+        // genuinely darker brand neutral (not just a lighter mix ratio),
+        // giving the logo real contrast while the page still reads as
+        // light, warm, and on-brand rather than gray.
+        background: "color-mix(in oklch, var(--linen), var(--taupe-dark) 45%)",
         ...LIGHT_THEME_VARS,
       }}
     >
