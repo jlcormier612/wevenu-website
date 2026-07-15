@@ -62,6 +62,33 @@ export async function getClients(client: DbClient, venueId: string, filters?: { 
   return (data as ClientRow[]).map(mapClient);
 }
 
+export async function getClientAttentionFlags(client: DbClient, venueId: string): Promise<Set<string>> {
+  const threeDaysAgo = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString();
+  const today = new Date().toISOString().slice(0, 10);
+
+  const [overdue, unsignedContracts] = await Promise.all([
+    client.from("payment_line_items")
+      .select("due_date, status, payment_schedules!inner(client_id)")
+      .eq("venue_id", venueId)
+      .or(`status.eq.overdue,and(status.eq.pending,due_date.lt.${today})`),
+    client.from("contracts")
+      .select("client_id")
+      .eq("venue_id", venueId).eq("status", "sent")
+      .not("sent_at", "is", null).lt("sent_at", threeDaysAgo),
+  ]);
+
+  const flagged = new Set<string>();
+  type OverdueRow = { payment_schedules: { client_id: string | null } | { client_id: string | null }[] | null };
+  for (const row of (overdue.data ?? []) as unknown as OverdueRow[]) {
+    const schedule = Array.isArray(row.payment_schedules) ? row.payment_schedules[0] : row.payment_schedules;
+    if (schedule?.client_id) flagged.add(schedule.client_id);
+  }
+  for (const row of (unsignedContracts.data ?? []) as { client_id: string | null }[]) {
+    if (row.client_id) flagged.add(row.client_id);
+  }
+  return flagged;
+}
+
 export async function getClient(client: DbClient, venueId: string, clientId: string): Promise<ClientWithDetails | null> {
   const [cRes, nRes, kdRes, aRes, evRes] = await Promise.all([
     client.from("clients").select("*").eq("id", clientId).eq("venue_id", venueId).maybeSingle<ClientRow>(),
@@ -114,31 +141,39 @@ export async function insertClient(client: DbClient, venueId: string, input: Cli
   // time, regardless of origin. Converted-from-a-Lead clients inherit the
   // Lead's already-resolved relationship (no extra round trip); directly
   // created clients (no Lead) resolve/create one via the same shared
-  // function every other entry point uses — this is the fix for the
+  // logic every other entry point uses — this is the fix for the
   // "Client with no Lead has no Conversation" gap named in
   // docs/architecture-delta-phase-2a-backend.md.
-  let relationshipId: string | null = null;
-  if (leadId) {
-    const { data: lead, error: leadErr } = await client
-      .from("leads").select("relationship_id").eq("id", leadId).maybeSingle<{ relationship_id: string | null }>();
-    if (leadErr) throw leadErr;
-    relationshipId = lead?.relationship_id ?? null;
-  } else {
-    const { data: relId, error: relErr } = await client.rpc("find_or_create_relationship", {
-      p_venue_id: venueId,
-      p_email: input.email.trim() || null,
-      p_first_name: input.firstName.trim(),
-      p_last_name: input.lastName.trim(),
-    });
-    if (relErr) throw relErr;
-    relationshipId = relId;
-  }
-
-  const { data, error } = await client.from("clients")
-    .insert({ ...toClientRow(venueId, input, leadId), relationship_id: relationshipId })
-    .select("id").single<{ id: string }>();
+  //
+  // Relationship resolution and the Client insert used to be two separate
+  // network calls — if the second failed, the first had already committed,
+  // leaving an orphaned Relationship with no visible Client. Same bug
+  // shape confirmed and fixed for Leads (create_lead_atomic); this is the
+  // identical fix for Clients. venueId isn't passed to the RPC — it
+  // resolves itself via current_user_venue_id(), the same RLS-backed
+  // source of truth every policy on these tables uses.
+  const { data, error } = await client.rpc("create_client_atomic", {
+    payload: {
+      leadId: leadId || null,
+      firstName: input.firstName.trim(),
+      lastName: input.lastName.trim(),
+      email: input.email.trim(),
+      phone: input.phone.trim(),
+      partnerFirstName: input.partnerFirstName.trim(),
+      partnerLastName: input.partnerLastName.trim(),
+      partnerEmail: input.partnerEmail.trim(),
+      eventType: input.eventType,
+      eventDate: input.eventDate,
+      endDate: input.endDate,
+      guestCount: input.guestCount,
+      ceremonyTime: input.ceremonyTime,
+      receptionTime: input.receptionTime,
+      rehearsalDate: input.rehearsalDate,
+      internalNotes: input.internalNotes.trim(),
+    },
+  });
   if (error) throw error;
-  return data.id;
+  return data as string;
 }
 
 export async function updateClientInfo(client: DbClient, venueId: string, clientId: string, input: ClientInput): Promise<void> {

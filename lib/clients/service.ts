@@ -87,6 +87,23 @@ export async function getClients(filters?: { q?: string; status?: string }): Pro
   return repo.getClients(await createClient(), venue.id, filters);
 }
 
+/**
+ * Client Workspace list-page UX pass — "Needs Attention" filter/metric.
+ * Reuses two signals already established elsewhere in this codebase
+ * (overdue payments — the same definition the Dashboard's payments widget
+ * uses; a contract sent 3+ days ago still unsigned — the same definition
+ * Luv's own observation engine uses) rather than inventing a new one or a
+ * full per-event readiness computation, which would mean an expensive
+ * query per client just to render a filter count. Two single, venue-scoped
+ * queries — not one per client.
+ */
+export async function getClientAttentionFlags(): Promise<Set<string>> {
+  if (!isSupabaseConfigured) return new Set();
+  const venue = await getCurrentVenue();
+  if (!venue) return new Set();
+  return repo.getClientAttentionFlags(await createClient(), venue.id);
+}
+
 export async function getClient(clientId: string): Promise<ClientWithDetails | null> {
   if (!isSupabaseConfigured) return null;
   const venue = await getCurrentVenue();
@@ -186,7 +203,30 @@ export async function convertLeadToClient(lead: Lead): Promise<CreateClientResul
         return { ok: false, message: `Cannot convert this lead — their event date is blocked: "${title}". Remove the block first, or update the event date.` } as CreateClientResult;
       }
     }
-    const clientId = await repo.insertClient(supabase, venueId, input, lead.id);
+    // Lead Pipeline — Release Readiness, Release Blocker #2. clients.lead_id
+    // is now uniquely constrained (a double-click or a race between two
+    // tabs could otherwise create two Clients for one Lead) — this
+    // pre-check gives a friendly message in the common case; the
+    // try/catch below is the actual guarantee, for the race itself.
+    const { data: existingClient } = await supabase.from("clients")
+      .select("id").eq("lead_id", lead.id).eq("venue_id", venueId).maybeSingle<{ id: string }>();
+    if (existingClient) {
+      return { ok: true, clientId: existingClient.id, eventId: null } as CreateClientResult;
+    }
+    let clientId: string;
+    try {
+      clientId = await repo.insertClient(supabase, venueId, input, lead.id);
+    } catch (err) {
+      // The true race: two near-simultaneous conversions both passed the
+      // pre-check above before either had committed. clients_lead_id_unique
+      // is the actual guarantee — Postgres unique_violation is 23505.
+      if (err && typeof err === "object" && "code" in err && (err as { code: string }).code === "23505") {
+        const { data: raceClient } = await supabase.from("clients")
+          .select("id").eq("lead_id", lead.id).eq("venue_id", venueId).maybeSingle<{ id: string }>();
+        if (raceClient) return { ok: true, clientId: raceClient.id, eventId: null } as CreateClientResult;
+      }
+      throw err;
+    }
     await repo.insertClientActivity(supabase, venueId, clientId, "note_added",
       "Welcome note", `Converted from lead inquiry — ${lead.firstName} ${lead.lastName}`);
     await convertLeadHolds(venueId, lead.id, supabase);
@@ -209,6 +249,21 @@ export async function convertLeadToClient(lead: Lead): Promise<CreateClientResul
           guestCount: input.guestCount,
         })
       : null;
+
+    // Sales → Booking Journey walkthrough — a document uploaded to the Lead
+    // (a signed proposal, inspiration photos, anything) kept lead_id
+    // forever and never gained a client_id/event_id, so it silently
+    // vanished from the Client Workspace's Documents tab the moment the
+    // lead converted — the couple's own file, missing its own proposal.
+    // The document still belongs to this couple; it just needs the same
+    // tag a document uploaded here today would get — documents_one_entity
+    // means exactly one of lead_id/client_id/event_id/vendor_id, never two,
+    // so lead_id must actually clear, not just gain a second tag alongside it.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await (supabase.from("documents") as any)
+      .update(eventId ? { lead_id: null, event_id: eventId } : { lead_id: null, client_id: clientId })
+      .eq("lead_id", lead.id).eq("venue_id", venueId);
+
     return { ok: true, clientId, eventId } as CreateClientResult;
   });
   const r = result as CreateClientResult;

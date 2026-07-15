@@ -205,34 +205,37 @@ function toVendorProfileRow(input: VendorInput): Record<string, unknown> {
   };
 }
 
-function toVVRRow(venueId: string, vendorId: string, input: VendorInput): Record<string, unknown> {
-  return {
-    venue_id:             venueId,
-    vendor_id:            vendorId,
-    status:               "active",
-    preference_level:     input.preferenceLevel || "recommended",
-    notes:                input.notes.trim() || null,
-    special_pricing_note: input.specialPricingNote.trim() || null,
-  };
-}
-
 export async function insertVendor(client: DbClient, venueId: string, input: VendorInput): Promise<string> {
-  // Create the global vendor profile first. The venue is the de facto steward
-  // of identity fields until the vendor claims it (venues_update_unclaimed_vendors).
-  const { data: vendorData, error: vendorErr } = await client
-    .from("vendors")
-    .insert(toVendorProfileRow(input))
-    .select("id")
-    .single<{ id: string }>();
-  if (vendorErr) throw vendorErr;
-
-  // Then create the venue relationship
-  const { error: vvrErr } = await client
-    .from("venue_vendor_relationships")
-    .insert(toVVRRow(venueId, vendorData.id, input));
-  if (vvrErr) throw vvrErr;
-
-  return vendorData.id;
+  // The global vendor profile and the venue relationship used to be two
+  // separate inserts — if the second failed, the first had already
+  // committed, leaving an orphaned global vendor profile with no venue
+  // relationship pointing at it. Same bug shape confirmed and fixed for
+  // Leads and Clients; this is the identical fix for Vendors. venueId
+  // isn't passed to the RPC — it resolves itself via
+  // current_user_venue_id(), the same RLS-backed source of truth every
+  // policy on these tables uses.
+  const { data, error } = await client.rpc("create_vendor_atomic", {
+    payload: {
+      businessName: input.businessName.trim(),
+      category: input.category,
+      contactName: input.contactName.trim(),
+      email: input.email.trim(),
+      phone: input.phone.trim(),
+      websiteUrl: input.websiteUrl.trim(),
+      instagramUrl: input.instagramUrl.trim(),
+      facebookUrl: input.facebookUrl.trim(),
+      pinterestUrl: input.pinterestUrl.trim(),
+      tiktokUrl: input.tiktokUrl.trim(),
+      logoUrl: input.logoUrl.trim(),
+      description: input.description.trim(),
+      pricingTier: input.pricingTier,
+      preferenceLevel: input.preferenceLevel,
+      notes: input.notes.trim(),
+      specialPricingNote: input.specialPricingNote.trim(),
+    },
+  });
+  if (error) throw error;
+  return data as string;
 }
 
 /**
