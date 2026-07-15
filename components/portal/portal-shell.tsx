@@ -2769,7 +2769,7 @@ function WebsiteSection({ token, context }: { token: string; context: PortalCont
 
 // ── Venue tasks ───────────────────────────────────────────────────────────────
 
-function VenueTasksSection({ token, initialTasks }: { token: string; initialTasks: PortalTask[] }) {
+function VenueTasksSection({ token, initialTasks, venueName }: { token: string; initialTasks: PortalTask[]; venueName: string }) {
   const [tasks, setTasks] = React.useState(initialTasks);
   const [completing, setCompleting] = React.useState<string | null>(null);
 
@@ -2798,6 +2798,7 @@ function VenueTasksSection({ token, initialTasks }: { token: string; initialTask
           {t.status === "complete" ? <Check className="h-4 w-4 shrink-0" style={{ color: SAGE }} /> : t.status === "blocked" ? <Lock className="h-4 w-4 shrink-0" style={{ color: TAUPE }} /> : <Clock className="h-4 w-4 shrink-0" style={{ color: TAUPE }} />}
           <div className="flex-1 min-w-0">
             <p className={`text-sm font-medium ${t.status === "complete" ? "text-muted-foreground line-through" : "text-heading"}`}>{t.title}</p>
+            {t.description && <p className="text-xs text-muted-foreground mt-0.5">{t.description}</p>}
             <p className="text-[11px] text-muted-foreground">Due {formatDate(t.dueDate)}</p>
           </div>
           {t.canComplete && (
@@ -2814,7 +2815,7 @@ function VenueTasksSection({ token, initialTasks }: { token: string; initialTask
 
   return (
     <div className="space-y-4">
-      <p className="text-xs text-muted-foreground">Tasks assigned by {""}<span className="font-medium">{""}</span> that need your attention or are in progress.</p>
+      <p className="text-xs text-muted-foreground">Tasks assigned by <span className="font-medium">{venueName}</span> that need your attention or are in progress.</p>
       <Group label="Your action needed" items={actionNeeded} />
       <Group label="In progress" items={tracking} />
       <Group label="Completed" items={done} />
@@ -4137,7 +4138,7 @@ export function PortalShell({
             {activeSection === "journey"   && <JourneySection token={token} context={context} onNavigate={setActiveSection} />}
             {activeSection === "people"    && <OurPeopleSection token={token} context={context} />}
             {activeSection === "guide"     && <VenueGuidePortalSection token={token} context={context} />}
-            {activeSection === "tasks"     && <VenueTasksSection token={token} initialTasks={initialTasks} />}
+            {activeSection === "tasks"     && <VenueTasksSection token={token} initialTasks={initialTasks} venueName={context.venue.name} />}
             {activeSection === "timeline"  && <TimelinePortalSection token={token} initialSections={initialTimelineSections} initialEntries={initialTimelineEntries} />}
             {activeSection === "vendors"   && <VendorPortalSection token={token} context={context} />}
             {activeSection === "budget"    && <BudgetPortalSection token={token} />}

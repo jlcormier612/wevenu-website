@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 
-import { addPackageItem, createPackage, deletePackage_, removePackageItem, updatePackage_ } from "@/lib/packages/service";
+import { addPackageItem, createPackage, deletePackage_, duplicatePackage_, removePackageItem, updatePackage_ } from "@/lib/packages/service";
 import type { CreatePackageResult, PackageActionResult, PackageInput, PackageItemInput, PackageItem } from "@/lib/packages/types";
 
 export async function createPackageAction(input: PackageInput): Promise<CreatePackageResult> {
@@ -19,6 +19,12 @@ export async function updatePackageAction(id: string, input: PackageInput): Prom
 
 export async function deletePackageAction(id: string): Promise<PackageActionResult> {
   const result = await deletePackage_(id);
+  if (result.ok) revalidatePath("/packages");
+  return result;
+}
+
+export async function duplicatePackageAction(id: string, newName: string): Promise<CreatePackageResult> {
+  const result = await duplicatePackage_(id, newName);
   if (result.ok) revalidatePath("/packages");
   return result;
 }

@@ -158,14 +158,14 @@ export function TeamRoster({ initialMembers, venueId: _venueId }: Props) {
                       .map((r) => (
                         <DropdownMenuItem
                           key={r}
-                          onSelect={() => handleRoleChange(member.id, r)}
+                          onClick={() => handleRoleChange(member.id, r)}
                         >
                           Change to {ROLE_LABELS[r]}
                         </DropdownMenuItem>
                       ))}
                     <DropdownMenuItem
                       className="text-destructive focus:text-destructive"
-                      onSelect={() => handleRemove(member.id, member.name)}
+                      onClick={() => handleRemove(member.id, member.name)}
                     >
                       <Trash2 className="mr-2 h-3.5 w-3.5" />
                       Remove

@@ -145,7 +145,7 @@ export default async function SettingsPage() {
 
       {/* ── Tour Scheduling ────────────────────────────────────────── */}
       {tourSettings && (
-        <Card>
+        <Card id="tours" className="scroll-mt-20">
           <CardHeader>
             <CardTitle className="text-base">Tour Scheduling</CardTitle>
             <CardDescription>

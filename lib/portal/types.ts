@@ -168,6 +168,20 @@ export const ACCESSIBILITY_TAGS = [
 ] as const;
 export type AccessibilityTag = (typeof ACCESSIBILITY_TAGS)[number];
 
+/** Shared display labels/emoji for the tag vocabularies above — used by the couple's Seating tab and the venue's Wedding Day Seating lookup alike, so the two surfaces never invent a second vocabulary. */
+export const ACCESSIBILITY_LABELS: Record<string, string> = {
+  wheelchair: "Wheelchair access", limited_mobility: "Limited mobility",
+  hearing_assistance: "Hearing assistance", vision_assistance: "Vision assistance",
+  service_animal: "Service animal", special_seating: "Special seating request",
+};
+export const DIETARY_EMOJI: Record<string, string> = {
+  vegetarian: "🥦", vegan: "🌱", gluten_free: "🌾", dairy_free: "🥛",
+  nut_allergy: "🥜", shellfish_allergy: "🦐", kosher: "✡️", halal: "☪️",
+};
+export const MEAL_EMOJI: Record<string, string> = {
+  chicken: "🍗", beef: "🥩", fish: "🐟", vegetarian: "🥦", vegan: "🌱", kids: "🍕",
+};
+
 export type CoupleGuest = {
   id: string;
   firstName: string;
@@ -298,6 +312,8 @@ export type SeatingData = {
   unassignedGuests: SeatingGuest[];
   /** A table this guest was seated at got deleted in the Floor Plan editor — the assignment survives, pointing nowhere. */
   needsReassignment: SeatingGuest[];
+  /** True if this couple has ever seated a guest, even if no floor plan is currently shared — lets the empty state say "your venue paused sharing" instead of implying prior work was lost. */
+  hadPriorWork: boolean;
   stats: SeatingStats;
 };
 
@@ -391,6 +407,8 @@ export type PortalSession = {
   id: string;
   venueId: string;
   clientId: string;
+  /** The booking this session resolves to — stable, set at creation, never re-derived (Seating Release Completion). Null only for legacy rows this venue hasn't loaded since the backfill. */
+  eventId: string | null;
   accessToken: string;
   accessLevel: PortalContext["accessLevel"];
   label: string | null;

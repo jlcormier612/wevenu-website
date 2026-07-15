@@ -4,10 +4,10 @@ import * as React from "react";
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Archive, Loader2, MoreHorizontal, Pencil, Plus, Trash2 } from "lucide-react";
+import { Archive, ArchiveRestore, Copy, Loader2, MoreHorizontal, Pencil, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
-import { deletePackageAction, updatePackageAction } from "@/app/(app)/packages/actions";
+import { deletePackageAction, duplicatePackageAction, updatePackageAction } from "@/app/(app)/packages/actions";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -40,6 +40,14 @@ export function PackageList({ initialPackages }: { initialPackages: Package[] })
     if (!result.ok) { toast.error(result.message ?? "Could not delete."); router.refresh(); }
   }
 
+  async function handleDuplicate(pkg: Package) {
+    setLoadingId(pkg.id);
+    const result = await duplicatePackageAction(pkg.id, `${pkg.name} (Copy)`);
+    setLoadingId(null);
+    if (result.ok) { toast.success("Package duplicated."); router.push(`/packages/${result.packageId}`); }
+    else toast.error(result.message ?? "Could not duplicate package.");
+  }
+
   if (packages.length === 0) {
     return (
       <div className="rounded-xl border border-dashed border-border py-16 text-center">
@@ -67,7 +75,7 @@ export function PackageList({ initialPackages }: { initialPackages: Package[] })
           <div className="flex items-center justify-between">
             <p className="text-lg font-semibold text-heading">{formatPrice(pkg.basePrice)}</p>
             <div className="flex items-center gap-1">
-              {!pkg.isActive && <Badge variant="muted" className="text-xs">Inactive</Badge>}
+              {!pkg.isActive && <Badge variant="muted" className="text-xs">Archived</Badge>}
               <DropdownMenu>
                 <DropdownMenuTrigger render={<Button variant="ghost" size="icon-sm" aria-label="Package options" />}>
                   {loadingId === pkg.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <MoreHorizontal className="h-3.5 w-3.5" />}
@@ -76,11 +84,14 @@ export function PackageList({ initialPackages }: { initialPackages: Package[] })
                   <DropdownMenuItem render={<Link href={`/packages/${pkg.id}`} />}>
                     <Pencil className="mr-2 h-3.5 w-3.5" /> Edit
                   </DropdownMenuItem>
-                  <DropdownMenuItem onSelect={() => handleToggleActive(pkg)}>
-                    <Archive className="mr-2 h-3.5 w-3.5" />
-                    {pkg.isActive ? "Deactivate" : "Activate"}
+                  <DropdownMenuItem onClick={() => handleDuplicate(pkg)}>
+                    <Copy className="mr-2 h-3.5 w-3.5" /> Duplicate
                   </DropdownMenuItem>
-                  <DropdownMenuItem onSelect={() => handleDelete(pkg)} className="text-destructive focus:text-destructive">
+                  <DropdownMenuItem onClick={() => handleToggleActive(pkg)}>
+                    {pkg.isActive ? <Archive className="mr-2 h-3.5 w-3.5" /> : <ArchiveRestore className="mr-2 h-3.5 w-3.5" />}
+                    {pkg.isActive ? "Archive" : "Restore"}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => handleDelete(pkg)} className="text-destructive focus:text-destructive">
                     <Trash2 className="mr-2 h-3.5 w-3.5" /> Delete
                   </DropdownMenuItem>
                 </DropdownMenuContent>

@@ -61,6 +61,32 @@ function canManageStaff(
   return false;
 }
 
+/**
+ * The logged-in user's own venue_staff row — the prerequisite every "My —"
+ * view needs and, until now, nothing in the codebase resolved (confirmed
+ * absent during the Calendar Experience Completion audit; Planning
+ * Execution's own "My Tasks" is the first real consumer). Reuses the exact
+ * `venue_staff.user_id = auth.uid()` relationship `current_user_role()`
+ * already reads at the SQL layer — identity resolution, not a new
+ * permission or ownership concept. Owners have a real venue_staff row too
+ * (role='owner', is_owner=true, user_id = venues.owner_user_id — confirmed
+ * directly against live data), so one query covers every role.
+ */
+export async function getCurrentStaffMember(venueId: string): Promise<StaffMember | null> {
+  if (!isSupabaseConfigured) return null;
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return null;
+  const { data } = await supabase
+    .from("venue_staff")
+    .select("*")
+    .eq("venue_id", venueId)
+    .eq("user_id", user.id)
+    .eq("is_active", true)
+    .maybeSingle();
+  return data ? rowToStaffMember(data) : null;
+}
+
 export async function getTeamMembers(venueId: string): Promise<StaffMember[]> {
   if (!isSupabaseConfigured) return [];
   const supabase = await createClient();

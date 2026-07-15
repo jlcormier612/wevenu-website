@@ -59,3 +59,30 @@ export async function deletePackage(client: DbClient, venueId: string, id: strin
   const { error } = await client.from("packages").delete().eq("id", id).eq("venue_id", venueId);
   if (error) throw error;
 }
+
+// Template Platform — Release Readiness: Duplicate, matching the identical
+// pattern Playbooks/Timeline Templates/Floor Plan Templates already use — a
+// fresh, independent copy of the package and every one of its line items,
+// always starting active regardless of the source's state.
+export async function duplicatePackage(client: DbClient, venueId: string, sourceId: string, newName: string): Promise<string> {
+  const source = await getPackage(client, venueId, sourceId);
+  if (!source) throw new Error("Package not found.");
+  const { data, error } = await client.from("packages")
+    .insert({
+      venue_id: venueId, name: newName, description: source.description,
+      base_price: source.basePrice, category: source.category, is_active: true,
+    })
+    .select("id").single<{ id: string }>();
+  if (error) throw error;
+
+  if (source.items.length > 0) {
+    const { error: itemsError } = await client.from("package_items").insert(
+      source.items.map((item) => ({
+        package_id: data.id, venue_id: venueId, description: item.description,
+        quantity: item.quantity, unit: item.unit, sort_order: item.sortOrder,
+      })),
+    );
+    if (itemsError) throw itemsError;
+  }
+  return data.id;
+}

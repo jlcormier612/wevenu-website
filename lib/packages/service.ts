@@ -71,3 +71,11 @@ export async function deletePackage_(id: string): Promise<PackageActionResult> {
   });
   return result as PackageActionResult;
 }
+
+export async function duplicatePackage_(id: string, newName: string): Promise<CreatePackageResult> {
+  const result = await withVenue(async (c, venueId) => {
+    const packageId = await repo.duplicatePackage(c, venueId, id, newName);
+    return { ok: true, packageId } as CreatePackageResult;
+  });
+  return result as CreatePackageResult;
+}
