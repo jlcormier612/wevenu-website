@@ -56,6 +56,15 @@ export async function getLeads(filters?: { q?: string; status?: string }): Promi
   return repo.getLeads(supabase, venue.id, filters);
 }
 
+/** An already-active Lead matching this email (or, absent an email, this exact name) — for import-time duplicate detection. Null if the venue can't be resolved, matching this module's other read functions' fail-open shape. */
+export async function findActiveDuplicateLead(email: string, firstName: string, lastName: string): Promise<{ id: string } | null> {
+  if (!isSupabaseConfigured) return null;
+  const venue = await getCurrentVenue();
+  if (!venue) return null;
+  const supabase = await createClient();
+  return repo.findActiveDuplicate(supabase, venue.id, email, firstName, lastName);
+}
+
 export async function getLead(leadId: string): Promise<LeadWithDetails | null> {
   if (!isSupabaseConfigured) return null;
   const venue = await getCurrentVenue();

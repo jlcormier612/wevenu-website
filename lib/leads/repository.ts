@@ -4,6 +4,7 @@
  * Maps snake_case rows to camelCase domain types. Server-only.
  */
 import { createClient } from "@/integrations/supabase/server";
+import { getVenueTimezone, utcToVenueLocalParts, venueLocalToUtcIso } from "@/lib/venue/timezone";
 import type {
   Lead,
   LeadActivity,
@@ -38,12 +39,12 @@ export const EMPTY_TOUR: LeadTourInfo = { tourDate: null, tourTime: null, tourCo
 
 type TourAppointmentRow = { lead_id?: string | null; scheduled_at: string; status: string; notes: string | null };
 
-function tourInfoFromAppointment(row: TourAppointmentRow | null | undefined): LeadTourInfo {
+function tourInfoFromAppointment(row: TourAppointmentRow | null | undefined, timezone: string | null): LeadTourInfo {
   if (!row) return EMPTY_TOUR;
-  const d = new Date(row.scheduled_at);
+  const { date, time } = utcToVenueLocalParts(row.scheduled_at, timezone);
   return {
-    tourDate: d.toISOString().slice(0, 10),
-    tourTime: d.toISOString().slice(11, 16),
+    tourDate: date,
+    tourTime: time,
     tourCompleted: row.status === "completed",
     tourNotes: row.notes,
   };
@@ -51,27 +52,33 @@ function tourInfoFromAppointment(row: TourAppointmentRow | null | undefined): Le
 
 /** The most recent non-cancelled tour appointment for a single lead. */
 export async function getCurrentTourForLead(client: DbClient, venueId: string, leadId: string): Promise<LeadTourInfo> {
-  const { data } = await client.from("tour_appointments")
-    .select("scheduled_at, status, notes")
-    .eq("venue_id", venueId).eq("lead_id", leadId)
-    .neq("status", "cancelled")
-    .order("scheduled_at", { ascending: false })
-    .limit(1).maybeSingle<TourAppointmentRow>();
-  return tourInfoFromAppointment(data);
+  const [{ data }, timezone] = await Promise.all([
+    client.from("tour_appointments")
+      .select("scheduled_at, status, notes")
+      .eq("venue_id", venueId).eq("lead_id", leadId)
+      .neq("status", "cancelled")
+      .order("scheduled_at", { ascending: false })
+      .limit(1).maybeSingle<TourAppointmentRow>(),
+    getVenueTimezone(client, venueId),
+  ]);
+  return tourInfoFromAppointment(data, timezone);
 }
 
 /** Batch version for list views — one query for many leads instead of N+1. */
 export async function getCurrentToursForLeads(client: DbClient, venueId: string, leadIds: string[]): Promise<Map<string, LeadTourInfo>> {
   const map = new Map<string, LeadTourInfo>();
   if (leadIds.length === 0) return map;
-  const { data } = await client.from("tour_appointments")
-    .select("lead_id, scheduled_at, status, notes")
-    .eq("venue_id", venueId).in("lead_id", leadIds)
-    .neq("status", "cancelled")
-    .order("scheduled_at", { ascending: false });
+  const [{ data }, timezone] = await Promise.all([
+    client.from("tour_appointments")
+      .select("lead_id, scheduled_at, status, notes")
+      .eq("venue_id", venueId).in("lead_id", leadIds)
+      .neq("status", "cancelled")
+      .order("scheduled_at", { ascending: false }),
+    getVenueTimezone(client, venueId),
+  ]);
   for (const row of (data ?? []) as TourAppointmentRow[]) {
     if (!row.lead_id || map.has(row.lead_id)) continue; // rows are ordered desc, so the first one seen per lead is the most recent
-    map.set(row.lead_id, tourInfoFromAppointment(row));
+    map.set(row.lead_id, tourInfoFromAppointment(row, timezone));
   }
   return map;
 }
@@ -102,7 +109,8 @@ export async function upsertLeadTour(
     return;
   }
 
-  const scheduledAt = new Date(`${input.tourDate}T${input.tourTime || "12:00"}:00`).toISOString();
+  const timezone = await getVenueTimezone(client, venueId);
+  const scheduledAt = venueLocalToUtcIso(input.tourDate, input.tourTime || "12:00", timezone);
   const status = input.tourCompleted ? "completed" : "scheduled";
   const completedAt = input.tourCompleted ? new Date().toISOString() : null;
 
@@ -273,50 +281,63 @@ export async function insertLead(
   venueId: string,
   input: LeadInput,
 ): Promise<string> {
-  // Program 2 Phase 2: every Lead-creating path resolves a Relationship
-  // (the enduring customer identity) through the same shared function the
-  // public entry points use — this is also the manual-create AND CSV-import
-  // path (importLeadsAction calls createLead per row), so one call here
-  // covers both, per Engineering Standard #2 (an invariant enforced on one
-  // entry point must be enforced on every entry point).
-  const { data: relationshipId, error: relationshipError } = await client.rpc(
-    "find_or_create_relationship",
-    {
-      p_venue_id: venueId,
-      p_email: input.email.trim() || null,
-      p_first_name: input.firstName.trim(),
-      p_last_name: input.lastName.trim(),
+  // Relationship resolution and the Lead insert used to be two separate
+  // network calls from here — if the second one failed for any reason, the
+  // first had already committed, leaving an orphaned customer identity with
+  // no visible Lead to show for it (confirmed directly in production data).
+  // `create_lead_atomic` does both inside one function, so they succeed or
+  // fail together. This is also the manual-create AND CSV-import path
+  // (importLeadsAction calls createLead per row), so one call here covers
+  // both, per Engineering Standard #2 (an invariant enforced on one entry
+  // point must be enforced on every entry point). `venueId` isn't passed
+  // through — the function resolves it itself via `current_user_venue_id()`,
+  // the same RLS-backed source of truth every policy on these tables uses.
+  const { data, error } = await client.rpc("create_lead_atomic", {
+    payload: {
+      firstName: input.firstName.trim(),
+      lastName: input.lastName.trim(),
+      email: input.email.trim(),
+      phone: input.phone.trim(),
+      partnerFirstName: input.partnerFirstName.trim(),
+      partnerLastName: input.partnerLastName.trim(),
+      partnerEmail: input.partnerEmail.trim(),
+      eventType: input.eventType,
+      eventDate: input.eventDate,
+      endDate: input.endDate,
+      guestCount: input.guestCount,
+      estimatedBudget: input.estimatedBudget,
+      source: input.source,
+      inquiryMessage: input.inquiryMessage.trim(),
+      inquiryDate: input.inquiryDate,
     },
-  );
-  if (relationshipError) throw relationshipError;
-
-  const { data, error } = await client
-    .from("leads")
-    .insert({
-      venue_id: venueId,
-      first_name: input.firstName.trim(),
-      last_name: input.lastName.trim(),
-      email: input.email.trim() || null,
-      phone: input.phone.trim() || null,
-      partner_first_name: input.partnerFirstName.trim() || null,
-      partner_last_name: input.partnerLastName.trim() || null,
-      partner_email: input.partnerEmail.trim() || null,
-      event_type: input.eventType || null,
-      event_date: input.eventDate || null,
-      end_date: input.endDate || null,
-      guest_count: input.guestCount.trim() ? parseInt(input.guestCount, 10) : null,
-      estimated_budget: input.estimatedBudget.trim()
-        ? parseFloat(input.estimatedBudget.replace(/[$,]/g, "")) : null,
-      source: input.source || null,
-      inquiry_message: input.inquiryMessage.trim() || null,
-      inquiry_date: input.inquiryDate || new Date().toISOString().slice(0, 10),
-      status: "new",
-      relationship_id: relationshipId,
-    })
-    .select("id")
-    .single<{ id: string }>();
+  });
   if (error) throw error;
-  return data.id;
+  return data as string;
+}
+
+// Lead Pipeline — Release Readiness, Release Blocker #1. find_or_create_
+// relationship already dedupes the enduring Relationship by email; it never
+// touches whether a *Lead* (Opportunity) row already exists — so bulk
+// import had no duplicate check at all. Scoped deliberately narrow: only
+// still-active leads count as a duplicate (won/lost/cancelled leads are a
+// real, deliberately out-of-scope repeat-business question, per
+// docs/lead-identity-architectural-exploration.md §8 — this is not that
+// decision, only a guard against accidentally re-importing the same
+// still-open pipeline). Falls back to an exact first+last name match only
+// when no email is given, since email is the only field the platform's own
+// dedup already trusts.
+export async function findActiveDuplicate(
+  client: DbClient, venueId: string, email: string, firstName: string, lastName: string,
+): Promise<{ id: string } | null> {
+  let q = client.from("leads").select("id")
+    .eq("venue_id", venueId)
+    .not("status", "in", "(won,lost,cancelled)");
+  const trimmedEmail = email.trim();
+  q = trimmedEmail
+    ? q.ilike("email", trimmedEmail)
+    : q.ilike("first_name", firstName.trim()).ilike("last_name", lastName.trim());
+  const { data } = await q.limit(1).maybeSingle<{ id: string }>();
+  return data ?? null;
 }
 
 export async function updateLeadStatus(
