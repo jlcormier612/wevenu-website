@@ -3,7 +3,8 @@ import type { Metadata } from "next";
 import { TaskCenter } from "@/components/tasks/task-center";
 import { PageHeader } from "@/components/shell/module-placeholder";
 import { createClient } from "@/integrations/supabase/server";
-import { getCurrentVenue } from "@/lib/venue/service";
+import { getCurrentVenue, getCurrentUserRole } from "@/lib/venue/service";
+import { getCurrentStaffMember } from "@/lib/team/service";
 import { isSupabaseConfigured } from "@/lib/env";
 
 export const metadata: Metadata = { title: "Task Center" };
@@ -28,20 +29,26 @@ export default async function TaskCenterPage() {
   const weekOut = new Date(Date.now() + 7 * 86_400_000).toISOString().slice(0, 10);
   const tomorrow = new Date(Date.now() + 86_400_000).toISOString().slice(0, 10);
 
-  const { data: rawTasks } = await supabase
-    .from("event_tasks")
-    .select(`
-      id, title, status, due_date, category, owner_type, visibility,
-      is_required, depends_on_event_task_id, completed_at,
-      events (
-        id, name, event_date, status,
-        clients ( first_name, last_name, partner_first_name, partner_last_name )
-      )
-    `)
-    .eq("venue_id", venue.id)
-    .in("status", ["pending", "overdue", "blocked"])
-    .not("events.status", "in", "(cancelled,complete)")
-    .order("due_date", { ascending: true });
+  const [{ data: rawTasks }, currentStaff, currentRole] = await Promise.all([
+    supabase
+      .from("event_tasks")
+      .select(`
+        id, title, status, due_date, category, owner_type, visibility,
+        is_required, depends_on_event_task_id, completed_at,
+        assigned_to_staff_id, milestone_kind,
+        assignee:assigned_to_staff_id ( full_name ),
+        events (
+          id, name, event_date, status,
+          clients ( first_name, last_name, partner_first_name, partner_last_name )
+        )
+      `)
+      .eq("venue_id", venue.id)
+      .in("status", ["pending", "overdue", "blocked"])
+      .not("events.status", "in", "(cancelled,complete)")
+      .order("due_date", { ascending: true }),
+    getCurrentStaffMember(venue.id),
+    getCurrentUserRole(),
+  ]);
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const tasks = (rawTasks ?? []) as any[];
@@ -79,6 +86,8 @@ export default async function TaskCenterPage() {
         blocked={blocked}
         upcoming={upcoming}
         venueId={venue.id}
+        currentStaffId={currentStaff?.id ?? null}
+        currentRole={currentRole}
       />
     </div>
   );

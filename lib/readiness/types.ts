@@ -13,11 +13,13 @@
 
 export type ReadinessStatus = "complete" | "needs_attention" | "waiting" | "not_started";
 
-/** Where clicking a section actually takes the coordinator — never a new screen. */
+/** Where clicking a section actually takes the coordinator. */
 export type ReadinessNavTarget =
   | { kind: "tab"; tab: string }
   | { kind: "portal"; section: string }
-  | { kind: "scroll"; elementId: string };
+  | { kind: "scroll"; elementId: string }
+  /** A page within the Booking Workspace itself (e.g. Wedding Day Seating) — same-tab navigation, distinct from "portal", which crosses into the couple's own Wedding Workspace in a new tab. */
+  | { kind: "link"; href: string };
 
 export type ReadinessSection = {
   key: string;

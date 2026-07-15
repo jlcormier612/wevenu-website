@@ -91,7 +91,7 @@ export function computeGuestsReadiness(summary: GuestReadinessSummary): Readines
   };
 }
 
-export function computeSeatingReadiness(summary: SeatingReadinessSummary | null): ReadinessSection {
+export function computeSeatingReadiness(eventId: string, summary: SeatingReadinessSummary | null): ReadinessSection {
   let status: ReadinessStatus;
   let detail: string;
 
@@ -115,7 +115,12 @@ export function computeSeatingReadiness(summary: SeatingReadinessSummary | null)
   return {
     key: "seating", label: "Seating", status, detail,
     metric: summary && summary.totalAttending > 0 ? `${summary.totalAssigned}/${summary.totalAttending}` : undefined,
-    nav: { kind: "portal", section: "seating" },
+    // Wedding Day Seating (Seating Final Release Completion) — a read-only
+    // staff lookup, not the couple's own live-editable chart. Reviewing
+    // seating from Readiness should never risk an accidental edit; a
+    // coordinator who genuinely needs to open the couple's own editor still
+    // can, via the existing "View Client Portal" links elsewhere.
+    nav: { kind: "link", href: `/events/${eventId}/seating` },
   };
 }
 
@@ -270,6 +275,7 @@ function headlineFor(sections: ReadinessSection[], overallStatus: ReadinessStatu
 }
 
 export function buildEventReadiness(input: {
+  eventId: string;
   readinessByKind: { client: EventReadiness | null; venue: EventReadiness | null };
   timelineEntries: TimelineEntry[];
   guestSummary: GuestReadinessSummary;
@@ -288,7 +294,7 @@ export function buildEventReadiness(input: {
     computePlanningReadiness(input.readinessByKind),
     computeTimelineReadiness(input.timelineEntries),
     computeGuestsReadiness(input.guestSummary),
-    computeSeatingReadiness(input.seatingSummary),
+    computeSeatingReadiness(input.eventId, input.seatingSummary),
     computeFloorPlansReadiness(input.floorPlans, input.inventoryUsage),
     computeRequestsReadiness(input.requests),
     computeContractsReadiness(input.contracts),

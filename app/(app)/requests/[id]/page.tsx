@@ -7,14 +7,14 @@ import { getRequest, getRequestHistory } from "@/lib/requests/service";
 import { getTeamMembers } from "@/lib/team/service";
 import { getCurrentVenue } from "@/lib/venue/service";
 
-export const metadata: Metadata = { title: "Request (Internal) — Wevenu" };
+export const metadata: Metadata = { title: "Request — Wevenu" };
 
 type Props = { params: Promise<{ id: string }> };
 
 /**
- * Internal-only Request record page — the single source of truth a Request
- * is opened to (e.g. from Planning's "Open Request" link). Not the Client
- * Workspace UI; not a redesign of any feature that links to it.
+ * A single Request's own record — the page a Request is opened to (e.g.
+ * from Planning's "Open Request" link). Not the Client Workspace UI; not a
+ * redesign of any feature that links to it.
  */
 export default async function RequestDetailPage({ params }: Props) {
   const { id } = await params;
