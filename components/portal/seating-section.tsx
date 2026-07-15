@@ -24,23 +24,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { FloorPlanShapeSvg, DISPLAY_SHAPE_STYLE } from "@/components/floor-plan/floor-plan-shapes";
 import { getSeatingObservation } from "@/lib/luv/portal-observations";
-import type { SeatingData, SeatingTable, SeatingGuest, SeatingSuggestionHousehold } from "@/lib/portal/types";
+import {
+  ACCESSIBILITY_LABELS, DIETARY_EMOJI, MEAL_EMOJI,
+  type SeatingData, type SeatingTable, type SeatingGuest, type SeatingSuggestionHousehold,
+} from "@/lib/portal/types";
 import type { DisplayShape } from "@/lib/floor-plans/types";
 
 const INCHES_PER_FOOT = 12;
-
-const DIETARY_EMOJI: Record<string, string> = {
-  vegetarian: "🥦", vegan: "🌱", gluten_free: "🌾", dairy_free: "🥛",
-  nut_allergy: "🥜", shellfish_allergy: "🦐", kosher: "✡️", halal: "☪️",
-};
-const MEAL_EMOJI: Record<string, string> = {
-  chicken: "🍗", beef: "🥩", fish: "🐟", vegetarian: "🥦", vegan: "🌱", kids: "🍕",
-};
-const ACCESSIBILITY_LABELS: Record<string, string> = {
-  wheelchair: "Wheelchair access", limited_mobility: "Limited mobility",
-  hearing_assistance: "Hearing assistance", vision_assistance: "Vision assistance",
-  service_animal: "Service animal", special_seating: "Special seating request",
-};
 
 function mealEmoji(choice: string | null) {
   if (!choice) return null;
@@ -166,6 +156,13 @@ function GuestChip({
         )}
       </div>
       <div className="flex gap-0.5 shrink-0 text-sm">
+        {/* Passive guidance only — visible everywhere a guest chip appears,
+            including before assignment, so accessibility needs are never a
+            surprise discovered only after a guest is already seated. Never
+            blocks or restricts which table a guest can be assigned to. */}
+        {guest.accessibilityTags.length > 0 && (
+          <span className="opacity-70" title={guest.accessibilityTags.map((t) => ACCESSIBILITY_LABELS[t] ?? t).join(", ")}>♿</span>
+        )}
         {meal && <span className="opacity-70">{meal}</span>}
         {diet.map((e, i) => <span key={i} className="opacity-70">{e}</span>)}
       </div>
@@ -548,31 +545,73 @@ function GuestWorkspacePanel({
               <p className="text-xs">Everyone is seated!</p>
             </div>
           ) : (
-            <div className="space-y-1">{unassigned.map(renderChip)}</div>
+            <div className="space-y-2">
+              {/* Split from never-assigned guests — these already had a
+                  seat, then lost it when their table was removed from the
+                  Floor Plan, which reads very differently than "not yet
+                  seated." The amber banner above explains why; this keeps
+                  that distinction visible per-guest, not just in the count. */}
+              {needsReassignmentCount > 0 && (
+                <div className="space-y-1">
+                  <p className="px-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-700">Needs a new table</p>
+                  <div className="space-y-1">{unassigned.filter((g) => g.needsReassignment).map(renderChip)}</div>
+                </div>
+              )}
+              {unassigned.some((g) => !g.needsReassignment) && (
+                <div className="space-y-1">
+                  {needsReassignmentCount > 0 && (
+                    <p className="px-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Not yet seated</p>
+                  )}
+                  <div className="space-y-1">{unassigned.filter((g) => !g.needsReassignment).map(renderChip)}</div>
+                </div>
+              )}
+            </div>
           )}
         </CollapsibleGroup>
 
         {households.length > 0 && (
           <CollapsibleGroup icon="🏠" title="Households" count={households.length}>
             <div className="space-y-4">
-              {households.map((h) => (
-                <div key={h.key}>
-                  <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground mb-1">{h.name} ({h.guests.length})</p>
-                  <GroupBulkActions members={h.guests} onSelectAll={() => onSelectMany(h.guests.map((g) => g.guestId))} />
-                  <div className="space-y-1 mt-1.5">{h.guests.map(renderChip)}</div>
-                  <p className="text-[10px] text-muted-foreground/70 mt-1">Tip: select or drag individual members to split them across tables.</p>
-                </div>
-              ))}
+              {households.map((h) => {
+                // Passive, non-alarming signal that a household ended up at more
+                // than one table — splitting is allowed and often intentional
+                // (e.g. kids' table), so this is informational, never a warning.
+                const splitTableCount = new Set(h.guests.filter((g) => g.tableId).map((g) => g.tableId)).size;
+                return (
+                  <div key={h.key}>
+                    <div className="flex items-center gap-1.5 mb-1">
+                      <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">{h.name} ({h.guests.length})</p>
+                      {splitTableCount > 1 && (
+                        <Badge variant="outline" className="text-[9px] font-normal normal-case">🔀 Split across {splitTableCount} tables</Badge>
+                      )}
+                    </div>
+                    <GroupBulkActions members={h.guests} onSelectAll={() => onSelectMany(h.guests.map((g) => g.guestId))} />
+                    <div className="space-y-1 mt-1.5">{h.guests.map(renderChip)}</div>
+                    <p className="text-[10px] text-muted-foreground/70 mt-1">Tip: select or drag individual members to split them across tables.</p>
+                  </div>
+                );
+              })}
             </div>
           </CollapsibleGroup>
         )}
 
-        {weddingParty.length > 0 && (
-          <CollapsibleGroup icon="💍" title="Wedding Party" count={weddingParty.length}>
-            <GroupBulkActions members={weddingParty} onSelectAll={() => onSelectMany(weddingParty.map((g) => g.guestId))} />
-            <div className="space-y-1">{weddingParty.map(renderChip)}</div>
-          </CollapsibleGroup>
-        )}
+        {weddingParty.length > 0 && (() => {
+          const splitTableCount = new Set(weddingParty.filter((g) => g.tableId).map((g) => g.tableId)).size;
+          return (
+            <CollapsibleGroup
+              icon="💍" title="Wedding Party" count={weddingParty.length}
+              summary={splitTableCount > 1 ? `Split across ${splitTableCount} tables` : undefined}
+            >
+              <div className="flex items-center gap-1.5">
+                <GroupBulkActions members={weddingParty} onSelectAll={() => onSelectMany(weddingParty.map((g) => g.guestId))} />
+                {splitTableCount > 1 && (
+                  <Badge variant="outline" className="text-[9px] font-normal">🔀 Split across {splitTableCount} tables</Badge>
+                )}
+              </div>
+              <div className="space-y-1">{weddingParty.map(renderChip)}</div>
+            </CollapsibleGroup>
+          );
+        })()}
 
         {children.length > 0 && (
           <CollapsibleGroup icon="👶" title="Children" count={children.length}>
@@ -713,6 +752,7 @@ export default function SeatingSection({ token }: { token: string }) {
 
   const assignGuest = async (guestId: string, tableId: string) => {
     if (!data) return;
+    const previous = data; // captured for rollback — a failed write must never leave the UI showing a seat that was never saved
 
     setData((d) => {
       if (!d) return d;
@@ -733,11 +773,21 @@ export default function SeatingSection({ token }: { token: string }) {
       };
     });
 
-    await fetch("/api/portal/seating/assign", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ token, guestId, tableId }),
-    });
+    try {
+      const res = await fetch("/api/portal/seating/assign", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token, guestId, tableId }),
+      });
+      const json = await res.json().catch(() => null);
+      if (!res.ok || !json?.ok) {
+        setData(previous);
+        toast.error("Couldn't seat this guest — please try again.");
+      }
+    } catch {
+      setData(previous);
+      toast.error("Couldn't seat this guest — please try again.");
+    }
   };
 
   const assignMany = async (guestIds: string[], tableId: string) => {
@@ -752,6 +802,7 @@ export default function SeatingSection({ token }: { token: string }) {
     if (!data) return;
     const assigned = data.tables.flatMap((t) => t.guests).find((g) => g.guestId === guestId);
     if (!assigned) return;
+    const previous = data; // captured for rollback
 
     setData((d) => {
       if (!d) return d;
@@ -763,11 +814,21 @@ export default function SeatingSection({ token }: { token: string }) {
       };
     });
 
-    await fetch("/api/portal/seating/assign", {
-      method: "DELETE",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ token, guestId }),
-    });
+    try {
+      const res = await fetch("/api/portal/seating/assign", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token, guestId }),
+      });
+      const json = await res.json().catch(() => null);
+      if (!res.ok || !json?.ok) {
+        setData(previous);
+        toast.error("Couldn't remove this guest — please try again.");
+      }
+    } catch {
+      setData(previous);
+      toast.error("Couldn't remove this guest — please try again.");
+    }
   };
 
   const toggleSelect = (guestId: string) => {
@@ -824,11 +885,31 @@ export default function SeatingSection({ token }: { token: string }) {
   }
 
   if (!data || !data.floorPlan) {
+    // hadPriorWork distinguishes "never shared" from "was shared, and this
+    // couple already seated guests, but the venue has since paused
+    // sharing" — no seating data is ever deleted by unsharing (the
+    // assignment rows survive, they're just not reachable while hidden),
+    // so this is a read of existing truth, not a new computation.
+    const strandedCount = data?.needsReassignment.length ?? 0;
     return (
       <div className="text-center py-16 text-muted-foreground">
         <div className="text-3xl mb-3">🪑</div>
-        <p className="text-sm font-medium">No floor plan shared for seating yet.</p>
-        <p className="text-xs mt-1">Check with your venue — seating opens up once they share the room layout.</p>
+        {data?.hadPriorWork ? (
+          <>
+            <p className="text-sm font-medium">Your venue has paused sharing the floor plan.</p>
+            <p className="text-xs mt-1">Your seating chart is saved — it&apos;ll reappear here as soon as they share it again.</p>
+          </>
+        ) : (
+          <>
+            <p className="text-sm font-medium">No floor plan shared for seating yet.</p>
+            <p className="text-xs mt-1">Check with your venue — seating opens up once they share the room layout.</p>
+          </>
+        )}
+        {strandedCount > 0 && (
+          <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mt-4 max-w-xs mx-auto">
+            {strandedCount} guest{strandedCount === 1 ? "" : "s"} will need a new table once seating reopens.
+          </p>
+        )}
       </div>
     );
   }

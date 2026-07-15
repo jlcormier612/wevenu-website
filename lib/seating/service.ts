@@ -14,6 +14,8 @@
  * the same stats block the couple's own Seating tab already computes.
  */
 import { createClient } from "@/integrations/supabase/server";
+import { getPortalSessions } from "@/lib/portal/service";
+import type { SeatingData } from "@/lib/portal/types";
 
 export type SeatingReadinessSummary = {
   floorPlanShared: boolean;
@@ -34,4 +36,27 @@ export async function getSeatingReadinessSummary(portalToken: string | null): Pr
     totalAssigned: data.stats?.totalAssigned ?? 0,
     needsReassignmentCount: (data.needsReassignment ?? []).length,
   };
+}
+
+/**
+ * Wedding Day Seating — the venue-side operational lookup (Seating Final
+ * Release Completion). Same reuse strategy as getSeatingReadinessSummary
+ * above: no new RLS, no new RPC, no second seating data model — this reads
+ * the couple's own get_seating_data(p_token) through whichever of the
+ * client's portal sessions is actually pinned to this event (Seating
+ * Release Completion's stable event_id), preferring a full-access tier so
+ * staff never see the degraded 'financial'-tier response the couple's own
+ * session might be limited to.
+ */
+export async function getSeatingDataForVenue(eventId: string, clientId: string): Promise<SeatingData | null> {
+  const sessions = await getPortalSessions(clientId);
+  const forThisEvent = sessions.filter((s) => s.eventId === eventId);
+  const pool = forThisEvent.length > 0 ? forThisEvent : sessions;
+  const session = pool.find((s) => s.accessLevel !== "financial") ?? pool[0] ?? null;
+  if (!session) return null;
+
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("get_seating_data", { p_token: session.accessToken });
+  if (error || !data || data.error) return null;
+  return data as SeatingData;
 }
