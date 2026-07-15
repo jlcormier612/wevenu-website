@@ -10,6 +10,7 @@
  * compute layer, so the coordinator's eye lands on what needs attention
  * before anything else, without having to scan a flat list.
  */
+import { useRouter } from "next/navigation";
 import { ChevronRight } from "lucide-react";
 import { Badge, type BadgeVariant } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -49,6 +50,8 @@ export function EventReadinessCard({
   portalToken: string | null;
   onNavigateTab: (tab: string) => void;
 }) {
+  const router = useRouter();
+
   function handleOpen(section: ReadinessSection) {
     const { nav } = section;
     if (nav.kind === "tab") {
@@ -58,6 +61,8 @@ export function EventReadinessCard({
     } else if (nav.kind === "portal") {
       if (!portalToken) return;
       window.open(`/p/${portalToken}#${nav.section}`, "_blank", "noopener,noreferrer");
+    } else if (nav.kind === "link") {
+      router.push(nav.href);
     }
   }
 

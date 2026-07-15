@@ -7,7 +7,7 @@ import { getSpaces } from "@/lib/availability/service";
 import { clientDisplayName } from "@/lib/clients/constants";
 import { getClient } from "@/lib/clients/service";
 import { createInitialEventInput } from "@/lib/events/constants";
-import { getTemplates } from "@/lib/playbooks/service";
+import { getTemplatesForLibrary } from "@/lib/playbooks/service";
 
 export const metadata: Metadata = { title: "New Event" };
 
@@ -15,7 +15,10 @@ type Props = { searchParams: Promise<{ clientId?: string }> };
 
 export default async function NewEventPage({ searchParams }: Props) {
   const { clientId } = await searchParams;
-  const [spaces, playbookTemplates] = await Promise.all([getSpaces(), getTemplates()]);
+  const [spaces, allTemplates] = await Promise.all([getSpaces(), getTemplatesForLibrary()]);
+  // Archived templates aren't valid choices for a brand-new event — same
+  // exclusion the old getTemplates() applied by default.
+  const playbookTemplates = allTemplates.filter((t) => !t.isArchived);
   let prefill = createInitialEventInput();
 
   if (clientId) {

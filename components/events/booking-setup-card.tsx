@@ -3,10 +3,10 @@
 import { PlaybookApplyRow } from "@/components/playbooks/event-task-list";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { PLAYBOOK_KINDS } from "@/lib/playbooks/constants";
-import type { EventPlaybookApplication, EventReadiness, PlaybookKind, PlaybookTemplate } from "@/lib/playbooks/types";
+import type { EventPlaybookApplication, EventReadiness, PlaybookKind, PlaybookTemplateWithStats } from "@/lib/playbooks/types";
 
 /** The venue's marked default for this kind, matching the event's type if possible — falls back to a kind-wide default with no event type set. Doesn't invent a default where the venue hasn't set one. */
-function resolveDefaultTemplateId(templates: PlaybookTemplate[], kind: PlaybookKind, eventType: string | null): string | undefined {
+function resolveDefaultTemplateId(templates: PlaybookTemplateWithStats[], kind: PlaybookKind, eventType: string | null): string | undefined {
   const defaultsForKind = templates.filter((t) => t.kind === kind && t.isDefault);
   const matchingEventType = eventType ? defaultsForKind.find((t) => t.eventType === eventType) : undefined;
   return (matchingEventType ?? defaultsForKind.find((t) => !t.eventType))?.id;
@@ -22,7 +22,7 @@ function resolveDefaultTemplateId(templates: PlaybookTemplate[], kind: PlaybookK
  */
 export function BookingSetupCard({
   eventId, clientId, eventDate, eventName, clientName, eventType,
-  templates, applications, readinessByKind, portalToken, onApplied,
+  templates, applications, readinessByKind, onApplied,
 }: {
   eventId: string;
   clientId: string | null;
@@ -30,10 +30,9 @@ export function BookingSetupCard({
   eventName: string;
   clientName: string | null;
   eventType: string | null;
-  templates: PlaybookTemplate[];
+  templates: PlaybookTemplateWithStats[];
   applications: EventPlaybookApplication[];
   readinessByKind: { client: EventReadiness | null; venue: EventReadiness | null };
-  portalToken: string | null;
   onApplied: () => void;
 }) {
   if (applications.length > 0) return null;
@@ -57,7 +56,6 @@ export function BookingSetupCard({
               application={applications.find((a) => a.kind === k.value)}
               preselectTemplateId={resolveDefaultTemplateId(templates, k.value, eventType)}
               readiness={k.value === "client" ? readinessByKind.client : readinessByKind.venue}
-              portalToken={portalToken}
               onApplied={onApplied}
             />
           );

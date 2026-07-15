@@ -9,7 +9,7 @@ import { toast } from "sonner";
 import { createEventAction } from "@/app/(app)/events/actions";
 import { applyPlaybookAction } from "@/app/(app)/playbooks/actions";
 import { PLAYBOOK_KINDS } from "@/lib/playbooks/constants";
-import type { PlaybookKind, PlaybookTemplate } from "@/lib/playbooks/types";
+import type { PlaybookKind, PlaybookTemplateWithStats } from "@/lib/playbooks/types";
 import { ConflictWarning } from "@/components/availability/conflict-warning";
 import { Field } from "@/components/setup/field";
 import { Button } from "@/components/ui/button";
@@ -133,7 +133,7 @@ export function EventForm({
 }: {
   initial: EventInput;
   spaces?: VenueSpace[];
-  playbookTemplates?: PlaybookTemplate[];
+  playbookTemplates?: PlaybookTemplateWithStats[];
 }) {
   const router = useRouter();
   const [input, setInput] = React.useState<EventInput>(initial);
@@ -206,7 +206,9 @@ export function EventForm({
                   <SelectContent>
                     <SelectItem value="">{`No ${k.label} checklist`}</SelectItem>
                     {options.map((t) => (
-                      <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
+                      <SelectItem key={t.id} value={t.id}>
+                        {t.name} <span className="text-muted-foreground">— {t.milestoneCount} milestone{t.milestoneCount === 1 ? "" : "s"}, {t.taskCount} task{t.taskCount === 1 ? "" : "s"}</span>
+                      </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>

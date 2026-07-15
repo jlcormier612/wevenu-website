@@ -3,12 +3,14 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { ActivityTimeline } from "@/components/hq/venue-detail/activity-timeline";
+import { CommunicationDiagnosticsSection } from "@/components/hq/venue-detail/communication-diagnostics-section";
 import { EngagementSection } from "@/components/hq/venue-detail/engagement-section";
 import { LuvInsights } from "@/components/hq/venue-detail/luv-insights";
 import { OverviewSection } from "@/components/hq/venue-detail/overview-section";
 import { SupportSection } from "@/components/hq/venue-detail/support-section";
 import { ViewAsButton } from "@/components/hq/venue-detail/view-as-button";
 import { getVenueHqDetail } from "@/lib/hq/venue-detail-service";
+import { getVenueCommunicationDiagnostics } from "@/lib/hq/communication-diagnostics-service";
 
 export const metadata: Metadata = { title: "Venue — Wevenu HQ" };
 
@@ -16,7 +18,10 @@ type Props = { params: Promise<{ venueId: string }> };
 
 export default async function VenueHqDetailPage({ params }: Props) {
   const { venueId } = await params;
-  const detail = await getVenueHqDetail(venueId);
+  const [detail, diagnostics] = await Promise.all([
+    getVenueHqDetail(venueId),
+    getVenueCommunicationDiagnostics(venueId),
+  ]);
   if (!detail) notFound();
 
   return (
@@ -40,6 +45,8 @@ export default async function VenueHqDetailPage({ params }: Props) {
       <EngagementSection team={detail.team} vendors={detail.vendors} couples={detail.couples} />
 
       <SupportSection venueId={venueId} notes={detail.notes} tasks={detail.tasks} crmState={detail.crmState} />
+
+      <CommunicationDiagnosticsSection diagnostics={diagnostics} />
     </div>
   );
 }

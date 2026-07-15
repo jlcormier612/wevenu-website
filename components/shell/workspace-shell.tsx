@@ -40,7 +40,7 @@ export function WorkspaceShell({
   const [searchOpen,    setSearchOpen]      = React.useState(false);
 
   return (
-    <div className="flex min-h-svh w-full">
+    <div className="flex h-svh w-full overflow-hidden">
       {/* Desktop sidebar */}
       <aside className="hidden w-64 shrink-0 flex-col border-r bg-sidebar lg:flex">
         <div className="flex h-16 items-center border-b px-5">

@@ -133,20 +133,31 @@
   --sidebar-border: color-mix(in oklch, var(--forest-sage) 25%, var(--taupe-dark));
   --sidebar-ring: var(--heritage-sage);
 
-  /* Calendar item dot colors (light mode — dark dots on light surface) */
-  --cal-event:          var(--heritage-sage);   /* #5D6F5D — dark green  */
-  --cal-tour:           var(--soft-sage);        /* #B9D1C2 — light sage  */
+  /* Calendar item dot colors (light mode — dark dots on light surface).
+     Manual Schedule Items (Calendar Manual Type Redesign): the five colors
+     a coordinator should recognize instantly at a glance — Tour (green),
+     Wedding/Event (purple), Meeting (orange, covers Consultation/Client
+     Meeting/Vendor Meeting alike — they're all "someone's talking to
+     someone"), Walkthrough (blue), Blocked Time (charcoal, no longer red —
+     a closed date isn't an alarm, it's just unavailable) — were chosen to
+     be clearly distinguishable from every other color already in this
+     palette, not just from each other. */
+  --cal-event:          #7B5EA0;                 /* purple — the wedding day itself, the single most important item on the calendar */
+  --cal-tour:           var(--soft-sage);        /* #B9D1C2 — light sage green — shared by real booked tours AND manual "Tour" schedule items, deliberately identical */
   --cal-follow-up:      var(--taupe-dark);       /* #B8AEA1 — taupe       */
   --cal-payment-due:    var(--dusty-rose);       /* #D8A7AA — rose        */
   --cal-key-date:       var(--forest-sage);      /* #4F5F4F — dark green  */
   --cal-date-hold:      #C7A66A;                 /* amber (tint, same hue as taupe) */
-  --cal-blocked:        #B85C57;                 /* muted red (tint of dusty rose)  */
+  --cal-blocked:        #5A5A5A;                 /* charcoal — Blocked Time is "unavailable," not an alarm; also reused by the manual "Blocked Time" schedule type */
   --cal-planning-activity: #7A8FA6;              /* muted slate blue — distinct from every other item type */
   --cal-request-due:       #B08D3E;              /* muted mustard gold — Due Date kind (§2a) */
   --cal-contract-expiration: #8E6B8E;            /* muted plum — Expiration kind (§2a), distinct from Due Date colors */
   --cal-document-expiration: #9C7A5B;            /* muted clay brown — Expiration kind (§2a) */
   --cal-planning-task:  #8A9A5B;                  /* muted olive — Due Date kind, Booking Schedule lens only (Phase 3) */
   --cal-timeline-entry: #B06A3A;                  /* muted copper — day-of run-of-show, Booking Schedule lens only (Phase 3) */
+  --cal-meeting:        #D68A3E;                  /* orange — manual Consultation/Client Meeting/Vendor Meeting, deliberately one color for the whole "meeting" family */
+  --cal-walkthrough:    #4A7EA8;                  /* clear blue — manual Walkthrough, distinct from Planning's own muted slate-blue above (a Walkthrough scheduled here is a Calendar-only entry, not a Planning-tracked task) */
+  --cal-other:          #9C9690;                  /* neutral warm gray — manual "Other," the catch-all */
 }
 
 /*
@@ -198,8 +209,9 @@
   --sidebar-ring: var(--heritage-sage);
 
   /* Calendar item dot colors (dark mode — light dots on dark surface) */
-  --cal-event:       var(--true-white);     /* white — most important, stands out    */
+  --cal-event:       #C4AEDA;               /* light lavender — keeps the purple identity legible on dark, rather than reverting to plain white */
   --cal-key-date:    var(--taupe-light);    /* #DED6CA warm cream — visible, distinct */
+  --cal-blocked:     #9A9A9A;               /* lighter charcoal — the light-mode #5A5A5A would vanish against a dark surface */
 }
 
 @layer base {
@@ -226,3 +238,4 @@
   85%  { opacity: 0.9; }
   100% { opacity: 0;   transform: translateY(90vh)  rotate(540deg); }
 }
+

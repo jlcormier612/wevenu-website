@@ -109,7 +109,7 @@ export const NAV_SECTIONS: NavSection[] = [
       { title: "Venue Guide", href: "/guide",       icon: Info },
       { title: "Analytics",   href: "/analytics",   icon: TrendingUp },
       { title: "Insights",    href: "/operations",  icon: ShieldCheck },
-      { title: "Requests (Internal)", href: "/requests", icon: ListChecks },
+      { title: "Requests", href: "/requests", icon: ListChecks },
     ],
   },
   {
