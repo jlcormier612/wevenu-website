@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowRight, Building2, Check, Clock, Sparkles } from "lucide-react";
+import { ArrowRight, Building2, Check, Clock } from "lucide-react";
 
 import { dismissOnboardingAction } from "@/app/(app)/dashboard/actions";
 import { LuvHeart } from "@/components/dashboard/luv-widget";
@@ -15,10 +15,13 @@ import type { OnboardingStatus } from "@/lib/dashboard/types";
 /**
  * Venue onboarding card — "Welcome to Wevenu / You're X% set up."
  *
- * Three states:
+ * Two states:
  *   1. Checklist — not complete; shows steps, Luv nudge, time estimates
  *   2. Milestone — a step was just completed (?milestone=step_id in URL)
- *   3. Graduation — 100% complete; becomes a live operating summary
+ *
+ * Doesn't render at all once every step is complete — `onboarding.show`
+ * goes false and the dashboard reclaims the space, rather than this card
+ * lingering as a permanent "you're done" summary.
  *
  * Pure server component — dismiss uses a form server action.
  */
@@ -46,54 +49,6 @@ export function GettingStartedCard({
   const isNew = pct < 50;
   const remaining = onboarding.totalSteps - onboarding.completedCount;
   const nextStep = onboarding.steps.find((s) => !s.completed && s.ctaHref);
-
-  // ── Graduation card ─────────────────────────────────────────────────────────
-  if (onboarding.allComplete) {
-    const s = onboarding.summary;
-    return (
-      <Card className="border-primary/20 bg-primary/5">
-        <CardContent className="py-5">
-          <div className="flex items-start gap-4">
-            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
-              <Sparkles className="h-5 w-5" />
-            </span>
-            <div className="min-w-0 flex-1 space-y-3">
-              <p className="font-heading text-lg font-semibold text-heading">
-                You&apos;re fully set up.
-              </p>
-              {s && (
-                <ul className="space-y-1 text-sm text-foreground">
-                  {s.weeklyInquiries > 0 && (
-                    <li>• {s.weeklyInquiries} new {s.weeklyInquiries === 1 ? "inquiry" : "inquiries"} this week</li>
-                  )}
-                  {s.upcomingTourCount > 0 && (
-                    <li>• {s.upcomingTourCount} upcoming {s.upcomingTourCount === 1 ? "tour" : "tours"}</li>
-                  )}
-                  {s.openTaskCount > 0 && (
-                    <li>• {s.openTaskCount} open {s.openTaskCount === 1 ? "task" : "tasks"}</li>
-                  )}
-                  {s.weeklyInquiries === 0 && s.upcomingTourCount === 0 && s.openTaskCount === 0 && (
-                    <li className="text-muted-foreground">Your workspace is ready. Start by adding your first inquiry.</li>
-                  )}
-                </ul>
-              )}
-              <div className="flex items-center gap-1.5 text-sm">
-                <span className="shrink-0">
-                  <LuvHeart size={12} />
-                </span>
-                <span className="text-muted-foreground">
-                  Need help?{" "}
-                  <Link href="/leads" className="font-medium text-primary hover:underline">
-                    Ask Luv
-                  </Link>
-                </span>
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-    );
-  }
 
   // ── Milestone celebration banner (shown when ?milestone=X matches a completed step) ──
   const celebratedStep = milestone

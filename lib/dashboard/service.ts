@@ -9,6 +9,7 @@
 import { createClient } from "@/integrations/supabase/server";
 import { isSupabaseConfigured } from "@/lib/env";
 import { getLuvObservations } from "@/lib/luv/observations";
+import { getCommunicationObservations } from "@/lib/luv/communication-observations";
 import { getLuvSettings } from "@/lib/luv/settings";
 import { getVenueTrends, computeTrendObservations, computeStoryMode } from "@/lib/luv/trends-service";
 import { getVenueMemories, computeMemoryObservations } from "@/lib/luv/memory-service";
@@ -376,8 +377,9 @@ export async function getDashboardData(): Promise<DashboardData | null> {
 
   // Luv observations + trend intelligence — non-blocking; return [] on error
   const luvSettings = await getLuvSettings().catch(() => null);
-  const [luvObservations, rawTrends, rawMemories, rawInsights, healthScore, recommendations, actionObservations, pendingActionObservations, performanceObservations, activationScore, nextPendingMilestone, notificationPrefs] = await Promise.all([
+  const [luvObservationsRaw, communicationObservations, rawTrends, rawMemories, rawInsights, healthScore, recommendations, actionObservations, pendingActionObservations, performanceObservations, activationScore, nextPendingMilestone, notificationPrefs] = await Promise.all([
     getLuvObservations(supabase, venue.id, today, luvSettings ?? undefined).catch(() => []),
+    getCommunicationObservations(supabase, venue.id).catch(() => []),
     getVenueTrends().catch(() => null),
     getVenueMemories().catch(() => null),
     getVenueInsights().catch(() => null),
@@ -390,6 +392,11 @@ export async function getDashboardData(): Promise<DashboardData | null> {
     getNextPendingMilestone(venue.id).catch(() => null),
     getNotificationPreferences().catch(() => null),
   ]);
+  // Communication observations respect the same observationsEnabled setting
+  // as every other Luv observation — Luv is one voice, not two.
+  const luvObservations = luvSettings?.observationsEnabled === false
+    ? luvObservationsRaw
+    : [...luvObservationsRaw, ...communicationObservations];
   const showDigestCallout = !!notificationPrefs && notificationPrefs.dailyDigestEnabled && !notificationPrefs.digestIntroDismissed;
   const trendObservations  = rawTrends   ? computeTrendObservations(rawTrends) : [];
   const storyObservation   = rawTrends   ? computeStoryMode(rawTrends) : null;
@@ -428,9 +435,6 @@ export async function getDashboardData(): Promise<DashboardData | null> {
       hasGuideContent: !!(guideRes.data),
       vendorCount: vendorRes.count ?? 0,
       playbookCount: playbookRes.count ?? 0,
-      weeklyInquiries: leads.filter((l) => l.createdAt >= new Date(Date.now() - 7 * 86400000).toISOString()).length,
-      upcomingTourCount: upcomingTours.length,
-      openTaskCount: openTasks.length,
     }),
     needsAttention,
     followupsDue,
@@ -470,9 +474,6 @@ type OnboardingSignals = {
   hasGuideContent: boolean;
   vendorCount: number;
   playbookCount: number;
-  weeklyInquiries: number;
-  upcomingTourCount: number;
-  openTaskCount: number;
 };
 
 const NUDGE_TEXT: Record<string, string> = {
@@ -567,15 +568,13 @@ function computeOnboarding(venue: Venue, leads: Lead[], signals: OnboardingSigna
   const luvNudge = nudgeId ? (NUDGE_TEXT[nudgeId] ?? null) : null;
 
   return {
-    // Show the checklist while not dismissed; always show the graduation card when complete
-    show: allComplete || !venue.onboardingDismissed,
+    // Disappears entirely once every step is done — no lingering graduation
+    // card, so the dashboard reclaims that space rather than keeping a
+    // permanent "you're done" card on screen.
+    show: !allComplete && !venue.onboardingDismissed,
     steps,
     completedCount,
     totalSteps: steps.length,
-    allComplete,
     luvNudge,
-    summary: allComplete
-      ? { weeklyInquiries: signals.weeklyInquiries, upcomingTourCount: signals.upcomingTourCount, openTaskCount: signals.openTaskCount }
-      : null,
   };
 }

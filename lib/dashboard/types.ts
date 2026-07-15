@@ -88,21 +88,13 @@ export type OnboardingStep = {
 };
 
 export type OnboardingStatus = {
-  /** Whether to render the Getting Started card at all. */
+  /** Whether to render the Getting Started card at all — false once every step is complete, so the card disappears entirely rather than lingering. */
   show: boolean;
   steps: OnboardingStep[];
   completedCount: number;
   totalSteps: number;
-  /** True when every step is done — graduation card replaces the checklist. */
-  allComplete: boolean;
   /** Luv's priority coaching message — the single most impactful next step. */
   luvNudge: string | null;
-  /** Live operating summary shown in the graduation card. */
-  summary: {
-    weeklyInquiries: number;
-    upcomingTourCount: number;
-    openTaskCount: number;
-  } | null;
 };
 
 /** Payment due item for the dashboard. */

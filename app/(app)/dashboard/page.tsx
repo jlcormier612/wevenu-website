@@ -9,6 +9,8 @@ import { ActivationWidget } from "@/components/dashboard/activation-widget";
 import { DigestCallout } from "@/components/dashboard/digest-callout";
 import { MilestoneToast } from "@/components/dashboard/milestone-toast";
 import { HealthScoreWidget } from "@/components/dashboard/health-score-widget";
+import { CommunicationHealthWidget } from "@/components/communication/communication-health-widget";
+import { getCommunicationHealth } from "@/lib/communication/health";
 import { Greeting } from "@/components/dashboard/greeting";
 import { LuvWidget } from "@/components/dashboard/luv-widget";
 import { MomentumWidget } from "@/components/dashboard/momentum-widget";
@@ -33,7 +35,9 @@ type Props = { searchParams: Promise<{ milestone?: string }> };
  * activities) then shaped client-side with no additional round-trips.
  */
 export default async function DashboardPage({ searchParams }: Props) {
-  const [data, { milestone }] = await Promise.all([getDashboardData(), searchParams]);
+  const [data, { milestone }, communicationHealth] = await Promise.all([
+    getDashboardData(), searchParams, getCommunicationHealth(),
+  ]);
 
   if (!data) {
     return (
@@ -56,30 +60,31 @@ export default async function DashboardPage({ searchParams }: Props) {
         </Button>
       </div>
 
+      {/* Getting Started onboarding card (new venues only) — up top, ahead of
+          Venue Health/Activation/Communication, and gone entirely once
+          every step is complete (see OnboardingStatus.show). */}
+      {data.onboarding.show && (
+        <GettingStartedCard onboarding={data.onboarding} milestone={milestone} />
+      )}
+
       {/* Daily digest intro callout — dismissible, shown until turned off or dismissed */}
       {data.showDigestCallout && <DigestCallout />}
 
       {/* 💗 Luv — venue assistant (observations + trend intelligence) */}
       <LuvWidget observations={data.luvObservations} trendObservations={data.trendObservations} storyObservation={data.storyObservation} memoryObservations={data.memoryObservations} insightObservations={data.insightObservations} recommendations={data.recommendations} actionObservations={data.actionObservations} pendingActionObservations={data.pendingActionObservations} performanceObservations={data.performanceObservations} />
 
-      {/* 🟢 Venue Health Score + 🚀 Activation */}
-      {(data.healthScore || data.activationScore) && (
-        <div className="grid gap-6 lg:grid-cols-2">
-          {data.healthScore && <HealthScoreWidget health={data.healthScore} />}
-          {data.activationScore && <ActivationWidget score={data.activationScore} />}
-        </div>
-      )}
+      {/* 🟢 Venue Health Score + 🚀 Activation + 💬 Communication */}
+      <div className="grid gap-6 lg:grid-cols-2">
+        {data.healthScore && <HealthScoreWidget health={data.healthScore} />}
+        {data.activationScore && <ActivationWidget score={data.activationScore} />}
+        <CommunicationHealthWidget health={communicationHealth} />
+      </div>
 
       {/* 💗 Momentum intelligence — who needs attention today? */}
       <MomentumWidget
         heatingUp={data.momentumSegments.heatingUp}
         coolingOff={data.momentumSegments.coolingOff}
       />
-
-      {/* Getting Started onboarding card (new venues only) */}
-      {data.onboarding.show && (
-        <GettingStartedCard onboarding={data.onboarding} milestone={milestone} />
-      )}
 
       {/* Quick-count stat bar */}
       <StatBar data={data} />
