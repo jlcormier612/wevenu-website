@@ -30,7 +30,9 @@ import {
   PaymentStatusBadge,
   ScheduleStatusBadge,
 } from "@/components/payments/payment-status-badge";
+import { ScheduleReviewBanner } from "@/components/payments/schedule-review-banner";
 import { ActivityTimeline } from "@/components/leads/activity-timeline";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Card, CardContent, CardDescription, CardHeader, CardTitle,
@@ -49,6 +51,7 @@ import {
   formatDate,
   formatMoney,
   paymentMethodLabel,
+  paymentPlanReviewStatus,
 } from "@/lib/payments/constants";
 import type {
   LineItemInput,
@@ -408,6 +411,11 @@ export function PaymentScheduleDetail({ schedule, invoice }: { schedule: Payment
   const balance = schedule.totalAmount - totalPaid;
   const pctPaid = schedule.totalAmount > 0 ? Math.min(100, (totalPaid / schedule.totalAmount) * 100) : 0;
 
+  // Booking Financial Architecture Phase 3c — "Never update automatically.
+  // Surface a clear Needs Review state." A direct comparison against the
+  // linked invoice's current total, not a timestamp or revision counter.
+  const reviewStatus = paymentPlanReviewStatus(schedule, invoice?.total ?? null);
+
   // Allocation tracking (all active installments, whether paid or not)
   const allocated = items.filter((i) => i.status !== "cancelled").reduce((s, i) => s + i.amount, 0);
   const remaining = Math.max(0, schedule.totalAmount - allocated);
@@ -454,7 +462,11 @@ export function PaymentScheduleDetail({ schedule, invoice }: { schedule: Payment
             </Link>
           )}
         </div>
-        <ScheduleStatusBadge status={schedule.scheduleStatus} />
+        <div className="flex items-center gap-2">
+          {reviewStatus === "needs_review" && <Badge variant="warning">🟡 Needs Review</Badge>}
+          {reviewStatus === "current" && invoice && <Badge variant="success">🟢 Current</Badge>}
+          <ScheduleStatusBadge status={schedule.scheduleStatus} />
+        </div>
       </div>
 
       {/* Invoice context banner */}
@@ -476,6 +488,10 @@ export function PaymentScheduleDetail({ schedule, invoice }: { schedule: Payment
             </Button>
           </div>
         </div>
+      )}
+
+      {reviewStatus === "needs_review" && invoice && (
+        <ScheduleReviewBanner scheduleId={schedule.id} scheduleTotal={schedule.totalAmount} invoiceTotal={invoice.total} />
       )}
 
       {/* Summary */}

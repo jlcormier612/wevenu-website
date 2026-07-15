@@ -4,10 +4,14 @@ import { revalidatePath } from "next/cache";
 
 import {
   addLineItem,
+  addReviewInstallment,
   cancelLineItem_,
+  collectRemainingBalanceManually,
   deleteLineItem_,
+  keepExistingSchedule,
   markLineItemPaid,
   refundLineItem_,
+  regeneratePaymentSchedule,
   updateLineItem_,
 } from "@/lib/payments/service";
 import type {
@@ -76,6 +80,32 @@ export async function refundItemAction(
   reason?: string,
 ): Promise<PaymentActionResult> {
   const result = await refundLineItem_(itemId, scheduleId, refundAmount, reason);
+  if (result.ok) revalidate(scheduleId);
+  return result;
+}
+
+// ---- Phase 3c: Payment Plan review resolutions -------------------------------
+
+export async function keepExistingScheduleAction(scheduleId: string): Promise<PaymentActionResult> {
+  const result = await keepExistingSchedule(scheduleId);
+  if (result.ok) revalidate(scheduleId);
+  return result;
+}
+
+export async function collectRemainingBalanceManuallyAction(scheduleId: string): Promise<PaymentActionResult> {
+  const result = await collectRemainingBalanceManually(scheduleId);
+  if (result.ok) revalidate(scheduleId);
+  return result;
+}
+
+export async function regeneratePaymentScheduleAction(scheduleId: string, presetId: string): Promise<PaymentActionResult> {
+  const result = await regeneratePaymentSchedule(scheduleId, presetId);
+  if (result.ok) revalidate(scheduleId);
+  return result;
+}
+
+export async function addReviewInstallmentAction(scheduleId: string, input: LineItemInput): Promise<AddLineItemResult> {
+  const result = await addReviewInstallment(scheduleId, input);
   if (result.ok) revalidate(scheduleId);
   return result;
 }

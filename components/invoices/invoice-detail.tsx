@@ -8,6 +8,7 @@ import { ArrowLeft, Mail, Printer, Receipt } from "lucide-react";
 import { toast } from "sonner";
 
 import { sendInvoiceEmailAction, updateInvoiceStatusAction } from "@/app/(app)/invoices/actions";
+import { EventOrderDriftBanner } from "@/components/invoices/event-order-drift-banner";
 import { InvoiceLineItemsEditor } from "@/components/invoices/invoice-line-items-editor";
 import { InvoiceStatusBadge } from "@/components/invoices/invoice-status-badge";
 import { Button } from "@/components/ui/button";
@@ -16,7 +17,7 @@ import {
 } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { formatCurrency, invoiceStatusLabel } from "@/lib/invoices/constants";
-import type { InvoiceStatus, InvoiceWithLineItems } from "@/lib/invoices/types";
+import type { EventOrderDrift, InvoiceStatus, InvoiceWithLineItems } from "@/lib/invoices/types";
 import type { Package } from "@/lib/packages/types";
 
 const STATUS_TRANSITIONS: Record<InvoiceStatus, { next: InvoiceStatus; label: string } | null> = {
@@ -26,7 +27,9 @@ const STATUS_TRANSITIONS: Record<InvoiceStatus, { next: InvoiceStatus; label: st
   void:  null,
 };
 
-export function InvoiceDetail({ invoice, packages }: { invoice: InvoiceWithLineItems; packages: Package[] }) {
+export function InvoiceDetail({
+  invoice, packages, eventOrderDrift = null,
+}: { invoice: InvoiceWithLineItems; packages: Package[]; eventOrderDrift?: EventOrderDrift | null }) {
   const router = useRouter();
   const [status, setStatus] = React.useState<InvoiceStatus>(invoice.status);
   const [pending, startTransition] = React.useTransition();
@@ -57,6 +60,20 @@ export function InvoiceDetail({ invoice, packages }: { invoice: InvoiceWithLineI
             <p className="text-sm text-muted-foreground">
               {invoice.clientName}
               {invoice.eventDate && ` · ${new Date(invoice.eventDate + "T12:00:00").toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}`}
+            </p>
+          )}
+          {invoice.eventOrderRevisionAtFreeze != null && (
+            <p className="text-xs text-muted-foreground">Generated from Event Order v{invoice.eventOrderRevisionAtFreeze}</p>
+          )}
+          {invoice.amendsInvoiceId && (
+            <p className="text-xs text-muted-foreground">
+              Amends <Link href={`/invoices/${invoice.amendsInvoiceId}`} className="text-primary hover:underline">an earlier invoice</Link>
+            </p>
+          )}
+          {invoice.amendedByInvoiceId && (
+            <p className="text-xs text-muted-foreground">
+              An amended invoice exists: <Link href={`/invoices/${invoice.amendedByInvoiceId}`} className="text-primary hover:underline">{invoice.amendedByInvoiceNumber} →</Link>
+              {" "}This invoice remains the active financial record until that one is sent.
             </p>
           )}
         </div>
@@ -94,6 +111,14 @@ export function InvoiceDetail({ invoice, packages }: { invoice: InvoiceWithLineI
         </div>
       </div>
 
+      {eventOrderDrift && (
+        <EventOrderDriftBanner
+          invoiceId={invoice.id} drift={eventOrderDrift}
+          canRevertToDraft={invoice.balanceDue >= invoice.total}
+          hasExistingAmendment={!!invoice.amendedByInvoiceId}
+        />
+      )}
+
       {/* Line items */}
       <Card>
         <CardHeader>
@@ -101,9 +126,11 @@ export function InvoiceDetail({ invoice, packages }: { invoice: InvoiceWithLineI
             <Receipt className="h-4 w-4 text-muted-foreground" /> Line Items
           </CardTitle>
           <CardDescription>
-            {status === "draft"
-              ? "Add packages from your catalog or enter custom line items."
-              : "Invoice is locked — edit is only available in Draft status."}
+            {status === "draft" && invoice.eventOrderId
+              ? "Lines tagged “Event Order” update automatically from this event's Event Order. Add packages or custom line items for anything else."
+              : status === "draft"
+                ? "Add packages from your catalog or enter custom line items."
+                : "Invoice is locked — edit is only available in Draft status."}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -173,7 +200,7 @@ export function InvoiceDetail({ invoice, packages }: { invoice: InvoiceWithLineI
                 </p>
               </div>
               <Button type="button" variant="outline" size="sm"
-                render={<Link href={`/payments/new?invoiceId=${invoice.id}&clientId=${invoice.clientId ?? ""}&amount=${invoice.total}`} />}>
+                render={<Link href={`/payments/new?invoiceId=${invoice.id}`} />}>
                 Create Payment Plan →
               </Button>
             </div>
