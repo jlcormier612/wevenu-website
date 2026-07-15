@@ -196,10 +196,10 @@ export function FloorPlanTemplateStarterPicker({
           + New Floor Plan Template<ChevronDown className="ml-1.5 h-3.5 w-3.5" />
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
-          <DropdownMenuItem onSelect={() => openFlow("blank")}>Build from Scratch</DropdownMenuItem>
-          <DropdownMenuItem onSelect={() => openFlow("upload")}>Upload Existing Floor Plan</DropdownMenuItem>
-          <DropdownMenuItem onSelect={() => openFlow("paste")}>Paste Layout Details</DropdownMenuItem>
-          <DropdownMenuItem disabled={existingTemplates.length === 0} onSelect={() => openFlow("duplicate")}>Duplicate Existing Template</DropdownMenuItem>
+          <DropdownMenuItem onClick={() => openFlow("blank")}>Build from Scratch</DropdownMenuItem>
+          <DropdownMenuItem onClick={() => openFlow("upload")}>Upload Existing Floor Plan</DropdownMenuItem>
+          <DropdownMenuItem onClick={() => openFlow("paste")}>Paste Layout Details</DropdownMenuItem>
+          <DropdownMenuItem disabled={existingTemplates.length === 0} onClick={() => openFlow("duplicate")}>Duplicate Existing Template</DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
 

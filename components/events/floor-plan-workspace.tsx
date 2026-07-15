@@ -17,18 +17,23 @@ import * as React from "react";
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Loader2 } from "lucide-react";
+import { Loader2, MoreHorizontal } from "lucide-react";
 import { toast } from "sonner";
 
 import {
-  applyTemplateAction, createFloorPlanAction, duplicateFloorPlanAction, setClientAccessAction,
+  applyTemplateAction, createFloorPlanAction, deleteFloorPlanAction, duplicateFloorPlanAction,
+  renameFloorPlanAction, setClientAccessAction,
 } from "@/app/(app)/events/[id]/floor-plan-actions";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import type { VenueSpace } from "@/lib/availability/types";
 import type { FloorPlan } from "@/lib/floor-plans/types";
 import type { FloorPlanTemplate } from "@/lib/floor-plan-templates/types";
@@ -66,23 +71,47 @@ function ShareForSeatingToggle({ eventId, plan }: { eventId: string; plan: Floor
   }
 
   return (
-    <button type="button" onClick={toggle} disabled={pending}
-      className={`self-start text-[10px] font-medium px-2 py-0.5 rounded-full border transition-colors ${
-        shared ? "border-primary/40 bg-primary/10 text-primary" : "border-border text-muted-foreground hover:border-primary/40"
-      }`}
-      title={shared ? "Visible to the couple — tables here are available in Seating. Click to unshare." : "Not visible to the couple yet. Click to share for Seating."}>
-      {pending ? "…" : shared ? "Shared for Seating" : "Share for Seating"}
-    </button>
+    <Tooltip>
+      <TooltipTrigger render={
+        <button type="button" onClick={toggle} disabled={pending}
+          className={`self-start text-[10px] font-medium px-2 py-0.5 rounded-full border transition-colors ${
+            shared ? "border-primary/40 bg-primary/10 text-primary" : "border-border text-muted-foreground hover:border-primary/40"
+          }`}>
+          {pending ? "…" : shared ? "Shared for Seating" : "Share for Seating"}
+        </button>
+      } />
+      <TooltipContent>
+        {shared ? "Visible to the couple — tables here are available in Seating. Click to unshare." : "Not visible to the couple yet. Click to share for Seating."}
+      </TooltipContent>
+    </Tooltip>
   );
 }
 
-function FloorPlanCard({ eventId, plan, spaces }: { eventId: string; plan: FloorPlan; spaces: VenueSpace[] }) {
+function FloorPlanCard({
+  eventId, plan, spaces, busy, onRename, onDelete,
+}: {
+  eventId: string; plan: FloorPlan; spaces: VenueSpace[]; busy: boolean;
+  onRename: () => void; onDelete: () => void;
+}) {
   return (
     <Link
       href={`/events/${eventId}/floor-plans/${plan.id}`}
       className="flex flex-col gap-1.5 rounded-xl border border-border bg-card p-4 transition-colors hover:border-primary/40 hover:bg-muted/20"
     >
-      <p className="truncate text-sm font-medium text-heading">{plan.name}</p>
+      <div className="flex items-start justify-between gap-2">
+        <p className="min-w-0 truncate text-sm font-medium text-heading">{plan.name}</p>
+        <div onClick={(e) => { e.preventDefault(); e.stopPropagation(); }} className="shrink-0">
+          <DropdownMenu>
+            <DropdownMenuTrigger render={<Button variant="ghost" size="icon" className="h-7 w-7" disabled={busy} aria-label="Floor plan actions" />}>
+              {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <MoreHorizontal className="h-3.5 w-3.5" />}
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={onRename}>Rename</DropdownMenuItem>
+              <DropdownMenuItem onClick={onDelete} className="text-destructive">Delete</DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      </div>
       <p className="text-xs text-muted-foreground">{spaceName(spaces, plan.spaceId) ?? "No space assigned"}</p>
       <ShareForSeatingToggle eventId={eventId} plan={plan} />
     </Link>
@@ -108,9 +137,33 @@ export function FloorPlanWorkspace({
   const [templateId, setTemplateId] = React.useState("");
   const [sourcePlanId, setSourcePlanId] = React.useState("");
   const [pending, startTransition] = React.useTransition();
+  const [busyPlanId, setBusyPlanId] = React.useState<string | null>(null);
 
   function reset() {
     setMethod("blank"); setName(""); setSpaceId(eventSpaceId ?? NO_SPACE); setTemplateId(""); setSourcePlanId("");
+  }
+
+  function handleRenamePlan(plan: FloorPlan) {
+    const next = window.prompt("Rename floor plan", plan.name);
+    if (!next || !next.trim() || next.trim() === plan.name) return;
+    setBusyPlanId(plan.id);
+    startTransition(async () => {
+      const result = await renameFloorPlanAction(plan.id, eventId, next.trim());
+      setBusyPlanId(null);
+      if (result.ok) { toast.success("Floor plan renamed."); router.refresh(); }
+      else toast.error(result.message ?? "Could not rename floor plan.");
+    });
+  }
+
+  function handleDeletePlan(plan: FloorPlan) {
+    if (!confirm(`Delete "${plan.name}"? This removes every object on it and can't be undone.`)) return;
+    setBusyPlanId(plan.id);
+    startTransition(async () => {
+      const result = await deleteFloorPlanAction(plan.id, eventId);
+      setBusyPlanId(null);
+      if (result.ok) { toast.success("Floor plan deleted."); router.refresh(); }
+      else toast.error(result.message ?? "Could not delete floor plan.");
+    });
   }
 
   function handleTemplateChange(id: string) {
@@ -157,20 +210,39 @@ export function FloorPlanWorkspace({
   const canSubmit = !!name.trim() && (method !== "apply" || !!templateId) && (method !== "duplicate" || !!sourcePlanId);
   const submitLabel = method === "apply" ? "Apply" : method === "duplicate" ? "Duplicate" : "Create Floor Plan";
 
+  // Seating always resolves to exactly one shared plan (whichever was most
+  // recently updated) — a coordinator who shares more than one at once has
+  // no other signal telling them which one the couple is actually seeing.
+  const sharedPlans = floorPlans.filter((p) => p.clientAccess !== "hidden");
+
   return (
     <div className="space-y-4">
       <div className="flex justify-end">
         <Button type="button" onClick={() => { reset(); setOpen(true); }}>+ New Floor Plan</Button>
       </div>
 
+      {sharedPlans.length > 1 && (
+        <div className="rounded-lg border border-warning/40 bg-warning/10 px-3 py-2 text-xs text-warning-foreground">
+          {sharedPlans.length} floor plans are shared for Seating at once — the couple only ever sees the most recently
+          updated one ({[...sharedPlans].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))[0].name}). Unshare the
+          others if that&apos;s not the one they should be seating against.
+        </div>
+      )}
+
       {floorPlans.length === 0 ? (
-        <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border py-12 text-center">
-          <p className="text-sm text-muted-foreground">No floor plans yet.</p>
+        <div className="flex flex-col items-center justify-center gap-1 rounded-xl border border-dashed border-border py-12 text-center">
+          <p className="text-sm font-medium text-heading">No floor plans yet</p>
+          <p className="text-xs text-muted-foreground">Apply a template, duplicate another booking&apos;s plan, or start from a blank room.</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {floorPlans.map((plan) => (
-            <FloorPlanCard key={plan.id} eventId={eventId} plan={plan} spaces={spaces} />
+            <FloorPlanCard
+              key={plan.id} eventId={eventId} plan={plan} spaces={spaces}
+              busy={busyPlanId === plan.id}
+              onRename={() => handleRenamePlan(plan)}
+              onDelete={() => handleDeletePlan(plan)}
+            />
           ))}
         </div>
       )}
