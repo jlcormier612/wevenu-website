@@ -14,14 +14,14 @@ export function ProposalWorkspaceMock({ className }: { className?: string }) {
         <span className="h-2.5 w-2.5 rounded-full bg-[var(--taupe-dark)]/40" />
         <span className="h-2.5 w-2.5 rounded-full bg-[var(--taupe-dark)]/40" />
         <div className="ml-3 flex-1 truncate rounded-full bg-[var(--true-white)] px-3 py-1 text-[10px] tracking-wide text-[var(--forest-sage)]/45">
-          willowestate.com / proposal / elena-james
+          willowandhearth.com / proposal / elena-james
         </div>
       </div>
 
       <div className="bg-[var(--warm-gray)]/40 p-5 md:p-7">
         <div className="border border-[var(--taupe-medium)]/40 bg-[var(--true-white)] px-6 py-8 md:px-8 md:py-10">
           <p className="text-[10px] tracking-[0.28em] uppercase text-[var(--heritage-sage)]">
-            Willow Estate
+            Willow & Hearth
           </p>
           <h3 className="mt-3 font-heading text-3xl text-[var(--forest-sage)] md:text-4xl">
             For Elena & James
@@ -33,7 +33,7 @@ export function ProposalWorkspaceMock({ className }: { className?: string }) {
           <div className="mt-8 aspect-[16/9] bg-[var(--linen)]">
             <div className="flex h-full items-end p-4">
               <p className="text-[10px] tracking-[0.18em] uppercase text-[var(--heritage-sage)]/70">
-                Estate photography
+                Venue photography
               </p>
             </div>
           </div>

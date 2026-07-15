@@ -128,13 +128,13 @@ export const FILM = {
 
   // Guest Portal — informed guests, softer arrivals
   guestArrive:
-    "https://images.unsplash.com/photo-1527529480361-87119c887168?auto=format&fit=crop&w=2000&q=80",
+    "https://images.unsplash.com/photo-1772404245994-200ca40c47fa?auto=format&fit=crop&w=2000&q=80",
   guestCelebrate:
-    "https://images.unsplash.com/photo-1519677100203-d0b8484b0841?auto=format&fit=crop&w=2200&q=80",
+    "https://images.unsplash.com/photo-1511795409834-ef04bbd61622?auto=format&fit=crop&w=2200&q=80",
 
   // Celebration — joy preserved; the relationship continues
   celebrationJoy:
-    "https://images.unsplash.com/photo-1519741497674-611ae548259b?auto=format&fit=crop&w=2000&q=80",
+    "https://images.unsplash.com/photo-1523438885200-e635ba2c371e?auto=format&fit=crop&w=2000&q=80",
   celebrationNight:
     "https://images.unsplash.com/photo-1464366400600-7168b8af9bc3?auto=format&fit=crop&w=2200&q=80",
 } as const;

@@ -72,7 +72,7 @@ export function GuestExperience({ prev, next }: GuestExperienceProps) {
           <div className="relative min-h-[420px] overflow-hidden md:min-h-[560px]">
             <Image
               src={FILM.guestArrive}
-              alt="Guests gathered for an outdoor celebration — arriving informed and ready for a wonderful day"
+              alt="Outdoor seating quietly prepared — guests arrive informed and ready to celebrate"
               fill
               className="object-cover object-[center_40%]"
               sizes="(max-width:768px) 100vw, 55vw"
@@ -171,7 +171,7 @@ export function GuestExperience({ prev, next }: GuestExperienceProps) {
       <section className="relative min-h-[70vh] md:min-h-[85vh]">
         <Image
           src={FILM.guestCelebrate}
-          alt="Warm celebration with friends toasting — hospitality that feels natural"
+          alt="Warm evening celebration under string lights — hospitality that feels natural"
           fill
           className="object-cover object-[center_35%]"
           sizes="100vw"
@@ -182,7 +182,7 @@ export function GuestExperience({ prev, next }: GuestExperienceProps) {
             “When guests feel informed, they arrive ready to celebrate.”
           </p>
           <p className="mt-8 text-sm tracking-wide text-white/70 md:text-base">
-            Thoughtful experiences create memorable celebrations long before the ceremony begins.
+            Thoughtful experiences create memorable celebrations long before the celebration begins.
           </p>
         </div>
       </section>

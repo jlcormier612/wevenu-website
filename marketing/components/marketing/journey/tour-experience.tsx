@@ -73,7 +73,7 @@ export function TourExperience({ prev, next }: TourExperienceProps) {
           <div className="relative min-h-[420px] overflow-hidden md:min-h-[560px]">
             <Image
               src={FILM.tourGrounds}
-              alt="Couple on the grounds of an elegant estate venue — a warm, natural tour moment"
+              alt="Couple on the grounds of an elegant venue — a warm, natural tour moment"
               fill
               className="object-cover object-[center_35%]"
               sizes="(max-width:768px) 100vw, 60vw"

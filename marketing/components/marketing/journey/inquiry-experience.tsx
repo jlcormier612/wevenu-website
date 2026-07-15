@@ -14,7 +14,7 @@ const HOW_IT_WORKS = [
   },
   {
     n: "02",
-    title: "Know Your Couple",
+    title: "Know Your Client",
     body: "Preferences, conversations, notes, and history stay together from day one.",
   },
   {
@@ -30,7 +30,7 @@ const RELATIONSHIP_FLOW = [
   "Proposal",
   "Contract",
   "Planning",
-  "Wedding Day",
+  "Event Day",
 ] as const;
 
 type InquiryExperienceProps = {
@@ -192,7 +192,7 @@ export function InquiryExperience({ prev = null, next }: InquiryExperienceProps)
       <section className="px-6 py-32 md:py-44">
         <div className="mx-auto max-w-3xl text-center">
           <p className="font-heading text-3xl italic leading-snug text-[var(--forest-sage)] md:text-5xl">
-            “The best hospitality begins long before the wedding day.”
+            “The best hospitality begins long before the event day.”
           </p>
           <p className="mt-8 text-sm tracking-wide text-[var(--forest-sage)]/55 md:text-base">
             Wevenu simply makes sure it never gets forgotten.

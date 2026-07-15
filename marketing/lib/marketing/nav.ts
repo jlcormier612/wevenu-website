@@ -4,10 +4,10 @@ export const PRODUCT_APP_URL =
 
 export const MARKETING_NAV = [
   { href: "/", label: "Home" },
-  { href: "/concepts", label: "Concepts" },
   { href: "/product", label: "Product" },
+  { href: "/features", label: "Features" },
   { href: "/pricing", label: "Pricing" },
-  { href: "/about", label: "About Wevenu" },
+  { href: "/about", label: "About" },
   { href: "/contact", label: "Contact" },
 ] as const;
 

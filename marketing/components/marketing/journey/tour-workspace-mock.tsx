@@ -69,7 +69,7 @@ export function TourWorkspaceMock({ className }: { className?: string }) {
               Assigned venue host
             </p>
             <p className="mt-2 font-heading text-lg text-[var(--forest-sage)]">Maya Chen</p>
-            <p className="mt-1 text-xs text-[var(--forest-sage)]/55">Estate director</p>
+            <p className="mt-1 text-xs text-[var(--forest-sage)]/55">Venue director</p>
           </div>
 
           <div>

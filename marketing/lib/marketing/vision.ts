@@ -113,7 +113,7 @@ export const VISION = {
     parties: [
       {
         name: "Venue",
-        line: "The operating system for how your estate actually runs.",
+        line: "The operating system for how your venue actually runs.",
       },
       {
         name: "Couple",

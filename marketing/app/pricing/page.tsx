@@ -1,20 +1,20 @@
 import type { Metadata } from "next";
 
-import { PricingTiers } from "@/components/marketing/sections/pricing-tiers";
-import { CtaBand } from "@/components/marketing/sections/cta-band";
+import { PricingExperience } from "@/components/marketing/pricing-experience";
 
 export const metadata: Metadata = {
   title: "Pricing",
+  description:
+    "Simple monthly pricing for Wevenu—every feature included. The only difference is how many celebrations you host each year.",
 };
 
-export default function PricingPage() {
-  return (
-    <>
-      <PricingTiers />
-      <CtaBand
-        headline="Ready when you are"
-        body="Request a walkthrough to discuss the plan that fits your venue."
-      />
-    </>
-  );
+type PricingSearchParams = Promise<{ canceled?: string }>;
+
+export default async function PricingPage({
+  searchParams,
+}: {
+  searchParams: PricingSearchParams;
+}) {
+  const params = await searchParams;
+  return <PricingExperience canceled={params.canceled === "1"} />;
 }

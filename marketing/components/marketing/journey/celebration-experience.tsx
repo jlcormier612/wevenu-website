@@ -79,7 +79,7 @@ export function CelebrationExperience({ prev, next }: CelebrationExperienceProps
           <div className="relative min-h-[420px] overflow-hidden md:min-h-[560px]">
             <Image
               src={FILM.celebrationJoy}
-              alt="Couple celebrating outdoors — pure joy, the reason everyone worked so hard"
+              alt="Joy on the day — the relationship continues afterward"
               fill
               className="object-cover object-[center_30%]"
               sizes="(max-width:768px) 100vw, 55vw"
