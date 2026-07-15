@@ -79,6 +79,16 @@ export async function setEntryStatus(entryId: string, status: TimelineEntryStatu
   return result as TimelineActionResult;
 }
 
+export async function shiftEntriesAfter(
+  eventId: string, afterEntryId: string, minutesDelta: number,
+): Promise<TimelineActionResult & { shiftedCount?: number }> {
+  const result = await withVenue(async (supabase, venueId) => {
+    const { shiftedCount } = await repo.shiftEntriesAfter(supabase, venueId, eventId, afterEntryId, minutesDelta);
+    return { ok: true, shiftedCount } as TimelineActionResult & { shiftedCount: number };
+  });
+  return result as TimelineActionResult & { shiftedCount?: number };
+}
+
 export async function reorderEntry(
   eventId: string, entryId: string, direction: "up" | "down",
 ): Promise<TimelineActionResult> {

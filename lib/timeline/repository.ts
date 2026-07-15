@@ -132,6 +132,46 @@ export async function setEntryStatus(
 }
 
 /**
+ * Delay recovery — "push everything after this entry back by N minutes."
+ * Timeline entries have no duration/dependency model (a deliberate,
+ * documented open question — docs/shared-template-architecture.md), so
+ * recovering from a late-running wedding day today meant re-editing every
+ * subsequent entry's time by hand. This shifts every timed entry strictly
+ * later than the anchor entry's own time, in one write, without inventing
+ * durations or dependencies — a bulk update over the existing point-in-time
+ * field, not a redesign (Timeline Release Readiness, UX Improvement #1).
+ */
+export async function shiftEntriesAfter(
+  client: DbClient, venueId: string, eventId: string, afterEntryId: string, minutesDelta: number,
+): Promise<{ shiftedCount: number }> {
+  const { data: anchor, error: anchorError } = await client
+    .from("timeline_entries")
+    .select("entry_time")
+    .eq("id", afterEntryId).eq("venue_id", venueId).eq("event_id", eventId)
+    .maybeSingle<{ entry_time: string | null }>();
+  if (anchorError) throw anchorError;
+  if (!anchor?.entry_time) return { shiftedCount: 0 };
+
+  const { data: rows, error: fetchError } = await client
+    .from("timeline_entries")
+    .select("id, entry_time")
+    .eq("venue_id", venueId).eq("event_id", eventId)
+    .not("entry_time", "is", null)
+    .gt("entry_time", anchor.entry_time);
+  if (fetchError) throw fetchError;
+
+  const toShift = (rows ?? []) as { id: string; entry_time: string }[];
+  for (const row of toShift) {
+    const newTime = minutesToTime(timeToMinutes(row.entry_time.slice(0, 5)) + minutesDelta);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error } = await (client.from("timeline_entries") as any)
+      .update({ entry_time: newTime }).eq("id", row.id).eq("venue_id", venueId);
+    if (error) throw error;
+  }
+  return { shiftedCount: toShift.length };
+}
+
+/**
  * Move an entry up or down within the same entry_time group.
  * Swaps the sort_order of the target and its neighbour. Kept unchanged —
  * the Timeline tab now drives reordering through reorderEntries (drag), but

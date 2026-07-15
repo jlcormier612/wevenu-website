@@ -20,10 +20,16 @@ export function TemplatePicker({
   eventId,
   eventStartTime,
   onApplied,
+  existingEntryCount = 0,
 }: {
   eventId: string;
   eventStartTime: string | null;
   onApplied: () => void;
+  /** When this Timeline already has entries, applying another template adds
+   * to it rather than starting fresh — surfaced here so a coordinator can't
+   * silently double up a Timeline they've already built (Timeline Release
+   * Readiness, Release Blocker #3). */
+  existingEntryCount?: number;
 }) {
   const [open, setOpen] = React.useState(false);
   const [selectedId, setSelectedId] = React.useState<string | null>(null);
@@ -31,6 +37,12 @@ export function TemplatePicker({
 
   function handleApply() {
     if (!selectedId) return;
+    if (existingEntryCount > 0) {
+      const ok = confirm(
+        `This Timeline already has ${existingEntryCount} ${existingEntryCount === 1 ? "entry" : "entries"}. Applying "${selected?.name}" will add its entries on top — nothing existing will be changed or removed. Continue?`
+      );
+      if (!ok) return;
+    }
     startTransition(async () => {
       const result = await applyTemplateAction(eventId, selectedId, eventStartTime);
       if (result.ok) {
@@ -68,6 +80,19 @@ export function TemplatePicker({
             )}
           </p>
         </SheetHeader>
+
+        {/* Warning: applying on top of an existing Timeline */}
+        {existingEntryCount > 0 && (
+          <div className="mb-3 flex items-start gap-2.5 rounded-lg border border-warning/40 bg-warning/10 px-3.5 py-3 text-sm">
+            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-warning-foreground" />
+            <div className="space-y-0.5">
+              <p className="font-medium text-warning-foreground">This Timeline already has {existingEntryCount} {existingEntryCount === 1 ? "entry" : "entries"}</p>
+              <p className="text-xs text-muted-foreground">
+                Applying a template adds its entries on top — nothing existing is changed or removed.
+              </p>
+            </div>
+          </div>
+        )}
 
         {/* Warning: no start time set */}
         {!eventStartTime && (

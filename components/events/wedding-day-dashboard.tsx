@@ -14,10 +14,13 @@
 
 import * as React from "react";
 
-import { CheckCircle, Circle, Clock, Phone, Mail, FileText, RefreshCw, Users, ChevronDown } from "lucide-react";
+import { CheckCircle, Circle, Clock, Phone, Mail, FileText, LayoutGrid, RefreshCw, Users, ChevronDown } from "lucide-react";
+import { toast } from "sonner";
 
+import { shiftEntriesAfterAction } from "@/app/(app)/events/[id]/timeline-actions";
 import type { VenueEvent } from "@/lib/events/types";
 import type { Document } from "@/lib/documents/types";
+import type { FloorPlan } from "@/lib/floor-plans/types";
 
 // ── Palette ───────────────────────────────────────────────────────────────────
 
@@ -36,6 +39,8 @@ type TimelineEntry = {
   entryTime: string | null;
   sortOrder: number;
   status: "not_started" | "in_progress" | "complete";
+  assignedToStaffId: string | null;
+  assignedToName: string | null;
 };
 
 type VendorAssignment = {
@@ -51,6 +56,13 @@ type VendorAssignment = {
   setupCompleteAt: string | null;
 };
 
+// A lightweight, page-local version of docs/luv-platform-reconciliation.md
+// §4's kind model — just the four kinds this page's own observations
+// actually produce, not the full six-kind shared envelope (out of scope
+// here; this stays this page's own bespoke computation, same as before).
+type LuvObservationKind = "fact" | "celebration" | "waiting" | "risk";
+type LuvObservation = { kind: LuvObservationKind; text: string };
+
 type DayTask = {
   id: string;
   title: string;
@@ -58,7 +70,11 @@ type DayTask = {
   ownerType: string | null;
   status: string;
   completedAt: string | null;
+  assignedToStaffId: string | null;
+  assignedToName: string | null;
 };
+
+type DayRequest = { id: string; title: string; status: string };
 
 type Contact = {
   id: string;
@@ -188,10 +204,11 @@ function CeremonyCountdownChip({ entries }: { entries: TimelineEntry[] }) {
 // ── Live Timeline ─────────────────────────────────────────────────────────────
 
 function LiveTimeline({
-  entries, onStatusChange,
+  entries, onStatusChange, onDelay,
 }: {
   entries: TimelineEntry[];
   onStatusChange: (id: string, status: TimelineEntry["status"]) => void;
+  onDelay: (entryId: string) => void;
 }) {
   if (entries.length === 0) {
     return (
@@ -210,7 +227,7 @@ function LiveTimeline({
 
         return (
           <div key={entry.id}
-            className="flex items-start gap-4 py-3"
+            className="group flex items-start gap-4 py-3"
             style={isActive ? { background: `${GOLD}0A` } : undefined}>
             <div className="w-14 shrink-0 text-right pt-0.5">
               <p className="text-xs font-semibold" style={{ color: isActive ? GOLD : "#9A938D" }}>
@@ -237,7 +254,18 @@ function LiveTimeline({
               {entry.description && !isDone && (
                 <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">{entry.description}</p>
               )}
+              {entry.assignedToName && (
+                <p className="text-[11px] text-muted-foreground mt-0.5">👤 {entry.assignedToName}</p>
+              )}
             </div>
+            {entry.entryTime && !isDone && (
+              <button type="button"
+                onClick={() => onDelay(entry.id)}
+                className="shrink-0 self-center text-[11px] text-muted-foreground opacity-0 transition-opacity hover:text-heading group-hover:opacity-100"
+                title="Push this and everything after it back">
+                Running late?
+              </button>
+            )}
           </div>
         );
       })}
@@ -283,6 +311,7 @@ function GroupedTaskList({
                 <div className="flex-1">
                   <p className="text-sm font-medium text-heading">{t.title}</p>
                   {t.description && <p className="text-xs text-muted-foreground mt-0.5">{t.description}</p>}
+                  {t.assignedToName && <p className="text-[11px] text-muted-foreground mt-0.5">👤 {t.assignedToName}</p>}
                 </div>
                 <span className="text-[10px] font-medium opacity-0 group-hover:opacity-100 transition-opacity shrink-0 mt-1"
                   style={{ color: SAGE }}>
@@ -559,19 +588,127 @@ function QuickDocuments({ documents }: { documents: Document[] }) {
   );
 }
 
+// Requests had zero presence on this page before this — a pending
+// Approval/Selection/etc. tied to this booking was invisible to a
+// coordinator running the day (Wedding Day Release Readiness, UX
+// Improvement #2). Read-only, links out to the Request itself — this page
+// reveals Requests, it doesn't reimplement the Request Center.
+const REQUEST_STATUS_LABEL: Record<string, string> = {
+  sent: "Sent", viewed: "Viewed", in_progress: "In progress",
+  submitted: "Submitted — needs review", reviewed: "Reviewed",
+};
+
+function QuickRequests({ requests }: { requests: DayRequest[] }) {
+  if (requests.length === 0) {
+    return <p className="text-sm text-muted-foreground italic py-2">No outstanding requests for this booking.</p>;
+  }
+  return (
+    <div className="space-y-2">
+      {requests.map(r => (
+        <a key={r.id} href={`/requests/${r.id}`} target="_blank" rel="noopener noreferrer"
+          className="flex items-center justify-between gap-3 p-3 rounded-xl border bg-card hover:shadow-sm transition-all"
+          style={{ borderColor: "#E8E3DC" }}>
+          <div className="min-w-0">
+            <p className="text-sm font-medium text-heading truncate">{r.title}</p>
+            <p className="text-[11px] text-muted-foreground">{REQUEST_STATUS_LABEL[r.status] ?? r.status}</p>
+          </div>
+          {r.status === "submitted" && (
+            <span className="shrink-0 text-[10px] font-semibold px-2 py-0.5 rounded-full text-white" style={{ background: GOLD }}>
+              Needs review
+            </span>
+          )}
+        </a>
+      ))}
+    </div>
+  );
+}
+
+// Floor Plans had no wedding-day surface at all before this — the print
+// view existed but was undiscoverable from the one page a coordinator
+// actually uses on the day itself. This mirrors QuickDocuments' shape
+// exactly: a link out, never an embedded editor.
+function QuickFloorPlans({ eventId, floorPlans }: { eventId: string; floorPlans: FloorPlan[] }) {
+  if (floorPlans.length === 0) {
+    return <p className="text-sm text-muted-foreground italic py-2">No floor plans yet.</p>;
+  }
+
+  return (
+    <div className="grid gap-2 sm:grid-cols-2">
+      {floorPlans.map(plan => (
+        <div key={plan.id} className="flex items-center justify-between gap-2 p-3 rounded-xl border bg-card text-sm"
+          style={{ borderColor: "#E8E3DC" }}>
+          <span className="flex min-w-0 items-center gap-2 truncate font-medium text-heading">
+            <LayoutGrid className="h-4 w-4 shrink-0" style={{ color: ROSE }} />
+            <span className="truncate">{plan.name}</span>
+          </span>
+          <span className="flex shrink-0 items-center gap-3">
+            <a href={`/events/${eventId}/floor-plans/${plan.id}`} className="text-xs font-medium hover:underline" style={{ color: ROSE_DEEP }}>
+              View
+            </a>
+            <a href={`/events/${eventId}/floor-plan-print/${plan.id}`} target="_blank" rel="noopener noreferrer"
+              className="text-xs font-medium hover:underline" style={{ color: ROSE_DEEP }}>
+              Print
+            </a>
+          </span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// Wedding Day Seating — a fast lookup workspace for staff (Seating Final
+// Release Completion), distinct from Floor Plans: this links to guest-level
+// rosters, not room geometry. Same link-out shape as QuickFloorPlans/
+// QuickDocuments — never an embedded editor.
+function QuickSeating({ eventId }: { eventId: string }) {
+  return (
+    <div className="flex items-center justify-between gap-2 p-3 rounded-xl border bg-card text-sm"
+      style={{ borderColor: "#E8E3DC" }}>
+      <span className="flex min-w-0 items-center gap-2 truncate font-medium text-heading">
+        <LayoutGrid className="h-4 w-4 shrink-0" style={{ color: ROSE }} />
+        <span className="truncate">Table rosters, meal counts &amp; accessibility notes</span>
+      </span>
+      <span className="flex shrink-0 items-center gap-3">
+        <a href={`/events/${eventId}/seating`} className="text-xs font-medium hover:underline" style={{ color: ROSE_DEEP }}>
+          Look Up
+        </a>
+        <a href={`/events/${eventId}/seating-print`} target="_blank" rel="noopener noreferrer"
+          className="text-xs font-medium hover:underline" style={{ color: ROSE_DEEP }}>
+          Print
+        </a>
+      </span>
+    </div>
+  );
+}
+
 // ── Luv Observations ──────────────────────────────────────────────────────────
 
-function LuvObsPanel({ observations }: { observations: string[] }) {
+// Celebration > Risk > Waiting > Fact — same precedence
+// docs/luv-platform-reconciliation.md §4 establishes for the shared model,
+// applied here to sort order: the thing most worth a coordinator's
+// attention reads first, not whatever order the computation happened to
+// push it in.
+const LUV_KIND_ORDER: Record<LuvObservationKind, number> = { celebration: 0, risk: 1, waiting: 2, fact: 3 };
+const LUV_KIND_STYLE: Record<LuvObservationKind, { emoji: string; color: string }> = {
+  celebration: { emoji: "🎉", color: SAGE },
+  risk:        { emoji: "⚠️", color: ROSE_DEEP },
+  waiting:     { emoji: "⏳", color: GOLD },
+  fact:        { emoji: "💗", color: "#5A3235" },
+};
+
+function LuvObsPanel({ observations }: { observations: LuvObservation[] }) {
   if (observations.length === 0) return null;
+  const sorted = [...observations].sort((a, b) => LUV_KIND_ORDER[a.kind] - LUV_KIND_ORDER[b.kind]);
   return (
     <section className="rounded-2xl border p-5 space-y-3"
       style={{ background: "#FDF5F5", borderColor: `${ROSE}30` }}>
       <p className="text-[10px] font-semibold uppercase tracking-[0.18em]" style={{ color: ROSE_DEEP }}>
         💗 Luv
       </p>
-      {observations.map((obs, i) => (
-        <p key={i} className="text-sm leading-relaxed" style={{ color: "#5A3235" }}>
-          {obs}
+      {sorted.map((obs, i) => (
+        <p key={i} className="text-sm leading-relaxed flex items-start gap-2" style={{ color: LUV_KIND_STYLE[obs.kind].color }}>
+          <span className="shrink-0">{LUV_KIND_STYLE[obs.kind].emoji}</span>
+          <span>{obs.text}</span>
         </p>
       ))}
     </section>
@@ -597,11 +734,15 @@ function Section({ title, emoji, children }: { title: string; emoji: string; chi
 export function WeddingDayDashboard({
   event,
   documents,
+  floorPlans,
   coupleName,
+  outstandingRequests = [],
 }: {
   event: VenueEvent;
   documents: Document[];
+  floorPlans: FloorPlan[];
   coupleName: string;
+  outstandingRequests?: DayRequest[];
 }) {
   const [data, setData]               = React.useState<OpsData | null>(null);
   const [loading, setLoading]         = React.useState(true);
@@ -624,58 +765,114 @@ export function WeddingDayDashboard({
 
   // ── Optimistic mutations ──────────────────────────────────────────────────
 
+  // Every mutation here follows the same shape: apply optimistically, capture
+  // what the screen looked like before, and on any failure (network drop, an
+  // expired session, an RLS rejection) revert to that snapshot and surface a
+  // toast — never leave the coordinator believing a write landed when it
+  // didn't. This is the live wedding-day surface; the next 30s poll would
+  // otherwise silently "undo" an unnoticed failed write mid-event with zero
+  // explanation (Timeline Release Readiness, Release Blocker #2).
+
   async function handleTimelineStatus(entryId: string, status: TimelineEntry["status"]) {
+    const previous = data;
     setData(d => d ? { ...d, timeline: d.timeline.map(e => e.id === entryId ? { ...e, status } : e) } : d);
-    await fetch(`/api/events/${event.id}/wedding-day`, {
-      method: "PATCH",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ action: "timeline_status", entryId, status }),
-    });
+    try {
+      const res = await fetch(`/api/events/${event.id}/wedding-day`, {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ action: "timeline_status", entryId, status }),
+      });
+      if (!res.ok) throw new Error((await res.json().catch(() => ({})))?.error ?? "Request failed");
+    } catch {
+      setData(previous);
+      toast.error("Could not update the timeline — please try again.");
+    }
   }
 
   async function handleVendorToggle(assignmentId: string, field: "checked_in" | "setup_complete") {
     const key = field === "checked_in" ? "checkedInAt" : "setupCompleteAt";
+    const previous = data;
     setData(d => d ? {
       ...d,
       vendors: d.vendors.map(v => v.assignmentId === assignmentId
         ? { ...v, [key]: v[key] ? null : new Date().toISOString() }
         : v),
     } : d);
-    await fetch(`/api/events/${event.id}/wedding-day`, {
-      method: "PATCH",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ action: "vendor_checkin", assignmentId, field }),
-    });
+    try {
+      const res = await fetch(`/api/events/${event.id}/wedding-day`, {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ action: "vendor_checkin", assignmentId, field }),
+      });
+      if (!res.ok) throw new Error((await res.json().catch(() => ({})))?.error ?? "Request failed");
+    } catch {
+      setData(previous);
+      toast.error("Could not update vendor check-in — please try again.");
+    }
   }
 
   async function handleTaskComplete(taskId: string) {
+    const previous = data;
     setData(d => d ? {
       ...d,
       tasks: d.tasks.map(t => t.id === taskId
         ? { ...t, status: "complete", completedAt: new Date().toISOString() }
         : t),
     } : d);
-    await fetch(`/api/events/${event.id}/wedding-day`, {
-      method: "PATCH",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ action: "complete_task", taskId }),
-    });
+    try {
+      const res = await fetch(`/api/events/${event.id}/wedding-day`, {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ action: "complete_task", taskId }),
+      });
+      if (!res.ok) throw new Error((await res.json().catch(() => ({})))?.error ?? "Request failed");
+    } catch {
+      setData(previous);
+      toast.error("Could not complete the task — please try again.");
+    }
+  }
+
+  // Delay recovery — Timeline entries have no duration/dependency model, so
+  // "the ceremony ran late" means re-typing every later entry's time by hand
+  // today. This is the one bulk operation that doesn't require either
+  // (Timeline Release Readiness, UX Improvement #1): shift every entry after
+  // this one by N minutes in a single write, refetching afterward since a
+  // shift touches rows this component doesn't hold optimistic state for.
+  async function handleDelay(entryId: string) {
+    const raw = window.prompt("Push this and everything after it back by how many minutes?", "15");
+    if (raw === null) return;
+    const minutes = parseInt(raw, 10);
+    if (!Number.isFinite(minutes) || minutes === 0) return;
+    const result = await shiftEntriesAfterAction(event.id, entryId, minutes);
+    if (result.ok) { toast.success(`Shifted ${result.shiftedCount ?? 0} later ${result.shiftedCount === 1 ? "entry" : "entries"}.`); fetchData(); }
+    else toast.error(result.message ?? "Could not shift the schedule.");
   }
 
   // ── Luv observations ──────────────────────────────────────────────────────
 
-  const luvObs: string[] = React.useMemo(() => {
+  const luvObs: LuvObservation[] = React.useMemo(() => {
     if (!data) return [];
-    const obs: string[] = [];
+    const obs: LuvObservation[] = [];
 
-    // Ceremony countdown — lead observation
+    // Ceremony countdown — lead observation. "Starting now" is the one
+    // moment worth calling out as a risk-toned interrupt; otherwise a
+    // routine fact.
     const ceremony = getCeremonyEntry(data.timeline);
     const countdown = computeCountdown(ceremony);
     if (countdown) {
-      obs.push(countdown.mins === 0
-        ? "Ceremony is starting now."
-        : `${ceremony?.title ?? "Ceremony"} begins in ${countdown.label}.`);
+      obs.push({
+        kind: countdown.mins === 0 ? "risk" : "fact",
+        text: countdown.mins === 0
+          ? "Ceremony is starting now."
+          : `${ceremony?.title ?? "Ceremony"} begins in ${countdown.label}.`,
+      });
     }
+    // Inside 30 minutes of the ceremony, an unresolved vendor or task stops
+    // being routine "waiting" and becomes something worth flagging as risk —
+    // the same fact, a different urgency, per docs/luv-platform-
+    // reconciliation.md §4's kind model (a Risk is a Fact plus a crossed
+    // threshold, never invented from nothing).
+    const isCloseToCeremony = countdown !== null && countdown.mins <= 30;
 
     // Vendor status
     const totalVendors   = data.vendors.length;
@@ -683,29 +880,35 @@ export function WeddingDayDashboard({
     const pendingVendors = data.vendors.filter(v => !v.checkedInAt);
 
     if (totalVendors > 0 && readyVendors === totalVendors) {
-      obs.push(`All ${totalVendors} vendor${totalVendors === 1 ? "" : "s"} have checked in and are set up.`);
+      obs.push({ kind: "celebration", text: `All ${totalVendors} vendor${totalVendors === 1 ? "" : "s"} have checked in and are set up.` });
     } else if (pendingVendors.length > 0) {
       const names = pendingVendors.slice(0, 2).map(v => v.vendorName).join(", ");
-      obs.push(`Still waiting on ${names}${pendingVendors.length > 2 ? ` and ${pendingVendors.length - 2} more` : ""}.`);
+      obs.push({
+        kind: isCloseToCeremony ? "risk" : "waiting",
+        text: `Still waiting on ${names}${pendingVendors.length > 2 ? ` and ${pendingVendors.length - 2} more` : ""}.`,
+      });
     }
 
     // Guest count
     if (event.guestCount) {
-      obs.push(`Final guest count is ${event.guestCount}.`);
+      obs.push({ kind: "fact", text: `Final guest count is ${event.guestCount}.` });
     }
 
     // Dietary
     const totalRestrictions = data.dietary.filter(d => d.restriction).reduce((s, d) => s + d.count, 0);
     if (totalRestrictions > 0) {
-      obs.push(`${totalRestrictions} dietary note${totalRestrictions === 1 ? "" : "s"} for today's service. Confirm catering has the list.`);
+      obs.push({ kind: "fact", text: `${totalRestrictions} dietary note${totalRestrictions === 1 ? "" : "s"} for today's service. Confirm catering has the list.` });
     }
 
     // Tasks
     const pendingTasks = data.tasks.filter(t => t.status !== "complete");
     if (pendingTasks.length === 0 && data.tasks.length > 0) {
-      obs.push("All wedding day tasks are complete.");
+      obs.push({ kind: "celebration", text: "All wedding day tasks are complete." });
     } else if (pendingTasks.length > 0) {
-      obs.push(`${pendingTasks.length} task${pendingTasks.length === 1 ? "" : "s"} still on the checklist.`);
+      obs.push({
+        kind: isCloseToCeremony ? "risk" : "waiting",
+        text: `${pendingTasks.length} task${pendingTasks.length === 1 ? "" : "s"} still on the checklist.`,
+      });
     }
 
     return obs;
@@ -782,7 +985,7 @@ export function WeddingDayDashboard({
         <div className="space-y-5">
 
           <Section title="Run of Show" emoji="📋">
-            <LiveTimeline entries={data?.timeline ?? []} onStatusChange={handleTimelineStatus} />
+            <LiveTimeline entries={data?.timeline ?? []} onStatusChange={handleTimelineStatus} onDelay={handleDelay} />
           </Section>
 
           <Section title="Wedding Day Tasks" emoji="✅">
@@ -799,6 +1002,18 @@ export function WeddingDayDashboard({
 
           <Section title="Key Contacts" emoji="📱">
             <KeyContacts contacts={data?.contacts ?? []} />
+          </Section>
+
+          <Section title="Requests" emoji="📝">
+            <QuickRequests requests={outstandingRequests} />
+          </Section>
+
+          <Section title="Floor Plans" emoji="🪑">
+            <QuickFloorPlans eventId={event.id} floorPlans={floorPlans} />
+          </Section>
+
+          <Section title="Seating" emoji="💺">
+            <QuickSeating eventId={event.id} />
           </Section>
 
           <Section title="Documents" emoji="📁">
