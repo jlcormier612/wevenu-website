@@ -9,11 +9,14 @@ import { getSupabaseConfig, isSupabaseConfigured } from "@/lib/env";
  */
 const PUBLIC_PATHS = [
   "/login",
+  "/client/login",   // couple/client portal login
   "/form",           // public venue inquiry forms — /form/{embedKey}
   "/questionnaire",  // public final details forms — /questionnaire/{accessKey}
   "/api/public",     // public API routes — /api/public/inquire, /api/public/questionnaire
   "/api/messaging/inbound",  // Resend inbound email webhook (no user session)
   "/api/messaging/webhook",  // Resend delivery webhook (no user session)
+  "/api/messaging/sms-inbound", // Twilio inbound SMS webhook (no user session; verifies its own signature)
+  "/api/messaging/sms-status",  // Twilio outbound SMS status callback (no user session; verifies its own signature)
   "/sign",           // public contract signing — /sign/{token}
   "/p",              // client portal workspace — /p/{access_token}
   "/v",              // vendor portal workspace — /v/{access_token}
@@ -25,6 +28,9 @@ const PUBLIC_PATHS = [
   "/api/vendor",        // vendor portal API endpoints
   "/api/notifications", // notification delivery engine — secret-guarded, not session-guarded
   "/api/tours",         // public tour slot queries and bookings
+  "/api/digest",                     // daily digest cron (vercel.json) — CRON_SECRET-guarded, not session-guarded
+  "/api/communication/scheduled",    // Scheduled Sends cron (vercel.json) — CRON_SECRET-guarded, not session-guarded
+  "/api/automation/process",         // Automation engine cron (vercel.json) — CRON_SECRET-guarded, not session-guarded
 ];
 
 function isPublicPath(pathname: string): boolean {
