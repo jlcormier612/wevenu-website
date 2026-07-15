@@ -51,9 +51,14 @@ function referenceFor(kind: PlaybookKind) {
 
 type StarterChoice = "standard" | "existing" | "scratch" | "import";
 
+// variant="import" is a second, dedicated entry point onto this exact same
+// sheet — same state, same submit path. Kind (Client/Venue Planning) still
+// has to be chosen first since import needs to know which checklist type
+// it's creating, but picking a kind jumps straight to "Import an existing
+// checklist" instead of leaving a venue to find it among four choices.
 export function PlaybookStarterPicker({
-  existingTemplates = [], compact,
-}: { existingTemplates?: PlaybookTemplate[]; compact?: boolean }) {
+  existingTemplates = [], compact, variant = "new",
+}: { existingTemplates?: PlaybookTemplate[]; compact?: boolean; variant?: "new" | "import" }) {
   const router = useRouter();
   const [open, setOpen] = React.useState(false);
   const [kind, setKind] = React.useState<PlaybookKind | null>(null);
@@ -118,8 +123,8 @@ export function PlaybookStarterPicker({
 
   return (
     <Sheet open={open} onOpenChange={(v) => { setOpen(v); if (!v) reset(); }}>
-      <SheetTrigger render={<Button type="button" variant={compact ? "outline" : "default"} size={compact ? "sm" : "default"} />}>
-        <Wand2 className="mr-1.5 h-4 w-4" />New template
+      <SheetTrigger render={<Button type="button" variant={variant === "import" || compact ? "outline" : "default"} size={compact ? "sm" : "default"} />}>
+        {variant === "import" ? "Import a checklist" : <><Wand2 className="mr-1.5 h-4 w-4" />New template</>}
       </SheetTrigger>
       <SheetContent side="right" className="w-full sm:max-w-lg overflow-y-auto">
         {!kind ? (
@@ -135,7 +140,7 @@ export function PlaybookStarterPicker({
                 <button
                   key={k.value}
                   type="button"
-                  onClick={() => setKind(k.value)}
+                  onClick={() => { setKind(k.value); if (variant === "import") setSelected("import"); }}
                   className="w-full rounded-xl border border-border p-4 text-left transition-colors hover:border-primary/40 hover:bg-muted/40"
                 >
                   <p className="font-medium text-foreground">{k.emoji} {k.label}</p>
@@ -167,7 +172,7 @@ export function PlaybookStarterPicker({
                 <div className="flex items-start justify-between gap-2">
                   <p className="font-medium text-foreground">{referenceFor(kind).name}</p>
                   <span className="shrink-0 text-xs text-muted-foreground">
-                    {referenceFor(kind).milestones.length} sections · {referenceFor(kind).tasks.length} tasks
+                    {referenceFor(kind).milestones.length} milestones · {referenceFor(kind).tasks.length} tasks
                   </span>
                 </div>
                 <p className="mt-0.5 text-sm text-muted-foreground">

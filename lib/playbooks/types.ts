@@ -42,6 +42,7 @@ export type PlaybookTemplate = {
 export type PlaybookTemplateWithStats = PlaybookTemplate & {
   taskCount: number;
   usageCount: number;
+  milestoneCount: number;
 };
 
 export type PlaybookMilestone = {

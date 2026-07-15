@@ -84,14 +84,14 @@ function TemplateCard({
               {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <MoreHorizontal className="h-3.5 w-3.5" />}
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuItem onSelect={() => router.push(`/library/playbooks/${template.id}`)}>Edit</DropdownMenuItem>
-              <DropdownMenuItem onSelect={onDuplicate}>Duplicate</DropdownMenuItem>
-              <DropdownMenuItem onSelect={onRename}>Rename</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => router.push(`/library/playbooks/${template.id}`)}>Edit</DropdownMenuItem>
+              <DropdownMenuItem onClick={onDuplicate}>Duplicate</DropdownMenuItem>
+              <DropdownMenuItem onClick={onRename}>Rename</DropdownMenuItem>
               {!template.isArchived && !template.isDefault && (
-                <DropdownMenuItem onSelect={onSetDefault}>Set as Default</DropdownMenuItem>
+                <DropdownMenuItem onClick={onSetDefault}>Set as Default</DropdownMenuItem>
               )}
               <DropdownMenuSeparator />
-              <DropdownMenuItem onSelect={onArchiveToggle}>{template.isArchived ? "Unarchive" : "Archive"}</DropdownMenuItem>
+              <DropdownMenuItem onClick={onArchiveToggle}>{template.isArchived ? "Unarchive" : "Archive"}</DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
@@ -179,7 +179,10 @@ export function PlaybooksSection({ initialTemplates }: { initialTemplates: Playb
         <Sparkles className="h-8 w-8 text-muted-foreground mx-auto" />
         <p className="text-sm font-medium text-heading">No planning templates yet</p>
         <p className="text-xs text-muted-foreground">Client Planning and Venue Planning are two separate checklists — start with whichever you need first.</p>
-        <div className="flex justify-center pt-1"><PlaybookStarterPicker existingTemplates={templates} /></div>
+        <div className="flex justify-center gap-2 pt-1">
+          <PlaybookStarterPicker existingTemplates={templates} />
+          <PlaybookStarterPicker existingTemplates={templates} variant="import" />
+        </div>
       </div>
     );
   }
@@ -234,8 +237,9 @@ export function PlaybooksSection({ initialTemplates }: { initialTemplates: Playb
         </div>
       )}
 
-      <div className="pt-2 border-t border-border/60">
+      <div className="flex gap-2 pt-2 border-t border-border/60">
         <PlaybookStarterPicker existingTemplates={templates} compact />
+        <PlaybookStarterPicker existingTemplates={templates} compact variant="import" />
       </div>
     </div>
   );

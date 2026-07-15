@@ -7,11 +7,11 @@ import {
   deleteMilestone, deleteTemplate_, deleteTemplateTask_, duplicateTemplate,
   releasePlaybookApplication,
   removeEventTaskContextLink, removePlaybookTaskAttachment, renameMilestone, renameTemplate_, reorderMilestone,
-  setEventTaskRequest, setEventTaskStatus, setTemplateArchived_, setTemplateDefault_, updateEventTaskDueDate, updateEventTaskNotes,
+  setEventTaskRequest, setEventTaskStatus, setMilestoneKind, setTemplateArchived_, setTemplateDefault_, updateEventTaskAssignment, updateEventTaskDueDate, updateEventTaskNotes,
   updateEventTaskSchedule, updateTemplateTask_,
 } from "@/lib/playbooks/service";
 import type { ScheduleInput } from "@/lib/playbooks/repository";
-import type { EventTaskContextSourceType, ImportPlaybookResult, PlaybookActionResult, PlaybookKind, PlaybookTask, CreatePlaybookResult } from "@/lib/playbooks/types";
+import type { EventTaskContextSourceType, ImportPlaybookResult, PlaybookActionResult, PlaybookKind, PlaybookMilestone, PlaybookTask, CreatePlaybookResult } from "@/lib/playbooks/types";
 import { createRequest } from "@/lib/requests/service";
 
 export async function createTemplateAction(name: string, kind: PlaybookKind, eventType: string | null, description: string | null): Promise<CreatePlaybookResult> {
@@ -128,6 +128,12 @@ export async function updateEventTaskScheduleAction(taskId: string, eventId: str
   return result;
 }
 
+export async function updateEventTaskAssignmentAction(taskId: string, eventId: string, staffId: string | null): Promise<PlaybookActionResult> {
+  const result = await updateEventTaskAssignment(taskId, staffId);
+  if (result.ok) { revalidatePath(`/events/${eventId}`); revalidatePath("/calendar"); }
+  return result;
+}
+
 /**
  * Turns a Planning Task into a Request Framework record. One-click, no form:
  * defaults come straight from the task (title, description, due date,
@@ -221,6 +227,12 @@ export async function reorderMilestoneAction(templateId: string, milestoneId: st
 
 export async function deleteMilestoneAction(templateId: string, milestoneId: string): Promise<PlaybookActionResult> {
   const result = await deleteMilestone(milestoneId);
+  if (result.ok) revalidatePath(`/library/playbooks/${templateId}`);
+  return result;
+}
+
+export async function setMilestoneKindAction(templateId: string, milestoneId: string, kind: PlaybookMilestone["kind"]): Promise<PlaybookActionResult> {
+  const result = await setMilestoneKind(templateId, milestoneId, kind);
   if (result.ok) revalidatePath(`/library/playbooks/${templateId}`);
   return result;
 }

@@ -123,6 +123,14 @@ export async function renameMilestone(milestoneId: string, name: string): Promis
   return result as PlaybookActionResult;
 }
 
+export async function setMilestoneKind(templateId: string, milestoneId: string, kind: PlaybookMilestone["kind"]): Promise<PlaybookActionResult> {
+  const result = await withVenue(async (c, venueId) => {
+    await repo.setMilestoneKind(c, venueId, templateId, milestoneId, kind);
+    return { ok: true } as PlaybookActionResult;
+  });
+  return result as PlaybookActionResult;
+}
+
 export async function reorderMilestone(templateId: string, milestoneId: string, direction: "up" | "down"): Promise<PlaybookActionResult> {
   const result = await withVenue(async (c, venueId) => {
     await repo.reorderMilestone(c, venueId, templateId, milestoneId, direction);
@@ -330,6 +338,14 @@ export async function updateEventTaskSchedule(taskId: string, input: repo.Schedu
 export async function updateEventTaskNotes(taskId: string, notes: string): Promise<PlaybookActionResult> {
   const result = await withVenue(async (c, venueId) => {
     await repo.updateEventTaskNotes(c, venueId, taskId, notes);
+    return { ok: true } as PlaybookActionResult;
+  });
+  return result as PlaybookActionResult;
+}
+
+export async function updateEventTaskAssignment(taskId: string, staffId: string | null): Promise<PlaybookActionResult> {
+  const result = await withVenue(async (c, venueId) => {
+    await repo.updateEventTaskAssignment(c, venueId, taskId, staffId);
     return { ok: true } as PlaybookActionResult;
   });
   return result as PlaybookActionResult;

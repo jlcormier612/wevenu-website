@@ -61,14 +61,16 @@ export async function getTemplate(client: DbClient, venueId: string, id: string)
 // rather than a PostgREST embedded-count select — this codebase has hit
 // real bugs from untested embedded-relationship syntax before.
 export async function getTemplatesWithStats(client: DbClient, venueId: string): Promise<PlaybookTemplateWithStats[]> {
-  const [{ data: templateRows, error: templateError }, { data: taskRows, error: taskError }, { data: applicationRows, error: applicationError }] = await Promise.all([
+  const [{ data: templateRows, error: templateError }, { data: taskRows, error: taskError }, { data: applicationRows, error: applicationError }, { data: milestoneRows, error: milestoneError }] = await Promise.all([
     client.from("playbook_templates").select("*").eq("venue_id", venueId).order("name"),
     client.from("playbook_tasks").select("template_id").eq("venue_id", venueId),
     client.from("event_playbook_applications").select("template_id").eq("venue_id", venueId),
+    client.from("playbook_milestones").select("template_id").eq("venue_id", venueId),
   ]);
   if (templateError) throw templateError;
   if (taskError) throw taskError;
   if (applicationError) throw applicationError;
+  if (milestoneError) throw milestoneError;
 
   const taskCounts = new Map<string, number>();
   for (const row of taskRows as { template_id: string }[]) taskCounts.set(row.template_id, (taskCounts.get(row.template_id) ?? 0) + 1);
@@ -79,10 +81,14 @@ export async function getTemplatesWithStats(client: DbClient, venueId: string): 
     usageCounts.set(row.template_id, (usageCounts.get(row.template_id) ?? 0) + 1);
   }
 
+  const milestoneCounts = new Map<string, number>();
+  for (const row of milestoneRows as { template_id: string }[]) milestoneCounts.set(row.template_id, (milestoneCounts.get(row.template_id) ?? 0) + 1);
+
   return (templateRows as TemplateRow[]).map((r) => ({
     ...mapTemplate(r),
     taskCount: taskCounts.get(r.id) ?? 0,
     usageCount: usageCounts.get(r.id) ?? 0,
+    milestoneCount: milestoneCounts.get(r.id) ?? 0,
   }));
 }
 
@@ -198,6 +204,31 @@ export async function insertMilestone(client: DbClient, venueId: string, templat
 export async function renameMilestone(client: DbClient, venueId: string, milestoneId: string, name: string): Promise<void> {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { error } = await (client.from("playbook_milestones") as any).update({ name: name.trim() }).eq("id", milestoneId).eq("venue_id", venueId);
+  if (error) throw error;
+}
+
+/**
+ * Marks (or unmarks) a milestone as the template's Wedding Day chapter —
+ * every task in it inherits milestone_kind='event_day' at apply time and
+ * is what get_wedding_day_ops surfaces (Planning Execution — Release
+ * Completion). Before this, `kind` could only ever be set by seed/migration
+ * code — a coordinator building their own template had no way to mark
+ * anything as Wedding Day at all. `playbook_milestones_one_event_day` (a
+ * partial unique index) allows at most one per template, so setting a new
+ * one clears any other milestone in this template that already had it —
+ * "moving" the designation, not stacking a second one.
+ */
+export async function setMilestoneKind(
+  client: DbClient, venueId: string, templateId: string, milestoneId: string, kind: PlaybookMilestone["kind"],
+): Promise<void> {
+  if (kind !== null) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error: clearError } = await (client.from("playbook_milestones") as any)
+      .update({ kind: null }).eq("template_id", templateId).eq("venue_id", venueId).eq("kind", kind).neq("id", milestoneId);
+    if (clearError) throw clearError;
+  }
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error } = await (client.from("playbook_milestones") as any).update({ kind }).eq("id", milestoneId).eq("venue_id", venueId);
   if (error) throw error;
 }
 
@@ -579,12 +610,35 @@ export async function completeEventTask(
   };
   if (sourceType) patch.source_type = sourceType;
   if (sourceId) patch.source_id = sourceId;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  await (client.from("event_tasks") as any).update(patch).eq("id", taskId).eq("venue_id", venueId);
+  const { data } = await client.from("event_tasks")
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    .update(patch as any).eq("id", taskId).eq("venue_id", venueId)
+    .select("title, event_id, notify_on_complete")
+    .maybeSingle<{ title: string; event_id: string | null; notify_on_complete: boolean }>();
   // Cancel pending reminders — task is done, no more notifications needed
   await cancelRemindersForTask(client, venueId, taskId);
   // Unblock dependent tasks
   await unblockedependents(client, venueId, taskId);
+
+  // notify_on_complete audit (Planning Execution — Release Completion): the
+  // DB trigger notify_task_completed already covers completedBy IN
+  // ('couple','vendor') unconditionally, ignoring this field entirely — so
+  // the one real remaining gap this field could ever cover is a
+  // coordinator's own completion, which that trigger explicitly excludes.
+  // Gating on both completedBy = 'coordinator' and the task's own setting
+  // means this can never double-fire alongside the DB trigger (the two
+  // conditions are mutually exclusive by completedBy).
+  if (completedBy === "coordinator" && data?.event_id && data.notify_on_complete) {
+    await client.rpc("create_venue_notification", {
+      p_venue_id: venueId,
+      p_event_id: data.event_id,
+      p_type: "task_completed_coordinator",
+      p_title: "Task completed",
+      p_body: `"${data.title}" was marked complete.`,
+      p_link: `/events/${data.event_id}?tab=playbook`,
+      p_emoji: "✅",
+    });
+  }
 }
 
 export async function updateEventTaskStatus(
@@ -594,9 +648,15 @@ export async function updateEventTaskStatus(
   status: "waived" | "pending",
 ): Promise<void> {
   const patch: Record<string, unknown> = { status };
-  if (status === "pending") patch.completed_at = null; // un-complete
+  if (status === "pending") patch.completed_at = null; // un-complete or un-waive
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   await (client.from("event_tasks") as any).update(patch).eq("id", taskId).eq("venue_id", venueId);
+  // Waiving a required task is a deliberate, coordinator-approved decision
+  // not to do it — exactly like completing it, anything waiting on it
+  // should unblock. Without this, a waived (not completed) blocking task
+  // left every dependent permanently stuck in "blocked" (Planning Release
+  // Readiness Fixes).
+  if (status === "waived") await unblockedependents(client, venueId, taskId);
 }
 
 /** Auto-complete tasks matching a trigger for a given event. */
@@ -645,7 +705,11 @@ export async function computeEventReadinessFromPlaybook(
 
   const required = tasks.filter((t) => t.isRequired);
   const optional = tasks.filter((t) => !t.isRequired);
-  const completedRequired = required.filter((t) => t.status === "complete").length;
+  // A waived required task is a deliberate, coordinator-approved skip, not
+  // an open requirement — it must count as satisfied the same way complete
+  // does, or a single waived required task permanently caps this event's
+  // readiness below 100%, forever (Planning Release Readiness Fixes).
+  const completedRequired = required.filter((t) => t.status === "complete" || t.status === "waived").length;
   const completedOptional = optional.filter((t) => t.status === "complete").length;
   const score = required.length > 0 ? Math.round((completedRequired / required.length) * 100) : 0;
 
@@ -665,7 +729,9 @@ function readinessFromTasks(tasks: EventTask[]): EventReadiness | null {
   if (!tasks.length) return null;
   const required = tasks.filter((t) => t.isRequired);
   const optional = tasks.filter((t) => !t.isRequired);
-  const completedRequired = required.filter((t) => t.status === "complete").length;
+  // See the matching comment in computeEventReadinessFromPlaybook above —
+  // waived must count as satisfied for a required task.
+  const completedRequired = required.filter((t) => t.status === "complete" || t.status === "waived").length;
   const completedOptional = optional.filter((t) => t.status === "complete").length;
   return {
     score: required.length > 0 ? Math.round((completedRequired / required.length) * 100) : 0,
@@ -703,6 +769,48 @@ export async function updateEventTaskNotes(client: DbClient, venueId: string, ta
     .update({ notes: notes.trim() || null } as any)
     .eq("id", taskId).eq("venue_id", venueId);
   if (error) throw error;
+}
+
+// assigned_to_staff_id was already read everywhere (Calendar's own staff
+// filter, Request creation metadata, the contact-lookup used for the
+// couple-facing contact line) but had no write path at all — "assign
+// staff" simply didn't work through the product (Planning Release
+// Readiness Fixes). null unassigns; both the FK's own ON DELETE SET NULL
+// and this explicit null path share one meaning, "no one assigned."
+export async function updateEventTaskAssignment(
+  client: DbClient, venueId: string, taskId: string, staffId: string | null,
+): Promise<void> {
+  const { data, error } = await client.from("event_tasks")
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    .update({ assigned_to_staff_id: staffId, assigned_at: staffId ? new Date().toISOString() : null } as any)
+    .eq("id", taskId).eq("venue_id", venueId)
+    .select("title, event_id, notify_on_assign")
+    .maybeSingle<{ title: string; event_id: string | null; notify_on_assign: boolean }>();
+  if (error) throw error;
+
+  // Repairs notify_on_assign (Planning Execution — Release Completion):
+  // real, Builder-configurable, stored correctly, previously read nowhere.
+  // Gated on the task's own setting, same as the Builder presents it — some
+  // tasks are meant to announce their assignment, others aren't, and this
+  // makes that actual coordinator decision take effect for the first time,
+  // rather than silently replacing it with an always-on rule. Only fires on
+  // a real assignment (never on unassign — nothing to announce there), via
+  // the same venue-wide notification mechanism escalation already uses;
+  // create_venue_notification never throws, so a notification failure can
+  // never block the assignment itself.
+  if (staffId && data?.event_id && data.notify_on_assign) {
+    const { data: staff } = await client.from("venue_staff").select("full_name").eq("id", staffId).maybeSingle<{ full_name: string }>();
+    const staffName = staff?.full_name ?? "a team member";
+    await client.rpc("create_venue_notification", {
+      p_venue_id: venueId,
+      p_event_id: data.event_id,
+      p_type: "task_assigned",
+      p_title: "Task assigned",
+      p_body: `"${data.title}" was assigned to ${staffName}.`,
+      p_link: `/events/${data.event_id}?tab=playbook`,
+      p_emoji: "📌",
+    });
+  }
 }
 
 // ---- Scheduled Activity (Calendar Integration — Phase 1) ---------------------
