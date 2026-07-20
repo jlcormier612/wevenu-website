@@ -53,7 +53,7 @@ function readinessLine(readiness: EventReadiness | null): ReactNode {
 // ---- Main ---------------------------------------------------------------------
 
 export function BookingOverviewSummary({
-  clientName, eventType, eventDate, spaceName, guestCount, clientStatus,
+  clientName, eventType, eventDate, spaceName, guestCount, guestCountSubmission, clientStatus,
   readinessByKind,
   invoices,
   timeline,
@@ -66,6 +66,7 @@ export function BookingOverviewSummary({
   eventDate: string;
   spaceName: string | null;
   guestCount: number | null;
+  guestCountSubmission?: { count: number; submittedAt: string } | null;
   clientStatus: ClientStatus;
   readinessByKind: { client: EventReadiness | null; venue: EventReadiness | null };
   invoices: Invoice[];
@@ -117,6 +118,11 @@ export function BookingOverviewSummary({
           <span className="text-muted-foreground">{spaceName ?? "No space assigned"}</span>
           <span className="text-muted-foreground">
             {guestCount != null ? `${guestCount.toLocaleString()} guests` : "Guest count TBD"}
+            {guestCountSubmission && (
+              <span className="ml-1.5 text-xs" style={{ color: "#5D6F5D" }}>
+                (submitted by couple {formatDate(guestCountSubmission.submittedAt)})
+              </span>
+            )}
           </span>
           <ClientStatusBadge status={clientStatus} />
         </CardContent>

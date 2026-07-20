@@ -70,7 +70,7 @@ export default function AdminFeedbackPage() {
       <div className="flex flex-col items-center justify-center py-24 gap-3">
         <p className="text-2xl">🔒</p>
         <p className="text-sm font-medium text-heading">Access restricted</p>
-        <p className="text-xs text-muted-foreground">This page is only available to Wevenu team members.</p>
+        <p className="text-xs text-muted-foreground">This page is only available to Hello to Cheers team members.</p>
       </div>
     );
   }

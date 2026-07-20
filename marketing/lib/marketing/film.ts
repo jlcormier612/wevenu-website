@@ -6,12 +6,17 @@
  */
 
 export const FILM = {
-  /** Hero — Jen's curated tablescape */
-  heroCrop: "/marketing/hero-tablescape.png",
+  /** Hero — hospitality prep before guests arrive */
+  heroCrop: "/marketing/hero-hospitality-prep.jpg",
+
+  /** Home bridge — one place where venue hospitality comes together */
+  homeVenueMagic: "/marketing/home-venue-magic.jpg",
 
   // Venue-owner world — Follow one booking open
   emptyChairs:
     "https://images.unsplash.com/photo-1523438885200-e635ba2c371e?auto=format&fit=crop&w=1800&q=80",
+  /** Product — Follow one booking open */
+  productJourneyOpen: "/marketing/product-journey-open.jpg",
   morningLight:
     "https://images.unsplash.com/photo-1500382017468-9049fed747ef?auto=format&fit=crop&w=1800&q=80",
   doorsOpen:
@@ -69,78 +74,63 @@ export const FILM = {
   // Our First Friends — gratitude memories (local still)
   firstFriendsMemory: "/marketing/first-friends-memory.jpg",
 
-  // Why Wevenu — Our Promise editorial still
+  // Trust — earned every month editorial still
+  trustEarned: "/marketing/trust-earned-htc.jpg",
+
+  // Why Hello to Cheers — Our Promise editorial still
   whyCarePrep: "/marketing/why-our-promise.jpg",
 
   // Inquiry journey — welcoming, hopeful (unique to this chapter)
-  inquiryWelcome:
-    "https://images.unsplash.com/photo-1768777278552-80bf6516c793?auto=format&fit=crop&w=2000&q=80",
-  inquiryConversation:
-    "https://images.unsplash.com/photo-1783340255085-c92bb647ff4e?auto=format&fit=crop&w=1600&q=80",
+  inquiryWelcome: "/marketing/inquiry-welcome-htc.jpg",
+  inquiryConversation: "/marketing/inquiry-conversation.jpg",
 
   // Tour journey — aspirational, immersive (do not reuse Inquiry images)
-  tourGrounds:
-    "https://images.unsplash.com/photo-1769038950133-d8f1260a1bab?auto=format&fit=crop&w=2000&q=80",
-  tourVenueMoment:
-    "https://images.unsplash.com/photo-1772404245843-ffc50d4e38fa?auto=format&fit=crop&w=2200&q=80",
+  tourGrounds: "/marketing/tour-grounds.jpg",
+  tourVenueMoment: "/marketing/tour-venue-moment-htc.jpg",
 
   // Proposal journey — confidence, continuity (do not reuse Tour/Inquiry)
-  proposalReview:
-    "https://images.unsplash.com/photo-1758523417185-5d46089b870a?auto=format&fit=crop&w=2000&q=80",
-  proposalHospitality:
-    "https://images.unsplash.com/photo-1718463384055-738905bdd16e?auto=format&fit=crop&w=2200&q=80",
+  proposalReview: "/marketing/proposal-review.jpg",
+  proposalHospitality: "/marketing/proposal-hospitality.jpg",
+  /** In-mock venue collage for Willow & Hearth proposal surface */
+  proposalVenuePhotography: "/marketing/proposal-venue-photography.png",
 
-  // Booking Confirmed — trust; promises become preparation
-  bookingPrep:
-    "https://images.unsplash.com/photo-1677981316539-d2464643b1c8?auto=format&fit=crop&w=2000&q=80",
+  // Booking — trust; promises become preparation
+  bookingPrep: "/marketing/booking-prep.jpg",
   bookingBehindScenes:
     "https://images.unsplash.com/photo-1780337092243-8cc6bdd6cb3e?auto=format&fit=crop&w=2200&q=80",
 
   // Payments — financial confidence without finance imagery
-  paymentsConsult:
-    "https://images.unsplash.com/photo-1685575003212-f4b319cf3b57?auto=format&fit=crop&w=2000&q=80",
-  paymentsCelebrate:
-    "https://images.unsplash.com/photo-1745433921722-72ad1e4d46b9?auto=format&fit=crop&w=2200&q=80",
+  paymentsConsult: "/marketing/payments-consult.jpg",
+  paymentsCelebrate: "/marketing/payments-celebrate.jpg",
 
   // Planning — collaboration as hospitality, not project management
   planningCraft:
     "https://images.unsplash.com/photo-1681118984819-42fed498d868?auto=format&fit=crop&w=2000&q=80",
-  planningJoy:
-    "https://images.unsplash.com/photo-1768002074905-d7d26db37e82?auto=format&fit=crop&w=2200&q=80",
+  planningPrep: "/marketing/planning-prep.jpg",
+  planningJoy: "/marketing/planning-joy.jpg",
 
   // Vendors — hospitality extended to partners
-  vendorsFlorist:
-    "https://images.unsplash.com/photo-1712560631952-cb35d4a3872a?auto=format&fit=crop&w=2000&q=80",
-  vendorsPhotograph:
-    "https://images.unsplash.com/photo-1629756048377-09540f52caa1?auto=format&fit=crop&w=2200&q=80",
+  vendorsFlorist: "/marketing/vendors-florist.jpg",
+  vendorsPhotograph: "/marketing/vendors-photograph.jpg",
 
   // Timeline — calm before the celebration
-  timelineMorning:
-    "https://images.unsplash.com/photo-1761121575313-04109e79d9b2?auto=format&fit=crop&w=2000&q=80",
-  timelineReady:
-    "https://images.unsplash.com/photo-1770301434595-f273f57dbd85?auto=format&fit=crop&w=2200&q=80",
+  timelineMorning: "/marketing/timeline-morning.jpg",
+  timelineReady: "/marketing/timeline-ready.jpg",
 
   // Floor & Seating — quiet confidence that the room matches the plan
-  floorReady:
-    "https://images.unsplash.com/photo-1772404245508-3d9902599c07?auto=format&fit=crop&w=2000&q=80",
+  floorReady: "/marketing/floor-ready.jpg",
   floorPrep:
     "https://images.unsplash.com/photo-1644962786178-0b8531fcce43?auto=format&fit=crop&w=2200&q=80",
 
   // Client Experience — hospitality continues online
-  clientHome:
-    "https://images.unsplash.com/photo-1529333166437-7750a6dd5a70?auto=format&fit=crop&w=2000&q=80",
-  clientWarm:
-    "https://images.unsplash.com/photo-1583939003579-730e3918a45a?auto=format&fit=crop&w=2200&q=80",
+  clientHome: "/marketing/client-home.jpg",
+  clientWarm: "/marketing/client-warm-v2.jpg",
 
   // Guest Portal — informed guests, softer arrivals
-  guestArrive:
-    "https://images.unsplash.com/photo-1772404245994-200ca40c47fa?auto=format&fit=crop&w=2000&q=80",
-  guestCelebrate:
-    "https://images.unsplash.com/photo-1511795409834-ef04bbd61622?auto=format&fit=crop&w=2200&q=80",
+  guestArrive: "/marketing/guest-arrive.jpg",
+  guestCelebrate: "/marketing/guest-celebrate.jpg",
 
   // Celebration — joy preserved; the relationship continues
-  celebrationJoy:
-    "https://images.unsplash.com/photo-1523438885200-e635ba2c371e?auto=format&fit=crop&w=2000&q=80",
-  celebrationNight:
-    "https://images.unsplash.com/photo-1464366400600-7168b8af9bc3?auto=format&fit=crop&w=2200&q=80",
+  celebrationJoy: "/marketing/celebration-joy.jpg",
+  celebrationNight: "/marketing/celebration-night.jpg",
 } as const;

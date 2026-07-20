@@ -46,7 +46,9 @@ type VenueRow = {
   setup_completed: boolean;
   setup_completed_at: string | null;
   onboarding_dismissed: boolean;
+  luv_intro_seen_at: string | null;
   embed_key: string;
+  lead_email_key: string;
   tour_scheduling_enabled: boolean;
   conversation_experience_enabled: boolean;
   event_order_enabled: boolean;
@@ -85,7 +87,9 @@ function mapVenue(r: VenueRow): Venue {
     setupCompleted: r.setup_completed,
     setupCompletedAt: r.setup_completed_at,
     onboardingDismissed: r.onboarding_dismissed,
+    luvIntroSeenAt: r.luv_intro_seen_at,
     embedKey: r.embed_key ?? "",
+    leadEmailKey: r.lead_email_key ?? "",
     tourSchedulingEnabled: r.tour_scheduling_enabled ?? false,
     conversationExperienceEnabled: r.conversation_experience_enabled ?? false,
     eventOrderEnabled: r.event_order_enabled ?? false,

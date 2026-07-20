@@ -6,6 +6,8 @@ import { isSupabaseConfigured } from "@/lib/env";
 import { triggerAutoComplete } from "@/lib/playbooks/service";
 import { createInvoice, addLineItem as addInvoiceLineItem, getInvoice } from "@/lib/invoices/service";
 import * as repo from "@/lib/payments/repository";
+import { computePaymentsReadiness } from "@/lib/readiness/compute";
+import type { Invoice } from "@/lib/invoices/types";
 import {
   computeTotalPaid,
   deriveScheduleStatus,
@@ -254,7 +256,34 @@ export async function markLineItemPaid(itemId: string, scheduleId: string, input
       entityId:  itemId,
     });
 
-    return { ok: true } as PaymentActionResult;
+    // Final Payment Received — Luv Experience Completion, Work Stream 3.
+    // Reads computePaymentsReadiness's own "complete" status (never a
+    // second, independent balance calculation) against every invoice for
+    // this event; only inserts, never selects-then-decides, so the
+    // luv_celebrations unique constraint is the actual "first time" check,
+    // not a TS-level race-prone one.
+    let celebrated = false;
+    if (sch?.event_id) {
+      const { data: eventInvoices } = await supabase.from("invoices")
+        .select("*").eq("venue_id", venueId).eq("event_id", sch.event_id);
+      const invoices = (eventInvoices ?? []) as unknown as Invoice[];
+      if (invoices.length > 0 && computePaymentsReadiness(invoices).status === "complete") {
+        const { data: ev } = await supabase.from("events")
+          .select("client_id").eq("id", sch.event_id).maybeSingle<{ client_id: string | null }>();
+        if (ev?.client_id) {
+          // Plain insert, not upsert — the unique constraint on
+          // (client_id, celebration_type) is the real "first time" check;
+          // a 23505 (unique_violation) here means it already fired, which
+          // is the expected, non-error outcome on every payment after the
+          // first that completes this event.
+          const { error: celebrationError } = await supabase.from("luv_celebrations")
+            .insert({ venue_id: venueId, client_id: ev.client_id, event_id: sch.event_id, celebration_type: "final_payment_received", entity_id: sch.invoice_id });
+          celebrated = !celebrationError;
+        }
+      }
+    }
+
+    return { ok: true, celebrated } as PaymentActionResult;
   });
   return result as PaymentActionResult;
 }

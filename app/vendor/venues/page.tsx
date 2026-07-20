@@ -38,7 +38,7 @@ export default async function VendorVenuesPage() {
       <div>
         <h1 className="text-2xl font-bold text-foreground">Venues</h1>
         <p className="text-sm text-muted-foreground mt-1">
-          Venues you're connected to on Wevenu.
+          Venues you're connected to on Hello to Cheers.
         </p>
       </div>
       <VendorVenuesList venues={venues} />

@@ -13,6 +13,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/integrations/supabase/server";
 import { sendEmail } from "@/lib/email/send";
+import { resolvePortalContext } from "@/lib/portal/service";
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -57,6 +58,8 @@ export async function POST(request: Request) {
     if (preview) {
       const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://app.wevenu.com";
       const acceptUrl = `${baseUrl}/client/accept-participant?token=${data.inviteToken}`;
+      const ctx = await resolvePortalContext(token);
+      const venueColor = ctx?.venue.primaryColor ?? "#5D6F5D";
       await sendEmail({
         to: email.trim(),
         subject: `${preview.coupleName} invited you to their planning workspace`,
@@ -73,7 +76,7 @@ export async function POST(request: Request) {
         html: [
           `<p>Hi ${firstName.trim()},</p>`,
           `<p>${preview.coupleName} invited you to help plan their celebration with ${preview.venueName}.</p>`,
-          `<p><a href="${acceptUrl}" style="background:#D8A7AA;color:#fff;padding:10px 20px;border-radius:8px;text-decoration:none;display:inline-block;">Create Your Account</a></p>`,
+          `<p><a href="${acceptUrl}" style="background:${venueColor};color:#fff;padding:10px 20px;border-radius:8px;text-decoration:none;display:inline-block;">Create Your Account</a></p>`,
           `<p style="color:#888;font-size:12px;">This link is personal to you — please don't share it.</p>`,
         ].join(""),
       });

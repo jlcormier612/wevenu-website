@@ -192,7 +192,7 @@ export async function sendContactPortalInvite(
     html: [
       `<p>Hi ${contact.firstName},</p>`,
       `<p>${coupleName} have invited you to access their wedding planning portal through <strong>${venueName}</strong>.</p>`,
-      `<p><a href="${portalUrl}" style="background:#D8A7AA;color:#fff;padding:10px 20px;border-radius:8px;text-decoration:none;display:inline-block;">Open Planning Portal</a></p>`,
+      `<p><a href="${portalUrl}" style="background:${venue.primaryColor};color:#fff;padding:10px 20px;border-radius:8px;text-decoration:none;display:inline-block;">Open Planning Portal</a></p>`,
       `<p style="color:#888;font-size:12px;">This is a personal link — please don't share it.</p>`,
       `<p style="color:#888;font-size:12px;">${venueName}</p>`,
     ].join(""),

@@ -9,6 +9,8 @@
 
 Today's contract model has exactly one signer (the couple) and one mutable-until-signed record. TR-L1/TR-L2/TR-L3/TR-L5/TR-L6 (all resolved 2026-07-07) closed every gap in *that* model — a signed contract genuinely can't be edited, deleted, re-sent, or read without its token anymore. But the model itself is narrower than what a real venue contract needs: no venue-side countersignature, no way to make a legitimate post-signature change (a date adjustment, a guest-count update, a payment-schedule tweak) without either breaking the immutability guarantee or leaving the couple stuck with a wrong document forever. This design closes that gap the right way — not by loosening immutability, but by making change itself a new, linked record.
 
+**Confirmed 2026-07-16 as one of the precedents `docs/commitment-lifecycle-architecture.md`'s platform-wide Commitment Lifecycle was derived from** — the states below map onto that document's Draft/Submitted/Accepted/Committed/Superseded, and the Amendment/Clone split (below) is its Revise event, specialized for Contract's two-party model.
+
 ## The lifecycle
 
 **1. Draft.** Venue builds the contract. Fully editable — pricing, inventory, clauses, anything. Status: `draft`.

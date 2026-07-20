@@ -1,3 +1,4 @@
+import { EDITORIAL_FRAME } from "@/lib/marketing/rhythm";
 /**
  * Floor & seating workspace — room layout connected to guests, inventory, and placement.
  * Soft hospitality UI — not blueprints or CAD.
@@ -7,7 +8,7 @@ export function FloorWorkspaceMock({ className }: { className?: string }) {
     <div
       className={
         className ??
-        "overflow-hidden border border-[var(--taupe-medium)]/60 bg-[var(--true-white)] shadow-[0_20px_60px_-40px_rgba(47,55,47,0.35)]"
+        `${EDITORIAL_FRAME} bg-[var(--true-white)]`
       }
     >
       <div className="flex items-center gap-2 border-b border-[var(--taupe-medium)]/50 bg-[var(--linen)] px-4 py-3">
@@ -15,7 +16,7 @@ export function FloorWorkspaceMock({ className }: { className?: string }) {
         <span className="h-2.5 w-2.5 rounded-full bg-[var(--taupe-dark)]/40" />
         <span className="h-2.5 w-2.5 rounded-full bg-[var(--taupe-dark)]/40" />
         <div className="ml-3 flex-1 truncate rounded-full bg-[var(--true-white)] px-3 py-1 text-[10px] tracking-wide text-[var(--forest-sage)]/45">
-          wevenu.app / floor-plan / elena-james · barn reception
+          hellotocheers.app / floor-plan / elena-james · barn reception
         </div>
       </div>
 
@@ -23,7 +24,7 @@ export function FloorWorkspaceMock({ className }: { className?: string }) {
         <div className="border-b border-[var(--taupe-medium)]/40 p-5 md:border-b-0 md:border-r md:p-6">
           <div className="flex items-end justify-between gap-3">
             <div>
-              <p className="text-[10px] tracking-[0.2em] uppercase text-[var(--heritage-sage)]">
+              <p className="text-[10px] tracking-[0.22em] uppercase text-[var(--heritage-sage)]">
                 Floor plan
               </p>
               <h3 className="mt-2 font-heading text-2xl text-[var(--forest-sage)]">
@@ -44,7 +45,7 @@ export function FloorWorkspaceMock({ className }: { className?: string }) {
           {/* Soft room canvas — elegant placements, not a blueprint */}
           <div className="relative mt-6 aspect-[4/3] overflow-hidden bg-[var(--warm-gray)]/50">
             <div className="absolute inset-4 border border-dashed border-[var(--taupe-medium)]/50" />
-            <p className="absolute top-6 left-1/2 -translate-x-1/2 text-[9px] tracking-[0.18em] uppercase text-[var(--heritage-sage)]/55">
+            <p className="absolute top-6 left-1/2 -translate-x-1/2 text-[9px] tracking-[0.22em] uppercase text-[var(--heritage-sage)]/55">
               Section A · Dining
             </p>
 
@@ -72,7 +73,7 @@ export function FloorWorkspaceMock({ className }: { className?: string }) {
 
         <div className="space-y-5 bg-[var(--warm-gray)]/60 p-5 md:p-6">
           <div>
-            <p className="text-[10px] tracking-[0.18em] uppercase text-[var(--heritage-sage)]/80">
+            <p className="text-[10px] tracking-[0.22em] uppercase text-[var(--heritage-sage)]/80">
               Inventory
             </p>
             <ul className="mt-3 space-y-2 text-sm text-[var(--forest-sage)]/70">
@@ -92,7 +93,7 @@ export function FloorWorkspaceMock({ className }: { className?: string }) {
           </div>
 
           <div>
-            <p className="text-[10px] tracking-[0.18em] uppercase text-[var(--heritage-sage)]/80">
+            <p className="text-[10px] tracking-[0.22em] uppercase text-[var(--heritage-sage)]/80">
               Placement
             </p>
             <ul className="mt-3 space-y-2 text-sm text-[var(--forest-sage)]/70">
@@ -103,7 +104,7 @@ export function FloorWorkspaceMock({ className }: { className?: string }) {
           </div>
 
           <div>
-            <p className="text-[10px] tracking-[0.18em] uppercase text-[var(--heritage-sage)]/80">
+            <p className="text-[10px] tracking-[0.22em] uppercase text-[var(--heritage-sage)]/80">
               Sections
             </p>
             <ul className="mt-3 space-y-2 text-sm text-[var(--forest-sage)]/70">

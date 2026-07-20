@@ -149,7 +149,7 @@ export async function inviteStaffMember(input: StaffInput): Promise<TeamActionRe
 
     await sendEmail({
       to:      input.email,
-      subject: `You're invited to join ${venueName} on Wevenu`,
+      subject: `You're invited to join ${venueName} on Hello to Cheers`,
       text:    buildTeamInviteText({ memberName: input.name, venueName, acceptUrl }),
       html:    buildTeamInviteHtml({ memberName: input.name, venueName, acceptUrl }),
     });
@@ -169,12 +169,13 @@ export async function inviteStaffMember(input: StaffInput): Promise<TeamActionRe
 
 export async function acceptTeamInvitation(
   token: string,
-): Promise<{ ok: boolean; venueId?: string }> {
+): Promise<{ ok: boolean; venueId?: string; error?: string }> {
   if (!isSupabaseConfigured) return { ok: false };
   const supabase = await createClient();
   const { data, error } = await supabase
     .rpc("accept_team_invitation", { p_token: token });
-  if (error || !data?.ok) return { ok: false };
+  if (error) return { ok: false };
+  if (!data?.ok) return { ok: false, error: data?.error };
 
   const { data: { user } } = await supabase.auth.getUser();
   void recordEngagementEvent({

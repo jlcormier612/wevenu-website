@@ -4,7 +4,7 @@ import { Construction } from "lucide-react";
 
 /**
  * Standard page header used across workspace pages. Answers "Where am I?" with a
- * clear title and optional supporting description, in line with the Wevenu UX
+ * clear title and optional supporting description, in line with the Hello to Cheers UX
  * philosophy (calm, oriented screens).
  */
 export function PageHeader({

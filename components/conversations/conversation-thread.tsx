@@ -13,12 +13,12 @@
 import * as React from "react";
 import Link from "next/link";
 import {
-  ArrowLeft, Calendar, Clock, ListTodo, Mail, MessageSquare, Phone, RotateCcw, Send, Smartphone, StickyNote, User, Voicemail, Workflow, X,
+  ArrowLeft, Bot, Calendar, Clock, FileText, ListTodo, Mail, MessageSquare, Paperclip, Phone, RotateCcw, Send, Smartphone, StickyNote, User, Voicemail, Workflow, X,
 } from "lucide-react";
 import { toast } from "sonner";
 
 import {
-  cancelScheduledMessageAction, getActiveEnrollmentsForConversationAction, getComposeTemplatesAction, getConversationAction,
+  addConversationMessageAttachmentAction, cancelScheduledMessageAction, getActiveEnrollmentsForConversationAction, getComposeTemplatesAction, getConversationAction,
   getScheduledForConversationAction, scheduleMessageAction, sendConversationMessageAction, setConversationAssignedStaffAction,
 } from "@/app/(app)/messaging/actions";
 import { addTaskAction } from "@/app/(app)/leads/[id]/actions";
@@ -111,6 +111,52 @@ function RecoveryActions({
   );
 }
 
+function isImageAttachment(mimeType: string | null): boolean {
+  return !!mimeType && mimeType.startsWith("image/");
+}
+
+function AttachmentList({ attachments, isVenue }: { attachments: ConversationMessage["attachments"]; isVenue: boolean }) {
+  if (!attachments.length) return null;
+  return (
+    <div className="mt-1.5 space-y-1.5">
+      {attachments.map((a) => (
+        <a
+          key={a.id}
+          href={a.fileUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className={`block ${isImageAttachment(a.mimeType) ? "" : "flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-xs underline-offset-2 hover:underline"} ${
+            isImageAttachment(a.mimeType) ? "" : isVenue ? "bg-primary-foreground/10" : "bg-background/60"
+          }`}
+        >
+          {isImageAttachment(a.mimeType) ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={a.fileUrl} alt={a.fileName} className="max-h-48 rounded-lg object-cover" />
+          ) : (
+            <><FileText className="h-3.5 w-3.5 shrink-0" /><span className="truncate">{a.fileName}</span></>
+          )}
+        </a>
+      ))}
+    </div>
+  );
+}
+
+// RC2 — a message a Sequence/Scheduled Send produced on the venue's behalf
+// looks identical to one a coordinator personally typed unless flagged —
+// sender_type: "system" is the signal; this is its only rendering.
+function AutomatedBadge({ isVenue }: { isVenue: boolean }) {
+  return (
+    <span
+      title="Sent automatically by an Automation"
+      className={`inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[9px] font-medium ${
+        isVenue ? "bg-primary-foreground/15 text-primary-foreground/80" : "bg-muted-foreground/10 text-muted-foreground"
+      }`}
+    >
+      <Bot className="h-2.5 w-2.5" /> Automated
+    </span>
+  );
+}
+
 function Bubble({
   msg, leadId, onPrefill, onCreateTask,
 }: {
@@ -127,7 +173,11 @@ function Bubble({
           isVenue ? "bg-primary text-primary-foreground rounded-br-sm" : "bg-muted text-foreground rounded-bl-sm"
         }`}
       >
-        <p className="whitespace-pre-wrap">{msg.body}</p>
+        {msg.senderType === "system" && (
+          <div className="mb-1"><AutomatedBadge isVenue={isVenue} /></div>
+        )}
+        {msg.body && <p className="whitespace-pre-wrap">{msg.body}</p>}
+        <AttachmentList attachments={msg.attachments} isVenue={isVenue} />
         <span className={`mt-1 flex items-center gap-1 text-[10px] ${isVenue ? "text-primary-foreground/60 justify-end" : "text-muted-foreground"}`}>
           <ChannelIcon channel={msg.channel} />
           {formatTime(msg.sentAt)}
@@ -209,6 +259,13 @@ export function ConversationThread({
   const [sending, setSending] = React.useState(false);
   const bottomRef = React.useRef<HTMLDivElement>(null);
 
+  // RC2 — attachment upload state. The file is uploaded once picked (not on
+  // send) so the compose bar can show upload progress/errors immediately;
+  // it's attached to the message row only after the message itself sends.
+  const [pendingFile, setPendingFile] = React.useState<File | null>(null);
+  const [uploadingFile, setUploadingFile] = React.useState(false);
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
+
   const [templates, setTemplates] = React.useState<MessageTemplate[]>([]);
   const [templateId, setTemplateId] = React.useState("");
 
@@ -266,23 +323,71 @@ export function ConversationThread({
     }
   }
 
+  function handleFilePick(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = ""; // allow picking the same file again after removing it
+    if (!file) return;
+    if (file.size > 20 * 1024 * 1024) {
+      toast.error("File exceeds 20 MB limit.");
+      return;
+    }
+    setPendingFile(file);
+  }
+
   async function send() {
     const text = body.trim();
-    if (!text || sending) return;
+    if ((!text && !pendingFile) || sending || uploadingFile) return;
     if (channel === "email" && !emailSubject.trim()) {
       toast.error("An email needs a subject line.");
       return;
     }
+    if (pendingFile && channel !== "portal" && channel !== "internal_note") {
+      toast.error("Attachments can only be sent on Portal or Internal Note messages right now.");
+      return;
+    }
     setSending(true);
+
+    // Upload first — a message is only created once the file is confirmed
+    // safely stored, so a failed upload never leaves a dangling empty
+    // "attachment-only" message behind.
+    let uploaded: { url: string; name: string; size: number; mimeType: string } | null = null;
+    if (pendingFile) {
+      setUploadingFile(true);
+      try {
+        const form = new FormData();
+        form.append("file", pendingFile);
+        form.append("conversationId", conversationId);
+        const res = await fetch("/api/conversations/upload", { method: "POST", body: form });
+        const data = await res.json() as { ok: boolean; url?: string; file_name?: string; file_size?: number; mime_type?: string; error?: string };
+        if (!data.ok || !data.url) {
+          toast.error(data.error ?? "Upload failed.");
+          setSending(false);
+          setUploadingFile(false);
+          return;
+        }
+        uploaded = { url: data.url, name: data.file_name ?? pendingFile.name, size: data.file_size ?? pendingFile.size, mimeType: data.mime_type ?? pendingFile.type };
+      } catch {
+        toast.error("Upload failed.");
+        setSending(false);
+        setUploadingFile(false);
+        return;
+      }
+      setUploadingFile(false);
+    }
+
     // Real sends (email, sms) can genuinely fail — don't clear the draft or
     // pretend success until the result is known, unlike the old DB-only-write
     // path where every channel here trivially "succeeded" (2026-07-11; email
     // corrected 2026-07-14 — it looked real but wasn't, see product-backlog.md).
-    const result = await sendConversationMessageAction(conversationId, text, channel, emailSubject);
+    const result = await sendConversationMessageAction(conversationId, text, channel, emailSubject, !!uploaded);
     if (result.ok) {
+      if (uploaded) {
+        await addConversationMessageAttachmentAction(result.messageId, uploaded);
+      }
       setBody("");
       setEmailSubject("");
       setTemplateId("");
+      setPendingFile(null);
       await load();
     } else {
       toast.error(result.message ?? "Could not send message.");
@@ -474,6 +579,21 @@ export function ConversationThread({
           </div>
         )}
 
+        {pendingFile && (
+          <div className="flex items-center gap-2 rounded-lg border border-dashed border-border bg-muted/30 px-2.5 py-1.5">
+            <Paperclip className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+            <span className="min-w-0 flex-1 truncate text-xs text-heading">{pendingFile.name}</span>
+            {uploadingFile ? (
+              <span className="shrink-0 text-[10px] text-muted-foreground">Uploading…</span>
+            ) : (
+              <button type="button" onClick={() => setPendingFile(null)} aria-label="Remove attachment"
+                className="shrink-0 rounded p-0.5 text-muted-foreground hover:text-destructive">
+                <X className="h-3.5 w-3.5" />
+              </button>
+            )}
+          </div>
+        )}
+
         <div className="flex items-end gap-2">
           <select
             aria-label="Channel"
@@ -493,6 +613,18 @@ export function ConversationThread({
             rows={1}
             className="flex-1 resize-none rounded-lg border border-border bg-background px-3 py-2 text-sm"
           />
+          <input ref={fileInputRef} type="file" onChange={handleFilePick} className="hidden" />
+          {(channel === "portal" || channel === "internal_note") && (
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              aria-label="Attach a file"
+              title="Attach a file"
+              className="h-9 w-9 shrink-0 rounded-lg border border-border text-muted-foreground hover:text-foreground flex items-center justify-center"
+            >
+              <Paperclip className="h-4 w-4" />
+            </button>
+          )}
           {canSchedule && (
             <button
               type="button"
@@ -509,7 +641,7 @@ export function ConversationThread({
           <button
             type="button"
             onClick={() => void send()}
-            disabled={!body.trim() || sending || (channel === "email" && !emailSubject.trim())}
+            disabled={(!body.trim() && !pendingFile) || sending || uploadingFile || (channel === "email" && !emailSubject.trim())}
             className="h-9 w-9 shrink-0 rounded-lg bg-primary text-primary-foreground flex items-center justify-center disabled:opacity-40"
           >
             <Send className="h-4 w-4" />

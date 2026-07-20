@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@/integrations/supabase/server";
+import { addPortalConversationMessageAttachment } from "@/lib/conversations/service";
 
+/** RC2, Milestone 2 — attaches through Conversations instead of couple_messages. */
 export async function POST(request: Request) {
   const { token, messageId, fileUrl, fileName, fileSize, mimeType } =
     await request.json() as {
@@ -16,15 +17,9 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: false, error: "Missing fields." }, { status: 400 });
   }
 
-  const supabase = await createClient();
-  const { data } = await supabase.rpc("add_portal_message_attachment", {
-    p_token:      token,
-    p_message_id: messageId,
-    p_file_url:   fileUrl,
-    p_file_name:  fileName,
-    p_file_size:  fileSize ?? null,
-    p_mime_type:  mimeType ?? null,
+  const result = await addPortalConversationMessageAttachment(token, messageId, {
+    url: fileUrl, name: fileName, size: fileSize ?? null, mimeType: mimeType ?? null,
   });
 
-  return NextResponse.json(data ?? { ok: false });
+  return NextResponse.json(result);
 }

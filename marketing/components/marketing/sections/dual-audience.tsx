@@ -10,10 +10,10 @@ export function DualAudienceSection() {
     <Section tone="white">
       <div className="grid gap-16 lg:grid-cols-2 lg:gap-20">
         <div>
-          <h2 className="font-heading text-3xl font-medium text-[var(--forest-sage)] md:text-4xl">
+          <h2 className="font-heading text-[2.1rem] font-medium text-[var(--forest-sage)] md:text-[2.52rem]">
             {dual.couples.title}
           </h2>
-          <p className="mt-4 max-w-md text-base leading-relaxed text-[var(--forest-sage)]/70">
+          <p className="mt-4 max-w-md text-base leading-[1.7] text-[var(--forest-sage)]/70">
             {dual.couples.body}
           </p>
           <div className="mt-8 grid gap-4 sm:grid-cols-2">
@@ -31,16 +31,16 @@ export function DualAudienceSection() {
         </div>
 
         <div>
-          <h2 className="font-heading text-3xl font-medium text-[var(--forest-sage)] md:text-4xl">
+          <h2 className="font-heading text-[2.1rem] font-medium text-[var(--forest-sage)] md:text-[2.52rem]">
             {dual.venues.title}
           </h2>
-          <p className="mt-4 max-w-md text-base leading-relaxed text-[var(--forest-sage)]/70">
+          <p className="mt-4 max-w-md text-base leading-[1.7] text-[var(--forest-sage)]/70">
             {dual.venues.body}
           </p>
           <div className="mt-8 space-y-4">
             <MediaFrame
               src={MARKETING_MEDIA.dashboard}
-              alt="Wevenu dashboard"
+              alt="Hello to Cheers dashboard"
               aspect="product"
               caption="Dashboard · Calendar · Planning"
             />

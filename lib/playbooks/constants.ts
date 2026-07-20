@@ -67,9 +67,12 @@ export const AUTO_COMPLETE_TRIGGERS: { value: string; label: string }[] = [
   { value: "contract_signed",       label: "Contract signed" },
   { value: "payment_received",      label: "Any payment received" },
   { value: "questionnaire_submitted", label: "Final details submitted" },
+  { value: "guest_count_finalized", label: "Guest count submitted" },
+  { value: "seating_submitted",     label: "Seating plan submitted" },
   { value: "document_uploaded",     label: "Any document uploaded" },
   { value: "document_uploaded_insurance", label: "Insurance COI uploaded" },
   { value: "timeline_created",      label: "Timeline entries added" },
+  { value: "timeline_submitted",    label: "Client submits their timeline" },
   { value: "floor_plan_created",    label: "Floor plan created" },
   { value: "vendor_selected",       label: "Client chooses a recommended vendor" },
 ];
@@ -138,7 +141,7 @@ export function offsetForDirection(days: number, direction: DueDateDirection): n
 // The underlying model is always "Client Planning" — the label a couple (or
 // other primary contact) actually sees is event-specific (Product Decisions,
 // 2026-07-08: "Client Planning becomes the reusable platform concept... the
-// presentation becomes event-specific"). Wevenu doesn't yet capture a company
+// presentation becomes event-specific"). Hello to Cheers doesn't yet capture a company
 // or organization name on a Client (see docs/product-backlog.md), so
 // non-couple event types fall back to the event's own name rather than
 // fabricating an organization field that doesn't exist.
@@ -187,9 +190,12 @@ export const STANDARD_CLIENT_PLANNING_TASKS: SeedTask[] = [
   { ...R, title: "Choose your package",      description: null, ownerType: "couple", visibility: "client_owned", daysOffset: -115, category: "planning",      milestoneIndex: 0, autoCompleteTrigger: null,              isRequired: true,  sortOrder: 1, dependsOnTaskId: null },
   { ...R, title: "Complete your questionnaire", description: "Tell us about your vision for the day.", ownerType: "couple", visibility: "client_owned", daysOffset: -90, category: "planning", milestoneIndex: 1, autoCompleteTrigger: "questionnaire_submitted", isRequired: true, sortOrder: 2, dependsOnTaskId: null },
   { ...R, title: "Purchase event insurance", description: null, ownerType: "couple", visibility: "client_owned", daysOffset: -60, category: "document", milestoneIndex: 1, autoCompleteTrigger: "document_uploaded_insurance", isRequired: true, sortOrder: 3, dependsOnTaskId: null },
-  { ...R, title: "Submit your guest count",  description: "We need your final headcount to plan seating, catering, and rentals.", ownerType: "couple", visibility: "client_owned", daysOffset: -30, category: "planning", milestoneIndex: 2, autoCompleteTrigger: null, isRequired: true, sortOrder: 4, dependsOnTaskId: null },
-  { ...R, title: "Final payment",            description: null, ownerType: "couple", visibility: "client_owned", daysOffset: -30, category: "financial", milestoneIndex: 2, autoCompleteTrigger: "payment_received", isRequired: true, sortOrder: 5, dependsOnTaskId: null },
-  { ...R, title: "Leave a review",           description: "We'd love to hear about your experience.", ownerType: "couple", visibility: "client_owned", daysOffset: 14, category: "communication", milestoneIndex: 3, autoCompleteTrigger: null, isRequired: false, sortOrder: 6, dependsOnTaskId: null },
+  { ...R, title: "Choose your vendors",      description: "Pick the vendors you'd like to work with, then submit your list so your venue has it.", ownerType: "couple", visibility: "client_owned", daysOffset: -45, category: "planning", milestoneIndex: 1, autoCompleteTrigger: "vendor_selected", isRequired: false, sortOrder: 4, dependsOnTaskId: null },
+  { ...R, title: "Submit your guest count",  description: "We need your final headcount to plan seating, catering, and rentals.", ownerType: "couple", visibility: "client_owned", daysOffset: -30, category: "planning", milestoneIndex: 2, autoCompleteTrigger: "guest_count_finalized", isRequired: true, sortOrder: 5, dependsOnTaskId: null },
+  { ...R, title: "Submit your seating plan", description: "Arrange your tables, then submit your seating plan so your venue has it for the day.", ownerType: "couple", visibility: "client_owned", daysOffset: -21, category: "planning", milestoneIndex: 2, autoCompleteTrigger: "seating_submitted", isRequired: true, sortOrder: 6, dependsOnTaskId: null },
+  { ...R, title: "Submit your timeline",     description: "Plan your day-of schedule, then submit it so your venue has it.", ownerType: "couple", visibility: "client_owned", daysOffset: -14, category: "planning", milestoneIndex: 2, autoCompleteTrigger: "timeline_submitted", isRequired: true, sortOrder: 7, dependsOnTaskId: null },
+  { ...R, title: "Final payment",            description: null, ownerType: "couple", visibility: "client_owned", daysOffset: -30, category: "financial", milestoneIndex: 2, autoCompleteTrigger: "payment_received", isRequired: true, sortOrder: 8, dependsOnTaskId: null },
+  { ...R, title: "Leave a review",           description: "We'd love to hear about your experience.", ownerType: "couple", visibility: "client_owned", daysOffset: 14, category: "communication", milestoneIndex: 3, autoCompleteTrigger: null, isRequired: false, sortOrder: 9, dependsOnTaskId: null },
 ];
 
 // ── Standard Wedding (Venue Planning) — reference implementation ──

@@ -112,7 +112,7 @@ export type MarkPaidInput = {
 export type PaymentErrors = Record<string, string>;
 
 export type PaymentActionResult =
-  | { ok: true }
+  | { ok: true; celebrated?: boolean }
   | { ok: false; errors?: PaymentErrors; message?: string };
 
 export type CreateScheduleResult =

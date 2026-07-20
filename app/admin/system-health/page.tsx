@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { getSystemHealthData } from "@/lib/hq/system-health-service";
 
-export const metadata: Metadata = { title: "System Health — Wevenu HQ" };
+export const metadata: Metadata = { title: "System Health — Hello to Cheers HQ" };
 
 function fmtRelative(iso: string | null): string {
   if (!iso) return "Never";

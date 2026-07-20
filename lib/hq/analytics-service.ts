@@ -1,5 +1,5 @@
 /**
- * Wevenu HQ — Analytics. Server-only, HQ-admin-only.
+ * Hello to Cheers HQ — Analytics. Server-only, HQ-admin-only.
  *
  * Deliberately derives everything from the same BetaVenueSummary rows the
  * Beta Command Center already fetches (getBetaOverview()) rather than new

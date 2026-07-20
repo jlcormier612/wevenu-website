@@ -4,8 +4,10 @@ import * as React from "react";
 import { FileText, Image as ImageIcon, Paperclip, RotateCcw, Send, X } from "lucide-react";
 import type { CoupleMessage, MessageAttachment, PortalThread } from "@/lib/messages/types";
 
-const SAGE  = "#5D6F5D";
-const LINEN = "#F7F5F1";
+// Venue Brand Experience Phase 1: SAGE (the couple's own outgoing chat
+// bubble color) and LINEN (background tint) are now the venue's own brand.
+const SAGE  = "var(--venue-primary)";
+const LINEN = "var(--venue-neutral)";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -378,7 +380,7 @@ export function PortalMessageSection({
       <div className="flex-1 overflow-y-auto px-4 py-4 space-y-2">
         {loading ? (
           <div className="flex items-center justify-center py-12">
-            <div className="h-5 w-5 rounded-full border-2 border-t-[#5D6F5D] animate-spin" style={{ borderColor: "#DDD9D2", borderTopColor: SAGE }} />
+            <div className="h-5 w-5 rounded-full border-2 animate-spin" style={{ borderColor: "#DDD9D2", borderTopColor: SAGE }} />
           </div>
         ) : groups.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-10 gap-2 text-center">

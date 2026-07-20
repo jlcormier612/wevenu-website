@@ -6,7 +6,7 @@ import { getStripe } from "@/lib/stripe/config";
 export const runtime = "nodejs";
 
 /**
- * Stripe webhook for Wevenu SaaS subscription lifecycle.
+ * Stripe webhook for Hello to Cheers SaaS subscription lifecycle.
  * Configure this endpoint in the Stripe Dashboard (platform account).
  *
  * Handled events:

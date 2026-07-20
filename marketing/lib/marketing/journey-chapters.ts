@@ -1,57 +1,57 @@
 import type { ProductJourneyId } from "@/lib/marketing/journey";
 import { FILM } from "@/lib/marketing/film";
 
-/** Hero / lifestyle still for each Product journey chapter */
+/** Lifestyle still for each Product journey chapter (paired with UX mock). */
 export const JOURNEY_CHAPTER_FILM: Record<
   ProductJourneyId,
   { src: string; alt: string }
 > = {
   inquiry: {
     src: FILM.inquiryWelcome,
-    alt: "A warm first hello on property — the beginning of a relationship",
+    alt: "Let's start something beautiful — the first hello that begins a relationship",
   },
   tour: {
     src: FILM.tourGrounds,
-    alt: "Walking the venue grounds — time on property, remembered",
+    alt: "Open doors onto a sunlit courtyard — time on property, remembered",
   },
   proposal: {
     src: FILM.proposalReview,
-    alt: "Reviewing a personal proposal together — confidence and continuity",
+    alt: "A Willow & Hearth proposal booklet for Elena & James — personal, clear, beautiful",
   },
   "contract-inventory": {
     src: FILM.bookingPrep,
-    alt: "Quiet preparation after a booking is confirmed",
+    alt: "Booking — thank you, we're honored to be part of your celebration",
   },
   "invoice-payment": {
     src: FILM.paymentsConsult,
-    alt: "A calm financial conversation connected to the celebration",
+    alt: "Payment overview for Elena & James — deposits, schedules, and balances kept clear",
   },
   planning: {
-    src: FILM.planningCraft,
-    alt: "Planning together with care — not separately in spreadsheets",
+    src: FILM.planningPrep,
+    alt: "Hands writing a wedding plan with sage swatches and florals — collaboration as hospitality",
   },
   vendors: {
     src: FILM.vendorsFlorist,
-    alt: "A trusted partner preparing for the celebration",
+    alt: "Vendor plan for Elena & James — partners confirmed, roles clear, everyone connected",
   },
   timeline: {
     src: FILM.timelineMorning,
-    alt: "The day prepared calmly before guests arrive",
+    alt: "Event timeline for Elena & James — every moment, perfectly planned",
   },
   "floor-seating": {
     src: FILM.floorReady,
-    alt: "A room prepared with confidence — every placement intentional",
+    alt: "Floor plan for Elena & James — every table, seat, and space prepared with confidence",
   },
   "client-portal-website": {
     src: FILM.clientHome,
-    alt: "Hospitality that continues between conversations",
+    alt: "Guests celebrating together at a warm evening table — hospitality that continues",
   },
   "guest-portal": {
     src: FILM.guestArrive,
-    alt: "Outdoor seating quietly prepared — guests arrive informed and ready to celebrate",
+    alt: "Guest portal welcome on a phone — every guest arrives a little more prepared",
   },
   celebration: {
     src: FILM.celebrationJoy,
-    alt: "Joy on the day — the relationship continues afterward",
+    alt: "Guests dancing under warm lights — the celebration ends, the relationship doesn't",
   },
 };

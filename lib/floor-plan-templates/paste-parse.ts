@@ -8,6 +8,16 @@
  * description is a much harder, more speculative problem than the
  * line-to-checklist-item parsing Planning/Timeline import already does, so
  * this stays a plain, predictable layout generator rather than guessing.
+ *
+ * Reviewed during Luv Experience Completion (Work Stream 7) against the
+ * near-identical Playbook/Timeline-Template "paste and structure" flows,
+ * which do use Luv — confirmed as a deliberate, correct difference, not an
+ * accidental gap: the source text there is genuinely unstructured
+ * (arbitrary checklist/schedule wording), while a floor-plan line is
+ * already simple and keyword-friendly, and no amount of text
+ * interpretation tells you *where* on a canvas something belongs. Now also
+ * surfaced in the UI itself (the paste flow's own description), not just
+ * this comment.
  */
 
 import { CANVAS_WIDTH } from "@/lib/floor-plans/constants";

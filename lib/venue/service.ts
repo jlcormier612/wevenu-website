@@ -306,6 +306,17 @@ export async function dismissOnboarding(): Promise<void> {
   });
 }
 
+/** Luv Experience Completion, Work Stream 5 — one-time intro, never shown again. */
+export async function markLuvIntroSeen(): Promise<void> {
+  if (!isSupabaseConfigured) return;
+  const supabase = await createClient();
+  const venue = await getCurrentVenue();
+  if (!venue) return;
+  await repository.updateVenueFields(supabase, venue.id, {
+    luv_intro_seen_at: new Date().toISOString(),
+  });
+}
+
 /** Update the venue logo URL (or clear it when url is null). */
 export async function updateVenueLogo(url: string | null): Promise<void> {
   if (!isSupabaseConfigured) return;

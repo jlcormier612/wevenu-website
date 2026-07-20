@@ -1,11 +1,12 @@
 /**
- * Why Wevenu — belief chapter. Unique purpose: why any of this matters.
+ * Why Hello to Cheers — belief chapter. Unique purpose: why any of this matters.
  * Never duplicates Home. Never recreates Product, Features, Pricing, or Trust pages.
  */
 
 export const WHY_WEVENU = {
   opening: {
-    eyebrow: "Why Wevenu",
+    eyebrow: "Our Story",
+    chapterTitle: "Hospitality First",
     lines: [
       "We didn't start by asking what software should do.",
       "We started by asking what hospitality deserves.",
@@ -17,7 +18,7 @@ export const WHY_WEVENU = {
       "Trust.",
       "Presence.",
       "Care.",
-      "Every decision inside Wevenu begins with one question:",
+      "Every decision inside Hello to Cheers begins with one question:",
       '"Does this make hospitality feel more human?"',
       "If the answer is no...",
       "we don't build it.",
@@ -31,7 +32,7 @@ export const WHY_WEVENU = {
     eyebrow: "Hospitality Comes First",
     headline: "Hospitality should never feel like administration.",
     lines: [
-      "Software exists to give venue owners more time for hospitality.",
+      "Software exists to give venue owners and teams more time for hospitality.",
       "Not more administration.",
       "Not more complexity.",
       "Technology should disappear.",
@@ -44,13 +45,23 @@ export const WHY_WEVENU = {
     eyebrow: "Our Promise",
     headline: "Technology changes.\nHospitality doesn't.",
     lines: [
-      "Every product decision inside Wevenu is measured against the same promise.",
+      "Every product decision inside Hello to Cheers is measured against the same promise.",
       "Will this save time?",
       "Will it reduce stress?",
       "Will it strengthen relationships?",
       "Will it help venues create better experiences?",
       "If it doesn't...",
       "it doesn't belong.",
+    ],
+  },
+  roleOfLuv: {
+    eyebrow: "The Role of Luv",
+    headline: "Hospitality will always belong to people.",
+    lines: [
+      "Luv was never created to replace the people who make your venue special.",
+      "She quietly notices what deserves attention, prepares thoughtful suggestions, and helps keep important details from slipping through the cracks.",
+      "So your team can spend less time managing software...",
+      "and more time practicing hospitality.",
     ],
   },
   pricingPhilosophy: {
@@ -76,7 +87,7 @@ export const WHY_WEVENU = {
       "Venue owners trust you with life's most meaningful celebrations.",
       "You trust us with your business.",
       "We take that responsibility seriously.",
-      "Wevenu believes trust is earned every month—through transparency, security, privacy, data ownership, and the freedom to cancel anytime.",
+      "Hello to Cheers believes trust is earned every month—through transparency, security, privacy, data ownership, and the freedom to cancel anytime.",
     ],
     ideas: [
       "Transparency",
@@ -88,9 +99,9 @@ export const WHY_WEVENU = {
     cta: { href: "/trust", label: "Read our full Trust philosophy →" },
   },
   welcome: {
-    eyebrow: "Welcome Home",
+    eyebrow: "An Invitation",
     lines: [
-      "We built Wevenu because we believe software should give hospitality back to the people who create it.",
+      "We built Hello to Cheers because we believe software should give hospitality back to the people who create it.",
       "If that belief resonates with you, we'd be honored to welcome you.",
     ],
   },

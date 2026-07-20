@@ -1,13 +1,15 @@
 /**
  * Features catalog — scannable inventory of everything included.
- * Not a sales brochure; answers “Does Wevenu have everything I need?”
+ * Not a sales brochure; answers “Does Hello to Cheers have everything I need?”
  */
 
 export const FEATURES_PAGE = {
   hero: {
+    eyebrow: "Features",
+    chapterTitle: "Everything Included",
     headline: "Everything your venue needs.",
     lines: [
-      "Every capability in Wevenu, thoughtfully organized around how independent venues actually work.",
+      "Every capability in Hello to Cheers, thoughtfully organized around how independent venues actually work.",
       "No jargon.",
       "No feature hunting.",
       "Just one place to see everything included.",
@@ -55,6 +57,21 @@ export const FEATURES_PAGE = {
       ],
     },
     {
+      id: "client-experience",
+      title: "Client Experience",
+      intro: "An experience that reflects your venue—not another generic portal.",
+      features: [
+        "Branded Client Portal",
+        "Shared Planning Workspace",
+        "Messages",
+        "Documents",
+        "Timeline Access",
+        "Planning Progress",
+        "Task Completion",
+        "Secure File Sharing",
+      ],
+    },
+    {
       id: "venue-operations",
       title: "Venue Operations",
       intro: "The operational heartbeat of every event.",
@@ -87,21 +104,6 @@ export const FEATURES_PAGE = {
         "Vendor Notes",
         "Vendor Assignments",
         "Preferred Vendors",
-      ],
-    },
-    {
-      id: "client-experience",
-      title: "Client Experience",
-      intro: "An experience that reflects your venue—not another generic portal.",
-      features: [
-        "Branded Client Portal",
-        "Shared Planning Workspace",
-        "Messages",
-        "Documents",
-        "Timeline Access",
-        "Planning Progress",
-        "Task Completion",
-        "Secure File Sharing",
       ],
     },
     {
@@ -153,17 +155,17 @@ export const FEATURES_PAGE = {
       ],
     },
     {
-      id: "luv-intelligence",
-      title: "Luv Intelligence",
+      id: "meet-luv",
+      title: "Meet Luv.",
       intro:
         "Thoughtful recommendations that help your venue scale hospitality without losing heart.",
       features: [
         "Morning Briefings",
-        "Smart Recommendations",
+        "Thoughtful Recommendations",
         "Venue Health",
         "Opportunity Detection",
-        "AI-assisted Drafts",
-        "Intelligent Reminders",
+        "Helpful Drafts",
+        "Gentle Reminders",
         "Contextual Suggestions",
       ],
     },

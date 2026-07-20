@@ -24,7 +24,7 @@ import type { PortalSection } from "@/lib/portal/types";
 
 const ROSE = "#D8A7AA";
 const ROSE_DEEP = "#C17F84";
-const SAGE = "#5D6F5D";
+const SAGE = "var(--venue-primary)"; // Venue Brand Experience Phase 1
 
 const TYPE_LABELS: Record<RequestType, string> = {
   document: "Document", approval: "Approval", information: "Information",
@@ -72,7 +72,7 @@ function StatusPill({ status }: { status: string }) {
   };
   return (
     <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full"
-      style={{ background: `${SAGE}15`, color: SAGE }}>
+      style={{ background: `color-mix(in srgb, var(--venue-primary) 8%, transparent)`, color: SAGE }}>
       {labels[status] ?? status}
     </span>
   );

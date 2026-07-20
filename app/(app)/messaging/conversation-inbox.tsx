@@ -15,8 +15,9 @@
  * conversation from either place is byte-for-byte the same experience.
  *
  * Flag-gated: only rendered when the current venue has
- * conversationExperienceEnabled = true (see page.tsx). No attachments this
- * phase, by explicit agreement (Program 2 Phase 3/4 territory).
+ * conversationExperienceEnabled = true (see page.tsx). Attachments (RC2,
+ * Milestone 1) and the Relationship Context Panel (Requests/Files/Activity —
+ * "conversation as the relationship's paper folder") are both live here now.
  */
 
 import * as React from "react";
@@ -25,6 +26,7 @@ import { Search } from "lucide-react";
 
 import { getConversationInboxAction, getScheduledCountForTodayAction } from "@/app/(app)/messaging/actions";
 import { CHANNEL_META, ConversationThread } from "@/components/conversations/conversation-thread";
+import { RelationshipContextPanel } from "@/components/conversations/relationship-context-panel";
 import type { ConversationSummary } from "@/lib/conversations/types";
 import type { StaffMember } from "@/lib/team/types";
 
@@ -67,6 +69,11 @@ function ConversationRow({
     ? `${preview.senderType === "venue_staff" ? "You: " : ""}${preview.body}`
     : "No messages yet";
   const ChannelIcon = preview ? CHANNEL_META[preview.channel]?.icon : null;
+  // RC2 — derived, not stored (matching every other "waiting" computation in
+  // this codebase): distinct from the unread badge, which only tracks
+  // whether the coordinator has *seen* the message, not whether they've
+  // replied to it yet.
+  const waitingOnVenue = !!preview && preview.senderType !== "venue_staff" && preview.senderType !== "system";
 
   return (
     <button
@@ -88,6 +95,9 @@ function ConversationRow({
           <span className="rounded-full bg-muted px-1.5 py-0.5 font-medium">{conversation.clientId ? "Booking" : "Lead"}</span>
           {ChannelIcon && <ChannelIcon className="h-3 w-3" />}
           {conversation.assignedStaffName && <span className="truncate">· {conversation.assignedStaffName}</span>}
+          {waitingOnVenue && (
+            <span className="rounded-full bg-warning/20 px-1.5 py-0.5 font-medium text-warning-foreground">Awaiting reply</span>
+          )}
         </div>
         <div className="flex items-center justify-between gap-2">
           <p className={`text-xs truncate ${conversation.venueUnread > 0 ? "text-foreground font-medium" : "text-muted-foreground"}`}>
@@ -210,13 +220,23 @@ export function ConversationInbox({ teamMembers = [] }: { teamMembers?: StaffMem
               ))
             )}
           </div>
-          <div className={`flex-1 ${activeId ? "" : "hidden md:flex md:items-center md:justify-center"}`}>
+          <div className={`flex-1 flex ${activeId ? "" : "hidden md:flex md:items-center md:justify-center"}`}>
             {activeId ? (
-              <ConversationThread
-                key={activeId}
-                conversationId={activeId} onBack={() => setActiveId(null)}
-                summary={activeSummary} teamMembers={teamMembers}
-              />
+              <>
+                <div className="flex-1 min-w-0">
+                  <ConversationThread
+                    key={activeId}
+                    conversationId={activeId} onBack={() => setActiveId(null)}
+                    summary={activeSummary} teamMembers={teamMembers}
+                  />
+                </div>
+                <RelationshipContextPanel
+                  key={`ctx-${activeId}`}
+                  conversationId={activeId}
+                  leadId={activeSummary?.leadId ?? null}
+                  clientId={activeSummary?.clientId ?? null}
+                />
+              </>
             ) : (
               <p className="text-sm text-muted-foreground">Select a conversation</p>
             )}

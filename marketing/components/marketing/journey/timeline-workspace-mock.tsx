@@ -1,3 +1,4 @@
+import { EDITORIAL_FRAME } from "@/lib/marketing/rhythm";
 /**
  * Timeline workspace — run of show built through planning, not the night before.
  */
@@ -6,7 +7,7 @@ export function TimelineWorkspaceMock({ className }: { className?: string }) {
     <div
       className={
         className ??
-        "overflow-hidden border border-[var(--taupe-medium)]/60 bg-[var(--true-white)] shadow-[0_20px_60px_-40px_rgba(47,55,47,0.35)]"
+        `${EDITORIAL_FRAME} bg-[var(--true-white)]`
       }
     >
       <div className="flex items-center gap-2 border-b border-[var(--taupe-medium)]/50 bg-[var(--linen)] px-4 py-3">
@@ -14,13 +15,13 @@ export function TimelineWorkspaceMock({ className }: { className?: string }) {
         <span className="h-2.5 w-2.5 rounded-full bg-[var(--taupe-dark)]/40" />
         <span className="h-2.5 w-2.5 rounded-full bg-[var(--taupe-dark)]/40" />
         <div className="ml-3 flex-1 truncate rounded-full bg-[var(--true-white)] px-3 py-1 text-[10px] tracking-wide text-[var(--forest-sage)]/45">
-          wevenu.app / timeline / elena-james · event day
+          hellotocheers.app / timeline / elena-james · event day
         </div>
       </div>
 
       <div className="p-5 md:p-6">
         <div className="border-b border-[var(--taupe-medium)]/40 pb-5">
-          <p className="text-[10px] tracking-[0.2em] uppercase text-[var(--heritage-sage)]">
+          <p className="text-[10px] tracking-[0.22em] uppercase text-[var(--heritage-sage)]">
             Run of show
           </p>
           <h3 className="mt-2 font-heading text-2xl text-[var(--forest-sage)]">

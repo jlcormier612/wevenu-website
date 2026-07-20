@@ -7,7 +7,7 @@ export async function signContractAction(
   token: string,
   signerName: string,
   consent: boolean,
-): Promise<{ ok: boolean; message?: string }> {
+): Promise<{ ok: boolean; message?: string; celebrated?: boolean }> {
   const result = await signContractByToken(token, signerName, consent);
   if (result.ok && result.clientId) {
     // Refresh the linked lead's commitment score — contract signed = milestone.

@@ -1,10 +1,9 @@
 import Image from "next/image";
-import Link from "next/link";
-
 import { FloorWorkspaceMock } from "@/components/marketing/journey/floor-workspace-mock";
 import { JourneyNav } from "@/components/marketing/journey/journey-nav";
 import { MarketingCta } from "@/components/marketing/marketing-cta";
 import { FILM } from "@/lib/marketing/film";
+import { EDITORIAL_BLEED, EDITORIAL_FRAME, EDITORIAL_IMAGE, TYPE_HERO_SHELL } from "@/lib/marketing/rhythm";
 
 const PRINCIPLES = [
   {
@@ -46,47 +45,46 @@ export function FloorExperience({ prev, next }: FloorExperienceProps) {
   return (
     <div className="bg-[var(--true-white)]">
       {/* ── Section 1 · Hero ── */}
-      <section className="px-6 pt-[140px] pb-28 md:pb-36">
-        <div className="mx-auto max-w-[700px]">
-          <p className="text-xs tracking-[0.18em] uppercase text-[var(--heritage-sage)]">
+      <section className={TYPE_HERO_SHELL}>
+        <div className="mx-auto max-w-[65ch]">
+          <p className="text-[0.7125rem] tracking-[0.22em] uppercase text-[var(--heritage-sage)]/82">
             Connected journey · 09
           </p>
-          <h1 className="mt-6 font-heading text-5xl font-medium leading-[1.05] text-[var(--forest-sage)] md:text-6xl lg:text-7xl">
+          <h1 className="mt-8 font-heading text-[3.36rem] font-medium leading-[1.1] tracking-tight text-[var(--forest-sage)] md:text-[4.2rem] lg:text-[5.04rem]">
             Floor & Seating Plans
           </h1>
-          <p className="mt-6 font-heading text-2xl italic text-[var(--forest-sage)]/80 md:text-3xl">
+          <p className="mt-4 font-heading text-2xl italic text-[var(--forest-sage)]/80 md:text-3xl">
             Every space prepared with confidence.
           </p>
-          <p className="mt-10 max-w-[620px] text-base leading-relaxed text-[var(--forest-sage)]/70 md:text-lg">
+          <p className="mt-8 max-w-[65ch] text-base leading-[1.7] text-[var(--forest-sage)]/70 md:text-lg">
             Floor plans, seating layouts, inventory, and guest counts stay connected to the same
             booking—so the room you&apos;re preparing is always the room you&apos;re expecting.
           </p>
-          <div className="mt-14 flex flex-wrap items-center gap-5">
+          <div className="mt-14 flex flex-wrap items-center gap-4">
             <MarketingCta />
-            <Link
+            <MarketingCta
               href="/product#connected-journey"
-              className="text-sm tracking-wide text-[var(--forest-sage)]/55 underline-offset-4 transition hover:underline"
-            >
-              Back to Journey
-            </Link>
+              label="Back to Journey"
+              variant="ghost"
+            />
           </div>
         </div>
       </section>
 
       {/* ── Section 2 · Hospitality + Product ── */}
       <section className="px-6 pb-28 md:pb-36">
-        <div className="mx-auto grid max-w-6xl items-stretch gap-8 md:grid-cols-[11fr_9fr] md:gap-10">
-          <div className="relative min-h-[420px] overflow-hidden md:min-h-[560px]">
+        <div className="mx-auto grid max-w-6xl items-start gap-8 md:grid-cols-[11fr_9fr] md:gap-10">
+          <div className={`relative aspect-[16/10] w-full md:aspect-[5/3] ${EDITORIAL_FRAME}`}>
             <Image
               src={FILM.floorReady}
-              alt="Ceremony seating perfectly aligned and ready — every chair in place before guests arrive"
+              alt="Floor plan for Elena & James — every table, seat, and space prepared with confidence"
               fill
-              className="object-cover object-[center_45%]"
+              className={EDITORIAL_IMAGE}
               sizes="(max-width:768px) 100vw, 55vw"
               priority
             />
           </div>
-          <div className="flex flex-col justify-center">
+          <div className="flex flex-col justify-center self-stretch">
             <FloorWorkspaceMock />
             <p className="mt-6 text-sm tracking-wide text-[var(--forest-sage)]/55">
               The room evolves naturally as the event evolves.
@@ -96,15 +94,15 @@ export function FloorExperience({ prev, next }: FloorExperienceProps) {
       </section>
 
       {/* ── Section 3 · Three Principles ── */}
-      <section className="px-6 py-24 md:py-32">
+      <section className="px-6 py-28 md:py-36">
         <div className="mx-auto grid max-w-6xl gap-10 md:grid-cols-3 md:gap-12">
           {PRINCIPLES.map((card) => (
             <div key={card.n} className="border-t border-[var(--taupe-medium)]/70 pt-8">
               <p className="font-heading text-sm text-[var(--heritage-sage)]/60">{card.n}</p>
-              <h2 className="mt-4 font-heading text-2xl text-[var(--forest-sage)] md:text-3xl">
+              <h2 className="mt-4 font-heading text-2xl text-[var(--forest-sage)] md:text-[2.1rem]">
                 {card.title}
               </h2>
-              <p className="mt-4 text-sm leading-relaxed text-[var(--forest-sage)]/70 md:text-base">
+              <p className="mt-4 text-sm leading-[1.7] text-[var(--forest-sage)]/70 md:text-base">
                 {card.body}
               </p>
             </div>
@@ -116,23 +114,23 @@ export function FloorExperience({ prev, next }: FloorExperienceProps) {
       <section className="bg-[var(--warm-gray)] px-6 py-28 md:py-36">
         <div className="mx-auto grid max-w-6xl gap-14 md:grid-cols-2 md:items-start md:gap-20">
           <div>
-            <h2 className="font-heading text-3xl font-medium leading-[1.15] text-[var(--forest-sage)] md:text-5xl">
+            <h2 className="font-heading text-[2.1rem] font-medium leading-[1.21] text-[var(--forest-sage)] md:text-[3.36rem]">
               The room shouldn&apos;t surprise you.
             </h2>
-            <p className="mt-8 text-base leading-relaxed text-[var(--forest-sage)]/75 md:text-lg">
+            <p className="mt-6 text-base leading-[1.7] text-[var(--forest-sage)]/75 md:text-lg max-w-[65ch]">
               Changes happen.
             </p>
-            <p className="mt-5 text-base leading-relaxed text-[var(--forest-sage)]/75 md:text-lg">
+            <p className="mt-5 text-base leading-[1.7] text-[var(--forest-sage)]/75 md:text-lg max-w-[65ch]">
               Guest counts grow.
             </p>
-            <p className="mt-5 text-base leading-relaxed text-[var(--forest-sage)]/75 md:text-lg">
+            <p className="mt-5 text-base leading-[1.7] text-[var(--forest-sage)]/75 md:text-lg max-w-[65ch]">
               Tables move.
             </p>
-            <p className="mt-5 text-base leading-relaxed text-[var(--forest-sage)]/75 md:text-lg">
+            <p className="mt-5 text-base leading-[1.7] text-[var(--forest-sage)]/75 md:text-lg max-w-[65ch]">
               Packages evolve.
             </p>
-            <p className="mt-5 text-base leading-relaxed text-[var(--forest-sage)]/75 md:text-lg">
-              Wevenu helps ensure the room reflects those changes before setup begins—not after.
+            <p className="mt-5 text-base leading-[1.7] text-[var(--forest-sage)]/75 md:text-lg max-w-[65ch]">
+              Hello to Cheers helps ensure the room reflects those changes before setup begins—not after.
             </p>
           </div>
           <div>
@@ -160,15 +158,15 @@ export function FloorExperience({ prev, next }: FloorExperienceProps) {
       {/* ── Section 5 · Product Showcase ── */}
       <section className="px-6 py-28 md:py-36">
         <div className="mx-auto grid max-w-6xl items-center gap-12 md:grid-cols-[1.35fr_0.65fr] md:gap-16">
-          <FloorWorkspaceMock className="min-h-[420px] overflow-hidden border border-[var(--taupe-medium)]/50 bg-[var(--true-white)] shadow-[0_28px_80px_-48px_rgba(47,55,47,0.4)] md:min-h-[520px]" />
+          <FloorWorkspaceMock className={`min-h-[420px] md:min-h-[520px] ${EDITORIAL_FRAME} bg-[var(--true-white)]`} />
           <div>
-            <h2 className="font-heading text-3xl text-[var(--forest-sage)] md:text-4xl">
+            <h2 className="font-heading text-[2.1rem] text-[var(--forest-sage)] md:text-[2.52rem]">
               Every placement has context.
             </h2>
-            <p className="mt-6 text-base leading-relaxed text-[var(--forest-sage)]/70 md:text-lg">
+            <p className="mt-6 text-base leading-[1.7] text-[var(--forest-sage)]/70 md:text-lg max-w-[65ch]">
               Your floor plan isn&apos;t just a drawing.
             </p>
-            <p className="mt-5 text-base leading-relaxed text-[var(--forest-sage)]/70 md:text-lg">
+            <p className="mt-5 text-base leading-[1.7] text-[var(--forest-sage)]/70 md:text-lg max-w-[65ch]">
               It&apos;s connected to the people, inventory, and celebration it was created for.
             </p>
           </div>
@@ -176,12 +174,12 @@ export function FloorExperience({ prev, next }: FloorExperienceProps) {
       </section>
 
       {/* ── Section 6 · Hospitality Photography ── */}
-      <section className="relative min-h-[70vh] md:min-h-[85vh]">
+      <section className={`relative min-h-[70vh] md:min-h-[85vh] ${EDITORIAL_BLEED}`}>
         <Image
           src={FILM.floorPrep}
           alt="Final floral touches on a carefully set table — calm preparation before the celebration"
           fill
-          className="object-cover object-[center_40%]"
+          className={EDITORIAL_IMAGE}
           sizes="100vw"
         />
         <div className="absolute inset-0 bg-[rgba(47,55,47,0.42)]" />
@@ -196,19 +194,19 @@ export function FloorExperience({ prev, next }: FloorExperienceProps) {
         </div>
       </section>
 
-      {/* ── Section 7 · The Wevenu Difference ── */}
+      {/* ── Section 7 · The Hello to Cheers Difference ── */}
       <section className="px-6 py-28 md:py-36">
         <div className="mx-auto grid max-w-5xl gap-12 md:grid-cols-2 md:items-start md:gap-20">
-          <h2 className="font-heading text-3xl text-[var(--forest-sage)] md:text-5xl">
+          <h2 className="font-heading text-[2.1rem] text-[var(--forest-sage)] md:text-[3.36rem]">
             Confidence before setup begins.
           </h2>
-          <div className="space-y-5 text-base leading-relaxed text-[var(--forest-sage)]/75 md:text-lg">
+          <div className="space-y-5 text-base leading-[1.7] text-[var(--forest-sage)]/75 md:text-lg max-w-[65ch]">
             <p>Every room changes as planning evolves.</p>
             <p>
               The difference is knowing those changes before anyone starts moving tables.
             </p>
             <p>
-              Because Wevenu keeps your floor plans connected to the event—not disconnected from
+              Because Hello to Cheers keeps your floor plans connected to the event—not disconnected from
               it—your team can prepare with confidence instead of discovering surprises during
               setup.
             </p>

@@ -73,7 +73,7 @@ export default async function TaskCenterPage() {
       <div className="flex items-start justify-between">
         <PageHeader
           title="Task Center"
-          description="Your live event workspace. Focus on exceptions — Wevenu handles the routine."
+          description="Your live event workspace. Focus on exceptions — Hello to Cheers handles the routine."
         />
         <div className="shrink-0 flex items-center gap-2 text-xs text-muted-foreground pt-1">
           <span className="font-medium text-heading">{overdue.length + dueToday.length + blocked.length}</span> items need attention

@@ -5,7 +5,7 @@ import { ACCEPTABLE_USE_POLICY } from "@/lib/marketing/legal";
 
 export const metadata: Metadata = {
   title: "Acceptable Use Policy",
-  description: "How Wevenu stays safe, lawful, and trustworthy for hospitality professionals.",
+  description: "How Hello to Cheers stays safe, lawful, and trustworthy for hospitality professionals.",
 };
 
 export default function AcceptableUsePage() {

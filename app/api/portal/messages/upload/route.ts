@@ -29,8 +29,27 @@ export async function POST(request: Request) {
 
     if (!session) return NextResponse.json({ ok: false, error: "Invalid token." }, { status: 401 });
 
+    // RC2, Milestone 2 — stored under conversations/ now (not messages/) so
+    // every Conversation attachment, coordinator- or couple-uploaded, lives
+    // under the same storage prefix. Falls back to the client id if the
+    // conversation can't be resolved (should not happen once every client
+    // has a Relationship-provisioned Conversation, but avoids a hard failure
+    // on an upload that would otherwise succeed).
+    const { data: lead } = await supabase
+      .from("clients")
+      .select("leads(relationship_id)")
+      .eq("id", session.client_id)
+      .maybeSingle<{ leads: { relationship_id: string | null } | { relationship_id: string | null }[] | null }>();
+    const relationshipId = lead?.leads
+      ? (Array.isArray(lead.leads) ? lead.leads[0]?.relationship_id : lead.leads.relationship_id)
+      : null;
+    const { data: conversation } = relationshipId
+      ? await supabase.from("conversations").select("id").eq("relationship_id", relationshipId).maybeSingle<{ id: string }>()
+      : { data: null };
+    const conversationSegment = conversation?.id ?? session.client_id;
+
     const safe = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
-    const path = `${session.venue_id}/${session.client_id}/messages/portal-${Date.now()}-${safe}`;
+    const path = `conversations/${session.venue_id}/${conversationSegment}/${Date.now()}-${safe}`;
 
     const { error: uploadErr } = await supabase.storage
       .from(BUCKET)

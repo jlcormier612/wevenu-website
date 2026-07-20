@@ -10,7 +10,7 @@ import {
 export const runtime = "nodejs";
 
 /**
- * Create a Stripe Checkout Session for a Wevenu SaaS subscription.
+ * Create a Stripe Checkout Session for a Hello to Cheers SaaS subscription.
  * Relies on Stripe-hosted Checkout (Apple Pay / Google Pay when enabled).
  */
 export async function POST(request: Request) {

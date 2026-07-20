@@ -72,7 +72,6 @@ import {
   formatTime,
 } from "@/lib/events/constants";
 import type { EventWithDetails } from "@/lib/events/types";
-import { eventTypeLabel } from "@/lib/leads/constants";
 
 // ---- Anniversary Banner (shown on anniversary milestones) ------------------
 
@@ -320,6 +319,23 @@ export function EventDetail({
   }, []);
 
   function handleStatusChange(status: string) {
+    // Commitment Alignment Sprint (docs/commitment-lifecycle-architecture.md
+    // §9, Booking Financial item B) — a completion-time checkpoint reusing
+    // the existing finalized/finalized_at Committed markers, not a new
+    // lifecycle state. UI-level only: never blocks the transition, just
+    // warns, since a real event can legitimately complete without ever
+    // using either feature.
+    if (status === "complete") {
+      const orderUnfinalized = eventOrderEnabled && eventOrder?.status !== "finalized";
+      const floorPlanUnfinalized = event.floorPlans.length > 0 && !event.floorPlans.some((fp) => fp.finalizedAt);
+      if (orderUnfinalized || floorPlanUnfinalized) {
+        const parts = [
+          orderUnfinalized && "the Event Order isn't finalized",
+          floorPlanUnfinalized && "the Floor Plan isn't finalized",
+        ].filter(Boolean).join(" and ");
+        if (!confirm(`Heads up — ${parts} yet. Mark this event complete anyway?`)) return;
+      }
+    }
     startStatus(async () => {
       const result = await updateEventStatusAction(event.id, status);
       if (result.ok) { toast.success("Status updated."); router.refresh(); }
@@ -336,23 +352,13 @@ export function EventDetail({
             <ArrowLeft className="mr-1 h-3.5 w-3.5" /> Bookings
           </Button>
           <h1 className="font-heading text-2xl font-medium text-heading">{event.name}</h1>
-          <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-            {event.eventType && <span>{eventTypeLabel(event.eventType)}</span>}
-            {event.clientName && (
-              <>
-                <span className="text-border">·</span>
-                <span>{event.clientName}</span>
-              </>
-            )}
-            {originatingLeadId && (
-              <>
-                <span className="text-border">·</span>
-                <Link href={`/leads/${originatingLeadId}`} className="hover:text-foreground hover:underline">
-                  View original inquiry
-                </Link>
-              </>
-            )}
-          </div>
+          {originatingLeadId && (
+            <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+              <Link href={`/leads/${originatingLeadId}`} className="hover:text-foreground hover:underline">
+                View original inquiry
+              </Link>
+            </div>
+          )}
         </div>
 
         <div className="flex shrink-0 items-center gap-2">
@@ -502,7 +508,7 @@ export function EventDetail({
           {clientStatus && (
             <BookingOverviewSummary
               clientName={event.clientName} eventType={event.eventType} eventDate={event.eventDate}
-              spaceName={spaceName} guestCount={event.guestCount} clientStatus={clientStatus}
+              spaceName={spaceName} guestCount={event.guestCount} guestCountSubmission={event.guestCountSubmission} clientStatus={clientStatus}
               readinessByKind={readinessByKind}
               invoices={invoices}
               timeline={event.timeline ?? []}

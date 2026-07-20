@@ -25,14 +25,15 @@ export const VISION_PHOTO = {
   flowersDetail:
     "https://images.unsplash.com/photo-1520854221256-17451cc331bf?auto=format&fit=crop&w=1600&q=80",
   dashboard: "/marketing/product-dashboard.png",
+  luvNoticed: "/marketing/luv-noticed-today-v4.png",
 } as const;
 
 export const VISION = {
-  brandLine: "Wevenu",
+  brandLine: "Hello to Cheers",
   understood: {
     script: "You were not looking for software.",
     headline: "You were looking for calm.",
-    body: "Independent venues do not fail from lack of effort. They drown in disconnected tools, repeated questions, and nights spent chasing what should have been effortless. Wevenu exists so hospitality can feel like hospitality again.",
+    body: "Independent venues do not fail from lack of effort. They drown in disconnected tools, repeated questions, and nights spent chasing what should have been effortless. Hello to Cheers exists so hospitality can feel like hospitality again.",
   },
   connected: {
     eyebrow: "Not integrated. Connected.",
@@ -100,7 +101,7 @@ export const VISION = {
     },
     {
       id: "luv",
-      title: "Hospitality Intelligence",
+      title: "Quiet Assistance",
       value: "Scale hospitality without losing heart.",
       groups: ["Luv notices", "Gentle nudges", "Daily calm", "Included"],
       photo: VISION_PHOTO.flowersDetail,
@@ -109,7 +110,7 @@ export const VISION = {
   triad: {
     eyebrow: "The differentiator",
     headline: "Venue. Couple. Vendor.",
-    subhead: "Competitors own one or two. Wevenu owns all three — connected.",
+    subhead: "Competitors own one or two. Hello to Cheers owns all three — connected.",
     parties: [
       {
         name: "Venue",
@@ -131,8 +132,8 @@ export const VISION = {
     body: "Website, guest portal, RSVP, planning, timeline, communication, payments, and event details — working together because they already live inside the venue platform. That is what point solutions cannot replicate.",
   },
   luv: {
-    eyebrow: "Meet Luv",
-    headline: "Hospitality intelligence—not another assistant.",
+    eyebrow: "Meet Luv.",
+    headline: "Quiet assistance—always in service of hospitality.",
     body: "Luv exists to help venues scale hospitality without losing heart.",
     lines: [
       "Real recommendations.",
@@ -144,7 +145,7 @@ export const VISION = {
     { id: "inquiry", title: "Inquiry", emotion: "A first hello that feels personal." },
     { id: "tour", title: "Tour", emotion: "Time on property, remembered beautifully." },
     { id: "proposal", title: "Proposal", emotion: "A beautiful yes begins with a beautiful proposal." },
-    { id: "contract-inventory", title: "Booking Confirmed", emotion: "Every promise becomes something your team can deliver." },
+    { id: "contract-inventory", title: "Booking", emotion: "Every promise becomes something your team can deliver." },
     { id: "invoice-payment", title: "Payments", emotion: "Money stays connected to the celebration." },
     { id: "planning", title: "Planning", emotion: "Everyone planning together—not everyone planning separately." },
     { id: "vendors", title: "Vendors", emotion: "Every partner, perfectly informed." },
@@ -155,8 +156,8 @@ export const VISION = {
     { id: "celebration", title: "Celebration", emotion: "The celebration ends. The relationship doesn't." },
   ],
   cta: {
-    headline: "Request a Walkthrough",
-    body: "A calm conversation about your venue. No free trial. No pressure. Just clarity.",
+    headline: "Schedule a Walkthrough",
+    body: "A calm conversation about your venue. No pressure. Just clarity.",
   },
   closingDesire:
     "I've never seen a platform that actually understands how my venue operates.",

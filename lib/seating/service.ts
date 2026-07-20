@@ -15,7 +15,7 @@
  */
 import { createClient } from "@/integrations/supabase/server";
 import { getPortalSessions } from "@/lib/portal/service";
-import type { SeatingData } from "@/lib/portal/types";
+import type { SeatingData, SeatingFloorPlanSummary } from "@/lib/portal/types";
 
 export type SeatingReadinessSummary = {
   floorPlanShared: boolean;
@@ -39,24 +39,40 @@ export async function getSeatingReadinessSummary(portalToken: string | null): Pr
 }
 
 /**
- * Wedding Day Seating — the venue-side operational lookup (Seating Final
- * Release Completion). Same reuse strategy as getSeatingReadinessSummary
- * above: no new RLS, no new RPC, no second seating data model — this reads
- * the couple's own get_seating_data(p_token) through whichever of the
- * client's portal sessions is actually pinned to this event (Seating
- * Release Completion's stable event_id), preferring a full-access tier so
- * staff never see the degraded 'financial'-tier response the couple's own
- * session might be limited to.
+ * Commitment Alignment Sprint — Seating Delegation & Submission
+ * (docs/commitment-lifecycle-architecture.md §9). The plan picker: reuses
+ * the couple's own get_seating_floor_plans(p_token) server-side, through
+ * whichever of the client's portal sessions is pinned to this event,
+ * preferring a full-access tier so staff never see a degraded
+ * 'financial'-tier response the couple's own session might be limited to.
  */
-export async function getSeatingDataForVenue(eventId: string, clientId: string): Promise<SeatingData | null> {
+export async function getSeatingFloorPlansForVenue(eventId: string, clientId: string): Promise<SeatingFloorPlanSummary[]> {
   const sessions = await getPortalSessions(clientId);
   const forThisEvent = sessions.filter((s) => s.eventId === eventId);
   const pool = forThisEvent.length > 0 ? forThisEvent : sessions;
   const session = pool.find((s) => s.accessLevel !== "financial") ?? pool[0] ?? null;
-  if (!session) return null;
+  if (!session) return [];
 
   const supabase = await createClient();
-  const { data, error } = await supabase.rpc("get_seating_data", { p_token: session.accessToken });
+  const { data, error } = await supabase.rpc("get_seating_floor_plans", { p_token: session.accessToken });
+  if (error || !data) return [];
+  return data as SeatingFloorPlanSummary[];
+}
+
+/**
+ * The venue's operational read for one floor plan — genuinely
+ * venue-authenticated (current_user_venue_id(), no borrowed token).
+ * Private Until Committed: returns the couple's last Submitted snapshot by
+ * default, live data only when the couple has explicitly delegated this
+ * specific plan (docs/client-workspace-product-architecture.md §11/§12).
+ */
+export async function getOperationalSeatingPlan(eventId: string, floorPlanId: string): Promise<(SeatingData & {
+  isDelegated: boolean; notYetSubmitted?: boolean; submittedAt?: string; submittedBy?: "couple" | "venue"; delegatedAt?: string; delegatedNote?: string | null;
+}) | null> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("get_operational_seating_plan", {
+    p_event_id: eventId, p_floor_plan_id: floorPlanId,
+  });
   if (error || !data || data.error) return null;
-  return data as SeatingData;
+  return data;
 }

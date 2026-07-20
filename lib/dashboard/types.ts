@@ -162,4 +162,5 @@ export type DashboardData = {
   activationScore: import("@/lib/activation/types").ActivationScore | null;
   nextPendingMilestone: import("@/lib/activation/types").VenueMilestone | null;
   showDigestCallout: boolean;
+  showLuvIntro: boolean;
 };

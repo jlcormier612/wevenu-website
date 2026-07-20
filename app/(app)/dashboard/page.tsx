@@ -5,6 +5,7 @@ import { ClientEventsWidget } from "@/components/dashboard/client-events-widget"
 import { OverduePaymentsWidget, UpcomingPaymentsWidget } from "@/components/dashboard/payments-widget";
 import { FollowupsWidget } from "@/components/dashboard/followups-widget";
 import { GettingStartedCard } from "@/components/dashboard/getting-started";
+import { DashboardLuvIntro } from "@/components/dashboard/luv-intro";
 import { ActivationWidget } from "@/components/dashboard/activation-widget";
 import { DigestCallout } from "@/components/dashboard/digest-callout";
 import { MilestoneToast } from "@/components/dashboard/milestone-toast";
@@ -59,6 +60,11 @@ export default async function DashboardPage({ searchParams }: Props) {
           + New Inquiry
         </Button>
       </div>
+
+      {/* Luv's one-time intro — shown once, ever, only to genuinely new
+          venues (Luv Experience Completion, Work Stream 5), ahead of the
+          Getting Started card it leads into. */}
+      <DashboardLuvIntro show={data.showLuvIntro} />
 
       {/* Getting Started onboarding card (new venues only) — up top, ahead of
           Venue Health/Activation/Communication, and gone entirely once

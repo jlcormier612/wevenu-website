@@ -1,5 +1,5 @@
 /**
- * Legal document drafts for Wevenu.
+ * Legal document drafts for Hello to Cheers.
  * Ready for counsel review before launch — not final legal advice.
  */
 
@@ -22,12 +22,12 @@ export const PRIVACY_POLICY: LegalDocument = {
   slug: "privacy",
   effectiveDate: "July 15, 2026",
   notice:
-    "This Privacy Policy explains how Wevenu collects, uses, shares, and protects information when you use our websites, products, and related services. Please review it carefully. We will update this page when our practices change.",
+    "This Privacy Policy explains how Hello to Cheers collects, uses, shares, and protects information when you use our websites, products, and related services. Please review it carefully. We will update this page when our practices change.",
   sections: [
     {
       heading: "1. Who We Are",
       paragraphs: [
-        "Wevenu provides software and related services for independent venues and hospitality businesses (the “Services”). In this Privacy Policy, “Wevenu,” “we,” “us,” and “our” refer to the Wevenu operating entity that provides the Services.",
+        "Hello to Cheers provides software and related services for independent venues and hospitality businesses (the “Services”). In this Privacy Policy, “Hello to Cheers,” “we,” “us,” and “our” refer to the Hello to Cheers operating entity that provides the Services.",
         "If you have privacy questions, contact us at privacy@wevenu.com (or the support address listed on our website).",
       ],
     },
@@ -35,15 +35,15 @@ export const PRIVACY_POLICY: LegalDocument = {
       heading: "2. Scope",
       paragraphs: [
         "This Policy applies to personal information we process in connection with our marketing sites, product applications, customer accounts, support communications, and related online experiences.",
-        "Our Services may allow venues to invite clients, guests, vendors, and team members. Those individuals’ information is typically processed on behalf of the venue customer. Where Wevenu acts as a processor/service provider for a venue, the venue’s instructions and privacy notices also apply.",
+        "Our Services may allow venues to invite clients, guests, vendors, and team members. Those individuals’ information is typically processed on behalf of the venue customer. Where Hello to Cheers acts as a processor/service provider for a venue, the venue’s instructions and privacy notices also apply.",
       ],
     },
     {
       heading: "3. Information We Collect",
-      paragraphs: ["Depending on how you interact with Wevenu, we may collect:"],
+      paragraphs: ["Depending on how you interact with Hello to Cheers, we may collect:"],
       bullets: [
         "Account and profile information (name, email, phone, role, venue details).",
-        "Business and operational data you enter into Wevenu (events, clients, planning details, messages, documents, financial records related to venue operations).",
+        "Business and operational data you enter into Hello to Cheers (events, clients, planning details, messages, documents, financial records related to venue operations).",
         "Billing and transaction metadata associated with your subscription (processed with our payment providers).",
         "Communications you send us (support requests, walkthrough requests, feedback).",
         "Usage and device information (IP address, browser type, approximate location derived from IP, pages viewed, feature usage, diagnostic logs).",
@@ -75,7 +75,7 @@ export const PRIVACY_POLICY: LegalDocument = {
     {
       heading: "6. Sharing Information",
       paragraphs: [
-        "We share information only as needed to run Wevenu responsibly:",
+        "We share information only as needed to run Hello to Cheers responsibly:",
       ],
       bullets: [
         "Service providers who help us host, secure, support, analyze, or process payments (under contractual obligations to protect data).",
@@ -88,8 +88,8 @@ export const PRIVACY_POLICY: LegalDocument = {
     {
       heading: "7. Customer Content and Venue Relationships",
       paragraphs: [
-        "Venues control much of the content they store in Wevenu. Clients, guests, and vendors interacting through a venue’s workspace are generally engaging with that venue’s configuration of the Services.",
-        "Wevenu may process that content to deliver the product features the venue enables (portals, messaging, planning, payments records, and related tools).",
+        "Venues control much of the content they store in Hello to Cheers. Clients, guests, and vendors interacting through a venue’s workspace are generally engaging with that venue’s configuration of the Services.",
+        "Hello to Cheers may process that content to deliver the product features the venue enables (portals, messaging, planning, payments records, and related tools).",
       ],
     },
     {
@@ -117,13 +117,13 @@ export const PRIVACY_POLICY: LegalDocument = {
     {
       heading: "11. International Transfers",
       paragraphs: [
-        "Wevenu may process information in the United States and other countries where we or our service providers operate. Where required, we use appropriate safeguards for cross-border transfers.",
+        "Hello to Cheers may process information in the United States and other countries where we or our service providers operate. Where required, we use appropriate safeguards for cross-border transfers.",
       ],
     },
     {
       heading: "12. Children’s Privacy",
       paragraphs: [
-        "Wevenu is built for business use by venues and related professionals. The Services are not directed to children under 16, and we do not knowingly collect personal information from children for marketing purposes.",
+        "Hello to Cheers is built for business use by venues and related professionals. The Services are not directed to children under 16, and we do not knowingly collect personal information from children for marketing purposes.",
       ],
     },
     {
@@ -147,13 +147,13 @@ export const TERMS_OF_SERVICE: LegalDocument = {
   slug: "terms",
   effectiveDate: "July 15, 2026",
   notice:
-    "These Terms of Service govern your access to and use of Wevenu. By creating an account or using the Services, you agree to these Terms. If you are accepting on behalf of a venue or organization, you represent that you have authority to bind that entity.",
+    "These Terms of Service govern your access to and use of Hello to Cheers. By creating an account or using the Services, you agree to these Terms. If you are accepting on behalf of a venue or organization, you represent that you have authority to bind that entity.",
   sections: [
     {
       heading: "1. Overview",
       paragraphs: [
-        "Wevenu provides cloud software and related services to help venues manage sales, planning, operations, communication, financial workflows, and guest experiences (the “Services”).",
-        "These Terms form a binding agreement between you and Wevenu. Additional product-specific terms, order forms, or policies (including our Privacy Policy, Cookie Policy, and Acceptable Use Policy) are incorporated by reference.",
+        "Hello to Cheers provides cloud software and related services to help venues manage sales, planning, operations, communication, financial workflows, and guest experiences (the “Services”).",
+        "These Terms form a binding agreement between you and Hello to Cheers. Additional product-specific terms, order forms, or policies (including our Privacy Policy, Cookie Policy, and Acceptable Use Policy) are incorporated by reference.",
       ],
     },
     {
@@ -175,7 +175,7 @@ export const TERMS_OF_SERVICE: LegalDocument = {
     {
       heading: "4. 30-Day Happiness Promise",
       paragraphs: [
-        "If you are a new paying subscriber and Wevenu is not the right fit during your first 30 days, you may request a refund of your first month’s subscription fee.",
+        "If you are a new paying subscriber and Hello to Cheers is not the right fit during your first 30 days, you may request a refund of your first month’s subscription fee.",
         "After the first 30 days, your subscription continues month-to-month until canceled. This Promise does not apply to third-party fees, custom professional services, or amounts charged by venues to their own clients.",
       ],
     },
@@ -191,8 +191,8 @@ export const TERMS_OF_SERVICE: LegalDocument = {
       heading: "6. Your Data and Ownership",
       paragraphs: [
         "You retain ownership of the content and data you submit to the Services (“Customer Data”).",
-        "You grant Wevenu a limited license to host, process, transmit, display, and otherwise use Customer Data solely to provide and improve the Services and as otherwise permitted in these Terms and our Privacy Policy.",
-        "You are responsible for the accuracy of Customer Data and for obtaining any consents needed to collect and process information about your clients, guests, vendors, and staff through Wevenu.",
+        "You grant Hello to Cheers a limited license to host, process, transmit, display, and otherwise use Customer Data solely to provide and improve the Services and as otherwise permitted in these Terms and our Privacy Policy.",
+        "You are responsible for the accuracy of Customer Data and for obtaining any consents needed to collect and process information about your clients, guests, vendors, and staff through Hello to Cheers.",
       ],
     },
     {
@@ -212,14 +212,14 @@ export const TERMS_OF_SERVICE: LegalDocument = {
     {
       heading: "9. Third-Party Services",
       paragraphs: [
-        "The Services may integrate with third parties (including Stripe and communications providers). Your use of those services may be subject to their terms. Wevenu is not responsible for third-party services we do not control.",
+        "The Services may integrate with third parties (including Stripe and communications providers). Your use of those services may be subject to their terms. Hello to Cheers is not responsible for third-party services we do not control.",
       ],
     },
     {
       heading: "10. Intellectual Property",
       paragraphs: [
-        "Wevenu and its licensors own the Services, software, branding, and related intellectual property. Except for the limited rights expressly granted, no rights are transferred to you.",
-        "Feedback you provide may be used by Wevenu to improve the Services without obligation to you.",
+        "Hello to Cheers and its licensors own the Services, software, branding, and related intellectual property. Except for the limited rights expressly granted, no rights are transferred to you.",
+        "Feedback you provide may be used by Hello to Cheers to improve the Services without obligation to you.",
       ],
     },
     {
@@ -231,22 +231,22 @@ export const TERMS_OF_SERVICE: LegalDocument = {
     {
       heading: "12. Disclaimers",
       paragraphs: [
-        "THE SERVICES ARE PROVIDED “AS IS” AND “AS AVAILABLE.” TO THE MAXIMUM EXTENT PERMITTED BY LAW, WEVENU DISCLAIMS ALL WARRANTIES, WHETHER EXPRESS, IMPLIED, OR STATUTORY, INCLUDING MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, AND NON-INFRINGEMENT.",
+        "THE SERVICES ARE PROVIDED “AS IS” AND “AS AVAILABLE.” TO THE MAXIMUM EXTENT PERMITTED BY LAW, HELLO TO CHEERS DISCLAIMS ALL WARRANTIES, WHETHER EXPRESS, IMPLIED, OR STATUTORY, INCLUDING MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, AND NON-INFRINGEMENT.",
         "We do not warrant that the Services will be uninterrupted, error-free, or free of harmful components, or that all content will be secure or not lost.",
       ],
     },
     {
       heading: "13. Limitation of Liability",
       paragraphs: [
-        "TO THE MAXIMUM EXTENT PERMITTED BY LAW, WEVENU WILL NOT BE LIABLE FOR INDIRECT, INCIDENTAL, SPECIAL, CONSEQUENTIAL, EXEMPLARY, OR PUNITIVE DAMAGES, OR ANY LOSS OF PROFITS, REVENUE, DATA, OR GOODWILL.",
-        "TO THE MAXIMUM EXTENT PERMITTED BY LAW, WEVENU’S TOTAL LIABILITY ARISING OUT OF OR RELATED TO THE SERVICES WILL NOT EXCEED THE AMOUNTS PAID BY YOU TO WEVENU FOR THE SERVICES IN THE TWELVE (12) MONTHS BEFORE THE EVENT GIVING RISE TO LIABILITY.",
+        "TO THE MAXIMUM EXTENT PERMITTED BY LAW, HELLO TO CHEERS WILL NOT BE LIABLE FOR INDIRECT, INCIDENTAL, SPECIAL, CONSEQUENTIAL, EXEMPLARY, OR PUNITIVE DAMAGES, OR ANY LOSS OF PROFITS, REVENUE, DATA, OR GOODWILL.",
+        "TO THE MAXIMUM EXTENT PERMITTED BY LAW, HELLO TO CHEERS’ TOTAL LIABILITY ARISING OUT OF OR RELATED TO THE SERVICES WILL NOT EXCEED THE AMOUNTS PAID BY YOU TO HELLO TO CHEERS FOR THE SERVICES IN THE TWELVE (12) MONTHS BEFORE THE EVENT GIVING RISE TO LIABILITY.",
         "Some jurisdictions do not allow certain limitations; in those cases, our liability is limited to the fullest extent permitted.",
       ],
     },
     {
       heading: "14. Indemnification",
       paragraphs: [
-        "You will defend and indemnify Wevenu against claims arising from your Customer Data, your use of the Services in violation of these Terms, or your violation of law or third-party rights.",
+        "You will defend and indemnify Hello to Cheers against claims arising from your Customer Data, your use of the Services in violation of these Terms, or your violation of law or third-party rights.",
       ],
     },
     {
@@ -282,7 +282,7 @@ export const COOKIE_POLICY: LegalDocument = {
   slug: "cookie-policy",
   effectiveDate: "July 15, 2026",
   notice:
-    "This Cookie Policy explains how Wevenu uses cookies and similar technologies on our websites and applications.",
+    "This Cookie Policy explains how Hello to Cheers uses cookies and similar technologies on our websites and applications.",
   sections: [
     {
       heading: "1. What Are Cookies?",
@@ -306,7 +306,7 @@ export const COOKIE_POLICY: LegalDocument = {
       bullets: [
         "Strictly necessary — required for core features, security, and network management.",
         "Preferences — remember choices such as consent settings.",
-        "Analytics — help us understand usage in aggregate so we can improve Wevenu.",
+        "Analytics — help us understand usage in aggregate so we can improve Hello to Cheers.",
         "Marketing — if used, help us measure campaign effectiveness; we aim to keep these limited and respectful.",
       ],
     },
@@ -335,17 +335,17 @@ export const ACCEPTABLE_USE_POLICY: LegalDocument = {
   slug: "acceptable-use",
   effectiveDate: "July 15, 2026",
   notice:
-    "This Acceptable Use Policy (“AUP”) describes prohibited uses of Wevenu. It helps protect venues, their clients and guests, and the integrity of the platform.",
+    "This Acceptable Use Policy (“AUP”) describes prohibited uses of Hello to Cheers. It helps protect venues, their clients and guests, and the integrity of the platform.",
   sections: [
     {
       heading: "1. Purpose",
       paragraphs: [
-        "Wevenu is built for hospitality professionals. This AUP sets boundaries so the platform remains safe, lawful, and trustworthy.",
+        "Hello to Cheers is built for hospitality professionals. This AUP sets boundaries so the platform remains safe, lawful, and trustworthy.",
       ],
     },
     {
       heading: "2. Prohibited Activities",
-      paragraphs: ["You may not use Wevenu to:"],
+      paragraphs: ["You may not use Hello to Cheers to:"],
       bullets: [
         "Violate applicable laws or regulations.",
         "Infringe intellectual property, privacy, or publicity rights.",
@@ -362,7 +362,7 @@ export const ACCEPTABLE_USE_POLICY: LegalDocument = {
     {
       heading: "3. Customer Communications",
       paragraphs: [
-        "Venues remain responsible for the content of messages and documents they send through Wevenu to clients, guests, vendors, and staff, and for complying with applicable messaging and privacy laws.",
+        "Venues remain responsible for the content of messages and documents they send through Hello to Cheers to clients, guests, vendors, and staff, and for complying with applicable messaging and privacy laws.",
       ],
     },
     {
@@ -380,7 +380,7 @@ export const ACCEPTABLE_USE_POLICY: LegalDocument = {
     {
       heading: "6. Changes",
       paragraphs: [
-        "We may update this AUP. Continued use of Wevenu after updates constitutes acceptance.",
+        "We may update this AUP. Continued use of Hello to Cheers after updates constitutes acceptance.",
       ],
     },
   ],

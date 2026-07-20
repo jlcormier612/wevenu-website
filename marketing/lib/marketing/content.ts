@@ -17,7 +17,7 @@ export const PLACEHOLDER = {
   connected: {
     headline: "The Entire Venue, Connected",
     intro:
-      "A concise introduction to how Wevenu brings sales, planning, communication, operations, financials, and guest experience into one calm workspace.",
+      "A concise introduction to how Hello to Cheers brings sales, planning, communication, operations, financials, and guest experience into one calm workspace.",
   },
   pillars: [
     {
@@ -46,7 +46,7 @@ export const PLACEHOLDER = {
     },
   ],
   howItWorks: {
-    headline: "How Wevenu Works",
+    headline: "How Hello to Cheers Works",
     steps: [
       { title: "Capture the inquiry", body: "Step description placeholder." },
       { title: "Guide the booking", body: "Step description placeholder." },
@@ -56,8 +56,8 @@ export const PLACEHOLDER = {
     ],
   },
   luv: {
-    headline: "Meet Luv",
-    body: "Your venue's built-in hospitality assistant — included with the platform.",
+    headline: "Meet Luv.",
+    body: "Your venue's built-in quiet assistance — included with the platform.",
   },
   dual: {
     couples: {
@@ -87,20 +87,20 @@ export const PLACEHOLDER = {
     ],
   },
   about: {
-    headline: "About Wevenu",
+    headline: "About Hello to Cheers",
     body: "Story and founding narrative placeholder — peace of mind for independent venues.",
   },
   product: {
     headline: "Product",
-    intro: "An overview of the Wevenu operating system for wedding and event venues.",
+    intro: "An overview of the Hello to Cheers operating system for wedding and event venues.",
   },
   walkthrough: {
-    headline: "Request a Walkthrough",
+    headline: "Schedule a Walkthrough",
     body: "A short, personal conversation about your venue — no pressure, no free trial.",
   },
   contact: {
     headline: "Contact",
-    body: "Reach the Wevenu team. We respond with care and clarity.",
+    body: "Reach the Hello to Cheers team. We respond with care and clarity.",
   },
 } as const;
 
@@ -119,7 +119,11 @@ export const MARKETING_MEDIA = {
   architecture:
     "https://images.unsplash.com/photo-1519167758481-83f550bb49b3?auto=format&fit=crop&w=1400&q=80",
   dashboard: "/marketing/product-dashboard.png",
-  logo: "/brand/Wevenu_Light_Mode_Primary.svg",
-  logoPng: "/brand/Wevenu_Logo_Master_Transparent.png",
-  mark: "/brand/wevenu-mark.png",
+  /** Header/footer lockup — Hello to Cheers + WITH LUV. */
+  logo: "/brand/hello-to-cheers-logo-primary-transparent.png",
+  logoPng: "/brand/hello-to-cheers-logo-primary-transparent.png",
+  logoLockup: "/brand/hello-to-cheers-logo-primary-transparent.png",
+  /** Body-copy wordmark only */
+  wordmark: "/brand/hello-to-cheers-wordmark-transparent.png",
+  mark: "/brand/hello-to-cheers-logo-primary-transparent.png",
 } as const;

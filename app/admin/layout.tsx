@@ -4,7 +4,7 @@ import { HqShell } from "@/components/hq/hq-shell";
 import { getHqAdmin } from "@/lib/hq/service";
 
 /**
- * Gate for Wevenu HQ (/admin/*). Layout-level check, mirrored by a
+ * Gate for Hello to Cheers HQ (/admin/*). Layout-level check, mirrored by a
  * middleware-level check in integrations/supabase/proxy.ts — see
  * docs/wevenu-hq-architecture.md §5 for why both exist.
  */

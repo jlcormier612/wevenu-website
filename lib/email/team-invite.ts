@@ -22,11 +22,11 @@ export function buildTeamInviteHtml({
           Team invitation
         </p>
         <h1 style="margin:0 0 24px;font-size:24px;font-weight:700;color:#111827;line-height:1.3">
-          You're invited to join<br>${escapeHtml(venueName)} on Wevenu
+          You're invited to join<br>${escapeHtml(venueName)} on Hello to Cheers
         </h1>
         <p style="margin:0 0 24px;font-size:15px;color:#374151;line-height:1.6">
           Hi ${escapeHtml(memberName)},<br><br>
-          ${escapeHtml(venueName)} has invited you to join their team on Wevenu — where they manage clients, events, vendors, and workflows.
+          ${escapeHtml(venueName)} has invited you to join their team on Hello to Cheers — where they manage clients, events, vendors, and workflows.
           Click below to accept your invitation and access the workspace.
         </p>
         <a href="${acceptUrl}"
@@ -41,7 +41,7 @@ export function buildTeamInviteHtml({
     </tr>
     <tr>
       <td style="padding-top:20px;text-align:center">
-        <p style="font-size:12px;color:#9ca3af;margin:0">Powered by Wevenu</p>
+        <p style="font-size:12px;color:#9ca3af;margin:0">Powered by Hello to Cheers</p>
       </td>
     </tr>
   </table>
@@ -59,11 +59,11 @@ export function buildTeamInviteText({
   acceptUrl:  string;
 }): string {
   return [
-    `You're invited to join ${venueName} on Wevenu`,
+    `You're invited to join ${venueName} on Hello to Cheers`,
     "",
     `Hi ${memberName},`,
     "",
-    `${venueName} has invited you to join their team on Wevenu.`,
+    `${venueName} has invited you to join their team on Hello to Cheers.`,
     "Accept your invitation to access the full venue workspace.",
     "",
     `Accept invitation: ${acceptUrl}`,

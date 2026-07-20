@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 
 import { PrintButton } from "@/app/(app)/events/[id]/floor-plan-print/print-button";
 import { getEvent } from "@/lib/events/service";
-import { getSeatingDataForVenue } from "@/lib/seating/service";
+import { getSeatingFloorPlansForVenue, getOperationalSeatingPlan } from "@/lib/seating/service";
 import { getClient } from "@/lib/clients/service";
 import { getCurrentVenue } from "@/lib/venue/service";
 import { clientDisplayName } from "@/lib/clients/constants";
@@ -16,21 +16,25 @@ export const metadata: Metadata = { title: "Seating — Print" };
 
 /**
  * Print-friendly wedding-day seating rosters — one flow, every table, no
- * search, no interactivity. Reads the exact same data the couple's own
- * Seating tab and the venue's interactive lookup (app/(app)/events/[id]/seating)
- * both compute — no second seating data model, nothing new stored.
+ * search, no interactivity. Commitment Lifecycle Architecture §9: reads
+ * the same operational plan (latest Submitted snapshot, or live if
+ * delegated) the venue's interactive lookup shows — never the couple's
+ * unsubmitted private draft, so a printed roster is never handed out
+ * ahead of what the couple actually committed to.
  */
 export default async function SeatingPrintPage({ params }: Props) {
   const { id } = await params;
   const event = await getEvent(id);
   if (!event || !event.clientId) notFound();
 
-  const [data, client, venue] = await Promise.all([
-    getSeatingDataForVenue(id, event.clientId),
+  const [floorPlans, client, venue] = await Promise.all([
+    getSeatingFloorPlansForVenue(id, event.clientId),
     getClient(event.clientId),
     getCurrentVenue(),
   ]);
   if (!venue) notFound();
+
+  const data = floorPlans[0] ? await getOperationalSeatingPlan(id, floorPlans[0].id) : null;
 
   const coupleName = client
     ? clientDisplayName(client.firstName, client.lastName, client.partnerFirstName, client.partnerLastName) || event.name
@@ -80,9 +84,15 @@ export default async function SeatingPrintPage({ params }: Props) {
 
         <div style={{ background: "white", borderRadius: 12, overflow: "hidden", boxShadow: "0 4px 20px rgba(0,0,0,0.08)" }}>
           <div style={{ background: venue.primaryColor, padding: "14px 24px", display: "flex", justifyContent: "space-between", alignItems: "flex-end" }}>
-            <div style={{ color: "white" }}>
-              <div style={{ fontSize: 11, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.1em", opacity: 0.7 }}>Seating Rosters</div>
-              <div style={{ fontSize: 18, fontWeight: 700, marginTop: 2 }}>{venue.name}</div>
+            <div style={{ display: "flex", alignItems: "center", gap: 12, color: "white" }}>
+              {venue.logoUrl && (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={venue.logoUrl} alt="" style={{ height: 36, width: 36, borderRadius: 8, objectFit: "contain", background: "rgba(255,255,255,0.15)" }} />
+              )}
+              <div>
+                <div style={{ fontSize: 11, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.1em", opacity: 0.7 }}>Seating Rosters</div>
+                <div style={{ fontSize: 18, fontWeight: 700, marginTop: 2 }}>{venue.name}</div>
+              </div>
             </div>
             <div style={{ color: "white", textAlign: "right" }}>
               <div style={{ fontSize: 14, fontWeight: 600 }}>{coupleName}</div>
@@ -157,9 +167,8 @@ export default async function SeatingPrintPage({ params }: Props) {
             )}
           </div>
 
-          <div style={{ borderTop: "1px solid #DED6CA", padding: "8px 24px", display: "flex", justifyContent: "space-between" }}>
+          <div style={{ borderTop: "1px solid #DED6CA", padding: "8px 24px" }}>
             <span style={{ fontSize: 10, color: "#B8AEA1" }}>{venue.name}</span>
-            <span style={{ fontSize: 10, color: "#B8AEA1" }}>Powered by Wevenu</span>
           </div>
         </div>
       </div>

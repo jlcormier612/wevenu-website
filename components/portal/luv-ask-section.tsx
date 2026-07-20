@@ -17,7 +17,7 @@ import { Button } from "@/components/ui/button";
 
 const DUSTY_ROSE = "#D8A7AA";
 const ROSE_DEEP  = "#8B5456";
-const SAGE       = "#5D6F5D";
+const SAGE       = "var(--venue-primary)"; // the couple's own outgoing message bubble, not Luv's — Venue Brand Experience Phase 1
 
 // Must match the guideSection keys returned by /api/portal/luv-ask
 const GUIDE_SECTIONS: Record<string, { emoji: string; label: string }> = {

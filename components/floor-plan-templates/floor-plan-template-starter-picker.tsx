@@ -210,7 +210,7 @@ export function FloorPlanTemplateStarterPicker({
               <SheetHeader className="mb-6">
                 <SheetTitle>{titles[flow]}</SheetTitle>
                 {flow === "upload" && <p className="text-sm text-muted-foreground">Upload a floor plan image to use as the background — fully editable after.</p>}
-                {flow === "paste" && <p className="text-sm text-muted-foreground">Paste your table/layout list — one item per line. Everything is fully editable after.</p>}
+                {flow === "paste" && <p className="text-sm text-muted-foreground">Paste your table/layout list — one item per line, arranged automatically and fully editable after. This one's a straightforward line-by-line reader, not Luv — placing a floor plan spatially from a text description isn't something she'd guess well either.</p>}
               </SheetHeader>
 
               {flow === "blank" && (

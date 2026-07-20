@@ -201,6 +201,20 @@ export function LeadDetail({ lead, holds = [], spaces = [], documents = [], luvD
               </>
             )}
           </div>
+          <div className="flex flex-wrap items-center gap-2">
+            {lead.otherLeadsOnRelationship > 0 && (
+              <Badge variant="secondary">
+                Returning relationship — {lead.otherLeadsOnRelationship} other {lead.otherLeadsOnRelationship === 1 ? "lead" : "leads"} on file
+              </Badge>
+            )}
+            {lead.intakeConfidence != null && lead.intakeConfidence < 80 && (
+              <Badge variant={lead.intakeConfidence < 50 ? "warning" : "outline"}>
+                {lead.intakeConfidence < 50
+                  ? "Auto-extracted — needs confirmation before automated follow-ups send"
+                  : "Auto-extracted — please verify details"}
+              </Badge>
+            )}
+          </div>
         </div>
 
         <div className="flex shrink-0 items-center gap-2">

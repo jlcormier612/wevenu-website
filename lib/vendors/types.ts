@@ -51,6 +51,7 @@ export type VendorProfile = {
   isClaimed:            boolean;
   acceptingInquiries:   boolean;
   availabilityNotes:    string | null;
+  luvIntroSeenAt:       string | null;
   createdAt:            string;
   updatedAt:            string;
 };
@@ -211,10 +212,18 @@ export type EventVendorAssignment = {
   checkedInAt:     string | null;
   setupCompleteAt: string | null;
   createdAt:       string;
+  // RC2, Milestone 3 — auto-provisioned the moment the assignment is
+  // created; never null in practice, but typed nullable defensively like
+  // every other Conversation lookup in this codebase.
+  conversationId:  string | null;
 };
 
 export type VendorWithEvents = Vendor & {
   assignments: VendorEventSummary[];
+  // RC2, Milestone 3 — this venue's own venue_vendor_relationships id, needed
+  // to fetch the conversation history rollup. Null only if the vendor
+  // somehow has no relationship row for this venue (shouldn't happen).
+  vendorRelationshipId: string | null;
 };
 
 export type VendorEventSummary = {

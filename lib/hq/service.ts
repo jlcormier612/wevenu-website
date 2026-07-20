@@ -1,5 +1,5 @@
 /**
- * Wevenu HQ access control. Server-only.
+ * Hello to Cheers HQ access control. Server-only.
  */
 import { createClient } from "@/integrations/supabase/server";
 import { isSupabaseConfigured } from "@/lib/env";

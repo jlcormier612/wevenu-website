@@ -1,6 +1,17 @@
 import { NextResponse } from "next/server";
 
-import { updatePortalTimelineEntry } from "@/lib/portal/service";
+import { resolvePortalTimeline, updatePortalTimelineEntry } from "@/lib/portal/service";
+
+// GET so the client can refresh Timeline Status (lastSubmittedAt /
+// hasUnpublishedChanges) after any mutating action, the same
+// refetch-after-write pattern already used by Vendor Selection and
+// Documents on this portal.
+export async function GET(request: Request) {
+  const token = new URL(request.url).searchParams.get("token") ?? "";
+  if (!token) return NextResponse.json({ error: "missing_token" }, { status: 400 });
+  const timeline = await resolvePortalTimeline(token);
+  return NextResponse.json(timeline);
+}
 
 export async function POST(request: Request) {
   try {

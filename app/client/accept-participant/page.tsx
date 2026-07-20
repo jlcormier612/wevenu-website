@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Wordmark } from "@/components/brand/wordmark";
 import { AcceptParticipantForm } from "@/app/client/accept-participant/accept-participant-form";
 
-export const metadata: Metadata = { title: "Create Your Account — Wevenu" };
+export const metadata: Metadata = { title: "Create Your Account — Hello to Cheers" };
 
 type Props = { searchParams: Promise<{ token?: string }> };
 

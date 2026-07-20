@@ -63,7 +63,7 @@ export async function sendVendorInviteAction(vendorId: string): Promise<VendorAc
 
   const result = await sendEmail({
     to:      vendor.email,
-    subject: `You're invited to manage ${vendor.business_name} on Wevenu`,
+    subject: `You're invited to manage ${vendor.business_name} on Hello to Cheers`,
     text:    buildVendorInviteText({ vendorName: vendor.business_name, venueName: venue.name, acceptUrl }),
     html:    buildVendorInviteHtml({ vendorName: vendor.business_name, venueName: venue.name, acceptUrl }),
   });

@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { HOVER_WHISPER } from "@/lib/marketing/rhythm";
 import { cn } from "@/lib/utils";
 
 type JourneyNavProps = {
@@ -21,7 +22,7 @@ export function JourneyNav({ prev, next, className }: JourneyNavProps) {
       {prev ? (
         <Link
           href={`/product/journey/${prev.id}`}
-          className="group max-w-xs transition-opacity hover:opacity-80"
+          className={`group max-w-xs transition-opacity duration-200 ease-out ${HOVER_WHISPER}`}
         >
           <span className="block text-[10px] tracking-[0.22em] uppercase text-[var(--heritage-sage)]/70">
             Previous
@@ -36,7 +37,7 @@ export function JourneyNav({ prev, next, className }: JourneyNavProps) {
       {next ? (
         <Link
           href={`/product/journey/${next.id}`}
-          className="group ml-auto max-w-xs text-right transition-opacity hover:opacity-80"
+          className={`group ml-auto max-w-xs text-right transition-opacity duration-200 ease-out ${HOVER_WHISPER}`}
         >
           <span className="block text-[10px] tracking-[0.22em] uppercase text-[var(--heritage-sage)]/70">
             Next

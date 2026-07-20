@@ -105,7 +105,7 @@ export async function createTemplateFromImport(rawText: string, name: string, ev
       if (item.guessed) guessedCount++;
       await repo.insertItem(c, venueId, templateId, {
         title: item.title, description: item.description || null, notes: null,
-        timeOfDay: null, minutesOffset: item.minutesOffset, audiences: ["internal"], sortOrder: i,
+        timeOfDay: null, minutesOffset: item.minutesOffset, audiences: ["venue"], sortOrder: i,
       });
     }
     return { ok: true, templateId, itemCount: proposal.items.length, guessedCount } as ImportTimelineTemplateResult;

@@ -4,13 +4,14 @@ import * as React from "react";
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Check, CheckCircle, Circle, Clock, Plus, Trash2 } from "lucide-react";
+import { Check, CheckCircle, Circle, Clock, MessageSquare, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 import {
   assignVendorAction,
   removeVendorAssignmentAction,
 } from "@/app/(app)/events/[id]/vendor-actions";
+import { ConversationThread } from "@/components/conversations/conversation-thread";
 import { VendorCategoryBadge } from "@/components/vendors/vendor-category-badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -58,6 +59,7 @@ export function EventVendorsSection({
   const [loadInNotes, setLoadInNotes] = React.useState("");
   const [notes, setNotes]             = React.useState("");
   const [addPending, startAdd]        = React.useTransition();
+  const [openThreadId, setOpenThreadId] = React.useState<string | null>(null);
 
   const preferred    = availableVendors.filter(v => v.isPreferred);
   const others       = availableVendors.filter(v => !v.isPreferred);
@@ -130,12 +132,22 @@ export function EventVendorsSection({
                     {a.notes && <span className="italic">{a.notes}</span>}
                   </div>
                 </div>
-                <button type="button"
-                  onClick={() => handleRemove(a.id)}
-                  className="shrink-0 opacity-0 transition-opacity group-hover:opacity-100 text-muted-foreground hover:text-destructive"
-                  aria-label="Remove vendor">
-                  <Trash2 className="h-3.5 w-3.5" />
-                </button>
+                <div className="flex shrink-0 items-center gap-1">
+                  {a.conversationId && (
+                    <button type="button"
+                      onClick={() => setOpenThreadId(prev => prev === a.id ? null : a.id)}
+                      className={`opacity-0 transition-opacity group-hover:opacity-100 ${openThreadId === a.id ? "opacity-100 text-primary" : "text-muted-foreground hover:text-primary"}`}
+                      aria-label={`Message ${a.vendorName}`}>
+                      <MessageSquare className="h-3.5 w-3.5" />
+                    </button>
+                  )}
+                  <button type="button"
+                    onClick={() => handleRemove(a.id)}
+                    className="opacity-0 transition-opacity group-hover:opacity-100 text-muted-foreground hover:text-destructive"
+                    aria-label="Remove vendor">
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
+                </div>
               </div>
 
               {/* Row 2: Check-in status */}
@@ -143,6 +155,15 @@ export function EventVendorsSection({
                 <CheckinBadge label="Arrived"       checked={!!a.checkedInAt} />
                 <CheckinBadge label="Setup done"    checked={!!a.setupCompleteAt} />
               </div>
+
+              {/* Message panel — RC2, Milestone 3. Same ConversationThread the
+                  main inbox and Relationship tab use; a vendor conversation is
+                  read/written no differently than any other Conversation. */}
+              {openThreadId === a.id && a.conversationId && (
+                <div className="rounded-lg border border-border overflow-hidden" style={{ height: 420 }}>
+                  <ConversationThread conversationId={a.conversationId} showHeader={false} />
+                </div>
+              )}
             </div>
           ))}
         </div>

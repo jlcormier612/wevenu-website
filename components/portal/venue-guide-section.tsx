@@ -6,10 +6,16 @@ import type { PortalContext } from "@/lib/portal/types";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
-const SAGE      = "#5D6F5D";
-const LINEN     = "#FAF8F4";
+// Venue Brand Experience Phase 1: SAGE is now the venue's own primary color.
+// TAUPE stays fixed (used here for body text — a venue's own neutral isn't
+// guaranteed safe as text color). ROSE is Luv's persona identity — corrected
+// to the one canonical hex (#D8A7AA) used everywhere else Luv appears in
+// this app; this file had independently drifted to a near-duplicate shade
+// (#C9697A), a small consistency bug found and fixed in passing.
+const SAGE      = "var(--venue-primary)";
+const LINEN     = "var(--venue-neutral)";
 const TAUPE     = "#8C8075";
-const ROSE      = "#C9697A";
+const ROSE      = "#D8A7AA";
 const BORDER    = "#E8E2DB";
 
 // ── Data types ────────────────────────────────────────────────────────────────
@@ -153,7 +159,7 @@ function FaqItem({ faq, open, onToggle }: { faq: FaqEntry; open: boolean; onTogg
         type="button"
         onClick={onToggle}
         className="w-full flex items-start justify-between gap-3 px-4 py-3.5 text-left transition-colors"
-        style={{ background: open ? `${SAGE}08` : "#FDFCFA" }}>
+        style={{ background: open ? `color-mix(in srgb, var(--venue-primary) 3%, transparent)` : "#FDFCFA" }}>
         <p className="text-sm font-medium leading-snug" style={{ color: "#2D2A28" }}>{faq.question}</p>
         {open
           ? <ChevronUp className="h-4 w-4 shrink-0 mt-0.5" style={{ color: TAUPE }} />
@@ -161,7 +167,7 @@ function FaqItem({ faq, open, onToggle }: { faq: FaqEntry; open: boolean; onTogg
         }
       </button>
       {open && (
-        <div className="px-4 pb-4 pt-1" style={{ background: `${SAGE}06` }}>
+        <div className="px-4 pb-4 pt-1" style={{ background: `color-mix(in srgb, var(--venue-primary) 2%, transparent)` }}>
           <p className="text-sm leading-relaxed whitespace-pre-line" style={{ color: "#4A4440" }}>
             {faq.answer}
           </p>
@@ -268,7 +274,7 @@ export function VenueGuideSection({ token, context }: { token: string; context: 
               background: "#FDFCFA",
               color: "#2D2A28",
               // @ts-expect-error css variable
-              "--tw-ring-color": `${SAGE}40`,
+              "--tw-ring-color": `color-mix(in srgb, var(--venue-primary) 25%, transparent)`,
             }}
           />
           {query && (

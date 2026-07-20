@@ -8,7 +8,7 @@ export const PRODUCT_JOURNEY = [
     id: "inquiry",
     title: "Inquiry",
     emotion: "A first hello that feels personal.",
-    body: "Every conversation begins a relationship. Whether it arrives from your website, email, phone call, or referral, Wevenu keeps everything together from the very first moment.",
+    body: "Every conversation begins a relationship. Whether it arrives from your website, email, phone call, or referral, Hello to Cheers keeps everything together from the very first moment.",
   },
   {
     id: "tour",
@@ -20,11 +20,11 @@ export const PRODUCT_JOURNEY = [
     id: "proposal",
     title: "Proposal",
     emotion: "A beautiful yes begins with a beautiful proposal.",
-    body: "Your venue has already told its story. Wevenu simply helps you present it clearly—with packages, pricing, imagery, and details that feel personal instead of transactional.",
+    body: "Your venue has already told its story. Hello to Cheers simply helps you present it clearly—with packages, pricing, imagery, and details that feel personal instead of transactional.",
   },
   {
     id: "contract-inventory",
-    title: "Booking Confirmed",
+    title: "Booking",
     emotion: "Every promise becomes something your team can deliver.",
     body: "Contracts, packages, and inventory stay connected from the moment a booking is confirmed. Nothing needs to be entered twice, and nothing gets forgotten between sales and operations.",
   },
@@ -38,7 +38,7 @@ export const PRODUCT_JOURNEY = [
     id: "planning",
     title: "Planning",
     emotion: "Everyone planning together—not everyone planning separately.",
-    body: "Couples, venues, and your team all contribute to the same planning experience—so every update, decision, and detail stays connected from the first conversation to event day.",
+    body: "Couples, venues, and your team all contribute to the same planning experience—so every update, decision, and detail stays connected from the first conversation to event\u00a0day.",
   },
   {
     id: "vendors",

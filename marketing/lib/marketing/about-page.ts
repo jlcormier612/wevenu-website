@@ -1,11 +1,11 @@
 /**
- * About Wevenu — trust page copy.
+ * About Hello to Cheers — trust page copy.
  * Hero is the venue owner. Never corporate. Never "amazing AI."
  */
 
 export const ABOUT_PAGE = {
   why: {
-    eyebrow: "About Wevenu",
+    eyebrow: "About Hello to Cheers",
     headline: "We didn't set out to build software.\nWe set out to protect hospitality.",
     paragraphs: [
       "Independent venues create some of life's most meaningful celebrations.",
@@ -14,9 +14,9 @@ export const ABOUT_PAGE = {
       "Too many repeated conversations.",
       "Too much information living in too many places.",
       "We believed the people creating unforgettable experiences deserved technology that felt just as thoughtful.",
-      "That belief became Wevenu.",
+      "That belief became Hello to Cheers.",
     ],
-    cta: "Request a Walkthrough",
+    cta: "Schedule a Walkthrough",
   },
   whatWeSaw: {
     headline: "The problem was never effort.\nIt was fragmentation.",
@@ -46,7 +46,7 @@ export const ABOUT_PAGE = {
       "The venue should remain.",
       "The software shouldn't become the experience.",
       "It should quietly support the people creating it.",
-      "Every decision inside Wevenu starts with one question:",
+      "Every decision inside Hello to Cheers starts with one question:",
       '"Does this make hospitality feel more human?"',
       "If the answer is no...",
       "we don't build it.",
@@ -57,7 +57,7 @@ export const ABOUT_PAGE = {
     headline: "Connected.\nNot integrated.",
     paragraphs: [
       "Most software connects separate systems.",
-      "Wevenu was designed differently.",
+      "Hello to Cheers was designed differently.",
       "Every inquiry...",
       "Every proposal...",
       "Every conversation...",
@@ -98,11 +98,11 @@ export const ABOUT_PAGE = {
       "Always available.",
       "Never intrusive.",
       "Hospitality first.",
-      "Artificial intelligence second.",
+      "Quiet assistance second.",
     ],
   },
   who: {
-    headline: "Wevenu isn't for everyone.",
+    headline: "Hello to Cheers isn't for everyone.",
     paragraphs: [
       "It's for independent venues that believe hospitality is personal.",
       "For owners who know every event is different.",
@@ -121,11 +121,11 @@ export const ABOUT_PAGE = {
       "Not a sales presentation.",
       "Not a pressure call.",
       "Just a conversation about your venue.",
-      "We'll show you how Wevenu works.",
+      "We'll show you how Hello to Cheers works.",
       "We'll answer every question.",
       "And if it isn't the right fit...",
       "we'll tell you that too.",
     ],
-    cta: "Request a Walkthrough",
+    cta: "Schedule a Walkthrough",
   },
 } as const;

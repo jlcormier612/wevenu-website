@@ -24,11 +24,11 @@ export function buildVendorInviteHtml({
           Invitation from ${escapeHtml(venueName)}
         </p>
         <h1 style="margin:0 0 24px;font-size:24px;font-weight:700;color:#111827;line-height:1.3">
-          You're invited to manage <br>${escapeHtml(vendorName)} on Wevenu
+          You're invited to manage <br>${escapeHtml(vendorName)} on Hello to Cheers
         </h1>
         ${message ? `<p style="margin:0 0 24px;font-size:15px;color:#374151;line-height:1.6">${escapeHtml(message)}</p>` : ""}
         <p style="margin:0 0 24px;font-size:15px;color:#374151;line-height:1.6">
-          ${escapeHtml(venueName)} has set up a vendor profile for ${escapeHtml(vendorName)} on Wevenu.
+          ${escapeHtml(venueName)} has set up a vendor profile for ${escapeHtml(vendorName)} on Hello to Cheers.
           Claim it to manage your business profile, service packages, availability, and venue relationships — all in one place.
         </p>
         <a href="${acceptUrl}"
@@ -43,7 +43,7 @@ export function buildVendorInviteHtml({
     </tr>
     <tr>
       <td style="padding-top:20px;text-align:center">
-        <p style="font-size:12px;color:#9ca3af;margin:0">Powered by Wevenu</p>
+        <p style="font-size:12px;color:#9ca3af;margin:0">Powered by Hello to Cheers</p>
       </td>
     </tr>
   </table>
@@ -61,9 +61,9 @@ export function buildVendorInviteText({
   acceptUrl:  string;
 }): string {
   return [
-    `You're invited to manage ${vendorName} on Wevenu`,
+    `You're invited to manage ${vendorName} on Hello to Cheers`,
     "",
-    `${venueName} has set up a vendor profile for ${vendorName} on Wevenu.`,
+    `${venueName} has set up a vendor profile for ${vendorName} on Hello to Cheers.`,
     "Claim it to manage your profile, packages, availability, and venue relationships.",
     "",
     `Accept your invitation: ${acceptUrl}`,

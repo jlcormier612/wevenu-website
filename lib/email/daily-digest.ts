@@ -83,7 +83,7 @@ export function buildDigestHtml(ctx: DigestContext): string {
     </tr>
     <tr>
       <td style="padding-top:20px;text-align:center">
-        <p style="font-size:12px;color:#9ca3af;margin:0">Powered by Wevenu</p>
+        <p style="font-size:12px;color:#9ca3af;margin:0">Powered by Hello to Cheers</p>
       </td>
     </tr>
   </table>

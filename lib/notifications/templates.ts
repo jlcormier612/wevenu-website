@@ -1,7 +1,6 @@
 import type { NotificationRole } from "@/lib/notifications/types";
 
 const SAGE = "#5D6F5D";
-const ROSE = "#D8A7AA";
 const LINEN = "#F7F5F1";
 
 function formatDate(isoDate: string): string {
@@ -24,6 +23,8 @@ type ReminderEmailContext = {
   portalToken?: string;     // couple portal access token for portal link
   venueBaseUrl: string;
   venueName: string;
+  /** Venue Brand Experience Phase 1 — used for the couple-facing branch only; the coordinator branch stays Hello to Cheers' own palette. */
+  venueColor?: string;
 };
 
 export function buildReminderEmail(ctx: ReminderEmailContext): { subject: string; html: string; text: string } {
@@ -37,12 +38,13 @@ export function buildReminderEmail(ctx: ReminderEmailContext): { subject: string
   else urgencyLine = `This task is due in ${du} day${du !== 1 ? "s" : ""} (${formatDate(ctx.dueDate)}).`;
 
   const isCoordinator = ctx.role === "coordinator";
+  const headerColor = isCoordinator ? SAGE : (ctx.venueColor ?? SAGE);
   const actionUrl = isCoordinator
     ? `${ctx.venueBaseUrl}/events`
     : ctx.portalToken
     ? `${ctx.venueBaseUrl}/p/${ctx.portalToken}`
     : ctx.venueBaseUrl;
-  const actionLabel = isCoordinator ? "View in Wevenu →" : "View your planning workspace →";
+  const actionLabel = isCoordinator ? "View in Hello to Cheers →" : "View your planning workspace →";
 
   const subject = isOverdue
     ? `Overdue: "${ctx.taskTitle}" — ${ctx.eventName}`
@@ -58,7 +60,7 @@ export function buildReminderEmail(ctx: ReminderEmailContext): { subject: string
     <tr><td>
       <table width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;margin:0 auto;background:#fff;border-radius:12px;overflow:hidden;border:1px solid #DED6CA;">
         <!-- Header -->
-        <tr><td style="background:${SAGE};padding:20px 28px;">
+        <tr><td style="background:${headerColor};padding:20px 28px;">
           <p style="margin:0;color:#fff;font-size:13px;letter-spacing:0.05em;">${ctx.venueName}</p>
           <p style="margin:4px 0 0;color:rgba(255,255,255,0.75);font-size:12px;">${ctx.eventName}</p>
         </td></tr>
@@ -76,15 +78,17 @@ export function buildReminderEmail(ctx: ReminderEmailContext): { subject: string
           <p style="margin:0 0 20px;font-size:14px;color:#444;line-height:1.6;">
             ${isOverdue
               ? "This task requires attention. You can mark it complete, waive it, or reassign the due date."
-              : "This task is coming up. Review and take action in Wevenu."
+              : "This task is coming up. Review and take action in Hello to Cheers."
             }
           </p>`}
-          <a href="${actionUrl}" style="display:inline-block;background:${SAGE};color:#fff;text-decoration:none;padding:10px 22px;border-radius:8px;font-size:14px;font-weight:500;">${actionLabel}</a>
+          <a href="${actionUrl}" style="display:inline-block;background:${headerColor};color:#fff;text-decoration:none;padding:10px 22px;border-radius:8px;font-size:14px;font-weight:500;">${actionLabel}</a>
         </td></tr>
         <!-- Footer -->
         <tr><td style="padding:16px 28px;border-top:1px solid #F0EDE9;">
           <p style="margin:0;font-size:11px;color:#B8AEA1;">
-            Sent by ${ctx.venueName} via Wevenu. ${ctx.role === "couple" ? `<a href="${ctx.venueBaseUrl}/p/${ctx.portalToken ?? ""}" style="color:${ROSE};text-decoration:none;">Manage your workspace</a>` : ""}
+            ${isCoordinator
+              ? `Sent by ${ctx.venueName} via Hello to Cheers.`
+              : `${ctx.venueName}. <a href="${ctx.venueBaseUrl}/p/${ctx.portalToken ?? ""}" style="color:${headerColor};text-decoration:none;">Manage your workspace</a>`}
           </p>
         </td></tr>
       </table>

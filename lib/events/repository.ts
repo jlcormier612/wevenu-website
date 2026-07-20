@@ -70,7 +70,7 @@ export async function getEvents(client: DbClient, venueId: string, filters?: { q
 }
 
 export async function getEvent(client: DbClient, venueId: string, eventId: string): Promise<EventWithDetails | null> {
-  const [evRes, nRes, tRes, aRes, timeline, vendorAssignments, floorPlans] = await Promise.all([
+  const [evRes, nRes, tRes, aRes, timeline, vendorAssignments, floorPlans, gcsRes] = await Promise.all([
     client.from("events")
       .select("*, clients(first_name, last_name, partner_first_name, partner_last_name)")
       .eq("id", eventId).eq("venue_id", venueId).maybeSingle<EventRow>(),
@@ -80,6 +80,9 @@ export async function getEvent(client: DbClient, venueId: string, eventId: strin
     getTimelineEntries(client, venueId, eventId),
     getEventVendorAssignments(client, venueId, eventId),
     getFloorPlansByEvent(client, venueId, eventId),
+    // Commitment Lifecycle Architecture §9 — latest Guest Count Submission,
+    // shown distinctly from a coordinator's own manual guest_count entry.
+    client.rpc("get_latest_guest_count_submission", { p_venue_id: venueId, p_event_id: eventId }),
   ]);
   if (evRes.error) throw evRes.error;
   if (nRes.error) throw nRes.error;
@@ -95,6 +98,7 @@ export async function getEvent(client: DbClient, venueId: string, eventId: strin
     timeline,
     vendorAssignments,
     floorPlans,
+    guestCountSubmission: (gcsRes.data as { count: number; submittedAt: string } | null) ?? null,
   };
 }
 

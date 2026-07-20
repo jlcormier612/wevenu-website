@@ -25,11 +25,11 @@ const greatVibes = Great_Vibes({
 
 export const metadata: Metadata = {
   title: {
-    default: "Wevenu",
-    template: "%s · Wevenu",
+    default: "Hello to Cheers",
+    template: "%s · Hello to Cheers",
   },
   description:
-    "Wevenu — the calm, elegant operating system for independent wedding and event venues.",
+    "Hello to Cheers — the calm, elegant operating system for independent wedding and event venues.",
 };
 
 export default function RootLayout({

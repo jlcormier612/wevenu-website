@@ -100,9 +100,15 @@ export default async function FloorPlanPrintPage({ params }: Props) {
         <div style={{ background: "white", borderRadius: 12, overflow: "hidden", boxShadow: "0 4px 20px rgba(0,0,0,0.08)" }}>
           {/* Header */}
           <div style={{ background: venue.primaryColor, padding: "14px 24px", display: "flex", justifyContent: "space-between", alignItems: "flex-end" }}>
-            <div style={{ color: "white" }}>
-              <div style={{ fontSize: 11, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.1em", opacity: 0.7 }}>{plan.name}</div>
-              <div style={{ fontSize: 18, fontWeight: 700, marginTop: 2 }}>{venue.name}</div>
+            <div style={{ display: "flex", alignItems: "center", gap: 12, color: "white" }}>
+              {venue.logoUrl && (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={venue.logoUrl} alt="" style={{ height: 36, width: 36, borderRadius: 8, objectFit: "contain", background: "rgba(255,255,255,0.15)" }} />
+              )}
+              <div>
+                <div style={{ fontSize: 11, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.1em", opacity: 0.7 }}>{plan.name}</div>
+                <div style={{ fontSize: 18, fontWeight: 700, marginTop: 2 }}>{venue.name}</div>
+              </div>
             </div>
             <div style={{ color: "white", textAlign: "right" }}>
               <div style={{ fontSize: 14, fontWeight: 600 }}>{event.name}</div>
@@ -166,9 +172,8 @@ export default async function FloorPlanPrintPage({ params }: Props) {
             </div>
           )}
 
-          <div style={{ borderTop: "1px solid #DED6CA", padding: "8px 24px", display: "flex", justifyContent: "space-between" }}>
+          <div style={{ borderTop: "1px solid #DED6CA", padding: "8px 24px" }}>
             <span style={{ fontSize: 10, color: "#B8AEA1" }}>{venue.name}</span>
-            <span style={{ fontSize: 10, color: "#B8AEA1" }}>Powered by Wevenu</span>
           </div>
         </div>
       </div>

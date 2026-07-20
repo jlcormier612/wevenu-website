@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { bookTour } from "@/lib/tours/service";
 import { sendEmail } from "@/lib/email/send";
+import { createAdminClient } from "@/integrations/supabase/admin";
+import { recordNotificationStatus } from "@/lib/lead-intake/attempt-log";
 import type { BookingResult } from "@/lib/tours/types";
 
 type BookPayload = {
@@ -8,6 +10,7 @@ type BookPayload = {
   firstName: string; lastName: string; partnerName: string;
   email: string; phone: string; eventType: string;
   eventDate: string; guestCount: number | null; notes: string;
+  turnstileToken?: string | null;
 };
 
 export async function POST(request: Request) {
@@ -16,11 +19,13 @@ export async function POST(request: Request) {
     if (!body.key || !body.slotStart || !body.firstName || !body.email) {
       return NextResponse.json({ ok: false, error: "Missing required fields." }, { status: 400 });
     }
+    const forwardedFor = request.headers.get("x-forwarded-for");
+    const ipAddress = forwardedFor ? forwardedFor.split(",")[0].trim() : null;
     const result: BookingResult = await bookTour(body.key, body.slotStart, {
       firstName: body.firstName, lastName: body.lastName, partnerName: body.partnerName ?? "",
       email: body.email, phone: body.phone ?? "", eventType: body.eventType ?? "",
       eventDate: body.eventDate ?? "", guestCount: body.guestCount ?? null, notes: body.notes ?? "",
-    });
+    }, { turnstileToken: body.turnstileToken ?? null, ipAddress });
 
     if (result.ok && result.appointmentId) {
       // The couple's confirmation email is sent inside bookTour() itself now
@@ -57,8 +62,11 @@ async function sendCoordinatorNotification(result: BookingResult): Promise<void>
 
   // Internal ops notification, not a message to the lead — no Message
   // History tracking needed, but still one send implementation, not a
-  // second raw fetch to Resend.
-  await sendEmail({
+  // second raw fetch to Resend. Outcome recorded onto the same intake
+  // attempt as the couple's confirmation email (lib/tours/communication.ts)
+  // — last write wins if both fire, which is fine: they usually succeed or
+  // fail together (a Resend outage takes both down at once).
+  const emailResult = await sendEmail({
     to: coordinatorEmail,
     subject: `New tour booked — ${scheduledDate}`,
     text: [
@@ -68,10 +76,13 @@ async function sendCoordinatorNotification(result: BookingResult): Promise<void>
       `Duration: ${result.duration ?? 60} minutes`,
       result.contactName ? `Contact: ${result.contactName}` : null,
       "",
-      "A new lead has been created in Wevenu.",
+      "A new lead has been created in Hello to Cheers.",
       `${appUrl}/leads`,
     ].filter(Boolean).join("\n"),
   });
+  if (result.intakeAttemptId) {
+    await recordNotificationStatus(createAdminClient(), result.intakeAttemptId, emailResult.ok ? "sent" : "failed");
+  }
 }
 
 // ── Tour reminders (24h before, for coordinator + couple) ─────────────────────

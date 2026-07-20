@@ -35,7 +35,7 @@ export function MomentumWidget({
   heatingUp: Segment[];
   coolingOff: Segment[];
 }) {
-  if (!heatingUp.length && !coolingOff.length) return null;
+  const isEmpty = !heatingUp.length && !coolingOff.length;
 
   return (
     <div
@@ -51,6 +51,15 @@ export function MomentumWidget({
           Who needs attention today?
         </h2>
       </div>
+
+      {/* Empty-state consistency (Luv Experience Completion, Work Stream 6):
+          this is a dashboard-primary card, not a fragment embedded in
+          another feature's page — it always shows a light reassurance
+          state rather than vanishing, matching the main Luv widget's own
+          empty-state choice one card above it. */}
+      {isEmpty && (
+        <p className="text-xs text-muted-foreground">No one needs attention right now — your pipeline is quiet.</p>
+      )}
 
       {heatingUp.length > 0 && (
         <div className="space-y-1">

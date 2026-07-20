@@ -9,6 +9,7 @@ import { NotificationPreferencesSection } from "@/components/settings/notificati
 import { NotificationsSection } from "@/components/settings/notifications-section";
 import { TourSettingsSection } from "@/components/settings/tour-settings-section";
 import { WebsiteFormsSection } from "@/components/settings/website-forms-section";
+import { LeadIntakeHealthSection } from "@/components/settings/lead-intake-health-section";
 import { DataExportSection } from "@/components/settings/data-export-section";
 import { LuvHeart } from "@/components/dashboard/luv-widget";
 import { StripeConnectSection } from "@/components/settings/stripe-connect-section";
@@ -26,6 +27,7 @@ import { getCurrentVenue, getVenueSettings } from "@/lib/venue/service";
 import { getNotificationStats } from "@/lib/notifications/stats";
 import { getNotificationPreferences } from "@/lib/notifications/preferences";
 import { getTourSettings } from "@/lib/tours/service";
+import { getIntakeHealthSummary } from "@/lib/lead-intake/monitoring";
 // Playbooks moved to Library (/library/playbooks)
 // Pipeline Templates moved to Library (/library/pipeline-templates)
 
@@ -38,8 +40,8 @@ export const metadata: Metadata = { title: "Settings" };
  * Route is protected by the (app) layout (venue existence already confirmed).
  */
 export default async function SettingsPage() {
-  const [settings, venue, spaces, capacityRules, luvSettings, notifStats, notifPrefs, tourSettings] = await Promise.all([
-    getVenueSettings(), getCurrentVenue(), getSpaces(), getCapacityRules(), getLuvSettings(), getNotificationStats(), getNotificationPreferences(), getTourSettings(),
+  const [settings, venue, spaces, capacityRules, luvSettings, notifStats, notifPrefs, tourSettings, intakeHealth] = await Promise.all([
+    getVenueSettings(), getCurrentVenue(), getSpaces(), getCapacityRules(), getLuvSettings(), getNotificationStats(), getNotificationPreferences(), getTourSettings(), getIntakeHealthSummary(),
   ]);
 
   if (!settings) {
@@ -70,7 +72,7 @@ export default async function SettingsPage() {
         <CardHeader>
           <CardTitle className="text-base">Import Existing Data</CardTitle>
           <CardDescription>
-            Bring your clients, leads, vendors, inventory, and packages into Wevenu from any CSV export. No template required — map your own column names.
+            Bring your clients, leads, vendors, inventory, and packages into Hello to Cheers from any CSV export. No template required — map your own column names.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -131,14 +133,34 @@ export default async function SettingsPage() {
           <CardHeader>
             <CardTitle className="text-base">Website Forms</CardTitle>
             <CardDescription>
-              Share your inquiry form or embed it on your website. Every submission becomes a lead in Wevenu automatically.
+              Share your inquiry form or embed it on your website. Every submission becomes a lead in Hello to Cheers automatically.
             </CardDescription>
           </CardHeader>
           <CardContent>
             <WebsiteFormsSection
               embedKey={venue.embedKey}
               appUrl={process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"}
+              leadEmailAddress={
+                process.env.RESEND_INBOUND_ADDRESS
+                  ? `leads+${venue.leadEmailKey}@${process.env.RESEND_INBOUND_ADDRESS.replace(/^.*@/, "")}`
+                  : null
+              }
             />
+          </CardContent>
+        </Card>
+      )}
+
+      {/* ── Lead Intake Health ─────────────────────────────────────── */}
+      {venue && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Lead Intake Health</CardTitle>
+            <CardDescription>
+              Every inquiry your venue receives — website, tour requests, and email intake — in one place.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <LeadIntakeHealthSection summary={intakeHealth} />
           </CardContent>
         </Card>
       )}
@@ -149,7 +171,7 @@ export default async function SettingsPage() {
           <CardHeader>
             <CardTitle className="text-base">Tour Scheduling</CardTitle>
             <CardDescription>
-              Let clients schedule a tour directly from your website. Every booking creates a lead in Wevenu automatically.
+              Let clients schedule a tour directly from your website. Every booking creates a lead in Hello to Cheers automatically.
             </CardDescription>
           </CardHeader>
           <CardContent>

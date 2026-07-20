@@ -184,7 +184,7 @@ export function InventoryItemForm({
         <Label className="text-xs">Photo <span className="font-normal text-muted-foreground">(optional)</span></Label>
         {item?.imageUrl && !file && (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={item.imageUrl} alt="" className="h-20 w-20 rounded-lg border border-border object-cover" />
+          <img src={item.imageUrl} alt="" className="h-20 w-20 rounded-lg border border-border bg-muted/40 object-contain" />
         )}
         <input
           type="file" accept="image/*" onChange={(e) => setFile(e.target.files?.[0] ?? null)}

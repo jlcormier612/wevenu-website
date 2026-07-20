@@ -49,13 +49,13 @@ export function CookiePreferencesExperience() {
   return (
     <div className="bg-[var(--true-white)] px-6 pt-[140px] pb-28 md:pb-36">
       <div className="mx-auto max-w-3xl">
-        <p className="text-xs tracking-[0.22em] uppercase text-[var(--heritage-sage)]">
+        <p className="text-[0.7125rem] tracking-[0.22em] uppercase text-[var(--heritage-sage)]/82">
           Cookies
         </p>
-        <h1 className="mt-5 font-heading text-4xl font-medium text-[var(--forest-sage)] md:text-6xl">
+        <h1 className="mt-8 font-heading text-[2.52rem] font-medium leading-[1.16] tracking-tight text-[var(--forest-sage)] md:text-[4.2rem]">
           Cookie Preferences
         </h1>
-        <p className="mt-8 text-base leading-relaxed text-[var(--forest-sage)]/70 md:text-lg">
+        <p className="mt-8 text-base leading-[1.7] text-[var(--forest-sage)]/70 md:text-lg max-w-[65ch]">
           We use cookies carefully. Essential cookies keep the site and product working.
           Everything else is your choice.
         </p>
@@ -69,7 +69,7 @@ export function CookiePreferencesExperience() {
           />
           <PreferenceRow
             title="Analytics"
-            description="Help us understand how people use Wevenu in aggregate so we can improve the experience."
+            description="Help us understand how people use Hello to Cheers in aggregate so we can improve the experience."
             checked={prefs.analytics}
             onChange={(analytics) => save({ ...prefs, analytics })}
           />
@@ -85,7 +85,7 @@ export function CookiePreferencesExperience() {
           <p className="mt-8 text-sm text-[var(--heritage-sage)]">Preferences saved.</p>
         ) : null}
 
-        <p className="mt-12 text-sm leading-relaxed text-[var(--forest-sage)]/55">
+        <p className="mt-12 text-sm leading-[1.7] text-[var(--forest-sage)]/55">
           You can also review our{" "}
           <a href="/cookie-policy" className="underline-offset-4 hover:underline">
             Cookie Policy
@@ -118,7 +118,7 @@ function PreferenceRow({
     <div className="flex items-start justify-between gap-6 border-t border-[var(--taupe-medium)]/40 pt-8">
       <div className="max-w-xl">
         <h2 className="font-heading text-2xl text-[var(--forest-sage)]">{title}</h2>
-        <p className="mt-3 text-sm leading-relaxed text-[var(--forest-sage)]/65 md:text-base">
+        <p className="mt-3 text-sm leading-[1.7] text-[var(--forest-sage)]/65 md:text-base">
           {description}
         </p>
       </div>

@@ -12,7 +12,7 @@ import {
   type EntityType, type FieldMapping, type ImportResult,
 } from "@/lib/import/types";
 import {
-  buildTemplateCsv, getSampleValue, validateRequiredFields,
+  buildTemplateCsv, getSampleValue, validateRequiredFields, looksLikeHeaderRow,
   rowToClientInput, rowToLeadInput, rowToVendorInput, rowToInventoryInput, rowToPackageInput,
   loadSavedMapping, saveMapping,
 } from "@/lib/import/utils";
@@ -280,6 +280,9 @@ function StepMapFields({
   onChange,
   onNext,
   onBack,
+  hasHeaderRow,
+  headerRowLikely,
+  onToggleHeaderRow,
 }: {
   entity: EntityType;
   headers: string[];
@@ -288,6 +291,9 @@ function StepMapFields({
   onChange: (m: FieldMapping) => void;
   onNext: () => void;
   onBack: () => void;
+  hasHeaderRow: boolean;
+  headerRowLikely: boolean;
+  onToggleHeaderRow: (next: boolean) => void;
 }) {
   const fields = ENTITY_FIELDS[entity];
   const requiredMapped = fields
@@ -299,9 +305,28 @@ function StepMapFields({
       <div>
         <h2 className="text-base font-semibold text-foreground">Map your columns</h2>
         <p className="text-sm text-muted-foreground mt-1">
-          Match each Wevenu field to a column in your CSV. Required fields are marked with *.
+          Match each Hello to Cheers field to a column in your CSV. Required fields are marked with *.
         </p>
       </div>
+
+      {!headerRowLikely && hasHeaderRow && (
+        <div className="flex items-start gap-2 rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2.5 text-sm text-destructive">
+          <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
+          <div>
+            The first row of your file looks like it might be a real record (something that looks like a phone number, email, or date), not column headers — importing as-is would silently skip it. If your file doesn&apos;t have a header row, turn off &quot;First row is headers&quot; below so nothing gets lost.
+          </div>
+        </div>
+      )}
+
+      <label className="flex items-center gap-2 text-sm text-muted-foreground">
+        <input
+          type="checkbox"
+          checked={hasHeaderRow}
+          onChange={(e) => onToggleHeaderRow(e.target.checked)}
+          className="rounded"
+        />
+        First row of my file is column headers
+      </label>
 
       <div className="rounded-xl border border-border divide-y divide-border">
         {fields.map((field) => {
@@ -574,46 +599,79 @@ function ProgressBar({ step, total }: { step: number; total: number }) {
 
 // ── Main wizard ───────────────────────────────────────────────────────────────
 
+// A file with no real header row silently loses its first record — it
+// gets consumed as "column headers" instead of imported. Derives the
+// headers/rows a step actually sees from the raw as-parsed values (which
+// always assume row 1 is headers) plus whether that assumption holds —
+// pure and reversible, so toggling never loses or reshuffles data.
+function deriveHeadersRows(rawHeaders: string[], rawRows: CsvRow[], hasHeaderRow: boolean): { headers: string[]; rows: CsvRow[] } {
+  if (hasHeaderRow) return { headers: rawHeaders, rows: rawRows };
+  const headers = rawHeaders.map((_, i) => `Column ${i + 1}`);
+  const headerAsRow: CsvRow = {};
+  rawHeaders.forEach((h, i) => { headerAsRow[headers[i]] = h; });
+  const rows = [headerAsRow, ...rawRows.map((r) => {
+    const nr: CsvRow = {};
+    rawHeaders.forEach((h, i) => { nr[headers[i]] = r[h] ?? ""; });
+    return nr;
+  })];
+  return { headers, rows };
+}
+
 export function ImportWizard({ initialEntity }: { initialEntity?: EntityType }) {
   const [step, setStep]         = React.useState<number>(initialEntity ? 1 : 0);
   const [entity, setEntity]     = React.useState<EntityType | null>(initialEntity ?? null);
-  const [headers, setHeaders]   = React.useState<string[]>([]);
-  const [rows, setRows]         = React.useState<CsvRow[]>([]);
+  const [rawHeaders, setRawHeaders] = React.useState<string[]>([]);
+  const [rawRows, setRawRows]       = React.useState<CsvRow[]>([]);
+  const [hasHeaderRow, setHasHeaderRow] = React.useState(true);
   const [filename, setFilename] = React.useState("");
   const [mapping, setMapping]   = React.useState<FieldMapping>({});
   const [assisted, setAssisted] = React.useState(false);
   const [result, setResult]     = React.useState<ImportResult | null>(null);
   const [pending, startTransition] = useTransition();
 
+  const { headers, rows } = React.useMemo(
+    () => deriveHeadersRows(rawHeaders, rawRows, hasHeaderRow),
+    [rawHeaders, rawRows, hasHeaderRow],
+  );
+
   function handleEntitySelect(e: EntityType) {
     setEntity(e);
     setStep(1);
   }
 
+  function guessMapping(h: string[]) {
+    const saved = loadSavedMapping(entity!, h);
+    if (saved) { setMapping(saved); return; }
+    // Auto-match by lowercase similarity
+    const fields = ENTITY_FIELDS[entity!];
+    const initial: FieldMapping = {};
+    for (const field of fields) {
+      const match = h.find(
+        (col) =>
+          col.toLowerCase().replace(/\s+/g, "") === field.label.toLowerCase().replace(/\s+/g, "") ||
+          col.toLowerCase().replace(/\s+/g, "") === field.key.toLowerCase()
+      );
+      initial[field.key] = match ?? null;
+    }
+    setMapping(initial);
+  }
+
   function handleParsed(h: string[], r: CsvRow[], name: string, wasAssisted: boolean) {
-    setHeaders(h);
-    setRows(r);
+    // A real header never itself looks like a phone number, email, or
+    // date — if row 1 does, it's very likely a data row, not headers.
+    const headerRowLikely = looksLikeHeaderRow(h);
+    setRawHeaders(h);
+    setRawRows(r);
+    setHasHeaderRow(headerRowLikely);
     setFilename(name);
     setAssisted(wasAssisted);
-    // Auto-populate saved mapping if headers match
-    const saved = loadSavedMapping(entity!, h);
-    if (saved) {
-      setMapping(saved);
-    } else {
-      // Auto-match by lowercase similarity
-      const fields = ENTITY_FIELDS[entity!];
-      const initial: FieldMapping = {};
-      for (const field of fields) {
-        const match = h.find(
-          (col) =>
-            col.toLowerCase().replace(/\s+/g, "") === field.label.toLowerCase().replace(/\s+/g, "") ||
-            col.toLowerCase().replace(/\s+/g, "") === field.key.toLowerCase()
-        );
-        initial[field.key] = match ?? null;
-      }
-      setMapping(initial);
-    }
+    guessMapping(deriveHeadersRows(h, r, headerRowLikely).headers);
     setStep(2);
+  }
+
+  function handleToggleHeaderRow(next: boolean) {
+    setHasHeaderRow(next);
+    guessMapping(deriveHeadersRows(rawHeaders, rawRows, next).headers);
   }
 
   function handleImport() {
@@ -645,8 +703,9 @@ export function ImportWizard({ initialEntity }: { initialEntity?: EntityType }) 
   function handleReset() {
     setStep(initialEntity ? 1 : 0);
     setEntity(initialEntity ?? null);
-    setHeaders([]);
-    setRows([]);
+    setRawHeaders([]);
+    setRawRows([]);
+    setHasHeaderRow(true);
     setFilename("");
     setMapping({});
     setAssisted(false);
@@ -681,6 +740,9 @@ export function ImportWizard({ initialEntity }: { initialEntity?: EntityType }) 
           onChange={setMapping}
           onNext={() => setStep(3)}
           onBack={() => setStep(1)}
+          hasHeaderRow={hasHeaderRow}
+          headerRowLikely={looksLikeHeaderRow(rawHeaders)}
+          onToggleHeaderRow={handleToggleHeaderRow}
         />
       )}
 

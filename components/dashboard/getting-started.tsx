@@ -13,7 +13,7 @@ import {
 import type { OnboardingStatus } from "@/lib/dashboard/types";
 
 /**
- * Venue onboarding card — "Welcome to Wevenu / You're X% set up."
+ * Venue onboarding card — "Welcome to Hello to Cheers / You're X% set up."
  *
  * Two states:
  *   1. Checklist — not complete; shows steps, Luv nudge, time estimates
@@ -58,7 +58,7 @@ export function GettingStartedCard({
 
   // ── Checklist card ──────────────────────────────────────────────────────────
   return (
-    <Card className="border-primary/20 bg-primary/5">
+    <Card id="getting-started" className="border-primary/20 bg-primary/5">
       <CardHeader className="pb-3">
         {/* Welcome header — shown until halfway */}
         {isNew && (
@@ -67,7 +67,7 @@ export function GettingStartedCard({
               <Building2 className="h-3.5 w-3.5" />
             </span>
             <span className="text-xs font-semibold uppercase tracking-widest text-primary">
-              Welcome to Wevenu
+              Welcome to Hello to Cheers
             </span>
           </div>
         )}

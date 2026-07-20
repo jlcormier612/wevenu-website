@@ -1,5 +1,5 @@
 /**
- * Wevenu HQ — Support/Ops triage. Server-only, HQ-admin-only.
+ * Hello to Cheers HQ — Support/Ops triage. Server-only, HQ-admin-only.
  *
  * Scope note: this surfaces what's genuinely instrumented today — stuck
  * invitations (vendor + team) and notification/digest delivery failures,

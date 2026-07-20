@@ -19,9 +19,11 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const supabase = await createClient();
   const { data } = await supabase.rpc("get_questionnaire_for_couple", { p_key: key });
   const row = data?.[0];
+  // Venue Brand Experience Phase 1: `absolute` stops the root layout's
+  // "%s · Hello to Cheers" template from appending to this customer-facing tab title.
   return row
-    ? { title: `Final Details — ${row.event_name} · ${row.venue_name}` }
-    : { title: "Final Details Form" };
+    ? { title: { absolute: `Final Details — ${row.event_name} · ${row.venue_name}` } }
+    : { title: { absolute: "Final Details Form" } };
 }
 
 export default async function CouplequestionnairePage({ params }: Props) {

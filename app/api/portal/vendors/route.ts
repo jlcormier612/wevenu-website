@@ -1,11 +1,17 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/integrations/supabase/server";
-import { triggerAutoComplete } from "@/lib/playbooks/service";
 
 // Event-scoped vendor recommendations — replaces the old venue-wide,
 // read-only vendor list (Vendor Management — Next Iteration, 2026-07-10).
-// A couple only ever sees what their venue specifically recommended to
-// them, and can select one, which the venue sees immediately.
+//
+// Commitment Alignment Sprint (docs/commitment-lifecycle-architecture.md
+// §9): picking a vendor is now private (toggle_vendor_pick) — the venue
+// sees nothing until the couple explicitly submits their list
+// (/api/portal/vendors/submit). This route previously called
+// triggerAutoComplete via a raw client_portal_sessions table select, which
+// RLS silently blocked for real anonymous portal requests (no anon grant
+// exists on that table) — task completion now happens natively inside
+// submit_vendor_list instead, avoiding that whole bug class.
 
 export async function GET(request: Request) {
   const url = new URL(request.url);
@@ -18,38 +24,14 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  const body = await request.json() as { token?: string; clientId?: string; recommendationId?: string };
-  const { token, clientId, recommendationId } = body;
-  if (!token || !clientId || !recommendationId) {
+  const body = await request.json() as { token?: string; clientId?: string; recommendationId?: string; picked?: boolean };
+  const { token, clientId, recommendationId, picked } = body;
+  if (!token || !clientId || !recommendationId || picked === undefined) {
     return NextResponse.json({ ok: false, error: "Missing fields." }, { status: 400 });
   }
   const supabase = await createClient();
-  const { data } = await supabase.rpc("select_event_vendor_recommendation", {
-    p_access_token: token, p_client_id: clientId, p_recommendation_id: recommendationId,
+  const { data } = await supabase.rpc("toggle_vendor_pick", {
+    p_access_token: token, p_client_id: clientId, p_recommendation_id: recommendationId, p_picked: picked,
   });
-
-  // Auto-complete any Planning task waiting on a vendor selection (e.g.
-  // "Choose a florist") — same mechanism as contract_signed/payment_received,
-  // just triggered from the couple's own action rather than the venue's.
-  if ((data as { ok?: boolean } | null)?.ok) {
-    const { data: session } = await supabase
-      .from("client_portal_sessions")
-      .select("venue_id, client_id")
-      .eq("access_token", token)
-      .maybeSingle<{ venue_id: string; client_id: string }>();
-    if (session) {
-      const { data: event } = await supabase
-        .from("events")
-        .select("id")
-        .eq("client_id", session.client_id).eq("venue_id", session.venue_id)
-        .not("status", "in", "(cancelled,complete)")
-        .order("event_date").limit(1)
-        .maybeSingle<{ id: string }>();
-      if (event) {
-        await triggerAutoComplete(supabase, session.venue_id, event.id, "vendor_selected", "vendor_recommendation", recommendationId);
-      }
-    }
-  }
-
   return NextResponse.json(data ?? { ok: false });
 }

@@ -1,0 +1,58 @@
+# Commitment Alignment Sprint — Seating Delegation & Submission Report
+
+Closes item 2 of 5 in the Commitment Alignment Sprint, per `docs/commitment-lifecycle-architecture.md` §9's Domain Mapping Matrix. Next: Vendor Selection Submission.
+
+## What Shipped
+
+| # | File | Delivers |
+|---|---|---|
+| 1 | `supabase/migrations/20261025000000_..._seating_schema.sql` | `guest_seat_assignments.floor_plan_id` (new), `unique(guest_id, floor_plan_id)` replacing the old booking-wide `unique(guest_id)`; `seating_submissions` (append-only); `seating_delegations` (at most one active grant per plan) |
+| 2 | `supabase/migrations/20261025010000_..._seating_rpcs.sql` | `_build_seating_json` (shared JSON shape); `get_seating_floor_plans`; `get_seating_data`/`assign_guest_to_table`/`remove_guest_assignment` extended with `p_floor_plan_id`; `submit_seating_plan`; `grant_seating_delegation`/`revoke_seating_delegation`; venue-side `get_operational_seating_plan`, `assign_guest_to_table_as_venue`, `remove_guest_assignment_as_venue`, `submit_seating_plan_as_venue`, `revoke_seating_delegation_as_venue` |
+| 3 | `supabase/migrations/20261025020000`, `...030000`, `...040000`, `...050000` | Corrective migrations — see Errors and Fixes below |
+| 4 | `lib/playbooks/constants.ts` | New `seating_submitted` trigger; new stock Client Planning task, "Submit your seating plan" |
+| 5 | `components/portal/seating-section.tsx`, `app/api/portal/seating/*` | Floor-plan picker, Submit action, Delegate/Revoke, delegation banner + read-only enforcement |
+| 6 | `lib/seating/service.ts` | `getSeatingFloorPlansForVenue`, `getOperationalSeatingPlan`; removed `getSeatingDataForVenue` (superseded, confirmed dead) |
+| 7 | `components/events/wedding-day-seating.tsx`, `app/(app)/events/[id]/seating/page.tsx`, `.../seating-print/page.tsx` | Now read the operational plan (latest submission, or live only while delegated) instead of the couple's raw live draft; delegation banner + "Manage Seating" entry point |
+| 8 | `components/events/venue-seating-editor.tsx`, `app/(app)/events/[id]/seating/manage/page.tsx`, `app/api/venue/seating/*` | The venue's delegated editing surface — real, RPC-authorized writes, gated on an active delegation |
+
+## The Finding That Changed This Item's Shape
+
+Before writing any code, research surfaced that `docs/commitment-lifecycle-architecture.md`'s own Domain Mapping Matrix had the Seating finding backwards: it said "the venue currently has no visibility at all." Live code reading showed the opposite — `wedding-day-seating.tsx` (framed as a "day-of" tool) called the exact same `get_seating_data` RPC the couple's own canvas uses, via a borrowed portal token, with **no date gate, no status gate, nothing** — a coordinator could open it at any point during planning and watch the couple arrange tables live. This was surfaced and confirmed with you before any implementation began, and closing it became part of this item's scope rather than a separate follow-up: the coordinator's default read is now always the latest **Submitted** snapshot, live data only for a floor plan the couple has explicitly delegated.
+
+A second, structural finding was also surfaced and confirmed before coding: `guest_seat_assignments` had `unique(guest_id)` with no `floor_plan_id` on the row at all — a guest could hold exactly one seat across the *entire* booking. Given the approved direction that each floor plan (Ceremony, Reception, ...) is its own independent Commitment Lifecycle, this was a real blocker, not a nice-to-have: assigning a guest in a second plan would have silently overwritten their seat in the first. Fixed at the schema level — `floor_plan_id` added, `unique(guest_id, floor_plan_id)`.
+
+## Design Decisions
+
+1. **Delegation grants authorship on the same live workspace, not a separate venue draft.** Per your direction, "the venue edits that operational seating plan using the same canvas" — while delegated, the coordinator's writes go through venue-authenticated RPCs directly against the same `guest_seat_assignments` rows the couple's own canvas would edit. The venue's own `submit_seating_plan_as_venue` is available as an explicit checkpoint (same mechanism the couple uses), not a requirement for every edit to "count" — the live state itself is the operational plan for as long as delegation stays active, matching the banner copy you specified.
+2. **Delegation is per floor plan, symmetric, and mutually exclusive with the other party's writes.** Couple's write RPCs now reject if an active delegation exists for that specific plan; venue's write RPCs reject unless one does. Revocation is available to either party (`revoke_seating_delegation` for the couple, `revoke_seating_delegation_as_venue` for the venue handing it back), each stamping `revoked_by` — "who currently holds the pen" is never ambiguous, matching your stated goal directly.
+3. **The venue's delegated editing UI is not the couple's pixel-identical drag-and-drop canvas — named honestly, not silently scoped down.** Given the size of this item once the live-read violation, the seat-per-plan schema fix, and the full Submit/Delegate mechanism were all in scope, a true single shared React component (identical interaction, two auth contexts) was more refactoring than this pass could responsibly complete. What shipped instead: the *same data model and the same RPC-authorized write path* (`assign_guest_to_table_as_venue`/`remove_guest_assignment_as_venue`, gated on delegation exactly like the couple's own writes are gated on absence of delegation), rendered through a simpler list/dropdown interface rather than a drag canvas. This is real, functional delegated editing — not a stub — and per your own framing ("the UI can start simple and grow, the architecture should be correct"), the architecture is the part built to be correct; full canvas-component reuse is the natural next iteration, not deferred silently.
+4. **The stock "Submit your seating plan" task completes on the *first* plan a couple submits**, not once per plan. Matches the existing stock-task pattern's granularity (a single yes/no engagement signal, not a per-sub-item tracker) — a coordinator who needs multi-plan submission status already has it in the per-plan picker (`get_seating_floor_plans`'s `lastSubmission` per plan), not the Task list.
+
+## Errors and Fixes — Four Self-Caught, All Live-Verified Before and After
+
+1. **Overload duplication, the known hazard, caught immediately.** Extending `get_seating_data`/`assign_guest_to_table`/`remove_guest_assignment` with a trailing `p_floor_plan_id default null` parameter via `CREATE OR REPLACE` created new overloads rather than replacing the originals — confirmed via `pg_proc` (`count = 2` for all three). Fixed with an explicit `drop function` corrective migration; re-verified `count = 1` for all three afterward.
+2. **Missing `delegationId` in `get_seating_data`'s response**, caught before any live test — the couple's "Revoke" action had nothing to call `revoke_seating_delegation(p_delegation_id)` with. Fixed in a corrective migration (same function signature, no new overload).
+3. **Same gap in `get_operational_seating_plan`'s delegated branch**, caught the same way, fixed the same way — the venue's own revoke action needed the delegation id too.
+4. **A real bug, caught live during testing, not before**: `assign_guest_to_table_as_venue` referenced `couple_guests.event_id`, a column that doesn't exist (`couple_guests` is scoped by `client_id`/`venue_id` everywhere else in this codebase, never `event_id`) — every call errored with "column g.event_id does not exist." Fixed to resolve the guest's client via the floor plan's own event (`floor_plans.event_id → events.client_id`), matching the pattern `_build_seating_json` already uses correctly. Re-tested immediately after the fix; confirmed working.
+
+## Live Validation
+
+Real venue, client, event, two floor plans (Reception, Ceremony — each with one table), two real guests created via `/api/portal/guests` and RSVP'd `attending` via `/api/portal/rsvp`, one real Playbook task wired to `seating_submitted`. Venue-authenticated RPCs (gated on `current_user_venue_id()`) were tested by simulating a real authenticated session via Postgres's `request.jwt.claims` config (the standard mechanism Supabase's own `auth.uid()` reads from) rather than skipped — this environment has no way to complete a real browser login flow, so this was the most rigorous verification available for the `current_user_venue_id()`-gated code paths specifically; the couple-portal-token paths were tested via real HTTP calls to the real Next.js routes, as in every prior phase.
+
+- **The Private Until Committed fix, proven, not assumed**: with both guests already seated by the couple in Reception, the coordinator's `get_operational_seating_plan` read returned `notYetSubmitted: true` and empty data — zero visibility into the in-progress work, exactly the fix this item's central finding required.
+- **Submit → three-way commit**: after the couple submitted Reception, the wired Playbook task auto-completed (`status: complete`, `completed_by: system`), and the coordinator's next read returned the frozen 2-guest snapshot.
+- **Multi-plan independence, proven with a live write**: Ceremony's `notYetSubmitted` stayed `true` after Reception was submitted — submitting one plan has zero effect on another.
+- **The seat-per-plan schema fix, proven with a live write**: assigning the same guest (Sam) to both Reception and Ceremony produced two independent `guest_seat_assignments` rows, one per `floor_plan_id` — the exact case that would have silently overwritten under the old `unique(guest_id)` constraint.
+- **Delegation write-gating, both directions**: after delegating Ceremony, the couple's own attempt to edit it was rejected (`{"ok":false}`) while their edits to the still-non-delegated Reception plan continued to work normally in the same test run.
+- **Venue delegated read/write/submit**: confirmed `isDelegated: true` on the coordinator's read for the delegated plan; confirmed a venue-authenticated assign succeeded only after the `event_id` bug (above) was fixed; confirmed `submit_seating_plan_as_venue` created a real, attributed (`submitted_by: "venue"`) snapshot.
+- **Security boundary**: a venue write attempt against the *non*-delegated Reception plan was correctly rejected (`false`) — delegation gating is per-plan, not global.
+- **Revocation, both directions, with attribution**: the couple's own revoke correctly returned write access to them; a fresh re-delegation followed by the venue's own revoke correctly set `revoked_by: "venue"`.
+- **Never Silently Change an Agreement**: both submissions (Reception by the couple, Ceremony by the venue) remained in `seating_submissions` permanently, correctly attributed, neither mutated by the other.
+- **Invalid token rejection**: confirmed on the couple-portal read route.
+- `tsc --noEmit` clean throughout, aside from the same two pre-existing, unrelated stale `.next` entries noted in every prior report this session.
+
+All test data (venue, venue_staff, client, event, two floor plans with tables, two guests, portal session, task, both seating submissions, both delegation grants) created and fully removed; final verification confirmed zero rows across every touched table.
+
+## Recommendation: Seating Delegation & Submission Complete
+
+Ready to proceed to item 3 of the Commitment Alignment Sprint — Vendor Selection Submission — per `docs/commitment-lifecycle-architecture.md` §9's scoping: batch today's immediate-per-category vendor recommendation reveal behind one whole-slate "Submit Vendor List" commit action, the clearest-named remaining conflict in the matrix.

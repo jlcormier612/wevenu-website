@@ -161,6 +161,7 @@ type LeadRow = {
   scores_updated_at: string | null;
   source_data: Record<string, unknown> | null;
   relationship_id: string | null;
+  intake_confidence: number | null;
   created_at: string;
   updated_at: string;
 };
@@ -199,6 +200,7 @@ function mapLead(r: LeadRow, tour: LeadTourInfo = EMPTY_TOUR): Lead {
     scoresUpdatedAt: r.scores_updated_at ?? null,
     sourceData: r.source_data ?? null,
     relationshipId: r.relationship_id ?? null,
+    intakeConfidence: r.intake_confidence ?? null,
     createdAt: r.created_at, updatedAt: r.updated_at,
   };
 }
@@ -265,12 +267,34 @@ export async function getLead(
   if (activitiesRes.error) throw activitiesRes.error;
   if (!leadRes.data) return null;
   const tour = await getCurrentTourForLead(client, venueId, leadId);
+
+  // Once converted, check whether that client has gone on to book an
+  // Event — Commitment Alignment Sprint item C needs this to know whether
+  // guest_count/event_type/event_date are still this Lead's to edit.
+  let linkedEventId: string | null = null;
+  if (clientRes.data?.id) {
+    const { data: eventRow } = await client.from("events").select("id")
+      .eq("client_id", clientRes.data.id).eq("venue_id", venueId).maybeSingle<{ id: string }>();
+    linkedEventId = eventRow?.id ?? null;
+  }
+
+  let otherLeadsOnRelationship = 0;
+  if (leadRes.data.relationship_id) {
+    const { count } = await client.from("leads")
+      .select("id", { count: "exact", head: true })
+      .eq("relationship_id", leadRes.data.relationship_id)
+      .neq("id", leadId);
+    otherLeadsOnRelationship = count ?? 0;
+  }
+
   return {
     ...mapLead(leadRes.data, tour),
     notes: (notesRes.data as NoteRow[]).map(mapNote),
     tasks: (tasksRes.data as TaskRow[]).map(mapTask),
     activities: (activitiesRes.data as ActivityRow[]).map(mapActivity),
     linkedClientId: clientRes.data?.id ?? null,
+    linkedEventId,
+    otherLeadsOnRelationship,
   };
 }
 
@@ -309,6 +333,11 @@ export async function insertLead(
       source: input.source,
       inquiryMessage: input.inquiryMessage.trim(),
       inquiryDate: input.inquiryDate,
+      // Lead Intake architecture: leads.source is now a real, enforced
+      // vocabulary — a CSV row's free-text source that didn't match one is
+      // remapped to "other" upstream, with the original text preserved here
+      // rather than silently dropped.
+      sourceData: input.originalSourceLabel ? { original_source_label: input.originalSourceLabel } : undefined,
     },
   });
   if (error) throw error;
@@ -445,27 +474,46 @@ export async function updateLeadInfo(
   leadId: string,
   input: LeadInput,
 ): Promise<void> {
+  const row: Record<string, unknown> = {
+    first_name: input.firstName.trim(),
+    last_name: input.lastName.trim(),
+    email: input.email.trim() || null,
+    phone: input.phone.trim() || null,
+    partner_first_name: input.partnerFirstName.trim() || null,
+    partner_last_name: input.partnerLastName.trim() || null,
+    partner_email: input.partnerEmail.trim() || null,
+    event_type: input.eventType || null,
+    event_date: input.eventDate || null,
+    end_date: input.endDate || null,
+    guest_count: input.guestCount.trim() ? parseInt(input.guestCount, 10) : null,
+    estimated_budget: input.estimatedBudget.trim()
+      ? parseFloat(input.estimatedBudget.replace(/[$,]/g, ""))
+      : null,
+    source: input.source || null,
+    inquiry_message: input.inquiryMessage.trim() || null,
+    inquiry_date: input.inquiryDate || null,
+  };
+
+  // Commitment Alignment Sprint (docs/commitment-lifecycle-architecture.md
+  // §9, Booking Financial item C) — once the converted client has gone on
+  // to book an Event, it becomes the sole canonical writer for
+  // guest_count/event_type/event_date. Defense-in-depth against a stale
+  // form bypassing the read-only UI, same guard as updateClientInfo.
+  const { data: convertedClient } = await client.from("clients").select("id")
+    .eq("lead_id", leadId).eq("venue_id", venueId).maybeSingle<{ id: string }>();
+  if (convertedClient) {
+    const { data: linkedEvent } = await client.from("events").select("id")
+      .eq("client_id", convertedClient.id).eq("venue_id", venueId).maybeSingle<{ id: string }>();
+    if (linkedEvent) {
+      delete row.event_type;
+      delete row.event_date;
+      delete row.guest_count;
+    }
+  }
+
   const { error } = await client
     .from("leads")
-    .update({
-      first_name: input.firstName.trim(),
-      last_name: input.lastName.trim(),
-      email: input.email.trim() || null,
-      phone: input.phone.trim() || null,
-      partner_first_name: input.partnerFirstName.trim() || null,
-      partner_last_name: input.partnerLastName.trim() || null,
-      partner_email: input.partnerEmail.trim() || null,
-      event_type: input.eventType || null,
-      event_date: input.eventDate || null,
-      end_date: input.endDate || null,
-      guest_count: input.guestCount.trim() ? parseInt(input.guestCount, 10) : null,
-      estimated_budget: input.estimatedBudget.trim()
-        ? parseFloat(input.estimatedBudget.replace(/[$,]/g, ""))
-        : null,
-      source: input.source || null,
-      inquiry_message: input.inquiryMessage.trim() || null,
-      inquiry_date: input.inquiryDate || null,
-    })
+    .update(row)
     .eq("id", leadId)
     .eq("venue_id", venueId);
   if (error) throw error;

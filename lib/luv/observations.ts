@@ -25,10 +25,12 @@ import type { LuvSettings } from "@/lib/luv/settings";
 import { computeInterestFromSignals } from "@/lib/leads/signals";
 import { generateMomentumLanguage } from "@/lib/leads/momentum";
 import { computeEventTaskReadinessByKind } from "@/lib/playbooks/repository";
-import { computePlanningReadiness } from "@/lib/readiness/compute";
+import { computePlanningReadiness, computeTimelineReadiness, computeCommunicationReadiness } from "@/lib/readiness/compute";
 import { getRequests } from "@/lib/requests/service";
 import type { Request as PlatformRequest } from "@/lib/requests/types";
-import { computeWebsiteCompletenessGapTemporary } from "@/lib/luv/website-completeness-temporary";
+import { computeWebsiteReadiness } from "@/lib/wedding-website/readiness";
+import type { TimelineEntry } from "@/lib/timeline/types";
+import type { ThreadWithMessages } from "@/lib/messaging/types";
 
 type DbClient = Awaited<ReturnType<typeof createClient>>;
 
@@ -400,14 +402,13 @@ export async function getLuvObservations(
     const coupleName = [ev.clients?.first_name, ev.clients?.partner_first_name].filter(Boolean).join(" & ");
     const du = Math.ceil((new Date(ev.event_date + "T12:00:00").getTime() - Date.now()) / 86_400_000);
 
-    // See lib/luv/website-completeness-temporary.ts — Website doesn't yet
-    // expose its own status; this is an isolated, explicitly temporary
-    // stand-in, not something to extend here.
-    const gap = computeWebsiteCompletenessGapTemporary({
-      isPublished: site.is_published, hasTravelContent: !!site.content?.travel, daysUntilEvent: du,
+    // Website's own readiness function (lib/wedding-website/readiness.ts) —
+    // Luv narrates around its status, it doesn't compute completeness itself.
+    const websiteReadiness = computeWebsiteReadiness({
+      clientId: site.client_id, isPublished: site.is_published, hasTravelContent: !!site.content?.travel, daysUntilEvent: du,
     });
 
-    if (gap?.kind === "unpublished") {
+    if (websiteReadiness.status === "needs_attention") {
       observations.push({
         id: `website-unpublished-${site.client_id}`,
         kind: "risk",
@@ -417,7 +418,7 @@ export async function getLuvObservations(
         link: `/clients/${site.client_id}`,
         actionLabel: "View Client →",
       });
-    } else if (gap?.kind === "missing_travel_info") {
+    } else if (websiteReadiness.status === "waiting") {
       observations.push({
         id: `website-missing-travel-${site.client_id}`,
         kind: "fact",
@@ -472,38 +473,115 @@ export async function getLuvObservations(
     .gte("event_date", today)
     .lte("event_date", soon90);
 
+  // Timeline + Communication — read Event Readiness, same discipline as
+  // Planning above (Luv Experience Completion, Work Stream 2). Both fetched
+  // venue-wide once, grouped by event, rather than one query per event.
+  //
+  // Private Until Committed (final audit, Luv Experience Completion):
+  // scoped to owner='venue' only — the coordinator's own structural
+  // entries. Timeline is a shared multi-owner table (owner='venue'/
+  // 'client' in the same rows, per docs/timeline-implementation-report.md)
+  // and a client's own entries stay private until they explicitly submit
+  // (submit_timeline → timeline_submissions). Reading raw, unfiltered
+  // timeline_entries here would let Luv infer the size/completeness of a
+  // couple's still-private draft from the coordinator side — exactly what
+  // that model exists to prevent. get_event_timeline_merged (the real
+  // coordinator-facing read everywhere else in the app) already draws this
+  // same line; this query draws it too, rather than bypassing it.
+  const [timelineStatusRes, threadCountsRes] = await Promise.all([
+    supabase.from("timeline_entries").select("event_id, status").eq("venue_id", venueId).eq("owner", "venue"),
+    supabase.from("message_threads").select("event_id, message_count").eq("venue_id", venueId),
+  ]);
+  const timelineByEvent = new Map<string, Pick<TimelineEntry, "status">[]>();
+  for (const r of (timelineStatusRes.data ?? []) as { event_id: string; status: TimelineEntry["status"] }[]) {
+    if (!r.event_id) continue;
+    const list = timelineByEvent.get(r.event_id) ?? [];
+    list.push({ status: r.status });
+    timelineByEvent.set(r.event_id, list);
+  }
+  const threadCountByEvent = new Map<string, number>();
+  for (const r of (threadCountsRes.data ?? []) as { event_id: string | null; message_count: number }[]) {
+    if (!r.event_id) continue;
+    threadCountByEvent.set(r.event_id, (threadCountByEvent.get(r.event_id) ?? 0) + r.message_count);
+  }
+
   for (const ev of (planningCandidateEvents ?? []) as { id: string; name: string; event_date: string; clients?: { first_name?: string | null; partner_first_name?: string | null } | null }[]) {
     const readinessByKind = await computeEventTaskReadinessByKind(supabase, venueId, ev.id);
-    if (!readinessByKind.client && !readinessByKind.venue) continue; // no tasks yet for this event
-
-    const planning = computePlanningReadiness(readinessByKind);
-    const totalRequired = (readinessByKind.client?.totalRequired ?? 0) + (readinessByKind.venue?.totalRequired ?? 0);
-    const completedRequired = (readinessByKind.client?.completedRequired ?? 0) + (readinessByKind.venue?.completedRequired ?? 0);
-
     const du = Math.ceil((new Date(ev.event_date + "T12:00:00").getTime() - Date.now()) / 86_400_000);
     const name = [ev.clients?.first_name, ev.clients?.partner_first_name].filter(Boolean).join(" & ") || ev.name;
 
-    if (planning.status === "needs_attention") {
-      observations.push({
-        id: `planning-attention-${ev.id}`,
-        kind: "risk",
-        priority: du <= 30 ? "high" : "medium",
-        message: `${name}'s planning needs attention.`,
-        detail: planning.detail,
-        link: `/events/${ev.id}#playbook`,
-        actionLabel: "View Playbook →",
-        recommendation: { label: "Review overdue or blocked tasks", link: `/events/${ev.id}#playbook`, type: "navigate" },
-      });
-    } else if (totalRequired >= 5 && completedRequired / totalRequired >= 0.7) {
-      observations.push({
-        id: `strong-momentum-${ev.id}`,
-        kind: "fact",
-        priority: "low",
-        message: `${name} has no exceptions and is ${planning.metric ?? `${completedRequired}/${totalRequired}`} ready.`,
-        detail: du <= 30 ? "Everything is on track for the big day." : "Planning momentum looks strong.",
-        link: `/events/${ev.id}`,
-        actionLabel: "View Event →",
-      });
+    if (readinessByKind.client || readinessByKind.venue) {
+      const planning = computePlanningReadiness(readinessByKind);
+      const totalRequired = (readinessByKind.client?.totalRequired ?? 0) + (readinessByKind.venue?.totalRequired ?? 0);
+      const completedRequired = (readinessByKind.client?.completedRequired ?? 0) + (readinessByKind.venue?.completedRequired ?? 0);
+
+      if (planning.status === "needs_attention") {
+        observations.push({
+          id: `planning-attention-${ev.id}`,
+          kind: "risk",
+          priority: du <= 30 ? "high" : "medium",
+          message: `${name}'s planning needs attention.`,
+          detail: planning.detail,
+          link: `/events/${ev.id}#playbook`,
+          actionLabel: "View Playbook →",
+          recommendation: { label: "Review overdue or blocked tasks", link: `/events/${ev.id}#playbook`, type: "navigate" },
+        });
+      } else if (totalRequired >= 5 && completedRequired / totalRequired >= 0.7) {
+        observations.push({
+          id: `strong-momentum-${ev.id}`,
+          kind: "fact",
+          priority: "low",
+          message: `${name} has no exceptions and is ${planning.metric ?? `${completedRequired}/${totalRequired}`} ready.`,
+          detail: du <= 30 ? "Everything is on track for the big day." : "Planning momentum looks strong.",
+          link: `/events/${ev.id}`,
+          actionLabel: "View Event →",
+        });
+      }
+    }
+
+    // Timeline — genuinely new coverage: the "events approaching" briefing
+    // above (≤21 days) already flags a missing timeline as a boolean; this
+    // reads real completion% for the wider 22-90 day window, where a large
+    // outstanding share is a real, worth-surfacing risk per
+    // docs/luv-platform-intelligence-architecture.md §1's Timeline section.
+    if (du > 21) {
+      const entries = timelineByEvent.get(ev.id) ?? [];
+      const timeline = computeTimelineReadiness(entries as unknown as TimelineEntry[]);
+      if (timeline.status === "waiting" && entries.length >= 5) {
+        const complete = entries.filter((e) => e.status === "complete").length;
+        if (complete / entries.length < 0.5) {
+          observations.push({
+            id: `timeline-attention-${ev.id}`,
+            kind: "risk",
+            priority: du <= 60 ? "medium" : "low",
+            message: `${name}'s day-of timeline is ${timeline.metric ?? `${complete}/${entries.length}`} complete with ${du} days to go.`,
+            link: `/events/${ev.id}#timeline`,
+            actionLabel: "View Timeline →",
+            recommendation: { label: "Review the timeline", link: `/events/${ev.id}#timeline`, type: "navigate" },
+          });
+        }
+      }
+    }
+
+    // Communication — genuinely new coverage: nothing today tells a
+    // coordinator an approaching event has zero logged contact.
+    // conversationExperienceEnabled is deliberately left false here — the
+    // richer unread-count signal needs a per-relationship conversation
+    // resolution this venue-wide pass doesn't do; legacy message-count is
+    // the bounded, honest signal available without it.
+    if (du <= 30) {
+      const threads = [{ messageCount: threadCountByEvent.get(ev.id) ?? 0 }] as ThreadWithMessages[];
+      const communication = computeCommunicationReadiness({ conversationExperienceEnabled: false, conversationMessages: [], threads });
+      if (communication.status === "not_started") {
+        observations.push({
+          id: `communication-none-${ev.id}`,
+          kind: "fact",
+          priority: "low",
+          message: `${name} is ${inDays(ev.event_date)} with no messages logged yet.`,
+          link: `/events/${ev.id}#messages`,
+          actionLabel: "View Event →",
+        });
+      }
     }
   }
 
@@ -662,8 +740,8 @@ export async function getLuvObservations(
   }
 
   // ── Couple portal engagement signals ─────────────────────────────────────
-  // Three patterns: recent activity (momentum), inactivity, guest list momentum
-  const since7d = new Date(Date.now() - 7 * 86_400_000).toISOString();
+  // Inactivity only — a login timestamp, not private planning content
+  // (guest list momentum retired below; see that note for why).
   const { data: portalSessions } = await supabase
     .from("client_portal_sessions")
     .select("client_id, last_accessed_at, clients(first_name, partner_first_name, lead_id)")
@@ -694,40 +772,21 @@ export async function getLuvObservations(
     }
   }
 
-  // Guest list momentum — significant guest additions recently
-  const { data: guestEvents } = await supabase
-    .from("couple_portal_events")
-    .select("client_id, event_data, occurred_at, clients(first_name, partner_first_name)")
-    .eq("venue_id", venueId)
-    .in("event_type", ["guests_added", "csv_imported"])
-    .gte("occurred_at", since7d)
-    .order("occurred_at", { ascending: false });
-
-  if (guestEvents?.length) {
-    // Group by client, sum counts
-    const guestCountByClient = new Map<string, { name: string; count: number }>();
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    for (const ev of (guestEvents as any[]).filter(e => e.clients)) {
-      const count = (ev.event_data?.count as number) ?? 1;
-      const name = [ev.clients.first_name, ev.clients.partner_first_name].filter(Boolean).join(" & ");
-      const existing = guestCountByClient.get(ev.client_id);
-      if (existing) existing.count += count;
-      else guestCountByClient.set(ev.client_id, { name, count });
-    }
-    for (const [clientId, { name, count }] of guestCountByClient) {
-      if (count >= 10) {
-        observations.push({
-          id: `guest-momentum-${clientId}`,
-          kind: "celebration",
-          priority: "low",
-          message: `${name} added ${count} guests this week. Planning momentum looks strong.`,
-          detail: count > 50 ? "Guest count increased significantly — the final payment or capacity may need a check." : undefined,
-          link: `/clients/${clientId}`,
-          actionLabel: "View Client →",
-        });
-      }
-    }
-  }
+  // Guest list momentum — retired (Luv Experience Completion, final Private
+  // Until Committed audit). This read couple_portal_events directly
+  // ("guests_added"/"csv_imported") and surfaced an inferred quantity of
+  // the couple's still-private guest-list activity to the coordinator —
+  // ahead of any explicit submission, and sourced independently of
+  // GuestReadinessSummary, the one approved aggregate-only read
+  // (docs/luv-platform-reconciliation.md §8: "Guest progress... a count,
+  // never a name" — always via the feature's own approved aggregate, never
+  // an ad hoc activity-event query). The guest list is Client-Owned
+  // (couple_guests' own founding migration: "the venue does NOT see
+  // individual records") and only becomes coordinator-visible through the
+  // couple's explicit submission — now the real, compliant "Guest List
+  // Submitted" celebration (Work Stream 3) — not through inferring how
+  // much private list-building happened this week. Retired rather than
+  // patched: keeping both would be redundant with that celebration anyway.
 
   // ── Completed tours without follow-up ────────────────────────────────────
   // The 48 hours after a tour determines conversion. Surface immediately.

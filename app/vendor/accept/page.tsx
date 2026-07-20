@@ -3,7 +3,7 @@ import { createClient } from "@/integrations/supabase/server";
 import { isSupabaseConfigured } from "@/lib/env";
 import { ClaimButton } from "@/components/vendor-app/claim-button";
 
-export const metadata: Metadata = { title: "Accept Invitation — Wevenu" };
+export const metadata: Metadata = { title: "Accept Invitation — Hello to Cheers" };
 
 type Props = { searchParams: Promise<{ token?: string }> };
 
@@ -45,7 +45,7 @@ export default async function VendorAcceptPage({ searchParams }: Props) {
         </div>
 
         <div className="rounded-lg border border-border bg-muted/40 p-4 text-sm text-foreground leading-relaxed">
-          A venue has set up this profile for your business on Wevenu. Claim it to manage your
+          A venue has set up this profile for your business on Hello to Cheers. Claim it to manage your
           profile, service packages, availability, and venue relationships — all in one place.
         </div>
 

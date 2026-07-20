@@ -43,8 +43,8 @@ export function WorkspaceShell({
     <div className="flex h-svh w-full overflow-hidden">
       {/* Desktop sidebar */}
       <aside className="hidden w-64 shrink-0 flex-col border-r bg-sidebar lg:flex">
-        <div className="flex h-16 items-center border-b px-5">
-          <Wordmark />
+        <div className="flex h-20 items-center border-b px-5">
+          <Wordmark sizeClassName="h-[66.8px] w-auto" />
         </div>
         <div className="flex-1 overflow-y-auto">
           <SidebarNav />
@@ -75,9 +75,9 @@ export function WorkspaceShell({
               side="left"
               className="w-72 bg-sidebar p-0 text-sidebar-foreground"
             >
-              <SheetHeader className="h-16 justify-center border-b px-5 text-left">
+              <SheetHeader className="h-20 justify-center border-b px-5 text-left">
                 <SheetTitle>
-                  <Wordmark />
+                  <Wordmark sizeClassName="h-[66.8px] w-auto" />
                 </SheetTitle>
               </SheetHeader>
               <div className="overflow-y-auto">
@@ -87,7 +87,7 @@ export function WorkspaceShell({
           </Sheet>
 
           <div className="lg:hidden">
-            <Wordmark showText={false} />
+            <Wordmark showText={false} sizeClassName="h-[48.6px] w-auto" />
           </div>
 
           {/* Venue branding — logo when uploaded, name + icon otherwise */}

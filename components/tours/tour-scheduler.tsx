@@ -7,7 +7,7 @@
  *
  * This is the "front door" for venue tours.
  * Design: clean, mobile-first, warm. Heritage Sage palette.
- * Every booking creates a lead in Wevenu automatically.
+ * Every booking creates a lead in Hello to Cheers automatically.
  */
 
 import * as React from "react";
@@ -19,8 +19,16 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { TurnstileWidget } from "@/components/shared/turnstile-widget";
 import type { TourSlot, TourVenueInfo } from "@/lib/tours/types";
 
+// Venue Brand Experience Phase 1 — this is the public "front door" for
+// tours, so it's customer-facing (prospective couples, not staff). SAGE/
+// LINEN below are fallback defaults only, used until each call site has the
+// real venue.primaryColor / venue.neutralColor; TAUPE stays a fixed neutral
+// gray — it's used for footer/border text, and a venue's own neutral color
+// is often near-white, unsafe as a text/border color (same reasoning as the
+// couple portal's TAUPE).
 const SAGE = "#5D6F5D";
 const LINEN = "#F7F5F1";
 const TAUPE = "#B8AEA1";
@@ -46,12 +54,13 @@ function formatTime(iso: string): string {
 
 // ── Calendar ─────────────────────────────────────────────────────────────────
 
-function CalendarPicker({ availableDates, selectedDate, onSelect, month, year, onMonthChange }: {
+function CalendarPicker({ availableDates, selectedDate, onSelect, month, year, onMonthChange, primaryColor = SAGE }: {
   availableDates: Set<string>;
   selectedDate: string | null;
   onSelect: (d: string) => void;
   month: number; year: number;
   onMonthChange: (m: number, y: number) => void;
+  primaryColor?: string;
 }) {
   const firstDay = new Date(year, month, 1).getDay();
   const daysInMonth = new Date(year, month + 1, 0).getDate();
@@ -84,7 +93,7 @@ function CalendarPicker({ availableDates, selectedDate, onSelect, month, year, o
               className={`rounded-lg py-2 text-sm font-medium transition-colors text-center ${
                 isSel ? "text-white" : isAvail && !isPast ? "text-heading hover:bg-muted" : "text-muted-foreground/40"
               }`}
-              style={isSel ? { background: SAGE } : isAvail && !isPast ? { background: `${SAGE}15` } : {}}>
+              style={isSel ? { background: primaryColor } : isAvail && !isPast ? { background: `color-mix(in srgb, ${primaryColor} 8%, transparent)` } : {}}>
               {day}
             </button>
           );
@@ -96,7 +105,7 @@ function CalendarPicker({ availableDates, selectedDate, onSelect, month, year, o
 
 // ── Time Slot Grid ────────────────────────────────────────────────────────────
 
-function TimeSlots({ slots, selectedSlot, onSelect }: { slots: TourSlot[]; selectedSlot: TourSlot | null; onSelect: (s: TourSlot) => void }) {
+function TimeSlots({ slots, selectedSlot, onSelect, primaryColor = SAGE }: { slots: TourSlot[]; selectedSlot: TourSlot | null; onSelect: (s: TourSlot) => void; primaryColor?: string }) {
   if (!slots.length) {
     return <p className="text-sm text-muted-foreground text-center py-6">No available times on this date. Please select a different day.</p>;
   }
@@ -107,7 +116,7 @@ function TimeSlots({ slots, selectedSlot, onSelect }: { slots: TourSlot[]; selec
         return (
           <button key={slot.start} type="button" onClick={() => onSelect(slot)}
             className="rounded-xl border py-3 text-sm font-medium transition-colors"
-            style={isSel ? { background: SAGE, borderColor: SAGE, color: "white" } : { borderColor: "#DED6CA", color: "#333" }}>
+            style={isSel ? { background: primaryColor, borderColor: primaryColor, color: "white" } : { borderColor: "#DED6CA", color: "#333" }}>
             <Clock className="h-3.5 w-3.5 inline mr-1 opacity-60" />
             {slot.time}
           </button>
@@ -127,8 +136,9 @@ type FormFields = {
 
 const EMPTY: FormFields = { firstName: "", lastName: "", partnerName: "", email: "", phone: "", eventType: "", eventDate: "", guestCount: "", notes: "" };
 
-function ContactForm({ onSubmit, pending }: { onSubmit: (f: FormFields) => void; pending: boolean }) {
+function ContactForm({ onSubmit, pending }: { onSubmit: (f: FormFields, turnstileToken: string | null) => void; pending: boolean }) {
   const [f, setF] = React.useState<FormFields>(EMPTY);
+  const [turnstileToken, setTurnstileToken] = React.useState<string | null>(null);
   const set = <K extends keyof FormFields>(k: K, v: string) => setF((p) => ({ ...p, [k]: v }));
 
   return (
@@ -175,9 +185,12 @@ function ContactForm({ onSubmit, pending }: { onSubmit: (f: FormFields) => void;
           <Textarea rows={2} value={f.notes} onChange={(e) => set("notes", e.target.value)} placeholder="Questions, specific needs, or anything you'd like to share…" />
         </div>
       </div>
+      <div className="flex justify-center">
+        <TurnstileWidget onToken={setTurnstileToken} />
+      </div>
       <Button type="button" className="w-full"
         disabled={!f.firstName.trim() || !f.lastName.trim() || !f.email.trim() || pending}
-        onClick={() => onSubmit(f)}>
+        onClick={() => onSubmit(f, turnstileToken)}>
         {pending ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Booking your tour…</> : "Confirm Tour →"}
       </Button>
     </div>
@@ -197,11 +210,11 @@ function buildIcsDataUrl(scheduledAt: string, duration: number, venueName: strin
   const start    = new Date(scheduledAt);
   const end      = new Date(start.getTime() + duration * 60000);
   const fmt      = (d: Date) => d.toISOString().replace(/[-:]/g, "").replace(/\.\d{3}Z$/, "");
-  const uid      = `tour-${Date.now()}@wevenu.com`;
+  const uid      = `tour-${Date.now()}@${venueName.replace(/[^a-z0-9]+/gi, "-").toLowerCase() || "venue"}.invalid`;
   const ics = [
     "BEGIN:VCALENDAR",
     "VERSION:2.0",
-    "PRODID:-//Wevenu//Tour Scheduler//EN",
+    "PRODID:-//Tour Scheduler//EN",
     "BEGIN:VEVENT",
     `UID:${uid}`,
     `DTSTAMP:${fmt(new Date())}Z`,
@@ -225,16 +238,17 @@ type ConfirmationProps = {
   addressLine1?: string | null;
   city?: string | null;
   stateRegion?: string | null;
+  primaryColor?: string;
 };
 
-function Confirmation({ venueName, scheduledAt, duration, venuePhone, venueEmail, addressLine1, city, stateRegion }: ConfirmationProps) {
+function Confirmation({ venueName, scheduledAt, duration, venuePhone, venueEmail, addressLine1, city, stateRegion, primaryColor = SAGE }: ConfirmationProps) {
   const addressLine = [addressLine1, [city, stateRegion].filter(Boolean).join(", ")].filter(Boolean).join(", ");
   const gcalUrl  = buildGoogleCalendarUrl(scheduledAt, duration, venueName);
   const icsUrl   = buildIcsDataUrl(scheduledAt, duration, venueName, addressLine || null);
 
   return (
     <div className="py-8 text-center space-y-5">
-      <div className="h-16 w-16 rounded-full mx-auto flex items-center justify-center" style={{ background: `${SAGE}20` }}>
+      <div className="h-16 w-16 rounded-full mx-auto flex items-center justify-center" style={{ background: `color-mix(in srgb, ${primaryColor} 13%, transparent)` }}>
         <span className="text-3xl">🌿</span>
       </div>
       <div>
@@ -256,7 +270,7 @@ function Confirmation({ venueName, scheduledAt, duration, venuePhone, venueEmail
       <div className="flex items-center justify-center gap-3 flex-wrap">
         <a href={gcalUrl} target="_blank" rel="noopener noreferrer"
           className="inline-flex items-center gap-1.5 text-sm font-medium px-4 py-2 rounded-xl border transition-colors hover:opacity-80"
-          style={{ borderColor: SAGE, color: SAGE, background: `${SAGE}10` }}>
+          style={{ borderColor: primaryColor, color: primaryColor, background: `color-mix(in srgb, ${primaryColor} 6%, transparent)` }}>
           📅 Add to Google Calendar
         </a>
         <a href={icsUrl} download="tour.ics"
@@ -312,14 +326,14 @@ export function TourScheduler({ tourKey, venue }: { tourKey: string; venue: Tour
     setStep("form");
   }
 
-  async function handleFormSubmit(fields: { firstName: string; lastName: string; partnerName: string; email: string; phone: string; eventType: string; eventDate: string; guestCount: string; notes: string }) {
+  async function handleFormSubmit(fields: { firstName: string; lastName: string; partnerName: string; email: string; phone: string; eventType: string; eventDate: string; guestCount: string; notes: string }, turnstileToken: string | null) {
     if (!selectedSlot) return;
     setSubmitting(true);
     try {
       const res = await fetch("/api/tours/book", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ key: tourKey, slotStart: selectedSlot.start, ...fields, guestCount: fields.guestCount ? parseInt(fields.guestCount) : null }),
+        body: JSON.stringify({ key: tourKey, slotStart: selectedSlot.start, ...fields, guestCount: fields.guestCount ? parseInt(fields.guestCount) : null, turnstileToken }),
       });
       const data = await res.json() as { ok: boolean; error?: string; scheduledAt?: string; duration?: number };
       if (!data.ok) { toast.error(data.error ?? "Could not complete booking. Please try again."); }
@@ -330,8 +344,12 @@ export function TourScheduler({ tourKey, venue }: { tourKey: string; venue: Tour
 
   if (step === "confirm" && confirmation) {
     return (
-      <div className="min-h-screen flex flex-col" style={{ background: LINEN }}>
-        <header className="border-b border-[#DED6CA] bg-white px-6 py-4">
+      <div className="min-h-screen flex flex-col" style={{ background: venue.neutralColor ?? LINEN }}>
+        <header className="border-b border-[#DED6CA] bg-white px-6 py-4 flex items-center gap-3">
+          {venue.logoUrl && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={venue.logoUrl} alt="" className="h-7 w-7 rounded-full object-cover shrink-0" />
+          )}
           <p className="text-sm font-semibold text-heading">{venue.name}</p>
         </header>
         <main className="flex-1 max-w-md mx-auto w-full px-4 py-8">
@@ -344,6 +362,7 @@ export function TourScheduler({ tourKey, venue }: { tourKey: string; venue: Tour
             addressLine1={venue.addressLine1}
             city={venue.city}
             stateRegion={venue.stateRegion}
+            primaryColor={venue.primaryColor}
           />
         </main>
       </div>
@@ -351,10 +370,16 @@ export function TourScheduler({ tourKey, venue }: { tourKey: string; venue: Tour
   }
 
   return (
-    <div className="min-h-screen flex flex-col" style={{ background: LINEN }}>
+    <div className="min-h-screen flex flex-col" style={{ background: venue.neutralColor ?? LINEN }}>
       {/* Header */}
       <header className="border-b border-[#DED6CA] bg-white px-6 py-4 space-y-0.5">
-        <p className="text-xs text-muted-foreground">{venue.name}</p>
+        <div className="flex items-center gap-3">
+          {venue.logoUrl && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={venue.logoUrl} alt="" className="h-7 w-7 rounded-full object-cover shrink-0" />
+          )}
+          <p className="text-xs text-muted-foreground">{venue.name}</p>
+        </div>
         <p className="font-heading text-lg font-semibold text-heading">{venue.headline}</p>
         {venue.description && <p className="text-xs text-muted-foreground">{venue.description}</p>}
       </header>
@@ -369,7 +394,8 @@ export function TourScheduler({ tourKey, venue }: { tourKey: string; venue: Tour
               ) : (
                 <CalendarPicker availableDates={availableDates} selectedDate={selectedDate}
                   onSelect={handleDateSelect} month={month} year={year}
-                  onMonthChange={(m, y) => { setMonth(m); setYear(y); setSelectedDate(null); setSelectedSlot(null); }} />
+                  onMonthChange={(m, y) => { setMonth(m); setYear(y); setSelectedDate(null); setSelectedSlot(null); }}
+                  primaryColor={venue.primaryColor} />
               )}
             </div>
 
@@ -377,7 +403,7 @@ export function TourScheduler({ tourKey, venue }: { tourKey: string; venue: Tour
             {selectedDate && (
               <div className="rounded-2xl border border-border bg-card p-5 space-y-3">
                 <p className="text-sm font-semibold text-heading">{formatReadable(selectedDate)}</p>
-                <TimeSlots slots={slotsForDate} selectedSlot={selectedSlot} onSelect={handleSlotSelect} />
+                <TimeSlots slots={slotsForDate} selectedSlot={selectedSlot} onSelect={handleSlotSelect} primaryColor={venue.primaryColor} />
               </div>
             )}
 
@@ -406,7 +432,7 @@ export function TourScheduler({ tourKey, venue }: { tourKey: string; venue: Tour
       </main>
 
       <footer className="text-center py-4 text-[10px]" style={{ color: TAUPE }}>
-        Powered by Wevenu · {venue.name}
+        {venue.name}
       </footer>
     </div>
   );

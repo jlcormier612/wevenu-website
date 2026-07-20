@@ -2,6 +2,7 @@
 
 import * as React from "react";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
@@ -19,8 +20,28 @@ import {
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
-import { EVENT_TYPES, LEAD_SOURCES } from "@/lib/leads/constants";
-import type { Lead, LeadErrors, LeadInput } from "@/lib/leads/types";
+import { EVENT_TYPES, LEAD_SOURCES, eventTypeLabel, formatDate } from "@/lib/leads/constants";
+import type { Lead, LeadErrors, LeadInput, LeadWithDetails } from "@/lib/leads/types";
+
+/**
+ * Commitment Alignment Sprint (docs/commitment-lifecycle-architecture.md
+ * §9, Booking Financial item C) — once the converted client has booked an
+ * Event, it's the sole canonical writer for guest_count/event_type/
+ * event_date. Lead keeps showing the value for continuity, but read-only
+ * with a link to where it's actually managed now.
+ */
+function ManagedOnEventField({ label, value, eventId }: { label: string; value: string; eventId: string }) {
+  return (
+    <Field label={label} hint="Managed on the Event now.">
+      <div className="flex h-9 items-center justify-between rounded-md border border-border bg-muted/40 px-3 text-sm">
+        <span className={value ? "text-foreground" : "text-muted-foreground"}>{value || "—"}</span>
+        <Link href={`/events/${eventId}/edit`} className="text-xs font-medium text-primary hover:underline shrink-0 ml-2">
+          Edit on Event →
+        </Link>
+      </div>
+    </Field>
+  );
+}
 
 function leadToInput(lead: Lead): LeadInput {
   return {
@@ -42,7 +63,7 @@ function leadToInput(lead: Lead): LeadInput {
   };
 }
 
-export function LeadEditForm({ lead }: { lead: Lead }) {
+export function LeadEditForm({ lead }: { lead: LeadWithDetails }) {
   const router = useRouter();
   const [input, setInput] = React.useState<LeadInput>(() => leadToInput(lead));
   const [errors, setErrors] = React.useState<LeadErrors>({});
@@ -113,22 +134,34 @@ export function LeadEditForm({ lead }: { lead: Lead }) {
       <div className="space-y-4">
         <p className="text-sm font-medium text-heading">Event details</p>
         <div className="grid gap-4 sm:grid-cols-2">
-          <Field label="Event type" htmlFor="et">
-            <Select value={input.eventType} onValueChange={(v) => set("eventType", v)} items={EVENT_TYPES}>
-              <SelectTrigger id="et"><SelectValue placeholder="Select a type" /></SelectTrigger>
-              <SelectContent>
-                {EVENT_TYPES.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
-              </SelectContent>
-            </Select>
-          </Field>
-          <Field label="Event date" htmlFor="ed">
-            <Input id="ed" type="date" value={input.eventDate} onChange={(e) => set("eventDate", e.target.value)} />
-          </Field>
+          {lead.linkedEventId ? (
+            <ManagedOnEventField label="Event type" value={eventTypeLabel(input.eventType)} eventId={lead.linkedEventId} />
+          ) : (
+            <Field label="Event type" htmlFor="et">
+              <Select value={input.eventType} onValueChange={(v) => set("eventType", v)} items={EVENT_TYPES}>
+                <SelectTrigger id="et"><SelectValue placeholder="Select a type" /></SelectTrigger>
+                <SelectContent>
+                  {EVENT_TYPES.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </Field>
+          )}
+          {lead.linkedEventId ? (
+            <ManagedOnEventField label="Event date" value={formatDate(input.eventDate)} eventId={lead.linkedEventId} />
+          ) : (
+            <Field label="Event date" htmlFor="ed">
+              <Input id="ed" type="date" value={input.eventDate} onChange={(e) => set("eventDate", e.target.value)} />
+            </Field>
+          )}
         </div>
         <div className="grid gap-4 sm:grid-cols-2">
-          <Field label="Estimated guests" htmlFor="gc" error={errors.guestCount}>
-            <Input id="gc" type="number" value={input.guestCount} onChange={(e) => set("guestCount", e.target.value)} placeholder="150" />
-          </Field>
+          {lead.linkedEventId ? (
+            <ManagedOnEventField label="Estimated guests" value={input.guestCount} eventId={lead.linkedEventId} />
+          ) : (
+            <Field label="Estimated guests" htmlFor="gc" error={errors.guestCount}>
+              <Input id="gc" type="number" value={input.guestCount} onChange={(e) => set("guestCount", e.target.value)} placeholder="150" />
+            </Field>
+          )}
           <Field label="Estimated budget (USD)" htmlFor="eb" error={errors.estimatedBudget}>
             <Input id="eb" value={input.estimatedBudget} onChange={(e) => set("estimatedBudget", e.target.value)} placeholder="10,000" />
           </Field>

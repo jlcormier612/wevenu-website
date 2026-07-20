@@ -24,6 +24,9 @@ type ContractRow = {
   sent_at: string | null; expires_at: string | null; created_at: string; updated_at: string;
   clients?: { first_name: string; last_name: string; partner_first_name: string | null; partner_last_name: string | null } | null;
   events?: { event_date: string | null } | null;
+  // Venue Brand Experience Phase 1 — only present in get_contract_by_token's
+  // response (the public sign page's own read).
+  venue?: { name: string | null; primaryColor: string | null; secondaryColor: string | null; accentColor: string | null; neutralColor: string | null; logoUrl: string | null } | null;
 };
 type ActRow = { id: string; venue_id: string; contract_id: string; type: string; title: string; description: string | null; created_at: string; };
 
@@ -46,6 +49,7 @@ function mapContract(r: ContractRow): Contract {
     signToken: r.sign_token, signerName: r.signer_name, signedAt: r.signed_at,
     sentAt: r.sent_at, expiresAt: r.expires_at, createdAt: r.created_at, updatedAt: r.updated_at,
     clientName: cn, eventDate: r.events?.event_date ?? null,
+    venue: r.venue,
   };
 }
 
@@ -152,9 +156,14 @@ export async function getContractByToken(client: DbClient, token: string): Promi
 }
 
 export async function insertContract(client: DbClient, venueId: string, input: NewContractInput): Promise<string> {
+  // "__default__" is the client-only placeholder id used by /contracts/new
+  // when the venue has no saved templates yet (app/(app)/contracts/new/page.tsx)
+  // — it's never a real contract_templates row, so it must never reach the
+  // uuid FK column (was raising 22P02: invalid input syntax for type uuid).
+  const templateId = input.templateId && input.templateId !== "__default__" ? input.templateId : null;
   const { data, error } = await client.from("contracts")
     .insert({ venue_id: venueId, client_id: input.clientId || null, event_id: input.eventId || null,
-      template_id: input.templateId || null, title: input.title.trim(), content: input.content })
+      template_id: templateId, title: input.title.trim(), content: input.content })
     .select("id").single<{ id: string }>();
   if (error) throw error;
   return data.id;
@@ -216,7 +225,14 @@ export async function updateContractStatus(
   }
 
   const update: Record<string, unknown> = { status };
-  if (extra?.sentAt) update.sent_at = new Date().toISOString();
+  if (extra?.sentAt) {
+    update.sent_at = new Date().toISOString();
+    // Commitment Alignment Sprint (docs/commitment-lifecycle-architecture.md
+    // §9, Documents item) — Private until intentionally shared. Sending is
+    // the one existing action that means "the couple should see this now";
+    // this is the only place that ever sets is_couple_visible to true.
+    update.is_couple_visible = true;
+  }
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { error } = await (client.from("contracts") as any).update(update).eq("id", id).eq("venue_id", venueId);
   if (error) throw error;

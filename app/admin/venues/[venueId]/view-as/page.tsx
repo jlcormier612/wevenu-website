@@ -8,7 +8,7 @@ import { EngagementSection } from "@/components/hq/venue-detail/engagement-secti
 import { OverviewSection } from "@/components/hq/venue-detail/overview-section";
 import { getVenueHqDetail } from "@/lib/hq/venue-detail-service";
 
-export const metadata: Metadata = { title: "View As — Wevenu HQ" };
+export const metadata: Metadata = { title: "View As — Hello to Cheers HQ" };
 
 type Props = { params: Promise<{ venueId: string }> };
 

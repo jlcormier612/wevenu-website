@@ -12,7 +12,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   if (!ctx) return { title: "Wedding Workspace" };
   const coupleName = [ctx.client.firstName, ctx.client.partnerFirstName].filter(Boolean).join(" & ");
   return {
-    title: `${coupleName} — ${ctx.venue.name}`,
+    // Venue Brand Experience Phase 1: `absolute` stops the root layout's
+    // "%s · Hello to Cheers" template from appending to this customer-facing tab title.
+    title: { absolute: `${coupleName} — ${ctx.venue.name}` },
     description: `Your wedding planning workspace at ${ctx.venue.name}`,
   };
 }
@@ -32,6 +34,7 @@ export default async function PortalPage({ params }: Props) {
     <PortalShell
       token={token} context={context} initialTasks={tasks}
       initialTimelineSections={timeline.sections} initialTimelineEntries={timeline.entries}
+      initialTimelineLastSubmittedAt={timeline.lastSubmittedAt} initialTimelineHasUnpublishedChanges={timeline.hasUnpublishedChanges}
     />
   );
 }

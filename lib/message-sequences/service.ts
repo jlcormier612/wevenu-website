@@ -2,6 +2,7 @@
  * Automated Series application service. Server-only.
  */
 import { createClient } from "@/integrations/supabase/server";
+import { createAdminClient } from "@/integrations/supabase/admin";
 import { isSupabaseConfigured } from "@/lib/env";
 import * as repo from "@/lib/message-sequences/repository";
 import { validateSequenceInput } from "@/lib/message-sequences/validation";
@@ -12,6 +13,7 @@ import type {
 import { getCurrentVenue } from "@/lib/venue/service";
 
 type DbClient = Awaited<ReturnType<typeof createClient>>;
+type AnyDbClient = DbClient | ReturnType<typeof createAdminClient>;
 
 async function withVenue<T>(
   fn: (supabase: DbClient, venueId: string) => Promise<T>,
@@ -125,17 +127,27 @@ export async function cancelEnrollment_(enrollmentId: string): Promise<SequenceA
 // these as fire-and-forget side effects: a Series failing to enroll or exit
 // must never block a lead being created or a booking going through.
 
-/** Rule-based enrollment (§3.2) — called after a lead is created or its stage changes. */
+/**
+ * Rule-based enrollment (§3.2) — called after a lead is created or its
+ * stage changes. Returns the enrollment ids created (usually 0 or 1, but a
+ * relationship can match more than one active sequence) — Lead Intake logs
+ * the first one onto lead_intake_attempts.sequence_enrollment_id purely for
+ * observability ("what automation fired"); callers that don't need it can
+ * ignore the return value, matching every existing call site.
+ */
 export async function triggerSequencesForRelationship(
-  supabase: DbClient, venueId: string, relationshipId: string,
+  supabase: AnyDbClient, venueId: string, relationshipId: string,
   triggerType: SequenceTriggerType, triggerStage?: string,
-): Promise<void> {
+): Promise<string[]> {
   const sequences = await repo.getActiveSequencesForTrigger(supabase, venueId, triggerType, triggerStage);
+  const enrollmentIds: string[] = [];
   for (const seq of sequences) {
     if (await repo.hasActiveEnrollment(supabase, seq.id, relationshipId)) continue;
     const enrollmentId = await repo.insertEnrollment(supabase, venueId, seq.id, relationshipId);
     await repo.materializeEnrollmentSteps(supabase, venueId, enrollmentId, seq.id, relationshipId);
+    enrollmentIds.push(enrollmentId);
   }
+  return enrollmentIds;
 }
 
 /** Stop on booking (§3.3) — called once a lead becomes a client. */

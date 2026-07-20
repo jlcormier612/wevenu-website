@@ -3,14 +3,33 @@
  * links, and attachments added in the Booking Timeline Experience task).
  */
 
-export type TimelineAudience = "internal" | "couple" | "guest" | "vendor" | "public";
+// docs/client-workspace-product-architecture.md §12 — the approved
+// Visibility vocabulary in full (matches the DB check constraint). "venue"
+// and "client" are kept as valid values for precision/future use, but
+// aren't offered as picker toggles below: per the approved workflow, the
+// venue's own live framework is always visible to the client (they're
+// planning inside it) and the venue always reads the client's latest
+// submitted snapshot — neither of those two core parties' mutual
+// visibility is gated by a tag. Only the three genuine external-audience
+// tags are real, deliberate per-item publishing decisions.
+// "public" (the old vocabulary's unused value, no picker UI ever) is dropped.
+export type TimelineAudience = "venue" | "client" | "wedding_party" | "guests" | "vendors";
 
 export const TIMELINE_AUDIENCES: { value: TimelineAudience; label: string; color: string; emoji: string }[] = [
-  { value: "internal",  label: "Internal",  color: "#B8AEA1", emoji: "🔒" },
-  { value: "couple",    label: "Client",    color: "#D8A7AA", emoji: "💗" },
-  { value: "guest",     label: "Guests",    color: "#5D6F5D", emoji: "🌿" },
-  { value: "vendor",    label: "Vendors",   color: "#C7A66A", emoji: "🚚" },
+  { value: "wedding_party", label: "Wedding Party", color: "#A98CC7", emoji: "💐" },
+  { value: "guests",        label: "Guests",        color: "#5D6F5D", emoji: "🌿" },
+  { value: "vendors",       label: "Vendors",       color: "#C7A66A", emoji: "🚚" },
 ];
+
+// docs/commitment-lifecycle-architecture.md §4 — who authored this item.
+// "shared" deliberately omitted (approved 2026-07-17): Delegation (§7)
+// already covers cross-party edit rights structurally.
+export type TimelineOwner = "venue" | "client";
+
+// Whether this item can be changed right now, by whoever would otherwise
+// be allowed to (§12) — venue-owned structural milestones default locked;
+// never gates a cross-party edit, which Owner alone already governs.
+export type TimelineLockState = "editable" | "locked";
 
 export type TimelineSection = {
   id: string;
@@ -42,11 +61,11 @@ export type TimelineEntry = {
   audiences: TimelineAudience[];
   sectionId: string | null; // null = unsectioned
   sortOrder: number;
-  // Lets the couple edit this exact row from the Client Timeline — only
-  // meaningful when audiences already includes "couple" (Client Timeline
-  // Experience task). Coordinator-only visibility/section/notes/reorder
-  // stay coordinator-only regardless of this flag.
-  clientEditable: boolean;
+  // Who authored this item, and whether it can be changed right now —
+  // fully supersede the old clientEditable boolean (Commitment Alignment,
+  // Timeline Implementation, 2026-07-17).
+  owner: TimelineOwner;
+  lockState: TimelineLockState;
   status: TimelineEntryStatus;
   // Venue team member responsible for this item — references venue_staff,
   // the same roster Planning Tasks assign to (Timeline Experience
@@ -64,7 +83,7 @@ export type TimelineEntryInput = {
   audiences?: TimelineAudience[];
   sectionId?: string | null;
   sortOrder?: number;
-  clientEditable?: boolean;
+  lockState?: TimelineLockState;
   status?: TimelineEntryStatus;
   assignedToStaffId?: string | null;
 };

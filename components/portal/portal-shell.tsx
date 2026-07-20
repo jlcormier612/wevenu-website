@@ -41,13 +41,22 @@ import {
   grantSupportAccessAction, revokeSupportGrantAction,
 } from "@/app/(portal)/p/[token]/account-actions";
 import { RequestsPortalSection, RequestsSummaryCard } from "@/components/portal/requests-section";
+import { LuvIntroCard } from "@/components/luv/luv-intro-card";
 
-const SAGE = "#5D6F5D";
-const LINEN = "#F7F5F1";
+// Venue Brand Experience Phase 1: SAGE/LINEN/CREAM were Hello to Cheers' own hardcoded
+// palette, now the venue's own brand via CSS custom properties injected on
+// this file's root wrapper (context.venue.*). TAUPE stays a fixed muted gray
+// deliberately — it's used here for body text/icon legibility, and a venue's
+// own "neutral" color (often near-white) isn't guaranteed safe as text color
+// the way it is as a background tint. ROSE/ROSE_DEEP are Luv's own persona
+// identity, not a venue-branding target — confirmed unchanged everywhere
+// else in the app (dashboard, Settings, draft panels).
+const SAGE = "var(--venue-primary)";
+const LINEN = "var(--venue-neutral)";
 const TAUPE = "#B8AEA1";
 const ROSE  = "#D8A7AA";
 const ROSE_DEEP = "#C17F84";
-const CREAM = "#F5F4F2";
+const CREAM = "var(--venue-neutral)";
 
 // ── Shared utilities ──────────────────────────────────────────────────────────
 
@@ -572,7 +581,7 @@ function WeddingJourneySection({ guestStats }: { guestStats: GuestStats | null }
                     {m.label}
                   </p>
                   {done && (
-                    <span className="text-[9px] font-semibold px-2 py-0.5 rounded-full" style={{ background: `${SAGE}18`, color: SAGE }}>
+                    <span className="text-[9px] font-semibold px-2 py-0.5 rounded-full" style={{ background: `color-mix(in srgb, var(--venue-primary) 9%, transparent)`, color: SAGE }}>
                       Done ✓
                     </span>
                   )}
@@ -618,7 +627,7 @@ function StarRating({ value, onChange }: { value: number; onChange: (n: number) 
 // ── Post-Wedding: Feedback Flow ───────────────────────────────────────────────
 // Step 1: Venue experience (stars + qualitative)
 // Step 2: Permission (if rating >= 3)
-// Step 3: Wevenu platform feedback — completely separate, never visible to venue
+// Step 3: Hello to Cheers platform feedback — completely separate, never visible to venue
 // Done: Thank you
 
 type FeedbackStep = "prompt" | "step1" | "step2" | "step3" | "done";
@@ -637,7 +646,7 @@ function FeedbackFlow({
   const [wouldRecommend, setWouldRecommend] = React.useState(true);
   const [permission, setPermission] = React.useState<PermOption>("none");
   const [npsScore, setNpsScore]     = React.useState(8);
-  const [wevenuComments, setWevenuComments] = React.useState("");
+  const [platformComments, setPlatformComments] = React.useState("");
   const [suggestions, setSuggestions] = React.useState("");
   const [submitting, setSubmitting] = React.useState(false);
 
@@ -659,7 +668,7 @@ function FeedbackFlow({
         fetch("/api/portal/platform-feedback", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ token, npsScore, comments: wevenuComments, suggestions }),
+          body: JSON.stringify({ token, npsScore, comments: platformComments, suggestions }),
         }),
       ]);
       setStep("done");
@@ -703,8 +712,8 @@ function FeedbackFlow({
   if (step === "done") {
     return (
       <div className="rounded-2xl p-5 flex items-center gap-3"
-        style={{ background: `${SAGE}06`, border: `1px solid ${SAGE}25` }}>
-        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full" style={{ background: `${SAGE}18` }}>
+        style={{ background: `color-mix(in srgb, var(--venue-primary) 2%, transparent)`, border: `1px solid color-mix(in srgb, var(--venue-primary) 15%, transparent)` }}>
+        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full" style={{ background: `color-mix(in srgb, var(--venue-primary) 9%, transparent)` }}>
           <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke={SAGE} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
             <path d="M20 6L9 17l-5-5" />
           </svg>
@@ -820,17 +829,17 @@ function FeedbackFlow({
           </>
         )}
 
-        {/* ── Step 3: Wevenu platform feedback (separate — never to venue) ── */}
+        {/* ── Step 3: Hello to Cheers platform feedback (separate — never to venue) ── */}
         {step === "step3" && (
           <>
             <div className="rounded-xl border p-4 space-y-4 bg-white">
               <div>
                 <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground mb-1">
-                  Just for the Wevenu team
+                  Just for the Hello to Cheers team
                 </p>
-                <p className="text-sm font-medium text-heading">How was your experience using Wevenu?</p>
+                <p className="text-sm font-medium text-heading">How was your experience using Hello to Cheers?</p>
                 <p className="text-xs text-muted-foreground mt-0.5">
-                  🔒 This goes only to Wevenu — never to {venueName}, never publicly shared.
+                  🔒 This goes only to Hello to Cheers — never to {venueName}, never publicly shared.
                 </p>
               </div>
 
@@ -844,7 +853,7 @@ function FeedbackFlow({
                   onChange={e => setNpsScore(Number(e.target.value))}
                   className="w-full accent-rose-400" />
                 <p className="text-center text-[10px] text-muted-foreground mt-1">
-                  How likely are you to recommend Wevenu to others?
+                  How likely are you to recommend Hello to Cheers to others?
                 </p>
               </div>
 
@@ -853,7 +862,7 @@ function FeedbackFlow({
                   Any feedback or features you&apos;d love?{" "}
                   <span className="text-muted-foreground font-normal">(optional)</span>
                 </label>
-                <textarea value={wevenuComments} onChange={e => setWevenuComments(e.target.value)}
+                <textarea value={platformComments} onChange={e => setPlatformComments(e.target.value)}
                   placeholder="What could we improve? What did you love?"
                   rows={2} className="w-full rounded-xl border px-3.5 py-2.5 text-sm resize-none focus:outline-none"
                   style={{ borderColor: "#E5E0DC" }} />
@@ -952,7 +961,7 @@ function MemoriesSection({ token, venueName }: { token: string; venueName: strin
         </div>
         <button type="button" onClick={() => setShowAdd(s => !s)}
           className="text-xs font-semibold px-3 py-1 rounded-full transition-all"
-          style={{ background: showAdd ? `${ROSE}20` : `${SAGE}12`, color: showAdd ? ROSE_DEEP : SAGE }}>
+          style={{ background: showAdd ? `${ROSE}20` : `color-mix(in srgb, var(--venue-primary) 7%, transparent)`, color: showAdd ? ROSE_DEEP : SAGE }}>
           {showAdd ? "Cancel" : "+ Add"}
         </button>
       </div>
@@ -1078,7 +1087,7 @@ function ReferralCard({
   if (done) {
     return (
       <div className="rounded-2xl p-5 text-center space-y-2"
-        style={{ background: `${SAGE}06`, border: `1px solid ${SAGE}25` }}>
+        style={{ background: `color-mix(in srgb, var(--venue-primary) 2%, transparent)`, border: `1px solid color-mix(in srgb, var(--venue-primary) 15%, transparent)` }}>
         <p className="text-lg">💗</p>
         <p className="text-sm font-semibold text-heading">Referral sent. Thank you!</p>
         <p className="text-xs text-muted-foreground">{venueName} will be in touch with them.</p>
@@ -1241,7 +1250,7 @@ function KeepsakeSection({
 
       {/* ── Venue anniversary message (if sent) ── */}
       {annivMessages.length > 0 && (
-        <div className="rounded-2xl p-5 space-y-3" style={{ background: `${SAGE}08`, border: `1px solid ${SAGE}25` }}>
+        <div className="rounded-2xl p-5 space-y-3" style={{ background: `color-mix(in srgb, var(--venue-primary) 3%, transparent)`, border: `1px solid color-mix(in srgb, var(--venue-primary) 15%, transparent)` }}>
           <p className="text-[10px] font-semibold uppercase tracking-[0.18em]" style={{ color: SAGE }}>
             A note from {venueName}
           </p>
@@ -1301,7 +1310,7 @@ function KeepsakeSection({
               style={item.current
                 ? { background: `${ROSE}06` }
                 : item.highlight
-                  ? { background: `${SAGE}05` }
+                  ? { background: `color-mix(in srgb, var(--venue-primary) 2%, transparent)` }
                   : undefined}>
               <span className="text-base shrink-0 mt-0.5" style={{ opacity: item.dim ? 0.45 : 1 }}>
                 {item.emoji}
@@ -1342,9 +1351,9 @@ function KeepsakeSection({
       {/* Already submitted confirmation */}
       {postWeddingStatus?.feedbackSubmitted && daysSince >= 7 && (
         <div className="rounded-2xl p-5 flex items-center gap-3"
-          style={{ background: `${SAGE}06`, border: `1px solid ${SAGE}25` }}>
+          style={{ background: `color-mix(in srgb, var(--venue-primary) 2%, transparent)`, border: `1px solid color-mix(in srgb, var(--venue-primary) 15%, transparent)` }}>
           <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full"
-            style={{ background: `${SAGE}18` }}>
+            style={{ background: `color-mix(in srgb, var(--venue-primary) 9%, transparent)` }}>
             <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke={SAGE}
               strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
               <path d="M20 6L9 17l-5-5" />
@@ -1693,7 +1702,12 @@ function OverviewSection({
       <div className="rounded-3xl overflow-hidden relative" style={{
         background: heroPhotoUrl
           ? `url(${heroPhotoUrl}) center/cover no-repeat`
-          : `linear-gradient(155deg, #3D4F3D 0%, ${SAGE} 38%, #6B8F6B 100%)`,
+          // Venue Brand Experience Phase 1 — the single largest visual
+          // branding surface in the portal (the hero fallback, shown
+          // whenever the couple hasn't uploaded a hero photo). All three
+          // gradient stops are now the venue's own primary/secondary,
+          // not a fixed Hello to Cheers sage gradient.
+          : `linear-gradient(155deg, var(--venue-secondary) 0%, var(--venue-primary) 38%, var(--venue-secondary) 100%)`,
         minHeight: heroPhotoUrl ? "min(62vh, 540px)" : "min(48vh, 400px)",
       }}>
 
@@ -2353,7 +2367,7 @@ function avatarInitials(firstName: string, lastName?: string | null) {
 }
 
 function avatarBg(name: string) {
-  const palettes = [`${SAGE}28`, `${ROSE}28`, "#E8E2D855", "#D4C9BE44"];
+  const palettes = [`color-mix(in srgb, var(--venue-primary) 16%, transparent)`, `${ROSE}28`, "#E8E2D855", "#D4C9BE44"];
   let h = 0;
   for (const c of name) h = (h * 31 + c.charCodeAt(0)) & 0xffff;
   return palettes[h % palettes.length];
@@ -2540,14 +2554,14 @@ function OurPeopleSection({ token, context }: { token: string; context: PortalCo
         <p className="text-[10px] font-semibold uppercase tracking-[0.15em] text-muted-foreground mb-2 px-1">Primary</p>
         <div className="rounded-2xl border border-border bg-card p-4 flex items-center gap-3">
           <div className="h-10 w-10 rounded-full flex items-center justify-center shrink-0 text-sm font-semibold"
-            style={{ background: `${SAGE}22`, color: SAGE }}>
+            style={{ background: `color-mix(in srgb, var(--venue-primary) 13%, transparent)`, color: SAGE }}>
             {avatarInitials(context.client.firstName, context.client.lastName)}
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-sm font-semibold text-heading">{coupleName}</p>
             <p className="text-xs text-muted-foreground">Couple · Primary contact</p>
           </div>
-          <span className="shrink-0 text-[10px] font-semibold px-2.5 py-1 rounded-full" style={{ background: `${SAGE}15`, color: SAGE }}>Full Access</span>
+          <span className="shrink-0 text-[10px] font-semibold px-2.5 py-1 rounded-full" style={{ background: `color-mix(in srgb, var(--venue-primary) 8%, transparent)`, color: SAGE }}>Full Access</span>
         </div>
       </div>
 
@@ -2572,7 +2586,7 @@ function OurPeopleSection({ token, context }: { token: string; context: PortalCo
                       <div className="flex items-center gap-1.5 flex-wrap">
                         <p className="text-sm font-semibold text-heading">{[p.firstName, p.lastName].filter(Boolean).join(" ")}</p>
                         {p.inviteStatus === "pending"  && <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded-full" style={{ background: `${ROSE}15`, color: ROSE_DEEP }}>Pending</span>}
-                        {p.inviteStatus === "accepted" && <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded-full" style={{ background: `${SAGE}15`, color: SAGE }}>Joined ✓</span>}
+                        {p.inviteStatus === "accepted" && <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded-full" style={{ background: `color-mix(in srgb, var(--venue-primary) 8%, transparent)`, color: SAGE }}>Joined ✓</span>}
                       </div>
                       <p className="text-xs text-muted-foreground">{roleLabel(p)} · {p.email}</p>
                       <span className="inline-block mt-1 text-[10px] font-medium px-2 py-0.5 rounded-full"
@@ -2861,12 +2875,26 @@ function CoupleDocumentsPortalSection({ token }: { token: string }) {
 // ── Client Timeline (same Booking Timeline, visibility-filtered) ──────────────
 
 function TimelinePortalSection({
-  token, initialSections, initialEntries,
-}: { token: string; initialSections: PortalTimelineSection[]; initialEntries: PortalTimelineEntry[] }) {
+  token, clientId, initialSections, initialEntries, initialLastSubmittedAt, initialHasUnpublishedChanges,
+}: {
+  token: string; clientId: string;
+  initialSections: PortalTimelineSection[]; initialEntries: PortalTimelineEntry[];
+  initialLastSubmittedAt: string | null; initialHasUnpublishedChanges: boolean;
+}) {
   const { TimelineSection } = require("@/components/portal/timeline-section") as {
-    TimelineSection: React.ComponentType<{ token: string; initialSections: PortalTimelineSection[]; initialEntries: PortalTimelineEntry[] }>;
+    TimelineSection: React.ComponentType<{
+      token: string; clientId: string;
+      initialSections: PortalTimelineSection[]; initialEntries: PortalTimelineEntry[];
+      initialLastSubmittedAt: string | null; initialHasUnpublishedChanges: boolean;
+    }>;
   };
-  return <TimelineSection token={token} initialSections={initialSections} initialEntries={initialEntries} />;
+  return (
+    <TimelineSection
+      token={token} clientId={clientId}
+      initialSections={initialSections} initialEntries={initialEntries}
+      initialLastSubmittedAt={initialLastSubmittedAt} initialHasUnpublishedChanges={initialHasUnpublishedChanges}
+    />
+  );
 }
 
 // ── Ask Luv ───────────────────────────────────────────────────────────────────
@@ -3063,7 +3091,7 @@ function InspirationBoard({
       {filtered.length === 0 && photos.length === 0 ? (
         <button type="button" onClick={() => inputRef.current?.click()}
           className="w-full rounded-2xl border-2 border-dashed py-12 flex flex-col items-center gap-3 transition-colors hover:bg-muted/20"
-          style={{ borderColor: `${SAGE}40` }}>
+          style={{ borderColor: `color-mix(in srgb, var(--venue-primary) 25%, transparent)` }}>
           {uploading
             ? <div className="h-8 w-8 rounded-full border-2 border-muted-foreground/30 border-t-foreground animate-spin" />
             : <span className="text-4xl">🌸</span>}
@@ -3247,7 +3275,7 @@ function JourneySection({
                     <div className="p-4 space-y-1.5">
                       {isAuto ? (
                         <p className="text-[10px] font-semibold tracking-[0.15em] uppercase" style={{ color: TAUPE }}>
-                          ✦ Wevenu noticed
+                          ✦ Luv noticed
                         </p>
                       ) : milestone ? (
                         <p className="text-[10px] font-semibold tracking-[0.15em] uppercase" style={{ color: ROSE_DEEP }}>
@@ -3740,7 +3768,7 @@ function OurStorySection({
                       {isAuto ? (
                         <span className="inline-flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full"
                           style={{ background: `${TAUPE}20`, color: TAUPE }}>
-                          ✦ Wevenu noticed
+                          ✦ Luv noticed
                         </span>
                       ) : ms && (
                         <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full"
@@ -3973,18 +4001,22 @@ const NAV_ITEMS: { id: PortalSection; icon: string; label: string; shortLabel?: 
 
 export function PortalShell({
   token, context, initialTasks, initialTimelineSections = [], initialTimelineEntries = [],
+  initialTimelineLastSubmittedAt = null, initialTimelineHasUnpublishedChanges = false,
 }: {
   token: string;
   context: PortalContext;
   initialTasks: PortalTask[];
   initialTimelineSections?: PortalTimelineSection[];
   initialTimelineEntries?: PortalTimelineEntry[];
+  initialTimelineLastSubmittedAt?: string | null;
+  initialTimelineHasUnpublishedChanges?: boolean;
 }) {
   const [activeSection, setActiveSection] = React.useState<PortalSection>("overview");
   const [guestStats, setGuestStats] = React.useState<GuestStats | null>(null);
   const [todoCount, setTodoCount] = React.useState(0);
   const [profile, setProfile] = React.useState<CoupleProfile | null>(null);
   const [recentActivity, setRecentActivity] = React.useState<RecentActivity | null>(null);
+  const [showLuvIntro, setShowLuvIntro] = React.useState(false);
 
   // Deep-linkable by #hash (e.g. #guests, #seating) — same pattern the
   // Booking Workspace's own tabs already use — so the venue-side Event
@@ -4011,7 +4043,20 @@ export function PortalShell({
       .then(r => r.json())
       .then((d: RecentActivity) => setRecentActivity(d))
       .catch(() => {});
+    // Luv Experience Completion, Work Stream 5 — one-time intro card.
+    fetch(`/api/portal/luv-intro?token=${token}`)
+      .then(r => r.json())
+      .then((d: { seen?: boolean }) => setShowLuvIntro(d.seen === false))
+      .catch(() => {});
   }, [token]);
+
+  function dismissLuvIntro() {
+    setShowLuvIntro(false);
+    void fetch("/api/portal/luv-intro", {
+      method: "POST", headers: { "content-type": "application/json" },
+      body: JSON.stringify({ token }),
+    });
+  }
 
   const firstName = context.client.firstName;
   const partnerName = context.client.partnerFirstName;
@@ -4020,13 +4065,34 @@ export function PortalShell({
   const isOverview = activeSection === "overview";
 
   return (
-    <div className="min-h-screen flex flex-col" style={{ background: LINEN }}>
+    <div
+      className="min-h-screen flex flex-col"
+      style={{
+        background: "var(--venue-neutral)",
+        // Venue Brand Experience Phase 1 — the venue's own brand, cascading
+        // to every nested portal component via CSS custom properties, so
+        // ~16 section files can each reference var(--venue-*) in their own
+        // inline styles without needing this data threaded through props.
+        // Luv's own dusty-rose identity and every functional/status color
+        // (paid/overdue, RSVP state) are deliberately untouched — not brand
+        // targets, per the governing "a couple should remember the venue,
+        // not the software" review.
+        "--venue-primary": context.venue.primaryColor,
+        "--venue-secondary": context.venue.secondaryColor,
+        "--venue-accent": context.venue.accentColor,
+        "--venue-neutral": context.venue.neutralColor,
+      } as React.CSSProperties}
+    >
 
       {/* ── Sticky Header ── */}
       <header className="sticky top-0 z-30 bg-white/95 backdrop-blur border-b border-[#DED6CA]">
         {/* Venue + couple identity */}
         <div className="max-w-4xl mx-auto px-4 sm:px-6 py-2.5 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
+            {context.venue.logoUrl && (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={context.venue.logoUrl} alt={context.venue.name} className="h-7 w-7 rounded-full object-cover shrink-0" />
+            )}
             <p className="text-sm font-semibold text-heading leading-tight font-heading">{coupleName}</p>
             <span className="text-muted-foreground/40 text-xs">·</span>
             <p className="text-xs text-muted-foreground">{context.venue.name}</p>
@@ -4061,7 +4127,7 @@ export function PortalShell({
                     className="relative flex-shrink-0 flex items-center gap-1.5 px-3 py-2.5 text-xs font-medium transition-all rounded-lg mx-0.5"
                     style={{
                       color: isActive ? SAGE : "#5A5550",
-                      background: isActive ? `${SAGE}12` : "transparent",
+                      background: isActive ? `color-mix(in srgb, var(--venue-primary) 7%, transparent)` : "transparent",
                       fontWeight: isActive ? 600 : 400,
                     }}>
                     <span className="text-sm">{item.icon}</span>
@@ -4089,7 +4155,7 @@ export function PortalShell({
                     className="relative flex-shrink-0 flex items-center gap-1.5 px-3 py-2.5 text-xs font-medium transition-all rounded-lg mx-0.5"
                     style={{
                       color: !item.available ? "#8A837D" : isActive ? SAGE : "#6A6460",
-                      background: isActive ? `${SAGE}12` : "transparent",
+                      background: isActive ? `color-mix(in srgb, var(--venue-primary) 7%, transparent)` : "transparent",
                       fontWeight: isActive ? 600 : 400,
                     }}>
                     <span className="text-sm">{item.icon}</span>
@@ -4118,7 +4184,7 @@ export function PortalShell({
               <OverviewSection token={token} context={context} tasks={initialTasks} guestStats={guestStats} todoCount={todoCount} heroPhotoUrl={profile?.heroPhotoUrl ?? null} latestJournalEntry={profile?.latestJournalEntry ?? null} onNavigate={setActiveSection} />
               {/* Right: Quick actions sidebar (desktop only) */}
               <div className="hidden lg:flex flex-col gap-4">
-                <QuickActionsSidebar token={token} context={context} tasks={initialTasks} guestStats={guestStats} todoCount={todoCount} onNavigate={setActiveSection} recentActivity={recentActivity} />
+                <QuickActionsSidebar token={token} context={context} tasks={initialTasks} guestStats={guestStats} todoCount={todoCount} onNavigate={setActiveSection} recentActivity={recentActivity} showLuvIntro={showLuvIntro} onDismissLuvIntro={dismissLuvIntro} />
               </div>
             </div>
           </div>
@@ -4139,7 +4205,7 @@ export function PortalShell({
             {activeSection === "people"    && <OurPeopleSection token={token} context={context} />}
             {activeSection === "guide"     && <VenueGuidePortalSection token={token} context={context} />}
             {activeSection === "tasks"     && <VenueTasksSection token={token} initialTasks={initialTasks} venueName={context.venue.name} />}
-            {activeSection === "timeline"  && <TimelinePortalSection token={token} initialSections={initialTimelineSections} initialEntries={initialTimelineEntries} />}
+            {activeSection === "timeline"  && <TimelinePortalSection token={token} clientId={context.client.id} initialSections={initialTimelineSections} initialEntries={initialTimelineEntries} initialLastSubmittedAt={initialTimelineLastSubmittedAt} initialHasUnpublishedChanges={initialTimelineHasUnpublishedChanges} />}
             {activeSection === "vendors"   && <VendorPortalSection token={token} context={context} />}
             {activeSection === "budget"    && <BudgetPortalSection token={token} />}
             {activeSection === "ask"       && <LuvAskPortalSection token={token} onNavigateToGuide={() => setActiveSection("guide")} />}
@@ -4152,8 +4218,10 @@ export function PortalShell({
         )}
       </main>
 
+      {/* Venue Brand Experience Phase 1: "Powered by Hello to Cheers" removed — the
+          venue is the only visible brand on this customer-facing surface. */}
       <footer className="text-center py-4 text-[10px] border-t border-border/30" style={{ color: TAUPE }}>
-        Powered by Wevenu · {context.venue.name}
+        {context.venue.name}
       </footer>
     </div>
   );
@@ -4163,10 +4231,12 @@ export function PortalShell({
 
 function QuickActionsSidebar({
   token, context, tasks, guestStats, todoCount, onNavigate, recentActivity,
+  showLuvIntro, onDismissLuvIntro,
 }: {
   token: string; context: PortalContext; tasks: PortalTask[]; guestStats: GuestStats | null;
   todoCount: number; onNavigate: (s: PortalSection) => void;
   recentActivity: RecentActivity | null;
+  showLuvIntro: boolean; onDismissLuvIntro: () => void;
 }) {
   const actionNeeded = tasks.filter(t => t.canComplete && t.status !== "complete");
   const required = tasks.filter(t => t.isRequired);
@@ -4290,6 +4360,17 @@ function QuickActionsSidebar({
 
       {/* This Week — live activity feed */}
       <YourWeekCard activity={recentActivity} />
+
+      {/* Luv's one-time intro — shown once, ever, only to genuinely new
+          couples (Luv Experience Completion, Work Stream 5). */}
+      {showLuvIntro && (
+        <LuvIntroCard
+          body="I'll help you stay organized throughout your planning."
+          ctaLabel="Let's start with your first task"
+          onCtaClick={() => onNavigate("tasks")}
+          onDismiss={onDismissLuvIntro}
+        />
+      )}
 
       {/* From Luv */}
       <div className="rounded-2xl p-5 relative overflow-hidden"

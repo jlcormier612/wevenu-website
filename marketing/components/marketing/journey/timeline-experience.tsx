@@ -1,10 +1,9 @@
 import Image from "next/image";
-import Link from "next/link";
-
 import { JourneyNav } from "@/components/marketing/journey/journey-nav";
 import { TimelineWorkspaceMock } from "@/components/marketing/journey/timeline-workspace-mock";
 import { MarketingCta } from "@/components/marketing/marketing-cta";
 import { FILM } from "@/lib/marketing/film";
+import { EDITORIAL_BLEED, EDITORIAL_FRAME, EDITORIAL_IMAGE, TYPE_HERO_SHELL } from "@/lib/marketing/rhythm";
 
 const PRINCIPLES = [
   {
@@ -45,48 +44,47 @@ export function TimelineExperience({ prev, next }: TimelineExperienceProps) {
   return (
     <div className="bg-[var(--true-white)]">
       {/* ── Section 1 · Hero ── */}
-      <section className="px-6 pt-[140px] pb-28 md:pb-36">
-        <div className="mx-auto max-w-[700px]">
-          <p className="text-xs tracking-[0.18em] uppercase text-[var(--heritage-sage)]">
+      <section className={TYPE_HERO_SHELL}>
+        <div className="mx-auto max-w-[65ch]">
+          <p className="text-[0.7125rem] tracking-[0.22em] uppercase text-[var(--heritage-sage)]/82">
             Connected journey · 08
           </p>
-          <h1 className="mt-6 font-heading text-5xl font-medium leading-[1.05] text-[var(--forest-sage)] md:text-6xl lg:text-7xl">
+          <h1 className="mt-8 font-heading text-[3.36rem] font-medium leading-[1.1] tracking-tight text-[var(--forest-sage)] md:text-[4.2rem] lg:text-[5.04rem]">
             Timeline
           </h1>
-          <p className="mt-6 font-heading text-2xl italic text-[var(--forest-sage)]/80 md:text-3xl">
+          <p className="mt-4 font-heading text-2xl italic text-[var(--forest-sage)]/80 md:text-3xl">
             The celebration is ready before the day begins.
           </p>
-          <p className="mt-10 max-w-[620px] text-base leading-relaxed text-[var(--forest-sage)]/70 md:text-lg">
+          <p className="mt-8 max-w-[65ch] text-base leading-[1.7] text-[var(--forest-sage)]/70 md:text-lg">
             Every conversation, planning decision, vendor update, and schedule change naturally
             becomes part of the event timeline—so everyone arrives knowing exactly what&apos;s
             happening.
           </p>
-          <div className="mt-14 flex flex-wrap items-center gap-5">
+          <div className="mt-14 flex flex-wrap items-center gap-4">
             <MarketingCta />
-            <Link
+            <MarketingCta
               href="/product#connected-journey"
-              className="text-sm tracking-wide text-[var(--forest-sage)]/55 underline-offset-4 transition hover:underline"
-            >
-              Back to Journey
-            </Link>
+              label="Back to Journey"
+              variant="ghost"
+            />
           </div>
         </div>
       </section>
 
       {/* ── Section 2 · Lifestyle + Product ── */}
       <section className="px-6 pb-28 md:pb-36">
-        <div className="mx-auto grid max-w-6xl items-stretch gap-8 md:grid-cols-[11fr_9fr] md:gap-10">
-          <div className="relative min-h-[420px] overflow-hidden md:min-h-[560px]">
+        <div className="mx-auto grid max-w-6xl items-start gap-8 md:grid-cols-[11fr_9fr] md:gap-10">
+          <div className={`relative aspect-[16/10] w-full md:aspect-[5/3] ${EDITORIAL_FRAME}`}>
             <Image
               src={FILM.timelineMorning}
-              alt="Ceremony space quietly prepared in golden light — the calm before something beautiful"
+              alt="Event timeline for Elena & James — every moment, perfectly planned"
               fill
-              className="object-cover object-[center_40%]"
+              className={EDITORIAL_IMAGE}
               sizes="(max-width:768px) 100vw, 55vw"
               priority
             />
           </div>
-          <div className="flex flex-col justify-center">
+          <div className="flex flex-col justify-center self-stretch">
             <TimelineWorkspaceMock />
             <p className="mt-6 text-sm tracking-wide text-[var(--forest-sage)]/55">
               Built gradually throughout planning—not rushed together the night before.
@@ -96,15 +94,15 @@ export function TimelineExperience({ prev, next }: TimelineExperienceProps) {
       </section>
 
       {/* ── Section 3 · Three Principles ── */}
-      <section className="px-6 py-24 md:py-32">
+      <section className="px-6 py-28 md:py-36">
         <div className="mx-auto grid max-w-6xl gap-10 md:grid-cols-3 md:gap-12">
           {PRINCIPLES.map((card) => (
             <div key={card.n} className="border-t border-[var(--taupe-medium)]/70 pt-8">
               <p className="font-heading text-sm text-[var(--heritage-sage)]/60">{card.n}</p>
-              <h2 className="mt-4 font-heading text-2xl text-[var(--forest-sage)] md:text-3xl">
+              <h2 className="mt-4 font-heading text-2xl text-[var(--forest-sage)] md:text-[2.1rem]">
                 {card.title}
               </h2>
-              <p className="mt-4 text-sm leading-relaxed text-[var(--forest-sage)]/70 md:text-base">
+              <p className="mt-4 text-sm leading-[1.7] text-[var(--forest-sage)]/70 md:text-base">
                 {card.body}
               </p>
             </div>
@@ -116,13 +114,13 @@ export function TimelineExperience({ prev, next }: TimelineExperienceProps) {
       <section className="bg-[var(--warm-gray)] px-6 py-28 md:py-36">
         <div className="mx-auto grid max-w-6xl gap-14 md:grid-cols-2 md:items-start md:gap-20">
           <div>
-            <h2 className="font-heading text-3xl font-medium leading-[1.15] text-[var(--forest-sage)] md:text-5xl">
+            <h2 className="font-heading text-[2.1rem] font-medium leading-[1.21] text-[var(--forest-sage)] md:text-[3.36rem]">
               Great events begin long before guests arrive.
             </h2>
-            <p className="mt-8 text-base leading-relaxed text-[var(--forest-sage)]/75 md:text-lg">
+            <p className="mt-6 text-base leading-[1.7] text-[var(--forest-sage)]/75 md:text-lg max-w-[65ch]">
               Event day shouldn&apos;t be spent answering questions.
             </p>
-            <p className="mt-5 text-base leading-relaxed text-[var(--forest-sage)]/75 md:text-lg">
+            <p className="mt-5 text-base leading-[1.7] text-[var(--forest-sage)]/75 md:text-lg max-w-[65ch]">
               It should be spent welcoming people.
             </p>
           </div>
@@ -151,15 +149,15 @@ export function TimelineExperience({ prev, next }: TimelineExperienceProps) {
       {/* ── Section 5 · Product Showcase ── */}
       <section className="px-6 py-28 md:py-36">
         <div className="mx-auto grid max-w-6xl items-center gap-12 md:grid-cols-[1.35fr_0.65fr] md:gap-16">
-          <TimelineWorkspaceMock className="min-h-[420px] overflow-hidden border border-[var(--taupe-medium)]/50 bg-[var(--true-white)] shadow-[0_28px_80px_-48px_rgba(47,55,47,0.4)] md:min-h-[520px]" />
+          <TimelineWorkspaceMock className={`min-h-[420px] md:min-h-[520px] ${EDITORIAL_FRAME} bg-[var(--true-white)]`} />
           <div>
-            <h2 className="font-heading text-3xl text-[var(--forest-sage)] md:text-4xl">
+            <h2 className="font-heading text-[2.1rem] text-[var(--forest-sage)] md:text-[2.52rem]">
               Every moment has context.
             </h2>
-            <p className="mt-6 text-base leading-relaxed text-[var(--forest-sage)]/70 md:text-lg">
+            <p className="mt-6 text-base leading-[1.7] text-[var(--forest-sage)]/70 md:text-lg max-w-[65ch]">
               The timeline isn&apos;t another document.
             </p>
-            <p className="mt-5 text-base leading-relaxed text-[var(--forest-sage)]/70 md:text-lg">
+            <p className="mt-5 text-base leading-[1.7] text-[var(--forest-sage)]/70 md:text-lg max-w-[65ch]">
               It&apos;s simply the story of the celebration—already connected to everything that
               came before it.
             </p>
@@ -168,34 +166,25 @@ export function TimelineExperience({ prev, next }: TimelineExperienceProps) {
       </section>
 
       {/* ── Section 6 · Hospitality Photography ── */}
-      <section className="relative min-h-[70vh] md:min-h-[85vh]">
+      <section className={`relative aspect-[16/10] w-full md:aspect-[1024/493] ${EDITORIAL_BLEED}`}>
         <Image
           src={FILM.timelineReady}
-          alt="Ceremony chairs and aisle finished in soft light — venue ready before guests arrive"
+          alt="Wooden ceremony chairs and florals in warm light — preparation creates effortless event days"
           fill
-          className="object-cover"
+          className={EDITORIAL_IMAGE}
           sizes="100vw"
         />
-        <div className="absolute inset-0 bg-[rgba(47,55,47,0.4)]" />
-        <div className="relative z-10 mx-auto flex min-h-[70vh] max-w-3xl flex-col items-center justify-center px-6 text-center text-[var(--true-white)] md:min-h-[85vh]">
-          <p className="font-heading text-3xl italic leading-snug md:text-5xl">
-            “The best event days are the ones that feel effortless.”
-          </p>
-          <p className="mt-8 text-sm tracking-wide text-white/70 md:text-base">
-            Preparation creates the space for genuine hospitality.
-          </p>
-        </div>
       </section>
 
-      {/* ── Section 7 · The Wevenu Difference ── */}
+      {/* ── Section 7 · The Hello to Cheers Difference ── */}
       <section className="px-6 py-28 md:py-36">
         <div className="mx-auto grid max-w-5xl gap-12 md:grid-cols-2 md:items-start md:gap-20">
-          <h2 className="font-heading text-3xl text-[var(--forest-sage)] md:text-5xl">
+          <h2 className="font-heading text-[2.1rem] text-[var(--forest-sage)] md:text-[3.36rem]">
             Less reacting.
             <br />
             More welcoming.
           </h2>
-          <div className="space-y-5 text-base leading-relaxed text-[var(--forest-sage)]/75 md:text-lg">
+          <div className="space-y-5 text-base leading-[1.7] text-[var(--forest-sage)]/75 md:text-lg max-w-[65ch]">
             <p>
               Because planning, vendors, conversations, and schedules have stayed connected from
               the beginning, event day becomes exactly what it should be:

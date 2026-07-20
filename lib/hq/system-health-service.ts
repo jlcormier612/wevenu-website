@@ -1,5 +1,5 @@
 /**
- * Wevenu HQ — System Health. Server-only, HQ-admin-only.
+ * Hello to Cheers HQ — System Health. Server-only, HQ-admin-only.
  *
  * "Cron job status" here means "when did we last see evidence this cron
  * ran" (most recent notification_log / digest send timestamp) — there is no

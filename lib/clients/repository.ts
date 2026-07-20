@@ -177,8 +177,23 @@ export async function insertClient(client: DbClient, venueId: string, input: Cli
 }
 
 export async function updateClientInfo(client: DbClient, venueId: string, clientId: string, input: ClientInput): Promise<void> {
+  const row = toClientRow(venueId, input);
+
+  // Commitment Alignment Sprint (docs/commitment-lifecycle-architecture.md
+  // §9, Booking Financial item C) — once an Event exists, it becomes the
+  // sole canonical writer for guest_count/event_type/event_date. The edit
+  // form already makes these read-only in that case; this is
+  // defense-in-depth against a stale form bypassing that.
+  const { data: linkedEvent } = await client.from("events").select("id")
+    .eq("client_id", clientId).eq("venue_id", venueId).maybeSingle<{ id: string }>();
+  if (linkedEvent) {
+    delete row.event_type;
+    delete row.event_date;
+    delete row.guest_count;
+  }
+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { error } = await (client.from("clients") as any).update(toClientRow(venueId, input)).eq("id", clientId).eq("venue_id", venueId);
+  const { error } = await (client.from("clients") as any).update(row).eq("id", clientId).eq("venue_id", venueId);
   if (error) throw error;
 }
 

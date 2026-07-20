@@ -7,7 +7,7 @@ import { getRequest, getRequestHistory } from "@/lib/requests/service";
 import { getTeamMembers } from "@/lib/team/service";
 import { getCurrentVenue } from "@/lib/venue/service";
 
-export const metadata: Metadata = { title: "Request — Wevenu" };
+export const metadata: Metadata = { title: "Request — Hello to Cheers" };
 
 type Props = { params: Promise<{ id: string }> };
 

@@ -196,7 +196,7 @@ export function LuvRollUpCard() {
                 </p>
               ) : (
                 <p className="text-[11px] text-muted-foreground">
-                  Your weekly synthesis — what matters, what needs action, what to celebrate.
+                  Generate a fresh synthesis anytime — what matters, what needs action, what to celebrate.
                 </p>
               )}
             </div>

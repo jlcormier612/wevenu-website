@@ -5,7 +5,7 @@ import { PRIVACY_POLICY } from "@/lib/marketing/legal";
 
 export const metadata: Metadata = {
   title: "Privacy Policy",
-  description: "How Wevenu collects, uses, and protects information—written for humans first.",
+  description: "How Hello to Cheers collects, uses, and protects information—written for humans first.",
 };
 
 export default function PrivacyPage() {

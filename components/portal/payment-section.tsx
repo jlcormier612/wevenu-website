@@ -32,9 +32,11 @@ type PortalPaymentSchedule = {
 };
 
 // ── Palette ───────────────────────────────────────────────────────────────────
+// Venue Brand Experience Phase 1: SAGE is the venue's own primary color now.
+// ROSE stays Luv's persona identity, unchanged (her observation panel below).
 
 const ROSE  = "#D8A7AA";
-const SAGE  = "#5D6F5D";
+const SAGE  = "var(--venue-primary)";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 

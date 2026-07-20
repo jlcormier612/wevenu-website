@@ -4,7 +4,7 @@ import Link from "next/link";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { getSupportOpsData } from "@/lib/hq/support-service";
 
-export const metadata: Metadata = { title: "Support — Wevenu HQ" };
+export const metadata: Metadata = { title: "Support — Hello to Cheers HQ" };
 
 function fmt(iso: string): string {
   return new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric" });

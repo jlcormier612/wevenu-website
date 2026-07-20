@@ -1,6 +1,6 @@
 const RESEND_URL = "https://api.resend.com/emails";
 
-const FROM = process.env.FROM_EMAIL ?? "Wevenu <onboarding@resend.dev>";
+const FROM = process.env.FROM_EMAIL ?? "Hello to Cheers <onboarding@resend.dev>";
 
 function html(senderName: string, preview: string, ctaUrl: string, ctaLabel: string): string {
   const escaped = preview.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
@@ -10,7 +10,7 @@ function html(senderName: string, preview: string, ctaUrl: string, ctaLabel: str
   ${escaped}
 </div>
 <a href="${ctaUrl}" style="display:inline-block;background:#5D6F5D;color:#fff;text-decoration:none;padding:10px 20px;border-radius:8px;font-size:14px;font-weight:500">${ctaLabel}</a>
-<p style="margin-top:24px;font-size:11px;color:#9A9188">Wevenu · Your venue planning platform</p>
+<p style="margin-top:24px;font-size:11px;color:#9A9188">Hello to Cheers · Your venue planning platform</p>
 </body></html>`;
 }
 

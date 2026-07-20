@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { getHqAnalytics } from "@/lib/hq/analytics-service";
 
-export const metadata: Metadata = { title: "Analytics — Wevenu HQ" };
+export const metadata: Metadata = { title: "Analytics — Hello to Cheers HQ" };
 
 function StatCard({ label, value }: { label: string; value: string }) {
   return (

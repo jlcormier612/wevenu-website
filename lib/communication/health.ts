@@ -1,7 +1,7 @@
 /**
  * Communication Health — Communication Trust Experience, Phase 2.
  *
- * The one question this answers, in plain English: "can I trust Wevenu to
+ * The one question this answers, in plain English: "can I trust Hello to Cheers to
  * communicate with my clients today?" No SPF/DKIM/webhook/DNS language
  * belongs here — that's Phase 7's diagnostics view. This reads the status
  * lifecycle built in Phase 3 (lib/communication/status.ts) and turns it

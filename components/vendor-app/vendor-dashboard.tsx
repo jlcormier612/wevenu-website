@@ -9,6 +9,9 @@ import { VendorLuvBriefing } from "@/components/vendor-app/vendor-luv-briefing";
 import { VendorHealthScoreWidget } from "@/components/vendor-app/vendor-health-score-widget";
 import { formatTime } from "@/lib/vendors/constants";
 import type { VendorDashboardData, VendorDashboardEvent } from "@/lib/vendors/types";
+import { getVendorObservations } from "@/lib/luv/vendor-observations";
+import { LuvIntroCard } from "@/components/luv/luv-intro-card";
+import { markVendorLuvIntroSeenAction } from "@/app/vendor/actions";
 
 function formatDate(iso: string | null): string {
   if (!iso) return "";
@@ -27,50 +30,6 @@ function greetingWord(): string {
   if (h < 12) return "Good morning";
   if (h < 18) return "Good afternoon";
   return "Good evening";
-}
-
-function computeLuvData(data: VendorDashboardData) {
-  const wins: string[] = [];
-  const observations: string[] = [];
-  const now = new Date();
-  const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString();
-
-  const recentVenues = data.venues.filter((v) => v.addedAt >= sevenDaysAgo);
-  if (recentVenues.length > 0) {
-    wins.push(`Connected with ${recentVenues.length} new ${recentVenues.length === 1 ? "venue" : "venues"} this week`);
-  }
-  if (data.upcomingEvents.length > 0) {
-    wins.push(`${data.upcomingEvents.length} upcoming ${data.upcomingEvents.length === 1 ? "event" : "events"} confirmed`);
-  }
-
-  if (data.newInquiryCount > 0) {
-    observations.push(`${data.newInquiryCount} new ${data.newInquiryCount === 1 ? "inquiry" : "inquiries"} waiting for a response`);
-  }
-  if (data.pendingTaskCount > 0) {
-    observations.push(`${data.pendingTaskCount} ${data.pendingTaskCount === 1 ? "task is" : "tasks are"} due soon`);
-  }
-
-  const profile = data.vendor;
-  if (profile.insuranceExpiry) {
-    const daysLeft = Math.ceil(
-      (new Date(profile.insuranceExpiry).getTime() - now.getTime()) / (1000 * 60 * 60 * 24),
-    );
-    if (daysLeft > 0 && daysLeft <= 30) {
-      observations.push(`Insurance expires in ${daysLeft} days — renew soon`);
-    }
-  }
-
-  const profileFields = [
-    profile.businessName, profile.category, profile.description,
-    profile.contactName, profile.email, profile.phone,
-    profile.pricingTier, profile.serviceArea,
-  ];
-  const filledCount = profileFields.filter(Boolean).length;
-  if (filledCount < 6) {
-    observations.push("Profile is incomplete — finish it to improve your business health score");
-  }
-
-  return { wins, observations };
 }
 
 const STATUS_LABELS: Record<string, string> = {
@@ -105,7 +64,9 @@ export function VendorDashboard({ data }: { data: VendorDashboardData }) {
   const today = todayIso();
   const todayEvents = data.upcomingEvents.filter((e) => e.eventDate === today);
   const futureEvents = data.upcomingEvents.filter((e) => !e.eventDate || e.eventDate > today);
-  const { wins, observations } = computeLuvData(data);
+  const { wins, observations } = getVendorObservations(data);
+  const [introDismissed, setIntroDismissed] = React.useState(false);
+  const showIntro = !data.vendor.luvIntroSeenAt && !introDismissed;
 
   return (
     <div className="space-y-6">
@@ -118,6 +79,17 @@ export function VendorDashboard({ data }: { data: VendorDashboardData }) {
           {new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}
         </p>
       </div>
+
+      {/* Luv's one-time intro — shown once, ever, only to genuinely new
+          vendors (Luv Experience Completion, Work Stream 5). */}
+      {showIntro && (
+        <LuvIntroCard
+          body="I'll help you stay on top of your business here."
+          ctaLabel="Let's finish your profile"
+          ctaHref="/vendor/profile"
+          onDismiss={() => { setIntroDismissed(true); void markVendorLuvIntroSeenAction(); }}
+        />
+      )}
 
       {/* Luv briefing */}
       <VendorLuvBriefing

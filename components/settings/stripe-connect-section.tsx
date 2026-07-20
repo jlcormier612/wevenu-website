@@ -56,7 +56,7 @@ export function StripeConnectSection({ venue }: { venue: Venue }) {
           <Badge variant="muted">Coming soon</Badge>
         </div>
         <CardDescription>
-          Accepting deposits and payments directly through Wevenu isn&apos;t live yet.
+          Accepting deposits and payments directly through Hello to Cheers isn&apos;t live yet.
           Continue collecting payments the way you do today, and record them under
           Payments — your payment schedules and balances stay accurate either way.
         </CardDescription>
@@ -77,7 +77,7 @@ export function StripeConnectSection({ venue }: { venue: Venue }) {
                 )}
                 <p className="text-xs text-muted-foreground">
                   Linking your account doesn&apos;t process any payments today — no charge is ever created
-                  through Wevenu yet. We&apos;ll let you know the moment real payment collection is ready.
+                  through Hello to Cheers yet. We&apos;ll let you know the moment real payment collection is ready.
                 </p>
               </div>
             </div>

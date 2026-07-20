@@ -3,7 +3,7 @@
 import * as React from "react";
 import {
   Users, Plus, Trash2, Pencil, Loader2, X, Check, ChevronDown, ChevronUp, Copy, Mail, Send, Undo2, ClipboardList,
-  UserPlus, Link2,
+  UserPlus, Link2, Eye,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -12,6 +12,57 @@ import {
   type GuestStats, type InvitationProgress, type RsvpInsights, type RsvpQuestion,
 } from "@/lib/portal/types";
 import { getGuestObservations } from "@/lib/luv/portal-observations";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { RsvpPage } from "@/components/wedding-website/rsvp-page";
+import type { RsvpContext } from "@/app/rsvp/[token]/page";
+import { FinalizeGuestCountCard } from "@/components/portal/finalize-guest-count-card";
+
+// Hosted Experience Platform Phase 4 — "preview as this guest." Self-contained
+// so it doesn't need new props threaded through GuestRow's already-long list —
+// fetches its own preview data on open, via the couple's own portal token.
+function GuestRsvpPreviewButton({ token, guestId, guestName }: { token: string; guestId: string; guestName: string }) {
+  const [open, setOpen] = React.useState(false);
+  const [loading, setLoading] = React.useState(false);
+  const [context, setContext] = React.useState<RsvpContext | null>(null);
+
+  async function handleOpen() {
+    setOpen(true);
+    if (context) return;
+    setLoading(true);
+    try {
+      const res = await fetch("/api/portal/rsvp/preview", {
+        method: "POST", headers: { "content-type": "application/json" },
+        body: JSON.stringify({ token, guestId }),
+      });
+      const data = await res.json() as { ok: boolean; context?: RsvpContext };
+      if (data.ok && data.context) setContext(data.context);
+      else toast.error("Could not load this guest's RSVP preview.");
+    } catch { toast.error("Could not load this guest's RSVP preview."); }
+    finally { setLoading(false); }
+  }
+
+  return (
+    <Sheet open={open} onOpenChange={setOpen}>
+      <button type="button" onClick={handleOpen}
+        className="p-1 text-muted-foreground hover:text-foreground rounded transition-colors"
+        title={`Preview as ${guestName}`}>
+        <Eye className="h-3.5 w-3.5" />
+      </button>
+      <SheetContent side="right" className="w-full sm:max-w-md p-0 overflow-y-auto">
+        <SheetHeader className="p-4 border-b border-border">
+          <SheetTitle>Preview as {guestName}</SheetTitle>
+        </SheetHeader>
+        {loading ? (
+          <div className="flex items-center justify-center py-16">
+            <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+          </div>
+        ) : context ? (
+          <RsvpPage context={context} rsvpToken="" readOnly />
+        ) : null}
+      </SheetContent>
+    </Sheet>
+  );
+}
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -78,7 +129,7 @@ function parseCSV(text: string): { firstName: string; lastName?: string; email?:
 
 // ── Progress ring (reused from budget-section) ────────────────────────────────
 
-function ProgressRing({ pct, size = 80, stroke = 8, color = "#5D6F5D" }: {
+function ProgressRing({ pct, size = 80, stroke = 8, color = "var(--venue-accent)" }: {
   pct: number; size?: number; stroke?: number; color?: string;
 }) {
   const r    = (size - stroke) / 2;
@@ -110,11 +161,11 @@ function InsightsPanel({ insights, onSendReminders }: {
     <div className="space-y-4">
       {/* Milestone celebrations */}
       {newMilestones.includes("first_rsvp") && (
-        <div className="rounded-2xl bg-[#5D6F5D]/8 border border-[#5D6F5D]/20 px-4 py-3 flex items-center gap-3">
+        <div className="rounded-2xl bg-[color-mix(in_srgb,var(--venue-accent)_8%,transparent)] border border-[color-mix(in_srgb,var(--venue-accent)_20%,transparent)] px-4 py-3 flex items-center gap-3">
           <span className="text-2xl">🎉</span>
           <div>
-            <p className="text-sm font-semibold text-[#3D5040]">Your first RSVP is in!</p>
-            <p className="text-xs text-[#5D6F5D]">The RSVPs are starting to roll in.</p>
+            <p className="text-sm font-semibold" style={{ color: "var(--venue-accent)" }}>Your first RSVP is in!</p>
+            <p className="text-xs" style={{ color: "var(--venue-accent)" }}>The RSVPs are starting to roll in.</p>
           </div>
         </div>
       )}
@@ -128,11 +179,11 @@ function InsightsPanel({ insights, onSendReminders }: {
         </div>
       )}
       {newMilestones.includes("all_responded") && (
-        <div className="rounded-2xl bg-[#5D6F5D]/8 border border-[#5D6F5D]/20 px-4 py-3 flex items-center gap-3">
+        <div className="rounded-2xl bg-[color-mix(in_srgb,var(--venue-accent)_8%,transparent)] border border-[color-mix(in_srgb,var(--venue-accent)_20%,transparent)] px-4 py-3 flex items-center gap-3">
           <span className="text-2xl">💌</span>
           <div>
-            <p className="text-sm font-semibold text-[#3D5040]">Everyone has RSVPed!</p>
-            <p className="text-xs text-[#5D6F5D]">{insights.attending} guests are celebrating with you.</p>
+            <p className="text-sm font-semibold" style={{ color: "var(--venue-accent)" }}>Everyone has RSVPed!</p>
+            <p className="text-xs" style={{ color: "var(--venue-accent)" }}>{insights.attending} guests are celebrating with you.</p>
           </div>
         </div>
       )}
@@ -419,14 +470,14 @@ function QuestionManager({ token, questions, onUpdate }: {
 
           {/* Meal option builder */}
           {adding?.type === "select" && (
-            <div className="rounded-xl border border-[#5D6F5D]/30 bg-[#5D6F5D]/5 p-3 space-y-2">
+            <div className="rounded-xl border border-[color-mix(in_srgb,var(--venue-primary)_30%,transparent)] bg-[color-mix(in_srgb,var(--venue-primary)_5%,transparent)] p-3 space-y-2">
               <p className="text-sm font-medium">{adding.text}</p>
               <p className="text-[11px] text-muted-foreground">Add the meal options guests will choose from:</p>
               {options.map((opt, i) => (
                 <div key={i} className="flex gap-2">
                   <input value={opt} onChange={e => setOptions(p => p.map((o, idx) => idx === i ? e.target.value : o))}
                     placeholder={`Option ${i + 1} (e.g., Beef Tenderloin)`}
-                    className="flex-1 px-3 py-1.5 text-sm border border-border rounded-lg bg-background focus:outline-none focus:ring-1 focus:ring-[#5D6F5D]/40" />
+                    className="flex-1 px-3 py-1.5 text-sm border border-border rounded-lg bg-background focus:outline-none focus:ring-1 focus:ring-[color-mix(in_srgb,var(--venue-primary)_40%,transparent)]" />
                   {options.length > 1 && (
                     <button onClick={() => setOptions(p => p.filter((_, idx) => idx !== i))}
                       className="p-1.5 text-muted-foreground hover:text-foreground">
@@ -446,7 +497,7 @@ function QuestionManager({ token, questions, onUpdate }: {
                 </button>
                 <button onClick={saveSelectQuestion} disabled={saving}
                   className="flex-1 text-xs py-1.5 rounded-lg text-white font-medium disabled:opacity-40"
-                  style={{ backgroundColor: "#5D6F5D" }}>
+                  style={{ backgroundColor: "var(--venue-primary)" }}>
                   {saving ? "Saving…" : "Save"}
                 </button>
               </div>
@@ -506,7 +557,7 @@ function TagCheckboxGrid<T extends string>({ tags, labels, selected, onToggle }:
       {tags.map(tag => (
         <label key={tag} className="flex items-center gap-1.5 text-xs cursor-pointer select-none">
           <input type="checkbox" checked={selected.includes(tag)} onChange={() => onToggle(tag)}
-            className="h-3.5 w-3.5 rounded accent-[#5D6F5D]" />
+            className="h-3.5 w-3.5 rounded accent-[var(--venue-accent)]" />
           <span className="text-muted-foreground">{labels[tag]}</span>
         </label>
       ))}
@@ -588,17 +639,17 @@ function GuestFieldsForm({ fields, setFields, households, mealOptions, autoFocus
       <div className="flex flex-wrap gap-x-5 gap-y-2 pt-0.5">
         <label className="flex items-center gap-2 text-sm cursor-pointer select-none">
           <input type="checkbox" checked={fields.isChild} onChange={e => set("isChild", e.target.checked)}
-            className="h-3.5 w-3.5 rounded accent-[#5D6F5D]" />
+            className="h-3.5 w-3.5 rounded accent-[var(--venue-accent)]" />
           <span className="text-muted-foreground">Child guest</span>
         </label>
         <label className="flex items-center gap-2 text-sm cursor-pointer select-none">
           <input type="checkbox" checked={fields.plusOne} onChange={e => { set("plusOne", e.target.checked); if (!e.target.checked) set("plusOneName", ""); }}
-            className="h-3.5 w-3.5 rounded accent-[#5D6F5D]" />
+            className="h-3.5 w-3.5 rounded accent-[var(--venue-accent)]" />
           <span className="text-muted-foreground">Brings a +1</span>
         </label>
         <label className="flex items-center gap-2 text-sm cursor-pointer select-none">
           <input type="checkbox" checked={fields.isWeddingParty} onChange={e => set("isWeddingParty", e.target.checked)}
-            className="h-3.5 w-3.5 rounded accent-[#5D6F5D]" />
+            className="h-3.5 w-3.5 rounded accent-[var(--venue-accent)]" />
           <span className="text-muted-foreground">Wedding party</span>
         </label>
       </div>
@@ -617,7 +668,7 @@ function GuestFieldsForm({ fields, setFields, households, mealOptions, autoFocus
               className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring" />
             <label className="flex items-center gap-2 text-sm cursor-pointer select-none px-1">
               <input type="checkbox" checked={fields.highChairRequired} onChange={e => set("highChairRequired", e.target.checked)}
-                className="h-3.5 w-3.5 rounded accent-[#5D6F5D]" />
+                className="h-3.5 w-3.5 rounded accent-[var(--venue-accent)]" />
               <span className="text-muted-foreground">High chair needed</span>
             </label>
           </div>
@@ -759,7 +810,8 @@ function PlusOneControl({ guest, linkedPlusOneName, onAssign, onConvert, onRemov
 
 // ── Guest row ─────────────────────────────────────────────────────────────────
 
-function GuestRow({ guest, linkedPlusOneName, primaryGuestName, onDelete, onStatusChange, onEditStart, onInvitationAction, onAssignPlusOne, onConvertPlusOne, onRemovePlusOne }: {
+function GuestRow({ token, guest, linkedPlusOneName, primaryGuestName, onDelete, onStatusChange, onEditStart, onInvitationAction, onAssignPlusOne, onConvertPlusOne, onRemovePlusOne }: {
+  token: string;
   guest: CoupleGuest;
   /** If this guest brings a +1 that's already a real record, that record's name. */
   linkedPlusOneName: string | null;
@@ -843,6 +895,9 @@ function GuestRow({ guest, linkedPlusOneName, primaryGuestName, onDelete, onStat
           title="Copy RSVP link">
           <Copy className="h-3.5 w-3.5" />
         </button>
+
+        <GuestRsvpPreviewButton token={token} guestId={guest.id}
+          guestName={[guest.firstName, guest.lastName].filter(Boolean).join(" ")} />
 
         <button type="button" onClick={() => onEditStart(guest)}
           className="p-1 text-muted-foreground hover:text-foreground rounded transition-colors"
@@ -1415,6 +1470,9 @@ export function GuestSection({ token }: { token: string }) {
         <InvitationProgressPanel progress={progress} onSendToHousehold={handleSendHousehold} />
       )}
 
+      {/* Guest Count — the Commitment Lifecycle's Submit action for this domain */}
+      <FinalizeGuestCountCard token={token} />
+
       {/* RSVP Insights */}
       {insights && insights.total > 0 && (
         <InsightsPanel insights={insights} onSendReminders={sendReminders} />
@@ -1440,7 +1498,7 @@ export function GuestSection({ token }: { token: string }) {
             <button key={f} onClick={() => setFilter(f)}
               className="text-xs font-medium px-3 py-1.5 rounded-full transition-colors"
               style={filter === f
-                ? { background: "#5D6F5D", color: "white" }
+                ? { background: "var(--venue-primary)", color: "white" }
                 : { background: "transparent", color: "#6A6460", border: "1px solid #E0DAD4" }}>
               {f === "all" ? `All (${socialGuests.length})` : `${RSVP_LABELS[f]} (${socialGuests.filter(g => g.rsvpStatus === f).length})`}
             </button>
@@ -1492,13 +1550,13 @@ export function GuestSection({ token }: { token: string }) {
                     <div className="flex gap-2 justify-end pt-1">
                       <button type="button" onClick={() => setEditingId(null)} className="text-sm text-muted-foreground px-3 py-1.5 rounded-lg hover:bg-muted">Cancel</button>
                       <button type="button" onClick={handleEditSave} disabled={!editFields.name.trim() || saving}
-                        className="text-sm font-medium px-4 py-1.5 rounded-lg text-white disabled:opacity-50" style={{ background: "#5D6F5D" }}>
+                        className="text-sm font-medium px-4 py-1.5 rounded-lg text-white disabled:opacity-50" style={{ background: "var(--venue-primary)" }}>
                         {saving ? "Saving…" : "Save Changes"}
                       </button>
                     </div>
                   </div>
                 ) : (
-                  <GuestRow key={g.id} guest={g}
+                  <GuestRow key={g.id} token={token} guest={g}
                     linkedPlusOneName={(() => { const p = plusOneByPrimaryId.get(g.id); return p ? [p.firstName, p.lastName].filter(Boolean).join(" ") : null; })()}
                     primaryGuestName={primaryNameByPlusOneId.get(g.id) ?? null}
                     onDelete={handleDelete} onStatusChange={handleRsvp} onEditStart={handleEditStart} onInvitationAction={handleInvitationAction}
@@ -1522,13 +1580,13 @@ export function GuestSection({ token }: { token: string }) {
                     <div className="flex gap-2 justify-end pt-1">
                       <button type="button" onClick={() => setEditingId(null)} className="text-sm text-muted-foreground px-3 py-1.5 rounded-lg hover:bg-muted">Cancel</button>
                       <button type="button" onClick={handleEditSave} disabled={!editFields.name.trim() || saving}
-                        className="text-sm font-medium px-4 py-1.5 rounded-lg text-white disabled:opacity-50" style={{ background: "#5D6F5D" }}>
+                        className="text-sm font-medium px-4 py-1.5 rounded-lg text-white disabled:opacity-50" style={{ background: "var(--venue-primary)" }}>
                         {saving ? "Saving…" : "Save Changes"}
                       </button>
                     </div>
                   </div>
                 ) : (
-                  <GuestRow key={g.id} guest={g}
+                  <GuestRow key={g.id} token={token} guest={g}
                     linkedPlusOneName={(() => { const p = plusOneByPrimaryId.get(g.id); return p ? [p.firstName, p.lastName].filter(Boolean).join(" ") : null; })()}
                     primaryGuestName={primaryNameByPlusOneId.get(g.id) ?? null}
                     onDelete={handleDelete} onStatusChange={handleRsvp} onEditStart={handleEditStart} onInvitationAction={handleInvitationAction}
@@ -1570,7 +1628,7 @@ export function GuestSection({ token }: { token: string }) {
               className="text-sm text-muted-foreground px-3 py-1.5 rounded-lg hover:bg-muted">Cancel</button>
             <button type="button" onClick={handleAdd} disabled={!addFields.name.trim() || adding}
               className="text-sm font-medium px-4 py-1.5 rounded-lg text-white disabled:opacity-50"
-              style={{ background: "#5D6F5D" }}>
+              style={{ background: "var(--venue-primary)" }}>
               {adding ? "Adding…" : "Add Guest"}
             </button>
           </div>
@@ -1593,7 +1651,7 @@ export function GuestSection({ token }: { token: string }) {
               className="text-sm text-muted-foreground px-3 py-1.5 rounded-lg hover:bg-muted">Cancel</button>
             <button type="button" onClick={handleAddVendorMeal} disabled={!vendorMealName.trim() || addingVendorMeal}
               className="text-sm font-medium px-4 py-1.5 rounded-lg text-white disabled:opacity-50"
-              style={{ background: "#5D6F5D" }}>
+              style={{ background: "var(--venue-primary)" }}>
               {addingVendorMeal ? "Adding…" : "Add Vendor Meal"}
             </button>
           </div>
@@ -1628,7 +1686,7 @@ export function GuestSection({ token }: { token: string }) {
               placeholder="Household name — The Smiths, College Friends…" autoFocus
               className="flex-1 rounded-lg border border-border bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring" />
             <button type="button" onClick={handleCreateHousehold} disabled={!newHouseholdName.trim()}
-              className="text-sm font-medium px-3 py-1.5 rounded-lg text-white disabled:opacity-50" style={{ background: "#5D6F5D" }}>
+              className="text-sm font-medium px-3 py-1.5 rounded-lg text-white disabled:opacity-50" style={{ background: "var(--venue-primary)" }}>
               Add
             </button>
             <button type="button" onClick={() => { setAddingHousehold(false); setNewHouseholdName(""); }}
@@ -1689,7 +1747,7 @@ export function GuestSection({ token }: { token: string }) {
               placeholder="Meal option — e.g. Chicken, Vegetarian, Kids Meal" autoFocus
               className="flex-1 rounded-lg border border-border bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring" />
             <button type="button" onClick={handleCreateMealOption} disabled={!newMealOptionName.trim()}
-              className="text-sm font-medium px-3 py-1.5 rounded-lg text-white disabled:opacity-50" style={{ background: "#5D6F5D" }}>
+              className="text-sm font-medium px-3 py-1.5 rounded-lg text-white disabled:opacity-50" style={{ background: "var(--venue-primary)" }}>
               Add
             </button>
             <button type="button" onClick={() => { setAddingMealOption(false); setNewMealOptionName(""); }}

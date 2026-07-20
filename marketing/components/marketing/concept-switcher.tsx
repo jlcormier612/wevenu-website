@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { CONCEPTS } from "@/lib/marketing/vision";
+import { HOVER_NAV, HOVER_TAB } from "@/lib/marketing/rhythm";
 import { cn } from "@/lib/utils";
 
 export function ConceptSwitcher({ active }: { active?: string }) {
@@ -10,8 +11,10 @@ export function ConceptSwitcher({ active }: { active?: string }) {
         <Link
           href="/concepts"
           className={cn(
-            "shrink-0 text-xs tracking-[0.18em] uppercase",
-            !active ? "text-[var(--forest-sage)]" : "text-[var(--forest-sage)]/45 hover:text-[var(--forest-sage)]",
+            "shrink-0 text-xs tracking-[0.22em] uppercase",
+            !active
+              ? "text-[var(--forest-sage)]"
+              : `text-[var(--forest-sage)]/45 ${HOVER_TAB}`,
           )}
         >
           All concepts
@@ -24,10 +27,10 @@ export function ConceptSwitcher({ active }: { active?: string }) {
             key={c.id}
             href={`/concepts/${c.slug}`}
             className={cn(
-              "shrink-0 rounded-full px-3 py-1.5 text-xs tracking-wide transition",
+              "shrink-0 rounded-full px-3 py-1.5 text-xs tracking-wide transition duration-200 ease-out",
               active === c.slug
                 ? "bg-[var(--heritage-sage)] text-[var(--true-white)]"
-                : "text-[var(--forest-sage)]/65 hover:bg-[var(--linen)] hover:text-[var(--forest-sage)]",
+                : `text-[var(--forest-sage)]/65 ${HOVER_NAV}`,
             )}
           >
             {c.name} · {c.label}

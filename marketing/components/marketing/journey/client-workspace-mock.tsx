@@ -1,3 +1,4 @@
+import { EDITORIAL_FRAME } from "@/lib/marketing/rhythm";
 /**
  * Client portal workspace — venue-branded planning home, not generic software.
  */
@@ -6,7 +7,7 @@ export function ClientWorkspaceMock({ className }: { className?: string }) {
     <div
       className={
         className ??
-        "overflow-hidden border border-[var(--taupe-medium)]/60 bg-[var(--true-white)] shadow-[0_20px_60px_-40px_rgba(47,55,47,0.35)]"
+        `${EDITORIAL_FRAME} bg-[var(--true-white)]`
       }
     >
       <div className="flex items-center gap-2 border-b border-[var(--taupe-medium)]/50 bg-[var(--linen)] px-4 py-3">
@@ -21,7 +22,7 @@ export function ClientWorkspaceMock({ className }: { className?: string }) {
       <div className="grid gap-0 md:grid-cols-[1.15fr_0.85fr]">
         <div className="space-y-5 border-b border-[var(--taupe-medium)]/40 p-5 md:border-b-0 md:border-r md:p-6">
           <div>
-            <p className="text-[10px] tracking-[0.2em] uppercase text-[var(--heritage-sage)]">
+            <p className="text-[10px] tracking-[0.22em] uppercase text-[var(--heritage-sage)]">
               Willow & Hearth
             </p>
             <h3 className="mt-2 font-heading text-2xl text-[var(--forest-sage)]">
@@ -33,7 +34,7 @@ export function ClientWorkspaceMock({ className }: { className?: string }) {
           </div>
 
           <div className="border border-[var(--taupe-medium)]/50 bg-[var(--warm-gray)]/40 p-4">
-            <p className="text-[10px] tracking-[0.18em] uppercase text-[var(--heritage-sage)]/80">
+            <p className="text-[10px] tracking-[0.22em] uppercase text-[var(--heritage-sage)]/80">
               Planning progress
             </p>
             <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-[var(--taupe-medium)]/40">
@@ -43,7 +44,7 @@ export function ClientWorkspaceMock({ className }: { className?: string }) {
           </div>
 
           <div>
-            <p className="text-[10px] tracking-[0.18em] uppercase text-[var(--heritage-sage)]/80">
+            <p className="text-[10px] tracking-[0.22em] uppercase text-[var(--heritage-sage)]/80">
               Upcoming
             </p>
             <ul className="mt-3 space-y-2 text-sm text-[var(--forest-sage)]/75">
@@ -65,7 +66,7 @@ export function ClientWorkspaceMock({ className }: { className?: string }) {
 
         <div className="space-y-5 bg-[var(--warm-gray)]/60 p-5 md:p-6">
           <div>
-            <p className="text-[10px] tracking-[0.18em] uppercase text-[var(--heritage-sage)]/80">
+            <p className="text-[10px] tracking-[0.22em] uppercase text-[var(--heritage-sage)]/80">
               Messages
             </p>
             <ul className="mt-3 space-y-2 text-sm text-[var(--forest-sage)]/70">
@@ -75,7 +76,7 @@ export function ClientWorkspaceMock({ className }: { className?: string }) {
           </div>
 
           <div>
-            <p className="text-[10px] tracking-[0.18em] uppercase text-[var(--heritage-sage)]/80">
+            <p className="text-[10px] tracking-[0.22em] uppercase text-[var(--heritage-sage)]/80">
               Timeline
             </p>
             <ul className="mt-3 space-y-2 text-sm text-[var(--forest-sage)]/70">
@@ -85,7 +86,7 @@ export function ClientWorkspaceMock({ className }: { className?: string }) {
           </div>
 
           <div>
-            <p className="text-[10px] tracking-[0.18em] uppercase text-[var(--heritage-sage)]/80">
+            <p className="text-[10px] tracking-[0.22em] uppercase text-[var(--heritage-sage)]/80">
               Documents
             </p>
             <ul className="mt-3 space-y-2 text-sm text-[var(--forest-sage)]/70">

@@ -15,6 +15,9 @@ import type {
   ConversationSummary,
   PortalConversationResult,
   SendMessageResult,
+  VendorConversationResult,
+  VendorConversationSummary,
+  VendorRollupConversation,
 } from "@/lib/conversations/types";
 import { sendSms } from "@/lib/sms/send";
 import { toE164 } from "@/lib/sms/phone";
@@ -38,16 +41,22 @@ export async function sendConversationMessage(
   body: string,
   channel = "portal",
   emailSubject?: string,
+  hasAttachment = false,
 ): Promise<SendMessageResult> {
   if (!isSupabaseConfigured) return { ok: false, message: "Backend not configured." };
-  if (!body.trim()) return { ok: false, message: "Message can't be empty." };
+  // An attachment-only message ("here's the floor plan," no text) is only
+  // meaningful on record-only channels — email/SMS attachments aren't
+  // actually delivered by either provider integration in this pass, so an
+  // empty body there would silently send nothing.
+  const attachmentOnlyAllowed = hasAttachment && (channel === "portal" || channel === "internal_note");
+  if (!body.trim() && !attachmentOnlyAllowed) return { ok: false, message: "Message can't be empty." };
   const supabase = await createClient();
   const trimmed = body.trim();
 
   // Email and SMS are the two channels with a real external send behind
   // them — attempt the actual send *before* recording it, so the
   // conversation transcript never shows a message as sent when it never
-  // left Wevenu. Every other channel here (portal, internal_note,
+  // left Hello to Cheers. Every other channel here (portal, internal_note,
   // phone_log, ...) is record-only by nature.
   //
   // Email was corrected 2026-07-14 — it looked identical to sms in the
@@ -92,6 +101,25 @@ export async function sendConversationMessage(
   return { ok: true, messageId: result.messageId! };
 }
 
+/** RC2 — every attachment across a Conversation, for the Relationship Context Panel. */
+export async function getConversationAttachments(conversationId: string) {
+  if (!isSupabaseConfigured) return [];
+  const supabase = await createClient();
+  return repo.getConversationAttachments(supabase, conversationId);
+}
+
+/** RC2 — attaches an already-uploaded file to a message the caller just sent. */
+export async function addConversationMessageAttachment(
+  messageId: string,
+  file: { url: string; name: string; size?: number | null; mimeType?: string | null },
+): Promise<{ ok: boolean; message?: string }> {
+  if (!isSupabaseConfigured) return { ok: false, message: "Backend not configured." };
+  const supabase = await createClient();
+  const result = await repo.addConversationMessageAttachment(supabase, messageId, file);
+  if (!result.ok) return { ok: false, message: result.error ?? "Could not attach file." };
+  return { ok: true };
+}
+
 export async function getConversationIdForRelationship(relationshipId: string): Promise<string | null> {
   if (!isSupabaseConfigured) return null;
   const supabase = await createClient();
@@ -118,11 +146,68 @@ export async function getPortalConversation(token: string): Promise<PortalConver
   return { ok: true, conversation: result };
 }
 
-export async function sendPortalConversationMessage(token: string, body: string): Promise<SendMessageResult> {
+export async function sendPortalConversationMessage(
+  token: string,
+  body: string,
+  hasAttachment = false,
+): Promise<SendMessageResult> {
+  if (!isSupabaseConfigured) return { ok: false, message: "Backend not configured." };
+  if (!body.trim() && !hasAttachment) return { ok: false, message: "Message can't be empty." };
+  const supabase = await createClient();
+  const result = await repo.sendPortalConversationMessage(supabase, token, body.trim(), hasAttachment);
+  if (!result.ok) return { ok: false, message: result.error ?? "Could not send message." };
+  return { ok: true, messageId: result.messageId! };
+}
+
+/** RC2 — attaches an already-uploaded file to a message the couple just sent. */
+export async function addPortalConversationMessageAttachment(
+  token: string,
+  messageId: string,
+  file: { url: string; name: string; size?: number | null; mimeType?: string | null },
+): Promise<{ ok: boolean; message?: string }> {
+  if (!isSupabaseConfigured) return { ok: false, message: "Backend not configured." };
+  const supabase = await createClient();
+  const result = await repo.addPortalConversationMessageAttachment(supabase, token, messageId, file);
+  if (!result.ok) return { ok: false, message: result.error ?? "Could not attach file." };
+  return { ok: true };
+}
+
+// ── RC2, Milestone 3 — vendor conversations (event-anchored) ────────────────
+
+/** Venue side — resolves an assignment's Conversation id for the "Message [Vendor]" panel. */
+export async function getConversationIdForEventVendorAssignment(assignmentId: string): Promise<string | null> {
+  if (!isSupabaseConfigured) return null;
+  const supabase = await createClient();
+  return repo.getConversationIdForEventVendorAssignment(supabase, assignmentId);
+}
+
+/** Venue side — the Vendor detail page's conversation history rollup. */
+export async function getVendorRelationshipRollup(vendorRelationshipId: string): Promise<VendorRollupConversation[]> {
+  if (!isSupabaseConfigured) return [];
+  const supabase = await createClient();
+  return repo.getVendorRelationshipRollup(supabase, vendorRelationshipId);
+}
+
+/** Vendor side — the vendor portal's event-grouped Messages inbox. */
+export async function getVendorConversationInbox(): Promise<{ conversations: VendorConversationSummary[]; totalUnread: number }> {
+  if (!isSupabaseConfigured) return { conversations: [], totalUnread: 0 };
+  const supabase = await createClient();
+  return repo.getVendorConversationInbox(supabase);
+}
+
+export async function getVendorConversation(conversationId: string): Promise<VendorConversationResult> {
+  if (!isSupabaseConfigured) return { ok: false, message: "Backend not configured." };
+  const supabase = await createClient();
+  const conversation = await repo.getVendorConversation(supabase, conversationId);
+  if (!conversation) return { ok: false, message: "Conversation not found." };
+  return { ok: true, conversation };
+}
+
+export async function sendVendorConversationMessage(conversationId: string, body: string): Promise<SendMessageResult> {
   if (!isSupabaseConfigured) return { ok: false, message: "Backend not configured." };
   if (!body.trim()) return { ok: false, message: "Message can't be empty." };
   const supabase = await createClient();
-  const result = await repo.sendPortalConversationMessage(supabase, token, body.trim());
+  const result = await repo.sendVendorConversationMessage(supabase, conversationId, body.trim());
   if (!result.ok) return { ok: false, message: result.error ?? "Could not send message." };
   return { ok: true, messageId: result.messageId! };
 }

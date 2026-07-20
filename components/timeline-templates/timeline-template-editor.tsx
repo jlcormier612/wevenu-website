@@ -27,7 +27,7 @@ import type { TimelineTemplateItem, TimelineTemplateItemInput } from "@/lib/time
 import type { TimelineAudience } from "@/lib/timeline/types";
 
 function emptyForm(sortOrder: number): TimelineTemplateItemInput {
-  return { title: "", description: null, notes: null, timeOfDay: null, minutesOffset: null, audiences: ["internal"], sortOrder };
+  return { title: "", description: null, notes: null, timeOfDay: null, minutesOffset: null, audiences: ["venue"], sortOrder };
 }
 
 function itemToForm(item: TimelineTemplateItem): TimelineTemplateItemInput {

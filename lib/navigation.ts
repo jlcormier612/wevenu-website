@@ -44,7 +44,7 @@ export type NavSection = {
  *
  * Each entry maps to an EMPTY placeholder page for a future module (Sprint 1
  * builds navigation + shells only — no business functionality). The structure
- * mirrors the modules defined in the Wevenu Product Blueprint (Book 3).
+ * mirrors the modules defined in the Hello to Cheers Product Blueprint (Book 3).
  */
 export const NAV_SECTIONS: NavSection[] = [
   {

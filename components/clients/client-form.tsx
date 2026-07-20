@@ -2,6 +2,7 @@
 
 import * as React from "react";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
@@ -18,8 +19,30 @@ import { Textarea } from "@/components/ui/textarea";
 import {
   EVENT_TYPES,
   createInitialClientInput,
+  eventTypeLabel,
+  formatDate,
 } from "@/lib/clients/constants";
 import type { ClientErrors, ClientInput } from "@/lib/clients/types";
+
+/**
+ * Commitment Alignment Sprint (docs/commitment-lifecycle-architecture.md
+ * §9, Booking Financial item C) — once an Event exists, it's the sole
+ * canonical writer for guest_count/event_type/event_date. Client keeps
+ * showing the value for continuity, but read-only with a link to where
+ * it's actually managed now, rather than a silently-disabled input.
+ */
+function ManagedOnEventField({ label, value, eventId }: { label: string; value: string; eventId: string }) {
+  return (
+    <Field label={label} hint="Managed on the Event now.">
+      <div className="flex h-9 items-center justify-between rounded-md border border-border bg-muted/40 px-3 text-sm">
+        <span className={value ? "text-foreground" : "text-muted-foreground"}>{value || "—"}</span>
+        <Link href={`/events/${eventId}/edit`} className="text-xs font-medium text-primary hover:underline shrink-0 ml-2">
+          Edit on Event →
+        </Link>
+      </div>
+    </Field>
+  );
+}
 
 export function ClientForm() {
   const router = useRouter();
@@ -52,7 +75,7 @@ export function ClientForm() {
 }
 
 export function ClientFormFields({
-  input, errors, set, onSubmit, pending, submitLabel = "Save client",
+  input, errors, set, onSubmit, pending, submitLabel = "Save client", linkedEventId = null,
 }: {
   input: ClientInput;
   errors: ClientErrors;
@@ -60,6 +83,7 @@ export function ClientFormFields({
   onSubmit: () => void;
   pending: boolean;
   submitLabel?: string;
+  linkedEventId?: string | null;
 }) {
   const router = useRouter();
 
@@ -105,15 +129,23 @@ export function ClientFormFields({
       <div className="space-y-4">
         <p className="text-sm font-medium text-heading">Event details</p>
         <div className="grid gap-4 sm:grid-cols-2">
-          <Field label="Event type" htmlFor="et">
-            <Select value={input.eventType} onValueChange={(v) => set("eventType", v)} items={EVENT_TYPES}>
-              <SelectTrigger id="et"><SelectValue placeholder="Select type" /></SelectTrigger>
-              <SelectContent>{EVENT_TYPES.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent>
-            </Select>
-          </Field>
-          <Field label="Event date" htmlFor="ed">
-            <Input id="ed" type="date" value={input.eventDate} onChange={(e) => set("eventDate", e.target.value)} />
-          </Field>
+          {linkedEventId ? (
+            <ManagedOnEventField label="Event type" value={eventTypeLabel(input.eventType)} eventId={linkedEventId} />
+          ) : (
+            <Field label="Event type" htmlFor="et">
+              <Select value={input.eventType} onValueChange={(v) => set("eventType", v)} items={EVENT_TYPES}>
+                <SelectTrigger id="et"><SelectValue placeholder="Select type" /></SelectTrigger>
+                <SelectContent>{EVENT_TYPES.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent>
+              </Select>
+            </Field>
+          )}
+          {linkedEventId ? (
+            <ManagedOnEventField label="Event date" value={formatDate(input.eventDate)} eventId={linkedEventId} />
+          ) : (
+            <Field label="Event date" htmlFor="ed">
+              <Input id="ed" type="date" value={input.eventDate} onChange={(e) => set("eventDate", e.target.value)} />
+            </Field>
+          )}
         </div>
         <div className="grid gap-4 sm:grid-cols-2">
           <Field label="Ceremony time" htmlFor="ct">
@@ -124,9 +156,13 @@ export function ClientFormFields({
           </Field>
         </div>
         <div className="grid gap-4 sm:grid-cols-2">
-          <Field label="Estimated guests" htmlFor="gc" error={errors.guestCount}>
-            <Input id="gc" type="number" value={input.guestCount} onChange={(e) => set("guestCount", e.target.value)} placeholder="150" />
-          </Field>
+          {linkedEventId ? (
+            <ManagedOnEventField label="Estimated guests" value={input.guestCount} eventId={linkedEventId} />
+          ) : (
+            <Field label="Estimated guests" htmlFor="gc" error={errors.guestCount}>
+              <Input id="gc" type="number" value={input.guestCount} onChange={(e) => set("guestCount", e.target.value)} placeholder="150" />
+            </Field>
+          )}
           <Field label="Rehearsal date" htmlFor="rh" error={errors.rehearsalDate}>
             <Input id="rh" type="date" value={input.rehearsalDate} onChange={(e) => set("rehearsalDate", e.target.value)} />
           </Field>

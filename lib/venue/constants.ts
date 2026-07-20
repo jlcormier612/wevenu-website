@@ -22,6 +22,9 @@ export const VENUE_TYPES: Option[] = [
   { value: "conference_center", label: "Conference Center" },
   { value: "rooftop", label: "Rooftop / Loft" },
   { value: "museum_gallery", label: "Museum / Gallery" },
+  { value: "inn_bnb", label: "Inn / B&B" },
+  { value: "estate", label: "Estate" },
+  { value: "camp_retreat", label: "Camp / Retreat" },
   { value: "other", label: "Other" },
 ];
 
@@ -78,7 +81,7 @@ export const WEEK_START_OPTIONS: Option[] = [
   { value: "1", label: "Monday" },
 ];
 
-/** Venue brand defaults — the Wevenu sage palette, editable per venue. */
+/** Venue brand defaults — the Hello to Cheers sage palette, editable per venue. */
 export const DEFAULT_PRIMARY_COLOR = "#5D6F5D";
 export const DEFAULT_SECONDARY_COLOR = "#4F5F4F";
 export const DEFAULT_TIMEZONE = "America/New_York";

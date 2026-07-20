@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 
 import { CelebrationExperience } from "@/components/marketing/journey/celebration-experience";
@@ -112,28 +111,27 @@ export default async function ProductJourneyPage({
   }
 
   return (
-    <div className="bg-[var(--true-white)] px-6 pt-[140px] pb-[120px]">
-      <article className="mx-auto max-w-[700px]">
-        <p className="text-xs tracking-[0.18em] uppercase text-[var(--heritage-sage)]">
+    <div className="bg-[var(--true-white)] px-6 pt-[140px] pb-28 md:pb-36">
+      <article className="mx-auto max-w-[65ch]">
+        <p className="text-[0.7125rem] tracking-[0.22em] uppercase text-[var(--heritage-sage)]/82">
           Connected journey · {String(index + 1).padStart(2, "0")}
         </p>
-        <h1 className="mt-6 font-heading text-5xl font-medium leading-[1.05] text-[var(--forest-sage)] md:text-6xl">
+        <h1 className="mt-8 font-heading text-[3.36rem] font-medium leading-[1.1] text-[var(--forest-sage)] md:text-[4.2rem]">
           {step.title}
         </h1>
         <p className="mt-6 font-heading text-2xl italic text-[var(--forest-sage)]/80 md:text-3xl">
           {step.emotion}
         </p>
-        <p className="mt-10 max-w-[620px] text-base leading-relaxed text-[var(--forest-sage)]/70 md:text-lg">
+        <p className="mt-10 max-w-[65ch] text-base leading-[1.7] text-[var(--forest-sage)]/70 md:text-lg">
           {step.body}
         </p>
-        <div className="mt-14 flex flex-wrap items-center gap-5">
+        <div className="mt-14 flex flex-wrap items-center gap-4">
           <MarketingCta />
-          <Link
+          <MarketingCta
             href="/product#connected-journey"
-            className="text-sm tracking-wide text-[var(--forest-sage)]/55 underline-offset-4 transition hover:underline"
-          >
-            Back to Journey
-          </Link>
+            label="Back to Journey"
+            variant="ghost"
+          />
         </div>
       </article>
       <div className="mx-auto mt-24 max-w-6xl">

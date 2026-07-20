@@ -75,6 +75,10 @@ export type EventWithDetails = VenueEvent & {
   // metadata only here; the editor/print pages fetch a single plan's objects
   // by its own id via getFloorPlan().
   floorPlans: import("@/lib/floor-plans/types").FloorPlan[];
+  // Commitment Lifecycle Architecture §9 — the couple's most recent
+  // Guest Count Submission, distinct from guestCount above (which reflects
+  // whichever write, coordinator or couple, happened most recently).
+  guestCountSubmission: { count: number; submittedAt: string } | null;
 };
 
 /** Form model for create and edit. */

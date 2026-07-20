@@ -33,10 +33,11 @@ type VendorRow = {
   subscription_tier: string | null; subscription_status: string | null; trial_ends_at: string | null;
   is_claimed: boolean; created_at: string; updated_at: string;
   accepting_inquiries: boolean; availability_notes: string | null;
+  luv_intro_seen_at: string | null;
 };
 
 type VVRRow = {
-  venue_id: string; vendor_id: string; status: string;
+  id: string; venue_id: string; vendor_id: string; status: string;
   preference_level: string; display_order: number;
   notes: string | null; special_pricing_note: string | null;
   added_at: string; updated_at: string;
@@ -56,6 +57,9 @@ type EVARow = {
   notes: string | null; created_at: string;
   checked_in_at: string | null; setup_complete_at: string | null;
   vendors: { business_name: string; category: string | null; contact_name: string | null; phone: string | null } | null;
+  // RC2, Milestone 3 — one Conversation per assignment, auto-provisioned by
+  // a trigger the moment the assignment row is created (never lazily).
+  conversations: { id: string } | { id: string }[] | null;
 };
 
 type EVAEventRow = {
@@ -95,6 +99,7 @@ function mapVendorProfile(r: VendorRow) {
     isClaimed:           r.is_claimed,
     acceptingInquiries:  r.accepting_inquiries !== false,
     availabilityNotes:   r.availability_notes ?? null,
+    luvIntroSeenAt:      r.luv_intro_seen_at ?? null,
     createdAt:           r.created_at,
     updatedAt:           r.updated_at,
   };
@@ -118,6 +123,7 @@ function mapVVR(r: VVRRow): Vendor | null {
 }
 
 function mapEVA(r: EVARow): EventVendorAssignment {
+  const conversation = Array.isArray(r.conversations) ? r.conversations[0] : r.conversations;
   return {
     id:              r.id,
     venueId:         r.venue_id,
@@ -133,6 +139,7 @@ function mapEVA(r: EVARow): EventVendorAssignment {
     checkedInAt:     r.checked_in_at ?? null,
     setupCompleteAt: r.setup_complete_at ?? null,
     createdAt:       r.created_at,
+    conversationId:  conversation?.id ?? null,
   };
 }
 
@@ -184,7 +191,7 @@ export async function getVendor(client: DbClient, venueId: string, vendorId: str
     eventDate:   (r.events as { event_date: string | null } | null)?.event_date ?? null,
     arrivalTime: r.arrival_time?.slice(0, 5) ?? null,
   }));
-  return { ...vendor, assignments };
+  return { ...vendor, assignments, vendorRelationshipId: vvrRes.data.id };
 }
 
 function toVendorProfileRow(input: VendorInput): Record<string, unknown> {
@@ -344,7 +351,7 @@ export async function getEventVendorAssignments(
 ): Promise<EventVendorAssignment[]> {
   const { data, error } = await client
     .from("event_vendor_assignments")
-    .select("*, vendors(business_name, category, contact_name, phone)")
+    .select("*, vendors(business_name, category, contact_name, phone), conversations!event_vendor_assignment_id(id)")
     .eq("event_id", eventId)
     .eq("venue_id", venueId)
     .order("arrival_time", { ascending: true, nullsFirst: false })
@@ -367,7 +374,7 @@ export async function insertVendorAssignment(
       load_in_notes:  input.loadInNotes.trim() || null,
       notes:          input.notes.trim() || null,
     })
-    .select("*, vendors(business_name, category, contact_name, phone)")
+    .select("*, vendors(business_name, category, contact_name, phone), conversations!event_vendor_assignment_id(id)")
     .single<EVARow>();
   if (error) throw error;
   return mapEVA(data);

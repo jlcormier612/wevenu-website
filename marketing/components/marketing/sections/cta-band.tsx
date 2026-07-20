@@ -1,4 +1,4 @@
-import { MarketingCta } from "@/components/marketing/marketing-cta";
+import { ClosingCta } from "@/components/marketing/closing-cta";
 import { Section } from "@/components/marketing/section";
 
 type CtaBandProps = {
@@ -7,14 +7,12 @@ type CtaBandProps = {
 };
 
 export function CtaBand({
-  headline = "Request a Walkthrough",
+  headline = "Schedule a Walkthrough",
   body = "A calm conversation about your venue — no trial, no pressure.",
 }: CtaBandProps) {
   return (
     <Section tone="cream" narrow headline={headline} intro={body}>
-      <div className="flex justify-center">
-        <MarketingCta />
-      </div>
+      <ClosingCta />
     </Section>
   );
 }

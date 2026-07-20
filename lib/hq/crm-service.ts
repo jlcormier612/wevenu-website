@@ -1,5 +1,5 @@
 /**
- * Wevenu HQ — Customer Success workflow mutations (notes, tasks, next
+ * Hello to Cheers HQ — Customer Success workflow mutations (notes, tasks, next
  * contact date) plus the View-As audit log write. Server-only.
  */
 import { createClient } from "@/integrations/supabase/server";
@@ -14,7 +14,7 @@ async function requireAdminUser(): Promise<{ userId: string; name: string } | nu
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return null;
-  return { userId: user.id, name: user.email ?? "Wevenu team" };
+  return { userId: user.id, name: user.email ?? "Hello to Cheers team" };
 }
 
 export async function addVenueNote(venueId: string, body: string): Promise<boolean> {

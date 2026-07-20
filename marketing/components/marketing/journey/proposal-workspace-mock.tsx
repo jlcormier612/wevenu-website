@@ -1,3 +1,8 @@
+import Image from "next/image";
+
+import { FILM } from "@/lib/marketing/film";
+import { EDITORIAL_FRAME } from "@/lib/marketing/rhythm";
+
 /**
  * Proposal preview mock — venue-branded hospitality surface, not a PDF or spreadsheet.
  */
@@ -6,7 +11,7 @@ export function ProposalWorkspaceMock({ className }: { className?: string }) {
     <div
       className={
         className ??
-        "overflow-hidden border border-[var(--taupe-medium)]/60 bg-[var(--true-white)] shadow-[0_20px_60px_-40px_rgba(47,55,47,0.35)]"
+        `${EDITORIAL_FRAME} bg-[var(--true-white)]`
       }
     >
       <div className="flex items-center gap-2 border-b border-[var(--taupe-medium)]/50 bg-[var(--linen)] px-4 py-3">
@@ -30,17 +35,25 @@ export function ProposalWorkspaceMock({ className }: { className?: string }) {
             October 2026 · A celebration on the grounds you loved
           </p>
 
-          <div className="mt-8 aspect-[16/9] bg-[var(--linen)]">
-            <div className="flex h-full items-end p-4">
-              <p className="text-[10px] tracking-[0.18em] uppercase text-[var(--heritage-sage)]/70">
-                Venue photography
-              </p>
-            </div>
+          <div className="mt-8 border-t border-[var(--taupe-medium)]/50 pt-4">
+            <p className="text-[10px] tracking-[0.22em] uppercase text-[var(--heritage-sage)]/70">
+              Imagine your celebration
+            </p>
+          </div>
+
+          <div className="relative mt-4 aspect-[510/532] overflow-hidden bg-[var(--linen)]">
+            <Image
+              src={FILM.proposalVenuePhotography}
+              alt="Willow & Hearth — ceremony overlook, barn reception, and candlelit tablescape"
+              fill
+              className="object-cover object-center"
+              sizes="(max-width:768px) 100vw, 560px"
+            />
           </div>
 
           <div className="mt-8 space-y-5">
             <div className="border-t border-[var(--taupe-medium)]/50 pt-4">
-              <p className="text-[10px] tracking-[0.18em] uppercase text-[var(--heritage-sage)]/80">
+              <p className="text-[10px] tracking-[0.22em] uppercase text-[var(--heritage-sage)]/80">
                 Package
               </p>
               <p className="mt-2 font-heading text-xl text-[var(--forest-sage)]">
@@ -52,7 +65,7 @@ export function ProposalWorkspaceMock({ className }: { className?: string }) {
             </div>
 
             <div className="border-t border-[var(--taupe-medium)]/50 pt-4">
-              <p className="text-[10px] tracking-[0.18em] uppercase text-[var(--heritage-sage)]/80">
+              <p className="text-[10px] tracking-[0.22em] uppercase text-[var(--heritage-sage)]/80">
                 Investment
               </p>
               <p className="mt-2 font-heading text-2xl text-[var(--forest-sage)]">$28,400</p>
@@ -60,7 +73,7 @@ export function ProposalWorkspaceMock({ className }: { className?: string }) {
             </div>
 
             <div className="border-t border-[var(--taupe-medium)]/50 pt-4">
-              <p className="text-[10px] tracking-[0.18em] uppercase text-[var(--heritage-sage)]/80">
+              <p className="text-[10px] tracking-[0.22em] uppercase text-[var(--heritage-sage)]/80">
                 Optional enhancements
               </p>
               <ul className="mt-2 space-y-1 text-sm text-[var(--forest-sage)]/70">

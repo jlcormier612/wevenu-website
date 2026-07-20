@@ -8,9 +8,9 @@ import { toast } from "sonner";
 import { updateClientInfoAction } from "@/app/(app)/clients/[id]/actions";
 import { ClientFormFields } from "@/components/clients/client-form";
 import { createInitialClientInput } from "@/lib/clients/constants";
-import type { Client, ClientErrors, ClientInput } from "@/lib/clients/types";
+import type { ClientErrors, ClientInput, ClientWithDetails } from "@/lib/clients/types";
 
-export function ClientEditForm({ client }: { client: Client }) {
+export function ClientEditForm({ client }: { client: ClientWithDetails }) {
   const router = useRouter();
   const [input, setInput] = React.useState<ClientInput>(() => createInitialClientInput(client));
   const [errors, setErrors] = React.useState<ClientErrors>({});
@@ -40,6 +40,7 @@ export function ClientEditForm({ client }: { client: Client }) {
       input={input} errors={errors} set={set}
       onSubmit={handleSubmit} pending={pending}
       submitLabel="Save changes"
+      linkedEventId={client.linkedEventId}
     />
   );
 }

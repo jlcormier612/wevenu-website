@@ -97,7 +97,7 @@ function WorkspaceChecklist({ eventId, invited }: { eventId?: string | null; inv
       className="rounded-xl border px-6 py-5 text-left"
       style={{ borderColor: "#D8A7AA40", background: "#FDF8F8" }}
     >
-      <p className="mb-4 text-xs font-medium uppercase tracking-widest text-muted-foreground">
+      <p className="mb-4 text-xs font-medium uppercase tracking-widest" style={{ color: "#9ca3af" }}>
         Workspace Ready
       </p>
       <ul className="space-y-2.5">
@@ -113,7 +113,7 @@ function WorkspaceChecklist({ eventId, invited }: { eventId?: string | null; inv
             >
               {active[key] ? "✓" : "·"}
             </span>
-            <span className={active[key] ? "text-foreground" : "text-muted-foreground"}>
+            <span style={{ color: active[key] ? "#3D2F30" : "#9ca3af" }}>
               {label}
             </span>
           </li>

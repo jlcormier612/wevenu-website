@@ -208,7 +208,7 @@ export function WelcomeStep({ onStart }: { onStart: () => void }) {
           Let&apos;s build your venue
         </h1>
         <p className="mx-auto max-w-md text-sm text-muted-foreground">
-          Everything in Wevenu begins with your venue. We&apos;ll set up the
+          Everything in Hello to Cheers begins with your venue. We&apos;ll set up the
           foundation now — it only takes a few minutes, and you can refine any of
           it later.
         </p>
@@ -598,7 +598,7 @@ export function PaymentsStep() {
             </div>
             <p className="text-sm text-muted-foreground">
               Connect Stripe to collect deposits, send invoices, and take
-              payments directly through Wevenu.
+              payments directly through Hello to Cheers.
             </p>
           </div>
         </div>

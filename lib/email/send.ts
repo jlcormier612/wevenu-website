@@ -41,7 +41,7 @@ export async function sendEmail(payload: EmailPayload): Promise<SendResult> {
   }
 
   const apiKey = process.env.RESEND_API_KEY;
-  const fromEmail = process.env.FROM_EMAIL ?? "Wevenu <onboarding@resend.dev>";
+  const fromEmail = process.env.FROM_EMAIL ?? "Hello to Cheers <onboarding@resend.dev>";
 
   let recipient = payload.to;
   let sandboxRedirectedFrom: string | undefined;
@@ -63,7 +63,7 @@ export async function sendEmail(payload: EmailPayload): Promise<SendResult> {
       to: [recipient],
       subject: payload.subject,
       text: payload.text,
-      // Enable delivery + engagement tracking so signals flow back into Wevenu
+      // Enable delivery + engagement tracking so signals flow back into Hello to Cheers
       // via the /api/messaging/webhook route. These fire email.opened and
       // email.clicked events which become lead_signal_events entries.
       open_tracking: true,

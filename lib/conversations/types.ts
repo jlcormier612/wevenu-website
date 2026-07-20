@@ -35,6 +35,14 @@ export type ConversationSummary = {
   clientId: string | null;
 };
 
+export type ConversationMessageAttachment = {
+  id: string;
+  fileUrl: string;
+  fileName: string;
+  fileSize: number | null;
+  mimeType: string | null;
+};
+
 export type ConversationMessage = {
   id: string;
   senderType: ConversationSenderType;
@@ -47,6 +55,10 @@ export type ConversationMessage = {
   // internal_note, phone_log, voicemail) where no provider is ever involved.
   status: string | null;
   failureReason: string | null;
+  // RC2 — { sequenceEnrollmentId } for a sender_type:'system' message, so
+  // the UI can explain *why* it was automated, not just that it was.
+  channelMetadata: Record<string, unknown> | null;
+  attachments: ConversationMessageAttachment[];
 };
 
 export type ConversationDetail = {
@@ -60,6 +72,8 @@ export type PortalConversationMessage = {
   body: string;
   sentAt: string;
   contactReadAt: string | null;
+  venueReadAt: string | null;
+  attachments: ConversationMessageAttachment[];
 };
 
 export type PortalConversationDetail = {
@@ -73,4 +87,46 @@ export type SendMessageResult =
 
 export type PortalConversationResult =
   | { ok: true; conversation: PortalConversationDetail }
+  | { ok: false; message: string };
+
+// ── RC2, Milestone 3 — vendor conversations (event-anchored) ────────────────
+
+/** One event-anchored vendor conversation, as seen from the venue side's rollup. */
+export type VendorRollupConversation = {
+  conversationId: string;
+  eventId: string;
+  eventName: string;
+  eventDate: string | null;
+  lastMessageAt: string | null;
+  venueUnread: number;
+  latestMessage: ConversationMessagePreview | null;
+};
+
+/** The vendor portal's inbox row — one per event they're assigned to. */
+export type VendorConversationSummary = {
+  conversationId: string;
+  eventId: string;
+  eventName: string;
+  eventDate: string | null;
+  lastMessageAt: string | null;
+  contactUnread: number;
+  latestMessage: ConversationMessagePreview | null;
+};
+
+export type VendorConversationMessage = {
+  id: string;
+  senderType: ConversationSenderType;
+  body: string;
+  sentAt: string;
+  contactReadAt: string | null;
+  venueReadAt: string | null;
+};
+
+export type VendorConversationDetail = {
+  conversationId: string;
+  messages: VendorConversationMessage[];
+};
+
+export type VendorConversationResult =
+  | { ok: true; conversation: VendorConversationDetail }
   | { ok: false; message: string };

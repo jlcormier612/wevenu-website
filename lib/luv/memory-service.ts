@@ -66,7 +66,7 @@ export function computeMemoryObservations(
     if (hit) {
       const message = hit === totalBookings
         ? `You just reached ${hit} booking${hit !== 1 ? "s" : ""} — a milestone worth celebrating. 💗`
-        : `You've booked ${totalBookings} clients on Wevenu. ${totalBookings >= 50 ? "An incredible community you've built." : "Keep the momentum going."}`;
+        : `You've booked ${totalBookings} clients on Hello to Cheers. ${totalBookings >= 50 ? "An incredible community you've built." : "Keep the momentum going."}`;
       obs.push({
         id:          "memory_total_bookings",
         kind:        "celebration",

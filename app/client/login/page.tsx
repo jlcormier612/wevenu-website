@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Wordmark } from "@/components/brand/wordmark";
 import { ClientLoginForm } from "@/app/client/login/login-form";
 
-export const metadata: Metadata = { title: "Sign In — Wevenu" };
+export const metadata: Metadata = { title: "Sign In — Hello to Cheers" };
 
 export default function ClientLoginPage() {
   return (

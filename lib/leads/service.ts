@@ -26,6 +26,7 @@ import { getCurrentVenue } from "@/lib/venue/service";
 import { triggerSequencesForRelationship } from "@/lib/message-sequences/service";
 import { CANONICAL_STAGE_TO_LEAD_STATUS } from "@/lib/leads/pipeline-stage-mapping";
 import type { CanonicalStage } from "@/lib/pipeline-templates/types";
+import { ingestLead } from "@/lib/lead-intake/pipeline";
 
 /** Shared auth + venue guard. Returns a typed error if anything is missing. */
 async function withVenue<T>(
@@ -79,18 +80,52 @@ export async function createLead(input: LeadInput): Promise<CreateLeadResult> {
   const errors = validateLeadInput(input);
   if (Object.keys(errors).length > 0) return { ok: false, errors };
   const result = await withVenue(async (supabase, venueId) => {
-    const leadId = await repo.insertLead(supabase, venueId, input);
-    // Activity is logged by the DB trigger (log_lead_created).
+    // Routed through the Lead Intake pipeline (Log Attempt → Relationship
+    // Resolution → Lead Creation → Automation Trigger → Assignment Hook) —
+    // manual entry and CSV import are just another Source Adapter now, not
+    // a separate implementation. Activity is logged by the DB trigger
+    // (log_lead_created), same as every other source.
+    const outcome = await ingestLead({
+      supabase,
+      venueId,
+      source: input.source || "other",
+      trustTier: "manual",
+      rawPayload: input,
+      input: {
+        firstName: input.firstName,
+        lastName: input.lastName,
+        email: input.email,
+        phone: input.phone,
+        partnerFirstName: input.partnerFirstName,
+        partnerLastName: input.partnerLastName,
+        partnerEmail: input.partnerEmail,
+        eventType: input.eventType,
+        eventDate: input.eventDate,
+        endDate: input.endDate,
+        guestCount: input.guestCount ? parseInt(input.guestCount, 10) || null : null,
+        estimatedBudget: input.estimatedBudget ? parseFloat(input.estimatedBudget) || null : null,
+        inquiryMessage: input.inquiryMessage,
+        inquiryDate: input.inquiryDate,
+        sourceData: input.originalSourceLabel ? { original_source_label: input.originalSourceLabel } : undefined,
+      },
+      create: async () => {
+        try {
+          const leadId = await repo.insertLead(supabase, venueId, input);
+          const { data: lead } = await supabase.from("leads").select("relationship_id")
+            .eq("id", leadId).maybeSingle<{ relationship_id: string | null }>();
+          if (!lead?.relationship_id) return { ok: false, error: "Lead created without a relationship." };
+          const { count } = await supabase.from("leads")
+            .select("id", { count: "exact", head: true })
+            .eq("relationship_id", lead.relationship_id);
+          return { ok: true, leadId, relationshipId: lead.relationship_id, isReturningRelationship: (count ?? 0) > 1 };
+        } catch (err) {
+          return { ok: false, error: err instanceof Error ? err.message : "Could not create lead." };
+        }
+      },
+    });
 
-    // Rule-based Series enrollment (§3.2) — must never block lead creation.
-    const { data: lead } = await supabase.from("leads").select("relationship_id")
-      .eq("id", leadId).maybeSingle<{ relationship_id: string | null }>();
-    if (lead?.relationship_id) {
-      void triggerSequencesForRelationship(supabase, venueId, lead.relationship_id, "lead_created")
-        .catch((e) => console.error("Series enrollment (lead_created) failed:", e));
-    }
-
-    return { ok: true, leadId } as CreateLeadResult;
+    if (!outcome.ok) return { ok: false, message: outcome.error } as CreateLeadResult;
+    return { ok: true, leadId: outcome.leadId } as CreateLeadResult;
   });
   if ("ok" in result && result.ok === false) return result as CreateLeadResult;
   return result as CreateLeadResult;

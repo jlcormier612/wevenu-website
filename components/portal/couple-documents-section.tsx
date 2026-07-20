@@ -116,7 +116,7 @@ function DocRow({ doc }: { doc: CoupleDocument }) {
           href={doc.fileUrl}
           target="_blank"
           rel="noopener noreferrer"
-          className="opacity-0 group-hover:opacity-100 text-xs text-[#5D6F5D] hover:text-[#3D5040] transition-opacity px-2 py-1 rounded border border-transparent hover:border-[#5D6F5D]/20"
+          className="opacity-0 group-hover:opacity-100 text-xs text-[var(--venue-primary)] hover:text-[var(--venue-secondary)] transition-opacity px-2 py-1 rounded border border-transparent hover:border-[color-mix(in_srgb,var(--venue-primary)_20%,transparent)]"
         >
           Open ↗
         </a>
@@ -135,7 +135,7 @@ function InfoBlock({ label, value }: { label: string; value: string | null }) {
   if (!value) return null;
   return (
     <div className="mb-4">
-      <h4 className="text-xs font-semibold text-[#5D6F5D] uppercase tracking-wide mb-1">{label}</h4>
+      <h4 className="text-xs font-semibold text-[var(--venue-primary)] uppercase tracking-wide mb-1">{label}</h4>
       <p className="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed">{value}</p>
     </div>
   );
@@ -161,10 +161,10 @@ function VenueInfoSection({ info }: { info: VenueInfo }) {
   if (!hasContent) return null;
 
   return (
-    <div className="mt-6 border border-[#e0e8e0] rounded-xl overflow-hidden">
+    <div className="mt-6 border border-[color-mix(in_srgb,var(--venue-neutral)_60%,#e0e8e0)] rounded-xl overflow-hidden">
       <button
         onClick={() => setOpen(o => !o)}
-        className="w-full flex items-center justify-between px-4 py-3 bg-[#f5f8f5] hover:bg-[#edf2ed] transition-colors"
+        className="w-full flex items-center justify-between px-4 py-3 bg-[var(--venue-neutral)] hover:bg-[color-mix(in_srgb,var(--venue-neutral)_70%,#edf2ed)] transition-colors"
       >
         <div className="flex items-center gap-2">
           <span className="text-base">🏛</span>
@@ -180,7 +180,7 @@ function VenueInfoSection({ info }: { info: VenueInfo }) {
 
           {info.hotelBlocks.length > 0 && (
             <div className="mb-4">
-              <h4 className="text-xs font-semibold text-[#5D6F5D] uppercase tracking-wide mb-2">Hotel Blocks</h4>
+              <h4 className="text-xs font-semibold text-[var(--venue-primary)] uppercase tracking-wide mb-2">Hotel Blocks</h4>
               <div className="space-y-2">
                 {info.hotelBlocks.map((h, i) => (
                   <div key={i} className="bg-gray-50 rounded-lg p-3">
@@ -189,7 +189,7 @@ function VenueInfoSection({ info }: { info: VenueInfo }) {
                     {h.notes && <div className="text-xs text-gray-500 mt-0.5">{h.notes}</div>}
                     {h.url && (
                       <a href={h.url} target="_blank" rel="noopener noreferrer"
-                        className="text-xs text-[#5D6F5D] hover:underline mt-1 inline-block">
+                        className="text-xs text-[var(--venue-primary)] hover:underline mt-1 inline-block">
                         Book now ↗
                       </a>
                     )}
@@ -207,7 +207,7 @@ function VenueInfoSection({ info }: { info: VenueInfo }) {
 
           {info.faqs.length > 0 && (
             <div className="mb-4">
-              <h4 className="text-xs font-semibold text-[#5D6F5D] uppercase tracking-wide mb-2">FAQs</h4>
+              <h4 className="text-xs font-semibold text-[var(--venue-primary)] uppercase tracking-wide mb-2">FAQs</h4>
               <div className="space-y-3">
                 {info.faqs.map((faq, i) => (
                   <div key={i}>
@@ -221,11 +221,11 @@ function VenueInfoSection({ info }: { info: VenueInfo }) {
 
           {info.importantContacts.length > 0 && (
             <div className="mb-4">
-              <h4 className="text-xs font-semibold text-[#5D6F5D] uppercase tracking-wide mb-2">Important Contacts</h4>
+              <h4 className="text-xs font-semibold text-[var(--venue-primary)] uppercase tracking-wide mb-2">Important Contacts</h4>
               <div className="space-y-2">
                 {info.importantContacts.map((c, i) => (
                   <div key={i} className="flex items-start gap-3">
-                    <div className="w-7 h-7 rounded-full bg-[#eef4ee] flex items-center justify-center text-xs font-semibold text-[#5D6F5D] shrink-0">
+                    <div className="w-7 h-7 rounded-full bg-[color-mix(in_srgb,var(--venue-neutral)_70%,#eef4ee)] flex items-center justify-center text-xs font-semibold text-[var(--venue-primary)] shrink-0">
                       {c.name[0]}
                     </div>
                     <div>
@@ -379,8 +379,8 @@ export default function CoupleDocumentsSection({ token }: { token: string }) {
             onClick={() => setFilterType("all")}
             className={`text-xs px-3 py-1 rounded-full border transition-colors ${
               filterType === "all"
-                ? "bg-[#3D5040] text-white border-[#3D5040]"
-                : "bg-white text-gray-500 border-gray-200 hover:border-[#5D6F5D]/40"
+                ? "bg-[var(--venue-primary)] text-white border-[var(--venue-primary)]"
+                : "bg-white text-gray-500 border-gray-200 hover:border-[color-mix(in_srgb,var(--venue-primary)_40%,transparent)]"
             }`}
           >
             All ({documents.length})
@@ -394,8 +394,8 @@ export default function CoupleDocumentsSection({ token }: { token: string }) {
                 onClick={() => setFilterType(type)}
                 className={`text-xs px-3 py-1 rounded-full border transition-colors ${
                   filterType === type
-                    ? "bg-[#3D5040] text-white border-[#3D5040]"
-                    : "bg-white text-gray-500 border-gray-200 hover:border-[#5D6F5D]/40"
+                    ? "bg-[var(--venue-primary)] text-white border-[var(--venue-primary)]"
+                    : "bg-white text-gray-500 border-gray-200 hover:border-[color-mix(in_srgb,var(--venue-primary)_40%,transparent)]"
                 }`}
               >
                 {meta.emoji} {meta.label} ({count})

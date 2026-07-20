@@ -57,7 +57,7 @@ export async function getClientInvitation(clientId: string): Promise<ClientInvit
 }
 
 async function sendClientInviteEmail(
-  email: string, coupleName: string, venueName: string, token: string,
+  email: string, coupleName: string, venueName: string, primaryColor: string, token: string,
 ): Promise<void> {
   const acceptUrl = portalAcceptUrl("client", token);
   await sendEmail({
@@ -78,7 +78,7 @@ async function sendClientInviteEmail(
     html: [
       `<p>Hi ${coupleName},</p>`,
       `<p>${venueName} has invited you to create your own account for your wedding planning workspace.</p>`,
-      `<p><a href="${acceptUrl}" style="background:#D8A7AA;color:#fff;padding:10px 20px;border-radius:8px;text-decoration:none;display:inline-block;">Create Your Account</a></p>`,
+      `<p><a href="${acceptUrl}" style="background:${primaryColor};color:#fff;padding:10px 20px;border-radius:8px;text-decoration:none;display:inline-block;">Create Your Account</a></p>`,
       `<p style="color:#888;font-size:12px;">This link is personal to you — please don't share it.</p>`,
       `<p style="color:#888;font-size:12px;">${venueName}</p>`,
     ].join(""),
@@ -101,7 +101,7 @@ export async function inviteClient(
   }).select("token").single<{ token: string }>();
   if (error) return { ok: false, error: error.message };
 
-  await sendClientInviteEmail(email.trim(), coupleName, venue.name ?? "Your venue", data.token);
+  await sendClientInviteEmail(email.trim(), coupleName, venue.name ?? "Your venue", venue.primaryColor, data.token);
   return { ok: true };
 }
 
@@ -124,7 +124,7 @@ export async function resendClientInvitation(invitationId: string): Promise<Clie
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const client = (inv as any).clients as { first_name: string; partner_first_name: string | null } | null;
   const coupleName = [client?.first_name, client?.partner_first_name].filter(Boolean).join(" & ") || "there";
-  await sendClientInviteEmail(inv.email, coupleName, venue.name ?? "Your venue", inv.token);
+  await sendClientInviteEmail(inv.email, coupleName, venue.name ?? "Your venue", venue.primaryColor, inv.token);
   return { ok: true };
 }
 

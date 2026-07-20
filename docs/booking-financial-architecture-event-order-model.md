@@ -14,6 +14,8 @@ The test I'm holding myself to throughout: **Event Order is not a table that sit
 
 ### Lifecycle
 
+**Confirmed 2026-07-16 as the reference implementation `docs/commitment-lifecycle-architecture.md`'s platform-wide Commitment Lifecycle was substantially modeled on** — Open/Finalized/Amended below map directly onto that document's Draft/Committed/Revise-and-Supersede states, independently arrived at here first.
+
 | State | Meaning | Who can edit | What downstream may do |
 |---|---|---|---|
 | **Open** | Actively being built or adjusted — the normal state for most of the planning window | Coordinator, freely | Invoice may sync live from it (see §5) — nothing has been shown to the couple as final yet, so mechanical updates carry no trust risk |

@@ -24,6 +24,17 @@ async function withVendor<T>(
   return fn(supabase, vendorUser.vendorId);
 }
 
+/** Luv Experience Completion, Work Stream 5 — one-time intro, never shown again. */
+export async function markVendorLuvIntroSeen(): Promise<void> {
+  await withVendor(async (supabase, vendorId) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await (supabase.from("vendors") as any)
+      .update({ luv_intro_seen_at: new Date().toISOString() })
+      .eq("id", vendorId);
+    return { ok: true } as VendorActionResult;
+  });
+}
+
 export async function getVendorProfile(vendorId: string): Promise<VendorProfile | null> {
   if (!isSupabaseConfigured) return null;
   const supabase = await createClient();
@@ -189,6 +200,7 @@ function mapVendorProfile(d: Record<string, unknown>): VendorProfile {
     isClaimed:            Boolean(d.is_claimed),
     acceptingInquiries:   d.accepting_inquiries !== false,
     availabilityNotes:    (d.availability_notes as string | null) ?? null,
+    luvIntroSeenAt:       (d.luv_intro_seen_at as string | null) ?? null,
     createdAt:            d.created_at as string,
     updatedAt:            d.updated_at as string,
   };

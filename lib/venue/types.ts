@@ -93,7 +93,9 @@ export type Venue = {
   setupCompleted: boolean;
   setupCompletedAt: string | null;
   onboardingDismissed: boolean;
+  luvIntroSeenAt: string | null;
   embedKey: string;   // public key for the venue's inquiry form — /form/{embedKey}
+  leadEmailKey: string;   // Email Intake Engine — leads+{leadEmailKey}@{inbound domain}
   tourSchedulingEnabled: boolean;
   // Program 2 Phase 2B rollout flag — per docs/conversation-experience-cutover.md's
   // staged rollout (dogfood -> opt-in beta -> default-on -> retirement).

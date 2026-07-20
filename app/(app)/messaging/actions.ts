@@ -18,6 +18,8 @@ import { getCommunicationReadiness, sendTestEmail, sendTestSms } from "@/lib/com
 import type { CommunicationReadiness, TestSendResult } from "@/lib/communication/readiness";
 import { getMessageTimeline } from "@/lib/communication/timeline";
 import type { TimelineStep } from "@/lib/communication/timeline";
+import { getRelationshipContext } from "@/lib/conversations/context";
+import type { RelationshipContext } from "@/lib/conversations/context";
 
 export async function sendMessageAction(
   entityType: MessageEntityType,
@@ -52,11 +54,22 @@ export async function sendConversationMessageAction(
   body: string,
   channel: string,
   emailSubject?: string,
+  hasAttachment = false,
 ): Promise<SendMessageResult> {
-  const result = await conversations.sendConversationMessage(conversationId, body, channel, emailSubject);
+  const result = await conversations.sendConversationMessage(conversationId, body, channel, emailSubject, hasAttachment);
   if (result.ok) {
     revalidatePath("/messaging");
   }
+  return result;
+}
+
+/** RC2 — attaches an already-uploaded file to a message. */
+export async function addConversationMessageAttachmentAction(
+  messageId: string,
+  file: { url: string; name: string; size?: number | null; mimeType?: string | null },
+): Promise<{ ok: boolean; message?: string }> {
+  const result = await conversations.addConversationMessageAttachment(messageId, file);
+  if (result.ok) revalidatePath("/messaging");
   return result;
 }
 
@@ -68,6 +81,16 @@ export async function setConversationAssignedStaffAction(conversationId: string,
 /** Active Automations for the Conversation Workspace (Communication Workspace Completion) — read-only, never mutates Automations. */
 export async function getActiveEnrollmentsForConversationAction(relationshipId: string): Promise<SequenceEnrollment[]> {
   return getActiveEnrollmentsForRelationship(relationshipId);
+}
+
+/** RC2 — Relationship Context Panel: linked Requests + recent activity. */
+export async function getRelationshipContextAction(leadId: string | null, clientId: string | null): Promise<RelationshipContext> {
+  return getRelationshipContext(leadId, clientId);
+}
+
+/** RC2 — Relationship Context Panel's "Files" tab. */
+export async function getConversationAttachmentsAction(conversationId: string) {
+  return conversations.getConversationAttachments(conversationId);
 }
 
 // ---- Communication Platform Phase 2 — Scheduled Sends -----------------------

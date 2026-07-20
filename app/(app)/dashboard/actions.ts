@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 
-import { dismissOnboarding } from "@/lib/venue/service";
+import { dismissOnboarding, markLuvIntroSeen } from "@/lib/venue/service";
 import { getCurrentVenue } from "@/lib/venue/service";
 import { markMilestoneShown } from "@/lib/activation/service";
 import { createClient } from "@/integrations/supabase/server";
@@ -14,6 +14,12 @@ import { isSupabaseConfigured } from "@/lib/env";
  */
 export async function dismissOnboardingAction(): Promise<void> {
   await dismissOnboarding();
+  revalidatePath("/dashboard");
+}
+
+/** Luv Experience Completion, Work Stream 5 — dismiss the one-time intro card. */
+export async function markLuvIntroSeenAction(): Promise<void> {
+  await markLuvIntroSeen();
   revalidatePath("/dashboard");
 }
 

@@ -31,6 +31,13 @@ export type PortalContext = {
     id: string;
     name: string;
     website: string | null;
+    // Venue Brand Experience Phase 1 — the venue's own brand, already
+    // set at venue setup time, now reaching the portal for the first time.
+    primaryColor: string;
+    secondaryColor: string;
+    accentColor: string;
+    neutralColor: string;
+    logoUrl: string | null;
   };
 };
 
@@ -54,9 +61,10 @@ export type PortalTask = {
 
 export type PortalSection = "overview" | "guests" | "todos" | "budget" | "seating" | "people" | "website" | "story" | "journey" | "tasks" | "timeline" | "vendors" | "payments" | "documents" | "messages" | "ask" | "guide" | "account" | "requests";
 
-// A Timeline item as visible in the client portal — same timeline_entries
-// row the coordinator sees in the Booking Timeline, filtered to only what's
-// marked visible to the client.
+// A Timeline item as visible in the client portal — the couple's own
+// always-live view: the venue's live structural framework plus the
+// couple's own live draft, never gated by their own submission state
+// (docs/client-workspace-product-architecture.md §12, refined 2026-07-17).
 export type PortalTimelineLink = { id: string; url: string; label: string | null };
 export type PortalTimelineAttachment = { id: string; name: string; url: string };
 export type PortalTimelineSection = { id: string; name: string; sortOrder: number; clientCanAdd: boolean };
@@ -68,7 +76,13 @@ export type PortalTimelineEntry = {
   entryTime: string | null;
   sectionId: string | null;
   sortOrder: number;
+  owner: "venue" | "client";
+  lockState: "editable" | "locked";
+  audiences: string[];
   canEdit: boolean;
+  // Visibility follows Ownership (2026-07-17) — only true on the couple's
+  // own owner='client' items.
+  canManageVisibility: boolean;
   links: PortalTimelineLink[];
   attachments: PortalTimelineAttachment[];
 };
@@ -76,6 +90,8 @@ export type PortalTimelineEntry = {
 export type PortalTimeline = {
   sections: PortalTimelineSection[];
   entries: PortalTimelineEntry[];
+  lastSubmittedAt: string | null;
+  hasUnpublishedChanges: boolean;
 };
 
 export type BudgetContributor = {
@@ -315,6 +331,20 @@ export type SeatingData = {
   /** True if this couple has ever seated a guest, even if no floor plan is currently shared — lets the empty state say "your venue paused sharing" instead of implying prior work was lost. */
   hadPriorWork: boolean;
   stats: SeatingStats;
+  // Commitment Lifecycle Architecture §7 — Delegation. When isDelegated is
+  // true, the venue is currently managing this plan; the couple's own
+  // canvas should read-only + show the delegation banner.
+  isDelegated?: boolean;
+  delegationId?: string | null;
+  delegatedNote?: string | null;
+};
+
+/** One of the couple's floor plans, for the Seating plan picker — each an independent Commitment Lifecycle (docs/commitment-lifecycle-architecture.md §9). */
+export type SeatingFloorPlanSummary = {
+  id: string;
+  name: string;
+  isDelegated: boolean;
+  lastSubmission: { count: number; submittedAt: string; submittedBy: "couple" | "venue" } | null;
 };
 
 /** Household-aware auto-assign suggestions (Seating Experience — Phase 1), reusing the same packing idea as Guest Households. */

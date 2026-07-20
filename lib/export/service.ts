@@ -1,7 +1,7 @@
 /**
  * Data export service. Server-only.
  * Resolves docs/trust-risk-register.md TR-G2 — a venue owner (or manager)
- * can get a complete, real copy of their own data out of Wevenu on demand.
+ * can get a complete, real copy of their own data out of Hello to Cheers on demand.
  * See docs/product-promise.md, "Data Ownership".
  */
 import { createClient } from "@/integrations/supabase/server";

@@ -19,7 +19,7 @@ export function HowItWorksSection() {
             <h3 className="font-heading text-xl font-medium text-[var(--forest-sage)] md:text-2xl">
               {step.title}
             </h3>
-            <p className="text-sm leading-relaxed text-[var(--forest-sage)]/70 md:text-base">
+            <p className="text-sm leading-[1.7] text-[var(--forest-sage)]/70 md:text-base">
               {step.body}
             </p>
           </li>

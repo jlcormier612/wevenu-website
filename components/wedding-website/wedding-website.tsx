@@ -6,6 +6,9 @@ import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
 import type { PublicWebsite, WebsiteTheme } from "@/lib/wedding-website/types";
+import { RsvpPage } from "@/components/wedding-website/rsvp-page";
+import { GuestConciergeWidget } from "@/components/wedding-website/guest-concierge";
+import type { RsvpContext } from "@/app/rsvp/[token]/page";
 
 // ── Theme system: Collection (aesthetic DNA) + Palette (color expression) ────
 //
@@ -285,14 +288,52 @@ const PALETTES: Record<string, PaletteConfig[]> = {
   ],
 };
 
-function resolveTheme(collectionKey: string | undefined, paletteKey?: string | null): ThemeConfig {
+// ── Typography Styles — global font pairings, independent of Collection ──────
+// Mirrors FONT_PAIRINGS in components/portal/website-editor.tsx (the picker)
+// and the seeded public.typography_styles catalog (Hosted Experience
+// Platform Phase 1) — same 4 pairings, same keys. Not curated per Collection
+// in this phase; see docs/hosted-experience-platform-architecture-spec.md.
+type TypographyOverride = Pick<CollectionConfig, "headingFont" | "bodyFont" | "headingItalic" | "fontUrl">;
+
+const TYPOGRAPHY_STYLES: Record<string, TypographyOverride> = {
+  classic_serif: {
+    headingFont: "'Playfair Display', Georgia, serif",
+    bodyFont: "'Lato', system-ui, sans-serif",
+    headingItalic: false,
+    fontUrl: "https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=Lato:wght@300;400;600&display=swap",
+  },
+  modern_sans: {
+    headingFont: "'DM Sans', system-ui, sans-serif",
+    bodyFont: "'DM Sans', system-ui, sans-serif",
+    headingItalic: false,
+    fontUrl: "https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,700&display=swap",
+  },
+  romantic: {
+    headingFont: "'Cormorant Garamond', Georgia, serif",
+    bodyFont: "system-ui, sans-serif",
+    headingItalic: true,
+    fontUrl: "https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400;1,600&display=swap",
+  },
+  editorial: {
+    headingFont: "'DM Serif Display', Georgia, serif",
+    bodyFont: "system-ui, sans-serif",
+    headingItalic: false,
+    fontUrl: "https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&display=swap",
+  },
+};
+
+function resolveTheme(collectionKey: string | undefined, paletteKey?: string | null, fontPairingKey?: string | null): ThemeConfig {
   const key = collectionKey ?? "classic";
   const collection = COLLECTIONS[key] ?? COLLECTIONS.classic;
   const palettes = PALETTES[key] ?? PALETTES.classic;
   const palette = (paletteKey
     ? palettes.find(p => p.name.toLowerCase() === paletteKey.toLowerCase())
     : null) ?? palettes[0];
-  return { ...collection, ...palette };
+  // A couple's chosen Font Pairing overrides the Collection's own default
+  // typography when set — otherwise the Collection's typography stands on
+  // its own, unchanged from today.
+  const typographyOverride = fontPairingKey ? TYPOGRAPHY_STYLES[fontPairingKey] : null;
+  return { ...collection, ...palette, ...typographyOverride };
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -518,13 +559,19 @@ function PasswordGate({ slug, accentColor }: { slug: string; accentColor: string
 
 // ── RSVP form ─────────────────────────────────────────────────────────────────
 
+// Hosted Experience Platform Phase 4 — unifies what used to be two RSVP
+// experiences into one. A guest who lands here directly (not via their
+// personalized emailed link) types their code; once get_rsvp_context
+// confirms it's real, this renders the exact same RsvpPage a guest gets
+// at /rsvp/[token] — same meal options, same custom questions, same
+// household members, same submit path. No second, thinner form, and no
+// "found" state until the code has actually been validated server-side
+// (previously a client-side length check accepted any 11+ character
+// string, showing a working-looking form for a code that was never real).
 function RsvpSection({ accentColor, tc }: { accentColor: string; tc: ThemeConfig }) {
   const [token, setToken] = React.useState("");
-  const [status, setStatus] = React.useState<"idle" | "found" | "submitted">("idle");
-  const [guestName, setGuestName] = React.useState("");
-  const [rsvpStatus, setRsvpStatus] = React.useState("attending");
-  const [dietary, setDietary] = React.useState("");
-  const [submitting, setSubmitting] = React.useState(false);
+  const [checking, setChecking] = React.useState(false);
+  const [context, setContext] = React.useState<RsvpContext | null>(null);
 
   const inputStyle = {
     background: tc.dark ? "rgba(255,255,255,0.08)" : "rgba(255,255,255,0.9)",
@@ -535,82 +582,42 @@ function RsvpSection({ accentColor, tc }: { accentColor: string; tc: ThemeConfig
 
   async function handleLookup(e: React.FormEvent) {
     e.preventDefault();
-    if (token.trim().length > 10) setStatus("found");
-    else toast.error("Please enter your full RSVP code from your invitation.");
-  }
-
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    setSubmitting(true);
+    const trimmed = token.trim();
+    if (!trimmed) return;
+    setChecking(true);
     try {
-      const res = await fetch("/api/portal/rsvp", {
+      const res = await fetch("/api/portal/rsvp/lookup", {
         method: "POST", headers: { "content-type": "application/json" },
-        body: JSON.stringify({ rsvpToken: token, status: rsvpStatus, dietary }),
+        body: JSON.stringify({ token: trimmed }),
       });
-      const data = await res.json() as { ok: boolean; guestName?: string };
-      if (data.ok) { setGuestName(data.guestName ?? ""); setStatus("submitted"); }
-      else toast.error("Could not submit RSVP. Please try again.");
-    } catch { toast.error("Something went wrong."); }
-    finally { setSubmitting(false); }
+      const data = await res.json() as { ok: boolean; context?: RsvpContext };
+      if (data.ok && data.context) setContext(data.context);
+      else toast.error("We couldn't find that code. Please check your invitation and try again.");
+    } catch { toast.error("Something went wrong. Please try again."); }
+    finally { setChecking(false); }
   }
 
-  if (status === "submitted") {
+  if (context) {
     return (
-      <div className="p-8 text-center space-y-3" style={{ background: "rgba(255,255,255,0.1)", borderRadius: tc.cardRadius }}>
-        <p className="text-3xl">💗</p>
-        <p style={{ fontFamily: tc.headingFont, fontSize: "1.25rem", fontStyle: tc.headingItalic ? "italic" : "normal" }}>
-          Thank you{guestName ? `, ${guestName}` : ""}!
-        </p>
-        <p className="text-sm opacity-75">We've received your RSVP and can't wait to celebrate with you.</p>
+      <div className="space-y-4">
+        <RsvpPage context={context} rsvpToken={token.trim()} />
+        <GuestConciergeWidget rsvpToken={token.trim()} accentColor={accentColor} tc={tc} />
       </div>
     );
   }
 
   return (
     <div className="p-6 space-y-5" style={{ background: tc.dark ? "rgba(255,255,255,0.06)" : "rgba(255,255,255,0.85)", borderRadius: tc.cardRadius, color: tc.dark ? tc.text : "#333" }}>
-      {status === "idle" ? (
-        <form onSubmit={handleLookup} className="space-y-3">
-          <p className="text-sm font-medium">Enter the RSVP code from your invitation</p>
-          <input value={token} onChange={e => setToken(e.target.value)} placeholder="Your RSVP code"
-            className="w-full px-4 py-3 text-sm focus:outline-none" style={inputStyle} />
-          <button type="submit" disabled={!token.trim()}
-            className="w-full py-3 text-sm font-semibold text-white disabled:opacity-50"
-            style={{ background: accentColor, borderRadius: tc.buttonRadius }}>
-            Find My Invitation →
-          </button>
-        </form>
-      ) : (
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <p className="text-sm font-medium">Will you be attending?</p>
-          <div className="grid grid-cols-3 gap-2">
-            {[["attending", "Joyfully accepts"], ["declined", "Regretfully declines"], ["maybe", "Maybe"]].map(([v, l]) => (
-              <button key={v} type="button" onClick={() => setRsvpStatus(v)}
-                className="py-3 text-sm font-medium transition-colors"
-                style={{
-                  borderRadius: tc.buttonRadius,
-                  border: "1px solid",
-                  ...(rsvpStatus === v
-                    ? { background: accentColor, borderColor: accentColor, color: "white" }
-                    : { background: "transparent", borderColor: "#DED6CA", color: "inherit" }),
-                }}>
-                {l}
-              </button>
-            ))}
-          </div>
-          {rsvpStatus === "attending" && (
-            <div className="space-y-1.5">
-              <p className="text-xs font-medium opacity-70">Dietary restrictions (optional)</p>
-              <input value={dietary} onChange={e => setDietary(e.target.value)} placeholder="e.g., vegetarian, nut allergy"
-                className="w-full px-4 py-2.5 text-sm focus:outline-none" style={inputStyle} />
-            </div>
-          )}
-          <button type="submit" disabled={submitting}
-            className="w-full py-3 text-sm font-semibold text-white disabled:opacity-50"
-            style={{ background: accentColor, borderRadius: tc.buttonRadius }}>
-            {submitting ? <Loader2 className="h-4 w-4 animate-spin mx-auto" /> : "Submit RSVP →"}
-          </button>
-        </form>
-      )}
+      <form onSubmit={handleLookup} className="space-y-3">
+        <p className="text-sm font-medium">Enter the RSVP code from your invitation</p>
+        <input value={token} onChange={e => setToken(e.target.value)} placeholder="Your RSVP code"
+          className="w-full px-4 py-3 text-sm focus:outline-none" style={inputStyle} />
+        <button type="submit" disabled={!token.trim() || checking}
+          className="w-full py-3 text-sm font-semibold text-white disabled:opacity-50"
+          style={{ background: accentColor, borderRadius: tc.buttonRadius }}>
+          {checking ? <Loader2 className="h-4 w-4 animate-spin mx-auto" /> : "Find My Invitation →"}
+        </button>
+      </form>
     </div>
   );
 }
@@ -654,7 +661,7 @@ export function WeddingWebsite({
     return <PasswordGate slug={slug} accentColor={site.accentColor ?? "#5D6F5D"} />;
   }
 
-  const tc = resolveTheme(site.theme, site.themePalette);
+  const tc = resolveTheme(site.theme, site.themePalette, site.fontPairing);
   // Theme supplies a natural accent; couples can override it with a custom accentColor.
   const color = site.accentColor ?? tc.accent;
   const couple = site.couple;
@@ -665,9 +672,17 @@ export function WeddingWebsite({
   const du = eventDate ? daysUntil(eventDate) : null;
   const content = site.content ?? {};
 
-  // Section order: use custom order if set, otherwise sensible default
+  // Section order & visibility: Hosted Experience Platform Phase 2 —
+  // prefer the ordered, visibility-filtered `sections` array from
+  // experience_sections (the server already excludes hidden sections, so
+  // no client-side filtering is needed) over the legacy sectionOrder
+  // array. Falls back to the pre-Phase-2 behavior when `sections` is
+  // absent or empty, so an experience that predates the Section Model
+  // (or a stale cached response) still renders exactly as before.
   const DEFAULT_ORDER = ["story", "event", "gallery", "schedule", "travel", "dress_code", "bridal_party", "things_to_do", "music", "registry", "faq", "rsvp"];
-  const sectionOrder = site.sectionOrder?.length ? site.sectionOrder : DEFAULT_ORDER;
+  const sectionOrder = site.sections?.length
+    ? site.sections.map(s => s.key).filter(k => k !== "home")
+    : (site.sectionOrder?.length ? site.sectionOrder : DEFAULT_ORDER);
 
   // Load Google Fonts for this theme
   React.useEffect(() => {
@@ -1260,7 +1275,7 @@ export function WeddingWebsite({
 
       {/* Footer */}
       <div className="text-center py-10 text-xs opacity-30" style={{ fontFamily: tc.bodyFont }}>
-        {coupleName}'s Wedding · Made with Wevenu
+        {coupleName}'s Wedding
       </div>
 
     </div>

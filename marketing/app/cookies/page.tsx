@@ -4,7 +4,7 @@ import { CookiePreferencesExperience } from "@/components/marketing/cookie-prefe
 
 export const metadata: Metadata = {
   title: "Cookie Preferences",
-  description: "Manage how Wevenu uses cookies on this device.",
+  description: "Manage how Hello to Cheers uses cookies on this device.",
 };
 
 export default function CookiePreferencesPage() {

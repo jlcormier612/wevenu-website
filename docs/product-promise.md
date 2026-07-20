@@ -15,6 +15,8 @@ The question to ask before shipping anything: **does this violate one of our pro
 ### 2. Legal Integrity
 **Executed contracts are permanent historical records. They are never edited or overwritten.** If changes are required, Wevenu creates a new version or amendment while preserving the complete history of every agreement — never a mutation of the original, and never an option for any role, including Owner. Records preserve history; relationships evolve. A contract becomes a permanent historical artifact the moment it's executed, while the client's planning journey continues through new versions or amendments when necessary. See `docs/contract-lifecycle-design.md` for the full lifecycle this promise is built on.
 
+**Generalized 2026-07-16:** these two promises are the money-and-legal instances of a platform-wide pattern, formalized as `docs/commitment-lifecycle-architecture.md` — "Never Silently Change an Agreement," applied there to every commitment on the platform (guest counts, seating plans, timelines, vendor selections), not just contracts and invoices.
+
 ### 3. Operational Integrity
 **The platform will never knowingly allow a double booking.** If a space is already committed to an event on a given date and time, the system rejects the conflicting booking — it does not merely warn and let the user proceed.
 

@@ -15,7 +15,7 @@ export function MeetLuvSection() {
           />
         </div>
         <p className="text-sm tracking-wide text-[var(--true-white)]/65">
-          Included with every Wevenu plan
+          Included with every Hello to Cheers plan
         </p>
       </div>
     </Section>

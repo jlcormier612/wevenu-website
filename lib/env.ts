@@ -1,7 +1,7 @@
 /**
  * Centralized access to public runtime environment variables.
  *
- * Wevenu never hardcodes credentials. The Supabase URL and anon key are
+ * Hello to Cheers never hardcodes credentials. The Supabase URL and anon key are
  * supplied by the deployment environment (Vercel / local `.env.local`).
  *
  * The anon (publishable) key is safe to expose to the browser; it only grants

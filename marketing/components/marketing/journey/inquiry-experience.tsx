@@ -1,10 +1,10 @@
 import Image from "next/image";
-import Link from "next/link";
-
+import { HospitalityHeart } from "@/components/marketing/brand-accents";
 import { InquiryWorkspaceMock } from "@/components/marketing/journey/inquiry-workspace-mock";
 import { JourneyNav } from "@/components/marketing/journey/journey-nav";
 import { MarketingCta } from "@/components/marketing/marketing-cta";
 import { FILM } from "@/lib/marketing/film";
+import { EDITORIAL_BLEED, EDITORIAL_BREAK_Y, EDITORIAL_FRAME, EDITORIAL_IMAGE, TYPE_HERO_SHELL } from "@/lib/marketing/rhythm";
 
 const HOW_IT_WORKS = [
   {
@@ -46,48 +46,47 @@ export function InquiryExperience({ prev = null, next }: InquiryExperienceProps)
   return (
     <div className="bg-[var(--true-white)]">
       {/* ── Section 1 · Hero ── */}
-      <section className="px-6 pt-[140px] pb-28 md:pb-36">
-        <div className="mx-auto max-w-[700px]">
-          <p className="text-xs tracking-[0.18em] uppercase text-[var(--heritage-sage)]">
+      <section className={TYPE_HERO_SHELL}>
+        <div className="mx-auto max-w-[65ch]">
+          <p className="text-[0.7125rem] tracking-[0.22em] uppercase text-[var(--heritage-sage)]/82">
             Connected journey · 01
           </p>
-          <h1 className="mt-6 font-heading text-5xl font-medium leading-[1.05] text-[var(--forest-sage)] md:text-6xl lg:text-7xl">
+          <h1 className="mt-8 font-heading text-[3.36rem] font-medium leading-[1.1] tracking-tight text-[var(--forest-sage)] md:text-[4.2rem] lg:text-[5.04rem]">
             Inquiry
           </h1>
-          <p className="mt-6 font-heading text-2xl italic text-[var(--forest-sage)]/80 md:text-3xl">
+          <p className="mt-4 font-heading text-2xl italic text-[var(--forest-sage)]/80 md:text-3xl">
             A first hello that feels personal.
           </p>
-          <p className="mt-10 max-w-[620px] text-base leading-relaxed text-[var(--forest-sage)]/70 md:text-lg">
+          <p className="mt-8 max-w-[65ch] text-base leading-[1.7] text-[var(--forest-sage)]/70 md:text-lg">
             Every conversation begins a relationship. Whether it arrives from your website,
-            email, phone call, or referral, Wevenu keeps everything together from the very
+            email, phone call, or referral, Hello to Cheers keeps everything together from the very
             first moment.
           </p>
-          <div className="mt-14 flex flex-wrap items-center gap-5">
+          <div className="mt-14 flex flex-wrap items-center gap-4">
             <MarketingCta />
-            <Link
+            <MarketingCta
               href="/product#connected-journey"
-              className="text-sm tracking-wide text-[var(--forest-sage)]/55 underline-offset-4 transition hover:underline"
-            >
-              Back to Journey
-            </Link>
+              label="Back to Journey"
+              variant="ghost"
+            />
           </div>
         </div>
       </section>
 
       {/* ── Section 2 · Large Visual Story ── 60/40 */}
       <section className="px-6 pb-28 md:pb-36">
-        <div className="mx-auto grid max-w-6xl items-stretch gap-8 md:grid-cols-[3fr_2fr] md:gap-10">
-          <div className="relative min-h-[420px] overflow-hidden md:min-h-[560px]">
+        <div className="mx-auto grid max-w-6xl items-start gap-8 md:grid-cols-[3fr_2fr] md:gap-10">
+          <div className={`relative aspect-[16/10] w-full md:aspect-[5/3] ${EDITORIAL_FRAME}`}>
             <Image
               src={FILM.inquiryWelcome}
-              alt="Couple walking the grounds of an elegant venue on a warm, bright day"
+              alt="Let's start something beautiful — the first hello that begins a relationship"
               fill
-              className="object-cover object-[center_40%]"
+              className={EDITORIAL_IMAGE}
               sizes="(max-width:768px) 100vw, 60vw"
               priority
             />
           </div>
-          <div className="flex flex-col justify-center">
+          <div className="flex flex-col justify-center self-stretch">
             <InquiryWorkspaceMock />
             <p className="mt-6 text-sm tracking-wide text-[var(--forest-sage)]/55">
               Every conversation becomes part of one living record.
@@ -97,7 +96,7 @@ export function InquiryExperience({ prev = null, next }: InquiryExperienceProps)
       </section>
 
       {/* ── Section 3 · How It Works ── */}
-      <section className="px-6 py-24 md:py-32">
+      <section className="px-6 py-28 md:py-36">
         <div className="mx-auto grid max-w-6xl gap-10 md:grid-cols-3 md:gap-12">
           {HOW_IT_WORKS.map((card) => (
             <div
@@ -105,10 +104,10 @@ export function InquiryExperience({ prev = null, next }: InquiryExperienceProps)
               className="border-t border-[var(--taupe-medium)]/70 pt-8"
             >
               <p className="font-heading text-sm text-[var(--heritage-sage)]/60">{card.n}</p>
-              <h2 className="mt-4 font-heading text-2xl text-[var(--forest-sage)] md:text-3xl">
+              <h2 className="mt-4 font-heading text-2xl text-[var(--forest-sage)] md:text-[2.1rem]">
                 {card.title}
               </h2>
-              <p className="mt-4 text-sm leading-relaxed text-[var(--forest-sage)]/70 md:text-base">
+              <p className="mt-4 text-sm leading-[1.7] text-[var(--forest-sage)]/70 md:text-base">
                 {card.body}
               </p>
             </div>
@@ -117,13 +116,13 @@ export function InquiryExperience({ prev = null, next }: InquiryExperienceProps)
       </section>
 
       {/* ── Quiet hospitality detail ── */}
-      <section className="px-6 pb-8 md:pb-12">
-        <div className="relative mx-auto aspect-[21/7] max-w-6xl overflow-hidden md:aspect-[21/6]">
+      <section className={`px-6 ${EDITORIAL_BREAK_Y}`}>
+        <div className={`relative mx-auto aspect-[2/1] max-w-6xl ${EDITORIAL_FRAME}`}>
           <Image
             src={FILM.inquiryConversation}
-            alt="Coffee, notebook, and flowers on a quiet morning table"
+            alt="Planning table with Hello to Cheers on phone, notebook, and roses — personal details matter"
             fill
-            className="object-cover"
+            className={EDITORIAL_IMAGE}
             sizes="100vw"
           />
         </div>
@@ -132,17 +131,17 @@ export function InquiryExperience({ prev = null, next }: InquiryExperienceProps)
       {/* ── Section 4 · Real Difference ── */}
       <section className="bg-[var(--warm-gray)] px-6 py-28 md:py-36">
         <div className="mx-auto grid max-w-6xl gap-14 md:grid-cols-2 md:gap-20 md:items-start">
-          <h2 className="font-heading text-3xl font-medium leading-[1.15] text-[var(--forest-sage)] md:text-5xl">
+          <h2 className="font-heading text-[2.1rem] font-medium leading-[1.21] text-[var(--forest-sage)] md:text-[3.36rem]">
             Most software tracks inquiries.
             <br />
-            Wevenu remembers relationships.
+            Hello to Cheers remembers relationships.
           </h2>
           <div>
-            <p className="text-base leading-relaxed text-[var(--forest-sage)]/75 md:text-lg">
+            <p className="text-base leading-[1.7] text-[var(--forest-sage)]/75 md:text-lg max-w-[65ch]">
               Traditional CRMs create another contact.
             </p>
-            <p className="mt-5 text-base leading-relaxed text-[var(--forest-sage)]/75 md:text-lg">
-              Wevenu creates the beginning of a living booking that stays connected through
+            <p className="mt-5 text-base leading-[1.7] text-[var(--forest-sage)]/75 md:text-lg max-w-[65ch]">
+              Hello to Cheers creates the beginning of a living booking that stays connected through
               planning, payments, guests, vendors, and celebration.
             </p>
             <ol className="mt-14 space-y-0">
@@ -172,15 +171,15 @@ export function InquiryExperience({ prev = null, next }: InquiryExperienceProps)
       {/* ── Section 5 · Screenshot Feature ── */}
       <section className="px-6 py-28 md:py-36">
         <div className="mx-auto grid max-w-6xl items-center gap-12 md:grid-cols-[1.35fr_0.65fr] md:gap-16">
-          <InquiryWorkspaceMock className="min-h-[420px] overflow-hidden border border-[var(--taupe-medium)]/50 bg-[var(--true-white)] shadow-[0_28px_80px_-48px_rgba(47,55,47,0.4)] md:min-h-[480px]" />
+          <InquiryWorkspaceMock className={`min-h-[420px] md:min-h-[480px] ${EDITORIAL_FRAME} bg-[var(--true-white)]`} />
           <div>
-            <h2 className="font-heading text-3xl text-[var(--forest-sage)] md:text-4xl">
+            <h2 className="font-heading text-[2.1rem] text-[var(--forest-sage)] md:text-[2.52rem]">
               Calm by design.
             </h2>
-            <p className="mt-6 text-base leading-relaxed text-[var(--forest-sage)]/70 md:text-lg">
+            <p className="mt-6 text-base leading-[1.7] text-[var(--forest-sage)]/70 md:text-lg max-w-[65ch]">
               The interface shouldn&apos;t compete for your attention.
             </p>
-            <p className="mt-5 text-base leading-relaxed text-[var(--forest-sage)]/70 md:text-lg">
+            <p className="mt-5 text-base leading-[1.7] text-[var(--forest-sage)]/70 md:text-lg max-w-[65ch]">
               It quietly keeps every conversation organized so you can focus on people instead
               of paperwork.
             </p>
@@ -189,13 +188,14 @@ export function InquiryExperience({ prev = null, next }: InquiryExperienceProps)
       </section>
 
       {/* ── Section 6 · Closing Quote ── */}
-      <section className="px-6 py-32 md:py-44">
+      <section className="px-6 py-28 md:py-36">
         <div className="mx-auto max-w-3xl text-center">
+          <HospitalityHeart size={14} className="mx-auto mb-6 opacity-[0.8]" />
           <p className="font-heading text-3xl italic leading-snug text-[var(--forest-sage)] md:text-5xl">
             “The best hospitality begins long before the event day.”
           </p>
           <p className="mt-8 text-sm tracking-wide text-[var(--forest-sage)]/55 md:text-base">
-            Wevenu simply makes sure it never gets forgotten.
+            Hello to Cheers simply makes sure it never gets forgotten.
           </p>
         </div>
       </section>

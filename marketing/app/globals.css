@@ -19,8 +19,17 @@
   --taupe-dark: #b8aea1;
   --dusty-rose: #d8a7aa;
   --black: #000000;
-  /* Header-only — mid linen between dark flower-contrast and white */
-  --header-linen: #ddd5c8;
+  /* Celebration accent — champagne gold, imagery only (never UI fill) */
+  --celebration-gold: #c4a882;
+  /* Header/footer — two shades lighter than prior mid linen */
+  --header-linen: #efe9e1;
+  /* Motion — SEND 4 + SEND 5
+   * Base: 180–250ms, ease-out, opacity ± translateY.
+   * Journey story: thin connecting line (scaleX/Y) + chapter opacity only.
+   */
+  --marketing-ease: ease-out;
+  --marketing-motion: 220ms;
+  --marketing-hover: 200ms;
 }
 
 @layer base {
@@ -44,29 +53,233 @@
   color-scheme: light;
 }
 
+/* SEND 8 — photography collection (one art direction) */
+.editorial-frame {
+  border-radius: 0.125rem; /* rounded-sm — locked */
+  border: 1px solid color-mix(in srgb, var(--taupe-medium) 28%, transparent);
+  box-shadow: 0 20px 50px -38px rgba(47, 55, 47, 0.22);
+  background-color: var(--taupe-light);
+}
+
+.editorial-bleed {
+  border-radius: 0;
+  border: none;
+  box-shadow: none;
+}
+
+.editorial-photo {
+  object-fit: cover;
+  object-position: center;
+  /* Identical warmth across the collection */
+  filter: brightness(0.985) contrast(1.035) saturate(1.07) sepia(0.06);
+}
+
+/* Shared interactive hover timing — SEND 9 quiet response */
+.marketing-surface a,
+.marketing-surface button {
+  transition-property: color, background-color, border-color, opacity,
+    text-decoration-color, box-shadow, filter;
+  transition-duration: var(--marketing-hover);
+  transition-timing-function: var(--marketing-ease);
+}
+
 .font-script {
   font-family: var(--font-script), cursive;
 }
 
-@keyframes marketing-fade-up {
+/* ── SEND 4 · Motion system ─────────────────────────────────────────
+ * Two motions only:
+ *   .marketing-page-enter  — opacity (route change)
+ *   .marketing-reveal      — opacity + translateY (storytelling)
+ * No bounce, scale, spin, or global image animation.
+ */
+@keyframes marketing-fade {
   from {
     opacity: 0;
-    transform: translateY(14px);
   }
   to {
     opacity: 1;
-    transform: translateY(0);
   }
 }
 
-.marketing-fade-up {
-  animation: marketing-fade-up 0.8s ease-out both;
+.marketing-page-enter {
+  animation: marketing-fade var(--marketing-motion) var(--marketing-ease) both;
 }
 
-.marketing-fade-up-delay {
-  animation: marketing-fade-up 0.9s ease-out 0.12s both;
+/**
+ * Scroll reveal — start hidden; .is-visible settles in.
+ * Applied only where storytelling benefits (section openers, chapters).
+ */
+.marketing-reveal {
+  opacity: 0;
+  transform: translateY(6px);
+  transition:
+    opacity var(--marketing-motion) var(--marketing-ease),
+    transform var(--marketing-motion) var(--marketing-ease);
 }
 
-.marketing-fade-up-delay-2 {
-  animation: marketing-fade-up 1s ease-out 0.22s both;
+.marketing-reveal.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .marketing-page-enter,
+  .marketing-reveal,
+  .marketing-reveal.is-visible {
+    animation: none;
+    transition: none;
+    opacity: 1;
+    transform: none;
+  }
+
+  .journey-chapter,
+  .journey-chapter-node,
+  .journey-story-line {
+    transition: none !important;
+  }
+
+  .luv-heart,
+  .luv-heart.is-visible,
+  .luv-whisper,
+  .luv-whisper.is-visible {
+    transition: none;
+    opacity: 1;
+    transform: none;
+  }
+
+  .story-end-heart,
+  .story-end-heart.is-lit {
+    animation: none;
+    opacity: 0.72;
+    transform: none;
+    filter: none;
+  }
+}
+
+/* SEND 5 — Follow One Celebration story line + chapter cadence */
+.journey-chapter {
+  transition: opacity var(--marketing-motion) var(--marketing-ease);
+}
+
+.journey-chapter-node {
+  transition:
+    background-color var(--marketing-motion) var(--marketing-ease),
+    opacity var(--marketing-motion) var(--marketing-ease);
+}
+
+.journey-story-line {
+  transition: transform var(--marketing-motion) var(--marketing-ease);
+}
+
+/* SEND 6 — Luv quiet delight (heart, then whisper) */
+.luv-heart {
+  color: var(--dusty-rose);
+  opacity: 0;
+  transform: translateY(4px);
+  transition:
+    opacity var(--marketing-motion) var(--marketing-ease),
+    transform var(--marketing-motion) var(--marketing-ease);
+}
+
+.luv-heart.is-visible {
+  opacity: 0.9;
+  transform: translateY(0);
+}
+
+.luv-whisper {
+  opacity: 0;
+  transform: translateY(6px);
+  transition:
+    opacity var(--marketing-motion) var(--marketing-ease) 280ms,
+    transform var(--marketing-motion) var(--marketing-ease) 280ms;
+}
+
+.luv-whisper.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* SEND 7 — end-of-page story heart (soft glow <1s) */
+@keyframes story-end-heart {
+  0% {
+    opacity: 0;
+    transform: translateY(5px);
+    filter: drop-shadow(0 0 0 rgba(216, 167, 170, 0));
+  }
+  38% {
+    opacity: 0.95;
+    transform: translateY(0);
+    filter: drop-shadow(0 0 9px rgba(216, 167, 170, 0.5));
+  }
+  100% {
+    opacity: 0.72;
+    transform: translateY(0);
+    filter: drop-shadow(0 0 2px rgba(216, 167, 170, 0.22));
+  }
+}
+
+.story-end-heart {
+  color: var(--dusty-rose);
+  opacity: 0;
+}
+
+.story-end-heart.is-lit {
+  animation: story-end-heart 880ms ease-out both;
+}
+
+/*
+ * Brand value accents — Hospitality · Trust · Celebration
+ * Recognizable cues that repeat quietly across the experience.
+ */
+.hospitality-heart {
+  color: var(--dusty-rose);
+  opacity: 0.88;
+}
+
+.trust-rule {
+  display: block;
+  width: 2.75rem;
+  height: 1px;
+  background: color-mix(in srgb, var(--heritage-sage) 52%, transparent);
+}
+
+.celebration-whisper {
+  position: absolute;
+  top: 0.85rem;
+  right: 0.85rem;
+  z-index: 2;
+  color: var(--celebration-gold);
+  opacity: 0.42;
+  pointer-events: none;
+  filter: drop-shadow(0 0 4px color-mix(in srgb, var(--celebration-gold) 35%, transparent));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .celebration-whisper {
+    filter: none;
+    opacity: 0.36;
+  }
+}
+
+/* Typographic rhythm utilities — SEND 1 */
+.marketing-label {
+  @apply text-[0.7125rem] tracking-[0.22em] uppercase text-[var(--heritage-sage)]/82;
+}
+
+.marketing-body {
+  @apply text-base leading-[1.7] md:text-lg;
+}
+
+.marketing-measure {
+  max-width: 65ch;
+}
+
+/*
+ * Primary editorial headlines — ~12% size, ~5% opener line-height.
+ * Applied via explicit utility replacements in components; these
+ * helpers keep the intended scale documented in one place.
+ */
+.marketing-surface :is(h1, h2).font-heading {
+  letter-spacing: -0.025em;
 }

@@ -67,7 +67,7 @@ function ItemCard({
 
       {item.imageUrl ? (
         // eslint-disable-next-line @next/next/no-img-element
-        <img src={item.imageUrl} alt="" className="h-24 w-full rounded-lg border border-border/60 object-cover" />
+        <img src={item.imageUrl} alt="" className="h-24 w-full rounded-lg border border-border/60 bg-muted/40 object-contain" />
       ) : (
         <div className="flex h-24 w-full items-center justify-center rounded-lg border border-dashed border-border/60 text-muted-foreground">
           <Package className="h-6 w-6" />

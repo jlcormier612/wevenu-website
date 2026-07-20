@@ -124,7 +124,7 @@ function HouseholdMemberRow({ member, mealOptions, onChange }: {
 
 // ── Main component ────────────────────────────────────────────────────────────
 
-export function RsvpPage({ context, rsvpToken }: { context: RsvpContext; rsvpToken: string }) {
+export function RsvpPage({ context, rsvpToken, readOnly = false }: { context: RsvpContext; rsvpToken: string; readOnly?: boolean }) {
   const { guest, couple, event, venue, websiteSlug, accentColor, mealOptions = [], questions = [], guestAnswers = [], householdMembers = [] } = context;
   const color      = accentColor ?? "#5D6F5D";
   const coupleName = [couple.firstName, couple.partnerFirstName].filter(Boolean).join(" & ");
@@ -252,6 +252,12 @@ export function RsvpPage({ context, rsvpToken }: { context: RsvpContext; rsvpTok
             </div>
           ) : (
             <div className="rounded-2xl border border-border bg-white p-6 shadow-sm space-y-5">
+              {readOnly && (
+                <div className="rounded-xl px-3 py-2 text-xs font-medium text-center"
+                  style={{ background: `${color}15`, color }}>
+                  Previewing as {guest.firstName} — this is exactly what they&apos;ll see. Nothing here can be submitted from preview.
+                </div>
+              )}
               <div>
                 <h2 className="font-heading text-xl font-semibold text-[#1A1A1A]">
                   Hi {guest.firstName}! 👋
@@ -385,10 +391,10 @@ export function RsvpPage({ context, rsvpToken }: { context: RsvpContext; rsvpTok
               </div>
 
               <button type="button" onClick={handleSubmit}
-                disabled={formStatus === "submitting"}
+                disabled={readOnly || formStatus === "submitting"}
                 className="w-full rounded-xl py-3.5 text-sm font-semibold text-white transition-opacity disabled:opacity-60"
                 style={{ background: color }}>
-                {formStatus === "submitting"
+                {readOnly ? "Preview only" : formStatus === "submitting"
                   ? <Loader2 className="h-4 w-4 animate-spin mx-auto" />
                   : attending === "attending" ? "💗 I'll be there!" : "Submit RSVP"}
               </button>
@@ -404,7 +410,7 @@ export function RsvpPage({ context, rsvpToken }: { context: RsvpContext; rsvpTok
       </div>
 
       <footer className="text-center py-4 text-[10px] text-[#B8AEA1]">
-        Powered by Wevenu · {venue.name}
+        {venue.name}
       </footer>
     </div>
   );

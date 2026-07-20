@@ -5,7 +5,7 @@ import { Section } from "@/components/marketing/section";
 import { PLACEHOLDER } from "@/lib/marketing/content";
 
 export const metadata: Metadata = {
-  title: "Request a Walkthrough",
+  title: "Schedule a Walkthrough",
 };
 
 export default function WalkthroughPage() {
@@ -15,6 +15,7 @@ export default function WalkthroughPage() {
     <Section
       tone="cream"
       narrow
+      hero
       headline={walkthrough.headline}
       intro={walkthrough.body}
     >

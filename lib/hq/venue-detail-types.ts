@@ -1,4 +1,5 @@
 import type { HealthStatus, RiskSignal, Trend } from "@/lib/hq/beta-types";
+import type { LuvObservation } from "@/lib/luv/types";
 
 export type HqVenueSummary = {
   id: string;
@@ -89,4 +90,5 @@ export type HqVenueDetail = {
   notes: HqNote[];
   tasks: HqTask[];
   crmState: HqCrmState;
+  luvObservations: LuvObservation[];
 };

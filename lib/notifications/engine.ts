@@ -123,8 +123,9 @@ export async function processReminders(): Promise<ProcessResult> {
           portalToken = session?.access_token;
         }
 
-        const { data: venueRow } = await supabase.from("venues").select("name").eq("id", reminder.venue_id).maybeSingle<{ name: string }>();
+        const { data: venueRow } = await supabase.from("venues").select("name, primary_color").eq("id", reminder.venue_id).maybeSingle<{ name: string; primary_color: string }>();
         const venueName = venueRow?.name ?? "Your Venue";
+        const venueColor = venueRow?.primary_color ?? "#5D6F5D";
 
         let emailContent: { subject: string; html: string; text: string };
         if (isTourReminder && tourAppt) {
@@ -148,7 +149,7 @@ export async function processReminders(): Promise<ProcessResult> {
             eventDate: event?.event_date ?? "",
             dueDate: task!.due_date,
             role, reminderType: reminder.reminder_type,
-            portalToken, venueBaseUrl: getBaseUrl(), venueName,
+            portalToken, venueBaseUrl: getBaseUrl(), venueName, venueColor,
           });
         }
         subject = emailContent.subject;
@@ -156,7 +157,7 @@ export async function processReminders(): Promise<ProcessResult> {
 
         // Send via Resend REST API
         const apiKey = process.env.RESEND_API_KEY;
-        const fromEmail = process.env.FROM_EMAIL ?? "Wevenu <onboarding@resend.dev>";
+        const fromEmail = process.env.FROM_EMAIL ?? "Hello to Cheers <onboarding@resend.dev>";
         if (apiKey) {
           const resendResponse = await fetch("https://api.resend.com/emails", {
             method: "POST",

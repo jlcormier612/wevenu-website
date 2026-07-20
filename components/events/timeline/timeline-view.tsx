@@ -151,7 +151,7 @@ function TimelineEntryRow({
           entryTime: entry.entryTime ?? "",
           audiences: entry.audiences,
           sectionId: entry.sectionId,
-          clientEditable: entry.clientEditable,
+          lockState: entry.lockState,
           status: entry.status,
           assignedToStaffId: entry.assignedToStaffId,
         }}
@@ -167,9 +167,15 @@ function TimelineEntryRow({
     );
   }
 
+  // A client-owned row is the couple's own submitted, private planning
+  // work — read-only here by design (docs/client-workspace-product-
+  // architecture.md §12, refined 2026-07-17). Day-of execution
+  // (status/assignment) stays settable regardless of owner, per Q3.
+  const isClientOwned = entry.owner === "client";
+
   return (
     <div
-      draggable
+      draggable={!isClientOwned}
       onDragStart={onDragStart}
       onDragEnd={onDragEnd}
       className={cn(
@@ -178,9 +184,11 @@ function TimelineEntryRow({
         entry.status === "complete" && "opacity-70",
       )}
     >
-      <div className="mt-1 shrink-0 cursor-grab text-muted-foreground" aria-label="Drag to reorder">
-        <GripVertical className="h-4 w-4" />
-      </div>
+      {!isClientOwned && (
+        <div className="mt-1 shrink-0 cursor-grab text-muted-foreground" aria-label="Drag to reorder">
+          <GripVertical className="h-4 w-4" />
+        </div>
+      )}
       <button
         type="button"
         onClick={() => onSetStatus(entry.id, entry.status === "complete" ? "not_started" : "complete")}
@@ -209,6 +217,11 @@ function TimelineEntryRow({
               <span className={cn("rounded-full px-1.5 py-0.5 text-[9px] font-semibold", DUE_STATUS_BADGE[dueStatus])}>
                 {DUE_STATUS_LABEL[dueStatus]}
               </span>
+              {isClientOwned && (
+                <span className="rounded-full bg-[#D8A7AA]/15 px-1.5 py-0.5 text-[9px] font-semibold text-[#8A5A5E]" title="From the couple's latest submitted timeline — read-only here">
+                  💗 From client&apos;s timeline
+                </span>
+              )}
             </div>
             <p className={cn("mt-0.5 text-sm font-medium text-foreground", entry.status === "complete" && "line-through")}>{entry.title}</p>
             {entry.description && (
@@ -221,10 +234,12 @@ function TimelineEntryRow({
                 Note: {entry.notes}
               </p>
             )}
-            {/* Audience badges — only show non-internal audiences */}
-            {entry.audiences && entry.audiences.some(a => a !== "internal") && (
+            {/* Publication badges — venue/client mutual visibility isn't
+                gated by a tag (see lib/timeline/types.ts), so only the
+                genuine external-audience tags ever render here. */}
+            {entry.audiences && entry.audiences.some(a => TIMELINE_AUDIENCES.some(t => t.value === a)) && (
               <div className="mt-1.5 flex gap-1 flex-wrap">
-                {TIMELINE_AUDIENCES.filter(a => a.value !== "internal" && entry.audiences.includes(a.value)).map(a => (
+                {TIMELINE_AUDIENCES.filter(a => entry.audiences.includes(a.value)).map(a => (
                   <span key={a.value} className="rounded-full px-1.5 py-0.5 text-[9px] font-semibold text-white"
                     style={{ background: a.color }}>
                     {a.emoji} {a.label}
@@ -241,7 +256,9 @@ function TimelineEntryRow({
             )}
           </div>
 
-          {/* Actions */}
+          {/* Actions — a client-owned row is read-only here; content can
+              only change on the couple's side, via their next submission. */}
+          {!isClientOwned && (
           <div className="flex shrink-0 items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
             <button
               type="button"
@@ -260,6 +277,8 @@ function TimelineEntryRow({
               <Trash2 className="h-3.5 w-3.5" />
             </button>
           </div>
+          )}
+          {isClientOwned && <div className="shrink-0" />}
         </div>
       </div>
     </div>
@@ -608,7 +627,7 @@ export function TimelineView({
               entryTime: input.entryTime || null,
               audiences: input.audiences ?? e.audiences,
               sectionId: input.sectionId !== undefined ? input.sectionId : e.sectionId,
-              clientEditable: input.clientEditable !== undefined ? input.clientEditable : e.clientEditable,
+              lockState: input.lockState !== undefined ? input.lockState : e.lockState,
               status: input.status ?? e.status,
               assignedToStaffId: input.assignedToStaffId !== undefined ? input.assignedToStaffId : e.assignedToStaffId,
               updatedAt: new Date().toISOString(),

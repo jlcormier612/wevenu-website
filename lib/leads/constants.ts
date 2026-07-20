@@ -37,6 +37,9 @@ export const EVENT_TYPES: Option[] = [
   { value: "anniversary",       label: "Anniversary Celebration" },
   { value: "shower",            label: "Bridal / Baby Shower" },
   { value: "gala",              label: "Gala / Fundraiser" },
+  { value: "retreat",           label: "Retreat" },
+  { value: "celebration_of_life", label: "Celebration of Life" },
+  { value: "quinceanera",       label: "Quinceañera" },
   { value: "other",             label: "Other" },
 ];
 
@@ -102,6 +105,23 @@ export function eventTypeLabel(value: string | null): string {
 export function sourceLabel(value: string | null): string {
   if (!value) return "";
   return LEAD_SOURCES.find((s) => s.value === value)?.label ?? value;
+}
+
+/**
+ * Resolves free-text source values (e.g. from a CSV export of another CRM —
+ * "The Knot", "website-form", "Referral!") against the registered source
+ * vocabulary. leads.source is now a real, enforced foreign key (Lead Intake
+ * architecture) — an unrecognized value would otherwise fail the whole
+ * import row. Falls back to "other" rather than dropping the row, and never
+ * discards the original text: the caller stores it in source_data so
+ * nothing is silently lost.
+ */
+export function resolveLeadSourceKey(rawValue: string | null | undefined): { key: string; originalLabel: string | null } {
+  const trimmed = rawValue?.trim();
+  if (!trimmed) return { key: "other", originalLabel: null };
+  const normalized = trimmed.toLowerCase().replace(/[\s-]+/g, "_");
+  const match = LEAD_SOURCES.find((s) => s.value === normalized || s.label.toLowerCase() === trimmed.toLowerCase());
+  return match ? { key: match.value, originalLabel: null } : { key: "other", originalLabel: trimmed };
 }
 
 export function formatDate(iso: string | null | undefined): string {

@@ -11,6 +11,7 @@
 import * as React from "react";
 
 import { Loader2 } from "lucide-react";
+import { TurnstileWidget } from "@/components/shared/turnstile-widget";
 
 const EVENT_TYPES = [
   { value: "wedding",             label: "Wedding" },
@@ -46,6 +47,7 @@ export function InquiryForm({
   const [refCode, setRefCode] = React.useState("");
   const [error, setError] = React.useState("");
   const [honeypot, setHoneypot] = React.useState("");
+  const [turnstileToken, setTurnstileToken] = React.useState<string | null>(null);
 
   // Form fields
   const [firstName, setFirstName] = React.useState("");
@@ -96,6 +98,7 @@ export function InquiryForm({
           estimatedBudget: budget ? parseFloat(budget.replace(/[$,]/g, "")) : null,
           message,
           sourceData,
+          turnstileToken,
         }),
       });
       const data = await res.json();
@@ -256,6 +259,10 @@ export function InquiryForm({
           {state === "error" && (
             <p className="text-sm text-red-600 text-center">{error}</p>
           )}
+
+          <div className="flex justify-center">
+            <TurnstileWidget onToken={setTurnstileToken} />
+          </div>
 
           <button type="submit" disabled={state === "submitting"}
             className="w-full rounded-lg py-3 text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-50 flex items-center justify-center gap-2"

@@ -43,6 +43,14 @@ function revalidateEvent(eventId: string) {
   revalidatePath(`/events/${eventId}`);
 }
 
+// Corrected on review: this is NOT a §8 violation. addEntryAction only
+// ever creates owner='venue' rows (the client's own items are created
+// exclusively through the portal RPCs) — the coordinator is both
+// Workspace Owner and Operational Owner for their own entries, the same
+// shape as Event Order's Finalize, so there's no cross-party commitment
+// being fired on early. "Build timeline" (a required coordinator-only
+// stock task) genuinely depends on this firing when the coordinator adds
+// their own entries — retiring it would have silently broken that task.
 async function triggerTimelineAutoComplete(eventId: string) {
   try {
     const { createClient } = await import("@/integrations/supabase/server");

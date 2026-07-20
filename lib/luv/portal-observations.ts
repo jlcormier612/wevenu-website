@@ -264,7 +264,7 @@ export function getAnniversaryObservations(
     } else if (daysSince < 180) {
       obs.push({ id: "settling-in", text: "The planning is done. The memories are yours to keep.", kind: "info" });
     } else {
-      obs.push({ id: "long-married", text: "Wevenu is yours for as long as you want it. Your wedding journey is preserved here.", kind: "info" });
+      obs.push({ id: "long-married", text: "Hello to Cheers is yours for as long as you want it. Your wedding journey is preserved here.", kind: "info" });
     }
   }
 

@@ -124,7 +124,10 @@
 
   --radius: 1rem; /* 16px */
 
-  --sidebar: var(--taupe-medium);
+  /* Same base color as dark mode's --sidebar (--taupe-dark), just lightened
+     2 more shades — light mode only, per request. Dark mode's --sidebar
+     below is untouched. */
+  --sidebar: color-mix(in oklch, var(--taupe-dark) 40%, white);
   --sidebar-foreground: var(--forest-sage);
   --sidebar-primary: var(--heritage-sage);
   --sidebar-primary-foreground: var(--true-white);
@@ -199,7 +202,9 @@
   --chart-4: var(--dusty-rose);
   --chart-5: var(--taupe-light);
 
-  --sidebar: var(--taupe-dark);
+  /* 2 shades lighter than --taupe-dark — same standalone-lighten reasoning
+     as the light-mode --sidebar above. */
+  --sidebar: color-mix(in oklch, var(--taupe-dark) 70%, white);
   --sidebar-foreground: var(--forest-sage);
   --sidebar-primary: var(--heritage-sage);
   --sidebar-primary-foreground: var(--true-white);

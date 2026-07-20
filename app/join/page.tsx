@@ -54,6 +54,50 @@ export default async function JoinPage({ searchParams }: Props) {
       redirect("/");
     }
 
+    if (result.error === "email_mismatch") {
+      return (
+        <main className="flex min-h-svh flex-col items-center justify-center bg-muted/40 px-4 py-12">
+          <div className="flex w-full max-w-sm flex-col gap-6">
+            <div className="flex justify-center"><Wordmark /></div>
+            <Card>
+              <CardHeader className="text-center">
+                <CardTitle>Wrong Email Address</CardTitle>
+                <CardDescription>
+                  This invitation was sent to a different email address.
+                  Sign in with that email, or ask your venue owner to resend
+                  the invitation to the correct address.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="text-center">
+                <Link href="/login" className="text-sm text-primary hover:underline">Sign in with a different account</Link>
+              </CardContent>
+            </Card>
+          </div>
+        </main>
+      );
+    }
+
+    if (result.error === "already_a_member") {
+      return (
+        <main className="flex min-h-svh flex-col items-center justify-center bg-muted/40 px-4 py-12">
+          <div className="flex w-full max-w-sm flex-col gap-6">
+            <div className="flex justify-center"><Wordmark /></div>
+            <Card>
+              <CardHeader className="text-center">
+                <CardTitle>Already a Member</CardTitle>
+                <CardDescription>
+                  You&apos;re already an active team member at this venue.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="text-center">
+                <Link href="/" className="text-sm text-primary hover:underline">Go to workspace</Link>
+              </CardContent>
+            </Card>
+          </div>
+        </main>
+      );
+    }
+
     return (
       <main className="flex min-h-svh flex-col items-center justify-center bg-muted/40 px-4 py-12">
         <div className="flex w-full max-w-sm flex-col gap-6">

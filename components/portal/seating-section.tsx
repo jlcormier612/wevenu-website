@@ -27,6 +27,7 @@ import { getSeatingObservation } from "@/lib/luv/portal-observations";
 import {
   ACCESSIBILITY_LABELS, DIETARY_EMOJI, MEAL_EMOJI,
   type SeatingData, type SeatingTable, type SeatingGuest, type SeatingSuggestionHousehold,
+  type SeatingFloorPlanSummary,
 } from "@/lib/portal/types";
 import type { DisplayShape } from "@/lib/floor-plans/types";
 
@@ -138,7 +139,7 @@ function GuestChip({
         <input
           type="checkbox" checked={!!selected} onChange={() => onToggleSelect(guest.guestId)}
           onClick={(e) => e.stopPropagation()}
-          className="h-3.5 w-3.5 rounded accent-[#5D6F5D] shrink-0"
+          className="h-3.5 w-3.5 rounded accent-[var(--venue-accent)] shrink-0"
         />
       )}
       <div className="flex-1 min-w-0">
@@ -205,7 +206,7 @@ function SeatingTableShape({
   const shape: DisplayShape = table.displayShape ?? "round";
   const style = DISPLAY_SHAPE_STYLE[shape];
   const overCapacity = table.capacity != null && table.guests.length > table.capacity;
-  const stroke = overCapacity ? "#ef4444" : isSelected ? "#3D5040" : isDragOver ? "#5D6F5D" : style.stroke;
+  const stroke = overCapacity ? "#ef4444" : isSelected ? "var(--venue-primary)" : isDragOver ? "var(--venue-primary)" : style.stroke;
   const fill = isDragOver ? "#eef4ee" : isSelected ? "#f0f5f0" : occupancyFill(table, style.fill);
   const fontSize = Math.max(9, Math.min(14, table.width / 6));
 
@@ -236,7 +237,7 @@ function SeatingTableShape({
         <rect
           x={table.x - table.width / 2 - 6} y={table.y - table.height / 2 - 6}
           width={table.width + 12} height={table.height + 12}
-          fill="none" stroke="#3D5040" strokeWidth={1.5} strokeDasharray="6,4" rx={4}
+          fill="none" stroke="var(--venue-primary)" strokeWidth={1.5} strokeDasharray="6,4" rx={4}
         />
       )}
     </g>
@@ -696,7 +697,7 @@ function SeatingDashboard({ data, onContinue }: { data: SeatingData; onContinue:
 
       <div className="w-full max-w-xs mb-6">
         <div className="h-2.5 rounded-full bg-muted overflow-hidden">
-          <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, background: complete ? "#3D5040" : "#5D6F5D" }} />
+          <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, background: complete ? "var(--venue-accent)" : "var(--venue-primary)" }} />
         </div>
         <p className="text-xs text-muted-foreground mt-1.5">{stats.totalAssigned} of {stats.totalAttending} guests seated · {pct}%</p>
       </div>
@@ -743,15 +744,88 @@ export default function SeatingSection({ token }: { token: string }) {
   const [autoAssigning, setAutoAssigning] = useState(false);
   const [showAutoPreview, setShowAutoPreview] = useState<Array<{ guestId: string; tableId: string }>>([]);
 
+  // Commitment Lifecycle Architecture §9 — each floor plan (Ceremony,
+  // Reception, ...) is its own independent Commitment Lifecycle. floorPlanId
+  // is undefined until the plan list loads, then defaults to the first plan.
+  const [floorPlans, setFloorPlans] = useState<SeatingFloorPlanSummary[]>([]);
+  const [floorPlanId, setFloorPlanId] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [confirmingSubmit, setConfirmingSubmit] = useState(false);
+  const [delegating, setDelegating] = useState(false);
+
   useEffect(() => {
-    fetch(`/api/portal/seating?token=${token}`)
+    fetch(`/api/portal/seating/floor-plans?token=${token}`)
+      .then((r) => r.json())
+      .then((d: { floorPlans?: SeatingFloorPlanSummary[] }) => {
+        const plans = d.floorPlans ?? [];
+        setFloorPlans(plans);
+        setFloorPlanId((prev) => prev ?? plans[0]?.id ?? null);
+      })
+      .catch(() => {});
+  }, [token]);
+
+  useEffect(() => {
+    const url = floorPlanId
+      ? `/api/portal/seating?token=${token}&floorPlanId=${floorPlanId}`
+      : `/api/portal/seating?token=${token}`;
+    setLoading(true);
+    fetch(url)
       .then((res) => res.json())
       .then((json) => setData(json as SeatingData))
       .finally(() => setLoading(false));
-  }, [token]);
+  }, [token, floorPlanId]);
+
+  async function submitPlan() {
+    if (!floorPlanId) return;
+    setSubmitting(true);
+    try {
+      const res = await fetch("/api/portal/seating/submit", {
+        method: "POST", headers: { "content-type": "application/json" },
+        body: JSON.stringify({ token, floorPlanId }),
+      });
+      const json = await res.json() as { ok?: boolean; error?: string };
+      if (json.ok) {
+        toast.success("🎉 Your seating plan is submitted — your venue has it now.");
+        setConfirmingSubmit(false);
+        fetch(`/api/portal/seating/floor-plans?token=${token}`).then(r => r.json())
+          .then((d: { floorPlans?: SeatingFloorPlanSummary[] }) => setFloorPlans(d.floorPlans ?? []));
+      } else if (json.error === "delegated_to_venue") {
+        toast.error("Your venue is currently managing this plan — revoke delegation to submit it yourself.");
+      } else {
+        toast.error("Couldn't submit your seating plan. Please try again.");
+      }
+    } finally { setSubmitting(false); }
+  }
+
+  async function toggleDelegate(grant: boolean) {
+    if (!floorPlanId) return;
+    setDelegating(true);
+    try {
+      if (grant) {
+        const res = await fetch("/api/portal/seating/delegate", {
+          method: "POST", headers: { "content-type": "application/json" },
+          body: JSON.stringify({ token, floorPlanId }),
+        });
+        const json = await res.json() as { ok?: boolean };
+        if (json.ok) toast.success("Your venue can now manage this seating plan for you.");
+        else toast.error("Couldn't delegate seating. Please try again.");
+      } else if (data?.delegationId) {
+        const res = await fetch("/api/portal/seating/delegate", {
+          method: "DELETE", headers: { "content-type": "application/json" },
+          body: JSON.stringify({ token, delegationId: data.delegationId }),
+        });
+        const json = await res.json() as { ok?: boolean };
+        if (json.ok) toast.success("You're managing this seating plan again.");
+        else toast.error("Couldn't revoke delegation. Please try again.");
+      }
+      const url = floorPlanId ? `/api/portal/seating?token=${token}&floorPlanId=${floorPlanId}` : `/api/portal/seating?token=${token}`;
+      fetch(url).then(r => r.json()).then((json) => setData(json as SeatingData));
+    } finally { setDelegating(false); }
+  }
 
   const assignGuest = async (guestId: string, tableId: string) => {
     if (!data) return;
+    if (data.isDelegated) { toast.error("Your venue is currently managing this seating plan."); return; }
     const previous = data; // captured for rollback — a failed write must never leave the UI showing a seat that was never saved
 
     setData((d) => {
@@ -777,7 +851,7 @@ export default function SeatingSection({ token }: { token: string }) {
       const res = await fetch("/api/portal/seating/assign", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ token, guestId, tableId }),
+        body: JSON.stringify({ token, guestId, tableId, floorPlanId }),
       });
       const json = await res.json().catch(() => null);
       if (!res.ok || !json?.ok) {
@@ -800,6 +874,7 @@ export default function SeatingSection({ token }: { token: string }) {
 
   const removeGuest = async (guestId: string) => {
     if (!data) return;
+    if (data.isDelegated) { toast.error("Your venue is currently managing this seating plan."); return; }
     const assigned = data.tables.flatMap((t) => t.guests).find((g) => g.guestId === guestId);
     if (!assigned) return;
     const previous = data; // captured for rollback
@@ -818,7 +893,7 @@ export default function SeatingSection({ token }: { token: string }) {
       const res = await fetch("/api/portal/seating/assign", {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ token, guestId }),
+        body: JSON.stringify({ token, guestId, floorPlanId }),
       });
       const json = await res.json().catch(() => null);
       if (!res.ok || !json?.ok) {
@@ -876,10 +951,71 @@ export default function SeatingSection({ token }: { token: string }) {
   const stats = data?.stats;
   const pctAssigned = stats && stats.totalAttending > 0 ? Math.round((stats.totalAssigned / stats.totalAttending) * 100) : 0;
 
+  // Commitment Lifecycle Architecture §9 — plan picker (only shown when the
+  // couple has more than one shared plan), delegation banner, and the
+  // Submit action. Always rendered above whichever view (loading, empty,
+  // dashboard, workspace) follows, so it's never lost switching views.
+  const commitBar = (
+    <div className="space-y-2 mb-3">
+      {floorPlans.length > 1 && (
+        <div className="flex gap-1.5 flex-wrap">
+          {floorPlans.map((fp) => (
+            <button key={fp.id} onClick={() => setFloorPlanId(fp.id)}
+              className="text-xs font-medium px-3 py-1.5 rounded-full transition-colors"
+              style={fp.id === floorPlanId
+                ? { background: "var(--venue-primary)", color: "white" }
+                : { background: "transparent", color: "#6A6460", border: "1px solid #E0DAD4" }}>
+              {fp.name}{fp.isDelegated ? " ✋" : ""}
+            </button>
+          ))}
+        </div>
+      )}
+      {data?.isDelegated ? (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 space-y-2">
+          <p className="text-sm text-amber-900">
+            ✋ Seating management has been delegated to your venue.
+          </p>
+          <p className="text-xs text-amber-800">
+            The venue is currently managing this seating plan on your behalf. You can revoke delegation at any time.
+          </p>
+          <Button type="button" size="sm" variant="outline" disabled={delegating} onClick={() => toggleDelegate(false)}>
+            {delegating ? "Revoking…" : "Revoke Delegation"}
+          </Button>
+        </div>
+      ) : data?.floorPlan && (
+        <div className="flex flex-wrap gap-2">
+          {!confirmingSubmit ? (
+            <Button type="button" size="sm" onClick={() => setConfirmingSubmit(true)}>
+              Submit Seating Plan
+            </Button>
+          ) : (
+            <div className="rounded-xl bg-muted/40 p-3 space-y-2 w-full">
+              <p className="text-sm text-foreground">
+                This becomes your venue&apos;s working plan for the day — continue?
+              </p>
+              <div className="flex gap-2">
+                <Button type="button" variant="outline" size="sm" onClick={() => setConfirmingSubmit(false)} disabled={submitting}>Back</Button>
+                <Button type="button" size="sm" onClick={submitPlan} disabled={submitting}>
+                  {submitting ? "Submitting…" : "Submit to Venue"}
+                </Button>
+              </div>
+            </div>
+          )}
+          <Button type="button" size="sm" variant="outline" disabled={delegating} onClick={() => toggleDelegate(true)}>
+            Let Your Venue Manage This
+          </Button>
+        </div>
+      )}
+    </div>
+  );
+
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64 text-muted-foreground">
-        <div className="animate-pulse">Loading seating chart…</div>
+      <div className="flex flex-col h-full min-h-0">
+        {commitBar}
+        <div className="flex items-center justify-center h-64 text-muted-foreground">
+          <div className="animate-pulse">Loading seating chart…</div>
+        </div>
       </div>
     );
   }
@@ -892,37 +1028,43 @@ export default function SeatingSection({ token }: { token: string }) {
     // so this is a read of existing truth, not a new computation.
     const strandedCount = data?.needsReassignment.length ?? 0;
     return (
-      <div className="text-center py-16 text-muted-foreground">
-        <div className="text-3xl mb-3">🪑</div>
-        {data?.hadPriorWork ? (
-          <>
-            <p className="text-sm font-medium">Your venue has paused sharing the floor plan.</p>
-            <p className="text-xs mt-1">Your seating chart is saved — it&apos;ll reappear here as soon as they share it again.</p>
-          </>
-        ) : (
-          <>
-            <p className="text-sm font-medium">No floor plan shared for seating yet.</p>
-            <p className="text-xs mt-1">Check with your venue — seating opens up once they share the room layout.</p>
-          </>
-        )}
-        {strandedCount > 0 && (
-          <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mt-4 max-w-xs mx-auto">
-            {strandedCount} guest{strandedCount === 1 ? "" : "s"} will need a new table once seating reopens.
-          </p>
-        )}
+      <div className="flex flex-col h-full min-h-0">
+        {commitBar}
+        <div className="text-center py-16 text-muted-foreground">
+          <div className="text-3xl mb-3">🪑</div>
+          {data?.hadPriorWork ? (
+            <>
+              <p className="text-sm font-medium">Your venue has paused sharing the floor plan.</p>
+              <p className="text-xs mt-1">Your seating chart is saved — it&apos;ll reappear here as soon as they share it again.</p>
+            </>
+          ) : (
+            <>
+              <p className="text-sm font-medium">No floor plan shared for seating yet.</p>
+              <p className="text-xs mt-1">Check with your venue — seating opens up once they share the room layout.</p>
+            </>
+          )}
+          {strandedCount > 0 && (
+            <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mt-4 max-w-xs mx-auto">
+              {strandedCount} guest{strandedCount === 1 ? "" : "s"} will need a new table once seating reopens.
+            </p>
+          )}
+        </div>
       </div>
     );
   }
 
   if (view === "dashboard") {
     return (
-      <SeatingDashboard
-        data={data}
-        onContinue={() => {
-          sessionStorage.setItem(`seating-continued-${token}`, "1");
-          setView("workspace");
-        }}
-      />
+      <div className="flex flex-col h-full min-h-0">
+        {commitBar}
+        <SeatingDashboard
+          data={data}
+          onContinue={() => {
+            sessionStorage.setItem(`seating-continued-${token}`, "1");
+            setView("workspace");
+          }}
+        />
+      </div>
     );
   }
 
@@ -931,6 +1073,7 @@ export default function SeatingSection({ token }: { token: string }) {
 
   return (
     <div className="flex flex-col h-full min-h-0">
+      {commitBar}
       {showAutoPreview.length > 0 && (
         <div className="fixed inset-0 bg-black/30 z-50 flex items-center justify-center p-4">
           <div className="bg-card rounded-xl shadow-xl p-6 max-w-sm w-full border border-border">

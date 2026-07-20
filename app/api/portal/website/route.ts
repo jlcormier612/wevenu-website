@@ -25,40 +25,52 @@ export async function POST(request: Request) {
     contentValue?: unknown;
     sectionsEnabled?: string[];
     scheduleSync?: boolean;
+    collectionId?: string;
+    colorStoryId?: string;
+    typographyStyleId?: string;
   };
 
   const { token, slug, isPublished, password, clearPassword, theme, themePalette, accentColor,
-          fontPairing, sectionOrder, contentKey, contentValue, sectionsEnabled, scheduleSync } = body;
+          fontPairing, sectionOrder, contentKey, contentValue, sectionsEnabled, scheduleSync,
+          collectionId, colorStoryId, typographyStyleId } = body;
 
   if (!token) return NextResponse.json({ ok: false, error: "Missing token." }, { status: 400 });
 
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("update_my_website", {
-    p_token:            token,
-    p_slug:             slug             ?? null,
-    p_is_published:     isPublished      ?? null,
-    p_password:         password         ?? null,
-    p_clear_password:   clearPassword    ?? false,
-    p_theme:            theme            ?? null,
-    p_theme_palette:    themePalette     ?? null,
-    p_accent_color:     accentColor      ?? null,
-    p_font_pairing:     fontPairing      ?? null,
-    p_section_order:    sectionOrder     ?? null,
-    p_content_key:      contentKey       ?? null,
-    p_content_value:    contentValue     ? JSON.stringify(contentValue) : null,
-    p_sections_enabled: sectionsEnabled  ?? null,
+    p_token:               token,
+    p_slug:                slug             ?? null,
+    p_is_published:        isPublished      ?? null,
+    p_password:            password         ?? null,
+    p_clear_password:      clearPassword    ?? false,
+    p_theme:               theme            ?? null,
+    p_theme_palette:       themePalette     ?? null,
+    p_accent_color:        accentColor      ?? null,
+    p_font_pairing:        fontPairing      ?? null,
+    p_section_order:       sectionOrder     ?? null,
+    p_content_key:         contentKey       ?? null,
+    // Do NOT JSON.stringify here — supabase-js already serializes RPC params
+    // for the request; p_content_value is a jsonb-typed parameter, so it must
+    // be passed as a native object/array. Stringifying it first caused every
+    // section saved through the Studio to be stored as a JSON *string* inside
+    // the jsonb column instead of a nested object, which silently broke
+    // guest-visible rendering (content.dress_code?.formality etc. is
+    // undefined on a string, so the section renders as empty/fallback with
+    // no error). See supabase/migrations/20261023000000_fix_website_content_double_encoding.sql
+    // for the one-time repair of already-corrupted content.
+    p_content_value:       contentValue     ?? null,
+    p_sections_enabled:    sectionsEnabled  ?? null,
+    p_schedule_sync:       scheduleSync     ?? null,
+    // Hosted Experience Platform Phase 2 — the Studio now sends catalog IDs
+    // instead of the theme/themePalette/fontPairing strings above; both are
+    // still accepted (see the migration's own note on why), but the Studio
+    // itself only ever sends these three going forward.
+    p_collection_id:       collectionId       ?? null,
+    p_color_story_id:      colorStoryId       ?? null,
+    p_typography_style_id: typographyStyleId  ?? null,
   });
 
   if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 422 });
-
-  // scheduleSync still handled via direct update (pre-Sprint-68 pattern)
-  if (scheduleSync !== undefined && (data as Record<string, unknown>)?.siteId) {
-    const siteId = (data as Record<string, unknown>).siteId as string;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await (supabase.from("couple_websites") as any)
-      .update({ schedule_sync: scheduleSync })
-      .eq("id", siteId);
-  }
 
   return NextResponse.json(data ?? { ok: false });
 }

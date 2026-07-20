@@ -93,7 +93,7 @@ function WizardProgress({ step }: { step: WizardStep }) {
     <div className="flex items-center gap-1.5 justify-center">
       {WIZARD_STEPS.filter(s => s !== "welcome").map((s, i) => (
         <div key={s} className={`h-1 rounded-full transition-all ${i <= idx - 1 ? "w-6" : "w-3"}`}
-          style={{ background: i <= idx - 1 ? "#5D6F5D" : "#5D6F5D30" }} />
+          style={{ background: i <= idx - 1 ? "var(--venue-primary)" : "color-mix(in srgb, var(--venue-primary) 19%, transparent)" }} />
       ))}
     </div>
   );
@@ -151,7 +151,7 @@ function SetupWizard({
   // ── Welcome ──
   if (step === "welcome") return (
     <div className="fixed inset-0 z-50 flex flex-col items-center justify-center px-6 text-center"
-      style={{ background: "linear-gradient(160deg, #5D6F5D 0%, #3A4D3A 60%, #C17F84 100%)" }}>
+      style={{ background: "linear-gradient(160deg, var(--venue-primary) 0%, var(--venue-secondary) 60%, var(--venue-accent) 100%)" }}>
       <div className="max-w-md space-y-6">
         <div className="space-y-2">
           <p className="text-white/60 text-xs font-semibold uppercase tracking-[0.3em]">Website Studio</p>
@@ -171,7 +171,7 @@ function SetupWizard({
           </div>
         )}
         <button type="button" onClick={() => setStep("photo")}
-          className="w-full rounded-2xl py-4 text-base font-semibold bg-white text-[#3A4D3A] hover:bg-white/90 transition-colors">
+          className="w-full rounded-2xl py-4 text-base font-semibold bg-white hover:bg-white/90 transition-colors" style={{ color: "var(--venue-secondary)" }}>
           ✨ Let's get started
         </button>
         <button type="button" onClick={onComplete} className="text-white/50 text-sm hover:text-white/80 transition-colors">
@@ -267,7 +267,7 @@ function SetupWizard({
                   </div>
                   {isSelected && (
                     <div className="absolute top-2 right-2 h-5 w-5 rounded-full bg-white/90 flex items-center justify-center shadow">
-                      <span className="text-[10px] text-[#5D6F5D] font-bold">✓</span>
+                      <span className="text-[10px] text-[var(--venue-primary)] font-bold">✓</span>
                     </div>
                   )}
                 </div>
@@ -301,7 +301,7 @@ function SetupWizard({
                 <button key={p.name} type="button"
                   onClick={() => setSelectedPalette(p.name)}
                   className="flex flex-col items-center gap-1.5 group">
-                  <div className={`h-10 w-10 rounded-full border-2 transition-all ${isActive ? "border-[#5D6F5D] scale-110 shadow-md" : "border-transparent hover:border-border"}`}
+                  <div className={`h-10 w-10 rounded-full border-2 transition-all ${isActive ? "border-[var(--venue-primary)] scale-110 shadow-md" : "border-transparent hover:border-border"}`}
                     style={{ background: p.gradient }} />
                   <p className={`text-[10px] ${isActive ? "font-semibold text-foreground" : "text-muted-foreground"}`}>
                     {p.name}
@@ -336,12 +336,12 @@ function SetupWizard({
         </div>
 
         {suggestions?.story?.text && !storyText && (
-          <div className="rounded-xl border border-[#5D6F5D]/30 bg-[#5D6F5D]/5 p-4 space-y-3">
-            <p className="text-xs font-semibold text-[#5D6F5D]">✦ From your profile — tap to use</p>
+          <div className="rounded-xl border border-[color-mix(in_srgb,var(--venue-primary)_30%,transparent)] bg-[color-mix(in_srgb,var(--venue-primary)_5%,transparent)] p-4 space-y-3">
+            <p className="text-xs font-semibold text-[var(--venue-primary)]">✦ From your profile — tap to use</p>
             <p className="text-sm text-foreground/70 leading-relaxed">{suggestions.story.text}</p>
             <button type="button" onClick={() => setStoryText(suggestions.story!.text)}
               className="text-sm font-semibold px-4 py-2 rounded-xl text-white w-full"
-              style={{ background: "#5D6F5D" }}>
+              style={{ background: "var(--venue-primary)" }}>
               Use this story
             </button>
           </div>
@@ -422,7 +422,7 @@ function SetupWizard({
         <div className="w-full max-w-xs space-y-2">
           <button type="button" onClick={() => advance("done")} disabled={saving}
             className="w-full rounded-2xl py-3.5 text-sm font-semibold text-white disabled:opacity-60"
-            style={{ background: "#5D6F5D" }}>
+            style={{ background: "var(--venue-primary)" }}>
             {saving ? <Loader2 className="h-4 w-4 animate-spin mx-auto" /> : "✨ Open Website Studio"}
           </button>
         </div>
@@ -456,7 +456,7 @@ function WizardFooter({ onBack, onNext, nextLabel, saving }: {
       </button>
       <button type="button" onClick={onNext} disabled={saving}
         className="flex-1 rounded-xl py-3 text-sm font-semibold text-white disabled:opacity-60"
-        style={{ background: "#5D6F5D" }}>
+        style={{ background: "var(--venue-primary)" }}>
         {saving ? <Loader2 className="h-4 w-4 animate-spin mx-auto" /> : nextLabel}
       </button>
     </div>

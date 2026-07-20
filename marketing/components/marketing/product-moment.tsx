@@ -1,5 +1,6 @@
 import Image from "next/image";
 
+import { EDITORIAL_FRAME, EDITORIAL_IMAGE_UI } from "@/lib/marketing/rhythm";
 import { cn } from "@/lib/utils";
 
 type ProductMomentProps = {
@@ -22,19 +23,24 @@ export function ProductMoment({
   return (
     <figure
       className={cn(
-        "overflow-hidden border",
-        tone === "light"
-          ? "border-[var(--taupe-medium)] bg-[var(--true-white)]"
-          : "border-white/15 bg-black/20",
+        EDITORIAL_FRAME,
+        tone === "light" ? "bg-[var(--true-white)]" : "bg-black/20",
+        tone === "dark" && "border-white/15",
         className,
       )}
     >
       <div className="relative aspect-[16/10] w-full">
-        <Image src={src} alt={label} fill className="object-cover object-top" sizes="(max-width:768px) 100vw, 720px" />
+        <Image
+          src={src}
+          alt={label}
+          fill
+          className={EDITORIAL_IMAGE_UI}
+          sizes="(max-width:768px) 100vw, 720px"
+        />
       </div>
       <figcaption
         className={cn(
-          "px-4 py-3 text-xs tracking-[0.16em] uppercase",
+          "px-4 py-3 text-xs tracking-[0.22em] uppercase",
           tone === "light" ? "text-[var(--forest-sage)]/55" : "text-white/55",
         )}
       >

@@ -1,14 +1,16 @@
 "use client";
 
 /**
- * Wedding Day Seating — the venue-side operational lookup (Seating Final
- * Release Completion). Not another seating editor: no assign/remove, no
- * drag-and-drop, no table creation. Reads the exact same data the couple's
- * own Seating tab computes (lib/seating/service.ts's getSeatingDataForVenue,
- * reusing get_seating_data — no second seating data model). Optimized for
- * a coordinator standing in a room full of guests who needs an answer in
- * under five seconds: where does this person sit, who's at this table, who
- * needs a wheelchair-accessible seat, how many chicken dinners.
+ * Wedding Day Seating — the venue-side operational lookup. Not an editor:
+ * no assign/remove, no drag-and-drop, no table creation (that's
+ * VenueSeatingEditor, reachable only while a plan is delegated). Per the
+ * Commitment Lifecycle Architecture (docs/commitment-lifecycle-architecture.md
+ * §9), reads the couple's latest Submitted snapshot by default — never
+ * their live in-progress work — or the live plan when explicitly
+ * delegated (lib/seating/service.ts's getOperationalSeatingPlan). Optimized
+ * for a coordinator standing in a room full of guests who needs an answer
+ * in under five seconds: where does this person sit, who's at this table,
+ * who needs a wheelchair-accessible seat, how many chicken dinners.
  */
 
 import { useMemo, useState } from "react";
@@ -104,10 +106,17 @@ function ReportCard({ title, isEmpty, emptyLabel, children }: {
   );
 }
 
+type OperationalSeatingData = SeatingData & {
+  notYetSubmitted?: boolean;
+  submittedAt?: string;
+  submittedBy?: "couple" | "venue";
+  delegatedAt?: string;
+};
+
 export function WeddingDaySeating({
-  eventId, eventName, coupleName, data,
+  eventId, eventName, coupleName, data, floorPlanId,
 }: {
-  eventId: string; eventName: string; coupleName: string; data: SeatingData | null;
+  eventId: string; eventName: string; coupleName: string; data: OperationalSeatingData | null; floorPlanId?: string | null;
 }) {
   const [search, setSearch] = useState("");
   const q = search.trim().toLowerCase();
@@ -160,12 +169,45 @@ export function WeddingDaySeating({
     );
   }
 
+  // Commitment Lifecycle Architecture §9 — Private Until Committed: this
+  // read is always the couple's last Submitted snapshot, never their live
+  // in-progress work, unless they've explicitly delegated this plan.
+  if (data.notYetSubmitted && !data.isDelegated) {
+    return (
+      <div className="rounded-xl border border-dashed border-border py-16 text-center">
+        <div className="text-3xl mb-3">🪑</div>
+        <p className="text-sm font-medium text-heading">{coupleName} hasn&apos;t submitted a seating plan yet.</p>
+        <p className="text-xs text-muted-foreground mt-1 max-w-sm mx-auto">
+          Their seating chart stays private while they work on it — you&apos;ll see it here once they submit it, or you can ask them to delegate seating to your team.
+        </p>
+      </div>
+    );
+  }
+
   const emptySeatsTotal = data.tables.reduce(
     (sum, t) => sum + (t.capacity != null ? Math.max(0, t.capacity - t.guests.length) : 0), 0,
   );
 
   return (
     <div className="space-y-5">
+      {data.isDelegated ? (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <p className="text-sm font-medium text-amber-900">✋ Delegated by {coupleName}</p>
+            <p className="text-xs text-amber-800">Changes made here update the active operational seating plan until delegation is revoked.</p>
+          </div>
+          {floorPlanId && (
+            <a href={`/events/${eventId}/seating/manage?plan=${floorPlanId}`}
+              className="shrink-0 inline-flex items-center gap-1.5 rounded-lg bg-amber-900 px-3 py-1.5 text-xs font-medium text-white hover:opacity-90">
+              Manage Seating
+            </a>
+          )}
+        </div>
+      ) : data.submittedAt && (
+        <p className="text-xs text-muted-foreground">
+          Submitted by {data.submittedBy === "venue" ? "your team" : "the couple"} · {new Date(data.submittedAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+        </p>
+      )}
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="text-xl font-semibold text-heading">Wedding Day Seating</h1>

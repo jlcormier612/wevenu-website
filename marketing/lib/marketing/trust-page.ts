@@ -1,14 +1,14 @@
 /**
  * Trust experience — editorial home for security, privacy, reliability, and transparency.
- * Philosophy: Trust isn't built by contracts. It's earned by showing up.
+ * Philosophy: Trust isn't something you ask for. It's something you earn.
  */
 
 export const TRUST_PAGE = {
   hero: {
     title: "Trust",
-    headline: "Trust isn't built by contracts.",
-    subhead:
-      "It's built by showing up, keeping our promises, and earning the privilege to serve you month after month.",
+    chapterTitle: "Our Promise",
+    headline: "Trust isn't something you ask for.",
+    subhead: "It's something you earn.",
     lines: [
       "Venue owners trust you with life's most meaningful celebrations.",
       "You trust us with your business.",
@@ -41,7 +41,7 @@ export const TRUST_PAGE = {
       },
       {
         title: "Secure infrastructure",
-        body: "Wevenu runs on carefully chosen cloud infrastructure with modern security practices—isolation, hardening, and least-privilege access as a default.",
+        body: "Hello to Cheers runs on carefully chosen cloud infrastructure with modern security practices—isolation, hardening, and least-privilege access as a default.",
       },
       {
         title: "Backups",
@@ -57,7 +57,7 @@ export const TRUST_PAGE = {
       },
       {
         title: "Payments",
-        body: "Payment card data is handled by Stripe—a PCI-compliant payment processor. Wevenu is not designed to store raw card numbers on our systems.",
+        body: "Payment card data is handled by Stripe—a PCI-compliant payment processor. Hello to Cheers is not designed to store raw card numbers on our systems.",
       },
       {
         title: "Ongoing improvement",
@@ -70,7 +70,7 @@ export const TRUST_PAGE = {
     headline: "In Plain English",
     lines: [
       "We don't sell your data.",
-      "We use it only to operate and improve Wevenu.",
+      "We use it only to operate and improve Hello to Cheers.",
       "We'll always be transparent about how your information is used.",
     ],
     cta: { href: "/privacy", label: "Read the full Privacy Policy →" },
@@ -80,7 +80,7 @@ export const TRUST_PAGE = {
     headline: "Your data belongs to you.",
     subhead: "Not us. Not ever.",
     lines: [
-      "If you choose to leave Wevenu, your data should leave with you.",
+      "If you choose to leave Hello to Cheers, your data should leave with you.",
       "You can export your information before cancellation—without filing a support ticket or navigating unnecessary barriers.",
       "That philosophy isn't a footnote. It shapes how we design the product.",
     ],
@@ -95,7 +95,7 @@ export const TRUST_PAGE = {
       },
       {
         title: "High availability",
-        body: "We design for steady uptime and resilient infrastructure, recognizing that venues rely on Wevenu during real events—not only quiet mornings.",
+        body: "We design for steady uptime and resilient infrastructure, recognizing that venues rely on Hello to Cheers during real events—not only quiet mornings.",
       },
       {
         title: "Planned maintenance",
@@ -107,7 +107,7 @@ export const TRUST_PAGE = {
       },
       {
         title: "System Status",
-        body: "Our System Status page is where we'll share current operational status and notable incidents as Wevenu grows.",
+        body: "Our System Status page is where we'll share current operational status and notable incidents as Hello to Cheers grows.",
       },
       {
         title: "Continual improvement",
@@ -115,7 +115,7 @@ export const TRUST_PAGE = {
       },
     ],
     disclaimer:
-      "We work hard to keep Wevenu available and healthy. Like all software, we cannot guarantee uninterrupted service at every moment—and we won't pretend otherwise.",
+      "We work hard to keep Hello to Cheers available and healthy. Like all software, we cannot guarantee uninterrupted service at every moment—and we won't pretend otherwise.",
     statusCta: { href: "/status", label: "View System Status →" },
   },
   compliance: {
@@ -124,7 +124,7 @@ export const TRUST_PAGE = {
     lines: [
       "We take compliance seriously, and we prefer clarity over buzzwords.",
       "Payment security: card payments are processed by Stripe, which maintains PCI DSS compliance for cardholder data.",
-      "Accessibility: we design Wevenu with inclusive usability in mind and continue improving accessibility across the experience.",
+      "Accessibility: we design Hello to Cheers with inclusive usability in mind and continue improving accessibility across the experience.",
       "SOC 2: we are building our security and operational practices with a SOC 2 roadmap in mind. We will only claim a SOC 2 report when one has been completed—not before.",
       "As additional compliance initiatives come into place, we'll update this page with the same honesty we expect from hospitality itself.",
     ],
@@ -133,7 +133,7 @@ export const TRUST_PAGE = {
     title: "Terms",
     headline: "In Plain English",
     lines: [
-      "We built Wevenu to earn your business every month—not lock you into it.",
+      "We built Hello to Cheers to earn your business every month—not lock you into it.",
       "Here's what that means.",
       "You can cancel your subscription anytime.",
       "You own your data.",
@@ -165,14 +165,14 @@ export const TRUST_PAGE = {
       "No cancellation fees.",
       "No phone calls.",
       "No emails asking you to stay.",
-      "If Wevenu is no longer the right fit, you can cancel your subscription in just a few clicks.",
+      "If Hello to Cheers is no longer the right fit, you can cancel your subscription in just a few clicks.",
       "We'll be grateful for the time we spent working together.",
     ],
   },
   happiness: {
     title: "30-Day Happiness Promise",
     lines: [
-      "If Wevenu isn't the right fit during your first 30 days, we'll happily refund your first month's subscription.",
+      "If Hello to Cheers isn't the right fit during your first 30 days, we'll happily refund your first month's subscription.",
       "After that, your subscription continues month-to-month until you cancel.",
       "No hassle.",
       "No surprises.",

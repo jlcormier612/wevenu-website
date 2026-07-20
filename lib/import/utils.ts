@@ -1,6 +1,7 @@
 import { ENTITY_FIELDS, type EntityType, type FieldMapping, type ImportFieldDef } from "./types";
 import type { ClientInput } from "@/lib/clients/types";
 import type { LeadInput } from "@/lib/leads/types";
+import { resolveLeadSourceKey } from "@/lib/leads/constants";
 import type { VendorInput } from "@/lib/vendors/types";
 import type { PackageInput } from "@/lib/packages/types";
 
@@ -16,6 +17,26 @@ export type InventoryImportRow = {
   name: string; categoryName: string; quantityAvailable: string;
   width: string; length: string; height: string; shape: string; color: string; printableName: string;
 };
+
+const PHONE_LIKE = /^\+?\d{7,}$/;
+const EMAIL_LIKE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const DATE_LIKE = /^\d{4}-\d{2}-\d{2}/;
+
+/**
+ * A file with no real header row silently loses its first record — it gets
+ * consumed as "column headers" instead of imported (found via a real
+ * customer's Leads.xlsx/Vendors.xlsx, both missing a header row: row 1 was
+ * a genuine record in both, and both lost it silently with no error).
+ * A real header ("First Name", "Phone") never itself looks like a phone
+ * number, an email, or a date — if any cell in the presumed header row
+ * does, row 1 is very likely a data row, not headers.
+ */
+export function looksLikeHeaderRow(headers: string[]): boolean {
+  return !headers.some((h) => {
+    const v = h.trim();
+    return PHONE_LIKE.test(v) || EMAIL_LIKE.test(v) || DATE_LIKE.test(v);
+  });
+}
 
 function val(row: CsvRow, mapping: FieldMapping, key: string): string {
   const col = mapping[key];
@@ -43,6 +64,11 @@ export function rowToClientInput(row: CsvRow, mapping: FieldMapping): ClientInpu
 }
 
 export function rowToLeadInput(row: CsvRow, mapping: FieldMapping): LeadInput {
+  // leads.source is a real, enforced vocabulary (Lead Intake architecture) —
+  // a spreadsheet's free-text source ("The Knot", "website-form", ...) is
+  // resolved against it here rather than passed through raw, so an
+  // unrecognized value can't fail the whole row on import.
+  const { key: sourceKey, originalLabel } = resolveLeadSourceKey(val(row, mapping, "source"));
   return {
     firstName:        val(row, mapping, "firstName"),
     lastName:         val(row, mapping, "lastName"),
@@ -56,7 +82,8 @@ export function rowToLeadInput(row: CsvRow, mapping: FieldMapping): LeadInput {
     endDate:          "",
     guestCount:       "",
     estimatedBudget:  val(row, mapping, "estimatedBudget"),
-    source:           val(row, mapping, "source"),
+    source:           sourceKey,
+    originalSourceLabel: originalLabel,
     inquiryMessage:   val(row, mapping, "inquiryMessage"),
     inquiryDate:      "",
   };

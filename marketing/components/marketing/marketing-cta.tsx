@@ -2,10 +2,16 @@ import Link from "next/link";
 
 import { cn } from "@/lib/utils";
 import { PRIMARY_CTA } from "@/lib/marketing/nav";
+import { HOVER_FILL, HOVER_GHOST, HOVER_OUTLINE } from "@/lib/marketing/rhythm";
 
 type MarketingCtaProps = {
   href?: string;
   label?: string;
+  /**
+   * primary — one filled action per viewport (Schedule a Walkthrough)
+   * secondary — quieter control (header, outline peers)
+   * ghost — lightest paired action (Follow one booking, Explore…, Back to Journey)
+   */
   variant?: "primary" | "secondary" | "ghost";
   className?: string;
 };
@@ -20,13 +26,13 @@ export function MarketingCta({
     <Link
       href={href}
       className={cn(
-        "inline-flex items-center justify-center rounded-full px-6 py-3 text-sm tracking-wide transition-opacity duration-300",
+        "inline-flex items-center justify-center rounded-full text-sm tracking-wide transition duration-200 ease-out",
         variant === "primary" &&
-          "bg-[var(--heritage-sage)] text-[var(--true-white)] hover:opacity-90",
+          `bg-[var(--heritage-sage)] px-6 py-3 text-[var(--true-white)] ${HOVER_FILL}`,
         variant === "secondary" &&
-          "border border-[var(--heritage-sage)]/35 bg-transparent text-[var(--forest-sage)] hover:bg-[var(--linen)]",
+          `border border-[var(--heritage-sage)]/28 bg-transparent px-6 py-3 text-[var(--forest-sage)]/72 ${HOVER_OUTLINE}`,
         variant === "ghost" &&
-          "text-[var(--forest-sage)] underline-offset-4 hover:underline",
+          `px-1 py-3 text-[var(--forest-sage)]/55 ${HOVER_GHOST}`,
         className,
       )}
     >

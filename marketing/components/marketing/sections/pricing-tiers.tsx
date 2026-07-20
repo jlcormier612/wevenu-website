@@ -20,7 +20,7 @@ export function PricingTiers() {
             <p className="mt-3 text-sm font-medium tracking-wide text-[var(--heritage-sage)]">
               {tier.audience}
             </p>
-            <p className="mt-6 flex-1 text-base leading-relaxed text-[var(--forest-sage)]/75">
+            <p className="mt-6 flex-1 text-base leading-[1.7] text-[var(--forest-sage)]/75">
               {tier.description}
             </p>
             <p className="mt-8 text-sm text-[var(--forest-sage)]/55">

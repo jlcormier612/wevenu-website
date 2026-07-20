@@ -1,11 +1,13 @@
 /**
- * Wevenu HQ — Venue Detail ("the internal customer record"). Server-only,
+ * Hello to Cheers HQ — Venue Detail ("the internal customer record"). Server-only,
  * HQ-admin-only (every underlying table read here relies on the
  * `*_hq_select` RLS policies added in the Sprint 108.5 migration).
  */
 import { createClient } from "@/integrations/supabase/server";
 import { isSupabaseConfigured } from "@/lib/env";
 import { getBetaOverview } from "@/lib/hq/beta-service";
+import { getLuvObservations } from "@/lib/luv/observations";
+import type { LuvObservation } from "@/lib/luv/types";
 import type {
   HqCouple,
   HqCrmState,
@@ -41,7 +43,7 @@ const EVENT_LABELS: Record<string, string> = {
   "luv.recommendation_viewed": "Viewed a Luv recommendation",
   "luv.recommendation_acted_on": "Acted on a Luv recommendation",
   "luv.draft_generated": "Luv generated a draft",
-  "hq.view_as": "Wevenu support viewed this venue (read-only)",
+  "hq.view_as": "Hello to Cheers support viewed this venue (read-only)",
 };
 
 const MILESTONE_LABELS: Record<string, string> = {
@@ -93,8 +95,9 @@ type VendorInviteRow = {
 export async function getVenueHqDetail(venueId: string): Promise<HqVenueDetail | null> {
   if (!isSupabaseConfigured) return null;
   const supabase = await createClient();
+  const today = new Date().toISOString().slice(0, 10);
 
-  const [venueRes, overview, teamRes, vendorRes, clientsRes, portalRes, eventsRes, milestonesRes, notesRes, tasksRes] =
+  const [venueRes, overview, teamRes, vendorRes, clientsRes, portalRes, eventsRes, milestonesRes, notesRes, tasksRes, luvObservations] =
     await Promise.all([
       supabase.from("venues").select("id, name, email, phone, timezone, created_at").eq("id", venueId).maybeSingle(),
       getBetaOverview(),
@@ -132,6 +135,15 @@ export async function getVenueHqDetail(venueId: string): Promise<HqVenueDetail |
         .eq("venue_id", venueId)
         .order("completed_at", { ascending: true, nullsFirst: true })
         .order("due_date", { ascending: true, nullsFirst: false }),
+      // Luv Experience Completion, Work Stream 1 — the real observation
+      // engine, called for an arbitrary venue rather than the logged-in
+      // one. Works because the underlying tables already grant HQ staff
+      // cross-venue SELECT (the *_hq_select policies this file's header
+      // comment references) — the same session, the same venue-scoped
+      // queries getLuvObservations always makes, just called from HQ
+      // instead of the coordinator's own dashboard. Replaces the rules-
+      // based placeholder LuvInsights previously computed on its own.
+      getLuvObservations(supabase, venueId, today).catch(() => [] as LuvObservation[]),
     ]);
 
   if (venueRes.error || !venueRes.data) return null;
@@ -237,5 +249,6 @@ export async function getVenueHqDetail(venueId: string): Promise<HqVenueDetail |
     notes,
     tasks,
     crmState,
+    luvObservations,
   };
 }

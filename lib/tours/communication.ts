@@ -34,6 +34,8 @@ export type TourConfirmationParams = {
   contactEmail: string | null;
   contactName: string | null;
   venueName: string;
+  /** Venue Brand Experience Phase 1 — falls back to Hello to Cheers' own default if the caller doesn't have it handy. */
+  primaryColor?: string | null;
   scheduledAt: string;
   durationMinutes: number;
 };
@@ -72,7 +74,7 @@ function buildConfirmationContent(params: TourConfirmationParams): { subject: st
     `  <tr><td style="padding:4px 0;font-size:14px">🕐 <strong>${timeStr}</strong></td></tr>`,
     `  <tr><td style="padding:4px 0;font-size:14px">📍 ${params.venueName}</td></tr>`,
     `</table>`,
-    `<p style="margin-top:16px"><a href="${gcalUrl}" style="background:#5D6F5D;color:#fff;padding:10px 20px;border-radius:8px;text-decoration:none;display:inline-block;font-size:14px">Add to Calendar</a></p>`,
+    `<p style="margin-top:16px"><a href="${gcalUrl}" style="background:${params.primaryColor ?? "#5D6F5D"};color:#fff;padding:10px 20px;border-radius:8px;text-decoration:none;display:inline-block;font-size:14px">Add to Calendar</a></p>`,
     `<p style="color:#888;font-size:13px;margin-top:24px">We're looking forward to meeting you! If you need to reschedule, just reply to this email.</p>`,
     `<p style="color:#888;font-size:12px">${params.venueName}</p>`,
   ].join("\n");

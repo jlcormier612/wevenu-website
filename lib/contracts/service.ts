@@ -24,6 +24,12 @@ import {
 import { getClient } from "@/lib/clients/service";
 import { getEvent } from "@/lib/events/service";
 import { getCurrentVenue, getCurrentUserRole } from "@/lib/venue/service";
+import { sendEmail } from "@/lib/email/send";
+import {
+  buildContractInviteSubject,
+  buildContractInviteText,
+  buildContractInviteHtml,
+} from "@/lib/email/contract-invite";
 
 async function withVenue<T>(
   fn: (supabase: Awaited<ReturnType<typeof createClient>>, venueId: string) => Promise<T>,
@@ -170,9 +176,36 @@ export async function updateContractContent_(id: string, title: string, content:
 
 export async function sendContract(id: string): Promise<ContractActionResult> {
   const result = await withVenue(async (supabase, venueId) => {
+    const contract = await repo.getContract(supabase, venueId, id);
     const outcome = await repo.updateContractStatus(supabase, venueId, id, "sent", { sentAt: true });
     if (!outcome.ok) return { ok: false, message: outcome.message } as ContractActionResult;
     await repo.insertContractActivity(supabase, venueId, id, "sent", "Contract sent for signing");
+
+    if (contract?.clientId) {
+      const [client, venue] = await Promise.all([getClient(contract.clientId), getCurrentVenue()]);
+      if (client?.email && venue) {
+        const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://app.wevenu.com";
+        const signUrl = `${baseUrl}/sign/${contract.signToken}`;
+        const brand = {
+          name: venue.name ?? "Your venue",
+          logoUrl: venue.logoUrl,
+          primaryColor: venue.primaryColor,
+        };
+        const ctx = {
+          brand,
+          recipientFirstName: client.firstName,
+          contractTitle: contract.title,
+          signUrl,
+        };
+        await sendEmail({
+          to: client.email,
+          subject: buildContractInviteSubject(ctx),
+          text: buildContractInviteText(ctx),
+          html: buildContractInviteHtml(ctx),
+        });
+      }
+    }
+
     return { ok: true } as ContractActionResult;
   });
   return result as ContractActionResult;
@@ -206,7 +239,7 @@ export async function signContractByToken(
   token: string,
   signerName: string,
   consent: boolean,
-): Promise<{ ok: boolean; message?: string; clientId?: string | null }> {
+): Promise<{ ok: boolean; message?: string; clientId?: string | null; celebrated?: boolean }> {
   if (!isSupabaseConfigured) return { ok: false, message: "Backend not configured." };
   if (!signerName.trim()) return { ok: false, message: "Please enter your full name." };
   if (!consent) return { ok: false, message: "Please confirm you agree this constitutes your legal signature." };
@@ -233,7 +266,8 @@ export async function signContractByToken(
     p_consent: consent,
   });
   if (error) return { ok: false, message: error.message };
-  if (!data) return { ok: false, message: "This contract is not available for signing." };
+  const result = data as { ok: boolean; celebrated?: boolean } | null;
+  if (!result?.ok) return { ok: false, message: "This contract is not available for signing." };
 
   if (contractRow?.venueId) {
     void recordEngagementEvent({
@@ -254,7 +288,7 @@ export async function signContractByToken(
     }
   }
 
-  return { ok: true, clientId: contractRow?.clientId ?? null };
+  return { ok: true, clientId: contractRow?.clientId ?? null, celebrated: result.celebrated === true };
 }
 
 export { mergeContent };

@@ -124,8 +124,8 @@ export async function sendTestEmail(): Promise<TestSendResult> {
 
   const result = await sendEmail({
     to: venue.email,
-    subject: "Wevenu test message",
-    text: `This is a test message from Wevenu to confirm email is working for ${venue.name}. If you received this, email is set up correctly.`,
+    subject: "Hello to Cheers test message",
+    text: `This is a test message from Hello to Cheers to confirm email is working for ${venue.name}. If you received this, email is set up correctly.`,
   });
   if (!result.ok) return { ok: false, message: result.message };
   if (result.method === "mailto") return { ok: false, message: "Email isn't fully configured for this venue yet." };
@@ -143,7 +143,7 @@ export async function sendTestSms(): Promise<TestSendResult> {
 
   const result = await sendSms({
     to: e164,
-    body: `This is a test message from Wevenu to confirm texting is working for ${venue.name}. If you received this, texting is set up correctly.`,
+    body: `This is a test message from Hello to Cheers to confirm texting is working for ${venue.name}. If you received this, texting is set up correctly.`,
   });
   if (!result.ok) return { ok: false, message: result.message };
 

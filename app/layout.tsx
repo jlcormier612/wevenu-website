@@ -25,8 +25,8 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: {
-    default: "Wevenu",
-    template: "%s · Wevenu",
+    default: "Hello to Cheers",
+    template: "%s · Hello to Cheers",
   },
   description: "The operating system for independent wedding and event venues.",
 };

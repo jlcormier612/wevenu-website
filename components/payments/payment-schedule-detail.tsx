@@ -17,6 +17,8 @@ import {
   X,
 } from "lucide-react";
 import { toast } from "sonner";
+import { celebrateLuv } from "@/lib/luv/celebrate";
+import { coordinatorCelebrationMessage } from "@/lib/luv/celebrations";
 
 import {
   addLineItemAction,
@@ -228,15 +230,19 @@ function RefundForm({
 function LineItemRow({
   item,
   scheduleId,
+  scheduleTitle,
   onUpdate,
   onMarkPaid,
   onDelete,
+  currentUserRole,
 }: {
   item: PaymentLineItem;
   scheduleId: string;
+  scheduleTitle: string;
   onUpdate: (id: string, updated: Partial<PaymentLineItem>) => void;
   onMarkPaid: (id: string) => void;
   onDelete: (id: string) => void;
+  currentUserRole?: string | null;
 }) {
   const [editMode, setEditMode] = React.useState(false);
   const [payMode, setPayMode] = React.useState(false);
@@ -251,7 +257,11 @@ function LineItemRow({
   const isCancelled = item.status === "cancelled";
   const isRefunded = item.status === "refunded";
   const isPartiallyRefunded = item.status === "partially_refunded";
-  const canRefund = isPaid || isPartiallyRefunded;
+  // TR-M3: refunds are Owner-only server-side (and RLS-backed, TR-G5) — this
+  // mirrors that here so a Manager/Coordinator/Staff never sees a button
+  // that the server was always going to reject. Cosmetic-only: the real
+  // enforcement remains server-side, unchanged by this.
+  const canRefund = (isPaid || isPartiallyRefunded) && currentUserRole === "owner";
 
   function handleEdit(input: LineItemInput) {
     startEdit(async () => {
@@ -269,7 +279,11 @@ function LineItemRow({
       if (result.ok) {
         onMarkPaid(item.id);
         setPayMode(false);
-        toast.success("Payment recorded.");
+        if (result.celebrated) {
+          celebrateLuv(coordinatorCelebrationMessage("final_payment_received", scheduleTitle));
+        } else {
+          toast.success("Payment recorded.");
+        }
       } else toast.error(result.message ?? "Could not record payment.");
     });
   }
@@ -401,7 +415,7 @@ function LineItemRow({
 
 // ---- Main component ---------------------------------------------------------
 
-export function PaymentScheduleDetail({ schedule, invoice }: { schedule: PaymentScheduleWithDetails; invoice?: Invoice | null }) {
+export function PaymentScheduleDetail({ schedule, invoice, currentUserRole }: { schedule: PaymentScheduleWithDetails; invoice?: Invoice | null; currentUserRole?: string | null }) {
   const router = useRouter();
   const [items, setItems] = React.useState(schedule.lineItems);
   const [showAdd, setShowAdd] = React.useState(false);
@@ -547,8 +561,9 @@ export function PaymentScheduleDetail({ schedule, invoice }: { schedule: Payment
             </p>
           )}
           {items.map((item) => (
-            <LineItemRow key={item.id} item={item} scheduleId={schedule.id}
-              onUpdate={handleItemUpdate} onMarkPaid={handleMarkPaid} onDelete={handleDelete} />
+            <LineItemRow key={item.id} item={item} scheduleId={schedule.id} scheduleTitle={schedule.title}
+              onUpdate={handleItemUpdate} onMarkPaid={handleMarkPaid} onDelete={handleDelete}
+              currentUserRole={currentUserRole} />
           ))}
           {showAdd && (
             <div className="space-y-2">
@@ -583,7 +598,7 @@ export function PaymentScheduleDetail({ schedule, invoice }: { schedule: Payment
           <div className="min-w-0 flex-1">
             <p className="text-sm font-medium text-heading">Online payment collection — coming soon</p>
             <p className="text-xs text-muted-foreground mt-0.5">
-              Accepting deposits and installments directly through Wevenu isn&apos;t live yet. Keep recording
+              Accepting deposits and installments directly through Hello to Cheers isn&apos;t live yet. Keep recording
               payments here as you collect them today.
             </p>
           </div>

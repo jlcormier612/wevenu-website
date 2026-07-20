@@ -9,6 +9,7 @@ import {
   type DigestContext,
   type DigestItem,
 } from "@/lib/email/daily-digest";
+import { getLuvObservations } from "@/lib/luv/observations";
 import * as crypto from "crypto";
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://app.wevenu.com";
@@ -139,6 +140,18 @@ async function buildDigestContext(
     href: `${APP_URL}/tasks`,
   }));
 
+  // Luv Experience Completion, Work Stream 7 — the "Luv noticed" block was
+  // fully built (HTML + plain-text template, wired into the send pipeline)
+  // and permanently dead, hardcoded null on every send. Reads the same
+  // real engine every dashboard load uses; takes the single highest-
+  // priority observation as the digest's one-line callout, same as any
+  // other Luv surface never recomputing a second way.
+  const luvObservations = await getLuvObservations(supabase, venue.venue_id, todayIso).catch(() => []);
+  const topLuvObservation = luvObservations[0] ?? null;
+  const luvObservation = topLuvObservation
+    ? { message: topLuvObservation.message, link: `${APP_URL}${topLuvObservation.link}` }
+    : null;
+
   const total = urgentItems.length + dueTodayItems.length;
   let subjectLine: string;
   if (total === 1) {
@@ -159,7 +172,7 @@ async function buildDigestContext(
     urgentItems,
     dueTodayItems,
     recentWins,
-    luvObservation: null,
+    luvObservation,
     appUrl:         APP_URL,
     unsubscribeUrl: "/settings#notifications",
   };

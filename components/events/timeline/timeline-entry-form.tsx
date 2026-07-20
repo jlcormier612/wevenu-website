@@ -70,9 +70,13 @@ export function TimelineEntryForm({
   const [entryTime, setEntryTime] = React.useState(initial.entryTime);
   const [sectionId, setSectionId] = React.useState(initial.sectionId ?? NO_SECTION);
   const [audiences, setAudiences] = React.useState<TimelineAudience[]>(
-    initial.audiences ?? ["internal"]
+    initial.audiences ?? ["venue"]
   );
-  const [clientEditable, setClientEditable] = React.useState(initial.clientEditable ?? false);
+  // Structural milestones lock by default (docs/client-workspace-product-
+  // architecture.md §12) — a safety rail against accidental drift, always
+  // one click to unlock. Never gates a cross-party edit; only the item's
+  // own owner (always the venue, from this form) can toggle it.
+  const [isLocked, setIsLocked] = React.useState((initial.lockState ?? "locked") === "locked");
   const initialStatus: TimelineEntryStatus = initial.status ?? "not_started";
   const [isComplete, setIsComplete] = React.useState(initialStatus === "complete");
   const [assignedToStaffId, setAssignedToStaffId] = React.useState(initial.assignedToStaffId ?? NO_ASSIGNEE);
@@ -87,7 +91,7 @@ export function TimelineEntryForm({
     onSave({
       title, description, notes, entryTime, audiences,
       sectionId: sectionId === NO_SECTION ? null : sectionId,
-      clientEditable: audiences.includes("couple") && clientEditable,
+      lockState: isLocked ? "locked" : "editable",
       // Un-checking only ever falls back to not_started — in_progress (set
       // by the live Wedding Day Dashboard) is preserved unless this box is
       // the thing that changed it.
@@ -154,6 +158,11 @@ export function TimelineEntryForm({
         Mark as complete
       </label>
 
+      <label className="flex items-center gap-2 text-xs text-muted-foreground">
+        <input type="checkbox" checked={isLocked} onChange={(e) => setIsLocked(e.target.checked)} className="h-3.5 w-3.5" />
+        🔒 Lock this item (structural — prevent accidental changes)
+      </label>
+
       <div className="space-y-1.5">
         <Label htmlFor="et-desc" className="text-xs">
           Description <span className="font-normal text-muted-foreground">(optional)</span>
@@ -180,9 +189,12 @@ export function TimelineEntryForm({
         />
       </div>
 
-      {/* Audience visibility */}
+      {/* Publication — the venue's own items are always visible to the
+          client (they're planning inside this framework); these tags are
+          purely about publishing further out, to guests/wedding
+          party/vendors, independent of anything else on this item. */}
       <div className="space-y-1.5">
-        <Label className="text-xs">Visible to</Label>
+        <Label className="text-xs">Publish to</Label>
         <div className="flex gap-1.5 flex-wrap">
           {TIMELINE_AUDIENCES.map(a => (
             <button
@@ -200,16 +212,10 @@ export function TimelineEntryForm({
             </button>
           ))}
         </div>
-        {audiences.includes("guest") && (
+        {audiences.includes("guests") && (
           <p className="text-[10px] text-muted-foreground">
             🌿 This entry will appear on the wedding website&apos;s Day-of Schedule.
           </p>
-        )}
-        {audiences.includes("couple") && (
-          <label className="mt-1 flex items-center gap-2 text-xs text-muted-foreground">
-            <input type="checkbox" checked={clientEditable} onChange={(e) => setClientEditable(e.target.checked)} className="h-3.5 w-3.5" />
-            Let the client edit this item in the Client Timeline
-          </label>
         )}
       </div>
 

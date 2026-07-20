@@ -29,8 +29,8 @@ type FeatureRequest = {
 const TYPES: { value: FeedbackType; label: string; emoji: string; placeholder: string }[] = [
   { value: "support", label: "Get Help",        emoji: "🙋", placeholder: "Describe what you need help with…" },
   { value: "bug",     label: "Report a Bug",    emoji: "🐛", placeholder: "What happened? What did you expect?" },
-  { value: "feature", label: "Suggest an Idea", emoji: "💡", placeholder: "What would make Wevenu better for you?" },
-  { value: "nps",     label: "Rate Wevenu",     emoji: "⭐", placeholder: "Any comments? (optional)" },
+  { value: "feature", label: "Suggest an Idea", emoji: "💡", placeholder: "What would make Hello to Cheers better for you?" },
+  { value: "nps",     label: "Rate Hello to Cheers",     emoji: "⭐", placeholder: "Any comments? (optional)" },
 ];
 
 export function FeedbackSheet({ children }: { children?: React.ReactNode }) {
@@ -131,7 +131,7 @@ export function FeedbackSheet({ children }: { children?: React.ReactNode }) {
       <SheetContent side="right" className="flex flex-col w-full sm:max-w-md p-0">
         <SheetHeader className="px-5 pt-5 pb-4 border-b">
           <SheetTitle>Share Feedback</SheetTitle>
-          <SheetDescription>Help us make Wevenu better for your venue.</SheetDescription>
+          <SheetDescription>Help us make Hello to Cheers better for your venue.</SheetDescription>
         </SheetHeader>
 
         <div className="flex-1 overflow-y-auto px-5 py-4 space-y-5">
@@ -158,7 +158,7 @@ export function FeedbackSheet({ children }: { children?: React.ReactNode }) {
           {/* NPS rating */}
           {isNps && (
             <div className="space-y-2">
-              <p className="text-sm font-medium text-heading">How likely are you to recommend Wevenu?</p>
+              <p className="text-sm font-medium text-heading">How likely are you to recommend Hello to Cheers?</p>
               <div className="flex gap-1.5 flex-wrap">
                 {Array.from({ length: 10 }, (_, i) => i + 1).map(n => (
                   <button

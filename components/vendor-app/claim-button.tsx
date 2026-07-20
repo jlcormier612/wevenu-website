@@ -16,7 +16,7 @@ export function ClaimButton({ token }: { token: string }) {
     startTransition(async () => {
       const result = await claimVendorProfileAction(token);
       if (result.ok) {
-        toast.success("Profile claimed! Welcome to Wevenu.");
+        toast.success("Profile claimed! Welcome to Hello to Cheers.");
         router.push("/vendor/dashboard");
       } else {
         toast.error(result.message ?? "Could not claim profile. Please try again.");

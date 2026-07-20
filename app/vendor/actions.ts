@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 
-import { updateVendorProfile } from "@/lib/vendor-profile/service";
+import { updateVendorProfile, markVendorLuvIntroSeen } from "@/lib/vendor-profile/service";
 import { claimVendorProfile } from "@/lib/vendor-auth/service";
 import type { VendorActionResult, VendorProfileInput } from "@/lib/vendors/types";
 
@@ -11,6 +11,12 @@ export async function updateVendorProfileAction(input: VendorProfileInput): Prom
   const result = await updateVendorProfile(input);
   if (result.ok) revalidatePath("/vendor/profile");
   return result;
+}
+
+/** Luv Experience Completion, Work Stream 5 — dismiss the one-time intro card. */
+export async function markVendorLuvIntroSeenAction(): Promise<void> {
+  await markVendorLuvIntroSeen();
+  revalidatePath("/vendor/dashboard");
 }
 
 export async function claimVendorProfileAction(claimToken: string): Promise<

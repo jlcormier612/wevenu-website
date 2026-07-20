@@ -118,14 +118,21 @@ async function processOne(supabase: ReturnType<typeof createAdminClient>, msg: S
     // touch_conversation_on_message already updates last_message_at /
     // venue_unread on insert — no manual follow-up update needed here,
     // same as the SMS inbound webhook.
+    // RC2 — this was previously inserted as sender_type: "venue_staff",
+    // making an Automation-sent message indistinguishable from one a
+    // coordinator personally typed. "system" already exists in the check
+    // constraint and is already handled correctly everywhere this renders
+    // (Bubble treats venue_staff/system identically for alignment) — this
+    // was a real bug, not a missing mechanism.
     await supabase.from("conversation_messages").insert({
       conversation_id: conversationId,
       venue_id: msg.venueId,
-      sender_type: "venue_staff",
+      sender_type: "system",
       channel: msg.channel,
       body: resolvedBody,
       provider_id: providerId ?? null,
       status: "accepted",
+      channel_metadata: msg.sequenceEnrollmentId ? { sequenceEnrollmentId: msg.sequenceEnrollmentId } : null,
     });
   }
 

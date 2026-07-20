@@ -5,7 +5,7 @@ import { PricingExperience } from "@/components/marketing/pricing-experience";
 export const metadata: Metadata = {
   title: "Pricing",
   description:
-    "Simple monthly pricing for Wevenu—every feature included. The only difference is how many celebrations you host each year.",
+    "Simple monthly pricing for Hello to Cheers—every feature included. The only difference is how many celebrations you host each year.",
 };
 
 type PricingSearchParams = Promise<{ canceled?: string }>;

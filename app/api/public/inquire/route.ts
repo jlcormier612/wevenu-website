@@ -1,15 +1,18 @@
 /**
  * POST /api/public/inquire
  *
- * Public endpoint for venue inquiry form submissions.
+ * Public endpoint for venue inquiry form submissions — the "direct" Source
+ * Adapter into the Lead Intake pipeline (lib/lead-intake/pipeline.ts).
  * No authentication required. Protected by:
  *   - Honeypot field (checked client-side + here as backup)
+ *   - Rate limiting (lib/lead-intake/rate-limit.ts, applied inside the pipeline)
  *   - SECURITY DEFINER function validates the embed_key
- *   - Basic input sanitisation
  *
  * After creating the lead:
  *   1. Sends a confirmation email to the inquirer (if Resend is configured)
  *   2. Sends a notification email to the venue coordinator
+ * Both outcomes are recorded onto the lead_intake_attempts row so a failed
+ * send is no longer invisible.
  *
  * Returns: { ok: true, referenceCode: "ABC12345" }
  */
@@ -18,6 +21,13 @@ import { type NextRequest, NextResponse } from "next/server";
 
 import { createClient } from "@/integrations/supabase/server";
 import { sendEmail } from "@/lib/email/send";
+import { ingestLead } from "@/lib/lead-intake/pipeline";
+import { recordNotificationStatus } from "@/lib/lead-intake/attempt-log";
+
+function clientIp(request: NextRequest): string | null {
+  const forwarded = request.headers.get("x-forwarded-for");
+  return forwarded ? forwarded.split(",")[0].trim() : null;
+}
 
 export async function POST(request: NextRequest) {
   let body: Record<string, unknown>;
@@ -33,6 +43,7 @@ export async function POST(request: NextRequest) {
     eventType, eventDate, guestCount, estimatedBudget,
     message: inquiryMessage,
     sourceData,
+    turnstileToken,
     __hp,  // server-side honeypot check (form uses 'website_url')
   } = body as Record<string, unknown>;
 
@@ -43,30 +54,80 @@ export async function POST(request: NextRequest) {
   }
 
   const supabase = await createClient();
+  const ipAddress = clientIp(request);
 
-  // Call the SECURITY DEFINER function to create the lead
-  const { data, error } = await supabase.rpc("create_public_lead", {
-    p_embed_key:        String(embedKey),
-    p_first_name:       String(firstName),
-    p_last_name:        String(lastName),
-    p_email:            String(email),
-    p_phone:            phone ? String(phone) : "",
-    p_partner_first:    partnerFirst ? String(partnerFirst) : "",
-    p_partner_last:     partnerLast ? String(partnerLast) : "",
-    p_partner_email:    "",
-    p_event_type:       eventType ? String(eventType) : "",
-    p_event_date:       eventDate ? String(eventDate) : null,
-    p_guest_count:      guestCount ? Number(guestCount) : null,
-    p_estimated_budget: estimatedBudget ? Number(estimatedBudget) : null,
-    p_message:          inquiryMessage ? String(inquiryMessage) : "",
-    p_source_data:      (sourceData ?? {}) as Record<string, unknown>,
-  });
+  // Venue resolution happens up front (not inside create_public_lead) so
+  // the pipeline can log/rate-limit against a known venue_id before the
+  // RPC call — the RPC still re-validates the embed_key itself regardless
+  // of this lookup, so nothing about its own security is weakened.
+  const { data: venueRows } = await supabase.rpc("get_venue_by_embed_key", { p_key: String(embedKey) });
+  const venue = venueRows?.[0] as { id: string; name: string; email: string | null } | undefined;
 
-  if (error || !data?.ok) {
-    return NextResponse.json({ ok: false, message: data?.error ?? "Could not submit inquiry." }, { status: 400 });
+  if (!venue) {
+    return NextResponse.json({ ok: false, message: "Invalid form key." }, { status: 400 });
   }
 
-  const refCode = data.reference_code as string;
+  const outcome = await ingestLead({
+    supabase,
+    venueId: venue.id,
+    source: "website",
+    trustTier: "direct",
+    ipAddress,
+    turnstileToken: turnstileToken ? String(turnstileToken) : null,
+    rawPayload: body,
+    input: {
+      firstName: String(firstName),
+      lastName: String(lastName),
+      email: String(email),
+      phone: phone ? String(phone) : null,
+      partnerFirstName: partnerFirst ? String(partnerFirst) : null,
+      eventType: eventType ? String(eventType) : null,
+      eventDate: eventDate ? String(eventDate) : null,
+      guestCount: guestCount ? Number(guestCount) : null,
+      estimatedBudget: estimatedBudget ? Number(estimatedBudget) : null,
+      inquiryMessage: inquiryMessage ? String(inquiryMessage) : null,
+      sourceData: (sourceData ?? {}) as Record<string, unknown>,
+    },
+    create: async (normalized) => {
+      const { data, error } = await supabase.rpc("create_public_lead", {
+        p_embed_key:        String(embedKey),
+        p_first_name:       normalized.firstName,
+        p_last_name:        normalized.lastName,
+        p_email:            normalized.email ?? "",
+        p_phone:            normalized.phone ?? "",
+        p_partner_first:    normalized.partnerFirstName ?? "",
+        p_partner_last:     normalized.partnerLastName ?? "",
+        p_partner_email:    normalized.partnerEmail ?? "",
+        p_event_type:       normalized.eventType ?? "",
+        p_event_date:       normalized.eventDate,
+        p_guest_count:      normalized.guestCount,
+        p_estimated_budget: normalized.estimatedBudget,
+        p_message:          normalized.inquiryMessage ?? "",
+        p_source_data:      normalized.sourceData,
+      });
+      if (error || !data?.ok) return { ok: false, error: data?.error ?? error?.message ?? "Could not submit inquiry." };
+      // create_public_lead doesn't return relationshipId directly — a cheap
+      // follow-up read, same as every other RPC-returns-just-an-id path.
+      const { data: leadRow } = await supabase.from("leads").select("relationship_id")
+        .eq("id", data.lead_id).maybeSingle<{ relationship_id: string | null }>();
+      if (!leadRow?.relationship_id) return { ok: false, error: "Lead created without a relationship." };
+      const { count } = await supabase.from("leads")
+        .select("id", { count: "exact", head: true })
+        .eq("relationship_id", leadRow.relationship_id);
+      return {
+        ok: true,
+        leadId: data.lead_id as string,
+        relationshipId: leadRow.relationship_id,
+        isReturningRelationship: (count ?? 0) > 1,
+      };
+    },
+  });
+
+  if (!outcome.ok) {
+    return NextResponse.json({ ok: false, message: outcome.error }, { status: 400 });
+  }
+
+  const refCode = outcome.leadId.slice(0, 8).toUpperCase();
   const inquirerName = `${firstName} ${lastName}`;
   const inquirerEmail = String(email);
 
@@ -75,7 +136,7 @@ export async function POST(request: NextRequest) {
 
   // 1. Confirmation email to the inquirer
   if (fromEmail) {
-    void sendEmail({
+    sendEmail({
       to: inquirerEmail,
       subject: `We received your inquiry — ${refCode}`,
       text: [
@@ -92,21 +153,24 @@ export async function POST(request: NextRequest) {
         "We look forward to speaking with you.",
       ].filter(Boolean).join("\n"),
       replyTo: fromEmail,
-    }).catch(() => {});
+    }).then(
+      (result) => recordNotificationStatus(supabase, outcome.attemptId, result.ok ? "sent" : "failed"),
+      () => recordNotificationStatus(supabase, outcome.attemptId, "failed"),
+    );
+  } else {
+    void recordNotificationStatus(supabase, outcome.attemptId, "skipped");
   }
 
-  // 2. Notification to the venue coordinator
-  // Fetch venue email for notification
-  const { data: venueRows } = await supabase.rpc("get_venue_by_embed_key", { p_key: String(embedKey) });
-  const venueEmail = venueRows?.[0]?.email;
-  const venueName = venueRows?.[0]?.name ?? "your venue";
-
-  if (fromEmail && venueEmail) {
-    void sendEmail({
-      to: venueEmail,
+  // 2. Notification to the venue coordinator — the one that matters most
+  // for "did the venue actually find out about this lead," so its outcome
+  // is what lead_intake_attempts.notification_status ultimately reflects
+  // (this write happens after the confirmation email's, above).
+  if (fromEmail && venue.email) {
+    sendEmail({
+      to: venue.email,
       subject: `New inquiry: ${inquirerName}`,
       text: [
-        `New inquiry received via ${venueName}'s website form.`,
+        `New inquiry received via ${venue.name}'s website form.`,
         "",
         `Name: ${inquirerName}`,
         `Email: ${inquirerEmail}`,
@@ -119,9 +183,12 @@ export async function POST(request: NextRequest) {
         inquiryMessage ? `\nMessage:\n${inquiryMessage}` : null,
         "",
         `Reference: ${refCode}`,
-        `View in Wevenu: ${process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"}/leads`,
+        `View in Hello to Cheers: ${process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"}/leads`,
       ].filter(Boolean).join("\n"),
-    }).catch(() => {});
+    }).then(
+      (result) => recordNotificationStatus(supabase, outcome.attemptId, result.ok ? "sent" : "failed"),
+      () => recordNotificationStatus(supabase, outcome.attemptId, "failed"),
+    );
   }
 
   return NextResponse.json({ ok: true, referenceCode: refCode });

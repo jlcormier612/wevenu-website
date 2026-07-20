@@ -15,7 +15,9 @@ import { ArrowDown, ArrowUp, Check, ChevronDown, ChevronUp, Copy, ExternalLink, 
 import { toast } from "sonner";
 
 import { ColorPickerTrigger } from "@/components/ui/color-picker";
-import type { CoupleWebsite, WebsiteContent, WebsiteTheme, FontPairing, WebsiteSuggestions } from "@/lib/wedding-website/types";
+import type { CoupleWebsite, WebsiteContent, WebsiteTheme, FontPairing, WebsiteSuggestions, HostedExperienceCatalog } from "@/lib/wedding-website/types";
+import { celebrateLuv } from "@/lib/luv/celebrate";
+import { coupleCelebrationMessage } from "@/lib/luv/celebrations";
 
 // ── Theme library — 8 collections × 3 palettes ───────────────────────────────
 
@@ -204,9 +206,36 @@ function Actions({ onSave, onCancel }: { onSave: () => void; onCancel: () => voi
 
 // ── Section editors ───────────────────────────────────────────────────────────
 
-function HomeEditor({ content, onSave, onCancel, token, suggestions }: {
-  content: WebsiteContent; onSave: (v: object) => void; onCancel: () => void; token: string;
+// Hosted Experience Platform Phase 5 — visible "Sourced from Planning ·
+// synced [date]" indicator + explicit Refresh action for guided sections
+// (§3/§4). Refresh re-pulls live via onRefresh; accepting a proposed value
+// never auto-saves — the couple still reviews it in the form and presses
+// Save, at which point onSynced stamps last_synced_at.
+function SyncBadge({ lastSyncedAt, onRefresh, refreshing }: {
+  lastSyncedAt?: string | null; onRefresh?: () => void; refreshing?: boolean;
+}) {
+  if (!onRefresh) return null;
+  return (
+    <div className="flex items-center justify-between text-[10px] text-muted-foreground px-0.5">
+      <span>
+        Sourced from Planning{lastSyncedAt
+          ? ` · synced ${new Date(lastSyncedAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}`
+          : " · not yet synced"}
+      </span>
+      <button type="button" onClick={onRefresh} disabled={refreshing}
+        className="underline underline-offset-2 hover:text-foreground disabled:opacity-50">
+        {refreshing ? "Refreshing…" : "Refresh"}
+      </button>
+    </div>
+  );
+}
+
+function HomeEditor({ content, onSave, onCancel, token, suggestions, lastSyncedAt, onRefresh, onSynced }: {
+  content: WebsiteContent; onSave: (v: object) => void | Promise<void>; onCancel: () => void; token: string;
   suggestions?: WebsiteSuggestions | null;
+  lastSyncedAt?: string | null;
+  onRefresh?: () => Promise<WebsiteSuggestions | null>;
+  onSynced?: () => void;
 }) {
   const suggestedTitle    = suggestions?.coupleNames ?? null;
   const suggestedSubtitle = React.useMemo(() => {
@@ -221,12 +250,31 @@ function HomeEditor({ content, onSave, onCancel, token, suggestions }: {
   const [subtitle, setSubtitle] = React.useState(content.home?.subtitle ?? suggestedSubtitle ?? "");
   const [welcome, setWelcome] = React.useState(content.home?.welcomeMessage ?? "");
   const [coverUrl, setCoverUrl] = React.useState(content.home?.coverImageUrl ?? "");
+  const [refreshing, setRefreshing] = React.useState(false);
+  const [justAccepted, setJustAccepted] = React.useState(false);
 
   const engagementPhotos = suggestions?.engagementPhotos ?? [];
   const hasCoverSuggestions = engagementPhotos.length > 0 && !coverUrl;
 
+  async function handleRefresh() {
+    if (!onRefresh) return;
+    setRefreshing(true);
+    const fresh = await onRefresh();
+    setRefreshing(false);
+    if (!fresh) { toast.info("Nothing new found in Planning."); return; }
+    const changed = fresh.coupleNames !== suggestedTitle || (fresh.engagementPhotos?.length ?? 0) > engagementPhotos.length;
+    toast.success(changed ? "Refreshed — review the suggestions below." : "You're up to date with Planning.");
+  }
+
+  async function handleSave() {
+    await onSave({ title, subtitle, welcomeMessage: welcome, coverImageUrl: coverUrl || undefined });
+    if (justAccepted) onSynced?.();
+  }
+
   return (
     <div className="space-y-3">
+
+      <SyncBadge lastSyncedAt={lastSyncedAt} onRefresh={onRefresh ? handleRefresh : undefined} refreshing={refreshing} />
 
       {/* ── Cover photo suggestion ── */}
       {hasCoverSuggestions && (
@@ -236,7 +284,7 @@ function HomeEditor({ content, onSave, onCancel, token, suggestions }: {
           </p>
           <div className="flex gap-2 overflow-x-auto pb-1">
             {engagementPhotos.slice(0, 6).map((p, i) => (
-              <button key={p.id} type="button" onClick={() => setCoverUrl(p.url)}
+              <button key={p.id} type="button" onClick={() => { setCoverUrl(p.url); setJustAccepted(true); }}
                 className={`shrink-0 h-16 w-16 rounded-xl overflow-hidden border-2 transition-all hover:scale-105 ${coverUrl === p.url ? "border-primary" : "border-transparent"}`}>
                 <img src={p.url} alt={`Photo ${i + 1}`} className="w-full h-full object-cover" />
               </button>
@@ -267,18 +315,23 @@ function HomeEditor({ content, onSave, onCancel, token, suggestions }: {
       <Field label="Page headline" value={title} onChange={setTitle} placeholder="Emily & James" />
       <Field label="Subtitle" value={subtitle} onChange={setSubtitle} placeholder="June 12, 2027 · Nashville, TN" />
       <TextareaField label="Welcome message" value={welcome} onChange={setWelcome} placeholder="We're so excited to celebrate with you!" rows={3} />
-      <Actions onSave={() => onSave({ title, subtitle, welcomeMessage: welcome, coverImageUrl: coverUrl || undefined })} onCancel={onCancel} />
+      <Actions onSave={handleSave} onCancel={onCancel} />
     </div>
   );
 }
 
-function StoryEditor({ content, onSave, onCancel, suggestions }: {
-  content: WebsiteContent; onSave: (v: object) => void; onCancel: () => void;
+function StoryEditor({ content, onSave, onCancel, suggestions, lastSyncedAt, onRefresh, onSynced }: {
+  content: WebsiteContent; onSave: (v: object) => void | Promise<void>; onCancel: () => void;
   suggestions?: WebsiteSuggestions | null;
+  lastSyncedAt?: string | null;
+  onRefresh?: () => Promise<WebsiteSuggestions | null>;
+  onSynced?: () => void;
 }) {
   const story = (content as any).story ?? {};
   const [title, setTitle] = React.useState(story.title ?? "How We Met");
   const [text, setText] = React.useState(story.text ?? "");
+  const [refreshing, setRefreshing] = React.useState(false);
+  const [justAccepted, setJustAccepted] = React.useState(false);
 
   const profileStory = suggestions?.story?.text ?? null;
   // Show sync prompt when: profile has a story AND the website hasn't been customized yet
@@ -286,11 +339,28 @@ function StoryEditor({ content, onSave, onCancel, suggestions }: {
 
   function useProfileStory() {
     setText(profileStory!);
+    setJustAccepted(true);
     toast.success("Story synced from your profile.");
+  }
+
+  async function handleRefresh() {
+    if (!onRefresh) return;
+    setRefreshing(true);
+    const fresh = await onRefresh();
+    setRefreshing(false);
+    if (!fresh?.story?.text) { toast.info("Nothing new found in Planning."); return; }
+    toast.success(fresh.story.text !== profileStory ? "Refreshed — review the suggestion below." : "You're up to date with Planning.");
+  }
+
+  async function handleSave() {
+    await onSave({ title, text });
+    if (justAccepted) onSynced?.();
   }
 
   return (
     <div className="space-y-3">
+
+      <SyncBadge lastSyncedAt={lastSyncedAt} onRefresh={onRefresh ? handleRefresh : undefined} refreshing={refreshing} />
 
       {/* ── Sync from Profile prompt ── */}
       {showSyncPrompt && (
@@ -329,7 +399,7 @@ function StoryEditor({ content, onSave, onCancel, suggestions }: {
         </button>
       )}
 
-      <Actions onSave={() => onSave({ title, text })} onCancel={onCancel} />
+      <Actions onSave={handleSave} onCancel={onCancel} />
     </div>
   );
 }
@@ -801,6 +871,7 @@ function FaqEditor({ content, onSave, onCancel }: { content: WebsiteContent; onS
 function SectionAccordion({
   section, content, onSaveSection, saving, token, scheduleSync, onToggleSync,
   onMoveUp, onMoveDown, isFirst, isLast, suggestions, forceOpen,
+  lastSyncedAt, onRefreshSuggestions, onSectionSynced,
 }: {
   section: SectionDef;
   content: WebsiteContent;
@@ -815,6 +886,9 @@ function SectionAccordion({
   isLast?: boolean;
   suggestions?: WebsiteSuggestions | null;
   forceOpen?: boolean;
+  lastSyncedAt?: string | null;
+  onRefreshSuggestions?: () => Promise<WebsiteSuggestions | null>;
+  onSectionSynced?: (sectionKey: string) => Promise<void>;
 }) {
   const [open, setOpen] = React.useState(false);
   const accordionRef = React.useRef<HTMLDivElement>(null);
@@ -844,8 +918,12 @@ function SectionAccordion({
       onCancel: () => setOpen(false),
     };
     switch (section.key) {
-      case "home":         return <HomeEditor {...props} token={token} suggestions={suggestions} />;
-      case "story":        return <StoryEditor {...props} suggestions={suggestions} />;
+      case "home":         return <HomeEditor {...props} token={token} suggestions={suggestions}
+                                     lastSyncedAt={lastSyncedAt} onRefresh={onRefreshSuggestions}
+                                     onSynced={() => onSectionSynced?.("home")} />;
+      case "story":        return <StoryEditor {...props} suggestions={suggestions}
+                                     lastSyncedAt={lastSyncedAt} onRefresh={onRefreshSuggestions}
+                                     onSynced={() => onSectionSynced?.("story")} />;
       case "event":        return <EventEditor {...props} suggestions={suggestions} />;
       case "gallery":      return <GalleryEditor {...props} token={token} />;
       case "schedule":     return <ScheduleEditor {...props} token={token} scheduleSync={scheduleSync} onToggleSync={onToggleSync} />;
@@ -950,7 +1028,7 @@ function CompletionMeter({ completed, total, syncableSections }: {
         <div className="h-1.5 rounded-full bg-muted overflow-hidden">
           <div
             className="h-full rounded-full transition-all duration-500"
-            style={{ width: `${pct}%`, background: pct === 100 ? "var(--primary)" : "linear-gradient(90deg, var(--primary), #D8A7AA)" }}
+            style={{ width: `${pct}%`, background: pct === 100 ? "var(--venue-primary)" : "linear-gradient(90deg, var(--venue-primary), #D8A7AA)" }}
           />
         </div>
       )}
@@ -970,6 +1048,24 @@ function ThemeStudio({
   const currentCollection = THEME_LIBRARY.find(t => t.value === (site.theme ?? "classic")) ?? THEME_LIBRARY[0];
   const currentPaletteName = site.themePalette ?? currentCollection.palettes[0].name;
   const currentPalette = currentCollection.palettes.find(p => p.name === currentPaletteName) ?? currentCollection.palettes[0];
+
+  // Hosted Experience Platform Phase 2 — the visual picker below still
+  // uses THEME_LIBRARY/FONT_PAIRINGS for the actual preview cards (those
+  // collection-level tokens — heading font, mood copy — aren't in the
+  // catalog tables yet, only palette/typography color+font values are).
+  // What DOES cut over: every selection now also resolves and sends the
+  // matching catalog id, so update_my_website's FK write path (not just
+  // the legacy theme/themePalette/fontPairing strings) is what a real
+  // Studio save exercises. Sent alongside the strings, not instead of —
+  // the strings stay as a safety net if the catalog fetch below fails for
+  // any reason; the read side already prefers the FK-derived value
+  // whenever a catalog id is present, so this is a real migration of the
+  // authoritative write path, not just an additional field.
+  const [catalog, setCatalog] = React.useState<HostedExperienceCatalog | null>(null);
+  React.useEffect(() => {
+    fetch("/api/portal/website/catalog").then(r => r.json()).then(setCatalog).catch(() => {});
+  }, []);
+  const catalogCollection = catalog?.collections.find(c => c.key === currentCollection.value);
 
   return (
     <div className={`rounded-2xl border transition-colors overflow-hidden ${open ? "border-ring bg-card" : "border-border bg-card"}`}>
@@ -1017,7 +1113,14 @@ function ThemeStudio({
                 const previewPalette = theme.palettes[0];
                 return (
                   <button key={theme.value} type="button"
-                    onClick={() => onUpdate({ theme: theme.value, themePalette: theme.palettes[0].name })}
+                    onClick={() => {
+                      const cc = catalog?.collections.find(c => c.key === theme.value);
+                      const cs = cc?.colorStories.find(s => s.name.toLowerCase() === theme.palettes[0].name.toLowerCase());
+                      onUpdate({
+                        theme: theme.value, themePalette: theme.palettes[0].name,
+                        collectionId: cc?.id, colorStoryId: cs?.id,
+                      });
+                    }}
                     className={`relative rounded-2xl overflow-hidden text-left transition-all hover:scale-[1.01] ${isSelected ? "ring-2 ring-offset-2 ring-ring" : ""}`}>
 
                     {/* Visual hero preview */}
@@ -1065,7 +1168,10 @@ function ThemeStudio({
                 const isActive = p.name === currentPaletteName;
                 return (
                   <button key={p.name} type="button"
-                    onClick={() => onUpdate({ themePalette: p.name })}
+                    onClick={() => {
+                      const cs = catalogCollection?.colorStories.find(s => s.name.toLowerCase() === p.name.toLowerCase());
+                      onUpdate({ themePalette: p.name, colorStoryId: cs?.id });
+                    }}
                     className="flex flex-col items-center gap-1.5">
                     <div className={`rounded-full border-2 transition-all ${isActive ? "h-10 w-10 border-foreground shadow-md" : "h-8 w-8 border-transparent hover:border-border"}`}
                       style={{ background: p.gradient }} />
@@ -1094,7 +1200,10 @@ function ThemeStudio({
               {FONT_PAIRINGS.map(f => {
                 const isSelected = (site.fontPairing ?? "classic_serif") === f.value;
                 return (
-                  <button key={f.value} type="button" onClick={() => onUpdate({ fontPairing: f.value })}
+                  <button key={f.value} type="button" onClick={() => {
+                      const ts = catalog?.typographyStyles.find(t => t.key === f.value);
+                      onUpdate({ fontPairing: f.value, typographyStyleId: ts?.id });
+                    }}
                     className={`rounded-xl border p-3 text-left transition-all ${isSelected ? "ring-2 ring-ring ring-offset-1 border-ring" : "border-border"}`}>
                     <p className="text-[13px]" style={{ fontFamily: f.css }}>{f.name}</p>
                     <p className="text-[10px] text-muted-foreground mt-0.5">{f.label}</p>
@@ -1140,6 +1249,8 @@ export function WebsiteEditor({
   const [selectedGuests, setSelectedGuests] = React.useState<string[]>([]);
   const [sendingInvites, setSendingInvites] = React.useState(false);
   const [views, setViews] = React.useState<{ totalViews: number; weekViews: number } | null>(null);
+  const [nudges, setNudges] = React.useState<{ id: string; sectionKey: string; changeSummary: string; detectedAt: string; notifiedAt: string | null }[]>([]);
+  const [notifyingNudge, setNotifyingNudge] = React.useState<string | null>(null);
 
   // Pre-population suggestions — fetched once on mount
   const [suggestions, setSuggestions] = React.useState<WebsiteSuggestions | null>(null);
@@ -1161,6 +1272,24 @@ export function WebsiteEditor({
       .catch(() => {});
   }, [token]);
 
+  // Hosted Experience Platform Phase 5 — explicit Refresh for guided
+  // sections (home/story): re-pulls the current source value rather than
+  // relying on the once-on-mount fetch above, so "Refresh" actually
+  // reflects what's in Planning right now.
+  async function refreshSuggestions(): Promise<WebsiteSuggestions | null> {
+    const res = await fetch(`/api/portal/website/suggestions?token=${token}`);
+    const d = await res.json() as WebsiteSuggestions | null;
+    setSuggestions(d);
+    return d;
+  }
+
+  async function markSectionSynced(sectionKey: string) {
+    await fetch("/api/portal/website/sync-section", {
+      method: "POST", headers: { "content-type": "application/json" },
+      body: JSON.stringify({ token, sectionKey }),
+    }).catch(() => {});
+  }
+
   React.useEffect(() => {
     if (!site.isPublished) return;
     fetch(`/api/portal/website/analytics?token=${token}`)
@@ -1170,6 +1299,50 @@ export function WebsiteEditor({
       })
       .catch(() => {});
   }, [token, site.isPublished]);
+
+  // Hosted Experience Platform Phase 5 — a live-synced source (Schedule)
+  // changed after publish; nudge the couple to let already-RSVP'd guests
+  // know, rather than leaving them to discover the change on their own.
+  React.useEffect(() => {
+    if (!site.isPublished) return;
+    fetch(`/api/portal/website/change-nudges?token=${token}`)
+      .then(r => r.json())
+      .then((d: { nudges?: typeof nudges }) => setNudges(d.nudges ?? []))
+      .catch(() => {});
+  }, [token, site.isPublished]);
+
+  async function dismissNudge(nudgeId: string) {
+    setNudges(n => n.filter(x => x.id !== nudgeId));
+    await fetch("/api/portal/website/change-nudges", {
+      method: "POST", headers: { "content-type": "application/json" },
+      body: JSON.stringify({ token, nudgeId }),
+    });
+  }
+
+  async function notifyGuestsOfChange(nudgeId: string) {
+    const alreadyResponded = guests.filter(g => g.rsvpStatus !== "pending" && g.email);
+    if (!alreadyResponded.length) {
+      toast.info("No RSVP'd guests with email addresses to notify.");
+      await dismissNudge(nudgeId);
+      return;
+    }
+    setNotifyingNudge(nudgeId);
+    try {
+      const res = await fetch("/api/portal/invite", {
+        method: "POST", headers: { "content-type": "application/json" },
+        body: JSON.stringify({ token, guestIds: alreadyResponded.map(g => g.id), emailType: "update" }),
+      });
+      const data = await res.json() as { ok: boolean; sent?: number };
+      if (data.ok) {
+        toast.success(`Update sent to ${data.sent ?? alreadyResponded.length} guest${alreadyResponded.length !== 1 ? "s" : ""}.`);
+        setNudges(n => n.filter(x => x.id !== nudgeId));
+        await fetch("/api/portal/website/change-nudges", {
+          method: "POST", headers: { "content-type": "application/json" },
+          body: JSON.stringify({ token, nudgeId, notified: true }),
+        });
+      } else toast.error("Could not send the update. Please try again.");
+    } finally { setNotifyingNudge(null); }
+  }
 
   // How many sections have ready-to-sync suggestions
   const syncableSections = suggestions
@@ -1223,7 +1396,7 @@ export function WebsiteEditor({
       });
       const data = await res.json() as { ok: boolean };
       if (data.ok) {
-        setSite(s => ({ ...s, ...patch }));
+        setSite(s => ({ ...s, ...patch, hasPendingChanges: s.isPublished ? true : s.hasPendingChanges }));
         onAppearanceChanged?.(patch);
         toast.success("Design updated.");
       }
@@ -1238,10 +1411,35 @@ export function WebsiteEditor({
         method: "POST", headers: { "content-type": "application/json" },
         body: JSON.stringify({ token, isPublished: next }),
       });
+      const data = await res.json() as { ok: boolean; celebrated?: boolean };
+      if (data.ok) {
+        setSite(s => ({ ...s, isPublished: next, status: next ? "published" : "draft", hasPendingChanges: false }));
+        if (next && data.celebrated) {
+          celebrateLuv(coupleCelebrationMessage("website_published"));
+        } else {
+          toast.success(next ? "Your website is live!" : "Website set to draft.");
+        }
+      }
+    } finally { setPublishing(false); }
+  }
+
+  // Publishing is a commitment, not a save (Hosted Experience Platform
+  // Phase 3) — edits made after the first publish land in the draft only;
+  // guests keep seeing the version frozen at the last publish until this
+  // is called again. Always sends isPublished: true, even though the site
+  // is already published, since that's what makes update_my_website write
+  // a new experience_versions snapshot and move guests onto the latest draft.
+  async function publishUpdates() {
+    setPublishing(true);
+    try {
+      const res = await fetch("/api/portal/website", {
+        method: "POST", headers: { "content-type": "application/json" },
+        body: JSON.stringify({ token, isPublished: true }),
+      });
       const data = await res.json() as { ok: boolean };
       if (data.ok) {
-        setSite(s => ({ ...s, isPublished: next }));
-        toast.success(next ? "🎉 Your website is live!" : "Website set to draft.");
+        setSite(s => ({ ...s, hasPendingChanges: false }));
+        toast.success("Updates are live.");
       }
     } finally { setPublishing(false); }
   }
@@ -1286,12 +1484,48 @@ export function WebsiteEditor({
             syncableSections={syncableSections}
           />
         )}
-        <button type="button" onClick={togglePublish} disabled={publishing}
-          className={`w-full rounded-xl py-2.5 text-sm font-semibold transition-colors disabled:opacity-60 ${site.isPublished ? "border border-border text-muted-foreground hover:bg-muted/40" : "bg-primary text-primary-foreground"}`}>
-          {publishing ? <Loader2 className="h-4 w-4 animate-spin mx-auto" />
-            : site.isPublished ? "Unpublish website" : "🚀 Publish website"}
-        </button>
+
+        {/* Publishing is a commitment (Hosted Experience Platform Phase 3) —
+            guests keep seeing the last published version; edits made since
+            then sit in the draft until this is pressed again. */}
+        {site.isPublished && site.hasPendingChanges && (
+          <div className="rounded-xl bg-amber-50 border border-amber-200 px-3 py-2 text-xs text-amber-800">
+            You&apos;ve made changes since your website last went live. Guests are still seeing the previous version.
+          </div>
+        )}
+        {site.isPublished && site.hasPendingChanges ? (
+          <button type="button" onClick={publishUpdates} disabled={publishing}
+            className="w-full rounded-xl py-2.5 text-sm font-semibold transition-colors disabled:opacity-60 bg-primary text-primary-foreground">
+            {publishing ? <Loader2 className="h-4 w-4 animate-spin mx-auto" /> : "Publish updates"}
+          </button>
+        ) : (
+          <button type="button" onClick={togglePublish} disabled={publishing}
+            className={`w-full rounded-xl py-2.5 text-sm font-semibold transition-colors disabled:opacity-60 ${site.isPublished ? "border border-border text-muted-foreground hover:bg-muted/40" : "bg-primary text-primary-foreground"}`}>
+            {publishing ? <Loader2 className="h-4 w-4 animate-spin mx-auto" />
+              : site.isPublished ? "Unpublish website" : "🚀 Publish website"}
+          </button>
+        )}
       </div>}
+
+      {/* ── Change-notification nudges (Hosted Experience Platform Phase 5) ── */}
+      {!hideStatusHeader && nudges.map(nudge => (
+        <div key={nudge.id} className="rounded-2xl border border-primary/30 bg-primary/5 p-4 space-y-3">
+          <div className="flex items-start gap-2">
+            <span className="text-base mt-0.5">💗</span>
+            <p className="text-sm text-heading leading-relaxed">{nudge.changeSummary}</p>
+          </div>
+          <div className="flex gap-2">
+            <button type="button" onClick={() => notifyGuestsOfChange(nudge.id)} disabled={notifyingNudge === nudge.id}
+              className="flex-1 text-xs font-semibold py-2 rounded-xl bg-primary text-primary-foreground transition-opacity hover:opacity-90 disabled:opacity-60">
+              {notifyingNudge === nudge.id ? <Loader2 className="h-3.5 w-3.5 animate-spin mx-auto" /> : "Notify guests who've RSVP'd"}
+            </button>
+            <button type="button" onClick={() => dismissNudge(nudge.id)} disabled={notifyingNudge === nudge.id}
+              className="text-xs text-muted-foreground py-2 px-3 rounded-xl border border-border hover:bg-muted/40">
+              Not now
+            </button>
+          </div>
+        </div>
+      ))}
 
       {/* ── "Already here" welcome banner ── */}
       {/* Shown on first open when the platform already knows things about the couple */}
@@ -1304,7 +1538,7 @@ export function WebsiteEditor({
               <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
                 We found your story, venue details
                 {(suggestions?.engagementPhotos?.length ?? 0) > 0 ? `, and ${suggestions!.engagementPhotos!.length} engagement photo${suggestions!.engagementPhotos!.length === 1 ? "" : "s"}` : ""}
-                {" "}already in Wevenu. Open any section marked{" "}
+                {" "}already in Hello to Cheers. Open any section marked{" "}
                 <span className="font-semibold text-primary">✦ Ready to sync</span>{" "}
                 below to bring it in.
               </p>
@@ -1500,6 +1734,9 @@ export function WebsiteEditor({
             saving={saving}
             token={token}
             suggestions={suggestions}
+            lastSyncedAt={site.sections?.find(s => s.key === section.key)?.lastSyncedAt}
+            onRefreshSuggestions={refreshSuggestions}
+            onSectionSynced={markSectionSynced}
             scheduleSync={section.key === "schedule" ? scheduleSync : undefined}
             onToggleSync={section.key === "schedule" ? async (v) => {
               setScheduleSync(v);

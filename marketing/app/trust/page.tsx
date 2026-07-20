@@ -3,9 +3,9 @@ import type { Metadata } from "next";
 import { TrustExperience } from "@/components/marketing/trust-experience";
 
 export const metadata: Metadata = {
-  title: "Trust",
+  title: "Our Promise",
   description:
-    "Trust isn't built by contracts. It's built by showing up—security, privacy, data ownership, reliability, and transparent terms from Wevenu.",
+    "Trust isn't something you ask for. It's something you earn—security, privacy, data ownership, reliability, and transparent terms from Hello to Cheers.",
 };
 
 export default function TrustPage() {

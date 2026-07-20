@@ -5,7 +5,7 @@ import { COOKIE_POLICY } from "@/lib/marketing/legal";
 
 export const metadata: Metadata = {
   title: "Cookie Policy",
-  description: "How Wevenu uses cookies and similar technologies.",
+  description: "How Hello to Cheers uses cookies and similar technologies.",
 };
 
 export default function CookiePolicyPage() {

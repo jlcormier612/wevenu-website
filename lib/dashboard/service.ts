@@ -87,6 +87,7 @@ function mapLead(r: LeadRow, tour: LeadTourInfo = EMPTY_TOUR): Lead {
     tourCompleted: tour.tourCompleted, tourNotes: tour.tourNotes,
     commitmentScore: 0, responsivenessScore: 0, interestScore: 0, scoresUpdatedAt: null, sourceData: null,
     relationshipId: (r.relationship_id as string | null) ?? null,
+    intakeConfidence: null,
     createdAt: r.created_at, updatedAt: r.updated_at,
   };
 }
@@ -465,6 +466,8 @@ export async function getDashboardData(): Promise<DashboardData | null> {
     activationScore,
     nextPendingMilestone,
     showDigestCallout,
+    // Luv Experience Completion, Work Stream 5 — the one-time intro card.
+    showLuvIntro: !venue.luvIntroSeenAt,
   };
 }
 

@@ -1,11 +1,10 @@
 import { cn } from "@/lib/utils";
 
-const PLATFORM_LOGO_LIGHT = "/brand/Wevenu_Logo_Master_Transparent.png";
-const PLATFORM_LOGO_DARK  = "/brand/Wevenu_Dark_Mode_Primary.png";
+const PLATFORM_LOGO_LIGHT = "/brand/hello-to-cheers-logo-primary-transparent.png";
+const PLATFORM_LOGO_DARK = "/brand/hello-to-cheers-logo-primary-transparent.png";
 
 /**
- * Renders the Wevenu platform logo everywhere platform branding appears.
- * Swaps to the white SVG version in dark mode automatically.
+ * Renders the Hello to Cheers platform logo everywhere platform branding appears.
  * Pass logoUrl only when displaying a venue's own uploaded logo instead.
  * Pass forceLight on a page whose surface is a fixed light background
  * regardless of the app's dark-mode setting (e.g. login) — otherwise the
@@ -19,15 +18,18 @@ export function Wordmark({
   logoUrl,
   venueName,
   forceLight = false,
+  sizeClassName,
 }: {
   className?: string;
   showText?: boolean;
   logoUrl?: string | null;
   venueName?: string;
   forceLight?: boolean;
+  /** Overrides the default height class — for callers that need a non-standard size (e.g. the main app header, sized 20% up from the default). */
+  sizeClassName?: string;
 }) {
-  const alt = logoUrl ? (venueName ?? "Venue") : "Wevenu";
-  const sizeClass = showText ? "h-11 w-auto" : "h-8 w-auto";
+  const alt = logoUrl ? (venueName ?? "Venue") : "Hello to Cheers";
+  const sizeClass = sizeClassName ?? (showText ? "h-11 w-auto" : "h-8 w-auto");
 
   if (logoUrl) {
     return (

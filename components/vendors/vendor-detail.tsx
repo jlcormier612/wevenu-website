@@ -10,6 +10,7 @@ import { toast } from "sonner";
 import { deleteVendorAction, reactivateVendorAction, sendVendorInviteAction } from "@/app/(app)/vendors/actions";
 import { DocumentsSection } from "@/components/documents/documents-section";
 import { VendorCategoryBadge } from "@/components/vendors/vendor-category-badge";
+import { VendorConversationRollup } from "@/components/vendors/vendor-conversation-rollup";
 import { VendorReviews } from "@/components/vendors/vendor-reviews";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -18,8 +19,13 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { formatTime } from "@/lib/vendors/constants";
 import type { VendorReview, VendorWithEvents } from "@/lib/vendors/types";
 import type { Document } from "@/lib/documents/types";
+import type { VendorRollupConversation } from "@/lib/conversations/types";
 
-export function VendorDetail({ vendor, documents = [], reviews = [] }: { vendor: VendorWithEvents; documents?: Document[]; reviews?: VendorReview[] }) {
+export function VendorDetail({
+  vendor, documents = [], reviews = [], conversations = [],
+}: {
+  vendor: VendorWithEvents; documents?: Document[]; reviews?: VendorReview[]; conversations?: VendorRollupConversation[];
+}) {
   const router = useRouter();
   const [deletePending, startDelete] = React.useTransition();
   const [reactivatePending, startReactivate] = React.useTransition();
@@ -106,6 +112,10 @@ export function VendorDetail({ vendor, documents = [], reviews = [] }: { vendor:
       <Tabs defaultValue="overview">
         <TabsList>
           <TabsTrigger value="overview">Overview</TabsTrigger>
+          <TabsTrigger value="conversations">
+            Conversations
+            {conversations.length > 0 && <span className="ml-1 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground">{conversations.length}</span>}
+          </TabsTrigger>
           <TabsTrigger value="reviews">
             Reviews
             {reviews.length > 0 && <span className="ml-1 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground">{reviews.length}</span>}
@@ -239,6 +249,10 @@ export function VendorDetail({ vendor, documents = [], reviews = [] }: { vendor:
           </CardContent>
         </Card>
       )}
+        </TabsContent>
+
+        <TabsContent value="conversations">
+          <VendorConversationRollup conversations={conversations} />
         </TabsContent>
 
         <TabsContent value="reviews">

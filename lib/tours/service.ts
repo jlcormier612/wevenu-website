@@ -8,6 +8,8 @@ import type { CalendarItem } from "@/lib/calendar/types";
 import { eventTypeLabel, leadDisplayName } from "@/lib/leads/constants";
 import { sendTourConfirmation } from "@/lib/tours/communication";
 import { updateLeadStatus } from "@/lib/leads/service";
+import { ingestLead } from "@/lib/lead-intake/pipeline";
+import { recordNotificationStatus } from "@/lib/lead-intake/attempt-log";
 
 type DbClient = Awaited<ReturnType<typeof createClient>>;
 
@@ -76,6 +78,11 @@ export async function getVenueByTourKey(key: string): Promise<TourVenueInfo | nu
     addressLine1: (d.addressLine1 as string | null) ?? null,
     city: (d.city as string | null) ?? null,
     stateRegion: (d.stateRegion as string | null) ?? null,
+    primaryColor: (d.primaryColor as string) ?? "#5D6F5D",
+    secondaryColor: (d.secondaryColor as string) ?? "#4F5F4F",
+    accentColor: (d.accentColor as string) ?? "#B8AEA1",
+    neutralColor: (d.neutralColor as string) ?? "#F7F5F1",
+    logoUrl: (d.logoUrl as string | null) ?? null,
   };
 }
 
@@ -87,70 +94,133 @@ export async function getTourSlots(key: string, startDate: string, endDate: stri
   return ((data as Record<string, unknown>).slots ?? []) as TourSlot[];
 }
 
+const TOUR_BOOK_ERRORS: Record<string, string> = {
+  slot_taken: "This slot was just booked. Please choose another time.",
+  slot_too_soon: "Please choose a time at least 24 hours from now.",
+  slot_too_far: "This slot is too far in the future.",
+  invalid_key: "This booking link is not valid.",
+};
+
 export async function bookTour(
   key: string,
   slotStart: string,
   fields: { firstName: string; lastName: string; partnerName: string; email: string; phone: string; eventType: string; eventDate: string; guestCount: number | null; notes: string },
+  opts?: { turnstileToken?: string | null; ipAddress?: string | null },
 ): Promise<BookingResult> {
   if (!isSupabaseConfigured) return { ok: false, error: "Backend not configured." };
-  const supabase = await createClient();
-  const { data, error } = await supabase.rpc("book_tour", {
-    p_embed_key: key, p_slot_start: slotStart,
-    p_first_name: fields.firstName, p_last_name: fields.lastName, p_partner_name: fields.partnerName,
-    p_email: fields.email, p_phone: fields.phone, p_event_type: fields.eventType,
-    p_event_date: fields.eventDate || null, p_guest_count: fields.guestCount,
-    p_notes: fields.notes,
-  });
-  if (error) return { ok: false, error: error.message };
-  const d = data as Record<string, unknown>;
-  if (!d?.ok) {
-    const msg: Record<string, string> = {
-      slot_taken: "This slot was just booked. Please choose another time.",
-      slot_too_soon: "Please choose a time at least 24 hours from now.",
-      slot_too_far: "This slot is too far in the future.",
-      invalid_key: "This booking link is not valid.",
-    };
-    return { ok: false, error: msg[d?.error as string] ?? "Could not book this slot. Please try again." };
-  }
-  const appointmentId = d.appointmentId as string;
-  const leadId = d.leadId as string;
-  const venueName = d.venueName as string;
-  const scheduledAt = d.scheduledAt as string;
-  const duration = d.duration as number;
 
-  // Fetch venue email + id for coordinator notification, and the new
-  // Lead's relationship_id — book_tour() creates the Lead inside the RPC,
-  // so this is the only way to learn which Relationship it resolved to.
-  //
   // Found while verifying this pass, not assumed: this route has no
   // session (it's public), and `anon` turns out to have zero grants on
   // tour_appointments at all — confirmed directly against PostgREST
-  // ("permission denied for table tour_appointments"). This read has
-  // been silently returning nothing since Sprint 45; venueEmail has never
-  // actually carried the venue's real address, only ever falling back to
-  // COORDINATOR_NOTIFY_EMAIL when set. Same TR-M7 pattern as every other
-  // session-less route in this codebase: the admin client.
+  // ("permission denied for table tour_appointments"). Same TR-M7 pattern
+  // as every other session-less route in this codebase: the admin client,
+  // used throughout this function (including the Lead Intake pipeline call
+  // below) rather than mixing it with a second, anon-key client.
   const admin = createAdminClient();
+
+  // Venue resolution happens up front (not only inside book_tour) so the
+  // Lead Intake pipeline can log/rate-limit against a known venue_id before
+  // the RPC call — book_tour still independently re-validates the key.
+  const { data: venueRow } = await admin
+    .from("venues")
+    .select("id")
+    .eq("tour_embed_key", key)
+    .eq("tour_scheduling_enabled", true)
+    .maybeSingle<{ id: string }>();
+
+  if (!venueRow) {
+    return { ok: false, error: TOUR_BOOK_ERRORS.invalid_key };
+  }
+
+  // book_tour's own response carries booking-specific fields (appointmentId,
+  // venueName, scheduledAt, duration) that don't belong on CreateOutcome —
+  // captured via this closure variable rather than smuggled through the
+  // pipeline's generic result shape.
+  let booking: Record<string, unknown> | null = null;
+
+  const outcome = await ingestLead({
+    supabase: admin,
+    venueId: venueRow.id,
+    source: "tour_scheduling",
+    trustTier: "direct",
+    ipAddress: opts?.ipAddress ?? null,
+    turnstileToken: opts?.turnstileToken ?? null,
+    rawPayload: { key, slotStart, fields },
+    input: {
+      firstName: fields.firstName,
+      lastName: fields.lastName,
+      partnerFirstName: fields.partnerName,
+      email: fields.email,
+      phone: fields.phone,
+      eventType: fields.eventType,
+      eventDate: fields.eventDate || null,
+      guestCount: fields.guestCount,
+      inquiryMessage: fields.notes,
+    },
+    create: async (normalized) => {
+      const { data, error } = await admin.rpc("book_tour", {
+        p_embed_key: key, p_slot_start: slotStart,
+        p_first_name: normalized.firstName, p_last_name: normalized.lastName,
+        p_partner_name: normalized.partnerFirstName ?? "",
+        p_email: normalized.email ?? "", p_phone: normalized.phone ?? "",
+        p_event_type: normalized.eventType ?? "", p_event_date: normalized.eventDate,
+        p_guest_count: normalized.guestCount, p_notes: normalized.inquiryMessage ?? "",
+      });
+      if (error) return { ok: false, error: error.message };
+      const d = data as Record<string, unknown>;
+      if (!d?.ok) {
+        return { ok: false, error: TOUR_BOOK_ERRORS[d?.error as string] ?? "Could not book this slot. Please try again." };
+      }
+      const { data: leadRow } = await admin.from("leads").select("relationship_id")
+        .eq("id", d.leadId as string).maybeSingle<{ relationship_id: string | null }>();
+      if (!leadRow?.relationship_id) return { ok: false, error: "Lead created without a relationship." };
+      const { count } = await admin.from("leads")
+        .select("id", { count: "exact", head: true })
+        .eq("relationship_id", leadRow.relationship_id);
+      booking = d;
+      return {
+        ok: true,
+        leadId: d.leadId as string,
+        relationshipId: leadRow.relationship_id,
+        isReturningRelationship: (count ?? 0) > 1,
+      };
+    },
+  });
+
+  if (!outcome.ok || !booking) {
+    return { ok: false, error: outcome.ok ? "Could not book this slot. Please try again." : outcome.error };
+  }
+
+  const confirmedBooking = booking as Record<string, unknown>;
+  const appointmentId = confirmedBooking.appointmentId as string;
+  const leadId = outcome.leadId;
+  const venueName = confirmedBooking.venueName as string;
+  const scheduledAt = confirmedBooking.scheduledAt as string;
+  const duration = confirmedBooking.duration as number;
+  const relationshipId = outcome.relationshipId;
+
   const { data: apptRow } = await admin
     .from("tour_appointments")
-    .select("venue_id, contact_email, contact_name, contact_phone, venues(email), leads(relationship_id)")
+    .select("contact_email, contact_name, contact_phone, venues(email, primary_color)")
     .eq("id", appointmentId)
-    .maybeSingle<{ venue_id: string; contact_email: string | null; contact_name: string | null; contact_phone: string | null; venues: { email: string | null } | null; leads: { relationship_id: string | null } | null }>();
+    .maybeSingle<{ contact_email: string | null; contact_name: string | null; contact_phone: string | null; venues: { email: string | null; primary_color: string | null } | null }>();
 
   const contactEmail = apptRow?.contact_email ?? fields.email;
   const contactName = apptRow?.contact_name ?? `${fields.firstName} ${fields.lastName}`.trim();
-  const venueId = apptRow?.venue_id;
-  const relationshipId = apptRow?.leads?.relationship_id ?? null;
+  const venueId = venueRow.id;
 
   // Same confirmation, same pipeline, whether the website or a coordinator
   // booked it — see lib/tours/communication.ts. Never blocks the response;
-  // a failed send must not fail a booking that already succeeded.
-  if (venueId) {
-    void sendTourConfirmation({
-      venueId, leadId, relationshipId, contactEmail, contactName,
-      venueName, scheduledAt, durationMinutes: duration,
-    }).catch((err) => console.error("sendTourConfirmation failed:", err));
-  }
+  // a failed send must not fail a booking that already succeeded. Already
+  // tracks its own delivery status durably in conversation_messages; also
+  // recorded onto the intake attempt so a coordinator can see it from there too.
+  void sendTourConfirmation({
+    venueId, leadId, relationshipId, contactEmail, contactName,
+    venueName, primaryColor: apptRow?.venues?.primary_color ?? null, scheduledAt, durationMinutes: duration,
+  }).then(
+    () => recordNotificationStatus(admin, outcome.attemptId, "sent"),
+    (err) => { console.error("sendTourConfirmation failed:", err); void recordNotificationStatus(admin, outcome.attemptId, "failed"); },
+  );
 
   return {
     ok: true,
@@ -161,6 +231,7 @@ export async function bookTour(
     venueName,
     duration,
     venueId,
+    intakeAttemptId: outcome.attemptId,
     venueEmail: apptRow?.venues?.email ?? null,
     contactEmail,
     contactName,
@@ -262,9 +333,9 @@ const TOUR_RPC_ERRORS: Record<string, string> = {
   invalid_status: "That's not a valid tour status.",
 };
 
-async function sendConfirmationForResult(supabase: DbClient, appointmentId: string, leadId: string, relationshipId: string | null, venueId: string, venueName: string, scheduledAt: string, duration: number, contactEmail: string | null, contactName: string | null) {
+async function sendConfirmationForResult(supabase: DbClient, appointmentId: string, leadId: string, relationshipId: string | null, venueId: string, venueName: string, primaryColor: string | null, scheduledAt: string, duration: number, contactEmail: string | null, contactName: string | null) {
   void sendTourConfirmation({
-    venueId, leadId, relationshipId, contactEmail, contactName, venueName, scheduledAt, durationMinutes: duration,
+    venueId, leadId, relationshipId, contactEmail, contactName, venueName, primaryColor, scheduledAt, durationMinutes: duration,
   }).catch((err) => console.error("sendTourConfirmation failed:", err));
 }
 
@@ -292,7 +363,7 @@ export async function scheduleTourForLead(leadId: string, slotStart: string, not
     contactPhone: (d.contactPhone as string | null) ?? null,
   };
 
-  await sendConfirmationForResult(supabase, result.appointmentId, result.leadId, result.relationshipId, result.venueId, result.venueName, result.scheduledAt, result.duration, result.contactEmail, result.contactName);
+  await sendConfirmationForResult(supabase, result.appointmentId, result.leadId, result.relationshipId, result.venueId, result.venueName, venue.primaryColor, result.scheduledAt, result.duration, result.contactEmail, result.contactName);
 
   // "Tour Scheduled" is a real step in the Sales Pipeline — a lead that's
   // still sitting at "new" moves to "contacted" (the canonical "tour"
@@ -339,7 +410,7 @@ export async function rescheduleTour(appointmentId: string, newSlotStart: string
     result.relationshipId = leadRow?.relationship_id ?? null;
   }
 
-  await sendConfirmationForResult(supabase, result.appointmentId, result.leadId, result.relationshipId, result.venueId, result.venueName, result.scheduledAt, result.duration, result.contactEmail, result.contactName);
+  await sendConfirmationForResult(supabase, result.appointmentId, result.leadId, result.relationshipId, result.venueId, result.venueName, venue.primaryColor, result.scheduledAt, result.duration, result.contactEmail, result.contactName);
 
   return result;
 }

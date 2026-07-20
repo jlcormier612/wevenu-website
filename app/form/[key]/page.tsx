@@ -23,8 +23,10 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const supabase = await createClient();
   const { data } = await supabase.rpc("get_venue_by_embed_key", { p_key: key });
   const venue = data?.[0];
+  // Venue Brand Experience Phase 1: `absolute` stops the root layout's
+  // "%s · Hello to Cheers" template from appending to this customer-facing tab title.
   return {
-    title: venue ? `Inquire — ${venue.name}` : "Venue Inquiry",
+    title: { absolute: venue ? `Inquire — ${venue.name}` : "Venue Inquiry" },
     description: venue ? `Submit an inquiry to ${venue.name}` : "Submit an inquiry",
   };
 }

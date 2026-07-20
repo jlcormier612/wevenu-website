@@ -1,5 +1,5 @@
 /**
- * Our First Friends — gratitude editorial for Weven alumni and founding venues.
+ * Our First Friends — gratitude editorial for founding venues and former Weven customers.
  * Reusable on Pricing and as a standalone page at /our-first-friends.
  */
 
@@ -7,34 +7,40 @@ export const OUR_FIRST_FRIENDS = {
   letter: {
     title: "Our First Friends",
     paragraphs: [
-      "Before Wevenu, there was Weven.",
-      "More importantly, there were hundreds of venue owners who trusted us with one of the most important parts of their business.",
+      "Some time ago, we had the privilege of working alongside hundreds of valued wedding and event venues through our Customer Success work on a platform called Weven.",
+      "Those relationships never left us.",
       "You welcomed us into your venues.",
       "You shared your ideas.",
-      "You challenged us to build something better.",
-      "You celebrated with us when things went well, and helped us learn when they didn't.",
-      "Those relationships have stayed with us.",
-      "Wevenu is a new company and a completely new platform, thoughtfully built from the ground up using everything we learned over the years.",
-      "While much has changed, one thing never has:",
-      "Our belief that venue software should make hospitality feel easier—not more complicated.",
-      "If you were part of the Weven community, thank you.",
-      "You helped shape the thinking behind everything we've built.",
-      "We would be honored to welcome you home.",
+      "We listened carefully to your likes and wants—and you challenged us to build something even better.",
+      "You celebrated successes with us and helped us learn from every challenge.",
+      "When that platform came to an end, we weren't ready to say goodbye or stop solving the problems venue owners face every day.",
+      "Instead, we started over.",
+      "Not with old code.",
+      "Not with a redesign.",
+      "With a blank sheet of paper.",
+      "Every workflow.",
+      "Every feature.",
+      "Every decision.",
+      "Built from the ground up using everything we learned from the venue community we served directly over the years.",
+      "While the technology is entirely new, the philosophy remains the same:",
+      "Venue software should make hospitality feel easier—not more complicated.",
+      "If we had the opportunity to work together before, thank you.",
+      "We would be honored to earn your business again.",
     ],
   },
   reserved: {
     title: "A Place Reserved For You",
     paragraphs: [
-      "If you were a Weven customer, we'd love to welcome you back.",
-      "Former Weven customers are invited to join Wevenu through our Founding Venue Program and receive Preferred Founding Pricing for as long as their subscription remains active.",
-      "This is our way of saying thank you.",
-      "Because some relationships deserve to continue.",
+      "If we worked together during our time with Weven, we'd love the opportunity to reconnect.",
+      "Former Weven customers are invited to join our Founding Venue Program and receive Preferred Founding Pricing for as long as their subscription remains active.",
+      "This is simply our way of saying thank you to the people who helped shape the thinking behind everything we've built into Hello to Cheers today.",
+      "Some relationships are worth continuing.",
     ],
   },
   program: {
     title: "Founding Venue Program",
     intro:
-      "As Wevenu begins welcoming its first venues, we're inviting a small group to help shape the future of the platform.",
+      "As Hello to Cheers begins welcoming its first venues, we're inviting a small group to help shape the future of the platform.",
     receivesLabel: "Founding venues receive:",
     benefits: [
       "Preferred Founding Pricing, locked in for as long as your subscription remains active",
@@ -43,14 +49,14 @@ export const OUR_FIRST_FRIENDS = {
       "Opportunities to influence future product development",
     ],
     close:
-      "This is our way of thanking the venues who believed in Wevenu from the very beginning.",
+      "This is our way of thanking the venues who believed in Hello to Cheers from the very beginning.",
   },
   eligibility: {
     title: "Eligibility",
-    intro: "The Founding Venue Program is reserved for:",
+    intro: "The Founding Venue Program is available to:",
     points: [
-      "The first 100 new venues to join Wevenu",
-      "Every former Weven customer who returns during our launch period",
+      "The first 100 venues that join our platform.",
+      "Former Weven customers who join during our launch period.",
     ],
   },
 } as const;

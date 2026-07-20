@@ -17,7 +17,7 @@ function issueLink(issue: CommunicationHealth["issues"][number]): string | null 
 
 /**
  * Communication Trust Experience, Phase 2 — the one question a venue owner
- * actually has: "can I trust Wevenu to communicate with my clients today?"
+ * actually has: "can I trust Hello to Cheers to communicate with my clients today?"
  * No SPF/DKIM/webhook language here by design; see lib/communication/
  * health.ts for how the three states are computed.
  */

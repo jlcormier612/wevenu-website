@@ -16,6 +16,12 @@ export type TourVenueInfo = {
   addressLine1: string | null;
   city: string | null;
   stateRegion: string | null;
+  // Venue Brand Experience Phase 1
+  primaryColor: string;
+  secondaryColor: string;
+  accentColor: string;
+  neutralColor: string;
+  logoUrl: string | null;
 };
 
 export type TourSettings = {
@@ -69,6 +75,8 @@ export type BookingResult = {
   contactName?: string;
   contactPhone?: string;
   duration?: number;
+  /** Lead Intake architecture — lets the caller record a coordinator-notification outcome onto the same intake attempt row. */
+  intakeAttemptId?: string | null;
 };
 
 // Coordinator Tour Scheduling — the Lead already exists, so there's no

@@ -1,5 +1,6 @@
 "use client";
 
+import { HOVER_FILL } from "@/lib/marketing/rhythm";
 import { cn } from "@/lib/utils";
 
 type LeadFormProps = {
@@ -13,7 +14,7 @@ type LeadFormProps = {
  */
 export function LeadForm({ intent, className }: LeadFormProps) {
   const submitLabel =
-    intent === "walkthrough" ? "Request a Walkthrough" : "Send Message";
+    intent === "walkthrough" ? "Schedule a Walkthrough" : "Send Message";
 
   return (
     <form
@@ -35,13 +36,13 @@ export function LeadForm({ intent, className }: LeadFormProps) {
           id={`${intent}-message`}
           name="message"
           rows={4}
-          className="w-full rounded-2xl border border-[var(--taupe-light)] bg-[var(--true-white)] px-4 py-3 text-sm text-[var(--forest-sage)] outline-none transition focus:border-[var(--heritage-sage)]"
+          className="w-full rounded-2xl border border-[var(--taupe-light)] bg-[var(--true-white)] px-4 py-3 text-sm text-[var(--forest-sage)] outline-none transition duration-200 ease-out focus:border-[var(--heritage-sage)]"
           placeholder="Placeholder — tell us a little about your venue"
         />
       </div>
       <button
         type="submit"
-        className="inline-flex w-full items-center justify-center rounded-full bg-[var(--heritage-sage)] px-6 py-3 text-sm text-[var(--true-white)] transition-opacity hover:opacity-90 sm:w-auto"
+        className={`inline-flex w-full items-center justify-center rounded-full bg-[var(--heritage-sage)] px-6 py-3 text-sm text-[var(--true-white)] transition-opacity duration-200 ease-out ${HOVER_FILL} sm:w-auto`}
       >
         {submitLabel}
       </button>
@@ -74,7 +75,7 @@ function Field({
         name={name}
         type={type}
         autoComplete={autoComplete}
-        className="w-full rounded-full border border-[var(--taupe-light)] bg-[var(--true-white)] px-4 py-3 text-sm text-[var(--forest-sage)] outline-none transition focus:border-[var(--heritage-sage)]"
+        className="w-full rounded-full border border-[var(--taupe-light)] bg-[var(--true-white)] px-4 py-3 text-sm text-[var(--forest-sage)] outline-none transition duration-200 ease-out focus:border-[var(--heritage-sage)]"
         placeholder="Placeholder"
       />
     </div>

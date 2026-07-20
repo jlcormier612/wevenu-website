@@ -12,7 +12,7 @@ import { ViewAsButton } from "@/components/hq/venue-detail/view-as-button";
 import { getVenueHqDetail } from "@/lib/hq/venue-detail-service";
 import { getVenueCommunicationDiagnostics } from "@/lib/hq/communication-diagnostics-service";
 
-export const metadata: Metadata = { title: "Venue — Wevenu HQ" };
+export const metadata: Metadata = { title: "Venue — Hello to Cheers HQ" };
 
 type Props = { params: Promise<{ venueId: string }> };
 
@@ -39,7 +39,7 @@ export default async function VenueHqDetailPage({ params }: Props) {
 
       <div className="grid gap-6 lg:grid-cols-2">
         <ActivityTimeline timeline={detail.timeline} />
-        <LuvInsights activation={detail.activation} />
+        <LuvInsights activation={detail.activation} observations={detail.luvObservations} />
       </div>
 
       <EngagementSection team={detail.team} vendors={detail.vendors} couples={detail.couples} />

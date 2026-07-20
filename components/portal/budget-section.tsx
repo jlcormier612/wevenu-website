@@ -49,7 +49,7 @@ function catDef(key: string) {
 
 // ── Progress ring ─────────────────────────────────────────────────────────────
 
-function ProgressRing({ pct, size = 96, stroke = 10, color = "#5D6F5D" }: {
+function ProgressRing({ pct, size = 96, stroke = 10, color = "var(--venue-accent)" }: {
   pct: number; size?: number; stroke?: number; color?: string;
 }) {
   const r = (size - stroke) / 2;
@@ -145,10 +145,10 @@ function CategoryCard({ cat, dbCat, totalBudget, token, onSaved }: {
     ? "#DC6A6A"
     : pct >= 80
     ? "#D97706"
-    : "#5D6F5D";
+    : "var(--venue-accent)";
 
   return (
-    <div className={`bg-card border rounded-2xl overflow-hidden transition-shadow ${editing ? "border-[#5D6F5D]/40 shadow-md" : "border-border hover:shadow-sm"}`}>
+    <div className={`bg-card border rounded-2xl overflow-hidden transition-shadow ${editing ? "border-[color-mix(in_srgb,var(--venue-primary)_40%,transparent)] shadow-md" : "border-border hover:shadow-sm"}`}>
       <div className="p-4 space-y-3">
         {/* Header */}
         <div className="flex items-center justify-between gap-2">
@@ -216,7 +216,7 @@ function CategoryCard({ cat, dbCat, totalBudget, token, onSaved }: {
                   <input type="number" min="0" step="100" value={budgetStr}
                     onChange={e => setBudgetStr(e.target.value)}
                     placeholder="0"
-                    className="w-full pl-6 pr-2 py-2 text-sm border border-border rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-[#5D6F5D]/30 focus:border-[#5D6F5D]" />
+                    className="w-full pl-6 pr-2 py-2 text-sm border border-border rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-[color-mix(in_srgb,var(--venue-primary)_30%,transparent)] focus:border-[var(--venue-primary)]" />
                 </div>
               </label>
               <label className="space-y-1">
@@ -226,7 +226,7 @@ function CategoryCard({ cat, dbCat, totalBudget, token, onSaved }: {
                   <input type="number" min="0" step="100" value={actualStr}
                     onChange={e => setActualStr(e.target.value)}
                     placeholder="0"
-                    className="w-full pl-6 pr-2 py-2 text-sm border border-border rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-[#5D6F5D]/30 focus:border-[#5D6F5D]" />
+                    className="w-full pl-6 pr-2 py-2 text-sm border border-border rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-[color-mix(in_srgb,var(--venue-primary)_30%,transparent)] focus:border-[var(--venue-primary)]" />
                 </div>
               </label>
             </div>
@@ -240,7 +240,7 @@ function CategoryCard({ cat, dbCat, totalBudget, token, onSaved }: {
               </button>
               <button onClick={save} disabled={saving}
                 className="flex-1 py-1.5 text-xs rounded-lg font-medium text-white transition-colors"
-                style={{ backgroundColor: "#5D6F5D" }}>
+                style={{ backgroundColor: "var(--venue-primary)" }}>
                 {saving ? "Saving…" : "Save"}
               </button>
             </div>
@@ -323,7 +323,7 @@ function SetupView({ token, onComplete }: { token: string; onComplete: () => voi
               value={total}
               onChange={e => setTotal(e.target.value)}
               placeholder="45,000"
-              className="w-full pl-10 pr-4 py-4 text-2xl font-light border border-border rounded-2xl bg-background focus:outline-none focus:ring-2 focus:ring-[#5D6F5D]/30 focus:border-[#5D6F5D]"
+              className="w-full pl-10 pr-4 py-4 text-2xl font-light border border-border rounded-2xl bg-background focus:outline-none focus:ring-2 focus:ring-[color-mix(in_srgb,var(--venue-primary)_30%,transparent)] focus:border-[var(--venue-primary)]"
               autoFocus
             />
           </div>
@@ -343,7 +343,7 @@ function SetupView({ token, onComplete }: { token: string; onComplete: () => voi
           onClick={() => setStep("contributors")}
           disabled={!isValidTotal}
           className="w-full py-3.5 rounded-2xl font-medium text-white transition-opacity disabled:opacity-40"
-          style={{ backgroundColor: "#5D6F5D" }}>
+          style={{ backgroundColor: "var(--venue-primary)" }}>
           Continue →
         </button>
       </div>
@@ -388,7 +388,7 @@ function SetupView({ token, onComplete }: { token: string; onComplete: () => voi
                 type="text" value={c.name}
                 onChange={e => setContributors(p => p.map((x, idx) => idx === i ? { ...x, name: e.target.value } : x))}
                 placeholder="Name"
-                className="flex-1 px-3 py-2 text-sm border border-border rounded-xl bg-background focus:outline-none focus:ring-2 focus:ring-[#5D6F5D]/30 focus:border-[#5D6F5D]"
+                className="flex-1 px-3 py-2 text-sm border border-border rounded-xl bg-background focus:outline-none focus:ring-2 focus:ring-[color-mix(in_srgb,var(--venue-primary)_30%,transparent)] focus:border-[var(--venue-primary)]"
               />
               <div className="relative w-32 shrink-0">
                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">$</span>
@@ -396,7 +396,7 @@ function SetupView({ token, onComplete }: { token: string; onComplete: () => voi
                   type="number" min="0" value={c.amount}
                   onChange={e => setContributors(p => p.map((x, idx) => idx === i ? { ...x, amount: e.target.value } : x))}
                   placeholder="0"
-                  className="w-full pl-7 pr-2 py-2 text-sm border border-border rounded-xl bg-background focus:outline-none focus:ring-2 focus:ring-[#5D6F5D]/30 focus:border-[#5D6F5D]"
+                  className="w-full pl-7 pr-2 py-2 text-sm border border-border rounded-xl bg-background focus:outline-none focus:ring-2 focus:ring-[color-mix(in_srgb,var(--venue-primary)_30%,transparent)] focus:border-[var(--venue-primary)]"
                 />
               </div>
               <button onClick={() => removeContributor(i)}
@@ -423,7 +423,7 @@ function SetupView({ token, onComplete }: { token: string; onComplete: () => voi
         <button
           onClick={() => submit(true)} disabled={saving}
           className="w-full py-3.5 rounded-2xl font-medium text-white transition-opacity disabled:opacity-40 text-left px-5"
-          style={{ backgroundColor: "#5D6F5D" }}>
+          style={{ backgroundColor: "var(--venue-primary)" }}>
           <span className="block text-sm font-semibold">Apply suggested allocations</span>
           <span className="block text-xs opacity-75 mt-0.5">We'll pre-fill 14 categories based on typical wedding budgets</span>
         </button>
@@ -507,17 +507,17 @@ function ContributorsPanel({ budget, token, onUpdate }: {
             <div className="flex gap-2 items-center">
               <input autoFocus value={newName} onChange={e => setNewName(e.target.value)}
                 placeholder="Name" onKeyDown={e => e.key === "Enter" && addContributor()}
-                className="flex-1 px-3 py-1.5 text-sm border border-border rounded-xl bg-background focus:outline-none focus:ring-2 focus:ring-[#5D6F5D]/30 focus:border-[#5D6F5D]" />
+                className="flex-1 px-3 py-1.5 text-sm border border-border rounded-xl bg-background focus:outline-none focus:ring-2 focus:ring-[color-mix(in_srgb,var(--venue-primary)_30%,transparent)] focus:border-[var(--venue-primary)]" />
               <div className="relative w-28 shrink-0">
                 <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">$</span>
                 <input type="number" min="0" value={newAmt} onChange={e => setNewAmt(e.target.value)}
                   onKeyDown={e => e.key === "Enter" && addContributor()}
                   placeholder="0"
-                  className="w-full pl-6 pr-2 py-1.5 text-sm border border-border rounded-xl bg-background focus:outline-none focus:ring-2 focus:ring-[#5D6F5D]/30 focus:border-[#5D6F5D]" />
+                  className="w-full pl-6 pr-2 py-1.5 text-sm border border-border rounded-xl bg-background focus:outline-none focus:ring-2 focus:ring-[color-mix(in_srgb,var(--venue-primary)_30%,transparent)] focus:border-[var(--venue-primary)]" />
               </div>
               <button onClick={addContributor} disabled={busy || !newName.trim()}
                 className="p-1.5 rounded-lg text-white disabled:opacity-40 transition-colors"
-                style={{ backgroundColor: "#5D6F5D" }}>
+                style={{ backgroundColor: "var(--venue-primary)" }}>
                 <Check className="h-4 w-4" />
               </button>
               <button onClick={() => { setAdding(false); setNewName(""); setNewAmt(""); }}
@@ -577,11 +577,11 @@ function EditTotalBudget({ budget, token, onUpdate }: {
         <input autoFocus type="number" min="0" step="500" value={val}
           onChange={e => setVal(e.target.value)}
           onKeyDown={e => { if (e.key === "Enter") save(); if (e.key === "Escape") setEditing(false); }}
-          className="pl-7 pr-3 py-1.5 text-sm border border-[#5D6F5D] rounded-xl bg-background focus:outline-none w-32" />
+          className="pl-7 pr-3 py-1.5 text-sm border border-[var(--venue-primary)] rounded-xl bg-background focus:outline-none w-32" />
       </div>
       <button onClick={save} disabled={saving}
         className="p-1.5 rounded-lg text-white disabled:opacity-40"
-        style={{ backgroundColor: "#5D6F5D" }}>
+        style={{ backgroundColor: "var(--venue-primary)" }}>
         <Check className="h-4 w-4" />
       </button>
       <button onClick={() => setEditing(false)}
@@ -650,7 +650,7 @@ function DashboardView({ budget, token, onUpdate }: {
               </div>
               <div>
                 <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Remaining</p>
-                <p className="font-semibold" style={{ color: remaining < 0 ? "#DC6A6A" : "#5D6F5D" }}>
+                <p className="font-semibold" style={{ color: remaining < 0 ? "#DC6A6A" : "var(--venue-accent)" }}>
                   {remaining < 0 ? `-${fmtShort(Math.abs(remaining))}` : fmtShort(remaining)}
                 </p>
               </div>
@@ -665,7 +665,7 @@ function DashboardView({ budget, token, onUpdate }: {
           {insights.map((ins, i) => (
             <div key={i} className={`flex items-start gap-2.5 rounded-xl px-4 py-3 text-sm ${
               ins.type === "warn" ? "bg-amber-50 text-amber-800 border border-amber-100" :
-              ins.type === "good" ? "bg-[#5D6F5D]/8 text-[#3D5040] border border-[#5D6F5D]/15" :
+              ins.type === "good" ? "bg-[color-mix(in_srgb,var(--venue-accent)_8%,transparent)] text-[var(--venue-accent)] border border-[color-mix(in_srgb,var(--venue-accent)_15%,transparent)]" :
               "bg-blue-50 text-blue-800 border border-blue-100"
             }`}>
               <span className="shrink-0 mt-0.5">

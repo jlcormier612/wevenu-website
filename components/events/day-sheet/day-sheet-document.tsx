@@ -285,9 +285,8 @@ export function DaySheetDocument({
       )}
 
       {/* ── Footer ──────────────────────────────────────────────────────── */}
-      <div className="mt-8 px-10 py-4 border-t border-gray-100 flex items-center justify-between">
+      <div className="mt-8 px-10 py-4 border-t border-gray-100">
         <p className="text-xs text-gray-300">{venue.name}</p>
-        <p className="text-xs text-gray-300">Powered by Wevenu</p>
       </div>
     </div>
   );

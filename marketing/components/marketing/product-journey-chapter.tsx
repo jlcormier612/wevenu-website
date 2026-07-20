@@ -14,8 +14,10 @@ import { ProposalWorkspaceMock } from "@/components/marketing/journey/proposal-w
 import { TimelineWorkspaceMock } from "@/components/marketing/journey/timeline-workspace-mock";
 import { TourWorkspaceMock } from "@/components/marketing/journey/tour-workspace-mock";
 import { VendorsWorkspaceMock } from "@/components/marketing/journey/vendors-workspace-mock";
+import { Reveal } from "@/components/marketing/reveal";
 import { JOURNEY_CHAPTER_FILM } from "@/lib/marketing/journey-chapters";
 import type { ProductJourneyId } from "@/lib/marketing/journey";
+import { EDITORIAL_FRAME, EDITORIAL_IMAGE, HOVER_WHISPER } from "@/lib/marketing/rhythm";
 import { cn } from "@/lib/utils";
 
 const MOCKS: Record<ProductJourneyId, () => ReactNode> = {
@@ -33,12 +35,16 @@ const MOCKS: Record<ProductJourneyId, () => ReactNode> = {
   celebration: () => <CelebrationWorkspaceMock />,
 };
 
+export type JourneyChapterStatus = "active" | "past" | "upcoming";
+
 type ProductJourneyChapterProps = {
   id: ProductJourneyId;
   index: number;
   title: string;
   emotion: string;
   body: string;
+  /** SEND 5 — reading position in the continuous story */
+  status?: JourneyChapterStatus;
   /** Alternate image/mock side for visual rhythm */
   reverse?: boolean;
 };
@@ -52,57 +58,106 @@ export function ProductJourneyChapter({
   title,
   emotion,
   body,
+  status = "upcoming",
   reverse,
 }: ProductJourneyChapterProps) {
   const film = JOURNEY_CHAPTER_FILM[id];
   const Mock = MOCKS[id];
   const n = String(index + 1).padStart(2, "0");
+  const isActive = status === "active";
 
   return (
-    <section id={`ch-${id}`} className="scroll-mt-28 px-6 py-24 md:py-32">
-      <div className="mx-auto max-w-6xl">
-        <p className="flex items-center gap-3 text-xs tracking-[0.22em] uppercase text-[var(--heritage-sage)]">
-          <span>{n}</span>
+    <section
+      id={`ch-${id}`}
+      data-journey-status={status}
+      className={cn(
+        "journey-chapter relative scroll-mt-28 py-28 md:py-36",
+        status === "active" && "opacity-100",
+        status === "past" && "opacity-[0.52]",
+        status === "upcoming" && "opacity-[0.62]",
+      )}
+    >
+      {/* Spine node — sits on the story line (in the pl-10 gutter) */}
+      <span
+        aria-hidden
+        className={cn(
+          "journey-chapter-node absolute top-28 -left-10 hidden h-2 w-2 -translate-x-1/2 rounded-full md:block",
+          isActive
+            ? "bg-[var(--heritage-sage)]"
+            : status === "past"
+              ? "bg-[var(--heritage-sage)]/40"
+              : "bg-[var(--taupe-medium)]",
+        )}
+      />
+
+      <Reveal>
+        <p
+          className={cn(
+            "flex items-center gap-3 text-[0.7125rem] tracking-[0.22em] uppercase transition-colors duration-200 ease-out",
+            isActive
+              ? "text-[var(--heritage-sage)]"
+              : "text-[var(--heritage-sage)]/82",
+          )}
+        >
+          <span
+            className={cn(
+              "text-[15px] transition-colors duration-200 ease-out md:text-[1.05rem]",
+              isActive
+                ? "text-[var(--heritage-sage)]"
+                : "text-[var(--heritage-sage)]/65",
+            )}
+          >
+            {n}
+          </span>
           <span aria-hidden className="text-[var(--taupe-dark)]">
             ·
           </span>
           <span>{title}</span>
         </p>
-        <h2 className="mt-4 max-w-2xl font-heading text-3xl text-[var(--forest-sage)] md:text-5xl">
+        <h2 className="mt-7 max-w-2xl font-heading text-[2.1rem] text-[var(--forest-sage)] md:text-[3.36rem]">
           {emotion}
         </h2>
-        <p className="mt-5 max-w-xl text-base leading-relaxed text-[var(--forest-sage)]/70 md:text-lg">
+        <p className="mt-5 max-w-4xl text-base leading-[1.7] text-[var(--forest-sage)]/70 md:text-lg">
           {body}
         </p>
+      </Reveal>
 
+      <div
+        className={cn(
+          "mt-14 grid items-start gap-8 md:grid-cols-[11fr_9fr] md:gap-10",
+          reverse && "md:[&>*:first-child]:order-2",
+        )}
+      >
         <div
           className={cn(
-            "mt-14 grid items-stretch gap-8 md:grid-cols-[11fr_9fr] md:gap-10",
-            reverse && "md:[&>*:first-child]:order-2",
+            "relative aspect-[16/10] w-full md:aspect-[5/3]",
+            EDITORIAL_FRAME,
           )}
         >
-          <div className="relative min-h-[360px] overflow-hidden md:min-h-[520px]">
-            <Image
-              src={film.src}
-              alt={film.alt}
-              fill
-              className="object-cover"
-              sizes="(max-width:768px) 100vw, 55vw"
-            />
-          </div>
-          <div className="flex flex-col justify-center">
-            {Mock()}
-          </div>
+          <Image
+            src={film.src}
+            alt={film.alt}
+            fill
+            className={EDITORIAL_IMAGE}
+            sizes="(max-width:768px) 100vw, 55vw"
+          />
         </div>
+        <Link
+          href={`/product/journey/${id}`}
+          aria-label={`See ${title}`}
+          className={`group flex flex-col justify-center self-stretch transition-opacity duration-200 ease-out ${HOVER_WHISPER} focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[var(--heritage-sage)]`}
+        >
+          {Mock()}
+        </Link>
+      </div>
 
-        <div className="mt-12">
-          <Link
-            href={`/product/journey/${id}`}
-            className="inline-flex items-center font-heading text-xl text-[var(--forest-sage)] underline-offset-8 transition hover:underline md:text-2xl"
-          >
-            Explore {title} →
-          </Link>
-        </div>
+      <div className="mt-12">
+        <Link
+          href={`/product/journey/${id}`}
+          className={`inline-flex items-center font-heading text-xl text-[var(--forest-sage)] underline-offset-8 transition duration-200 ease-out hover:underline md:text-2xl`}
+        >
+          See {title} →
+        </Link>
       </div>
     </section>
   );

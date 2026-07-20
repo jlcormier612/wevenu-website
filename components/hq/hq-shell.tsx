@@ -28,8 +28,8 @@ const NAV: NavItem[] = [
 ];
 
 /**
- * Wevenu HQ's left nav. IA per docs/wevenu-hq-architecture.md §1 — reuses
- * QuickCloud's sectioned-nav shape, built on Wevenu's own sidebar tokens.
+ * Hello to Cheers HQ's left nav. IA per docs/wevenu-hq-architecture.md §1 — reuses
+ * QuickCloud's sectioned-nav shape, built on Hello to Cheers' own sidebar tokens.
  * Beta Command Center is the default /admin route (not /admin/beta) — see
  * §6: beta health is the single most important thing happening in the
  * company for the next 6–12 months, so it's the home page, not a sub-page.
@@ -87,7 +87,7 @@ export async function HqShell({ children }: { children: React.ReactNode }) {
         </nav>
         <div className="shrink-0 border-t px-4 py-3">
           <Link href="/dashboard" className="text-xs text-muted-foreground hover:text-foreground transition-colors">
-            ← Back to Wevenu
+            ← Back to Hello to Cheers
           </Link>
         </div>
       </aside>

@@ -6,7 +6,7 @@ import { getRequests } from "@/lib/requests/service";
 import { getTeamMembers } from "@/lib/team/service";
 import { getCurrentVenue } from "@/lib/venue/service";
 
-export const metadata: Metadata = { title: "Requests — Wevenu" };
+export const metadata: Metadata = { title: "Requests — Hello to Cheers" };
 
 /**
  * The venue's Request Dashboard — everything asked of a couple or vendor,

@@ -52,9 +52,19 @@ export function TimelineDocument({
       {/* ── Header bar ─────────────────────────────────────────────────── */}
       <div className="px-10 py-5" style={{ backgroundColor: venue.primaryColor }}>
         <div className="flex items-end justify-between">
-          <div className="text-white">
-            <p className="text-[10px] font-semibold uppercase tracking-widest opacity-70">Booking Timeline</p>
-            <p className="mt-0.5 text-xl font-bold">{venue.name}</p>
+          <div className="flex items-center gap-4 text-white">
+            {venue.logoUrl && (
+              <img
+                src={venue.logoUrl}
+                alt={venue.name}
+                className="h-12 w-12 rounded-lg object-contain"
+                style={{ background: "rgba(255,255,255,0.15)" }}
+              />
+            )}
+            <div>
+              <p className="text-[10px] font-semibold uppercase tracking-widest opacity-70">Booking Timeline</p>
+              <p className="mt-0.5 text-xl font-bold">{venue.name}</p>
+            </div>
           </div>
           <div className="text-right text-white">
             <p className="text-base font-semibold">{formatDate(event.eventDate)}</p>
@@ -112,9 +122,8 @@ export function TimelineDocument({
       })}
 
       {/* ── Footer ──────────────────────────────────────────────────────── */}
-      <div className="mt-8 px-10 py-4 border-t border-gray-100 flex items-center justify-between">
+      <div className="mt-8 px-10 py-4 border-t border-gray-100">
         <p className="text-xs text-gray-300">{venue.name}</p>
-        <p className="text-xs text-gray-300">Powered by Wevenu</p>
       </div>
     </div>
   );

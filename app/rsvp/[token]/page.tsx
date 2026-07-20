@@ -10,12 +10,14 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { token } = await params;
   const supabase = await createClient();
   const { data } = await supabase.rpc("get_rsvp_context", { p_rsvp_token: token });
-  if (!data || (data as Record<string, unknown>).error) return { title: "RSVP" };
+  // Venue Brand Experience Phase 1: `absolute` stops the root layout's
+  // "%s · Hello to Cheers" template from appending to this customer-facing tab title.
+  if (!data || (data as Record<string, unknown>).error) return { title: { absolute: "RSVP" } };
   const d = data as Record<string, unknown>;
   const couple = d.couple as { firstName: string; partnerFirstName?: string } | undefined;
   const coupleName = [couple?.firstName, couple?.partnerFirstName].filter(Boolean).join(" & ");
   return {
-    title: `RSVP — ${coupleName}'s Wedding`,
+    title: { absolute: `RSVP — ${coupleName}'s Wedding` },
     description: `Submit your RSVP for ${coupleName}'s wedding.`,
   };
 }
@@ -46,7 +48,7 @@ export type RsvpContext = {
   };
   couple: { firstName: string; partnerFirstName: string | null };
   event: { name: string; eventDate: string; eventType: string | null } | null;
-  venue: { name: string };
+  venue: { name: string; logoUrl: string | null };
   websiteSlug: string | null;
   accentColor: string;
   /** The one authoritative meal catalog (Guest Experience — Phase 3) — replaces the old rsvp_questions "meal_choice" convention. */

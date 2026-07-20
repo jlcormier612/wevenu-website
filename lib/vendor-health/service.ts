@@ -23,14 +23,14 @@ function buildHealthScore(
   const filled = profileFields.filter((f) => profile[f]).length;
   const profileScore = Math.round(filled * 2.5);
   dims.profile = { score: profileScore, label: "Profile Completeness", weight: 20 };
-  if (profileScore >= 18) strengths.push("Profile is detailed and complete");
-  else gaps.push(`Profile is ${filled}/8 complete — finish missing fields`);
+  if (profileScore >= 18) strengths.push("Your profile is detailed and complete.");
+  else gaps.push(`Your profile is ${filled}/8 complete — finishing it helps venues get to know your business.`);
 
   // ── Package completeness (15 pts) ─────────────────────────────────────────
   const pkgScore = packageCount >= 1 ? 15 : 0;
   dims.packages = { score: pkgScore, label: "Package Offerings", weight: 15 };
-  if (pkgScore === 15) strengths.push("Packages are listed and visible to venues");
-  else gaps.push("Add at least one active package so venues can see your offerings");
+  if (pkgScore === 15) strengths.push("Your packages are listed and visible to venues.");
+  else gaps.push("You don't have any packages listed yet — adding one helps venues see your offerings.");
 
   // ── Insurance current (15 pts) ────────────────────────────────────────────
   const insuranceExpiry = profile.insurance_expiry as string | null;
@@ -40,23 +40,23 @@ function buildHealthScore(
     const daysLeft = Math.ceil(
       (new Date(insuranceExpiry!).getTime() - now.getTime()) / (1000 * 60 * 60 * 24),
     );
-    if (daysLeft < 30) gaps.push(`Insurance expires in ${daysLeft} days — renew soon`);
-    else strengths.push("Insurance is current");
+    if (daysLeft < 30) gaps.push(`Your certificate of insurance expires in ${daysLeft} days — renewing now keeps your profile in good standing.`);
+    else strengths.push("Your insurance is current.");
   } else {
-    gaps.push("Add your insurance expiry date — venues require this");
+    gaps.push("Your certificate of insurance is missing an expiry date — venues require this on file.");
   }
 
   // ── Availability freshness (10 pts) ───────────────────────────────────────
   const availScore = hasAvailability ? 10 : 0;
   dims.availability = { score: availScore, label: "Availability Updated", weight: 10 };
-  if (availScore === 10) strengths.push("Availability calendar is up to date");
-  else gaps.push("Mark blocked dates on your calendar so venues know your schedule");
+  if (availScore === 10) strengths.push("Your availability calendar is up to date.");
+  else gaps.push("Your availability calendar hasn't been updated recently — keeping it current helps venues know your schedule.");
 
   // ── Marketplace ready (10 pts) ────────────────────────────────────────────
   const mpScore = profile.is_marketplace_listed ? 10 : 0;
   dims.marketplace = { score: mpScore, label: "Marketplace Listed", weight: 10 };
-  if (mpScore === 10) strengths.push("Listed on the Wevenu marketplace");
-  else gaps.push("Enable marketplace listing to get discovered by more venues");
+  if (mpScore === 10) strengths.push("You're listed on the Hello to Cheers marketplace.");
+  else gaps.push("Marketplace listing is off — turning it on helps more venues discover you.");
 
   // ── Inquiry momentum (30 pts) ─────────────────────────────────────────────
   // Neutral (15 pts) if < 3 inquiries (not penalized for being new)
@@ -84,13 +84,13 @@ function buildHealthScore(
 
     momentumScore = convScore + timelinessScore;
 
-    if (booked > 0) strengths.push(`${booked} booked ${booked === 1 ? "inquiry" : "inquiries"}`);
-    if (active > 0) strengths.push(`${active} active ${active === 1 ? "inquiry" : "inquiries"} in pipeline`);
-    if (staleNew > 0) gaps.push(`${staleNew} new ${staleNew === 1 ? "inquiry" : "inquiries"} waiting over 48 hours — respond to stay competitive`);
-    if (convRate < 0.3 && closed >= 3) gaps.push("Conversion rate below 30% — consider following up faster with proposals");
+    if (booked > 0) strengths.push(`You have ${booked} booked ${booked === 1 ? "inquiry" : "inquiries"}.`);
+    if (active > 0) strengths.push(`You have ${active} active ${active === 1 ? "inquiry" : "inquiries"} in your pipeline.`);
+    if (staleNew > 0) gaps.push(`${staleNew} new ${staleNew === 1 ? "inquiry has" : "inquiries have"} been waiting over 48 hours — responding soon keeps you competitive.`);
+    if (convRate < 0.3 && closed >= 3) gaps.push("Your conversion rate is below 30% — following up faster with proposals tends to help.");
     void total;
   } else if (inquiries.length === 0) {
-    gaps.push("No inquiries yet — complete your profile and enable marketplace listing");
+    gaps.push("No inquiries yet — a complete profile with marketplace listing enabled helps venues find you.");
   }
 
   dims.momentum = { score: momentumScore, label: "Inquiry Momentum", weight: 30 };

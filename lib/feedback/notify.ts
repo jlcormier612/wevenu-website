@@ -1,5 +1,5 @@
 const RESEND_URL = "https://api.resend.com/emails";
-const FROM = process.env.FROM_EMAIL ?? "Wevenu <onboarding@resend.dev>";
+const FROM = process.env.FROM_EMAIL ?? "Hello to Cheers <onboarding@resend.dev>";
 const INTERNAL_EMAIL = process.env.WEVENU_INTERNAL_EMAIL ?? "feedback@wevenu.com";
 
 const TYPE_LABELS: Record<string, string> = {
@@ -32,7 +32,7 @@ ${subject ? `<p style="font-size:14px;font-weight:600;margin-bottom:8px">${subje
 ${ratingHtml}
 <div style="background:#F5F3EF;border-radius:10px;padding:14px 16px;margin-bottom:20px;font-size:14px;color:#3D3A35;line-height:1.6;white-space:pre-wrap">${escaped}</div>
 ${metaHtml}
-<p style="margin-top:24px;font-size:11px;color:#9A9188">Wevenu Platform · Internal Notification</p>
+<p style="margin-top:24px;font-size:11px;color:#9A9188">Hello to Cheers Platform · Internal Notification</p>
 </body></html>`;
 }
 
@@ -53,7 +53,7 @@ export async function sendFeedbackEmail({
     return;
   }
   const label   = TYPE_LABELS[type] ?? type;
-  const subject_ = `[Wevenu Feedback] ${label}${subject ? `: ${subject}` : ""}`;
+  const subject_ = `[Hello to Cheers Feedback] ${label}${subject ? `: ${subject}` : ""}`;
   await fetch(RESEND_URL, {
     method:  "POST",
     headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },

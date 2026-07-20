@@ -9,6 +9,8 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { celebrateLuv } from "@/lib/luv/celebrate";
+import { coupleCelebrationMessage } from "@/lib/luv/celebrations";
 
 export function SignForm({ token }: { token: string }) {
   const [name, setName] = React.useState("");
@@ -25,6 +27,7 @@ export function SignForm({ token }: { token: string }) {
       const result = await signContractAction(token, name, consent);
       if (result.ok) {
         setDone(true);
+        if (result.celebrated) celebrateLuv(coupleCelebrationMessage("contract_signed"));
       } else {
         setError(result.message ?? "Could not record your signature. Please try again.");
       }
@@ -71,7 +74,7 @@ export function SignForm({ token }: { token: string }) {
           id="signer-consent"
           checked={consent}
           onCheckedChange={(checked) => setConsent(checked === true)}
-          className="mt-0.5 bg-white"
+          className="mt-0.5 bg-white data-[checked]:!border-[var(--venue-accent)] data-[checked]:!bg-[var(--venue-accent)]"
         />
         <Label htmlFor="signer-consent" className="text-xs font-normal text-gray-700 leading-snug">
           I agree this constitutes my legal signature on this agreement.
@@ -83,7 +86,13 @@ export function SignForm({ token }: { token: string }) {
           {new Date().toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}
         </span>
       </div>
-      <Button type="button" onClick={handleSign} disabled={pending} className="w-full">
+      <Button
+        type="button"
+        onClick={handleSign}
+        disabled={pending}
+        className="w-full text-white hover:opacity-90"
+        style={{ backgroundColor: "var(--venue-primary)", borderColor: "var(--venue-primary)" }}
+      >
         {pending
           ? <><Loader2 className="mr-1.5 h-4 w-4 animate-spin" />Signing…</>
           : <><PenLine className="mr-1.5 h-4 w-4" />Sign Agreement</>}

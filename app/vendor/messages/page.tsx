@@ -1,26 +1,23 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
+import { VendorMessagesInbox } from "@/components/vendor-app/vendor-messages-inbox";
 import { getVendorUser } from "@/lib/vendor-auth/service";
+import { getVendorConversationInbox } from "@/lib/conversations/service";
 
 export const metadata: Metadata = { title: "Messages — Vendor Portal" };
 
+/**
+ * RC2, Milestone 3 — replaces the "Messages are organized by event; coming
+ * in Sprint 107" placeholder with a real event-grouped Conversation inbox.
+ * One Conversation per event assignment (Photography for Emma & James vs.
+ * DJ for Sarah & Mike are different threads, never merged) — see
+ * docs/rc2-messaging-conversations-implementation-plan.md, Milestone 3.
+ */
 export default async function VendorMessagesPage() {
   const vendorUser = await getVendorUser();
   if (!vendorUser) redirect("/login");
 
-  return (
-    <div className="space-y-6">
-      <h1 className="text-xl font-bold text-foreground">Messages</h1>
-      <p className="text-sm text-muted-foreground">
-        Messages are organized by event. Open an event to view and reply to message threads.
-      </p>
-      <div className="rounded-xl border border-dashed border-border py-14 text-center">
-        <p className="text-sm text-muted-foreground">No message threads yet.</p>
-        <p className="text-xs text-muted-foreground mt-1">
-          Standalone message compose is coming in Sprint 107.
-        </p>
-      </div>
-    </div>
-  );
+  const { conversations } = await getVendorConversationInbox();
+  return <VendorMessagesInbox conversations={conversations} />;
 }

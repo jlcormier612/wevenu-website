@@ -15,7 +15,7 @@ const DAILY_NAV = [
   { href: "/vendor/dashboard",   label: "Home",      icon: LayoutDashboard },
   { href: "/vendor/inquiries",   label: "Inquiries", icon: Inbox,          badge: "inquiry" as const },
   { href: "/vendor/events",      label: "Events",    icon: CalendarDays    },
-  { href: "/vendor/messages",    label: "Messages",  icon: MessageSquare   },
+  { href: "/vendor/messages",    label: "Messages",  icon: MessageSquare,  badge: "message" as const },
   { href: "/vendor/tasks",       label: "Tasks",     icon: CheckSquare,    badge: "task" as const },
   { href: "/vendor/documents",   label: "Documents", icon: FileText        },
 ];
@@ -27,7 +27,7 @@ const BUSINESS_NAV = [
   { href: "/vendor/profile",      label: "Profile",     icon: User       },
 ];
 
-type BadgeKey = "inquiry" | "task";
+type BadgeKey = "inquiry" | "task" | "message";
 
 function NavItem({
   href, label, icon: Icon, badgeCount,
@@ -65,6 +65,7 @@ export function VendorAppShell({
   role,
   newInquiryCount,
   pendingTaskCount,
+  unreadMessageCount,
   children,
 }: {
   businessName:     string;
@@ -72,6 +73,7 @@ export function VendorAppShell({
   role:             VendorRole;
   newInquiryCount?: number;
   pendingTaskCount?: number;
+  unreadMessageCount?: number;
   children:         React.ReactNode;
 }) {
   const [mobileOpen, setMobileOpen] = React.useState(false);
@@ -79,6 +81,7 @@ export function VendorAppShell({
   const badges: Record<BadgeKey, number | undefined> = {
     inquiry: newInquiryCount,
     task:    pendingTaskCount,
+    message: unreadMessageCount,
   };
 
   return (
@@ -114,7 +117,7 @@ export function VendorAppShell({
           </button>
           <span className="font-semibold text-sm text-foreground truncate">{businessName}</span>
           <span className="ml-auto text-[10px] font-medium uppercase tracking-widest text-muted-foreground">
-            Wevenu
+            Hello to Cheers
           </span>
         </header>
         <main className="flex-1 overflow-y-auto p-6">
@@ -138,7 +141,7 @@ function SidebarContent({
     <>
       {/* Header */}
       <div className="px-5 pt-6 pb-4 border-b border-border">
-        <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1">Wevenu</p>
+        <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1">Hello to Cheers</p>
         <p className="font-semibold text-sm text-foreground leading-tight">{businessName}</p>
         {category && (
           <p className="text-xs text-muted-foreground mt-0.5 capitalize">{category.replace(/_/g, " ")}</p>

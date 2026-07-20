@@ -200,6 +200,11 @@ export async function updateInvoiceStatus(
   const patch: Record<string, unknown> = { status };
   if (status === "sent") {
     patch.issued_at = new Date().toISOString();
+    // Commitment Alignment Sprint (docs/commitment-lifecycle-architecture.md
+    // §9, Documents item) — Private until intentionally shared. Sending is
+    // the one existing action that means "the couple should see this now";
+    // this is the only place that ever sets is_couple_visible to true.
+    patch.is_couple_visible = true;
     if (extra?.eventOrderRevisionAtFreeze != null) patch.event_order_revision_at_freeze = extra.eventOrderRevisionAtFreeze;
   }
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -222,7 +227,11 @@ export async function revertToDraft(client: DbClient, venueId: string, invoiceId
   if (deleteError) throw deleteError;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { error } = await (client.from("invoices") as any)
-    .update({ status: "draft", issued_at: null, event_order_dismissed_fingerprint: null, event_order_revision_at_freeze: null })
+    // Private until intentionally shared, symmetrically: reverting to
+    // Draft means the venue is about to live-edit it again, so the couple
+    // shouldn't keep seeing a version that's now actively changing.
+    // Re-sending is the same explicit action that shares it again.
+    .update({ status: "draft", issued_at: null, event_order_dismissed_fingerprint: null, event_order_revision_at_freeze: null, is_couple_visible: false })
     .eq("id", invoiceId).eq("venue_id", venueId);
   if (error) throw error;
   await recomputeInvoiceTotals(client, venueId, invoiceId);

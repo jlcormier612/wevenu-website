@@ -1,17 +1,18 @@
 "use client";
 
 /**
- * Client Timeline — the same Booking Timeline (timeline_entries), read
- * through get_portal_run_of_show's visibility filter (lib/portal/service.ts
- * resolvePortalTimeline). Not a second Timeline: read-only items display
- * as-is, and items marked editable by the coordinator edit the exact same
- * row via update_portal_timeline_entry. Sections are the same sections the
- * coordinator organized — no separate client-side grouping.
+ * Client Timeline — the couple's own always-live view (docs/client-
+ * workspace-product-architecture.md §12, refined 2026-07-17): the venue's
+ * live structural framework, read-only here, plus the couple's own
+ * private draft, fully editable (including delete and Visibility) until
+ * they explicitly Submit. Submitting creates an immutable snapshot for
+ * the venue and does not freeze this workspace — the couple keeps
+ * planning; a later Submit creates a new snapshot.
  */
 
 import * as React from "react";
 
-import { Check, Clock, FileText, Link2, Loader2, Pencil, Plus, X } from "lucide-react";
+import { Check, CheckCircle2, Circle, Clock, FileText, Link2, Loader2, Pencil, Plus, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
@@ -19,9 +20,51 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { formatTime } from "@/lib/timeline/constants";
-import type { PortalTimelineEntry, PortalTimelineSection } from "@/lib/portal/types";
+import { TIMELINE_AUDIENCES, type TimelineAudience } from "@/lib/timeline/types";
+import type { PortalTimeline, PortalTimelineEntry, PortalTimelineSection } from "@/lib/portal/types";
+import { celebrateLuv } from "@/lib/luv/celebrate";
+import { coupleCelebrationMessage } from "@/lib/luv/celebrations";
 
 const UNSECTIONED = "__unsectioned__";
+
+function VisibilityPicker({
+  entryId, token, audiences, onChanged,
+}: { entryId: string; token: string; audiences: string[]; onChanged: (audiences: string[]) => void }) {
+  const [saving, setSaving] = React.useState(false);
+
+  async function toggle(value: TimelineAudience) {
+    const next = audiences.includes(value) ? audiences.filter((a) => a !== value) : [...audiences, value];
+    setSaving(true);
+    const res = await fetch("/api/portal/timeline/visibility", {
+      method: "POST", headers: { "content-type": "application/json" },
+      body: JSON.stringify({ token, entryId, audiences: next }),
+    });
+    const data = await res.json() as { ok: boolean };
+    setSaving(false);
+    if (data.ok) onChanged(next);
+    else toast.error("Couldn't update who sees this item.");
+  }
+
+  return (
+    <div className="mt-1.5 flex flex-wrap items-center gap-1">
+      <span className="text-[10px] text-muted-foreground">Also share with:</span>
+      {TIMELINE_AUDIENCES.map((a) => (
+        <button
+          key={a.value}
+          type="button"
+          disabled={saving}
+          onClick={() => toggle(a.value)}
+          className={`flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-medium transition-colors disabled:opacity-60 ${
+            audiences.includes(a.value) ? "text-white border-transparent" : "border-border text-muted-foreground hover:border-ring"
+          }`}
+          style={audiences.includes(a.value) ? { background: a.color } : {}}
+        >
+          {a.emoji} {a.label}
+        </button>
+      ))}
+    </div>
+  );
+}
 
 function EntryEditForm({
   entry, onSave, onCancel, pending,
@@ -49,9 +92,17 @@ function EntryEditForm({
   );
 }
 
-function EntryRow({ entry, token, onUpdated }: { entry: PortalTimelineEntry; token: string; onUpdated: (entry: PortalTimelineEntry) => void }) {
+function EntryRow({
+  entry, token, onUpdated, onDeleted, onVisibilityChanged,
+}: {
+  entry: PortalTimelineEntry; token: string;
+  onUpdated: (entry: PortalTimelineEntry) => void;
+  onDeleted: (id: string) => void;
+  onVisibilityChanged: (id: string, audiences: string[]) => void;
+}) {
   const [editing, setEditing] = React.useState(false);
   const [saving, setSaving] = React.useState(false);
+  const [deleting, setDeleting] = React.useState(false);
 
   async function handleSave(title: string, description: string, entryTime: string) {
     setSaving(true);
@@ -69,9 +120,24 @@ function EntryRow({ entry, token, onUpdated }: { entry: PortalTimelineEntry; tok
     }
   }
 
+  async function handleDelete() {
+    if (!confirm(`Remove "${entry.title}" from your timeline?`)) return;
+    setDeleting(true);
+    const res = await fetch("/api/portal/timeline/delete", {
+      method: "POST", headers: { "content-type": "application/json" },
+      body: JSON.stringify({ token, entryId: entry.id }),
+    });
+    const data = await res.json() as { ok: boolean };
+    setDeleting(false);
+    if (data.ok) onDeleted(entry.id);
+    else toast.error("Could not remove this item.");
+  }
+
   if (editing) {
     return <EntryEditForm entry={entry} onSave={handleSave} onCancel={() => setEditing(false)} pending={saving} />;
   }
+
+  const isOwnItem = entry.owner === "client";
 
   return (
     <div className="rounded-xl border border-border bg-card p-3">
@@ -84,6 +150,11 @@ function EntryRow({ entry, token, onUpdated }: { entry: PortalTimelineEntry; tok
               </span>
             ) : (
               <span className="text-[10px] italic text-muted-foreground">No time set</span>
+            )}
+            {!isOwnItem && (
+              <span className="rounded-full bg-muted px-1.5 py-0.5 text-[9px] font-semibold text-muted-foreground">
+                🔒 From your venue
+              </span>
             )}
           </div>
           <p className="mt-0.5 text-sm font-medium text-foreground">{entry.title}</p>
@@ -108,12 +179,24 @@ function EntryRow({ entry, token, onUpdated }: { entry: PortalTimelineEntry; tok
               ))}
             </div>
           )}
+
+          {/* Visibility follows Ownership — only the couple's own items
+              show a picker here; the venue's own items are managed by
+              the venue. */}
+          {entry.canManageVisibility && (
+            <VisibilityPicker entryId={entry.id} token={token} audiences={entry.audiences} onChanged={(a) => onVisibilityChanged(entry.id, a)} />
+          )}
         </div>
 
         {entry.canEdit && (
-          <button type="button" onClick={() => setEditing(true)} className="shrink-0 rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground" aria-label="Edit">
-            <Pencil className="h-3.5 w-3.5" />
-          </button>
+          <div className="flex shrink-0 items-center gap-0.5">
+            <button type="button" onClick={() => setEditing(true)} className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground" aria-label="Edit">
+              <Pencil className="h-3.5 w-3.5" />
+            </button>
+            <button type="button" onClick={handleDelete} disabled={deleting} className="rounded p-1 text-muted-foreground hover:bg-destructive/10 hover:text-destructive disabled:opacity-60" aria-label="Delete">
+              {deleting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
+            </button>
+          </div>
         )}
       </div>
     </div>
@@ -173,17 +256,114 @@ function AddItemAction({
   );
 }
 
+function formatSubmittedAt(iso: string): { date: string; time: string } {
+  const d = new Date(iso);
+  return {
+    date: d.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" }),
+    time: d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" }),
+  };
+}
+
+function TimelineStatus({
+  token, clientId, lastSubmittedAt, hasUnpublishedChanges, onSubmitted,
+}: { token: string; clientId: string; lastSubmittedAt: string | null; hasUnpublishedChanges: boolean; onSubmitted: () => void }) {
+  const [submitting, setSubmitting] = React.useState(false);
+
+  async function handleSubmit() {
+    setSubmitting(true);
+    const res = await fetch("/api/portal/timeline/submit", {
+      method: "POST", headers: { "content-type": "application/json" },
+      body: JSON.stringify({ token, clientId }),
+    });
+    const data = await res.json() as { ok: boolean; celebrated?: boolean };
+    setSubmitting(false);
+    if (data.ok) {
+      if (data.celebrated) {
+        celebrateLuv(coupleCelebrationMessage("timeline_submitted"));
+      } else {
+        toast.success("Your timeline is submitted — your venue can see it now.");
+      }
+      onSubmitted();
+    } else {
+      toast.error("Couldn't submit your timeline. Please try again.");
+    }
+  }
+
+  return (
+    <div className="rounded-2xl border border-border bg-card p-4 space-y-2">
+      <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground">Timeline Status</p>
+
+      {lastSubmittedAt ? (
+        <div className="flex items-center gap-1.5 text-sm text-foreground">
+          <CheckCircle2 className="h-4 w-4 text-[var(--venue-primary)]" /> Submitted to venue
+        </div>
+      ) : (
+        <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
+          <Circle className="h-4 w-4" /> Not yet submitted
+        </div>
+      )}
+
+      {lastSubmittedAt && (() => {
+        const { date, time } = formatSubmittedAt(lastSubmittedAt);
+        return (
+          <p className="text-xs text-muted-foreground">
+            Last submitted<br />{date}<br />{time}
+          </p>
+        );
+      })()}
+
+      {hasUnpublishedChanges && (
+        <p className="text-xs font-medium text-[#8A5A5E]">You have unpublished changes.</p>
+      )}
+
+      {(hasUnpublishedChanges || !lastSubmittedAt) && (
+        <Button type="button" size="sm" disabled={submitting} onClick={handleSubmit} className="mt-1">
+          {submitting ? "Submitting…" : lastSubmittedAt ? "Submit Updated Timeline" : "Submit Timeline to Venue"}
+        </Button>
+      )}
+    </div>
+  );
+}
+
 export function TimelineSection({
-  token, initialSections, initialEntries,
-}: { token: string; initialSections: PortalTimelineSection[]; initialEntries: PortalTimelineEntry[] }) {
+  token, clientId, initialSections, initialEntries, initialLastSubmittedAt = null, initialHasUnpublishedChanges = false,
+}: {
+  token: string; clientId: string;
+  initialSections: PortalTimelineSection[]; initialEntries: PortalTimelineEntry[];
+  initialLastSubmittedAt?: string | null; initialHasUnpublishedChanges?: boolean;
+}) {
   const [entries, setEntries] = React.useState(initialEntries);
+  const [lastSubmittedAt, setLastSubmittedAt] = React.useState(initialLastSubmittedAt);
+  const [hasUnpublishedChanges, setHasUnpublishedChanges] = React.useState(initialHasUnpublishedChanges);
+
+  const refresh = React.useCallback(() => {
+    fetch(`/api/portal/timeline?token=${token}`)
+      .then((r) => r.json())
+      .then((d: PortalTimeline) => {
+        setEntries(d.entries ?? []);
+        setLastSubmittedAt(d.lastSubmittedAt ?? null);
+        setHasUnpublishedChanges(d.hasUnpublishedChanges ?? false);
+      })
+      .catch(() => {});
+  }, [token]);
 
   function handleUpdated(updated: PortalTimelineEntry) {
     setEntries((prev) => prev.map((e) => (e.id === updated.id ? updated : e)));
+    setHasUnpublishedChanges(true);
   }
 
   function handleAdded(entry: PortalTimelineEntry) {
     setEntries((prev) => [...prev, entry]);
+    setHasUnpublishedChanges(true);
+  }
+
+  function handleDeleted(id: string) {
+    setEntries((prev) => prev.filter((e) => e.id !== id));
+    setHasUnpublishedChanges(true);
+  }
+
+  function handleVisibilityChanged(id: string, audiences: string[]) {
+    setEntries((prev) => prev.map((e) => (e.id === id ? { ...e, audiences } : e)));
   }
 
   const groups = React.useMemo(() => {
@@ -212,6 +392,12 @@ export function TimelineSection({
 
   return (
     <div className="space-y-5">
+      <TimelineStatus
+        token={token} clientId={clientId}
+        lastSubmittedAt={lastSubmittedAt} hasUnpublishedChanges={hasUnpublishedChanges}
+        onSubmitted={refresh}
+      />
+
       {initialSections.map((section) => {
         const list = groups.get(section.id) ?? [];
         // A brand-new addable section can be legitimately empty until the
@@ -225,7 +411,9 @@ export function TimelineSection({
               {list.length > 0 && <Badge variant="outline" className="text-[10px]">{list.length}</Badge>}
             </div>
             <div className="space-y-2">
-              {list.map((entry) => <EntryRow key={entry.id} entry={entry} token={token} onUpdated={handleUpdated} />)}
+              {list.map((entry) => (
+                <EntryRow key={entry.id} entry={entry} token={token} onUpdated={handleUpdated} onDeleted={handleDeleted} onVisibilityChanged={handleVisibilityChanged} />
+              ))}
               {list.length === 0 && <p className="text-xs text-muted-foreground italic">Nothing here yet.</p>}
             </div>
             {section.clientCanAdd && <AddItemAction token={token} sectionId={section.id} onAdded={handleAdded} />}
@@ -237,7 +425,9 @@ export function TimelineSection({
         <div className="space-y-2">
           {initialSections.length > 0 && <h3 className="font-heading text-sm font-semibold text-heading">Other</h3>}
           <div className="space-y-2">
-            {unsectioned.map((entry) => <EntryRow key={entry.id} entry={entry} token={token} onUpdated={handleUpdated} />)}
+            {unsectioned.map((entry) => (
+              <EntryRow key={entry.id} entry={entry} token={token} onUpdated={handleUpdated} onDeleted={handleDeleted} onVisibilityChanged={handleVisibilityChanged} />
+            ))}
           </div>
         </div>
       )}

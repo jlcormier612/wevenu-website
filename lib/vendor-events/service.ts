@@ -106,7 +106,7 @@ export async function getVendorEventDetail(
 
   // Parallel fetch all tab data
   type ClientRow = { id: string; partner1_name: string | null; partner2_name: string | null; email: string | null; phone: string | null };
-  type TimelineRow = { id: string; time: string | null; title: string; description: string | null; audiences: string[] };
+  type TimelineRow = { id: string; entry_time: string | null; title: string; description: string | null; audiences: string[] };
   type TaskRow = { id: string; title: string; description: string | null; category: string; visibility: string; due_date: string | null; status: string; is_required: boolean; completed_at: string | null };
   type PersonalTaskRow = Record<string, unknown>;
   type DocRow = { id: string; name: string; category: string; storage_url: string; mime_type: string | null; notes: string | null };
@@ -121,10 +121,10 @@ export async function getVendorEventDetail(
         .maybeSingle(),
       supabase
         .from("timeline_entries")
-        .select("id, time, title, description, audiences")
+        .select("id, entry_time, title, description, audiences")
         .eq("event_id", eventId)
-        .contains("audiences", ["vendor"])
-        .order("time", { ascending: true, nullsFirst: true }),
+        .contains("audiences", ["vendors"])
+        .order("entry_time", { ascending: true, nullsFirst: true }),
       supabase
         .from("event_tasks")
         .select("id, title, description, category, visibility, due_date, status, is_required, completed_at")
@@ -152,7 +152,7 @@ export async function getVendorEventDetail(
 
   const timeline: VendorTimelineEntry[] = ((timelineRes.data ?? []) as TimelineRow[]).map((r) => ({
     id:          r.id,
-    time:        r.time,
+    time:        r.entry_time,
     title:       r.title,
     description: r.description,
     audiences:   r.audiences,

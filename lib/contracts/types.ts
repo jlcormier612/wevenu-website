@@ -38,6 +38,17 @@ export type Contract = {
   // Embedded from join
   clientName: string | null;
   eventDate: string | null;
+  // Venue Brand Experience Phase 1 — only populated by getContractByToken
+  // (the public sign page's own read); every other Contract-producing
+  // function leaves this undefined, since they don't join venues.
+  venue?: {
+    name: string | null;
+    primaryColor: string | null;
+    secondaryColor: string | null;
+    accentColor: string | null;
+    neutralColor: string | null;
+    logoUrl: string | null;
+  } | null;
 };
 
 export type ContractActivity = {
