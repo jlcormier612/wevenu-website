@@ -1,3 +1,7 @@
+/**
+ * COMPATIBILITY-ONLY — not deleted, no longer wired into any live UI.
+ * See lib/messaging/repository.ts's header — RC2, Milestone 5.
+ */
 export type MessageChannel = "email" | "sms" | "system" | "internal";
 export type MessageDirection = "outbound" | "inbound" | "system";
 // Communication Trust Experience — one shared lifecycle across messages and

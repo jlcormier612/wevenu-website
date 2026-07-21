@@ -6,14 +6,14 @@ import { HospitalityHeart, TrustRule } from "@/components/marketing/brand-accent
 import { OurFirstFriends } from "@/components/marketing/our-first-friends";
 import { FILM } from "@/lib/marketing/film";
 import { EDITORIAL_BREAK_Y, EDITORIAL_FRAME, EDITORIAL_IMAGE } from "@/lib/marketing/rhythm";
-import { WHY_WEVENU } from "@/lib/marketing/why-wevenu";
+import { OUR_STORY } from "@/lib/marketing/our-story";
 
 /**
- * Why Hello to Cheers — editorial belief chapter.
+ * Our Story — editorial belief chapter.
  * Unique purpose: why this company exists. Never repeats Home.
  */
-export function WhyWevenuExperience() {
-  const page = WHY_WEVENU;
+export function OurStoryExperience() {
+  const page = OUR_STORY;
 
   return (
     <div className="bg-[var(--true-white)]">
@@ -165,7 +165,7 @@ export function WhyWevenuExperience() {
         </div>
       </section>
 
-      {/* ── Our First Friends + A Place Reserved For You (unchanged) ── */}
+      {/* ── Our First Friends ── */}
       <div id="our-first-friends" className="scroll-mt-28">
         <OurFirstFriends letterOnly />
       </div>

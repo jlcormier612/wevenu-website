@@ -203,11 +203,27 @@ export async function getVendorConversation(conversationId: string): Promise<Ven
   return { ok: true, conversation };
 }
 
-export async function sendVendorConversationMessage(conversationId: string, body: string): Promise<SendMessageResult> {
+export async function sendVendorConversationMessage(
+  conversationId: string,
+  body: string,
+  hasAttachment = false,
+): Promise<SendMessageResult> {
   if (!isSupabaseConfigured) return { ok: false, message: "Backend not configured." };
-  if (!body.trim()) return { ok: false, message: "Message can't be empty." };
+  if (!body.trim() && !hasAttachment) return { ok: false, message: "Message can't be empty." };
   const supabase = await createClient();
-  const result = await repo.sendVendorConversationMessage(supabase, conversationId, body.trim());
+  const result = await repo.sendVendorConversationMessage(supabase, conversationId, body.trim(), hasAttachment);
   if (!result.ok) return { ok: false, message: result.error ?? "Could not send message." };
   return { ok: true, messageId: result.messageId! };
+}
+
+/** Sprint 1 — attaches an already-uploaded file to a message the vendor just sent. */
+export async function addVendorConversationMessageAttachment(
+  messageId: string,
+  file: { url: string; name: string; size?: number | null; mimeType?: string | null },
+): Promise<{ ok: boolean; message?: string }> {
+  if (!isSupabaseConfigured) return { ok: false, message: "Backend not configured." };
+  const supabase = await createClient();
+  const result = await repo.addVendorConversationMessageAttachment(supabase, messageId, file);
+  if (!result.ok) return { ok: false, message: result.error ?? "Could not attach file." };
+  return { ok: true };
 }

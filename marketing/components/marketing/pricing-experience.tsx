@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-import { OurFirstFriends } from "@/components/marketing/our-first-friends";
+import { ClosingCta } from "@/components/marketing/closing-cta";
 import { MarketingCta } from "@/components/marketing/marketing-cta";
 import { PricingCheckoutButton } from "@/components/marketing/pricing-checkout-button";
 import { PRICING_PAGE } from "@/lib/marketing/pricing-page";
@@ -22,9 +22,7 @@ export function PricingExperience({ canceled }: { canceled?: boolean }) {
           </h1>
           <div className="mt-8 space-y-5 text-base leading-[1.7] text-[var(--forest-sage)]/70 md:text-lg max-w-[65ch]">
             {page.hero.lines.map((line) => (
-              <p key={line}>
-                {line}
-              </p>
+              <p key={line}>{line}</p>
             ))}
           </div>
           {canceled ? (
@@ -36,7 +34,7 @@ export function PricingExperience({ canceled }: { canceled?: boolean }) {
       </section>
 
       {/* ── Plans ── */}
-      <section className="px-6 pb-28 md:pb-36">
+      <section className="px-6 pb-16 md:pb-20">
         <div className="mx-auto grid max-w-6xl gap-6 md:grid-cols-2 xl:grid-cols-4">
           {page.plans.map((plan) => (
             <article
@@ -49,12 +47,43 @@ export function PricingExperience({ canceled }: { canceled?: boolean }) {
               </p>
               <div className="mt-10 flex-1">
                 {plan.kind === "subscription" && plan.price ? (
-                  <p className="font-heading text-4xl text-[var(--forest-sage)] md:text-5xl">
-                    {plan.price}
-                    <span className="ml-1 text-lg text-[var(--forest-sage)]/50">{plan.period}</span>
-                  </p>
+                  <>
+                    <p className="font-heading text-4xl text-[var(--forest-sage)] md:text-5xl">
+                      {plan.price}
+                      <span className="ml-1 text-lg text-[var(--forest-sage)]/50">{plan.period}</span>
+                    </p>
+                    {plan.priceCaption ? (
+                      <p className="mt-3 text-sm tracking-wide text-[var(--forest-sage)]/65">
+                        {plan.priceCaption}
+                      </p>
+                    ) : null}
+                    {plan.foundingPrice ? (
+                      <div className="mt-6">
+                        <p className="text-sm text-[var(--forest-sage)]/70">
+                          Founding Price: {plan.foundingPrice}
+                        </p>
+                        {plan.foundingNote ? (
+                          <p className="mt-1 text-xs text-[var(--forest-sage)]/45">
+                            {plan.foundingNote}
+                          </p>
+                        ) : null}
+                      </div>
+                    ) : null}
+                    {plan.welcomeBackPrice ? (
+                      <div className="mt-5">
+                        <p className="text-sm text-[var(--forest-sage)]/70">
+                          Welcome Back Price: {plan.welcomeBackPrice}
+                        </p>
+                        {plan.welcomeBackNote ? (
+                          <p className="mt-1 text-xs text-[var(--forest-sage)]/45">
+                            {plan.welcomeBackNote}
+                          </p>
+                        ) : null}
+                      </div>
+                    ) : null}
+                  </>
                 ) : (
-                  <p className="font-heading text-3xl text-[var(--forest-sage)] md:text-4xl">
+                  <p className="font-heading text-2xl leading-snug text-[var(--forest-sage)] md:text-3xl">
                     {plan.priceLabel}
                   </p>
                 )}
@@ -76,6 +105,12 @@ export function PricingExperience({ canceled }: { canceled?: boolean }) {
                 )}
               </div>
             </article>
+          ))}
+        </div>
+
+        <div className="mx-auto mt-14 max-w-3xl space-y-5 text-base leading-[1.7] text-[var(--forest-sage)]/65 md:text-lg">
+          {page.beneathPlans.lines.map((line) => (
+            <p key={line}>{line}</p>
           ))}
         </div>
       </section>
@@ -102,9 +137,6 @@ export function PricingExperience({ canceled }: { canceled?: boolean }) {
               </li>
             ))}
           </ul>
-          <p className="mt-14 max-w-2xl font-heading text-xl leading-snug text-[var(--forest-sage)] md:text-2xl">
-            {page.included.note}
-          </p>
         </div>
       </section>
 
@@ -116,9 +148,7 @@ export function PricingExperience({ canceled }: { canceled?: boolean }) {
           </h2>
           <div className="mt-8 max-w-[65ch] space-y-5 text-base leading-[1.7] text-[var(--forest-sage)]/70 md:text-lg">
             {page.gettingStarted.intro.map((line) => (
-              <p key={line}>
-                {line}
-              </p>
+              <p key={line}>{line}</p>
             ))}
           </div>
           <div className="mt-10 grid items-stretch gap-6 md:grid-cols-2">
@@ -164,9 +194,7 @@ export function PricingExperience({ canceled }: { canceled?: boolean }) {
                 {card.body.length > 0 ? (
                   <div className="mt-10 max-w-[65ch] space-y-5 text-base leading-[1.7] text-[var(--forest-sage)]/70 md:text-lg">
                     {card.body.map((line) => (
-                      <p key={line}>
-                        {line}
-                      </p>
+                      <p key={line}>{line}</p>
                     ))}
                   </div>
                 ) : null}
@@ -181,28 +209,53 @@ export function PricingExperience({ canceled }: { canceled?: boolean }) {
         </div>
       </section>
 
-      {/* ── Founding Venue Program ── */}
-      <OurFirstFriends programOnly />
-
-      {/* ── Concise philosophy — full belief lives on Why Hello to Cheers ── */}
-      <section className="px-6 py-28 md:py-36">
+      {/* ── Founding Venue Membership ── */}
+      <section className="border-t border-[var(--taupe-medium)]/40 bg-[var(--linen)] px-6 py-28 md:py-36">
         <div className="mx-auto max-w-3xl">
-          <p className="text-[0.7125rem] tracking-[0.22em] uppercase text-[var(--heritage-sage)]/82">
-            {page.philosophy.eyebrow}
-          </p>
-          <div className="mt-10 space-y-6 text-base leading-[1.7] text-[var(--forest-sage)]/75 md:text-lg max-w-[65ch]">
-            {page.philosophy.lines.map((line) => (
-              <p
-                key={line}
-                className="font-heading text-2xl leading-[1.35] text-[var(--forest-sage)] md:text-3xl"
-              >
-                {line}
-              </p>
+          <h2 className="font-heading text-[2.1rem] font-medium text-[var(--forest-sage)] md:text-[3.36rem]">
+            {page.foundingMembership.headline}
+          </h2>
+          <div className="mt-8 max-w-[65ch] space-y-5 text-base leading-[1.7] text-[var(--forest-sage)]/75 md:text-lg">
+            {page.foundingMembership.intro.map((line) => (
+              <p key={line}>{line}</p>
             ))}
           </div>
-          <p className="mt-12">
+          <p className="mt-12 text-sm tracking-wide text-[var(--heritage-sage)]">
+            {page.foundingMembership.receivesLabel}
+          </p>
+          <ul className="mt-6 space-y-4">
+            {page.foundingMembership.benefits.map((benefit) => (
+              <li
+                key={benefit}
+                className="flex items-baseline gap-3 text-base leading-[1.7] text-[var(--forest-sage)]/80 md:text-lg max-w-[65ch]"
+              >
+                <span
+                  className="shrink-0 font-heading text-lg leading-none text-[var(--heritage-sage)]"
+                  aria-hidden
+                >
+                  ✓
+                </span>
+                <span>{benefit}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </section>
+
+      {/* ── Welcome Back ── */}
+      <section className="px-6 py-28 md:py-36">
+        <div className="mx-auto max-w-3xl">
+          <h2 className="font-heading text-[2.1rem] font-medium text-[var(--forest-sage)] md:text-[3.36rem]">
+            {page.welcomeBack.headline}
+          </h2>
+          <div className="mt-8 max-w-[65ch] space-y-5 text-base leading-[1.7] text-[var(--forest-sage)]/75 md:text-lg">
+            {page.welcomeBack.lines.map((line) => (
+              <p key={line}>{line}</p>
+            ))}
+          </div>
+          <p className="mt-14">
             <Link
-              href="/why-wevenu#pricing-philosophy"
+              href="/our-story#pricing-philosophy"
               className="font-heading text-xl text-[var(--forest-sage)] underline-offset-8 hover:underline md:text-2xl"
             >
               Read our full pricing philosophy →
@@ -211,8 +264,22 @@ export function PricingExperience({ canceled }: { canceled?: boolean }) {
         </div>
       </section>
 
-      {/* ── Our First Friends — intentional exception; also on Why Hello to Cheers ── */}
-      <OurFirstFriends letterOnly />
+      {/* ── Closing CTA ── */}
+      <section className="border-t border-[var(--taupe-medium)]/40 bg-[var(--header-linen)] px-6 py-28 md:py-36">
+        <div className="mx-auto max-w-2xl text-center">
+          <h2 className="font-heading text-[2.52rem] text-[var(--forest-sage)] md:text-[3.36rem]">
+            {page.closing.headline}
+          </h2>
+          <div className="mt-8 space-y-3 text-base text-[var(--forest-sage)]/65 md:text-lg">
+            {page.closing.lines.map((line) => (
+              <p key={line}>{line}</p>
+            ))}
+          </div>
+          <div className="mt-12 flex justify-center">
+            <ClosingCta label={page.closing.cta} />
+          </div>
+        </div>
+      </section>
     </div>
   );
 }

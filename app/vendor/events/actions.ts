@@ -17,7 +17,7 @@ export async function completeEventTaskAction(
 ): Promise<VendorActionResult> {
   const vendorUser = await getVendorUser();
   if (!vendorUser) return { ok: false, message: "No vendor account found." };
-  const result = await completeEventTask(taskId, vendorUser.vendorId);
+  const result = await completeEventTask(taskId);
   if (result.ok) revalidatePath(`/vendor/events/${assignmentId}`);
   return result;
 }

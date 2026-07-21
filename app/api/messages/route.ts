@@ -1,3 +1,9 @@
+/**
+ * COMPATIBILITY-ONLY — not deleted. Only caller is
+ * app/(app)/messaging/legacy-inbox.tsx, itself no longer wired into any
+ * live route as of RC2, Milestone 5. Backs the couple_threads/
+ * couple_messages system via get_couple_inbox/ensure_couple_thread.
+ */
 import { NextResponse } from "next/server";
 import { createClient } from "@/integrations/supabase/server";
 

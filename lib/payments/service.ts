@@ -228,7 +228,8 @@ export async function markLineItemPaid(itemId: string, scheduleId: string, input
   const errors = validateMarkPaidInput(input);
   if (Object.keys(errors).length > 0) return { ok: false, errors };
   const result = await withVenue(async (supabase, venueId) => {
-    await repo.markItemPaid(supabase, venueId, itemId, input);
+    const marked = await repo.markItemPaid(supabase, venueId, itemId, input);
+    if (!marked.ok) return marked as PaymentActionResult;
     const amount = parseFloat(input.paidAmount.replace(/[$,]/g, ""));
     await repo.insertPaymentActivity(supabase, venueId, scheduleId, "payment_received",
       `Payment received: $${amount.toLocaleString()}`,

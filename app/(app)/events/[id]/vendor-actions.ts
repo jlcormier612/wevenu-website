@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 
-import { assignVendor, removeVendorAssignment, updateVendorAssignment_ } from "@/lib/vendors/service";
+import { assignVendor, removeVendorAssignment, setVendorAssignmentPayment_, updateVendorAssignment_ } from "@/lib/vendors/service";
 import { addRecommendation, removeRecommendation } from "@/lib/vendor-recommendations/service";
 import type { EventVendorAssignment, VendorActionResult, VendorAssignmentInput } from "@/lib/vendors/types";
 import type { RecommendationActionResult } from "@/lib/vendor-recommendations/types";
@@ -47,6 +47,16 @@ export async function updateVendorAssignmentAction(
   input: { arrivalTime: string; setupLocation: string; loadInNotes: string; notes: string },
 ): Promise<VendorActionResult> {
   const result = await updateVendorAssignment_(assignmentId, input);
+  if (result.ok) revalidateEvent(eventId);
+  return result;
+}
+
+/** Sprint 2 — Vendor Payment Visibility: "what am I being paid, has it been paid." */
+export async function setVendorAssignmentPaymentAction(
+  assignmentId: string, eventId: string,
+  agreedFee: number | null, paymentStatus: "pending" | "paid",
+): Promise<VendorActionResult> {
+  const result = await setVendorAssignmentPayment_(assignmentId, agreedFee, paymentStatus);
   if (result.ok) revalidateEvent(eventId);
   return result;
 }

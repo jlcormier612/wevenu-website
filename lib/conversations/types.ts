@@ -120,6 +120,7 @@ export type VendorConversationMessage = {
   sentAt: string;
   contactReadAt: string | null;
   venueReadAt: string | null;
+  attachments: ConversationMessageAttachment[];
 };
 
 export type VendorConversationDetail = {

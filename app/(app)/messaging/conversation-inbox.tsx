@@ -22,6 +22,7 @@
 
 import * as React from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { Search } from "lucide-react";
 
 import { getConversationInboxAction, getScheduledCountForTodayAction } from "@/app/(app)/messaging/actions";
@@ -115,10 +116,14 @@ function ConversationRow({
 }
 
 export function ConversationInbox({ teamMembers = [] }: { teamMembers?: StaffMember[] }) {
+  const searchParams = useSearchParams();
   const [items, setItems] = React.useState<ConversationSummary[] | null>(null);
   const [totalUnread, setTotalUnread] = React.useState(0);
   const [scheduledToday, setScheduledToday] = React.useState(0);
-  const [activeId, setActiveId] = React.useState<string | null>(null);
+  // RC2, Milestone 4 — deep-linking in from Search results and Request
+  // cross-links (/messaging?conversation={id}). Read once on mount; the
+  // sidebar list click handler owns activeId after that, same as before.
+  const [activeId, setActiveId] = React.useState<string | null>(() => searchParams.get("conversation"));
 
   const [search, setSearch] = React.useState("");
   const [relationshipFilter, setRelationshipFilter] = React.useState<RelationshipFilter>("all");

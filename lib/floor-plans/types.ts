@@ -42,6 +42,11 @@ export type FloorPlan = {
   name: string;
   spaceId: string | null;
   clientAccess: FloorPlanClientAccess;
+  // Sprint 1 — Vendor Event Assets: whether a vendor assigned to this
+  // event can see this plan at all. Same shape/reasoning as clientAccess,
+  // a separate flag since the couple and vendor audiences are gated
+  // independently (a plan can be shared with one, both, or neither).
+  sharedWithVendors: boolean;
   backgroundImageUrl: string | null;
   backgroundImageOpacity: number;
   backgroundLocked: boolean;
@@ -77,6 +82,22 @@ export type FloorPlanSectionReconciliation = {
   sectionId: string;
   sectionName: string;
   items: FloorPlanReconciliationItem[];
+};
+
+/** Sprint 1 — Vendor Event Assets: the vendor's own "Floor Plans" list for one event, metadata only. */
+export type VendorFloorPlanSummary = {
+  id: string;
+  name: string;
+  updatedAt: string;
+};
+
+/** Sprint 1 — a vendor's read-only view of one shared Floor Plan, with just enough event/venue context to render its own standalone page. */
+export type VendorFloorPlanDetail = FloorPlanWithObjects & {
+  eventName: string;
+  eventDate: string | null;
+  venueName: string;
+  venuePrimaryColor: string | null;
+  venueLogoUrl: string | null;
 };
 
 export type FloorPlanObject = {

@@ -1,5 +1,6 @@
 import { createClient } from "@/integrations/supabase/server";
 import { isSupabaseConfigured } from "@/lib/env";
+import { clientDisplayName } from "@/lib/clients/constants";
 import { getVendorUser } from "@/lib/vendor-auth/service";
 import type {
   VendorActionResult,
@@ -24,34 +25,36 @@ async function withVendor<T>(
   return fn(supabase, vendorUser.vendorId);
 }
 
-export async function getVendorEvents(
-  vendorId: string,
-): Promise<VendorEventListItem[]> {
+/**
+ * Sprint 2 — Vendor Certification Pass. Previously read event_vendor_
+ * assignments directly through the caller's own RLS-scoped session; that
+ * table's RLS only recognizes venue_id = current_user_venue_id() (null for
+ * a vendor), so this returned an empty list for every real vendor login —
+ * confirmed live with a signed vendor JWT before this fix. Now goes through
+ * get_vendor_events, a SECURITY DEFINER RPC validated against
+ * current_user_vendor_id(), the same pattern every other vendor read uses.
+ */
+export async function getVendorEvents(): Promise<VendorEventListItem[]> {
   if (!isSupabaseConfigured) return [];
   const supabase = await createClient();
-  const today    = new Date().toISOString().slice(0, 10);
 
   type Row = {
-    id: string;
-    event_id: string;
-    arrival_time: string | null;
-    events: { id: string; name: string; event_date: string | null; venues: { name: string } | null } | null;
+    assignment_id: string; event_id: string; event_name: string; event_date: string | null;
+    venue_name: string; arrival_time: string | null; is_upcoming: boolean;
   };
 
-  const { data } = await supabase
-    .from("event_vendor_assignments")
-    .select("id, event_id, arrival_time, events(id, name, event_date, venues(name))")
-    .eq("vendor_id", vendorId)
-    .order("events(event_date)", { ascending: false });
+  const { data, error } = await supabase.rpc("get_vendor_events");
+  if (error) throw error;
+  if (!data || "error" in data) return [];
 
-  return ((data ?? []) as unknown as Row[]).map((r) => ({
-    assignmentId: r.id,
+  return ((data.events ?? []) as Row[]).map((r) => ({
+    assignmentId: r.assignment_id,
     eventId:      r.event_id,
-    eventName:    r.events?.name ?? "Unnamed Event",
-    eventDate:    r.events?.event_date ?? null,
-    venueName:    r.events?.venues?.name ?? "Unknown Venue",
+    eventName:    r.event_name,
+    eventDate:    r.event_date,
+    venueName:    r.venue_name,
     arrivalTime:  r.arrival_time,
-    isUpcoming:   !!r.events?.event_date && r.events.event_date >= today,
+    isUpcoming:   r.is_upcoming,
   }));
 }
 
@@ -62,95 +65,55 @@ export async function getVendorEventDetail(
   if (!isSupabaseConfigured) return null;
   const supabase = await createClient();
 
-  // Fetch assignment + event + venue in one query
-  type AssRow = {
-    id: string;
-    event_id: string;
-    arrival_time: string | null;
-    setup_location: string | null;
-    load_in_notes: string | null;
-    internal_notes: string | null;
-    notes: string | null;
-    checked_in_at: string | null;
-    setup_complete_at: string | null;
-    share_couple_email: boolean;
-    share_couple_phone: boolean;
-    events: {
-      id: string;
-      name: string;
-      event_date: string | null;
-      event_type: string | null;
-      venues: { id: string; name: string } | null;
+  // Sprint 1 — every field below used to come from direct RLS-scoped reads
+  // against event_vendor_assignments/timeline_entries/event_tasks/clients/
+  // documents. None of those tables' RLS policies recognize a vendor
+  // session (only venue_id = current_user_venue_id()), so every one of
+  // those reads silently returned nothing for a real vendor login — the
+  // assignment fetch coming back empty made this whole function (and the
+  // page above it) 404 unconditionally. get_vendor_event_detail is a
+  // SECURITY DEFINER RPC that does the same joins server-side, validated
+  // against current_user_vendor_id(), the same pattern every other
+  // vendor-facing read in this codebase already uses. It also fixes two
+  // bugs that were riding along in the old direct reads: "event_documents"
+  // was never a real table (the real one is "documents"), and the client
+  // lookup used three columns clients has never had (event_id,
+  // partner1_name, partner2_name — the couple is reached via
+  // events.client_id, and the real name columns are first_name/last_name/
+  // partner_first_name/partner_last_name).
+  type DetailPayload = {
+    assignment: {
+      id: string; event_id: string; arrival_time: string | null;
+      setup_location: string | null; load_in_notes: string | null; internal_notes: string | null;
+      notes: string | null; checked_in_at: string | null; setup_complete_at: string | null;
+      share_couple_email: boolean; share_couple_phone: boolean;
+      agreed_fee: number | null; payment_status: "pending" | "paid";
     } | null;
+    event: { id: string; name: string; event_date: string | null; event_type: string | null; venue_id: string; venue_name: string } | null;
+    client: { first_name: string | null; last_name: string | null; partner_first_name: string | null; partner_last_name: string | null; email: string | null; phone: string | null } | null;
+    timeline: { id: string; entry_time: string | null; title: string; description: string | null; audiences: string[] }[];
+    event_tasks: { id: string; title: string; description: string | null; category: string; visibility: string; due_date: string | null; status: string; is_required: boolean; completed_at: string | null }[];
+    documents: { id: string; name: string; category: string; storage_url: string; mime_type: string | null; notes: string | null }[];
   };
 
-  const { data: assRow } = await supabase
-    .from("event_vendor_assignments")
-    .select(`
-      id, event_id, arrival_time, setup_location, load_in_notes,
-      internal_notes, notes, checked_in_at, setup_complete_at,
-      share_couple_email, share_couple_phone,
-      events(id, name, event_date, event_type, venues(id, name))
-    `)
-    .eq("id", assignmentId)
-    .eq("vendor_id", vendorId)
-    .maybeSingle();
+  const { data, error } = await supabase.rpc("get_vendor_event_detail", { p_assignment_id: assignmentId });
+  if (error) throw error;
+  if (!data) return null;
+  const payload = data as DetailPayload;
+  if (!payload.assignment || !payload.event) return null;
+  const ass = payload.assignment;
+  const event = payload.event;
+  const eventId = ass.event_id;
 
-  if (!assRow) return null;
-  const ass = assRow as unknown as AssRow;
-  const event = ass.events;
-  if (!event) return null;
-
-  const eventId  = ass.event_id;
-  const venueId  = event.venues?.id ?? "";
-
-  // Parallel fetch all tab data
-  type ClientRow = { id: string; partner1_name: string | null; partner2_name: string | null; email: string | null; phone: string | null };
-  type TimelineRow = { id: string; entry_time: string | null; title: string; description: string | null; audiences: string[] };
-  type TaskRow = { id: string; title: string; description: string | null; category: string; visibility: string; due_date: string | null; status: string; is_required: boolean; completed_at: string | null };
   type PersonalTaskRow = Record<string, unknown>;
-  type DocRow = { id: string; name: string; category: string; storage_url: string; mime_type: string | null; notes: string | null };
-  type MsgThreadRow = { id: string; subject: string | null; updated_at: string; message_count: number };
+  const { data: personalTaskData } = await supabase
+    .from("vendor_tasks")
+    .select("*")
+    .eq("vendor_id", vendorId)
+    .eq("event_id", eventId)
+    .order("due_date", { ascending: true, nullsFirst: false });
 
-  const [clientRes, timelineRes, taskRes, personalTaskRes, docRes, threadRes] =
-    await Promise.all([
-      supabase
-        .from("clients")
-        .select("id, partner1_name, partner2_name, email, phone")
-        .eq("event_id", eventId)
-        .maybeSingle(),
-      supabase
-        .from("timeline_entries")
-        .select("id, entry_time, title, description, audiences")
-        .eq("event_id", eventId)
-        .contains("audiences", ["vendors"])
-        .order("entry_time", { ascending: true, nullsFirst: true }),
-      supabase
-        .from("event_tasks")
-        .select("id, title, description, category, visibility, due_date, status, is_required, completed_at")
-        .eq("event_id", eventId)
-        .in("visibility", ["vendor_visible", "vendor_owned"]),
-      supabase
-        .from("vendor_tasks")
-        .select("*")
-        .eq("vendor_id", vendorId)
-        .eq("event_id", eventId)
-        .order("due_date", { ascending: true, nullsFirst: false }),
-      supabase
-        .from("event_documents")
-        .select("id, name, category, storage_url, mime_type, notes")
-        .eq("event_id", eventId)
-        .eq("shared_with_vendors", true),
-      supabase
-        .from("message_threads")
-        .select("id, subject, updated_at")
-        .eq("event_id", eventId)
-        .eq("vendor_id", vendorId),
-    ]);
-
-  const clientData = clientRes.data as ClientRow | null;
-
-  const timeline: VendorTimelineEntry[] = ((timelineRes.data ?? []) as TimelineRow[]).map((r) => ({
+  const timeline: VendorTimelineEntry[] = payload.timeline.map((r) => ({
     id:          r.id,
     time:        r.entry_time,
     title:       r.title,
@@ -158,7 +121,7 @@ export async function getVendorEventDetail(
     audiences:   r.audiences,
   }));
 
-  const eventTasks: VendorTask[] = ((taskRes.data ?? []) as TaskRow[]).map((r) => ({
+  const eventTasks: VendorTask[] = payload.event_tasks.map((r) => ({
     id:          r.id,
     title:       r.title,
     description: r.description,
@@ -171,7 +134,7 @@ export async function getVendorEventDetail(
     canComplete: r.visibility === "vendor_owned",
   }));
 
-  const personalTasks: VendorPersonalTask[] = ((personalTaskRes.data ?? []) as PersonalTaskRow[]).map((r) => ({
+  const personalTasks: VendorPersonalTask[] = ((personalTaskData ?? []) as PersonalTaskRow[]).map((r) => ({
     id:              r.id as string,
     vendorId:        r.vendor_id as string,
     vendorInquiryId: (r.vendor_inquiry_id as string | null) ?? null,
@@ -185,7 +148,7 @@ export async function getVendorEventDetail(
     createdAt:       r.created_at as string,
   }));
 
-  const documents: VendorDocument[] = ((docRes.data ?? []) as DocRow[]).map((r) => ({
+  const documents: VendorDocument[] = payload.documents.map((r) => ({
     id:         r.id,
     name:       r.name,
     category:   r.category,
@@ -214,11 +177,10 @@ export async function getVendorEventDetail(
     })),
   ].sort((a, b) => b.occurredAt.localeCompare(a.occurredAt));
 
-  const coupleName =
-    [clientData?.partner1_name, clientData?.partner2_name].filter(Boolean).join(" & ") || null;
-
-  const threads = (threadRes.data ?? []) as MsgThreadRow[];
-  void threads;
+  const coupleName = clientDisplayName(
+    payload.client?.first_name ?? "", payload.client?.last_name ?? "",
+    payload.client?.partner_first_name, payload.client?.partner_last_name,
+  ) || null;
 
   return {
     assignmentId:    ass.id,
@@ -226,17 +188,19 @@ export async function getVendorEventDetail(
     eventName:       event.name,
     eventDate:       event.event_date,
     eventType:       event.event_type,
-    venueName:       event.venues?.name ?? "Unknown Venue",
-    venueId,
+    venueName:       event.venue_name,
+    venueId:         event.venue_id,
     arrivalTime:     ass.arrival_time,
     setupLocation:   ass.setup_location,
     loadInNotes:     ass.load_in_notes,
     internalNotes:   ass.internal_notes,
     coupleName,
-    coupleEmail:     ass.share_couple_email ? (clientData?.email ?? null) : null,
-    couplePhone:     ass.share_couple_phone ? (clientData?.phone ?? null) : null,
+    coupleEmail:     ass.share_couple_email ? (payload.client?.email ?? null) : null,
+    couplePhone:     ass.share_couple_phone ? (payload.client?.phone ?? null) : null,
     checkedInAt:     ass.checked_in_at,
     setupCompleteAt: ass.setup_complete_at,
+    agreedFee:       ass.agreed_fee != null ? Number(ass.agreed_fee) : null,
+    paymentStatus:   ass.payment_status,
     timeline,
     eventTasks,
     personalTasks,
@@ -245,35 +209,45 @@ export async function getVendorEventDetail(
   };
 }
 
+/**
+ * Sprint 2 — Vendor Certification Pass. Previously updated event_vendor_
+ * assignments directly through the caller's RLS-scoped session; confirmed
+ * live that this returned HTTP 204 (success) while silently writing
+ * nothing — the same "reports success but did nothing" shape as TR-B3/
+ * TR-M2/TR-L4. Now goes through update_vendor_assignment_notes, a
+ * SECURITY DEFINER RPC that actually validates and performs the write.
+ */
 export async function updateAssignmentNotes(
   assignmentId: string,
   notes:        string,
 ): Promise<VendorActionResult> {
-  const result = await withVendor(async (supabase, vendorId) => {
-    const { error } = await supabase
-      .from("event_vendor_assignments")
-      .update({ internal_notes: notes || null })
-      .eq("id", assignmentId)
-      .eq("vendor_id", vendorId);
+  const result = await withVendor(async (supabase) => {
+    const { data, error } = await supabase.rpc("update_vendor_assignment_notes", {
+      p_assignment_id: assignmentId,
+      p_notes: notes,
+    });
     if (error) return { ok: false, message: error.message } as VendorActionResult;
+    if (!data?.ok) return { ok: false, message: "Could not save notes." } as VendorActionResult;
     return { ok: true } as VendorActionResult;
   });
   return result as VendorActionResult;
 }
 
-export async function completeEventTask(
-  taskId:   string,
-  vendorId: string,
-): Promise<VendorActionResult> {
+/**
+ * Sprint 2 — Vendor Certification Pass. Two bugs fixed in one pass:
+ * (1) the same RLS-blocks-silently-succeeds defect as updateAssignmentNotes
+ * above, and (2) this never actually verified the task's event belonged to
+ * an assignment the calling vendor owns — it received vendorId but never
+ * used it (`void vendorId`). Latent only because RLS happened to block the
+ * write anyway; fixing RLS without fixing this too would have let any
+ * vendor complete any other vendor's task. complete_vendor_event_task
+ * checks both.
+ */
+export async function completeEventTask(taskId: string): Promise<VendorActionResult> {
   if (!isSupabaseConfigured) return { ok: false, message: "Backend not configured." };
   const supabase = await createClient();
-  // Only allow completing vendor_owned tasks
-  const { error } = await supabase
-    .from("event_tasks")
-    .update({ status: "complete", completed_at: new Date().toISOString() })
-    .eq("id", taskId)
-    .eq("visibility", "vendor_owned");
-  void vendorId;
+  const { data, error } = await supabase.rpc("complete_vendor_event_task", { p_task_id: taskId });
   if (error) return { ok: false, message: error.message };
+  if (!data?.ok) return { ok: false, message: "Could not complete this task." };
   return { ok: true };
 }

@@ -1,14 +1,15 @@
 "use client";
 
 /**
- * RelationshipContextPanel — RC2, Milestone 1.
+ * RelationshipContextPanel — RC2, Milestone 1, upgraded in Milestone 4.
  *
  * "Conversation as the relationship's paper folder, not just chat." Shown
  * alongside the thread (never instead of it): linked Requests, the files
- * shared in this conversation, and a short recent-activity strip. No new
- * tables — a composed read over data that already exists. Milestone 4's
- * Activity Timeline is the fuller expression of the same idea; this is the
- * lightweight version available from day one.
+ * shared in this conversation, and a recent-activity strip. No new
+ * tables — a composed read over data that already exists. The activity
+ * strip now sources from the full Activity Timeline (capped to a
+ * handful) — "View full activity" opens the uncapped audit trail on the
+ * relationship's own Activity tab.
  */
 
 import * as React from "react";
@@ -100,11 +101,16 @@ export function RelationshipContextPanel({
         ) : (
           <div className="space-y-2">
             {context.recentActivity.map((a) => (
-              <div key={a.id} className="text-xs">
+              <div key={`${a.type}-${a.occurredAt}`} className="text-xs">
                 <p className="text-heading">{a.title}</p>
-                <p className="text-[10px] text-muted-foreground">{timeAgo(a.createdAt)}</p>
+                <p className="text-[10px] text-muted-foreground">{timeAgo(a.occurredAt)}</p>
               </div>
             ))}
+            {requestHref && (
+              <Link href={`${requestHref}#activity`} className="block pt-1 text-[10px] font-medium text-primary hover:underline">
+                View full activity →
+              </Link>
+            )}
           </div>
         )}
       </Section>

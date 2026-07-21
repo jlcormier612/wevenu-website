@@ -34,6 +34,7 @@ const TYPE_LABELS: Record<RequestType, string> = {
 const SOURCE_LABELS: Record<RequestSourceFeature, string> = {
   planning: "Planning", timeline: "Timeline", documents: "Documents",
   contracts: "Contracts", floor_plans: "Floor Plans", guests: "Guest List", manual: "Venue",
+  conversation: "Messages",
 };
 
 // The one Wedding Workspace section each source feature's "Open Related

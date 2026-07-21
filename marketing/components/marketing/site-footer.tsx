@@ -20,7 +20,7 @@ export function SiteFooter() {
             />
           </Link>
           <p className="max-w-sm text-sm leading-[1.7] text-[var(--forest-sage)]/70">
-            The operating system for wedding and event venues —
+            The comprehensive operating system for wedding and event venues —
             elegant, organized, thoughtful, and effortless.
           </p>
           <Link
@@ -75,7 +75,7 @@ export function SiteFooter() {
           <ul className="space-y-2.5">
             <li>
               <Link
-                href="/why-wevenu#our-first-friends"
+                href="/our-story#our-first-friends"
                 className={`text-sm text-[var(--forest-sage)]/80 ${HOVER_LINK}`}
               >
                 Our First Friends

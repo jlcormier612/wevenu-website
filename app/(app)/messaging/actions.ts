@@ -20,6 +20,8 @@ import { getMessageTimeline } from "@/lib/communication/timeline";
 import type { TimelineStep } from "@/lib/communication/timeline";
 import { getRelationshipContext } from "@/lib/conversations/context";
 import type { RelationshipContext } from "@/lib/conversations/context";
+import { getActivityTimelineForLeadOrClient } from "@/lib/activity-timeline/service";
+import type { ActivityTimelineEvent } from "@/lib/activity-timeline/types";
 
 export async function sendMessageAction(
   entityType: MessageEntityType,
@@ -91,6 +93,11 @@ export async function getRelationshipContextAction(leadId: string | null, client
 /** RC2 — Relationship Context Panel's "Files" tab. */
 export async function getConversationAttachmentsAction(conversationId: string) {
   return conversations.getConversationAttachments(conversationId);
+}
+
+/** RC2, Milestone 4 — the full, uncapped Activity Timeline (Lead/Client "Activity" tab). */
+export async function getActivityTimelineAction(leadId: string | null, clientId: string | null): Promise<ActivityTimelineEvent[]> {
+  return getActivityTimelineForLeadOrClient(leadId, clientId);
 }
 
 // ---- Communication Platform Phase 2 — Scheduled Sends -----------------------

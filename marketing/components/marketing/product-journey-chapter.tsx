@@ -114,7 +114,7 @@ export function ProductJourneyChapter({
           </span>
           <span>{title}</span>
         </p>
-        <h2 className="mt-7 max-w-2xl font-heading text-[2.1rem] text-[var(--forest-sage)] md:text-[3.36rem]">
+        <h2 className="mt-7 max-w-2xl font-heading text-[2.1rem] whitespace-pre-line text-[var(--forest-sage)] md:text-[3.36rem]">
           {emotion}
         </h2>
         <p className="mt-5 max-w-4xl text-base leading-[1.7] text-[var(--forest-sage)]/70 md:text-lg">

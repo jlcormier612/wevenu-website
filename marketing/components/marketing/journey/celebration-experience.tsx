@@ -54,8 +54,8 @@ export function CelebrationExperience({ prev, next }: CelebrationExperienceProps
           <h1 className="mt-8 font-heading text-[3.36rem] font-medium leading-[1.1] tracking-tight text-[var(--forest-sage)] md:text-[4.2rem] lg:text-[5.04rem]">
             Celebration
           </h1>
-          <p className="mt-4 font-heading text-2xl italic text-[var(--forest-sage)]/80 md:text-3xl">
-            The celebration ends. The relationship doesn&apos;t.
+          <p className="mt-4 font-heading text-2xl italic leading-snug whitespace-pre-line text-[var(--forest-sage)]/80 md:text-3xl">
+            {"The celebration ends.\nThe relationship doesn't."}
           </p>
           <p className="mt-8 max-w-[65ch] text-base leading-[1.7] text-[var(--forest-sage)]/70 md:text-lg">
             Photos, memories, reviews, referrals, and every detail of the event become part of a

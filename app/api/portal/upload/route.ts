@@ -6,10 +6,22 @@
  *   file: image file
  *   type: 'cover' | 'couple' | 'gallery'
  *
- * Uploads to Supabase Storage bucket 'couple-media' using service role key.
+ * Uploads to Supabase Storage bucket 'client-media' using service role key.
  * Returns the public URL.
  *
- * Path: couple-media/{venue_id}/{client_id}/{type}-{timestamp}.{ext}
+ * Path: client-media/{venue_id}/{client_id}/{type}-{timestamp}.{ext}
+ *
+ * RC-Launch Validation, Sprint 2 — this hardcoded the bucket's original
+ * name from its very first migration comment ("client-media"); the
+ * migration that actually created the bucket (20260629270000_couple_
+ * profiles.sql) renamed it to "client-media" and this route was never
+ * updated. No bucket named "client-media" has ever existed, so every
+ * upload through this route (wedding website hero/cover photo, couple
+ * portal profile photo, couple document uploads — see callers in
+ * website-editor.tsx, portal-shell.tsx, couple-documents-section.tsx)
+ * has always failed with a real "Bucket not found" error. lib/storage.ts
+ * and app/api/portal/media/route.ts already correctly reference
+ * "client-media" — this route was the one holdout.
  */
 
 import { NextResponse } from "next/server";
@@ -60,7 +72,7 @@ export async function POST(request: Request) {
     const path = `${sessionData.venue_id}/${sessionData.client_id}/${type}-${Date.now()}.${ext}`;
 
     const { error: uploadError } = await supabase.storage
-      .from("couple-media")
+      .from("client-media")
       .upload(path, file, { upsert: true, contentType: file.type });
 
     if (uploadError) {
@@ -68,7 +80,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ ok: false, error: "Upload failed. Please try again." }, { status: 500 });
     }
 
-    const { data: urlData } = supabase.storage.from("couple-media").getPublicUrl(path);
+    const { data: urlData } = supabase.storage.from("client-media").getPublicUrl(path);
 
     return NextResponse.json({ ok: true, url: urlData.publicUrl, path });
   } catch (err) {

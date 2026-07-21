@@ -10,10 +10,15 @@
  * mode, no way to answer "did the confirmation actually go?" for a tour
  * confirmation specifically. This sends through the same sendEmail() +
  * conversation_messages pipeline every other message in this platform
- * goes through, and mirrors into the legacy `messages` system exactly
- * like lib/scheduled-messages/processor.ts's mirrorToLegacyIfNeeded does,
- * so it appears wherever a coordinator already looks for a Lead's message
- * history regardless of which messaging experience their venue is on.
+ * goes through.
+ *
+ * RC2, Milestone 5: the legacy-`messages` mirror this used to also perform
+ * (for venues still on the legacy experience) was removed — every venue
+ * now defaults onto Conversations, with no toggle UI ever built, so the
+ * mirror's "or wherever the coordinator's venue happens to be" condition
+ * can no longer be false. lib/messaging/repository.ts's sendMessage/
+ * updateMessageStatus remain as compatibility-only functions, still used
+ * by the legacy inbox itself, just no longer called from here.
  *
  * System-initiated (no user session either way — the public widget has
  * none, and the coordinator's own action shouldn't require a second
@@ -23,7 +28,6 @@
  */
 import { createAdminClient } from "@/integrations/supabase/admin";
 import { sendEmail } from "@/lib/email/send";
-import { sendMessage as sendLegacyMessage, updateMessageStatus as updateLegacyMessageStatus } from "@/lib/messaging/repository";
 
 type AdminClient = ReturnType<typeof createAdminClient>;
 
@@ -133,24 +137,4 @@ export async function sendTourConfirmation(params: TourConfirmationParams): Prom
     status,
     failure_reason: failureReason,
   });
-
-  // Same mirror this platform already performs for every other automated
-  // send (Automation, Scheduled Sends) — legacy Messages is still the
-  // default experience for every real venue today.
-  const { data: venue } = await supabase.from("venues")
-    .select("conversation_experience_enabled").eq("id", params.venueId).maybeSingle<{ conversation_experience_enabled: boolean }>();
-  if (venue?.conversation_experience_enabled) return;
-
-  try {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { messageId } = await sendLegacyMessage(supabase as any, params.venueId, "lead", params.leadId, null, null, {
-      toEmail: params.contactEmail, toName: "", subject, body: text,
-    }, providerId ?? null, status as "accepted" | "failed");
-    if (status === "failed" && failureReason) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      await updateLegacyMessageStatus(supabase as any, params.venueId, messageId, "failed", undefined, failureReason);
-    }
-  } catch (err) {
-    console.error("sendTourConfirmation: legacy mirror failed:", err);
-  }
 }

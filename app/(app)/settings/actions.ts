@@ -12,9 +12,15 @@ import {
 } from "@/lib/venue/service";
 import type { VenueSetupInput } from "@/lib/venue/types";
 import { exportVenueData, type ExportResult } from "@/lib/export/service";
+import { setEventCompletedNudgeEnabled } from "@/lib/automation/service";
 
 export async function exportVenueDataAction(): Promise<ExportResult> {
   return exportVenueData();
+}
+
+/** RC2, Milestone 4 — the one purpose-built toggle for Event.Completed → review/referral. */
+export async function setEventCompletedNudgeEnabledAction(enabled: boolean): Promise<{ ok: boolean; message?: string }> {
+  return setEventCompletedNudgeEnabled(enabled);
 }
 
 /** Revalidates the workspace layout so venue name changes appear immediately. */

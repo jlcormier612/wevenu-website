@@ -10,7 +10,7 @@ export const TRUST_PAGE = {
     headline: "Trust isn't something you ask for.",
     subhead: "It's something you earn.",
     lines: [
-      "Venue owners trust you with life's most meaningful celebrations.",
+      "Couples and clients trust you with life's most meaningful celebrations.",
       "You trust us with your business.",
       "We take that responsibility seriously.",
     ],
@@ -28,40 +28,38 @@ export const TRUST_PAGE = {
   ],
   security: {
     title: "Security",
-    headline: "Trust is earned.",
+    headline: "Your venue runs on trust.\nOur offering should too.",
     intro: [
-      "Venue owners trust you with some of life's most important celebrations.",
-      "You trust us with your business.",
-      "We take that responsibility seriously.",
+      "Hello to Cheers is built with modern security practices that protect your data, your clients, and every celebration you manage.",
     ],
     points: [
       {
         title: "Encryption",
-        body: "Your data is protected in transit and at rest using industry-standard encryption. Sensitive information never travels in the clear.",
+        body: "All information is encrypted both in transit and at rest using modern industry-standard encryption.",
       },
       {
-        title: "Secure infrastructure",
-        body: "Hello to Cheers runs on carefully chosen cloud infrastructure with modern security practices—isolation, hardening, and least-privilege access as a default.",
+        title: "Secure Infrastructure",
+        body: "Hello to Cheers runs on hardened cloud infrastructure with network isolation, least-privilege access, and continuous security updates.",
       },
       {
         title: "Backups",
-        body: "We maintain regular backups so that unexpected events don't mean lost celebrations, lost conversations, or lost history.",
+        body: "Regular backups protect your events, conversations, documents, and client history so celebrations are never lost.",
       },
       {
-        title: "Access controls",
-        body: "Team permissions and account access are designed so the right people see the right information—and nothing more.",
+        title: "Access Controls",
+        body: "Owners control who can access information. Team members only see the information they need to do their jobs.",
       },
       {
         title: "Monitoring",
-        body: "We watch for unusual activity and system health continuously, so we can respond quickly when something needs attention.",
+        body: "System health, performance, and unusual activity are monitored continuously so issues can be identified and addressed quickly.",
       },
       {
         title: "Payments",
-        body: "Payment card data is handled by Stripe—a PCI-compliant payment processor. Hello to Cheers is not designed to store raw card numbers on our systems.",
+        body: "Payment information is processed securely by Stripe, a PCI-compliant payment processor. Hello to Cheers never stores raw credit card numbers.",
       },
       {
-        title: "Ongoing improvement",
-        body: "Security isn't a one-time checklist. We keep improving our practices as threats and technology evolve.",
+        title: "Ongoing Improvement",
+        body: "Security is never finished. We continuously improve our infrastructure and security practices as technology evolves.",
       },
     ],
   },
@@ -180,9 +178,17 @@ export const TRUST_PAGE = {
     ],
   },
   close: {
+    headline: "Built for the long haul.",
     lines: [
-      "We know trust isn't something you can ask for.",
-      "It's something you earn.",
+      "Hello to Cheers isn't just software.",
+      "It's where years of conversations, celebrations, proposals, contracts, payments, and relationships come together.",
+      "Every feature is designed with the expectation that you'll trust us with your business for years—not just months.",
+      "That's why trust isn't simply one of our features.",
+      "It's the foundation of everything we build.",
     ],
+    signature: {
+      brand: "Hello to Cheers",
+      line: "Helping venues create celebrations worth remembering.",
+    },
   },
 } as const;

@@ -8,6 +8,7 @@ import { LuvSettingsSection } from "@/components/settings/luv-settings-section";
 import { NotificationPreferencesSection } from "@/components/settings/notification-preferences-section";
 import { NotificationsSection } from "@/components/settings/notifications-section";
 import { TourSettingsSection } from "@/components/settings/tour-settings-section";
+import { ReviewReferralNudgeSection } from "@/components/settings/review-referral-nudge-section";
 import { WebsiteFormsSection } from "@/components/settings/website-forms-section";
 import { LeadIntakeHealthSection } from "@/components/settings/lead-intake-health-section";
 import { DataExportSection } from "@/components/settings/data-export-section";
@@ -28,6 +29,7 @@ import { getNotificationStats } from "@/lib/notifications/stats";
 import { getNotificationPreferences } from "@/lib/notifications/preferences";
 import { getTourSettings } from "@/lib/tours/service";
 import { getIntakeHealthSummary } from "@/lib/lead-intake/monitoring";
+import { getEventCompletedNudgeRule } from "@/lib/automation/service";
 // Playbooks moved to Library (/library/playbooks)
 // Pipeline Templates moved to Library (/library/pipeline-templates)
 
@@ -40,8 +42,8 @@ export const metadata: Metadata = { title: "Settings" };
  * Route is protected by the (app) layout (venue existence already confirmed).
  */
 export default async function SettingsPage() {
-  const [settings, venue, spaces, capacityRules, luvSettings, notifStats, notifPrefs, tourSettings, intakeHealth] = await Promise.all([
-    getVenueSettings(), getCurrentVenue(), getSpaces(), getCapacityRules(), getLuvSettings(), getNotificationStats(), getNotificationPreferences(), getTourSettings(), getIntakeHealthSummary(),
+  const [settings, venue, spaces, capacityRules, luvSettings, notifStats, notifPrefs, tourSettings, intakeHealth, eventCompletedNudgeRule] = await Promise.all([
+    getVenueSettings(), getCurrentVenue(), getSpaces(), getCapacityRules(), getLuvSettings(), getNotificationStats(), getNotificationPreferences(), getTourSettings(), getIntakeHealthSummary(), getEventCompletedNudgeRule(),
   ]);
 
   if (!settings) {
@@ -179,6 +181,19 @@ export default async function SettingsPage() {
           </CardContent>
         </Card>
       )}
+
+      {/* ── Review & Referral Nudge — RC2, Milestone 4 ─────────────── */}
+      <Card id="review-referral" className="scroll-mt-20">
+        <CardHeader>
+          <CardTitle className="text-base">Post-Event Follow-Up</CardTitle>
+          <CardDescription>
+            The moment coordination ends and relationship management begins.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <ReviewReferralNudgeSection initialRule={eventCompletedNudgeRule} />
+        </CardContent>
+      </Card>
 
       {/* ── Notification Preferences ───────────────────────────────── */}
       <Card>

@@ -20,7 +20,6 @@ import type { Contract } from "@/lib/contracts/types";
 import type { Invoice } from "@/lib/invoices/types";
 import type { Document } from "@/lib/documents/types";
 import type { ConversationMessage } from "@/lib/conversations/types";
-import type { ThreadWithMessages } from "@/lib/messaging/types";
 import type { EventReadinessSummary, ReadinessSection, ReadinessStatus } from "@/lib/readiness/types";
 
 const STATUS_PRIORITY: Record<ReadinessStatus, number> = {
@@ -240,25 +239,17 @@ export function computeDocumentsReadiness(documents: Document[]): ReadinessSecti
   return { key: "documents", label: "Documents", status, detail, nav: { kind: "tab", tab: "documents" } };
 }
 
+// RC2, Milestone 5: every venue now defaults onto Conversations (no toggle
+// UI ever existed, so there was never a real legacy-threads state worth
+// preserving here) — this always reads real per-message unread state
+// instead of branching on a flag that's now permanently true.
 export function computeCommunicationReadiness(params: {
-  conversationExperienceEnabled: boolean;
   conversationMessages: ConversationMessage[];
-  threads: ThreadWithMessages[];
 }): ReadinessSection {
-  const { conversationExperienceEnabled, conversationMessages, threads } = params;
-
-  if (conversationExperienceEnabled) {
-    const unread = conversationMessages.filter((m) => m.senderType === "lead_or_client" && !m.venueReadAt).length;
-    const status: ReadinessStatus = conversationMessages.length === 0 ? "not_started" : unread > 0 ? "needs_attention" : "complete";
-    const detail = conversationMessages.length === 0 ? "No messages yet." : unread > 0 ? `${unread} unread from the client.` : "All caught up.";
-    return { key: "communication", label: "Communication", status, detail, nav: { kind: "tab", tab: "messages" } };
-  }
-
-  // Legacy threads carry no read-state (booking-overview-summary.tsx makes the
-  // same choice) — don't invent one here either.
-  const messageCount = threads.reduce((sum, t) => sum + t.messageCount, 0);
-  const status: ReadinessStatus = messageCount === 0 ? "not_started" : "complete";
-  const detail = messageCount === 0 ? "No messages yet." : `${messageCount} message${messageCount === 1 ? "" : "s"} logged.`;
+  const { conversationMessages } = params;
+  const unread = conversationMessages.filter((m) => m.senderType === "lead_or_client" && !m.venueReadAt).length;
+  const status: ReadinessStatus = conversationMessages.length === 0 ? "not_started" : unread > 0 ? "needs_attention" : "complete";
+  const detail = conversationMessages.length === 0 ? "No messages yet." : unread > 0 ? `${unread} unread from the client.` : "All caught up.";
   return { key: "communication", label: "Communication", status, detail, nav: { kind: "tab", tab: "messages" } };
 }
 
@@ -286,9 +277,7 @@ export function buildEventReadiness(input: {
   contracts: Contract[];
   invoices: Invoice[];
   documents: Document[];
-  conversationExperienceEnabled: boolean;
   conversationMessages: ConversationMessage[];
-  threads: ThreadWithMessages[];
 }): EventReadinessSummary {
   const sections = [
     computePlanningReadiness(input.readinessByKind),
@@ -300,11 +289,7 @@ export function buildEventReadiness(input: {
     computeContractsReadiness(input.contracts),
     computePaymentsReadiness(input.invoices),
     computeDocumentsReadiness(input.documents),
-    computeCommunicationReadiness({
-      conversationExperienceEnabled: input.conversationExperienceEnabled,
-      conversationMessages: input.conversationMessages,
-      threads: input.threads,
-    }),
+    computeCommunicationReadiness({ conversationMessages: input.conversationMessages }),
   ].sort((a, b) => STATUS_PRIORITY[a.status] - STATUS_PRIORITY[b.status]);
 
   const overallStatus = sections.reduce<ReadinessStatus>(

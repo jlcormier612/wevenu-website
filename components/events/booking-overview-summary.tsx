@@ -15,7 +15,6 @@ import type { TimelineEntry } from "@/lib/timeline/types";
 import type { EventVendorAssignment } from "@/lib/vendors/types";
 import type { EventVendorRecommendation } from "@/lib/vendor-recommendations/types";
 import type { ConversationMessage } from "@/lib/conversations/types";
-import type { ThreadWithMessages } from "@/lib/messaging/types";
 import type { Document } from "@/lib/documents/types";
 
 // ---- Small shared tile ------------------------------------------------------
@@ -58,7 +57,7 @@ export function BookingOverviewSummary({
   invoices,
   timeline,
   vendorAssignments, vendorRecommendations,
-  conversationExperienceEnabled, conversationMessages, threads,
+  conversationMessages,
   documents,
 }: {
   clientName: string | null;
@@ -73,9 +72,7 @@ export function BookingOverviewSummary({
   timeline: TimelineEntry[];
   vendorAssignments: EventVendorAssignment[];
   vendorRecommendations: EventVendorRecommendation[];
-  conversationExperienceEnabled: boolean;
   conversationMessages: ConversationMessage[];
-  threads: ThreadWithMessages[];
   documents: Document[];
 }) {
   // ---- Payments: simple sums/finds over already-fetched invoices, nothing new invented ----
@@ -94,18 +91,9 @@ export function BookingOverviewSummary({
   const vendorsSelected = vendorAssignments.length;
   const recommendationsPending = vendorRecommendations.filter((r) => !r.selectedAt).length;
 
-  // ---- Messages: real unread count only where Conversations tracks it (venueReadAt);
-  // legacy threads have no read-state, so "unread" isn't shown for that path rather
-  // than inventing one. ----
-  const lastConversationMessage = conversationExperienceEnabled
-    ? [...conversationMessages].sort((a, b) => (a.sentAt < b.sentAt ? 1 : -1))[0]
-    : null;
-  const conversationUnread = conversationExperienceEnabled
-    ? conversationMessages.filter((m) => m.senderType === "lead_or_client" && !m.venueReadAt).length
-    : 0;
-  const lastThread = !conversationExperienceEnabled
-    ? [...threads].sort((a, b) => (a.lastMessageAt ?? "") < (b.lastMessageAt ?? "") ? 1 : -1)[0]
-    : null;
+  // ---- Messages: real per-message unread count (venueReadAt). ----
+  const lastConversationMessage = [...conversationMessages].sort((a, b) => (a.sentAt < b.sentAt ? 1 : -1))[0];
+  const conversationUnread = conversationMessages.filter((m) => m.senderType === "lead_or_client" && !m.venueReadAt).length;
 
   return (
     <div className="space-y-4">
@@ -164,12 +152,9 @@ export function BookingOverviewSummary({
         />
         <SummaryTile
           title="Messages"
-          lines={conversationExperienceEnabled ? [
+          lines={[
             lastConversationMessage ? `Last message: "${lastConversationMessage.body.length > 60 ? `${lastConversationMessage.body.slice(0, 60)}…` : lastConversationMessage.body}"` : "No messages yet",
             `${conversationUnread} unread`,
-          ] : [
-            lastThread?.lastMessagePreview ? `Last message: "${lastThread.lastMessagePreview.length > 60 ? `${lastThread.lastMessagePreview.slice(0, 60)}…` : lastThread.lastMessagePreview}"` : "No messages yet",
-            "Unread not tracked for this messaging mode",
           ]}
           linkHref="#messages" linkLabel="Open Messages"
         />

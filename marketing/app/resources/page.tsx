@@ -41,7 +41,7 @@ const RESOURCES = [
     body: "Security, privacy, data ownership, and terms written for humans.",
   },
   {
-    href: "/why-wevenu#our-first-friends",
+    href: "/our-story#our-first-friends",
     chapter: "Our First Friends",
     title: null,
     body: "A letter of gratitude to the venues we worked with through Weven.",

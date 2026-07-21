@@ -16,6 +16,7 @@ import {
   setBackgroundLocked,
   setClientAccess,
   setFinalized,
+  setVendorAccess,
   updateBackground,
   updateNotes,
   updateObject_,
@@ -143,6 +144,15 @@ export async function setClientAccessAction(
   planId: string, eventId: string, clientAccess: FloorPlan["clientAccess"],
 ): Promise<FloorPlanActionResult> {
   const result = await setClientAccess(planId, clientAccess);
+  if (result.ok) revalidateEvent(eventId);
+  return result;
+}
+
+/** Sprint 1 — Vendor Event Assets: share (or unshare) this Floor Plan with vendors assigned to the event. */
+export async function setVendorAccessAction(
+  planId: string, eventId: string, sharedWithVendors: boolean,
+): Promise<FloorPlanActionResult> {
+  const result = await setVendorAccess(planId, sharedWithVendors);
   if (result.ok) revalidateEvent(eventId);
   return result;
 }

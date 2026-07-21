@@ -9,7 +9,7 @@ const BASE = process.env.PREVIEW_BASE_URL ?? "http://localhost:3001";
 
 const PAGES = [
   { file: "Home.pdf", path: "/" },
-  { file: "Why.pdf", path: "/why-wevenu" },
+  { file: "Why.pdf", path: "/our-story" },
   { file: "Product.pdf", path: "/product" },
   { file: "Features.pdf", path: "/features" },
   { file: "Pricing.pdf", path: "/pricing" },

@@ -23,6 +23,7 @@ import type { StaffMember } from "@/lib/team/types";
 const SOURCE_LABELS: Record<string, string> = {
   planning: "Planning", timeline: "Timeline", documents: "Documents",
   contracts: "Contracts", floor_plans: "Floor Plans", guests: "Guest List", manual: "Manual",
+  conversation: "Conversation",
 };
 
 // Origin → the Booking Workspace's own anchor for that feature, so "Open
@@ -30,6 +31,21 @@ const SOURCE_LABELS: Record<string, string> = {
 const SOURCE_ANCHORS: Record<string, string> = {
   planning: "planning-task-list",
 };
+
+/**
+ * RC2, Milestone 4 — Conversation-sourced Requests don't live inside the
+ * Booking Workspace's own tabs (SOURCE_ANCHORS' assumption), so they need
+ * a real href rather than an #anchor fragment: source_id is the
+ * conversation's id, and /messaging?conversation={id} is the deep-link
+ * ConversationInbox now supports.
+ */
+function relatedItemHref(request: Request): string | null {
+  if (request.sourceFeature === "conversation" && request.sourceId) {
+    return `/messaging?conversation=${request.sourceId}`;
+  }
+  const anchor = request.sourceFeature ? SOURCE_ANCHORS[request.sourceFeature] : undefined;
+  return request.eventId && anchor ? `/events/${request.eventId}#${anchor}` : null;
+}
 
 export function RequestDetail({
   initialRequest, clients, teamMembers, initialHistory,
@@ -43,7 +59,7 @@ export function RequestDetail({
     ? clientDisplayName(client.firstName, client.lastName, client.partnerFirstName, client.partnerLastName)
     : request.clientId;
   const assignee = teamMembers.find((m) => m.id === request.assignedToStaffId);
-  const anchor = request.sourceFeature ? SOURCE_ANCHORS[request.sourceFeature] : undefined;
+  const relatedHref = relatedItemHref(request);
 
   async function handleStatusChange(status: RequestStatus) {
     setPending(true);
@@ -112,8 +128,8 @@ export function RequestDetail({
         </div>
       </div>
 
-      {request.eventId && anchor && (
-        <a href={`/events/${request.eventId}#${anchor}`} className="text-sm underline">
+      {relatedHref && (
+        <a href={relatedHref} className="text-sm underline">
           Open Related Item →
         </a>
       )}

@@ -147,3 +147,16 @@ export async function updateVendorAssignment_(
   });
   return result as VendorActionResult;
 }
+
+/** Sprint 2 — Vendor Payment Visibility: "what am I being paid, has it been paid." */
+export async function setVendorAssignmentPayment_(
+  assignmentId: string,
+  agreedFee: number | null,
+  paymentStatus: "pending" | "paid",
+): Promise<VendorActionResult> {
+  const result = await withVenue(async (supabase, venueId) => {
+    await repo.setVendorAssignmentPayment(supabase, venueId, assignmentId, agreedFee, paymentStatus);
+    return { ok: true } as VendorActionResult;
+  });
+  return result as VendorActionResult;
+}

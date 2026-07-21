@@ -52,9 +52,9 @@ export function ContractExperience({ prev, next }: ContractExperienceProps) {
             Every promise becomes something your team can deliver.
           </p>
           <p className="mt-8 max-w-[65ch] text-base leading-[1.7] text-[var(--forest-sage)]/70 md:text-lg">
-            Contracts, packages, and inventory stay connected from the moment a booking is
-            confirmed. Nothing needs to be entered twice, and nothing gets forgotten between
-            sales and operations.
+            E-signed Contracts, custom packages, and collaborative inventory selection stay
+            connected from the moment a booking is confirmed. Nothing needs to be entered twice,
+            and nothing gets forgotten between sales and operations.
           </p>
           <div className="mt-14 flex flex-wrap items-center gap-4">
             <MarketingCta />

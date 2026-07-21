@@ -14,7 +14,14 @@
  */
 import { ConversationThread } from "@/components/conversations/conversation-thread";
 
-export function RelationshipConversationTab({ conversationId }: { conversationId: string | null }) {
+export function RelationshipConversationTab({
+  conversationId, initialBody, initialSubject,
+}: {
+  conversationId: string | null;
+  /** RC2, Milestone 5 — the Luv→Messages "Use this draft" bridge (lead-detail.tsx). */
+  initialBody?: string;
+  initialSubject?: string;
+}) {
   if (!conversationId) {
     // Shouldn't happen in practice — every Relationship gets a Conversation
     // provisioned automatically — but a plain, honest empty state beats a
@@ -27,7 +34,10 @@ export function RelationshipConversationTab({ conversationId }: { conversationId
   }
   return (
     <div className="rounded-xl border border-border bg-card overflow-hidden" style={{ height: 520 }}>
-      <ConversationThread conversationId={conversationId} showHeader={false} />
+      <ConversationThread
+        conversationId={conversationId} showHeader={false}
+        initialBody={initialBody} initialSubject={initialSubject}
+      />
     </div>
   );
 }

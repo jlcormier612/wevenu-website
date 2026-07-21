@@ -8,7 +8,7 @@ export const PRODUCT_JOURNEY = [
     id: "inquiry",
     title: "Inquiry",
     emotion: "A first hello that feels personal.",
-    body: "Every conversation begins a relationship. Whether it arrives from your website, email, phone call, or referral, Hello to Cheers keeps everything together from the very first moment.",
+    body: "Every conversation begins a relationship. Whether it arrives from your website, marketing or social media site, email, phone call, or referral, Hello to Cheers brings everything in, and keeps it all together, from the very first moment.",
   },
   {
     id: "tour",
@@ -20,19 +20,19 @@ export const PRODUCT_JOURNEY = [
     id: "proposal",
     title: "Proposal",
     emotion: "A beautiful yes begins with a beautiful proposal.",
-    body: "Your venue has already told its story. Hello to Cheers simply helps you present it clearly—with packages, pricing, imagery, and details that feel personal instead of transactional.",
+    body: "Your venue has already told its story. Hello to Cheers simply helps you present it clearly—with custom venue branded packages, pricing, imagery, and details that feel personal instead of transactional.",
   },
   {
     id: "contract-inventory",
     title: "Booking",
     emotion: "Every promise becomes something your team can deliver.",
-    body: "Contracts, packages, and inventory stay connected from the moment a booking is confirmed. Nothing needs to be entered twice, and nothing gets forgotten between sales and operations.",
+    body: "E-signed Contracts, custom packages, and collaborative inventory selection stay connected from the moment a booking is confirmed. Nothing needs to be entered twice, and nothing gets forgotten between sales and operations.",
   },
   {
     id: "invoice-payment",
     title: "Payments",
     emotion: "Money stays connected to the celebration.",
-    body: "Deposits, payment schedules, invoices, and balances all stay connected to the same booking—so everyone always knows where things stand without chasing spreadsheets or email threads.",
+    body: "Deposits, auto-generated invoices, flexible payment schedules, balances and built-in reminders all stay connected to the same booking—so everyone always knows where things stand without spreadsheets, disjointed email threads or chasing payments.",
   },
   {
     id: "planning",
@@ -73,7 +73,7 @@ export const PRODUCT_JOURNEY = [
   {
     id: "celebration",
     title: "Celebration",
-    emotion: "The celebration ends. The relationship doesn't.",
+    emotion: "The celebration ends.\nThe relationship doesn't.",
     body: "Photos, memories, reviews, referrals, and every detail of the event become part of a complete story—preserved long after the last guest goes home.",
   },
 ] as const;

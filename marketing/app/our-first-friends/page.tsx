@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 
-/** Gratitude letter now lives inside Why Hello to Cheers. */
+/** Gratitude letter now lives inside Our Story. */
 export default function OurFirstFriendsPage() {
-  redirect("/why-wevenu#our-first-friends");
+  redirect("/our-story#our-first-friends");
 }

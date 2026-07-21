@@ -15,9 +15,17 @@ import {
   updateAssignmentNotesAction,
 } from "@/app/vendor/events/actions";
 import { createVendorTaskAction } from "@/app/vendor/tasks/actions";
+import {
+  getVendorConversationAction,
+  getVendorConversationIdForEventAction,
+} from "@/app/vendor/messages/actions";
+import { getVendorSharedFloorPlansForEventAction } from "@/app/vendor/floor-plans/actions";
+import { VendorConversationThread } from "@/components/vendor-app/vendor-conversation-thread";
 import type { VendorEventDetail } from "@/lib/vendors/types";
+import type { VendorConversationMessage } from "@/lib/conversations/types";
+import type { VendorFloorPlanSummary } from "@/lib/floor-plans/types";
 
-type Tab = "overview" | "timeline" | "tasks" | "messages" | "documents" | "notes" | "activity";
+type Tab = "overview" | "timeline" | "tasks" | "messages" | "documents" | "floorplans" | "notes" | "activity";
 
 const TABS: { id: Tab; label: string }[] = [
   { id: "overview",   label: "Overview"   },
@@ -25,6 +33,7 @@ const TABS: { id: Tab; label: string }[] = [
   { id: "tasks",      label: "Tasks"      },
   { id: "messages",   label: "Messages"   },
   { id: "documents",  label: "Documents"  },
+  { id: "floorplans", label: "Floor Plans" },
   { id: "notes",      label: "Notes"      },
   { id: "activity",   label: "Activity"   },
 ];
@@ -95,6 +104,7 @@ export function VendorEventWorkspace({ detail }: { detail: VendorEventDetail }) 
         {tab === "tasks"     && <TasksTab      detail={detail} />}
         {tab === "messages"  && <MessagesTab   detail={detail} />}
         {tab === "documents" && <DocumentsTab  detail={detail} />}
+        {tab === "floorplans" && <FloorPlansTab detail={detail} />}
         {tab === "notes"     && <NotesTab      detail={detail} />}
         {tab === "activity"  && <ActivityTab   detail={detail} />}
       </div>
@@ -151,6 +161,25 @@ function OverviewTab({ detail }: { detail: VendorEventDetail }) {
           )}
         </div>
       </div>
+
+      {/* Payment summary — Sprint 2, Vendor Payment Visibility. A summary
+          only: what you're being paid, and whether it's been paid. No
+          installments, no invoices, no history — the venue hasn't set a
+          fee yet if this card doesn't appear. */}
+      {detail.agreedFee != null && (
+        <div className="rounded-xl border border-border bg-card p-4 space-y-2 sm:col-span-2">
+          <h2 className="text-sm font-semibold text-foreground">Payment</h2>
+          <div className="flex items-center justify-between">
+            <p className="text-2xl font-semibold text-foreground">${detail.agreedFee.toLocaleString()}</p>
+            <Badge
+              className={detail.paymentStatus === "paid" ? "bg-primary/10 text-primary border-primary/40" : "bg-amber-50 text-amber-700 border-amber-300"}
+              variant="outline"
+            >
+              {detail.paymentStatus === "paid" ? "Paid" : "Pending"}
+            </Badge>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -276,8 +305,10 @@ function TasksTab({ detail }: { detail: VendorEventDetail }) {
           !allEmpty && <p className="text-xs text-muted-foreground py-2">No personal tasks for this event.</p>
         )}
 
-        {/* Add task */}
-        <form onSubmit={handleAddTask} className="flex gap-2 pt-1">
+        {/* Add task — Sprint 2 mobile pass: the date input's fixed w-36
+            used to sit next to the title input with no wrap, crushing the
+            title field at phone width. Stacks below it under sm instead. */}
+        <form onSubmit={handleAddTask} className="flex flex-col gap-2 pt-1 sm:flex-row">
           <input
             className="flex-1 rounded-md border border-input bg-background px-3 py-1.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
             placeholder="Add a personal task…"
@@ -286,7 +317,7 @@ function TasksTab({ detail }: { detail: VendorEventDetail }) {
           />
           <input
             type="date"
-            className="w-36 rounded-md border border-input bg-background px-3 py-1.5 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+            className="w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring sm:w-36"
             value={newDue}
             onChange={(e) => setNewDue(e.target.value)}
           />
@@ -297,18 +328,38 @@ function TasksTab({ detail }: { detail: VendorEventDetail }) {
   );
 }
 
+/**
+ * RC2, Milestone 5 (Rollout verification) — this was a static placeholder
+ * ("coming in Sprint 107") left over from before RC2 Milestone 3 shipped a
+ * real, populated Conversation for every event assignment. Found by
+ * verifying every entry point that represents a conversation actually
+ * opens one — it didn't. Now it does: the same canonical thread the vendor
+ * portal's own Messages nav item uses (components/vendor-app/
+ * vendor-conversation-thread.tsx), embedded inline.
+ */
 function MessagesTab({ detail }: { detail: VendorEventDetail }) {
-  return (
-    <div className="rounded-xl border border-dashed border-border py-12 text-center">
-      <p className="text-sm font-medium text-foreground">Messages</p>
-      <p className="text-xs text-muted-foreground mt-1">
-        Message threads for this event will appear here.
-      </p>
-      <p className="text-xs text-muted-foreground mt-0.5">
-        Full message compose coming in Sprint 107.
-      </p>
-    </div>
-  );
+  const [conversationId, setConversationId] = React.useState<string | null | undefined>(undefined);
+  const [messages, setMessages] = React.useState<VendorConversationMessage[] | null>(null);
+
+  React.useEffect(() => {
+    void getVendorConversationIdForEventAction(detail.eventId).then((id) => {
+      setConversationId(id);
+      if (id) void getVendorConversationAction(id).then((r) => setMessages(r.ok ? r.conversation.messages : []));
+    });
+  }, [detail.eventId]);
+
+  if (conversationId === undefined || (conversationId && messages === null)) {
+    return <p className="py-8 text-center text-sm text-muted-foreground">Loading…</p>;
+  }
+  if (!conversationId) {
+    return (
+      <div className="rounded-xl border border-dashed border-border py-12 text-center">
+        <p className="text-sm font-medium text-foreground">Messages</p>
+        <p className="text-xs text-muted-foreground mt-1">No conversation for this event yet.</p>
+      </div>
+    );
+  }
+  return <VendorConversationThread conversationId={conversationId} initialMessages={messages ?? []} showHeader={false} />;
 }
 
 function DocumentsTab({ detail }: { detail: VendorEventDetail }) {
@@ -336,6 +387,53 @@ function DocumentsTab({ detail }: { detail: VendorEventDetail }) {
             {d.notes && <p className="text-xs text-muted-foreground">{d.notes}</p>}
           </div>
           <Badge variant="outline" className="text-xs shrink-0">{d.category}</Badge>
+        </a>
+      ))}
+    </div>
+  );
+}
+
+/**
+ * Sprint 1 — Vendor Event Assets. Distinct from Documents: a Floor Plan is
+ * the structured layout built in the coordinator's own Floor Plan editor
+ * (floor_plans/floor_plan_objects), shared here via its own
+ * shared_with_vendors flag — not a PDF a coordinator had to export and
+ * upload. "Open" renders the same read-only SVG canvas the coordinator's
+ * print view uses, scoped to the vendor's own data fetch.
+ */
+function FloorPlansTab({ detail }: { detail: VendorEventDetail }) {
+  const [plans, setPlans] = React.useState<VendorFloorPlanSummary[] | null>(null);
+
+  React.useEffect(() => {
+    void getVendorSharedFloorPlansForEventAction(detail.eventId).then(setPlans);
+  }, [detail.eventId]);
+
+  if (plans === null) {
+    return <p className="py-8 text-center text-sm text-muted-foreground">Loading…</p>;
+  }
+  if (plans.length === 0) {
+    return (
+      <div className="rounded-xl border border-dashed border-border py-12 text-center">
+        <FileText className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
+        <p className="text-sm text-muted-foreground">No floor plans shared for this event yet.</p>
+      </div>
+    );
+  }
+  return (
+    <div className="rounded-xl border border-border bg-card divide-y divide-border">
+      {plans.map((p) => (
+        <a
+          key={p.id}
+          href={`/vendor/floor-plans/${p.id}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex items-center gap-3 px-4 py-3 hover:bg-muted/40 transition-colors"
+        >
+          <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-medium text-foreground">{p.name}</p>
+          </div>
+          <Badge variant="outline" className="text-xs shrink-0">Open</Badge>
         </a>
       ))}
     </div>

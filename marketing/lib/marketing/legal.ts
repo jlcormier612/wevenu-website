@@ -28,7 +28,7 @@ export const PRIVACY_POLICY: LegalDocument = {
       heading: "1. Who We Are",
       paragraphs: [
         "Hello to Cheers provides software and related services for independent venues and hospitality businesses (the “Services”). In this Privacy Policy, “Hello to Cheers,” “we,” “us,” and “our” refer to the Hello to Cheers operating entity that provides the Services.",
-        "If you have privacy questions, contact us at privacy@wevenu.com (or the support address listed on our website).",
+        "If you have privacy questions, contact us at privacy@hellotocheers.com (or the support address listed on our website).",
       ],
     },
     {
@@ -111,7 +111,7 @@ export const PRIVACY_POLICY: LegalDocument = {
       paragraphs: [
         "Depending on your location, you may have rights to access, correct, delete, export, or restrict certain personal information, or to object to certain processing.",
         "You may also manage cookie preferences where available, and unsubscribe from promotional emails using the link in those messages. Service and billing messages may still be sent as needed to operate your account.",
-        "To exercise privacy rights, contact privacy@wevenu.com. We may need to verify your request before responding.",
+        "To exercise privacy rights, contact privacy@hellotocheers.com. We may need to verify your request before responding.",
       ],
     },
     {
@@ -135,8 +135,8 @@ export const PRIVACY_POLICY: LegalDocument = {
     {
       heading: "14. Contact",
       paragraphs: [
-        "For privacy questions or requests: privacy@wevenu.com",
-        "For general support: the contact methods listed on wevenu.com",
+        "For privacy questions or requests: privacy@hellotocheers.com",
+        "For general support: the contact methods listed on hellotocheers.com",
       ],
     },
   ],
@@ -270,7 +270,7 @@ export const TERMS_OF_SERVICE: LegalDocument = {
     {
       heading: "18. Contact",
       paragraphs: [
-        "Questions about these Terms: legal@wevenu.com",
+        "Questions about these Terms: legal@hellotocheers.com",
         "Billing and account questions: through in-product support or the contact methods on our website.",
       ],
     },
@@ -325,7 +325,7 @@ export const COOKIE_POLICY: LegalDocument = {
     },
     {
       heading: "6. Contact",
-      paragraphs: ["privacy@wevenu.com"],
+      paragraphs: ["privacy@hellotocheers.com"],
     },
   ],
 };
@@ -374,7 +374,7 @@ export const ACCEPTABLE_USE_POLICY: LegalDocument = {
     {
       heading: "5. Reporting",
       paragraphs: [
-        "Report suspected abuse to abuse@wevenu.com or through in-product support channels.",
+        "Report suspected abuse to abuse@hellotocheers.com or through in-product support channels.",
       ],
     },
     {

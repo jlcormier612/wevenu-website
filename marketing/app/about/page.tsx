@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 
-/** About is no longer a primary destination — belief lives on Why Hello to Cheers. */
+/** About is no longer a primary destination — belief lives on Our Story. */
 export default function AboutPage() {
-  redirect("/why-wevenu");
+  redirect("/our-story");
 }

@@ -157,7 +157,7 @@ export const VISION = {
   ],
   cta: {
     headline: "Schedule a Walkthrough",
-    body: "A calm conversation about your venue. No pressure. Just clarity.",
+    body: "A calm conversation about your venue. No pressure. Just clarity and genuine care.",
   },
   closingDesire:
     "I've never seen a platform that actually understands how my venue operates.",

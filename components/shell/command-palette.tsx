@@ -6,7 +6,7 @@ import { Search, X } from "lucide-react";
 
 type SearchResult = {
   id: string;
-  kind: "lead" | "event" | "vendor" | "guest" | "document" | "task";
+  kind: "lead" | "event" | "vendor" | "guest" | "document" | "task" | "conversation" | "request";
   title: string;
   subtitle: string | null;
   link: string;
@@ -18,15 +18,17 @@ type SearchResponse = {
   error?: string;
 };
 
-const KIND_ORDER = ["lead", "event", "vendor", "guest", "document", "task"] as const;
+const KIND_ORDER = ["lead", "event", "vendor", "guest", "document", "task", "conversation", "request"] as const;
 
 const KIND_LABELS: Record<string, string> = {
-  lead:     "Leads",
-  event:    "Events",
-  vendor:   "Vendors",
-  guest:    "Guests",
-  document: "Documents",
-  task:     "Tasks",
+  lead:         "Leads",
+  event:        "Events",
+  vendor:       "Vendors",
+  guest:        "Guests",
+  document:     "Documents",
+  task:         "Tasks",
+  conversation: "Conversations",
+  request:      "Requests",
 };
 
 function groupResults(results: SearchResult[]) {
@@ -149,7 +151,7 @@ export function CommandPalette({
             value={query}
             onChange={e => setQuery(e.target.value)}
             onKeyDown={onKeyDown}
-            placeholder="Search leads, events, vendors, guests, documents, tasks…"
+            placeholder="Search leads, events, vendors, guests, documents, tasks, conversations, requests…"
             className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground/50"
           />
           {query && (
@@ -181,7 +183,7 @@ export function CommandPalette({
             <div className="py-12 text-center px-8">
               <p className="text-2xl mb-2">🔍</p>
               <p className="text-sm text-muted-foreground leading-relaxed">
-                Search across leads, events, vendors, guests, documents, and tasks.
+                Search across leads, events, vendors, guests, documents, tasks, conversations, and requests.
               </p>
               <p className="mt-3 text-xs text-muted-foreground/50">
                 ↑↓ to navigate · ↵ to open · Esc to close

@@ -3,7 +3,7 @@
 import * as React from "react";
 import {
   Users, Plus, Trash2, Pencil, Loader2, X, Check, ChevronDown, ChevronUp, Copy, Mail, Send, Undo2, ClipboardList,
-  UserPlus, Link2, Eye,
+  UserPlus, Link2, Eye, MoreHorizontal,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -13,6 +13,9 @@ import {
 } from "@/lib/portal/types";
 import { getGuestObservations } from "@/lib/luv/portal-observations";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { RsvpPage } from "@/components/wedding-website/rsvp-page";
 import type { RsvpContext } from "@/app/rsvp/[token]/page";
 import { FinalizeGuestCountCard } from "@/components/portal/finalize-guest-count-card";
@@ -890,20 +893,8 @@ function GuestRow({ token, guest, linkedPlusOneName, primaryGuestName, onDelete,
           {Object.entries(RSVP_LABELS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
         </select>
 
-        <button type="button" onClick={copyLink}
-          className="p-1 text-muted-foreground hover:text-foreground rounded transition-colors"
-          title="Copy RSVP link">
-          <Copy className="h-3.5 w-3.5" />
-        </button>
-
         <GuestRsvpPreviewButton token={token} guestId={guest.id}
           guestName={[guest.firstName, guest.lastName].filter(Boolean).join(" ")} />
-
-        <button type="button" onClick={() => onEditStart(guest)}
-          className="p-1 text-muted-foreground hover:text-foreground rounded transition-colors"
-          title="Edit guest">
-          <Pencil className="h-3.5 w-3.5" />
-        </button>
 
         {hasDetails && (
           <button type="button" onClick={() => setExpanded(p => !p)}
@@ -912,10 +903,30 @@ function GuestRow({ token, guest, linkedPlusOneName, primaryGuestName, onDelete,
           </button>
         )}
 
-        <button type="button" onClick={() => onDelete(guest.id)}
-          className="p-1 text-muted-foreground hover:text-destructive rounded transition-colors">
-          <Trash2 className="h-3.5 w-3.5" />
-        </button>
+        {/* Sprint 2 mobile pass — this row was up to 9 always-visible
+            elements wide with no wrap, crushed at phone width. Copy Link /
+            Edit / Delete (the least time-critical actions) collapse into
+            one menu; everything a coordinator needs at a glance (name,
+            invitation status, RSVP status, RSVP preview, details expand)
+            stays directly visible. */}
+        <DropdownMenu>
+          <DropdownMenuTrigger render={
+            <button type="button" className="p-1 text-muted-foreground hover:text-foreground rounded transition-colors" aria-label="More actions" />
+          }>
+            <MoreHorizontal className="h-3.5 w-3.5" />
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={copyLink}>
+              <Copy className="h-3.5 w-3.5" /> Copy RSVP link
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => onEditStart(guest)}>
+              <Pencil className="h-3.5 w-3.5" /> Edit guest
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => onDelete(guest.id)} variant="destructive">
+              <Trash2 className="h-3.5 w-3.5" /> Delete guest
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
 
       {expanded && hasDetails && (

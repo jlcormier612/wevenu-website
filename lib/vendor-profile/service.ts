@@ -84,15 +84,18 @@ export async function getVendorDashboardData(vendorId: string): Promise<VendorDa
 
   const today = new Date().toISOString().slice(0, 10);
 
-  const [profileRes, eventsRes, venuesRes, pkgRes, availRes, newInquiryRes] = await Promise.all([
+  // Sprint 2 — Vendor Certification Pass. This used to read
+  // event_vendor_assignments directly through the caller's RLS-scoped
+  // session, the same defect fixed elsewhere in lib/vendor-events/
+  // service.ts: that table's RLS never recognizes a vendor session, so the
+  // Dashboard's "upcoming events" section returned empty for every real
+  // vendor. Goes through get_vendor_events (the same RPC the vendor Events
+  // list now uses) instead of adding a fourth near-duplicate query shape.
+  const eventsRpc = supabase.rpc("get_vendor_events");
+
+  const [profileRes, eventsRpcRes, venuesRes, pkgRes, availRes, newInquiryRes] = await Promise.all([
     supabase.from("vendors").select("*").eq("id", vendorId).maybeSingle(),
-    supabase
-      .from("event_vendor_assignments")
-      .select("id, event_id, arrival_time, events(id, name, event_date, venues(name))")
-      .eq("vendor_id", vendorId)
-      .gte("events.event_date", today)
-      .order("events(event_date)", { ascending: true })
-      .limit(10),
+    eventsRpc,
     supabase
       .from("venue_vendor_relationships")
       .select("id, venue_id, status, added_at, venues(name)")
@@ -124,21 +127,23 @@ export async function getVendorDashboardData(vendorId: string): Promise<VendorDa
     getVendorHealthScore(vendorId),
   ]);
 
-  type EVARow = {
-    id: string;
-    event_id: string;
-    arrival_time: string | null;
-    events: { id: string; name: string; event_date: string | null; venues: { name: string } | null } | null;
+  type EventsRpcRow = {
+    assignment_id: string; event_id: string; event_name: string; event_date: string | null;
+    venue_name: string; arrival_time: string | null;
   };
+  const eventsRpcData = eventsRpcRes.data as { events?: EventsRpcRow[] } | { error: string } | null;
+  const eventsRpcRows = eventsRpcData && "events" in eventsRpcData ? eventsRpcData.events ?? [] : [];
 
-  const upcomingEvents = ((eventsRes.data ?? []) as unknown as EVARow[])
-    .filter((r) => r.events?.event_date && r.events.event_date >= today)
+  const upcomingEvents = eventsRpcRows
+    .filter((r) => r.event_date && r.event_date >= today)
+    .sort((a, b) => (a.event_date ?? "").localeCompare(b.event_date ?? ""))
+    .slice(0, 10)
     .map((r) => ({
-      id:          r.id,
+      id:          r.assignment_id,
       eventId:     r.event_id,
-      eventName:   r.events?.name ?? "Unnamed Event",
-      eventDate:   r.events?.event_date ?? null,
-      venueName:   r.events?.venues?.name ?? "Unknown Venue",
+      eventName:   r.event_name,
+      eventDate:   r.event_date,
+      venueName:   r.venue_name,
       arrivalTime: r.arrival_time,
     }));
 

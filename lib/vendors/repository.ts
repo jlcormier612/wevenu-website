@@ -56,6 +56,7 @@ type EVARow = {
   arrival_time: string | null; setup_location: string | null; load_in_notes: string | null;
   notes: string | null; created_at: string;
   checked_in_at: string | null; setup_complete_at: string | null;
+  agreed_fee: number | null; payment_status: "pending" | "paid";
   vendors: { business_name: string; category: string | null; contact_name: string | null; phone: string | null } | null;
   // RC2, Milestone 3 — one Conversation per assignment, auto-provisioned by
   // a trigger the moment the assignment row is created (never lazily).
@@ -140,6 +141,8 @@ function mapEVA(r: EVARow): EventVendorAssignment {
     setupCompleteAt: r.setup_complete_at ?? null,
     createdAt:       r.created_at,
     conversationId:  conversation?.id ?? null,
+    agreedFee:       r.agreed_fee != null ? Number(r.agreed_fee) : null,
+    paymentStatus:   r.payment_status,
   };
 }
 
@@ -401,6 +404,23 @@ export async function updateVendorAssignment(
       load_in_notes:  input.loadInNotes.trim() || null,
       notes:          input.notes.trim() || null,
     })
+    .eq("id", assignmentId).eq("venue_id", venueId);
+  if (error) throw error;
+}
+
+/**
+ * Sprint 2 — Vendor Payment Visibility. Sets what the venue owes this
+ * vendor for the assignment and whether it's been paid. agreedFee = null
+ * clears the fee (and the vendor's payment summary card simply doesn't
+ * render — set nothing, show nothing).
+ */
+export async function setVendorAssignmentPayment(
+  client: DbClient, venueId: string, assignmentId: string,
+  agreedFee: number | null, paymentStatus: "pending" | "paid",
+): Promise<void> {
+  const { error } = await client
+    .from("event_vendor_assignments")
+    .update({ agreed_fee: agreedFee, payment_status: paymentStatus })
     .eq("id", assignmentId).eq("venue_id", venueId);
   if (error) throw error;
 }

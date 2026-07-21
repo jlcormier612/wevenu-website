@@ -7,7 +7,7 @@ export const PRODUCT_APP_URL =
  */
 export const CHAPTERS = {
   why: {
-    href: "/why-wevenu",
+    href: "/our-story",
     chapter: "Our Story",
     title: "Hospitality First",
   },

@@ -1,10 +1,12 @@
 "use client";
 
 /**
- * MessagesSection — the "Messages" tab on Lead and Client detail pages.
+ * COMPATIBILITY-ONLY — not deleted, no longer rendered anywhere.
  *
- * Shows all message threads for the entity. Each thread expands to show
- * individual messages. "New Message" opens the compose form inline.
+ * MessagesSection — the old "Messages" tab on Lead and Client detail pages.
+ * RC2, Milestone 5: both detail pages now always render
+ * RelationshipConversationTab instead. Kept in the tree as a historical/
+ * rollback reference only. Do not add new features here.
  */
 
 import * as React from "react";

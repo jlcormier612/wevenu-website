@@ -96,7 +96,7 @@ export const PLACEHOLDER = {
   },
   walkthrough: {
     headline: "Schedule a Walkthrough",
-    body: "A short, personal conversation about your venue — no pressure, no free trial.",
+    body: "A personalized conversation about your venue — no pressure, just an inside look\nat how your process would work on our platform (or not).",
   },
   contact: {
     headline: "Contact",

@@ -15,6 +15,8 @@ import type {
   ReorderDirection,
   UpdateObjectInput,
   UpdateRoomSettingsInput,
+  VendorFloorPlanDetail,
+  VendorFloorPlanSummary,
 } from "@/lib/floor-plans/types";
 import { getCurrentVenue } from "@/lib/venue/service";
 import { triggerAutoComplete } from "@/lib/playbooks/service";
@@ -128,6 +130,27 @@ export async function setClientAccess(planId: string, clientAccess: FloorPlan["c
     return { ok: true } as FloorPlanActionResult;
   });
   return result as FloorPlanActionResult;
+}
+
+/** Sprint 1 — Vendor Event Assets: share (or unshare) this Floor Plan with vendors assigned to the event. */
+export async function setVendorAccess(planId: string, sharedWithVendors: boolean): Promise<FloorPlanActionResult> {
+  const result = await withVenue(async (supabase, venueId) => {
+    await repo.setFloorPlanVendorAccess(supabase, venueId, planId, sharedWithVendors);
+    return { ok: true } as FloorPlanActionResult;
+  });
+  return result as FloorPlanActionResult;
+}
+
+/** Sprint 1 — the vendor portal's "Floor Plans" section for one event. */
+export async function getVendorSharedFloorPlansForEvent(eventId: string): Promise<VendorFloorPlanSummary[]> {
+  if (!isSupabaseConfigured) return [];
+  return repo.getVendorSharedFloorPlans(await createClient(), eventId);
+}
+
+/** Sprint 1 — a vendor opening one shared Floor Plan, read-only. */
+export async function getVendorFloorPlan(planId: string): Promise<VendorFloorPlanDetail | null> {
+  if (!isSupabaseConfigured) return null;
+  return repo.getVendorFloorPlan(await createClient(), planId);
 }
 
 /** Phase 4 — the print-ready checkpoint. Never gates editing; reversible. */

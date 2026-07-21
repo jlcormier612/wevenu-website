@@ -19,7 +19,7 @@ import { toast } from "sonner";
 
 import { convertLeadToClientAction } from "@/app/(app)/clients/actions";
 import { updateLeadPipelineStageAction, updateLeadStatusAction } from "@/app/(app)/leads/[id]/actions";
-import { ActivityTimeline } from "@/components/leads/activity-timeline";
+import { ActivityTimelineView } from "@/components/conversations/activity-timeline";
 import { LeadStatusBadge } from "@/components/leads/lead-status-badge";
 import { Badge } from "@/components/ui/badge";
 import { NotesSection } from "@/components/leads/notes-section";
@@ -46,7 +46,6 @@ import { DateHoldsSection } from "@/components/availability/date-holds-section";
 import { DocumentsSection } from "@/components/documents/documents-section";
 import { LuvDraftPanel } from "@/components/luv/luv-draft-panel";
 import { LuvHeart } from "@/components/dashboard/luv-widget";
-import { MessagesSection } from "@/components/messaging/messages-section";
 import { RelationshipConversationTab } from "@/components/conversations/relationship-conversation-tab";
 import { TourPanel } from "@/components/leads/tour-panel";
 import {
@@ -61,7 +60,6 @@ import type { LeadWithDetails } from "@/lib/leads/types";
 import type { DateHold, VenueSpace } from "@/lib/availability/types";
 import type { Document } from "@/lib/documents/types";
 import type { LuvDraft } from "@/lib/luv/drafts";
-import type { ThreadWithMessages } from "@/lib/messaging/types";
 import type { PipelineStage } from "@/lib/pipeline-templates/types";
 
 // ---- info row (overview tab) ------------------------------------------------
@@ -91,7 +89,7 @@ function InfoRow({
 
 // ---- main component ---------------------------------------------------------
 
-export function LeadDetail({ lead, holds = [], spaces = [], documents = [], luvDrafts = [], threads = [], autoLuvDraft, tourAppointments = [], conversationExperienceEnabled = false, conversationId = null, pipelineStages = [], currentPipelineStage = null, now }: { lead: LeadWithDetails; holds?: DateHold[]; spaces?: VenueSpace[]; documents?: Document[]; luvDrafts?: LuvDraft[]; threads?: ThreadWithMessages[]; autoLuvDraft?: string; tourAppointments?: import("@/lib/tours/types").TourAppointment[]; conversationExperienceEnabled?: boolean; conversationId?: string | null; pipelineStages?: PipelineStage[]; currentPipelineStage?: PipelineStage | null; now: string }) {
+export function LeadDetail({ lead, holds = [], spaces = [], documents = [], luvDrafts = [], autoLuvDraft, tourAppointments = [], conversationId = null, pipelineStages = [], currentPipelineStage = null, now }: { lead: LeadWithDetails; holds?: DateHold[]; spaces?: VenueSpace[]; documents?: Document[]; luvDrafts?: LuvDraft[]; autoLuvDraft?: string; tourAppointments?: import("@/lib/tours/types").TourAppointment[]; conversationId?: string | null; pipelineStages?: PipelineStage[]; currentPipelineStage?: PipelineStage | null; now: string }) {
   // Controlled tabs — supports Luv→Messages bridge and ?luv= URL param routing
   const [activeTab, setActiveTab] = React.useState(autoLuvDraft ? "luv" : "overview");
   const [messagePrefill, setMessagePrefill] = React.useState<{ subject: string; body: string } | null>(null);
@@ -303,12 +301,7 @@ export function LeadDetail({ lead, holds = [], spaces = [], documents = [], luvD
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList>
           <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="messages">
-            {conversationExperienceEnabled ? "Conversation" : "Messages"}
-            {!conversationExperienceEnabled && threads.length > 0 && (
-              <span className="ml-1 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground">{threads.reduce((s, t) => s + t.messageCount, 0)}</span>
-            )}
-          </TabsTrigger>
+          <TabsTrigger value="messages">Conversation</TabsTrigger>
           <TabsTrigger value="notes">
             Notes
             {lead.notes.length > 0 && (
@@ -416,28 +409,11 @@ export function LeadDetail({ lead, holds = [], spaces = [], documents = [], luvD
 
         {/* ── Conversation ─────────────────────────────────────────── */}
         <TabsContent value="messages">
-          {conversationExperienceEnabled ? (
-            <RelationshipConversationTab conversationId={conversationId} />
-          ) : (
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base">Messages</CardTitle>
-                <CardDescription>Email history with this lead. All correspondence is logged here automatically.</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <MessagesSection
-                  entityType="lead"
-                  entityId={lead.id}
-                  entityEmail={lead.email}
-                  entityName={leadDisplayName(lead.firstName, lead.lastName, lead.partnerFirstName, lead.partnerLastName)}
-                  initialThreads={threads}
-                  prefillSubject={messagePrefill?.subject}
-                  prefillBody={messagePrefill?.body}
-                  onPrefillUsed={() => setMessagePrefill(null)}
-                />
-              </CardContent>
-            </Card>
-          )}
+          <RelationshipConversationTab
+            conversationId={conversationId}
+            initialBody={messagePrefill?.body}
+            initialSubject={messagePrefill?.subject}
+          />
         </TabsContent>
 
         {/* ── Notes ─────────────────────────────────────────────────── */}
@@ -498,7 +474,7 @@ export function LeadDetail({ lead, holds = [], spaces = [], documents = [], luvD
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <ActivityTimeline activities={lead.activities} />
+              <ActivityTimelineView leadId={lead.id} clientId={null} />
             </CardContent>
           </Card>
         </TabsContent>

@@ -7,6 +7,7 @@
  *   - getActorContext()      — resolves actor type for routing
  */
 import { createClient } from "@/integrations/supabase/server";
+import { createAdminClient } from "@/integrations/supabase/admin";
 import { isSupabaseConfigured } from "@/lib/env";
 import { recordEngagementEvent } from "@/lib/activation/service";
 import type { ActorContext, VendorRole } from "@/lib/vendors/types";
@@ -48,10 +49,19 @@ export async function claimVendorProfile(claimToken: string): Promise<
   const result = data as { ok: boolean; vendor_id?: string; already_vendor?: boolean; error?: string };
   if (!result.ok) return { ok: false, message: result.error ?? "Could not claim profile." };
 
-  // Fire engagement event — look up the venue that invited this vendor
+  // Fire engagement event — look up the venue that invited this vendor.
+  // vendor_invitations' RLS only recognizes the inviting venue's owner
+  // (venues_manage_invitations) or HQ — a freshly-claimed vendor session
+  // has no read access to its own invitation row. Confirmed live: this
+  // silently returned nothing under a real vendor session, silently
+  // dropping the "vendor.invitation_accepted" engagement event on every
+  // claim (no user-facing error, since the read result is only used inside
+  // an `if`). Uses the admin client for this one internal lookup, the same
+  // sanctioned pattern lib/contracts/service.ts's signContractByToken uses
+  // for "the caller has no venue_staff session yet" reads.
   if (result.vendor_id) {
-    const supabase2 = await createClient();
-    const { data: invite } = await supabase2
+    const admin = createAdminClient();
+    const { data: invite } = await admin
       .from("vendor_invitations")
       .select("venue_id")
       .eq("vendor_id", result.vendor_id)

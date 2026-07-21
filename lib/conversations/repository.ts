@@ -422,10 +422,15 @@ export async function getVendorConversation(
   const { data, error } = await client.rpc("get_vendor_conversation", { p_conversation_id: conversationId });
   if (error) throw error;
   if (!data || "error" in data) return null;
-  type Row = { id: string; sender_type: VendorConversationMessage["senderType"]; body: string; sent_at: string; contact_read_at: string | null; venue_read_at: string | null };
+  type Row = {
+    id: string; sender_type: VendorConversationMessage["senderType"]; body: string; sent_at: string;
+    contact_read_at: string | null; venue_read_at: string | null;
+    attachments: { id: string; fileUrl: string; fileName: string; fileSize: number | null; mimeType: string | null }[];
+  };
   const messages = ((data.messages ?? []) as Row[]).map((m): VendorConversationMessage => ({
     id: m.id, senderType: m.sender_type, body: m.body, sentAt: m.sent_at,
     contactReadAt: m.contact_read_at, venueReadAt: m.venue_read_at,
+    attachments: m.attachments ?? [],
   }));
   return { conversationId: data.conversation_id, messages };
 }
@@ -434,10 +439,28 @@ export async function sendVendorConversationMessage(
   client: DbClient,
   conversationId: string,
   body: string,
+  hasAttachment = false,
 ): Promise<{ ok: boolean; messageId?: string; error?: string }> {
   const { data, error } = await client.rpc("send_vendor_conversation_message", {
-    p_conversation_id: conversationId, p_body: body,
+    p_conversation_id: conversationId, p_body: body, p_has_attachment: hasAttachment,
   });
   if (error) throw error;
   return { ok: data?.ok ?? false, messageId: data?.message_id, error: data?.error };
+}
+
+/** Sprint 1 — attaches an already-uploaded file to a vendor message. */
+export async function addVendorConversationMessageAttachment(
+  client: DbClient,
+  messageId: string,
+  file: { url: string; name: string; size?: number | null; mimeType?: string | null },
+): Promise<{ ok: boolean; attachmentId?: string; error?: string }> {
+  const { data, error } = await client.rpc("add_vendor_conversation_message_attachment", {
+    p_message_id: messageId,
+    p_file_url: file.url,
+    p_file_name: file.name,
+    p_file_size: file.size ?? null,
+    p_mime_type: file.mimeType ?? null,
+  });
+  if (error) throw error;
+  return { ok: data?.ok ?? false, attachmentId: data?.attachment_id, error: data?.error };
 }

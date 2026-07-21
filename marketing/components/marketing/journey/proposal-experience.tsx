@@ -51,8 +51,8 @@ export function ProposalExperience({ prev, next }: ProposalExperienceProps) {
           </p>
           <p className="mt-8 max-w-[65ch] text-base leading-[1.7] text-[var(--forest-sage)]/70 md:text-lg">
             Your venue has already told its story. Hello to Cheers simply helps you present it
-            clearly—with packages, pricing, imagery, and details that feel personal instead of
-            transactional.
+            clearly—with custom venue branded packages, pricing, imagery, and details that feel
+            personal instead of transactional.
           </p>
           <div className="mt-14 flex flex-wrap items-center gap-4">
             <MarketingCta />

@@ -21,6 +21,7 @@ declare
   v_owner_id        uuid := gen_random_uuid();
   v_manager_id      uuid := gen_random_uuid();
   v_venue_id        uuid := gen_random_uuid();
+  v_relationship_id uuid := gen_random_uuid();
   v_client_id       uuid := gen_random_uuid();
   v_event_id        uuid := gen_random_uuid();
   v_contract_id     uuid := gen_random_uuid();
@@ -69,13 +70,26 @@ begin
     (v_venue_id, v_owner_id,   'Jordan Rivera', 'owner@example.com',   'Owner',            'owner',   true),
     (v_venue_id, v_manager_id, 'Sam Whitfield', 'manager@example.com', 'Venue Manager',    'manager', false);
 
+  -- ── Relationship (the enduring couple↔venue entity) ─────────────────────
+  -- Every real client goes through this — created directly here (not via
+  -- create_client_atomic) but with the same relationship-first shape, since
+  -- the client insert below sets relationship_id itself. Inserting this row
+  -- also auto-provisions this couple's Conversation via
+  -- provision_conversation_for_relationship, so seed data exercises the
+  -- same path production does instead of a client with no relationship_id
+  -- (a real gap: RC2 Milestone 1 and Milestone 4 both had to route around
+  -- this before it was fixed here).
+  insert into public.venue_customer_relationships (id, venue_id, email, first_name, last_name) values (
+    v_relationship_id, v_venue_id, 'emma.carter@example.com', 'Emma', 'Carter'
+  );
+
   -- ── Client (the couple) ──────────────────────────────────────────────────
   insert into public.clients (
-    id, venue_id, status, first_name, last_name, email, phone,
+    id, venue_id, relationship_id, status, first_name, last_name, email, phone,
     partner_first_name, partner_last_name, partner_email,
     event_type, event_date, guest_count
   ) values (
-    v_client_id, v_venue_id, 'confirmed', 'Emma', 'Carter', 'emma.carter@example.com', '555-0142',
+    v_client_id, v_venue_id, v_relationship_id, 'confirmed', 'Emma', 'Carter', 'emma.carter@example.com', '555-0142',
     'Jordan', 'Lee', 'jordan.lee@example.com',
     'wedding', v_event_date, 120
   );

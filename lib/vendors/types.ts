@@ -216,6 +216,11 @@ export type EventVendorAssignment = {
   // created; never null in practice, but typed nullable defensively like
   // every other Conversation lookup in this codebase.
   conversationId:  string | null;
+  // Sprint 2 — Vendor Payment Visibility. Deliberately a summary only: what
+  // the venue owes the vendor, and whether it's been paid. No installments,
+  // no refunds — that's the couple-side payment system's shape, not this.
+  agreedFee:       number | null;
+  paymentStatus:   "pending" | "paid";
 };
 
 export type VendorWithEvents = Vendor & {
@@ -460,6 +465,11 @@ export type VendorEventDetail = {
   couplePhone:    string | null;
   checkedInAt:    string | null;
   setupCompleteAt: string | null;
+  // Sprint 2 — Vendor Payment Visibility: "what am I being paid, has it
+  // been paid." agreedFee null means the venue hasn't set one yet — the
+  // vendor's summary card simply doesn't render in that case.
+  agreedFee:      number | null;
+  paymentStatus:  "pending" | "paid";
   timeline:       import("@/lib/vendor-portal/types").VendorTimelineEntry[];
   eventTasks:     import("@/lib/vendor-portal/types").VendorTask[];
   personalTasks:  VendorPersonalTask[];

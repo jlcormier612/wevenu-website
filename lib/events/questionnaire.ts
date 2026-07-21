@@ -114,7 +114,7 @@ export async function sendQuestionnaireToCouple(
 
   // Send email if Resend is configured
   if (process.env.RESEND_API_KEY && process.env.FROM_EMAIL) {
-    await sendEmail({
+    const emailResult = await sendEmail({
       to: coupleEmail,
       subject: `Final details form for ${eventName}`,
       text: [
@@ -133,7 +133,10 @@ export async function sendQuestionnaireToCouple(
         venue.name,
       ].join("\n"),
       replyTo: venue.email ?? undefined,
-    }).catch(() => {}); // non-blocking
+    });
+    if (!emailResult.ok) {
+      return { ok: false, formUrl, message: `The form link was created, but the email couldn't be sent: ${emailResult.message}` };
+    }
   }
 
   return { ok: true, formUrl };

@@ -1,9 +1,9 @@
 /**
- * Why Hello to Cheers — belief chapter. Unique purpose: why any of this matters.
+ * Our Story — belief chapter. Unique purpose: why any of this matters.
  * Never duplicates Home. Never recreates Product, Features, Pricing, or Trust pages.
  */
 
-export const WHY_WEVENU = {
+export const OUR_STORY = {
   opening: {
     eyebrow: "Our Story",
     chapterTitle: "Hospitality First",
@@ -58,7 +58,7 @@ export const WHY_WEVENU = {
     eyebrow: "The Role of Luv",
     headline: "Hospitality will always belong to people.",
     lines: [
-      "Luv was never created to replace the people who make your venue special.",
+      "Luv was never intended to replace the people who make your venue special.",
       "She quietly notices what deserves attention, prepares thoughtful suggestions, and helps keep important details from slipping through the cracks.",
       "So your team can spend less time managing software...",
       "and more time practicing hospitality.",
@@ -84,7 +84,7 @@ export const WHY_WEVENU = {
     subhead:
       "It's built by showing up, keeping our promises, and earning the privilege to serve you month after month.",
     lines: [
-      "Venue owners trust you with life's most meaningful celebrations.",
+      "Couples and clients trust you with life's most meaningful celebrations.",
       "You trust us with your business.",
       "We take that responsibility seriously.",
       "Hello to Cheers believes trust is earned every month—through transparency, security, privacy, data ownership, and the freedom to cancel anytime.",

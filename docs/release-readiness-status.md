@@ -1,5 +1,7 @@
 # Release Readiness Status
 
+**⚠️ Superseded 2026-07-20 by `docs/release-candidate-roadmap.md`** — that document reconciles this one against RC1 (Venue Brand Experience), Lead Acquisition & Intake, and RC2 (Messaging & Conversations), all shipped after this snapshot. Kept here for history, not being re-verified line by line.
+
 **Date:** 2026-07-17
 **Status:** Current working roadmap, superseding the Gap Analysis / Scorecard sections of `docs/product-completion-roadmap.md` (kept for history, not being re-verified line by line). This document is the baseline for the refinement phase that follows.
 **Supersedes as source of truth for "where do we actually stand":** `docs/product-completion-roadmap.md` (2026-07-07 baseline), `docs/trust-risk-register.md` (2026-07-07 baseline, individual items updated since but its own summary table/count is stale — see Engineering Cleanup below).

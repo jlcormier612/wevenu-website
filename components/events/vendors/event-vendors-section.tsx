@@ -10,6 +10,7 @@ import { toast } from "sonner";
 import {
   assignVendorAction,
   removeVendorAssignmentAction,
+  setVendorAssignmentPaymentAction,
 } from "@/app/(app)/events/[id]/vendor-actions";
 import { ConversationThread } from "@/components/conversations/conversation-thread";
 import { VendorCategoryBadge } from "@/components/vendors/vendor-category-badge";
@@ -35,6 +36,69 @@ function CheckinBadge({ label, checked }: { label: string; checked: boolean }) {
         : <Circle className="h-3 w-3" />}
       {label}
     </span>
+  );
+}
+
+// ── Payment control — Sprint 2, Vendor Payment Visibility ──────────────────
+// Deliberately a summary only: what the venue owes this vendor, and
+// whether it's been paid. No installments, no refunds — that's the
+// couple-side payment system's shape, not this. Same inline-edit
+// conventions already established elsewhere (window.prompt for the fee,
+// matching floor-plan-workspace.tsx's handleRenamePlan; a pill toggle for
+// status, matching ShareForSeatingToggle) rather than a new modal.
+
+function VendorPaymentControl({ eventId, assignment }: { eventId: string; assignment: EventVendorAssignment }) {
+  const router = useRouter();
+  const [fee, setFee] = React.useState(assignment.agreedFee);
+  const [status, setStatus] = React.useState(assignment.paymentStatus);
+  const [pending, startTransition] = React.useTransition();
+
+  function save(nextFee: number | null, nextStatus: "pending" | "paid") {
+    startTransition(async () => {
+      const result = await setVendorAssignmentPaymentAction(assignment.id, eventId, nextFee, nextStatus);
+      if (result.ok) { setFee(nextFee); setStatus(nextStatus); router.refresh(); }
+      else toast.error(result.message ?? "Could not update payment.");
+    });
+  }
+
+  function handleEditFee(e: React.MouseEvent) {
+    e.preventDefault(); e.stopPropagation();
+    const input = window.prompt("Agreed fee for this vendor ($)", fee != null ? String(fee) : "");
+    if (input === null) return;
+    const trimmed = input.trim();
+    if (!trimmed) { save(null, status); return; }
+    const parsed = parseFloat(trimmed.replace(/[$,]/g, ""));
+    if (Number.isNaN(parsed) || parsed < 0) { toast.error("Enter a valid amount."); return; }
+    save(parsed, status);
+  }
+
+  function toggleStatus(e: React.MouseEvent) {
+    e.preventDefault(); e.stopPropagation();
+    save(fee, status === "paid" ? "pending" : "paid");
+  }
+
+  if (fee == null) {
+    return (
+      <button type="button" onClick={handleEditFee} disabled={pending}
+        className="text-[10px] font-medium px-2 py-0.5 rounded-full border border-border text-muted-foreground hover:border-primary/40">
+        + Add fee
+      </button>
+    );
+  }
+
+  return (
+    <div className="flex items-center gap-1">
+      <button type="button" onClick={handleEditFee} disabled={pending}
+        className="text-[10px] font-medium px-2 py-0.5 rounded-full border border-border text-foreground hover:border-primary/40">
+        ${fee.toLocaleString()}
+      </button>
+      <button type="button" onClick={toggleStatus} disabled={pending}
+        className={`text-[10px] font-medium px-2 py-0.5 rounded-full border transition-colors ${
+          status === "paid" ? "border-primary/40 bg-primary/10 text-primary" : "border-amber-300 bg-amber-50 text-amber-700"
+        }`}>
+        {pending ? "…" : status === "paid" ? "Paid" : "Pending"}
+      </button>
+    </div>
   );
 }
 
@@ -150,10 +214,11 @@ export function EventVendorsSection({
                 </div>
               </div>
 
-              {/* Row 2: Check-in status */}
-              <div className="flex items-center gap-3 pt-0.5 border-t border-border/50">
+              {/* Row 2: Check-in status + payment */}
+              <div className="flex flex-wrap items-center gap-3 pt-0.5 border-t border-border/50">
                 <CheckinBadge label="Arrived"       checked={!!a.checkedInAt} />
                 <CheckinBadge label="Setup done"    checked={!!a.setupCompleteAt} />
+                <VendorPaymentControl eventId={eventId} assignment={a} />
               </div>
 
               {/* Message panel — RC2, Milestone 3. Same ConversationThread the

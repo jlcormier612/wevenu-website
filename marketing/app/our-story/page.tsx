@@ -1,0 +1,13 @@
+import type { Metadata } from "next";
+
+import { OurStoryExperience } from "@/components/marketing/our-story-experience";
+
+export const metadata: Metadata = {
+  title: "Hospitality First",
+  description:
+    "Why Hello to Cheers exists—hospitality first, gratitude for our first friends, transparent pricing, and trust earned every month.",
+};
+
+export default function OurStoryPage() {
+  return <OurStoryExperience />;
+}

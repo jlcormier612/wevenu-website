@@ -1,5 +1,7 @@
 /**
- * Messaging application service. Server-only.
+ * COMPATIBILITY-ONLY — not deleted, no longer wired into any live UI.
+ * Messaging application service. Server-only. See lib/messaging/
+ * repository.ts's header for the full explanation — RC2, Milestone 5.
  */
 import { createClient } from "@/integrations/supabase/server";
 import { isSupabaseConfigured } from "@/lib/env";

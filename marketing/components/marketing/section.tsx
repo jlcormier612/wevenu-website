@@ -65,7 +65,7 @@ export function Section({
             {intro ? (
               <p
                 className={cn(
-                  "mt-4 max-w-[65ch] text-base leading-[1.7] md:text-lg",
+                  "mt-4 max-w-[65ch] text-base leading-[1.7] whitespace-pre-line md:text-lg",
                   onSage ? "text-[var(--true-white)]/80" : "text-[var(--forest-sage)]/75",
                   narrow && "mx-auto",
                 )}

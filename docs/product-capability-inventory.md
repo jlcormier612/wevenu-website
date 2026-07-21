@@ -1,5 +1,7 @@
 # Product Capability Inventory
 
+**⚠️ Superseded 2026-07-20 by `docs/release-candidate-roadmap.md`** — that document reconciles this one against RC1 (Venue Brand Experience), Lead Acquisition & Intake, and RC2 (Messaging & Conversations), all shipped after this snapshot (this doc predates all three — see its own "Update, 2026-07-19" note, written before RC2 even started). Kept here for history, not being re-verified line by line.
+
 **Status:** Release planning artifact. Governs the remainder of Product Completion.
 **Method:** Built from institutional knowledge — the Trust Risk Register, Release Readiness Status, Commitment Alignment Sprint, Timeline Implementation, Engineering Cleanup, and Luv Experience Completion reports, plus every architecture/assessment doc produced across this engagement — per explicit instruction, not from a fresh code inspection. Where a capability's exact current state depends on something no session has touched or re-verified recently, that's marked **Unverified** rather than assumed either way.
 **Framing:** The platform architecture is now stable. Everything below is scored as a release-candidate capability review — completeness, UX, consistency, polish — not an architecture question. Nothing here proposes a new architectural concept.

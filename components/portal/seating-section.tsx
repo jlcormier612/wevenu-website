@@ -1148,8 +1148,8 @@ export default function SeatingSection({ token }: { token: string }) {
         );
       })()}
 
-      <div className="flex flex-1 min-h-0 overflow-hidden">
-        <div className="flex-1 overflow-auto bg-muted/20 p-4">
+      <div className="flex flex-col md:flex-row flex-1 min-h-0 overflow-hidden">
+        <div className="flex-1 min-h-[280px] overflow-auto bg-muted/20 p-4">
           <svg
             viewBox={`0 0 ${canvasWidth} ${canvasHeight}`}
             style={{ width: "100%", maxWidth: canvasWidth, height: "auto" }}
@@ -1190,7 +1190,7 @@ export default function SeatingSection({ token }: { token: string }) {
           )}
         </div>
 
-        <div className="w-80 border-l border-border flex flex-col bg-card overflow-hidden">
+        <div className="h-80 md:h-auto w-full md:w-80 border-t md:border-t-0 md:border-l border-border flex flex-col bg-card overflow-hidden shrink-0">
           {selectedTable ? (
             <TableInfoPanel
               table={selectedTable}

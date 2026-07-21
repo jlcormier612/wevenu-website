@@ -59,8 +59,8 @@ export function InquiryExperience({ prev = null, next }: InquiryExperienceProps)
           </p>
           <p className="mt-8 max-w-[65ch] text-base leading-[1.7] text-[var(--forest-sage)]/70 md:text-lg">
             Every conversation begins a relationship. Whether it arrives from your website,
-            email, phone call, or referral, Hello to Cheers keeps everything together from the very
-            first moment.
+            marketing or social media site, email, phone call, or referral, Hello to Cheers brings
+            everything in, and keeps it all together, from the very first moment.
           </p>
           <div className="mt-14 flex flex-wrap items-center gap-4">
             <MarketingCta />

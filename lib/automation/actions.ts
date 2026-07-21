@@ -12,18 +12,27 @@
  * is the *same* function every interactive call site already uses, not a
  * second path — only the caller's auth context differs.
  *
- * Two actions are implemented in this phase — enough to prove the
- * registry pattern, not a library of automations (out of scope, per
- * docs/platform-event-adoption-plan.md's own Phase 1 scope):
+ * Three actions are implemented so far — not a library of automations
+ * (out of scope, per docs/platform-event-adoption-plan.md's own Phase 1
+ * scope), but proving the registry pattern generalizes:
  *   - apply_planning_template — calls lib/playbooks/repository.ts's
  *     applyPlaybookToEvent() directly.
  *   - send_notification — calls the existing create_venue_notification()
  *     Postgres function via RPC, the same one every trigger-based
  *     notification already uses.
+ *   - schedule_relationship_message (RC2, Milestone 4) — calls
+ *     lib/scheduled-messages/repository.ts's insertScheduledMessage()
+ *     directly, the same table/processor every coordinator-composed
+ *     Scheduled Send already uses. Powers the Event.Completed →
+ *     review/referral nudge without inventing a second communication
+ *     model — it's a Scheduled Send like any other, just queued by an
+ *     Automation Rule instead of a coordinator's own click.
  */
 import { createClient as createServiceClient, type SupabaseClient } from "@supabase/supabase-js";
 
 import * as playbooksRepo from "@/lib/playbooks/repository";
+import * as scheduledMessagesRepo from "@/lib/scheduled-messages/repository";
+import type { ScheduledMessageChannel } from "@/lib/scheduled-messages/types";
 import type { PlatformEvent } from "@/lib/platform-events/types";
 
 export type ActionResult = { ok: true } | { ok: false; error: string };
@@ -91,7 +100,51 @@ async function sendNotification(params: Record<string, unknown>, event: Platform
   return { ok: true };
 }
 
+/**
+ * Queues a Scheduled Send for the relationship the triggering Platform
+ * Event is about — offsetDays out from when the event fires, not
+ * immediately (a review/referral ask the moment the wedding ends reads as
+ * tone-deaf; a few days later reads as thoughtful). Reuses
+ * event.clientId, already populated on Event.Completed/Booking.Confirmed
+ * (see log_event_status_changed()), rather than re-fetching the event row.
+ */
+async function scheduleRelationshipMessage(params: Record<string, unknown>, event: PlatformEvent): Promise<ActionResult> {
+  if (!event.clientId) return { ok: false, error: "This Platform Event has no client." };
+
+  const client = getServiceClient();
+  if (!client) return { ok: false, error: "Service role not configured." };
+
+  const { data: clientRow, error: fetchError } = await client
+    .from("clients").select("relationship_id").eq("id", event.clientId).maybeSingle();
+  if (fetchError) return { ok: false, error: fetchError.message };
+  const relationshipId = (clientRow as { relationship_id: string | null } | null)?.relationship_id;
+  if (!relationshipId) return { ok: false, error: "Client has no relationship." };
+
+  const channel = (params.channel as ScheduledMessageChannel) ?? "email";
+  const body = typeof params.body === "string" ? params.body : "";
+  if (!body.trim()) return { ok: false, error: "Missing required action param: body." };
+  const offsetDays = typeof params.offsetDays === "number" ? params.offsetDays : 3;
+  const scheduledFor = new Date(Date.now() + offsetDays * 24 * 60 * 60 * 1000).toISOString();
+
+  try {
+    await scheduledMessagesRepo.insertScheduledMessage(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      client as any,
+      event.venueId,
+      {
+        relationshipId, templateId: null, channel,
+        emailSubject: typeof params.subject === "string" ? params.subject : "",
+        body, scheduledFor,
+      },
+    );
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "Unknown error scheduling message." };
+  }
+}
+
 export const ACTION_REGISTRY: Record<string, ActionHandler> = {
   apply_planning_template: applyPlanningTemplate,
   send_notification: sendNotification,
+  schedule_relationship_message: scheduleRelationshipMessage,
 };

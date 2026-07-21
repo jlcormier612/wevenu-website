@@ -1,12 +1,17 @@
 "use client";
 
 /**
- * LegacyMessagingInbox — the couple-portal-chat-only inbox this venue used
- * before Program 2 Phase 2B. Rendered only for venues with
- * conversationExperienceEnabled = false (see page.tsx). Untouched during
- * the staged rollout — kept exactly as-is so a venue's experience doesn't
- * change until its flag flips, and flipping back is a safe, real rollback
- * per docs/conversation-experience-cutover.md.
+ * COMPATIBILITY-ONLY — not deleted, not wired into any live route.
+ *
+ * LegacyMessagingInbox — the couple-portal-chat-only inbox every venue used
+ * before Conversations. RC2, Milestone 5: conversation_experience_enabled
+ * now defaults true for every venue with no toggle UI ever built, so
+ * app/(app)/messaging/page.tsx no longer renders this component at all.
+ * Kept in the tree (not deleted) as a historical/rollback reference only —
+ * see docs/rc2-messaging-conversations-final-report.md's compatibility
+ * surface inventory. Do not add new features here; the couple_threads/
+ * couple_messages tables it reads are compatibility data, not active
+ * architecture.
  */
 
 import * as React from "react";

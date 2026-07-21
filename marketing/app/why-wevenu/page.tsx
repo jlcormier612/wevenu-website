@@ -1,13 +1,16 @@
-import type { Metadata } from "next";
+"use client";
 
-import { WhyWevenuExperience } from "@/components/marketing/why-wevenu-experience";
+import { useEffect } from "react";
 
-export const metadata: Metadata = {
-  title: "Hospitality First",
-  description:
-    "Why Hello to Cheers exists—hospitality first, gratitude for our first friends, transparent pricing, and trust earned every month.",
-};
+/**
+ * Legacy Wevenu path — keep so old bookmarks and links still resolve.
+ * Preserves hash fragments (e.g. #our-first-friends).
+ */
+export default function WhyWevenuRedirectPage() {
+  useEffect(() => {
+    const hash = window.location.hash;
+    window.location.replace(`/our-story${hash}`);
+  }, []);
 
-export default function WhyWevenuPage() {
-  return <WhyWevenuExperience />;
+  return null;
 }

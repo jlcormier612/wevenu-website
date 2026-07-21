@@ -19,7 +19,6 @@ import { getTemplates as getFloorPlanTemplates } from "@/lib/floor-plan-template
 import { getGuestReadinessSummary } from "@/lib/guests/service";
 import { getUsageForEvent } from "@/lib/inventory/service";
 import { getInvoices } from "@/lib/invoices/service";
-import { getThreadsForEntity } from "@/lib/messaging/service";
 import {
   getEventPlaybookApplications, getEventTaskContextLinksForEvent, getEventTaskReadinessByKind,
   getEventTasks, getTaskContactsByStaffIds, getTemplatesForLibrary,
@@ -83,14 +82,14 @@ export default async function BookingWorkspacePage({ params }: Props) {
   const [
     event, availableVendors, allInvoices, documents, questionnaire, eventTasks, allPlaybookTemplates,
     playbookApplications, readinessByKind, contextLinksByTask, timelineEntries, venue, vendorRecommendations,
-    threads, spaces, contractTemplates, allContracts, timelineTemplates,
+    spaces, contractTemplates, allContracts, timelineTemplates,
     timelineSections, timelineLinksByEntry, timelineAttachmentsByEntry, timelineRelatedLinksByEntry,
     floorPlanTemplates, inventoryUsage,
   ] = await Promise.all([
     getEvent(eventId), getVendors(), getInvoices({}), getDocuments("event", eventId), getQuestionnaire(eventId),
     getEventTasks(eventId), getTemplatesForLibrary(), getEventPlaybookApplications(eventId), getEventTaskReadinessByKind(eventId),
     getEventTaskContextLinksForEvent(eventId), getTimelineEntries(eventId), getCurrentVenue(), getEventRecommendations(eventId),
-    getThreadsForEntity("client", id), getSpaces(), getContractTemplates(), getContracts(), getTimelineTemplates(),
+    getSpaces(), getContractTemplates(), getContracts(), getTimelineTemplates(),
     getSections(eventId), getEntryLinksForEvent(eventId), getEntryAttachmentsForEvent(eventId), getRelatedLinksForEvent(eventId),
     getFloorPlanTemplates(), getUsageForEvent(eventId),
   ]);
@@ -125,9 +124,8 @@ export default async function BookingWorkspacePage({ params }: Props) {
 
   let linkableConversationMessages: LinkableConversationMessage[] = [];
   let conversationMessages: ConversationMessage[] = [];
-  const conversationExperienceEnabled = venue?.conversationExperienceEnabled ?? false;
   let conversationId: string | null = null;
-  if (conversationExperienceEnabled && cl?.relationship_id) {
+  if (cl?.relationship_id) {
     conversationId = await getConversationIdForRelationship(cl.relationship_id);
     if (conversationId) {
       const conversation = await getConversation(conversationId);
@@ -167,7 +165,7 @@ export default async function BookingWorkspacePage({ params }: Props) {
     readinessByKind, timelineEntries, guestSummary, seatingSummary,
     floorPlans: event.floorPlans, inventoryUsage, requests: eventRequests,
     contracts, invoices: eventInvoices, documents,
-    conversationExperienceEnabled, conversationMessages, threads,
+    conversationMessages,
   });
 
   return (
@@ -183,7 +181,7 @@ export default async function BookingWorkspacePage({ params }: Props) {
       taskContacts={taskContacts} linkableDocuments={documents} linkableTimelineEntries={timelineEntries}
       linkableConversationMessages={linkableConversationMessages} vendorRecommendations={vendorRecommendations}
       portalToken={portalToken}
-      threads={threads} conversationExperienceEnabled={conversationExperienceEnabled} conversationId={conversationId}
+      conversationId={conversationId}
       conversationMessages={conversationMessages} spaceName={spaceName} clientStatus={client.status}
       contractTemplates={contractTemplates} contracts={contracts}
       floorPlanTemplates={floorPlanTemplates} spaces={spaces}

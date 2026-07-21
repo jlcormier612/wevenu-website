@@ -46,9 +46,8 @@ import { EventOrderPanel } from "@/components/event-orders/event-order-panel";
 import type { EventOrderWithDetails } from "@/lib/event-orders/types";
 import type { InventoryItem } from "@/lib/inventory/types";
 import type { Package } from "@/lib/packages/types";
-import { MessagesSection } from "@/components/messaging/messages-section";
 import { RelationshipConversationTab } from "@/components/conversations/relationship-conversation-tab";
-import type { ThreadWithMessages } from "@/lib/messaging/types";
+import { ActivityTimelineView } from "@/components/conversations/activity-timeline";
 import type { ConversationMessage } from "@/lib/conversations/types";
 import type { ClientStatus } from "@/lib/clients/types";
 import { Button } from "@/components/ui/button";
@@ -233,8 +232,6 @@ export function EventDetail({
   linkableConversationMessages = [],
   vendorRecommendations = [],
   portalToken = null,
-  threads = [],
-  conversationExperienceEnabled = false,
   conversationId = null,
   conversationMessages = [],
   spaceName = null,
@@ -276,8 +273,6 @@ export function EventDetail({
   linkableConversationMessages?: LinkableConversationMessage[];
   portalToken?: string | null;
   vendorRecommendations?: EventVendorRecommendation[];
-  threads?: ThreadWithMessages[];
-  conversationExperienceEnabled?: boolean;
   conversationId?: string | null;
   conversationMessages?: ConversationMessage[];
   spaceName?: string | null;
@@ -288,8 +283,7 @@ export function EventDetail({
   spaces?: VenueSpace[];
   inventoryUsage?: import("@/lib/inventory/types").InventoryUsage[];
   teamMembers?: import("@/lib/team/types").StaffMember[];
-  // Booking Financial Architecture Phase 2 — gated by venues.event_order_enabled,
-  // same staged-rollout posture as conversationExperienceEnabled above.
+  // Booking Financial Architecture Phase 2 — gated by venues.event_order_enabled.
   eventOrderEnabled?: boolean;
   eventOrder?: EventOrderWithDetails | null;
   packages?: Package[];
@@ -475,12 +469,8 @@ export function EventDetail({
             Payments
             {invoices.length > 0 && <span className="ml-1 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground">{invoices.length}</span>}
           </TabsTrigger>
-          <TabsTrigger value="messages">
-            {conversationExperienceEnabled ? "Conversation" : "Messages"}
-            {!conversationExperienceEnabled && threads.reduce((s, t) => s + t.messageCount, 0) > 0 && (
-              <span className="ml-1 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground">{threads.reduce((s, t) => s + t.messageCount, 0)}</span>
-            )}
-          </TabsTrigger>
+          <TabsTrigger value="messages">Conversation</TabsTrigger>
+          <TabsTrigger value="activity">Activity</TabsTrigger>
           <TabsTrigger value="notes">
             Notes
             {event.notes.length > 0 && (
@@ -513,8 +503,7 @@ export function EventDetail({
               invoices={invoices}
               timeline={event.timeline ?? []}
               vendorAssignments={event.vendorAssignments} vendorRecommendations={vendorRecommendations}
-              conversationExperienceEnabled={conversationExperienceEnabled}
-              conversationMessages={conversationMessages} threads={threads}
+              conversationMessages={conversationMessages}
               documents={documents}
             />
           )}
@@ -777,31 +766,20 @@ export function EventDetail({
 
         {/* ── Messages ─────────────────────────────────────────────── */}
         <TabsContent value="messages">
-          {conversationExperienceEnabled ? (
-            <RelationshipConversationTab conversationId={conversationId} />
-          ) : (
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base">Messages</CardTitle>
-                <CardDescription>Email history with this client. All correspondence is logged here automatically.</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <MessagesSection
-                  entityType="client"
-                  entityId={event.clientId ?? ""}
-                  entityEmail={coupleEmail}
-                  entityName={event.clientName ?? ""}
-                  initialThreads={threads}
-                  questionnaireInfo={questionnaire ? {
-                    eventId: event.id,
-                    eventName: event.name,
-                    accessKey: questionnaire.accessKey,
-                    status: questionnaire.status,
-                  } : null}
-                />
-              </CardContent>
-            </Card>
-          )}
+          <RelationshipConversationTab conversationId={conversationId} />
+        </TabsContent>
+
+        {/* ── Activity — RC2, Milestone 4: the relationship's audit trail ── */}
+        <TabsContent value="activity">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Activity</CardTitle>
+              <CardDescription>What happened, in order — the Conversation tab has what was said.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ActivityTimelineView leadId={originatingLeadId} clientId={event.clientId} />
+            </CardContent>
+          </Card>
         </TabsContent>
 
         {/* ── Notes ──────────────────────────────────────────────────── */}

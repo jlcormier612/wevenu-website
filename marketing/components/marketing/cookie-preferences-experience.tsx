@@ -8,7 +8,7 @@ type CookiePrefs = {
   marketing: boolean;
 };
 
-const STORAGE_KEY = "wevenu-cookie-prefs";
+const STORAGE_KEY = "hellotocheers-cookie-prefs";
 
 const DEFAULT_PREFS: CookiePrefs = {
   necessary: true,

@@ -6,16 +6,16 @@ import { EDITORIAL_FRAME, EDITORIAL_IMAGE } from "@/lib/marketing/rhythm";
 import { cn } from "@/lib/utils";
 
 type OurFirstFriendsProps = {
-  /** When true, render letter + reserved invitation only. */
+  /** When true, render letter only. */
   letterOnly?: boolean;
-  /** When true, render program + eligibility only. */
+  /** When true, render legacy program + eligibility only. */
   programOnly?: boolean;
   className?: string;
 };
 
 /**
  * Gratitude editorial — Our First Friends.
- * Quiet magazine lettering. Lives on Why Hello to Cheers; program block also on Pricing.
+ * Quiet magazine lettering. Lives on Our Story.
  */
 export function OurFirstFriends({
   letterOnly = false,
@@ -42,97 +42,71 @@ export function OurFirstFriendsExperience() {
           A letter from Hello to Cheers
         </p>
       </div>
-      <OurFirstFriends />
+      <OurFirstFriends letterOnly />
     </div>
   );
 }
 
 function FirstFriendsLetter() {
-  const { letter, reserved } = OUR_FIRST_FRIENDS;
+  const { letter } = OUR_FIRST_FRIENDS;
 
   return (
-    <>
-      {/* ── Letter ── */}
-      <section className="px-6 py-28 md:py-36">
-        <div className="mx-auto max-w-3xl">
-          <h2 className="font-heading text-[2.52rem] font-medium leading-[1.16] text-[var(--forest-sage)] md:text-[4.2rem]">
-            {letter.title}
-          </h2>
+    <section className="px-6 py-28 md:py-36">
+      <div className="mx-auto max-w-3xl">
+        <h2 className="font-heading text-[2.52rem] font-medium leading-[1.16] text-[var(--forest-sage)] md:text-[4.2rem]">
+          {letter.title}
+        </h2>
 
-          <div className={`relative mt-14 aspect-[16/10] w-full md:mt-16 md:aspect-[2.1/1] ${EDITORIAL_FRAME}`}>
-            <Image
-              src={FILM.firstFriendsMemory}
-              alt="Printed memories, handwritten thank-yous, and a journal of ideas and plans — relationships kept"
-              fill
-              className={EDITORIAL_IMAGE}
-              sizes="(max-width:768px) 100vw, 720px"
-            />
-          </div>
-
-          <div className="mt-14 space-y-7 text-base leading-[1.7] text-[var(--forest-sage)]/75 md:mt-16 md:space-y-8 md:text-lg max-w-[65ch]">
-            {letter.paragraphs.map((paragraph, i) => {
-              const isBelief =
-                paragraph.startsWith("Venue software should make hospitality");
-              const isLeadIn =
-                paragraph === "While the technology is entirely new, the philosophy remains the same:";
-
-              if (isBelief) {
-                return (
-                  <p
-                    key={paragraph}
-                    className="font-heading text-2xl leading-[1.35] text-[var(--forest-sage)] md:text-3xl"
-                  >
-                    {paragraph}
-                  </p>
-                );
-              }
-
-              if (isLeadIn) {
-                return (
-                  <p key={paragraph} className="pt-2">
-                    {paragraph}
-                  </p>
-                );
-              }
-
-              // Extra breath before the closing gratitude
-              if (paragraph.startsWith("If we had the opportunity to work together before")) {
-                return (
-                  <p key={paragraph} className="pt-6">
-                    {paragraph}
-                  </p>
-                );
-              }
-
-              return <p key={`${i}-${paragraph.slice(0, 24)}`}>{paragraph}</p>;
-            })}
-          </div>
+        <div className={`relative mt-14 aspect-[16/10] w-full md:mt-16 md:aspect-[2.1/1] ${EDITORIAL_FRAME}`}>
+          <Image
+            src={FILM.firstFriendsMemory}
+            alt="Printed memories, handwritten thank-yous, and a journal of ideas and plans — relationships kept"
+            fill
+            className={EDITORIAL_IMAGE}
+            sizes="(max-width:768px) 100vw, 720px"
+          />
         </div>
-      </section>
 
-      {/* ── A Place Reserved For You ── */}
-      <section className="border-y border-[var(--taupe-medium)]/40 bg-[var(--linen)] px-6 py-28 md:py-36">
-        <div className="mx-auto max-w-6xl">
-          <h3 className="max-w-3xl font-heading text-3xl font-medium text-[var(--forest-sage)] md:text-5xl">
-            {reserved.title}
-          </h3>
-          <div className="mt-10 space-y-6 text-base leading-[1.7] text-[var(--forest-sage)]/75 md:text-lg">
-            {reserved.paragraphs.map((paragraph) => (
-              <p
-                key={paragraph}
-                className={
-                  paragraph.startsWith("Some relationships are worth continuing")
-                    ? "pt-4 font-heading text-xl leading-snug text-[var(--forest-sage)] md:text-2xl"
-                    : undefined
-                }
-              >
-                {paragraph}
-              </p>
-            ))}
-          </div>
+        <div className="mt-14 space-y-7 text-base leading-[1.7] text-[var(--forest-sage)]/75 md:mt-16 md:space-y-8 md:text-lg max-w-[65ch]">
+          {letter.paragraphs.map((paragraph, i) => {
+            const isBelief = paragraph.startsWith(
+              "Venue software should make hospitality",
+            );
+            const isLeadIn =
+              paragraph === "While the technology is entirely new, the philosophy remains the same:";
+
+            if (isBelief) {
+              return (
+                <p
+                  key={paragraph}
+                  className="font-heading text-2xl leading-[1.35] text-[var(--forest-sage)] md:text-3xl"
+                >
+                  {paragraph}
+                </p>
+              );
+            }
+
+            if (isLeadIn) {
+              return (
+                <p key={paragraph} className="pt-2">
+                  {paragraph}
+                </p>
+              );
+            }
+
+            if (paragraph.startsWith("If we had the opportunity to work together before")) {
+              return (
+                <p key={paragraph} className="pt-6">
+                  {paragraph}
+                </p>
+              );
+            }
+
+            return <p key={`${i}-${paragraph.slice(0, 24)}`}>{paragraph}</p>;
+          })}
         </div>
-      </section>
-    </>
+      </div>
+    </section>
   );
 }
 
@@ -141,7 +115,6 @@ function FoundingVenueProgram() {
 
   return (
     <>
-      {/* ── Founding Venue Program ── */}
       <section className="px-6 py-28 md:py-36">
         <div className="mx-auto max-w-3xl">
           <h2 className="font-heading text-[2.1rem] font-medium text-[var(--forest-sage)] md:text-[3.36rem]">
@@ -173,7 +146,6 @@ function FoundingVenueProgram() {
         </div>
       </section>
 
-      {/* ── Eligibility ── */}
       <section className="border-t border-[var(--taupe-medium)]/40 bg-[var(--linen)] px-6 py-28 md:py-36">
         <div className="mx-auto max-w-3xl">
           <h3 className="font-heading text-2xl text-[var(--forest-sage)] md:text-4xl">

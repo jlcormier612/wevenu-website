@@ -255,10 +255,31 @@
   filter: drop-shadow(0 0 4px color-mix(in srgb, var(--celebration-gold) 35%, transparent));
 }
 
+/* Trust page — Security item entrance (once, staggered) */
+.trust-security-card {
+  opacity: 0;
+  transform: translateY(12px);
+  transition:
+    opacity 400ms ease-out,
+    transform 400ms ease-out;
+}
+
+.trust-security-card.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
 @media (prefers-reduced-motion: reduce) {
   .celebration-whisper {
     filter: none;
     opacity: 0.36;
+  }
+
+  .trust-security-card,
+  .trust-security-card.is-visible {
+    opacity: 1;
+    transform: none;
+    transition: none;
   }
 }
 

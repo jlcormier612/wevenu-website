@@ -25,12 +25,11 @@ import type { LuvSettings } from "@/lib/luv/settings";
 import { computeInterestFromSignals } from "@/lib/leads/signals";
 import { generateMomentumLanguage } from "@/lib/leads/momentum";
 import { computeEventTaskReadinessByKind } from "@/lib/playbooks/repository";
-import { computePlanningReadiness, computeTimelineReadiness, computeCommunicationReadiness } from "@/lib/readiness/compute";
+import { computePlanningReadiness, computeTimelineReadiness } from "@/lib/readiness/compute";
 import { getRequests } from "@/lib/requests/service";
 import type { Request as PlatformRequest } from "@/lib/requests/types";
 import { computeWebsiteReadiness } from "@/lib/wedding-website/readiness";
 import type { TimelineEntry } from "@/lib/timeline/types";
-import type { ThreadWithMessages } from "@/lib/messaging/types";
 
 type DbClient = Awaited<ReturnType<typeof createClient>>;
 
@@ -467,7 +466,7 @@ export async function getLuvObservations(
   // readiness percentage from a second, independent event_tasks query.
   const { data: planningCandidateEvents } = await supabase
     .from("events")
-    .select("id, name, event_date, clients(first_name, partner_first_name)")
+    .select("id, name, event_date, client_id, clients(first_name, partner_first_name)")
     .eq("venue_id", venueId)
     .not("status", "in", "(cancelled,complete)")
     .gte("event_date", today)
@@ -488,9 +487,21 @@ export async function getLuvObservations(
   // that model exists to prevent. get_event_timeline_merged (the real
   // coordinator-facing read everywhere else in the app) already draws this
   // same line; this query draws it too, rather than bypassing it.
-  const [timelineStatusRes, threadCountsRes] = await Promise.all([
+  // RC2, Milestone 5 — conversation_messages counts join in too, batched the
+  // same way as legacy threadCounts below (one venue-wide query, grouped in
+  // JS), now that every venue defaults onto Conversations and new messages
+  // stop landing in message_threads at all. Two extra queries (conversation
+  // message rows + a client→relationship map) replace the "conversation
+  // resolution this venue-wide pass doesn't do" limitation this block used
+  // to defer on — without it, this observation would keep reading a
+  // message_threads count that stops growing for every venue, producing an
+  // increasingly false "no messages logged yet" as real activity moves to
+  // conversation_messages.
+  const [timelineStatusRes, threadCountsRes, conversationMessageRes, clientRelationshipRes] = await Promise.all([
     supabase.from("timeline_entries").select("event_id, status").eq("venue_id", venueId).eq("owner", "venue"),
     supabase.from("message_threads").select("event_id, message_count").eq("venue_id", venueId),
+    supabase.from("conversation_messages").select("conversations!inner(relationship_id)").eq("venue_id", venueId),
+    supabase.from("clients").select("id, relationship_id").eq("venue_id", venueId).not("relationship_id", "is", null),
   ]);
   const timelineByEvent = new Map<string, Pick<TimelineEntry, "status">[]>();
   for (const r of (timelineStatusRes.data ?? []) as { event_id: string; status: TimelineEntry["status"] }[]) {
@@ -504,8 +515,21 @@ export async function getLuvObservations(
     if (!r.event_id) continue;
     threadCountByEvent.set(r.event_id, (threadCountByEvent.get(r.event_id) ?? 0) + r.message_count);
   }
+  const relationshipIdByClientId = new Map<string, string>();
+  for (const c of (clientRelationshipRes.data ?? []) as { id: string; relationship_id: string | null }[]) {
+    if (c.relationship_id) relationshipIdByClientId.set(c.id, c.relationship_id);
+  }
+  const conversationMessageCountByRelationship = new Map<string, number>();
+  type ConversationMessageJoinRow = { conversations: { relationship_id: string | null } | { relationship_id: string | null }[] | null };
+  for (const r of (conversationMessageRes.data ?? []) as ConversationMessageJoinRow[]) {
+    const rel = Array.isArray(r.conversations) ? r.conversations[0] : r.conversations;
+    if (!rel?.relationship_id) continue;
+    conversationMessageCountByRelationship.set(
+      rel.relationship_id, (conversationMessageCountByRelationship.get(rel.relationship_id) ?? 0) + 1,
+    );
+  }
 
-  for (const ev of (planningCandidateEvents ?? []) as { id: string; name: string; event_date: string; clients?: { first_name?: string | null; partner_first_name?: string | null } | null }[]) {
+  for (const ev of (planningCandidateEvents ?? []) as { id: string; name: string; event_date: string; client_id: string | null; clients?: { first_name?: string | null; partner_first_name?: string | null } | null }[]) {
     const readinessByKind = await computeEventTaskReadinessByKind(supabase, venueId, ev.id);
     const du = Math.ceil((new Date(ev.event_date + "T12:00:00").getTime() - Date.now()) / 86_400_000);
     const name = [ev.clients?.first_name, ev.clients?.partner_first_name].filter(Boolean).join(" & ") || ev.name;
@@ -564,15 +588,21 @@ export async function getLuvObservations(
     }
 
     // Communication — genuinely new coverage: nothing today tells a
-    // coordinator an approaching event has zero logged contact.
-    // conversationExperienceEnabled is deliberately left false here — the
-    // richer unread-count signal needs a per-relationship conversation
-    // resolution this venue-wide pass doesn't do; legacy message-count is
-    // the bounded, honest signal available without it.
+    // coordinator an approaching event has zero logged contact. Combines
+    // legacy message_threads counts with conversation_messages counts
+    // (via the event's client → relationship) — RC2, Milestone 5: every
+    // venue now defaults onto Conversations, so a signal built from
+    // message_threads alone would increasingly under-report real activity
+    // as new messages stop landing there. This doesn't need
+    // computeCommunicationReadiness's fuller unread-aware logic (that
+    // needs a real per-message read state this venue-wide pass doesn't
+    // have) — "has any contact been logged at all" is a plain count.
     if (du <= 30) {
-      const threads = [{ messageCount: threadCountByEvent.get(ev.id) ?? 0 }] as ThreadWithMessages[];
-      const communication = computeCommunicationReadiness({ conversationExperienceEnabled: false, conversationMessages: [], threads });
-      if (communication.status === "not_started") {
+      const relationshipId = ev.client_id ? relationshipIdByClientId.get(ev.client_id) : undefined;
+      const totalMessageCount =
+        (threadCountByEvent.get(ev.id) ?? 0) +
+        (relationshipId ? conversationMessageCountByRelationship.get(relationshipId) ?? 0 : 0);
+      if (totalMessageCount === 0) {
         observations.push({
           id: `communication-none-${ev.id}`,
           kind: "fact",

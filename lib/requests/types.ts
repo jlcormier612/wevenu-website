@@ -24,7 +24,11 @@ export type RequestVisibility = "venue_only" | "shared" | "completed";
 // null means "created directly" (no originating feature, e.g. from the
 // internal Request Center).
 export type RequestSourceFeature =
-  | "planning" | "timeline" | "documents" | "contracts" | "floor_plans" | "guests" | "manual";
+  | "planning" | "timeline" | "documents" | "contracts" | "floor_plans" | "guests" | "manual"
+  // RC2, Milestone 4 — created from within a Conversation thread; source_id
+  // is the conversation's id (not a specific message), so "Open Related
+  // Item" lands back on the discussion, not one line out of context.
+  | "conversation";
 
 export type Request = {
   id: string;

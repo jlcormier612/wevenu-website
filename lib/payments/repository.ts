@@ -213,7 +213,20 @@ export async function updateLineItem(client: DbClient, venueId: string, itemId: 
   if (error) throw error;
 }
 
-export async function markItemPaid(client: DbClient, venueId: string, itemId: string, input: MarkPaidInput): Promise<void> {
+export async function markItemPaid(
+  client: DbClient,
+  venueId: string,
+  itemId: string,
+  input: MarkPaidInput,
+): Promise<{ ok: true } | { ok: false; message: string }> {
+  const { data: item } = await client.from("payment_line_items")
+    .select("status").eq("id", itemId).eq("venue_id", venueId).maybeSingle<{ status: string }>();
+  if (item?.status === "paid") {
+    return { ok: false, message: "This payment has already been marked as received." };
+  }
+  if (item?.status === "cancelled") {
+    return { ok: false, message: "This payment was cancelled and can't be marked as received." };
+  }
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { error } = await (client.from("payment_line_items") as any)
     .update({
@@ -225,6 +238,7 @@ export async function markItemPaid(client: DbClient, venueId: string, itemId: st
       notes: input.notes.trim() || null,
     }).eq("id", itemId).eq("venue_id", venueId);
   if (error) throw error;
+  return { ok: true };
 }
 
 /**

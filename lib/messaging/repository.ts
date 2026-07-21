@@ -1,3 +1,20 @@
+/**
+ * COMPATIBILITY-ONLY — not deleted, no longer wired into any live UI.
+ *
+ * message_threads/messages (the "entity messaging" system — new thread per
+ * send, wrong ownership model per docs/rc2-messaging-conversations-
+ * architecture-assessment.md). RC2, Milestone 5: components/events/
+ * event-detail.tsx and components/leads/lead-detail.tsx both dropped their
+ * legacy Messages tab branch, which was this repository module's only real
+ * caller (via components/messaging/messages-section.tsx, also now
+ * orphaned). The underlying tables themselves are NOT frozen — inbound
+ * email replies (app/api/messaging/inbound/route.ts) and the mark-
+ * questionnaire-opened/submitted system messages still write there
+ * directly (not through this file) and mirror forward into
+ * conversation_messages via a trigger — but no code should call the
+ * functions in THIS file anymore. Do not add new features here.
+ * See docs/rc2-messaging-conversations-final-report.md.
+ */
 import { createClient } from "@/integrations/supabase/server";
 import type {
   ComposeInput,

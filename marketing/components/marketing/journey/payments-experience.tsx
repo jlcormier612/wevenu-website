@@ -57,9 +57,9 @@ export function PaymentsExperience({ prev, next }: PaymentsExperienceProps) {
             Money stays connected to the celebration.
           </p>
           <p className="mt-8 max-w-[65ch] text-base leading-[1.7] text-[var(--forest-sage)]/70 md:text-lg">
-            Deposits, payment schedules, invoices, and balances all stay connected to the same
-            booking—so everyone always knows where things stand without chasing spreadsheets or
-            email threads.
+            Deposits, auto-generated invoices, flexible payment schedules, balances and built-in
+            reminders all stay connected to the same booking—so everyone always knows where things
+            stand without spreadsheets, disjointed email threads or chasing payments.
           </p>
           <div className="mt-14 flex flex-wrap items-center gap-4">
             <MarketingCta />

@@ -13,7 +13,7 @@
 import * as React from "react";
 import Link from "next/link";
 import {
-  ArrowLeft, Bot, Calendar, Clock, FileText, ListTodo, Mail, MessageSquare, Paperclip, Phone, RotateCcw, Send, Smartphone, StickyNote, User, Voicemail, Workflow, X,
+  ArrowLeft, Bot, Calendar, CheckCircle2, Clock, FileText, ListTodo, Mail, MessageSquare, Paperclip, Phone, RotateCcw, Send, Smartphone, StickyNote, User, Voicemail, Workflow, X,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -22,6 +22,7 @@ import {
   getScheduledForConversationAction, scheduleMessageAction, sendConversationMessageAction, setConversationAssignedStaffAction,
 } from "@/app/(app)/messaging/actions";
 import { addTaskAction } from "@/app/(app)/leads/[id]/actions";
+import { createRequestAction } from "@/app/(app)/requests/actions";
 import { MessageTimelinePopover } from "@/components/messaging/message-timeline-popover";
 import type { ConversationChannel, ConversationMessage, ConversationSummary } from "@/lib/conversations/types";
 import type { SequenceEnrollment } from "@/lib/message-sequences/types";
@@ -238,7 +239,7 @@ function defaultScheduleValue(): string {
 const NO_ASSIGNEE = "__none__";
 
 export function ConversationThread({
-  conversationId, onBack, showHeader = true, summary, teamMembers = [],
+  conversationId, onBack, showHeader = true, summary, teamMembers = [], initialBody, initialSubject,
 }: {
   conversationId: string;
   onBack?: () => void;
@@ -251,11 +252,19 @@ export function ConversationThread({
    */
   summary?: ConversationSummary;
   teamMembers?: StaffMember[];
+  /**
+   * RC2, Milestone 5 — seeds the compose box (e.g. the Luv→Messages "Use
+   * this draft" bridge in lead-detail.tsx). A subject implies email intent,
+   * so the channel defaults to email when one is present, same as the
+   * legacy MessagesSection this replaces.
+   */
+  initialBody?: string;
+  initialSubject?: string;
 }) {
   const [messages, setMessages] = React.useState<ConversationMessage[] | null>(null);
-  const [body, setBody] = React.useState("");
-  const [emailSubject, setEmailSubject] = React.useState("");
-  const [channel, setChannel] = React.useState<ConversationChannel>("portal");
+  const [body, setBody] = React.useState(initialBody ?? "");
+  const [emailSubject, setEmailSubject] = React.useState(initialSubject ?? "");
+  const [channel, setChannel] = React.useState<ConversationChannel>(initialSubject ? "email" : "portal");
   const [sending, setSending] = React.useState(false);
   const bottomRef = React.useRef<HTMLDivElement>(null);
 
@@ -273,6 +282,13 @@ export function ConversationThread({
   const [schedulePanelOpen, setSchedulePanelOpen] = React.useState(false);
   const [scheduledFor, setScheduledFor] = React.useState(defaultScheduleValue);
   const [scheduling, setScheduling] = React.useState(false);
+
+  // RC2, Milestone 4 — "Create Request" from this Conversation. source_id
+  // is the conversation's id (not one specific message), so the Request's
+  // "Open Related Item" always lands back on the discussion.
+  const [requestFormOpen, setRequestFormOpen] = React.useState(false);
+  const [requestTitle, setRequestTitle] = React.useState("");
+  const [creatingRequest, setCreatingRequest] = React.useState(false);
 
   // Initializer-only — the Inbox remounts this component (key={conversationId})
   // whenever the selected conversation changes, so this never needs to
@@ -416,6 +432,27 @@ export function ConversationThread({
     else toast.error(result.message ?? "Could not create the task.");
   }
 
+  async function createRequestFromConversation() {
+    const title = requestTitle.trim();
+    if (!title || !summary?.clientId || creatingRequest) return;
+    setCreatingRequest(true);
+    const result = await createRequestAction({
+      clientId: summary.clientId,
+      title,
+      requestType: "information",
+      sourceFeature: "conversation",
+      sourceId: conversationId,
+    });
+    setCreatingRequest(false);
+    if (result.ok) {
+      toast.success("Request created.");
+      setRequestTitle("");
+      setRequestFormOpen(false);
+    } else {
+      toast.error(result.error ?? "Could not create the request.");
+    }
+  }
+
   async function confirmSchedule() {
     const text = body.trim();
     if (!text || scheduling) return;
@@ -493,6 +530,39 @@ export function ConversationThread({
                   <Calendar className="h-3 w-3" /> Booking
                 </Link>
               )}
+              {/* RC2, Milestone 4 — Requests need a Client, not just a Lead
+                  (requests.client_id is not-null), so this only appears once
+                  the relationship has booked. */}
+              {summary.clientId && (
+                <button
+                  type="button"
+                  onClick={() => setRequestFormOpen((v) => !v)}
+                  className="flex items-center gap-1 text-muted-foreground hover:text-foreground"
+                >
+                  <CheckCircle2 className="h-3 w-3" /> Create Request
+                </button>
+              )}
+            </div>
+          )}
+          {requestFormOpen && (
+            <div className="flex items-center gap-2 border-t border-border/60 px-4 py-2">
+              <input
+                type="text"
+                autoFocus
+                value={requestTitle}
+                onChange={(e) => setRequestTitle(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter") void createRequestFromConversation(); if (e.key === "Escape") setRequestFormOpen(false); }}
+                placeholder="Request title — e.g. Confirm final guest count"
+                className="h-8 flex-1 rounded-lg border border-border bg-background px-2 text-xs"
+              />
+              <button type="button" onClick={() => void createRequestFromConversation()} disabled={!requestTitle.trim() || creatingRequest}
+                className="h-8 shrink-0 rounded-lg bg-primary px-3 text-xs font-medium text-primary-foreground disabled:opacity-40">
+                {creatingRequest ? "Creating…" : "Create"}
+              </button>
+              <button type="button" onClick={() => setRequestFormOpen(false)}
+                className="h-8 shrink-0 rounded-lg px-2 text-xs text-muted-foreground hover:text-foreground">
+                Cancel
+              </button>
             </div>
           )}
         </div>

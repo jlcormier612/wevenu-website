@@ -11,6 +11,6 @@ export default async function VendorEventsPage() {
   const vendorUser = await getVendorUser();
   if (!vendorUser) redirect("/login");
 
-  const events = await getVendorEvents(vendorUser.vendorId);
+  const events = await getVendorEvents();
   return <VendorEventsList events={events} />;
 }

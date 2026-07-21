@@ -22,7 +22,7 @@ import { toast } from "sonner";
 
 import {
   applyTemplateAction, createFloorPlanAction, deleteFloorPlanAction, duplicateFloorPlanAction,
-  renameFloorPlanAction, setClientAccessAction,
+  renameFloorPlanAction, setClientAccessAction, setVendorAccessAction,
 } from "@/app/(app)/events/[id]/floor-plan-actions";
 import { Button } from "@/components/ui/button";
 import {
@@ -87,6 +87,44 @@ function ShareForSeatingToggle({ eventId, plan }: { eventId: string; plan: Floor
   );
 }
 
+/**
+ * Vendor Event Assets (Sprint 1) — the only UI that sets shared_with_vendors.
+ * A vendor assigned to this event sees this plan in their own "Floor Plans"
+ * section the moment it's shared — no PDF export, no manual send required.
+ */
+function ShareWithVendorsToggle({ eventId, plan }: { eventId: string; plan: FloorPlan }) {
+  const router = useRouter();
+  const [shared, setShared] = React.useState(plan.sharedWithVendors);
+  const [pending, startTransition] = React.useTransition();
+
+  function toggle(e: React.MouseEvent) {
+    e.preventDefault();
+    e.stopPropagation();
+    const next = !shared;
+    startTransition(async () => {
+      const result = await setVendorAccessAction(plan.id, eventId, next);
+      if (result.ok) { setShared(next); router.refresh(); }
+      else toast.error(result.message ?? "Could not update sharing.");
+    });
+  }
+
+  return (
+    <Tooltip>
+      <TooltipTrigger render={
+        <button type="button" onClick={toggle} disabled={pending}
+          className={`self-start text-[10px] font-medium px-2 py-0.5 rounded-full border transition-colors ${
+            shared ? "border-primary/40 bg-primary/10 text-primary" : "border-border text-muted-foreground hover:border-primary/40"
+          }`}>
+          {pending ? "…" : shared ? "Shared with Vendors" : "Share with Vendors"}
+        </button>
+      } />
+      <TooltipContent>
+        {shared ? "Visible to any vendor assigned to this event. Click to unshare." : "Not visible to vendors yet. Click to share."}
+      </TooltipContent>
+    </Tooltip>
+  );
+}
+
 function FloorPlanCard({
   eventId, plan, spaces, busy, onRename, onDelete,
 }: {
@@ -113,7 +151,10 @@ function FloorPlanCard({
         </div>
       </div>
       <p className="text-xs text-muted-foreground">{spaceName(spaces, plan.spaceId) ?? "No space assigned"}</p>
-      <ShareForSeatingToggle eventId={eventId} plan={plan} />
+      <div className="flex flex-wrap gap-1.5">
+        <ShareForSeatingToggle eventId={eventId} plan={plan} />
+        <ShareWithVendorsToggle eventId={eventId} plan={plan} />
+      </div>
     </Link>
   );
 }

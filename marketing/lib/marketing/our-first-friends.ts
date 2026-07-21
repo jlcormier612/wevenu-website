@@ -1,6 +1,6 @@
 /**
  * Our First Friends — gratitude editorial for founding venues and former Weven customers.
- * Reusable on Pricing and as a standalone page at /our-first-friends.
+ * Lives on Our Story. Founding Membership + Welcome Back live on Pricing.
  */
 
 export const OUR_FIRST_FRIENDS = {
@@ -26,15 +26,6 @@ export const OUR_FIRST_FRIENDS = {
       "Venue software should make hospitality feel easier—not more complicated.",
       "If we had the opportunity to work together before, thank you.",
       "We would be honored to earn your business again.",
-    ],
-  },
-  reserved: {
-    title: "A Place Reserved For You",
-    paragraphs: [
-      "If we worked together during our time with Weven, we'd love the opportunity to reconnect.",
-      "Former Weven customers are invited to join our Founding Venue Program and receive Preferred Founding Pricing for as long as their subscription remains active.",
-      "This is simply our way of saying thank you to the people who helped shape the thinking behind everything we've built into Hello to Cheers today.",
-      "Some relationships are worth continuing.",
     ],
   },
   program: {

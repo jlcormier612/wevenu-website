@@ -17,6 +17,8 @@ import type {
   ReorderDirection,
   UpdateObjectInput,
   UpdateRoomSettingsInput,
+  VendorFloorPlanDetail,
+  VendorFloorPlanSummary,
 } from "@/lib/floor-plans/types";
 
 type DbClient = Awaited<ReturnType<typeof createClient>>;
@@ -24,6 +26,7 @@ type DbClient = Awaited<ReturnType<typeof createClient>>;
 type PlanRow = {
   id: string; venue_id: string; event_id: string; name: string; space_id: string | null;
   client_access: FloorPlanClientAccess;
+  shared_with_vendors: boolean;
   background_image_url: string | null; background_image_opacity: number; background_locked: boolean;
   room_width_ft: number; room_depth_ft: number; measurement_unit: MeasurementUnit;
   finalized_at: string | null;
@@ -43,6 +46,7 @@ type ObjRow = {
 const mapPlan = (r: PlanRow): FloorPlan => ({
   id: r.id, venueId: r.venue_id, eventId: r.event_id, name: r.name,
   spaceId: r.space_id, clientAccess: r.client_access,
+  sharedWithVendors: r.shared_with_vendors,
   backgroundImageUrl: r.background_image_url,
   backgroundImageOpacity: Number(r.background_image_opacity),
   backgroundLocked: r.background_locked,
@@ -165,6 +169,60 @@ export async function setFloorPlanClientAccess(
   const { error } = await (client.from("floor_plans") as any)
     .update({ client_access: clientAccess }).eq("id", planId).eq("venue_id", venueId);
   if (error) throw error;
+}
+
+/**
+ * Sprint 1 — Vendor Event Assets: whether a vendor assigned to this event
+ * can see this Floor Plan at all. Mirrors setFloorPlanClientAccess exactly,
+ * a separate flag since the couple/vendor audiences are gated independently.
+ */
+export async function setFloorPlanVendorAccess(
+  client: DbClient, venueId: string, planId: string, sharedWithVendors: boolean,
+): Promise<void> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error } = await (client.from("floor_plans") as any)
+    .update({ shared_with_vendors: sharedWithVendors }).eq("id", planId).eq("venue_id", venueId);
+  if (error) throw error;
+}
+
+/**
+ * Sprint 1 — Vendor Event Assets, vendor side. Vendors have no RLS read on
+ * floor_plans (same reasoning as every other vendor-facing table in this
+ * codebase), so this goes through get_vendor_shared_floor_plans, a
+ * SECURITY DEFINER RPC that validates the vendor is actually assigned to
+ * this event before returning anything.
+ */
+export async function getVendorSharedFloorPlans(
+  client: DbClient, eventId: string,
+): Promise<VendorFloorPlanSummary[]> {
+  const { data, error } = await client.rpc("get_vendor_shared_floor_plans", { p_event_id: eventId });
+  if (error) throw error;
+  if (!data || "error" in data) return [];
+  type Row = { id: string; name: string; updated_at: string };
+  return ((data.floor_plans ?? []) as Row[]).map((r) => ({ id: r.id, name: r.name, updatedAt: r.updated_at }));
+}
+
+/**
+ * Sprint 1 — one shared Floor Plan, with objects, read-only for a vendor.
+ * get_vendor_floor_plan re-validates shared_with_vendors + assignment
+ * ownership itself; a vendor can never reach an unshared plan even by
+ * guessing its id.
+ */
+export async function getVendorFloorPlan(
+  client: DbClient, planId: string,
+): Promise<VendorFloorPlanDetail | null> {
+  const { data, error } = await client.rpc("get_vendor_floor_plan", { p_floor_plan_id: planId });
+  if (error) throw error;
+  if (!data) return null;
+  const plan = mapPlan(data.plan as PlanRow);
+  const objects = ((data.objects ?? []) as ObjRow[]).map(mapObj);
+  const event = data.event as { id: string; name: string; event_date: string | null };
+  const venue = data.venue as { name: string; primary_color: string | null; logo_url: string | null };
+  return {
+    ...plan, objects,
+    eventName: event.name, eventDate: event.event_date,
+    venueName: venue.name, venuePrimaryColor: venue.primary_color, venueLogoUrl: venue.logo_url,
+  };
 }
 
 /**
