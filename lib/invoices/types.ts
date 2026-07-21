@@ -62,6 +62,7 @@ export type Invoice = {
   /** Booking Financial Architecture Phase 3c — the reverse of amendsInvoiceId: set when some OTHER invoice amends this one. Computed at read time, not stored; lets the original show "an amended invoice exists" without its own status ever changing. */
   amendedByInvoiceId: string | null;
   amendedByInvoiceNumber: string | null;
+  quickbooksSyncStatus: "not_synced" | "pending" | "synced" | "failed";
 };
 
 export type InvoiceWithLineItems = Invoice & {

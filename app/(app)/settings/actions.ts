@@ -67,6 +67,11 @@ import {
   disconnectStripeAccount,
   updateVenueLogo,
 } from "@/lib/venue/service";
+import {
+  connectQuickBooksAccount,
+  disconnectQuickBooksAccount,
+} from "@/lib/quickbooks/service";
+import type { QuickBooksActionResult } from "@/lib/quickbooks/types";
 
 export async function updateLogoAction(url: string | null): Promise<void> {
   await updateVenueLogo(url);
@@ -83,4 +88,22 @@ export async function disconnectStripeAction(): Promise<void> {
   await disconnectStripeAccount();
   revalidatePath("/settings");
   revalidatePath("/", "layout");
+}
+
+export async function connectQuickBooksAction(input: {
+  realmId: string;
+  accessToken: string;
+  refreshToken: string;
+  accessTokenExpiresIn: number;
+  refreshTokenExpiresIn: number;
+}): Promise<QuickBooksActionResult> {
+  const result = await connectQuickBooksAccount(input);
+  revalidatePath("/settings");
+  return result;
+}
+
+export async function disconnectQuickBooksAction(): Promise<QuickBooksActionResult> {
+  const result = await disconnectQuickBooksAccount();
+  revalidatePath("/settings");
+  return result;
 }

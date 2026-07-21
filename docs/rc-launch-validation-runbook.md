@@ -53,10 +53,18 @@ Grouped by what breaks if it's missing. `NEXT_PUBLIC_*` variables are exposed to
 | `STRIPE_SECRET_KEY` | Powers the "Connect with Stripe" OAuth flow in Settings (`app/api/stripe/callback/route.ts`) — a venue can link their own Stripe account today. Real payment collection through that link is designed but unbuilt (TR-M1, blocked on a live Stripe account this dev environment never had) |
 | `STRIPE_WEBHOOK_SECRET` | Referenced for the eventual real-collection webhook path |
 
+### Accounting (QuickBooks Online — one-directional push sync, built and live-verified against Intuit's sandbox with fake credentials; blocked on real credentials for final confirmation, see `docs/quickbooks-integration-completion.md`)
+| Variable | Purpose |
+|---|---|
+| `QUICKBOOKS_CLIENT_ID` / `QUICKBOOKS_CLIENT_SECRET` | Server-only Intuit App credentials. Without both, `isQuickBooksConfigured()` is false and the Settings card shows setup instructions instead of a Connect button — no silent failure |
+| `NEXT_PUBLIC_QUICKBOOKS_CLIENT_ID` | Client-side copy, used only to build the OAuth authorize URL in Settings |
+| `QUICKBOOKS_ENVIRONMENT` | `sandbox` or `production` — must match the Intuit App's actual mode or every API call 401s |
+| `QUICKBOOKS_SYNC_SECRET` | Alternate auth path into `/api/quickbooks/sync/process` for manual/external triggering, same pattern as `AUTOMATION_SECRET` |
+
 ### Automation / cron (see "Cron jobs" section below — these gate who can trigger them)
 | Variable | Purpose |
 |---|---|
-| `CRON_SECRET` | Required on every scheduled job route (`/api/notifications/process`, `/api/digest`, `/api/communication/scheduled/process`, `/api/automation/process`) — Vercel Cron sends this automatically if set, but it must be set in your hosting environment or these routes 401 |
+| `CRON_SECRET` | Required on every scheduled job route (`/api/notifications/process`, `/api/digest`, `/api/communication/scheduled/process`, `/api/automation/process`, `/api/quickbooks/sync/process`) — Vercel Cron sends this automatically if set, but it must be set in your hosting environment or these routes 401 |
 | `AUTOMATION_SECRET` | Alternate auth path into `/api/automation/process` for manual/external triggering |
 | `NOTIFICATIONS_SECRET` | Alternate auth path into the notification/scheduled-message processors |
 
@@ -112,6 +120,14 @@ Grouped by what breaks if it's missing. `NEXT_PUBLIC_*` variables are exposed to
 1. Real charge collection is not built (TR-M1) — there is nothing to sandbox-test on the collection side yet.
 2. What **is** built and should be tested: the Stripe Connect OAuth link/unlink flow in Settings. Click "Connect with Stripe," complete a real (test-mode) Stripe OAuth authorization, confirm the callback (`app/api/stripe/callback/route.ts`) correctly stores the connected account and redirects back to Settings with a success state. Confirm the error path too (deny the OAuth request, confirm a clear `stripe_error` message appears).
 
+### QuickBooks Online
+1. Register a real Intuit App (sandbox first) at the Intuit Developer portal, set `QUICKBOOKS_CLIENT_ID`/`QUICKBOOKS_CLIENT_SECRET`/`NEXT_PUBLIC_QUICKBOOKS_CLIENT_ID`/`QUICKBOOKS_ENVIRONMENT=sandbox` in your hosting environment.
+2. Click "Connect with QuickBooks" in Settings, complete the real OAuth authorization against a sandbox company, confirm the callback (`app/api/quickbooks/callback/route.ts`) stores the connection and the Settings card shows "Connected to {company name}" — this exercises the one-time CompanyInfo verification call.
+3. Create a real client, send a real invoice, mark a real payment as paid, issue a real refund — confirm each shows a "Syncing…" then "Synced to QuickBooks" badge within one 5-minute cron tick, and confirm the corresponding Customer/Invoice/Payment/RefundReceipt actually exists in the sandbox company (not just that Wevenu's own badge flipped).
+4. Confirm idempotency: edit an already-sent invoice's line items and confirm it re-syncs (not silently drifts) rather than creating a duplicate Invoice in QuickBooks.
+5. Confirm disconnect actually revokes the token on Intuit's side (Intuit's My Apps dashboard should show the connection gone, not just Wevenu's local state).
+6. Everything above is already verified in this environment against Intuit's real endpoints using fake credentials (real 401/`invalid_client` rejections, correctly classified and retried/dead-lettered) — this step is specifically about confirming a *genuine successful* sync with real credentials, which this dev environment could not do. See `docs/quickbooks-integration-completion.md`.
+
 ---
 
 ## 4. Production configuration
@@ -149,7 +165,7 @@ Covered under "File uploads/downloads" above — confirm all seven buckets exist
 3. Confirm favicons and any hardcoded fallback logo/color values look intentional, not like a placeholder, for a venue that hasn't set custom branding yet.
 
 ### Cron jobs
-Four jobs are already declared in `vercel.json` and will auto-register on a Vercel deployment — nothing to configure there beyond deploying to Vercel and setting `CRON_SECRET`:
+Five jobs are already declared in `vercel.json` and will auto-register on a Vercel deployment — nothing to configure there beyond deploying to Vercel and setting `CRON_SECRET`:
 
 | Path | Schedule | Powers |
 |---|---|---|
@@ -157,6 +173,7 @@ Four jobs are already declared in `vercel.json` and will auto-register on a Verc
 | `/api/digest` | hourly | Daily digest emails |
 | `/api/communication/scheduled/process` | every 5 min | Scheduled Sends, Sequences |
 | `/api/automation/process` | every 15 min | Automation Rules (including the Event.Completed review/referral nudge) |
+| `/api/quickbooks/sync/process` | every 5 min | QuickBooks Customer/Invoice/Payment/Refund sync queue |
 
 **If you're not deploying to Vercel, none of these fire automatically** — you'll need your own scheduler (cron, a managed scheduled-task service) hitting each path with `Authorization: Bearer {CRON_SECRET}`. This is easy to miss because nothing in the UI indicates these aren't running — Scheduled Sends and Automations will simply never fire, silently, with no error visible to a coordinator.
 

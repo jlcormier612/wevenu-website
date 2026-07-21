@@ -30,6 +30,7 @@ type ItemRow = {
   paid_at: string | null; paid_amount: number | null; payment_method: string | null;
   reference_number: string | null; notes: string | null; sort_order: number;
   refunded_amount: number | null; refunded_at: string | null; refund_reason: string | null;
+  quickbooks_sync_status: "not_synced" | "pending" | "synced" | "failed";
   created_at: string; updated_at: string;
 };
 
@@ -64,6 +65,7 @@ function mapItem(r: ItemRow): PaymentLineItem {
     notes: r.notes, sortOrder: r.sort_order,
     refundedAmount: r.refunded_amount != null ? Number(r.refunded_amount) : 0,
     refundedAt: r.refunded_at, refundReason: r.refund_reason,
+    quickbooksSyncStatus: r.quickbooks_sync_status,
     createdAt: r.created_at, updatedAt: r.updated_at,
   };
 }

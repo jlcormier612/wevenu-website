@@ -4,7 +4,7 @@
 
 This is a snapshot, not a history — it reflects the platform as of the date below and gets overwritten on the next reconciliation, not appended to. For the detailed history of how the platform got here (RC1, Lead Intake, RC2, Sprint 1, Sprint 2), see `docs/release-candidate-roadmap.md` and the final report each initiative produced. For the exhaustive per-item Trust Risk Register, see `docs/trust-risk-register.md`. For a literal, run-it-yourself QA/demo checklist, see `docs/launch-verification-script.md`. For the operational (non-engineering) production validation checklist — device/browser matrix, external integrations, DNS/production config — see `docs/rc-launch-validation-runbook.md`.
 
-**Date:** 2026-07-20 (after Sprint 2 — Vendor Certification Pass, and the RC-Launch Validation Runbook pass)
+**Date:** 2026-07-21 (after Sprint 2 — Vendor Certification Pass, the RC-Launch Validation Runbook pass, and the QuickBooks Online Launch Integration)
 
 ---
 
@@ -23,6 +23,7 @@ Verified — either live-database-tested this engagement, or confirmed via direc
 | Floor Plans (incl. Vendor Event Assets) | ✅ Complete | Live: multi-floor-plan-per-event confirmed already correct; vendor sharing built and verified Sprint 1 |
 | Contracts | ✅ Complete | Live: draft/send/sign lifecycle guards, e-signature audit trail (IP/user-agent/consent), no re-open-after-signed path — all from the original Trust Foundation audit |
 | Payments (venue ↔ couple) | 🟡 Mostly complete | Live: double-mark-paid guard (Sprint 2), refund/void, hard-delete guards. Real Stripe collection still design-only, blocked on credentials this environment doesn't have (TR-M1) |
+| QuickBooks Online Integration | 🟡 Built, blocked on credentials | Live: OAuth connect/disconnect, Customer/Invoice/Payment/Refund one-directional push sync, retry queue with real backoff + dead-letter, connection health, sync-status badges. Every HTTP path verified against Intuit's real sandbox endpoints with fake credentials (real 401/`invalid_client` rejections correctly classified); the actual successful-sync confirmation is blocked on real Intuit sandbox credentials, same shape as TR-M1. Full detail: `docs/quickbooks-integration-completion.md` |
 | Booking & Client Workspace | ✅ Complete | Carried forward from original Trust Foundation audit, unchanged since |
 | Timeline | ✅ Complete | Carried forward, unchanged since |
 | Requests Framework | ✅ Complete | Live: Request↔Conversation cross-linking (RC2) |
@@ -42,6 +43,7 @@ Nothing on the platform is currently known-unbuilt except the one item below, wh
 | Item | Type | Why it's not done |
 |---|---|---|
 | Real Stripe payment collection (TR-M1) | Deferred, designed | Blocked on a live Stripe test-mode account this environment doesn't have. Full architecture in `docs/stripe-payment-architecture.md` |
+| Real QuickBooks sync confirmation | Deferred, built | Blocked on a live Intuit sandbox app/credentials this environment doesn't have. Every other piece (OAuth, queue, error handling, idempotency queries) is built and verified against real Intuit rejections — see `docs/quickbooks-integration-completion.md` |
 | iCal/webcal calendar sync | Deferred | Genuinely unbuilt; not previously scoped as a Trust Risk item |
 | Lead-to-team-member assignment | Deferred | `resolveLeadOwner()` is an explicit no-op stub — the pipeline stage exists, the routing logic behind it doesn't |
 | `lib/notifications/engine.ts`'s tour-reminder emails bypass Conversations | Deferred, disclosed | Sends directly via Resend; a coordinator has no record of it in the couple's thread. Named in RC2's final report, not yet actioned |

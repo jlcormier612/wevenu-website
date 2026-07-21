@@ -11,6 +11,7 @@ import { sendInvoiceEmailAction, updateInvoiceStatusAction } from "@/app/(app)/i
 import { EventOrderDriftBanner } from "@/components/invoices/event-order-drift-banner";
 import { InvoiceLineItemsEditor } from "@/components/invoices/invoice-line-items-editor";
 import { InvoiceStatusBadge } from "@/components/invoices/invoice-status-badge";
+import { QuickBooksSyncStatusBadge } from "@/components/quickbooks/sync-status-badge";
 import { Button } from "@/components/ui/button";
 import {
   Card, CardContent, CardDescription, CardHeader, CardTitle,
@@ -55,6 +56,7 @@ export function InvoiceDetail({
           <div className="flex items-center gap-3 flex-wrap">
             <h1 className="text-2xl font-heading font-semibold text-heading">{invoice.invoiceNumber}</h1>
             <InvoiceStatusBadge status={status} />
+            <QuickBooksSyncStatusBadge status={invoice.quickbooksSyncStatus} />
           </div>
           {invoice.clientName && (
             <p className="text-sm text-muted-foreground">

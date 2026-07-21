@@ -34,6 +34,7 @@ import {
 } from "@/components/payments/payment-status-badge";
 import { ScheduleReviewBanner } from "@/components/payments/schedule-review-banner";
 import { ActivityTimeline } from "@/components/leads/activity-timeline";
+import { QuickBooksSyncStatusBadge } from "@/components/quickbooks/sync-status-badge";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -365,6 +366,9 @@ function LineItemRow({
               <><span className="text-border">·</span><span>{item.refundReason}</span></>
             )}
           </div>
+          {(isPaid || isRefunded || isPartiallyRefunded) && (
+            <QuickBooksSyncStatusBadge status={item.quickbooksSyncStatus} />
+          )}
         </div>
 
         {/* Actions */}

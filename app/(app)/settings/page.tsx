@@ -14,6 +14,7 @@ import { LeadIntakeHealthSection } from "@/components/settings/lead-intake-healt
 import { DataExportSection } from "@/components/settings/data-export-section";
 import { LuvHeart } from "@/components/dashboard/luv-widget";
 import { StripeConnectSection } from "@/components/settings/stripe-connect-section";
+import { QuickBooksConnectSection } from "@/components/settings/quickbooks-connect-section";
 import { VenueSettings } from "@/components/settings/venue-settings";
 import {
   Card,
@@ -30,6 +31,7 @@ import { getNotificationPreferences } from "@/lib/notifications/preferences";
 import { getTourSettings } from "@/lib/tours/service";
 import { getIntakeHealthSummary } from "@/lib/lead-intake/monitoring";
 import { getEventCompletedNudgeRule } from "@/lib/automation/service";
+import { getQuickBooksConnection, getRecentQuickBooksSyncLog } from "@/lib/quickbooks/service";
 // Playbooks moved to Library (/library/playbooks)
 // Pipeline Templates moved to Library (/library/pipeline-templates)
 
@@ -42,8 +44,8 @@ export const metadata: Metadata = { title: "Settings" };
  * Route is protected by the (app) layout (venue existence already confirmed).
  */
 export default async function SettingsPage() {
-  const [settings, venue, spaces, capacityRules, luvSettings, notifStats, notifPrefs, tourSettings, intakeHealth, eventCompletedNudgeRule] = await Promise.all([
-    getVenueSettings(), getCurrentVenue(), getSpaces(), getCapacityRules(), getLuvSettings(), getNotificationStats(), getNotificationPreferences(), getTourSettings(), getIntakeHealthSummary(), getEventCompletedNudgeRule(),
+  const [settings, venue, spaces, capacityRules, luvSettings, notifStats, notifPrefs, tourSettings, intakeHealth, eventCompletedNudgeRule, quickbooksConnection, quickbooksSyncLog] = await Promise.all([
+    getVenueSettings(), getCurrentVenue(), getSpaces(), getCapacityRules(), getLuvSettings(), getNotificationStats(), getNotificationPreferences(), getTourSettings(), getIntakeHealthSummary(), getEventCompletedNudgeRule(), getQuickBooksConnection(), getRecentQuickBooksSyncLog(),
   ]);
 
   if (!settings) {
@@ -68,6 +70,7 @@ export default async function SettingsPage() {
       />
       <VenueSettings initial={settings.input} venueId={settings.venueId} />
       {venue && <StripeConnectSection venue={venue} />}
+      {venue && <QuickBooksConnectSection venueId={venue.id} connection={quickbooksConnection} syncLog={quickbooksSyncLog} />}
 
       {/* ── Import Data ────────────────────────────────────────────── */}
       <Card>

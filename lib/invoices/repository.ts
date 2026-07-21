@@ -20,6 +20,7 @@ type InvoiceRow = {
   notes: string | null; due_date: string | null; issued_at: string | null;
   event_order_id: string | null; event_order_dismissed_fingerprint: string | null;
   amends_invoice_id: string | null; event_order_revision_at_freeze: number | null;
+  quickbooks_sync_status: "not_synced" | "pending" | "synced" | "failed";
   created_at: string; updated_at: string;
   clients?: { first_name: string; last_name: string; partner_first_name: string | null; partner_last_name: string | null } | null;
   events?: { name: string; event_date: string } | null;
@@ -36,6 +37,7 @@ function mapInvoice(r: InvoiceRow, amendedBy?: { id: string; invoiceNumber: stri
     eventOrderId: r.event_order_id, eventOrderDismissedFingerprint: r.event_order_dismissed_fingerprint,
     amendsInvoiceId: r.amends_invoice_id, eventOrderRevisionAtFreeze: r.event_order_revision_at_freeze,
     amendedByInvoiceId: amendedBy?.id ?? null, amendedByInvoiceNumber: amendedBy?.invoiceNumber ?? null,
+    quickbooksSyncStatus: r.quickbooks_sync_status,
     createdAt: r.created_at, updatedAt: r.updated_at, clientName: cn, eventDate: r.events?.event_date ?? null, eventName: r.events?.name ?? null,
   };
 }

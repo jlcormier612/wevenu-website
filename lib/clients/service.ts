@@ -4,6 +4,7 @@
 import { createClient } from "@/integrations/supabase/server";
 import { isSupabaseConfigured } from "@/lib/env";
 import * as repo from "@/lib/clients/repository";
+import { enqueueQuickBooksSync } from "@/lib/quickbooks/queue";
 import type {
   Client,
   ClientActionResult,
@@ -129,6 +130,12 @@ export async function createClient_(input: ClientInput): Promise<CreateClientRes
       }
     }
     const clientId = await repo.insertClient(supabase, venueId, input);
+
+    void enqueueQuickBooksSync(venueId, "customer", clientId, {
+      firstName: input.firstName, lastName: input.lastName,
+      partnerFirstName: input.partnerFirstName, partnerLastName: input.partnerLastName,
+      email: input.email, phone: input.phone,
+    });
 
     // Stop on booking (§3.3) — must never block client creation.
     const { data: newClient } = await supabase.from("clients").select("relationship_id")
@@ -283,6 +290,14 @@ export async function updateClientInfo(clientId: string, input: ClientInput): Pr
   const result = await withVenue(async (supabase, venueId) => {
     await repo.updateClientInfo(supabase, venueId, clientId, input);
     await repo.insertClientActivity(supabase, venueId, clientId, "lead_updated", "Client information updated");
+    // A client's name/email changing after their QBO Customer was already
+    // created should re-sync — the queue's payload_hash dedup handles
+    // this safely (a no-op if nothing sync-relevant actually changed).
+    void enqueueQuickBooksSync(venueId, "customer", clientId, {
+      firstName: input.firstName, lastName: input.lastName,
+      partnerFirstName: input.partnerFirstName, partnerLastName: input.partnerLastName,
+      email: input.email, phone: input.phone,
+    });
     return { ok: true } as ClientActionResult;
   });
   return result as ClientActionResult;

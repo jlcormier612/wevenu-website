@@ -32,6 +32,7 @@ const PUBLIC_PATHS = [
   "/api/digest",                     // daily digest cron (vercel.json) — CRON_SECRET-guarded, not session-guarded
   "/api/communication/scheduled",    // Scheduled Sends cron (vercel.json) — CRON_SECRET-guarded, not session-guarded
   "/api/automation/process",         // Automation engine cron (vercel.json) — CRON_SECRET-guarded, not session-guarded
+  "/api/quickbooks/sync/process",    // QuickBooks sync queue cron (vercel.json) — CRON_SECRET-guarded, not session-guarded
 ];
 
 function isPublicPath(pathname: string): boolean {

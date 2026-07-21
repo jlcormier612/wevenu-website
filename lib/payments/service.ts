@@ -32,6 +32,7 @@ import {
 } from "@/lib/payments/validation";
 import { getCurrentVenue, getCurrentUserRole } from "@/lib/venue/service";
 import { recordEngagementEvent } from "@/lib/activation/service";
+import { enqueueQuickBooksSync } from "@/lib/quickbooks/queue";
 
 async function withVenue<T>(
   fn: (supabase: Awaited<ReturnType<typeof createClient>>, venueId: string) => Promise<T>,
@@ -110,6 +111,7 @@ export async function getUpcomingPayments(daysAhead = 30): Promise<PaymentLineIt
     notes: r.notes, sortOrder: r.sort_order,
     refundedAmount: r.refunded_amount != null ? Number(r.refunded_amount) : 0,
     refundedAt: r.refunded_at ?? null, refundReason: r.refund_reason ?? null,
+    quickbooksSyncStatus: r.quickbooks_sync_status ?? "not_synced",
     createdAt: r.created_at, updatedAt: r.updated_at,
   }));
 }
@@ -234,6 +236,7 @@ export async function markLineItemPaid(itemId: string, scheduleId: string, input
     await repo.insertPaymentActivity(supabase, venueId, scheduleId, "payment_received",
       `Payment received: $${amount.toLocaleString()}`,
       input.paymentMethod ? `Via ${input.paymentMethod}` : undefined);
+    void enqueueQuickBooksSync(venueId, "payment", itemId, { paidAmount: amount });
 
     // Reconcile the linked invoice's balance_due, if any
     const { data: sch } = await supabase.from("payment_schedules")
@@ -313,6 +316,7 @@ export async function refundLineItem_(
       outcome.newStatus === "refunded" ? "refunded" : "partially_refunded",
       `Refund issued: $${refundAmount.toLocaleString()}`,
       reason?.trim() || undefined);
+    void enqueueQuickBooksSync(venueId, "refund", itemId, { refundAmount, reason });
 
     const { data: sch } = await supabase.from("payment_schedules")
       .select("invoice_id").eq("id", scheduleId).maybeSingle<{ invoice_id: string | null }>();

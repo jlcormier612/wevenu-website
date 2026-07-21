@@ -49,6 +49,7 @@ export type PaymentLineItem = {
   refundedAmount: number;
   refundedAt: string | null;
   refundReason: string | null;
+  quickbooksSyncStatus: "not_synced" | "pending" | "synced" | "failed";
   createdAt: string;
   updatedAt: string;
 };

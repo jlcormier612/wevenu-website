@@ -22,6 +22,7 @@ import { getEventOrder } from "@/lib/event-orders/service";
 import { eventOrderLinesFingerprint } from "@/lib/event-orders/constants";
 import type { EventOrderLine } from "@/lib/event-orders/types";
 import { getCurrentVenue } from "@/lib/venue/service";
+import { enqueueQuickBooksSync } from "@/lib/quickbooks/queue";
 
 /**
  * Booking Financial Architecture Phase 3a — a Draft Invoice linked to an
@@ -109,11 +110,29 @@ export async function createInvoice(input: InvoiceInput): Promise<CreateInvoiceR
   return result as CreateInvoiceResult;
 }
 
+/**
+ * addLineItem/removeLineItem have no status guard at all (confirmed at
+ * the repository level — a coordinator can edit an already-'sent'
+ * invoice's line items with nothing stopping them). The QuickBooks sync
+ * hook fires from here whenever the invoice isn't a draft, so an invoice
+ * edited after being sent doesn't silently drift from its QuickBooks
+ * copy — the queue's payload_hash dedup makes this safe to call
+ * unconditionally on every edit, not just the ones that actually change
+ * something.
+ */
+async function enqueueInvoiceSyncIfNotDraft(c: Awaited<ReturnType<typeof createClient>>, venueId: string, invoiceId: string): Promise<void> {
+  const { data } = await c.from("invoices").select("status, total, balance_due").eq("id", invoiceId).maybeSingle<{ status: string; total: number; balance_due: number }>();
+  if (data && data.status !== "draft") {
+    void enqueueQuickBooksSync(venueId, "invoice", invoiceId, { status: data.status, total: data.total, balanceDue: data.balance_due });
+  }
+}
+
 export async function addLineItem(invoiceId: string, input: InvoiceLineItemInput): Promise<AddLineItemResult> {
   if (!input.description.trim()) return { ok: false, errors: { description: "Description is required." } };
   const result = await withVenue(async (c, venueId) => {
     const item = await repo.addLineItem(c, venueId, invoiceId, input);
     await repo.insertActivity(c, venueId, invoiceId, "line_item_added", `Line item added: ${input.description.trim()}`);
+    await enqueueInvoiceSyncIfNotDraft(c, venueId, invoiceId);
     return { ok: true, item } as AddLineItemResult;
   });
   return result as AddLineItemResult;
@@ -123,6 +142,7 @@ export async function removeLineItem(invoiceId: string, itemId: string): Promise
   const result = await withVenue(async (c, venueId) => {
     await repo.removeLineItem(c, venueId, invoiceId, itemId);
     await repo.insertActivity(c, venueId, invoiceId, "line_item_removed", "Line item removed");
+    await enqueueInvoiceSyncIfNotDraft(c, venueId, invoiceId);
     return { ok: true } as InvoiceActionResult;
   });
   return result as InvoiceActionResult;
@@ -151,12 +171,16 @@ export async function updateInvoiceStatus(invoiceId: string, status: InvoiceStat
           // of whatever revision Event Order has moved to since.
           await repo.updateInvoiceStatus(c, venueId, invoiceId, status, { eventOrderRevisionAtFreeze: eventOrder.revision });
           await repo.insertActivity(c, venueId, invoiceId, "status_changed", `Status updated to ${status}`);
+          void enqueueQuickBooksSync(venueId, "invoice", invoiceId, { status });
           return { ok: true } as InvoiceActionResult;
         }
       }
     }
     await repo.updateInvoiceStatus(c, venueId, invoiceId, status);
     await repo.insertActivity(c, venueId, invoiceId, "status_changed", `Status updated to ${status}`);
+    if (status === "sent") {
+      void enqueueQuickBooksSync(venueId, "invoice", invoiceId, { status });
+    }
     return { ok: true } as InvoiceActionResult;
   });
   return result as InvoiceActionResult;
