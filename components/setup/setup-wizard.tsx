@@ -3,7 +3,7 @@
 import * as React from "react";
 
 import { useRouter } from "next/navigation";
-import { ArrowLeft, ArrowRight, CheckCircle2, Loader2 } from "lucide-react";
+import { ArrowLeft, ArrowRight, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { submitVenueSetupAction } from "@/app/setup/actions";
@@ -49,7 +49,6 @@ export function SetupWizard({ ownerEmail }: { ownerEmail: string }) {
   );
   const [stepIndex, setStepIndex] = React.useState(0);
   const [errors, setErrors] = React.useState<VenueSetupErrors>({});
-  const [done, setDone] = React.useState(false);
   const [pending, startTransition] = React.useTransition();
 
   const set = React.useCallback(
@@ -109,8 +108,10 @@ export function SetupWizard({ ownerEmail }: { ownerEmail: string }) {
     startTransition(async () => {
       const result = await submitVenueSetupAction(input);
       if (result.ok) {
-        setDone(true);
-        if (typeof window !== "undefined") window.scrollTo({ top: 0 });
+        // Financial Setup (QuickBooks/Stripe connect) needs a real venue_id
+        // to exist, so it lives as its own post-creation route rather than a
+        // client-state screen here — see app/setup/page.tsx.
+        router.push("/setup?financial=1");
         return;
       }
       if (result.errors && Object.keys(result.errors).length > 0) {
@@ -142,18 +143,6 @@ export function SetupWizard({ ownerEmail }: { ownerEmail: string }) {
     }
     setStepIndex((i) => i + 1);
     if (typeof window !== "undefined") window.scrollTo({ top: 0 });
-  }
-
-  if (done) {
-    return (
-      <CompletionScreen
-        venueName={input.name.trim() || "Your venue"}
-        onEnter={() => {
-          router.push("/dashboard");
-          router.refresh();
-        }}
-      />
-    );
   }
 
   if (screen === "welcome") {
@@ -237,36 +226,6 @@ export function SetupWizard({ ownerEmail }: { ownerEmail: string }) {
           )}
         </Button>
       </div>
-    </div>
-  );
-}
-
-function CompletionScreen({
-  venueName,
-  onEnter,
-}: {
-  venueName: string;
-  onEnter: () => void;
-}) {
-  return (
-    <div className="mx-auto max-w-xl space-y-8 py-16 text-center">
-      <span className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-primary/10 text-primary">
-        <CheckCircle2 className="h-8 w-8" />
-      </span>
-      <div className="space-y-3">
-        <h1 className="font-heading text-3xl font-medium tracking-tight text-heading">
-          Your venue is ready
-        </h1>
-        <p className="mx-auto max-w-md text-sm text-muted-foreground">
-          <span className="font-medium text-foreground">{venueName}</span> is set
-          up and your workspace is live. From here you can start inviting your
-          team and building out events.
-        </p>
-      </div>
-      <Button size="lg" onClick={onEnter} className="w-full sm:w-auto">
-        Enter your workspace
-        <ArrowRight className="ml-1 h-4 w-4" />
-      </Button>
     </div>
   );
 }
