@@ -181,7 +181,7 @@ export async function getLuvObservations(
   // ── 1 & 2: Events approaching — grouped coordinator briefing ─────────────
   // Instead of individual observations, generate ONE briefing card per event
   // that shows all open items together. This is the "experienced coordinator's
-  // morning briefing" pattern.
+  // daily briefing" pattern.
 
   const eventsWithTimelines = new Set(
     (timelineCountsRes.data ?? []).map((r: { event_id: string }) => r.event_id),

@@ -14,6 +14,7 @@ const PUBLIC_PATHS = [
   "/questionnaire",  // public final details forms — /questionnaire/{accessKey}
   "/api/public",     // public API routes — /api/public/inquire, /api/public/questionnaire
   "/api/messaging/inbound",  // Resend inbound email webhook (no user session)
+  "/api/leads/email-intake", // Resend inbound webhook for the Email Intake Engine (no user session; verifies its own secret) — found unreachable during Sprint 3 assessment, same allowlist-omission class as the QuickBooks sync cron
   "/api/messaging/webhook",  // Resend delivery webhook (no user session)
   "/api/messaging/sms-inbound", // Twilio inbound SMS webhook (no user session; verifies its own signature)
   "/api/messaging/sms-status",  // Twilio outbound SMS status callback (no user session; verifies its own signature)
@@ -23,6 +24,7 @@ const PUBLIC_PATHS = [
   "/vendor/accept",  // vendor invitation claim — accessible before auth
   "/book",           // public tour scheduling — /book/{tour_embed_key}
   "/w",              // public wedding website — /w/{slug}
+  "/qr",             // QR Lead Capture scan-and-redirect — /qr/{code}, plus /qr/inactive
   "/rsvp",           // public RSVP submission — /rsvp/{rsvp_token}
   "/api/portal",        // portal API endpoints — complete tasks, invites, etc.
   "/api/rsvp",          // guest-token-authenticated RSVP API endpoints (concierge, etc.)
@@ -33,6 +35,9 @@ const PUBLIC_PATHS = [
   "/api/communication/scheduled",    // Scheduled Sends cron (vercel.json) — CRON_SECRET-guarded, not session-guarded
   "/api/automation/process",         // Automation engine cron (vercel.json) — CRON_SECRET-guarded, not session-guarded
   "/api/quickbooks/sync/process",    // QuickBooks sync queue cron (vercel.json) — CRON_SECRET-guarded, not session-guarded
+  "/api/facebook/webhook",           // Meta Lead Ads webhook — GET verification handshake + POST delivery, verifies its own signature
+  "/api/facebook/sync/process",      // Facebook Lead Ads queue cron (vercel.json) — CRON_SECRET-guarded, not session-guarded
+  "/api/facebook/reconcile/process", // Facebook Lead Ads reconciliation poll cron (vercel.json) — CRON_SECRET-guarded, not session-guarded
 ];
 
 function isPublicPath(pathname: string): boolean {

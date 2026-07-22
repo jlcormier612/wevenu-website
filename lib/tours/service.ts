@@ -3,7 +3,7 @@ import { createAdminClient } from "@/integrations/supabase/admin";
 import { isSupabaseConfigured } from "@/lib/env";
 import { getCurrentVenue } from "@/lib/venue/service";
 import { getVenueTimezone, utcToVenueLocalParts } from "@/lib/venue/timezone";
-import type { BookingResult, CoordinatorTourResult, SimpleTourResult, TourSettings, TourSlot, TourVenueInfo } from "@/lib/tours/types";
+import type { BookingResult, CoordinatorTourResult, SimpleTourResult, TourAvailabilityException, TourAvailabilityExceptionInput, TourAvailabilityWindow, TourAvailabilityWindowInput, TourSettings, TourSlot, TourVenueInfo } from "@/lib/tours/types";
 import type { CalendarItem } from "@/lib/calendar/types";
 import { eventTypeLabel, leadDisplayName } from "@/lib/leads/constants";
 import { sendTourConfirmation } from "@/lib/tours/communication";
@@ -266,6 +266,76 @@ export async function updateTourSettings(patch: Partial<Omit<TourSettings, "tour
   if (patch.tourPageDescription !== undefined) dbPatch.tour_page_description = patch.tourPageDescription || null;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { error } = await (supabase.from("venues") as any).update(dbPatch).eq("id", venue.id);
+  return { ok: !error };
+}
+
+// ── Weekly availability + exceptions (Tour Scheduling Completion) ------------
+
+export async function getTourAvailabilityWindows(): Promise<TourAvailabilityWindow[]> {
+  if (!isSupabaseConfigured) return [];
+  const venue = await getCurrentVenue();
+  if (!venue) return [];
+  const supabase = await createClient();
+  const { data } = await supabase.from("tour_availability_windows")
+    .select("id, day_of_week, start_time, end_time, sort_order")
+    .eq("venue_id", venue.id)
+    .order("day_of_week").order("sort_order").order("start_time");
+  return ((data ?? []) as { id: string; day_of_week: number; start_time: string; end_time: string; sort_order: number }[])
+    .map((r) => ({ id: r.id, dayOfWeek: r.day_of_week, startTime: r.start_time.slice(0, 5), endTime: r.end_time.slice(0, 5), sortOrder: r.sort_order }));
+}
+
+/**
+ * Full replace, not a per-row upsert — there's no unique (venue_id,
+ * day_of_week) constraint here the way venue_business_hours has, since
+ * multiple windows per day are the whole point. A day with zero windows
+ * in the input is simply closed; the caller (the Settings UI) is
+ * responsible for only submitting windows for enabled days.
+ */
+export async function replaceTourAvailabilityWindows(windows: TourAvailabilityWindowInput[]): Promise<{ ok: boolean }> {
+  if (!isSupabaseConfigured) return { ok: false };
+  const venue = await getCurrentVenue();
+  if (!venue) return { ok: false };
+  const supabase = await createClient();
+  const { error: deleteError } = await supabase.from("tour_availability_windows").delete().eq("venue_id", venue.id);
+  if (deleteError) return { ok: false };
+  if (windows.length === 0) return { ok: true };
+  const rows = windows.map((w, i) => ({
+    venue_id: venue.id, day_of_week: w.dayOfWeek, start_time: w.startTime, end_time: w.endTime, sort_order: i,
+  }));
+  const { error: insertError } = await supabase.from("tour_availability_windows").insert(rows);
+  return { ok: !insertError };
+}
+
+export async function getTourAvailabilityExceptions(): Promise<TourAvailabilityException[]> {
+  if (!isSupabaseConfigured) return [];
+  const venue = await getCurrentVenue();
+  if (!venue) return [];
+  const supabase = await createClient();
+  const { data } = await supabase.from("tour_availability_exceptions")
+    .select("id, start_date, end_date, label")
+    .eq("venue_id", venue.id)
+    .order("start_date");
+  return ((data ?? []) as { id: string; start_date: string; end_date: string; label: string | null }[])
+    .map((r) => ({ id: r.id, startDate: r.start_date, endDate: r.end_date, label: r.label }));
+}
+
+export async function addTourAvailabilityException(input: TourAvailabilityExceptionInput): Promise<{ ok: boolean }> {
+  if (!isSupabaseConfigured) return { ok: false };
+  const venue = await getCurrentVenue();
+  if (!venue) return { ok: false };
+  const supabase = await createClient();
+  const { error } = await supabase.from("tour_availability_exceptions").insert({
+    venue_id: venue.id, start_date: input.startDate, end_date: input.endDate, label: input.label?.trim() || null,
+  });
+  return { ok: !error };
+}
+
+export async function removeTourAvailabilityException(id: string): Promise<{ ok: boolean }> {
+  if (!isSupabaseConfigured) return { ok: false };
+  const venue = await getCurrentVenue();
+  if (!venue) return { ok: false };
+  const supabase = await createClient();
+  const { error } = await supabase.from("tour_availability_exceptions").delete().eq("id", id).eq("venue_id", venue.id);
   return { ok: !error };
 }
 

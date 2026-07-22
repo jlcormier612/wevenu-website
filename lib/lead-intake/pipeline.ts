@@ -16,7 +16,7 @@
  */
 import { normalizeLeadInput } from "@/lib/lead-intake/normalize";
 import { validateLeadInput } from "@/lib/lead-intake/validate";
-import { logIntakeAttempt, markIntakeAttempt } from "@/lib/lead-intake/attempt-log";
+import { findAcceptedAttemptByExternalRef, logIntakeAttempt, markIntakeAttempt } from "@/lib/lead-intake/attempt-log";
 import { checkRateLimit, isNearRateLimit } from "@/lib/lead-intake/rate-limit";
 import { isTurnstileConfigured, verifyTurnstileToken } from "@/lib/lead-intake/turnstile";
 import { resolveLeadOwner } from "@/lib/lead-intake/assignment";
@@ -28,6 +28,18 @@ const LOW_CONFIDENCE_THRESHOLD = 50;
 export async function ingestLead(opts: IngestLeadOptions): Promise<IngestOutcome> {
   const normalized = normalizeLeadInput(opts.input);
 
+  // Idempotency for a webhook source that may redeliver the same event —
+  // must run before logIntakeAttempt, since the external_ref unique index
+  // is permanent (not scoped to unresolved rows), so a redelivery after
+  // the original attempt already resolved would otherwise still fall
+  // through to a second, duplicate create() call.
+  if (opts.externalRef) {
+    const existing = await findAcceptedAttemptByExternalRef(opts.supabase, opts.source, opts.externalRef);
+    if (existing) {
+      return { ok: true, leadId: existing.leadId, relationshipId: existing.relationshipId, isReturningRelationship: true, attemptId: existing.attemptId };
+    }
+  }
+
   const attemptId = await logIntakeAttempt(opts.supabase, {
     venueId: opts.venueId,
     source: opts.source,
@@ -35,6 +47,7 @@ export async function ingestLead(opts: IngestLeadOptions): Promise<IngestOutcome
     rawPayload: opts.rawPayload,
     normalizedPayload: normalized,
     ipAddress: opts.ipAddress ?? null,
+    externalRef: opts.externalRef ?? null,
   });
 
   const validation = validateLeadInput(normalized);

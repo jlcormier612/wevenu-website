@@ -11,7 +11,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
-import type { TourSettings } from "@/lib/tours/types";
+import { TourAvailabilityEditor } from "@/components/settings/tour-availability-editor";
+import type { TourAvailabilityException, TourAvailabilityWindow, TourSettings } from "@/lib/tours/types";
 
 function SlotPreview({ tourKey }: { tourKey: string }) {
   const [slots, setSlots] = React.useState<{ start: string; time: string; date: string }[]>([]);
@@ -55,9 +56,13 @@ function SlotPreview({ tourKey }: { tourKey: string }) {
   );
 }
 
-type Props = { initialSettings: TourSettings };
+type Props = {
+  initialSettings: TourSettings;
+  initialWindows: TourAvailabilityWindow[];
+  initialExceptions: TourAvailabilityException[];
+};
 
-export function TourSettingsSection({ initialSettings }: Props) {
+export function TourSettingsSection({ initialSettings, initialWindows, initialExceptions }: Props) {
   const router = useRouter();
   const [s, setS] = React.useState(initialSettings);
   const [saving, startSave] = React.useTransition();
@@ -76,11 +81,7 @@ export function TourSettingsSection({ initialSettings }: Props) {
       const result = await updateTourSettingsAction(s);
       if (result.ok) {
         toast.success("Tour settings saved.");
-        if (s.tourSchedulingEnabled) {
-          router.push("/dashboard?milestone=tour_scheduling");
-        } else {
-          router.refresh();
-        }
+        router.refresh();
       } else {
         toast.error("Could not save settings.");
       }
@@ -154,7 +155,10 @@ export function TourSettingsSection({ initialSettings }: Props) {
             </div>
           </div>
 
-          {/* Available slot preview */}
+          <TourAvailabilityEditor initialWindows={initialWindows} initialExceptions={initialExceptions} />
+
+          {/* Available slot preview — always the output of the availability
+              configured above, never a separate source of truth. */}
           <div className="rounded-xl border border-border bg-muted/20 p-4 space-y-2">
             <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Available Slot Preview</p>
             <SlotPreview tourKey={s.tourEmbedKey} />

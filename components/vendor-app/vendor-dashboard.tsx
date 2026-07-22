@@ -70,7 +70,7 @@ export function VendorDashboard({ data }: { data: VendorDashboardData }) {
 
   return (
     <div className="space-y-6">
-      {/* Morning briefing header */}
+      {/* Daily briefing header */}
       <div>
         <h1 className="text-2xl font-bold text-foreground">
           {greetingWord()}, {data.vendor.businessName}.

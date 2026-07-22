@@ -83,6 +83,7 @@ export function InquiryForm({
       utm_term: urlParams.get("utm_term") ?? undefined,
       referrer: document.referrer || undefined,
       landing_page: window.location.href,
+      qr_campaign_id: urlParams.get("qr") ?? undefined,
     };
 
     try {

@@ -35,6 +35,40 @@ export type TourSettings = {
   tourPageDescription: string | null;
 };
 
+/**
+ * Tour Scheduling Completion — the weekly recurring availability schedule,
+ * replacing "tour hours inferred from venue_business_hours." dayOfWeek
+ * follows Postgres's extract(dow) convention (0 = Sunday .. 6 = Saturday),
+ * same as venue_business_hours.day_of_week.
+ */
+export type TourAvailabilityWindow = {
+  id: string;
+  dayOfWeek: number;
+  startTime: string; // "HH:MM"
+  endTime: string;
+  sortOrder: number;
+};
+
+export type TourAvailabilityWindowInput = {
+  dayOfWeek: number;
+  startTime: string;
+  endTime: string;
+};
+
+/** Blocked dates / holidays / venue closures — a date range, not a single day. */
+export type TourAvailabilityException = {
+  id: string;
+  startDate: string; // "YYYY-MM-DD"
+  endDate: string;
+  label: string | null;
+};
+
+export type TourAvailabilityExceptionInput = {
+  startDate: string;
+  endDate: string;
+  label?: string;
+};
+
 export type TourOutcome = "interested" | "considering" | "not_a_fit" | "booked" | "unknown";
 
 export type TourAppointment = {

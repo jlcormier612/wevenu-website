@@ -15,6 +15,7 @@ import { DataExportSection } from "@/components/settings/data-export-section";
 import { LuvHeart } from "@/components/dashboard/luv-widget";
 import { StripeConnectSection } from "@/components/settings/stripe-connect-section";
 import { QuickBooksConnectSection } from "@/components/settings/quickbooks-connect-section";
+import { FacebookConnectSection } from "@/components/settings/facebook-connect-section";
 import { VenueSettings } from "@/components/settings/venue-settings";
 import {
   Card,
@@ -28,10 +29,12 @@ import { getLuvSettings } from "@/lib/luv/settings";
 import { getCurrentVenue, getVenueSettings } from "@/lib/venue/service";
 import { getNotificationStats } from "@/lib/notifications/stats";
 import { getNotificationPreferences } from "@/lib/notifications/preferences";
-import { getTourSettings } from "@/lib/tours/service";
+import { getTourAvailabilityExceptions, getTourAvailabilityWindows, getTourSettings } from "@/lib/tours/service";
 import { getIntakeHealthSummary } from "@/lib/lead-intake/monitoring";
+import { getEmailIntakeStatus } from "@/lib/lead-intake/email-status";
 import { getEventCompletedNudgeRule } from "@/lib/automation/service";
 import { getQuickBooksConnection, getRecentQuickBooksSyncLog } from "@/lib/quickbooks/service";
+import { getFacebookConnection, getFacebookLeadForms, getRecentFacebookLog } from "@/lib/facebook/service";
 // Playbooks moved to Library (/library/playbooks)
 // Pipeline Templates moved to Library (/library/pipeline-templates)
 
@@ -44,8 +47,8 @@ export const metadata: Metadata = { title: "Settings" };
  * Route is protected by the (app) layout (venue existence already confirmed).
  */
 export default async function SettingsPage() {
-  const [settings, venue, spaces, capacityRules, luvSettings, notifStats, notifPrefs, tourSettings, intakeHealth, eventCompletedNudgeRule, quickbooksConnection, quickbooksSyncLog] = await Promise.all([
-    getVenueSettings(), getCurrentVenue(), getSpaces(), getCapacityRules(), getLuvSettings(), getNotificationStats(), getNotificationPreferences(), getTourSettings(), getIntakeHealthSummary(), getEventCompletedNudgeRule(), getQuickBooksConnection(), getRecentQuickBooksSyncLog(),
+  const [settings, venue, spaces, capacityRules, luvSettings, notifStats, notifPrefs, tourSettings, intakeHealth, eventCompletedNudgeRule, quickbooksConnection, quickbooksSyncLog, tourAvailabilityWindows, tourAvailabilityExceptions, emailIntakeStatus, facebookConnection, facebookLeadForms, facebookLog] = await Promise.all([
+    getVenueSettings(), getCurrentVenue(), getSpaces(), getCapacityRules(), getLuvSettings(), getNotificationStats(), getNotificationPreferences(), getTourSettings(), getIntakeHealthSummary(), getEventCompletedNudgeRule(), getQuickBooksConnection(), getRecentQuickBooksSyncLog(), getTourAvailabilityWindows(), getTourAvailabilityExceptions(), getEmailIntakeStatus(), getFacebookConnection(), getFacebookLeadForms(), getRecentFacebookLog(),
   ]);
 
   if (!settings) {
@@ -71,6 +74,7 @@ export default async function SettingsPage() {
       <VenueSettings initial={settings.input} venueId={settings.venueId} />
       {venue && <StripeConnectSection venue={venue} />}
       {venue && <QuickBooksConnectSection venueId={venue.id} connection={quickbooksConnection} syncLog={quickbooksSyncLog} />}
+      {venue && <FacebookConnectSection venueId={venue.id} connection={facebookConnection} leadForms={facebookLeadForms} recentLog={facebookLog} />}
 
       {/* ── Import Data ────────────────────────────────────────────── */}
       <Card>
@@ -150,6 +154,7 @@ export default async function SettingsPage() {
                   ? `leads+${venue.leadEmailKey}@${process.env.RESEND_INBOUND_ADDRESS.replace(/^.*@/, "")}`
                   : null
               }
+              emailIntakeStatus={emailIntakeStatus}
             />
           </CardContent>
         </Card>
@@ -180,7 +185,11 @@ export default async function SettingsPage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <TourSettingsSection initialSettings={tourSettings} />
+            <TourSettingsSection
+              initialSettings={tourSettings}
+              initialWindows={tourAvailabilityWindows}
+              initialExceptions={tourAvailabilityExceptions}
+            />
           </CardContent>
         </Card>
       )}

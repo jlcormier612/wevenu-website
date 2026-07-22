@@ -31,7 +31,7 @@ export const metadata: Metadata = { title: "Dashboard" };
 type Props = { searchParams: Promise<{ milestone?: string }> };
 
 /**
- * Today Dashboard — the venue owner's morning briefing.
+ * Today Dashboard — the venue owner's daily briefing.
  * All widget data is fetched in three parallel queries (leads, tasks,
  * activities) then shaped client-side with no additional round-trips.
  */

@@ -82,6 +82,16 @@ export type IngestLeadOptions = {
   ipAddress?: string | null;
   /** Cloudflare Turnstile token from the submitting form, if the widget rendered one. Optional below the rate-limit escalation threshold, required at/above it. */
   turnstileToken?: string | null;
+  /**
+   * Idempotency key for a webhook source that may redeliver the same event
+   * (Meta Lead Ads' leadgen_id, a future integration's own stable ID, etc).
+   * Threaded straight through to logIntakeAttempt, whose
+   * lead_intake_attempts_external_ref unique partial index
+   * (source, external_ref) was built for exactly this — a redelivered
+   * webhook for an already-logged external_ref is a safe no-op at the
+   * attempt-log layer, before any lead-creation logic even runs.
+   */
+  externalRef?: string | null;
   /** The source-specific RPC call, invoked with the finalized normalized+validated input. */
   create: (normalized: NormalizedLeadInput) => Promise<CreateOutcome>;
 };

@@ -47,6 +47,32 @@ export async function logIntakeAttempt(
   return data.id;
 }
 
+/**
+ * Idempotency check for a webhook source that may redeliver the same
+ * event (Meta Lead Ads' leadgen_id, etc). lead_intake_attempts_external_ref
+ * is a permanent unique index (not scoped to unresolved rows the way the
+ * source-specific queue tables are) — a bare insert on a genuine
+ * redelivery would fail the unique constraint and logIntakeAttempt would
+ * silently return null, but the pipeline would still go on to call
+ * create() a second time and create a duplicate Lead. This check runs
+ * BEFORE logIntakeAttempt so a redelivery short-circuits before any of
+ * that happens.
+ */
+export async function findAcceptedAttemptByExternalRef(
+  supabase: AnyDbClient,
+  source: string,
+  externalRef: string,
+): Promise<{ attemptId: string; leadId: string; relationshipId: string } | null> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data } = await (supabase.from("lead_intake_attempts") as any)
+    .select("id, lead_id, relationship_id")
+    .eq("source", source).eq("external_ref", externalRef).eq("status", "accepted")
+    .maybeSingle();
+  const row = data as { id: string; lead_id: string | null; relationship_id: string | null } | null;
+  if (!row?.lead_id || !row.relationship_id) return null;
+  return { attemptId: row.id, leadId: row.lead_id, relationshipId: row.relationship_id };
+}
+
 export async function markIntakeAttempt(
   supabase: AnyDbClient,
   attemptId: string | null,

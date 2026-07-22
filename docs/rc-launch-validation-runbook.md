@@ -120,13 +120,24 @@ Grouped by what breaks if it's missing. `NEXT_PUBLIC_*` variables are exposed to
 1. Real charge collection is not built (TR-M1) — there is nothing to sandbox-test on the collection side yet.
 2. What **is** built and should be tested: the Stripe Connect OAuth link/unlink flow in Settings. Click "Connect with Stripe," complete a real (test-mode) Stripe OAuth authorization, confirm the callback (`app/api/stripe/callback/route.ts`) correctly stores the connected account and redirects back to Settings with a success state. Confirm the error path too (deny the OAuth request, confirm a clear `stripe_error` message appears).
 
-### QuickBooks Online
-1. Register a real Intuit App (sandbox first) at the Intuit Developer portal, set `QUICKBOOKS_CLIENT_ID`/`QUICKBOOKS_CLIENT_SECRET`/`NEXT_PUBLIC_QUICKBOOKS_CLIENT_ID`/`QUICKBOOKS_ENVIRONMENT=sandbox` in your hosting environment.
-2. Click "Connect with QuickBooks" in Settings, complete the real OAuth authorization against a sandbox company, confirm the callback (`app/api/quickbooks/callback/route.ts`) stores the connection and the Settings card shows "Connected to {company name}" — this exercises the one-time CompanyInfo verification call.
-3. Create a real client, send a real invoice, mark a real payment as paid, issue a real refund — confirm each shows a "Syncing…" then "Synced to QuickBooks" badge within one 5-minute cron tick, and confirm the corresponding Customer/Invoice/Payment/RefundReceipt actually exists in the sandbox company (not just that Wevenu's own badge flipped).
-4. Confirm idempotency: edit an already-sent invoice's line items and confirm it re-syncs (not silently drifts) rather than creating a duplicate Invoice in QuickBooks.
-5. Confirm disconnect actually revokes the token on Intuit's side (Intuit's My Apps dashboard should show the connection gone, not just Wevenu's local state).
-6. Everything above is already verified in this environment against Intuit's real endpoints using fake credentials (real 401/`invalid_client` rejections, correctly classified and retried/dead-lettered) — this step is specifically about confirming a *genuine successful* sync with real credentials, which this dev environment could not do. See `docs/quickbooks-integration-completion.md`.
+### QuickBooks Online — Financial Validation (production-readiness bar)
+
+Everything below has already been verified in this environment against Intuit's real endpoints using fake credentials — real 401/`invalid_client` rejections, correctly classified and retried/dead-lettered, correct dependency ordering, correct idempotent re-sync on edit (see `docs/quickbooks-integration-completion.md` and the full-lifecycle live-verification pass that confirmed the mechanics end-to-end). What remains, and cannot be verified without a real Intuit App, is whether a *genuine successful* sync actually lands in a real QuickBooks company. This checklist is the explicit go/no-go bar for calling the integration production-ready — **all twelve steps must pass with real Intuit credentials**:
+
+1. **Connect QuickBooks Sandbox** — register a real Intuit App (sandbox) at the Intuit Developer portal, set `QUICKBOOKS_CLIENT_ID`/`QUICKBOOKS_CLIENT_SECRET`/`NEXT_PUBLIC_QUICKBOOKS_CLIENT_ID`/`QUICKBOOKS_ENVIRONMENT=sandbox`. Click "Connect with QuickBooks" in Settings, complete real OAuth authorization, confirm the Settings card shows "Connected to {company name}."
+2. **Create invoice** — create a real client and a real invoice with at least one line item, send it.
+3. **Sync invoice** — confirm the invoice shows "Synced to QuickBooks" within one 5-minute cron tick, and confirm a real Invoice object with the matching `DocNumber` actually exists in the sandbox company.
+4. **Receive payment** — mark the invoice's payment as paid in Wevenu.
+5. **Sync payment** — confirm the payment syncs and a real Payment object linked to the correct Invoice exists in the sandbox company.
+6. **Issue refund** — refund the payment (Owner-only) in Wevenu.
+7. **Sync refund** — confirm a real RefundReceipt object exists in the sandbox company.
+8. **Modify sent invoice** — edit a line item on the already-sent invoice.
+9. **Verify re-sync** — confirm this triggers a fresh sync (not silent drift) and the sandbox company's Invoice reflects the change, without creating a duplicate Invoice.
+10. **Disconnect** — confirm Intuit's own My Apps dashboard shows the connection genuinely revoked, not just Wevenu's local state cleared.
+11. **Reconnect** — re-run the OAuth flow, confirm the connection is restored and sync resumes correctly.
+12. **Manual re-sync** — force a retry on a previously failed/dead-lettered item (once the manual re-sync affordance from `docs/quickbooks-online-architecture.md` §7 is built — currently deferred as an explicit non-launch-blocking item, schema-ready) and confirm it succeeds.
+
+If all twelve pass, the QuickBooks integration is production-ready.
 
 ---
 

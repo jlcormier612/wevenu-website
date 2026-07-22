@@ -19,6 +19,14 @@
     {
       "path": "/api/quickbooks/sync/process",
       "schedule": "*/5 * * * *"
+    },
+    {
+      "path": "/api/facebook/sync/process",
+      "schedule": "*/5 * * * *"
+    },
+    {
+      "path": "/api/facebook/reconcile/process",
+      "schedule": "0 * * * *"
     }
   ]
 }
