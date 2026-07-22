@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "next dev --port 3000",
     "dev:marketing": "npm run dev --prefix marketing",
+    "dev:workspace": "npm run dev --prefix workspace",
     "build": "next build",
     "start": "next start --port 3000",
     "lint": "eslint"
