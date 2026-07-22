@@ -114,7 +114,7 @@ export function TourExperience({ prev, next }: TourExperienceProps) {
               Great follow-up creates trust.
             </h2>
             <p className="mt-6 text-base leading-[1.7] text-[var(--forest-sage)]/75 md:text-lg max-w-[65ch]">
-              Most venues rely on memory, notebooks, or scattered emails after a tour.
+              Most venues rely on memory, notebooks, scattered emails, or disconnected systems after a tour.
             </p>
             <p className="mt-5 text-base leading-[1.7] text-[var(--forest-sage)]/75 md:text-lg max-w-[65ch]">
               Hello to Cheers quietly preserves everything, so every future conversation feels like a
@@ -141,24 +141,6 @@ export function TourExperience({ prev, next }: TourExperienceProps) {
             </ol>
             <p className="mt-8 text-sm tracking-wide text-[var(--forest-sage)]/50">
               One uninterrupted line.
-            </p>
-          </div>
-        </div>
-      </section>
-
-      {/* ── Section 5 · Product Showcase ── */}
-      <section className="px-6 py-28 md:py-36">
-        <div className="mx-auto grid max-w-6xl items-center gap-12 md:grid-cols-[1.35fr_0.65fr] md:gap-16">
-          <TourWorkspaceMock className={`min-h-[420px] md:min-h-[480px] ${EDITORIAL_FRAME} bg-[var(--true-white)]`} />
-          <div>
-            <h2 className="font-heading text-[2.1rem] text-[var(--forest-sage)] md:text-[2.52rem]">
-              Hospitality doesn&apos;t happen by accident.
-            </h2>
-            <p className="mt-6 text-base leading-[1.7] text-[var(--forest-sage)]/70 md:text-lg max-w-[65ch]">
-              It happens when everyone remembers what matters.
-            </p>
-            <p className="mt-5 text-base leading-[1.7] text-[var(--forest-sage)]/70 md:text-lg max-w-[65ch]">
-              Hello to Cheers gives your team shared context before every conversation.
             </p>
           </div>
         </div>

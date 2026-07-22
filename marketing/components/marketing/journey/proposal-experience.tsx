@@ -68,15 +68,44 @@ export function ProposalExperience({ prev, next }: ProposalExperienceProps) {
       {/* ── Section 2 · Lifestyle + Proposal ── */}
       <section className="px-6 pb-28 md:pb-36">
         <div className="mx-auto grid max-w-6xl items-start gap-8 md:grid-cols-[3fr_2fr] md:gap-10">
-          <div className={`relative aspect-[16/10] w-full md:aspect-[5/3] ${EDITORIAL_FRAME}`}>
-            <Image
-              src={FILM.proposalReview}
-              alt="A Willow & Hearth proposal booklet for Elena & James — personal, clear, beautiful"
-              fill
-              className={EDITORIAL_IMAGE}
-              sizes="(max-width:768px) 100vw, 60vw"
-              priority
-            />
+          <div>
+            <div className={`relative aspect-[16/10] w-full md:aspect-[5/3] ${EDITORIAL_FRAME}`}>
+              <Image
+                src={FILM.proposalReview}
+                alt="A Willow & Hearth proposal booklet for Elena & James — personal, clear, beautiful"
+                fill
+                className={EDITORIAL_IMAGE}
+                sizes="(max-width:768px) 100vw, 60vw"
+                priority
+              />
+            </div>
+            <div className="mt-8">
+              <h2 className="font-heading text-[2.1rem] font-medium leading-[1.21] text-[var(--forest-sage)] md:text-[3.36rem]">
+                Most proposals start over.
+                <br />
+                Yours simply continues the story.
+              </h2>
+              <p className="mt-6 text-base leading-[1.7] text-[var(--forest-sage)]/75 md:text-lg max-w-[65ch]">
+                Other systems ask you to rebuild what you already know.
+              </p>
+              <p className="mt-5 text-base leading-[1.7] text-[var(--forest-sage)]/75 md:text-lg max-w-[65ch]">
+                Hello to Cheers remembers the conversations, preferences, favorite spaces, and details
+                from every interaction—so every proposal feels thoughtful without creating more
+                work.
+              </p>
+            </div>
+            <div className="mt-8">
+              <h2 className="font-heading text-[2.1rem] text-[var(--forest-sage)] md:text-[2.52rem]">
+                Confidence creates momentum.
+              </h2>
+              <p className="mt-6 text-base leading-[1.7] text-[var(--forest-sage)]/70 md:text-lg max-w-[65ch]">
+                When couples can clearly see themselves celebrating at your venue, decisions
+                become easier.
+              </p>
+              <p className="mt-5 text-base leading-[1.7] text-[var(--forest-sage)]/70 md:text-lg max-w-[65ch]">
+                Hello to Cheers helps you present that vision beautifully.
+              </p>
+            </div>
           </div>
           <div className="flex flex-col justify-center self-stretch">
             <ProposalWorkspaceMock />
@@ -104,71 +133,6 @@ export function ProposalExperience({ prev, next }: ProposalExperienceProps) {
         </div>
       </section>
 
-      {/* ── Section 4 · The Difference ── */}
-      <section className="bg-[var(--warm-gray)] px-6 py-28 md:py-36">
-        <div className="mx-auto grid max-w-6xl gap-14 md:grid-cols-2 md:items-start md:gap-20">
-          <div>
-            <h2 className="font-heading text-[2.1rem] font-medium leading-[1.21] text-[var(--forest-sage)] md:text-[3.36rem]">
-              Most proposals start over.
-              <br />
-              Yours simply continues the story.
-            </h2>
-            <p className="mt-6 text-base leading-[1.7] text-[var(--forest-sage)]/75 md:text-lg max-w-[65ch]">
-              Other systems ask you to rebuild what you already know.
-            </p>
-            <p className="mt-5 text-base leading-[1.7] text-[var(--forest-sage)]/75 md:text-lg max-w-[65ch]">
-              Hello to Cheers remembers the conversations, preferences, favorite spaces, and details
-              from every interaction—so every proposal feels thoughtful without creating more
-              work.
-            </p>
-          </div>
-          <div>
-            <ol className="space-y-0">
-              {CONTINUITY_FLOW.map((label, i) => (
-                <li key={label} className="flex flex-col items-start">
-                  <span className="font-heading text-xl text-[var(--forest-sage)] md:text-2xl">
-                    {label}
-                  </span>
-                  {i < CONTINUITY_FLOW.length - 1 ? (
-                    <span
-                      className="my-2 pl-1 text-lg leading-none text-[var(--heritage-sage)]/45"
-                      aria-hidden
-                    >
-                      ↓
-                    </span>
-                  ) : null}
-                </li>
-              ))}
-            </ol>
-            <p className="mt-8 text-sm tracking-wide text-[var(--forest-sage)]/50">
-              Nothing resets.
-            </p>
-            <p className="mt-2 text-sm tracking-wide text-[var(--forest-sage)]/50">
-              Nothing starts over.
-            </p>
-          </div>
-        </div>
-      </section>
-
-      {/* ── Section 5 · Product Showcase ── */}
-      <section className="px-6 py-28 md:py-36">
-        <div className="mx-auto grid max-w-6xl items-center gap-12 md:grid-cols-[1.35fr_0.65fr] md:gap-16">
-          <ProposalWorkspaceMock className={`min-h-[480px] ${EDITORIAL_FRAME} bg-[var(--true-white)]`} />
-          <div>
-            <h2 className="font-heading text-[2.1rem] text-[var(--forest-sage)] md:text-[2.52rem]">
-              Confidence creates momentum.
-            </h2>
-            <p className="mt-6 text-base leading-[1.7] text-[var(--forest-sage)]/70 md:text-lg max-w-[65ch]">
-              When couples can clearly see themselves celebrating at your venue, decisions
-              become easier.
-            </p>
-            <p className="mt-5 text-base leading-[1.7] text-[var(--forest-sage)]/70 md:text-lg max-w-[65ch]">
-              Hello to Cheers helps you present that vision beautifully.
-            </p>
-          </div>
-        </div>
-      </section>
-
       {/* ── Section 6 · Hospitality Moment ── */}
       <section className={`px-6 ${EDITORIAL_BREAK_Y}`}>
         <div className={`relative mx-auto aspect-[16/10] max-w-6xl md:aspect-[2/1] ${EDITORIAL_FRAME}`}>
@@ -183,11 +147,38 @@ export function ProposalExperience({ prev, next }: ProposalExperienceProps) {
       </section>
 
       {/* ── Section 7 · Continuity differentiator ── */}
-      <section className="px-6 py-28 md:py-36">
+      <section className="bg-[var(--warm-gray)] px-6 py-28 md:py-36">
         <div className="mx-auto grid max-w-5xl gap-12 md:grid-cols-2 md:items-start md:gap-20">
-          <h2 className="font-heading text-[2.1rem] text-[var(--forest-sage)] md:text-[3.36rem]">
-            Packages stay connected.
-          </h2>
+          <div>
+            <h2 className="font-heading text-[2.1rem] text-[var(--forest-sage)] md:text-[3.36rem]">
+              Packages stay connected.
+            </h2>
+            <div className="mt-10">
+              <ol className="space-y-0">
+                {CONTINUITY_FLOW.map((label, i) => (
+                  <li key={label} className="flex flex-col items-start">
+                    <span className="font-heading text-xl text-[var(--forest-sage)] md:text-2xl">
+                      {label}
+                    </span>
+                    {i < CONTINUITY_FLOW.length - 1 ? (
+                      <span
+                        className="my-2 pl-1 text-lg leading-none text-[var(--heritage-sage)]/45"
+                        aria-hidden
+                      >
+                        ↓
+                      </span>
+                    ) : null}
+                  </li>
+                ))}
+              </ol>
+              <p className="mt-8 text-sm tracking-wide text-[var(--forest-sage)]/50">
+                Nothing resets.
+              </p>
+              <p className="mt-2 text-sm tracking-wide text-[var(--forest-sage)]/50">
+                Nothing starts over.
+              </p>
+            </div>
+          </div>
           <div className="space-y-5 text-base leading-[1.7] text-[var(--forest-sage)]/75 md:text-lg max-w-[65ch]">
             <p>Your proposal isn&apos;t a disconnected document.</p>
             <p>

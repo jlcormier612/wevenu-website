@@ -1,5 +1,4 @@
 import Image from "next/image";
-import { GuestWorkspaceMock } from "@/components/marketing/journey/guest-workspace-mock";
 import { JourneyNav } from "@/components/marketing/journey/journey-nav";
 import { MarketingCta } from "@/components/marketing/marketing-cta";
 import { FILM } from "@/lib/marketing/film";
@@ -64,26 +63,17 @@ export function GuestExperience({ prev, next }: GuestExperienceProps) {
         </div>
       </section>
 
-      {/* ── Section 2 · Lifestyle + Product ── */}
+      {/* ── Section 2 · Emotional Photography ── */}
       <section className="px-6 pb-28 md:pb-36">
-        <div className="mx-auto grid max-w-6xl items-start gap-8 md:grid-cols-[11fr_9fr] md:gap-10">
-          <div className={`relative aspect-[16/10] w-full md:aspect-[5/3] ${EDITORIAL_FRAME}`}>
-            <Image
-              src={FILM.guestArrive}
-              alt="Guest portal welcome on a phone — every guest arrives a little more prepared"
-              fill
-              className={EDITORIAL_IMAGE}
-              sizes="(max-width:768px) 100vw, 55vw"
-              priority
-            />
-          </div>
-          <div className="flex flex-col justify-center self-stretch">
-            <GuestWorkspaceMock />
-            <p className="mt-6 text-sm tracking-wide text-[var(--forest-sage)]/55">
-              Guests spend less time asking questions—and more time looking forward to the
-              celebration.
-            </p>
-          </div>
+        <div className={`relative mx-auto aspect-[16/10] max-w-6xl ${EDITORIAL_FRAME}`}>
+          <Image
+            src={FILM.guestArrive}
+            alt="Guest portal welcome on a phone — every guest arrives a little more prepared"
+            fill
+            className={EDITORIAL_IMAGE}
+            sizes="(max-width:768px) 100vw, 1152px"
+            priority
+          />
         </div>
       </section>
 
@@ -150,7 +140,23 @@ export function GuestExperience({ prev, next }: GuestExperienceProps) {
       {/* ── Section 5 · Product Showcase ── */}
       <section className="px-6 py-28 md:py-36">
         <div className="mx-auto grid max-w-6xl items-center gap-12 md:grid-cols-[1.35fr_0.65fr] md:gap-16">
-          <GuestWorkspaceMock className={`min-h-[420px] md:min-h-[520px] ${EDITORIAL_FRAME} bg-[var(--true-white)]`} />
+          <div>
+            <div
+              className={`relative aspect-[1024/634] ${EDITORIAL_FRAME} bg-[var(--linen)]`}
+            >
+              <Image
+                src="/marketing/guest-workspace-showcase-v2.jpg"
+                alt="Guest portal for Elena & James — invitation, RSVP, day-of schedule, travel, stay, and helpful links"
+                fill
+                className="object-contain object-center"
+                sizes="(max-width:768px) 100vw, 720px"
+              />
+            </div>
+            <p className="mt-6 text-sm tracking-wide text-[var(--forest-sage)]/55">
+              Guests spend less time asking questions—and more time looking forward to the
+              celebration.
+            </p>
+          </div>
           <div>
             <h2 className="font-heading text-[2.1rem] text-[var(--forest-sage)] md:text-[2.52rem]">
               Beautifully organized.

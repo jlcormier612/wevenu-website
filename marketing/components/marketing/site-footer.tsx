@@ -1,10 +1,11 @@
 import Image from "next/image";
 import Link from "next/link";
 
+import { TrustRule } from "@/components/marketing/brand-accents";
+import { NewsletterSignup } from "@/components/marketing/newsletter-signup";
 import { MARKETING_MEDIA } from "@/lib/marketing/content";
 import { FOOTER_EXPLORE, FOOTER_TRUST, PRIMARY_CTA } from "@/lib/marketing/nav";
 import { HOVER_LINK, TYPE_LABEL } from "@/lib/marketing/rhythm";
-import { TrustRule } from "@/components/marketing/brand-accents";
 
 export function SiteFooter() {
   return (
@@ -32,9 +33,7 @@ export function SiteFooter() {
         </div>
 
         <div>
-          <p className={`mb-4 ${TYPE_LABEL}`}>
-            Explore
-          </p>
+          <p className={`mb-4 ${TYPE_LABEL}`}>Explore</p>
           <ul className="space-y-2.5">
             {FOOTER_EXPLORE.map((item) => (
               <li key={item.href}>
@@ -51,9 +50,7 @@ export function SiteFooter() {
 
         <div>
           <TrustRule className="mb-4" />
-          <p className={`mb-4 ${TYPE_LABEL}`}>
-            Trust
-          </p>
+          <p className={`mb-4 ${TYPE_LABEL}`}>Trust</p>
           <ul className="space-y-2.5">
             {FOOTER_TRUST.map((item) => (
               <li key={item.href}>
@@ -69,35 +66,11 @@ export function SiteFooter() {
         </div>
 
         <div>
-          <p className={`mb-4 ${TYPE_LABEL}`}>
-            Stay Connected
+          <p className={`mb-4 ${TYPE_LABEL}`}>Stay Connected</p>
+          <p className="mb-4 text-sm leading-[1.7] text-[var(--forest-sage)]/70">
+            Occasional notes for venue operators — no spam.
           </p>
-          <ul className="space-y-2.5">
-            <li>
-              <Link
-                href="/our-story#our-first-friends"
-                className={`text-sm text-[var(--forest-sage)]/80 ${HOVER_LINK}`}
-              >
-                Our First Friends
-              </Link>
-            </li>
-            <li>
-              <Link
-                href="/acceptable-use"
-                className={`text-sm text-[var(--forest-sage)]/80 ${HOVER_LINK}`}
-              >
-                Acceptable Use
-              </Link>
-            </li>
-            <li>
-              <Link
-                href="/cookie-policy"
-                className={`text-sm text-[var(--forest-sage)]/80 ${HOVER_LINK}`}
-              >
-                Cookie Policy
-              </Link>
-            </li>
-          </ul>
+          <NewsletterSignup />
         </div>
       </div>
 

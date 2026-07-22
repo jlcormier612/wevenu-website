@@ -72,25 +72,17 @@ export function PaymentsExperience({ prev, next }: PaymentsExperienceProps) {
         </div>
       </section>
 
-      {/* ── Section 2 · Beautiful Image + Product ── */}
+      {/* ── Section 2 · Emotional Photography ── */}
       <section className="px-6 pb-28 md:pb-36">
-        <div className="mx-auto grid max-w-6xl items-start gap-8 md:grid-cols-[3fr_2fr] md:gap-10">
-          <div className={`relative aspect-[16/10] w-full md:aspect-[5/3] ${EDITORIAL_FRAME}`}>
-            <Image
-              src={FILM.paymentsConsult}
-              alt="Payment overview for Elena & James — deposits, schedules, and balances kept clear"
-              fill
-              className={EDITORIAL_IMAGE}
-              sizes="(max-width:768px) 100vw, 60vw"
-              priority
-            />
-          </div>
-          <div className="flex flex-col justify-center self-stretch">
-            <PaymentsWorkspaceMock />
-            <p className="mt-6 text-sm tracking-wide text-[var(--forest-sage)]/55">
-              Every payment lives with the booking it belongs to.
-            </p>
-          </div>
+        <div className={`relative mx-auto aspect-[16/10] max-w-6xl md:aspect-[2/1] ${EDITORIAL_FRAME}`}>
+          <Image
+            src={FILM.paymentsConsult}
+            alt="Payment overview for Elena & James — deposits, schedules, and balances kept clear"
+            fill
+            className={EDITORIAL_IMAGE}
+            sizes="100vw"
+            priority
+          />
         </div>
       </section>
 

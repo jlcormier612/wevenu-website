@@ -159,7 +159,7 @@ export const FEATURES_PAGE = {
       intro:
         "Thoughtful recommendations that help your venue scale hospitality without losing heart.",
       features: [
-        "Morning Briefings",
+        "Daily Briefings",
         "Helpful Drafts",
         "Smart Reminders",
         "Venue Health",

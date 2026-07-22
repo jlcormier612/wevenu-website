@@ -25,6 +25,24 @@
     "paths": {
       "@/*": [
         "./*"
+      ],
+      "@shared/relationships": [
+        "../shared/relationships/index.ts"
+      ],
+      "@shared/relationships/*": [
+        "../shared/relationships/*"
+      ],
+      "@shared/email": [
+        "../shared/email/index.ts"
+      ],
+      "@shared/email/*": [
+        "../shared/email/*"
+      ],
+      "@shared/product-sync": [
+        "../shared/product-sync/index.ts"
+      ],
+      "@shared/product-sync/*": [
+        "../shared/product-sync/*"
       ]
     }
   },

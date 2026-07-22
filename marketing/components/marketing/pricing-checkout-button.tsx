@@ -3,6 +3,9 @@
 import { useState } from "react";
 import Link from "next/link";
 
+import { OnboardingSelection } from "@/components/marketing/onboarding-selection";
+import type { OnboardingType } from "@/lib/marketing/enrollment";
+import { getPlanDisplayName } from "@/lib/marketing/onboarding-packages";
 import type { SubscriptionPlanId } from "@/lib/marketing/pricing-page";
 import { HOVER_FILL, HOVER_LINK, HOVER_OUTLINE } from "@/lib/marketing/rhythm";
 import { cn } from "@/lib/utils";
@@ -16,7 +19,8 @@ type PricingCheckoutButtonProps = {
 };
 
 /**
- * Starts Stripe Checkout for a subscription plan (hosted Checkout).
+ * Pricing card CTA → onboarding selection → single Stripe Checkout Session.
+ * Welcome Back checkbox lives on the selection step (never blocks checkout).
  */
 export function PricingCheckoutButton({
   planId,
@@ -24,17 +28,25 @@ export function PricingCheckoutButton({
   variant = "primary",
   className,
 }: PricingCheckoutButtonProps) {
+  const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  async function startCheckout() {
+  async function startCheckout(selection: {
+    onboardingType: OnboardingType;
+    welcomeBack: boolean;
+  }) {
     setLoading(true);
     setError(null);
     try {
       const res = await fetch("/api/stripe/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ plan: planId }),
+        body: JSON.stringify({
+          plan: planId,
+          welcome_back: selection.welcomeBack,
+          onboarding_type: selection.onboardingType,
+        }),
       });
       const data = (await res.json()) as { url?: string; error?: string };
       if (!res.ok || !data.url) {
@@ -51,7 +63,10 @@ export function PricingCheckoutButton({
     <div>
       <button
         type="button"
-        onClick={startCheckout}
+        onClick={() => {
+          setError(null);
+          setOpen(true);
+        }}
         disabled={loading}
         className={cn(
           "inline-flex w-full items-center justify-center rounded-full px-6 py-3 text-sm tracking-wide transition duration-200 ease-out disabled:opacity-60",
@@ -62,13 +77,22 @@ export function PricingCheckoutButton({
           className,
         )}
       >
-        {loading ? "Opening checkout…" : label}
+        {label}
       </button>
-      {error ? (
-        <p className="mt-3 text-center text-xs leading-[1.7] text-[var(--forest-sage)]/55">
-          {error}
-        </p>
-      ) : null}
+
+      <OnboardingSelection
+        open={open}
+        planLabel={getPlanDisplayName(planId)}
+        loading={loading}
+        error={error}
+        onClose={() => {
+          if (!loading) {
+            setOpen(false);
+            setError(null);
+          }
+        }}
+        onContinue={startCheckout}
+      />
     </div>
   );
 }

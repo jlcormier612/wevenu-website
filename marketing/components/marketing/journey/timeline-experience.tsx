@@ -71,25 +71,17 @@ export function TimelineExperience({ prev, next }: TimelineExperienceProps) {
         </div>
       </section>
 
-      {/* ── Section 2 · Lifestyle + Product ── */}
+      {/* ── Section 2 · Emotional Photography ── */}
       <section className="px-6 pb-28 md:pb-36">
-        <div className="mx-auto grid max-w-6xl items-start gap-8 md:grid-cols-[11fr_9fr] md:gap-10">
-          <div className={`relative aspect-[16/10] w-full md:aspect-[5/3] ${EDITORIAL_FRAME}`}>
-            <Image
-              src={FILM.timelineMorning}
-              alt="Event timeline for Elena & James — every moment, perfectly planned"
-              fill
-              className={EDITORIAL_IMAGE}
-              sizes="(max-width:768px) 100vw, 55vw"
-              priority
-            />
-          </div>
-          <div className="flex flex-col justify-center self-stretch">
-            <TimelineWorkspaceMock />
-            <p className="mt-6 text-sm tracking-wide text-[var(--forest-sage)]/55">
-              Built gradually throughout planning—not rushed together the night before.
-            </p>
-          </div>
+        <div className={`relative mx-auto aspect-[16/10] max-w-6xl ${EDITORIAL_FRAME}`}>
+          <Image
+            src={FILM.timelineMorning}
+            alt="Event timeline for Elena & James — every moment, perfectly planned"
+            fill
+            className={EDITORIAL_IMAGE}
+            sizes="100vw"
+            priority
+          />
         </div>
       </section>
 
@@ -165,8 +157,10 @@ export function TimelineExperience({ prev, next }: TimelineExperienceProps) {
         </div>
       </section>
 
-      {/* ── Section 6 · Hospitality Photography ── */}
-      <section className={`relative aspect-[16/10] w-full md:aspect-[1024/493] ${EDITORIAL_BLEED}`}>
+      {/* ── Section 6 · Hospitality Photography (quote baked into image) ── */}
+      <section
+        className={`relative aspect-[16/10] w-full bg-[var(--taupe-light)] md:aspect-[1024/493] ${EDITORIAL_BLEED}`}
+      >
         <Image
           src={FILM.timelineReady}
           alt="Wooden ceremony chairs and florals in warm light — preparation creates effortless event days"

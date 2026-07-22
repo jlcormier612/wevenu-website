@@ -1,9 +1,13 @@
 import Image from "next/image";
 import { JourneyNav } from "@/components/marketing/journey/journey-nav";
-import { VendorsWorkspaceMock } from "@/components/marketing/journey/vendors-workspace-mock";
 import { MarketingCta } from "@/components/marketing/marketing-cta";
 import { FILM } from "@/lib/marketing/film";
-import { EDITORIAL_BLEED, EDITORIAL_FRAME, EDITORIAL_IMAGE, TYPE_HERO_SHELL } from "@/lib/marketing/rhythm";
+import {
+  EDITORIAL_BLEED,
+  EDITORIAL_FRAME,
+  EDITORIAL_IMAGE,
+  TYPE_HERO_SHELL,
+} from "@/lib/marketing/rhythm";
 
 const PRINCIPLES = [
   {
@@ -69,25 +73,17 @@ export function VendorsExperience({ prev, next }: VendorsExperienceProps) {
         </div>
       </section>
 
-      {/* ── Section 2 · Hospitality + Product ── */}
+      {/* ── Section 2 · Emotional Photography ── */}
       <section className="px-6 pb-28 md:pb-36">
-        <div className="mx-auto grid max-w-6xl items-start gap-8 md:grid-cols-[11fr_9fr] md:gap-10">
-          <div className={`relative aspect-[16/10] w-full md:aspect-[5/3] ${EDITORIAL_FRAME}`}>
-            <Image
-              src={FILM.vendorsFlorist}
-              alt="Vendor plan for Elena & James — partners confirmed, roles clear, everyone connected"
-              fill
-              className={EDITORIAL_IMAGE}
-              sizes="(max-width:768px) 100vw, 55vw"
-              priority
-            />
-          </div>
-          <div className="flex flex-col justify-center self-stretch">
-            <VendorsWorkspaceMock />
-            <p className="mt-6 text-sm tracking-wide text-[var(--forest-sage)]/55">
-              Every vendor sees exactly what they need—when they need it.
-            </p>
-          </div>
+        <div className={`relative mx-auto aspect-[16/10] max-w-6xl md:aspect-[2/1] ${EDITORIAL_FRAME}`}>
+          <Image
+            src={FILM.vendorsFlorist}
+            alt="Vendor plan for Elena & James — partners confirmed, roles clear, everyone connected"
+            fill
+            className={EDITORIAL_IMAGE}
+            sizes="(max-width:768px) 100vw, 1152px"
+            priority
+          />
         </div>
       </section>
 
@@ -148,7 +144,22 @@ export function VendorsExperience({ prev, next }: VendorsExperienceProps) {
       {/* ── Section 5 · Product Showcase ── */}
       <section className="px-6 py-28 md:py-36">
         <div className="mx-auto grid max-w-6xl items-center gap-12 md:grid-cols-[1.35fr_0.65fr] md:gap-16">
-          <VendorsWorkspaceMock className={`min-h-[420px] md:min-h-[480px] ${EDITORIAL_FRAME} bg-[var(--true-white)]`} />
+          <div>
+            <div
+              className={`relative aspect-[1024/545] ${EDITORIAL_FRAME} bg-[var(--linen)]`}
+            >
+              <Image
+                src="/marketing/vendors-workspace-showcase-v2.jpg"
+                alt="Vendor list for Elena & James — partners, assignments, florist timeline, and shared documents"
+                fill
+                className="object-contain object-center"
+                sizes="(max-width:768px) 100vw, 720px"
+              />
+            </div>
+            <p className="mt-6 text-sm tracking-wide text-[var(--forest-sage)]/55">
+              Every vendor sees exactly what they need—when they need it.
+            </p>
+          </div>
           <div>
             <h2 className="font-heading text-[2.1rem] text-[var(--forest-sage)] md:text-[2.52rem]">
               Relationships matter.

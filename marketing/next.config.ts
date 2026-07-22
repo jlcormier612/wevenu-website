@@ -2,9 +2,9 @@ import path from "path";
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  // Keep this app isolated from the parent product workspace.
+  // Repo root so marketing can import shared/relationships.
   turbopack: {
-    root: path.join(__dirname),
+    root: path.join(__dirname, ".."),
   },
   images: {
     remotePatterns: [

@@ -82,7 +82,7 @@ export const FILM = {
 
   // Inquiry journey — welcoming, hopeful (unique to this chapter)
   inquiryWelcome: "/marketing/inquiry-welcome-htc.jpg",
-  inquiryConversation: "/marketing/inquiry-conversation.jpg",
+  inquiryConversation: "/marketing/inquiry-understood.jpg",
 
   // Tour journey — aspirational, immersive (do not reuse Inquiry images)
   tourGrounds: "/marketing/tour-grounds.jpg",
@@ -96,8 +96,7 @@ export const FILM = {
 
   // Booking — trust; promises become preparation
   bookingPrep: "/marketing/booking-prep.jpg",
-  bookingBehindScenes:
-    "https://images.unsplash.com/photo-1780337092243-8cc6bdd6cb3e?auto=format&fit=crop&w=2200&q=80",
+  bookingBehindScenes: "/marketing/booking-behind-scenes-v2.jpg",
 
   // Payments — financial confidence without finance imagery
   paymentsConsult: "/marketing/payments-consult.jpg",
@@ -115,12 +114,11 @@ export const FILM = {
 
   // Timeline — calm before the celebration
   timelineMorning: "/marketing/timeline-morning.jpg",
-  timelineReady: "/marketing/timeline-ready.jpg",
+  timelineReady: "/marketing/timeline-ready-chairs.jpg",
 
   // Floor & Seating — quiet confidence that the room matches the plan
   floorReady: "/marketing/floor-ready.jpg",
-  floorPrep:
-    "https://images.unsplash.com/photo-1644962786178-0b8531fcce43?auto=format&fit=crop&w=2200&q=80",
+  floorPrep: "/marketing/floor-prep-v2.jpg",
 
   // Client Experience — hospitality continues online
   clientHome: "/marketing/client-home.jpg",

@@ -120,7 +120,7 @@ export function InquiryExperience({ prev = null, next }: InquiryExperienceProps)
         <div className={`relative mx-auto aspect-[2/1] max-w-6xl ${EDITORIAL_FRAME}`}>
           <Image
             src={FILM.inquiryConversation}
-            alt="Planning table with Hello to Cheers on phone, notebook, and roses — personal details matter"
+            alt="Venue foyer welcome table with inquiry notification — every relationship starts with feeling understood"
             fill
             className={EDITORIAL_IMAGE}
             sizes="100vw"
@@ -163,25 +163,6 @@ export function InquiryExperience({ prev = null, next }: InquiryExperienceProps)
             </ol>
             <p className="mt-8 text-sm tracking-wide text-[var(--forest-sage)]/50">
               One uninterrupted flow.
-            </p>
-          </div>
-        </div>
-      </section>
-
-      {/* ── Section 5 · Screenshot Feature ── */}
-      <section className="px-6 py-28 md:py-36">
-        <div className="mx-auto grid max-w-6xl items-center gap-12 md:grid-cols-[1.35fr_0.65fr] md:gap-16">
-          <InquiryWorkspaceMock className={`min-h-[420px] md:min-h-[480px] ${EDITORIAL_FRAME} bg-[var(--true-white)]`} />
-          <div>
-            <h2 className="font-heading text-[2.1rem] text-[var(--forest-sage)] md:text-[2.52rem]">
-              Calm by design.
-            </h2>
-            <p className="mt-6 text-base leading-[1.7] text-[var(--forest-sage)]/70 md:text-lg max-w-[65ch]">
-              The interface shouldn&apos;t compete for your attention.
-            </p>
-            <p className="mt-5 text-base leading-[1.7] text-[var(--forest-sage)]/70 md:text-lg max-w-[65ch]">
-              It quietly keeps every conversation organized so you can focus on people instead
-              of paperwork.
             </p>
           </div>
         </div>

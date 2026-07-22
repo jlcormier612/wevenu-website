@@ -71,25 +71,17 @@ export function FloorExperience({ prev, next }: FloorExperienceProps) {
         </div>
       </section>
 
-      {/* ── Section 2 · Hospitality + Product ── */}
+      {/* ── Section 2 · Emotional Photography ── */}
       <section className="px-6 pb-28 md:pb-36">
-        <div className="mx-auto grid max-w-6xl items-start gap-8 md:grid-cols-[11fr_9fr] md:gap-10">
-          <div className={`relative aspect-[16/10] w-full md:aspect-[5/3] ${EDITORIAL_FRAME}`}>
-            <Image
-              src={FILM.floorReady}
-              alt="Floor plan for Elena & James — every table, seat, and space prepared with confidence"
-              fill
-              className={EDITORIAL_IMAGE}
-              sizes="(max-width:768px) 100vw, 55vw"
-              priority
-            />
-          </div>
-          <div className="flex flex-col justify-center self-stretch">
-            <FloorWorkspaceMock />
-            <p className="mt-6 text-sm tracking-wide text-[var(--forest-sage)]/55">
-              The room evolves naturally as the event evolves.
-            </p>
-          </div>
+        <div className={`relative mx-auto aspect-[16/10] max-w-6xl md:aspect-[2/1] ${EDITORIAL_FRAME}`}>
+          <Image
+            src={FILM.floorReady}
+            alt="Floor plan for Elena & James — every table, seat, and space prepared with confidence"
+            fill
+            className={EDITORIAL_IMAGE}
+            sizes="100vw"
+            priority
+          />
         </div>
       </section>
 
@@ -174,24 +166,14 @@ export function FloorExperience({ prev, next }: FloorExperienceProps) {
       </section>
 
       {/* ── Section 6 · Hospitality Photography ── */}
-      <section className={`relative min-h-[70vh] md:min-h-[85vh] ${EDITORIAL_BLEED}`}>
+      <section className={`relative aspect-[16/10] w-full md:aspect-[1024/557] ${EDITORIAL_BLEED}`}>
         <Image
           src={FILM.floorPrep}
-          alt="Final floral touches on a carefully set table — calm preparation before the celebration"
+          alt="Venue plans and seating arrangements on a wooden table — thoughtful preparation before the celebration"
           fill
           className={EDITORIAL_IMAGE}
           sizes="100vw"
         />
-        <div className="absolute inset-0 bg-[rgba(47,55,47,0.42)]" />
-        <div className="relative z-10 mx-auto flex min-h-[70vh] max-w-3xl flex-col items-center justify-center px-6 text-center text-[var(--true-white)] md:min-h-[85vh]">
-          <p className="font-heading text-3xl italic leading-snug md:text-5xl">
-            “Beautiful celebrations begin with thoughtful preparation.”
-          </p>
-          <p className="mt-8 text-sm tracking-wide text-white/70 md:text-base">
-            When the room is ready, your team is free to focus on the people walking through the
-            doors.
-          </p>
-        </div>
       </section>
 
       {/* ── Section 7 · The Hello to Cheers Difference ── */}

@@ -2,9 +2,9 @@
 
 **Sprint 3, Item 5. Research and inventory only — no implementation. Waiting for approval.**
 
-**Date:** 2026-07-21
+**Date:** 2026-07-21 (Hosted Checkout confirmed as the approved direction 2026-07-21 — see §3.1)
 
-This is a major initiative. A full architecture pass, `docs/stripe-payment-architecture.md`, already exists (dated 2026-07-07, TR-M1's designed permanent fix) — this document does **not** re-derive that design from scratch. It (a) confirms the existing design against the current live codebase, since real changes have happened since it was written (the Stripe card is now explicitly "coming soon," QuickBooks shipped and sets several new precedents worth reusing), (b) inventories exactly what exists today per the sprint prompt's checklist, and (c) reconciles two real gaps between the prior design and this sprint's new requirements — most importantly, **the existing design recommends an embedded Payment Element; this sprint's prompt asks for Hosted Checkout.** That's flagged explicitly below, not silently resolved either way.
+This is a major initiative. A full architecture pass, `docs/stripe-payment-architecture.md`, already exists (dated 2026-07-07, TR-M1's designed permanent fix) — this document does **not** re-derive that design from scratch. It (a) confirms the existing design against the current live codebase, since real changes have happened since it was written (the Stripe card is now explicitly "coming soon," QuickBooks shipped and sets several new precedents worth reusing), (b) inventories exactly what exists today per the sprint prompt's checklist, and (c) reconciles the real gap between the prior design and this sprint's new requirements — the prior design recommended an embedded Payment Element; **Hosted Checkout is now the confirmed, approved direction**, overriding that earlier recommendation. Still research/inventory only — no implementation yet, waiting for the go-ahead to build.
 
 ---
 
@@ -51,18 +51,18 @@ From `docs/stripe-payment-architecture.md`, still correct and not re-litigated h
 
 ## 3. Reconciling this sprint's new requirements against the prior design
 
-### 3.1 Hosted Checkout vs. embedded Payment Element — real conflict, needs a decision
+### 3.1 Hosted Checkout — confirmed as the approved direction
 
-The prior architecture doc explicitly recommends against a redirect-based checkout, reasoning that leaving the portal "cuts against the polished, cohesive portal experience this whole trust-rebuilding effort is about," and designed around an embedded Payment Element instead. **This sprint's prompt explicitly asks for "Hosted Checkout."** These are two different, mutually exclusive checkout implementations — not a small variation of each other:
+The prior architecture doc (`docs/stripe-payment-architecture.md`) had recommended against a redirect-based checkout, reasoning that leaving the portal "cuts against the polished, cohesive portal experience this whole trust-rebuilding effort is about," and designed around an embedded Payment Element instead. **This is now explicitly overridden: Hosted Checkout is the confirmed, approved direction for implementation.** These were two different, mutually exclusive checkout implementations, not a small variation of each other:
 
-| | Embedded Payment Element (prior design) | Hosted Checkout (this sprint's ask) |
+| | Embedded Payment Element (prior design, superseded) | Hosted Checkout (approved) |
 |---|---|---|
 | Where the couple pays | Inside the Wevenu portal, no redirect | Stripe-hosted page, couple leaves the portal, returns after |
 | Build effort | More (client-side Stripe.js integration, PaymentIntent creation, embedded UI) | Less (create a Checkout Session server-side, redirect, Stripe handles the entire payment UI) |
 | Direct Charges on connected accounts | Fully supported | Fully supported (Checkout Sessions support `on_behalf_of`/connected-account scoping) |
 | Couple experience | Stays inside Wevenu's branded portal throughout | Briefly sees Stripe's own checkout UI (which *can* be branded with the venue's logo/colors via Stripe's own branding settings on the connected account, partially closing this gap) |
 
-**This needs an explicit decision, not a silent pick.** Hosted Checkout is faster to build and just as architecturally sound (still Direct Charges, still Standard Connect, still "Wevenu never touches funds") — the only real tradeoff is the portal-cohesion argument the prior design was built around. Recommend confirming Hosted Checkout is the deliberate choice for this sprint (overriding the prior recommendation), given it's explicitly named in the launch requirement — but flagging rather than silently overriding a previously-documented design decision.
+Hosted Checkout is just as architecturally sound as the superseded Payment Element design (still Direct Charges, still Standard Connect, still "Wevenu never touches funds") — the only real tradeoff versus the prior recommendation is the portal-cohesion argument the earlier design was built around, which this decision knowingly accepts in exchange for materially less build effort. Every section below (§4 implementation plan, §5 verification plan) is already written against Hosted Checkout, not the superseded alternative.
 
 ### 3.2 New requirements not covered by the prior design
 
@@ -107,7 +107,7 @@ Everything not requiring a live Stripe round-trip can be built and verified now 
 
 ## 6. Open decisions needing approval before coding starts
 
-1. **Hosted Checkout vs. embedded Payment Element (§3.1)** — this sprint's prompt asks for Hosted Checkout, overriding the prior architecture doc's explicit recommendation. Confirm Hosted Checkout is the deliberate final choice.
+1. ~~Hosted Checkout vs. embedded Payment Element (§3.1)~~ — **Resolved 2026-07-21: Hosted Checkout is the approved direction.** No longer open.
 2. **Stripe Customer object** — persist a `stripe_customer_id` on `clients` (enables saved payment methods for repeat/installment payers) or stay fully guest-checkout (simpler, no new column, no saved-card convenience)? Recommend guest-checkout for v1 given the "one PaymentIntent/Session per line item" installment model doesn't strictly need a persisted Customer, but flagging since it's a real scoping choice.
 3. **Application fee** — does Wevenu take a percentage of venue↔couple payments (a real Wevenu revenue line), or is this purely a facilitation feature with Wevenu Billing (System A) as the only revenue source? Carried over from the prior doc's still-open question #1.
 4. **Payment methods beyond card** — Checkout Sessions support ACH/bank debit with minimal extra configuration; card-only for v1, or include ACH now? Carried over from the prior doc's open question #2.
