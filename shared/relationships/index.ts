@@ -1,0 +1,71 @@
+/**
+ * Shared Relationship Operations — used by marketing (writes) and workspace (reads).
+ *
+ * Data path: RELATIONSHIPS_DATA_PATH or <repo>/shared/relationships/.data/
+ * Format: JSONL files with a process-safe lock file.
+ */
+
+export type * from "./types";
+export {
+  normalizeEmail,
+  normalizeVenueName,
+  splitPersonName,
+  mapPlanId,
+  planDisplayName,
+} from "./normalize";
+export {
+  getFounderProgramCapacity,
+  computeFounderRemaining,
+  resolveFounderSpotsRemaining,
+} from "./founder-program";
+export { getRelationshipsDataDir, STORE_FILES } from "./paths";
+export { promoteStatus, stageLabelForStatus, toPipelineStatus } from "./status";
+export {
+  loadLiveStore,
+  loadLiveStoreSync,
+  hasLiveRelationships,
+  hasLiveRelationshipsSync,
+  saveLiveStore,
+  withLiveStore,
+  emptyLiveStore,
+} from "./store";
+export {
+  findOrCreateRelationship,
+  updateRelationshipFields,
+  setRelationshipStatus,
+  appendTimelineEvent,
+  appendCommunication,
+  upsertWalkthrough,
+  upsertSubscription,
+  appendNotification,
+  mutateRelationship,
+  resolveWelcomeBackVerification,
+  completeRelationshipTask,
+  setWalkthroughStatus,
+  personFromFields,
+  type FindOrCreateResult,
+  type WelcomeBackAction,
+  type WelcomeBackResolveResult,
+  type WalkthroughStatusUpdateResult,
+} from "./service";
+export {
+  ingestContactForm,
+  ingestWalkthroughRequest,
+  ingestWalkthroughCanceled,
+  ingestManualRelationship,
+  ingestCheckoutStarted,
+  ingestSubscriptionPurchased,
+  ingestSubscriptionLifecycle,
+  ingestWelcomeBackRequest,
+  ingestNewsletterSignup,
+  ingestSupportRequest,
+} from "./ingest";
+export {
+  WHITE_GLOVE_CHECKLIST_TITLES,
+  WHITE_GLOVE_CHECKLIST_OWNER_ID,
+  WHITE_GLOVE_CHECKLIST_MARKER,
+  ensureWhiteGloveChecklist,
+  ensureWhiteGloveChecklistInStore,
+  ensureWhiteGloveChecklistsForLiveStore,
+  isWhiteGloveChecklistTitle,
+} from "./white-glove-checklist";

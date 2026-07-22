@@ -1,0 +1,74 @@
+/** Shared helpers for rendering Hello to Cheers product emails. */
+
+import type { EmailTemplateVars } from "../types";
+
+export function str(vars: EmailTemplateVars, key: string, fallback = ""): string {
+  const value = vars[key];
+  if (value == null) return fallback;
+  const text = String(value).trim();
+  return text || fallback;
+}
+
+export function escapeHtml(s: string): string {
+  return s
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+export function firstName(vars: EmailTemplateVars): string {
+  return str(vars, "firstName") || str(vars, "ownerFirstName") || "there";
+}
+
+export function venueName(vars: EmailTemplateVars): string {
+  return str(vars, "venueName") || "your venue";
+}
+
+export function planName(vars: EmailTemplateVars): string {
+  return str(vars, "planName") || "your plan";
+}
+
+export function marketingUrl(path = ""): string {
+  const base =
+    process.env.NEXT_PUBLIC_MARKETING_URL?.trim() ||
+    process.env.MARKETING_URL?.trim() ||
+    "https://hellotocheers.com";
+  const normalized = base.replace(/\/$/, "");
+  if (!path) return normalized;
+  return `${normalized}${path.startsWith("/") ? path : `/${path}`}`;
+}
+
+export function paragraphsToHtml(paragraphs: string[]): string {
+  return paragraphs
+    .map(
+      (p) =>
+        `<p style="margin:0 0 16px;font-size:16px;line-height:1.55;color:#1f2937">${escapeHtml(p)}</p>`,
+    )
+    .join("\n");
+}
+
+export function wrapHelloHtml(title: string, bodyHtml: string): string {
+  return `<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="font-family:Georgia,'Times New Roman',serif;background:#f7f4ef;margin:0;padding:32px 16px">
+  <table width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;margin:0 auto">
+    <tr>
+      <td style="background:#fffdf9;border-radius:4px;padding:40px 36px;border:1px solid #e5ddd0">
+        <p style="margin:0 0 8px;font-size:12px;letter-spacing:0.14em;text-transform:uppercase;color:#6b7a6b">Hello to Cheers</p>
+        <h1 style="margin:0 0 24px;font-size:24px;line-height:1.3;color:#2f3d2f;font-weight:normal">${escapeHtml(title)}</h1>
+        ${bodyHtml}
+        <p style="margin:28px 0 0;font-size:14px;line-height:1.5;color:#6b7a6b">With care,<br/>Jennifer &amp; the Hello to Cheers team</p>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`;
+}
+
+export function previewFromText(text: string, max = 180): string {
+  const oneLine = text.replace(/\s+/g, " ").trim();
+  if (oneLine.length <= max) return oneLine;
+  return `${oneLine.slice(0, max - 1)}…`;
+}
