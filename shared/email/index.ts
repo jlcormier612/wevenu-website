@@ -19,7 +19,7 @@ export {
   sendRenewalReminder,
   type SendRelationshipEmailInput,
 } from "./send";
-export { sendEnrollmentProductEmails, type EnrollmentEmailContext } from "./enrollment";
+export { sendEnrollmentProductEmails, sendWelcomeHomeEmail, sendReactivationEmail, type EnrollmentEmailContext } from "./enrollment";
 export {
   getEmailTemplate,
   listEmailTemplates,

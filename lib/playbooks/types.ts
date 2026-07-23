@@ -88,6 +88,13 @@ export type PlaybookTask = {
   notifyOnComplete: boolean;
   actionType: TaskActionType | null;
   actionLabel: string | null;   // null = a sensible default label for actionType
+  // True when this task's content/timing was proposed by an import rather
+  // than confirmed by a coordinator — surfaced in the Template Editor until
+  // touched. Added 2026-07-22 per template-import review, superseding the
+  // prior "not tracked per-task, a one-time summary is enough" decision
+  // (see ImportPlaybookResult below) — in practice a one-time toast is easy
+  // to miss and gives no way to find the guessed tasks again afterward.
+  needsReview: boolean;
 };
 
 // What a task needs to get done — an uploaded file, an existing venue
@@ -247,10 +254,9 @@ export type CreatePlaybookResult =
 
 // "Bring Your Existing Checklist" (2026-07-10) — same shape as
 // CreatePlaybookResult, plus enough for the one-time "N due dates were
-// estimated, please double-check them" banner right after creation. Not
-// tracked per-task after that — the coordinator reviews everything in the
-// real Template Editor immediately, so a persistent per-task flag isn't
-// needed on top of a one-time summary.
+// estimated, please double-check them" toast right after creation.
+// guessedCount also now persists per-task via PlaybookTask.needsReview
+// (2026-07-22) rather than being summary-only.
 export type ImportPlaybookResult =
-  | { ok: true; templateId: string; taskCount: number; guessedCount: number }
+  | { ok: true; templateId: string; taskCount: number; guessedCount: number; aiStructured: boolean }
   | { ok: false; message: string };

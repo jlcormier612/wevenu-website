@@ -17,7 +17,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { uploadToStorage } from "@/lib/storage/upload";
 import { PRICING_TIERS, VENDOR_CATEGORIES } from "@/lib/vendors/constants";
 import type { VendorProfile, VendorProfileInput } from "@/lib/vendors/types";
-import { updateVendorProfileAction } from "@/app/vendor/actions";
+import { updateVendorProfileAction, updateVendorLogoAction } from "@/app/vendor/actions";
 
 function buildInput(profile: VendorProfile): VendorProfileInput {
   return {
@@ -55,6 +55,12 @@ export function VendorProfileForm({ profile }: { profile: VendorProfile }) {
     try {
       const url = await uploadToStorage("vendors", `${profile.id}/logo`, file);
       set("logoUrl", url);
+      // Saves immediately — logo upload previously only staged the URL in
+      // this form's local state, so it silently never persisted unless
+      // "Save Profile" was clicked right after (2026-07-23).
+      const result = await updateVendorLogoAction(url);
+      if (result.ok) toast.success("Logo updated.");
+      else toast.error(result.message ?? "Logo uploaded, but could not be saved.");
     } catch {
       toast.error("Logo upload failed.");
     } finally {

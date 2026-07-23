@@ -177,6 +177,9 @@ export function TourAvailabilityEditor({
           <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Blocked Dates</Label>
           <p className="text-xs text-muted-foreground">Holidays, venue closures, or any date range tours shouldn&apos;t be offered — regardless of your weekly schedule above.</p>
         </div>
+        {exceptions.length === 0 && (
+          <p className="text-xs text-muted-foreground italic">No blocked dates yet.</p>
+        )}
         {exceptions.length > 0 && (
           <div className="space-y-1.5">
             {exceptions.map((exc) => (

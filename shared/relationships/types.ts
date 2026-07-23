@@ -11,8 +11,10 @@
  */
 
 /**
- * Pipeline lifecycle (Program 3). Legacy `active_customer` normalizes to `live`.
- * `support` is retained as an overlay status (not a separate record / pipeline column).
+ * Pipeline lifecycle (Customer Lifecycle Engine Phase 1).
+ * Aliases: `live` / `active_customer` → `active`; onboarding+WG maps to
+ * `white_glove_implementation` when White Glove is selected.
+ * `support` is retained as an overlay (not a separate pipeline column).
  */
 export type PipelineStatus =
   | "inquiry"
@@ -22,6 +24,11 @@ export type PipelineStatus =
   | "trial"
   | "subscribed"
   | "onboarding"
+  | "white_glove_implementation"
+  | "active"
+  | "at_risk"
+  | "suspended"
+  | "reactivated"
   | "live"
   | "expansion"
   | "referral"
@@ -31,6 +38,38 @@ export type PipelineStatus =
 export type RelationshipStatus = PipelineStatus | "active_customer" | "support";
 
 export type RelationshipHealth = "excellent" | "good" | "needs_attention" | "at_risk";
+
+/** Heuristic 0–100 score shown on Relationship Snapshot. */
+export type RelationshipHealthScore = number;
+
+/** Payment / access flags for SaaS subscription lifecycle. */
+export type PaymentStatus =
+  | "none"
+  | "pending"
+  | "paid"
+  | "past_due"
+  | "failed"
+  | "manual"
+  | "refunded";
+
+/** Dunning schedule day offsets after first payment_failed. */
+export const DUNNING_DAYS = [0, 3, 7, 14, 21] as const;
+export type DunningDay = (typeof DUNNING_DAYS)[number];
+
+export type DunningState = {
+  /** ISO when first past_due / payment_failed observed */
+  startedAt: string;
+  /** Last reminder day offset that was sent (0, 3, 7, 14, 21) */
+  lastReminderDay: number | null;
+  /** ISO of last dunning reminder */
+  lastReminderAt?: string | null;
+  /** When status moved to at_risk (day 14) */
+  atRiskAt?: string | null;
+  /** When access was suspended (day 21) */
+  suspendedAt?: string | null;
+  /** Cleared when payment succeeds */
+  clearedAt?: string | null;
+};
 
 export type PlanId = "gather" | "celebrate" | "flourish" | "none";
 
@@ -78,7 +117,19 @@ export type TimelineEventType =
   | "product_sync_started"
   | "product_sync_step_completed"
   | "product_sync_completed"
-  | "product_sync_failed";
+  | "product_sync_failed"
+  | "subscription_link_sent"
+  | "subscription_activated"
+  | "welcome_workflow_started"
+  | "onboarding_created"
+  | "white_glove_implementation_started"
+  | "implementation_complete"
+  | "workspace_activated"
+  | "payment_failed"
+  | "payment_reminder_sent"
+  | "account_suspended"
+  | "account_reactivated"
+  | "manual_subscription";
 
 export type CommunicationChannel =
   | "email"
@@ -99,7 +150,13 @@ export type NotificationType =
   | "welcome_back_requested"
   | "founder_spot_filled"
   | "support_request_submitted"
-  | "newsletter_signup";
+  | "newsletter_signup"
+  | "white_glove_implementation"
+  | "payment_failed"
+  | "account_at_risk"
+  | "account_suspended"
+  | "account_reactivated"
+  | "workspace_launched";
 
 export type SubscriptionStatus = "trialing" | "active" | "past_due" | "cancelled" | "paused";
 
@@ -208,6 +265,8 @@ export type Subscription = {
   stripeSubscriptionId?: string | null;
   stripeCustomerId?: string | null;
   stripeCheckoutSessionId?: string | null;
+  /** Owner/Admin entered without Stripe */
+  manual?: boolean;
 };
 
 export type Walkthrough = {
@@ -254,6 +313,8 @@ export type Relationship = {
   owner: Contact;
   status: RelationshipStatus;
   health: RelationshipHealth;
+  /** Heuristic 0–100; recomputed on lifecycle ticks / snapshot load */
+  healthScore?: RelationshipHealthScore;
   assignedTeamMemberId: string;
   planId: PlanId;
   planName: string;
@@ -268,12 +329,41 @@ export type Relationship = {
   createdAt: string;
   updatedAt: string;
   notes?: string;
+  /** Internal White Glove implementation notes (team-only) */
+  implementationNotes?: string;
+  /** Branding / contracts / packages / questionnaires placeholders for WG */
+  implementationAssets?: {
+    brandingNotes?: string;
+    contractsNotes?: string;
+    packagesNotes?: string;
+    questionnairesNotes?: string;
+    websiteProgressNotes?: string;
+  };
   referralSource?: string;
   supportOpenCount: number;
   /** Stripe ids for ops / dedupe across checkout retries */
   stripeCustomerId?: string | null;
   stripeSubscriptionId?: string | null;
   stripeCheckoutSessionId?: string | null;
+  /** SaaS payment status (separate from Stripe subscription.status) */
+  paymentStatus?: PaymentStatus;
+  /** ISO when subscription became active (purchase or manual) */
+  subscribedAt?: string | null;
+  /** When true, product access is disabled (suspended) — data preserved */
+  accessDisabled?: boolean;
+  /** Activation token for Launch Yourself / Welcome Home */
+  activationToken?: string | null;
+  activationTokenCreatedAt?: string | null;
+  activationCompletedAt?: string | null;
+  /** Last known customer product login (ISO); optional until product sync reports */
+  lastLoginAt?: string | null;
+  loginCount30d?: number;
+  lastCustomerActivityAt?: string | null;
+  lastTeamActivityAt?: string | null;
+  /** Website published flag from product sync / ops */
+  websitePublished?: boolean;
+  /** Failed-payment dunning schedule state */
+  dunning?: DunningState | null;
   /** Project 10 — idempotent product provisioning state */
   productSync?: ProductSyncState;
 };
@@ -311,6 +401,7 @@ export type RelationshipFieldPatch = Partial<
     Relationship,
     | "status"
     | "health"
+    | "healthScore"
     | "planId"
     | "planName"
     | "foundingMember"
@@ -321,12 +412,26 @@ export type RelationshipFieldPatch = Partial<
     | "nextMilestone"
     | "nextMilestoneAt"
     | "notes"
+    | "implementationNotes"
+    | "implementationAssets"
     | "referralSource"
     | "supportOpenCount"
     | "assignedTeamMemberId"
     | "stripeCustomerId"
     | "stripeSubscriptionId"
     | "stripeCheckoutSessionId"
+    | "paymentStatus"
+    | "subscribedAt"
+    | "accessDisabled"
+    | "activationToken"
+    | "activationTokenCreatedAt"
+    | "activationCompletedAt"
+    | "lastLoginAt"
+    | "loginCount30d"
+    | "lastCustomerActivityAt"
+    | "lastTeamActivityAt"
+    | "websitePublished"
+    | "dunning"
   >
 > & {
   venueName?: string | null;

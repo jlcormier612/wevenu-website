@@ -8,6 +8,7 @@ import { GettingStartedCard } from "@/components/dashboard/getting-started";
 import { DashboardLuvIntro } from "@/components/dashboard/luv-intro";
 import { ActivationWidget } from "@/components/dashboard/activation-widget";
 import { DigestCallout } from "@/components/dashboard/digest-callout";
+import { DailyBriefingWidget } from "@/components/dashboard/daily-briefing-widget";
 import { MilestoneToast } from "@/components/dashboard/milestone-toast";
 import { HealthScoreWidget } from "@/components/dashboard/health-score-widget";
 import { CommunicationHealthWidget } from "@/components/communication/communication-health-widget";
@@ -57,7 +58,7 @@ export default async function DashboardPage({ searchParams }: Props) {
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <Greeting venueName={data.venueName} ownerFirstName={data.ownerFirstName} />
         <Button render={<Link href="/leads/new" />} className="sm:shrink-0">
-          + New Inquiry
+          + New Lead
         </Button>
       </div>
 
@@ -70,11 +71,18 @@ export default async function DashboardPage({ searchParams }: Props) {
           Venue Health/Activation/Communication, and gone entirely once
           every step is complete (see OnboardingStatus.show). */}
       {data.onboarding.show && (
-        <GettingStartedCard onboarding={data.onboarding} milestone={milestone} />
+        <GettingStartedCard onboarding={data.onboarding} milestone={milestone} venueName={data.venueName} />
       )}
 
       {/* Daily digest intro callout — dismissible, shown until turned off or dismissed */}
       {data.showDigestCallout && <DigestCallout />}
+
+      {/* Luv Success Guide §3.1 (2026-07-22) — the priority-ordered "here's
+          your day" summary: what needs you now across every booking, what's
+          coming up this week, what got resolved since you last looked.
+          Distinct from LuvWidget below, which is the broader ambient
+          observation feed, not priority-ordered against Event Readiness. */}
+      <DailyBriefingWidget briefing={data.briefing} />
 
       {/* 💗 Luv — venue assistant (observations + trend intelligence) */}
       <LuvWidget observations={data.luvObservations} trendObservations={data.trendObservations} storyObservation={data.storyObservation} memoryObservations={data.memoryObservations} insightObservations={data.insightObservations} recommendations={data.recommendations} actionObservations={data.actionObservations} pendingActionObservations={data.pendingActionObservations} performanceObservations={data.performanceObservations} />

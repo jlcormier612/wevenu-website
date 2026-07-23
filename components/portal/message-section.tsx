@@ -445,7 +445,7 @@ export function PortalMessageSection({
             type="file"
             multiple
             className="sr-only"
-            accept="image/*,.pdf,.doc,.docx,.xls,.xlsx"
+            accept="image/*,.heic,.heif,.pdf,.doc,.docx,.xls,.xlsx"
             onChange={e => { if (e.target.files) handleFiles(e.target.files); e.target.value = ""; }}
           />
 

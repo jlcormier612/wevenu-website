@@ -73,7 +73,7 @@ export async function saveVenueDocument(payload: DocumentUploadPayload): Promise
 
 export async function updateDocument(
   documentId: string,
-  patch: { name?: string; notes?: string; tags?: string[]; expiresAt?: string | null; category?: Document["category"] },
+  patch: { name?: string; notes?: string; tags?: string[]; expiresAt?: string | null; category?: Document["category"]; isCoupleVisible?: boolean },
 ): Promise<DocumentActionResult> {
   const result = await withVenue(async (c, venueId) => {
     await repo.updateDocumentMeta(c, venueId, documentId, patch);

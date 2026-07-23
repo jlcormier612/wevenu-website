@@ -4,6 +4,7 @@ import type { PaymentItemStatus } from "@/lib/payments/types";
 
 const VARIANT: Record<PaymentItemStatus, BadgeVariant> = {
   pending:            "muted",
+  processing:         "default",
   overdue:            "destructive",
   paid:               "success",
   cancelled:          "outline",

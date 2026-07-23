@@ -7,15 +7,26 @@
  * transcription of a document the venue already trusts.
  */
 
+const CLOCK_TIME = /\b(1[0-2]|0?[1-9]):([0-5]\d)\s*([AaPp]\.?[Mm]\.?)?\b/;
+
 export type ProposedTimelineItem = {
   title: string;
   description: string;
-  minutesOffset: number; // minutes relative to the event's start time; negative = before
+  // An absolute clock anchor ("HH:MM", 24-hour) — set whenever the source
+  // text stated a literal time ("6:00 PM"). Preferred over minutesOffset
+  // whenever both could apply: it needs no assumption about the event's
+  // actual start time to be correct, where an offset always does.
+  timeOfDay: string | null;
+  // Minutes relative to the event's start time; negative = before. Only
+  // used when the source stated a genuinely relative timing ("30 minutes
+  // before ceremony") or when no timing at all was stated and one is
+  // estimated (guessed = true in that case).
+  minutesOffset: number | null;
   guessed: boolean;      // true when the source text didn't state a timing and Luv estimated one
 };
 
 export type LuvTimelineProposal =
-  | { ok: true; items: ProposedTimelineItem[] }
+  | { ok: true; items: ProposedTimelineItem[]; aiStructured: boolean }
   | { ok: false; message: string };
 
 type AnthropicResponse = { content: { type: string; text: string }[] };
@@ -56,7 +67,9 @@ function buildPrompt(rawText: string): string {
 For each item, provide:
 - title: short, in the venue's own words — copy it, don't paraphrase it
 - description: any extra detail from the source text (empty string if there's none)
-- minutesOffset: a signed integer number of minutes relative to the event's start time (negative = before start, 0 = at start, positive = after start). If the source text states an explicit or relative time ("6:00 PM", "30 minutes before ceremony"), convert that to an offset from the event's start time and set guessed to false. If no timing is stated for an item, make a reasonable estimate based on typical event run-of-show ordering and set guessed to true.
+- timeOfDay: if the source states an explicit clock time for this item ("6:00 PM", "18:00"), convert it to 24-hour "HH:MM" and set this field, leaving minutesOffset null and guessed false. You do NOT know the event's actual start time — never estimate this field, only fill it in when the source literally states a clock time.
+- minutesOffset: use this instead of timeOfDay only when the source states a timing relative to the event itself ("30 minutes before ceremony", "right after dinner") — a signed integer number of minutes relative to the event's start time (negative = before, 0 = at start, positive = after), with guessed set to false. If the item has no timing stated at all, estimate a reasonable minutesOffset based on typical event run-of-show ordering and set guessed to true.
+- Exactly one of timeOfDay/minutesOffset should be non-null for every item (never both, never neither).
 
 Rules:
 - Keep items in the order the source text presents them.
@@ -64,7 +77,7 @@ Rules:
 - Preserve the coordinator's own wording exactly where you can; don't rewrite for style or tone.
 - When in doubt between reorganizing and transcribing as-is, transcribe as-is.
 - Return ONLY a JSON object of this exact shape, no prose, no markdown fences, no explanation:
-{"items":[{"title":"...","description":"...","minutesOffset":-30,"guessed":true}]}
+{"items":[{"title":"...","description":"...","timeOfDay":"18:00","minutesOffset":null,"guessed":false}]}
 - If you can't find any real timeline content in this text, return {"items":[]}
 
 Source text:
@@ -78,16 +91,52 @@ function isValidItem(t: unknown): t is ProposedTimelineItem {
   const r = t as Record<string, unknown>;
   return typeof r.title === "string" && r.title.trim().length > 0
     && (typeof r.description === "string" || r.description === undefined)
-    && typeof r.minutesOffset === "number" && Number.isFinite(r.minutesOffset)
+    && (r.timeOfDay === null || r.timeOfDay === undefined || typeof r.timeOfDay === "string")
+    && (r.minutesOffset === null || r.minutesOffset === undefined || (typeof r.minutesOffset === "number" && Number.isFinite(r.minutesOffset)))
     && (typeof r.guessed === "boolean" || r.guessed === undefined);
 }
 
+/**
+ * Plain, deterministic fallback with no AI involved at all — used whenever
+ * ANTHROPIC_API_KEY isn't configured (template-import review, 2026-07-22:
+ * this used to hard-fail with "Luv isn't configured," leaving a coordinator
+ * with nothing at all). One line becomes one item; a literal clock time
+ * found anywhere in the line is preserved as timeOfDay (a plain regex, no
+ * offset math or guessing involved — "6:00 PM Ceremony" trivially becomes
+ * timeOfDay "18:00" without needing to know the event's start time at all).
+ * A line with no clock time gets no timing at all rather than a guessed
+ * one — this fallback doesn't attempt the kind of ordering-based estimate
+ * only the AI path can reasonably make — and is flagged guessed so it's
+ * impossible to miss in the editor that timing still needs to be set.
+ */
+function splitTimelineLines(rawText: string): LuvTimelineProposal {
+  const lines = rawText.split("\n").map((l) => l.trim()).filter(Boolean);
+  if (lines.length === 0) return { ok: false, message: "There's no text to work with — paste or upload your timeline first." };
+
+  const items = lines.map((line): ProposedTimelineItem => {
+    const match = line.match(CLOCK_TIME);
+    const timeOfDay = match ? to24Hour(match[1], match[2], match[3]) : null;
+    const title = (timeOfDay ? line.replace(CLOCK_TIME, "").replace(/[-–—:]+/g, " ") : line).trim() || line;
+    return { title, description: "", timeOfDay, minutesOffset: null, guessed: !timeOfDay };
+  });
+
+  return { ok: true, items, aiStructured: false };
+}
+
+function to24Hour(hourStr: string, minuteStr: string, meridiem: string | undefined): string {
+  let hour = parseInt(hourStr, 10);
+  const meridiemLower = meridiem?.toLowerCase().replace(/\./g, "");
+  if (meridiemLower === "pm" && hour !== 12) hour += 12;
+  if (meridiemLower === "am" && hour === 12) hour = 0;
+  return `${String(hour).padStart(2, "0")}:${minuteStr}`;
+}
+
 export async function proposeTimelineDraft(rawText: string): Promise<LuvTimelineProposal> {
-  if (!process.env.ANTHROPIC_API_KEY) {
-    return { ok: false, message: "Luv isn't configured for this venue yet — you can still build your timeline by hand in the Template Editor." };
-  }
   if (!rawText.trim()) {
     return { ok: false, message: "There's no text to work with — paste or upload your timeline first." };
+  }
+  if (!process.env.ANTHROPIC_API_KEY) {
+    return splitTimelineLines(rawText);
   }
 
   try {
@@ -105,12 +154,13 @@ export async function proposeTimelineDraft(rawText: string): Promise<LuvTimeline
       .map((t) => ({
         title: t.title.trim(),
         description: typeof t.description === "string" ? t.description.trim() : "",
-        minutesOffset: Math.round(t.minutesOffset),
+        timeOfDay: typeof t.timeOfDay === "string" && t.timeOfDay.trim() ? t.timeOfDay.trim() : null,
+        minutesOffset: typeof t.minutesOffset === "number" ? Math.round(t.minutesOffset) : null,
         guessed: t.guessed === true,
       }));
 
     if (items.length === 0) return { ok: false, message: "Luv couldn't find any items in this text — try pasting more of the timeline, or build it by hand instead." };
-    return { ok: true, items };
+    return { ok: true, items, aiStructured: true };
   } catch (err) {
     return { ok: false, message: err instanceof Error ? err.message : "Luv couldn't process this text." };
   }

@@ -1,0 +1,67 @@
+import { getVendorEvents } from "@/lib/vendor-events/service";
+import { getVendorDocumentsAcrossEvents, getVendorTimelineAcrossEvents } from "@/lib/vendor-events/service";
+import { getVendorTasks } from "@/lib/vendor-tasks/service";
+import { getVendorConversationInbox } from "@/lib/conversations/service";
+import type { VendorEventListItem } from "@/lib/vendors/types";
+import type { VendorPersonalTask } from "@/lib/vendors/types";
+import type { VendorConversationSummary } from "@/lib/conversations/types";
+import type { VendorDocumentsByEvent, VendorTimelineByEvent } from "@/lib/vendor-portal/types";
+
+export type VendorHomeData = {
+  eventsToday: VendorEventListItem[];
+  eventsThisWeek: VendorEventListItem[];
+  unreadConversations: VendorConversationSummary[];
+  tasksDue: VendorPersonalTask[];
+  nextTimeline: VendorTimelineByEvent[];
+  recentDocuments: VendorDocumentsByEvent[];
+};
+
+function todayIso(): string {
+  return new Date().toISOString().slice(0, 10);
+}
+function weekFromNowIso(): string {
+  return new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+}
+
+/**
+ * Vendor Workspace Realignment, Phase 4 (2026-07-22) — Home answers exactly
+ * five questions, nothing else: what events require me today, what
+ * messages need a reply, what tasks are due, what's next on my schedule,
+ * and what venue documents need attention. No CRM metrics, no marketplace
+ * analytics — replaces the old business-dashboard aggregation entirely.
+ * Every field here is read from the same sources the rest of the portal
+ * already reads (events, conversations, tasks, timeline, documents) — this
+ * is a synthesis, not a new data source.
+ */
+export async function getVendorHomeData(vendorId: string): Promise<VendorHomeData> {
+  const [events, inbox, tasks, timeline, documents] = await Promise.all([
+    getVendorEvents(),
+    getVendorConversationInbox(),
+    getVendorTasks(vendorId, { status: "pending" }),
+    getVendorTimelineAcrossEvents(),
+    getVendorDocumentsAcrossEvents(),
+  ]);
+
+  const today = todayIso();
+  const week = weekFromNowIso();
+
+  const eventsToday = events.filter((e) => e.eventDate === today);
+  const eventsThisWeek = events.filter((e) => e.isUpcoming && e.eventDate && e.eventDate > today && e.eventDate <= week);
+
+  const unreadConversations = inbox.conversations.filter((c) => c.contactUnread > 0);
+
+  const tasksDue = tasks
+    .filter((t) => t.dueDate && t.dueDate <= week)
+    .sort((a, b) => (a.dueDate ?? "").localeCompare(b.dueDate ?? ""));
+
+  // "What's changed on the timeline" — no per-vendor read/seen tracking
+  // exists on timeline_entries today, so this surfaces the practical
+  // equivalent: the nearest upcoming items a vendor with an event today or
+  // this week actually needs to see, not a true diff.
+  const soonEventIds = new Set([...eventsToday, ...eventsThisWeek].map((e) => e.eventId));
+  const nextTimeline = timeline.filter((t) => soonEventIds.has(t.eventId) && t.entries.length > 0);
+
+  const recentDocuments = documents.filter((d) => d.documents.length > 0 || d.floorPlans.length > 0).slice(0, 5);
+
+  return { eventsToday, eventsThisWeek, unreadConversations, tasksDue, nextTimeline, recentDocuments };
+}

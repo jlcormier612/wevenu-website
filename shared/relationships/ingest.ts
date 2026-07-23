@@ -73,15 +73,19 @@ export async function ingestWalkthroughRequest(input: {
   email: string;
   venueName?: string;
   message?: string;
+  /** Only a real Calendly (or ops) start time promotes to walkthrough_scheduled. */
   scheduledAt?: string | null;
   sourceId?: string;
   referralSource?: string;
   assignedTeamMemberId?: string;
 }): Promise<FindOrCreateResult> {
   const person = personFromFields({ name: input.name });
-  const hasDate = Boolean(input.scheduledAt?.trim());
+  const rawWhen = input.scheduledAt?.trim() || "";
+  const parsedWhen = rawWhen ? new Date(rawWhen) : null;
+  const hasDate = Boolean(parsedWhen && !Number.isNaN(parsedWhen.getTime()));
+  // Placeholder row time when requested-but-unscheduled (status stays walkthrough_requested).
   const scheduledAt = hasDate
-    ? new Date(input.scheduledAt!).toISOString()
+    ? parsedWhen!.toISOString()
     : new Date(Date.now() + 7 * 86_400_000).toISOString();
   const whenLabel = hasDate
     ? new Date(scheduledAt).toLocaleString("en-US", {
@@ -321,7 +325,7 @@ export async function ingestCheckoutStarted(input: {
   }))!;
 }
 
-/** Stripe checkout.session.completed → subscribed / onboarding */
+/** Stripe checkout.session.completed → subscribed then onboarding path */
 export async function ingestSubscriptionPurchased(input: {
   email?: string | null;
   venueName?: string | null;
@@ -335,11 +339,12 @@ export async function ingestSubscriptionPurchased(input: {
   stripeCheckoutSessionId?: string | null;
   mrrCents?: number;
   subscriptionStatus?: "trialing" | "active" | "past_due" | "cancelled" | "paused";
+  /** Skip enterOnboardingAfterPurchase when caller handles it */
+  deferOnboardingEntry?: boolean;
 }): Promise<FindOrCreateResult> {
   const planId: PlanId = mapPlanId(input.plan);
   const planName = planDisplayName(planId, input.planName);
   const isWhiteGlove = input.onboardingType === "white_glove";
-  const status = isWhiteGlove ? "onboarding" : "subscribed";
   const now = new Date().toISOString();
   const resolvedPlanId = planId === "none" ? "gather" : planId;
 
@@ -390,20 +395,21 @@ export async function ingestSubscriptionPurchased(input: {
       stripeCustomerId: input.stripeCustomerId,
       stripeCheckoutSessionId: input.stripeCheckoutSessionId,
     },
+    forceStatus: "subscribed",
     patch: {
-      status,
       planId: resolvedPlanId,
       planName,
-      // Ratchet true-only inside applyFieldPatch; omit false so we never clear.
       foundingMember: input.foundingMember ? true : undefined,
       welcomeBackRequested: input.welcomeBackRequested ? true : undefined,
       welcomeBackVerified: input.welcomeBackRequested ? "pending" : undefined,
       onboardingType: input.onboardingType,
-      currentStageLabel: isWhiteGlove ? "White Glove Onboarding" : "Subscribed",
+      currentStageLabel: "Subscribed",
       nextMilestone: isWhiteGlove ? "Kickoff Call" : "Self-guided setup",
       stripeCustomerId: input.stripeCustomerId,
       stripeSubscriptionId: input.stripeSubscriptionId,
       stripeCheckoutSessionId: input.stripeCheckoutSessionId,
+      paymentStatus: "paid",
+      subscribedAt: now,
       ownerEmail: input.email,
       venueName: input.venueName,
     },
@@ -460,7 +466,19 @@ export async function ingestSubscriptionPurchased(input: {
     },
   }))!;
 
-  await maybeEnsureWhiteGloveChecklist(result);
+  if (!input.deferOnboardingEntry && result.relationship) {
+    const { enterOnboardingAfterPurchase } = await import("./lifecycle");
+    await enterOnboardingAfterPurchase({
+      relationshipId: result.relationship.id,
+      onboardingType: input.onboardingType,
+    });
+    const refreshed = await loadLiveStore();
+    const updated = refreshed.relationships.find((r) => r.id === result.relationship.id);
+    if (updated) result.relationship = updated;
+  } else {
+    await maybeEnsureWhiteGloveChecklist(result);
+  }
+
   return result;
 }
 

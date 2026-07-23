@@ -194,6 +194,10 @@ export type WebsiteSuggestions = {
     website?: string | null;
   } | null;
   engagementPhotos?: { url: string; id: string }[];
+  travel?: {
+    hotels?: Array<{ name: string; url?: string; code?: string; notes?: string }>;
+    transportation?: { notes?: string } | null;
+  } | null;
 };
 
 export type PublicWebsite = {

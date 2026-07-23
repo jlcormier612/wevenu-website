@@ -99,6 +99,14 @@ function itemRow(input: InventoryItemInput) {
   };
 }
 
+/** Migration Center (Hospitality Success Platform §2.1) — ports Leads' dedup shape to Inventory: non-archived items, matched by name (case-insensitive). */
+export async function findActiveDuplicateInventoryItem(client: DbClient, venueId: string, name: string): Promise<{ id: string } | null> {
+  const { data } = await client.from("inventory_items").select("id")
+    .eq("venue_id", venueId).eq("is_archived", false).ilike("name", name.trim())
+    .limit(1).maybeSingle<{ id: string }>();
+  return data ?? null;
+}
+
 export async function insertItem(client: DbClient, venueId: string, input: InventoryItemInput): Promise<string> {
   const { data, error } = await client.from("inventory_items")
     .insert({ venue_id: venueId, ...itemRow(input) })

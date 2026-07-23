@@ -332,6 +332,9 @@ function applyFieldPatch(relationship: Relationship, patch: RelationshipFieldPat
   }
 
   if (patch.health) relationship.health = patch.health;
+  if (typeof patch.healthScore === "number") {
+    relationship.healthScore = Math.max(0, Math.min(100, Math.round(patch.healthScore)));
+  }
 
   if (patch.planId && PLAN_RANK[patch.planId] > PLAN_RANK[relationship.planId]) {
     relationship.planId = patch.planId;
@@ -365,14 +368,62 @@ function applyFieldPatch(relationship: Relationship, patch: RelationshipFieldPat
     relationship.onboardingType = patch.onboardingType;
   }
 
-  // White Glove implies Onboarding stage when not already further in the pipeline.
+  // White Glove: once subscribed/onboarding, prefer Implementation stage.
   if (relationship.onboardingType === "white_glove") {
-    const promoted = promoteStatus(relationship.status, "onboarding");
-    if (promoted !== relationship.status) {
-      relationship.status = promoted;
-      relationship.currentStageLabel =
-        patch.currentStageLabel?.trim() || "White Glove Onboarding";
+    const normalized = relationship.status;
+    if (
+      normalized === "subscribed" ||
+      normalized === "onboarding" ||
+      normalized === "white_glove_implementation"
+    ) {
+      const promoted = promoteStatus(
+        relationship.status,
+        "white_glove_implementation",
+      );
+      if (promoted !== relationship.status) {
+        relationship.status = promoted;
+        relationship.currentStageLabel =
+          patch.currentStageLabel?.trim() || "White Glove Implementation";
+      }
     }
+  }
+
+  if (patch.paymentStatus) relationship.paymentStatus = patch.paymentStatus;
+  if (patch.subscribedAt !== undefined) relationship.subscribedAt = patch.subscribedAt;
+  if (patch.accessDisabled !== undefined) {
+    relationship.accessDisabled = patch.accessDisabled;
+  }
+  if (patch.activationToken !== undefined) {
+    relationship.activationToken = patch.activationToken;
+  }
+  if (patch.activationTokenCreatedAt !== undefined) {
+    relationship.activationTokenCreatedAt = patch.activationTokenCreatedAt;
+  }
+  if (patch.activationCompletedAt !== undefined) {
+    relationship.activationCompletedAt = patch.activationCompletedAt;
+  }
+  if (patch.lastLoginAt !== undefined) relationship.lastLoginAt = patch.lastLoginAt;
+  if (typeof patch.loginCount30d === "number") {
+    relationship.loginCount30d = patch.loginCount30d;
+  }
+  if (patch.lastCustomerActivityAt !== undefined) {
+    relationship.lastCustomerActivityAt = patch.lastCustomerActivityAt;
+  }
+  if (patch.lastTeamActivityAt !== undefined) {
+    relationship.lastTeamActivityAt = patch.lastTeamActivityAt;
+  }
+  if (patch.websitePublished !== undefined) {
+    relationship.websitePublished = patch.websitePublished;
+  }
+  if (patch.dunning !== undefined) relationship.dunning = patch.dunning;
+  if (patch.implementationNotes !== undefined) {
+    relationship.implementationNotes = patch.implementationNotes;
+  }
+  if (patch.implementationAssets !== undefined) {
+    relationship.implementationAssets = {
+      ...(relationship.implementationAssets ?? {}),
+      ...patch.implementationAssets,
+    };
   }
 
   if (patch.nextMilestone !== undefined && patch.nextMilestone) {
@@ -478,7 +529,8 @@ export async function setRelationshipStatus(
     const relationship = store.relationships.find((r) => r.id === relationshipId);
     if (!relationship) return null;
     const now = new Date().toISOString();
-    relationship.status = status === "active_customer" ? "live" : status;
+    relationship.status =
+      status === "active_customer" || status === "live" ? "active" : status;
     relationship.currentStageLabel =
       opts?.currentStageLabel?.trim() || stageLabelForStatus(relationship.status);
     if (opts?.assignedTeamMemberId) {
@@ -874,8 +926,11 @@ export async function mutateRelationship(opts: {
     }
 
     if (opts.forceStatus) {
-      relationship.status =
-        opts.forceStatus === "active_customer" ? "live" : opts.forceStatus;
+      const forced =
+        opts.forceStatus === "active_customer" || opts.forceStatus === "live"
+          ? "active"
+          : opts.forceStatus;
+      relationship.status = forced;
       relationship.currentStageLabel =
         opts.patch?.currentStageLabel?.trim() ||
         stageLabelForStatus(relationship.status);
@@ -964,6 +1019,7 @@ export async function mutateRelationship(opts: {
         if (next.stripeCheckoutSessionId) {
           existing.stripeCheckoutSessionId = next.stripeCheckoutSessionId;
         }
+        if (next.manual === true) existing.manual = true;
         existing.relationshipId = relationship.id;
       } else {
         store.subscriptions.push({
@@ -980,6 +1036,7 @@ export async function mutateRelationship(opts: {
           stripeSubscriptionId: opts.subscription.stripeSubscriptionId,
           stripeCustomerId: opts.subscription.stripeCustomerId,
           stripeCheckoutSessionId: opts.subscription.stripeCheckoutSessionId,
+          manual: opts.subscription.manual === true ? true : undefined,
         });
       }
     }

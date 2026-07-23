@@ -1,9 +1,11 @@
 /**
  * GET /api/portal/payments?token=...
  *
- * Returns the couple's payment schedule(s) with line items.
- * Read-only — couples view their financial picture; they cannot mark payments
- * paid through the portal (online payments are a future sprint).
+ * Returns the couple's payment schedule(s) with line items. Read-only —
+ * a couple can start a real payment (POST /api/portal/checkout, Sprint 4),
+ * but this route itself never mutates anything; the payment_line_item's
+ * status only ever changes via the Stripe webhook confirming what
+ * actually happened.
  */
 
 import { NextResponse } from "next/server";

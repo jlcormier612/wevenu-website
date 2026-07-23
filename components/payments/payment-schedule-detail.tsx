@@ -258,6 +258,10 @@ function LineItemRow({
   const isCancelled = item.status === "cancelled";
   const isRefunded = item.status === "refunded";
   const isPartiallyRefunded = item.status === "partially_refunded";
+  // Stripe Connect (Sprint 4) — an ACH debit that's been initiated but
+  // hasn't settled yet (4-5 business days). Stripe owns this state; a
+  // coordinator can't manually intervene while it's in flight.
+  const isProcessing = item.status === "processing";
   // TR-M3: refunds are Owner-only server-side (and RLS-backed, TR-G5) — this
   // mirrors that here so a Manager/Coordinator/Staff never sees a button
   // that the server was always going to reject. Cosmetic-only: the real
@@ -322,12 +326,16 @@ function LineItemRow({
     <div>
       <div className={cn("group flex items-center gap-3 rounded-lg border bg-card p-3 transition-colors",
         isRefunded || isPartiallyRefunded ? "border-amber-300/50 bg-amber-50 dark:bg-amber-950/20"
-          : isPaid ? "border-success/20 bg-success/5" : isCancelled ? "border-border opacity-50" : item.status === "overdue" ? "border-destructive/20 bg-destructive/5" : "border-border")}>
+          : isPaid ? "border-success/20 bg-success/5" : isCancelled ? "border-border opacity-50"
+          : isProcessing ? "border-blue-300/50 bg-blue-50 dark:bg-blue-950/20"
+          : item.status === "overdue" ? "border-destructive/20 bg-destructive/5" : "border-border")}>
         {/* Status icon */}
         <span className={cn("flex h-7 w-7 shrink-0 items-center justify-center rounded-full border-2",
           isRefunded || isPartiallyRefunded ? "border-amber-500 bg-amber-500 text-white"
-            : isPaid ? "border-success bg-success text-white" : item.status === "overdue" ? "border-destructive text-destructive" : "border-border text-muted-foreground")}>
-          {isPaid || isRefunded || isPartiallyRefunded ? <Check className="h-3.5 w-3.5" /> : item.status === "overdue" ? <AlertTriangle className="h-3 w-3" /> : <Calendar className="h-3 w-3" />}
+            : isPaid ? "border-success bg-success text-white"
+            : isProcessing ? "border-blue-500 text-blue-500"
+            : item.status === "overdue" ? "border-destructive text-destructive" : "border-border text-muted-foreground")}>
+          {isPaid || isRefunded || isPartiallyRefunded ? <Check className="h-3.5 w-3.5" /> : isProcessing ? <Loader2 className="h-3 w-3 animate-spin" /> : item.status === "overdue" ? <AlertTriangle className="h-3 w-3" /> : <Calendar className="h-3 w-3" />}
         </span>
 
         {/* Content */}
@@ -354,6 +362,9 @@ function LineItemRow({
             {isPaid && item.paymentMethod && (
               <><span className="text-border">·</span><span>{paymentMethodLabel(item.paymentMethod)}</span></>
             )}
+            {isProcessing && (
+              <><span className="text-border">·</span><span className="font-medium text-blue-600 dark:text-blue-400">Processing — ACH transfer initiated, funds arrive in 4–5 business days</span></>
+            )}
             {(isRefunded || isPartiallyRefunded) && item.refundedAt && (
               <>
                 <span className="text-border">·</span>
@@ -367,12 +378,16 @@ function LineItemRow({
             )}
           </div>
           {(isPaid || isRefunded || isPartiallyRefunded) && (
-            <QuickBooksSyncStatusBadge status={item.quickbooksSyncStatus} />
+            <QuickBooksSyncStatusBadge
+              status={item.quickbooksSyncStatus}
+              entityType={isRefunded || isPartiallyRefunded ? "refund" : "payment"}
+              entityId={item.id}
+            />
           )}
         </div>
 
         {/* Actions */}
-        {!isPaid && !isCancelled && !isRefunded && !isPartiallyRefunded && (
+        {!isPaid && !isCancelled && !isRefunded && !isPartiallyRefunded && !isProcessing && (
           <div className="flex shrink-0 items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
             <Button type="button" size="sm" className="h-7 px-2 text-xs"
               onClick={() => setPayMode(true)} disabled={cancelPending}>

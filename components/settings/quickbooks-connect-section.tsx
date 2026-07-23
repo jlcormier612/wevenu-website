@@ -6,7 +6,7 @@ import { useSearchParams } from "next/navigation";
 import { AlertTriangle, CheckCircle2, ExternalLink, Loader2, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 
-import { disconnectQuickBooksAction } from "@/app/(app)/settings/actions";
+import { disconnectQuickBooksAction, retryQuickBooksSyncAction } from "@/app/(app)/settings/actions";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -16,7 +16,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import type { QuickBooksConnection } from "@/lib/quickbooks/types";
+import type { QuickBooksConnection, QuickBooksEntityType } from "@/lib/quickbooks/types";
 import type { QuickBooksSyncLogEntry } from "@/lib/quickbooks/service";
 
 const ENTITY_LABEL: Record<string, string> = {
@@ -30,7 +30,18 @@ const OUTCOME_BADGE: Record<QuickBooksSyncLogEntry["outcome"], { variant: "succe
 };
 
 function RecentSyncActivity({ entries }: { entries: QuickBooksSyncLogEntry[] }) {
+  const [retryingId, setRetryingId] = React.useState<string | null>(null);
   if (entries.length === 0) return null;
+
+  function handleRetry(entry: QuickBooksSyncLogEntry) {
+    setRetryingId(entry.id);
+    retryQuickBooksSyncAction(entry.entityType as QuickBooksEntityType, entry.entityId).then((result) => {
+      setRetryingId(null);
+      if (result.ok) toast.success("Retrying sync to QuickBooks…");
+      else toast.error(result.message ?? "Could not retry this sync.");
+    });
+  }
+
   return (
     <div className="space-y-2 rounded-lg border border-border p-4">
       <p className="text-xs font-medium text-muted-foreground">Recent sync activity</p>
@@ -44,7 +55,19 @@ function RecentSyncActivity({ entries }: { entries: QuickBooksSyncLogEntry[] }) 
                 <span className="truncate text-foreground">{ENTITY_LABEL[entry.entityType] ?? entry.entityType}</span>
                 {entry.message && <span className="truncate text-muted-foreground">{entry.message}</span>}
               </div>
-              <span className="shrink-0 text-muted-foreground">{new Date(entry.createdAt).toLocaleString()}</span>
+              <div className="flex shrink-0 items-center gap-2">
+                {entry.outcome === "dead_lettered" && (
+                  <button
+                    type="button"
+                    onClick={() => handleRetry(entry)}
+                    disabled={retryingId === entry.id}
+                    className="font-medium text-primary hover:underline disabled:opacity-50"
+                  >
+                    {retryingId === entry.id ? "Retrying…" : "Retry now"}
+                  </button>
+                )}
+                <span className="text-muted-foreground">{new Date(entry.createdAt).toLocaleString()}</span>
+              </div>
             </li>
           );
         })}
@@ -206,7 +229,7 @@ export function QuickBooksConnectSection({
                   {[
                     "Customers, invoices, payments, and refunds sync automatically",
                     "Every sync retries on failure — nothing is silently dropped",
-                    "One-directional: Wevenu stays the source of truth",
+                    "One-directional: Hello to Cheers stays the source of truth",
                   ].map((item) => (
                     <li key={item} className="flex items-start gap-2">
                       <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-primary" />

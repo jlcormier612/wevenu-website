@@ -5,7 +5,6 @@ import { isSupabaseConfigured } from "@/lib/env";
 import { getVendorUser } from "@/lib/vendor-auth/service";
 import { getVendorProfile } from "@/lib/vendor-profile/service";
 import { getPendingTaskCount } from "@/lib/vendor-tasks/service";
-import { getInquiryCounts } from "@/lib/vendor-inquiries/service";
 import { getVendorConversationInbox } from "@/lib/conversations/service";
 
 export default async function VendorLayout({ children }: { children: React.ReactNode }) {
@@ -14,21 +13,18 @@ export default async function VendorLayout({ children }: { children: React.React
   const vendorUser = await getVendorUser();
   if (!vendorUser) redirect("/login");
 
-  const [profile, pendingTaskCount, inquiryCounts, conversationInbox] = await Promise.all([
+  const [profile, pendingTaskCount, conversationInbox] = await Promise.all([
     getVendorProfile(vendorUser.vendorId),
     getPendingTaskCount(vendorUser.vendorId),
-    getInquiryCounts(vendorUser.vendorId),
     getVendorConversationInbox(),
   ]);
-
-  const newInquiryCount = inquiryCounts.new ?? 0;
 
   return (
     <VendorAppShell
       businessName={profile?.businessName ?? "Your Business"}
       category={profile?.category ?? null}
+      logoUrl={profile?.logoUrl ?? null}
       role={vendorUser.role}
-      newInquiryCount={newInquiryCount}
       pendingTaskCount={pendingTaskCount}
       unreadMessageCount={conversationInbox.totalUnread}
     >

@@ -11,21 +11,14 @@
  *
  * Path: client-media/{venue_id}/{client_id}/{type}-{timestamp}.{ext}
  *
- * RC-Launch Validation, Sprint 2 — this hardcoded the bucket's original
- * name from its very first migration comment ("client-media"); the
- * migration that actually created the bucket (20260629270000_couple_
- * profiles.sql) renamed it to "client-media" and this route was never
- * updated. No bucket named "client-media" has ever existed, so every
- * upload through this route (wedding website hero/cover photo, couple
- * portal profile photo, couple document uploads — see callers in
- * website-editor.tsx, portal-shell.tsx, couple-documents-section.tsx)
- * has always failed with a real "Bucket not found" error. lib/storage.ts
- * and app/api/portal/media/route.ts already correctly reference
- * "client-media" — this route was the one holdout.
+ * Callers: wedding website hero/cover photo and gallery photos
+ * (website-editor.tsx), couple portal profile photo (portal-shell.tsx),
+ * couple document uploads (couple-documents-section.tsx).
  */
 
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { resolveImageFile } from "@/lib/storage";
 
 function getServiceClient() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -49,8 +42,13 @@ export async function POST(request: Request) {
       return NextResponse.json({ ok: false, error: "File too large. Maximum 10MB." }, { status: 400 });
     }
 
-    if (!file.type.startsWith("image/")) {
-      return NextResponse.json({ ok: false, error: "Only image files are accepted." }, { status: 400 });
+    // Falls back to the filename's own extension when the browser doesn't
+    // report a MIME type at all — common for HEIC/HEIF straight off an
+    // iPhone, which used to be rejected outright here (client portal
+    // feedback, 2026-07-22).
+    const resolved = resolveImageFile(file);
+    if (!resolved) {
+      return NextResponse.json({ ok: false, error: "Only image files are accepted (JPG, PNG, GIF, WEBP, HEIC, and similar)." }, { status: 400 });
     }
 
     const supabase = getServiceClient();
@@ -66,14 +64,13 @@ export async function POST(request: Request) {
       return NextResponse.json({ ok: false, error: "Invalid portal token." }, { status: 401 });
     }
 
-    const ext = file.type === "image/webp" ? "webp"
-      : file.type === "image/png" ? "png"
-      : file.type === "image/gif" ? "gif" : "jpg";
-    const path = `${sessionData.venue_id}/${sessionData.client_id}/${type}-${Date.now()}.${ext}`;
+    // Real extension matching the file's actual bytes, not every
+    // non-explicit type silently renamed to ".jpg" regardless of format.
+    const path = `${sessionData.venue_id}/${sessionData.client_id}/${type}-${Date.now()}.${resolved.ext}`;
 
     const { error: uploadError } = await supabase.storage
       .from("client-media")
-      .upload(path, file, { upsert: true, contentType: file.type });
+      .upload(path, file, { upsert: true, contentType: file.type || resolved.mime });
 
     if (uploadError) {
       console.error("[upload]", uploadError.message);

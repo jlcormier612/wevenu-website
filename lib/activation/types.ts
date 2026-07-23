@@ -15,6 +15,20 @@ export type ActivationGap = {
   href: string;
 };
 
+/**
+ * Guided Setup, Hospitality Success Platform §1.1 — the full checklist
+ * (every item the Activation Engine tracks, completed or not), not just
+ * the top-3 incomplete ones `gaps` exposes. This is what the Getting
+ * Started card renders from now — one computation, not two.
+ */
+export type ActivationChecklistItem = {
+  key: string;
+  label: string;
+  points: number;
+  href: string;
+  completed: boolean;
+};
+
 export type ActivationScore = {
   score: number;
   previousScore: number | null;
@@ -22,6 +36,7 @@ export type ActivationScore = {
   phaseLabel: string;
   dimensionScores: Record<string, number>;
   gaps: ActivationGap[];
+  checklist: ActivationChecklistItem[];
   computedAt: string;
 };
 

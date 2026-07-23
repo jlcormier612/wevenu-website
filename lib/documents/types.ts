@@ -28,6 +28,11 @@ export type Document = {
   notes: string | null;
   tags: string[];
   expiresAt: string | null;   // ISO date "YYYY-MM-DD"
+  // Private by default — the venue explicitly shares it. Only meaningful
+  // for client/event-scoped documents; mirrors contracts.is_couple_visible
+  // / invoices.is_couple_visible exactly (Client Collaboration Workspace,
+  // 2026-07-22). Once true, get_couple_documents() surfaces it automatically.
+  isCoupleVisible: boolean;
   createdAt: string;
   updatedAt: string;
 };

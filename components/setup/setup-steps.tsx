@@ -7,6 +7,8 @@ import {
   Building2,
   CalendarClock,
   CreditCard,
+  Heart,
+  RefreshCw,
   Sparkles,
   UserRound,
 } from "lucide-react";
@@ -39,6 +41,12 @@ import type {
   VenueSetupInput,
 } from "@/lib/venue/types";
 import { type SetupStepId } from "@/lib/venue/validation";
+import { getPaymentsStepDataAction } from "@/app/setup/actions";
+import { QuickBooksConnectSection } from "@/components/settings/quickbooks-connect-section";
+import { StripeConnectSection } from "@/components/settings/stripe-connect-section";
+import type { Venue } from "@/lib/venue/types";
+import type { QuickBooksConnection } from "@/lib/quickbooks/types";
+import type { QuickBooksSyncLogEntry } from "@/lib/quickbooks/service";
 
 export const STEP_META: Record<
   SetupStepId,
@@ -66,7 +74,7 @@ export const STEP_META: Record<
   },
   payments: {
     title: "Payments",
-    description: "Connect Stripe to take deposits and payments.",
+    description: "Connect the accounting tools you use to take deposits and payments.",
   },
   review: {
     title: "Review & create",
@@ -229,6 +237,113 @@ export function WelcomeStep({ onStart }: { onStart: () => void }) {
         Get started
         <ArrowRight className="ml-1 h-4 w-4" />
       </Button>
+    </div>
+  );
+}
+
+// ---- Origin (onboarding persona) ---------------------------------------------
+// Guided Setup, Hospitality Success Platform Phase 1 — captured once, right
+// alongside the venue name, before any other question. Drives which of three
+// scripts the rest of the journey narrates with (docs/hospitality-success-
+// platform-implementation-plan.md §1.2a). Deliberately outside SETUP_STEPS —
+// like "welcome", it needs no field validation and nothing to persist until
+// a real venue row exists.
+
+function OriginOptionCard({
+  icon: Icon,
+  title,
+  description,
+  onClick,
+}: {
+  icon: React.ComponentType<{ className?: string }>;
+  title: string;
+  description: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="flex w-full items-start gap-4 rounded-xl border border-border bg-card p-4 text-left transition-colors hover:border-primary/40 hover:bg-muted/30"
+    >
+      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-accent/40 text-heading">
+        <Icon className="h-5 w-5" />
+      </span>
+      <span className="space-y-0.5">
+        <span className="block text-sm font-medium text-heading">{title}</span>
+        <span className="block text-xs text-muted-foreground">{description}</span>
+      </span>
+    </button>
+  );
+}
+
+export function OriginStep({
+  onChoose,
+}: {
+  onChoose: (persona: "new" | "switching" | "weven_returning") => void;
+}) {
+  const [showSwitchingDetail, setShowSwitchingDetail] = React.useState(false);
+
+  if (showSwitchingDetail) {
+    return (
+      <div className="mx-auto max-w-xl space-y-6 py-8">
+        <div className="space-y-2 text-center">
+          <h1 className="font-heading text-2xl font-medium tracking-tight text-heading">
+            Where are you coming from?
+          </h1>
+          <p className="text-sm text-muted-foreground">
+            This just helps us bring the right things over.
+          </p>
+        </div>
+        <div className="space-y-3">
+          <OriginOptionCard
+            icon={Heart}
+            title="Weven"
+            description="Welcome back — we'll make this transition smooth."
+            onClick={() => onChoose("weven_returning")}
+          />
+          <OriginOptionCard
+            icon={RefreshCw}
+            title="Somewhere else"
+            description="HoneyBook, Aisle Planner, a spreadsheet — anything at all."
+            onClick={() => onChoose("switching")}
+          />
+        </div>
+        <button
+          type="button"
+          onClick={() => setShowSwitchingDetail(false)}
+          className="mx-auto block text-xs text-muted-foreground hover:text-foreground"
+        >
+          ← Back
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="mx-auto max-w-xl space-y-6 py-8">
+      <div className="space-y-2 text-center">
+        <h1 className="font-heading text-2xl font-medium tracking-tight text-heading">
+          Tell us where you're starting from
+        </h1>
+        <p className="text-sm text-muted-foreground">
+          This changes how we guide you — nothing else.
+        </p>
+      </div>
+      <div className="space-y-3">
+        <OriginOptionCard
+          icon={Building2}
+          title="This is a brand-new venue"
+          description="We'll walk through everything, one step at a time."
+          onClick={() => onChoose("new")}
+        />
+        <OriginOptionCard
+          icon={RefreshCw}
+          title="I'm bringing an existing business over"
+          description="We'll focus on getting your current weddings and clients imported."
+          onClick={() => setShowSwitchingDetail(true)}
+        />
+      </div>
     </div>
   );
 }
@@ -577,40 +692,48 @@ export function OwnerStep({ input, errors, set }: StepProps) {
   );
 }
 
-// ---- Payments (Stripe placeholder) ------------------------------------------
+// ---- Payments (Guided Setup §1.2, 2026-07-22 — folded in from the old
+// separate ?financial=1 post-creation screen; this is the one step whose
+// content is server-fetched rather than local wizard state, since Stripe/
+// QuickBooks connect both need real venue/connection data no client-side
+// VenueSetupInput carries) ---------------------------------------------------
 
 export function PaymentsStep() {
-  return (
-    <div className="space-y-5">
-      <div className="rounded-xl border border-border p-5">
-        <div className="flex items-start gap-4">
-          <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-accent/40 text-heading">
-            <CreditCard className="h-5 w-5" />
-          </span>
-          <div className="min-w-0 flex-1 space-y-1">
-            <div className="flex items-center gap-2">
-              <p className="text-sm font-medium text-heading">
-                Stripe Connect
-              </p>
-              <span className="rounded-full border border-border px-2 py-0.5 text-xs text-muted-foreground">
-                Not connected
-              </span>
-            </div>
-            <p className="text-sm text-muted-foreground">
-              Connect Stripe to collect deposits, send invoices, and take
-              payments directly through Hello to Cheers.
-            </p>
-          </div>
-        </div>
-        <Button type="button" variant="outline" className="mt-4 w-full" disabled>
-          Connect with Stripe — coming soon
-        </Button>
-      </div>
-      <p className="text-xs text-muted-foreground">
-        Payment processing isn&apos;t live yet. Your venue will be created
-        without it, and you can connect Stripe later from Settings — nothing
-        will be charged in the meantime.
+  const [data, setData] = React.useState<{
+    venue: Venue | null;
+    quickbooksConnection: QuickBooksConnection | null;
+    quickbooksSyncLog: QuickBooksSyncLogEntry[];
+  } | null>(null);
+
+  React.useEffect(() => {
+    void getPaymentsStepDataAction().then(setData);
+  }, []);
+
+  if (!data) {
+    return <p className="py-8 text-center text-sm text-muted-foreground">Loading…</p>;
+  }
+
+  if (!data.venue) {
+    return (
+      <p className="py-8 text-center text-sm text-muted-foreground">
+        Still setting up your venue — go back a step, then return here in a moment.
       </p>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <p className="text-sm text-muted-foreground">
+        Connect the accounting tools you already use. You can always change
+        this later from Settings — nothing here is required to continue.
+      </p>
+      <QuickBooksConnectSection
+        venueId={data.venue.id}
+        connection={data.quickbooksConnection}
+        syncLog={data.quickbooksSyncLog}
+        returnTo="onboarding"
+      />
+      <StripeConnectSection venue={data.venue} returnTo="onboarding" />
     </div>
   );
 }

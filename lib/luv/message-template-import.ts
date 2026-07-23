@@ -70,16 +70,37 @@ ${truncated}
 """`;
 }
 
+/**
+ * Plain, deterministic fallback with no AI involved at all — used whenever
+ * ANTHROPIC_API_KEY isn't configured. Bringing your own wording into a
+ * template is a basic paste-and-save action (name/category/channel are
+ * already collected by the caller's own form); it should never hard-fail
+ * just because Luv's optional structuring assist isn't available. This
+ * does exactly what the AI path promises to do at minimum — preserve the
+ * coordinator's own wording exactly, invent nothing — just without
+ * guessing a subject line or condensing an SMS version.
+ */
+function plainTemplateSplit(rawText: string, channel: ImportChannel): LuvMessageTemplateProposal {
+  const text = rawText.trim();
+  return {
+    ok: true,
+    name: "",
+    emailSubject: "",
+    emailBody: channel === "sms" ? "" : text,
+    smsBody: channel === "email" ? "" : text,
+  };
+}
+
 export async function proposeMessageTemplate(
   rawText: string,
   channel: ImportChannel,
   category: MessageTemplateCategory,
 ): Promise<LuvMessageTemplateProposal> {
-  if (!process.env.ANTHROPIC_API_KEY) {
-    return { ok: false, message: "Luv isn't configured for this venue yet — you can still build the template by hand below." };
-  }
   if (!rawText.trim()) {
     return { ok: false, message: "There's no text to work with — paste your message first." };
+  }
+  if (!process.env.ANTHROPIC_API_KEY) {
+    return plainTemplateSplit(rawText, channel);
   }
 
   try {

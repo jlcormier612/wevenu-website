@@ -73,6 +73,10 @@ export type HqTask = {
   dueDate: string | null;
   completedAt: string | null;
   createdAt: string;
+  // White-Glove Customer Success Workspace §2.2a — a blocker is
+  // structurally a task with a distinct visual weight, not a new table.
+  kind: "task" | "blocker";
+  engagementId: string | null;
 };
 
 export type HqCrmState = {

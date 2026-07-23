@@ -32,6 +32,7 @@ export const runtime = "nodejs";
  * - founding_member: "true" | "false"
  * - welcome_back: "true" | "false"
  * - onboarding_type: self_guided | white_glove
+ * - relationship_id (Path 2 — Send Subscription Link from Relationship Workspace)
  */
 export async function POST(request: Request) {
   try {
@@ -42,6 +43,11 @@ export async function POST(request: Request) {
       welcome_back_requested?: unknown;
       onboarding_type?: string;
       venue_name?: string;
+      /** Existing Relationship — Path 2 subscription link */
+      relationship_id?: string;
+      customer_email?: string;
+      /** Prefer Stripe customer when re-linking */
+      stripe_customer_id?: string;
     };
     const plan = body.plan;
 
@@ -59,6 +65,8 @@ export async function POST(request: Request) {
     const onboardingPackage = getOnboardingPackage(onboardingType);
     const venueName = body.venue_name?.trim() || "";
     const planName = getPlanDisplayName(plan);
+    const relationshipId = body.relationship_id?.trim() || "";
+    const customerEmail = body.customer_email?.trim() || "";
 
     const stripe = getStripe();
     const priceId = getPriceIdForPlan(plan, { founder: founderActive });
@@ -76,6 +84,9 @@ export async function POST(request: Request) {
     if (venueName) {
       metadata.venue_name = venueName;
     }
+    if (relationshipId) {
+      metadata.relationship_id = relationshipId;
+    }
 
     const lineItems: { price: string; quantity: number }[] = [
       { price: priceId, quantity: 1 },
@@ -92,21 +103,33 @@ export async function POST(request: Request) {
       lineItems.push({ price: addonPriceId, quantity: 1 });
     }
 
-    const session = await stripe.checkout.sessions.create({
+    const sessionParams: Parameters<typeof stripe.checkout.sessions.create>[0] = {
       mode: "subscription",
       line_items: lineItems,
       success_url: `${siteUrl}/pricing/success?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${siteUrl}/pricing?canceled=1`,
+      cancel_url: relationshipId
+        ? `${siteUrl}/pricing?canceled=1&relationship_id=${encodeURIComponent(relationshipId)}`
+        : `${siteUrl}/pricing?canceled=1`,
       allow_promotion_codes: true,
       billing_address_collection: "required",
       automatic_tax: { enabled: true },
       tax_id_collection: { enabled: true },
-      customer_creation: "always",
       subscription_data: {
         metadata,
       },
       metadata,
-    });
+    };
+
+    if (body.stripe_customer_id?.trim()) {
+      sessionParams.customer = body.stripe_customer_id.trim();
+    } else if (customerEmail) {
+      sessionParams.customer_email = customerEmail;
+      sessionParams.customer_creation = "always";
+    } else {
+      sessionParams.customer_creation = "always";
+    }
+
+    const session = await stripe.checkout.sessions.create(sessionParams);
 
     if (!session.url) {
       return NextResponse.json(
@@ -115,8 +138,9 @@ export async function POST(request: Request) {
       );
     }
 
-    // Optional draft relationship when we have a venue name (email comes later from Stripe).
+    // Draft / link relationship when we have venue, email, or existing relationship id.
     await syncCheckoutStartedToRelationship({
+      email: customerEmail || null,
       venueName: venueName || null,
       plan,
       planName,
@@ -127,9 +151,11 @@ export async function POST(request: Request) {
 
     return NextResponse.json({
       url: session.url,
+      session_id: session.id,
       welcome_back: welcomeBack,
       onboarding_type: onboardingType,
       founding_member: foundingMember,
+      relationship_id: relationshipId || null,
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Checkout failed.";

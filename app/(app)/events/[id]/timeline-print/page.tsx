@@ -12,7 +12,7 @@ type Props = { params: Promise<{ id: string }> };
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { id } = await params;
   const event = await getEvent(id);
-  return { title: event ? `Booking Timeline · ${event.name}` : "Booking Timeline" };
+  return { title: event ? `Timeline · ${event.name}` : "Timeline" };
 }
 
 /**

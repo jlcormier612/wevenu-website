@@ -593,7 +593,7 @@ export function EventDetail({
             <CardHeader>
               <div className="flex items-start justify-between gap-2">
                 <div>
-                  <CardTitle className="text-base">Booking Timeline</CardTitle>
+                  <CardTitle className="text-base">Timeline</CardTitle>
                   <CardDescription>
                     The moment-by-moment schedule your team needs to run the day.
                   </CardDescription>

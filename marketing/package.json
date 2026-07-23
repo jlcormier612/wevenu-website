@@ -6,7 +6,9 @@
     "dev": "next dev --port 3001",
     "build": "next build",
     "start": "next start --port 3001",
-    "lint": "eslint"
+    "lint": "eslint",
+    "export:pdfs": "node scripts/export-preview-pdfs.mjs",
+    "export:journey-pdfs": "node scripts/export-journey-pdfs.mjs"
   },
   "dependencies": {
     "clsx": "^2.1.1",

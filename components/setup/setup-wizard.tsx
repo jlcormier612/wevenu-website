@@ -3,13 +3,14 @@
 import * as React from "react";
 
 import { useRouter } from "next/navigation";
-import { ArrowLeft, ArrowRight, Loader2 } from "lucide-react";
+import { ArrowLeft, ArrowRight, CheckCircle2, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
-import { submitVenueSetupAction } from "@/app/setup/actions";
+import { saveSetupProgressAction, submitVenueSetupAction } from "@/app/setup/actions";
 import {
   BrandStep,
   BusinessHoursStep,
+  OriginStep,
   OwnerStep,
   PaymentsStep,
   ReviewStep,
@@ -29,6 +30,7 @@ import {
 import { createInitialSetupInput } from "@/lib/venue/constants";
 import type {
   BusinessHourInput,
+  OnboardingPersona,
   VenueSetupErrors,
   VenueSetupInput,
 } from "@/lib/venue/types";
@@ -39,15 +41,47 @@ import {
   validateVenueSetup,
 } from "@/lib/venue/validation";
 
-const SCREENS = ["welcome", ...SETUP_STEPS] as const;
+const SCREENS = ["welcome", "origin", ...SETUP_STEPS] as const;
 type ScreenId = (typeof SCREENS)[number];
 
-export function SetupWizard({ ownerEmail }: { ownerEmail: string }) {
+/**
+ * Luv's own voice narrating the journey, not a generic banner — this is the
+ * one place "Let's get Willow Creek ready" actually lives. Shown once the
+ * venue has a name, above every step from "venue-details" onward.
+ */
+function journeyLine(name: string, persona: OnboardingPersona | null): string {
+  const trimmed = name.trim();
+  if (persona === "weven_returning") {
+    return `Welcome back — let's get ${trimmed} moved over and ready to welcome its next couple.`;
+  }
+  if (persona === "switching") {
+    return `Let's get ${trimmed} moved over and ready to welcome its next couple.`;
+  }
+  return `Let's get ${trimmed} ready to welcome its next couple.`;
+}
+
+export function SetupWizard({
+  ownerEmail,
+  initialInput,
+  resumeStep,
+}: {
+  ownerEmail: string;
+  /** Present when resuming a partially-completed venue (Guided Setup, Phase 1). */
+  initialInput?: VenueSetupInput;
+  resumeStep?: SetupStepId;
+}) {
   const router = useRouter();
-  const [input, setInput] = React.useState<VenueSetupInput>(() =>
-    createInitialSetupInput(ownerEmail),
+  const [input, setInput] = React.useState<VenueSetupInput>(
+    () => initialInput ?? createInitialSetupInput(ownerEmail),
   );
-  const [stepIndex, setStepIndex] = React.useState(0);
+  // Guided Setup §1.2 (2026-07-22) — Financial Setup folded into the
+  // "payments" step, so the separate post-creation ?financial=1 screen is
+  // gone; this inline flag is what shows the short completion moment that
+  // used to live there before handing off to the dashboard.
+  const [complete, setComplete] = React.useState(false);
+  const [stepIndex, setStepIndex] = React.useState(() =>
+    initialInput ? SCREENS.indexOf(resumeStep ?? "venue-info") : 0,
+  );
   const [errors, setErrors] = React.useState<VenueSetupErrors>({});
   const [pending, startTransition] = React.useTransition();
 
@@ -96,6 +130,18 @@ export function SetupWizard({ ownerEmail }: { ownerEmail: string }) {
     [],
   );
 
+  /**
+   * Guided Setup, Phase 1 — fire-and-forget progress save. Called every time
+   * a real setup step (not welcome/origin) is left, so an abandoned wizard
+   * resumes instead of starting over. Never awaited by the caller and never
+   * surfaces an error to the venue — a failed progress save just means the
+   * next one (or the final authoritative submit) tries again.
+   */
+  function saveProgress(data: VenueSetupInput, completedStep: SetupStepId) {
+    if (!data.name.trim()) return;
+    void saveSetupProgressAction(data, completedStep);
+  }
+
   function handleSubmit() {
     const allErrors = validateVenueSetup(input);
     if (Object.keys(allErrors).length > 0) {
@@ -108,10 +154,7 @@ export function SetupWizard({ ownerEmail }: { ownerEmail: string }) {
     startTransition(async () => {
       const result = await submitVenueSetupAction(input);
       if (result.ok) {
-        // Financial Setup (QuickBooks/Stripe connect) needs a real venue_id
-        // to exist, so it lives as its own post-creation route rather than a
-        // client-state screen here — see app/setup/page.tsx.
-        router.push("/setup?financial=1");
+        setComplete(true);
         return;
       }
       if (result.errors && Object.keys(result.errors).length > 0) {
@@ -127,7 +170,11 @@ export function SetupWizard({ ownerEmail }: { ownerEmail: string }) {
 
   function handleContinue() {
     if (screen === "welcome") {
-      setStepIndex(1);
+      setStepIndex(SCREENS.indexOf("origin"));
+      return;
+    }
+    if (screen === "origin") {
+      // OriginStep advances itself via onChoose — nothing to do here.
       return;
     }
     const step = screen as SetupStepId;
@@ -141,18 +188,51 @@ export function SetupWizard({ ownerEmail }: { ownerEmail: string }) {
       handleSubmit();
       return;
     }
+    saveProgress(input, step);
     setStepIndex((i) => i + 1);
     if (typeof window !== "undefined") window.scrollTo({ top: 0 });
   }
 
+  if (complete) {
+    return (
+      <div className="mx-auto max-w-xl space-y-8 py-16 text-center">
+        <span className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-primary/10 text-primary">
+          <CheckCircle2 className="h-8 w-8" />
+        </span>
+        <div className="space-y-2">
+          <h1 className="font-heading text-2xl font-medium tracking-tight text-heading">Your venue is ready</h1>
+          <p className="text-sm text-muted-foreground">
+            <span className="font-medium text-foreground">{input.name}</span> is set up and your workspace is live.
+          </p>
+        </div>
+        <Button size="lg" onClick={() => { router.push("/dashboard"); router.refresh(); }}>
+          Enter your workspace
+          <ArrowRight className="ml-1 h-4 w-4" />
+        </Button>
+      </div>
+    );
+  }
+
   if (screen === "welcome") {
-    return <WelcomeStep onStart={() => setStepIndex(1)} />;
+    return <WelcomeStep onStart={() => setStepIndex(SCREENS.indexOf("origin"))} />;
+  }
+
+  if (screen === "origin") {
+    return (
+      <OriginStep
+        onChoose={(persona) => {
+          set("onboardingPersona", persona);
+          setStepIndex(SCREENS.indexOf("venue-info"));
+          if (typeof window !== "undefined") window.scrollTo({ top: 0 });
+        }}
+      />
+    );
   }
 
   const step = screen as SetupStepId;
   const meta = STEP_META[step];
   const totalSteps = SETUP_STEPS.length;
-  const stepNumber = stepIndex; // welcome is 0, so setup steps are 1..N
+  const stepNumber = SETUP_STEPS.indexOf(step) + 1;
   const progress = Math.round((stepNumber / totalSteps) * 100);
   const isReview = step === "review";
 
@@ -180,6 +260,12 @@ export function SetupWizard({ ownerEmail }: { ownerEmail: string }) {
           />
         </div>
       </div>
+
+      {input.name.trim() && step !== "venue-info" && (
+        <p className="text-sm font-medium text-primary">
+          💗 {journeyLine(input.name, input.onboardingPersona)}
+        </p>
+      )}
 
       <Card>
         <CardHeader>

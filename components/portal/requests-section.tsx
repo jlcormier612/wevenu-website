@@ -269,7 +269,10 @@ export function RequestsSummaryCard({ token, onNavigate }: { token: string; onNa
   if (needingAction.length === 0 && recentlyCompleted.length === 0 && upcoming.length === 0) return null;
 
   return (
-    <button type="button" onClick={() => onNavigate("requests")}
+    // Program 4, Initiative C (2026-07-23) — Requests is no longer its own
+    // destination; "Venue Requests" is a filter inside Tasks so the couple
+    // has exactly one place for work that needs completing.
+    <button type="button" onClick={() => onNavigate("tasks")}
       className="w-full text-left rounded-2xl border bg-card p-5 hover:shadow-sm transition-all"
       style={needingAction.length > 0 ? { borderColor: `${ROSE}45`, background: `${ROSE}05` } : { borderColor: "#E8E3DC" }}>
       <div className="flex items-center justify-between mb-3">

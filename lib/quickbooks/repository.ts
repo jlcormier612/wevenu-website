@@ -196,6 +196,33 @@ export async function enqueueSync(client: any, input: {
   if (error) throw error;
 }
 
+/**
+ * Manual "Retry now" — finds this entity's most recent queue row
+ * (dead_letter or still-retrying; whichever exists) and resets it to
+ * pending with a fresh attempt budget, so a coordinator-triggered retry
+ * gets the same full 8-attempt allowance a brand-new sync would, not
+ * whatever was left when it originally dead-lettered. Uses the session
+ * client — RLS (venue_id = current_user_venue_id()) is the actual
+ * security boundary, not an app-level venue check.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export async function resetQueueItemForRetry(client: any, entityType: string, entityId: string): Promise<boolean> {
+  const { data: existing } = await client
+    .from("quickbooks_sync_queue")
+    .select("id")
+    .eq("entity_type", entityType).eq("entity_id", entityId)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  const row = existing as { id: string } | null;
+  if (!row) return false;
+
+  const { error } = await client.from("quickbooks_sync_queue").update({
+    status: "pending", attempt_count: 0, next_attempt_at: new Date().toISOString(), last_error: null,
+  }).eq("id", row.id);
+  return !error;
+}
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function getDueBatch(client: any, limit = 50): Promise<SyncQueueRow[]> {
   const { data, error } = await client

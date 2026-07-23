@@ -28,6 +28,7 @@ import { getCapacityRules, getSpaces } from "@/lib/availability/service";
 import { getLuvSettings } from "@/lib/luv/settings";
 import { getCurrentVenue, getVenueSettings } from "@/lib/venue/service";
 import { getNotificationStats } from "@/lib/notifications/stats";
+import { isEmailConfigured } from "@/lib/email/send";
 import { getNotificationPreferences } from "@/lib/notifications/preferences";
 import { getTourAvailabilityExceptions, getTourAvailabilityWindows, getTourSettings } from "@/lib/tours/service";
 import { getIntakeHealthSummary } from "@/lib/lead-intake/monitoring";
@@ -140,7 +141,7 @@ export default async function SettingsPage() {
       {venue && (
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Website Forms</CardTitle>
+            <CardTitle className="text-base">Inquiry Form</CardTitle>
             <CardDescription>
               Share your inquiry form or embed it on your website. Every submission becomes a lead in Hello to Cheers automatically.
             </CardDescription>
@@ -223,14 +224,13 @@ export default async function SettingsPage() {
       {/* ── Notifications ──────────────────────────────────────────── */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Notification Engine</CardTitle>
+          <CardTitle className="text-base">Notifications</CardTitle>
           <CardDescription>
-            Reminder delivery engine. Pending reminders are processed on a schedule.
-            Channel-agnostic: email active now, SMS and in-app coming soon.
+            Automatic reminders for tasks and tours, sent by email.
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <NotificationsSection initialStats={notifStats} />
+          <NotificationsSection initialStats={notifStats} emailConfigured={isEmailConfigured()} />
         </CardContent>
       </Card>
 

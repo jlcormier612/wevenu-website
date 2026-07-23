@@ -47,7 +47,12 @@ const PROSPECT_STATUSES = new Set([
 const CUSTOMER_STATUSES = new Set([
   "subscribed",
   "onboarding",
+  "white_glove_implementation",
   "live",
+  "active",
+  "reactivated",
+  "at_risk",
+  "suspended",
   "expansion",
   "referral",
   "renewal",

@@ -1,29 +1,36 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
-import { VendorProfileForm } from "@/components/vendor-app/vendor-profile-form";
+import { VendorProfileWorkspace } from "@/components/vendor-app/vendor-profile-workspace";
 import { getVendorUser } from "@/lib/vendor-auth/service";
 import { getVendorProfile } from "@/lib/vendor-profile/service";
-import type { VendorProfile } from "@/lib/vendors/types";
+import { getVendorPackages } from "@/lib/vendor-packages/service";
+import { getVendorFaqs } from "@/lib/vendor-faqs/service";
+import { getVendorAvailability } from "@/lib/vendor-availability/service";
 
-export const metadata: Metadata = { title: "My Profile — Vendor Portal" };
+export const metadata: Metadata = { title: "Profile — Vendor Portal" };
 
 export default async function VendorProfilePage() {
   const vendorUser = await getVendorUser();
   if (!vendorUser) redirect("/login");
 
-  const profile = await getVendorProfile(vendorUser.vendorId);
+  const now = new Date();
+  const [profile, packages, faqs, availability] = await Promise.all([
+    getVendorProfile(vendorUser.vendorId),
+    getVendorPackages(vendorUser.vendorId),
+    getVendorFaqs(vendorUser.vendorId),
+    getVendorAvailability(vendorUser.vendorId, now.getFullYear(), now.getMonth() + 1),
+  ]);
   if (!profile) redirect("/login");
 
   return (
-    <div className="space-y-6 max-w-2xl">
-      <div>
-        <h1 className="text-2xl font-bold text-foreground">My Profile</h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          Keep your business details up to date. Changes are visible to connected venues immediately.
-        </p>
-      </div>
-      <VendorProfileForm profile={profile} />
-    </div>
+    <VendorProfileWorkspace
+      profile={profile}
+      packages={packages}
+      faqs={faqs}
+      availability={availability}
+      year={now.getFullYear()}
+      month={now.getMonth()}
+    />
   );
 }

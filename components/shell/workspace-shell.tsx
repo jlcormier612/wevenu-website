@@ -98,7 +98,7 @@ export function WorkspaceShell({
                 <img
                   src={venueLogo}
                   alt={venueName ?? "Venue"}
-                  className="h-8 w-auto max-w-[160px] rounded-md object-contain"
+                  className="h-12 w-auto max-w-[200px] rounded-md object-contain"
                 />
               ) : (
                 <>

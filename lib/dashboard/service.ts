@@ -18,6 +18,11 @@ import { getVenueHealthScore } from "@/lib/luv/health-service";
 import { getVenueRecommendations } from "@/lib/luv/recommendation-service";
 import { getLuvActionObservations, getPendingLuvActions, getLuvPerformanceObservations } from "@/lib/luv/action-service";
 import { getActivationScore, getNextPendingMilestone } from "@/lib/activation/service";
+import type { ActivationScore } from "@/lib/activation/types";
+import { GAP_COPY } from "@/lib/dashboard/gap-copy";
+import { computeSetupGapObservations } from "@/lib/luv/setup-observations";
+import { getDailyBriefing } from "@/lib/luv/briefing-service";
+import { getArticlesForGapKeys } from "@/lib/success-library/service";
 import { getNotificationPreferences } from "@/lib/notifications/preferences";
 import { refreshAllLeadScores, generateMomentumLanguage, getMomentumTier } from "@/lib/leads/scores";
 import { LEAD_STATUSES } from "@/lib/leads/constants";
@@ -160,7 +165,7 @@ export async function getDashboardData(): Promise<DashboardData | null> {
   // Auto-mark overdue (non-fatal — don't block dashboard load on failure)
   void supabase.rpc("mark_overdue_payments", { p_venue_id: venue.id });
 
-  const [leadsRes, tasksRes, activityRes, clientsRes, keyDatesRes, eventsRes, paymentsRes, staffRes, guideRes, vendorRes, playbookRes] = await Promise.all([
+  const [leadsRes, tasksRes, activityRes, clientsRes, keyDatesRes, eventsRes, paymentsRes, staffRes] = await Promise.all([
     supabase
       .from("leads")
       .select("*")
@@ -229,11 +234,6 @@ export async function getDashboardData(): Promise<DashboardData | null> {
       .eq("venue_id", venue.id)
       .eq("is_owner", true)
       .maybeSingle<{ full_name: string }>(),
-
-    // Onboarding signals — non-fatal; any error = not complete
-    supabase.from("venue_operational_info").select("venue_id").eq("venue_id", venue.id).maybeSingle<{ venue_id: string }>(),
-    supabase.from("vendors").select("*", { count: "exact", head: true }).eq("venue_id", venue.id),
-    supabase.from("playbook_templates").select("*", { count: "exact", head: true }).eq("venue_id", venue.id),
   ]);
 
   if (leadsRes.error) throw leadsRes.error;
@@ -378,7 +378,8 @@ export async function getDashboardData(): Promise<DashboardData | null> {
 
   // Luv observations + trend intelligence — non-blocking; return [] on error
   const luvSettings = await getLuvSettings().catch(() => null);
-  const [luvObservationsRaw, communicationObservations, rawTrends, rawMemories, rawInsights, healthScore, recommendations, actionObservations, pendingActionObservations, performanceObservations, activationScore, nextPendingMilestone, notificationPrefs] = await Promise.all([
+  const emptyBriefing = { needsAttentionNow: [], comingUpThisWeek: [], resolvedSinceLastLooked: [], informational: [], generatedAt: new Date().toISOString() };
+  const [luvObservationsRaw, communicationObservations, rawTrends, rawMemories, rawInsights, healthScore, recommendations, actionObservations, pendingActionObservations, performanceObservations, activationScore, nextPendingMilestone, notificationPrefs, briefing] = await Promise.all([
     getLuvObservations(supabase, venue.id, today, luvSettings ?? undefined).catch(() => []),
     getCommunicationObservations(supabase, venue.id).catch(() => []),
     getVenueTrends().catch(() => null),
@@ -392,12 +393,15 @@ export async function getDashboardData(): Promise<DashboardData | null> {
     getActivationScore(venue.id).catch(() => null),
     getNextPendingMilestone(venue.id).catch(() => null),
     getNotificationPreferences().catch(() => null),
+    getDailyBriefing(venue.id).catch(() => emptyBriefing),
   ]);
-  // Communication observations respect the same observationsEnabled setting
-  // as every other Luv observation — Luv is one voice, not two.
+  // Communication and setup-gap observations respect the same
+  // observationsEnabled setting as every other Luv observation — Luv is
+  // one voice, not two.
+  const setupGapObservations = activationScore ? computeSetupGapObservations(activationScore.checklist) : [];
   const luvObservations = luvSettings?.observationsEnabled === false
     ? luvObservationsRaw
-    : [...luvObservationsRaw, ...communicationObservations];
+    : [...luvObservationsRaw, ...communicationObservations, ...setupGapObservations];
   const showDigestCallout = !!notificationPrefs && notificationPrefs.dailyDigestEnabled && !notificationPrefs.digestIntroDismissed;
   const trendObservations  = rawTrends   ? computeTrendObservations(rawTrends) : [];
   const storyObservation   = rawTrends   ? computeStoryMode(rawTrends) : null;
@@ -432,11 +436,8 @@ export async function getDashboardData(): Promise<DashboardData | null> {
     venueName: venue.name,
     ownerFirstName,
     todayIso: today,
-    onboarding: computeOnboarding(venue, leads, {
-      hasGuideContent: !!(guideRes.data),
-      vendorCount: vendorRes.count ?? 0,
-      playbookCount: playbookRes.count ?? 0,
-    }),
+    onboarding: await buildGuidedSetupChecklist(venue, activationScore),
+    briefing,
     needsAttention,
     followupsDue,
     upcomingTours,
@@ -467,108 +468,74 @@ export async function getDashboardData(): Promise<DashboardData | null> {
     nextPendingMilestone,
     showDigestCallout,
     // Luv Experience Completion, Work Stream 5 — the one-time intro card.
-    showLuvIntro: !venue.luvIntroSeenAt,
+    // Guided Setup §1.1 (2026-07-22): the permanent luvIntroSeenAt flag is
+    // still the gate (never show it twice), but it's no longer sufficient
+    // on its own — a venue that's long past setup and simply never
+    // dismissed the card shouldn't have it resurface. Requires the venue
+    // to actually look new: still in the Activation Engine's "setup"
+    // phase, or created within the last two weeks (matches this file's
+    // own `twoWeeksOut` window elsewhere).
+    showLuvIntro: !venue.luvIntroSeenAt && (
+      activationScore?.phase === "setup" ||
+      Date.now() - new Date(venue.createdAt).getTime() < 14 * 86_400_000
+    ),
   };
 }
 
 // ---- Getting Started onboarding ---------------------------------------------
+// Hospitality Success Platform, Guided Setup §1.1 (decided 2026-07-22): this
+// used to be a second, independent computation of "what's done, what's
+// missing" — its own ad hoc field/count checks, disagreeing in places with
+// the Activation Engine's own scoring. It's now a presentation layer over
+// Activation's own checklist (lib/activation/service.ts's getActivationScore,
+// backed by compute_venue_activation_score() in Postgres) — one computation,
+// with journey-voiced copy attached per item here. Companion voice, not
+// documentation: every line names the actual consequence of the gap, not
+// just the feature it's missing — "Luv says 'I'll walk through it with
+// you,' not 'here's an article.'"
 
-type OnboardingSignals = {
-  hasGuideContent: boolean;
-  vendorCount: number;
-  playbookCount: number;
-};
+/** Presentation layer over the Activation Engine's own checklist — see the note above. No independent computation of "what's done" happens here. */
+async function buildGuidedSetupChecklist(venue: Venue, activationScore: ActivationScore | null): Promise<OnboardingStatus> {
+  const items = activationScore?.checklist ?? [];
 
-const NUDGE_TEXT: Record<string, string> = {
-  profile_complete:  "Fill in your venue address, phone, and email. Clients and coordinators need this before anything else.",
-  tour_scheduling:   "Enabling tour scheduling turns your venue page into a 24/7 booking engine — clients book themselves while you sleep.",
-  venue_guide:       "Your Venue Guide is the #1 resource clients share with their families. Ten minutes here saves fifty future emails.",
-  preferred_vendors: "Add your preferred vendors. Clients ask about photographers and caterers before almost anything else.",
-  task_playbook:     "Create your first Planning Playbook to automate your event workflow — it saves hours on every booking you make.",
-  first_inquiry:     "Add your first lead to start building your pipeline and tracking inquiries.",
-};
-
-/** Derives onboarding state from existing venue, leads, and lightweight counts — no separate progress table. */
-function computeOnboarding(venue: Venue, leads: Lead[], signals: OnboardingSignals): OnboardingStatus {
-  const profileFilled = !!(venue.addressLine1?.trim() && venue.phone?.trim() && venue.email?.trim());
+  // Luv's Success Library §4.2 (2026-07-22) — a published article tagged
+  // for an incomplete gap becomes a secondary "read more" link. Looked up
+  // once, in bulk, not per step.
+  const incompleteKeys = items.filter((i) => !i.completed).map((i) => i.key);
+  const articlesByGapKey = await getArticlesForGapKeys(incompleteKeys).catch(() => new Map());
 
   const steps: OnboardingStep[] = [
     {
       id: "setup_complete",
-      title: "Create your venue",
-      description: "Your venue workspace is live.",
+      title: "Your venue is open",
+      description: `${venue.name} is live and ready to take leads.`,
       completed: true,
     },
-    {
-      id: "profile_complete",
-      title: "Fill in your venue profile",
-      description: "Add your address, phone, and email so clients can reach you.",
-      completed: profileFilled,
-      timeEstimate: "1 min",
-      ctaLabel: "Complete Profile",
-      ctaHref: "/settings",
-    },
-    {
-      id: "tour_scheduling",
-      title: "Enable tour scheduling",
-      description: "Let clients book a venue tour directly from your website — 24/7, no back-and-forth.",
-      completed: venue.tourSchedulingEnabled,
-      timeEstimate: "2 min",
-      ctaLabel: "Set Up Tours",
-      ctaHref: "/settings",
-    },
-    {
-      id: "venue_guide",
-      title: "Start your Venue Guide",
-      description: "Parking, hotels, policies, FAQs — the questions clients will ask you a hundred times.",
-      completed: signals.hasGuideContent,
-      timeEstimate: "10 min",
-      ctaLabel: "Open Guide",
-      ctaHref: "/guide",
-    },
-    {
-      id: "preferred_vendors",
-      title: "Add preferred vendors",
-      description: "Share your trusted caterers, photographers, and florists so clients have a starting point.",
-      completed: signals.vendorCount > 0,
-      timeEstimate: "5 min",
-      ctaLabel: "Add Vendors",
-      ctaHref: "/vendors",
-    },
-    {
-      id: "task_playbook",
-      title: "Create a Planning Playbook",
-      description: "Build a reusable workflow template that auto-assigns tasks to every new event.",
-      completed: signals.playbookCount > 0,
-      timeEstimate: "5 min",
-      ctaLabel: "Create Playbook",
-      ctaHref: "/library/playbooks",
-    },
-    {
-      id: "first_inquiry",
-      title: "Receive your first inquiry",
-      description: "Add a lead to start building your pipeline.",
-      completed: leads.length > 0,
-      ctaLabel: "New Inquiry",
-      ctaHref: "/leads/new",
-    },
-    {
-      id: "first_booking",
-      title: "Book your first client",
-      description: "Mark a lead as Won to record your first confirmed booking.",
-      completed: leads.some((l) => l.status === "won"),
-      ctaLabel: "View Leads",
-      ctaHref: "/leads",
-    },
+    ...items.map((item): OnboardingStep => {
+      const copy = GAP_COPY[item.key];
+      const article = articlesByGapKey.get(item.key);
+      return {
+        id: item.key,
+        title: copy?.title ?? item.label,
+        description: copy?.description ?? item.label,
+        completed: item.completed,
+        timeEstimate: copy?.timeEstimate,
+        ctaLabel: copy?.ctaLabel ?? "Take me there",
+        ctaHref: item.href,
+        articleTitle: article?.title,
+        articleHref: article ? `/success-library/${article.slug}` : undefined,
+      };
+    }),
   ];
 
   const completedCount = steps.filter((s) => s.completed).length;
   const allComplete = completedCount === steps.length;
 
-  // Priority order: get the profile right first, then open the revenue engine
-  const NUDGE_PRIORITY = ["profile_complete", "tour_scheduling", "venue_guide", "preferred_vendors", "task_playbook", "first_inquiry"];
-  const nudgeId = NUDGE_PRIORITY.find((id) => steps.find((s) => s.id === id && !s.completed));
-  const luvNudge = nudgeId ? (NUDGE_TEXT[nudgeId] ?? null) : null;
+  // Luv's single highest-priority nudge — the top (highest-points) unresolved
+  // item in the checklist itself (which carries a stable `key` GAP_COPY is
+  // keyed by; the separate `gaps` array only carries display label text).
+  const topGapItem = [...items].filter((i) => !i.completed).sort((a, b) => b.points - a.points)[0];
+  const luvNudge = topGapItem ? (GAP_COPY[topGapItem.key]?.description ?? topGapItem.label) : null;
 
   return {
     // Disappears entirely once every step is done — no lingering graduation

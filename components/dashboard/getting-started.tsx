@@ -27,21 +27,27 @@ import type { OnboardingStatus } from "@/lib/dashboard/types";
  */
 
 const MILESTONE_COPY: Record<string, { headline: string; body: string }> = {
-  tour_scheduling:   { headline: "Tour scheduling enabled!", body: "Clients can now book appointments with you online, any time of day." },
-  venue_guide:       { headline: "Venue Guide started!", body: "Clients and their families will thank you for this." },
-  preferred_vendors: { headline: "Vendors added!", body: "Clients now have a trusted starting point when they ask about vendors." },
-  task_playbook:     { headline: "Planning Playbook created!", body: "Every new event you create can now use this workflow automatically." },
-  profile_complete:  { headline: "Venue profile complete!", body: "Clients and coordinators can now find and reach you." },
-  first_inquiry:     { headline: "First inquiry in!", body: "Your pipeline is live. Keep the momentum going." },
-  first_booking:     { headline: "First client booked!", body: "This is what it's all about. Congratulations." },
+  profile_complete:       { headline: "Venue profile complete!", body: "Couples and coordinators can now actually find and reach you." },
+  first_package:          { headline: "Your first package is live!", body: "There's finally something real for a couple to book." },
+  first_portal_invite:    { headline: "First portal invite sent!", body: "Your couple now has a home for their planning." },
+  first_portal_open:      { headline: "Your first couple opened their portal!", body: "They're in — this is the moment it starts working for them, too." },
+  three_couples_active:   { headline: "3 couples active in their portals!", body: "This is what it feels like when Hello to Cheers runs your day-to-day." },
+  first_contract_signed:  { headline: "First contract signed!", body: "That lead is officially a client now. Congratulations." },
+  first_payment_received: { headline: "First payment received!", body: "Money's moving. This is what it's all about." },
+  first_vendor_assigned:  { headline: "First vendor assigned!", body: "They now know exactly when and where to show up." },
+  first_team_invite:      { headline: "Team member invited!", body: "You don't have to run this alone anymore." },
+  first_team_login:       { headline: "Your team is in!", body: "They can actually help you now." },
+  team_active_recently:   { headline: "Your team is active!", body: "This is becoming a real habit, not just a setup step." },
 };
 
 export function GettingStartedCard({
   onboarding,
   milestone,
+  venueName,
 }: {
   onboarding: OnboardingStatus;
   milestone?: string;
+  venueName?: string;
 }) {
   const pct = Math.round(
     (onboarding.completedCount / onboarding.totalSteps) * 100,
@@ -49,6 +55,7 @@ export function GettingStartedCard({
   const isNew = pct < 50;
   const remaining = onboarding.totalSteps - onboarding.completedCount;
   const nextStep = onboarding.steps.find((s) => !s.completed && s.ctaHref);
+  const name = venueName?.trim() || "your venue";
 
   // ── Milestone celebration banner (shown when ?milestone=X matches a completed step) ──
   const celebratedStep = milestone
@@ -67,7 +74,7 @@ export function GettingStartedCard({
               <Building2 className="h-3.5 w-3.5" />
             </span>
             <span className="text-xs font-semibold uppercase tracking-widest text-primary">
-              Welcome to Hello to Cheers
+              Getting {name} ready
             </span>
           </div>
         )}
@@ -79,8 +86,8 @@ export function GettingStartedCard({
             </p>
             <p className="mt-0.5 text-sm text-muted-foreground">
               {isNew
-                ? "A few more steps and your workspace will be ready to take leads."
-                : `${remaining} step${remaining === 1 ? "" : "s"} left to finish your setup.`}
+                ? `A few more steps and ${name} will be ready to welcome its next couple.`
+                : `${remaining} step${remaining === 1 ? "" : "s"} left to finish getting ${name} ready.`}
             </p>
           </div>
           <span className="shrink-0 text-sm tabular-nums text-muted-foreground">
@@ -162,6 +169,17 @@ export function GettingStartedCard({
                         className="text-xs text-primary hover:underline"
                       >
                         {step.ctaLabel} →
+                      </Link>
+                    )}
+                    {/* Luv's Success Library §4.2 — secondary "read more"
+                        affordance, always after the primary "let's do this
+                        together" CTA above, never replacing it. */}
+                    {step.articleHref && (
+                      <Link
+                        href={step.articleHref}
+                        className="text-xs text-muted-foreground hover:text-foreground hover:underline"
+                      >
+                        Read more
                       </Link>
                     )}
                   </div>

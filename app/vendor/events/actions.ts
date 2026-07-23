@@ -9,7 +9,12 @@ import {
   uncompleteVendorTask,
 } from "@/lib/vendor-tasks/service";
 import { getVendorUser } from "@/lib/vendor-auth/service";
+import { getVendorHandbookForEvent, type VendorHandbook } from "@/lib/vendor-handbook/service";
 import type { VendorActionResult } from "@/lib/vendors/types";
+
+export async function getVendorHandbookForEventAction(eventId: string): Promise<VendorHandbook | null> {
+  return getVendorHandbookForEvent(eventId);
+}
 
 export async function completeEventTaskAction(
   taskId:       string,

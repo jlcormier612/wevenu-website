@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 
 import { LuvMark } from "@/components/luv/luv-mark";
 import { LuvRelationshipAdvisor } from "@/components/luv/luv-relationship-advisor";
+import { LifecycleActions } from "@/components/relationships/lifecycle-actions";
 import { ProductSyncPanel } from "@/components/relationships/product-sync-panel";
 import {
   RelationshipDetails,
@@ -48,6 +49,7 @@ import { actorCan, getActingMember } from "@/lib/program4/session";
 import { ensureProgram4Data } from "@/lib/program4/store";
 import { ensureWhiteGloveChecklistsInWorkspace } from "@/lib/white-glove/ensure-checklist";
 import { formatDateTime } from "@/lib/utils";
+import { refreshRelationshipHealth } from "@shared/relationships";
 
 const PROSPECT_PIPELINE = new Set([
   "inquiry",
@@ -80,6 +82,7 @@ export default async function RelationshipDetailPage({
   await ensureWhiteGloveChecklistsInWorkspace();
   await tickWorkflows(getRelationship);
   await tickSequences(getRelationship);
+  await refreshRelationshipHealth(id).catch(() => null);
 
   const relationship = getRelationship(id);
   if (!relationship) notFound();
@@ -92,6 +95,9 @@ export default async function RelationshipDetailPage({
   const canVerifyWelcomeBack = await actorCan("manage_welcome_back");
   const canProvisionProduct = await actorCan("manage_product_sync");
   const canManageWalkthroughs = await actorCan("manage_walkthroughs");
+  const canEditRelationships = await actorCan("edit_relationships");
+  const canManageOnboarding = await actorCan("manage_onboarding");
+  const canViewFinance = await actorCan("view_finance");
   const showWelcomeBackActions =
     canVerifyWelcomeBack &&
     relationship.welcomeBackRequested &&
@@ -152,6 +158,18 @@ export default async function RelationshipDetailPage({
           venueName={relationship.venue.name}
         />
       ) : null}
+      <LifecycleActions
+        relationshipId={id}
+        planId={relationship.planId}
+        onboardingType={relationship.onboardingType}
+        status={relationship.status}
+        hasStripeCustomer={Boolean(relationship.stripeCustomerId)}
+        canSendLink={canEditRelationships}
+        canManualSub={canProvisionProduct}
+        canLaunch={canManageOnboarding || canProvisionProduct}
+        canSuspend={canProvisionProduct}
+        canManageBilling={canEditRelationships || canViewFinance}
+      />
       <StatusMoveControl relationshipId={id} status={relationship.status} />
       <ProductSyncPanel
         relationshipId={id}

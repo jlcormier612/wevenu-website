@@ -24,8 +24,13 @@ export const VISION_PHOTO = {
     "https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?auto=format&fit=crop&w=2000&q=80",
   flowersDetail:
     "https://images.unsplash.com/photo-1520854221256-17451cc331bf?auto=format&fit=crop&w=1600&q=80",
-  dashboard: "/marketing/product-dashboard.png",
-  luvNoticed: "/marketing/luv-noticed-today-v4.png",
+  /** Homepage workspace — overview (Luv, Venue Health, Activation) */
+  dashboardOverview: "/marketing/homepage-dashboard-overview.png",
+  /** Homepage workspace — ops scroll (attention, payments) */
+  dashboardOps: "/marketing/homepage-dashboard-ops-v2.png",
+  /** Single-frame fallback for concept / secondary surfaces */
+  dashboard: "/marketing/homepage-dashboard-overview.png",
+  luvNoticed: "/marketing/homepage-luv-assistant.png",
 } as const;
 
 export const VISION = {

@@ -104,7 +104,7 @@ function PageFormPicker({ onDone }: { onDone: () => void }) {
 
   return (
     <div className="space-y-3">
-      <p className="text-sm font-medium text-heading">Select which Lead Ads forms should feed Wevenu</p>
+      <p className="text-sm font-medium text-heading">Select which Lead Ads forms should feed Hello to Cheers</p>
       {!forms || forms.length === 0 ? (
         <p className="text-xs text-muted-foreground">No Lead Ads forms found on this Page yet.</p>
       ) : (
@@ -176,7 +176,7 @@ export function FacebookConnectSection({
           {!connection && <Badge variant="muted">Not connected</Badge>}
         </div>
         <CardDescription>
-          Every lead submitted through your connected Lead Ads forms becomes a Lead in Wevenu automatically.
+          Every lead submitted through your connected Lead Ads forms becomes a Lead in Hello to Cheers automatically.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">

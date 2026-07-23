@@ -37,5 +37,5 @@ export const QUICKBOOKS_REVOKE_URL = "https://developer.api.intuit.com/v2/oauth2
 export const QUICKBOOKS_AUTHORIZE_URL = "https://appcenter.intuit.com/connect/oauth2";
 export const QUICKBOOKS_SCOPE = "com.intuit.quickbooks.accounting";
 
-/** "Wevenu Services" placeholder Item name — see lib/quickbooks/items.ts. */
-export const QUICKBOOKS_DEFAULT_ITEM_NAME = "Wevenu Services";
+/** "Hello to Cheers Services" placeholder Item name — see lib/quickbooks/items.ts. */
+export const QUICKBOOKS_DEFAULT_ITEM_NAME = "Hello to Cheers Services";

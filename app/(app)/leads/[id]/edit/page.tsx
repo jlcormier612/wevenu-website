@@ -33,11 +33,11 @@ export default async function EditLeadPage({ params }: Props) {
     <div className="space-y-6">
       <PageHeader
         title={`Edit · ${leadDisplayName(lead.firstName, lead.lastName, lead.partnerFirstName, lead.partnerLastName)}`}
-        description="Update the contact information and event details for this inquiry."
+        description="Update the contact information and event details for this lead."
       />
       <Card>
         <CardHeader>
-          <CardTitle>Inquiry details</CardTitle>
+          <CardTitle>Lead details</CardTitle>
           <CardDescription>
             Changes are saved immediately and logged to the activity timeline.
           </CardDescription>

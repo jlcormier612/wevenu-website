@@ -2,9 +2,11 @@
  * Clients application service. Server-only.
  */
 import { createClient } from "@/integrations/supabase/server";
+import { createAdminClient } from "@/integrations/supabase/admin";
 import { isSupabaseConfigured } from "@/lib/env";
 import * as repo from "@/lib/clients/repository";
 import { enqueueQuickBooksSync } from "@/lib/quickbooks/queue";
+import { requireAdminUser } from "@/lib/hq/crm-service";
 import type {
   Client,
   ClientActionResult,
@@ -114,58 +116,104 @@ export async function getClient(clientId: string): Promise<ClientWithDetails | n
 
 // ---- create -----------------------------------------------------------------
 
+/** Migration Center — mirrors lib/leads/service.ts's findActiveDuplicateLead(). */
+export async function findActiveDuplicateClient(email: string, firstName: string, lastName: string): Promise<{ id: string } | null> {
+  if (!isSupabaseConfigured) return null;
+  const venue = await getCurrentVenue();
+  if (!venue) return null;
+  const supabase = await createClient();
+  return repo.findActiveDuplicateClient(supabase, venue.id, email, firstName, lastName);
+}
+
+/** White-Glove Migration (Hospitality Success Platform §2.2a step 4) — see createClientForVenue's doc comment for the pattern this mirrors. */
+export async function findActiveDuplicateClientForVenue(venueId: string, email: string, firstName: string, lastName: string): Promise<{ id: string } | null> {
+  if (!isSupabaseConfigured) return null;
+  const actor = await requireAdminUser();
+  if (!actor) return null;
+  return repo.findActiveDuplicateClient(createAdminClient(), venueId, email, firstName, lastName);
+}
+
+/**
+ * The real create-a-client logic, independent of how `venueId` was
+ * resolved (a venue's own session vs. an HQ admin acting on their behalf).
+ * Extracted so White-Glove imports (`createClientForVenue`, Hospitality
+ * Success Platform §2.2a) run through the exact same engine self-service
+ * does — calendar-block check, QuickBooks sync, stop-on-booking, auto-event
+ * creation, and the portal invitation email — rather than a second,
+ * drifting implementation.
+ */
+async function createClientCore(
+  supabase: Awaited<ReturnType<typeof createClient>>, venueId: string, input: ClientInput,
+): Promise<CreateClientResult> {
+  // Server-side hard block: refuse if the event date is calendar-blocked.
+  if (input.eventDate) {
+    const { data: blocks } = await supabase.from("calendar_blocks")
+      .select("title").eq("venue_id", venueId)
+      .lte("start_date", input.eventDate).gte("end_date", input.eventDate)
+      .limit(1);
+    if (blocks && blocks.length > 0) {
+      const title = (blocks[0] as { title: string }).title;
+      return { ok: false, message: `Cannot book this date — the calendar is blocked: "${title}". Remove the block first.` };
+    }
+  }
+  const clientId = await repo.insertClient(supabase, venueId, input);
+
+  void enqueueQuickBooksSync(venueId, "customer", clientId, {
+    firstName: input.firstName, lastName: input.lastName,
+    partnerFirstName: input.partnerFirstName, partnerLastName: input.partnerLastName,
+    email: input.email, phone: input.phone,
+  });
+
+  // Stop on booking (§3.3) — must never block client creation.
+  const { data: newClient } = await supabase.from("clients").select("relationship_id")
+    .eq("id", clientId).maybeSingle<{ relationship_id: string | null }>();
+  if (newClient?.relationship_id) {
+    void exitEnrollmentsForBooking(supabase, venueId, newClient.relationship_id)
+      .catch((e) => console.error("Series exit-on-booking failed:", e));
+  }
+
+  const eventId = input.eventDate
+    ? await autoCreateEvent(supabase, venueId, clientId, {
+        firstName: input.firstName,
+        lastName: input.lastName,
+        partnerFirstName: input.partnerFirstName,
+        partnerLastName: input.partnerLastName,
+        eventDate: input.eventDate,
+        eventType: input.eventType,
+        guestCount: input.guestCount,
+        startTime: input.ceremonyTime,
+      })
+    : null;
+
+  const coupleName = clientDisplayName(input.firstName, input.lastName, input.partnerFirstName, input.partnerLastName);
+  const invitationSent = input.email.trim()
+    ? (await inviteClient(clientId, input.email, coupleName)).ok
+    : false;
+  return { ok: true, clientId, eventId, invitationSent };
+}
+
 export async function createClient_(input: ClientInput): Promise<CreateClientResult> {
   const errors = validateClientInput(input);
   if (Object.keys(errors).length > 0) return { ok: false, errors };
-  const result = await withVenue(async (supabase, venueId) => {
-    // Server-side hard block: refuse if the event date is calendar-blocked.
-    if (input.eventDate) {
-      const { data: blocks } = await supabase.from("calendar_blocks")
-        .select("title").eq("venue_id", venueId)
-        .lte("start_date", input.eventDate).gte("end_date", input.eventDate)
-        .limit(1);
-      if (blocks && blocks.length > 0) {
-        const title = (blocks[0] as { title: string }).title;
-        return { ok: false, message: `Cannot book this date — the calendar is blocked: "${title}". Remove the block first.` } as CreateClientResult;
-      }
-    }
-    const clientId = await repo.insertClient(supabase, venueId, input);
+  const result = await withVenue((supabase, venueId) => createClientCore(supabase, venueId, input));
+  return result as CreateClientResult;
+}
 
-    void enqueueQuickBooksSync(venueId, "customer", clientId, {
-      firstName: input.firstName, lastName: input.lastName,
-      partnerFirstName: input.partnerFirstName, partnerLastName: input.partnerLastName,
-      email: input.email, phone: input.phone,
-    });
-
-    // Stop on booking (§3.3) — must never block client creation.
-    const { data: newClient } = await supabase.from("clients").select("relationship_id")
-      .eq("id", clientId).maybeSingle<{ relationship_id: string | null }>();
-    if (newClient?.relationship_id) {
-      void exitEnrollmentsForBooking(supabase, venueId, newClient.relationship_id)
-        .catch((e) => console.error("Series exit-on-booking failed:", e));
-    }
-
-    const eventId = input.eventDate
-      ? await autoCreateEvent(supabase, venueId, clientId, {
-          firstName: input.firstName,
-          lastName: input.lastName,
-          partnerFirstName: input.partnerFirstName,
-          partnerLastName: input.partnerLastName,
-          eventDate: input.eventDate,
-          eventType: input.eventType,
-          guestCount: input.guestCount,
-          startTime: input.ceremonyTime,
-        })
-      : null;
-    return { ok: true, clientId, eventId } as CreateClientResult;
-  });
-  const r = result as CreateClientResult;
-  if (!r.ok) return r;
-  const coupleName = clientDisplayName(input.firstName, input.lastName, input.partnerFirstName, input.partnerLastName);
-  const invitationSent = input.email.trim()
-    ? (await inviteClient(r.clientId, input.email, coupleName)).ok
-    : false;
-  return { ok: true, clientId: r.clientId, eventId: r.eventId, invitationSent };
+/**
+ * White-Glove Migration (Hospitality Success Platform §2.2a step 4) — an
+ * HQ admin importing on a venue's behalf. Requires an explicit venueId (no
+ * session-derived venue exists for an HQ admin) and runs via
+ * createAdminClient() (service_role), the only role create_client_atomic's
+ * p_venue_id_override honors. Every write is otherwise identical to
+ * self-service — same validation, same core function, same side effects.
+ */
+export async function createClientForVenue(venueId: string, input: ClientInput): Promise<CreateClientResult> {
+  const actor = await requireAdminUser();
+  if (!actor) return { ok: false, message: "Not signed in as an HQ admin." };
+  const errors = validateClientInput(input);
+  if (Object.keys(errors).length > 0) return { ok: false, errors };
+  const admin = createAdminClient();
+  return createClientCore(admin, venueId, input);
 }
 
 /** Convert a won lead to a client. Pre-populates from lead data. */

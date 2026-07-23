@@ -91,7 +91,8 @@ export function VendorDetail({
         </div>
         <div className="flex shrink-0 items-center gap-2">
           {vendor.email && !vendor.isClaimed && (
-            <Button variant="outline" size="sm" onClick={handleSendInvite} disabled={invitePending || inviteSent}>
+            <Button variant="outline" size="sm" onClick={handleSendInvite} disabled={invitePending || inviteSent}
+              title="Gives this vendor their own login to the Vendor Portal — separate from assigning them to a specific event.">
               <Mail className="mr-1 h-3.5 w-3.5" />
               {inviteSent ? "Invite Sent" : invitePending ? "Sending…" : "Send Invite"}
             </Button>

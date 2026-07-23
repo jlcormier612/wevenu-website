@@ -2,8 +2,10 @@
  * Vendor application service. Server-only.
  */
 import { createClient } from "@/integrations/supabase/server";
+import { createAdminClient } from "@/integrations/supabase/admin";
 import { isSupabaseConfigured } from "@/lib/env";
 import * as repo from "@/lib/vendors/repository";
+import { requireAdminUser } from "@/lib/hq/crm-service";
 import type {
   CreateVendorResult,
   EventVendorAssignment,
@@ -20,6 +22,7 @@ import {
   validateVendorInput,
 } from "@/lib/vendors/validation";
 import { getCurrentVenue } from "@/lib/venue/service";
+import { autoInviteVendorIfUnclaimed } from "@/lib/vendor-invites/service";
 
 async function withVenue<T>(
   fn: (supabase: Awaited<ReturnType<typeof createClient>>, venueId: string) => Promise<T>,
@@ -58,6 +61,23 @@ export async function getEventVendorAssignments(eventId: string): Promise<EventV
 
 // ---- vendor CRUD ------------------------------------------------------------
 
+/** Migration Center — mirrors lib/leads/service.ts's findActiveDuplicateLead(). */
+export async function findActiveDuplicateVendor(businessName: string, email: string): Promise<{ id: string } | null> {
+  if (!isSupabaseConfigured) return null;
+  const venue = await getCurrentVenue();
+  if (!venue) return null;
+  const supabase = await createClient();
+  return repo.findActiveDuplicateVendor(supabase, venue.id, businessName, email);
+}
+
+/** White-Glove Migration (Hospitality Success Platform §2.2a step 4) — see createClientForVenue's doc comment for the pattern this mirrors. */
+export async function findActiveDuplicateVendorForVenue(venueId: string, businessName: string, email: string): Promise<{ id: string } | null> {
+  if (!isSupabaseConfigured) return null;
+  const actor = await requireAdminUser();
+  if (!actor) return null;
+  return repo.findActiveDuplicateVendor(createAdminClient(), venueId, businessName, email);
+}
+
 export async function createVendor(input: VendorInput): Promise<CreateVendorResult> {
   const errors = validateVendorInput(input);
   if (Object.keys(errors).length > 0) return { ok: false, errors };
@@ -66,6 +86,17 @@ export async function createVendor(input: VendorInput): Promise<CreateVendorResu
     return { ok: true, vendorId } as CreateVendorResult;
   });
   return result as CreateVendorResult;
+}
+
+/** White-Glove Migration (Hospitality Success Platform §2.2a step 4) — see createClientForVenue's doc comment for the pattern this mirrors. */
+export async function createVendorForVenue(venueId: string, input: VendorInput): Promise<CreateVendorResult> {
+  const actor = await requireAdminUser();
+  if (!actor) return { ok: false, message: "Not signed in as an HQ admin." };
+  const errors = validateVendorInput(input);
+  if (Object.keys(errors).length > 0) return { ok: false, errors };
+  const admin = createAdminClient();
+  const vendorId = await repo.insertVendor(admin, venueId, input);
+  return { ok: true, vendorId };
 }
 
 export async function updateVendor_(vendorId: string, input: VendorInput): Promise<VendorActionResult> {
@@ -117,6 +148,14 @@ export async function addVendorReview(vendorId: string, input: VendorReviewInput
 
 // ---- event vendor assignments -----------------------------------------------
 
+/**
+ * Vendor Workspace Realignment, Phase 3 (2026-07-22) — Stage 3 (Booked)
+ * automation: "when a vendor is selected, automatically ... invite vendor
+ * into Hello to Cheers." Booking a vendor with no portal login would
+ * otherwise leave them unable to see the assignment, tasks, or timeline
+ * until a coordinator remembered the separate manual invite step.
+ * Best-effort — never blocks or fails the booking itself.
+ */
 export async function assignVendor(
   eventId: string, input: VendorAssignmentInput,
 ): Promise<{ ok: true; assignment: EventVendorAssignment } | VendorActionResult> {
@@ -126,6 +165,10 @@ export async function assignVendor(
     const assignment = await repo.insertVendorAssignment(supabase, venueId, eventId, input);
     return { ok: true, assignment };
   });
+  if ((result as VendorActionResult).ok) {
+    const venue = await getCurrentVenue();
+    if (venue) void autoInviteVendorIfUnclaimed(venue.id, venue.name, input.vendorId);
+  }
   return result as { ok: true; assignment: EventVendorAssignment } | VendorActionResult;
 }
 

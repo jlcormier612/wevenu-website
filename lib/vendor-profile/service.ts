@@ -35,6 +35,29 @@ export async function markVendorLuvIntroSeen(): Promise<void> {
   });
 }
 
+/**
+ * Update the vendor logo URL immediately after upload (or clear it when
+ * url is null) — mirrors lib/venue/service.ts's updateVenueLogo() exactly.
+ * A dedicated, narrow write so uploading a logo doesn't also flush
+ * whatever else is sitting unsaved in the rest of the Profile form, and so
+ * the logo actually persists without a separate "Save Profile" click
+ * (2026-07-23: uploads were landing in Supabase Storage successfully but
+ * only ever staged into the form's local state — vendors.logo_url stayed
+ * null until Save was clicked, and was silently lost if the form
+ * unmounted first).
+ */
+export async function updateVendorLogo(url: string | null): Promise<VendorActionResult> {
+  const result = await withVendor(async (supabase, vendorId) => {
+    const { error } = await supabase
+      .from("vendors")
+      .update({ logo_url: url })
+      .eq("id", vendorId);
+    if (error) return { ok: false, message: error.message } as VendorActionResult;
+    return { ok: true } as VendorActionResult;
+  });
+  return result as VendorActionResult;
+}
+
 export async function getVendorProfile(vendorId: string): Promise<VendorProfile | null> {
   if (!isSupabaseConfigured) return null;
   const supabase = await createClient();

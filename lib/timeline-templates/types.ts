@@ -28,6 +28,12 @@ export type TimelineTemplateItem = {
   notes: string | null;
   timeOfDay: string | null; // "HH:MM" or null — an absolute clock anchor, independent of minutesOffset
   minutesOffset: number | null; // minutes relative to the event's start time; null = untimed
+  // True when this item's timing was estimated (or never set) by an import,
+  // rather than confirmed by a coordinator — surfaced in the editor until
+  // touched. Added 2026-07-22 per template-import review: previously this
+  // only existed as a one-time import-count toast, easy to miss and
+  // impossible to recover once dismissed.
+  needsReview: boolean;
   audiences: TimelineAudience[];
   sortOrder: number;
   createdAt: string;
@@ -40,6 +46,10 @@ export type TimelineTemplateItemInput = {
   notes: string | null;
   timeOfDay: string | null;
   minutesOffset: number | null;
+  // Optional at the write boundary — omitted by every hand-authored item
+  // (defaults to false at the repository layer); only the import path sets
+  // this explicitly.
+  needsReview?: boolean;
   audiences: TimelineAudience[];
   sortOrder: number;
 };
@@ -53,5 +63,5 @@ export type CreateTimelineTemplateResult =
   | { ok: false; message?: string };
 
 export type ImportTimelineTemplateResult =
-  | { ok: true; templateId: string; itemCount: number; guessedCount: number }
+  | { ok: true; templateId: string; itemCount: number; guessedCount: number; aiStructured: boolean }
   | { ok: false; message: string };

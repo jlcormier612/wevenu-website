@@ -1,7 +1,20 @@
+/**
+ * Create a CRM venue enrollment record when a subscription succeeds.
+ * Welcome Back Verified starts as `pending` only when Welcome Back was requested —
+ * never auto-verified. Persists `onboardingType` on the venue record.
+ * Also upserts the shared Relationship (timeline + subscription metadata),
+ * then sends product emails (Welcome / Founder / White Glove Welcome),
+ * then enqueues Product Sync for Launch Yourself only (White Glove defers until Launch Workspace).
+ */
+
 import { randomUUID } from "crypto";
 
 import { sendEnrollmentProductEmails } from "@shared/email";
 import { enqueueProductSync } from "@shared/product-sync";
+import {
+  DEFAULT_WHITE_GLOVE_TIMELINE_DAYS,
+  whiteGloveTimelineLabel,
+} from "@shared/relationships";
 import { notifySubscriptionEnrollment } from "@/lib/crm/notify";
 import { storeVenueEnrollment } from "@/lib/crm/store";
 import type { CreateVenueEnrollmentInput, VenueEnrollmentRecord } from "@/lib/crm/types";
@@ -14,8 +27,8 @@ import { syncEnrollmentToRelationship } from "@/lib/relationships/bridge";
  * Welcome Back Verified starts as `pending` only when Welcome Back was requested —
  * never auto-verified. Persists `onboardingType` on the venue record.
  * Also upserts the shared Relationship (timeline + subscription metadata),
- * then sends Project 3 product emails (Welcome / Founder / Welcome Back / WG),
- * then enqueues Project 10 product sync (Venue → … → Launch).
+ * then sends product emails (Welcome / Founder / White Glove Welcome),
+ * then enqueues Product Sync for Launch Yourself only (White Glove defers until Launch Workspace).
  */
 export async function createVenueEnrollment(
   input: CreateVenueEnrollmentInput,
@@ -54,6 +67,10 @@ export async function createVenueEnrollment(
         foundingMember: record.foundingMember,
         welcomeBackRequested: record.welcomeBackRequested,
         onboardingType: record.onboardingType,
+        implementationTimeline: whiteGloveTimelineLabel({
+          minBusinessDays: DEFAULT_WHITE_GLOVE_TIMELINE_DAYS.min,
+          maxBusinessDays: DEFAULT_WHITE_GLOVE_TIMELINE_DAYS.max,
+        }),
       });
       console.info("[crm] enrollment product emails", {
         enrollmentId: record.id,
@@ -69,11 +86,18 @@ export async function createVenueEnrollment(
     }
   }
 
-  if (synced?.relationshipId) {
+  // Launch Yourself: provision product access now.
+  // White Glove: defer until Implementation Launch Workspace.
+  if (synced?.relationshipId && record.onboardingType !== "white_glove") {
     await enqueueProductSync(
       synced.relationshipId,
       "checkout.session.completed",
     );
+  } else if (synced?.relationshipId && record.onboardingType === "white_glove") {
+    console.info("[crm] defer product sync for White Glove", {
+      relationshipId: synced.relationshipId,
+      enrollmentId: record.id,
+    });
   }
 
   return record;

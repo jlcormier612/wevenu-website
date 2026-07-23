@@ -12,7 +12,7 @@ import {
 import { getBlock } from "@/lib/availability/service";
 import type { LeadInput } from "@/lib/leads/types";
 
-export const metadata: Metadata = { title: "New Inquiry" };
+export const metadata: Metadata = { title: "New Lead" };
 
 /** Best-effort split of a placeholder's free-text "Client" field into a LeadInput's first/last/partner names — everything here is editable before submitting, so an imperfect guess costs a coordinator a click, never data correctness. */
 function parseClientName(clientName: string): Partial<LeadInput> {
@@ -54,14 +54,14 @@ export default async function NewLeadPage({
   return (
     <div className="space-y-6">
       <PageHeader
-        title={block ? "Convert to Booking" : "New Inquiry"}
+        title={block ? "Convert to Lead" : "New Lead"}
         description={block
           ? `Turning "${block.title}" into a real Lead — nothing here was retyped, review and save when ready.`
           : "Record a new lead from a call, email, or walk-in."}
       />
       <Card>
         <CardHeader>
-          <CardTitle>Inquiry details</CardTitle>
+          <CardTitle>Lead details</CardTitle>
           <CardDescription>
             Fill in what you know. Everything is editable later from the lead
             record.

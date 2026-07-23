@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
 import { InvoiceDetail } from "@/components/invoices/invoice-detail";
+import { isEmailConfigured } from "@/lib/email/send";
 import { getEventOrderDrift, getInvoice } from "@/lib/invoices/service";
 import { getPackages } from "@/lib/packages/service";
 
@@ -21,5 +22,5 @@ export default async function InvoiceDetailPage({ params }: Props) {
   // Booking Financial Architecture Phase 3b — null for any invoice that
   // isn't sent+Event-Order-linked, or that has no undismissed drift.
   const eventOrderDrift = await getEventOrderDrift(id);
-  return <InvoiceDetail invoice={invoice} packages={packages} eventOrderDrift={eventOrderDrift} />;
+  return <InvoiceDetail invoice={invoice} packages={packages} eventOrderDrift={eventOrderDrift} emailConfigured={isEmailConfigured()} />;
 }

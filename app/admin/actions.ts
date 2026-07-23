@@ -15,16 +15,22 @@ import {
 export async function addVenueNoteAction(venueId: string, body: string): Promise<void> {
   await addVenueNote(venueId, body);
   revalidatePath(`/admin/venues/${venueId}`);
+  revalidatePath(`/admin/onboarding/${venueId}`);
 }
 
-export async function addVenueTaskAction(venueId: string, title: string, dueDate: string | null): Promise<void> {
-  await addVenueTask(venueId, title, dueDate);
+export async function addVenueTaskAction(
+  venueId: string, title: string, dueDate: string | null,
+  opts?: { kind?: "task" | "blocker"; engagementId?: string | null },
+): Promise<void> {
+  await addVenueTask(venueId, title, dueDate, opts);
   revalidatePath(`/admin/venues/${venueId}`);
+  revalidatePath(`/admin/onboarding/${venueId}`);
 }
 
 export async function completeVenueTaskAction(venueId: string, taskId: string): Promise<void> {
   await completeVenueTask(taskId);
   revalidatePath(`/admin/venues/${venueId}`);
+  revalidatePath(`/admin/onboarding/${venueId}`);
 }
 
 export async function setNextContactAction(venueId: string, nextContactAt: string | null): Promise<void> {

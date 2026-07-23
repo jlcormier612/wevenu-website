@@ -10,7 +10,7 @@ import type {
 type DbClient = Awaited<ReturnType<typeof createClient>>;
 
 type TemplateRow = { id: string; venue_id: string; name: string; event_type: string | null; space_id: string | null; is_default: boolean; is_archived: boolean; created_at: string; updated_at: string; };
-type ItemRow = { id: string; template_id: string; venue_id: string; title: string; description: string | null; notes: string | null; time_of_day: string | null; minutes_offset: number | null; audiences: string[]; sort_order: number; created_at: string; updated_at: string; };
+type ItemRow = { id: string; template_id: string; venue_id: string; title: string; description: string | null; notes: string | null; time_of_day: string | null; minutes_offset: number | null; needs_review: boolean; audiences: string[]; sort_order: number; created_at: string; updated_at: string; };
 
 const mapTemplate = (r: TemplateRow): TimelineTemplate => ({
   id: r.id, venueId: r.venue_id, name: r.name, eventType: r.event_type, spaceId: r.space_id,
@@ -19,7 +19,7 @@ const mapTemplate = (r: TemplateRow): TimelineTemplate => ({
 
 const mapItem = (r: ItemRow): TimelineTemplateItem => ({
   id: r.id, templateId: r.template_id, venueId: r.venue_id, title: r.title, description: r.description,
-  notes: r.notes, timeOfDay: r.time_of_day, minutesOffset: r.minutes_offset,
+  notes: r.notes, timeOfDay: r.time_of_day, minutesOffset: r.minutes_offset, needsReview: r.needs_review,
   audiences: r.audiences as TimelineAudience[], sortOrder: r.sort_order, createdAt: r.created_at, updatedAt: r.updated_at,
 });
 
@@ -115,7 +115,7 @@ export async function duplicateTemplateInto(client: DbClient, venueId: string, s
   for (const item of items) {
     await insertItem(client, venueId, newTemplateId, {
       title: item.title, description: item.description, notes: item.notes,
-      timeOfDay: item.timeOfDay, minutesOffset: item.minutesOffset,
+      timeOfDay: item.timeOfDay, minutesOffset: item.minutesOffset, needsReview: item.needsReview,
       audiences: item.audiences, sortOrder: item.sortOrder,
     });
   }
@@ -136,12 +136,17 @@ export async function insertItem(client: DbClient, venueId: string, templateId: 
     template_id: templateId, venue_id: venueId, title: input.title.trim(),
     description: input.description?.trim() || null, notes: input.notes?.trim() || null,
     time_of_day: input.timeOfDay || null, minutes_offset: input.minutesOffset,
+    needs_review: input.needsReview ?? false,
     audiences: input.audiences, sort_order: input.sortOrder,
   }).select("id").single<{ id: string }>();
   if (error) throw error;
   return data.id;
 }
 
+// A coordinator editing any part of an item is treated as having reviewed
+// it — needsReview clears itself on the very next save rather than needing
+// its own explicit "mark reviewed" control, unless the patch is itself
+// re-setting it (the import path re-saving through this same function).
 export async function updateItem(client: DbClient, venueId: string, itemId: string, patch: Partial<TimelineTemplateItemInput>): Promise<void> {
   const row: Record<string, unknown> = {};
   if (patch.title !== undefined) row.title = patch.title.trim();
@@ -149,6 +154,7 @@ export async function updateItem(client: DbClient, venueId: string, itemId: stri
   if (patch.notes !== undefined) row.notes = patch.notes?.trim() || null;
   if (patch.timeOfDay !== undefined) row.time_of_day = patch.timeOfDay || null;
   if (patch.minutesOffset !== undefined) row.minutes_offset = patch.minutesOffset;
+  if (patch.needsReview !== undefined) row.needs_review = patch.needsReview;
   if (patch.audiences !== undefined) row.audiences = patch.audiences;
   if (patch.sortOrder !== undefined) row.sort_order = patch.sortOrder;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any

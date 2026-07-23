@@ -34,6 +34,8 @@ type VenueRow = {
   capacity: number | null;
   timezone: string;
   logo_url: string | null;
+  hero_image_url: string | null;
+  story: string | null;
   primary_color: string;
   secondary_color: string;
   accent_color: string;
@@ -42,9 +44,13 @@ type VenueRow = {
   week_starts_on: number;
   stripe_account_id: string | null;
   stripe_charges_enabled: boolean;
+  stripe_charges_enabled_verified_at: string | null;
   stripe_onboarding_status: Venue["stripeOnboardingStatus"];
+  stripe_accepted_payment_methods: Venue["stripeAcceptedPaymentMethods"];
   setup_completed: boolean;
   setup_completed_at: string | null;
+  setup_last_step: string | null;
+  onboarding_persona: Venue["onboardingPersona"];
   onboarding_dismissed: boolean;
   luv_intro_seen_at: string | null;
   embed_key: string;
@@ -75,6 +81,8 @@ function mapVenue(r: VenueRow): Venue {
     capacity: r.capacity,
     timezone: r.timezone,
     logoUrl: r.logo_url,
+    heroImageUrl: r.hero_image_url,
+    story: r.story,
     primaryColor: r.primary_color,
     secondaryColor: r.secondary_color,
     accentColor: r.accent_color ?? "#B8AEA1",
@@ -83,9 +91,13 @@ function mapVenue(r: VenueRow): Venue {
     weekStartsOn: r.week_starts_on,
     stripeAccountId: r.stripe_account_id,
     stripeChargesEnabled: r.stripe_charges_enabled,
+    stripeChargesEnabledVerifiedAt: r.stripe_charges_enabled_verified_at,
     stripeOnboardingStatus: r.stripe_onboarding_status,
+    stripeAcceptedPaymentMethods: r.stripe_accepted_payment_methods ?? ["card"],
     setupCompleted: r.setup_completed,
     setupCompletedAt: r.setup_completed_at,
+    setupLastStep: r.setup_last_step ?? null,
+    onboardingPersona: r.onboarding_persona ?? null,
     onboardingDismissed: r.onboarding_dismissed,
     luvIntroSeenAt: r.luv_intro_seen_at,
     embedKey: r.embed_key ?? "",
@@ -105,8 +117,11 @@ export function normalizeVenueUrl(value: string): string {
 }
 
 /** Shape the validated input into the JSON payload the RPC expects. */
-function toSetupPayload(input: VenueSetupInput) {
+function toSetupPayload(input: VenueSetupInput, completed: boolean, lastStep?: string) {
   return {
+    onboarding_persona: input.onboardingPersona ?? undefined,
+    setup_completed: completed,
+    setup_last_step: lastStep,
     name: input.name.trim(),
     business_name: input.businessName.trim(),
     email: input.email.trim(),
@@ -155,13 +170,21 @@ export async function getVenueForCurrentUser(
   return data ? mapVenue(data) : null;
 }
 
-/** Atomically persists the whole setup payload; returns the new venue id. */
+/**
+ * Atomically upserts the setup payload; returns the venue id. `completed`
+ * controls whether this is a final "Create venue" submit (true) or a
+ * mid-wizard progress save (false) — setup_completed is sticky once true,
+ * enforced in complete_venue_setup() itself, so a stale progress save can
+ * never un-complete an already-finished venue.
+ */
 export async function insertVenueSetup(
   client: DbClient,
   input: VenueSetupInput,
+  completed: boolean = true,
+  lastStep?: string,
 ): Promise<string> {
   const { data, error } = await client.rpc("complete_venue_setup", {
-    payload: toSetupPayload(input),
+    payload: toSetupPayload(input, completed, lastStep),
   });
   if (error) throw error;
   return data as string;

@@ -6,7 +6,7 @@
  * for an existing Invoice with that DocNumber before ever POSTing a new
  * one.
  *
- * Every line item pushes under the one "Wevenu Services" placeholder Item
+ * Every line item pushes under the one "Hello to Cheers Services" placeholder Item
  * (lib/quickbooks/items.ts) — no chart-of-accounts mapping, explicitly out
  * of scope for launch.
  */

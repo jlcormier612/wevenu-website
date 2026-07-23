@@ -97,7 +97,7 @@ export function ImageUpload({
         className={cn(
           "relative flex items-center justify-center overflow-hidden rounded-xl border border-border bg-muted/40",
           aspectRatio,
-          !aspectRatio && "h-28 w-28",
+          !aspectRatio && "h-40 w-40",
         )}
       >
         {preview ? (

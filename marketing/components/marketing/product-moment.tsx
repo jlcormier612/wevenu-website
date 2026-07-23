@@ -16,7 +16,7 @@ type ProductMomentProps = {
  */
 export function ProductMoment({
   label,
-  src = "/marketing/product-dashboard.png",
+  src = "/marketing/homepage-dashboard-overview.png",
   className,
   tone = "light",
 }: ProductMomentProps) {

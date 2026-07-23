@@ -136,6 +136,27 @@ function toClientRow(venueId: string, input: ClientInput, leadId?: string | null
   };
 }
 
+/**
+ * Migration Center (Hospitality Success Platform §2.1) — ports
+ * lib/leads/repository.ts's findActiveDuplicate() to Clients. Scoped to
+ * still-active clients (not 'cancelled'), email match with a first+last
+ * name fallback when no email is given, exactly mirroring the Leads
+ * precedent that shipped as a named release blocker.
+ */
+export async function findActiveDuplicateClient(
+  client: DbClient, venueId: string, email: string, firstName: string, lastName: string,
+): Promise<{ id: string } | null> {
+  let q = client.from("clients").select("id")
+    .eq("venue_id", venueId)
+    .neq("status", "cancelled");
+  const trimmedEmail = email.trim();
+  q = trimmedEmail
+    ? q.ilike("email", trimmedEmail)
+    : q.ilike("first_name", firstName.trim()).ilike("last_name", lastName.trim());
+  const { data } = await q.limit(1).maybeSingle<{ id: string }>();
+  return data ?? null;
+}
+
 export async function insertClient(client: DbClient, venueId: string, input: ClientInput, leadId?: string | null): Promise<string> {
   // Program 2 Phase 2B: every Client resolves a relationship_id at create
   // time, regardless of origin. Converted-from-a-Lead clients inherit the
@@ -149,9 +170,15 @@ export async function insertClient(client: DbClient, venueId: string, input: Cli
   // network calls — if the second failed, the first had already committed,
   // leaving an orphaned Relationship with no visible Client. Same bug
   // shape confirmed and fixed for Leads (create_lead_atomic); this is the
-  // identical fix for Clients. venueId isn't passed to the RPC — it
-  // resolves itself via current_user_venue_id(), the same RLS-backed
-  // source of truth every policy on these tables uses.
+  // identical fix for Clients. For a normal venue session, venueId isn't
+  // actually used by the RPC — it resolves itself via
+  // current_user_venue_id(), the same RLS-backed source of truth every
+  // policy on these tables uses. p_venue_id_override is always passed
+  // through too (White-Glove, 2026-07-22): safe for every caller, since
+  // the RPC itself only honors it for a genuine service_role caller
+  // (20261141000000_white_glove_atomic_venue_override.sql) — this is what
+  // lets a white-glove staff action call this exact same function, with
+  // an admin client and this venueId, and land in the right venue.
   const { data, error } = await client.rpc("create_client_atomic", {
     payload: {
       leadId: leadId || null,
@@ -171,6 +198,7 @@ export async function insertClient(client: DbClient, venueId: string, input: Cli
       rehearsalDate: input.rehearsalDate,
       internalNotes: input.internalNotes.trim(),
     },
+    p_venue_id_override: venueId,
   });
   if (error) throw error;
   return data as string;

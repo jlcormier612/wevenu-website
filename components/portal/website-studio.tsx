@@ -120,7 +120,37 @@ function SetupWizard({
   const [storyText, setStoryText] = React.useState(site.content?.story?.text ?? "");
   const [saving, setSaving] = React.useState(false);
 
-  const eng = suggestions?.engagementPhotos ?? [];
+  // Uploaded straight from this step (Studio Wizard photo-upload, 2026-07-22)
+  // — before this, the only way to add a photo here was to leave the wizard
+  // and go to Profile first. Merged with the suggested engagement photos for
+  // display; a freshly uploaded photo is auto-selected.
+  const [uploadedPhotos, setUploadedPhotos] = React.useState<{ id: string; url: string }[]>([]);
+  const [uploadingPhoto, setUploadingPhoto] = React.useState(false);
+  const photoInputRef = React.useRef<HTMLInputElement>(null);
+
+  const eng = [...uploadedPhotos, ...(suggestions?.engagementPhotos ?? [])];
+
+  async function handlePhotoUpload(file: File) {
+    setUploadingPhoto(true);
+    try {
+      const fd = new FormData();
+      fd.append("token", token); fd.append("file", file);
+      fd.append("category", "engagement"); fd.append("visibility", "private");
+      const res = await fetch("/api/portal/media", { method: "POST", body: fd });
+      const data = await res.json() as { ok: boolean; mediaId?: string; fileUrl?: string; error?: string };
+      if (data.ok && data.mediaId && data.fileUrl) {
+        setUploadedPhotos(p => [{ id: data.mediaId!, url: data.fileUrl! }, ...p]);
+        setSelectedPhoto(data.fileUrl);
+      } else {
+        toast.error(data.error ?? "Upload failed — please try again.");
+      }
+    } catch {
+      toast.error("Upload failed — please try again.");
+    } finally {
+      setUploadingPhoto(false);
+      if (photoInputRef.current) photoInputRef.current.value = "";
+    }
+  }
 
   async function advance(next: WizardStep | "done") {
     setSaving(true);
@@ -192,9 +222,18 @@ function SetupWizard({
           <p className="text-sm text-muted-foreground">This will be the first thing guests see.</p>
         </div>
 
+        <input ref={photoInputRef} type="file" accept="image/*,.heic,.heif" className="hidden"
+          onChange={e => { const f = e.target.files?.[0]; if (f) void handlePhotoUpload(f); }} disabled={uploadingPhoto} />
+
         {eng.length > 0 && (
           <div className="space-y-2">
-            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Your engagement photos</p>
+            <div className="flex items-center justify-between">
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Your engagement photos</p>
+              <button type="button" onClick={() => photoInputRef.current?.click()} disabled={uploadingPhoto}
+                className="text-xs font-medium text-primary hover:underline disabled:opacity-50">
+                {uploadingPhoto ? "Uploading…" : "+ Upload a photo"}
+              </button>
+            </div>
             <div className="grid grid-cols-3 gap-2">
               {eng.slice(0, 9).map((p, i) => (
                 <button key={p.id} type="button" onClick={() => setSelectedPhoto(p.url)}
@@ -215,10 +254,15 @@ function SetupWizard({
         )}
 
         {eng.length === 0 && (
-          <div className="text-center py-10 space-y-2">
+          <div className="text-center py-10 space-y-3">
             <p className="text-4xl">🌿</p>
             <p className="text-sm text-muted-foreground">No engagement photos uploaded yet.</p>
-            <p className="text-xs text-muted-foreground">You can add photos from your Profile, or skip this step and add them later.</p>
+            <button type="button" onClick={() => photoInputRef.current?.click()} disabled={uploadingPhoto}
+              className="inline-flex items-center gap-1.5 rounded-xl px-4 py-2 text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
+              style={{ background: "var(--venue-primary)" }}>
+              {uploadingPhoto ? <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Uploading…</> : "📤 Upload a photo"}
+            </button>
+            <p className="text-xs text-muted-foreground">Or skip this step and add photos later.</p>
           </div>
         )}
       </div>

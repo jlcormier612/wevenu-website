@@ -24,6 +24,7 @@ This document designs the *complete* QuickBooks Online synchronization surface t
 | Audit logging | ✅ Shipped — `quickbooks_sync_log`, append-only, surfaced in Settings |
 | Retry / error queue | ✅ Shipped — `quickbooks_sync_queue`, exponential backoff, 8-attempt dead-letter |
 | Connection health | ✅ Shipped — surfaced from real sync attempts, not a separate poll |
+| Manual re-sync | ✅ Shipped (2026-07-22, RC1 launch-hardening pass) — "Retry now" on any failed sync badge (invoice detail, payment row, Settings sync-activity list) and in the Settings "recent sync activity" list; resets the queue item to a fresh attempt budget and runs the processor immediately rather than waiting for the next cron tick. Live-verified: real dead-lettered item reset and re-attempted, RLS confirmed via a real signed session, not just the superuser client. See §7, no longer "not yet shipped." |
 
 **Not yet shipped — this document's actual subject:**
 
@@ -34,7 +35,6 @@ This document designs the *complete* QuickBooks Online synchronization surface t
 | Chart of Accounts mapping | A venue-facing settings UI to map Wevenu line-item types to real QBO accounts |
 | Webhooks | Inbound change notifications from QuickBooks itself |
 | Conflict handling | What happens when the same record changed on both sides |
-| Manual re-sync | A venue/coordinator-triggered "sync this now" action |
 
 ---
 
@@ -101,11 +101,11 @@ Once inbound awareness exists (§5), the two systems can disagree about a shared
 
 ---
 
-## 7. Manual re-sync
+## 7. Manual re-sync — ✅ Shipped 2026-07-22
 
-**Current state:** explicitly deferred at launch ("not in launch requirements, schema supports adding it trivially later" — `docs/quickbooks-integration-completion.md`). The schema already supports it exactly as predicted.
+**Built as designed, no changes.** A "Retry now" action appears on any `failed`/dead-lettered sync badge (invoice detail, payment row) and next to each dead-lettered row in the Settings "recent sync activity" list. Under the hood: `lib/quickbooks/repository.ts`'s `resetQueueItemForRetry()` finds the entity's most recent queue row and resets it to a fresh attempt budget (`attempt_count = 0`, `next_attempt_at = now()`, `status = 'pending'`, `last_error` cleared — a coordinator-triggered retry gets the same full 8-attempt allowance a brand-new sync would, not whatever was left when it originally dead-lettered), `lib/quickbooks/service.ts`'s `retryQuickBooksSync()` also resets the record's own `quickbooks_sync_status` to `'pending'` for immediate UI feedback, then runs the processor immediately rather than waiting for the next 5-minute cron tick.
 
-**Design:** a "Retry now" button on any `failed`/dead-lettered sync-status badge (invoice detail, payment row, Settings sync-activity list), calling a new server action that does exactly the reset above (`next_attempt_at = now(), status = 'pending'` — sufficient to force an immediate retry of a dead-lettered item), then optionally triggers an immediate (rather than next-cron-tick) processor run for just that item — small, low-risk, no new architecture needed beyond what already exists.
+Live-verified: a real dead-lettered invoice (`attempt_count = 8`, exhausted) was reset and correctly re-entered the full pipeline from a clean slate (`attempt_count` restarted at 0→1, not continuing from 8); the session-client write path was confirmed authorized via a real signed JWT matching the venue's owner (not just the superuser client, which would have hidden an RLS gap) — matches this engagement's standing verification discipline. No new architecture — reuses the existing queue/processor entirely.
 
 ---
 
@@ -121,7 +121,7 @@ This is a large initiative — recommend treating it as its own multi-phase buil
 
 1. **Products + Chart of Accounts mapping** (§2, §4) — additive, no conflict-handling complexity, lowest risk, immediately useful (real P&L breakdown) even before anything inbound exists.
 2. **Tax codes, path (b)** (§3) — small, contingent on confirming the scope decision in §3.
-3. **Webhooks + conflict handling + manual re-sync** (§5, §6, §7) — the real architectural addition, should be built and verified together since conflict handling is meaningless without inbound awareness, and manual re-sync is a natural companion UI once conflicts can occur.
+3. **Webhooks + conflict handling** (§5, §6) — the real architectural addition, should be built and verified together since conflict handling is meaningless without inbound awareness. (Manual re-sync, §7, no longer belongs in this phase — it shipped independently ahead of the rest of this document, since it didn't actually depend on inbound webhooks/conflicts existing first.)
 4. **Audit logging extension** (§8) — folds into phase 3, not a separate pass.
 
 ---

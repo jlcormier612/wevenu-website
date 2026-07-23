@@ -32,7 +32,11 @@ const PLAN_MRR_ESTIMATE: Record<string, number> = {
 const SUBSCRIBED_PLUS = new Set([
   "subscribed",
   "onboarding",
+  "white_glove_implementation",
   "live",
+  "active",
+  "reactivated",
+  "at_risk",
   "expansion",
   "referral",
   "renewal",

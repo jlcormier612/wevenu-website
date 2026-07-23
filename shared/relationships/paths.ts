@@ -8,6 +8,11 @@ import path from "path";
  * Default: <repo>/shared/relationships/.data
  *
  * Works when cwd is marketing/, workspace/, or the repo root.
+ *
+ * Important: prefer the package directory that contains `types.ts`.
+ * Orphan mirrors under marketing/shared or workspace/shared (created if an
+ * earlier resolver wrote there) must NOT win — that splits marketing writes
+ * from the workspace UI.
  */
 export function getRelationshipsDataDir(): string {
   const fromEnv = process.env.RELATIONSHIPS_DATA_PATH?.trim();
@@ -22,9 +27,17 @@ export function getRelationshipsDataDir(): string {
     path.join(cwd, "..", "..", "shared", "relationships", ".data"),
   ];
 
+  // Prefer the real package (has source), not an app-local .data-only mirror.
   for (const candidate of candidates) {
     const moduleDir = path.dirname(candidate);
-    if (existsSync(moduleDir) || existsSync(path.join(moduleDir, "types.ts"))) {
+    if (existsSync(path.join(moduleDir, "types.ts"))) {
+      return candidate;
+    }
+  }
+
+  for (const candidate of candidates) {
+    const moduleDir = path.dirname(candidate);
+    if (existsSync(moduleDir)) {
       return candidate;
     }
   }

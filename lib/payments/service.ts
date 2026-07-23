@@ -112,6 +112,9 @@ export async function getUpcomingPayments(daysAhead = 30): Promise<PaymentLineIt
     refundedAmount: r.refunded_amount != null ? Number(r.refunded_amount) : 0,
     refundedAt: r.refunded_at ?? null, refundReason: r.refund_reason ?? null,
     quickbooksSyncStatus: r.quickbooks_sync_status ?? "not_synced",
+    stripePaymentIntentId: r.stripe_payment_intent_id ?? null,
+    stripeCheckoutSessionId: r.stripe_checkout_session_id ?? null,
+    stripePaymentMethodType: r.stripe_payment_method_type ?? null,
     createdAt: r.created_at, updatedAt: r.updated_at,
   }));
 }
@@ -309,6 +312,25 @@ export async function refundLineItem_(
     if (role !== "owner") {
       return { ok: false, message: "Only the venue Owner can issue a refund." } as PaymentActionResult;
     }
+
+    // Stripe Connect (Sprint 4): a payment collected through Stripe must
+    // actually be refunded through Stripe's API first — no optimistic
+    // local ledger change before Stripe confirms (docs/venue-payment-
+    // processing-architecture.md §4.4). A manually-recorded payment (no
+    // stripe_payment_intent_id) keeps TR-M3's original ledger-only path,
+    // untouched.
+    const { data: itemRow } = await supabase.from("payment_line_items")
+      .select("stripe_payment_intent_id").eq("id", itemId).eq("venue_id", venueId)
+      .maybeSingle<{ stripe_payment_intent_id: string | null }>();
+    if (itemRow?.stripe_payment_intent_id) {
+      const { data: v } = await supabase.from("venues").select("stripe_account_id").eq("id", venueId)
+        .maybeSingle<{ stripe_account_id: string | null }>();
+      if (!v?.stripe_account_id) return { ok: false, message: "Your Stripe account is no longer connected." } as PaymentActionResult;
+      const { refundStripePayment } = await import("@/lib/stripe/refunds");
+      const stripeResult = await refundStripePayment(v.stripe_account_id, itemRow.stripe_payment_intent_id, refundAmount);
+      if (!stripeResult.ok) return { ok: false, message: stripeResult.message } as PaymentActionResult;
+    }
+
     const outcome = await repo.refundLineItem(supabase, venueId, itemId, refundAmount, reason);
     if (!outcome.ok) return { ok: false, message: outcome.message } as PaymentActionResult;
 

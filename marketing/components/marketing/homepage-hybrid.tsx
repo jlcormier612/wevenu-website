@@ -5,8 +5,10 @@ import { CelebrationWhisper, HospitalityHeart } from "@/components/marketing/bra
 import { LuvQuietMoment } from "@/components/marketing/luv-quiet-moment";
 import { MarketingCta } from "@/components/marketing/marketing-cta";
 import { Reveal } from "@/components/marketing/reveal";
+import { SharedTruthArchitecture } from "@/components/marketing/shared-truth-architecture";
 import { FILM } from "@/lib/marketing/film";
 import {
+  EDITORIAL_BLEED,
   EDITORIAL_FRAME,
   EDITORIAL_IMAGE,
   EDITORIAL_IMAGE_UI,
@@ -58,15 +60,52 @@ export function HomepageHybrid() {
             variant="ghost"
           />
         </div>
-        <div className={`relative mx-auto mt-14 aspect-[16/9] w-full max-w-4xl md:mt-16 md:aspect-[2.1/1] ${EDITORIAL_FRAME}`}>
-          <Image
-            src={FILM.heroCrop}
-            alt="A host carefully finishing a guest table — hospitality before arrival"
-            fill
-            priority
-            className={EDITORIAL_IMAGE}
-            sizes="(max-width:768px) 100vw, 80vw"
-          />
+      </section>
+
+      {/* ── Hero divider — hospitality prep ── */}
+      <section
+        className={`relative aspect-[21/9] min-h-[50vh] w-full md:min-h-[55vh] ${EDITORIAL_BLEED}`}
+      >
+        <Image
+          src={FILM.heroCrop}
+          alt="A host carefully finishing a guest table — hospitality before arrival"
+          fill
+          priority
+          className={EDITORIAL_IMAGE}
+          style={{ objectPosition: "35% 45%" }}
+          sizes="100vw"
+        />
+      </section>
+
+      {/* ── One Shared Truth ── */}
+      <section className="px-6 py-28 md:py-36">
+        <Reveal className="mx-auto max-w-[1200px] text-center">
+          <h2 className="mx-auto max-w-3xl font-heading text-[2.1rem] font-medium leading-[1.21] whitespace-pre-line text-[var(--forest-sage)] md:text-[3.36rem]">
+            {"One Event.\nThree Perspectives.\nOne Shared Truth."}
+          </h2>
+
+          <div className="mx-auto mt-10 max-w-2xl space-y-5 text-base leading-[1.7] text-[var(--forest-sage)]/70 md:mt-12 md:text-lg">
+            <p>
+              Every conversation, document, payment, timeline, vendor, and guest belongs to one
+              shared celebration.
+            </p>
+            <p>
+              Hello to Cheers doesn&apos;t create separate software for venues, couples, and
+              vendors.
+            </p>
+            <p>
+              It gives each participant their own experience while everyone stays connected to the
+              same source of truth.
+            </p>
+          </div>
+        </Reveal>
+
+        <div className="mx-auto mt-14 max-w-[1200px] md:mt-16">
+          <SharedTruthArchitecture />
+        </div>
+
+        <div className="mt-14 flex justify-center md:mt-16">
+          <MarketingCta href="/product" label="Explore the Connected Journey →" />
         </div>
       </section>
 
@@ -183,16 +222,25 @@ export function HomepageHybrid() {
             <p>Tasks.</p>
             <p className="pt-2">Without switching between systems.</p>
           </div>
-          <div className="mt-0">
-            <div className={`relative min-h-[360px] w-full md:min-h-[520px] ${EDITORIAL_FRAME}`}>
-              <Image
-                src={VISION_PHOTO.dashboard}
-                alt="Hello to Cheers workspace — morning priorities, bookings, planning, conversations, financials, and tasks"
-                fill
-                className={EDITORIAL_IMAGE_UI}
-                sizes="(max-width:768px) 100vw, 1024px"
-              />
-            </div>
+        </div>
+        <div className="mx-auto mt-12 grid max-w-7xl gap-4 md:mt-14 md:grid-cols-2 md:gap-6">
+          <div className={`relative aspect-[1024/584] ${EDITORIAL_FRAME} bg-[var(--linen)]`}>
+            <Image
+              src={VISION_PHOTO.dashboardOverview}
+              alt="Hello to Cheers workspace — Luv notices, venue health, and morning priorities"
+              fill
+              className={EDITORIAL_IMAGE_UI}
+              sizes="(max-width:768px) 100vw, 640px"
+            />
+          </div>
+          <div className={`relative aspect-[1024/584] ${EDITORIAL_FRAME} bg-[var(--linen)]`}>
+            <Image
+              src={VISION_PHOTO.dashboardOps}
+              alt="Hello to Cheers workspace — who needs attention, communication, and payments"
+              fill
+              className={EDITORIAL_IMAGE_UI}
+              sizes="(max-width:768px) 100vw, 640px"
+            />
           </div>
         </div>
       </section>
@@ -225,9 +273,9 @@ export function HomepageHybrid() {
             <div className={`w-[103%] ${EDITORIAL_FRAME}`}>
               <Image
                 src={VISION_PHOTO.luvNoticed}
-                alt="What Luv noticed today — thoughtful recommendations from your quiet teammate"
-                width={1036}
-                height={723}
+                alt="Luv in Hello to Cheers — notices, remembers, and learning for your venue"
+                width={1024}
+                height={873}
                 className={`h-auto w-full ${EDITORIAL_IMAGE_UI}`}
                 sizes="(max-width:768px) 100vw, 505px"
                 priority

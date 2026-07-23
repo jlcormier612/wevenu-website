@@ -25,7 +25,7 @@ export type ProposedPlaybookMilestone = {
 };
 
 export type LuvPlaybookProposal =
-  | { ok: true; milestones: ProposedPlaybookMilestone[] }
+  | { ok: true; milestones: ProposedPlaybookMilestone[]; aiStructured: boolean }
   | { ok: false; message: string };
 
 type AnthropicResponse = { content: { type: string; text: string }[] };
@@ -103,12 +103,33 @@ function isValidTask(t: unknown): t is ProposedPlaybookTask {
     && (typeof r.guessed === "boolean" || r.guessed === undefined);
 }
 
+/**
+ * Plain, deterministic fallback with no AI involved at all — used whenever
+ * ANTHROPIC_API_KEY isn't configured (template-import review, 2026-07-22:
+ * this used to hard-fail with "Luv isn't configured," leaving a coordinator
+ * with nothing at all). One line becomes one task, in a single "Imported"
+ * milestone — no section-grouping or due-date guessing is attempted here
+ * (unlike the AI path, there's no reasonable ordering-based estimate a
+ * plain line-splitter can make), every task is flagged guessed so it's
+ * impossible to miss that a due date still needs to be set.
+ */
+function splitChecklistLines(rawText: string): LuvPlaybookProposal {
+  const lines = rawText.split("\n").map((l) => l.trim()).filter(Boolean);
+  if (lines.length === 0) return { ok: false, message: "There's no text to work with — paste your checklist first." };
+
+  const tasks: ProposedPlaybookTask[] = lines.map((line) => ({
+    title: line.replace(/^[-–—•*]+\s*/, ""), instructions: "", daysOffset: 0, guessed: true,
+  }));
+
+  return { ok: true, milestones: [{ name: "Imported", tasks }], aiStructured: false };
+}
+
 export async function proposePlaybookDraft(rawText: string, kind: PlaybookKind): Promise<LuvPlaybookProposal> {
-  if (!process.env.ANTHROPIC_API_KEY) {
-    return { ok: false, message: "Luv isn't configured for this venue yet — you can still build your checklist by hand in the Template Editor." };
-  }
   if (!rawText.trim()) {
     return { ok: false, message: "There's no text to work with — paste your checklist first." };
+  }
+  if (!process.env.ANTHROPIC_API_KEY) {
+    return splitChecklistLines(rawText);
   }
 
   try {
@@ -142,7 +163,7 @@ export async function proposePlaybookDraft(rawText: string, kind: PlaybookKind):
       .filter((m) => m.tasks.length > 0);
 
     if (milestones.length === 0) return { ok: false, message: "Luv couldn't find any tasks in this text — try pasting more of the checklist, or build it by hand instead." };
-    return { ok: true, milestones };
+    return { ok: true, milestones, aiStructured: true };
   } catch (err) {
     return { ok: false, message: err instanceof Error ? err.message : "Luv couldn't process this text." };
   }

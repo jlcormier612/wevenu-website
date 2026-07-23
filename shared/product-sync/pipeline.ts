@@ -34,7 +34,11 @@ export type SyncRelationshipResult = {
 const READY_STATUSES = new Set([
   "subscribed",
   "onboarding",
+  "white_glove_implementation",
   "live",
+  "active",
+  "reactivated",
+  "at_risk",
   "expansion",
   "referral",
   "renewal",

@@ -39,6 +39,22 @@ export type MessageTemplateInput = {
   smsBody: string;
 };
 
+// What this template points to for reference material (a brochure, a
+// pricing sheet, a signed-off policy PDF) — an uploaded/venue-level
+// document or a plain web link. Mirrors PlaybookTaskAttachment's shape
+// exactly (lib/playbooks/types.ts).
+export type MessageTemplateAttachment = {
+  id: string;
+  templateId: string;
+  documentId: string | null;
+  linkUrl: string | null;
+  linkLabel: string | null;
+  sortOrder: number;
+  createdAt: string;
+  // Resolved at read-time when documentId is set — never stored here.
+  label: string;
+};
+
 export type MessageTemplateErrors = Record<string, string>;
 
 export type MessageTemplateActionResult =

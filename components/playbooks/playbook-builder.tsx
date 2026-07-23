@@ -21,7 +21,7 @@ import * as React from "react";
 
 import { useRouter } from "next/navigation";
 import {
-  ChevronDown, ChevronUp, FileText, Link2, Loader2, Pencil, Plus, Trash2, Upload, X, Check,
+  AlertTriangle, ChevronDown, ChevronUp, FileText, Link2, Loader2, Pencil, Plus, Trash2, Upload, X, Check,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -497,7 +497,7 @@ function TaskRow({
   const audience = AUDIENCE_CHIPS.find((a) => a.value !== "all" && matchesAudience(task, a.value)) ?? AUDIENCE_CHIPS[1];
 
   return (
-    <div className="group flex items-start gap-3 py-2.5 border-b border-border/50 last:border-0">
+    <div className={`group flex items-start gap-3 py-2.5 border-b border-border/50 last:border-0 ${task.needsReview ? "bg-amber-50/40 dark:bg-amber-950/20" : ""}`}>
       {kind === "venue" && (
         <span
           className="mt-0.5 shrink-0 rounded-full px-1.5 py-0.5 text-[9px] font-semibold text-white"
@@ -511,6 +511,11 @@ function TaskRow({
         <div className="flex items-center gap-2 flex-wrap">
           <p className="text-sm font-medium text-heading">{task.title}</p>
           {!task.isRequired && <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">optional</span>}
+          {task.needsReview && (
+            <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-medium text-amber-800 dark:bg-amber-900/40 dark:text-amber-300">
+              <AlertTriangle className="h-3 w-3" /> Needs review
+            </span>
+          )}
         </div>
         <div className="flex flex-wrap items-center gap-x-2 text-xs text-muted-foreground">
           <span style={{ color: categoryColor(task.category) }}>{categoryLabel(task.category)}</span>
@@ -646,6 +651,10 @@ function MilestoneChapter({
         reminderBeforeDays: f.reminderDays ? [parseInt(f.reminderDays, 10)] : null,
         escalationAfterDays: kind === "venue" && f.isRequired && f.escalationAfterDays ? parseInt(f.escalationAfterDays, 10) || null : null,
         actionType: (f.actionType || null) as TaskActionType | null, actionLabel: f.actionLabel.trim() || null,
+        // Saving through this form is itself the review — a coordinator who
+        // opened an imported task and clicked Save has looked at its due
+        // date, whether or not they changed it.
+        needsReview: false,
       });
       if (result.ok) { toast.success("Task updated."); onTaskUpdated(); }
       else toast.error(result.message ?? "Could not update task.");
@@ -683,7 +692,7 @@ function MilestoneChapter({
         <span className="text-xs text-muted-foreground shrink-0">{tasks.length} task{tasks.length !== 1 ? "s" : ""}</span>
         <button
           type="button" onClick={handleToggleWeddingDay}
-          title={milestone.kind === "event_day" ? "This is the Wedding Day chapter — click to unmark" : "Mark this milestone as Wedding Day"}
+          title={milestone.kind === "event_day" ? "This is the event day chapter — click to unmark" : "Mark this milestone as the event day"}
           className={cn(
             "flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium shrink-0 border transition-colors",
             milestone.kind === "event_day"
@@ -691,7 +700,7 @@ function MilestoneChapter({
               : "border-border text-muted-foreground opacity-50 hover:opacity-100",
           )}
         >
-          💍 Wedding Day
+          📅 Event Day
         </button>
         <div className="flex items-center gap-0.5 shrink-0">
           {!isFirst && (

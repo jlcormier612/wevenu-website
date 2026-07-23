@@ -74,6 +74,8 @@ export default async function RelationshipsPage({
           if (statusFilter === "live") {
             return (
               r.status === "live" ||
+              r.status === "active" ||
+              r.status === "reactivated" ||
               r.status === "active_customer" ||
               r.status === "expansion" ||
               r.status === "referral" ||

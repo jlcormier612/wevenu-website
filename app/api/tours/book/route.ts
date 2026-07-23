@@ -11,6 +11,8 @@ type BookPayload = {
   email: string; phone: string; eventType: string;
   eventDate: string; guestCount: number | null; notes: string;
   turnstileToken?: string | null;
+  /** QR Lead Capture attribution — set when the booking page was reached via /qr/{code} (app/qr/[code]/route.ts). */
+  qrCampaignId?: string | null;
 };
 
 export async function POST(request: Request) {
@@ -25,7 +27,7 @@ export async function POST(request: Request) {
       firstName: body.firstName, lastName: body.lastName, partnerName: body.partnerName ?? "",
       email: body.email, phone: body.phone ?? "", eventType: body.eventType ?? "",
       eventDate: body.eventDate ?? "", guestCount: body.guestCount ?? null, notes: body.notes ?? "",
-    }, { turnstileToken: body.turnstileToken ?? null, ipAddress });
+    }, { turnstileToken: body.turnstileToken ?? null, ipAddress, qrCampaignId: body.qrCampaignId ?? null });
 
     if (result.ok && result.appointmentId) {
       // The couple's confirmation email is sent inside bookTour() itself now

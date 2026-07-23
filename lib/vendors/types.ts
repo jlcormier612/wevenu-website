@@ -131,6 +131,23 @@ export type VendorPackage = {
   updatedAt:   string;
 };
 
+// Program 4, Initiative C, Phase 16 (2026-07-23) — a claimed vendor's own
+// FAQs, shown on their expanded profile (Phase 8).
+export type VendorFaq = {
+  id:         string;
+  vendorId:   string;
+  question:   string;
+  answer:     string;
+  sortOrder:  number;
+  createdAt:  string;
+  updatedAt:  string;
+};
+
+export type VendorFaqInput = {
+  question: string;
+  answer:   string;
+};
+
 // ── Availability ──────────────────────────────────────────────────────────────
 
 export type VendorAvailability = {
@@ -336,6 +353,23 @@ export type VendorDashboardVenue = {
   venueName:   string;
   status:      string;
   addedAt:     string;
+};
+
+// Program 4, Initiative C, Phase 10 (2026-07-23) — every venue relationship
+// this vendor has, with the venue-specific promotion they may edit and
+// whether they've become an Event Vendor for at least one booked event
+// with this venue.
+export type VendorPartnership = {
+  id:                 string;
+  venueId:            string;
+  venueName:          string;
+  venueLogoUrl:       string | null;
+  status:             string;
+  preferenceLevel:    string;
+  addedAt:            string;
+  promotionHeadline:  string | null;
+  promotionDetails:   string | null;
+  activeEventCount:   number;
 };
 
 export type VendorDashboardData = {

@@ -19,7 +19,28 @@ export {
   resolveFounderSpotsRemaining,
 } from "./founder-program";
 export { getRelationshipsDataDir, STORE_FILES } from "./paths";
-export { promoteStatus, stageLabelForStatus, toPipelineStatus } from "./status";
+export { promoteStatus, stageLabelForStatus, toPipelineStatus, normalizeLifecycleStatus, isCustomerLifecycleStatus } from "./status";
+export {
+  computeRelationshipHealth,
+  applyHealthSnapshot,
+  type RelationshipHealthSnapshot,
+} from "./health";
+export {
+  enterOnboardingAfterPurchase,
+  createManualSubscription,
+  launchWhiteGloveWorkspace,
+  whiteGloveLaunchReady,
+  suspendRelationshipAccount,
+  reactivateRelationshipAccount,
+  recordPaymentFailed,
+  markDunningReminderSent,
+  tickPaymentDunning,
+  refreshRelationshipHealth,
+  recordSubscriptionLinkSent,
+  whiteGloveTimelineLabel,
+  DEFAULT_WHITE_GLOVE_TIMELINE_DAYS,
+  type WhiteGloveTimelineSettings,
+} from "./lifecycle";
 export {
   loadLiveStore,
   loadLiveStoreSync,

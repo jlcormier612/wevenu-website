@@ -21,7 +21,7 @@ import { checkRateLimit, isNearRateLimit } from "@/lib/lead-intake/rate-limit";
 import { isTurnstileConfigured, verifyTurnstileToken } from "@/lib/lead-intake/turnstile";
 import { resolveLeadOwner } from "@/lib/lead-intake/assignment";
 import { triggerSequencesForRelationship } from "@/lib/message-sequences/service";
-import type { IngestLeadOptions, IngestOutcome } from "@/lib/lead-intake/types";
+import type { AnyDbClient, IngestLeadOptions, IngestOutcome, RawIntakeInput, TrustTier } from "@/lib/lead-intake/types";
 
 const LOW_CONFIDENCE_THRESHOLD = 50;
 
@@ -113,4 +113,29 @@ export async function ingestLead(opts: IngestLeadOptions): Promise<IngestOutcome
   await resolveLeadOwner(opts.supabase, outcome.leadId, opts.venueId!);
 
   return { ...outcome, attemptId };
+}
+
+/**
+ * Migration Center §2.1 item 3 (2026-07-22) — a real intake attempt for a
+ * row that never reaches ingestLead() at all: two rows in the *same* CSV
+ * describing the same person (the second occurrence is rejected before
+ * create() is ever called, distinct from an against-the-database
+ * duplicate, which already gets its own "skipped" ImportResult entry but
+ * never touches lead_intake_attempts). Logged with the schema's own
+ * long-dormant `rejected_duplicate_batch` status so the health/monitoring
+ * surfaces that already know this status (lead-intake-health-section.tsx,
+ * monitoring.ts) start seeing real data instead of a value nothing ever
+ * wrote.
+ */
+export async function logDuplicateBatchRejection(
+  supabase: AnyDbClient, venueId: string, source: string, trustTier: TrustTier, rawPayload: unknown, input: RawIntakeInput,
+): Promise<void> {
+  const normalized = normalizeLeadInput(input);
+  const attemptId = await logIntakeAttempt(supabase, {
+    venueId, source, trustTier, rawPayload, normalizedPayload: normalized,
+  });
+  await markIntakeAttempt(supabase, attemptId, {
+    status: "rejected_duplicate_batch",
+    errorMessage: "Duplicate within this import — matches an earlier row in the same file.",
+  });
 }

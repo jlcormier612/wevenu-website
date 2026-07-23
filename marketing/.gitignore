@@ -2,3 +2,5 @@ node_modules
 .next
 .env*.local
 .data
+# Never commit an app-local shadow of monorepo shared/ (splits relationship data)
+/shared/

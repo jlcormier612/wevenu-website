@@ -5,8 +5,10 @@
  * Server-only.
  */
 import { createClient } from "@/integrations/supabase/server";
+import { createAdminClient } from "@/integrations/supabase/admin";
 import { isSupabaseConfigured } from "@/lib/env";
 import * as repo from "@/lib/leads/repository";
+import { requireAdminUser } from "@/lib/hq/crm-service";
 import type {
   CreateLeadResult,
   Lead,
@@ -27,6 +29,7 @@ import { triggerSequencesForRelationship } from "@/lib/message-sequences/service
 import { CANONICAL_STAGE_TO_LEAD_STATUS } from "@/lib/leads/pipeline-stage-mapping";
 import type { CanonicalStage } from "@/lib/pipeline-templates/types";
 import { ingestLead } from "@/lib/lead-intake/pipeline";
+import type { RawIntakeInput, TrustTier } from "@/lib/lead-intake/types";
 
 /** Shared auth + venue guard. Returns a typed error if anything is missing. */
 async function withVenue<T>(
@@ -57,6 +60,38 @@ export async function getLeads(filters?: { q?: string; status?: string }): Promi
   return repo.getLeads(supabase, venue.id, filters);
 }
 
+/**
+ * Migration Center §2.1 item 3 (2026-07-22) — the same email-then-name
+ * matching findActiveDuplicate() uses against the database, as an in-memory
+ * key an import loop can check two CSV rows against each other with,
+ * before either ever reaches the database. Case-insensitive, trimmed, to
+ * match the DB check's `ilike` semantics exactly.
+ */
+export function leadIdentityKey(email: string | null | undefined, firstName: string, lastName: string): string {
+  const trimmedEmail = (email ?? "").trim().toLowerCase();
+  return trimmedEmail || `${firstName.trim().toLowerCase()}|${lastName.trim().toLowerCase()}`;
+}
+
+/** Import-loop → Lead Intake pipeline shape. Only the fields logDuplicateBatchRejection's normalizer actually reads matter here — same field set createLeadCore already threads into ingestLead's own `input`. */
+export function leadInputToRawIntake(input: LeadInput): RawIntakeInput {
+  return {
+    firstName: input.firstName,
+    lastName: input.lastName,
+    email: input.email,
+    phone: input.phone,
+    partnerFirstName: input.partnerFirstName,
+    partnerLastName: input.partnerLastName,
+    partnerEmail: input.partnerEmail,
+    eventType: input.eventType,
+    eventDate: input.eventDate,
+    endDate: input.endDate,
+    guestCount: input.guestCount ? parseInt(input.guestCount, 10) || null : null,
+    estimatedBudget: input.estimatedBudget ? parseFloat(input.estimatedBudget) || null : null,
+    inquiryMessage: input.inquiryMessage,
+    inquiryDate: input.inquiryDate,
+  };
+}
+
 /** An already-active Lead matching this email (or, absent an email, this exact name) — for import-time duplicate detection. Null if the venue can't be resolved, matching this module's other read functions' fail-open shape. */
 export async function findActiveDuplicateLead(email: string, firstName: string, lastName: string): Promise<{ id: string } | null> {
   if (!isSupabaseConfigured) return null;
@@ -64,6 +99,14 @@ export async function findActiveDuplicateLead(email: string, firstName: string, 
   if (!venue) return null;
   const supabase = await createClient();
   return repo.findActiveDuplicate(supabase, venue.id, email, firstName, lastName);
+}
+
+/** White-Glove Migration (Hospitality Success Platform §2.2a step 4) — see createClientForVenue's doc comment (lib/clients/service.ts) for the pattern this mirrors. */
+export async function findActiveDuplicateLeadForVenue(venueId: string, email: string, firstName: string, lastName: string): Promise<{ id: string } | null> {
+  if (!isSupabaseConfigured) return null;
+  const actor = await requireAdminUser();
+  if (!actor) return null;
+  return repo.findActiveDuplicate(createAdminClient(), venueId, email, firstName, lastName);
 }
 
 export async function getLead(leadId: string): Promise<LeadWithDetails | null> {
@@ -76,59 +119,85 @@ export async function getLead(leadId: string): Promise<LeadWithDetails | null> {
 
 // ---- create -----------------------------------------------------------------
 
-export async function createLead(input: LeadInput): Promise<CreateLeadResult> {
+/**
+ * The real create-a-lead logic, independent of how `venueId` was resolved.
+ * Extracted so White-Glove imports (`createLeadForVenue`, Hospitality
+ * Success Platform §2.2a) run through the exact same Lead Intake pipeline
+ * self-service does. See createClientCore's doc comment for the pattern.
+ */
+async function createLeadCore(
+  supabase: Awaited<ReturnType<typeof createClient>>, venueId: string, input: LeadInput, trustTier: TrustTier,
+): Promise<CreateLeadResult> {
+  // Routed through the Lead Intake pipeline (Log Attempt → Relationship
+  // Resolution → Lead Creation → Automation Trigger → Assignment Hook) —
+  // manual entry and CSV import are just another Source Adapter now, not
+  // a separate implementation. Activity is logged by the DB trigger
+  // (log_lead_created), same as every other source.
+  const outcome = await ingestLead({
+    supabase,
+    venueId,
+    source: input.source || "other",
+    trustTier,
+    rawPayload: input,
+    input: {
+      firstName: input.firstName,
+      lastName: input.lastName,
+      email: input.email,
+      phone: input.phone,
+      partnerFirstName: input.partnerFirstName,
+      partnerLastName: input.partnerLastName,
+      partnerEmail: input.partnerEmail,
+      eventType: input.eventType,
+      eventDate: input.eventDate,
+      endDate: input.endDate,
+      guestCount: input.guestCount ? parseInt(input.guestCount, 10) || null : null,
+      estimatedBudget: input.estimatedBudget ? parseFloat(input.estimatedBudget) || null : null,
+      inquiryMessage: input.inquiryMessage,
+      inquiryDate: input.inquiryDate,
+      sourceData: input.originalSourceLabel ? { original_source_label: input.originalSourceLabel } : undefined,
+    },
+    create: async () => {
+      try {
+        const leadId = await repo.insertLead(supabase, venueId, input);
+        const { data: lead } = await supabase.from("leads").select("relationship_id")
+          .eq("id", leadId).maybeSingle<{ relationship_id: string | null }>();
+        if (!lead?.relationship_id) return { ok: false, error: "Lead created without a relationship." };
+        const { count } = await supabase.from("leads")
+          .select("id", { count: "exact", head: true })
+          .eq("relationship_id", lead.relationship_id);
+        return { ok: true, leadId, relationshipId: lead.relationship_id, isReturningRelationship: (count ?? 0) > 1 };
+      } catch (err) {
+        return { ok: false, error: err instanceof Error ? err.message : "Could not create lead." };
+      }
+    },
+  });
+
+  if (!outcome.ok) return { ok: false, message: outcome.error };
+  return { ok: true, leadId: outcome.leadId };
+}
+
+/**
+ * `trustTier` defaults to "manual" (the single-lead-add form's own use)
+ * but the CSV import actions pass "import" explicitly — Migration Center
+ * §2.1 item 3 (2026-07-22): TrustTier already had a real "import" value
+ * defined, but every import-created lead was silently mislabeled "manual"
+ * since this always hardcoded that value regardless of caller.
+ */
+export async function createLead(input: LeadInput, trustTier: TrustTier = "manual"): Promise<CreateLeadResult> {
   const errors = validateLeadInput(input);
   if (Object.keys(errors).length > 0) return { ok: false, errors };
-  const result = await withVenue(async (supabase, venueId) => {
-    // Routed through the Lead Intake pipeline (Log Attempt → Relationship
-    // Resolution → Lead Creation → Automation Trigger → Assignment Hook) —
-    // manual entry and CSV import are just another Source Adapter now, not
-    // a separate implementation. Activity is logged by the DB trigger
-    // (log_lead_created), same as every other source.
-    const outcome = await ingestLead({
-      supabase,
-      venueId,
-      source: input.source || "other",
-      trustTier: "manual",
-      rawPayload: input,
-      input: {
-        firstName: input.firstName,
-        lastName: input.lastName,
-        email: input.email,
-        phone: input.phone,
-        partnerFirstName: input.partnerFirstName,
-        partnerLastName: input.partnerLastName,
-        partnerEmail: input.partnerEmail,
-        eventType: input.eventType,
-        eventDate: input.eventDate,
-        endDate: input.endDate,
-        guestCount: input.guestCount ? parseInt(input.guestCount, 10) || null : null,
-        estimatedBudget: input.estimatedBudget ? parseFloat(input.estimatedBudget) || null : null,
-        inquiryMessage: input.inquiryMessage,
-        inquiryDate: input.inquiryDate,
-        sourceData: input.originalSourceLabel ? { original_source_label: input.originalSourceLabel } : undefined,
-      },
-      create: async () => {
-        try {
-          const leadId = await repo.insertLead(supabase, venueId, input);
-          const { data: lead } = await supabase.from("leads").select("relationship_id")
-            .eq("id", leadId).maybeSingle<{ relationship_id: string | null }>();
-          if (!lead?.relationship_id) return { ok: false, error: "Lead created without a relationship." };
-          const { count } = await supabase.from("leads")
-            .select("id", { count: "exact", head: true })
-            .eq("relationship_id", lead.relationship_id);
-          return { ok: true, leadId, relationshipId: lead.relationship_id, isReturningRelationship: (count ?? 0) > 1 };
-        } catch (err) {
-          return { ok: false, error: err instanceof Error ? err.message : "Could not create lead." };
-        }
-      },
-    });
-
-    if (!outcome.ok) return { ok: false, message: outcome.error } as CreateLeadResult;
-    return { ok: true, leadId: outcome.leadId } as CreateLeadResult;
-  });
-  if ("ok" in result && result.ok === false) return result as CreateLeadResult;
+  const result = await withVenue((supabase, venueId) => createLeadCore(supabase, venueId, input, trustTier));
   return result as CreateLeadResult;
+}
+
+/** White-Glove Migration (Hospitality Success Platform §2.2a step 4) — see createClientForVenue's doc comment for the pattern this mirrors. Always an import, so trustTier is fixed at "import", not a parameter. */
+export async function createLeadForVenue(venueId: string, input: LeadInput): Promise<CreateLeadResult> {
+  const actor = await requireAdminUser();
+  if (!actor) return { ok: false, message: "Not signed in as an HQ admin." };
+  const errors = validateLeadInput(input);
+  if (Object.keys(errors).length > 0) return { ok: false, errors };
+  const admin = createAdminClient();
+  return createLeadCore(admin, venueId, input, "import");
 }
 
 // ---- update status ----------------------------------------------------------

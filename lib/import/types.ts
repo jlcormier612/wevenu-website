@@ -76,4 +76,22 @@ export type ImportRowError = { row: number; message: string; kind: "skipped" | "
 export type ImportResult = {
   imported: number;
   errors: ImportRowError[];
+  /** Migration Center — the batch this run created, for history/rollback. Null if the batch itself couldn't be recorded (never blocks the import). */
+  batchId: string | null;
+};
+
+/** Migration Center (Hospitality Success Platform §2.1) — one row per import run, unlocking history + conservative rollback. */
+export type ImportBatch = {
+  id: string;
+  venueId: string;
+  entityType: EntityType;
+  sourceLabel: string | null;
+  importedByType: "venue" | "hq_staff";
+  importedBy: string | null;
+  rowCount: number;
+  importedCount: number;
+  skippedCount: number;
+  errorCount: number;
+  rolledBackAt: string | null;
+  createdAt: string;
 };

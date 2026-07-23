@@ -1,8 +1,12 @@
 import Link from "next/link";
 
 import {
+  getCommunications,
   getOpenTaskCount,
+  getSubscriptions,
+  getTasks,
   getTeamMember,
+  getTimelineForRelationship,
 } from "@/lib/data/store";
 import type { Relationship, TimelineEvent } from "@/lib/types";
 import {
@@ -18,35 +22,121 @@ import {
 } from "@/lib/utils";
 import { Panel, StatusPill } from "@/components/shared/ui";
 import { TaskCompleteButton } from "@/components/tasks/task-complete-button";
+import {
+  computeRelationshipHealth,
+  WHITE_GLOVE_CHECKLIST_MARKER,
+} from "@shared/relationships";
 
 export function RelationshipSnapshot({ relationship }: { relationship: Relationship }) {
   const assignee = getTeamMember(relationship.assignedTeamMemberId);
   const openTasks = getOpenTaskCount(relationship.id);
+  const tasks = getTasks({ relationshipId: relationship.id });
+  const communications = getCommunications({ relationshipId: relationship.id });
+  const timelineEvents = getTimelineForRelationship(relationship.id);
+  const subscriptions = getSubscriptions(relationship.id);
+
+  const health = computeRelationshipHealth(relationship as never, {
+    tasks: tasks as never,
+    communications: communications as never,
+    timelineEvents: timelineEvents as never,
+    subscriptions: subscriptions as never,
+  });
+
+  const wgTasks = tasks.filter(
+    (t) => t.meta?.checklist === WHITE_GLOVE_CHECKLIST_MARKER,
+  );
+  const showImplLink =
+    relationship.onboardingType === "white_glove" ||
+    relationship.status === "white_glove_implementation" ||
+    wgTasks.length > 0;
 
   return (
     <section className="ws-panel border-[var(--soft-sage)]/60 bg-[linear-gradient(165deg,var(--natural-cream),var(--true-white)_45%,color-mix(in_srgb,var(--soft-sage)_18%,var(--true-white)))] p-7 md:p-8">
-      <p className="ws-eyebrow">Relationship Snapshot</p>
-      <h1 className="mt-2 font-heading text-4xl tracking-tight md:text-5xl">
-        {relationship.venue.name}
-      </h1>
-      <p className="mt-2 text-[var(--heritage-sage)]">
-        {relationship.venue.city}, {relationship.venue.state}
-        {assignee ? ` · ${assignee.name}` : null}
-      </p>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <p className="ws-eyebrow">Relationship Snapshot</p>
+          <h1 className="mt-2 font-heading text-4xl tracking-tight md:text-5xl">
+            {relationship.venue.name}
+          </h1>
+          <p className="mt-2 text-[var(--heritage-sage)]">
+            {relationship.venue.city}, {relationship.venue.state}
+            {assignee ? ` · ${assignee.name}` : null}
+          </p>
+        </div>
+        {showImplLink ? (
+          <Link
+            href={`/relationships/${relationship.id}/implementation`}
+            className="rounded-sm border border-[color-mix(in_srgb,var(--taupe-medium)_55%,transparent)] bg-[var(--true-white)] px-3.5 py-2 text-sm font-medium text-[var(--forest-sage)] hover:border-[var(--heritage-sage)]"
+          >
+            White Glove Implementation
+          </Link>
+        ) : null}
+      </div>
 
       <dl className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <SnapItem
           label="Relationship Health"
-          value={`${HEALTH_LABELS[relationship.health]} ${HEALTH_EMOJI[relationship.health]}`}
+          value={`${HEALTH_LABELS[health.band]} ${HEALTH_EMOJI[health.band]} · ${health.score}/100`}
         />
-        <SnapItem label="Current Stage" value={relationship.currentStageLabel} />
+        <SnapItem label="Lifecycle Stage" value={relationship.currentStageLabel} />
         <SnapItem label="Plan" value={relationship.planName} />
         <SnapItem label="Founder" value={yesNo(relationship.foundingMember)} />
         <SnapItem
           label="Welcome Back"
           value={WELCOME_BACK_LABELS[relationship.welcomeBackVerified]}
         />
-        <SnapItem label="Last Contact" value={formatRelativeDay(relationship.lastContactAt)} />
+        <SnapItem
+          label="Payment"
+          value={String(health.paymentStatus).replace(/_/g, " ")}
+        />
+        <SnapItem
+          label="Onboarding progress"
+          value={`${health.onboardingProgress}%`}
+        />
+        <SnapItem
+          label="Website published"
+          value={yesNo(health.websitePublished)}
+        />
+        <SnapItem
+          label="Last login"
+          value={
+            health.lastLoginAt
+              ? formatRelativeDay(health.lastLoginAt)
+              : "—"
+          }
+        />
+        <SnapItem
+          label="Logins (30d)"
+          value={String(health.loginCount30d)}
+        />
+        <SnapItem
+          label="Last customer activity"
+          value={
+            health.lastCustomerActivityAt
+              ? formatRelativeDay(health.lastCustomerActivityAt)
+              : formatRelativeDay(relationship.lastContactAt)
+          }
+        />
+        <SnapItem
+          label="Last team activity"
+          value={
+            health.lastTeamActivityAt
+              ? formatRelativeDay(health.lastTeamActivityAt)
+              : "—"
+          }
+        />
+        <SnapItem
+          label="Last communication"
+          value={
+            health.lastCommunicationAt
+              ? formatRelativeDay(health.lastCommunicationAt)
+              : "—"
+          }
+        />
+        <SnapItem
+          label="Support requests"
+          value={String(health.supportOpenCount)}
+        />
         <SnapItem
           label="Next Milestone"
           value={
@@ -61,6 +151,11 @@ export function RelationshipSnapshot({ relationship }: { relationship: Relations
         />
         <SnapItem label="Open Tasks" value={String(openTasks)} />
       </dl>
+      {health.factors.length > 0 ? (
+        <p className="mt-4 text-xs ws-muted">
+          Health factors: {health.factors.slice(0, 4).join(" · ")}
+        </p>
+      ) : null}
     </section>
   );
 }

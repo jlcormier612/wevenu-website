@@ -16,6 +16,7 @@ type DocRow = {
   mime_type: string | null; storage_path: string; storage_url: string;
   category: Document["category"]; notes: string | null; tags: string[];
   expires_at: string | null; created_at: string; updated_at: string;
+  is_couple_visible: boolean;
 };
 
 function mapDoc(r: DocRow): Document {
@@ -26,7 +27,8 @@ function mapDoc(r: DocRow): Document {
     name: r.name, fileName: r.file_name, fileSize: r.file_size,
     mimeType: r.mime_type, storagePath: r.storage_path, storageUrl: r.storage_url,
     category: r.category, notes: r.notes, tags: r.tags ?? [],
-    expiresAt: r.expires_at, createdAt: r.created_at, updatedAt: r.updated_at,
+    expiresAt: r.expires_at, isCoupleVisible: r.is_couple_visible,
+    createdAt: r.created_at, updatedAt: r.updated_at,
   };
 }
 
@@ -115,7 +117,7 @@ export async function updateDocumentMeta(
   client: DbClient,
   venueId: string,
   documentId: string,
-  patch: { name?: string; notes?: string; tags?: string[]; expiresAt?: string | null; category?: Document["category"] },
+  patch: { name?: string; notes?: string; tags?: string[]; expiresAt?: string | null; category?: Document["category"]; isCoupleVisible?: boolean },
 ): Promise<void> {
   const update: Record<string, unknown> = {};
   if (patch.name !== undefined) update.name = patch.name.trim();
@@ -123,6 +125,7 @@ export async function updateDocumentMeta(
   if (patch.tags !== undefined) update.tags = patch.tags;
   if (patch.category !== undefined) update.category = patch.category;
   if ("expiresAt" in patch) update.expires_at = patch.expiresAt || null;
+  if (patch.isCoupleVisible !== undefined) update.is_couple_visible = patch.isCoupleVisible;
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { error } = await (client.from("documents") as any)

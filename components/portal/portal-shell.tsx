@@ -25,15 +25,15 @@ import * as React from "react";
 
 import {
   CalendarDays, Check, CheckSquare, Clock, Loader2,
-  Lock, Plus, Trash2, Users, X,
+  Plus, Trash2, Users, X,
 } from "lucide-react";
 import { toast } from "sonner";
 
 import type {
   ActivityItem, ClientMedia, CoupleProfile, CoupleTodo, CoupleGuest,
-  GuestStats, JournalEntry, PortalContext, PortalSection, PortalTask,
+  GuestStats, JournalEntry, PortalContext, PortalKeyDate, PortalSection, PortalTask,
   RecentActivity, TodoCategory, PortalParticipant, PortalActivity,
-  PortalTimelineEntry, PortalTimelineSection,
+  PortalTimelineEntry, PortalTimelineSection, PortalVenueTeamMember,
 } from "@/lib/portal/types";
 import { getAnniversaryObservations, getCountdownObservation, getOverviewObservation, getWeddingDayObservations } from "@/lib/luv/portal-observations";
 import {
@@ -42,6 +42,10 @@ import {
 } from "@/app/(portal)/p/[token]/account-actions";
 import { RequestsPortalSection, RequestsSummaryCard } from "@/components/portal/requests-section";
 import { LuvIntroCard } from "@/components/luv/luv-intro-card";
+import { UnifiedTasksSection } from "@/components/portal/unified-tasks-section";
+import { buildUnifiedTaskList } from "@/lib/portal/unified-tasks";
+import type { PortalRequestSummary } from "@/lib/requests/types";
+import { QuestionnairePortalSection } from "@/components/portal/questionnaire-section";
 
 // Venue Brand Experience Phase 1: SAGE/LINEN/CREAM were Hello to Cheers' own hardcoded
 // palette, now the venue's own brand via CSS custom properties injected on
@@ -980,7 +984,7 @@ function MemoriesSection({ token, venueName }: { token: string; venueName: strin
                   <p className="text-sm text-muted-foreground">Tap to choose a photo</p>
                 </>}
           </div>
-          <input ref={fileRef} type="file" accept="image/*" className="hidden"
+          <input ref={fileRef} type="file" accept="image/*,.heic,.heif" className="hidden"
             onChange={e => setPendingFile(e.target.files?.[0] ?? null)} />
 
           <input value={caption} onChange={e => setCaption(e.target.value)}
@@ -1674,14 +1678,13 @@ function WeddingDaySection({
 // ── Overview ─────────────────────────────────────────────────────────────────
 
 function OverviewSection({
-  token, context, tasks, guestStats, todoCount, heroPhotoUrl, latestJournalEntry, onNavigate,
+  token, context, tasks, guestStats, todoCount, latestJournalEntry, onNavigate,
 }: {
   token: string;
   context: PortalContext;
   tasks: PortalTask[];
   guestStats: GuestStats | null;
   todoCount: number;
-  heroPhotoUrl?: string | null;
   latestJournalEntry?: JournalEntry | null;
   onNavigate: (s: PortalSection) => void;
 }) {
@@ -1690,34 +1693,36 @@ function OverviewSection({
   const readinessScore = required.length > 0
     ? Math.round(required.filter(t => t.status === "complete").length / required.length * 100)
     : 0;
-  const actionNeeded = tasks.filter(t => t.canComplete && t.status !== "complete");
   const coupleName = [context.client.firstName, context.client.partnerFirstName].filter(Boolean).join(" & ");
   const bracket = getSuggestionBracket(du);
   const suggestions = (SUGGESTIONS_BY_BRACKET[bracket] ?? []).slice(0, 4);
+  // Program 4, Initiative D, Phase 2 (2026-07-23) — the venue's own hero
+  // photo, not the couple's; see venues.hero_image_url.
+  const venueHeroPhotoUrl = context.venue.heroImageUrl;
 
   return (
     <div className="space-y-6">
 
-      {/* ── HERO — The emotional anchor ── */}
+      {/* ── HERO — Program 4, Initiative D, Phase 2/3 (2026-07-23): "The
+          hero should no longer emphasize only the couple. Instead it
+          should welcome the couple into the venue." Hierarchy is the
+          directive's own list, top to bottom: venue photo → venue name →
+          welcome message → couple names → countdown → event date →
+          tagline → primary actions. One shared content layout regardless
+          of whether the venue has uploaded a hero photo (brand-gradient
+          fallback otherwise) — the hierarchy doesn't change, only the
+          backdrop does. ── */}
       <div className="rounded-3xl overflow-hidden relative" style={{
-        background: heroPhotoUrl
-          ? `url(${heroPhotoUrl}) center/cover no-repeat`
-          // Venue Brand Experience Phase 1 — the single largest visual
-          // branding surface in the portal (the hero fallback, shown
-          // whenever the couple hasn't uploaded a hero photo). All three
-          // gradient stops are now the venue's own primary/secondary,
-          // not a fixed Hello to Cheers sage gradient.
+        background: venueHeroPhotoUrl
+          ? `url(${venueHeroPhotoUrl}) center/cover no-repeat`
           : `linear-gradient(155deg, var(--venue-secondary) 0%, var(--venue-primary) 38%, var(--venue-secondary) 100%)`,
-        minHeight: heroPhotoUrl ? "min(62vh, 540px)" : "min(48vh, 400px)",
+        minHeight: "min(64vh, 560px)",
       }}>
-
-        {heroPhotoUrl ? (
-          /* ── MAGAZINE COVER: pure cinematic scrim, let the photo breathe ── */
+        {venueHeroPhotoUrl ? (
           <div className="absolute inset-0" style={{
-            background: "linear-gradient(to top, rgba(0,0,0,0.92) 0%, rgba(0,0,0,0.62) 30%, rgba(0,0,0,0.20) 60%, rgba(0,0,0,0.03) 100%)",
+            background: "linear-gradient(to top, rgba(0,0,0,0.90) 0%, rgba(0,0,0,0.58) 32%, rgba(0,0,0,0.18) 62%, rgba(0,0,0,0.05) 100%)",
           }} />
         ) : (
-          /* ── EDITORIAL MODE: brand gradient with decorations ── */
           <>
             <div className="absolute inset-0" style={{
               backgroundImage: "radial-gradient(circle at 25% 35%, rgba(255,255,255,0.06) 1px, transparent 1px), radial-gradient(circle at 75% 70%, rgba(255,255,255,0.04) 1px, transparent 1px)",
@@ -1732,153 +1737,85 @@ function OverviewSection({
             <div className="absolute bottom-0 right-0 pointer-events-none select-none">
               <FloralLineart />
             </div>
-            {[
-              { top: "8%",  left: "5%",  size: "text-sm",     op: 0.40 },
-              { top: "14%", left: "84%", size: "text-xl",     op: 0.60 },
-              { top: "45%", left: "91%", size: "text-xs",     op: 0.28 },
-              { top: "75%", left: "4%",  size: "text-base",   op: 0.45 },
-              { top: "58%", left: "62%", size: "text-[10px]", op: 0.22 },
-            ].map((s, i) => (
-              <span key={i} className={`absolute ${s.size} pointer-events-none select-none`}
-                style={{ top: s.top, left: s.left, color: ROSE, opacity: s.op }}>✦</span>
-            ))}
           </>
         )}
 
-        {heroPhotoUrl ? (
-          /* ── MAGAZINE COVER CONTENT ── */
-          <div className="relative flex flex-col justify-between p-8 sm:p-10"
-            style={{ minHeight: "min(62vh, 540px)" }}>
-
-            {/* Top: date badge + change photo */}
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2.5">
-                <span className="h-px w-5" style={{ background: `${ROSE}50` }} />
-                <span className="text-[9px] font-semibold uppercase tracking-[0.32em]"
-                  style={{ color: "rgba(255,255,255,0.32)" }}>
-                  {context.event
-                    ? new Date(context.event.eventDate + "T12:00:00")
-                        .toLocaleDateString("en-US", { month: "long", year: "numeric" })
-                    : context.venue.name}
-                </span>
-              </div>
-              <button type="button" onClick={() => onNavigate("story")}
-                className="text-[10px] text-white/28 hover:text-white/55 transition-colors font-medium">
-                📸 Change photo
-              </button>
-            </div>
-
-            {/* Bottom: tagline → headline → compact date */}
-            <div className="space-y-2.5">
-              {/* Italic story line — pull-quote above the name */}
-              <p className="font-heading italic leading-snug"
-                style={{ color: `${ROSE}C5`, fontSize: "clamp(0.85rem, 2vw, 1.05rem)" }}>
-                {getStoryLine(du)}
-              </p>
-
-              {/* THE HEADLINE — magazine masthead */}
-              <p className="font-heading font-medium text-white leading-[0.90] tracking-tight"
-                style={{ fontSize: "clamp(2.8rem, 8vw, 6rem)" }}>
-                {coupleName}
-              </p>
-
-              {/* Compact countdown — single elegant line */}
-              <div className="flex items-center gap-2.5 pt-1">
-                <span style={{ color: `${ROSE}80`, fontSize: "0.5rem" }}>✦</span>
-                {context.event && du !== null ? (
-                  <p className="font-light tracking-wide" style={{ color: "rgba(255,255,255,0.45)", fontSize: "clamp(0.65rem, 1.5vw, 0.8rem)" }}>
-                    {du > 0 ? (
-                      <>{du.toLocaleString()} days<span style={{ color: `${ROSE}60`, margin: "0 0.5em" }}>·</span>{new Date(context.event.eventDate + "T12:00:00").toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}</>
-                    ) : (
-                      <>✦ Married<span style={{ color: `${ROSE}60`, margin: "0 0.5em" }}>·</span>{new Date(context.event.eventDate + "T12:00:00").toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}</>
-                    )}
-                  </p>
-                ) : (
-                  <p className="text-white/35 text-[11px]">Your planning journey has begun.</p>
-                )}
-              </div>
-            </div>
+        <div className="relative flex flex-col justify-end gap-3 p-8 sm:p-10" style={{ minHeight: "min(64vh, 560px)" }}>
+          {/* Venue name — first in the hierarchy */}
+          <div className="flex items-center gap-2.5">
+            <span className="h-px w-5" style={{ background: `${ROSE}60` }} />
+            <span className="text-[11px] font-semibold uppercase tracking-[0.28em]" style={{ color: "rgba(255,255,255,0.75)" }}>
+              {context.venue.name}
+            </span>
           </div>
 
-        ) : (
-          /* ── EDITORIAL MODE CONTENT — unchanged, no photo ── */
-          <div className="relative flex flex-col justify-center gap-4 p-8 sm:p-10"
-            style={{ minHeight: "min(48vh, 400px)" }}>
+          {/* Welcome message */}
+          <p className="font-heading italic leading-snug" style={{ color: `${ROSE}D0`, fontSize: "clamp(0.95rem, 2.2vw, 1.2rem)" }}>
+            Welcome to your wedding home.
+          </p>
 
-            <div className="flex items-center gap-2">
-              <span className="h-px w-5 opacity-35" style={{ background: ROSE }} />
-              <p className="text-[9px] font-semibold uppercase tracking-[0.3em] text-white/40">{context.venue.name}</p>
-            </div>
+          {/* Couple names */}
+          <p className="font-heading font-medium text-white leading-[0.92] tracking-tight" style={{ fontSize: "clamp(2.6rem, 7vw, 5.2rem)" }}>
+            {coupleName}
+          </p>
 
-            <div className="space-y-0.5">
-              <p className="text-white/50 text-sm font-light">Welcome back,</p>
-              <p className="font-heading text-4xl sm:text-5xl md:text-6xl font-medium text-white leading-none tracking-tight">
-                {coupleName}
+          {/* Countdown + event date */}
+          {context.event && du !== null ? (
+            <div className="space-y-0.5 pt-1">
+              <p className="font-heading font-semibold text-white" style={{ fontSize: "clamp(1.1rem, 2.6vw, 1.6rem)" }}>
+                {du > 0 ? `${du.toLocaleString()} Days Until Your Celebration`
+                  : du === 0 ? "Today Is Your Celebration ✦"
+                  : `Married ${new Date(context.event.eventDate + "T12:00:00").toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}`}
               </p>
+              {du >= 0 && (
+                <p className="font-light tracking-wide" style={{ color: "rgba(255,255,255,0.60)", fontSize: "clamp(0.75rem, 1.6vw, 0.9rem)" }}>
+                  {new Date(context.event.eventDate + "T12:00:00").toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" })}
+                </p>
+              )}
             </div>
+          ) : (
+            <p className="text-white/55 text-sm pt-1">Your planning journey has begun.</p>
+          )}
 
-            <div className="space-y-1">
-              <p className="font-heading italic text-base sm:text-lg" style={{ color: `${ROSE}E0` }}>
-                {getStoryLine(du)}
-              </p>
-              <p className="text-[11px] tracking-[0.12em] uppercase font-light" style={{ color: `${ROSE}70` }}>
-                {pickQuote(coupleName)}
-              </p>
-            </div>
+          {/* Tagline */}
+          <p className="text-sm" style={{ color: "rgba(255,255,255,0.55)" }}>
+            Your venue team is here to guide you every step of the way.
+          </p>
 
-            <div className="flex items-center gap-3">
-              <div className="h-px flex-1" style={{ background: "rgba(255,255,255,0.10)" }} />
-              <span className="text-[10px]" style={{ color: `${ROSE}80` }}>✦</span>
-              <div className="h-px flex-1" style={{ background: "rgba(255,255,255,0.10)" }} />
-            </div>
-
-            {context.event && du !== null ? (
-              du > 0 ? (
-                <div className="space-y-1.5">
-                  <p className="flex items-center gap-2.5 flex-wrap">
-                    <span className="font-heading text-3xl sm:text-4xl font-semibold text-white">{du}</span>
-                    <span className="text-base sm:text-lg font-light text-white/75">days until you say "I do"</span>
-                  </p>
-                  <p className="text-white/35 text-sm">
-                    {new Date(context.event.eventDate + "T12:00:00").toLocaleDateString("en-US", {
-                      weekday: "long", month: "long", day: "numeric", year: "numeric",
-                    })}
-                  </p>
-                </div>
-              ) : du === 0 ? (
-                <div className="space-y-1">
-                  <p className="font-heading text-3xl sm:text-4xl font-semibold text-white">Today is your day. ✦</p>
-                  <p className="text-white/40 text-sm">
-                    {new Date(context.event.eventDate + "T12:00:00").toLocaleDateString("en-US", {
-                      weekday: "long", month: "long", day: "numeric", year: "numeric",
-                    })}
-                  </p>
-                </div>
-              ) : (
-                <div className="space-y-1">
-                  <p className="font-heading text-2xl sm:text-3xl font-medium text-white">
-                    {-du < 365
-                      ? `${-du} days of marriage ✦`
-                      : `${Math.floor(-du / 365)} year${Math.floor(-du / 365) === 1 ? "" : "s"} of marriage ✦`}
-                  </p>
-                  <p className="text-white/35 text-sm">
-                    Married {new Date(context.event.eventDate + "T12:00:00").toLocaleDateString("en-US", {
-                      month: "long", day: "numeric", year: "numeric",
-                    })}
-                  </p>
-                </div>
-              )
-            ) : (
-              <p className="text-white/45 text-sm">Your planning journey has begun.</p>
-            )}
-
-            <button type="button" onClick={() => onNavigate(du !== null && du <= 0 ? "journey" : "story")}
-              className="self-start flex items-center gap-1.5 text-[10px] font-medium text-white/35 hover:text-white/55 transition-colors mt-1 border border-white/15 px-3 py-1.5 rounded-full hover:border-white/25">
-              {du !== null && du <= 0 ? "📖 Revisit your journey" : "📸 Add your engagement photo"}
+          {/* Primary actions */}
+          <div className="flex items-center gap-2 flex-wrap pt-2">
+            <button type="button" onClick={() => onNavigate("todos")}
+              className="text-xs font-semibold px-4 py-2.5 rounded-full text-white transition-opacity hover:opacity-90"
+              style={{ background: "var(--venue-primary)" }}>
+              Continue Your Journey
+            </button>
+            <button type="button" onClick={() => onNavigate("tasks")}
+              className="text-xs font-medium px-4 py-2.5 rounded-full text-white border transition-colors"
+              style={{ borderColor: "rgba(255,255,255,0.35)", background: "rgba(255,255,255,0.08)" }}>
+              Review Tasks
+            </button>
+            <button type="button" onClick={() => onNavigate("messages")}
+              className="text-xs font-medium px-4 py-2.5 rounded-full text-white border transition-colors"
+              style={{ borderColor: "rgba(255,255,255,0.35)", background: "rgba(255,255,255,0.08)" }}>
+              Message Venue
+            </button>
+            <button type="button" onClick={() => onNavigate("timeline")}
+              className="text-xs font-medium px-4 py-2.5 rounded-full text-white border transition-colors"
+              style={{ borderColor: "rgba(255,255,255,0.35)", background: "rgba(255,255,255,0.08)" }}>
+              View Timeline
             </button>
           </div>
-        )}
+        </div>
       </div>
+
+      {/* ── Your Venue — Phase 4: the operational relationship, immediately below the hero ── */}
+      <YourVenueCards token={token} tasks={tasks} onNavigate={onNavigate} />
+
+      {/* ── Your Wedding — Phase 5: personal planning, intentionally secondary ── */}
+      <YourWeddingSection guestStats={guestStats} todoCount={todoCount} onNavigate={onNavigate} />
+
+      {/* ── Luv, daily — one small card, never buried in a desktop-only sidebar ── */}
+      <LuvDailyCard token={token} du={du} guestTotal={guestStats?.total ?? 0} readiness={readinessScore} />
 
       {/* ── Memory Strip — latest journal moment ── */}
       {latestJournalEntry && (
@@ -1914,49 +1851,14 @@ function OverviewSection({
         <WeddingSnapshotCard du={du} guestStats={guestStats} todoCount={todoCount} readinessScore={readinessScore} />
       )}
 
-      {/* ── Mobile-only quick cards (hidden on desktop — sidebar handles it; hidden in keepsake) ── */}
-      {(du === null || du > -3) && <div className="grid grid-cols-2 gap-3 lg:hidden">
-        {[
-          { id: "guests"  as PortalSection, emoji: "👥", n: guestStats?.total ?? 0,  sub: guestStats?.attending ? `${guestStats.attending} confirmed so far` : "Start building your list", warn: false },
-          { id: "todos"   as PortalSection, emoji: "✨", n: todoCount,                 sub: "things on your heart",  warn: false },
-          { id: "website" as PortalSection, emoji: "🌐", n: null,                      sub: "share your love story", warn: false },
-          { id: "tasks"   as PortalSection, emoji: "📋", n: actionNeeded.length,       sub: actionNeeded.length > 0 ? "your venue is waiting" : "all caught up", warn: actionNeeded.length > 0 },
-        ].map(card => (
-          <button key={card.id} type="button" onClick={() => onNavigate(card.id)}
-            className="rounded-2xl border bg-card p-4 text-left space-y-2.5 active:opacity-80 transition-all"
-            style={card.warn ? { borderColor: `${ROSE}60`, background: `${ROSE}08` } : { borderColor: "#E8E3DC" }}>
-            <p className="text-3xl">{card.emoji}</p>
-            <div>
-              {card.n !== null
-                ? <p className="text-2xl font-bold text-heading">{card.n}</p>
-                : <p className="text-sm font-semibold text-heading">Your Website</p>}
-              <p className="text-[11px] text-muted-foreground mt-0.5">{card.sub}</p>
-            </div>
-            <p className="text-[11px] font-semibold" style={{ color: card.warn ? ROSE_DEEP : SAGE }}>
-              {card.warn ? "Action needed →" : "View →"}
-            </p>
-          </button>
-        ))}
-      </div>}
-
-      {/* ── Action needed (both mobile and desktop) ── */}
-      {actionNeeded.length > 0 && (
-        <div className="rounded-2xl overflow-hidden" style={{ border: `1px solid ${ROSE}35`, background: `${ROSE}06` }}>
-          <div className="px-4 py-3">
-            <p className="text-xs font-semibold" style={{ color: ROSE }}>📋 Your venue has tasks waiting</p>
-          </div>
-          {actionNeeded.slice(0, 3).map(t => (
-            <button key={t.id} type="button" onClick={() => onNavigate("tasks")}
-              className="w-full text-left px-4 py-3 flex items-center justify-between gap-3 border-t"
-              style={{ borderColor: `${ROSE}20` }}>
-              <p className="text-sm text-heading truncate">{t.title}</p>
-              <span className="shrink-0 text-[10px] px-2.5 py-1 rounded-full font-semibold text-white" style={{ background: ROSE }}>
-                Complete →
-              </span>
-            </button>
-          ))}
-        </div>
-      )}
+      {/* Program 4, Initiative D, Phase 8/9 (2026-07-23): the mobile quick-
+          cards grid and "Action needed" banner that used to live here are
+          gone — both mixed venue-tasks and personal-planning into one
+          undifferentiated grid, exactly what "do not intermingle these two
+          categories" rules out. YourVenueCards' Next Steps card (visible
+          on every breakpoint, not desktop-sidebar-gated) and
+          YourWeddingSection above now cover this ground without
+          duplicating it. */}
 
       {/* ── This Month — editorial style (planning phase only) ── */}
       {(du === null || du > 14) && <div className="rounded-3xl overflow-hidden" style={{ background: "linear-gradient(135deg, #F7F5F0 0%, #F0EDE6 100%)", border: "1px solid #E8E2D8" }}>
@@ -2781,62 +2683,6 @@ function WebsiteSection({ token, context }: { token: string; context: PortalCont
   );
 }
 
-// ── Venue tasks ───────────────────────────────────────────────────────────────
-
-function VenueTasksSection({ token, initialTasks, venueName }: { token: string; initialTasks: PortalTask[]; venueName: string }) {
-  const [tasks, setTasks] = React.useState(initialTasks);
-  const [completing, setCompleting] = React.useState<string | null>(null);
-
-  async function handleComplete(taskId: string) {
-    setCompleting(taskId);
-    const res = await fetch("/api/portal/complete-task", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ token, taskId }) });
-    const data = await res.json() as { ok: boolean };
-    setCompleting(null);
-    if (data.ok) setTasks(p => p.map(t => t.id === taskId ? { ...t, status: "complete" as const, canComplete: false } : t));
-    else toast.error("Could not complete task.");
-  }
-
-  const actionNeeded = tasks.filter(t => t.canComplete && t.status !== "complete");
-  const tracking = tasks.filter(t => !t.canComplete && t.status !== "complete");
-  const done = tasks.filter(t => t.status === "complete");
-
-  if (tasks.length === 0) {
-    return <p className="text-sm text-muted-foreground text-center py-8">No tasks from your venue yet.</p>;
-  }
-
-  const Group = ({ label, items }: { label: string; items: PortalTask[] }) => items.length === 0 ? null : (
-    <div className="space-y-1">
-      <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide px-1 py-1">{label}</p>
-      {items.map(t => (
-        <div key={t.id} className={`flex items-center gap-3 py-3 px-3 rounded-xl ${t.status === "complete" ? "opacity-50" : "bg-card border border-border/60"}`}>
-          {t.status === "complete" ? <Check className="h-4 w-4 shrink-0" style={{ color: SAGE }} /> : t.status === "blocked" ? <Lock className="h-4 w-4 shrink-0" style={{ color: TAUPE }} /> : <Clock className="h-4 w-4 shrink-0" style={{ color: TAUPE }} />}
-          <div className="flex-1 min-w-0">
-            <p className={`text-sm font-medium ${t.status === "complete" ? "text-muted-foreground line-through" : "text-heading"}`}>{t.title}</p>
-            {t.description && <p className="text-xs text-muted-foreground mt-0.5">{t.description}</p>}
-            <p className="text-[11px] text-muted-foreground">Due {formatDate(t.dueDate)}</p>
-          </div>
-          {t.canComplete && (
-            <button type="button" onClick={() => handleComplete(t.id)} disabled={completing === t.id}
-              className="shrink-0 text-xs font-semibold px-3 py-1.5 rounded-xl text-white"
-              style={{ background: SAGE, opacity: completing === t.id ? 0.7 : 1 }}>
-              {completing === t.id ? <Loader2 className="h-3 w-3 animate-spin" /> : "Done"}
-            </button>
-          )}
-        </div>
-      ))}
-    </div>
-  );
-
-  return (
-    <div className="space-y-4">
-      <p className="text-xs text-muted-foreground">Tasks assigned by <span className="font-medium">{venueName}</span> that need your attention or are in progress.</p>
-      <Group label="Your action needed" items={actionNeeded} />
-      <Group label="In progress" items={tracking} />
-      <Group label="Completed" items={done} />
-    </div>
-  );
-}
-
 // ── Guest section (lazy) ──────────────────────────────────────────────────────
 
 function GuestPortalSection({ token }: { token: string }) {
@@ -2847,8 +2693,8 @@ function GuestPortalSection({ token }: { token: string }) {
 // ── Vendor recommendations ────────────────────────────────────────────────────
 
 function VendorPortalSection({ token, context }: { token: string; context: PortalContext }) {
-  const { VendorSection } = require("@/components/portal/vendor-section") as { VendorSection: React.ComponentType<{ token: string; clientId: string }> };
-  return <VendorSection token={token} clientId={context.client.id} />;
+  const { VendorSection } = require("@/components/portal/vendor-section") as { VendorSection: React.ComponentType<{ token: string; clientId: string; venueName: string }> };
+  return <VendorSection token={token} clientId={context.client.id} venueName={context.venue.name} />;
 }
 
 // ── Budget planner ────────────────────────────────────────────────────────────
@@ -2867,9 +2713,9 @@ function SeatingPortalSection({ token }: { token: string }) {
 
 // ── Couple documents ──────────────────────────────────────────────────────────
 
-function CoupleDocumentsPortalSection({ token }: { token: string }) {
-  const CoupleDocumentsSection = require("@/components/portal/couple-documents-section").default as React.ComponentType<{ token: string }>;
-  return <CoupleDocumentsSection token={token} />;
+function CoupleDocumentsPortalSection({ token, onNavigate }: { token: string; onNavigate: (s: PortalSection) => void }) {
+  const CoupleDocumentsSection = require("@/components/portal/couple-documents-section").default as React.ComponentType<{ token: string; onNavigate: (s: PortalSection) => void }>;
+  return <CoupleDocumentsSection token={token} onNavigate={onNavigate} />;
 }
 
 // ── Client Timeline (same Booking Timeline, visibility-filtered) ──────────────
@@ -2906,9 +2752,9 @@ function LuvAskPortalSection({ token, onNavigateToGuide }: { token: string; onNa
   return <LuvAskSection token={token} onNavigateToGuide={onNavigateToGuide} />;
 }
 
-function VenueGuidePortalSection({ token, context }: { token: string; context: PortalContext }) {
-  const { VenueGuideSection } = require("@/components/portal/venue-guide-section") as { VenueGuideSection: React.ComponentType<{ token: string; context: PortalContext }> };
-  return <VenueGuideSection token={token} context={context} />;
+function VenueGuidePortalSection({ token, context, onNavigate }: { token: string; context: PortalContext; onNavigate: (s: PortalSection) => void }) {
+  const { VenueGuideSection } = require("@/components/portal/venue-guide-section") as { VenueGuideSection: React.ComponentType<{ token: string; context: PortalContext; onNavigate: (s: PortalSection) => void }> };
+  return <VenueGuideSection token={token} context={context} onNavigate={onNavigate} />;
 }
 
 function PortalMessageSection({ token, venueName }: { token: string; venueName: string }) {
@@ -2949,13 +2795,15 @@ const INSPO_CATEGORIES: { key: string; label: string; emoji: string }[] = [
 ];
 
 function EngagementPhotoGrid({
-  photos, heroPhotoId, uploading, onUpload, onSetHero,
+  photos, heroPhotoId, uploading, onUpload, onSetHero, onDelete, deletingId,
 }: {
   photos: ClientMedia[];
   heroPhotoId?: string | null;
   uploading: boolean;
   onUpload: (file: File) => void;
   onSetHero: (id: string, url: string) => void;
+  onDelete: (id: string) => void;
+  deletingId: string | null;
 }) {
   const inputRef = React.useRef<HTMLInputElement>(null);
 
@@ -2980,6 +2828,11 @@ function EngagementPhotoGrid({
                 style={{ aspectRatio: "1 / 1" }}>
                 <img src={photo.fileUrl} alt="" className="w-full h-full object-cover" />
                 <div className="absolute inset-0 bg-black/0 group-hover:bg-black/25 transition-colors" />
+                <button type="button" onClick={() => onDelete(photo.id)} disabled={deletingId === photo.id}
+                  aria-label="Delete photo"
+                  className="absolute top-1.5 right-1.5 h-6 w-6 rounded-full bg-black/60 flex items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-opacity hover:bg-black/80 disabled:opacity-100">
+                  {deletingId === photo.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <X className="h-3 w-3" />}
+                </button>
                 {isHero ? (
                   <div className="absolute bottom-2 inset-x-2 text-center">
                     <span className="inline-block text-[10px] font-semibold px-2.5 py-1 rounded-full text-white"
@@ -3005,18 +2858,20 @@ function EngagementPhotoGrid({
           </button>
         </div>
       )}
-      <input ref={inputRef} type="file" accept="image/*" className="hidden"
+      <input ref={inputRef} type="file" accept="image/*,.heic,.heif" className="hidden"
         onChange={e => { const f = e.target.files?.[0]; if (f) onUpload(f); e.target.value = ""; }} />
     </>
   );
 }
 
 function InspirationBoard({
-  photos, uploading, onUpload,
+  photos, uploading, onUpload, onDelete, deletingId,
 }: {
   photos: ClientMedia[];
   uploading: boolean;
   onUpload: (file: File, category: string) => void;
+  onDelete: (id: string) => void;
+  deletingId: string | null;
 }) {
   const inputRef = React.useRef<HTMLInputElement>(null);
   const [activeFilter, setActiveFilter] = React.useState("all");
@@ -3108,6 +2963,12 @@ function InspirationBoard({
               <div key={photo.id} className="relative rounded-2xl overflow-hidden group"
                 style={{ aspectRatio: "1 / 1" }}>
                 <img src={photo.fileUrl} alt={cat?.label ?? ""} className="w-full h-full object-cover" />
+                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/15 transition-colors" />
+                <button type="button" onClick={() => onDelete(photo.id)} disabled={deletingId === photo.id}
+                  aria-label="Delete photo"
+                  className="absolute top-1.5 right-1.5 h-6 w-6 rounded-full bg-black/60 flex items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-opacity hover:bg-black/80 disabled:opacity-100">
+                  {deletingId === photo.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <X className="h-3 w-3" />}
+                </button>
                 {/* Category badge */}
                 {cat && activeFilter === "all" && (
                   <div className="absolute top-2 left-2">
@@ -3129,7 +2990,7 @@ function InspirationBoard({
           </button>
         </div>
       )}
-      <input ref={inputRef} type="file" accept="image/*" className="hidden"
+      <input ref={inputRef} type="file" accept="image/*,.heic,.heif" className="hidden"
         onChange={e => { const f = e.target.files?.[0]; if (f) handleFileSelect(f); e.target.value = ""; }} />
     </div>
   );
@@ -3466,6 +3327,37 @@ function OurStorySection({
     }
   }
 
+  // delete_couple_media already existed server-side with no caller anywhere
+  // in the app — every photo grid only ever let a couple add photos, never
+  // remove one they changed their mind about (client portal feedback,
+  // 2026-07-22). Optimistic removal, reverted if the delete call fails.
+  const [deletingPhotoId, setDeletingPhotoId] = React.useState<string | null>(null);
+  async function deletePhoto(mediaId: string) {
+    const base = profile ?? emptyProfile;
+    setDeletingPhotoId(mediaId);
+    try {
+      const res = await fetch("/api/portal/media", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token, mediaId }),
+      });
+      const data = await res.json() as { ok: boolean; error?: string };
+      if (data.ok) {
+        onProfileChange({
+          ...base,
+          engagementPhotos:  base.engagementPhotos.filter(p => p.id !== mediaId),
+          inspirationPhotos: base.inspirationPhotos.filter(p => p.id !== mediaId),
+        });
+      } else {
+        toast.error(data.error ?? "Could not delete this photo.");
+      }
+    } catch {
+      toast.error("Could not delete this photo.");
+    } finally {
+      setDeletingPhotoId(null);
+    }
+  }
+
   async function setHeroPhoto(mediaId: string, fileUrl: string) {
     const res  = await fetch("/api/portal/profile", {
       method: "PATCH",
@@ -3592,6 +3484,8 @@ function OurStorySection({
           uploading={uploadingCategory === "engagement"}
           onUpload={f => uploadPhoto(f, "engagement")}
           onSetHero={setHeroPhoto}
+          onDelete={deletePhoto}
+          deletingId={deletingPhotoId}
         />
       </section>
 
@@ -3609,6 +3503,8 @@ function OurStorySection({
           photos={inspoPhotos}
           uploading={!!uploadingCategory && uploadingCategory !== "engagement"}
           onUpload={(f, cat) => uploadPhoto(f, cat)}
+          onDelete={deletePhoto}
+          deletingId={deletingPhotoId}
         />
       </section>
 
@@ -3711,7 +3607,7 @@ function OurStorySection({
                   {uploadingPhoto ? "Uploading…" : "Add a photo"}
                 </button>
               )}
-              <input ref={photoInputRef} type="file" accept="image/*" className="hidden"
+              <input ref={photoInputRef} type="file" accept="image/*,.heic,.heif" className="hidden"
                 onChange={e => { const f = e.target.files?.[0]; if (f) uploadEntryPhoto(f); e.target.value = ""; }} />
             </div>
 
@@ -3814,7 +3710,7 @@ const SUPPORT_ACCESS_DURATIONS = [
   { hours: 72, label: "3 days" },
 ];
 
-function AccountSection({ venueName }: { venueName: string }) {
+function AccountSettingsPanel({ venueName }: { venueName: string }) {
   const [state, setState] = React.useState<AccountState | null>(null);
   const [loading, setLoading] = React.useState(true);
   const [newPassword, setNewPassword] = React.useState("");
@@ -3976,27 +3872,104 @@ function AccountSection({ venueName }: { venueName: string }) {
   );
 }
 
+// Program 4, Initiative D, Phase 1 (2026-07-23) — "People" (inviting
+// collaborators) isn't named in either of the directive's two nav lists;
+// it's access management, not venue-planning or wedding-personalization,
+// so it folds in here as a second tab rather than keeping its own
+// top-level nav slot. Same tab-switch pattern already used for Story/Journey.
+function AccountSection({ token, context, venueName }: { token: string; context: PortalContext; venueName: string }) {
+  const [tab, setTab] = React.useState<"account" | "people">("account");
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center gap-1 rounded-xl bg-muted/60 p-1 w-fit">
+        {(["account", "people"] as const).map((t) => (
+          <button key={t} type="button" onClick={() => setTab(t)}
+            className="px-3 py-1.5 text-sm font-medium rounded-lg transition-all"
+            style={{
+              color: tab === t ? SAGE : "#6A6460",
+              background: tab === t ? "var(--card)" : "transparent",
+              fontWeight: tab === t ? 600 : 400,
+            }}>
+            {t === "account" ? "Account" : "People"}
+          </button>
+        ))}
+      </div>
+      {tab === "account"
+        ? <AccountSettingsPanel venueName={venueName} />
+        : <OurPeopleSection token={token} context={context} />}
+    </div>
+  );
+}
+
 // ── Shell ─────────────────────────────────────────────────────────────────────
 
-const NAV_ITEMS: { id: PortalSection; icon: string; label: string; shortLabel?: string; available: boolean; group: "yours" | "venue" }[] = [
-  { id: "overview",  icon: "🏠", label: "Home",        available: true,  group: "yours" },
-  { id: "guests",    icon: "👥", label: "Guests",      available: true,  group: "yours" },
-  { id: "todos",     icon: "✨", label: "Plans",       available: true,  group: "yours" },
-  { id: "budget",    icon: "💰", label: "Budget",      available: true,  group: "yours" },
-  { id: "seating",   icon: "🪑", label: "Seating",     available: true,  group: "yours" },
-  { id: "website",   icon: "🌐", label: "Website",     available: true,  group: "yours" },
-  { id: "story",     icon: "💍", label: "Our Story",   shortLabel: "Story",  available: true,  group: "yours" },
-  { id: "journey",   icon: "📖", label: "Journey",     available: true,  group: "yours" },
-  { id: "people",    icon: "👤", label: "People",      available: true,  group: "yours" },
-  { id: "ask",       icon: "💗", label: "Ask Luv",     shortLabel: "Luv",    available: true,  group: "yours" },
-  { id: "account",   icon: "⚙️", label: "Account",     available: true,  group: "yours" },
-  { id: "requests",  icon: "📨", label: "Requests",    available: true,  group: "venue" },
-  { id: "guide",     icon: "🏛️", label: "Venue Guide", shortLabel: "Guide",  available: true,  group: "venue" },
-  { id: "tasks",     icon: "📋", label: "Tasks",       available: true,  group: "venue" },
-  { id: "timeline",  icon: "🕒", label: "Timeline",    available: true,  group: "venue" },
-  { id: "vendors",   icon: "🤝", label: "Vendors",     available: true,  group: "venue" },
-  { id: "payments",  icon: "💳", label: "Payments",    available: true,  group: "venue" },
-  { id: "messages",  icon: "💬", label: "Messages",    available: true,  group: "venue" },
+// Our Story and Journey were two separate nav destinations covering the same
+// idea (the couple's own narrative) — merged into one tab-switching entry
+// point so the primary nav can stay focused on the collaborative workspace.
+// Reuses both section components unchanged.
+function StoryAndJourneySection({
+  token, context, profile, onProfileChange, onNavigate, initialTab,
+}: {
+  token: string;
+  context: PortalContext;
+  profile: CoupleProfile | null;
+  onProfileChange: (p: CoupleProfile) => void;
+  onNavigate: (s: PortalSection) => void;
+  initialTab: "story" | "journey";
+}) {
+  const [tab, setTab] = React.useState<"story" | "journey">(initialTab);
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center gap-1 rounded-xl bg-muted/60 p-1 w-fit">
+        {(["story", "journey"] as const).map((t) => (
+          <button key={t} type="button" onClick={() => setTab(t)}
+            className="px-3 py-1.5 text-xs font-medium rounded-lg transition-all"
+            style={{
+              color: tab === t ? SAGE : "#6A6460",
+              background: tab === t ? "var(--card)" : "transparent",
+              fontWeight: tab === t ? 600 : 400,
+            }}>
+            {t === "story" ? "Our Story" : "Journey"}
+          </button>
+        ))}
+      </div>
+      {tab === "story"
+        ? <OurStorySection token={token} profile={profile} onProfileChange={onProfileChange} />
+        : <JourneySection token={token} context={context} onNavigate={onNavigate} />}
+    </div>
+  );
+}
+
+// Program 4, Initiative D, Phase 1 (2026-07-23) — "This is not a redesign
+// ... this is strictly about reorganizing and presenting the existing
+// experience correctly." Two groups, not one list with a label: "Your
+// Venue" (the collaborative planning relationship with the venue, always
+// first) and "Your Wedding" (personal planning tools, intentionally
+// secondary, after a visible divider). Order within each group is the
+// directive's own list verbatim. "People" (inviting collaborators) isn't
+// named in either of the directive's two lists — it's not a venue-planning
+// destination or a wedding-personalization tool, it's access management,
+// so it folds into Account as a second tab there (same move already made
+// for Story/Journey) rather than getting its own top-level slot outside
+// the two sanctioned categories.
+const NAV_ITEMS: { id: PortalSection; icon: string; label: string; shortLabel?: string; available: boolean; group: "venue" | "wedding" }[] = [
+  { id: "overview",  icon: "🏠", label: "Home",              available: true, group: "venue" },
+  { id: "tasks",     icon: "✅", label: "Tasks",             available: true, group: "venue" },
+  { id: "timeline",  icon: "🕒", label: "Timeline",          available: true, group: "venue" },
+  { id: "documents", icon: "📁", label: "Documents",         available: true, group: "venue" },
+  { id: "payments",  icon: "💳", label: "Payments",          available: true, group: "venue" },
+  { id: "messages",  icon: "💬", label: "Messages",          available: true, group: "venue" },
+  { id: "guide",     icon: "🏛️", label: "Venue Guide",       shortLabel: "Guide",   available: true, group: "venue" },
+  { id: "vendors",   icon: "🤝", label: "Preferred Vendors", shortLabel: "Vendors", available: true, group: "venue" },
+  { id: "website",   icon: "🌐", label: "Website",     available: true, group: "wedding" },
+  { id: "guests",    icon: "👥", label: "Guests",      available: true, group: "wedding" },
+  { id: "seating",   icon: "🪑", label: "Seating",     available: true, group: "wedding" },
+  { id: "budget",    icon: "💰", label: "Budget",      available: true, group: "wedding" },
+  { id: "story",     icon: "💍", label: "Our Story",   shortLabel: "Story", available: true, group: "wedding" },
+  { id: "todos",     icon: "✨", label: "Plans",       available: true, group: "wedding" },
+  { id: "ask",       icon: "💗", label: "Ask Luv",     shortLabel: "Luv",   available: true, group: "wedding" },
+  { id: "account",   icon: "⚙️", label: "Account",     available: true, group: "wedding" },
 ];
 
 export function PortalShell({
@@ -4066,7 +4039,7 @@ export function PortalShell({
 
   return (
     <div
-      className="min-h-screen flex flex-col"
+      className="h-screen flex flex-col overflow-hidden"
       style={{
         background: "var(--venue-neutral)",
         // Venue Brand Experience Phase 1 — the venue's own brand, cascading
@@ -4114,77 +4087,87 @@ export function PortalShell({
           </div>
         </div>
 
-        {/* Navigation */}
-        <div className="max-w-4xl mx-auto px-2 sm:px-4 overflow-x-auto scrollbar-hide">
-          <div className="flex items-center gap-0 py-0.5">
-            {/* Yours */}
-            <div className="flex items-center">
-              {NAV_ITEMS.filter(i => i.group === "yours").map(item => {
-                const isActive = activeSection === item.id;
-                return (
-                  <button key={item.id} type="button"
-                    onClick={() => item.available && setActiveSection(item.id)}
-                    className="relative flex-shrink-0 flex items-center gap-1.5 px-3 py-2.5 text-xs font-medium transition-all rounded-lg mx-0.5"
-                    style={{
-                      color: isActive ? SAGE : "#5A5550",
-                      background: isActive ? `color-mix(in srgb, var(--venue-primary) 7%, transparent)` : "transparent",
-                      fontWeight: isActive ? 600 : 400,
-                    }}>
-                    <span className="text-sm">{item.icon}</span>
-                    <span className="hidden sm:inline">{item.label}</span>
-                    <span className="sm:hidden text-[11px]">{item.shortLabel ?? item.label}</span>
-                  </button>
-                );
-              })}
-            </div>
+        {/* Navigation — Program 4, Initiative D, Phase 1 (2026-07-23):
+            "Create two clearly separated navigation groups... Do not
+            intermingle these two categories. The distinction should be
+            visually obvious." Two stacked rows, not one row with a label —
+            "Your Venue" always first and full-weight (this is the
+            collaborative planning relationship), "Your Wedding" second,
+            after a real horizontal rule, in a visibly quieter register
+            (smaller, lighter) — personal planning tools, intentionally
+            secondary. */}
+        <div className="max-w-4xl mx-auto px-2 sm:px-4">
+          {/* Your Venue */}
+          <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide py-1">
+            <span className="text-[9px] font-bold uppercase tracking-widest px-1.5 shrink-0 hidden sm:inline" style={{ color: SAGE }}>
+              Your Venue
+            </span>
+            {NAV_ITEMS.filter(i => i.group === "venue").map(item => {
+              const isActive = activeSection === item.id;
+              const badge = item.id === "tasks" && actionCount > 0 ? actionCount : 0;
+              return (
+                <button key={item.id} type="button"
+                  onClick={() => item.available && setActiveSection(item.id)}
+                  className="relative flex-shrink-0 flex items-center gap-1.5 px-3 py-2.5 text-sm font-medium transition-all rounded-lg"
+                  style={{
+                    color: !item.available ? "#8A837D" : isActive ? SAGE : "#3D3833",
+                    background: isActive ? `color-mix(in srgb, var(--venue-primary) 9%, transparent)` : "transparent",
+                    fontWeight: isActive ? 700 : 500,
+                  }}>
+                  <span className="text-sm">{item.icon}</span>
+                  <span className="hidden sm:inline">{item.label}</span>
+                  <span className="sm:hidden text-[11px]">{item.shortLabel ?? item.label}</span>
+                  {badge > 0 && (
+                    <span className="h-4 w-4 rounded-full text-[8px] font-bold text-white flex items-center justify-center"
+                      style={{ background: ROSE }}>{badge}</span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
 
-            {/* Divider */}
-            <div className="h-5 w-px mx-2 shrink-0" style={{ background: "#E0D8D0" }} />
+          {/* Visible divider between the two groups */}
+          <div className="h-px w-full" style={{ background: "#E0D8D0" }} />
 
-            {/* Venue */}
-            <div className="flex items-center">
-              <span className="text-[9px] font-semibold uppercase tracking-widest text-muted-foreground/50 px-1.5 shrink-0 hidden sm:inline">
-                Venue
-              </span>
-              {NAV_ITEMS.filter(i => i.group === "venue").map(item => {
-                const isActive = activeSection === item.id;
-                const badge = item.id === "tasks" && actionCount > 0 ? actionCount : 0;
-                return (
-                  <button key={item.id} type="button"
-                    onClick={() => item.available && setActiveSection(item.id)}
-                    className="relative flex-shrink-0 flex items-center gap-1.5 px-3 py-2.5 text-xs font-medium transition-all rounded-lg mx-0.5"
-                    style={{
-                      color: !item.available ? "#8A837D" : isActive ? SAGE : "#6A6460",
-                      background: isActive ? `color-mix(in srgb, var(--venue-primary) 7%, transparent)` : "transparent",
-                      fontWeight: isActive ? 600 : 400,
-                    }}>
-                    <span className="text-sm">{item.icon}</span>
-                    <span className="hidden sm:inline">{item.label}</span>
-                    <span className="sm:hidden text-[11px]">{item.shortLabel ?? item.label}</span>
-                    {badge > 0 && (
-                      <span className="h-4 w-4 rounded-full text-[8px] font-bold text-white flex items-center justify-center"
-                        style={{ background: ROSE }}>{badge}</span>
-                    )}
-                  </button>
-                );
-              })}
-            </div>
+          {/* Your Wedding — intentionally quieter: smaller text, lighter weight, no active tint */}
+          <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide py-0.5">
+            <span className="text-[9px] font-medium uppercase tracking-widest text-muted-foreground/45 px-1.5 shrink-0 hidden sm:inline">
+              Your Wedding
+            </span>
+            {NAV_ITEMS.filter(i => i.group === "wedding").map(item => {
+              const isActive = activeSection === item.id;
+              return (
+                <button key={item.id} type="button"
+                  onClick={() => item.available && setActiveSection(item.id)}
+                  className="relative flex-shrink-0 flex items-center gap-1.5 px-2.5 py-2 text-xs font-normal transition-all rounded-lg"
+                  style={{
+                    color: isActive ? SAGE : "#6A6460",
+                    background: isActive ? `color-mix(in srgb, var(--venue-primary) 6%, transparent)` : "transparent",
+                    fontWeight: isActive ? 600 : 400,
+                    opacity: isActive ? 1 : 0.82,
+                  }}>
+                  <span className="text-xs">{item.icon}</span>
+                  <span className="hidden sm:inline">{item.label}</span>
+                  <span className="sm:hidden text-[10px]">{item.shortLabel ?? item.label}</span>
+                </button>
+              );
+            })}
           </div>
         </div>
       </header>
 
       {/* ── Content ── */}
-      <main className="flex-1 min-h-0 w-full overflow-hidden flex flex-col">
+      <main className="flex-1 min-h-0 w-full overflow-y-auto flex flex-col">
         {/* Overview gets a full-canvas layout */}
         {isOverview ? (
           <div className="max-w-4xl mx-auto px-4 sm:px-6 py-6">
             {/* Desktop: 2-column hero layout */}
             <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-6 items-start">
               {/* Left: Hero + planning journey */}
-              <OverviewSection token={token} context={context} tasks={initialTasks} guestStats={guestStats} todoCount={todoCount} heroPhotoUrl={profile?.heroPhotoUrl ?? null} latestJournalEntry={profile?.latestJournalEntry ?? null} onNavigate={setActiveSection} />
+              <OverviewSection token={token} context={context} tasks={initialTasks} guestStats={guestStats} todoCount={todoCount} latestJournalEntry={profile?.latestJournalEntry ?? null} onNavigate={setActiveSection} />
               {/* Right: Quick actions sidebar (desktop only) */}
               <div className="hidden lg:flex flex-col gap-4">
-                <QuickActionsSidebar token={token} context={context} tasks={initialTasks} guestStats={guestStats} todoCount={todoCount} onNavigate={setActiveSection} recentActivity={recentActivity} showLuvIntro={showLuvIntro} onDismissLuvIntro={dismissLuvIntro} />
+                <QuickActionsSidebar token={token} context={context} onNavigate={setActiveSection} recentActivity={recentActivity} showLuvIntro={showLuvIntro} onDismissLuvIntro={dismissLuvIntro} />
               </div>
             </div>
           </div>
@@ -4200,19 +4183,21 @@ export function PortalShell({
           <div className="max-w-2xl mx-auto px-4 sm:px-6 py-6">
             {activeSection === "guests"    && <GuestPortalSection token={token} />}
             {activeSection === "todos"     && <TodoSection token={token} onCountChange={setTodoCount} eventDate={context.event?.eventDate} />}
-            {activeSection === "story"     && <OurStorySection token={token} profile={profile} onProfileChange={setProfile} />}
-            {activeSection === "journey"   && <JourneySection token={token} context={context} onNavigate={setActiveSection} />}
+            {(activeSection === "story" || activeSection === "journey") && (
+              <StoryAndJourneySection token={token} context={context} profile={profile} onProfileChange={setProfile} onNavigate={setActiveSection} initialTab={activeSection === "journey" ? "journey" : "story"} />
+            )}
             {activeSection === "people"    && <OurPeopleSection token={token} context={context} />}
-            {activeSection === "guide"     && <VenueGuidePortalSection token={token} context={context} />}
-            {activeSection === "tasks"     && <VenueTasksSection token={token} initialTasks={initialTasks} venueName={context.venue.name} />}
+            {activeSection === "guide"     && <VenueGuidePortalSection token={token} context={context} onNavigate={setActiveSection} />}
+            {activeSection === "tasks"     && <UnifiedTasksSection token={token} initialTasks={initialTasks} venueName={context.venue.name} onNavigate={setActiveSection} />}
+            {activeSection === "questionnaire" && <QuestionnairePortalSection token={token} />}
             {activeSection === "timeline"  && <TimelinePortalSection token={token} clientId={context.client.id} initialSections={initialTimelineSections} initialEntries={initialTimelineEntries} initialLastSubmittedAt={initialTimelineLastSubmittedAt} initialHasUnpublishedChanges={initialTimelineHasUnpublishedChanges} />}
             {activeSection === "vendors"   && <VendorPortalSection token={token} context={context} />}
             {activeSection === "budget"    && <BudgetPortalSection token={token} />}
             {activeSection === "ask"       && <LuvAskPortalSection token={token} onNavigateToGuide={() => setActiveSection("guide")} />}
-            {activeSection === "documents" && <CoupleDocumentsPortalSection token={token} />}
+            {activeSection === "documents" && <CoupleDocumentsPortalSection token={token} onNavigate={setActiveSection} />}
             {activeSection === "payments"  && <PaymentPortalSection token={token} />}
             {activeSection === "messages"  && <PortalMessageSection token={token} venueName={context.venue.name} />}
-            {activeSection === "account"   && <AccountSection venueName={context.venue.name} />}
+            {activeSection === "account"   && <AccountSection token={token} context={context} venueName={context.venue.name} />}
             {activeSection === "requests"  && <RequestsPortalSection token={token} onNavigate={setActiveSection} />}
           </div>
         )}
@@ -4229,125 +4214,461 @@ export function PortalShell({
 
 // ── Desktop Quick Actions Sidebar ─────────────────────────────────────────────
 
+// ── Key Dates card — venue-authored (Program 4, Initiative C, Phase 3):
+// "the couple should feel that the venue has already prepared everything
+// for them." Self-fetching like RequestsSummaryCard; renders nothing until
+// the venue has actually set at least one date.
+function KeyDatesCard({ token }: { token: string }) {
+  const [keyDates, setKeyDates] = React.useState<PortalKeyDate[] | null>(null);
+
+  React.useEffect(() => {
+    fetch(`/api/portal/key-dates?token=${token}`)
+      .then((r) => r.json())
+      .then((d: { keyDates?: PortalKeyDate[] }) => setKeyDates(d.keyDates ?? []));
+  }, [token]);
+
+  if (!keyDates || keyDates.length === 0) return null;
+
+  const today = new Date().toISOString().slice(0, 10);
+  const next = keyDates.find((k) => k.date >= today) ?? keyDates[0];
+  const upcoming = keyDates.filter((k) => k.id !== next.id).slice(0, 3);
+
+  return (
+    <div className="w-full rounded-2xl border bg-card p-5" style={{ borderColor: "#E8E3DC" }}>
+      <div className="flex items-center justify-between mb-3">
+        <span className="text-2xl">📅</span>
+      </div>
+      <p className="text-sm font-semibold text-heading leading-snug">{next.label}</p>
+      <p className="text-[11px] text-muted-foreground mt-1">
+        {new Date(next.date + "T12:00:00").toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}
+      </p>
+      {next.note && <p className="text-[11px] text-muted-foreground mt-1 leading-relaxed">{next.note}</p>}
+      {upcoming.length > 0 && (
+        <div className="mt-3 pt-3 border-t space-y-1.5" style={{ borderColor: "#E8E3DC" }}>
+          {upcoming.map((k) => (
+            <div key={k.id} className="flex items-center justify-between">
+              <span className="text-[11px] text-muted-foreground">{k.label}</span>
+              <span className="text-[11px] font-medium text-heading">
+                {new Date(k.date + "T12:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Program 4, Initiative D, Phase 4 (2026-07-23) — the four cards that sit
+// "immediately below the hero" and "represent the operational relationship
+// with the venue": Your Venue Team, Your Next Steps, Payments, Timeline.
+// Each is a small, self-contained card in the same visual language as the
+// sidebar cards above, so they read as one family. ─────────────────────────
+
+const ROLE_LABEL: Record<string, string> = { owner: "Owner", manager: "Venue Manager", coordinator: "Coordinator", staff: "Team" };
+
+function VenueTeamCard({ token, onNavigate }: { token: string; onNavigate: (s: PortalSection) => void }) {
+  const [team, setTeam] = React.useState<PortalVenueTeamMember[] | null>(null);
+
+  React.useEffect(() => {
+    fetch(`/api/portal/venue-team?token=${token}`)
+      .then((r) => r.json())
+      .then((d: { team?: PortalVenueTeamMember[] }) => setTeam(d.team ?? []));
+  }, [token]);
+
+  if (!team) return null;
+  const shown = team.slice(0, 3);
+
+  // "Meet Your Venue Team" — 2026-07-23: "It feels dramatically more
+  // welcoming" than a single name. Each member gets their own row with
+  // role and a real Email action (venue_staff.email); Message stays one
+  // shared button since messaging is a single venue-wide thread, not
+  // per-staff-member.
+  return (
+    <div className="rounded-2xl border bg-card p-5" style={{ borderColor: "#E8E3DC" }}>
+      <p className="text-[10px] font-semibold uppercase tracking-widest mb-3" style={{ color: SAGE }}>👋 Meet Your Venue Team</p>
+      {shown.length === 0 ? (
+        <p className="text-xs text-muted-foreground">Your venue team will appear here.</p>
+      ) : (
+        <div className="space-y-2.5">
+          {shown.map((m) => (
+            <div key={m.id} className="flex items-center gap-3">
+              <div className="h-9 w-9 rounded-full flex items-center justify-center text-xs font-bold text-white shrink-0" style={{ background: SAGE }}>
+                {m.fullName.split(" ").map((s) => s[0]).slice(0, 2).join("").toUpperCase()}
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-medium text-heading truncate">{m.fullName}</p>
+                <p className="text-[11px] text-muted-foreground">{m.title || ROLE_LABEL[m.role] || "Team"}</p>
+              </div>
+              {m.email && (
+                <a href={`mailto:${m.email}`} title={`Email ${m.fullName}`}
+                  className="shrink-0 h-7 w-7 rounded-lg border flex items-center justify-center hover:opacity-80"
+                  style={{ borderColor: "#E8E3DC", color: SAGE }}>
+                  ✉️
+                </a>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+      <button type="button" onClick={() => onNavigate("messages")}
+        className="mt-3.5 w-full text-xs font-semibold py-2 rounded-xl text-white transition-opacity hover:opacity-90"
+        style={{ background: SAGE }}>
+        💬 Message
+      </button>
+    </div>
+  );
+}
+
+// "The single most important dashboard card... it should never simply show
+// 'tasks.' It should answer: what do I need to do next?" (2026-07-23) —
+// reuses the exact same cross-system synthesis (buildUnifiedTaskList) the
+// Tasks page itself uses, so "Sign Contract"/"Pay Deposit"/"Complete
+// Questionnaire" all show up here even though none of them live in the
+// venue_tasks table. Everything already existed; it just wasn't surfaced
+// on the dashboard yet.
+function NextStepsCard({ token, tasks, onNavigate }: { token: string; tasks: PortalTask[]; onNavigate: (s: PortalSection) => void }) {
+  const [requests, setRequests] = React.useState<PortalRequestSummary[]>([]);
+  const [paymentSchedules, setPaymentSchedules] = React.useState<PaymentScheduleLite[]>([]);
+  const [questionnaire, setQuestionnaire] = React.useState<{ status: string } | null>(null);
+  const [documents, setDocuments] = React.useState<{ id: string; docType: string; name: string; status: string | null; signToken?: string | null }[]>([]);
+  const [loaded, setLoaded] = React.useState(false);
+
+  React.useEffect(() => {
+    Promise.all([
+      fetch(`/api/portal/requests?token=${token}`).then((r) => r.json()).catch(() => ({ requests: [] })),
+      fetch(`/api/portal/payments?token=${token}`).then((r) => r.json()).catch(() => ({ schedules: [] })),
+      fetch(`/api/portal/questionnaire?token=${token}`).then((r) => r.json()).catch(() => ({ questionnaire: null })),
+      fetch(`/api/portal/documents?token=${token}`).then((r) => r.json()).catch(() => ({ documents: [] })),
+    ]).then(([requestsRes, paymentsRes, questionnaireRes, documentsRes]) => {
+      setRequests(requestsRes.requests ?? []);
+      setPaymentSchedules(paymentsRes.schedules ?? []);
+      setQuestionnaire(questionnaireRes.questionnaire ? { status: questionnaireRes.questionnaire.status } : null);
+      setDocuments(documentsRes.documents ?? []);
+      setLoaded(true);
+    });
+  }, [token]);
+
+  const required = tasks.filter((t) => t.isRequired);
+  const readiness = required.length > 0
+    ? Math.round((required.filter((t) => t.status === "complete").length / required.length) * 100)
+    : 0;
+
+  const items = loaded ? buildUnifiedTaskList({
+    venueTasks: tasks, requests, paymentSchedules, questionnaire, documents,
+    timelineHasUnpublishedChanges: false,
+  }).slice(0, 5) : [];
+
+  return (
+    <div className="rounded-2xl border bg-card p-5" style={{ borderColor: "#E8E3DC" }}>
+      <div className="flex items-center justify-between mb-3">
+        <p className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: SAGE }}>✅ Your Next Steps</p>
+        {required.length > 0 && <span className="text-[11px] font-semibold text-muted-foreground">{readiness}%</span>}
+      </div>
+      {required.length > 0 && (
+        <div className="h-1.5 rounded-full bg-muted overflow-hidden mb-3">
+          <div className="h-full rounded-full" style={{ width: `${readiness}%`, background: SAGE }} />
+        </div>
+      )}
+      {!loaded ? (
+        <div className="space-y-1.5">
+          {[1, 2].map((i) => <div key={i} className="h-3.5 rounded-full bg-muted animate-pulse" style={{ width: `${70 - i * 10}%` }} />)}
+        </div>
+      ) : items.length === 0 ? (
+        <p className="text-xs text-muted-foreground">You&apos;re all caught up — nothing due right now.</p>
+      ) : (
+        <div className="space-y-1.5">
+          {items.map((t) => (
+            <p key={t.id} className="text-xs text-heading truncate flex items-center gap-1.5">
+              <Check className="h-3 w-3 shrink-0 opacity-40" /> {t.title}
+            </p>
+          ))}
+        </div>
+      )}
+      <button type="button" onClick={() => onNavigate("tasks")}
+        className="mt-3.5 w-full text-xs font-semibold py-2 rounded-xl text-white transition-opacity hover:opacity-90"
+        style={{ background: SAGE }}>
+        Open Tasks
+      </button>
+    </div>
+  );
+}
+
+type PaymentScheduleLite = { title: string; lineItems: { id: string; label: string; amount: number; dueDate: string | null; status: string }[] };
+
+function PaymentsCard({ token, onNavigate }: { token: string; onNavigate: (s: PortalSection) => void }) {
+  const [schedules, setSchedules] = React.useState<PaymentScheduleLite[] | null>(null);
+
+  React.useEffect(() => {
+    fetch(`/api/portal/payments?token=${token}`)
+      .then((r) => r.json())
+      .then((d: { schedules?: PaymentScheduleLite[] }) => setSchedules(d.schedules ?? []));
+  }, [token]);
+
+  if (!schedules) return null;
+  const lineItems = schedules.flatMap((s) => s.lineItems);
+  const outstanding = lineItems.filter((li) => li.status !== "paid");
+  const remaining = outstanding.reduce((sum, li) => sum + li.amount, 0);
+  const total = lineItems.reduce((sum, li) => sum + li.amount, 0);
+  const paidPct = total > 0 ? Math.round(((total - remaining) / total) * 100) : 0;
+  const next = outstanding.filter((li) => li.dueDate).sort((a, b) => (a.dueDate! < b.dueDate! ? -1 : 1))[0] ?? null;
+  const fmt = (n: number) => new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(n);
+
+  // Payments deserves prominence — "couples worry about money" (2026-07-23)
+  // — Remaining Balance, Next Payment + Due Date, Payment Plan Progress,
+  // Pay Now, all in one place.
+  return (
+    <div className="rounded-2xl border bg-card p-5" style={{ borderColor: "#E8E3DC" }}>
+      <p className="text-[10px] font-semibold uppercase tracking-widest mb-3" style={{ color: SAGE }}>💳 Payments</p>
+      {lineItems.length === 0 ? (
+        <p className="text-xs text-muted-foreground">Your payment schedule will appear here.</p>
+      ) : outstanding.length === 0 ? (
+        <p className="text-sm font-semibold text-heading">All paid up ✦</p>
+      ) : (
+        <>
+          <p className="font-heading text-2xl font-bold text-heading">{fmt(remaining)}</p>
+          <p className="text-[11px] text-muted-foreground mt-0.5">remaining balance</p>
+          {next && (
+            <p className="text-[11px] text-muted-foreground mt-2">
+              Next payment: {next.label} — due {new Date(next.dueDate! + "T12:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+            </p>
+          )}
+          <div className="mt-3">
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-[10px] text-muted-foreground">Payment plan progress</span>
+              <span className="text-[10px] font-semibold text-muted-foreground">{paidPct}%</span>
+            </div>
+            <div className="h-1.5 rounded-full bg-muted overflow-hidden">
+              <div className="h-full rounded-full" style={{ width: `${paidPct}%`, background: SAGE }} />
+            </div>
+          </div>
+        </>
+      )}
+      <button type="button" onClick={() => onNavigate("payments")}
+        className="mt-3.5 w-full text-xs font-semibold py-2 rounded-xl text-white transition-opacity hover:opacity-90"
+        style={{ background: SAGE }}>
+        {outstanding.length > 0 ? "Pay Now" : "View Payments"}
+      </button>
+    </div>
+  );
+}
+
+function TimelineCard({ token, onNavigate }: { token: string; onNavigate: (s: PortalSection) => void }) {
+  const [entries, setEntries] = React.useState<PortalTimelineEntry[] | null>(null);
+
+  React.useEffect(() => {
+    fetch(`/api/portal/timeline?token=${token}`)
+      .then((r) => r.json())
+      .then((d: { entries?: PortalTimelineEntry[] }) => setEntries(d.entries ?? []));
+  }, [token]);
+
+  if (!entries) return null;
+  const upcoming = [...entries].filter((e) => e.entryTime).sort((a, b) => (a.entryTime! < b.entryTime! ? -1 : 1)).slice(0, 2);
+
+  return (
+    <div className="rounded-2xl border bg-card p-5" style={{ borderColor: "#E8E3DC" }}>
+      <p className="text-[10px] font-semibold uppercase tracking-widest mb-3" style={{ color: SAGE }}>🕒 Timeline</p>
+      {upcoming.length === 0 ? (
+        <p className="text-xs text-muted-foreground">Your day-of schedule is being built with your venue.</p>
+      ) : (
+        <div className="space-y-1.5">
+          {upcoming.map((e) => (
+            <p key={e.id} className="text-xs text-heading">
+              <span className="font-semibold">{e.entryTime}</span> — {e.title}
+            </p>
+          ))}
+        </div>
+      )}
+      <button type="button" onClick={() => onNavigate("timeline")}
+        className="mt-3.5 w-full text-xs font-semibold py-2 rounded-xl text-white transition-opacity hover:opacity-90"
+        style={{ background: SAGE }}>
+        View Timeline
+      </button>
+    </div>
+  );
+}
+
+// The four cards together, as one grid — "these four cards should
+// represent the operational relationship with the venue," placed
+// immediately below the hero on both mobile and desktop (not sidebar-only).
+// "A single large planning progress bar... every completed task moves it,
+// every upload moves it, every payment moves it, every questionnaire moves
+// it. This becomes addictive." (2026-07-23) — one composite percentage
+// across every system that already tracks completion, not a new metric:
+// required venue tasks, payment line items, the questionnaire, and sent
+// contracts. Placed directly below the hero, above the four venue cards.
+function WeddingPlanningProgressCard({ token, tasks }: { token: string; tasks: PortalTask[] }) {
+  const [paymentSchedules, setPaymentSchedules] = React.useState<PaymentScheduleLite[] | null>(null);
+  const [questionnaire, setQuestionnaire] = React.useState<{ status: string } | null | undefined>(undefined);
+  const [documents, setDocuments] = React.useState<{ docType: string; status: string | null }[] | null>(null);
+
+  React.useEffect(() => {
+    fetch(`/api/portal/payments?token=${token}`).then((r) => r.json())
+      .then((d: { schedules?: PaymentScheduleLite[] }) => setPaymentSchedules(d.schedules ?? [])).catch(() => setPaymentSchedules([]));
+    fetch(`/api/portal/questionnaire?token=${token}`).then((r) => r.json())
+      .then((d: { questionnaire?: { status: string } | null }) => setQuestionnaire(d.questionnaire ?? null)).catch(() => setQuestionnaire(null));
+    fetch(`/api/portal/documents?token=${token}`).then((r) => r.json())
+      .then((d: { documents?: { docType: string; status: string | null }[] }) => setDocuments(d.documents ?? [])).catch(() => setDocuments([]));
+  }, [token]);
+
+  if (paymentSchedules === null || questionnaire === undefined || documents === null) return null;
+
+  const required = tasks.filter((t) => t.isRequired);
+  const paymentItems = paymentSchedules.flatMap((s) => s.lineItems);
+  const contracts = documents.filter((d) => d.docType === "contract" && (d.status === "sent" || d.status === "signed"));
+
+  let completed = 0;
+  let total = 0;
+  completed += required.filter((t) => t.status === "complete").length; total += required.length;
+  completed += paymentItems.filter((li) => li.status === "paid").length; total += paymentItems.length;
+  completed += contracts.filter((c) => c.status === "signed").length; total += contracts.length;
+  if (questionnaire) { total += 1; if (questionnaire.status === "submitted" || questionnaire.status === "completed") completed += 1; }
+
+  if (total === 0) return null;
+  const pct = Math.round((completed / total) * 100);
+
+  return (
+    <div className="rounded-2xl border bg-card p-5" style={{ borderColor: "#E8E3DC" }}>
+      <div className="flex items-center justify-between mb-2">
+        <p className="text-sm font-semibold text-heading">Wedding Planning Progress</p>
+        <span className="font-heading text-xl font-bold" style={{ color: SAGE }}>{pct}%</span>
+      </div>
+      <div className="h-3 rounded-full bg-muted overflow-hidden">
+        <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, background: `linear-gradient(90deg, var(--venue-primary), var(--venue-secondary))` }} />
+      </div>
+    </div>
+  );
+}
+
+function YourVenueCards({ token, tasks, onNavigate }: { token: string; tasks: PortalTask[]; onNavigate: (s: PortalSection) => void }) {
+  return (
+    <div className="space-y-2">
+      <p className="text-[10px] font-bold uppercase tracking-[0.2em]" style={{ color: SAGE }}>Your Venue</p>
+      <WeddingPlanningProgressCard token={token} tasks={tasks} />
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <VenueTeamCard token={token} onNavigate={onNavigate} />
+        <NextStepsCard token={token} tasks={tasks} onNavigate={onNavigate} />
+        <PaymentsCard token={token} onNavigate={onNavigate} />
+        <TimelineCard token={token} onNavigate={onNavigate} />
+      </div>
+    </div>
+  );
+}
+
+// Program 4, Initiative D, Phase 5 (2026-07-23) — "Only after the venue
+// section should the couple's own planning appear... These are engagement
+// tools. They should not compete visually with the venue relationship."
+// Quieter than YourVenueCards: smaller cards, muted icons, no white filled
+// buttons — a tap target, not an operational status card.
+const WEDDING_CARDS: { id: PortalSection; icon: string; label: string }[] = [
+  { id: "website", icon: "🌐", label: "Wedding Website" },
+  { id: "guests",  icon: "👥", label: "Guest List" },
+  { id: "budget",  icon: "💰", label: "Budget" },
+  { id: "seating", icon: "🪑", label: "Seating" },
+  { id: "todos",   icon: "✨", label: "Plans" },
+  { id: "story",   icon: "💍", label: "Our Story" },
+  { id: "ask",     icon: "💗", label: "Luv" },
+];
+
+// "I wouldn't leave Luv buried. Instead I'd give Luv one small card every
+// day... Tiny. Never overwhelming." (2026-07-23) — promoted out of the
+// desktop-only sidebar into the main dashboard flow. Tries specific,
+// real signals first (an upcoming key date within the week, an
+// unstarted questionnaire), then falls back to the existing mood-based
+// getLuvMessage() — never a blank or generic-feeling card.
+function LuvDailyCard({ token, du, guestTotal, readiness }: { token: string; du: number | null; guestTotal: number; readiness: number }) {
+  const [keyDates, setKeyDates] = React.useState<PortalKeyDate[] | null>(null);
+  const [questionnaire, setQuestionnaire] = React.useState<{ status: string } | null | undefined>(undefined);
+
+  React.useEffect(() => {
+    fetch(`/api/portal/key-dates?token=${token}`).then((r) => r.json())
+      .then((d: { keyDates?: PortalKeyDate[] }) => setKeyDates(d.keyDates ?? [])).catch(() => setKeyDates([]));
+    fetch(`/api/portal/questionnaire?token=${token}`).then((r) => r.json())
+      .then((d: { questionnaire?: { status: string } | null }) => setQuestionnaire(d.questionnaire ?? null)).catch(() => setQuestionnaire(null));
+  }, [token]);
+
+  if (keyDates === null || questionnaire === undefined) return null;
+
+  const today = new Date();
+  const inSevenDays = new Date(today.getTime() + 7 * 86400000);
+  const soonKeyDate = keyDates
+    .filter((k) => { const d = new Date(k.date + "T12:00:00"); return d >= today && d <= inSevenDays; })
+    .sort((a, b) => (a.date < b.date ? -1 : 1))[0] ?? null;
+
+  let message: string;
+  if (soonKeyDate) {
+    const weekday = new Date(soonKeyDate.date + "T12:00:00").toLocaleDateString("en-US", { weekday: "long" });
+    message = `Your ${soonKeyDate.label.toLowerCase()} is ${weekday}.`;
+  } else if (questionnaire && questionnaire.status !== "submitted" && questionnaire.status !== "completed") {
+    message = "Your questionnaire is ready whenever you'd like to fill it out.";
+  } else {
+    message = getLuvMessage(du, guestTotal, readiness);
+  }
+
+  return (
+    <div className="rounded-2xl px-4 py-3.5 flex items-start gap-2.5"
+      style={{ background: `${ROSE}08`, border: `1px solid ${ROSE}25` }}>
+      <span style={{ color: ROSE, fontSize: 15 }}>💗</span>
+      <p className="text-xs leading-relaxed" style={{ color: "#5A3235" }}>
+        <span className="font-semibold">Luv says…</span> "{message}"
+      </p>
+    </div>
+  );
+}
+
+function YourWeddingSection({ guestStats, todoCount, onNavigate }: { guestStats: GuestStats | null; todoCount: number; onNavigate: (s: PortalSection) => void }) {
+  const previewFor = (id: PortalSection): string | null => {
+    if (id === "guests" && guestStats?.total) return `${guestStats.total} guests`;
+    if (id === "todos" && todoCount > 0) return `${todoCount} on your list`;
+    return null;
+  };
+
+  return (
+    <div className="space-y-2">
+      <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-muted-foreground/50">Your Wedding</p>
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+        {WEDDING_CARDS.map((c) => (
+          <button key={c.id} type="button" onClick={() => onNavigate(c.id)}
+            className="rounded-xl border bg-card/60 px-3 py-3.5 text-left hover:bg-card hover:shadow-sm transition-all"
+            style={{ borderColor: "#EDE8E1" }}>
+            <p className="text-lg opacity-80">{c.icon}</p>
+            <p className="text-[11px] font-medium text-heading/85 mt-1.5 leading-snug">{c.label}</p>
+            {previewFor(c.id) && <p className="text-[10px] text-muted-foreground mt-0.5">{previewFor(c.id)}</p>}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function QuickActionsSidebar({
-  token, context, tasks, guestStats, todoCount, onNavigate, recentActivity,
+  token, context, onNavigate, recentActivity,
   showLuvIntro, onDismissLuvIntro,
 }: {
-  token: string; context: PortalContext; tasks: PortalTask[]; guestStats: GuestStats | null;
-  todoCount: number; onNavigate: (s: PortalSection) => void;
+  token: string; context: PortalContext;
+  onNavigate: (s: PortalSection) => void;
   recentActivity: RecentActivity | null;
   showLuvIntro: boolean; onDismissLuvIntro: () => void;
 }) {
-  const actionNeeded = tasks.filter(t => t.canComplete && t.status !== "complete");
-  const required = tasks.filter(t => t.isRequired);
-  const readinessScore = required.length > 0
-    ? Math.round(required.filter(t => t.status === "complete").length / required.length * 100)
-    : 0;
   const du = context.event ? daysUntil(context.event.eventDate) : null;
   const bracket = getSuggestionBracket(du);
-
-  const guestTotal = guestStats?.total ?? 0;
-  const activeMilestone = guestTotal > 0
-    ? GUEST_MILESTONES.find(m => guestTotal >= m && guestTotal < m + 5) ?? null
-    : null;
 
   return (
     <>
       {/* ── Requests summary (Wedding Workspace – Request Experience, Phase 1) ── */}
       <RequestsSummaryCard token={token} onNavigate={onNavigate} />
 
-      {/* ── Guest List card — aspiration-first, milestone-aware ── */}
-      <button type="button" onClick={() => onNavigate("guests")}
-        className="w-full text-left rounded-2xl border bg-card p-5 hover:shadow-sm transition-all group"
-        style={activeMilestone
-          ? { borderColor: `${ROSE}45`, background: `${ROSE}05` }
-          : { borderColor: "#E8E3DC" }}>
-        <div className="flex items-center justify-between mb-3">
-          <span className="text-2xl">{activeMilestone ? "🎉" : "👥"}</span>
-          {guestTotal > 0 && (
-            <span className="font-heading text-2xl font-bold text-heading">{guestTotal}</span>
-          )}
-        </div>
-        {guestTotal === 0 ? (
-          <>
-            <p className="text-sm font-semibold text-heading leading-snug">Build your celebration list.</p>
-            <p className="text-[11px] text-muted-foreground mt-1 leading-relaxed">Who will be there for your most important day?</p>
-          </>
-        ) : activeMilestone ? (
-          <>
-            <p className="text-sm font-semibold text-heading leading-snug">
-              {activeMilestone} guests — a beautiful milestone. 🎉
-            </p>
-            <p className="text-[11px] text-muted-foreground mt-1">
-              {guestStats?.attending ? `${guestStats.attending} confirmed` : "Your celebration is coming together."}
-            </p>
-          </>
-        ) : (
-          <>
-            <p className="text-sm font-semibold text-heading leading-snug">Your celebration is taking shape.</p>
-            <p className="text-[11px] text-muted-foreground mt-1">
-              {guestStats?.attending ? `${guestStats.attending} confirmed` : "Invitations on their way"}
-            </p>
-          </>
-        )}
-        <p className="text-[11px] font-semibold mt-3 group-hover:underline" style={{ color: SAGE }}>
-          {guestTotal === 0 ? "Start your guest list →" : "View guest list →"}
-        </p>
-      </button>
+      {/* ── Key Dates — venue-authored, Program 4 Initiative C Phase 3 ── */}
+      <KeyDatesCard token={token} />
 
-      {/* ── Planning card — aspiration-first ── */}
-      <button type="button" onClick={() => onNavigate("todos")}
-        className="w-full text-left rounded-2xl border bg-card p-5 hover:shadow-sm transition-all group"
-        style={{ borderColor: "#E8E3DC" }}>
-        <div className="flex items-center justify-between mb-3">
-          <span className="text-2xl">✨</span>
-          {todoCount > 0 && <span className="font-heading text-2xl font-bold text-heading">{todoCount}</span>}
-        </div>
-        {todoCount === 0 ? (
-          <>
-            <p className="text-sm font-semibold text-heading leading-snug">Capture every dream.</p>
-            <p className="text-[11px] text-muted-foreground mt-1 leading-relaxed">Your personal planning notebook — separate from venue tasks.</p>
-          </>
-        ) : (
-          <>
-            <p className="text-sm font-semibold text-heading leading-snug">Your plans are growing beautifully.</p>
-            <p className="text-[11px] text-muted-foreground mt-1">{todoCount === 1 ? "1 planning item" : `${todoCount} planning items`} on your list</p>
-          </>
-        )}
-        <p className="text-[11px] font-semibold mt-3 group-hover:underline" style={{ color: SAGE }}>
-          {todoCount === 0 ? "Open your plans →" : "View your plans →"}
-        </p>
-      </button>
-
-      {/* ── Venue Tasks card — aspiration-first ── */}
-      <button type="button" onClick={() => onNavigate("tasks")}
-        className="w-full text-left rounded-2xl border p-5 hover:shadow-sm transition-all group"
-        style={actionNeeded.length > 0
-          ? { borderColor: `${ROSE}45`, background: `${ROSE}05` }
-          : { borderColor: "#E8E3DC", background: "#FFFFFF" }}>
-        <div className="flex items-center justify-between mb-3">
-          <span className="text-2xl">📋</span>
-          {actionNeeded.length > 0 && (
-            <span className="text-xs font-semibold px-2.5 py-1 rounded-full text-white" style={{ background: ROSE }}>
-              {actionNeeded.length} pending
-            </span>
-          )}
-        </div>
-        {actionNeeded.length === 0 ? (
-          <>
-            <p className="text-sm font-semibold text-heading leading-snug">You're all caught up. ✓</p>
-            <p className="text-[11px] text-muted-foreground mt-1">Nothing waiting — enjoy the journey.</p>
-          </>
-        ) : (
-          <>
-            <p className="text-sm font-semibold text-heading leading-snug">Your venue is waiting on you.</p>
-            <p className="text-[11px] text-muted-foreground mt-1">{actionNeeded[0].title}</p>
-          </>
-        )}
-        <p className="text-[11px] font-semibold mt-3 group-hover:underline" style={{ color: actionNeeded.length > 0 ? ROSE_DEEP : SAGE }}>
-          {actionNeeded.length > 0 ? "Complete tasks →" : "Review tasks →"}
-        </p>
-      </button>
+      {/* Program 4, Initiative D, Phase 8/9 (2026-07-23): the Guest List,
+          Planning, and Venue Tasks cards that used to live here were
+          removed — YourVenueCards' Next Steps card and YourWeddingSection
+          (both now in the main column, on every breakpoint, not
+          desktop-sidebar-gated) already cover Tasks/Guests/Plans. Showing
+          the same status twice reads as clutter, not hospitality; this
+          sidebar's job now is purely the supplementary, inspirational
+          layer beneath that. */}
 
       {/* Coming Up */}
       <ComingUpCard bracket={bracket} onNavigate={onNavigate} />
@@ -4372,18 +4693,11 @@ function QuickActionsSidebar({
         />
       )}
 
-      {/* From Luv */}
-      <div className="rounded-2xl p-5 relative overflow-hidden"
-        style={{ background: `linear-gradient(135deg, ${ROSE}16 0%, ${ROSE}06 100%)`, border: `1px solid ${ROSE}28` }}>
-        <span className="absolute top-4 right-5 text-base" style={{ color: ROSE, opacity: 0.4 }}>✦</span>
-        <p className="text-[10px] font-semibold uppercase tracking-[0.2em] mb-2.5" style={{ color: ROSE_DEEP }}>💗 From Luv</p>
-        <p className="font-heading text-base sm:text-lg text-heading leading-relaxed italic">
-          "{getLuvMessage(du, guestStats?.total ?? 0, readinessScore)}"
-        </p>
-        <p className="mt-3 text-[10px] font-medium" style={{ color: ROSE_DEEP, opacity: 0.65 }}>
-          — Luv, your planning companion
-        </p>
-      </div>
+      {/* 2026-07-23: the sidebar's own "From Luv" quote card was removed —
+          LuvDailyCard now gives Luv one small, contextual card in the main
+          dashboard flow (every breakpoint, not desktop-sidebar-only);
+          showing the same getLuvMessage() text twice on desktop was
+          exactly the kind of clutter trimmed elsewhere on this pass. */}
 
       {/* Inspiration */}
       <InspirationCard bracket={bracket} />

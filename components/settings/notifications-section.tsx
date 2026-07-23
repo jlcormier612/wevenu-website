@@ -2,10 +2,9 @@
 
 import * as React from "react";
 
-import { Bell, CheckCircle2, Loader2, Mail, MessageSquare, Smartphone, } from "lucide-react";
+import { AlertTriangle, Bell, CheckCircle2, Loader2, Mail, MessageSquare, Smartphone, XCircle } from "lucide-react";
 import { toast } from "sonner";
 
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useSyncedState } from "@/lib/hooks/use-synced-state";
 
@@ -20,32 +19,45 @@ const CHANNEL_ICONS = {
   email: Mail, sms: Smartphone, in_app: Bell, push: MessageSquare,
 };
 
-function StatusChip({ label, count, variant }: { label: string; count: number; variant: "pending" | "sent" | "failed" }) {
+function StatCard({ label, count, tone }: { label: string; count: number; tone: "neutral" | "success" | "failed" }) {
   const colors = {
-    pending: "text-amber-700 bg-amber-50 border-amber-200",
-    sent:    "text-green-700 bg-green-50 border-green-200",
+    neutral: "text-foreground bg-muted/40 border-border",
+    success: "text-green-700 bg-green-50 border-green-200",
     failed:  "text-red-700 bg-red-50 border-red-200",
   };
   return (
-    <div className={`flex items-center gap-1.5 rounded-lg border px-3 py-2 ${colors[variant]}`}>
+    <div className={`flex items-center gap-1.5 rounded-lg border px-3 py-2 ${colors[tone]}`}>
       <span className="text-lg font-bold">{count}</span>
       <span className="text-xs font-medium">{label}</span>
     </div>
   );
 }
 
-export function NotificationsSection({ initialStats }: { initialStats: NotificationStats }) {
+/**
+ * Sprint 4 — Notification Experience UX Polish. The backend (scheduled
+ * messages, processed by a background worker) is unchanged; this is a
+ * terminology/framing pass only. Every label here answers one of the four
+ * questions a venue actually has — did it send, when will it send, is
+ * anything failing, is email working — never how the queue works.
+ */
+export function NotificationsSection({
+  initialStats, emailConfigured,
+}: {
+  initialStats: NotificationStats;
+  /** Whether an email provider is actually connected — answers "is email working?" directly. */
+  emailConfigured: boolean;
+}) {
   // See lib/hooks/use-synced-state.ts — sibling sections on this same flat
   // Settings page (VenueSpacesSection, TourSettingsSection) call
   // router.refresh() on save, which would otherwise leave these counts
   // stale without a full reload.
   const [stats, setStats] = useSyncedState(initialStats);
-  const [processing, setProcessing] = React.useState(false);
-  const [lastResult, setLastResult] = React.useState<{ processed: number; sent: number; failed: number } | null>(null);
+  const [sending, setSending] = React.useState(false);
 
-  async function handleProcess() {
-    setProcessing(true);
-    setLastResult(null);
+  const isHealthy = emailConfigured && stats.failedLast24h === 0;
+
+  async function handleSendNow() {
+    setSending(true);
     try {
       const secret = process.env.NEXT_PUBLIC_NOTIFICATIONS_SECRET;
       const res = await fetch("/api/notifications/process", {
@@ -53,8 +65,7 @@ export function NotificationsSection({ initialStats }: { initialStats: Notificat
         headers: secret ? { "x-notifications-secret": secret } : {},
       });
       const data = await res.json();
-      if (!res.ok) { toast.error(data.error ?? "Failed to process notifications."); return; }
-      setLastResult({ processed: data.processed, sent: data.sent, failed: data.failed });
+      if (!res.ok) { toast.error(data.error ?? "Couldn't check for reminders right now."); return; }
       setStats((p) => ({
         ...p,
         pendingReminders: Math.max(0, p.pendingReminders - data.sent - data.skipped),
@@ -62,49 +73,70 @@ export function NotificationsSection({ initialStats }: { initialStats: Notificat
         failedLast24h: p.failedLast24h + data.failed,
         lastProcessedAt: new Date().toISOString(),
       }));
-      if (data.sent > 0) toast.success(`${data.sent} notification${data.sent !== 1 ? "s" : ""} sent.`);
-      else toast.success("No pending notifications at this time.");
-      if (data.failed > 0) toast.error(`${data.failed} notification${data.failed !== 1 ? "s" : ""} failed to send.`);
-    } catch { toast.error("Could not reach the notification engine."); }
-    finally { setProcessing(false); }
+      if (data.sent > 0) toast.success(`${data.sent} reminder${data.sent !== 1 ? "s" : ""} sent.`);
+      else toast.success("Nothing was due to send.");
+      if (data.failed > 0) toast.error(`${data.failed} reminder${data.failed !== 1 ? "s" : ""} failed to send.`);
+    } catch { toast.error("Couldn't check for reminders right now."); }
+    finally { setSending(false); }
   }
 
   return (
     <div className="space-y-5">
+      {/* Delivery health — the one thing a venue needs to know at a glance */}
+      {!emailConfigured ? (
+        <div className="flex items-start gap-3 rounded-xl border border-red-200 bg-red-50 p-4">
+          <XCircle className="h-5 w-5 shrink-0 text-red-600 mt-0.5" />
+          <div>
+            <p className="text-sm font-medium text-red-900">Email isn&apos;t connected</p>
+            <p className="text-xs text-red-700 mt-0.5">Reminders can&apos;t send until an email provider is connected.</p>
+          </div>
+        </div>
+      ) : isHealthy ? (
+        <div className="flex items-start gap-3 rounded-xl border border-green-200 bg-green-50 p-4">
+          <CheckCircle2 className="h-5 w-5 shrink-0 text-green-600 mt-0.5" />
+          <div>
+            <p className="text-sm font-medium text-green-900">Email delivery is active</p>
+            <p className="text-xs text-green-700 mt-0.5">Notifications are sending automatically.</p>
+          </div>
+        </div>
+      ) : (
+        <div className="flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4">
+          <AlertTriangle className="h-5 w-5 shrink-0 text-amber-600 mt-0.5" />
+          <div>
+            <p className="text-sm font-medium text-amber-900">Some notifications failed to send</p>
+            <p className="text-xs text-amber-700 mt-0.5">
+              {stats.failedLast24h} failed delivery{stats.failedLast24h !== 1 ? "ies" : ""} in the last 24 hours. Hello to Cheers will keep retrying automatically.
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Stats */}
       <div className="flex flex-wrap gap-3">
-        <StatusChip label="pending" count={stats.pendingReminders} variant="pending" />
-        <StatusChip label="sent (24h)" count={stats.sentLast24h} variant="sent" />
-        {stats.failedLast24h > 0 && <StatusChip label="failed (24h)" count={stats.failedLast24h} variant="failed" />}
+        <StatCard label="scheduled" count={stats.pendingReminders} tone="neutral" />
+        <StatCard label="sent today" count={stats.sentLast24h} tone="success" />
+        {stats.failedLast24h > 0 && <StatCard label="failed" count={stats.failedLast24h} tone="failed" />}
       </div>
 
       {stats.lastProcessedAt && (
         <p className="text-xs text-muted-foreground">
-          Last processed: {new Date(stats.lastProcessedAt).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}
+          Last successful delivery: {new Date(stats.lastProcessedAt).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}
         </p>
       )}
 
-      {/* Manual trigger */}
+      {/* Manual send */}
       <div className="rounded-xl border border-border bg-muted/30 p-4 space-y-3">
         <div>
-          <p className="text-sm font-medium text-heading">Manual Processing</p>
+          <p className="text-sm font-medium text-heading">Send reminders now</p>
           <p className="text-xs text-muted-foreground mt-0.5">
-            Process all pending reminders now. In production, this runs automatically on a schedule.
+            Reminders normally send automatically. Use this if you don&apos;t want to wait.
           </p>
         </div>
-        <div className="flex items-center gap-3">
-          <Button type="button" size="sm" onClick={handleProcess} disabled={processing}>
-            {processing
-              ? <><Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />Processing…</>
-              : <><CheckCircle2 className="mr-1.5 h-3.5 w-3.5" />Process Now</>}
-          </Button>
-          {lastResult && (
-            <p className="text-xs text-muted-foreground">
-              {lastResult.processed} processed · {lastResult.sent} sent
-              {lastResult.failed > 0 ? ` · ${lastResult.failed} failed` : ""}
-            </p>
-          )}
-        </div>
+        <Button type="button" size="sm" onClick={handleSendNow} disabled={sending}>
+          {sending
+            ? <><Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />Sending…</>
+            : <><CheckCircle2 className="mr-1.5 h-3.5 w-3.5" />Send Now</>}
+        </Button>
       </div>
 
       {/* Channel overview */}
@@ -113,20 +145,20 @@ export function NotificationsSection({ initialStats }: { initialStats: Notificat
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
           {(["email", "sms", "in_app", "push"] as const).map((ch) => {
             const Icon = CHANNEL_ICONS[ch];
-            const isActive = ch === "email";
+            const isActive = ch === "email" && emailConfigured;
             return (
               <div key={ch} className={`flex items-center gap-2 rounded-lg border px-3 py-2.5 ${isActive ? "border-border bg-card" : "border-border/40 bg-muted/20 opacity-50"}`}>
                 <Icon className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
                 <div>
                   <p className="text-xs font-medium text-heading capitalize">{ch.replace("_", "-")}</p>
-                  <p className="text-[10px] text-muted-foreground">{isActive ? "Active" : "Future"}</p>
+                  <p className="text-[10px] text-muted-foreground">{isActive ? "Active" : "Coming soon"}</p>
                 </div>
               </div>
             );
           })}
         </div>
         <p className="text-[11px] text-muted-foreground">
-          Email is active in Sprint 44. SMS, in-app, and push notifications are architected and will be activated in future sprints based on recipient role and urgency.
+          Email is active today. SMS, in-app, and push notifications are coming soon.
         </p>
       </div>
     </div>

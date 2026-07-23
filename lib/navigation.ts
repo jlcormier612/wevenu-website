@@ -9,6 +9,7 @@ import {
   FileSignature,
   FileText,
   GitBranch,
+  GraduationCap,
   Inbox as InboxIcon,
   Info,
   LayoutDashboard,
@@ -58,11 +59,11 @@ export const NAV_SECTIONS: NavSection[] = [
   {
     label: "Pipeline",
     items: [
-      { title: "Prospects", href: "/leads", icon: Workflow },
+      { title: "Leads", href: "/leads", icon: Workflow },
     ],
   },
   {
-    label: "Bookings",
+    label: "Clients",
     items: [
       { title: "Clients", href: "/clients", icon: Users },
     ],
@@ -109,6 +110,7 @@ export const NAV_SECTIONS: NavSection[] = [
     items: [
       { title: "Settings",    href: "/settings",    icon: Settings },
       { title: "Venue Guide", href: "/guide",       icon: Info },
+      { title: "Success Library", href: "/success-library", icon: GraduationCap },
       { title: "Analytics",   href: "/analytics",   icon: TrendingUp },
       { title: "Operations",  href: "/operations",  icon: ShieldCheck },
       { title: "Requests", href: "/requests", icon: ListChecks },

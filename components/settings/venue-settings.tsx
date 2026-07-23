@@ -12,8 +12,11 @@ import {
   saveVenueInfoAction,
   saveVenueProfileAction,
   updateLogoAction,
+  updateHeroImageAction,
+  updateStoryAction,
 } from "@/app/(app)/settings/actions";
 import { ImageUpload } from "@/components/ui/image-upload";
+import { Textarea } from "@/components/ui/textarea";
 import {
   BrandStep,
   BusinessHoursStep,
@@ -205,10 +208,56 @@ export function VenueSettings({
         </CardContent>
       </Card>
 
+      {/* 4a.2 — Hero photo (Program 4, Initiative D, 2026-07-23): the same
+          image used in the couple's dashboard hero and the Venue Guide —
+          one upload, both places, so this is the only place it's set. */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg">Wedding Home Photo</CardTitle>
+          <CardDescription>
+            The large photo your couples see when they arrive at their Couple Workspace, and in their Venue Guide. A wide, well-lit shot of your venue works best.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <ImageUpload
+            currentUrl={input.heroImageUrl || null}
+            bucket="uploads"
+            path={`${venueId}/hero`}
+            label="Wedding home photo"
+            hint="Wide/landscape format. PNG or JPG, up to 5 MB."
+            onUpload={async (url) => {
+              set("heroImageUrl", url);
+              await updateHeroImageAction(url);
+              toast.success("Photo updated.");
+            }}
+            onRemove={async () => {
+              set("heroImageUrl", "");
+              await updateHeroImageAction(null);
+              toast.success("Photo removed.");
+            }}
+          />
+        </CardContent>
+      </Card>
+
+      {/* 4a.3 — Venue story, shown in the Venue Guide */}
+      <SettingsSection
+        title="Your Venue's Story"
+        description="A short welcome, in your own words — shown to couples in their Venue Guide."
+        onSave={async () => { await updateStoryAction(input.story); toast.success("Saved"); }}
+      >
+        <Textarea
+          value={input.story}
+          onChange={(e) => set("story", e.target.value)}
+          rows={4}
+          maxLength={1000}
+          placeholder="Tell couples what makes your venue special…"
+        />
+      </SettingsSection>
+
       {/* 4b — Brand settings (primary & secondary colors) */}
       <SettingsSection
         title="Brand colors"
-        description="Primary and secondary brand colors displayed throughout your workspace."
+        description="Primary, secondary, accent, and neutral brand colors displayed throughout your workspace."
         onSave={() => save(saveBrandAction)}
       >
         <BrandStep {...stepProps} />

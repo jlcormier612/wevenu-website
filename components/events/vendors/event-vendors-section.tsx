@@ -237,6 +237,9 @@ export function EventVendorsSection({
       {/* Assign form */}
       {showForm ? (
         <div className="rounded-lg border border-border bg-muted/30 p-4 space-y-3">
+          <p className="text-xs text-muted-foreground">
+            An internal note that this vendor is working this event — it doesn&apos;t give them portal access. Use Send Invite on the vendor&apos;s own page for that.
+          </p>
           {/* Vendor select */}
           <div className="space-y-1.5">
             <Label htmlFor="ev-vendor" className="text-xs">Vendor *</Label>

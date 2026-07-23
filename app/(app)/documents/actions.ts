@@ -38,7 +38,7 @@ export async function updateDocumentAction(
   documentId: string,
   entityType: DocumentEntityType,
   entityId: string,
-  patch: { name?: string; notes?: string; tags?: string[]; expiresAt?: string | null; category?: Document["category"] },
+  patch: { name?: string; notes?: string; tags?: string[]; expiresAt?: string | null; category?: Document["category"]; isCoupleVisible?: boolean },
 ): Promise<DocumentActionResult> {
   const result = await updateDocument(documentId, patch);
   if (result.ok) revalidatePath(entityPath(entityType, entityId));

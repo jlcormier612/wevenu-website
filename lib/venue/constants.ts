@@ -117,6 +117,7 @@ export function defaultBusinessHours(): BusinessHourInput[] {
  */
 export function createInitialSetupInput(prefillEmail = ""): VenueSetupInput {
   return {
+    onboardingPersona: null,
     name: "",
     businessName: "",
     email: prefillEmail,
@@ -133,6 +134,8 @@ export function createInitialSetupInput(prefillEmail = ""): VenueSetupInput {
     timezone: DEFAULT_TIMEZONE,
     businessHours: defaultBusinessHours(),
     logoUrl: "",
+    heroImageUrl: "",
+    story: "",
     primaryColor: DEFAULT_PRIMARY_COLOR,
     secondaryColor: DEFAULT_SECONDARY_COLOR,
     accentColor: "#B8AEA1",

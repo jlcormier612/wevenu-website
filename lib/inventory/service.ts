@@ -2,8 +2,10 @@
  * Inventory Foundation application service. Server-only.
  */
 import { createClient } from "@/integrations/supabase/server";
+import { createAdminClient } from "@/integrations/supabase/admin";
 import { isSupabaseConfigured } from "@/lib/env";
 import * as repo from "@/lib/inventory/repository";
+import { requireAdminUser } from "@/lib/hq/crm-service";
 import type {
   CreateInventoryCategoryResult,
   CreateInventoryItemResult,
@@ -46,6 +48,21 @@ export async function createCategory(name: string): Promise<CreateInventoryCateg
   return result as CreateInventoryCategoryResult;
 }
 
+/** White-Glove Migration (Hospitality Success Platform §2.2a step 4) — see createClientForVenue's doc comment for the pattern this mirrors. */
+export async function getCategoriesForVenue(venueId: string): Promise<InventoryCategory[]> {
+  const actor = await requireAdminUser();
+  if (!actor) return [];
+  return repo.getCategories(createAdminClient(), venueId);
+}
+
+export async function createCategoryForVenue(venueId: string, name: string): Promise<CreateInventoryCategoryResult> {
+  const actor = await requireAdminUser();
+  if (!actor) return { ok: false, message: "Not signed in as an HQ admin." };
+  if (!name.trim()) return { ok: false, message: "Category name is required." };
+  const categoryId = await repo.insertCategory(createAdminClient(), venueId, name);
+  return { ok: true, categoryId };
+}
+
 // ---- Items ----------------------------------------------------------------------
 
 export async function getItems(): Promise<InventoryItem[]> {
@@ -84,6 +101,23 @@ function validate(input: InventoryItemInput): string | null {
   return null;
 }
 
+/** Migration Center — mirrors lib/leads/service.ts's findActiveDuplicateLead(). */
+export async function findActiveDuplicateInventoryItem(name: string): Promise<{ id: string } | null> {
+  if (!isSupabaseConfigured) return null;
+  const venue = await getCurrentVenue();
+  if (!venue) return null;
+  const supabase = await createClient();
+  return repo.findActiveDuplicateInventoryItem(supabase, venue.id, name);
+}
+
+/** White-Glove Migration (Hospitality Success Platform §2.2a step 4) — see createClientForVenue's doc comment (lib/clients/service.ts) for the pattern this mirrors. */
+export async function findActiveDuplicateInventoryItemForVenue(venueId: string, name: string): Promise<{ id: string } | null> {
+  if (!isSupabaseConfigured) return null;
+  const actor = await requireAdminUser();
+  if (!actor) return null;
+  return repo.findActiveDuplicateInventoryItem(createAdminClient(), venueId, name);
+}
+
 export async function createItem(input: InventoryItemInput): Promise<CreateInventoryItemResult> {
   const error = validate(input);
   if (error) return { ok: false, message: error };
@@ -92,6 +126,16 @@ export async function createItem(input: InventoryItemInput): Promise<CreateInven
     return { ok: true, itemId } as CreateInventoryItemResult;
   });
   return result as CreateInventoryItemResult;
+}
+
+/** White-Glove Migration (Hospitality Success Platform §2.2a step 4) — see createClientForVenue's doc comment for the pattern this mirrors. */
+export async function createItemForVenue(venueId: string, input: InventoryItemInput): Promise<CreateInventoryItemResult> {
+  const actor = await requireAdminUser();
+  if (!actor) return { ok: false, message: "Not signed in as an HQ admin." };
+  const error = validate(input);
+  if (error) return { ok: false, message: error };
+  const itemId = await repo.insertItem(createAdminClient(), venueId, input);
+  return { ok: true, itemId };
 }
 
 export async function updateItem(id: string, input: InventoryItemInput): Promise<InventoryActionResult> {

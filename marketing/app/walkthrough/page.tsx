@@ -12,6 +12,8 @@ export const metadata: Metadata = {
 
 export default function WalkthroughPage() {
   const { walkthrough } = PLACEHOLDER;
+  // Embed when NEXT_PUBLIC_CALENDLY_URL is set in marketing/.env.local (restart required).
+  // Email LeadForm below still creates walkthrough_requested without Calendly.
   const calendlyUrl = process.env.NEXT_PUBLIC_CALENDLY_URL?.trim() || "";
 
   return (
@@ -23,7 +25,7 @@ export default function WalkthroughPage() {
       intro={walkthrough.body}
     >
       {calendlyUrl ? (
-        <div className="mx-auto max-w-3xl space-y-8">
+        <div className="mx-auto max-w-4xl space-y-8">
           <CalendlyEmbed url={calendlyUrl} />
           <p className="text-center text-sm text-[var(--forest-sage)]/70">
             Prefer email?{" "}

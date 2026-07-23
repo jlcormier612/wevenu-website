@@ -163,7 +163,7 @@ export function WeddingDaySeating({
     return (
       <div className="rounded-xl border border-dashed border-border py-16 text-center">
         <div className="text-3xl mb-3">🪑</div>
-        <p className="text-sm font-medium text-heading">No Wedding Workspace link exists for this couple yet.</p>
+        <p className="text-sm font-medium text-heading">No Client Workspace link exists for this client yet.</p>
         <p className="text-xs text-muted-foreground mt-1">Create one from the Client record to enable seating.</p>
       </div>
     );
@@ -205,12 +205,12 @@ export function WeddingDaySeating({
         </div>
       ) : data.submittedAt && (
         <p className="text-xs text-muted-foreground">
-          Submitted by {data.submittedBy === "venue" ? "your team" : "the couple"} · {new Date(data.submittedAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+          Submitted by {data.submittedBy === "venue" ? "your team" : "the client"} · {new Date(data.submittedAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
         </p>
       )}
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-xl font-semibold text-heading">Wedding Day Seating</h1>
+          <h1 className="text-xl font-semibold text-heading">Event Day Seating</h1>
           <p className="text-sm text-muted-foreground">{coupleName} — {eventName}</p>
         </div>
         <a
@@ -226,7 +226,7 @@ export function WeddingDaySeating({
         <div className="rounded-xl border border-dashed border-border py-16 text-center">
           <div className="text-3xl mb-3">🪑</div>
           <p className="text-sm font-medium text-heading">No floor plan is currently shared for seating.</p>
-          <p className="text-xs text-muted-foreground mt-1">Once a plan is shared and the couple seats guests, they&apos;ll show up here.</p>
+          <p className="text-xs text-muted-foreground mt-1">Once a plan is shared and the client seats guests, they&apos;ll show up here.</p>
         </div>
       ) : (
         <>

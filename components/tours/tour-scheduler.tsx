@@ -330,10 +330,11 @@ export function TourScheduler({ tourKey, venue }: { tourKey: string; venue: Tour
     if (!selectedSlot) return;
     setSubmitting(true);
     try {
+      const qrCampaignId = new URLSearchParams(window.location.search).get("qr");
       const res = await fetch("/api/tours/book", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ key: tourKey, slotStart: selectedSlot.start, ...fields, guestCount: fields.guestCount ? parseInt(fields.guestCount) : null, turnstileToken }),
+        body: JSON.stringify({ key: tourKey, slotStart: selectedSlot.start, ...fields, guestCount: fields.guestCount ? parseInt(fields.guestCount) : null, turnstileToken, qrCampaignId }),
       });
       const data = await res.json() as { ok: boolean; error?: string; scheduledAt?: string; duration?: number };
       if (!data.ok) { toast.error(data.error ?? "Could not complete booking. Please try again."); }

@@ -151,12 +151,12 @@ export function BookingOverviewSummary({
           linkHref="#vendors" linkLabel="Open Vendors"
         />
         <SummaryTile
-          title="Messages"
+          title="Conversation"
           lines={[
             lastConversationMessage ? `Last message: "${lastConversationMessage.body.length > 60 ? `${lastConversationMessage.body.slice(0, 60)}…` : lastConversationMessage.body}"` : "No messages yet",
             `${conversationUnread} unread`,
           ]}
-          linkHref="#messages" linkLabel="Open Messages"
+          linkHref="#messages" linkLabel="Open Conversation"
         />
         <SummaryTile
           title="Documents"

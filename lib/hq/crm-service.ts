@@ -7,7 +7,7 @@ import { isSupabaseConfigured } from "@/lib/env";
 import { getHqAdmin } from "@/lib/hq/service";
 import { recordEngagementEvent } from "@/lib/activation/service";
 
-async function requireAdminUser(): Promise<{ userId: string; name: string } | null> {
+export async function requireAdminUser(): Promise<{ userId: string; name: string } | null> {
   if (!isSupabaseConfigured) return null;
   const admin = await getHqAdmin();
   if (!admin) return null;
@@ -30,7 +30,10 @@ export async function addVenueNote(venueId: string, body: string): Promise<boole
   return !error;
 }
 
-export async function addVenueTask(venueId: string, title: string, dueDate: string | null): Promise<boolean> {
+export async function addVenueTask(
+  venueId: string, title: string, dueDate: string | null,
+  opts?: { kind?: "task" | "blocker"; engagementId?: string | null },
+): Promise<boolean> {
   const actor = await requireAdminUser();
   if (!actor || !title.trim()) return false;
   const supabase = await createClient();
@@ -40,6 +43,8 @@ export async function addVenueTask(venueId: string, title: string, dueDate: stri
     assigned_name: actor.name,
     title: title.trim(),
     due_date: dueDate,
+    kind: opts?.kind ?? "task",
+    engagement_id: opts?.engagementId ?? null,
   });
   return !error;
 }

@@ -12,6 +12,8 @@ import type {
   VendorTimelineEntry,
   VendorTask,
   VendorDocument,
+  VendorDocumentsByEvent,
+  VendorTimelineByEvent,
 } from "@/lib/vendor-portal/types";
 import type { VendorPersonalTask } from "@/lib/vendors/types";
 
@@ -250,4 +252,61 @@ export async function completeEventTask(taskId: string): Promise<VendorActionRes
   if (error) return { ok: false, message: error.message };
   if (!data?.ok) return { ok: false, message: "Could not complete this task." };
   return { ok: true };
+}
+
+/**
+ * Vendor Workspace Realignment, Phase 8 (2026-07-22) — the top-level
+ * Documents destination: every document/floor plan shared across every
+ * event the vendor is booked on, grouped by event, so the vendor never has
+ * to open each event individually to find what was shared. Reuses the same
+ * `documents`/`floor_plans` rows the per-event Documents tab already reads,
+ * fanned out via get_vendor_documents (same RPC pattern as get_vendor_events).
+ */
+export async function getVendorDocumentsAcrossEvents(): Promise<VendorDocumentsByEvent[]> {
+  if (!isSupabaseConfigured) return [];
+  const supabase = await createClient();
+
+  type Row = {
+    assignmentId: string; eventId: string; eventName: string; eventDate: string | null; venueName: string;
+    documents: { id: string; name: string; category: string; storageUrl: string; mimeType: string | null; notes: string | null }[];
+    floorPlans: { id: string; name: string }[];
+  };
+
+  const { data, error } = await supabase.rpc("get_vendor_documents");
+  if (error) throw error;
+  if (!data || "error" in data) return [];
+
+  return ((data.events ?? []) as Row[]).map((r) => ({
+    assignmentId: r.assignmentId, eventId: r.eventId, eventName: r.eventName, eventDate: r.eventDate, venueName: r.venueName,
+    documents: r.documents.map((d) => ({
+      id: d.id, name: d.name, category: d.category, storageUrl: d.storageUrl, mimeType: d.mimeType, notes: d.notes,
+    })),
+    floorPlans: r.floorPlans,
+  }));
+}
+
+/**
+ * Vendor Workspace Realignment, Phase 7 (2026-07-22) — the top-level
+ * Timeline destination: the vendor-visible timeline entries across every
+ * booked event, grouped by event. Reuses the same collaborative Timeline
+ * (timeline_entries, audiences @> array['vendors']) the per-event Timeline
+ * tab already reads.
+ */
+export async function getVendorTimelineAcrossEvents(): Promise<VendorTimelineByEvent[]> {
+  if (!isSupabaseConfigured) return [];
+  const supabase = await createClient();
+
+  type Row = {
+    assignmentId: string; eventId: string; eventName: string; eventDate: string | null; venueName: string;
+    entries: { id: string; time: string | null; title: string; description: string | null }[];
+  };
+
+  const { data, error } = await supabase.rpc("get_vendor_timeline");
+  if (error) throw error;
+  if (!data || "error" in data) return [];
+
+  return ((data.events ?? []) as Row[]).map((r) => ({
+    assignmentId: r.assignmentId, eventId: r.eventId, eventName: r.eventName, eventDate: r.eventDate, venueName: r.venueName,
+    entries: r.entries.map((e) => ({ id: e.id, time: e.time, title: e.title, description: e.description, audiences: ["vendors"] })),
+  }));
 }

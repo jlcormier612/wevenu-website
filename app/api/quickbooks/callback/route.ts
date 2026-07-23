@@ -13,14 +13,18 @@ import { QUICKBOOKS_TOKEN_URL } from "@/lib/quickbooks/config";
  * token.
  *
  * Flow:
- *  1. User clicks "Connect with QuickBooks" in Settings, or in the
- *     post-setup Financial Setup onboarding step.
+ *  1. User clicks "Connect with QuickBooks" in Settings, or in the Guided
+ *     Setup wizard's "payments" step (Hospitality Success Platform §1.2,
+ *     2026-07-22 — Financial Setup folded into the main step sequence).
  *  2. Redirected to Intuit: https://appcenter.intuit.com/connect/oauth2?...
  *  3. User authorizes → Intuit redirects here:
  *     /api/quickbooks/callback?code=xxx&realmId=yyy&state={venueId}:{returnTo}
  *  4. This route exchanges the code for tokens and stores them.
  *  5. Redirects back to wherever the connect flow started — /settings, or
- *     /setup?financial=1 for onboarding — with a success or error param.
+ *     plain /setup for onboarding, which naturally resumes at the
+ *     "payments" step via the wizard's existing setup_last_step
+ *     resumability (no ?financial=1 query param anymore — that separate
+ *     post-creation screen is gone) — with a success or error param.
  *     The `returnTo` half of `state` isn't itself trust-sensitive (it only
  *     picks which page shows the toast), so it's read even before the CSRF
  *     check below can run.
@@ -41,7 +45,6 @@ export async function GET(request: NextRequest) {
   const destinationUrl = stateReturnTo === "onboarding"
     ? new URL("/setup", origin)
     : new URL("/settings", origin);
-  if (stateReturnTo === "onboarding") destinationUrl.searchParams.set("financial", "1");
 
   if (error) {
     destinationUrl.searchParams.set("quickbooks_error", errorDescription ?? error);

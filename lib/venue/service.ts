@@ -123,6 +123,37 @@ export async function submitVenueSetup(
   }
 }
 
+/**
+ * Guided Setup — save progress mid-wizard, before the venue exists as a
+ * finished thing. Deliberately unvalidated (unlike submitVenueSetup): a
+ * partial, in-progress save is not held to "is this a complete venue"
+ * standards — whatever's filled in so far is written as-is, with
+ * setup_completed:false, so a venue that's abandoned mid-flow and returned
+ * to later resumes exactly where it left off instead of starting over.
+ * Fire-and-forget from the wizard's perspective; never blocks navigation.
+ */
+export async function saveSetupProgress(
+  input: VenueSetupInput,
+  lastStep: string,
+): Promise<{ ok: boolean; venueId?: string }> {
+  if (!isSupabaseConfigured) return { ok: false };
+  if (!input.name.trim()) return { ok: false }; // nothing to anchor a row to yet
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false };
+
+  try {
+    const venueId = await repository.insertVenueSetup(supabase, input, false, lastStep);
+    return { ok: true, venueId };
+  } catch (error) {
+    console.error("Could not save setup progress:", error);
+    return { ok: false };
+  }
+}
+
 // ---- Settings ---------------------------------------------------------------
 
 /**
@@ -162,6 +193,7 @@ function normalizeUrl(value: string): string {
 export async function getVenueSettings(): Promise<{
   input: VenueSetupInput;
   venueId: string;
+  setupLastStep: string | null;
 } | null> {
   if (!isSupabaseConfigured) return null;
   const supabase = await createClient();
@@ -173,6 +205,7 @@ export async function getVenueSettings(): Promise<{
   if (!details) return null;
   const { venue, hours, ownerName, ownerTitle, ownerEmail } = details;
   const input: VenueSetupInput = {
+    onboardingPersona: venue.onboardingPersona,
     name: venue.name,
     businessName: venue.businessName ?? "",
     email: venue.email ?? "",
@@ -189,6 +222,8 @@ export async function getVenueSettings(): Promise<{
     timezone: venue.timezone,
     businessHours: hours,
     logoUrl: venue.logoUrl ?? "",
+    heroImageUrl: venue.heroImageUrl ?? "",
+    story: venue.story ?? "",
     primaryColor: venue.primaryColor,
     secondaryColor: venue.secondaryColor,
     accentColor: venue.accentColor ?? "#B8AEA1",
@@ -200,7 +235,7 @@ export async function getVenueSettings(): Promise<{
     weekStartsOn: venue.weekStartsOn,
     stripeOnboardingStatus: venue.stripeOnboardingStatus,
   };
-  return { input, venueId: venue.id };
+  return { input, venueId: venue.id, setupLastStep: venue.setupLastStep };
 }
 
 /** Save: venue name, business name, contact details, and address. */
@@ -326,28 +361,28 @@ export async function updateVenueLogo(url: string | null): Promise<void> {
   await repository.updateVenueFields(supabase, venue.id, { logo_url: url ?? null });
 }
 
-/** Store a confirmed Stripe Connect account. */
-export async function connectStripeAccount(accountId: string): Promise<void> {
+/**
+ * Program 4, Initiative D (2026-07-23) — the same photo backs both the
+ * Couple Workspace hero and the Venue Guide, so it's one upload here, not
+ * two.
+ */
+export async function updateVenueHeroImage(url: string | null): Promise<void> {
   if (!isSupabaseConfigured) return;
   const supabase = await createClient();
   const venue = await getCurrentVenue();
   if (!venue) return;
-  await repository.updateVenueFields(supabase, venue.id, {
-    stripe_account_id: accountId,
-    stripe_onboarding_status: "connected",
-    stripe_charges_enabled: true,
-  });
+  await repository.updateVenueFields(supabase, venue.id, { hero_image_url: url ?? null });
 }
 
-/** Revoke the Stripe Connect account from the venue record. */
-export async function disconnectStripeAccount(): Promise<void> {
+export async function updateVenueStory(story: string): Promise<void> {
   if (!isSupabaseConfigured) return;
   const supabase = await createClient();
   const venue = await getCurrentVenue();
   if (!venue) return;
-  await repository.updateVenueFields(supabase, venue.id, {
-    stripe_account_id: null,
-    stripe_onboarding_status: "not_started",
-    stripe_charges_enabled: false,
-  });
+  await repository.updateVenueFields(supabase, venue.id, { story: story.trim() || null });
 }
+
+// connectStripeAccount()/disconnectStripeAccount() moved to
+// lib/stripe/service.ts (Sprint 4 — Venue Payment Processing), which reads
+// Stripe's real charges_enabled flag and calls Stripe's own deauthorize
+// endpoint, instead of the placeholder local-only versions that lived here.

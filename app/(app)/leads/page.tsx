@@ -20,7 +20,7 @@ export default async function LeadsPage() {
     <div className="space-y-6">
       <PageHeader
         title="Leads"
-        description="Manage inquiries and track them through your booking pipeline."
+        description="Manage leads and track them through your pipeline."
         actions={
           <div className="flex items-center gap-2">
             <Button variant="ghost" size="sm" render={<Link href="/library/pipeline-templates" />}>
@@ -28,7 +28,7 @@ export default async function LeadsPage() {
             </Button>
             <Button variant="outline" size="sm" render={<Link href="/leads/pipeline" />}>Board view</Button>
             <Button variant="outline" render={<Link href="/settings/import?type=leads" />}>Import Leads</Button>
-            <Button render={<Link href="/leads/new" />}>+ New Inquiry</Button>
+            <Button render={<Link href="/leads/new" />}>+ New Lead</Button>
           </div>
         }
       />

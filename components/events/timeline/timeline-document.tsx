@@ -62,7 +62,7 @@ export function TimelineDocument({
               />
             )}
             <div>
-              <p className="text-[10px] font-semibold uppercase tracking-widest opacity-70">Booking Timeline</p>
+              <p className="text-[10px] font-semibold uppercase tracking-widest opacity-70">Timeline</p>
               <p className="mt-0.5 text-xl font-bold">{venue.name}</p>
             </div>
           </div>

@@ -2,7 +2,7 @@
 
 import * as React from "react";
 
-import { AlertTriangle, Clock, Download, ExternalLink, Eye, FileText, Loader2, Pencil, Trash2, X } from "lucide-react";
+import { AlertTriangle, Clock, Download, ExternalLink, Eye, FileText, Loader2, Pencil, Share2, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 
 import { deleteDocumentAction, updateDocumentAction } from "@/app/(app)/documents/actions";
@@ -62,9 +62,24 @@ export function DocumentCard({
   const [expiresAt, setExpiresAt] = React.useState(doc.expiresAt ?? "");
   const [savePending, startSave] = React.useTransition();
   const [deletePending, startDelete] = React.useTransition();
+  const [sharePending, startShare] = React.useTransition();
   const [previewOpen, setPreviewOpen] = React.useState(false);
 
   const isImage = isImageMimeType(doc.mimeType);
+  // Sharing with the couple only makes sense for a document scoped to a
+  // specific client or their event — a venue-level or vendor document has
+  // no couple to share it with (Client Collaboration Workspace, 2026-07-22).
+  const canShareWithCouple = entityType === "client" || entityType === "event";
+
+  function handleToggleCoupleVisible() {
+    startShare(async () => {
+      const result = await updateDocumentAction(doc.id, entityType, entityId, { isCoupleVisible: !doc.isCoupleVisible });
+      if (result.ok) {
+        onUpdate(doc.id, { isCoupleVisible: !doc.isCoupleVisible });
+        toast.success(doc.isCoupleVisible ? "No longer shared with the couple." : "Shared — this now appears in their Documents.");
+      } else toast.error(result.message ?? "Could not update sharing.");
+    });
+  }
 
   function handleSave() {
     startSave(async () => {
@@ -162,6 +177,11 @@ export function DocumentCard({
         <div className="flex flex-wrap items-center gap-2">
           <p className="text-sm font-medium text-heading truncate">{doc.name}</p>
           <DocumentCategoryBadge category={doc.category} />
+          {canShareWithCouple && doc.isCoupleVisible && (
+            <span className="inline-flex items-center gap-1 rounded-full bg-success/15 px-2 py-0.5 text-[10px] font-semibold text-success">
+              <Share2 className="h-3 w-3" /> Shared with couple
+            </span>
+          )}
         </div>
         <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-muted-foreground">
           <span>{doc.fileName}</span>
@@ -180,6 +200,14 @@ export function DocumentCard({
 
       {/* Actions */}
       <div className="flex items-start gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+        {canShareWithCouple && (
+          <button type="button" onClick={handleToggleCoupleVisible} disabled={sharePending}
+            className={`rounded p-1.5 hover:bg-muted ${doc.isCoupleVisible ? "text-success hover:text-success" : "text-muted-foreground hover:text-foreground"}`}
+            aria-label={doc.isCoupleVisible ? "Stop sharing with couple" : "Share with couple"}
+            title={doc.isCoupleVisible ? "Shared with couple — click to unshare" : "Share with couple"}>
+            {sharePending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Share2 className="h-3.5 w-3.5" />}
+          </button>
+        )}
         {isImage ? (
           <button type="button" onClick={() => setPreviewOpen(true)}
             className="rounded p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground" aria-label="Preview">

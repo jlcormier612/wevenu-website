@@ -215,15 +215,41 @@ function toVendorProfileRow(input: VendorInput): Record<string, unknown> {
   };
 }
 
+/**
+ * Migration Center (Hospitality Success Platform §2.1) — ports Leads' dedup
+ * shape to Vendors. `vendors` is a global profile with no venue_id/is_active
+ * of its own (confirmed live, not assumed) — a venue's own directory is
+ * scoped through venue_vendor_relationships (status <> 'inactive'), so the
+ * dedup match has to join through that table. No first/last name concept
+ * here, so this matches on business name (case-insensitive) with an email
+ * fallback when given.
+ */
+export async function findActiveDuplicateVendor(
+  client: DbClient, venueId: string, businessName: string, email: string,
+): Promise<{ id: string } | null> {
+  const trimmedEmail = email.trim();
+  let q = client.from("venue_vendor_relationships")
+    .select("vendor_id, vendors!inner(id, business_name, email)")
+    .eq("venue_id", venueId)
+    .neq("status", "inactive");
+  q = trimmedEmail
+    ? q.ilike("vendors.email", trimmedEmail)
+    : q.ilike("vendors.business_name", businessName.trim());
+  const { data } = await q.limit(1).maybeSingle<{ vendor_id: string }>();
+  return data ? { id: data.vendor_id } : null;
+}
+
 export async function insertVendor(client: DbClient, venueId: string, input: VendorInput): Promise<string> {
   // The global vendor profile and the venue relationship used to be two
   // separate inserts — if the second failed, the first had already
   // committed, leaving an orphaned global vendor profile with no venue
   // relationship pointing at it. Same bug shape confirmed and fixed for
-  // Leads and Clients; this is the identical fix for Vendors. venueId
-  // isn't passed to the RPC — it resolves itself via
-  // current_user_venue_id(), the same RLS-backed source of truth every
-  // policy on these tables uses.
+  // Leads and Clients; this is the identical fix for Vendors. For a normal
+  // venue session, venueId isn't actually used by the RPC — it resolves
+  // itself via current_user_venue_id(). p_venue_id_override is always
+  // passed through too (White-Glove, 2026-07-22) — safe for every caller,
+  // honored only for a genuine service_role caller
+  // (20261141000000_white_glove_atomic_venue_override.sql).
   const { data, error } = await client.rpc("create_vendor_atomic", {
     payload: {
       businessName: input.businessName.trim(),
@@ -243,6 +269,7 @@ export async function insertVendor(client: DbClient, venueId: string, input: Ven
       notes: input.notes.trim(),
       specialPricingNote: input.specialPricingNote.trim(),
     },
+    p_venue_id_override: venueId,
   });
   if (error) throw error;
   return data as string;

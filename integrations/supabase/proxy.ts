@@ -38,6 +38,7 @@ const PUBLIC_PATHS = [
   "/api/facebook/webhook",           // Meta Lead Ads webhook — GET verification handshake + POST delivery, verifies its own signature
   "/api/facebook/sync/process",      // Facebook Lead Ads queue cron (vercel.json) — CRON_SECRET-guarded, not session-guarded
   "/api/facebook/reconcile/process", // Facebook Lead Ads reconciliation poll cron (vercel.json) — CRON_SECRET-guarded, not session-guarded
+  "/api/webhooks/stripe-connect",    // Stripe Connect webhook — no user session, verifies its own signature (Sprint 4)
 ];
 
 function isPublicPath(pathname: string): boolean {

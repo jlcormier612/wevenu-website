@@ -154,9 +154,11 @@ export function TimelineTemplateStarterPicker({
       );
       if (result.ok) {
         toast.success(
-          result.guessedCount > 0
-            ? `Imported ${result.itemCount} items — Luv estimated timing for ${result.guessedCount} of them, so double-check those first.`
-            : `Imported ${result.itemCount} items.`,
+          result.guessedCount === 0
+            ? `Imported ${result.itemCount} items.`
+            : result.aiStructured
+              ? `Imported ${result.itemCount} items — Luv estimated timing for ${result.guessedCount} of them, so double-check those first.`
+              : `Imported ${result.itemCount} items — timing wasn't detected for ${result.guessedCount} of them, marked for review below.`,
         );
         goToEditor(result.templateId);
       } else {

@@ -61,3 +61,26 @@ export type VendorDocument = {
   mimeType: string | null;
   notes: string | null;
 };
+
+export type VendorFloorPlanRef = { id: string; name: string };
+
+// Vendor Workspace Realignment, Phases 6-8 (2026-07-22) — cross-event
+// aggregations for the top-level Documents and Timeline nav destinations.
+export type VendorDocumentsByEvent = {
+  assignmentId: string;
+  eventId: string;
+  eventName: string;
+  eventDate: string | null;
+  venueName: string;
+  documents: VendorDocument[];
+  floorPlans: VendorFloorPlanRef[];
+};
+
+export type VendorTimelineByEvent = {
+  assignmentId: string;
+  eventId: string;
+  eventName: string;
+  eventDate: string | null;
+  venueName: string;
+  entries: VendorTimelineEntry[];
+};

@@ -284,7 +284,7 @@ function GroupedTaskList({
   if (tasks.length === 0) {
     return (
       <p className="text-sm text-muted-foreground py-4 text-center italic">
-        No wedding day tasks. Add tasks with the "Wedding Day" phase in the playbook editor.
+        No day-of tasks. Add tasks with the "event day" phase in the playbook editor.
       </p>
     );
   }
@@ -988,7 +988,7 @@ export function WeddingDayDashboard({
             <LiveTimeline entries={data?.timeline ?? []} onStatusChange={handleTimelineStatus} onDelay={handleDelay} />
           </Section>
 
-          <Section title="Wedding Day Tasks" emoji="✅">
+          <Section title="Day-of Tasks" emoji="✅">
             <GroupedTaskList tasks={data?.tasks ?? []} onComplete={handleTaskComplete} />
           </Section>
 

@@ -78,7 +78,7 @@ export default async function SeatingPrintPage({ params }: Props) {
 
       <div style={{ maxWidth: 800, margin: "0 auto", padding: "24px 16px" }}>
         <div className="no-print" style={{ display: "flex", justifyContent: "space-between", marginBottom: 16, alignItems: "center" }}>
-          <a href={`/events/${id}/seating`} style={{ fontSize: 14, color: "#5D6F5D", textDecoration: "none" }}>← Back to Wedding Day Seating</a>
+          <a href={`/events/${id}/seating`} style={{ fontSize: 14, color: "#5D6F5D", textDecoration: "none" }}>← Back to Event Day Seating</a>
           <PrintButton />
         </div>
 

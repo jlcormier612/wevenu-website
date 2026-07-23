@@ -1,11 +1,11 @@
 /**
  * Post-purchase product emails for Hello to Cheers enrollments.
  *
- * Policy (Project 3):
- * - Always send Welcome (or Founder Welcome when foundingMember).
- * - When Welcome Back was requested, also send Welcome Back acknowledgment
- *   (verification remains pending — Project 5).
- * - When White Glove, also send Kickoff + White Glove Scheduling.
+ * Policy (Customer Lifecycle Engine Phase 1):
+ * - Launch Yourself (self_guided): Welcome / Founder Welcome (+ Welcome Back ack).
+ *   Customer gets access; product sync may follow.
+ * - White Glove: White Glove Welcome only (no credentials). Kickoff/scheduling optional.
+ *   Do NOT send Launch Yourself welcome that implies product access.
  * - Payment receipt companion is registry-only; Stripe sends the official receipt.
  */
 
@@ -22,6 +22,9 @@ export type EnrollmentEmailContext = {
   welcomeBackRequested: boolean;
   onboardingType: "self_guided" | "white_glove" | "none" | string;
   schedulingUrl?: string | null;
+  /** e.g. "5–7 business days" */
+  implementationTimeline?: string | null;
+  activateUrl?: string | null;
 };
 
 function baseVars(ctx: EnrollmentEmailContext): EmailTemplateVars {
@@ -30,6 +33,8 @@ function baseVars(ctx: EnrollmentEmailContext): EmailTemplateVars {
     venueName: ctx.venueName,
     planName: ctx.planName,
     schedulingUrl: ctx.schedulingUrl ?? null,
+    implementationTimeline: ctx.implementationTimeline ?? null,
+    activateUrl: ctx.activateUrl ?? null,
   };
 }
 
@@ -46,6 +51,48 @@ export async function sendEnrollmentProductEmails(
   const results: RelationshipEmailResult[] = [];
   const isWhiteGlove = ctx.onboardingType === "white_glove";
 
+  if (isWhiteGlove) {
+    results.push(
+      await sendRelationshipEmail({
+        relationshipId: ctx.relationshipId,
+        to,
+        templateId: "white_glove_welcome",
+        vars,
+        meta: { trigger: "checkout.session.completed", white_glove: true },
+      }),
+    );
+
+    if (ctx.welcomeBackRequested) {
+      results.push(
+        await sendRelationshipEmail({
+          relationshipId: ctx.relationshipId,
+          to,
+          templateId: "welcome_back",
+          vars,
+          meta: {
+            trigger: "checkout.session.completed",
+            welcome_back: true,
+            white_glove: true,
+          },
+        }),
+      );
+    }
+
+    // Optional companion scheduling note (no credentials).
+    results.push(
+      await sendRelationshipEmail({
+        relationshipId: ctx.relationshipId,
+        to,
+        templateId: "kickoff",
+        vars,
+        meta: { trigger: "checkout.session.completed", white_glove: true },
+      }),
+    );
+
+    return results;
+  }
+
+  // Launch Yourself / self-guided
   results.push(
     await sendRelationshipEmail({
       relationshipId: ctx.relationshipId,
@@ -68,26 +115,49 @@ export async function sendEnrollmentProductEmails(
     );
   }
 
-  if (isWhiteGlove) {
-    results.push(
-      await sendRelationshipEmail({
-        relationshipId: ctx.relationshipId,
-        to,
-        templateId: "kickoff",
-        vars,
-        meta: { trigger: "checkout.session.completed", white_glove: true },
-      }),
-    );
-    results.push(
-      await sendRelationshipEmail({
-        relationshipId: ctx.relationshipId,
-        to,
-        templateId: "white_glove_scheduling",
-        vars,
-        meta: { trigger: "checkout.session.completed", white_glove: true },
-      }),
-    );
-  }
-
   return results;
+}
+
+/** Welcome Home after White Glove Launch Workspace. */
+export async function sendWelcomeHomeEmail(input: {
+  relationshipId: string;
+  customerEmail: string;
+  venueName: string;
+  firstName?: string | null;
+  activateUrl: string;
+}): Promise<RelationshipEmailResult | null> {
+  const to = input.customerEmail.trim();
+  if (!to) return null;
+  return sendRelationshipEmail({
+    relationshipId: input.relationshipId,
+    to,
+    templateId: "welcome_home",
+    vars: {
+      firstName: input.firstName,
+      venueName: input.venueName,
+      activateUrl: input.activateUrl,
+    },
+    meta: { trigger: "white_glove.launch_workspace" },
+  });
+}
+
+/** Reactivation email after payment success / manual reactivate. */
+export async function sendReactivationEmail(input: {
+  relationshipId: string;
+  customerEmail: string;
+  venueName: string;
+  firstName?: string | null;
+}): Promise<RelationshipEmailResult | null> {
+  const to = input.customerEmail.trim();
+  if (!to) return null;
+  return sendRelationshipEmail({
+    relationshipId: input.relationshipId,
+    to,
+    templateId: "account_reactivated",
+    vars: {
+      firstName: input.firstName,
+      venueName: input.venueName,
+    },
+    meta: { trigger: "lifecycle.reactivated" },
+  });
 }

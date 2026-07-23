@@ -172,7 +172,7 @@ export function defaultReminderForCategory(category: TaskCategory): number[] | n
 const R = { reminderBeforeDays: null, escalationAfterDays: null, notifyOnAssign: false, notifyOnComplete: false, dueDateRuleKind: "relative_to_event", actionType: null, actionLabel: null } as const;
 
 type SeedMilestone = { name: string; kind: import("@/lib/playbooks/types").MilestoneKind | null };
-type SeedTask = Omit<import("@/lib/playbooks/types").PlaybookTask, "id" | "templateId" | "venueId" | "createdAt" | "milestoneId"> & { milestoneIndex: number };
+type SeedTask = Omit<import("@/lib/playbooks/types").PlaybookTask, "id" | "templateId" | "venueId" | "createdAt" | "milestoneId" | "needsReview"> & { milestoneIndex: number; needsReview?: boolean };
 
 // ── Standard Wedding (Client Planning) — reference implementation ──
 // Every task is couple-owned by construction; the Client Planning editor

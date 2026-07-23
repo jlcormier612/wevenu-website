@@ -3,17 +3,23 @@
 import * as React from "react";
 
 import { useRouter } from "next/navigation";
-import { Loader2, Sparkles } from "lucide-react";
+import { Eye, Loader2, Pencil, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 
 import { createTemplateAction, importTemplateAction, updateTemplateAction } from "@/app/(app)/communication/templates/actions";
+import { TemplateAttachmentsField } from "@/components/communication/template-attachments-field";
+import { TemplatePreview } from "@/components/communication/template-preview";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { MESSAGE_MERGE_FIELDS, MESSAGE_TEMPLATE_CATEGORIES } from "@/lib/message-templates/constants";
-import type { MessageTemplate, MessageTemplateErrors, MessageTemplateInput } from "@/lib/message-templates/types";
+import type { Document } from "@/lib/documents/types";
+import type {
+  MessageTemplate, MessageTemplateAttachment, MessageTemplateErrors, MessageTemplateInput,
+} from "@/lib/message-templates/types";
 import type { ImportChannel } from "@/lib/luv/message-template-import";
 
 function buildInitial(template?: MessageTemplate | null): MessageTemplateInput {
@@ -30,12 +36,19 @@ function buildInitial(template?: MessageTemplate | null): MessageTemplateInput {
 // independently written per channel, never shared (§2.5, decided
 // 2026-07-13). Both sections are always visible; saving only requires at
 // least one to actually have content.
-export function TemplateForm({ template }: { template?: MessageTemplate | null }) {
+export function TemplateForm({
+  template, attachments = [], venueDocuments = [],
+}: {
+  template?: MessageTemplate | null;
+  attachments?: MessageTemplateAttachment[];
+  venueDocuments?: Document[];
+}) {
   const router = useRouter();
   const isEdit = !!template;
   const [input, setInput] = React.useState<MessageTemplateInput>(() => buildInitial(template));
   const [errors, setErrors] = React.useState<MessageTemplateErrors>({});
   const [pending, startTransition] = React.useTransition();
+  const [mode, setMode] = React.useState<"edit" | "preview">("edit");
 
   const [importOpen, setImportOpen] = React.useState(false);
   const [importText, setImportText] = React.useState("");
@@ -90,121 +103,147 @@ export function TemplateForm({ template }: { template?: MessageTemplate | null }
 
   return (
     <div className="space-y-6">
-      {!isEdit && (
-        <div className="rounded-lg border border-dashed border-border p-4">
-          {!importOpen ? (
-            <button
-              type="button"
-              onClick={() => setImportOpen(true)}
-              className="flex items-center gap-2 text-sm font-medium text-primary hover:underline"
-            >
-              <Sparkles className="h-4 w-4" />
-              Paste an existing message instead
-            </button>
-          ) : (
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <p className="text-sm font-medium text-heading">Paste a message you already send</p>
-                <button type="button" onClick={() => setImportOpen(false)} className="text-xs text-muted-foreground hover:text-foreground">
-                  Cancel
+      <Tabs value={mode} onValueChange={(v) => setMode(v as "edit" | "preview")}>
+        <TabsList>
+          <TabsTrigger value="edit"><Pencil className="mr-1.5 h-3.5 w-3.5" />Edit</TabsTrigger>
+          <TabsTrigger value="preview"><Eye className="mr-1.5 h-3.5 w-3.5" />Preview</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="edit" className="space-y-6">
+          {!isEdit && (
+            <div className="rounded-lg border border-dashed border-border p-4">
+              {!importOpen ? (
+                <button
+                  type="button"
+                  onClick={() => setImportOpen(true)}
+                  className="flex items-center gap-2 text-sm font-medium text-primary hover:underline"
+                >
+                  <Sparkles className="h-4 w-4" />
+                  Paste an existing message instead
                 </button>
-              </div>
-              <p className="text-xs text-muted-foreground">
-                Luv will organize it into the fields below for you to review — nothing is saved until you click Create.
-              </p>
-              <Textarea
-                value={importText} onChange={(e) => setImportText(e.target.value)}
-                placeholder="Paste your existing email or text message here…"
-                className="min-h-28 text-sm"
-              />
-              <div className="flex items-center gap-3">
-                <Select value={importChannel} onValueChange={(v) => setImportChannel(v as ImportChannel)}
-                  items={[{ value: "both", label: "Email + SMS" }, { value: "email", label: "Email only" }, { value: "sms", label: "SMS only" }]}>
-                  <SelectTrigger className="h-9 w-40 text-sm"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="both">Email + SMS</SelectItem>
-                    <SelectItem value="email">Email only</SelectItem>
-                    <SelectItem value="sms">SMS only</SelectItem>
-                  </SelectContent>
-                </Select>
-                <Button type="button" size="sm" onClick={handleImport} disabled={importing || !importText.trim()}>
-                  {importing ? <><Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />Reading…</> : "Propose with Luv"}
-                </Button>
-              </div>
+              ) : (
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm font-medium text-heading">Paste a message you already send</p>
+                    <button type="button" onClick={() => setImportOpen(false)} className="text-xs text-muted-foreground hover:text-foreground">
+                      Cancel
+                    </button>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Luv will organize it into the fields below for you to review — nothing is saved until you click Create.
+                  </p>
+                  <Textarea
+                    value={importText} onChange={(e) => setImportText(e.target.value)}
+                    placeholder="Paste your existing email or text message here…"
+                    className="min-h-28 text-sm"
+                  />
+                  <div className="flex items-center gap-3">
+                    <Select value={importChannel} onValueChange={(v) => setImportChannel(v as ImportChannel)}
+                      items={[{ value: "both", label: "Email + SMS" }, { value: "email", label: "Email only" }, { value: "sms", label: "SMS only" }]}>
+                      <SelectTrigger className="h-9 w-40 text-sm"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="both">Email + SMS</SelectItem>
+                        <SelectItem value="email">Email only</SelectItem>
+                        <SelectItem value="sms">SMS only</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <Button type="button" size="sm" onClick={handleImport} disabled={importing || !importText.trim()}>
+                      {importing ? <><Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />Reading…</> : "Propose with Luv"}
+                    </Button>
+                  </div>
+                </div>
+              )}
             </div>
           )}
-        </div>
-      )}
 
-      <div className="grid gap-4 sm:grid-cols-2">
-        <div className="space-y-1.5">
-          <Label htmlFor="tn">Template name *</Label>
-          <Input id="tn" value={input.name} onChange={(e) => set("name", e.target.value)}
-            placeholder="New Inquiry Reply" aria-invalid={errors.name ? true : undefined} />
-          {errors.name && <p className="text-xs text-destructive">{errors.name}</p>}
-        </div>
-        <div className="space-y-1.5">
-          <Label htmlFor="tcat">Category</Label>
-          <Select value={input.category} onValueChange={(v) => set("category", v as MessageTemplateInput["category"])} items={MESSAGE_TEMPLATE_CATEGORIES}>
-            <SelectTrigger id="tcat" className="h-9 text-sm"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              {MESSAGE_TEMPLATE_CATEGORIES.map((c) => <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>)}
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
-
-      <div className="grid gap-4 lg:grid-cols-3">
-        <div className="space-y-5 lg:col-span-2">
-          <div className="space-y-3 rounded-lg border border-border p-4">
-            <p className="text-sm font-semibold text-heading">Email</p>
+          <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-1.5">
-              <Label htmlFor="tes">Subject</Label>
-              <Input id="tes" value={input.emailSubject} onChange={(e) => set("emailSubject", e.target.value)}
-                placeholder="Thanks for reaching out!" aria-invalid={errors.emailSubject ? true : undefined} />
-              {errors.emailSubject && <p className="text-xs text-destructive">{errors.emailSubject}</p>}
+              <Label htmlFor="tn">Template name *</Label>
+              <Input id="tn" value={input.name} onChange={(e) => set("name", e.target.value)}
+                placeholder="New Inquiry Reply" aria-invalid={errors.name ? true : undefined} />
+              {errors.name && <p className="text-xs text-destructive">{errors.name}</p>}
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="teb">Body</Label>
-              <Textarea id="teb" value={input.emailBody} onChange={(e) => set("emailBody", e.target.value)}
-                rows={10} className="text-sm" aria-invalid={errors.emailBody ? true : undefined}
-                placeholder="Hi {{client_name}}, thank you for your interest in {{venue_name}}…" />
+              <Label htmlFor="tcat">Category</Label>
+              <Select value={input.category} onValueChange={(v) => set("category", v as MessageTemplateInput["category"])} items={MESSAGE_TEMPLATE_CATEGORIES}>
+                <SelectTrigger id="tcat" className="h-9 text-sm"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {MESSAGE_TEMPLATE_CATEGORIES.map((c) => <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>)}
+                </SelectContent>
+              </Select>
             </div>
           </div>
 
-          <div className="space-y-3 rounded-lg border border-border p-4">
-            <div className="flex items-center justify-between">
-              <p className="text-sm font-semibold text-heading">SMS</p>
-              <p className="text-xs text-muted-foreground">{input.smsBody.length} characters</p>
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="tsb">Body</Label>
-              <Textarea id="tsb" value={input.smsBody} onChange={(e) => set("smsBody", e.target.value)}
-                rows={4} className="text-sm" aria-invalid={errors.smsBody ? true : undefined}
-                placeholder="Hi {{client_name}}, this is {{venue_name}} — thanks for reaching out!" />
-            </div>
-          </div>
-          {errors.emailBody && !errors.emailSubject && (
-            <p className="text-xs text-destructive">{errors.emailBody}</p>
-          )}
-        </div>
-
-        <div className="space-y-3">
-          <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Merge fields</p>
-          <p className="text-xs text-muted-foreground">Same fields work in Email and SMS. They&apos;re replaced with real data when a message is sent.</p>
-          <div className="space-y-2">
-            {MESSAGE_MERGE_FIELDS.map((f) => (
-              <div key={f.key}
-                className="rounded-lg border border-border bg-muted/30 px-3 py-2 cursor-pointer hover:border-primary/40 transition-colors"
-                onClick={() => copyToken(f.key)}>
-                <p className="font-mono text-xs font-medium text-primary">{`{{${f.key}}}`}</p>
-                <p className="text-xs text-muted-foreground mt-0.5">{f.description}</p>
+          <div className="grid gap-4 lg:grid-cols-3">
+            <div className="space-y-5 lg:col-span-2">
+              <div className="space-y-3 rounded-lg border border-border p-4">
+                <p className="text-sm font-semibold text-heading">Email</p>
+                <div className="space-y-1.5">
+                  <Label htmlFor="tes">Subject</Label>
+                  <Input id="tes" value={input.emailSubject} onChange={(e) => set("emailSubject", e.target.value)}
+                    placeholder="Thanks for reaching out!" aria-invalid={errors.emailSubject ? true : undefined} />
+                  {errors.emailSubject && <p className="text-xs text-destructive">{errors.emailSubject}</p>}
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="teb">Body</Label>
+                  <Textarea id="teb" value={input.emailBody} onChange={(e) => set("emailBody", e.target.value)}
+                    rows={10} className="text-sm" aria-invalid={errors.emailBody ? true : undefined}
+                    placeholder="Hi {{client_name}}, thank you for your interest in {{venue_name}}…" />
+                </div>
               </div>
-            ))}
+
+              <div className="space-y-3 rounded-lg border border-border p-4">
+                <div className="flex items-center justify-between">
+                  <p className="text-sm font-semibold text-heading">SMS</p>
+                  <p className="text-xs text-muted-foreground">{input.smsBody.length} characters</p>
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="tsb">Body</Label>
+                  <Textarea id="tsb" value={input.smsBody} onChange={(e) => set("smsBody", e.target.value)}
+                    rows={4} className="text-sm" aria-invalid={errors.smsBody ? true : undefined}
+                    placeholder="Hi {{client_name}}, this is {{venue_name}} — thanks for reaching out!" />
+                </div>
+              </div>
+              {errors.emailBody && !errors.emailSubject && (
+                <p className="text-xs text-destructive">{errors.emailBody}</p>
+              )}
+
+              {isEdit ? (
+                <TemplateAttachmentsField
+                  templateId={template!.id}
+                  attachments={attachments}
+                  venueDocuments={venueDocuments}
+                  onChanged={() => router.refresh()}
+                />
+              ) : (
+                <p className="rounded-lg border border-dashed border-border p-4 text-xs italic text-muted-foreground">
+                  Save this template first to attach a brochure or other file.
+                </p>
+              )}
+            </div>
+
+            <div className="space-y-3">
+              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Merge fields</p>
+              <p className="text-xs text-muted-foreground">Same fields work in Email and SMS. They&apos;re replaced with real data when a message is sent.</p>
+              <div className="space-y-2">
+                {MESSAGE_MERGE_FIELDS.map((f) => (
+                  <div key={f.key}
+                    className="rounded-lg border border-border bg-muted/30 px-3 py-2 cursor-pointer hover:border-primary/40 transition-colors"
+                    onClick={() => copyToken(f.key)}>
+                    <p className="font-mono text-xs font-medium text-primary">{`{{${f.key}}}`}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">{f.description}</p>
+                  </div>
+                ))}
+              </div>
+              <p className="text-xs text-muted-foreground">Click any field to copy it to your clipboard.</p>
+            </div>
           </div>
-          <p className="text-xs text-muted-foreground">Click any field to copy it to your clipboard.</p>
-        </div>
-      </div>
+        </TabsContent>
+
+        <TabsContent value="preview">
+          <TemplatePreview input={input} attachments={attachments} />
+        </TabsContent>
+      </Tabs>
 
       <div className="flex items-center justify-end gap-3">
         <Button type="button" variant="outline" onClick={() => router.back()} disabled={pending}>Cancel</Button>

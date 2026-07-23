@@ -69,6 +69,23 @@ export async function getRequests(
   return (data ?? []).map(rowToRequest);
 }
 
+/**
+ * Daily Briefing §3.1 (2026-07-22) — every request for a venue, explicit
+ * venueId rather than session-resolved. Mirrors getContracts/getInvoices/
+ * getVenueDocuments' repository-level shape (client + venueId as
+ * parameters) so lib/luv/briefing-service.ts's getDailyBriefing(venueId)
+ * can call it the same way — a reusable service, not one bound to a
+ * coordinator's own browser session, per the plan's own "callable from
+ * chat, notifications, a future email digest" requirement.
+ */
+export async function getRequestsForVenue(
+  supabase: Awaited<ReturnType<typeof createClient>>, venueId: string,
+): Promise<Request[]> {
+  const { data } = await supabase.from("requests").select("*").eq("venue_id", venueId)
+    .order("due_date", { ascending: true, nullsFirst: false }).order("created_at", { ascending: false });
+  return (data ?? []).map(rowToRequest);
+}
+
 /** Batch lookup for callers (e.g. Planning) that hold a set of request ids and need current status/due date/etc. Keyed by request id. */
 export async function getRequestsByIds(requestIds: string[]): Promise<Record<string, Request>> {
   if (!isSupabaseConfigured || requestIds.length === 0) return {};

@@ -271,12 +271,12 @@ export function LeadList({ leads, pipelineStages = [], stageIdsByLead = {} }: { 
       {/* Empty state */}
       {leads.length === 0 && (
         <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border bg-card/40 py-16 text-center">
-          <p className="font-heading text-lg font-medium text-heading">No inquiries yet</p>
+          <p className="font-heading text-lg font-medium text-heading">No leads yet</p>
           <p className="mt-1 mb-4 text-sm text-muted-foreground">
-            When a client reaches out, add their inquiry here to start tracking it.
+            When a client reaches out, add them here to start tracking it.
           </p>
           <Button render={<Link href="/leads/new" />}>
-            + New Inquiry
+            + New Lead
           </Button>
         </div>
       )}

@@ -24,6 +24,93 @@ npm run dev:workspace
 
 (after the root `package.json` script is present)
 
+## Customer Lifecycle Engine (Phase 1)
+
+One Relationship. Status changes. Never duplicate. Everything appends to the timeline.
+
+### Purchase paths
+
+| Path | How |
+|------|-----|
+| **1 — Public pricing** | Marketing `/pricing` → Stripe Checkout (unchanged) |
+| **2 — Send Subscription Link** | Relationship → **Lifecycle actions** → creates Stripe Checkout Session with `relationship_id` metadata; email via `@shared/email` and/or copy URL. Does **not** send the public pricing page. |
+| **3 — Manual Subscription** | Owner/Admin records a subscription without Stripe (`manual: true`) then enters onboarding |
+
+### After purchase
+
+1. Status → `subscribed` (timeline: Subscription Purchased)
+2. Immediately enter onboarding:
+   - **Launch Yourself** (`self_guided`) → `onboarding`, activation token, Welcome / Founder Welcome, product sync
+   - **White Glove** → `white_glove_implementation`, 8-task checklist, **no** product access yet, White Glove Welcome (credentials deferred)
+3. Timeline also: Subscription Activated, Welcome Workflow Started, Onboarding Created (+ White Glove Implementation Started)
+
+### White Glove Implementation screen
+
+- Route: **`/relationships/[id]/implementation`** (team-only)
+- Link from Relationship Snapshot when WG applies
+- Checklist, branding/contracts/packages/questionnaires/website notes, internal notes
+- **Launch Workspace** when all 8 tasks complete (Owner/Admin override available)
+- On launch: status → `active`, product sync, **Welcome Home** email with Activate Account link
+
+### Lifecycle stages
+
+Inquiry · Walkthrough · Subscribed · Onboarding · White Glove Implementation · **Active** · At Risk · Suspended · Reactivated · Former Customer
+
+Aliases: `live` / `active_customer` → `active`.
+
+### Relationship Health (Snapshot)
+
+Lifecycle stage, last login, logins 30d, onboarding progress, website published, payment status, last customer/team activity, last communication, support requests, **health score 0–100** (heuristic).
+
+### Failed payment dunning
+
+Stripe `invoice.payment_failed` / `past_due` → days **0, 3, 7, 14, 21**:
+
+- Email reminders + timeline
+- Day 14 → At Risk + internal notify
+- Day 21 → Suspended (`accessDisabled`, data preserved)
+- Payment success → Reactivated + reactivation email
+
+Tick manually: `POST /api/relationships/lifecycle` with `{ "action": "tick_dunning" }` (Owner/Admin).
+
+### Owner actions (on Relationship detail)
+
+Send Subscription Link · Copy Link · Manual Subscription · Resend Welcome · Launch Workspace · Suspend / Reactivate · Send Payment Reminder · View Billing (Stripe portal)
+
+### Luv
+
+Health-based suggestions only (WG overdue, no login after activation, onboarding stalled, payment failed, inactive) — **never auto-acts**.
+
+### Settings
+
+**Settings → Customer Lifecycle — White Glove timeline** (default 5–7 business days) → `workspace/.data/lifecycle-settings.json`.
+
+### API
+
+`POST /api/relationships/lifecycle` — see action names in `app/api/relationships/lifecycle/route.ts`.
+
+### Jennifer test scripts
+
+**Path 2 — Send Subscription Link**
+
+1. Sign in as Jennifer · open a prospect Relationship with owner email
+2. Lifecycle actions → choose plan → **Send Subscription Link** (or Copy)
+3. Confirm timeline `Subscription Link Sent` + email_sent (or dry-run)
+4. Open the Checkout URL (not `/pricing`) · complete test payment in Stripe
+5. Confirm status moves Subscribed → Onboarding or White Glove Implementation
+
+**Launch Workspace**
+
+1. Open a White Glove Relationship → **White Glove Implementation**
+2. Complete the 8 checklist tasks (or use Owner Override)
+3. **Launch Workspace** → status Active · Welcome Home email · activation token on timeline
+
+**Dunning tick**
+
+1. Relationship with `paymentStatus` failed / dunning started (or simulate via Stripe webhook)
+2. `POST /api/relationships/lifecycle` `{ "action": "tick_dunning" }`
+3. Confirm reminder day advances + timeline Payment Reminder / At Risk / Suspended
+
 ## Project 7 — Luv (debut quality)
 
 Luv as **Chief of Staff** for Hello to Cheers — proactive advisor, suggestions-first. Not a chatbot. Never takes action without a click.
@@ -277,12 +364,13 @@ Relationship Operating System layer: **pipeline + automated workflows + communic
 
 Statuses (single field on one Relationship record):
 
-Inquiry → Walkthrough Requested → Walkthrough Scheduled → Walkthrough Completed → Trial → Subscribed → Onboarding → Live → Expansion → Referral → Renewal → Former Customer
+Inquiry → Walkthrough Requested → Walkthrough Scheduled → Walkthrough Completed → Trial → Subscribed → Onboarding → White Glove Implementation → **Active** → At Risk / Suspended / Reactivated → Expansion → Referral → Renewal → Former Customer
 
-- Legacy `active_customer` normalizes to **Live**.
+- Legacy `live` / `active_customer` normalize to **Active**.
 - **Support**, **Welcome Back**, and **Founder** are overlays on the same record (not separate CRM objects).
 - Relationships page defaults to a **pipeline board**; toggle **List** for the table view.
 - Moving a stage writes a timeline event and may auto-enroll workflows triggered on `status_enter`.
+- See **Customer Lifecycle Engine (Phase 1)** above for purchase paths, WG Launch, dunning, and health.
 
 ### Communication Library
 

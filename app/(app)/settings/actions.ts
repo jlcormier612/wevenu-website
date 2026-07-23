@@ -63,18 +63,36 @@ export async function saveOwnerAction(
 }
 
 import {
+  updateVenueLogo,
+  updateVenueHeroImage,
+  updateVenueStory,
+} from "@/lib/venue/service";
+import {
   connectStripeAccount,
   disconnectStripeAccount,
-  updateVenueLogo,
-} from "@/lib/venue/service";
+  updateAcceptedPaymentMethods,
+} from "@/lib/stripe/service";
+import type { StripeActionResult } from "@/lib/stripe/types";
+import type { StripePaymentMethodType } from "@/lib/venue/types";
 import {
   connectQuickBooksAccount,
   disconnectQuickBooksAccount,
+  retryQuickBooksSync,
 } from "@/lib/quickbooks/service";
-import type { QuickBooksActionResult } from "@/lib/quickbooks/types";
+import type { QuickBooksActionResult, QuickBooksEntityType } from "@/lib/quickbooks/types";
 
 export async function updateLogoAction(url: string | null): Promise<void> {
   await updateVenueLogo(url);
+  revalidatePath("/", "layout");
+}
+
+export async function updateHeroImageAction(url: string | null): Promise<void> {
+  await updateVenueHeroImage(url);
+  revalidatePath("/", "layout");
+}
+
+export async function updateStoryAction(story: string): Promise<void> {
+  await updateVenueStory(story);
   revalidatePath("/", "layout");
 }
 
@@ -84,10 +102,17 @@ export async function connectStripeAction(accountId: string): Promise<void> {
   revalidatePath("/", "layout");
 }
 
-export async function disconnectStripeAction(): Promise<void> {
-  await disconnectStripeAccount();
+export async function disconnectStripeAction(): Promise<StripeActionResult> {
+  const result = await disconnectStripeAccount();
   revalidatePath("/settings");
   revalidatePath("/", "layout");
+  return result;
+}
+
+export async function updateAcceptedPaymentMethodsAction(methods: StripePaymentMethodType[]): Promise<StripeActionResult> {
+  const result = await updateAcceptedPaymentMethods(methods);
+  revalidatePath("/settings");
+  return result;
 }
 
 export async function connectQuickBooksAction(input: {
@@ -104,6 +129,12 @@ export async function connectQuickBooksAction(input: {
 
 export async function disconnectQuickBooksAction(): Promise<QuickBooksActionResult> {
   const result = await disconnectQuickBooksAccount();
+  revalidatePath("/settings");
+  return result;
+}
+
+export async function retryQuickBooksSyncAction(entityType: QuickBooksEntityType, entityId: string): Promise<QuickBooksActionResult> {
+  const result = await retryQuickBooksSync(entityType, entityId);
   revalidatePath("/settings");
   return result;
 }

@@ -3,6 +3,7 @@
  * Pure types — no framework or database imports.
  */
 import type { Lead } from "@/lib/leads/types";
+import type { LuvBriefing } from "@/lib/luv/briefing-types";
 
 /** Lead with a computed "why it needs attention" reason string. */
 export type AttentionLead = Lead & {
@@ -85,6 +86,12 @@ export type OnboardingStep = {
   timeEstimate?: string;
   ctaLabel?: string;
   ctaHref?: string;
+  // Luv's Success Library §4.2 (2026-07-22) — a secondary "read more" link
+  // when a published article is tagged for this gap. Never the primary
+  // CTA — "let's do this together" always comes first, per the plan's own
+  // "Luv is a companion, not documentation" rule.
+  articleTitle?: string;
+  articleHref?: string;
 };
 
 export type OnboardingStatus = {
@@ -113,6 +120,7 @@ export type DashboardData = {
   ownerFirstName: string | null;
   todayIso: string;
   onboarding: OnboardingStatus;
+  briefing: LuvBriefing;
   // ---- pipeline (leads) ----
   needsAttention: AttentionLead[];
   followupsDue: Lead[];

@@ -23,7 +23,7 @@ export const welcomeTemplate: EmailTemplateDefinition = {
       `Hi ${name},`,
       `Welcome to Hello to Cheers. We're glad ${venue} is here.`,
       `Your ${plan} subscription is active. You can take your time with setup — we'll keep the path clear and the noise low.`,
-      `If you need anything, just reply to this email. We're listening.`,
+      `Activate your workspace when you're ready. If you need anything, just reply to this email. We're listening.`,
       `Start here: ${marketingUrl("/product")}`,
     ];
     const text = paragraphs.join("\n\n");
@@ -198,6 +198,180 @@ export const whiteGloveSchedulingTemplate: EmailTemplateDefinition = {
       html: wrapHelloHtml("Schedule Kickoff", paragraphsToHtml(paragraphs)),
       preview: previewFromText(text),
       timelineTitle: "White Glove Scheduling Email Sent",
+    };
+  },
+};
+
+export const whiteGloveWelcomeTemplate: EmailTemplateDefinition = {
+  id: "white_glove_welcome",
+  name: "White Glove Welcome",
+  description:
+    "Welcome after White Glove purchase — no credentials; sets expectation for implementation window.",
+  status: "live",
+  render(vars) {
+    const name = firstName(vars);
+    const venue = venueName(vars);
+    const plan = planName(vars);
+    const timeline =
+      String(vars.implementationTimeline || "").trim() || "5–7 business days";
+    const subject = `White Glove is underway — ${venue}`;
+    const paragraphs = [
+      `Hi ${name},`,
+      `Thank you for choosing White Glove for ${venue}. Your ${plan} subscription is confirmed.`,
+      `Our Implementation team is preparing your workspace — branding, packages, contracts, questionnaires, and website — with care. You won't receive login credentials yet; we'll invite you when everything is ready.`,
+      `Typical timeline: about ${timeline}. We'll keep you posted and may reach out if we need a logo, contracts, or a quick decision.`,
+      `Questions? Just reply — we're right here.`,
+    ];
+    const text = paragraphs.join("\n\n");
+    return {
+      subject,
+      text,
+      html: wrapHelloHtml("White Glove Welcome", paragraphsToHtml(paragraphs)),
+      preview: previewFromText(text),
+      timelineTitle: "White Glove Welcome Email Sent",
+    };
+  },
+};
+
+export const welcomeHomeTemplate: EmailTemplateDefinition = {
+  id: "welcome_home",
+  name: "Welcome Home",
+  description:
+    "Sent when White Glove Implementation launches the workspace — includes Activate Account link.",
+  status: "live",
+  render(vars) {
+    const name = firstName(vars);
+    const venue = venueName(vars);
+    const activateUrl =
+      String(vars.activateUrl || "").trim() || marketingUrl("/product");
+    const subject = `Welcome home — activate ${venue}`;
+    const paragraphs = [
+      `Hi ${name},`,
+      `Your White Glove setup for ${venue} is complete. Welcome home.`,
+      `Activate your account here: ${activateUrl}`,
+      `Everything we've prepared is waiting for you. If anything feels unclear, reply to this email — Implementation and Customer Success are still close by.`,
+    ];
+    const text = paragraphs.join("\n\n");
+    return {
+      subject,
+      text,
+      html: wrapHelloHtml("Welcome Home", paragraphsToHtml(paragraphs)),
+      preview: previewFromText(text),
+      timelineTitle: "Welcome Home Email Sent",
+    };
+  },
+};
+
+export const paymentReminderTemplate: EmailTemplateDefinition = {
+  id: "payment_reminder",
+  name: "Payment Reminder",
+  description: "Failed-payment dunning reminder with optional billing portal link.",
+  status: "live",
+  render(vars) {
+    const name = firstName(vars);
+    const venue = venueName(vars);
+    const day = String(vars.dunningDay ?? "0");
+    const portalUrl = String(vars.billingPortalUrl || "").trim();
+    const subject = `Action needed: update payment for ${venue}`;
+    const paragraphs = [
+      `Hi ${name},`,
+      `We weren't able to process the latest payment for ${venue}'s Hello to Cheers subscription.`,
+      portalUrl
+        ? `Please update your payment method here: ${portalUrl}`
+        : `Please update your payment method from the billing email Stripe sent, or reply and we'll help.`,
+      Number(day) >= 14
+        ? `Your account is at risk of suspension if payment isn't resolved soon. Your data remains safe.`
+        : `No action needed if you've already updated your card — thank you.`,
+    ];
+    const text = paragraphs.join("\n\n");
+    return {
+      subject,
+      text,
+      html: wrapHelloHtml("Payment reminder", paragraphsToHtml(paragraphs)),
+      preview: previewFromText(text),
+      timelineTitle: `Payment Reminder Email Sent (Day ${day})`,
+    };
+  },
+};
+
+export const accountSuspendedTemplate: EmailTemplateDefinition = {
+  id: "account_suspended",
+  name: "Account Suspended",
+  description: "Day-21 suspension notice — access disabled, data preserved.",
+  status: "live",
+  render(vars) {
+    const name = firstName(vars);
+    const venue = venueName(vars);
+    const portalUrl = String(vars.billingPortalUrl || "").trim();
+    const subject = `Access paused for ${venue}`;
+    const paragraphs = [
+      `Hi ${name},`,
+      `We've paused access to Hello to Cheers for ${venue} because payment is still unresolved.`,
+      `Your data is preserved. Update your payment method to restore access${portalUrl ? `: ${portalUrl}` : "."}`,
+      `Reply anytime — we're here to help you get back online.`,
+    ];
+    const text = paragraphs.join("\n\n");
+    return {
+      subject,
+      text,
+      html: wrapHelloHtml("Access paused", paragraphsToHtml(paragraphs)),
+      preview: previewFromText(text),
+      timelineTitle: "Suspension Email Sent",
+    };
+  },
+};
+
+export const accountReactivatedTemplate: EmailTemplateDefinition = {
+  id: "account_reactivated",
+  name: "Account Reactivated",
+  description: "Welcome-back style note after payment success or manual reactivation.",
+  status: "live",
+  render(vars) {
+    const name = firstName(vars);
+    const venue = venueName(vars);
+    const subject = `Welcome back — ${venue} is active again`;
+    const paragraphs = [
+      `Hi ${name},`,
+      `Good news: access for ${venue} is restored. Welcome back.`,
+      `Everything you had before is still here. If you need a hand settling back in, just reply.`,
+    ];
+    const text = paragraphs.join("\n\n");
+    return {
+      subject,
+      text,
+      html: wrapHelloHtml("Welcome back", paragraphsToHtml(paragraphs)),
+      preview: previewFromText(text),
+      timelineTitle: "Reactivation Email Sent",
+    };
+  },
+};
+
+export const subscriptionLinkTemplate: EmailTemplateDefinition = {
+  id: "subscription_link",
+  name: "Subscription Link",
+  description: "Owner/Sales sends a Stripe Checkout link for an existing Relationship.",
+  status: "live",
+  render(vars) {
+    const name = firstName(vars);
+    const venue = venueName(vars);
+    const plan = planName(vars);
+    const checkoutUrl =
+      String(vars.checkoutUrl || "").trim() || marketingUrl("/pricing");
+    const subject = `Your Hello to Cheers subscription link — ${venue}`;
+    const paragraphs = [
+      `Hi ${name},`,
+      `Here's your personal checkout link for ${venue} (${plan}):`,
+      checkoutUrl,
+      `This link takes you straight to secure checkout — no need to start from the public pricing page.`,
+      `Questions before you subscribe? Just reply.`,
+    ];
+    const text = paragraphs.join("\n\n");
+    return {
+      subject,
+      text,
+      html: wrapHelloHtml("Subscription link", paragraphsToHtml(paragraphs)),
+      preview: previewFromText(text),
+      timelineTitle: "Subscription Link Email Sent",
     };
   },
 };

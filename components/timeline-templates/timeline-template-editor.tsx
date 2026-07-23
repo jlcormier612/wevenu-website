@@ -12,7 +12,7 @@
 
 import * as React from "react";
 
-import { GripVertical, Loader2, Pencil, Plus, Trash2 } from "lucide-react";
+import { AlertTriangle, GripVertical, Loader2, Pencil, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { addItemAction, deleteItemAction, reorderItemsAction, updateItemAction } from "@/app/(app)/timeline-templates/actions";
@@ -27,13 +27,13 @@ import type { TimelineTemplateItem, TimelineTemplateItemInput } from "@/lib/time
 import type { TimelineAudience } from "@/lib/timeline/types";
 
 function emptyForm(sortOrder: number): TimelineTemplateItemInput {
-  return { title: "", description: null, notes: null, timeOfDay: null, minutesOffset: null, audiences: ["venue"], sortOrder };
+  return { title: "", description: null, notes: null, timeOfDay: null, minutesOffset: null, needsReview: false, audiences: ["venue"], sortOrder };
 }
 
 function itemToForm(item: TimelineTemplateItem): TimelineTemplateItemInput {
   return {
     title: item.title, description: item.description, notes: item.notes,
-    timeOfDay: item.timeOfDay, minutesOffset: item.minutesOffset,
+    timeOfDay: item.timeOfDay, minutesOffset: item.minutesOffset, needsReview: item.needsReview,
     audiences: item.audiences, sortOrder: item.sortOrder,
   };
 }
@@ -80,24 +80,28 @@ export function TimelineTemplateEditor({ templateId, initialItems }: { templateI
   async function handleSave() {
     if (!form.title.trim()) return;
     setSaving(true);
+    // Saving through this form is itself the review — a coordinator who
+    // opened an imported item and clicked Save has looked at its timing,
+    // whether or not they changed it. needsReview always clears here.
+    const reviewed = { ...form, needsReview: false };
     if (editingId) {
-      const result = await updateItemAction(editingId, templateId, form);
+      const result = await updateItemAction(editingId, templateId, reviewed);
       setSaving(false);
       if (result.ok) {
-        setItems((p) => p.map((it) => (it.id === editingId ? { ...it, ...form, description: form.description, notes: form.notes } : it)));
+        setItems((p) => p.map((it) => (it.id === editingId ? { ...it, ...reviewed, description: reviewed.description, notes: reviewed.notes } : it)));
         setSheetOpen(false);
       } else {
         toast.error(result.message ?? "Could not save item.");
       }
     } else {
-      const result = await addItemAction(templateId, form);
+      const result = await addItemAction(templateId, reviewed);
       setSaving(false);
       if (result.ok && result.itemId) {
         const now = new Date().toISOString();
         setItems((p) => [...p, {
-          id: result.itemId!, templateId, venueId: "", title: form.title, description: form.description,
-          notes: form.notes, timeOfDay: form.timeOfDay, minutesOffset: form.minutesOffset,
-          audiences: form.audiences, sortOrder: form.sortOrder, createdAt: now, updatedAt: now,
+          id: result.itemId!, templateId, venueId: "", title: reviewed.title, description: reviewed.description,
+          notes: reviewed.notes, timeOfDay: reviewed.timeOfDay, minutesOffset: reviewed.minutesOffset, needsReview: false,
+          audiences: reviewed.audiences, sortOrder: reviewed.sortOrder, createdAt: now, updatedAt: now,
         }]);
         setSheetOpen(false);
       } else {
@@ -158,7 +162,9 @@ export function TimelineTemplateEditor({ templateId, initialItems }: { templateI
                 onDragOver={(e) => handleDragOver(e, index)}
                 onDrop={() => handleDrop(index)}
                 onDragEnd={handleDragEnd}
-                className={`flex items-start gap-3 rounded-xl border bg-card p-3 transition-colors ${dragOverIndex === index ? "border-primary bg-primary/5" : "border-border"}`}
+                className={`flex items-start gap-3 rounded-xl border bg-card p-3 transition-colors ${
+                  item.needsReview ? "border-amber-300 bg-amber-50/40 dark:border-amber-900 dark:bg-amber-950/20" : dragOverIndex === index ? "border-primary bg-primary/5" : "border-border"
+                }`}
               >
                 <div className="mt-1 shrink-0 cursor-grab text-muted-foreground" aria-label="Drag to reorder">
                   <GripVertical className="h-4 w-4" />
@@ -166,7 +172,16 @@ export function TimelineTemplateEditor({ templateId, initialItems }: { templateI
                 <div className="min-w-0 flex-1 space-y-1">
                   <div className="flex flex-wrap items-center gap-2">
                     <p className="text-sm font-medium text-foreground">{item.title}</p>
-                    {timing && <span className="text-xs text-muted-foreground">{timing}</span>}
+                    {timing ? (
+                      <span className="text-xs text-muted-foreground">{timing}</span>
+                    ) : item.needsReview ? null : (
+                      <span className="text-xs text-muted-foreground">No timing set</span>
+                    )}
+                    {item.needsReview && (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-medium text-amber-800 dark:bg-amber-900/40 dark:text-amber-300">
+                        <AlertTriangle className="h-3 w-3" /> Needs timing review
+                      </span>
+                    )}
                   </div>
                   {item.description && <p className="text-xs text-muted-foreground">{item.description}</p>}
                   {item.notes && <p className="text-xs italic text-muted-foreground">Note: {item.notes}</p>}

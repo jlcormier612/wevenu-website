@@ -5,17 +5,23 @@ import type {
   RenderedEmail,
 } from "../types";
 import {
+  accountReactivatedTemplate,
+  accountSuspendedTemplate,
   founderWelcomeTemplate,
   kickoffTemplate,
   luvSuggestionTemplate,
   paymentReceiptTemplate,
+  paymentReminderTemplate,
   renewalReminderTemplate,
+  subscriptionLinkTemplate,
   trialReminderTemplate,
   welcomeBackRejectedTemplate,
   welcomeBackTemplate,
   welcomeBackVerifiedTemplate,
+  welcomeHomeTemplate,
   welcomeTemplate,
   whiteGloveSchedulingTemplate,
+  whiteGloveWelcomeTemplate,
 } from "./definitions";
 
 const TEMPLATES: EmailTemplateDefinition[] = [
@@ -27,6 +33,12 @@ const TEMPLATES: EmailTemplateDefinition[] = [
   kickoffTemplate,
   paymentReceiptTemplate,
   whiteGloveSchedulingTemplate,
+  whiteGloveWelcomeTemplate,
+  welcomeHomeTemplate,
+  paymentReminderTemplate,
+  accountSuspendedTemplate,
+  accountReactivatedTemplate,
+  subscriptionLinkTemplate,
   trialReminderTemplate,
   renewalReminderTemplate,
   luvSuggestionTemplate,

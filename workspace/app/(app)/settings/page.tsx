@@ -1,12 +1,14 @@
 import Link from "next/link";
 
 import { logoutAction } from "@/app/(app)/team/auth-actions";
+import { WhiteGloveTimelineSettingsForm } from "@/components/settings/white-glove-timeline-settings";
 import {
   DataTable,
   PageHeader,
   Panel,
   StatusPill,
 } from "@/components/shared/ui";
+import { loadLifecycleSettings } from "@/lib/lifecycle-settings";
 import { DEMO_LOGIN } from "@/lib/program4/demo-login";
 import { AVAILABILITY_LABELS, DEPARTMENT_LABELS, ROLE_LABELS } from "@/lib/program4/labels";
 import { ALL_PERMISSIONS, ROLE_PERMISSIONS } from "@/lib/program4/permissions";
@@ -20,6 +22,7 @@ import {
   ensureProgram4Data,
   getTeamProfilesSync,
 } from "@/lib/program4/store";
+import { whiteGloveTimelineLabel } from "@shared/relationships";
 
 export const metadata = { title: "Settings" };
 
@@ -30,14 +33,16 @@ export default async function SettingsPage() {
   const impersonating = await isImpersonating();
   const team = getTeamProfilesSync().filter((m) => m.active);
   const canManageTeam = await actorCan("manage_team");
+  const canManageSettings = await actorCan("manage_settings");
   const permissions = ROLE_PERMISSIONS[actor.role];
+  const lifecycle = await loadLifecycleSettings();
 
   return (
     <div>
       <PageHeader
         eyebrow="Settings"
         title="Workspace settings"
-        description="Team roster, role permissions, and session auth (Project 8)."
+        description="Team roster, role permissions, lifecycle defaults, and session auth."
       />
 
       <Panel title="Signed in">
@@ -66,6 +71,18 @@ export default async function SettingsPage() {
             Sign out
           </button>
         </form>
+      </Panel>
+
+      <Panel title="Customer Lifecycle — White Glove timeline" className="mt-6">
+        <p className="text-sm leading-relaxed ws-muted">
+          Used in White Glove Welcome emails and Implementation screen copy. Default{" "}
+          {whiteGloveTimelineLabel(lifecycle.whiteGlove)}.
+        </p>
+        <WhiteGloveTimelineSettingsForm
+          minBusinessDays={lifecycle.whiteGlove.minBusinessDays}
+          maxBusinessDays={lifecycle.whiteGlove.maxBusinessDays}
+          canEdit={canManageSettings}
+        />
       </Panel>
 
       <Panel title="Your permissions" className="mt-6">

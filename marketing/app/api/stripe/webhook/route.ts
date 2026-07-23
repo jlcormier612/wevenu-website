@@ -1,6 +1,14 @@
 import { NextResponse } from "next/server";
 import type Stripe from "stripe";
 
+import { sendRelationshipEmail, sendReactivationEmail } from "@shared/email";
+import {
+  loadLiveStore,
+  markDunningReminderSent,
+  reactivateRelationshipAccount,
+  recordPaymentFailed,
+  type DunningDay,
+} from "@shared/relationships";
 import { createVenueEnrollment } from "@/lib/crm/service";
 import {
   isAutomaticFoundingMember,
@@ -8,7 +16,7 @@ import {
   parseWelcomeBackRequested,
 } from "@/lib/marketing/enrollment";
 import { syncSubscriptionLifecycleToRelationship } from "@/lib/relationships/bridge";
-import { getStripe } from "@/lib/stripe/config";
+import { getMarketingSiteUrl, getStripe } from "@/lib/stripe/config";
 import {
   estimateMrrCentsFromPlan,
   mrrCentsFromStripeSubscription,
@@ -18,24 +26,12 @@ export const runtime = "nodejs";
 
 /**
  * Stripe webhook for Hello to Cheers SaaS subscription lifecycle.
- * Configure this endpoint in the Stripe Dashboard (platform account).
  *
- * On checkout.session.completed:
- * - Creates a CRM venue enrollment record
- * - Upserts the shared Relationship (findOrCreate by email / Stripe ids / venue)
- * - Appends timeline: Subscription Purchased (Founder title when applicable),
- *   Welcome Back requested, White Glove Selected, Founding Member assigned
- * - Stores plan, founding, welcome back, onboarding, customer/subscription/session ids
- * - Persists real MRR from Stripe subscription price objects when available
- *
- * On customer.subscription.updated / deleted (and created as soft sync):
- * - Updates Relationship subscription status + MRR
- * - Appends timeline when status changes (never duplicates Relationship)
- *
- * Never auto-verifies Welcome Back. Product welcome emails (Project 3) are sent
- * after Relationship upsert via sendEnrollmentProductEmails — timeline gets email_sent.
- * Product Sync (Project 10) runs after enrollment via enqueueProductSync.
- * Team CRM notify remains ops-only and is not timeline'd.
+ * checkout.session.completed → enrollment + Relationship + emails + product sync
+ *   (WG defers product sync)
+ * customer.subscription.* → lifecycle status / MRR
+ * invoice.payment_failed → dunning schedule (0/3/7/14/21)
+ * invoice.paid → clear dunning / reactivate when recovering from past_due
  */
 export async function POST(request: Request) {
   const stripe = getStripe();
@@ -81,15 +77,14 @@ export async function POST(request: Request) {
       );
       break;
     }
-    case "invoice.paid":
+    case "invoice.paid": {
+      const invoice = event.data.object as Stripe.Invoice;
+      await handleInvoicePaid(stripe, invoice);
+      break;
+    }
     case "invoice.payment_failed": {
       const invoice = event.data.object as Stripe.Invoice;
-      console.info(`[stripe] ${event.type}`, {
-        id: invoice.id,
-        customer: invoice.customer,
-        amount_due: invoice.amount_due,
-        status: invoice.status,
-      });
+      await handleInvoicePaymentFailed(stripe, invoice);
       break;
     }
     default:
@@ -175,6 +170,24 @@ function resolveMrrCents(
   return estimateMrrCentsFromPlan(plan);
 }
 
+async function createBillingPortalUrl(
+  stripe: Stripe,
+  customerId: string | null,
+): Promise<string | null> {
+  if (!customerId) return null;
+  try {
+    const siteUrl = getMarketingSiteUrl();
+    const portal = await stripe.billingPortal.sessions.create({
+      customer: customerId,
+      return_url: `${siteUrl}/pricing`,
+    });
+    return portal.url;
+  } catch (error) {
+    console.warn("[stripe] billing portal create failed", error);
+    return null;
+  }
+}
+
 async function handleCheckoutCompleted(
   stripe: Stripe,
   session: Stripe.Checkout.Session,
@@ -231,6 +244,7 @@ async function handleCheckoutCompleted(
       welcomeBackVerified: record.welcomeBackVerified,
       onboardingType: record.onboardingType,
       mrrCents: record.mrrCents,
+      relationshipId: meta.relationship_id || null,
     });
   } catch (error) {
     console.error("[stripe] failed to create venue enrollment", error);
@@ -257,7 +271,6 @@ async function handleSubscriptionLifecycle(
     meta.venue_name?.trim() || "",
   );
 
-  // Prefer expanded items on the event object; re-fetch if MRR would be 0.
   let mrrSource: Stripe.Subscription = subscription;
   if (mrrCentsFromStripeSubscription(subscription) <= 0 && !deleted) {
     const loaded = await loadSubscriptionForMrr(stripe, subscription.id);
@@ -266,18 +279,17 @@ async function handleSubscriptionLifecycle(
 
   const mrrCents = resolveMrrCents(mrrSource, plan ?? "");
 
-  // created: soft sync only — purchase timeline comes from checkout.session.completed.
-  // Do not create a brand-new Relationship from subscription.created alone unless
-  // checkout was missed and we have an email (allowCreate when email present).
   await syncSubscriptionLifecycleToRelationship({
     email,
     venueName: meta.venue_name?.trim() || venueName,
     plan,
     planName: meta.plan_name?.trim() || null,
-    foundingMember: meta.founding_member != null ? readFoundingFromMeta(meta) : undefined,
-    welcomeBackRequested: meta.welcome_back != null || meta.welcome_back_requested != null
-      ? readWelcomeBackFromMeta(meta)
-      : undefined,
+    foundingMember:
+      meta.founding_member != null ? readFoundingFromMeta(meta) : undefined,
+    welcomeBackRequested:
+      meta.welcome_back != null || meta.welcome_back_requested != null
+        ? readWelcomeBackFromMeta(meta)
+        : undefined,
     onboardingType: meta.onboarding_type
       ? parseOnboardingType(meta.onboarding_type)
       : null,
@@ -289,6 +301,25 @@ async function handleSubscriptionLifecycle(
     allowCreate: Boolean(email),
   });
 
+  if (
+    !deleted &&
+    (subscription.status === "past_due" || subscription.status === "unpaid")
+  ) {
+    await handleDunningForCustomer(stripe, {
+      stripeCustomerId: customerId,
+      stripeSubscriptionId: subscription.id,
+      email,
+    });
+  }
+
+  if (!deleted && subscription.status === "active") {
+    await maybeReactivateFromPayment({
+      stripeCustomerId: customerId,
+      stripeSubscriptionId: subscription.id,
+      email,
+    });
+  }
+
   console.info(`[stripe] subscription lifecycle synced`, {
     id: subscription.id,
     status: subscription.status,
@@ -297,4 +328,186 @@ async function handleSubscriptionLifecycle(
     mrrCents,
     plan,
   });
+}
+
+function subscriptionIdFromInvoice(invoice: Stripe.Invoice): string | null {
+  const legacy = invoice as Stripe.Invoice & {
+    subscription?: string | { id?: string } | null;
+  };
+  if (typeof legacy.subscription === "string") return legacy.subscription;
+  if (legacy.subscription && typeof legacy.subscription === "object") {
+    return legacy.subscription.id ?? null;
+  }
+  const parent = (
+    invoice as Stripe.Invoice & {
+      parent?: {
+        subscription_details?: { subscription?: string | { id?: string } | null };
+      } | null;
+    }
+  ).parent?.subscription_details?.subscription;
+  if (typeof parent === "string") return parent;
+  if (parent && typeof parent === "object") return parent.id ?? null;
+  return null;
+}
+
+async function handleInvoicePaymentFailed(
+  stripe: Stripe,
+  invoice: Stripe.Invoice,
+): Promise<void> {
+  const customerId =
+    typeof invoice.customer === "string"
+      ? invoice.customer
+      : invoice.customer?.id ?? null;
+  const subscriptionId = subscriptionIdFromInvoice(invoice);
+
+  const { email } = await resolveCustomerEmailAndVenue(
+    stripe,
+    customerId,
+    invoice.customer_email?.trim() || null,
+    "",
+  );
+
+  console.info("[stripe] invoice.payment_failed", {
+    id: invoice.id,
+    customer: customerId,
+    subscription: subscriptionId,
+  });
+
+  await handleDunningForCustomer(stripe, {
+    stripeCustomerId: customerId,
+    stripeSubscriptionId: subscriptionId,
+    email,
+    invoiceId: invoice.id,
+  });
+}
+
+async function handleDunningForCustomer(
+  stripe: Stripe,
+  input: {
+    stripeCustomerId: string | null;
+    stripeSubscriptionId?: string | null;
+    email?: string | null;
+    invoiceId?: string;
+  },
+): Promise<void> {
+  const result = await recordPaymentFailed({
+    stripeCustomerId: input.stripeCustomerId,
+    stripeSubscriptionId: input.stripeSubscriptionId,
+    email: input.email,
+    invoiceId: input.invoiceId,
+  });
+
+  if (!result.relationship || result.reminderDay == null) return;
+
+  const portalUrl = await createBillingPortalUrl(
+    stripe,
+    result.relationship.stripeCustomerId || input.stripeCustomerId,
+  );
+  const to = result.relationship.owner.email?.trim();
+  if (!to) return;
+
+  const day = result.reminderDay as DunningDay;
+  const templateId =
+    day === 21 || result.shouldSuspend ? "account_suspended" : "payment_reminder";
+
+  try {
+    await sendRelationshipEmail({
+      relationshipId: result.relationship.id,
+      to,
+      templateId,
+      vars: {
+        firstName: result.relationship.owner.firstName,
+        venueName: result.relationship.venue.name,
+        planName: result.relationship.planName,
+        dunningDay: day,
+        billingPortalUrl: portalUrl,
+      },
+      meta: { trigger: "invoice.payment_failed", dunning_day: day },
+    });
+    await markDunningReminderSent(result.relationship.id, day);
+  } catch (error) {
+    console.error("[stripe] dunning email failed", error);
+  }
+}
+
+async function handleInvoicePaid(
+  stripe: Stripe,
+  invoice: Stripe.Invoice,
+): Promise<void> {
+  const customerId =
+    typeof invoice.customer === "string"
+      ? invoice.customer
+      : invoice.customer?.id ?? null;
+  const subscriptionId = subscriptionIdFromInvoice(invoice);
+
+  const { email } = await resolveCustomerEmailAndVenue(
+    stripe,
+    customerId,
+    invoice.customer_email?.trim() || null,
+    "",
+  );
+
+  console.info("[stripe] invoice.paid", {
+    id: invoice.id,
+    customer: customerId,
+    amount_paid: invoice.amount_paid,
+  });
+
+  await maybeReactivateFromPayment({
+    stripeCustomerId: customerId,
+    stripeSubscriptionId: subscriptionId,
+    email,
+  });
+}
+
+async function maybeReactivateFromPayment(input: {
+  stripeCustomerId: string | null;
+  stripeSubscriptionId?: string | null;
+  email?: string | null;
+}): Promise<void> {
+  const store = await loadLiveStore();
+  const relationship =
+    (input.stripeSubscriptionId
+      ? store.relationships.find(
+          (r) => r.stripeSubscriptionId === input.stripeSubscriptionId,
+        )
+      : undefined) ||
+    (input.stripeCustomerId
+      ? store.relationships.find(
+          (r) => r.stripeCustomerId === input.stripeCustomerId,
+        )
+      : undefined) ||
+    (input.email
+      ? store.relationships.find(
+          (r) =>
+            (r.owner.email || "").trim().toLowerCase() ===
+            input.email!.trim().toLowerCase(),
+        )
+      : undefined);
+
+  if (!relationship) return;
+  const needsReactivate =
+    relationship.status === "suspended" ||
+    relationship.status === "at_risk" ||
+    relationship.accessDisabled ||
+    (relationship.dunning && !relationship.dunning.clearedAt);
+
+  if (!needsReactivate) return;
+
+  const updated = await reactivateRelationshipAccount({
+    relationshipId: relationship.id,
+    fromPaymentSuccess: true,
+  });
+  if (!updated?.owner.email) return;
+
+  try {
+    await sendReactivationEmail({
+      relationshipId: updated.id,
+      customerEmail: updated.owner.email,
+      venueName: updated.venue.name,
+      firstName: updated.owner.firstName,
+    });
+  } catch (error) {
+    console.error("[stripe] reactivation email failed", error);
+  }
 }

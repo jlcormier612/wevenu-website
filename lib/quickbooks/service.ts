@@ -12,7 +12,8 @@ import { isSupabaseConfigured } from "@/lib/env";
 import { getCurrentVenue } from "@/lib/venue/service";
 import * as repo from "@/lib/quickbooks/repository";
 import { quickBooksApiBaseUrl, quickBooksEnvironment, QUICKBOOKS_REVOKE_URL } from "@/lib/quickbooks/config";
-import type { QuickBooksActionResult, QuickBooksConnection } from "@/lib/quickbooks/types";
+import { processQuickBooksSyncQueue } from "@/lib/quickbooks/processor";
+import type { QuickBooksActionResult, QuickBooksConnection, QuickBooksEntityType } from "@/lib/quickbooks/types";
 
 function basicAuthHeader(): string {
   const id = process.env.QUICKBOOKS_CLIENT_ID ?? "";
@@ -132,5 +133,30 @@ export async function disconnectQuickBooksAccount(): Promise<QuickBooksActionRes
   }
 
   await repo.disconnectConnection(supabase, venue.id);
+  return { ok: true };
+}
+
+/**
+ * Manual "Retry now" (docs/quickbooks-online-architecture.md §7) — the one
+ * piece of the fuller architecture explicitly deferred at launch, now
+ * built so the Financial Validation checklist's "manual re-sync" step is
+ * actually executable. Resets the entity's queue item to a fresh pending
+ * state, resets the record's own status so the UI reflects "retrying"
+ * immediately, then runs the processor right away rather than making the
+ * coordinator wait for the next 5-minute cron tick.
+ */
+export async function retryQuickBooksSync(entityType: QuickBooksEntityType, entityId: string): Promise<QuickBooksActionResult> {
+  if (!isSupabaseConfigured) return { ok: false, message: "Backend not configured." };
+  const venue = await getCurrentVenue();
+  if (!venue) return { ok: false, message: "Session expired." };
+
+  const supabase = await createClient();
+  const reset = await repo.resetQueueItemForRetry(supabase, entityType, entityId);
+  if (!reset) return { ok: false, message: "No sync attempt found to retry." };
+
+  const table = entityType === "customer" ? "clients" : entityType === "invoice" ? "invoices" : "payment_line_items";
+  await supabase.from(table).update({ quickbooks_sync_status: "pending" }).eq("id", entityId);
+
+  await processQuickBooksSyncQueue();
   return { ok: true };
 }

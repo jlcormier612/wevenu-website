@@ -38,6 +38,19 @@ export type PortalContext = {
     accentColor: string;
     neutralColor: string;
     logoUrl: string | null;
+    // Program 4, Initiative D (2026-07-23) — the venue's own hero photo +
+    // short story, shown in the Couple Workspace hero and Venue Guide.
+    heroImageUrl: string | null;
+    story: string | null;
+    // Venue Guide expansion (2026-07-23) — "About the Venue" / "Contact
+    // Information"; read-only exposure of existing venue columns.
+    phone: string | null;
+    email: string | null;
+    addressLine1: string | null;
+    addressLine2: string | null;
+    city: string | null;
+    stateRegion: string | null;
+    postalCode: string | null;
   };
 };
 
@@ -59,7 +72,36 @@ export type PortalTask = {
   canComplete: boolean;  // true only for client_owned tasks the couple can act on
 };
 
-export type PortalSection = "overview" | "guests" | "todos" | "budget" | "seating" | "people" | "website" | "story" | "journey" | "tasks" | "timeline" | "vendors" | "payments" | "documents" | "messages" | "ask" | "guide" | "account" | "requests";
+// Program 4, Initiative D, Phase 4 (2026-07-23) — "Your Venue Team" card.
+export type PortalVenueTeamMember = {
+  id: string;
+  fullName: string;
+  title: string | null;
+  role: string;
+  isOwner: boolean;
+  email: string | null;
+};
+
+// Venue Guide expansion, "Property Overview" (2026-07-23) — reuses
+// venue_spaces, already authored by the venue.
+export type PortalVenueSpace = {
+  id: string;
+  name: string;
+  description: string | null;
+  capacity: number | null;
+};
+
+// Program 4, Initiative C, Phase 3 (2026-07-23) — venue-authored Key Dates
+// (client_key_dates), previously only ever shown on the venue's own
+// Dashboard, now also readable from the Couple Workspace.
+export type PortalKeyDate = {
+  id: string;
+  label: string;
+  date: string;
+  note: string | null;
+};
+
+export type PortalSection = "overview" | "guests" | "todos" | "budget" | "seating" | "people" | "website" | "story" | "journey" | "tasks" | "timeline" | "vendors" | "payments" | "documents" | "messages" | "ask" | "guide" | "account" | "requests" | "questionnaire";
 
 // A Timeline item as visible in the client portal — the couple's own
 // always-live view: the venue's live structural framework plus the

@@ -3,7 +3,8 @@
 import { revalidatePath } from "next/cache";
 
 import {
-  createTemplate, deleteTemplate_, duplicateTemplate_, setTemplateArchived_, updateTemplate_,
+  addTemplateAttachment, createTemplate, deleteTemplate_, duplicateTemplate_,
+  removeTemplateAttachment, setTemplateArchived_, updateTemplate_,
 } from "@/lib/message-templates/service";
 import type {
   CreateMessageTemplateResult, MessageTemplateActionResult, MessageTemplateCategory, MessageTemplateInput,
@@ -47,4 +48,20 @@ export async function importTemplateAction(
   category: MessageTemplateCategory,
 ): Promise<LuvMessageTemplateProposal> {
   return proposeMessageTemplate(rawText, channel, category);
+}
+
+export async function addTemplateAttachmentAction(
+  templateId: string,
+  attachment: { documentId: string } | { linkUrl: string; linkLabel: string | null },
+  sortOrder: number,
+): Promise<MessageTemplateActionResult> {
+  const result = await addTemplateAttachment(templateId, attachment, sortOrder);
+  if (result.ok) revalidatePath(`/communication/templates/${templateId}/edit`);
+  return result;
+}
+
+export async function removeTemplateAttachmentAction(attachmentId: string, templateId: string): Promise<MessageTemplateActionResult> {
+  const result = await removeTemplateAttachment(attachmentId);
+  if (result.ok) revalidatePath(`/communication/templates/${templateId}/edit`);
+  return result;
 }

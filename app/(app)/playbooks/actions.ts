@@ -44,7 +44,10 @@ export async function setTemplateArchivedAction(id: string, isArchived: boolean)
   return result;
 }
 
-export async function addTemplateTaskAction(templateId: string, task: Omit<PlaybookTask, "id" | "templateId" | "venueId" | "createdAt">): Promise<PlaybookActionResult & { taskId?: string }> {
+export async function addTemplateTaskAction(
+  templateId: string,
+  task: Omit<PlaybookTask, "id" | "templateId" | "venueId" | "createdAt" | "needsReview"> & { needsReview?: boolean },
+): Promise<PlaybookActionResult & { taskId?: string }> {
   const result = await addTemplateTask(templateId, task);
   if (result.ok) revalidatePath("/library/playbooks");
   return result;

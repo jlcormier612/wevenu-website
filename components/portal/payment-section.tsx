@@ -5,7 +5,7 @@ import { getPaymentObservations } from "@/lib/luv/portal-observations";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
-type PaymentStatus = "pending" | "overdue" | "paid" | "cancelled";
+type PaymentStatus = "pending" | "processing" | "overdue" | "paid" | "cancelled";
 
 type PortalPaymentItem = {
   id: string;
@@ -87,6 +87,14 @@ function StatusPill({ status, dueDate }: { status: PaymentStatus; dueDate: strin
       <span className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium"
         style={{ background: "#FEF2F2", color: "#991B1B" }}>
         Overdue
+      </span>
+    );
+  }
+  if (status === "processing") {
+    return (
+      <span className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium"
+        style={{ background: "#EFF6FF", color: "#1D4ED8" }}>
+        Processing
       </span>
     );
   }
@@ -175,9 +183,45 @@ function SummaryBar({ schedule }: { schedule: PortalPaymentSchedule }) {
   );
 }
 
+// ── Pay Now ───────────────────────────────────────────────────────────────────
+
+function PayNowButton({ token, itemId }: { token: string; itemId: string }) {
+  const [loading, setLoading] = React.useState(false);
+
+  async function handleClick() {
+    setLoading(true);
+    try {
+      const res = await fetch("/api/portal/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token, itemId }),
+      });
+      const data = await res.json() as { checkoutUrl?: string; error?: string };
+      if (data.checkoutUrl) { window.location.href = data.checkoutUrl; return; }
+      alert(data.error ?? "Could not start checkout.");
+    } catch {
+      alert("Could not start checkout.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={handleClick}
+      disabled={loading}
+      className="mt-1 inline-flex items-center rounded-full px-3 py-1 text-xs font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-50"
+      style={{ background: SAGE }}
+    >
+      {loading ? "Loading…" : "Pay now"}
+    </button>
+  );
+}
+
 // ── Payment timeline ──────────────────────────────────────────────────────────
 
-function PaymentTimeline({ items }: { items: PortalPaymentItem[] }) {
+function PaymentTimeline({ items, token }: { items: PortalPaymentItem[]; token: string }) {
   return (
     <div className="space-y-3">
       <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground px-1">
@@ -247,6 +291,9 @@ function PaymentTimeline({ items }: { items: PortalPaymentItem[] }) {
                         {formatMoney(item.paidAmount ?? item.amount)}
                       </p>
                       <StatusPill status={item.status} dueDate={item.dueDate} />
+                      {(item.status === "pending" || item.status === "overdue") && (
+                        <div><PayNowButton token={token} itemId={item.id} /></div>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -264,6 +311,7 @@ function PaymentTimeline({ items }: { items: PortalPaymentItem[] }) {
 export function PaymentSection({ token }: { token: string }) {
   const [schedules, setSchedules] = React.useState<PortalPaymentSchedule[] | null>(null);
   const [loading, setLoading] = React.useState(true);
+  const [checkoutNotice, setCheckoutNotice] = React.useState<"success" | "cancelled" | null>(null);
 
   React.useEffect(() => {
     fetch(`/api/portal/payments?token=${encodeURIComponent(token)}`)
@@ -274,6 +322,17 @@ export function PaymentSection({ token }: { token: string }) {
       .catch(() => setSchedules([]))
       .finally(() => setLoading(false));
   }, [token]);
+
+  React.useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const payment = params.get("payment");
+    if (payment === "success" || payment === "cancelled") {
+      setCheckoutNotice(payment);
+      params.delete("payment");
+      const next = params.toString();
+      window.history.replaceState(null, "", window.location.pathname + (next ? `?${next}` : ""));
+    }
+  }, []);
 
   if (loading) {
     return (
@@ -331,6 +390,16 @@ export function PaymentSection({ token }: { token: string }) {
 
   return (
     <div className="space-y-6 px-1">
+      {checkoutNotice === "success" && (
+        <div className="rounded-xl px-4 py-3 text-sm font-medium" style={{ background: "#F7FBF8", border: "1px solid #B9D1C2", color: "#1F5C3D" }}>
+          Payment received — thank you! It may take a moment to show as paid below.
+        </div>
+      )}
+      {checkoutNotice === "cancelled" && (
+        <div className="rounded-xl px-4 py-3 text-sm font-medium" style={{ background: "#FAFAF9", border: "1px solid #E8E2D8", color: "#57534E" }}>
+          Checkout was cancelled — nothing was charged.
+        </div>
+      )}
       {/* Header */}
       <div>
         <h2 className="font-heading text-2xl font-medium text-heading">Payments</h2>
@@ -362,7 +431,7 @@ export function PaymentSection({ token }: { token: string }) {
       )}
 
       {/* Timeline */}
-      {allItems.length > 0 && <PaymentTimeline items={allItems} />}
+      {allItems.length > 0 && <PaymentTimeline items={allItems} token={token} />}
 
       {/* Notes */}
       {schedule.notes && (

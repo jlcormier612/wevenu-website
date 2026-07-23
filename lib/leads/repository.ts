@@ -313,10 +313,14 @@ export async function insertLead(
   // fail together. This is also the manual-create AND CSV-import path
   // (importLeadsAction calls createLead per row), so one call here covers
   // both, per Engineering Standard #2 (an invariant enforced on one entry
-  // point must be enforced on every entry point). `venueId` isn't passed
-  // through — the function resolves it itself via `current_user_venue_id()`,
-  // the same RLS-backed source of truth every policy on these tables uses.
+  // point must be enforced on every entry point). For a normal venue
+  // session, `venueId` isn't actually used by the RPC — it resolves itself
+  // via `current_user_venue_id()`. p_venue_id_override is always passed
+  // through too (White-Glove, Hospitality Success Platform §2.2a) — safe
+  // for every caller, honored only for a genuine service_role caller
+  // (20261151000000_white_glove_lead_venue_override.sql).
   const { data, error } = await client.rpc("create_lead_atomic", {
+    p_venue_id_override: venueId,
     payload: {
       firstName: input.firstName.trim(),
       lastName: input.lastName.trim(),

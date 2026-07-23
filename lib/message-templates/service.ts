@@ -9,6 +9,7 @@ import type {
   CreateMessageTemplateResult,
   MessageTemplate,
   MessageTemplateActionResult,
+  MessageTemplateAttachment,
   MessageTemplateInput,
 } from "@/lib/message-templates/types";
 import { getCurrentVenue } from "@/lib/venue/service";
@@ -78,4 +79,31 @@ export async function duplicateTemplate_(id: string, newName: string): Promise<C
     return { ok: true, templateId } as CreateMessageTemplateResult;
   });
   return result as CreateMessageTemplateResult;
+}
+
+export async function getTemplateAttachments(templateId: string): Promise<MessageTemplateAttachment[]> {
+  if (!isSupabaseConfigured) return [];
+  const venue = await getCurrentVenue();
+  if (!venue) return [];
+  return repo.getTemplateAttachments(await createClient(), venue.id, templateId);
+}
+
+export async function addTemplateAttachment(
+  templateId: string,
+  attachment: { documentId: string } | { linkUrl: string; linkLabel: string | null },
+  sortOrder: number,
+): Promise<MessageTemplateActionResult> {
+  const result = await withVenue(async (supabase, venueId) => {
+    await repo.addTemplateAttachment(supabase, venueId, templateId, attachment, sortOrder);
+    return { ok: true } as MessageTemplateActionResult;
+  });
+  return result as MessageTemplateActionResult;
+}
+
+export async function removeTemplateAttachment(attachmentId: string): Promise<MessageTemplateActionResult> {
+  const result = await withVenue(async (supabase, venueId) => {
+    await repo.removeTemplateAttachment(supabase, venueId, attachmentId);
+    return { ok: true } as MessageTemplateActionResult;
+  });
+  return result as MessageTemplateActionResult;
 }

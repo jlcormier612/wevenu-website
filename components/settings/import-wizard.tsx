@@ -3,8 +3,9 @@
 import * as React from "react";
 import { useTransition } from "react";
 import Papa from "papaparse";
-import { Upload, ChevronRight, ChevronLeft, Check, AlertCircle, FileText } from "lucide-react";
+import { Upload, ChevronRight, ChevronLeft, Check, AlertCircle, FileText, Sparkles } from "lucide-react";
 import Link from "next/link";
+import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -12,14 +13,18 @@ import {
   type EntityType, type FieldMapping, type ImportResult,
 } from "@/lib/import/types";
 import {
-  buildTemplateCsv, getSampleValue, validateRequiredFields, looksLikeHeaderRow,
+  buildTemplateCsv, getSampleValue, validateRequiredFields, looksLikeHeaderRow, isSyntheticColumnHeaders,
   rowToClientInput, rowToLeadInput, rowToVendorInput, rowToInventoryInput, rowToPackageInput,
   loadSavedMapping, saveMapping,
 } from "@/lib/import/utils";
 import {
   importCouplesAction, importLeadsAction, importVendorsAction, importInventoryAction, importPackagesAction,
-  parseImportFileAction, parseImportTextAction,
+  parseImportFileAction, parseImportTextAction, proposeFieldMappingAction,
 } from "@/app/(app)/settings/import/actions";
+import {
+  importCouplesForVenueAction, importLeadsForVenueAction, importVendorsForVenueAction,
+  importInventoryForVenueAction, importPackagesForVenueAction,
+} from "@/app/admin/onboarding/import-actions";
 
 type CsvRow = Record<string, string>;
 
@@ -299,14 +304,63 @@ function StepMapFields({
   const requiredMapped = fields
     .filter((f) => f.required)
     .every((f) => mapping[f.key]);
+  const [suggesting, startSuggest] = useTransition();
+
+  // Real per-column sample values, shown directly in each option — this is
+  // what actually lets someone match "Email" to the right column by
+  // recognizing "jane@abcflorals.com" rather than guessing "Column 3" vs
+  // "Column 4" and checking after the fact. Especially important with no
+  // real header row, where the header text itself ("Column 3") carries no
+  // information at all.
+  const headerSamples = React.useMemo(
+    () => Object.fromEntries(headers.map((h) => [h, getSampleValue(rows, h)])),
+    [headers, rows],
+  );
+
+  const unmappedCount = fields.filter((f) => !mapping[f.key]).length;
+
+  // Migration Center §2.1 item 4 (2026-07-22) — the existing lowercase-
+  // similarity auto-match already ran when this file was parsed; this is
+  // for whatever it couldn't confidently resolve (an unfamiliar
+  // competitor-export header like "Bride/Groom" instead of "First Name").
+  // A proposal only: it fills in *unmapped* fields, never overwrites a
+  // field the coordinator (or the earlier auto-match) already set.
+  function handleSuggest() {
+    startSuggest(async () => {
+      const result = await proposeFieldMappingAction(headers, entity);
+      if (!result.ok) {
+        toast.error(result.message);
+        return;
+      }
+      const next = { ...mapping };
+      let filled = 0;
+      for (const [key, header] of Object.entries(result.mapping)) {
+        if (!next[key] && header) { next[key] = header; filled++; }
+      }
+      if (filled === 0) {
+        toast.info("Luv didn't find any new matches beyond what's already mapped.");
+        return;
+      }
+      onChange(next);
+      toast.success(`Luv suggested ${filled} mapping${filled === 1 ? "" : "s"} — review before continuing.`);
+    });
+  }
 
   return (
     <div className="space-y-4">
-      <div>
-        <h2 className="text-base font-semibold text-foreground">Map your columns</h2>
-        <p className="text-sm text-muted-foreground mt-1">
-          Match each Hello to Cheers field to a column in your CSV. Required fields are marked with *.
-        </p>
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h2 className="text-base font-semibold text-foreground">Map your columns</h2>
+          <p className="text-sm text-muted-foreground mt-1">
+            Match each Hello to Cheers field to a column in your CSV. Required fields are marked with *.
+          </p>
+        </div>
+        {unmappedCount > 0 && (
+          <Button type="button" variant="outline" size="sm" onClick={handleSuggest} disabled={suggesting} className="shrink-0">
+            <Sparkles className="h-3.5 w-3.5 mr-1.5" />
+            {suggesting ? "Asking Luv…" : "Suggest with Luv"}
+          </Button>
+        )}
       </div>
 
       {!headerRowLikely && hasHeaderRow && (
@@ -344,12 +398,17 @@ function StepMapFields({
                 onChange={(e) => onChange({ ...mapping, [field.key]: e.target.value || null })}
               >
                 <option value="">— skip this field —</option>
-                {headers.map((h) => (
-                  <option key={h} value={h}>{h}</option>
-                ))}
+                {headers.map((h) => {
+                  const preview = headerSamples[h];
+                  return (
+                    <option key={h} value={h}>
+                      {preview ? `${h} — e.g. "${preview}"` : `${h} (empty)`}
+                    </option>
+                  );
+                })}
               </select>
               {sample && (
-                <span className="text-xs text-muted-foreground truncate max-w-[100px]" title={sample}>
+                <span className="text-xs text-muted-foreground truncate max-w-[140px]" title={sample}>
                   e.g. {sample}
                 </span>
               )}
@@ -480,11 +539,13 @@ function StepResults({
   result,
   filename,
   onReset,
+  venueId,
 }: {
   entity: EntityType;
   result: ImportResult;
   filename: string;
   onReset: () => void;
+  venueId?: string;
 }) {
   const meta = ENTITY_META[entity];
   const skipped = result.errors.filter((e) => e.kind === "skipped").length;
@@ -550,7 +611,12 @@ function StepResults({
         </div>
       )}
 
-      {result.imported > 0 && (() => {
+      {/* The self-service "next step" CTA points at the venue's own app pages
+          (/clients, /leads, …) — meaningless to an HQ admin's own session,
+          which has no venue of its own. Suppressed in "Importing for
+          {venue}" mode (venueId set); a link back to the onboarding
+          workspace takes its place below instead. */}
+      {result.imported > 0 && !venueId && (() => {
         const next = NEXT_STEP[entity];
         return (
           <div className="rounded-xl border border-primary/20 bg-primary/5 p-4 space-y-2">
@@ -569,10 +635,10 @@ function StepResults({
 
       <div className="flex flex-wrap gap-3">
         <Link
-          href={meta.resultPath}
+          href={venueId ? `/admin/onboarding/${venueId}` : meta.resultPath}
           className="text-sm text-muted-foreground hover:text-foreground hover:underline"
         >
-          View all {meta.label.toLowerCase()} →
+          {venueId ? "Back to onboarding workspace →" : `View all ${meta.label.toLowerCase()} →`}
         </Link>
         <button type="button" onClick={onReset} className="text-sm text-muted-foreground hover:text-foreground hover:underline">
           Import more
@@ -617,7 +683,14 @@ function deriveHeadersRows(rawHeaders: string[], rawRows: CsvRow[], hasHeaderRow
   return { headers, rows };
 }
 
-export function ImportWizard({ initialEntity }: { initialEntity?: EntityType }) {
+/**
+ * White-Glove Migration (Hospitality Success Platform §2.2a step 4) — the
+ * optional `venueId` prop is what turns this into the "Importing for
+ * {venue}" staff mode: same wizard, same steps, but every write is scoped
+ * to the given venue via the admin actions rather than the caller's own
+ * session (an HQ admin has no venue of their own).
+ */
+export function ImportWizard({ initialEntity, venueId }: { initialEntity?: EntityType; venueId?: string }) {
   const [step, setStep]         = React.useState<number>(initialEntity ? 1 : 0);
   const [entity, setEntity]     = React.useState<EntityType | null>(initialEntity ?? null);
   const [rawHeaders, setRawHeaders] = React.useState<string[]>([]);
@@ -639,10 +712,23 @@ export function ImportWizard({ initialEntity }: { initialEntity?: EntityType }) 
     setStep(1);
   }
 
-  function guessMapping(h: string[]) {
-    const saved = loadSavedMapping(entity!, h);
-    if (saved) { setMapping(saved); return; }
-    // Auto-match by lowercase similarity
+  // hasRealHeaders distinguishes a genuine header row from the "Column 1,
+  // Column 2…" placeholders deriveHeadersRows falls back to when there
+  // isn't one. Found live: reusing a saved mapping when headers are those
+  // placeholders is actively dangerous, not just unhelpful — "Column 1..5"
+  // from one header-less paste looks identical to "Column 1..5" from any
+  // other header-less paste of a completely different list, so
+  // loadSavedMapping's headers-match check would silently reapply a
+  // stale mapping from an unrelated earlier import (wrong field assigned
+  // to wrong data, with no error until the import itself fails).
+  function guessMapping(h: string[], hasRealHeaders: boolean) {
+    if (hasRealHeaders) {
+      const saved = loadSavedMapping(entity!, h);
+      if (saved) { setMapping(saved); return; }
+    }
+    // Auto-match by lowercase similarity — only meaningful with real
+    // headers; against "Column N" placeholders nothing matches, which is
+    // correct (every field starts unmapped rather than guessed wrong).
     const fields = ENTITY_FIELDS[entity!];
     const initial: FieldMapping = {};
     for (const field of fields) {
@@ -665,35 +751,42 @@ export function ImportWizard({ initialEntity }: { initialEntity?: EntityType }) 
     setHasHeaderRow(headerRowLikely);
     setFilename(name);
     setAssisted(wasAssisted);
-    guessMapping(deriveHeadersRows(h, r, headerRowLikely).headers);
+    const derivedHeaders = deriveHeadersRows(h, r, headerRowLikely).headers;
+    guessMapping(derivedHeaders, headerRowLikely && !isSyntheticColumnHeaders(derivedHeaders));
     setStep(2);
   }
 
   function handleToggleHeaderRow(next: boolean) {
     setHasHeaderRow(next);
-    guessMapping(deriveHeadersRows(rawHeaders, rawRows, next).headers);
+    const derivedHeaders = deriveHeadersRows(rawHeaders, rawRows, next).headers;
+    guessMapping(derivedHeaders, next && !isSyntheticColumnHeaders(derivedHeaders));
   }
 
   function handleImport() {
     if (!entity) return;
-    saveMapping(entity, headers, mapping);
+    // Only worth remembering against real column names — saving a mapping
+    // keyed on "Column 1, Column 2…" would just set up the exact same
+    // stale-reuse trap for the next header-less import (whether those
+    // placeholders came from a headerless CSV or from the paste-fallback
+    // splitter in lib/luv/import-assist.ts).
+    if (hasHeaderRow && !isSyntheticColumnHeaders(headers)) saveMapping(entity, headers, mapping);
     startTransition(async () => {
       let res: ImportResult;
       if (entity === "couples") {
         const inputRows = rows.map((r) => rowToClientInput(r, mapping));
-        res = await importCouplesAction(inputRows);
+        res = venueId ? await importCouplesForVenueAction(venueId, inputRows) : await importCouplesAction(inputRows);
       } else if (entity === "leads") {
         const inputRows = rows.map((r) => rowToLeadInput(r, mapping));
-        res = await importLeadsAction(inputRows);
+        res = venueId ? await importLeadsForVenueAction(venueId, inputRows) : await importLeadsAction(inputRows);
       } else if (entity === "vendors") {
         const inputRows = rows.map((r) => rowToVendorInput(r, mapping));
-        res = await importVendorsAction(inputRows);
+        res = venueId ? await importVendorsForVenueAction(venueId, inputRows) : await importVendorsAction(inputRows);
       } else if (entity === "inventory") {
         const inputRows = rows.map((r) => rowToInventoryInput(r, mapping));
-        res = await importInventoryAction(inputRows);
+        res = venueId ? await importInventoryForVenueAction(venueId, inputRows) : await importInventoryAction(inputRows);
       } else {
         const inputRows = rows.map((r) => rowToPackageInput(r, mapping));
-        res = await importPackagesAction(inputRows);
+        res = venueId ? await importPackagesForVenueAction(venueId, inputRows) : await importPackagesAction(inputRows);
       }
       setResult(res);
       setStep(4);
@@ -764,6 +857,7 @@ export function ImportWizard({ initialEntity }: { initialEntity?: EntityType }) 
           result={result}
           filename={filename}
           onReset={handleReset}
+          venueId={venueId}
         />
       )}
     </div>

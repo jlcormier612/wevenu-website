@@ -22,6 +22,7 @@ export function paymentMethodLabel(value: string | null): string {
 
 export const STATUS_LABEL: Record<PaymentItemStatus, string> = {
   pending:            "Pending",
+  processing:         "Processing",
   overdue:            "Overdue",
   paid:               "Paid",
   cancelled:          "Cancelled",

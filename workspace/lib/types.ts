@@ -19,6 +19,11 @@ export type PipelineStatus =
   | "trial"
   | "subscribed"
   | "onboarding"
+  | "white_glove_implementation"
+  | "active"
+  | "at_risk"
+  | "suspended"
+  | "reactivated"
   | "live"
   | "expansion"
   | "referral"
@@ -75,7 +80,19 @@ export type TimelineEventType =
   | "product_sync_started"
   | "product_sync_step_completed"
   | "product_sync_completed"
-  | "product_sync_failed";
+  | "product_sync_failed"
+  | "subscription_link_sent"
+  | "subscription_activated"
+  | "welcome_workflow_started"
+  | "onboarding_created"
+  | "white_glove_implementation_started"
+  | "implementation_complete"
+  | "workspace_activated"
+  | "payment_failed"
+  | "payment_reminder_sent"
+  | "account_suspended"
+  | "account_reactivated"
+  | "manual_subscription";
 
 export type CommunicationChannel =
   | "email"
@@ -294,6 +311,7 @@ export type Relationship = {
   owner: Contact;
   status: RelationshipStatus;
   health: RelationshipHealth;
+  healthScore?: number;
   assignedTeamMemberId: string;
   planId: PlanId;
   planName: string;
@@ -308,11 +326,38 @@ export type Relationship = {
   createdAt: string;
   updatedAt: string;
   notes?: string;
+  implementationNotes?: string;
+  implementationAssets?: {
+    brandingNotes?: string;
+    contractsNotes?: string;
+    packagesNotes?: string;
+    questionnairesNotes?: string;
+    websiteProgressNotes?: string;
+  };
   referralSource?: string;
   supportOpenCount: number;
   stripeCustomerId?: string | null;
   stripeSubscriptionId?: string | null;
   stripeCheckoutSessionId?: string | null;
+  paymentStatus?: string;
+  subscribedAt?: string | null;
+  accessDisabled?: boolean;
+  activationToken?: string | null;
+  activationTokenCreatedAt?: string | null;
+  activationCompletedAt?: string | null;
+  lastLoginAt?: string | null;
+  loginCount30d?: number;
+  lastCustomerActivityAt?: string | null;
+  lastTeamActivityAt?: string | null;
+  websitePublished?: boolean;
+  dunning?: {
+    startedAt: string;
+    lastReminderDay: number | null;
+    lastReminderAt?: string | null;
+    atRiskAt?: string | null;
+    suspendedAt?: string | null;
+    clearedAt?: string | null;
+  } | null;
   /** Project 10 — idempotent product provisioning state */
   productSync?: ProductSyncState;
 };

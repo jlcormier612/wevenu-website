@@ -108,6 +108,25 @@ export function ProductExperience() {
         </div>
       </section>
 
+      {/* ── Architecture overview ── */}
+      <section className="px-6 pb-28 md:pb-36">
+        <div className="mx-auto max-w-[1200px]">
+          <h2 className="max-w-5xl font-heading text-[2.1rem] text-[var(--forest-sage)] md:text-[3.36rem]">
+            Every relationship becomes one connected celebration.
+          </h2>
+          <div className="mx-auto mt-14 md:mt-16">
+            <Image
+              src="/marketing/product-architecture-overview.png"
+              alt="One Event. Three Experiences. One Shared Truth — architecture overview for venues, couples, and vendors"
+              width={682}
+              height={1024}
+              className="mx-auto h-auto w-full object-contain"
+              sizes="(max-width:1200px) 100vw, 1200px"
+            />
+          </div>
+        </div>
+      </section>
+
       {/* ── Follow one booking ── */}
       <section id="follow" className="scroll-mt-28 px-6 pb-28 md:pb-36">
         <div className="mx-auto max-w-6xl">

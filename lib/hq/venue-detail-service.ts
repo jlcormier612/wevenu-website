@@ -131,7 +131,7 @@ export async function getVenueHqDetail(venueId: string): Promise<HqVenueDetail |
         .order("created_at", { ascending: false }),
       supabase
         .from("venue_hq_tasks")
-        .select("id, assigned_name, title, due_date, completed_at, created_at")
+        .select("id, assigned_name, title, due_date, completed_at, created_at, kind, engagement_id")
         .eq("venue_id", venueId)
         .order("completed_at", { ascending: true, nullsFirst: true })
         .order("due_date", { ascending: true, nullsFirst: false }),
@@ -215,13 +215,15 @@ export async function getVenueHqDetail(venueId: string): Promise<HqVenueDetail |
     createdAt: n.created_at,
   }));
 
-  const tasks: HqTask[] = ((tasksRes.data ?? []) as { id: string; assigned_name: string | null; title: string; due_date: string | null; completed_at: string | null; created_at: string }[]).map((t) => ({
+  const tasks: HqTask[] = ((tasksRes.data ?? []) as { id: string; assigned_name: string | null; title: string; due_date: string | null; completed_at: string | null; created_at: string; kind: "task" | "blocker"; engagement_id: string | null }[]).map((t) => ({
     id: t.id,
     assignedName: t.assigned_name,
     title: t.title,
     dueDate: t.due_date,
     completedAt: t.completed_at,
     createdAt: t.created_at,
+    kind: t.kind,
+    engagementId: t.engagement_id,
   }));
 
   const crmState: HqCrmState = {

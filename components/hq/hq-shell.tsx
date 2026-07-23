@@ -1,6 +1,8 @@
 import Link from "next/link";
 import {
   Gauge,
+  GraduationCap,
+  HandHeart,
   Headset,
   LineChart,
   MessageSquareHeart,
@@ -20,6 +22,12 @@ const NAV: NavItem[] = [
   { href: "/admin", label: "Beta Command Center", icon: Gauge },
   { href: "/admin/feedback", label: "Feedback & Roadmap", icon: MessageSquareHeart },
   { section: "Operations" },
+  // Restores "Customer Success" as its own nav pillar per the original
+  // wevenu-hq-architecture.md §1 IA sketch — folded into venue-detail pages
+  // until White-Glove's Onboarding Engagement (Hospitality Success
+  // Platform §2.2a) gave it something real to stand on.
+  { href: "/admin/onboarding", label: "Customer Success", icon: HandHeart },
+  { href: "/admin/success-library", label: "Success Library", icon: GraduationCap },
   { href: "/admin/support", label: "Support", icon: Headset, badgeKey: "support" },
   { href: "/admin/analytics", label: "Analytics", icon: LineChart },
   { href: "/admin/system-health", label: "System Health", icon: Siren },

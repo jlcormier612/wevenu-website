@@ -26,7 +26,7 @@ export const REQUEST_TYPE_LABELS: Record<RequestType, string> = {
   selection: "Selection",
   upload: "Upload",
   confirmation: "Confirmation",
-  task: "Task",
+  task: "Action Item",
 };
 
 export const VISIBILITY_OPTIONS: RequestVisibility[] = ["venue_only", "shared", "completed"];

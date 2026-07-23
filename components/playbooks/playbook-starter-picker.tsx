@@ -68,11 +68,25 @@ export function PlaybookStarterPicker({
   const [scratchEventType, setScratchEventType] = React.useState(EVENT_TYPES[0].value);
   const [importName, setImportName] = React.useState("");
   const [importText, setImportText] = React.useState("");
+  const [importFileName, setImportFileName] = React.useState("");
   const [pending, startTransition] = React.useTransition();
 
   function reset() {
     setKind(null); setSelected(null); setSourceTemplateId(""); setScratchName(""); setScratchEventType(EVENT_TYPES[0].value);
-    setImportName(""); setImportText("");
+    setImportName(""); setImportText(""); setImportFileName("");
+  }
+
+  async function handleImportFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const lower = file.name.toLowerCase();
+    if (!lower.endsWith(".txt") && !lower.endsWith(".md")) {
+      toast.error("This file type isn't supported yet — try a .txt or .md file, or paste the text instead.");
+      return;
+    }
+    setImportFileName(file.name);
+    if (!importName.trim()) setImportName(file.name.replace(/\.[^.]+$/, ""));
+    setImportText(await file.text());
   }
 
   function goToBuilder(templateId: string) {
@@ -109,9 +123,11 @@ export function PlaybookStarterPicker({
         const result = await createTemplateFromImportAction(importText, kind, importName.trim());
         if (result.ok) {
           toast.success(
-            result.guessedCount > 0
-              ? `Imported ${result.taskCount} tasks — Luv estimated timing for ${result.guessedCount} of them, so double-check those first.`
-              : `Imported ${result.taskCount} tasks.`,
+            result.guessedCount === 0
+              ? `Imported ${result.taskCount} tasks.`
+              : result.aiStructured
+                ? `Imported ${result.taskCount} tasks — Luv estimated timing for ${result.guessedCount} of them, so double-check those first.`
+                : `Imported ${result.taskCount} tasks — due dates weren't detected, marked for review below.`,
           );
           goToBuilder(result.templateId);
         } else {
@@ -267,7 +283,16 @@ export function PlaybookStarterPicker({
                       <Input value={importName} onChange={(e) => setImportName(e.target.value)} placeholder="Our Wedding Checklist" className="h-8 text-sm" />
                     </div>
                     <div className="space-y-1.5">
-                      <Label className="text-xs">Paste your checklist</Label>
+                      <Label className="text-xs">Upload a file <span className="font-normal text-muted-foreground">(optional — .txt or .md)</span></Label>
+                      <input
+                        type="file" accept=".txt,.md,text/plain,text/markdown"
+                        onChange={handleImportFileChange}
+                        className="block w-full text-sm text-muted-foreground file:mr-3 file:rounded-md file:border-0 file:bg-muted file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-foreground"
+                      />
+                      {importFileName && <p className="text-xs text-muted-foreground">Loaded {importFileName}</p>}
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs">Or paste your checklist</Label>
                       <Textarea
                         value={importText} onChange={(e) => setImportText(e.target.value)}
                         placeholder="Paste your existing checklist here — from a Word doc, a spreadsheet, notes, anything."

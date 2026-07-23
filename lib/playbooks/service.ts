@@ -163,7 +163,10 @@ export async function getTemplateTasks(templateId: string): Promise<PlaybookTask
   return repo.getTemplateTasks(await createClient(), venue.id, templateId);
 }
 
-export async function addTemplateTask(templateId: string, task: Omit<PlaybookTask, "id" | "templateId" | "venueId" | "createdAt">): Promise<PlaybookActionResult & { taskId?: string }> {
+export async function addTemplateTask(
+  templateId: string,
+  task: Omit<PlaybookTask, "id" | "templateId" | "venueId" | "createdAt" | "needsReview"> & { needsReview?: boolean },
+): Promise<PlaybookActionResult & { taskId?: string }> {
   const result = await withVenue(async (c, venueId) => {
     const taskId = await repo.insertTemplateTask(c, venueId, templateId, task);
     return { ok: true, taskId } as PlaybookActionResult & { taskId?: string };
@@ -460,7 +463,7 @@ async function createFromReference(
   c: Awaited<ReturnType<typeof createClient>>, venueId: string,
   name: string, kind: PlaybookKind, eventType: string | null, description: string,
   milestones: { name: string; kind: import("@/lib/playbooks/types").MilestoneKind | null }[],
-  tasks: (Omit<PlaybookTask, "id" | "templateId" | "venueId" | "createdAt" | "milestoneId"> & { milestoneIndex: number })[],
+  tasks: (Omit<PlaybookTask, "id" | "templateId" | "venueId" | "createdAt" | "milestoneId" | "needsReview"> & { milestoneIndex: number; needsReview?: boolean })[],
 ): Promise<string> {
   const templateId = await repo.insertTemplate(c, venueId, name, kind, eventType, description);
   const milestoneIds: string[] = [];
@@ -537,6 +540,7 @@ export async function createTemplateFromImport(rawText: string, kind: PlaybookKi
           notifyOnComplete: false,
           actionType: null,
           actionLabel: null,
+          needsReview: t.guessed,
         });
       });
     });
@@ -546,7 +550,7 @@ export async function createTemplateFromImport(rawText: string, kind: PlaybookKi
       "Imported from an existing checklist.",
       milestones, tasks,
     );
-    return { ok: true, templateId, taskCount: tasks.length, guessedCount } as ImportPlaybookResult;
+    return { ok: true, templateId, taskCount: tasks.length, guessedCount, aiStructured: proposal.aiStructured } as ImportPlaybookResult;
   });
   return result as ImportPlaybookResult;
 }

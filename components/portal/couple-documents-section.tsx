@@ -8,7 +8,9 @@ import { Button } from "@/components/ui/button";
 
 type DocType =
   | "contract" | "invoice" | "upload" | "planning_guide"
-  | "brochure" | "receipt" | "package" | "other";
+  | "brochure" | "receipt" | "package" | "insurance" | "floor_plan" | "menu" | "permit" | "other";
+
+type LineItem = { id: string; description: string; quantity: number; unitPrice: number; amount: number; type: string };
 
 type CoupleDocument = {
   id: string;
@@ -17,49 +19,46 @@ type CoupleDocument = {
   status: string | null;
   signedAt: string | null;
   amount: number | null;
+  balanceDue?: number | null;
   fileUrl: string | null;
   fileSize: number | null;
   mimeType: string | null;
+  content?: string | null;
+  signToken?: string | null;
+  lineItems?: LineItem[];
   uploadedBy: "couple" | "venue";
   shareWithVenue?: boolean;
   createdAt: string;
 };
 
-type VenueInfo = {
-  parkingInfo: string | null;
-  transportation: string | null;
-  hotelBlocks: Array<{ name: string; url?: string; code?: string; notes?: string }>;
-  nearbyAccommodations: string | null;
-  thingsToDo: string | null;
-  faqs: Array<{ question: string; answer: string }>;
-  policies: string | null;
-  ceremonyInstructions: string | null;
-  rainPlan: string | null;
-  importantContacts: Array<{ name: string; role?: string; phone?: string; email?: string }>;
-} | null;
+type PaidLineItem = { id: string; label: string; amount: number; paidAt: string; paidAmount: number | null; paymentMethod: string | null; scheduleTitle: string };
+
+type QuestionnaireSummary = { status: string };
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
 const DOC_META: Record<DocType, { emoji: string; label: string; color: string }> = {
-  contract:      { emoji: "📝", label: "Contract",       color: "bg-blue-50 text-blue-700 border-blue-100" },
-  invoice:       { emoji: "🧾", label: "Invoice",        color: "bg-amber-50 text-amber-700 border-amber-100" },
-  upload:        { emoji: "📎", label: "Document",       color: "bg-gray-50 text-gray-600 border-gray-100" },
-  planning_guide:{ emoji: "📋", label: "Planning Guide", color: "bg-purple-50 text-purple-700 border-purple-100" },
-  brochure:      { emoji: "📄", label: "Brochure",       color: "bg-gray-50 text-gray-600 border-gray-100" },
-  receipt:       { emoji: "🧾", label: "Receipt",        color: "bg-green-50 text-green-700 border-green-100" },
-  package:       { emoji: "📦", label: "Package",        color: "bg-indigo-50 text-indigo-700 border-indigo-100" },
-  other:         { emoji: "📁", label: "File",           color: "bg-gray-50 text-gray-600 border-gray-100" },
+  contract:       { emoji: "📝", label: "Contract",       color: "bg-blue-50 text-blue-700 border-blue-100" },
+  invoice:        { emoji: "🧾", label: "Invoice",        color: "bg-amber-50 text-amber-700 border-amber-100" },
+  upload:         { emoji: "📎", label: "Document",       color: "bg-gray-50 text-gray-600 border-gray-100" },
+  planning_guide: { emoji: "📋", label: "Planning Guide", color: "bg-purple-50 text-purple-700 border-purple-100" },
+  brochure:       { emoji: "📄", label: "Brochure",       color: "bg-gray-50 text-gray-600 border-gray-100" },
+  receipt:        { emoji: "🧾", label: "Receipt",        color: "bg-green-50 text-green-700 border-green-100" },
+  package:        { emoji: "📦", label: "Package",        color: "bg-indigo-50 text-indigo-700 border-indigo-100" },
+  insurance:      { emoji: "🛡️", label: "Insurance",      color: "bg-sky-50 text-sky-700 border-sky-100" },
+  floor_plan:     { emoji: "🗺️", label: "Floor Plan",     color: "bg-teal-50 text-teal-700 border-teal-100" },
+  menu:           { emoji: "🍽️", label: "Menu",           color: "bg-orange-50 text-orange-700 border-orange-100" },
+  permit:         { emoji: "📜", label: "Permit",         color: "bg-gray-50 text-gray-600 border-gray-100" },
+  other:          { emoji: "📁", label: "File",           color: "bg-gray-50 text-gray-600 border-gray-100" },
 };
 
 const STATUS_BADGE: Record<string, { label: string; color: string }> = {
-  signed:    { label: "Signed",   color: "bg-green-50 text-green-700 border-green-200" },
-  pending:   { label: "Pending",  color: "bg-amber-50 text-amber-700 border-amber-200" },
-  draft:     { label: "Draft",    color: "bg-gray-50 text-gray-500 border-gray-200" },
-  paid:      { label: "Paid",     color: "bg-green-50 text-green-700 border-green-200" },
-  unpaid:    { label: "Unpaid",   color: "bg-red-50 text-red-600 border-red-200" },
-  partial:   { label: "Partial",  color: "bg-amber-50 text-amber-700 border-amber-200" },
-  overdue:   { label: "Overdue",  color: "bg-red-50 text-red-600 border-red-200" },
-  cancelled: { label: "Void",     color: "bg-gray-50 text-gray-400 border-gray-200" },
+  signed:    { label: "Signed",    color: "bg-green-50 text-green-700 border-green-200" },
+  sent:      { label: "Awaiting your signature", color: "bg-amber-50 text-amber-700 border-amber-200" },
+  draft:     { label: "Draft",     color: "bg-gray-50 text-gray-500 border-gray-200" },
+  paid:      { label: "Paid",      color: "bg-green-50 text-green-700 border-green-200" },
+  overdue:   { label: "Overdue",   color: "bg-red-50 text-red-600 border-red-200" },
+  cancelled: { label: "Void",      color: "bg-gray-50 text-gray-400 border-gray-200" },
 };
 
 function fmtDate(iso: string) {
@@ -67,7 +66,7 @@ function fmtDate(iso: string) {
 }
 
 function fmtCurrency(n: number) {
-  return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(n);
+  return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 2 }).format(n);
 }
 
 function fmtBytes(b: number) {
@@ -76,172 +75,171 @@ function fmtBytes(b: number) {
   return `${(b / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-// ── Document row ──────────────────────────────────────────────────────────────
+// ── Contract card — real content, read inline, sign if pending ────────────────
+
+function ContractCard({ doc }: { doc: CoupleDocument }) {
+  const [expanded, setExpanded] = useState(false);
+  const needsSignature = doc.status === "sent" && !!doc.signToken;
+
+  return (
+    <div className={`rounded-xl border overflow-hidden ${needsSignature ? "border-amber-300 bg-amber-50/30" : "border-gray-100"}`}>
+      <div className="flex items-center gap-3 px-4 py-3">
+        <div className="w-9 h-9 rounded-lg flex items-center justify-center text-lg border bg-blue-50 text-blue-700 border-blue-100 shrink-0">📝</div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-sm font-medium text-[#2D3D2D] truncate">{doc.name}</span>
+            {doc.status && STATUS_BADGE[doc.status] && (
+              <Badge className={`text-[10px] px-1.5 py-0 border ${STATUS_BADGE[doc.status].color}`}>{STATUS_BADGE[doc.status].label}</Badge>
+            )}
+          </div>
+          <div className="flex items-center gap-3 mt-0.5 text-[11px] text-gray-400">
+            {doc.signedAt ? <span>Signed {fmtDate(doc.signedAt)}</span> : <span>Sent {fmtDate(doc.createdAt)}</span>}
+          </div>
+        </div>
+        <button type="button" onClick={() => setExpanded((v) => !v)}
+          className="text-xs text-[var(--venue-primary)] hover:underline shrink-0">
+          {expanded ? "Hide" : "Review"}
+        </button>
+      </div>
+      {expanded && doc.content && (
+        <div className="px-4 pb-4 border-t border-gray-100 pt-3">
+          <p className="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed max-h-80 overflow-y-auto">{doc.content}</p>
+        </div>
+      )}
+      {needsSignature && (
+        <div className="px-4 pb-3">
+          <a href={`/sign/${doc.signToken}`} target="_blank" rel="noopener noreferrer">
+            <Button size="sm" className="text-xs">Review &amp; sign →</Button>
+          </a>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Invoice card — real line items + balance due ───────────────────────────────
+
+function InvoiceCard({ doc }: { doc: CoupleDocument }) {
+  const [expanded, setExpanded] = useState(false);
+  const hasBalance = (doc.balanceDue ?? 0) > 0;
+
+  return (
+    <div className={`rounded-xl border overflow-hidden ${hasBalance ? "border-amber-300 bg-amber-50/30" : "border-gray-100"}`}>
+      <div className="flex items-center gap-3 px-4 py-3">
+        <div className="w-9 h-9 rounded-lg flex items-center justify-center text-lg border bg-amber-50 text-amber-700 border-amber-100 shrink-0">🧾</div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-sm font-medium text-[#2D3D2D] truncate">{doc.name}</span>
+            {doc.status && STATUS_BADGE[doc.status] && (
+              <Badge className={`text-[10px] px-1.5 py-0 border ${STATUS_BADGE[doc.status].color}`}>{STATUS_BADGE[doc.status].label}</Badge>
+            )}
+          </div>
+          <div className="flex items-center gap-3 mt-0.5 text-[11px] text-gray-400">
+            <span>Total {fmtCurrency(doc.amount ?? 0)}</span>
+            {hasBalance && <span className="text-amber-700 font-medium">· {fmtCurrency(doc.balanceDue!)} due</span>}
+          </div>
+        </div>
+        <button type="button" onClick={() => setExpanded((v) => !v)} className="text-xs text-[var(--venue-primary)] hover:underline shrink-0">
+          {expanded ? "Hide" : "Details"}
+        </button>
+      </div>
+      {expanded && doc.lineItems && (
+        <div className="px-4 pb-4 border-t border-gray-100 pt-3 space-y-1.5">
+          {doc.lineItems.map((li) => (
+            <div key={li.id} className="flex items-center justify-between text-xs text-gray-600">
+              <span>{li.description} {li.quantity !== 1 && <span className="text-gray-400">× {li.quantity}</span>}</span>
+              <span className="font-mono">{fmtCurrency(li.amount)}</span>
+            </div>
+          ))}
+        </div>
+      )}
+      {hasBalance && (
+        <div className="px-4 pb-3">
+          <a href="#payments">
+            <Button size="sm" variant="outline" className="text-xs">Go to Payments →</Button>
+          </a>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Generic document / receipt row ──────────────────────────────────────────
 
 function DocRow({ doc }: { doc: CoupleDocument }) {
   const meta = DOC_META[doc.docType] ?? DOC_META.other;
-  const statusMeta = doc.status ? STATUS_BADGE[doc.status] : null;
 
   return (
     <div className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50/60 transition-colors group rounded-lg">
-      <div className={`w-9 h-9 rounded-lg flex items-center justify-center text-lg border ${meta.color}`}>
-        {meta.emoji}
-      </div>
-
+      <div className={`w-9 h-9 rounded-lg flex items-center justify-center text-lg border ${meta.color}`}>{meta.emoji}</div>
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 flex-wrap">
           <span className="text-sm font-medium text-[#2D3D2D] truncate">{doc.name}</span>
-          {statusMeta && (
-            <Badge className={`text-[10px] px-1.5 py-0 border ${statusMeta.color}`}>
-              {statusMeta.label}
-            </Badge>
-          )}
           {doc.uploadedBy === "couple" && (
-            <Badge variant="outline" className="text-[10px] px-1.5 py-0 text-gray-400 border-gray-200">
-              Your upload
-            </Badge>
+            <Badge variant="outline" className="text-[10px] px-1.5 py-0 text-gray-400 border-gray-200">Your upload</Badge>
           )}
         </div>
         <div className="flex items-center gap-3 mt-0.5 text-[11px] text-gray-400">
           <span>{meta.label}</span>
           {doc.amount != null && <span>· {fmtCurrency(doc.amount)}</span>}
-          {doc.signedAt && <span>· Signed {fmtDate(doc.signedAt)}</span>}
           {doc.fileSize && <span>· {fmtBytes(doc.fileSize)}</span>}
           <span>· {fmtDate(doc.createdAt)}</span>
         </div>
       </div>
-
-      {doc.fileUrl ? (
-        <a
-          href={doc.fileUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="opacity-0 group-hover:opacity-100 text-xs text-[var(--venue-primary)] hover:text-[var(--venue-secondary)] transition-opacity px-2 py-1 rounded border border-transparent hover:border-[color-mix(in_srgb,var(--venue-primary)_20%,transparent)]"
-        >
+      {doc.fileUrl && (
+        <a href={doc.fileUrl} target="_blank" rel="noopener noreferrer"
+          className="opacity-0 group-hover:opacity-100 text-xs text-[var(--venue-primary)] hover:text-[var(--venue-secondary)] transition-opacity px-2 py-1 rounded border border-transparent hover:border-[color-mix(in_srgb,var(--venue-primary)_20%,transparent)]">
           Open ↗
         </a>
-      ) : (
-        <span className="opacity-0 group-hover:opacity-100 text-[11px] text-gray-300">
-          Online record
-        </span>
       )}
     </div>
   );
 }
 
-// ── Venue Info Section ────────────────────────────────────────────────────────
-
-function InfoBlock({ label, value }: { label: string; value: string | null }) {
-  if (!value) return null;
+function ReceiptRow({ r }: { r: PaidLineItem }) {
   return (
-    <div className="mb-4">
-      <h4 className="text-xs font-semibold text-[var(--venue-primary)] uppercase tracking-wide mb-1">{label}</h4>
-      <p className="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed">{value}</p>
-    </div>
-  );
-}
-
-function VenueInfoSection({ info }: { info: VenueInfo }) {
-  const [open, setOpen] = useState(false);
-
-  if (!info) {
-    return (
-      <div className="mt-8 px-4 py-6 border border-dashed border-gray-200 rounded-xl text-center text-gray-400">
-        <div className="text-2xl mb-2">🏛</div>
-        <p className="text-sm">Your venue hasn't added operational details yet.</p>
-        <p className="text-xs mt-1">Check back closer to your event for parking, hotel recommendations, and FAQs.</p>
+    <div className="flex items-center gap-3 px-4 py-3">
+      <div className="w-9 h-9 rounded-lg flex items-center justify-center text-lg border bg-green-50 text-green-700 border-green-100 shrink-0">🧾</div>
+      <div className="flex-1 min-w-0">
+        <span className="text-sm font-medium text-[#2D3D2D]">{r.label}</span>
+        <div className="flex items-center gap-3 mt-0.5 text-[11px] text-gray-400">
+          <span>{fmtCurrency(r.paidAmount ?? r.amount)} paid</span>
+          <span>· {fmtDate(r.paidAt)}</span>
+          {r.paymentMethod && <span>· {r.paymentMethod}</span>}
+        </div>
       </div>
-    );
-  }
+    </div>
+  );
+}
 
-  const hasContent = info.parkingInfo || info.transportation || info.hotelBlocks.length ||
-    info.nearbyAccommodations || info.thingsToDo || info.faqs.length ||
-    info.policies || info.ceremonyInstructions || info.rainPlan || info.importantContacts.length;
+// ── Questionnaire card — Program 4, Initiative C, Phase 6 (2026-07-23):
+// a questionnaire is a document as much as it's a task; the couple should
+// never wonder where it lives. Reuses the existing questionnaire status,
+// links back to the same section Tasks already navigates to.
+const QUESTIONNAIRE_STATUS_BADGE: Record<string, { label: string; color: string }> = {
+  not_started: { label: "Not started", color: "bg-amber-50 text-amber-700 border-amber-200" },
+  in_progress: { label: "In progress", color: "bg-amber-50 text-amber-700 border-amber-200" },
+  submitted:   { label: "Submitted",   color: "bg-green-50 text-green-700 border-green-200" },
+  completed:   { label: "Submitted",   color: "bg-green-50 text-green-700 border-green-200" },
+};
 
-  if (!hasContent) return null;
+function QuestionnaireCard({ status, onNavigate }: { status: string; onNavigate: (s: "questionnaire") => void }) {
+  const badge = QUESTIONNAIRE_STATUS_BADGE[status] ?? QUESTIONNAIRE_STATUS_BADGE.not_started;
+  const isDone = status === "submitted" || status === "completed";
 
   return (
-    <div className="mt-6 border border-[color-mix(in_srgb,var(--venue-neutral)_60%,#e0e8e0)] rounded-xl overflow-hidden">
-      <button
-        onClick={() => setOpen(o => !o)}
-        className="w-full flex items-center justify-between px-4 py-3 bg-[var(--venue-neutral)] hover:bg-[color-mix(in_srgb,var(--venue-neutral)_70%,#edf2ed)] transition-colors"
-      >
-        <div className="flex items-center gap-2">
-          <span className="text-base">🏛</span>
-          <span className="text-sm font-semibold text-[#2D3D2D]">Venue Information</span>
+    <button type="button" onClick={() => onNavigate("questionnaire")}
+      className={`w-full text-left flex items-center gap-3 px-4 py-3 rounded-xl border transition-colors hover:bg-gray-50/60 ${isDone ? "border-gray-100" : "border-amber-300 bg-amber-50/30"}`}>
+      <div className="w-9 h-9 rounded-lg flex items-center justify-center text-lg border bg-purple-50 text-purple-700 border-purple-100 shrink-0">📋</div>
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="text-sm font-medium text-[#2D3D2D]">Final Details Questionnaire</span>
+          <Badge className={`text-[10px] px-1.5 py-0 border ${badge.color}`}>{badge.label}</Badge>
         </div>
-        <span className="text-gray-400 text-sm">{open ? "▲" : "▼"}</span>
-      </button>
-
-      {open && (
-        <div className="px-5 py-4 bg-white">
-          <InfoBlock label="Parking" value={info.parkingInfo} />
-          <InfoBlock label="Transportation" value={info.transportation} />
-
-          {info.hotelBlocks.length > 0 && (
-            <div className="mb-4">
-              <h4 className="text-xs font-semibold text-[var(--venue-primary)] uppercase tracking-wide mb-2">Hotel Blocks</h4>
-              <div className="space-y-2">
-                {info.hotelBlocks.map((h, i) => (
-                  <div key={i} className="bg-gray-50 rounded-lg p-3">
-                    <div className="text-sm font-medium text-[#2D3D2D]">{h.name}</div>
-                    {h.code && <div className="text-xs text-gray-500">Code: <span className="font-mono font-semibold">{h.code}</span></div>}
-                    {h.notes && <div className="text-xs text-gray-500 mt-0.5">{h.notes}</div>}
-                    {h.url && (
-                      <a href={h.url} target="_blank" rel="noopener noreferrer"
-                        className="text-xs text-[var(--venue-primary)] hover:underline mt-1 inline-block">
-                        Book now ↗
-                      </a>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          <InfoBlock label="Nearby Accommodations" value={info.nearbyAccommodations} />
-          <InfoBlock label="Things To Do" value={info.thingsToDo} />
-          <InfoBlock label="Ceremony Instructions" value={info.ceremonyInstructions} />
-          <InfoBlock label="Rain Plan" value={info.rainPlan} />
-          <InfoBlock label="Policies" value={info.policies} />
-
-          {info.faqs.length > 0 && (
-            <div className="mb-4">
-              <h4 className="text-xs font-semibold text-[var(--venue-primary)] uppercase tracking-wide mb-2">FAQs</h4>
-              <div className="space-y-3">
-                {info.faqs.map((faq, i) => (
-                  <div key={i}>
-                    <p className="text-sm font-medium text-[#2D3D2D]">{faq.question}</p>
-                    <p className="text-sm text-gray-600 mt-0.5">{faq.answer}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {info.importantContacts.length > 0 && (
-            <div className="mb-4">
-              <h4 className="text-xs font-semibold text-[var(--venue-primary)] uppercase tracking-wide mb-2">Important Contacts</h4>
-              <div className="space-y-2">
-                {info.importantContacts.map((c, i) => (
-                  <div key={i} className="flex items-start gap-3">
-                    <div className="w-7 h-7 rounded-full bg-[color-mix(in_srgb,var(--venue-neutral)_70%,#eef4ee)] flex items-center justify-center text-xs font-semibold text-[var(--venue-primary)] shrink-0">
-                      {c.name[0]}
-                    </div>
-                    <div>
-                      <div className="text-xs font-medium text-[#2D3D2D]">{c.name}</div>
-                      {c.role && <div className="text-[11px] text-gray-400">{c.role}</div>}
-                      {c.phone && <div className="text-[11px] text-gray-500">{c.phone}</div>}
-                      {c.email && <div className="text-[11px] text-gray-500">{c.email}</div>}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
-      )}
-    </div>
+        <p className="text-[11px] text-gray-400 mt-0.5">Meal selections, music, emergency contact, and more.</p>
+      </div>
+      <span className="text-xs text-[var(--venue-primary)] shrink-0">{isDone ? "Review →" : "Complete →"}</span>
+    </button>
   );
 }
 
@@ -264,7 +262,6 @@ function UploadRow({ token, onDone }: { token: string; onDone: () => void }) {
       const res = await fetch("/api/portal/upload", { method: "POST", body: formData });
       const json = await res.json();
       if (json.url) {
-        // Save as a couple_document record
         await fetch("/api/portal/documents", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -288,31 +285,12 @@ function UploadRow({ token, onDone }: { token: string; onDone: () => void }) {
   return (
     <div className="flex items-center gap-3">
       <label className="flex items-center gap-2 text-xs text-gray-500 cursor-pointer hover:text-gray-700">
-        <input
-          type="checkbox"
-          checked={shareWithVenue}
-          onChange={e => setShareWithVenue(e.target.checked)}
-          className="rounded"
-        />
+        <input type="checkbox" checked={shareWithVenue} onChange={(e) => setShareWithVenue(e.target.checked)} className="rounded" />
         Share with venue
       </label>
-      <input
-        ref={fileRef}
-        type="file"
-        className="hidden"
-        onChange={e => {
-          const f = e.target.files?.[0];
-          if (f) handleFile(f);
-          e.target.value = "";
-        }}
-      />
-      <Button
-        size="sm"
-        variant="outline"
-        disabled={uploading}
-        onClick={() => fileRef.current?.click()}
-        className="text-xs"
-      >
+      <input ref={fileRef} type="file" className="hidden"
+        onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFile(f); e.target.value = ""; }} />
+      <Button size="sm" variant="outline" disabled={uploading} onClick={() => fileRef.current?.click()} className="text-xs">
         {uploading ? "Uploading…" : "+ Upload document"}
       </Button>
     </div>
@@ -321,22 +299,38 @@ function UploadRow({ token, onDone }: { token: string; onDone: () => void }) {
 
 // ── Main Component ────────────────────────────────────────────────────────────
 
-export default function CoupleDocumentsSection({ token }: { token: string }) {
+export default function CoupleDocumentsSection({ token, onNavigate }: { token: string; onNavigate?: (s: "questionnaire") => void }) {
   const [documents, setDocuments] = useState<CoupleDocument[]>([]);
-  const [venueInfo, setVenueInfo] = useState<VenueInfo | undefined>(undefined);
+  const [receipts, setReceipts] = useState<PaidLineItem[]>([]);
+  const [questionnaire, setQuestionnaire] = useState<QuestionnaireSummary | null>(null);
   const [loading, setLoading] = useState(true);
-  const [filterType, setFilterType] = useState<DocType | "all">("all");
 
   const load = async () => {
     setLoading(true);
     try {
-      const [docsRes, infoRes] = await Promise.all([
+      const [docsRes, paymentsRes, questionnaireRes] = await Promise.all([
         fetch(`/api/portal/documents?token=${token}`),
-        fetch(`/api/portal/venue-info?token=${token}`),
+        fetch(`/api/portal/payments?token=${token}`),
+        fetch(`/api/portal/questionnaire?token=${token}`),
       ]);
-      const [docsJson, infoJson] = await Promise.all([docsRes.json(), infoRes.json()]);
+      const [docsJson, paymentsJson, questionnaireJson] = await Promise.all([docsRes.json(), paymentsRes.json(), questionnaireRes.json()]);
       setDocuments(docsJson.documents ?? []);
-      setVenueInfo(infoJson);
+      setQuestionnaire(questionnaireJson.questionnaire ? { status: questionnaireJson.questionnaire.status } : null);
+
+      // Receipts are derived from paid payment line items — not a separate
+      // entity (Client Collaboration Workspace, 2026-07-22): "the client
+      // should never need to find these through emails," but Hello to
+      // Cheers has no first-class Receipt record, so this reuses the same
+      // payment data the Payments tab already reads.
+      type Schedule = { title: string; lineItems: { id: string; label: string; amount: number; status: string; paidAt: string | null; paidAmount: number | null; paymentMethod: string | null }[] };
+      const schedules = (paymentsJson.schedules ?? []) as Schedule[];
+      const paid: PaidLineItem[] = schedules.flatMap((s) =>
+        s.lineItems.filter((li) => li.status === "paid" && li.paidAt).map((li) => ({
+          id: li.id, label: li.label, amount: li.amount, paidAt: li.paidAt!, paidAmount: li.paidAmount,
+          paymentMethod: li.paymentMethod, scheduleTitle: s.title,
+        })),
+      );
+      setReceipts(paid);
     } finally {
       setLoading(false);
     }
@@ -344,104 +338,93 @@ export default function CoupleDocumentsSection({ token }: { token: string }) {
 
   useEffect(() => { load(); }, [token]);
 
-  const docTypes = Array.from(new Set(documents.map(d => d.docType)));
-  const filtered = filterType === "all" ? documents : documents.filter(d => d.docType === filterType);
-
-  const venueShared  = filtered.filter(d => d.uploadedBy === "venue");
-  const coupleUploaded = filtered.filter(d => d.uploadedBy === "couple");
-
   if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64 text-gray-400">
-        <div className="animate-pulse">Loading documents…</div>
-      </div>
-    );
+    return <div className="flex items-center justify-center h-64 text-gray-400"><div className="animate-pulse">Loading documents…</div></div>;
   }
+
+  const contracts = documents.filter((d) => d.docType === "contract");
+  const invoices = documents.filter((d) => d.docType === "invoice");
+  const venueShared = documents.filter((d) => d.uploadedBy === "venue" && d.docType !== "contract" && d.docType !== "invoice");
+  const coupleUploaded = documents.filter((d) => d.uploadedBy === "couple");
+
+  const pendingSignature = contracts.filter((c) => c.status === "sent" && c.signToken);
+  const isEmpty = documents.length === 0 && receipts.length === 0 && !questionnaire;
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-6">
-
-      {/* Header */}
       <div className="flex items-center justify-between mb-5">
         <div>
           <h2 className="text-lg font-semibold text-[#2D3D2D]">Documents</h2>
           <p className="text-xs text-gray-400 mt-0.5">
-            Everything your venue has shared, plus your own uploads — all in one place.
+            Contracts, invoices, receipts, and anything your venue shares — all in one place.
           </p>
         </div>
         <UploadRow token={token} onDone={load} />
       </div>
 
-      {/* Filter tabs */}
-      {docTypes.length > 1 && (
-        <div className="flex gap-1.5 flex-wrap mb-4">
-          <button
-            onClick={() => setFilterType("all")}
-            className={`text-xs px-3 py-1 rounded-full border transition-colors ${
-              filterType === "all"
-                ? "bg-[var(--venue-primary)] text-white border-[var(--venue-primary)]"
-                : "bg-white text-gray-500 border-gray-200 hover:border-[color-mix(in_srgb,var(--venue-primary)_40%,transparent)]"
-            }`}
-          >
-            All ({documents.length})
-          </button>
-          {docTypes.map(type => {
-            const meta = DOC_META[type] ?? DOC_META.other;
-            const count = documents.filter(d => d.docType === type).length;
-            return (
-              <button
-                key={type}
-                onClick={() => setFilterType(type)}
-                className={`text-xs px-3 py-1 rounded-full border transition-colors ${
-                  filterType === type
-                    ? "bg-[var(--venue-primary)] text-white border-[var(--venue-primary)]"
-                    : "bg-white text-gray-500 border-gray-200 hover:border-[color-mix(in_srgb,var(--venue-primary)_40%,transparent)]"
-                }`}
-              >
-                {meta.emoji} {meta.label} ({count})
-              </button>
-            );
-          })}
-        </div>
-      )}
-
-      {/* Empty state */}
-      {documents.length === 0 && (
+      {isEmpty && (
         <div className="text-center py-16 border border-dashed border-gray-200 rounded-xl text-gray-400">
           <div className="text-4xl mb-3">📂</div>
           <p className="text-sm font-medium">No documents yet</p>
-          <p className="text-xs mt-1">
-            Contracts, invoices, and planning guides from your venue will appear here automatically.
+          <p className="text-xs mt-1">Contracts, invoices, and shared files from your venue will appear here automatically.</p>
+        </div>
+      )}
+
+      {pendingSignature.length > 0 && (
+        <div className="mb-6 rounded-xl border border-amber-300 bg-amber-50/40 px-4 py-3">
+          <p className="text-sm font-semibold text-amber-800">
+            ✍️ {pendingSignature.length} contract{pendingSignature.length === 1 ? "" : "s"} waiting for your signature
           </p>
         </div>
       )}
 
-      {/* Venue-shared documents */}
+      {contracts.length > 0 && (
+        <div className="mb-6">
+          <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2 px-1">Contracts</h3>
+          <div className="space-y-2">{contracts.map((doc) => <ContractCard key={doc.id} doc={doc} />)}</div>
+        </div>
+      )}
+
+      {questionnaire && onNavigate && (
+        <div className="mb-6">
+          <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2 px-1">Questionnaire</h3>
+          <QuestionnaireCard status={questionnaire.status} onNavigate={onNavigate} />
+        </div>
+      )}
+
+      {invoices.length > 0 && (
+        <div className="mb-6">
+          <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2 px-1">Invoices</h3>
+          <div className="space-y-2">{invoices.map((doc) => <InvoiceCard key={doc.id} doc={doc} />)}</div>
+        </div>
+      )}
+
+      {receipts.length > 0 && (
+        <div className="mb-6">
+          <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2 px-1">Receipts</h3>
+          <div className="border border-gray-100 rounded-xl overflow-hidden divide-y divide-gray-50">
+            {receipts.map((r) => <ReceiptRow key={r.id} r={r} />)}
+          </div>
+        </div>
+      )}
+
       {venueShared.length > 0 && (
         <div className="mb-6">
-          <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2 px-1">
-            From Your Venue
-          </h3>
+          <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2 px-1">From Your Venue</h3>
           <div className="border border-gray-100 rounded-xl overflow-hidden divide-y divide-gray-50">
-            {venueShared.map(doc => <DocRow key={doc.id} doc={doc} />)}
+            {venueShared.map((doc) => <DocRow key={doc.id} doc={doc} />)}
           </div>
         </div>
       )}
 
-      {/* Couple uploads */}
       {coupleUploaded.length > 0 && (
         <div className="mb-6">
-          <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2 px-1">
-            Your Uploads
-          </h3>
+          <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2 px-1">Your Uploads</h3>
           <div className="border border-gray-100 rounded-xl overflow-hidden divide-y divide-gray-50">
-            {coupleUploaded.map(doc => <DocRow key={doc.id} doc={doc} />)}
+            {coupleUploaded.map((doc) => <DocRow key={doc.id} doc={doc} />)}
           </div>
         </div>
       )}
-
-      {/* Venue info */}
-      <VenueInfoSection info={venueInfo ?? null} />
     </div>
   );
 }

@@ -34,6 +34,8 @@ yarn-error.log*
 
 # local data (if any)
 .data
+# Never commit an app-local shadow of monorepo shared/ (splits relationship data)
+/shared/
 
 # typescript
 *.tsbuildinfo

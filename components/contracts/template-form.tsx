@@ -3,7 +3,7 @@
 import * as React from "react";
 
 import { useRouter } from "next/navigation";
-import { Loader2 } from "lucide-react";
+import { Loader2, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 
 import { createTemplateAction, updateTemplateAction } from "@/app/(app)/contracts/actions";
@@ -12,7 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
-import { MERGE_FIELDS } from "@/lib/contracts/constants";
+import { DEFAULT_TEMPLATE_DESCRIPTION, DEFAULT_TEMPLATE_NAME, MERGE_FIELDS } from "@/lib/contracts/constants";
 import type { ContractErrors, ContractTemplate, TemplateInput } from "@/lib/contracts/types";
 
 function buildInitial(template?: ContractTemplate | null): TemplateInput {
@@ -34,10 +34,49 @@ export function TemplateForm({ template }: { template?: ContractTemplate | null 
   const [errors, setErrors] = React.useState<ContractErrors>({});
   const [pending, startTransition] = React.useTransition();
 
+  const [importOpen, setImportOpen] = React.useState(false);
+  const [importText, setImportText] = React.useState("");
+  const [importFileName, setImportFileName] = React.useState("");
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
+
   const set = <K extends keyof TemplateInput>(key: K, v: TemplateInput[K]) => {
     setInput((p) => ({ ...p, [key]: v }));
     setErrors((p) => { const n = { ...p }; delete n[key as string]; return n; });
   };
+
+  async function handleImportFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.name.toLowerCase().endsWith(".txt")) {
+      toast.error("This file type isn't supported yet — try a .txt file, or paste the text instead.");
+      return;
+    }
+    setImportFileName(file.name);
+    setImportText(await file.text());
+  }
+
+  // Deterministic, no AI involved — a contract's own wording is the source
+  // of truth, this is transcription into the field, not structuring
+  // (template-import review, 2026-07-22: "contracts will need to be copy
+  // and pastable at a minimum from outside documents"). Also clears the
+  // starter boilerplate name/description this form seeds new templates
+  // with, but only if they're still untouched — never clobbers a name the
+  // venue already typed.
+  function handleUseImportText() {
+    if (!importText.trim()) return;
+    setInput((p) => ({
+      ...p,
+      content: importText,
+      name: p.name.trim() === DEFAULT_TEMPLATE_NAME ? "" : p.name,
+      description: p.description.trim() === DEFAULT_TEMPLATE_DESCRIPTION ? "" : p.description,
+    }));
+    setErrors((p) => { const n = { ...p }; delete n.content; return n; });
+    setImportOpen(false);
+    setImportText("");
+    setImportFileName("");
+    if (fileInputRef.current) fileInputRef.current.value = "";
+    toast.success("Pasted in — review it below before saving.");
+  }
 
   function handleSubmit() {
     startTransition(async () => {
@@ -56,6 +95,53 @@ export function TemplateForm({ template }: { template?: ContractTemplate | null 
 
   return (
     <div className="space-y-6">
+      {!isEdit && (
+        <div className="rounded-lg border border-dashed border-border p-4">
+          {!importOpen ? (
+            <button
+              type="button"
+              onClick={() => setImportOpen(true)}
+              className="flex items-center gap-2 text-sm font-medium text-primary hover:underline"
+            >
+              <Sparkles className="h-4 w-4" />
+              Paste or upload an existing contract instead
+            </button>
+          ) : (
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <p className="text-sm font-medium text-heading">Bring your existing contract</p>
+                <button type="button" onClick={() => setImportOpen(false)} className="text-xs text-muted-foreground hover:text-foreground">
+                  Cancel
+                </button>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Your own wording is the source of truth — this copies it in exactly as written. Nothing is saved until you click Create.
+              </p>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Upload a file <span className="font-normal text-muted-foreground">(optional — .txt)</span></Label>
+                <input
+                  ref={fileInputRef}
+                  type="file" accept=".txt,text/plain"
+                  onChange={handleImportFileChange}
+                  className="block w-full text-sm text-muted-foreground file:mr-3 file:rounded-md file:border-0 file:bg-muted file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-foreground"
+                />
+                {importFileName && <p className="text-xs text-muted-foreground">Loaded {importFileName}</p>}
+              </div>
+              <Textarea
+                value={importText} onChange={(e) => setImportText(e.target.value)}
+                placeholder="Or paste your existing contract text here…"
+                className="min-h-32 text-sm"
+              />
+              <div className="flex items-center justify-end">
+                <Button type="button" size="sm" onClick={handleUseImportText} disabled={!importText.trim()}>
+                  Use this text
+                </Button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="space-y-1.5 sm:col-span-2">
           <Label htmlFor="tn">Template name *</Label>

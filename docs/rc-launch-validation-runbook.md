@@ -122,7 +122,7 @@ Grouped by what breaks if it's missing. `NEXT_PUBLIC_*` variables are exposed to
 
 ### QuickBooks Online — Financial Validation (production-readiness bar)
 
-Everything below has already been verified in this environment against Intuit's real endpoints using fake credentials — real 401/`invalid_client` rejections, correctly classified and retried/dead-lettered, correct dependency ordering, correct idempotent re-sync on edit (see `docs/quickbooks-integration-completion.md` and the full-lifecycle live-verification pass that confirmed the mechanics end-to-end). What remains, and cannot be verified without a real Intuit App, is whether a *genuine successful* sync actually lands in a real QuickBooks company. This checklist is the explicit go/no-go bar for calling the integration production-ready — **all twelve steps must pass with real Intuit credentials**:
+Everything below has already been verified in this environment against Intuit's real endpoints using fake credentials — real 401/`invalid_client` rejections, correctly classified and retried/dead-lettered, correct dependency ordering, correct idempotent re-sync on edit, and (as of 2026-07-22) a real dead-lettered item correctly reset and re-attempted via the now-shipped manual retry action (see `docs/quickbooks-integration-completion.md`, `docs/quickbooks-online-architecture.md` §7, and the full-lifecycle live-verification pass that confirmed the mechanics end-to-end). What remains, and cannot be verified without a real Intuit App, is whether a *genuine successful* sync actually lands in a real QuickBooks company. This checklist is the explicit go/no-go bar for calling the integration production-ready — **all twelve steps must pass with real Intuit credentials**:
 
 1. **Connect QuickBooks Sandbox** — register a real Intuit App (sandbox) at the Intuit Developer portal, set `QUICKBOOKS_CLIENT_ID`/`QUICKBOOKS_CLIENT_SECRET`/`NEXT_PUBLIC_QUICKBOOKS_CLIENT_ID`/`QUICKBOOKS_ENVIRONMENT=sandbox`. Click "Connect with QuickBooks" in Settings, complete real OAuth authorization, confirm the Settings card shows "Connected to {company name}."
 2. **Create invoice** — create a real client and a real invoice with at least one line item, send it.
@@ -135,7 +135,9 @@ Everything below has already been verified in this environment against Intuit's 
 9. **Verify re-sync** — confirm this triggers a fresh sync (not silent drift) and the sandbox company's Invoice reflects the change, without creating a duplicate Invoice.
 10. **Disconnect** — confirm Intuit's own My Apps dashboard shows the connection genuinely revoked, not just Wevenu's local state cleared.
 11. **Reconnect** — re-run the OAuth flow, confirm the connection is restored and sync resumes correctly.
-12. **Manual re-sync** — force a retry on a previously failed/dead-lettered item (once the manual re-sync affordance from `docs/quickbooks-online-architecture.md` §7 is built — currently deferred as an explicit non-launch-blocking item, schema-ready) and confirm it succeeds.
+12. **Manual re-sync** — click "Retry now" on a previously failed/dead-lettered item (shipped 2026-07-22, `docs/quickbooks-online-architecture.md` §7 — already verified in this environment against a real dead-lettered fixture; this step confirms it also succeeds against a genuine Intuit response) and confirm it succeeds.
+
+**All twelve steps are now executable** — the checklist is no longer blocked on any unbuilt piece, only on real Intuit sandbox credentials.
 
 If all twelve pass, the QuickBooks integration is production-ready.
 

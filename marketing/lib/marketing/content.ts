@@ -118,7 +118,7 @@ export const MARKETING_MEDIA = {
     "https://images.unsplash.com/photo-1506377247377-2a5b3b417ebb?auto=format&fit=crop&w=1400&q=80",
   architecture:
     "https://images.unsplash.com/photo-1519167758481-83f550bb49b3?auto=format&fit=crop&w=1400&q=80",
-  dashboard: "/marketing/product-dashboard.png",
+  dashboard: "/marketing/homepage-dashboard-overview.png",
   /** Header/footer lockup — Hello to Cheers + WITH LUV. */
   logo: "/brand/hello-to-cheers-logo-primary-transparent.png",
   logoPng: "/brand/hello-to-cheers-logo-primary-transparent.png",

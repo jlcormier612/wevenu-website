@@ -12,6 +12,8 @@ workspace (reads)   ──┘
 
 Both Next apps import `@shared/relationships` (via tsconfig paths). Data lives on disk under `shared/relationships/.data/` (or `RELATIONSHIPS_DATA_PATH`).
 
+Do **not** create `marketing/shared/` or `workspace/shared/` — those are orphan mirrors. Path resolution prefers the package that contains `types.ts` (`<repo>/shared/relationships/`).
+
 ### Deduplication
 
 `findOrCreateRelationship` / ingest helpers match (in order):
@@ -40,6 +42,16 @@ Field patches **merge**; they do not wipe stronger data:
 ### Append-only timeline
 
 Every marketing event appends a `TimelineEvent` (and usually a `Communication`). Subscriptions, walkthroughs, notifications, and Relationship **tasks** are written alongside when relevant.
+
+### Customer Lifecycle Engine (Phase 1)
+
+See also [`../../workspace/README.md`](../../workspace/README.md#customer-lifecycle-engine-phase-1).
+
+After `ingestSubscriptionPurchased`: status is forced to **subscribed**, then `enterOnboardingAfterPurchase` advances to **onboarding** (Launch Yourself) or **white_glove_implementation** (White Glove). Product Sync is deferred for White Glove until Launch Workspace.
+
+New helpers: `enterOnboardingAfterPurchase`, `createManualSubscription`, `launchWhiteGloveWorkspace`, `recordPaymentFailed`, `tickPaymentDunning`, `computeRelationshipHealth`, `suspendRelationshipAccount`, `reactivateRelationshipAccount`.
+
+Pipeline aliases: `live` / `active_customer` → `active`.
 
 ### Project 6 — White Glove Implementation Checklist
 
@@ -177,11 +189,13 @@ Marketing page: http://localhost:3001/walkthrough
 ### Env (marketing `.env.local`)
 
 ```bash
-NEXT_PUBLIC_CALENDLY_URL=https://calendly.com/your-org/walkthrough
-CALENDLY_WEBHOOK_SIGNING_KEY=   # from Calendly when you create the webhook
+NEXT_PUBLIC_CALENDLY_URL=https://calendly.com/YOUR-LINK/walkthrough
+CALENDLY_WEBHOOK_SIGNING_KEY=...
 # Optional if signing key unset:
 # CALENDLY_WEBHOOK_SHARED_SECRET=some-shared-value
 ```
+
+**Restart marketing after changing these** (`npm run dev:marketing` or redeploy). `NEXT_PUBLIC_*` is read at process start — saving `.env.local` alone will not show the embed.
 
 ### Calendly setup steps
 

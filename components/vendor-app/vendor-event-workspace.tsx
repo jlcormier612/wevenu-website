@@ -13,6 +13,7 @@ import {
   completePersonalTaskAction,
   uncompletePersonalTaskAction,
   updateAssignmentNotesAction,
+  getVendorHandbookForEventAction,
 } from "@/app/vendor/events/actions";
 import { createVendorTaskAction } from "@/app/vendor/tasks/actions";
 import {
@@ -21,21 +22,28 @@ import {
 } from "@/app/vendor/messages/actions";
 import { getVendorSharedFloorPlansForEventAction } from "@/app/vendor/floor-plans/actions";
 import { VendorConversationThread } from "@/components/vendor-app/vendor-conversation-thread";
+import { VendorHandbookView } from "@/components/vendor-app/vendor-handbook-view";
 import type { VendorEventDetail } from "@/lib/vendors/types";
 import type { VendorConversationMessage } from "@/lib/conversations/types";
 import type { VendorFloorPlanSummary } from "@/lib/floor-plans/types";
+import type { VendorHandbook } from "@/lib/vendor-handbook/service";
 
-type Tab = "overview" | "timeline" | "tasks" | "messages" | "documents" | "floorplans" | "notes" | "activity";
+// Vendor Workspace Realignment, Phase 5 (2026-07-22): tabs mirror the
+// Client Workspace shape (Overview/Messages/Timeline/Tasks/Documents/Venue
+// Information), plus Notes — private vendor-side notes with no equivalent
+// anywhere else in the workspace, kept per the Phase 1 audit. Floor Plans
+// folded into Documents (it's a document category, not a separate
+// concept); Activity folded into Overview.
+type Tab = "overview" | "messages" | "timeline" | "tasks" | "documents" | "venueinfo" | "notes";
 
 const TABS: { id: Tab; label: string }[] = [
-  { id: "overview",   label: "Overview"   },
-  { id: "timeline",   label: "Timeline"   },
-  { id: "tasks",      label: "Tasks"      },
-  { id: "messages",   label: "Messages"   },
-  { id: "documents",  label: "Documents"  },
-  { id: "floorplans", label: "Floor Plans" },
-  { id: "notes",      label: "Notes"      },
-  { id: "activity",   label: "Activity"   },
+  { id: "overview",  label: "Overview"          },
+  { id: "messages",  label: "Messages"          },
+  { id: "timeline",  label: "Timeline"          },
+  { id: "tasks",     label: "Tasks"             },
+  { id: "documents", label: "Documents"         },
+  { id: "venueinfo", label: "Venue Information" },
+  { id: "notes",     label: "Notes"             },
 ];
 
 function formatDate(iso: string | null): string {
@@ -100,13 +108,12 @@ export function VendorEventWorkspace({ detail }: { detail: VendorEventDetail }) 
       {/* Tab content */}
       <div>
         {tab === "overview"  && <OverviewTab   detail={detail} />}
+        {tab === "messages"  && <MessagesTab   detail={detail} />}
         {tab === "timeline"  && <TimelineTab   detail={detail} />}
         {tab === "tasks"     && <TasksTab      detail={detail} />}
-        {tab === "messages"  && <MessagesTab   detail={detail} />}
         {tab === "documents" && <DocumentsTab  detail={detail} />}
-        {tab === "floorplans" && <FloorPlansTab detail={detail} />}
+        {tab === "venueinfo" && <VenueInfoTab  detail={detail} />}
         {tab === "notes"     && <NotesTab      detail={detail} />}
-        {tab === "activity"  && <ActivityTab   detail={detail} />}
       </div>
     </div>
   );
@@ -140,9 +147,9 @@ function OverviewTab({ detail }: { detail: VendorEventDetail }) {
         </div>
       </div>
 
-      {/* Venue + couple */}
+      {/* Venue + client */}
       <div className="rounded-xl border border-border bg-card p-4 space-y-3">
-        <h2 className="text-sm font-semibold text-foreground">Venue & Couple</h2>
+        <h2 className="text-sm font-semibold text-foreground">Venue & Client</h2>
         <div className="space-y-2 text-sm">
           <p className="font-medium text-foreground">{detail.venueName}</p>
           {detail.coupleName && <p className="text-muted-foreground">{detail.coupleName}</p>}
@@ -157,7 +164,7 @@ function OverviewTab({ detail }: { detail: VendorEventDetail }) {
             </a>
           )}
           {!detail.coupleEmail && !detail.couplePhone && !detail.coupleName && (
-            <p className="text-xs text-muted-foreground">Couple contact not shared by venue.</p>
+            <p className="text-xs text-muted-foreground">Client contact not shared by venue.</p>
           )}
         </div>
       </div>
@@ -177,6 +184,25 @@ function OverviewTab({ detail }: { detail: VendorEventDetail }) {
             >
               {detail.paymentStatus === "paid" ? "Paid" : "Pending"}
             </Badge>
+          </div>
+        </div>
+      )}
+
+      {/* Recent activity — folded in from the old standalone Activity tab
+          (Phase 5: an event has too little activity to justify its own
+          destination; it belongs with everything else about the event). */}
+      {detail.activityFeed.length > 0 && (
+        <div className="rounded-xl border border-border bg-card p-4 space-y-2 sm:col-span-2">
+          <h2 className="text-sm font-semibold text-foreground">Recent Activity</h2>
+          <div className="space-y-2">
+            {detail.activityFeed.slice(0, 5).map((item) => (
+              <div key={item.id} className="text-sm">
+                <p className="text-foreground">{item.description}</p>
+                <p className="text-xs text-muted-foreground">
+                  {item.actor === "venue" ? "Venue" : "You"} · {formatDateShort(item.occurredAt)}
+                </p>
+              </div>
+            ))}
           </div>
         </div>
       )}
@@ -362,15 +388,33 @@ function MessagesTab({ detail }: { detail: VendorEventDetail }) {
   return <VendorConversationThread conversationId={conversationId} initialMessages={messages ?? []} showHeader={false} />;
 }
 
+/**
+ * Documents + Floor Plans, unified (Phase 5/8: a Floor Plan is a document
+ * category — a structured layout built in the coordinator's own Floor Plan
+ * editor and shared via its own shared_with_vendors flag, not a PDF — not a
+ * reason for a separate tab). "Open" on a floor plan renders the same
+ * read-only SVG canvas the coordinator's print view uses.
+ */
 function DocumentsTab({ detail }: { detail: VendorEventDetail }) {
-  if (detail.documents.length === 0) {
+  const [plans, setPlans] = React.useState<VendorFloorPlanSummary[] | null>(null);
+
+  React.useEffect(() => {
+    void getVendorSharedFloorPlansForEventAction(detail.eventId).then(setPlans);
+  }, [detail.eventId]);
+
+  const loading = plans === null;
+  const hasDocuments = detail.documents.length > 0;
+  const hasPlans = (plans ?? []).length > 0;
+
+  if (!loading && !hasDocuments && !hasPlans) {
     return (
       <div className="rounded-xl border border-dashed border-border py-12 text-center">
         <FileText className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
-        <p className="text-sm text-muted-foreground">No documents shared for this event yet.</p>
+        <p className="text-sm text-muted-foreground">No documents or floor plans shared for this event yet.</p>
       </div>
     );
   }
+
   return (
     <div className="rounded-xl border border-border bg-card divide-y divide-border">
       {detail.documents.map((d) => (
@@ -389,39 +433,7 @@ function DocumentsTab({ detail }: { detail: VendorEventDetail }) {
           <Badge variant="outline" className="text-xs shrink-0">{d.category}</Badge>
         </a>
       ))}
-    </div>
-  );
-}
-
-/**
- * Sprint 1 — Vendor Event Assets. Distinct from Documents: a Floor Plan is
- * the structured layout built in the coordinator's own Floor Plan editor
- * (floor_plans/floor_plan_objects), shared here via its own
- * shared_with_vendors flag — not a PDF a coordinator had to export and
- * upload. "Open" renders the same read-only SVG canvas the coordinator's
- * print view uses, scoped to the vendor's own data fetch.
- */
-function FloorPlansTab({ detail }: { detail: VendorEventDetail }) {
-  const [plans, setPlans] = React.useState<VendorFloorPlanSummary[] | null>(null);
-
-  React.useEffect(() => {
-    void getVendorSharedFloorPlansForEventAction(detail.eventId).then(setPlans);
-  }, [detail.eventId]);
-
-  if (plans === null) {
-    return <p className="py-8 text-center text-sm text-muted-foreground">Loading…</p>;
-  }
-  if (plans.length === 0) {
-    return (
-      <div className="rounded-xl border border-dashed border-border py-12 text-center">
-        <FileText className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
-        <p className="text-sm text-muted-foreground">No floor plans shared for this event yet.</p>
-      </div>
-    );
-  }
-  return (
-    <div className="rounded-xl border border-border bg-card divide-y divide-border">
-      {plans.map((p) => (
+      {(plans ?? []).map((p) => (
         <a
           key={p.id}
           href={`/vendor/floor-plans/${p.id}`}
@@ -433,11 +445,31 @@ function FloorPlansTab({ detail }: { detail: VendorEventDetail }) {
           <div className="min-w-0 flex-1">
             <p className="text-sm font-medium text-foreground">{p.name}</p>
           </div>
-          <Badge variant="outline" className="text-xs shrink-0">Open</Badge>
+          <Badge variant="outline" className="text-xs shrink-0">Floor Plan</Badge>
         </a>
       ))}
     </div>
   );
+}
+
+function VenueInfoTab({ detail }: { detail: VendorEventDetail }) {
+  const [handbook, setHandbook] = React.useState<VendorHandbook | null | undefined>(undefined);
+
+  React.useEffect(() => {
+    void getVendorHandbookForEventAction(detail.eventId).then(setHandbook);
+  }, [detail.eventId]);
+
+  if (handbook === undefined) {
+    return <p className="py-8 text-center text-sm text-muted-foreground">Loading…</p>;
+  }
+  if (!handbook) {
+    return (
+      <div className="rounded-xl border border-dashed border-border py-12 text-center">
+        <p className="text-sm text-muted-foreground">Venue information isn&apos;t available for this event.</p>
+      </div>
+    );
+  }
+  return <VendorHandbookView handbook={handbook} />;
 }
 
 function NotesTab({ detail }: { detail: VendorEventDetail }) {
@@ -466,30 +498,6 @@ function NotesTab({ detail }: { detail: VendorEventDetail }) {
           {pending ? "Saving…" : "Save Notes"}
         </Button>
       )}
-    </div>
-  );
-}
-
-function ActivityTab({ detail }: { detail: VendorEventDetail }) {
-  if (detail.activityFeed.length === 0) {
-    return (
-      <div className="rounded-xl border border-dashed border-border py-12 text-center">
-        <p className="text-sm text-muted-foreground">No activity yet for this event.</p>
-      </div>
-    );
-  }
-  return (
-    <div className="space-y-2">
-      {detail.activityFeed.map((item) => (
-        <div key={item.id} className="flex items-start gap-3 rounded-xl border border-border bg-card px-4 py-3">
-          <div className="min-w-0 flex-1">
-            <p className="text-sm text-foreground">{item.description}</p>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              {item.actor === "venue" ? "Venue" : "You"} · {formatDateShort(item.occurredAt)}
-            </p>
-          </div>
-        </div>
-      ))}
     </div>
   );
 }

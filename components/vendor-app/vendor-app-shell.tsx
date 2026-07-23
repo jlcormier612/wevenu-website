@@ -4,30 +4,37 @@ import * as React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  Building2, CalendarDays, CheckSquare, FileText, Heart,
-  Inbox, LayoutDashboard, Menu, MessageSquare, Package,
+  CalendarDays, CheckSquare, Clock, FileText,
+  Handshake, LayoutDashboard, Menu, MessageSquare,
   User, X,
 } from "lucide-react";
 
 import type { VendorRole } from "@/lib/vendors/types";
 
-const DAILY_NAV = [
-  { href: "/vendor/dashboard",   label: "Home",      icon: LayoutDashboard },
-  { href: "/vendor/inquiries",   label: "Inquiries", icon: Inbox,          badge: "inquiry" as const },
-  { href: "/vendor/events",      label: "Events",    icon: CalendarDays    },
-  { href: "/vendor/messages",    label: "Messages",  icon: MessageSquare,  badge: "message" as const },
-  { href: "/vendor/tasks",       label: "Tasks",     icon: CheckSquare,    badge: "task" as const },
-  { href: "/vendor/documents",   label: "Documents", icon: FileText        },
+// Program 4, Initiative C, Phase 9 (2026-07-23): "The Vendor Workspace is
+// not a CRM. It exists to strengthen the Vendor's relationship with
+// participating Venues." Nav order is the directive's own list verbatim.
+// Venue Information (formerly top-level, /vendor/handbook) drops out of
+// primary nav — Phase 11 places it inside each Event's own workspace
+// instead, alongside that event's Timeline/Tasks/Messages/Documents,
+// rather than as a standalone, venue-agnostic destination. Venue
+// Partnerships (/vendor/partnerships) takes its slot: the vendor's list of
+// every venue relationship, with the venue-specific promotion editor
+// (Phase 10/16). Inquiries (lead pipeline), Venues (old cross-venue
+// browser, now redirects to Partnerships), and Luv/health-score business
+// coaching remain dropped per the Program 4 Initiative B Phase 1 audit.
+const NAV = [
+  { href: "/vendor/dashboard",    label: "Home",               icon: LayoutDashboard },
+  { href: "/vendor/partnerships", label: "Venue Partnerships", icon: Handshake       },
+  { href: "/vendor/messages",     label: "Messages",           icon: MessageSquare,  badge: "message" as const },
+  { href: "/vendor/events",       label: "Events",             icon: CalendarDays    },
+  { href: "/vendor/tasks",        label: "Tasks",              icon: CheckSquare,    badge: "task" as const },
+  { href: "/vendor/timeline",     label: "Timeline",           icon: Clock           },
+  { href: "/vendor/documents",    label: "Documents",          icon: FileText        },
+  { href: "/vendor/profile",      label: "Profile",            icon: User            },
 ];
 
-const BUSINESS_NAV = [
-  { href: "/vendor/packages",     label: "Packages",    icon: Package    },
-  { href: "/vendor/availability", label: "Availability", icon: CalendarDays },
-  { href: "/vendor/venues",       label: "Venues",      icon: Building2  },
-  { href: "/vendor/profile",      label: "Profile",     icon: User       },
-];
-
-type BadgeKey = "inquiry" | "task" | "message";
+type BadgeKey = "task" | "message";
 
 function NavItem({
   href, label, icon: Icon, badgeCount,
@@ -62,16 +69,16 @@ function NavItem({
 export function VendorAppShell({
   businessName,
   category,
+  logoUrl,
   role,
-  newInquiryCount,
   pendingTaskCount,
   unreadMessageCount,
   children,
 }: {
   businessName:     string;
   category:         string | null;
+  logoUrl?:         string | null;
   role:             VendorRole;
-  newInquiryCount?: number;
   pendingTaskCount?: number;
   unreadMessageCount?: number;
   children:         React.ReactNode;
@@ -79,7 +86,6 @@ export function VendorAppShell({
   const [mobileOpen, setMobileOpen] = React.useState(false);
 
   const badges: Record<BadgeKey, number | undefined> = {
-    inquiry: newInquiryCount,
     task:    pendingTaskCount,
     message: unreadMessageCount,
   };
@@ -88,7 +94,7 @@ export function VendorAppShell({
     <div className="flex h-screen bg-background">
       {/* Desktop sidebar */}
       <aside className="hidden lg:flex w-64 shrink-0 flex-col border-r border-border bg-card">
-        <SidebarContent businessName={businessName} category={category} badges={badges} />
+        <SidebarContent businessName={businessName} category={category} logoUrl={logoUrl} badges={badges} />
       </aside>
 
       {/* Mobile overlay */}
@@ -103,7 +109,7 @@ export function VendorAppShell({
             >
               <X className="h-5 w-5" />
             </button>
-            <SidebarContent businessName={businessName} category={category} badges={badges} />
+            <SidebarContent businessName={businessName} category={category} logoUrl={logoUrl} badges={badges} />
           </aside>
         </div>
       )}
@@ -115,6 +121,9 @@ export function VendorAppShell({
           <button type="button" onClick={() => setMobileOpen(true)} className="text-muted-foreground hover:text-foreground">
             <Menu className="h-5 w-5" />
           </button>
+          {logoUrl ? (
+            <img src={logoUrl} alt="" className="h-6 w-6 rounded-md object-cover shrink-0" />
+          ) : null}
           <span className="font-semibold text-sm text-foreground truncate">{businessName}</span>
           <span className="ml-auto text-[10px] font-medium uppercase tracking-widest text-muted-foreground">
             Hello to Cheers
@@ -131,10 +140,12 @@ export function VendorAppShell({
 function SidebarContent({
   businessName,
   category,
+  logoUrl,
   badges,
 }: {
   businessName: string;
   category:     string | null;
+  logoUrl?:     string | null;
   badges:       Record<BadgeKey, number | undefined>;
 }) {
   return (
@@ -142,16 +153,26 @@ function SidebarContent({
       {/* Header */}
       <div className="px-5 pt-6 pb-4 border-b border-border">
         <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1">Hello to Cheers</p>
-        <p className="font-semibold text-sm text-foreground leading-tight">{businessName}</p>
-        {category && (
-          <p className="text-xs text-muted-foreground mt-0.5 capitalize">{category.replace(/_/g, " ")}</p>
-        )}
+        <div className="flex items-center gap-2.5">
+          {logoUrl ? (
+            <img src={logoUrl} alt="" className="h-9 w-9 rounded-lg object-cover border border-border shrink-0" />
+          ) : (
+            <div className="h-9 w-9 rounded-lg bg-muted flex items-center justify-center text-xs font-bold text-muted-foreground border border-border shrink-0">
+              {businessName.slice(0, 2).toUpperCase()}
+            </div>
+          )}
+          <div className="min-w-0">
+            <p className="font-semibold text-sm text-foreground leading-tight truncate">{businessName}</p>
+            {category && (
+              <p className="text-xs text-muted-foreground mt-0.5 capitalize truncate">{category.replace(/_/g, " ")}</p>
+            )}
+          </div>
+        </div>
       </div>
 
-      {/* Daily work nav */}
+      {/* Event workspace nav */}
       <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
-        <p className="px-3 pt-1 pb-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Daily Work</p>
-        {DAILY_NAV.map((item) => (
+        {NAV.map((item) => (
           <NavItem
             key={item.href}
             href={item.href}
@@ -160,23 +181,7 @@ function SidebarContent({
             badgeCount={item.badge ? badges[item.badge] : undefined}
           />
         ))}
-
-        <p className="px-3 pt-4 pb-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Business</p>
-        {BUSINESS_NAV.map((item) => (
-          <NavItem key={item.href} href={item.href} label={item.label} icon={item.icon} />
-        ))}
       </nav>
-
-      {/* Luv button */}
-      <div className="px-3 pb-4 border-t border-border pt-3">
-        <Link
-          href="/vendor/luv"
-          className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-semibold text-pink-600 hover:bg-pink-50 dark:hover:bg-pink-950/20 transition-colors"
-        >
-          <Heart className="h-4 w-4 shrink-0 fill-pink-400 text-pink-400" />
-          Luv
-        </Link>
-      </div>
     </>
   );
 }

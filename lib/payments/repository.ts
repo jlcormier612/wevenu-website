@@ -31,6 +31,9 @@ type ItemRow = {
   reference_number: string | null; notes: string | null; sort_order: number;
   refunded_amount: number | null; refunded_at: string | null; refund_reason: string | null;
   quickbooks_sync_status: "not_synced" | "pending" | "synced" | "failed";
+  stripe_payment_intent_id: string | null;
+  stripe_checkout_session_id: string | null;
+  stripe_payment_method_type: "card" | "us_bank_account" | null;
   created_at: string; updated_at: string;
 };
 
@@ -66,6 +69,9 @@ function mapItem(r: ItemRow): PaymentLineItem {
     refundedAmount: r.refunded_amount != null ? Number(r.refunded_amount) : 0,
     refundedAt: r.refunded_at, refundReason: r.refund_reason,
     quickbooksSyncStatus: r.quickbooks_sync_status,
+    stripePaymentIntentId: r.stripe_payment_intent_id ?? null,
+    stripeCheckoutSessionId: r.stripe_checkout_session_id ?? null,
+    stripePaymentMethodType: r.stripe_payment_method_type ?? null,
     createdAt: r.created_at, updatedAt: r.updated_at,
   };
 }
@@ -241,6 +247,106 @@ export async function markItemPaid(
     }).eq("id", itemId).eq("venue_id", venueId);
   if (error) throw error;
   return { ok: true };
+}
+
+/**
+ * Stripe Connect (Sprint 4) — record that a Checkout Session was created
+ * for this item, before the couple has even completed it. Lets the
+ * webhook handler (and a retried/duplicate checkout attempt) find the
+ * item by session id.
+ */
+export async function setCheckoutSession(
+  client: DbClient,
+  venueId: string,
+  itemId: string,
+  stripeCheckoutSessionId: string,
+): Promise<void> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error } = await (client.from("payment_line_items") as any)
+    .update({ stripe_checkout_session_id: stripeCheckoutSessionId })
+    .eq("id", itemId).eq("venue_id", venueId);
+  if (error) throw error;
+}
+
+/**
+ * Stripe Connect (Sprint 4) — ACH only. Hosted Checkout completing only
+ * means the bank debit was *initiated*, not that funds landed (4-5
+ * business days). Moves pending -> processing; never touches an item
+ * that's already paid/cancelled/refunded (idempotent against a
+ * redelivered webhook).
+ */
+export async function markItemProcessing(
+  client: DbClient,
+  venueId: string,
+  itemId: string,
+  input: { stripePaymentIntentId: string; stripePaymentMethodType: "card" | "us_bank_account" },
+): Promise<{ ok: true } | { ok: false; message: string }> {
+  const { data: item } = await client.from("payment_line_items")
+    .select("status").eq("id", itemId).eq("venue_id", venueId).maybeSingle<{ status: string }>();
+  if (!item) return { ok: false, message: "Payment not found." };
+  if (item.status !== "pending" && item.status !== "overdue") {
+    return { ok: true }; // already processing/paid/etc — idempotent no-op, not an error
+  }
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error } = await (client.from("payment_line_items") as any)
+    .update({
+      status: "processing",
+      stripe_payment_intent_id: input.stripePaymentIntentId,
+      stripe_payment_method_type: input.stripePaymentMethodType,
+    })
+    .eq("id", itemId).eq("venue_id", venueId);
+  if (error) throw error;
+  return { ok: true };
+}
+
+/**
+ * Stripe Connect (Sprint 4) — the webhook-driven equivalent of
+ * markItemPaid(), used by app/api/webhooks/stripe-connect/route.ts (an
+ * admin-client, no-session context, so it can't call the session-bound
+ * lib/payments/service.ts version). Idempotent: a redelivered
+ * checkout.session.completed / payment_intent.succeeded for an
+ * already-paid item is a no-op, not an error.
+ */
+export async function markItemPaidFromStripe(
+  client: DbClient,
+  venueId: string,
+  itemId: string,
+  input: { paidAmount: number; stripePaymentIntentId: string; stripeCheckoutSessionId?: string; stripePaymentMethodType: "card" | "us_bank_account" },
+): Promise<{ ok: true; alreadyPaid: boolean } | { ok: false; message: string }> {
+  const { data: item } = await client.from("payment_line_items")
+    .select("status").eq("id", itemId).eq("venue_id", venueId).maybeSingle<{ status: string }>();
+  if (!item) return { ok: false, message: "Payment not found." };
+  if (item.status === "paid") return { ok: true, alreadyPaid: true };
+  if (item.status === "cancelled") return { ok: false, message: "This payment was cancelled and can't be marked as received." };
+
+  const patch: Record<string, unknown> = {
+    status: "paid",
+    paid_at: new Date().toISOString(),
+    paid_amount: input.paidAmount,
+    payment_method: "stripe",
+    reference_number: input.stripePaymentIntentId,
+    stripe_payment_intent_id: input.stripePaymentIntentId,
+    stripe_payment_method_type: input.stripePaymentMethodType,
+  };
+  if (input.stripeCheckoutSessionId) patch.stripe_checkout_session_id = input.stripeCheckoutSessionId;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error } = await (client.from("payment_line_items") as any)
+    .update(patch).eq("id", itemId).eq("venue_id", venueId);
+  if (error) throw error;
+  return { ok: true, alreadyPaid: false };
+}
+
+/**
+ * Stripe Connect (Sprint 4) — a failed ACH debit (e.g. insufficient
+ * funds). Reverts processing -> pending, never a terminal "failed" state:
+ * nothing was actually collected, so the couple can simply retry.
+ */
+export async function revertItemToPending(client: DbClient, venueId: string, itemId: string): Promise<void> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error } = await (client.from("payment_line_items") as any)
+    .update({ status: "pending" })
+    .eq("id", itemId).eq("venue_id", venueId).eq("status", "processing");
+  if (error) throw error;
 }
 
 /**

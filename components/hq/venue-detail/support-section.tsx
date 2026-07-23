@@ -1,3 +1,5 @@
+import { AlertTriangle } from "lucide-react";
+
 import {
   addVenueNoteAction,
   addVenueTaskAction,
@@ -23,6 +25,12 @@ async function addTask(venueId: string, formData: FormData) {
   await addVenueTaskAction(venueId, title, dueDate);
 }
 
+async function addBlocker(venueId: string, engagementId: string | null, formData: FormData) {
+  "use server";
+  const title = String(formData.get("title") ?? "");
+  await addVenueTaskAction(venueId, title, null, { kind: "blocker", engagementId });
+}
+
 async function addNote(venueId: string, formData: FormData) {
   "use server";
   const body = String(formData.get("body") ?? "");
@@ -40,22 +48,66 @@ export function SupportSection({
   notes,
   tasks,
   crmState,
+  engagementId,
 }: {
   venueId: string;
   notes: HqNote[];
   tasks: HqTask[];
   crmState: HqCrmState;
+  // Only set on the onboarding workspace (§2.2a step 4) — a blocker raised
+  // from there links back to that engagement's case file. Null everywhere
+  // else (Beta Command Center's venue detail page), same component either way.
+  engagementId?: string | null;
 }) {
-  const openTasks = tasks.filter((t) => !t.completedAt);
-  const doneTasks = tasks.filter((t) => t.completedAt);
+  const blockers = tasks.filter((t) => t.kind === "blocker");
+  const openBlockers = blockers.filter((t) => !t.completedAt);
+  const resolvedBlockers = blockers.filter((t) => t.completedAt);
+
+  const plainTasks = tasks.filter((t) => t.kind !== "blocker");
+  const openTasks = plainTasks.filter((t) => !t.completedAt);
+  const doneTasks = plainTasks.filter((t) => t.completedAt);
 
   return (
     <Card>
       <CardHeader className="pb-3">
         <h2 className="font-heading text-sm font-semibold text-heading">Support</h2>
-        <p className="text-xs text-muted-foreground">Internal notes, follow-up tasks, and contact cadence.</p>
+        <p className="text-xs text-muted-foreground">Blockers, internal notes, follow-up tasks, and contact cadence.</p>
       </CardHeader>
       <CardContent className="pt-0 space-y-6">
+        {/* Blockers — impossible to miss, per §2.2a */}
+        {openBlockers.length > 0 && (
+          <div className="rounded-lg border border-destructive/40 bg-destructive/5 p-3 space-y-2">
+            <p className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wide text-destructive">
+              <AlertTriangle className="h-3 w-3" /> Open blockers ({openBlockers.length})
+            </p>
+            <ul className="space-y-1.5">
+              {openBlockers.map((t) => (
+                <li key={t.id} className="flex items-center justify-between gap-2 text-xs">
+                  <span className="font-medium text-heading">{t.title}</span>
+                  <form action={completeVenueTaskAction.bind(null, venueId, t.id)}>
+                    <Button type="submit" variant="ghost" size="xs">Resolve</Button>
+                  </form>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+        <div>
+          {openBlockers.length === 0 && <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground mb-2">Blockers</p>}
+          <form action={addBlocker.bind(null, venueId, engagementId ?? null)} className="flex items-center gap-2">
+            <Input name="title" placeholder="Raise a blocker…" className="h-7 flex-1 text-xs" required />
+            <Button type="submit" variant="outline" size="sm">Raise</Button>
+          </form>
+          {resolvedBlockers.length > 0 && (
+            <details className="text-xs text-muted-foreground mt-2">
+              <summary className="cursor-pointer">{resolvedBlockers.length} resolved</summary>
+              <ul className="mt-1.5 space-y-1">
+                {resolvedBlockers.map((t) => <li key={t.id} className="line-through">{t.title}</li>)}
+              </ul>
+            </details>
+          )}
+        </div>
+
         {/* Contact cadence */}
         <div className="flex flex-wrap items-center gap-4 rounded-lg border p-3 text-xs">
           <div>

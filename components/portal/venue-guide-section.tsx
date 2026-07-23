@@ -1,8 +1,8 @@
 "use client";
 
 import * as React from "react";
-import { Search, Globe, Phone, Mail, ChevronDown, ChevronUp, ExternalLink } from "lucide-react";
-import type { PortalContext } from "@/lib/portal/types";
+import { Search, Globe, Phone, Mail, ChevronDown, ChevronUp, ExternalLink, Users } from "lucide-react";
+import type { PortalContext, PortalSection, PortalVenueTeamMember, PortalVenueSpace } from "@/lib/portal/types";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -150,6 +150,48 @@ function ContactCard({ contact }: { contact: ContactEntry }) {
   );
 }
 
+// ── Venue Team card ───────────────────────────────────────────────────────────
+
+const TEAM_ROLE_LABEL: Record<string, string> = { owner: "Owner", manager: "Venue Manager", coordinator: "Coordinator", staff: "Team" };
+
+function TeamMemberCard({ member }: { member: PortalVenueTeamMember }) {
+  return (
+    <div className="rounded-2xl border p-4 flex items-center gap-3" style={{ borderColor: BORDER, background: "#FDFCFA" }}>
+      <div className="h-9 w-9 rounded-full flex items-center justify-center text-xs font-bold text-white shrink-0" style={{ background: SAGE }}>
+        {member.fullName.split(" ").map((s) => s[0]).slice(0, 2).join("").toUpperCase()}
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-medium" style={{ color: "#2D2A28" }}>{member.fullName}</p>
+        <p className="text-[11px]" style={{ color: TAUPE }}>{member.title || TEAM_ROLE_LABEL[member.role] || "Team"}</p>
+      </div>
+      {member.email && (
+        <a href={`mailto:${member.email}`} className="flex items-center justify-center h-8 w-8 rounded-lg border shrink-0 hover:opacity-80"
+          style={{ borderColor: BORDER, color: SAGE }} title={`Email ${member.fullName}`}>
+          <Mail className="h-3.5 w-3.5" />
+        </a>
+      )}
+    </div>
+  );
+}
+
+// ── Property Overview — venue_spaces card ───────────────────────────────────────
+
+function SpaceCard({ space }: { space: PortalVenueSpace }) {
+  return (
+    <div className="rounded-2xl border p-4 space-y-1" style={{ borderColor: BORDER, background: "#FDFCFA" }}>
+      <div className="flex items-start justify-between gap-2">
+        <p className="text-sm font-medium" style={{ color: "#2D2A28" }}>{space.name}</p>
+        {space.capacity != null && (
+          <span className="flex items-center gap-1 text-[11px] shrink-0" style={{ color: TAUPE }}>
+            <Users className="h-3 w-3" /> up to {space.capacity}
+          </span>
+        )}
+      </div>
+      {space.description && <p className="text-xs leading-relaxed" style={{ color: TAUPE }}>{space.description}</p>}
+    </div>
+  );
+}
+
 // ── FAQ accordion item ────────────────────────────────────────────────────────
 
 function FaqItem({ faq, open, onToggle }: { faq: FaqEntry; open: boolean; onToggle: () => void }) {
@@ -177,34 +219,26 @@ function FaqItem({ faq, open, onToggle }: { faq: FaqEntry; open: boolean; onTogg
   );
 }
 
-// ── Empty state ───────────────────────────────────────────────────────────────
-
-function EmptyGuide({ venueName }: { venueName: string }) {
-  return (
-    <div className="text-center py-16 space-y-3">
-      <span className="text-4xl block">🏛️</span>
-      <p className="text-sm font-medium" style={{ color: "#4A4440" }}>Your Venue Guide is on its way</p>
-      <p className="text-xs leading-relaxed max-w-xs mx-auto" style={{ color: TAUPE }}>
-        {venueName} is still adding venue details here. In the meantime, feel free to ask Luv any questions you have.
-      </p>
-    </div>
-  );
-}
-
 // ── Main export ───────────────────────────────────────────────────────────────
 
-export function VenueGuideSection({ token, context }: { token: string; context: PortalContext }) {
+export function VenueGuideSection({ token, context, onNavigate }: { token: string; context: PortalContext; onNavigate: (s: PortalSection) => void }) {
   const [data,    setData]    = React.useState<VenueGuideData | null>(null);
+  const [team,    setTeam]    = React.useState<PortalVenueTeamMember[]>([]);
+  const [spaces,  setSpaces]  = React.useState<PortalVenueSpace[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [query,   setQuery]   = React.useState("");
   const [openFaq, setOpenFaq] = React.useState<number | null>(null);
 
   React.useEffect(() => {
-    fetch(`/api/portal/venue-info?token=${token}`)
-      .then(r => r.json())
-      .then((d: VenueGuideData | null) => setData(d))
-      .catch(() => {})
-      .finally(() => setLoading(false));
+    Promise.all([
+      fetch(`/api/portal/venue-info?token=${token}`).then(r => r.json()).catch(() => null) as Promise<VenueGuideData | null>,
+      fetch(`/api/portal/venue-team?token=${token}`).then(r => r.json()).catch(() => ({ team: [] })) as Promise<{ team?: PortalVenueTeamMember[] }>,
+      fetch(`/api/portal/venue-spaces?token=${token}`).then(r => r.json()).catch(() => ({ spaces: [] })) as Promise<{ spaces?: PortalVenueSpace[] }>,
+    ]).then(([info, teamRes, spacesRes]) => {
+      setData(info);
+      setTeam(teamRes.team ?? []);
+      setSpaces(spacesRes.spaces ?? []);
+    }).finally(() => setLoading(false));
   }, [token]);
 
   const q = query.trim().toLowerCase();
@@ -220,36 +254,45 @@ export function VenueGuideSection({ token, context }: { token: string; context: 
     c => !q || matches(c.name, q) || matches(c.role, q) || matches(c.phone, q) || matches(c.email, q)
   );
 
-  // Section visibility when searching
-  function show(relevant: boolean, ...texts: (string | null | undefined)[]): boolean {
-    if (!q) return relevant;
-    return texts.some(t => matches(t, q)) || (relevant && filteredFaqs.length + filteredHotels.length + filteredContacts.length > 0);
-  }
 
-  const hasParking         = hasAny(data?.parkingInfo, data?.transportation);
-  const hasAccommodations  = hasAny(data?.hotelBlocks, data?.nearbyAccommodations);
-  const hasCeremony        = hasAny(data?.ceremonyInstructions);
-  const hasRain            = hasAny(data?.rainPlan);
-  const hasPolicies        = hasAny(data?.policies);
-  const hasThings          = hasAny(data?.thingsToDo);
-  const hasFaqs            = data?.faqs && data.faqs.length > 0;
-  const hasContacts        = data?.importantContacts && data.importantContacts.length > 0;
-  const hasAnyData         = hasParking || hasAccommodations || hasCeremony || hasRain || hasPolicies || hasThings || hasFaqs || hasContacts;
+  const hasDirections       = hasAny(data?.transportation);
+  const hasParking          = hasAny(data?.parkingInfo);
+  const hasAccommodations   = hasAny(data?.hotelBlocks, data?.nearbyAccommodations);
+  const hasCeremony         = hasAny(data?.ceremonyInstructions);
+  const hasRain             = hasAny(data?.rainPlan);
+  const hasPolicies         = hasAny(data?.policies);
+  const hasThings           = hasAny(data?.thingsToDo);
+  const hasFaqs             = data?.faqs && data.faqs.length > 0;
+  const hasContacts         = (data?.importantContacts && data.importantContacts.length > 0) || !!context.venue.phone || !!context.venue.email;
+  const hasTeam             = team.length > 0;
+  const hasSpaces           = spaces.length > 0;
+  const hasAnyData          = hasDirections || hasParking || hasAccommodations || hasCeremony || hasRain || hasPolicies || hasThings || hasFaqs || hasContacts;
 
   // Search visibility per section
-  const showParking        = hasParking        && (!q || matches(data?.parkingInfo, q) || matches(data?.transportation, q));
-  const showAccommodations = hasAccommodations && (!q || filteredHotels.length > 0 || matches(data?.nearbyAccommodations, q));
-  const showCeremony       = hasCeremony       && (!q || matches(data?.ceremonyInstructions, q));
-  const showRain           = hasRain           && (!q || matches(data?.rainPlan, q));
-  const showPolicies       = hasPolicies       && (!q || matches(data?.policies, q));
-  const showThings         = hasThings         && (!q || matches(data?.thingsToDo, q));
-  const showFaqs           = hasFaqs           && (!q || filteredFaqs.length > 0);
-  const showContacts       = hasContacts       && (!q || filteredContacts.length > 0);
+  const showDirections      = hasDirections    && (!q || matches(data?.transportation, q));
+  const showParking         = hasParking       && (!q || matches(data?.parkingInfo, q));
+  const showAccommodations  = hasAccommodations && (!q || filteredHotels.length > 0 || matches(data?.nearbyAccommodations, q));
+  const showCeremony        = hasCeremony      && (!q || matches(data?.ceremonyInstructions, q));
+  const showRain            = hasRain          && (!q || matches(data?.rainPlan, q));
+  const showPolicies        = hasPolicies      && (!q || matches(data?.policies, q));
+  const showThings          = hasThings        && (!q || matches(data?.thingsToDo, q));
+  const showFaqs            = hasFaqs          && (!q || filteredFaqs.length > 0);
+  const showContacts        = hasContacts      && (!q || filteredContacts.length > 0 || matches(context.venue.phone, q) || matches(context.venue.email, q));
+  const showTeam            = hasTeam          && (!q || team.some(m => matches(m.fullName, q) || matches(m.title, q)));
+  const showSpaces          = hasSpaces        && (!q || spaces.some(s => matches(s.name, q) || matches(s.description, q)));
 
-  const hasResults = showParking || showAccommodations || showCeremony || showRain || showPolicies || showThings || showFaqs || showContacts;
+  const hasResults = showDirections || showParking || showAccommodations || showCeremony || showRain || showPolicies || showThings || showFaqs || showContacts || showTeam || showSpaces;
 
   return (
     <div className="space-y-6 pb-10">
+
+      {/* Hero photograph + venue story — Program 4, Initiative D, Phase 6
+          (2026-07-23): "It should become the venue's digital welcome book."
+          Same photo as the Couple Workspace hero (venues.hero_image_url),
+          one upload, both places. */}
+      {context.venue.heroImageUrl && (
+        <div className="rounded-3xl overflow-hidden -mx-1" style={{ height: "180px", background: `url(${context.venue.heroImageUrl}) center/cover no-repeat` }} />
+      )}
 
       {/* Page header */}
       <div className="space-y-0.5">
@@ -259,8 +302,15 @@ export function VenueGuideSection({ token, context }: { token: string; context: 
         </p>
       </div>
 
-      {/* Search */}
-      {hasAnyData && (
+      {context.venue.story && (
+        <GuideSection emoji="📖" title="Our Story">
+          <TextBlock text={context.venue.story} />
+        </GuideSection>
+      )}
+
+      {/* Search — always available now; "About the Venue" always has
+          content, so the guide is never truly empty. */}
+      {!loading && (
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5" style={{ color: TAUPE }} />
           <input
@@ -300,11 +350,10 @@ export function VenueGuideSection({ token, context }: { token: string; context: 
         </div>
       )}
 
-      {/* No data at all */}
-      {!loading && !hasAnyData && <EmptyGuide venueName={context.venue.name} />}
-
-      {/* No search results */}
-      {!loading && hasAnyData && q && !hasResults && (
+      {/* No search results (About the Venue always has content, so search
+          "no results" only applies to the operational-info + team/spaces
+          layer, not a fully-empty guide state — that can no longer happen). */}
+      {!loading && q && !hasResults && !matches(context.venue.name, q) && (
         <div className="text-center py-8 space-y-2">
           <p className="text-sm font-medium" style={{ color: "#4A4440" }}>No results for "{query}"</p>
           <p className="text-xs" style={{ color: TAUPE }}>
@@ -313,11 +362,18 @@ export function VenueGuideSection({ token, context }: { token: string; context: 
         </div>
       )}
 
-      {/* ── Venue Overview ── always shown if we have any data ── */}
-      {!loading && hasAnyData && (!q || show(true, context.venue.name, context.venue.website)) && (
-        <GuideSection emoji="📍" title="Venue Overview">
+      {/* ── About the Venue — always shown; name/address always exist ── */}
+      {!loading && (!q || matches(context.venue.name, q) || matches(context.venue.website, q)) && (
+        <GuideSection emoji="📍" title="About the Venue">
           <div className="rounded-2xl border p-4 space-y-2" style={{ borderColor: BORDER, background: "#FDFCFA" }}>
             <p className="text-sm font-semibold" style={{ color: "#2D2A28" }}>{context.venue.name}</p>
+            {(context.venue.addressLine1 || context.venue.city) && (
+              <p className="text-xs leading-relaxed" style={{ color: TAUPE }}>
+                {[context.venue.addressLine1, context.venue.addressLine2].filter(Boolean).join(", ")}
+                {context.venue.addressLine1 && (context.venue.city || context.venue.stateRegion) && <br />}
+                {[context.venue.city, context.venue.stateRegion, context.venue.postalCode].filter(Boolean).join(", ")}
+              </p>
+            )}
             {context.venue.website && (
               <a href={context.venue.website} target="_blank" rel="noopener noreferrer"
                 className="flex items-center gap-1.5 text-xs hover:underline"
@@ -330,16 +386,35 @@ export function VenueGuideSection({ token, context }: { token: string; context: 
         </GuideSection>
       )}
 
-      {/* ── Parking & Transportation ── */}
-      {!loading && showParking && (
-        <GuideSection emoji="🚗" title="Parking & Transportation">
-          <div className="space-y-3">
-            {data?.parkingInfo   && <TextBlock text={data.parkingInfo} />}
-            {data?.transportation && data.parkingInfo && (
-              <div className="h-px" style={{ background: BORDER }} />
-            )}
-            {data?.transportation && <TextBlock text={data.transportation} />}
+      {/* ── Venue Team ── */}
+      {!loading && showTeam && (
+        <GuideSection emoji="👋" title="Venue Team">
+          <div className="space-y-2">
+            {team.filter(m => !q || matches(m.fullName, q) || matches(m.title, q)).map((m) => <TeamMemberCard key={m.id} member={m} />)}
           </div>
+        </GuideSection>
+      )}
+
+      {/* ── Property Overview — reuses venue_spaces ── */}
+      {!loading && showSpaces && (
+        <GuideSection emoji="🏡" title="Property Overview">
+          <div className="space-y-2">
+            {spaces.filter(s => !q || matches(s.name, q) || matches(s.description, q)).map((s) => <SpaceCard key={s.id} space={s} />)}
+          </div>
+        </GuideSection>
+      )}
+
+      {/* ── Directions ── */}
+      {!loading && showDirections && (
+        <GuideSection emoji="🧭" title="Directions">
+          <TextBlock text={data!.transportation!} />
+        </GuideSection>
+      )}
+
+      {/* ── Parking ── */}
+      {!loading && showParking && (
+        <GuideSection emoji="🚗" title="Parking">
+          <TextBlock text={data!.parkingInfo!} />
         </GuideSection>
       )}
 
@@ -369,17 +444,20 @@ export function VenueGuideSection({ token, context }: { token: string; context: 
         </GuideSection>
       )}
 
-      {/* ── Policies & Rules ── */}
-      {!loading && showPolicies && (
-        <GuideSection emoji="📋" title="Policies & Rules">
-          <TextBlock text={data!.policies!} />
+      {/* ── Ceremony Information — covers arrival timing, per the venue's
+          own free-text; "Arrival Instructions" isn't a separate authored
+          field, so it lives here rather than as an empty duplicate heading ── */}
+      {!loading && showCeremony && (
+        <GuideSection emoji="⛪" title="Ceremony Information">
+          <TextBlock text={data!.ceremonyInstructions!} />
         </GuideSection>
       )}
 
-      {/* ── Ceremony & Arrival ── */}
-      {!loading && showCeremony && (
-        <GuideSection emoji="⛪" title="Ceremony & Arrival">
-          <TextBlock text={data!.ceremonyInstructions!} />
+      {/* ── Property Rules — covers alcohol and setup/cleanup policies as
+          part of the venue's one policies field, same reasoning as above ── */}
+      {!loading && showPolicies && (
+        <GuideSection emoji="📋" title="Property Rules">
+          <TextBlock text={data!.policies!} />
         </GuideSection>
       )}
 
@@ -406,17 +484,36 @@ export function VenueGuideSection({ token, context }: { token: string; context: 
         </GuideSection>
       )}
 
-      {/* ── Important Contacts ── */}
+      {/* ── Contact Information — the venue's own phone/email always leads,
+          plus any additional named contacts they've entered ── */}
       {!loading && showContacts && (
-        <GuideSection emoji="📞" title="Important Contacts">
+        <GuideSection emoji="📞" title="Contact Information">
           <div className="space-y-2">
+            {(context.venue.phone || context.venue.email) && (!q || matches(context.venue.phone, q) || matches(context.venue.email, q)) && (
+              <ContactCard contact={{ name: context.venue.name, role: "Main line", phone: context.venue.phone, email: context.venue.email }} />
+            )}
             {filteredContacts.map((c, i) => <ContactCard key={i} contact={c} />)}
           </div>
         </GuideSection>
       )}
 
+      {/* ── Preferred Vendors cross-link — Phase 6: the Guide points to the
+          venue's own preferred vendor list rather than duplicating it. ── */}
+      {!loading && (!q || matches("preferred vendors", q)) && (
+        <GuideSection emoji="🤝" title="Preferred Vendors">
+          <button type="button" onClick={() => onNavigate("vendors")}
+            className="w-full text-left rounded-2xl border p-4 flex items-center justify-between gap-3 hover:shadow-sm transition-all"
+            style={{ borderColor: BORDER, background: "#FDFCFA" }}>
+            <p className="text-sm leading-relaxed" style={{ color: "#4A4440" }}>
+              {context.venue.name} has already vetted a list of trusted vendors for you to browse.
+            </p>
+            <span className="text-xs font-semibold shrink-0" style={{ color: SAGE }}>View →</span>
+          </button>
+        </GuideSection>
+      )}
+
       {/* Luv nudge at bottom */}
-      {!loading && hasAnyData && (
+      {!loading && (hasAnyData || hasTeam || hasSpaces) && (
         <div className="rounded-2xl border border-dashed p-4 text-center space-y-1" style={{ borderColor: `${ROSE}40`, background: `${ROSE}08` }}>
           <p className="text-xs font-medium" style={{ color: ROSE }}>💗 Can't find what you're looking for?</p>
           <p className="text-[11px]" style={{ color: TAUPE }}>

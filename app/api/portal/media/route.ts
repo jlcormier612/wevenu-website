@@ -17,7 +17,7 @@
 
 import { NextResponse } from "next/server";
 import { createClient } from "@/integrations/supabase/server";
-import { uploadFile, getPublicUrl, removeFile } from "@/lib/storage";
+import { uploadFile, getPublicUrl, removeFile, resolveImageFile } from "@/lib/storage";
 import { createAdminClient } from "@/integrations/supabase/admin";
 
 export async function POST(request: Request) {
@@ -37,8 +37,9 @@ export async function POST(request: Request) {
       return NextResponse.json({ ok: false, error: "File too large. Maximum 10 MB." }, { status: 400 });
     }
 
-    if (!file.type.startsWith("image/")) {
-      return NextResponse.json({ ok: false, error: "Only image files are accepted." }, { status: 400 });
+    const resolved = resolveImageFile(file);
+    if (!resolved) {
+      return NextResponse.json({ ok: false, error: "Only image files are accepted (JPG, PNG, GIF, WEBP, HEIC, and similar)." }, { status: 400 });
     }
 
     // Validate token and get venue_id / client_id via admin client (bypasses RLS)
@@ -54,15 +55,10 @@ export async function POST(request: Request) {
     }
 
     // Build storage path: {venue_id}/{client_id}/{category}-{uuid}.{ext}
-    const ext = (
-      file.type === "image/png"  ? "png" :
-      file.type === "image/webp" ? "webp" :
-      file.type === "image/gif"  ? "gif" : "jpg"
-    );
     const uuid = crypto.randomUUID();
-    const path = `${session.venue_id}/${session.client_id}/${category}-${uuid}.${ext}`;
+    const path = `${session.venue_id}/${session.client_id}/${category}-${uuid}.${resolved.ext}`;
 
-    const uploadResult = await uploadFile(path, file, file.type);
+    const uploadResult = await uploadFile(path, file, file.type || resolved.mime);
     if (!uploadResult.ok) {
       console.error("[media/upload] storage error:", uploadResult.error);
       return NextResponse.json({ ok: false, error: "Upload failed. Please try again." }, { status: 500 });
@@ -76,7 +72,7 @@ export async function POST(request: Request) {
       p_token:       token,
       p_file_url:    fileUrl,
       p_file_name:   file.name,
-      p_mime_type:   file.type,
+      p_mime_type:   file.type || resolved.mime,
       p_media_type:  "image",
       p_visibility:  visibility,
       p_category:    category,
@@ -94,6 +90,39 @@ export async function POST(request: Request) {
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";
     console.error("[media/upload]", message);
+    return NextResponse.json({ ok: false, error: message }, { status: 500 });
+  }
+}
+
+/**
+ * DELETE /api/portal/media
+ *
+ * Removes a photo the couple uploaded — the delete_couple_media
+ * SECURITY DEFINER already existed (client_media.sql) but had no caller
+ * anywhere in the app; every photo grid (Engagement Photos, Inspiration
+ * Board) only ever let a couple add photos, never remove one they changed
+ * their mind about (client portal feedback, 2026-07-22).
+ *
+ * JSON body: { token, mediaId }
+ */
+export async function DELETE(request: Request) {
+  try {
+    const { token, mediaId } = await request.json() as { token?: string; mediaId?: string };
+    if (!token || !mediaId) {
+      return NextResponse.json({ ok: false, error: "Missing token or mediaId." }, { status: 400 });
+    }
+
+    const supabase = await createClient();
+    const { data } = await supabase.rpc("delete_couple_media", { p_token: token, p_media_id: mediaId });
+    const result = data as { ok?: boolean; error?: string } | null;
+    if (!result?.ok) {
+      return NextResponse.json({ ok: false, error: result?.error ?? "Could not delete this photo." }, { status: 400 });
+    }
+
+    return NextResponse.json({ ok: true });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Unknown error";
+    console.error("[media/delete]", message);
     return NextResponse.json({ ok: false, error: message }, { status: 500 });
   }
 }

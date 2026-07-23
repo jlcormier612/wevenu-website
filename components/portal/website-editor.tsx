@@ -167,7 +167,7 @@ function PhotoUpload({ token, type, label, currentUrl, onUploaded }: {
       <label className="flex items-center gap-2 cursor-pointer px-3 py-2.5 rounded-xl border border-dashed border-border hover:bg-muted/40 transition-colors">
         {uploading ? <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" /> : <Image className="h-4 w-4 text-muted-foreground" />}
         <span className="text-sm text-muted-foreground">{uploading ? "Uploading…" : currentUrl ? "Change photo" : `Upload ${label.toLowerCase()}`}</span>
-        <input ref={inputRef} type="file" accept="image/*" className="sr-only" onChange={handleFile} disabled={uploading} />
+        <input ref={inputRef} type="file" accept="image/*,.heic,.heif" className="sr-only" onChange={handleFile} disabled={uploading} />
       </label>
     </div>
   );
@@ -495,9 +495,19 @@ function GalleryEditor({ content, onSave, onCancel, token }: { content: WebsiteC
     try {
       const res = await fetch(`/api/portal/profile?token=${token}`);
       const data = await res.json() as { engagementPhotos?: { fileUrl: string }[] };
-      const newUrls = (data.engagementPhotos ?? []).map(p => p.fileUrl).filter(u => !photos.includes(u));
-      if (newUrls.length > 0) { setPhotos(p => [...p, ...newUrls]); toast.success(`${newUrls.length} photo${newUrls.length === 1 ? "" : "s"} imported!`); }
-      else toast.info("All engagement photos are already in your gallery.");
+      const available = data.engagementPhotos ?? [];
+      const newUrls = available.map(p => p.fileUrl).filter(u => !photos.includes(u));
+      if (newUrls.length > 0) {
+        setPhotos(p => [...p, ...newUrls]);
+        toast.success(`${newUrls.length} photo${newUrls.length === 1 ? "" : "s"} imported!`);
+      } else if (available.length === 0) {
+        // Previously said "already in your gallery" here too — factually
+        // wrong when there's nothing to import in the first place (client
+        // portal feedback, 2026-07-22).
+        toast.info("You haven't uploaded any engagement photos yet — add some from your Profile first.");
+      } else {
+        toast.info("All engagement photos are already in your gallery.");
+      }
     } catch { toast.error("Could not import photos."); }
     finally { setLoadingImport(false); }
   }
@@ -532,7 +542,7 @@ function GalleryEditor({ content, onSave, onCancel, token }: { content: WebsiteC
           {uploading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}
           Upload photo
         </button>
-        <input ref={inputRef} type="file" accept="image/*" className="hidden" onChange={handleUpload} />
+        <input ref={inputRef} type="file" accept="image/*,.heic,.heif" className="hidden" onChange={handleUpload} />
       </div>
 
       {photos.length > 0 && (
@@ -631,14 +641,48 @@ function ScheduleEditor({ content, onSave, onCancel, token, scheduleSync, onTogg
   );
 }
 
-function TravelEditor({ content, onSave, onCancel }: { content: WebsiteContent; onSave: (v: object) => void; onCancel: () => void }) {
+function TravelEditor({ content, onSave, onCancel, suggestions }: {
+  content: WebsiteContent; onSave: (v: object) => void; onCancel: () => void;
+  suggestions?: WebsiteSuggestions | null;
+}) {
   const [message, setMessage] = React.useState(content.travel?.message ?? "");
   const [hotels, setHotels] = React.useState<{ name: string; url: string; code: string; notes: string }[]>(
     content.travel?.hotels?.map(h => ({ name: h.name, url: h.url ?? "", code: h.code ?? "", notes: h.notes ?? "" })) ?? []
   );
   const [transport, setTransport] = React.useState(content.travel?.transportation?.notes ?? "");
+
+  // Fill from the venue's own hotel blocks / transportation info
+  // (venue_operational_info, Sprint 75) — same one-click, non-destructive
+  // "Fill from venue details" pattern as EventEditor's venue-address
+  // suggestion, not auto-applied.
+  const suggestedHotels = suggestions?.travel?.hotels ?? [];
+  const suggestedTransport = suggestions?.travel?.transportation?.notes ?? null;
+  const hasTravelSuggestion = (suggestedHotels.length > 0 || !!suggestedTransport) && hotels.length === 0 && !transport.trim();
+
+  function applyTravelSuggestion() {
+    if (suggestedHotels.length > 0) {
+      setHotels(suggestedHotels.map(h => ({ name: h.name, url: h.url ?? "", code: h.code ?? "", notes: h.notes ?? "" })));
+    }
+    if (suggestedTransport) setTransport(suggestedTransport);
+    toast.success("Filled from venue details.");
+  }
+
   return (
     <div className="space-y-4">
+      {hasTravelSuggestion && (
+        <button type="button" onClick={applyTravelSuggestion}
+          className="w-full flex items-center justify-between rounded-xl border border-primary/30 bg-primary/5 px-3 py-2.5 text-left hover:bg-primary/10 transition-colors">
+          <div>
+            <p className="text-xs font-semibold text-primary">Fill from venue details</p>
+            <p className="text-[10px] text-muted-foreground mt-0.5">
+              {suggestedHotels.length > 0 ? `${suggestedHotels.length} hotel block${suggestedHotels.length === 1 ? "" : "s"}` : ""}
+              {suggestedHotels.length > 0 && suggestedTransport ? " · " : ""}
+              {suggestedTransport ? "Transportation notes" : ""}
+            </p>
+          </div>
+          <span className="text-primary text-xs font-medium">Use →</span>
+        </button>
+      )}
       <TextareaField label="Travel message" value={message} onChange={setMessage} placeholder="We've reserved a room block at the Marriott. Use code CARTER2027 for 20% off." rows={2} />
       <div className="space-y-2">
         <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Hotel blocks</p>
@@ -908,7 +952,8 @@ function SectionAccordion({
     !hasContent && (
       (section.key === "story"  && !!suggestions?.story?.text) ||
       (section.key === "home"   && (!!suggestions?.coupleNames || (suggestions?.engagementPhotos?.length ?? 0) > 0)) ||
-      (section.key === "event"  && !!suggestions?.venue?.name)
+      (section.key === "event"  && !!suggestions?.venue?.name) ||
+      (section.key === "travel" && !!suggestions?.travel)
     );
 
   function EditorFor() {
@@ -927,7 +972,7 @@ function SectionAccordion({
       case "event":        return <EventEditor {...props} suggestions={suggestions} />;
       case "gallery":      return <GalleryEditor {...props} token={token} />;
       case "schedule":     return <ScheduleEditor {...props} token={token} scheduleSync={scheduleSync} onToggleSync={onToggleSync} />;
-      case "travel":       return <TravelEditor {...props} />;
+      case "travel":       return <TravelEditor {...props} suggestions={suggestions} />;
       case "dress_code":   return <DressCodeEditor {...props} />;
       case "bridal_party": return <BridalPartyEditor {...props} token={token} />;
       case "things_to_do": return <ThingsToDoEditor {...props} />;
@@ -1350,6 +1395,7 @@ export function WebsiteEditor({
         suggestions.story?.text               && "story",
         (suggestions.coupleNames || (suggestions.engagementPhotos?.length ?? 0) > 0) && "home",
         suggestions.venue?.name               && "event",
+        suggestions.travel                    && "travel",
       ].filter(Boolean).length
     : 0;
 

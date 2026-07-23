@@ -218,7 +218,7 @@ function TimelineEntryRow({
                 {DUE_STATUS_LABEL[dueStatus]}
               </span>
               {isClientOwned && (
-                <span className="rounded-full bg-[#D8A7AA]/15 px-1.5 py-0.5 text-[9px] font-semibold text-[#8A5A5E]" title="From the couple's latest submitted timeline — read-only here">
+                <span className="rounded-full bg-[#D8A7AA]/15 px-1.5 py-0.5 text-[9px] font-semibold text-[#8A5A5E]" title="From the client's latest submitted timeline — read-only here">
                   💗 From client&apos;s timeline
                 </span>
               )}
@@ -407,7 +407,10 @@ function TimelineSectionBlock({
       {collapsed ? null : (
         <>
           {!isUnsectioned && (
-            <label className="flex items-center gap-1.5 pl-1 text-[11px] text-muted-foreground">
+            <label
+              className="flex items-center gap-1.5 pl-1 text-[11px] text-muted-foreground"
+              title="When checked, the client can add their own entries to this section from their own timeline. Their entries appear here with a &quot;From client's timeline&quot; badge."
+            >
               <input type="checkbox" checked={!!clientCanAdd} onChange={(e) => onToggleClientCanAdd?.(e.target.checked)} className="h-3 w-3" />
               Client may add items to this section
             </label>

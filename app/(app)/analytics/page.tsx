@@ -10,7 +10,7 @@ import { HealthScoresSection } from "@/components/analytics/health-scores-sectio
 import { LuvRollUpCard } from "@/components/luv/luv-roll-up-card";
 import { getVenueAnalytics, getClientHealthScores } from "@/lib/analytics/service";
 
-export const metadata: Metadata = { title: "Insights" };
+export const metadata: Metadata = { title: "Analytics" };
 
 export default async function AnalyticsPage() {
   const [analytics, health] = await Promise.all([
@@ -21,7 +21,7 @@ export default async function AnalyticsPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Insights"
+        title="Analytics"
         description="Lead conversion, client engagement, and venue performance."
       />
 

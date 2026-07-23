@@ -281,6 +281,47 @@
     transform: none;
     transition: none;
   }
+
+  .shared-truth-heart-glow {
+    opacity: 0.55 !important;
+    filter: none;
+  }
+
+  .shared-truth-caption {
+    transition: none;
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* Homepage — One Shared Truth scroll scrub */
+.shared-truth-heart-glow {
+  background: radial-gradient(
+    circle,
+    color-mix(in srgb, var(--dusty-rose) 55%, transparent) 0%,
+    color-mix(in srgb, var(--dusty-rose) 18%, transparent) 42%,
+    transparent 72%
+  );
+  filter: blur(10px);
+  will-change: opacity;
+}
+
+.shared-truth-caption {
+  opacity: 0;
+  transform: translateY(5px);
+  transition:
+    opacity 320ms var(--marketing-ease),
+    transform 320ms var(--marketing-ease);
+}
+
+.shared-truth-caption.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.shared-truth-caption.is-hidden {
+  opacity: 0;
+  transform: translateY(5px);
 }
 
 /* Typographic rhythm utilities — SEND 1 */

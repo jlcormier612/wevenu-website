@@ -10,11 +10,17 @@
  * existing Import wizard for a coordinator to review, edit, and confirm.
  */
 
-import type { EntityType, ImportFieldDef } from "@/lib/import/types";
+import type { EntityType, FieldMapping, ImportFieldDef } from "@/lib/import/types";
 import { ENTITY_FIELDS } from "@/lib/import/types";
 
 export type LuvImportProposal =
-  | { ok: true; headers: string[]; rows: Record<string, string>[] }
+  // aiStructured distinguishes a real Luv proposal (headers are actual field
+  // keys, rows reviewed for scrutiny — the wizard's "Luv helped structure
+  // this" banner) from the non-AI splitDelimitedRows fallback (headers are
+  // generic "Column N" placeholders the coordinator maps themselves, same
+  // as any other headerless import) — they land in very different states
+  // downstream and must not be labeled the same way.
+  | { ok: true; headers: string[]; rows: Record<string, string>[]; aiStructured: boolean }
   | { ok: false; message: string };
 
 type AnthropicResponse = { content: { type: string; text: string }[] };
@@ -69,12 +75,53 @@ ${truncated}
 """`;
 }
 
+/**
+ * Plain, deterministic fallback with no AI involved at all — used whenever
+ * ANTHROPIC_API_KEY isn't configured (bug report, 2026-07-22: a coordinator
+ * pasting a plain list of inquiries/vendors saw nothing happen at all, since
+ * this used to hard-fail with "Luv isn't configured" the moment a paste
+ * didn't parse as clean CSV). Splits on whichever delimiter (tab, comma, or
+ * 2+ spaces) is most consistent across the pasted lines and hands the result
+ * to the same generic "Column 1, Column 2, …" map-your-columns step a
+ * headerless CSV already goes through — no field-guessing attempted here,
+ * the coordinator maps columns themselves same as any other headerless
+ * import. Doesn't invent structure Luv's AI path would otherwise infer (e.g.
+ * a paragraph with no delimiters at all still becomes one column, one row
+ * per line) — it's a safety net, not a replacement for real structuring.
+ */
+function splitDelimitedRows(rawText: string): LuvImportProposal {
+  const lines = rawText.split("\n").map((l) => l.trim()).filter(Boolean);
+  if (lines.length === 0) return { ok: false, message: "There's no readable text to work with." };
+
+  const countOf = (line: string, re: RegExp) => (line.match(re) ?? []).length;
+  const tabTotal = lines.reduce((sum, l) => sum + countOf(l, /\t/g), 0);
+  const commaTotal = lines.reduce((sum, l) => sum + countOf(l, /,/g), 0);
+  const multiSpaceTotal = lines.reduce((sum, l) => sum + countOf(l, /\s{2,}/g), 0);
+
+  let splitter: RegExp;
+  if (tabTotal >= commaTotal && tabTotal >= multiSpaceTotal && tabTotal > 0) splitter = /\t/;
+  else if (commaTotal >= multiSpaceTotal && commaTotal > 0) splitter = /,/;
+  else if (multiSpaceTotal > 0) splitter = /\s{2,}/;
+  else splitter = /$^/; // never matches — each line stays a single column
+
+  const splitLines = lines.map((l) => l.split(splitter).map((c) => c.trim()));
+  const columnCount = Math.max(1, ...splitLines.map((c) => c.length));
+  const headers = Array.from({ length: columnCount }, (_, i) => `Column ${i + 1}`);
+  const rows = splitLines.map((cells) => {
+    const row: Record<string, string> = {};
+    headers.forEach((h, i) => { row[h] = cells[i] ?? ""; });
+    return row;
+  });
+
+  return { ok: true, headers, rows, aiStructured: false };
+}
+
 export async function proposeStructuredRows(rawText: string, entity: EntityType): Promise<LuvImportProposal> {
-  if (!process.env.ANTHROPIC_API_KEY) {
-    return { ok: false, message: "Luv isn't configured for this venue yet — try Copy/Paste with a clearly columned list, or CSV/Excel instead." };
-  }
   if (!rawText.trim()) {
     return { ok: false, message: "There's no readable text to work with." };
+  }
+  if (!process.env.ANTHROPIC_API_KEY) {
+    return splitDelimitedRows(rawText);
   }
 
   const fields = ENTITY_FIELDS[entity];
@@ -100,7 +147,76 @@ export async function proposeStructuredRows(rawText: string, entity: EntityType)
       });
 
     if (rows.length === 0) return { ok: false, message: "Luv couldn't find any structured records in this text." };
-    return { ok: true, headers: fields.map((f) => f.key), rows };
+    return { ok: true, headers: fields.map((f) => f.key), rows, aiStructured: true };
+  } catch (err) {
+    return { ok: false, message: err instanceof Error ? err.message : "Luv couldn't process this text." };
+  }
+}
+
+export type LuvFieldMappingProposal =
+  | { ok: true; mapping: FieldMapping }
+  | { ok: false; message: string };
+
+function buildFieldMappingPrompt(headers: string[], fields: ImportFieldDef[]): string {
+  const headerList = headers.map((h) => `- "${h}"`).join("\n");
+  const fieldList = fields.map((f) => `- ${f.key}${f.required ? " (required)" : ""}: ${f.label}`).join("\n");
+
+  return `You are helping a venue coordinator import a spreadsheet into their software. Below are the column headers from their file, and the fields their software needs filled in.
+
+Column headers in their file:
+${headerList}
+
+Fields to fill in (key: what it means):
+${fieldList}
+
+For each field, name the ONE column header that most likely contains that data, or null if none of the headers are a good match. Only propose a mapping you're reasonably confident about — an unfamiliar or ambiguous header is better left unmapped than guessed wrong; the coordinator reviews every suggestion before anything is imported.
+
+Return ONLY a JSON object with one entry per field key above, each value either one of the exact header strings shown (copied exactly, including punctuation/capitalization) or null. No prose, no markdown fences — just the JSON object.`;
+}
+
+/**
+ * Migration Center §2.1 item 4 (2026-07-22) — extends Luv's existing
+ * import-assist family from "structure this unstructured text"
+ * (proposeStructuredRows above) to "suggest which of my columns maps to
+ * which of your fields," for genuinely unfamiliar competitor-export column
+ * headers the field-mapping step's own lowercase-similarity auto-match
+ * can't confidently resolve. A proposal only — the wizard merges this into
+ * its own mapping state as pre-filled *suggestions*, never auto-committed,
+ * matching every other Luv-assist surface's rule.
+ */
+export async function proposeFieldMapping(headers: string[], entity: EntityType): Promise<LuvFieldMappingProposal> {
+  if (headers.length === 0) return { ok: false, message: "There are no columns to map." };
+  if (!process.env.ANTHROPIC_API_KEY) {
+    return { ok: false, message: "Luv's mapping assist isn't configured in this environment." };
+  }
+
+  const fields = ENTITY_FIELDS[entity];
+  const headerSet = new Set(headers);
+  const fieldKeys = new Set(fields.map((f) => f.key));
+
+  try {
+    const raw = await callClaude(buildFieldMappingPrompt(headers, fields));
+    const jsonMatch = raw.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) return { ok: false, message: "Luv couldn't suggest a mapping for these columns." };
+
+    const parsed = JSON.parse(jsonMatch[0]) as unknown;
+    if (typeof parsed !== "object" || parsed === null) {
+      return { ok: false, message: "Luv couldn't suggest a mapping for these columns." };
+    }
+
+    // Defensive: only accept a proposed header that's actually one of the
+    // real headers we sent — never trust a hallucinated column name — and
+    // only for a field key that's actually part of this entity's schema.
+    const mapping: FieldMapping = {};
+    for (const [key, value] of Object.entries(parsed as Record<string, unknown>)) {
+      if (!fieldKeys.has(key)) continue;
+      if (typeof value === "string" && headerSet.has(value)) mapping[key] = value;
+    }
+
+    if (Object.keys(mapping).length === 0) {
+      return { ok: false, message: "Luv couldn't confidently match any of these columns — you'll need to map them yourself." };
+    }
+    return { ok: true, mapping };
   } catch (err) {
     return { ok: false, message: err instanceof Error ? err.message : "Luv couldn't process this text." };
   }

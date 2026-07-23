@@ -96,7 +96,7 @@ export const FEATURES_PAGE = {
         "Vendor Directory",
         "Preferred Vendors",
         "Vendor Invitations",
-        "Vendor Portal",
+        "Shared Planning Workspace",
         "Shared Timeline",
         "Shared Documents",
         "Messages & Conversations",

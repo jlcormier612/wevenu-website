@@ -7,7 +7,17 @@
 
 export type StripeOnboardingStatus = "not_started" | "pending" | "connected";
 
+/** Kept as an allowed-values array, not one flag per method — scales to any future Stripe-supported method without a schema change. */
+export type StripePaymentMethodType = "card" | "us_bank_account";
+
 export type StaffRole = "owner" | "manager" | "staff";
+
+/**
+ * Captured once, right alongside the venue name — drives which of three
+ * scripts Guided Setup and Luv narrate the whole journey with. See
+ * docs/hospitality-success-platform-implementation-plan.md §1.2a.
+ */
+export type OnboardingPersona = "new" | "switching" | "weven_returning";
 
 /** A single day's operating hours as collected by the wizard. */
 export type BusinessHourInput = {
@@ -23,6 +33,10 @@ export type BusinessHourInput = {
  * validates before persistence.
  */
 export type VenueSetupInput = {
+  // Which of three onboarding scripts this venue is on. Null until the
+  // Origin micro-step is answered (before "Venue information").
+  onboardingPersona: OnboardingPersona | null;
+
   // Venue information
   name: string;
   businessName: string;
@@ -46,6 +60,10 @@ export type VenueSetupInput = {
 
   // Brand (per-venue) — four-color system
   logoUrl: string;
+  // Program 4, Initiative D (2026-07-23) — settings-only, like logoUrl;
+  // never touched by the onboarding wizard.
+  heroImageUrl: string;
+  story: string;
   primaryColor: string;
   secondaryColor: string;
   accentColor: string;
@@ -81,6 +99,11 @@ export type Venue = {
   capacity: number | null;
   timezone: string;
   logoUrl: string | null;
+  // Program 4, Initiative D, Phase 2/3/6 (2026-07-23) — the venue's own
+  // hero photograph and a short "our story" blurb, shown in the Couple
+  // Workspace hero and the Venue Guide (the same image, both places).
+  heroImageUrl: string | null;
+  story: string | null;
   primaryColor: string;
   secondaryColor: string;
   accentColor: string;
@@ -89,9 +112,14 @@ export type Venue = {
   weekStartsOn: number;
   stripeAccountId: string | null;
   stripeChargesEnabled: boolean;
+  stripeChargesEnabledVerifiedAt: string | null;
   stripeOnboardingStatus: StripeOnboardingStatus;
+  stripeAcceptedPaymentMethods: StripePaymentMethodType[];
   setupCompleted: boolean;
   setupCompletedAt: string | null;
+  /** The furthest Guided Setup wizard step this venue has actually completed — drives where a resumed setup picks back up. */
+  setupLastStep: string | null;
+  onboardingPersona: OnboardingPersona | null;
   onboardingDismissed: boolean;
   luvIntroSeenAt: string | null;
   embedKey: string;   // public key for the venue's inquiry form — /form/{embedKey}

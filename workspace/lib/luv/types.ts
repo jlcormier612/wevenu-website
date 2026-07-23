@@ -25,6 +25,11 @@ export type LuvInsightType =
   | "new_inquiry"
   | "referral"
   | "task_overdue"
+  | "wg_overdue"
+  | "no_login_after_activation"
+  | "onboarding_stalled"
+  | "payment_failed"
+  | "inactive_customer"
   | "general";
 
 export type LuvDraftKind =

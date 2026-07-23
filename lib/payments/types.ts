@@ -2,7 +2,8 @@
  * Payments domain types (Sprint 16 — Payments Foundation).
  */
 
-export type PaymentItemStatus = "pending" | "overdue" | "paid" | "cancelled" | "partially_refunded" | "refunded";
+/** "processing" — an ACH bank debit that's been initiated but hasn't settled yet (Stripe Connect, Sprint 4). Card payments go straight pending -> paid and never pass through it. */
+export type PaymentItemStatus = "pending" | "processing" | "overdue" | "paid" | "cancelled" | "partially_refunded" | "refunded";
 
 export type PaymentSchedule = {
   id: string;
@@ -50,6 +51,9 @@ export type PaymentLineItem = {
   refundedAt: string | null;
   refundReason: string | null;
   quickbooksSyncStatus: "not_synced" | "pending" | "synced" | "failed";
+  stripePaymentIntentId: string | null;
+  stripeCheckoutSessionId: string | null;
+  stripePaymentMethodType: "card" | "us_bank_account" | null;
   createdAt: string;
   updatedAt: string;
 };

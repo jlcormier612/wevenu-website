@@ -1,29 +1,31 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
-import { PostSetupFinancial } from "@/components/setup/post-setup-financial";
 import { SetupWizard } from "@/components/setup/setup-wizard";
 import { createClient } from "@/integrations/supabase/server";
 import { isSupabaseConfigured } from "@/lib/env";
-import { getQuickBooksConnection, getRecentQuickBooksSyncLog } from "@/lib/quickbooks/service";
-import { getCurrentVenue } from "@/lib/venue/service";
+import { getCurrentVenue, getVenueSettings } from "@/lib/venue/service";
+import { SETUP_STEPS, type SetupStepId } from "@/lib/venue/validation";
 
 export const metadata: Metadata = {
   title: "Set up your venue",
 };
 
-type Props = { searchParams: Promise<{ financial?: string }> };
-
 /**
- * Venue Setup entry. Requires an authenticated user (defense in depth alongside
- * the proxy). If a venue has already been created, the workspace exists — send
- * the user there instead of re-running setup, UNLESS this is the one-time
- * post-setup Financial Setup step (?financial=1), which needs a real venue_id
- * to exist before QuickBooks/Stripe can be connected — this is also the page
- * the QuickBooks OAuth callback redirects back to when it was initiated from
- * onboarding rather than Settings.
+ * Venue Setup entry. Requires an authenticated user (defense in depth
+ * alongside the proxy). If a venue has already completed setup, the
+ * workspace exists — send the user there instead of re-running setup.
+ *
+ * Guided Setup §1.2 (2026-07-22): Financial Setup (QuickBooks/Stripe
+ * connect) used to be a separate post-creation ?financial=1 screen here,
+ * reached only after the wizard finished. It's now the wizard's own
+ * "payments" step (components/setup/setup-steps.tsx's PaymentsStep) — this
+ * page no longer has a financial-specific branch. The QuickBooks/Stripe
+ * OAuth callbacks still redirect back to this plain URL when initiated
+ * from onboarding; since setup isn't complete yet at that point, the
+ * resume logic below naturally lands back on the "payments" step.
  */
-export default async function SetupPage({ searchParams }: Props) {
+export default async function SetupPage() {
   if (!isSupabaseConfigured) {
     redirect("/login");
   }
@@ -37,23 +39,35 @@ export default async function SetupPage({ searchParams }: Props) {
   }
 
   const venue = await getCurrentVenue();
-  const { financial } = await searchParams;
 
   if (venue?.setupCompleted) {
-    if (financial === "1") {
-      const [quickbooksConnection, quickbooksSyncLog] = await Promise.all([
-        getQuickBooksConnection(),
-        getRecentQuickBooksSyncLog(),
-      ]);
+    redirect("/dashboard");
+  }
+
+  // Guided Setup, Phase 1 — a venue row may already exist, partially filled
+  // in, from an earlier progress-saved attempt (or an abandoned session).
+  // Resume at the step AFTER the furthest one actually completed
+  // (setup_last_step) — not "the first step that fails validation": most
+  // steps' fields are optional with real defaults (timezone, brand colors,
+  // currency), so they'd validate successfully without ever having been
+  // visited, and "first invalid step" would skip straight past Venue
+  // Details/Hours/Brand to Owner. See docs/hospitality-success-platform-
+  // implementation-plan.md §1.2.
+  if (venue) {
+    const settings = await getVenueSettings();
+    if (settings) {
+      const lastIndex = settings.setupLastStep
+        ? SETUP_STEPS.indexOf(settings.setupLastStep as SetupStepId)
+        : -1;
+      const resumeStep: SetupStepId = SETUP_STEPS[lastIndex + 1] ?? "review";
       return (
-        <PostSetupFinancial
-          venue={venue}
-          quickbooksConnection={quickbooksConnection}
-          quickbooksSyncLog={quickbooksSyncLog}
+        <SetupWizard
+          ownerEmail={user.email ?? ""}
+          initialInput={settings.input}
+          resumeStep={resumeStep}
         />
       );
     }
-    redirect("/dashboard");
   }
 
   return <SetupWizard ownerEmail={user.email ?? ""} />;

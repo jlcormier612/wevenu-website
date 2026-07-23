@@ -5,7 +5,8 @@ import { DeleteTemplateButton } from "@/components/communication/delete-template
 import { TemplateForm } from "@/components/communication/template-form";
 import { PageHeader } from "@/components/shell/module-placeholder";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { getTemplate } from "@/lib/message-templates/service";
+import { getVenueDocuments } from "@/lib/documents/service";
+import { getTemplate, getTemplateAttachments } from "@/lib/message-templates/service";
 
 type Props = { params: Promise<{ id: string }> };
 
@@ -19,6 +20,10 @@ export default async function EditMessageTemplatePage({ params }: Props) {
   const { id } = await params;
   const template = await getTemplate(id);
   if (!template) notFound();
+  const [attachments, venueDocuments] = await Promise.all([
+    getTemplateAttachments(id),
+    getVenueDocuments(),
+  ]);
   return (
     <div className="space-y-6">
       <PageHeader
@@ -32,7 +37,7 @@ export default async function EditMessageTemplatePage({ params }: Props) {
           <CardDescription>Changes take effect the next time this template is used.</CardDescription>
         </CardHeader>
         <CardContent>
-          <TemplateForm template={template} />
+          <TemplateForm template={template} attachments={attachments} venueDocuments={venueDocuments} />
         </CardContent>
       </Card>
     </div>

@@ -143,7 +143,7 @@ export function TourSettingsSection({ initialSettings, initialWindows, initialEx
             </div>
             <div className="space-y-1.5">
               <Label className="text-xs">Minimum notice (hours)</Label>
-              <p className="text-[10px] text-muted-foreground">Clients can&apos;t book tours less than N hours from now.</p>
+              <p className="text-[10px] text-muted-foreground">Clients can&apos;t book tours less than {s.tourMinNoticeHours} hours from now.</p>
               <Input type="number" min="0" value={s.tourMinNoticeHours}
                 onChange={(e) => set("tourMinNoticeHours", parseInt(e.target.value) || 24)} />
             </div>

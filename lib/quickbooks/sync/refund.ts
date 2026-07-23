@@ -7,7 +7,7 @@
  * same mechanism and same caveat as syncPayment — needs real sandbox
  * verification the moment credentials exist.
  *
- * Every refund pushes under the one "Wevenu Services" placeholder Item
+ * Every refund pushes under the one "Hello to Cheers Services" placeholder Item
  * (lib/quickbooks/items.ts), same as invoice line items — no chart-of-
  * accounts mapping, explicitly out of scope for launch.
  */

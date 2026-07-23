@@ -41,6 +41,14 @@ export async function deletePackageItem(client: DbClient, venueId: string, itemI
   if (error) throw error;
 }
 
+/** Migration Center (Hospitality Success Platform §2.1) — ports Leads' dedup shape to Packages: active packages, matched by name (case-insensitive). */
+export async function findActiveDuplicatePackage(client: DbClient, venueId: string, name: string): Promise<{ id: string } | null> {
+  const { data } = await client.from("packages").select("id")
+    .eq("venue_id", venueId).eq("is_active", true).ilike("name", name.trim())
+    .limit(1).maybeSingle<{ id: string }>();
+  return data ?? null;
+}
+
 export async function insertPackage(client: DbClient, venueId: string, input: PackageInput): Promise<string> {
   const { data, error } = await client.from("packages")
     .insert({ venue_id: venueId, name: input.name.trim(), description: input.description.trim() || null, base_price: parseFloat(input.basePrice.replace(/[$,]/g, "")) || 0, category: input.category.trim() || null, is_active: input.isActive })

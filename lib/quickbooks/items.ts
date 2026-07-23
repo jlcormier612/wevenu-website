@@ -1,5 +1,5 @@
 /**
- * The "Wevenu Services" placeholder QBO Item — how invoice line items push
+ * The "Hello to Cheers Services" placeholder QBO Item — how invoice line items push
  * without chart-of-accounts mapping (explicitly out of scope for launch).
  * Every invoice line item pushes under this one generic Item regardless of
  * invoice_line_items.type ('package'/'addon'/'inventory'/'discount'/'fee'/

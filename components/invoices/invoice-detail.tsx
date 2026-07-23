@@ -29,8 +29,8 @@ const STATUS_TRANSITIONS: Record<InvoiceStatus, { next: InvoiceStatus; label: st
 };
 
 export function InvoiceDetail({
-  invoice, packages, eventOrderDrift = null,
-}: { invoice: InvoiceWithLineItems; packages: Package[]; eventOrderDrift?: EventOrderDrift | null }) {
+  invoice, packages, eventOrderDrift = null, emailConfigured = true,
+}: { invoice: InvoiceWithLineItems; packages: Package[]; eventOrderDrift?: EventOrderDrift | null; emailConfigured?: boolean }) {
   const router = useRouter();
   const [status, setStatus] = React.useState<InvoiceStatus>(invoice.status);
   const [pending, startTransition] = React.useTransition();
@@ -56,7 +56,7 @@ export function InvoiceDetail({
           <div className="flex items-center gap-3 flex-wrap">
             <h1 className="text-2xl font-heading font-semibold text-heading">{invoice.invoiceNumber}</h1>
             <InvoiceStatusBadge status={status} />
-            <QuickBooksSyncStatusBadge status={invoice.quickbooksSyncStatus} />
+            <QuickBooksSyncStatusBadge status={invoice.quickbooksSyncStatus} entityType="invoice" entityId={invoice.id} />
           </div>
           {invoice.clientName && (
             <p className="text-sm text-muted-foreground">
@@ -85,6 +85,7 @@ export function InvoiceDetail({
           </Button>
           {invoice.clientId && status !== "void" && (
             <Button type="button" variant="outline" size="sm" disabled={emailPending}
+              title={emailConfigured ? undefined : "No email provider is connected — this will open your own email client instead of sending in-app."}
               onClick={() => startEmail(async () => {
                 const result = await sendInvoiceEmailAction(invoice.id);
                 if (!result.ok) { toast.error(result.message ?? "Could not send."); return; }
@@ -95,7 +96,9 @@ export function InvoiceDetail({
                   toast.success("Invoice emailed successfully.");
                 }
               })}>
-              {emailPending ? <><span className="mr-1">⋯</span>Sending…</> : <><Mail className="mr-1 h-3.5 w-3.5" /> Email</>}
+              {emailPending
+                ? <><span className="mr-1">⋯</span>Sending…</>
+                : <><Mail className="mr-1 h-3.5 w-3.5" /> {emailConfigured ? "Email" : "Email (opens your mail app)"}</>}
             </Button>
           )}
           {status !== "void" && status !== "paid" && (

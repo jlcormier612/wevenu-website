@@ -1,42 +1,35 @@
 "use client";
 
-import Script from "next/script";
-import { useEffect, useId, useState } from "react";
+import { useEffect, useState } from "react";
 
-declare global {
-  interface Window {
-    Calendly?: {
-      initInlineWidget: (opts: {
-        url: string;
-        parentElement: HTMLElement;
-        prefill?: Record<string, string>;
-        utm?: Record<string, string>;
-      }) => void;
-    };
+/** Calendly docs use ~700px; extra room so the month grid isn’t clipped. */
+const WIDGET_HEIGHT_PX = 900;
+
+function withEmbedParams(raw: string, hostname?: string): string {
+  try {
+    const u = new URL(raw);
+    u.searchParams.set("embed_type", "Inline");
+    if (hostname) u.searchParams.set("embed_domain", hostname);
+    return u.toString();
+  } catch {
+    return raw;
   }
 }
 
 /**
- * Official Calendly inline embed. Parent page supplies Hello to Cheers framing.
+ * Inline Calendly booking UI.
+ * Uses an iframe with an explicit height — Calendly’s iframe is height:100%,
+ * so min-height alone collapses to a blank body (logo only).
  */
 export function CalendlyEmbed({ url }: { url: string }) {
-  const reactId = useId();
-  const containerId = `calendly-inline-${reactId.replace(/:/g, "")}`;
-  const [ready, setReady] = useState(false);
+  const [src, setSrc] = useState(() => withEmbedParams(url));
 
   useEffect(() => {
-    if (!ready || !window.Calendly) return;
-    const el = document.getElementById(containerId);
-    if (!el) return;
-    el.innerHTML = "";
-    window.Calendly.initInlineWidget({
-      url,
-      parentElement: el,
-    });
-  }, [ready, url, containerId]);
+    setSrc(withEmbedParams(url, window.location.hostname));
+  }, [url]);
 
   return (
-    <div className="overflow-hidden rounded-[2rem] border border-[var(--taupe-light)] bg-[var(--true-white)]">
+    <div className="rounded-[2rem] border border-[var(--taupe-light)] bg-[var(--true-white)]">
       <div className="border-b border-[var(--taupe-light)] px-6 py-5 md:px-8">
         <p className="text-xs tracking-[0.18em] uppercase text-[var(--heritage-sage)]">
           Schedule
@@ -48,15 +41,12 @@ export function CalendlyEmbed({ url }: { url: string }) {
           Choose a slot below. We&apos;ll confirm by email and prepare for your venue.
         </p>
       </div>
-      <div
-        id={containerId}
-        className="calendly-inline-widget min-h-[680px] w-full"
-        data-url={url}
-      />
-      <Script
-        src="https://assets.calendly.com/assets/external/widget.js"
-        strategy="lazyOnload"
-        onLoad={() => setReady(true)}
+      <iframe
+        title="Schedule a Walkthrough"
+        src={src}
+        loading="lazy"
+        className="block w-full"
+        style={{ minWidth: 320, height: WIDGET_HEIGHT_PX, border: 0 }}
       />
     </div>
   );

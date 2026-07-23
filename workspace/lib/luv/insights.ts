@@ -101,7 +101,7 @@ function kickoffIncomplete(
 ): boolean {
   if (relationship.onboardingType !== "white_glove") return false;
   const status = pipelineStatus(relationship);
-  if (status !== "onboarding" && status !== "subscribed") return false;
+  if (status !== "onboarding" && status !== "subscribed" && status !== "white_glove_implementation") return false;
 
   const km = kickoffMilestone(milestones);
   if (km && km.status !== "completed") return true;
@@ -179,6 +179,9 @@ function findWhiteGlovePeer(
     status !== "subscribed" &&
     status !== "onboarding" &&
     status !== "live" &&
+    status !== "active" &&
+    status !== "reactivated" &&
+    status !== "white_glove_implementation" &&
     status !== "support" &&
     status !== "expansion"
   ) {
@@ -192,7 +195,10 @@ function findWhiteGlovePeer(
     const peerStatus = pipelineStatus(peer);
     if (
       peerStatus !== "live" &&
+      peerStatus !== "active" &&
+      peerStatus !== "reactivated" &&
       peerStatus !== "onboarding" &&
+      peerStatus !== "white_glove_implementation" &&
       peerStatus !== "expansion" &&
       peerStatus !== "subscribed"
     ) {
@@ -217,7 +223,7 @@ function renewalWindowDays(relationship: Relationship, now: Date): number | null
       (new Date(relationship.nextMilestoneAt).getTime() - now.getTime()) / MS_DAY,
     );
   }
-  if (status === "live" || status === "expansion") {
+  if (status === "live" || status === "active" || status === "reactivated" || status === "expansion") {
     const created = new Date(relationship.createdAt);
     const anniversary = new Date(created);
     anniversary.setFullYear(anniversary.getFullYear() + 1);
@@ -717,6 +723,146 @@ export function computeRelationshipInsights(
         primaryAction: "draft",
         draftKind: "email",
         priority: 28,
+      }),
+    );
+  }
+
+  // —— Health-based suggestions (recommend only — never auto-act) ——
+  const checklistOpen = tasks.filter((t) => isChecklistTask(t) && isOpenTask(t));
+  const checklistOverdue = checklistOpen.filter(
+    (t) => t.dueDate < now.toISOString().slice(0, 10),
+  );
+  if (
+    (status === "white_glove_implementation" || relationship.onboardingType === "white_glove") &&
+    checklistOverdue.length > 0
+  ) {
+    push(
+      buildInsight({
+        id: `ins_wg_overdue_${id}`,
+        type: "wg_overdue",
+        relationshipId: id,
+        venueName: venue,
+        message: address(
+          actor,
+          `White Glove implementation has ${checklistOverdue.length} overdue checklist item${checklistOverdue.length === 1 ? "" : "s"}.`,
+        ),
+        detail: checklistOverdue[0]?.title,
+        severity: "urgent",
+        actions: ["create_task", "draft", "dismiss"],
+        primaryAction: "create_task",
+        draftKind: "launch_checklist",
+        priority: 42,
+      }),
+    );
+  }
+
+  if (
+    (relationship.activationCompletedAt || relationship.productSync?.ownerAccountId) &&
+    (status === "active" || status === "reactivated" || status === "onboarding") &&
+    !relationship.lastLoginAt
+  ) {
+    const days = relationship.activationCompletedAt
+      ? daysBetween(relationship.activationCompletedAt, now)
+      : daysBetween(relationship.updatedAt, now);
+    if (days >= 3) {
+      push(
+        buildInsight({
+          id: `ins_nologin_${id}`,
+          type: "no_login_after_activation",
+          relationshipId: id,
+          venueName: venue,
+          message: address(
+            actor,
+            `no login after activation (${days} day${days === 1 ? "" : "s"}).`,
+          ),
+          detail: "I suggest a gentle check-in — recommend only.",
+          severity: days >= 7 ? "attention" : "suggested",
+          actions: ["draft", "send_email", "create_task", "dismiss"],
+          primaryAction: "draft",
+          draftKind: "follow_up",
+          priority: 34,
+        }),
+      );
+    }
+  }
+
+  if (
+    (status === "onboarding" || status === "white_glove_implementation") &&
+    daysBetween(relationship.updatedAt, now) >= 7
+  ) {
+    push(
+      buildInsight({
+        id: `ins_onboard_stall_${id}`,
+        type: "onboarding_stalled",
+        relationshipId: id,
+        venueName: venue,
+        message: address(
+          actor,
+          `onboarding looks stalled — little team activity in a week.`,
+        ),
+        detail: relationship.nextMilestone
+          ? `Next milestone: ${relationship.nextMilestone}`
+          : undefined,
+        severity: "attention",
+        actions: ["create_task", "draft", "dismiss"],
+        primaryAction: "create_task",
+        priority: 33,
+      }),
+    );
+  }
+
+  if (
+    relationship.paymentStatus === "failed" ||
+    relationship.paymentStatus === "past_due" ||
+    relationship.dunning
+  ) {
+    if (!relationship.dunning?.clearedAt) {
+      push(
+        buildInsight({
+          id: `ins_payfail_${id}`,
+          type: "payment_failed",
+          relationshipId: id,
+          venueName: venue,
+          message: address(
+            actor,
+            `payment failed — dunning may be in progress.`,
+          ),
+          detail: "Recommend a personal outreach; do not auto-suspend from Luv.",
+          severity: status === "suspended" ? "urgent" : "attention",
+          actions: ["draft", "send_email", "create_task", "dismiss"],
+          primaryAction: "draft",
+          draftKind: "follow_up",
+          priority: 44,
+        }),
+      );
+    }
+  }
+
+  if (
+    (status === "active" || status === "reactivated") &&
+    daysBetween(
+      relationship.lastCustomerActivityAt ||
+        relationship.lastLoginAt ||
+        relationship.lastContactAt,
+      now,
+    ) >= 30
+  ) {
+    push(
+      buildInsight({
+        id: `ins_inactive_${id}`,
+        type: "inactive_customer",
+        relationshipId: id,
+        venueName: venue,
+        message: address(
+          actor,
+          `this customer looks inactive (30+ days without activity).`,
+        ),
+        detail: "A warm check-in could help — suggestion only.",
+        severity: "suggested",
+        actions: ["draft", "send_email", "dismiss"],
+        primaryAction: "draft",
+        draftKind: "follow_up",
+        priority: 26,
       }),
     );
   }

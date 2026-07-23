@@ -105,7 +105,7 @@ export async function bookTour(
   key: string,
   slotStart: string,
   fields: { firstName: string; lastName: string; partnerName: string; email: string; phone: string; eventType: string; eventDate: string; guestCount: number | null; notes: string },
-  opts?: { turnstileToken?: string | null; ipAddress?: string | null },
+  opts?: { turnstileToken?: string | null; ipAddress?: string | null; qrCampaignId?: string | null },
 ): Promise<BookingResult> {
   if (!isSupabaseConfigured) return { ok: false, error: "Backend not configured." };
 
@@ -165,6 +165,7 @@ export async function bookTour(
         p_email: normalized.email ?? "", p_phone: normalized.phone ?? "",
         p_event_type: normalized.eventType ?? "", p_event_date: normalized.eventDate,
         p_guest_count: normalized.guestCount, p_notes: normalized.inquiryMessage ?? "",
+        p_qr_campaign_id: opts?.qrCampaignId ?? null,
       });
       if (error) return { ok: false, error: error.message };
       const d = data as Record<string, unknown>;

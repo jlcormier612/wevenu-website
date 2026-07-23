@@ -4,6 +4,7 @@
 import { createClient } from "@/integrations/supabase/server";
 import { isSupabaseConfigured } from "@/lib/env";
 import type {
+  ActivationChecklistItem,
   ActivationScore,
   EngagementEventInput,
   VenueMilestone,
@@ -48,6 +49,16 @@ function mapGap(g: Record<string, unknown>): ActivationScore["gaps"][number] {
   };
 }
 
+function mapChecklistItem(c: Record<string, unknown>): ActivationChecklistItem {
+  return {
+    key:       c.key as string,
+    label:     (c.label ?? c.action) as string,
+    points:    (c.points ?? c.pts) as number,
+    href:      c.href as string,
+    completed: !!c.completed,
+  };
+}
+
 function mapScore(r: Record<string, unknown>): ActivationScore {
   return {
     score:            r.score as number,
@@ -56,6 +67,7 @@ function mapScore(r: Record<string, unknown>): ActivationScore {
     phaseLabel:       r.phase_label as string,
     dimensionScores:  (r.dimension_scores ?? {}) as Record<string, number>,
     gaps:             ((r.gaps ?? []) as Record<string, unknown>[]).map(mapGap),
+    checklist:        ((r.checklist ?? []) as Record<string, unknown>[]).map(mapChecklistItem),
     computedAt:       r.computed_at as string,
   };
 }
