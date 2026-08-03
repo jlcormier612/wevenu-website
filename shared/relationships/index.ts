@@ -21,6 +21,30 @@ export {
 export { getRelationshipsDataDir, STORE_FILES } from "./paths";
 export { promoteStatus, stageLabelForStatus, toPipelineStatus, normalizeLifecycleStatus, isCustomerLifecycleStatus } from "./status";
 export {
+  type SalesStage,
+  type CustomerSuccessStage,
+  type CustomerHealthBadge,
+  type AdoptionCheckpoint,
+  type RiskTone,
+  SALES_STAGE_COLUMNS,
+  CS_STAGE_COLUMNS,
+  SALES_STAGE_LABELS,
+  CS_STAGE_LABELS,
+  HEALTH_BADGE_LABELS,
+  isSalesStage,
+  isCustomerSuccessStage,
+  isInCustomerSuccessView,
+  isInSalesView,
+  deriveSalesStage,
+  deriveCustomerSuccessStage,
+  salesStageFromLifecycleStatus,
+  promoteSalesStage,
+  toCustomerHealthBadge,
+  computeAdoptionCheckpoints,
+  computeRiskSection,
+  applySubscribeViewTransition,
+} from "./sales-cs";
+export {
   computeRelationshipHealth,
   applyHealthSnapshot,
   type RelationshipHealthSnapshot,

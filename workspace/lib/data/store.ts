@@ -124,6 +124,9 @@ function applyProgram3Overlays(data: WorkspaceData): WorkspaceData {
       foundingMember:
         patch.foundingMember === true ? true : r.foundingMember,
       welcomeBackVerified: patch.welcomeBackVerified ?? r.welcomeBackVerified,
+      salesStage: patch.salesStage ?? r.salesStage,
+      customerSuccessStage:
+        patch.customerSuccessStage ?? r.customerSuccessStage,
       updatedAt: patch.updatedAt ?? r.updatedAt,
     };
   });

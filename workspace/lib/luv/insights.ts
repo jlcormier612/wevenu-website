@@ -7,6 +7,11 @@ import type {
   WorkspaceData,
 } from "@/lib/types";
 import { normalizeRelationshipStatus } from "@/lib/pipeline";
+import {
+  deriveSalesStage,
+  isInCustomerSuccessView,
+  isInSalesView,
+} from "@/lib/sales-cs";
 
 import type { LuvDraftKind, LuvInsight, LuvSeverity } from "./types";
 
@@ -891,6 +896,201 @@ export function computeRelationshipInsights(
         primaryAction: "create_task",
       }),
     );
+  }
+
+  // —— Workspace-aware Sales recommendations (never auto-act) ——
+  if (isInSalesView(relationship)) {
+    const salesStage = deriveSalesStage(relationship);
+    if (salesStage === "proposal_sent") {
+      const days = daysBetween(relationship.lastContactAt, now);
+      if (days >= 2) {
+        push(
+          buildInsight({
+            id: `ins_sales_proposal_${id}`,
+            type: "sales_proposal_followup",
+            relationshipId: id,
+            venueName: venue,
+            message: address(
+              actor,
+              `follow up on the proposal — ${days} day${days === 1 ? "" : "s"} since last contact.`,
+            ),
+            detail: "Suggestion only — draft a short check-in.",
+            severity: days >= 5 ? "attention" : "suggested",
+            actions: ["draft", "send_email", "create_task", "dismiss"],
+            primaryAction: "draft",
+            draftKind: "follow_up",
+            priority: 32,
+          }),
+        );
+      }
+    }
+    if (
+      salesStage === "inquiry" ||
+      salesStage === "discovery_scheduled"
+    ) {
+      push(
+        buildInsight({
+          id: `ins_sales_wt_${id}`,
+          type: "sales_schedule_walkthrough",
+          relationshipId: id,
+          venueName: venue,
+          message: address(
+            actor,
+            salesStage === "discovery_scheduled"
+              ? `confirm discovery and schedule the venue walkthrough.`
+              : `schedule a walkthrough while interest is warm.`,
+          ),
+          severity: "suggested",
+          actions: ["create_task", "draft", "dismiss"],
+          primaryAction: "create_task",
+          draftKind: "follow_up",
+          priority: 27,
+        }),
+      );
+    }
+    if (
+      (salesStage === "negotiation" ||
+        salesStage === "awaiting_signature" ||
+        salesStage === "nurture") &&
+      daysBetween(relationship.lastContactAt, now) >= 7
+    ) {
+      push(
+        buildInsight({
+          id: `ins_sales_inactive_${id}`,
+          type: "sales_inactivity",
+          relationshipId: id,
+          venueName: venue,
+          message: address(
+            actor,
+            `no contact in ${daysBetween(relationship.lastContactAt, now)} days — send a reminder or re-engage.`,
+          ),
+          detail: "Recommend outreach; Luv will not act automatically.",
+          severity: "attention",
+          actions: ["draft", "send_email", "dismiss"],
+          primaryAction: "draft",
+          draftKind: "follow_up",
+          priority: 30,
+        }),
+      );
+    }
+  }
+
+  // —— Workspace-aware Customer Success recommendations (never auto-act) ——
+  if (isInCustomerSuccessView(relationship)) {
+    const websitePublished = Boolean(
+      relationship.websitePublished ||
+        relationship.productSync?.steps?.find((s) => s.id === "website")
+          ?.status === "completed",
+    );
+    const teamInvited = Boolean(
+      relationship.activationCompletedAt ||
+        relationship.productSync?.steps?.find((s) => s.id === "owner_account")
+          ?.status === "completed",
+    );
+    if (!teamInvited) {
+      push(
+        buildInsight({
+          id: `ins_cs_team_${id}`,
+          type: "cs_invite_team",
+          relationshipId: id,
+          venueName: venue,
+          message: address(actor, `invite the venue team to activate their workspace.`),
+          detail: "Suggestion only.",
+          severity: "suggested",
+          actions: ["draft", "create_task", "dismiss"],
+          primaryAction: "draft",
+          draftKind: "welcome",
+          priority: 29,
+        }),
+      );
+    }
+    if (!websitePublished) {
+      push(
+        buildInsight({
+          id: `ins_cs_web_${id}`,
+          type: "cs_publish_website",
+          relationshipId: id,
+          venueName: venue,
+          message: address(actor, `their website still needs to be published.`),
+          severity: "suggested",
+          actions: ["create_task", "draft", "dismiss"],
+          primaryAction: "create_task",
+          draftKind: "follow_up",
+          priority: 28,
+        }),
+      );
+    }
+    if (
+      status === "subscribed" ||
+      status === "onboarding" ||
+      status === "white_glove_implementation"
+    ) {
+      push(
+        buildInsight({
+          id: `ins_cs_onboard_${id}`,
+          type: "cs_schedule_onboarding",
+          relationshipId: id,
+          venueName: venue,
+          message: address(
+            actor,
+            `schedule or advance onboarding — keep momentum after subscribe.`,
+          ),
+          severity: "suggested",
+          actions: ["create_task", "draft", "dismiss"],
+          primaryAction: "create_task",
+          draftKind: "white_glove_kickoff",
+          priority: 31,
+        }),
+      );
+    }
+    const activityDays = daysBetween(
+      relationship.lastCustomerActivityAt ||
+        relationship.lastLoginAt ||
+        relationship.lastContactAt,
+      now,
+    );
+    if (
+      (status === "active" || status === "reactivated" || status === "live") &&
+      activityDays >= 21
+    ) {
+      push(
+        buildInsight({
+          id: `ins_cs_decline_${id}`,
+          type: "cs_declining_engagement",
+          relationshipId: id,
+          venueName: venue,
+          message: address(
+            actor,
+            `engagement is declining (${activityDays} days since activity).`,
+          ),
+          detail: "Warm outreach recommended — never auto-act.",
+          severity: activityDays >= 30 ? "attention" : "suggested",
+          actions: ["draft", "send_email", "dismiss"],
+          primaryAction: "draft",
+          draftKind: "follow_up",
+          priority: 33,
+        }),
+      );
+    }
+    if (
+      status === "renewal" ||
+      (relationship.nextMilestone && /renew/i.test(relationship.nextMilestone))
+    ) {
+      push(
+        buildInsight({
+          id: `ins_cs_renew_${id}`,
+          type: "cs_renewal_outreach",
+          relationshipId: id,
+          venueName: venue,
+          message: address(actor, `renewal outreach would land well right now.`),
+          severity: "suggested",
+          actions: ["draft", "send_email", "dismiss"],
+          primaryAction: "draft",
+          draftKind: "renewal",
+          priority: 30,
+        }),
+      );
+    }
   }
 
   return insights.sort((a, b) => b.priority - a.priority);

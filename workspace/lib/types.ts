@@ -34,6 +34,37 @@ export type RelationshipStatus = PipelineStatus | "active_customer" | "support";
 
 export type RelationshipHealth = "excellent" | "good" | "needs_attention" | "at_risk";
 
+/** Pre-customer Sales board stage (view field — not a second CRM). */
+export type SalesStage =
+  | "inquiry"
+  | "discovery_scheduled"
+  | "venue_walkthrough"
+  | "proposal_sent"
+  | "negotiation"
+  | "awaiting_signature"
+  | "won"
+  | "lost"
+  | "nurture";
+
+/** Post-subscribe Customer Success lifecycle stage (view field). */
+export type CustomerSuccessStage =
+  | "welcome"
+  | "onboarding"
+  | "implementation"
+  | "training"
+  | "live"
+  | "adoption"
+  | "healthy"
+  | "expansion"
+  | "renewal"
+  | "renewed";
+
+export type CustomerHealthBadge =
+  | "healthy"
+  | "needs_attention"
+  | "at_risk"
+  | "critical";
+
 export type PlanId = "gather" | "celebrate" | "flourish" | "none";
 
 export type OnboardingType = "self_guided" | "white_glove" | "none";
@@ -312,6 +343,10 @@ export type Relationship = {
   status: RelationshipStatus;
   health: RelationshipHealth;
   healthScore?: number;
+  /** Sales board stage (pre-customer). Same record as Customer Success. */
+  salesStage?: SalesStage;
+  /** Customer Success lifecycle stage (post-subscribe). */
+  customerSuccessStage?: CustomerSuccessStage;
   assignedTeamMemberId: string;
   planId: PlanId;
   planName: string;

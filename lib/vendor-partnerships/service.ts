@@ -3,11 +3,24 @@
  * Every venue relationship this vendor has, plus the one thing a Partner
  * Vendor can actually edit on it: their venue-specific promotion. Server-
  * only, mirrors lib/vendor-profile/service.ts's withVendor() pattern.
+ *
+ * getVendorPartnerships (2026-07-24 fix) now calls the get_vendor_partnerships
+ * RPC instead of a direct embedded select. The direct read
+ * (`.select("...venues(name, logo_url)")`) silently returned a null nested
+ * `venues` object for every row, for every vendor, 100% of the time —
+ * venues' own RLS policy only recognizes current_user_venue_id()
+ * (venue-staff sessions), never a vendor session, so PostgREST's embed
+ * enforcement failed silently rather than erroring. That's what produced
+ * "Unknown Venue" on every partnership card. Every other vendor read in
+ * this codebase already avoids this exact trap by joining venues inside a
+ * SECURITY DEFINER function (get_vendor_events etc.) — this brings
+ * Partnerships in line with that pattern instead of leaving a second copy
+ * of an already-fixed bug. See supabase/migrations/20261170000000_vendor_venue_first_dashboard.sql.
  */
 import { createClient } from "@/integrations/supabase/server";
 import { isSupabaseConfigured } from "@/lib/env";
 import { getVendorUser } from "@/lib/vendor-auth/service";
-import type { VendorActionResult, VendorPartnership } from "@/lib/vendors/types";
+import type { VendorActionResult, VendorActiveVenueContext, VendorPartnership } from "@/lib/vendors/types";
 
 export async function getVendorPartnerships(): Promise<VendorPartnership[]> {
   if (!isSupabaseConfigured) return [];
@@ -15,42 +28,29 @@ export async function getVendorPartnerships(): Promise<VendorPartnership[]> {
   if (!vendorUser) return [];
   const supabase = await createClient();
 
-  const { data } = await supabase
-    .from("venue_vendor_relationships")
-    .select("id, venue_id, status, preference_level, added_at, promotion_headline, promotion_details, venues(name, logo_url)")
-    .eq("vendor_id", vendorUser.vendorId)
-    .neq("status", "removed")
-    .order("added_at", { ascending: false });
+  const { data, error } = await supabase.rpc("get_vendor_partnerships");
+  if (error) return [];
+  const result = data as { partnerships?: VendorPartnership[]; error?: string } | null;
+  return result?.partnerships ?? [];
+}
 
-  type Row = {
-    id: string; venue_id: string; status: string; preference_level: string; added_at: string;
-    promotion_headline: string | null; promotion_details: string | null;
-    venues: { name: string; logo_url: string | null } | null;
-  };
-  const rows = (data ?? []) as unknown as Row[];
-  if (rows.length === 0) return [];
+// Venue-First Vendor Dashboard (2026-07-24) — the active venue's
+// hero/branding, this vendor's own partnership status with it, and the
+// venue's contact team, all resolved server-side in one RPC call.
+// p_venue_id is omitted for the common single-venue case (resolves to the
+// vendor's most recently added active relationship); passed explicitly by
+// the lightweight venue switcher once a vendor has more than one.
+export async function getVendorActiveVenue(venueId?: string): Promise<VendorActiveVenueContext> {
+  if (!isSupabaseConfigured) return null;
+  const vendorUser = await getVendorUser();
+  if (!vendorUser) return null;
+  const supabase = await createClient();
 
-  const { data: assignments } = await supabase
-    .from("event_vendor_assignments")
-    .select("venue_id")
-    .eq("vendor_id", vendorUser.vendorId);
-  const eventCountByVenue = new Map<string, number>();
-  for (const a of (assignments ?? []) as { venue_id: string }[]) {
-    eventCountByVenue.set(a.venue_id, (eventCountByVenue.get(a.venue_id) ?? 0) + 1);
-  }
-
-  return rows.map((r) => ({
-    id: r.id,
-    venueId: r.venue_id,
-    venueName: r.venues?.name ?? "Unknown Venue",
-    venueLogoUrl: r.venues?.logo_url ?? null,
-    status: r.status,
-    preferenceLevel: r.preference_level,
-    addedAt: r.added_at,
-    promotionHeadline: r.promotion_headline,
-    promotionDetails: r.promotion_details,
-    activeEventCount: eventCountByVenue.get(r.venue_id) ?? 0,
-  }));
+  const { data, error } = await supabase.rpc("get_vendor_active_venue", { p_venue_id: venueId ?? null });
+  if (error) return null;
+  const result = data as VendorActiveVenueContext | { error: string };
+  if (!result || "error" in result) return null;
+  return result;
 }
 
 export async function updateVenuePromotion(

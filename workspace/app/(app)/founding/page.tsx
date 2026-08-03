@@ -119,13 +119,13 @@ export default async function FounderDashboardPage() {
           label="Welcome Back · approved"
           value={metrics.welcomeBackApproved}
           hint="Verified · Founding pricing eligibility"
-          href="/relationships?view=list&wb=verified"
+          href="/sales?view=list&wb=verified"
         />
         <StatTile
           label="Welcome Back · pending"
           value={metrics.welcomeBackPending}
           hint="Open the Relationship to Approve / Reject / Follow up"
-          href="/relationships?view=list&wb=pending"
+          href="/sales?view=list&wb=pending"
         />
         <StatTile
           label="Welcome Back · rejected"
@@ -135,7 +135,7 @@ export default async function FounderDashboardPage() {
               ? `${metrics.welcomeBackExpired} expired · verify on the Relationship`
               : "Updated when Reject is chosen on the Relationship"
           }
-          href="/relationships?view=list&wb=rejected"
+          href="/sales?view=list&wb=rejected"
         />
       </div>
 
@@ -145,7 +145,7 @@ export default async function FounderDashboardPage() {
           className="lg:col-span-3"
           action={
             <Link
-              href="/relationships?view=list"
+              href="/sales?view=list"
               className="text-sm text-[var(--heritage-sage)] underline-offset-4 hover:underline"
             >
               All relationships →

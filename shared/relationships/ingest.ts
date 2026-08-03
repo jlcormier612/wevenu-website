@@ -1,5 +1,8 @@
 import { mapPlanId, planDisplayName } from "./normalize";
 import {
+  salesStageFromLifecycleStatus,
+} from "./sales-cs";
+import {
   mutateRelationship,
   personFromFields,
   type FindOrCreateResult,
@@ -40,6 +43,7 @@ export async function ingestContactForm(input: {
     },
     patch: {
       status: "inquiry",
+      salesStage: "inquiry",
     },
     event: {
       type: "contact_form",
@@ -105,6 +109,7 @@ export async function ingestWalkthroughRequest(input: {
     },
     patch: {
       status: hasDate ? "walkthrough_scheduled" : "walkthrough_requested",
+      salesStage: hasDate ? "venue_walkthrough" : "discovery_scheduled",
       nextMilestone: hasDate ? "Upcoming walkthrough" : "Qualify & schedule walkthrough",
       nextMilestoneAt: hasDate ? scheduledAt : undefined,
       assignedTeamMemberId: input.assignedTeamMemberId,
@@ -232,6 +237,7 @@ export async function ingestManualRelationship(input: {
 }): Promise<FindOrCreateResult> {
   const person = personFromFields({ name: input.ownerName });
   const now = new Date().toISOString();
+  const status = input.status ?? "inquiry";
   return (await mutateRelationship({
     find: {
       email: input.email,
@@ -242,7 +248,8 @@ export async function ingestManualRelationship(input: {
       referralSource: "Manual entry",
     },
     patch: {
-      status: input.status ?? "inquiry",
+      status,
+      salesStage: salesStageFromLifecycleStatus(status),
       notes: input.notes,
       ownerPhone: input.phone,
     },
@@ -294,6 +301,7 @@ export async function ingestCheckoutStarted(input: {
     },
     patch: {
       status: "inquiry",
+      salesStage: "inquiry",
       planId: planId === "none" ? undefined : planId,
       planName: planId === "none" ? undefined : planName,
       welcomeBackRequested: input.welcomeBack ? true : undefined,
@@ -410,6 +418,8 @@ export async function ingestSubscriptionPurchased(input: {
       stripeCheckoutSessionId: input.stripeCheckoutSessionId,
       paymentStatus: "paid",
       subscribedAt: now,
+      salesStage: "won",
+      customerSuccessStage: "welcome",
       ownerEmail: input.email,
       venueName: input.venueName,
     },

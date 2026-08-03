@@ -10,6 +10,7 @@ import {
   RelationshipSnapshot,
   RelationshipTimeline,
   SecondaryLists,
+  CustomerSuccessPanels,
 } from "@/components/relationships/relationship-workspace";
 import { StatusMoveControl } from "@/components/relationships/status-move-control";
 import { WelcomeBackVerifyControl } from "@/components/relationships/welcome-back-verify-control";
@@ -35,7 +36,7 @@ import {
   getTimelineForRelationship,
 } from "@/lib/data/store";
 import { loadLuvRelationshipAdvisor } from "@/lib/luv/load";
-import { toPipelineStatus } from "@/lib/pipeline";
+import { isInCustomerSuccessView, isInSalesView } from "@/lib/sales-cs";
 import { tickWorkflows } from "@/lib/program3/engine";
 import { tickSequences } from "@/lib/program3/sequence-engine";
 import {
@@ -50,15 +51,6 @@ import { ensureProgram4Data } from "@/lib/program4/store";
 import { ensureWhiteGloveChecklistsInWorkspace } from "@/lib/white-glove/ensure-checklist";
 import { formatDateTime } from "@/lib/utils";
 import { refreshRelationshipHealth } from "@shared/relationships";
-
-const PROSPECT_PIPELINE = new Set([
-  "inquiry",
-  "walkthrough_requested",
-  "walkthrough_scheduled",
-  "walkthrough_completed",
-  "trial",
-]);
-
 export async function generateMetadata({
   params,
 }: {
@@ -115,18 +107,24 @@ export default async function RelationshipDetailPage({
   const sequences = getSequencesSync();
   const sequenceEnrollments = getSequenceEnrollmentsSync({ relationshipId: id });
   const teamOptions = getTeamMembers().map((m) => ({ id: m.id, name: m.name }));
-  const pipelineBucket = PROSPECT_PIPELINE.has(toPipelineStatus(relationship.status))
+  const pipelineBucket = isInSalesView(relationship)
     ? ("prospects" as const)
     : ("customers" as const);
+  const backHref = isInCustomerSuccessView(relationship)
+    ? "/customer-success"
+    : "/sales";
+  const backLabel = isInCustomerSuccessView(relationship)
+    ? "← Customer Success"
+    : "← Sales";
 
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <Link
-          href="/relationships"
+          href={backHref}
           className="inline-block text-sm text-[var(--heritage-sage)] underline-offset-4 hover:underline"
         >
-          ← All relationships
+          {backLabel}
         </Link>
         <div className="flex flex-wrap items-center gap-3">
           {canManageWalkthroughs ? (
@@ -170,7 +168,8 @@ export default async function RelationshipDetailPage({
         canSuspend={canProvisionProduct}
         canManageBilling={canEditRelationships || canViewFinance}
       />
-      <StatusMoveControl relationshipId={id} status={relationship.status} />
+      <StatusMoveControl relationship={relationship} />
+      <CustomerSuccessPanels relationship={relationship} />
       <ProductSyncPanel
         relationshipId={id}
         productSync={relationship.productSync}

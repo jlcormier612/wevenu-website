@@ -19,11 +19,20 @@ function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 }
 
-function PromotionEditor({ partnership }: { partnership: VendorPartnership }) {
+// Exported so the venue-first Dashboard's "Current Promotion" card
+// (components/vendor-app/vendor-home.tsx) can reuse the exact same editor
+// rather than a second copy of this logic.
+export function PromotionEditor({ partnership }: { partnership: Pick<VendorPartnership, "id" | "promotionHeadline" | "promotionDetails"> }) {
   const [editing, setEditing] = React.useState(false);
   const [headline, setHeadline] = React.useState(partnership.promotionHeadline ?? "");
   const [details, setDetails] = React.useState(partnership.promotionDetails ?? "");
   const [saving, setSaving] = React.useState(false);
+
+  // View mode reads local state, not the `partnership` prop directly — the
+  // prop only refreshes on the next server render/navigation, which would
+  // otherwise leave a just-saved promotion showing its old text until the
+  // vendor reloads the page.
+  const [savedHeadline, setSavedHeadline] = React.useState(partnership.promotionHeadline);
 
   async function handleSave() {
     setSaving(true);
@@ -31,6 +40,7 @@ function PromotionEditor({ partnership }: { partnership: VendorPartnership }) {
       const result = await updateVenuePromotionAction(partnership.id, headline, details);
       if (result.ok) {
         toast.success("Promotion updated.");
+        setSavedHeadline(headline.trim() || null);
         setEditing(false);
       } else {
         toast.error(result.message ?? "Couldn't save your promotion.");
@@ -43,13 +53,13 @@ function PromotionEditor({ partnership }: { partnership: VendorPartnership }) {
   if (!editing) {
     return (
       <div className="mt-3 pt-3 border-t border-border/60">
-        {partnership.promotionHeadline ? (
-          <p className="text-xs font-medium text-foreground">🎁 {partnership.promotionHeadline}</p>
+        {savedHeadline ? (
+          <p className="text-xs font-medium text-foreground">🎁 {savedHeadline}</p>
         ) : (
           <p className="text-xs text-muted-foreground">No promotion set for this venue's couples yet.</p>
         )}
         <button type="button" onClick={() => setEditing(true)} className="text-[11px] font-medium text-primary hover:underline mt-1">
-          {partnership.promotionHeadline ? "Edit promotion" : "Add a promotion →"}
+          {savedHeadline ? "Edit promotion" : "Add a promotion →"}
         </button>
       </div>
     );

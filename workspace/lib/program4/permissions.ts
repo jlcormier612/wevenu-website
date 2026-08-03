@@ -150,6 +150,8 @@ export function roleHasPermission(role: TeamRole, permission: Permission): boole
 export const NAV_PERMISSION: Record<string, Permission> = {
   "/business": "view_business_dashboard",
   "/today": "view_today",
+  "/sales": "view_relationships",
+  "/customer-success": "view_relationships",
   "/relationships": "view_relationships",
   "/walkthroughs": "view_walkthroughs",
   "/onboarding": "view_onboarding",
@@ -169,6 +171,8 @@ export const PAGE_PERMISSION: { prefix: string; permission: Permission }[] = [
   { prefix: "/business", permission: "view_business_dashboard" },
   { prefix: "/today", permission: "view_today" },
   { prefix: "/dashboard", permission: "view_today" },
+  { prefix: "/sales", permission: "view_relationships" },
+  { prefix: "/customer-success", permission: "view_relationships" },
   { prefix: "/relationships", permission: "view_relationships" },
   { prefix: "/walkthroughs", permission: "view_walkthroughs" },
   { prefix: "/onboarding", permission: "view_onboarding" },

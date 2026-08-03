@@ -8,15 +8,26 @@ import {
   getTeamMember,
   getTimelineForRelationship,
 } from "@/lib/data/store";
+import {
+  computeAdoptionCheckpoints,
+  computeRiskSection,
+  CS_STAGE_LABELS,
+  deriveCustomerSuccessStage,
+  deriveSalesStage,
+  HEALTH_BADGE_LABELS,
+  isInCustomerSuccessView,
+  SALES_STAGE_LABELS,
+  toCustomerHealthBadge,
+} from "@/lib/sales-cs";
 import type { Relationship, TimelineEvent } from "@/lib/types";
 import {
+  formatCurrency,
   formatDate,
   formatDateTime,
   formatRelativeDay,
   HEALTH_EMOJI,
   HEALTH_LABELS,
   ONBOARDING_LABELS,
-  STATUS_LABELS,
   WELCOME_BACK_LABELS,
   yesNo,
 } from "@/lib/utils";
@@ -49,6 +60,18 @@ export function RelationshipSnapshot({ relationship }: { relationship: Relations
     relationship.onboardingType === "white_glove" ||
     relationship.status === "white_glove_implementation" ||
     wgTasks.length > 0;
+  const isCustomer = isInCustomerSuccessView(relationship);
+  const healthBadge = toCustomerHealthBadge(
+    health.band,
+    health.score,
+    {
+      suspended: relationship.status === "suspended",
+      accessDisabled: relationship.accessDisabled,
+    },
+  );
+  const viewStage = isCustomer
+    ? CS_STAGE_LABELS[deriveCustomerSuccessStage(relationship)]
+    : SALES_STAGE_LABELS[deriveSalesStage(relationship)];
 
   return (
     <section className="ws-panel border-[var(--soft-sage)]/60 bg-[linear-gradient(165deg,var(--natural-cream),var(--true-white)_45%,color-mix(in_srgb,var(--soft-sage)_18%,var(--true-white)))] p-7 md:p-8">
@@ -63,14 +86,21 @@ export function RelationshipSnapshot({ relationship }: { relationship: Relations
             {assignee ? ` · ${assignee.name}` : null}
           </p>
         </div>
-        {showImplLink ? (
-          <Link
-            href={`/relationships/${relationship.id}/implementation`}
-            className="rounded-sm border border-[color-mix(in_srgb,var(--taupe-medium)_55%,transparent)] bg-[var(--true-white)] px-3.5 py-2 text-sm font-medium text-[var(--forest-sage)] hover:border-[var(--heritage-sage)]"
-          >
-            White Glove Implementation
-          </Link>
-        ) : null}
+        <div className="flex flex-wrap items-center gap-2">
+          {isCustomer ? (
+            <span className="rounded-sm bg-[color-mix(in_srgb,var(--soft-sage)_35%,var(--true-white))] px-2.5 py-1 text-xs font-medium tracking-wide text-[var(--forest-sage)]">
+              {HEALTH_BADGE_LABELS[healthBadge]}
+            </span>
+          ) : null}
+          {showImplLink ? (
+            <Link
+              href={`/relationships/${relationship.id}/implementation`}
+              className="rounded-sm border border-[color-mix(in_srgb,var(--taupe-medium)_55%,transparent)] bg-[var(--true-white)] px-3.5 py-2 text-sm font-medium text-[var(--forest-sage)] hover:border-[var(--heritage-sage)]"
+            >
+              White Glove Implementation
+            </Link>
+          ) : null}
+        </div>
       </div>
 
       <dl className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -78,7 +108,10 @@ export function RelationshipSnapshot({ relationship }: { relationship: Relations
           label="Relationship Health"
           value={`${HEALTH_LABELS[health.band]} ${HEALTH_EMOJI[health.band]} · ${health.score}/100`}
         />
-        <SnapItem label="Lifecycle Stage" value={relationship.currentStageLabel} />
+        <SnapItem
+          label={isCustomer ? "Customer Success stage" : "Sales stage"}
+          value={viewStage}
+        />
         <SnapItem label="Plan" value={relationship.planName} />
         <SnapItem label="Founder" value={yesNo(relationship.foundingMember)} />
         <SnapItem
@@ -169,6 +202,135 @@ function SnapItem({ label, value }: { label: string; value: string }) {
   );
 }
 
+/** Customer Success panels — same Relationship record; no sales terminology. */
+export function CustomerSuccessPanels({
+  relationship,
+}: {
+  relationship: Relationship;
+}) {
+  if (!isInCustomerSuccessView(relationship)) return null;
+
+  const tasks = getTasks({ relationshipId: relationship.id });
+  const communications = getCommunications({ relationshipId: relationship.id });
+  const timelineEvents = getTimelineForRelationship(relationship.id);
+  const subscriptions = getSubscriptions(relationship.id);
+  const health = computeRelationshipHealth(relationship as never, {
+    tasks: tasks as never,
+    communications: communications as never,
+    timelineEvents: timelineEvents as never,
+    subscriptions: subscriptions as never,
+  });
+  const adoption = computeAdoptionCheckpoints(relationship, {
+    onboardingProgress: health.onboardingProgress,
+    websitePublished: health.websitePublished,
+  });
+  const lastActivity =
+    health.lastCustomerActivityAt ||
+    health.lastLoginAt ||
+    relationship.lastContactAt;
+  const daysSince = lastActivity
+    ? Math.floor((Date.now() - new Date(lastActivity).getTime()) / 86_400_000)
+    : null;
+  const risk = computeRiskSection(relationship, {
+    onboardingProgress: health.onboardingProgress,
+    websitePublished: health.websitePublished,
+    daysSinceActivity: daysSince,
+    healthFactors: health.factors,
+  });
+  const sub = subscriptions[0];
+  const badge = toCustomerHealthBadge(relationship.health, relationship.healthScore, {
+    suspended: relationship.status === "suspended",
+    accessDisabled: relationship.accessDisabled,
+  });
+  const riskLabel =
+    risk.tone === "green" ? "Green" : risk.tone === "yellow" ? "Yellow" : "Red";
+
+  return (
+    <div className="grid gap-5 lg:grid-cols-2">
+      <Panel title="Adoption">
+        <ul className="space-y-2">
+          {adoption.map((a) => (
+            <li key={a.id} className="flex justify-between gap-3 text-sm">
+              <span>{a.label}</span>
+              <span className="ws-muted">{a.done ? "Done" : "Open"}</span>
+            </li>
+          ))}
+        </ul>
+      </Panel>
+
+      <Panel title="Engagement">
+        <div className="space-y-2">
+          <Row
+            label="Last Login"
+            value={
+              health.lastLoginAt ? formatRelativeDay(health.lastLoginAt) : "—"
+            }
+          />
+          <Row
+            label="Last Activity"
+            value={lastActivity ? formatRelativeDay(lastActivity) : "—"}
+          />
+          <Row
+            label="Days Since Activity"
+            value={daysSince != null ? String(daysSince) : "—"}
+          />
+          <Row
+            label="Open Support Issues"
+            value={String(health.supportOpenCount)}
+          />
+          <Row label="Health badge" value={HEALTH_BADGE_LABELS[badge]} />
+        </div>
+      </Panel>
+
+      <Panel title="Subscription">
+        <div className="space-y-2">
+          <Row label="Current Plan" value={sub?.planName ?? relationship.planName} />
+          <Row
+            label="Monthly Revenue"
+            value={sub ? formatCurrency(sub.mrrCents) : "—"}
+          />
+          <Row
+            label="Subscription Status"
+            value={sub?.status ?? relationship.paymentStatus ?? "—"}
+          />
+          <Row
+            label="Renewal Date"
+            value={
+              relationship.nextMilestoneAt &&
+              /renew/i.test(relationship.nextMilestone ?? "")
+                ? formatDate(relationship.nextMilestoneAt)
+                : "—"
+            }
+          />
+          <Row
+            label="Customer Since"
+            value={
+              relationship.subscribedAt
+                ? formatDate(relationship.subscribedAt)
+                : "—"
+            }
+          />
+        </div>
+      </Panel>
+
+      <Panel title="Risk">
+        <p className="text-sm font-medium">Badge: {riskLabel}</p>
+        {risk.reasons.length === 0 ? (
+          <p className="mt-2 text-sm ws-muted">No risk reasons flagged.</p>
+        ) : (
+          <ul className="mt-2 space-y-1.5">
+            {risk.reasons.map((reason) => (
+              <li key={reason} className="text-sm ws-muted">
+                · {reason}
+              </li>
+            ))}
+          </ul>
+        )}
+      </Panel>
+    </div>
+  );
+}
+
 export function RelationshipTimeline({ events }: { events: TimelineEvent[] }) {
   if (events.length === 0) {
     return (
@@ -227,7 +389,18 @@ export function RelationshipDetails({ relationship }: { relationship: Relationsh
         </DetailBlock>
 
         <DetailBlock title="Status & Plan">
-          <Row label="Status" value={STATUS_LABELS[relationship.status]} />
+          <Row
+            label={
+              isInCustomerSuccessView(relationship)
+                ? "Customer Success"
+                : "Sales stage"
+            }
+            value={
+              isInCustomerSuccessView(relationship)
+                ? CS_STAGE_LABELS[deriveCustomerSuccessStage(relationship)]
+                : SALES_STAGE_LABELS[deriveSalesStage(relationship)]
+            }
+          />
           <Row label="Assigned" value={assignee?.name ?? "—"} />
           <Row label="Plan" value={relationship.planName} />
           <Row label="Founder" value={yesNo(relationship.foundingMember)} />

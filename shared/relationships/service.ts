@@ -1,6 +1,12 @@
 import { randomUUID } from "crypto";
 
 import { normalizeEmail, normalizeVenueName, splitPersonName } from "./normalize";
+import {
+  deriveSalesStage,
+  isInCustomerSuccessView,
+  promoteSalesStage,
+  type SalesStage,
+} from "./sales-cs";
 import { promoteStatus, stageLabelForStatus } from "./status";
 import { withLiveStore } from "./store";
 import type {
@@ -243,6 +249,7 @@ function createRelationship(input: FindOrCreateInput, now: string): Relationship
     },
     status: "inquiry",
     health: "good",
+    salesStage: "inquiry",
     assignedTeamMemberId: input.assignedTeamMemberId?.trim() || DEFAULT_ASSIGNEE,
     planId: "none",
     planName: "—",
@@ -311,15 +318,28 @@ export async function findOrCreateRelationship(
   return result;
 }
 
+type ApplyFieldPatchOpts = {
+  /**
+   * Direct sales/CS stage writes (workspace board drag).
+   * Default soft path promotes salesStage and skips regressing CS customers.
+   */
+  forceViewStages?: boolean;
+};
+
 /**
  * Merge patch into relationship. Never wipe stronger data with weaker values:
  * - booleans ratchet true-only (foundingMember, welcomeBackRequested)
  * - plan / onboarding / welcomeBackVerified only advance in rank
  * - venue / owner / referral fill empties only
  * - status uses promoteStatus
+ * - salesStage uses promoteSalesStage unless forceViewStages
  * - Stripe ids fill when provided (authoritative when set)
  */
-function applyFieldPatch(relationship: Relationship, patch: RelationshipFieldPatch): void {
+function applyFieldPatch(
+  relationship: Relationship,
+  patch: RelationshipFieldPatch,
+  opts?: ApplyFieldPatchOpts,
+): void {
   if (patch.status) {
     const before = relationship.status;
     relationship.status = promoteStatus(relationship.status, patch.status);
@@ -334,6 +354,24 @@ function applyFieldPatch(relationship: Relationship, patch: RelationshipFieldPat
   if (patch.health) relationship.health = patch.health;
   if (typeof patch.healthScore === "number") {
     relationship.healthScore = Math.max(0, Math.min(100, Math.round(patch.healthScore)));
+  }
+  if (patch.salesStage) {
+    if (opts?.forceViewStages) {
+      relationship.salesStage = patch.salesStage;
+    } else if (
+      isInCustomerSuccessView(relationship) &&
+      patch.salesStage !== "won"
+    ) {
+      // Subscribed / CS customers stay on Won (or current); ingest must not re-open Sales.
+    } else {
+      relationship.salesStage = promoteSalesStage(
+        relationship.salesStage,
+        patch.salesStage,
+      );
+    }
+  }
+  if (patch.customerSuccessStage) {
+    relationship.customerSuccessStage = patch.customerSuccessStage;
   }
 
   if (patch.planId && PLAN_RANK[patch.planId] > PLAN_RANK[relationship.planId]) {
@@ -504,7 +542,8 @@ export async function updateRelationshipFields(
   const { result } = await withLiveStore((store) => {
     const relationship = store.relationships.find((r) => r.id === relationshipId);
     if (!relationship) return null;
-    applyFieldPatch(relationship, patch);
+    // Workspace board moves may go backward — force view stages.
+    applyFieldPatch(relationship, patch, { forceViewStages: true });
     const now = new Date().toISOString();
     relationship.updatedAt = now;
     relationship.lastContactAt = now;
@@ -1112,6 +1151,7 @@ export async function setWalkthroughStatus(
             title: "Walkthrough completed",
             body: reason,
             relationshipStatus: "walkthrough_completed" as const,
+            salesStage: "venue_walkthrough" as SalesStage,
             nextMilestone: "Send proposal / follow up",
           }
         : status === "rescheduled"
@@ -1120,6 +1160,7 @@ export async function setWalkthroughStatus(
               title: "Walkthrough rescheduled",
               body: reason || (nextScheduled ? `New time: ${nextScheduled}` : undefined),
               relationshipStatus: "walkthrough_scheduled" as const,
+              salesStage: "venue_walkthrough" as SalesStage,
               nextMilestone: "Upcoming walkthrough",
               nextMilestoneAt: nextScheduled || walkthrough.scheduledAt,
             }
@@ -1128,18 +1169,38 @@ export async function setWalkthroughStatus(
               title: "Walkthrough cancelled",
               body: reason,
               relationshipStatus: undefined,
+              // Still in early pipeline → Discovery (needs rebook). Later stages untouched.
+              salesStage: undefined as SalesStage | undefined,
               nextMilestone: "Reschedule walkthrough",
             };
 
-    if (eventSpec.relationshipStatus) {
-      applyFieldPatch(relationship, {
-        status: eventSpec.relationshipStatus,
-        nextMilestone: eventSpec.nextMilestone,
-        nextMilestoneAt:
-          "nextMilestoneAt" in eventSpec
-            ? eventSpec.nextMilestoneAt
-            : relationship.nextMilestoneAt,
-      });
+    if (status === "cancelled" && !isInCustomerSuccessView(relationship)) {
+      const currentSales = deriveSalesStage(relationship);
+      if (
+        currentSales === "inquiry" ||
+        currentSales === "discovery_scheduled" ||
+        currentSales === "venue_walkthrough"
+      ) {
+        eventSpec.salesStage = "discovery_scheduled";
+      }
+    }
+
+    if (eventSpec.relationshipStatus || eventSpec.salesStage) {
+      const forceCancelStage =
+        status === "cancelled" && eventSpec.salesStage === "discovery_scheduled";
+      applyFieldPatch(
+        relationship,
+        {
+          status: eventSpec.relationshipStatus,
+          salesStage: eventSpec.salesStage,
+          nextMilestone: eventSpec.nextMilestone,
+          nextMilestoneAt:
+            "nextMilestoneAt" in eventSpec
+              ? eventSpec.nextMilestoneAt
+              : relationship.nextMilestoneAt,
+        },
+        forceCancelStage ? { forceViewStages: true } : undefined,
+      );
     } else if (eventSpec.nextMilestone) {
       relationship.nextMilestone = eventSpec.nextMilestone;
     }

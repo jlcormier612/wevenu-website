@@ -33,7 +33,11 @@ export async function dismissLuvInsightAction(formData: FormData) {
 
   revalidatePath("/business");
   revalidatePath("/today");
-  if (relationshipId) revalidatePath(`/relationships/${relationshipId}`);
+  if (relationshipId) {
+    revalidatePath(`/relationships/${relationshipId}`);
+    revalidatePath("/sales");
+    revalidatePath("/customer-success");
+  }
   return { ok: true as const };
 }
 
@@ -64,6 +68,8 @@ export async function createLuvTaskAction(formData: FormData) {
   });
 
   revalidatePath(`/relationships/${relationshipId}`);
+  revalidatePath("/sales");
+  revalidatePath("/customer-success");
   revalidatePath("/tasks");
   revalidatePath("/today");
   return { ok: true as const };

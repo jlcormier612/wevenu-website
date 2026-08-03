@@ -250,6 +250,29 @@ export type RelationshipPatch = {
     | "verified"
     | "rejected"
     | "expired";
+  /** Sales board stage (pre-customer view). */
+  salesStage?:
+    | "inquiry"
+    | "discovery_scheduled"
+    | "venue_walkthrough"
+    | "proposal_sent"
+    | "negotiation"
+    | "awaiting_signature"
+    | "won"
+    | "lost"
+    | "nurture";
+  /** Customer Success lifecycle stage (post-subscribe view). */
+  customerSuccessStage?:
+    | "welcome"
+    | "onboarding"
+    | "implementation"
+    | "training"
+    | "live"
+    | "adoption"
+    | "healthy"
+    | "expansion"
+    | "renewal"
+    | "renewed";
   updatedAt: string;
 };
 

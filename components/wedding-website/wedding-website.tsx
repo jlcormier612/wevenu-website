@@ -35,6 +35,19 @@ type CollectionConfig = {
   buttonRadius: string;
   photoRadius: string;
   photoFilter: string; // CSS filter applied to all gallery images
+  // Four independent dimensions (2026-07-24) — these last five belong to
+  // Layout Collection specifically (Part 1: gallery layout, RSVP
+  // placement, animation style, scrolling behavior, section spacing);
+  // photoFilter/photoRadius above are overridden by Photo Style tokens
+  // when a couple has chosen one, independent of Collection (Part 4).
+  galleryLayout: "grid" | "masonry" | "film-strip";
+  rsvpPlacement: "inline" | "banner";
+  animationStyle: "none" | "fade" | "rise";
+  scrollBehavior: "normal" | "snap";
+  sectionSpacing: "compact" | "cozy" | "spacious";
+  frameStyle: "none" | "border" | "polaroid"; // Photo Style
+  captionStyle: "none" | "minimal" | "handwritten"; // Photo Style
+  imageScale: "normal" | "large"; // Photo Style
 };
 
 type PaletteConfig = {
@@ -52,11 +65,77 @@ type PaletteConfig = {
   dark: boolean;
 };
 
-// ThemeConfig is what the renderer works with: collection DNA + resolved palette
-type ThemeConfig = CollectionConfig & PaletteConfig;
+// ThemeConfig is what the renderer works with: collection DNA + resolved
+// palette. primary/secondary (2026-07-24) are the couple's own Color Story
+// primary/secondary — always populated (falling back to accent) so callers
+// never need an extra null-check beyond what tc.accent already required.
+type ThemeConfig = CollectionConfig & PaletteConfig & { primary: string; secondary: string };
+
+// Baseline for the four new layout fields (Part 1) plus the three Photo
+// Style fields (Part 4) — the 8 original hardcoded collections below predate
+// both dimensions, so this is what they fall back to before layout_config /
+// a chosen Photo Style override anything (resolveTheme merges over this).
+const LAYOUT_DEFAULTS: Pick<CollectionConfig, "galleryLayout" | "rsvpPlacement" | "animationStyle" | "scrollBehavior" | "sectionSpacing" | "frameStyle" | "captionStyle" | "imageScale"> = {
+  galleryLayout: "grid", rsvpPlacement: "inline", animationStyle: "none",
+  scrollBehavior: "normal", sectionSpacing: "cozy",
+  frameStyle: "none", captionStyle: "none", imageScale: "normal",
+};
+
+// Vertical rhythm between sections, keyed by the Layout Collection's own
+// sectionSpacing (Part 1) — real per-collection variance now lives in
+// layout_config, this is just the CSS translation of the three buckets.
+const SECTION_SPACING: Record<CollectionConfig["sectionSpacing"], string> = {
+  compact: "3rem",
+  cozy: "5rem",
+  spacious: "7.5rem",
+};
+
+// Scroll-reveal for animationStyle (Part 1) — a couple's Collection choice,
+// not per-section. Respects prefers-reduced-motion (architecture spec §11):
+// the observer still fires so content always ends visible, it just skips
+// straight to the resting state instead of animating into it.
+function useScrollReveal(style: CollectionConfig["animationStyle"]) {
+  const ref = React.useRef<HTMLDivElement>(null);
+  const [revealed, setRevealed] = React.useState(style === "none");
+  React.useEffect(() => {
+    if (style === "none" || !ref.current) return;
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      setRevealed(true);
+      return;
+    }
+    const el = ref.current;
+    const io = new IntersectionObserver(([entry]) => {
+      if (entry.isIntersecting) { setRevealed(true); io.unobserve(el); }
+    }, { threshold: 0.15 });
+    io.observe(el);
+    return () => io.disconnect();
+  }, [style]);
+  return { ref, revealed };
+}
+
+function ScrollReveal({ style, scrollSnap, children }: { style: CollectionConfig["animationStyle"]; scrollSnap: boolean; children: React.ReactNode }) {
+  const { ref, revealed } = useScrollReveal(style);
+  const hidden: React.CSSProperties = style === "fade"
+    ? { opacity: 0 }
+    : style === "rise"
+    ? { opacity: 0, transform: "translateY(28px)" }
+    : {};
+  return (
+    <div
+      ref={ref}
+      style={{
+        ...(revealed ? { opacity: 1, transform: "none" } : hidden),
+        transition: style === "none" ? undefined : "opacity 0.7s ease, transform 0.7s ease",
+        scrollSnapAlign: scrollSnap ? "start" : undefined,
+      }}
+    >
+      {children}
+    </div>
+  );
+}
 
 // ── Collections ───────────────────────────────────────────────────────────────
-const COLLECTIONS: Record<string, CollectionConfig> = {
+const COLLECTIONS: Record<string, Omit<CollectionConfig, keyof typeof LAYOUT_DEFAULTS>> = {
 
   // Wildflower — English garden party, Playfair Display, pressed botanical elements
   classic: {
@@ -322,18 +401,78 @@ const TYPOGRAPHY_STYLES: Record<string, TypographyOverride> = {
   },
 };
 
-function resolveTheme(collectionKey: string | undefined, paletteKey?: string | null, fontPairingKey?: string | null): ThemeConfig {
-  const key = collectionKey ?? "classic";
+// Four independent dimensions (2026-07-24) — Layout Collection, Color
+// Story, Typography, Photo Style — each resolved and merged in its own
+// step, in that order, so a later dimension's tokens always win over an
+// earlier one's defaults for any field they both happen to touch (this
+// only matters for photoFilter/photoRadius, which Photo Style now owns).
+// `site` already carries every dimension's resolved tokens (layoutConfig/
+// colorTokens/typographyTokens/photoStyleTokens), joined server-side by
+// get_wedding_website — this function's only job is merging them over the
+// same hardcoded fallback defaults the old, three-argument resolveTheme()
+// used, so a site with none of the new fields set (every site published
+// before this initiative) renders pixel-identical to before.
+function resolveTheme(site: PublicWebsite): ThemeConfig {
+  const key = site.theme ?? "classic";
   const collection = COLLECTIONS[key] ?? COLLECTIONS.classic;
   const palettes = PALETTES[key] ?? PALETTES.classic;
+  const paletteKey = site.themePalette;
   const palette = (paletteKey
     ? palettes.find(p => p.name.toLowerCase() === paletteKey.toLowerCase())
     : null) ?? palettes[0];
   // A couple's chosen Font Pairing overrides the Collection's own default
   // typography when set — otherwise the Collection's typography stands on
-  // its own, unchanged from today.
-  const typographyOverride = fontPairingKey ? TYPOGRAPHY_STYLES[fontPairingKey] : null;
-  return { ...collection, ...palette, ...typographyOverride };
+  // its own, unchanged from today. typographyTokens (from the catalog, via
+  // typography_style_id) takes priority over the legacy fontPairing string
+  // lookup when both are present.
+  const legacyTypographyOverride = site.fontPairing ? TYPOGRAPHY_STYLES[site.fontPairing] : null;
+  const typographyOverride = site.typographyTokens ?? legacyTypographyOverride;
+
+  // Layout Collection (Part 1) — DB layout_config over hardcoded defaults.
+  const layoutOverride = { ...LAYOUT_DEFAULTS, ...(site.layoutConfig ?? {}) };
+
+  // Color Story (Part 2) — DB color_story tokens over the legacy palette,
+  // then the couple's own direct custom colors over that. Primary/
+  // Secondary/Accent/Neutral/Background/Text map onto the palette's own
+  // token names one-for-one where a slot already exists (accent/bg/text),
+  // and extend two new ones (primary drives buttons + hero tone,
+  // secondary joins it in the hero gradient) so all six actually show up
+  // somewhere real rather than only three of them doing anything.
+  const colorOverride: Partial<PaletteConfig & { primary: string; secondary: string }> = {
+    ...(site.colorTokens ?? {}),
+    ...(site.colorAccent ? { accent: site.colorAccent } : {}),
+    ...(site.colorNeutral ? { border: site.colorNeutral } : {}),
+    ...(site.colorBackground ? { bg: site.colorBackground } : {}),
+    ...(site.colorText ? { text: site.colorText } : {}),
+  };
+  // Precedence: the couple's own new Primary color, then whatever a chosen
+  // Color Story (or a direct Accent override) resolved to, then the legacy
+  // single accentColor a pre-this-initiative site may have saved, then the
+  // Collection's hardcoded default. Legacy accentColor must rank BELOW a
+  // resolved Color Story — otherwise a site that already has an accentColor
+  // (nearly every site published before this initiative, since it used to
+  // be the only color customization available) would see no visible change
+  // from picking a brand new Color Story at all.
+  const primary = site.colorPrimary ?? colorOverride.accent ?? site.accentColor ?? palette.accent;
+  const secondary = site.colorSecondary ?? primary;
+  if (site.colorPrimary || site.colorSecondary) {
+    colorOverride.heroGradient = `linear-gradient(160deg, ${secondary} 0%, ${primary} 60%, ${primary} 100%)`;
+  }
+
+  // Photo Style (Part 4) — fully independent of Collection; only touches
+  // photoFilter/photoRadius (Collection's own defaults) plus its own three
+  // fields (frame/caption/scale), never anything Color Story or Typography
+  // own.
+  const photoOverride = site.photoStyleTokens
+    ? { photoFilter: site.photoStyleTokens.photoFilter, photoRadius: site.photoStyleTokens.photoRadius,
+        frameStyle: site.photoStyleTokens.frameStyle, captionStyle: site.photoStyleTokens.captionStyle,
+        imageScale: site.photoStyleTokens.imageScale }
+    : null;
+
+  return {
+    ...collection, ...layoutOverride, ...palette, ...colorOverride, ...typographyOverride, ...photoOverride,
+    primary, secondary,
+  };
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -518,6 +657,60 @@ function SectionHeader({ title, tc, accentColor }: { title: string; tc: ThemeCon
   );
 }
 
+// ── Gallery ────────────────────────────────────────────────────────────────────
+// galleryLayout (Layout Collection, Part 1) picks the composition; frameStyle
+// / imageScale (Photo Style, Part 4) picks the per-image treatment — the two
+// dimensions combine freely since neither reads the other's fields.
+function GalleryGrid({ photos, tc }: { photos: string[]; tc: ThemeConfig }) {
+  const frame = (i: number): React.CSSProperties =>
+    tc.frameStyle === "polaroid"
+      ? { background: "#fff", padding: "10px 10px 28px", boxShadow: "0 6px 20px rgba(0,0,0,0.18)", transform: `rotate(${(i % 2 === 0 ? -1 : 1) * (1 + (i % 3))}deg)` }
+      : tc.frameStyle === "border"
+      ? { border: `6px solid #fff`, boxShadow: "0 2px 10px rgba(0,0,0,0.12)" }
+      : {};
+  const imgStyle: React.CSSProperties = {
+    display: "block", width: "100%", objectFit: "cover",
+    filter: tc.photoFilter || undefined,
+    borderRadius: tc.frameStyle === "polaroid" ? 0 : tc.photoRadius,
+  };
+
+  if (tc.galleryLayout === "film-strip") {
+    return (
+      <div className="flex gap-4 overflow-x-auto pb-4 -mx-6 px-6" style={{ scrollSnapType: "x proximity" }}>
+        {photos.map((url, i) => (
+          <div key={i} className="shrink-0 overflow-hidden"
+            style={{ width: tc.imageScale === "large" ? "78vw" : "46vw", maxWidth: tc.imageScale === "large" ? 560 : 340, borderRadius: tc.photoRadius, scrollSnapAlign: "center", ...frame(i) }}>
+            <img src={url} alt="" style={{ ...imgStyle, aspectRatio: "4 / 5" }} />
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  if (tc.galleryLayout === "grid") {
+    return (
+      <div className={`grid gap-3 ${tc.imageScale === "large" ? "grid-cols-2" : "grid-cols-2 md:grid-cols-3"}`}>
+        {photos.map((url, i) => (
+          <div key={i} className="overflow-hidden" style={{ borderRadius: tc.photoRadius, ...frame(i) }}>
+            <img src={url} alt="" style={{ ...imgStyle, aspectRatio: "1 / 1" }} />
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  // masonry — the original free-flowing columns treatment
+  return (
+    <div className={`columns-2 gap-3 space-y-3 ${tc.imageScale === "large" ? "md:columns-2" : "md:columns-3 lg:columns-4"}`}>
+      {photos.map((url, i) => (
+        <div key={i} className="break-inside-avoid overflow-hidden" style={{ borderRadius: tc.photoRadius, ...frame(i) }}>
+          <img src={url} alt="" style={imgStyle} />
+        </div>
+      ))}
+    </div>
+  );
+}
+
 // ── Password gate ─────────────────────────────────────────────────────────────
 
 function PasswordGate({ slug, accentColor }: { slug: string; accentColor: string }) {
@@ -658,12 +851,18 @@ export function WeddingWebsite({
   onSectionClick?: (key: string) => void;
 }) {
   if (site.requires_password) {
-    return <PasswordGate slug={slug} accentColor={site.accentColor ?? "#5D6F5D"} />;
+    // Same precedence as tc.primary below (colorPrimary → resolved Color
+    // Story accent → legacy accentColor → fallback) — the password gate
+    // renders before a full resolveTheme() call, so it mirrors the chain
+    // by hand rather than sharing the computation.
+    return <PasswordGate slug={slug} accentColor={site.colorPrimary ?? site.colorTokens?.accent ?? site.colorAccent ?? site.accentColor ?? "#5D6F5D"} />;
   }
 
-  const tc = resolveTheme(site.theme, site.themePalette, site.fontPairing);
-  // Theme supplies a natural accent; couples can override it with a custom accentColor.
-  const color = site.accentColor ?? tc.accent;
+  const tc = resolveTheme(site);
+  // Theme supplies a natural accent; a couple's Color Story primary (Part 2)
+  // takes precedence, then the legacy single accentColor override, then the
+  // Collection/Color-Story-resolved default.
+  const color = tc.primary;
   const couple = site.couple;
   const coupleName = couple
     ? [couple.firstName, couple.partnerFirstName].filter(Boolean).join(" & ")
@@ -704,9 +903,16 @@ export function WeddingWebsite({
         filter: tc.photoFilter || undefined }
     : { background: tc.heroGradient };
 
-  // Wraps each section in an edit overlay when editMode=true
+  // Wraps each section in an edit overlay when editMode=true, and — always,
+  // edit mode or not — in the Collection's own scroll-reveal + scroll-snap
+  // behavior (Part 1), so every section gets it with zero per-section edits.
   function SectionWrapper({ sectionKey, children }: { sectionKey: string; children: React.ReactNode }) {
-    if (!editMode) return <>{children}</>;
+    const revealed = (
+      <ScrollReveal style={tc.animationStyle} scrollSnap={tc.scrollBehavior === "snap"}>
+        {children}
+      </ScrollReveal>
+    );
+    if (!editMode) return revealed;
     const isActive = activeSection === sectionKey;
     return (
       <div
@@ -714,7 +920,7 @@ export function WeddingWebsite({
         style={isActive ? { "--tw-ring-color": `${color}60` } as React.CSSProperties : {}}
         onClick={() => onSectionClick?.(sectionKey)}
       >
-        {children}
+        {revealed}
         <div
           className={`absolute inset-0 rounded-2xl pointer-events-none border-2 transition-all ${isActive ? "" : "opacity-0 group-hover:opacity-100"}`}
           style={{ borderColor: isActive ? `${color}90` : `${color}45`, background: `${color}06` }}
@@ -879,15 +1085,16 @@ export function WeddingWebsite({
       )}
 
       {/* ── Sections in couple-defined order ── */}
+      {/* Section spacing (Part 1) is the Layout Collection's own call —
+          tc.sectionSpacing comes straight from layout_config, real per
+          collection, replacing the old headerStyle-keyed guess. */}
       <div
         className="max-w-5xl mx-auto px-6 py-10"
         style={{
           display: "flex",
           flexDirection: "column",
-          gap: tc.headerStyle === "minimal" ? "6.5rem"
-            : tc.headerStyle === "editorial" ? "4rem"
-            : tc.headerStyle === "formal" ? "4.5rem"
-            : "5rem",
+          gap: SECTION_SPACING[tc.sectionSpacing],
+          scrollSnapType: tc.scrollBehavior === "snap" ? "y proximity" : undefined,
         }}
       >
 
@@ -1010,15 +1217,7 @@ export function WeddingWebsite({
                 <SectionWrapper key="gallery" sectionKey="gallery">
                   <section>
                     <SectionHeader title={g.title ?? "Our Photos"} tc={tc} accentColor={color} />
-                    <div className="columns-2 md:columns-3 lg:columns-4 gap-3 space-y-3">
-                      {g.photos.map((url, i) => (
-                        <div key={i} className="break-inside-avoid overflow-hidden"
-                          style={{ borderRadius: tc.photoRadius }}>
-                          <img src={url} alt="" className="w-full object-cover"
-                            style={{ display: "block", filter: tc.photoFilter || undefined }} />
-                        </div>
-                      ))}
-                    </div>
+                    <GalleryGrid photos={g.photos} tc={tc} />
                   </section>
                 </SectionWrapper>
               );
@@ -1247,21 +1446,30 @@ export function WeddingWebsite({
 
             // ── RSVP ──────────────────────────────────────────────────────────
             case "rsvp": {
+              // rsvpPlacement (Part 1): "inline" keeps the original rounded
+              // inset card in the normal section flow; "banner" breaks the
+              // card out to full-bleed width, a genuinely different moment
+              // in the page rather than just another section.
+              const isBanner = tc.rsvpPlacement === "banner";
+              const rsvpCard = (
+                <div className={isBanner ? "p-10 md:p-16" : "p-8 md:p-12 rounded-3xl"}
+                  style={{ background: color }}>
+                  <div className="text-center text-white mb-8 max-w-xl mx-auto">
+                    <h2 style={{ fontFamily: tc.headingFont, color: "white", fontStyle: tc.headingItalic ? "italic" : "normal", fontSize: isBanner ? "clamp(2rem, 5vw, 3rem)" : "clamp(1.75rem, 4vw, 2.5rem)", fontWeight: 600 }}>
+                      RSVP
+                    </h2>
+                    <p className="opacity-70 text-sm mt-2">Enter the code from your invitation to respond.</p>
+                    {site.rsvpStats && site.rsvpStats.total > 0 && (
+                      <p className="opacity-50 text-xs mt-1">{site.rsvpStats.attending} of {site.rsvpStats.total} guests have responded</p>
+                    )}
+                  </div>
+                  <div className="max-w-xl mx-auto"><RsvpSection accentColor={color} tc={tc} /></div>
+                </div>
+              );
               return (
                 <SectionWrapper key="rsvp" sectionKey="rsvp">
-                  <section>
-                    <div className="p-8 md:p-12 rounded-3xl" style={{ background: color }}>
-                      <div className="text-center text-white mb-8">
-                        <h2 style={{ fontFamily: tc.headingFont, color: "white", fontStyle: tc.headingItalic ? "italic" : "normal", fontSize: "clamp(1.75rem, 4vw, 2.5rem)", fontWeight: 600 }}>
-                          RSVP
-                        </h2>
-                        <p className="opacity-70 text-sm mt-2">Enter the code from your invitation to respond.</p>
-                        {site.rsvpStats && site.rsvpStats.total > 0 && (
-                          <p className="opacity-50 text-xs mt-1">{site.rsvpStats.attending} of {site.rsvpStats.total} guests have responded</p>
-                        )}
-                      </div>
-                      <RsvpSection accentColor={color} tc={tc} />
-                    </div>
+                  <section className={isBanner ? "relative left-1/2 right-1/2 -mx-[50vw] w-screen" : undefined}>
+                    {rsvpCard}
                   </section>
                 </SectionWrapper>
               );

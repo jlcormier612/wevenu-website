@@ -372,6 +372,38 @@ export type VendorPartnership = {
   activeEventCount:   number;
 };
 
+// Venue-First Vendor Dashboard (2026-07-24) — "The vendor should always
+// feel like they are working with a venue, not browsing a marketplace."
+// The hero/immersion data for the vendor's active (usually singular) venue
+// relationship — branding, their own partnership status, and the venue's
+// contact team.
+export type VendorActiveVenue = {
+  id:              string;
+  name:            string;
+  logoUrl:         string | null;
+  heroImageUrl:    string | null;
+  primaryColor:    string | null;
+  secondaryColor:  string | null;
+  accentColor:     string | null;
+  neutralColor:    string | null;
+  story:           string | null;
+};
+
+export type VendorActiveVenueContact = {
+  id:       string;
+  fullName: string;
+  title:    string | null;
+  role:     string;
+  isOwner:  boolean;
+  email:    string | null;
+};
+
+export type VendorActiveVenueContext = {
+  venue:       VendorActiveVenue;
+  partnership: Pick<VendorPartnership, "id" | "venueId" | "status" | "preferenceLevel" | "addedAt" | "promotionHeadline" | "promotionDetails" | "activeEventCount">;
+  contacts:    VendorActiveVenueContact[];
+} | null;
+
 export type VendorDashboardData = {
   vendor:           VendorProfile;
   upcomingEvents:   VendorDashboardEvent[];
@@ -469,6 +501,7 @@ export type VendorEventListItem = {
   eventId:      string;
   eventName:    string;
   eventDate:    string | null;
+  venueId:      string;
   venueName:    string;
   arrivalTime:  string | null;
   isUpcoming:   boolean;

@@ -4,34 +4,37 @@ import * as React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  CalendarDays, CheckSquare, Clock, FileText,
-  Handshake, LayoutDashboard, Menu, MessageSquare,
+  CalendarDays, Clock, FileText,
+  LayoutDashboard, Menu, MessageSquare,
   User, X,
 } from "lucide-react";
 
 import type { VendorRole } from "@/lib/vendors/types";
 
-// Program 4, Initiative C, Phase 9 (2026-07-23): "The Vendor Workspace is
-// not a CRM. It exists to strengthen the Vendor's relationship with
-// participating Venues." Nav order is the directive's own list verbatim.
-// Venue Information (formerly top-level, /vendor/handbook) drops out of
-// primary nav — Phase 11 places it inside each Event's own workspace
-// instead, alongside that event's Timeline/Tasks/Messages/Documents,
-// rather than as a standalone, venue-agnostic destination. Venue
-// Partnerships (/vendor/partnerships) takes its slot: the vendor's list of
-// every venue relationship, with the venue-specific promotion editor
-// (Phase 10/16). Inquiries (lead pipeline), Venues (old cross-venue
-// browser, now redirects to Partnerships), and Luv/health-score business
-// coaching remain dropped per the Program 4 Initiative B Phase 1 audit.
+// Venue-First Vendor Dashboard (2026-07-24): "Very focused. That's it."
+// Six destinations, nothing else. Venue Partnerships is no longer a nav
+// item — the vendor's active venue relationship (branding, contacts,
+// promotion, partnership status) now lives directly on the Dashboard
+// (VendorVenueHero), immersing the vendor in that venue immediately rather
+// than requiring a second click through a "partnerships list" page.
+// /vendor/partnerships still exists (linked from the Dashboard's venue
+// switcher, for vendors with more than one relationship) but isn't
+// primary nav anymore. Tasks folds the same way — "Outstanding Tasks" is
+// now a Dashboard card (see vendor-home.tsx); /vendor/tasks still works,
+// reached from that card's "View all →" link.
+//
+// (Historical note, Program 4, Initiative C, Phase 9: "The Vendor
+// Workspace is not a CRM. It exists to strengthen the Vendor's
+// relationship with participating Venues." Inquiries/lead-pipeline CRM,
+// the old cross-venue Venues browser, and Luv/health-score business
+// coaching remain dropped per that same audit.)
 const NAV = [
-  { href: "/vendor/dashboard",    label: "Home",               icon: LayoutDashboard },
-  { href: "/vendor/partnerships", label: "Venue Partnerships", icon: Handshake       },
-  { href: "/vendor/messages",     label: "Messages",           icon: MessageSquare,  badge: "message" as const },
-  { href: "/vendor/events",       label: "Events",             icon: CalendarDays    },
-  { href: "/vendor/tasks",        label: "Tasks",              icon: CheckSquare,    badge: "task" as const },
-  { href: "/vendor/timeline",     label: "Timeline",           icon: Clock           },
-  { href: "/vendor/documents",    label: "Documents",          icon: FileText        },
-  { href: "/vendor/profile",      label: "Profile",            icon: User            },
+  { href: "/vendor/dashboard", label: "Home",     icon: LayoutDashboard },
+  { href: "/vendor/events",    label: "Events",    icon: CalendarDays    },
+  { href: "/vendor/timeline",  label: "Timeline",  icon: Clock           },
+  { href: "/vendor/documents", label: "Documents", icon: FileText        },
+  { href: "/vendor/messages",  label: "Messages",  icon: MessageSquare,  badge: "message" as const },
+  { href: "/vendor/profile",   label: "Profile",   icon: User            },
 ];
 
 type BadgeKey = "task" | "message";

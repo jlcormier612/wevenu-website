@@ -10,6 +10,10 @@ import type { VendorDocumentsByEvent, VendorTimelineByEvent } from "@/lib/vendor
 export type VendorHomeData = {
   eventsToday: VendorEventListItem[];
   eventsThisWeek: VendorEventListItem[];
+  // The vendor's full cross-venue event list — the venue-first Dashboard
+  // hero (VendorVenueHero) filters this down to the active venue's own
+  // upcoming-events count and next event, rather than re-fetching.
+  allEvents: VendorEventListItem[];
   unreadConversations: VendorConversationSummary[];
   tasksDue: VendorPersonalTask[];
   nextTimeline: VendorTimelineByEvent[];
@@ -63,5 +67,5 @@ export async function getVendorHomeData(vendorId: string): Promise<VendorHomeDat
 
   const recentDocuments = documents.filter((d) => d.documents.length > 0 || d.floorPlans.length > 0).slice(0, 5);
 
-  return { eventsToday, eventsThisWeek, unreadConversations, tasksDue, nextTimeline, recentDocuments };
+  return { eventsToday, eventsThisWeek, allEvents: events, unreadConversations, tasksDue, nextTimeline, recentDocuments };
 }

@@ -24,6 +24,21 @@ npm run dev:workspace
 
 (after the root `package.json` script is present)
 
+## Sales vs Customer Success (navigation)
+
+One Relationship record — two filtered views. Never duplicate.
+
+| Nav | Route | Who appears |
+|-----|-------|-------------|
+| **Sales** | `/sales` | Pre-customer (not yet subscribed) |
+| **Customer Success** | `/customer-success` | Subscribed / customers |
+| Detail (shared) | `/relationships/[id]` | Same record from either board |
+
+- Sales pipeline stages: Inquiry → Discovery Scheduled → Venue Walkthrough → Proposal Sent → Negotiation → Awaiting Signature → Won → Lost → Nurture
+- CS lifecycle stages: Welcome → Onboarding → Implementation → Training → Live → Adoption → Healthy → Expansion → Renewal → Renewed
+- On Stripe / manual subscribe: same Relationship ID; `salesStage` → Won; `customerSuccessStage` → Welcome (then Onboarding / Implementation); record leaves Sales filter and appears only in Customer Success
+- Legacy `/relationships` redirects to `/sales`
+
 ## Customer Lifecycle Engine (Phase 1)
 
 One Relationship. Status changes. Never duplicate. Everything appends to the timeline.

@@ -30,6 +30,14 @@ export type LuvInsightType =
   | "onboarding_stalled"
   | "payment_failed"
   | "inactive_customer"
+  | "sales_proposal_followup"
+  | "sales_schedule_walkthrough"
+  | "sales_inactivity"
+  | "cs_invite_team"
+  | "cs_publish_website"
+  | "cs_schedule_onboarding"
+  | "cs_declining_engagement"
+  | "cs_renewal_outreach"
   | "general";
 
 export type LuvDraftKind =

@@ -320,7 +320,7 @@ export default async function BusinessPage() {
             used in Projected ARR.
           </p>
           <Link
-            href="/relationships"
+            href="/sales"
             className="mt-5 inline-block text-sm text-[var(--heritage-sage)] underline-offset-4 hover:underline"
           >
             Open pipeline →

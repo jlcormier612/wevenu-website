@@ -42,7 +42,7 @@ export async function getVendorEvents(): Promise<VendorEventListItem[]> {
 
   type Row = {
     assignment_id: string; event_id: string; event_name: string; event_date: string | null;
-    venue_name: string; arrival_time: string | null; is_upcoming: boolean;
+    venue_id: string; venue_name: string; arrival_time: string | null; is_upcoming: boolean;
   };
 
   const { data, error } = await supabase.rpc("get_vendor_events");
@@ -54,6 +54,7 @@ export async function getVendorEvents(): Promise<VendorEventListItem[]> {
     eventId:      r.event_id,
     eventName:    r.event_name,
     eventDate:    r.event_date,
+    venueId:      r.venue_id,
     venueName:    r.venue_name,
     arrivalTime:  r.arrival_time,
     isUpcoming:   r.is_upcoming,

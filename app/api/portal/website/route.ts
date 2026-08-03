@@ -28,11 +28,21 @@ export async function POST(request: Request) {
     collectionId?: string;
     colorStoryId?: string;
     typographyStyleId?: string;
+    photoStyleId?: string;
+    colorPrimary?: string;
+    colorSecondary?: string;
+    colorAccent?: string;
+    colorNeutral?: string;
+    colorBackground?: string;
+    colorText?: string;
+    clearCustomColors?: boolean;
   };
 
   const { token, slug, isPublished, password, clearPassword, theme, themePalette, accentColor,
           fontPairing, sectionOrder, contentKey, contentValue, sectionsEnabled, scheduleSync,
-          collectionId, colorStoryId, typographyStyleId } = body;
+          collectionId, colorStoryId, typographyStyleId, photoStyleId,
+          colorPrimary, colorSecondary, colorAccent, colorNeutral, colorBackground, colorText,
+          clearCustomColors } = body;
 
   if (!token) return NextResponse.json({ ok: false, error: "Missing token." }, { status: 400 });
 
@@ -68,6 +78,16 @@ export async function POST(request: Request) {
     p_collection_id:       collectionId       ?? null,
     p_color_story_id:      colorStoryId       ?? null,
     p_typography_style_id: typographyStyleId  ?? null,
+    // Photo Style + full custom Color Story (2026-07-24) — Part 2/4's two
+    // fully independent dimensions.
+    p_photo_style_id:      photoStyleId       ?? null,
+    p_color_primary:       colorPrimary       ?? null,
+    p_color_secondary:     colorSecondary     ?? null,
+    p_color_accent:        colorAccent        ?? null,
+    p_color_neutral:       colorNeutral       ?? null,
+    p_color_background:    colorBackground    ?? null,
+    p_color_text:          colorText          ?? null,
+    p_clear_custom_colors: clearCustomColors  ?? false,
   });
 
   if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 422 });

@@ -6,13 +6,20 @@ export type WebsiteTheme =
   | "romance"    // Rosé — romantic, blush, candlelit
   | "coastal"    // Coastal — relaxed, navy, breezy
   | "champagne"  // Champagne — golden, celebratory, warm
-  | "velvet";    // Velvet — dramatic, burgundy, luxurious
+  | "velvet"     // Velvet — dramatic, burgundy, luxurious
+  | "estate"     // European Estate — formal grounds, stone and ivy
+  | "rustic"     // Rustic — weathered wood, wildflowers
+  | "industrial"; // Industrial — exposed brick, black steel
 
 export type FontPairing =
   | "classic_serif"   // Playfair Display + Lato
   | "modern_sans"     // DM Sans (clean, contemporary)
   | "romantic"        // Cormorant Garamond (italic serifs)
-  | "editorial";      // DM Serif Display + DM Sans
+  | "editorial"       // DM Serif Display + DM Sans
+  | "luxury"          // EB Garamond
+  | "minimal"         // Inter
+  | "calligraphy"     // Great Vibes + Lato
+  | "elegant";        // Cormorant italic
 
 export type WebsiteSection =
   | "home"
@@ -131,6 +138,26 @@ export type CatalogTypographyStyle = {
   tokens: { headingFont: string; bodyFont: string; headingItalic: boolean; fontUrl: string | null; sampleLabel: string };
 };
 
+// The layout/composition vocabulary a Collection controls (Part 1) — kept
+// deliberately separate from color/typography/photo tokens above, which are
+// each their own independent dimension now (Part 6/7).
+export type CollectionLayoutConfig = {
+  heroType?: "full-bleed" | "invitation";
+  heroAlign?: "center" | "left";
+  heroMinHeight?: string;
+  headerStyle?: "romantic" | "formal" | "editorial" | "minimal" | "coastal";
+  storyStyle?: "quote" | "prose" | "editorial" | "minimal";
+  divider?: "botanical" | "rule" | "dots" | "ornament" | "none" | "deco";
+  cardRadius?: string;
+  buttonRadius?: string;
+  galleryLayout?: "grid" | "masonry" | "film-strip";
+  rsvpPlacement?: "inline" | "banner";
+  animationStyle?: "none" | "fade" | "rise";
+  scrollBehavior?: "normal" | "snap";
+  sectionSpacing?: "compact" | "cozy" | "spacious";
+  [k: string]: unknown;
+};
+
 export type CatalogCollection = {
   id: string;
   key: string;
@@ -139,12 +166,33 @@ export type CatalogCollection = {
   isPremium: boolean;
   sortOrder: number;
   swatchAccent: string | null;
+  layoutConfig: CollectionLayoutConfig;
   colorStories: CatalogColorStory[];
+};
+
+// Photo Style — the 4th independent dimension (Part 4). How uploaded
+// images are presented; independent from Collection, Color Story, and
+// Typography.
+export type CatalogPhotoStyle = {
+  id: string;
+  key: string;
+  name: string;
+  description: string | null;
+  sortOrder: number;
+  tokens: {
+    photoFilter: string;
+    photoRadius: string;
+    frameStyle: "none" | "border" | "polaroid";
+    captionStyle: "none" | "minimal" | "handwritten";
+    imageScale: "normal" | "large";
+    [k: string]: unknown;
+  };
 };
 
 export type HostedExperienceCatalog = {
   collections: CatalogCollection[];
   typographyStyles: CatalogTypographyStyle[];
+  photoStyles: CatalogPhotoStyle[];
 };
 
 // Hosted Experience Platform Phase 3 — publishing is a commitment, not a
@@ -168,6 +216,17 @@ export type CoupleWebsite = {
   collectionId?: string | null;
   colorStoryId?: string | null;
   typographyStyleId?: string | null;
+  // Photo Style — Part 4's independent 4th dimension.
+  photoStyleId?: string | null;
+  // Custom Color Story (Part 2) — reuses the venue brand color-picker
+  // pattern: direct hex values, not a locked preset. Any of these set
+  // overrides the chosen Color Story's own tokens for that color role.
+  colorPrimary?: string | null;
+  colorSecondary?: string | null;
+  colorAccent?: string | null;
+  colorNeutral?: string | null;
+  colorBackground?: string | null;
+  colorText?: string | null;
   sectionOrder?: string[] | null;
   sectionsEnabled?: WebsiteSection[];
   scheduleSync?: boolean;
@@ -211,6 +270,20 @@ export type PublicWebsite = {
   themePalette?: string;
   accentColor?: string;
   fontPairing?: FontPairing;
+  // Resolved tokens for all four independent dimensions — already joined
+  // server-side by get_wedding_website, re-read live on every request (never
+  // frozen into the published snapshot itself, matching "reference, not
+  // copy" for every other catalog lookup this platform already does).
+  layoutConfig?: CollectionLayoutConfig;
+  colorTokens?: CatalogColorStory["tokens"] | null;
+  typographyTokens?: CatalogTypographyStyle["tokens"] | null;
+  photoStyleTokens?: CatalogPhotoStyle["tokens"] | null;
+  colorPrimary?: string | null;
+  colorSecondary?: string | null;
+  colorAccent?: string | null;
+  colorNeutral?: string | null;
+  colorBackground?: string | null;
+  colorText?: string | null;
   sectionOrder?: string[] | null;
   sections?: ExperienceSection[];
   sectionsEnabled?: string[];

@@ -39,13 +39,13 @@ export default async function TodayPage() {
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
-        <StatTile label="New Inquiries" value={d.newInquiries.length} href="/relationships?status=inquiry" />
+        <StatTile label="New Inquiries" value={d.newInquiries.length} href="/sales?stage=inquiry" />
         <StatTile
           label="Walkthrough Requests"
           value={d.newWalkthroughRequests.length}
           href="/walkthroughs"
         />
-        <StatTile label="New Subscribers" value={d.newSubscribers.length} href="/relationships" />
+        <StatTile label="New Subscribers" value={d.newSubscribers.length} href="/customer-success" />
         <StatTile label="White Glove" value={d.whiteGlovePurchases.length} href="/onboarding" />
         <StatTile
           label="Welcome Back"

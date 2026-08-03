@@ -5,6 +5,8 @@ import { CalendarDays, MessageSquare, CheckSquare, Clock, FileText } from "lucid
 
 import { formatTime } from "@/lib/vendors/constants";
 import type { VendorHomeData } from "@/lib/vendor-home/service";
+import { VendorVenueHero } from "@/components/vendor-app/vendor-venue-hero";
+import type { VendorActiveVenueContext, VendorPartnership } from "@/lib/vendors/types";
 
 function formatDate(iso: string | null): string {
   if (!iso) return "";
@@ -43,8 +45,22 @@ function Card({ icon: Icon, title, href, count, children }: {
  * schedule, what documents need attention. Replaces the old CRM-style
  * dashboard (stat tiles, business health score, Luv coaching) entirely —
  * see docs/vendor-workspace-realignment-audit.md.
+ *
+ * Venue-First Dashboard (2026-07-24) — "The vendor should always feel like
+ * they are working with a venue, not browsing a marketplace." The venue
+ * hero/contacts/promotion block (VendorVenueHero) now leads, above the
+ * daily-attention cards below — same design language as the Couple
+ * Workspace's own venue-first hero. Everything below is unchanged in
+ * substance, just reordered per the directive's own list: Upcoming Events,
+ * Outstanding Tasks, Messages, then Coming Up/Documents ("Recent Activity").
  */
-export function VendorHome({ greetingName, data }: { greetingName: string; data: VendorHomeData }) {
+export function VendorHome({ greetingName, data, activeVenue, partnerships, vendorCategory }: {
+  greetingName: string;
+  data: VendorHomeData;
+  activeVenue: VendorActiveVenueContext;
+  partnerships: VendorPartnership[];
+  vendorCategory: string | null;
+}) {
   const nothingToday = data.eventsToday.length === 0 && data.unreadConversations.length === 0 && data.tasksDue.length === 0;
 
   return (
@@ -55,6 +71,8 @@ export function VendorHome({ greetingName, data }: { greetingName: string; data:
           {new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}
         </p>
       </div>
+
+      <VendorVenueHero initialVenue={activeVenue} partnerships={partnerships} vendorCategory={vendorCategory} allEvents={data.allEvents} />
 
       {nothingToday && (
         <div className="rounded-xl border border-dashed border-border py-8 text-center">
@@ -80,6 +98,20 @@ export function VendorHome({ greetingName, data }: { greetingName: string; data:
         </Card>
       )}
 
+      {/* What tasks are due */}
+      {data.tasksDue.length > 0 && (
+        <Card icon={CheckSquare} title="Outstanding Tasks" href="/vendor/tasks" count={data.tasksDue.length}>
+          <div className="divide-y divide-border">
+            {data.tasksDue.slice(0, 5).map((t) => (
+              <div key={t.id} className="flex items-center justify-between gap-4 px-4 py-3">
+                <p className="text-sm text-foreground truncate">{t.title}</p>
+                {t.dueDate && <p className="text-xs text-muted-foreground shrink-0">{formatDate(t.dueDate)}</p>}
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
+
       {/* What messages need a reply */}
       {data.unreadConversations.length > 0 && (
         <Card icon={MessageSquare} title="Messages Needing a Reply" href="/vendor/messages" count={data.unreadConversations.length}>
@@ -94,20 +126,6 @@ export function VendorHome({ greetingName, data }: { greetingName: string; data:
                   {c.contactUnread}
                 </span>
               </Link>
-            ))}
-          </div>
-        </Card>
-      )}
-
-      {/* What tasks are due */}
-      {data.tasksDue.length > 0 && (
-        <Card icon={CheckSquare} title="Tasks Due" href="/vendor/tasks" count={data.tasksDue.length}>
-          <div className="divide-y divide-border">
-            {data.tasksDue.slice(0, 5).map((t) => (
-              <div key={t.id} className="flex items-center justify-between gap-4 px-4 py-3">
-                <p className="text-sm text-foreground truncate">{t.title}</p>
-                {t.dueDate && <p className="text-xs text-muted-foreground shrink-0">{formatDate(t.dueDate)}</p>}
-              </div>
             ))}
           </div>
         </Card>

@@ -42,6 +42,31 @@ export type RelationshipHealth = "excellent" | "good" | "needs_attention" | "at_
 /** Heuristic 0–100 score shown on Relationship Snapshot. */
 export type RelationshipHealthScore = number;
 
+/** Pre-customer Sales board stage (view field — not a second CRM). */
+export type SalesStage =
+  | "inquiry"
+  | "discovery_scheduled"
+  | "venue_walkthrough"
+  | "proposal_sent"
+  | "negotiation"
+  | "awaiting_signature"
+  | "won"
+  | "lost"
+  | "nurture";
+
+/** Post-subscribe Customer Success lifecycle stage (view field). */
+export type CustomerSuccessStage =
+  | "welcome"
+  | "onboarding"
+  | "implementation"
+  | "training"
+  | "live"
+  | "adoption"
+  | "healthy"
+  | "expansion"
+  | "renewal"
+  | "renewed";
+
 /** Payment / access flags for SaaS subscription lifecycle. */
 export type PaymentStatus =
   | "none"
@@ -315,6 +340,13 @@ export type Relationship = {
   health: RelationshipHealth;
   /** Heuristic 0–100; recomputed on lifecycle ticks / snapshot load */
   healthScore?: RelationshipHealthScore;
+  /**
+   * Sales board stage (pre-customer). Separate from Customer Success stage —
+   * one Relationship record, two views.
+   */
+  salesStage?: SalesStage;
+  /** Customer Success lifecycle stage (post-subscribe). */
+  customerSuccessStage?: CustomerSuccessStage;
   assignedTeamMemberId: string;
   planId: PlanId;
   planName: string;
@@ -402,6 +434,8 @@ export type RelationshipFieldPatch = Partial<
     | "status"
     | "health"
     | "healthScore"
+    | "salesStage"
+    | "customerSuccessStage"
     | "planId"
     | "planName"
     | "foundingMember"

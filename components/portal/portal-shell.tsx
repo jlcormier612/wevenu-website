@@ -25,14 +25,14 @@ import * as React from "react";
 
 import {
   CalendarDays, Check, CheckSquare, Clock, Loader2,
-  Plus, Trash2, Users, X,
+  Plus, Settings, Trash2, Users, X,
 } from "lucide-react";
 import { toast } from "sonner";
 
 import type {
-  ActivityItem, ClientMedia, CoupleProfile, CoupleTodo, CoupleGuest,
+  ClientMedia, CoupleBudget, CoupleProfile, CoupleTodo, CoupleGuest,
   GuestStats, JournalEntry, PortalContext, PortalKeyDate, PortalSection, PortalTask,
-  RecentActivity, TodoCategory, PortalParticipant, PortalActivity,
+  RecentActivity, SeatingData, TodoCategory, PortalParticipant, PortalActivity,
   PortalTimelineEntry, PortalTimelineSection, PortalVenueTeamMember,
 } from "@/lib/portal/types";
 import { getAnniversaryObservations, getCountdownObservation, getOverviewObservation, getWeddingDayObservations } from "@/lib/luv/portal-observations";
@@ -46,6 +46,8 @@ import { UnifiedTasksSection } from "@/components/portal/unified-tasks-section";
 import { buildUnifiedTaskList } from "@/lib/portal/unified-tasks";
 import type { PortalRequestSummary } from "@/lib/requests/types";
 import { QuestionnairePortalSection } from "@/components/portal/questionnaire-section";
+import { ALL_SECTIONS as WEBSITE_ALL_SECTIONS } from "@/components/portal/website-editor";
+import type { CoupleWebsite } from "@/lib/wedding-website/types";
 
 // Venue Brand Experience Phase 1: SAGE/LINEN/CREAM were Hello to Cheers' own hardcoded
 // palette, now the venue's own brand via CSS custom properties injected on
@@ -225,27 +227,8 @@ const SEASON_CONTENT: Record<Season, { emoji: string; title: string; copy: strin
   winter: { emoji: "❄️", title: "A Winter Wedding", copy: "Twinkling lights and intimate gatherings — winter weddings feel like a fairytale.", sparkle: "❄️ · ✨ · 🤍" },
 };
 
-function YourSeasonCard({ eventDate }: { eventDate: string }) {
-  const season = getSeason(eventDate);
-  const { emoji, title, copy, sparkle } = SEASON_CONTENT[season];
-  const dateLabel = new Date(eventDate + "T12:00:00").toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" });
-  return (
-    <div className="rounded-3xl p-6 sm:p-8 relative overflow-hidden" style={{ background: `linear-gradient(135deg, ${ROSE}14 0%, #FBF8F5 100%)`, border: `1px solid ${ROSE}30` }}>
-      <p className="text-[10px] font-semibold uppercase tracking-[0.2em] mb-3" style={{ color: ROSE_DEEP }}>💗 Your Season</p>
-      <div className="flex items-start gap-4">
-        <span className="text-4xl shrink-0">{emoji}</span>
-        <div className="space-y-1.5">
-          <p className="font-heading text-2xl text-heading leading-snug">{title}</p>
-          <p className="text-sm text-muted-foreground leading-relaxed max-w-md">{copy}</p>
-          <p className="text-xs text-muted-foreground/70 pt-1">{dateLabel}</p>
-        </div>
-      </div>
-      <p className="mt-5 text-sm tracking-widest" style={{ color: `${ROSE}A0` }}>{sparkle}</p>
-    </div>
-  );
-}
-
-// ── "Most Couples Like You" — reassuring social proof ────────────────────────
+// ── "Most Couples Like You" — reassuring social proof (copy bank now used
+//    by Luv's own message rotation instead of a standalone card) ───────────
 
 const SOCIAL_PROOF_BY_BRACKET: Record<string, string> = {
   "12+": "Most couples this far out are choosing their venue and starting their guest list. You're exactly on track.",
@@ -277,59 +260,6 @@ export const JOURNAL_MILESTONES: { key: string; emoji: string; label: string; po
   { key: "other",             emoji: "💗", label: "Moment" },
 ];
 
-// ── YourWeekCard ──────────────────────────────────────────────────────────────
-
-function YourWeekCard({ activity }: { activity: RecentActivity | null }) {
-  if (!activity) return null;
-  const { activity: items = [], totalThisWeek } = activity;
-
-  return (
-    <div className="rounded-2xl border border-border bg-card p-4 space-y-3">
-      <p className="text-[10px] font-semibold uppercase tracking-[0.15em]" style={{ color: ROSE_DEEP }}>
-        🌿 This Week
-      </p>
-      {totalThisWeek === 0 ? (
-        <div className="space-y-1.5">
-          <p className="text-sm font-medium text-heading">A quiet week.</p>
-          <p className="text-xs text-muted-foreground leading-relaxed">
-            Your journey has its own rhythm — still moments are part of the story too.
-          </p>
-        </div>
-      ) : (
-        <div className="space-y-2.5">
-          {items.slice(0, 4).map((item: ActivityItem, i: number) => (
-            <div key={i} className="flex items-start gap-2.5">
-              <span className="text-sm leading-none mt-0.5 shrink-0">{item.emoji}</span>
-              <p className="text-xs text-heading leading-snug">{item.label}</p>
-            </div>
-          ))}
-          {totalThisWeek > 4 && (
-            <p className="text-[10px] text-muted-foreground pl-6">
-              +{totalThisWeek - 4} more this week
-            </p>
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ── Guest milestone thresholds for the sidebar card ───────────────────────────
-
-const GUEST_MILESTONES = [10, 25, 50, 75, 100, 150, 200];
-
-function MostCouplesCard({ bracket }: { bracket: string }) {
-  const message = SOCIAL_PROOF_BY_BRACKET[bracket] ?? SOCIAL_PROOF_BY_BRACKET["6-9"];
-  return (
-    <div className="rounded-3xl border bg-card p-6 sm:p-7 flex items-start gap-4" style={{ borderColor: `${ROSE}30` }}>
-      <span className="text-2xl shrink-0">✨</span>
-      <div>
-        <p className="text-[10px] font-semibold uppercase tracking-[0.2em] mb-1.5" style={{ color: ROSE_DEEP }}>Most Couples Like You</p>
-        <p className="text-sm sm:text-[15px] text-heading leading-relaxed">{message}</p>
-      </div>
-    </div>
-  );
-}
 
 // ── Wedding quotes — cover-of-a-magazine feel ─────────────────────────────────
 
@@ -393,34 +323,6 @@ const NEXT_MILESTONE_BY_BRACKET: Record<string, { emoji: string; title: string; 
   "1-3": { emoji: "📝", title: "Write your vows", desc: "The most personal words of your entire wedding. Give them the time they deserve." },
   "<1":  { emoji: "😌", title: "Take a deep breath", desc: "You've done the hard part. Now enjoy the countdown to the best day of your life." },
 };
-
-function NextBigMomentCard({
-  bracket, guestTotal, onNavigate,
-}: {
-  bracket: string; guestTotal: number; onNavigate: (s: PortalSection) => void;
-}) {
-  const milestone = guestTotal === 0 && bracket !== "<1"
-    ? NEXT_MILESTONE_BY_BRACKET["12+"]
-    : NEXT_MILESTONE_BY_BRACKET[bracket] ?? NEXT_MILESTONE_BY_BRACKET["6-9"];
-
-  return (
-    <div className="rounded-3xl p-6" style={{ background: `linear-gradient(135deg, ${ROSE}12 0%, #FAF7F4 100%)`, border: `1px solid ${ROSE}28` }}>
-      <p className="text-[10px] font-semibold uppercase tracking-[0.2em] mb-3" style={{ color: ROSE_DEEP }}>💗 Next Big Moment</p>
-      <div className="flex items-start gap-4">
-        <span className="text-3xl shrink-0 mt-0.5">{milestone.emoji}</span>
-        <div className="space-y-1">
-          <p className="font-heading text-lg text-heading leading-snug">{milestone.title}</p>
-          <p className="text-sm text-muted-foreground leading-relaxed">{milestone.desc}</p>
-        </div>
-      </div>
-      <button type="button" onClick={() => onNavigate("todos")}
-        className="mt-5 text-xs font-semibold px-4 py-2 rounded-xl transition-colors text-white"
-        style={{ background: ROSE }}>
-        Add to your plans →
-      </button>
-    </div>
-  );
-}
 
 // ── Venue Note — warm message from the venue team ────────────────────────────
 
@@ -506,21 +408,62 @@ const INSPIRATION_CONTENT: Record<string, { emoji: string; headline: string; ite
   "<1": { emoji: "💗", headline: "Savoring every moment", items: ["How to be present on your day", "First look inspiration", "Capturing candid moments"] },
 };
 
-function InspirationCard({ bracket }: { bracket: string }) {
-  const content = INSPIRATION_CONTENT[bracket] ?? INSPIRATION_CONTENT["6-9"];
+// "Keep ONE inspiration area only... Merge these into a single section
+// called: Seasonal Inspiration." (2026-07-24) — replaces three previously
+// separate cards (Your Season, This Month, Inspiration) with one card in
+// three labeled parts, reusing each one's existing content bank verbatim
+// rather than authoring new copy: the season narrative as the intro/
+// reminder framing, SUGGESTIONS_BY_BRACKET as "Seasonal planning tips",
+// INSPIRATION_CONTENT as "Seasonal décor ideas."
+function SeasonalInspirationCard({
+  eventDate, bracket, suggestions, onNavigate,
+}: {
+  eventDate: string; bracket: string;
+  suggestions: { title: string; category: TodoCategory; emoji: string }[];
+  onNavigate: (s: PortalSection) => void;
+}) {
+  const season = getSeason(eventDate);
+  const { emoji, title, copy } = SEASON_CONTENT[season];
+  const inspiration = INSPIRATION_CONTENT[bracket] ?? INSPIRATION_CONTENT["6-9"];
+
   return (
-    <div className="rounded-2xl overflow-hidden" style={{ border: `1px solid ${ROSE}22` }}>
-      <div className="px-5 py-4" style={{ background: `linear-gradient(135deg, ${ROSE}10 0%, #FBF9F6 100%)` }}>
-        <p className="text-[10px] font-semibold uppercase tracking-[0.2em] mb-2" style={{ color: ROSE_DEEP }}>
-          {content.emoji} Inspiration
-        </p>
-        <p className="font-heading text-base text-heading mb-3 leading-snug">{content.headline}</p>
-        <div className="space-y-1.5">
-          {content.items.map(item => (
-            <p key={item} className="text-xs text-muted-foreground flex items-center gap-2">
-              <span style={{ color: ROSE }}>✦</span> {item}
-            </p>
-          ))}
+    <div className="rounded-3xl overflow-hidden" style={{ border: `1px solid ${ROSE}28` }}>
+      <div className="p-6 sm:p-7 space-y-5" style={{ background: `linear-gradient(135deg, ${ROSE}10 0%, #FBF9F6 100%)` }}>
+        <p className="text-[10px] font-semibold uppercase tracking-[0.2em]" style={{ color: ROSE_DEEP }}>{emoji} Seasonal Inspiration</p>
+
+        {/* Seasonal reminder — the season's own narrative framing */}
+        <div>
+          <p className="font-heading text-xl text-heading leading-snug">{title}</p>
+          <p className="text-sm text-muted-foreground leading-relaxed mt-1">{copy}</p>
+        </div>
+
+        {/* Seasonal planning tips */}
+        {suggestions.length > 0 && (
+          <div className="space-y-2 pt-1 border-t" style={{ borderColor: `${ROSE}20` }}>
+            <p className="text-[10px] font-semibold uppercase tracking-[0.15em] pt-3" style={{ color: ROSE_DEEP }}>Seasonal planning tips</p>
+            <div className="space-y-2.5">
+              {suggestions.slice(0, 3).map(s => (
+                <button key={s.title} type="button" onClick={() => onNavigate("todos")}
+                  className="w-full text-left flex items-center gap-3 group">
+                  <span className="text-lg shrink-0 group-hover:scale-110 transition-transform">{s.emoji}</span>
+                  <span className="text-sm text-heading flex-1">{s.title}</span>
+                  <span className="shrink-0 text-[11px] font-medium" style={{ color: ROSE_DEEP, opacity: 0.7 }}>+ Add</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Seasonal décor ideas */}
+        <div className="space-y-1.5 pt-1 border-t" style={{ borderColor: `${ROSE}20` }}>
+          <p className="text-[10px] font-semibold uppercase tracking-[0.15em] pt-3" style={{ color: ROSE_DEEP }}>Seasonal décor ideas</p>
+          <div className="space-y-1.5">
+            {inspiration.items.map(item => (
+              <p key={item} className="text-xs text-muted-foreground flex items-center gap-2">
+                <span style={{ color: ROSE }}>✦</span> {item}
+              </p>
+            ))}
+          </div>
         </div>
       </div>
     </div>
@@ -1678,15 +1621,20 @@ function WeddingDaySection({
 // ── Overview ─────────────────────────────────────────────────────────────────
 
 function OverviewSection({
-  token, context, tasks, guestStats, todoCount, latestJournalEntry, onNavigate,
+  token, context, tasks, guestStats, todoCount, profile, latestJournalEntry, onNavigate,
+  recentActivity, showLuvIntro, onDismissLuvIntro,
 }: {
   token: string;
   context: PortalContext;
   tasks: PortalTask[];
   guestStats: GuestStats | null;
   todoCount: number;
+  profile: CoupleProfile | null;
   latestJournalEntry?: JournalEntry | null;
   onNavigate: (s: PortalSection) => void;
+  recentActivity: RecentActivity | null;
+  showLuvIntro: boolean;
+  onDismissLuvIntro: () => void;
 }) {
   const du = context.event ? daysUntil(context.event.eventDate) : null;
   const required = tasks.filter(t => t.isRequired);
@@ -1811,16 +1759,8 @@ function OverviewSection({
       {/* ── Your Venue — Phase 4: the operational relationship, immediately below the hero ── */}
       <YourVenueCards token={token} tasks={tasks} onNavigate={onNavigate} />
 
-      {/* ── Your Wedding — Phase 5: personal planning, intentionally secondary ── */}
-      <YourWeddingSection guestStats={guestStats} todoCount={todoCount} onNavigate={onNavigate} />
-
-      {/* ── Luv, daily — one small card, never buried in a desktop-only sidebar ── */}
-      <LuvDailyCard token={token} du={du} guestTotal={guestStats?.total ?? 0} readiness={readinessScore} />
-
-      {/* ── Memory Strip — latest journal moment ── */}
-      {latestJournalEntry && (
-        <MemoryStrip entry={latestJournalEntry} onNavigate={onNavigate} />
-      )}
+      {/* ── Your Wedding — personal planning, launched from here rather than a second nav row (Program 5) ── */}
+      <YourWeddingSection token={token} guestStats={guestStats} todoCount={todoCount} profile={profile} onNavigate={onNavigate} />
 
       {/* ── Keepsake Mode — replaces all planning when du < -3 ── */}
       {du !== null && du < -3 && context.event && (
@@ -1838,81 +1778,70 @@ function OverviewSection({
         <WeddingDaySection token={token} tasks={tasks} du={du} venueName={context.venue.name} />
       )}
 
-      {/* ── Your Season — narrative context (planning phase only) ── */}
-      {context.event && (du === null || du > 14) && <YourSeasonCard eventDate={context.event.eventDate} />}
-
-      {/* ── Wedding Journey (milestone path — pre-wedding, planning phase only) ── */}
-      {context.event && du !== null && du > 14 && (
-        <PlanningJourney du={du} readiness={readinessScore} />
-      )}
-
-      {/* ── Wedding Snapshot — at-a-glance editorial summary (planning phase only) ── */}
-      {(du === null || du > -3) && (
-        <WeddingSnapshotCard du={du} guestStats={guestStats} todoCount={todoCount} readinessScore={readinessScore} />
-      )}
-
-      {/* Program 4, Initiative D, Phase 8/9 (2026-07-23): the mobile quick-
-          cards grid and "Action needed" banner that used to live here are
-          gone — both mixed venue-tasks and personal-planning into one
-          undifferentiated grid, exactly what "do not intermingle these two
-          categories" rules out. YourVenueCards' Next Steps card (visible
-          on every breakpoint, not desktop-sidebar-gated) and
-          YourWeddingSection above now cover this ground without
-          duplicating it. */}
-
-      {/* ── This Month — editorial style (planning phase only) ── */}
-      {(du === null || du > 14) && <div className="rounded-3xl overflow-hidden" style={{ background: "linear-gradient(135deg, #F7F5F0 0%, #F0EDE6 100%)", border: "1px solid #E8E2D8" }}>
-        <div className="p-6 sm:p-8">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.2em] mb-2" style={{ color: ROSE_DEEP }}>✨ This Month</p>
-          <p className="font-heading text-2xl text-heading mb-5 leading-snug">
-            {bracket === "12+" ? "Laying a beautiful foundation" :
-             bracket === "9-12" ? "Locking in your most important vendors" :
-             bracket === "6-9"  ? "The details that make it unforgettable" :
-             bracket === "3-6"  ? "Bringing it all together beautifully" :
-             bracket === "1-3"  ? "The final, wonderful stretch" :
-             "Last touches before the magic begins"}
-          </p>
-          <div className="space-y-3">
-            {suggestions.map(s => (
-              <button key={s.title} type="button" onClick={() => onNavigate("todos")}
-                className="w-full text-left flex items-center gap-4 group">
-                <span className="text-2xl shrink-0 group-hover:scale-110 transition-transform">{s.emoji}</span>
-                <div className="flex-1 border-b pb-3" style={{ borderColor: `${ROSE}25` }}>
-                  <p className="text-sm font-medium text-heading">{s.title}</p>
-                </div>
-                <span className="shrink-0 text-[11px] font-medium transition-colors" style={{ color: ROSE_DEEP, opacity: 0.7 }}>+ Add</span>
-              </button>
-            ))}
-          </div>
+      {/* Everything below is one pool of small/medium cards — the couple's
+          own tail content (Memory Strip, Season, Journey, Snapshot, This
+          Month, Luv observation, Next Big Moment, Milestones) plus what
+          used to live in a fixed-width, desktop-only 320px sidebar
+          (Requests, Key Dates, Coming Up, Venue Note, Most Couples, This
+          Week, Luv Intro, Inspiration). A 320px sidebar next to one tall
+          narrow column is exactly why the page used to scroll forever on
+          one side while the other sat empty (2026-07-23 report). CSS
+          multi-column flow balances arbitrarily-sized cards across both
+          halves by actual height, not a fixed split — `break-inside-avoid`
+          keeps a card from being sliced across the column break, and
+          `empty:hidden` collapses a wrapper down to nothing when the card
+          inside it conditionally renders null, so a hidden card doesn't
+          leave a dead gap. */}
+      <div className="columns-1 lg:columns-2 gap-5 [column-fill:_balance]">
+        <div className="mb-5 break-inside-avoid empty:hidden">
+          <LuvDailyCard token={token} du={du} guestStats={guestStats} readiness={readinessScore} bracket={bracket} recentActivity={recentActivity} onNavigate={onNavigate} />
         </div>
-      </div>}
-
-      {/* ── Luv observation — contextual planning nudge (planning phase only) ── */}
-      {(du === null || du > 14) && (() => {
-        const obs = getOverviewObservation(
-          guestStats ? { total: guestStats.total, attending: guestStats.attending } : null,
-          readinessScore,
-          du,
-        );
-        if (!obs) return null;
-        return (
-          <div
-            className="rounded-2xl px-5 py-4 flex items-start gap-3"
-            style={{ background: "#FDF5F5", border: "1px solid #D8A7AA30" }}
-          >
-            <span style={{ color: ROSE, fontSize: 16, lineHeight: 1.4 }}>💗</span>
-            <p className="text-sm leading-relaxed" style={{ color: "#5A3235" }}>{obs.text}</p>
+        <div className="mb-5 break-inside-avoid empty:hidden">
+          <RequestsSummaryCard token={token} onNavigate={onNavigate} />
+        </div>
+        <div className="mb-5 break-inside-avoid empty:hidden">
+          <KeyDatesCard token={token} />
+        </div>
+        {latestJournalEntry && (
+          <div className="mb-5 break-inside-avoid">
+            <MemoryStrip entry={latestJournalEntry} onNavigate={onNavigate} />
           </div>
-        );
-      })()}
-
-      {/* ── Next Big Moment — surfaces most relevant next step (planning phase only) ── */}
-      {(du === null || du > 14) && (
-        <NextBigMomentCard bracket={bracket} guestTotal={guestStats?.total ?? 0} onNavigate={onNavigate} />
-      )}
-
-      {/* ── Wedding Journey Milestones — anchors the left column, balances sidebar height ── */}
-      <WeddingJourneySection guestStats={guestStats} />
+        )}
+        {context.event && du !== null && du > 14 && (
+          <div className="mb-5 break-inside-avoid">
+            <PlanningJourney du={du} readiness={readinessScore} />
+          </div>
+        )}
+        {(du === null || du > -3) && (
+          <div className="mb-5 break-inside-avoid">
+            <WeddingSnapshotCard du={du} guestStats={guestStats} todoCount={todoCount} readinessScore={readinessScore} />
+          </div>
+        )}
+        {context.event && (du === null || du > 14) && (
+          <div className="mb-5 break-inside-avoid">
+            <SeasonalInspirationCard eventDate={context.event.eventDate} bracket={bracket} suggestions={suggestions} onNavigate={onNavigate} />
+          </div>
+        )}
+        <div className="mb-5 break-inside-avoid">
+          <WeddingJourneySection guestStats={guestStats} />
+        </div>
+        <div className="mb-5 break-inside-avoid">
+          <ComingUpCard bracket={bracket} onNavigate={onNavigate} />
+        </div>
+        <div className="mb-5 break-inside-avoid">
+          <VenueNoteCard venueName={context.venue.name} />
+        </div>
+        {showLuvIntro && (
+          <div className="mb-5 break-inside-avoid">
+            <LuvIntroCard
+              body="I'll help you stay organized throughout your planning."
+              ctaLabel="Let's start with your first task"
+              onCtaClick={() => onNavigate("tasks")}
+              onDismiss={onDismissLuvIntro}
+            />
+          </div>
+        )}
+      </div>
 
     </div>
   );
@@ -2743,13 +2672,49 @@ function TimelinePortalSection({
   );
 }
 
-// ── Ask Luv ───────────────────────────────────────────────────────────────────
+// ── Ask Luv — Program 5 (2026-07-24): persistent floating assistant, not a
+// nav destination. "Luv isn't 'another planning tool.' She's part of the
+// platform itself." Mounted once at the PortalShell root (outside the
+// activeSection switch) so she's reachable from every tab. Reuses the
+// existing LuvAskSection chat UI unchanged — same lazy require() pattern
+// as every other section here, deferred until the couple actually opens
+// the panel rather than loaded on every dashboard visit.
+function FloatingLuvWidget({ token, onNavigateToGuide }: { token: string; onNavigateToGuide: () => void }) {
+  const [open, setOpen] = React.useState(false);
 
-function LuvAskPortalSection({ token, onNavigateToGuide }: { token: string; onNavigateToGuide?: () => void }) {
-  const { LuvAskSection } = require("@/components/portal/luv-ask-section") as {
-    LuvAskSection: React.ComponentType<{ token: string; onNavigateToGuide?: () => void }>;
-  };
-  return <LuvAskSection token={token} onNavigateToGuide={onNavigateToGuide} />;
+  return (
+    <>
+      {open && (
+        <div className="fixed inset-0 z-40 sm:inset-auto sm:bottom-24 sm:right-6 sm:w-[400px] sm:h-[620px] sm:max-h-[80vh] flex flex-col bg-card sm:rounded-3xl sm:shadow-2xl sm:border overflow-hidden"
+          style={{ borderColor: "#E8E3DC" }}>
+          <div className="flex items-center justify-between px-4 py-2.5 border-b shrink-0" style={{ borderColor: "#EDE8E1" }}>
+            <div className="flex items-center gap-1.5">
+              <span style={{ color: ROSE }}>💗</span>
+              <p className="text-xs font-semibold text-heading">Ask Luv</p>
+            </div>
+            <button type="button" onClick={() => setOpen(false)}
+              className="h-7 w-7 rounded-full flex items-center justify-center text-muted-foreground hover:bg-muted/60 transition-colors">
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+          <div className="flex-1 overflow-y-auto">
+            {(() => {
+              const { LuvAskSection } = require("@/components/portal/luv-ask-section") as {
+                LuvAskSection: React.ComponentType<{ token: string; onNavigateToGuide?: () => void }>;
+              };
+              return <LuvAskSection token={token} onNavigateToGuide={() => { onNavigateToGuide(); setOpen(false); }} />;
+            })()}
+          </div>
+        </div>
+      )}
+      <button type="button" onClick={() => setOpen(o => !o)}
+        title="Ask Luv"
+        className="fixed bottom-5 right-5 z-40 h-14 w-14 rounded-full shadow-lg flex items-center justify-center text-2xl transition-transform hover:scale-105"
+        style={{ background: open ? "#3D3833" : ROSE }}>
+        {open ? <X className="h-5 w-5 text-white" /> : "💗"}
+      </button>
+    </>
+  );
 }
 
 function VenueGuidePortalSection({ token, context, onNavigate }: { token: string; context: PortalContext; onNavigate: (s: PortalSection) => void }) {
@@ -3941,19 +3906,27 @@ function StoryAndJourneySection({
   );
 }
 
-// Program 4, Initiative D, Phase 1 (2026-07-23) — "This is not a redesign
-// ... this is strictly about reorganizing and presenting the existing
-// experience correctly." Two groups, not one list with a label: "Your
-// Venue" (the collaborative planning relationship with the venue, always
-// first) and "Your Wedding" (personal planning tools, intentionally
-// secondary, after a visible divider). Order within each group is the
-// directive's own list verbatim. "People" (inviting collaborators) isn't
-// named in either of the directive's two lists — it's not a venue-planning
-// destination or a wedding-personalization tool, it's access management,
-// so it folds into Account as a second tab there (same move already made
-// for Story/Journey) rather than getting its own top-level slot outside
-// the two sanctioned categories.
-const NAV_ITEMS: { id: PortalSection; icon: string; label: string; shortLabel?: string; available: boolean; group: "venue" | "wedding" }[] = [
+// Program 5 (2026-07-24) — the top nav is venue-operational only now.
+// Directive: "Think about how a couple actually behaves... [operational
+// reasons] are navigation. [Website/Guests/Seating/Budget/Our Story/Plans]
+// are personal planning tools... not things people jump between constantly
+// throughout the day." Those became dashboard launch cards (see
+// YourWeddingSection) instead of a second nav row — asking the same
+// "where do I go" question twice (nav row AND dashboard card) was
+// duplicate IA. Ask Luv is no longer a nav destination at all — it's the
+// persistent FloatingLuvWidget, mounted once at the PortalShell root, so
+// it's reachable from every tab rather than being one tab among many.
+// Account moved to the header's top-right (a global function, not
+// scoped to either the venue relationship or personal planning — see the
+// header JSX). "People" still folds into Account per the prior reasoning
+// below.
+//
+// (Historical note, Program 4/Initiative D, Phase 1: "People" isn't named
+// in either of the venue/wedding lists — it's access management, not a
+// venue-planning destination or a wedding-personalization tool, so it
+// folds into Account as a second tab there, same move already made for
+// Story/Journey, rather than getting its own top-level slot.)
+const NAV_ITEMS: { id: PortalSection; icon: string; label: string; shortLabel?: string; available: boolean; group: "venue" }[] = [
   { id: "overview",  icon: "🏠", label: "Home",              available: true, group: "venue" },
   { id: "tasks",     icon: "✅", label: "Tasks",             available: true, group: "venue" },
   { id: "timeline",  icon: "🕒", label: "Timeline",          available: true, group: "venue" },
@@ -3962,14 +3935,6 @@ const NAV_ITEMS: { id: PortalSection; icon: string; label: string; shortLabel?: 
   { id: "messages",  icon: "💬", label: "Messages",          available: true, group: "venue" },
   { id: "guide",     icon: "🏛️", label: "Venue Guide",       shortLabel: "Guide",   available: true, group: "venue" },
   { id: "vendors",   icon: "🤝", label: "Preferred Vendors", shortLabel: "Vendors", available: true, group: "venue" },
-  { id: "website",   icon: "🌐", label: "Website",     available: true, group: "wedding" },
-  { id: "guests",    icon: "👥", label: "Guests",      available: true, group: "wedding" },
-  { id: "seating",   icon: "🪑", label: "Seating",     available: true, group: "wedding" },
-  { id: "budget",    icon: "💰", label: "Budget",      available: true, group: "wedding" },
-  { id: "story",     icon: "💍", label: "Our Story",   shortLabel: "Story", available: true, group: "wedding" },
-  { id: "todos",     icon: "✨", label: "Plans",       available: true, group: "wedding" },
-  { id: "ask",       icon: "💗", label: "Ask Luv",     shortLabel: "Luv",   available: true, group: "wedding" },
-  { id: "account",   icon: "⚙️", label: "Account",     available: true, group: "wedding" },
 ];
 
 export function PortalShell({
@@ -4084,25 +4049,30 @@ export function PortalShell({
             >
               Export my data
             </a>
+            {/* Account — Program 5 (2026-07-24): "That's a global function.
+                It doesn't belong with either planning area." The only
+                header-level nav control; everything else routes through
+                the single venue-operational row below or a dashboard
+                launch card. */}
+            <button type="button" onClick={() => setActiveSection("account")}
+              title="Account"
+              className="h-7 w-7 rounded-full flex items-center justify-center transition-colors hover:bg-muted/60 shrink-0"
+              style={{ color: activeSection === "account" ? SAGE : "#6A6460" }}>
+              <Settings className="h-4 w-4" />
+            </button>
           </div>
         </div>
 
-        {/* Navigation — Program 4, Initiative D, Phase 1 (2026-07-23):
-            "Create two clearly separated navigation groups... Do not
-            intermingle these two categories. The distinction should be
-            visually obvious." Two stacked rows, not one row with a label —
-            "Your Venue" always first and full-weight (this is the
-            collaborative planning relationship), "Your Wedding" second,
-            after a real horizontal rule, in a visibly quieter register
-            (smaller, lighter) — personal planning tools, intentionally
-            secondary. */}
+        {/* Navigation — Program 5 (2026-07-24): one row, venue-operational
+            only. "Your Wedding" no longer lives in the header — those
+            destinations (Website/Guests/Seating/Budget/Our Story/Plans)
+            are reached from the dashboard's launch cards instead (see
+            YourWeddingSection), so a couple isn't asked the same
+            "where do I go" question in two places. See NAV_ITEMS for the
+            full directive. */}
         <div className="max-w-4xl mx-auto px-2 sm:px-4">
-          {/* Your Venue */}
           <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide py-1">
-            <span className="text-[9px] font-bold uppercase tracking-widest px-1.5 shrink-0 hidden sm:inline" style={{ color: SAGE }}>
-              Your Venue
-            </span>
-            {NAV_ITEMS.filter(i => i.group === "venue").map(item => {
+            {NAV_ITEMS.map(item => {
               const isActive = activeSection === item.id;
               const badge = item.id === "tasks" && actionCount > 0 ? actionCount : 0;
               return (
@@ -4125,51 +4095,20 @@ export function PortalShell({
               );
             })}
           </div>
-
-          {/* Visible divider between the two groups */}
-          <div className="h-px w-full" style={{ background: "#E0D8D0" }} />
-
-          {/* Your Wedding — intentionally quieter: smaller text, lighter weight, no active tint */}
-          <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide py-0.5">
-            <span className="text-[9px] font-medium uppercase tracking-widest text-muted-foreground/45 px-1.5 shrink-0 hidden sm:inline">
-              Your Wedding
-            </span>
-            {NAV_ITEMS.filter(i => i.group === "wedding").map(item => {
-              const isActive = activeSection === item.id;
-              return (
-                <button key={item.id} type="button"
-                  onClick={() => item.available && setActiveSection(item.id)}
-                  className="relative flex-shrink-0 flex items-center gap-1.5 px-2.5 py-2 text-xs font-normal transition-all rounded-lg"
-                  style={{
-                    color: isActive ? SAGE : "#6A6460",
-                    background: isActive ? `color-mix(in srgb, var(--venue-primary) 6%, transparent)` : "transparent",
-                    fontWeight: isActive ? 600 : 400,
-                    opacity: isActive ? 1 : 0.82,
-                  }}>
-                  <span className="text-xs">{item.icon}</span>
-                  <span className="hidden sm:inline">{item.label}</span>
-                  <span className="sm:hidden text-[10px]">{item.shortLabel ?? item.label}</span>
-                </button>
-              );
-            })}
-          </div>
         </div>
       </header>
 
       {/* ── Content ── */}
       <main className="flex-1 min-h-0 w-full overflow-y-auto flex flex-col">
-        {/* Overview gets a full-canvas layout */}
+        {/* Overview gets a full-canvas layout. Widened from max-w-4xl and no
+            longer split into a 1fr-main / 320px-sidebar grid — a fixed
+            narrow sidebar next to one tall column is what produced the
+            "left side scrolls forever, right side sits empty" report
+            (2026-07-23); OverviewSection now lays every card out itself in
+            a balanced multi-column flow that uses the full width. */}
         {isOverview ? (
-          <div className="max-w-4xl mx-auto px-4 sm:px-6 py-6">
-            {/* Desktop: 2-column hero layout */}
-            <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-6 items-start">
-              {/* Left: Hero + planning journey */}
-              <OverviewSection token={token} context={context} tasks={initialTasks} guestStats={guestStats} todoCount={todoCount} latestJournalEntry={profile?.latestJournalEntry ?? null} onNavigate={setActiveSection} />
-              {/* Right: Quick actions sidebar (desktop only) */}
-              <div className="hidden lg:flex flex-col gap-4">
-                <QuickActionsSidebar token={token} context={context} onNavigate={setActiveSection} recentActivity={recentActivity} showLuvIntro={showLuvIntro} onDismissLuvIntro={dismissLuvIntro} />
-              </div>
-            </div>
+          <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6">
+            <OverviewSection token={token} context={context} tasks={initialTasks} guestStats={guestStats} todoCount={todoCount} profile={profile} latestJournalEntry={profile?.latestJournalEntry ?? null} onNavigate={setActiveSection} recentActivity={recentActivity} showLuvIntro={showLuvIntro} onDismissLuvIntro={dismissLuvIntro} />
           </div>
         ) : activeSection === "website" ? (
           <div className="flex-1 min-h-0 overflow-hidden">
@@ -4193,7 +4132,6 @@ export function PortalShell({
             {activeSection === "timeline"  && <TimelinePortalSection token={token} clientId={context.client.id} initialSections={initialTimelineSections} initialEntries={initialTimelineEntries} initialLastSubmittedAt={initialTimelineLastSubmittedAt} initialHasUnpublishedChanges={initialTimelineHasUnpublishedChanges} />}
             {activeSection === "vendors"   && <VendorPortalSection token={token} context={context} />}
             {activeSection === "budget"    && <BudgetPortalSection token={token} />}
-            {activeSection === "ask"       && <LuvAskPortalSection token={token} onNavigateToGuide={() => setActiveSection("guide")} />}
             {activeSection === "documents" && <CoupleDocumentsPortalSection token={token} onNavigate={setActiveSection} />}
             {activeSection === "payments"  && <PaymentPortalSection token={token} />}
             {activeSection === "messages"  && <PortalMessageSection token={token} venueName={context.venue.name} />}
@@ -4208,6 +4146,9 @@ export function PortalShell({
       <footer className="text-center py-4 text-[10px] border-t border-border/30" style={{ color: TAUPE }}>
         {context.venue.name}
       </footer>
+
+      {/* Persistent across every tab, not just Overview — Program 5. */}
+      <FloatingLuvWidget token={token} onNavigateToGuide={() => setActiveSection("guide")} />
     </div>
   );
 }
@@ -4540,17 +4481,23 @@ function WeddingPlanningProgressCard({ token, tasks }: { token: string; tasks: P
   );
 }
 
+// Program 4 dashboard restructure (2026-07-24), Part 3: "Immediately below
+// the hero should be operational planning only." Order is the directive's
+// own list — Venue Team, Next Steps, Payment Status, Timeline Progress,
+// Wedding Planning Progress — the same five cards as before, reordered so
+// the composite progress bar reads as the summary of the four cards above
+// it rather than a headline sitting in front of them.
 function YourVenueCards({ token, tasks, onNavigate }: { token: string; tasks: PortalTask[]; onNavigate: (s: PortalSection) => void }) {
   return (
     <div className="space-y-2">
       <p className="text-[10px] font-bold uppercase tracking-[0.2em]" style={{ color: SAGE }}>Your Venue</p>
-      <WeddingPlanningProgressCard token={token} tasks={tasks} />
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <VenueTeamCard token={token} onNavigate={onNavigate} />
         <NextStepsCard token={token} tasks={tasks} onNavigate={onNavigate} />
         <PaymentsCard token={token} onNavigate={onNavigate} />
         <TimelineCard token={token} onNavigate={onNavigate} />
       </div>
+      <WeddingPlanningProgressCard token={token} tasks={tasks} />
     </div>
   );
 }
@@ -4560,15 +4507,111 @@ function YourVenueCards({ token, tasks, onNavigate }: { token: string; tasks: Po
 // tools. They should not compete visually with the venue relationship."
 // Quieter than YourVenueCards: smaller cards, muted icons, no white filled
 // buttons — a tap target, not an operational status card.
-const WEDDING_CARDS: { id: PortalSection; icon: string; label: string }[] = [
-  { id: "website", icon: "🌐", label: "Wedding Website" },
-  { id: "guests",  icon: "👥", label: "Guest List" },
-  { id: "budget",  icon: "💰", label: "Budget" },
-  { id: "seating", icon: "🪑", label: "Seating" },
-  { id: "todos",   icon: "✨", label: "Plans" },
-  { id: "story",   icon: "💍", label: "Our Story" },
-  { id: "ask",     icon: "💗", label: "Luv" },
-];
+//
+// Program 5 (2026-07-24) — "Those boxes become live status cards instead
+// of just buttons... Now they're actually useful." Each card below fetches
+// its own real number the same self-contained way VenueTeamCard/
+// PaymentsCard/TimelineCard already do — no shared aggregate endpoint,
+// consistent with the rest of this dashboard. Luv is deliberately absent
+// here now — she's the FloatingLuvWidget, not a planning box.
+const GREEN = "#5F8A5B";
+
+function LaunchCard({ icon, label, status, statusColor, onClick }: {
+  icon: string; label: string; status: string | null; statusColor?: string; onClick: () => void;
+}) {
+  return (
+    <button type="button" onClick={onClick}
+      className="rounded-xl border bg-card/60 px-3 py-3.5 text-left hover:bg-card hover:shadow-sm transition-all"
+      style={{ borderColor: "#EDE8E1" }}>
+      <p className="text-lg opacity-80">{icon}</p>
+      <p className="text-[11px] font-medium text-heading/85 mt-1.5 leading-snug">{label}</p>
+      {status && <p className="text-[10px] mt-0.5" style={{ color: statusColor ?? "var(--muted-foreground)" }}>{status}</p>}
+    </button>
+  );
+}
+
+// "Wedding Website — Published ✓ or 82% complete" — reuses website-editor's
+// own ALL_SECTIONS/preview() predicates (imported as WEBSITE_ALL_SECTIONS)
+// so this card can never drift from what the Studio itself counts as a
+// filled section.
+function WebsiteLaunchCard({ token, onNavigate }: { token: string; onNavigate: (s: PortalSection) => void }) {
+  const [site, setSite] = React.useState<CoupleWebsite | null>(null);
+
+  React.useEffect(() => {
+    fetch(`/api/portal/website?token=${token}`).then(r => r.json())
+      .then((d: CoupleWebsite) => setSite(d?.exists ? d : null)).catch(() => setSite(null));
+  }, [token]);
+
+  let status: string | null = null;
+  if (site) {
+    if (site.isPublished) {
+      status = "Published ✓";
+    } else {
+      const completed = WEBSITE_ALL_SECTIONS.filter(s => s.preview?.(site.content ?? {})).length;
+      status = `${Math.round((completed / WEBSITE_ALL_SECTIONS.length) * 100)}% complete`;
+    }
+  }
+
+  return <LaunchCard icon="🌐" label="Wedding Website" status={status} statusColor={site?.isPublished ? GREEN : undefined} onClick={() => onNavigate("website")} />;
+}
+
+// "Guest List — 128 invited, 97 confirmed" — guestStats is already fetched
+// once at the PortalShell level; no new request needed for this card.
+function GuestsLaunchCard({ guestStats, onNavigate }: { guestStats: GuestStats | null; onNavigate: (s: PortalSection) => void }) {
+  const status = guestStats && guestStats.total > 0 ? `${guestStats.total} invited, ${guestStats.attending} confirmed` : null;
+  return <LaunchCard icon="👥" label="Guest List" status={status} onClick={() => onNavigate("guests")} />;
+}
+
+// "Budget — $24,800 of $30,000"
+function BudgetLaunchCard({ token, onNavigate }: { token: string; onNavigate: (s: PortalSection) => void }) {
+  const [budget, setBudget] = React.useState<CoupleBudget | null>(null);
+
+  React.useEffect(() => {
+    fetch(`/api/portal/budget?token=${token}`).then(r => r.json())
+      .then((d: { budget?: CoupleBudget | null }) => setBudget(d.budget ?? null)).catch(() => setBudget(null));
+  }, [token]);
+
+  const fmt = (n: number) => new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(n);
+  const spent = budget?.categories.reduce((sum, c) => sum + c.actualAmount, 0) ?? 0;
+  const status = budget && budget.totalBudget > 0 ? `${fmt(spent)} of ${fmt(budget.totalBudget)}` : null;
+
+  return <LaunchCard icon="💰" label="Budget" status={status} onClick={() => onNavigate("budget")} />;
+}
+
+// "Seating — 4 guests unassigned"
+function SeatingLaunchCard({ token, onNavigate }: { token: string; onNavigate: (s: PortalSection) => void }) {
+  const [data, setData] = React.useState<SeatingData | null>(null);
+
+  React.useEffect(() => {
+    fetch(`/api/portal/seating?token=${token}`).then(r => r.json())
+      .then((d: SeatingData) => setData(d?.floorPlan !== undefined ? d : null)).catch(() => setData(null));
+  }, [token]);
+
+  const unassigned = data ? data.unassignedGuests.length + data.needsReassignment.length : 0;
+  const status = !data?.floorPlan ? null : unassigned > 0 ? `${unassigned} guest${unassigned === 1 ? "" : "s"} unassigned` : "All guests seated ✓";
+
+  return <LaunchCard icon="🪑" label="Seating" status={status} statusColor={data?.floorPlan && unassigned === 0 ? GREEN : undefined} onClick={() => onNavigate("seating")} />;
+}
+
+// "Plans — 8 saved ideas" (the Inspiration Board photo count, already part
+// of the profile fetch) falls back to the to-do count when there are no
+// saved ideas yet, rather than showing nothing.
+function PlansLaunchCard({ todoCount, profile, onNavigate }: { todoCount: number; profile: CoupleProfile | null; onNavigate: (s: PortalSection) => void }) {
+  const ideaCount = profile?.inspirationPhotos.length ?? 0;
+  const status = ideaCount > 0 ? `${ideaCount} saved idea${ideaCount === 1 ? "" : "s"}` : todoCount > 0 ? `${todoCount} on your list` : null;
+  return <LaunchCard icon="✨" label="Plans" status={status} onClick={() => onNavigate("todos")} />;
+}
+
+// "Our Story — Published ✓" in the original directive assumed a publish
+// state this field doesn't have (it's the couple's private profile text,
+// not part of the published wedding website — see the website's own,
+// separate story section on the Website card above). Showing "Written ✓"
+// once they've saved something is the accurate equivalent rather than a
+// fabricated publish flag.
+function StoryLaunchCard({ profile, onNavigate }: { profile: CoupleProfile | null; onNavigate: (s: PortalSection) => void }) {
+  const status = profile?.ourStory?.trim() ? "Written ✓" : null;
+  return <LaunchCard icon="💍" label="Our Story" status={status} statusColor={status ? GREEN : undefined} onClick={() => onNavigate("story")} />;
+}
 
 // "I wouldn't leave Luv buried. Instead I'd give Luv one small card every
 // day... Tiny. Never overwhelming." (2026-07-23) — promoted out of the
@@ -4576,9 +4619,26 @@ const WEDDING_CARDS: { id: PortalSection; icon: string; label: string }[] = [
 // real signals first (an upcoming key date within the week, an
 // unstarted questionnaire), then falls back to the existing mood-based
 // getLuvMessage() — never a blank or generic-feeling card.
-function LuvDailyCard({ token, du, guestTotal, readiness }: { token: string; du: number | null; guestTotal: number; readiness: number }) {
+// Luv, the single coaching surface (2026-07-24): "One card. One voice.
+// Never multiple coaching widgets." This absorbs every other Luv-voiced or
+// coaching-flavored card that used to sit next to it on the dashboard —
+// Most Couples Like You (social proof), Next Big Moment (the next
+// milestone suggestion), This Week (activity digest), and the unlabeled
+// "Luv observation" quote card — as additional candidate messages in the
+// same priority chain that already existed for key dates and the
+// questionnaire. Nothing here is new copy or a new planning concept; every
+// message reuses the exact text bank the card it replaced already had.
+// Still exactly one small card, still falls back to the same generic mood
+// message as before when nothing more specific applies.
+function LuvDailyCard({
+  token, du, guestStats, readiness, bracket, recentActivity, onNavigate,
+}: {
+  token: string; du: number | null; guestStats: GuestStats | null; readiness: number;
+  bracket: string; recentActivity: RecentActivity | null; onNavigate: (s: PortalSection) => void;
+}) {
   const [keyDates, setKeyDates] = React.useState<PortalKeyDate[] | null>(null);
   const [questionnaire, setQuestionnaire] = React.useState<{ status: string } | null | undefined>(undefined);
+  const guestTotal = guestStats?.total ?? 0;
 
   React.useEffect(() => {
     fetch(`/api/portal/key-dates?token=${token}`).then((r) => r.json())
@@ -4595,112 +4655,83 @@ function LuvDailyCard({ token, du, guestTotal, readiness }: { token: string; du:
     .filter((k) => { const d = new Date(k.date + "T12:00:00"); return d >= today && d <= inSevenDays; })
     .sort((a, b) => (a.date < b.date ? -1 : 1))[0] ?? null;
 
+  const observation = getOverviewObservation(
+    guestStats ? { total: guestStats.total, attending: guestStats.attending } : null,
+    readiness, du,
+  );
+
   let message: string;
+  let actionable = false;
   if (soonKeyDate) {
     const weekday = new Date(soonKeyDate.date + "T12:00:00").toLocaleDateString("en-US", { weekday: "long" });
     message = `Your ${soonKeyDate.label.toLowerCase()} is ${weekday}.`;
+  } else if (observation) {
+    message = observation.text;
+  } else if ((recentActivity?.totalThisWeek ?? 0) > 0) {
+    const n = recentActivity!.totalThisWeek;
+    message = `You completed ${n} planning ${n === 1 ? "item" : "items"} this week.`;
   } else if (questionnaire && questionnaire.status !== "submitted" && questionnaire.status !== "completed") {
     message = "Your questionnaire is ready whenever you'd like to fill it out.";
+  } else if (du === null || du > 14) {
+    // Both are real bracket-keyed content this card absorbed (Next Big
+    // Moment vs. Most Couples Like You) with no other signal to choose
+    // between them — alternate by day so "one small card every day"
+    // actually varies day to day instead of always picking the same one.
+    if (today.getDate() % 2 === 0) {
+      const milestone = guestTotal === 0 && bracket !== "<1"
+        ? NEXT_MILESTONE_BY_BRACKET["12+"] : NEXT_MILESTONE_BY_BRACKET[bracket] ?? NEXT_MILESTONE_BY_BRACKET["6-9"];
+      message = `${milestone.title}. ${milestone.desc}`;
+      actionable = true;
+    } else {
+      message = SOCIAL_PROOF_BY_BRACKET[bracket] ?? SOCIAL_PROOF_BY_BRACKET["6-9"];
+    }
   } else {
     message = getLuvMessage(du, guestTotal, readiness);
+  }
+
+  const content = (
+    <>
+      <span style={{ color: ROSE, fontSize: 15 }}>💗</span>
+      <p className="text-xs leading-relaxed" style={{ color: "#5A3235" }}>
+        <span className="font-semibold">Luv says…</span> "{message}"
+        {actionable && <span className="font-semibold" style={{ color: ROSE_DEEP }}> Add to your plans →</span>}
+      </p>
+    </>
+  );
+
+  if (actionable) {
+    return (
+      <button type="button" onClick={() => onNavigate("todos")}
+        className="w-full text-left rounded-2xl px-4 py-3.5 flex items-start gap-2.5 hover:shadow-sm transition-all"
+        style={{ background: `${ROSE}08`, border: `1px solid ${ROSE}25` }}>
+        {content}
+      </button>
+    );
   }
 
   return (
     <div className="rounded-2xl px-4 py-3.5 flex items-start gap-2.5"
       style={{ background: `${ROSE}08`, border: `1px solid ${ROSE}25` }}>
-      <span style={{ color: ROSE, fontSize: 15 }}>💗</span>
-      <p className="text-xs leading-relaxed" style={{ color: "#5A3235" }}>
-        <span className="font-semibold">Luv says…</span> "{message}"
-      </p>
+      {content}
     </div>
   );
 }
 
-function YourWeddingSection({ guestStats, todoCount, onNavigate }: { guestStats: GuestStats | null; todoCount: number; onNavigate: (s: PortalSection) => void }) {
-  const previewFor = (id: PortalSection): string | null => {
-    if (id === "guests" && guestStats?.total) return `${guestStats.total} guests`;
-    if (id === "todos" && todoCount > 0) return `${todoCount} on your list`;
-    return null;
-  };
-
+function YourWeddingSection({ token, guestStats, todoCount, profile, onNavigate }: {
+  token: string; guestStats: GuestStats | null; todoCount: number; profile: CoupleProfile | null; onNavigate: (s: PortalSection) => void;
+}) {
   return (
     <div className="space-y-2">
       <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-muted-foreground/50">Your Wedding</p>
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-        {WEDDING_CARDS.map((c) => (
-          <button key={c.id} type="button" onClick={() => onNavigate(c.id)}
-            className="rounded-xl border bg-card/60 px-3 py-3.5 text-left hover:bg-card hover:shadow-sm transition-all"
-            style={{ borderColor: "#EDE8E1" }}>
-            <p className="text-lg opacity-80">{c.icon}</p>
-            <p className="text-[11px] font-medium text-heading/85 mt-1.5 leading-snug">{c.label}</p>
-            {previewFor(c.id) && <p className="text-[10px] text-muted-foreground mt-0.5">{previewFor(c.id)}</p>}
-          </button>
-        ))}
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+        <WebsiteLaunchCard token={token} onNavigate={onNavigate} />
+        <GuestsLaunchCard guestStats={guestStats} onNavigate={onNavigate} />
+        <BudgetLaunchCard token={token} onNavigate={onNavigate} />
+        <SeatingLaunchCard token={token} onNavigate={onNavigate} />
+        <PlansLaunchCard todoCount={todoCount} profile={profile} onNavigate={onNavigate} />
+        <StoryLaunchCard profile={profile} onNavigate={onNavigate} />
       </div>
     </div>
   );
 }
 
-function QuickActionsSidebar({
-  token, context, onNavigate, recentActivity,
-  showLuvIntro, onDismissLuvIntro,
-}: {
-  token: string; context: PortalContext;
-  onNavigate: (s: PortalSection) => void;
-  recentActivity: RecentActivity | null;
-  showLuvIntro: boolean; onDismissLuvIntro: () => void;
-}) {
-  const du = context.event ? daysUntil(context.event.eventDate) : null;
-  const bracket = getSuggestionBracket(du);
-
-  return (
-    <>
-      {/* ── Requests summary (Wedding Workspace – Request Experience, Phase 1) ── */}
-      <RequestsSummaryCard token={token} onNavigate={onNavigate} />
-
-      {/* ── Key Dates — venue-authored, Program 4 Initiative C Phase 3 ── */}
-      <KeyDatesCard token={token} />
-
-      {/* Program 4, Initiative D, Phase 8/9 (2026-07-23): the Guest List,
-          Planning, and Venue Tasks cards that used to live here were
-          removed — YourVenueCards' Next Steps card and YourWeddingSection
-          (both now in the main column, on every breakpoint, not
-          desktop-sidebar-gated) already cover Tasks/Guests/Plans. Showing
-          the same status twice reads as clutter, not hospitality; this
-          sidebar's job now is purely the supplementary, inspirational
-          layer beneath that. */}
-
-      {/* Coming Up */}
-      <ComingUpCard bracket={bracket} onNavigate={onNavigate} />
-
-      {/* Venue Note */}
-      <VenueNoteCard venueName={context.venue.name} />
-
-      {/* Most Couples Like You */}
-      <MostCouplesCard bracket={bracket} />
-
-      {/* This Week — live activity feed */}
-      <YourWeekCard activity={recentActivity} />
-
-      {/* Luv's one-time intro — shown once, ever, only to genuinely new
-          couples (Luv Experience Completion, Work Stream 5). */}
-      {showLuvIntro && (
-        <LuvIntroCard
-          body="I'll help you stay organized throughout your planning."
-          ctaLabel="Let's start with your first task"
-          onCtaClick={() => onNavigate("tasks")}
-          onDismiss={onDismissLuvIntro}
-        />
-      )}
-
-      {/* 2026-07-23: the sidebar's own "From Luv" quote card was removed —
-          LuvDailyCard now gives Luv one small, contextual card in the main
-          dashboard flow (every breakpoint, not desktop-sidebar-only);
-          showing the same getLuvMessage() text twice on desktop was
-          exactly the kind of clutter trimmed elsewhere on this pass. */}
-
-      {/* Inspiration */}
-      <InspirationCard bracket={bracket} />
-    </>
-  );
-}

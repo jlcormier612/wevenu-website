@@ -6,86 +6,43 @@
  * "Couples stop filling out forms and start designing their wedding website."
  *
  * Three layers:
- *   1. Guided setup wizard — first-time users walk through Photo → Theme → Story → Preview
+ *   1. Guided setup wizard — first-time users walk through Photo → Layout Collection →
+ *      Color Story → Typography → Photo Style → Story → Preview
  *   2. Split layout (desktop) — sidebar editor left, live preview right
- *   3. Theme carousel — ← cycle themes → with instant preview update
+ *   3. Collection carousel — ← cycle Layout Collections → with instant preview update
  *
  * Mobile: full-screen editor with a "Preview" toggle tab.
  * Desktop: side-by-side studio with scaled live preview.
+ *
+ * Four independent design dimensions (2026-07-24) — Layout Collection, Color
+ * Story, Typography, Photo Style — replace the old single "theme" step. See
+ * ThemeStudio in website-editor.tsx for the same catalog data model used here.
  */
 
 import * as React from "react";
-import { ChevronLeft, ChevronRight, Eye, EyeOff, Loader2, Monitor, Smartphone, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, Eye, Loader2, Monitor, Smartphone } from "lucide-react";
 import { toast } from "sonner";
 
-import type { CoupleWebsite, WebsiteContent, WebsiteSuggestions } from "@/lib/wedding-website/types";
+import { ColorPickerTrigger } from "@/components/ui/color-picker";
+import type { CoupleWebsite, WebsiteContent, WebsiteSuggestions, HostedExperienceCatalog, CatalogCollection } from "@/lib/wedding-website/types";
 import type { PortalContext } from "@/lib/portal/types";
 import type { PublicWebsite } from "@/lib/wedding-website/types";
 
-// ── Theme collection data ─────────────────────────────────────────────────────
-// Each collection has a gradient (for the preview card), typography sample, and
-// 3 named palettes (swatch color is the accent of that palette).
+// A save patch for any of the four design dimensions, or the legacy
+// theme/themePalette/fontPairing strings sent alongside as a safety net —
+// mirrors ThemePatch in website-editor.tsx.
+type DesignPatch = Partial<CoupleWebsite & { fontPairing: string; clearCustomColors: boolean }>;
 
-type StudioPalette = { name: string; accent: string; gradient: string; dark?: boolean };
-
-const STUDIO_THEMES = [
-  { value: "classic",   name: "Wildflower",   mood: "Garden romance",        font: "'Playfair Display', Georgia, serif",        italic: false,
-    palettes: [
-      { name: "Sage",        accent: "#97AC9E", gradient: "linear-gradient(160deg, #6A8A78 0%, #97AC9E 50%, #C8D5C8 100%)" },
-      { name: "Mauve",       accent: "#B89AAC", gradient: "linear-gradient(160deg, #8A7080 0%, #B898AC 50%, #DCC8D4 100%)" },
-      { name: "Terracotta",  accent: "#B49480", gradient: "linear-gradient(160deg, #907060 0%, #B49480 50%, #D4B8A0 100%)" },
-    ] as StudioPalette[] },
-  { value: "romance",   name: "Rosé",         mood: "Soft femininity",       font: "'Cormorant Garamond', Georgia, serif",      italic: true,
-    palettes: [
-      { name: "Blush",       accent: "#CCA8A0", gradient: "linear-gradient(160deg, #A07070 0%, #CCA8A0 50%, #EDD6CE 100%)" },
-      { name: "Petal",       accent: "#CCA0B0", gradient: "linear-gradient(160deg, #A07088 0%, #CCA0B0 50%, #EDD0DC 100%)" },
-      { name: "Powder",      accent: "#A0A8CC", gradient: "linear-gradient(160deg, #707090 0%, #A0A8CC 50%, #D0D4E8 100%)" },
-    ] as StudioPalette[] },
-  { value: "champagne", name: "Champagne",    mood: "Black-tie invitation",  font: "'Playfair Display', Georgia, serif",        italic: false,
-    palettes: [
-      { name: "Warm Stone",  accent: "#C4AE88", gradient: "linear-gradient(160deg, #7A6040 0%, #A08558 60%, #C4AE88 100%)" },
-      { name: "Ecru",        accent: "#B4A888", gradient: "linear-gradient(160deg, #6A5A38 0%, #9A8860 60%, #B8A880 100%)" },
-      { name: "Charcoal",    accent: "#989890", gradient: "linear-gradient(160deg, #3A3A38 0%, #686860 60%, #989890 100%)" },
-    ] as StudioPalette[] },
-  { value: "velvet",    name: "Velvet",       mood: "Editorial luxury",      font: "'Cormorant Garamond', Georgia, serif",      italic: false,
-    palettes: [
-      { name: "Burgundy",    accent: "#C9B89A", gradient: "linear-gradient(160deg, #1E1015 0%, #3A1820 60%, #5B3438 100%)", dark: true },
-      { name: "Noir",        accent: "#C0B89A", gradient: "linear-gradient(160deg, #0A0A0A 0%, #1A1818 50%, #2A2020 100%)", dark: true },
-      { name: "Plum",        accent: "#C0A8CC", gradient: "linear-gradient(160deg, #140A18 0%, #28183A 50%, #3A2048 100%)", dark: true },
-    ] as StudioPalette[] },
-  { value: "coastal",   name: "Coastal",      mood: "Nantucket, salt air",   font: "'Plus Jakarta Sans', system-ui, sans-serif", italic: false,
-    palettes: [
-      { name: "Navy",        accent: "#4A6278", gradient: "linear-gradient(160deg, #324E64 0%, #4A6278 50%, #C8DCE8 100%)" },
-      { name: "Sea Glass",   accent: "#4A7868", gradient: "linear-gradient(160deg, #2A5848 0%, #4A7868 50%, #A0C8BC 100%)" },
-      { name: "Sand",        accent: "#9A8068", gradient: "linear-gradient(160deg, #5A4A38 0%, #9A8068 60%, #C0AE98 100%)" },
-    ] as StudioPalette[] },
-  { value: "garden",    name: "Garden Party", mood: "English countryside",   font: "Georgia, serif",                           italic: false,
-    palettes: [
-      { name: "Eucalyptus",  accent: "#9DC4A8", gradient: "linear-gradient(160deg, #5A8A70 0%, #7AAE8C 50%, #B0CEBC 100%)" },
-      { name: "Peony",       accent: "#D4A0AC", gradient: "linear-gradient(160deg, #B07088 0%, #D4A0AC 50%, #EECCD4 100%)" },
-      { name: "Wisteria",    accent: "#A898C0", gradient: "linear-gradient(160deg, #685898 0%, #A898C0 50%, #CCC0D8 100%)" },
-    ] as StudioPalette[] },
-  { value: "minimal",   name: "Linen",        mood: "Letterpress, timeless", font: "Georgia, serif",                           italic: false,
-    palettes: [
-      { name: "Ivory",       accent: "#C8B898", gradient: "linear-gradient(160deg, #D8CFC2 0%, #EBE5DB 100%)" },
-      { name: "Blush",       accent: "#D4B8B0", gradient: "linear-gradient(160deg, #D8C4C0 0%, #EBD8D5 100%)" },
-      { name: "Slate",       accent: "#A8B0B8", gradient: "linear-gradient(160deg, #C0C8D0 0%, #D8DCE4 100%)" },
-    ] as StudioPalette[] },
-  { value: "modern",    name: "Midnight",     mood: "Atmospheric indigo",    font: "'DM Sans', system-ui, sans-serif",          italic: false,
-    palettes: [
-      { name: "Indigo",      accent: "#BFB8CE", gradient: "linear-gradient(160deg, #120F1A 0%, #1E1828 40%, #2E2545 100%)", dark: true },
-      { name: "Onyx",        accent: "#C0B8A8", gradient: "linear-gradient(160deg, #0A0A0A 0%, #181818 50%, #252520 100%)", dark: true },
-      { name: "Plum",        accent: "#C0A8CC", gradient: "linear-gradient(160deg, #120818 0%, #1E1030 40%, #2E1848 100%)", dark: true },
-    ] as StudioPalette[] },
-] as const;
-
-type StudioTheme = typeof STUDIO_THEMES[number]["value"];
+function collectionSwatch(c: CatalogCollection): string {
+  return c.colorStories[0]?.tokens.heroGradient
+    ?? `linear-gradient(160deg, ${c.swatchAccent ?? "#B8AEA1"} 0%, ${c.swatchAccent ?? "#DED6CA"} 100%)`;
+}
 
 // ── Setup wizard ──────────────────────────────────────────────────────────────
 
-type WizardStep = "welcome" | "photo" | "theme" | "story" | "preview";
+type WizardStep = "welcome" | "photo" | "collection" | "color" | "typography" | "photostyle" | "story" | "preview";
 
-const WIZARD_STEPS: WizardStep[] = ["welcome", "photo", "theme", "story", "preview"];
+const WIZARD_STEPS: WizardStep[] = ["welcome", "photo", "collection", "color", "typography", "photostyle", "story", "preview"];
 
 function WizardProgress({ step }: { step: WizardStep }) {
   const idx = WIZARD_STEPS.indexOf(step);
@@ -101,8 +58,8 @@ function WizardProgress({ step }: { step: WizardStep }) {
 
 function SetupWizard({
   step, setStep, onComplete,
-  site, suggestions, token,
-  onSaveSection, onSaveTheme, coupleName,
+  site, suggestions, token, catalog,
+  onSaveSection, onSaveDesign, coupleName,
 }: {
   step: WizardStep;
   setStep: (s: WizardStep) => void;
@@ -110,13 +67,21 @@ function SetupWizard({
   site: CoupleWebsite;
   suggestions: WebsiteSuggestions | null;
   token: string;
+  catalog: HostedExperienceCatalog | null;
   onSaveSection: (key: string, value: object) => Promise<void>;
-  onSaveTheme: (theme: StudioTheme, palette: string) => Promise<void>;
+  onSaveDesign: (patch: DesignPatch) => Promise<void>;
   coupleName: string;
 }) {
   const [selectedPhoto, setSelectedPhoto] = React.useState(site.content?.home?.coverImageUrl ?? "");
-  const [selectedTheme, setSelectedTheme] = React.useState<StudioTheme>((site.theme ?? "classic") as StudioTheme);
-  const [selectedPalette, setSelectedPalette] = React.useState<string>(site.themePalette ?? "");
+  const [collectionId, setCollectionId] = React.useState<string | undefined>(site.collectionId ?? undefined);
+  const [colorStoryId, setColorStoryId] = React.useState<string | undefined>(site.colorStoryId ?? undefined);
+  const [customColors, setCustomColors] = React.useState<Record<string, string>>({
+    colorPrimary: site.colorPrimary ?? "", colorSecondary: site.colorSecondary ?? "",
+    colorAccent: site.colorAccent ?? "", colorNeutral: site.colorNeutral ?? "",
+    colorBackground: site.colorBackground ?? "", colorText: site.colorText ?? "",
+  });
+  const [typographyStyleId, setTypographyStyleId] = React.useState<string | undefined>(site.typographyStyleId ?? undefined);
+  const [photoStyleId, setPhotoStyleId] = React.useState<string | undefined>(site.photoStyleId ?? undefined);
   const [storyText, setStoryText] = React.useState(site.content?.story?.text ?? "");
   const [saving, setSaving] = React.useState(false);
 
@@ -129,6 +94,13 @@ function SetupWizard({
   const photoInputRef = React.useRef<HTMLInputElement>(null);
 
   const eng = [...uploadedPhotos, ...(suggestions?.engagementPhotos ?? [])];
+
+  const collections = catalog?.collections ?? [];
+  const currentCollection = collections.find(c => c.id === collectionId) ?? collections[0];
+  const currentColorStory = currentCollection?.colorStories.find(cs => cs.id === colorStoryId);
+  const currentTypography = catalog?.typographyStyles.find(t => t.id === typographyStyleId) ?? catalog?.typographyStyles[0];
+  const currentPhotoStyle = catalog?.photoStyles.find(p => p.id === photoStyleId);
+  const hasCustomColors = Object.values(customColors).some(v => !!v);
 
   async function handlePhotoUpload(file: File) {
     setUploadingPhoto(true);
@@ -162,10 +134,36 @@ function SetupWizard({
           coverImageUrl: selectedPhoto,
         });
       }
-      if (step === "theme") {
-        const tc = STUDIO_THEMES.find(t => t.value === selectedTheme) ?? STUDIO_THEMES[0];
-        const palette = selectedPalette || tc.palettes[0].name;
-        await onSaveTheme(selectedTheme, palette);
+      if (step === "collection" && currentCollection) {
+        await onSaveDesign({
+          theme: currentCollection.key as CoupleWebsite["theme"], collectionId: currentCollection.id,
+          ...(colorStoryId ? {} : (currentCollection.colorStories[0]
+            ? { themePalette: currentCollection.colorStories[0].name, colorStoryId: currentCollection.colorStories[0].id }
+            : {})),
+        });
+        if (!colorStoryId && currentCollection.colorStories[0]) setColorStoryId(currentCollection.colorStories[0].id);
+      }
+      if (step === "color") {
+        const patch: DesignPatch = {};
+        if (hasCustomColors) {
+          patch.clearCustomColors = false;
+          if (customColors.colorPrimary) patch.colorPrimary = customColors.colorPrimary;
+          if (customColors.colorSecondary) patch.colorSecondary = customColors.colorSecondary;
+          if (customColors.colorAccent) patch.colorAccent = customColors.colorAccent;
+          if (customColors.colorNeutral) patch.colorNeutral = customColors.colorNeutral;
+          if (customColors.colorBackground) patch.colorBackground = customColors.colorBackground;
+          if (customColors.colorText) patch.colorText = customColors.colorText;
+        } else if (colorStoryId) {
+          patch.colorStoryId = colorStoryId;
+          patch.themePalette = currentColorStory?.name;
+        }
+        if (Object.keys(patch).length > 0) await onSaveDesign(patch);
+      }
+      if (step === "typography" && currentTypography) {
+        await onSaveDesign({ fontPairing: currentTypography.key as CoupleWebsite["fontPairing"], typographyStyleId: currentTypography.id });
+      }
+      if (step === "photostyle" && photoStyleId) {
+        await onSaveDesign({ photoStyleId });
       }
       if (step === "story" && storyText.trim()) {
         await onSaveSection("story", { title: "Our Story", text: storyText });
@@ -174,9 +172,6 @@ function SetupWizard({
     if (next === "done") onComplete();
     else setStep(next);
   }
-
-  const tc = STUDIO_THEMES.find(t => t.value === selectedTheme) ?? STUDIO_THEMES[0];
-  const tcPalette = (tc.palettes as StudioPalette[]).find(p => p.name === (selectedPalette || tc.palettes[0].name)) ?? tc.palettes[0];
 
   // ── Welcome ──
   if (step === "welcome") return (
@@ -214,7 +209,7 @@ function SetupWizard({
   // ── Photo ──
   if (step === "photo") return (
     <div className="fixed inset-0 z-50 flex flex-col bg-background">
-      <WizardHeader step={step} onSkip={() => advance("theme")} />
+      <WizardHeader step={step} onSkip={() => advance("collection")} />
       <div className="flex-1 overflow-y-auto px-6 py-8 max-w-lg mx-auto w-full space-y-6">
         <div className="text-center space-y-2">
           <p className="text-3xl">📸</p>
@@ -268,105 +263,183 @@ function SetupWizard({
       </div>
       <WizardFooter
         onBack={() => setStep("welcome")}
-        onNext={() => advance("theme")}
+        onNext={() => advance("collection")}
         nextLabel={selectedPhoto ? "Use this photo →" : "Skip for now →"}
         saving={saving}
       />
     </div>
   );
 
-  // ── Theme ──
-  if (step === "theme") {
-    const activeCollection = STUDIO_THEMES.find(t => t.value === selectedTheme) ?? STUDIO_THEMES[0];
-    const activePaletteName = selectedPalette || activeCollection.palettes[0].name;
-    const activePalette = activeCollection.palettes.find(p => p.name === activePaletteName) ?? activeCollection.palettes[0];
-    return (
+  // ── Step 1: Layout Collection ──
+  if (step === "collection") return (
     <div className="fixed inset-0 z-50 flex flex-col bg-background">
-      <WizardHeader step={step} onSkip={() => advance("story")} />
+      <WizardHeader step={step} onSkip={() => advance("color")} />
       <div className="flex-1 overflow-y-auto px-6 py-8 max-w-lg mx-auto w-full space-y-6">
         <div className="text-center space-y-2">
-          <p className="text-3xl">🎨</p>
-          <h2 className="text-2xl font-bold text-heading" style={{ fontFamily: "Georgia, serif" }}>Choose your aesthetic.</h2>
-          <p className="text-sm text-muted-foreground">Pick the feeling, then choose your palette.</p>
+          <p className="text-3xl">🖼</p>
+          <h2 className="text-2xl font-bold text-heading" style={{ fontFamily: "Georgia, serif" }}>Choose your Layout Collection.</h2>
+          <p className="text-sm text-muted-foreground">This shapes your whole website — composition, hero, gallery, motion. Not just colors.</p>
         </div>
-
-        {/* Collection grid */}
         <div className="grid grid-cols-2 gap-3">
-          {STUDIO_THEMES.map(theme => {
-            const isSelected = selectedTheme === theme.value;
-            const previewPalette = theme.palettes[0];
+          {collections.map(c => {
+            const isSelected = c.id === currentCollection?.id;
             return (
-              <button key={theme.value} type="button"
-                onClick={() => { setSelectedTheme(theme.value as StudioTheme); setSelectedPalette(""); }}
+              <button key={c.id} type="button"
+                onClick={() => { setCollectionId(c.id); if (!colorStoryId && c.colorStories[0]) setColorStoryId(c.colorStories[0].id); }}
                 className={`relative rounded-2xl overflow-hidden text-left transition-all hover:scale-[1.01] ${isSelected ? "ring-2 ring-primary ring-offset-2" : ""}`}>
-                <div className="h-20 relative" style={{ background: previewPalette.gradient }}>
-                  <div className="absolute inset-0 flex flex-col items-center justify-center px-2 text-center">
-                    <p className="text-[9px] uppercase tracking-[0.2em] mb-0.5" style={{ color: previewPalette.dark ? "rgba(255,255,255,0.5)" : "rgba(255,255,255,0.7)" }}>
-                      {theme.mood}
-                    </p>
-                    <p className="text-sm font-semibold leading-tight"
-                      style={{ fontFamily: theme.font, fontStyle: theme.italic ? "italic" : "normal", color: "white" }}>
-                      {suggestions?.coupleNames ?? coupleName}
-                    </p>
-                  </div>
+                <div className="h-20 relative flex items-center justify-center" style={{ background: collectionSwatch(c) }}>
+                  <p className="text-sm font-semibold text-white text-center px-2" style={{ fontFamily: catalog?.typographyStyles[0]?.tokens.headingFont }}>
+                    {suggestions?.coupleNames ?? coupleName}
+                  </p>
                   {isSelected && (
                     <div className="absolute top-2 right-2 h-5 w-5 rounded-full bg-white/90 flex items-center justify-center shadow">
                       <span className="text-[10px] text-[var(--venue-primary)] font-bold">✓</span>
                     </div>
                   )}
                 </div>
-                <div className="px-3 py-2.5 bg-white border-t border-black/5 flex items-center justify-between gap-2">
-                  <p className="text-xs font-bold text-heading">{theme.name}</p>
-                  <div className="flex gap-1">
-                    {theme.palettes.map(p => (
-                      <div key={p.name} className="h-3 w-3 rounded-full border border-black/10"
-                        style={{ background: p.accent }} />
-                    ))}
-                  </div>
+                <div className="px-3 py-2.5 bg-white border-t border-black/5">
+                  <p className="text-xs font-bold text-heading">{c.name}</p>
+                  <p className="text-[10px] text-muted-foreground mt-0.5 line-clamp-1">{c.description}</p>
                 </div>
               </button>
             );
           })}
         </div>
+      </div>
+      <WizardFooter onBack={() => setStep("photo")} onNext={() => advance("color")} nextLabel="This is us →" saving={saving} />
+    </div>
+  );
 
-        {/* Palette chips — appear when a collection is selected */}
+  // ── Step 2: Color Story ──
+  if (step === "color") return (
+    <div className="fixed inset-0 z-50 flex flex-col bg-background">
+      <WizardHeader step={step} onSkip={() => advance("typography")} />
+      <div className="flex-1 overflow-y-auto px-6 py-8 max-w-lg mx-auto w-full space-y-6">
+        <div className="text-center space-y-2">
+          <p className="text-3xl">🎨</p>
+          <h2 className="text-2xl font-bold text-heading" style={{ fontFamily: "Georgia, serif" }}>Choose your Color Story.</h2>
+          <p className="text-sm text-muted-foreground">Start from a curated palette, or pick every color yourself.</p>
+        </div>
+
+        {currentCollection && currentCollection.colorStories.length > 0 && (
+          <div className="rounded-2xl border border-border bg-card p-4 space-y-3">
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Quick start · {currentCollection.name}</p>
+            <div className="flex gap-3">
+              {currentCollection.colorStories.map(cs => {
+                const isActive = !hasCustomColors && cs.id === colorStoryId;
+                return (
+                  <button key={cs.id} type="button"
+                    onClick={() => { setColorStoryId(cs.id); setCustomColors({ colorPrimary: "", colorSecondary: "", colorAccent: "", colorNeutral: "", colorBackground: "", colorText: "" }); }}
+                    className="flex flex-col items-center gap-1.5">
+                    <div className={`rounded-full border-2 transition-all ${isActive ? "h-10 w-10 border-[var(--venue-primary)] scale-110 shadow-md" : "h-8 w-8 border-transparent hover:border-border"}`}
+                      style={{ background: cs.tokens.heroGradient }} />
+                    <p className={`text-[10px] ${isActive ? "font-semibold text-foreground" : "text-muted-foreground"}`}>{cs.name}</p>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
         <div className="rounded-2xl border border-border bg-card p-4 space-y-3">
-          <div className="flex items-center justify-between">
-            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-              {activeCollection.name} palette
-            </p>
-            <div className="h-4 w-px bg-border" />
-            <p className="text-xs text-muted-foreground">{activePaletteName}</p>
+          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Or design your own</p>
+          <div className="grid grid-cols-2 gap-3">
+            {[
+              { key: "colorPrimary", label: "Primary", fallback: currentColorStory?.tokens.accent },
+              { key: "colorSecondary", label: "Secondary", fallback: currentColorStory?.tokens.accent },
+              { key: "colorAccent", label: "Accent", fallback: currentColorStory?.tokens.accent },
+              { key: "colorNeutral", label: "Neutral", fallback: "#DED6CA" },
+              { key: "colorBackground", label: "Background", fallback: currentColorStory?.tokens.bg },
+              { key: "colorText", label: "Text", fallback: currentColorStory?.tokens.dark ? "#F5F0E8" : "#2E2A24" },
+            ].map(r => (
+              <div key={r.key} className="space-y-1">
+                <p className="text-[10px] font-medium text-muted-foreground">{r.label}</p>
+                <ColorPickerTrigger
+                  value={customColors[r.key] || r.fallback || "#BF9089"}
+                  onChange={(v) => setCustomColors(c => ({ ...c, [r.key]: v }))}
+                />
+              </div>
+            ))}
           </div>
-          <div className="flex gap-3">
-            {activeCollection.palettes.map(p => {
-              const isActive = p.name === activePaletteName;
-              return (
-                <button key={p.name} type="button"
-                  onClick={() => setSelectedPalette(p.name)}
-                  className="flex flex-col items-center gap-1.5 group">
-                  <div className={`h-10 w-10 rounded-full border-2 transition-all ${isActive ? "border-[var(--venue-primary)] scale-110 shadow-md" : "border-transparent hover:border-border"}`}
-                    style={{ background: p.gradient }} />
-                  <p className={`text-[10px] ${isActive ? "font-semibold text-foreground" : "text-muted-foreground"}`}>
-                    {p.name}
-                  </p>
-                </button>
-              );
-            })}
-          </div>
-          {/* Mini preview bar showing selected aesthetic */}
-          <div className="h-8 rounded-xl overflow-hidden" style={{ background: activePalette.gradient }} />
+          {hasCustomColors && (
+            <button type="button" onClick={() => setCustomColors({ colorPrimary: "", colorSecondary: "", colorAccent: "", colorNeutral: "", colorBackground: "", colorText: "" })}
+              className="text-[11px] text-muted-foreground hover:text-foreground underline underline-offset-2">
+              Clear custom colors — use the preset instead
+            </button>
+          )}
         </div>
       </div>
-      <WizardFooter
-        onBack={() => setStep("photo")}
-        onNext={() => advance("story")}
-        nextLabel="This is us →"
-        saving={saving}
-      />
+      <WizardFooter onBack={() => setStep("collection")} onNext={() => advance("typography")} nextLabel="Love it →" saving={saving} />
     </div>
-    );
-  }
+  );
+
+  // ── Step 3: Typography ──
+  if (step === "typography") return (
+    <div className="fixed inset-0 z-50 flex flex-col bg-background">
+      <WizardHeader step={step} onSkip={() => advance("photostyle")} />
+      <div className="flex-1 overflow-y-auto px-6 py-8 max-w-lg mx-auto w-full space-y-6">
+        <div className="text-center space-y-2">
+          <p className="text-3xl">🔤</p>
+          <h2 className="text-2xl font-bold text-heading" style={{ fontFamily: "Georgia, serif" }}>Choose your Typography.</h2>
+          <p className="text-sm text-muted-foreground">Independent of your Collection — carries through every heading, quote, and button.</p>
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          {(catalog?.typographyStyles ?? []).map(t => {
+            const isSelected = t.id === currentTypography?.id;
+            return (
+              <button key={t.id} type="button" onClick={() => setTypographyStyleId(t.id)}
+                className={`rounded-2xl border p-4 text-left transition-all hover:scale-[1.01] ${isSelected ? "ring-2 ring-primary ring-offset-2 border-primary" : "border-border"}`}>
+                <p className="text-lg" style={{ fontFamily: t.tokens.headingFont, fontStyle: t.tokens.headingItalic ? "italic" : "normal" }}>
+                  {suggestions?.coupleNames ?? coupleName}
+                </p>
+                <p className="text-xs font-semibold text-heading mt-2">{t.name}</p>
+                <p className="text-[10px] text-muted-foreground">{t.tokens.sampleLabel}</p>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+      <WizardFooter onBack={() => setStep("color")} onNext={() => advance("photostyle")} nextLabel="Beautiful →" saving={saving} />
+    </div>
+  );
+
+  // ── Step 4: Photo Style ──
+  if (step === "photostyle") return (
+    <div className="fixed inset-0 z-50 flex flex-col bg-background">
+      <WizardHeader step={step} onSkip={() => advance("story")} />
+      <div className="flex-1 overflow-y-auto px-6 py-8 max-w-lg mx-auto w-full space-y-6">
+        <div className="text-center space-y-2">
+          <p className="text-3xl">📷</p>
+          <h2 className="text-2xl font-bold text-heading" style={{ fontFamily: "Georgia, serif" }}>Choose your Photo Style.</h2>
+          <p className="text-sm text-muted-foreground">How your photos are presented — independent of everything else.</p>
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          {(catalog?.photoStyles ?? []).map(p => {
+            const isSelected = p.id === currentPhotoStyle?.id;
+            return (
+              <button key={p.id} type="button" onClick={() => setPhotoStyleId(p.id)}
+                className={`rounded-2xl border overflow-hidden text-left transition-all hover:scale-[1.01] ${isSelected ? "ring-2 ring-primary ring-offset-2 border-primary" : "border-border"}`}>
+                <div className="h-16 flex items-center justify-center" style={{ background: "linear-gradient(135deg, #C9B89A 0%, #97AC9E 100%)" }}>
+                  <div style={{
+                    width: p.tokens.imageScale === "large" ? "70%" : "45%", aspectRatio: "1/1",
+                    filter: p.tokens.photoFilter, borderRadius: p.tokens.photoRadius,
+                    background: "linear-gradient(160deg, #D8CFC2 0%, #EBE5DB 100%)",
+                    border: p.tokens.frameStyle === "border" ? "3px solid #fff" : p.tokens.frameStyle === "polaroid" ? "4px solid #fff" : undefined,
+                    boxShadow: p.tokens.frameStyle === "polaroid" ? "0 2px 6px rgba(0,0,0,0.25)" : undefined,
+                  }} />
+                </div>
+                <div className="px-3 py-2.5 bg-white border-t border-black/5">
+                  <p className="text-xs font-bold text-heading">{p.name}</p>
+                  <p className="text-[10px] text-muted-foreground mt-0.5">{p.description}</p>
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+      <WizardFooter onBack={() => setStep("typography")} onNext={() => advance("story")} nextLabel="Perfect →" saving={saving} />
+    </div>
+  );
 
   // ── Story ──
   if (step === "story") return (
@@ -404,7 +477,7 @@ function SetupWizard({
         </div>
       </div>
       <WizardFooter
-        onBack={() => setStep("theme")}
+        onBack={() => setStep("photostyle")}
         onNext={() => advance("preview")}
         nextLabel={storyText.trim() ? "Love it →" : "Skip for now →"}
         saving={saving}
@@ -427,17 +500,17 @@ function SetupWizard({
       </div>
 
       <div className="flex-1 flex flex-col items-center justify-center px-6 py-8 space-y-6">
-        {/* Mini website preview card */}
+        {/* Mini website preview card — driven live by all four dimensions */}
         <div className="w-full max-w-xs rounded-2xl overflow-hidden shadow-2xl border border-border">
-          <div className="h-44 flex flex-col items-center justify-center text-center px-4"
-            style={{ background: tcPalette.gradient }}>
+          <div className="h-44 flex flex-col items-center justify-center text-center px-4 relative"
+            style={{ background: currentColorStory?.tokens.heroGradient ?? (currentCollection ? collectionSwatch(currentCollection) : undefined) }}>
             {selectedPhoto && (
               <div className="absolute inset-0 opacity-50"
-                style={{ backgroundImage: `url(${selectedPhoto})`, backgroundSize: "cover", backgroundPosition: "center" }} />
+                style={{ backgroundImage: `url(${selectedPhoto})`, backgroundSize: "cover", backgroundPosition: "center", filter: currentPhotoStyle?.tokens.photoFilter }} />
             )}
             <div className="relative z-10 space-y-2">
               <p className="text-[9px] text-white/60 uppercase tracking-[0.25em]">Wedding</p>
-              <p className="text-xl font-bold text-white" style={{ fontFamily: tc.font, fontStyle: tc.italic ? "italic" : "normal" }}>
+              <p className="text-xl font-bold text-white" style={{ fontFamily: currentTypography?.tokens.headingFont, fontStyle: currentTypography?.tokens.headingItalic ? "italic" : "normal" }}>
                 {suggestions?.coupleNames ?? coupleName}
               </p>
               {suggestions?.event?.eventDate && (
@@ -449,7 +522,7 @@ function SetupWizard({
           </div>
           <div className="p-4 bg-white space-y-2">
             {storyText ? (
-              <p className="text-xs text-gray-500 leading-relaxed line-clamp-2">{storyText}</p>
+              <p className="text-xs text-gray-500 leading-relaxed line-clamp-2" style={{ fontFamily: currentTypography?.tokens.bodyFont }}>{storyText}</p>
             ) : (
               <p className="text-xs text-gray-300 italic">Your story will appear here…</p>
             )}
@@ -458,7 +531,7 @@ function SetupWizard({
 
         <div className="text-center space-y-1">
           <p className="text-sm font-semibold text-heading">
-            {tc.name} · {suggestions?.coupleNames ?? coupleName}
+            {currentCollection?.name} · {suggestions?.coupleNames ?? coupleName}
           </p>
           <p className="text-xs text-muted-foreground">Looking beautiful. You can keep building in the studio.</p>
         </div>
@@ -507,59 +580,64 @@ function WizardFooter({ onBack, onNext, nextLabel, saving }: {
   );
 }
 
-// ── Theme carousel (desktop sidebar header) ───────────────────────────────────
+// ── Collection carousel (desktop sidebar header) ──────────────────────────────
+// Cycles the Layout Collection only — Color Story, Typography, and Photo
+// Style are each their own independent choice, untouched by this control
+// (Part 1/6/7: Collections are composition, not the whole identity anymore).
 
-function ThemeCarousel({ currentTheme, currentPalette, onChange }: {
-  currentTheme: StudioTheme;
-  currentPalette?: string;
-  onChange: (theme: StudioTheme, palette: string) => void;
+function CollectionCarousel({ catalog, currentCollectionId, currentColorStoryId, onChange }: {
+  catalog: HostedExperienceCatalog | null;
+  currentCollectionId?: string | null;
+  currentColorStoryId?: string | null;
+  onChange: (patch: DesignPatch) => void;
 }) {
-  const idx = STUDIO_THEMES.findIndex(t => t.value === currentTheme);
-  const tc = STUDIO_THEMES[idx] ?? STUDIO_THEMES[0];
-  const activePaletteName = currentPalette || tc.palettes[0].name;
-  const activePalette = tc.palettes.find(p => p.name === activePaletteName) ?? tc.palettes[0];
+  const collections = catalog?.collections ?? [];
+  const idx = Math.max(0, collections.findIndex(c => c.id === currentCollectionId));
+  const current = collections[idx] ?? collections[0];
+  const currentStory = current?.colorStories.find(cs => cs.id === currentColorStoryId) ?? current?.colorStories[0];
 
-  function prev() {
-    const next = STUDIO_THEMES[(idx - 1 + STUDIO_THEMES.length) % STUDIO_THEMES.length];
-    onChange(next.value as StudioTheme, next.palettes[0].name);
+  function go(dir: 1 | -1) {
+    if (collections.length === 0) return;
+    const next = collections[(idx + dir + collections.length) % collections.length];
+    onChange({
+      theme: next.key as CoupleWebsite["theme"], collectionId: next.id,
+      ...(next.colorStories[0] ? { themePalette: next.colorStories[0].name, colorStoryId: next.colorStories[0].id } : {}),
+    });
   }
-  function next() {
-    const nx = STUDIO_THEMES[(idx + 1) % STUDIO_THEMES.length];
-    onChange(nx.value as StudioTheme, nx.palettes[0].name);
-  }
+
+  if (!current) return null;
 
   return (
     <div className="rounded-2xl overflow-hidden border border-border">
       {/* Mini preview */}
-      <div className="h-20 relative flex items-center justify-center"
-        style={{ background: activePalette.gradient }}>
-        <p className="text-base font-semibold text-white" style={{ fontFamily: tc.font, fontStyle: tc.italic ? "italic" : "normal" }}>
-          Emily &amp; James
-        </p>
+      <div className="h-20 relative flex items-center justify-center" style={{ background: currentStory?.tokens.heroGradient ?? collectionSwatch(current) }}>
+        <p className="text-base font-semibold text-white">Emily &amp; James</p>
       </div>
       {/* Collection controls */}
       <div className="flex items-center bg-card px-2 pt-2.5 pb-1">
-        <button type="button" onClick={prev} className="p-1.5 rounded-lg hover:bg-muted/60 text-muted-foreground hover:text-foreground transition-colors">
+        <button type="button" onClick={() => go(-1)} className="p-1.5 rounded-lg hover:bg-muted/60 text-muted-foreground hover:text-foreground transition-colors">
           <ChevronLeft className="h-4 w-4" />
         </button>
         <div className="flex-1 text-center">
-          <p className="text-sm font-semibold text-heading">{tc.name}</p>
-          <p className="text-[10px] text-muted-foreground leading-tight px-1">{tc.mood}</p>
+          <p className="text-sm font-semibold text-heading">{current.name}</p>
+          <p className="text-[10px] text-muted-foreground leading-tight px-1 line-clamp-1">{current.description}</p>
         </div>
-        <button type="button" onClick={next} className="p-1.5 rounded-lg hover:bg-muted/60 text-muted-foreground hover:text-foreground transition-colors">
+        <button type="button" onClick={() => go(1)} className="p-1.5 rounded-lg hover:bg-muted/60 text-muted-foreground hover:text-foreground transition-colors">
           <ChevronRight className="h-4 w-4" />
         </button>
       </div>
-      {/* Palette dots */}
-      <div className="flex items-center justify-center gap-2.5 pb-3 bg-card">
-        {tc.palettes.map(p => (
-          <button key={p.name} type="button"
-            onClick={() => onChange(currentTheme, p.name)}
-            title={p.name}
-            className={`rounded-full border-2 transition-all ${p.name === activePaletteName ? "h-5 w-5 border-foreground scale-110" : "h-4 w-4 border-transparent hover:border-border"}`}
-            style={{ background: p.accent }} />
-        ))}
-      </div>
+      {/* Color Story dots — for the current collection's curated shortlist */}
+      {current.colorStories.length > 0 && (
+        <div className="flex items-center justify-center gap-2.5 pb-3 bg-card">
+          {current.colorStories.map(cs => (
+            <button key={cs.id} type="button"
+              onClick={() => onChange({ colorStoryId: cs.id, themePalette: cs.name })}
+              title={cs.name}
+              className={`rounded-full border-2 transition-all ${cs.id === currentStory?.id ? "h-5 w-5 border-foreground scale-110" : "h-4 w-4 border-transparent hover:border-border"}`}
+              style={{ background: cs.tokens.accent }} />
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -584,12 +662,18 @@ export function WebsiteStudio({
   const [wizardDismissed, setWizardDismissed] = React.useState(false);
   const [suggestions, setSuggestions] = React.useState<WebsiteSuggestions | null>(null);
 
+  // Catalog — the four dimensions' data, shared by the wizard and the carousel
+  const [catalog, setCatalog] = React.useState<HostedExperienceCatalog | null>(null);
+  React.useEffect(() => {
+    fetch("/api/portal/website/catalog").then(r => r.json()).then(setCatalog).catch(() => {});
+  }, []);
+
   // Studio UI state
   const [activeSection, setActiveSection] = React.useState<string | null>(null);
   const [focusSection, setFocusSection] = React.useState<string | null>(null);
   const [mobileView, setMobileView] = React.useState<"edit" | "preview">("edit");
   const [previewDevice, setPreviewDevice] = React.useState<"mobile" | "desktop">("desktop");
-  const [savingTheme, setSavingTheme] = React.useState(false);
+  const [savingDesign, setSavingDesign] = React.useState(false);
 
   const coupleName = [context.client.firstName, context.client.partnerFirstName].filter(Boolean).join(" & ");
   const completedSections = React.useMemo(
@@ -620,48 +704,64 @@ export function WebsiteStudio({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
 
-  // Build PublicWebsite shape for the live preview
-  const livePreviewSite = React.useMemo((): PublicWebsite => ({
-    siteId: previewSite.id,
-    slug: previewSite.slug ?? "",
-    theme: previewSite.theme,
-    themePalette: previewSite.themePalette,
-    accentColor: previewSite.accentColor,
-    fontPairing: previewSite.fontPairing,
-    sectionOrder: previewSite.sectionOrder,
-    sectionsEnabled: previewSite.sectionsEnabled,
-    content: previewContent,
-    couple: {
-      firstName: context.client.firstName,
-      lastName: context.client.lastName ?? null,
-      partnerFirstName: context.client.partnerFirstName ?? null,
-      partnerLastName: context.client.partnerLastName ?? null,
-    },
-    event: context.event ? {
-      id: context.event.id,
-      name: context.event.name ?? "",
-      eventDate: context.event.eventDate,
-      eventType: context.event.eventType ?? null,
-    } : null,
-  }), [previewSite, previewContent, context]);
+  // Build PublicWebsite shape for the live preview — all four dimensions'
+  // resolved tokens come from the catalog directly (same shape
+  // get_wedding_website returns server-side), so the in-studio preview
+  // matches the real published page exactly.
+  const livePreviewSite = React.useMemo((): PublicWebsite => {
+    const collection = catalog?.collections.find(c => c.id === previewSite.collectionId);
+    const colorStory = collection?.colorStories.find(cs => cs.id === previewSite.colorStoryId);
+    const typography = catalog?.typographyStyles.find(t => t.id === previewSite.typographyStyleId);
+    const photoStyle = catalog?.photoStyles.find(p => p.id === previewSite.photoStyleId);
+    return {
+      siteId: previewSite.id,
+      slug: previewSite.slug ?? "",
+      theme: previewSite.theme,
+      themePalette: previewSite.themePalette,
+      accentColor: previewSite.accentColor,
+      fontPairing: previewSite.fontPairing,
+      layoutConfig: collection?.layoutConfig,
+      colorTokens: colorStory?.tokens,
+      typographyTokens: typography?.tokens,
+      photoStyleTokens: photoStyle?.tokens,
+      colorPrimary: previewSite.colorPrimary, colorSecondary: previewSite.colorSecondary,
+      colorAccent: previewSite.colorAccent, colorNeutral: previewSite.colorNeutral,
+      colorBackground: previewSite.colorBackground, colorText: previewSite.colorText,
+      sectionOrder: previewSite.sectionOrder,
+      sectionsEnabled: previewSite.sectionsEnabled,
+      content: previewContent,
+      couple: {
+        firstName: context.client.firstName,
+        lastName: context.client.lastName ?? null,
+        partnerFirstName: context.client.partnerFirstName ?? null,
+        partnerLastName: context.client.partnerLastName ?? null,
+      },
+      event: context.event ? {
+        id: context.event.id,
+        name: context.event.name ?? "",
+        eventDate: context.event.eventDate,
+        eventType: context.event.eventType ?? null,
+      } : null,
+    };
+  }, [previewSite, previewContent, context, catalog]);
 
   async function handleSaveSection(key: string, value: object) {
     setPreviewContent(c => ({ ...c, [key]: value }));
   }
 
-  async function handleAppearanceChanged(patch: Partial<CoupleWebsite & { fontPairing: string }>) {
+  async function handleAppearanceChanged(patch: DesignPatch) {
     setPreviewSite(s => ({ ...s, ...patch }));
   }
 
-  async function handleSaveTheme(theme: StudioTheme, palette: string) {
-    setSavingTheme(true);
+  async function handleSaveDesign(patch: DesignPatch) {
+    setSavingDesign(true);
     try {
       await fetch("/api/portal/website", {
         method: "POST", headers: { "content-type": "application/json" },
-        body: JSON.stringify({ token, theme, themePalette: palette }),
+        body: JSON.stringify({ token, ...patch }),
       });
-      setPreviewSite(s => ({ ...s, theme, themePalette: palette }));
-    } finally { setSavingTheme(false); }
+      setPreviewSite(s => ({ ...s, ...patch }));
+    } finally { setSavingDesign(false); }
   }
 
   function handleSectionClick(key: string) {
@@ -689,6 +789,7 @@ export function WebsiteStudio({
           site={previewSite}
           suggestions={suggestions}
           token={token}
+          catalog={catalog}
           onSaveSection={async (key, value) => {
             await fetch("/api/portal/website", {
               method: "POST", headers: { "content-type": "application/json" },
@@ -697,7 +798,7 @@ export function WebsiteStudio({
             setPreviewContent(c => ({ ...c, [key]: value }));
             toast.success("Saved!");
           }}
-          onSaveTheme={handleSaveTheme}
+          onSaveDesign={handleSaveDesign}
           coupleName={coupleName}
         />
       )}
@@ -741,21 +842,22 @@ export function WebsiteStudio({
             </button>
           </div>
 
-          {/* Theme carousel */}
+          {/* Collection carousel */}
           <div className="px-4 pt-4 pb-2">
-            <ThemeCarousel
-              currentTheme={(previewSite.theme ?? "classic") as StudioTheme}
-              currentPalette={previewSite.themePalette}
-              onChange={handleSaveTheme}
+            <CollectionCarousel
+              catalog={catalog}
+              currentCollectionId={previewSite.collectionId}
+              currentColorStoryId={previewSite.colorStoryId}
+              onChange={handleSaveDesign}
             />
-            {savingTheme && (
+            {savingDesign && (
               <p className="text-[10px] text-muted-foreground text-center mt-1 flex items-center justify-center gap-1">
                 <Loader2 className="h-3 w-3 animate-spin" /> Updating…
               </p>
             )}
           </div>
 
-          {/* Editor (sections + full controls) */}
+          {/* Editor (sections + full controls, incl. the full Theme Studio) */}
           <div className="px-4 pb-6">
             <WebsiteEditor
               token={token}
@@ -786,8 +888,10 @@ export function WebsiteStudio({
                 <Monitor className="h-3.5 w-3.5" />
               </button>
               {previewSite.slug && (
-                <a href={`${origin}/w/${previewSite.slug}`} target="_blank" rel="noopener noreferrer"
-                  className="ml-1 p-1.5 rounded-lg text-muted-foreground hover:bg-muted transition-colors">
+                <a href={previewSite.previewToken ? `${origin}/w/${previewSite.slug}?preview=${previewSite.previewToken}` : `${origin}/w/${previewSite.slug}`}
+                  target="_blank" rel="noopener noreferrer"
+                  className="ml-1 p-1.5 rounded-lg text-muted-foreground hover:bg-muted transition-colors"
+                  title="Open the real public page — works even before you publish">
                   <Eye className="h-3.5 w-3.5" />
                 </a>
               )}
@@ -862,7 +966,7 @@ type WebsiteEditorProps = {
   origin: string;
   initialGuests?: { id: string; firstName: string; lastName: string | null; email: string | null; rsvpStatus: string; rsvpSentAt?: string | null }[];
   onSectionSaved?: (key: string, value: object) => void;
-  onAppearanceChanged?: (patch: Partial<CoupleWebsite & { fontPairing: string }>) => void;
+  onAppearanceChanged?: (patch: DesignPatch) => void;
   focusSection?: string | null;
   hideStatusHeader?: boolean;
 };

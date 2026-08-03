@@ -12,6 +12,8 @@ export async function completeTaskAction(
 
   revalidatePath("/tasks");
   revalidatePath("/onboarding");
+  revalidatePath("/sales");
+  revalidatePath("/customer-success");
   revalidatePath("/relationships");
   revalidatePath(`/relationships/${result.relationshipId}`);
   return { ok: true };

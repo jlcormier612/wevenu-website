@@ -8,6 +8,7 @@ import { randomUUID } from "crypto";
 
 import { applyHealthSnapshot, computeRelationshipHealth } from "./health";
 import { mapPlanId, planDisplayName } from "./normalize";
+import { applySubscribeViewTransition } from "./sales-cs";
 import {
   mutateRelationship,
   type FindOrCreateResult,
@@ -89,6 +90,10 @@ export async function enterOnboardingAfterPurchase(input: {
         : "self_guided";
     relationship.paymentStatus = relationship.paymentStatus || "paid";
     relationship.subscribedAt = relationship.subscribedAt || now;
+    // Same Relationship ID — leave Sales view, enter Customer Success.
+    applySubscribeViewTransition(relationship, {
+      customerSuccessStage: isWg ? "implementation" : "onboarding",
+    });
     relationship.updatedAt = now;
     relationship.lastContactAt = now;
     relationship.lastTeamActivityAt = now;
@@ -220,6 +225,8 @@ export async function createManualSubscription(input: {
       paymentStatus: "manual",
       subscribedAt: now,
       currentStageLabel: "Subscribed",
+      salesStage: "won",
+      customerSuccessStage: "welcome",
       notes: input.notes,
     },
     event: {
@@ -326,6 +333,8 @@ export async function launchWhiteGloveWorkspace(input: {
 
     relationship.status = "active";
     relationship.currentStageLabel = "Active";
+    relationship.salesStage = "won";
+    relationship.customerSuccessStage = "live";
     relationship.accessDisabled = false;
     relationship.activationToken = token;
     relationship.activationTokenCreatedAt =

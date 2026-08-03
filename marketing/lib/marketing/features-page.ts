@@ -69,6 +69,7 @@ export const FEATURES_PAGE = {
         "Planning Progress",
         "Task Completion",
         "Secure File Sharing",
+        "Website Builder",
       ],
     },
     {
