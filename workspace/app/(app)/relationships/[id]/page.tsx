@@ -11,9 +11,11 @@ import {
   RelationshipTimeline,
   SecondaryLists,
   CustomerSuccessPanels,
+  resolveSnapshotMode,
+  type SnapshotPreferredView,
 } from "@/components/relationships/relationship-workspace";
 import { StatusMoveControl } from "@/components/relationships/status-move-control";
-import { WelcomeBackVerifyControl } from "@/components/relationships/welcome-back-verify-control";
+import { SupportResolveControl } from "@/components/relationships/support-resolve-control";
 import { Panel, StatusPill } from "@/components/shared/ui";
 import { LogWalkthroughForm } from "@/components/walkthroughs/log-walkthrough-form";
 import {
@@ -36,10 +38,11 @@ import {
   getTimelineForRelationship,
 } from "@/lib/data/store";
 import { loadLuvRelationshipAdvisor } from "@/lib/luv/load";
-import { isInCustomerSuccessView, isInSalesView } from "@/lib/sales-cs";
+import { isInCustomerSuccessView } from "@/lib/sales-cs";
 import { tickWorkflows } from "@/lib/program3/engine";
 import { tickSequences } from "@/lib/program3/sequence-engine";
 import {
+  appendRelationshipPatch,
   ensureProgram3Data,
   getSequenceEnrollmentsSync,
   getSequencesSync,
@@ -50,7 +53,13 @@ import { actorCan, getActingMember } from "@/lib/program4/session";
 import { ensureProgram4Data } from "@/lib/program4/store";
 import { ensureWhiteGloveChecklistsInWorkspace } from "@/lib/white-glove/ensure-checklist";
 import { formatDateTime } from "@/lib/utils";
-import { refreshRelationshipHealth } from "@shared/relationships";
+import {
+  clearRelationshipAutoArrival,
+  hasLiveRelationshipsSync,
+  refreshRelationshipHealth,
+  tickRenewalStageForRelationship,
+} from "@shared/relationships";
+
 export async function generateMetadata({
   params,
 }: {
@@ -65,16 +74,37 @@ export async function generateMetadata({
 
 export default async function RelationshipDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ from?: string; panel?: string }>;
 }) {
   const { id } = await params;
+  const { from, panel } = await searchParams;
+  const preferredView: SnapshotPreferredView | undefined =
+    from === "sales" || from === "customer-success" ? from : undefined;
+  const focusSupport = panel === "support";
   await ensureProgram4Data();
   await ensureProgram3Data();
   await ensureWhiteGloveChecklistsInWorkspace();
   await tickWorkflows(getRelationship);
   await tickSequences(getRelationship);
   await refreshRelationshipHealth(id).catch(() => null);
+  if (hasLiveRelationshipsSync()) {
+    await tickRenewalStageForRelationship(id).catch(() => null);
+  }
+
+  // Opening from Sales / CS acknowledges any auto-arrival highlight on this record.
+  if (preferredView) {
+    if (hasLiveRelationshipsSync()) {
+      await clearRelationshipAutoArrival(id).catch(() => null);
+    }
+    await appendRelationshipPatch({
+      relationshipId: id,
+      lastAutoArrival: null,
+      updatedAt: new Date().toISOString(),
+    }).catch(() => null);
+  }
 
   const relationship = getRelationship(id);
   if (!relationship) notFound();
@@ -90,10 +120,18 @@ export default async function RelationshipDetailPage({
   const canEditRelationships = await actorCan("edit_relationships");
   const canManageOnboarding = await actorCan("manage_onboarding");
   const canViewFinance = await actorCan("view_finance");
+  const canManageCommunications = await actorCan("manage_communications");
+  const canResolveSupport = canEditRelationships || canManageCommunications;
+  const canOwnerTools = canEditRelationships || canManageCommunications;
   const showWelcomeBackActions =
     canVerifyWelcomeBack &&
     relationship.welcomeBackRequested &&
     relationship.welcomeBackVerified === "pending";
+  const openFeedbackItems = (relationship.openFeedbackItems ?? []).filter(
+    (i) => i.status === "open",
+  );
+  const showSupportPanel =
+    (relationship.supportOpenCount || 0) > 0 || openFeedbackItems.length > 0;
 
   const timeline = getTimelineForRelationship(id);
   const tasks = getTasks({ relationshipId: id });
@@ -107,15 +145,18 @@ export default async function RelationshipDetailPage({
   const sequences = getSequencesSync();
   const sequenceEnrollments = getSequenceEnrollmentsSync({ relationshipId: id });
   const teamOptions = getTeamMembers().map((m) => ({ id: m.id, name: m.name }));
-  const pipelineBucket = isInSalesView(relationship)
-    ? ("prospects" as const)
-    : ("customers" as const);
+  const pipelineBucket = isInCustomerSuccessView(relationship)
+    ? ("customers" as const)
+    : ("prospects" as const);
   const backHref = isInCustomerSuccessView(relationship)
     ? "/customer-success"
     : "/sales";
   const backLabel = isInCustomerSuccessView(relationship)
     ? "← Customer Success"
     : "← Sales";
+  /** Same hard switch as snapshot: subscribed wins; Sales / !subscribed hides customer-only controls. */
+  const showCustomerActions =
+    resolveSnapshotMode(relationship, preferredView) === "cs";
 
   return (
     <div className="space-y-6">
@@ -127,7 +168,7 @@ export default async function RelationshipDetailPage({
           {backLabel}
         </Link>
         <div className="flex flex-wrap items-center gap-3">
-          {canManageWalkthroughs ? (
+          {canManageWalkthroughs && !showCustomerActions ? (
             <LogWalkthroughForm
               relationships={[]}
               teamMembers={teamOptions}
@@ -142,7 +183,11 @@ export default async function RelationshipDetailPage({
         </div>
       </div>
 
-      <RelationshipSnapshot relationship={relationship} />
+      <RelationshipSnapshot
+        relationship={relationship}
+        preferredView={preferredView}
+        canVerifyWelcomeBack={canVerifyWelcomeBack}
+      />
       <LuvRelationshipAdvisor
         venueName={relationship.venue.name}
         insights={insights}
@@ -150,10 +195,23 @@ export default async function RelationshipDetailPage({
         actorFirstName={actorFirstName}
         showWelcomeBackVerify={showWelcomeBackActions}
       />
-      {showWelcomeBackActions ? (
-        <WelcomeBackVerifyControl
+      {showSupportPanel ? (
+        <SupportResolveControl
           relationshipId={id}
           venueName={relationship.venue.name}
+          ownerEmail={relationship.owner.email}
+          ownerFirstName={relationship.owner.firstName}
+          openCount={relationship.supportOpenCount || 0}
+          items={(relationship.openFeedbackItems ?? []).map((i) => ({
+            id: i.id,
+            type: i.type,
+            subject: i.subject,
+            body: i.body,
+            createdAt: i.createdAt,
+            status: i.status,
+          }))}
+          autoFocus={focusSupport}
+          canAct={canResolveSupport}
         />
       ) : null}
       <LifecycleActions
@@ -162,19 +220,26 @@ export default async function RelationshipDetailPage({
         onboardingType={relationship.onboardingType}
         status={relationship.status}
         hasStripeCustomer={Boolean(relationship.stripeCustomerId)}
+        showCustomerActions={showCustomerActions}
         canSendLink={canEditRelationships}
         canManualSub={canProvisionProduct}
         canLaunch={canManageOnboarding || canProvisionProduct}
         canSuspend={canProvisionProduct}
         canManageBilling={canEditRelationships || canViewFinance}
+        canOwnerTools={canOwnerTools}
+        ownerEmail={relationship.owner.email}
+        ownerFirstName={relationship.owner.firstName}
+        venueName={relationship.venue.name}
       />
       <StatusMoveControl relationship={relationship} />
       <CustomerSuccessPanels relationship={relationship} />
-      <ProductSyncPanel
-        relationshipId={id}
-        productSync={relationship.productSync}
-        canProvision={canProvisionProduct}
-      />
+      {showCustomerActions ? (
+        <ProductSyncPanel
+          relationshipId={id}
+          productSync={relationship.productSync}
+          canProvision={canProvisionProduct}
+        />
+      ) : null}
       <EnrollSequenceButton
         relationshipId={id}
         sequences={sequences}

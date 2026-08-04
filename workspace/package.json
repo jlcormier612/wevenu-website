@@ -6,7 +6,8 @@
     "dev": "next dev --port 3002",
     "build": "next build",
     "start": "next start --port 3002",
-    "lint": "eslint"
+    "lint": "eslint",
+    "tick:automations": "npx tsx --tsconfig tsconfig.json scripts/tick-automations.mts"
   },
   "dependencies": {
     "clsx": "^2.1.1",

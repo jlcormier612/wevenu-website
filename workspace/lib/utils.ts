@@ -110,10 +110,28 @@ export const ONBOARDING_LABELS: Record<OnboardingType, string> = {
 export const WELCOME_BACK_LABELS: Record<WelcomeBackVerifiedStatus, string> = {
   none: "—",
   pending: "Pending",
-  verified: "Welcome Back verified",
+  verified: "Verified",
   rejected: "Rejected",
   expired: "Expired",
 };
+
+/** Attention-style badge copy for CS board / list — not pipeline stages. */
+export function welcomeBackBadgeLabel(
+  status: WelcomeBackVerifiedStatus,
+): string | null {
+  switch (status) {
+    case "pending":
+      return "Welcome Back · Needs review";
+    case "verified":
+      return "Welcome Back · Yes";
+    case "rejected":
+      return "Welcome Back · No";
+    case "expired":
+      return "Welcome Back · Expired";
+    default:
+      return null;
+  }
+}
 
 export const TASK_PRIORITY_LABELS: Record<TaskPriority, string> = {
   low: "Low",

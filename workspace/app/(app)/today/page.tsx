@@ -2,6 +2,10 @@ import Link from "next/link";
 
 import { LuvBriefingCard } from "@/components/luv/luv-briefing";
 import {
+  SupportResolveControl,
+  supportItemPreview,
+} from "@/components/relationships/support-resolve-control";
+import {
   DataTable,
   PageHeader,
   Panel,
@@ -14,7 +18,7 @@ import {
   getTeamMember,
 } from "@/lib/data/store";
 import { loadLuvBriefing } from "@/lib/luv/load";
-import { getActingMember } from "@/lib/program4/session";
+import { actorCan, getActingMember } from "@/lib/program4/session";
 import { ensureProgram4Data } from "@/lib/program4/store";
 import { formatDateTime, formatRelativeDay } from "@/lib/utils";
 
@@ -23,6 +27,9 @@ export const metadata = { title: "Today" };
 export default async function TodayPage() {
   await ensureProgram4Data();
   const actor = await getActingMember();
+  const canResolveSupport =
+    (await actorCan("edit_relationships")) ||
+    (await actorCan("manage_communications"));
   const { briefing, drafts } = loadLuvBriefing(actor);
   const d = getDashboardBuckets();
 
@@ -38,8 +45,14 @@ export default async function TodayPage() {
         <LuvBriefingCard briefing={briefing} drafts={drafts} compact />
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
         <StatTile label="New Inquiries" value={d.newInquiries.length} href="/sales?stage=inquiry" />
+        <StatTile
+          label="Responded — F/U"
+          value={d.respondedNeedsFollowUp.length}
+          href="/sales?stage=responded"
+          hint="Reply immediately"
+        />
         <StatTile
           label="Walkthrough Requests"
           value={d.newWalkthroughRequests.length}
@@ -75,13 +88,34 @@ export default async function TodayPage() {
         <StatTile
           label="Support Requests"
           value={d.supportRequests.length}
-          href="/communications"
+          href="/customer-success?stage=needs_support"
+          hint={
+            d.supportRequests.length > 0
+              ? "Open Needs Support — click to triage"
+              : undefined
+          }
         />
       </div>
 
       <div className="mt-8 grid gap-6 lg:grid-cols-5">
         <Panel title="Needs attention" className="lg:col-span-3">
           <div className="space-y-6">
+            <Bucket
+              title="Responded — follow up now"
+              empty="No prospects waiting on a reply."
+              items={d.respondedNeedsFollowUp.map((r) => (
+                <RelationshipLink
+                  key={r.id}
+                  id={r.id}
+                  name={r.venue.name}
+                  subtitle={`${r.owner.firstName} ${r.owner.lastName} · replied${
+                    r.lastInboundAt
+                      ? ` · ${formatRelativeDay(r.lastInboundAt)}`
+                      : ""
+                  }`}
+                />
+              ))}
+            />
             <Bucket
               title="New inquiries"
               empty="No new inquiries today."
@@ -109,14 +143,45 @@ export default async function TodayPage() {
             <Bucket
               title="Open support"
               empty="No open support."
-              items={d.supportRequests.map((r) => (
-                <RelationshipLink
-                  key={r.id}
-                  id={r.id}
-                  name={r.venue.name}
-                  subtitle={r.nextMilestone ?? "Support open"}
-                />
-              ))}
+              items={d.supportRequests.map((r) => {
+                const previewItems = (r.openFeedbackItems ?? []).map((i) => ({
+                  id: i.id,
+                  type: i.type,
+                  subject: i.subject,
+                  body: i.body,
+                  createdAt: i.createdAt,
+                  status: i.status,
+                }));
+                const preview =
+                  supportItemPreview(previewItems) ||
+                  r.nextMilestone ||
+                  "Open support — click to view";
+                return (
+                  <div
+                    key={r.id}
+                    className="rounded-sm border border-[color-mix(in_srgb,var(--dusty-rose)_35%,transparent)] bg-[color-mix(in_srgb,var(--dusty-rose)_8%,var(--true-white))] px-3 py-2"
+                  >
+                    <RelationshipLink
+                      id={r.id}
+                      href={`/relationships/${r.id}?panel=support&from=customer-success`}
+                      name={r.venue.name}
+                      subtitle={preview}
+                    />
+                    <p className="mt-1 text-xs font-medium text-[var(--heritage-sage)]">
+                      View message & reply →
+                    </p>
+                    {canResolveSupport ? (
+                      <SupportResolveControl
+                        relationshipId={r.id}
+                        venueName={r.venue.name}
+                        openCount={r.supportOpenCount || 0}
+                        items={previewItems}
+                        compact
+                      />
+                    ) : null}
+                  </div>
+                );
+              })}
             />
           </div>
         </Panel>
@@ -125,10 +190,17 @@ export default async function TodayPage() {
           <ul className="space-y-4">
             {d.unreadNotifications.map((n) => {
               const rel = getRelationship(n.relationshipId);
+              const isSupport =
+                n.type === "support_request_submitted" ||
+                n.type === "feedback_received";
               return (
                 <li key={n.id}>
                   <Link
-                    href={`/relationships/${n.relationshipId}`}
+                    href={
+                      isSupport
+                        ? `/relationships/${n.relationshipId}?panel=support`
+                        : `/relationships/${n.relationshipId}`
+                    }
                     className="block hover:opacity-80"
                   >
                     <p className="font-medium">{n.title}</p>

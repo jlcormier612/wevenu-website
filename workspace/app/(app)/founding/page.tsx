@@ -119,23 +119,23 @@ export default async function FounderDashboardPage() {
           label="Welcome Back · approved"
           value={metrics.welcomeBackApproved}
           hint="Verified · Founding pricing eligibility"
-          href="/sales?view=list&wb=verified"
+          href="/customer-success?view=list"
         />
         <StatTile
           label="Welcome Back · pending"
           value={metrics.welcomeBackPending}
-          hint="Open the Relationship to Approve / Reject / Follow up"
-          href="/sales?view=list&wb=pending"
+          hint="Confirm returning or Not returning on the customer card"
+          href="/customer-success?flag=wb_pending"
         />
         <StatTile
           label="Welcome Back · rejected"
           value={metrics.welcomeBackRejected}
           hint={
             metrics.welcomeBackExpired > 0
-              ? `${metrics.welcomeBackExpired} expired · verify on the Relationship`
-              : "Updated when Reject is chosen on the Relationship"
+              ? `${metrics.welcomeBackExpired} expired · review on the Relationship`
+              : "Updated when Not returning is chosen on the Relationship"
           }
-          href="/sales?view=list&wb=rejected"
+          href="/customer-success?view=list"
         />
       </div>
 
@@ -145,10 +145,10 @@ export default async function FounderDashboardPage() {
           className="lg:col-span-3"
           action={
             <Link
-              href="/sales?view=list"
+              href="/customer-success?view=list"
               className="text-sm text-[var(--heritage-sage)] underline-offset-4 hover:underline"
             >
-              All relationships →
+              All customers →
             </Link>
           }
         >

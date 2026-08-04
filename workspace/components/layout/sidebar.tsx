@@ -11,11 +11,17 @@ import { cn } from "@/lib/utils";
 
 type SidebarProps = {
   unreadCount: number;
+  openSupportCount?: number;
   permissions: Permission[];
   homeHref: string;
 };
 
-export function Sidebar({ unreadCount, permissions, homeHref }: SidebarProps) {
+export function Sidebar({
+  unreadCount,
+  openSupportCount = 0,
+  permissions,
+  homeHref,
+}: SidebarProps) {
   const pathname = usePathname();
   const allowed = new Set(permissions);
 
@@ -45,18 +51,37 @@ export function Sidebar({ unreadCount, permissions, homeHref }: SidebarProps) {
         {items.map((item) => {
           const active =
             pathname === item.href || pathname.startsWith(`${item.href}/`);
+          const showSupportBadge =
+            item.href === "/customer-success" && openSupportCount > 0;
           return (
             <Link
               key={item.href}
-              href={item.href}
+              href={
+                showSupportBadge
+                  ? "/customer-success?stage=needs_support"
+                  : item.href
+              }
               className={cn(
-                "block rounded-sm px-3 py-2.5 text-[0.95rem] tracking-wide",
+                "flex items-center justify-between gap-2 rounded-sm px-3 py-2.5 text-[0.95rem] tracking-wide",
                 active
                   ? "bg-[var(--forest-sage)] text-[var(--true-white)]"
                   : "text-[var(--forest-sage)] hover:bg-[color-mix(in_srgb,var(--soft-sage)_35%,transparent)]",
               )}
             >
-              {item.label}
+              <span>{item.label}</span>
+              {showSupportBadge ? (
+                <span
+                  className={cn(
+                    "shrink-0 rounded-sm px-1.5 py-0.5 text-[0.65rem] font-medium tabular-nums",
+                    active
+                      ? "bg-[var(--true-white)]/20 text-[var(--true-white)]"
+                      : "bg-[color-mix(in_srgb,var(--dusty-rose)_28%,transparent)] text-[var(--dusty-rose)]",
+                  )}
+                  title={`${openSupportCount} open support`}
+                >
+                  {openSupportCount}
+                </span>
+              ) : null}
             </Link>
           );
         })}

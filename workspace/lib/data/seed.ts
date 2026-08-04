@@ -315,6 +315,20 @@ export const seedData: WorkspaceData = {
       createdAt: "2026-03-15T12:00:00.000Z",
       updatedAt: "2026-07-21T09:45:00.000Z",
       supportOpenCount: 1,
+      customerSuccessStage: "needs_support",
+      customerSuccessStageBeforeSupport: "healthy",
+      subscribedAt: "2026-03-15T12:00:00.000Z",
+      openFeedbackItems: [
+        {
+          id: "fb_solstice_guest_portal",
+          type: "support",
+          subject: "Guest portal issue",
+          body: "Our couples can't see the updated guest list after we publish — can you help us unblock this today?",
+          createdAt: "2026-07-21T09:45:00.000Z",
+          status: "open",
+          source: "product",
+        },
+      ],
     },
     {
       id: "rel_ivory",

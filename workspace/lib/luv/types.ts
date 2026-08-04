@@ -33,6 +33,7 @@ export type LuvInsightType =
   | "sales_proposal_followup"
   | "sales_schedule_walkthrough"
   | "sales_inactivity"
+  | "sales_responded"
   | "cs_invite_team"
   | "cs_publish_website"
   | "cs_schedule_onboarding"

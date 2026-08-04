@@ -253,26 +253,31 @@ export type RelationshipPatch = {
   /** Sales board stage (pre-customer view). */
   salesStage?:
     | "inquiry"
-    | "discovery_scheduled"
-    | "venue_walkthrough"
+    | "personal_send"
+    | "sequence_scheduled"
+    | "responded"
+    | "walkthrough_scheduled"
     | "proposal_sent"
-    | "negotiation"
-    | "awaiting_signature"
-    | "won"
-    | "lost"
-    | "nurture";
+    | "follow_up"
+    | "closed_won"
+    | "closed_lost";
   /** Customer Success lifecycle stage (post-subscribe view). */
   customerSuccessStage?:
-    | "welcome"
     | "onboarding"
     | "implementation"
-    | "training"
     | "live"
-    | "adoption"
+    | "check_in_sequence"
     | "healthy"
     | "expansion"
     | "renewal"
-    | "renewed";
+    | "renewed"
+    | "needs_support";
+  /** Cleared auto-arrival highlight (null) or local overlay value. */
+  lastAutoArrival?: {
+    stage: string;
+    at: string;
+    board: "sales" | "cs";
+  } | null;
   updatedAt: string;
 };
 

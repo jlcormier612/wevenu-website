@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { AddRelationshipForm } from "@/components/relationships/add-relationship-form";
+import { AutoArrivalBadge } from "@/components/relationships/auto-arrival-badge";
 import { SalesPipelineBoard } from "@/components/relationships/sales-pipeline-board";
 import {
   DataTable,
@@ -21,38 +22,32 @@ import { ensureProgram4Data } from "@/lib/program4/store";
 import {
   SALES_STAGE_COLUMNS,
   SALES_STAGE_LABELS,
+  countAutoArrivalsForStage,
   deriveSalesStage,
   isInSalesView,
+  isSalesAutoArrivalStage,
   type SalesStage,
 } from "@/lib/sales-cs";
-import type { WelcomeBackVerifiedStatus } from "@/lib/types";
 import {
   formatRelativeDay,
   HEALTH_EMOJI,
   HEALTH_LABELS,
-  WELCOME_BACK_LABELS,
   yesNo,
 } from "@/lib/utils";
+import {
+  acknowledgeStageAutoArrivals,
+  hasLiveRelationshipsSync,
+} from "@shared/relationships";
 
 export const metadata = { title: "Sales" };
 
 const STAGE_FILTERS: { label: string; value: SalesStage | "all" }[] = [
   { label: "All", value: "all" },
-  ...SALES_STAGE_COLUMNS.filter((c) => c.stage !== "won").map((c) => ({
+  ...SALES_STAGE_COLUMNS.map((c) => ({
     label: c.label,
     value: c.stage,
   })),
 ];
-
-const WB_FILTERS: WelcomeBackVerifiedStatus[] = [
-  "pending",
-  "verified",
-  "rejected",
-];
-
-function isWbFilter(value: string | undefined): value is WelcomeBackVerifiedStatus {
-  return value === "pending" || value === "verified" || value === "rejected";
-}
 
 function isSalesStageFilter(value: string | undefined): value is SalesStage {
   return SALES_STAGE_COLUMNS.some((c) => c.stage === value);
@@ -61,7 +56,7 @@ function isSalesStageFilter(value: string | undefined): value is SalesStage {
 export default async function SalesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ stage?: string; view?: string; wb?: string }>;
+  searchParams: Promise<{ stage?: string; view?: string }>;
 }) {
   await ensureProgram4Data();
   await ensureProgram3Data();
@@ -70,26 +65,28 @@ export default async function SalesPage({
   const canEdit = await actorCan("edit_relationships");
   const params = await searchParams;
   const stageFilter = isSalesStageFilter(params.stage) ? params.stage : "all";
-  const wbFilter = isWbFilter(params.wb) ? params.wb : null;
-  const view = params.view === "list" || wbFilter ? "list" : "pipeline";
+  const view = params.view === "list" ? "list" : "pipeline";
+
+  // Acknowledge filter chip / column stage so the highlight clears.
+  if (
+    stageFilter !== "all" &&
+    isSalesAutoArrivalStage(stageFilter) &&
+    hasLiveRelationshipsSync()
+  ) {
+    await acknowledgeStageAutoArrivals("sales", stageFilter).catch(() => null);
+  }
+
   const all = getRelationships().filter(isInSalesView);
 
-  let relationships =
+  const relationships =
     stageFilter === "all"
       ? all
       : all.filter((r) => deriveSalesStage(r) === stageFilter);
 
-  if (wbFilter) {
-    relationships = relationships.filter(
-      (r) => r.welcomeBackRequested && r.welcomeBackVerified === wbFilter,
-    );
-  }
-
-  const wbQuery = wbFilter ? `&wb=${wbFilter}` : "";
   const listHref =
     stageFilter === "all"
-      ? `/sales?view=list${wbQuery}`
-      : `/sales?view=list&stage=${stageFilter}${wbQuery}`;
+      ? "/sales?view=list"
+      : `/sales?view=list&stage=${stageFilter}`;
   const pipelineHref =
     stageFilter === "all" ? "/sales" : `/sales?stage=${stageFilter}`;
 
@@ -98,14 +95,14 @@ export default async function SalesPage({
       <PageHeader
         eyebrow="Sales"
         title="Every venue, one record"
-        description="Convert inquiries to subscribed. Status changes; the relationship remains. After subscribe, the same record appears in Customer Success."
+        description="Convert inquiries to subscribed. Closed Won stays on this board after subscribe — the same record also appears in Customer Success. Dragging to Closed Won does not enter CS; only a successful Stripe subscribe does."
         action={canEdit ? <AddRelationshipForm /> : undefined}
       />
 
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-wrap gap-2">
           {STAGE_FILTERS.map((f) => {
-            const active = stageFilter === f.value && !wbFilter;
+            const active = stageFilter === f.value;
             const base =
               f.value === "all"
                 ? view === "list"
@@ -114,33 +111,26 @@ export default async function SalesPage({
                 : view === "list"
                   ? `/sales?view=list&stage=${f.value}`
                   : `/sales?stage=${f.value}`;
+            const newCount =
+              f.value !== "all"
+                ? countAutoArrivalsForStage(
+                    all.filter((r) => deriveSalesStage(r) === f.value),
+                    f.value,
+                    "sales",
+                  )
+                : 0;
             return (
               <Link
                 key={f.value}
                 href={base}
                 className={
                   active
-                    ? "rounded-sm bg-[var(--forest-sage)] px-3 py-1.5 text-sm text-[var(--true-white)]"
-                    : "rounded-sm bg-[var(--true-white)] px-3 py-1.5 text-sm text-[var(--forest-sage)] ring-1 ring-[color-mix(in_srgb,var(--taupe-medium)_50%,transparent)] hover:bg-[var(--header-linen)]"
+                    ? "inline-flex items-center rounded-sm bg-[var(--forest-sage)] px-3 py-1.5 text-sm text-[var(--true-white)]"
+                    : "inline-flex items-center rounded-sm bg-[var(--true-white)] px-3 py-1.5 text-sm text-[var(--forest-sage)] ring-1 ring-[color-mix(in_srgb,var(--taupe-medium)_50%,transparent)] hover:bg-[var(--header-linen)]"
                 }
               >
                 {f.label}
-              </Link>
-            );
-          })}
-          {WB_FILTERS.map((wb) => {
-            const active = wbFilter === wb;
-            return (
-              <Link
-                key={wb}
-                href={`/sales?view=list&wb=${wb}`}
-                className={
-                  active
-                    ? "rounded-sm bg-[var(--forest-sage)] px-3 py-1.5 text-sm text-[var(--true-white)]"
-                    : "rounded-sm bg-[var(--true-white)] px-3 py-1.5 text-sm text-[var(--forest-sage)] ring-1 ring-[color-mix(in_srgb,var(--taupe-medium)_50%,transparent)] hover:bg-[var(--header-linen)]"
-                }
-              >
-                WB {WELCOME_BACK_LABELS[wb]}
+                <AutoArrivalBadge count={newCount} active={active} />
               </Link>
             );
           })}
@@ -169,20 +159,6 @@ export default async function SalesPage({
         </div>
       </div>
 
-      {wbFilter ? (
-        <p className="mb-4 text-sm ws-muted">
-          Showing Welcome Back · {WELCOME_BACK_LABELS[wbFilter].toLowerCase()} (
-          {relationships.length})
-          {" · "}
-          <Link
-            href="/founding"
-            className="text-[var(--heritage-sage)] underline-offset-4 hover:underline"
-          >
-            Founder Dashboard
-          </Link>
-        </p>
-      ) : null}
-
       {view === "pipeline" ? (
         <SalesPipelineBoard relationships={relationships} />
       ) : (
@@ -205,7 +181,7 @@ export default async function SalesPage({
               return [
                 <div key={`${r.id}-venue`}>
                   <Link
-                    href={`/relationships/${r.id}`}
+                    href={`/relationships/${r.id}?from=sales`}
                     className="font-medium hover:text-[var(--heritage-sage)]"
                   >
                     {r.venue.name}

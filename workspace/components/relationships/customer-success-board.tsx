@@ -4,6 +4,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 
+import { AutoArrivalDot } from "@/components/relationships/auto-arrival-badge";
+import { WelcomeBackVerifyControl } from "@/components/relationships/welcome-back-verify-control";
 import { StatusPill } from "@/components/shared/ui";
 import {
   CS_STAGE_COLUMNS,
@@ -11,12 +13,13 @@ import {
   HEALTH_BADGE_LABELS,
   computeAdoptionCheckpoints,
   computeRiskSection,
+  countAutoArrivalsForStage,
   deriveCustomerSuccessStage,
   toCustomerHealthBadge,
   type CustomerSuccessStage,
 } from "@/lib/sales-cs";
 import type { Relationship, Subscription } from "@/lib/types";
-import { formatRelativeDay } from "@/lib/utils";
+import { formatRelativeDay, welcomeBackBadgeLabel } from "@/lib/utils";
 
 function badgeToneClass(
   badge: ReturnType<typeof toCustomerHealthBadge>,
@@ -43,22 +46,28 @@ export function CustomerSuccessBoard({
   relationships,
   subscriptionsByRel,
   onboardingProgressByRel,
+  canVerifyWelcomeBack = false,
 }: {
   relationships: Relationship[];
   subscriptionsByRel: Record<string, Subscription | undefined>;
   onboardingProgressByRel: Record<string, number>;
+  canVerifyWelcomeBack?: boolean;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [movingId, setMovingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const byColumn = CS_STAGE_COLUMNS.map((col) => ({
-    ...col,
-    items: relationships.filter(
+  const byColumn = CS_STAGE_COLUMNS.map((col) => {
+    const items = relationships.filter(
       (r) => deriveCustomerSuccessStage(r) === col.stage,
-    ),
-  }));
+    );
+    return {
+      ...col,
+      items,
+      autoArrivals: countAutoArrivalsForStage(items, col.stage, "cs"),
+    };
+  });
 
   async function move(relationshipId: string, customerSuccessStage: CustomerSuccessStage) {
     setError(null);
@@ -93,12 +102,35 @@ export function CustomerSuccessBoard({
         {byColumn.map((col) => (
           <div
             key={col.stage}
-            className="flex w-[17.5rem] shrink-0 flex-col rounded-sm border border-[color-mix(in_srgb,var(--taupe-medium)_40%,transparent)] bg-[color-mix(in_srgb,var(--header-linen)_55%,var(--true-white))]"
+            className={`flex w-[17.5rem] shrink-0 flex-col rounded-sm border bg-[color-mix(in_srgb,var(--header-linen)_55%,var(--true-white))] ${
+              col.autoArrivals > 0
+                ? "border-[color-mix(in_srgb,var(--heritage-sage)_45%,transparent)]"
+                : "border-[color-mix(in_srgb,var(--taupe-medium)_40%,transparent)]"
+            }`}
           >
             <div className="border-b border-[color-mix(in_srgb,var(--taupe-medium)_35%,transparent)] px-3 py-3">
               <p className="ws-eyebrow">{col.short}</p>
-              <p className="mt-1 font-heading text-lg leading-tight">{col.label}</p>
-              <p className="mt-1 text-xs ws-muted">{col.items.length}</p>
+              <p className="mt-1 flex items-center font-heading text-lg leading-tight">
+                <Link
+                  href={`/customer-success?stage=${col.stage}`}
+                  className="hover:text-[var(--heritage-sage)]"
+                >
+                  {col.label}
+                </Link>
+                <AutoArrivalDot count={col.autoArrivals} />
+              </p>
+              <p
+                className={`mt-1 text-xs ${
+                  col.stage === "needs_support" && col.items.length > 0
+                    ? "font-medium text-[var(--dusty-rose)]"
+                    : "ws-muted"
+                }`}
+              >
+                {col.items.length}
+                {col.stage === "needs_support" && col.items.length > 0
+                  ? " open"
+                  : ""}
+              </p>
             </div>
             <div className="flex flex-1 flex-col gap-2 p-2 min-h-[12rem]">
               {col.items.length === 0 ? (
@@ -106,6 +138,15 @@ export function CustomerSuccessBoard({
               ) : (
                 col.items.map((r) => {
                   const stage = deriveCustomerSuccessStage(r);
+                  const isNewArrival =
+                    r.lastAutoArrival?.board === "cs" &&
+                    r.lastAutoArrival.stage === stage;
+                  const wbPending =
+                    r.welcomeBackRequested &&
+                    r.welcomeBackVerified === "pending";
+                  const wbBadge = r.welcomeBackRequested
+                    ? welcomeBackBadgeLabel(r.welcomeBackVerified)
+                    : null;
                   const badge = toCustomerHealthBadge(r.health, r.healthScore, {
                     suspended: r.status === "suspended",
                     accessDisabled: r.accessDisabled,
@@ -132,11 +173,19 @@ export function CustomerSuccessBoard({
                   return (
                     <article
                       key={r.id}
-                      className="rounded-sm bg-[var(--true-white)] p-3 shadow-[0_1px_0_color-mix(in_srgb,var(--taupe-medium)_35%,transparent)]"
+                      className={`rounded-sm bg-[var(--true-white)] p-3 shadow-[0_1px_0_color-mix(in_srgb,var(--taupe-medium)_35%,transparent)] ${
+                        wbPending
+                          ? "ring-1 ring-[color-mix(in_srgb,var(--dusty-rose)_40%,transparent)]"
+                          : isNewArrival
+                            ? "ring-1 ring-[color-mix(in_srgb,var(--heritage-sage)_35%,transparent)]"
+                            : ""
+                      }`}
                     >
                       <div className="flex items-start justify-between gap-2">
                         <Link
-                          href={`/relationships/${r.id}`}
+                          href={`/relationships/${r.id}?from=customer-success${
+                            (r.supportOpenCount || 0) > 0 ? "&panel=support" : ""
+                          }`}
                           className="font-medium hover:text-[var(--heritage-sage)]"
                         >
                           {r.venue.name}
@@ -211,10 +260,33 @@ export function CustomerSuccessBoard({
                         )}
                       </div>
 
-                      {r.foundingMember ? (
-                        <div className="mt-2">
-                          <StatusPill tone="good">Founder</StatusPill>
+                      {r.foundingMember || wbBadge ? (
+                        <div className="mt-2 flex flex-wrap gap-1">
+                          {r.foundingMember ? (
+                            <StatusPill tone="good">Founder</StatusPill>
+                          ) : null}
+                          {wbBadge ? (
+                            <StatusPill
+                              tone={
+                                r.welcomeBackVerified === "pending"
+                                  ? "warn"
+                                  : r.welcomeBackVerified === "verified"
+                                    ? "good"
+                                    : "muted"
+                              }
+                            >
+                              {wbBadge}
+                            </StatusPill>
+                          ) : null}
                         </div>
+                      ) : null}
+
+                      {canVerifyWelcomeBack && wbPending ? (
+                        <WelcomeBackVerifyControl
+                          relationshipId={r.id}
+                          venueName={r.venue.name}
+                          variant="compact"
+                        />
                       ) : null}
 
                       <label className="mt-3 block text-[0.65rem] uppercase tracking-wider ws-muted">

@@ -5,12 +5,16 @@ import { useState, useTransition } from "react";
 
 type Action = "approve" | "reject" | "needs_follow_up";
 
+type Variant = "panel" | "inline" | "compact";
+
 export function WelcomeBackVerifyControl({
   relationshipId,
   venueName,
+  variant = "panel",
 }: {
   relationshipId: string;
-  venueName: string;
+  venueName?: string;
+  variant?: Variant;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -33,9 +37,9 @@ export function WelcomeBackVerifyControl({
       }
       const label =
         action === "approve"
-          ? "Approved — Welcome Back verified"
+          ? "Confirmed returning"
           : action === "reject"
-            ? "Rejected"
+            ? "Marked not returning"
             : "Marked needs follow up";
       setDone(label);
       startTransition(() => router.refresh());
@@ -44,45 +48,128 @@ export function WelcomeBackVerifyControl({
     }
   }
 
+  const primaryBtn =
+    variant === "compact"
+      ? "rounded-sm bg-[var(--heritage-sage)] px-2 py-1 text-[0.7rem] font-medium text-[var(--true-white)] disabled:opacity-60"
+      : "rounded-sm bg-[var(--heritage-sage)] px-4 py-2 text-sm font-medium text-[var(--true-white)] disabled:opacity-60";
+  const secondaryBtn =
+    variant === "compact"
+      ? "rounded-sm border border-[color-mix(in_srgb,var(--taupe-medium)_55%,transparent)] bg-[var(--true-white)] px-2 py-1 text-[0.7rem] font-medium text-[var(--forest-sage)] disabled:opacity-60"
+      : "rounded-sm border border-[color-mix(in_srgb,var(--taupe-medium)_55%,transparent)] bg-[var(--true-white)] px-4 py-2 text-sm font-medium text-[var(--forest-sage)] disabled:opacity-60";
+  const followUpBtn =
+    "rounded-sm border border-[color-mix(in_srgb,var(--taupe-medium)_55%,transparent)] bg-[var(--warm-gray)] px-4 py-2 text-sm font-medium text-[var(--forest-sage)] disabled:opacity-60";
+
+  const actions = (
+    <div className="flex flex-wrap gap-2">
+      <button
+        type="button"
+        disabled={pending}
+        onClick={() => void onAction("approve")}
+        className={primaryBtn}
+      >
+        Confirm returning
+      </button>
+      <button
+        type="button"
+        disabled={pending}
+        onClick={() => void onAction("reject")}
+        className={secondaryBtn}
+      >
+        Not returning
+      </button>
+      {variant === "panel" ? (
+        <button
+          type="button"
+          disabled={pending}
+          onClick={() => void onAction("needs_follow_up")}
+          className={followUpBtn}
+        >
+          Needs Follow Up
+        </button>
+      ) : null}
+    </div>
+  );
+
+  const feedback = (
+    <>
+      {pending ? <p className="mt-2 text-xs ws-muted">Saving…</p> : null}
+      {done ? (
+        <p
+          className={`mt-2 text-[var(--heritage-sage)] ${
+            variant === "compact" ? "text-[0.7rem]" : "text-sm"
+          }`}
+        >
+          {done}
+        </p>
+      ) : null}
+      {error ? (
+        <p
+          className={`mt-2 text-[var(--dusty-rose)] ${
+            variant === "compact" ? "text-[0.7rem]" : "text-sm"
+          }`}
+        >
+          {error}
+        </p>
+      ) : null}
+    </>
+  );
+
+  if (variant === "compact") {
+    return (
+      <div className="mt-2">
+        {actions}
+        {feedback}
+      </div>
+    );
+  }
+
+  if (variant === "inline") {
+    return (
+      <div id="welcome-back-verify">
+        <p className="text-[1.05rem] leading-snug">Pending</p>
+        <div className="mt-2 flex flex-wrap gap-2">
+          <button
+            type="button"
+            disabled={pending}
+            onClick={() => void onAction("approve")}
+            className={primaryBtn}
+          >
+            Confirm returning
+          </button>
+          <button
+            type="button"
+            disabled={pending}
+            onClick={() => void onAction("reject")}
+            className={secondaryBtn}
+          >
+            Not returning
+          </button>
+          <button
+            type="button"
+            disabled={pending}
+            onClick={() => void onAction("needs_follow_up")}
+            className="rounded-sm border border-[color-mix(in_srgb,var(--taupe-medium)_55%,transparent)] bg-[var(--warm-gray)] px-3 py-1.5 text-xs font-medium text-[var(--forest-sage)] disabled:opacity-60"
+          >
+            Needs Follow Up
+          </button>
+        </div>
+        {feedback}
+      </div>
+    );
+  }
+
   return (
     <div id="welcome-back-verify" className="ws-panel border-[var(--soft-sage)]/50 p-5">
       <p className="ws-eyebrow">Welcome Back Request</p>
       <h2 className="mt-1 font-heading text-xl">Verify eligibility</h2>
       <p className="mt-2 text-sm ws-muted">
-        {venueName} self-identified for Welcome Back. Approving confirms Founding
-        Member pricing on this Relationship — no separate queue.
+        {venueName ?? "This venue"} self-identified for Welcome Back. Confirming
+        returning applies Founding Member pricing on this Relationship — no
+        separate queue.
       </p>
 
-      <div className="mt-4 flex flex-wrap gap-2">
-        <button
-          type="button"
-          disabled={pending}
-          onClick={() => void onAction("approve")}
-          className="rounded-sm bg-[var(--heritage-sage)] px-4 py-2 text-sm font-medium text-[var(--true-white)] disabled:opacity-60"
-        >
-          Approve
-        </button>
-        <button
-          type="button"
-          disabled={pending}
-          onClick={() => void onAction("reject")}
-          className="rounded-sm border border-[color-mix(in_srgb,var(--taupe-medium)_55%,transparent)] bg-[var(--true-white)] px-4 py-2 text-sm font-medium text-[var(--forest-sage)] disabled:opacity-60"
-        >
-          Reject
-        </button>
-        <button
-          type="button"
-          disabled={pending}
-          onClick={() => void onAction("needs_follow_up")}
-          className="rounded-sm border border-[color-mix(in_srgb,var(--taupe-medium)_55%,transparent)] bg-[var(--warm-gray)] px-4 py-2 text-sm font-medium text-[var(--forest-sage)] disabled:opacity-60"
-        >
-          Needs Follow Up
-        </button>
-      </div>
-
-      {pending ? <p className="mt-2 text-xs ws-muted">Saving…</p> : null}
-      {done ? <p className="mt-2 text-sm text-[var(--heritage-sage)]">{done}</p> : null}
-      {error ? <p className="mt-2 text-sm text-[var(--dusty-rose)]">{error}</p> : null}
+      <div className="mt-4">{actions}</div>
+      {feedback}
     </div>
   );
 }

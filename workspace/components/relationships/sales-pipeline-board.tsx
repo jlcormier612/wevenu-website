@@ -4,10 +4,12 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 
+import { AutoArrivalDot } from "@/components/relationships/auto-arrival-badge";
 import { StatusPill } from "@/components/shared/ui";
 import {
   SALES_STAGE_COLUMNS,
   SALES_STAGE_LABELS,
+  countAutoArrivalsForStage,
   deriveSalesStage,
   type SalesStage,
 } from "@/lib/sales-cs";
@@ -24,10 +26,14 @@ export function SalesPipelineBoard({
   const [movingId, setMovingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const byColumn = SALES_STAGE_COLUMNS.map((col) => ({
-    ...col,
-    items: relationships.filter((r) => deriveSalesStage(r) === col.stage),
-  }));
+  const byColumn = SALES_STAGE_COLUMNS.map((col) => {
+    const items = relationships.filter((r) => deriveSalesStage(r) === col.stage);
+    return {
+      ...col,
+      items,
+      autoArrivals: countAutoArrivalsForStage(items, col.stage, "sales"),
+    };
+  });
 
   async function move(relationshipId: string, salesStage: SalesStage) {
     setError(null);
@@ -62,11 +68,23 @@ export function SalesPipelineBoard({
         {byColumn.map((col) => (
           <div
             key={col.stage}
-            className="flex w-[15.5rem] shrink-0 flex-col rounded-sm border border-[color-mix(in_srgb,var(--taupe-medium)_40%,transparent)] bg-[color-mix(in_srgb,var(--header-linen)_55%,var(--true-white))]"
+            className={`flex w-[15.5rem] shrink-0 flex-col rounded-sm border bg-[color-mix(in_srgb,var(--header-linen)_55%,var(--true-white))] ${
+              col.autoArrivals > 0
+                ? "border-[color-mix(in_srgb,var(--heritage-sage)_45%,transparent)]"
+                : "border-[color-mix(in_srgb,var(--taupe-medium)_40%,transparent)]"
+            }`}
           >
             <div className="border-b border-[color-mix(in_srgb,var(--taupe-medium)_35%,transparent)] px-3 py-3">
               <p className="ws-eyebrow">{col.short}</p>
-              <p className="mt-1 font-heading text-lg leading-tight">{col.label}</p>
+              <p className="mt-1 flex items-center font-heading text-lg leading-tight">
+                <Link
+                  href={`/sales?stage=${col.stage}`}
+                  className="hover:text-[var(--heritage-sage)]"
+                >
+                  {col.label}
+                </Link>
+                <AutoArrivalDot count={col.autoArrivals} />
+              </p>
               <p className="mt-1 text-xs ws-muted">{col.items.length}</p>
             </div>
             <div className="flex flex-1 flex-col gap-2 p-2 min-h-[12rem]">
@@ -75,13 +93,20 @@ export function SalesPipelineBoard({
               ) : (
                 col.items.map((r) => {
                   const stage = deriveSalesStage(r);
+                  const isNewArrival =
+                    r.lastAutoArrival?.board === "sales" &&
+                    r.lastAutoArrival.stage === stage;
                   return (
                     <article
                       key={r.id}
-                      className="rounded-sm bg-[var(--true-white)] p-3 shadow-[0_1px_0_color-mix(in_srgb,var(--taupe-medium)_35%,transparent)]"
+                      className={`rounded-sm bg-[var(--true-white)] p-3 shadow-[0_1px_0_color-mix(in_srgb,var(--taupe-medium)_35%,transparent)] ${
+                        isNewArrival
+                          ? "ring-1 ring-[color-mix(in_srgb,var(--heritage-sage)_35%,transparent)]"
+                          : ""
+                      }`}
                     >
                       <Link
-                        href={`/relationships/${r.id}`}
+                        href={`/relationships/${r.id}?from=sales`}
                         className="font-medium hover:text-[var(--heritage-sage)]"
                       >
                         {r.venue.name}
@@ -89,8 +114,11 @@ export function SalesPipelineBoard({
                       <p className="mt-1 text-xs ws-muted">
                         {r.owner.firstName} · {HEALTH_EMOJI[r.health]}
                       </p>
-                      {r.welcomeBackRequested || r.foundingMember ? (
+                      {r.welcomeBackRequested || r.foundingMember || r.subscribedAt ? (
                         <div className="mt-2 flex flex-wrap gap-1">
+                          {r.subscribedAt ? (
+                            <StatusPill tone="good">Subscribed</StatusPill>
+                          ) : null}
                           {r.foundingMember ? (
                             <StatusPill tone="good">Founder</StatusPill>
                           ) : null}

@@ -15,6 +15,7 @@ import {
   getRelationshipPatchesSync,
 } from "@/lib/program3/store";
 import { getTeamProfilesSync } from "@/lib/program4/store";
+import { deriveSalesStage } from "@/lib/sales-cs";
 import type {
   Communication,
   FounderProgramStats,
@@ -127,6 +128,10 @@ function applyProgram3Overlays(data: WorkspaceData): WorkspaceData {
       salesStage: patch.salesStage ?? r.salesStage,
       customerSuccessStage:
         patch.customerSuccessStage ?? r.customerSuccessStage,
+      lastAutoArrival:
+        patch.lastAutoArrival !== undefined
+          ? patch.lastAutoArrival
+          : r.lastAutoArrival,
       updatedAt: patch.updatedAt ?? r.updatedAt,
     };
   });
@@ -384,6 +389,8 @@ export type DashboardBuckets = {
   newSubscribers: Relationship[];
   whiteGlovePurchases: Relationship[];
   welcomeBackRequests: Relationship[];
+  /** Sales stage Responded — waiting on Hello to Cheers follow-up. */
+  respondedNeedsFollowUp: Relationship[];
   upcomingWalkthroughs: Walkthrough[];
   upcomingOnboardingSessions: Relationship[];
   founderProgress: FounderProgramStats;
@@ -429,6 +436,14 @@ export function getDashboardBuckets(): DashboardBuckets {
     (r) => r.welcomeBackRequested && r.welcomeBackVerified === "pending",
   );
 
+  const respondedNeedsFollowUp = relationships
+    .filter((r) => deriveSalesStage(r) === "responded")
+    .sort((a, b) => {
+      const aAt = a.lastInboundAt || a.lastContactAt;
+      const bAt = b.lastInboundAt || b.lastContactAt;
+      return new Date(bAt).getTime() - new Date(aAt).getTime();
+    });
+
   const upcomingWalkthroughs = getWalkthroughs({ status: "upcoming" });
 
   const upcomingOnboardingSessions = relationships.filter(
@@ -452,6 +467,7 @@ export function getDashboardBuckets(): DashboardBuckets {
     newSubscribers,
     whiteGlovePurchases,
     welcomeBackRequests,
+    respondedNeedsFollowUp,
     upcomingWalkthroughs,
     upcomingOnboardingSessions,
     founderProgress: getFounderProgram(),

@@ -3,17 +3,26 @@
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 
+type OwnerPanel = "task" | "message" | "note" | null;
+
 type Props = {
   relationshipId: string;
   planId: string;
   onboardingType: string;
   status: string;
   hasStripeCustomer: boolean;
+  /** Same hard switch as snapshot (`subscribedAt` / CS) — customer-only actions stay hidden on Sales. */
+  showCustomerActions: boolean;
   canSendLink: boolean;
   canManualSub: boolean;
   canLaunch: boolean;
   canSuspend: boolean;
   canManageBilling: boolean;
+  /** Set a Task / Send a Message / Make a Note — Sales + CS when permitted. */
+  canOwnerTools: boolean;
+  ownerEmail?: string;
+  ownerFirstName?: string;
+  venueName?: string;
 };
 
 export function LifecycleActions({
@@ -22,11 +31,16 @@ export function LifecycleActions({
   onboardingType,
   status,
   hasStripeCustomer,
+  showCustomerActions,
   canSendLink,
   canManualSub,
   canLaunch,
   canSuspend,
   canManageBilling,
+  canOwnerTools,
+  ownerEmail,
+  ownerFirstName,
+  venueName,
 }: Props) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -34,6 +48,28 @@ export function LifecycleActions({
   const [checkoutUrl, setCheckoutUrl] = useState<string | null>(null);
   const [plan, setPlan] = useState(planId === "none" ? "gather" : planId);
   const [wg, setWg] = useState(onboardingType === "white_glove");
+
+  const [ownerPanel, setOwnerPanel] = useState<OwnerPanel>(null);
+  const [taskTitle, setTaskTitle] = useState("");
+  const [taskDue, setTaskDue] = useState(() => {
+    const d = new Date();
+    d.setDate(d.getDate() + 2);
+    return d.toISOString().slice(0, 10);
+  });
+  const [taskDescription, setTaskDescription] = useState("");
+  const [msgSubject, setMsgSubject] = useState(
+    venueName ? `Following up — ${venueName}` : "Following up",
+  );
+  const [msgBody, setMsgBody] = useState(
+    ownerFirstName ? `Hi ${ownerFirstName},\n\n` : "Hi,\n\n",
+  );
+  const [noteText, setNoteText] = useState("");
+  const [ownerBusy, setOwnerBusy] = useState(false);
+
+  function toggleOwnerPanel(panel: Exclude<OwnerPanel, null>) {
+    setMessage(null);
+    setOwnerPanel((cur) => (cur === panel ? null : panel));
+  }
 
   async function run(action: string, extra: Record<string, unknown> = {}) {
     setMessage(null);
@@ -64,6 +100,46 @@ export function LifecycleActions({
     setMessage(data.message || data.activateUrl || "Done.");
     startTransition(() => router.refresh());
     return data;
+  }
+
+  async function runOwnerAction(
+    action: "create_task" | "send_message" | "add_note",
+    payload: Record<string, unknown>,
+  ) {
+    setMessage(null);
+    setOwnerBusy(true);
+    try {
+      const res = await fetch("/api/relationships/owner-actions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ relationshipId, action, ...payload }),
+      });
+      const data = (await res.json()) as {
+        ok?: boolean;
+        error?: string;
+        message?: string;
+        delivery?: string;
+      };
+      if (!res.ok) {
+        setMessage(data.error || "Action failed");
+        return;
+      }
+      setMessage(data.message || "Done.");
+      if (action === "create_task") {
+        setTaskTitle("");
+        setTaskDescription("");
+      } else if (action === "send_message") {
+        setMsgBody(ownerFirstName ? `Hi ${ownerFirstName},\n\n` : "Hi,\n\n");
+      } else {
+        setNoteText("");
+      }
+      setOwnerPanel(null);
+      startTransition(() => router.refresh());
+    } catch {
+      setMessage("Network error");
+    } finally {
+      setOwnerBusy(false);
+    }
   }
 
   async function copyUrl() {
@@ -110,6 +186,31 @@ export function LifecycleActions({
       </div>
 
       <div className="mt-4 flex flex-wrap gap-2">
+        {canOwnerTools ? (
+          <>
+            <ActionButton
+              disabled={pending || ownerBusy}
+              onClick={() => toggleOwnerPanel("task")}
+              active={ownerPanel === "task"}
+            >
+              Set a Task
+            </ActionButton>
+            <ActionButton
+              disabled={pending || ownerBusy}
+              onClick={() => toggleOwnerPanel("message")}
+              active={ownerPanel === "message"}
+            >
+              Send a Message
+            </ActionButton>
+            <ActionButton
+              disabled={pending || ownerBusy}
+              onClick={() => toggleOwnerPanel("note")}
+              active={ownerPanel === "note"}
+            >
+              Make a Note
+            </ActionButton>
+          </>
+        ) : null}
         {canSendLink ? (
           <>
             <ActionButton
@@ -153,12 +254,13 @@ export function LifecycleActions({
             Manual Subscription
           </ActionButton>
         ) : null}
-        {canSendLink ? (
+        {showCustomerActions && canSendLink ? (
           <ActionButton disabled={pending} onClick={() => run("resend_welcome")}>
             Resend Welcome Email
           </ActionButton>
         ) : null}
-        {canLaunch &&
+        {showCustomerActions &&
+        canLaunch &&
         (status === "white_glove_implementation" ||
           status === "onboarding" ||
           onboardingType === "white_glove") ? (
@@ -189,7 +291,7 @@ export function LifecycleActions({
             ) : null}
           </>
         ) : null}
-        {canSuspend ? (
+        {showCustomerActions && canSuspend ? (
           <>
             <ActionButton
               disabled={pending}
@@ -207,7 +309,7 @@ export function LifecycleActions({
             </ActionButton>
           </>
         ) : null}
-        {canManageBilling ? (
+        {showCustomerActions && canManageBilling ? (
           <>
             <ActionButton
               disabled={pending}
@@ -229,6 +331,149 @@ export function LifecycleActions({
           </>
         ) : null}
       </div>
+
+      {canOwnerTools && ownerPanel === "task" ? (
+        <div className="mt-4 space-y-3 rounded-sm border border-[color-mix(in_srgb,var(--taupe-medium)_45%,transparent)] bg-[var(--true-white)] p-4">
+          <p className="ws-eyebrow">Set a Task</p>
+          <label className="block text-sm">
+            <span className="ws-muted">Title</span>
+            <input
+              className="mt-1 w-full rounded-sm border border-[color-mix(in_srgb,var(--taupe-medium)_55%,transparent)] bg-[var(--true-white)] px-3 py-2 text-sm"
+              value={taskTitle}
+              onChange={(e) => setTaskTitle(e.target.value)}
+              placeholder="e.g. Follow up on walkthrough"
+              disabled={ownerBusy}
+            />
+          </label>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <label className="block text-sm">
+              <span className="ws-muted">Due date</span>
+              <input
+                type="date"
+                className="mt-1 w-full rounded-sm border border-[color-mix(in_srgb,var(--taupe-medium)_55%,transparent)] bg-[var(--true-white)] px-3 py-2 text-sm"
+                value={taskDue}
+                onChange={(e) => setTaskDue(e.target.value)}
+                disabled={ownerBusy}
+              />
+            </label>
+            <label className="block text-sm sm:col-span-1">
+              <span className="ws-muted">Notes (optional)</span>
+              <input
+                className="mt-1 w-full rounded-sm border border-[color-mix(in_srgb,var(--taupe-medium)_55%,transparent)] bg-[var(--true-white)] px-3 py-2 text-sm"
+                value={taskDescription}
+                onChange={(e) => setTaskDescription(e.target.value)}
+                placeholder="Context for the assignee"
+                disabled={ownerBusy}
+              />
+            </label>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <ActionButton
+              primary
+              disabled={ownerBusy || !taskTitle.trim()}
+              onClick={() =>
+                void runOwnerAction("create_task", {
+                  title: taskTitle,
+                  dueDate: taskDue,
+                  description: taskDescription || null,
+                })
+              }
+            >
+              Create task
+            </ActionButton>
+            <ActionButton disabled={ownerBusy} onClick={() => setOwnerPanel(null)}>
+              Cancel
+            </ActionButton>
+          </div>
+        </div>
+      ) : null}
+
+      {canOwnerTools && ownerPanel === "message" ? (
+        <div className="mt-4 space-y-3 rounded-sm border border-[color-mix(in_srgb,var(--taupe-medium)_45%,transparent)] bg-[var(--true-white)] p-4">
+          <p className="ws-eyebrow">Send a Message</p>
+          <p className="text-sm ws-muted">
+            To: {ownerEmail?.trim() || "No owner email on this relationship"}
+          </p>
+          <label className="block text-sm">
+            <span className="ws-muted">Subject</span>
+            <input
+              className="mt-1 w-full rounded-sm border border-[color-mix(in_srgb,var(--taupe-medium)_55%,transparent)] bg-[var(--true-white)] px-3 py-2 text-sm"
+              value={msgSubject}
+              onChange={(e) => setMsgSubject(e.target.value)}
+              disabled={ownerBusy}
+            />
+          </label>
+          <label className="block text-sm">
+            <span className="ws-muted">Message</span>
+            <textarea
+              rows={8}
+              className="mt-1 w-full rounded-sm border border-[color-mix(in_srgb,var(--taupe-medium)_55%,transparent)] bg-[var(--true-white)] px-3 py-2 text-sm leading-relaxed"
+              value={msgBody}
+              onChange={(e) => setMsgBody(e.target.value)}
+              disabled={ownerBusy}
+            />
+          </label>
+          <div className="flex flex-wrap gap-2">
+            <ActionButton
+              primary
+              disabled={
+                ownerBusy ||
+                !msgSubject.trim() ||
+                !msgBody.trim() ||
+                !ownerEmail?.trim()
+              }
+              onClick={() =>
+                void runOwnerAction("send_message", {
+                  subject: msgSubject,
+                  body: msgBody,
+                })
+              }
+            >
+              Send message
+            </ActionButton>
+            <ActionButton disabled={ownerBusy} onClick={() => setOwnerPanel(null)}>
+              Cancel
+            </ActionButton>
+          </div>
+        </div>
+      ) : null}
+
+      {canOwnerTools && ownerPanel === "note" ? (
+        <div className="mt-4 space-y-3 rounded-sm border border-[color-mix(in_srgb,var(--taupe-medium)_45%,transparent)] bg-[var(--true-white)] p-4">
+          <p className="ws-eyebrow">Make a Note</p>
+          <p className="text-sm ws-muted">
+            Internal only — not emailed to the venue owner.
+          </p>
+          <label className="block text-sm">
+            <span className="ws-muted">Note</span>
+            <textarea
+              rows={5}
+              className="mt-1 w-full rounded-sm border border-[color-mix(in_srgb,var(--taupe-medium)_55%,transparent)] bg-[var(--true-white)] px-3 py-2 text-sm leading-relaxed"
+              value={noteText}
+              onChange={(e) => setNoteText(e.target.value)}
+              placeholder="Capture context for the team…"
+              disabled={ownerBusy}
+            />
+          </label>
+          <div className="flex flex-wrap gap-2">
+            <ActionButton
+              primary
+              disabled={ownerBusy || !noteText.trim()}
+              onClick={() =>
+                void runOwnerAction("add_note", {
+                  note: noteText,
+                  subject: "Internal note",
+                })
+              }
+            >
+              Save note
+            </ActionButton>
+            <ActionButton disabled={ownerBusy} onClick={() => setOwnerPanel(null)}>
+              Cancel
+            </ActionButton>
+          </div>
+        </div>
+      ) : null}
 
       {checkoutUrl ? (
         <div className="mt-4 rounded-sm border border-[color-mix(in_srgb,var(--soft-sage)_50%,transparent)] bg-[color-mix(in_srgb,var(--soft-sage)_12%,var(--true-white))] p-3 text-sm">
@@ -258,11 +503,13 @@ function ActionButton({
   onClick,
   disabled,
   primary,
+  active,
 }: {
   children: React.ReactNode;
   onClick: () => void;
   disabled?: boolean;
   primary?: boolean;
+  active?: boolean;
 }) {
   return (
     <button
@@ -272,7 +519,9 @@ function ActionButton({
       className={
         primary
           ? "rounded-sm bg-[var(--heritage-sage)] px-3.5 py-2 text-sm font-medium text-[var(--true-white)] hover:opacity-95 disabled:opacity-50"
-          : "rounded-sm border border-[color-mix(in_srgb,var(--taupe-medium)_55%,transparent)] bg-[var(--true-white)] px-3.5 py-2 text-sm font-medium text-[var(--forest-sage)] hover:border-[var(--heritage-sage)] disabled:opacity-50"
+          : active
+            ? "rounded-sm border border-[var(--heritage-sage)] bg-[color-mix(in_srgb,var(--soft-sage)_18%,var(--true-white))] px-3.5 py-2 text-sm font-medium text-[var(--forest-sage)] disabled:opacity-50"
+            : "rounded-sm border border-[color-mix(in_srgb,var(--taupe-medium)_55%,transparent)] bg-[var(--true-white)] px-3.5 py-2 text-sm font-medium text-[var(--forest-sage)] hover:border-[var(--heritage-sage)] disabled:opacity-50"
       }
     >
       {children}

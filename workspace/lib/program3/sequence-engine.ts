@@ -418,3 +418,22 @@ export async function exitSequenceEnrollment(
   );
   return enrollment;
 }
+
+/**
+ * Stop-on-reply — exit every active/paused enrollment for a relationship
+ * (mirrors venue Series exit-on-reply).
+ */
+export async function exitActiveEnrollmentsForRelationship(
+  relationshipId: string,
+  reason = "exited_reply",
+): Promise<SequenceEnrollment[]> {
+  const active = getSequenceEnrollmentsSync({ relationshipId }).filter(
+    (e) => e.status === "active" || e.status === "paused",
+  );
+  const exited: SequenceEnrollment[] = [];
+  for (const enrollment of active) {
+    const result = await exitSequenceEnrollment(enrollment.id, reason);
+    if (!("error" in result)) exited.push(result);
+  }
+  return exited;
+}

@@ -97,7 +97,7 @@ export default async function BusinessPage() {
     <div>
       <PageHeader
         eyebrow="Business"
-        title={briefing.greeting.replace(/\.$/, "")}
+        title="Business"
         description="Company dashboard — revenue, conversion, founders, and White Glove capacity. Day-to-day work lives on Today."
         action={
           <div className="flex flex-wrap items-center gap-3">

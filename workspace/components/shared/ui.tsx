@@ -117,14 +117,17 @@ export function RelationshipLink({
   id,
   name,
   subtitle,
+  href,
 }: {
   id: string;
   name: string;
   subtitle?: string;
+  /** Override default `/relationships/{id}` (e.g. deep-link `?panel=support`). */
+  href?: string;
 }) {
   return (
     <Link
-      href={`/relationships/${id}`}
+      href={href ?? `/relationships/${id}`}
       className="group block rounded-sm py-1"
     >
       <span className="font-medium text-[var(--forest-sage)] group-hover:text-[var(--heritage-sage)]">

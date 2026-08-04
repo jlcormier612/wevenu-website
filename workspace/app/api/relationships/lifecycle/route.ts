@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { sendRelationshipEmail, sendWelcomeHomeEmail, sendReactivationEmail } from "@shared/email";
+import { sendRelationshipEmail, sendWelcomeHomeEmail, sendReactivationEmail, activationUrlFromToken } from "@shared/email";
 import {
   createManualSubscription,
   launchWhiteGloveWorkspace,
@@ -10,6 +10,7 @@ import {
   refreshRelationshipHealth,
   suspendRelationshipAccount,
   tickPaymentDunning,
+  tickRenewalStages,
   whiteGloveTimelineLabel,
   markDunningReminderSent,
   recordPaymentFailed,
@@ -33,6 +34,7 @@ type Action =
   | "send_payment_reminder"
   | "view_billing"
   | "tick_dunning"
+  | "tick_renewals"
   | "refresh_health"
   | "save_implementation_notes";
 
@@ -42,14 +44,6 @@ function marketingBaseUrl(): string {
     process.env.NEXT_PUBLIC_MARKETING_URL ||
     process.env.NEXT_PUBLIC_SITE_URL ||
     "http://localhost:3001"
-  ).replace(/\/$/, "");
-}
-
-function workspaceBaseUrl(): string {
-  return (
-    process.env.WORKSPACE_URL ||
-    process.env.NEXT_PUBLIC_WORKSPACE_URL ||
-    "http://localhost:3002"
   ).replace(/\/$/, "");
 }
 
@@ -92,6 +86,14 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
     const results = await tickPaymentDunning();
+    return NextResponse.json({ ok: true, results });
+  }
+
+  if (action === "tick_renewals") {
+    if (!(await actorCan("manage_settings")) && !(await actorCan("manage_product_sync"))) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+    const results = await tickRenewalStages();
     return NextResponse.json({ ok: true, results });
   }
 
@@ -206,7 +208,10 @@ export async function POST(request: Request) {
       }
       const settings = await loadLifecycleSettings();
       if (result.relationship.onboardingType !== "white_glove") {
-        await enqueueProductSync(relationshipId, "manual_subscription");
+        // Token → welcome with Activate Account → product sync
+        const activateUrl = result.relationship.activationToken
+          ? activationUrlFromToken(result.relationship.activationToken)
+          : null;
         if (result.relationship.owner.email) {
           await sendRelationshipEmail({
             relationshipId,
@@ -218,11 +223,13 @@ export async function POST(request: Request) {
               firstName: result.relationship.owner.firstName,
               venueName: result.relationship.venue.name,
               planName: result.relationship.planName,
+              activateUrl,
             },
             actorId: actor.id,
             meta: { trigger: "lifecycle.manual_subscription" },
           });
         }
+        await enqueueProductSync(relationshipId, "manual_subscription");
       } else if (result.relationship.owner.email) {
         await sendRelationshipEmail({
           relationshipId,
@@ -265,7 +272,7 @@ export async function POST(request: Request) {
             : "welcome";
 
       const activateUrl = relationship.activationToken
-        ? `${workspaceBaseUrl()}/activate/${relationship.activationToken}`
+        ? activationUrlFromToken(relationship.activationToken)
         : `${marketingBaseUrl()}/product`;
 
       await sendRelationshipEmail({
@@ -307,7 +314,7 @@ export async function POST(request: Request) {
       await enqueueProductSync(relationshipId, "white_glove.launch_workspace");
 
       const activateUrl = launched.activationToken
-        ? `${workspaceBaseUrl()}/activate/${launched.activationToken}`
+        ? activationUrlFromToken(launched.activationToken)
         : `${marketingBaseUrl()}/product`;
 
       if (launched.relationship.owner.email) {

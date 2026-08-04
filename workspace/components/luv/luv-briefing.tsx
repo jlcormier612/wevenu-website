@@ -10,10 +10,13 @@ export function LuvBriefingCard({
   briefing,
   drafts,
   compact = false,
+  showGreeting = true,
 }: {
   briefing: LuvBriefing;
   drafts: LuvDraft[];
   compact?: boolean;
+  /** When false, skip the time-of-day greeting (e.g. page header already shows it). */
+  showGreeting?: boolean;
 }) {
   const [open, setOpen] = useState(false);
 
@@ -31,15 +34,17 @@ export function LuvBriefingCard({
           <p className="ws-eyebrow">Luv · Daily briefing</p>
         </div>
 
-        <p
-          className={
-            compact
-              ? "mt-3 font-heading text-2xl tracking-tight"
-              : "mt-4 font-heading text-3xl tracking-tight md:text-[2.15rem]"
-          }
-        >
-          {briefing.greeting}
-        </p>
+        {showGreeting ? (
+          <p
+            className={
+              compact
+                ? "mt-3 font-heading text-2xl tracking-tight"
+                : "mt-4 font-heading text-3xl tracking-tight md:text-[2.15rem]"
+            }
+          >
+            {briefing.greeting}
+          </p>
+        ) : null}
 
         <ul className={`mt-5 space-y-2.5 ${compact ? "text-sm" : "text-[1.02rem]"} leading-relaxed`}>
           {briefing.bullets.map((b) => (

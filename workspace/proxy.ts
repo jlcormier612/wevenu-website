@@ -1,7 +1,7 @@
 /**
  * Auth gate (Next.js 16 `proxy` convention).
  * Project 8 — require real session cookie `ws_session` for app routes.
- * Public: `/login`, `/invite/*`
+ * Public: `/login`, `/invite/*`, `/activate/*`
  */
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
@@ -14,6 +14,7 @@ export function proxy(request: NextRequest) {
   const isPublic =
     pathname === "/login" ||
     pathname.startsWith("/invite/") ||
+    pathname.startsWith("/activate/") ||
     pathname.startsWith("/_next");
 
   if (!isAuthed && !isPublic) {

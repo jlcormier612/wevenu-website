@@ -7,7 +7,9 @@ import {
   getTasks,
   getTeamMember,
   getTimelineForRelationship,
+  getWalkthroughs,
 } from "@/lib/data/store";
+import { getSequenceEnrollmentsSync } from "@/lib/program3/store";
 import {
   computeAdoptionCheckpoints,
   computeRiskSection,
@@ -19,7 +21,7 @@ import {
   SALES_STAGE_LABELS,
   toCustomerHealthBadge,
 } from "@/lib/sales-cs";
-import type { Relationship, TimelineEvent } from "@/lib/types";
+import type { Relationship, TimelineEvent, Walkthrough } from "@/lib/types";
 import {
   formatCurrency,
   formatDate,
@@ -28,23 +30,163 @@ import {
   HEALTH_EMOJI,
   HEALTH_LABELS,
   ONBOARDING_LABELS,
+  STATUS_LABELS,
   WELCOME_BACK_LABELS,
+  welcomeBackBadgeLabel,
   yesNo,
 } from "@/lib/utils";
 import { Panel, StatusPill } from "@/components/shared/ui";
 import { TaskCompleteButton } from "@/components/tasks/task-complete-button";
+import { WelcomeBackVerifyControl } from "@/components/relationships/welcome-back-verify-control";
 import {
   computeRelationshipHealth,
+  normalizeLifecycleStatus,
   WHITE_GLOVE_CHECKLIST_MARKER,
 } from "@shared/relationships";
+import type { SequenceEnrollment } from "@/lib/program3/types";
 
-export function RelationshipSnapshot({ relationship }: { relationship: Relationship }) {
+export type SnapshotPreferredView = "sales" | "customer-success";
+
+/**
+ * Display mode for Relationship Snapshot cells — same record, no data duplication.
+ * `subscribedAt` always forces CS so customers never stay on hollow Sales metrics.
+ * Prospects (`!subscribedAt` and not in CS view) always use Sales.
+ * Optional board `from=` bias only applies when CS membership is not from subscribe.
+ */
+export function resolveSnapshotMode(
+  relationship: Pick<Relationship, "status" | "subscribedAt">,
+  preferredView?: SnapshotPreferredView,
+): "sales" | "cs" {
+  if (relationship.subscribedAt) return "cs";
+  if (!isInCustomerSuccessView(relationship)) return "sales";
+  if (preferredView === "sales") return "sales";
+  return "cs";
+}
+
+/** Mid-checkout / trial — show Plan + Payment on Sales snapshot; hide empty otherwise. */
+function isMidCheckoutSales(relationship: Relationship): boolean {
+  if (relationship.subscribedAt) return false;
+  if (relationship.stripeCheckoutSessionId) return true;
+  if (relationship.paymentStatus === "pending") return true;
+  if (normalizeLifecycleStatus(relationship.status) === "trial") return true;
+  if (relationship.planId && relationship.planId !== "none") return true;
+  return false;
+}
+
+/** Humanize payment status; clarify manual (Owner/Admin, no Stripe). */
+function formatPaymentLabel(status: string | null | undefined): string {
+  if (!status) return "—";
+  const raw = String(status).trim();
+  if (raw.toLowerCase() === "manual") return "Manual (no Stripe)";
+  return raw.replace(/_/g, " ");
+}
+
+/**
+ * CS board already shows the primary stage. Only surface Lifecycle/Access when
+ * it adds signal (suspension, disabled access, former customer, lifecycle at-risk).
+ */
+function csSnapshotLifecycleExtra(
+  relationship: Relationship,
+): { label: string; value: string } | null {
+  const status = normalizeLifecycleStatus(relationship.status);
+
+  if (relationship.accessDisabled || status === "suspended") {
+    const value = relationship.accessDisabled
+      ? status === "suspended"
+        ? "Suspended · access disabled"
+        : "Access disabled"
+      : (STATUS_LABELS[relationship.status] ?? "Suspended");
+    return { label: "Access", value };
+  }
+
+  if (status === "former_customer" || status === "at_risk") {
+    return {
+      label: "Lifecycle",
+      value: STATUS_LABELS[relationship.status] ?? relationship.status,
+    };
+  }
+
+  return null;
+}
+
+function daysSilentSince(iso: string | null | undefined): number | null {
+  if (!iso) return null;
+  const ms = Date.now() - new Date(iso).getTime();
+  if (Number.isNaN(ms)) return null;
+  return Math.max(0, Math.floor(ms / 86_400_000));
+}
+
+function walkthroughSnapshotLabel(
+  relationship: Relationship,
+  walkthroughs: Walkthrough[],
+): string {
+  const status = normalizeLifecycleStatus(relationship.status);
+  if (status === "walkthrough_requested") return "Requested";
+  if (status === "walkthrough_scheduled") {
+    const upcoming = walkthroughs.find(
+      (w) => w.status === "upcoming" || w.status === "rescheduled",
+    );
+    return upcoming
+      ? `Scheduled — ${formatDate(upcoming.scheduledAt, { year: undefined })}`
+      : "Scheduled";
+  }
+  if (status === "walkthrough_completed") return "Completed";
+
+  const completed = walkthroughs.find((w) => w.status === "completed");
+  if (completed) return "Completed";
+  const upcoming = [...walkthroughs]
+    .filter((w) => w.status === "upcoming" || w.status === "rescheduled")
+    .sort(
+      (a, b) =>
+        new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime(),
+    )[0];
+  if (upcoming) {
+    return `Scheduled — ${formatDate(upcoming.scheduledAt, { year: undefined })}`;
+  }
+  if (walkthroughs.some((w) => w.status === "cancelled")) return "Cancelled";
+  return "—";
+}
+
+function sequenceEnrollmentLabel(
+  enrollment: SequenceEnrollment | undefined,
+): string | null {
+  if (!enrollment) return null;
+  const next = enrollment.steps.find(
+    (s) => s.status === "scheduled" || s.status === "pending",
+  );
+  const status = enrollment.status.replace(/_/g, " ");
+  if (next?.scheduledFor) {
+    return `${status} · next ${formatDateTime(next.scheduledFor)}`;
+  }
+  if (next?.label) return `${status} · next: ${next.label}`;
+  return status;
+}
+
+export function RelationshipSnapshot({
+  relationship,
+  preferredView,
+  canVerifyWelcomeBack = false,
+}: {
+  relationship: Relationship;
+  preferredView?: SnapshotPreferredView;
+  canVerifyWelcomeBack?: boolean;
+}) {
   const assignee = getTeamMember(relationship.assignedTeamMemberId);
   const openTasks = getOpenTaskCount(relationship.id);
   const tasks = getTasks({ relationshipId: relationship.id });
   const communications = getCommunications({ relationshipId: relationship.id });
   const timelineEvents = getTimelineForRelationship(relationship.id);
   const subscriptions = getSubscriptions(relationship.id);
+  const walkthroughs = getWalkthroughs().filter(
+    (w) => w.relationshipId === relationship.id,
+  );
+  const sequenceEnrollments = getSequenceEnrollmentsSync({
+    relationshipId: relationship.id,
+  });
+  const activeEnrollment =
+    sequenceEnrollments.find((e) => e.status === "active") ??
+    sequenceEnrollments.find((e) => e.status === "paused") ??
+    sequenceEnrollments[0];
 
   const health = computeRelationshipHealth(relationship as never, {
     tasks: tasks as never,
@@ -60,7 +202,8 @@ export function RelationshipSnapshot({ relationship }: { relationship: Relations
     relationship.onboardingType === "white_glove" ||
     relationship.status === "white_glove_implementation" ||
     wgTasks.length > 0;
-  const isCustomer = isInCustomerSuccessView(relationship);
+  const mode = resolveSnapshotMode(relationship, preferredView);
+  const isCsMode = mode === "cs";
   const healthBadge = toCustomerHealthBadge(
     health.band,
     health.score,
@@ -69,9 +212,31 @@ export function RelationshipSnapshot({ relationship }: { relationship: Relations
       accessDisabled: relationship.accessDisabled,
     },
   );
-  const viewStage = isCustomer
-    ? CS_STAGE_LABELS[deriveCustomerSuccessStage(relationship)]
-    : SALES_STAGE_LABELS[deriveSalesStage(relationship)];
+  const nextMilestoneValue = relationship.nextMilestone
+    ? `${relationship.nextMilestone}${
+        relationship.nextMilestoneAt
+          ? ` — ${formatDate(relationship.nextMilestoneAt, { year: undefined })}`
+          : ""
+      }`
+    : "—";
+  const lastCommAt =
+    health.lastCommunicationAt || relationship.lastContactAt || null;
+  const silentDays = daysSilentSince(lastCommAt);
+  const showWelcomeBack =
+    relationship.welcomeBackRequested ||
+    relationship.welcomeBackVerified !== "none";
+  const wbPending =
+    relationship.welcomeBackRequested &&
+    relationship.welcomeBackVerified === "pending";
+  const wbBadgeLabel = relationship.welcomeBackRequested
+    ? welcomeBackBadgeLabel(relationship.welcomeBackVerified)
+    : null;
+  const showPlanPayment = isCsMode || isMidCheckoutSales(relationship);
+  const sequenceLabel = sequenceEnrollmentLabel(activeEnrollment);
+  const walkthroughLabel = walkthroughSnapshotLabel(relationship, walkthroughs);
+  const lifecycleExtra = isCsMode
+    ? csSnapshotLifecycleExtra(relationship)
+    : null;
 
   return (
     <section className="ws-panel border-[var(--soft-sage)]/60 bg-[linear-gradient(165deg,var(--natural-cream),var(--true-white)_45%,color-mix(in_srgb,var(--soft-sage)_18%,var(--true-white)))] p-7 md:p-8">
@@ -87,7 +252,7 @@ export function RelationshipSnapshot({ relationship }: { relationship: Relations
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          {isCustomer ? (
+          {isCsMode ? (
             <span className="rounded-sm bg-[color-mix(in_srgb,var(--soft-sage)_35%,var(--true-white))] px-2.5 py-1 text-xs font-medium tracking-wide text-[var(--forest-sage)]">
               {HEALTH_BADGE_LABELS[healthBadge]}
             </span>
@@ -104,87 +269,151 @@ export function RelationshipSnapshot({ relationship }: { relationship: Relations
       </div>
 
       <dl className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <SnapItem
-          label="Relationship Health"
-          value={`${HEALTH_LABELS[health.band]} ${HEALTH_EMOJI[health.band]} · ${health.score}/100`}
-        />
-        <SnapItem
-          label={isCustomer ? "Customer Success stage" : "Sales stage"}
-          value={viewStage}
-        />
-        <SnapItem label="Plan" value={relationship.planName} />
-        <SnapItem label="Founder" value={yesNo(relationship.foundingMember)} />
-        <SnapItem
-          label="Welcome Back"
-          value={WELCOME_BACK_LABELS[relationship.welcomeBackVerified]}
-        />
-        <SnapItem
-          label="Payment"
-          value={String(health.paymentStatus).replace(/_/g, " ")}
-        />
-        <SnapItem
-          label="Onboarding progress"
-          value={`${health.onboardingProgress}%`}
-        />
-        <SnapItem
-          label="Website published"
-          value={yesNo(health.websitePublished)}
-        />
-        <SnapItem
-          label="Last login"
-          value={
-            health.lastLoginAt
-              ? formatRelativeDay(health.lastLoginAt)
-              : "—"
-          }
-        />
-        <SnapItem
-          label="Logins (30d)"
-          value={String(health.loginCount30d)}
-        />
-        <SnapItem
-          label="Last customer activity"
-          value={
-            health.lastCustomerActivityAt
-              ? formatRelativeDay(health.lastCustomerActivityAt)
-              : formatRelativeDay(relationship.lastContactAt)
-          }
-        />
-        <SnapItem
-          label="Last team activity"
-          value={
-            health.lastTeamActivityAt
-              ? formatRelativeDay(health.lastTeamActivityAt)
-              : "—"
-          }
-        />
-        <SnapItem
-          label="Last communication"
-          value={
-            health.lastCommunicationAt
-              ? formatRelativeDay(health.lastCommunicationAt)
-              : "—"
-          }
-        />
-        <SnapItem
-          label="Support requests"
-          value={String(health.supportOpenCount)}
-        />
-        <SnapItem
-          label="Next Milestone"
-          value={
-            relationship.nextMilestone
-              ? `${relationship.nextMilestone}${
-                  relationship.nextMilestoneAt
-                    ? ` — ${formatDate(relationship.nextMilestoneAt, { year: undefined })}`
-                    : ""
-                }`
-              : "—"
-          }
-        />
-        <SnapItem label="Open Tasks" value={String(openTasks)} />
+        {isCsMode ? (
+          <>
+            <SnapItem
+              label="Relationship Health"
+              value={`${HEALTH_LABELS[health.band]} ${HEALTH_EMOJI[health.band]} · ${health.score}/100`}
+            />
+            <SnapItem
+              label="Customer Success stage"
+              value={CS_STAGE_LABELS[deriveCustomerSuccessStage(relationship)]}
+            />
+            {lifecycleExtra ? (
+              <SnapItem
+                label={lifecycleExtra.label}
+                value={lifecycleExtra.value}
+              />
+            ) : null}
+            {showPlanPayment ? (
+              <SnapItem label="Plan" value={relationship.planName} />
+            ) : null}
+            <SnapItem label="Founder" value={yesNo(relationship.foundingMember)} />
+            {showWelcomeBack ? (
+              wbPending && canVerifyWelcomeBack ? (
+                <div>
+                  <dt className="ws-eyebrow">Welcome Back</dt>
+                  <dd className="mt-1.5">
+                    <WelcomeBackVerifyControl
+                      relationshipId={relationship.id}
+                      venueName={relationship.venue.name}
+                      variant="inline"
+                    />
+                  </dd>
+                </div>
+              ) : (
+                <SnapItem
+                  label="Welcome Back"
+                  value={wbBadgeLabel ?? WELCOME_BACK_LABELS[relationship.welcomeBackVerified]}
+                />
+              )
+            ) : null}
+            {showPlanPayment ? (
+              <SnapItem
+                label="Payment"
+                value={formatPaymentLabel(health.paymentStatus)}
+              />
+            ) : null}
+            <SnapItem
+              label="Onboarding progress"
+              value={`${health.onboardingProgress}%`}
+            />
+            <SnapItem
+              label="Last login"
+              value={
+                health.lastLoginAt
+                  ? formatRelativeDay(health.lastLoginAt)
+                  : "—"
+              }
+            />
+            <SnapItem
+              label="Logins (30d)"
+              value={String(health.loginCount30d)}
+            />
+            <SnapItem
+              label="Last customer activity"
+              value={
+                health.lastCustomerActivityAt
+                  ? formatRelativeDay(health.lastCustomerActivityAt)
+                  : formatRelativeDay(relationship.lastContactAt)
+              }
+            />
+            <SnapItem
+              label="Last team activity"
+              value={
+                health.lastTeamActivityAt
+                  ? formatRelativeDay(health.lastTeamActivityAt)
+                  : "—"
+              }
+            />
+            <SnapItem
+              label="Last communication"
+              value={
+                health.lastCommunicationAt
+                  ? formatRelativeDay(health.lastCommunicationAt)
+                  : "—"
+              }
+            />
+            <SnapItem
+              label="Support requests"
+              value={String(health.supportOpenCount)}
+            />
+            <SnapItem label="Next Milestone" value={nextMilestoneValue} />
+            <SnapItem label="Open Tasks" value={String(openTasks)} />
+            {relationship.subscribedAt ? (
+              <SnapItem
+                label="Customer since"
+                value={formatDate(relationship.subscribedAt)}
+              />
+            ) : null}
+          </>
+        ) : (
+          <>
+            <SnapItem
+              label="Sales stage"
+              value={SALES_STAGE_LABELS[deriveSalesStage(relationship)]}
+            />
+            <SnapItem label="Next Milestone" value={nextMilestoneValue} />
+            {relationship.referralSource ? (
+              <SnapItem label="Source" value={relationship.referralSource} />
+            ) : null}
+            <SnapItem
+              label="Last communication"
+              value={lastCommAt ? formatRelativeDay(lastCommAt) : "—"}
+            />
+            <SnapItem
+              label="Days silent"
+              value={silentDays != null ? String(silentDays) : "—"}
+            />
+            {sequenceLabel ? (
+              <SnapItem label="Sequence" value={sequenceLabel} />
+            ) : null}
+            <SnapItem label="Walkthrough" value={walkthroughLabel} />
+            {showWelcomeBack ? (
+              <SnapItem
+                label="Welcome Back"
+                value={WELCOME_BACK_LABELS[relationship.welcomeBackVerified]}
+              />
+            ) : null}
+            {relationship.foundingMember ? (
+              <SnapItem label="Founder" value={yesNo(true)} />
+            ) : null}
+            {showPlanPayment ? (
+              <>
+                <SnapItem label="Plan" value={relationship.planName} />
+                <SnapItem
+                  label="Payment"
+                  value={formatPaymentLabel(
+                    relationship.paymentStatus ?? health.paymentStatus,
+                  )}
+                />
+              </>
+            ) : null}
+            <SnapItem label="Open Tasks" value={String(openTasks)} />
+          </>
+        )}
       </dl>
-      {health.factors.length > 0 ? (
+      {isCsMode && health.factors.length > 0 ? (
         <p className="mt-4 text-xs ws-muted">
           Health factors: {health.factors.slice(0, 4).join(" · ")}
         </p>
@@ -291,7 +520,9 @@ export function CustomerSuccessPanels({
           />
           <Row
             label="Subscription Status"
-            value={sub?.status ?? relationship.paymentStatus ?? "—"}
+            value={formatPaymentLabel(
+              sub?.status ?? relationship.paymentStatus ?? undefined,
+            )}
           />
           <Row
             label="Renewal Date"
@@ -408,7 +639,8 @@ export function RelationshipDetails({ relationship }: { relationship: Relationsh
             label="Welcome Back"
             value={
               relationship.welcomeBackRequested
-                ? WELCOME_BACK_LABELS[relationship.welcomeBackVerified]
+                ? (welcomeBackBadgeLabel(relationship.welcomeBackVerified) ??
+                  WELCOME_BACK_LABELS[relationship.welcomeBackVerified])
                 : "Not requested"
             }
           />

@@ -10,7 +10,6 @@ import { normalizeRelationshipStatus } from "@/lib/pipeline";
 import {
   deriveSalesStage,
   isInCustomerSuccessView,
-  isInSalesView,
 } from "@/lib/sales-cs";
 
 import type { LuvDraftKind, LuvInsight, LuvSeverity } from "./types";
@@ -899,8 +898,78 @@ export function computeRelationshipInsights(
   }
 
   // —— Workspace-aware Sales recommendations (never auto-act) ——
-  if (isInSalesView(relationship)) {
+  if (!isInCustomerSuccessView(relationship)) {
     const salesStage = deriveSalesStage(relationship);
+    const emailInbound = [...comms]
+      .filter((c) => c.direction === "inbound" && c.channel === "email")
+      .sort(
+        (a, b) =>
+          new Date(b.occurredAt).getTime() - new Date(a.occurredAt).getTime(),
+      )[0];
+    const outbound = latestOutbound(comms);
+    const inboundAt =
+      relationship.lastInboundAt ||
+      events
+        .filter((e) => e.type === "email_received")
+        .sort(
+          (a, b) =>
+            new Date(b.occurredAt).getTime() - new Date(a.occurredAt).getTime(),
+        )[0]?.occurredAt ||
+      emailInbound?.occurredAt;
+    const inboundWaiting =
+      Boolean(inboundAt) &&
+      (!outbound ||
+        new Date(outbound.occurredAt).getTime() <
+          new Date(inboundAt!).getTime());
+    const daysSinceInbound = inboundAt ? daysBetween(inboundAt, now) : 99;
+
+    // Critical: prospect replied — follow up immediately (Suggest only).
+    if (salesStage === "responded" && inboundAt && daysSinceInbound <= 14) {
+      const when =
+        daysSinceInbound === 0
+          ? "today"
+          : daysSinceInbound === 1
+            ? "yesterday"
+            : `${daysSinceInbound} days ago`;
+      push(
+        buildInsight({
+          id: `ins_sales_responded_${id}`,
+          type: "sales_responded",
+          relationshipId: id,
+          venueName: venue,
+          message: address(
+            actor,
+            `${venue} responded — follow up immediately.`,
+          ),
+          detail: inboundWaiting
+            ? `Inbound reply ${when}. Critical action — draft a personal response; Luv will not auto-send.`
+            : `They replied ${when}. Stay close while they're in Responded.`,
+          severity:
+            inboundWaiting && daysSinceInbound <= 1
+              ? "urgent"
+              : inboundWaiting
+                ? "attention"
+                : "suggested",
+          actions: ["draft", "send_email", "create_task", "dismiss"],
+          primaryAction: "draft",
+          draftKind: "follow_up",
+          meta: {
+            daysSinceInbound,
+            inboundAt: inboundAt ?? null,
+            salesStage,
+            waitingOnReply: inboundWaiting,
+            critical: inboundWaiting,
+          },
+          // Outrank most other sales nudges when still waiting on our reply.
+          priority: inboundWaiting
+            ? daysSinceInbound === 0
+              ? 55
+              : 50 - Math.min(daysSinceInbound, 10)
+            : 35,
+        }),
+      );
+    }
+
     if (salesStage === "proposal_sent") {
       const days = daysBetween(relationship.lastContactAt, now);
       if (days >= 2) {
@@ -926,7 +995,8 @@ export function computeRelationshipInsights(
     }
     if (
       salesStage === "inquiry" ||
-      salesStage === "discovery_scheduled"
+      salesStage === "personal_send" ||
+      salesStage === "sequence_scheduled"
     ) {
       push(
         buildInsight({
@@ -936,9 +1006,11 @@ export function computeRelationshipInsights(
           venueName: venue,
           message: address(
             actor,
-            salesStage === "discovery_scheduled"
-              ? `confirm discovery and schedule the venue walkthrough.`
-              : `schedule a walkthrough while interest is warm.`,
+            salesStage === "sequence_scheduled"
+              ? `confirm the sequence touch and schedule the venue walkthrough.`
+              : salesStage === "personal_send"
+                ? `follow the personal send with a walkthrough invite while interest is warm.`
+                : `schedule a walkthrough while interest is warm.`,
           ),
           severity: "suggested",
           actions: ["create_task", "draft", "dismiss"],
@@ -949,10 +1021,12 @@ export function computeRelationshipInsights(
       );
     }
     if (
-      (salesStage === "negotiation" ||
-        salesStage === "awaiting_signature" ||
-        salesStage === "nurture") &&
-      daysBetween(relationship.lastContactAt, now) >= 7
+      (salesStage === "follow_up" ||
+        salesStage === "responded" ||
+        salesStage === "walkthrough_scheduled") &&
+      daysBetween(relationship.lastContactAt, now) >= 7 &&
+      // Don't stack a soft inactivity nudge on top of the critical replied insight.
+      !(salesStage === "responded" && inboundWaiting && daysSinceInbound <= 14)
     ) {
       push(
         buildInsight({

@@ -30,13 +30,16 @@ One Relationship record — two filtered views. Never duplicate.
 
 | Nav | Route | Who appears |
 |-----|-------|-------------|
-| **Sales** | `/sales` | Pre-customer (not yet subscribed) |
-| **Customer Success** | `/customer-success` | Subscribed / customers |
+| **Sales** | `/sales` | Full Sales pipeline including Closed Won / Closed Lost (subscribed stay visible) |
+| **Customer Success** | `/customer-success` | Subscribed / customers only (entered via successful Stripe subscribe) |
 | Detail (shared) | `/relationships/[id]` | Same record from either board |
 
-- Sales pipeline stages: Inquiry → Discovery Scheduled → Venue Walkthrough → Proposal Sent → Negotiation → Awaiting Signature → Won → Lost → Nurture
-- CS lifecycle stages: Welcome → Onboarding → Implementation → Training → Live → Adoption → Healthy → Expansion → Renewal → Renewed
-- On Stripe / manual subscribe: same Relationship ID; `salesStage` → Won; `customerSuccessStage` → Welcome (then Onboarding / Implementation); record leaves Sales filter and appears only in Customer Success
+- Sales pipeline stages: Inquiry → Personal Send → Sequence Scheduled → Responded → Walkthrough Scheduled → Proposal Sent → Follow-up → Closed Won → Closed Lost
+- CS lifecycle stages: Onboarding → Implementation → Live → Check-in Sequence → Healthy → Expansion → Renewal → Renewed → Needs Support
+- **Flags ≠ stages.** On `/customer-success`, Row 1 is pipeline stages only; Row 2 is attention **Flags** (`?flag=`). Flags are not columns and never replace stages. Stage + flag combine with AND (e.g. `?stage=onboarding&flag=wb_pending`). Legacy `?wb=pending` still maps to `flag=wb_pending`. Values: `wb_pending`, `founder`, `payment_issue`, `at_risk`, `suspended`, `manual_billing`.
+- On Stripe / manual subscribe: same Relationship ID; `salesStage` → `closed_won`; `customerSuccessStage` → `onboarding` (Launch Yourself) or `implementation` (White Glove); record appears on **both** Sales (Closed Won) and Customer Success
+- Dragging to Closed Won does **not** enter Customer Success — only a successful subscribe does
+- Welcome Back verification filters live on Customer Success Flags (not Sales); verification never gates checkout
 - Legacy `/relationships` redirects to `/sales`
 
 ## Customer Lifecycle Engine (Phase 1)
@@ -75,7 +78,12 @@ Aliases: `live` / `active_customer` → `active`.
 
 ### Relationship Health (Snapshot)
 
-Lifecycle stage, last login, logins 30d, onboarding progress, website published, payment status, last customer/team activity, last communication, support requests, **health score 0–100** (heuristic).
+Same Relationship record; snapshot **display mode** only (no duplicated data):
+
+- **Sales snapshot** when not subscribed (`!subscribedAt` / not in CS) — Sales stage, next milestone, source, last communication / days silent, sequence enrollment, walkthrough status, Welcome Back when present. Plan/Payment only mid-checkout (checkout session, pending payment, trial, or plan selected). Hides CS health score, onboarding %, website/logins, and empty renewal blocks.
+- **CS snapshot** when subscribed (`subscribedAt` wins) — health + score, CS stage / lifecycle, onboarding, website published, logins / engagement, plan & payment, support, open tasks, customer since. Optional `?from=sales|customer-success` biases only when CS membership is not from subscribe.
+
+Boards link with `?from=` for light bias. Lifecycle actions, timeline, and detail panels stay shared outside the snapshot grid.
 
 ### Failed payment dunning
 
@@ -83,14 +91,43 @@ Stripe `invoice.payment_failed` / `past_due` → days **0, 3, 7, 14, 21**:
 
 - Email reminders + timeline
 - Day 14 → At Risk + internal notify
-- Day 21 → Suspended (`accessDisabled`, data preserved)
-- Payment success → Reactivated + reactivation email
+- Day 21 → Suspended (`accessDisabled`, data preserved) **and** product venue hard-lock (`venues.access_disabled`) when `PRODUCT_API_BASE_URL` + `PRODUCT_SYNC_API_KEY` resolve a real venue
+- Payment success → Reactivated + reactivation email + product unlock
 
-Tick manually: `POST /api/relationships/lifecycle` with `{ "action": "tick_dunning" }` (Owner/Admin).
+Tick manually: `POST /api/relationships/lifecycle` with `{ "action": "tick_dunning" }` (Owner/Admin). Background cron also runs dunning via `GET|POST /api/cron/automations` (see [Automation scheduler](#automation-scheduler-sequences--workflows)).
+
+### Renewal anniversary CS stages
+
+Renewal anniversary = **`subscribedAt` + 1 calendar year** (UTC). Stored as `renewalDate` and set on subscribe when missing; ticks keep it in sync and roll it forward after **Renewed**.
+
+| Auto move | When (UTC calendar days) | Soft-promote to |
+|-----------|--------------------------|-----------------|
+| **→ Renewal** | today ∈ [`renewalDate` − 60 days, `renewalDate`] | `renewal` |
+| **→ Renewed** | today ≥ `renewalDate` + 1 day | `renewed`, then `renewalDate` += 1 year |
+
+Soft-promote rules:
+
+- **Support pin wins** — skip while `supportOpenCount > 0` or stage is `needs_support`; after support clears, the next tick applies
+- Do not regress `renewed` → `renewal` within the same cycle (annual cycle allows `renewed` → `renewal` only when the *next* 60-day window opens after the date roll)
+- Never override `suspended` / `accessDisabled`
+- Manual CS board moves still force any stage
+- Sets `lastAutoArrival` for `renewal` / `renewed` (highlighted on the CS board)
+
+**When it runs**
+
+- Cron / ops: `GET|POST /api/cron/automations` (Bearer `CRON_SECRET`) — also ticks sequences + workflows + dunning
+- Manual ops: `POST /api/relationships/lifecycle` with `{ "action": "tick_renewals" }` (Owner/Admin — same gate as dunning tick)
+- Local demo: lightly on `/customer-success` load and `/relationships/[id]` load when the live store is present; or `npm run tick:automations`
+
+Logic: `shared/relationships/renewal-stages.ts` (`tickRenewalStages`).
 
 ### Owner actions (on Relationship detail)
 
-Send Subscription Link · Copy Link · Manual Subscription · Resend Welcome · Launch Workspace · Suspend / Reactivate · Send Payment Reminder · View Billing (Stripe portal)
+**Always (Sales + CS, with edit/comms permission):** Set a Task · Send a Message · Make a Note
+
+**Lifecycle:** Send Subscription Link · Copy Link · Manual Subscription · Resend Welcome · Launch Workspace · Suspend / Reactivate · Send Payment Reminder · View Billing (Stripe portal)
+
+API: `POST /api/relationships/owner-actions` (`create_task` | `send_message` | `add_note`).
 
 ### Luv
 
@@ -105,6 +142,8 @@ Health-based suggestions only (WG overdue, no login after activation, onboarding
 `POST /api/relationships/lifecycle` — see action names in `app/api/relationships/lifecycle/route.ts`.
 
 ### Jennifer test scripts
+
+**Demo subscribed CS customer (no Stripe)** — `npx tsx workspace/scripts/seed-demo-customer.mts` (idempotent; venue **Sweet Daisy Barn & Farm** → `/customer-success` + Sales Closed Won)
 
 **Path 2 — Send Subscription Link**
 
@@ -126,6 +165,49 @@ Health-based suggestions only (WG overdue, no login after activation, onboarding
 2. `POST /api/relationships/lifecycle` `{ "action": "tick_dunning" }`
 3. Confirm reminder day advances + timeline Payment Reminder / At Risk / Suspended
 
+**Renewal auto-stages (backdated subscribedAt)**
+
+1. Seed or open a subscribed CS customer (e.g. Sweet Daisy via `npx tsx workspace/scripts/seed-demo-customer.mts`)
+2. Backdate for the window you want (UTC), then open CS / relationship **or** call the tick:
+   - **→ Renewal (e.g. ~45 days out):**  
+     `subscribedAt = now − (365 − 45)` days · `renewalDate = subscribedAt + 1 year` · stage not `needs_support`  
+     Or: `npx tsx workspace/scripts/seed-demo-customer.mts --renewal-window`
+   - **→ Renewed (day after anniversary):**  
+     `subscribedAt = now − 366` days · clear open support ·  
+     Or: `npx tsx workspace/scripts/seed-demo-customer.mts --renewed`
+3. `POST /api/relationships/lifecycle` `{ "action": "tick_renewals" }` (or reload `/customer-success`)
+4. Confirm CS column **Renewal** / **Renewed**, auto-arrival highlight, timeline “Renewal window (auto)” / “Renewed (auto)”
+5. With open support on the same record: tick should **skip** (stay Needs Support); resolve support, tick again → advances
+
+**Product hard-lock (Suspend → app blocked)**
+
+Prereqs: migration `20261175000000_venue_account_access_lock.sql` applied; product `:3000` + workspace `:3002` running; same `PRODUCT_SYNC_API_KEY` in both; workspace `PRODUCT_API_BASE_URL=http://localhost:3000`.
+
+1. Sign into the product app as a venue owner whose email matches a CRM Relationship owner (or set `productSync.venueId` to that venue’s real UUID)
+2. In CRM → Relationship → **Suspend**
+3. Confirm product logs `[product-access/lock]` and venue row has `access_disabled=true` / `account_status=suspended`
+4. Refresh product or open `/dashboard` → redirects to `/billing/suspended`
+5. Sign out → sign in again → lands on suspend screen (not dashboard)
+6. CRM → **Reactivate** (or Stripe test `invoice.paid`) → product unlocks → `/dashboard` works again
+7. Confirm no venue/client/event rows were deleted
+
+**Inbound reply → Responded (no MX required)**
+
+1. Pick a live Relationship id (e.g. from `/relationships/[id]` URL) in Sales stage Inquiry / Personal Send / Sequence
+2. With workspace running on `:3002`:
+
+```bash
+curl -s -X POST 'http://localhost:3002/api/email/inbound' \
+  -H 'Content-Type: application/json' \
+  -d "{\"from\":\"prospect@example.com\",\"to\":[\"relationship+REL_ID@replies.example.com\"],\"subject\":\"Re: Hello\",\"text\":\"Thanks — yes, I'd love a walkthrough.\"}"
+```
+
+3. Dry-run first: add `"dryRun":true` or `?dry_run=1` (no writes)
+4. Confirm: Sales stage → **Responded** (no regression if already further), timeline `Inbound email received`, sequence enrollments exited, Luv briefing / Today **"Responded — F/U"** surface the venue
+5. Open Relationship → **Luv noticed** shows urgent “responded — follow up immediately” (draft only; never auto-sends)
+
+If `RESEND_WEBHOOK_SECRET` is set locally, append `?secret=YOUR_SECRET` or `?test=1` (dev only).
+
 ## Project 7 — Luv (debut quality)
 
 Luv as **Chief of Staff** for Hello to Cheers — proactive advisor, suggestions-first. Not a chatbot. Never takes action without a click.
@@ -143,6 +225,7 @@ On open, **Luv noticed** lists contextual, named suggestions (heuristic — no L
 
 | Signal | Suggestion (example) | Primary action |
 |--------|----------------------|----------------|
+| Prospect **Responded** (inbound reply) | “…responded — follow up immediately.” (**Urgent**) | **Draft** / Send email |
 | Subscribed, no Welcome / Founder `email_sent` | “…hasn't received their Founder Welcome email yet.” | **Send email** / Draft welcome |
 | White Glove kickoff past due | “…kickoff call is overdue by 3 days.” | **Draft** kickoff email |
 | White Glove kickoff incomplete | “…kickoff is on the books but not completed yet.” | **Draft** |
@@ -326,12 +409,12 @@ Owner (and Administrator) view of the Founding Program — richer than a single 
 Capacity auto-decrements by counting live founding relationships (not a separate counter). Marketing pricing uses the same helper (`shared/relationships/founder-program.ts`) when the live store has data; otherwise `FOUNDER_SPOTS_REMAINING`.
 
 - Permission: `view_founding` — **Owner** and **Administrator** only.
-- Welcome Back verification (Project 5) lives on the Relationship: Approve / Reject / Needs Follow Up when pending. Permission: `manage_welcome_back` (Owner, Administrator, Customer Success). Tiles link to `/relationships?view=list&wb=pending` (etc.).
+- Welcome Back verification (Project 5) lives on the Relationship: Approve / Reject / Needs Follow Up when pending. Permission: `manage_welcome_back` (Owner, Administrator, Customer Success). Tiles link to `/customer-success?view=list&flag=wb_pending` (etc.).
 - Recent founder activity from timeline (founder status, Welcome Back, subscriptions).
 
 ### Welcome Back verification (Project 5)
 
-Everything stays on the Relationship — no separate approval queue.
+Everything stays on the Relationship — no separate approval queue. Primary filter home is **Customer Success** (not Sales). Verification is honor-system / monitored after subscribe and **must not** gate checkout.
 
 | Action | Result |
 |--------|--------|
@@ -342,6 +425,19 @@ Everything stays on the Relationship — no separate approval queue.
 API: `POST /api/relationships/welcome-back` with `{ relationshipId, action: "approve"|"reject"|"needs_follow_up" }`.
 
 UI: buttons on `/relationships/[id]` when `welcomeBackRequested && welcomeBackVerified === "pending"` and the actor has `manage_welcome_back`.
+
+### Product feedback & support resolve
+
+All product Get Help types (`support`, `bug`, `feature`, `nps`, `general`) and marketing `/support` land on the Relationship as `openFeedbackItems` + `supportOpenCount`, with timeline / communication / team notification. Customer receives `feedback_confirmation` (dry-run without Resend). Product HQ Feedback board is unchanged.
+
+| Action | Result |
+|--------|--------|
+| **Resolve** (item) | Item → `resolved`, recount `supportOpenCount`, timeline `support_resolved`; clears `status: support` → `active` when count hits 0 |
+| **Resolve all** | Same for every open item (or legacy count-only rows) |
+
+API: `POST /api/relationships/support` with `{ relationshipId, action: "resolve", itemId?, all? }`.
+
+UI: panel on `/relationships/[id]` when open count / items exist; compact **Resolve** on Today → Open support. Permission: `edit_relationships` or `manage_communications` (Owner, Admin, CS, Support).
 
 ### Demo script
 
@@ -382,7 +478,7 @@ Statuses (single field on one Relationship record):
 Inquiry → Walkthrough Requested → Walkthrough Scheduled → Walkthrough Completed → Trial → Subscribed → Onboarding → White Glove Implementation → **Active** → At Risk / Suspended / Reactivated → Expansion → Referral → Renewal → Former Customer
 
 - Legacy `live` / `active_customer` normalize to **Active**.
-- **Support**, **Welcome Back**, and **Founder** are overlays on the same record (not separate CRM objects).
+- **Support**, **Welcome Back**, and **Founder** are attention **flags** / overlays on the same record (not pipeline stages or separate CRM objects).
 - Relationships page defaults to a **pipeline board**; toggle **List** for the table view.
 - Moving a stage writes a timeline event and may auto-enroll workflows triggered on `status_enter`.
 - See **Customer Lifecycle Engine (Phase 1)** above for purchase paths, WG Launch, dunning, and health.
@@ -398,8 +494,42 @@ Inquiry → Walkthrough Requested → Walkthrough Scheduled → Walkthrough Comp
   - Targeting: `prospects` (before Subscribed) · `customers` (Subscribed+) · `any`
 - UI: `/communications?tab=library` builder · `/sequences` list + enrollments · relationship **Enroll in sequence**
 - File store: `sequences.jsonl`, `sequence-enrollments.jsonl`
-- Scheduler: `GET|POST /api/sequences/tick` (also ticks on `/sequences` and relationship detail load)
+- Scheduler: Vercel Cron → `GET|POST /api/cron/automations` every 10 minutes; targeted `GET|POST /api/sequences/tick`; also ticks on `/sequences` and relationship detail load; enroll ticks immediately
 - Sends via `@shared/email` + timeline `email_sent` (dry-run without `RESEND_API_KEY`)
+- **Stop on reply:** inbound webhook exits active/paused sequence enrollments (`exited_reply`) — cron does not change this
+
+### Inbound email → Sales Responded
+
+When a prospect replies to personal / sequence email:
+
+1. Webhook `POST /api/email/inbound` matches the Relationship (see matching below)
+2. Appends inbound communication + `email_received` timeline · sets `lastInboundAt`
+3. `promoteSalesStage(…, "responded")` — never moves backward from Walkthrough / Proposal / Follow-up / Closed Won / etc.
+4. Stops active sequence enrollments
+5. Notification `prospect_responded` + Luv critical insight for F/U
+
+**Matching (in order)**
+
+1. Reply-To / To `relationship+{relationshipId}@inbound-domain` (set automatically on outbound when `RESEND_INBOUND_ADDRESS` is configured)
+2. `In-Reply-To` / `References` → stored Resend `provider_id` on outbound `email_sent` timeline meta
+3. From address → unique owner email match only (skipped if ambiguous)
+
+**Env (workspace `.env.local`)**
+
+| Variable | Purpose |
+|----------|---------|
+| `RESEND_API_KEY` / `EMAIL_FROM` | Outbound sends |
+| `RESEND_INBOUND_ADDRESS` | e.g. `inbox@replies.hellotocheers.com` — enables `relationship+{id}@…` Reply-To |
+| `RESEND_WEBHOOK_SECRET` | Query `?secret=` and/or Svix signature on inbound webhook (skip verify when unset for local) |
+| `EMAIL_REPLY_TO` | Fallback Reply-To when inbound address unset |
+
+**Resend setup**
+
+1. Inbound domain + MX → Resend
+2. Inbound webhook URL → `https://<workspace-host>/api/email/inbound?secret=<RESEND_WEBHOOK_SECRET>`
+3. Same vars in workspace env as marketing for shared `@shared/email`
+
+Not wired to venue messaging — Relationship CRM only.
 
 ### Absolute vs relative scheduling
 
@@ -416,14 +546,81 @@ Timezone: sequence default or per-step IANA string. Wall times are converted wit
 2. On a card (e.g. Lumen Hall), use **Move to** → choose another stage. Refresh the venue workspace — timeline shows “Moved to …”.
 3. Open that relationship → **Enroll in sequence** (prospect or customer list) or **Start a workflow**.
 4. Open **Sequences** — see enrollment; **Pause / Resume / Exit**.
-5. Hit `/api/sequences/tick` (and `/api/workflows/tick`) to process due delayed / absolute steps.
+5. Process due delayed / absolute steps via cron (`/api/cron/automations`), `npm run tick:automations`, or curl the tick routes (see below).
 6. Open **Communications → Library** to edit templates or build sequence steps (Relative vs Absolute + datetime picker).
+
+### Automation scheduler (Sequences + Workflows)
+
+Delayed and absolute steps advance when a **tick** runs. Hands-off production uses Vercel Cron; local/demo still works on page load and enroll.
+
+| Mechanism | What runs |
+|-----------|-----------|
+| **Vercel Cron** `*/10 * * * *` → `/api/cron/automations` | Sequences + workflows + renewal stages + payment dunning |
+| Targeted routes | `GET\|POST /api/sequences/tick`, `GET\|POST /api/workflows/tick` |
+| Page load | `/sequences`, workflows pages, Sales / CS / relationship detail (in-process; no HTTP auth) |
+| Enroll / resume | Immediate in-process tick (unchanged) |
+| In-process CLI | `npm run tick:automations` from `workspace/` |
+
+**Env (workspace)**
+
+| Variable | Purpose |
+|----------|---------|
+| `CRON_SECRET` | Required in production. Vercel Cron sends `Authorization: Bearer <CRON_SECRET>`. When unset, tick HTTP routes allow unauthenticated calls only if `NODE_ENV !== "production"` (local demo). |
+
+Set `CRON_SECRET` in the workspace project's Vercel env (same pattern as the venue app). Declare the schedule in `workspace/vercel.json` (this app's own Vercel project — not root `vercel.json`).
+
+**vercel.json cron**
+
+```json
+{
+  "crons": [
+    {
+      "path": "/api/cron/automations",
+      "schedule": "*/10 * * * *"
+    }
+  ]
+}
+```
+
+**Local verification (Jennifer)**
+
+1. `cd workspace && npm run dev` → [http://localhost:3002](http://localhost:3002)
+2. Without `CRON_SECRET` (default local):
+
+```bash
+curl -sS -X POST http://localhost:3002/api/cron/automations | jq .
+# or the targeted engines:
+curl -sS -X POST http://localhost:3002/api/sequences/tick | jq .
+curl -sS -X POST http://localhost:3002/api/workflows/tick | jq .
+```
+
+3. With a secret in `.env.local` (`CRON_SECRET=dev-cron-secret`):
+
+```bash
+curl -sS -X POST http://localhost:3002/api/cron/automations \
+  -H "Authorization: Bearer dev-cron-secret" | jq .
+```
+
+Expect `401` if the header is missing/wrong when the secret is set.
+
+4. **In-process** (no server — useful for crontab / non-Vercel hosts):
+
+```bash
+cd workspace && npm run tick:automations
+```
+
+5. Confirm a due delayed step advanced (timeline / enrollment step index) after tick — enroll still fires immediate steps without waiting for cron; inbound reply still exits sequences (`exited_reply`).
+
+**Not on Vercel?** Cron jobs in `vercel.json` will not fire. Point any scheduler (system crontab, GitHub Actions, etc.) at:
+
+`GET|POST https://<workspace-host>/api/cron/automations` with `Authorization: Bearer <CRON_SECRET>`
+
+—or run `npm run tick:automations` on a schedule on the host that has the workspace data files.
 
 ### Known stubs
 
 - Opens / performance counters are placeholders.
-- Delayed and absolute steps advance when tick runs (page load or cron route), not a background worker.
-- Cron hint: `curl -X POST https://<host>/api/sequences/tick` on a schedule (e.g. every 5–15 minutes).
+- Delayed steps still need a tick within the cron interval (default 10 minutes) to fire after `scheduledFor`.
 
 ### Workflows
 
@@ -433,7 +630,7 @@ Timezone: sequence default or per-step IANA string. Wall times are converted wit
 - When a workflow step references a `sequenceId`, steps expand and inherit relative/absolute schedule fields.
 - Pause / resume / exit from the run viewer or relationship detail.
 - File store: `workspace/.data/workflows.jsonl`, `workflow-runs.jsonl` (seeded on first use).
-- Scheduler stub: `GET|POST /api/workflows/tick` (also runs on Relationships / Workflows page load).
+- Scheduler: Vercel Cron `/api/cron/automations`; targeted `GET|POST /api/workflows/tick`; also runs on Relationships / Workflows page load; enroll ticks immediately.
 - Workflows still reference templates/sequences for multi-step ops (tasks, wait conditions); dedicated sequence enrollments are preferred for nurture/check-in cadences.
 
 ## Phase 2 — Relationship Operations
@@ -506,8 +703,13 @@ Calendly bookings from marketing `/walkthrough` land in the same store — see [
 | `lib/data/store.ts` | Query helpers + live store + Program 3 merge |
 | `../shared/relationships/` | Shared write/read Relationship store |
 | `app/(app)/*` | Authenticated screens |
+| `app/api/cron/automations` | Secured cron — sequences + workflows + renewals + dunning |
 | `app/api/workflows/*` | Workflow enroll + tick |
 | `app/api/sequences/*` | Sequence enroll + tick |
+| `lib/program3/tick-automations.ts` | Shared in-process / cron tick runner |
+| `lib/cron-auth.ts` | `CRON_SECRET` Bearer gate |
+| `vercel.json` | Workspace Vercel Cron schedule |
+| `scripts/tick-automations.mts` | `npm run tick:automations` |
 | `app/api/library` | Template / sequence / branding writes |
 | `app/api/relationships` | Manual Add Relationship |
 | `app/api/relationships/status` | Pipeline stage moves |

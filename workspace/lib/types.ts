@@ -37,27 +37,26 @@ export type RelationshipHealth = "excellent" | "good" | "needs_attention" | "at_
 /** Pre-customer Sales board stage (view field — not a second CRM). */
 export type SalesStage =
   | "inquiry"
-  | "discovery_scheduled"
-  | "venue_walkthrough"
+  | "personal_send"
+  | "sequence_scheduled"
+  | "responded"
+  | "walkthrough_scheduled"
   | "proposal_sent"
-  | "negotiation"
-  | "awaiting_signature"
-  | "won"
-  | "lost"
-  | "nurture";
+  | "follow_up"
+  | "closed_won"
+  | "closed_lost";
 
 /** Post-subscribe Customer Success lifecycle stage (view field). */
 export type CustomerSuccessStage =
-  | "welcome"
   | "onboarding"
   | "implementation"
-  | "training"
   | "live"
-  | "adoption"
+  | "check_in_sequence"
   | "healthy"
   | "expansion"
   | "renewal"
-  | "renewed";
+  | "renewed"
+  | "needs_support";
 
 export type CustomerHealthBadge =
   | "healthy"
@@ -98,6 +97,8 @@ export type TimelineEventType =
   | "onboarding_completed"
   | "support_request"
   | "support_resolved"
+  | "feedback_received"
+  | "feedback_resolved"
   | "referral_submitted"
   | "renewal"
   | "task_completed"
@@ -119,6 +120,7 @@ export type TimelineEventType =
   | "white_glove_implementation_started"
   | "implementation_complete"
   | "workspace_activated"
+  | "account_activated"
   | "payment_failed"
   | "payment_reminder_sent"
   | "account_suspended"
@@ -149,7 +151,9 @@ export type NotificationType =
   | "welcome_back_requested"
   | "founder_spot_filled"
   | "support_request_submitted"
-  | "newsletter_signup";
+  | "feedback_received"
+  | "newsletter_signup"
+  | "prospect_responded";
 
 export type InvoiceStatus = "draft" | "sent" | "paid" | "void" | "overdue";
 export type SubscriptionStatus = "trialing" | "active" | "past_due" | "cancelled" | "paused";
@@ -347,6 +351,17 @@ export type Relationship = {
   salesStage?: SalesStage;
   /** Customer Success lifecycle stage (post-subscribe). */
   customerSuccessStage?: CustomerSuccessStage;
+  /** Prior CS stage before soft-promote to needs_support. */
+  customerSuccessStageBeforeSupport?: CustomerSuccessStage | null;
+  /**
+   * Unacknowledged auto-arrival into a Sales/CS highlight stage.
+   * Cleared when opened from that board or the stage filter is acknowledged.
+   */
+  lastAutoArrival?: {
+    stage: string;
+    at: string;
+    board: "sales" | "cs";
+  } | null;
   assignedTeamMemberId: string;
   planId: PlanId;
   planName: string;
@@ -356,6 +371,8 @@ export type Relationship = {
   onboardingType: OnboardingType;
   currentStageLabel: string;
   lastContactAt: string;
+  /** ISO when the latest inbound owner email was recorded (reply automation / Luv urgency). */
+  lastInboundAt?: string | null;
   nextMilestone?: string;
   nextMilestoneAt?: string;
   createdAt: string;
@@ -371,11 +388,24 @@ export type Relationship = {
   };
   referralSource?: string;
   supportOpenCount: number;
+  openFeedbackItems?: Array<{
+    id: string;
+    type: "support" | "bug" | "feature" | "nps" | "general";
+    subject: string;
+    body?: string;
+    createdAt: string;
+    status: "open" | "acknowledged" | "resolved";
+    productFeedbackId?: string;
+    resolvedAt?: string | null;
+    source?: "product" | "marketing_support" | "manual";
+  }>;
   stripeCustomerId?: string | null;
   stripeSubscriptionId?: string | null;
   stripeCheckoutSessionId?: string | null;
   paymentStatus?: string;
   subscribedAt?: string | null;
+  /** Next subscription anniversary (subscribedAt + N years); synced on subscribe / renewal tick. */
+  renewalDate?: string | null;
   accessDisabled?: boolean;
   activationToken?: string | null;
   activationTokenCreatedAt?: string | null;

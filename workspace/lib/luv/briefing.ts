@@ -68,6 +68,38 @@ export function buildDailyBriefing(
     }
   };
 
+  // Critical: prospect replied — surface immediately for F/U.
+  const respondedInsights = insights
+    .filter((i) => i.type === "sales_responded" && !usedInsightIds.has(i.id))
+    .sort((a, b) => b.priority - a.priority);
+  if (respondedInsights.length > 0) {
+    const n = respondedInsights.length;
+    const names = respondedInsights
+      .slice(0, 2)
+      .map((i) => i.venueName)
+      .join(" and ");
+    const top = respondedInsights[0];
+    const days = Number(top.meta?.daysSinceInbound ?? 0);
+    const when =
+      days === 0 ? "today" : days === 1 ? "yesterday" : `${days} days ago`;
+    pushBullet(
+      {
+        id: "b_sales_responded",
+        text:
+          n === 1
+            ? `${names} responded ${when} — follow up immediately.`
+            : `${countWords(n)} prospects responded and need a reply, including ${names}.`,
+        relationshipId: top.relationshipId,
+        insightId: top.id,
+      },
+      top,
+    );
+    for (const insight of respondedInsights.slice(1, 4)) {
+      addFollowUp(followUpInsights, insight);
+      usedInsightIds.add(insight.id);
+    }
+  }
+
   // Overnight walkthrough / inquiry arrivals.
   const overnightWalkthroughs = data.relationships.filter((r) => {
     const status = normalizeRelationshipStatus(r.status);
