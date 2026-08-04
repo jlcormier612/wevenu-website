@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 
-import { getCurrentVenue, saveSetupProgress, submitVenueSetup, type SubmitSetupResult } from "@/lib/venue/service";
+import { getCurrentVenue, getSetupReadyCounts, saveSetupProgress, submitVenueSetup, type SetupReadyCounts, type SubmitSetupResult } from "@/lib/venue/service";
 import { getQuickBooksConnection, getRecentQuickBooksSyncLog, type QuickBooksSyncLogEntry } from "@/lib/quickbooks/service";
 import type { QuickBooksConnection } from "@/lib/quickbooks/types";
 import type { Venue, VenueSetupInput } from "@/lib/venue/types";
@@ -55,4 +55,18 @@ export async function getPaymentsStepDataAction(): Promise<{
     getRecentQuickBooksSyncLog(),
   ]);
   return { venue, quickbooksConnection, quickbooksSyncLog };
+}
+
+/**
+ * Guided Setup — Bring Your Business / Your Offerings / Your Business Tools /
+ * Your People & Business / Ready to Go all need to know, live, what already
+ * exists for this venue (whether from an earlier import or hand-entry) so
+ * they can say "you already have 4 packages" instead of asking again. Same
+ * session-resolution pattern as getPaymentsStepDataAction — no venue id
+ * threaded through wizard state, since a real venue row exists by now.
+ */
+export async function getSetupReadyCountsAction(): Promise<SetupReadyCounts | null> {
+  const venue = await getCurrentVenue();
+  if (!venue) return null;
+  return getSetupReadyCounts(venue.id);
 }

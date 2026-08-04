@@ -135,6 +135,12 @@ export type Venue = {
   // posture as conversationExperienceEnabled above. False leaves a venue's
   // Booking Workspace with no Event Order tab at all; nothing else changes.
   eventOrderEnabled: boolean;
+  /** CRM Suspend / unpaid dunning hard-lock. Data is preserved when true. */
+  accessDisabled: boolean;
+  /** Mirrors accessDisabled today: active | suspended. */
+  accountStatus: "active" | "suspended";
+  /** Hello to Cheers SaaS Stripe Customer id for Billing Portal (not Connect). */
+  saasStripeCustomerId: string | null;
   createdAt: string;
   updatedAt: string;
 };

@@ -58,6 +58,9 @@ type VenueRow = {
   tour_scheduling_enabled: boolean;
   conversation_experience_enabled: boolean;
   event_order_enabled: boolean;
+  access_disabled: boolean | null;
+  account_status: "active" | "suspended" | null;
+  saas_stripe_customer_id: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -105,6 +108,9 @@ function mapVenue(r: VenueRow): Venue {
     tourSchedulingEnabled: r.tour_scheduling_enabled ?? false,
     conversationExperienceEnabled: r.conversation_experience_enabled ?? false,
     eventOrderEnabled: r.event_order_enabled ?? false,
+    accessDisabled: r.access_disabled === true,
+    accountStatus: r.account_status === "suspended" ? "suspended" : "active",
+    saasStripeCustomerId: r.saas_stripe_customer_id ?? null,
     createdAt: r.created_at,
     updatedAt: r.updated_at,
   };
@@ -158,13 +164,31 @@ function toSetupPayload(input: VenueSetupInput, completed: boolean, lastStep?: s
   };
 }
 
-/** Returns the current user's venue (RLS-scoped) or null. */
+/**
+ * Returns the current user's own venue, or null.
+ *
+ * Explicitly scoped via current_user_venue_id() (the same RPC the venues_select
+ * RLS policy itself uses) rather than a bare `select *` relying on RLS alone
+ * to narrow the result to one row. RLS also has a second, broader policy
+ * (venues_hq_select — any HQ admin can see every venue) that's correct on its
+ * own terms but is OR'd together with venues_select, so an unfiltered query
+ * from an account that's *both* a venue owner and an HQ admin legitimately
+ * matches every venue in the database and PGRST116s instead of returning one
+ * row (confirmed 2026-08-04: a dev seed account had a stray hq_admins grant
+ * left over from unrelated testing, breaking /dashboard and /clients for it).
+ * Filtering by id here makes this function correct regardless of what else a
+ * user is separately permitted to see.
+ */
 export async function getVenueForCurrentUser(
   client: DbClient,
 ): Promise<Venue | null> {
+  const { data: venueId, error: idError } = await client.rpc("current_user_venue_id");
+  if (idError) throw idError;
+  if (!venueId) return null;
   const { data, error } = await client
     .from("venues")
     .select("*")
+    .eq("id", venueId)
     .maybeSingle<VenueRow>();
   if (error) throw error;
   return data ? mapVenue(data) : null;

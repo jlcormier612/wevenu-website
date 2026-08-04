@@ -42,6 +42,24 @@ export async function signIn(
     return { error: error.message };
   }
 
+  // Hard-lock: suspended / unpaid venues may not enter the workspace.
+  // Keep the session so /billing/suspended can open the Stripe Billing Portal.
+  const { data: venueLock } = await supabase
+    .from("venues")
+    .select("access_disabled, account_status")
+    .maybeSingle<{
+      access_disabled: boolean | null;
+      account_status: string | null;
+    }>();
+
+  if (
+    venueLock &&
+    (venueLock.access_disabled === true ||
+      venueLock.account_status === "suspended")
+  ) {
+    redirect("/billing/suspended");
+  }
+
   // redirect() throws internally and must be outside the try/catch above.
   redirect("/dashboard");
 }

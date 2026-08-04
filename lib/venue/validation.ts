@@ -43,6 +43,16 @@ export const SETUP_STEPS = [
   "brand",
   "owner",
   "payments",
+  // Pre-Launch Commercial Readiness, Initiative 1 (2026-08-03) — Guided
+  // Setup's 6-stage journey. These four have no fields of their own (no
+  // validation to run) — they're the Bring Your Business / Offerings /
+  // Business Tools / People stages, each either real-data-driven (a status
+  // check against live counts) or an embedded flow (Migration Center)
+  // that writes through its own existing, already-validated create paths.
+  "bring-your-business",
+  "your-offerings",
+  "business-tools",
+  "your-people",
   "review",
 ] as const;
 
@@ -68,7 +78,40 @@ export const STEP_FIELDS: Record<SetupStepId, string[]> = {
   brand: ["primaryColor", "secondaryColor", "accentColor", "neutralColor"],
   owner: ["ownerFullName", "ownerEmail", "ownerTitle", "currency", "weekStartsOn"],
   payments: [],
+  "bring-your-business": [],
+  "your-offerings": [],
+  "business-tools": [],
+  "your-people": [],
   review: [],
+};
+
+/** The 6-stage grouping Guided Setup presents in its header — "Your Venue"
+ * bundles the 6 pre-existing settings steps under one umbrella, matching
+ * what a venue actually experiences as one topic even though it's several
+ * form steps internally. */
+export const SETUP_STAGES = [
+  { id: "venue", label: "Your Venue" },
+  { id: "bring-your-business", label: "Bring Your Business" },
+  { id: "your-offerings", label: "Your Offerings" },
+  { id: "business-tools", label: "Your Business Tools" },
+  { id: "your-people", label: "Your People & Business" },
+  { id: "ready", label: "Ready to Go" },
+] as const;
+
+export type SetupStageId = (typeof SETUP_STAGES)[number]["id"];
+
+export const STAGE_FOR_STEP: Record<SetupStepId, SetupStageId> = {
+  "venue-info": "venue",
+  "venue-details": "venue",
+  "business-hours": "venue",
+  brand: "venue",
+  owner: "venue",
+  payments: "venue",
+  "bring-your-business": "bring-your-business",
+  "your-offerings": "your-offerings",
+  "business-tools": "business-tools",
+  "your-people": "your-people",
+  review: "ready",
 };
 
 // ---- field rules ------------------------------------------------------------

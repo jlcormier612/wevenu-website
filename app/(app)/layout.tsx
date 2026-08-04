@@ -38,6 +38,11 @@ export default async function WorkspaceLayout({
     redirect("/setup");
   }
 
+  // Defense in depth alongside proxy hard-lock for CRM Suspend / unpaid dunning.
+  if (venue.accessDisabled || venue.accountStatus === "suspended") {
+    redirect("/billing/suspended");
+  }
+
   void recordStaffActivity(user.id);
 
   return (

@@ -8,7 +8,8 @@
     "dev:workspace": "npm run dev --prefix workspace",
     "build": "next build",
     "start": "next start --port 3000",
-    "lint": "eslint"
+    "lint": "eslint",
+    "process:lifecycle": "node scripts/process-lifecycle.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.110.0",

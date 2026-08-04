@@ -15,6 +15,10 @@ import type {
   VenueSetupInput,
 } from "@/lib/venue/types";
 import { validateStep, validateVenueSetup } from "@/lib/venue/validation";
+import type {
+  ProductVenueProfileFields,
+  SyncVenueProfileReason,
+} from "@shared/product-sync";
 
 export type SubmitSetupResult =
   | { ok: true; venueId: string }
@@ -24,6 +28,56 @@ export type SubmitSetupResult =
 export type SaveSectionResult =
   | { ok: true }
   | { ok: false; errors: VenueSetupErrors; message?: string };
+
+function streetAddressFromSetup(input: VenueSetupInput): string {
+  return [input.addressLine1.trim(), input.addressLine2.trim()]
+    .filter(Boolean)
+    .join(", ");
+}
+
+function profileFieldsFromSetup(input: VenueSetupInput): ProductVenueProfileFields {
+  const capacityRaw = input.capacity.trim();
+  const capacity = capacityRaw ? parseInt(capacityRaw, 10) : null;
+  return {
+    name: input.name,
+    city: input.city,
+    state: input.stateRegion,
+    website: input.website,
+    address: streetAddressFromSetup(input),
+    venueType: input.venueType,
+    capacity: Number.isFinite(capacity) ? capacity : null,
+    ownerFullName: input.ownerFullName,
+    ownerEmail: input.ownerEmail || input.email,
+    ownerTitle: input.ownerTitle,
+    // Product setup collects venue phone; use it as owner contact when present.
+    ownerPhone: input.phone,
+  };
+}
+
+/**
+ * Soft product → CRM write-back. Never blocks setup/settings on CRM failure.
+ */
+function pushVenueProfileToCrm(
+  venueId: string,
+  input: VenueSetupInput,
+  reason: SyncVenueProfileReason,
+): void {
+  void (async () => {
+    try {
+      const { syncVenueProfileFromProduct } = await import("@shared/product-sync");
+      const result = await syncVenueProfileFromProduct({
+        venueId,
+        profile: profileFieldsFromSetup(input),
+        reason,
+      });
+      if (!result.ok) {
+        console.error("[product→crm] write-back error:", result.error);
+      }
+    } catch (error) {
+      console.error("[product→crm] write-back failed:", error);
+    }
+  })();
+}
 
 /**
  * The current user's venue, or null if none exists / not authenticated /
@@ -94,6 +148,7 @@ export async function submitVenueSetup(
   // Idempotency: if a completed venue already exists, treat as success.
   const existing = await repository.getVenueForCurrentUser(supabase);
   if (existing?.setupCompleted) {
+    pushVenueProfileToCrm(existing.id, input, "setup_submit");
     return { ok: true, venueId: existing.id };
   }
 
@@ -107,13 +162,17 @@ export async function submitVenueSetup(
       // add Inventory by hand; it should never block venue creation itself.
       console.error("Could not seed starter inventory:", seedError);
     }
+    pushVenueProfileToCrm(venueId, input, "setup_submit");
     return { ok: true, venueId };
   } catch (error) {
     const code = (error as { code?: string } | null)?.code;
     if (code === "23505") {
       // Unique violation — a venue already exists for this owner.
       const venue = await repository.getVenueForCurrentUser(supabase);
-      if (venue) return { ok: true, venueId: venue.id };
+      if (venue) {
+        pushVenueProfileToCrm(venue.id, input, "setup_submit");
+        return { ok: true, venueId: venue.id };
+      }
     }
     const message =
       error instanceof Error
@@ -147,6 +206,7 @@ export async function saveSetupProgress(
 
   try {
     const venueId = await repository.insertVenueSetup(supabase, input, false, lastStep);
+    pushVenueProfileToCrm(venueId, input, "setup_progress");
     return { ok: true, venueId };
   } catch (error) {
     console.error("Could not save setup progress:", error);
@@ -258,6 +318,7 @@ export async function saveVenueInfoSection(
       postal_code: input.postalCode.trim() || null,
       country: input.country.trim() || null,
     });
+    pushVenueProfileToCrm(venueId, input, "settings");
     return { ok: true };
   });
 }
@@ -274,6 +335,7 @@ export async function saveVenueProfileSection(
       capacity: input.capacity.trim() ? parseInt(input.capacity, 10) : null,
       timezone: input.timezone,
     });
+    pushVenueProfileToCrm(venueId, input, "settings");
     return { ok: true };
   });
 }
@@ -326,6 +388,7 @@ export async function saveOwnerSection(
         week_starts_on: input.weekStartsOn,
       }),
     ]);
+    pushVenueProfileToCrm(venueId, input, "settings");
     return { ok: true };
   });
 }
@@ -386,3 +449,69 @@ export async function updateVenueStory(story: string): Promise<void> {
 // lib/stripe/service.ts (Sprint 4 — Venue Payment Processing), which reads
 // Stripe's real charges_enabled flag and calls Stripe's own deauthorize
 // endpoint, instead of the placeholder local-only versions that lived here.
+
+export type SetupReadyCounts = {
+  packages: number;
+  inventory: number;
+  contractTemplates: number;
+  communicationTemplates: number;
+  playbookTemplates: number;
+  vendorRelationships: number;
+  contacts: number;
+  upcomingEvents: number;
+};
+
+const EMPTY_SETUP_READY_COUNTS: SetupReadyCounts = {
+  packages: 0, inventory: 0, contractTemplates: 0, communicationTemplates: 0,
+  playbookTemplates: 0, vendorRelationships: 0, contacts: 0, upcomingEvents: 0,
+};
+
+/**
+ * Guided Setup — real counts only, queried live against the venue's own
+ * RLS-scoped session. Never a fabricated or cached number: called when a
+ * stage renders, straight off the same tables every other part of the
+ * product reads. Feeds both the per-stage "you already have N of these"
+ * checks (Offerings/Business Tools/People) and the "Ready to Go" summary.
+ * A count of 0 for a domain is simply omitted by the caller, never shown as
+ * a false "0 packages ready."
+ */
+export async function getSetupReadyCounts(venueId: string): Promise<SetupReadyCounts> {
+  if (!isSupabaseConfigured) return EMPTY_SETUP_READY_COUNTS;
+  const supabase = await createClient();
+  const today = new Date().toISOString().slice(0, 10);
+
+  const [
+    packages, inventory, contractTemplates, communicationTemplates, playbookTemplates,
+    vendorRelationships, clients, leads, upcomingEvents,
+  ] = await Promise.all([
+    supabase.from("packages").select("id", { count: "exact", head: true })
+      .eq("venue_id", venueId).eq("is_active", true),
+    supabase.from("inventory_items").select("id", { count: "exact", head: true })
+      .eq("venue_id", venueId).eq("is_archived", false),
+    supabase.from("contract_templates").select("id", { count: "exact", head: true })
+      .eq("venue_id", venueId).eq("is_archived", false),
+    supabase.from("message_templates").select("id", { count: "exact", head: true })
+      .eq("venue_id", venueId).eq("is_archived", false),
+    supabase.from("playbook_templates").select("id", { count: "exact", head: true })
+      .eq("venue_id", venueId).eq("is_archived", false),
+    supabase.from("venue_vendor_relationships").select("id", { count: "exact", head: true })
+      .eq("venue_id", venueId).eq("status", "active"),
+    supabase.from("clients").select("id", { count: "exact", head: true })
+      .eq("venue_id", venueId).neq("status", "cancelled"),
+    supabase.from("leads").select("id", { count: "exact", head: true })
+      .eq("venue_id", venueId).not("status", "in", "(won,lost,cancelled)"),
+    supabase.from("events").select("id", { count: "exact", head: true })
+      .eq("venue_id", venueId).neq("status", "cancelled").gte("event_date", today),
+  ]);
+
+  return {
+    packages: packages.count ?? 0,
+    inventory: inventory.count ?? 0,
+    contractTemplates: contractTemplates.count ?? 0,
+    communicationTemplates: communicationTemplates.count ?? 0,
+    playbookTemplates: playbookTemplates.count ?? 0,
+    vendorRelationships: vendorRelationships.count ?? 0,
+    contacts: (clients.count ?? 0) + (leads.count ?? 0),
+    upcomingEvents: upcomingEvents.count ?? 0,
+  };
+}

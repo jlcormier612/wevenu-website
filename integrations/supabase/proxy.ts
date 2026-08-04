@@ -39,7 +39,17 @@ const PUBLIC_PATHS = [
   "/api/facebook/sync/process",      // Facebook Lead Ads queue cron (vercel.json) — CRON_SECRET-guarded, not session-guarded
   "/api/facebook/reconcile/process", // Facebook Lead Ads reconciliation poll cron (vercel.json) — CRON_SECRET-guarded, not session-guarded
   "/api/webhooks/stripe-connect",    // Stripe Connect webhook — no user session, verifies its own signature (Sprint 4)
+  "/api/internal/product-access",    // CRM → product access lock — Bearer PRODUCT_SYNC_API_KEY, not session-guarded
 ];
+
+/** Authenticated routes still reachable when the venue SaaS account is suspended. */
+const SUSPENDED_ALLOW_PATHS = ["/billing/suspended", "/api/billing/portal"];
+
+function isSuspendedAllowPath(pathname: string): boolean {
+  return SUSPENDED_ALLOW_PATHS.some(
+    (path) => pathname === path || pathname.startsWith(`${path}/`),
+  );
+}
 
 function isPublicPath(pathname: string): boolean {
   return PUBLIC_PATHS.some(
@@ -115,11 +125,68 @@ export async function updateSession(
       dashboardUrl.pathname = "/dashboard";
       return NextResponse.redirect(dashboardUrl);
     }
+    // HQ admins skip venue suspend hard-lock.
+    return supabaseResponse;
+  }
+
+  // CRM Suspend / unpaid dunning hard-lock — venue staff cannot use the app.
+  // Public couple/guest surfaces stay on PUBLIC_PATHS above. Suspend screen +
+  // billing portal API remain reachable so payment can be updated.
+  if (user && !isPublicPath(pathname)) {
+    const { data: venueLock, error: venueLockError } = await supabase
+      .from("venues")
+      .select("access_disabled, account_status")
+      .maybeSingle<{
+        access_disabled: boolean | null;
+        account_status: string | null;
+      }>();
+
+    // If migration is not applied yet, the select may error — do not brick the app.
+    const isLocked =
+      !venueLockError &&
+      Boolean(
+        venueLock &&
+          (venueLock.access_disabled === true ||
+            venueLock.account_status === "suspended"),
+      );
+
+    if (isLocked && !isSuspendedAllowPath(pathname)) {
+      if (pathname.startsWith("/api/")) {
+        return NextResponse.json(
+          {
+            error:
+              "Subscription inactive. Update your payment method to restore access.",
+            code: "account_suspended",
+          },
+          { status: 403 },
+        );
+      }
+      const suspendedUrl = request.nextUrl.clone();
+      suspendedUrl.pathname = "/billing/suspended";
+      return NextResponse.redirect(suspendedUrl);
+    }
   }
 
   // Only redirect logged-in users away from /login — not from public couple/guest surfaces.
   // Coordinators need to be able to preview /p/{token}, /w/{slug}, /book/{key} etc.
   if (user && pathname === "/login") {
+    const { data: lockedVenue } = await supabase
+      .from("venues")
+      .select("access_disabled, account_status")
+      .maybeSingle<{
+        access_disabled: boolean | null;
+        account_status: string | null;
+      }>();
+    if (
+      lockedVenue &&
+      (lockedVenue.access_disabled === true ||
+        lockedVenue.account_status === "suspended")
+    ) {
+      const suspendedUrl = request.nextUrl.clone();
+      suspendedUrl.pathname = "/billing/suspended";
+      return NextResponse.redirect(suspendedUrl);
+    }
+
     const { data: vu } = await supabase
       .from("vendor_users")
       .select("vendor_id")
