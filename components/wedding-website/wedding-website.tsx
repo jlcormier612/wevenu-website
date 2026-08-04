@@ -9,6 +9,11 @@ import type { PublicWebsite, WebsiteTheme } from "@/lib/wedding-website/types";
 import { RsvpPage } from "@/components/wedding-website/rsvp-page";
 import { GuestConciergeWidget } from "@/components/wedding-website/guest-concierge";
 import type { RsvpContext } from "@/app/rsvp/[token]/page";
+import {
+  SectionComposition, ContentBlock, WeddingPartyComposition, edgeWidthClass,
+  SectionCanvas, contrastText, ScheduleTimeline, EditorialOpening, PairedPassage, DestinationFeature, CompactInterlude,
+  type CompositionItem, type CompositionRecipe, type PartyMember, type SectionRole, type SectionScale,
+} from "@/components/wedding-website/composition-primitives";
 
 // ── Theme system: Collection (aesthetic DNA) + Palette (color expression) ────
 //
@@ -46,9 +51,16 @@ type CollectionConfig = {
   scrollBehavior: "normal" | "snap";
   sectionSpacing: "compact" | "cozy" | "spacious";
   frameStyle: "none" | "border" | "polaroid"; // Photo Style
-  captionStyle: "none" | "minimal" | "handwritten"; // Photo Style
+  captionStyle: "none" | "minimal" | "handwritten"; // Photo Style (dormant — see resolveTheme)
   imageScale: "normal" | "large"; // Photo Style
-};
+  // Photo Style — Wedding Website Visual Expression Pass (2026-08-03),
+  // gallery-arrangement/per-image treatment, independent of Collection.
+  arrangement: "uniform" | "collage" | "scrapbook";
+  scalePattern: "uniform" | "alternating" | "hero-emphasis";
+  rotation: "none" | "subtle" | "scattered";
+  shadow: "none" | "soft" | "lifted";
+  photoSpacing: "tight" | "normal" | "generous";
+} & CompositionRecipe; // Collection composition recipe — see composition-primitives.tsx
 
 type PaletteConfig = {
   name: string;
@@ -71,14 +83,25 @@ type PaletteConfig = {
 // never need an extra null-check beyond what tc.accent already required.
 type ThemeConfig = CollectionConfig & PaletteConfig & { primary: string; secondary: string };
 
-// Baseline for the four new layout fields (Part 1) plus the three Photo
-// Style fields (Part 4) — the 8 original hardcoded collections below predate
-// both dimensions, so this is what they fall back to before layout_config /
-// a chosen Photo Style override anything (resolveTheme merges over this).
-const LAYOUT_DEFAULTS: Pick<CollectionConfig, "galleryLayout" | "rsvpPlacement" | "animationStyle" | "scrollBehavior" | "sectionSpacing" | "frameStyle" | "captionStyle" | "imageScale"> = {
+// Baseline for the layout/composition/photo-style fields — every current
+// Collection/Photo Style row in the DB now sets all of these explicitly
+// (see supabase/migrations/20261173000000_wedding_website_visual_expression.sql),
+// so this only matters as a defensive fallback (an offline render, a
+// malformed row, a future Collection added without full config).
+// "framed" is the closest fallback family to the pre-this-pass look.
+const LAYOUT_DEFAULTS: Pick<CollectionConfig,
+  "galleryLayout" | "rsvpPlacement" | "animationStyle" | "scrollBehavior" | "sectionSpacing" |
+  "frameStyle" | "captionStyle" | "imageScale" | "arrangement" | "scalePattern" | "rotation" | "shadow" | "photoSpacing" |
+  "sectionComposition" | "contentWidth" | "itemAlign" | "alternate" | "featuredItem" | "sectionFrame" |
+  "sectionBand" | "itemSeparator" | "density" | "asymmetry" | "edgeTreatment" | "portraitShape"
+> = {
   galleryLayout: "grid", rsvpPlacement: "inline", animationStyle: "none",
   scrollBehavior: "normal", sectionSpacing: "cozy",
   frameStyle: "none", captionStyle: "none", imageScale: "normal",
+  arrangement: "uniform", scalePattern: "uniform", rotation: "none", shadow: "none", photoSpacing: "normal",
+  sectionComposition: "framed", contentWidth: "standard", itemAlign: "center", alternate: "none",
+  featuredItem: "none", sectionFrame: "card", sectionBand: "none", itemSeparator: "gap",
+  density: "cozy", asymmetry: "none", edgeTreatment: "contained", portraitShape: "circle",
 };
 
 // Vertical rhythm between sections, keyed by the Layout Collection's own
@@ -88,6 +111,14 @@ const SECTION_SPACING: Record<CollectionConfig["sectionSpacing"], string> = {
   compact: "3rem",
   cozy: "5rem",
   spacious: "7.5rem",
+};
+
+// Mirrors composition-primitives.tsx's own SCALE_MARGIN — RSVP doesn't run
+// through SectionCanvas (it has its own bespoke banner/gradient treatment),
+// but still participates in the same scale-driven rhythm when a Collection
+// has sectionRoles (Coastal only, 2026-08-03).
+const SCALE_MARGIN_RSVP: Record<SectionScale, string> = {
+  feature: "7rem", standard: "4.5rem", interlude: "2rem",
 };
 
 // Scroll-reveal for animationStyle (Part 1) — a couple's Collection choice,
@@ -459,14 +490,20 @@ function resolveTheme(site: PublicWebsite): ThemeConfig {
     colorOverride.heroGradient = `linear-gradient(160deg, ${secondary} 0%, ${primary} 60%, ${primary} 100%)`;
   }
 
-  // Photo Style (Part 4) — fully independent of Collection; only touches
-  // photoFilter/photoRadius (Collection's own defaults) plus its own three
-  // fields (frame/caption/scale), never anything Color Story or Typography
-  // own.
+  // Photo Style (Part 4, extended in the Visual Expression Pass) — fully
+  // independent of Collection; only touches photoFilter/photoRadius
+  // (Collection's own defaults) plus its own fields, never anything Color
+  // Story, Typography, or Collection's own sectionComposition/etc. own.
+  // `arrangement` (collage/scrapbook) overrides Collection's `galleryLayout`
+  // for the Photo Gallery section specifically — the one disclosed
+  // exception — nothing else Collection owns is touched.
   const photoOverride = site.photoStyleTokens
     ? { photoFilter: site.photoStyleTokens.photoFilter, photoRadius: site.photoStyleTokens.photoRadius,
         frameStyle: site.photoStyleTokens.frameStyle, captionStyle: site.photoStyleTokens.captionStyle,
-        imageScale: site.photoStyleTokens.imageScale }
+        imageScale: site.photoStyleTokens.imageScale,
+        arrangement: site.photoStyleTokens.arrangement, scalePattern: site.photoStyleTokens.scalePattern,
+        rotation: site.photoStyleTokens.rotation, shadow: site.photoStyleTokens.shadow,
+        photoSpacing: site.photoStyleTokens.spacing }
     : null;
 
   return {
@@ -658,41 +695,168 @@ function SectionHeader({ title, tc, accentColor }: { title: string; tc: ThemeCon
 }
 
 // ── Gallery ────────────────────────────────────────────────────────────────────
-// galleryLayout (Layout Collection, Part 1) picks the composition; frameStyle
-// / imageScale (Photo Style, Part 4) picks the per-image treatment — the two
-// dimensions combine freely since neither reads the other's fields.
+// Collection owns the gallery SECTION's relationship to the page (width,
+// edge treatment, band, header/divider) — applied by the "gallery" case in
+// WeddingWebsite, not here. This component owns only what's inside that
+// section: galleryLayout (Collection's base grid/masonry/film-strip, used
+// by every "uniform"-arrangement Photo Style) and everything Photo Style
+// controls (arrangement/scalePattern/rotation/shadow/spacing/frame/scale/
+// filter/radius). `arrangement: "collage"/"scrapbook"` replace the per-
+// image loop entirely for that gallery instance — the one place Photo
+// Style's own composition supersedes Collection's galleryLayout, per the
+// locked product model.
+
+const SPACING_GAP: Record<ThemeConfig["photoSpacing"], string> = {
+  tight: "0.5rem", normal: "0.75rem", generous: "1.5rem",
+};
+
+function rotationFor(style: ThemeConfig["rotation"], i: number, wide = false): number {
+  if (style === "none") return 0;
+  const range = style === "scattered" ? (wide ? 7 : 5) : 2;
+  // Deterministic per-index "randomness" — same site always renders the
+  // same arrangement (no layout shift on re-render), still reads as
+  // organically placed rather than a repeating pattern.
+  const seed = (i * 47 + 13) % 100;
+  return ((seed / 100) * 2 - 1) * range;
+}
+
+function shadowFor(style: ThemeConfig["shadow"]): string {
+  if (style === "lifted") return "0 12px 28px rgba(0,0,0,0.22)";
+  if (style === "soft") return "0 4px 16px rgba(0,0,0,0.1)";
+  return "none";
+}
+
 function GalleryGrid({ photos, tc }: { photos: string[]; tc: ThemeConfig }) {
-  const frame = (i: number): React.CSSProperties =>
-    tc.frameStyle === "polaroid"
-      ? { background: "#fff", padding: "10px 10px 28px", boxShadow: "0 6px 20px rgba(0,0,0,0.18)", transform: `rotate(${(i % 2 === 0 ? -1 : 1) * (1 + (i % 3))}deg)` }
-      : tc.frameStyle === "border"
-      ? { border: `6px solid #fff`, boxShadow: "0 2px 10px rgba(0,0,0,0.12)" }
-      : {};
+  const gap = SPACING_GAP[tc.photoSpacing];
+  const frame = (i: number, extraRotation = 0): React.CSSProperties => {
+    const rot = rotationFor(tc.rotation, i) + extraRotation;
+    const base: React.CSSProperties = {
+      transform: rot ? `rotate(${rot.toFixed(1)}deg)` : undefined,
+      boxShadow: shadowFor(tc.shadow),
+    };
+    if (tc.frameStyle === "polaroid") return { ...base, background: "#fff", padding: "10px 10px 28px", boxShadow: base.boxShadow === "none" ? "0 6px 20px rgba(0,0,0,0.18)" : base.boxShadow };
+    if (tc.frameStyle === "border") return { ...base, border: "6px solid #fff" };
+    return base;
+  };
+  // Two variants: the collage/scrapbook grids give each cell an explicit
+  // pixel height (via gridAutoRows), so their images fill it with
+  // height:100%. The "uniform" grid/masonry/film-strip paths size rows
+  // from the image's own aspect-ratio instead — mixing height:100% with a
+  // CSS grid row track sized "auto" is a circular-sizing bug (the row has
+  // no independent height to fill, so it collapses towards zero).
+  const imgStyleFill: React.CSSProperties = {
+    display: "block", width: "100%", height: "100%", objectFit: "cover",
+    filter: tc.photoFilter || undefined,
+    borderRadius: tc.frameStyle === "polaroid" ? 0 : tc.photoRadius,
+  };
   const imgStyle: React.CSSProperties = {
     display: "block", width: "100%", objectFit: "cover",
     filter: tc.photoFilter || undefined,
     borderRadius: tc.frameStyle === "polaroid" ? 0 : tc.photoRadius,
   };
 
-  if (tc.galleryLayout === "film-strip") {
+  // ── Magazine: true layered collage — mixed scale, overlap, hierarchy ──
+  // Overlapping ranges on a shared grid (not absolute positioning) so it
+  // reflows naturally at narrower widths. Hand-designed per photo count,
+  // never algorithmic/random, so low counts never look broken.
+  if (tc.arrangement === "collage") {
+    const n = photos.length;
+    // [gridColumn, gridRow, zIndex] per slot, 6-column grid. Patterns
+    // defined for 1-4; 5+ repeats the 4-pattern in successive 4-row bands.
+    const patterns: Record<number, [string, string, number][]> = {
+      1: [["1 / 7", "1 / 6", 1]],
+      2: [["1 / 5", "1 / 6", 1], ["4 / 7", "3 / 8", 2]],
+      3: [["1 / 5", "1 / 7", 1], ["4 / 7", "1 / 4", 2], ["3 / 7", "5 / 8", 3]],
+      4: [["1 / 4", "1 / 6", 1], ["3 / 7", "1 / 4", 2], ["1 / 4", "5 / 9", 3], ["4 / 7", "4 / 9", 2]],
+    };
     return (
-      <div className="flex gap-4 overflow-x-auto pb-4 -mx-6 px-6" style={{ scrollSnapType: "x proximity" }}>
+      <div className="grid gap-3" style={{ gridTemplateColumns: "repeat(6, 1fr)", gridAutoRows: "2.75rem", rowGap: "1.25rem" }}>
+        {photos.map((url, i) => {
+          const band = patterns[Math.min(n, 4) as 1 | 2 | 3 | 4];
+          const [col, row, z] = band[i % band.length];
+          // Offset each successive band of 4 further down so 5+ photos stack in new rows, not on top of earlier ones.
+          const bandIndex = Math.floor(i / 4);
+          const rowShift = bandIndex * 8;
+          const [rowStart, rowEnd] = row.split(" / ").map(Number);
+          return (
+            <div key={i} className="overflow-hidden"
+              style={{
+                gridColumn: col, gridRow: `${rowStart + rowShift} / ${rowEnd + rowShift}`, zIndex: z,
+                borderRadius: tc.photoRadius, ...frame(i, i % 2 === 0 ? -1.5 : 1.5),
+              }}>
+              <img src={url} alt="" style={imgStyleFill} />
+            </div>
+          );
+        })}
+      </div>
+    );
+  }
+
+  // ── Scrapbook: collected, tactile, overlapping-adjacent placement ──
+  // Every photo polaroid-framed with scattered rotation; slight deliberate
+  // overlap between neighbors reads as "photos placed on a table," not a
+  // grid with rotated corners.
+  if (tc.arrangement === "scrapbook") {
+    return (
+      <div className="flex flex-wrap justify-center" style={{ rowGap: "2rem", paddingInline: "1.5rem" }}>
         {photos.map((url, i) => (
-          <div key={i} className="shrink-0 overflow-hidden"
-            style={{ width: tc.imageScale === "large" ? "78vw" : "46vw", maxWidth: tc.imageScale === "large" ? 560 : 340, borderRadius: tc.photoRadius, scrollSnapAlign: "center", ...frame(i) }}>
-            <img src={url} alt="" style={{ ...imgStyle, aspectRatio: "4 / 5" }} />
+          <div key={i} className="overflow-hidden shrink-0"
+            style={{
+              width: "42%", maxWidth: "260px",
+              marginTop: i % 3 === 1 ? "1.5rem" : "0",
+              marginLeft: i > 0 ? "-1.25rem" : "0",
+              zIndex: i,
+              ...frame(i),
+            }}>
+            <img src={url} alt="" style={{ ...imgStyle, aspectRatio: "1 / 1" }} />
           </div>
         ))}
       </div>
     );
   }
 
+  // ── Uniform arrangement — Editorial/Film/Minimal/Modern/Luxury ──
+  // Collection's galleryLayout (grid/masonry/film-strip) still picks the
+  // outer structure; scalePattern varies per-image size/emphasis within it.
+  const spanFor = (i: number, total: number): string => {
+    if (tc.scalePattern === "hero-emphasis" && i === 0 && total > 1) return "col-span-2 row-span-2";
+    if (tc.scalePattern === "alternating" && i % 3 === 1) return "col-span-2";
+    return "";
+  };
+  const aspectFor = (i: number): string => {
+    if (tc.scalePattern === "alternating") return i % 2 === 0 ? "4 / 5" : "16 / 10";
+    return "1 / 1";
+  };
+
+  if (tc.galleryLayout === "film-strip") {
+    const baseW = tc.imageScale === "large" ? 78 : 46;
+    const baseMax = tc.imageScale === "large" ? 560 : 340;
+    const widthFor = (i: number): { vw: string; max: number } => {
+      if (tc.scalePattern === "hero-emphasis" && i === 0) return { vw: `${Math.min(baseW + 22, 92)}vw`, max: baseMax + 180 };
+      if (tc.scalePattern === "alternating") return i % 2 === 1 ? { vw: `${Math.max(baseW - 12, 30)}vw`, max: baseMax - 100 } : { vw: `${baseW}vw`, max: baseMax };
+      return { vw: `${baseW}vw`, max: baseMax };
+    };
+    return (
+      <div className="flex overflow-x-auto pb-4 -mx-6 px-6" style={{ gap, scrollSnapType: "x proximity" }}>
+        {photos.map((url, i) => {
+          const w = widthFor(i);
+          return (
+            <div key={i} className="shrink-0 overflow-hidden"
+              style={{ width: w.vw, maxWidth: w.max, borderRadius: tc.photoRadius, scrollSnapAlign: "center", ...frame(i) }}>
+              <img src={url} alt="" style={{ ...imgStyle, aspectRatio: "4 / 5" }} />
+            </div>
+          );
+        })}
+      </div>
+    );
+  }
+
   if (tc.galleryLayout === "grid") {
     return (
-      <div className={`grid gap-3 ${tc.imageScale === "large" ? "grid-cols-2" : "grid-cols-2 md:grid-cols-3"}`}>
+      <div className={`grid ${tc.imageScale === "large" ? "grid-cols-2" : "grid-cols-2 md:grid-cols-3"}`} style={{ gap }}>
         {photos.map((url, i) => (
-          <div key={i} className="overflow-hidden" style={{ borderRadius: tc.photoRadius, ...frame(i) }}>
-            <img src={url} alt="" style={{ ...imgStyle, aspectRatio: "1 / 1" }} />
+          <div key={i} className={`overflow-hidden ${spanFor(i, photos.length)}`} style={{ borderRadius: tc.photoRadius, ...frame(i) }}>
+            <img src={url} alt="" style={{ ...imgStyle, aspectRatio: aspectFor(i) }} />
           </div>
         ))}
       </div>
@@ -701,9 +865,9 @@ function GalleryGrid({ photos, tc }: { photos: string[]; tc: ThemeConfig }) {
 
   // masonry — the original free-flowing columns treatment
   return (
-    <div className={`columns-2 gap-3 space-y-3 ${tc.imageScale === "large" ? "md:columns-2" : "md:columns-3 lg:columns-4"}`}>
+    <div className={`columns-2 space-y-3 ${tc.imageScale === "large" ? "md:columns-2" : "md:columns-3 lg:columns-4"}`} style={{ columnGap: gap }}>
       {photos.map((url, i) => (
-        <div key={i} className="break-inside-avoid overflow-hidden" style={{ borderRadius: tc.photoRadius, ...frame(i) }}>
+        <div key={i} className="break-inside-avoid overflow-hidden" style={{ borderRadius: tc.photoRadius, marginBottom: gap, ...frame(i) }}>
           <img src={url} alt="" style={imgStyle} />
         </div>
       ))}
@@ -713,7 +877,9 @@ function GalleryGrid({ photos, tc }: { photos: string[]; tc: ThemeConfig }) {
 
 // ── Password gate ─────────────────────────────────────────────────────────────
 
-function PasswordGate({ slug, accentColor }: { slug: string; accentColor: string }) {
+function PasswordGate({
+  slug, accentColor, headingFont, headingItalic,
+}: { slug: string; accentColor: string; headingFont: string; headingItalic: boolean }) {
   const router = useRouter();
   const [pw, setPw] = React.useState("");
   const [checking, setChecking] = React.useState(false);
@@ -730,7 +896,7 @@ function PasswordGate({ slug, accentColor }: { slug: string; accentColor: string
       <div className="text-center space-y-6 px-6 max-w-sm w-full">
         <p className="text-3xl">🔒</p>
         <div>
-          <p style={{ fontFamily: "'Playfair Display', Georgia, serif", fontSize: "1.25rem", color: "#5D6F5D" }}>
+          <p style={{ fontFamily: headingFont, fontStyle: headingItalic ? "italic" : "normal", fontSize: "1.25rem", color: "#5D6F5D" }}>
             Private wedding website
           </p>
           <p className="text-sm mt-1" style={{ color: "#B8AEA1" }}>Enter the password to continue.</p>
@@ -850,15 +1016,16 @@ export function WeddingWebsite({
   activeSection?: string | null;
   onSectionClick?: (key: string) => void;
 }) {
+  // resolveTheme is pure (no side effects), so it's safe to compute once,
+  // up front, and reuse for the password gate too — the gate now shows the
+  // couple's actual chosen Typography instead of a hardcoded font (Visual
+  // Expression Pass, guardrail #7), by sharing the exact same resolution
+  // chain the rest of the page uses rather than duplicating it by hand.
+  const tc = resolveTheme(site);
   if (site.requires_password) {
-    // Same precedence as tc.primary below (colorPrimary → resolved Color
-    // Story accent → legacy accentColor → fallback) — the password gate
-    // renders before a full resolveTheme() call, so it mirrors the chain
-    // by hand rather than sharing the computation.
-    return <PasswordGate slug={slug} accentColor={site.colorPrimary ?? site.colorTokens?.accent ?? site.colorAccent ?? site.accentColor ?? "#5D6F5D"} />;
+    return <PasswordGate slug={slug} accentColor={tc.primary} headingFont={tc.headingFont} headingItalic={tc.headingItalic} />;
   }
 
-  const tc = resolveTheme(site);
   // Theme supplies a natural accent; a couple's Color Story primary (Part 2)
   // takes precedence, then the legacy single accentColor override, then the
   // Collection/Color-Story-resolved default.
@@ -896,10 +1063,15 @@ export function WeddingWebsite({
     return () => { link.remove(); };
   }, [tc.fontUrl]);
 
-  // Hero background — when no cover photo use the theme's personality gradient
-  const hascover = !!content.home?.coverImageUrl;
+  // Hero background — the couple's own cover photo always wins when set.
+  // venues.hero_image_url (Coastal Premium Art-Direction Proof Pass,
+  // 2026-08-03) is a safe fallback only — never replaces a couple-selected
+  // hero — and only when no cover photo exists does the theme's personality
+  // gradient apply. COUPLE = STORY, VENUE = PLACE.
+  const heroImage = content.home?.coverImageUrl || site.venue?.heroImageUrl || null;
+  const hascover = !!heroImage;
   const heroStyle: React.CSSProperties = hascover
-    ? { backgroundImage: `url(${content.home!.coverImageUrl})`, backgroundSize: "cover", backgroundPosition: "center",
+    ? { backgroundImage: `url(${heroImage})`, backgroundSize: "cover", backgroundPosition: "center",
         filter: tc.photoFilter || undefined }
     : { background: tc.heroGradient };
 
@@ -933,6 +1105,549 @@ export function WeddingWebsite({
         </div>
       </div>
     );
+  }
+
+  // Coastal Art-Direction Pass 2 (2026-08-03) — whether each section
+  // currently has real content to show, mirroring the exact same
+  // null-guards each case below already uses. Computed up front, generically
+  // by content shape (never by section index), so the pairing decision below
+  // can never disagree with what actually renders.
+  const hasContent: Record<string, boolean> = {
+    story: !!content.story?.text || editMode,
+    event: !!(content.event?.ceremony || content.event?.reception),
+    gallery: !!content.gallery?.photos?.length,
+    schedule: !!content.schedule?.length,
+    travel: !!(content.travel?.message || content.travel?.hotels?.length || content.travel?.transportation?.notes),
+    dress_code: !!(content.dress_code?.formality || content.dress_code?.description),
+    bridal_party: !!content.bridal_party?.members?.length,
+    things_to_do: !!content.things_to_do?.items?.length,
+    music: !!(content.music?.ceremony || content.music?.cocktail || content.music?.reception || content.music?.lastDance),
+    registry: !!content.registry?.length,
+    faq: !!content.faq?.length,
+    rsvp: true,
+  };
+
+  // Groups adjacent sections into shared passages (Step 6/9) purely from
+  // data: both sides must name each other via sectionRoles.pairWith, be
+  // immediately adjacent in the couple's OWN section order (never a fixed
+  // index), and both currently have content. Reordered apart, hidden, or
+  // emptied — each falls back to rendering solo, its normal treatment.
+  const renderGroups: (string | [string, string])[] = [];
+  {
+    const paired = new Set<string>();
+    for (let i = 0; i < sectionOrder.length; i++) {
+      const key = sectionOrder[i];
+      if (paired.has(key)) continue;
+      const role = tc.sectionRoles?.[key];
+      const next = sectionOrder[i + 1];
+      const nextRole = next ? tc.sectionRoles?.[next] : undefined;
+      if (role?.pairWith && next && role.pairWith === next && nextRole?.pairWith === key
+        && hasContent[key] && hasContent[next]) {
+        renderGroups.push([key, next]);
+        paired.add(key); paired.add(next);
+      } else {
+        renderGroups.push(key);
+      }
+    }
+  }
+
+  const canvasColors = { surface: tc.surface, secondary: tc.secondary, accent: tc.accent };
+
+  function renderDressCodeWeddingPartyPair(): React.ReactNode {
+    const dc = content.dress_code;
+    const bp = content.bridal_party;
+    const formalityLabel = dc?.formality ? (FORMALITY_LABELS[dc.formality] ?? "") : "";
+    const members: PartyMember[] = bp?.members ?? [];
+    return (
+      <SectionCanvas key="dress_code+bridal_party" role={tc.sectionRoles?.dress_code} sparse={members.length <= 2} colors={canvasColors}>
+        <PairedPassage
+          dividerColor={`color-mix(in srgb, ${tc.border} 55%, ${tc.text} 45%)`}
+          leftSpan={4}
+          left={
+            <SectionWrapper sectionKey="dress_code">
+              <section>
+                <SectionHeader title="Dress Code" tc={tc} accentColor={color} />
+                <div className="space-y-4">
+                  {formalityLabel && (
+                    <p style={{ fontFamily: tc.headingFont, fontStyle: tc.headingItalic ? "italic" : "normal", fontSize: "1.4rem", color }}>
+                      {formalityLabel}
+                    </p>
+                  )}
+                  {dc?.description && <p className="leading-relaxed opacity-70 text-sm">{dc.description}</p>}
+                  {dc?.colorNote && <p className="text-sm opacity-55 italic" style={{ fontFamily: tc.headingFont }}>{dc.colorNote}</p>}
+                </div>
+              </section>
+            </SectionWrapper>
+          }
+          right={
+            <SectionWrapper sectionKey="bridal_party">
+              <section>
+                <SectionHeader title={bp?.title ?? "Our Wedding Party"} tc={tc} accentColor={color} />
+                <WeddingPartyComposition recipe={tc} tc={tc} color={color} members={members} />
+              </section>
+            </SectionWrapper>
+          }
+        />
+      </SectionCanvas>
+    );
+  }
+
+  function renderRegistryFaqPair(): React.ReactNode {
+    const registryItems: CompositionItem[] = (content.registry ?? []).map(r => ({ heading: r.name, body: r.notes, href: r.url }));
+    const faqItems: CompositionItem[] = (content.faq ?? []).map(item => ({ heading: item.question, body: item.answer }));
+    return (
+      <SectionCanvas key="registry+faq" role={tc.sectionRoles?.registry} sparse={registryItems.length <= 1 && faqItems.length <= 2} colors={canvasColors}>
+        <PairedPassage
+          dividerColor={`color-mix(in srgb, ${tc.border} 55%, ${tc.text} 45%)`}
+          leftSpan={5}
+          left={
+            <SectionWrapper sectionKey="registry">
+              <section>
+                <SectionHeader title="Registry" tc={tc} accentColor={color} />
+                <SectionComposition recipe={tc} tc={tc} color={color} items={registryItems} />
+              </section>
+            </SectionWrapper>
+          }
+          right={
+            <SectionWrapper sectionKey="faq">
+              <section>
+                <SectionHeader title="FAQ" tc={tc} accentColor={color} />
+                <SectionComposition recipe={tc} tc={tc} color={color} items={faqItems} />
+              </section>
+            </SectionWrapper>
+          }
+        />
+      </SectionCanvas>
+    );
+  }
+
+  function renderPair(keyA: string, keyB: string): React.ReactNode {
+    const pairId = [keyA, keyB].sort().join("+");
+    if (pairId === "bridal_party+dress_code") return renderDressCodeWeddingPartyPair();
+    if (pairId === "faq+registry") return renderRegistryFaqPair();
+    return null;
+  }
+
+  function renderSolo(key: string): React.ReactNode {
+          switch (key) {
+
+            // ── Our Story ──────────────────────────────────────────────────────
+            case "story": {
+              const s = content.story;
+              if (!s?.text) return editMode ? (
+                <SectionCanvas key="story" role={tc.sectionRoles?.story} sparse colors={canvasColors}>
+                  <SectionWrapper sectionKey="story">
+                    <section className="py-4">
+                      <p style={{ fontSize: "0.8rem", opacity: 0.3, fontStyle: "italic" }}>Your story will appear here.</p>
+                    </section>
+                  </SectionWrapper>
+                </SectionCanvas>
+              ) : null;
+
+              // Dead-space guard (Part 8): a short story reads as sparse —
+              // collapses Standard down to Interlude spacing.
+              const storySparse = s.text.length < 240;
+              // Coastal Art-Direction Pass 2 — an editorial opening may use
+              // the couple's own first gallery photo when they have one;
+              // never forced, never a venue/marketing image (Step 2/14).
+              const storyPhoto = tc.sectionRoles ? (content.gallery?.photos?.[0] ?? null) : null;
+
+              return (
+                <SectionCanvas key="story" role={tc.sectionRoles?.story} sparse={storySparse} colors={canvasColors}>
+                <SectionWrapper sectionKey="story">
+                  <section>
+                    {tc.sectionRoles ? (
+                      <EditorialOpening tc={tc} color={color} labelColor={tc.accent || color} eyebrow="Our Story" heading={s.title ?? "How it began"} text={s.text} photoUrl={storyPhoto} />
+                    ) : (
+                      <>
+                    <SectionHeader title={s.title ?? "Our Story"} tc={tc} accentColor={color} />
+
+                    {tc.storyStyle === "quote" ? (
+                      // Rosé — large italic pull quote, centered, like a love letter
+                      <div className="max-w-xl mx-auto text-center px-4">
+                        <p style={{
+                          fontFamily: tc.headingFont,
+                          fontStyle: "italic",
+                          fontSize: "clamp(1.35rem, 3vw, 1.9rem)",
+                          lineHeight: 1.75,
+                          color,
+                          letterSpacing: "0.01em",
+                        }}>
+                          {s.text}
+                        </p>
+                      </div>
+                    ) : tc.storyStyle === "minimal" ? (
+                      // Linen — quiet body-text scale, no headingFont, max breathing room
+                      <div>
+                        <p style={{
+                          fontFamily: tc.bodyFont,
+                          fontSize: "0.9rem",
+                          lineHeight: 2.05,
+                          color: tc.textMuted,
+                          maxWidth: "520px",
+                        }}>
+                          {s.text}
+                        </p>
+                      </div>
+                    ) : tc.storyStyle === "editorial" ? (
+                      // Velvet / Midnight — left-aligned measured prose, body text scale
+                      <div className="max-w-2xl">
+                        <p style={{
+                          fontFamily: tc.bodyFont,
+                          fontSize: "1rem",
+                          lineHeight: 1.9,
+                          color: tc.textMuted,
+                          letterSpacing: "0.01em",
+                        }}>
+                          {s.text}
+                        </p>
+                      </div>
+                    ) : (
+                      // prose — Wildflower, Garden Party, Coastal, Champagne
+                      <div className="max-w-xl mx-auto text-center px-4">
+                        <p style={{
+                          fontFamily: tc.headingFont,
+                          fontStyle: tc.headingItalic ? "italic" : "normal",
+                          fontSize: "clamp(1rem, 2vw, 1.2rem)",
+                          lineHeight: 1.85,
+                          color: tc.text,
+                        }}>
+                          {s.text}
+                        </p>
+                      </div>
+                    )}
+                      </>
+                    )}
+                  </section>
+                </SectionWrapper>
+                </SectionCanvas>
+              );
+            }
+            // ── Event Details ─────────────────────────────────────────────────
+            // The one authorized primary placement for the venue's editorial
+            // image (Coastal Premium Art-Direction Proof Pass, guardrail 3) —
+            // it belongs here because this is where ceremony/reception
+            // information already connects to the physical venue. Canvas
+            // "strong" needs a contrast-checked tc so heading/body/meta text
+            // stays readable against any Color Story's secondary/accent —
+            // never hardcoded to a specific palette.
+            case "event": {
+              const e = content.event;
+              if (!e?.ceremony && !e?.reception) return null;
+              const items: CompositionItem[] = [];
+              if (e.ceremony) items.push({
+                label: "Ceremony",
+                heading: e.ceremony.time ?? "Ceremony",
+                body: e.ceremony.location,
+                meta: e.ceremony.address,
+              });
+              if (e.reception) items.push({
+                label: "Reception",
+                heading: e.reception.time ?? "Reception",
+                body: e.reception.location,
+                meta: e.reception.address,
+              });
+              const eventRole = tc.sectionRoles?.event;
+              const eventStrong = eventRole?.canvas === "strong";
+              const eventBg = tc.secondary || tc.accent;
+              const eventFg = eventStrong ? contrastText(eventBg) : tc.text;
+              const eventTc: ThemeConfig = eventStrong ? { ...tc, text: eventFg, textMuted: `${eventFg}b0` } : tc;
+              const venueImage = site.venue?.heroImageUrl;
+              return (
+                <SectionCanvas key="event" role={eventRole} colors={canvasColors}>
+                <SectionWrapper sectionKey="event">
+                  <section className={venueImage ? "grid gap-10 md:grid-cols-5 md:items-center" : undefined}>
+                    <div className={venueImage ? "md:col-span-3" : undefined}>
+                      <SectionHeader title="Event Details" tc={eventTc} accentColor={eventStrong ? eventFg : color} />
+                      <SectionComposition recipe={eventTc} tc={eventTc} color={eventStrong ? eventFg : color} items={items} />
+                    </div>
+                    {venueImage && (
+                      <div className="md:col-span-2">
+                        <div className="overflow-hidden" style={{ borderRadius: tc.cardRadius, aspectRatio: "4 / 5" }}>
+                          <img src={venueImage} alt={site.venue?.name ?? "The venue"} className="w-full h-full object-cover" />
+                        </div>
+                        {site.venue?.name && (
+                          <p className="text-xs mt-3 text-center opacity-60" style={{ color: eventFg, fontFamily: tc.bodyFont }}>
+                            {site.venue.name}
+                          </p>
+                        )}
+                      </div>
+                    )}
+                  </section>
+                </SectionWrapper>
+                </SectionCanvas>
+              );
+            }
+
+            // ── Photo Gallery ─────────────────────────────────────────────────
+            // Collection owns this section's relationship to the page — width,
+            // edge treatment, background band; Photo Style owns everything
+            // inside GalleryGrid. Neither reads the other's fields.
+            case "gallery": {
+              const g = content.gallery;
+              if (!g?.photos?.length) return null;
+              return (
+                <SectionCanvas key="gallery" role={tc.sectionRoles?.gallery} colors={canvasColors}>
+                <SectionWrapper sectionKey="gallery">
+                  <section
+                    className={edgeWidthClass(tc.edgeTreatment, 0)}
+                    style={tc.sectionBand === "tinted" ? { background: tc.surface, paddingBlock: "3rem" } : undefined}
+                  >
+                    <div style={{ maxWidth: tc.edgeTreatment === "full-bleed" ? "none" : (tc.contentWidth === "narrow" ? "30rem" : tc.contentWidth === "wide" ? "56rem" : "42rem"), marginInline: tc.edgeTreatment === "full-bleed" ? undefined : "auto" }}>
+                      <SectionHeader title={g.title ?? "Our Photos"} tc={tc} accentColor={color} />
+                      <GalleryGrid photos={g.photos} tc={tc} />
+                    </div>
+                  </section>
+                </SectionWrapper>
+                </SectionCanvas>
+              );
+            }
+
+            // ── Day-of Schedule — a visual timeline for Coastal, the
+            // original database-list treatment for every other Collection ──
+            case "schedule": {
+              if (!content.schedule?.length) return null;
+              const items: CompositionItem[] = content.schedule.map(item => ({
+                label: item.time, heading: item.title, body: item.description,
+              }));
+              return (
+                <SectionCanvas key="schedule" role={tc.sectionRoles?.schedule} sparse={items.length <= 2} colors={canvasColors}>
+                <SectionWrapper sectionKey="schedule">
+                  <section>
+                    <SectionHeader title="Schedule" tc={tc} accentColor={color} />
+                    {tc.sectionRoles ? (
+                      <ScheduleTimeline tc={tc} color={color} labelColor={tc.accent || color} items={items} />
+                    ) : (
+                      <SectionComposition recipe={tc} tc={tc} color={color} items={items} />
+                    )}
+                  </section>
+                </SectionWrapper>
+                </SectionCanvas>
+              );
+            }
+
+            // ── Travel & Hotels ───────────────────────────────────────────────
+            case "travel": {
+              const t = content.travel;
+              if (!t?.message && !t?.hotels?.length && !t?.transportation?.notes) return null;
+              const items: CompositionItem[] = [
+                ...(t.hotels ?? []).map(h => ({
+                  heading: h.name,
+                  body: h.notes,
+                  meta: h.code ? `Code: ${h.code}` : undefined,
+                  href: h.url,
+                })),
+                ...(t.transportation?.notes ? [{ label: "Transportation", heading: "Getting around", body: t.transportation.notes }] : []),
+              ];
+              return (
+                <SectionCanvas key="travel" role={tc.sectionRoles?.travel} sparse={items.length <= 1} colors={{ surface: tc.surface, secondary: tc.secondary, accent: tc.accent }}>
+                <SectionWrapper sectionKey="travel">
+                  <section>
+                    <SectionHeader title="Travel & Accommodations" tc={tc} accentColor={color} />
+                    {t.message && <p className="text-center opacity-65 mb-8 leading-relaxed">{t.message}</p>}
+                    <SectionComposition recipe={tc} tc={tc} color={color} items={items} />
+                  </section>
+                </SectionWrapper>
+                </SectionCanvas>
+              );
+            }
+
+            // ── Dress Code (solo fallback — see renderDressCodeWeddingPartyPair
+            // for the paired-with-Wedding-Party composition) ──────────────────
+            case "dress_code": {
+              const dc = content.dress_code;
+              if (!dc?.formality && !dc?.description) return null;
+              const formalityLabel = dc.formality ? (FORMALITY_LABELS[dc.formality] ?? "") : "";
+              return (
+                <SectionCanvas key="dress_code" role={tc.sectionRoles?.dress_code} sparse colors={canvasColors}>
+                <SectionWrapper sectionKey="dress_code">
+                  <section>
+                    <SectionHeader title="Dress Code" tc={tc} accentColor={color} />
+                    <ContentBlock recipe={tc} tc={tc} color={color}>
+                      <div className="space-y-4">
+                        {formalityLabel && (
+                          <p style={{ fontFamily: tc.headingFont, fontStyle: tc.headingItalic ? "italic" : "normal", fontSize: "1.5rem", color }}>
+                            {formalityLabel}
+                          </p>
+                        )}
+                        {dc.description && <p className="leading-relaxed opacity-70">{dc.description}</p>}
+                        {dc.colorNote && (
+                          <p className="text-sm opacity-55 italic" style={{ fontFamily: tc.headingFont }}>{dc.colorNote}</p>
+                        )}
+                      </div>
+                    </ContentBlock>
+                  </section>
+                </SectionWrapper>
+                </SectionCanvas>
+              );
+            }
+
+            // ── Wedding Party (solo fallback) — Collection composition only,
+            // Photo Style is never consulted here, per the locked product
+            // model (Photo Style is scoped to the Photo Gallery section). ────
+            case "bridal_party": {
+              const bp = content.bridal_party;
+              if (!bp?.members?.length) return null;
+              const members: PartyMember[] = bp.members;
+              return (
+                <SectionCanvas key="bridal_party" role={tc.sectionRoles?.bridal_party} sparse={members.length <= 2} colors={canvasColors}>
+                <SectionWrapper sectionKey="bridal_party">
+                  <section>
+                    <SectionHeader title={bp.title ?? "Our Wedding Party"} tc={tc} accentColor={color} />
+                    <WeddingPartyComposition recipe={tc} tc={tc} color={color} members={members} />
+                  </section>
+                </SectionWrapper>
+                </SectionCanvas>
+              );
+            }
+
+            // ── Things To Do — a small destination moment for Coastal ──────────
+            case "things_to_do": {
+              const ttd = content.things_to_do;
+              if (!ttd?.items?.length) return null;
+              const items: CompositionItem[] = ttd.items.map(item => ({
+                label: CATEGORY_ICONS[item.category] ?? "✦",
+                heading: item.name,
+                body: item.description,
+                meta: item.address,
+                href: item.url,
+              }));
+              return (
+                <SectionCanvas key="things_to_do" role={tc.sectionRoles?.things_to_do} sparse={items.length <= 1} colors={canvasColors}>
+                <SectionWrapper sectionKey="things_to_do">
+                  <section>
+                    <SectionHeader title={ttd.title ?? "Things To Do"} tc={tc} accentColor={color} />
+                    {ttd.intro && <p className="text-center opacity-60 mb-8 leading-relaxed">{ttd.intro}</p>}
+                    {tc.sectionRoles ? (
+                      <DestinationFeature tc={tc} color={color} items={items} />
+                    ) : (
+                      <SectionComposition recipe={tc} tc={tc} color={color} items={items} />
+                    )}
+                  </section>
+                </SectionWrapper>
+                </SectionCanvas>
+              );
+            }
+
+            // ── Music — a compact romantic interlude for Coastal, never its
+            // own section band ──────────────────────────────────────────────
+            case "music": {
+              const m = content.music;
+              if (!m?.ceremony && !m?.cocktail && !m?.reception && !m?.lastDance) return null;
+              const tracks = [
+                m.ceremony  && { label: "Ceremony",      song: m.ceremony },
+                m.cocktail  && { label: "Cocktail Hour", song: m.cocktail },
+                m.reception && { label: "Reception",     song: m.reception },
+                m.lastDance && { label: "Last Dance",    song: m.lastDance },
+              ].filter(Boolean) as { label: string; song: string }[];
+              const items: CompositionItem[] = tracks.map(t => ({ label: t.label, heading: t.song }));
+              return (
+                <SectionCanvas key="music" role={tc.sectionRoles?.music} sparse={items.length <= 1} colors={canvasColors}>
+                <SectionWrapper sectionKey="music">
+                  <section>
+                    {tc.sectionRoles ? (
+                      <CompactInterlude tc={tc} color={color} labelColor={tc.accent || color} label={content.music?.title ?? "Our Music"} items={items}
+                        footnote={m.doNotPlay ? `Please don't play: ${m.doNotPlay}` : undefined} />
+                    ) : (
+                      <>
+                        <SectionHeader title={content.music?.title ?? "Our Music"} tc={tc} accentColor={color} />
+                        <SectionComposition recipe={tc} tc={tc} color={color} items={items} />
+                        {m.doNotPlay && (
+                          <p className="text-sm opacity-40 text-center pt-4">Please don't play: {m.doNotPlay}</p>
+                        )}
+                      </>
+                    )}
+                  </section>
+                </SectionWrapper>
+                </SectionCanvas>
+              );
+            }
+
+            // ── Registry (solo fallback — see renderRegistryFaqPair) ──────────
+            case "registry": {
+              if (!content.registry?.length) return null;
+              const items: CompositionItem[] = content.registry.map(r => ({
+                heading: r.name, body: r.notes, href: r.url,
+              }));
+              return (
+                <SectionCanvas key="registry" role={tc.sectionRoles?.registry} sparse={items.length <= 1} colors={canvasColors}>
+                <SectionWrapper sectionKey="registry">
+                  <section>
+                    <SectionHeader title="Registry" tc={tc} accentColor={color} />
+                    <SectionComposition recipe={tc} tc={tc} color={color} items={items} />
+                  </section>
+                </SectionWrapper>
+                </SectionCanvas>
+              );
+            }
+
+            // ── FAQ (solo fallback — see renderRegistryFaqPair) ───────────────
+            case "faq": {
+              if (!content.faq?.length) return null;
+              const items: CompositionItem[] = content.faq.map(item => ({
+                heading: item.question, body: item.answer,
+              }));
+              return (
+                <SectionCanvas key="faq" role={tc.sectionRoles?.faq} sparse={items.length <= 2} colors={canvasColors}>
+                <SectionWrapper sectionKey="faq">
+                  <section>
+                    <SectionHeader title="FAQ" tc={tc} accentColor={color} />
+                    <SectionComposition recipe={tc} tc={tc} color={color} items={items} />
+                  </section>
+                </SectionWrapper>
+                </SectionCanvas>
+              );
+            }
+
+            // ── RSVP ──────────────────────────────────────────────────────────
+            case "rsvp": {
+              // rsvpPlacement (Part 1): "inline" keeps the original rounded
+              // inset card in the normal section flow; "banner" breaks the
+              // card out to full-bleed width, a genuinely different moment
+              // in the page rather than just another section. sectionFrame/
+              // sectionBand (Visual Expression Pass) shape the surrounding
+              // treatment only — RSVP's own business logic is untouched.
+              //
+              // Coastal Premium Art-Direction Proof Pass (2026-08-03) —
+              // presentation only: the banner now echoes the hero's own
+              // gradient (same primary/secondary formula from resolveTheme)
+              // so the page's closing scene visually rhymes with its
+              // opening one, with contrast-checked text for any palette.
+              const isBanner = tc.rsvpPlacement === "banner";
+              const quiet = tc.sectionComposition === "quiet";
+              const rsvpRole = tc.sectionRoles?.rsvp;
+              const bannerBg = rsvpRole?.canvas === "strong" ? tc.heroGradient : color;
+              const bannerFg = rsvpRole?.canvas === "strong" ? contrastText(tc.secondary || tc.primary) : "white";
+              const rsvpCard = (
+                <div className={isBanner ? "p-10 md:p-16" : quiet ? "p-8 md:p-10" : "p-8 md:p-12 rounded-3xl"}
+                  style={quiet
+                    ? { background: "transparent", border: `1px solid ${color}30` }
+                    : { background: bannerBg, borderRadius: isBanner ? 0 : tc.cardRadius }}>
+                  <div className="text-center mb-8 max-w-xl mx-auto" style={{ color: quiet ? tc.text : bannerFg }}>
+                    <h2 style={{ fontFamily: tc.headingFont, color: quiet ? color : bannerFg, fontStyle: tc.headingItalic ? "italic" : "normal", fontSize: isBanner ? "clamp(2rem, 5vw, 3rem)" : "clamp(1.75rem, 4vw, 2.5rem)", fontWeight: 600 }}>
+                      RSVP
+                    </h2>
+                    <p className="opacity-70 text-sm mt-2">Enter the code from your invitation to respond.</p>
+                    {site.rsvpStats && site.rsvpStats.total > 0 && (
+                      <p className="opacity-50 text-xs mt-1">{site.rsvpStats.attending} of {site.rsvpStats.total} guests have responded</p>
+                    )}
+                  </div>
+                  <div className="max-w-xl mx-auto"><RsvpSection accentColor={color} tc={tc} /></div>
+                </div>
+              );
+              return (
+                <div key="rsvp" style={{ marginBlock: rsvpRole ? SCALE_MARGIN_RSVP[rsvpRole.scale] : undefined }}>
+                <SectionWrapper sectionKey="rsvp">
+                  <section className={isBanner ? "relative left-1/2 right-1/2 -mx-[50vw] w-screen" : undefined}>
+                    {rsvpCard}
+                  </section>
+                </SectionWrapper>
+                </div>
+              );
+            }
+
+            default: return null;
+          }
   }
 
   return (
@@ -1023,6 +1738,47 @@ export function WeddingWebsite({
           </div>
         ) : (
           // Centered layout — all other themes
+          tc.sectionRoles ? (
+            // Coastal Art-Direction Pass 2 (2026-08-03) — editorial hierarchy:
+            // eyebrow -> atmospheric phrase -> couple names (unmistakable
+            // primary identity) -> ONE authoritative date+location line.
+            // `subtitle` is a free-text field a couple can type anything
+            // into (Studio's own placeholder used to suggest a date, which
+            // is exactly the collision this fixes) — it now always reads as
+            // a lead-in phrase ahead of the names, never a second date
+            // candidate, and eventDate (the synced, authoritative source)
+            // is the only place a date is ever rendered in this hero.
+            <div className="relative z-10 max-w-3xl mx-auto text-center" style={{ color: tc.heroTextColor }}>
+              <p className="text-xs font-semibold uppercase tracking-[0.3em] opacity-70 mb-5">
+                {site.event?.eventType?.replace(/_/g, " ") ?? "Wedding"}
+              </p>
+              {content.home?.subtitle && (
+                <p className="text-base md:text-lg italic opacity-80 mb-4" style={{ fontFamily: tc.headingFont }}>
+                  {content.home.subtitle}
+                </p>
+              )}
+              <h1 style={{
+                fontFamily: tc.headingFont,
+                color: tc.heroTextColor,
+                fontStyle: tc.headingItalic ? "italic" : "normal",
+                fontSize: "clamp(2.5rem, 8vw, 5rem)",
+                fontWeight: 600,
+                lineHeight: 1.1,
+                textShadow: "0 2px 20px rgba(0,0,0,0.25)",
+              }}>
+                {content.home?.title ?? coupleName}
+              </h1>
+              {(eventDate || content.event?.ceremony?.location || site.venue?.name) && (
+                <p className="pt-5 text-base md:text-lg opacity-90" style={{ fontFamily: tc.headingFont, fontStyle: tc.headingItalic ? "italic" : "normal" }}>
+                  {[eventDate ? formatEventDate(eventDate) : null, content.event?.ceremony?.location ?? site.venue?.name ?? null]
+                    .filter(Boolean).join(" · ")}
+                </p>
+              )}
+              {du !== null && du > 0 && (
+                <p className="text-sm opacity-60 pt-1">{du} days to go</p>
+              )}
+            </div>
+          ) : (
           <div className="relative z-10 space-y-5 max-w-3xl mx-auto text-center" style={{ color: tc.heroTextColor }}>
             <p className="text-xs font-semibold uppercase tracking-[0.3em] opacity-70">
               {site.event?.eventType?.replace(/_/g, " ") ?? "Wedding"}
@@ -1052,6 +1808,7 @@ export function WeddingWebsite({
               </div>
             )}
           </div>
+          )
         )}
       </div>
       )}
@@ -1093,396 +1850,22 @@ export function WeddingWebsite({
         style={{
           display: "flex",
           flexDirection: "column",
-          gap: SECTION_SPACING[tc.sectionSpacing],
+          // sectionRoles (Coastal only, 2026-08-03) replaces the flat gap
+          // with each section's own scale-driven margin so Feature/Standard/
+          // Interlude sections get genuinely different breathing room —
+          // every other Collection keeps the original uniform gap untouched.
+          gap: tc.sectionRoles ? "0" : SECTION_SPACING[tc.sectionSpacing],
           scrollSnapType: tc.scrollBehavior === "snap" ? "y proximity" : undefined,
         }}
       >
 
-        {sectionOrder.map(key => {
-          switch (key) {
-
-            // ── Our Story ──────────────────────────────────────────────────────
-            case "story": {
-              const s = content.story;
-              if (!s?.text) return editMode ? (
-                <SectionWrapper key="story" sectionKey="story">
-                  <section className="py-4">
-                    <p style={{ fontSize: "0.8rem", opacity: 0.3, fontStyle: "italic" }}>Your story will appear here.</p>
-                  </section>
-                </SectionWrapper>
-              ) : null;
-
-              return (
-                <SectionWrapper key="story" sectionKey="story">
-                  <section>
-                    <SectionHeader title={s.title ?? "Our Story"} tc={tc} accentColor={color} />
-
-                    {tc.storyStyle === "quote" ? (
-                      // Rosé — large italic pull quote, centered, like a love letter
-                      <div className="max-w-xl mx-auto text-center px-4">
-                        <p style={{
-                          fontFamily: tc.headingFont,
-                          fontStyle: "italic",
-                          fontSize: "clamp(1.35rem, 3vw, 1.9rem)",
-                          lineHeight: 1.75,
-                          color,
-                          letterSpacing: "0.01em",
-                        }}>
-                          {s.text}
-                        </p>
-                      </div>
-                    ) : tc.storyStyle === "minimal" ? (
-                      // Linen — quiet body-text scale, no headingFont, max breathing room
-                      <div>
-                        <p style={{
-                          fontFamily: tc.bodyFont,
-                          fontSize: "0.9rem",
-                          lineHeight: 2.05,
-                          color: tc.textMuted,
-                          maxWidth: "520px",
-                        }}>
-                          {s.text}
-                        </p>
-                      </div>
-                    ) : tc.storyStyle === "editorial" ? (
-                      // Velvet / Midnight — left-aligned measured prose, body text scale
-                      <div className="max-w-2xl">
-                        <p style={{
-                          fontFamily: tc.bodyFont,
-                          fontSize: "1rem",
-                          lineHeight: 1.9,
-                          color: tc.textMuted,
-                          letterSpacing: "0.01em",
-                        }}>
-                          {s.text}
-                        </p>
-                      </div>
-                    ) : (
-                      // prose — Wildflower, Garden Party, Coastal, Champagne
-                      <div className="max-w-xl mx-auto text-center px-4">
-                        <p style={{
-                          fontFamily: tc.headingFont,
-                          fontStyle: tc.headingItalic ? "italic" : "normal",
-                          fontSize: "clamp(1rem, 2vw, 1.2rem)",
-                          lineHeight: 1.85,
-                          color: tc.text,
-                        }}>
-                          {s.text}
-                        </p>
-                      </div>
-                    )}
-                  </section>
-                </SectionWrapper>
-              );
-            }
-
-            // ── Event Details ─────────────────────────────────────────────────
-            case "event": {
-              const e = content.event;
-              if (!e?.ceremony && !e?.reception) return null;
-              return (
-                <SectionWrapper key="event" sectionKey="event">
-                  <section>
-                    <SectionHeader title="Event Details" tc={tc} accentColor={color} />
-                    <div className="grid gap-5 md:grid-cols-2">
-                      {e.ceremony && (
-                        <div className="p-6 text-center space-y-2"
-                          style={{ border: `1px solid ${color}25`, borderRadius: tc.cardRadius, background: tc.surface }}>
-                          <p className="text-[10px] font-semibold uppercase tracking-[0.25em]" style={{ color: `${color}70` }}>Ceremony</p>
-                          {e.ceremony.time && <p style={{ fontFamily: tc.headingFont, fontSize: "1.15rem" }}>{e.ceremony.time}</p>}
-                          {e.ceremony.location && <p style={{ color: tc.text }}>{e.ceremony.location}</p>}
-                          {e.ceremony.address && <p className="text-sm opacity-55">{e.ceremony.address}</p>}
-                        </div>
-                      )}
-                      {e.reception && (
-                        <div className="p-6 text-center space-y-2"
-                          style={{ border: `1px solid ${color}25`, borderRadius: tc.cardRadius, background: tc.surface }}>
-                          <p className="text-[10px] font-semibold uppercase tracking-[0.25em]" style={{ color: `${color}70` }}>Reception</p>
-                          {e.reception.time && <p style={{ fontFamily: tc.headingFont, fontSize: "1.15rem" }}>{e.reception.time}</p>}
-                          {e.reception.location && <p style={{ color: tc.text }}>{e.reception.location}</p>}
-                          {e.reception.address && <p className="text-sm opacity-55">{e.reception.address}</p>}
-                        </div>
-                      )}
-                    </div>
-                  </section>
-                </SectionWrapper>
-              );
-            }
-
-            // ── Photo Gallery ─────────────────────────────────────────────────
-            case "gallery": {
-              const g = content.gallery;
-              if (!g?.photos?.length) return null;
-              return (
-                <SectionWrapper key="gallery" sectionKey="gallery">
-                  <section>
-                    <SectionHeader title={g.title ?? "Our Photos"} tc={tc} accentColor={color} />
-                    <GalleryGrid photos={g.photos} tc={tc} />
-                  </section>
-                </SectionWrapper>
-              );
-            }
-
-            // ── Day-of Schedule ───────────────────────────────────────────────
-            case "schedule": {
-              if (!content.schedule?.length) return null;
-              return (
-                <SectionWrapper key="schedule" sectionKey="schedule">
-                  <section>
-                    <SectionHeader title="Schedule" tc={tc} accentColor={color} />
-                    <div className="space-y-6">
-                      {content.schedule.map((item, i) => (
-                        <div key={i} className="flex gap-5 items-start">
-                          <span className="shrink-0 w-20 text-right opacity-50 text-sm pt-0.5"
-                            style={{ fontFamily: tc.bodyFont }}>{item.time}</span>
-                          <div className="flex-1 pl-5 pb-6" style={{ borderLeft: `2px solid ${color}35` }}>
-                            <p style={{ fontFamily: tc.headingFont, fontStyle: tc.headingItalic ? "italic" : "normal" }}>{item.title}</p>
-                            {item.description && <p className="text-sm opacity-55 mt-1">{item.description}</p>}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </section>
-                </SectionWrapper>
-              );
-            }
-
-            // ── Travel & Hotels ───────────────────────────────────────────────
-            case "travel": {
-              const t = content.travel;
-              if (!t?.message && !t?.hotels?.length && !t?.transportation?.notes) return null;
-              return (
-                <SectionWrapper key="travel" sectionKey="travel">
-                  <section>
-                    <SectionHeader title="Travel & Accommodations" tc={tc} accentColor={color} />
-                    {t.message && <p className="text-center opacity-65 mb-8 leading-relaxed">{t.message}</p>}
-                    {t.hotels?.map((h, i) => (
-                      <div key={i} className="p-5 mb-4 space-y-1.5"
-                        style={{ border: `1px solid ${color}25`, borderRadius: tc.cardRadius, background: tc.surface }}>
-                        <p style={{ fontFamily: tc.headingFont }}>{h.name}</p>
-                        {h.code && <p className="text-sm opacity-55">Code: <span className="font-mono font-medium">{h.code}</span></p>}
-                        {h.notes && <p className="text-sm opacity-55">{h.notes}</p>}
-                        {h.url && <a href={h.url} target="_blank" rel="noopener noreferrer" className="text-sm underline underline-offset-2" style={{ color }}>{h.url}</a>}
-                      </div>
-                    ))}
-                    {t.transportation?.notes && (
-                      <div className="p-5" style={{ border: `1px solid ${color}25`, borderRadius: tc.cardRadius, background: tc.surface }}>
-                        <p className="text-[10px] font-semibold uppercase tracking-[0.2em] mb-2 opacity-50">Transportation</p>
-                        <p className="text-sm opacity-65 leading-relaxed">{t.transportation.notes}</p>
-                      </div>
-                    )}
-                  </section>
-                </SectionWrapper>
-              );
-            }
-
-            // ── Dress Code ────────────────────────────────────────────────────
-            case "dress_code": {
-              const dc = content.dress_code;
-              if (!dc?.formality && !dc?.description) return null;
-              const formalityLabel = dc.formality ? (FORMALITY_LABELS[dc.formality] ?? "") : "";
-              return (
-                <SectionWrapper key="dress_code" sectionKey="dress_code">
-                  <section>
-                    <SectionHeader title="Dress Code" tc={tc} accentColor={color} />
-                    <div className="max-w-lg mx-auto text-center space-y-4">
-                      {formalityLabel && (
-                        <p style={{ fontFamily: tc.headingFont, fontStyle: tc.headingItalic ? "italic" : "normal", fontSize: "1.5rem", color }}>
-                          {formalityLabel}
-                        </p>
-                      )}
-                      {dc.description && <p className="leading-relaxed opacity-70">{dc.description}</p>}
-                      {dc.colorNote && (
-                        <p className="text-sm opacity-55 italic" style={{ fontFamily: tc.headingFont }}>{dc.colorNote}</p>
-                      )}
-                    </div>
-                  </section>
-                </SectionWrapper>
-              );
-            }
-
-            // ── Wedding Party ─────────────────────────────────────────────────
-            case "bridal_party": {
-              const bp = content.bridal_party;
-              if (!bp?.members?.length) return null;
-              return (
-                <SectionWrapper key="bridal_party" sectionKey="bridal_party">
-                  <section>
-                    <SectionHeader title={bp.title ?? "Our Wedding Party"} tc={tc} accentColor={color} />
-                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-5">
-                      {bp.members.map((m, i) => (
-                        <div key={i} className="text-center space-y-2">
-                          {m.photoUrl ? (
-                            <div className="overflow-hidden mx-auto"
-                              style={{ width: "80px", height: "80px", borderRadius: "50%", border: `2px solid ${color}30` }}>
-                              <img src={m.photoUrl} alt={m.name} className="w-full h-full object-cover" />
-                            </div>
-                          ) : (
-                            <div className="mx-auto flex items-center justify-center"
-                              style={{ width: "72px", height: "72px", borderRadius: "50%", background: `${color}15`, border: `2px solid ${color}25`, color, fontSize: "1.5rem" }}>
-                              {m.name.charAt(0)}
-                            </div>
-                          )}
-                          <div>
-                            <p className="font-medium text-sm" style={{ fontFamily: tc.headingFont, fontStyle: tc.headingItalic ? "italic" : "normal" }}>{m.name}</p>
-                            <p className="text-[11px] opacity-55">{m.role}</p>
-                            {m.note && <p className="text-[11px] opacity-40 mt-0.5 leading-tight">{m.note}</p>}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </section>
-                </SectionWrapper>
-              );
-            }
-
-            // ── Things To Do ──────────────────────────────────────────────────
-            case "things_to_do": {
-              const ttd = content.things_to_do;
-              if (!ttd?.items?.length) return null;
-              return (
-                <SectionWrapper key="things_to_do" sectionKey="things_to_do">
-                  <section>
-                    <SectionHeader title={ttd.title ?? "Things To Do"} tc={tc} accentColor={color} />
-                    {ttd.intro && <p className="text-center opacity-60 mb-8 leading-relaxed">{ttd.intro}</p>}
-                    <div className="grid gap-4 sm:grid-cols-2">
-                      {ttd.items.map((item, i) => (
-                        <div key={i} className="flex gap-3 p-4"
-                          style={{ border: `1px solid ${color}20`, borderRadius: tc.cardRadius, background: tc.surface }}>
-                          <span className="text-xl shrink-0 mt-0.5">{CATEGORY_ICONS[item.category] ?? "✦"}</span>
-                          <div className="space-y-0.5">
-                            {item.url ? (
-                              <a href={item.url} target="_blank" rel="noopener noreferrer" className="font-medium text-sm underline underline-offset-2" style={{ color }}>{item.name}</a>
-                            ) : (
-                              <p className="font-medium text-sm" style={{ fontFamily: tc.headingFont }}>{item.name}</p>
-                            )}
-                            {item.description && <p className="text-xs opacity-55 leading-relaxed">{item.description}</p>}
-                            {item.address && <p className="text-[11px] opacity-40">{item.address}</p>}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </section>
-                </SectionWrapper>
-              );
-            }
-
-            // ── Music ─────────────────────────────────────────────────────────
-            case "music": {
-              const m = content.music;
-              if (!m?.ceremony && !m?.cocktail && !m?.reception && !m?.lastDance) return null;
-              const tracks = [
-                m.ceremony  && { label: "Ceremony",      song: m.ceremony },
-                m.cocktail  && { label: "Cocktail Hour", song: m.cocktail },
-                m.reception && { label: "Reception",     song: m.reception },
-                m.lastDance && { label: "Last Dance",    song: m.lastDance },
-              ].filter(Boolean) as { label: string; song: string }[];
-              return (
-                <SectionWrapper key="music" sectionKey="music">
-                  <section>
-                    <SectionHeader title={content.music?.title ?? "Our Music"} tc={tc} accentColor={color} />
-                    <div className="space-y-3">
-                      {tracks.map((t, i) => (
-                        <div key={i} className="flex items-center gap-4 p-4"
-                          style={{ border: `1px solid ${color}20`, borderRadius: tc.cardRadius, background: tc.surface }}>
-                          <span className="text-xl shrink-0">🎵</span>
-                          <div>
-                            <p className="text-[10px] font-semibold uppercase tracking-[0.15em] opacity-50">{t.label}</p>
-                            <p style={{ fontFamily: tc.headingFont, fontStyle: tc.headingItalic ? "italic" : "normal" }}>{t.song}</p>
-                          </div>
-                        </div>
-                      ))}
-                      {m.doNotPlay && (
-                        <p className="text-sm opacity-40 text-center pt-2">Please don't play: {m.doNotPlay}</p>
-                      )}
-                    </div>
-                  </section>
-                </SectionWrapper>
-              );
-            }
-
-            // ── Registry ──────────────────────────────────────────────────────
-            case "registry": {
-              if (!content.registry?.length) return null;
-              return (
-                <SectionWrapper key="registry" sectionKey="registry">
-                  <section>
-                    <SectionHeader title="Registry" tc={tc} accentColor={color} />
-                    <div className="grid gap-3 sm:grid-cols-2">
-                      {content.registry.map((r, i) => (
-                        <a key={i} href={r.url} target="_blank" rel="noopener noreferrer"
-                          className="block p-5 text-center transition-opacity hover:opacity-80"
-                          style={{ border: `1px solid ${color}30`, borderRadius: tc.cardRadius, background: tc.surface, color }}>
-                          <p style={{ fontFamily: tc.headingFont, fontStyle: tc.headingItalic ? "italic" : "normal", fontWeight: 600 }}>{r.name}</p>
-                          {r.notes && <p className="text-xs opacity-50 mt-1">{r.notes}</p>}
-                        </a>
-                      ))}
-                    </div>
-                  </section>
-                </SectionWrapper>
-              );
-            }
-
-            // ── FAQ ───────────────────────────────────────────────────────────
-            case "faq": {
-              if (!content.faq?.length) return null;
-              return (
-                <SectionWrapper key="faq" sectionKey="faq">
-                  <section>
-                    <SectionHeader title="FAQ" tc={tc} accentColor={color} />
-                    <div className="space-y-4">
-                      {content.faq.map((item, i) => (
-                        <div key={i} className="p-5 space-y-2"
-                          style={{ border: `1px solid ${color}20`, borderRadius: tc.cardRadius, background: tc.surface }}>
-                          <p style={{ fontFamily: tc.headingFont, fontStyle: tc.headingItalic ? "italic" : "normal", fontWeight: 600 }}>{item.question}</p>
-                          <p className="text-sm opacity-65 leading-relaxed">{item.answer}</p>
-                        </div>
-                      ))}
-                    </div>
-                  </section>
-                </SectionWrapper>
-              );
-            }
-
-            // ── RSVP ──────────────────────────────────────────────────────────
-            case "rsvp": {
-              // rsvpPlacement (Part 1): "inline" keeps the original rounded
-              // inset card in the normal section flow; "banner" breaks the
-              // card out to full-bleed width, a genuinely different moment
-              // in the page rather than just another section.
-              const isBanner = tc.rsvpPlacement === "banner";
-              const rsvpCard = (
-                <div className={isBanner ? "p-10 md:p-16" : "p-8 md:p-12 rounded-3xl"}
-                  style={{ background: color }}>
-                  <div className="text-center text-white mb-8 max-w-xl mx-auto">
-                    <h2 style={{ fontFamily: tc.headingFont, color: "white", fontStyle: tc.headingItalic ? "italic" : "normal", fontSize: isBanner ? "clamp(2rem, 5vw, 3rem)" : "clamp(1.75rem, 4vw, 2.5rem)", fontWeight: 600 }}>
-                      RSVP
-                    </h2>
-                    <p className="opacity-70 text-sm mt-2">Enter the code from your invitation to respond.</p>
-                    {site.rsvpStats && site.rsvpStats.total > 0 && (
-                      <p className="opacity-50 text-xs mt-1">{site.rsvpStats.attending} of {site.rsvpStats.total} guests have responded</p>
-                    )}
-                  </div>
-                  <div className="max-w-xl mx-auto"><RsvpSection accentColor={color} tc={tc} /></div>
-                </div>
-              );
-              return (
-                <SectionWrapper key="rsvp" sectionKey="rsvp">
-                  <section className={isBanner ? "relative left-1/2 right-1/2 -mx-[50vw] w-screen" : undefined}>
-                    {rsvpCard}
-                  </section>
-                </SectionWrapper>
-              );
-            }
-
-            default: return null;
-          }
-        })}
+        {renderGroups.map(group => Array.isArray(group) ? renderPair(group[0], group[1]) : renderSolo(group))}
 
       </div>
 
-      {/* Footer */}
-      <div className="text-center py-10 text-xs opacity-30" style={{ fontFamily: tc.bodyFont }}>
+      {/* Footer — restrained, never another large empty color band (Step 10) */}
+      <div className="text-center py-8 text-xs opacity-30" style={{ fontFamily: tc.bodyFont }}>
+        {tc.sectionRoles && <div className="w-6 h-px mx-auto mb-3" style={{ background: tc.accent }} />}
         {coupleName}'s Wedding
       </div>
 

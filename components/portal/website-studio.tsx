@@ -742,6 +742,13 @@ export function WebsiteStudio({
         eventDate: context.event.eventDate,
         eventType: context.event.eventType ?? null,
       } : null,
+      // Coastal Premium Art-Direction Proof Pass (2026-08-03) — reuses the
+      // exact same venue read PortalContext already provides (Studio's
+      // context prop), same authoritative columns get_wedding_website now
+      // also joins for the public page. No second read path.
+      venue: context.venue ? {
+        name: context.venue.name, heroImageUrl: context.venue.heroImageUrl, story: context.venue.story,
+      } : null,
     };
   }, [previewSite, previewContent, context, catalog]);
 

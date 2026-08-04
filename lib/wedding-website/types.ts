@@ -155,8 +155,50 @@ export type CollectionLayoutConfig = {
   animationStyle?: "none" | "fade" | "rise";
   scrollBehavior?: "normal" | "snap";
   sectionSpacing?: "compact" | "cozy" | "spacious";
+  // Wedding Website Visual Expression Pass (2026-08-03) — the composition
+  // recipe. `sectionComposition` selects which shared primitive family
+  // (components/wedding-website/composition-primitives.tsx) a section is
+  // built from; the rest parametrize that primitive so Collections sharing
+  // a family still render recognizably differently. See docs/wedding-
+  // website-visual-expression-completion-report.md for the full per-
+  // Collection table.
+  sectionComposition?: "editorial" | "flowing" | "framed" | "quiet";
+  contentWidth?: "narrow" | "standard" | "wide";
+  itemAlign?: "center" | "left" | "alternating";
+  alternate?: "none" | "background" | "position";
+  featuredItem?: "none" | "first";
+  sectionFrame?: "none" | "rule-top" | "rule-both" | "card";
+  sectionBand?: "none" | "alternate" | "tinted";
+  itemSeparator?: "divider" | "rule" | "gap" | "index";
+  density?: "compact" | "cozy" | "spacious" | "airy";
+  asymmetry?: "none" | "subtle" | "editorial";
+  edgeTreatment?: "contained" | "wide" | "full-bleed" | "alternating";
+  /** Wedding Party portrait crop shape only — never read by Photo Style. */
+  portraitShape?: "circle" | "square";
+  // Coastal Premium Art-Direction Proof Pass (2026-08-03) — per-section
+  // whole-page canvas/scale choreography. Closed vocabulary at the leaf;
+  // a Collection assigns each section a canvas moment and a visual weight
+  // so the page reads as a composed rhythm rather than one flat color
+  // repeated behind every section. Optional and additive — a Collection
+  // without sectionRoles falls back to the pre-existing flat treatment.
+  sectionRoles?: Partial<Record<WebsiteSection | "hero", SectionRole>>;
   [k: string]: unknown;
 };
+
+export type CanvasRole = "light" | "soft" | "strong" | "photographic" | "neutral";
+export type SectionScale = "feature" | "standard" | "interlude";
+// Coastal Art-Direction Pass 2 (2026-08-03) — page-level composition
+// primitives (Step 13). `treatment` selects which shared editorial
+// primitive a section is built from, independent of `canvas`/`scale`.
+// `pairWith` names the one other section key this section may compose
+// into a single shared passage with — only when BOTH sides name each
+// other AND they are currently adjacent in the couple's own section
+// order. Reordered apart, or with one side hidden/empty, each renders
+// solo via its normal treatment — this must never assume fixed indexes.
+export type SectionTreatment =
+  | "editorial-opening" | "split-feature" | "image-led-feature" | "compact-interlude"
+  | "timeline" | "paired-passage" | "gallery-spread" | "strong-closing";
+export type SectionRole = { canvas: CanvasRole; scale: SectionScale; treatment?: SectionTreatment; pairWith?: string };
 
 export type CatalogCollection = {
   id: string;
@@ -183,8 +225,22 @@ export type CatalogPhotoStyle = {
     photoFilter: string;
     photoRadius: string;
     frameStyle: "none" | "border" | "polaroid";
+    // Dormant (2026-08-03) — no photo-caption content field exists yet
+    // (WebsiteContent.gallery.photos is plain string[]), so this is
+    // resolved and carried through the theme but never rendered. Kept,
+    // not removed, pending a future dedicated caption capability.
     captionStyle: "none" | "minimal" | "handwritten";
     imageScale: "normal" | "large";
+    // Wedding Website Visual Expression Pass (2026-08-03) — how the
+    // Photo Gallery's photographs are arranged/treated, independent of
+    // the Collection's own section-shell composition. `arrangement`
+    // "collage"/"scrapbook" replace the per-image grid/masonry/film-strip
+    // loop entirely for that gallery instance; "uniform" decorates it.
+    arrangement?: "uniform" | "collage" | "scrapbook";
+    scalePattern?: "uniform" | "alternating" | "hero-emphasis";
+    rotation?: "none" | "subtle" | "scattered";
+    shadow?: "none" | "soft" | "lifted";
+    spacing?: "tight" | "normal" | "generous";
     [k: string]: unknown;
   };
 };
@@ -199,6 +255,17 @@ export type HostedExperienceCatalog = {
 // save. status replaces the old two-state is_published boolean (kept,
 // still correct, now derived from status).
 export type ExperienceStatus = "draft" | "preview" | "published" | "archived";
+
+// Coastal Premium Art-Direction Proof Pass (2026-08-03) — the venue's own
+// PLACE, distinct from WebsiteSuggestions.venue (onboarding-only, address/
+// website fields). Reads venues.name/hero_image_url/story directly, the
+// same authoritative columns the couple portal's get_portal_context already
+// exposes — no duplicate image storage, one photo, not a gallery.
+export type WebsiteVenue = {
+  name: string | null;
+  heroImageUrl: string | null;
+  story: string | null;
+} | null;
 
 export type CoupleWebsite = {
   exists: boolean;
@@ -232,6 +299,7 @@ export type CoupleWebsite = {
   scheduleSync?: boolean;
   content?: WebsiteContent;
   sections?: ExperienceSection[];
+  venue?: WebsiteVenue;
 };
 
 // Suggestions returned by get_website_suggestions — data already on the
@@ -301,6 +369,7 @@ export type PublicWebsite = {
     eventDate: string;
     eventType: string | null;
   } | null;
+  venue?: WebsiteVenue;
   rsvpStats?: {
     total: number;
     attending: number;

@@ -236,7 +236,14 @@ function HomeEditor({ content, onSave, onCancel, token, suggestions, lastSyncedA
 
       <PhotoUpload token={token} type="cover" label={coverUrl ? "Change cover photo" : "Upload cover photo"} onUploaded={setCoverUrl} />
       <Field label="Page headline" value={title} onChange={setTitle} placeholder="Emily & James" />
-      <Field label="Subtitle" value={subtitle} onChange={setSubtitle} placeholder="June 12, 2027 · Nashville, TN" />
+      {/* Coastal Art-Direction Pass 2 (2026-08-03) — used to suggest a
+          date+location example, which collided with the wedding date
+          already shown automatically below it (the actual bug found in
+          the Coastal fixture: a hand-typed date that drifted from the
+          real one). Your date/location are always synced from Planning —
+          this is for a short phrase instead. */}
+      <Field label="Subtitle" value={subtitle} onChange={setSubtitle} placeholder="Two hearts, one beautiful beginning" />
+      <p className="text-[11px] text-muted-foreground -mt-2">Your wedding date and location are shown automatically — use this for a short phrase instead.</p>
       <TextareaField label="Welcome message" value={welcome} onChange={setWelcome} placeholder="We're so excited to celebrate with you!" rows={3} />
       <Actions onSave={handleSave} onCancel={onCancel} />
     </div>
@@ -453,6 +460,14 @@ function GalleryEditor({ content, onSave, onCancel, token }: { content: WebsiteC
   return (
     <div className="space-y-4">
       <Field label="Gallery title" value={title} onChange={setTitle} placeholder="Our Photos" />
+
+      {/* Beautiful-by-default guidance (Coastal Art-Direction Pass 2) —
+          contextual only, never a validation error; publishing is never
+          blocked by this. A Magazine-style layout needs real range to look
+          intentional rather than a single lonely photo. */}
+      {photos.length > 0 && photos.length < 3 && (
+        <p className="text-[11px] text-muted-foreground">Add a few more photos to bring your gallery to life.</p>
+      )}
 
       <div className="flex gap-2">
         <button type="button" onClick={importEngagementPhotos} disabled={loadingImport}
@@ -673,9 +688,57 @@ function BridalPartyEditor({ content, onSave, onCancel, token }: { content: Webs
     bp?.members?.map(m => ({ name: m.name, role: m.role, note: m.note ?? "", photoUrl: m.photoUrl ?? "" })) ?? []
   );
 
-  function add() { setMembers(p => [...p, { name: "", role: "", note: "", photoUrl: "" }]); }
-  function remove(i: number) { setMembers(p => p.filter((_, j) => j !== i)); }
-  function set(i: number, k: string, v: string) { setMembers(p => p.map((m, j) => j === i ? { ...m, [k]: v } : m)); }
+  // Mirrors `members` synchronously (updated in the exact same place every
+  // `setMembers` call is made, never inside a React updater callback) so
+  // `setPhotoAndPersist` always has an accurate "latest members" value to
+  // build its save payload from, without needing to read one back out of
+  // React state. Plain state alone can't do this safely — see the note below.
+  const membersRef = React.useRef(members);
+  function add() { const next = [...membersRef.current, { name: "", role: "", note: "", photoUrl: "" }]; membersRef.current = next; setMembers(next); }
+  function remove(i: number) { const next = membersRef.current.filter((_, j) => j !== i); membersRef.current = next; setMembers(next); }
+  function set(i: number, k: string, v: string) { const next = membersRef.current.map((m, j) => j === i ? { ...m, [k]: v } : m); membersRef.current = next; setMembers(next); }
+
+  // Upload-widgets-must-autosave (same bug class already fixed once in the
+  // vendor logo uploader, 2026-07-23): the upload itself succeeds against
+  // Supabase Storage immediately, but a handler that only does `set(...)`
+  // stages the URL into this form's local state and nothing else — if
+  // anything remounts this editor before the couple happens to press Save
+  // below, the upload is silently lost even though the file object really
+  // exists.
+  //
+  // Two bugs already found and fixed in earlier versions of this fix
+  // (2026-08-04): (1) persisting from the `bp` prop — a stale snapshot from
+  // whenever this editor mounted — let two uploads saved close together
+  // clobber each other back to empty; (2) calling the persist fetch *inside*
+  // a `setMembers` updater function violated React's rule that updater
+  // functions must be pure — React (Strict Mode, concurrent rendering) can
+  // invoke an updater more than once for a single state update, which fired
+  // duplicate saves and produced the indefinite white-screen hang. Neither
+  // problem exists with `membersRef`: it's read/written synchronously
+  // in plain event-handler code, never inside React's own update machinery.
+  async function persistMembers(nextMembers: typeof members) {
+    try {
+      const res = await fetch("/api/portal/website", {
+        method: "POST", headers: { "content-type": "application/json" },
+        body: JSON.stringify({ token, contentKey: "bridal_party", contentValue: { title, members: nextMembers } }),
+      });
+      const data = await res.json() as { ok?: boolean };
+      if (!data.ok) toast.error("Photo uploaded, but couldn't save it yet — press Save below to keep it.");
+    } catch {
+      toast.error("Photo uploaded, but couldn't save it yet — press Save below to keep it.");
+    }
+  }
+  // Only meaningful for a member that's already saved server-side — a
+  // brand-new not-yet-saved person has nothing to attach the photo to
+  // until the couple saves the person first (still stages into local
+  // state via `set` either way, so the upload itself is never lost from
+  // the UI, just not durable until the next explicit Save for that case).
+  function setPhotoAndPersist(i: number, url: string) {
+    const next = membersRef.current.map((m, j) => j === i ? { ...m, photoUrl: url } : m);
+    membersRef.current = next;
+    setMembers(next);
+    if (bp?.members && i < bp.members.length) void persistMembers(next);
+  }
 
   const COMMON_ROLES = ["Maid of Honor", "Best Man", "Bridesmaid", "Groomsman", "Flower Girl", "Ring Bearer", "Mother of the Bride", "Father of the Bride", "Officiant"];
 
@@ -685,7 +748,27 @@ function BridalPartyEditor({ content, onSave, onCancel, token }: { content: Webs
       <div className="space-y-3">
         {members.map((m, i) => (
           <div key={i} className="rounded-xl border border-border bg-muted/20 p-3 space-y-2">
-            <div className="flex items-start gap-2">
+            <div className="flex items-start gap-3">
+              {/* Photo affordance — the data model has always carried
+                  photoUrl (published portrait falls back to initials when
+                  absent), but this editor never exposed a way to set it.
+                  Reuses the same PhotoUpload pattern/endpoint as the cover
+                  photo, just a different `type` prefix. */}
+              <div className="shrink-0 w-16">
+                {m.photoUrl ? (
+                  <div className="relative">
+                    <div className="w-16 h-16 rounded-full overflow-hidden bg-muted">
+                      <img src={m.photoUrl} alt={m.name || "Portrait"} className="w-full h-full object-cover" />
+                    </div>
+                    <button type="button" onClick={() => set(i, "photoUrl", "")}
+                      className="absolute -top-1 -right-1 rounded-full bg-background border border-border p-0.5 text-muted-foreground hover:text-destructive">
+                      <Trash2 className="h-3 w-3" />
+                    </button>
+                  </div>
+                ) : (
+                  <PartyPhotoUpload token={token} onUploaded={url => setPhotoAndPersist(i, url)} />
+                )}
+              </div>
               <div className="flex-1 space-y-2">
                 <input value={m.name} onChange={e => set(i, "name", e.target.value)} placeholder="Name *" className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none" />
                 <select value={m.role} onChange={e => set(i, "role", e.target.value)} className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none text-muted-foreground">
@@ -697,6 +780,9 @@ function BridalPartyEditor({ content, onSave, onCancel, token }: { content: Webs
                   <input value={m.role} onChange={e => set(i, "role", e.target.value)} placeholder="Custom role" className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none" />
                 )}
                 <input value={m.note} onChange={e => set(i, "note", e.target.value)} placeholder="Fun fact or how you met (optional)" className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none" />
+                {!m.photoUrl && (
+                  <p className="text-[11px] text-muted-foreground">Add a photo to make your wedding party feel more personal.</p>
+                )}
               </div>
               <button type="button" onClick={() => remove(i)} className="shrink-0 p-1.5 text-muted-foreground hover:text-destructive mt-0.5"><Trash2 className="h-3.5 w-3.5" /></button>
             </div>
@@ -708,6 +794,34 @@ function BridalPartyEditor({ content, onSave, onCancel, token }: { content: Webs
       </div>
       <Actions onSave={() => onSave({ title, members: members.filter(m => m.name.trim()) })} onCancel={onCancel} />
     </div>
+  );
+}
+
+// Compact variant of PhotoUpload — a small circular tap target instead of
+// the full-width dashed dropzone, sized for a member row.
+function PartyPhotoUpload({ token, onUploaded }: { token: string; onUploaded: (url: string) => void }) {
+  const [uploading, setUploading] = React.useState(false);
+
+  async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    try {
+      const form = new FormData();
+      form.append("token", token); form.append("file", file); form.append("type", "party");
+      const res = await fetch("/api/portal/upload", { method: "POST", body: form });
+      const data = await res.json() as { ok: boolean; url?: string; error?: string };
+      if (data.ok && data.url) onUploaded(data.url);
+      else toast.error(data.error ?? "Upload failed.");
+    } catch { toast.error("Upload failed. Please try again."); }
+    finally { setUploading(false); e.target.value = ""; }
+  }
+
+  return (
+    <label className="flex flex-col items-center justify-center w-16 h-16 rounded-full border border-dashed border-border hover:bg-muted/40 cursor-pointer transition-colors">
+      {uploading ? <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" /> : <Image className="h-4 w-4 text-muted-foreground" />}
+      <input type="file" accept="image/*,.heic,.heif" className="sr-only" onChange={handleFile} disabled={uploading} />
+    </label>
   );
 }
 
@@ -1220,7 +1334,10 @@ function ThemeStudio({ site, onUpdate }: { site: CoupleWebsite; onUpdate: (patch
               borderRadius: currentPhotoStyle?.tokens.photoRadius,
               background: "linear-gradient(160deg, #D8CFC2 0%, #EBE5DB 100%)",
               border: currentPhotoStyle?.tokens.frameStyle === "border" ? "3px solid #fff" : currentPhotoStyle?.tokens.frameStyle === "polaroid" ? "4px solid #fff" : undefined,
-              boxShadow: currentPhotoStyle?.tokens.frameStyle === "polaroid" ? "0 2px 6px rgba(0,0,0,0.25)" : undefined,
+              boxShadow: currentPhotoStyle?.tokens.shadow === "lifted" ? "0 6px 14px rgba(0,0,0,0.3)"
+                : currentPhotoStyle?.tokens.shadow === "soft" ? "0 3px 8px rgba(0,0,0,0.18)"
+                : currentPhotoStyle?.tokens.frameStyle === "polaroid" ? "0 2px 6px rgba(0,0,0,0.25)" : undefined,
+              transform: currentPhotoStyle?.tokens.rotation && currentPhotoStyle.tokens.rotation !== "none" ? "rotate(-3deg)" : undefined,
             }} />
           </div>
         }
