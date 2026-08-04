@@ -8,7 +8,7 @@ import {
   type FindOrCreateResult,
 } from "./service";
 import { loadLiveStore } from "./store";
-import type { OnboardingType, PlanId, SubscriptionStatus } from "./types";
+import type { OnboardingType, PlanId, ProductFeedbackType, SubscriptionStatus } from "./types";
 import { ensureWhiteGloveChecklist } from "./white-glove-checklist";
 
 async function maybeEnsureWhiteGloveChecklist(
@@ -27,12 +27,18 @@ function safeBody(parts: Array<string | null | undefined>): string {
 /** Website Contact Us form */
 export async function ingestContactForm(input: {
   name?: string;
+  firstName?: string;
+  lastName?: string;
   email: string;
   venueName?: string;
   message?: string;
   sourceId?: string;
 }): Promise<FindOrCreateResult> {
-  const person = personFromFields({ name: input.name });
+  const person = personFromFields({
+    name: input.name,
+    firstName: input.firstName,
+    lastName: input.lastName,
+  });
   return (await mutateRelationship({
     find: {
       email: input.email,
@@ -74,6 +80,8 @@ export async function ingestContactForm(input: {
 /** Schedule a Walkthrough form (or Calendly invitee.created with real scheduledAt). */
 export async function ingestWalkthroughRequest(input: {
   name?: string;
+  firstName?: string;
+  lastName?: string;
   email: string;
   venueName?: string;
   message?: string;
@@ -83,7 +91,11 @@ export async function ingestWalkthroughRequest(input: {
   referralSource?: string;
   assignedTeamMemberId?: string;
 }): Promise<FindOrCreateResult> {
-  const person = personFromFields({ name: input.name });
+  const person = personFromFields({
+    name: input.name,
+    firstName: input.firstName,
+    lastName: input.lastName,
+  });
   const rawWhen = input.scheduledAt?.trim() || "";
   const parsedWhen = rawWhen ? new Date(rawWhen) : null;
   const hasDate = Boolean(parsedWhen && !Number.isNaN(parsedWhen.getTime()));
@@ -109,7 +121,9 @@ export async function ingestWalkthroughRequest(input: {
     },
     patch: {
       status: hasDate ? "walkthrough_scheduled" : "walkthrough_requested",
-      salesStage: hasDate ? "venue_walkthrough" : "discovery_scheduled",
+      // Soft / email walkthrough request (no real datetime) stays Sales Inquiry.
+      // Only Calendly / ops with a real scheduledAt → Walkthrough Scheduled.
+      salesStage: hasDate ? "walkthrough_scheduled" : "inquiry",
       nextMilestone: hasDate ? "Upcoming walkthrough" : "Qualify & schedule walkthrough",
       nextMilestoneAt: hasDate ? scheduledAt : undefined,
       assignedTeamMemberId: input.assignedTeamMemberId,
@@ -418,8 +432,8 @@ export async function ingestSubscriptionPurchased(input: {
       stripeCheckoutSessionId: input.stripeCheckoutSessionId,
       paymentStatus: "paid",
       subscribedAt: now,
-      salesStage: "won",
-      customerSuccessStage: "welcome",
+      salesStage: "closed_won",
+      customerSuccessStage: isWhiteGlove ? "implementation" : "onboarding",
       ownerEmail: input.email,
       venueName: input.venueName,
     },
@@ -791,12 +805,19 @@ export async function ingestNewsletterSignup(input: {
 /** Support contact form — status → Support only if already a customer (promoteStatus). */
 export async function ingestSupportRequest(input: {
   name?: string;
+  firstName?: string;
+  lastName?: string;
   email: string;
   venueName?: string;
   message?: string;
   sourceId?: string;
 }): Promise<FindOrCreateResult> {
-  const person = personFromFields({ name: input.name });
+  const person = personFromFields({
+    name: input.name,
+    firstName: input.firstName,
+    lastName: input.lastName,
+  });
+  const subject = "Support request";
   return (await mutateRelationship({
     find: {
       email: input.email,
@@ -808,17 +829,26 @@ export async function ingestSupportRequest(input: {
     patch: {
       status: "support",
     },
-    bumpSupportOpenCount: true,
+    openFeedbackItem: {
+      type: "support",
+      subject,
+      body: input.message?.trim() || undefined,
+      source: "marketing_support",
+      productFeedbackId: input.sourceId,
+    },
     event: {
       type: "support_request",
       title: "Support request",
       body: input.message?.trim() || undefined,
       occurredAt: new Date().toISOString(),
-      meta: { sourceId: input.sourceId ?? null },
+      meta: {
+        sourceId: input.sourceId ?? null,
+        feedback_type: "support",
+      },
     },
     communication: {
       channel: "support",
-      subject: "Support request",
+      subject,
       body: safeBody([
         input.message,
         input.venueName ? `Venue: ${input.venueName}` : null,
@@ -831,6 +861,201 @@ export async function ingestSupportRequest(input: {
       type: "support_request_submitted",
       title: "Support request",
       body: `${input.venueName?.trim() || person.firstName || input.email} submitted a support request.`,
+    },
+  }))!;
+}
+
+const PRODUCT_FEEDBACK_LABELS: Record<
+  ProductFeedbackType,
+  { title: string; subject: string; notificationTitle: string }
+> = {
+  support: {
+    title: "Support request",
+    subject: "Get Help",
+    notificationTitle: "Support request",
+  },
+  bug: {
+    title: "Bug report",
+    subject: "Bug report",
+    notificationTitle: "Bug report",
+  },
+  feature: {
+    title: "Idea submitted",
+    subject: "Idea",
+    notificationTitle: "Product idea",
+  },
+  nps: {
+    title: "NPS feedback",
+    subject: "NPS feedback",
+    notificationTitle: "NPS feedback",
+  },
+  general: {
+    title: "Product feedback",
+    subject: "Feedback",
+    notificationTitle: "Product feedback",
+  },
+};
+
+function normalizeProductFeedbackType(
+  raw: string | undefined | null,
+): ProductFeedbackType {
+  switch ((raw || "").trim().toLowerCase()) {
+    case "support":
+    case "bug":
+    case "feature":
+    case "nps":
+    case "general":
+      return (raw || "").trim().toLowerCase() as ProductFeedbackType;
+    default:
+      return "general";
+  }
+}
+
+/**
+ * Product Get Help / feedback → Relationship CRM mirror.
+ * Matches productSync.venueId → owner email → Stripe customer; findOrCreate by
+ * email when needed (never invents a random Relationship without contact).
+ */
+export async function ingestProductFeedback(input: {
+  productVenueId: string;
+  email?: string | null;
+  venueName?: string | null;
+  firstName?: string | null;
+  lastName?: string | null;
+  stripeCustomerId?: string | null;
+  feedbackType: string;
+  subject?: string | null;
+  body?: string | null;
+  rating?: number | null;
+  productFeedbackId?: string | null;
+  sourceUrl?: string | null;
+}): Promise<FindOrCreateResult | null> {
+  const email = input.email?.trim() || null;
+  const productVenueId = input.productVenueId.trim();
+  if (!productVenueId && !email && !input.stripeCustomerId?.trim()) {
+    console.warn(
+      "[relationships] ingestProductFeedback soft-fail: no venue, email, or stripe id",
+    );
+    return null;
+  }
+
+  const feedbackType = normalizeProductFeedbackType(input.feedbackType);
+  const labels = PRODUCT_FEEDBACK_LABELS[feedbackType];
+  const subject =
+    input.subject?.trim() ||
+    (feedbackType === "nps" && input.rating != null
+      ? `NPS ${input.rating}/10`
+      : labels.subject);
+  const now = new Date().toISOString();
+  const person = personFromFields({
+    firstName: input.firstName ?? undefined,
+    lastName: input.lastName ?? undefined,
+  });
+
+  // Prefer match-only when we only have a venue id (no email to safely create).
+  const updateOnly = !email;
+
+  const store = await loadLiveStore();
+  const byVenue = productVenueId
+    ? store.relationships.find(
+        (r) => r.productSync?.venueId?.trim() === productVenueId,
+      )
+    : undefined;
+  const byEmail = email
+    ? store.relationships.find(
+        (r) =>
+          (r.owner.email || "").trim().toLowerCase() === email.toLowerCase(),
+      )
+    : undefined;
+  const byStripe = input.stripeCustomerId?.trim()
+    ? store.relationships.find(
+        (r) => r.stripeCustomerId?.trim() === input.stripeCustomerId!.trim(),
+      )
+    : undefined;
+  const existing = byVenue || byEmail || byStripe;
+
+  if (!existing && updateOnly) {
+    console.warn(
+      "[relationships] ingestProductFeedback soft-fail: no Relationship for venue",
+      productVenueId,
+    );
+    return null;
+  }
+
+  const isHelpOrBug = feedbackType === "support" || feedbackType === "bug";
+  const who =
+    input.venueName?.trim() ||
+    person.firstName ||
+    email ||
+    productVenueId;
+
+  return (await mutateRelationship({
+    find: {
+      // Prefer existing contact keys so venueId-matched rows aren't duplicated.
+      email: existing?.owner.email?.trim() || email,
+      venueName: existing?.venue.name || input.venueName,
+      firstName: person.firstName || existing?.owner.firstName,
+      lastName: person.lastName || existing?.owner.lastName,
+      referralSource: "Product feedback",
+      stripeCustomerId: existing?.stripeCustomerId || input.stripeCustomerId,
+    },
+    updateOnly,
+    productVenueId: productVenueId || undefined,
+    // Overlay Support for all collected types so Today / CS queues stay unified.
+    patch: {
+      status: "support",
+      // Fill owner email from product when CRM row was venue-linked without one.
+      ownerEmail: email && !existing?.owner.email?.trim() ? email : undefined,
+    },
+    openFeedbackItem: {
+      type: feedbackType,
+      subject,
+      body:
+        safeBody([
+          input.body,
+          input.rating != null ? `Rating: ${input.rating}/10` : null,
+          input.sourceUrl ? `URL: ${input.sourceUrl}` : null,
+        ]) || undefined,
+      productFeedbackId: input.productFeedbackId ?? undefined,
+      source: "product",
+    },
+    event: {
+      type: feedbackType === "support" ? "support_request" : "feedback_received",
+      title: labels.title,
+      body:
+        safeBody([
+          input.body,
+          input.rating != null ? `Rating: ${input.rating}/10` : null,
+          input.sourceUrl ? `URL: ${input.sourceUrl}` : null,
+        ]) || undefined,
+      occurredAt: now,
+      meta: {
+        feedback_type: feedbackType,
+        product_feedback_id: input.productFeedbackId ?? null,
+        product_venue_id: productVenueId || null,
+        rating: input.rating ?? null,
+        source: "product",
+      },
+    },
+    communication: {
+      channel: "support",
+      subject: labels.subject,
+      body: safeBody([
+        input.body,
+        input.rating != null ? `Rating: ${input.rating}/10` : null,
+        input.venueName ? `Venue: ${input.venueName}` : null,
+      ]),
+      direction: "inbound",
+      occurredAt: now,
+      authorName:
+        [person.firstName, person.lastName].filter(Boolean).join(" ") ||
+        email ||
+        "Product user",
+    },
+    notification: {
+      type: isHelpOrBug ? "support_request_submitted" : "feedback_received",
+      title: labels.notificationTitle,
+      body: `${who} submitted ${labels.title.toLowerCase()} from product.`,
     },
   }))!;
 }

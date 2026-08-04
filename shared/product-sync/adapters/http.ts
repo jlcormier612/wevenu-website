@@ -6,7 +6,7 @@
  * authenticated venue-owner session). Flip to real HTTP once a service-role
  * or signed provisioning API ships in the product app.
  *
- * Planned endpoints (product app, not yet implemented):
+ * Planned endpoints (product app):
  *
  *   POST {BASE}/api/internal/product-sync/venues
  *   POST {BASE}/api/internal/product-sync/workspaces
@@ -15,8 +15,9 @@
  *   POST {BASE}/api/internal/product-sync/owner-accounts
  *   POST {BASE}/api/internal/product-sync/onboarding
  *   POST {BASE}/api/internal/product-sync/launch
+ *   POST {BASE}/api/internal/product-access/lock  ← live (CRM Suspend hard-lock)
  *
- * Auth: PRODUCT_SYNC_API_KEY (Bearer) — reserved for future use.
+ * Auth: PRODUCT_SYNC_API_KEY (Bearer).
  */
 
 import { localProductSyncAdapter } from "./local";

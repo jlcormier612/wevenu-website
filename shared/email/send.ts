@@ -10,7 +10,11 @@ import {
   appendTimelineEvent,
   loadLiveStore,
 } from "../relationships";
-import { isResendConfigured, sendRawEmail } from "./client";
+import {
+  buildRelationshipReplyTo,
+  isResendConfigured,
+  sendRawEmail,
+} from "./client";
 import { renderEmailTemplate } from "./templates/registry";
 import type {
   EmailTemplateId,
@@ -82,12 +86,18 @@ export async function sendRelationshipEmail(
     input,
   );
 
+  // Prefer relationship+{id}@inbound-domain for reliable inbound matching.
+  const replyTo =
+    input.replyTo?.trim() ||
+    buildRelationshipReplyTo(input.relationshipId) ||
+    undefined;
+
   const sendResult = await sendRawEmail({
     to,
     subject: rendered.subject,
     text: rendered.text,
     html: rendered.html,
-    replyTo: input.replyTo,
+    replyTo,
     tags: [
       { name: "template", value: input.templateId },
       { name: "relationship", value: input.relationshipId.slice(0, 48) },
@@ -177,6 +187,79 @@ export async function sendRelationshipEmail(
     timelineEventId,
     communicationId,
   };
+}
+
+/**
+ * Auto-reply after Contact Us / Request more information / unscheduled walkthrough
+ * inquiry forms. Not used for Calendly-scheduled confirmation.
+ */
+export async function sendInquiryConfirmationEmail(input: {
+  relationshipId: string;
+  to: string;
+  firstName?: string | null;
+  venueName?: string | null;
+  meta?: Record<string, string | number | boolean | null>;
+}): Promise<RelationshipEmailResult> {
+  return sendRelationshipEmail({
+    relationshipId: input.relationshipId,
+    to: input.to,
+    templateId: "inquiry_confirmation",
+    vars: {
+      firstName: input.firstName,
+      venueName: input.venueName,
+    },
+    meta: {
+      trigger: "inquiry.submit",
+      ...(input.meta ?? {}),
+    },
+  });
+}
+
+function feedbackKindLabel(raw?: string | null): string {
+  switch ((raw || "").trim().toLowerCase()) {
+    case "support":
+      return "support request";
+    case "bug":
+      return "bug report";
+    case "feature":
+      return "idea";
+    case "nps":
+      return "rating feedback";
+    case "general":
+      return "feedback";
+    default:
+      return "feedback";
+  }
+}
+
+/**
+ * Auto-ack after product Get Help / bug / idea / NPS or marketing /support.
+ * Dry-runs without RESEND_API_KEY; still writes timeline.
+ */
+export async function sendFeedbackConfirmationEmail(input: {
+  relationshipId: string;
+  to: string;
+  firstName?: string | null;
+  venueName?: string | null;
+  feedbackType?: string | null;
+  meta?: Record<string, string | number | boolean | null>;
+}): Promise<RelationshipEmailResult> {
+  const kind = feedbackKindLabel(input.feedbackType);
+  return sendRelationshipEmail({
+    relationshipId: input.relationshipId,
+    to: input.to,
+    templateId: "feedback_confirmation",
+    vars: {
+      firstName: input.firstName,
+      venueName: input.venueName,
+      feedbackKindLabel: kind,
+    },
+    meta: {
+      trigger: "feedback.submit",
+      feedback_type: input.feedbackType ?? null,
+      ...(input.meta ?? {}),
+    },
+  });
 }
 
 /**

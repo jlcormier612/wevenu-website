@@ -39,6 +39,23 @@ export function marketingUrl(path = ""): string {
   return `${normalized}${path.startsWith("/") ? path : `/${path}`}`;
 }
 
+/** Base URL for `/activate/{token}` links (matches lifecycle send paths). */
+export function activationBaseUrl(): string {
+  return (
+    process.env.WORKSPACE_URL?.trim() ||
+    process.env.NEXT_PUBLIC_WORKSPACE_URL?.trim() ||
+    process.env.NEXT_PUBLIC_PRODUCT_APP_URL?.trim() ||
+    process.env.NEXT_PUBLIC_APP_URL?.trim() ||
+    "http://localhost:3002"
+  ).replace(/\/$/, "");
+}
+
+/** Magic-link style activation URL — no plaintext password. */
+export function activationUrlFromToken(token: string): string {
+  const clean = token.trim();
+  return `${activationBaseUrl()}/activate/${encodeURIComponent(clean)}`;
+}
+
 export function paragraphsToHtml(paragraphs: string[]): string {
   return paragraphs
     .map(
@@ -46,6 +63,16 @@ export function paragraphsToHtml(paragraphs: string[]): string {
         `<p style="margin:0 0 16px;font-size:16px;line-height:1.55;color:#1f2937">${escapeHtml(p)}</p>`,
     )
     .join("\n");
+}
+
+/** Primary CTA button for HTML emails (plain URL still included in text part). */
+export function ctaButtonHtml(label: string, href: string): string {
+  const safeHref = escapeHtml(href);
+  const safeLabel = escapeHtml(label);
+  return `<p style="margin:8px 0 24px">
+  <a href="${safeHref}" style="display:inline-block;background:#2f3d2f;color:#fffdf9;text-decoration:none;padding:12px 22px;border-radius:4px;font-size:16px;font-family:Georgia,'Times New Roman',serif">${safeLabel}</a>
+</p>
+<p style="margin:0 0 16px;font-size:13px;line-height:1.5;color:#6b7a6b">Or open this link: <a href="${safeHref}" style="color:#2f3d2f">${safeHref}</a></p>`;
 }
 
 export function wrapHelloHtml(title: string, bodyHtml: string): string {

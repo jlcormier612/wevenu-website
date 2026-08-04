@@ -7,7 +7,9 @@ import type {
 import {
   accountReactivatedTemplate,
   accountSuspendedTemplate,
+  feedbackConfirmationTemplate,
   founderWelcomeTemplate,
+  inquiryConfirmationTemplate,
   kickoffTemplate,
   luvSuggestionTemplate,
   paymentReceiptTemplate,
@@ -41,6 +43,8 @@ const TEMPLATES: EmailTemplateDefinition[] = [
   subscriptionLinkTemplate,
   trialReminderTemplate,
   renewalReminderTemplate,
+  inquiryConfirmationTemplate,
+  feedbackConfirmationTemplate,
   luvSuggestionTemplate,
 ];
 

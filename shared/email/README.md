@@ -26,7 +26,8 @@ Ops team notify (CRM / inquiry alerts) uses `sendRawEmail` only — **not** time
 |----------|---------|
 | `RESEND_API_KEY` | Resend API key. **Without it, sends dry-run** (console log) and still append timeline with `delivery: simulated`. |
 | `EMAIL_FROM` | From address, e.g. `Hello to Cheers <hello@hellotocheers.com>` |
-| `EMAIL_REPLY_TO` | Optional Reply-To |
+| `EMAIL_REPLY_TO` | Optional default Reply-To (overridden by relationship subaddress when inbound configured) |
+| `RESEND_INBOUND_ADDRESS` | Inbound catch-all, e.g. `inbox@replies.hellotocheers.com`. Enables `relationship+{id}@domain` Reply-To for CRM inbound matching. |
 | `FROM_EMAIL` | Back-compat alias for `EMAIL_FROM` (existing marketing ops notify) |
 | `INQUIRY_NOTIFY_EMAIL` | Ops inbox for team alerts (not product welcome) |
 | `NEXT_PUBLIC_MARKETING_URL` | Used in template links |
@@ -50,6 +51,8 @@ Add the same Resend vars to **marketing** and **workspace** `.env.local` if Luv 
 | `kickoff` | live | White Glove checkout |
 | `white_glove_scheduling` | live | White Glove checkout |
 | `luv_suggestion` | live | Luv draft **Send** + workflow email steps |
+| `inquiry_confirmation` | live | Contact Us / unscheduled walkthrough more-info |
+| `feedback_confirmation` | live | Product Get Help / bug / idea / NPS + marketing `/support` |
 | `payment_receipt` | registry | Optional companion; Stripe receipt is source of truth |
 | `trial_reminder` | registry | Hook: `sendTrialReminder()` — trial not live |
 | `renewal_reminder` | registry | Hook: `sendRenewalReminder()` — wire from renewal workflows later |

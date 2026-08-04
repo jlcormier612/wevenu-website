@@ -3,8 +3,16 @@ import { randomUUID } from "crypto";
 import { normalizeEmail, normalizeVenueName, splitPersonName } from "./normalize";
 import {
   deriveSalesStage,
+  isCsAutoArrivalStage,
   isInCustomerSuccessView,
+  isSalesAutoArrivalStage,
+  markAutoArrival,
+  clearAutoArrival,
+  normalizeCustomerSuccessStage,
+  normalizeSalesStage,
   promoteSalesStage,
+  promoteToNeedsSupport,
+  restoreFromNeedsSupport,
   type SalesStage,
 } from "./sales-cs";
 import { promoteStatus, stageLabelForStatus } from "./status";
@@ -14,6 +22,7 @@ import type {
   FindOrCreateInput,
   LiveRelationshipStore,
   Notification,
+  OpenFeedbackItem,
   Relationship,
   RelationshipFieldPatch,
   RelationshipStatus,
@@ -23,6 +32,32 @@ import type {
   Walkthrough,
 } from "./types";
 import { ensureWhiteGloveChecklistInStore } from "./white-glove-checklist";
+
+function recountOpenFeedback(relationship: Relationship): number {
+  const items = relationship.openFeedbackItems ?? [];
+  if (items.length === 0) return relationship.supportOpenCount || 0;
+  return items.filter((i) => i.status === "open").length;
+}
+
+/** subscribedAt + 1 UTC calendar year (keeps renewalDate in sync on subscribe). */
+function renewalDateFromSubscribedAt(subscribedAt: string): string {
+  const d = new Date(subscribedAt);
+  return new Date(
+    Date.UTC(
+      d.getUTCFullYear() + 1,
+      d.getUTCMonth(),
+      d.getUTCDate(),
+      d.getUTCHours(),
+      d.getUTCMinutes(),
+      d.getUTCSeconds(),
+      d.getUTCMilliseconds(),
+    ),
+  ).toISOString();
+}
+
+function syncSupportOpenCountFromItems(relationship: Relationship): void {
+  relationship.supportOpenCount = recountOpenFeedback(relationship);
+}
 
 const DEFAULT_ASSIGNEE = "tm_jen";
 
@@ -324,13 +359,18 @@ type ApplyFieldPatchOpts = {
    * Default soft path promotes salesStage and skips regressing CS customers.
    */
   forceViewStages?: boolean;
+  /**
+   * Product → CRM write-back: overwrite venue/owner identity fields when
+   * the product supplies a non-empty value. Default merge still fills empties only.
+   */
+  syncFromProduct?: boolean;
 };
 
 /**
  * Merge patch into relationship. Never wipe stronger data with weaker values:
  * - booleans ratchet true-only (foundingMember, welcomeBackRequested)
  * - plan / onboarding / welcomeBackVerified only advance in rank
- * - venue / owner / referral fill empties only
+ * - venue / owner / referral fill empties only (unless syncFromProduct)
  * - status uses promoteStatus
  * - salesStage uses promoteSalesStage unless forceViewStages
  * - Stripe ids fill when provided (authoritative when set)
@@ -356,22 +396,63 @@ function applyFieldPatch(
     relationship.healthScore = Math.max(0, Math.min(100, Math.round(patch.healthScore)));
   }
   if (patch.salesStage) {
+    const previousSales = normalizeSalesStage(relationship.salesStage);
     if (opts?.forceViewStages) {
-      relationship.salesStage = patch.salesStage;
+      relationship.salesStage =
+        normalizeSalesStage(patch.salesStage) ?? patch.salesStage;
     } else if (
       isInCustomerSuccessView(relationship) &&
-      patch.salesStage !== "won"
+      normalizeSalesStage(patch.salesStage) !== "closed_won"
     ) {
-      // Subscribed / CS customers stay on Won (or current); ingest must not re-open Sales.
+      // Subscribed / CS customers stay on Closed Won (or current); ingest must not re-open Sales.
     } else {
       relationship.salesStage = promoteSalesStage(
         relationship.salesStage,
         patch.salesStage,
       );
+      const nextSales = normalizeSalesStage(relationship.salesStage);
+      if (
+        nextSales &&
+        nextSales !== previousSales &&
+        isSalesAutoArrivalStage(nextSales)
+      ) {
+        markAutoArrival(relationship, nextSales, "sales");
+      }
     }
   }
   if (patch.customerSuccessStage) {
-    relationship.customerSuccessStage = patch.customerSuccessStage;
+    const previousCs =
+      normalizeCustomerSuccessStage(relationship.customerSuccessStage, {
+        onboardingType: patch.onboardingType ?? relationship.onboardingType,
+        status: patch.status ?? relationship.status,
+      }) ?? relationship.customerSuccessStage;
+    const next = normalizeCustomerSuccessStage(patch.customerSuccessStage, {
+      onboardingType: patch.onboardingType ?? relationship.onboardingType,
+      status: patch.status ?? relationship.status,
+    });
+    if (next) {
+      // While support is open, remember the intended post-resolve stage and stay pinned.
+      if ((relationship.supportOpenCount || 0) > 0 && next !== "needs_support") {
+        relationship.customerSuccessStageBeforeSupport = next;
+        relationship.customerSuccessStage = "needs_support";
+      } else {
+        relationship.customerSuccessStage = next;
+        if (
+          !opts?.forceViewStages &&
+          next !== previousCs &&
+          isCsAutoArrivalStage(next)
+        ) {
+          markAutoArrival(relationship, next, "cs");
+        }
+      }
+    }
+  }
+  if (patch.customerSuccessStageBeforeSupport !== undefined) {
+    relationship.customerSuccessStageBeforeSupport =
+      patch.customerSuccessStageBeforeSupport;
+  }
+  if (patch.lastAutoArrival !== undefined) {
+    relationship.lastAutoArrival = patch.lastAutoArrival;
   }
 
   if (patch.planId && PLAN_RANK[patch.planId] > PLAN_RANK[relationship.planId]) {
@@ -427,7 +508,13 @@ function applyFieldPatch(
   }
 
   if (patch.paymentStatus) relationship.paymentStatus = patch.paymentStatus;
-  if (patch.subscribedAt !== undefined) relationship.subscribedAt = patch.subscribedAt;
+  if (patch.subscribedAt !== undefined) {
+    relationship.subscribedAt = patch.subscribedAt;
+    if (patch.subscribedAt && !relationship.renewalDate && !patch.renewalDate) {
+      relationship.renewalDate = renewalDateFromSubscribedAt(patch.subscribedAt);
+    }
+  }
+  if (patch.renewalDate !== undefined) relationship.renewalDate = patch.renewalDate;
   if (patch.accessDisabled !== undefined) {
     relationship.accessDisabled = patch.accessDisabled;
   }
@@ -508,31 +595,225 @@ function applyFieldPatch(
     relationship.stripeCheckoutSessionId = patch.stripeCheckoutSessionId;
   }
 
-  // Venue / owner: fill empties only — never overwrite established identity.
-  if (patch.venueName?.trim() && !relationship.venue.name.trim()) {
-    relationship.venue.name = patch.venueName.trim();
+  // Venue / owner: fill empties only — unless product write-back forces overwrite.
+  const forceVenueOwner = Boolean(opts?.syncFromProduct);
+  const takeStr = (
+    incoming: string | null | undefined,
+    current: string | undefined,
+  ): string | undefined => {
+    const next = incoming?.trim();
+    if (!next) return current;
+    if (forceVenueOwner || !current?.trim()) return next;
+    return current;
+  };
+
+  if (patch.venueName !== undefined) {
+    relationship.venue.name =
+      takeStr(patch.venueName, relationship.venue.name) ?? relationship.venue.name;
   }
-  if (patch.city?.trim() && !relationship.venue.city) {
-    relationship.venue.city = patch.city.trim();
+  if (patch.city !== undefined) {
+    relationship.venue.city =
+      takeStr(patch.city, relationship.venue.city) ?? relationship.venue.city;
   }
-  if (patch.state?.trim() && !relationship.venue.state) {
-    relationship.venue.state = patch.state.trim();
+  if (patch.state !== undefined) {
+    relationship.venue.state =
+      takeStr(patch.state, relationship.venue.state) ?? relationship.venue.state;
   }
-  if (patch.website?.trim() && !relationship.venue.website) {
-    relationship.venue.website = patch.website.trim();
+  if (patch.website !== undefined) {
+    relationship.venue.website = takeStr(patch.website, relationship.venue.website);
   }
-  if (patch.ownerFirstName?.trim() && !relationship.owner.firstName) {
-    relationship.owner.firstName = patch.ownerFirstName.trim();
+  if (patch.address !== undefined) {
+    relationship.venue.address = takeStr(patch.address, relationship.venue.address);
   }
-  if (patch.ownerLastName?.trim() && !relationship.owner.lastName) {
-    relationship.owner.lastName = patch.ownerLastName.trim();
+  if (patch.venueType !== undefined) {
+    relationship.venue.venueType = takeStr(
+      patch.venueType,
+      relationship.venue.venueType,
+    );
   }
-  if (patch.ownerPhone?.trim() && !relationship.owner.phone) {
-    relationship.owner.phone = patch.ownerPhone.trim();
+  if (typeof patch.capacity === "number" && Number.isFinite(patch.capacity)) {
+    if (forceVenueOwner || relationship.venue.capacity == null) {
+      relationship.venue.capacity = Math.max(0, Math.round(patch.capacity));
+    }
   }
-  if (patch.ownerEmail?.trim() && !normalizeEmail(relationship.owner.email)) {
-    relationship.owner.email = normalizeEmail(patch.ownerEmail);
+  if (patch.ownerFirstName !== undefined) {
+    relationship.owner.firstName =
+      takeStr(patch.ownerFirstName, relationship.owner.firstName) ??
+      relationship.owner.firstName;
   }
+  if (patch.ownerLastName !== undefined) {
+    relationship.owner.lastName =
+      takeStr(patch.ownerLastName, relationship.owner.lastName) ??
+      relationship.owner.lastName;
+  }
+  if (patch.ownerPhone !== undefined) {
+    relationship.owner.phone = takeStr(patch.ownerPhone, relationship.owner.phone);
+  }
+  if (patch.ownerTitle !== undefined) {
+    relationship.owner.title = takeStr(patch.ownerTitle, relationship.owner.title);
+  }
+  if (patch.ownerEmail?.trim()) {
+    if (forceVenueOwner || !normalizeEmail(relationship.owner.email)) {
+      relationship.owner.email = normalizeEmail(patch.ownerEmail);
+    }
+  }
+}
+
+export type SyncFromProductMatchBy =
+  | "product_venue_id"
+  | "email"
+  | "stripe_customer";
+
+export type SyncRelationshipFromProductResult = {
+  relationship: Relationship;
+  changed: boolean;
+  eventAppended: boolean;
+  matchedBy: SyncFromProductMatchBy;
+};
+
+/**
+ * Product → CRM write-back for Venue / Owner Details.
+ * Prefers `productSync.venueId`, then owner email, then Stripe customer id.
+ * Never creates a Relationship. Overwrites venue/owner identity fields when
+ * the product supplies non-empty values.
+ */
+export async function syncRelationshipFromProduct(opts: {
+  productVenueId: string;
+  email?: string | null;
+  stripeCustomerId?: string | null;
+  patch: RelationshipFieldPatch;
+  /**
+   * When matched by email/stripe (or sim venue id), bind the real product
+   * venue id onto `productSync.venueId` for stable future lookups.
+   */
+  bindProductVenueId?: boolean;
+  timeline?: {
+    title?: string;
+    body?: string;
+    /** Skip appending when a recent venue_profile_synced event exists. */
+    debounceMs?: number;
+    skip?: boolean;
+  };
+}): Promise<SyncRelationshipFromProductResult | null> {
+  const productVenueId = opts.productVenueId.trim();
+  if (!productVenueId) return null;
+
+  const email = normalizeEmail(opts.email);
+  const stripeCustomerId = opts.stripeCustomerId?.trim() || "";
+
+  const { result } = await withLiveStore((store) => {
+    let matchedBy: SyncFromProductMatchBy | null = null;
+    let relationship = store.relationships.find(
+      (r) => r.productSync?.venueId?.trim() === productVenueId,
+    );
+    if (relationship) matchedBy = "product_venue_id";
+
+    if (!relationship && email) {
+      relationship = store.relationships.find(
+        (r) => normalizeEmail(r.owner.email) === email,
+      );
+      if (relationship) matchedBy = "email";
+    }
+
+    if (!relationship && stripeCustomerId) {
+      relationship = store.relationships.find(
+        (r) => r.stripeCustomerId?.trim() === stripeCustomerId,
+      );
+      if (relationship) matchedBy = "stripe_customer";
+    }
+
+    if (!relationship || !matchedBy) return null;
+
+    const before = snapshotVenueOwner(relationship);
+    applyFieldPatch(relationship, opts.patch, { syncFromProduct: true });
+    const after = snapshotVenueOwner(relationship);
+    const changed = before !== after;
+
+    const now = new Date().toISOString();
+    if (changed) {
+      relationship.updatedAt = now;
+      relationship.lastCustomerActivityAt = now;
+    }
+
+    if (
+      opts.bindProductVenueId !== false &&
+      relationship.productSync?.venueId?.trim() !== productVenueId
+    ) {
+      relationship.productSync = {
+        status: relationship.productSync?.status ?? "idle",
+        steps: relationship.productSync?.steps ?? [],
+        adapter: relationship.productSync?.adapter ?? "local",
+        ...relationship.productSync,
+        venueId: productVenueId,
+      };
+      relationship.updatedAt = now;
+    }
+
+    let eventAppended = false;
+    const timeline = opts.timeline;
+    if (changed && timeline && !timeline.skip) {
+      const debounceMs = timeline.debounceMs ?? 0;
+      const recent =
+        debounceMs > 0
+          ? store.timelineEvents
+              .filter(
+                (e) =>
+                  e.relationshipId === relationship!.id &&
+                  e.type === "venue_profile_synced",
+              )
+              .sort((a, b) => b.occurredAt.localeCompare(a.occurredAt))[0]
+          : undefined;
+      const recentAt = recent ? Date.parse(recent.occurredAt) : NaN;
+      const withinDebounce =
+        Number.isFinite(recentAt) && Date.now() - recentAt < debounceMs;
+
+      if (!withinDebounce) {
+        store.timelineEvents.push({
+          id: `evt_${randomUUID().replace(/-/g, "").slice(0, 12)}`,
+          relationshipId: relationship.id,
+          type: "venue_profile_synced",
+          title: timeline.title?.trim() || "Venue profile updated from product",
+          body: timeline.body,
+          occurredAt: now,
+          meta: {
+            source: "product",
+            matched_by: matchedBy,
+            product_venue_id: productVenueId,
+          },
+        });
+        relationship.lastContactAt = now;
+        eventAppended = true;
+      }
+    }
+
+    return {
+      relationship,
+      changed,
+      eventAppended,
+      matchedBy,
+    } as const;
+  });
+
+  return result;
+}
+
+function snapshotVenueOwner(relationship: Relationship): string {
+  const v = relationship.venue;
+  const o = relationship.owner;
+  return JSON.stringify({
+    name: v.name,
+    city: v.city,
+    state: v.state,
+    website: v.website ?? "",
+    address: v.address ?? "",
+    venueType: v.venueType ?? "",
+    capacity: v.capacity ?? null,
+    firstName: o.firstName,
+    lastName: o.lastName,
+    email: o.email,
+    phone: o.phone ?? "",
+    title: o.title ?? "",
+  });
 }
 
 export async function updateRelationshipFields(
@@ -553,6 +834,47 @@ export async function updateRelationshipFields(
     return relationship;
   });
   return result;
+}
+
+/**
+ * Clear unacked auto-arrival highlight for one relationship (detail page open).
+ */
+export async function clearRelationshipAutoArrival(
+  relationshipId: string,
+): Promise<Relationship | null> {
+  const { result } = await withLiveStore((store) => {
+    const relationship = store.relationships.find((r) => r.id === relationshipId);
+    if (!relationship) return null;
+    if (!relationship.lastAutoArrival) return relationship;
+    clearAutoArrival(relationship);
+    relationship.updatedAt = new Date().toISOString();
+    return relationship;
+  });
+  return result;
+}
+
+/**
+ * Acknowledge all unacked auto-arrivals for a board stage (filter chip / column).
+ * Returns how many relationships were cleared.
+ */
+export async function acknowledgeStageAutoArrivals(
+  board: "sales" | "cs",
+  stage: string,
+): Promise<number> {
+  const { result } = await withLiveStore((store) => {
+    let cleared = 0;
+    const now = new Date().toISOString();
+    for (const relationship of store.relationships) {
+      const hit = relationship.lastAutoArrival;
+      if (hit && hit.board === board && hit.stage === stage) {
+        clearAutoArrival(relationship);
+        relationship.updatedAt = now;
+        cleared += 1;
+      }
+    }
+    return cleared;
+  });
+  return result ?? 0;
 }
 
 /**
@@ -886,6 +1208,131 @@ export async function resolveWelcomeBackVerification(
   return result;
 }
 
+export type ResolveOpenFeedbackResult = {
+  relationship: Relationship;
+  resolvedIds: string[];
+  timelineEvent: TimelineEvent;
+  supportOpenCount: number;
+};
+
+/**
+ * Mark open feedback/support item(s) resolved, recount supportOpenCount,
+ * clear status overlay when no open items remain, append support_resolved.
+ */
+export async function resolveOpenFeedback(opts: {
+  relationshipId: string;
+  /** Resolve this item; omit with `all: true` to clear every open item. */
+  itemId?: string;
+  all?: boolean;
+  actorId?: string;
+  note?: string | null;
+}): Promise<ResolveOpenFeedbackResult | { error: string }> {
+  const relationshipId = opts.relationshipId.trim();
+  if (!relationshipId) return { error: "relationshipId required" };
+
+  const { result } = await withLiveStore((store) => {
+    const relationship = store.relationships.find((r) => r.id === relationshipId);
+    if (!relationship) return { error: "Relationship not found" } as const;
+
+    const now = new Date().toISOString();
+    const note = opts.note?.trim() || undefined;
+    if (!relationship.openFeedbackItems) relationship.openFeedbackItems = [];
+
+    const resolvedIds: string[] = [];
+
+    if (opts.all) {
+      for (const item of relationship.openFeedbackItems) {
+        if (item.status === "open") {
+          item.status = "resolved";
+          item.resolvedAt = now;
+          resolvedIds.push(item.id);
+        }
+      }
+      if (
+        resolvedIds.length === 0 &&
+        (relationship.supportOpenCount || 0) > 0
+      ) {
+        relationship.supportOpenCount = 0;
+        resolvedIds.push("legacy");
+      } else if (resolvedIds.length === 0) {
+        return { error: "No open feedback to resolve" } as const;
+      }
+    } else if (opts.itemId?.trim()) {
+      const item = relationship.openFeedbackItems.find(
+        (i) => i.id === opts.itemId!.trim(),
+      );
+      if (!item) return { error: "Feedback item not found" } as const;
+      if (item.status === "resolved") {
+        return { error: "Feedback item already resolved" } as const;
+      }
+      item.status = "resolved";
+      item.resolvedAt = now;
+      resolvedIds.push(item.id);
+    } else if ((relationship.supportOpenCount || 0) > 0) {
+      // Legacy rows bumped supportOpenCount without openFeedbackItems.
+      relationship.supportOpenCount = Math.max(
+        0,
+        (relationship.supportOpenCount || 0) - 1,
+      );
+      resolvedIds.push("legacy");
+    } else {
+      return { error: "No open feedback to resolve" } as const;
+    }
+
+    if (resolvedIds[0] !== "legacy") {
+      syncSupportOpenCountFromItems(relationship);
+    }
+
+    if (
+      relationship.supportOpenCount === 0 &&
+      relationship.status === "support"
+    ) {
+      relationship.status = "active";
+      relationship.currentStageLabel = stageLabelForStatus("active");
+    }
+
+    if (relationship.supportOpenCount === 0) {
+      restoreFromNeedsSupport(relationship);
+    }
+
+    relationship.updatedAt = now;
+    relationship.lastContactAt = now;
+    relationship.lastTeamActivityAt = now;
+
+    const countLabel =
+      resolvedIds.length === 1
+        ? "1 item"
+        : `${resolvedIds.length} items`;
+    const timelineEvent: TimelineEvent = {
+      id: `evt_${randomUUID().replace(/-/g, "").slice(0, 12)}`,
+      relationshipId,
+      type: "support_resolved",
+      title: "Support / feedback resolved",
+      body:
+        note ||
+        `Resolved ${countLabel}. Open count is now ${relationship.supportOpenCount}.`,
+      occurredAt: now,
+      actorId: opts.actorId,
+      meta: {
+        resolved_ids: resolvedIds.join(","),
+        support_open_count: relationship.supportOpenCount,
+        cleared_support_overlay:
+          relationship.status === "active" && relationship.supportOpenCount === 0,
+      },
+    };
+    store.timelineEvents.push(timelineEvent);
+
+    return {
+      relationship,
+      resolvedIds,
+      timelineEvent,
+      supportOpenCount: relationship.supportOpenCount,
+    } as const;
+  });
+
+  return result;
+}
+
 /**
  * Single locked transaction: find/create, patch fields, append timeline (+ optional extras).
  * Preferred for ingest paths to avoid race conditions across multiple helpers.
@@ -900,6 +1347,17 @@ export async function mutateRelationship(opts: {
   forceStatus?: RelationshipStatus;
   /** Increment supportOpenCount by 1 after find/create. */
   bumpSupportOpenCount?: boolean;
+  /**
+   * Append an open feedback item and keep supportOpenCount in lockstep.
+   * Prefer this over bumping the count alone for typed CS queues.
+   */
+  openFeedbackItem?: Omit<OpenFeedbackItem, "id" | "createdAt" | "status"> & {
+    id?: string;
+    createdAt?: string;
+    status?: OpenFeedbackItem["status"];
+  };
+  /** Bind product venue id onto productSync for stable future lookups. */
+  productVenueId?: string | null;
   /** When true, return null instead of creating a new Relationship. */
   updateOnly?: boolean;
   event?: Omit<TimelineEvent, "id" | "relationshipId">;
@@ -964,6 +1422,14 @@ export async function mutateRelationship(opts: {
       applyFieldPatch(relationship, opts.patch);
     }
 
+    // New relationships created into a highlightable Sales stage (contact / walkthrough ingest).
+    if (created) {
+      const sales = normalizeSalesStage(relationship.salesStage) ?? "inquiry";
+      if (isSalesAutoArrivalStage(sales) && !relationship.lastAutoArrival) {
+        markAutoArrival(relationship, sales, "sales");
+      }
+    }
+
     if (opts.forceStatus) {
       const forced =
         opts.forceStatus === "active_customer" || opts.forceStatus === "live"
@@ -975,8 +1441,40 @@ export async function mutateRelationship(opts: {
         stageLabelForStatus(relationship.status);
     }
 
-    if (opts.bumpSupportOpenCount) {
+    if (opts.openFeedbackItem) {
+      if (!relationship.openFeedbackItems) relationship.openFeedbackItems = [];
+      const item: OpenFeedbackItem = {
+        id:
+          opts.openFeedbackItem.id ??
+          `fb_${randomUUID().replace(/-/g, "").slice(0, 12)}`,
+        type: opts.openFeedbackItem.type,
+        subject: opts.openFeedbackItem.subject.trim() || "Feedback",
+        body: opts.openFeedbackItem.body?.trim() || undefined,
+        createdAt: opts.openFeedbackItem.createdAt || now,
+        status: opts.openFeedbackItem.status ?? "open",
+        productFeedbackId: opts.openFeedbackItem.productFeedbackId,
+        resolvedAt: opts.openFeedbackItem.resolvedAt,
+        source: opts.openFeedbackItem.source,
+      };
+      relationship.openFeedbackItems.push(item);
+      syncSupportOpenCountFromItems(relationship);
+      if (item.status === "open") {
+        promoteToNeedsSupport(relationship);
+      }
+    } else if (opts.bumpSupportOpenCount) {
       relationship.supportOpenCount = (relationship.supportOpenCount || 0) + 1;
+      promoteToNeedsSupport(relationship);
+    }
+
+    const bindVenueId = opts.productVenueId?.trim();
+    if (bindVenueId) {
+      relationship.productSync = {
+        status: relationship.productSync?.status ?? "idle",
+        steps: relationship.productSync?.steps ?? [],
+        adapter: relationship.productSync?.adapter ?? "local",
+        ...relationship.productSync,
+        venueId: bindVenueId,
+      };
     }
 
     const occurredAt = opts.event?.occurredAt || now;
@@ -1151,7 +1649,7 @@ export async function setWalkthroughStatus(
             title: "Walkthrough completed",
             body: reason,
             relationshipStatus: "walkthrough_completed" as const,
-            salesStage: "venue_walkthrough" as SalesStage,
+            salesStage: "walkthrough_scheduled" as SalesStage,
             nextMilestone: "Send proposal / follow up",
           }
         : status === "rescheduled"
@@ -1160,7 +1658,7 @@ export async function setWalkthroughStatus(
               title: "Walkthrough rescheduled",
               body: reason || (nextScheduled ? `New time: ${nextScheduled}` : undefined),
               relationshipStatus: "walkthrough_scheduled" as const,
-              salesStage: "venue_walkthrough" as SalesStage,
+              salesStage: "walkthrough_scheduled" as SalesStage,
               nextMilestone: "Upcoming walkthrough",
               nextMilestoneAt: nextScheduled || walkthrough.scheduledAt,
             }
@@ -1169,7 +1667,7 @@ export async function setWalkthroughStatus(
               title: "Walkthrough cancelled",
               body: reason,
               relationshipStatus: undefined,
-              // Still in early pipeline → Discovery (needs rebook). Later stages untouched.
+              // Still in early pipeline → Personal Send (needs rebook). Later stages untouched.
               salesStage: undefined as SalesStage | undefined,
               nextMilestone: "Reschedule walkthrough",
             };
@@ -1178,16 +1676,17 @@ export async function setWalkthroughStatus(
       const currentSales = deriveSalesStage(relationship);
       if (
         currentSales === "inquiry" ||
-        currentSales === "discovery_scheduled" ||
-        currentSales === "venue_walkthrough"
+        currentSales === "personal_send" ||
+        currentSales === "sequence_scheduled" ||
+        currentSales === "walkthrough_scheduled"
       ) {
-        eventSpec.salesStage = "discovery_scheduled";
+        eventSpec.salesStage = "personal_send";
       }
     }
 
     if (eventSpec.relationshipStatus || eventSpec.salesStage) {
       const forceCancelStage =
-        status === "cancelled" && eventSpec.salesStage === "discovery_scheduled";
+        status === "cancelled" && eventSpec.salesStage === "personal_send";
       applyFieldPatch(
         relationship,
         {

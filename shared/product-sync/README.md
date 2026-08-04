@@ -35,6 +35,29 @@ Relationship (subscribed)
    └────────┘
 ```
 
+## Product → CRM write-back
+
+When a venue saves setup progress, completes setup, or edits Venue Info / Profile / Owner in product settings, the product app calls `syncVenueProfileFromProduct` (soft / non-blocking):
+
+```
+product lib/venue/service.ts
+        │
+        ▼
+ syncVenueProfileFromProduct (shared/product-sync/writeback.ts)
+        │
+        ▼
+ syncRelationshipFromProduct (shared/relationships)
+        │
+        ├── match: productSync.venueId → owner email → Stripe customer
+        ├── overwrite Venue / Owner Details (syncFromProduct)
+        ├── bind real venueId onto productSync.venueId when found by email
+        └── timeline: venue_profile_synced (debounced on progress/settings)
+```
+
+Fields: venue name, city, state, website, address, type, capacity; owner name, title, email, phone.
+
+While CRM→product venue creation remains simulated (`ven_<hash>`), write-back still works via owner email and upgrades the link to the real Supabase venue id once setup runs.
+
 ## What is live vs simulated
 
 | Layer | Status |
@@ -134,3 +157,23 @@ When the product app exposes signed internal routes, implement them under:
 - `…/workspaces`, `…/websites`, `…/subscriptions`, `…/owner-accounts`, `…/onboarding`, `…/launch`
 
 Then set `PRODUCT_SYNC_ADAPTER=http`, `PRODUCT_API_BASE_URL`, `PRODUCT_SYNC_API_KEY`, and flip the http adapter from stub → real `fetch` (guarded by `PRODUCT_SYNC_LIVE=1`).
+
+## Access lock (CRM Suspend → product hard lock)
+
+Live path (not simulated):
+
+1. CRM **Suspend** / day-21 dunning / **Reactivate** / Stripe `invoice.paid` call `applyProductAccessLockFromRelationship` in `access-lock.ts`
+2. That POSTs to `{PRODUCT_API_BASE_URL}/api/internal/product-access/lock` with `PRODUCT_SYNC_API_KEY`
+3. Product sets `venues.access_disabled` + `account_status` (+ optional `saas_stripe_customer_id`)
+4. Product proxy / login send locked venues to `/billing/suspended`
+
+When `productSync.venueId` is still a simulated `ven_*` id, the bridge falls back to matching `owner.email` to a real venue. If neither resolves, CRM suspend still works and a warning is logged; local `.data/{relationshipId}.json` records `accessLock` for audit.
+
+Env (workspace + marketing callers **and** product):
+
+| Variable | Where | Purpose |
+|----------|--------|---------|
+| `PRODUCT_API_BASE_URL` | workspace / marketing | e.g. `http://localhost:3000` |
+| `PRODUCT_SYNC_API_KEY` | workspace / marketing **and** product | shared Bearer secret |
+| `SUPABASE_SERVICE_ROLE_KEY` | product | lock API updates venues |
+| Migration `20261175000000_venue_account_access_lock.sql` | Supabase | adds lock columns |

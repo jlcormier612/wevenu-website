@@ -45,27 +45,26 @@ export type RelationshipHealthScore = number;
 /** Pre-customer Sales board stage (view field — not a second CRM). */
 export type SalesStage =
   | "inquiry"
-  | "discovery_scheduled"
-  | "venue_walkthrough"
+  | "personal_send"
+  | "sequence_scheduled"
+  | "responded"
+  | "walkthrough_scheduled"
   | "proposal_sent"
-  | "negotiation"
-  | "awaiting_signature"
-  | "won"
-  | "lost"
-  | "nurture";
+  | "follow_up"
+  | "closed_won"
+  | "closed_lost";
 
 /** Post-subscribe Customer Success lifecycle stage (view field). */
 export type CustomerSuccessStage =
-  | "welcome"
   | "onboarding"
   | "implementation"
-  | "training"
   | "live"
-  | "adoption"
+  | "check_in_sequence"
   | "healthy"
   | "expansion"
   | "renewal"
-  | "renewed";
+  | "renewed"
+  | "needs_support";
 
 /** Payment / access flags for SaaS subscription lifecycle. */
 export type PaymentStatus =
@@ -129,6 +128,8 @@ export type TimelineEventType =
   | "onboarding_completed"
   | "support_request"
   | "support_resolved"
+  | "feedback_received"
+  | "feedback_resolved"
   | "referral_submitted"
   | "renewal"
   | "task_completed"
@@ -150,11 +151,13 @@ export type TimelineEventType =
   | "white_glove_implementation_started"
   | "implementation_complete"
   | "workspace_activated"
+  | "account_activated"
   | "payment_failed"
   | "payment_reminder_sent"
   | "account_suspended"
   | "account_reactivated"
-  | "manual_subscription";
+  | "manual_subscription"
+  | "venue_profile_synced";
 
 export type CommunicationChannel =
   | "email"
@@ -175,13 +178,15 @@ export type NotificationType =
   | "welcome_back_requested"
   | "founder_spot_filled"
   | "support_request_submitted"
+  | "feedback_received"
   | "newsletter_signup"
   | "white_glove_implementation"
   | "payment_failed"
   | "account_at_risk"
   | "account_suspended"
   | "account_reactivated"
-  | "workspace_launched";
+  | "workspace_launched"
+  | "prospect_responded";
 
 export type SubscriptionStatus = "trialing" | "active" | "past_due" | "cancelled" | "paused";
 
@@ -332,6 +337,30 @@ export type RelationshipTask = {
   meta?: Record<string, string | number | boolean | null>;
 };
 
+/** Product / marketing customer input mirrored on the Relationship for CS queue. */
+export type ProductFeedbackType =
+  | "support"
+  | "bug"
+  | "feature"
+  | "nps"
+  | "general";
+
+export type OpenFeedbackItemStatus = "open" | "acknowledged" | "resolved";
+
+export type OpenFeedbackItem = {
+  id: string;
+  type: ProductFeedbackType;
+  subject: string;
+  /** Full customer message when available (product Get Help / support form). */
+  body?: string;
+  createdAt: string;
+  status: OpenFeedbackItemStatus;
+  /** Supabase venue_feedback.id when sourced from product Get Help. */
+  productFeedbackId?: string;
+  resolvedAt?: string | null;
+  source?: "product" | "marketing_support" | "manual";
+};
+
 export type Relationship = {
   id: string;
   venue: VenueInfo;
@@ -347,6 +376,21 @@ export type Relationship = {
   salesStage?: SalesStage;
   /** Customer Success lifecycle stage (post-subscribe). */
   customerSuccessStage?: CustomerSuccessStage;
+  /**
+   * Prior CS stage before soft-promote to `needs_support`.
+   * Restored when all open feedback items are resolved.
+   */
+  customerSuccessStageBeforeSupport?: CustomerSuccessStage | null;
+  /**
+   * Unacknowledged auto-arrival into a Sales/CS highlight stage.
+   * Set by ingest / subscribe / inbound reply / feedback — not board drag.
+   * Cleared when the relationship is opened from that board or the stage is acknowledged.
+   */
+  lastAutoArrival?: {
+    stage: string;
+    at: string;
+    board: "sales" | "cs";
+  } | null;
   assignedTeamMemberId: string;
   planId: PlanId;
   planName: string;
@@ -356,6 +400,8 @@ export type Relationship = {
   onboardingType: OnboardingType;
   currentStageLabel: string;
   lastContactAt: string;
+  /** ISO when the latest inbound owner email was recorded (reply automation / Luv urgency). */
+  lastInboundAt?: string | null;
   nextMilestone?: string;
   nextMilestoneAt?: string;
   createdAt: string;
@@ -373,6 +419,11 @@ export type Relationship = {
   };
   referralSource?: string;
   supportOpenCount: number;
+  /**
+   * Open / resolved product + marketing feedback items.
+   * `supportOpenCount` stays derived from items with status `open` (kept in lockstep).
+   */
+  openFeedbackItems?: OpenFeedbackItem[];
   /** Stripe ids for ops / dedupe across checkout retries */
   stripeCustomerId?: string | null;
   stripeSubscriptionId?: string | null;
@@ -381,6 +432,11 @@ export type Relationship = {
   paymentStatus?: PaymentStatus;
   /** ISO when subscription became active (purchase or manual) */
   subscribedAt?: string | null;
+  /**
+   * Next (or current-cycle) subscription anniversary — subscribedAt + N years.
+   * Kept in sync on subscribe / renewal ticks; prefer compute from subscribedAt when missing.
+   */
+  renewalDate?: string | null;
   /** When true, product access is disabled (suspended) — data preserved */
   accessDisabled?: boolean;
   /** Activation token for Launch Yourself / Welcome Home */
@@ -436,6 +492,8 @@ export type RelationshipFieldPatch = Partial<
     | "healthScore"
     | "salesStage"
     | "customerSuccessStage"
+    | "customerSuccessStageBeforeSupport"
+    | "lastAutoArrival"
     | "planId"
     | "planName"
     | "foundingMember"
@@ -456,6 +514,7 @@ export type RelationshipFieldPatch = Partial<
     | "stripeCheckoutSessionId"
     | "paymentStatus"
     | "subscribedAt"
+    | "renewalDate"
     | "accessDisabled"
     | "activationToken"
     | "activationTokenCreatedAt"
@@ -472,8 +531,13 @@ export type RelationshipFieldPatch = Partial<
   city?: string | null;
   state?: string | null;
   website?: string | null;
+  /** Street address (city/state live in dedicated fields). */
+  address?: string | null;
+  venueType?: string | null;
+  capacity?: number | null;
   ownerFirstName?: string | null;
   ownerLastName?: string | null;
   ownerPhone?: string | null;
   ownerEmail?: string | null;
+  ownerTitle?: string | null;
 };

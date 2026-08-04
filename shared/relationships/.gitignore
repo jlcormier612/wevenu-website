@@ -1,3 +1,4 @@
 .data/
 .smoke-data/
+.smoke-*-data/
 *.lock

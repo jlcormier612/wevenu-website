@@ -96,4 +96,107 @@ if (second.ran !== false && second.message.indexOf("Already") < 0) {
   if (!ok) throw new Error("Second run did not preserve completed state");
 }
 
-console.log("product-sync smoke OK");
+// --- Product → CRM write-back ---
+const { syncVenueProfileFromProduct } = await import("./writeback");
+const { loadLiveStore } = await import("../relationships");
+
+const writeback = await syncVenueProfileFromProduct({
+  venueId: "uuid-real-venue-from-product",
+  reason: "setup_submit",
+  profile: {
+    name: "Coastal Grove Estate",
+    city: "Charleston",
+    state: "SC",
+    website: "coastalgrove.example",
+    address: "12 Harbor Lane",
+    venueType: "Estate",
+    capacity: 180,
+    ownerFullName: "Avery Grove",
+    ownerEmail: "smoke-product-sync@example.com",
+    ownerTitle: "Owner & Host",
+    ownerPhone: "555-0100",
+  },
+});
+
+if (!writeback.ok || !writeback.synced) {
+  throw new Error(
+    `Write-back failed: ${JSON.stringify(writeback)}`,
+  );
+}
+if (writeback.matchedBy !== "email") {
+  throw new Error(`Expected email match (sim venue id), got ${writeback.matchedBy}`);
+}
+
+const store = await loadLiveStore();
+const refreshed = store.relationships.find((r) => r.id === relationship.id);
+if (!refreshed) throw new Error("Relationship missing after write-back");
+if (refreshed.venue.name !== "Coastal Grove Estate") {
+  throw new Error(`Venue name not overwritten: ${refreshed.venue.name}`);
+}
+if (refreshed.venue.city !== "Charleston" || refreshed.venue.state !== "SC") {
+  throw new Error("Location not overwritten");
+}
+if (refreshed.venue.venueType !== "Estate" || refreshed.venue.capacity !== 180) {
+  throw new Error("Type/capacity not synced");
+}
+if (refreshed.owner.title !== "Owner & Host") {
+  throw new Error(`Owner title not synced: ${refreshed.owner.title}`);
+}
+if (refreshed.owner.firstName !== "Avery" || refreshed.owner.lastName !== "Grove") {
+  throw new Error("Owner name not overwritten");
+}
+if (refreshed.productSync?.venueId !== "uuid-real-venue-from-product") {
+  throw new Error(
+    `Expected productSync.venueId rebound to real id, got ${refreshed.productSync?.venueId}`,
+  );
+}
+
+const timeline = store.timelineEvents.filter(
+  (e) =>
+    e.relationshipId === relationship.id && e.type === "venue_profile_synced",
+);
+if (timeline.length < 1) {
+  throw new Error("Expected venue_profile_synced timeline event");
+}
+
+// Second submit with same data — no spam event when unchanged
+const writeback2 = await syncVenueProfileFromProduct({
+  venueId: "uuid-real-venue-from-product",
+  reason: "setup_submit",
+  profile: {
+    name: "Coastal Grove Estate",
+    city: "Charleston",
+    state: "SC",
+    website: "https://coastalgrove.example",
+    address: "12 Harbor Lane",
+    venueType: "Estate",
+    capacity: 180,
+    ownerFullName: "Avery Grove",
+    ownerEmail: "smoke-product-sync@example.com",
+    ownerTitle: "Owner & Host",
+    ownerPhone: "555-0100",
+  },
+});
+if (!writeback2.ok || !writeback2.synced || writeback2.eventAppended) {
+  throw new Error(
+    `Expected silent no-change write-back, got ${JSON.stringify(writeback2)}`,
+  );
+}
+
+// Match by product venue id after rebind
+const writeback3 = await syncVenueProfileFromProduct({
+  venueId: "uuid-real-venue-from-product",
+  reason: "settings",
+  profile: {
+    name: "Coastal Grove Estate",
+    city: "Charleston",
+    state: "SC",
+    capacity: 200,
+    ownerEmail: "smoke-product-sync@example.com",
+  },
+});
+if (!writeback3.ok || !writeback3.synced || writeback3.matchedBy !== "product_venue_id") {
+  throw new Error(`Expected product_venue_id match, got ${JSON.stringify(writeback3)}`);
+}
+
+console.log("product-sync smoke OK (incl. product→CRM write-back)");

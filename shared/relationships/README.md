@@ -36,7 +36,7 @@ Field patches **merge**; they do not wipe stronger data:
 | Plan / onboarding | Rank upward only (`none` → Gather → …; self-guided → White Glove) |
 | Founding / Welcome Back requested | Ratchet **true-only** |
 | Welcome Back verified | `none` → `pending` → verified/rejected (never downgrade to `none`) |
-| Venue / owner / referral | Fill empties only |
+| Venue / owner / referral | Fill empties only (**exception:** product → CRM write-back overwrites when non-empty) |
 | Timeline | Always **append** |
 
 ### Append-only timeline
@@ -49,9 +49,17 @@ See also [`../../workspace/README.md`](../../workspace/README.md#customer-lifecy
 
 After `ingestSubscriptionPurchased`: status is forced to **subscribed**, then `enterOnboardingAfterPurchase` advances to **onboarding** (Launch Yourself) or **white_glove_implementation** (White Glove). Product Sync is deferred for White Glove until Launch Workspace.
 
-New helpers: `enterOnboardingAfterPurchase`, `createManualSubscription`, `launchWhiteGloveWorkspace`, `recordPaymentFailed`, `tickPaymentDunning`, `computeRelationshipHealth`, `suspendRelationshipAccount`, `reactivateRelationshipAccount`.
+New helpers: `enterOnboardingAfterPurchase`, `createManualSubscription`, `launchWhiteGloveWorkspace`, `recordPaymentFailed`, `tickPaymentDunning`, `tickRenewalStages`, `computeRelationshipHealth`, `suspendRelationshipAccount`, `reactivateRelationshipAccount`.
 
 Pipeline aliases: `live` / `active_customer` → `active`.
+
+### Renewal anniversary → CS stages
+
+See [`../../workspace/README.md`](../../workspace/README.md#renewal-anniversary-cs-stages).
+
+- `renewalDate` = `subscribedAt` + 1 year (set on subscribe; ticks keep / roll it)
+- Auto soft-promote to `renewal` within 60 days of anniversary; to `renewed` on anniversary + 1 day
+- Support pin / suspended skip; `tickRenewalStages()` via lifecycle `tick_renewals` or CS page load
 
 ### Project 6 — White Glove Implementation Checklist
 
@@ -81,6 +89,10 @@ Completing a task (workspace **Complete**) sets status + appends timeline `task_
 
 After a successful Stripe purchase → Relationship upsert, `enqueueProductSync` runs the idempotent pipeline (Venue → Workspace → Website → Subscription → Owner Account → Onboarding → Launch). State lives on `relationship.productSync`; timeline gets `product_sync_*` events. Provisioning of real Supabase venues is **simulated** via `shared/product-sync` adapters until a product internal API exists. See `shared/product-sync/README.md`.
 
+**Product → CRM write-back:** when the product app saves venue setup / settings, `syncVenueProfileFromProduct` overwrites CRM Venue/Owner Details (name, location, type, capacity, website, owner name/title/email/phone) on the linked Relationship (`productSync.venueId`, else owner email / Stripe customer). Timeline gets a quiet `venue_profile_synced` event (debounced on progress/settings). This path uses `syncFromProduct` so updates are not blocked by the default “fill empties only” merge.
+
+**Product feedback → CRM:** product `POST /api/feedback` (Get Help / bug / idea / NPS / general) calls `ingestProductFeedback` after the Supabase insert. Match order mirrors write-back (`productSync.venueId` → owner email → Stripe); findOrCreate by email when needed. Stores `openFeedbackItems[]`, bumps `supportOpenCount`, timeline + support communication + notification. Customer ack: `feedback_confirmation` via `@shared/email`. Ops **Resolve** uses `resolveOpenFeedback` (workspace `POST /api/relationships/support`). Marketing `/support` uses the same open-item + resolve path (`ingestSupportRequest`).
+
 ### Wired entry points
 
 | Source | Ingest |
@@ -94,7 +106,28 @@ After a successful Stripe purchase → Relationship upsert, `enqueueProductSync`
 | Stripe purchase (incl. Founder) | `ingestSubscriptionPurchased` |
 | Stripe subscription updated / cancelled | `ingestSubscriptionLifecycle` |
 | Welcome Back form + checkout checkbox | `ingestWelcomeBackRequest` / purchase path |
-| Newsletter / Support | also wired (same store) |
+| Newsletter | `ingestNewsletterSignup` |
+| Marketing `/support` | `ingestSupportRequest` (+ open feedback item) |
+| Product Get Help / feedback | `ingestProductFeedback` |
+
+### Sales stage from marketing ingest
+
+| Source | Lifecycle `status` | Sales `salesStage` |
+|--------|--------------------|--------------------|
+| Contact form | `inquiry` | `inquiry` |
+| Walkthrough form / “Request more information” (**no** real `scheduledAt`) | `walkthrough_requested` | `inquiry` |
+| Calendly / walkthrough **with** real `scheduledAt` | `walkthrough_scheduled` | `walkthrough_scheduled` |
+
+Soft walkthrough requests (under-calendar LeadForm on `/walkthrough`, including `?intent=more-info`) stay on Sales **Inquiry** — they do **not** promote to `personal_send`.
+
+### Relationship Snapshot (workspace display)
+
+Workspace `/relationships/[id]` snapshot cells switch by view — **same record**, no duplicated fields:
+
+- **Sales** when `!subscribedAt` (and not otherwise in CS): stage, milestone, source, silence, sequence, walkthrough, Welcome Back; plan/payment only mid-checkout
+- **Customer Success** when `subscribedAt` (wins over board origin): health, CS stage, adoption/engagement, plan/payment, support
+
+Optional `?from=sales|customer-success` from board links is a soft bias only when CS membership is not from subscribe.
 
 ## Stripe (Project 2) — test mode + CLI
 
@@ -161,6 +194,17 @@ Triggerable events to have enabled for the endpoint (CLI listen forwards all; Da
 RELATIONSHIPS_DATA_PATH=./shared/relationships/.smoke-data npx tsx shared/relationships/_smoke.mts
 ```
 
+### Demo subscribed CS customer (live store, no Stripe)
+
+```bash
+npx tsx workspace/scripts/seed-demo-customer.mts
+# Renewal testing:
+npx tsx workspace/scripts/seed-demo-customer.mts --renewal-window
+npx tsx workspace/scripts/seed-demo-customer.mts --renewed
+```
+
+Idempotent seed for **Sweet Daisy Barn & Farm** (Launch Yourself mid-onboarding) so Customer Success shows a CS Relationship Snapshot. Use `--renewal-window` / `--renewed` to backdate `subscribedAt` for anniversary stage ticks.
+
 ### Email smoke (Project 3, no Resend key)
 
 ```bash
@@ -181,6 +225,8 @@ npx tsx shared/email/_smoke.mts
 | `CALENDLY_WEBHOOK_SIGNING_KEY` | marketing | HMAC key from Calendly webhook subscription |
 | `CALENDLY_WEBHOOK_SHARED_SECRET` | marketing | Optional fallback: require `x-calendly-webhook-secret` header |
 | `RESEND_API_KEY` / `EMAIL_FROM` / `EMAIL_REPLY_TO` | marketing + workspace | Product email (Project 3). See [`../email/README.md`](../email/README.md). |
+| `RESEND_INBOUND_ADDRESS` | workspace (+ shared email) | Enables `relationship+{id}@domain` Reply-To for inbound → Responded. |
+| `RESEND_WEBHOOK_SECRET` | workspace | Auth for `POST /api/email/inbound` (query secret and/or Svix). |
 
 ## Calendly walkthroughs (Jennifer)
 
@@ -286,7 +332,7 @@ rg '"type":' shared/relationships/.data/timeline-events.jsonl | tail
 | `types.ts` | Shared model (aligned with workspace) |
 | `normalize.ts` | Email / venue / plan mapping |
 | `store.ts` | JSONL load/save + lock |
-| `service.ts` | `findOrCreate`, `appendTimelineEvent`, `completeRelationshipTask`, `setRelationshipStatus`, `resolveWelcomeBackVerification`, `mutateRelationship` |
-| `ingest.ts` | Marketing event → relationship mappers |
+| `service.ts` | `findOrCreate`, `appendTimelineEvent`, `completeRelationshipTask`, `setRelationshipStatus`, `resolveWelcomeBackVerification`, `resolveOpenFeedback`, `mutateRelationship`, `syncRelationshipFromProduct` |
+| `ingest.ts` | Marketing + product feedback event → relationship mappers |
 | `white-glove-checklist.ts` | Project 6 — idempotent Implementation Checklist tasks |
 | `paths.ts` | Data directory resolution |

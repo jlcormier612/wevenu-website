@@ -19,7 +19,13 @@
       }
     ],
     "paths": {
-      "@/*": ["./*"]
+      "@/*": ["./*"],
+      "@shared/relationships": ["./shared/relationships/index.ts"],
+      "@shared/relationships/*": ["./shared/relationships/*"],
+      "@shared/product-sync": ["./shared/product-sync/index.ts"],
+      "@shared/product-sync/*": ["./shared/product-sync/*"],
+      "@shared/email": ["./shared/email/index.ts"],
+      "@shared/email/*": ["./shared/email/*"]
     }
   },
   "include": [
@@ -30,5 +36,5 @@
     ".next/dev/types/**/*.ts",
     "**/*.mts"
   ],
-  "exclude": ["node_modules", "marketing", "workspace", "shared"]
+  "exclude": ["node_modules", "marketing", "workspace"]
 }

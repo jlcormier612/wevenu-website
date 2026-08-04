@@ -3,8 +3,9 @@
  *
  * Policy (Customer Lifecycle Engine Phase 1):
  * - Launch Yourself (self_guided): Welcome / Founder Welcome (+ Welcome Back ack).
- *   Customer gets access; product sync may follow.
- * - White Glove: White Glove Welcome only (no credentials). Kickoff/scheduling optional.
+ *   One message with Activate Account link when `activateUrl` is provided.
+ *   Caller must mint activationToken before send; product sync may follow.
+ * - White Glove: White Glove Welcome only (no credentials). Kickoff optional.
  *   Do NOT send Launch Yourself welcome that implies product access.
  * - Payment receipt companion is registry-only; Stripe sends the official receipt.
  */

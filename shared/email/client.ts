@@ -4,10 +4,13 @@
  * Env (preferred):
  *   RESEND_API_KEY
  *   EMAIL_FROM          e.g. "Hello to Cheers <hello@hellotocheers.com>"
- *   EMAIL_REPLY_TO      optional
+ *   EMAIL_REPLY_TO      optional default Reply-To
+ *   RESEND_INBOUND_ADDRESS — inbound catch-all (e.g. inbox@replies.hellotocheers.com)
+ *     When set, relationship sends use Reply-To relationship+{id}@domain
  *
  * Back-compat aliases (marketing ops notify already used these):
  *   FROM_EMAIL  → same as EMAIL_FROM
+ *   RELATIONSHIP_INBOUND_ADDRESS → same as RESEND_INBOUND_ADDRESS
  */
 
 import type { RawSendResult } from "./types";
@@ -36,6 +39,29 @@ export function getEmailReplyTo(): string | undefined {
     process.env.REPLY_TO_EMAIL?.trim() ||
     undefined;
   return reply || undefined;
+}
+
+/** Domain used for Resend inbound routing / subaddress Reply-To. */
+export function getInboundEmailDomain(): string | undefined {
+  const addr =
+    process.env.RESEND_INBOUND_ADDRESS?.trim() ||
+    process.env.RELATIONSHIP_INBOUND_ADDRESS?.trim() ||
+    "";
+  if (!addr) return undefined;
+  return addr.includes("@") ? addr.replace(/^.*@/, "") : addr;
+}
+
+/**
+ * Prefer Reply-To `relationship+{id}@inbound-domain` so inbound replies
+ * match without relying on From-email uniqueness.
+ */
+export function buildRelationshipReplyTo(
+  relationshipId: string,
+): string | undefined {
+  const domain = getInboundEmailDomain();
+  const id = relationshipId.trim().replace(/[^a-zA-Z0-9_+-]/g, "");
+  if (!domain || !id) return undefined;
+  return `relationship+${id}@${domain}`;
 }
 
 export function isResendConfigured(): boolean {

@@ -1,5 +1,6 @@
 import type { EmailTemplateDefinition } from "../types";
 import {
+  ctaButtonHtml,
   firstName,
   marketingUrl,
   paragraphsToHtml,
@@ -9,28 +10,71 @@ import {
   wrapHelloHtml,
 } from "./helpers";
 
+function activateUrlFromVars(vars: Parameters<EmailTemplateDefinition["render"]>[0]): string {
+  const fromVars = String(vars.activateUrl || "").trim();
+  return fromVars || marketingUrl("/product");
+}
+
+function launchYourselfBodyParts(input: {
+  name: string;
+  venue: string;
+  plan: string;
+  activateUrl: string;
+  founding: boolean;
+}): { beforeActivate: string[]; afterActivate: string[] } {
+  const { name, venue, plan, activateUrl, founding } = input;
+  const beforeActivate = founding
+    ? [
+        `Hi ${name},`,
+        `Thank you for joining Hello to Cheers as a Founding Member for ${venue}.`,
+        `Your ${plan} Founding subscription is confirmed — you're ready to set up your workspace.`,
+        `Founding Members help shape what we build next, and you'll always have a direct line to us.`,
+      ]
+    : [
+        `Hi ${name},`,
+        `Thank you for joining Hello to Cheers. We're glad ${venue} is here.`,
+        `Your ${plan} subscription is active — you're ready to set up your workspace.`,
+      ];
+  const afterActivate = [
+    `Activate Account: ${activateUrl}`,
+    `What happens next: open the link, create your password, and take your first steps in Hello to Cheers at your own pace.`,
+    `Getting started: ${marketingUrl("/product")}`,
+    `Resources & guides: ${marketingUrl("/resources")}`,
+    `Questions? Just reply to this email — Jennifer and the team are listening.`,
+  ];
+  return { beforeActivate, afterActivate };
+}
+
 export const welcomeTemplate: EmailTemplateDefinition = {
   id: "welcome",
   name: "Welcome",
-  description: "Standard welcome for a new Hello to Cheers subscriber.",
+  description:
+    "Launch Yourself welcome — includes Activate Account link (no plaintext password).",
   status: "live",
   render(vars) {
     const name = firstName(vars);
     const venue = venueName(vars);
     const plan = planName(vars);
+    const activateUrl = activateUrlFromVars(vars);
     const subject = `Welcome to Hello to Cheers — ${venue}`;
-    const paragraphs = [
-      `Hi ${name},`,
-      `Welcome to Hello to Cheers. We're glad ${venue} is here.`,
-      `Your ${plan} subscription is active. You can take your time with setup — we'll keep the path clear and the noise low.`,
-      `Activate your workspace when you're ready. If you need anything, just reply to this email. We're listening.`,
-      `Start here: ${marketingUrl("/product")}`,
-    ];
+    const { beforeActivate, afterActivate } = launchYourselfBodyParts({
+      name,
+      venue,
+      plan,
+      activateUrl,
+      founding: false,
+    });
+    const paragraphs = [...beforeActivate, ...afterActivate];
     const text = paragraphs.join("\n\n");
+    const htmlBody = [
+      paragraphsToHtml(beforeActivate),
+      ctaButtonHtml("Activate Account", activateUrl),
+      paragraphsToHtml(afterActivate.slice(1)),
+    ].join("\n");
     return {
       subject,
       text,
-      html: wrapHelloHtml("Welcome", paragraphsToHtml(paragraphs)),
+      html: wrapHelloHtml("Welcome", htmlBody),
       preview: previewFromText(text),
       timelineTitle: "Welcome Email Sent",
     };
@@ -40,25 +84,33 @@ export const welcomeTemplate: EmailTemplateDefinition = {
 export const founderWelcomeTemplate: EmailTemplateDefinition = {
   id: "founder_welcome",
   name: "Founder Welcome",
-  description: "Welcome for Founding Members (automatic while Founder Program is active).",
+  description:
+    "Founding Member Launch Yourself welcome — includes Activate Account link (no plaintext password).",
   status: "live",
   render(vars) {
     const name = firstName(vars);
     const venue = venueName(vars);
     const plan = planName(vars);
+    const activateUrl = activateUrlFromVars(vars);
     const subject = `You're a Founding Member — welcome, ${name}`;
-    const paragraphs = [
-      `Hi ${name},`,
-      `Thank you for joining Hello to Cheers as a Founding Member for ${venue}.`,
-      `Your ${plan} Founding subscription is confirmed. Founding Members help shape what we build next — and you'll always have a direct line to us.`,
-      `We'll keep you close as we grow. Reply anytime; Jen reads these.`,
-      `Explore the product: ${marketingUrl("/product")}`,
-    ];
+    const { beforeActivate, afterActivate } = launchYourselfBodyParts({
+      name,
+      venue,
+      plan,
+      activateUrl,
+      founding: true,
+    });
+    const paragraphs = [...beforeActivate, ...afterActivate];
     const text = paragraphs.join("\n\n");
+    const htmlBody = [
+      paragraphsToHtml(beforeActivate),
+      ctaButtonHtml("Activate Account", activateUrl),
+      paragraphsToHtml(afterActivate.slice(1)),
+    ].join("\n");
     return {
       subject,
       text,
-      html: wrapHelloHtml("Founding Member Welcome", paragraphsToHtml(paragraphs)),
+      html: wrapHelloHtml("Founding Member Welcome", htmlBody),
       preview: previewFromText(text),
       timelineTitle: "Founder Welcome Email Sent",
     };
@@ -242,20 +294,27 @@ export const welcomeHomeTemplate: EmailTemplateDefinition = {
   render(vars) {
     const name = firstName(vars);
     const venue = venueName(vars);
-    const activateUrl =
-      String(vars.activateUrl || "").trim() || marketingUrl("/product");
+    const activateUrl = activateUrlFromVars(vars);
     const subject = `Welcome home — activate ${venue}`;
-    const paragraphs = [
+    const before = [
       `Hi ${name},`,
       `Your White Glove setup for ${venue} is complete. Welcome home.`,
-      `Activate your account here: ${activateUrl}`,
+    ];
+    const after = [
+      `Activate Account: ${activateUrl}`,
       `Everything we've prepared is waiting for you. If anything feels unclear, reply to this email — Implementation and Customer Success are still close by.`,
     ];
+    const paragraphs = [...before, ...after];
     const text = paragraphs.join("\n\n");
+    const htmlBody = [
+      paragraphsToHtml(before),
+      ctaButtonHtml("Activate Account", activateUrl),
+      paragraphsToHtml(after.slice(1)),
+    ].join("\n");
     return {
       subject,
       text,
-      html: wrapHelloHtml("Welcome Home", paragraphsToHtml(paragraphs)),
+      html: wrapHelloHtml("Welcome Home", htmlBody),
       preview: previewFromText(text),
       timelineTitle: "Welcome Home Email Sent",
     };
@@ -455,6 +514,61 @@ export const renewalReminderTemplate: EmailTemplateDefinition = {
       html: wrapHelloHtml("Renewal reminder", paragraphsToHtml(paragraphs)),
       preview: previewFromText(text),
       timelineTitle: "Renewal Reminder Email Sent",
+    };
+  },
+};
+
+export const inquiryConfirmationTemplate: EmailTemplateDefinition = {
+  id: "inquiry_confirmation",
+  name: "Inquiry Confirmation",
+  description:
+    "Auto-reply after Contact Us or Request more information (unscheduled walkthrough) form submit. No credentials.",
+  status: "live",
+  render(vars) {
+    const name = firstName(vars);
+    const venue = venueName(vars);
+    const subject = "Thanks for inquiring about Hello to Cheers!";
+    const paragraphs = [
+      `Hi ${name},`,
+      `Thanks for inquiring about Hello to Cheers!`,
+      `We received your note about ${venue} and someone from our team will follow up with you shortly.`,
+      `In the meantime, no action is needed on your end. If something comes up, just reply to this email.`,
+    ];
+    const text = paragraphs.join("\n\n");
+    return {
+      subject,
+      text,
+      html: wrapHelloHtml("Thanks for reaching out", paragraphsToHtml(paragraphs)),
+      preview: previewFromText(text),
+      timelineTitle: "Inquiry Confirmation Email Sent",
+    };
+  },
+};
+
+export const feedbackConfirmationTemplate: EmailTemplateDefinition = {
+  id: "feedback_confirmation",
+  name: "Feedback Confirmation",
+  description:
+    "Auto-ack after product Get Help / bug / idea / NPS or marketing support form. No credentials.",
+  status: "live",
+  render(vars) {
+    const name = firstName(vars);
+    const venue = venueName(vars);
+    const kindLabel = String(vars.feedbackKindLabel || "").trim() || "message";
+    const subject = `We received your ${kindLabel}`;
+    const paragraphs = [
+      `Hi ${name},`,
+      `Thank you for sharing your ${kindLabel} with us${venue && venue !== "your venue" ? ` about ${venue}` : ""}.`,
+      `We've received it and our team will follow up if we need more details or have an update.`,
+      `No action is needed on your end right now. If anything else comes up, reply to this email anytime.`,
+    ];
+    const text = paragraphs.join("\n\n");
+    return {
+      subject,
+      text,
+      html: wrapHelloHtml("Thanks for your feedback", paragraphsToHtml(paragraphs)),
+      preview: previewFromText(text),
+      timelineTitle: "Feedback Confirmation Email Sent",
     };
   },
 };

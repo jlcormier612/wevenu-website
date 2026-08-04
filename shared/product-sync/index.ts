@@ -25,3 +25,18 @@ export {
   enqueueProductSync,
   type SyncRelationshipResult,
 } from "./pipeline";
+export { recordOwnerActivationCredential } from "./owner-activation";
+export {
+  applyProductAccessLock,
+  applyProductAccessLockFromRelationship,
+  isRealVenueUuid,
+  type ProductAccessLockInput,
+  type ProductAccessLockResult,
+} from "./access-lock";
+export {
+  syncVenueProfileFromProduct,
+  type ProductVenueProfileFields,
+  type SyncVenueProfileFromProductInput,
+  type SyncVenueProfileFromProductResult,
+  type SyncVenueProfileReason,
+} from "./writeback";

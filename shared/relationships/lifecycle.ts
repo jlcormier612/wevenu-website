@@ -9,6 +9,7 @@ import { randomUUID } from "crypto";
 import { applyHealthSnapshot, computeRelationshipHealth } from "./health";
 import { mapPlanId, planDisplayName } from "./normalize";
 import { applySubscribeViewTransition } from "./sales-cs";
+import { syncRenewalDate } from "./renewal-stages";
 import {
   mutateRelationship,
   type FindOrCreateResult,
@@ -37,6 +38,167 @@ function shortId(prefix: string): string {
 
 function newActivationToken(): string {
   return `act_${randomUUID().replace(/-/g, "")}`;
+}
+
+/** Activation magic links expire after 30 days. */
+export const ACTIVATION_TOKEN_TTL_MS = 1000 * 60 * 60 * 24 * 30;
+
+export function isActivationTokenExpired(
+  createdAt: string | null | undefined,
+  nowMs = Date.now(),
+): boolean {
+  if (!createdAt?.trim()) return false;
+  const created = new Date(createdAt).getTime();
+  if (Number.isNaN(created)) return false;
+  return nowMs - created > ACTIVATION_TOKEN_TTL_MS;
+}
+
+export type ActivationLookupResult =
+  | {
+      ok: true;
+      relationship: Relationship;
+    }
+  | {
+      ok: false;
+      reason: "not_found" | "expired" | "already_activated" | "access_disabled";
+      message: string;
+    };
+
+/** Resolve a live activation token for the Activate Account page (server-side). */
+export async function lookupActivationToken(
+  token: string,
+): Promise<ActivationLookupResult> {
+  const clean = token.trim();
+  if (!clean) {
+    return {
+      ok: false,
+      reason: "not_found",
+      message: "This activation link is invalid or has already been used.",
+    };
+  }
+
+  const store = await loadLiveStore();
+  const relationship = store.relationships.find((r) => r.activationToken === clean);
+  if (!relationship) {
+    return {
+      ok: false,
+      reason: "not_found",
+      message: "This activation link is invalid or has already been used.",
+    };
+  }
+
+  if (relationship.activationCompletedAt) {
+    return {
+      ok: false,
+      reason: "already_activated",
+      message: "This account is already activated. Sign in with your password.",
+    };
+  }
+
+  if (isActivationTokenExpired(relationship.activationTokenCreatedAt)) {
+    return {
+      ok: false,
+      reason: "expired",
+      message:
+        "This activation link has expired. Reply to your welcome email and we'll send a fresh one.",
+    };
+  }
+
+  if (relationship.accessDisabled && relationship.status === "suspended") {
+    return {
+      ok: false,
+      reason: "access_disabled",
+      message:
+        "This account is suspended. Contact Hello to Cheers support to restore access.",
+    };
+  }
+
+  return { ok: true, relationship };
+}
+
+/**
+ * Consume activation token after the customer creates a password.
+ * Works against the Relationship record even when product sync is simulated.
+ * Launch Yourself welcome and White Glove welcome_home share this path.
+ */
+export async function completeAccountActivation(input: {
+  token: string;
+}): Promise<ActivationLookupResult> {
+  const lookup = await lookupActivationToken(input.token);
+  if (!lookup.ok) return lookup;
+
+  const now = new Date().toISOString();
+  const relationshipId = lookup.relationship.id;
+  const token = input.token.trim();
+
+  const { result } = await withLiveStore((store) => {
+    const relationship = store.relationships.find(
+      (r) => r.id === relationshipId && r.activationToken === token,
+    );
+    if (!relationship) return null;
+
+    if (relationship.activationCompletedAt) {
+      return relationship;
+    }
+    if (isActivationTokenExpired(relationship.activationTokenCreatedAt)) {
+      return null;
+    }
+
+    relationship.activationToken = null;
+    relationship.activationTokenCreatedAt = null;
+    relationship.activationCompletedAt = now;
+    relationship.accessDisabled = false;
+    relationship.updatedAt = now;
+    relationship.lastCustomerActivityAt = now;
+
+    if (relationship.status === "onboarding") {
+      relationship.status = "active";
+      relationship.currentStageLabel = "Active";
+      // Keep CS in onboarding for self-guided setup after password is set.
+      relationship.customerSuccessStage =
+        relationship.customerSuccessStage ?? "onboarding";
+    }
+
+    if (
+      !relationship.nextMilestone ||
+      relationship.nextMilestone === "Workspace activated" ||
+      relationship.nextMilestone === "Self-guided setup"
+    ) {
+      relationship.nextMilestone = "Getting started";
+    }
+
+    store.timelineEvents.push({
+      id: shortId("evt"),
+      relationshipId: relationship.id,
+      type: "account_activated",
+      title: "Account Activated",
+      body: `${relationship.owner.email} created a password and activated access.`,
+      occurredAt: now,
+      meta: {
+        owner_email: relationship.owner.email,
+        onboarding_type: relationship.onboardingType,
+      },
+    });
+
+    const health = computeRelationshipHealth(relationship, store);
+    applyHealthSnapshot(relationship, health);
+    return relationship;
+  });
+
+  if (!result) {
+    // Race: token consumed or expired between lookup and mutate
+    return lookupActivationToken(token);
+  }
+
+  if (result.activationCompletedAt) {
+    return { ok: true, relationship: result };
+  }
+
+  return {
+    ok: false,
+    reason: "not_found",
+    message: "This activation link is invalid or has already been used.",
+  };
 }
 
 function daysBetween(startIso: string, now: Date): number {
@@ -90,7 +252,8 @@ export async function enterOnboardingAfterPurchase(input: {
         : "self_guided";
     relationship.paymentStatus = relationship.paymentStatus || "paid";
     relationship.subscribedAt = relationship.subscribedAt || now;
-    // Same Relationship ID — leave Sales view, enter Customer Success.
+    syncRenewalDate(relationship);
+    // Same Relationship ID — Closed Won on Sales + enter Customer Success.
     applySubscribeViewTransition(relationship, {
       customerSuccessStage: isWg ? "implementation" : "onboarding",
     });
@@ -225,8 +388,9 @@ export async function createManualSubscription(input: {
       paymentStatus: "manual",
       subscribedAt: now,
       currentStageLabel: "Subscribed",
-      salesStage: "won",
-      customerSuccessStage: "welcome",
+      salesStage: "closed_won",
+      customerSuccessStage:
+        onboardingType === "white_glove" ? "implementation" : "onboarding",
       notes: input.notes,
     },
     event: {
@@ -264,6 +428,9 @@ export async function createManualSubscription(input: {
       onboardingType,
       actorId: input.actorId,
     });
+    const refreshed = await loadLiveStore();
+    const updated = refreshed.relationships.find((r) => r.id === result.relationship.id);
+    if (updated) result.relationship = updated;
   }
 
   return result;
@@ -333,7 +500,7 @@ export async function launchWhiteGloveWorkspace(input: {
 
     relationship.status = "active";
     relationship.currentStageLabel = "Active";
-    relationship.salesStage = "won";
+    relationship.salesStage = "closed_won";
     relationship.customerSuccessStage = "live";
     relationship.accessDisabled = false;
     relationship.activationToken = token;
@@ -459,6 +626,25 @@ export async function suspendRelationshipAccount(input: {
     applyHealthSnapshot(relationship, computeRelationshipHealth(relationship, store));
     return relationship;
   });
+
+  if (result) {
+    try {
+      const { applyProductAccessLockFromRelationship } = await import(
+        "../product-sync/access-lock"
+      );
+      await applyProductAccessLockFromRelationship(
+        result,
+        true,
+        input.reason ||
+          (input.fromDunning
+            ? "Suspended after 21-day failed payment dunning"
+            : "Account suspended by team"),
+      );
+    } catch (error) {
+      console.warn("[lifecycle] product access lock on suspend failed", error);
+    }
+  }
+
   return result;
 }
 
@@ -523,6 +709,25 @@ export async function reactivateRelationshipAccount(input: {
     applyHealthSnapshot(relationship, computeRelationshipHealth(relationship, store));
     return relationship;
   });
+
+  if (result) {
+    try {
+      const { applyProductAccessLockFromRelationship } = await import(
+        "../product-sync/access-lock"
+      );
+      await applyProductAccessLockFromRelationship(
+        result,
+        false,
+        input.reason ||
+          (input.fromPaymentSuccess
+            ? "Payment succeeded — access restored"
+            : "Account reactivated by team"),
+      );
+    } catch (error) {
+      console.warn("[lifecycle] product access unlock on reactivate failed", error);
+    }
+  }
+
   return result;
 }
 

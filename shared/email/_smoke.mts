@@ -20,6 +20,8 @@ delete process.env.RESEND_API_KEY;
 const { ingestSubscriptionPurchased } = await import("../relationships/index.ts");
 const {
   sendEnrollmentProductEmails,
+  sendInquiryConfirmationEmail,
+  sendFeedbackConfirmationEmail,
   sendRelationshipEmail,
   listEmailTemplates,
   liveTemplateIds,
@@ -74,6 +76,25 @@ const luv = await sendRelationshipEmail({
 });
 console.log("luv suggestion:", luv.delivery, luv.subject);
 
+const inquiryAck = await sendInquiryConfirmationEmail({
+  relationshipId: enrolled.relationship.id,
+  to: "smoke-founder@example.com",
+  firstName: "Smoke",
+  venueName: "Smoke Test Manor",
+  meta: { source: "smoke" },
+});
+console.log("inquiry confirmation:", inquiryAck.delivery, inquiryAck.subject);
+
+const feedbackAck = await sendFeedbackConfirmationEmail({
+  relationshipId: enrolled.relationship.id,
+  to: "smoke-founder@example.com",
+  firstName: "Smoke",
+  venueName: "Smoke Test Manor",
+  feedbackType: "bug",
+  meta: { source: "smoke" },
+});
+console.log("feedback confirmation:", feedbackAck.delivery, feedbackAck.subject);
+
 const store = await loadLiveStore();
 const emails = store.timelineEvents.filter((e) => e.type === "email_sent");
 console.log("timeline email_sent count:", emails.length);
@@ -81,8 +102,12 @@ for (const e of emails) {
   console.log(" -", e.title, e.meta?.delivery, e.meta?.simulated);
 }
 
-const allSimulated = results.every((r) => r.delivery === "simulated") && luv.delivery === "simulated";
-const expectedMin = 5; // founder_welcome + welcome_back + kickoff + scheduling + luv
+const allSimulated =
+  results.every((r) => r.delivery === "simulated") &&
+  luv.delivery === "simulated" &&
+  inquiryAck.delivery === "simulated" &&
+  feedbackAck.delivery === "simulated";
+const expectedMin = 6; // founder_welcome + welcome_back + kickoff + scheduling + luv + inquiry (+ feedback)
 if (!allSimulated || emails.length < expectedMin) {
   console.error("SMOKE FAIL", { allSimulated, emailCount: emails.length, expectedMin });
   process.exit(1);
