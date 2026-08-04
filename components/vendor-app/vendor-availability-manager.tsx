@@ -10,6 +10,7 @@ import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import {
   blockDateAction,
+  loadAvailabilityMonthAction,
   unblockDateAction,
   updateAvailabilitySettingsAction,
 } from "@/app/vendor/availability/actions";
@@ -21,6 +22,8 @@ const MONTH_NAMES = [
 ];
 const DAY_NAMES = ["Su","Mo","Tu","We","Th","Fr","Sa"];
 
+type DayEntry = { id: string; note: string | null };
+
 function getDaysInMonth(year: number, month: number): number {
   return new Date(year, month + 1, 0).getDate();
 }
@@ -31,6 +34,20 @@ function getFirstDayOfWeek(year: number, month: number): number {
 
 function toDateString(year: number, month: number, day: number): string {
   return `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+}
+
+function splitAvailability(rows: VendorAvailability[]): {
+  manual: Map<string, DayEntry>;
+  booked: Map<string, DayEntry>;
+} {
+  const manual = new Map<string, DayEntry>();
+  const booked = new Map<string, DayEntry>();
+  for (const a of rows) {
+    const entry = { id: a.id, note: a.note };
+    if (a.source === "event") booked.set(a.date, entry);
+    else manual.set(a.date, entry);
+  }
+  return { manual, booked };
 }
 
 export function VendorAvailabilityManager({
@@ -46,16 +63,43 @@ export function VendorAvailabilityManager({
   acceptingInquiries:  boolean;
   availabilityNotes:   string | null;
 }) {
+  const initialSplit = React.useMemo(() => splitAvailability(initial), [initial]);
   const [year, setYear]   = React.useState(initialYear);
   const [month, setMonth] = React.useState(initialMonth);
-  const [blocked, setBlocked] = React.useState<Map<string, string>>(
-    () => new Map(initial.map((a) => [a.date, a.id])),
-  );
+  const [manual, setManual] = React.useState<Map<string, DayEntry>>(() => initialSplit.manual);
+  const [booked, setBooked] = React.useState<Map<string, DayEntry>>(() => initialSplit.booked);
   const [pendingDate, setPendingDate] = React.useState<string | null>(null);
 
   const [accepting, setAccepting]   = React.useState(initialAccepting);
   const [notes, setNotes]           = React.useState(initialNotes ?? "");
   const [settingsSaving, startSettings] = React.useTransition();
+  const [monthLoading, setMonthLoading] = React.useState(false);
+  const skipFirstMonthLoad = React.useRef(true);
+
+  React.useEffect(() => {
+    const next = splitAvailability(initial);
+    setManual(next.manual);
+    setBooked(next.booked);
+  }, [initial]);
+
+  React.useEffect(() => {
+    if (skipFirstMonthLoad.current) {
+      skipFirstMonthLoad.current = false;
+      return;
+    }
+    let cancelled = false;
+    setMonthLoading(true);
+    void loadAvailabilityMonthAction(year, month).then((rows) => {
+      if (cancelled) return;
+      const next = splitAvailability(rows);
+      setManual(next.manual);
+      setBooked(next.booked);
+      setMonthLoading(false);
+    }).catch(() => {
+      if (!cancelled) setMonthLoading(false);
+    });
+    return () => { cancelled = true; };
+  }, [year, month]);
 
   function prevMonth() {
     if (month === 0) { setYear((y) => y - 1); setMonth(11); }
@@ -70,18 +114,26 @@ export function VendorAvailabilityManager({
 
   async function handleDayClick(dateStr: string) {
     if (pendingDate === dateStr) return;
+
+    const bookedEntry = booked.get(dateStr);
+    if (bookedEntry) {
+      const label = bookedEntry.note?.trim() || "an event";
+      toast.message(`Booked — ${label}`);
+      return;
+    }
+
     setPendingDate(dateStr);
     try {
-      if (blocked.has(dateStr)) {
-        const id = blocked.get(dateStr)!;
+      if (manual.has(dateStr)) {
+        const id = manual.get(dateStr)!.id;
         const result = await unblockDateAction(id);
         if (!result.ok) { toast.error(result.message ?? "Could not unblock date."); return; }
-        setBlocked((m) => { const n = new Map(m); n.delete(dateStr); return n; });
+        setManual((m) => { const n = new Map(m); n.delete(dateStr); return n; });
       } else {
         const result = await blockDateAction(dateStr, "");
         if (!result.ok) { toast.error(result.message ?? "Could not block date."); return; }
-        if (result.ok && "id" in result) {
-          setBlocked((m) => new Map(m).set(dateStr, (result as { ok: true; id: string }).id));
+        if (result.ok && "id" in result && result.id) {
+          setManual((m) => new Map(m).set(dateStr, { id: result.id as string, note: null }));
         }
       }
     } finally {
@@ -150,8 +202,9 @@ export function VendorAvailabilityManager({
           >
             <ChevronLeft className="h-4 w-4" />
           </button>
-          <p className="text-sm font-semibold text-foreground">
+          <p className="text-sm font-semibold text-foreground flex items-center gap-2">
             {MONTH_NAMES[month]} {year}
+            {monthLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" /> : null}
           </p>
           <button
             type="button"
@@ -164,12 +217,15 @@ export function VendorAvailabilityManager({
         </div>
 
         {/* Legend */}
-        <div className="flex items-center gap-4 text-xs text-muted-foreground">
+        <div className="flex flex-wrap items-center gap-4 text-xs text-muted-foreground">
           <span className="flex items-center gap-1.5">
             <span className="h-3 w-3 rounded-full bg-green-100 border border-green-300 inline-block" />Available
           </span>
           <span className="flex items-center gap-1.5">
             <span className="h-3 w-3 rounded-full bg-red-100 border border-red-300 inline-block" />Blocked
+          </span>
+          <span className="flex items-center gap-1.5">
+            <span className="h-3 w-3 rounded-full bg-amber-100 border border-amber-300 inline-block" />Booked
           </span>
         </div>
 
@@ -183,9 +239,11 @@ export function VendorAvailabilityManager({
           {cells.map((day, i) => {
             if (!day) return <div key={`empty-${i}`} />;
             const dateStr  = toDateString(year, month, day);
-            const isBlocked = blocked.has(dateStr);
+            const isBooked  = booked.has(dateStr);
+            const isBlocked = !isBooked && manual.has(dateStr);
             const isPast    = dateStr < today;
             const isPending = pendingDate === dateStr;
+            const stateLabel = isBooked ? " (booked)" : isBlocked ? " (blocked)" : "";
 
             return (
               <button
@@ -193,11 +251,13 @@ export function VendorAvailabilityManager({
                 type="button"
                 onClick={() => !isPast && handleDayClick(dateStr)}
                 disabled={isPast || isPending}
-                aria-label={`${dateStr}${isBlocked ? " (blocked)" : ""}`}
+                aria-label={`${dateStr}${stateLabel}`}
                 className={[
                   "relative flex items-center justify-center rounded-lg text-xs font-medium aspect-square transition-all",
                   isPast
                     ? "text-muted-foreground/40 cursor-not-allowed"
+                    : isBooked
+                    ? "bg-amber-100 text-amber-900 border border-amber-300 cursor-default"
                     : isBlocked
                     ? "bg-red-100 text-red-700 border border-red-300 hover:bg-red-200"
                     : "bg-green-50 text-green-700 border border-green-200 hover:bg-green-100",
@@ -212,7 +272,7 @@ export function VendorAvailabilityManager({
         </div>
 
         <p className="text-xs text-muted-foreground">
-          Click a date to toggle it blocked / available. Past dates cannot be changed.
+          Click Available ↔ Blocked to toggle. Booked days come from secured events and can’t be cleared here.
         </p>
       </div>
     </div>

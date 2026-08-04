@@ -34,6 +34,16 @@ export async function getDocuments(
   return repo.getDocuments(await createClient(), venue.id, entityType, entityId);
 }
 
+/** Event files vendors shared from their portal (COIs, W-9s, etc.). */
+export async function getEventDocumentsFromVendors(
+  eventId: string,
+): Promise<(Document & { vendorName: string | null })[]> {
+  if (!isSupabaseConfigured) return [];
+  const venue = await getCurrentVenue();
+  if (!venue) return [];
+  return repo.getEventDocumentsFromVendors(await createClient(), venue.id, eventId);
+}
+
 export async function saveDocument(payload: DocumentUploadPayload): Promise<CreateDocumentResult> {
   if (!payload.entityType || !payload.entityId || !payload.storageUrl) return { ok: false, message: "Missing required fields." };
   const result = await withVenue(async (c, venueId) => {
@@ -73,7 +83,10 @@ export async function saveVenueDocument(payload: DocumentUploadPayload): Promise
 
 export async function updateDocument(
   documentId: string,
-  patch: { name?: string; notes?: string; tags?: string[]; expiresAt?: string | null; category?: Document["category"]; isCoupleVisible?: boolean },
+  patch: {
+    name?: string; notes?: string; tags?: string[]; expiresAt?: string | null;
+    category?: Document["category"]; isCoupleVisible?: boolean; sharedWithVendors?: boolean;
+  },
 ): Promise<DocumentActionResult> {
   const result = await withVenue(async (c, venueId) => {
     await repo.updateDocumentMeta(c, venueId, documentId, patch);

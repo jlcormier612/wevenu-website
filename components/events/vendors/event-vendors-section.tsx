@@ -4,7 +4,7 @@ import * as React from "react";
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Check, CheckCircle, Circle, Clock, MessageSquare, Plus, Trash2 } from "lucide-react";
+import { Check, CheckCircle, Circle, Clock, FileText, MessageSquare, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 import {
@@ -14,6 +14,7 @@ import {
 } from "@/app/(app)/events/[id]/vendor-actions";
 import { ConversationThread } from "@/components/conversations/conversation-thread";
 import { VendorCategoryBadge } from "@/components/vendors/vendor-category-badge";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -22,6 +23,7 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { useSyncedState } from "@/lib/hooks/use-synced-state";
+import type { Document } from "@/lib/documents/types";
 import { formatTime, vendorCategoryLabel } from "@/lib/vendors/constants";
 import type { EventVendorAssignment, Vendor } from "@/lib/vendors/types";
 
@@ -108,10 +110,12 @@ export function EventVendorsSection({
   eventId,
   initialAssignments,
   availableVendors,
+  vendorDocuments = [],
 }: {
   eventId: string;
   initialAssignments: EventVendorAssignment[];
   availableVendors: Vendor[];
+  vendorDocuments?: (Document & { vendorName: string | null })[];
 }) {
   const router = useRouter();
   // See lib/hooks/use-synced-state.ts.
@@ -221,11 +225,37 @@ export function EventVendorsSection({
                 <VendorPaymentControl eventId={eventId} assignment={a} />
               </div>
 
+              {/* From vendor — docs they shared onto this event */}
+              {(() => {
+                const docs = vendorDocuments.filter((d) => d.uploadedById === a.vendorId);
+                if (docs.length === 0) return null;
+                return (
+                  <div className="space-y-1.5 pt-1 border-t border-border/50">
+                    <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">From vendor</p>
+                    <div className="space-y-1">
+                      {docs.map((d) => (
+                        <a
+                          key={d.id}
+                          href={d.storageUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-2 rounded-md px-2 py-1.5 text-xs hover:bg-muted/50"
+                        >
+                          <FileText className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                          <span className="min-w-0 flex-1 truncate text-foreground">{d.name}</span>
+                          <Badge variant="outline" className="text-[10px] shrink-0">{d.category}</Badge>
+                        </a>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })()}
+
               {/* Message panel — RC2, Milestone 3. Same ConversationThread the
                   main inbox and Relationship tab use; a vendor conversation is
                   read/written no differently than any other Conversation. */}
               {openThreadId === a.id && a.conversationId && (
-                <div className="rounded-lg border border-border overflow-hidden" style={{ height: 420 }}>
+                <div className="min-h-0 overflow-hidden rounded-lg border border-border" style={{ height: 420 }}>
                   <ConversationThread conversationId={a.conversationId} showHeader={false} />
                 </div>
               )}

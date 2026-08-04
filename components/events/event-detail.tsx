@@ -214,6 +214,7 @@ export function EventDetail({
   availableVendors = [],
   invoices = [],
   documents = [],
+  vendorDocuments = [],
   questionnaire = null,
   coupleEmail = null,
   eventTasks = [],
@@ -255,6 +256,7 @@ export function EventDetail({
   availableVendors?: import("@/lib/vendors/types").Vendor[];
   invoices?: Invoice[];
   documents?: Document[];
+  vendorDocuments?: (Document & { vendorName: string | null })[];
   questionnaire?: Questionnaire | null;
   coupleEmail?: string | null;
   eventTasks?: EventTask[];
@@ -664,6 +666,7 @@ export function EventDetail({
         <TabsContent value="documents">
           <BookingDocumentsTab
             entityType="event" entityId={event.id} venueId={event.venueId} documents={documents}
+            vendorDocuments={vendorDocuments}
             contractTemplates={contractTemplates} contracts={contracts} questionnaire={questionnaire}
             eventId={event.id} eventName={event.name} coupleEmail={coupleEmail} coupleName={event.clientName}
           />
@@ -700,6 +703,7 @@ export function EventDetail({
                 eventId={event.id}
                 initialAssignments={event.vendorAssignments}
                 availableVendors={availableVendors}
+                vendorDocuments={vendorDocuments}
               />
             </CardContent>
           </Card>

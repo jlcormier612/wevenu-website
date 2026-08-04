@@ -10,6 +10,10 @@
 import { createClient } from "@/integrations/supabase/server";
 import { isSupabaseConfigured } from "@/lib/env";
 import * as repo from "@/lib/conversations/repository";
+import {
+  notifyVendorOfVenuePortalMessage,
+  notifyVenueOfVendorPortalMessage,
+} from "@/lib/conversations/notify";
 import type {
   ConversationDetail,
   ConversationSummary,
@@ -98,6 +102,14 @@ export async function sendConversationMessage(
 
   const result = await repo.sendConversationMessage(supabase, conversationId, trimmed, channel, providerId, status);
   if (!result.ok) return { ok: false, message: result.error ?? "Could not send message." };
+
+  // Portal-only: email/SMS already notified the counterparty via the
+  // provider send above. Vendor-anchored Conversations get a short “new
+  // message” email; couple portal messages use their own notify path.
+  if (channel === "portal") {
+    notifyVendorOfVenuePortalMessage(conversationId, trimmed);
+  }
+
   return { ok: true, messageId: result.messageId! };
 }
 
@@ -211,8 +223,11 @@ export async function sendVendorConversationMessage(
   if (!isSupabaseConfigured) return { ok: false, message: "Backend not configured." };
   if (!body.trim() && !hasAttachment) return { ok: false, message: "Message can't be empty." };
   const supabase = await createClient();
-  const result = await repo.sendVendorConversationMessage(supabase, conversationId, body.trim(), hasAttachment);
+  const trimmed = body.trim();
+  const result = await repo.sendVendorConversationMessage(supabase, conversationId, trimmed, hasAttachment);
   if (!result.ok) return { ok: false, message: result.error ?? "Could not send message." };
+  // Vendor portal sends are always the in-app portal channel.
+  notifyVenueOfVendorPortalMessage(conversationId, trimmed);
   return { ok: true, messageId: result.messageId! };
 }
 

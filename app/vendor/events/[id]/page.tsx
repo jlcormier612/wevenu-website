@@ -2,6 +2,10 @@ import { notFound, redirect } from "next/navigation";
 
 import { VendorEventWorkspace } from "@/components/vendor-app/vendor-event-workspace";
 import { getVendorUser } from "@/lib/vendor-auth/service";
+import {
+  getVendorEventUploads,
+  getVendorLibraryDocuments,
+} from "@/lib/vendor-documents/service";
 import { getVendorEventDetail } from "@/lib/vendor-events/service";
 
 export default async function VendorEventDetailPage({
@@ -16,5 +20,16 @@ export default async function VendorEventDetailPage({
   const detail = await getVendorEventDetail(id, vendorUser.vendorId);
   if (!detail) notFound();
 
-  return <VendorEventWorkspace detail={detail} />;
+  const [library, eventUploads] = await Promise.all([
+    getVendorLibraryDocuments(),
+    getVendorEventUploads(id),
+  ]);
+
+  return (
+    <VendorEventWorkspace
+      detail={detail}
+      library={library}
+      eventUploads={eventUploads}
+    />
+  );
 }

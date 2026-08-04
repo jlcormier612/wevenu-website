@@ -33,6 +33,12 @@ export type Document = {
   // / invoices.is_couple_visible exactly (Client Collaboration Workspace,
   // 2026-07-22). Once true, get_couple_documents() surfaces it automatically.
   isCoupleVisible: boolean;
+  // Event-scoped only. When true, vendor RPCs (get_vendor_event_detail /
+  // get_vendor_documents) surface the file. Same flag floor plans use.
+  sharedWithVendors: boolean;
+  // Who wrote the row — venue coordinators vs vendor portal self-upload.
+  uploadedByType: "venue" | "vendor";
+  uploadedById: string | null;
   createdAt: string;
   updatedAt: string;
 };

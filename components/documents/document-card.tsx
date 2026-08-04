@@ -2,7 +2,7 @@
 
 import * as React from "react";
 
-import { AlertTriangle, Clock, Download, ExternalLink, Eye, FileText, Loader2, Pencil, Share2, Trash2, X } from "lucide-react";
+import { AlertTriangle, Clock, Download, ExternalLink, Eye, FileText, Loader2, Pencil, Share2, Trash2, Users, X } from "lucide-react";
 import { toast } from "sonner";
 
 import { deleteDocumentAction, updateDocumentAction } from "@/app/(app)/documents/actions";
@@ -63,6 +63,7 @@ export function DocumentCard({
   const [savePending, startSave] = React.useTransition();
   const [deletePending, startDelete] = React.useTransition();
   const [sharePending, startShare] = React.useTransition();
+  const [vendorSharePending, startVendorShare] = React.useTransition();
   const [previewOpen, setPreviewOpen] = React.useState(false);
 
   const isImage = isImageMimeType(doc.mimeType);
@@ -70,6 +71,8 @@ export function DocumentCard({
   // specific client or their event — a venue-level or vendor document has
   // no couple to share it with (Client Collaboration Workspace, 2026-07-22).
   const canShareWithCouple = entityType === "client" || entityType === "event";
+  // Vendor Event Assets — event files only; mirrors floor-plan Share with Vendors.
+  const canShareWithVendors = entityType === "event" && doc.uploadedByType !== "vendor";
 
   function handleToggleCoupleVisible() {
     startShare(async () => {
@@ -77,6 +80,16 @@ export function DocumentCard({
       if (result.ok) {
         onUpdate(doc.id, { isCoupleVisible: !doc.isCoupleVisible });
         toast.success(doc.isCoupleVisible ? "No longer shared with the couple." : "Shared — this now appears in their Documents.");
+      } else toast.error(result.message ?? "Could not update sharing.");
+    });
+  }
+
+  function handleToggleSharedWithVendors() {
+    startVendorShare(async () => {
+      const result = await updateDocumentAction(doc.id, entityType, entityId, { sharedWithVendors: !doc.sharedWithVendors });
+      if (result.ok) {
+        onUpdate(doc.id, { sharedWithVendors: !doc.sharedWithVendors });
+        toast.success(doc.sharedWithVendors ? "No longer shared with vendors." : "Shared — this now appears in vendor Documents.");
       } else toast.error(result.message ?? "Could not update sharing.");
     });
   }
@@ -182,6 +195,11 @@ export function DocumentCard({
               <Share2 className="h-3 w-3" /> Shared with couple
             </span>
           )}
+          {canShareWithVendors && doc.sharedWithVendors && (
+            <span className="inline-flex items-center gap-1 rounded-full bg-success/15 px-2 py-0.5 text-[10px] font-semibold text-success">
+              <Users className="h-3 w-3" /> Shared with vendors
+            </span>
+          )}
         </div>
         <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-muted-foreground">
           <span>{doc.fileName}</span>
@@ -206,6 +224,14 @@ export function DocumentCard({
             aria-label={doc.isCoupleVisible ? "Stop sharing with couple" : "Share with couple"}
             title={doc.isCoupleVisible ? "Shared with couple — click to unshare" : "Share with couple"}>
             {sharePending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Share2 className="h-3.5 w-3.5" />}
+          </button>
+        )}
+        {canShareWithVendors && (
+          <button type="button" onClick={handleToggleSharedWithVendors} disabled={vendorSharePending}
+            className={`rounded p-1.5 hover:bg-muted ${doc.sharedWithVendors ? "text-success hover:text-success" : "text-muted-foreground hover:text-foreground"}`}
+            aria-label={doc.sharedWithVendors ? "Stop sharing with vendors" : "Share with vendors"}
+            title={doc.sharedWithVendors ? "Shared with vendors — click to unshare" : "Share with vendors"}>
+            {vendorSharePending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Users className="h-3.5 w-3.5" />}
           </button>
         )}
         {isImage ? (

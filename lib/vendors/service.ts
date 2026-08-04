@@ -23,6 +23,10 @@ import {
 } from "@/lib/vendors/validation";
 import { getCurrentVenue } from "@/lib/venue/service";
 import { autoInviteVendorIfUnclaimed } from "@/lib/vendor-invites/service";
+import {
+  clearAssignmentBooked,
+  markAssignmentBooked,
+} from "@/lib/vendor-availability/sync";
 
 async function withVenue<T>(
   fn: (supabase: Awaited<ReturnType<typeof createClient>>, venueId: string) => Promise<T>,
@@ -163,6 +167,21 @@ export async function assignVendor(
   if (Object.keys(errors).length > 0) return { ok: false, errors, message: errors.vendorId };
   const result = await withVenue(async (supabase, venueId) => {
     const assignment = await repo.insertVendorAssignment(supabase, venueId, eventId, input);
+    // Availability write-through: secured assignment → Booked on event_date.
+    const { data: event } = await supabase
+      .from("events")
+      .select("event_date, name, status")
+      .eq("id", eventId)
+      .maybeSingle<{ event_date: string | null; name: string; status: string }>();
+    if (event) {
+      await markAssignmentBooked({
+        assignmentId: assignment.id,
+        vendorId:     assignment.vendorId,
+        eventDate:    event.event_date,
+        eventName:    event.name,
+        eventStatus:  event.status,
+      });
+    }
     return { ok: true, assignment };
   });
   if ((result as VendorActionResult).ok) {
@@ -175,6 +194,8 @@ export async function assignVendor(
 export async function removeVendorAssignment(assignmentId: string): Promise<VendorActionResult> {
   const result = await withVenue(async (supabase, venueId) => {
     await repo.deleteVendorAssignment(supabase, venueId, assignmentId);
+    // Free the Booked day if this assignment was the occupant (manual blocks stay).
+    await clearAssignmentBooked(assignmentId);
     return { ok: true } as VendorActionResult;
   });
   return result as VendorActionResult;

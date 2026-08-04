@@ -155,9 +155,9 @@ export function VendorConversationThread({
   }
 
   return (
-    <div className={`flex flex-col rounded-xl border border-border bg-card overflow-hidden ${showHeader ? "h-[calc(100vh-8rem)]" : "h-[480px]"}`}>
+    <div className={`flex min-h-0 flex-col overflow-hidden rounded-xl border border-border bg-card ${showHeader ? "h-full" : "h-[480px]"}`}>
       {showHeader && (
-        <div className="flex items-center gap-2 border-b border-border px-4 py-3">
+        <div className="flex shrink-0 items-center gap-2 border-b border-border px-4 py-3">
           <Link href="/vendor/messages" className="text-muted-foreground hover:text-foreground">
             <ArrowLeft className="h-4 w-4" />
           </Link>
@@ -165,7 +165,7 @@ export function VendorConversationThread({
         </div>
       )}
 
-      <div className="flex-1 overflow-y-auto p-4 space-y-3">
+      <div className="min-h-0 flex-1 space-y-3 overflow-y-auto p-4">
         {messages.length === 0 ? (
           <p className="text-center text-sm text-muted-foreground py-8">No messages yet — say hello.</p>
         ) : (
@@ -174,7 +174,7 @@ export function VendorConversationThread({
         <div ref={bottomRef} />
       </div>
 
-      <div className="border-t border-border p-3 space-y-2">
+      <div className="shrink-0 space-y-2 border-t border-border p-3">
         {pendingFile && (
           <div className="flex items-center gap-1.5 rounded-lg border border-border bg-muted/30 px-2 py-1.5 text-xs w-fit">
             <Paperclip className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />

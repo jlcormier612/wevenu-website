@@ -22,11 +22,13 @@ import {
 } from "@/app/vendor/messages/actions";
 import { getVendorSharedFloorPlansForEventAction } from "@/app/vendor/floor-plans/actions";
 import { VendorConversationThread } from "@/components/vendor-app/vendor-conversation-thread";
+import { VendorEventSharePanel } from "@/components/vendor-app/vendor-event-share-panel";
 import { VendorHandbookView } from "@/components/vendor-app/vendor-handbook-view";
 import type { VendorEventDetail } from "@/lib/vendors/types";
 import type { VendorConversationMessage } from "@/lib/conversations/types";
 import type { VendorFloorPlanSummary } from "@/lib/floor-plans/types";
 import type { VendorHandbook } from "@/lib/vendor-handbook/service";
+import type { VendorEventUpload, VendorLibraryDocument } from "@/lib/vendor-documents/types";
 
 // Vendor Workspace Realignment, Phase 5 (2026-07-22): tabs mirror the
 // Client Workspace shape (Overview/Messages/Timeline/Tasks/Documents/Venue
@@ -58,7 +60,15 @@ function formatDateShort(iso: string): string {
   return new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit" });
 }
 
-export function VendorEventWorkspace({ detail }: { detail: VendorEventDetail }) {
+export function VendorEventWorkspace({
+  detail,
+  library = [],
+  eventUploads = [],
+}: {
+  detail: VendorEventDetail;
+  library?: import("@/lib/vendor-documents/types").VendorLibraryDocument[];
+  eventUploads?: import("@/lib/vendor-documents/types").VendorEventUpload[];
+}) {
   const [tab, setTab] = React.useState<Tab>("overview");
 
   return (
@@ -111,7 +121,9 @@ export function VendorEventWorkspace({ detail }: { detail: VendorEventDetail }) 
         {tab === "messages"  && <MessagesTab   detail={detail} />}
         {tab === "timeline"  && <TimelineTab   detail={detail} />}
         {tab === "tasks"     && <TasksTab      detail={detail} />}
-        {tab === "documents" && <DocumentsTab  detail={detail} />}
+        {tab === "documents" && (
+          <DocumentsTab detail={detail} library={library} eventUploads={eventUploads} />
+        )}
         {tab === "venueinfo" && <VenueInfoTab  detail={detail} />}
         {tab === "notes"     && <NotesTab      detail={detail} />}
       </div>
@@ -169,22 +181,16 @@ function OverviewTab({ detail }: { detail: VendorEventDetail }) {
         </div>
       </div>
 
-      {/* Payment summary — Sprint 2, Vendor Payment Visibility. A summary
-          only: what you're being paid, and whether it's been paid. No
-          installments, no invoices, no history — the venue hasn't set a
-          fee yet if this card doesn't appear. */}
+      {/* Agreed fee — coordination reference only. Payments happen outside
+          Hello to Cheers; no paid/pending status is shown here. Hidden when
+          the venue hasn't set a fee. */}
       {detail.agreedFee != null && (
         <div className="rounded-xl border border-border bg-card p-4 space-y-2 sm:col-span-2">
-          <h2 className="text-sm font-semibold text-foreground">Payment</h2>
-          <div className="flex items-center justify-between">
-            <p className="text-2xl font-semibold text-foreground">${detail.agreedFee.toLocaleString()}</p>
-            <Badge
-              className={detail.paymentStatus === "paid" ? "bg-primary/10 text-primary border-primary/40" : "bg-amber-50 text-amber-700 border-amber-300"}
-              variant="outline"
-            >
-              {detail.paymentStatus === "paid" ? "Paid" : "Pending"}
-            </Badge>
-          </div>
+          <h2 className="text-sm font-semibold text-foreground">Agreed fee</h2>
+          <p className="text-2xl font-semibold text-foreground">${detail.agreedFee.toLocaleString()}</p>
+          <p className="text-xs text-muted-foreground">
+            Tracked for coordination — payments happen outside Hello to Cheers.
+          </p>
         </div>
       )}
 
@@ -394,8 +400,19 @@ function MessagesTab({ detail }: { detail: VendorEventDetail }) {
  * editor and shared via its own shared_with_vendors flag, not a PDF — not a
  * reason for a separate tab). "Open" on a floor plan renders the same
  * read-only SVG canvas the coordinator's print view uses.
+ *
+ * Vendor Documents V1 also adds a "Shared with venue" panel so vendors can
+ * attach library / one-off files (COI, W-9) for the venue to see.
  */
-function DocumentsTab({ detail }: { detail: VendorEventDetail }) {
+function DocumentsTab({
+  detail,
+  library,
+  eventUploads,
+}: {
+  detail: VendorEventDetail;
+  library: VendorLibraryDocument[];
+  eventUploads: VendorEventUpload[];
+}) {
   const [plans, setPlans] = React.useState<VendorFloorPlanSummary[] | null>(null);
 
   React.useEffect(() => {
@@ -406,48 +423,58 @@ function DocumentsTab({ detail }: { detail: VendorEventDetail }) {
   const hasDocuments = detail.documents.length > 0;
   const hasPlans = (plans ?? []).length > 0;
 
-  if (!loading && !hasDocuments && !hasPlans) {
-    return (
-      <div className="rounded-xl border border-dashed border-border py-12 text-center">
-        <FileText className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
-        <p className="text-sm text-muted-foreground">No documents or floor plans shared for this event yet.</p>
-      </div>
-    );
-  }
-
   return (
-    <div className="rounded-xl border border-border bg-card divide-y divide-border">
-      {detail.documents.map((d) => (
-        <a
-          key={d.id}
-          href={d.storageUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="flex items-center gap-3 px-4 py-3 hover:bg-muted/40 transition-colors"
-        >
-          <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
-          <div className="min-w-0 flex-1">
-            <p className="text-sm font-medium text-foreground">{d.name}</p>
-            {d.notes && <p className="text-xs text-muted-foreground">{d.notes}</p>}
+    <div className="space-y-6">
+      <div className="space-y-2">
+        <h3 className="text-sm font-semibold text-foreground">From venue</h3>
+        {!loading && !hasDocuments && !hasPlans ? (
+          <div className="rounded-xl border border-dashed border-border py-10 text-center">
+            <FileText className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
+            <p className="text-sm text-muted-foreground">No documents or floor plans shared for this event yet.</p>
           </div>
-          <Badge variant="outline" className="text-xs shrink-0">{d.category}</Badge>
-        </a>
-      ))}
-      {(plans ?? []).map((p) => (
-        <a
-          key={p.id}
-          href={`/vendor/floor-plans/${p.id}`}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="flex items-center gap-3 px-4 py-3 hover:bg-muted/40 transition-colors"
-        >
-          <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
-          <div className="min-w-0 flex-1">
-            <p className="text-sm font-medium text-foreground">{p.name}</p>
+        ) : (
+          <div className="rounded-xl border border-border bg-card divide-y divide-border">
+            {detail.documents.map((d) => (
+              <a
+                key={d.id}
+                href={d.storageUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-3 px-4 py-3 hover:bg-muted/40 transition-colors"
+              >
+                <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-medium text-foreground">{d.name}</p>
+                  {d.notes && <p className="text-xs text-muted-foreground">{d.notes}</p>}
+                </div>
+                <Badge variant="outline" className="text-xs shrink-0">{d.category}</Badge>
+              </a>
+            ))}
+            {(plans ?? []).map((p) => (
+              <a
+                key={p.id}
+                href={`/vendor/floor-plans/${p.id}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-3 px-4 py-3 hover:bg-muted/40 transition-colors"
+              >
+                <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-medium text-foreground">{p.name}</p>
+                </div>
+                <Badge variant="outline" className="text-xs shrink-0">Floor Plan</Badge>
+              </a>
+            ))}
           </div>
-          <Badge variant="outline" className="text-xs shrink-0">Floor Plan</Badge>
-        </a>
-      ))}
+        )}
+      </div>
+
+      <VendorEventSharePanel
+        assignmentId={detail.assignmentId}
+        eventId={detail.eventId}
+        library={library}
+        uploads={eventUploads}
+      />
     </div>
   );
 }

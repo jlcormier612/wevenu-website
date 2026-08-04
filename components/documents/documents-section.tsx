@@ -130,7 +130,7 @@ export function DocumentsSection({
       if (result.ok) {
         // Optimistic: add a placeholder, real data comes after refresh
         const newDoc: Document = {
-          id: result.documentId, venueId, entityType, entityId,
+          id: result.documentId, venueId,
           leadId: entityType === "lead" ? entityId : null,
           clientId: entityType === "client" ? entityId : null,
           eventId: entityType === "event" ? entityId : null,
@@ -141,8 +141,12 @@ export function DocumentsSection({
           category: uploadCategory, notes: uploadNotes.trim() || null,
           tags: uploadTags.split(",").map((t) => t.trim()).filter(Boolean),
           expiresAt: uploadExpiry || null,
+          isCoupleVisible: false,
+          sharedWithVendors: false,
+          uploadedByType: "venue",
+          uploadedById: null,
           createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
-        } as unknown as Document;
+        };
         setDocs((p) => [newDoc, ...p]);
         toast.success("Document uploaded.");
         resetForm();

@@ -17,5 +17,9 @@ export default async function VendorConversationPage({ params }: Props) {
   const result = await getVendorConversation(conversationId);
   if (!result.ok) notFound();
 
-  return <VendorConversationThread conversationId={conversationId} initialMessages={result.conversation.messages} />;
+  return (
+    <div className="flex min-h-0 flex-1 flex-col">
+      <VendorConversationThread conversationId={conversationId} initialMessages={result.conversation.messages} />
+    </div>
+  );
 }

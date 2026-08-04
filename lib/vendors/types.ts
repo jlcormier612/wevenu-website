@@ -150,12 +150,18 @@ export type VendorFaqInput = {
 
 // ── Availability ──────────────────────────────────────────────────────────────
 
+export type VendorAvailabilitySource = "manual" | "event";
+
 export type VendorAvailability = {
   id:        string;
   vendorId:  string;
   date:      string;
   isBlocked: boolean;
   note:      string | null;
+  /** manual = vendor toggle; event = secured assignment write-through (Booked). */
+  source:    VendorAvailabilitySource;
+  /** event_vendor_assignments.id when source=event. */
+  sourceId:  string | null;
   createdAt: string;
 };
 
@@ -532,9 +538,10 @@ export type VendorEventDetail = {
   couplePhone:    string | null;
   checkedInAt:    string | null;
   setupCompleteAt: string | null;
-  // Sprint 2 — Vendor Payment Visibility: "what am I being paid, has it
-  // been paid." agreedFee null means the venue hasn't set one yet — the
-  // vendor's summary card simply doesn't render in that case.
+  // Agreed fee for coordination only — shown on vendor Overview as amount
+  // + helper copy, never as paid/pending. Null means hide the card.
+  // paymentStatus is still loaded from the assignment row but unused on
+  // the vendor surface (payments happen outside Hello to Cheers).
   agreedFee:      number | null;
   paymentStatus:  "pending" | "paid";
   timeline:       import("@/lib/vendor-portal/types").VendorTimelineEntry[];

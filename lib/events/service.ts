@@ -15,6 +15,7 @@ import type {
   VenueEvent,
 } from "@/lib/events/types";
 import { validateEventInput, validateEventStatus, validateTeamMemberInput } from "@/lib/events/validation";
+import { syncEventVendorAvailability } from "@/lib/vendor-availability/sync";
 import { getCurrentVenue } from "@/lib/venue/service";
 
 async function withVenue<T>(
@@ -88,6 +89,18 @@ export async function updateEvent_(eventId: string, input: EventInput): Promise<
       await recalculateEventTaskDueDates(eventId, input.eventDate);
     }
 
+    // Move Booked availability when the secured event date (or name) changes.
+    if (
+      before &&
+      (before.eventDate !== input.eventDate || before.name !== input.name.trim())
+    ) {
+      await syncEventVendorAvailability(eventId, {
+        eventDate: input.eventDate,
+        eventName: input.name.trim(),
+        status:    before.status,
+      });
+    }
+
     return { ok: true } as EventActionResult;
   });
   return result as EventActionResult;
@@ -96,7 +109,16 @@ export async function updateEvent_(eventId: string, input: EventInput): Promise<
 export async function updateEventStatus_(eventId: string, status: string): Promise<EventActionResult> {
   if (!validateEventStatus(status)) return { ok: false, message: `"${status}" is not a valid status.` };
   const result = await withVenue(async (supabase, venueId) => {
+    const before = await repo.getEvent(supabase, venueId, eventId);
     await repo.updateEventStatus(supabase, venueId, eventId, status as EventStatus);
+    // Cancel frees Booked days; restoring a cancelled event re-books them.
+    if (before && before.status !== status) {
+      await syncEventVendorAvailability(eventId, {
+        eventDate: before.eventDate,
+        eventName: before.name,
+        status,
+      });
+    }
     return { ok: true } as EventActionResult;
   });
   return result as EventActionResult;

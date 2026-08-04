@@ -488,9 +488,9 @@ export function ConversationThread({
   const canSchedule = channel === "email" || channel === "sms";
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex h-full min-h-0 flex-col">
       {showHeader && (
-        <div className="border-b border-border/60">
+        <div className="shrink-0 border-b border-border/60">
           <div className="flex items-center gap-2 px-4 py-3">
             {onBack && (
               <button type="button" onClick={onBack} className="md:hidden -ml-1 p-1 text-muted-foreground">
@@ -568,7 +568,7 @@ export function ConversationThread({
         </div>
       )}
 
-      <div className="flex-1 overflow-y-auto px-4 py-3">
+      <div className="min-h-0 flex-1 overflow-y-auto px-4 py-3">
         {messages === null ? (
           <p className="text-xs text-muted-foreground">Loading…</p>
         ) : messages.length === 0 ? (
@@ -589,13 +589,13 @@ export function ConversationThread({
       </div>
 
       {scheduled.length > 0 && (
-        <div className="space-y-1.5 border-t border-border/60 px-3 py-2">
+        <div className="shrink-0 space-y-1.5 border-t border-border/60 px-3 py-2">
           {scheduled.map((s) => <ScheduledRow key={s.id} msg={s} onCancel={cancelScheduled} />)}
         </div>
       )}
 
       {summary && automations.length > 0 && (
-        <div className="space-y-1.5 border-t border-border/60 px-3 py-2">
+        <div className="shrink-0 space-y-1.5 border-t border-border/60 px-3 py-2">
           {automations.map((a) => (
             <div key={a.id} className="flex items-center gap-2 rounded-lg border border-dashed border-border bg-muted/30 px-3 py-2">
               <Workflow className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
@@ -605,7 +605,7 @@ export function ConversationThread({
         </div>
       )}
 
-      <div className="border-t border-border/60 p-3 space-y-2">
+      <div className="shrink-0 space-y-2 border-t border-border/60 p-3">
         {templatesForChannel.length > 0 && (
           <select
             aria-label="Use a template"
