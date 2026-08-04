@@ -8,8 +8,11 @@
 -- contract, guests, a preferred vendor, an invoice, and a day-of timeline.
 --
 -- Login (local dev only — never use these credentials anywhere real):
---   Owner:   owner@example.com   / devpassword123
---   Manager: manager@example.com / devpassword123
+--   Owner:   owner@example.com         / devpassword123
+--   Manager: manager@example.com       / devpassword123
+--   Couple:  emma.carter@example.com   / devpassword123
+--            → password login at /client/login
+--            → or open /p/seedcoupleportal00000000000000000000000000000001
 --
 -- This is a fixed development fixture, not sample/demo content for a real
 -- venue — keep it small and deterministic rather than growing it into a
@@ -20,6 +23,7 @@ do $$
 declare
   v_owner_id        uuid := gen_random_uuid();
   v_manager_id      uuid := gen_random_uuid();
+  v_couple_user_id  uuid := gen_random_uuid();
   v_venue_id        uuid := gen_random_uuid();
   v_relationship_id uuid := gen_random_uuid();
   v_client_id       uuid := gen_random_uuid();
@@ -29,8 +33,11 @@ declare
   v_invoice_id      uuid := gen_random_uuid();
   v_section_id      uuid := gen_random_uuid();
   v_event_date      date := current_date + interval '90 days';
+  -- Deterministic portal token so docs/smoke scripts can deep-link without
+  -- querying client_portal_sessions after every reset.
+  v_portal_token    text := 'seedcoupleportal00000000000000000000000000000001';
 begin
-  -- ── Auth users (owner + manager) ─────────────────────────────────────────
+  -- ── Auth users (owner + manager + couple) ────────────────────────────────
   insert into auth.users (
     instance_id, id, aud, role, email, encrypted_password,
     email_confirmed_at, last_sign_in_at,
@@ -42,6 +49,9 @@ begin
      now(), now(), '{"provider":"email","providers":["email"]}', '{}', now(), now(), '', '', '', ''),
     ('00000000-0000-0000-0000-000000000000', v_manager_id, 'authenticated', 'authenticated',
      'manager@example.com', crypt('devpassword123', gen_salt('bf')),
+     now(), now(), '{"provider":"email","providers":["email"]}', '{}', now(), now(), '', '', '', ''),
+    ('00000000-0000-0000-0000-000000000000', v_couple_user_id, 'authenticated', 'authenticated',
+     'emma.carter@example.com', crypt('devpassword123', gen_salt('bf')),
      now(), now(), '{"provider":"email","providers":["email"]}', '{}', now(), now(), '', '', '', '');
 
   insert into auth.identities (id, user_id, identity_data, provider, provider_id, last_sign_in_at, created_at, updated_at)
@@ -49,7 +59,9 @@ begin
     (gen_random_uuid(), v_owner_id,
      jsonb_build_object('sub', v_owner_id::text, 'email', 'owner@example.com'), 'email', v_owner_id::text, now(), now(), now()),
     (gen_random_uuid(), v_manager_id,
-     jsonb_build_object('sub', v_manager_id::text, 'email', 'manager@example.com'), 'email', v_manager_id::text, now(), now(), now());
+     jsonb_build_object('sub', v_manager_id::text, 'email', 'manager@example.com'), 'email', v_manager_id::text, now(), now(), now()),
+    (gen_random_uuid(), v_couple_user_id,
+     jsonb_build_object('sub', v_couple_user_id::text, 'email', 'emma.carter@example.com'), 'email', v_couple_user_id::text, now(), now(), now());
 
   -- ── Venue ─────────────────────────────────────────────────────────────────
   insert into public.venues (
@@ -129,6 +141,22 @@ begin
 
   insert into public.venue_vendor_relationships (venue_id, vendor_id, status, preference_level, notes) values
     (v_venue_id, v_vendor_id, 'active', 'preferred', 'Preferred photographer — great with outdoor ceremonies.');
+
+  -- Booked onto Emma & Jordan's event so Preferred Vendors shows Message and
+  -- the AFTER INSERT trigger provisions venue_vendor + couple_vendor threads.
+  insert into public.event_vendor_assignments (venue_id, event_id, vendor_id, notes) values
+    (v_venue_id, v_event_id, v_vendor_id, 'Seed preferred photographer');
+
+  -- ── Couple portal (password login + deterministic capability token) ──────
+  -- Password path: /client/login → emma.carter@example.com / devpassword123
+  -- Direct path:   /p/{v_portal_token}  (no auth cookie required)
+  insert into public.client_users (id) values (v_couple_user_id);
+
+  insert into public.client_portal_sessions (
+    venue_id, client_id, client_user_id, access_token, access_level, label
+  ) values (
+    v_venue_id, v_client_id, v_couple_user_id, v_portal_token, 'couple', 'Primary'
+  );
 
   -- ── Invoice ───────────────────────────────────────────────────────────────
   insert into public.invoices (

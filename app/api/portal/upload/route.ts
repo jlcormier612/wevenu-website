@@ -4,16 +4,19 @@
  * Accepts a multipart form with:
  *   token: portal access token
  *   file: image file
- *   type: 'cover' | 'couple' | 'gallery'
+ *   type: 'cover' | 'couple' | 'gallery' | 'story' | ... (any short label —
+ *         used only as the stored file's name prefix, not validated against
+ *         a fixed enum)
  *
  * Uploads to Supabase Storage bucket 'client-media' using service role key.
  * Returns the public URL.
  *
  * Path: client-media/{venue_id}/{client_id}/{type}-{timestamp}.{ext}
  *
- * Callers: wedding website hero/cover photo and gallery photos
- * (website-editor.tsx), couple portal profile photo (portal-shell.tsx),
- * couple document uploads (couple-documents-section.tsx).
+ * Callers: wedding website hero/cover photo, gallery photos, and the Our
+ * Story section's own optional photo (website-editor.tsx), couple portal
+ * profile photo (portal-shell.tsx), couple document uploads
+ * (couple-documents-section.tsx).
  */
 
 import { NextResponse } from "next/server";

@@ -24,7 +24,9 @@ export type VenueEvent = {
   status: EventStatus;
   name: string;
   eventType: string | null;
-  eventDate: string; // ISO "YYYY-MM-DD"
+  eventDate: string; // ISO "YYYY-MM-DD" (start day)
+  /** Inclusive end day; null = single-day (same as eventDate). */
+  eventEndDate: string | null;
   startTime: string | null;   // "HH:MM"
   endTime: string | null;
   setupTime: string | null;
@@ -86,6 +88,8 @@ export type EventInput = {
   name: string;
   eventType: string;
   eventDate: string;
+  /** Inclusive end day; empty = single-day. */
+  eventEndDate: string;
   startTime: string;
   endTime: string;
   setupTime: string;

@@ -712,6 +712,7 @@ export function ConversationThread({
             type="button"
             onClick={() => void send()}
             disabled={(!body.trim() && !pendingFile) || sending || uploadingFile || (channel === "email" && !emailSubject.trim())}
+            aria-label="Send"
             className="h-9 w-9 shrink-0 rounded-lg bg-primary text-primary-foreground flex items-center justify-center disabled:opacity-40"
           >
             <Send className="h-4 w-4" />

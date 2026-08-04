@@ -189,17 +189,25 @@ export function VendorProfileForm({ profile }: { profile: VendorProfile }) {
       <p className="text-sm font-medium text-heading">Visibility</p>
 
       <div className="space-y-3">
-        <div className="flex items-center justify-between rounded-lg border border-border p-4">
-          <div>
-            <p className="text-sm font-medium text-foreground">Marketplace listing</p>
-            <p className="text-xs text-muted-foreground">Allow venues to discover you in the vendor marketplace.</p>
+        <div className="rounded-lg border border-dashed border-border p-4">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className="text-sm font-medium text-foreground">Marketplace listing</p>
+              <p className="text-xs text-muted-foreground">
+                Vendor discovery for venues isn&apos;t live yet. This setting will matter once marketplace listing ships.
+              </p>
+            </div>
+            <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+              Coming soon
+            </span>
           </div>
-          <Switch checked={input.isMarketplaceListed} onCheckedChange={(v) => set("isMarketplaceListed", v)} />
         </div>
         <div className="flex items-center justify-between rounded-lg border border-border p-4">
           <div>
-            <p className="text-sm font-medium text-foreground">Accepting inquiries</p>
-            <p className="text-xs text-muted-foreground">Venues can send you booking inquiries.</p>
+            <p className="text-sm font-medium text-foreground">Open for new bookings</p>
+            <p className="text-xs text-muted-foreground">
+              Signals to partner venues that you&apos;re available for more events. This isn&apos;t a public inquiry inbox.
+            </p>
           </div>
           <Switch checked={input.acceptingInquiries} onCheckedChange={(v) => set("acceptingInquiries", v)} />
         </div>

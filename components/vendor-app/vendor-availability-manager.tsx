@@ -166,8 +166,10 @@ export function VendorAvailabilityManager({
 
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-sm font-medium text-foreground">Accepting inquiries</p>
-            <p className="text-xs text-muted-foreground">Venues can send you booking inquiries.</p>
+            <p className="text-sm font-medium text-foreground">Open for new bookings</p>
+            <p className="text-xs text-muted-foreground">
+              Signals to partner venues that you&apos;re available for more events. This isn&apos;t a public inquiry inbox.
+            </p>
           </div>
           <Switch checked={accepting} onCheckedChange={setAccepting} />
         </div>
@@ -239,11 +241,15 @@ export function VendorAvailabilityManager({
           {cells.map((day, i) => {
             if (!day) return <div key={`empty-${i}`} />;
             const dateStr  = toDateString(year, month, day);
-            const isBooked  = booked.has(dateStr);
+            const bookedEntry = booked.get(dateStr);
+            const isBooked  = Boolean(bookedEntry);
             const isBlocked = !isBooked && manual.has(dateStr);
             const isPast    = dateStr < today;
             const isPending = pendingDate === dateStr;
-            const stateLabel = isBooked ? " (booked)" : isBlocked ? " (blocked)" : "";
+            const eventLabel = bookedEntry?.note?.trim() || null;
+            const stateLabel = isBooked
+              ? ` (booked${eventLabel ? `: ${eventLabel}` : ""})`
+              : isBlocked ? " (blocked)" : "";
 
             return (
               <button
@@ -252,8 +258,9 @@ export function VendorAvailabilityManager({
                 onClick={() => !isPast && handleDayClick(dateStr)}
                 disabled={isPast || isPending}
                 aria-label={`${dateStr}${stateLabel}`}
+                title={isBooked ? `Booked — ${eventLabel || "event"}` : undefined}
                 className={[
-                  "relative flex items-center justify-center rounded-lg text-xs font-medium aspect-square transition-all",
+                  "relative flex flex-col items-center justify-center rounded-lg text-xs font-medium aspect-square transition-all px-0.5",
                   isPast
                     ? "text-muted-foreground/40 cursor-not-allowed"
                     : isBooked
@@ -265,7 +272,18 @@ export function VendorAvailabilityManager({
                   isPending ? "opacity-50" : "",
                 ].join(" ")}
               >
-                {isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : day}
+                {isPending ? (
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                ) : (
+                  <>
+                    <span>{day}</span>
+                    {eventLabel ? (
+                      <span className="mt-0.5 max-w-full truncate text-[8px] leading-tight font-normal text-amber-800/90">
+                        {eventLabel}
+                      </span>
+                    ) : null}
+                  </>
+                )}
               </button>
             );
           })}

@@ -1,69 +1,175 @@
-import { Card, CardContent } from "@/components/ui/card";
-import { Heart } from "lucide-react";
+/**
+ * Vendor Luv briefing — same job and visual cues as the venue Daily Briefing
+ * ("Today's Briefing" / LuvHeart / dusty rose), role-scoped to vendor ops.
+ *
+ * Presentation layer only: sections mirror DailyBriefingWidget so Luv feels
+ * like one character across portals.
+ */
+"use client";
+
+import Link from "next/link";
+import { AlertTriangle, CalendarClock, CheckCircle2, Info } from "lucide-react";
+
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { LuvHeart } from "@/components/dashboard/luv-widget";
+import type { BriefingItem, LuvBriefing } from "@/lib/luv/briefing-types";
+
+const DUSTY_ROSE = "#D8A7AA";
+
+function formatDate(iso: string | null): string {
+  if (!iso) return "";
+  const [y, m, d] = iso.slice(0, 10).split("-");
+  if (!y || !m || !d) return "";
+  return new Date(Number(y), Number(m) - 1, Number(d)).toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+  });
+}
+
+function Row({ item, icon: Icon, tone }: { item: BriefingItem; icon: React.ElementType; tone: string }) {
+  return (
+    <Link
+      href={item.link}
+      className="flex items-start gap-2.5 rounded-lg px-2 py-1.5 -mx-2 hover:bg-muted/50 transition-colors"
+    >
+      <Icon className={`h-3.5 w-3.5 shrink-0 mt-0.5 ${tone}`} />
+      <div className="min-w-0 flex-1">
+        <p className="text-sm text-heading truncate">{item.detail}</p>
+        {(item.eventName || item.eventDate) && (
+          <p className="text-xs text-muted-foreground">
+            {item.eventName}
+            {item.eventName && item.eventDate ? " · " : ""}
+            {formatDate(item.eventDate)}
+          </p>
+        )}
+      </div>
+    </Link>
+  );
+}
+
+function Section({
+  title,
+  items,
+  icon,
+  tone,
+  emptyText,
+}: {
+  title: string;
+  items: BriefingItem[];
+  icon: React.ElementType;
+  tone: string;
+  emptyText?: string;
+}) {
+  if (items.length === 0 && !emptyText) return null;
+  return (
+    <div className="space-y-1">
+      <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+        {title}
+        {items.length > 0 ? ` (${items.length})` : ""}
+      </p>
+      {items.length === 0 ? (
+        <p className="text-xs text-muted-foreground/70 px-2 py-1">{emptyText}</p>
+      ) : (
+        <div className="space-y-0.5">
+          {items.slice(0, 8).map((item) => (
+            <Row key={item.id} item={item} icon={icon} tone={tone} />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 export function VendorLuvBriefing({
-  wins,
-  observations,
-  healthTip,
+  briefing,
   isPrimarySurface = false,
+  compact = false,
 }: {
-  wins:         string[];
-  observations: string[];
-  healthTip?:   string | null;
-  /** True on the dedicated /vendor/luv page (a primary/anchor surface, per
-   * Luv Experience Completion Work Stream 6's empty-state rule — always
-   * shows a light reassurance state rather than vanishing). False (default)
-   * when embedded as one card among several on the dashboard, where
-   * vanishing is correct since the parent page has its own content. */
+  briefing: LuvBriefing;
+  /**
+   * True on /vendor/luv — always show a light reassurance empty state
+   * (same rule as venue Luv primary surfaces). False when embedded on Home.
+   */
   isPrimarySurface?: boolean;
+  /** Home embed: show urgent + coming up only, with link to full Luv page. */
+  compact?: boolean;
 }) {
-  const isEmpty = wins.length === 0 && observations.length === 0 && !healthTip;
-  if (isEmpty && !isPrimarySurface) return null;
+  const totalUrgent = briefing.needsAttentionNow.length;
+  const hasAnything =
+    briefing.needsAttentionNow.length > 0 ||
+    briefing.comingUpThisWeek.length > 0 ||
+    briefing.resolvedSinceLastLooked.length > 0 ||
+    briefing.informational.length > 0;
+
+  if (!hasAnything && !isPrimarySurface) return null;
+
+  const empty = !hasAnything;
 
   return (
-    <Card className="border-pink-200/50 dark:border-pink-800/30" style={{ background: "color-mix(in oklch, var(--color-pink-500, #ec4899) 4%, var(--card))" }}>
-      <CardContent className="pt-4 pb-4 space-y-3">
-        <div className="flex items-center gap-2 mb-1">
-          <Heart className="h-4 w-4 fill-pink-400 text-pink-400 shrink-0" />
-          <span className="text-sm font-semibold text-pink-600 dark:text-pink-400">Luv</span>
+    <Card
+      className="border-[#D8A7AA]/25"
+      style={{ background: `color-mix(in oklch, ${DUSTY_ROSE} 4%, var(--card))` }}
+    >
+      <CardHeader className="pb-3">
+        <div className="flex items-center gap-2">
+          <LuvHeart size={16} />
+          <h2 className="font-heading text-sm font-semibold text-heading">Today&apos;s Briefing</h2>
+          {totalUrgent > 0 && (
+            <span className="ml-auto text-xs font-semibold text-destructive">
+              {totalUrgent} need{totalUrgent === 1 ? "s" : ""} attention
+            </span>
+          )}
         </div>
-
-        {isEmpty && (
-          <p className="text-xs text-muted-foreground">Nothing new to report right now — everything looks steady.</p>
-        )}
-
-        {wins.length > 0 && (
-          <div>
-            <p className="text-[10px] font-bold uppercase tracking-widest text-pink-500/70 mb-1.5">Wins</p>
-            <ul className="space-y-1">
-              {wins.map((w, i) => (
-                <li key={i} className="flex items-start gap-1.5 text-xs text-foreground">
-                  <span className="text-pink-400 shrink-0">✦</span>
-                  {w}
-                </li>
-              ))}
-            </ul>
+        <p className="text-xs text-muted-foreground">
+          Luv is keeping an eye on what matters for your events.
+        </p>
+      </CardHeader>
+      <CardContent className="pt-0 space-y-4">
+        {empty ? (
+          <div className="flex items-center gap-2 py-2">
+            <LuvHeart size={14} />
+            <p className="text-sm text-muted-foreground">
+              Everything looks good today — nothing needs your attention right now.
+            </p>
           </div>
+        ) : (
+          <>
+            <Section
+              title="Needs you now"
+              items={briefing.needsAttentionNow}
+              icon={AlertTriangle}
+              tone="text-destructive"
+            />
+            <Section
+              title="Coming up this week"
+              items={briefing.comingUpThisWeek}
+              icon={CalendarClock}
+              tone="text-muted-foreground"
+            />
+            {!compact && briefing.resolvedSinceLastLooked.length > 0 && (
+              <Section
+                title="Resolved since you last looked"
+                items={briefing.resolvedSinceLastLooked}
+                icon={CheckCircle2}
+                tone="text-success"
+              />
+            )}
+            <Section
+              title="Worth knowing"
+              items={compact ? briefing.informational.slice(0, 2) : briefing.informational}
+              icon={Info}
+              tone="text-muted-foreground"
+            />
+          </>
         )}
 
-        {observations.length > 0 && (
-          <div className={wins.length > 0 ? "border-t border-pink-200/30 pt-3" : ""}>
-            <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1.5">Observations</p>
-            <ul className="space-y-1">
-              {observations.map((o, i) => (
-                <li key={i} className="flex items-start gap-1.5 text-xs text-muted-foreground">
-                  <span className="text-muted-foreground/60 shrink-0">·</span>
-                  {o}
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
-
-        {healthTip && (
-          <p className="text-xs text-pink-600 dark:text-pink-400 border-t border-pink-200/30 pt-3">
-            {healthTip}
-          </p>
+        {compact && hasAnything && (
+          <Link
+            href="/vendor/luv"
+            className="inline-flex text-xs font-medium text-primary hover:underline underline-offset-2"
+          >
+            Open full briefing →
+          </Link>
         )}
       </CardContent>
     </Card>

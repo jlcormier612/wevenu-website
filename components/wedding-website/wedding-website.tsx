@@ -11,7 +11,7 @@ import { GuestConciergeWidget } from "@/components/wedding-website/guest-concier
 import type { RsvpContext } from "@/app/rsvp/[token]/page";
 import {
   SectionComposition, ContentBlock, WeddingPartyComposition, edgeWidthClass,
-  SectionCanvas, contrastText, ScheduleTimeline, EditorialOpening, PairedPassage, DestinationFeature, CompactInterlude,
+  SectionCanvas, contrastText, ScheduleTimeline, ScheduleDateMoment, EditorialOpening, PairedPassage, DestinationFeature, CompactInterlude,
   type CompositionItem, type CompositionRecipe, type PartyMember, type SectionRole, type SectionScale,
 } from "@/components/wedding-website/composition-primitives";
 
@@ -520,8 +520,26 @@ function formatEventDate(iso: string): string {
   });
 }
 
+function formatEventDateRange(start: string, end?: string | null): string {
+  if (!end || end === start) return formatEventDate(start);
+  return `${formatEventDate(start)} – ${formatEventDate(end)}`;
+}
+
 function daysUntil(iso: string): number {
   return Math.ceil((new Date(iso + "T12:00:00").getTime() - Date.now()) / 86_400_000);
+}
+
+// Schedule Desktop Composition — day/month/year for ScheduleDateMoment,
+// parsed from the SAME authoritative eventDate every other date display on
+// this page already uses (see `formatEventDate` above), never a second
+// date source and never a hand-entered field.
+function scheduleDateParts(iso: string): { day: string; month: string; year: string } {
+  const d = new Date(iso + "T12:00:00");
+  return {
+    day: String(d.getDate()),
+    month: d.toLocaleDateString("en-US", { month: "long" }),
+    year: String(d.getFullYear()),
+  };
 }
 
 // ── Dividers — theme-aware section separators ─────────────────────────────────
@@ -759,35 +777,89 @@ function GalleryGrid({ photos, tc }: { photos: string[]; tc: ThemeConfig }) {
   // Overlapping ranges on a shared grid (not absolute positioning) so it
   // reflows naturally at narrower widths. Hand-designed per photo count,
   // never algorithmic/random, so low counts never look broken.
+  //
+  // Cropping-safety fix (Coastal Magazine Gallery Remediation): the row
+  // unit used to be a fixed rem length (2.75rem) while columns are fluid
+  // `1fr` tracks — at this section's ~56rem desktop container that made
+  // several slots as wide as 3.5x their height, so `object-fit: cover`
+  // cropped portrait-oriented wedding photography (faces, torsos) down to
+  // unreadable fragments. Row height is now expressed in `cqw` (a
+  // container-query unit — 1% of THIS grid's own rendered width, via
+  // `containerType: "inline-size"` below), so row height scales with
+  // column width continuously at every viewport, not just at the one
+  // width the old rem value happened to look right for. Every pattern
+  // below is hand-tuned against that unit so no slot's aspect ratio goes
+  // narrower than ~4:5 (portrait) or wider than ~3:2 (landscape) — varied,
+  // still editorial, never a sliver.
   if (tc.arrangement === "collage") {
     const n = photos.length;
-    // [gridColumn, gridRow, zIndex] per slot, 6-column grid. Patterns
-    // defined for 1-4; 5+ repeats the 4-pattern in successive 4-row bands.
+    const ROW_UNIT = "10cqw";
+    const ROW_GAP = "1.5cqw";
+    // [gridColumn, gridRow, zIndex] per slot, 6-column grid. Column-span
+    // to row-span is held to a safe ratio throughout (2col->3row,
+    // 3col->4row, 4col->6row, 5col->7row) so every slot's aspect ratio
+    // stays in the ~4:5–3:2 range regardless of which photo lands there —
+    // patterns don't know each photo's real orientation, so the bound is
+    // symmetric rather than tuned to any one image. Patterns defined for
+    // 1-4; 5+ repeats the 4-pattern in successive bands, shifted down by
+    // that pattern's own row-track count (computed below, not hardcoded)
+    // so bands never collide or overlap into each other.
     const patterns: Record<number, [string, string, number][]> = {
-      1: [["1 / 7", "1 / 6", 1]],
-      2: [["1 / 5", "1 / 6", 1], ["4 / 7", "3 / 8", 2]],
-      3: [["1 / 5", "1 / 7", 1], ["4 / 7", "1 / 4", 2], ["3 / 7", "5 / 8", 3]],
-      4: [["1 / 4", "1 / 6", 1], ["3 / 7", "1 / 4", 2], ["1 / 4", "5 / 9", 3], ["4 / 7", "4 / 9", 2]],
+      1: [["1 / 6", "1 / 8", 1]],
+      2: [
+        ["1 / 5", "1 / 7", 1],
+        ["4 / 7", "4 / 8", 2],
+      ],
+      3: [
+        ["1 / 5", "1 / 7", 1],
+        ["4 / 7", "1 / 5", 2],
+        ["4 / 7", "5 / 9", 3],
+      ],
+      4: [
+        ["1 / 5", "1 / 7", 1],
+        ["4 / 7", "1 / 5", 2],
+        ["1 / 4", "7 / 11", 2],
+        ["4 / 7", "6 / 10", 3],
+      ],
     };
+    const band4 = patterns[4];
+    const bandRowSpan = Math.max(...band4.map(([, row]) => parseInt(row.split(" / ")[1], 10))) - 1;
+    const collageImgStyle: React.CSSProperties = { ...imgStyleFill, objectPosition: "50% 35%" };
+    // `cqw` on gridAutoRows must resolve against an ANCESTOR's containment,
+    // not the grid's own — a container-query length set on the same
+    // element that declares containment doesn't resolve against itself
+    // (spec-defined, to avoid circularity), it silently falls back to the
+    // viewport instead, which reintroduces exactly the container-width-vs-
+    // viewport-width mismatch this fix exists to remove. The grid and its
+    // `containerType: inline-size` therefore live on two different divs.
     return (
-      <div className="grid gap-3" style={{ gridTemplateColumns: "repeat(6, 1fr)", gridAutoRows: "2.75rem", rowGap: "1.25rem" }}>
-        {photos.map((url, i) => {
-          const band = patterns[Math.min(n, 4) as 1 | 2 | 3 | 4];
-          const [col, row, z] = band[i % band.length];
-          // Offset each successive band of 4 further down so 5+ photos stack in new rows, not on top of earlier ones.
-          const bandIndex = Math.floor(i / 4);
-          const rowShift = bandIndex * 8;
-          const [rowStart, rowEnd] = row.split(" / ").map(Number);
-          return (
-            <div key={i} className="overflow-hidden"
-              style={{
-                gridColumn: col, gridRow: `${rowStart + rowShift} / ${rowEnd + rowShift}`, zIndex: z,
-                borderRadius: tc.photoRadius, ...frame(i, i % 2 === 0 ? -1.5 : 1.5),
-              }}>
-              <img src={url} alt="" style={imgStyleFill} />
-            </div>
-          );
-        })}
+      <div style={{ containerType: "inline-size" }}>
+        <div
+          className="grid"
+          style={{
+            gridTemplateColumns: "repeat(6, 1fr)", gridAutoRows: ROW_UNIT,
+            columnGap: "0.75rem", rowGap: ROW_GAP,
+            overflow: "hidden",
+          }}
+        >
+          {photos.map((url, i) => {
+            const band = patterns[Math.min(n, 4) as 1 | 2 | 3 | 4];
+            const [col, row, z] = band[i % band.length];
+            // Offset each successive band further down so 5+ photos stack in new rows, not on top of earlier ones.
+            const bandIndex = Math.floor(i / 4);
+            const rowShift = bandIndex * bandRowSpan;
+            const [rowStart, rowEnd] = row.split(" / ").map(Number);
+            return (
+              <div key={i} className="overflow-hidden"
+                style={{
+                  gridColumn: col, gridRow: `${rowStart + rowShift} / ${rowEnd + rowShift}`, zIndex: z,
+                  borderRadius: tc.photoRadius, ...frame(i, i % 2 === 0 ? -1.5 : 1.5),
+                }}>
+                <img src={url} alt="" style={collageImgStyle} />
+              </div>
+            );
+          })}
+        </div>
       </div>
     );
   }
@@ -1035,6 +1107,8 @@ export function WeddingWebsite({
     ? [couple.firstName, couple.partnerFirstName].filter(Boolean).join(" & ")
     : "The Couple";
   const eventDate = site.event?.eventDate;
+  const eventEndDate = site.event?.eventEndDate;
+  const eventDateLabel = eventDate ? formatEventDateRange(eventDate, eventEndDate) : null;
   const du = eventDate ? daysUntil(eventDate) : null;
   const content = site.content ?? {};
 
@@ -1247,10 +1321,14 @@ export function WeddingWebsite({
               // Dead-space guard (Part 8): a short story reads as sparse —
               // collapses Standard down to Interlude spacing.
               const storySparse = s.text.length < 240;
-              // Coastal Art-Direction Pass 2 — an editorial opening may use
-              // the couple's own first gallery photo when they have one;
-              // never forced, never a venue/marketing image (Step 2/14).
-              const storyPhoto = tc.sectionRoles ? (content.gallery?.photos?.[0] ?? null) : null;
+              // Our Story Image Ownership fix — the story image is the
+              // couple's own dedicated, optional upload (content.story.imageUrl)
+              // and nothing else. It previously borrowed content.gallery.photos[0],
+              // which meant reordering or editing the gallery could silently
+              // change what appeared here, and a couple had no way to know
+              // "my first gallery photo secretly becomes my Our Story photo."
+              // Never falls back to the gallery, hero, or venue imagery.
+              const storyPhoto = s.imageUrl ?? null;
 
               return (
                 <SectionCanvas key="story" role={tc.sectionRoles?.story} sparse={storySparse} colors={canvasColors}>
@@ -1410,15 +1488,67 @@ export function WeddingWebsite({
               const items: CompositionItem[] = content.schedule.map(item => ({
                 label: item.time, heading: item.title, body: item.description,
               }));
+              const scheduleSparse = items.length <= 2;
+              // Schedule Desktop Composition — the authoritative event date
+              // (same source the hero/countdown already use), never a
+              // second date field. Absent on Coastal only when this
+              // couple's event has no date synced yet; the decorative
+              // field is simply omitted, never fabricated.
+              const dateParts = tc.sectionRoles && eventDate ? scheduleDateParts(eventDate) : null;
+              const scheduleLeft = (
+                <>
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.25em] mb-3" style={{ color: `${tc.accent || color}95` }}>Our Day</p>
+                  <SectionHeader title="Schedule" tc={tc} accentColor={color} />
+                  <ScheduleTimeline tc={tc} color={color} labelColor={tc.accent || color} items={items} />
+                </>
+              );
               return (
-                <SectionCanvas key="schedule" role={tc.sectionRoles?.schedule} sparse={items.length <= 2} colors={canvasColors}>
+                <SectionCanvas key="schedule" role={tc.sectionRoles?.schedule} sparse={scheduleSparse} colors={canvasColors}>
                 <SectionWrapper sectionKey="schedule">
                   <section>
-                    <SectionHeader title="Schedule" tc={tc} accentColor={color} />
                     {tc.sectionRoles ? (
-                      <ScheduleTimeline tc={tc} color={color} labelColor={tc.accent || color} items={items} />
+                      dateParts ? (
+                        // `lg:` (1024px viewport) — Schedule's canvas role is
+                        // "soft" (see SectionCanvas below), which paints its
+                        // full-bleed background using `w-screen`/`-mx-[50vw]`:
+                        // an intentional, pre-existing technique that always
+                        // measures the true browser viewport, never an
+                        // ancestor's rendered width. That makes a container
+                        // query no more (and no less) correct here than a
+                        // viewport breakpoint — both resolve identically on
+                        // the real public page, since `w-screen` guarantees
+                        // this section's content width already equals the
+                        // viewport at every real width. `lg:` is kept for
+                        // consistency with the rest of this file (Our Story's
+                        // EditorialOpening etc. all use viewport breakpoints).
+                        // Known limitation: Studio's mobile preview fakes
+                        // narrowness with a CSS-width-constrained container
+                        // inside a full desktop-width browser viewport, which
+                        // `w-screen` sees straight through — so this specific
+                        // "soft"-canvas section cannot be made to visually
+                        // collapse inside Studio's phone frame without either
+                        // a Studio-specific prop (explicitly out of scope —
+                        // "do not create a Studio-only Schedule renderer") or
+                        // changing SectionCanvas's shared full-bleed technique
+                        // (touches every "strong"/"soft" section on the page,
+                        // not just Schedule — out of this pass's scope). The
+                        // real guest-facing mobile page is unaffected — this
+                        // is a Studio-preview-only cosmetic gap.
+                        <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-16 lg:items-center">
+                          <div className="lg:col-span-7">{scheduleLeft}</div>
+                          {/* Mobile/tablet default is clean timeline first (Step 6) —
+                              the decorative date moment is a desktop-only field,
+                              not a shrunk-down copy stacked underneath. */}
+                          <div className="hidden lg:block lg:col-span-5">
+                            <ScheduleDateMoment tc={tc} color={tc.accent || color} day={dateParts.day} month={dateParts.month} year={dateParts.year} sparse={scheduleSparse} />
+                          </div>
+                        </div>
+                      ) : scheduleLeft
                     ) : (
-                      <SectionComposition recipe={tc} tc={tc} color={color} items={items} />
+                      <>
+                        <SectionHeader title="Schedule" tc={tc} accentColor={color} />
+                        <SectionComposition recipe={tc} tc={tc} color={color} items={items} />
+                      </>
                     )}
                   </section>
                 </SectionWrapper>
@@ -1678,7 +1808,7 @@ export function WeddingWebsite({
             <div style={{ height: "1px", width: "36px", background: `${color}50`, margin: "0 auto" }} />
             {eventDate && (
               <p style={{ fontFamily: tc.bodyFont, fontSize: "0.7rem", color: tc.textMuted, letterSpacing: "0.2em", textTransform: "uppercase", fontWeight: 400 }}>
-                {formatEventDate(eventDate)}
+                {eventDateLabel}
               </p>
             )}
             {content.event?.ceremony?.location && (
@@ -1725,7 +1855,7 @@ export function WeddingWebsite({
             <div className="flex items-baseline gap-5 mt-5 flex-wrap">
               {eventDate && (
                 <p style={{ fontFamily: tc.headingFont, fontSize: "1rem", opacity: 0.65 }}>
-                  {formatEventDate(eventDate)}
+                  {eventDateLabel}
                 </p>
               )}
               {du !== null && du > 0 && (
@@ -1770,7 +1900,7 @@ export function WeddingWebsite({
               </h1>
               {(eventDate || content.event?.ceremony?.location || site.venue?.name) && (
                 <p className="pt-5 text-base md:text-lg opacity-90" style={{ fontFamily: tc.headingFont, fontStyle: tc.headingItalic ? "italic" : "normal" }}>
-                  {[eventDate ? formatEventDate(eventDate) : null, content.event?.ceremony?.location ?? site.venue?.name ?? null]
+                  {[eventDateLabel, content.event?.ceremony?.location ?? site.venue?.name ?? null]
                     .filter(Boolean).join(" · ")}
                 </p>
               )}
@@ -1800,7 +1930,7 @@ export function WeddingWebsite({
             {eventDate && (
               <div className="pt-4 space-y-1">
                 <p style={{ fontFamily: tc.headingFont, fontSize: "1.15rem", fontStyle: tc.headingItalic ? "italic" : "normal" }}>
-                  {formatEventDate(eventDate)}
+                  {eventDateLabel}
                 </p>
                 {du !== null && du > 0 && (
                   <p className="text-sm opacity-60">{du} days to go</p>

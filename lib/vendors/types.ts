@@ -349,6 +349,7 @@ export type VendorDashboardEvent = {
   eventId:     string;
   eventName:   string;
   eventDate:   string | null;
+  eventEndDate: string | null;
   venueName:   string;
   arrivalTime: string | null;
 };
@@ -507,6 +508,7 @@ export type VendorEventListItem = {
   eventId:      string;
   eventName:    string;
   eventDate:    string | null;
+  eventEndDate: string | null;
   venueId:      string;
   venueName:    string;
   arrivalTime:  string | null;
@@ -526,6 +528,7 @@ export type VendorEventDetail = {
   eventId:        string;
   eventName:      string;
   eventDate:      string | null;
+  eventEndDate:   string | null;
   eventType:      string | null;
   venueName:      string;
   venueId:        string;

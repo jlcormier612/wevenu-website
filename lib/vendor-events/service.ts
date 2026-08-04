@@ -42,6 +42,7 @@ export async function getVendorEvents(): Promise<VendorEventListItem[]> {
 
   type Row = {
     assignment_id: string; event_id: string; event_name: string; event_date: string | null;
+    event_end_date: string | null;
     venue_id: string; venue_name: string; arrival_time: string | null; is_upcoming: boolean;
   };
 
@@ -54,6 +55,7 @@ export async function getVendorEvents(): Promise<VendorEventListItem[]> {
     eventId:      r.event_id,
     eventName:    r.event_name,
     eventDate:    r.event_date,
+    eventEndDate: r.event_end_date,
     venueId:      r.venue_id,
     venueName:    r.venue_name,
     arrivalTime:  r.arrival_time,
@@ -92,11 +94,11 @@ export async function getVendorEventDetail(
       share_couple_email: boolean; share_couple_phone: boolean;
       agreed_fee: number | null; payment_status: "pending" | "paid";
     } | null;
-    event: { id: string; name: string; event_date: string | null; event_type: string | null; venue_id: string; venue_name: string } | null;
+    event: { id: string; name: string; event_date: string | null; event_end_date: string | null; event_type: string | null; venue_id: string; venue_name: string } | null;
     client: { first_name: string | null; last_name: string | null; partner_first_name: string | null; partner_last_name: string | null; email: string | null; phone: string | null } | null;
     timeline: { id: string; entry_time: string | null; title: string; description: string | null; audiences: string[] }[];
     event_tasks: { id: string; title: string; description: string | null; category: string; visibility: string; due_date: string | null; status: string; is_required: boolean; completed_at: string | null }[];
-    documents: { id: string; name: string; category: string; storage_url: string; mime_type: string | null; notes: string | null }[];
+    documents: { id: string; name: string; category: string; storage_url: string; mime_type: string | null; notes: string | null; created_at?: string | null }[];
   };
 
   const { data, error } = await supabase.rpc("get_vendor_event_detail", { p_assignment_id: assignmentId });
@@ -158,9 +160,12 @@ export async function getVendorEventDetail(
     storageUrl: r.storage_url,
     mimeType:   r.mime_type,
     notes:      r.notes,
+    createdAt:  r.created_at ?? null,
   }));
 
-  // Activity feed: derive from tasks + docs sorted by time
+  // Activity feed: derive from tasks + docs sorted by time.
+  // Never emit epoch-zero timestamps (Dec 31, 1969 / Jan 1, 1970) — skip
+  // items without a real occurredAt when the RPC has not yet been migrated.
   const activityFeed: VendorActivityItem[] = [
     ...eventTasks
       .filter((t) => t.completedAt)
@@ -171,13 +176,19 @@ export async function getVendorEventDetail(
         occurredAt:  t.completedAt!,
         actor:       "venue" as const,
       })),
-    ...documents.map((d) => ({
-      id:          d.id,
-      type:        "document_upload" as const,
-      description: `Document shared: ${d.name}`,
-      occurredAt:  new Date(0).toISOString(),
-      actor:       "venue" as const,
-    })),
+    ...documents
+      .filter((d) => {
+        if (!d.createdAt) return false;
+        const ms = Date.parse(d.createdAt);
+        return Number.isFinite(ms) && ms > 0;
+      })
+      .map((d) => ({
+        id:          d.id,
+        type:        "document_upload" as const,
+        description: `Document shared: ${d.name}`,
+        occurredAt:  d.createdAt!,
+        actor:       "venue" as const,
+      })),
   ].sort((a, b) => b.occurredAt.localeCompare(a.occurredAt));
 
   const coupleName = clientDisplayName(
@@ -190,6 +201,7 @@ export async function getVendorEventDetail(
     eventId,
     eventName:       event.name,
     eventDate:       event.event_date,
+    eventEndDate:    event.event_end_date,
     eventType:       event.event_type,
     venueName:       event.venue_name,
     venueId:         event.venue_id,
@@ -237,6 +249,52 @@ export async function updateAssignmentNotes(
 }
 
 /**
+ * Vendor self check-in / setup complete. Writes the same
+ * checked_in_at / setup_complete_at columns the venue wedding-day board
+ * toggles — via SECURITY DEFINER RPC because assignment RLS is venue-only.
+ */
+export async function toggleAssignmentCheckin(
+  assignmentId: string,
+  field: "checked_in" | "setup_complete",
+): Promise<VendorActionResult & {
+  checkedInAt?: string | null;
+  setupCompleteAt?: string | null;
+}> {
+  const result = await withVendor(async (supabase) => {
+    const { data, error } = await supabase.rpc("vendor_toggle_assignment_checkin", {
+      p_assignment_id: assignmentId,
+      p_field: field,
+    });
+    if (error) {
+      return { ok: false, message: error.message } as VendorActionResult;
+    }
+    if (!data?.ok) {
+      const err = typeof data?.error === "string" ? data.error : "Could not update day-of status.";
+      return {
+        ok: false,
+        message:
+          err === "unauthorized"
+            ? "No vendor account found."
+            : err === "not_found"
+              ? "Assignment not found."
+              : err === "invalid_field"
+                ? "Invalid status field."
+                : "Could not update day-of status.",
+      } as VendorActionResult;
+    }
+    return {
+      ok: true,
+      checkedInAt: data.checkedInAt ?? undefined,
+      setupCompleteAt: data.setupCompleteAt ?? undefined,
+    };
+  });
+  return result as VendorActionResult & {
+    checkedInAt?: string | null;
+    setupCompleteAt?: string | null;
+  };
+}
+
+/**
  * Sprint 2 — Vendor Certification Pass. Two bugs fixed in one pass:
  * (1) the same RLS-blocks-silently-succeeds defect as updateAssignmentNotes
  * above, and (2) this never actually verified the task's event belonged to
@@ -268,7 +326,7 @@ export async function getVendorDocumentsAcrossEvents(): Promise<VendorDocumentsB
   const supabase = await createClient();
 
   type Row = {
-    assignmentId: string; eventId: string; eventName: string; eventDate: string | null; venueName: string;
+    assignmentId: string; eventId: string; eventName: string; eventDate: string | null; eventEndDate: string | null; venueName: string;
     documents: { id: string; name: string; category: string; storageUrl: string; mimeType: string | null; notes: string | null }[];
     floorPlans: { id: string; name: string }[];
   };
@@ -278,7 +336,8 @@ export async function getVendorDocumentsAcrossEvents(): Promise<VendorDocumentsB
   if (!data || "error" in data) return [];
 
   return ((data.events ?? []) as Row[]).map((r) => ({
-    assignmentId: r.assignmentId, eventId: r.eventId, eventName: r.eventName, eventDate: r.eventDate, venueName: r.venueName,
+    assignmentId: r.assignmentId, eventId: r.eventId, eventName: r.eventName,
+    eventDate: r.eventDate, eventEndDate: r.eventEndDate ?? null, venueName: r.venueName,
     documents: r.documents.map((d) => ({
       id: d.id, name: d.name, category: d.category, storageUrl: d.storageUrl, mimeType: d.mimeType, notes: d.notes,
     })),
@@ -298,7 +357,7 @@ export async function getVendorTimelineAcrossEvents(): Promise<VendorTimelineByE
   const supabase = await createClient();
 
   type Row = {
-    assignmentId: string; eventId: string; eventName: string; eventDate: string | null; venueName: string;
+    assignmentId: string; eventId: string; eventName: string; eventDate: string | null; eventEndDate: string | null; venueName: string;
     entries: { id: string; time: string | null; title: string; description: string | null }[];
   };
 
@@ -307,7 +366,8 @@ export async function getVendorTimelineAcrossEvents(): Promise<VendorTimelineByE
   if (!data || "error" in data) return [];
 
   return ((data.events ?? []) as Row[]).map((r) => ({
-    assignmentId: r.assignmentId, eventId: r.eventId, eventName: r.eventName, eventDate: r.eventDate, venueName: r.venueName,
+    assignmentId: r.assignmentId, eventId: r.eventId, eventName: r.eventName,
+    eventDate: r.eventDate, eventEndDate: r.eventEndDate ?? null, venueName: r.venueName,
     entries: r.entries.map((e) => ({ id: e.id, time: e.time, title: e.title, description: e.description, audiences: ["vendors"] })),
   }));
 }

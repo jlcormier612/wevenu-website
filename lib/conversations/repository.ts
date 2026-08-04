@@ -17,6 +17,8 @@ import type {
   ConversationSummary,
   PortalConversationDetail,
   PortalConversationMessage,
+  PortalCoupleVendorConversationDetail,
+  PortalCoupleVendorConversationSummary,
   VendorConversationDetail,
   VendorConversationMessage,
   VendorConversationSummary,
@@ -392,10 +394,14 @@ export async function getVendorRelationshipRollup(
 type VendorInboxRow = {
   conversation_id: string; event_id: string; event_name: string; event_date: string | null;
   last_message_at: string | null; contact_unread: number;
+  conversation_kind: "venue_vendor" | "couple_vendor";
+  counterparty_label: "Venue" | "Couple";
+  venue_name: string | null;
+  couple_name: string | null;
   latest_message: { body: string; sender_type: ConversationMessagePreview["senderType"]; sent_at: string } | null;
 };
 
-/** Vendor side — the vendor portal's event-grouped Messages inbox. */
+/** Vendor side — the vendor portal's Messages inbox (Venue + Couple threads). */
 export async function getVendorConversationInbox(
   client: DbClient,
 ): Promise<{ conversations: VendorConversationSummary[]; totalUnread: number }> {
@@ -407,6 +413,10 @@ export async function getVendorConversationInbox(
     conversations: rows.map((r): VendorConversationSummary => ({
       conversationId: r.conversation_id, eventId: r.event_id, eventName: r.event_name, eventDate: r.event_date,
       lastMessageAt: r.last_message_at, contactUnread: r.contact_unread,
+      conversationKind: r.conversation_kind ?? "venue_vendor",
+      counterpartyLabel: r.counterparty_label ?? (r.conversation_kind === "couple_vendor" ? "Couple" : "Venue"),
+      venueName: r.venue_name ?? null,
+      coupleName: r.couple_name ?? null,
       latestMessage: r.latest_message
         ? { body: r.latest_message.body, senderType: r.latest_message.sender_type, sentAt: r.latest_message.sent_at, channel: "portal" }
         : null,
@@ -427,12 +437,21 @@ export async function getVendorConversation(
     contact_read_at: string | null; venue_read_at: string | null;
     attachments: { id: string; fileUrl: string; fileName: string; fileSize: number | null; mimeType: string | null }[];
   };
+  const kind = (data.conversation_kind as "venue_vendor" | "couple_vendor" | undefined) ?? null;
   const messages = ((data.messages ?? []) as Row[]).map((m): VendorConversationMessage => ({
     id: m.id, senderType: m.sender_type, body: m.body, sentAt: m.sent_at,
     contactReadAt: m.contact_read_at, venueReadAt: m.venue_read_at,
     attachments: m.attachments ?? [],
   }));
-  return { conversationId: data.conversation_id, messages };
+  return {
+    conversationId: data.conversation_id,
+    conversationKind: kind,
+    eventName: null,
+    venueName: null,
+    coupleName: null,
+    counterpartyLabel: kind === "couple_vendor" ? "Couple" : kind === "venue_vendor" ? "Venue" : null,
+    messages,
+  };
 }
 
 export async function sendVendorConversationMessage(
@@ -463,4 +482,89 @@ export async function addVendorConversationMessageAttachment(
   });
   if (error) throw error;
   return { ok: data?.ok ?? false, attachmentId: data?.attachment_id, error: data?.error };
+}
+
+// ── Couple ↔ vendor (portal token) ────────────────────────────────────────────
+
+export async function getPortalCoupleVendorConversations(
+  client: DbClient,
+  token: string,
+  clientId: string,
+): Promise<{ conversations: PortalCoupleVendorConversationSummary[]; totalUnread: number }> {
+  const { data, error } = await client.rpc("get_portal_couple_vendor_conversations", {
+    p_access_token: token,
+    p_client_id: clientId,
+  });
+  if (error) throw error;
+  if (!data || "error" in data) return { conversations: [], totalUnread: 0 };
+  type Row = {
+    conversation_id: string; assignment_id: string; vendor_id: string;
+    vendor_name: string; vendor_category: string | null;
+    last_message_at: string | null; couple_unread: number;
+    latest_message: { body: string; sender_type: ConversationMessagePreview["senderType"]; sent_at: string } | null;
+  };
+  const rows = (data.conversations ?? []) as Row[];
+  return {
+    conversations: rows.map((r): PortalCoupleVendorConversationSummary => ({
+      conversationId: r.conversation_id,
+      assignmentId: r.assignment_id,
+      vendorId: r.vendor_id,
+      vendorName: r.vendor_name,
+      vendorCategory: r.vendor_category,
+      lastMessageAt: r.last_message_at,
+      coupleUnread: r.couple_unread ?? 0,
+      latestMessage: r.latest_message
+        ? { body: r.latest_message.body, senderType: r.latest_message.sender_type, sentAt: r.latest_message.sent_at, channel: "portal" }
+        : null,
+    })),
+    totalUnread: data.total_unread ?? 0,
+  };
+}
+
+export async function getPortalCoupleVendorConversation(
+  client: DbClient,
+  token: string,
+  clientId: string,
+  conversationId: string,
+): Promise<PortalCoupleVendorConversationDetail | { error: string }> {
+  const { data, error } = await client.rpc("get_portal_couple_vendor_conversation", {
+    p_access_token: token,
+    p_client_id: clientId,
+    p_conversation_id: conversationId,
+  });
+  if (error) throw error;
+  if (!data || "error" in data) return { error: data?.error ?? "not_found" };
+  type Row = {
+    id: string; sender_type: PortalConversationMessage["senderType"]; body: string; sent_at: string;
+    contact_read_at: string | null; venue_read_at: string | null;
+    attachments: { id: string; fileUrl: string; fileName: string; fileSize: number | null; mimeType: string | null }[];
+  };
+  return {
+    conversationId: data.conversation_id,
+    vendorName: data.vendor_name ?? "Vendor",
+    messages: ((data.messages ?? []) as Row[]).map((m): PortalConversationMessage => ({
+      id: m.id, senderType: m.sender_type, body: m.body, sentAt: m.sent_at,
+      contactReadAt: m.contact_read_at, venueReadAt: m.venue_read_at,
+      attachments: m.attachments ?? [],
+    })),
+  };
+}
+
+export async function sendPortalCoupleVendorMessage(
+  client: DbClient,
+  token: string,
+  clientId: string,
+  conversationId: string,
+  body: string,
+  hasAttachment = false,
+): Promise<{ ok: boolean; messageId?: string; error?: string }> {
+  const { data, error } = await client.rpc("send_portal_couple_vendor_message", {
+    p_access_token: token,
+    p_client_id: clientId,
+    p_conversation_id: conversationId,
+    p_body: body,
+    p_has_attachment: hasAttachment,
+  });
+  if (error) throw error;
+  return { ok: data?.ok ?? false, messageId: data?.message_id, error: data?.error };
 }

@@ -474,9 +474,62 @@ export function ScheduleTimeline({ tc, color, labelColor, items }: { tc: Composi
   );
 }
 
+// ── Schedule Date Moment — the desktop composition's right field. Purely
+// decorative editorial typography derived from the page's own authoritative
+// event date (never a second date source, never hand-entered) — it fills
+// the wide desktop canvas beside the timeline with restrained hierarchy,
+// not another card or image. Day number stays deliberately lower-contrast
+// than the timeline's own text so it reads as atmosphere, not competing
+// content. Caller omits this entirely when no date exists — this component
+// never fabricates one.
+export function ScheduleDateMoment({
+  tc, color, day, month, year, sparse,
+}: {
+  tc: CompositionTheme; color: string; day: string; month: string; year: string;
+  /** A 1-2 item schedule reads as sparse — the day number scales down with
+   * it, same threshold SectionCanvas already uses, so a short schedule
+   * never gets stretched taller just to match a decorative block that
+   * assumed a fuller timeline. */
+  sparse?: boolean;
+}) {
+  return (
+    <div className="text-center lg:text-left">
+      <p style={{
+        fontFamily: tc.headingFont, fontStyle: tc.headingItalic ? "italic" : "normal",
+        fontSize: sparse ? "clamp(3rem, 6vw, 4.5rem)" : "clamp(5rem, 9vw, 8.5rem)", lineHeight: 0.9,
+        color: `${tc.text}25`,
+      }}>
+        {day}
+      </p>
+      <p style={{
+        fontFamily: tc.bodyFont, color, fontSize: "0.95rem", fontWeight: 600,
+        letterSpacing: "0.3em", textTransform: "uppercase", marginTop: "0.5rem",
+      }}>
+        {month}
+      </p>
+      <p style={{
+        fontFamily: tc.bodyFont, color: tc.textMuted, fontSize: "0.8rem",
+        letterSpacing: "0.15em", marginTop: "0.25rem",
+      }}>
+        {year}
+      </p>
+    </div>
+  );
+}
+
 // ── Editorial Opening — Our Story as the page's emotional opening spread ──
 // Asymmetric: a narrow heading column beside a measured-width prose column,
 // with an optional couple photograph never forced when none exists.
+//
+// Text-only mode (Our Story Image Ownership fix) is its own deliberate
+// composition, not "the same grid with the image column deleted": the
+// heading column gets Coastal's own short accent bar (the same motif
+// `headerStyle: "coastal"` uses elsewhere) so it still reads as Coastal
+// with no photo present, and the text column is intentionally narrower
+// than the leftover space — a comfortable reading measure plus an
+// asymmetric right margin, the same "confident negative space" move the
+// Magazine gallery's 1-photo layout already uses, rather than stretching
+// prose edge-to-edge into a generic content block.
 export function EditorialOpening({
   tc, color, labelColor, eyebrow, heading, text, photoUrl,
 }: {
@@ -485,8 +538,9 @@ export function EditorialOpening({
   const lc = labelColor ?? color;
   return (
     <div className="grid grid-cols-1 md:grid-cols-12 gap-8 md:gap-12 md:items-start">
-      <div className={photoUrl ? "md:col-span-4" : "md:col-span-4"}>
+      <div className="md:col-span-4">
         {eyebrow && <p className="text-[10px] font-semibold uppercase tracking-[0.25em] mb-3" style={{ color: `${lc}95` }}>{eyebrow}</p>}
+        {!photoUrl && <div style={{ height: "3px", width: "28px", background: color, marginBottom: "14px", borderRadius: "2px" }} />}
         <h2 style={{
           fontFamily: tc.headingFont, fontStyle: tc.headingItalic ? "italic" : "normal",
           color: tc.text, fontSize: "clamp(1.7rem, 3.4vw, 2.4rem)", lineHeight: 1.15,
@@ -494,7 +548,7 @@ export function EditorialOpening({
           {heading}
         </h2>
       </div>
-      <div className={photoUrl ? "md:col-span-5" : "md:col-span-8"}>
+      <div className={photoUrl ? "md:col-span-5" : "md:col-span-6"}>
         <p style={{ fontFamily: tc.bodyFont, color: tc.textMuted, fontSize: "1rem", lineHeight: 1.9 }}>{text}</p>
       </div>
       {photoUrl && (

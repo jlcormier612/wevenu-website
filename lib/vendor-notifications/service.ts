@@ -1,0 +1,53 @@
+/**
+ * Vendor in-app notification center — inbox RPCs over vendor_notifications.
+ * Writes are produced by DB triggers (assignment, message, task, share).
+ */
+import { createClient } from "@/integrations/supabase/server";
+import { isSupabaseConfigured } from "@/lib/env";
+import type { VendorNotification, VendorNotificationsResponse } from "./types";
+
+export async function getVendorNotifications(
+  limit = 40,
+): Promise<VendorNotificationsResponse> {
+  if (!isSupabaseConfigured) return { notifications: [], unreadCount: 0 };
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("get_vendor_notifications", {
+    p_limit: limit,
+  });
+
+  if (error) {
+    console.error("[getVendorNotifications]", error.message);
+    return { notifications: [], unreadCount: 0 };
+  }
+
+  const result = data as {
+    notifications?: VendorNotification[];
+    unreadCount?: number;
+    error?: string;
+  } | null;
+
+  if (result?.error) return { notifications: [], unreadCount: 0 };
+
+  return {
+    notifications: result?.notifications ?? [],
+    unreadCount: result?.unreadCount ?? 0,
+  };
+}
+
+export async function markVendorNotificationsRead(
+  ids: string[] = [],
+): Promise<{ ok: boolean }> {
+  if (!isSupabaseConfigured) return { ok: false };
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("mark_vendor_notifications_read", {
+    p_notification_ids: ids,
+  });
+
+  if (error) {
+    console.error("[markVendorNotificationsRead]", error.message);
+    return { ok: false };
+  }
+
+  const result = data as { ok?: boolean } | null;
+  return { ok: result?.ok ?? false };
+}

@@ -67,7 +67,7 @@ import type { TimelineTemplate } from "@/lib/timeline-templates/types";
 import {
   EVENT_STATUSES,
   daysUntil,
-  formatDate,
+  formatEventDateRange,
   formatTime,
 } from "@/lib/events/constants";
 import type { EventWithDetails } from "@/lib/events/types";
@@ -136,6 +136,10 @@ function EventHeroCard({ event }: { event: EventWithDetails }) {
   const dayName = new Date(event.eventDate + "T12:00:00").toLocaleDateString("en-US", {
     weekday: "long",
   });
+  const multiDay = Boolean(event.eventEndDate && event.eventEndDate !== event.eventDate);
+  const endDayName = multiDay
+    ? new Date(event.eventEndDate! + "T12:00:00").toLocaleDateString("en-US", { weekday: "long" })
+    : null;
 
   const days = daysUntil(event.eventDate);
   const urgent = days >= 0 && days <= 14;
@@ -144,10 +148,10 @@ function EventHeroCard({ event }: { event: EventWithDetails }) {
     <Card className="border-primary/20 bg-primary/5">
       <CardContent className="py-8 text-center space-y-3">
         <p className="font-heading text-5xl font-medium tracking-tight text-heading">
-          {formatDate(event.eventDate)}
+          {formatEventDateRange(event.eventDate, event.eventEndDate)}
         </p>
         <p className="text-muted-foreground">
-          {dayName}
+          {multiDay ? `${dayName} – ${endDayName}` : dayName}
           {countdown ? (
             <span className={urgent ? " · font-semibold text-destructive" : " · text-muted-foreground"}>
               {" "}· {countdown}
@@ -306,6 +310,11 @@ export function EventDetail({
     const syncFromHash = () => {
       const hash = window.location.hash.replace("#", "");
       if (hash) setActiveTab(hash);
+      // Vendor-thread deep links: /events/{id}?conversation=… → /clients/…?conversation=…
+      // Server redirects drop #vendors; open Vendors when a thread id is present.
+      else if (new URLSearchParams(window.location.search).get("conversation")) {
+        setActiveTab("vendors");
+      }
     };
     syncFromHash();
     // An Interactive Planning Task's "Open X" button sets the hash while
@@ -528,7 +537,7 @@ export function EventDetail({
               <CardHeader><CardTitle className="text-base">Event summary</CardTitle></CardHeader>
               <CardContent className="space-y-3">
                 {[
-                  { icon: Calendar, label: "Date", value: formatDate(event.eventDate) },
+                  { icon: Calendar, label: "Date", value: formatEventDateRange(event.eventDate, event.eventEndDate) },
                   { icon: Clock, label: "Start", value: formatTime(event.startTime) },
                   { icon: Clock, label: "End", value: formatTime(event.endTime) },
                   { icon: Wrench, label: "Setup", value: formatTime(event.setupTime) },

@@ -91,6 +91,9 @@ export type PortalConversationResult =
 
 // ── RC2, Milestone 3 — vendor conversations (event-anchored) ────────────────
 
+/** Pairwise conversation kinds. couple_vendor is assignment-anchored too. */
+export type ConversationKind = "venue_couple" | "venue_vendor" | "couple_vendor";
+
 /** One event-anchored vendor conversation, as seen from the venue side's rollup. */
 export type VendorRollupConversation = {
   conversationId: string;
@@ -102,7 +105,7 @@ export type VendorRollupConversation = {
   latestMessage: ConversationMessagePreview | null;
 };
 
-/** The vendor portal's inbox row — one per event they're assigned to. */
+/** The vendor portal's inbox row — venue↔vendor and couple↔vendor per event. */
 export type VendorConversationSummary = {
   conversationId: string;
   eventId: string;
@@ -110,6 +113,10 @@ export type VendorConversationSummary = {
   eventDate: string | null;
   lastMessageAt: string | null;
   contactUnread: number;
+  conversationKind: "venue_vendor" | "couple_vendor";
+  counterpartyLabel: "Venue" | "Couple";
+  venueName: string | null;
+  coupleName: string | null;
   latestMessage: ConversationMessagePreview | null;
 };
 
@@ -125,9 +132,36 @@ export type VendorConversationMessage = {
 
 export type VendorConversationDetail = {
   conversationId: string;
+  conversationKind: "venue_vendor" | "couple_vendor" | null;
+  eventName: string | null;
+  venueName: string | null;
+  coupleName: string | null;
+  counterpartyLabel: "Venue" | "Couple" | null;
   messages: VendorConversationMessage[];
 };
 
 export type VendorConversationResult =
   | { ok: true; conversation: VendorConversationDetail }
+  | { ok: false; message: string };
+
+/** Couple portal — one assigned vendor's couple↔vendor thread. */
+export type PortalCoupleVendorConversationSummary = {
+  conversationId: string;
+  assignmentId: string;
+  vendorId: string;
+  vendorName: string;
+  vendorCategory: string | null;
+  lastMessageAt: string | null;
+  coupleUnread: number;
+  latestMessage: ConversationMessagePreview | null;
+};
+
+export type PortalCoupleVendorConversationDetail = {
+  conversationId: string;
+  vendorName: string;
+  messages: PortalConversationMessage[];
+};
+
+export type PortalCoupleVendorConversationResult =
+  | { ok: true; conversation: PortalCoupleVendorConversationDetail }
   | { ok: false; message: string };

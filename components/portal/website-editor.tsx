@@ -250,8 +250,8 @@ function HomeEditor({ content, onSave, onCancel, token, suggestions, lastSyncedA
   );
 }
 
-function StoryEditor({ content, onSave, onCancel, suggestions, lastSyncedAt, onRefresh, onSynced }: {
-  content: WebsiteContent; onSave: (v: object) => void | Promise<void>; onCancel: () => void;
+function StoryEditor({ content, onSave, onCancel, token, suggestions, lastSyncedAt, onRefresh, onSynced }: {
+  content: WebsiteContent; onSave: (v: object) => void | Promise<void>; onCancel: () => void; token: string;
   suggestions?: WebsiteSuggestions | null;
   lastSyncedAt?: string | null;
   onRefresh?: () => Promise<WebsiteSuggestions | null>;
@@ -260,6 +260,7 @@ function StoryEditor({ content, onSave, onCancel, suggestions, lastSyncedAt, onR
   const story = (content as any).story ?? {};
   const [title, setTitle] = React.useState(story.title ?? "How We Met");
   const [text, setText] = React.useState(story.text ?? "");
+  const [imageUrl, setImageUrl] = React.useState(story.imageUrl ?? "");
   const [refreshing, setRefreshing] = React.useState(false);
   const [justAccepted, setJustAccepted] = React.useState(false);
 
@@ -283,7 +284,7 @@ function StoryEditor({ content, onSave, onCancel, suggestions, lastSyncedAt, onR
   }
 
   async function handleSave() {
-    await onSave({ title, text });
+    await onSave({ title, text, imageUrl: imageUrl || undefined });
     if (justAccepted) onSynced?.();
   }
 
@@ -320,6 +321,25 @@ function StoryEditor({ content, onSave, onCancel, suggestions, lastSyncedAt, onR
 
       <Field label="Section title" value={title} onChange={setTitle} placeholder="How We Met" />
       <TextareaField label="Your story" value={text} onChange={setText} placeholder="We met at a coffee shop in Nashville on a rainy Tuesday morning…" rows={5} />
+
+      {/* ── Story photo — its own dedicated, optional image. Never the
+          gallery's first photo, never the cover/hero photo: a couple
+          shouldn't have to know "my first gallery photo secretly becomes
+          my Our Story photo." ── */}
+      <div className="space-y-1.5">
+        <p className="text-[11px] font-medium text-muted-foreground">Story photo (optional)</p>
+        <p className="text-[10px] text-muted-foreground -mt-1">Add a favorite photo to appear with your story.</p>
+        {imageUrl && (
+          <div className="relative rounded-xl overflow-hidden h-24 bg-muted group">
+            <img src={imageUrl} alt="Story photo" className="w-full h-full object-cover" />
+            <button type="button" onClick={() => setImageUrl("")}
+              className="absolute top-2 right-2 h-6 w-6 rounded-full bg-black/60 items-center justify-center text-white hidden group-hover:flex">
+              <X className="h-3 w-3" />
+            </button>
+          </div>
+        )}
+        <PhotoUpload token={token} type="story" label="a photo" onUploaded={setImageUrl} />
+      </div>
 
       {/* ── Re-sync prompt when editing a customized story ── */}
       {!showSyncPrompt && profileStory && story.text && story.text !== profileStory && (
@@ -1003,7 +1023,7 @@ function SectionAccordion({
       case "home":         return <HomeEditor {...props} token={token} suggestions={suggestions}
                                      lastSyncedAt={lastSyncedAt} onRefresh={onRefreshSuggestions}
                                      onSynced={() => onSectionSynced?.("home")} />;
-      case "story":        return <StoryEditor {...props} suggestions={suggestions}
+      case "story":        return <StoryEditor {...props} token={token} suggestions={suggestions}
                                      lastSyncedAt={lastSyncedAt} onRefresh={onRefreshSuggestions}
                                      onSynced={() => onSectionSynced?.("story")} />;
       case "event":        return <EventEditor {...props} suggestions={suggestions} />;

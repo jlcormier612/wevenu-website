@@ -56,12 +56,24 @@ const GROUP_LABELS: Record<Group, string> = {
   complete:  "Completed",
 };
 
-export function VendorTasksList({ tasks }: { tasks: VendorPersonalTask[] }) {
+export function VendorTasksList({
+  tasks,
+  focusTaskId = null,
+}: {
+  tasks: VendorPersonalTask[];
+  focusTaskId?: string | null;
+}) {
   const [pending, startTransition] = useTransition();
   const [showForm, setShowForm]    = React.useState(false);
   const [newTitle, setNewTitle]    = React.useState("");
   const [newDue, setNewDue]        = React.useState("");
   const [formError, setFormError]  = React.useState<string | null>(null);
+  const focusRef = React.useRef<HTMLDivElement | null>(null);
+
+  React.useEffect(() => {
+    if (!focusTaskId || !focusRef.current) return;
+    focusRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
+  }, [focusTaskId]);
 
   function handleToggle(t: VendorPersonalTask) {
     startTransition(async () => {
@@ -180,7 +192,14 @@ export function VendorTasksList({ tasks }: { tasks: VendorPersonalTask[] }) {
             </h2>
             <div className="rounded-xl border border-border bg-card divide-y divide-border">
               {items.map((t) => (
-                <div key={t.id} className="flex items-start gap-3 px-4 py-3 group">
+                <div
+                  key={t.id}
+                  id={`task-${t.id}`}
+                  ref={focusTaskId === t.id ? focusRef : undefined}
+                  className={`flex items-start gap-3 px-4 py-3 group ${
+                    focusTaskId === t.id ? "bg-primary/5 ring-1 ring-inset ring-primary/30" : ""
+                  }`}
+                >
                   <button
                     type="button"
                     onClick={() => handleToggle(t)}

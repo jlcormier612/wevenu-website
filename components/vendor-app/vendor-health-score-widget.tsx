@@ -1,3 +1,8 @@
+/**
+ * Legacy Business Health Score widget — orphaned from vendor nav/Home/Luv.
+ * CRM marketplace health is not Luv's job on the vendor portal. Kept only
+ * so historical imports don't break; do not wire into Luv surfaces.
+ */
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import type { VendorHealthScore } from "@/lib/vendors/types";
 

@@ -25,6 +25,39 @@ export function formatDate(iso: string | null | undefined): string {
   });
 }
 
+/** Single day, or "June 5 – June 7, 2026" when end is after start. */
+export function formatEventDateRange(
+  start: string | null | undefined,
+  end?: string | null | undefined,
+): string {
+  if (!start) return "";
+  if (!end || end === start) return formatDate(start);
+  return `${formatDate(start)} – ${formatDate(end)}`;
+}
+
+/** Short range for compact lists (e.g. "Fri, Jun 5 – Sun, Jun 7"). */
+export function formatEventDateRangeShort(
+  start: string | null | undefined,
+  end?: string | null | undefined,
+): string {
+  if (!start) return "";
+  const fmt = (iso: string) => {
+    const [y, m, d] = iso.split("-");
+    return new Date(Number(y), Number(m) - 1, Number(d)).toLocaleDateString("en-US", {
+      weekday: "short", month: "short", day: "numeric",
+    });
+  };
+  if (!end || end === start) return fmt(start);
+  return `${fmt(start)} – ${fmt(end)}`;
+}
+
+/** Persist null for single-day (empty or equal to start). */
+export function normalizeEventEndDate(start: string, end: string | null | undefined): string | null {
+  const trimmed = (end ?? "").trim();
+  if (!trimmed || trimmed === start) return null;
+  return trimmed;
+}
+
 export function formatTime(hhmm: string | null | undefined): string {
   if (!hhmm) return "";
   const [h, m] = hhmm.split(":");
@@ -47,6 +80,7 @@ export function createInitialEventInput(
     name: string;
     eventType: string;
     eventDate: string;
+    eventEndDate: string | null;
     guestCount: number | null;
     clientId: string;
     spaceId: string | null;
@@ -56,6 +90,7 @@ export function createInitialEventInput(
     name: source?.name ?? "",
     eventType: source?.eventType ?? "",
     eventDate: source?.eventDate ?? "",
+    eventEndDate: source?.eventEndDate ?? "",
     startTime: "",
     endTime: "",
     setupTime: "",
@@ -71,6 +106,7 @@ export function eventInputFromVenueEvent(ev: VenueEvent): EventInput {
     name: ev.name,
     eventType: ev.eventType ?? "",
     eventDate: ev.eventDate,
+    eventEndDate: ev.eventEndDate ?? "",
     startTime: ev.startTime ?? "",
     endTime: ev.endTime ?? "",
     setupTime: ev.setupTime ?? "",

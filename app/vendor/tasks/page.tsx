@@ -7,9 +7,13 @@ import { getVendorTasks } from "@/lib/vendor-tasks/service";
 
 export const metadata: Metadata = { title: "Tasks — Vendor Portal" };
 
-export default async function VendorTasksPage() {
+type Props = { searchParams: Promise<{ focus?: string }> };
+
+export default async function VendorTasksPage({ searchParams }: Props) {
   const vendorUser = await getVendorUser();
   if (!vendorUser) redirect("/login");
+
+  const { focus } = await searchParams;
 
   // Vendor Workspace Realignment, Phase 6 (2026-07-22): Inquiries (the lead
   // pipeline) dropped from the portal per the Phase 1 audit — a personal
@@ -17,5 +21,5 @@ export default async function VendorTasksPage() {
   // way back to its context, so those rows are excluded here rather than
   // left dangling. The vendor_tasks rows themselves are untouched.
   const tasks = (await getVendorTasks(vendorUser.vendorId)).filter((t) => !t.vendorInquiryId);
-  return <VendorTasksList tasks={tasks} />;
+  return <VendorTasksList tasks={tasks} focusTaskId={focus ?? null} />;
 }

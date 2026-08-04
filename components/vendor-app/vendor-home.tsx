@@ -1,11 +1,16 @@
 "use client";
 
 import Link from "next/link";
-import { CalendarDays, MessageSquare, CheckSquare, Clock, FileText } from "lucide-react";
+import { useTransition } from "react";
+import { CalendarDays, MessageSquare, CheckSquare, Circle, Clock, FileText } from "lucide-react";
 
+import { completeVendorTaskAction } from "@/app/vendor/tasks/actions";
 import { formatTime } from "@/lib/vendors/constants";
 import type { VendorHomeData } from "@/lib/vendor-home/service";
+import type { LuvBriefing } from "@/lib/luv/briefing-types";
 import { VendorVenueHero } from "@/components/vendor-app/vendor-venue-hero";
+import { VendorLuvBriefing } from "@/components/vendor-app/vendor-luv-briefing";
+import { VendorLuvIntro } from "@/components/vendor-app/vendor-luv-intro";
 import type { VendorActiveVenueContext, VendorPartnership } from "@/lib/vendors/types";
 
 function formatDate(iso: string | null): string {
@@ -54,14 +59,31 @@ function Card({ icon: Icon, title, href, count, children }: {
  * substance, just reordered per the directive's own list: Upcoming Events,
  * Outstanding Tasks, Messages, then Coming Up/Documents ("Recent Activity").
  */
-export function VendorHome({ greetingName, data, activeVenue, partnerships, vendorCategory }: {
+export function VendorHome({ greetingName, data, briefing, showLuvIntro, activeVenue, partnerships, vendorCategory }: {
   greetingName: string;
   data: VendorHomeData;
+  briefing: LuvBriefing;
+  showLuvIntro: boolean;
   activeVenue: VendorActiveVenueContext;
   partnerships: VendorPartnership[];
   vendorCategory: string | null;
 }) {
-  const nothingToday = data.eventsToday.length === 0 && data.unreadConversations.length === 0 && data.tasksDue.length === 0;
+  const [pending, startTransition] = useTransition();
+
+  // Only show the empty state when nothing on Home needs attention —
+  // including Coming Up and Documents, not just today's action queue.
+  const nothingNeedsAttention =
+    data.eventsToday.length === 0 &&
+    data.unreadConversations.length === 0 &&
+    data.tasksDue.length === 0 &&
+    data.nextTimeline.length === 0 &&
+    data.recentDocuments.length === 0;
+
+  function handleCompleteTask(taskId: string) {
+    startTransition(async () => {
+      await completeVendorTaskAction(taskId);
+    });
+  }
 
   return (
     <div className="space-y-6">
@@ -72,9 +94,14 @@ export function VendorHome({ greetingName, data, activeVenue, partnerships, vend
         </p>
       </div>
 
+      <VendorLuvIntro show={showLuvIntro} />
+
       <VendorVenueHero initialVenue={activeVenue} partnerships={partnerships} vendorCategory={vendorCategory} allEvents={data.allEvents} />
 
-      {nothingToday && (
+      {/* Same Luv Daily Briefing job as venue Today — compact on Home */}
+      <VendorLuvBriefing briefing={briefing} compact />
+
+      {nothingNeedsAttention && (
         <div className="rounded-xl border border-dashed border-border py-8 text-center">
           <p className="text-sm font-medium text-foreground">Nothing needs your attention today</p>
           <p className="text-xs text-muted-foreground mt-1">You&apos;re all caught up.</p>
@@ -98,14 +125,28 @@ export function VendorHome({ greetingName, data, activeVenue, partnerships, vend
         </Card>
       )}
 
-      {/* What tasks are due */}
+      {/* What tasks are due — completable inline, or open Tasks with context */}
       {data.tasksDue.length > 0 && (
         <Card icon={CheckSquare} title="Outstanding Tasks" href="/vendor/tasks" count={data.tasksDue.length}>
           <div className="divide-y divide-border">
             {data.tasksDue.slice(0, 5).map((t) => (
-              <div key={t.id} className="flex items-center justify-between gap-4 px-4 py-3">
-                <p className="text-sm text-foreground truncate">{t.title}</p>
-                {t.dueDate && <p className="text-xs text-muted-foreground shrink-0">{formatDate(t.dueDate)}</p>}
+              <div key={t.id} className="flex items-center gap-3 px-4 py-3">
+                <button
+                  type="button"
+                  onClick={() => handleCompleteTask(t.id)}
+                  disabled={pending}
+                  className="shrink-0 text-muted-foreground hover:text-primary transition-colors"
+                  aria-label={`Mark "${t.title}" complete`}
+                >
+                  <Circle className="h-4 w-4" />
+                </button>
+                <Link
+                  href={`/vendor/tasks?focus=${encodeURIComponent(t.id)}`}
+                  className="min-w-0 flex-1 flex items-center justify-between gap-4 hover:opacity-80 transition-opacity"
+                >
+                  <p className="text-sm text-foreground truncate">{t.title}</p>
+                  {t.dueDate && <p className="text-xs text-muted-foreground shrink-0">{formatDate(t.dueDate)}</p>}
+                </Link>
               </div>
             ))}
           </div>
@@ -119,7 +160,10 @@ export function VendorHome({ greetingName, data, activeVenue, partnerships, vend
             {data.unreadConversations.slice(0, 5).map((c) => (
               <Link key={c.conversationId} href={`/vendor/messages/${c.conversationId}`} className="flex items-center justify-between gap-4 px-4 py-3 hover:bg-muted/40 transition-colors">
                 <div className="min-w-0">
-                  <p className="text-sm font-medium text-foreground truncate">{c.eventName}</p>
+                  <p className="text-sm font-medium text-foreground truncate">
+                    {c.eventName}
+                    <span className="ml-1.5 font-normal text-muted-foreground">· {c.counterpartyLabel}</span>
+                  </p>
                   {c.latestMessage && <p className="text-xs text-muted-foreground truncate">{c.latestMessage.body}</p>}
                 </div>
                 <span className="h-5 min-w-5 shrink-0 rounded-full bg-primary px-1.5 text-[10px] font-bold text-primary-foreground flex items-center justify-center">

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { createClient } from "@/integrations/supabase/server";
 import { isSupabaseConfigured } from "@/lib/env";
 import { ClaimButton } from "@/components/vendor-app/claim-button";
+import { VendorAcceptUnauthPanel } from "@/components/vendor-app/vendor-accept-unauth-panel";
 
 export const metadata: Metadata = { title: "Accept Invitation — Hello to Cheers" };
 
@@ -24,19 +25,26 @@ export default async function VendorAcceptPage({ searchParams }: Props) {
     return <InvalidToken />;
   }
 
-  const { data: { user } } = isSupabaseConfigured
-    ? await supabase.auth.getUser()
-    : { data: { user: null } };
+  const [{ data: { user } }, { data: invitePreview }] = isSupabaseConfigured
+    ? await Promise.all([
+        supabase.auth.getUser(),
+        supabase.rpc("get_invitation_preview", { p_token: token }),
+      ])
+    : [{ data: { user: null } }, { data: null }];
 
   const vendorName = vendor.businessName ?? "your business";
   const category   = vendor.category ?? null;
+  const inviteEmail =
+    invitePreview && typeof invitePreview === "object" && "email" in invitePreview
+      ? String((invitePreview as { email?: string }).email ?? "").trim() || null
+      : null;
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-muted/30 p-4">
       <div className="w-full max-w-md bg-background border border-border rounded-2xl p-8 shadow-sm space-y-6">
         <div className="space-y-1">
           <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
-            You've been invited
+            You&apos;ve been invited
           </p>
           <h1 className="text-2xl font-bold text-foreground">{vendorName}</h1>
           {category && (
@@ -52,17 +60,7 @@ export default async function VendorAcceptPage({ searchParams }: Props) {
         {user ? (
           <ClaimButton token={token} />
         ) : (
-          <div className="space-y-3">
-            <p className="text-sm text-muted-foreground">
-              Sign in or create an account to claim this profile.
-            </p>
-            <a
-              href={`/login?next=${encodeURIComponent(`/vendor/accept?token=${token}`)}`}
-              className="block w-full text-center rounded-lg bg-foreground text-background font-semibold py-3 text-sm hover:opacity-90 transition-opacity"
-            >
-              Sign in or Create Account
-            </a>
-          </div>
+          <VendorAcceptUnauthPanel token={token} inviteEmail={inviteEmail} />
         )}
       </div>
     </div>

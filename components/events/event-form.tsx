@@ -51,10 +51,26 @@ export function EventFormFields({
             <SelectContent>{EVENT_TYPES.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent>
           </Select>
         </Field>
-        <Field label="Event date" htmlFor="ed" required error={errors.eventDate}>
+        <Field label="Start date" htmlFor="ed" required error={errors.eventDate}>
           <Input id="ed" type="date" value={input.eventDate} onChange={(e) => set("eventDate", e.target.value)} aria-invalid={errors.eventDate ? true : undefined} />
         </Field>
       </div>
+
+      <Field
+        label="End date"
+        htmlFor="eed"
+        error={errors.eventEndDate}
+        hint="Optional — leave blank for a single-day event."
+      >
+        <Input
+          id="eed"
+          type="date"
+          value={input.eventEndDate}
+          min={input.eventDate || undefined}
+          onChange={(e) => set("eventEndDate", e.target.value)}
+          aria-invalid={errors.eventEndDate ? true : undefined}
+        />
+      </Field>
 
       {/* Space assignment + availability check */}
       {spaces.length > 0 && (

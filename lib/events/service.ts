@@ -15,6 +15,7 @@ import type {
   VenueEvent,
 } from "@/lib/events/types";
 import { validateEventInput, validateEventStatus, validateTeamMemberInput } from "@/lib/events/validation";
+import { normalizeEventEndDate } from "@/lib/events/constants";
 import { syncEventVendorAvailability } from "@/lib/vendor-availability/sync";
 import { getCurrentVenue } from "@/lib/venue/service";
 
@@ -89,15 +90,19 @@ export async function updateEvent_(eventId: string, input: EventInput): Promise<
       await recalculateEventTaskDueDates(eventId, input.eventDate);
     }
 
-    // Move Booked availability when the secured event date (or name) changes.
+    // Move Booked availability when the secured event date range (or name) changes.
+    const nextEnd = normalizeEventEndDate(input.eventDate, input.eventEndDate);
     if (
       before &&
-      (before.eventDate !== input.eventDate || before.name !== input.name.trim())
+      (before.eventDate !== input.eventDate
+        || before.eventEndDate !== nextEnd
+        || before.name !== input.name.trim())
     ) {
       await syncEventVendorAvailability(eventId, {
-        eventDate: input.eventDate,
-        eventName: input.name.trim(),
-        status:    before.status,
+        eventDate:    input.eventDate,
+        eventEndDate: nextEnd,
+        eventName:    input.name.trim(),
+        status:       before.status,
       });
     }
 
@@ -114,8 +119,9 @@ export async function updateEventStatus_(eventId: string, status: string): Promi
     // Cancel frees Booked days; restoring a cancelled event re-books them.
     if (before && before.status !== status) {
       await syncEventVendorAvailability(eventId, {
-        eventDate: before.eventDate,
-        eventName: before.name,
+        eventDate:    before.eventDate,
+        eventEndDate: before.eventEndDate,
+        eventName:    before.name,
         status,
       });
     }

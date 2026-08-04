@@ -43,7 +43,7 @@ export function VendorConversationRollup({ conversations }: { conversations: Ven
             {conversations.map((c) => (
               <Link
                 key={c.conversationId}
-                href={`/events/${c.eventId}#vendors`}
+                href={`/events/${c.eventId}?conversation=${c.conversationId}#vendors`}
                 className="flex items-start gap-3 py-3 hover:bg-muted/30 -mx-2 px-2 rounded-lg transition-colors"
               >
                 <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground">

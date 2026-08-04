@@ -1,65 +1,248 @@
 /**
  * Luv — vendor-facing observations.
  *
- * Luv Experience Completion, Work Stream 1: retires the two verbatim
- * copies of computeLuvData() that used to live independently in
- * app/vendor/luv/page.tsx and components/vendor-app/vendor-dashboard.tsx
- * — a genuine, undocumented fork of the coordinator dashboard's Luv
- * pattern, doubled by its own internal duplication. This is that logic's
- * one real home in lib/luv/, mirroring portal-observations.ts's shape:
- * pure, stateless, computed fresh from data the caller already fetched
- * (VendorDashboardData) — no new query, no AI call.
+ * Same purpose as every other portal: notice what needs attention in *this*
+ * role's world today, and point to the next useful action. Vendor-scoped
+ * facts only (messages, tasks, events, docs, COI/profile) — not venue CRM
+ * pipeline / marketplace health.
  *
- * Tone (Work Stream 4): professional hospitality — a trusted operations
- * partner, not a cheerleader and not a cold status feed. States what's
- * true and what it means, never a bare command or an alarm.
+ * Output shape is the shared Daily Briefing contract (`LuvBriefing` /
+ * `BriefingItem` from lib/luv/briefing-types.ts) so vendor Luv and venue
+ * Luv stay the same job with different feeds.
+ *
+ * Tone: professional hospitality — warm, service-oriented, states what's
+ * true and what it means. Never a bare command or cheerleader copy.
  */
-import type { VendorDashboardData } from "@/lib/vendors/types";
+import type { BriefingItem, LuvBriefing } from "@/lib/luv/briefing-types";
+import type { VendorHomeData } from "@/lib/vendor-home/service";
+import type { VendorProfile } from "@/lib/vendors/types";
 
-export type VendorLuvBriefingData = {
-  wins: string[];
-  observations: string[];
+export type VendorLuvProfileSlice = Pick<
+  VendorProfile,
+  | "businessName"
+  | "contactName"
+  | "category"
+  | "description"
+  | "email"
+  | "phone"
+  | "pricingTier"
+  | "serviceArea"
+  | "insuranceExpiry"
+>;
+
+/**
+ * Optional feeds merged into the briefing. `notifications` is filled from
+ * unread vendor_notifications (assignment / document alerts + rollup).
+ * Couple↔vendor chat extras can land here later.
+ */
+export type VendorLuvExtras = {
+  notifications?: BriefingItem[];
 };
 
-export function getVendorObservations(data: VendorDashboardData): VendorLuvBriefingData {
-  const wins: string[] = [];
-  const observations: string[] = [];
-  const now = new Date();
-  const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString();
+export type VendorLuvInput = {
+  home: VendorHomeData;
+  profile: VendorLuvProfileSlice | null;
+  extras?: VendorLuvExtras;
+};
 
-  const recentVenues = data.venues.filter((v) => v.addedAt >= sevenDaysAgo);
-  if (recentVenues.length > 0) {
-    wins.push(`You connected with ${recentVenues.length} new ${recentVenues.length === 1 ? "venue" : "venues"} this week.`);
-  }
-  if (data.upcomingEvents.length > 0) {
-    wins.push(`${data.upcomingEvents.length} upcoming ${data.upcomingEvents.length === 1 ? "event is" : "events are"} confirmed.`);
+function formatShortDate(iso: string | null): string {
+  if (!iso) return "";
+  const [y, m, d] = iso.slice(0, 10).split("-");
+  if (!y || !m || !d) return "";
+  return new Date(Number(y), Number(m) - 1, Number(d)).toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+  });
+}
+
+function todayIso(): string {
+  return new Date().toISOString().slice(0, 10);
+}
+
+/**
+ * Build the shared Daily Briefing sections from vendor operator data.
+ * Pure — no I/O. Callers fetch VendorHomeData + profile first.
+ */
+export function getVendorBriefing(input: VendorLuvInput): LuvBriefing {
+  const { home, profile, extras } = input;
+  const needsAttentionNow: BriefingItem[] = [];
+  const comingUpThisWeek: BriefingItem[] = [];
+  const informational: BriefingItem[] = [];
+  const today = todayIso();
+
+  // ── Needs you now ────────────────────────────────────────────────────────
+  for (const c of home.unreadConversations) {
+    needsAttentionNow.push({
+      id: `msg-${c.conversationId}`,
+      eventId: c.eventId,
+      eventName: c.eventName,
+      eventDate: c.eventDate,
+      label: "Unread message",
+      detail:
+        c.contactUnread === 1
+          ? "1 message waiting for your reply"
+          : `${c.contactUnread} messages waiting for your reply`,
+      link: `/vendor/messages/${c.conversationId}`,
+    });
   }
 
-  if (data.newInquiryCount > 0) {
-    observations.push(`${data.newInquiryCount} new ${data.newInquiryCount === 1 ? "inquiry is" : "inquiries are"} waiting for a response.`);
-  }
-  if (data.pendingTaskCount > 0) {
-    observations.push(`${data.pendingTaskCount} ${data.pendingTaskCount === 1 ? "task is" : "tasks are"} coming up — completing ${data.pendingTaskCount === 1 ? "it" : "them"} now helps the venue stay on schedule.`);
+  for (const t of home.tasksDue) {
+    const overdue = t.dueDate != null && t.dueDate < today;
+    needsAttentionNow.push({
+      id: `task-${t.id}`,
+      eventId: t.eventId,
+      eventName: null,
+      eventDate: t.dueDate,
+      label: overdue ? "Overdue task" : "Task due soon",
+      detail: t.title,
+      link: `/vendor/tasks?focus=${encodeURIComponent(t.id)}`,
+    });
   }
 
-  const profile = data.vendor;
-  if (profile.insuranceExpiry) {
-    const daysLeft = Math.ceil(
-      (new Date(profile.insuranceExpiry).getTime() - now.getTime()) / (1000 * 60 * 60 * 24),
-    );
-    if (daysLeft > 0 && daysLeft <= 30) {
-      observations.push(`Your certificate of insurance expires in ${daysLeft} days — renewing now keeps your profile in good standing.`);
+  for (const ev of home.eventsToday) {
+    needsAttentionNow.push({
+      id: `event-today-${ev.assignmentId}`,
+      eventId: ev.eventId,
+      eventName: ev.eventName,
+      eventDate: ev.eventDate,
+      label: "Event today",
+      detail: ev.arrivalTime
+        ? `Check in with ${ev.venueName} — arrival ${ev.arrivalTime}`
+        : `You're on site with ${ev.venueName} today`,
+      link: `/vendor/events/${ev.assignmentId}`,
+    });
+  }
+
+  // Unread vendor_notifications (light — not a full bell feed)
+  if (extras?.notifications?.length) {
+    needsAttentionNow.push(...extras.notifications);
+  }
+
+  // ── Coming up this week ──────────────────────────────────────────────────
+  for (const ev of home.eventsThisWeek) {
+    comingUpThisWeek.push({
+      id: `event-week-${ev.assignmentId}`,
+      eventId: ev.eventId,
+      eventName: ev.eventName,
+      eventDate: ev.eventDate,
+      label: "Upcoming event",
+      detail: ev.venueName
+        ? `${ev.venueName}${ev.eventDate ? ` · ${formatShortDate(ev.eventDate)}` : ""}`
+        : formatShortDate(ev.eventDate),
+      link: `/vendor/events/${ev.assignmentId}`,
+    });
+  }
+
+  for (const tl of home.nextTimeline) {
+    const first = tl.entries[0];
+    if (!first) continue;
+    // Avoid doubling events already listed from eventsThisWeek / today
+    const already =
+      comingUpThisWeek.some((i) => i.eventId === tl.eventId) ||
+      needsAttentionNow.some((i) => i.eventId === tl.eventId && i.label === "Event today");
+    if (already) continue;
+    comingUpThisWeek.push({
+      id: `timeline-${tl.assignmentId}`,
+      eventId: tl.eventId,
+      eventName: tl.eventName,
+      eventDate: tl.eventDate,
+      label: "Run of show",
+      detail: first.time ? `${first.time} · ${first.title}` : first.title,
+      link: "/vendor/timeline",
+    });
+  }
+
+  for (const doc of home.recentDocuments) {
+    const count = doc.documents.length + doc.floorPlans.length;
+    if (count === 0) continue;
+    informational.push({
+      id: `docs-${doc.assignmentId}`,
+      eventId: doc.eventId,
+      eventName: doc.eventName,
+      eventDate: doc.eventDate,
+      label: "Shared documents",
+      detail:
+        count === 1
+          ? "1 file shared for this event"
+          : `${count} files shared for this event`,
+      link: `/vendor/events/${doc.assignmentId}`,
+    });
+  }
+
+  // ── Profile / COI (informational readiness — same Luv job, lighter urgency) ─
+  if (profile) {
+    const now = new Date();
+    if (profile.insuranceExpiry) {
+      const daysLeft = Math.ceil(
+        (new Date(profile.insuranceExpiry).getTime() - now.getTime()) / (1000 * 60 * 60 * 24),
+      );
+      if (daysLeft <= 0) {
+        needsAttentionNow.push({
+          id: "coi-expired",
+          eventId: null,
+          eventName: null,
+          eventDate: profile.insuranceExpiry,
+          label: "Insurance",
+          detail: "Your certificate of insurance has expired — venues typically need a current copy on file.",
+          link: "/vendor/profile",
+        });
+      } else if (daysLeft <= 30) {
+        informational.push({
+          id: "coi-expiring",
+          eventId: null,
+          eventName: null,
+          eventDate: profile.insuranceExpiry,
+          label: "Insurance",
+          detail: `Your certificate of insurance expires in ${daysLeft} day${daysLeft === 1 ? "" : "s"}.`,
+          link: "/vendor/profile",
+        });
+      }
+    } else {
+      informational.push({
+        id: "coi-missing",
+        eventId: null,
+        eventName: null,
+        eventDate: null,
+        label: "Insurance",
+        detail: "No insurance expiry on file yet — venues often ask for this before load-in.",
+        link: "/vendor/profile",
+      });
+    }
+
+    const profileFields = [
+      profile.businessName,
+      profile.category,
+      profile.description,
+      profile.contactName,
+      profile.email,
+      profile.phone,
+      profile.pricingTier,
+      profile.serviceArea,
+    ];
+    const filled = profileFields.filter(Boolean).length;
+    if (filled < 6) {
+      informational.push({
+        id: "profile-incomplete",
+        eventId: null,
+        eventName: null,
+        eventDate: null,
+        label: "Profile",
+        detail: "A few profile details are still open — completing them helps venues work with you smoothly.",
+        link: "/vendor/profile",
+      });
     }
   }
 
-  const profileFields = [
-    profile.businessName, profile.category, profile.description,
-    profile.contactName, profile.email, profile.phone,
-    profile.pricingTier, profile.serviceArea,
-  ];
-  if (profileFields.filter(Boolean).length < 6) {
-    observations.push("Your profile is missing a few details venues look for — completing it helps you stand out.");
-  }
+  return {
+    needsAttentionNow,
+    comingUpThisWeek,
+    resolvedSinceLastLooked: [],
+    informational,
+    generatedAt: new Date().toISOString(),
+  };
+}
 
-  return { wins, observations };
+/** Count of items that typically badge as "needs attention." */
+export function getVendorLuvAttentionCount(briefing: LuvBriefing): number {
+  return briefing.needsAttentionNow.length;
 }

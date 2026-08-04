@@ -43,6 +43,8 @@ async function autoCreateEvent(
     partnerFirstName?: string | null;
     partnerLastName?: string | null;
     eventDate: string;
+    /** Inclusive end day (client `endDate`); empty/omit = single-day. */
+    eventEndDate?: string | null;
     eventType?: string | null;
     guestCount?: string | null;
     startTime?: string | null;
@@ -59,6 +61,7 @@ async function autoCreateEvent(
     name: `${coupleName} — ${typeLabel}`,
     eventType: opts.eventType ?? "",
     eventDate: opts.eventDate,
+    eventEndDate: opts.eventEndDate ?? "",
     startTime: opts.startTime ?? "",
     endTime: opts.endTime ?? "",
     setupTime: "",
@@ -179,6 +182,7 @@ async function createClientCore(
         partnerFirstName: input.partnerFirstName,
         partnerLastName: input.partnerLastName,
         eventDate: input.eventDate,
+        eventEndDate: input.endDate,
         eventType: input.eventType,
         guestCount: input.guestCount,
         startTime: input.ceremonyTime,
@@ -300,6 +304,7 @@ export async function convertLeadToClient(lead: Lead): Promise<CreateClientResul
           partnerFirstName: lead.partnerFirstName,
           partnerLastName: lead.partnerLastName,
           eventDate: input.eventDate,
+          eventEndDate: input.endDate,
           eventType: input.eventType,
           guestCount: input.guestCount,
         })

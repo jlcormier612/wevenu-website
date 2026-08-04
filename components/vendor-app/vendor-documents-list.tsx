@@ -5,14 +5,9 @@ import { FileText } from "lucide-react";
 
 import { VendorLibrarySection } from "@/components/vendor-app/vendor-library-section";
 import { Badge } from "@/components/ui/badge";
+import { formatEventDateRange } from "@/lib/events/constants";
 import type { VendorDocumentsByEvent } from "@/lib/vendor-portal/types";
 import type { VendorLibraryDocument, VendorUploadedByEvent } from "@/lib/vendor-documents/types";
-
-function formatDate(iso: string | null): string {
-  if (!iso) return "";
-  const [y, m, d] = iso.split("-");
-  return new Date(Number(y), Number(m) - 1, Number(d)).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
-}
 
 function EventDocGroup({
   title,
@@ -22,7 +17,7 @@ function EventDocGroup({
 }: {
   title: string;
   emptyLabel: string;
-  events: { assignmentId: string; eventName: string; venueName: string; eventDate: string | null; documents: { id: string; name: string; category: string; storageUrl: string; notes?: string | null }[]; floorPlans?: { id: string; name: string }[] }[];
+  events: { assignmentId: string; eventName: string; venueName: string; eventDate: string | null; eventEndDate?: string | null; documents: { id: string; name: string; category: string; storageUrl: string; notes?: string | null }[]; floorPlans?: { id: string; name: string }[] }[];
   kind: "from-venue" | "shared-by-me";
 }) {
   const withContent = events.filter((e) => e.documents.length > 0 || (e.floorPlans?.length ?? 0) > 0);
@@ -45,7 +40,10 @@ function EventDocGroup({
                 <Link href={`/vendor/events/${ev.assignmentId}`} className="text-sm font-semibold text-foreground hover:text-primary">
                   {ev.eventName}
                 </Link>
-                <span className="text-xs text-muted-foreground">{ev.venueName}{ev.eventDate ? ` · ${formatDate(ev.eventDate)}` : ""}</span>
+                <span className="text-xs text-muted-foreground">
+                  {ev.venueName}
+                  {ev.eventDate ? ` · ${formatEventDateRange(ev.eventDate, ev.eventEndDate)}` : ""}
+                </span>
               </div>
               <div className="rounded-xl border border-border bg-card divide-y divide-border">
                 {ev.documents.map((d) => (
@@ -60,7 +58,7 @@ function EventDocGroup({
                   </a>
                 ))}
                 {(ev.floorPlans ?? []).map((p) => (
-                  <a key={p.id} href={`/vendor/floor-plans/${p.id}`} target="_blank" rel="noopener noreferrer"
+                  <a key={p.id} href={`/vendor/floor-plans/${p.id}?from=${encodeURIComponent(ev.assignmentId)}`} target="_blank" rel="noopener noreferrer"
                     className="flex items-center gap-3 px-4 py-3 hover:bg-muted/40 transition-colors">
                     <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
                     <div className="min-w-0 flex-1">

@@ -70,12 +70,17 @@ function Bubble({ msg }: { msg: VendorConversationMessage }) {
 }
 
 export function VendorConversationThread({
-  conversationId, initialMessages, showHeader = true,
+  conversationId, initialMessages, showHeader = true, eventName = null, venueName = null,
+  coupleName = null, counterpartyLabel = null,
 }: {
   conversationId: string;
   initialMessages: VendorConversationMessage[];
   /** RC2, Milestone 5 — false when embedded inline (e.g. an event workspace's own Messages tab, which already has its own heading), rather than as the standalone /vendor/messages/[conversationId] page. */
   showHeader?: boolean;
+  eventName?: string | null;
+  venueName?: string | null;
+  coupleName?: string | null;
+  counterpartyLabel?: "Venue" | "Couple" | null;
 }) {
   const [messages, setMessages] = React.useState(initialMessages);
   const [body, setBody] = React.useState("");
@@ -161,7 +166,21 @@ export function VendorConversationThread({
           <Link href="/vendor/messages" className="text-muted-foreground hover:text-foreground">
             <ArrowLeft className="h-4 w-4" />
           </Link>
-          <p className="text-sm font-medium text-foreground">Conversation</p>
+          <div className="min-w-0">
+            <p className="truncate text-sm font-medium text-foreground">
+              {eventName?.trim() || "Conversation"}
+              {counterpartyLabel ? (
+                <span className="ml-1.5 font-normal text-muted-foreground">· {counterpartyLabel}</span>
+              ) : null}
+            </p>
+            {(counterpartyLabel === "Couple"
+              ? coupleName?.trim()
+              : venueName?.trim()) && (
+              <p className="truncate text-xs text-muted-foreground">
+                {counterpartyLabel === "Couple" ? coupleName : venueName}
+              </p>
+            )}
+          </div>
         </div>
       )}
 

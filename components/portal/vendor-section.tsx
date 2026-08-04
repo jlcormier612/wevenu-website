@@ -1,22 +1,27 @@
 "use client";
 
 /**
- * Vendors recommended specifically for this couple's event — not the
- * venue's whole directory (Vendor Management — Next Iteration, 2026-07-10).
+ * Venue-preferred vendors for this couple's event.
  *
- * Commitment Alignment Sprint (docs/commitment-lifecycle-architecture.md
- * §9): picking a vendor is private — the couple can pick and unpick freely
- * while they compare options, and nothing is visible to the venue until
- * they explicitly submit their list. Submitting is a real Commitment: it
- * reveals the current picks to the venue, notifies them, and completes the
- * "Choose your vendors" Playbook task as a side effect.
+ * Tabs:
+ *  - Recommended for You — venue-curated for this event (pick/submit)
+ *  - All Our Vendors — full preferred directory (same pick/submit)
+ *
+ * Commitment Alignment: picks stay private (picked_at) until Submit, which
+ * reveals selected_at to the venue, creates event_vendor_assignments
+ * (venue↔vendor + couple↔vendor conversations + vendor email), and completes
+ * the "Choose your vendors" task.
+ *
+ * Messaging: once assigned, couples open a dedicated couple↔vendor thread
+ * from this section. Venue↔vendor ops stay separate.
  */
 
 import * as React from "react";
-import { ExternalLink, Mail, Phone, Check } from "lucide-react";
+import { ExternalLink, Mail, MessageSquare, Phone, Check } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
+import { PortalCoupleVendorThread } from "@/components/portal/couple-vendor-thread";
 import { vendorCategoryLabel } from "@/lib/vendors/constants";
 
 type VendorPackage = { id: string; name: string; description: string | null; price: number | null; priceType: string };
@@ -37,11 +42,12 @@ type PortalVendorRecommendation = {
   pinterestUrl: string | null;
   tiktokUrl: string | null;
   note: string | null;
+  source?: string;
   pickedAt: string | null;
   selectedAt: string | null;
-  // Program 4, Initiative C, Phase 8 (2026-07-23) — claimed-only fields;
-  // null/[] when the vendor hasn't claimed their profile, so the venue's
-  // own authored version (fields above) stays the complete experience.
+  isAssigned?: boolean;
+  assignmentId?: string | null;
+  coupleVendorConversationId?: string | null;
   isClaimed: boolean;
   heroImageUrl: string | null;
   coverImageUrl: string | null;
@@ -54,12 +60,10 @@ type PortalVendorRecommendation = {
   faqs: VendorFaq[];
 };
 
-// The venue's whole preferred-vendor network (2026-07-24) — live, no
-// per-event curation or submit step. Same shape as a recommendation minus
-// the event-specific/pick fields (note/pickedAt/selectedAt), plus the
-// preference level the venue itself set when building their vendor list.
-type PortalVendorDirectoryEntry = Omit<PortalVendorRecommendation, "note" | "pickedAt" | "selectedAt"> & {
+type PortalVendorDirectoryEntry = Omit<PortalVendorRecommendation, "note" | "id"> & {
+  id: string; // relationship id
   preferenceLevel: string;
+  recommendationId: string | null;
 };
 
 const PREFERENCE_BADGE: Record<string, string> = { featured: "⭐ Featured", preferred: "⭐ Preferred" };
@@ -86,29 +90,66 @@ function socialLink(url: string | null) {
   return url.startsWith("http") ? url : `https://${url}`;
 }
 
+type CardVendor = {
+  vendorId: string;
+  name: string;
+  category: string | null;
+  description: string | null;
+  photoUrl: string | null;
+  websiteUrl: string | null;
+  email: string | null;
+  phone: string | null;
+  instagramUrl: string | null;
+  facebookUrl: string | null;
+  pinterestUrl: string | null;
+  tiktokUrl: string | null;
+  note?: string | null;
+  pickedAt: string | null;
+  selectedAt: string | null;
+  isAssigned?: boolean;
+  coupleVendorConversationId?: string | null;
+  isClaimed: boolean;
+  heroImageUrl: string | null;
+  coverImageUrl: string | null;
+  pricingTier: string | null;
+  serviceArea: string | null;
+  availabilityNotes: string | null;
+  promotionHeadline: string | null;
+  promotionDetails: string | null;
+  packages: VendorPackage[];
+  faqs: VendorFaq[];
+  preferenceLevel?: string;
+};
+
 function VendorCard({
-  rec, onToggle, toggling,
+  rec, onToggle, toggling, onMessage,
 }: {
-  rec: PortalVendorRecommendation | PortalVendorDirectoryEntry;
-  // Absent for the venue-wide directory — pure browse, nothing to pick or submit.
+  rec: CardVendor;
   onToggle?: (picked: boolean) => void;
   toggling?: boolean;
+  onMessage?: () => void;
 }) {
   const [expanded, setExpanded] = React.useState(false);
   const emoji = CATEGORY_EMOJI[rec.category ?? "other"] ?? "⭐";
-  const isSubmitted = "selectedAt" in rec && !!rec.selectedAt;
-  const isPicked = "pickedAt" in rec && !!rec.pickedAt;
-  const preferenceBadge = "preferenceLevel" in rec ? PREFERENCE_BADGE[rec.preferenceLevel] : null;
-  // Expanded gallery, for a claimed profile, is the vendor's own hero +
-  // cover images layered over the card photo — the only real multi-image
-  // fields this schema has (Phase 8: "Expanded gallery").
+  const isAssigned = !!rec.isAssigned;
+  const isSubmitted = !!rec.selectedAt;
+  const isPicked = !!rec.pickedAt;
+  const preferenceBadge = rec.preferenceLevel ? PREFERENCE_BADGE[rec.preferenceLevel] : null;
   const coverImage = rec.isClaimed ? (rec.coverImageUrl ?? rec.heroImageUrl ?? rec.photoUrl) : rec.photoUrl;
   const hasExpandedContent = rec.isClaimed && (
     rec.promotionHeadline || rec.packages.length > 0 || rec.faqs.length > 0 || rec.availabilityNotes || rec.heroImageUrl
   );
 
   return (
-    <div className={`bg-card border rounded-2xl overflow-hidden flex flex-col transition-shadow ${isSubmitted ? "border-[var(--venue-primary)] shadow-md" : isPicked ? "border-[color-mix(in_srgb,var(--venue-primary)_50%,transparent)]" : "border-border hover:shadow-md"}`}>
+    <div className={`bg-card border rounded-2xl overflow-hidden flex flex-col transition-shadow ${
+      isAssigned
+        ? "border-[var(--venue-primary)] shadow-md"
+        : isSubmitted
+          ? "border-[color-mix(in_srgb,var(--venue-primary)_60%,transparent)] shadow-sm"
+          : isPicked
+            ? "border-[color-mix(in_srgb,var(--venue-primary)_50%,transparent)]"
+            : "border-border hover:shadow-md"
+    }`}>
       <div className="h-40 bg-muted flex items-center justify-center text-4xl shrink-0 relative"
         style={coverImage ? { backgroundImage: `url(${coverImage})`, backgroundSize: "cover", backgroundPosition: "center" } : {}}>
         {!coverImage && emoji}
@@ -138,7 +179,11 @@ function VendorCard({
               )}
             </p>
           </div>
-          {isSubmitted ? (
+          {isAssigned ? (
+            <span className="flex items-center gap-1 text-[10px] font-semibold text-[var(--venue-primary)] bg-[color-mix(in_srgb,var(--venue-primary)_10%,transparent)] border border-[color-mix(in_srgb,var(--venue-primary)_20%,transparent)] rounded-full px-2 py-0.5 shrink-0">
+              <Check className="h-3 w-3" /> On your team
+            </span>
+          ) : isSubmitted ? (
             <span className="flex items-center gap-1 text-[10px] font-semibold text-[var(--venue-primary)] bg-[color-mix(in_srgb,var(--venue-primary)_10%,transparent)] border border-[color-mix(in_srgb,var(--venue-primary)_20%,transparent)] rounded-full px-2 py-0.5 shrink-0">
               <Check className="h-3 w-3" /> Chosen
             </span>
@@ -153,7 +198,7 @@ function VendorCard({
           )}
         </div>
 
-        {"note" in rec && rec.note && (
+        {rec.note && (
           <p className="text-xs text-primary bg-primary/5 rounded-md px-2 py-1">{rec.note}</p>
         )}
 
@@ -161,7 +206,6 @@ function VendorCard({
           <p className="text-xs text-muted-foreground leading-relaxed line-clamp-3">{rec.description}</p>
         )}
 
-        {/* View info / contact actions */}
         <div className="flex items-center gap-2 flex-wrap pt-1">
           {rec.websiteUrl && (
             <a href={socialLink(rec.websiteUrl)!} target="_blank" rel="noopener noreferrer"
@@ -254,6 +298,17 @@ function VendorCard({
           </>
         )}
 
+        {onMessage && rec.isAssigned && rec.coupleVendorConversationId && (
+          <button
+            type="button"
+            onClick={onMessage}
+            className="mt-auto flex w-full items-center justify-center gap-1.5 rounded-lg border border-[color-mix(in_srgb,var(--venue-primary)_30%,transparent)] bg-[color-mix(in_srgb,var(--venue-primary)_8%,transparent)] py-2 px-3 text-xs font-medium text-[var(--venue-primary)] hover:bg-[color-mix(in_srgb,var(--venue-primary)_14%,transparent)]"
+          >
+            <MessageSquare className="h-3.5 w-3.5" />
+            Message {rec.name}
+          </button>
+        )}
+
         {onToggle && (
         <button
           type="button"
@@ -273,44 +328,86 @@ function VendorCard({
   );
 }
 
+function SubmitBar({
+  pendingCount, confirmingSubmit, submitting, onConfirm, onBack, onSubmit,
+}: {
+  pendingCount: number;
+  confirmingSubmit: boolean;
+  submitting: boolean;
+  onConfirm: () => void;
+  onBack: () => void;
+  onSubmit: () => void;
+}) {
+  if (pendingCount <= 0) return null;
+  return (
+    <div className="rounded-2xl border border-border bg-card p-4 space-y-2">
+      {!confirmingSubmit ? (
+        <div className="flex items-center justify-between gap-3 flex-wrap">
+          <p className="text-sm text-foreground">
+            {pendingCount} pick{pendingCount === 1 ? "" : "s"} not yet sent to your venue.
+          </p>
+          <Button type="button" size="sm" onClick={onConfirm}>Submit Vendor List</Button>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          <p className="text-sm text-foreground">
+            This submits your list to the venue and notifies the vendors you picked — continue?
+          </p>
+          <div className="flex gap-2">
+            <Button type="button" variant="outline" size="sm" disabled={submitting} onClick={onBack}>Back</Button>
+            <Button type="button" size="sm" disabled={submitting} onClick={onSubmit}>
+              {submitting ? "Submitting…" : "Submit to Venue"}
+            </Button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function VendorSection({ token, clientId, venueName }: { token: string; clientId: string; venueName: string }) {
   const [recommendations, setRecommendations] = React.useState<PortalVendorRecommendation[]>([]);
   const [loading, setLoading] = React.useState(true);
-  const [togglingId, setTogglingId] = React.useState<string | null>(null);
+  const [togglingKey, setTogglingKey] = React.useState<string | null>(null);
   const [submitting, setSubmitting] = React.useState(false);
   const [confirmingSubmit, setConfirmingSubmit] = React.useState(false);
 
-  // The venue's whole preferred-vendor network (2026-07-24) — "the entire
-  // vendor list that the venue builds should be available to the client
-  // through this button... like the Venue Guide, nothing needs to be sent
-  // or shared." A second, always-live tab alongside the existing
-  // per-event recommendations (which keep their real pick/submit value —
-  // this doesn't replace that, it fills the gap when a coordinator hasn't
-  // recommended anything yet, or a couple just wants to browse everyone).
   const [directory, setDirectory] = React.useState<PortalVendorDirectoryEntry[]>([]);
   const [directoryLoading, setDirectoryLoading] = React.useState(true);
   const [tab, setTab] = React.useState<"recommended" | "directory">("recommended");
+  const [openThread, setOpenThread] = React.useState<{
+    conversationId: string;
+    vendorName: string;
+  } | null>(null);
 
-  const load = React.useCallback(() => {
-    fetch(`/api/portal/vendors?token=${token}&clientId=${clientId}`)
+  const loadRecommendations = React.useCallback(() => {
+    return fetch(`/api/portal/vendors?token=${token}&clientId=${clientId}`)
       .then((r) => r.json())
       .then((d: { recommendations?: PortalVendorRecommendation[] }) => setRecommendations(d.recommendations ?? []))
-      .catch(() => {})
-      .finally(() => setLoading(false));
+      .catch(() => {});
   }, [token, clientId]);
 
-  React.useEffect(() => { load(); }, [load]);
-
-  React.useEffect(() => {
-    fetch(`/api/portal/vendors/directory?token=${token}`)
+  const loadDirectory = React.useCallback(() => {
+    return fetch(`/api/portal/vendors/directory?token=${token}&clientId=${clientId}`)
       .then((r) => r.json())
       .then((d: { vendors?: PortalVendorDirectoryEntry[] }) => setDirectory(d.vendors ?? []))
-      .catch(() => {})
-      .finally(() => setDirectoryLoading(false));
-  }, [token]);
+      .catch(() => {});
+  }, [token, clientId]);
 
-  async function handleToggle(recommendationId: string, picked: boolean) {
-    setTogglingId(recommendationId);
+  const loadAll = React.useCallback(() => {
+    return Promise.all([loadRecommendations(), loadDirectory()]);
+  }, [loadRecommendations, loadDirectory]);
+
+  React.useEffect(() => {
+    loadRecommendations().finally(() => setLoading(false));
+  }, [loadRecommendations]);
+
+  React.useEffect(() => {
+    loadDirectory().finally(() => setDirectoryLoading(false));
+  }, [loadDirectory]);
+
+  async function handleToggleRecommendation(recommendationId: string, vendorId: string, picked: boolean) {
+    setTogglingKey(recommendationId);
     try {
       const res = await fetch("/api/portal/vendors", {
         method: "POST",
@@ -319,14 +416,50 @@ export function VendorSection({ token, clientId, venueName }: { token: string; c
       });
       const data = await res.json() as { ok?: boolean };
       if (data.ok) {
-        setRecommendations((prev) => prev.map((r) => r.id === recommendationId ? { ...r, pickedAt: picked ? new Date().toISOString() : null } : r));
+        const pickedAt = picked ? new Date().toISOString() : null;
+        setRecommendations((prev) => prev.map((r) => r.id === recommendationId ? { ...r, pickedAt } : r));
+        setDirectory((prev) => prev.map((v) => v.vendorId === vendorId ? { ...v, pickedAt, recommendationId } : v));
       } else {
         toast.error("Couldn't save your pick. Please try again.");
       }
     } catch {
       toast.error("Couldn't save your pick. Please try again.");
     } finally {
-      setTogglingId(null);
+      setTogglingKey(null);
+    }
+  }
+
+  async function handleToggleDirectory(vendorId: string, picked: boolean) {
+    setTogglingKey(`dir:${vendorId}`);
+    try {
+      const res = await fetch("/api/portal/vendors", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ token, clientId, vendorId, picked }),
+      });
+      const data = await res.json() as { ok?: boolean; recommendationId?: string | null; pickedAt?: string | null };
+      if (data.ok) {
+        const pickedAt = picked ? (data.pickedAt ?? new Date().toISOString()) : null;
+        setDirectory((prev) => prev.map((v) =>
+          v.vendorId === vendorId
+            ? { ...v, pickedAt, recommendationId: data.recommendationId ?? v.recommendationId }
+            : v,
+        ));
+        // Venue-curated rows also live on Recommended — keep in sync.
+        setRecommendations((prev) => {
+          const exists = prev.some((r) => r.vendorId === vendorId);
+          if (exists) {
+            return prev.map((r) => r.vendorId === vendorId ? { ...r, pickedAt } : r);
+          }
+          return prev;
+        });
+      } else {
+        toast.error("Couldn't save your pick. Please try again.");
+      }
+    } catch {
+      toast.error("Couldn't save your pick. Please try again.");
+    } finally {
+      setTogglingKey(null);
     }
   }
 
@@ -339,9 +472,14 @@ export function VendorSection({ token, clientId, venueName }: { token: string; c
       });
       const data = await res.json() as { ok?: boolean; selectedCount?: number };
       if (data.ok) {
-        toast.success("🎉 Your vendor list is submitted — your venue can see it now.");
+        const n = data.selectedCount ?? 0;
+        toast.success(
+          n > 0
+            ? `Your vendors are submitted — ${venueName} and the vendors have been notified.`
+            : "Your vendor list is submitted — your venue can see it now.",
+        );
         setConfirmingSubmit(false);
-        load();
+        await loadAll();
       } else {
         toast.error("Couldn't submit your vendor list. Please try again.");
       }
@@ -356,9 +494,20 @@ export function VendorSection({ token, clientId, venueName }: { token: string; c
     );
   }
 
-  // Commitment Lifecycle Architecture §9 — picks are private until this
-  // count reflects something worth reviewing and submitting.
-  const pendingCount = recommendations.filter((r) => !!r.pickedAt !== !!r.selectedAt).length;
+  // Unified pending across both tabs (directory drafts may not appear on Recommended yet).
+  const pendingVendorIds = new Set<string>();
+  for (const r of recommendations) {
+    if (!!r.pickedAt !== !!r.selectedAt) pendingVendorIds.add(r.vendorId);
+  }
+  for (const v of directory) {
+    if (!!v.pickedAt !== !!v.selectedAt) pendingVendorIds.add(v.vendorId);
+  }
+  const pendingCount = pendingVendorIds.size;
+
+  const teamVendors = directory.filter((v) => v.isAssigned || v.selectedAt);
+  // Prefer assignment list; fall back to selected from recommendations when directory empty.
+  const teamFromRecs = recommendations.filter((r) => r.isAssigned || r.selectedAt);
+  const teamList = teamVendors.length > 0 ? teamVendors : teamFromRecs;
 
   function groupByCategory<T extends { category: string | null }>(items: T[]) {
     return Object.entries(
@@ -370,17 +519,69 @@ export function VendorSection({ token, clientId, venueName }: { token: string; c
     );
   }
 
+  const submitBar = (
+    <SubmitBar
+      pendingCount={pendingCount}
+      confirmingSubmit={confirmingSubmit}
+      submitting={submitting}
+      onConfirm={() => setConfirmingSubmit(true)}
+      onBack={() => setConfirmingSubmit(false)}
+      onSubmit={handleSubmit}
+    />
+  );
+
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 py-6 space-y-6">
-      {/* Venue introduction — Program 4, Initiative D, Phase 7 (2026-07-23,
-          refined 2026-07-23): "That instantly establishes trust." */}
       <div>
         <p className="font-semibold text-heading">These are the vendors {venueName} trusts and loves working with.</p>
-        <p className="text-xs text-muted-foreground mt-0.5">View their info, reach out, and pick the ones you&apos;d like to work with. Your picks stay private until you submit.</p>
+        <p className="text-xs text-muted-foreground mt-0.5">
+          Pick from their recommendations or full vendor list. Your picks stay private until you submit —
+          then the venue and those vendors are notified. Once a vendor is on your team, you can message them directly here.
+        </p>
       </div>
 
-      {/* Tabs — Recommended (event-specific, with picks) vs. the venue's
-          whole network (always live, nothing to submit). */}
+      {openThread && (
+        <PortalCoupleVendorThread
+          token={token}
+          clientId={clientId}
+          conversationId={openThread.conversationId}
+          vendorName={openThread.vendorName}
+          onBack={() => setOpenThread(null)}
+        />
+      )}
+
+      {teamList.length > 0 && (
+        <div className="rounded-2xl border border-[color-mix(in_srgb,var(--venue-primary)_25%,transparent)] bg-[color-mix(in_srgb,var(--venue-primary)_6%,transparent)] p-4 space-y-2">
+          <p className="text-xs font-semibold uppercase tracking-wide text-[var(--venue-primary)]">Your vendor team</p>
+          <ul className="flex flex-wrap gap-2">
+            {teamList.map((v) => (
+              <li key={v.vendorId} className="flex items-center gap-1.5">
+                <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-card border border-border text-foreground">
+                  {v.name}
+                  {v.isAssigned ? (
+                    <span className="ml-1.5 text-muted-foreground">· booked</span>
+                  ) : (
+                    <span className="ml-1.5 text-muted-foreground">· chosen</span>
+                  )}
+                </span>
+                {v.isAssigned && v.coupleVendorConversationId && (
+                  <button
+                    type="button"
+                    onClick={() => setOpenThread({
+                      conversationId: v.coupleVendorConversationId!,
+                      vendorName: v.name,
+                    })}
+                    className="text-[11px] font-medium text-[var(--venue-primary)] hover:underline"
+                  >
+                    Message
+                  </button>
+                )}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       <div className="flex items-center gap-1 border-b border-border">
         <button type="button" onClick={() => setTab("recommended")}
           className={`px-3 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${tab === "recommended" ? "border-[var(--venue-primary)] text-[var(--venue-primary)]" : "border-transparent text-muted-foreground hover:text-foreground"}`}>
@@ -393,60 +594,47 @@ export function VendorSection({ token, clientId, venueName }: { token: string; c
       </div>
 
       {tab === "recommended" && (
-        !recommendations.length ? (
-          <div className="py-16 text-center space-y-3 max-w-sm mx-auto px-4">
-            <p className="text-3xl">🤝</p>
-            <p className="font-semibold text-heading">No vendors recommended yet</p>
-            <p className="text-sm text-muted-foreground">Your venue will add vendor recommendations here as they get to know your event.</p>
-            {directory.length > 0 && (
-              <button type="button" onClick={() => setTab("directory")} className="text-sm font-medium text-[var(--venue-primary)] hover:underline">
-                Browse all {directory.length} of {venueName}&apos;s vendors →
-              </button>
-            )}
-          </div>
-        ) : (
-          <div className="space-y-6">
-            {pendingCount > 0 && (
-              <div className="rounded-2xl border border-border bg-card p-4 space-y-2">
-                {!confirmingSubmit ? (
-                  <div className="flex items-center justify-between gap-3 flex-wrap">
-                    <p className="text-sm text-foreground">
-                      {pendingCount} pick{pendingCount === 1 ? "" : "s"} not yet sent to your venue.
-                    </p>
-                    <Button type="button" size="sm" onClick={() => setConfirmingSubmit(true)}>Submit Vendor List</Button>
-                  </div>
-                ) : (
-                  <div className="space-y-2">
-                    <p className="text-sm text-foreground">This becomes visible to your venue — continue?</p>
-                    <div className="flex gap-2">
-                      <Button type="button" variant="outline" size="sm" disabled={submitting} onClick={() => setConfirmingSubmit(false)}>Back</Button>
-                      <Button type="button" size="sm" disabled={submitting} onClick={handleSubmit}>
-                        {submitting ? "Submitting…" : "Submit to Venue"}
-                      </Button>
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Grouped by category — "Florist / Photography / DJ / Cake /
-                Planner etc." (2026-07-23). The RPC already sorts by
-                category, so this just labels the groups rather than
-                re-sorting. */}
-            {groupByCategory(recommendations).map(([category, recs]) => (
+        <div className="space-y-6">
+          {submitBar}
+          {!recommendations.length ? (
+            <div className="py-16 text-center space-y-3 max-w-sm mx-auto px-4">
+              <p className="text-3xl">🤝</p>
+              <p className="font-semibold text-heading">No vendors recommended yet</p>
+              <p className="text-sm text-muted-foreground">Your venue will add recommendations here — or browse their full preferred list.</p>
+              {directory.length > 0 && (
+                <button type="button" onClick={() => setTab("directory")} className="text-sm font-medium text-[var(--venue-primary)] hover:underline">
+                  Browse all {directory.length} of {venueName}&apos;s vendors →
+                </button>
+              )}
+            </div>
+          ) : (
+            groupByCategory(recommendations).map(([category, recs]) => (
               <div key={category} className="space-y-3">
                 <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                   {CATEGORY_EMOJI[category] ?? "⭐"} {vendorCategoryLabel(category)}
                 </p>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                   {recs.map((r) => (
-                    <VendorCard key={r.id} rec={r} onToggle={(picked) => handleToggle(r.id, picked)} toggling={togglingId === r.id} />
+                    <VendorCard
+                      key={r.id}
+                      rec={r}
+                      onToggle={(picked) => handleToggleRecommendation(r.id, r.vendorId, picked)}
+                      toggling={togglingKey === r.id}
+                      onMessage={
+                        r.coupleVendorConversationId
+                          ? () => setOpenThread({
+                              conversationId: r.coupleVendorConversationId!,
+                              vendorName: r.name,
+                            })
+                          : undefined
+                      }
+                    />
                   ))}
                 </div>
               </div>
-            ))}
-          </div>
-        )
+            ))
+          )}
+        </div>
       )}
 
       {tab === "directory" && (
@@ -462,13 +650,29 @@ export function VendorSection({ token, clientId, venueName }: { token: string; c
           </div>
         ) : (
           <div className="space-y-6">
+            {submitBar}
             {groupByCategory(directory).map(([category, vendors]) => (
               <div key={category} className="space-y-3">
                 <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                   {CATEGORY_EMOJI[category] ?? "⭐"} {vendorCategoryLabel(category)}
                 </p>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {vendors.map((v) => <VendorCard key={v.id} rec={v} />)}
+                  {vendors.map((v) => (
+                    <VendorCard
+                      key={v.id}
+                      rec={{ ...v, note: null }}
+                      onToggle={(picked) => handleToggleDirectory(v.vendorId, picked)}
+                      toggling={togglingKey === `dir:${v.vendorId}`}
+                      onMessage={
+                        v.coupleVendorConversationId
+                          ? () => setOpenThread({
+                              conversationId: v.coupleVendorConversationId!,
+                              vendorName: v.name,
+                            })
+                          : undefined
+                      }
+                    />
+                  ))}
                 </div>
               </div>
             ))}

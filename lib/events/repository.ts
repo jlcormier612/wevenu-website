@@ -24,7 +24,8 @@ type DbClient = Awaited<ReturnType<typeof createClient>>;
 type EventRow = {
   id: string; venue_id: string; client_id: string | null; space_id: string | null;
   status: EventStatus; name: string; event_type: string | null;
-  event_date: string; start_time: string | null; end_time: string | null;
+  event_date: string; event_end_date: string | null;
+  start_time: string | null; end_time: string | null;
   setup_time: string | null; teardown_time: string | null;
   guest_count: number | null; created_at: string; updated_at: string;
   // embedded client name from join
@@ -38,7 +39,9 @@ function mapEvent(r: EventRow): VenueEvent {
   return {
     id: r.id, venueId: r.venue_id, clientId: r.client_id, spaceId: r.space_id,
     status: r.status, name: r.name, eventType: r.event_type,
-    eventDate: r.event_date, startTime: r.start_time, endTime: r.end_time,
+    eventDate: r.event_date,
+    eventEndDate: r.event_end_date && r.event_end_date !== r.event_date ? r.event_end_date : null,
+    startTime: r.start_time, endTime: r.end_time,
     setupTime: r.setup_time, teardownTime: r.teardown_time,
     guestCount: r.guest_count, createdAt: r.created_at, updatedAt: r.updated_at,
   };
@@ -113,6 +116,7 @@ export async function getEventIdForClient(client: DbClient, venueId: string, cli
 // ---- mutations --------------------------------------------------------------
 
 function toEventRow(venueId: string, input: EventInput): Record<string, unknown> {
+  const end = input.eventEndDate.trim();
   return {
     venue_id: venueId,
     client_id: input.clientId || null,
@@ -120,6 +124,7 @@ function toEventRow(venueId: string, input: EventInput): Record<string, unknown>
     name: input.name.trim(),
     event_type: input.eventType || null,
     event_date: input.eventDate,
+    event_end_date: end && end !== input.eventDate ? end : null,
     start_time: input.startTime || null,
     end_time: input.endTime || null,
     setup_time: input.setupTime || null,

@@ -3,7 +3,8 @@
 import * as React from "react";
 import { useTransition } from "react";
 import Link from "next/link";
-import { ArrowLeft, CheckSquare, Circle, Clock, FileText, Phone, Mail } from "lucide-react";
+import { ArrowLeft, CheckSquare, Circle, Clock, FileText, Phone, Mail, Loader2 } from "lucide-react";
+import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -13,19 +14,20 @@ import {
   completePersonalTaskAction,
   uncompletePersonalTaskAction,
   updateAssignmentNotesAction,
+  toggleAssignmentCheckinAction,
   getVendorHandbookForEventAction,
 } from "@/app/vendor/events/actions";
 import { createVendorTaskAction } from "@/app/vendor/tasks/actions";
 import {
   getVendorConversationAction,
-  getVendorConversationIdForEventAction,
+  getVendorConversationIdsForEventAction,
 } from "@/app/vendor/messages/actions";
 import { getVendorSharedFloorPlansForEventAction } from "@/app/vendor/floor-plans/actions";
 import { VendorConversationThread } from "@/components/vendor-app/vendor-conversation-thread";
 import { VendorEventSharePanel } from "@/components/vendor-app/vendor-event-share-panel";
 import { VendorHandbookView } from "@/components/vendor-app/vendor-handbook-view";
 import type { VendorEventDetail } from "@/lib/vendors/types";
-import type { VendorConversationMessage } from "@/lib/conversations/types";
+import type { VendorConversationMessage, VendorConversationSummary } from "@/lib/conversations/types";
 import type { VendorFloorPlanSummary } from "@/lib/floor-plans/types";
 import type { VendorHandbook } from "@/lib/vendor-handbook/service";
 import type { VendorEventUpload, VendorLibraryDocument } from "@/lib/vendor-documents/types";
@@ -41,7 +43,7 @@ type Tab = "overview" | "messages" | "timeline" | "tasks" | "documents" | "venue
 const TABS: { id: Tab; label: string }[] = [
   { id: "overview",  label: "Overview"          },
   { id: "messages",  label: "Messages"          },
-  { id: "timeline",  label: "Timeline"          },
+  { id: "timeline",  label: "Run of show"       },
   { id: "tasks",     label: "Tasks"             },
   { id: "documents", label: "Documents"         },
   { id: "venueinfo", label: "Venue Information" },
@@ -56,6 +58,12 @@ function formatDate(iso: string | null): string {
   });
 }
 
+function formatDateRange(start: string | null, end: string | null): string {
+  if (!start) return "";
+  if (!end || end === start) return formatDate(start);
+  return `${formatDate(start)} – ${formatDate(end)}`;
+}
+
 function formatDateShort(iso: string): string {
   return new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit" });
 }
@@ -64,12 +72,14 @@ export function VendorEventWorkspace({
   detail,
   library = [],
   eventUploads = [],
+  initialTab = "overview",
 }: {
   detail: VendorEventDetail;
   library?: import("@/lib/vendor-documents/types").VendorLibraryDocument[];
   eventUploads?: import("@/lib/vendor-documents/types").VendorEventUpload[];
+  initialTab?: Tab;
 }) {
-  const [tab, setTab] = React.useState<Tab>("overview");
+  const [tab, setTab] = React.useState<Tab>(initialTab);
 
   return (
     <div className="space-y-6">
@@ -85,7 +95,7 @@ export function VendorEventWorkspace({
         <h1 className="text-xl font-bold text-foreground">{detail.eventName}</h1>
         <div className="flex flex-wrap items-center gap-2 mt-0.5 text-sm text-muted-foreground">
           <span>{detail.venueName}</span>
-          {detail.eventDate && <span>· {formatDate(detail.eventDate)}</span>}
+          {detail.eventDate && <span>· {formatDateRange(detail.eventDate, detail.eventEndDate)}</span>}
           {detail.eventType && <span>· {detail.eventType}</span>}
         </div>
       </div>
@@ -132,6 +142,39 @@ export function VendorEventWorkspace({
 }
 
 function OverviewTab({ detail }: { detail: VendorEventDetail }) {
+  const [checkedInAt, setCheckedInAt] = React.useState(detail.checkedInAt);
+  const [setupCompleteAt, setSetupCompleteAt] = React.useState(detail.setupCompleteAt);
+  const [pendingField, setPendingField] = React.useState<"checked_in" | "setup_complete" | null>(null);
+  const [, startTransition] = useTransition();
+
+  React.useEffect(() => {
+    setCheckedInAt(detail.checkedInAt);
+    setSetupCompleteAt(detail.setupCompleteAt);
+  }, [detail.checkedInAt, detail.setupCompleteAt]);
+
+  const checkedIn = !!checkedInAt;
+  const setupDone = !!setupCompleteAt;
+
+  function toggleField(field: "checked_in" | "setup_complete") {
+    const prevChecked = checkedInAt;
+    const prevSetup = setupCompleteAt;
+    const now = new Date().toISOString();
+
+    if (field === "checked_in") setCheckedInAt(checkedInAt ? null : now);
+    else setSetupCompleteAt(setupCompleteAt ? null : now);
+
+    setPendingField(field);
+    startTransition(async () => {
+      const result = await toggleAssignmentCheckinAction(detail.assignmentId, field);
+      setPendingField(null);
+      if (!result.ok) {
+        setCheckedInAt(prevChecked);
+        setSetupCompleteAt(prevSetup);
+        toast.error(result.message ?? "Could not update day-of status.");
+      }
+    });
+  }
+
   return (
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
       {/* Assignment info */}
@@ -156,6 +199,48 @@ function OverviewTab({ detail }: { detail: VendorEventDetail }) {
               <p className="text-foreground">{detail.loadInNotes}</p>
             </div>
           )}
+          <div className="pt-1 space-y-2 border-t border-border/60">
+            <p className="text-xs text-muted-foreground">Day-of status</p>
+            <p className="text-[11px] text-muted-foreground">
+              Let the venue know you&apos;ve arrived and when setup is done. They&apos;ll see this on the wedding-day board.
+            </p>
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => toggleField("checked_in")}
+                disabled={pendingField !== null}
+                className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors disabled:opacity-60 ${
+                  checkedIn
+                    ? "border-primary/40 bg-primary/10 text-primary"
+                    : "border-border bg-background text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                }`}
+              >
+                {pendingField === "checked_in" ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : null}
+                {checkedIn
+                  ? `Checked in · ${formatDateShort(checkedInAt!)}`
+                  : "I've arrived"}
+              </button>
+              <button
+                type="button"
+                onClick={() => toggleField("setup_complete")}
+                disabled={pendingField !== null}
+                className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors disabled:opacity-60 ${
+                  setupDone
+                    ? "border-primary/40 bg-primary/10 text-primary"
+                    : "border-border bg-background text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                }`}
+              >
+                {pendingField === "setup_complete" ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : null}
+                {setupDone
+                  ? `Setup complete · ${formatDateShort(setupCompleteAt!)}`
+                  : "Setup complete"}
+              </button>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -220,7 +305,11 @@ function TimelineTab({ detail }: { detail: VendorEventDetail }) {
   if (detail.timeline.length === 0) {
     return (
       <div className="rounded-xl border border-dashed border-border py-12 text-center">
-        <p className="text-sm text-muted-foreground">No timeline items assigned to you yet.</p>
+        <p className="text-sm font-medium text-foreground">No run-of-show items yet</p>
+        <p className="text-xs text-muted-foreground mt-1 max-w-sm mx-auto">
+          The venue shares day-of timing with vendors when they are ready.
+          Check back once they release your items for this event.
+        </p>
       </div>
     );
   }
@@ -361,29 +450,40 @@ function TasksTab({ detail }: { detail: VendorEventDetail }) {
 }
 
 /**
- * RC2, Milestone 5 (Rollout verification) — this was a static placeholder
- * ("coming in Sprint 107") left over from before RC2 Milestone 3 shipped a
- * real, populated Conversation for every event assignment. Found by
- * verifying every entry point that represents a conversation actually
- * opens one — it didn't. Now it does: the same canonical thread the vendor
- * portal's own Messages nav item uses (components/vendor-app/
- * vendor-conversation-thread.tsx), embedded inline.
+ * Per-event Messages — Venue and Couple are separate pairwise threads
+ * (same list labels as /vendor/messages).
  */
 function MessagesTab({ detail }: { detail: VendorEventDetail }) {
-  const [conversationId, setConversationId] = React.useState<string | null | undefined>(undefined);
+  const [threads, setThreads] = React.useState<VendorConversationSummary[] | null>(null);
+  const [activeId, setActiveId] = React.useState<string | null>(null);
   const [messages, setMessages] = React.useState<VendorConversationMessage[] | null>(null);
+  const [activeMeta, setActiveMeta] = React.useState<VendorConversationSummary | null>(null);
 
   React.useEffect(() => {
-    void getVendorConversationIdForEventAction(detail.eventId).then((id) => {
-      setConversationId(id);
-      if (id) void getVendorConversationAction(id).then((r) => setMessages(r.ok ? r.conversation.messages : []));
+    void getVendorConversationIdsForEventAction(detail.eventId).then((list) => {
+      setThreads(list);
+      const preferred =
+        list.find((c) => c.conversationKind === "venue_vendor") ?? list[0] ?? null;
+      setActiveId(preferred?.conversationId ?? null);
+      setActiveMeta(preferred);
     });
   }, [detail.eventId]);
 
-  if (conversationId === undefined || (conversationId && messages === null)) {
+  React.useEffect(() => {
+    if (!activeId) {
+      setMessages(null);
+      return;
+    }
+    setMessages(null);
+    void getVendorConversationAction(activeId).then((r) => {
+      setMessages(r.ok ? r.conversation.messages : []);
+    });
+  }, [activeId]);
+
+  if (threads === null || (activeId && messages === null)) {
     return <p className="py-8 text-center text-sm text-muted-foreground">Loading…</p>;
   }
-  if (!conversationId) {
+  if (!threads.length || !activeId) {
     return (
       <div className="rounded-xl border border-dashed border-border py-12 text-center">
         <p className="text-sm font-medium text-foreground">Messages</p>
@@ -391,7 +491,42 @@ function MessagesTab({ detail }: { detail: VendorEventDetail }) {
       </div>
     );
   }
-  return <VendorConversationThread conversationId={conversationId} initialMessages={messages ?? []} showHeader={false} />;
+
+  return (
+    <div className="space-y-3">
+      {threads.length > 1 && (
+        <div className="flex flex-wrap gap-2">
+          {threads.map((t) => (
+            <button
+              key={t.conversationId}
+              type="button"
+              onClick={() => {
+                setActiveId(t.conversationId);
+                setActiveMeta(t);
+              }}
+              className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors ${
+                activeId === t.conversationId
+                  ? "border-primary bg-primary/10 text-foreground"
+                  : "border-border bg-card text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              {t.counterpartyLabel}
+              {t.contactUnread > 0 ? ` (${t.contactUnread})` : ""}
+            </button>
+          ))}
+        </div>
+      )}
+      <VendorConversationThread
+        conversationId={activeId}
+        initialMessages={messages ?? []}
+        showHeader={false}
+        eventName={activeMeta?.eventName}
+        venueName={activeMeta?.venueName}
+        coupleName={activeMeta?.coupleName}
+        counterpartyLabel={activeMeta?.counterpartyLabel}
+      />
+    </div>
+  );
 }
 
 /**
@@ -453,7 +588,7 @@ function DocumentsTab({
             {(plans ?? []).map((p) => (
               <a
                 key={p.id}
-                href={`/vendor/floor-plans/${p.id}`}
+                href={`/vendor/floor-plans/${p.id}?from=${encodeURIComponent(detail.assignmentId)}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex items-center gap-3 px-4 py-3 hover:bg-muted/40 transition-colors"

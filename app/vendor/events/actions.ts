@@ -2,6 +2,7 @@
 import { revalidatePath } from "next/cache";
 import {
   completeEventTask,
+  toggleAssignmentCheckin,
   updateAssignmentNotes,
 } from "@/lib/vendor-events/service";
 import {
@@ -57,6 +58,15 @@ export async function updateAssignmentNotesAction(
   notes:        string,
 ): Promise<VendorActionResult> {
   const result = await updateAssignmentNotes(assignmentId, notes);
+  if (result.ok) revalidatePath(`/vendor/events/${assignmentId}`);
+  return result;
+}
+
+export async function toggleAssignmentCheckinAction(
+  assignmentId: string,
+  field: "checked_in" | "setup_complete",
+): Promise<VendorActionResult> {
+  const result = await toggleAssignmentCheckin(assignmentId, field);
   if (result.ok) revalidatePath(`/vendor/events/${assignmentId}`);
   return result;
 }

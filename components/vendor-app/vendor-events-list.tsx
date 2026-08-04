@@ -4,16 +4,9 @@ import Link from "next/link";
 import { CalendarDays } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
+import { formatEventDateRangeShort } from "@/lib/events/constants";
 import { formatTime } from "@/lib/vendors/constants";
 import type { VendorEventListItem } from "@/lib/vendors/types";
-
-function formatDate(iso: string | null): string {
-  if (!iso) return "";
-  const [y, m, d] = iso.split("-");
-  return new Date(Number(y), Number(m) - 1, Number(d)).toLocaleDateString("en-US", {
-    weekday: "short", month: "short", day: "numeric",
-  });
-}
 
 export function VendorEventsList({ events }: { events: VendorEventListItem[] }) {
   const upcoming = events.filter((e) => e.isUpcoming);
@@ -32,7 +25,9 @@ export function VendorEventsList({ events }: { events: VendorEventListItem[] }) 
         </div>
         <div className="shrink-0 text-right space-y-0.5">
           {ev.eventDate && (
-            <p className="text-xs font-medium text-foreground">{formatDate(ev.eventDate)}</p>
+            <p className="text-xs font-medium text-foreground">
+              {formatEventDateRangeShort(ev.eventDate, ev.eventEndDate)}
+            </p>
           )}
           {ev.arrivalTime && (
             <p className="text-xs text-muted-foreground">Arrival {formatTime(ev.arrivalTime)}</p>

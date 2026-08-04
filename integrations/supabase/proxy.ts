@@ -10,6 +10,8 @@ import { getSupabaseConfig, isSupabaseConfigured } from "@/lib/env";
 const PUBLIC_PATHS = [
   "/login",
   "/client/login",   // couple/client portal login
+  "/client/accept",  // primary couple invite accept (pre-auth)
+  "/client/accept-participant", // delegate invite accept (pre-auth)
   "/form",           // public venue inquiry forms — /form/{embedKey}
   "/questionnaire",  // public final details forms — /questionnaire/{accessKey}
   "/api/public",     // public API routes — /api/public/inquire, /api/public/questionnaire
@@ -58,6 +60,34 @@ function isPublicPath(pathname: string): boolean {
 }
 
 /**
+ * Same-origin relative redirect targets only (blocks //evil.com and external URLs).
+ * Used for /login?next= after vendor invitation claim and similar flows.
+ */
+function safeInternalNextPath(raw: string | null, origin: string): string | null {
+  if (!raw) return null;
+  const trimmed = raw.trim();
+  if (!trimmed.startsWith("/") || trimmed.startsWith("//")) return null;
+  try {
+    const url = new URL(trimmed, origin);
+    if (url.origin !== origin) return null;
+    // Never bounce back to login itself.
+    if (url.pathname === "/login") return null;
+    return `${url.pathname}${url.search}${url.hash}`;
+  } catch {
+    return null;
+  }
+}
+
+/** Forward pathname to Server Components (vendor layout uses this for /vendor/accept). */
+function nextWithPathname(request: NextRequest, pathname: string): NextResponse {
+  const requestHeaders = new Headers(request.headers);
+  requestHeaders.set("x-pathname", pathname);
+  return NextResponse.next({
+    request: { headers: requestHeaders },
+  });
+}
+
+/**
  * Refreshes the Supabase session on every request and enforces route
  * protection. This runs in the Next.js 16 Proxy (formerly Middleware).
  *
@@ -73,14 +103,19 @@ export async function updateSession(
   // Without credentials, treat every visitor as unauthenticated.
   if (!isSupabaseConfigured) {
     if (isPublicPath(pathname)) {
-      return NextResponse.next({ request });
+      return nextWithPathname(request, pathname);
     }
     const loginUrl = request.nextUrl.clone();
     loginUrl.pathname = "/login";
     return NextResponse.redirect(loginUrl);
   }
 
-  let supabaseResponse = NextResponse.next({ request });
+  const requestHeaders = new Headers(request.headers);
+  requestHeaders.set("x-pathname", pathname);
+
+  let supabaseResponse = NextResponse.next({
+    request: { headers: requestHeaders },
+  });
 
   const { url, anonKey } = getSupabaseConfig();
   const supabase = createServerClient(url, anonKey, {
@@ -92,7 +127,9 @@ export async function updateSession(
         cookiesToSet.forEach(({ name, value }) => {
           request.cookies.set(name, value);
         });
-        supabaseResponse = NextResponse.next({ request });
+        supabaseResponse = NextResponse.next({
+          request: { headers: requestHeaders },
+        });
         cookiesToSet.forEach(({ name, value, options }) => {
           supabaseResponse.cookies.set(name, value, options);
         });
@@ -187,6 +224,15 @@ export async function updateSession(
       return NextResponse.redirect(suspendedUrl);
     }
 
+    // Honor ?next= for post-auth return (e.g. vendor invitation claim).
+    // Must stay same-origin and relative — never open a login ↔ accept loop
+    // by bouncing claimers who have a session but no vendor_users row yet.
+    const nextRaw = request.nextUrl.searchParams.get("next");
+    const safeNext = safeInternalNextPath(nextRaw, request.nextUrl.origin);
+    if (safeNext) {
+      return NextResponse.redirect(new URL(safeNext, request.nextUrl.origin));
+    }
+
     const { data: vu } = await supabase
       .from("vendor_users")
       .select("vendor_id")
@@ -195,6 +241,7 @@ export async function updateSession(
       .maybeSingle();
     const destUrl = request.nextUrl.clone();
     destUrl.pathname = vu ? "/vendor/dashboard" : "/dashboard";
+    destUrl.search = "";
     return NextResponse.redirect(destUrl);
   }
 

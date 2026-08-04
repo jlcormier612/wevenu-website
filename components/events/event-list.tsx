@@ -13,7 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
-import { EVENT_STATUSES, daysUntil, eventStatusLabel, formatDate, formatTime } from "@/lib/events/constants";
+import { EVENT_STATUSES, daysUntil, eventStatusLabel, formatEventDateRange, formatTime } from "@/lib/events/constants";
 import type { EventStatus, VenueEvent } from "@/lib/events/types";
 import { eventTypeLabel } from "@/lib/leads/constants";
 import { cn } from "@/lib/utils";
@@ -134,7 +134,7 @@ export function EventList({ events }: { events: VenueEvent[] }) {
                       <Link href={`/events/${ev.id}`} className="hover:text-primary">{ev.name}</Link>
                       {ev.eventType && <p className="text-xs text-muted-foreground">{eventTypeLabel(ev.eventType)}</p>}
                     </TableCell>
-                    <TableCell className="text-sm">{ev.eventDate ? formatDate(ev.eventDate) : <span className="text-muted-foreground">TBD</span>}</TableCell>
+                    <TableCell className="text-sm">{ev.eventDate ? formatEventDateRange(ev.eventDate, ev.eventEndDate) : <span className="text-muted-foreground">TBD</span>}</TableCell>
                     <TableCell className="text-sm text-muted-foreground">
                       {ev.startTime ? formatTime(ev.startTime) : "—"}
                     </TableCell>

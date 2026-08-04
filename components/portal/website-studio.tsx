@@ -166,7 +166,10 @@ function SetupWizard({
         await onSaveDesign({ photoStyleId });
       }
       if (step === "story" && storyText.trim()) {
-        await onSaveSection("story", { title: "Our Story", text: storyText });
+        // Section content is replaced wholesale on save, not merged — must
+        // carry forward any Story photo already set via the Studio's own
+        // section editor, or re-running this wizard would silently delete it.
+        await onSaveSection("story", { title: "Our Story", text: storyText, imageUrl: site.content?.story?.imageUrl });
       }
     } finally { setSaving(false); }
     if (next === "done") onComplete();

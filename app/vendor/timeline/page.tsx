@@ -5,7 +5,7 @@ import { VendorTimelineList } from "@/components/vendor-app/vendor-timeline-list
 import { getVendorUser } from "@/lib/vendor-auth/service";
 import { getVendorTimelineAcrossEvents } from "@/lib/vendor-events/service";
 
-export const metadata: Metadata = { title: "Timeline — Vendor Portal" };
+export const metadata: Metadata = { title: "Run of show — Vendor Portal" };
 
 export default async function VendorTimelinePage() {
   const vendorUser = await getVendorUser();
@@ -16,8 +16,10 @@ export default async function VendorTimelinePage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-xl font-bold text-foreground">Timeline</h1>
-        <p className="text-sm text-muted-foreground mt-0.5">Your run-of-show items, across every event, in one place.</p>
+        <h1 className="text-xl font-bold text-foreground">Run of show</h1>
+        <p className="text-sm text-muted-foreground mt-0.5">
+          Day-of timing shared by your venue, across every event.
+        </p>
       </div>
       <VendorTimelineList eventsWithTimeline={eventsWithTimeline} />
     </div>

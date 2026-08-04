@@ -23,6 +23,8 @@ export type PortalContext = {
   event: {
     id: string;
     eventDate: string;
+    /** Inclusive end; null/undefined = single-day. */
+    eventEndDate?: string | null;
     eventType: string | null;
     name: string | null;
     guestCount: number | null;

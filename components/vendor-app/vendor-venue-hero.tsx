@@ -28,6 +28,7 @@ import Link from "next/link";
 
 import { PromotionEditor } from "@/components/vendor-app/vendor-partnerships-list";
 import { getVendorActiveVenueAction } from "@/app/vendor/actions";
+import { formatEventDateRangeShort } from "@/lib/events/constants";
 import { vendorCategoryLabel } from "@/lib/vendors/constants";
 import type { VendorActiveVenueContext, VendorEventListItem, VendorPartnership } from "@/lib/vendors/types";
 
@@ -39,11 +40,6 @@ const PREFERENCE_LABELS: Record<string, string> = {
 
 function formatPartnerSince(iso: string): string {
   return new Date(iso).toLocaleDateString("en-US", { month: "long", year: "numeric" });
-}
-
-function formatEventDate(iso: string): string {
-  const [y, m, d] = iso.split("-");
-  return new Date(Number(y), Number(m) - 1, Number(d)).toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }
 
 function initials(name: string): string {
@@ -185,7 +181,9 @@ export function VendorVenueHero({ initialVenue, partnerships, vendorCategory, al
               <Link href={`/vendor/events/${nextEvent.assignmentId}`} className="text-xs font-medium text-foreground hover:text-primary">
                 {nextEvent.eventName}
               </Link>
-              <p className="text-[10px] text-muted-foreground mt-0.5">{formatEventDate(nextEvent.eventDate!)}</p>
+              <p className="text-[10px] text-muted-foreground mt-0.5">
+                {formatEventDateRangeShort(nextEvent.eventDate!, nextEvent.eventEndDate)}
+              </p>
               <p className="text-[10px] text-muted-foreground mt-2">
                 {upcomingAtVenue.length} upcoming event{upcomingAtVenue.length === 1 ? "" : "s"} together
               </p>

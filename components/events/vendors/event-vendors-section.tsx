@@ -129,6 +129,15 @@ export function EventVendorsSection({
   const [addPending, startAdd]        = React.useTransition();
   const [openThreadId, setOpenThreadId] = React.useState<string | null>(null);
 
+  // Deep-link from vendor→venue email / vendor rollup:
+  // /events/{id}?conversation={conversationId}#vendors
+  React.useEffect(() => {
+    const cid = new URLSearchParams(window.location.search).get("conversation");
+    if (!cid) return;
+    const match = assignments.find((a) => a.conversationId === cid);
+    if (match) setOpenThreadId(match.id);
+  }, [assignments]);
+
   const preferred    = availableVendors.filter(v => v.isPreferred);
   const others       = availableVendors.filter(v => !v.isPreferred);
   const assignedIds  = new Set(assignments.map(a => a.vendorId));
@@ -204,9 +213,15 @@ export function EventVendorsSection({
                   {a.conversationId && (
                     <button type="button"
                       onClick={() => setOpenThreadId(prev => prev === a.id ? null : a.id)}
-                      className={`opacity-0 transition-opacity group-hover:opacity-100 ${openThreadId === a.id ? "opacity-100 text-primary" : "text-muted-foreground hover:text-primary"}`}
-                      aria-label={`Message ${a.vendorName}`}>
+                      className={`inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium transition-colors ${
+                        openThreadId === a.id
+                          ? "bg-primary/10 text-primary"
+                          : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                      }`}
+                      aria-label={`Message ${a.vendorName}`}
+                      aria-expanded={openThreadId === a.id}>
                       <MessageSquare className="h-3.5 w-3.5" />
+                      Message
                     </button>
                   )}
                   <button type="button"

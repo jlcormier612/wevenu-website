@@ -60,7 +60,7 @@ type EVARow = {
   vendors: { business_name: string; category: string | null; contact_name: string | null; phone: string | null } | null;
   // RC2, Milestone 3 — one Conversation per assignment, auto-provisioned by
   // a trigger the moment the assignment row is created (never lazily).
-  conversations: { id: string } | { id: string }[] | null;
+  conversations: { id: string; conversation_kind?: string | null } | { id: string; conversation_kind?: string | null }[] | null;
 };
 
 type EVAEventRow = {
@@ -124,7 +124,17 @@ function mapVVR(r: VVRRow): Vendor | null {
 }
 
 function mapEVA(r: EVARow): EventVendorAssignment {
-  const conversation = Array.isArray(r.conversations) ? r.conversations[0] : r.conversations;
+  const conversations = Array.isArray(r.conversations)
+    ? r.conversations
+    : r.conversations
+      ? [r.conversations]
+      : [];
+  // Prefer the venue↔vendor ops thread when both kinds exist.
+  const conversation =
+    conversations.find((c) => c.conversation_kind === "venue_vendor")
+    ?? conversations.find((c) => !c.conversation_kind)
+    ?? conversations[0]
+    ?? null;
   return {
     id:              r.id,
     venueId:         r.venue_id,
@@ -381,7 +391,7 @@ export async function getEventVendorAssignments(
 ): Promise<EventVendorAssignment[]> {
   const { data, error } = await client
     .from("event_vendor_assignments")
-    .select("*, vendors(business_name, category, contact_name, phone), conversations!event_vendor_assignment_id(id)")
+    .select("*, vendors(business_name, category, contact_name, phone), conversations!event_vendor_assignment_id(id, conversation_kind)")
     .eq("event_id", eventId)
     .eq("venue_id", venueId)
     .order("arrival_time", { ascending: true, nullsFirst: false })
@@ -392,7 +402,7 @@ export async function getEventVendorAssignments(
 
 export async function insertVendorAssignment(
   client: DbClient, venueId: string, eventId: string, input: VendorAssignmentInput,
-): Promise<EventVendorAssignment> {
+): Promise<{ assignment: EventVendorAssignment; created: boolean }> {
   const { data, error } = await client
     .from("event_vendor_assignments")
     .insert({
@@ -404,10 +414,24 @@ export async function insertVendorAssignment(
       load_in_notes:  input.loadInNotes.trim() || null,
       notes:          input.notes.trim() || null,
     })
-    .select("*, vendors(business_name, category, contact_name, phone), conversations!event_vendor_assignment_id(id)")
+    .select("*, vendors(business_name, category, contact_name, phone), conversations!event_vendor_assignment_id(id, conversation_kind)")
     .single<EVARow>();
+
+  // Couple Submit may have already created the assignment — treat as success
+  // and return the existing row (venue can still edit details separately).
+  if (error?.code === "23505") {
+    const { data: existing, error: readErr } = await client
+      .from("event_vendor_assignments")
+      .select("*, vendors(business_name, category, contact_name, phone), conversations!event_vendor_assignment_id(id, conversation_kind)")
+      .eq("event_id", eventId)
+      .eq("vendor_id", input.vendorId)
+      .eq("venue_id", venueId)
+      .single<EVARow>();
+    if (readErr || !existing) throw readErr ?? error;
+    return { assignment: mapEVA(existing), created: false };
+  }
   if (error) throw error;
-  return mapEVA(data);
+  return { assignment: mapEVA(data), created: true };
 }
 
 export async function deleteVendorAssignment(

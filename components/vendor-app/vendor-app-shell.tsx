@@ -4,54 +4,46 @@ import * as React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  CalendarDays, Clock, FileText,
-  LayoutDashboard, Menu, MessageSquare,
+  CalendarDays, CheckSquare, Clock, FileText, Heart,
+  LayoutDashboard, LogOut, Menu, MessageSquare,
   User, X,
 } from "lucide-react";
 
+import { signOut } from "@/app/auth/actions";
+import { VendorNotificationBell } from "@/components/vendor-app/vendor-notification-bell";
 import type { VendorRole } from "@/lib/vendors/types";
 
-// Venue-First Vendor Dashboard (2026-07-24): "Very focused. That's it."
-// Six destinations, nothing else. Venue Partnerships is no longer a nav
-// item — the vendor's active venue relationship (branding, contacts,
-// promotion, partnership status) now lives directly on the Dashboard
-// (VendorVenueHero), immersing the vendor in that venue immediately rather
-// than requiring a second click through a "partnerships list" page.
-// /vendor/partnerships still exists (linked from the Dashboard's venue
-// switcher, for vendors with more than one relationship) but isn't
-// primary nav anymore. Tasks folds the same way — "Outstanding Tasks" is
-// now a Dashboard card (see vendor-home.tsx); /vendor/tasks still works,
-// reached from that card's "View all →" link.
-//
-// (Historical note, Program 4, Initiative C, Phase 9: "The Vendor
-// Workspace is not a CRM. It exists to strengthen the Vendor's
-// relationship with participating Venues." Inquiries/lead-pipeline CRM,
-// the old cross-venue Venues browser, and Luv/health-score business
-// coaching remain dropped per that same audit.)
+// Luv sits in nav (reachable surface) the way venue puts her on Today —
+// same job (attention + next actions), vendor-scoped. Health/CRM coaching
+// stay out of primary nav.
 const NAV = [
-  { href: "/vendor/dashboard", label: "Home",     icon: LayoutDashboard },
-  { href: "/vendor/events",    label: "Events",    icon: CalendarDays    },
-  { href: "/vendor/timeline",  label: "Timeline",  icon: Clock           },
-  { href: "/vendor/documents", label: "Documents", icon: FileText        },
-  { href: "/vendor/messages",  label: "Messages",  icon: MessageSquare,  badge: "message" as const },
-  { href: "/vendor/profile",   label: "Profile",   icon: User            },
+  { href: "/vendor/dashboard", label: "Home",         icon: LayoutDashboard },
+  { href: "/vendor/luv",       label: "Luv",           icon: Heart,          badge: "luv" as const },
+  { href: "/vendor/events",    label: "Events",        icon: CalendarDays    },
+  { href: "/vendor/timeline",  label: "Run of show",   icon: Clock           },
+  { href: "/vendor/tasks",     label: "Tasks",         icon: CheckSquare,    badge: "task" as const },
+  { href: "/vendor/documents", label: "Documents",     icon: FileText        },
+  { href: "/vendor/messages",  label: "Messages",      icon: MessageSquare,  badge: "message" as const },
+  { href: "/vendor/profile",   label: "Profile",       icon: User            },
 ];
 
-type BadgeKey = "task" | "message";
+type BadgeKey = "task" | "message" | "luv";
 
 function NavItem({
-  href, label, icon: Icon, badgeCount,
+  href, label, icon: Icon, badgeCount, onNavigate,
 }: {
   href: string;
   label: string;
   icon: React.ElementType;
   badgeCount?: number;
+  onNavigate?: () => void;
 }) {
   const pathname = usePathname();
   const active = pathname === href || (href !== "/vendor/dashboard" && pathname.startsWith(href));
   return (
     <Link
       href={href}
+      onClick={onNavigate}
       className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
         active
           ? "bg-primary/10 text-primary"
@@ -76,6 +68,7 @@ export function VendorAppShell({
   role,
   pendingTaskCount,
   unreadMessageCount,
+  luvAttentionCount,
   children,
 }: {
   businessName:     string;
@@ -84,6 +77,8 @@ export function VendorAppShell({
   role:             VendorRole;
   pendingTaskCount?: number;
   unreadMessageCount?: number;
+  /** Count for Luv nav badge — needsAttentionNow from shared briefing. */
+  luvAttentionCount?: number;
   children:         React.ReactNode;
 }) {
   const [mobileOpen, setMobileOpen] = React.useState(false);
@@ -91,28 +86,42 @@ export function VendorAppShell({
   const badges: Record<BadgeKey, number | undefined> = {
     task:    pendingTaskCount,
     message: unreadMessageCount,
+    luv:     luvAttentionCount,
   };
+
+  const closeMobile = () => setMobileOpen(false);
 
   return (
     <div className="flex h-screen bg-background">
       {/* Desktop sidebar */}
       <aside className="hidden lg:flex w-64 shrink-0 flex-col border-r border-border bg-card">
-        <SidebarContent businessName={businessName} category={category} logoUrl={logoUrl} badges={badges} />
+        <SidebarContent
+          businessName={businessName}
+          category={category}
+          logoUrl={logoUrl}
+          badges={badges}
+        />
       </aside>
 
       {/* Mobile overlay */}
       {mobileOpen && (
         <div className="fixed inset-0 z-40 lg:hidden">
-          <div className="absolute inset-0 bg-black/40" onClick={() => setMobileOpen(false)} />
+          <div className="absolute inset-0 bg-black/40" onClick={closeMobile} />
           <aside className="relative w-72 h-full flex flex-col bg-card border-r border-border">
             <button
               type="button"
               className="absolute top-4 right-4 text-muted-foreground hover:text-foreground"
-              onClick={() => setMobileOpen(false)}
+              onClick={closeMobile}
             >
               <X className="h-5 w-5" />
             </button>
-            <SidebarContent businessName={businessName} category={category} logoUrl={logoUrl} badges={badges} />
+            <SidebarContent
+              businessName={businessName}
+              category={category}
+              logoUrl={logoUrl}
+              badges={badges}
+              onNavigate={closeMobile}
+            />
           </aside>
         </div>
       )}
@@ -128,10 +137,11 @@ export function VendorAppShell({
             <img src={logoUrl} alt="" className="h-6 w-6 rounded-md object-cover shrink-0" />
           ) : null}
           <span className="font-semibold text-sm text-foreground truncate">{businessName}</span>
-          <span className="ml-auto text-[10px] font-medium uppercase tracking-widest text-muted-foreground">
-            Hello to Cheers
-          </span>
+          <div className="ml-auto">
+            <VendorNotificationBell />
+          </div>
         </header>
+
         <main className="flex min-h-0 flex-1 flex-col overflow-y-auto p-6">
           {children}
         </main>
@@ -145,17 +155,24 @@ function SidebarContent({
   category,
   logoUrl,
   badges,
+  onNavigate,
 }: {
   businessName: string;
   category:     string | null;
   logoUrl?:     string | null;
   badges:       Record<BadgeKey, number | undefined>;
+  onNavigate?:  () => void;
 }) {
   return (
     <>
       {/* Header */}
       <div className="px-5 pt-6 pb-4 border-b border-border">
-        <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1">Hello to Cheers</p>
+        <div className="mb-1 flex items-center justify-between gap-2">
+          <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Hello to Cheers</p>
+          <div className="hidden lg:block">
+            <VendorNotificationBell />
+          </div>
+        </div>
         <div className="flex items-center gap-2.5">
           {logoUrl ? (
             <img src={logoUrl} alt="" className="h-9 w-9 rounded-lg object-cover border border-border shrink-0" />
@@ -182,9 +199,22 @@ function SidebarContent({
             label={item.label}
             icon={item.icon}
             badgeCount={item.badge ? badges[item.badge] : undefined}
+            onNavigate={onNavigate}
           />
         ))}
       </nav>
+
+      <div className="mt-auto border-t border-border px-3 py-3">
+        <form action={signOut}>
+          <button
+            type="submit"
+            className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+          >
+            <LogOut className="h-4 w-4 shrink-0" />
+            Sign out
+          </button>
+        </form>
+      </div>
     </>
   );
 }

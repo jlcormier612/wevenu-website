@@ -28,7 +28,7 @@ function SubmitButton() {
   );
 }
 
-export function LoginForm() {
+export function LoginForm({ next }: { next?: string }) {
   const [state, formAction] = React.useActionState(signIn, INITIAL_STATE);
   const [showPassword, setShowPassword] = React.useState(false);
 
@@ -45,6 +45,7 @@ export function LoginForm() {
 
   return (
     <form action={formAction} className="space-y-4">
+      {next ? <input type="hidden" name="next" value={next} /> : null}
       <div className="space-y-2">
         <Label htmlFor="email">Email</Label>
         <Input

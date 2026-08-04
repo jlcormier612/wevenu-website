@@ -22,11 +22,11 @@ import {
   validateVendorInput,
 } from "@/lib/vendors/validation";
 import { getCurrentVenue } from "@/lib/venue/service";
-import { autoInviteVendorIfUnclaimed } from "@/lib/vendor-invites/service";
 import {
   clearAssignmentBooked,
   markAssignmentBooked,
 } from "@/lib/vendor-availability/sync";
+import { notifyVendorOfEventAssignment } from "@/lib/vendors/notify-assignment";
 
 async function withVenue<T>(
   fn: (supabase: Awaited<ReturnType<typeof createClient>>, venueId: string) => Promise<T>,
@@ -153,40 +153,58 @@ export async function addVendorReview(vendorId: string, input: VendorReviewInput
 // ---- event vendor assignments -----------------------------------------------
 
 /**
- * Vendor Workspace Realignment, Phase 3 (2026-07-22) — Stage 3 (Booked)
- * automation: "when a vendor is selected, automatically ... invite vendor
- * into Hello to Cheers." Booking a vendor with no portal login would
- * otherwise leave them unable to see the assignment, tasks, or timeline
- * until a coordinator remembered the separate manual invite step.
- * Best-effort — never blocks or fails the booking itself.
+ * Venue Assign — creates event_vendor_assignments (conversation trigger
+ * provisions venue↔vendor thread). Notifies the vendor by email; unclaimed
+ * vendors get a claim deep-link + invitation row (same notify path as
+ * couple Submit). Best-effort notify — never blocks the booking itself.
  */
 export async function assignVendor(
   eventId: string, input: VendorAssignmentInput,
 ): Promise<{ ok: true; assignment: EventVendorAssignment } | VendorActionResult> {
   const errors = validateAssignmentInput(input);
   if (Object.keys(errors).length > 0) return { ok: false, errors, message: errors.vendorId };
+  let created = false;
   const result = await withVenue(async (supabase, venueId) => {
-    const assignment = await repo.insertVendorAssignment(supabase, venueId, eventId, input);
-    // Availability write-through: secured assignment → Booked on event_date.
+    const inserted = await repo.insertVendorAssignment(supabase, venueId, eventId, input);
+    created = inserted.created;
+    const assignment = inserted.assignment;
+    // Availability write-through: secured assignment → Booked on every day in range.
     const { data: event } = await supabase
       .from("events")
-      .select("event_date, name, status")
+      .select("event_date, event_end_date, name, status")
       .eq("id", eventId)
-      .maybeSingle<{ event_date: string | null; name: string; status: string }>();
+      .maybeSingle<{
+        event_date: string | null;
+        event_end_date: string | null;
+        name: string;
+        status: string;
+      }>();
     if (event) {
       await markAssignmentBooked({
         assignmentId: assignment.id,
         vendorId:     assignment.vendorId,
         eventDate:    event.event_date,
+        eventEndDate: event.event_end_date,
         eventName:    event.name,
         eventStatus:  event.status,
       });
     }
     return { ok: true, assignment };
   });
-  if ((result as VendorActionResult).ok) {
+  if ((result as { ok: true; assignment: EventVendorAssignment }).ok && created) {
     const venue = await getCurrentVenue();
-    if (venue) void autoInviteVendorIfUnclaimed(venue.id, venue.name, input.vendorId);
+    const assignment = (result as { ok: true; assignment: EventVendorAssignment }).assignment;
+    if (venue) {
+      // Assignment email (+ claim deep-link / invitation row if unclaimed).
+      // Same notify path as couple Submit. Skip when assignment already existed.
+      notifyVendorOfEventAssignment({
+        venueId: venue.id,
+        venueName: venue.name,
+        eventId,
+        assignmentId: assignment.id,
+        vendorId: input.vendorId,
+      });
+    }
   }
   return result as { ok: true; assignment: EventVendorAssignment } | VendorActionResult;
 }

@@ -46,6 +46,8 @@ export type WebsiteContent = {
   story?: {
     title?: string;
     text?: string;
+    /** Optional, couple-supplied — never inferred from gallery/hero/venue imagery. */
+    imageUrl?: string;
   };
   event?: {
     ceremony?: { time?: string; location?: string; address?: string };
@@ -311,6 +313,7 @@ export type WebsiteSuggestions = {
   event?: {
     name: string;
     eventDate: string;
+    eventEndDate?: string | null;
     eventType: string | null;
   } | null;
   venue?: {
@@ -367,6 +370,7 @@ export type PublicWebsite = {
     id: string;
     name: string;
     eventDate: string;
+    eventEndDate?: string | null;
     eventType: string | null;
   } | null;
   venue?: WebsiteVenue;

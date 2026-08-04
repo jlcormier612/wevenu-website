@@ -122,7 +122,7 @@ async function buildDigestContext(
     ...((unreadRes.count ?? 0) > 0 ? [{
       label: `${unreadRes.count} unanswered message${(unreadRes.count ?? 0) > 1 ? "s" : ""}`,
       detail: "Inquiries waiting more than 24 hours",
-      href: `${APP_URL}/messages`,
+      href: `${APP_URL}/messaging`,
     }] : []),
   ].slice(0, MAX_ITEMS);
 

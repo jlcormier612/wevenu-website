@@ -8,12 +8,28 @@ import {
 } from "@/lib/vendor-documents/service";
 import { getVendorEventDetail } from "@/lib/vendor-events/service";
 
+type Tab =
+  | "overview"
+  | "messages"
+  | "timeline"
+  | "tasks"
+  | "documents"
+  | "venueinfo"
+  | "notes";
+
+const VALID_TABS = new Set<Tab>([
+  "overview", "messages", "timeline", "tasks", "documents", "venueinfo", "notes",
+]);
+
 export default async function VendorEventDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ tab?: string }>;
 }) {
   const { id } = await params;
+  const { tab: tabParam } = await searchParams;
   const vendorUser = await getVendorUser();
   if (!vendorUser) redirect("/login");
 
@@ -25,11 +41,15 @@ export default async function VendorEventDetailPage({
     getVendorEventUploads(id),
   ]);
 
+  const initialTab: Tab | undefined =
+    tabParam && VALID_TABS.has(tabParam as Tab) ? (tabParam as Tab) : undefined;
+
   return (
     <VendorEventWorkspace
       detail={detail}
       library={library}
       eventUploads={eventUploads}
+      initialTab={initialTab}
     />
   );
 }

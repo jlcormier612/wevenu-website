@@ -8,6 +8,9 @@ export function validateEventInput(input: EventInput): EventErrors {
   const errors: EventErrors = {};
   if (!input.name.trim()) errors.name = "Event name is required.";
   if (!input.eventDate) errors.eventDate = "Event date is required.";
+  if (input.eventEndDate.trim() && input.eventEndDate < input.eventDate) {
+    errors.eventEndDate = "End date must be on or after the start date.";
+  }
   if (input.guestCount.trim()) {
     const n = Number(input.guestCount);
     if (!Number.isInteger(n) || n < 0) errors.guestCount = "Guest count must be a whole number.";

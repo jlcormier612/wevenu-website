@@ -7,7 +7,7 @@ import { getVendorConversation } from "@/lib/conversations/service";
 
 type Props = { params: Promise<{ conversationId: string }> };
 
-export const metadata: Metadata = { title: "Conversation — Vendor Portal" };
+export const metadata: Metadata = { title: "Messages — Vendor Portal" };
 
 export default async function VendorConversationPage({ params }: Props) {
   const vendorUser = await getVendorUser();
@@ -19,7 +19,14 @@ export default async function VendorConversationPage({ params }: Props) {
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <VendorConversationThread conversationId={conversationId} initialMessages={result.conversation.messages} />
+      <VendorConversationThread
+        conversationId={conversationId}
+        initialMessages={result.conversation.messages}
+        eventName={result.conversation.eventName}
+        venueName={result.conversation.venueName}
+        coupleName={result.conversation.coupleName}
+        counterpartyLabel={result.conversation.counterpartyLabel}
+      />
     </div>
   );
 }

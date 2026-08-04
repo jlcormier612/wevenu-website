@@ -5,10 +5,12 @@ import * as React from "react";
 import { Loader2 } from "lucide-react";
 import { useFormStatus } from "react-dom";
 
-import { signInClientAction, CLIENT_AUTH_INITIAL_STATE } from "@/app/client/actions";
+import { signInClientAction, type ClientAuthFormState } from "@/app/client/actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+
+const INITIAL_STATE: ClientAuthFormState = {};
 
 function SubmitButton() {
   const { pending } = useFormStatus();
@@ -20,7 +22,7 @@ function SubmitButton() {
 }
 
 export function ClientLoginForm() {
-  const [state, formAction] = React.useActionState(signInClientAction, CLIENT_AUTH_INITIAL_STATE);
+  const [state, formAction] = React.useActionState(signInClientAction, INITIAL_STATE);
 
   return (
     <form action={formAction} className="space-y-4">

@@ -60,6 +60,8 @@ export type VendorDocument = {
   storageUrl: string;
   mimeType: string | null;
   notes: string | null;
+  /** ISO timestamp when the venue shared/created the document. Null if unknown. */
+  createdAt?: string | null;
 };
 
 export type VendorFloorPlanRef = { id: string; name: string };
@@ -71,6 +73,7 @@ export type VendorDocumentsByEvent = {
   eventId: string;
   eventName: string;
   eventDate: string | null;
+  eventEndDate: string | null;
   venueName: string;
   documents: VendorDocument[];
   floorPlans: VendorFloorPlanRef[];
@@ -81,6 +84,7 @@ export type VendorTimelineByEvent = {
   eventId: string;
   eventName: string;
   eventDate: string | null;
+  eventEndDate: string | null;
   venueName: string;
   entries: VendorTimelineEntry[];
 };

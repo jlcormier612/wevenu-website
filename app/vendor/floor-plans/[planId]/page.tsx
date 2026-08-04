@@ -9,7 +9,10 @@ import { getVendorFloorPlan } from "@/lib/floor-plans/service";
 import { OBJECT_STYLE } from "@/lib/floor-plans/constants";
 import type { FloorPlanObject } from "@/lib/floor-plans/types";
 
-type Props = { params: Promise<{ planId: string }> };
+type Props = {
+  params: Promise<{ planId: string }>;
+  searchParams: Promise<{ from?: string }>;
+};
 
 export const metadata: Metadata = { title: "Floor Plan" };
 
@@ -26,13 +29,32 @@ export const metadata: Metadata = { title: "Floor Plan" };
  * "Download"), scoped to the vendor's own data fetch instead of the
  * coordinator's.
  */
-export default async function VendorFloorPlanPage({ params }: Props) {
+export default async function VendorFloorPlanPage({ params, searchParams }: Props) {
   const { planId } = await params;
+  const { from: fromAssignmentId } = await searchParams;
   const vendorUser = await getVendorUser();
   if (!vendorUser) redirect("/login");
 
   const plan = await getVendorFloorPlan(planId);
   if (!plan) notFound();
+
+  // Prefer return to the event Documents workspace when opened from there
+  // (?from=assignmentId). Fall back to looking up the vendor's assignment
+  // for this plan's event; last resort is the events list.
+  let backHref = "/vendor/events";
+  let backLabel = "← Back to Events";
+  if (fromAssignmentId) {
+    backHref = `/vendor/events/${fromAssignmentId}?tab=documents`;
+    backLabel = "← Back to Documents";
+  } else {
+    const { getVendorEvents } = await import("@/lib/vendor-events/service");
+    const events = await getVendorEvents();
+    const match = events.find((e) => e.eventId === plan.eventId);
+    if (match) {
+      backHref = `/vendor/events/${match.assignmentId}?tab=documents`;
+      backLabel = "← Back to Documents";
+    }
+  }
 
   const CANVAS_WIDTH = plan.roomWidthFt * 12;
   const CANVAS_HEIGHT = plan.roomDepthFt * 12;
@@ -90,7 +112,7 @@ export default async function VendorFloorPlanPage({ params }: Props) {
 
       <div style={{ maxWidth: 960, margin: "0 auto", padding: "24px 16px" }}>
         <div className="no-print" style={{ display: "flex", justifyContent: "space-between", marginBottom: 16, alignItems: "center" }}>
-          <Link href="/vendor/events" style={{ fontSize: 14, color: "#5D6F5D", textDecoration: "none" }}>← Back to Events</Link>
+          <Link href={backHref} style={{ fontSize: 14, color: "#5D6F5D", textDecoration: "none" }}>{backLabel}</Link>
           <PrintButton />
         </div>
 

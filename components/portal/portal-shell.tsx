@@ -70,6 +70,22 @@ function formatDate(iso: string) {
   return new Date(iso + "T12:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 }
 
+function formatDateLong(iso: string) {
+  return new Date(iso + "T12:00:00").toLocaleDateString("en-US", {
+    weekday: "long", month: "long", day: "numeric", year: "numeric",
+  });
+}
+
+function formatPortalEventRange(start: string, end?: string | null) {
+  if (!end || end === start) return formatDateLong(start);
+  return `${formatDateLong(start)} – ${formatDateLong(end)}`;
+}
+
+function formatPortalEventRangeShort(start: string, end?: string | null) {
+  if (!end || end === start) return formatDate(start);
+  return `${formatDate(start)} – ${formatDate(end)}`;
+}
+
 function daysUntil(iso: string) {
   return Math.ceil((new Date(iso + "T12:00:00").getTime() - Date.now()) / 86_400_000);
 }
@@ -1713,11 +1729,11 @@ function OverviewSection({
               <p className="font-heading font-semibold text-white" style={{ fontSize: "clamp(1.1rem, 2.6vw, 1.6rem)" }}>
                 {du > 0 ? `${du.toLocaleString()} Days Until Your Celebration`
                   : du === 0 ? "Today Is Your Celebration ✦"
-                  : `Married ${new Date(context.event.eventDate + "T12:00:00").toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}`}
+                  : `Married ${formatPortalEventRangeShort(context.event.eventDate, context.event.eventEndDate)}`}
               </p>
               {du >= 0 && (
                 <p className="font-light tracking-wide" style={{ color: "rgba(255,255,255,0.60)", fontSize: "clamp(0.75rem, 1.6vw, 0.9rem)" }}>
-                  {new Date(context.event.eventDate + "T12:00:00").toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" })}
+                  {formatPortalEventRange(context.event.eventDate, context.event.eventEndDate)}
                 </p>
               )}
             </div>
@@ -4038,7 +4054,7 @@ export function PortalShell({
           <div className="flex items-center gap-3">
             {context.event && (
               <p className="text-xs text-muted-foreground hidden sm:block">
-                {new Date(context.event.eventDate + "T12:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                {formatPortalEventRangeShort(context.event.eventDate, context.event.eventEndDate)}
               </p>
             )}
             <a

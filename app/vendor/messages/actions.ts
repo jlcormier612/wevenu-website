@@ -25,7 +25,16 @@ export async function getVendorConversationAction(conversationId: string): Promi
  */
 export async function getVendorConversationIdForEventAction(eventId: string): Promise<string | null> {
   const { conversations } = await getVendorConversationInbox();
-  return conversations.find((c) => c.eventId === eventId)?.conversationId ?? null;
+  // Event workspace Messages tab defaults to the venue ops thread.
+  return conversations.find((c) => c.eventId === eventId && c.conversationKind === "venue_vendor")?.conversationId
+    ?? conversations.find((c) => c.eventId === eventId)?.conversationId
+    ?? null;
+}
+
+/** All Venue + Couple threads for one event (event workspace Messages list). */
+export async function getVendorConversationIdsForEventAction(eventId: string) {
+  const { conversations } = await getVendorConversationInbox();
+  return conversations.filter((c) => c.eventId === eventId);
 }
 
 export async function sendVendorConversationMessageAction(

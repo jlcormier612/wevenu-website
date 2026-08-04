@@ -10,6 +10,22 @@ export type AuthFormState = {
 };
 
 /**
+ * Same-origin relative post-login paths only. Blocks open redirects.
+ */
+function safeInternalNextPath(raw: unknown): string | null {
+  if (typeof raw !== "string") return null;
+  const trimmed = raw.trim();
+  if (!trimmed.startsWith("/") || trimmed.startsWith("//")) return null;
+  try {
+    const url = new URL(trimmed, "http://localhost");
+    if (url.pathname === "/login") return null;
+    return `${url.pathname}${url.search}${url.hash}`;
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Authenticates a user with email + password via Supabase Auth and redirects to
  * the workspace on success.
  *
@@ -22,6 +38,7 @@ export async function signIn(
 ): Promise<AuthFormState> {
   const email = String(formData.get("email") ?? "").trim();
   const password = String(formData.get("password") ?? "");
+  const next = safeInternalNextPath(formData.get("next"));
 
   if (!email || !password) {
     return { error: "Email and password are required." };
@@ -58,6 +75,25 @@ export async function signIn(
       venueLock.account_status === "suspended")
   ) {
     redirect("/billing/suspended");
+  }
+
+  // Prefer ?next= (e.g. /vendor/accept?token=…) so invitation claimers return
+  // to the claim page after signing in. Fall back by actor type.
+  if (next) {
+    redirect(next);
+  }
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (user) {
+    const { data: vu } = await supabase
+      .from("vendor_users")
+      .select("vendor_id")
+      .eq("user_id", user.id)
+      .eq("is_active", true)
+      .maybeSingle();
+    if (vu) redirect("/vendor/dashboard");
   }
 
   // redirect() throws internally and must be outside the try/catch above.

@@ -11,13 +11,18 @@ import { createClient } from "@/integrations/supabase/server";
 import { isSupabaseConfigured } from "@/lib/env";
 import * as repo from "@/lib/conversations/repository";
 import {
+  notifyCoupleOfVendorPortalMessage,
+  notifyVendorOfCouplePortalMessage,
   notifyVendorOfVenuePortalMessage,
   notifyVenueOfVendorPortalMessage,
 } from "@/lib/conversations/notify";
+import { getVendorEvents } from "@/lib/vendor-events/service";
 import type {
   ConversationDetail,
   ConversationSummary,
   PortalConversationResult,
+  PortalCoupleVendorConversationResult,
+  PortalCoupleVendorConversationSummary,
   SendMessageResult,
   VendorConversationResult,
   VendorConversationSummary,
@@ -104,8 +109,8 @@ export async function sendConversationMessage(
   if (!result.ok) return { ok: false, message: result.error ?? "Could not send message." };
 
   // Portal-only: email/SMS already notified the counterparty via the
-  // provider send above. Vendor-anchored Conversations get a short “new
-  // message” email; couple portal messages use their own notify path.
+  // provider send above. Venue↔vendor portal messages get a short “new
+  // message” email; couple portal / couple↔vendor use their own notify paths.
   if (channel === "portal") {
     notifyVendorOfVenuePortalMessage(conversationId, trimmed);
   }
@@ -212,7 +217,27 @@ export async function getVendorConversation(conversationId: string): Promise<Ven
   const supabase = await createClient();
   const conversation = await repo.getVendorConversation(supabase, conversationId);
   if (!conversation) return { ok: false, message: "Conversation not found." };
-  return { ok: true, conversation };
+
+  // Thread header needs event / venue / couple labels. Inbox + vendor events
+  // are the same sources Home and the Messages list already use (RLS-safe).
+  const [inbox, events] = await Promise.all([
+    repo.getVendorConversationInbox(supabase),
+    getVendorEvents(),
+  ]);
+  const summary = inbox.conversations.find((c) => c.conversationId === conversationId);
+  const event = events.find((e) => e.eventId === summary?.eventId);
+
+  return {
+    ok: true,
+    conversation: {
+      ...conversation,
+      conversationKind: summary?.conversationKind ?? conversation.conversationKind,
+      eventName: summary?.eventName ?? null,
+      venueName: summary?.venueName ?? event?.venueName ?? null,
+      coupleName: summary?.coupleName ?? null,
+      counterpartyLabel: summary?.counterpartyLabel ?? conversation.counterpartyLabel,
+    },
+  };
 }
 
 export async function sendVendorConversationMessage(
@@ -226,8 +251,16 @@ export async function sendVendorConversationMessage(
   const trimmed = body.trim();
   const result = await repo.sendVendorConversationMessage(supabase, conversationId, trimmed, hasAttachment);
   if (!result.ok) return { ok: false, message: result.error ?? "Could not send message." };
-  // Vendor portal sends are always the in-app portal channel.
-  notifyVenueOfVendorPortalMessage(conversationId, trimmed);
+
+  // Route notify by thread kind — venue ops vs couple client thread.
+  // Use inbox (no read-side effects) rather than getVendorConversation.
+  const inbox = await repo.getVendorConversationInbox(supabase);
+  const summary = inbox.conversations.find((c) => c.conversationId === conversationId);
+  if (summary?.conversationKind === "couple_vendor") {
+    notifyCoupleOfVendorPortalMessage(conversationId, trimmed);
+  } else {
+    notifyVenueOfVendorPortalMessage(conversationId, trimmed);
+  }
   return { ok: true, messageId: result.messageId! };
 }
 
@@ -241,4 +274,46 @@ export async function addVendorConversationMessageAttachment(
   const result = await repo.addVendorConversationMessageAttachment(supabase, messageId, file);
   if (!result.ok) return { ok: false, message: result.error ?? "Could not attach file." };
   return { ok: true };
+}
+
+// ── Couple ↔ vendor (portal) ──────────────────────────────────────────────────
+
+export async function getPortalCoupleVendorConversations(
+  token: string,
+  clientId: string,
+): Promise<{ conversations: PortalCoupleVendorConversationSummary[]; totalUnread: number }> {
+  if (!isSupabaseConfigured) return { conversations: [], totalUnread: 0 };
+  const supabase = await createClient();
+  return repo.getPortalCoupleVendorConversations(supabase, token, clientId);
+}
+
+export async function getPortalCoupleVendorConversation(
+  token: string,
+  clientId: string,
+  conversationId: string,
+): Promise<PortalCoupleVendorConversationResult> {
+  if (!isSupabaseConfigured) return { ok: false, message: "Backend not configured." };
+  const supabase = await createClient();
+  const result = await repo.getPortalCoupleVendorConversation(supabase, token, clientId, conversationId);
+  if ("error" in result) return { ok: false, message: result.error };
+  return { ok: true, conversation: result };
+}
+
+export async function sendPortalCoupleVendorMessage(
+  token: string,
+  clientId: string,
+  conversationId: string,
+  body: string,
+  hasAttachment = false,
+): Promise<SendMessageResult> {
+  if (!isSupabaseConfigured) return { ok: false, message: "Backend not configured." };
+  if (!body.trim() && !hasAttachment) return { ok: false, message: "Message can't be empty." };
+  const supabase = await createClient();
+  const trimmed = body.trim();
+  const result = await repo.sendPortalCoupleVendorMessage(
+    supabase, token, clientId, conversationId, trimmed, hasAttachment,
+  );
+  if (!result.ok) return { ok: false, message: result.error ?? "Could not send message." };
+  notifyVendorOfCouplePortalMessage(conversationId, trimmed);
+  return { ok: true, messageId: result.messageId! };
 }

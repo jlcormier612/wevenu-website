@@ -93,6 +93,7 @@ export type VendorFloorPlanSummary = {
 
 /** Sprint 1 — a vendor's read-only view of one shared Floor Plan, with just enough event/venue context to render its own standalone page. */
 export type VendorFloorPlanDetail = FloorPlanWithObjects & {
+  eventId: string;
   eventName: string;
   eventDate: string | null;
   venueName: string;

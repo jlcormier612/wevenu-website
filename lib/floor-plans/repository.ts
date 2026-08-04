@@ -220,7 +220,7 @@ export async function getVendorFloorPlan(
   const venue = data.venue as { name: string; primary_color: string | null; logo_url: string | null };
   return {
     ...plan, objects,
-    eventName: event.name, eventDate: event.event_date,
+    eventId: event.id, eventName: event.name, eventDate: event.event_date,
     venueName: venue.name, venuePrimaryColor: venue.primary_color, venueLogoUrl: venue.logo_url,
   };
 }

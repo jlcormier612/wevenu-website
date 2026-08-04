@@ -152,13 +152,19 @@ export async function getVendorDashboardData(vendorId: string): Promise<VendorDa
 
   type EventsRpcRow = {
     assignment_id: string; event_id: string; event_name: string; event_date: string | null;
+    event_end_date: string | null;
     venue_name: string; arrival_time: string | null;
   };
   const eventsRpcData = eventsRpcRes.data as { events?: EventsRpcRow[] } | { error: string } | null;
   const eventsRpcRows = eventsRpcData && "events" in eventsRpcData ? eventsRpcData.events ?? [] : [];
 
   const upcomingEvents = eventsRpcRows
-    .filter((r) => r.event_date && r.event_date >= today)
+    .filter((r) => {
+      const end = r.event_end_date && r.event_date && r.event_end_date > r.event_date
+        ? r.event_end_date
+        : r.event_date;
+      return end != null && end >= today;
+    })
     .sort((a, b) => (a.event_date ?? "").localeCompare(b.event_date ?? ""))
     .slice(0, 10)
     .map((r) => ({
@@ -166,6 +172,7 @@ export async function getVendorDashboardData(vendorId: string): Promise<VendorDa
       eventId:     r.event_id,
       eventName:   r.event_name,
       eventDate:   r.event_date,
+      eventEndDate: r.event_end_date,
       venueName:   r.venue_name,
       arrivalTime: r.arrival_time,
     }));

@@ -37,7 +37,11 @@ const LIGHT_THEME_VARS = {
   "--ring": "var(--heritage-sage)",
 } as CSSProperties;
 
-export default function LoginPage() {
+type Props = { searchParams: Promise<{ next?: string }> };
+
+export default async function LoginPage({ searchParams }: Props) {
+  const { next } = await searchParams;
+
   return (
     <main
       className="flex min-h-svh flex-col items-center justify-center px-4 py-12"
@@ -65,7 +69,7 @@ export default function LoginPage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <LoginForm />
+            <LoginForm next={next} />
           </CardContent>
         </Card>
 
