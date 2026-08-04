@@ -2,7 +2,7 @@ import Image from "next/image";
 import { HospitalityHeart } from "@/components/marketing/brand-accents";
 import { InquiryWorkspaceMock } from "@/components/marketing/journey/inquiry-workspace-mock";
 import { JourneyNav } from "@/components/marketing/journey/journey-nav";
-import { MarketingCta } from "@/components/marketing/marketing-cta";
+import { MarketingCta, WalkthroughCtas } from "@/components/marketing/marketing-cta";
 import { FILM } from "@/lib/marketing/film";
 import { EDITORIAL_BLEED, EDITORIAL_BREAK_Y, EDITORIAL_FRAME, EDITORIAL_IMAGE, TYPE_HERO_SHELL } from "@/lib/marketing/rhythm";
 
@@ -62,14 +62,13 @@ export function InquiryExperience({ prev = null, next }: InquiryExperienceProps)
             marketing or social media site, email, phone call, or referral, Hello to Cheers brings
             everything in, and keeps it all together, from the very first moment.
           </p>
-          <div className="mt-14 flex flex-wrap items-center gap-4">
-            <MarketingCta />
+          <WalkthroughCtas className="mt-14">
             <MarketingCta
               href="/product#connected-journey"
               label="Back to Journey"
               variant="ghost"
             />
-          </div>
+          </WalkthroughCtas>
         </div>
       </section>
 

@@ -1,7 +1,7 @@
 import Image from "next/image";
 
 import { ClosingCta } from "@/components/marketing/closing-cta";
-import { MarketingCta } from "@/components/marketing/marketing-cta";
+import { WalkthroughCtas } from "@/components/marketing/marketing-cta";
 import { ProductMoment } from "@/components/marketing/product-moment";
 import { EDITORIAL_FRAME, EDITORIAL_IMAGE, EDITORIAL_IMAGE_UI } from "@/lib/marketing/rhythm";
 import { VISION, VISION_PHOTO } from "@/lib/marketing/vision";
@@ -34,9 +34,11 @@ export function ConceptEditorial() {
           <p className="mt-6 max-w-xl text-base leading-[1.7] text-white/85 md:text-lg">
             {VISION.understood.body}
           </p>
-          <div className="mt-10">
-            <MarketingCta className="!bg-[var(--true-white)] !text-[var(--forest-sage)]" />
-          </div>
+          <WalkthroughCtas
+            className="mt-10"
+            walkthroughClassName="!bg-[var(--true-white)] !text-[var(--forest-sage)]"
+            moreInfoClassName="!border-[var(--true-white)]/40 !text-[var(--true-white)]/85"
+          />
         </div>
       </section>
 

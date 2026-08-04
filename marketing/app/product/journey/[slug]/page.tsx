@@ -14,7 +14,7 @@ import { ProposalExperience } from "@/components/marketing/journey/proposal-expe
 import { TimelineExperience } from "@/components/marketing/journey/timeline-experience";
 import { TourExperience } from "@/components/marketing/journey/tour-experience";
 import { VendorsExperience } from "@/components/marketing/journey/vendors-experience";
-import { MarketingCta } from "@/components/marketing/marketing-cta";
+import { MarketingCta, WalkthroughCtas } from "@/components/marketing/marketing-cta";
 import {
   JOURNEY_LEGACY_REDIRECTS,
   PRODUCT_JOURNEY,
@@ -125,14 +125,13 @@ export default async function ProductJourneyPage({
         <p className="mt-10 max-w-[65ch] text-base leading-[1.7] text-[var(--forest-sage)]/70 md:text-lg">
           {step.body}
         </p>
-        <div className="mt-14 flex flex-wrap items-center gap-4">
-          <MarketingCta />
+        <WalkthroughCtas className="mt-14">
           <MarketingCta
             href="/product#connected-journey"
             label="Back to Journey"
             variant="ghost"
           />
-        </div>
+        </WalkthroughCtas>
       </article>
       <div className="mx-auto mt-24 max-w-6xl">
         <JourneyNav prev={prev} next={next} className="px-0" />

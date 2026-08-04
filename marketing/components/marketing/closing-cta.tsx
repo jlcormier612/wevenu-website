@@ -3,12 +3,12 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 
 import { HospitalityHeart } from "@/components/marketing/brand-accents";
-import { MarketingCta } from "@/components/marketing/marketing-cta";
+import { WalkthroughCtas } from "@/components/marketing/marketing-cta";
 import { cn } from "@/lib/utils";
 
 type ClosingCtaProps = {
   children?: ReactNode;
-  /** Passed to default MarketingCta when children omitted */
+  /** Passed to default walkthrough CTA when children omitted */
   label?: string;
   className?: string;
 };
@@ -55,7 +55,14 @@ export function ClosingCta({ children, label, className }: ClosingCtaProps) {
       >
         <HospitalityHeart size={16} className="!opacity-100" />
       </span>
-      <div className="mt-5">{children ?? <MarketingCta label={label} />}</div>
+      <div className="mt-5">
+        {children ?? (
+          <WalkthroughCtas
+            className="justify-center"
+            walkthroughLabel={label}
+          />
+        )}
+      </div>
     </div>
   );
 }

@@ -1,6 +1,6 @@
 import { PLACEHOLDER } from "@/lib/marketing/content";
 
-import { MarketingCta } from "@/components/marketing/marketing-cta";
+import { WalkthroughCtas } from "@/components/marketing/marketing-cta";
 import { Section } from "@/components/marketing/section";
 
 export function PricingTiers() {
@@ -26,9 +26,11 @@ export function PricingTiers() {
             <p className="mt-8 text-sm text-[var(--forest-sage)]/55">
               Pricing shared during your walkthrough
             </p>
-            <div className="mt-6">
-              <MarketingCta className="w-full sm:w-auto" />
-            </div>
+            <WalkthroughCtas
+              className="mt-6"
+              walkthroughClassName="w-full sm:w-auto"
+              moreInfoClassName="w-full sm:w-auto"
+            />
           </article>
         ))}
       </div>

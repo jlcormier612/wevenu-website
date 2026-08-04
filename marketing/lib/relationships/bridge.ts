@@ -19,33 +19,72 @@ import type { InquirySubmission } from "@/lib/inquiries/types";
 import type { VenueEnrollmentRecord } from "@/lib/crm/types";
 import { estimateMrrCentsFromPlan } from "@/lib/stripe/mrr";
 
+/** Combine venue context + more-info question for Relationship notes/timeline. */
+function composeWalkthroughMessage(fields: Record<string, string>): string | undefined {
+  const venueContext = fields.message?.trim() ?? "";
+  const question = fields.question?.trim() ?? "";
+  if (!venueContext && !question) return undefined;
+  if (!question) return venueContext || undefined;
+  if (!venueContext) {
+    return `Question/information you're requesting:\n${question}`;
+  }
+  return [
+    "About your venue:",
+    venueContext,
+    "",
+    "Question/information you're requesting:",
+    question,
+  ].join("\n");
+}
+
+function personNameFields(f: Record<string, string>): {
+  name?: string;
+  firstName?: string;
+  lastName?: string;
+} {
+  const firstName = f.firstName?.trim() || undefined;
+  const lastName = f.lastName?.trim() || undefined;
+  const combined =
+    f.name?.trim() ||
+    [firstName, lastName].filter(Boolean).join(" ") ||
+    undefined;
+  return { name: combined, firstName, lastName };
+}
+
 export async function syncInquiryToRelationship(
   submission: InquirySubmission,
-): Promise<void> {
+): Promise<{ relationshipId: string } | null> {
   try {
     const f = submission.fields;
+    const person = personNameFields(f);
     switch (submission.kind) {
-      case "contact":
-        await ingestContactForm({
-          name: f.name,
+      case "contact": {
+        const result = await ingestContactForm({
+          name: person.name,
+          firstName: person.firstName,
+          lastName: person.lastName,
           email: f.email,
           venueName: f.venue || f.venueName,
           message: f.message,
           sourceId: submission.id,
         });
-        break;
-      case "walkthrough":
-        await ingestWalkthroughRequest({
-          name: f.name,
+        return { relationshipId: result.relationship.id };
+      }
+      case "walkthrough": {
+        const result = await ingestWalkthroughRequest({
+          name: person.name,
+          firstName: person.firstName,
+          lastName: person.lastName,
           email: f.email,
           venueName: f.venue || f.venueName,
-          message: f.message,
+          message: composeWalkthroughMessage(f),
           scheduledAt: f.scheduledAt || f.preferredDate || null,
           sourceId: submission.id,
         });
-        break;
-      case "welcome_back_request":
-        await ingestWelcomeBackRequest({
+        return { relationshipId: result.relationship.id };
+      }
+      case "welcome_back_request": {
+        const result = await ingestWelcomeBackRequest({
           businessName: f.businessName,
           venueName: f.venueName || f.venue,
           firstName: f.firstName,
@@ -56,33 +95,40 @@ export async function syncInquiryToRelationship(
           yearsWithWeven: f.yearsWithWeven,
           sourceId: submission.id,
         });
-        break;
-      case "newsletter":
-        await ingestNewsletterSignup({
+        return { relationshipId: result.relationship.id };
+      }
+      case "newsletter": {
+        const result = await ingestNewsletterSignup({
           email: f.email,
           name: f.name,
           venueName: f.venue || f.venueName,
           sourceId: submission.id,
         });
-        break;
-      case "support":
-        await ingestSupportRequest({
-          name: f.name,
+        return { relationshipId: result.relationship.id };
+      }
+      case "support": {
+        const result = await ingestSupportRequest({
+          name: person.name,
+          firstName: person.firstName,
+          lastName: person.lastName,
           email: f.email,
           venueName: f.venue || f.venueName,
           message: f.message,
           sourceId: submission.id,
         });
-        break;
+        return { relationshipId: result.relationship.id };
+      }
     }
   } catch (error) {
     console.error("[relationships] failed to sync inquiry", submission.id, error);
+    return null;
   }
+  return null;
 }
 
 export async function syncEnrollmentToRelationship(
   record: VenueEnrollmentRecord,
-): Promise<{ relationshipId: string } | null> {
+): Promise<{ relationshipId: string; activationToken: string | null } | null> {
   try {
     const mrrCents =
       typeof record.mrrCents === "number" && record.mrrCents > 0
@@ -105,7 +151,12 @@ export async function syncEnrollmentToRelationship(
       subscriptionStatus:
         record.paymentStatus === "successful" ? "active" : "trialing",
     });
-    return { relationshipId: result.relationship.id };
+    // enterOnboardingAfterPurchase already minted activationToken for Launch Yourself
+    // (cleared / deferred for White Glove).
+    return {
+      relationshipId: result.relationship.id,
+      activationToken: result.relationship.activationToken ?? null,
+    };
   } catch (error) {
     console.error("[relationships] failed to sync enrollment", record.id, error);
     return null;

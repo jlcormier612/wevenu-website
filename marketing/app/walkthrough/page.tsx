@@ -10,19 +10,42 @@ export const metadata: Metadata = {
   title: "Schedule a Walkthrough",
 };
 
-export default function WalkthroughPage() {
+type WalkthroughSearchParams = Promise<{ intent?: string }>;
+
+export default async function WalkthroughPage({
+  searchParams,
+}: {
+  searchParams: WalkthroughSearchParams;
+}) {
+  const params = await searchParams;
+  const moreInfo = params.intent === "more-info";
   const { walkthrough } = PLACEHOLDER;
   // Embed when NEXT_PUBLIC_CALENDLY_URL is set in marketing/.env.local (restart required).
   // Email LeadForm below still creates walkthrough_requested without Calendly.
   const calendlyUrl = process.env.NEXT_PUBLIC_CALENDLY_URL?.trim() || "";
+
+  const formHeading = moreInfo
+    ? "Request more information"
+    : calendlyUrl
+      ? "Prefer not to pick a time yet?"
+      : "Leave your details";
+  const formIntro = moreInfo
+    ? "Tell us a little about your venue — we\u2019ll follow up with answers, no calendar booking required."
+    : calendlyUrl
+      ? "Optional — leave a note if you\u2019d rather we reach out by email before booking a time."
+      : "Leave your details below and we\u2019ll follow up to book a walkthrough.";
 
   return (
     <Section
       tone="cream"
       narrow={!calendlyUrl}
       hero
-      headline={walkthrough.headline}
-      intro={walkthrough.body}
+      headline={moreInfo ? "Request more information" : walkthrough.headline}
+      intro={
+        moreInfo
+          ? "A calm first hello about your venue — answers without booking a walkthrough time."
+          : walkthrough.body
+      }
     >
       {calendlyUrl ? (
         <div className="mx-auto max-w-4xl space-y-8">
@@ -30,21 +53,24 @@ export default function WalkthroughPage() {
           <p className="text-center text-sm text-[var(--forest-sage)]/70">
             Prefer email?{" "}
             <Link
-              href="#prefer-email"
+              href="#request-info"
               className="font-medium text-[var(--heritage-sage)] underline-offset-4 hover:underline"
             >
-              Contact us
+              Request more information
             </Link>{" "}
-            and we&apos;ll find a time together.
+            without picking a time.
           </p>
           <div
-            id="prefer-email"
-            className="mx-auto max-w-lg rounded-[2rem] border border-[var(--taupe-light)] bg-[var(--true-white)] px-6 py-8 md:px-8 md:py-10"
+            id="request-info"
+            className="mx-auto max-w-lg scroll-mt-28 rounded-[2rem] border border-[var(--taupe-light)] bg-[var(--true-white)] px-6 py-8 md:px-8 md:py-10"
           >
-            <p className="mb-5 text-sm leading-relaxed text-[var(--forest-sage)]/75">
-              Optional — leave a note if you&apos;d rather we reach out by email.
+            <p className="mb-2 font-heading text-xl text-[var(--forest-sage)] md:text-2xl">
+              {formHeading}
             </p>
-            <LeadForm intent="walkthrough" />
+            <p className="mb-5 text-sm leading-relaxed text-[var(--forest-sage)]/75">
+              {formIntro}
+            </p>
+            <LeadForm intent="walkthrough" moreInfo={moreInfo} />
           </div>
         </div>
       ) : (
@@ -57,18 +83,18 @@ export default function WalkthroughPage() {
               Leave your details below and we&apos;ll follow up to book a walkthrough.
             </p>
           </div>
-          <div className="rounded-[2rem] border border-[var(--taupe-light)] bg-[var(--true-white)] px-6 py-8 md:px-8 md:py-10">
-            <LeadForm intent="walkthrough" />
+          <div
+            id="request-info"
+            className="scroll-mt-28 rounded-[2rem] border border-[var(--taupe-light)] bg-[var(--true-white)] px-6 py-8 md:px-8 md:py-10"
+          >
+            <p className="mb-2 font-heading text-xl text-[var(--forest-sage)] md:text-2xl">
+              {formHeading}
+            </p>
+            <p className="mb-5 text-sm leading-relaxed text-[var(--forest-sage)]/75">
+              {formIntro}
+            </p>
+            <LeadForm intent="walkthrough" moreInfo={moreInfo} />
           </div>
-          <p className="text-center text-sm text-[var(--forest-sage)]/70">
-            Prefer email?{" "}
-            <Link
-              href="/contact"
-              className="font-medium text-[var(--heritage-sage)] underline-offset-4 hover:underline"
-            >
-              Contact us
-            </Link>
-          </p>
         </div>
       )}
     </Section>

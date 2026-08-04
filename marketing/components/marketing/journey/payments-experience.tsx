@@ -1,7 +1,7 @@
 import Image from "next/image";
 import { JourneyNav } from "@/components/marketing/journey/journey-nav";
 import { PaymentsWorkspaceMock } from "@/components/marketing/journey/payments-workspace-mock";
-import { MarketingCta } from "@/components/marketing/marketing-cta";
+import { MarketingCta, WalkthroughCtas } from "@/components/marketing/marketing-cta";
 import { FILM } from "@/lib/marketing/film";
 import { EDITORIAL_BLEED, EDITORIAL_FRAME, EDITORIAL_IMAGE, TYPE_HERO_SHELL } from "@/lib/marketing/rhythm";
 
@@ -61,14 +61,13 @@ export function PaymentsExperience({ prev, next }: PaymentsExperienceProps) {
             reminders all stay connected to the same booking—so everyone always knows where things
             stand without spreadsheets, disjointed email threads or chasing payments.
           </p>
-          <div className="mt-14 flex flex-wrap items-center gap-4">
-            <MarketingCta />
+          <WalkthroughCtas className="mt-14">
             <MarketingCta
               href="/product#connected-journey"
               label="Back to Journey"
               variant="ghost"
             />
-          </div>
+          </WalkthroughCtas>
         </div>
       </section>
 

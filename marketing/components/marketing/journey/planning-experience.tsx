@@ -1,6 +1,6 @@
 import Image from "next/image";
 import { JourneyNav } from "@/components/marketing/journey/journey-nav";
-import { MarketingCta } from "@/components/marketing/marketing-cta";
+import { MarketingCta, WalkthroughCtas } from "@/components/marketing/marketing-cta";
 import { FILM } from "@/lib/marketing/film";
 import { EDITORIAL_BLEED, EDITORIAL_BREAK_Y, EDITORIAL_FRAME, EDITORIAL_IMAGE, TYPE_HERO_SHELL } from "@/lib/marketing/rhythm";
 
@@ -60,14 +60,13 @@ export function PlanningExperience({ prev, next }: PlanningExperienceProps) {
             <br />
             update, decision, and detail stays connected from the first conversation to event day.
           </p>
-          <div className="mt-14 flex flex-wrap items-center gap-4">
-            <MarketingCta />
+          <WalkthroughCtas className="mt-14">
             <MarketingCta
               href="/product#connected-journey"
               label="Back to Journey"
               variant="ghost"
             />
-          </div>
+          </WalkthroughCtas>
         </div>
       </section>
 

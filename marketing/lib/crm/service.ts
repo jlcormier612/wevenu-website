@@ -9,7 +9,7 @@
 
 import { randomUUID } from "crypto";
 
-import { sendEnrollmentProductEmails } from "@shared/email";
+import { activationUrlFromToken, sendEnrollmentProductEmails } from "@shared/email";
 import { enqueueProductSync } from "@shared/product-sync";
 import {
   DEFAULT_WHITE_GLOVE_TIMELINE_DAYS,
@@ -57,7 +57,15 @@ export async function createVenueEnrollment(
   await notifySubscriptionEnrollment(record);
   const synced = await syncEnrollmentToRelationship(record);
 
+  // Order: token minted in enterOnboardingAfterPurchase → welcome email with
+  // Activate Account link → product sync (Launch Yourself only).
   if (synced?.relationshipId && record.customerEmail) {
+    const isLaunchYourself = record.onboardingType !== "white_glove";
+    const activateUrl =
+      isLaunchYourself && synced.activationToken
+        ? activationUrlFromToken(synced.activationToken)
+        : null;
+
     try {
       const emailResults = await sendEnrollmentProductEmails({
         relationshipId: synced.relationshipId,
@@ -71,10 +79,12 @@ export async function createVenueEnrollment(
           minBusinessDays: DEFAULT_WHITE_GLOVE_TIMELINE_DAYS.min,
           maxBusinessDays: DEFAULT_WHITE_GLOVE_TIMELINE_DAYS.max,
         }),
+        activateUrl,
       });
       console.info("[crm] enrollment product emails", {
         enrollmentId: record.id,
         relationshipId: synced.relationshipId,
+        hasActivateUrl: Boolean(activateUrl),
         results: emailResults.map((r) => ({
           templateId: r.templateId,
           delivery: r.delivery,
@@ -86,7 +96,7 @@ export async function createVenueEnrollment(
     }
   }
 
-  // Launch Yourself: provision product access now.
+  // Launch Yourself: provision product access after welcome email is queued.
   // White Glove: defer until Implementation Launch Workspace.
   if (synced?.relationshipId && record.onboardingType !== "white_glove") {
     await enqueueProductSync(

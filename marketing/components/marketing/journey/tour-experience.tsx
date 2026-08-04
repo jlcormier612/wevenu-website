@@ -1,7 +1,7 @@
 import Image from "next/image";
 import { JourneyNav } from "@/components/marketing/journey/journey-nav";
 import { TourWorkspaceMock } from "@/components/marketing/journey/tour-workspace-mock";
-import { MarketingCta } from "@/components/marketing/marketing-cta";
+import { MarketingCta, WalkthroughCtas } from "@/components/marketing/marketing-cta";
 import { FILM } from "@/lib/marketing/film";
 import { EDITORIAL_BLEED, EDITORIAL_FRAME, EDITORIAL_IMAGE, TYPE_HERO_SHELL } from "@/lib/marketing/rhythm";
 
@@ -54,14 +54,13 @@ export function TourExperience({ prev, next }: TourExperienceProps) {
             preferences, questions, and follow-ups stay connected from the moment your guests
             arrive.
           </p>
-          <div className="mt-14 flex flex-wrap items-center gap-4">
-            <MarketingCta />
+          <WalkthroughCtas className="mt-14">
             <MarketingCta
               href="/product#connected-journey"
               label="Back to Journey"
               variant="ghost"
             />
-          </div>
+          </WalkthroughCtas>
         </div>
       </section>
 

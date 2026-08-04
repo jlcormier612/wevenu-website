@@ -1,7 +1,7 @@
 import Image from "next/image";
 
 import { ClosingCta } from "@/components/marketing/closing-cta";
-import { MarketingCta } from "@/components/marketing/marketing-cta";
+import { WalkthroughCtas } from "@/components/marketing/marketing-cta";
 import { UiPlaceholder } from "@/components/marketing/ui-placeholder";
 import { ABOUT_PAGE } from "@/lib/marketing/about-page";
 import { FILM } from "@/lib/marketing/film";
@@ -30,9 +30,10 @@ export function AboutExperience() {
               <p key={p}>{p}</p>
             ))}
           </div>
-          <div className="mt-12 flex justify-center">
-            <MarketingCta label={a.why.cta} />
-          </div>
+          <WalkthroughCtas
+            className="mt-12 justify-center"
+            walkthroughLabel={a.why.cta}
+          />
         </div>
         <div className={`relative mx-auto mt-16 aspect-[16/10] max-w-5xl md:mt-20 md:aspect-[21/9] ${EDITORIAL_FRAME}`}>
           <Image

@@ -1,7 +1,7 @@
 import Image from "next/image";
 import { JourneyNav } from "@/components/marketing/journey/journey-nav";
 import { TimelineWorkspaceMock } from "@/components/marketing/journey/timeline-workspace-mock";
-import { MarketingCta } from "@/components/marketing/marketing-cta";
+import { MarketingCta, WalkthroughCtas } from "@/components/marketing/marketing-cta";
 import { FILM } from "@/lib/marketing/film";
 import { EDITORIAL_BLEED, EDITORIAL_FRAME, EDITORIAL_IMAGE, TYPE_HERO_SHELL } from "@/lib/marketing/rhythm";
 
@@ -60,14 +60,13 @@ export function TimelineExperience({ prev, next }: TimelineExperienceProps) {
             becomes part of the event timeline—so everyone arrives knowing exactly what&apos;s
             happening.
           </p>
-          <div className="mt-14 flex flex-wrap items-center gap-4">
-            <MarketingCta />
+          <WalkthroughCtas className="mt-14">
             <MarketingCta
               href="/product#connected-journey"
               label="Back to Journey"
               variant="ghost"
             />
-          </div>
+          </WalkthroughCtas>
         </div>
       </section>
 

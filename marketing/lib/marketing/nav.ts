@@ -79,6 +79,15 @@ export const PRIMARY_CTA = {
   label: "Schedule a Walkthrough",
 } as const;
 
+/**
+ * Sibling near walkthrough CTAs — under-calendar form on /walkthrough
+ * (same LeadForm + ingestWalkthroughRequest path; no Calendly time required).
+ */
+export const MORE_INFO_CTA = {
+  href: "/walkthrough?intent=more-info#request-info",
+  label: "Request more information",
+} as const;
+
 export const LOGIN_LINKS = [
   { href: `${PRODUCT_APP_URL}/login`, label: "Venue", external: true },
   { href: `${PRODUCT_APP_URL}/client/login`, label: "Client", external: true },

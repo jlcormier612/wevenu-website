@@ -53,11 +53,21 @@ export async function POST(request: Request) {
       body.kind === "walkthrough" ||
       body.kind === "support"
     ) {
-      if (!body.fields.email?.trim() || !body.fields.name?.trim()) {
+      const firstName = body.fields.firstName?.trim() || "";
+      const lastName = body.fields.lastName?.trim() || "";
+      const email = body.fields.email?.trim() || "";
+      const venue = (body.fields.venue || body.fields.venueName)?.trim() || "";
+      // Prefer first/last; accept legacy combined `name` if first/last absent.
+      const legacyName = body.fields.name?.trim() || "";
+      const hasName = (firstName && lastName) || legacyName;
+      if (!hasName || !email || !venue) {
         return NextResponse.json(
-          { error: "Name and email are required." },
+          { error: "First name, last name, email, and venue name are required." },
           { status: 400 },
         );
+      }
+      if (firstName && lastName && !body.fields.name?.trim()) {
+        body.fields.name = `${firstName} ${lastName}`;
       }
     }
 

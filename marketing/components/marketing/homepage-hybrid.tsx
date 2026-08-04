@@ -3,7 +3,7 @@ import Image from "next/image";
 import { ClosingCta } from "@/components/marketing/closing-cta";
 import { CelebrationWhisper, HospitalityHeart } from "@/components/marketing/brand-accents";
 import { LuvQuietMoment } from "@/components/marketing/luv-quiet-moment";
-import { MarketingCta } from "@/components/marketing/marketing-cta";
+import { MarketingCta, WalkthroughCtas } from "@/components/marketing/marketing-cta";
 import { Reveal } from "@/components/marketing/reveal";
 import { SharedTruthArchitecture } from "@/components/marketing/shared-truth-architecture";
 import { FILM } from "@/lib/marketing/film";
@@ -52,14 +52,13 @@ export function HomepageHybrid() {
         <p className="mx-auto mt-14 max-w-3xl font-heading text-2xl font-medium leading-[1.26] text-[var(--forest-sage)] md:mt-[72px] md:text-4xl">
           Hello to Cheers gives you back the time—and peace of mind—to create unforgettable celebrations.
         </p>
-        <div className="mt-14 flex flex-wrap items-center justify-center gap-4 md:mt-[72px]">
-          <MarketingCta />
+        <WalkthroughCtas className="mt-14 justify-center md:mt-[72px]">
           <MarketingCta
             href="/product#follow"
             label="Follow one booking"
             variant="ghost"
           />
-        </div>
+        </WalkthroughCtas>
       </section>
 
       {/* ── Hero divider — hospitality prep ── */}

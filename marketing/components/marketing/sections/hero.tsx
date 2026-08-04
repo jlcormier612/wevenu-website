@@ -1,6 +1,6 @@
 import { MARKETING_MEDIA, PLACEHOLDER } from "@/lib/marketing/content";
 
-import { MarketingCta } from "@/components/marketing/marketing-cta";
+import { MarketingCta, WalkthroughCtas } from "@/components/marketing/marketing-cta";
 import { MediaFrame } from "@/components/marketing/media-frame";
 
 export function MarketingHero() {
@@ -19,14 +19,13 @@ export function MarketingHero() {
           <p className="mt-6 max-w-md text-base leading-[1.7] text-[var(--forest-sage)]/75 md:text-lg">
             {hero.sentence}
           </p>
-          <div className="mt-9 flex flex-wrap items-center gap-3">
-            <MarketingCta />
+          <WalkthroughCtas className="mt-9 gap-3">
             <MarketingCta
               href="/product"
               label={hero.secondaryCta}
               variant="ghost"
             />
-          </div>
+          </WalkthroughCtas>
         </div>
 
         <div className="relative grid gap-4">

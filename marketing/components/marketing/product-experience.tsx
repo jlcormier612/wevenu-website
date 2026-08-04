@@ -5,7 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 
 import { ProductJourneyChapter } from "@/components/marketing/product-journey-chapter";
 import { CelebrationWhisper } from "@/components/marketing/brand-accents";
-import { MarketingCta } from "@/components/marketing/marketing-cta";
+import { MarketingCta, WalkthroughCtas } from "@/components/marketing/marketing-cta";
 import { ClosingCta } from "@/components/marketing/closing-cta";
 import { Reveal } from "@/components/marketing/reveal";
 import { FILM } from "@/lib/marketing/film";
@@ -97,14 +97,13 @@ export function ProductExperience() {
             <p>{p.hero.body}</p>
             <p>{p.hero.bodySecondary}</p>
           </div>
-          <div className="mt-12 flex flex-wrap items-center gap-4">
-            <MarketingCta label={p.hero.primaryCta} />
+          <WalkthroughCtas className="mt-12" walkthroughLabel={p.hero.primaryCta}>
             <MarketingCta
               href="#follow"
               label={p.hero.secondaryCta}
               variant="ghost"
             />
-          </div>
+          </WalkthroughCtas>
         </div>
       </section>
 

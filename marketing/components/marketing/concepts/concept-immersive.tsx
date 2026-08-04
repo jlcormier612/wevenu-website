@@ -1,7 +1,7 @@
 import Image from "next/image";
 
 import { ClosingCta } from "@/components/marketing/closing-cta";
-import { MarketingCta } from "@/components/marketing/marketing-cta";
+import { WalkthroughCtas } from "@/components/marketing/marketing-cta";
 import { ProductMoment } from "@/components/marketing/product-moment";
 import { EDITORIAL_FRAME, EDITORIAL_IMAGE, EDITORIAL_IMAGE_UI } from "@/lib/marketing/rhythm";
 import { VISION, VISION_PHOTO } from "@/lib/marketing/vision";
@@ -22,9 +22,11 @@ export function ConceptImmersive() {
           <h1 className="mt-6 font-heading text-[4.2rem] font-medium leading-[1.0] tracking-tight md:text-8xl lg:text-9xl">
             {VISION.understood.headline}
           </h1>
-          <div className="mt-12">
-            <MarketingCta className="!bg-[var(--soft-sage)] !text-[var(--forest-sage)]" />
-          </div>
+          <WalkthroughCtas
+            className="mt-12"
+            walkthroughClassName="!bg-[var(--soft-sage)] !text-[var(--forest-sage)]"
+            moreInfoClassName="!border-[var(--soft-sage)]/50 !text-[var(--soft-sage)]"
+          />
         </div>
       </section>
 
@@ -135,7 +137,11 @@ export function ConceptImmersive() {
         <p className="mt-4 max-w-md text-white/60">{VISION.cta.body}</p>
         <div className="mt-10">
           <ClosingCta>
-            <MarketingCta className="!bg-[var(--soft-sage)] !text-[var(--forest-sage)]" />
+            <WalkthroughCtas
+              className="justify-center"
+              walkthroughClassName="!bg-[var(--soft-sage)] !text-[var(--forest-sage)]"
+              moreInfoClassName="!border-[var(--soft-sage)]/50 !text-[var(--soft-sage)]"
+            />
           </ClosingCta>
         </div>
       </section>

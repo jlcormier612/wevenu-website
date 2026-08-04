@@ -1,7 +1,7 @@
 import Image from "next/image";
 import { FloorWorkspaceMock } from "@/components/marketing/journey/floor-workspace-mock";
 import { JourneyNav } from "@/components/marketing/journey/journey-nav";
-import { MarketingCta } from "@/components/marketing/marketing-cta";
+import { MarketingCta, WalkthroughCtas } from "@/components/marketing/marketing-cta";
 import { FILM } from "@/lib/marketing/film";
 import { EDITORIAL_BLEED, EDITORIAL_FRAME, EDITORIAL_IMAGE, TYPE_HERO_SHELL } from "@/lib/marketing/rhythm";
 
@@ -60,14 +60,13 @@ export function FloorExperience({ prev, next }: FloorExperienceProps) {
             Floor plans, seating layouts, inventory, and guest counts stay connected to the same
             booking—so the room you&apos;re preparing is always the room you&apos;re expecting.
           </p>
-          <div className="mt-14 flex flex-wrap items-center gap-4">
-            <MarketingCta />
+          <WalkthroughCtas className="mt-14">
             <MarketingCta
               href="/product#connected-journey"
               label="Back to Journey"
               variant="ghost"
             />
-          </div>
+          </WalkthroughCtas>
         </div>
       </section>
 

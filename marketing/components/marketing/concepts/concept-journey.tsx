@@ -4,7 +4,7 @@ import Image from "next/image";
 import { useEffect, useState } from "react";
 
 import { ClosingCta } from "@/components/marketing/closing-cta";
-import { MarketingCta } from "@/components/marketing/marketing-cta";
+import { MarketingCta, WalkthroughCtas } from "@/components/marketing/marketing-cta";
 import { ProductMoment } from "@/components/marketing/product-moment";
 import { EDITORIAL_FRAME, EDITORIAL_IMAGE, EDITORIAL_IMAGE_UI, HOVER_TAB } from "@/lib/marketing/rhythm";
 import { VISION, VISION_PHOTO } from "@/lib/marketing/vision";
@@ -67,14 +67,13 @@ export function ConceptJourney() {
         <p className="mt-6 max-w-xl text-base leading-[1.7] text-[var(--forest-sage)]/70">
           {VISION.understood.body}
         </p>
-        <div className="mt-10 flex flex-wrap items-center gap-3">
-          <MarketingCta />
+        <WalkthroughCtas className="mt-10 gap-3">
           <MarketingCta
             href={`#journey-${VISION.journey[0].id}`}
             label="Begin the journey"
             variant="ghost"
           />
-        </div>
+        </WalkthroughCtas>
       </section>
 
       {/* Connected preamble */}
