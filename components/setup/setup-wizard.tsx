@@ -10,15 +10,20 @@ import { saveSetupProgressAction, submitVenueSetupAction } from "@/app/setup/act
 import {
   BrandStep,
   BusinessHoursStep,
-  OriginStep,
   OwnerStep,
+  PathChoiceStep,
   PaymentsStep,
   ReviewStep,
   STEP_META,
   VenueDetailsStep,
   VenueInfoStep,
-  WelcomeStep,
 } from "@/components/setup/setup-steps";
+import {
+  BringYourBusinessStep,
+  BusinessToolsStep,
+  YourOfferingsStep,
+  YourPeopleStep,
+} from "@/components/setup/setup-migration-steps";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -35,13 +40,15 @@ import type {
   VenueSetupInput,
 } from "@/lib/venue/types";
 import {
+  SETUP_STAGES,
   SETUP_STEPS,
+  STAGE_FOR_STEP,
   type SetupStepId,
   validateStep,
   validateVenueSetup,
 } from "@/lib/venue/validation";
 
-const SCREENS = ["welcome", "origin", ...SETUP_STEPS] as const;
+const SCREENS = ["welcome", ...SETUP_STEPS] as const;
 type ScreenId = (typeof SCREENS)[number];
 
 /**
@@ -168,13 +175,18 @@ export function SetupWizard({
     });
   }
 
+  /** Shared by the footer's Continue button and by stages that advance
+   * themselves internally (Bring Your Business drives its own sub-screens
+   * before handing control back). */
+  function advanceFromStep(step: SetupStepId) {
+    saveProgress(input, step);
+    setStepIndex((i) => i + 1);
+    if (typeof window !== "undefined") window.scrollTo({ top: 0 });
+  }
+
   function handleContinue() {
     if (screen === "welcome") {
-      setStepIndex(SCREENS.indexOf("origin"));
-      return;
-    }
-    if (screen === "origin") {
-      // OriginStep advances itself via onChoose — nothing to do here.
+      // PathChoiceStep advances itself via onChoose — nothing to do here.
       return;
     }
     const step = screen as SetupStepId;
@@ -188,9 +200,7 @@ export function SetupWizard({
       handleSubmit();
       return;
     }
-    saveProgress(input, step);
-    setStepIndex((i) => i + 1);
-    if (typeof window !== "undefined") window.scrollTo({ top: 0 });
+    advanceFromStep(step);
   }
 
   if (complete) {
@@ -206,7 +216,7 @@ export function SetupWizard({
           </p>
         </div>
         <Button size="lg" onClick={() => { router.push("/dashboard"); router.refresh(); }}>
-          Enter your workspace
+          Go to my workspace
           <ArrowRight className="ml-1 h-4 w-4" />
         </Button>
       </div>
@@ -214,12 +224,8 @@ export function SetupWizard({
   }
 
   if (screen === "welcome") {
-    return <WelcomeStep onStart={() => setStepIndex(SCREENS.indexOf("origin"))} />;
-  }
-
-  if (screen === "origin") {
     return (
-      <OriginStep
+      <PathChoiceStep
         onChoose={(persona) => {
           set("onboardingPersona", persona);
           setStepIndex(SCREENS.indexOf("venue-info"));
@@ -235,6 +241,8 @@ export function SetupWizard({
   const stepNumber = SETUP_STEPS.indexOf(step) + 1;
   const progress = Math.round((stepNumber / totalSteps) * 100);
   const isReview = step === "review";
+  const stage = STAGE_FOR_STEP[step];
+  const stageIndex = SETUP_STAGES.findIndex((s) => s.id === stage);
 
   const stepProps = { input, errors, set, setHour, goToStep };
 
@@ -243,7 +251,7 @@ export function SetupWizard({
       <div className="space-y-2">
         <div className="flex items-center justify-between text-xs text-muted-foreground">
           <span>
-            Step {stepNumber} of {totalSteps}
+            Stage {stageIndex + 1} of {SETUP_STAGES.length} · {SETUP_STAGES[stageIndex].label}
           </span>
           <span>{progress}%</span>
         </div>
@@ -279,6 +287,15 @@ export function SetupWizard({
           {step === "brand" && <BrandStep {...stepProps} />}
           {step === "owner" && <OwnerStep {...stepProps} />}
           {step === "payments" && <PaymentsStep />}
+          {step === "bring-your-business" && (
+            <BringYourBusinessStep
+              onAdvance={() => advanceFromStep("bring-your-business")}
+              onPersonaHint={(persona) => set("onboardingPersona", persona)}
+            />
+          )}
+          {step === "your-offerings" && <YourOfferingsStep goToStep={goToStep} />}
+          {step === "business-tools" && <BusinessToolsStep />}
+          {step === "your-people" && <YourPeopleStep goToStep={goToStep} />}
           {step === "review" && <ReviewStep {...stepProps} />}
         </CardContent>
       </Card>

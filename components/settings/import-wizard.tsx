@@ -540,12 +540,17 @@ function StepResults({
   filename,
   onReset,
   venueId,
+  embedded,
+  onDone,
 }: {
   entity: EntityType;
   result: ImportResult;
   filename: string;
   onReset: () => void;
   venueId?: string;
+  /** Guided Setup — rendered inside the onboarding wizard rather than /settings/import. */
+  embedded?: boolean;
+  onDone?: () => void;
 }) {
   const meta = ENTITY_META[entity];
   const skipped = result.errors.filter((e) => e.kind === "skipped").length;
@@ -616,7 +621,7 @@ function StepResults({
           which has no venue of its own. Suppressed in "Importing for
           {venue}" mode (venueId set); a link back to the onboarding
           workspace takes its place below instead. */}
-      {result.imported > 0 && !venueId && (() => {
+      {result.imported > 0 && !venueId && !embedded && (() => {
         const next = NEXT_STEP[entity];
         return (
           <div className="rounded-xl border border-primary/20 bg-primary/5 p-4 space-y-2">
@@ -634,12 +639,22 @@ function StepResults({
       })()}
 
       <div className="flex flex-wrap gap-3">
-        <Link
-          href={venueId ? `/admin/onboarding/${venueId}` : meta.resultPath}
-          className="text-sm text-muted-foreground hover:text-foreground hover:underline"
-        >
-          {venueId ? "Back to onboarding workspace →" : `View all ${meta.label.toLowerCase()} →`}
-        </Link>
+        {embedded ? (
+          <button
+            type="button"
+            onClick={onDone}
+            className="text-sm font-medium text-primary hover:underline"
+          >
+            Continue setting up →
+          </button>
+        ) : (
+          <Link
+            href={venueId ? `/admin/onboarding/${venueId}` : meta.resultPath}
+            className="text-sm text-muted-foreground hover:text-foreground hover:underline"
+          >
+            {venueId ? "Back to onboarding workspace →" : `View all ${meta.label.toLowerCase()} →`}
+          </Link>
+        )}
         <button type="button" onClick={onReset} className="text-sm text-muted-foreground hover:text-foreground hover:underline">
           Import more
         </button>
@@ -690,7 +705,21 @@ function deriveHeadersRows(rawHeaders: string[], rawRows: CsvRow[], hasHeaderRow
  * to the given venue via the admin actions rather than the caller's own
  * session (an HQ admin has no venue of their own).
  */
-export function ImportWizard({ initialEntity, venueId }: { initialEntity?: EntityType; venueId?: string }) {
+export function ImportWizard({
+  initialEntity,
+  venueId,
+  sourceLabel,
+  embedded,
+  onDone,
+}: {
+  initialEntity?: EntityType;
+  venueId?: string;
+  /** Guided Setup's source picker (Weven / another platform / spreadsheet / files / manual) — recorded on the import batch, never assumed to mean a real integration exists. */
+  sourceLabel?: string;
+  /** Rendered inside the onboarding wizard rather than /settings/import — suppresses outbound "go look at your data" links in favor of handing control back to the wizard. */
+  embedded?: boolean;
+  onDone?: () => void;
+}) {
   const [step, setStep]         = React.useState<number>(initialEntity ? 1 : 0);
   const [entity, setEntity]     = React.useState<EntityType | null>(initialEntity ?? null);
   const [rawHeaders, setRawHeaders] = React.useState<string[]>([]);
@@ -774,19 +803,19 @@ export function ImportWizard({ initialEntity, venueId }: { initialEntity?: Entit
       let res: ImportResult;
       if (entity === "couples") {
         const inputRows = rows.map((r) => rowToClientInput(r, mapping));
-        res = venueId ? await importCouplesForVenueAction(venueId, inputRows) : await importCouplesAction(inputRows);
+        res = venueId ? await importCouplesForVenueAction(venueId, inputRows) : await importCouplesAction(inputRows, sourceLabel);
       } else if (entity === "leads") {
         const inputRows = rows.map((r) => rowToLeadInput(r, mapping));
-        res = venueId ? await importLeadsForVenueAction(venueId, inputRows) : await importLeadsAction(inputRows);
+        res = venueId ? await importLeadsForVenueAction(venueId, inputRows) : await importLeadsAction(inputRows, sourceLabel);
       } else if (entity === "vendors") {
         const inputRows = rows.map((r) => rowToVendorInput(r, mapping));
-        res = venueId ? await importVendorsForVenueAction(venueId, inputRows) : await importVendorsAction(inputRows);
+        res = venueId ? await importVendorsForVenueAction(venueId, inputRows) : await importVendorsAction(inputRows, sourceLabel);
       } else if (entity === "inventory") {
         const inputRows = rows.map((r) => rowToInventoryInput(r, mapping));
-        res = venueId ? await importInventoryForVenueAction(venueId, inputRows) : await importInventoryAction(inputRows);
+        res = venueId ? await importInventoryForVenueAction(venueId, inputRows) : await importInventoryAction(inputRows, sourceLabel);
       } else {
         const inputRows = rows.map((r) => rowToPackageInput(r, mapping));
-        res = venueId ? await importPackagesForVenueAction(venueId, inputRows) : await importPackagesAction(inputRows);
+        res = venueId ? await importPackagesForVenueAction(venueId, inputRows) : await importPackagesAction(inputRows, sourceLabel);
       }
       setResult(res);
       setStep(4);
@@ -858,6 +887,8 @@ export function ImportWizard({ initialEntity, venueId }: { initialEntity?: Entit
           filename={filename}
           onReset={handleReset}
           venueId={venueId}
+          embedded={embedded}
+          onDone={onDone}
         />
       )}
     </div>

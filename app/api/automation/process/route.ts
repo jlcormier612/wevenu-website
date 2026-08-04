@@ -37,7 +37,7 @@ export async function GET(request: Request) {
   }
   try {
     const result = await processAutomationEvents();
-    console.log(`[cron] automation processed: ${result.executed} executed, ${result.skipped} skipped, ${result.failed} failed`);
+    console.log(`[cron] automation processed: ${result.executed} executed, ${result.skipped} skipped, ${result.failed} failed | system guarantees: ${result.systemGuarantees.applied} applied, ${result.systemGuarantees.skipped} skipped, ${result.systemGuarantees.failed} failed`);
     return NextResponse.json(result);
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";

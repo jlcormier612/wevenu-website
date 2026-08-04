@@ -3,15 +3,14 @@
 import * as React from "react";
 
 import {
-  ArrowRight,
   Building2,
-  CalendarClock,
-  CreditCard,
-  Heart,
+  Check,
   RefreshCw,
   Sparkles,
   UserRound,
 } from "lucide-react";
+
+import { useSetupReadyCounts } from "@/components/setup/setup-migration-steps";
 
 import { Field, SummaryRow } from "@/components/setup/field";
 import { Button } from "@/components/ui/button";
@@ -76,9 +75,25 @@ export const STEP_META: Record<
     title: "Payments",
     description: "Connect the accounting tools you use to take deposits and payments.",
   },
+  "bring-your-business": {
+    title: "Bring your business",
+    description: "Already have information somewhere else? Start with what you have.",
+  },
+  "your-offerings": {
+    title: "Your offerings",
+    description: "Packages and inventory — what you sell and what you set up with.",
+  },
+  "business-tools": {
+    title: "Your business tools",
+    description: "Contract wording, message wording, and planning checklists.",
+  },
+  "your-people": {
+    title: "Your people & business",
+    description: "Contacts, vendors, and the events already on your books.",
+  },
   review: {
-    title: "Review & create",
-    description: "Confirm everything looks right, then create your venue.",
+    title: "Ready to go",
+    description: "Here's what's ready — confirm your details, then create your venue.",
   },
 };
 
@@ -197,15 +212,64 @@ function SelectField({
   );
 }
 
-// ---- Welcome ----------------------------------------------------------------
+// ---- Welcome + Path choice (onboarding persona) ------------------------------
+// Pre-Launch Commercial Readiness, Initiative 1 (2026-08-03) — replaces the
+// old two-screen Welcome→Origin sequence with one combined "Welcome. Let's
+// get your venue ready." screen offering exactly the two paths the
+// initiative specifies. The "where specifically are you coming from" detail
+// (Weven / another platform / spreadsheets / files) moved to the Bring Your
+// Business stage's own source picker, where the initiative's Part 4 actually
+// asks for it — this screen only needs to know fresh-start vs. bringing a
+// business, so onboarding_persona is set to "new" or "switching" here and
+// may be refined to "weven_returning" later if Weven is picked as a source.
+// Deliberately outside SETUP_STEPS, like before — no field validation, and
+// nothing to persist until a real venue row exists.
 
-export function WelcomeStep({ onStart }: { onStart: () => void }) {
-  const points = [
-    { icon: Building2, text: "Your venue's name, contact details, and location" },
-    { icon: CalendarClock, text: "Capacity, time zone, and business hours" },
-    { icon: Sparkles, text: "Brand colors and your owner profile" },
-    { icon: CreditCard, text: "Payments setup (you can connect Stripe later)" },
-  ];
+function PathOptionCard({
+  icon: Icon,
+  title,
+  description,
+  emphasize,
+  onClick,
+}: {
+  icon: React.ComponentType<{ className?: string }>;
+  title: string;
+  description: string;
+  emphasize?: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        "flex w-full items-start gap-4 rounded-xl border p-5 text-left transition-colors hover:bg-muted/30",
+        emphasize
+          ? "border-primary/50 bg-primary/5 hover:border-primary"
+          : "border-border bg-card hover:border-primary/40",
+      )}
+    >
+      <span
+        className={cn(
+          "flex h-11 w-11 shrink-0 items-center justify-center rounded-lg",
+          emphasize ? "bg-primary/15 text-primary" : "bg-accent/40 text-heading",
+        )}
+      >
+        <Icon className="h-5.5 w-5.5" />
+      </span>
+      <span className="space-y-1">
+        <span className="block text-base font-medium text-heading">{title}</span>
+        <span className="block text-sm text-muted-foreground">{description}</span>
+      </span>
+    </button>
+  );
+}
+
+export function PathChoiceStep({
+  onChoose,
+}: {
+  onChoose: (persona: "new" | "switching") => void;
+}) {
   return (
     <div className="mx-auto max-w-xl space-y-8 py-8 text-center">
       <div className="space-y-3">
@@ -213,135 +277,27 @@ export function WelcomeStep({ onStart }: { onStart: () => void }) {
           <Building2 className="h-7 w-7" />
         </span>
         <h1 className="font-heading text-3xl font-medium tracking-tight text-heading">
-          Let&apos;s build your venue
+          Welcome to Hello to Cheers
         </h1>
         <p className="mx-auto max-w-md text-sm text-muted-foreground">
-          Everything in Hello to Cheers begins with your venue. We&apos;ll set up the
-          foundation now — it only takes a few minutes, and you can refine any of
-          it later.
+          Let&apos;s get your venue ready. It only takes a few minutes, and you
+          can refine anything later.
         </p>
       </div>
 
-      <ul className="mx-auto max-w-md space-y-3 text-left">
-        {points.map(({ icon: Icon, text }) => (
-          <li key={text} className="flex items-center gap-3">
-            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-accent/40 text-heading">
-              <Icon className="h-4.5 w-4.5" />
-            </span>
-            <span className="text-sm text-foreground">{text}</span>
-          </li>
-        ))}
-      </ul>
-
-      <Button size="lg" onClick={onStart} className="w-full sm:w-auto">
-        Get started
-        <ArrowRight className="ml-1 h-4 w-4" />
-      </Button>
-    </div>
-  );
-}
-
-// ---- Origin (onboarding persona) ---------------------------------------------
-// Guided Setup, Hospitality Success Platform Phase 1 — captured once, right
-// alongside the venue name, before any other question. Drives which of three
-// scripts the rest of the journey narrates with (docs/hospitality-success-
-// platform-implementation-plan.md §1.2a). Deliberately outside SETUP_STEPS —
-// like "welcome", it needs no field validation and nothing to persist until
-// a real venue row exists.
-
-function OriginOptionCard({
-  icon: Icon,
-  title,
-  description,
-  onClick,
-}: {
-  icon: React.ComponentType<{ className?: string }>;
-  title: string;
-  description: string;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="flex w-full items-start gap-4 rounded-xl border border-border bg-card p-4 text-left transition-colors hover:border-primary/40 hover:bg-muted/30"
-    >
-      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-accent/40 text-heading">
-        <Icon className="h-5 w-5" />
-      </span>
-      <span className="space-y-0.5">
-        <span className="block text-sm font-medium text-heading">{title}</span>
-        <span className="block text-xs text-muted-foreground">{description}</span>
-      </span>
-    </button>
-  );
-}
-
-export function OriginStep({
-  onChoose,
-}: {
-  onChoose: (persona: "new" | "switching" | "weven_returning") => void;
-}) {
-  const [showSwitchingDetail, setShowSwitchingDetail] = React.useState(false);
-
-  if (showSwitchingDetail) {
-    return (
-      <div className="mx-auto max-w-xl space-y-6 py-8">
-        <div className="space-y-2 text-center">
-          <h1 className="font-heading text-2xl font-medium tracking-tight text-heading">
-            Where are you coming from?
-          </h1>
-          <p className="text-sm text-muted-foreground">
-            This just helps us bring the right things over.
-          </p>
-        </div>
-        <div className="space-y-3">
-          <OriginOptionCard
-            icon={Heart}
-            title="Weven"
-            description="Welcome back — we'll make this transition smooth."
-            onClick={() => onChoose("weven_returning")}
-          />
-          <OriginOptionCard
-            icon={RefreshCw}
-            title="Somewhere else"
-            description="HoneyBook, Aisle Planner, a spreadsheet — anything at all."
-            onClick={() => onChoose("switching")}
-          />
-        </div>
-        <button
-          type="button"
-          onClick={() => setShowSwitchingDetail(false)}
-          className="mx-auto block text-xs text-muted-foreground hover:text-foreground"
-        >
-          ← Back
-        </button>
-      </div>
-    );
-  }
-
-  return (
-    <div className="mx-auto max-w-xl space-y-6 py-8">
-      <div className="space-y-2 text-center">
-        <h1 className="font-heading text-2xl font-medium tracking-tight text-heading">
-          Tell us where you're starting from
-        </h1>
-        <p className="text-sm text-muted-foreground">
-          This changes how we guide you — nothing else.
-        </p>
-      </div>
-      <div className="space-y-3">
-        <OriginOptionCard
-          icon={Building2}
-          title="This is a brand-new venue"
-          description="We'll walk through everything, one step at a time."
+      <div className="mx-auto max-w-md space-y-3 text-left">
+        <PathOptionCard
+          icon={Sparkles}
+          title="I'm starting fresh"
+          description="We'll walk you through the essentials."
           onClick={() => onChoose("new")}
         />
-        <OriginOptionCard
+        <PathOptionCard
           icon={RefreshCw}
-          title="I'm bringing an existing business over"
-          description="We'll focus on getting your current weddings and clients imported."
-          onClick={() => setShowSwitchingDetail(true)}
+          title="I'm bringing my business with me"
+          description="Already using another system, spreadsheets, or existing files? Bring what you have. We'll help set up your workspace."
+          emphasize
+          onClick={() => onChoose("switching")}
         />
       </div>
     </div>
@@ -772,6 +728,40 @@ function ReviewSection({
   );
 }
 
+// ---- Ready to Go summary (Pre-Launch Commercial Readiness, Initiative 1, 2026-08-03) ----
+// Real counts only — queried live via getSetupReadyCountsAction. A domain
+// with 0 is simply omitted, never shown as a fabricated accomplishment.
+
+function ReadyToGoSummary({ venueName }: { venueName: string }) {
+  const counts = useSetupReadyCounts();
+  const items: string[] = [];
+  if (counts) {
+    if (counts.packages > 0) items.push(`${counts.packages} package${counts.packages === 1 ? "" : "s"}`);
+    if (counts.contractTemplates > 0) items.push(`${counts.contractTemplates} contract template${counts.contractTemplates === 1 ? "" : "s"}`);
+    if (counts.vendorRelationships > 0) items.push(`${counts.vendorRelationships} vendor relationship${counts.vendorRelationships === 1 ? "" : "s"}`);
+    if (counts.contacts > 0) items.push(`${counts.contacts} contact${counts.contacts === 1 ? "" : "s"}`);
+    if (counts.upcomingEvents > 0) items.push(`${counts.upcomingEvents} upcoming event${counts.upcomingEvents === 1 ? "" : "s"}`);
+  }
+
+  return (
+    <div className="rounded-lg border border-primary/20 bg-primary/5 p-4 space-y-2">
+      <p className="text-sm font-medium text-heading">
+        {venueName.trim() || "Your venue"} is ready.
+      </p>
+      <div className="flex items-center gap-2 text-sm text-foreground">
+        <Check className="h-3.5 w-3.5 shrink-0 text-success" />
+        Venue profile
+      </div>
+      {items.map((text) => (
+        <div key={text} className="flex items-center gap-2 text-sm text-foreground">
+          <Check className="h-3.5 w-3.5 shrink-0 text-success" />
+          {text}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function formatHours(input: VenueSetupInput): string {
   const byDay = new Map(input.businessHours.map((h) => [h.dayOfWeek, h]));
   const open = DAYS_OF_WEEK.filter((d) => byDay.get(d.value)?.isOpen);
@@ -791,6 +781,8 @@ export function ReviewStep({ input, goToStep }: StepProps) {
 
   return (
     <div className="space-y-4">
+      <ReadyToGoSummary venueName={input.name} />
+
       <ReviewSection title="Venue information" step="venue-info" goToStep={goToStep}>
         <SummaryRow label="Name" value={input.name} />
         <SummaryRow label="Business name" value={input.businessName} />

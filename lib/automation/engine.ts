@@ -25,6 +25,7 @@ import { createClient as createServiceClient, type SupabaseClient } from "@supab
 
 import { evaluateConditions } from "./conditions";
 import { ACTION_REGISTRY } from "./actions";
+import { applyDefaultPlaybooksForConfirmedBookings, type SystemGuaranteeResult } from "./system-guarantees";
 import type { AutomationCondition, AutomationExecutionStatus } from "./types";
 import type { PlatformEvent } from "@/lib/platform-events/types";
 
@@ -37,7 +38,19 @@ function getServiceClient() {
   return createServiceClient(url, key, { auth: { autoRefreshToken: false, persistSession: false } });
 }
 
-export type ProcessResult = { evaluated: number; executed: number; skipped: number; failed: number };
+export type ProcessResult = {
+  evaluated: number; executed: number; skipped: number; failed: number;
+  // Venue Lifecycle Automation Completion Pass (2026-08-04) — kept as its
+  // own nested field, deliberately never merged into evaluated/executed/
+  // skipped/failed above: those four counters describe venue-configurable
+  // Automation Rule matches (Phase 2's "B" category); systemGuarantees
+  // describes behavior that runs unconditionally, with no rule involved at
+  // all (Phase 2's "A" category). Conflating the two would make it
+  // impossible to tell, from this result alone, whether something fired
+  // because a venue configured it or because the platform guarantees it —
+  // exactly the distinction this pass exists to keep legible.
+  systemGuarantees: SystemGuaranteeResult;
+};
 
 type RuleRow = {
   id: string; venue_id: string; trigger_event_type: string;
@@ -62,7 +75,14 @@ function toPlatformEvent(row: PlatformEventRow): PlatformEvent {
 
 export async function processAutomationEvents(): Promise<ProcessResult> {
   const client = getServiceClient();
-  const result: ProcessResult = { evaluated: 0, executed: 0, skipped: 0, failed: 0 };
+  const result: ProcessResult = {
+    evaluated: 0, executed: 0, skipped: 0, failed: 0,
+    // Runs unconditionally, before any rule is even loaded — this must
+    // never be reachable only through the "rules.length === 0 → return
+    // early" branch below, since a venue with zero configured Automation
+    // Rules is exactly the case this guarantee exists to still cover.
+    systemGuarantees: await applyDefaultPlaybooksForConfirmedBookings(),
+  };
 
   const { data: rules } = await client.from("automation_rules").select("*").eq("enabled", true);
   if (!rules || rules.length === 0) return result;
