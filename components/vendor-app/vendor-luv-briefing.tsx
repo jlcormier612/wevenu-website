@@ -34,9 +34,10 @@ function Row({ item, icon: Icon, tone }: { item: BriefingItem; icon: React.Eleme
     >
       <Icon className={`h-3.5 w-3.5 shrink-0 mt-0.5 ${tone}`} />
       <div className="min-w-0 flex-1">
-        <p className="text-sm text-heading truncate">{item.detail}</p>
+        {/* Primary line is the actionable "what" — never truncate mid-reason. */}
+        <p className="text-sm text-heading line-clamp-2">{item.detail}</p>
         {(item.eventName || item.eventDate) && (
-          <p className="text-xs text-muted-foreground">
+          <p className="text-xs text-muted-foreground truncate">
             {item.eventName}
             {item.eventName && item.eventDate ? " · " : ""}
             {formatDate(item.eventDate)}
@@ -107,7 +108,7 @@ export function VendorLuvBriefing({
 
   return (
     <Card
-      className="border-[#D8A7AA]/25"
+      className="w-full border-[#D8A7AA]/25"
       style={{ background: `color-mix(in oklch, ${DUSTY_ROSE} 4%, var(--card))` }}
     >
       <CardHeader className="pb-3">

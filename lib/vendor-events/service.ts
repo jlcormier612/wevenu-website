@@ -97,7 +97,7 @@ export async function getVendorEventDetail(
     event: { id: string; name: string; event_date: string | null; event_end_date: string | null; event_type: string | null; venue_id: string; venue_name: string } | null;
     client: { first_name: string | null; last_name: string | null; partner_first_name: string | null; partner_last_name: string | null; email: string | null; phone: string | null } | null;
     timeline: { id: string; entry_time: string | null; title: string; description: string | null; audiences: string[] }[];
-    event_tasks: { id: string; title: string; description: string | null; category: string; visibility: string; due_date: string | null; status: string; is_required: boolean; completed_at: string | null }[];
+    event_tasks: { id: string; title: string; description: string | null; category: string; visibility: string; due_date: string | null; days_offset: number | null; due_date_locked?: boolean; status: string; is_required: boolean; completed_at: string | null }[];
     documents: { id: string; name: string; category: string; storage_url: string; mime_type: string | null; notes: string | null; created_at?: string | null }[];
   };
 
@@ -133,6 +133,8 @@ export async function getVendorEventDetail(
     category:    r.category,
     visibility:  r.visibility as VendorTask["visibility"],
     dueDate:     r.due_date,
+    daysOffset:  r.days_offset ?? null,
+    dueDateLocked: r.due_date_locked ?? false,
     status:      r.status,
     isRequired:  r.is_required,
     completedAt: r.completed_at,

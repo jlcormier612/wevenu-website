@@ -1,9 +1,14 @@
 /**
  * Vendor in-app notification center — inbox RPCs over vendor_notifications.
  * Writes are produced by DB triggers (assignment, message, task, share).
+ *
+ * new_message rows are reconciled against the live vendor conversation inbox
+ * so CASCADE-deleted threads cannot leave ghost unread badges.
  */
 import { createClient } from "@/integrations/supabase/server";
 import { isSupabaseConfigured } from "@/lib/env";
+import * as conversationsRepo from "@/lib/conversations/repository";
+import { reconcileVendorMessageNotifications } from "./reconcile-message-notifications";
 import type { VendorNotification, VendorNotificationsResponse } from "./types";
 
 export async function getVendorNotifications(
@@ -28,10 +33,26 @@ export async function getVendorNotifications(
 
   if (result?.error) return { notifications: [], unreadCount: 0 };
 
-  return {
-    notifications: result?.notifications ?? [],
-    unreadCount: result?.unreadCount ?? 0,
-  };
+  const notifications = result?.notifications ?? [];
+  const unreadCount = result?.unreadCount ?? 0;
+
+  // Skip inbox RPC when nothing looks like a message alert.
+  if (!notifications.some((n) => n.type === "new_message")) {
+    return { notifications, unreadCount };
+  }
+
+  try {
+    const inbox = await conversationsRepo.getVendorConversationInbox(supabase);
+    return await reconcileVendorMessageNotifications(
+      supabase,
+      notifications,
+      inbox.conversations,
+      unreadCount,
+    );
+  } catch (err) {
+    console.error("[getVendorNotifications] reconcile failed:", err);
+    return { notifications, unreadCount };
+  }
 }
 
 export async function markVendorNotificationsRead(

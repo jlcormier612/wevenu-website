@@ -5,13 +5,13 @@ import * as React from "react";
 import { Eye, EyeOff, Loader2 } from "lucide-react";
 import { useFormStatus } from "react-dom";
 
-import {
-  createVendorAccountAndClaimAction,
-  VENDOR_ACCEPT_INITIAL_STATE,
-} from "@/app/vendor/actions";
+import { createVendorAccountAndClaimAction } from "@/app/vendor/actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+
+/** Must not live in the "use server" actions module — Next only allows async function exports there. */
+const VENDOR_ACCEPT_INITIAL_STATE: { error?: string } = {};
 
 function SubmitButton() {
   const { pending } = useFormStatus();

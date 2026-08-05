@@ -12,6 +12,9 @@
  *
  * Tone: professional hospitality — warm, service-oriented, states what's
  * true and what it means. Never a bare command or cheerleader copy.
+ *
+ * Each Needs-you-now row must answer: what, for whom, what to do — detail
+ * carries the what/action; eventName · date carries the whom.
  */
 import type { BriefingItem, LuvBriefing } from "@/lib/luv/briefing-types";
 import type { VendorHomeData } from "@/lib/vendor-home/service";
@@ -59,6 +62,11 @@ function todayIso(): string {
   return new Date().toISOString().slice(0, 10);
 }
 
+function eventWhom(eventName: string | null | undefined, venueName: string | null | undefined): string | null {
+  const parts = [eventName?.trim(), venueName?.trim()].filter(Boolean);
+  return parts.length ? parts.join(" · ") : null;
+}
+
 /**
  * Build the shared Daily Briefing sections from vendor operator data.
  * Pure — no I/O. Callers fetch VendorHomeData + profile first.
@@ -70,32 +78,42 @@ export function getVendorBriefing(input: VendorLuvInput): LuvBriefing {
   const informational: BriefingItem[] = [];
   const today = todayIso();
 
+  const eventById = new Map(home.allEvents.map((e) => [e.eventId, e]));
+
   // ── Needs you now ────────────────────────────────────────────────────────
   for (const c of home.unreadConversations) {
+    const from =
+      c.counterpartyLabel === "Venue"
+        ? (c.venueName?.trim() || "the venue")
+        : (c.coupleName?.trim() || "the couple");
     needsAttentionNow.push({
       id: `msg-${c.conversationId}`,
       eventId: c.eventId,
-      eventName: c.eventName,
+      eventName: eventWhom(c.eventName, c.venueName),
       eventDate: c.eventDate,
       label: "Unread message",
       detail:
         c.contactUnread === 1
-          ? "1 message waiting for your reply"
-          : `${c.contactUnread} messages waiting for your reply`,
+          ? `1 unread message from ${from}`
+          : `${c.contactUnread} unread messages from ${from}`,
       link: `/vendor/messages/${c.conversationId}`,
     });
   }
 
   for (const t of home.tasksDue) {
     const overdue = t.dueDate != null && t.dueDate < today;
+    const ev = t.eventId ? eventById.get(t.eventId) : undefined;
+    const taskLink = ev
+      ? `/vendor/events/${ev.assignmentId}?tab=tasks&focus=${encodeURIComponent(t.id)}`
+      : `/vendor/tasks?focus=${encodeURIComponent(t.id)}`;
     needsAttentionNow.push({
       id: `task-${t.id}`,
       eventId: t.eventId,
-      eventName: null,
+      eventName: ev ? eventWhom(ev.eventName, ev.venueName) : null,
       eventDate: t.dueDate,
       label: overdue ? "Overdue task" : "Task due soon",
-      detail: t.title,
-      link: `/vendor/tasks?focus=${encodeURIComponent(t.id)}`,
+      detail: overdue ? `Task overdue: ${t.title}` : `Task due soon: ${t.title}`,
+      link: taskLink,
     });
   }
 
@@ -103,19 +121,14 @@ export function getVendorBriefing(input: VendorLuvInput): LuvBriefing {
     needsAttentionNow.push({
       id: `event-today-${ev.assignmentId}`,
       eventId: ev.eventId,
-      eventName: ev.eventName,
+      eventName: eventWhom(ev.eventName, ev.venueName),
       eventDate: ev.eventDate,
       label: "Event today",
       detail: ev.arrivalTime
-        ? `Check in with ${ev.venueName} — arrival ${ev.arrivalTime}`
-        : `You're on site with ${ev.venueName} today`,
-      link: `/vendor/events/${ev.assignmentId}`,
+        ? `Event today — check in (arrival ${ev.arrivalTime})`
+        : "Event today — check in",
+      link: `/vendor/events/${ev.assignmentId}?tab=overview&highlight=checkin`,
     });
-  }
-
-  // Unread vendor_notifications (light — not a full bell feed)
-  if (extras?.notifications?.length) {
-    needsAttentionNow.push(...extras.notifications);
   }
 
   // ── Coming up this week ──────────────────────────────────────────────────
@@ -123,13 +136,13 @@ export function getVendorBriefing(input: VendorLuvInput): LuvBriefing {
     comingUpThisWeek.push({
       id: `event-week-${ev.assignmentId}`,
       eventId: ev.eventId,
-      eventName: ev.eventName,
+      eventName: eventWhom(ev.eventName, ev.venueName),
       eventDate: ev.eventDate,
       label: "Upcoming event",
-      detail: ev.venueName
-        ? `${ev.venueName}${ev.eventDate ? ` · ${formatShortDate(ev.eventDate)}` : ""}`
-        : formatShortDate(ev.eventDate),
-      link: `/vendor/events/${ev.assignmentId}`,
+      detail: ev.eventDate
+        ? `Event this week — ${formatShortDate(ev.eventDate)}`
+        : "Event this week",
+      link: `/vendor/events/${ev.assignmentId}?tab=overview`,
     });
   }
 
@@ -144,29 +157,55 @@ export function getVendorBriefing(input: VendorLuvInput): LuvBriefing {
     comingUpThisWeek.push({
       id: `timeline-${tl.assignmentId}`,
       eventId: tl.eventId,
-      eventName: tl.eventName,
+      eventName: eventWhom(tl.eventName, tl.venueName),
       eventDate: tl.eventDate,
       label: "Run of show",
-      detail: first.time ? `${first.time} · ${first.title}` : first.title,
-      link: "/vendor/timeline",
+      detail: first.time
+        ? `Next on the run of show: ${first.time} · ${first.title}`
+        : `Next on the run of show: ${first.title}`,
+      link: `/vendor/events/${tl.assignmentId}?tab=timeline`,
     });
   }
 
   for (const doc of home.recentDocuments) {
     const count = doc.documents.length + doc.floorPlans.length;
     if (count === 0) continue;
+    const firstName =
+      doc.documents[0]?.name ?? doc.floorPlans[0]?.name ?? null;
     informational.push({
       id: `docs-${doc.assignmentId}`,
       eventId: doc.eventId,
-      eventName: doc.eventName,
+      eventName: eventWhom(doc.eventName, doc.venueName),
       eventDate: doc.eventDate,
       label: "Shared documents",
       detail:
-        count === 1
-          ? "1 file shared for this event"
-          : `${count} files shared for this event`,
-      link: `/vendor/events/${doc.assignmentId}`,
+        count === 1 && firstName
+          ? `Document shared: ${firstName}`
+          : count === 1
+            ? "1 file shared for this event"
+            : `${count} files shared for this event`,
+      link: `/vendor/events/${doc.assignmentId}?tab=documents&highlight=documents`,
     });
+  }
+
+  // Unread vendor_notifications after home rows exist, so we can skip
+  // duplicates (assignment when event is today; docs when already listed).
+  if (extras?.notifications?.length) {
+    const eventTodayIds = new Set(
+      needsAttentionNow
+        .filter((i) => i.id.startsWith("event-today-"))
+        .map((i) => i.eventId)
+        .filter(Boolean),
+    );
+    const docsEventIds = new Set(
+      informational.filter((i) => i.id.startsWith("docs-")).map((i) => i.eventId).filter(Boolean),
+    );
+
+    for (const n of extras.notifications) {
+      if (n.label === "New assignment" && n.eventId && eventTodayIds.has(n.eventId)) continue;
+      if (n.label === "Shared with you" && n.eventId && docsEventIds.has(n.eventId)) continue;
+      needsAttentionNow.push(n);
+    }
   }
 
   // ── Profile / COI (informational readiness — same Luv job, lighter urgency) ─
@@ -183,8 +222,8 @@ export function getVendorBriefing(input: VendorLuvInput): LuvBriefing {
           eventName: null,
           eventDate: profile.insuranceExpiry,
           label: "Insurance",
-          detail: "Your certificate of insurance has expired — venues typically need a current copy on file.",
-          link: "/vendor/profile",
+          detail: "COI expired — update insurance on your profile",
+          link: "/vendor/profile#insurance",
         });
       } else if (daysLeft <= 30) {
         informational.push({
@@ -193,8 +232,8 @@ export function getVendorBriefing(input: VendorLuvInput): LuvBriefing {
           eventName: null,
           eventDate: profile.insuranceExpiry,
           label: "Insurance",
-          detail: `Your certificate of insurance expires in ${daysLeft} day${daysLeft === 1 ? "" : "s"}.`,
-          link: "/vendor/profile",
+          detail: `COI expires in ${daysLeft} day${daysLeft === 1 ? "" : "s"} — update before load-in`,
+          link: "/vendor/profile#insurance",
         });
       }
     } else {
@@ -204,8 +243,8 @@ export function getVendorBriefing(input: VendorLuvInput): LuvBriefing {
         eventName: null,
         eventDate: null,
         label: "Insurance",
-        detail: "No insurance expiry on file yet — venues often ask for this before load-in.",
-        link: "/vendor/profile",
+        detail: "No COI on file yet — venues often ask before load-in",
+        link: "/vendor/profile#insurance",
       });
     }
 
@@ -227,19 +266,36 @@ export function getVendorBriefing(input: VendorLuvInput): LuvBriefing {
         eventName: null,
         eventDate: null,
         label: "Profile",
-        detail: "A few profile details are still open — completing them helps venues work with you smoothly.",
+        detail: "A few profile details are still open — completing them helps venues work with you",
         link: "/vendor/profile",
       });
     }
   }
 
+  // Final pass: collapse any remaining identical detail+eventName pairs
+  // (e.g. two same-type alerts that slipped past earlier grouping).
+  const dedupedNeeds = dedupeIndistinguishable(needsAttentionNow);
+
   return {
-    needsAttentionNow,
+    needsAttentionNow: dedupedNeeds,
     comingUpThisWeek,
     resolvedSinceLastLooked: [],
     informational,
     generatedAt: new Date().toISOString(),
   };
+}
+
+/** Drop rows that would look identical in the briefing UI. Keep the first. */
+function dedupeIndistinguishable(items: BriefingItem[]): BriefingItem[] {
+  const seen = new Set<string>();
+  const out: BriefingItem[] = [];
+  for (const item of items) {
+    const key = `${item.detail}::${item.eventName ?? ""}::${item.eventDate ?? ""}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(item);
+  }
+  return out;
 }
 
 /** Count of items that typically badge as "needs attention." */

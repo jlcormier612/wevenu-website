@@ -12,7 +12,7 @@ import type { RsvpContext } from "@/app/rsvp/[token]/page";
 import {
   SectionComposition, ContentBlock, WeddingPartyComposition, edgeWidthClass,
   SectionCanvas, contrastText, ScheduleTimeline, ScheduleDateMoment, EditorialOpening, PairedPassage, DestinationFeature, CompactInterlude,
-  type CompositionItem, type CompositionRecipe, type PartyMember, type SectionRole, type SectionScale,
+  type CompositionItem, type CompositionRecipe, type PartyMember, type SectionRole, type SectionScale, type DestinationItem,
 } from "@/components/wedding-website/composition-primitives";
 
 // ── Theme system: Collection (aesthetic DNA) + Palette (color expression) ────
@@ -1074,6 +1074,20 @@ const CATEGORY_ICONS: Record<string, string> = {
   other:      "✦",
 };
 
+// Things To Do Sparse/Dense Fix — a text eyebrow for Coastal's own
+// DestinationFeature treatment (Step 8: "category as a small editorial
+// label"), kept separate from CATEGORY_ICONS above so every other
+// Collection's existing emoji-icon rendering (via the shared
+// CompositionItem `items` array and SectionComposition) is untouched.
+const CATEGORY_LABELS: Record<string, string> = {
+  restaurant: "Restaurant",
+  cafe:       "Café",
+  attraction: "Attraction",
+  hotel:      "Hotel",
+  shopping:   "Shopping",
+  other:      "Local Favorite",
+};
+
 // ── Main public website ───────────────────────────────────────────────────────
 
 export function WeddingWebsite({
@@ -1642,16 +1656,50 @@ export function WeddingWebsite({
                 meta: item.address,
                 href: item.url,
               }));
+              // Things To Do Sparse/Dense fix — DestinationFeature (Coastal
+              // only) reads the raw, richly-typed items directly rather than
+              // the lossy CompositionItem mapping above (which stays exactly
+              // as it was for every other Collection's SectionComposition
+              // fallback, untouched).
+              const destinationItems: DestinationItem[] = ttd.items.map(item => ({
+                name: item.name,
+                categoryLabel: CATEGORY_LABELS[item.category] ?? "Local Favorite",
+                description: item.description,
+                address: item.address,
+                url: item.url,
+              }));
               return (
                 <SectionCanvas key="things_to_do" role={tc.sectionRoles?.things_to_do} sparse={items.length <= 1} colors={canvasColors}>
                 <SectionWrapper sectionKey="things_to_do">
                   <section>
-                    <SectionHeader title={ttd.title ?? "Things To Do"} tc={tc} accentColor={color} />
-                    {ttd.intro && <p className="text-center opacity-60 mb-8 leading-relaxed">{ttd.intro}</p>}
-                    {tc.sectionRoles ? (
-                      <DestinationFeature tc={tc} color={color} items={items} />
+                    {tc.sectionRoles && destinationItems.length === 1 ? (
+                      // Exactly one recommendation — Coastal only: an
+                      // intentional featured-destination pairing (same
+                      // asymmetric "intro beside the one real thing" move as
+                      // Schedule's date field), not a small card floating in
+                      // a mostly-empty section. Heading/intro keep the same
+                      // left-aligned Coastal treatment they already use
+                      // everywhere else on the page (Schedule's "Our Day"
+                      // included) — never centered, on any viewport.
+                      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-14 lg:items-center">
+                        <div className="lg:col-span-5">
+                          <SectionHeader title={ttd.title ?? "Things To Do"} tc={tc} accentColor={color} />
+                          {ttd.intro && <p className="opacity-60 leading-relaxed" style={{ color: tc.textMuted }}>{ttd.intro}</p>}
+                        </div>
+                        <div className="lg:col-span-7">
+                          <DestinationFeature tc={tc} color={color} items={destinationItems} />
+                        </div>
+                      </div>
                     ) : (
-                      <SectionComposition recipe={tc} tc={tc} color={color} items={items} />
+                      <>
+                        <SectionHeader title={ttd.title ?? "Things To Do"} tc={tc} accentColor={color} />
+                        {ttd.intro && <p className="text-center opacity-60 mb-8 leading-relaxed">{ttd.intro}</p>}
+                        {tc.sectionRoles ? (
+                          <DestinationFeature tc={tc} color={color} items={destinationItems} />
+                        ) : (
+                          <SectionComposition recipe={tc} tc={tc} color={color} items={items} />
+                        )}
+                      </>
                     )}
                   </section>
                 </SectionWrapper>

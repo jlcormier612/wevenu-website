@@ -26,6 +26,7 @@ import { getVendorSharedFloorPlansForEventAction } from "@/app/vendor/floor-plan
 import { VendorConversationThread } from "@/components/vendor-app/vendor-conversation-thread";
 import { VendorEventSharePanel } from "@/components/vendor-app/vendor-event-share-panel";
 import { VendorHandbookView } from "@/components/vendor-app/vendor-handbook-view";
+import { formatEventRelativeDue } from "@/lib/playbooks/due-dates";
 import type { VendorEventDetail } from "@/lib/vendors/types";
 import type { VendorConversationMessage, VendorConversationSummary } from "@/lib/conversations/types";
 import type { VendorFloorPlanSummary } from "@/lib/floor-plans/types";
@@ -73,11 +74,16 @@ export function VendorEventWorkspace({
   library = [],
   eventUploads = [],
   initialTab = "overview",
+  highlight = null,
+  focusTaskId = null,
 }: {
   detail: VendorEventDetail;
   library?: import("@/lib/vendor-documents/types").VendorLibraryDocument[];
   eventUploads?: import("@/lib/vendor-documents/types").VendorEventUpload[];
   initialTab?: Tab;
+  /** Light cue from Luv deep links — scroll/emphasize the relevant surface. */
+  highlight?: "checkin" | "documents" | null;
+  focusTaskId?: string | null;
 }) {
   const [tab, setTab] = React.useState<Tab>(initialTab);
 
@@ -127,12 +133,17 @@ export function VendorEventWorkspace({
 
       {/* Tab content */}
       <div>
-        {tab === "overview"  && <OverviewTab   detail={detail} />}
+        {tab === "overview"  && <OverviewTab   detail={detail} highlight={highlight} />}
         {tab === "messages"  && <MessagesTab   detail={detail} />}
         {tab === "timeline"  && <TimelineTab   detail={detail} />}
-        {tab === "tasks"     && <TasksTab      detail={detail} />}
+        {tab === "tasks"     && <TasksTab      detail={detail} focusTaskId={focusTaskId} />}
         {tab === "documents" && (
-          <DocumentsTab detail={detail} library={library} eventUploads={eventUploads} />
+          <DocumentsTab
+            detail={detail}
+            library={library}
+            eventUploads={eventUploads}
+            highlight={highlight === "documents"}
+          />
         )}
         {tab === "venueinfo" && <VenueInfoTab  detail={detail} />}
         {tab === "notes"     && <NotesTab      detail={detail} />}
@@ -141,16 +152,29 @@ export function VendorEventWorkspace({
   );
 }
 
-function OverviewTab({ detail }: { detail: VendorEventDetail }) {
+function OverviewTab({
+  detail,
+  highlight = null,
+}: {
+  detail: VendorEventDetail;
+  highlight?: "checkin" | "documents" | null;
+}) {
   const [checkedInAt, setCheckedInAt] = React.useState(detail.checkedInAt);
   const [setupCompleteAt, setSetupCompleteAt] = React.useState(detail.setupCompleteAt);
   const [pendingField, setPendingField] = React.useState<"checked_in" | "setup_complete" | null>(null);
   const [, startTransition] = useTransition();
+  const checkinRef = React.useRef<HTMLDivElement | null>(null);
+  const emphasizeCheckin = highlight === "checkin";
 
   React.useEffect(() => {
     setCheckedInAt(detail.checkedInAt);
     setSetupCompleteAt(detail.setupCompleteAt);
   }, [detail.checkedInAt, detail.setupCompleteAt]);
+
+  React.useEffect(() => {
+    if (!emphasizeCheckin || !checkinRef.current) return;
+    checkinRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
+  }, [emphasizeCheckin]);
 
   const checkedIn = !!checkedInAt;
   const setupDone = !!setupCompleteAt;
@@ -178,7 +202,11 @@ function OverviewTab({ detail }: { detail: VendorEventDetail }) {
   return (
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
       {/* Assignment info */}
-      <div className="rounded-xl border border-border bg-card p-4 space-y-3">
+      <div
+        className={`rounded-xl border bg-card p-4 space-y-3 ${
+          emphasizeCheckin ? "border-primary/50 ring-2 ring-primary/25" : "border-border"
+        }`}
+      >
         <h2 className="text-sm font-semibold text-foreground">Your Assignment</h2>
         <div className="space-y-2 text-sm">
           {detail.arrivalTime && (
@@ -199,8 +227,16 @@ function OverviewTab({ detail }: { detail: VendorEventDetail }) {
               <p className="text-foreground">{detail.loadInNotes}</p>
             </div>
           )}
-          <div className="pt-1 space-y-2 border-t border-border/60">
+          <div
+            ref={checkinRef}
+            className={`pt-1 space-y-2 border-t border-border/60 ${
+              emphasizeCheckin ? "rounded-lg bg-primary/5 -mx-1 px-1 py-2" : ""
+            }`}
+          >
             <p className="text-xs text-muted-foreground">Day-of status</p>
+            {emphasizeCheckin && (
+              <p className="text-[11px] font-medium text-primary">Check in when you arrive</p>
+            )}
             <p className="text-[11px] text-muted-foreground">
               Let the venue know you&apos;ve arrived and when setup is done. They&apos;ll see this on the wedding-day board.
             </p>
@@ -330,10 +366,22 @@ function TimelineTab({ detail }: { detail: VendorEventDetail }) {
   );
 }
 
-function TasksTab({ detail }: { detail: VendorEventDetail }) {
+function TasksTab({
+  detail,
+  focusTaskId = null,
+}: {
+  detail: VendorEventDetail;
+  focusTaskId?: string | null;
+}) {
   const [pending, startTransition] = useTransition();
   const [newTitle, setNewTitle]   = React.useState("");
   const [newDue, setNewDue]       = React.useState("");
+  const focusRef = React.useRef<HTMLDivElement | null>(null);
+
+  React.useEffect(() => {
+    if (!focusTaskId || !focusRef.current) return;
+    focusRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
+  }, [focusTaskId]);
 
   function handleCompleteEvent(taskId: string) {
     startTransition(async () => { await completeEventTaskAction(taskId, detail.assignmentId); });
@@ -361,6 +409,7 @@ function TasksTab({ detail }: { detail: VendorEventDetail }) {
   }
 
   const allEmpty = detail.eventTasks.length === 0 && detail.personalTasks.length === 0;
+  const focusClass = "bg-primary/5 ring-1 ring-inset ring-primary/30";
 
   return (
     <div className="space-y-4">
@@ -370,7 +419,11 @@ function TasksTab({ detail }: { detail: VendorEventDetail }) {
           <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Assigned by Venue</h3>
           <div className="rounded-xl border border-border bg-card divide-y divide-border">
             {detail.eventTasks.map((t) => (
-              <div key={t.id} className="flex items-start gap-3 px-4 py-3">
+              <div
+                key={t.id}
+                ref={focusTaskId === t.id ? focusRef : undefined}
+                className={`flex items-start gap-3 px-4 py-3 ${focusTaskId === t.id ? focusClass : ""}`}
+              >
                 <button
                   type="button"
                   onClick={() => t.canComplete && t.status !== "complete" && handleCompleteEvent(t.id)}
@@ -385,7 +438,16 @@ function TasksTab({ detail }: { detail: VendorEventDetail }) {
                   <p className={`text-sm ${t.status === "complete" ? "line-through text-muted-foreground" : "text-foreground"}`}>
                     {t.title}
                   </p>
-                  {t.dueDate && <p className="text-xs text-muted-foreground">{t.dueDate}</p>}
+                  {(t.dueDate || t.daysOffset != null) && (
+                    <p className="text-xs text-muted-foreground">
+                      {formatEventRelativeDue({
+                        daysOffset: t.daysOffset,
+                        dueDate: t.dueDate,
+                        dueDateLocked: t.dueDateLocked,
+                        style: "urgency",
+                      })}
+                    </p>
+                  )}
                 </div>
                 {t.isRequired && <Badge variant="outline" className="text-xs shrink-0">Required</Badge>}
               </div>
@@ -400,7 +462,11 @@ function TasksTab({ detail }: { detail: VendorEventDetail }) {
         {detail.personalTasks.length > 0 ? (
           <div className="rounded-xl border border-border bg-card divide-y divide-border">
             {detail.personalTasks.map((t) => (
-              <div key={t.id} className="flex items-start gap-3 px-4 py-3">
+              <div
+                key={t.id}
+                ref={focusTaskId === t.id ? focusRef : undefined}
+                className={`flex items-start gap-3 px-4 py-3 ${focusTaskId === t.id ? focusClass : ""}`}
+              >
                 <button
                   type="button"
                   onClick={() =>
@@ -543,16 +609,24 @@ function DocumentsTab({
   detail,
   library,
   eventUploads,
+  highlight = false,
 }: {
   detail: VendorEventDetail;
   library: VendorLibraryDocument[];
   eventUploads: VendorEventUpload[];
+  highlight?: boolean;
 }) {
   const [plans, setPlans] = React.useState<VendorFloorPlanSummary[] | null>(null);
+  const fromVenueRef = React.useRef<HTMLDivElement | null>(null);
 
   React.useEffect(() => {
     void getVendorSharedFloorPlansForEventAction(detail.eventId).then(setPlans);
   }, [detail.eventId]);
+
+  React.useEffect(() => {
+    if (!highlight || !fromVenueRef.current) return;
+    fromVenueRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, [highlight]);
 
   const loading = plans === null;
   const hasDocuments = detail.documents.length > 0;
@@ -560,8 +634,16 @@ function DocumentsTab({
 
   return (
     <div className="space-y-6">
-      <div className="space-y-2">
+      <div
+        ref={fromVenueRef}
+        className={`space-y-2 rounded-xl p-1 -m-1 ${
+          highlight ? "ring-2 ring-primary/25 bg-primary/5" : ""
+        }`}
+      >
         <h3 className="text-sm font-semibold text-foreground">From venue</h3>
+        {highlight && (
+          <p className="text-[11px] font-medium text-primary">Shared documents for this event</p>
+        )}
         {!loading && !hasDocuments && !hasPlans ? (
           <div className="rounded-xl border border-dashed border-border py-10 text-center">
             <FileText className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
@@ -569,13 +651,15 @@ function DocumentsTab({
           </div>
         ) : (
           <div className="rounded-xl border border-border bg-card divide-y divide-border">
-            {detail.documents.map((d) => (
+            {detail.documents.map((d, idx) => (
               <a
                 key={d.id}
                 href={d.storageUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center gap-3 px-4 py-3 hover:bg-muted/40 transition-colors"
+                className={`flex items-center gap-3 px-4 py-3 hover:bg-muted/40 transition-colors ${
+                  highlight && idx === 0 ? "bg-primary/5" : ""
+                }`}
               >
                 <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
                 <div className="min-w-0 flex-1">

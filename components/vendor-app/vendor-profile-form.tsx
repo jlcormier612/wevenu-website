@@ -181,7 +181,9 @@ export function VendorProfileForm({ profile }: { profile: VendorProfile }) {
           </Select>
         </Field>
         <Field label="Insurance expiration" htmlFor="pf-ins" hint="Venues may ask for this.">
-          <Input id="pf-ins" type="date" value={input.insuranceExpiry} onChange={(e) => set("insuranceExpiry", e.target.value)} />
+          <div id="insurance">
+            <Input id="pf-ins" type="date" value={input.insuranceExpiry} onChange={(e) => set("insuranceExpiry", e.target.value)} />
+          </div>
         </Field>
       </div>
 

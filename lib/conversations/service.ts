@@ -16,6 +16,7 @@ import {
   notifyVendorOfVenuePortalMessage,
   notifyVenueOfVendorPortalMessage,
 } from "@/lib/conversations/notify";
+import { dismissOrphanMessageNotificationsForConversation } from "@/lib/vendor-notifications/reconcile-message-notifications";
 import { getVendorEvents } from "@/lib/vendor-events/service";
 import type {
   ConversationDetail,
@@ -238,6 +239,58 @@ export async function getVendorConversation(conversationId: string): Promise<Ven
       counterpartyLabel: summary?.counterpartyLabel ?? conversation.counterpartyLabel,
     },
   };
+}
+
+/**
+ * When a stored deep link points at a conversation that was CASCADE-deleted
+ * (e.g. assignment recreated), recover the live twin for the same event +
+ * kind from the vendor's notification metadata + inbox.
+ *
+ * Clears orphan new_message notifications for the dead id: rewrite onto a
+ * twin that still has messages (keep unread only if twin.contactUnread > 0),
+ * otherwise mark read so the bell can't advertise a vanished thread.
+ */
+export async function recoverVendorConversationId(
+  deadConversationId: string,
+): Promise<string | null> {
+  if (!isSupabaseConfigured) return null;
+  const supabase = await createClient();
+
+  const { data: note } = await supabase
+    .from("vendor_notifications")
+    .select("event_id, title, link")
+    .eq("type", "new_message")
+    .like("link", `%${deadConversationId}%`)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle<{ event_id: string | null; title: string; link: string | null }>();
+
+  const { conversations } = await repo.getVendorConversationInbox(supabase);
+  const wantCouple = note ? /couple/i.test(note.title) : false;
+  const match = note?.event_id
+    ? conversations.find(
+        (c) =>
+          c.eventId === note.event_id &&
+          (wantCouple
+            ? c.conversationKind === "couple_vendor"
+            : c.conversationKind === "venue_vendor"),
+      )
+    : undefined;
+
+  const twinHasMessages = Boolean(match?.lastMessageAt || match?.latestMessage);
+  const fallbackLink = match
+    ? `/vendor/messages/${match.conversationId}`
+    : "/vendor/messages";
+
+  const keepUnread = Boolean(twinHasMessages && match && match.contactUnread > 0);
+  await dismissOrphanMessageNotificationsForConversation(
+    supabase,
+    deadConversationId,
+    fallbackLink,
+    { markRead: !keepUnread },
+  );
+
+  return match?.conversationId ?? null;
 }
 
 export async function sendVendorConversationMessage(

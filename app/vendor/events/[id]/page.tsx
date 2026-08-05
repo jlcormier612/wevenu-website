@@ -26,10 +26,10 @@ export default async function VendorEventDetailPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ tab?: string }>;
+  searchParams: Promise<{ tab?: string; highlight?: string; focus?: string }>;
 }) {
   const { id } = await params;
-  const { tab: tabParam } = await searchParams;
+  const { tab: tabParam, highlight: highlightParam, focus: focusParam } = await searchParams;
   const vendorUser = await getVendorUser();
   if (!vendorUser) redirect("/login");
 
@@ -44,12 +44,19 @@ export default async function VendorEventDetailPage({
   const initialTab: Tab | undefined =
     tabParam && VALID_TABS.has(tabParam as Tab) ? (tabParam as Tab) : undefined;
 
+  const highlight =
+    highlightParam === "checkin" || highlightParam === "documents"
+      ? highlightParam
+      : null;
+
   return (
     <VendorEventWorkspace
       detail={detail}
       library={library}
       eventUploads={eventUploads}
       initialTab={initialTab}
+      highlight={highlight}
+      focusTaskId={focusParam ?? null}
     />
   );
 }

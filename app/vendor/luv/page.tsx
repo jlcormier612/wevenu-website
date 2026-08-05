@@ -15,7 +15,7 @@ export default async function VendorLuvPage() {
   const { briefing, showIntro, greetingName } = await getVendorLuvPageData(vendorUser.vendorId);
 
   return (
-    <div className="mx-auto max-w-2xl space-y-6">
+    <div className="w-full space-y-6">
       <div>
         <h1 className="text-xl font-bold text-foreground">Luv</h1>
         <p className="text-sm text-muted-foreground">

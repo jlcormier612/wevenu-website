@@ -8,9 +8,8 @@ import { claimVendorProfile, createVendorAccountAndClaim } from "@/lib/vendor-au
 import { getVendorActiveVenue, updateVenuePromotion } from "@/lib/vendor-partnerships/service";
 import type { VendorActionResult, VendorActiveVenueContext, VendorProfileInput } from "@/lib/vendors/types";
 
+/** Form state for vendor accept signup — type-only export (no runtime value). */
 export type VendorAcceptFormState = { error?: string };
-
-export const VENDOR_ACCEPT_INITIAL_STATE: VendorAcceptFormState = {};
 
 function validateVendorSignupPassword(password: string, confirm: string): string | null {
   if (password.length < 8) return "Password must be at least 8 characters.";

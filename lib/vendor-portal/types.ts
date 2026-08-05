@@ -47,6 +47,8 @@ export type VendorTask = {
   category: string;
   visibility: "vendor_visible" | "vendor_owned";
   dueDate: string | null;
+  daysOffset: number | null;
+  dueDateLocked: boolean;
   status: string;
   isRequired: boolean;
   completedAt: string | null;

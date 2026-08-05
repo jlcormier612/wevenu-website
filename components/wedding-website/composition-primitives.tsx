@@ -592,64 +592,192 @@ export function PairedPassage({
   );
 }
 
-// ── Destination Feature — Things To Do as a small guest moment, not a
-// nearly-empty database section. No imagery field exists on things_to_do
-// items today (see completion report "known limitations") — this composes
-// purely from name/description/address/link, never inventing content. ────
+// ── Destination Feature — Things To Do, count-aware (Things To Do
+// Sparse/Dense fix). Composes purely from name/category/description/
+// address/url, never inventing content, no imagery, no ratings/reviews/
+// prices/badges/maps embeds — only what the couple actually supplied.
+// One shared entry renderer (`DestinationEntry`), scaled and arranged
+// differently per count so the section always reads as intentionally
+// designed rather than "however many cards happened to fit."
+export type DestinationItem = {
+  name: string; categoryLabel?: string; description?: string; address?: string; url?: string;
+};
+
+function DestinationEntry({
+  tc, color, item, headingSize,
+}: {
+  tc: CompositionTheme; color: string; item: DestinationItem; headingSize: string;
+}) {
+  return (
+    <div>
+      {item.categoryLabel && (
+        <p className="text-[10px] font-semibold uppercase tracking-[0.2em] mb-2" style={{ color: `${color}90` }}>{item.categoryLabel}</p>
+      )}
+      <p style={{ fontFamily: tc.headingFont, fontStyle: tc.headingItalic ? "italic" : "normal", color: tc.text, fontSize: headingSize, lineHeight: 1.2 }}>
+        {item.name}
+      </p>
+      {item.description && <p className="text-sm mt-2 leading-relaxed" style={{ color: tc.textMuted }}>{item.description}</p>}
+      {(item.address || item.url) && (
+        <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1">
+          {/* Existing safe convention (see vendor-handbook-view.tsx) — a plain
+              Google Maps search-query link, no new map integration. */}
+          {item.address && (
+            <a href={`https://maps.google.com/?q=${encodeURIComponent(item.address)}`} target="_blank" rel="noopener noreferrer"
+              className="text-xs hover:underline" style={{ color: tc.textMuted }}>
+              {item.address}
+            </a>
+          )}
+          {item.url && (
+            <a href={item.url} target="_blank" rel="noopener noreferrer"
+              className="text-xs font-medium hover:underline" style={{ color }}>
+              Visit website ↗
+            </a>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function DestinationFeature({
   tc, color, items,
 }: {
-  tc: CompositionTheme; color: string; items: CompositionItem[];
+  tc: CompositionTheme; color: string; items: DestinationItem[];
 }) {
-  if (items.length === 1) {
-    const item = items[0];
+  const n = items.length;
+
+  // Exactly one — a featured destination, not a small centered card. Full
+  // visual scale; the caller (wedding-website.tsx) already pairs this with
+  // the section's own intro in a two-field composition on desktop.
+  if (n === 1) {
+    return <DestinationEntry tc={tc} color={color} item={items[0]} headingSize="clamp(1.6rem, 3.2vw, 2.3rem)" />;
+  }
+
+  // Exactly two — a balanced pairing of comparable weight, reusing the same
+  // paired-passage primitive (and its color-mix divider, an existing
+  // Coastal border/accent role) Dress Code + Wedding Party already use.
+  if (n === 2) {
     return (
-      <div className="max-w-lg mx-auto text-center">
-        {item.label && <div className="text-2xl mb-3">{item.label}</div>}
-        <p style={{ fontFamily: tc.headingFont, fontStyle: tc.headingItalic ? "italic" : "normal", color: tc.text, fontSize: "1.35rem" }}>
-          {item.href ? <a href={item.href} target="_blank" rel="noopener noreferrer" style={{ color: tc.text }}>{item.heading}</a> : item.heading}
-        </p>
-        {item.body && <p className="text-sm mt-2 leading-relaxed" style={{ color: tc.textMuted }}>{item.body}</p>}
-        {item.meta && <p className="text-xs mt-2 opacity-55" style={{ color: tc.textMuted }}>{item.meta}</p>}
+      <PairedPassage
+        dividerColor={`color-mix(in srgb, ${tc.border} 55%, ${tc.text} 45%)`}
+        leftSpan={6}
+        left={<DestinationEntry tc={tc} color={color} item={items[0]} headingSize="1.3rem" />}
+        right={<DestinationEntry tc={tc} color={color} item={items[1]} headingSize="1.3rem" />}
+      />
+    );
+  }
+
+  // Exactly three — an intentional asymmetric composition: one recommendation
+  // gets slightly more scale, two supporting recommendations balance it
+  // (visual rhythm, not a ranking — same weight of copy/detail either way).
+  if (n === 3) {
+    return (
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12">
+        <div className="lg:col-span-7">
+          <DestinationEntry tc={tc} color={color} item={items[0]} headingSize="clamp(1.4rem, 2.6vw, 1.75rem)" />
+        </div>
+        <div className="lg:col-span-5 space-y-7">
+          <DestinationEntry tc={tc} color={color} item={items[1]} headingSize="1.2rem" />
+          <div className="h-px" style={{ background: tc.border }} />
+          <DestinationEntry tc={tc} color={color} item={items[2]} headingSize="1.2rem" />
+        </div>
       </div>
     );
   }
+
+  // Four or more — a scannable two-column list. Restrained rules between
+  // rows (an existing border role, not card chrome) instead of boxes. Even
+  // counts fill every row exactly. An odd count's final, unpaired
+  // recommendation spans both columns as an intentional closing row —
+  // same heading size, same treatment as every other entry, never
+  // promoted to a feature — rather than sitting alone in the left column
+  // with a visibly empty cell beside it.
+  const isOdd = n % 2 === 1;
   return (
-    <div className="grid gap-8 sm:grid-cols-2" style={{ maxWidth: widthFor(tc), marginInline: "auto" }}>
-      {items.map((item, i) => (
-        <div key={i} className="text-left">
-          {item.label && <div className="text-xl mb-2">{item.label}</div>}
-          <p style={{ fontFamily: tc.headingFont, fontStyle: tc.headingItalic ? "italic" : "normal", color: tc.text, fontSize: "1.05rem" }}>
-            {item.href ? <a href={item.href} target="_blank" rel="noopener noreferrer" style={{ color: tc.text }}>{item.heading}</a> : item.heading}
-          </p>
-          {item.body && <p className="text-sm mt-1 leading-relaxed" style={{ color: tc.textMuted }}>{item.body}</p>}
-          {item.meta && <p className="text-xs mt-1 opacity-55" style={{ color: tc.textMuted }}>{item.meta}</p>}
-        </div>
-      ))}
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-x-10 gap-y-8">
+      {items.map((item, i) => {
+        const isClosingRow = isOdd && i === n - 1;
+        return (
+          <div key={i}
+            className={isClosingRow ? "md:col-span-2" : undefined}
+            style={i >= 2 ? { borderTop: `1px solid ${tc.border}`, paddingTop: "1.5rem" } : undefined}>
+            <DestinationEntry tc={tc} color={color} item={item} headingSize="1.15rem" />
+          </div>
+        );
+      })}
     </div>
   );
 }
 
 // ── Compact Interlude — Music: a small romantic moment, never a section
-// band on its own scale. ─────────────────────────────────────────────────
+// band on its own scale, and never a dashboard/card grid. Music-only (its
+// one caller) — count-aware (the model caps at 4: ceremony/cocktail/
+// reception/lastDance, so "4-6" in spirit means "up to the 4 that can ever
+// exist"), always centered, always the same lighter voice regardless of
+// how many moments a couple filled in. Legibility fix: the old moment-label
+// eyebrow and footnote each stacked a Tailwind opacity utility ON TOP of
+// tc.textMuted (which is already a deliberately toned-down color) — that
+// compounding is what made them hard to read; both now use existing
+// Color Story roles at their own tuned strength, no extra fade layered on.
+function MusicEntry({ tc, lc, item, size }: { tc: CompositionTheme; lc: string; item: CompositionItem; size: string }) {
+  return (
+    <div>
+      {item.label && <p className="text-[10px] font-semibold uppercase tracking-[0.2em] mb-2" style={{ color: `${lc}95` }}>{item.label}</p>}
+      <p style={{ fontFamily: tc.headingFont, fontStyle: "italic", color: tc.text, fontSize: size, lineHeight: 1.3 }}>{item.heading}</p>
+    </div>
+  );
+}
+
 export function CompactInterlude({
   tc, color, labelColor, label, items, footnote,
 }: {
   tc: CompositionTheme; color: string; labelColor?: string; label?: string; items: CompositionItem[]; footnote?: string;
 }) {
   const lc = labelColor ?? color;
-  return (
-    <div className="max-w-md mx-auto text-center">
-      {label && <p className="text-[10px] font-semibold uppercase tracking-[0.25em] mb-4" style={{ color: `${lc}95` }}>{label}</p>}
-      <div className="space-y-3">
+  const n = items.length;
+
+  // One moment — carries the section alone, full romantic presence, no
+  // multi-column grid around a single item.
+  let body: React.ReactNode = null;
+  if (n === 1) {
+    body = (
+      <div className="max-w-md mx-auto">
+        <MusicEntry tc={tc} lc={lc} item={items[0]} size="clamp(1.5rem, 3vw, 2rem)" />
+      </div>
+    );
+  } else if (n === 2) {
+    // Balanced pairing — the same primitive (and existing color-mix
+    // divider role) Things To Do's 2-item state and Dress Code + Wedding
+    // Party already use. No boxed cards.
+    body = (
+      <PairedPassage
+        dividerColor={`color-mix(in srgb, ${tc.border} 55%, ${tc.text} 45%)`}
+        leftSpan={6}
+        left={<div className="text-center"><MusicEntry tc={tc} lc={lc} item={items[0]} size="1.3rem" /></div>}
+        right={<div className="text-center"><MusicEntry tc={tc} lc={lc} item={items[1]} size="1.3rem" /></div>}
+      />
+    );
+  } else if (n >= 3) {
+    // Three or four (the model's real ceiling) — an equal-weight row/grid,
+    // deliberately NOT the hero-plus-supporting pattern Things To Do uses:
+    // no moment should read as more important than another. Column count
+    // matches n exactly (3 or 4), so this can never leave an empty cell.
+    body = (
+      <div className={`grid grid-cols-1 ${n === 3 ? "sm:grid-cols-3" : "sm:grid-cols-2"} gap-x-10 gap-y-8 max-w-2xl mx-auto`}>
         {items.map((item, i) => (
-          <div key={i}>
-            {item.label && <p className="text-[11px] uppercase tracking-wide opacity-55" style={{ color: tc.textMuted }}>{item.label}</p>}
-            <p style={{ fontFamily: tc.headingFont, fontStyle: "italic", color: tc.text, fontSize: "1.05rem" }}>{item.heading}</p>
+          <div key={i} className="text-center">
+            <MusicEntry tc={tc} lc={lc} item={item} size="1.2rem" />
           </div>
         ))}
       </div>
-      {footnote && <p className="text-xs opacity-40 mt-4" style={{ color: tc.textMuted }}>{footnote}</p>}
+    );
+  }
+
+  return (
+    <div className="text-center">
+      {label && <p className="text-[10px] font-semibold uppercase tracking-[0.25em] mb-6" style={{ color: `${lc}95` }}>{label}</p>}
+      {body}
+      {footnote && <p className="text-xs mt-6" style={{ color: tc.textMuted }}>{footnote}</p>}
     </div>
   );
 }

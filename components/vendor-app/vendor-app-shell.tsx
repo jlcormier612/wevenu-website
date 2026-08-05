@@ -10,8 +10,10 @@ import {
 } from "lucide-react";
 
 import { signOut } from "@/app/auth/actions";
+import { ThemeToggle } from "@/components/providers/theme-toggle";
 import { VendorNotificationBell } from "@/components/vendor-app/vendor-notification-bell";
 import type { VendorRole } from "@/lib/vendors/types";
+import { cn } from "@/lib/utils";
 
 // Luv sits in nav (reachable surface) the way venue puts her on Today —
 // same job (attention + next actions), vendor-scoped. Health/CRM coaching
@@ -44,13 +46,23 @@ function NavItem({
     <Link
       href={href}
       onClick={onNavigate}
-      className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+      aria-current={active ? "page" : undefined}
+      className={cn(
+        "group/nav flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
+        "hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
         active
-          ? "bg-primary/10 text-primary"
-          : "text-muted-foreground hover:bg-muted hover:text-foreground"
-      }`}
+          ? "bg-sidebar-accent text-sidebar-accent-foreground"
+          : "text-sidebar-foreground",
+      )}
     >
-      <Icon className="h-4 w-4 shrink-0" />
+      <Icon
+        className={cn(
+          "h-4 w-4 shrink-0 transition-colors",
+          active
+            ? "text-sidebar-primary"
+            : "text-sidebar-foreground/70 group-hover/nav:text-sidebar-accent-foreground",
+        )}
+      />
       <span className="flex-1">{label}</span>
       {badgeCount != null && badgeCount > 0 && (
         <span className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-[10px] font-bold text-primary-foreground">
@@ -92,9 +104,9 @@ export function VendorAppShell({
   const closeMobile = () => setMobileOpen(false);
 
   return (
-    <div className="flex h-screen bg-background">
-      {/* Desktop sidebar */}
-      <aside className="hidden lg:flex w-64 shrink-0 flex-col border-r border-border bg-card">
+    <div className="flex h-svh w-full overflow-hidden bg-background">
+      {/* Desktop sidebar — same sidebar tokens as WorkspaceShell */}
+      <aside className="hidden w-64 shrink-0 flex-col border-r bg-sidebar text-sidebar-foreground lg:flex">
         <SidebarContent
           businessName={businessName}
           category={category}
@@ -107,10 +119,10 @@ export function VendorAppShell({
       {mobileOpen && (
         <div className="fixed inset-0 z-40 lg:hidden">
           <div className="absolute inset-0 bg-black/40" onClick={closeMobile} />
-          <aside className="relative w-72 h-full flex flex-col bg-card border-r border-border">
+          <aside className="relative flex h-full w-72 flex-col border-r bg-sidebar text-sidebar-foreground">
             <button
               type="button"
-              className="absolute top-4 right-4 text-muted-foreground hover:text-foreground"
+              className="absolute right-4 top-4 text-sidebar-foreground/70 hover:text-sidebar-foreground"
               onClick={closeMobile}
             >
               <X className="h-5 w-5" />
@@ -127,22 +139,23 @@ export function VendorAppShell({
       )}
 
       {/* Main content */}
-      <div className="flex flex-1 flex-col overflow-hidden">
-        {/* Mobile top bar */}
-        <header className="flex items-center gap-3 px-4 py-3 border-b border-border bg-card lg:hidden">
+      <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
+        {/* Mobile top bar — page chrome tokens (like venue header), not sidebar */}
+        <header className="flex items-center gap-3 border-b bg-background/95 px-4 py-3 backdrop-blur supports-[backdrop-filter]:bg-background/60 lg:hidden">
           <button type="button" onClick={() => setMobileOpen(true)} className="text-muted-foreground hover:text-foreground">
             <Menu className="h-5 w-5" />
           </button>
           {logoUrl ? (
-            <img src={logoUrl} alt="" className="h-6 w-6 rounded-md object-cover shrink-0" />
+            <img src={logoUrl} alt="" className="h-6 w-6 shrink-0 rounded-md object-cover" />
           ) : null}
-          <span className="font-semibold text-sm text-foreground truncate">{businessName}</span>
-          <div className="ml-auto">
+          <span className="truncate text-sm font-semibold text-foreground">{businessName}</span>
+          <div className="ml-auto flex items-center gap-1">
             <VendorNotificationBell />
+            <ThemeToggle />
           </div>
         </header>
 
-        <main className="flex min-h-0 flex-1 flex-col overflow-y-auto p-6">
+        <main className="flex min-h-0 flex-1 flex-col overflow-y-auto bg-muted/40 p-6">
           {children}
         </main>
       </div>
@@ -166,32 +179,37 @@ function SidebarContent({
   return (
     <>
       {/* Header */}
-      <div className="px-5 pt-6 pb-4 border-b border-border">
+      <div className="border-b px-5 pb-4 pt-6">
         <div className="mb-1 flex items-center justify-between gap-2">
-          <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Hello to Cheers</p>
-          <div className="hidden lg:block">
-            <VendorNotificationBell />
+          <p className="text-[10px] font-bold uppercase tracking-widest text-sidebar-foreground/60">
+            Hello to Cheers
+          </p>
+          <div className="hidden items-center gap-1 text-sidebar-foreground lg:flex">
+            <VendorNotificationBell triggerClassName="text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground" />
+            <ThemeToggle />
           </div>
         </div>
         <div className="flex items-center gap-2.5">
           {logoUrl ? (
-            <img src={logoUrl} alt="" className="h-9 w-9 rounded-lg object-cover border border-border shrink-0" />
+            <img src={logoUrl} alt="" className="h-9 w-9 shrink-0 rounded-lg border border-sidebar-border object-cover" />
           ) : (
-            <div className="h-9 w-9 rounded-lg bg-muted flex items-center justify-center text-xs font-bold text-muted-foreground border border-border shrink-0">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-sidebar-border bg-sidebar-accent text-xs font-bold text-sidebar-foreground/70">
               {businessName.slice(0, 2).toUpperCase()}
             </div>
           )}
           <div className="min-w-0">
-            <p className="font-semibold text-sm text-foreground leading-tight truncate">{businessName}</p>
+            <p className="truncate text-sm font-semibold leading-tight text-sidebar-foreground">{businessName}</p>
             {category && (
-              <p className="text-xs text-muted-foreground mt-0.5 capitalize truncate">{category.replace(/_/g, " ")}</p>
+              <p className="mt-0.5 truncate text-xs capitalize text-sidebar-foreground/60">
+                {category.replace(/_/g, " ")}
+              </p>
             )}
           </div>
         </div>
       </div>
 
       {/* Event workspace nav */}
-      <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
+      <nav className="flex-1 space-y-0.5 overflow-y-auto px-3 py-4">
         {NAV.map((item) => (
           <NavItem
             key={item.href}
@@ -204,13 +222,13 @@ function SidebarContent({
         ))}
       </nav>
 
-      <div className="mt-auto border-t border-border px-3 py-3">
+      <div className="mt-auto border-t px-3 py-3">
         <form action={signOut}>
           <button
             type="submit"
-            className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+            className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
           >
-            <LogOut className="h-4 w-4 shrink-0" />
+            <LogOut className="h-4 w-4 shrink-0 text-sidebar-foreground/70" />
             Sign out
           </button>
         </form>
