@@ -40,23 +40,23 @@ export function WorkspaceShell({
   const [searchOpen,    setSearchOpen]      = React.useState(false);
 
   return (
-    <div className="flex h-svh w-full overflow-hidden">
+    <div className="htc-staff flex h-svh w-full overflow-hidden bg-background font-sans text-foreground">
       {/* Desktop sidebar */}
-      <aside className="hidden w-64 shrink-0 flex-col border-r bg-sidebar lg:flex">
-        <div className="flex h-20 items-center border-b px-5">
+      <aside className="hidden w-64 shrink-0 flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground lg:flex">
+        <div className="flex h-20 items-center border-b border-sidebar-border px-5">
           <Wordmark sizeClassName="h-[66.8px] w-auto" />
         </div>
         <div className="flex-1 overflow-y-auto">
           <SidebarNav />
         </div>
-        <div className="shrink-0 border-t px-3 py-3">
+        <div className="shrink-0 border-t border-sidebar-border px-3 py-3">
           <FeedbackSheet />
         </div>
       </aside>
 
       {/* Main column */}
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="sticky top-0 z-30 flex h-16 items-center gap-2 border-b bg-background/95 px-4 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+        <header className="sticky top-0 z-30 flex h-16 items-center gap-2 border-b border-border/40 bg-background/95 px-4 backdrop-blur supports-[backdrop-filter]:bg-background/60">
           {/* Mobile nav trigger */}
           <Sheet open={mobileNavOpen} onOpenChange={setMobileNavOpen}>
             <SheetTrigger
@@ -73,9 +73,9 @@ export function WorkspaceShell({
             </SheetTrigger>
             <SheetContent
               side="left"
-              className="w-72 bg-sidebar p-0 text-sidebar-foreground"
+              className="w-72 border-sidebar-border bg-sidebar p-0 text-sidebar-foreground"
             >
-              <SheetHeader className="h-20 justify-center border-b px-5 text-left">
+              <SheetHeader className="h-20 justify-center border-b border-sidebar-border px-5 text-left">
                 <SheetTitle>
                   <Wordmark sizeClassName="h-[66.8px] w-auto" />
                 </SheetTitle>
@@ -114,12 +114,12 @@ export function WorkspaceShell({
             <button
               type="button"
               onClick={() => setSearchOpen(true)}
-              className="hidden sm:flex h-9 items-center gap-2 rounded-md border border-border/60 bg-muted/40 px-3 text-xs text-muted-foreground hover:bg-muted transition-colors"
+              className="hidden sm:flex h-9 items-center gap-2 rounded-sm border border-border/60 bg-muted/40 px-3 text-xs text-muted-foreground transition-colors hover:bg-muted"
               aria-label="Search"
             >
               <Search className="h-3.5 w-3.5" />
               <span>Search</span>
-              <kbd className="ml-1 hidden md:inline-flex h-4 select-none items-center rounded bg-background px-1 text-[10px] font-medium border">
+              <kbd className="ml-1 hidden md:inline-flex h-4 select-none items-center rounded-sm border bg-background px-1 text-[10px] font-medium">
                 ⌘K
               </kbd>
             </button>
@@ -127,7 +127,7 @@ export function WorkspaceShell({
             <button
               type="button"
               onClick={() => setSearchOpen(true)}
-              className="sm:hidden inline-flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
+              className="sm:hidden inline-flex h-9 w-9 items-center justify-center rounded-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
               aria-label="Search"
             >
               <Search className="h-[1.1rem] w-[1.1rem]" />
@@ -138,7 +138,7 @@ export function WorkspaceShell({
           </div>
         </header>
 
-        <main className="flex-1 overflow-y-auto bg-muted/40">
+        <main className="flex-1 overflow-y-auto bg-background">
           <div className="mx-auto w-full max-w-6xl p-4 sm:p-6 lg:p-10">
             {children}
           </div>

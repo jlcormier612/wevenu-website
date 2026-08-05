@@ -164,6 +164,81 @@
 }
 
 /*
+ * STAFF SKIN (venue + vendor shells only) — CRM-aligned look.
+ * Additive scope: do NOT flip root `:root` (client portal stays Inter /
+ * soft white). next-themes puts `.dark` on <html>, so dark staff rules are
+ * `.dark .htc-staff` (not `.htc-staff.dark`). Token values mirror
+ * workspace/app/globals.css (cream/warm canvas, body ink, sharper radius,
+ * sidebar recipe).
+ */
+.htc-staff {
+  --font-sans: var(--font-staff-sans), ui-sans-serif, system-ui, sans-serif;
+
+  --warm-gray: #f8f7f4;
+  --natural-cream: #fefefc;
+  --header-linen: #efe9e1;
+
+  --background: var(--warm-gray);
+  --foreground: var(--forest-sage);
+  --heading: var(--forest-sage);
+  --card: var(--true-white);
+  --card-foreground: var(--forest-sage);
+  --popover: var(--true-white);
+  --popover-foreground: var(--forest-sage);
+  --muted: var(--natural-cream);
+  --muted-foreground: color-mix(in oklch, var(--forest-sage) 68%, transparent);
+  --secondary: var(--natural-cream);
+  --secondary-foreground: var(--forest-sage);
+  --border: var(--taupe-medium);
+  --input: var(--taupe-medium);
+
+  /* Sharper than portal’s 1rem soft radius — CRM panels use rounded-sm */
+  --radius: 0.375rem;
+
+  --sidebar: color-mix(in oklch, var(--taupe-dark) 40%, white);
+  --sidebar-foreground: var(--forest-sage);
+  --sidebar-primary: var(--heritage-sage);
+  --sidebar-primary-foreground: var(--true-white);
+  --sidebar-accent: var(--linen);
+  --sidebar-accent-foreground: var(--forest-sage);
+  --sidebar-border: color-mix(in oklch, var(--forest-sage) 25%, var(--taupe-dark));
+  --sidebar-ring: var(--heritage-sage);
+}
+
+/* CRM dark remap under staff scope (html.dark from next-themes) */
+.dark .htc-staff {
+  --warm-gray: var(--forest-sage);
+  --header-linen: color-mix(in oklch, var(--taupe-dark) 70%, white);
+  --natural-cream: var(--heritage-sage);
+
+  --background: var(--forest-sage);
+  --foreground: var(--true-white);
+  --heading: var(--true-white);
+  --card: var(--heritage-sage);
+  --card-foreground: var(--true-white);
+  --popover: var(--heritage-sage);
+  --popover-foreground: var(--true-white);
+  --muted: var(--heritage-sage);
+  --muted-foreground: color-mix(in oklch, var(--true-white) 78%, transparent);
+  --secondary: var(--heritage-sage);
+  --secondary-foreground: var(--true-white);
+  --border: color-mix(in oklch, var(--true-white) 20%, transparent);
+  --input: color-mix(in oklch, var(--true-white) 24%, transparent);
+  --primary: var(--soft-sage);
+  --primary-foreground: var(--forest-sage);
+  --ring: var(--soft-sage);
+
+  --sidebar: color-mix(in oklch, var(--taupe-dark) 70%, white);
+  --sidebar-foreground: var(--forest-sage);
+  --sidebar-primary: var(--heritage-sage);
+  --sidebar-primary-foreground: var(--true-white);
+  --sidebar-accent: color-mix(in oklch, var(--true-white) 38%, transparent);
+  --sidebar-accent-foreground: var(--forest-sage);
+  --sidebar-border: color-mix(in oklch, var(--forest-sage) 20%, transparent);
+  --sidebar-ring: var(--heritage-sage);
+}
+
+/*
  * DARK THEME — True White on Forest Sage.
  * Surfaces step up to Heritage Sage; structure is drawn with alpha-white
  * hairlines. No new colors — only the palette and its opacities.

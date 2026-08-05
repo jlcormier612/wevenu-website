@@ -20,15 +20,21 @@ const LIGHT_THEME_VARS = {
   "--popover": "var(--true-white)",
   "--popover-foreground": "var(--black)",
   "--heading": "var(--forest-sage)",
+  "--muted": "var(--natural-cream)",
   "--muted-foreground": "color-mix(in oklch, var(--forest-sage) 70%, transparent)",
+  "--secondary": "var(--natural-cream)",
+  "--secondary-foreground": "var(--forest-sage)",
   "--border": "var(--taupe-light)",
   "--input": "var(--taupe-light)",
   "--ring": "var(--heritage-sage)",
+  /* Soft portal radius — re-assert so staff’s sharper radius never leaks in. */
+  "--radius": "1rem",
+  "--natural-cream": "#f7f5f1",
 } as CSSProperties;
 
 export default function PortalLayout({ children }: { children: ReactNode }) {
   return (
-    <div className="min-h-svh" style={LIGHT_THEME_VARS}>
+    <div className="min-h-svh font-sans" style={LIGHT_THEME_VARS}>
       {children}
     </div>
   );

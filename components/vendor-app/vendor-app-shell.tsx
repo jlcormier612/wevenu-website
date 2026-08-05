@@ -48,7 +48,7 @@ function NavItem({
       onClick={onNavigate}
       aria-current={active ? "page" : undefined}
       className={cn(
-        "group/nav flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
+        "group/nav flex items-center gap-3 rounded-sm px-3 py-2 text-sm font-medium transition-colors",
         "hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
         active
           ? "bg-sidebar-accent text-sidebar-accent-foreground"
@@ -104,9 +104,9 @@ export function VendorAppShell({
   const closeMobile = () => setMobileOpen(false);
 
   return (
-    <div className="flex h-svh w-full overflow-hidden bg-background">
+    <div className="htc-staff flex h-svh w-full overflow-hidden bg-background font-sans text-foreground">
       {/* Desktop sidebar — same sidebar tokens as WorkspaceShell */}
-      <aside className="hidden w-64 shrink-0 flex-col border-r bg-sidebar text-sidebar-foreground lg:flex">
+      <aside className="hidden w-64 shrink-0 flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground lg:flex">
         <SidebarContent
           businessName={businessName}
           category={category}
@@ -119,7 +119,7 @@ export function VendorAppShell({
       {mobileOpen && (
         <div className="fixed inset-0 z-40 lg:hidden">
           <div className="absolute inset-0 bg-black/40" onClick={closeMobile} />
-          <aside className="relative flex h-full w-72 flex-col border-r bg-sidebar text-sidebar-foreground">
+          <aside className="relative flex h-full w-72 flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground">
             <button
               type="button"
               className="absolute right-4 top-4 text-sidebar-foreground/70 hover:text-sidebar-foreground"
@@ -141,12 +141,12 @@ export function VendorAppShell({
       {/* Main content */}
       <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
         {/* Mobile top bar — page chrome tokens (like venue header), not sidebar */}
-        <header className="flex items-center gap-3 border-b bg-background/95 px-4 py-3 backdrop-blur supports-[backdrop-filter]:bg-background/60 lg:hidden">
+        <header className="flex items-center gap-3 border-b border-border/40 bg-background/95 px-4 py-3 backdrop-blur supports-[backdrop-filter]:bg-background/60 lg:hidden">
           <button type="button" onClick={() => setMobileOpen(true)} className="text-muted-foreground hover:text-foreground">
             <Menu className="h-5 w-5" />
           </button>
           {logoUrl ? (
-            <img src={logoUrl} alt="" className="h-6 w-6 shrink-0 rounded-md object-cover" />
+            <img src={logoUrl} alt="" className="h-6 w-6 shrink-0 rounded-sm object-cover" />
           ) : null}
           <span className="truncate text-sm font-semibold text-foreground">{businessName}</span>
           <div className="ml-auto flex items-center gap-1">
@@ -155,7 +155,7 @@ export function VendorAppShell({
           </div>
         </header>
 
-        <main className="flex min-h-0 flex-1 flex-col overflow-y-auto bg-muted/40 p-6">
+        <main className="flex min-h-0 flex-1 flex-col overflow-y-auto bg-background p-6">
           {children}
         </main>
       </div>
@@ -191,9 +191,9 @@ function SidebarContent({
         </div>
         <div className="flex items-center gap-2.5">
           {logoUrl ? (
-            <img src={logoUrl} alt="" className="h-9 w-9 shrink-0 rounded-lg border border-sidebar-border object-cover" />
+            <img src={logoUrl} alt="" className="h-9 w-9 shrink-0 rounded-sm border border-sidebar-border object-cover" />
           ) : (
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-sidebar-border bg-sidebar-accent text-xs font-bold text-sidebar-foreground/70">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-sm border border-sidebar-border bg-sidebar-accent text-xs font-bold text-sidebar-foreground/70">
               {businessName.slice(0, 2).toUpperCase()}
             </div>
           )}
@@ -226,7 +226,7 @@ function SidebarContent({
         <form action={signOut}>
           <button
             type="submit"
-            className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+            className="flex w-full items-center gap-3 rounded-sm px-3 py-2 text-sm font-medium text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
           >
             <LogOut className="h-4 w-4 shrink-0 text-sidebar-foreground/70" />
             Sign out
