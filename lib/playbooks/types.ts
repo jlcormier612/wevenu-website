@@ -17,10 +17,11 @@ export type MilestoneKind = "event_day" | "final_stretch";
 // tasks are part of Venue Planning — there is no third kind.
 export type PlaybookKind = "client" | "venue";
 
-// V1 only implements relative_to_event (the existing daysOffset math,
-// unchanged). Extensible on purpose: future kinds (relative_to_task,
+// V1 only implements relative_to_event (daysOffset relative to events.event_date /
+// start). Extensible on purpose: future kinds (relative_to_task,
 // relative_to_trigger) extend this union and add their own reference field(s)
 // when they're actually built, without redesigning daysOffset itself.
+// Absolute calendar overrides use dueDateLocked=true rather than a separate rule kind.
 export type DueDateRuleKind = "relative_to_event";
 
 export type PlaybookTemplate = {

@@ -33,7 +33,7 @@ export default async function TaskCenterPage() {
     supabase
       .from("event_tasks")
       .select(`
-        id, title, status, due_date, category, owner_type, visibility,
+        id, title, status, due_date, days_offset, due_date_locked, category, owner_type, visibility,
         is_required, depends_on_event_task_id, completed_at,
         assigned_to_staff_id, milestone_kind,
         assignee:assigned_to_staff_id ( full_name ),

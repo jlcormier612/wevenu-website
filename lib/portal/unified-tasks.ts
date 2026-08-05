@@ -20,6 +20,9 @@ export type UnifiedTask = {
   title: string;
   description: string | null;
   dueDate: string | null;
+  /** Present for venue_task items — used for event-relative due labels. */
+  daysOffset?: number | null;
+  dueDateLocked?: boolean;
   completed: boolean;
   // Where completing this actually happens — Tasks never re-implements
   // another section's real action (a payment button, a sign flow, a
@@ -53,7 +56,7 @@ export function buildUnifiedTaskList(input: {
     if (t.status === "complete") continue;
     out.push({
       id: `task_${t.id}`, kind: "venue_task", title: t.title, description: t.description,
-      dueDate: t.dueDate, completed: false, targetSection: "tasks",
+      dueDate: t.dueDate, daysOffset: t.daysOffset, dueDateLocked: false, completed: false, targetSection: "tasks",
       actionLabel: t.canComplete ? "Mark complete" : "View",
       completableHere: t.canComplete,
     });

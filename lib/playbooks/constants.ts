@@ -119,11 +119,23 @@ export function formatScheduledTime(time: string | null): string | null {
 // Decisions, 2026-07-08: "keep the existing days_offset implementation; the
 // natural-language phrasing is presentation only"). A venue never sees or
 // types a raw offset — this is the one place that number becomes a sentence.
+// For list/row labels that also show the resolved calendar day, prefer
+// formatEventRelativeDue from lib/playbooks/due-dates.ts.
 export function formatDaysOffset(offset: number): string {
   if (offset === 0) return "On the event day";
   if (offset < 0) return `${Math.abs(offset)} day${Math.abs(offset) === 1 ? "" : "s"} before the event`;
   return `${offset} day${offset === 1 ? "" : "s"} after the event`;
 }
+
+export {
+  formatAbsoluteDueDate,
+  formatEventRelativeDue,
+  formatShortDaysOffset,
+  formatUrgencyDue,
+  offsetDate,
+  daysBetween,
+  daysUntilDue,
+} from "@/lib/playbooks/due-dates";
 
 // The inverse of the composer below — "30" + "before" → -30, "0" + "on" → 0.
 export type DueDateDirection = "before" | "on" | "after";

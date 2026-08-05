@@ -47,6 +47,7 @@ import {
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { createClient } from "@/integrations/supabase/client";
+import { DueDateComposer } from "@/components/playbooks/due-date-composer";
 import {
   AUTO_COMPLETE_TRIGGERS, categoryColor, categoryLabel, defaultReminderForCategory,
   directionForOffset, formatDaysOffset, offsetForDirection, TASK_ACTION_TYPES, TASK_CATEGORIES, taskActionLabel,
@@ -265,33 +266,6 @@ function taskToForm(t: PlaybookTask): TaskForm {
     escalationAfterDays: t.escalationAfterDays != null ? String(t.escalationAfterDays) : "",
     actionType: t.actionType ?? "", actionLabel: t.actionLabel ?? "",
   };
-}
-
-// A venue never sees or types a raw offset — this composer is the only place
-// "when" is set, and it always reads as a sentence (Product Decisions, 2026-07-08).
-function DueDateComposer({ direction, days, onChange }: { direction: DueDateDirection; days: string; onChange: (direction: DueDateDirection, days: string) => void }) {
-  return (
-    <div className="flex items-center gap-1.5">
-      {direction !== "on" && (
-        <Input
-          type="number" value={days} onChange={(e) => onChange(direction, e.target.value)}
-          className="w-16 h-9 text-sm" min={0}
-        />
-      )}
-      <Select
-        value={direction}
-        onValueChange={(v) => onChange(v as DueDateDirection, days)}
-        items={[{ value: "before", label: "days before the event" }, { value: "on", label: "On the event day" }, { value: "after", label: "days after the event" }]}
-      >
-        <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
-        <SelectContent>
-          <SelectItem value="before">days before the event</SelectItem>
-          <SelectItem value="on">On the event day</SelectItem>
-          <SelectItem value="after">days after the event</SelectItem>
-        </SelectContent>
-      </Select>
-    </div>
-  );
 }
 
 function TaskFormPanel({

@@ -1,4 +1,5 @@
 import { createClient } from "@/integrations/supabase/server";
+import { daysBetween, offsetDate } from "@/lib/playbooks/due-dates";
 import type {
   EventPlaybookApplication,
   EventReadiness,
@@ -527,12 +528,6 @@ export async function cancelRemindersForTask(client: DbClient, venueId: string, 
     .eq("status", "pending");
 }
 
-function offsetDate(dateStr: string, days: number): string {
-  const d = new Date(dateStr + "T12:00:00");
-  d.setDate(d.getDate() + days);
-  return d.toISOString().slice(0, 10);
-}
-
 /**
  * Event-date-change sync (Product Decisions, 2026-07-08): relative due dates
  * stay synchronized with the event date automatically, until an individual
@@ -540,6 +535,8 @@ function offsetDate(dateStr: string, days: number): string {
  * than silently discarding a deliberate manual change. Also re-derives
  * reminders, since one scheduled against the old due date would otherwise
  * fire at the wrong offset from the new one.
+ *
+ * Anchor: events.event_date (start). event_end_date is ignored.
  */
 export async function recalculateEventTaskDueDates(
   client: DbClient,
@@ -570,12 +567,16 @@ export async function recalculateEventTaskDueDates(
   }
 }
 
-/** Coordinator manually overrides one task's due date on this event — locks it out of future event-date recalculation. */
-export async function updateEventTaskDueDate(
+/**
+ * Primary edit path: set days_offset relative to event start, recompute due_date,
+ * unlock so future event-date moves keep tracking.
+ */
+export async function updateEventTaskDaysOffset(
   client: DbClient,
   venueId: string,
   taskId: string,
-  newDueDate: string,
+  daysOffset: number,
+  eventDate: string,
 ): Promise<void> {
   const { data, error: fetchError } = await client.from("event_tasks")
     .select("owner_type, reminder_before_days, escalation_after_days")
@@ -583,9 +584,47 @@ export async function updateEventTaskDueDate(
     .maybeSingle<{ owner_type: string; reminder_before_days: number[] | null; escalation_after_days: number | null }>();
   if (fetchError) throw fetchError;
 
+  const dueDate = offsetDate(eventDate, daysOffset);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { error } = await (client.from("event_tasks") as any)
-    .update({ due_date: newDueDate, due_date_locked: true })
+    .update({
+      days_offset: daysOffset,
+      due_date: dueDate,
+      due_date_locked: false,
+      due_date_rule_kind: "relative_to_event",
+    })
+    .eq("id", taskId).eq("venue_id", venueId);
+  if (error) throw error;
+
+  await cancelRemindersForTask(client, venueId, taskId);
+  if (data) {
+    await createRemindersForTask(client, venueId, taskId, dueDate, {
+      ownerType: data.owner_type as PlaybookTask["ownerType"],
+      reminderBeforeDays: data.reminder_before_days,
+      escalationAfterDays: data.escalation_after_days,
+      notifyOnAssign: false,
+    });
+  }
+}
+
+/** Coordinator locks an absolute calendar due date — skips future event-date recalc. Also stores best-effort days_offset for display. */
+export async function updateEventTaskDueDate(
+  client: DbClient,
+  venueId: string,
+  taskId: string,
+  newDueDate: string,
+  eventDate: string,
+): Promise<void> {
+  const { data, error: fetchError } = await client.from("event_tasks")
+    .select("owner_type, reminder_before_days, escalation_after_days")
+    .eq("id", taskId).eq("venue_id", venueId)
+    .maybeSingle<{ owner_type: string; reminder_before_days: number[] | null; escalation_after_days: number | null }>();
+  if (fetchError) throw fetchError;
+
+  const daysOffset = daysBetween(eventDate, newDueDate);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error } = await (client.from("event_tasks") as any)
+    .update({ due_date: newDueDate, days_offset: daysOffset, due_date_locked: true })
     .eq("id", taskId).eq("venue_id", venueId);
   if (error) throw error;
 

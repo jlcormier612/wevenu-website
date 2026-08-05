@@ -14,9 +14,11 @@ import {
   addEventTaskContextLinkAction, applyPlaybookAction, completeTaskAction,
   createRequestForTaskAction,
   releasePlaybookAction,
-  removeEventTaskContextLinkAction, setTaskStatusAction, updateEventTaskAssignmentAction, updateEventTaskNotesAction,
+  removeEventTaskContextLinkAction, setTaskStatusAction, updateEventTaskAssignmentAction,
+  updateEventTaskDaysOffsetAction, updateEventTaskDueDateAction, updateEventTaskNotesAction,
   updateEventTaskScheduleAction,
 } from "@/app/(app)/playbooks/actions";
+import { DueDateComposer } from "@/components/playbooks/due-date-composer";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -27,9 +29,11 @@ import {
 } from "@/components/ui/select";
 import { useSyncedState } from "@/lib/hooks/use-synced-state";
 import {
-  categoryColor, categoryLabel, formatClientPlanningTitle, formatScheduledTime, isScheduledActivity,
+  categoryColor, categoryLabel, directionForOffset, formatClientPlanningTitle, formatEventRelativeDue,
+  formatScheduledTime, isScheduledActivity, offsetForDirection,
   PLAYBOOK_KINDS, STATUS_CONFIG, taskActionHref, taskActionLabel,
 } from "@/lib/playbooks/constants";
+import type { DueDateDirection } from "@/lib/playbooks/constants";
 import type {
   EventPlaybookApplication, EventTask, EventTaskContextLink, EventReadiness, PlaybookKind, PlaybookTemplateWithStats, TaskContact,
 } from "@/lib/playbooks/types";
@@ -123,6 +127,82 @@ function AttachContextPicker({
       <Button type="button" size="sm" variant="outline" onClick={handleAttach} disabled={!value || pending} className="h-7 px-2 text-xs shrink-0">
         {pending ? <Loader2 className="h-3 w-3 animate-spin" /> : "Attach"}
       </Button>
+    </div>
+  );
+}
+
+// ---- Due date (event-relative primary; absolute lock is an edge-case override) --
+
+function TaskDueSection({ task, eventId, eventDate }: { task: EventTask; eventId: string; eventDate: string }) {
+  const router = useRouter();
+  const [direction, setDirection] = React.useState<DueDateDirection>(directionForOffset(task.daysOffset));
+  const [days, setDays] = React.useState(String(Math.abs(task.daysOffset)));
+  const [useAbsolute, setUseAbsolute] = React.useState(task.dueDateLocked);
+  const [absoluteDate, setAbsoluteDate] = React.useState(task.dueDate);
+  const [saving, startSave] = React.useTransition();
+
+  React.useEffect(() => {
+    setDirection(directionForOffset(task.daysOffset));
+    setDays(String(Math.abs(task.daysOffset)));
+    setUseAbsolute(task.dueDateLocked);
+    setAbsoluteDate(task.dueDate);
+  }, [task.daysOffset, task.dueDate, task.dueDateLocked]);
+
+  const nextOffset = offsetForDirection(parseInt(days, 10) || 0, direction);
+  const dirtyRelative = !useAbsolute && (nextOffset !== task.daysOffset || task.dueDateLocked);
+  const dirtyAbsolute = useAbsolute && (absoluteDate !== task.dueDate || !task.dueDateLocked);
+  const isDirty = dirtyRelative || dirtyAbsolute;
+
+  function handleSave() {
+    startSave(async () => {
+      if (useAbsolute) {
+        if (!absoluteDate) { toast.error("Pick a date."); return; }
+        const result = await updateEventTaskDueDateAction(task.id, eventId, absoluteDate, eventDate);
+        if (result.ok) { toast.success("Due date locked to a specific day."); router.refresh(); }
+        else toast.error(result.message ?? "Could not update due date.");
+      } else {
+        const result = await updateEventTaskDaysOffsetAction(task.id, eventId, nextOffset, eventDate);
+        if (result.ok) { toast.success("Due date updated."); router.refresh(); }
+        else toast.error(result.message ?? "Could not update due date.");
+      }
+    });
+  }
+
+  return (
+    <div className="space-y-1.5">
+      <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Due</p>
+      {!useAbsolute ? (
+        <DueDateComposer
+          size="sm"
+          direction={direction}
+          days={days}
+          onChange={(d, dayStr) => { setDirection(d); setDays(dayStr); }}
+        />
+      ) : (
+        <Input
+          type="date"
+          value={absoluteDate}
+          onChange={(e) => setAbsoluteDate(e.target.value)}
+          className="h-7 w-44 text-xs"
+        />
+      )}
+      <div className="flex flex-wrap items-center gap-2">
+        <button
+          type="button"
+          className="text-[11px] text-muted-foreground underline-offset-2 hover:underline"
+          onClick={() => setUseAbsolute((v) => !v)}
+        >
+          {useAbsolute ? "Use days before/after event instead" : "Set a specific calendar date"}
+        </button>
+        {isDirty && (
+          <Button type="button" size="sm" variant="outline" onClick={handleSave} disabled={saving} className="h-7 px-2 text-xs">
+            {saving ? <Loader2 className="h-3 w-3 animate-spin" /> : "Save due"}
+          </Button>
+        )}
+      </div>
+      {task.dueDateLocked && (
+        <p className="text-[10px] text-muted-foreground">Fixed date — won&apos;t move if the event date changes.</p>
+      )}
     </div>
   );
 }
@@ -226,9 +306,9 @@ function TaskAssignmentSection({ task, eventId, staffOptions }: { task: EventTas
 // ---- Task detail — "the place someone finds everything needed to do the work" --
 
 function TaskDetailPanel({
-  task, kind, eventId, contextLinks, contact, documents, timelineEntries, conversationMessages, staffOptions, onNotesUpdated,
+  task, kind, eventId, eventDate, contextLinks, contact, documents, timelineEntries, conversationMessages, staffOptions, onNotesUpdated,
 }: {
-  task: EventTask; kind: PlaybookKind; eventId: string; contextLinks: EventTaskContextLink[]; contact: TaskContact | null;
+  task: EventTask; kind: PlaybookKind; eventId: string; eventDate: string; contextLinks: EventTaskContextLink[]; contact: TaskContact | null;
   documents: Document[]; timelineEntries: TimelineEntry[]; conversationMessages: LinkableConversationMessage[];
   staffOptions: StaffOption[];
   onNotesUpdated: () => void;
@@ -283,6 +363,8 @@ function TaskDetailPanel({
         </p>
       )}
 
+      <TaskDueSection task={task} eventId={eventId} eventDate={eventDate} />
+
       <div className="space-y-1">
         <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
           {isVenue ? "Related Context" : "Helpful Information"}
@@ -331,9 +413,9 @@ function TaskDetailPanel({
 // ---- Task row -----------------------------------------------------------------
 
 function TaskRow({
-  task, kind, eventId, clientId, clientName, request, expanded, onToggleExpand, onUpdate, contextLinks, contact, documents, timelineEntries, conversationMessages, staffOptions,
+  task, kind, eventId, eventDate, clientId, clientName, request, expanded, onToggleExpand, onUpdate, contextLinks, contact, documents, timelineEntries, conversationMessages, staffOptions,
 }: {
-  task: EventTask; kind: PlaybookKind; eventId: string; clientId: string | null; clientName: string | null;
+  task: EventTask; kind: PlaybookKind; eventId: string; eventDate: string; clientId: string | null; clientName: string | null;
   request: Request | null; expanded: boolean; onToggleExpand: () => void;
   onUpdate: (id: string, status: EventTask["status"]) => void;
   contextLinks: EventTaskContextLink[]; contact: TaskContact | null;
@@ -424,7 +506,12 @@ function TaskRow({
             <span>·</span>
             <span>{task.ownerType === "couple" ? "Client" : task.ownerType === "vendor" ? "Vendor" : "Coordinator"}</span>
             <span>·</span>
-            <span>{new Date(task.dueDate + "T12:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric" })}</span>
+            <span>{formatEventRelativeDue({
+              daysOffset: task.daysOffset,
+              dueDate: task.dueDate,
+              dueDateLocked: task.dueDateLocked,
+              style: "planning",
+            })}</span>
             {isScheduledActivity(task) && (
               <>
                 <span>·</span>
@@ -505,7 +592,7 @@ function TaskRow({
 
       {expanded && (
         <TaskDetailPanel
-          task={task} kind={kind} eventId={eventId} contextLinks={contextLinks} contact={contact}
+          task={task} kind={kind} eventId={eventId} eventDate={eventDate} contextLinks={contextLinks} contact={contact}
           documents={documents} timelineEntries={timelineEntries} conversationMessages={conversationMessages}
           staffOptions={staffOptions}
           onNotesUpdated={() => router.refresh()}
@@ -809,7 +896,7 @@ export function EventTaskList({
     const kind: PlaybookKind = task.ownerType === "couple" ? "client" : "venue";
     return (
       <TaskRow
-        key={task.id} task={task} kind={kind} eventId={eventId}
+        key={task.id} task={task} kind={kind} eventId={eventId} eventDate={eventDate}
         clientId={clientId} clientName={clientName} request={requestsByTaskId[task.id] ?? null}
         expanded={expandedId === task.id}
         onToggleExpand={() => setExpandedId((p) => p === task.id ? null : task.id)}

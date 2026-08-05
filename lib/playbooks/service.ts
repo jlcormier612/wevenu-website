@@ -284,10 +284,27 @@ export async function releasePlaybookApplication(eventId: string, clientId: stri
   return result as PlaybookActionResult;
 }
 
-/** Coordinator manually overrides one task's due date on this event — it stops tracking the event date automatically. */
-export async function updateEventTaskDueDate(taskId: string, newDueDate: string): Promise<PlaybookActionResult> {
+/** Primary path: set relative offset to event start; clears any absolute lock. */
+export async function updateEventTaskDaysOffset(
+  taskId: string,
+  daysOffset: number,
+  eventDate: string,
+): Promise<PlaybookActionResult> {
   const result = await withVenue(async (c, venueId) => {
-    await repo.updateEventTaskDueDate(c, venueId, taskId, newDueDate);
+    await repo.updateEventTaskDaysOffset(c, venueId, taskId, daysOffset, eventDate);
+    return { ok: true } as PlaybookActionResult;
+  });
+  return result as PlaybookActionResult;
+}
+
+/** Coordinator manually overrides one task's due date on this event — it stops tracking the event date automatically. */
+export async function updateEventTaskDueDate(
+  taskId: string,
+  newDueDate: string,
+  eventDate: string,
+): Promise<PlaybookActionResult> {
+  const result = await withVenue(async (c, venueId) => {
+    await repo.updateEventTaskDueDate(c, venueId, taskId, newDueDate, eventDate);
     return { ok: true } as PlaybookActionResult;
   });
   return result as PlaybookActionResult;

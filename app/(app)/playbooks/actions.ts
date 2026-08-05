@@ -7,7 +7,7 @@ import {
   deleteMilestone, deleteTemplate_, deleteTemplateTask_, duplicateTemplate,
   releasePlaybookApplication,
   removeEventTaskContextLink, removePlaybookTaskAttachment, renameMilestone, renameTemplate_, reorderMilestone,
-  setEventTaskRequest, setEventTaskStatus, setMilestoneKind, setTemplateArchived_, setTemplateDefault_, updateEventTaskAssignment, updateEventTaskDueDate, updateEventTaskNotes,
+  setEventTaskRequest, setEventTaskStatus, setMilestoneKind, setTemplateArchived_, setTemplateDefault_, updateEventTaskAssignment, updateEventTaskDaysOffset, updateEventTaskDueDate, updateEventTaskNotes,
   updateEventTaskSchedule, updateTemplateTask_,
 } from "@/lib/playbooks/service";
 import type { ScheduleInput } from "@/lib/playbooks/repository";
@@ -113,8 +113,24 @@ export async function duplicateTemplateAction(sourceTemplateId: string, newName:
   return result;
 }
 
-export async function updateEventTaskDueDateAction(taskId: string, eventId: string, newDueDate: string): Promise<PlaybookActionResult> {
-  const result = await updateEventTaskDueDate(taskId, newDueDate);
+export async function updateEventTaskDaysOffsetAction(
+  taskId: string,
+  eventId: string,
+  daysOffset: number,
+  eventDate: string,
+): Promise<PlaybookActionResult> {
+  const result = await updateEventTaskDaysOffset(taskId, daysOffset, eventDate);
+  if (result.ok) revalidatePath(`/events/${eventId}`);
+  return result;
+}
+
+export async function updateEventTaskDueDateAction(
+  taskId: string,
+  eventId: string,
+  newDueDate: string,
+  eventDate: string,
+): Promise<PlaybookActionResult> {
+  const result = await updateEventTaskDueDate(taskId, newDueDate, eventDate);
   if (result.ok) revalidatePath(`/events/${eventId}`);
   return result;
 }

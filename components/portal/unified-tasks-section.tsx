@@ -6,6 +6,7 @@ import { CheckCircle2, Clock, FileSignature, MessageSquare, Receipt, Upload as U
 import { toast } from "sonner";
 
 import { celebrateLuv } from "@/lib/luv/celebrate";
+import { formatEventRelativeDue, formatAbsoluteDueDate } from "@/lib/playbooks/due-dates";
 import { buildUnifiedTaskList, type UnifiedTask } from "@/lib/portal/unified-tasks";
 import type { PortalSection, PortalTask } from "@/lib/portal/types";
 import type { PortalRequestSummary } from "@/lib/requests/types";
@@ -15,9 +16,17 @@ const KIND_ICON: Record<UnifiedTask["kind"], React.ComponentType<{ className?: s
   payment: Receipt, questionnaire: UploadIcon, timeline: Clock,
 };
 
-function fmtDate(iso: string | null): string {
-  if (!iso) return "";
-  return new Date(iso + "T12:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric" });
+function dueLabel(item: UnifiedTask): string {
+  if (item.kind === "venue_task") {
+    return formatEventRelativeDue({
+      daysOffset: item.daysOffset,
+      dueDate: item.dueDate,
+      dueDateLocked: item.dueDateLocked,
+      style: "urgency",
+    });
+  }
+  if (!item.dueDate) return "";
+  return `Due ${formatAbsoluteDueDate(item.dueDate)}`;
 }
 
 /**
@@ -149,7 +158,9 @@ export function UnifiedTasksSection({ token, initialTasks, venueName, onNavigate
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-medium text-heading">{item.title}</p>
                   {item.description && <p className="text-xs text-muted-foreground mt-0.5">{item.description}</p>}
-                  {item.dueDate && <p className="text-[11px] text-muted-foreground mt-0.5">Due {fmtDate(item.dueDate)}</p>}
+                  {(item.dueDate || item.daysOffset != null) && (
+                    <p className="text-[11px] text-muted-foreground mt-0.5">{dueLabel(item)}</p>
+                  )}
                 </div>
                 <button
                   type="button"

@@ -20,7 +20,7 @@ import { toast } from "sonner";
 import { completeTaskAction, setTaskStatusAction } from "@/app/(app)/playbooks/actions";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { categoryColor, categoryLabel } from "@/lib/playbooks/constants";
+import { categoryColor, categoryLabel, formatEventRelativeDue } from "@/lib/playbooks/constants";
 import { cn } from "@/lib/utils";
 
 type TaskRow = {
@@ -29,6 +29,8 @@ type TaskRow = {
   status: string;
   computedStatus: "overdue" | "blocked" | "pending" | "complete";
   due_date: string;
+  days_offset: number | null;
+  due_date_locked: boolean;
   category: string;
   owner_type: string;
   visibility: string;
@@ -66,14 +68,13 @@ const STATUS_ICON = {
   complete: <Check className="h-3.5 w-3.5 text-success shrink-0" />,
 };
 
-function formatDue(iso: string): string {
-  const d = new Date(iso + "T12:00:00");
-  const du = Math.ceil((d.getTime() - Date.now()) / 86_400_000);
-  if (du < -1) return `${Math.abs(du)} days overdue`;
-  if (du === -1) return "1 day overdue";
-  if (du === 0) return "Today";
-  if (du === 1) return "Tomorrow";
-  return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+function formatDue(task: TaskRow): string {
+  return formatEventRelativeDue({
+    daysOffset: task.days_offset,
+    dueDate: task.due_date,
+    dueDateLocked: task.due_date_locked,
+    style: "urgency",
+  });
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -105,7 +106,7 @@ function TaskItem({
           </span>
           <span>·</span>
           <span className={task.computedStatus === "overdue" ? "text-destructive font-medium" : ""}>
-            {formatDue(task.due_date)}
+            {formatDue(task)}
           </span>
           {task.owner_type !== "coordinator" && (
             <><span>·</span><span className="capitalize">{task.owner_type}</span></>
