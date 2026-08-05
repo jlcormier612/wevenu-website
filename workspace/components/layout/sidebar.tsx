@@ -32,7 +32,7 @@ export function Sidebar({
   });
 
   return (
-    <aside className="fixed inset-y-0 left-0 z-30 flex w-[var(--sidebar-width)] flex-col border-r border-[color-mix(in_srgb,var(--taupe-medium)_45%,transparent)] bg-[var(--header-linen)]">
+    <aside className="fixed inset-y-0 left-0 z-30 flex w-[var(--sidebar-width)] flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground">
       <div className="px-5 pt-7 pb-5">
         <Link href={homeHref} className="block" aria-label="Hello to Cheers Relationship Workspace">
           <Image
@@ -62,10 +62,10 @@ export function Sidebar({
                   : item.href
               }
               className={cn(
-                "flex items-center justify-between gap-2 rounded-sm px-3 py-2.5 text-[0.95rem] tracking-wide",
+                "flex items-center justify-between gap-2 rounded-sm px-3 py-2.5 text-[0.95rem] tracking-wide transition-colors",
                 active
-                  ? "bg-[var(--forest-sage)] text-[var(--true-white)]"
-                  : "text-[var(--forest-sage)] hover:bg-[color-mix(in_srgb,var(--soft-sage)_35%,transparent)]",
+                  ? "bg-sidebar-accent text-sidebar-accent-foreground"
+                  : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
               )}
             >
               <span>{item.label}</span>
@@ -74,7 +74,7 @@ export function Sidebar({
                   className={cn(
                     "shrink-0 rounded-sm px-1.5 py-0.5 text-[0.65rem] font-medium tabular-nums",
                     active
-                      ? "bg-[var(--true-white)]/20 text-[var(--true-white)]"
+                      ? "bg-sidebar-primary/15 text-sidebar-primary"
                       : "bg-[color-mix(in_srgb,var(--dusty-rose)_28%,transparent)] text-[var(--dusty-rose)]",
                   )}
                   title={`${openSupportCount} open support`}
@@ -87,11 +87,11 @@ export function Sidebar({
         })}
       </nav>
 
-      <div className="border-t border-[color-mix(in_srgb,var(--taupe-medium)_45%,transparent)] px-6 py-5">
-        <p className="text-sm text-[color-mix(in_srgb,var(--forest-sage)_70%,transparent)]">
+      <div className="border-t border-sidebar-border px-6 py-5">
+        <p className="text-sm text-sidebar-foreground/70">
           {unreadCount > 0 ? (
             <>
-              <span className="font-medium text-[var(--forest-sage)]">{unreadCount}</span>{" "}
+              <span className="font-medium text-sidebar-foreground">{unreadCount}</span>{" "}
               unread notifications
             </>
           ) : (
@@ -100,7 +100,7 @@ export function Sidebar({
         </p>
         <Link
           href="/login"
-          className="mt-2 inline-block text-sm text-[var(--heritage-sage)] underline-offset-4 hover:underline"
+          className="mt-2 inline-block text-sm text-sidebar-primary underline-offset-4 hover:underline"
         >
           Sign out (stub)
         </Link>

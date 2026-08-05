@@ -15,7 +15,7 @@ export default async function LoginPage({
   const params = await searchParams;
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-[var(--warm-gray)] px-6">
+    <div className="flex min-h-screen items-center justify-center bg-background px-6">
       <div className="ws-panel w-full max-w-md p-8 md:p-10">
         <p className="ws-eyebrow">Hello to Cheers</p>
         <h1 className="mt-3 font-heading text-4xl tracking-tight">

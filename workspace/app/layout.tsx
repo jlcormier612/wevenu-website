@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { Cormorant_Garamond, Source_Sans_3 } from "next/font/google";
 
+import { ThemeProvider } from "@/components/providers/theme-provider";
+
 import "./globals.css";
 
 const sourceSans = Source_Sans_3({
@@ -33,9 +35,19 @@ export default function RootLayout({
   return (
     <html
       lang="en"
+      suppressHydrationWarning
       className={`${sourceSans.variable} ${cormorant.variable} h-full`}
     >
-      <body className="min-h-full">{children}</body>
+      <body className="min-h-full">
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="system"
+          enableSystem
+          disableTransitionOnChange
+        >
+          {children}
+        </ThemeProvider>
+      </body>
     </html>
   );
 }
