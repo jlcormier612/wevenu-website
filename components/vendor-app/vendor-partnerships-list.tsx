@@ -99,7 +99,7 @@ export function PromotionEditor({ partnership }: { partnership: Pick<VendorPartn
 export function VendorPartnershipsList({ partnerships }: { partnerships: VendorPartnership[] }) {
   if (partnerships.length === 0) {
     return (
-      <div className="rounded-xl border border-dashed border-border py-12 text-center">
+      <div className="rounded-sm border border-dashed border-border py-12 text-center">
         <Building2 className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
         <p className="text-sm font-medium text-foreground">No venue partnerships yet</p>
         <p className="text-xs mt-1 text-muted-foreground">
@@ -112,7 +112,7 @@ export function VendorPartnershipsList({ partnerships }: { partnerships: VendorP
   return (
     <div className="space-y-3">
       {partnerships.map((p) => (
-        <div key={p.id} className="rounded-xl border border-border bg-card px-4 py-3">
+        <div key={p.id} className="rounded-sm border border-border bg-card px-4 py-3">
           <div className="flex items-center gap-4">
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-muted text-sm font-bold text-muted-foreground border border-border overflow-hidden">
               {p.venueLogoUrl ? (

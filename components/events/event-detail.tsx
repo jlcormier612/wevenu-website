@@ -89,7 +89,7 @@ function AnniversaryBanner({ eventId, ordinal }: { eventId: string; ordinal: str
   }
 
   return (
-    <div className="rounded-2xl p-5 space-y-3"
+    <div className="rounded-sm p-5 space-y-3"
       style={{ background: "linear-gradient(135deg, #FDF5F5 0%, #F9F5F0 100%)", border: "1px solid #E8C8CA" }}>
       <div className="flex items-center gap-2">
         <span className="text-xl">💗</span>
@@ -108,7 +108,7 @@ function AnniversaryBanner({ eventId, ordinal }: { eventId: string; ordinal: str
               value={message}
               onChange={e => setMessage(e.target.value)}
               placeholder={`Happy ${ordinal} anniversary! It was such a joy to be part of your day.`}
-              className="flex-1 text-sm rounded-lg border border-border px-3 py-2 bg-white focus:outline-none focus:ring-1 focus:ring-primary"
+              className="flex-1 text-sm rounded-sm border border-border px-3 py-2 bg-card focus:outline-none focus:ring-1 focus:ring-primary"
             />
             <Button size="sm" disabled={!message.trim() || sending} onClick={handleSend}
               style={{ background: "#C17F84", color: "white" }}>
@@ -201,7 +201,7 @@ function ComingSoonTab({
   description: string;
 }) {
   return (
-    <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border bg-card/40 py-16 text-center">
+    <div className="flex flex-col items-center justify-center rounded-sm border border-dashed border-border bg-card/40 py-16 text-center">
       <span className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-muted text-muted-foreground">
         <Icon className="h-5 w-5" />
       </span>
@@ -402,7 +402,7 @@ export function EventDetail({
       {/* ── Wedding Day banner — shows only on event date ─────────────── */}
       {daysUntil(event.eventDate) === 0 && (
         <Link href={`/events/${event.id}/today`}
-          className="flex items-center justify-between rounded-2xl px-5 py-4 text-white transition-opacity hover:opacity-90"
+          className="flex items-center justify-between rounded-sm px-5 py-4 text-white transition-opacity hover:opacity-90"
           style={{ background: "linear-gradient(135deg, #3D4F3D 0%, #5D6F5D 100%)" }}>
           <div className="flex items-center gap-3">
             <span className="text-xl">✦</span>

@@ -200,7 +200,7 @@ export function EventForm({
       <EventFormFields input={input} errors={errors} set={set} onSubmit={handleSubmit} pending={pending} spaces={spaces} />
       {/* Template application — shown after core fields; Client Planning and Venue Planning are separate systems, applied independently */}
       {playbookTemplates.length > 0 && (
-        <div className="rounded-xl border border-border bg-muted/30 p-4 space-y-3">
+        <div className="rounded-sm border border-border bg-muted/30 p-4 space-y-3">
           <p className="text-sm font-medium text-heading">Apply planning checklists</p>
           <p className="text-xs text-muted-foreground -mt-2">
             Tasks and reminders are generated automatically from the event date. Both are optional and independent.

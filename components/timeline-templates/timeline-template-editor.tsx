@@ -146,7 +146,7 @@ export function TimelineTemplateEditor({ templateId, initialItems }: { templateI
       </div>
 
       {items.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-border py-10 text-center">
+        <div className="rounded-sm border border-dashed border-border py-10 text-center">
           <p className="text-sm font-medium text-heading">No items yet</p>
           <p className="mt-1 text-xs text-muted-foreground">Add the first item in this timeline.</p>
         </div>
@@ -162,7 +162,7 @@ export function TimelineTemplateEditor({ templateId, initialItems }: { templateI
                 onDragOver={(e) => handleDragOver(e, index)}
                 onDrop={() => handleDrop(index)}
                 onDragEnd={handleDragEnd}
-                className={`flex items-start gap-3 rounded-xl border bg-card p-3 transition-colors ${
+                className={`flex items-start gap-3 rounded-sm border bg-card p-3 transition-colors ${
                   item.needsReview ? "border-amber-300 bg-amber-50/40 dark:border-amber-900 dark:bg-amber-950/20" : dragOverIndex === index ? "border-primary bg-primary/5" : "border-border"
                 }`}
               >

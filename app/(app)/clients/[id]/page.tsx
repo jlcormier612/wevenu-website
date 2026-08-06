@@ -69,7 +69,7 @@ export default async function BookingWorkspacePage({ params }: Props) {
     return (
       <div className="space-y-6">
         <PageHeader title={displayName} description="This booking doesn't have an event workspace yet." />
-        <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border bg-card/40 py-16 text-center">
+        <div className="flex flex-col items-center justify-center rounded-sm border border-dashed border-border bg-card/40 py-16 text-center">
           <p className="font-heading text-lg font-medium text-heading">No event yet</p>
           <p className="mt-1 mb-4 text-sm text-muted-foreground">Add an event date to open the full workspace.</p>
           <Button render={<Link href={`/events/new?clientId=${client.id}`} />}>+ Create Event</Button>

@@ -113,7 +113,7 @@ function FeedbackPanel({
 
       {/* Service recovery alert for low ratings */}
       {isLowRating && (
-        <div className="rounded-xl border border-destructive/20 bg-destructive/5 p-4">
+        <div className="rounded-sm border border-destructive/20 bg-destructive/5 p-4">
           <p className="text-sm font-semibold text-destructive mb-1">💗 This is an opportunity.</p>
           <p className="text-xs text-muted-foreground">
             Reaching out personally can turn a difficult experience into a lasting relationship.
@@ -126,7 +126,7 @@ function FeedbackPanel({
       {(feedback.lovedMost || feedback.couldImprove) && (
         <div className="space-y-3">
           {feedback.lovedMost && (
-            <div className="rounded-xl bg-muted/40 p-4">
+            <div className="rounded-sm bg-muted/40 p-4">
               <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground mb-1.5">
                 What they loved
               </p>
@@ -134,7 +134,7 @@ function FeedbackPanel({
             </div>
           )}
           {feedback.couldImprove && (
-            <div className="rounded-xl bg-muted/40 p-4">
+            <div className="rounded-sm bg-muted/40 p-4">
               <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground mb-1.5">
                 Areas for improvement
               </p>
@@ -145,7 +145,7 @@ function FeedbackPanel({
       )}
 
       {/* Permission status */}
-      <div className="flex items-center justify-between rounded-xl border px-4 py-3">
+      <div className="flex items-center justify-between rounded-sm border px-4 py-3">
         <div>
           <p className="text-xs font-medium text-heading">Sharing permission</p>
           <p className="text-xs text-muted-foreground mt-0.5">
@@ -177,12 +177,12 @@ function FeedbackPanel({
           onChange={e => setResponse(e.target.value)}
           placeholder="Add a note about how this was handled…"
           rows={3}
-          className="w-full rounded-xl border px-3.5 py-2.5 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-ring"
+          className="w-full rounded-sm border px-3.5 py-2.5 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-ring"
         />
         <button
           onClick={handleResolve}
           disabled={saving || feedback.venueStatus === "resolved"}
-          className="text-sm font-semibold px-4 py-2 rounded-xl border border-border transition-colors hover:bg-muted disabled:opacity-50"
+          className="text-sm font-semibold px-4 py-2 rounded-sm border border-border transition-colors hover:bg-muted disabled:opacity-50"
         >
           {saving ? "Saving…" : feedback.venueStatus === "resolved" ? "Resolved ✓" : "Mark resolved"}
         </button>
@@ -216,7 +216,7 @@ function ReferralsPanel({
   return (
     <div className="space-y-3">
       {referrals.map(r => (
-        <div key={r.id} className="rounded-xl border p-4 space-y-2">
+        <div key={r.id} className="rounded-sm border p-4 space-y-2">
           <div className="flex items-start justify-between gap-3">
             <div>
               <p className="text-sm font-semibold text-heading">{r.referralName}</p>
@@ -275,7 +275,7 @@ function MemoriesPanel({
   return (
     <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
       {memories.map(m => (
-        <div key={m.id} className="relative rounded-xl overflow-hidden border aspect-square">
+        <div key={m.id} className="relative rounded-sm overflow-hidden border aspect-square">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={m.storageUrl} alt={m.caption ?? "Shared memory"} className="h-full w-full object-cover" />
           <div className="absolute inset-0 flex flex-col justify-end p-2"
@@ -334,7 +334,7 @@ export function EventFeedbackSection({ eventId }: { eventId: string }) {
 
   if (noContent) {
     return (
-      <div className="rounded-2xl border border-dashed py-14 text-center px-6">
+      <div className="rounded-sm border border-dashed py-14 text-center px-6">
         <p className="text-2xl mb-3">💗</p>
         <p className="text-sm font-semibold text-heading mb-1">No feedback yet</p>
         <p className="text-xs text-muted-foreground max-w-xs mx-auto">
@@ -350,7 +350,7 @@ export function EventFeedbackSection({ eventId }: { eventId: string }) {
 
       {/* ── Venue Feedback ── */}
       {data?.feedback ? (
-        <div className="rounded-2xl border p-5 space-y-1">
+        <div className="rounded-sm border p-5 space-y-1">
           <div className="flex items-center gap-2 mb-4">
             <span className="text-base">💗</span>
             <p className="text-sm font-semibold text-heading">Client Feedback</p>
@@ -365,14 +365,14 @@ export function EventFeedbackSection({ eventId }: { eventId: string }) {
           />
         </div>
       ) : (
-        <div className="rounded-xl border border-dashed p-5 text-center">
+        <div className="rounded-sm border border-dashed p-5 text-center">
           <p className="text-sm text-muted-foreground">No venue feedback submitted yet.</p>
         </div>
       )}
 
       {/* ── Referrals ── */}
       {data?.referrals && data.referrals.length > 0 && (
-        <div className="rounded-2xl border p-5">
+        <div className="rounded-sm border p-5">
           <div className="flex items-center gap-2 mb-4">
             <span className="text-base">💍</span>
             <p className="text-sm font-semibold text-heading">
@@ -392,7 +392,7 @@ export function EventFeedbackSection({ eventId }: { eventId: string }) {
 
       {/* ── Shared Memories ── */}
       {data?.memories && data.memories.length > 0 && (
-        <div className="rounded-2xl border p-5">
+        <div className="rounded-sm border p-5">
           <div className="flex items-center gap-2 mb-4">
             <span className="text-base">📸</span>
             <p className="text-sm font-semibold text-heading">

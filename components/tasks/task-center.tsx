@@ -160,7 +160,7 @@ function EventGroup({ eventName, couple, eventId, tasks, onComplete, onWaive, co
   waiving: string | null;
 }) {
   return (
-    <div className="rounded-xl border border-border bg-card">
+    <div className="rounded-sm border border-border bg-card">
       <div className="flex items-center justify-between gap-2 px-4 py-2.5 border-b border-border/50">
         <div className="min-w-0">
           <p className="text-xs font-semibold text-heading truncate">{couple || eventName}</p>
@@ -193,7 +193,7 @@ function StaffGroup({ staffName, tasks, onComplete, onWaive, completing, waiving
   waiving: string | null;
 }) {
   return (
-    <div className="rounded-xl border border-border bg-card">
+    <div className="rounded-sm border border-border bg-card">
       <div className="flex items-center gap-2 px-4 py-2.5 border-b border-border/50">
         <p className="text-xs font-semibold text-heading truncate">👤 {staffName}</p>
         <p className="text-[10px] text-muted-foreground">{tasks.length} task{tasks.length !== 1 ? "s" : ""}</p>
@@ -376,7 +376,7 @@ export function TaskCenter({
       </div>
 
       {totalExceptions === 0 && scoped.dueThisWeek.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-border py-16 text-center space-y-2">
+        <div className="rounded-sm border border-dashed border-border py-16 text-center space-y-2">
           <p className="text-2xl">✅</p>
           <p className="text-sm font-medium text-heading">
             {perspective === "my-tasks" ? "Nothing assigned to you needs attention right now" : "No tasks need attention right now"}
@@ -387,7 +387,7 @@ export function TaskCenter({
         <>
           {/* Exception band */}
           {totalExceptions > 0 && (
-            <div className="rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-3 flex items-center gap-2">
+            <div className="rounded-sm border border-destructive/30 bg-destructive/5 px-4 py-3 flex items-center gap-2">
               <AlertTriangle className="h-4 w-4 text-destructive shrink-0" />
               <p className="text-sm font-medium text-destructive">
                 {totalExceptions} item{totalExceptions !== 1 ? "s" : ""} need your attention today

@@ -29,7 +29,7 @@ export default async function SeriesPage() {
       />
 
       {series.length === 0 ? (
-        <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border bg-card/40 py-16 text-center">
+        <div className="flex flex-col items-center justify-center rounded-sm border border-dashed border-border bg-card/40 py-16 text-center">
           <p className="font-heading text-lg font-medium text-heading">No automations yet</p>
           <p className="mt-1 mb-4 text-sm text-muted-foreground">
             Build a set of steps that send automatically — on their own schedule, from your Templates.

@@ -86,7 +86,7 @@ export function WeekView({
       <div className="grid gap-3 md:grid-cols-7">
         {days.map(({ date, dateStr, dayItems }) => (
           <div key={dateStr} className={cn(
-            "rounded-xl border border-border p-2 space-y-2 min-h-[140px]",
+            "rounded-sm border border-border p-2 space-y-2 min-h-[140px]",
             dateStr === today && "ring-1 ring-inset ring-primary/30 bg-primary/5",
           )}>
             <div className="text-center">

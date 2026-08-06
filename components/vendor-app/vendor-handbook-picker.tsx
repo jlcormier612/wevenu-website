@@ -12,7 +12,7 @@ export function VendorHandbookPicker({ handbooks }: { handbooks: VendorHandbook[
 
   if (handbooks.length === 0) {
     return (
-      <div className="rounded-xl border border-dashed border-border py-16 text-center">
+      <div className="rounded-sm border border-dashed border-border py-16 text-center">
         <Building2 className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
         <p className="text-sm font-medium text-foreground">No venue information yet</p>
         <p className="text-xs text-muted-foreground mt-1">Once you&apos;re booked for an event, that venue&apos;s details will appear here.</p>

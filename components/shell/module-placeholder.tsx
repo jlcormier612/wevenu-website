@@ -23,7 +23,7 @@ export function PageHeader({
           {title}
         </h1>
         {description ? (
-          <p className="max-w-2xl text-sm text-muted-foreground">{description}</p>
+          <p className="max-w-2xl text-[0.95rem] leading-relaxed text-muted-foreground">{description}</p>
         ) : null}
       </div>
       {actions ? <div className="flex items-center gap-2">{actions}</div> : null}
@@ -46,7 +46,7 @@ export function ModulePlaceholder({
   return (
     <div className="space-y-8">
       <PageHeader title={title} description={description} />
-      <div className="flex min-h-[360px] flex-col items-center justify-center gap-4 rounded-2xl border border-dashed border-border bg-card/40 p-10 text-center">
+      <div className="flex min-h-[360px] flex-col items-center justify-center gap-4 rounded-sm border border-dashed border-border bg-card/40 p-10 text-center">
         <span className="flex h-14 w-14 items-center justify-center rounded-full bg-primary/10 text-primary">
           <Construction className="h-7 w-7" />
         </span>

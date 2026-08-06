@@ -101,7 +101,7 @@ export function TimelineEntryForm({
   }
 
   return (
-    <div className="space-y-3 rounded-xl border border-ring bg-card p-4">
+    <div className="space-y-3 rounded-sm border border-ring bg-card p-4">
       <div className="grid gap-3 sm:grid-cols-[1fr_auto]">
         <div className="space-y-1.5">
           <Label htmlFor="et-title" className="text-xs">Title *</Label>

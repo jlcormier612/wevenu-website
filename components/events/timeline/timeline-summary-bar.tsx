@@ -16,7 +16,7 @@ export function TimelineSummaryBar({
   lastUpdated?: string | null;
 }) {
   return (
-    <div className="flex flex-wrap items-center gap-x-6 gap-y-1.5 rounded-xl border border-border bg-muted/20 px-4 py-2.5">
+    <div className="flex flex-wrap items-center gap-x-6 gap-y-1.5 rounded-sm border border-border bg-muted/20 px-4 py-2.5">
       <div className="flex items-center gap-1.5 text-sm">
         <Clock className="h-3.5 w-3.5 text-muted-foreground" />
         <span className="text-muted-foreground">Event Start</span>

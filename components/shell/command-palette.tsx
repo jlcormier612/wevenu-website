@@ -140,7 +140,7 @@ export function CommandPalette({
       onClick={() => onOpenChange(false)}
     >
       <div
-        className="w-full max-w-[580px] rounded-2xl border bg-background shadow-2xl overflow-hidden"
+        className="w-full max-w-[580px] rounded-sm border bg-background overflow-hidden"
         onClick={e => e.stopPropagation()}
       >
         {/* Search input */}

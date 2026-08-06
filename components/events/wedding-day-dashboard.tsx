@@ -305,7 +305,7 @@ function GroupedTaskList({
           <div className="space-y-0.5">
             {gTasks.map(t => (
               <button key={t.id} type="button" onClick={() => onComplete(t.id)}
-                className="w-full text-left flex items-start gap-3 py-2.5 px-2 rounded-xl hover:bg-muted/30 group transition-colors">
+                className="w-full text-left flex items-start gap-3 py-2.5 px-2 rounded-sm hover:bg-muted/30 group transition-colors">
                 <div className="h-4 w-4 rounded border-2 shrink-0 mt-0.5 group-hover:border-primary transition-colors"
                   style={{ borderColor: "#DED6CA" }} />
                 <div className="flex-1">
@@ -517,7 +517,7 @@ function KeyContacts({ contacts }: { contacts: Contact[] }) {
   return (
     <div className="grid gap-3 sm:grid-cols-2">
       {contacts.map(c => (
-        <div key={c.id} className="rounded-xl border bg-card p-3.5 space-y-2"
+        <div key={c.id} className="rounded-sm border bg-card p-3.5 space-y-2"
           style={{ borderColor: c.isEmergency ? `${ROSE}50` : "#E8E3DC" }}>
           <div>
             <div className="flex items-center gap-1.5">
@@ -578,7 +578,7 @@ function QuickDocuments({ documents }: { documents: Document[] }) {
     <div className="grid gap-2 sm:grid-cols-2">
       {sorted.map(doc => (
         <a key={doc.id} href={doc.storageUrl} target="_blank" rel="noopener noreferrer"
-          className="flex items-center gap-2.5 p-3 rounded-xl border bg-card text-sm font-medium text-heading hover:shadow-sm transition-all"
+          className="flex items-center gap-2.5 p-3 rounded-sm border bg-card text-sm font-medium text-heading hover:shadow-sm transition-all"
           style={{ borderColor: "#E8E3DC" }}>
           <FileText className="h-4 w-4 shrink-0" style={{ color: ROSE }} />
           <span className="truncate">{doc.name}</span>
@@ -606,7 +606,7 @@ function QuickRequests({ requests }: { requests: DayRequest[] }) {
     <div className="space-y-2">
       {requests.map(r => (
         <a key={r.id} href={`/requests/${r.id}`} target="_blank" rel="noopener noreferrer"
-          className="flex items-center justify-between gap-3 p-3 rounded-xl border bg-card hover:shadow-sm transition-all"
+          className="flex items-center justify-between gap-3 p-3 rounded-sm border bg-card hover:shadow-sm transition-all"
           style={{ borderColor: "#E8E3DC" }}>
           <div className="min-w-0">
             <p className="text-sm font-medium text-heading truncate">{r.title}</p>
@@ -635,7 +635,7 @@ function QuickFloorPlans({ eventId, floorPlans }: { eventId: string; floorPlans:
   return (
     <div className="grid gap-2 sm:grid-cols-2">
       {floorPlans.map(plan => (
-        <div key={plan.id} className="flex items-center justify-between gap-2 p-3 rounded-xl border bg-card text-sm"
+        <div key={plan.id} className="flex items-center justify-between gap-2 p-3 rounded-sm border bg-card text-sm"
           style={{ borderColor: "#E8E3DC" }}>
           <span className="flex min-w-0 items-center gap-2 truncate font-medium text-heading">
             <LayoutGrid className="h-4 w-4 shrink-0" style={{ color: ROSE }} />
@@ -662,7 +662,7 @@ function QuickFloorPlans({ eventId, floorPlans }: { eventId: string; floorPlans:
 // QuickDocuments — never an embedded editor.
 function QuickSeating({ eventId }: { eventId: string }) {
   return (
-    <div className="flex items-center justify-between gap-2 p-3 rounded-xl border bg-card text-sm"
+    <div className="flex items-center justify-between gap-2 p-3 rounded-sm border bg-card text-sm"
       style={{ borderColor: "#E8E3DC" }}>
       <span className="flex min-w-0 items-center gap-2 truncate font-medium text-heading">
         <LayoutGrid className="h-4 w-4 shrink-0" style={{ color: ROSE }} />
@@ -700,7 +700,7 @@ function LuvObsPanel({ observations }: { observations: LuvObservation[] }) {
   if (observations.length === 0) return null;
   const sorted = [...observations].sort((a, b) => LUV_KIND_ORDER[a.kind] - LUV_KIND_ORDER[b.kind]);
   return (
-    <section className="rounded-2xl border p-5 space-y-3"
+    <section className="rounded-sm border p-5 space-y-3"
       style={{ background: "#FDF5F5", borderColor: `${ROSE}30` }}>
       <p className="text-[10px] font-semibold uppercase tracking-[0.18em]" style={{ color: ROSE_DEEP }}>
         💗 Luv
@@ -719,7 +719,7 @@ function LuvObsPanel({ observations }: { observations: LuvObservation[] }) {
 
 function Section({ title, emoji, children }: { title: string; emoji: string; children: React.ReactNode }) {
   return (
-    <section className="rounded-2xl border bg-card overflow-hidden" style={{ borderColor: "#E8E3DC" }}>
+    <section className="rounded-sm border bg-card overflow-hidden" style={{ borderColor: "#E8E3DC" }}>
       <div className="px-5 py-3.5 flex items-center gap-2 border-b" style={{ borderColor: "#E8E3DC", background: LINEN }}>
         <span>{emoji}</span>
         <h2 className="text-sm font-semibold text-heading">{title}</h2>
@@ -928,7 +928,7 @@ export function WeddingDayDashboard({
     <div className="space-y-5">
 
       {/* ── Hero ── */}
-      <div className="rounded-2xl overflow-hidden"
+      <div className="rounded-sm overflow-hidden"
         style={{ background: `linear-gradient(135deg, #3D4F3D 0%, ${SAGE} 100%)` }}>
         <div className="p-6 sm:p-8 text-white space-y-5">
 

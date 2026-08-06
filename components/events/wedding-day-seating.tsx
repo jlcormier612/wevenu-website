@@ -62,7 +62,7 @@ function TableCard({ table, dimmed }: { table: SeatingTable; dimmed: boolean }) 
   const guests = [...table.guests].sort((a, b) => a.name.localeCompare(b.name));
 
   return (
-    <div className={`rounded-xl border p-3 bg-card transition-opacity ${dimmed ? "opacity-40" : "border-border"} ${overCapacity ? "border-destructive/50" : !dimmed ? "border-border" : ""}`}>
+    <div className={`rounded-sm border p-3 bg-card transition-opacity ${dimmed ? "opacity-40" : "border-border"} ${overCapacity ? "border-destructive/50" : !dimmed ? "border-border" : ""}`}>
       <div className="flex items-center justify-between mb-1.5 gap-2">
         <p className="font-semibold text-sm text-heading truncate">{table.label ?? "Table"}</p>
         <Badge
@@ -86,7 +86,7 @@ function TableCard({ table, dimmed }: { table: SeatingTable; dimmed: boolean }) 
 
 function StatCard({ label, value }: { label: string; value: number }) {
   return (
-    <div className="rounded-xl border border-border bg-card p-3 text-center">
+    <div className="rounded-sm border border-border bg-card p-3 text-center">
       <p className="text-xl font-semibold text-heading">{value}</p>
       <p className="text-[11px] text-muted-foreground">{label}</p>
     </div>
@@ -97,7 +97,7 @@ function ReportCard({ title, isEmpty, emptyLabel, children }: {
   title: string; isEmpty: boolean; emptyLabel: string; children: React.ReactNode;
 }) {
   return (
-    <div className="rounded-xl border border-border bg-card p-3">
+    <div className="rounded-sm border border-border bg-card p-3">
       <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">{title}</p>
       <div className="max-h-64 overflow-y-auto">
         {isEmpty ? <p className="text-xs text-muted-foreground">{emptyLabel}</p> : children}
@@ -161,7 +161,7 @@ export function WeddingDaySeating({
 
   if (!data) {
     return (
-      <div className="rounded-xl border border-dashed border-border py-16 text-center">
+      <div className="rounded-sm border border-dashed border-border py-16 text-center">
         <div className="text-3xl mb-3">🪑</div>
         <p className="text-sm font-medium text-heading">No Client Workspace link exists for this client yet.</p>
         <p className="text-xs text-muted-foreground mt-1">Create one from the Client record to enable seating.</p>
@@ -174,7 +174,7 @@ export function WeddingDaySeating({
   // in-progress work, unless they've explicitly delegated this plan.
   if (data.notYetSubmitted && !data.isDelegated) {
     return (
-      <div className="rounded-xl border border-dashed border-border py-16 text-center">
+      <div className="rounded-sm border border-dashed border-border py-16 text-center">
         <div className="text-3xl mb-3">🪑</div>
         <p className="text-sm font-medium text-heading">{coupleName} hasn&apos;t submitted a seating plan yet.</p>
         <p className="text-xs text-muted-foreground mt-1 max-w-sm mx-auto">
@@ -191,7 +191,7 @@ export function WeddingDaySeating({
   return (
     <div className="space-y-5">
       {data.isDelegated ? (
-        <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 flex flex-wrap items-center justify-between gap-3">
+        <div className="rounded-sm border border-amber-200 bg-amber-50 px-4 py-3 flex flex-wrap items-center justify-between gap-3">
           <div>
             <p className="text-sm font-medium text-amber-900">✋ Delegated by {coupleName}</p>
             <p className="text-xs text-amber-800">Changes made here update the active operational seating plan until delegation is revoked.</p>
@@ -223,7 +223,7 @@ export function WeddingDaySeating({
       </div>
 
       {!data.floorPlan ? (
-        <div className="rounded-xl border border-dashed border-border py-16 text-center">
+        <div className="rounded-sm border border-dashed border-border py-16 text-center">
           <div className="text-3xl mb-3">🪑</div>
           <p className="text-sm font-medium text-heading">No floor plan is currently shared for seating.</p>
           <p className="text-xs text-muted-foreground mt-1">Once a plan is shared and the client seats guests, they&apos;ll show up here.</p>
@@ -262,7 +262,7 @@ export function WeddingDaySeating({
           </div>
 
           {unassignedPool.length > 0 && (
-            <div className="rounded-xl border border-border bg-card p-3">
+            <div className="rounded-sm border border-border bg-card p-3">
               <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">Not yet seated ({unassignedPool.length})</p>
               <div className="divide-y divide-border/60">
                 {unassignedPool.map((g) => <GuestLine key={g.guestId} guest={g} />)}

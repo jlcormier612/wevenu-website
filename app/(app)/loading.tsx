@@ -15,7 +15,7 @@ export default function WorkspaceLoading() {
         {Array.from({ length: 3 }).map((_, i) => (
           <div
             key={i}
-            className="space-y-3 rounded-xl bg-card p-5 ring-1 shadow-sm ring-foreground/10"
+            className="space-y-3 rounded-sm bg-card p-5 ring-1 ring-foreground/10"
           >
             <Skeleton className="h-4 w-24" />
             <Skeleton className="h-8 w-32" />

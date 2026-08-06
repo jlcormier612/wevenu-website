@@ -33,6 +33,21 @@ type CollectionConfig = {
   heroType: "full-bleed" | "invitation";
   heroMinHeight: string;
   heroAlign: "center" | "left";
+  /** Coastal Hero Crop Fix (2026-08-06) — optional, undefined for every
+   * Collection but Coastal (byte-identical elsewhere). `background-size:
+   * cover` + a flat `heroMinHeight` decouples the hero box's height from
+   * its width, so on a full-bleed hero the required cover-scale (and thus
+   * how much of the source photo gets cropped off top/bottom) keeps
+   * growing as the viewport gets wider — a real photo with its subjects
+   * above center starts losing heads at wide desktop widths even though
+   * nothing about the photo changed. `heroAspectCap` bounds the box's own
+   * width:height ratio (via CSS `aspect-ratio`, with heroMinHeight/
+   * heroMaxHeight as the floor/ceiling) so height grows with width instead
+   * of staying flat — the crop fraction stays roughly constant across
+   * viewport widths instead of worsening. Still `cover`, still full-bleed,
+   * no letterboxing, no per-photo data. */
+  heroAspectCap?: string;
+  heroMaxHeight?: string;
   headerStyle: "romantic" | "formal" | "editorial" | "minimal" | "coastal";
   storyStyle: "quote" | "prose" | "editorial" | "minimal";
   divider: "botanical" | "rule" | "dots" | "ornament" | "none" | "deco";
@@ -236,6 +251,7 @@ const COLLECTIONS: Record<string, Omit<CollectionConfig, keyof typeof LAYOUT_DEF
     headingItalic: false,
     fontUrl: "https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;600;700&display=swap",
     heroType: "full-bleed", heroMinHeight: "65vh", heroAlign: "center",
+    heroAspectCap: "2 / 1", heroMaxHeight: "85vh",
     headerStyle: "coastal", storyStyle: "prose",
     divider: "deco", cardRadius: "0.75rem", buttonRadius: "0.75rem", photoRadius: "0.5rem",
     photoFilter: "saturate(0.75) brightness(1.12) contrast(0.95)",
@@ -1239,7 +1255,7 @@ export function WeddingWebsite({
     }
   }
 
-  const canvasColors = { surface: tc.surface, secondary: tc.secondary, accent: tc.accent };
+  const canvasColors = { surface: tc.surface, secondary: tc.secondary, accent: tc.accent, bg: tc.bg, border: tc.border };
 
   function renderDressCodeWeddingPartyPair(): React.ReactNode {
     const dc = content.dress_code;
@@ -1426,24 +1442,31 @@ export function WeddingWebsite({
             case "event": {
               const e = content.event;
               if (!e?.ceremony && !e?.reception) return null;
+              // Location + address render as one body line, not a
+              // separate `meta` line — `meta` gets an additional
+              // opacity-55 on top of this section's own (already dimmed,
+              // on-color-field) textMuted below, and the two compound to
+              // ~2:1 contrast against the "strong" canvas background,
+              // under WCAG's 3:1 minimum. A single line at the section's
+              // normal muted-text weight stays legible on every Color
+              // Story, not just ones where that compounding happens not
+              // to bite.
               const items: CompositionItem[] = [];
               if (e.ceremony) items.push({
                 label: "Ceremony",
                 heading: e.ceremony.time ?? "Ceremony",
-                body: e.ceremony.location,
-                meta: e.ceremony.address,
+                body: [e.ceremony.location, e.ceremony.address].filter(Boolean).join(" · "),
               });
               if (e.reception) items.push({
                 label: "Reception",
                 heading: e.reception.time ?? "Reception",
-                body: e.reception.location,
-                meta: e.reception.address,
+                body: [e.reception.location, e.reception.address].filter(Boolean).join(" · "),
               });
               const eventRole = tc.sectionRoles?.event;
               const eventStrong = eventRole?.canvas === "strong";
               const eventBg = tc.secondary || tc.accent;
               const eventFg = eventStrong ? contrastText(eventBg) : tc.text;
-              const eventTc: ThemeConfig = eventStrong ? { ...tc, text: eventFg, textMuted: `${eventFg}b0` } : tc;
+              const eventTc: ThemeConfig = eventStrong ? { ...tc, text: eventFg, textMuted: `${eventFg}cc` } : tc;
               const venueImage = site.venue?.heroImageUrl;
               return (
                 <SectionCanvas key="event" role={eventRole} colors={canvasColors}>
@@ -1584,7 +1607,7 @@ export function WeddingWebsite({
                 ...(t.transportation?.notes ? [{ label: "Transportation", heading: "Getting around", body: t.transportation.notes }] : []),
               ];
               return (
-                <SectionCanvas key="travel" role={tc.sectionRoles?.travel} sparse={items.length <= 1} colors={{ surface: tc.surface, secondary: tc.secondary, accent: tc.accent }}>
+                <SectionCanvas key="travel" role={tc.sectionRoles?.travel} sparse={items.length <= 1} colors={canvasColors}>
                 <SectionWrapper sectionKey="travel">
                   <section>
                     <SectionHeader title="Travel & Accommodations" tc={tc} accentColor={color} />
@@ -1869,7 +1892,14 @@ export function WeddingWebsite({
       ) : (
       <div
         className={`relative flex flex-col ${tc.heroAlign === "left" ? "items-start justify-end pb-14 pl-8" : "items-center justify-center"} px-6 py-20 ${editMode ? "group cursor-pointer" : ""}`}
-        style={{ ...heroStyle, minHeight: tc.heroMinHeight }}
+        style={{
+          ...heroStyle, minHeight: tc.heroMinHeight,
+          // `width: 100%` pins width so aspect-ratio only ever solves for
+          // height — without it, once maxHeight clamps height below what
+          // the ratio would give a full-width box, Chromium renegotiates
+          // width down to (height * ratio) instead, breaking full-bleed.
+          ...(tc.heroAspectCap ? { width: "100%", aspectRatio: tc.heroAspectCap, maxHeight: tc.heroMaxHeight } : {}),
+        }}
         onClick={editMode ? () => onSectionClick?.("home") : undefined}
       >
         {/* Overlay — softens cover photos; unused for gradient heroes */}

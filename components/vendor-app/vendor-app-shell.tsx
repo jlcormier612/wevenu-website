@@ -48,7 +48,7 @@ function NavItem({
       onClick={onNavigate}
       aria-current={active ? "page" : undefined}
       className={cn(
-        "group/nav flex items-center gap-3 rounded-sm px-3 py-2 text-sm font-medium transition-colors",
+        "group/nav flex items-center gap-3 rounded-sm px-3 py-2.5 text-[0.95rem] tracking-wide transition-colors",
         "hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
         active
           ? "bg-sidebar-accent text-sidebar-accent-foreground"
@@ -106,7 +106,7 @@ export function VendorAppShell({
   return (
     <div className="htc-staff flex h-svh w-full overflow-hidden bg-background font-sans text-foreground">
       {/* Desktop sidebar — same sidebar tokens as WorkspaceShell */}
-      <aside className="hidden w-64 shrink-0 flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground lg:flex">
+      <aside className="hidden w-[15.5rem] shrink-0 flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground lg:flex">
         <SidebarContent
           businessName={businessName}
           category={category}
@@ -119,7 +119,7 @@ export function VendorAppShell({
       {mobileOpen && (
         <div className="fixed inset-0 z-40 lg:hidden">
           <div className="absolute inset-0 bg-black/40" onClick={closeMobile} />
-          <aside className="relative flex h-full w-72 flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground">
+          <aside className="relative flex h-full w-[15.5rem] flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground">
             <button
               type="button"
               className="absolute right-4 top-4 text-sidebar-foreground/70 hover:text-sidebar-foreground"
@@ -226,7 +226,7 @@ function SidebarContent({
         <form action={signOut}>
           <button
             type="submit"
-            className="flex w-full items-center gap-3 rounded-sm px-3 py-2 text-sm font-medium text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+            className="flex w-full items-center gap-3 rounded-sm px-3 py-2.5 text-[0.95rem] tracking-wide text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
           >
             <LogOut className="h-4 w-4 shrink-0 text-sidebar-foreground/70" />
             Sign out

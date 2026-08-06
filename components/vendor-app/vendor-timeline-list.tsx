@@ -13,7 +13,7 @@ export function VendorTimelineList({ eventsWithTimeline }: { eventsWithTimeline:
 
   if (withEntries.length === 0) {
     return (
-      <div className="rounded-xl border border-dashed border-border py-16 text-center">
+      <div className="rounded-sm border border-dashed border-border py-16 text-center">
         <Clock className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
         <p className="text-sm font-medium text-foreground">No run-of-show items yet</p>
         <p className="text-xs text-muted-foreground mt-1 max-w-sm mx-auto">
@@ -39,7 +39,7 @@ export function VendorTimelineList({ eventsWithTimeline }: { eventsWithTimeline:
           </div>
           <div className="space-y-2">
             {ev.entries.map((entry) => (
-              <div key={entry.id} className="flex gap-4 rounded-xl border border-border bg-card px-4 py-3">
+              <div key={entry.id} className="flex gap-4 rounded-sm border border-border bg-card px-4 py-3">
                 <div className="w-16 shrink-0 text-xs font-medium text-muted-foreground pt-0.5">
                   {entry.time ? formatTime(entry.time) : "—"}
                 </div>

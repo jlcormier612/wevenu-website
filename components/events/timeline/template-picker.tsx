@@ -114,7 +114,7 @@ export function TemplatePicker({
               key={template.id}
               type="button"
               onClick={() => setSelectedId(template.id)}
-              className={`w-full rounded-xl border p-4 text-left transition-colors ${
+              className={`w-full rounded-sm border p-4 text-left transition-colors ${
                 selectedId === template.id
                   ? "border-primary bg-primary/5"
                   : "border-border hover:border-primary/40 hover:bg-muted/40"

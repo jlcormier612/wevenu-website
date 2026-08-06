@@ -202,7 +202,7 @@ export function BookingDocumentsTab({
           {vendorDocuments.length === 0 ? (
             <p className="py-4 text-center text-sm text-muted-foreground">No vendor documents yet.</p>
           ) : (
-            <div className="divide-y divide-border rounded-xl border border-border">
+            <div className="divide-y divide-border rounded-sm border border-border">
               {vendorDocuments.map((d) => (
                 <a
                   key={d.id}

@@ -94,7 +94,7 @@ function WorkspaceChecklist({ eventId, invited }: { eventId?: string | null; inv
 
   return (
     <div
-      className="rounded-xl border px-6 py-5 text-left"
+      className="rounded-sm border px-6 py-5 text-left"
       style={{ borderColor: "#D8A7AA40", background: "#FDF8F8" }}
     >
       <p className="mb-4 text-xs font-medium uppercase tracking-widest" style={{ color: "#9ca3af" }}>

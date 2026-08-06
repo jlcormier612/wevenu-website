@@ -209,7 +209,7 @@ function ContactFormPanel({
   const set = <K extends keyof ContactForm>(k: K, v: ContactForm[K]) => setF(p => ({ ...p, [k]: v }));
 
   return (
-    <div className="rounded-xl border border-ring bg-card p-4 space-y-4">
+    <div className="rounded-sm border border-ring bg-card p-4 space-y-4">
       <div className="grid gap-3 sm:grid-cols-2">
         <div className="space-y-1.5">
           <Label className="text-xs">First name *</Label>
@@ -346,7 +346,7 @@ export function ClientContactsTab({
       {/* Primary couple — read-only display */}
       <div>
         <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground mb-2">Primary Contacts</p>
-        <div className="rounded-xl border border-border bg-card divide-y divide-border/50">
+        <div className="rounded-sm border border-border bg-card divide-y divide-border/50">
           {primaryPeople.map((person, i) => (
             <div key={i} className="flex items-start gap-3 py-3 px-4">
               <div className="flex-1 min-w-0 space-y-1">
@@ -372,7 +372,7 @@ export function ClientContactsTab({
           Additional People {contacts.length > 0 && `(${contacts.length})`}
         </p>
         {contacts.length === 0 && !showAdd ? (
-          <div className="rounded-xl border border-dashed border-border py-8 text-center space-y-2">
+          <div className="rounded-sm border border-dashed border-border py-8 text-center space-y-2">
             <p className="text-sm font-medium text-heading">No additional contacts yet</p>
             <p className="text-xs text-muted-foreground max-w-xs mx-auto">
               Add parents, wedding party, planners, or anyone else involved in this event.
@@ -380,7 +380,7 @@ export function ClientContactsTab({
             </p>
           </div>
         ) : (
-          <div className="rounded-xl border border-border bg-card px-4">
+          <div className="rounded-sm border border-border bg-card px-4">
             {contacts.map(contact => (
               editingId === contact.id ? (
                 <div key={contact.id} className="py-3 border-b border-border/50 last:border-0">
@@ -429,7 +429,7 @@ export function ClientContactsTab({
       </div>
 
       {/* Principle note */}
-      <div className="rounded-xl border border-border/50 bg-muted/20 p-3 space-y-1">
+      <div className="rounded-sm border border-border/50 bg-muted/20 p-3 space-y-1">
         <p className="text-[11px] font-semibold text-muted-foreground">Portal access ≠ Messaging access</p>
         <p className="text-[11px] text-muted-foreground leading-relaxed">
           Portal access controls what each person can see and do in their planning workspace.

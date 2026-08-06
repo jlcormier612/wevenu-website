@@ -30,7 +30,7 @@ function Card({ icon: Icon, title, href, count, children }: {
   icon: React.ElementType; title: string; href: string; count: number; children: React.ReactNode;
 }) {
   return (
-    <div className="rounded-xl border border-border bg-card overflow-hidden">
+    <div className="rounded-sm border border-border bg-card overflow-hidden">
       <div className="flex items-center justify-between px-4 py-3 border-b border-border/60">
         <h2 className="flex items-center gap-2 text-sm font-semibold text-foreground">
           <Icon className="h-4 w-4 text-muted-foreground" /> {title}
@@ -88,8 +88,8 @@ export function VendorHome({ greetingName, data, briefing, showLuvIntro, activeV
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-foreground">{greetingWord()}, {greetingName}.</h1>
-        <p className="text-sm text-muted-foreground mt-0.5">
+        <h1 className="font-heading text-3xl font-medium tracking-tight text-heading">{greetingWord()}, {greetingName}.</h1>
+        <p className="text-[0.95rem] text-muted-foreground mt-0.5">
           {new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}
         </p>
       </div>
@@ -102,7 +102,7 @@ export function VendorHome({ greetingName, data, briefing, showLuvIntro, activeV
       <VendorLuvBriefing briefing={briefing} compact />
 
       {nothingNeedsAttention && (
-        <div className="rounded-xl border border-dashed border-border py-8 text-center">
+        <div className="rounded-sm border border-dashed border-border py-8 text-center">
           <p className="text-sm font-medium text-foreground">Nothing needs your attention today</p>
           <p className="text-xs text-muted-foreground mt-1">You&apos;re all caught up.</p>
         </div>

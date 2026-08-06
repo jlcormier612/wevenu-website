@@ -129,7 +129,7 @@ export function DocumentCard({
 
   if (editing) {
     return (
-      <div className="rounded-xl border border-ring bg-card p-4 space-y-3">
+      <div className="rounded-sm border border-ring bg-card p-4 space-y-3">
         <div className="grid gap-3 sm:grid-cols-2">
           <div className="space-y-1.5">
             <Label className="text-xs">Document name</Label>
@@ -168,7 +168,7 @@ export function DocumentCard({
   }
 
   return (
-    <div className="group flex gap-4 rounded-xl border border-border bg-card p-4 hover:bg-muted/20 transition-colors">
+    <div className="group flex gap-4 rounded-sm border border-border bg-card p-4 hover:bg-muted/20 transition-colors">
       {/* Thumbnail / icon */}
       {isImage ? (
         <button

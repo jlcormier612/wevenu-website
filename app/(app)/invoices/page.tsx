@@ -47,7 +47,7 @@ export default async function InvoicesPage({ searchParams }: Props) {
       <FilterBar placeholder="Search by invoice number…" statusOptions={INVOICE_SORT_OPTIONS} statusParam="sort" />
 
       {sorted.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-border py-16 text-center">
+        <div className="rounded-sm border border-dashed border-border py-16 text-center">
           <p className="text-sm font-medium text-heading">No invoices yet</p>
           <p className="text-xs text-muted-foreground mt-1">Create your first invoice to track amounts owed.</p>
           <Button type="button" size="sm" className="mt-4" render={<Link href="/invoices/new" />}>
@@ -58,7 +58,7 @@ export default async function InvoicesPage({ searchParams }: Props) {
         <div className="space-y-3">
           {sorted.map((inv) => (
             <Link key={inv.id} href={`/invoices/${inv.id}`}
-              className="block rounded-xl border border-border bg-card p-5 hover:bg-muted/30 transition-colors">
+              className="block rounded-sm border border-border bg-card p-5 hover:bg-muted/30 transition-colors">
               <div className="flex items-start justify-between gap-4">
                 <div className="space-y-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">

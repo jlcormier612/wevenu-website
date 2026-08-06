@@ -6,6 +6,16 @@ This is a sibling Next.js app to `marketing/` — not bolted into the public sit
 
 ## How to run
 
+**Stable (recommended — survives Cursor agent shells closing):**
+
+```bash
+# from repo root
+npm run dev:workspace:detach
+# log: /tmp/wevenu-workspace-dev.log
+```
+
+**Foreground (your own Terminal.app / iTerm only):**
+
 ```bash
 cd workspace
 npm install
@@ -14,15 +24,7 @@ npm run dev
 
 Open [http://localhost:3002](http://localhost:3002).
 
-> Keep this running in your own terminal — servers started by the AI agent may stop when the agent session ends.
-
-From the repo root you can also use:
-
-```bash
-npm run dev:workspace
-```
-
-(after the root `package.json` script is present)
+> **Do not rely on agent-started `npm run dev`.** Those shells exit when the agent turn ends (`exit_code: unknown`), which kills CRM and shows `ERR_CONNECTION_REFUSED`. Venue (:3000) and marketing (:3001) stay up because they were started detached (PPID 1). Use `npm run dev:workspace:detach` or keep a normal terminal open.
 
 ## Sales vs Customer Success (navigation)
 

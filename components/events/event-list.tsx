@@ -90,7 +90,7 @@ export function EventList({ events }: { events: VenueEvent[] }) {
       </div>
 
       {events.length === 0 && (
-        <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border bg-card/40 py-16 text-center">
+        <div className="flex flex-col items-center justify-center rounded-sm border border-dashed border-border bg-card/40 py-16 text-center">
           <p className="font-heading text-lg font-medium text-heading">No events yet</p>
           <p className="mt-1 mb-4 text-sm text-muted-foreground">
             Create an event to build the workspace for a booked date.
@@ -103,14 +103,14 @@ export function EventList({ events }: { events: VenueEvent[] }) {
       )}
 
       {events.length > 0 && filtered.length === 0 && (
-        <div className="rounded-xl border border-dashed border-border py-10 text-center">
+        <div className="rounded-sm border border-dashed border-border py-10 text-center">
           <p className="text-sm text-muted-foreground">No events match your filters.</p>
           <Button variant="link" size="sm" className="mt-1" onClick={() => { setQuery(""); setFilter("all"); }}>Clear filters</Button>
         </div>
       )}
 
       {filtered.length > 0 && (
-        <div className="rounded-xl border border-border bg-card">
+        <div className="rounded-sm border border-border bg-card">
           <Table>
             <TableHeader>
               <TableRow>

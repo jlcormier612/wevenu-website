@@ -97,7 +97,7 @@ export function VenueSeatingEditor({ eventId, floorPlanId, coupleName }: {
   if (loading) return <div className="py-10 text-center text-sm text-muted-foreground">Loading…</div>;
   if (!data || !data.isDelegated) {
     return (
-      <div className="rounded-xl border border-dashed border-border py-10 text-center">
+      <div className="rounded-sm border border-dashed border-border py-10 text-center">
         <p className="text-sm text-muted-foreground">This plan isn&apos;t currently delegated — nothing to manage here.</p>
       </div>
     );
@@ -105,7 +105,7 @@ export function VenueSeatingEditor({ eventId, floorPlanId, coupleName }: {
 
   return (
     <div className="space-y-5">
-      <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 flex flex-wrap items-center justify-between gap-3">
+      <div className="rounded-sm border border-amber-200 bg-amber-50 px-4 py-3 flex flex-wrap items-center justify-between gap-3">
         <p className="text-sm text-amber-900">✋ Managing seating on behalf of {coupleName}</p>
         <Button type="button" size="sm" variant="outline" disabled={revoking} onClick={revoke}>
           {revoking ? "Handing back…" : "Hand Back to Couple"}
@@ -122,7 +122,7 @@ export function VenueSeatingEditor({ eventId, floorPlanId, coupleName }: {
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2">
-        <div className="rounded-xl border border-border bg-card p-4 space-y-2">
+        <div className="rounded-sm border border-border bg-card p-4 space-y-2">
           <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
             Unseated ({data.unassignedGuests.length + data.needsReassignment.length})
           </p>
@@ -152,7 +152,7 @@ export function VenueSeatingEditor({ eventId, floorPlanId, coupleName }: {
           )}
         </div>
 
-        <div className="rounded-xl border border-border bg-card p-4 space-y-3">
+        <div className="rounded-sm border border-border bg-card p-4 space-y-3">
           <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Tables</p>
           {data.tables.map((t) => (
             <div key={t.id} className="space-y-1">

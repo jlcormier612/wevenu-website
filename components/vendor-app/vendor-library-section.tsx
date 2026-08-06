@@ -102,7 +102,7 @@ export function VendorLibrarySection({
       </div>
 
       {showUpload && (
-        <div className="rounded-xl border border-border bg-card p-4 space-y-3">
+        <div className="rounded-sm border border-border bg-card p-4 space-y-3">
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="space-y-1.5">
               <Label className="text-xs">Display name</Label>
@@ -144,12 +144,12 @@ export function VendorLibrarySection({
       )}
 
       {docs.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-border py-10 text-center">
+        <div className="rounded-sm border border-dashed border-border py-10 text-center">
           <FileText className="h-7 w-7 mx-auto mb-2 text-muted-foreground" />
           <p className="text-sm text-muted-foreground">No library documents yet.</p>
         </div>
       ) : (
-        <div className="rounded-xl border border-border bg-card divide-y divide-border">
+        <div className="rounded-sm border border-border bg-card divide-y divide-border">
           {docs.map((d) => (
             <div key={d.id} className="flex items-center gap-3 px-4 py-3">
               <FileText className="h-4 w-4 text-muted-foreground shrink-0" />

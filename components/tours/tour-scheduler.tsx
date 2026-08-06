@@ -115,7 +115,7 @@ function TimeSlots({ slots, selectedSlot, onSelect, primaryColor = SAGE }: { slo
         const isSel = selectedSlot?.start === slot.start;
         return (
           <button key={slot.start} type="button" onClick={() => onSelect(slot)}
-            className="rounded-xl border py-3 text-sm font-medium transition-colors"
+            className="rounded-sm border py-3 text-sm font-medium transition-colors"
             style={isSel ? { background: primaryColor, borderColor: primaryColor, color: "white" } : { borderColor: "#DED6CA", color: "#333" }}>
             <Clock className="h-3.5 w-3.5 inline mr-1 opacity-60" />
             {slot.time}
@@ -257,7 +257,7 @@ function Confirmation({ venueName, scheduledAt, duration, venuePhone, venueEmail
       </div>
 
       {/* Tour details card */}
-      <div className="rounded-xl border border-border bg-muted/30 p-5 text-left space-y-2 max-w-xs mx-auto">
+      <div className="rounded-sm border border-border bg-muted/30 p-5 text-left space-y-2 max-w-xs mx-auto">
         <p className="text-sm font-semibold text-heading">{venueName}</p>
         <p className="text-sm text-muted-foreground">📅 {formatReadable(scheduledAt.slice(0, 10))}</p>
         <p className="text-sm text-muted-foreground">🕐 {formatTime(scheduledAt)} · {duration} minutes</p>
@@ -269,12 +269,12 @@ function Confirmation({ venueName, scheduledAt, duration, venuePhone, venueEmail
       {/* Calendar links */}
       <div className="flex items-center justify-center gap-3 flex-wrap">
         <a href={gcalUrl} target="_blank" rel="noopener noreferrer"
-          className="inline-flex items-center gap-1.5 text-sm font-medium px-4 py-2 rounded-xl border transition-colors hover:opacity-80"
+          className="inline-flex items-center gap-1.5 text-sm font-medium px-4 py-2 rounded-sm border transition-colors hover:opacity-80"
           style={{ borderColor: primaryColor, color: primaryColor, background: `color-mix(in srgb, ${primaryColor} 6%, transparent)` }}>
           📅 Add to Google Calendar
         </a>
         <a href={icsUrl} download="tour.ics"
-          className="inline-flex items-center gap-1.5 text-sm font-medium px-4 py-2 rounded-xl border transition-colors hover:opacity-80"
+          className="inline-flex items-center gap-1.5 text-sm font-medium px-4 py-2 rounded-sm border transition-colors hover:opacity-80"
           style={{ borderColor: "#B8AEA1", color: "#5A5550", background: "#F5F4F2" }}>
           📥 Download .ics
         </a>
@@ -389,7 +389,7 @@ export function TourScheduler({ tourKey, venue }: { tourKey: string; venue: Tour
         {step === "calendar" && (
           <>
             {/* Calendar */}
-            <div className="rounded-2xl border border-border bg-card p-5">
+            <div className="rounded-sm border border-border bg-card p-5">
               {loadingSlots ? (
                 <div className="flex items-center justify-center py-8"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>
               ) : (
@@ -402,7 +402,7 @@ export function TourScheduler({ tourKey, venue }: { tourKey: string; venue: Tour
 
             {/* Time slots */}
             {selectedDate && (
-              <div className="rounded-2xl border border-border bg-card p-5 space-y-3">
+              <div className="rounded-sm border border-border bg-card p-5 space-y-3">
                 <p className="text-sm font-semibold text-heading">{formatReadable(selectedDate)}</p>
                 <TimeSlots slots={slotsForDate} selectedSlot={selectedSlot} onSelect={handleSlotSelect} primaryColor={venue.primaryColor} />
               </div>
@@ -417,7 +417,7 @@ export function TourScheduler({ tourKey, venue }: { tourKey: string; venue: Tour
         )}
 
         {step === "form" && selectedSlot && (
-          <div className="rounded-2xl border border-border bg-card p-5 space-y-4">
+          <div className="rounded-sm border border-border bg-card p-5 space-y-4">
             <div>
               <button type="button" onClick={() => setStep("calendar")} className="text-xs text-muted-foreground hover:text-foreground mb-3 flex items-center gap-1">
                 <ChevronLeft className="h-3.5 w-3.5" /> Back

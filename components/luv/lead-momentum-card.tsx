@@ -24,7 +24,7 @@ const DUSTY_ROSE = "#D8A7AA";
 function LuvCard({ children }: { children: React.ReactNode }) {
   return (
     <div
-      className="rounded-xl border p-4 space-y-3"
+      className="rounded-sm border p-4 space-y-3"
       style={{
         borderColor: `${DUSTY_ROSE}30`,
         background: `color-mix(in oklch, ${DUSTY_ROSE} 4%, var(--card))`,

@@ -203,7 +203,7 @@ function OverviewTab({
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
       {/* Assignment info */}
       <div
-        className={`rounded-xl border bg-card p-4 space-y-3 ${
+        className={`rounded-sm border bg-card p-4 space-y-3 ${
           emphasizeCheckin ? "border-primary/50 ring-2 ring-primary/25" : "border-border"
         }`}
       >
@@ -281,7 +281,7 @@ function OverviewTab({
       </div>
 
       {/* Venue + client */}
-      <div className="rounded-xl border border-border bg-card p-4 space-y-3">
+      <div className="rounded-sm border border-border bg-card p-4 space-y-3">
         <h2 className="text-sm font-semibold text-foreground">Venue & Client</h2>
         <div className="space-y-2 text-sm">
           <p className="font-medium text-foreground">{detail.venueName}</p>
@@ -306,7 +306,7 @@ function OverviewTab({
           Hello to Cheers; no paid/pending status is shown here. Hidden when
           the venue hasn't set a fee. */}
       {detail.agreedFee != null && (
-        <div className="rounded-xl border border-border bg-card p-4 space-y-2 sm:col-span-2">
+        <div className="rounded-sm border border-border bg-card p-4 space-y-2 sm:col-span-2">
           <h2 className="text-sm font-semibold text-foreground">Agreed fee</h2>
           <p className="text-2xl font-semibold text-foreground">${detail.agreedFee.toLocaleString()}</p>
           <p className="text-xs text-muted-foreground">
@@ -319,7 +319,7 @@ function OverviewTab({
           (Phase 5: an event has too little activity to justify its own
           destination; it belongs with everything else about the event). */}
       {detail.activityFeed.length > 0 && (
-        <div className="rounded-xl border border-border bg-card p-4 space-y-2 sm:col-span-2">
+        <div className="rounded-sm border border-border bg-card p-4 space-y-2 sm:col-span-2">
           <h2 className="text-sm font-semibold text-foreground">Recent Activity</h2>
           <div className="space-y-2">
             {detail.activityFeed.slice(0, 5).map((item) => (
@@ -340,7 +340,7 @@ function OverviewTab({
 function TimelineTab({ detail }: { detail: VendorEventDetail }) {
   if (detail.timeline.length === 0) {
     return (
-      <div className="rounded-xl border border-dashed border-border py-12 text-center">
+      <div className="rounded-sm border border-dashed border-border py-12 text-center">
         <p className="text-sm font-medium text-foreground">No run-of-show items yet</p>
         <p className="text-xs text-muted-foreground mt-1 max-w-sm mx-auto">
           The venue shares day-of timing with vendors when they are ready.
@@ -352,7 +352,7 @@ function TimelineTab({ detail }: { detail: VendorEventDetail }) {
   return (
     <div className="space-y-2">
       {detail.timeline.map((entry) => (
-        <div key={entry.id} className="flex gap-4 rounded-xl border border-border bg-card px-4 py-3">
+        <div key={entry.id} className="flex gap-4 rounded-sm border border-border bg-card px-4 py-3">
           <div className="w-16 shrink-0 text-xs font-medium text-muted-foreground pt-0.5">
             {entry.time ? formatTime(entry.time) : "—"}
           </div>
@@ -417,7 +417,7 @@ function TasksTab({
       {detail.eventTasks.length > 0 && (
         <div className="space-y-2">
           <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Assigned by Venue</h3>
-          <div className="rounded-xl border border-border bg-card divide-y divide-border">
+          <div className="rounded-sm border border-border bg-card divide-y divide-border">
             {detail.eventTasks.map((t) => (
               <div
                 key={t.id}
@@ -460,7 +460,7 @@ function TasksTab({
       <div className="space-y-2">
         <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Personal Tasks</h3>
         {detail.personalTasks.length > 0 ? (
-          <div className="rounded-xl border border-border bg-card divide-y divide-border">
+          <div className="rounded-sm border border-border bg-card divide-y divide-border">
             {detail.personalTasks.map((t) => (
               <div
                 key={t.id}
@@ -551,7 +551,7 @@ function MessagesTab({ detail }: { detail: VendorEventDetail }) {
   }
   if (!threads.length || !activeId) {
     return (
-      <div className="rounded-xl border border-dashed border-border py-12 text-center">
+      <div className="rounded-sm border border-dashed border-border py-12 text-center">
         <p className="text-sm font-medium text-foreground">Messages</p>
         <p className="text-xs text-muted-foreground mt-1">No conversation for this event yet.</p>
       </div>
@@ -636,7 +636,7 @@ function DocumentsTab({
     <div className="space-y-6">
       <div
         ref={fromVenueRef}
-        className={`space-y-2 rounded-xl p-1 -m-1 ${
+        className={`space-y-2 rounded-sm p-1 -m-1 ${
           highlight ? "ring-2 ring-primary/25 bg-primary/5" : ""
         }`}
       >
@@ -645,12 +645,12 @@ function DocumentsTab({
           <p className="text-[11px] font-medium text-primary">Shared documents for this event</p>
         )}
         {!loading && !hasDocuments && !hasPlans ? (
-          <div className="rounded-xl border border-dashed border-border py-10 text-center">
+          <div className="rounded-sm border border-dashed border-border py-10 text-center">
             <FileText className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
             <p className="text-sm text-muted-foreground">No documents or floor plans shared for this event yet.</p>
           </div>
         ) : (
-          <div className="rounded-xl border border-border bg-card divide-y divide-border">
+          <div className="rounded-sm border border-border bg-card divide-y divide-border">
             {detail.documents.map((d, idx) => (
               <a
                 key={d.id}
@@ -710,7 +710,7 @@ function VenueInfoTab({ detail }: { detail: VendorEventDetail }) {
   }
   if (!handbook) {
     return (
-      <div className="rounded-xl border border-dashed border-border py-12 text-center">
+      <div className="rounded-sm border border-dashed border-border py-12 text-center">
         <p className="text-sm text-muted-foreground">Venue information isn&apos;t available for this event.</p>
       </div>
     );
@@ -734,7 +734,7 @@ function NotesTab({ detail }: { detail: VendorEventDetail }) {
     <div className="space-y-3">
       <p className="text-xs text-muted-foreground">Private notes visible only to you, not the venue.</p>
       <textarea
-        className="w-full rounded-xl border border-border bg-card px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring min-h-[200px] resize-none"
+        className="w-full rounded-sm border border-border bg-card px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring min-h-[200px] resize-none"
         placeholder="Add your private notes for this event…"
         value={notes}
         onChange={(e) => { setNotes(e.target.value); setEdited(true); }}

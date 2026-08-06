@@ -55,7 +55,7 @@ function initials(name: string | null): string {
 
 function StatTile({ label, value }: { label: string; value: number }) {
   return (
-    <div className="rounded-xl border border-border bg-card px-4 py-3">
+    <div className="rounded-sm border border-border bg-card px-4 py-3">
       <p className="text-2xl font-semibold text-heading">{value}</p>
       <p className="text-xs text-muted-foreground">{label}</p>
     </div>
@@ -161,8 +161,8 @@ export function ConversationInbox({ teamMembers = [] }: { teamMembers?: StaffMem
     <div className="space-y-4">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <h1 className="font-heading text-2xl font-medium text-heading">Inbox</h1>
-          <p className="text-sm text-muted-foreground">Every conversation with a lead or booked client, in one place.</p>
+          <h1 className="font-heading text-3xl font-medium text-heading">Inbox</h1>
+          <p className="text-[0.95rem] text-muted-foreground">Every conversation with a lead or booked client, in one place.</p>
         </div>
         <Link href="/messaging/health" className="shrink-0 text-xs text-muted-foreground hover:text-foreground hover:underline">
           Communication Health →
@@ -210,7 +210,7 @@ export function ConversationInbox({ teamMembers = [] }: { teamMembers?: StaffMem
         </select>
       </div>
 
-      <div className="rounded-xl border border-border bg-card overflow-hidden" style={{ height: "calc(100vh - 320px)" }}>
+      <div className="rounded-sm border border-border bg-card overflow-hidden" style={{ height: "calc(100vh - 320px)" }}>
         <div className="flex h-full">
           <div className={`w-full md:w-80 shrink-0 border-r border-border/60 overflow-y-auto ${activeId ? "hidden md:block" : ""}`}>
             {items === null ? (

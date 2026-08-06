@@ -39,7 +39,7 @@ export function MomentumWidget({
 
   return (
     <div
-      className="rounded-xl border p-5 space-y-4"
+      className="rounded-sm border p-5 space-y-4"
       style={{
         borderColor: `${DUSTY_ROSE}25`,
         background: `color-mix(in oklch, ${DUSTY_ROSE} 3%, var(--card))`,

@@ -127,7 +127,7 @@ export function NotificationPreferencesSection({
           <p className="text-sm font-semibold text-heading">In-app notifications</p>
           <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-semibold text-primary">Active</span>
         </div>
-        <div className="divide-y divide-border rounded-xl border border-border overflow-hidden">
+        <div className="divide-y divide-border rounded-sm border border-border overflow-hidden">
           {PREF_ROWS.map(row => (
             <div key={row.key} className="flex items-center gap-4 px-4 py-3.5 bg-card">
               <span className="text-xl shrink-0 w-7 text-center">{row.emoji}</span>
@@ -155,7 +155,7 @@ export function NotificationPreferencesSection({
             Planned
           </span>
         </div>
-        <div className="rounded-xl border border-dashed border-border bg-muted/10 px-4 py-3.5 flex flex-wrap items-center gap-x-5 gap-y-2">
+        <div className="rounded-sm border border-dashed border-border bg-muted/10 px-4 py-3.5 flex flex-wrap items-center gap-x-5 gap-y-2">
           {[
             { icon: Mail,       label: "Email" },
             { icon: Smartphone, label: "SMS" },

@@ -45,7 +45,7 @@ export function VendorEventsList({ events }: { events: VendorEventListItem[] }) 
       <h1 className="text-xl font-bold text-foreground">Events</h1>
 
       {events.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-border py-14 text-center">
+        <div className="rounded-sm border border-dashed border-border py-14 text-center">
           <CalendarDays className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
           <p className="text-sm font-medium text-foreground">No events yet</p>
           <p className="text-xs mt-1 text-muted-foreground max-w-xs mx-auto">
@@ -57,7 +57,7 @@ export function VendorEventsList({ events }: { events: VendorEventListItem[] }) 
           {upcoming.length > 0 && (
             <div className="space-y-2">
               <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Upcoming</h2>
-              <div className="rounded-xl border border-border bg-card divide-y divide-border">
+              <div className="rounded-sm border border-border bg-card divide-y divide-border">
                 {upcoming.map(renderRow)}
               </div>
             </div>
@@ -65,7 +65,7 @@ export function VendorEventsList({ events }: { events: VendorEventListItem[] }) 
           {past.length > 0 && (
             <div className="space-y-2">
               <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Past</h2>
-              <div className="rounded-xl border border-border bg-card divide-y divide-border">
+              <div className="rounded-sm border border-border bg-card divide-y divide-border">
                 {past.map(renderRow)}
               </div>
             </div>

@@ -179,7 +179,7 @@ function TimelineEntryRow({
       onDragStart={onDragStart}
       onDragEnd={onDragEnd}
       className={cn(
-        "group flex items-start gap-2 rounded-xl border bg-card p-3 transition-colors",
+        "group flex items-start gap-2 rounded-sm border bg-card p-3 transition-colors",
         isDragOver ? "border-primary bg-primary/5" : "border-border hover:border-border/80",
         entry.status === "complete" && "opacity-70",
       )}
@@ -357,7 +357,7 @@ function TimelineSectionBlock({
 
   return (
     <div
-      className={cn("space-y-2 rounded-xl p-2 transition-colors", sectionDragOver && "bg-primary/5")}
+      className={cn("space-y-2 rounded-sm p-2 transition-colors", sectionDragOver && "bg-primary/5")}
       onDragOver={onSectionDragOver}
       onDrop={onSectionDrop}
     >
@@ -807,7 +807,7 @@ export function TimelineView({
             onApplied={() => router.refresh()}
           />
         </div>
-        <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border bg-card/40 py-16 text-center">
+        <div className="flex flex-col items-center justify-center rounded-sm border border-dashed border-border bg-card/40 py-16 text-center">
           <span className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-muted text-muted-foreground">
             <Clock className="h-5 w-5" />
           </span>

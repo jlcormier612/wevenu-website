@@ -38,7 +38,7 @@ export default async function SuccessLibraryArticlePage({ params }: Props) {
         <h1 className="text-xl font-bold text-foreground mt-1">{article.title}</h1>
       </div>
 
-      <div className="rounded-xl border border-border bg-card p-5 space-y-5">
+      <div className="rounded-sm border border-border bg-card p-5 space-y-5">
         <Section title="Why this matters" body={article.whyItMatters} />
         <Section title="When to use it" body={article.whenToUse} />
         <Section title="Best practices" body={article.bestPractices} />
@@ -50,7 +50,7 @@ export default async function SuccessLibraryArticlePage({ params }: Props) {
           <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Go do it</p>
           <div className="flex flex-wrap gap-2">
             {article.relatedFeatures.map((f) => (
-              <Link key={f.href} href={f.href} className="inline-flex items-center rounded-xl bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground hover:opacity-90 transition-opacity">
+              <Link key={f.href} href={f.href} className="inline-flex items-center rounded-sm bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground hover:opacity-90 transition-opacity">
                 {f.label} →
               </Link>
             ))}

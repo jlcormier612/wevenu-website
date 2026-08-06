@@ -23,7 +23,7 @@ function FaqForm({
   const [form, setForm] = React.useState<VendorFaqInput>(initial);
 
   return (
-    <div className="rounded-xl border border-primary/30 bg-card p-4 space-y-3">
+    <div className="rounded-sm border border-primary/30 bg-card p-4 space-y-3">
       <div className="space-y-1.5">
         <Label htmlFor="faq-question">Question <span className="text-destructive">*</span></Label>
         <Input id="faq-question" value={form.question} onChange={(e) => setForm((p) => ({ ...p, question: e.target.value }))} placeholder="e.g. Do you travel outside the area?" />
@@ -95,7 +95,7 @@ export function VendorFaqsManager({ faqs: initial }: { faqs: VendorFaq[] }) {
   return (
     <div className="space-y-4">
       {faqs.length === 0 && !showAdd ? (
-        <div className="rounded-xl border border-dashed border-border py-12 text-center">
+        <div className="rounded-sm border border-dashed border-border py-12 text-center">
           <HelpCircle className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
           <p className="text-sm font-medium text-foreground">No FAQs yet</p>
           <p className="text-xs mt-1 text-muted-foreground mb-4">Answer the questions couples ask most.</p>
@@ -109,7 +109,7 @@ export function VendorFaqsManager({ faqs: initial }: { faqs: VendorFaq[] }) {
                 <FaqForm key={faq.id} initial={{ question: faq.question, answer: faq.answer }}
                   onSave={(input) => handleUpdate(faq.id, input)} onCancel={() => setEditingId(null)} saving={savingId === faq.id} />
               ) : (
-                <div key={faq.id} className="flex items-start gap-3 rounded-xl border border-border bg-card p-4">
+                <div key={faq.id} className="flex items-start gap-3 rounded-sm border border-border bg-card p-4">
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-foreground">{faq.question}</p>
                     <p className="text-xs text-muted-foreground mt-0.5">{faq.answer}</p>

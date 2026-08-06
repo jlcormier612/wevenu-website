@@ -53,7 +53,7 @@ function Bubble({ msg }: { msg: VendorConversationMessage }) {
   const isAutomated = msg.senderType === "system";
   return (
     <div className={`flex ${isVendor ? "justify-end" : "justify-start"}`}>
-      <div className={`max-w-[75%] rounded-2xl px-4 py-2.5 ${isVendor ? "bg-primary text-primary-foreground" : "bg-muted text-foreground"}`}>
+      <div className={`max-w-[75%] rounded-lg px-4 py-2.5 ${isVendor ? "bg-primary text-primary-foreground" : "bg-muted text-foreground"}`}>
         {isAutomated && (
           <div className="mb-1 flex items-center gap-1 text-[10px] opacity-75">
             <Bot className="h-3 w-3" /> Automated
@@ -160,7 +160,7 @@ export function VendorConversationThread({
   }
 
   return (
-    <div className={`flex min-h-0 flex-col overflow-hidden rounded-xl border border-border bg-card ${showHeader ? "h-full" : "h-[480px]"}`}>
+    <div className={`flex min-h-0 flex-col overflow-hidden rounded-sm border border-border bg-card ${showHeader ? "h-full" : "h-[480px]"}`}>
       {showHeader && (
         <div className="flex shrink-0 items-center gap-2 border-b border-border px-4 py-3">
           <Link href="/vendor/messages" className="text-muted-foreground hover:text-foreground">

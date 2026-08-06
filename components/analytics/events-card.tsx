@@ -6,7 +6,7 @@ import type { EventsMetrics } from "@/lib/analytics/types";
 
 function StatBox({ label, value, sub }: { label: string; value: string | number; sub?: string }) {
   return (
-    <div className="rounded-xl bg-muted/50 px-4 py-3">
+    <div className="rounded-sm bg-muted/50 px-4 py-3">
       <p className="text-[10px] text-muted-foreground uppercase tracking-wide mb-1">{label}</p>
       <p className="text-2xl font-bold text-heading tabular-nums">{value}</p>
       {sub && <p className="text-[11px] text-muted-foreground mt-0.5">{sub}</p>}

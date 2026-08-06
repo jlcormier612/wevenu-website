@@ -42,9 +42,9 @@ function StatCard({ icon: Icon, count, label, href, tone }: Stat) {
 
   return (
     <Link href={href} className="block">
-      <Card className={cn("transition-shadow hover:shadow-md", toneClass)}>
+      <Card className={cn("transition-colors", toneClass)}>
         <CardContent className="flex items-center gap-3 p-4">
-          <span className={cn("flex h-11 w-11 shrink-0 items-center justify-center rounded-xl", iconClass)}>
+          <span className={cn("flex h-11 w-11 shrink-0 items-center justify-center rounded-sm", iconClass)}>
             <Icon className="h-5 w-5" />
           </span>
           <div>

@@ -97,7 +97,7 @@ export function VendorEventSharePanel({
       </div>
 
       {open && (
-        <div className="rounded-xl border border-border bg-card p-4 space-y-3">
+        <div className="rounded-sm border border-border bg-card p-4 space-y-3">
           <div className="flex gap-2">
             <Button type="button" size="sm" variant={mode === "library" ? "default" : "outline"} onClick={() => setMode("library")}>
               From library
@@ -181,7 +181,7 @@ export function VendorEventSharePanel({
       {uploads.length === 0 ? (
         <p className="text-xs text-muted-foreground">Nothing shared with the venue on this event yet.</p>
       ) : (
-        <div className="rounded-xl border border-border bg-card divide-y divide-border">
+        <div className="rounded-sm border border-border bg-card divide-y divide-border">
           {uploads.map((d) => (
             <a
               key={d.id}

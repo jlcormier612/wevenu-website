@@ -107,7 +107,7 @@ export function VendorInquiryDetail({
         {/* Left: details */}
         <div className="space-y-5">
           {/* Status */}
-          <div className="rounded-xl border border-border bg-card p-4 space-y-3">
+          <div className="rounded-sm border border-border bg-card p-4 space-y-3">
             <h2 className="text-sm font-semibold text-foreground">Status</h2>
             <div className="flex flex-wrap gap-2">
               {INQUIRY_STATUSES.map((s) => (
@@ -134,7 +134,7 @@ export function VendorInquiryDetail({
           </div>
 
           {/* Notes */}
-          <div className="rounded-xl border border-border bg-card p-4 space-y-3">
+          <div className="rounded-sm border border-border bg-card p-4 space-y-3">
             <h2 className="text-sm font-semibold text-foreground">Notes</h2>
             <textarea
               className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring min-h-[120px] resize-none"
@@ -151,7 +151,7 @@ export function VendorInquiryDetail({
 
           {/* Follow-up */}
           {inquiry.followUpAt && (
-            <div className="rounded-xl border border-border bg-card p-4">
+            <div className="rounded-sm border border-border bg-card p-4">
               <h2 className="text-sm font-semibold text-foreground mb-1">Follow-up Scheduled</h2>
               <p className="text-sm text-muted-foreground">{formatDate(inquiry.followUpAt)}</p>
             </div>
@@ -160,7 +160,7 @@ export function VendorInquiryDetail({
 
         {/* Right: linked tasks */}
         <div className="space-y-5">
-          <div className="rounded-xl border border-border bg-card p-4 space-y-4">
+          <div className="rounded-sm border border-border bg-card p-4 space-y-4">
             <h2 className="text-sm font-semibold text-foreground">Tasks for this Inquiry</h2>
 
             {linkedTasks.length > 0 ? (

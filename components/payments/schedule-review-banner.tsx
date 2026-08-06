@@ -71,7 +71,7 @@ export function ScheduleReviewBanner({
   }
 
   return (
-    <div className="rounded-xl border border-border bg-muted/30 px-4 py-3 space-y-3">
+    <div className="rounded-sm border border-border bg-muted/30 px-4 py-3 space-y-3">
       <div>
         <p className="text-sm font-medium text-heading">This payment plan no longer matches the invoice.</p>
         <p className="text-xs text-muted-foreground">

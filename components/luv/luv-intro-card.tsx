@@ -28,7 +28,7 @@ export function LuvIntroCard({
   onDismiss: () => void;
 }) {
   return (
-    <div className="relative rounded-2xl border p-4 pr-10" style={{ borderColor: "#D8A7AA55", backgroundColor: "#D8A7AA0F" }}>
+    <div data-luv-intro-card className="relative rounded-2xl border p-4 pr-10" style={{ borderColor: "#D8A7AA55", backgroundColor: "#D8A7AA0F" }}>
       <button
         type="button"
         aria-label="Dismiss"

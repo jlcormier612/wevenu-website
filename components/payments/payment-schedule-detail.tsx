@@ -504,7 +504,7 @@ export function PaymentScheduleDetail({ schedule, invoice, currentUserRole }: { 
 
       {/* Invoice context banner */}
       {invoice && (
-        <div className="rounded-xl border border-primary/20 bg-primary/5 px-4 py-3">
+        <div className="rounded-sm border border-primary/20 bg-primary/5 px-4 py-3">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="space-y-0.5">
               <p className="text-xs font-semibold text-primary uppercase tracking-wide">Linked Invoice</p>
@@ -611,7 +611,7 @@ export function PaymentScheduleDetail({ schedule, invoice, currentUserRole }: { 
       {/* TR-M1: online payment collection isn't built yet — see docs/trust-risk-register.md */}
       <Card className="border-dashed border-muted-foreground/30">
         <CardContent className="py-6 flex items-center gap-4">
-          <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-muted text-muted-foreground">
+          <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-sm bg-muted text-muted-foreground">
             <CreditCard className="h-5 w-5" />
           </span>
           <div className="min-w-0 flex-1">

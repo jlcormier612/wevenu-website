@@ -136,7 +136,7 @@ export function NotificationBell() {
       {/* Panel */}
       {open && (
         <div
-          className="absolute right-0 top-full z-50 mt-1.5 w-[340px] overflow-hidden rounded-2xl border bg-background shadow-xl"
+          className="absolute right-0 top-full z-50 mt-1.5 w-[340px] overflow-hidden rounded-sm border bg-background"
           style={{ maxHeight: "min(500px, calc(100svh - 88px))" }}
         >
           {/* Header */}

@@ -54,7 +54,7 @@ function TemplateCard({
       tabIndex={0}
       onClick={() => router.push(`/library/timeline-templates/${template.id}`)}
       onKeyDown={(e) => { if (e.key === "Enter") router.push(`/library/timeline-templates/${template.id}`); }}
-      className={`group flex cursor-pointer flex-col gap-2 rounded-xl border border-border bg-card p-4 transition-colors hover:border-primary/40 hover:bg-muted/20 ${template.isArchived ? "opacity-60" : ""}`}
+      className={`group flex cursor-pointer flex-col gap-2 rounded-sm border border-border bg-card p-4 transition-colors hover:border-primary/40 hover:bg-muted/20 ${template.isArchived ? "opacity-60" : ""}`}
     >
       <div className="flex items-start justify-between gap-2">
         <p className="min-w-0 truncate text-sm font-medium text-heading">{template.name}</p>
@@ -143,7 +143,7 @@ export function TimelineTemplatesSection({
 
   if (templates.length === 0) {
     return (
-      <div className="rounded-xl border border-dashed border-border py-10 text-center space-y-3">
+      <div className="rounded-sm border border-dashed border-border py-10 text-center space-y-3">
         <Sparkles className="h-8 w-8 text-muted-foreground mx-auto" />
         <p className="text-sm font-medium text-heading">No timeline templates yet</p>
         <p className="text-xs text-muted-foreground">Reusable day-of schedules a venue builds once and applies to any booking.</p>

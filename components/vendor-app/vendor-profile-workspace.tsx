@@ -45,7 +45,7 @@ export function VendorProfileWorkspace({ profile, packages, faqs, availability, 
         <p className="text-sm text-muted-foreground mt-1">How venues see you in their Vendor Directory.</p>
       </div>
 
-      <div className="flex items-center gap-1 rounded-xl bg-muted/60 p-1 w-fit">
+      <div className="flex items-center gap-1 rounded-sm bg-muted/60 p-1 w-fit">
         {TABS.map((t) => (
           <button key={t.id} type="button" onClick={() => setTab(t.id)}
             className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-all ${

@@ -71,7 +71,7 @@ export function VendorMessagesInbox({ conversations }: { conversations: VendorCo
       </div>
 
       {conversations.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-border py-14 text-center">
+        <div className="rounded-sm border border-dashed border-border py-14 text-center">
           <p className="text-sm font-medium text-foreground">No conversations yet</p>
           <p className="text-xs text-muted-foreground mt-1">
             When a venue assigns you to an event, Venue and Couple conversations appear here.
@@ -79,18 +79,18 @@ export function VendorMessagesInbox({ conversations }: { conversations: VendorCo
         </div>
       ) : conversations.every((c) => c.contactUnread === 0) ? (
         <>
-          <div className="rounded-xl border border-dashed border-border py-6 text-center">
+          <div className="rounded-sm border border-dashed border-border py-6 text-center">
             <p className="text-sm font-medium text-foreground">You&apos;re all caught up</p>
             <p className="text-xs text-muted-foreground mt-1">No messages need a reply right now.</p>
           </div>
-          <div className="rounded-xl border border-border bg-card divide-y divide-border overflow-hidden">
+          <div className="rounded-sm border border-border bg-card divide-y divide-border overflow-hidden">
             {conversations.map((c) => (
               <InboxRow key={c.conversationId} c={c} />
             ))}
           </div>
         </>
       ) : (
-        <div className="rounded-xl border border-border bg-card divide-y divide-border overflow-hidden">
+        <div className="rounded-sm border border-border bg-card divide-y divide-border overflow-hidden">
           {conversations.map((c) => (
             <InboxRow key={c.conversationId} c={c} />
           ))}

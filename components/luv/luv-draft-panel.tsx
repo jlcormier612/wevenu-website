@@ -61,7 +61,7 @@ function DraftCard({
   }
 
   return (
-    <div className="rounded-xl border border-[#D8A7AA]/30 bg-[#D8A7AA]/5 p-4 space-y-3">
+    <div className="rounded-sm border border-[#D8A7AA]/30 bg-[#D8A7AA]/5 p-4 space-y-3">
       <div className="flex items-center gap-1.5">
         <LuvHeart size={12} />
         <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
@@ -220,7 +220,7 @@ export function LuvDraftPanel({
       />
 
       {/* Generate button */}
-      <div className="rounded-xl border border-[#D8A7AA]/25 bg-[#D8A7AA]/5 px-4 py-4">
+      <div className="rounded-sm border border-[#D8A7AA]/25 bg-[#D8A7AA]/5 px-4 py-4">
         <div className="flex items-start gap-3">
           <LuvHeart size={16} />
           <div className="space-y-1">

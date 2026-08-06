@@ -168,7 +168,7 @@ export function VendorNotificationBell({
       ? createPortal(
           <div
             ref={panelRef}
-            className="fixed z-50 w-[320px] overflow-hidden rounded-xl border border-border bg-card shadow-lg"
+            className="fixed z-50 w-[320px] overflow-hidden rounded-sm border border-border bg-card"
             style={{
               top: coords.top,
               left: coords.left,

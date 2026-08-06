@@ -95,7 +95,7 @@ export function ImageUpload({
       {/* Preview */}
       <div
         className={cn(
-          "relative flex items-center justify-center overflow-hidden rounded-xl border border-border bg-muted/40",
+          "relative flex items-center justify-center overflow-hidden rounded-sm border border-border bg-muted/40",
           aspectRatio,
           !aspectRatio && "h-40 w-40",
         )}

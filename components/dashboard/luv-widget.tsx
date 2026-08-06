@@ -46,7 +46,7 @@ function StoryCard({ obs }: { obs: LuvObservation }) {
   const emoji = STORY_EMOJI[obs.id] ?? "✨";
   return (
     <div
-      className="rounded-xl p-4 mb-4 space-y-2.5"
+      className="rounded-sm p-4 mb-4 space-y-2.5"
       style={{
         background: `color-mix(in oklch, ${DUSTY_ROSE} 8%, var(--card))`,
         border: `1px solid ${DUSTY_ROSE}30`,

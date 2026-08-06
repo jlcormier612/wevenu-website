@@ -120,7 +120,7 @@ export function FeedbackSheet({ children }: { children?: React.ReactNode }) {
         {children ?? (
           <button
             type="button"
-            className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm text-sidebar-foreground/70 transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+            className="flex w-full items-center gap-2.5 rounded-sm px-3 py-2.5 text-[0.95rem] font-medium tracking-wide text-sidebar-foreground/70 transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
           >
             <MessageCircle className="h-4 w-4 shrink-0" />
             <span>Give feedback</span>

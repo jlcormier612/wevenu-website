@@ -404,6 +404,30 @@ export function contrastText(hex: string): string {
  * the section; "light"/"neutral"/"photographic" only ever contribute the
  * scale-driven vertical rhythm, never a color change — restraint is the
  * point, not every section is a showcase.
+ *
+ * Whole-Page Visual Rhythm Pass (2026-08-05) — margin is applied as
+ * marginTop only, never marginBlock. The page renders these as `flex
+ * flex-col` siblings (wedding-website.tsx), and flex children never
+ * collapse adjacent margins the way normal block flow does — a feature
+ * section's own 7rem bottom margin was stacking with the next section's
+ * own top margin, producing a doubled, un-anchored gap between every pair
+ * of sections (confirmed empirically: ~224px between Event and Gallery,
+ * ~184px between Gallery and Schedule, both landing in the middle of a
+ * flat, same-color field with nothing to visually explain the gap). A
+ * single top margin, sized off the section that's about to begin, is the
+ * same rhythm intent without the accidental doubling.
+ *
+ * "neutral" canvas gets a restrained background wash — `colors.bg` mixed
+ * toward `colors.border` (the couple's own Color Story neutral/border
+ * token, already used elsewhere for dividers, e.g. PairedPassage) — so
+ * interlude-scale sections that aren't a full "soft"/"strong" moment can
+ * still read as a distinct passage instead of vanishing into the page's
+ * flat background. Deliberately NOT full-bleed (no `w-screen`/`vw`) —
+ * unlike "soft"/"strong" this stays inside the normal content column, both
+ * because a quiet tint shouldn't compete with a real color-field moment,
+ * and because the `vw`-based full-bleed technique is the confirmed cause of
+ * WW-PREVIEW-01 (separately tracked, not in scope for this pass) — giving
+ * two more sections that same full-bleed treatment would only spread it.
  */
 export function SectionCanvas({
   role, sparse, colors, children,
@@ -413,7 +437,7 @@ export function SectionCanvas({
    * assigned scale (e.g. one Things To Do item) — collapses to interlude
    * spacing so a thin section doesn't sit inside a huge empty band. */
   sparse?: boolean;
-  colors: { surface: string; secondary: string; accent: string };
+  colors: { surface: string; secondary: string; accent: string; bg?: string; border?: string };
   children: React.ReactNode;
 }) {
   if (!role) return <>{children}</>;
@@ -423,12 +447,20 @@ export function SectionCanvas({
   const isColorField = role.canvas === "soft" || role.canvas === "strong";
 
   if (!isColorField) {
-    return <div style={{ marginBlock: margin }}>{children}</div>;
+    const tint = role.canvas === "neutral" && colors.bg && colors.border
+      ? `color-mix(in srgb, ${colors.bg} 82%, ${colors.border} 18%)`
+      : undefined;
+    if (!tint) return <div style={{ marginTop: margin }}>{children}</div>;
+    return (
+      <div style={{ marginTop: margin, background: tint, borderRadius: "1.5rem", padding: "2.5rem 2rem" }}>
+        {children}
+      </div>
+    );
   }
 
   const background = role.canvas === "strong" ? (colors.secondary || colors.accent) : colors.surface;
   return (
-    <div style={{ marginBlock: margin }}>
+    <div style={{ marginTop: margin }}>
       <div className="relative left-1/2 right-1/2 -mx-[50vw] w-screen" style={{ background }}>
         <div className="max-w-5xl mx-auto px-6" style={{ paddingBlock: "4rem" }}>
           {children}

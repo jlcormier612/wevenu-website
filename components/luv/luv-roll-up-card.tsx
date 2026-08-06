@@ -76,7 +76,7 @@ function formatDate(iso: string): string {
 
 function QuadrantBlock({ q, text }: { q: Quadrant; text: string }) {
   return (
-    <div className="rounded-2xl p-4 space-y-2"
+    <div className="rounded-sm p-4 space-y-2"
       style={{ background: q.bg, border: `1px solid ${q.border}` }}>
       <div className="flex items-center gap-2">
         <span className="text-base leading-none">{q.emoji}</span>
@@ -96,7 +96,7 @@ function HistoryRow({ rollup, onView }: { rollup: LuvRollUp; onView: (r: LuvRoll
     <button
       type="button"
       onClick={() => onView(rollup)}
-      className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-muted/50 transition-colors text-left group">
+      className="w-full flex items-center gap-3 px-3 py-2.5 rounded-sm hover:bg-muted/50 transition-colors text-left group">
       <Clock className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
       <div className="flex-1 min-w-0">
         <p className="text-xs font-medium text-heading truncate">
@@ -115,7 +115,7 @@ function GeneratingSkeleton() {
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
       {QUADRANTS.map(q => (
-        <div key={q.key} className="rounded-2xl p-4 space-y-2 animate-pulse"
+        <div key={q.key} className="rounded-sm p-4 space-y-2 animate-pulse"
           style={{ background: q.bg, border: `1px solid ${q.border}` }}>
           <div className="flex items-center gap-2">
             <span className="text-base">{q.emoji}</span>
@@ -205,7 +205,7 @@ export function LuvRollUpCard() {
             type="button"
             onClick={generate}
             disabled={generating || loading}
-            className="flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-xl border border-border hover:bg-muted/50 transition-colors disabled:opacity-50 shrink-0">
+            className="flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-sm border border-border hover:bg-muted/50 transition-colors disabled:opacity-50 shrink-0">
             {generating
               ? <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Luv is thinking…</>
               : <><RefreshCw className="h-3.5 w-3.5" /> {current ? "Refresh" : "Generate Roll-Up"}</>
@@ -217,7 +217,7 @@ export function LuvRollUpCard() {
       <CardContent className="space-y-4 pt-0">
         {/* Error state */}
         {error && (
-          <div className="rounded-xl bg-red-50 border border-red-100 px-4 py-3 text-sm text-red-700">
+          <div className="rounded-sm bg-red-50 border border-red-100 px-4 py-3 text-sm text-red-700">
             {error}
           </div>
         )}
@@ -243,7 +243,7 @@ export function LuvRollUpCard() {
 
         {/* Empty state */}
         {!loading && !generating && !current && (
-          <div className="rounded-2xl border border-dashed border-border py-10 text-center space-y-3">
+          <div className="rounded-sm border border-dashed border-border py-10 text-center space-y-3">
             <span className="text-3xl block">💗</span>
             <p className="text-sm font-medium text-heading">Luv is ready to synthesize</p>
             <p className="text-xs text-muted-foreground max-w-xs mx-auto leading-relaxed">

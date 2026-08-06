@@ -30,7 +30,7 @@ function Row({ item, icon: Icon, tone }: { item: BriefingItem; icon: React.Eleme
   return (
     <Link
       href={item.link}
-      className="flex items-start gap-2.5 rounded-lg px-2 py-1.5 -mx-2 hover:bg-muted/50 transition-colors"
+      className="flex items-start gap-2.5 rounded-sm px-2 py-1.5 -mx-2 hover:bg-muted/50 transition-colors"
     >
       <Icon className={`h-3.5 w-3.5 shrink-0 mt-0.5 ${tone}`} />
       <div className="min-w-0 flex-1">

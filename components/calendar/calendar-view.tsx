@@ -120,7 +120,7 @@ function CalendarGrid({
         ))}
       </div>
       {/* Day cells */}
-      <div className="grid grid-cols-7 gap-px bg-border rounded-xl overflow-hidden border border-border">
+      <div className="grid grid-cols-7 gap-px bg-border rounded-sm overflow-hidden border border-border">
         {cells.map((cell, i) =>
           cell === null ? (
             <div key={i} className="bg-muted/20 min-h-[72px]" />
@@ -464,7 +464,7 @@ export function CalendarView({
           "Block" is now one type among several, not the primary concept;
           neutral styling, not the old alarm-red treatment). */}
       {showBlockForm && (
-        <div className="rounded-xl border border-border bg-muted/20 p-4 space-y-3">
+        <div className="rounded-sm border border-border bg-muted/20 p-4 space-y-3">
           <p className="text-sm font-medium text-heading">Add Schedule Item</p>
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="space-y-1.5">

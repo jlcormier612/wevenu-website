@@ -79,13 +79,13 @@ export function VendorProfileForm({ profile }: { profile: VendorProfile }) {
   }
 
   return (
-    <div className="space-y-5 rounded-xl border border-border bg-card p-6">
+    <div className="space-y-5 rounded-sm border border-border bg-card p-6">
       {/* Logo */}
       <div className="flex items-center gap-4">
         {input.logoUrl ? (
-          <img src={input.logoUrl} alt="Logo" className="h-16 w-16 rounded-xl object-cover border border-border" />
+          <img src={input.logoUrl} alt="Logo" className="h-16 w-16 rounded-sm object-cover border border-border" />
         ) : (
-          <div className="h-16 w-16 rounded-xl bg-muted flex items-center justify-center text-xl font-bold text-muted-foreground border border-border">
+          <div className="h-16 w-16 rounded-sm bg-muted flex items-center justify-center text-xl font-bold text-muted-foreground border border-border">
             {profile.businessName.slice(0, 2).toUpperCase()}
           </div>
         )}

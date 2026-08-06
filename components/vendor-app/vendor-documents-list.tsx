@@ -28,7 +28,7 @@ function EventDocGroup({
         <h2 className="text-sm font-semibold text-foreground">{title}</h2>
       </div>
       {withContent.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-border py-10 text-center">
+        <div className="rounded-sm border border-dashed border-border py-10 text-center">
           <FileText className="h-7 w-7 mx-auto mb-2 text-muted-foreground" />
           <p className="text-sm text-muted-foreground">{emptyLabel}</p>
         </div>
@@ -45,7 +45,7 @@ function EventDocGroup({
                   {ev.eventDate ? ` · ${formatEventDateRange(ev.eventDate, ev.eventEndDate)}` : ""}
                 </span>
               </div>
-              <div className="rounded-xl border border-border bg-card divide-y divide-border">
+              <div className="rounded-sm border border-border bg-card divide-y divide-border">
                 {ev.documents.map((d) => (
                   <a key={d.id} href={d.storageUrl} target="_blank" rel="noopener noreferrer"
                     className="flex items-center gap-3 px-4 py-3 hover:bg-muted/40 transition-colors">

@@ -24,7 +24,7 @@ export default async function MessageTemplatesPage() {
       />
 
       {templates.length === 0 ? (
-        <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border bg-card/40 py-16 text-center">
+        <div className="flex flex-col items-center justify-center rounded-sm border border-dashed border-border bg-card/40 py-16 text-center">
           <p className="font-heading text-lg font-medium text-heading">No templates yet</p>
           <p className="mt-1 mb-4 text-sm text-muted-foreground">
             Create a reusable email or text message, or bring in one you already send.

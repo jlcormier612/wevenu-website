@@ -137,7 +137,7 @@ export function VendorTasksList({
 
       {/* New task form */}
       {showForm && (
-        <div className="rounded-xl border border-border bg-card p-4 space-y-3">
+        <div className="rounded-sm border border-border bg-card p-4 space-y-3">
           <div className="flex items-center justify-between">
             <h2 className="text-sm font-semibold text-foreground">New Task</h2>
             <button type="button" onClick={() => setShowForm(false)} className="text-muted-foreground hover:text-foreground">
@@ -170,7 +170,7 @@ export function VendorTasksList({
       )}
 
       {tasks.length === 0 && (
-        <div className="rounded-xl border border-dashed border-border py-12 text-center">
+        <div className="rounded-sm border border-dashed border-border py-12 text-center">
           <CheckSquare className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
           <p className="text-sm font-medium text-foreground">No tasks yet</p>
           <p className="text-xs mt-1 text-muted-foreground">
@@ -190,7 +190,7 @@ export function VendorTasksList({
             }`}>
               {GROUP_LABELS[group]} <span className="font-normal">({items.length})</span>
             </h2>
-            <div className="rounded-xl border border-border bg-card divide-y divide-border">
+            <div className="rounded-sm border border-border bg-card divide-y divide-border">
               {items.map((t) => (
                 <div
                   key={t.id}

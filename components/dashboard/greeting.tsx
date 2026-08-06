@@ -29,10 +29,10 @@ export function Greeting({
 
   return (
     <div>
-      <h1 className="font-heading text-2xl font-medium tracking-tight text-heading">
+      <h1 className="font-heading text-3xl font-medium tracking-tight text-heading">
         {salutation}
       </h1>
-      <p className="text-sm text-muted-foreground">
+      <p className="text-[0.95rem] text-muted-foreground">
         {dateStr
           ? `${dateStr} · Here's what's happening at ${venueName} today.`
           : `Here's what's happening at ${venueName} today.`}

@@ -117,7 +117,7 @@ export function FinalDetailsForm({
   if (isSubmitted) {
     return (
       <div className="space-y-4">
-        <div className="flex items-center gap-2 rounded-xl border border-success/30 bg-success/5 px-4 py-3">
+        <div className="flex items-center gap-2 rounded-sm border border-success/30 bg-success/5 px-4 py-3">
           <CheckCircle className="h-5 w-5 text-success shrink-0" />
           <div>
             <p className="text-sm font-medium text-heading">Final details submitted</p>
@@ -136,7 +136,7 @@ export function FinalDetailsForm({
   return (
     <div className="space-y-5">
       {/* Status + Send banner */}
-      <div className="rounded-xl border border-border bg-muted/30 p-4 space-y-3">
+      <div className="rounded-sm border border-border bg-muted/30 p-4 space-y-3">
         {/* Status row */}
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="space-y-0.5">
@@ -285,7 +285,7 @@ function Row({ label, value }: { label: string; value: string | number | null | 
 
 function QuestionnaireDisplay({ q }: { q: Questionnaire }) {
   return (
-    <div className="rounded-xl border border-border bg-card p-4">
+    <div className="rounded-sm border border-border bg-card p-4">
       <Row label="Ceremony time" value={q.ceremonyStartTime} />
       <Row label="Reception time" value={q.receptionStartTime} />
       <Row label="Ceremony room" value={q.ceremonyLocation} />

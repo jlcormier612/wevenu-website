@@ -42,7 +42,7 @@ export function WorkspaceShell({
   return (
     <div className="htc-staff flex h-svh w-full overflow-hidden bg-background font-sans text-foreground">
       {/* Desktop sidebar */}
-      <aside className="hidden w-64 shrink-0 flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground lg:flex">
+      <aside className="hidden w-[15.5rem] shrink-0 flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground lg:flex">
         <div className="flex h-20 items-center border-b border-sidebar-border px-5">
           <Wordmark sizeClassName="h-[66.8px] w-auto" />
         </div>
@@ -73,7 +73,7 @@ export function WorkspaceShell({
             </SheetTrigger>
             <SheetContent
               side="left"
-              className="w-72 border-sidebar-border bg-sidebar p-0 text-sidebar-foreground"
+              className="w-[15.5rem] border-sidebar-border bg-sidebar p-0 text-sidebar-foreground"
             >
               <SheetHeader className="h-20 justify-center border-b border-sidebar-border px-5 text-left">
                 <SheetTitle>

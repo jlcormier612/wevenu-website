@@ -58,7 +58,7 @@ function PackageForm({
   const showPrice = form.priceType === "fixed" || form.priceType === "starting_at";
 
   return (
-    <div className="rounded-xl border border-primary/30 bg-card p-4 space-y-3">
+    <div className="rounded-sm border border-primary/30 bg-card p-4 space-y-3">
       <div className="grid gap-3 sm:grid-cols-2">
         <div className="space-y-1.5">
           <Label htmlFor="pkg-name">Package name <span className="text-destructive">*</span></Label>
@@ -205,7 +205,7 @@ export function VendorPackagesManager({ packages: initial }: { packages: VendorP
   return (
     <div className="space-y-4">
       {packages.length === 0 && !showAdd ? (
-        <div className="rounded-xl border border-dashed border-border py-12 text-center">
+        <div className="rounded-sm border border-dashed border-border py-12 text-center">
           <Package className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
           <p className="text-sm font-medium text-foreground">No packages yet</p>
           <p className="text-xs mt-1 text-muted-foreground mb-4">
@@ -236,7 +236,7 @@ export function VendorPackagesManager({ packages: initial }: { packages: VendorP
               ) : (
                 <div
                   key={pkg.id}
-                  className={`flex items-start gap-3 rounded-xl border border-border bg-card p-4 transition-opacity ${pkg.isActive ? "" : "opacity-60"}`}
+                  className={`flex items-start gap-3 rounded-sm border border-border bg-card p-4 transition-opacity ${pkg.isActive ? "" : "opacity-60"}`}
                 >
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">

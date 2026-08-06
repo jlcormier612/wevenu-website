@@ -170,7 +170,7 @@ function Bubble({
   return (
     <div className={`flex flex-col ${isVenue ? "items-end" : "items-start"}`}>
       <div
-        className={`max-w-[72%] rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed ${
+        className={`max-w-[72%] rounded-lg px-3.5 py-2.5 text-sm leading-relaxed ${
           isVenue ? "bg-primary text-primary-foreground rounded-br-sm" : "bg-muted text-foreground rounded-bl-sm"
         }`}
       >

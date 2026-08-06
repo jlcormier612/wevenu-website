@@ -84,7 +84,7 @@ export function VendorInquiryPipeline({
 
       {/* New inquiry form */}
       {showForm && (
-        <div className="rounded-xl border border-border bg-card p-5 space-y-4">
+        <div className="rounded-sm border border-border bg-card p-5 space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="font-semibold text-sm text-foreground">New Inquiry</h2>
             <button type="button" onClick={() => setShowForm(false)} className="text-muted-foreground hover:text-foreground">
@@ -185,13 +185,13 @@ export function VendorInquiryPipeline({
 
       {/* List */}
       {filtered.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-border py-12 text-center">
+        <div className="rounded-sm border border-dashed border-border py-12 text-center">
           <p className="text-sm text-muted-foreground">
             {filter === "all" ? "No inquiries yet." : `No ${filter.replace(/_/g, " ")} inquiries.`}
           </p>
         </div>
       ) : (
-        <div className="rounded-xl border border-border bg-card divide-y divide-border">
+        <div className="rounded-sm border border-border bg-card divide-y divide-border">
           {filtered.map((inq) => (
             <Link
               key={inq.id}

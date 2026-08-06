@@ -167,11 +167,17 @@
  * STAFF SKIN (venue + vendor shells only) — CRM-aligned look.
  * Additive scope: do NOT flip root `:root` (client portal stays Inter /
  * soft white). next-themes puts `.dark` on <html>, so dark staff rules are
- * `.dark .htc-staff` (not `.htc-staff.dark`). Token values mirror
- * workspace/app/globals.css (cream/warm canvas, body ink, sharper radius,
- * sidebar recipe).
+ * `.dark .htc-staff` / `html.dark:has(.htc-staff)` (not `.htc-staff.dark`).
+ * Token values mirror workspace/app/globals.css (cream/warm canvas, body ink,
+ * sharper radius, sidebar recipe).
+ *
+ * `html:has(.htc-staff)` mirrors tokens onto the document so Base UI portals
+ * (dropdown / select / sheet / tooltip) inherit staff radius + surfaces even
+ * though they mount outside the `.htc-staff` node. Client portal never mounts
+ * `.htc-staff`, so these selectors do not apply there.
  */
-.htc-staff {
+.htc-staff,
+html:has(.htc-staff) {
   --font-sans: var(--font-staff-sans), ui-sans-serif, system-ui, sans-serif;
 
   --warm-gray: #f8f7f4;
@@ -206,7 +212,8 @@
 }
 
 /* CRM dark remap under staff scope (html.dark from next-themes) */
-.dark .htc-staff {
+.dark .htc-staff,
+html.dark:has(.htc-staff) {
   --warm-gray: var(--forest-sage);
   --header-linen: color-mix(in oklch, var(--taupe-dark) 70%, white);
   --natural-cream: var(--heritage-sage);
@@ -236,6 +243,155 @@
   --sidebar-accent-foreground: var(--forest-sage);
   --sidebar-border: color-mix(in oklch, var(--forest-sage) 20%, transparent);
   --sidebar-ring: var(--heritage-sage);
+}
+
+/*
+ * STAFF PRIMITIVES — CRM-like chrome for shared shadcn slots.
+ * Unlayered so these beat Tailwind utilities (rounded-xl, shadow-sm, etc.).
+ * Prefer `html:has(.htc-staff)` so portaled popups get the same treatment.
+ * Do not edit components/ui defaults (portal stays soft).
+ */
+html:has(.htc-staff) [data-slot="card"] {
+  border-radius: var(--radius-sm);
+  box-shadow: none;
+  --tw-ring-shadow: 0 0 #0000;
+  --tw-ring-offset-shadow: 0 0 #0000;
+  border: 1px solid color-mix(in oklch, var(--border) 40%, transparent);
+  --card-spacing: 1rem;
+  /* CRM reads ~16px in panels; shadcn Card defaults to text-sm (14px). */
+  font-size: 0.9375rem; /* 15px */
+  line-height: 1.55;
+}
+
+html:has(.htc-staff) [data-slot="card-header"],
+html:has(.htc-staff) [data-slot="card-footer"] {
+  border-radius: 0;
+}
+
+html:has(.htc-staff) [data-slot="card"] > img:first-child,
+html:has(.htc-staff) [data-slot="card"] > img:last-child {
+  border-radius: 0;
+}
+
+html:has(.htc-staff) [data-slot="card"]:has(> img:first-child) {
+  border-start-start-radius: var(--radius-sm);
+  border-start-end-radius: var(--radius-sm);
+}
+
+html:has(.htc-staff) [data-slot="card"]:has(> img:first-child) > img:first-child {
+  border-start-start-radius: var(--radius-sm);
+  border-start-end-radius: var(--radius-sm);
+}
+
+html:has(.htc-staff) [data-slot="button"] {
+  border-radius: var(--radius-sm);
+}
+
+html:has(.htc-staff) [data-slot="input"],
+html:has(.htc-staff) [data-slot="textarea"],
+html:has(.htc-staff) [data-slot="select-trigger"] {
+  border-radius: var(--radius-sm);
+  --tw-ring-shadow: 0 0 #0000;
+  box-shadow: none;
+}
+
+html:has(.htc-staff) [data-slot="input"]:focus-visible,
+html:has(.htc-staff) [data-slot="textarea"]:focus-visible,
+html:has(.htc-staff) [data-slot="select-trigger"]:focus-visible,
+html:has(.htc-staff) [data-slot="button"]:focus-visible {
+  --tw-ring-shadow: 0 0 0 2px color-mix(in oklch, var(--ring) 35%, transparent);
+  box-shadow: var(--tw-ring-shadow);
+}
+
+html:has(.htc-staff) [data-slot="badge"] {
+  border-radius: var(--radius-sm);
+  font-size: 0.75rem;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  padding-inline: 0.5rem;
+  padding-block: 0.125rem;
+}
+
+html:has(.htc-staff) [data-slot="select-content"],
+html:has(.htc-staff) [data-slot="dropdown-menu-content"],
+html:has(.htc-staff) [data-slot="dropdown-menu-sub-content"] {
+  border-radius: var(--radius-sm);
+  box-shadow: none;
+  --tw-ring-shadow: 0 0 #0000;
+  --tw-ring-offset-shadow: 0 0 #0000;
+  border: 1px solid color-mix(in oklch, var(--border) 45%, transparent);
+}
+
+html:has(.htc-staff) [data-slot="select-item"],
+html:has(.htc-staff) [data-slot="dropdown-menu-item"],
+html:has(.htc-staff) [data-slot="dropdown-menu-checkbox-item"],
+html:has(.htc-staff) [data-slot="dropdown-menu-radio-item"],
+html:has(.htc-staff) [data-slot="dropdown-menu-sub-trigger"] {
+  border-radius: calc(var(--radius-sm) * 0.75);
+}
+
+html:has(.htc-staff) [data-slot="sheet-content"] {
+  box-shadow: none;
+  border-color: color-mix(in oklch, var(--border) 55%, transparent);
+}
+
+html:has(.htc-staff) [data-slot="tooltip-content"] {
+  border-radius: var(--radius-sm);
+}
+
+html:has(.htc-staff) [data-slot="tabs-list"] {
+  border-radius: var(--radius-sm);
+}
+
+html:has(.htc-staff) [data-slot="tabs-trigger"] {
+  border-radius: calc(var(--radius-sm) * 0.85);
+  box-shadow: none;
+}
+
+html:has(.htc-staff) [data-slot="table-head"] {
+  height: 2.5rem;
+  padding-inline: 0.75rem;
+  padding-block: 0;
+}
+
+html:has(.htc-staff) [data-slot="table-cell"] {
+  padding: 0.625rem 0.75rem;
+}
+
+html:has(.htc-staff) [data-slot="table-row"] {
+  border-bottom-color: color-mix(in oklch, var(--border) 55%, transparent);
+}
+
+html:has(.htc-staff) [data-slot="table-row"]:hover {
+  background-color: color-mix(in oklch, var(--muted) 70%, transparent);
+}
+
+/* Shared Luv intro — portal keeps rounded-2xl; staff chrome sharpens only. */
+html:has(.htc-staff) [data-luv-intro-card] {
+  border-radius: var(--radius-sm);
+}
+
+/*
+ * STAFF TYPE — modest CRM-ward bumps. Scoped only; does not change portal
+ * Card text-sm / Inter / soft radius. Page titles stay product-scale (not CRM
+ * text-4xl). Sidebar nav size is set on shell components.
+ */
+html:has(.htc-staff) [data-slot="card-title"] {
+  font-size: 1.0625rem; /* 17px — a step above card body */
+  line-height: 1.35;
+}
+
+html:has(.htc-staff) [data-slot="card"][data-size="sm"] [data-slot="card-title"] {
+  font-size: 0.9375rem;
+}
+
+html:has(.htc-staff) [data-slot="card-description"] {
+  font-size: 0.9375rem; /* was text-sm / 14px */
+  line-height: 1.55;
+}
+
+html:has(.htc-staff) [data-slot="table"] {
+  font-size: 0.9375rem;
 }
 
 /*

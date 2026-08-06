@@ -85,7 +85,7 @@ export function PipelineBoard({
             onDragOver={(e) => { e.preventDefault(); setDragOverStageId(stage.id); }}
             onDragLeave={() => setDragOverStageId((p) => (p === stage.id ? null : p))}
             onDrop={() => handleDrop(stage.id)}
-            className={`flex w-72 shrink-0 flex-col rounded-xl border transition-colors ${isDragTarget ? "border-primary bg-primary/5" : "border-border bg-card/40"}`}
+            className={`flex w-72 shrink-0 flex-col rounded-sm border transition-colors ${isDragTarget ? "border-primary bg-primary/5" : "border-border bg-card/40"}`}
           >
             <div className="flex items-center justify-between gap-2 border-b border-border px-3 py-2.5">
               <div className="flex min-w-0 items-center gap-2">

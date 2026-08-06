@@ -7,7 +7,7 @@ import type { VendorHandbook } from "@/lib/vendor-handbook/service";
 
 function Section({ icon: Icon, title, children }: { icon: React.ElementType; title: string; children: React.ReactNode }) {
   return (
-    <div className="rounded-xl border border-border bg-card p-4 space-y-2">
+    <div className="rounded-sm border border-border bg-card p-4 space-y-2">
       <h2 className="flex items-center gap-2 text-sm font-semibold text-foreground">
         <Icon className="h-4 w-4 text-muted-foreground" />
         {title}
@@ -31,7 +31,7 @@ export function VendorHandbookView({ handbook }: { handbook: VendorHandbook }) {
 
   return (
     <div className="space-y-4">
-      <div className="rounded-xl border border-border bg-card p-4 space-y-2">
+      <div className="rounded-sm border border-border bg-card p-4 space-y-2">
         <h2 className="text-base font-bold text-foreground">{venue.name}</h2>
         <div className="space-y-1 text-sm text-muted-foreground">
           {address && (

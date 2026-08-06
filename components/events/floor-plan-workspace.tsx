@@ -134,7 +134,7 @@ function FloorPlanCard({
   return (
     <Link
       href={`/events/${eventId}/floor-plans/${plan.id}`}
-      className="flex flex-col gap-1.5 rounded-xl border border-border bg-card p-4 transition-colors hover:border-primary/40 hover:bg-muted/20"
+      className="flex flex-col gap-1.5 rounded-sm border border-border bg-card p-4 transition-colors hover:border-primary/40 hover:bg-muted/20"
     >
       <div className="flex items-start justify-between gap-2">
         <p className="min-w-0 truncate text-sm font-medium text-heading">{plan.name}</p>
@@ -271,7 +271,7 @@ export function FloorPlanWorkspace({
       )}
 
       {floorPlans.length === 0 ? (
-        <div className="flex flex-col items-center justify-center gap-1 rounded-xl border border-dashed border-border py-12 text-center">
+        <div className="flex flex-col items-center justify-center gap-1 rounded-sm border border-dashed border-border py-12 text-center">
           <p className="text-sm font-medium text-heading">No floor plans yet</p>
           <p className="text-xs text-muted-foreground">Apply a template, duplicate another booking&apos;s plan, or start from a blank room.</p>
         </div>
@@ -289,7 +289,7 @@ export function FloorPlanWorkspace({
       )}
 
       {inventoryUsage.length > 0 && (
-        <div className="space-y-2 rounded-xl border border-border bg-muted/20 p-4">
+        <div className="space-y-2 rounded-sm border border-border bg-muted/20 p-4">
           <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Inventory Usage</p>
           <ul className="space-y-1">
             {inventoryUsage.map((u) => {

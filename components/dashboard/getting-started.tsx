@@ -81,10 +81,10 @@ export function GettingStartedCard({
 
         <div className="flex items-end justify-between gap-4">
           <div>
-            <p className="font-heading text-2xl font-semibold text-heading">
+            <p className="font-heading text-3xl font-semibold text-heading">
               You&apos;re {pct}% set up
             </p>
-            <p className="mt-0.5 text-sm text-muted-foreground">
+            <p className="mt-0.5 text-[0.95rem] text-muted-foreground">
               {isNew
                 ? `A few more steps and ${name} will be ready to welcome its next couple.`
                 : `${remaining} step${remaining === 1 ? "" : "s"} left to finish getting ${name} ready.`}
@@ -113,7 +113,7 @@ export function GettingStartedCard({
       <CardContent className="space-y-4">
         {/* Milestone celebration */}
         {milestoneCopy && (
-          <div className="flex items-start gap-2.5 rounded-xl border border-primary/20 bg-primary/5 p-3.5">
+          <div className="flex items-start gap-2.5 rounded-sm border border-primary/20 bg-primary/5 p-3.5">
             <span className="text-base">🎉</span>
             <div>
               <p className="text-sm font-semibold text-heading">{milestoneCopy.headline}</p>
@@ -124,7 +124,7 @@ export function GettingStartedCard({
 
         {/* Luv coaching block */}
         {onboarding.luvNudge && !milestoneCopy && (
-          <div className="flex gap-2.5 rounded-xl bg-white/60 p-3.5 shadow-sm ring-1 ring-border/40">
+          <div className="flex gap-2.5 rounded-sm border border-border bg-card/80 p-3.5">
             <span className="mt-0.5 shrink-0">
               <LuvHeart size={13} />
             </span>

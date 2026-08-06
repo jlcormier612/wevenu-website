@@ -47,7 +47,7 @@ export function VendorDashboard({ data }: { data: VendorDashboardData }) {
           Legacy dashboard — use Home and Luv for daily attention.
         </p>
       </div>
-      <div className="rounded-xl border border-border bg-card divide-y divide-border">
+      <div className="rounded-sm border border-border bg-card divide-y divide-border">
         {upcoming.length === 0 ? (
           <div className="py-10 text-center">
             <CalendarDays className="mx-auto mb-2 h-8 w-8 text-muted-foreground" />

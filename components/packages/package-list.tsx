@@ -50,7 +50,7 @@ export function PackageList({ initialPackages }: { initialPackages: Package[] })
 
   if (packages.length === 0) {
     return (
-      <div className="rounded-xl border border-dashed border-border py-16 text-center">
+      <div className="rounded-sm border border-dashed border-border py-16 text-center">
         <p className="text-sm font-medium text-heading">No packages yet</p>
         <p className="text-xs text-muted-foreground mt-1">Add your venue packages to use them on invoices.</p>
         <Button type="button" size="sm" className="mt-4" render={<Link href="/packages/new" />}>
@@ -63,7 +63,7 @@ export function PackageList({ initialPackages }: { initialPackages: Package[] })
   return (
     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
       {packages.map((pkg) => (
-        <div key={pkg.id} className={`group relative rounded-xl border bg-card p-5 transition-opacity ${pkg.isActive ? "border-border" : "border-border opacity-60"}`}>
+        <div key={pkg.id} className={`group relative rounded-sm border bg-card p-5 transition-opacity ${pkg.isActive ? "border-border" : "border-border opacity-60"}`}>
           {/* Category badge */}
           {pkg.category && (
             <Badge variant="muted" className="mb-3 text-xs">{pkg.category}</Badge>

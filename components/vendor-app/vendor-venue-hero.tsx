@@ -67,7 +67,7 @@ export function VendorVenueHero({ initialVenue, partnerships, vendorCategory, al
 
   if (!context) {
     return (
-      <div className="rounded-2xl border border-dashed border-border py-10 text-center">
+      <div className="rounded-sm border border-dashed border-border py-10 text-center">
         <p className="text-sm font-medium text-foreground">No venue partnership yet</p>
         <p className="text-xs text-muted-foreground mt-1">Once a venue adds you to their preferred vendor list, you&apos;ll see them here.</p>
       </div>
@@ -87,7 +87,7 @@ export function VendorVenueHero({ initialVenue, partnerships, vendorCategory, al
     <div className="space-y-3">
 
       {/* Hero */}
-      <div className="rounded-2xl overflow-hidden relative" style={{
+      <div className="rounded-sm overflow-hidden relative" style={{
         background: venue.heroImageUrl
           ? `url(${venue.heroImageUrl}) center/cover no-repeat`
           : `linear-gradient(155deg, ${venue.secondaryColor ?? "#4F5F4F"} 0%, ${venue.primaryColor ?? "#5D6F5D"} 100%)`,
@@ -141,7 +141,7 @@ export function VendorVenueHero({ initialVenue, partnerships, vendorCategory, al
       {/* Who do I contact? / What's happening? / What's next? — one glance,
           three columns, same footprint as the old two-column grid. */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        <div className="rounded-xl border border-border bg-card p-4">
+        <div className="rounded-sm border border-border bg-card p-4">
           <p className="text-xs font-semibold text-foreground mb-3">👋 Venue Contact</p>
           {!primaryContact ? (
             <p className="text-xs text-muted-foreground">No contacts listed yet.</p>
@@ -166,13 +166,13 @@ export function VendorVenueHero({ initialVenue, partnerships, vendorCategory, al
           )}
         </div>
 
-        <div className="rounded-xl border border-border bg-card p-4">
+        <div className="rounded-sm border border-border bg-card p-4">
           <p className="text-xs font-semibold text-foreground">🎁 Current Promotion</p>
           <p className="text-[10px] text-muted-foreground mt-0.5">What couples see on your profile at {venue.name}.</p>
           <PromotionEditor partnership={partnership} />
         </div>
 
-        <div className="rounded-xl border border-border bg-card p-4">
+        <div className="rounded-sm border border-border bg-card p-4">
           <p className="text-xs font-semibold text-foreground mb-3">📅 Next Event</p>
           {!nextEvent ? (
             <p className="text-xs text-muted-foreground">Nothing booked here yet.</p>

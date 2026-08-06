@@ -29,7 +29,7 @@ export async function ImportHealthWidget() {
   if (stats.every((s) => s.count === 0)) return null;
 
   return (
-    <div className="rounded-xl border border-border bg-card p-4 space-y-3">
+    <div className="rounded-sm border border-border bg-card p-4 space-y-3">
       <h2 className="text-sm font-semibold text-foreground">Import Progress</h2>
 
       <div className="space-y-2">

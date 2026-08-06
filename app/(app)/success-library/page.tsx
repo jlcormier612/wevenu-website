@@ -21,7 +21,7 @@ export default async function SuccessLibraryPage() {
       </div>
 
       {categories.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-border py-16 text-center">
+        <div className="rounded-sm border border-dashed border-border py-16 text-center">
           <p className="text-sm text-muted-foreground">Nothing published yet — check back soon.</p>
         </div>
       ) : (
@@ -29,7 +29,7 @@ export default async function SuccessLibraryPage() {
           {categories.map((cat) => (
             <div key={cat.category} className="space-y-2">
               <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{cat.category}</p>
-              <div className="rounded-xl border border-border bg-card divide-y divide-border">
+              <div className="rounded-sm border border-border bg-card divide-y divide-border">
                 {cat.articles.map((a) => (
                   <Link key={a.slug} href={`/success-library/${a.slug}`} className="block px-4 py-3 text-sm font-medium text-foreground hover:bg-muted/40 transition-colors">
                     {a.title}

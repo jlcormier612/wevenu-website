@@ -161,7 +161,7 @@ export function VendorAvailabilityManager({
   return (
     <div className="space-y-6">
       {/* Settings */}
-      <div className="rounded-xl border border-border bg-card p-5 space-y-4">
+      <div className="rounded-sm border border-border bg-card p-5 space-y-4">
         <p className="text-sm font-medium text-heading">Availability settings</p>
 
         <div className="flex items-center justify-between">
@@ -193,7 +193,7 @@ export function VendorAvailabilityManager({
       </div>
 
       {/* Calendar */}
-      <div className="rounded-xl border border-border bg-card p-5 space-y-4">
+      <div className="rounded-sm border border-border bg-card p-5 space-y-4">
         {/* Month nav */}
         <div className="flex items-center justify-between">
           <button

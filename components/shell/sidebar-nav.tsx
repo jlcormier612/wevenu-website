@@ -25,7 +25,7 @@ export function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
     <nav className="flex flex-col gap-6 px-3 py-5" aria-label="Primary">
       {NAV_SECTIONS.filter(s => !s.adminOnly || isAdmin).map((section) => (
         <div key={section.label} className="flex flex-col gap-1">
-          <p className="px-3 pb-1.5 text-[0.6875rem] font-semibold uppercase tracking-[0.12em] text-sidebar-foreground/60">
+          <p className="px-3 pb-1.5 text-[0.7rem] font-medium uppercase tracking-[0.2em] text-sidebar-foreground/60">
             {section.label}
           </p>
           {section.items.map((item) => {
@@ -41,7 +41,7 @@ export function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
                 onClick={onNavigate}
                 aria-current={isActive ? "page" : undefined}
                 className={cn(
-                  "group/nav flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-semibold transition-colors",
+                  "group/nav flex items-center gap-3 rounded-sm px-3 py-2.5 text-[0.95rem] tracking-wide transition-colors",
                   "hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
                   isActive
                     ? "bg-sidebar-accent text-sidebar-accent-foreground"

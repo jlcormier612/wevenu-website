@@ -114,7 +114,7 @@ export function MessageTemplateStarterPicker({
             <button
               type="button"
               onClick={() => setSelected("existing")}
-              className={`w-full rounded-xl border p-4 text-left transition-colors ${
+              className={`w-full rounded-sm border p-4 text-left transition-colors ${
                 selected === "existing" ? "border-primary bg-primary/5" : "border-border hover:border-primary/40 hover:bg-muted/40"
               }`}
             >
@@ -142,7 +142,7 @@ export function MessageTemplateStarterPicker({
           <button
             type="button"
             onClick={() => setSelected("scratch")}
-            className={`w-full rounded-xl border p-4 text-left transition-colors ${
+            className={`w-full rounded-sm border p-4 text-left transition-colors ${
               selected === "scratch" ? "border-primary bg-primary/5" : "border-border hover:border-primary/40 hover:bg-muted/40"
             }`}
           >
@@ -156,7 +156,7 @@ export function MessageTemplateStarterPicker({
           <button
             type="button"
             onClick={() => setSelected("import")}
-            className={`w-full rounded-xl border p-4 text-left transition-colors ${
+            className={`w-full rounded-sm border p-4 text-left transition-colors ${
               selected === "import" ? "border-primary bg-primary/5" : "border-border hover:border-primary/40 hover:bg-muted/40"
             }`}
           >
