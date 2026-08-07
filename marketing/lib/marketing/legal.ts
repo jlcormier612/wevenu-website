@@ -430,7 +430,7 @@ export const VENDOR_TERMS: LegalDocument = {
     {
       heading: "2. Our Role",
       paragraphs: [
-        "Hello to Cheers provides software that helps venues, couples, vendors, and venue teams collaborate around shared events.",
+        "Hello to Cheers provides software that helps venues, clients, vendors, and venue teams collaborate around shared events.",
         "Hello to Cheers is not:",
       ],
       bullets: [

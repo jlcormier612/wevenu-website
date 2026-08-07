@@ -28,6 +28,8 @@ const PUBLIC_PATHS = [
   "/privacy",        // canonical public Privacy Policy
   "/cookies",        // canonical public Cookie Policy
   "/acceptable-use", // canonical public Acceptable Use Policy
+  "/end-user-terms", // canonical public End User Terms (couples)
+  "/vendor-terms",   // canonical public Vendor Terms
   "/api/legal",      // public legal metadata (active document ids / versions)
   "/api/internal/legal", // CRM → legal acceptances — Bearer PRODUCT_SYNC_API_KEY
   "/p",              // client portal workspace — /p/{access_token}
