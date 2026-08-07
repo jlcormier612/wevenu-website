@@ -235,15 +235,15 @@ export const TERMS_OF_SERVICE: LegalDocument = {
     {
       heading: "12. Disclaimers",
       paragraphs: [
-        "THE SERVICES ARE PROVIDED “AS IS” AND “AS AVAILABLE.” TO THE MAXIMUM EXTENT PERMITTED BY LAW, HELLO TO CHEERS DISCLAIMS ALL WARRANTIES, WHETHER EXPRESS, IMPLIED, OR STATUTORY, INCLUDING MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, AND NON-INFRINGEMENT.",
+        "The Services are provided “as is” and “as available.” To the maximum extent permitted by law, Hello to Cheers disclaims all warranties, whether express, implied, or statutory, including merchantability, fitness for a particular purpose, and non-infringement.",
         "We do not warrant that the Services will be uninterrupted, error-free, or free of harmful components, or that all content will be secure or not lost.",
       ],
     },
     {
       heading: "13. Limitation of Liability",
       paragraphs: [
-        "TO THE MAXIMUM EXTENT PERMITTED BY LAW, HELLO TO CHEERS WILL NOT BE LIABLE FOR INDIRECT, INCIDENTAL, SPECIAL, CONSEQUENTIAL, EXEMPLARY, OR PUNITIVE DAMAGES, OR ANY LOSS OF PROFITS, REVENUE, DATA, OR GOODWILL.",
-        "TO THE MAXIMUM EXTENT PERMITTED BY LAW, HELLO TO CHEERS’ TOTAL LIABILITY ARISING OUT OF OR RELATED TO THE SERVICES WILL NOT EXCEED THE AMOUNTS PAID BY YOU TO HELLO TO CHEERS FOR THE SERVICES IN THE TWELVE (12) MONTHS BEFORE THE EVENT GIVING RISE TO LIABILITY.",
+        "To the maximum extent permitted by law, Hello to Cheers will not be liable for indirect, incidental, special, consequential, exemplary, or punitive damages, or any loss of profits, revenue, data, or goodwill.",
+        "To the maximum extent permitted by law, Hello to Cheers’ total liability arising out of or related to the Services will not exceed the amounts paid by you to Hello to Cheers for the Services in the twelve (12) months before the event giving rise to liability.",
         "Some jurisdictions do not allow certain limitations; in those cases, our liability is limited to the fullest extent permitted.",
       ],
     },
