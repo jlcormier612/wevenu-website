@@ -2,7 +2,13 @@
  * Workspace → product-app legal acceptance / compliance (service-role via API key).
  */
 
-function productAppUrl(): string {
+import {
+  buildLegalAcceptanceHistoryUrl,
+  resolveLegalComplianceSubject,
+  type LegalComplianceSubject as ResolvedSubject,
+} from "@/lib/legal/compliance-summary";
+
+export function productAppUrl(): string {
   return (
     process.env.NEXT_PUBLIC_PRODUCT_APP_URL?.trim() ||
     process.env.PRODUCT_API_BASE_URL?.trim() ||
@@ -11,7 +17,7 @@ function productAppUrl(): string {
   ).replace(/\/$/, "");
 }
 
-export type LegalComplianceSubject = "venue" | "couple" | "vendor";
+export type LegalComplianceSubject = ResolvedSubject;
 
 export type LegalComplianceStatus =
   | "current"
@@ -39,11 +45,14 @@ export type CompleteVenueActivateLegalInput = {
 };
 
 /**
- * Read-only legal compliance for a Relationship Workspace venue account.
- * Defaults to subject=venue (Venue Terms + Privacy).
+ * Read-only legal compliance for a Relationship Workspace record.
+ * Defaults to subject=venue (venue_owner legal set from WP2).
+ * Pass entityType when couple/vendor relationship types exist.
  */
 export async function fetchLegalComplianceViaProduct(input: {
   subject?: LegalComplianceSubject;
+  /** Optional entity/subject type field when RW records are typed. */
+  entityType?: string | null;
   relationshipId?: string | null;
   email?: string | null;
 }): Promise<LegalComplianceSummary | null> {
@@ -55,8 +64,11 @@ export async function fetchLegalComplianceViaProduct(input: {
     return null;
   }
 
+  const subject =
+    input.subject ?? resolveLegalComplianceSubject(input.entityType);
+
   const params = new URLSearchParams();
-  params.set("subject", input.subject ?? "venue");
+  params.set("subject", subject);
   if (input.relationshipId?.trim()) {
     params.set("relationshipId", input.relationshipId.trim());
   }
@@ -93,13 +105,25 @@ export async function fetchLegalComplianceViaProduct(input: {
     };
     if (!data.ok || !Array.isArray(data.rows)) return null;
     return {
-      subject: data.subject ?? input.subject ?? "venue",
+      subject: data.subject ?? subject,
       rows: data.rows,
     };
   } catch (error) {
     console.error("[legal] compliance fetch error", error);
     return null;
   }
+}
+
+/** Business → Legal history URL for the Legal card View History action. */
+export function legalHistoryHrefForRelationship(input: {
+  relationshipId?: string | null;
+  email?: string | null;
+}): string {
+  return buildLegalAcceptanceHistoryUrl({
+    productAppBaseUrl: productAppUrl(),
+    relationshipId: input.relationshipId,
+    user: input.email,
+  });
 }
 
 /**

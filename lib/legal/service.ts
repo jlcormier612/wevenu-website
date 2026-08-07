@@ -25,6 +25,13 @@ import {
 } from "@/lib/legal/repository";
 import { publicPathForLegalDocumentType } from "@/lib/legal/public-routes";
 import {
+  getRequiredDocumentTypes,
+  isLegalAcceptanceUserType,
+  LEGAL_ACCEPTANCE_USER_TYPES,
+  LEGAL_ACCEPTANCE_USER_TYPE_LABELS,
+  REQUIRED_LEGAL_DOCUMENTS_BY_USER_TYPE,
+} from "@/lib/legal/required-documents";
+import {
   DEFAULT_LEGAL_ACCEPTANCE_METHOD,
   LEGAL_DOCUMENT_TYPES,
   LEGAL_DOCUMENT_TYPE_TITLES,
@@ -80,7 +87,7 @@ export {
   LEGAL_ACCEPTANCE_USER_TYPES,
   LEGAL_ACCEPTANCE_USER_TYPE_LABELS,
   REQUIRED_LEGAL_DOCUMENTS_BY_USER_TYPE,
-} from "@/lib/legal/required-documents";
+};
 export type { LegalAcceptanceUserType } from "@/lib/legal/required-documents";
 export {
   clearLegalEventListeners,
@@ -123,22 +130,28 @@ export const VENDOR_PORTAL_LEGAL_TYPES = [
 export type VendorPortalLegalType =
   (typeof VENDOR_PORTAL_LEGAL_TYPES)[number];
 
-/** Document types shown on a compliance summary for each subject. */
+/**
+ * Document types shown on a Relationship Workspace compliance summary.
+ * Venue uses WP2 venue_owner required set (VSA + Privacy + Cookie + AUP),
+ * not the narrower activate/session gate set (VENUE_SUBSCRIPTION_LEGAL_TYPES).
+ */
 export const LEGAL_COMPLIANCE_TYPES_BY_SUBJECT: Record<
   LegalComplianceSubject,
   readonly LegalDocumentType[]
 > = {
-  venue: VENUE_SUBSCRIPTION_LEGAL_TYPES,
-  couple: COUPLE_PORTAL_LEGAL_TYPES,
-  vendor: VENDOR_PORTAL_LEGAL_TYPES,
+  venue: REQUIRED_LEGAL_DOCUMENTS_BY_USER_TYPE.venue_owner,
+  couple: REQUIRED_LEGAL_DOCUMENTS_BY_USER_TYPE.couple,
+  vendor: REQUIRED_LEGAL_DOCUMENTS_BY_USER_TYPE.vendor,
 };
 
-/** Short CRM labels (full titles live in LEGAL_DOCUMENT_TYPE_TITLES). */
+/** Short operational labels for RW / CRM Legal summary. */
 export const LEGAL_COMPLIANCE_TITLES: Partial<
   Record<LegalDocumentType, string>
 > = {
-  venue_terms_of_service: "Venue Terms",
-  privacy_policy: "Privacy Policy",
+  terms_of_service: "Venue Subscription Agreement",
+  privacy_policy: "Privacy",
+  cookie_policy: "Cookie",
+  acceptable_use_policy: "Acceptable Use",
   couple_end_user_terms: "End User Terms",
   vendor_end_user_terms: "Vendor Terms",
 };

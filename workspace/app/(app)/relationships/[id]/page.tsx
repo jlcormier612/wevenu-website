@@ -15,7 +15,10 @@ import {
   resolveSnapshotMode,
   type SnapshotPreferredView,
 } from "@/components/relationships/relationship-workspace";
-import { fetchLegalComplianceViaProduct } from "@/lib/legal/product-legal";
+import {
+  fetchLegalComplianceViaProduct,
+  legalHistoryHrefForRelationship,
+} from "@/lib/legal/product-legal";
 import { StatusMoveControl } from "@/components/relationships/status-move-control";
 import { SupportResolveControl } from "@/components/relationships/support-resolve-control";
 import { Panel, StatusPill } from "@/components/shared/ui";
@@ -142,8 +145,12 @@ export default async function RelationshipDetailPage({
   const invoices = getInvoices(id);
   const subscriptions = getSubscriptions(id);
   const milestones = getOnboardingMilestones(id);
+  // RW records are venue entities today; entityType prepares couple/vendor subjects.
   const legalCompliance = await fetchLegalComplianceViaProduct({
-    subject: "venue",
+    relationshipId: id,
+    email: relationship.owner.email,
+  });
+  const legalHistoryHref = legalHistoryHrefForRelationship({
     relationshipId: id,
     email: relationship.owner.email,
   });
@@ -240,7 +247,10 @@ export default async function RelationshipDetailPage({
       />
       <StatusMoveControl relationship={relationship} />
       <CustomerSuccessPanels relationship={relationship} />
-      <LegalComplianceCard summary={legalCompliance} />
+      <LegalComplianceCard
+        summary={legalCompliance}
+        historyHref={legalHistoryHref}
+      />
       {showCustomerActions ? (
         <ProductSyncPanel
           relationshipId={id}

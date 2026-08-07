@@ -166,8 +166,8 @@ export type CouplePortalLegalGateStatus = {
 };
 
 /**
- * Whose legal set applies for a compliance summary (read-only CRM / gates).
- * Venue account → Venue Terms + Privacy.
+ * Whose legal set applies for a compliance summary (read-only CRM / RW).
+ * Venue → venue_owner set (VSA + Privacy + Cookie + Acceptable Use).
  * Couple → End User Terms + Privacy.
  * Vendor → Vendor Terms + Privacy.
  */
