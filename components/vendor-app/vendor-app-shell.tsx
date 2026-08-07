@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 
 import { signOut } from "@/app/auth/actions";
+import { FeedbackSheet } from "@/components/feedback/feedback-sheet";
 import { ThemeToggle } from "@/components/providers/theme-toggle";
 import { VendorNotificationBell } from "@/components/vendor-app/vendor-notification-bell";
 import type { VendorRole } from "@/lib/vendors/types";
@@ -222,7 +223,8 @@ function SidebarContent({
         ))}
       </nav>
 
-      <div className="mt-auto border-t px-3 py-3">
+      <div className="mt-auto shrink-0 border-t border-sidebar-border px-3 py-3 space-y-0.5">
+        <FeedbackSheet surface="vendor" />
         <form action={signOut}>
           <button
             type="submit"

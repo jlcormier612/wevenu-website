@@ -5,6 +5,7 @@ import { MessageCircle, ThumbsUp } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Sheet,
   SheetContent,
@@ -15,6 +16,8 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
+
+export type FeedbackSurface = "venue" | "vendor";
 
 type FeedbackType = "support" | "bug" | "feature" | "nps" | "general";
 
@@ -33,15 +36,27 @@ const TYPES: { value: FeedbackType; label: string; emoji: string; placeholder: s
   { value: "nps",     label: "Rate Hello to Cheers",     emoji: "⭐", placeholder: "Any comments? (optional)" },
 ];
 
-export function FeedbackSheet({ children }: { children?: React.ReactNode }) {
-  const [open,     setOpen]     = React.useState(false);
-  const [type,     setType]     = React.useState<FeedbackType>("general");
-  const [subject,  setSubject]  = React.useState("");
-  const [body,     setBody]     = React.useState("");
-  const [rating,   setRating]   = React.useState<number | null>(null);
-  const [sending,  setSending]  = React.useState(false);
-  const [features, setFeatures] = React.useState<FeatureRequest[]>([]);
-  const [votingId, setVotingId] = React.useState<string | null>(null);
+const SUBTITLES: Record<FeedbackSurface, string> = {
+  venue:  "Help us make Hello to Cheers better for your venue.",
+  vendor: "Help us make Hello to Cheers better for your vendor experience.",
+};
+
+export function FeedbackSheet({
+  children,
+  surface = "venue",
+}: {
+  children?: React.ReactNode;
+  surface?: FeedbackSurface;
+}) {
+  const [open,             setOpen]             = React.useState(false);
+  const [type,             setType]             = React.useState<FeedbackType>("general");
+  const [subject,          setSubject]          = React.useState("");
+  const [body,             setBody]             = React.useState("");
+  const [rating,           setRating]           = React.useState<number | null>(null);
+  const [allowPublicShare, setAllowPublicShare] = React.useState(false);
+  const [sending,          setSending]          = React.useState(false);
+  const [features,         setFeatures]         = React.useState<FeatureRequest[]>([]);
+  const [votingId,         setVotingId]         = React.useState<string | null>(null);
 
   const selected = TYPES.find(t => t.value === type) ?? TYPES[0];
   const isNps    = type === "nps";
@@ -62,6 +77,7 @@ export function FeedbackSheet({ children }: { children?: React.ReactNode }) {
     setSubject("");
     setBody("");
     setRating(null);
+    setAllowPublicShare(false);
     setSending(false);
     setFeatures([]);
   }
@@ -78,9 +94,12 @@ export function FeedbackSheet({ children }: { children?: React.ReactNode }) {
           subject: subject.trim() || null,
           body:    body.trim(),
           rating,
+          surface,
+          allow_public_share: isNps ? allowPublicShare : false,
           metadata: {
             current_url: window.location.href,
             user_agent:  navigator.userAgent,
+            surface,
           },
         }),
       });
@@ -131,7 +150,7 @@ export function FeedbackSheet({ children }: { children?: React.ReactNode }) {
       <SheetContent side="right" className="flex flex-col w-full sm:max-w-md p-0">
         <SheetHeader className="px-5 pt-5 pb-4 border-b">
           <SheetTitle>Share Feedback</SheetTitle>
-          <SheetDescription>Help us make Hello to Cheers better for your venue.</SheetDescription>
+          <SheetDescription>{SUBTITLES[surface]}</SheetDescription>
         </SheetHeader>
 
         <div className="flex-1 overflow-y-auto px-5 py-4 space-y-5">
@@ -141,7 +160,10 @@ export function FeedbackSheet({ children }: { children?: React.ReactNode }) {
               <button
                 key={t.value}
                 type="button"
-                onClick={() => setType(t.value)}
+                onClick={() => {
+                  setType(t.value);
+                  if (t.value !== "nps") setAllowPublicShare(false);
+                }}
                 className={cn(
                   "flex items-center gap-2 rounded-xl border px-3 py-2.5 text-sm font-medium transition-colors text-left",
                   type === t.value
@@ -216,6 +238,26 @@ export function FeedbackSheet({ children }: { children?: React.ReactNode }) {
               className="w-full resize-none rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring/50"
             />
           </div>
+
+          {/* Outward-share consent — NPS only; optional, default off */}
+          {isNps && (
+            <label className="flex items-start gap-2.5 rounded-xl border border-border bg-muted/30 px-3 py-2.5 cursor-pointer">
+              <Checkbox
+                checked={allowPublicShare}
+                onCheckedChange={(v) => setAllowPublicShare(v === true)}
+                className="mt-0.5"
+                aria-describedby="fb-public-share-hint"
+              />
+              <span className="min-w-0 space-y-0.5">
+                <span className="block text-sm font-medium text-heading">
+                  Okay to share this publicly
+                </span>
+                <span id="fb-public-share-hint" className="block text-xs text-muted-foreground leading-snug">
+                  I give Hello to Cheers permission to share this feedback publicly — anonymized, or with attribution if we ask first.
+                </span>
+              </span>
+            </label>
+          )}
 
           {/* Feature voting — shown when type = feature */}
           {isFeature && features.length > 0 && (

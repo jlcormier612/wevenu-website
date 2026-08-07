@@ -10,7 +10,7 @@ const TYPE_LABELS: Record<string, string> = {
   general: "General Feedback",
 };
 
-type Meta = Record<string, string | number | null>;
+type Meta = Record<string, string | number | boolean | null>;
 
 function html(type: string, subject: string | null, body: string, rating: number | null, userEmail: string, venueName: string, metadata: Meta): string {
   const label   = TYPE_LABELS[type] ?? type;

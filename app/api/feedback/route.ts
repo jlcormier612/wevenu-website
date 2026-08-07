@@ -2,8 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/integrations/supabase/server";
 import { sendFeedbackEmail } from "@/lib/feedback/notify";
 
+type FeedbackSurface = "venue" | "vendor";
+
 /**
  * Soft product → CRM mirror + customer ack. Never blocks the feedback POST.
+ * Venue-sourced feedback only (CRM links by product venue id).
  */
 function pushFeedbackToCrm(input: {
   productVenueId: string;
@@ -71,12 +74,93 @@ export async function POST(req: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const { type, subject, body, rating, metadata: clientMeta } = await req.json() as {
-    type: string; subject?: string; body?: string; rating?: number;
-    metadata?: { current_url?: string; user_agent?: string };
+  const {
+    type,
+    subject,
+    body,
+    rating,
+    surface: rawSurface,
+    allow_public_share: rawAllowPublicShare,
+    metadata: clientMeta,
+  } = await req.json() as {
+    type: string;
+    subject?: string;
+    body?: string;
+    rating?: number;
+    surface?: FeedbackSurface;
+    allow_public_share?: boolean;
+    metadata?: { current_url?: string; user_agent?: string; surface?: string };
   };
 
   if (!type) return NextResponse.json({ error: "Missing type" }, { status: 400 });
+
+  const surface: FeedbackSurface = rawSurface === "vendor" ? "vendor" : "venue";
+  // Consent only applies to NPS; ignore client true for other types.
+  const allowPublicShare = type === "nps" && rawAllowPublicShare === true;
+
+  const trimmedSubject = subject?.trim() || null;
+  const trimmedBody = body?.trim() ?? "";
+
+  if (surface === "vendor") {
+    const { data: vu } = await supabase
+      .from("vendor_users")
+      .select("vendor_id, vendors(business_name, created_at)")
+      .eq("user_id", user.id)
+      .eq("is_active", true)
+      .maybeSingle<{
+        vendor_id: string;
+        vendors: { business_name: string; created_at: string } | null;
+      }>();
+
+    if (!vu) return NextResponse.json({ error: "No vendor" }, { status: 400 });
+
+    const daysSinceSignup = vu.vendors?.created_at
+      ? Math.floor((Date.now() - new Date(vu.vendors.created_at).getTime()) / 86_400_000)
+      : null;
+
+    const actorLabel = vu.vendors?.business_name ?? "Unknown vendor";
+    const metadata = {
+      current_url:       clientMeta?.current_url ?? null,
+      user_agent:        clientMeta?.user_agent  ?? null,
+      subscription_tier: null,
+      days_since_signup: daysSinceSignup,
+      venue_name:        null,
+      vendor_name:       actorLabel,
+      user_email:        user.email ?? null,
+      surface,
+      allow_public_share: allowPublicShare,
+    };
+
+    const { data: inserted, error } = await supabase
+      .from("venue_feedback")
+      .insert({
+        venue_id:           null,
+        vendor_id:          vu.vendor_id,
+        user_id:            user.id,
+        type,
+        subject:            trimmedSubject,
+        body:               trimmedBody,
+        rating:             rating ?? null,
+        allow_public_share: allowPublicShare,
+        metadata,
+      })
+      .select("id")
+      .single<{ id: string }>();
+
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+    void sendFeedbackEmail({
+      type,
+      subject:   trimmedSubject,
+      body:      trimmedBody,
+      rating:    rating ?? null,
+      userEmail: user.email ?? "unknown",
+      venueName: actorLabel,
+      metadata,
+    });
+
+    return NextResponse.json({ ok: true, id: inserted?.id ?? null });
+  }
 
   // Resolve venue + days since signup
   const { data: vu } = await supabase
@@ -98,20 +182,21 @@ export async function POST(req: NextRequest) {
     days_since_signup:  daysSinceSignup,
     venue_name:         vu.venues?.name ?? null,
     user_email:         user.email ?? null,
+    surface,
+    allow_public_share: allowPublicShare,
   };
-
-  const trimmedSubject = subject?.trim() || null;
-  const trimmedBody = body?.trim() ?? "";
 
   const { data: inserted, error } = await supabase
     .from("venue_feedback")
     .insert({
-      venue_id: vu.venue_id,
-      user_id:  user.id,
+      venue_id:           vu.venue_id,
+      vendor_id:          null,
+      user_id:            user.id,
       type,
-      subject:  trimmedSubject,
-      body:     trimmedBody,
-      rating:   rating ?? null,
+      subject:            trimmedSubject,
+      body:               trimmedBody,
+      rating:             rating ?? null,
+      allow_public_share: allowPublicShare,
       metadata,
     })
     .select("id")
