@@ -10,6 +10,8 @@
     "build": "next build",
     "start": "next start --port 3000",
     "lint": "eslint",
+    "test": "tsx --test lib/**/*.test.ts",
+    "test:watch": "tsx --test --watch lib/**/*.test.ts",
     "process:lifecycle": "node scripts/process-lifecycle.mjs"
   },
   "dependencies": {
@@ -45,6 +47,7 @@
     "eslint": "^9",
     "eslint-config-next": "16.2.9",
     "tailwindcss": "^4",
+    "tsx": "^4.23.11",
     "typescript": "^5"
   }
 }

@@ -54,6 +54,41 @@ export type {
   LegalGateStatus,
 } from "@/lib/legal/types";
 
+/** WP2 acceptance engine — SoT for future workflows (existing gates unchanged). */
+export {
+  LegalAcceptanceService,
+  createLegalAcceptanceService,
+  legalAcceptanceService,
+  isAcceptanceCurrentForActive,
+} from "@/lib/legal/acceptance-engine";
+export type {
+  AcceptedDocumentSnapshot,
+  LegalAcceptanceEngineDeps,
+  LegalAcceptanceUser,
+  OutstandingDocument,
+  RecordAcceptanceInput,
+  RecordAcceptanceResult,
+  RequiresAcceptanceResult,
+} from "@/lib/legal/acceptance-engine";
+export {
+  getRequiredDocumentTypes,
+  isLegalAcceptanceUserType,
+  LEGAL_ACCEPTANCE_USER_TYPES,
+  LEGAL_ACCEPTANCE_USER_TYPE_LABELS,
+  REQUIRED_LEGAL_DOCUMENTS_BY_USER_TYPE,
+} from "@/lib/legal/required-documents";
+export type { LegalAcceptanceUserType } from "@/lib/legal/required-documents";
+export {
+  clearLegalEventListeners,
+  publishLegalEvent,
+  subscribeLegalEvents,
+} from "@/lib/legal/events";
+export type {
+  LegalDocumentAcceptedEvent,
+  LegalDomainEvent,
+  LegalRequirementsSatisfiedEvent,
+} from "@/lib/legal/events";
+
 /** Venue staff app + subscription/activate: Venue ToS + Privacy. */
 export const VENUE_SUBSCRIPTION_LEGAL_TYPES = [
   "venue_terms_of_service",
