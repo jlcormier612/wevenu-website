@@ -38,7 +38,7 @@ function AttachmentList({ attachments, isVendor }: { attachments: VendorConversa
           target="_blank"
           rel="noopener noreferrer"
           className={`block ${isImageAttachment(a.mimeType) ? "" : "flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-xs underline-offset-2 hover:underline"} ${
-            isImageAttachment(a.mimeType) ? "" : isVendor ? "bg-primary-foreground/10" : "bg-background/60"
+            isImageAttachment(a.mimeType) ? "" : isVendor ? "bg-white/15 dark:bg-[var(--forest-sage)]/10" : "bg-background/60"
           }`}
         >
           {isImageAttachment(a.mimeType) ? (
