@@ -45,11 +45,11 @@ export default async function AdminLegalNewVersionPage({ params }: Props) {
           </Link>
         </p>
         <h1 className="font-heading text-2xl font-semibold text-heading">
-          Create New Version
+          Publish New Version
         </h1>
         <p className="text-sm text-muted-foreground">
-          Appends an inactive version. Content is locked after creation —
-          activate separately when ready.
+          Appends a new inactive version. Content is locked after creation —
+          activate separately when ready to enforce.
         </p>
       </div>
 

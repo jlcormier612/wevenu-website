@@ -111,7 +111,7 @@ export function LegalVersionForm({
 
       <div className="flex items-center gap-2">
         <Button type="button" disabled={pending} onClick={handleCreate}>
-          {pending ? "Creating…" : "Create Version"}
+          {pending ? "Creating…" : "Publish New Version"}
         </Button>
         <Button
           type="button"

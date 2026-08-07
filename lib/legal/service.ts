@@ -5,7 +5,11 @@
 import { createAdminClient } from "@/integrations/supabase/admin";
 import { createClient } from "@/integrations/supabase/server";
 import { isSupabaseConfigured } from "@/lib/env";
-import { requireAdminUser } from "@/lib/hq/crm-service";
+import { requireLegalAdminUser } from "@/lib/legal/admin-service";
+import {
+  canDeactivateLegalVersion,
+  pickCurrentLegalVersion,
+} from "@/lib/legal/admin-helpers";
 import {
   deactivateActiveLegalDocumentsOfType,
   getActiveLegalDocumentByType,
@@ -734,27 +738,17 @@ export async function resolveCouplePortalLegalIdentity(
   };
 }
 
-// ---- HQ authoring (is_hq_admin via requireAdminUser + RLS) ----------------
+// ---- HQ authoring (owner / super_admin via requireLegalAdminUser) ----------
 
 export type LegalAdminActionResult =
   | { ok: true; id: string }
   | { ok: false; message: string };
 
-/**
- * Pick the version to show on the summary table: prefer the active row,
- * else the newest by effective_date / created_at.
- */
-function pickCurrentVersion(versions: LegalDocument[]): LegalDocument | null {
-  const active = versions.find((v) => v.isActive);
-  if (active) return active;
-  return versions[0] ?? null;
-}
-
 /** One summary row per document type for the HQ Legal table. */
 export async function getLegalDocumentTypeSummariesForAdmin(): Promise<
   LegalDocumentTypeSummary[]
 > {
-  const actor = await requireAdminUser();
+  const actor = await requireLegalAdminUser();
   if (!actor || !isSupabaseConfigured) return [];
 
   const supabase = await createClient();
@@ -771,7 +765,9 @@ export async function getLegalDocumentTypeSummariesForAdmin(): Promise<
     return {
       documentType,
       title: LEGAL_DOCUMENT_TYPE_TITLES[documentType],
-      current: pickCurrentVersion(versions),
+      current: pickCurrentLegalVersion(versions),
+      activeCount: versions.filter((v) => v.isActive).length,
+      versionCount: versions.length,
     };
   });
 }
@@ -779,7 +775,7 @@ export async function getLegalDocumentTypeSummariesForAdmin(): Promise<
 export async function getLegalDocumentsForTypeForAdmin(
   documentType: LegalDocumentType,
 ): Promise<LegalDocument[]> {
-  const actor = await requireAdminUser();
+  const actor = await requireLegalAdminUser();
   if (!actor || !isSupabaseConfigured) return [];
   const supabase = await createClient();
   return listLegalDocumentsByType(supabase, documentType);
@@ -788,7 +784,7 @@ export async function getLegalDocumentsForTypeForAdmin(
 export async function getLegalDocumentForAdmin(
   id: string,
 ): Promise<LegalDocument | null> {
-  const actor = await requireAdminUser();
+  const actor = await requireLegalAdminUser();
   if (!actor || !isSupabaseConfigured) return null;
   const supabase = await createClient();
   return getLegalDocumentById(supabase, id);
@@ -800,8 +796,13 @@ export async function getLegalDocumentForAdmin(
 export async function createLegalDocumentVersion(
   input: CreateLegalDocumentVersionInput,
 ): Promise<LegalAdminActionResult> {
-  const actor = await requireAdminUser();
-  if (!actor) return { ok: false, message: "Not signed in as an HQ admin." };
+  const actor = await requireLegalAdminUser();
+  if (!actor) {
+    return {
+      ok: false,
+      message: "Not signed in as an HQ Legal admin (Owner / Super Admin).",
+    };
+  }
   if (!isSupabaseConfigured) {
     return { ok: false, message: "Supabase is not configured." };
   }
@@ -843,12 +844,18 @@ export async function createLegalDocumentVersion(
 /**
  * Activate a version: deactivate any other active row of the same type,
  * then set this row active. Content is never modified.
+ * Sets published_by / published_at on first publish.
  */
 export async function activateLegalDocumentVersion(
   id: string,
 ): Promise<LegalAdminActionResult> {
-  const actor = await requireAdminUser();
-  if (!actor) return { ok: false, message: "Not signed in as an HQ admin." };
+  const actor = await requireLegalAdminUser();
+  if (!actor) {
+    return {
+      ok: false,
+      message: "Not signed in as an HQ Legal admin (Owner / Super Admin).",
+    };
+  }
   if (!isSupabaseConfigured) {
     return { ok: false, message: "Supabase is not configured." };
   }
@@ -860,7 +867,9 @@ export async function activateLegalDocumentVersion(
     if (doc.isActive) return { ok: true, id };
 
     await deactivateActiveLegalDocumentsOfType(supabase, doc.documentType);
-    await setLegalDocumentActive(supabase, id, true);
+    await setLegalDocumentActive(supabase, id, true, {
+      publishedBy: actor.userId,
+    });
     return { ok: true, id };
   } catch (err) {
     const message =
@@ -869,12 +878,20 @@ export async function activateLegalDocumentVersion(
   }
 }
 
-/** Mark a version inactive (no content change). */
+/**
+ * Mark a version inactive (no content change).
+ * Refuses when this is the last/only active version for the type.
+ */
 export async function deactivateLegalDocumentVersion(
   id: string,
 ): Promise<LegalAdminActionResult> {
-  const actor = await requireAdminUser();
-  if (!actor) return { ok: false, message: "Not signed in as an HQ admin." };
+  const actor = await requireLegalAdminUser();
+  if (!actor) {
+    return {
+      ok: false,
+      message: "Not signed in as an HQ Legal admin (Owner / Super Admin).",
+    };
+  }
   if (!isSupabaseConfigured) {
     return { ok: false, message: "Supabase is not configured." };
   }
@@ -884,6 +901,21 @@ export async function deactivateLegalDocumentVersion(
     const doc = await getLegalDocumentById(supabase, id);
     if (!doc) return { ok: false, message: "Document version not found." };
     if (!doc.isActive) return { ok: true, id };
+
+    const siblings = await listLegalDocumentsByType(supabase, doc.documentType);
+    const activeCount = siblings.filter((v) => v.isActive).length;
+    if (
+      !canDeactivateLegalVersion({
+        isActive: true,
+        activeCountForType: activeCount,
+      })
+    ) {
+      return {
+        ok: false,
+        message:
+          "Cannot deactivate the only active version. Activate another version first.",
+      };
+    }
 
     await setLegalDocumentActive(supabase, id, false);
     return { ok: true, id };

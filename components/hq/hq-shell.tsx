@@ -12,11 +12,20 @@ import {
 } from "lucide-react";
 
 import { Wordmark } from "@/components/brand/wordmark";
+import { canAccessHqLegalAdmin } from "@/lib/hq/legal-access";
+import { getHqAdmin } from "@/lib/hq/service";
 import { getSupportOpsData } from "@/lib/hq/support-service";
 
 type NavItem =
   | { section: string }
-  | { href: string; label: string; icon: React.ComponentType<{ className?: string }>; soon?: boolean; badgeKey?: "support" };
+  | {
+      href: string;
+      label: string;
+      icon: React.ComponentType<{ className?: string }>;
+      soon?: boolean;
+      badgeKey?: "support";
+      legalOnly?: boolean;
+    };
 
 const NAV: NavItem[] = [
   { section: "Beta" },
@@ -33,7 +42,7 @@ const NAV: NavItem[] = [
   { href: "/admin/analytics", label: "Analytics", icon: LineChart },
   { href: "/admin/system-health", label: "System Health", icon: Siren },
   { section: "Business" },
-  { href: "/admin/legal", label: "Legal", icon: Scale },
+  { href: "/admin/legal", label: "Legal", icon: Scale, legalOnly: true },
   { section: "Coming soon" },
   { href: "/admin/settings", label: "Settings", icon: Settings, soon: true },
 ];
@@ -46,10 +55,25 @@ const NAV: NavItem[] = [
  * company for the next 6–12 months, so it's the home page, not a sub-page.
  */
 export async function HqShell({ children }: { children: React.ReactNode }) {
-  const supportData = await getSupportOpsData().catch(() => null);
+  const [supportData, hqAdmin] = await Promise.all([
+    getSupportOpsData().catch(() => null),
+    getHqAdmin(),
+  ]);
   const supportBadge = supportData
     ? supportData.stuckVendorInvites.length + supportData.stuckTeamInvites.length + supportData.notificationFailureCount7d
     : 0;
+  const showLegal = canAccessHqLegalAdmin(hqAdmin);
+
+  const navItems = NAV.filter((item) => {
+    if (!("href" in item)) return true;
+    if (item.legalOnly && !showLegal) return false;
+    return true;
+  }).filter((item, index, arr) => {
+    // Drop empty section headers (e.g. Business when Legal is hidden).
+    if (!("section" in item)) return true;
+    const next = arr[index + 1];
+    return next && "href" in next;
+  });
 
   return (
     <div className="flex min-h-svh w-full">
@@ -60,7 +84,7 @@ export async function HqShell({ children }: { children: React.ReactNode }) {
         </div>
         <nav className="flex-1 overflow-y-auto px-3 py-4">
           <ul className="space-y-0.5">
-            {NAV.map((item, i) =>
+            {navItems.map((item, i) =>
               "section" in item ? (
                 <li key={i} className="mb-1 mt-4 px-2 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground first:mt-0">
                   {item.section}

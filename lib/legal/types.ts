@@ -63,6 +63,10 @@ export type LegalDocument = {
   isPublished: boolean;
   /** Currently enforced version for acceptance gates. */
   isActive: boolean;
+  /** HQ admin who first published this version (nullable for legacy rows). */
+  publishedBy: string | null;
+  /** When this version was first published (nullable for legacy rows). */
+  publishedAt: string | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -87,6 +91,10 @@ export type LegalDocumentTypeSummary = {
   title: string;
   /** Null when no versions exist for this type yet. */
   current: LegalDocument | null;
+  /** Active version count for this type (0 or 1 under one-active-per-type). */
+  activeCount: number;
+  /** Total versions for this type. */
+  versionCount: number;
 };
 
 /** Append-only acceptance audit row. Never update — insert a new row per accept. */

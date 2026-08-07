@@ -44,6 +44,8 @@ function makeDoc(
     content: partial.content ?? "body",
     isPublished: partial.isPublished ?? true,
     isActive: partial.isActive ?? true,
+    publishedBy: partial.publishedBy ?? null,
+    publishedAt: partial.publishedAt ?? null,
     createdAt: partial.createdAt ?? "2026-01-01T00:00:00.000Z",
     updatedAt: partial.updatedAt ?? "2026-01-01T00:00:00.000Z",
     ...partial,

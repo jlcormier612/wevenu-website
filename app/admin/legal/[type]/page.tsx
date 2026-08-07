@@ -4,10 +4,8 @@ import { notFound } from "next/navigation";
 
 import { LegalVersionsTable } from "@/components/hq/legal-versions-table";
 import { Button } from "@/components/ui/button";
-import {
-  getLegalDocumentsForTypeForAdmin,
-  isLegalDocumentType,
-} from "@/lib/legal/service";
+import { getLegalVersionHistoryForAdmin } from "@/lib/legal/admin-service";
+import { isLegalDocumentType } from "@/lib/legal/service";
 import { LEGAL_DOCUMENT_TYPE_TITLES } from "@/lib/legal/types";
 
 type Props = {
@@ -26,7 +24,7 @@ export default async function AdminLegalTypePage({ params }: Props) {
   const { type } = await params;
   if (!isLegalDocumentType(type)) notFound();
 
-  const versions = await getLegalDocumentsForTypeForAdmin(type);
+  const versions = await getLegalVersionHistoryForAdmin(type);
   const title = LEGAL_DOCUMENT_TYPE_TITLES[type];
 
   return (
@@ -42,12 +40,12 @@ export default async function AdminLegalTypePage({ params }: Props) {
             {title}
           </h1>
           <p className="text-sm text-muted-foreground">
-            All versions for this document. Only one version can be active at a
-            time.
+            Version history for this document. Newest first. Only one version
+            can be active at a time.
           </p>
         </div>
         <Button render={<Link href={`/admin/legal/${type}/new`} />}>
-          Create New Version
+          Publish New Version
         </Button>
       </div>
 

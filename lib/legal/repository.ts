@@ -24,6 +24,8 @@ type LegalDocumentRow = {
   content: string;
   is_published: boolean;
   is_active: boolean;
+  published_by: string | null;
+  published_at: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -51,6 +53,8 @@ export function mapLegalDocument(r: LegalDocumentRow): LegalDocument {
     content: r.content,
     isPublished: r.is_published,
     isActive: r.is_active,
+    publishedBy: r.published_by ?? null,
+    publishedAt: r.published_at ?? null,
     createdAt: r.created_at,
     updatedAt: r.updated_at,
   };
@@ -72,7 +76,7 @@ function mapLegalAcceptance(r: LegalAcceptanceRow): LegalAcceptance {
 }
 
 const LEGAL_DOCUMENT_SELECT =
-  "id, document_type, title, version, effective_date, content, is_published, is_active, created_at, updated_at";
+  "id, document_type, title, version, effective_date, content, is_published, is_active, published_by, published_at, created_at, updated_at";
 
 const LEGAL_ACCEPTANCE_SELECT =
   "id, relationship_id, user_id, legal_document_id, accepted_version, accepted_at, acceptance_method, ip_address, user_agent, created_at";
@@ -172,22 +176,84 @@ export async function insertLegalDocumentVersion(
 /**
  * Flip is_active (and publish when activating). Never mutates content fields.
  * Activating a version also sets is_published so the enforced version is readable.
+ * Optionally stamps published_by / published_at the first time the row is published.
  */
 export async function setLegalDocumentActive(
   supabase: DbClient,
   id: string,
   isActive: boolean,
+  opts?: { publishedBy?: string | null },
 ): Promise<void> {
+  if (!isActive) {
+    const { error } = await supabase
+      .from("legal_documents")
+      .update({ is_active: false })
+      .eq("id", id);
+    if (error) throw error;
+    return;
+  }
+
+  const existing = await getLegalDocumentById(supabase, id);
+  const patch: Record<string, unknown> = {
+    is_active: true,
+    is_published: true,
+  };
+  // First publish only — do not overwrite historical attribution.
+  if (existing && !existing.publishedAt) {
+    patch.published_at = new Date().toISOString();
+    if (opts?.publishedBy) {
+      patch.published_by = opts.publishedBy;
+    }
+  }
+
   const { error } = await supabase
     .from("legal_documents")
-    .update(
-      isActive
-        ? { is_active: true, is_published: true }
-        : { is_active: false },
-    )
+    .update(patch)
     .eq("id", id);
 
   if (error) throw error;
+}
+
+/** Count acceptances per legal_document id (service-role / HQ). */
+export async function countAcceptancesByDocumentIds(
+  supabase: DbClient,
+  documentIds: string[],
+): Promise<Map<string, number>> {
+  const unique = [...new Set(documentIds.map((id) => id.trim()).filter(Boolean))];
+  const counts = new Map<string, number>();
+  for (const id of unique) counts.set(id, 0);
+  if (unique.length === 0) return counts;
+
+  const { data, error } = await supabase
+    .from("legal_acceptances")
+    .select("legal_document_id")
+    .in("legal_document_id", unique);
+
+  if (error) throw error;
+  for (const row of data ?? []) {
+    const id = (row as { legal_document_id?: string }).legal_document_id;
+    if (!id) continue;
+    counts.set(id, (counts.get(id) ?? 0) + 1);
+  }
+  return counts;
+}
+
+/** All acceptance rows newest first (paginated). */
+export async function listLegalAcceptancesPage(
+  supabase: DbClient,
+  opts?: { limit?: number; offset?: number },
+): Promise<LegalAcceptance[]> {
+  const limit = Math.min(Math.max(opts?.limit ?? 200, 1), 1000);
+  const offset = Math.max(opts?.offset ?? 0, 0);
+
+  const { data, error } = await supabase
+    .from("legal_acceptances")
+    .select(LEGAL_ACCEPTANCE_SELECT)
+    .order("accepted_at", { ascending: false })
+    .range(offset, offset + limit - 1);
+
+  if (error) throw error;
+  return ((data ?? []) as LegalAcceptanceRow[]).map(mapLegalAcceptance);
 }
 
 /**

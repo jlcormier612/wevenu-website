@@ -18,11 +18,11 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { canDeactivateLegalVersion } from "@/lib/legal/admin-helpers";
 import type { LegalDocumentTypeSummary } from "@/lib/legal/types";
 
 function formatDate(iso: string | null | undefined): string {
   if (!iso) return "—";
-  // effective_date is a date; updated_at is timestamptz
   const d = iso.includes("T") ? new Date(iso) : new Date(`${iso}T00:00:00`);
   if (Number.isNaN(d.getTime())) return iso;
   return d.toLocaleDateString(undefined, {
@@ -67,7 +67,11 @@ export function LegalDocumentsTable({
   const [pending, startTransition] = useTransition();
 
   function handleActivate(id: string, documentType: string) {
-    if (!confirm("Activate this version? The previous active version of this document will be deactivated.")) {
+    if (
+      !confirm(
+        "Activate this version? The previous active version of this document will be deactivated.",
+      )
+    ) {
       return;
     }
     startTransition(async () => {
@@ -82,7 +86,11 @@ export function LegalDocumentsTable({
   }
 
   function handleDeactivate(id: string, documentType: string) {
-    if (!confirm("Deactivate this version? No active version will remain for this document until you activate another.")) {
+    if (
+      !confirm(
+        "Deactivate this version? Only allowed when another active version already exists.",
+      )
+    ) {
       return;
     }
     startTransition(async () => {
@@ -105,6 +113,7 @@ export function LegalDocumentsTable({
             <TableHead>Current Version</TableHead>
             <TableHead>Effective Date</TableHead>
             <TableHead>Status</TableHead>
+            <TableHead>Published</TableHead>
             <TableHead>Last Updated</TableHead>
             <TableHead className="text-right">Actions</TableHead>
           </TableRow>
@@ -112,6 +121,12 @@ export function LegalDocumentsTable({
         <TableBody>
           {rows.map((row) => {
             const current = row.current;
+            const canDeactivate =
+              !!current &&
+              canDeactivateLegalVersion({
+                isActive: current.isActive,
+                activeCountForType: row.activeCount,
+              });
             return (
               <TableRow key={row.documentType}>
                 <TableCell className="font-medium text-heading">
@@ -130,6 +145,9 @@ export function LegalDocumentsTable({
                 </TableCell>
                 <TableCell>
                   <StatusBadge current={current} />
+                </TableCell>
+                <TableCell className="text-muted-foreground">
+                  {current ? (current.isPublished ? "Yes" : "No") : "—"}
                 </TableCell>
                 <TableCell className="text-muted-foreground">
                   {formatDate(current?.updatedAt)}
@@ -163,12 +181,21 @@ export function LegalDocumentsTable({
                       variant="outline"
                       size="xs"
                       render={
+                        <Link href={`/admin/legal/${row.documentType}`} />
+                      }
+                    >
+                      View History
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="xs"
+                      render={
                         <Link
                           href={`/admin/legal/${row.documentType}/new`}
                         />
                       }
                     >
-                      Create New Version
+                      Publish New Version
                     </Button>
                     {current && !current.isActive ? (
                       <Button
@@ -179,19 +206,24 @@ export function LegalDocumentsTable({
                           handleActivate(current.id, row.documentType)
                         }
                       >
-                        Activate Version
+                        Activate
                       </Button>
                     ) : null}
                     {current?.isActive ? (
                       <Button
                         variant="outline"
                         size="xs"
-                        disabled={pending}
+                        disabled={pending || !canDeactivate}
+                        title={
+                          canDeactivate
+                            ? undefined
+                            : "Cannot deactivate the only active version"
+                        }
                         onClick={() =>
                           handleDeactivate(current.id, row.documentType)
                         }
                       >
-                        Deactivate Version
+                        Deactivate
                       </Button>
                     ) : null}
                   </div>

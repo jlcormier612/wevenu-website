@@ -5,6 +5,7 @@ import { notFound } from "next/navigation";
 import { LegalVersionActions } from "@/components/hq/legal-version-actions";
 import { Button } from "@/components/ui/button";
 import {
+  getLegalDocumentsForTypeForAdmin,
   getLegalDocumentForAdmin,
   isLegalDocumentType,
 } from "@/lib/legal/service";
@@ -51,8 +52,10 @@ export default async function AdminLegalVersionPage({ params }: Props) {
   const doc = await getLegalDocumentForAdmin(id);
   if (!doc || doc.documentType !== type) notFound();
 
+  const siblings = await getLegalDocumentsForTypeForAdmin(type);
+  const activeCount = siblings.filter((v) => v.isActive).length;
+
   const typeTitle = LEGAL_DOCUMENT_TYPE_TITLES[type];
-  // Prefer type chrome title when DB title is immutable after rename.
   const headingTitle =
     type === "terms_of_service" ||
     type === "couple_end_user_terms" ||
@@ -81,7 +84,7 @@ export default async function AdminLegalVersionPage({ params }: Props) {
           </h1>
           <p className="text-sm text-muted-foreground">
             Version {doc.version} · Effective {formatDate(doc.effectiveDate)} ·{" "}
-            {doc.isActive ? "Active" : "Inactive"}
+            {doc.isActive ? "Active" : doc.isPublished ? "Published" : "Draft"}
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -89,18 +92,19 @@ export default async function AdminLegalVersionPage({ params }: Props) {
             id={doc.id}
             documentType={type}
             isActive={doc.isActive}
+            activeCountForType={activeCount}
           />
           <Button
             variant="outline"
             render={<Link href={`/admin/legal/${type}/new`} />}
           >
-            Create New Version
+            Publish New Version
           </Button>
         </div>
       </div>
 
       <div className="rounded-xl border bg-muted/20 px-4 py-3 text-sm text-muted-foreground">
-        This version is read-only. To change the text, create a new version.
+        This version is read-only. To change the text, publish a new version.
       </div>
 
       <article className="rounded-xl border px-5 py-6">
