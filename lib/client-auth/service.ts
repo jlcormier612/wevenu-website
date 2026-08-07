@@ -68,6 +68,8 @@ async function sendClientInviteEmail(
       "",
       `${venueName} has invited you to create your own account for your wedding planning workspace.`,
       "",
+      "By accepting this invitation, you will be asked to review and accept the applicable Hello to Cheers Terms and Privacy Policy before accessing your workspace.",
+      "",
       "Create your account here:",
       acceptUrl,
       "",
@@ -78,6 +80,7 @@ async function sendClientInviteEmail(
     html: [
       `<p>Hi ${coupleName},</p>`,
       `<p>${venueName} has invited you to create your own account for your wedding planning workspace.</p>`,
+      `<p>By accepting this invitation, you will be asked to review and accept the applicable Hello to Cheers Terms and Privacy Policy before accessing your workspace.</p>`,
       `<p><a href="${acceptUrl}" style="background:${primaryColor};color:#fff;padding:10px 20px;border-radius:8px;text-decoration:none;display:inline-block;">Create Your Account</a></p>`,
       `<p style="color:#888;font-size:12px;">This link is personal to you — please don't share it.</p>`,
       `<p style="color:#888;font-size:12px;">${venueName}</p>`,

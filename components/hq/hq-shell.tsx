@@ -6,6 +6,7 @@ import {
   Headset,
   LineChart,
   MessageSquareHeart,
+  Scale,
   Settings,
   Siren,
 } from "lucide-react";
@@ -31,6 +32,8 @@ const NAV: NavItem[] = [
   { href: "/admin/support", label: "Support", icon: Headset, badgeKey: "support" },
   { href: "/admin/analytics", label: "Analytics", icon: LineChart },
   { href: "/admin/system-health", label: "System Health", icon: Siren },
+  { section: "Business" },
+  { href: "/admin/legal", label: "Legal", icon: Scale },
   { section: "Coming soon" },
   { href: "/admin/settings", label: "Settings", icon: Settings, soon: true },
 ];

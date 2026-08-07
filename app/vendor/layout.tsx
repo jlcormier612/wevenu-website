@@ -1,8 +1,14 @@
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 
+import { StaffLegalAcceptance } from "@/components/legal/staff-legal-acceptance";
 import { VendorAppShell } from "@/components/vendor-app/vendor-app-shell";
+import { createClient } from "@/integrations/supabase/server";
 import { isSupabaseConfigured } from "@/lib/env";
+import {
+  getLegalGateStatus,
+  VENDOR_PORTAL_LEGAL_TYPES,
+} from "@/lib/legal/service";
 import { getVendorBriefing, getVendorLuvAttentionCount } from "@/lib/luv/vendor-observations";
 import { getVendorUser } from "@/lib/vendor-auth/service";
 import { getVendorHomeData } from "@/lib/vendor-home/service";
@@ -29,6 +35,24 @@ export default async function VendorLayout({ children }: { children: React.React
 
   const vendorUser = await getVendorUser();
   if (!vendorUser) redirect("/login");
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+
+  const legalGate = await getLegalGateStatus(user.id, VENDOR_PORTAL_LEGAL_TYPES);
+  if (legalGate.needsAcceptance) {
+    return (
+      <StaffLegalAcceptance
+        portal="vendor"
+        documents={legalGate.documents}
+        title="Review vendor terms"
+        checkboxLabel="I have read and agree to the Vendor End User Terms and Privacy Policy."
+      />
+    );
+  }
 
   const [profile, pendingTaskCount, conversationInbox, home, luvExtras] = await Promise.all([
     getVendorProfile(vendorUser.vendorId),

@@ -69,8 +69,11 @@ export const FOOTER_EXPLORE = [
 export const FOOTER_TRUST = [
   { href: CHAPTERS.trust.href, label: chapterFooterLabel("trust") },
   { href: "/privacy", label: "Privacy Policy" },
-  { href: "/terms", label: "Terms of Service" },
-  { href: "/cookies", label: "Cookie Preferences" },
+  { href: "/terms", label: "Venue Subscription Agreement" },
+  { href: "/end-user-terms", label: "End User Terms" },
+  { href: "/vendor-terms", label: "Vendor Terms" },
+  { href: "/cookie-policy", label: "Cookie Policy" },
+  { href: "/acceptable-use", label: "Acceptable Use Policy" },
   { href: "/status", label: "System Status" },
 ] as const;
 

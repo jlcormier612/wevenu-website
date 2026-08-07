@@ -7,6 +7,8 @@ export type LegalSection = {
   heading: string;
   paragraphs?: string[];
   bullets?: string[];
+  /** Rendered after bullets when counsel prose continues past a list. */
+  afterBullets?: string[];
 };
 
 export type LegalDocument = {
@@ -34,8 +36,10 @@ export const PRIVACY_POLICY: LegalDocument = {
     {
       heading: "2. Scope",
       paragraphs: [
-        "This Policy applies to personal information we process in connection with our marketing sites, product applications, customer accounts, support communications, and related online experiences.",
-        "Our Services may allow venues to invite clients, guests, vendors, and team members. Those individuals’ information is typically processed on behalf of the venue customer. Where Hello to Cheers acts as a processor/service provider for a venue, the venue’s instructions and privacy notices also apply.",
+        "This Privacy Policy applies to our marketing website, product applications, customer accounts, support communications, and related online experiences.",
+        "Hello to Cheers is used by venue owners, venue staff, couples, clients, guests, vendors, and other invited collaborators.",
+        "Depending on your role, Hello to Cheers may act either as the direct provider of services to you or as a service provider processing information on behalf of a participating venue.",
+        "Where Hello to Cheers processes information on behalf of a venue, the venue's instructions and privacy practices also apply.",
       ],
     },
     {
@@ -143,7 +147,7 @@ export const PRIVACY_POLICY: LegalDocument = {
 };
 
 export const TERMS_OF_SERVICE: LegalDocument = {
-  title: "Terms of Service",
+  title: "Venue Subscription Agreement",
   slug: "terms",
   effectiveDate: "July 15, 2026",
   notice:
@@ -326,6 +330,197 @@ export const COOKIE_POLICY: LegalDocument = {
     {
       heading: "6. Contact",
       paragraphs: ["privacy@hellotocheers.com"],
+    },
+  ],
+};
+
+export const END_USER_TERMS: LegalDocument = {
+  title: "End User Terms",
+  slug: "end-user-terms",
+  effectiveDate: "July 15, 2026",
+  notice:
+    "These End User Terms govern your access to and use of Hello to Cheers as a couple, client, guest, or other invited participant. By accessing a planning portal, wedding website tools, or related features, you agree to these Terms.",
+  sections: [
+    {
+      heading: "1. Who These Terms Cover",
+      paragraphs: [
+        "These Terms apply to couples, clients, guests, and other people invited to use Hello to Cheers in connection with an event hosted or managed by a participating venue (together, “you” or “End Users”).",
+        "They do not replace any separate agreement you may have with a venue. Venue subscribers are also subject to the Venue Subscription Agreement.",
+      ],
+    },
+    {
+      heading: "2. The Platform We Provide",
+      paragraphs: [
+        "Hello to Cheers provides the software platform and related online tools that venues use to plan, communicate, and coordinate events (the “Services”).",
+        "We make the technology available; we do not operate your venue or run your event.",
+      ],
+    },
+    {
+      heading: "3. Your Venue Manages the Event",
+      paragraphs: [
+        "The venue (or other hospitality business) that invited you manages the event relationship—including planning decisions, communications, vendors, and guest experience configuration within Hello to Cheers.",
+        "Hello to Cheers is not a party to contracts between you and the venue, and is not a party to contracts between you and any vendors engaged for the event.",
+      ],
+    },
+    {
+      heading: "4. What We Are Not Responsible For",
+      paragraphs: [
+        "Hello to Cheers is not responsible for venue pricing, planning decisions, vendor selection, event execution, or disputes arising from the event or your relationship with the venue or vendors.",
+        "Questions about your booking, timeline, vendors, payments owed to the venue, or day-of logistics should be directed to your venue.",
+      ],
+    },
+    {
+      heading: "5. Accounts and Credentials",
+      paragraphs: [
+        "If you create or receive login credentials, you are responsible for protecting them and for activity that occurs under your account.",
+        "Notify your venue or Hello to Cheers promptly if you believe your access has been compromised.",
+      ],
+    },
+    {
+      heading: "6. Lawful Use",
+      paragraphs: [
+        "You may use the Services only for lawful purposes and in accordance with these Terms and our Acceptable Use Policy.",
+        "You agree not to misuse the platform, interfere with its security or integrity, or use it to harm others.",
+      ],
+    },
+    {
+      heading: "7. Privacy",
+      paragraphs: [
+        "Customer and End User information is protected according to our Privacy Policy, which explains how we collect, use, share, and safeguard information.",
+        "Where Hello to Cheers processes information on behalf of a venue, the venue’s instructions and privacy practices may also apply.",
+      ],
+    },
+    {
+      heading: "8. Suspension",
+      paragraphs: [
+        "Hello to Cheers may suspend or limit accounts for abuse, security risk, or violations of these Terms or the Acceptable Use Policy. We will provide notice when reasonable and practical.",
+      ],
+    },
+    {
+      heading: "9. Related Policies",
+      paragraphs: [
+        "Our Privacy Policy and Acceptable Use Policy are incorporated into these Terms by reference. Please review them together with this page.",
+      ],
+    },
+    {
+      heading: "10. Contact",
+      paragraphs: [
+        "Questions about these Terms: legal@hellotocheers.com",
+        "Privacy questions: privacy@hellotocheers.com",
+        "General support: the contact methods listed on hellotocheers.com",
+      ],
+    },
+  ],
+};
+
+export const VENDOR_TERMS: LegalDocument = {
+  title: "Vendor Terms",
+  slug: "vendor-terms",
+  effectiveDate: "July 15, 2026",
+  notice: "",
+  sections: [
+    {
+      heading: "1. Welcome",
+      paragraphs: [
+        "These Vendor Terms govern your access to and use of Hello to Cheers as an invited vendor.",
+        "You are accessing Hello to Cheers because a participating venue has invited you to collaborate on one or more events through the platform.",
+        "By accepting that invitation or using Hello to Cheers, you agree to these Vendor Terms, along with our Privacy Policy, Cookie Policy, and Acceptable Use Policy.",
+      ],
+    },
+    {
+      heading: "2. Our Role",
+      paragraphs: [
+        "Hello to Cheers provides software that helps venues, couples, vendors, and venue teams collaborate around shared events.",
+        "Hello to Cheers is not:",
+      ],
+      bullets: [
+        "the venue",
+        "your client",
+        "your employer",
+        "your agent",
+        "your event coordinator",
+      ],
+      afterBullets: [
+        "We provide the technology platform that enables collaboration.",
+      ],
+    },
+    {
+      heading: "3. Your Relationship With the Venue",
+      paragraphs: [
+        "Your business relationship remains directly with the venue and, where applicable, the couple or client.",
+        "Hello to Cheers is not a party to agreements involving:",
+      ],
+      bullets: [
+        "services",
+        "pricing",
+        "proposals",
+        "contracts",
+        "insurance",
+        "scheduling",
+        "payments between vendors and venues",
+        "event execution",
+        "disputes",
+      ],
+      afterBullets: [
+        "Questions regarding those matters should be directed to the venue or the appropriate contracting party.",
+      ],
+    },
+    {
+      heading: "4. Your Information",
+      paragraphs: [
+        "You remain responsible for the accuracy of the information you provide.",
+        "You should keep your contact information, availability, pricing (where applicable), uploaded documents, and other business information current.",
+        "You are responsible for maintaining the security of your login credentials.",
+      ],
+    },
+    {
+      heading: "5. Appropriate Use",
+      paragraphs: [
+        "You agree to use Hello to Cheers only for legitimate business purposes connected with events and hospitality.",
+        "You may not:",
+      ],
+      bullets: [
+        "interfere with the platform",
+        "attempt unauthorized access",
+        "upload malicious software",
+        "impersonate another person or business",
+        "misuse communication tools",
+        "violate applicable laws",
+      ],
+      afterBullets: [
+        "Additional requirements appear in our Acceptable Use Policy.",
+      ],
+    },
+    {
+      heading: "6. Privacy",
+      paragraphs: [
+        "Our Privacy Policy explains how Hello to Cheers collects, uses, and protects information.",
+        "The venue may also maintain its own privacy practices relating to information shared through its workspace.",
+      ],
+    },
+    {
+      heading: "7. Availability",
+      paragraphs: [
+        "We work hard to provide a reliable platform.",
+        "Like all software services, Hello to Cheers may occasionally experience maintenance, updates, or unexpected interruptions.",
+        "Current operational status is available through our System Status page.",
+      ],
+    },
+    {
+      heading: "8. Changes",
+      paragraphs: [
+        "We may update these Vendor Terms from time to time.",
+        "Material changes will include an updated effective date and, where appropriate, additional notice.",
+        "Continued use after the effective date constitutes acceptance of the updated terms.",
+      ],
+    },
+    {
+      heading: "9. Contact",
+      paragraphs: [
+        "Questions regarding these Vendor Terms may be sent to:",
+        "legal@hellotocheers.com",
+        "General support is available through the contact methods listed on hellotocheers.com.",
+      ],
     },
   ],
 };

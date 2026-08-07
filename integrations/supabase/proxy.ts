@@ -21,6 +21,13 @@ const PUBLIC_PATHS = [
   "/api/messaging/sms-inbound", // Twilio inbound SMS webhook (no user session; verifies its own signature)
   "/api/messaging/sms-status",  // Twilio outbound SMS status callback (no user session; verifies its own signature)
   "/sign",           // public contract signing — /sign/{token}
+  "/legal",          // public active legal documents — /legal/{document_type}
+  "/terms",          // canonical public Venue Subscription Agreement
+  "/privacy",        // canonical public Privacy Policy
+  "/cookies",        // canonical public Cookie Policy
+  "/acceptable-use", // canonical public Acceptable Use Policy
+  "/api/legal",      // public legal metadata (active document ids / versions)
+  "/api/internal/legal", // CRM → legal acceptances — Bearer PRODUCT_SYNC_API_KEY
   "/p",              // client portal workspace — /p/{access_token}
   "/v",              // vendor portal workspace — /v/{access_token}
   "/vendor/accept",  // vendor invitation claim — accessible before auth

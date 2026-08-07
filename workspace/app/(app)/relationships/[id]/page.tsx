@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 
 import { LuvMark } from "@/components/luv/luv-mark";
 import { LuvRelationshipAdvisor } from "@/components/luv/luv-relationship-advisor";
+import { LegalComplianceCard } from "@/components/relationships/legal-compliance-card";
 import { LifecycleActions } from "@/components/relationships/lifecycle-actions";
 import { ProductSyncPanel } from "@/components/relationships/product-sync-panel";
 import {
@@ -14,6 +15,7 @@ import {
   resolveSnapshotMode,
   type SnapshotPreferredView,
 } from "@/components/relationships/relationship-workspace";
+import { fetchLegalComplianceViaProduct } from "@/lib/legal/product-legal";
 import { StatusMoveControl } from "@/components/relationships/status-move-control";
 import { SupportResolveControl } from "@/components/relationships/support-resolve-control";
 import { Panel, StatusPill } from "@/components/shared/ui";
@@ -140,6 +142,11 @@ export default async function RelationshipDetailPage({
   const invoices = getInvoices(id);
   const subscriptions = getSubscriptions(id);
   const milestones = getOnboardingMilestones(id);
+  const legalCompliance = await fetchLegalComplianceViaProduct({
+    subject: "venue",
+    relationshipId: id,
+    email: relationship.owner.email,
+  });
   const workflows = getWorkflowsSync();
   const runs = getWorkflowRunsSync({ relationshipId: id });
   const sequences = getSequencesSync();
@@ -233,6 +240,7 @@ export default async function RelationshipDetailPage({
       />
       <StatusMoveControl relationship={relationship} />
       <CustomerSuccessPanels relationship={relationship} />
+      <LegalComplianceCard summary={legalCompliance} />
       {showCustomerActions ? (
         <ProductSyncPanel
           relationshipId={id}

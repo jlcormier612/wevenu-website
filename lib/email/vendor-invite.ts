@@ -31,6 +31,9 @@ export function buildVendorInviteHtml({
           ${escapeHtml(venueName)} has set up a vendor profile for ${escapeHtml(vendorName)} on Hello to Cheers.
           Claim it to manage your business profile, service packages, availability, and venue relationships — all in one place.
         </p>
+        <p style="margin:0 0 24px;font-size:15px;color:#374151;line-height:1.6">
+          By accepting this invitation, you will be asked to review and accept the applicable Hello to Cheers Terms and Privacy Policy before accessing your workspace.
+        </p>
         <a href="${acceptUrl}"
           style="display:inline-block;background:#1a1a1a;color:#fff;font-size:15px;font-weight:600;padding:14px 28px;border-radius:8px;text-decoration:none">
           Accept Invitation →
@@ -65,6 +68,8 @@ export function buildVendorInviteText({
     "",
     `${venueName} has set up a vendor profile for ${vendorName} on Hello to Cheers.`,
     "Claim it to manage your profile, packages, availability, and venue relationships.",
+    "",
+    "By accepting this invitation, you will be asked to review and accept the applicable Hello to Cheers Terms and Privacy Policy before accessing your workspace.",
     "",
     `Accept your invitation: ${acceptUrl}`,
     "",

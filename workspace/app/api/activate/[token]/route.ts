@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { completeAccountActivation, lookupActivationToken } from "@shared/relationships";
 import { recordOwnerActivationCredential } from "@shared/product-sync";
 
+import { completeVenueActivateLegalViaProduct } from "@/lib/legal/product-legal";
 import { hashPassword } from "@/lib/program4/password";
 
 function productLoginUrl(): string {
@@ -38,6 +39,7 @@ export async function GET(
     email: lookup.relationship.owner.email,
     venueName: lookup.relationship.venue.name,
     firstName: lookup.relationship.owner.firstName,
+    relationshipId: lookup.relationship.id,
   });
 }
 
@@ -48,16 +50,38 @@ export async function POST(
   const { token: raw } = await context.params;
   const token = decodeURIComponent(raw || "").trim();
 
-  let body: { password?: string; confirm?: string } = {};
+  let body: {
+    password?: string;
+    confirm?: string;
+    legalAccepted?: unknown;
+  } = {};
   try {
-    body = (await request.json()) as { password?: string; confirm?: string };
+    body = (await request.json()) as {
+      password?: string;
+      confirm?: string;
+      legalAccepted?: unknown;
+    };
   } catch {
     return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
   }
 
   const password = String(body.password || "");
   const confirm = String(body.confirm || "");
+  const legalAccepted =
+    body.legalAccepted === true ||
+    body.legalAccepted === "true" ||
+    body.legalAccepted === 1 ||
+    body.legalAccepted === "1";
 
+  if (!legalAccepted) {
+    return NextResponse.json(
+      {
+        error:
+          "Please agree to the Terms of Service and Privacy Policy to continue.",
+      },
+      { status: 400 },
+    );
+  }
   if (password.length < 8) {
     return NextResponse.json(
       { error: "Password must be at least 8 characters." },
@@ -66,6 +90,26 @@ export async function POST(
   }
   if (password !== confirm) {
     return NextResponse.json({ error: "Passwords do not match." }, { status: 400 });
+  }
+
+  const lookup = await lookupActivationToken(token);
+  if (!lookup.ok) {
+    return NextResponse.json(
+      { error: lookup.message, reason: lookup.reason },
+      { status: lookup.reason === "not_found" ? 404 : 400 },
+    );
+  }
+
+  const email = lookup.relationship.owner.email?.trim() || "";
+  if (email) {
+    const legal = await completeVenueActivateLegalViaProduct({
+      email,
+      relationshipId: lookup.relationship.id,
+      legalAccepted: true,
+    });
+    if (!legal.ok) {
+      return NextResponse.json({ error: legal.message }, { status: 400 });
+    }
   }
 
   const result = await completeAccountActivation({ token });

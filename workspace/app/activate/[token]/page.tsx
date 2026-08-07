@@ -102,6 +102,7 @@ export default async function ActivateAccountPage({
           token={token}
           email={email}
           venueName={venueName}
+          relationshipId={relationship.id}
         />
       </div>
     </div>

@@ -19,9 +19,11 @@ export function LegalDocumentView({ document }: { document: LegalDocument }) {
         <p className="mt-4 text-sm text-[var(--forest-sage)]/55">
           Effective date: {document.effectiveDate}
         </p>
-        <p className="mt-8 text-base leading-[1.7] text-[var(--forest-sage)]/70 md:text-lg max-w-[65ch]">
-          {document.notice}
-        </p>
+        {document.notice ? (
+          <p className="mt-8 text-base leading-[1.7] text-[var(--forest-sage)]/70 md:text-lg max-w-[65ch]">
+            {document.notice}
+          </p>
+        ) : null}
         <p className="mt-6 text-sm italic text-[var(--forest-sage)]/50">
           Draft for counsel review before launch.
         </p>
@@ -56,6 +58,14 @@ export function LegalDocumentView({ document }: { document: LegalDocument }) {
                   ))}
                 </ul>
               ) : null}
+              {section.afterBullets?.map((paragraph) => (
+                <p
+                  key={paragraph.slice(0, 48)}
+                  className="mt-5 text-base leading-[1.7] text-[var(--forest-sage)]/75 md:text-lg max-w-[65ch]"
+                >
+                  {paragraph}
+                </p>
+              ))}
             </section>
           ))}
         </div>

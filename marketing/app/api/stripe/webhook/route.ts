@@ -245,6 +245,7 @@ async function handleCheckoutCompleted(
       onboardingType: record.onboardingType,
       mrrCents: record.mrrCents,
       relationshipId: meta.relationship_id || null,
+      legalAccepted: meta.legal_accepted === "true",
     });
   } catch (error) {
     console.error("[stripe] failed to create venue enrollment", error);

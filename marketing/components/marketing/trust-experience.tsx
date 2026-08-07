@@ -138,6 +138,58 @@ export function TrustExperience() {
         </div>
       </section>
 
+      {/* ── Data Processing & Ownership ── */}
+      <section id="data-processing-ownership" className="scroll-mt-28 px-6 py-28 md:py-36">
+        <div className="mx-auto max-w-3xl">
+          <TrustRule className="mb-5" />
+          <h2 className="font-heading text-[2.35rem] text-[var(--forest-sage)] md:text-[3.76rem]">
+            {page.dataProcessingOwnership.title}
+          </h2>
+          <div className="mt-8 space-y-5 text-base leading-[1.7] text-[var(--forest-sage)]/70 md:text-lg max-w-[65ch]">
+            {page.dataProcessingOwnership.lines.map((line) => (
+              <p key={line}>{line}</p>
+            ))}
+          </div>
+          <div className="mt-14 space-y-10">
+            {page.dataProcessingOwnership.points.map((point) => (
+              <div key={point.title}>
+                <h3 className="font-heading text-xl text-[var(--forest-sage)] md:text-2xl">
+                  {point.title}
+                </h3>
+                <p className="mt-3 text-base leading-[1.7] text-[var(--forest-sage)]/70 md:text-lg max-w-[65ch]">
+                  {point.body}
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── Luv Principles ── */}
+      <section id="luv-principles" className="scroll-mt-28 px-6 py-28 md:py-36">
+        <div className="mx-auto max-w-3xl">
+          <TrustRule className="mb-5" />
+          <h2 className="font-heading text-[2.35rem] text-[var(--forest-sage)] md:text-[3.76rem]">
+            {page.luvPrinciples.title}
+          </h2>
+          <p className="mt-8 text-base leading-[1.7] text-[var(--forest-sage)]/70 md:text-lg max-w-[65ch]">
+            {page.luvPrinciples.intro}
+          </p>
+          <div className="mt-14 space-y-10">
+            {page.luvPrinciples.points.map((point) => (
+              <div key={point.title}>
+                <h3 className="font-heading text-xl text-[var(--forest-sage)] md:text-2xl">
+                  {point.title}
+                </h3>
+                <p className="mt-3 whitespace-pre-line text-base leading-[1.7] text-[var(--forest-sage)]/70 md:text-lg max-w-[65ch]">
+                  {point.body}
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* ── Reliability ── */}
       <section
         id="reliability"

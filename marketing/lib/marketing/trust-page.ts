@@ -19,6 +19,8 @@ export const TRUST_PAGE = {
     { id: "security", label: "Security" },
     { id: "privacy", label: "Privacy" },
     { id: "data-ownership", label: "Data Ownership" },
+    { id: "data-processing-ownership", label: "Data Processing & Ownership" },
+    { id: "luv-principles", label: "Luv Principles" },
     { id: "reliability", label: "Reliability" },
     { id: "compliance", label: "Compliance" },
     { id: "terms", label: "Terms" },
@@ -83,6 +85,66 @@ export const TRUST_PAGE = {
       "That philosophy isn't a footnote. It shapes how we design the product.",
     ],
   },
+  dataProcessingOwnership: {
+    title: "Data Processing & Ownership",
+    lines: [
+      "Clear ownership builds trust.",
+      "Hello to Cheers exists to help venues manage relationships—not to own them.",
+      "Everything you create inside Hello to Cheers remains yours.",
+    ],
+    points: [
+      {
+        title: "Who owns my data?",
+        body: "Your venue owns the business data created and managed within its workspace.",
+      },
+      {
+        title: "Can I export my data?",
+        body: "Yes. We believe leaving should never require filing a support ticket simply to retrieve your information.",
+      },
+      {
+        title: "Can Hello to Cheers read our information?",
+        body: "Only when reasonably necessary to operate, support, secure, or improve the platform, and always under appropriate safeguards.",
+      },
+      {
+        title: "Do you sell customer data?",
+        body: "Never.",
+      },
+      {
+        title: "How does Luv use our information?",
+        body: "Luv uses your workspace information only to generate recommendations for your venue. Customer information is never sold or used to build advertising profiles.",
+      },
+      {
+        title: "Do uploaded documents remain ours?",
+        body: "Yes.",
+      },
+    ],
+  },
+  luvPrinciples: {
+    title: "Luv Principles",
+    intro: "Artificial intelligence should strengthen hospitality—not replace it.",
+    points: [
+      {
+        title: "Suggestions First",
+        body: "Luv recommends.\nYou decide.",
+      },
+      {
+        title: "Venue Control",
+        body: "Luv never takes over your business.",
+      },
+      {
+        title: "Transparent Guidance",
+        body: "Recommendations should be understandable whenever possible.",
+      },
+      {
+        title: "Privacy Respect",
+        body: "Customer information is never sold or used for advertising.",
+      },
+      {
+        title: "Hospitality Before Automation",
+        body: "Technology should support relationships—not replace them.",
+      },
+    ],
+  },
   reliability: {
     title: "Reliability",
     headline: "Prepared for the work of real venues.",
@@ -128,7 +190,7 @@ export const TRUST_PAGE = {
     ],
   },
   terms: {
-    title: "Terms",
+    title: "Venue Subscription Agreement",
     headline: "In Plain English",
     lines: [
       "We built Hello to Cheers to earn your business every month—not lock you into it.",
@@ -139,7 +201,7 @@ export const TRUST_PAGE = {
       "We'll be transparent if something goes wrong.",
       "We'll never intentionally make leaving difficult.",
     ],
-    cta: { href: "/terms", label: "Read the full Terms of Service →" },
+    cta: { href: "/terms", label: "Read the Venue Subscription Agreement →" },
   },
   subscription: {
     title: "Subscription Philosophy",

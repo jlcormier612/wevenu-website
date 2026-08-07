@@ -4,13 +4,17 @@ import { useEffect, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
 import type { OnboardingType } from "@/lib/marketing/enrollment";
+import { PRODUCT_APP_URL } from "@/lib/marketing/nav";
 import {
   getDefaultOnboardingType,
   ONBOARDING_PACKAGES,
   ONBOARDING_SELECTION_COPY,
 } from "@/lib/marketing/onboarding-packages";
-import { HOVER_FILL, HOVER_OUTLINE } from "@/lib/marketing/rhythm";
+import { HOVER_FILL, HOVER_LINK, HOVER_OUTLINE } from "@/lib/marketing/rhythm";
 import { cn } from "@/lib/utils";
+
+const VENUE_TERMS_URL = `${PRODUCT_APP_URL}/legal/venue_terms_of_service`;
+const PRIVACY_POLICY_URL = `${PRODUCT_APP_URL}/legal/privacy_policy`;
 
 type OnboardingSelectionProps = {
   open: boolean;
@@ -21,6 +25,7 @@ type OnboardingSelectionProps = {
   onContinue: (selection: {
     onboardingType: OnboardingType;
     welcomeBack: boolean;
+    legalAccepted: boolean;
   }) => void;
 };
 
@@ -40,12 +45,14 @@ export function OnboardingSelection({
   const closeRef = useRef<HTMLButtonElement>(null);
   const [selected, setSelected] = useState<OnboardingType>(getDefaultOnboardingType);
   const [welcomeBack, setWelcomeBack] = useState(false);
+  const [legalAccepted, setLegalAccepted] = useState(false);
   const [pendingType, setPendingType] = useState<OnboardingType | null>(null);
 
   useEffect(() => {
     if (!open) return;
     setSelected(getDefaultOnboardingType());
     setWelcomeBack(false);
+    setLegalAccepted(false);
     setPendingType(null);
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
@@ -60,9 +67,10 @@ export function OnboardingSelection({
   }, [loading]);
 
   function continueWith(type: OnboardingType) {
+    if (!legalAccepted) return;
     setSelected(type);
     setPendingType(type);
-    onContinue({ onboardingType: type, welcomeBack });
+    onContinue({ onboardingType: type, welcomeBack, legalAccepted: true });
   }
 
   useEffect(() => {
@@ -141,9 +149,45 @@ export function OnboardingSelection({
               </label>
             </div>
 
+            <div className="mt-8 space-y-3 border-t border-[var(--taupe-medium)]/40 pt-8">
+              <label className="flex cursor-pointer items-start gap-3 text-sm leading-[1.6] text-[var(--forest-sage)]/80">
+                <input
+                  type="checkbox"
+                  checked={legalAccepted}
+                  onChange={(e) => setLegalAccepted(e.target.checked)}
+                  disabled={loading}
+                  className="mt-1 size-4 shrink-0 rounded border-[var(--taupe-medium)] text-[var(--heritage-sage)] accent-[var(--heritage-sage)]"
+                />
+                <span>
+                  I have read and agree to the{" "}
+                  <a
+                    href={VENUE_TERMS_URL}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={cn("underline underline-offset-2", HOVER_LINK)}
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    Terms of Service
+                  </a>{" "}
+                  and{" "}
+                  <a
+                    href={PRIVACY_POLICY_URL}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={cn("underline underline-offset-2", HOVER_LINK)}
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    Privacy Policy
+                  </a>
+                  .
+                </span>
+              </label>
+            </div>
+
             <div className="mt-8 grid gap-4 md:grid-cols-2">
               {ONBOARDING_PACKAGES.map((pkg) => {
                 const isSelected = selected === pkg.id;
+                const continueDisabled = loading || !legalAccepted;
                 return (
                   <article
                     key={pkg.id}
@@ -184,7 +228,7 @@ export function OnboardingSelection({
                     <button
                       type="button"
                       onClick={() => continueWith(pkg.id)}
-                      disabled={loading}
+                      disabled={continueDisabled}
                       className={cn(
                         "mt-8 inline-flex w-full items-center justify-center rounded-full px-5 py-3 text-sm tracking-wide transition duration-200 ease-out disabled:opacity-60",
                         isSelected
