@@ -4065,7 +4065,7 @@ export function PortalShell({
     });
   }
 
-  if (needsLegalAcceptance) {
+  if (needsLegalAcceptance && legalDocuments.length > 0) {
     const welcomeDocs: WelcomeExperienceDocument[] = legalDocuments.map(
       (d) => ({
         id: d.id,
@@ -4091,6 +4091,32 @@ export function PortalShell({
         portalToken={token}
         onSuccess={() => setNeedsLegalAcceptance(false)}
       />
+    );
+  }
+
+  // needsAcceptance without reviewable docs is either still loading (SSR
+  // fail-closed) or a transient legal-status error — never show Continue with
+  // an empty list, and never unlock the workspace until the API clears the gate.
+  if (needsLegalAcceptance) {
+    return (
+      <main
+        className="flex min-h-svh w-full flex-col items-center justify-center px-4 py-10"
+        style={{
+          background:
+            "color-mix(in oklch, var(--linen), var(--taupe-dark) 45%)",
+        }}
+        data-welcome-experience-pending
+      >
+        <div className="w-full max-w-md rounded-lg border border-[color-mix(in_srgb,var(--taupe-medium)_40%,transparent)] bg-[var(--true-white)] px-6 py-8 text-center shadow-sm">
+          <p className="font-heading text-xl text-[var(--forest-sage)]">
+            Preparing your workspace
+          </p>
+          <p className="mt-3 text-sm leading-relaxed text-[color-mix(in_oklch,var(--forest-sage)_70%,transparent)]">
+            We&apos;re confirming a few required documents. Refresh if this
+            takes too long, or contact your venue for help.
+          </p>
+        </div>
+      </main>
     );
   }
 

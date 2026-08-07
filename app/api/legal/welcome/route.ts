@@ -15,6 +15,7 @@ import {
   outstandingImpliesPriorAcceptance,
   recordOutstandingAcceptances,
   safeReturnToPath,
+  welcomeRequiresReview,
   type WelcomeFlowContext,
 } from "@/lib/legal/welcome-integration";
 import { welcomeDocumentsFromOutstanding } from "@/components/welcome-experience/welcome-experience-helpers";
@@ -76,7 +77,7 @@ export async function GET(request: Request) {
 
     return NextResponse.json({
       ok: true,
-      requiresAcceptance: status.requiresAcceptance,
+      requiresAcceptance: welcomeRequiresReview(status.outstanding),
       context,
       heading: copy.heading,
       introduction: copy.introduction,
@@ -152,7 +153,7 @@ export async function POST(request: Request) {
       principal.user,
     );
 
-    if (!status.requiresAcceptance) {
+    if (!welcomeRequiresReview(status.outstanding)) {
       return NextResponse.json({
         ok: true,
         alreadyAccepted: true,

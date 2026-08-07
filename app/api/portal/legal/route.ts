@@ -15,6 +15,7 @@ import {
   isWelcomeFlowContext,
   outstandingImpliesPriorAcceptance,
   recordOutstandingAcceptances,
+  welcomeRequiresReview,
   type WelcomeFlowContext,
 } from "@/lib/legal/welcome-integration";
 
@@ -52,7 +53,8 @@ export async function GET(request: Request) {
       });
       const docs = welcomeDocumentsFromOutstanding(engine.outstanding);
       return NextResponse.json({
-        needsAcceptance: engine.requiresAcceptance,
+        // Only reviewable (active) outstanding docs should mount Welcome.
+        needsAcceptance: welcomeRequiresReview(engine.outstanding),
         hasPriorAcceptance: outstandingImpliesPriorAcceptance(
           engine.outstanding,
         ),
@@ -139,9 +141,19 @@ export async function POST(request: Request) {
       );
     }
 
-    let userId = identity.userId?.trim() || null;
-    if (!userId && identity.email) {
-      userId = await resolveUserIdForEmail(identity.email);
+    // Prefer email → auth.users resolve/create so portal sessions without a
+    // verified auth id (or with a stale client_user_id) still record against a
+    // real FK target. Fall back to session user id when email is unavailable.
+    let userId: string | null = null;
+    if (identity.email) {
+      try {
+        userId = await resolveUserIdForEmail(identity.email);
+      } catch (error) {
+        console.error("[portal/legal] resolveUserIdForEmail failed", error);
+      }
+    }
+    if (!userId) {
+      userId = identity.userId?.trim() || null;
     }
     if (!userId) {
       return NextResponse.json(
@@ -157,7 +169,7 @@ export async function POST(request: Request) {
     };
 
     const status = await legalAcceptanceService.requiresAcceptance(user);
-    if (!status.requiresAcceptance) {
+    if (!welcomeRequiresReview(status.outstanding)) {
       return NextResponse.json({ ok: true, alreadyAccepted: true, userId });
     }
 

@@ -16,6 +16,7 @@ import {
   isWelcomeFlowContext,
   outstandingImpliesPriorAcceptance,
   safeReturnToPath,
+  welcomeRequiresReview,
   type WelcomeFlowContext,
 } from "@/lib/legal/welcome-integration";
 import { resolveLegalSessionPrincipal } from "@/lib/legal/resolve-session-principal";
@@ -77,8 +78,11 @@ export default async function WelcomePage({ searchParams }: Props) {
   const fallback =
     principal.kind === "vendor" ? "/vendor/dashboard" : "/dashboard";
   const returnTo = safeReturnToPath(params.returnTo, { fallback });
+  const documents = welcomeDocumentsFromOutstanding(status.outstanding);
 
-  if (!status.requiresAcceptance) {
+  // Only mount Welcome when there is at least one reviewable (active) doc —
+  // empty Continue screens cannot record acceptances (venue/vendor/signup).
+  if (!welcomeRequiresReview(status.outstanding) || documents.length === 0) {
     redirect(returnTo);
   }
 
@@ -92,7 +96,6 @@ export default async function WelcomePage({ searchParams }: Props) {
       });
 
   const copy = copyForWelcomeContext(context);
-  const documents = welcomeDocumentsFromOutstanding(status.outstanding);
 
   return (
     <WelcomeExperienceGate
@@ -136,7 +139,7 @@ async function renderCoupleWelcome(
       userType: "couple",
       relationshipId: identity.relationshipId,
     });
-    requires = status.requiresAcceptance;
+    requires = welcomeRequiresReview(status.outstanding);
     hasPrior = outstandingImpliesPriorAcceptance(status.outstanding);
     documents = welcomeDocumentsFromOutstanding(status.outstanding);
   } else {
@@ -151,7 +154,7 @@ async function renderCoupleWelcome(
     }));
   }
 
-  if (!requires) {
+  if (!requires || documents.length === 0) {
     redirect(returnTo);
   }
 

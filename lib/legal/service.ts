@@ -622,8 +622,10 @@ export async function getCouplePortalLegalGateStatus(
       d.documentType === "privacy_policy",
   );
 
+  // Missing active versions → empty documents. Do not soft-block Welcome with
+  // a Continue that cannot record anything (WP3/WP4 couple portal).
   return {
-    needsAcceptance: status.needsAcceptance,
+    needsAcceptance: status.needsAcceptance && documents.length > 0,
     documents,
   };
 }

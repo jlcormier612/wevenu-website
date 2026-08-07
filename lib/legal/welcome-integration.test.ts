@@ -15,7 +15,9 @@ import {
   mapStaffRoleToLegalUserType,
   outstandingImpliesPriorAcceptance,
   recordOutstandingAcceptances,
+  reviewableOutstanding,
   safeReturnToPath,
+  welcomeRequiresReview,
   WP4_WELCOME_COPY,
 } from "./welcome-integration";
 import {
@@ -155,6 +157,37 @@ describe("welcome-integration role + context mapping", () => {
             createdAt: "2026-01-01T00:00:00.000Z",
           },
         },
+      ]),
+      true,
+    );
+  });
+
+  it("only treats reviewable (active) outstanding as Welcome-blocking", () => {
+    assert.equal(
+      welcomeRequiresReview([
+        { documentType: "privacy_policy", active: null, acceptance: null },
+        {
+          documentType: "couple_end_user_terms",
+          active: null,
+          acceptance: null,
+        },
+      ]),
+      false,
+    );
+    assert.equal(
+      reviewableOutstanding([
+        { documentType: "privacy_policy", active: null, acceptance: null },
+      ]).length,
+      0,
+    );
+    const active = makeDoc({
+      id: "priv",
+      documentType: "privacy_policy",
+      version: "1.0",
+    });
+    assert.equal(
+      welcomeRequiresReview([
+        { documentType: "privacy_policy", active, acceptance: null },
       ]),
       true,
     );
@@ -421,6 +454,35 @@ describe("recordOutstandingAcceptances integration", () => {
     assert.equal(result.ok, false);
     if (!result.ok) {
       assert.equal(result.error, "insert_failed");
+    }
+  });
+
+  it("treats outstanding-without-active as idempotent success", async () => {
+    const svc = createLegalAcceptanceService({
+      getActiveDocumentByType: async () => null,
+      getDocumentById: async () => null,
+      getLatestAcceptanceForDocumentType: async () => null,
+      insertAcceptance: async () => {
+        throw new Error("should not insert");
+      },
+      publishEvent: () => {},
+    });
+    const result = await recordOutstandingAcceptances({
+      user: { userId: "u1", userType: "couple" },
+      outstanding: [
+        {
+          documentType: "privacy_policy",
+          active: null,
+          acceptance: null,
+        },
+      ],
+      acceptanceMethod: "Couple Invitation",
+      service: svc,
+    });
+    assert.equal(result.ok, true);
+    if (result.ok) {
+      assert.equal(result.recorded, 0);
+      assert.equal(result.alreadyAccepted, 0);
     }
   });
 });

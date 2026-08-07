@@ -150,6 +150,26 @@ export function outstandingImpliesPriorAcceptance(
 }
 
 /**
+ * Outstanding rows that can actually be reviewed / recorded (active version
+ * present). Missing active platform docs must not block Welcome with an empty
+ * Continue-enabled screen.
+ */
+export function reviewableOutstanding(
+  outstanding: readonly OutstandingDocument[],
+): OutstandingDocument[] {
+  return outstanding.filter((row): row is OutstandingDocument & {
+    active: NonNullable<OutstandingDocument["active"]>;
+  } => Boolean(row.active));
+}
+
+/** Welcome gate should mount only when there is at least one reviewable doc. */
+export function welcomeRequiresReview(
+  outstanding: readonly OutstandingDocument[],
+): boolean {
+  return reviewableOutstanding(outstanding).length > 0;
+}
+
+/**
  * Same-origin relative return paths only. Rejects protocol-relative and
  * external URLs. Defaults to `/dashboard` when missing/unsafe.
  */
@@ -217,17 +237,14 @@ export async function recordOutstandingAcceptances(input: {
   const service = input.service ?? legalAcceptanceService;
   let recorded = 0;
   let alreadyAccepted = 0;
+  const reviewable = reviewableOutstanding(input.outstanding);
 
-  for (const row of input.outstanding) {
-    if (!row.active) {
-      return {
-        ok: false,
-        message:
-          "Required legal documents are not available yet. Please try again shortly.",
-        error: "document_inactive",
-      };
-    }
+  // Nothing reviewable → idempotent success (callers should also skip Welcome).
+  if (reviewable.length === 0) {
+    return { ok: true, recorded: 0, alreadyAccepted: 0 };
+  }
 
+  for (const row of reviewable) {
     const result = await service.recordAcceptance(
       input.user,
       row.active as LegalDocument,
