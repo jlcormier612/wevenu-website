@@ -369,6 +369,13 @@ export class LegalAcceptanceService {
     } catch (err) {
       const message =
         err instanceof Error ? err.message : "Could not record acceptance.";
+      console.error("[legal] recordAcceptance insert failed", {
+        userId,
+        documentId: resolved.id,
+        documentType: resolved.documentType,
+        message,
+        err,
+      });
       return { ok: false, error: "insert_failed", message };
     }
 

@@ -13,6 +13,7 @@ import {
   inferWelcomeContext,
   mapStaffRoleToLegalUserType,
   outstandingImpliesPriorAcceptance,
+  welcomeRequiresReview,
   type WelcomeFlowContext,
 } from "@/lib/legal/welcome-integration";
 import { evaluateLegalMiddleware } from "@/lib/legal/welcome-middleware";
@@ -96,10 +97,12 @@ export async function decideLegalProxyEnforcement(input: {
       hasPriorAcceptance: hasPrior,
     });
 
+    // Gate only on reviewable (active) outstanding docs — same rule as
+    // /welcome + /api/legal/welcome, so missing active rows cannot loop users.
     const decision = evaluateLegalMiddleware({
       pathname: input.pathname,
       search: input.search,
-      requiresAcceptance: status.requiresAcceptance,
+      requiresAcceptance: welcomeRequiresReview(status.outstanding),
       context,
       enabled: true,
     });

@@ -354,15 +354,40 @@ async function findAuthUserIdByEmail(
   admin: ReturnType<typeof createAdminClient>,
   email: string,
 ): Promise<string | null> {
+  const normalized = email.trim().toLowerCase();
+
   // Prefer a direct Auth schema read (service role) over paginating listUsers.
   const { data, error } = await admin
     .schema("auth")
     .from("users")
     .select("id")
-    .eq("email", email)
+    .eq("email", normalized)
     .maybeSingle();
   if (!error && data && typeof (data as { id?: string }).id === "string") {
     return (data as { id: string }).id;
+  }
+  if (error) {
+    console.error("[legal] auth.users email lookup failed; falling back to listUsers", {
+      message: error.message,
+      code: (error as { code?: string }).code,
+    });
+  }
+
+  // PostgREST may not expose auth.users — page Admin API (bounded) as fallback.
+  for (let page = 1; page <= 10; page += 1) {
+    const { data: listed, error: listErr } = await admin.auth.admin.listUsers({
+      page,
+      perPage: 200,
+    });
+    if (listErr) {
+      console.error("[legal] listUsers fallback failed", listErr);
+      return null;
+    }
+    const match = (listed.users ?? []).find(
+      (u) => (u.email ?? "").trim().toLowerCase() === normalized,
+    );
+    if (match?.id) return match.id;
+    if ((listed.users?.length ?? 0) < 200) break;
   }
 
   return null;
