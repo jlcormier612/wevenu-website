@@ -67,7 +67,12 @@ export function VendorProfileWorkspace({
         ))}
       </div>
 
-      {tab === "profile" && <VendorProfileForm profile={profile} />}
+      {tab === "profile" && (
+        <>
+          <VendorProfileForm profile={profile} />
+          <VendorLegalHistorySection items={legalHistory} />
+        </>
+      )}
       {tab === "packages" && <VendorPackagesManager packages={packages} />}
       {tab === "faqs" && <VendorFaqsManager faqs={faqs} />}
       {tab === "availability" && (
@@ -79,8 +84,6 @@ export function VendorProfileWorkspace({
           availabilityNotes={profile.availabilityNotes}
         />
       )}
-
-      <VendorLegalHistorySection items={legalHistory} />
     </div>
   );
 }
