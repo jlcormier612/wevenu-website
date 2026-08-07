@@ -2,6 +2,11 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
 import { PortalShell } from "@/components/portal/portal-shell";
+import {
+  getCouplePortalLegalGateStatus,
+  resolveCouplePortalLegalIdentity,
+} from "@/lib/legal/service";
+import type { CouplePortalLegalGateStatus } from "@/lib/legal/types";
 import { resolvePortalContext, resolvePortalTasks, resolvePortalTimeline } from "@/lib/portal/service";
 
 type Props = { params: Promise<{ token: string }> };
@@ -19,12 +24,26 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   };
 }
 
+async function resolvePortalLegalGate(
+  token: string,
+): Promise<CouplePortalLegalGateStatus> {
+  try {
+    const identity = await resolveCouplePortalLegalIdentity(token);
+    if (!identity) return { needsAcceptance: true, documents: [] };
+    return await getCouplePortalLegalGateStatus(identity);
+  } catch (error) {
+    console.error("[portal] legal gate resolution failed", error);
+    return { needsAcceptance: true, documents: [] };
+  }
+}
+
 export default async function PortalPage({ params }: Props) {
   const { token } = await params;
-  const [context, tasks, timeline] = await Promise.all([
+  const [context, tasks, timeline, legalGate] = await Promise.all([
     resolvePortalContext(token),
     resolvePortalTasks(token),
     resolvePortalTimeline(token),
+    resolvePortalLegalGate(token),
   ]);
   // Log portal visit (non-blocking — get_portal_context already updates last_accessed_at)
   // The SECURITY DEFINER log_couple_event fires the activity signal
@@ -35,6 +54,7 @@ export default async function PortalPage({ params }: Props) {
       token={token} context={context} initialTasks={tasks}
       initialTimelineSections={timeline.sections} initialTimelineEntries={timeline.entries}
       initialTimelineLastSubmittedAt={timeline.lastSubmittedAt} initialTimelineHasUnpublishedChanges={timeline.hasUnpublishedChanges}
+      initialLegalGate={legalGate}
     />
   );
 }

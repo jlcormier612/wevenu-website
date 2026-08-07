@@ -1,18 +1,29 @@
 import { NextResponse } from "next/server";
 
+import { welcomeDocumentsFromOutstanding } from "@/components/welcome-experience/welcome-experience-helpers";
 import { isSupabaseConfigured } from "@/lib/env";
 import {
   clientRequestMeta,
   getCouplePortalLegalGateStatus,
-  recordCouplePortalLegalAcceptances,
+  legalAcceptanceService,
   resolveCouplePortalLegalIdentity,
+  resolveUserIdForEmail,
 } from "@/lib/legal/service";
+import {
+  acceptanceMethodForContext,
+  inferWelcomeContext,
+  isWelcomeFlowContext,
+  outstandingImpliesPriorAcceptance,
+  recordOutstandingAcceptances,
+  type WelcomeFlowContext,
+} from "@/lib/legal/welcome-integration";
 
 export const runtime = "nodejs";
 
 /**
  * GET /api/portal/legal?token=...
  * Whether the couple portal identity still needs Welcome + legal acceptance.
+ * Prefers the Legal Acceptance Engine when a user id is available.
  */
 export async function GET(request: Request) {
   if (!isSupabaseConfigured) {
@@ -33,9 +44,32 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: "Invalid portal token." }, { status: 401 });
     }
 
+    if (identity.userId) {
+      const engine = await legalAcceptanceService.requiresAcceptance({
+        userId: identity.userId,
+        userType: "couple",
+        relationshipId: identity.relationshipId,
+      });
+      const docs = welcomeDocumentsFromOutstanding(engine.outstanding);
+      return NextResponse.json({
+        needsAcceptance: engine.requiresAcceptance,
+        hasPriorAcceptance: outstandingImpliesPriorAcceptance(
+          engine.outstanding,
+        ),
+        documents: docs.map((d) => ({
+          id: d.id ?? d.documentType ?? d.title,
+          documentType: d.documentType ?? "couple_end_user_terms",
+          title: d.title,
+          version: d.version,
+          path: d.viewHref,
+        })),
+      });
+    }
+
     const status = await getCouplePortalLegalGateStatus(identity);
     return NextResponse.json({
       needsAcceptance: status.needsAcceptance,
+      hasPriorAcceptance: false,
       documents: status.documents,
     });
   } catch (error) {
@@ -48,8 +82,8 @@ export async function GET(request: Request) {
 
 /**
  * POST /api/portal/legal
- * Body: { token, legalAccepted: true }
- * Records couple End User Terms + Privacy acceptances (service role).
+ * Body: { token, legalAccepted: true, context?: WelcomeFlowContext }
+ * Records outstanding couple docs via the Legal Acceptance Engine (idempotent).
  */
 export async function POST(request: Request) {
   if (!isSupabaseConfigured) {
@@ -59,9 +93,13 @@ export async function POST(request: Request) {
     );
   }
 
-  let body: { token?: string; legalAccepted?: unknown };
+  let body: { token?: string; legalAccepted?: unknown; context?: unknown };
   try {
-    body = (await request.json()) as { token?: string; legalAccepted?: unknown };
+    body = (await request.json()) as {
+      token?: string;
+      legalAccepted?: unknown;
+      context?: unknown;
+    };
   } catch {
     return NextResponse.json({ error: "Invalid JSON body." }, { status: 400 });
   }
@@ -101,25 +139,57 @@ export async function POST(request: Request) {
       );
     }
 
-    // Already current — idempotent success (do not insert duplicate rows).
-    const current = await getCouplePortalLegalGateStatus(identity);
-    if (!current.needsAcceptance) {
-      return NextResponse.json({ ok: true, alreadyAccepted: true });
+    let userId = identity.userId?.trim() || null;
+    if (!userId && identity.email) {
+      userId = await resolveUserIdForEmail(identity.email);
+    }
+    if (!userId) {
+      return NextResponse.json(
+        { error: "Unable to resolve user for legal acceptance." },
+        { status: 400 },
+      );
     }
 
-    const { ipAddress, userAgent } = clientRequestMeta(request.headers);
-    const acceptances = await recordCouplePortalLegalAcceptances({
-      userId: identity.userId,
-      email: identity.email,
+    const user = {
+      userId,
+      userType: "couple" as const,
       relationshipId: identity.relationshipId,
+    };
+
+    const status = await legalAcceptanceService.requiresAcceptance(user);
+    if (!status.requiresAcceptance) {
+      return NextResponse.json({ ok: true, alreadyAccepted: true, userId });
+    }
+
+    const hasPrior = outstandingImpliesPriorAcceptance(status.outstanding);
+    const contextParam =
+      typeof body.context === "string" ? body.context : null;
+    const context: WelcomeFlowContext = isWelcomeFlowContext(contextParam)
+      ? contextParam
+      : inferWelcomeContext({
+          userType: "couple",
+          hasPriorAcceptance: hasPrior,
+        });
+
+    const { ipAddress, userAgent } = clientRequestMeta(request.headers);
+    const result = await recordOutstandingAcceptances({
+      user,
+      outstanding: status.outstanding,
+      acceptanceMethod: acceptanceMethodForContext(context),
       ipAddress,
       userAgent,
     });
 
+    if (!result.ok) {
+      return NextResponse.json({ error: result.message }, { status: 400 });
+    }
+
     return NextResponse.json({
       ok: true,
-      acceptanceIds: acceptances.map((a) => a.id),
-      userId: acceptances[0]?.userId ?? null,
+      userId,
+      recorded: result.recorded,
+      alreadyAcceptedCount: result.alreadyAccepted,
+      context,
     });
   } catch (error) {
     const message =

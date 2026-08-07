@@ -145,6 +145,31 @@ export async function submitVenueSetup(
     return { ok: false, errors };
   }
 
+  // WP4 — finalize only after Legal Acceptance Engine is satisfied (Welcome Experience).
+  try {
+    const { legalAcceptanceService } = await import("@/lib/legal/acceptance-engine");
+    const legal = await legalAcceptanceService.requiresAcceptance({
+      userId: user.id,
+      userType: "venue_owner",
+    });
+    if (legal.requiresAcceptance) {
+      return {
+        ok: false,
+        errors: {},
+        message:
+          "Please review and accept the required documents before creating your venue workspace.",
+      };
+    }
+  } catch (legalError) {
+    console.error("[setup] legal acceptance check failed", legalError);
+    return {
+      ok: false,
+      errors: {},
+      message:
+        "We couldn't verify legal acceptance. Please try again from the Welcome screen.",
+    };
+  }
+
   // Idempotency: if a completed venue already exists, treat as success.
   const existing = await repository.getVenueForCurrentUser(supabase);
   if (existing?.setupCompleted) {

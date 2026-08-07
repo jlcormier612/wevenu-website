@@ -3,6 +3,8 @@ import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 
 import { getSupabaseConfig, isSupabaseConfigured } from "@/lib/env";
+import { decideLegalProxyEnforcement } from "@/lib/legal/enforce-legal-in-proxy";
+import { shouldSkipLegalEnforcement } from "@/lib/legal/welcome-middleware";
 
 /**
  * Routes that do not require an authenticated session.
@@ -208,6 +210,36 @@ export async function updateSession(
       const suspendedUrl = request.nextUrl.clone();
       suspendedUrl.pathname = "/billing/suspended";
       return NextResponse.redirect(suspendedUrl);
+    }
+  }
+
+  // Legal Acceptance Middleware (WP4) — one enforcement path for returning
+  // users + signup/setup. Compliant users pass through unchanged.
+  if (
+    user &&
+    !isPublicPath(pathname) &&
+    !shouldSkipLegalEnforcement(pathname)
+  ) {
+    const legalDecision = await decideLegalProxyEnforcement({
+      user,
+      pathname,
+      search: request.nextUrl.search,
+      supabase,
+    });
+    if (legalDecision.action === "redirect_welcome") {
+      return NextResponse.redirect(
+        new URL(legalDecision.welcomePath, request.nextUrl.origin),
+      );
+    }
+    if (legalDecision.action === "block_api") {
+      return NextResponse.json(
+        {
+          error: "Legal acceptance required.",
+          code: legalDecision.code,
+          welcomePath: legalDecision.welcomePath,
+        },
+        { status: 403 },
+      );
     }
   }
 

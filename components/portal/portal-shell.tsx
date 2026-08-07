@@ -46,8 +46,15 @@ import { UnifiedTasksSection } from "@/components/portal/unified-tasks-section";
 import { buildUnifiedTaskList } from "@/lib/portal/unified-tasks";
 import type { PortalRequestSummary } from "@/lib/requests/types";
 import { QuestionnairePortalSection } from "@/components/portal/questionnaire-section";
+import { WelcomeExperienceGate } from "@/components/legal/welcome-experience-gate";
+import type { WelcomeExperienceDocument } from "@/components/welcome-experience";
 import { ALL_SECTIONS as WEBSITE_ALL_SECTIONS } from "@/components/portal/website-editor";
 import type { CoupleWebsite } from "@/lib/wedding-website/types";
+import {
+  copyForWelcomeContext,
+  inferWelcomeContext,
+} from "@/lib/legal/welcome-integration";
+import type { CouplePortalLegalGateStatus } from "@/lib/legal/types";
 
 // Venue Brand Experience Phase 1: SAGE/LINEN/CREAM were Hello to Cheers' own hardcoded
 // palette, now the venue's own brand via CSS custom properties injected on
@@ -3956,6 +3963,7 @@ const NAV_ITEMS: { id: PortalSection; icon: string; label: string; shortLabel?: 
 export function PortalShell({
   token, context, initialTasks, initialTimelineSections = [], initialTimelineEntries = [],
   initialTimelineLastSubmittedAt = null, initialTimelineHasUnpublishedChanges = false,
+  initialLegalGate,
 }: {
   token: string;
   context: PortalContext;
@@ -3964,6 +3972,7 @@ export function PortalShell({
   initialTimelineEntries?: PortalTimelineEntry[];
   initialTimelineLastSubmittedAt?: string | null;
   initialTimelineHasUnpublishedChanges?: boolean;
+  initialLegalGate?: CouplePortalLegalGateStatus;
 }) {
   const [activeSection, setActiveSection] = React.useState<PortalSection>("overview");
   const [guestStats, setGuestStats] = React.useState<GuestStats | null>(null);
@@ -3971,20 +3980,64 @@ export function PortalShell({
   const [profile, setProfile] = React.useState<CoupleProfile | null>(null);
   const [recentActivity, setRecentActivity] = React.useState<RecentActivity | null>(null);
   const [showLuvIntro, setShowLuvIntro] = React.useState(false);
+  const [needsLegalAcceptance, setNeedsLegalAcceptance] = React.useState(
+    () => initialLegalGate?.needsAcceptance ?? true,
+  );
+  const [legalDocuments, setLegalDocuments] = React.useState(
+    () => initialLegalGate?.documents ?? [],
+  );
+  const [hasPriorLegalAcceptance, setHasPriorLegalAcceptance] =
+    React.useState(false);
+
+  const hasServerLegalGate = Boolean(initialLegalGate);
+
+  React.useEffect(() => {
+    // Re-check on every visit/mount so version bumps are caught even when SSR
+    // already supplied a gate status (stale acceptance vs newly active docs).
+    let cancelled = false;
+    fetch(`/api/portal/legal?token=${encodeURIComponent(token)}`)
+      .then(async (r) => {
+        const d = (await r.json().catch(() => null)) as {
+          needsAcceptance?: boolean;
+          hasPriorAcceptance?: boolean;
+          documents?: typeof legalDocuments;
+        } | null;
+        if (cancelled) return;
+        // Fail closed on transport/API errors — never unlock from a non-ok body
+        // (e.g. `{ error }` would make Boolean(undefined) === false).
+        if (!r.ok || typeof d?.needsAcceptance !== "boolean") {
+          if (!hasServerLegalGate) setNeedsLegalAcceptance(true);
+          return;
+        }
+        setNeedsLegalAcceptance(d.needsAcceptance);
+        if (typeof d.hasPriorAcceptance === "boolean") {
+          setHasPriorLegalAcceptance(d.hasPriorAcceptance);
+        }
+        if (Array.isArray(d.documents)) setLegalDocuments(d.documents);
+      })
+      .catch(() => {
+        if (!cancelled && !hasServerLegalGate) setNeedsLegalAcceptance(true);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [token, hasServerLegalGate]);
 
   // Deep-linkable by #hash (e.g. #guests, #seating) — same pattern the
   // Booking Workspace's own tabs already use — so the venue-side Event
   // Readiness card's "open in the couple's portal" links land on the
   // relevant section instead of always Overview (Event Readiness — Phase 1).
   React.useEffect(() => {
+    if (needsLegalAcceptance) return;
     const syncFromHash = () => {
       const hash = window.location.hash.replace("#", "");
       if (hash) setActiveSection(hash as PortalSection);
     };
     syncFromHash();
-  }, []);
+  }, [needsLegalAcceptance]);
 
   React.useEffect(() => {
+    if (needsLegalAcceptance) return;
     fetch(`/api/portal/guests?token=${token}`)
       .then(r => r.json())
       .then((d: { stats?: GuestStats }) => setGuestStats(d.stats ?? null))
@@ -4002,7 +4055,7 @@ export function PortalShell({
       .then(r => r.json())
       .then((d: { seen?: boolean }) => setShowLuvIntro(d.seen === false))
       .catch(() => {});
-  }, [token]);
+  }, [token, needsLegalAcceptance]);
 
   function dismissLuvIntro() {
     setShowLuvIntro(false);
@@ -4010,6 +4063,35 @@ export function PortalShell({
       method: "POST", headers: { "content-type": "application/json" },
       body: JSON.stringify({ token }),
     });
+  }
+
+  if (needsLegalAcceptance) {
+    const welcomeDocs: WelcomeExperienceDocument[] = legalDocuments.map(
+      (d) => ({
+        id: d.id,
+        documentType: d.documentType,
+        title: d.title,
+        version: d.version,
+        effectiveDate: "",
+        viewHref: d.path,
+      }),
+    );
+    const welcomeContext = inferWelcomeContext({
+      userType: "couple",
+      hasPriorAcceptance: hasPriorLegalAcceptance,
+    });
+    const copy = copyForWelcomeContext(welcomeContext);
+    return (
+      <WelcomeExperienceGate
+        heading={copy.heading}
+        introduction={copy.introduction}
+        documents={welcomeDocs}
+        context={welcomeContext}
+        returnTo={`/p/${token}`}
+        portalToken={token}
+        onSuccess={() => setNeedsLegalAcceptance(false)}
+      />
+    );
   }
 
   const firstName = context.client.firstName;
