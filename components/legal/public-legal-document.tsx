@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 
+import { LegalMarkdown } from "@/components/legal/legal-markdown";
 import {
   getActiveLegalDocument,
 } from "@/lib/legal/service";
@@ -76,9 +77,7 @@ export function PublicLegalDocumentView({
             Version {document.version} · Effective {document.effectiveDate}
           </p>
         </header>
-        <div className="whitespace-pre-wrap text-base leading-relaxed text-foreground/90">
-          {document.content}
-        </div>
+        <LegalMarkdown content={document.content} />
       </article>
     </main>
   );
