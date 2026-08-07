@@ -4,7 +4,12 @@
 
 import type { createAdminClient } from "@/integrations/supabase/admin";
 import type { createClient } from "@/integrations/supabase/server";
-import type { LegalAcceptance, LegalDocument, LegalDocumentType } from "@/lib/legal/types";
+import type {
+  LegalAcceptance,
+  LegalAcceptanceMethod,
+  LegalDocument,
+  LegalDocumentType,
+} from "@/lib/legal/types";
 
 type DbClient =
   | Awaited<ReturnType<typeof createClient>>
@@ -17,6 +22,7 @@ type LegalDocumentRow = {
   version: string;
   effective_date: string;
   content: string;
+  is_published: boolean;
   is_active: boolean;
   created_at: string;
   updated_at: string;
@@ -29,6 +35,7 @@ type LegalAcceptanceRow = {
   legal_document_id: string;
   accepted_version: string;
   accepted_at: string;
+  acceptance_method: string;
   ip_address: string | null;
   user_agent: string | null;
   created_at: string;
@@ -42,6 +49,7 @@ export function mapLegalDocument(r: LegalDocumentRow): LegalDocument {
     version: r.version,
     effectiveDate: r.effective_date,
     content: r.content,
+    isPublished: r.is_published,
     isActive: r.is_active,
     createdAt: r.created_at,
     updatedAt: r.updated_at,
@@ -56,6 +64,7 @@ function mapLegalAcceptance(r: LegalAcceptanceRow): LegalAcceptance {
     legalDocumentId: r.legal_document_id,
     acceptedVersion: r.accepted_version,
     acceptedAt: r.accepted_at,
+    acceptanceMethod: r.acceptance_method,
     ipAddress: r.ip_address,
     userAgent: r.user_agent,
     createdAt: r.created_at,
@@ -63,7 +72,10 @@ function mapLegalAcceptance(r: LegalAcceptanceRow): LegalAcceptance {
 }
 
 const LEGAL_DOCUMENT_SELECT =
-  "id, document_type, title, version, effective_date, content, is_active, created_at, updated_at";
+  "id, document_type, title, version, effective_date, content, is_published, is_active, created_at, updated_at";
+
+const LEGAL_ACCEPTANCE_SELECT =
+  "id, relationship_id, user_id, legal_document_id, accepted_version, accepted_at, acceptance_method, ip_address, user_agent, created_at";
 
 export async function getActiveLegalDocumentByType(
   supabase: DbClient,
@@ -126,8 +138,8 @@ export async function getLegalDocumentById(
 }
 
 /**
- * Insert a new version row. Always created inactive — activation is a
- * separate flip of is_active (content is immutable after insert).
+ * Insert a new version row. Always created inactive + unpublished —
+ * activation publishes and flips is_active (content is immutable after insert).
  */
 export async function insertLegalDocumentVersion(
   supabase: DbClient,
@@ -147,6 +159,7 @@ export async function insertLegalDocumentVersion(
       version: input.version,
       effective_date: input.effectiveDate,
       content: input.content,
+      is_published: false,
       is_active: false,
     })
     .select(LEGAL_DOCUMENT_SELECT)
@@ -156,7 +169,10 @@ export async function insertLegalDocumentVersion(
   return mapLegalDocument(data as LegalDocumentRow);
 }
 
-/** Flip is_active only — never mutates content fields. */
+/**
+ * Flip is_active (and publish when activating). Never mutates content fields.
+ * Activating a version also sets is_published so the enforced version is readable.
+ */
 export async function setLegalDocumentActive(
   supabase: DbClient,
   id: string,
@@ -164,7 +180,11 @@ export async function setLegalDocumentActive(
 ): Promise<void> {
   const { error } = await supabase
     .from("legal_documents")
-    .update({ is_active: isActive })
+    .update(
+      isActive
+        ? { is_active: true, is_published: true }
+        : { is_active: false },
+    )
     .eq("id", id);
 
   if (error) throw error;
@@ -173,6 +193,7 @@ export async function setLegalDocumentActive(
 /**
  * Deactivate every active version of a type. Call before activating another
  * so the partial unique index `legal_documents_one_active_per_type` is satisfied.
+ * Does not unpublish historical versions.
  */
 export async function deactivateActiveLegalDocumentsOfType(
   supabase: DbClient,
@@ -194,6 +215,7 @@ export async function insertLegalAcceptance(
     userId: string;
     legalDocumentId: string;
     acceptedVersion: string;
+    acceptanceMethod: LegalAcceptanceMethod;
     relationshipId?: string | null;
     acceptedAt?: string | null;
     ipAddress?: string | null;
@@ -204,6 +226,7 @@ export async function insertLegalAcceptance(
     user_id: input.userId,
     legal_document_id: input.legalDocumentId,
     accepted_version: input.acceptedVersion,
+    acceptance_method: input.acceptanceMethod,
     relationship_id: input.relationshipId ?? null,
     ip_address: input.ipAddress ?? null,
     user_agent: input.userAgent ?? null,
@@ -213,9 +236,7 @@ export async function insertLegalAcceptance(
   const { data, error } = await admin
     .from("legal_acceptances")
     .insert(row)
-    .select(
-      "id, relationship_id, user_id, legal_document_id, accepted_version, accepted_at, ip_address, user_agent, created_at",
-    )
+    .select(LEGAL_ACCEPTANCE_SELECT)
     .single();
 
   if (error) throw error;
@@ -240,9 +261,7 @@ export async function getLatestLegalAcceptanceForIdentity(
 
   let query = admin
     .from("legal_acceptances")
-    .select(
-      "id, relationship_id, user_id, legal_document_id, accepted_version, accepted_at, ip_address, user_agent, created_at",
-    )
+    .select(LEGAL_ACCEPTANCE_SELECT)
     .eq("legal_document_id", input.legalDocumentId)
     .order("accepted_at", { ascending: false })
     .limit(1);
@@ -262,9 +281,6 @@ export async function getLatestLegalAcceptanceForIdentity(
   if (!data) return null;
   return mapLegalAcceptance(data as LegalAcceptanceRow);
 }
-
-const LEGAL_ACCEPTANCE_SELECT =
-  "id, relationship_id, user_id, legal_document_id, accepted_version, accepted_at, ip_address, user_agent, created_at";
 
 /**
  * Every acceptance for a user, newest first.
@@ -337,9 +353,7 @@ export async function getLatestLegalAcceptanceForDocumentType(
 
   let query = admin
     .from("legal_acceptances")
-    .select(
-      "id, relationship_id, user_id, legal_document_id, accepted_version, accepted_at, ip_address, user_agent, created_at",
-    )
+    .select(LEGAL_ACCEPTANCE_SELECT)
     .in("legal_document_id", documentIds)
     .order("accepted_at", { ascending: false })
     .limit(1);

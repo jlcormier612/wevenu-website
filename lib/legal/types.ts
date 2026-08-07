@@ -2,8 +2,9 @@
  * Versioned platform legal documents.
  * Pure types — no framework or database imports.
  *
- * document_type keys map to display titles (stored in `title`):
- *   terms_of_service        → Venue Subscription Agreement (public site /terms)
+ * document_type keys are stored as text in Postgres (no SQL CHECK) so new
+ * types can be added here without a schema migration. Human display titles:
+ *   terms_of_service        → Venue Subscription Agreement
  *   venue_terms_of_service  → Venue Terms of Service
  *   couple_end_user_terms   → End User Terms
  *   vendor_end_user_terms   → Vendor Terms
@@ -31,6 +32,26 @@ export const LEGAL_DOCUMENT_TYPE_TITLES: Record<LegalDocumentType, string> = {
   acceptable_use_policy: "Acceptable Use Policy",
 };
 
+/**
+ * How an acceptance was recorded. Stored as text on legal_acceptances;
+ * extend this registry when new flows are added (no SQL enum/CHECK).
+ */
+export type LegalAcceptanceMethod =
+  | "Venue Signup"
+  | "Couple Invitation"
+  | "Vendor Invitation"
+  | "Version Update";
+
+export const LEGAL_ACCEPTANCE_METHODS = [
+  "Venue Signup",
+  "Couple Invitation",
+  "Vendor Invitation",
+  "Version Update",
+] as const satisfies readonly LegalAcceptanceMethod[];
+
+export const DEFAULT_LEGAL_ACCEPTANCE_METHOD: LegalAcceptanceMethod =
+  "Version Update";
+
 export type LegalDocument = {
   id: string;
   documentType: LegalDocumentType;
@@ -38,6 +59,9 @@ export type LegalDocument = {
   version: string;
   effectiveDate: string;
   content: string;
+  /** Released for read (independent of currently-enforced active). */
+  isPublished: boolean;
+  /** Currently enforced version for acceptance gates. */
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
@@ -75,6 +99,7 @@ export type LegalAcceptance = {
   /** Snapshot of legal_documents.version at accept time. */
   acceptedVersion: string;
   acceptedAt: string;
+  acceptanceMethod: LegalAcceptanceMethod | string;
   ipAddress: string | null;
   userAgent: string | null;
   createdAt: string;
@@ -82,8 +107,6 @@ export type LegalAcceptance = {
 
 /**
  * One row for the read-only Legal History profile table.
- * No dedicated acceptance_method column exists on legal_acceptances — method
- * is derived for display (all current write paths require a checkbox confirm).
  */
 export type LegalAcceptanceHistoryItem = {
   id: string;
@@ -92,7 +115,7 @@ export type LegalAcceptanceHistoryItem = {
   documentTitle: string;
   acceptedVersion: string;
   acceptedAt: string;
-  /** Display label for how the user accepted (e.g. Checkbox). */
+  /** Display label for how the user accepted (e.g. Version Update). */
   acceptanceMethod: string;
 };
 

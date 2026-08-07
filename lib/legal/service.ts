@@ -21,6 +21,7 @@ import {
 } from "@/lib/legal/repository";
 import { publicPathForLegalDocumentType } from "@/lib/legal/public-routes";
 import {
+  DEFAULT_LEGAL_ACCEPTANCE_METHOD,
   LEGAL_DOCUMENT_TYPES,
   LEGAL_DOCUMENT_TYPE_TITLES,
   type AuthenticatedLegalPortal,
@@ -29,6 +30,7 @@ import {
   type CreateLegalDocumentVersionInput,
   type LegalAcceptance,
   type LegalAcceptanceHistoryItem,
+  type LegalAcceptanceMethod,
   type LegalComplianceRow,
   type LegalComplianceStatus,
   type LegalComplianceSubject,
@@ -189,12 +191,6 @@ export function isLegalDocumentType(value: string): value is LegalDocumentType {
   return value in LEGAL_DOCUMENT_TYPE_TITLES;
 }
 
-/**
- * All current write paths require an explicit checkbox (`legalAccepted`).
- * Schema has no acceptance_method / source / channel column — only ip/ua.
- */
-const DEFAULT_ACCEPTANCE_METHOD_LABEL = "Checkbox";
-
 function documentTitleForHistory(
   doc: LegalDocument | undefined,
 ): { documentType: LegalDocumentType | null; documentTitle: string } {
@@ -245,7 +241,7 @@ export async function listLegalAcceptancesForCurrentUser(): Promise<
       documentTitle,
       acceptedVersion: a.acceptedVersion,
       acceptedAt: a.acceptedAt,
-      acceptanceMethod: DEFAULT_ACCEPTANCE_METHOD_LABEL,
+      acceptanceMethod: a.acceptanceMethod || DEFAULT_LEGAL_ACCEPTANCE_METHOD,
     };
   });
 }
@@ -273,6 +269,8 @@ export type RecordLegalAcceptanceInput = {
   userId: string;
   legalDocumentId: string;
   acceptedVersion: string;
+  /** Required for new writes; column is NOT NULL with DB default for backfill. */
+  acceptanceMethod: LegalAcceptanceMethod;
   relationshipId?: string | null;
   acceptedAt?: string | null;
   ipAddress?: string | null;
@@ -282,6 +280,7 @@ export type RecordLegalAcceptanceInput = {
 /**
  * Append-only acceptance writes (service role). Call after validating the
  * caller already accepted the active documents in the UI.
+ * Never updates or deletes prior acceptance rows.
  */
 export async function recordLegalAcceptances(
   inputs: RecordLegalAcceptanceInput[],
@@ -361,6 +360,7 @@ export async function recordVenueSubscriptionLegalAcceptances(input: {
   acceptedAt?: string | null;
   ipAddress?: string | null;
   userAgent?: string | null;
+  acceptanceMethod?: LegalAcceptanceMethod;
 }): Promise<LegalAcceptance[]> {
   if (!isSupabaseConfigured) {
     throw new Error("Supabase is not configured.");
@@ -375,6 +375,7 @@ export async function recordVenueSubscriptionLegalAcceptances(input: {
     acceptedAt: input.acceptedAt,
     ipAddress: input.ipAddress,
     userAgent: input.userAgent,
+    acceptanceMethod: input.acceptanceMethod ?? "Venue Signup",
   });
 }
 
@@ -491,6 +492,8 @@ export async function getLegalGateStatus(
 /**
  * Append-only acceptances for the currently active versions of the given types.
  * Inserts only — never updates or deletes prior acceptance rows.
+ * Defaults acceptanceMethod to Version Update when callers omit it (e.g. gate
+ * re-accept after a new active version) so existing routes need no UX changes.
  */
 export async function recordActiveLegalAcceptancesForTypes(input: {
   userId: string;
@@ -499,11 +502,15 @@ export async function recordActiveLegalAcceptancesForTypes(input: {
   acceptedAt?: string | null;
   ipAddress?: string | null;
   userAgent?: string | null;
+  acceptanceMethod?: LegalAcceptanceMethod;
 }): Promise<LegalAcceptance[]> {
   if (!isSupabaseConfigured) {
     throw new Error("Supabase is not configured.");
   }
   if (input.documentTypes.length === 0) return [];
+
+  const acceptanceMethod =
+    input.acceptanceMethod ?? DEFAULT_LEGAL_ACCEPTANCE_METHOD;
 
   const admin = createAdminClient();
   const activeDocs = await Promise.all(
@@ -524,6 +531,7 @@ export async function recordActiveLegalAcceptancesForTypes(input: {
       userId: input.userId,
       legalDocumentId: doc!.id,
       acceptedVersion: doc!.version,
+      acceptanceMethod,
       relationshipId: input.relationshipId,
       acceptedAt: input.acceptedAt,
       ipAddress: input.ipAddress,
@@ -579,6 +587,7 @@ export async function recordCouplePortalLegalAcceptances(input: {
   acceptedAt?: string | null;
   ipAddress?: string | null;
   userAgent?: string | null;
+  acceptanceMethod?: LegalAcceptanceMethod;
 }): Promise<LegalAcceptance[]> {
   if (!isSupabaseConfigured) {
     throw new Error("Supabase is not configured.");
@@ -602,6 +611,7 @@ export async function recordCouplePortalLegalAcceptances(input: {
     acceptedAt: input.acceptedAt,
     ipAddress: input.ipAddress,
     userAgent: input.userAgent,
+    acceptanceMethod: input.acceptanceMethod ?? "Couple Invitation",
   });
 }
 
