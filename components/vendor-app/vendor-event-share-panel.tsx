@@ -27,11 +27,14 @@ export function VendorEventSharePanel({
   eventId,
   library,
   uploads,
+  composeOnly = false,
 }: {
   assignmentId: string;
   eventId: string;
   library: VendorLibraryDocument[];
   uploads: VendorEventUpload[];
+  /** When true, hide the uploads list (the event folder shows them) and keep only the share composer. */
+  composeOnly?: boolean;
 }) {
   const router = useRouter();
   const [open, setOpen] = React.useState(false);
@@ -48,10 +51,12 @@ export function VendorEventSharePanel({
     startTransition(async () => {
       try {
         if (mode === "library") {
-          if (!libraryId) { toast.error("Pick a library document."); return; }
+          if (!libraryId) { toast.error("Pick a Document Library file."); return; }
+          const selected = library.find((d) => d.id === libraryId);
           const result = await shareVendorDocumentToEventAction({
             assignmentId,
             libraryDocumentId: libraryId,
+            category: selected?.category,
             shareWithCouple,
           });
           if (!result.ok) { toast.error(result.message ?? "Could not share."); return; }
@@ -72,10 +77,11 @@ export function VendorEventSharePanel({
           });
           if (!result.ok) { toast.error(result.message ?? "Could not share."); return; }
         }
-        toast.success("Shared with the venue.");
+        toast.success(shareWithCouple ? "Shared to this event and the couple." : "Shared to this event.");
         setOpen(false);
         setFile(null);
         setName("");
+        setShareWithCouple(false);
         router.refresh();
       } catch (err) {
         toast.error(err instanceof Error ? err.message : "Could not share.");
@@ -87,12 +93,14 @@ export function VendorEventSharePanel({
     <div className="space-y-3">
       <div className="flex items-center justify-between gap-3">
         <div>
-          <h3 className="text-sm font-semibold text-foreground">Shared with venue</h3>
-          <p className="text-xs text-muted-foreground">COIs and other files you&apos;ve attached to this event.</p>
+          <h3 className="text-sm font-semibold text-foreground">Share to this event</h3>
+          <p className="text-xs text-muted-foreground">
+            Attach a Document Library file or one-off upload for the venue{composeOnly ? "" : " — optionally the couple too"}.
+          </p>
         </div>
         <Button size="sm" variant="outline" onClick={() => setOpen((v) => !v)}>
           <Plus className="h-3.5 w-3.5 mr-1.5" />
-          Share
+          Share to event
         </Button>
       </div>
 
@@ -100,7 +108,7 @@ export function VendorEventSharePanel({
         <div className="rounded-sm border border-border bg-card p-4 space-y-3">
           <div className="flex gap-2">
             <Button type="button" size="sm" variant={mode === "library" ? "default" : "outline"} onClick={() => setMode("library")}>
-              From library
+              From Document Library
             </Button>
             <Button type="button" size="sm" variant={mode === "upload" ? "default" : "outline"} onClick={() => setMode("upload")}>
               <Upload className="h-3.5 w-3.5 mr-1" />
@@ -110,10 +118,10 @@ export function VendorEventSharePanel({
 
           {mode === "library" ? (
             library.length === 0 ? (
-              <p className="text-xs text-muted-foreground">Upload a library document first from Documents.</p>
+              <p className="text-xs text-muted-foreground">Upload a document first from Document Library.</p>
             ) : (
               <div className="space-y-1.5">
-                <Label className="text-xs">Library document</Label>
+                <Label className="text-xs">Document Library file</Label>
                 <Select value={libraryId} onValueChange={setLibraryId} items={library.map((d) => ({ value: d.id, label: d.name }))}>
                   <SelectTrigger><SelectValue placeholder="Select…" /></SelectTrigger>
                   <SelectContent>
@@ -172,33 +180,42 @@ export function VendorEventSharePanel({
               onClick={handleShare}
               disabled={pending || (mode === "library" ? !libraryId : !file)}
             >
-              {pending ? <><Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />Sharing…</> : "Share with venue"}
+              {pending ? <><Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />Sharing…</> : "Share to event"}
             </Button>
           </div>
         </div>
       )}
 
-      {uploads.length === 0 ? (
-        <p className="text-xs text-muted-foreground">Nothing shared with the venue on this event yet.</p>
-      ) : (
-        <div className="rounded-sm border border-border bg-card divide-y divide-border">
-          {uploads.map((d) => (
-            <a
-              key={d.id}
-              href={d.storageUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-3 px-4 py-3 hover:bg-muted/40 transition-colors"
-            >
-              <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
-              <div className="min-w-0 flex-1">
-                <p className="text-sm font-medium text-foreground">{d.name}</p>
-                {d.notes && <p className="text-xs text-muted-foreground">{d.notes}</p>}
-              </div>
-              <Badge variant="outline" className="text-xs shrink-0">{d.category}</Badge>
-            </a>
-          ))}
-        </div>
+      {!composeOnly && (
+        uploads.length === 0 ? (
+          <p className="text-xs text-muted-foreground">Nothing shared to this event yet.</p>
+        ) : (
+          <div className="rounded-sm border border-border bg-card divide-y divide-border">
+            {uploads.map((d) => (
+              <a
+                key={d.id}
+                href={d.storageUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-3 px-4 py-3 hover:bg-muted/40 transition-colors"
+              >
+                <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-medium text-foreground">{d.name}</p>
+                  {d.notes && <p className="text-xs text-muted-foreground">{d.notes}</p>}
+                </div>
+                <div className="flex shrink-0 flex-wrap items-center justify-end gap-1.5">
+                  {d.isCoupleVisible ? (
+                    <Badge variant="outline" className="text-[10px] border-[color-mix(in_oklch,var(--dusty-rose)_40%,var(--border))]">
+                      With couple
+                    </Badge>
+                  ) : null}
+                  <Badge variant="outline" className="text-xs">{d.category}</Badge>
+                </div>
+              </a>
+            ))}
+          </div>
+        )
       )}
     </div>
   );

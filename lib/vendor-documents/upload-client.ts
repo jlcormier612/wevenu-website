@@ -1,7 +1,7 @@
 /** Client-side helper for /api/vendor/documents/upload */
 export async function uploadVendorFile(
   file: File,
-  scope: "library" | "event",
+  scope: "library" | "event" | "task-template",
   eventId?: string,
 ) {
   const form = new FormData();

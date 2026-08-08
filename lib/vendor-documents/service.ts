@@ -17,7 +17,10 @@ export async function getVendorLibraryDocuments(): Promise<VendorLibraryDocument
   if (!isSupabaseConfigured) return [];
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("get_vendor_library_documents");
-  if (error) throw error;
+  if (error) {
+    console.error("[getVendorLibraryDocuments]", error.message);
+    return [];
+  }
   if (!data || "error" in data) return [];
   return ((data.documents ?? []) as VendorLibraryDocument[]);
 }
@@ -26,7 +29,10 @@ export async function getVendorUploadedDocumentsAcrossEvents(): Promise<VendorUp
   if (!isSupabaseConfigured) return [];
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("get_vendor_uploaded_documents");
-  if (error) throw error;
+  if (error) {
+    console.error("[getVendorUploadedDocumentsAcrossEvents]", error.message);
+    return [];
+  }
   if (!data || "error" in data) return [];
   return ((data.events ?? []) as VendorUploadedByEvent[]);
 }
@@ -37,7 +43,10 @@ export async function getVendorEventUploads(assignmentId: string): Promise<Vendo
   const { data, error } = await supabase.rpc("get_vendor_event_uploads", {
     p_assignment_id: assignmentId,
   });
-  if (error) throw error;
+  if (error) {
+    console.error("[getVendorEventUploads]", error.message);
+    return [];
+  }
   if (!data || "error" in data) return [];
   return ((data.documents ?? []) as VendorEventUpload[]);
 }
@@ -107,7 +116,8 @@ export async function shareVendorDocumentToEvent(input: {
     p_mime_type: input.mimeType ?? null,
     p_storage_path: input.storagePath ?? null,
     p_storage_url: input.storageUrl ?? null,
-    p_category: input.category ?? "other",
+    // null lets the RPC keep the library document's category when sharing from library
+    p_category: input.category ?? null,
     p_notes: input.notes ?? null,
     p_expires_at: input.expiresAt || null,
     p_share_with_couple: input.shareWithCouple ?? false,
