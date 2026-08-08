@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { saveGuideAction } from "@/app/(app)/guide/actions";
 import {
   emptyVenueGuideData,
+  type DualCopySectionKey,
   type FaqEntry,
   type GuideAudience,
   type GuideSectionKey,
@@ -14,6 +15,7 @@ import {
   type SectionOverrides,
   type VenueContact,
   type VenueGuideData,
+  type VendorFaqEntry,
 } from "@/lib/guide/venue-guide-data";
 import { LuvHeart } from "@/components/dashboard/luv-widget";
 import { Button } from "@/components/ui/button";
@@ -318,92 +320,78 @@ function TextSectionEditor({
 
 // ── FAQs editor ───────────────────────────────────────────────────────────────
 
-function FaqsEditor({ faqs, onSave, saving }: {
-  faqs: FaqEntry[]; onSave: (items: FaqEntry[]) => Promise<void>; saving: boolean;
+type SimpleFaq = { question: string; answer: string };
+
+function FaqListEditor({
+  title,
+  emptyHint,
+  questionPlaceholder,
+  answerPlaceholder,
+  items: initial,
+  onSave,
+  saving,
+  saveLabel,
+}: {
+  title?: string;
+  emptyHint: string;
+  questionPlaceholder: string;
+  answerPlaceholder: string;
+  items: SimpleFaq[];
+  onSave: (items: SimpleFaq[]) => Promise<void>;
+  saving: boolean;
+  saveLabel: string;
 }) {
-  const [items, setItems] = React.useState<FaqEntry[]>(faqs);
-  const dirty = JSON.stringify(items) !== JSON.stringify(faqs);
+  const [items, setItems] = React.useState<SimpleFaq[]>(initial);
+  const dirty = JSON.stringify(items) !== JSON.stringify(initial);
 
   function add() {
-    setItems(p => [...p, { question: "", answer: "", audience: "both" }]);
+    setItems((p) => [...p, { question: "", answer: "" }]);
   }
 
   function remove(i: number) {
-    setItems(p => p.filter((_, idx) => idx !== i));
+    setItems((p) => p.filter((_, idx) => idx !== i));
   }
 
-  function update(i: number, patch: Partial<FaqEntry>) {
-    setItems(p => p.map((item, idx) => idx === i ? { ...item, ...patch } : item));
+  function update(i: number, patch: Partial<SimpleFaq>) {
+    setItems((p) => p.map((item, idx) => (idx === i ? { ...item, ...patch } : item)));
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
+      {title && <p className="text-xs font-medium text-heading">{title}</p>}
       {items.length === 0 ? (
-        <p className="text-sm text-muted-foreground py-2">No FAQs yet. Add the questions clients ask most often.</p>
+        <p className="text-sm text-muted-foreground py-2">{emptyHint}</p>
       ) : (
         <div className="space-y-4">
-          {items.map((faq, i) => {
-            const audience = faq.audience ?? "both";
-            const dualAnswers = audience === "both" && !!(faq.answer_for_vendors?.trim());
-            return (
-              <div key={i} className="rounded-xl border border-border bg-muted/20 p-4 space-y-2.5">
-                <div className="flex items-start gap-2">
-                  <span className="text-xs font-semibold text-muted-foreground mt-2 w-4 shrink-0">{i + 1}</span>
-                  <div className="flex-1 space-y-2">
-                    <Input
-                      value={faq.question}
-                      onChange={e => update(i, { question: e.target.value })}
-                      placeholder="Question — e.g. Can we have sparklers?"
-                      className="text-sm"
-                    />
-                    <Textarea
-                      value={faq.answer}
-                      onChange={e => update(i, { answer: e.target.value })}
-                      placeholder={audience === "vendors" ? "Answer for vendors" : "Answer"}
-                      rows={2}
-                      className="text-sm resize-none"
-                    />
-                    <div className="flex items-center justify-between gap-3 flex-wrap pt-0.5">
-                      <AudienceControl
-                        value={audience}
-                        onChange={v => update(i, {
-                          audience: v,
-                          ...(v !== "both" ? { answer_for_vendors: undefined } : {}),
-                        })}
-                      />
-                      {audience === "both" && (
-                        <label className="flex items-center gap-2 text-[11px] text-muted-foreground cursor-pointer">
-                          <Switch
-                            checked={dualAnswers}
-                            onCheckedChange={(on) => update(i, {
-                              answer_for_vendors: on ? (faq.answer_for_vendors ?? "") : undefined,
-                            })}
-                          />
-                          Different answer for vendors
-                        </label>
-                      )}
-                    </div>
-                    {audience === "both" && dualAnswers && (
-                      <div className="space-y-1.5 pt-1">
-                        <p className="text-xs font-medium text-heading">Vendor answer</p>
-                        <Textarea
-                          value={faq.answer_for_vendors ?? ""}
-                          onChange={e => update(i, { answer_for_vendors: e.target.value })}
-                          placeholder="Vendor-specific answer — e.g. load-in times, dock access…"
-                          rows={2}
-                          className="text-sm resize-none"
-                        />
-                      </div>
-                    )}
-                  </div>
-                  <button type="button" onClick={() => remove(i)}
-                    className="p-1.5 mt-1 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors shrink-0">
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </button>
+          {items.map((faq, i) => (
+            <div key={i} className="rounded-xl border border-border bg-muted/20 p-4 space-y-2.5">
+              <div className="flex items-start gap-2">
+                <span className="text-xs font-semibold text-muted-foreground mt-2 w-4 shrink-0">{i + 1}</span>
+                <div className="flex-1 space-y-2">
+                  <Input
+                    value={faq.question}
+                    onChange={(e) => update(i, { question: e.target.value })}
+                    placeholder={questionPlaceholder}
+                    className="text-sm"
+                  />
+                  <Textarea
+                    value={faq.answer}
+                    onChange={(e) => update(i, { answer: e.target.value })}
+                    placeholder={answerPlaceholder}
+                    rows={2}
+                    className="text-sm resize-none"
+                  />
                 </div>
+                <button
+                  type="button"
+                  onClick={() => remove(i)}
+                  className="p-1.5 mt-1 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors shrink-0"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </button>
               </div>
-            );
-          })}
+            </div>
+          ))}
         </div>
       )}
 
@@ -413,15 +401,91 @@ function FaqsEditor({ faqs, onSave, saving }: {
         </Button>
         <div className="flex gap-2">
           {dirty && (
-            <Button variant="outline" size="sm" onClick={() => setItems(faqs)}>
+            <Button variant="outline" size="sm" onClick={() => setItems(initial)}>
               Cancel
             </Button>
           )}
           <Button size="sm" onClick={() => onSave(items)} disabled={saving || !dirty}>
-            {saving ? "Saving…" : "Save FAQs"}
+            {saving ? "Saving…" : saveLabel}
           </Button>
         </div>
       </div>
+    </div>
+  );
+}
+
+function FaqsSectionEditor({
+  sectionAudience,
+  clientFaqs,
+  vendorFaqs,
+  onSaveClient,
+  onSaveVendor,
+  savingClient,
+  savingVendor,
+}: {
+  sectionAudience: GuideAudience;
+  clientFaqs: FaqEntry[];
+  vendorFaqs: VendorFaqEntry[];
+  onSaveClient: (items: FaqEntry[]) => Promise<void>;
+  onSaveVendor: (items: VendorFaqEntry[]) => Promise<void>;
+  savingClient: boolean;
+  savingVendor: boolean;
+}) {
+  const clientSimple: SimpleFaq[] = clientFaqs.map((f) => ({
+    question: f.question,
+    answer: f.answer,
+  }));
+
+  const showClient = sectionAudience === "both" || sectionAudience === "clients";
+  const showVendor = sectionAudience === "both" || sectionAudience === "vendors";
+  // When vendors-only, edit the main faqs column (section is hidden from clients).
+  const vendorUsesMainColumn = sectionAudience === "vendors";
+
+  return (
+    <div className="space-y-6">
+      {showClient && !vendorUsesMainColumn && (
+        <FaqListEditor
+          title={sectionAudience === "both" ? "Client FAQs" : undefined}
+          emptyHint="No FAQs yet. Add the questions clients ask most often."
+          questionPlaceholder="Question — e.g. Can we have sparklers?"
+          answerPlaceholder="Answer"
+          items={clientSimple}
+          saving={savingClient}
+          saveLabel={sectionAudience === "both" ? "Save Client FAQs" : "Save FAQs"}
+          onSave={async (items) => {
+            await onSaveClient(items.map((f) => ({ question: f.question, answer: f.answer })));
+          }}
+        />
+      )}
+
+      {sectionAudience === "both" && (
+        <div className="border-t border-border pt-5">
+          <FaqListEditor
+            title="Vendor FAQs"
+            emptyHint="No vendor FAQs yet. Add questions vendors ask — load-in, COI, dock access…"
+            questionPlaceholder="Question — e.g. Where is load-in?"
+            answerPlaceholder="Answer for vendors"
+            items={vendorFaqs}
+            saving={savingVendor}
+            saveLabel="Save Vendor FAQs"
+            onSave={onSaveVendor}
+          />
+        </div>
+      )}
+
+      {vendorUsesMainColumn && (
+        <FaqListEditor
+          emptyHint="No FAQs yet. Add the questions vendors ask most often."
+          questionPlaceholder="Question — e.g. Where is load-in?"
+          answerPlaceholder="Answer for vendors"
+          items={clientSimple}
+          saving={savingClient}
+          saveLabel="Save FAQs"
+          onSave={async (items) => {
+            await onSaveClient(items.map((f) => ({ question: f.question, answer: f.answer })));
+          }}
+        />
+      )}
     </div>
   );
 }
@@ -652,7 +716,7 @@ export function VenueGuideEditor({ initial }: { initial: VenueGuideData | null }
   }
 
   async function setSectionOverride(
-    key: keyof SectionOverrides,
+    key: DualCopySectionKey,
     vendors: string | null | undefined,
   ) {
     const nextOverrides: SectionOverrides = { ...data.sectionOverrides };
@@ -665,6 +729,23 @@ export function VenueGuideEditor({ initial }: { initial: VenueGuideData | null }
     }
     nextOverrides[key] = { vendors };
     setData(d => ({ ...d, sectionOverrides: nextOverrides }));
+    await save({ section_overrides: nextOverrides }, "section_overrides");
+  }
+
+  async function setVendorFaqs(vendors: VendorFaqEntry[]) {
+    const nextOverrides: SectionOverrides = { ...data.sectionOverrides };
+    const cleaned = vendors
+      .map((f) => ({ question: f.question, answer: f.answer }))
+      .filter((f) => f.question.trim().length > 0 || f.answer.trim().length > 0);
+    if (cleaned.length === 0) {
+      const { faqs: _removed, ...rest } = nextOverrides;
+      void _removed;
+      setData((d) => ({ ...d, sectionOverrides: rest }));
+      await save({ section_overrides: rest }, "section_overrides");
+      return;
+    }
+    nextOverrides.faqs = { vendors: cleaned };
+    setData((d) => ({ ...d, sectionOverrides: nextOverrides }));
     await save({ section_overrides: nextOverrides }, "section_overrides");
   }
 
@@ -681,8 +762,13 @@ export function VenueGuideEditor({ initial }: { initial: VenueGuideData | null }
 
   const parkingVendorCopy = data.sectionOverrides.parking?.vendors ?? "";
   const policiesVendorCopy = data.sectionOverrides.policies?.vendors ?? "";
+  const ceremonyVendorCopy = data.sectionOverrides.ceremony?.vendors ?? "";
+  const thingsVendorCopy = data.sectionOverrides.things?.vendors ?? "";
   const parkingDual = typeof data.sectionOverrides.parking?.vendors === "string";
   const policiesDual = typeof data.sectionOverrides.policies?.vendors === "string";
+  const ceremonyDual = typeof data.sectionOverrides.ceremony?.vendors === "string";
+  const thingsDual = typeof data.sectionOverrides.things?.vendors === "string";
+  const vendorFaqs = data.sectionOverrides.faqs?.vendors ?? [];
 
   return (
     <div className="space-y-4 max-w-3xl">
@@ -804,40 +890,70 @@ export function VenueGuideEditor({ initial }: { initial: VenueGuideData | null }
 
       {/* Ceremony & Arrival */}
       <SectionCard {...sectionProps("ceremony")}>
-        <TextSectionEditor
-          label="Ceremony Instructions"
-          value={data.ceremonyInstructions ?? ""}
-          placeholder="Guest arrival time, seating arrangement, ceremony start, photo restrictions during ceremony…"
-          saving={saving === "ceremony_instructions"}
-          onSave={async v => {
-            setData(d => ({ ...d, ceremonyInstructions: v || null }));
-            await save({ ceremony_instructions: v || null }, "ceremony_instructions");
-          }}
-        />
+        <div className="space-y-4">
+          <TextSectionEditor
+            label="Ceremony Instructions"
+            value={data.ceremonyInstructions ?? ""}
+            placeholder="Guest arrival time, seating arrangement, ceremony start, photo restrictions during ceremony…"
+            saving={saving === "ceremony_instructions"}
+            onSave={async v => {
+              setData(d => ({ ...d, ceremonyInstructions: v || null }));
+              await save({ ceremony_instructions: v || null }, "ceremony_instructions");
+            }}
+          />
+          <VendorOverrideToggle
+            enabled={ceremonyDual}
+            onToggle={(on) => void setSectionOverride("ceremony", on ? "" : undefined)}
+            label="Vendor Ceremony"
+            vendorLabel="Vendor arrival / setup"
+            vendorValue={ceremonyVendorCopy}
+            vendorPlaceholder="Vendor arrival window, setup access, ceremony-day load-in, restricted areas…"
+            saving={saving === "section_overrides"}
+            onVendorSave={async v => { await setSectionOverride("ceremony", v); }}
+          />
+        </div>
       </SectionCard>
 
       {/* Things To Know */}
       <SectionCard {...sectionProps("things")}>
-        <TextSectionEditor
-          label="Things To Know"
-          value={data.thingsToDo ?? ""}
-          placeholder="Setup rules, load-in times, what's included vs. not, tips for the day, anything else clients should know…"
-          saving={saving === "things_to_do"}
-          onSave={async v => {
-            setData(d => ({ ...d, thingsToDo: v || null }));
-            await save({ things_to_do: v || null }, "things_to_do");
-          }}
-        />
+        <div className="space-y-4">
+          <TextSectionEditor
+            label="Things To Know"
+            value={data.thingsToDo ?? ""}
+            placeholder="Setup rules, load-in times, what's included vs. not, tips for the day, anything else clients should know…"
+            saving={saving === "things_to_do"}
+            onSave={async v => {
+              setData(d => ({ ...d, thingsToDo: v || null }));
+              await save({ things_to_do: v || null }, "things_to_do");
+            }}
+          />
+          <VendorOverrideToggle
+            enabled={thingsDual}
+            onToggle={(on) => void setSectionOverride("things", on ? "" : undefined)}
+            label="Vendor Notes"
+            vendorLabel="Things vendors should know"
+            vendorValue={thingsVendorCopy}
+            vendorPlaceholder="Power drops, floor protection, teardown windows, preferred vendor entrance…"
+            saving={saving === "section_overrides"}
+            onVendorSave={async v => { await setSectionOverride("things", v); }}
+          />
+        </div>
       </SectionCard>
 
       {/* FAQs */}
       <SectionCard {...sectionProps("faqs")}>
-        <FaqsEditor
-          faqs={data.faqs}
-          saving={saving === "faqs"}
-          onSave={async items => {
+        <FaqsSectionEditor
+          sectionAudience={data.sectionAudiences.faqs}
+          clientFaqs={data.faqs}
+          vendorFaqs={vendorFaqs}
+          savingClient={saving === "faqs"}
+          savingVendor={saving === "section_overrides"}
+          onSaveClient={async items => {
             setData(d => ({ ...d, faqs: items }));
             await save({ faqs: items }, "faqs");
+          }}
+          onSaveVendor={async items => {
+            await setVendorFaqs(items);
           }}
         />
       </SectionCard>

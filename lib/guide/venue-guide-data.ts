@@ -1,15 +1,23 @@
 import {
   DEFAULT_SECTION_AUDIENCES,
+  type DualCopySectionKey,
   type GuideAudience,
   type GuideFaqEntry,
   type GuideSectionKey,
   type SectionOverrides,
+  type VendorFaqEntry,
 } from "@/lib/venue-guide/audience";
 
 export type FaqEntry = GuideFaqEntry;
 export type HotelBlock = { name: string; url?: string; code?: string; notes?: string };
 export type VenueContact = { name: string; role: string; phone?: string; email?: string };
-export type { GuideAudience, GuideSectionKey, SectionOverrides };
+export type {
+  DualCopySectionKey,
+  GuideAudience,
+  GuideSectionKey,
+  SectionOverrides,
+  VendorFaqEntry,
+};
 
 export type VenueGuideData = {
   parkingInfo: string | null;

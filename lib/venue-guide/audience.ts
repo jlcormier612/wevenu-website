@@ -30,6 +30,16 @@ export const GUIDE_SECTION_KEYS: GuideSectionKey[] = [
   "contacts",
 ];
 
+/** Dual-copy prose sections stored as section_overrides.<key>.vendors string. */
+export type DualCopySectionKey = "parking" | "policies" | "ceremony" | "things";
+
+export const DUAL_COPY_SECTION_KEYS: DualCopySectionKey[] = [
+  "parking",
+  "policies",
+  "ceremony",
+  "things",
+];
+
 /** Defaults match today's hardcoded vendor handbook subset. */
 export const DEFAULT_SECTION_AUDIENCES: Record<GuideSectionKey, GuideAudience> = {
   parking: "both",
@@ -42,17 +52,26 @@ export const DEFAULT_SECTION_AUDIENCES: Record<GuideSectionKey, GuideAudience> =
   contacts: "both",
 };
 
+export type VendorFaqEntry = {
+  question: string;
+  answer: string;
+};
+
 export type SectionOverrides = {
   parking?: { vendors?: string | null };
   policies?: { vendors?: string | null };
+  ceremony?: { vendors?: string | null };
+  things?: { vendors?: string | null };
+  /** Separate vendor FAQ list when section audience is both. */
+  faqs?: { vendors?: VendorFaqEntry[] };
 };
 
 export type GuideFaqEntry = {
   question: string;
   answer: string;
-  /** Defaults to both when omitted. */
+  /** Defaults to both when omitted. Legacy; dual lists preferred. */
   audience?: GuideAudience;
-  /** Used for vendors when audience is both and answers differ. */
+  /** Legacy dual-answer field; prefer section_overrides.faqs.vendors. */
   answer_for_vendors?: string | null;
 };
 
@@ -62,6 +81,22 @@ function asAudience(value: unknown): GuideAudience | null {
   return typeof value === "string" && AUDIENCE_VALUES.has(value as GuideAudience)
     ? (value as GuideAudience)
     : null;
+}
+
+function normalizeVendorFaqList(raw: unknown): VendorFaqEntry[] | undefined {
+  if (!Array.isArray(raw)) return undefined;
+  const items: VendorFaqEntry[] = [];
+  for (const entry of raw) {
+    if (!entry || typeof entry !== "object" || Array.isArray(entry)) continue;
+    const question = (entry as { question?: unknown }).question;
+    const answer = (entry as { answer?: unknown }).answer;
+    if (typeof question !== "string") continue;
+    items.push({
+      question,
+      answer: typeof answer === "string" ? answer : "",
+    });
+  }
+  return items;
 }
 
 /** Merge stored jsonb with defaults so missing keys keep current behavior. */
@@ -82,7 +117,7 @@ export function normalizeSectionOverrides(raw: unknown): SectionOverrides {
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) return {};
   const obj = raw as Record<string, unknown>;
   const out: SectionOverrides = {};
-  for (const key of ["parking", "policies"] as const) {
+  for (const key of DUAL_COPY_SECTION_KEYS) {
     const block = obj[key];
     if (!block || typeof block !== "object" || Array.isArray(block)) continue;
     const vendors = (block as { vendors?: unknown }).vendors;
@@ -91,6 +126,11 @@ export function normalizeSectionOverrides(raw: unknown): SectionOverrides {
     } else if (vendors === null) {
       out[key] = { vendors: null };
     }
+  }
+  const faqsBlock = obj.faqs;
+  if (faqsBlock && typeof faqsBlock === "object" && !Array.isArray(faqsBlock)) {
+    const vendors = normalizeVendorFaqList((faqsBlock as { vendors?: unknown }).vendors);
+    if (vendors) out.faqs = { vendors };
   }
   return out;
 }
@@ -113,7 +153,7 @@ export function isSectionVisible(
  * Vendors get override when present (non-empty), otherwise main.
  */
 export function resolveContent(
-  section: "parking" | "policies",
+  section: DualCopySectionKey,
   asking: AskingAudience,
   main: string | null | undefined,
   overrides?: SectionOverrides | null,
@@ -150,10 +190,31 @@ export function resolveFaqAnswer(
   return faq.answer ?? "";
 }
 
+function hasVendorFaqList(overrides?: SectionOverrides | null): boolean {
+  const list = overrides?.faqs?.vendors;
+  return Array.isArray(list) && list.some((f) => f.question.trim().length > 0);
+}
+
+/**
+ * Project FAQs for an audience.
+ * Vendors: prefer section_overrides.faqs.vendors when present; else fall back
+ * to the main list filtered by legacy per-item audience / answer_for_vendors.
+ */
 export function resolveFaqsForAudience(
   faqs: GuideFaqEntry[] | null | undefined,
   asking: AskingAudience,
+  overrides?: SectionOverrides | null,
 ): { question: string; answer: string }[] {
+  if (asking === "vendors" && hasVendorFaqList(overrides)) {
+    return (overrides!.faqs!.vendors ?? [])
+      .filter((f) => f && typeof f.question === "string")
+      .map((f) => ({
+        question: f.question,
+        answer: typeof f.answer === "string" ? f.answer : "",
+      }))
+      .filter((f) => f.question.trim().length > 0);
+  }
+
   if (!Array.isArray(faqs)) return [];
   return faqs
     .filter((f) => f && typeof f.question === "string" && isFaqVisibleTo(f, asking))
@@ -239,12 +300,14 @@ export function projectGuideForAudience(
       ? resolveContent("policies", asking, raw.policies, overrides)
       : null,
     ceremonyInstructions: show("ceremony")
-      ? (typeof raw.ceremonyInstructions === "string" ? raw.ceremonyInstructions : null)
+      ? resolveContent("ceremony", asking, raw.ceremonyInstructions, overrides)
       : null,
     thingsToDo: show("things")
-      ? (typeof raw.thingsToDo === "string" ? raw.thingsToDo : null)
+      ? resolveContent("things", asking, raw.thingsToDo, overrides)
       : null,
-    faqs: show("faqs") ? resolveFaqsForAudience(raw.faqs, asking) : [],
+    faqs: show("faqs")
+      ? resolveFaqsForAudience(raw.faqs, asking, overrides)
+      : [],
     importantContacts: show("contacts")
       ? (Array.isArray(raw.importantContacts) ? raw.importantContacts : [])
       : [],

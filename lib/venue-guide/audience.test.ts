@@ -48,12 +48,20 @@ describe("isSectionVisible", () => {
 });
 
 describe("resolveContent", () => {
-  const overrides = { parking: { vendors: "Load-in via north gate" } };
+  const overrides = {
+    parking: { vendors: "Load-in via north gate" },
+    ceremony: { vendors: "Vendors enter via north door at T-90" },
+    things: { vendors: "Power drop at dock B" },
+  };
 
   it("clients always get main copy", () => {
     assert.equal(
       resolveContent("parking", "clients", "Guest lot A", overrides),
       "Guest lot A",
+    );
+    assert.equal(
+      resolveContent("ceremony", "clients", "Arrive 30m early", overrides),
+      "Arrive 30m early",
     );
   });
 
@@ -61,6 +69,14 @@ describe("resolveContent", () => {
     assert.equal(
       resolveContent("parking", "vendors", "Guest lot A", overrides),
       "Load-in via north gate",
+    );
+    assert.equal(
+      resolveContent("ceremony", "vendors", "Arrive 30m early", overrides),
+      "Vendors enter via north door at T-90",
+    );
+    assert.equal(
+      resolveContent("things", "vendors", "Try the cafe", overrides),
+      "Power drop at dock B",
     );
     assert.equal(
       resolveContent("parking", "vendors", "Guest lot A", { parking: { vendors: "  " } }),
@@ -90,7 +106,7 @@ describe("FAQ audience helpers", () => {
     { question: "Guest dress?", answer: "Cocktail", audience: "clients" as const },
   ];
 
-  it("filters by audience and resolves dual answers", () => {
+  it("filters by audience and resolves dual answers (legacy fallback)", () => {
     const clientFaqs = resolveFaqsForAudience(faqs, "clients");
     assert.deepEqual(
       clientFaqs.map((f) => f.question),
@@ -110,6 +126,31 @@ describe("FAQ audience helpers", () => {
       vendorFaqs.find((f) => f.question === "Hotel shuttle?")?.answer,
       "Vendors use the service road",
     );
+  });
+
+  it("prefers section_overrides.faqs.vendors when present", () => {
+    const overrides = {
+      faqs: {
+        vendors: [
+          { question: "Dock access?", answer: "Use dock B" },
+          { question: "COI?", answer: "Required 14 days prior" },
+        ],
+      },
+    };
+    const vendorFaqs = resolveFaqsForAudience(faqs, "vendors", overrides);
+    assert.deepEqual(vendorFaqs, [
+      { question: "Dock access?", answer: "Use dock B" },
+      { question: "COI?", answer: "Required 14 days prior" },
+    ]);
+    // Clients still see main list
+    assert.equal(resolveFaqsForAudience(faqs, "clients", overrides).length, 3);
+  });
+
+  it("empty vendor FAQ list falls back to legacy filtering", () => {
+    const vendorFaqs = resolveFaqsForAudience(faqs, "vendors", {
+      faqs: { vendors: [] },
+    });
+    assert.equal(vendorFaqs.length, 3);
   });
 
   it("resolveFaqAnswer defaults to main", () => {
@@ -135,10 +176,18 @@ describe("projectGuideForAudience", () => {
       { question: "Dock?", answer: "Use dock B", audience: "vendors" as const },
     ],
     importantContacts: [{ name: "Sam", role: "Coordinator" }],
-    sectionAudiences: null,
+    sectionAudiences: {
+      ...DEFAULT_SECTION_AUDIENCES,
+      things: "both" as const,
+    },
     sectionOverrides: {
       parking: { vendors: "Vendor lot + loading dock" },
       policies: { vendors: "Insurance COI required" },
+      ceremony: { vendors: "Load-in at T-90 via north door" },
+      things: { vendors: "Vendor power at dock B" },
+      faqs: {
+        vendors: [{ question: "Insurance?", answer: "Email COI to ops@" }],
+      },
     },
   };
 
@@ -147,30 +196,46 @@ describe("projectGuideForAudience", () => {
     assert.ok(view);
     assert.equal(view.parkingInfo, "Guest parking");
     assert.equal(view.policies, "No flames");
+    assert.equal(view.ceremonyInstructions, "Arrive 30m early");
+    assert.equal(view.thingsToDo, "Try the cafe");
     assert.equal(view.nearbyAccommodations, "Hotel row");
     assert.equal(view.hotelBlocks.length, 1);
-    assert.equal(view.thingsToDo, "Try the cafe");
     assert.equal(view.faqs.length, 1);
+    assert.equal(view.faqs[0]?.question, "Pets?");
     assert.equal(view.parkingUsesVendorOverride, false);
   });
 
-  it("projects vendor view hiding hotels/things and using overrides", () => {
+  it("projects vendor view hiding hotels and using overrides + vendor FAQ list", () => {
     const view = projectGuideForAudience(raw, "vendors");
     assert.ok(view);
     assert.equal(view.parkingInfo, "Vendor lot + loading dock");
     assert.equal(view.policies, "Insurance COI required");
+    assert.equal(view.ceremonyInstructions, "Load-in at T-90 via north door");
+    assert.equal(view.thingsToDo, "Vendor power at dock B");
     assert.equal(view.transportation, "Uber drop-off");
     assert.equal(view.nearbyAccommodations, null);
     assert.deepEqual(view.hotelBlocks, []);
-    assert.equal(view.thingsToDo, null);
-    assert.equal(view.faqs.length, 2);
+    assert.deepEqual(view.faqs, [
+      { question: "Insurance?", answer: "Email COI to ops@" },
+    ]);
     assert.equal(view.parkingUsesVendorOverride, true);
   });
 
-  it("normalizes overrides object", () => {
+  it("normalizes overrides object including ceremony/things/faqs", () => {
     assert.deepEqual(
-      normalizeSectionOverrides({ parking: { vendors: "X" }, junk: 1 }),
-      { parking: { vendors: "X" } },
+      normalizeSectionOverrides({
+        parking: { vendors: "X" },
+        ceremony: { vendors: "Y" },
+        things: { vendors: "Z" },
+        faqs: { vendors: [{ question: "Q", answer: "A" }] },
+        junk: 1,
+      }),
+      {
+        parking: { vendors: "X" },
+        ceremony: { vendors: "Y" },
+        things: { vendors: "Z" },
+        faqs: { vendors: [{ question: "Q", answer: "A" }] },
+      },
     );
   });
 });
