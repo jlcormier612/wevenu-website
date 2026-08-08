@@ -17,7 +17,7 @@ import {
 } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 
-export type FeedbackSurface = "venue" | "vendor";
+export type FeedbackSurface = "venue" | "vendor" | "client";
 
 type FeedbackType = "support" | "bug" | "feature" | "nps" | "general";
 
@@ -39,14 +39,23 @@ const TYPES: { value: FeedbackType; label: string; emoji: string; placeholder: s
 const SUBTITLES: Record<FeedbackSurface, string> = {
   venue:  "Help us make Hello to Cheers better for your venue.",
   vendor: "Help us make Hello to Cheers better for your vendor experience.",
+  client: "Help us make Hello to Cheers better for your planning experience.",
 };
 
 export function FeedbackSheet({
   children,
   surface = "venue",
+  relatedVenueId = null,
+  portalToken,
+  triggerClassName,
 }: {
   children?: React.ReactNode;
   surface?: FeedbackSurface;
+  /** Related product venue id when known (vendor event context, portal session). */
+  relatedVenueId?: string | null;
+  /** Portal access token — required when surface is client. */
+  portalToken?: string;
+  triggerClassName?: string;
 }) {
   const [open,             setOpen]             = React.useState(false);
   const [type,             setType]             = React.useState<FeedbackType>("general");
@@ -63,14 +72,14 @@ export function FeedbackSheet({
   const isFeature = type === "feature";
   const canSend  = isNps ? rating != null : body.trim().length > 0;
 
-  // Load feature requests when feature tab is selected
+  // Load feature requests when feature tab is selected (authenticated surfaces only)
   React.useEffect(() => {
-    if (!isFeature || !open) return;
+    if (!isFeature || !open || surface === "client") return;
     fetch("/api/feedback/features")
       .then(r => r.json())
       .then((d: { features?: FeatureRequest[] }) => setFeatures(d.features ?? []))
       .catch(() => {});
-  }, [isFeature, open]);
+  }, [isFeature, open, surface]);
 
   function reset() {
     setType("general");
@@ -84,24 +93,50 @@ export function FeedbackSheet({
 
   async function submit() {
     if (!canSend || sending) return;
+    if (surface === "client" && !portalToken) {
+      toast.error("Couldn't send feedback. Please refresh and try again.");
+      return;
+    }
     setSending(true);
     try {
-      const res = await fetch("/api/feedback", {
-        method:  "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          type,
-          subject: subject.trim() || null,
-          body:    body.trim(),
-          rating,
-          surface,
-          allow_public_share: isNps ? allowPublicShare : false,
-          metadata: {
-            current_url: window.location.href,
-            user_agent:  navigator.userAgent,
+      const endpoint = surface === "client"
+        ? "/api/portal/product-feedback"
+        : "/api/feedback";
+
+      const payload = surface === "client"
+        ? {
+            token: portalToken,
+            type,
+            subject: subject.trim() || null,
+            body: body.trim(),
+            rating,
+            allow_public_share: isNps ? allowPublicShare : false,
+            metadata: {
+              current_url: window.location.href,
+              user_agent: navigator.userAgent,
+              surface,
+            },
+          }
+        : {
+            type,
+            subject: subject.trim() || null,
+            body: body.trim(),
+            rating,
             surface,
-          },
-        }),
+            related_venue_id: relatedVenueId ?? null,
+            allow_public_share: isNps ? allowPublicShare : false,
+            metadata: {
+              current_url: window.location.href,
+              user_agent: navigator.userAgent,
+              surface,
+              related_venue_id: relatedVenueId ?? null,
+            },
+          };
+
+      const res = await fetch(endpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
       });
       if (!res.ok) throw new Error("failed");
       toast.success("Feedback sent — thank you!");
@@ -139,7 +174,10 @@ export function FeedbackSheet({
         {children ?? (
           <button
             type="button"
-            className="flex w-full items-center gap-2.5 rounded-sm px-3 py-2.5 text-[0.95rem] font-medium tracking-wide text-sidebar-foreground/70 transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+            className={cn(
+              "flex w-full items-center gap-2.5 rounded-sm px-3 py-2.5 text-[0.95rem] font-medium tracking-wide text-sidebar-foreground/70 transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
+              triggerClassName,
+            )}
           >
             <MessageCircle className="h-4 w-4 shrink-0" />
             <span>Give feedback</span>
@@ -259,11 +297,11 @@ export function FeedbackSheet({
             </label>
           )}
 
-          {/* Feature voting — shown when type = feature */}
+          {/* Feature voting — shown when type = feature (venue/vendor only) */}
           {isFeature && features.length > 0 && (
             <div className="space-y-2">
               <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                Other venues have requested
+                {surface === "vendor" ? "Other vendors have requested" : "Other venues have requested"}
               </p>
               <div className="space-y-2">
                 {features.map(f => (

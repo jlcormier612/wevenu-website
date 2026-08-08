@@ -24,15 +24,17 @@
 import * as React from "react";
 
 import {
-  CalendarDays, Check, CheckSquare, Clock, Loader2,
+  CalendarDays, Check, CheckSquare, Clock, Loader2, MessageCircle,
   Plus, Settings, Trash2, Users, X,
 } from "lucide-react";
 import { toast } from "sonner";
 
+import { FeedbackSheet } from "@/components/feedback/feedback-sheet";
+
 import type {
   ClientMedia, CoupleBudget, CoupleProfile, CoupleTodo, CoupleGuest,
   GuestStats, JournalEntry, PortalContext, PortalKeyDate, PortalSection, PortalTask,
-  RecentActivity, SeatingData, TodoCategory, PortalParticipant, PortalActivity,
+  PortalVendorTask, RecentActivity, SeatingData, TodoCategory, PortalParticipant, PortalActivity,
   PortalTimelineEntry, PortalTimelineSection, PortalVenueTeamMember,
 } from "@/lib/portal/types";
 import { getAnniversaryObservations, getCountdownObservation, getOverviewObservation, getWeddingDayObservations } from "@/lib/luv/portal-observations";
@@ -40,12 +42,15 @@ import {
   type AccountState, getAccountStateAction, changePasswordAction, revokeSessionAction,
   grantSupportAccessAction, revokeSupportGrantAction,
 } from "@/app/(portal)/p/[token]/account-actions";
+import { PortalLegalHistorySection } from "@/components/legal/legal-history-section";
 import { RequestsPortalSection, RequestsSummaryCard } from "@/components/portal/requests-section";
 import { LuvIntroCard } from "@/components/luv/luv-intro-card";
 import { UnifiedTasksSection } from "@/components/portal/unified-tasks-section";
 import { buildUnifiedTaskList } from "@/lib/portal/unified-tasks";
+import { partitionByCompletion } from "@/lib/tasks/group-by-completion";
 import type { PortalRequestSummary } from "@/lib/requests/types";
 import { QuestionnairePortalSection } from "@/components/portal/questionnaire-section";
+import { CoupleNotificationBell } from "@/components/portal/couple-notification-bell";
 import { WelcomeExperienceGate } from "@/components/legal/welcome-experience-gate";
 import type { WelcomeExperienceDocument } from "@/components/welcome-experience";
 import { ALL_SECTIONS as WEBSITE_ALL_SECTIONS } from "@/components/portal/website-editor";
@@ -95,21 +100,6 @@ function formatPortalEventRangeShort(start: string, end?: string | null) {
 
 function daysUntil(iso: string) {
   return Math.ceil((new Date(iso + "T12:00:00").getTime() - Date.now()) / 86_400_000);
-}
-
-function ReadinessRing({ score, size = 64 }: { score: number; size?: number }) {
-  const r = (size - 8) / 2;
-  const circ = 2 * Math.PI * r;
-  const dash = (score / 100) * circ;
-  return (
-    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
-      <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke={CREAM} strokeWidth={5} />
-      <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke={SAGE} strokeWidth={5}
-        strokeDasharray={`${dash} ${circ}`} strokeLinecap="round"
-        transform={`rotate(-90 ${size / 2} ${size / 2})`} />
-      <text x={size / 2} y={size / 2 + 4} textAnchor="middle" fontSize={11} fontWeight={600} fill={SAGE}>{score}%</text>
-    </svg>
-  );
 }
 
 // ── Floral line art — hero corner decoration ──────────────────────────────────
@@ -2069,8 +2059,10 @@ function TodoSection({ token, onCountChange, eventDate }: { token: string; onCou
     }
   }
 
-  const open = todos.filter(t => !t.completed);
-  const done = todos.filter(t => t.completed);
+  const { open, completed: done } = partitionByCompletion(todos, {
+    isComplete: (t) => t.completed,
+    getDueDate: (t) => t.dueDate,
+  });
 
   return (
     <div className="space-y-4">
@@ -2674,16 +2666,21 @@ function CoupleDocumentsPortalSection({ token, onNavigate }: { token: string; on
 
 function TimelinePortalSection({
   token, clientId, initialSections, initialEntries, initialLastSubmittedAt, initialHasUnpublishedChanges,
+  eventDate = null, eventEndDate = null,
 }: {
   token: string; clientId: string;
   initialSections: PortalTimelineSection[]; initialEntries: PortalTimelineEntry[];
   initialLastSubmittedAt: string | null; initialHasUnpublishedChanges: boolean;
+  eventDate?: string | null;
+  eventEndDate?: string | null;
 }) {
   const { TimelineSection } = require("@/components/portal/timeline-section") as {
     TimelineSection: React.ComponentType<{
       token: string; clientId: string;
       initialSections: PortalTimelineSection[]; initialEntries: PortalTimelineEntry[];
       initialLastSubmittedAt: string | null; initialHasUnpublishedChanges: boolean;
+      eventDate?: string | null;
+      eventEndDate?: string | null;
     }>;
   };
   return (
@@ -2691,6 +2688,7 @@ function TimelinePortalSection({
       token={token} clientId={clientId}
       initialSections={initialSections} initialEntries={initialEntries}
       initialLastSubmittedAt={initialLastSubmittedAt} initialHasUnpublishedChanges={initialHasUnpublishedChanges}
+      eventDate={eventDate} eventEndDate={eventEndDate}
     />
   );
 }
@@ -3856,6 +3854,45 @@ function AccountSettingsPanel({ venueName }: { venueName: string }) {
           </div>
         )}
       </div>
+
+      <PortalLegalHistorySection items={state.legalHistory} />
+    </div>
+  );
+}
+
+function PortalProductFeedbackCard({
+  token,
+  venueId,
+}: {
+  token: string;
+  venueId: string;
+}) {
+  return (
+    <div className="rounded-2xl border border-border bg-card p-4 space-y-3">
+      <div className="flex items-start gap-3">
+        <div
+          className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full"
+          style={{ background: `${SAGE}18`, color: SAGE }}
+        >
+          <MessageCircle className="h-4 w-4" />
+        </div>
+        <div className="min-w-0 flex-1 space-y-1">
+          <p className="text-sm font-semibold text-heading">Share feedback</p>
+          <p className="text-xs text-muted-foreground leading-relaxed">
+            Tell Hello to Cheers what would make planning easier — help, bugs, ideas, or a quick rating.
+            This goes to our team, not your venue.
+          </p>
+        </div>
+      </div>
+      <FeedbackSheet surface="client" portalToken={token} relatedVenueId={venueId}>
+        <button
+          type="button"
+          className="text-xs font-semibold px-4 py-2 rounded-xl text-white"
+          style={{ background: SAGE }}
+        >
+          Give feedback
+        </button>
+      </FeedbackSheet>
     </div>
   );
 }
@@ -3882,9 +3919,14 @@ function AccountSection({ token, context, venueName }: { token: string; context:
           </button>
         ))}
       </div>
-      {tab === "account"
-        ? <AccountSettingsPanel venueName={venueName} />
-        : <OurPeopleSection token={token} context={context} />}
+      {tab === "account" ? (
+        <div className="space-y-6">
+          <AccountSettingsPanel venueName={venueName} />
+          <PortalProductFeedbackCard token={token} venueId={context.venue.id} />
+        </div>
+      ) : (
+        <OurPeopleSection token={token} context={context} />
+      )}
     </div>
   );
 }
@@ -3961,13 +4003,14 @@ const NAV_ITEMS: { id: PortalSection; icon: string; label: string; shortLabel?: 
 ];
 
 export function PortalShell({
-  token, context, initialTasks, initialTimelineSections = [], initialTimelineEntries = [],
+  token, context, initialTasks, initialVendorTasks = [], initialTimelineSections = [], initialTimelineEntries = [],
   initialTimelineLastSubmittedAt = null, initialTimelineHasUnpublishedChanges = false,
   initialLegalGate,
 }: {
   token: string;
   context: PortalContext;
   initialTasks: PortalTask[];
+  initialVendorTasks?: PortalVendorTask[];
   initialTimelineSections?: PortalTimelineSection[];
   initialTimelineEntries?: PortalTimelineEntry[];
   initialTimelineLastSubmittedAt?: string | null;
@@ -4123,8 +4166,16 @@ export function PortalShell({
   const firstName = context.client.firstName;
   const partnerName = context.client.partnerFirstName;
   const coupleName = [firstName, partnerName].filter(Boolean).join(" & ");
-  const actionCount = initialTasks.filter(t => t.canComplete && t.status !== "complete").length;
+  const actionCount =
+    initialTasks.filter(t => t.canComplete && t.status !== "complete").length
+    + initialVendorTasks.filter(t => t.canComplete && t.status !== "complete").length;
   const isOverview = activeSection === "overview";
+  // Tasks | Timeline | Documents | Venue Guide share one column so white list cards align.
+  const isSharedListColumn =
+    activeSection === "tasks"
+    || activeSection === "timeline"
+    || activeSection === "documents"
+    || activeSection === "guide";
 
   return (
     <div
@@ -4173,6 +4224,10 @@ export function PortalShell({
             >
               Export my data
             </a>
+            <CoupleNotificationBell
+              token={token}
+              onNavigate={(section) => setActiveSection(section)}
+            />
             {/* Account — Program 5 (2026-07-24): "That's a global function.
                 It doesn't belong with either planning area." The only
                 header-level nav control; everything else routes through
@@ -4242,21 +4297,25 @@ export function PortalShell({
           <div className="flex-1 min-h-0 overflow-hidden flex flex-col">
             <SeatingPortalSection token={token} />
           </div>
+        ) : isSharedListColumn ? (
+          /* Tasks | Timeline | Documents | Venue Guide — identical outer column (max-w + pad). */
+          <div className="w-full max-w-2xl mx-auto px-4 sm:px-6 py-6">
+            {activeSection === "tasks"     && <UnifiedTasksSection token={token} initialTasks={initialTasks} initialVendorTasks={initialVendorTasks} venueName={context.venue.name} onNavigate={setActiveSection} />}
+            {activeSection === "timeline"  && <TimelinePortalSection token={token} clientId={context.client.id} initialSections={initialTimelineSections} initialEntries={initialTimelineEntries} initialLastSubmittedAt={initialTimelineLastSubmittedAt} initialHasUnpublishedChanges={initialTimelineHasUnpublishedChanges} eventDate={context.event?.eventDate} eventEndDate={context.event?.eventEndDate} />}
+            {activeSection === "documents" && <CoupleDocumentsPortalSection token={token} onNavigate={setActiveSection} />}
+            {activeSection === "guide"     && <VenueGuidePortalSection token={token} context={context} onNavigate={setActiveSection} />}
+          </div>
         ) : (
-          <div className="max-w-2xl mx-auto px-4 sm:px-6 py-6">
+          <div className="w-full max-w-2xl mx-auto px-4 sm:px-6 py-6">
             {activeSection === "guests"    && <GuestPortalSection token={token} />}
             {activeSection === "todos"     && <TodoSection token={token} onCountChange={setTodoCount} eventDate={context.event?.eventDate} />}
             {(activeSection === "story" || activeSection === "journey") && (
               <StoryAndJourneySection token={token} context={context} profile={profile} onProfileChange={setProfile} onNavigate={setActiveSection} initialTab={activeSection === "journey" ? "journey" : "story"} />
             )}
             {activeSection === "people"    && <OurPeopleSection token={token} context={context} />}
-            {activeSection === "guide"     && <VenueGuidePortalSection token={token} context={context} onNavigate={setActiveSection} />}
-            {activeSection === "tasks"     && <UnifiedTasksSection token={token} initialTasks={initialTasks} venueName={context.venue.name} onNavigate={setActiveSection} />}
             {activeSection === "questionnaire" && <QuestionnairePortalSection token={token} />}
-            {activeSection === "timeline"  && <TimelinePortalSection token={token} clientId={context.client.id} initialSections={initialTimelineSections} initialEntries={initialTimelineEntries} initialLastSubmittedAt={initialTimelineLastSubmittedAt} initialHasUnpublishedChanges={initialTimelineHasUnpublishedChanges} />}
             {activeSection === "vendors"   && <VendorPortalSection token={token} context={context} />}
             {activeSection === "budget"    && <BudgetPortalSection token={token} />}
-            {activeSection === "documents" && <CoupleDocumentsPortalSection token={token} onNavigate={setActiveSection} />}
             {activeSection === "payments"  && <PaymentPortalSection token={token} />}
             {activeSection === "messages"  && <PortalMessageSection token={token} venueName={context.venue.name} />}
             {activeSection === "account"   && <AccountSection token={token} context={context} venueName={context.venue.name} />}
@@ -4422,7 +4481,7 @@ function NextStepsCard({ token, tasks, onNavigate }: { token: string; tasks: Por
   const items = loaded ? buildUnifiedTaskList({
     venueTasks: tasks, requests, paymentSchedules, questionnaire, documents,
     timelineHasUnpublishedChanges: false,
-  }).slice(0, 5) : [];
+  }).filter((t) => !t.completed).slice(0, 5) : [];
 
   return (
     <div className="rounded-2xl border bg-card p-5" style={{ borderColor: "#E8E3DC" }}>
@@ -4534,7 +4593,7 @@ function TimelineCard({ token, onNavigate }: { token: string; onNavigate: (s: Po
     <div className="rounded-2xl border bg-card p-5" style={{ borderColor: "#E8E3DC" }}>
       <p className="text-[10px] font-semibold uppercase tracking-widest mb-3" style={{ color: SAGE }}>🕒 Timeline</p>
       {upcoming.length === 0 ? (
-        <p className="text-xs text-muted-foreground">Your day-of schedule is being built with your venue.</p>
+        <p className="text-xs text-muted-foreground">Your Timeline is being built with your venue.</p>
       ) : (
         <div className="space-y-1.5">
           {upcoming.map((e) => (
