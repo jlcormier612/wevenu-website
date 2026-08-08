@@ -5,11 +5,14 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import type { DueDateDirection } from "@/lib/playbooks/constants";
+import { MAX_ABS_DAYS_OFFSET } from "@/lib/playbooks/due-dates";
 import { cn } from "@/lib/utils";
 
 /**
  * Relative due composer — venues never type a raw offset. Shared by the
  * Playbook template builder and per-event Planning task edit.
+ * Number + before/on/after already supports any offset (incl. 365 / 180+);
+ * max caps extreme values at ~3 years.
  */
 export function DueDateComposer({
   direction,
@@ -32,6 +35,7 @@ export function DueDateComposer({
           onChange={(e) => onChange(direction, e.target.value)}
           className={cn("w-16", h)}
           min={0}
+          max={MAX_ABS_DAYS_OFFSET}
         />
       )}
       <Select

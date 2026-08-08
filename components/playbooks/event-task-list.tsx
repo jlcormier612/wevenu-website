@@ -28,6 +28,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { useSyncedState } from "@/lib/hooks/use-synced-state";
+import { sortByDueDateAsc } from "@/lib/tasks/group-by-completion";
 import {
   categoryColor, categoryLabel, directionForOffset, formatClientPlanningTitle, formatEventRelativeDue,
   formatScheduledTime, isScheduledActivity, offsetForDirection,
@@ -510,6 +511,7 @@ function TaskRow({
               daysOffset: task.daysOffset,
               dueDate: task.dueDate,
               dueDateLocked: task.dueDateLocked,
+              eventDate,
               style: "planning",
             })}</span>
             {isScheduledActivity(task) && (
@@ -886,11 +888,13 @@ export function EventTaskList({
   }
 
   const clientTasks = tasks.filter((t) => t.ownerType === "couple");
-  const overdue   = tasks.filter((t) => t.status === "overdue");
-  const blocked   = tasks.filter((t) => t.status === "blocked");
-  const pending   = tasks.filter((t) => t.status === "pending");
-  const complete  = tasks.filter((t) => t.status === "complete");
-  const waived    = tasks.filter((t) => t.status === "waived");
+  const byDue = (list: EventTask[]) =>
+    sortByDueDateAsc(list, (t) => t.dueDate);
+  const overdue   = byDue(tasks.filter((t) => t.status === "overdue"));
+  const blocked   = byDue(tasks.filter((t) => t.status === "blocked"));
+  const pending   = byDue(tasks.filter((t) => t.status === "pending"));
+  const complete  = byDue(tasks.filter((t) => t.status === "complete"));
+  const waived    = byDue(tasks.filter((t) => t.status === "waived"));
 
   const renderTaskRow = (task: EventTask) => {
     const kind: PlaybookKind = task.ownerType === "couple" ? "client" : "venue";
@@ -957,7 +961,7 @@ export function EventTaskList({
             {renderGroup(overdue,  "Overdue",  true)}
             {renderGroup(blocked,  "Waiting",  true)}
             {renderGroup(pending,  "Upcoming", true)}
-            {renderGroup(complete, "Complete", true)}
+            {renderGroup(complete, "Completed", true)}
             {renderGroup(waived,   "Waived",   waived.length > 0)}
           </>
         )}

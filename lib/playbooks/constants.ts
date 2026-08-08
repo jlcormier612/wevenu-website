@@ -1,4 +1,5 @@
 import type { PlaybookKind, TaskActionType, TaskCategory, TaskOwner, TaskStatus, TaskVisibility } from "@/lib/playbooks/types";
+import { clampDaysOffset } from "@/lib/playbooks/due-dates";
 
 // A task becomes navigation into the platform, not a static checklist item
 // (Vendor Management — Next Iteration, 2026-07-10). Each destination is a
@@ -128,10 +129,12 @@ export function formatDaysOffset(offset: number): string {
 }
 
 export {
+  clampDaysOffset,
   formatAbsoluteDueDate,
   formatEventRelativeDue,
   formatShortDaysOffset,
   formatUrgencyDue,
+  MAX_ABS_DAYS_OFFSET,
   offsetDate,
   daysBetween,
   daysUntilDue,
@@ -147,7 +150,8 @@ export function directionForOffset(offset: number): DueDateDirection {
 
 export function offsetForDirection(days: number, direction: DueDateDirection): number {
   if (direction === "on") return 0;
-  return direction === "before" ? -Math.abs(days) : Math.abs(days);
+  const abs = Math.abs(Number.isFinite(days) ? days : 0);
+  return clampDaysOffset(direction === "before" ? -abs : abs);
 }
 
 // The underlying model is always "Client Planning" — the label a couple (or
@@ -205,7 +209,7 @@ export const STANDARD_CLIENT_PLANNING_TASKS: SeedTask[] = [
   { ...R, title: "Choose your vendors",      description: "Pick the vendors you'd like to work with, then submit your list so your venue has it.", ownerType: "couple", visibility: "client_owned", daysOffset: -45, category: "planning", milestoneIndex: 1, autoCompleteTrigger: "vendor_selected", isRequired: false, sortOrder: 4, dependsOnTaskId: null },
   { ...R, title: "Submit your guest count",  description: "We need your final headcount to plan seating, catering, and rentals.", ownerType: "couple", visibility: "client_owned", daysOffset: -30, category: "planning", milestoneIndex: 2, autoCompleteTrigger: "guest_count_finalized", isRequired: true, sortOrder: 5, dependsOnTaskId: null },
   { ...R, title: "Submit your seating plan", description: "Arrange your tables, then submit your seating plan so your venue has it for the day.", ownerType: "couple", visibility: "client_owned", daysOffset: -21, category: "planning", milestoneIndex: 2, autoCompleteTrigger: "seating_submitted", isRequired: true, sortOrder: 6, dependsOnTaskId: null },
-  { ...R, title: "Submit your timeline",     description: "Plan your day-of schedule, then submit it so your venue has it.", ownerType: "couple", visibility: "client_owned", daysOffset: -14, category: "planning", milestoneIndex: 2, autoCompleteTrigger: "timeline_submitted", isRequired: true, sortOrder: 7, dependsOnTaskId: null },
+  { ...R, title: "Submit your timeline",     description: "Plan your Timeline, then submit it so your venue has it.", ownerType: "couple", visibility: "client_owned", daysOffset: -14, category: "planning", milestoneIndex: 2, autoCompleteTrigger: "timeline_submitted", isRequired: true, sortOrder: 7, dependsOnTaskId: null },
   { ...R, title: "Final payment",            description: null, ownerType: "couple", visibility: "client_owned", daysOffset: -30, category: "financial", milestoneIndex: 2, autoCompleteTrigger: "payment_received", isRequired: true, sortOrder: 8, dependsOnTaskId: null },
   { ...R, title: "Leave a review",           description: "We'd love to hear about your experience.", ownerType: "couple", visibility: "client_owned", daysOffset: 14, category: "communication", milestoneIndex: 3, autoCompleteTrigger: null, isRequired: false, sortOrder: 9, dependsOnTaskId: null },
 ];

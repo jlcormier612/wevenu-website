@@ -1,5 +1,5 @@
 import { createClient } from "@/integrations/supabase/server";
-import { daysBetween, offsetDate } from "@/lib/playbooks/due-dates";
+import { clampDaysOffset, daysBetween, offsetDate } from "@/lib/playbooks/due-dates";
 import type {
   EventPlaybookApplication,
   EventReadiness,
@@ -270,7 +270,7 @@ export async function insertTemplateTask(
   const { data, error } = await client.from("playbook_tasks").insert({
     template_id: templateId, venue_id: venueId, title: task.title.trim(),
     description: task.description?.trim() || null, owner_type: task.ownerType,
-    visibility: task.visibility, days_offset: task.daysOffset, due_date_rule_kind: task.dueDateRuleKind, category: task.category,
+    visibility: task.visibility, days_offset: clampDaysOffset(task.daysOffset), due_date_rule_kind: task.dueDateRuleKind, category: task.category,
     milestone_id: task.milestoneId,
     auto_complete_trigger: task.autoCompleteTrigger || null,
     depends_on_task_id: task.dependsOnTaskId || null,
@@ -290,7 +290,7 @@ export async function updateTemplateTask(client: DbClient, venueId: string, task
   if (task.description !== undefined) patch.description = task.description?.trim() || null;
   if (task.ownerType !== undefined) patch.owner_type = task.ownerType;
   if (task.visibility !== undefined) patch.visibility = task.visibility;
-  if (task.daysOffset !== undefined) patch.days_offset = task.daysOffset;
+  if (task.daysOffset !== undefined) patch.days_offset = clampDaysOffset(task.daysOffset);
   if (task.category !== undefined) patch.category = task.category;
   if (task.milestoneId !== undefined) patch.milestone_id = task.milestoneId;
   if (task.autoCompleteTrigger !== undefined) patch.auto_complete_trigger = task.autoCompleteTrigger || null;
@@ -584,11 +584,12 @@ export async function updateEventTaskDaysOffset(
     .maybeSingle<{ owner_type: string; reminder_before_days: number[] | null; escalation_after_days: number | null }>();
   if (fetchError) throw fetchError;
 
-  const dueDate = offsetDate(eventDate, daysOffset);
+  const clamped = clampDaysOffset(daysOffset);
+  const dueDate = offsetDate(eventDate, clamped);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { error } = await (client.from("event_tasks") as any)
     .update({
-      days_offset: daysOffset,
+      days_offset: clamped,
       due_date: dueDate,
       due_date_locked: false,
       due_date_rule_kind: "relative_to_event",

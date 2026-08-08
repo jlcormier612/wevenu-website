@@ -7,6 +7,15 @@
  * changes. Multi-day events always anchor to start (`event_date`), not end.
  */
 
+/** Max |days_offset| accepted in UI / servers (~3 years). */
+export const MAX_ABS_DAYS_OFFSET = 1095;
+
+/** Clamp a signed day offset into the supported planning window. */
+export function clampDaysOffset(n: number): number {
+  if (!Number.isFinite(n)) return 0;
+  return Math.max(-MAX_ABS_DAYS_OFFSET, Math.min(MAX_ABS_DAYS_OFFSET, Math.trunc(n)));
+}
+
 /** Add `days` to an ISO date string (YYYY-MM-DD). Noon local avoids DST edge cases. */
 export function offsetDate(dateStr: string, days: number): string {
   const d = new Date(dateStr + "T12:00:00");
@@ -56,15 +65,25 @@ export function formatUrgencyDue(dueDate: string, today?: string): string {
  * - planning: “30 days before · Sept 12”
  * - urgency:  “Due in 12 days · 30 days before” (falls back sensibly when far out)
  * Locked absolute overrides show the calendar date only (plus “(fixed)” in planning).
+ *
+ * When `dueDate` is missing but `eventDate` + `daysOffset` are known, resolve the
+ * calendar day for display (covers legacy rows that only stored the offset).
  */
 export function formatEventRelativeDue(opts: {
   daysOffset?: number | null;
   dueDate?: string | null;
   dueDateLocked?: boolean;
+  /** Event start (YYYY-MM-DD) — used to resolve absolute date when dueDate is null. */
+  eventDate?: string | null;
   style?: "planning" | "urgency";
   today?: string;
 }): string {
-  const { daysOffset, dueDate, dueDateLocked = false, style = "planning", today } = opts;
+  const { daysOffset, dueDateLocked = false, style = "planning", today, eventDate } = opts;
+  const dueDate =
+    opts.dueDate
+    ?? (!dueDateLocked && daysOffset != null && eventDate
+      ? offsetDate(eventDate, daysOffset)
+      : null);
 
   if (dueDateLocked || daysOffset == null) {
     if (!dueDate) return daysOffset != null ? formatShortDaysOffset(daysOffset) : "";
