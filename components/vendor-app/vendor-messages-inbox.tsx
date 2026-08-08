@@ -3,6 +3,7 @@
 import Link from "next/link";
 
 import type { VendorConversationSummary } from "@/lib/conversations/types";
+import { vendorCounterpartyDisplayName } from "@/lib/conversations/vendor-counterparty";
 
 function timeAgo(iso: string | null): string {
   if (!iso) return "";
@@ -23,14 +24,12 @@ function formatEventDate(iso: string | null): string {
   return new Date(Number(y), Number(m) - 1, Number(d)).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 }
 
-function counterpartySubtitle(c: VendorConversationSummary): string {
-  if (c.counterpartyLabel === "Couple") {
-    return c.coupleName?.trim() ? `Couple · ${c.coupleName}` : "Couple";
-  }
-  return c.venueName?.trim() ? `Venue · ${c.venueName}` : "Venue";
-}
-
 function InboxRow({ c }: { c: VendorConversationSummary }) {
+  const counterpart = vendorCounterpartyDisplayName(
+    c.counterpartyLabel,
+    c.venueName,
+    c.coupleName,
+  );
   return (
     <Link
       href={`/vendor/messages/${c.conversationId}`}
@@ -40,11 +39,10 @@ function InboxRow({ c }: { c: VendorConversationSummary }) {
         <div className="flex items-center justify-between gap-2">
           <p className={`text-sm truncate ${c.contactUnread > 0 ? "font-semibold text-heading" : "font-medium text-foreground"}`}>
             {c.eventName}
-            <span className="ml-1.5 font-normal text-muted-foreground">· {c.counterpartyLabel}</span>
+            <span className="ml-1.5 font-normal text-muted-foreground">· {counterpart}</span>
           </p>
           <span className="text-[10px] text-muted-foreground shrink-0">{timeAgo(c.lastMessageAt)}</span>
         </div>
-        <p className="text-[11px] text-muted-foreground truncate">{counterpartySubtitle(c)}</p>
         <p className={`text-xs truncate ${c.contactUnread > 0 ? "text-foreground" : "text-muted-foreground"}`}>
           {c.latestMessage
             ? `${c.latestMessage.senderType === "vendor" ? "You: " : ""}${c.latestMessage.body}`
@@ -64,9 +62,9 @@ export function VendorMessagesInbox({ conversations }: { conversations: VendorCo
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-xl font-bold text-foreground">Messages</h1>
+        <h1 className="font-heading text-2xl font-medium text-heading">Messages</h1>
         <p className="text-sm text-muted-foreground">
-          Separate threads with the venue and the couple for each event you&apos;re booked for.
+          Separate threads with the venue and the client for each of your booked events.
         </p>
       </div>
 
