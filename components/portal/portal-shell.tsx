@@ -37,7 +37,7 @@ import type {
   PortalVendorTask, RecentActivity, SeatingData, TodoCategory, PortalParticipant, PortalActivity,
   PortalTimelineEntry, PortalTimelineSection, PortalVenueTeamMember,
 } from "@/lib/portal/types";
-import { getAnniversaryObservations, getCountdownObservation, getOverviewObservation, getWeddingDayObservations } from "@/lib/luv/portal-observations";
+import { getAnniversaryObservations, getCountdownObservation, getWeddingDayObservations } from "@/lib/luv/portal-observations";
 import {
   type AccountState, getAccountStateAction, changePasswordAction, revokeSessionAction,
   grantSupportAccessAction, revokeSupportGrantAction,
@@ -71,6 +71,7 @@ import {
   resolveWebsiteLaunch,
   type WeddingLaunchModel,
 } from "@/lib/portal/your-wedding";
+import { resolveLuvHomeSuggestion } from "@/lib/portal/luv-suggestions";
 import { partitionByCompletion } from "@/lib/tasks/group-by-completion";
 import type { PortalRequestSummary } from "@/lib/requests/types";
 import { QuestionnairePortalSection } from "@/components/portal/questionnaire-section";
@@ -155,22 +156,6 @@ function FloralLineart() {
       <circle cx="90" cy="130" r="1" fill={ROSE} opacity="0.4" />
     </svg>
   );
-}
-
-// ── Luv message generator (contextual, warm) ─────────────────────────────────
-
-function getLuvMessage(du: number | null, guestTotal: number, readiness: number): string {
-  if (du === null) return "Your wedding planning is underway. You're doing beautifully.";
-  if (du < 0) return "You made it. Every detail of how you got here lives in this space — revisit it whenever you want to remember.";
-  if (du === 0) return "Today is your wedding day. Everything you've planned leads to this moment. You're going to be extraordinary.";
-  if (du > 365) return "You have a beautiful journey ahead. The earlier you start, the more you can enjoy every moment.";
-  if (du > 270) return "This is such an exciting time. Most couples at your stage are locking in their venue and photographer.";
-  if (du > 180 && guestTotal === 0) return "Your guest list is the heart of your celebration. Now is a wonderful time to start building it.";
-  if (du > 180) return `With ${guestTotal} guests on your list, you're building something beautiful. Invitations typically go out 2–3 months out.`;
-  if (du > 90 && readiness < 50) return "You have everything you need to make this incredible. A few focused weeks of planning will bring it all together.";
-  if (du > 90) return "You're making wonderful progress. The details are coming together exactly as they should.";
-  if (du > 30) return "The final weeks before a wedding are often the most magical. Your special day is almost here.";
-  return "Your wedding day is so close. Breathe, celebrate, and enjoy every moment of this journey.";
 }
 
 // Short poetic line for the hero — storytelling, not status.
@@ -318,17 +303,7 @@ const SEASON_CONTENT: Record<Season, { emoji: string; title: string; copy: strin
   winter: { emoji: "❄️", title: "A Winter Wedding", copy: "Twinkling lights and intimate gatherings — winter weddings feel like a fairytale.", sparkle: "❄️ · ✨ · 🤍" },
 };
 
-// ── "Most Couples Like You" — reassuring social proof (copy bank now used
-//    by Luv's own message rotation instead of a standalone card) ───────────
-
-const SOCIAL_PROOF_BY_BRACKET: Record<string, string> = {
-  "12+": "Most couples this far out are choosing their venue and starting their guest list. You're exactly on track.",
-  "9-12": "Most couples at 9–12 months are locking in photographers, florists, and caterers. This is the season of big decisions.",
-  "6-9": "Most couples at 6–9 months are sending invitations and booking hair & makeup trials.",
-  "3-6": "Most couples at 3–6 months are finalizing their guest count and building their day-of timeline.",
-  "1-3": "Most couples in the final stretch are writing vows and confirming details with every vendor.",
-  "<1": "Most couples this close are simply trying to enjoy the moment — you've already done the hard part.",
-};
+// Social-proof / milestone banks live in lib/portal/luv-suggestions.ts (Impl 6).
 
 // ── Journal milestone labels ──────────────────────────────────────────────────
 // Shared between OurStorySection (form) and journal entry display
@@ -404,16 +379,7 @@ function WeddingSnapshotCard({
   );
 }
 
-// ── Next Big Moment — surfaces the most relevant next step ───────────────────
-
-const NEXT_MILESTONE_BY_BRACKET: Record<string, { emoji: string; title: string; desc: string }> = {
-  "12+": { emoji: "👥", title: "Start your guest list", desc: "One of the most exciting parts of planning — who will celebrate with you?" },
-  "9-12":{ emoji: "🌸", title: "Book your florist", desc: "Talented florists book up fast. Now is the perfect time to lock in your vision." },
-  "6-9": { emoji: "💌", title: "Send your save the dates", desc: "Let your guests know the date so they can make it a priority." },
-  "3-6": { emoji: "📬", title: "Mail your invitations", desc: "The most tangible moment of your celebration — the invitation in hand." },
-  "1-3": { emoji: "📝", title: "Write your vows", desc: "The most personal words of your entire wedding. Give them the time they deserve." },
-  "<1":  { emoji: "😌", title: "Take a deep breath", desc: "You've done the hard part. Now enjoy the countdown to the best day of your life." },
-};
+// Next Big Moment milestone bank lives in lib/portal/luv-suggestions.ts (Impl 6).
 
 // ── Venue Note — warm message from the venue team ────────────────────────────
 
@@ -1906,13 +1872,22 @@ function OverviewSection({
         onNavigate={onNavigate}
       />
 
-      {/* 9. Luv (P4) */}
-      <div className="space-y-3">
-        <LuvDailyCard token={token} du={du} guestStats={guestStats} readiness={readinessScore} bracket={bracket} recentActivity={recentActivity} onNavigate={onNavigate} />
+      {/* 9. Luv (P4) — suggestions-first; never above operational sections */}
+      <div className="space-y-3 pb-16 sm:pb-4" data-luv-home>
+        <LuvDailyCard
+          token={token}
+          du={du}
+          guestStats={guestStats}
+          readiness={readinessScore}
+          bracket={bracket}
+          recentActivity={recentActivity}
+          venueAttentionCount={p1Count ?? 0}
+          onNavigate={onNavigate}
+        />
         {showLuvIntro && (
           <LuvIntroCard
-            body="I'll help you stay organized throughout your planning."
-            ctaLabel={p1Count !== null && p1Count > 0 ? "Let's start with what your venue needs" : "Explore your plans"}
+            body="I'm here with thoughtful ideas whenever you'd like one — warm, optional, and never in the way."
+            ctaLabel={p1Count !== null && p1Count > 0 ? "See what your venue shared" : "Explore your plans"}
             onCtaClick={() => onNavigate(p1Count !== null && p1Count > 0 ? "tasks" : "todos")}
             onDismiss={onDismissLuvIntro}
           />
@@ -2952,22 +2927,33 @@ function TimelinePortalSection({
 // existing LuvAskSection chat UI unchanged — same lazy require() pattern
 // as every other section here, deferred until the couple actually opens
 // the panel rather than loaded on every dashboard visit.
+// ── Ask Luv FAB — deeper entry only; Home card stays non-chat (Impl 6).
+// Mounted once at PortalShell root. Does not auto-open over Next Steps.
 function FloatingLuvWidget({ token, onNavigateToGuide }: { token: string; onNavigateToGuide: () => void }) {
   const [open, setOpen] = React.useState(false);
 
   return (
     <>
       {open && (
-        <div className="fixed inset-0 z-40 sm:inset-auto sm:bottom-24 sm:right-6 sm:w-[400px] sm:h-[620px] sm:max-h-[80vh] flex flex-col bg-card sm:rounded-3xl sm:shadow-2xl sm:border overflow-hidden"
-          style={{ borderColor: "#E8E3DC" }}>
+        <div
+          className="fixed inset-0 z-40 sm:inset-auto sm:bottom-24 sm:right-6 sm:w-[400px] sm:h-[620px] sm:max-h-[80vh] flex flex-col bg-card sm:rounded-3xl sm:shadow-2xl sm:border overflow-hidden"
+          style={{ borderColor: "#E8E3DC" }}
+          role="dialog"
+          aria-label="Ask Luv"
+          aria-modal="true"
+        >
           <div className="flex items-center justify-between px-4 py-2.5 border-b shrink-0" style={{ borderColor: "#EDE8E1" }}>
             <div className="flex items-center gap-1.5">
-              <span style={{ color: ROSE }}>💗</span>
+              <span style={{ color: ROSE }} aria-hidden>💗</span>
               <p className="text-xs font-semibold text-heading">Ask Luv</p>
             </div>
-            <button type="button" onClick={() => setOpen(false)}
-              className="h-7 w-7 rounded-full flex items-center justify-center text-muted-foreground hover:bg-muted/60 transition-colors">
-              <X className="h-4 w-4" />
+            <button
+              type="button"
+              onClick={() => setOpen(false)}
+              aria-label="Close Ask Luv"
+              className="h-7 w-7 rounded-full flex items-center justify-center text-muted-foreground hover:bg-muted/60 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
+            >
+              <X className="h-4 w-4" aria-hidden />
             </button>
           </div>
           <div className="flex-1 overflow-y-auto">
@@ -2980,11 +2966,16 @@ function FloatingLuvWidget({ token, onNavigateToGuide }: { token: string; onNavi
           </div>
         </div>
       )}
-      <button type="button" onClick={() => setOpen(o => !o)}
-        title="Ask Luv"
-        className="fixed bottom-5 right-5 z-40 h-14 w-14 rounded-full shadow-lg flex items-center justify-center text-2xl transition-transform hover:scale-105"
-        style={{ background: open ? "#3D3833" : ROSE }}>
-        {open ? <X className="h-5 w-5 text-white" /> : "💗"}
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        aria-label={open ? "Close Ask Luv" : "Ask Luv"}
+        aria-expanded={open}
+        aria-haspopup="dialog"
+        className="fixed bottom-5 right-5 z-40 h-12 w-12 sm:h-14 sm:w-14 rounded-full shadow-lg flex items-center justify-center text-xl sm:text-2xl transition-transform hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
+        style={{ background: open ? "#3D3833" : ROSE }}
+      >
+        {open ? <X className="h-5 w-5 text-white" aria-hidden /> : <span aria-hidden>💗</span>}
       </button>
     </>
   );
@@ -5353,32 +5344,24 @@ function StoryLaunchCard({ profile, onNavigate }: { profile: CoupleProfile | nul
   return <WeddingLaunchCard icon="💍" model={model} onNavigate={onNavigate} />;
 }
 
-// "I wouldn't leave Luv buried. Instead I'd give Luv one small card every
-// day... Tiny. Never overwhelming." (2026-07-23) — promoted out of the
-// desktop-only sidebar into the main dashboard flow. Tries specific,
-// real signals first (an upcoming key date within the week, an
-// unstarted questionnaire), then falls back to the existing mood-based
-// getLuvMessage() — never a blank or generic-feeling card.
-// Luv, the single coaching surface (2026-07-24): "One card. One voice.
-// Never multiple coaching widgets." This absorbs every other Luv-voiced or
-// coaching-flavored card that used to sit next to it on the dashboard —
-// Most Couples Like You (social proof), Next Big Moment (the next
-// milestone suggestion), This Week (activity digest), and the unlabeled
-// "Luv observation" quote card — as additional candidate messages in the
-// same priority chain that already existed for key dates and the
-// questionnaire. Nothing here is new copy or a new planning concept; every
-// message reuses the exact text bank the card it replaced already had.
-// Still exactly one small card, still falls back to the same generic mood
-// message as before when nothing more specific applies.
+// Couple Home Impl 6 — Luv Suggestions:
+// One quiet suggestion card under Your Wedding (P4). Existing priority chain
+// via resolveLuvHomeSuggestion — warm, optional, never silently acts, and
+// skips venue-owned signals when Your Next Steps already has attention.
 function LuvDailyCard({
-  token, du, guestStats, readiness, bracket, recentActivity, onNavigate,
+  token, du, guestStats, readiness, bracket, recentActivity, venueAttentionCount, onNavigate,
 }: {
-  token: string; du: number | null; guestStats: GuestStats | null; readiness: number;
-  bracket: string; recentActivity: RecentActivity | null; onNavigate: (s: PortalSection) => void;
+  token: string;
+  du: number | null;
+  guestStats: GuestStats | null;
+  readiness: number;
+  bracket: string;
+  recentActivity: RecentActivity | null;
+  venueAttentionCount: number;
+  onNavigate: (s: PortalSection) => void;
 }) {
   const [keyDates, setKeyDates] = React.useState<PortalKeyDate[] | null>(null);
   const [questionnaire, setQuestionnaire] = React.useState<{ status: string } | null | undefined>(undefined);
-  const guestTotal = guestStats?.total ?? 0;
 
   React.useEffect(() => {
     fetch(`/api/portal/key-dates?token=${token}`).then((r) => r.json())
@@ -5387,73 +5370,111 @@ function LuvDailyCard({
       .then((d: { questionnaire?: { status: string } | null }) => setQuestionnaire(d.questionnaire ?? null)).catch(() => setQuestionnaire(null));
   }, [token]);
 
-  if (keyDates === null || questionnaire === undefined) return null;
+  if (keyDates === null || questionnaire === undefined) {
+    return (
+      <section
+        className="rounded-2xl px-4 py-3.5"
+        style={{ background: `${ROSE}05`, border: `1px solid ${ROSE}14` }}
+        aria-labelledby="luv-suggestions-heading"
+        aria-busy="true"
+      >
+        <h2
+          id="luv-suggestions-heading"
+          className="text-[10px] font-semibold uppercase tracking-widest"
+          style={{ color: ROSE_DEEP }}
+        >
+          From Luv
+        </h2>
+        <p className="text-xs text-muted-foreground mt-1.5">A thought for you in a moment…</p>
+      </section>
+    );
+  }
 
   const today = new Date();
   const inSevenDays = new Date(today.getTime() + 7 * 86400000);
   const soonKeyDate = keyDates
-    .filter((k) => { const d = new Date(k.date + "T12:00:00"); return d >= today && d <= inSevenDays; })
+    .filter((k) => {
+      const d = new Date(k.date + "T12:00:00");
+      return d >= today && d <= inSevenDays;
+    })
     .sort((a, b) => (a.date < b.date ? -1 : 1))[0] ?? null;
 
-  const observation = getOverviewObservation(
-    guestStats ? { total: guestStats.total, attending: guestStats.attending } : null,
-    readiness, du,
+  const questionnaireOpen = Boolean(
+    questionnaire && questionnaire.status !== "submitted" && questionnaire.status !== "completed",
   );
 
-  let message: string;
-  let actionable = false;
-  if (soonKeyDate) {
-    const weekday = new Date(soonKeyDate.date + "T12:00:00").toLocaleDateString("en-US", { weekday: "long" });
-    message = `Your ${soonKeyDate.label.toLowerCase()} is ${weekday}.`;
-  } else if (observation) {
-    message = observation.text;
-  } else if ((recentActivity?.totalThisWeek ?? 0) > 0) {
-    const n = recentActivity!.totalThisWeek;
-    message = `You completed ${n} planning ${n === 1 ? "item" : "items"} this week.`;
-  } else if (questionnaire && questionnaire.status !== "submitted" && questionnaire.status !== "completed") {
-    message = "Your questionnaire is ready whenever you'd like to fill it out.";
-  } else if (du === null || du > 14) {
-    // Both are real bracket-keyed content this card absorbed (Next Big
-    // Moment vs. Most Couples Like You) with no other signal to choose
-    // between them — alternate by day so "one small card every day"
-    // actually varies day to day instead of always picking the same one.
-    if (today.getDate() % 2 === 0) {
-      const milestone = guestTotal === 0 && bracket !== "<1"
-        ? NEXT_MILESTONE_BY_BRACKET["12+"] : NEXT_MILESTONE_BY_BRACKET[bracket] ?? NEXT_MILESTONE_BY_BRACKET["6-9"];
-      message = `${milestone.title}. ${milestone.desc}`;
-      actionable = true;
-    } else {
-      message = SOCIAL_PROOF_BY_BRACKET[bracket] ?? SOCIAL_PROOF_BY_BRACKET["6-9"];
-    }
-  } else {
-    message = getLuvMessage(du, guestTotal, readiness);
-  }
+  const suggestion = resolveLuvHomeSuggestion({
+    daysUntil: du,
+    guestTotal: guestStats?.total ?? 0,
+    guestAttending: guestStats?.attending ?? 0,
+    readiness,
+    bracket,
+    totalThisWeek: recentActivity?.totalThisWeek ?? 0,
+    questionnaireOpen,
+    soonKeyDate: soonKeyDate ? { label: soonKeyDate.label, date: soonKeyDate.date } : null,
+    venueAttentionCount,
+    dayOfMonth: today.getDate(),
+  });
 
-  const content = (
-    <>
-      <span style={{ color: ROSE, fontSize: 15 }}>💗</span>
-      <p className="text-xs leading-relaxed" style={{ color: "#5A3235" }}>
-        <span className="font-semibold">Luv says…</span> &ldquo;{message}&rdquo;
-        {actionable && <span className="font-semibold" style={{ color: ROSE_DEEP }}> Add to your plans →</span>}
-      </p>
-    </>
+  const hasCta = Boolean(suggestion.destination && suggestion.ctaLabel);
+
+  const inner = (
+    <div className="flex items-start gap-2.5">
+      <span className="mt-0.5 shrink-0 text-[15px]" style={{ color: ROSE }} aria-hidden>
+        💗
+      </span>
+      <div className="min-w-0 space-y-1.5">
+        <h2
+          id="luv-suggestions-heading"
+          className="text-[10px] font-semibold uppercase tracking-widest"
+          style={{ color: ROSE_DEEP }}
+        >
+          From Luv
+        </h2>
+        <p className="text-xs leading-relaxed text-heading" style={{ color: "#5A3235" }}>
+          {suggestion.message}
+        </p>
+        {hasCta && (
+          <p
+            className="text-[11px] font-medium"
+            style={{ color: ROSE_DEEP }}
+          >
+            {suggestion.ctaLabel} →
+          </p>
+        )}
+      </div>
+    </div>
   );
 
-  if (actionable) {
+  if (hasCta && suggestion.destination) {
+    const destination = suggestion.destination;
     return (
-      <button type="button" onClick={() => onNavigate("todos")}
-        className="w-full text-left rounded-2xl px-4 py-3.5 flex items-start gap-2.5 hover:shadow-sm transition-all"
-        style={{ background: `${ROSE}06`, border: `1px solid ${ROSE}18` }}>
-        {content}
-      </button>
+      <section
+        aria-labelledby="luv-suggestions-heading"
+        className="rounded-2xl"
+        style={{ background: `${ROSE}05`, border: `1px solid ${ROSE}14` }}
+      >
+        <button
+          type="button"
+          onClick={() => onNavigate(destination)}
+          aria-label={suggestion.accessibleLabel}
+          className="w-full text-left rounded-2xl px-4 py-3.5 transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
+        >
+          {inner}
+        </button>
+      </section>
     );
   }
 
   return (
-    <div className="rounded-2xl px-4 py-3.5 flex items-start gap-2.5"
-      style={{ background: `${ROSE}06`, border: `1px solid ${ROSE}18` }}>
-      {content}
-    </div>
+    <section
+      aria-labelledby="luv-suggestions-heading"
+      aria-label={suggestion.accessibleLabel}
+      className="rounded-2xl px-4 py-3.5"
+      style={{ background: `${ROSE}05`, border: `1px solid ${ROSE}14` }}
+    >
+      {inner}
+    </section>
   );
 }
 
