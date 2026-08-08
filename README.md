@@ -23,6 +23,8 @@ npm run dev
 
 Open http://localhost:3000.
 
+For stable local QA across venue (`:3000`), marketing (`:3001`), and CRM (`:3002`), see **[LOCAL_TESTING.md](./LOCAL_TESTING.md)** (credentials + how to keep sessions). Detached start: `npm run dev:all:detach`.
+
 > The app runs **without** Supabase credentials: the login screen renders and
 > protected routes redirect to it. Live credentials are an expected
 > infrastructure dependency, not a requirement to run the foundation locally.

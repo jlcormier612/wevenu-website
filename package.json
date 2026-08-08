@@ -5,8 +5,11 @@
   "scripts": {
     "dev": "next dev --port 3000",
     "dev:marketing": "npm run dev --prefix marketing",
+    "dev:marketing:detach": "bash scripts/start-marketing-dev.sh",
     "dev:workspace": "npm run dev --prefix workspace",
     "dev:workspace:detach": "bash scripts/start-workspace-dev.sh",
+    "dev:venue:detach": "bash scripts/start-venue-dev.sh",
+    "dev:all:detach": "bash scripts/start-all-dev.sh",
     "build": "next build",
     "start": "next start --port 3000",
     "lint": "eslint",

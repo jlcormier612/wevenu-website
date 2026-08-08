@@ -121,6 +121,7 @@ export async function decideLegalProxyEnforcement(input: {
     };
   } catch (error) {
     // Fail open — never take down the app if legal infra is mid-migrate.
+    // Must NOT clear Supabase cookies or call signOut; callers only redirect/allow.
     console.error("[legal] proxy enforcement failed open", error);
     return { action: "allow" };
   }

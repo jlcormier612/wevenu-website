@@ -99,6 +99,24 @@ function nextWithPathname(request: NextRequest, pathname: string): NextResponse 
 }
 
 /**
+ * Copy Set-Cookie headers from the session-bearing response onto a new one.
+ * Redirects / JSON after getUser() must preserve refreshed auth cookies —
+ * otherwise a silent JWT refresh is dropped and the next navigation looks logged out.
+ * Never clears cookies on fail-open legal / lock paths.
+ */
+function withSessionCookies(
+  from: NextResponse,
+  to: NextResponse,
+): NextResponse {
+  // Pass the full cookie record so maxAge / path / sameSite survive redirects.
+  // Setting only name+value would collapse refreshed auth cookies into session cookies.
+  from.cookies.getAll().forEach((cookie) => {
+    to.cookies.set(cookie);
+  });
+  return to;
+}
+
+/**
  * Refreshes the Supabase session on every request and enforces route
  * protection. This runs in the Next.js 16 Proxy (formerly Middleware).
  *
@@ -129,7 +147,18 @@ export async function updateSession(
   });
 
   const { url, anonKey } = getSupabaseConfig();
+  // Local browser uses http://localhost — never mark cookies Secure locally or
+  // Chrome/Safari drop them after soft reloads. Prod (https) still gets Secure.
+  const isLocalHttp =
+    request.nextUrl.hostname === "localhost" ||
+    request.nextUrl.hostname === "127.0.0.1";
+
   const supabase = createServerClient(url, anonKey, {
+    cookieOptions: {
+      path: "/",
+      sameSite: "lax",
+      secure: isLocalHttp ? false : undefined,
+    },
     cookies: {
       getAll() {
         return request.cookies.getAll();
@@ -138,11 +167,20 @@ export async function updateSession(
         cookiesToSet.forEach(({ name, value }) => {
           request.cookies.set(name, value);
         });
+        // Preserve cookies already queued on supabaseResponse when setAll runs
+        // more than once (rapid navigations / concurrent cookie chunks).
+        const prior = supabaseResponse.cookies.getAll();
         supabaseResponse = NextResponse.next({
           request: { headers: requestHeaders },
         });
+        prior.forEach((cookie) => {
+          supabaseResponse.cookies.set(cookie.name, cookie.value);
+        });
         cookiesToSet.forEach(({ name, value, options }) => {
-          supabaseResponse.cookies.set(name, value, options);
+          supabaseResponse.cookies.set(name, value, {
+            ...options,
+            ...(isLocalHttp ? { secure: false } : null),
+          });
         });
       },
     },
@@ -157,7 +195,10 @@ export async function updateSession(
   if (!user && !isPublicPath(pathname)) {
     const loginUrl = request.nextUrl.clone();
     loginUrl.pathname = "/login";
-    return NextResponse.redirect(loginUrl);
+    return withSessionCookies(
+      supabaseResponse,
+      NextResponse.redirect(loginUrl),
+    );
   }
 
   // Wevenu HQ (/admin/* and /api/admin/*) — defense in depth alongside the
@@ -167,11 +208,17 @@ export async function updateSession(
     const { data: isAdmin } = await supabase.rpc("is_hq_admin");
     if (!isAdmin) {
       if (pathname.startsWith("/api/admin")) {
-        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+        return withSessionCookies(
+          supabaseResponse,
+          NextResponse.json({ error: "Forbidden" }, { status: 403 }),
+        );
       }
       const dashboardUrl = request.nextUrl.clone();
       dashboardUrl.pathname = "/dashboard";
-      return NextResponse.redirect(dashboardUrl);
+      return withSessionCookies(
+        supabaseResponse,
+        NextResponse.redirect(dashboardUrl),
+      );
     }
     // HQ admins skip venue suspend hard-lock.
     return supabaseResponse;
@@ -200,23 +247,30 @@ export async function updateSession(
 
     if (isLocked && !isSuspendedAllowPath(pathname)) {
       if (pathname.startsWith("/api/")) {
-        return NextResponse.json(
-          {
-            error:
-              "Subscription inactive. Update your payment method to restore access.",
-            code: "account_suspended",
-          },
-          { status: 403 },
+        return withSessionCookies(
+          supabaseResponse,
+          NextResponse.json(
+            {
+              error:
+                "Subscription inactive. Update your payment method to restore access.",
+              code: "account_suspended",
+            },
+            { status: 403 },
+          ),
         );
       }
       const suspendedUrl = request.nextUrl.clone();
       suspendedUrl.pathname = "/billing/suspended";
-      return NextResponse.redirect(suspendedUrl);
+      return withSessionCookies(
+        supabaseResponse,
+        NextResponse.redirect(suspendedUrl),
+      );
     }
   }
 
   // Legal Acceptance Middleware (WP4) — one enforcement path for returning
   // users + signup/setup. Compliant users pass through unchanged.
+  // Fail-open (inside decideLegalProxyEnforcement) never clears cookies.
   if (
     user &&
     !isPublicPath(pathname) &&
@@ -229,18 +283,24 @@ export async function updateSession(
       supabase,
     });
     if (legalDecision.action === "redirect_welcome") {
-      return NextResponse.redirect(
-        new URL(legalDecision.welcomePath, request.nextUrl.origin),
+      return withSessionCookies(
+        supabaseResponse,
+        NextResponse.redirect(
+          new URL(legalDecision.welcomePath, request.nextUrl.origin),
+        ),
       );
     }
     if (legalDecision.action === "block_api") {
-      return NextResponse.json(
-        {
-          error: "Legal acceptance required.",
-          code: legalDecision.code,
-          welcomePath: legalDecision.welcomePath,
-        },
-        { status: 403 },
+      return withSessionCookies(
+        supabaseResponse,
+        NextResponse.json(
+          {
+            error: "Legal acceptance required.",
+            code: legalDecision.code,
+            welcomePath: legalDecision.welcomePath,
+          },
+          { status: 403 },
+        ),
       );
     }
   }
@@ -262,7 +322,10 @@ export async function updateSession(
     ) {
       const suspendedUrl = request.nextUrl.clone();
       suspendedUrl.pathname = "/billing/suspended";
-      return NextResponse.redirect(suspendedUrl);
+      return withSessionCookies(
+        supabaseResponse,
+        NextResponse.redirect(suspendedUrl),
+      );
     }
 
     // Honor ?next= for post-auth return (e.g. vendor invitation claim).
@@ -271,7 +334,10 @@ export async function updateSession(
     const nextRaw = request.nextUrl.searchParams.get("next");
     const safeNext = safeInternalNextPath(nextRaw, request.nextUrl.origin);
     if (safeNext) {
-      return NextResponse.redirect(new URL(safeNext, request.nextUrl.origin));
+      return withSessionCookies(
+        supabaseResponse,
+        NextResponse.redirect(new URL(safeNext, request.nextUrl.origin)),
+      );
     }
 
     const { data: vu } = await supabase
@@ -283,7 +349,10 @@ export async function updateSession(
     const destUrl = request.nextUrl.clone();
     destUrl.pathname = vu ? "/vendor/dashboard" : "/dashboard";
     destUrl.search = "";
-    return NextResponse.redirect(destUrl);
+    return withSessionCookies(
+      supabaseResponse,
+      NextResponse.redirect(destUrl),
+    );
   }
 
   return supabaseResponse;
