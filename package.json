@@ -13,6 +13,7 @@
     "build": "next build",
     "start": "next start --port 3000",
     "lint": "eslint",
+    "postinstall": "patch-package",
     "test": "tsx --test lib/**/*.test.ts lib/legal/**/*.test.ts lib/venue-guide/**/*.test.ts components/welcome-experience/**/*.test.ts workspace/lib/legal/**/*.test.ts",
     "test:watch": "tsx --test --watch lib/**/*.test.ts lib/legal/**/*.test.ts lib/venue-guide/**/*.test.ts components/welcome-experience/**/*.test.ts workspace/lib/legal/**/*.test.ts",
     "process:lifecycle": "node scripts/process-lifecycle.mjs"
@@ -49,6 +50,7 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.2.9",
+    "patch-package": "^8.0.1",
     "tailwindcss": "^4",
     "tsx": "^4.23.11",
     "typescript": "^5"
