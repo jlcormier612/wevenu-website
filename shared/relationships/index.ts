@@ -128,6 +128,7 @@ export {
   syncRelationshipFromProduct,
   resolveWelcomeBackVerification,
   resolveOpenFeedback,
+  resolveSupportInboxItem,
   completeRelationshipTask,
   setWalkthroughStatus,
   personFromFields,
@@ -137,6 +138,7 @@ export {
   type WelcomeBackAction,
   type WelcomeBackResolveResult,
   type ResolveOpenFeedbackResult,
+  type ResolveSupportInboxResult,
   type WalkthroughStatusUpdateResult,
 } from "./service";
 export {
@@ -163,6 +165,7 @@ export {
   ingestNewsletterSignup,
   ingestSupportRequest,
   ingestProductFeedback,
+  ingestProductPartnerFeedback,
 } from "./ingest";
 export {
   WHITE_GLOVE_CHECKLIST_TITLES,

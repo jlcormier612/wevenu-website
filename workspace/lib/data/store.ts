@@ -367,6 +367,23 @@ export function getNotifications(opts?: { unreadOnly?: boolean }): Notification[
     .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 }
 
+/** Vendor + client Support inbox (not venue Relationship.openFeedbackItems). */
+export function getSupportInboxItems(opts?: {
+  surface?: "vendor" | "client" | "all";
+  status?: "open" | "resolved" | "all";
+}) {
+  const live = hasLiveRelationshipsSync() ? loadLiveStoreSync() : null;
+  const items = live?.supportInboxItems ?? [];
+  const surface = opts?.surface ?? "all";
+  const status = opts?.status ?? "open";
+  return [...items]
+    .filter((i) => (surface === "all" ? true : i.surface === surface))
+    .filter((i) => (status === "all" ? true : i.status === status))
+    .sort(
+      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+    );
+}
+
 export function getFounderProgram(): FounderProgramStats {
   return getData().founderProgram;
 }

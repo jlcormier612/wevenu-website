@@ -54,4 +54,5 @@ export const STORE_FILES = {
   subscriptions: "subscriptions.jsonl",
   notifications: "notifications.jsonl",
   tasks: "tasks.jsonl",
+  supportInboxItems: "support-inbox-items.jsonl",
 } as const;

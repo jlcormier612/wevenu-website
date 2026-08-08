@@ -7,9 +7,17 @@ import {
   personFromFields,
   type FindOrCreateResult,
 } from "./service";
-import { loadLiveStore } from "./store";
-import type { OnboardingType, PlanId, ProductFeedbackType, SubscriptionStatus } from "./types";
+import { loadLiveStore, withLiveStore } from "./store";
+import type {
+  OnboardingType,
+  PlanId,
+  ProductFeedbackType,
+  SubscriptionStatus,
+  SupportInboxItem,
+  SupportInboxSurface,
+} from "./types";
 import { ensureWhiteGloveChecklist } from "./white-glove-checklist";
+import { randomUUID } from "crypto";
 
 async function maybeEnsureWhiteGloveChecklist(
   result: FindOrCreateResult | null | undefined,
@@ -927,6 +935,7 @@ export async function ingestProductFeedback(input: {
   subject?: string | null;
   body?: string | null;
   rating?: number | null;
+  allowPublicShare?: boolean;
   productFeedbackId?: string | null;
   sourceUrl?: string | null;
 }): Promise<FindOrCreateResult | null> {
@@ -1034,6 +1043,7 @@ export async function ingestProductFeedback(input: {
         product_feedback_id: input.productFeedbackId ?? null,
         product_venue_id: productVenueId || null,
         rating: input.rating ?? null,
+        allow_public_share: input.allowPublicShare === true,
         source: "product",
       },
     },
@@ -1044,6 +1054,7 @@ export async function ingestProductFeedback(input: {
         input.body,
         input.rating != null ? `Rating: ${input.rating}/10` : null,
         input.venueName ? `Venue: ${input.venueName}` : null,
+        input.allowPublicShare === true ? "Public share consent: yes" : null,
       ]),
       direction: "inbound",
       occurredAt: now,
@@ -1058,4 +1069,111 @@ export async function ingestProductFeedback(input: {
       body: `${who} submitted ${labels.title.toLowerCase()} from product.`,
     },
   }))!;
+}
+
+/**
+ * Vendor / client product feedback → CRM Support inbox.
+ * Does NOT write Relationship.openFeedbackItems or bump supportOpenCount / health.
+ */
+export async function ingestProductPartnerFeedback(input: {
+  surface: SupportInboxSurface;
+  productVenueId?: string | null;
+  vendorId?: string | null;
+  clientId?: string | null;
+  email?: string | null;
+  actorName?: string | null;
+  feedbackType: string;
+  subject?: string | null;
+  body?: string | null;
+  rating?: number | null;
+  allowPublicShare?: boolean;
+  productFeedbackId?: string | null;
+  sourceUrl?: string | null;
+}): Promise<SupportInboxItem | null> {
+  const surface = input.surface === "client" ? "client" : "vendor";
+  const feedbackType = normalizeProductFeedbackType(input.feedbackType);
+  const labels = PRODUCT_FEEDBACK_LABELS[feedbackType];
+  const subject =
+    input.subject?.trim() ||
+    (feedbackType === "nps" && input.rating != null
+      ? `NPS ${input.rating}/10`
+      : labels.subject);
+  const now = new Date().toISOString();
+  const productVenueId = input.productVenueId?.trim() || null;
+
+  const { result } = await withLiveStore((store) => {
+    if (!store.supportInboxItems) store.supportInboxItems = [];
+
+    // Dedupe by product feedback id when present
+    if (input.productFeedbackId) {
+      const existing = store.supportInboxItems.find(
+        (i) => i.productFeedbackId === input.productFeedbackId,
+      );
+      if (existing) return existing;
+    }
+
+    let relatedRelationshipId: string | null = null;
+    let relatedVenueName: string | null = null;
+    if (productVenueId) {
+      const rel = store.relationships.find(
+        (r) => r.productSync?.venueId?.trim() === productVenueId,
+      );
+      if (rel) {
+        relatedRelationshipId = rel.id;
+        relatedVenueName = rel.venue.name || null;
+      }
+    }
+
+    const item: SupportInboxItem = {
+      id: `sfi_${randomUUID().replace(/-/g, "").slice(0, 12)}`,
+      surface,
+      type: feedbackType,
+      subject,
+      body:
+        safeBody([
+          input.body,
+          input.rating != null ? `Rating: ${input.rating}/10` : null,
+          input.sourceUrl ? `URL: ${input.sourceUrl}` : null,
+        ]) || undefined,
+      rating: input.rating ?? null,
+      allowPublicShare: input.allowPublicShare === true,
+      actorName: input.actorName?.trim() || null,
+      actorEmail: input.email?.trim() || null,
+      vendorId: input.vendorId?.trim() || null,
+      clientId: input.clientId?.trim() || null,
+      relatedVenueId: productVenueId,
+      relatedRelationshipId,
+      relatedVenueName,
+      productFeedbackId: input.productFeedbackId ?? null,
+      sourceUrl: input.sourceUrl ?? null,
+      status: "open",
+      createdAt: now,
+      resolvedAt: null,
+    };
+
+    store.supportInboxItems.unshift(item);
+
+    if (relatedRelationshipId) {
+      const who =
+        input.actorName?.trim() ||
+        input.email?.trim() ||
+        (surface === "client" ? "Client" : "Vendor");
+      store.notifications.unshift({
+        id: `ntf_${randomUUID().replace(/-/g, "").slice(0, 12)}`,
+        type:
+          feedbackType === "support" || feedbackType === "bug"
+            ? "support_request_submitted"
+            : "feedback_received",
+        relationshipId: relatedRelationshipId,
+        title: `${surface === "client" ? "Client" : "Vendor"}: ${labels.notificationTitle}`,
+        body: `${who} submitted ${labels.title.toLowerCase()} from product.`,
+        createdAt: now,
+        read: false,
+      });
+    }
+
+    return item;
+  });
+
+  return result;
 }

@@ -1730,6 +1730,42 @@ export async function setWalkthroughStatus(
   return result;
 }
 
+export type ResolveSupportInboxResult = {
+  item: import("./types").SupportInboxItem;
+};
+
+/**
+ * Mark a vendor/client Support inbox item resolved.
+ * Does not touch Relationship.supportOpenCount / openFeedbackItems.
+ */
+export async function resolveSupportInboxItem(opts: {
+  itemId: string;
+  note?: string | null;
+}): Promise<ResolveSupportInboxResult | { error: string }> {
+  const itemId = opts.itemId.trim();
+  if (!itemId) return { error: "itemId required" };
+
+  const { result } = await withLiveStore((store) => {
+    if (!store.supportInboxItems) store.supportInboxItems = [];
+    const item = store.supportInboxItems.find((i) => i.id === itemId);
+    if (!item) return { error: "Support inbox item not found" } as const;
+    if (item.status === "resolved") {
+      return { item } as const;
+    }
+    const now = new Date().toISOString();
+    item.status = "resolved";
+    item.resolvedAt = now;
+    if (opts.note?.trim()) {
+      item.body = [item.body, `Resolved note: ${opts.note.trim()}`]
+        .filter(Boolean)
+        .join("\n\n");
+    }
+    return { item } as const;
+  });
+
+  return result;
+}
+
 /** Parse a freeform name into first/last when marketing only sends `name`. */
 export function personFromFields(fields: {
   name?: string;

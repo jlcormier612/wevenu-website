@@ -16,6 +16,7 @@ function pushFeedbackToCrm(input: {
   subject?: string | null;
   body?: string | null;
   rating?: number | null;
+  allowPublicShare?: boolean;
   productFeedbackId?: string | null;
   sourceUrl?: string | null;
 }): void {
@@ -30,6 +31,7 @@ function pushFeedbackToCrm(input: {
         subject: input.subject,
         body: input.body,
         rating: input.rating,
+        allowPublicShare: input.allowPublicShare,
         productFeedbackId: input.productFeedbackId,
         sourceUrl: input.sourceUrl,
       });
@@ -55,6 +57,7 @@ function pushFeedbackToCrm(input: {
         meta: {
           product_feedback_id: input.productFeedbackId ?? null,
           product_venue_id: input.productVenueId,
+          allow_public_share: input.allowPublicShare ?? false,
         },
       });
       console.info("[product→crm] feedback confirmation", {
@@ -65,6 +68,32 @@ function pushFeedbackToCrm(input: {
       });
     } catch (error) {
       console.error("[product→crm] feedback sync failed:", error);
+    }
+  })();
+}
+
+function pushPartnerFeedbackToCrm(input: {
+  surface: "vendor" | "client";
+  productVenueId?: string | null;
+  vendorId?: string | null;
+  clientId?: string | null;
+  email?: string | null;
+  actorName?: string | null;
+  feedbackType: string;
+  subject?: string | null;
+  body?: string | null;
+  rating?: number | null;
+  allowPublicShare?: boolean;
+  productFeedbackId?: string | null;
+  sourceUrl?: string | null;
+}): void {
+  void (async () => {
+    try {
+      const { ingestProductPartnerFeedback } = await import("@shared/relationships");
+      if (typeof ingestProductPartnerFeedback !== "function") return;
+      await ingestProductPartnerFeedback(input);
+    } catch (error) {
+      console.error("[product→crm] partner feedback sync failed:", error);
     }
   })();
 }
@@ -81,6 +110,7 @@ export async function POST(req: NextRequest) {
     rating,
     surface: rawSurface,
     allow_public_share: rawAllowPublicShare,
+    related_venue_id: rawRelatedVenueId,
     metadata: clientMeta,
   } = await req.json() as {
     type: string;
@@ -89,7 +119,13 @@ export async function POST(req: NextRequest) {
     rating?: number;
     surface?: FeedbackSurface;
     allow_public_share?: boolean;
-    metadata?: { current_url?: string; user_agent?: string; surface?: string };
+    related_venue_id?: string | null;
+    metadata?: {
+      current_url?: string;
+      user_agent?: string;
+      surface?: string;
+      related_venue_id?: string | null;
+    };
   };
 
   if (!type) return NextResponse.json({ error: "Missing type" }, { status: 400 });
@@ -100,6 +136,12 @@ export async function POST(req: NextRequest) {
 
   const trimmedSubject = subject?.trim() || null;
   const trimmedBody = body?.trim() ?? "";
+
+  const relatedVenueId = (
+    (typeof rawRelatedVenueId === "string" && rawRelatedVenueId.trim())
+    || (typeof clientMeta?.related_venue_id === "string" && clientMeta.related_venue_id.trim())
+    || null
+  );
 
   if (surface === "vendor") {
     const { data: vu } = await supabase
@@ -120,28 +162,31 @@ export async function POST(req: NextRequest) {
 
     const actorLabel = vu.vendors?.business_name ?? "Unknown vendor";
     const metadata = {
-      current_url:       clientMeta?.current_url ?? null,
-      user_agent:        clientMeta?.user_agent  ?? null,
-      subscription_tier: null,
-      days_since_signup: daysSinceSignup,
-      venue_name:        null,
-      vendor_name:       actorLabel,
-      user_email:        user.email ?? null,
+      current_url:        clientMeta?.current_url ?? null,
+      user_agent:         clientMeta?.user_agent  ?? null,
+      subscription_tier:  null,
+      days_since_signup:  daysSinceSignup,
+      venue_name:         null as string | null,
+      vendor_name:        actorLabel,
+      user_email:         user.email ?? null,
       surface,
       allow_public_share: allowPublicShare,
+      related_venue_id:   relatedVenueId,
     };
 
     const { data: inserted, error } = await supabase
       .from("venue_feedback")
       .insert({
-        venue_id:           null,
+        venue_id:           relatedVenueId,
         vendor_id:          vu.vendor_id,
+        client_id:          null,
         user_id:            user.id,
         type,
         subject:            trimmedSubject,
         body:               trimmedBody,
         rating:             rating ?? null,
         allow_public_share: allowPublicShare,
+        surface:            "vendor",
         metadata,
       })
       .select("id")
@@ -157,6 +202,21 @@ export async function POST(req: NextRequest) {
       userEmail: user.email ?? "unknown",
       venueName: actorLabel,
       metadata,
+    });
+
+    pushPartnerFeedbackToCrm({
+      surface: "vendor",
+      productVenueId: relatedVenueId,
+      vendorId: vu.vendor_id,
+      email: user.email ?? null,
+      actorName: actorLabel,
+      feedbackType: type,
+      subject: trimmedSubject,
+      body: trimmedBody,
+      rating: rating ?? null,
+      allowPublicShare,
+      productFeedbackId: inserted?.id ?? null,
+      sourceUrl: metadata.current_url,
     });
 
     return NextResponse.json({ ok: true, id: inserted?.id ?? null });
@@ -191,12 +251,14 @@ export async function POST(req: NextRequest) {
     .insert({
       venue_id:           vu.venue_id,
       vendor_id:          null,
+      client_id:          null,
       user_id:            user.id,
       type,
       subject:            trimmedSubject,
       body:               trimmedBody,
       rating:             rating ?? null,
       allow_public_share: allowPublicShare,
+      surface:            "venue",
       metadata,
     })
     .select("id")
@@ -222,6 +284,7 @@ export async function POST(req: NextRequest) {
     subject: trimmedSubject,
     body: trimmedBody,
     rating: rating ?? null,
+    allowPublicShare,
     productFeedbackId: inserted?.id ?? null,
     sourceUrl: metadata.current_url,
   });

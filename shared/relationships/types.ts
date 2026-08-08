@@ -456,6 +456,38 @@ export type Relationship = {
   productSync?: ProductSyncState;
 };
 
+/**
+ * Partner (vendor / client) product feedback — Support queue only.
+ * Not attached to Relationship.openFeedbackItems; does not bump supportOpenCount.
+ */
+export type SupportInboxSurface = "vendor" | "client";
+
+export type SupportInboxItemStatus = "open" | "acknowledged" | "resolved";
+
+export type SupportInboxItem = {
+  id: string;
+  surface: SupportInboxSurface;
+  type: ProductFeedbackType;
+  subject: string;
+  body?: string;
+  rating?: number | null;
+  allowPublicShare?: boolean;
+  actorName?: string | null;
+  actorEmail?: string | null;
+  vendorId?: string | null;
+  clientId?: string | null;
+  /** Product venues.id when known. */
+  relatedVenueId?: string | null;
+  /** CRM Relationship.id when matched via productSync.venueId. */
+  relatedRelationshipId?: string | null;
+  relatedVenueName?: string | null;
+  productFeedbackId?: string | null;
+  sourceUrl?: string | null;
+  status: SupportInboxItemStatus;
+  createdAt: string;
+  resolvedAt?: string | null;
+};
+
 /** Full live snapshot used by the workspace data layer. */
 export type LiveRelationshipStore = {
   relationships: Relationship[];
@@ -465,6 +497,8 @@ export type LiveRelationshipStore = {
   subscriptions: Subscription[];
   notifications: Notification[];
   tasks: RelationshipTask[];
+  /** Vendor + client product feedback inbox (not venue Relationship support). */
+  supportInboxItems?: SupportInboxItem[];
 };
 
 export type FindOrCreateInput = {
