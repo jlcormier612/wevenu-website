@@ -46,11 +46,18 @@ import { PortalLegalHistorySection } from "@/components/legal/legal-history-sect
 import { RequestsPortalSection } from "@/components/portal/requests-section";
 import { LuvIntroCard } from "@/components/luv/luv-intro-card";
 import { UnifiedTasksSection } from "@/components/portal/unified-tasks-section";
-import { buildUnifiedTaskList, ownershipLabel, type UnifiedTask } from "@/lib/portal/unified-tasks";
+import { buildUnifiedTaskList, type UnifiedTask } from "@/lib/portal/unified-tasks";
+import {
+  compactNextStepsActionLabel,
+  formatNextStepsDueLabel,
+  fromUnifiedTask,
+  groupNextStepsForDisplay,
+  selectNextStepsForHome,
+  type NextStepsItem,
+} from "@/lib/portal/next-steps";
 import { remainingBalanceFromSchedules, selectCanonicalPaymentSchedules } from "@/lib/portal/payment-schedules";
 import { partitionByCompletion } from "@/lib/tasks/group-by-completion";
 import type { PortalRequestSummary } from "@/lib/requests/types";
-import { formatAbsoluteDueDate } from "@/lib/playbooks/due-dates";
 import { QuestionnairePortalSection } from "@/components/portal/questionnaire-section";
 import { CoupleNotificationBell } from "@/components/portal/couple-notification-bell";
 import { WelcomeExperienceGate } from "@/components/legal/welcome-experience-gate";
@@ -4607,27 +4614,6 @@ type PaymentScheduleLite = {
   lineItems: { id: string; label: string; amount: number; dueDate: string | null; status: string }[];
 };
 
-type HomeAttentionRow = {
-  id: string;
-  title: string;
-  dueDate: string | null;
-  isOverdue: boolean;
-  isRequired: boolean;
-  ownership: "venue" | "shared";
-};
-
-function plainDueLabel(dueDate: string | null, isOverdue: boolean): string | null {
-  if (!dueDate) return null;
-  const today = new Date().toISOString().slice(0, 10);
-  if (dueDate === today) return "Due today";
-  const tomorrow = new Date();
-  tomorrow.setDate(tomorrow.getDate() + 1);
-  const tomIso = tomorrow.toISOString().slice(0, 10);
-  if (dueDate === tomIso) return "Due tomorrow";
-  if (isOverdue) return `Needed by ${formatAbsoluteDueDate(dueDate)}`;
-  return `Due ${formatAbsoluteDueDate(dueDate)}`;
-}
-
 function NextStepsCard({
   token, tasks, vendorTasks = [], timelineHasUnpublishedChanges = false, venueName, onNavigate, onAttentionCountChange,
 }: {
@@ -4663,56 +4649,127 @@ function NextStepsCard({
     });
   }, [token, timelineHasUnpublishedChanges]);
 
-  const unified: UnifiedTask[] = loaded
-    ? buildUnifiedTaskList({
-        venueTasks: tasks,
-        requests,
-        paymentSchedules,
-        questionnaire,
-        documents,
-        timelineHasUnpublishedChanges: timelineUnpublished,
-      }).filter((t) => !t.completed)
+  const today = new Date().toISOString().slice(0, 10);
+
+  const incomplete: NextStepsItem[] = loaded
+    ? [
+        ...buildUnifiedTaskList({
+          venueTasks: tasks,
+          requests,
+          paymentSchedules,
+          questionnaire,
+          documents,
+          timelineHasUnpublishedChanges: timelineUnpublished,
+        })
+          .filter((t: UnifiedTask) => !t.completed)
+          .map(fromUnifiedTask),
+        ...vendorTasks
+          .filter((t) => t.status !== "complete" && t.canComplete)
+          .map((t): NextStepsItem => {
+            const overdue = Boolean(t.dueDate && t.dueDate < today);
+            return {
+              id: `vendor_${t.id}`,
+              title: t.title,
+              description: t.notes || (t.vendorName ? `From ${t.vendorName}` : null),
+              dueDate: t.dueDate,
+              isOverdue: overdue,
+              isRequired: false,
+              ownership: "venue",
+              targetSection: "tasks",
+              actionLabel: "Complete",
+              kind: "vendor_task",
+            };
+          }),
+      ]
     : [];
 
-  const today = new Date().toISOString().slice(0, 10);
-  const vendorRows: HomeAttentionRow[] = vendorTasks
-    .filter((t) => t.status !== "complete" && t.canComplete)
-    .map((t) => {
-      const overdue = Boolean(t.dueDate && t.dueDate < today);
-      return {
-        id: `vendor_${t.id}`,
-        title: t.title,
-        dueDate: t.dueDate,
-        isOverdue: overdue,
-        isRequired: false,
-        ownership: "venue" as const,
-      };
-    });
-
-  const rows: HomeAttentionRow[] = [
-    ...unified.map((t) => ({
-      id: t.id,
-      title: t.title,
-      dueDate: t.dueDate,
-      isOverdue: t.isOverdue,
-      isRequired: t.isRequired,
-      ownership: t.ownership,
-    })),
-    ...vendorRows,
-  ].sort((a, b) => {
-    if (a.isOverdue !== b.isOverdue) return a.isOverdue ? -1 : 1;
-    if (a.dueDate && b.dueDate) return a.dueDate.localeCompare(b.dueDate);
-    if (a.dueDate) return -1;
-    if (b.dueDate) return 1;
-    return 0;
-  });
-
-  const fullCount = rows.length;
-  const items = rows.slice(0, 5);
+  const { visible, total: fullCount, hasMore } = selectNextStepsForHome(incomplete);
+  const groups = groupNextStepsForDisplay(visible);
 
   React.useEffect(() => {
     if (loaded) onAttentionCountChange?.(fullCount);
   }, [loaded, fullCount, onAttentionCountChange]);
+
+  function renderRow(t: NextStepsItem) {
+    const due = formatNextStepsDueLabel(t.dueDate, t.isOverdue);
+    const cta = compactNextStepsActionLabel(t);
+    const ownershipText = t.ownership === "shared" ? "Shared planning" : "From your venue";
+    const aria = [
+      t.title,
+      ownershipText,
+      t.isRequired ? "Required" : null,
+      due,
+      `Action: ${cta}`,
+    ].filter(Boolean).join(". ");
+
+    return (
+      <div
+        key={t.id}
+        className="flex items-start gap-2.5 rounded-xl px-3 py-2.5"
+        style={{
+          border: t.isOverdue
+            ? "1px solid color-mix(in srgb, var(--venue-primary) 35%, #E8E3DC)"
+            : "1px solid #EDE8E1",
+          background: t.isOverdue
+            ? "color-mix(in srgb, var(--venue-primary) 5%, white)"
+            : "transparent",
+        }}
+      >
+        <button
+          type="button"
+          onClick={() => onNavigate(t.targetSection)}
+          className="min-w-0 flex-1 text-left rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-1 focus-visible:ring-[var(--venue-primary)]"
+          aria-label={aria}
+        >
+          <div className="flex items-start justify-between gap-2">
+            <p className="text-xs font-medium text-heading leading-snug">{t.title}</p>
+            {t.isRequired && (
+              <span className="text-[10px] text-muted-foreground shrink-0">Required</span>
+            )}
+          </div>
+          {t.description && (
+            <p className="text-[10px] text-muted-foreground mt-0.5 line-clamp-1">{t.description}</p>
+          )}
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 mt-1">
+            {due && (
+              <span
+                className="text-[10px] text-muted-foreground"
+                style={t.isOverdue ? { fontWeight: 600 } : undefined}
+              >
+                {due}
+              </span>
+            )}
+            {t.isOverdue && (
+              <span className="text-[10px] text-muted-foreground">
+                {venueName} is waiting on this
+              </span>
+            )}
+          </div>
+        </button>
+        <button
+          type="button"
+          onClick={() => onNavigate(t.targetSection)}
+          className="shrink-0 self-center text-[11px] font-semibold px-2.5 py-1.5 rounded-lg text-white transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-1"
+          style={{ background: SAGE }}
+          aria-label={`${cta}: ${t.title}`}
+        >
+          {cta}
+        </button>
+      </div>
+    );
+  }
+
+  function renderGroup(label: string, rows: NextStepsItem[]) {
+    if (rows.length === 0) return null;
+    return (
+      <div className="space-y-1.5" role="group" aria-label={label}>
+        <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground px-0.5">
+          {label}
+        </p>
+        <div className="space-y-1.5">{rows.map(renderRow)}</div>
+      </div>
+    );
+  }
 
   return (
     <div
@@ -4728,75 +4785,63 @@ function NextStepsCard({
         What {venueName} needs from you
       </p>
       <div className="flex items-baseline justify-between gap-3 mb-3">
-        <p className="text-sm font-semibold text-heading">Your Next Steps</p>
+        <h2 className="text-sm font-semibold text-heading">Your Next Steps</h2>
         {loaded && fullCount > 0 && (
-          <p className="text-[11px] text-muted-foreground shrink-0">
+          <p className="text-[11px] text-muted-foreground shrink-0" aria-live="polite">
             {fullCount} left for {venueName}
           </p>
         )}
       </div>
 
       {!loaded ? (
-        <div className="space-y-2" aria-busy="true" aria-label="Loading what your venue needs">
+        <div className="space-y-2" aria-busy="true" aria-label="Loading your next steps">
           {[1, 2, 3].map((i) => <div key={i} className="h-10 rounded-xl bg-muted animate-pulse" />)}
         </div>
-      ) : items.length === 0 ? (
-        <p className="text-xs text-muted-foreground">
-          You’re all caught up with what {venueName} needs right now.
-        </p>
+      ) : visible.length === 0 ? (
+        <div className="space-y-3">
+          <p className="text-xs text-muted-foreground">
+            You’re all caught up with what {venueName} needs right now.
+          </p>
+          <p className="text-[11px] text-muted-foreground">
+            When you’re ready, keep wedding planning moving in Plans, Guests, or your website.
+          </p>
+          <button
+            type="button"
+            onClick={() => onNavigate("todos")}
+            className="w-full text-xs font-semibold py-2 rounded-xl text-white transition-opacity hover:opacity-90"
+            style={{ background: SAGE }}
+          >
+            Continue planning
+          </button>
+          <button
+            type="button"
+            onClick={() => onNavigate("tasks")}
+            className="w-full text-[11px] font-medium text-muted-foreground hover:text-heading transition-colors"
+          >
+            Open all tasks
+          </button>
+        </div>
       ) : (
-        <div className="space-y-2">
-          {items.map((t) => {
-            const due = plainDueLabel(t.dueDate, t.isOverdue);
-            return (
-              <button
-                key={t.id}
-                type="button"
-                onClick={() => onNavigate("tasks")}
-                className="w-full text-left rounded-xl px-3 py-2.5 transition-colors hover:bg-muted/40"
-                style={{
-                  border: t.isOverdue
-                    ? "1px solid color-mix(in srgb, var(--venue-primary) 35%, #E8E3DC)"
-                    : "1px solid #EDE8E1",
-                  background: t.isOverdue
-                    ? "color-mix(in srgb, var(--venue-primary) 5%, white)"
-                    : "transparent",
-                }}
-              >
-                <div className="flex items-start justify-between gap-2">
-                  <p className="text-xs font-medium text-heading leading-snug">{t.title}</p>
-                  {t.isRequired && (
-                    <span className="text-[10px] text-muted-foreground shrink-0">Required</span>
-                  )}
-                </div>
-                <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 mt-1">
-                  <span className="text-[10px] font-medium" style={{ color: SAGE }}>
-                    {ownershipLabel(t.ownership)}
-                  </span>
-                  {t.isOverdue && (
-                    <span className="text-[10px] text-muted-foreground">
-                      {venueName} is waiting on this
-                    </span>
-                  )}
-                  {due && !t.isOverdue && (
-                    <span className="text-[10px] text-muted-foreground">{due}</span>
-                  )}
-                  {due && t.isOverdue && (
-                    <span className="text-[10px] text-muted-foreground">{due}</span>
-                  )}
-                </div>
-              </button>
-            );
-          })}
+        <div className="space-y-3.5">
+          {renderGroup("From your venue", groups.venue)}
+          {renderGroup("Shared planning", groups.shared)}
         </div>
       )}
-      <button type="button" onClick={() => onNavigate("tasks")}
-        className={`mt-3.5 w-full text-xs font-semibold py-2 rounded-xl transition-opacity hover:opacity-90 ${items.length === 0 ? "text-heading border" : "text-white"}`}
-        style={items.length === 0
-          ? { borderColor: "#E8E3DC", background: "transparent" }
-          : { background: SAGE }}>
-        Open all tasks
-      </button>
+
+      {loaded && visible.length > 0 && (
+        <button
+          type="button"
+          onClick={() => onNavigate("tasks")}
+          className={`mt-3.5 w-full text-xs font-semibold py-2 rounded-xl transition-opacity hover:opacity-90 ${
+            hasMore ? "text-white" : "text-heading border"
+          }`}
+          style={hasMore
+            ? { background: SAGE }
+            : { borderColor: "#E8E3DC", background: "transparent" }}
+        >
+          {hasMore ? `View all ${fullCount} next steps →` : "Open all tasks"}
+        </button>
+      )}
     </div>
   );
 }
