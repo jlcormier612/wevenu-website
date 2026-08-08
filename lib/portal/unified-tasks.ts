@@ -11,6 +11,7 @@
  */
 import type { PortalRequestSummary } from "@/lib/requests/types";
 import type { PortalTask } from "@/lib/portal/types";
+import { selectCanonicalPaymentSchedules } from "@/lib/portal/payment-schedules";
 
 export type UnifiedTaskKind = "venue_task" | "request" | "contract" | "payment" | "questionnaire" | "timeline";
 
@@ -44,7 +45,10 @@ export type UnifiedTask = {
 };
 
 type PaymentSchedule = {
+  id?: string;
   title: string;
+  invoiceId?: string | null;
+  createdAt?: string | null;
   lineItems: { id: string; label: string; amount: number; dueDate: string | null; status: string }[];
 };
 
@@ -114,9 +118,20 @@ export function buildUnifiedTaskList(input: {
     });
   }
 
-  for (const s of input.paymentSchedules) {
+  // One Payment Plan per Invoice — collapse duplicate schedules so the same
+  // underlying obligation never surfaces as multiple actionable rows.
+  const paymentSchedules = selectCanonicalPaymentSchedules(
+    input.paymentSchedules.map((s, i) => ({
+      ...s,
+      id: s.id ?? `anon_${i}`,
+    })),
+  );
+  const seenLineItemIds = new Set<string>();
+  for (const s of paymentSchedules) {
     for (const li of s.lineItems) {
       if (li.status === "paid" || li.status === "cancelled") continue;
+      if (seenLineItemIds.has(li.id)) continue;
+      seenLineItemIds.add(li.id);
       const overdue = li.status === "overdue" || isPastDue(li.dueDate, today);
       out.push({
         id: `payment_${li.id}`, kind: "payment", title: li.label, description: `${s.title} — payment due`,

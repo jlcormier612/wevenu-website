@@ -134,6 +134,17 @@ export async function createPaymentSchedule(
     // phase (Booking Financial Architecture Decision 5).
     const invoice = await repo.getInvoiceSummaryForSchedule(supabase, venueId, input.invoiceId);
     if (!invoice) return { ok: false, message: "Invoice not found." } as CreateScheduleResult;
+    // One Payment Plan per Invoice (Booking Financial Architecture Decision 5).
+    // Creating a second schedule for the same invoice duplicates portal
+    // obligations; coordinators should open/regenerate the existing plan.
+    const { data: existingSchedules } = await supabase.from("payment_schedules")
+      .select("id").eq("invoice_id", input.invoiceId).eq("venue_id", venueId).limit(1);
+    if ((existingSchedules?.length ?? 0) > 0) {
+      return {
+        ok: false,
+        message: "A payment schedule already exists for this invoice. Open it to edit or regenerate instead of creating another.",
+      } as CreateScheduleResult;
+    }
     const totalAmount = invoice.total;
     const scheduleId = await repo.insertSchedule(supabase, venueId, {
       title: input.title, clientId: invoice.clientId, eventId: invoice.eventId,

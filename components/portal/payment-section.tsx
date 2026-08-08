@@ -383,7 +383,9 @@ export function PaymentSection({ token }: { token: string }) {
     );
   }
 
-  // Show the most recent schedule (venues typically have one per client)
+  // API returns one schedule per invoice (newest). Emma-style single-invoice
+  // relationships see exactly that plan; multi-invoice clients still pick the
+  // newest plan here (pre-existing Payments destination limitation).
   const schedule = schedules[0];
   const allItems = schedule.lineItems;
   const luvObs = getPaymentObservations(allItems);

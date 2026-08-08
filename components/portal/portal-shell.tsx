@@ -47,6 +47,7 @@ import { RequestsPortalSection } from "@/components/portal/requests-section";
 import { LuvIntroCard } from "@/components/luv/luv-intro-card";
 import { UnifiedTasksSection } from "@/components/portal/unified-tasks-section";
 import { buildUnifiedTaskList, ownershipLabel, type UnifiedTask } from "@/lib/portal/unified-tasks";
+import { remainingBalanceFromSchedules, selectCanonicalPaymentSchedules } from "@/lib/portal/payment-schedules";
 import { partitionByCompletion } from "@/lib/tasks/group-by-completion";
 import type { PortalRequestSummary } from "@/lib/requests/types";
 import { formatAbsoluteDueDate } from "@/lib/playbooks/due-dates";
@@ -4597,7 +4598,14 @@ function VenueTeamCard({ token, venueName, onNavigate }: { token: string; venueN
 // Questionnaire" all show up here even though none of them live in the
 // venue_tasks table. Everything already existed; it just wasn't surfaced
 // on the dashboard yet.
-type PaymentScheduleLite = { title: string; lineItems: { id: string; label: string; amount: number; dueDate: string | null; status: string }[] };
+type PaymentScheduleLite = {
+  id?: string;
+  title: string;
+  invoiceId?: string | null;
+  createdAt?: string | null;
+  totalAmount?: number;
+  lineItems: { id: string; label: string; amount: number; dueDate: string | null; status: string }[];
+};
 
 type HomeAttentionRow = {
   id: string;
@@ -4803,9 +4811,12 @@ function PaymentsCard({ token, onNavigate }: { token: string; onNavigate: (s: Po
   }, [token]);
 
   if (!schedules) return null;
-  const lineItems = schedules.flatMap((s) => s.lineItems);
-  const outstanding = lineItems.filter((li) => li.status !== "paid");
-  const remaining = outstanding.reduce((sum, li) => sum + li.amount, 0);
+  const canonical = selectCanonicalPaymentSchedules(
+    schedules.map((s, i) => ({ ...s, id: s.id ?? `anon_${i}` })),
+  );
+  const lineItems = canonical.flatMap((s) => s.lineItems);
+  const outstanding = lineItems.filter((li) => li.status !== "paid" && li.status !== "cancelled");
+  const remaining = remainingBalanceFromSchedules(canonical);
   const total = lineItems.reduce((sum, li) => sum + li.amount, 0);
   const paidPct = total > 0 ? Math.round(((total - remaining) / total) * 100) : 0;
   const next = outstanding.filter((li) => li.dueDate).sort((a, b) => (a.dueDate! < b.dueDate! ? -1 : 1))[0] ?? null;
@@ -4925,7 +4936,9 @@ function WeddingPlanningProgressCard({
   }
 
   const required = tasks.filter((t) => t.isRequired);
-  const paymentItems = paymentSchedules.flatMap((s) => s.lineItems);
+  const paymentItems = selectCanonicalPaymentSchedules(
+    paymentSchedules.map((s, i) => ({ ...s, id: s.id ?? `anon_${i}` })),
+  ).flatMap((s) => s.lineItems);
   const contracts = documents.filter((d) => d.docType === "contract" && (d.status === "sent" || d.status === "signed"));
 
   const reqDone = required.filter((t) => t.status === "complete").length;
