@@ -4,16 +4,17 @@ import * as React from "react";
 import { Check, ChevronDown, ChevronUp, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
-import { emptyVenueGuideData, saveGuideAction } from "@/app/(app)/guide/actions";
-import type {
-  FaqEntry,
-  GuideAudience,
-  GuideSectionKey,
-  HotelBlock,
-  SectionOverrides,
-  VenueContact,
-  VenueGuideData,
-} from "@/app/(app)/guide/actions";
+import { saveGuideAction } from "@/app/(app)/guide/actions";
+import {
+  emptyVenueGuideData,
+  type FaqEntry,
+  type GuideAudience,
+  type GuideSectionKey,
+  type HotelBlock,
+  type SectionOverrides,
+  type VenueContact,
+  type VenueGuideData,
+} from "@/lib/guide/venue-guide-data";
 import { LuvHeart } from "@/components/dashboard/luv-widget";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";

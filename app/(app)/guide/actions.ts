@@ -1,66 +1,50 @@
 "use server";
 
 import { createClient } from "@/integrations/supabase/server";
-import { getCurrentVenue } from "@/lib/venue/service";
+import type {
+  FaqEntry,
+  HotelBlock,
+  VenueContact,
+  VenueGuideData,
+} from "@/lib/guide/venue-guide-data";
 import {
-  DEFAULT_SECTION_AUDIENCES,
   normalizeSectionAudiences,
   normalizeSectionOverrides,
   type GuideAudience,
-  type GuideFaqEntry,
   type GuideSectionKey,
   type SectionOverrides,
 } from "@/lib/venue-guide/audience";
-
-export type FaqEntry = GuideFaqEntry;
-export type HotelBlock   = { name: string; url?: string; code?: string; notes?: string };
-export type VenueContact = { name: string; role: string; phone?: string; email?: string };
-export type { GuideAudience, GuideSectionKey, SectionOverrides };
-
-export type VenueGuideData = {
-  parkingInfo:          string | null;
-  transportation:       string | null;
-  nearbyAccommodations: string | null;
-  hotelBlocks:          HotelBlock[];
-  rainPlan:             string | null;
-  policies:             string | null;
-  ceremonyInstructions: string | null;
-  thingsToDo:           string | null;
-  faqs:                 FaqEntry[];
-  importantContacts:    VenueContact[];
-  sectionAudiences:     Record<GuideSectionKey, GuideAudience>;
-  sectionOverrides:     SectionOverrides;
-};
+import { getCurrentVenue } from "@/lib/venue/service";
 
 type DbRow = {
-  parking_info:          string | null;
-  transportation:        string | null;
+  parking_info: string | null;
+  transportation: string | null;
   nearby_accommodations: string | null;
-  hotel_blocks:          HotelBlock[];
-  rain_plan:             string | null;
-  policies:              string | null;
+  hotel_blocks: HotelBlock[];
+  rain_plan: string | null;
+  policies: string | null;
   ceremony_instructions: string | null;
-  things_to_do:          string | null;
-  faqs:                  FaqEntry[];
-  important_contacts:    VenueContact[];
-  section_audiences:     unknown;
-  section_overrides:     unknown;
+  things_to_do: string | null;
+  faqs: FaqEntry[];
+  important_contacts: VenueContact[];
+  section_audiences: unknown;
+  section_overrides: unknown;
 };
 
 function mapRow(row: DbRow): VenueGuideData {
   return {
-    parkingInfo:          row.parking_info,
-    transportation:       row.transportation,
+    parkingInfo: row.parking_info,
+    transportation: row.transportation,
     nearbyAccommodations: row.nearby_accommodations,
-    hotelBlocks:          row.hotel_blocks          ?? [],
-    rainPlan:             row.rain_plan,
-    policies:             row.policies,
+    hotelBlocks: row.hotel_blocks ?? [],
+    rainPlan: row.rain_plan,
+    policies: row.policies,
     ceremonyInstructions: row.ceremony_instructions,
-    thingsToDo:           row.things_to_do,
-    faqs:                 row.faqs                  ?? [],
-    importantContacts:    row.important_contacts     ?? [],
-    sectionAudiences:     normalizeSectionAudiences(row.section_audiences),
-    sectionOverrides:     normalizeSectionOverrides(row.section_overrides),
+    thingsToDo: row.things_to_do,
+    faqs: row.faqs ?? [],
+    importantContacts: row.important_contacts ?? [],
+    sectionAudiences: normalizeSectionAudiences(row.section_audiences),
+    sectionOverrides: normalizeSectionOverrides(row.section_overrides),
   };
 }
 
@@ -77,18 +61,18 @@ export async function loadVenueGuideAction(): Promise<VenueGuideData | null> {
 }
 
 type GuidePartial = {
-  parking_info?:          string | null;
-  transportation?:        string | null;
+  parking_info?: string | null;
+  transportation?: string | null;
   nearby_accommodations?: string | null;
-  hotel_blocks?:          HotelBlock[];
-  rain_plan?:             string | null;
-  policies?:              string | null;
+  hotel_blocks?: HotelBlock[];
+  rain_plan?: string | null;
+  policies?: string | null;
   ceremony_instructions?: string | null;
-  things_to_do?:          string | null;
-  faqs?:                  FaqEntry[];
-  important_contacts?:    VenueContact[];
-  section_audiences?:     Record<GuideSectionKey, GuideAudience>;
-  section_overrides?:     SectionOverrides;
+  things_to_do?: string | null;
+  faqs?: FaqEntry[];
+  important_contacts?: VenueContact[];
+  section_audiences?: Record<GuideSectionKey, GuideAudience>;
+  section_overrides?: SectionOverrides;
 };
 
 export async function saveGuideAction(partial: GuidePartial): Promise<{ ok: boolean; error?: string }> {
@@ -100,21 +84,4 @@ export async function saveGuideAction(partial: GuidePartial): Promise<{ ok: bool
     .upsert({ venue_id: venue.id, ...partial }, { onConflict: "venue_id" });
   if (error) return { ok: false, error: error.message };
   return { ok: true };
-}
-
-export function emptyVenueGuideData(): VenueGuideData {
-  return {
-    parkingInfo: null,
-    transportation: null,
-    nearbyAccommodations: null,
-    hotelBlocks: [],
-    rainPlan: null,
-    policies: null,
-    ceremonyInstructions: null,
-    thingsToDo: null,
-    faqs: [],
-    importantContacts: [],
-    sectionAudiences: { ...DEFAULT_SECTION_AUDIENCES },
-    sectionOverrides: {},
-  };
 }
