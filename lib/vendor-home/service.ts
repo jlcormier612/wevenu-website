@@ -1,11 +1,11 @@
 import { getVendorEvents } from "@/lib/vendor-events/service";
-import { getVendorDocumentsAcrossEvents, getVendorTimelineAcrossEvents } from "@/lib/vendor-events/service";
+import { getVendorTimelineAcrossEvents } from "@/lib/vendor-events/service";
 import { getVendorTasks } from "@/lib/vendor-tasks/service";
 import { getVendorConversationInbox } from "@/lib/conversations/service";
 import type { VendorEventListItem } from "@/lib/vendors/types";
 import type { VendorPersonalTask } from "@/lib/vendors/types";
 import type { VendorConversationSummary } from "@/lib/conversations/types";
-import type { VendorDocumentsByEvent, VendorTimelineByEvent } from "@/lib/vendor-portal/types";
+import type { VendorTimelineByEvent } from "@/lib/vendor-portal/types";
 
 export type VendorHomeData = {
   eventsToday: VendorEventListItem[];
@@ -17,7 +17,6 @@ export type VendorHomeData = {
   unreadConversations: VendorConversationSummary[];
   tasksDue: VendorPersonalTask[];
   nextTimeline: VendorTimelineByEvent[];
-  recentDocuments: VendorDocumentsByEvent[];
 };
 
 function todayIso(): string {
@@ -28,22 +27,20 @@ function weekFromNowIso(): string {
 }
 
 /**
- * Vendor Workspace Realignment, Phase 4 (2026-07-22) — Home answers exactly
- * five questions, nothing else: what events require me today, what
- * messages need a reply, what tasks are due, what's next on my schedule,
- * and what venue documents need attention. No CRM metrics, no marketplace
- * analytics — replaces the old business-dashboard aggregation entirely.
- * Every field here is read from the same sources the rest of the portal
- * already reads (events, conversations, tasks, timeline, documents) — this
- * is a synthesis, not a new data source.
+ * Vendor Workspace Realignment, Phase 4 (2026-07-22) — Home answers: what
+ * events require me today, what messages need a reply, what tasks are due,
+ * and what's next on my schedule. No CRM metrics, no marketplace analytics
+ * — replaces the old business-dashboard aggregation entirely. Every field
+ * here is read from the same sources the rest of the portal already reads
+ * (events, conversations, tasks, timeline) — this is a synthesis, not a
+ * new data source.
  */
 export async function getVendorHomeData(vendorId: string): Promise<VendorHomeData> {
-  const [events, inbox, tasks, timeline, documents] = await Promise.all([
+  const [events, inbox, tasks, timeline] = await Promise.all([
     getVendorEvents(),
     getVendorConversationInbox(),
     getVendorTasks(vendorId, { status: "pending" }),
     getVendorTimelineAcrossEvents(),
-    getVendorDocumentsAcrossEvents(),
   ]);
 
   const today = todayIso();
@@ -54,8 +51,9 @@ export async function getVendorHomeData(vendorId: string): Promise<VendorHomeDat
 
   const unreadConversations = inbox.conversations.filter((c) => c.contactUnread > 0);
 
+  // Orphan personal tasks (no event_id) stay in DB but are hidden from UI.
   const tasksDue = tasks
-    .filter((t) => t.dueDate && t.dueDate <= week)
+    .filter((t) => t.eventId && t.dueDate && t.dueDate <= week)
     .sort((a, b) => (a.dueDate ?? "").localeCompare(b.dueDate ?? ""));
 
   // "What's changed on the timeline" — no per-vendor read/seen tracking
@@ -65,7 +63,5 @@ export async function getVendorHomeData(vendorId: string): Promise<VendorHomeDat
   const soonEventIds = new Set([...eventsToday, ...eventsThisWeek].map((e) => e.eventId));
   const nextTimeline = timeline.filter((t) => soonEventIds.has(t.eventId) && t.entries.length > 0);
 
-  const recentDocuments = documents.filter((d) => d.documents.length > 0 || d.floorPlans.length > 0).slice(0, 5);
-
-  return { eventsToday, eventsThisWeek, allEvents: events, unreadConversations, tasksDue, nextTimeline, recentDocuments };
+  return { eventsToday, eventsThisWeek, allEvents: events, unreadConversations, tasksDue, nextTimeline };
 }

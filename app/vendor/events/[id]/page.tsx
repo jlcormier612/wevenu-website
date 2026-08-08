@@ -7,6 +7,8 @@ import {
   getVendorLibraryDocuments,
 } from "@/lib/vendor-documents/service";
 import { getVendorEventDetail } from "@/lib/vendor-events/service";
+import { getVendorPackages } from "@/lib/vendor-packages/service";
+import { getVendorTaskTemplates } from "@/lib/vendor-task-templates/service";
 
 type Tab =
   | "overview"
@@ -26,19 +28,21 @@ export default async function VendorEventDetailPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ tab?: string; highlight?: string; focus?: string }>;
+  searchParams: Promise<{ tab?: string; highlight?: string; focus?: string; thread?: string }>;
 }) {
   const { id } = await params;
-  const { tab: tabParam, highlight: highlightParam, focus: focusParam } = await searchParams;
+  const { tab: tabParam, highlight: highlightParam, focus: focusParam, thread: threadParam } = await searchParams;
   const vendorUser = await getVendorUser();
   if (!vendorUser) redirect("/login");
 
   const detail = await getVendorEventDetail(id, vendorUser.vendorId);
   if (!detail) notFound();
 
-  const [library, eventUploads] = await Promise.all([
+  const [library, eventUploads, taskTemplates, packages] = await Promise.all([
     getVendorLibraryDocuments(),
     getVendorEventUploads(id),
+    getVendorTaskTemplates(vendorUser.vendorId, { activeOnly: false }),
+    getVendorPackages(vendorUser.vendorId),
   ]);
 
   const initialTab: Tab | undefined =
@@ -49,14 +53,20 @@ export default async function VendorEventDetailPage({
       ? highlightParam
       : null;
 
+  const preferredThread =
+    threadParam === "couple" || threadParam === "venue" ? threadParam : null;
+
   return (
     <VendorEventWorkspace
       detail={detail}
       library={library}
       eventUploads={eventUploads}
+      taskTemplates={taskTemplates}
+      packages={packages}
       initialTab={initialTab}
       highlight={highlight}
       focusTaskId={focusParam ?? null}
+      preferredThread={preferredThread}
     />
   );
 }
