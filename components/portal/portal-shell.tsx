@@ -72,6 +72,7 @@ import {
   type WeddingLaunchModel,
 } from "@/lib/portal/your-wedding";
 import { resolveLuvHomeSuggestion } from "@/lib/portal/luv-suggestions";
+import { resolveHomeMemories } from "@/lib/portal/memories";
 import { partitionByCompletion } from "@/lib/tasks/group-by-completion";
 import type { PortalRequestSummary } from "@/lib/requests/types";
 import { QuestionnairePortalSection } from "@/components/portal/questionnaire-section";
@@ -1873,7 +1874,7 @@ function OverviewSection({
       />
 
       {/* 9. Luv (P4) — suggestions-first; never above operational sections */}
-      <div className="space-y-3 pb-16 sm:pb-4" data-luv-home>
+      <div className="space-y-3" data-luv-home>
         <LuvDailyCard
           token={token}
           du={du}
@@ -1894,8 +1895,14 @@ function OverviewSection({
         )}
       </div>
 
-      {/* 10. Memories / Planning Journal (P4) */}
-      <MemoryStrip entry={latestJournalEntry ?? null} onNavigate={onNavigate} />
+      {/* 10. Memories / Planning Journal (P4) — Impl 7; last soft moment below Luv */}
+      <div className="pb-16 sm:pb-4" data-memories-home>
+        <MemoryStrip
+          entry={latestJournalEntry ?? null}
+          inspirationPhotos={profile?.inspirationPhotos ?? []}
+          onNavigate={onNavigate}
+        />
+      </div>
 
       {/* 11. Date-mode band — emphasizes; does not replace Hero + Next Steps */}
       {du !== null && du < -3 && context.event && (
@@ -2078,56 +2085,145 @@ function WhatsHappeningCard({
   );
 }
 
-// ── Memory Strip ─────────────────────────────────────────────────────────────
+// ── Memory Strip (Couple Home Impl 7) ─────────────────────────────────────────
+// Soft P4 delight from existing journal + inspirationPhotos → Story only.
 
 function MemoryStrip({
-  entry, onNavigate,
+  entry, inspirationPhotos = [], onNavigate,
 }: {
   entry: JournalEntry | null;
+  inspirationPhotos?: ClientMedia[];
   onNavigate: (s: PortalSection) => void;
 }) {
-  if (!entry) {
+  const model = resolveHomeMemories({
+    latestJournalEntry: entry,
+    inspirationPhotos,
+  });
+
+  const shellClass =
+    "w-full text-left rounded-2xl px-4 py-3.5 transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2";
+
+  if (model.kind === "empty") {
     return (
-      <button type="button" onClick={() => onNavigate("story")}
-        className="w-full text-left rounded-2xl px-4 py-3.5 transition-opacity hover:opacity-90"
-        style={{ border: `1px dashed ${ROSE}35`, background: `${ROSE}04` }}>
-        <p className="text-[10px] font-semibold uppercase tracking-[0.16em]" style={{ color: ROSE_DEEP }}>
-          A moment from your journey
-        </p>
-        <p className="text-xs text-muted-foreground mt-1">Capture a note in your planning journal when you’re ready.</p>
-      </button>
+      <section aria-labelledby="memories-heading" data-memories-kind="empty">
+        <button
+          type="button"
+          onClick={() => onNavigate(model.destination)}
+          aria-label={model.accessibleLabel}
+          className={shellClass}
+          style={{ border: `1px dashed ${ROSE}30`, background: `${ROSE}04` }}
+        >
+          <h2
+            id="memories-heading"
+            className="text-[10px] font-semibold uppercase tracking-[0.16em]"
+            style={{ color: ROSE_DEEP }}
+          >
+            {model.heading}
+          </h2>
+          <p className="text-sm text-heading mt-1.5 leading-snug" style={{ color: "#5A3235" }}>
+            {model.inviteLine}
+          </p>
+          <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
+            {model.supportLine}
+          </p>
+          <p className="text-[11px] font-medium mt-2.5" style={{ color: ROSE_DEEP }}>
+            {model.ctaLabel} →
+          </p>
+        </button>
+      </section>
     );
   }
 
+  const hasCollection = model.collection.length > 0;
+  const hasFeatured = Boolean(model.featured);
+  const showIconFallback = !hasFeatured && !hasCollection;
+
   return (
-    <button type="button" onClick={() => onNavigate("story")}
-      className="w-full text-left rounded-2xl flex items-center gap-4 p-4 group transition-all hover:shadow-sm"
-      style={{ background: `${ROSE}08`, border: `1px solid ${ROSE}22` }}>
+    <section aria-labelledby="memories-heading" data-memories-kind="preview">
+      <button
+        type="button"
+        onClick={() => onNavigate(model.destination)}
+        aria-label={model.accessibleLabel}
+        className={`${shellClass} group`}
+        style={{ background: `${ROSE}06`, border: `1px solid ${ROSE}18` }}
+      >
+        <h2
+          id="memories-heading"
+          className="text-[10px] font-semibold uppercase tracking-[0.16em]"
+          style={{ color: ROSE_DEEP }}
+        >
+          {model.heading}
+        </h2>
 
-      {entry.mediaUrl ? (
-        <img src={entry.mediaUrl} alt=""
-          className="w-16 h-16 rounded-xl object-cover shrink-0" />
-      ) : (
-        <div className="w-14 h-14 rounded-xl flex items-center justify-center shrink-0 text-2xl"
-          style={{ background: `${ROSE}18` }}>
-          {entry.source === "auto" ? "✦" : "📖"}
+        {hasCollection ? (
+          <div className="mt-2.5 flex gap-1.5 overflow-hidden" aria-hidden={model.collection.every((p) => !p.alt)}>
+            {model.collection.map((p) => (
+              <img
+                key={p.id}
+                src={p.url}
+                alt={p.alt}
+                className="h-14 w-14 sm:h-16 sm:w-16 rounded-lg object-cover shrink-0"
+              />
+            ))}
+          </div>
+        ) : null}
+
+        <div className={`flex items-center gap-3 min-w-0 ${hasCollection ? "mt-2.5" : "mt-2"}`}>
+          {hasFeatured && model.featured ? (
+            <img
+              src={model.featured.url}
+              alt={model.featured.alt}
+              className="w-14 h-14 sm:w-16 sm:h-16 rounded-xl object-cover shrink-0"
+            />
+          ) : null}
+
+          {showIconFallback ? (
+            <div
+              className="w-12 h-12 sm:w-14 sm:h-14 rounded-xl flex items-center justify-center shrink-0 text-xl"
+              style={{ background: `${ROSE}16` }}
+              aria-hidden
+            >
+              {entry?.source === "auto" ? "✦" : "📖"}
+            </div>
+          ) : null}
+
+          {(model.title || model.excerpt || model.dateLabel || !hasCollection) && (
+            <div className="flex-1 min-w-0 space-y-0.5">
+              {model.title ? (
+                <p className="text-sm font-semibold text-heading leading-snug truncate">
+                  {model.title}
+                </p>
+              ) : null}
+              {model.excerpt ? (
+                <p className="text-xs text-muted-foreground leading-relaxed line-clamp-2">
+                  {model.excerpt}
+                </p>
+              ) : !model.title && hasFeatured ? (
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  A little piece of your wedding.
+                </p>
+              ) : null}
+              {model.dateLabel ? (
+                <p className="text-[10px] text-muted-foreground">{model.dateLabel}</p>
+              ) : null}
+            </div>
+          )}
         </div>
-      )}
 
-      <div className="flex-1 min-w-0 space-y-0.5">
-        <p className="text-[10px] font-semibold uppercase tracking-[0.16em]" style={{ color: ROSE_DEEP }}>
-          A moment from your journey
+        {hasCollection && !model.title && !model.excerpt ? (
+          <p className="text-xs text-muted-foreground mt-2 leading-relaxed">
+            A little piece of your wedding.
+          </p>
+        ) : null}
+
+        <p
+          className="text-[11px] font-medium mt-2.5 group-hover:underline"
+          style={{ color: ROSE_DEEP }}
+        >
+          {model.ctaLabel} →
         </p>
-        {entry.title && (
-          <p className="text-sm font-semibold text-heading leading-snug truncate">{entry.title}</p>
-        )}
-        <p className="text-xs text-muted-foreground leading-relaxed line-clamp-2">{entry.body}</p>
-        <p className="text-[10px] text-muted-foreground mt-0.5">{formatEntryDate(entry.entryDate)}</p>
-        <p className="text-[10px] font-semibold mt-2 group-hover:underline" style={{ color: ROSE_DEEP }}>
-          Open your story →
-        </p>
-      </div>
-    </button>
+      </button>
+    </section>
   );
 }
 
