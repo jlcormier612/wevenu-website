@@ -483,6 +483,10 @@ export type SupportInboxItem = {
   relatedVenueName?: string | null;
   productFeedbackId?: string | null;
   sourceUrl?: string | null;
+  /** Bug-report screenshot count when present. */
+  attachmentCount?: number;
+  /** Public screenshot URLs for Support inbox. */
+  attachmentUrls?: string[];
   status: SupportInboxItemStatus;
   createdAt: string;
   resolvedAt?: string | null;

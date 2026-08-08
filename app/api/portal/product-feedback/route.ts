@@ -1,5 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/integrations/supabase/server";
+import {
+  attachmentMetaFields,
+  normalizeFeedbackAttachments,
+  type FeedbackAttachment,
+} from "@/lib/feedback/attachments";
 import { sendFeedbackEmail } from "@/lib/feedback/notify";
 
 /**
@@ -14,6 +19,7 @@ export async function POST(req: NextRequest) {
     body?: string;
     rating?: number | null;
     allow_public_share?: boolean;
+    attachments?: unknown;
     metadata?: {
       current_url?: string;
       user_agent?: string;
@@ -30,6 +36,8 @@ export async function POST(req: NextRequest) {
   const allowPublicShare = type === "nps" && body.allow_public_share === true;
   const trimmedSubject = body.subject?.trim() || null;
   const trimmedBody = body.body?.trim() ?? "";
+  const attachments = normalizeFeedbackAttachments(body.attachments, type);
+  const attachmentFields = attachmentMetaFields(attachments);
 
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("submit_product_feedback_from_portal", {
@@ -43,6 +51,7 @@ export async function POST(req: NextRequest) {
       current_url: body.metadata?.current_url ?? null,
       user_agent: body.metadata?.user_agent ?? null,
       surface: "client",
+      ...attachmentFields,
     },
   });
 
@@ -99,6 +108,18 @@ export async function POST(req: NextRequest) {
   const { data: authData } = await supabase.auth.getUser();
   if (authData.user?.email) userEmail = authData.user.email;
 
+  const notifyMeta: Record<string, string | number | boolean | null> = {
+    surface: "client",
+    allow_public_share: allowPublicShare,
+    venue_id: result.venue_id ?? null,
+    client_id: result.client_id ?? null,
+    current_url: body.metadata?.current_url ?? null,
+  };
+  if (attachments.length > 0) {
+    notifyMeta.attachment_count = attachments.length;
+    notifyMeta.attachment_urls = attachments.map((a) => a.url).join("\n");
+  }
+
   void sendFeedbackEmail({
     type,
     subject: trimmedSubject,
@@ -106,13 +127,7 @@ export async function POST(req: NextRequest) {
     rating: body.rating ?? null,
     userEmail,
     venueName: `${actorLabel} · ${venueName}`,
-    metadata: {
-      surface: "client",
-      allow_public_share: allowPublicShare,
-      venue_id: result.venue_id ?? null,
-      client_id: result.client_id ?? null,
-      current_url: body.metadata?.current_url ?? null,
-    },
+    metadata: notifyMeta,
   });
 
   // CRM partner ingest is wired separately — never block portal submit.
@@ -132,6 +147,7 @@ export async function POST(req: NextRequest) {
           allowPublicShare: boolean;
           productFeedbackId: string | null;
           sourceUrl: string | null;
+          attachments?: FeedbackAttachment[];
         }) => Promise<unknown>;
       };
       if (typeof mod.ingestProductPartnerFeedback !== "function") return;
@@ -148,6 +164,7 @@ export async function POST(req: NextRequest) {
         allowPublicShare,
         productFeedbackId: result.id ?? null,
         sourceUrl: body.metadata?.current_url ?? null,
+        attachments,
       });
     } catch (error) {
       console.error("[product→crm] client feedback sync failed:", error);

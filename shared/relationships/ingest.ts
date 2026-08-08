@@ -938,6 +938,8 @@ export async function ingestProductFeedback(input: {
   allowPublicShare?: boolean;
   productFeedbackId?: string | null;
   sourceUrl?: string | null;
+  /** Bug-report screenshot URLs / paths when present. */
+  attachments?: Array<{ url: string; path?: string; file_name?: string }> | null;
 }): Promise<FindOrCreateResult | null> {
   const email = input.email?.trim() || null;
   const productVenueId = input.productVenueId.trim();
@@ -997,6 +999,16 @@ export async function ingestProductFeedback(input: {
     person.firstName ||
     email ||
     productVenueId;
+  const attachmentUrls = (input.attachments ?? [])
+    .map((a) => a?.url?.trim())
+    .filter((u): u is string => Boolean(u));
+  const attachmentLines =
+    attachmentUrls.length > 0
+      ? [
+          `Screenshots (${attachmentUrls.length}):`,
+          ...attachmentUrls.map((u, i) => `${i + 1}. ${u}`),
+        ]
+      : [];
 
   return (await mutateRelationship({
     find: {
@@ -1024,6 +1036,7 @@ export async function ingestProductFeedback(input: {
           input.body,
           input.rating != null ? `Rating: ${input.rating}/10` : null,
           input.sourceUrl ? `URL: ${input.sourceUrl}` : null,
+          ...attachmentLines,
         ]) || undefined,
       productFeedbackId: input.productFeedbackId ?? undefined,
       source: "product",
@@ -1036,6 +1049,7 @@ export async function ingestProductFeedback(input: {
           input.body,
           input.rating != null ? `Rating: ${input.rating}/10` : null,
           input.sourceUrl ? `URL: ${input.sourceUrl}` : null,
+          ...attachmentLines,
         ]) || undefined,
       occurredAt: now,
       meta: {
@@ -1045,6 +1059,9 @@ export async function ingestProductFeedback(input: {
         rating: input.rating ?? null,
         allow_public_share: input.allowPublicShare === true,
         source: "product",
+        attachment_count: attachmentUrls.length,
+        attachment_urls:
+          attachmentUrls.length > 0 ? attachmentUrls.join("\n") : null,
       },
     },
     communication: {
@@ -1055,6 +1072,7 @@ export async function ingestProductFeedback(input: {
         input.rating != null ? `Rating: ${input.rating}/10` : null,
         input.venueName ? `Venue: ${input.venueName}` : null,
         input.allowPublicShare === true ? "Public share consent: yes" : null,
+        ...attachmentLines,
       ]),
       direction: "inbound",
       occurredAt: now,
@@ -1089,6 +1107,8 @@ export async function ingestProductPartnerFeedback(input: {
   allowPublicShare?: boolean;
   productFeedbackId?: string | null;
   sourceUrl?: string | null;
+  /** Bug-report screenshot URLs / paths when present. */
+  attachments?: Array<{ url: string; path?: string; file_name?: string }> | null;
 }): Promise<SupportInboxItem | null> {
   const surface = input.surface === "client" ? "client" : "vendor";
   const feedbackType = normalizeProductFeedbackType(input.feedbackType);
@@ -1100,6 +1120,16 @@ export async function ingestProductPartnerFeedback(input: {
       : labels.subject);
   const now = new Date().toISOString();
   const productVenueId = input.productVenueId?.trim() || null;
+  const attachmentUrls = (input.attachments ?? [])
+    .map((a) => a?.url?.trim())
+    .filter((u): u is string => Boolean(u));
+  const attachmentLines =
+    attachmentUrls.length > 0
+      ? [
+          `Screenshots (${attachmentUrls.length}):`,
+          ...attachmentUrls.map((u, i) => `${i + 1}. ${u}`),
+        ]
+      : [];
 
   const { result } = await withLiveStore((store) => {
     if (!store.supportInboxItems) store.supportInboxItems = [];
@@ -1134,6 +1164,7 @@ export async function ingestProductPartnerFeedback(input: {
           input.body,
           input.rating != null ? `Rating: ${input.rating}/10` : null,
           input.sourceUrl ? `URL: ${input.sourceUrl}` : null,
+          ...attachmentLines,
         ]) || undefined,
       rating: input.rating ?? null,
       allowPublicShare: input.allowPublicShare === true,
@@ -1146,6 +1177,8 @@ export async function ingestProductPartnerFeedback(input: {
       relatedVenueName,
       productFeedbackId: input.productFeedbackId ?? null,
       sourceUrl: input.sourceUrl ?? null,
+      attachmentCount: attachmentUrls.length > 0 ? attachmentUrls.length : undefined,
+      attachmentUrls: attachmentUrls.length > 0 ? attachmentUrls : undefined,
       status: "open",
       createdAt: now,
       resolvedAt: null,
