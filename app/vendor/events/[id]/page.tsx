@@ -28,10 +28,23 @@ export default async function VendorEventDetailPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ tab?: string; highlight?: string; focus?: string; thread?: string }>;
+  searchParams: Promise<{
+    tab?: string;
+    highlight?: string;
+    focus?: string;
+    /** Alias used by some notification links (e.g. task_completed). */
+    taskId?: string;
+    thread?: string;
+  }>;
 }) {
   const { id } = await params;
-  const { tab: tabParam, highlight: highlightParam, focus: focusParam, thread: threadParam } = await searchParams;
+  const {
+    tab: tabParam,
+    highlight: highlightParam,
+    focus: focusParam,
+    taskId: taskIdParam,
+    thread: threadParam,
+  } = await searchParams;
   const vendorUser = await getVendorUser();
   if (!vendorUser) redirect("/login");
 
@@ -65,7 +78,7 @@ export default async function VendorEventDetailPage({
       packages={packages}
       initialTab={initialTab}
       highlight={highlight}
-      focusTaskId={focusParam ?? null}
+      focusTaskId={focusParam ?? taskIdParam ?? null}
       preferredThread={preferredThread}
     />
   );

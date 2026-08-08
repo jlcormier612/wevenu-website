@@ -16,6 +16,12 @@ export type BriefingItem = {
   label: string;
   detail: string;
   link: string;
+  /**
+   * Vendor Luv only: unread vendor_notification ids backing this row.
+   * Soft-dismiss (mark read) removes the item from Needs you now; hard clear
+   * lives on the notification bell.
+   */
+  dismissNotificationIds?: string[];
 };
 
 export type LuvBriefing = {

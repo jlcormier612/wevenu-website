@@ -6,6 +6,7 @@ import Link from "next/link";
 import { Bell, Trash2 } from "lucide-react";
 
 import type { VendorNotification } from "@/lib/vendor-notifications/types";
+import { normalizeVendorTaskDeepLink } from "@/lib/vendor-luv/notifications";
 import { cn } from "@/lib/utils";
 
 const PANEL_WIDTH = 320;
@@ -252,6 +253,7 @@ export function VendorNotificationBell({
                   {notifications.map((n) => {
                     const isUnread = !n.readAt;
                     const cta = CTA[n.type] ?? "View";
+                    const href = normalizeVendorTaskDeepLink(n.link) ?? n.link;
 
                     const item = (
                       <div
@@ -291,10 +293,11 @@ export function VendorNotificationBell({
                                   e.stopPropagation();
                                   void clearOne(n.id, isUnread);
                                 }}
-                                className="rounded p-0.5 text-muted-foreground/60 transition-colors hover:bg-muted hover:text-destructive"
-                                aria-label="Clear notification"
+                                className="rounded p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-destructive"
+                                aria-label="Dismiss"
+                                title="Dismiss"
                               >
-                                <Trash2 className="h-3 w-3" />
+                                <Trash2 className="h-3.5 w-3.5" />
                               </button>
                             </div>
                           </div>
@@ -303,7 +306,7 @@ export function VendorNotificationBell({
                               {n.body}
                             </p>
                           )}
-                          {n.link && (
+                          {href && (
                             <p className="mt-1 text-[10px] font-semibold text-primary">
                               {cta} →
                             </p>
@@ -315,8 +318,8 @@ export function VendorNotificationBell({
                       </div>
                     );
 
-                    return n.link ? (
-                      <Link key={n.id} href={n.link} className="block">
+                    return href ? (
+                      <Link key={n.id} href={href} className="block">
                         {item}
                       </Link>
                     ) : (

@@ -71,10 +71,23 @@ export function VendorTasksList({
   const [newDue, setNewDue]        = React.useState("");
   const [formError, setFormError]  = React.useState<string | null>(null);
   const focusRef = React.useRef<HTMLDivElement | null>(null);
+  const [activeFocusId, setActiveFocusId] = React.useState<string | null>(focusTaskId);
 
+  // Deep-link highlight — scroll + brief ring, then clear visual emphasis.
   React.useEffect(() => {
-    if (!focusTaskId || !focusRef.current) return;
-    focusRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
+    if (!focusTaskId) {
+      setActiveFocusId(null);
+      return;
+    }
+    setActiveFocusId(focusTaskId);
+    const scrollTimer = window.setTimeout(() => {
+      focusRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }, 50);
+    const clearTimer = window.setTimeout(() => setActiveFocusId(null), 2800);
+    return () => {
+      window.clearTimeout(scrollTimer);
+      window.clearTimeout(clearTimer);
+    };
   }, [focusTaskId]);
 
   function handleToggle(t: VendorPersonalTask) {
@@ -198,7 +211,9 @@ export function VendorTasksList({
                   id={`task-${t.id}`}
                   ref={focusTaskId === t.id ? focusRef : undefined}
                   className={`flex items-start gap-3 px-4 py-3 group ${
-                    focusTaskId === t.id ? "bg-primary/5 ring-1 ring-inset ring-primary/30" : ""
+                    activeFocusId === t.id
+                      ? "bg-primary/5 ring-1 ring-inset ring-primary/30 transition-colors duration-500"
+                      : ""
                   }`}
                 >
                   <button

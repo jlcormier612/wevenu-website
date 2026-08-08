@@ -152,6 +152,20 @@ export function VendorEventWorkspace({
   const [threadPref, setThreadPref] = React.useState<"venue" | "couple" | null>(preferredThread);
   const [hiddenActivityIds, setHiddenActivityIds] = React.useState<string[]>([]);
 
+  // Soft client nav with ?tab=&focus= (bell / Luv) must open the target tab —
+  // useState alone only applies on first mount.
+  React.useEffect(() => {
+    if (initialTab) setTab(initialTab);
+  }, [initialTab]);
+
+  React.useEffect(() => {
+    if (focusTaskId) setTab("tasks");
+  }, [focusTaskId]);
+
+  React.useEffect(() => {
+    if (preferredThread) setThreadPref(preferredThread);
+  }, [preferredThread]);
+
   const activityFeed = detail.activityFeed.filter((i) => !hiddenActivityIds.includes(i.id));
 
   function softAckDocumentShared() {
@@ -741,6 +755,7 @@ function TasksTab({
   const [applyShare, setApplyShare] = React.useState<VendorTaskCoupleVisibility>("private");
   const [newShare, setNewShare] = React.useState<VendorTaskCoupleVisibility>("private");
   const focusRef = React.useRef<HTMLDivElement | null>(null);
+  const [activeFocusId, setActiveFocusId] = React.useState<string | null>(focusTaskId);
 
   const sortedPacks = sortTemplatesForEventApply(
     taskTemplates.filter((t) => t.isActive && t.items.length > 0),
@@ -756,9 +771,21 @@ function TasksTab({
 
   const hasAnyTemplates = taskTemplates.some((t) => t.isActive && t.items.length > 0);
 
+  // Deep-link from notifications / Luv: scroll to task and briefly highlight.
   React.useEffect(() => {
-    if (!focusTaskId || !focusRef.current) return;
-    focusRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
+    if (!focusTaskId) {
+      setActiveFocusId(null);
+      return;
+    }
+    setActiveFocusId(focusTaskId);
+    const scrollTimer = window.setTimeout(() => {
+      focusRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }, 50);
+    const clearTimer = window.setTimeout(() => setActiveFocusId(null), 2800);
+    return () => {
+      window.clearTimeout(scrollTimer);
+      window.clearTimeout(clearTimer);
+    };
   }, [focusTaskId]);
 
   function openApply() {
@@ -890,7 +917,7 @@ function TasksTab({
     isComplete: (t) => t.status === "complete",
     getDueDate: (t) => t.dueDate,
   });
-  const focusClass = "bg-primary/5 ring-1 ring-inset ring-primary/30";
+  const focusClass = "bg-primary/5 ring-1 ring-inset ring-primary/30 transition-colors duration-500";
   const packageFilterItems = [
     { value: "__all__", label: "All packages" },
     { value: "__none__", label: "No package tag" },
@@ -898,11 +925,13 @@ function TasksTab({
   ];
 
   function renderEventTask(t: (typeof detail.eventTasks)[number]) {
+    const isFocused = activeFocusId === t.id;
     return (
       <div
         key={t.id}
+        id={`task-${t.id}`}
         ref={focusTaskId === t.id ? focusRef : undefined}
-        className={`flex items-start gap-3 px-4 py-3 ${focusTaskId === t.id ? focusClass : ""}`}
+        className={`flex items-start gap-3 px-4 py-3 ${isFocused ? focusClass : ""}`}
       >
         <button
           type="button"
@@ -936,11 +965,13 @@ function TasksTab({
   }
 
   function renderPersonalTask(t: (typeof detail.personalTasks)[number]) {
+    const isFocused = activeFocusId === t.id;
     return (
       <div
         key={t.id}
+        id={`task-${t.id}`}
         ref={focusTaskId === t.id ? focusRef : undefined}
-        className={`flex flex-col gap-2 px-4 py-3 sm:flex-row sm:items-start ${focusTaskId === t.id ? focusClass : ""}`}
+        className={`flex flex-col gap-2 px-4 py-3 sm:flex-row sm:items-start ${isFocused ? focusClass : ""}`}
       >
         <div className="flex min-w-0 flex-1 items-start gap-3">
           <button
