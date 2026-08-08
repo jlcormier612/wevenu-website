@@ -150,15 +150,40 @@ export function TrustExperience() {
               <p key={line}>{line}</p>
             ))}
           </div>
-          <div className="mt-14 space-y-10">
-            {page.dataProcessingOwnership.points.map((point) => (
-              <div key={point.title}>
+          <div className="mt-14 space-y-12">
+            {page.dataProcessingOwnership.subsections.map((subsection) => (
+              <div key={subsection.title}>
                 <h3 className="font-heading text-xl text-[var(--forest-sage)] md:text-2xl">
-                  {point.title}
+                  {subsection.title}
                 </h3>
-                <p className="mt-3 text-base leading-[1.7] text-[var(--forest-sage)]/70 md:text-lg max-w-[65ch]">
-                  {point.body}
-                </p>
+                <div className="mt-3 space-y-4 text-base leading-[1.7] text-[var(--forest-sage)]/70 md:text-lg max-w-[65ch]">
+                  {subsection.lines.map((line) => (
+                    <p key={line}>{line}</p>
+                  ))}
+                </div>
+                {"bullets" in subsection && subsection.bullets ? (
+                  <ul className="mt-5 space-y-3">
+                    {subsection.bullets.map((bullet) => (
+                      <li
+                        key={bullet}
+                        className="flex items-start gap-3 text-base leading-[1.7] text-[var(--forest-sage)]/70 md:text-lg max-w-[65ch]"
+                      >
+                        <span
+                          className="mt-2.5 h-1 w-1 shrink-0 rounded-full bg-[var(--heritage-sage)]"
+                          aria-hidden
+                        />
+                        <span>{bullet}</span>
+                      </li>
+                    ))}
+                  </ul>
+                ) : null}
+                {"afterBullets" in subsection && subsection.afterBullets ? (
+                  <div className="mt-5 space-y-4 text-base leading-[1.7] text-[var(--forest-sage)]/70 md:text-lg max-w-[65ch]">
+                    {subsection.afterBullets.map((line) => (
+                      <p key={line}>{line}</p>
+                    ))}
+                  </div>
+                ) : null}
               </div>
             ))}
           </div>
@@ -172,18 +197,51 @@ export function TrustExperience() {
           <h2 className="font-heading text-[2.35rem] text-[var(--forest-sage)] md:text-[3.76rem]">
             {page.luvPrinciples.title}
           </h2>
-          <p className="mt-8 text-base leading-[1.7] text-[var(--forest-sage)]/70 md:text-lg max-w-[65ch]">
-            {page.luvPrinciples.intro}
-          </p>
-          <div className="mt-14 space-y-10">
-            {page.luvPrinciples.points.map((point) => (
-              <div key={point.title}>
+          <div className="mt-8 space-y-5 text-base leading-[1.7] text-[var(--forest-sage)]/70 md:text-lg max-w-[65ch]">
+            {page.luvPrinciples.lines.map((line) => (
+              <p key={line}>{line}</p>
+            ))}
+          </div>
+          <div className="mt-14 space-y-12">
+            {page.luvPrinciples.subsections.map((subsection) => (
+              <div key={subsection.title}>
                 <h3 className="font-heading text-xl text-[var(--forest-sage)] md:text-2xl">
-                  {point.title}
+                  {subsection.title}
                 </h3>
-                <p className="mt-3 whitespace-pre-line text-base leading-[1.7] text-[var(--forest-sage)]/70 md:text-lg max-w-[65ch]">
-                  {point.body}
-                </p>
+                <div className="mt-3 space-y-4 text-base leading-[1.7] text-[var(--forest-sage)]/70 md:text-lg max-w-[65ch]">
+                  {subsection.lines.map((line) => (
+                    <p key={line}>{line}</p>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── Invited Users ── */}
+      <section id="invited-users" className="scroll-mt-28 px-6 py-28 md:py-36">
+        <div className="mx-auto max-w-3xl">
+          <TrustRule className="mb-5" />
+          <h2 className="font-heading text-[2.35rem] text-[var(--forest-sage)] md:text-[3.76rem]">
+            {page.invitedUsers.title}
+          </h2>
+          <div className="mt-8 space-y-5 text-base leading-[1.7] text-[var(--forest-sage)]/70 md:text-lg max-w-[65ch]">
+            {page.invitedUsers.lines.map((line) => (
+              <p key={line}>{line}</p>
+            ))}
+          </div>
+          <div className="mt-14 space-y-12">
+            {page.invitedUsers.subsections.map((subsection) => (
+              <div key={subsection.title}>
+                <h3 className="font-heading text-xl text-[var(--forest-sage)] md:text-2xl">
+                  {subsection.title}
+                </h3>
+                <div className="mt-3 space-y-4 text-base leading-[1.7] text-[var(--forest-sage)]/70 md:text-lg max-w-[65ch]">
+                  {subsection.lines.map((line) => (
+                    <p key={line}>{line}</p>
+                  ))}
+                </div>
               </div>
             ))}
           </div>

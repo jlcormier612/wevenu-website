@@ -21,6 +21,7 @@ export const TRUST_PAGE = {
     { id: "data-ownership", label: "Data Ownership" },
     { id: "data-processing-ownership", label: "Data Processing & Ownership" },
     { id: "luv-principles", label: "Luv Principles" },
+    { id: "invited-users", label: "Invited Users" },
     { id: "reliability", label: "Reliability" },
     { id: "compliance", label: "Compliance" },
     { id: "terms", label: "Terms" },
@@ -88,60 +89,263 @@ export const TRUST_PAGE = {
   dataProcessingOwnership: {
     title: "Data Processing & Ownership",
     lines: [
-      "Clear ownership builds trust.",
-      "Hello to Cheers exists to help venues manage relationships—not to own them.",
-      "Everything you create inside Hello to Cheers remains yours.",
+      "Your business is built on relationships.",
+      "Your software should respect them.",
+      "Every proposal, conversation, payment, document, floor plan, timeline, and celebration represents years of trust between you and your clients.",
+      "That information belongs to your business.",
+      "Our responsibility is to help protect it—not claim ownership of it.",
     ],
-    points: [
+    subsections: [
       {
-        title: "Who owns my data?",
-        body: "Your venue owns the business data created and managed within its workspace.",
+        title: "Data Ownership",
+        lines: [
+          "You own the information you create and manage within Hello to Cheers.",
+          "That includes things like:",
+        ],
+        bullets: [
+          "Relationships",
+          "Events",
+          "Clients and couples",
+          "Vendors",
+          "Proposals",
+          "Contracts",
+          "Payments and invoices",
+          "Planning timelines",
+          "Messages",
+          "Uploaded documents",
+          "Notes",
+          "Wedding websites",
+          "Team information",
+        ],
+        afterBullets: [
+          "We don't claim ownership of your business data simply because it lives in our platform.",
+        ],
       },
       {
-        title: "Can I export my data?",
-        body: "Yes. We believe leaving should never require filing a support ticket simply to retrieve your information.",
+        title: "Why We Process Your Information",
+        lines: [
+          "Hello to Cheers processes your information only to provide the services you've asked us to provide.",
+          "That includes things like:",
+        ],
+        bullets: [
+          "displaying your workspace",
+          "sending messages you've chosen to send",
+          "generating timelines",
+          "processing subscriptions",
+          "creating reports",
+          "providing customer support",
+          "improving product reliability",
+          "generating Luv recommendations",
+        ],
+        afterBullets: [
+          "We don't process your information to build advertising profiles.",
+          "We don't sell your information.",
+        ],
       },
       {
-        title: "Can Hello to Cheers read our information?",
-        body: "Only when reasonably necessary to operate, support, secure, or improve the platform, and always under appropriate safeguards.",
+        title: "Luv and Your Data",
+        lines: [
+          "Luv exists to support hospitality—not replace it.",
+          "Luv analyzes information already available within your workspace to generate recommendations that help your venue operate more thoughtfully.",
+          "Luv does not make business decisions for you.",
+          "Luv does not sell or share your information.",
+          "Luv does not use your venue's information to build advertising profiles.",
+          "Your venue remains in control.",
+        ],
       },
       {
-        title: "Do you sell customer data?",
-        body: "Never.",
+        title: "Can Hello to Cheers See My Information?",
+        lines: [
+          "Only when reasonably necessary.",
+          "Examples include:",
+        ],
+        bullets: [
+          "helping resolve a support request",
+          "investigating a technical issue",
+          "protecting the security of the platform",
+          "restoring information from backups when necessary",
+        ],
+        afterBullets: [
+          "Access is limited and governed by internal security practices.",
+        ],
       },
       {
-        title: "How does Luv use our information?",
-        body: "Luv uses your workspace information only to generate recommendations for your venue. Customer information is never sold or used to build advertising profiles.",
+        title: "Exporting Your Data",
+        lines: [
+          "We believe leaving should be as respectful as joining.",
+          "If you decide Hello to Cheers is no longer the right fit, you should be able to export your information without unnecessary obstacles.",
+          "Where product export tools are available, you shouldn't need to contact support simply to retrieve your own information.",
+        ],
       },
       {
-        title: "Do uploaded documents remain ours?",
-        body: "Yes.",
+        title: "Backups",
+        lines: [
+          "We maintain backups designed to help protect your workspace against unexpected failures.",
+          "Backups are part of our commitment to reliability.",
+          "They're not intended to replace your own recordkeeping requirements where those may exist.",
+        ],
+      },
+      {
+        title: "Your Responsibility",
+        lines: [
+          "While we protect the platform, every venue also plays an important role.",
+          "We encourage customers to:",
+        ],
+        bullets: [
+          "use strong passwords",
+          "enable available security features",
+          "manage team permissions thoughtfully",
+          "review user access regularly",
+          "remove former employees promptly",
+        ],
+        afterBullets: ["Security works best as a shared responsibility."],
+      },
+      {
+        title: "Our Promise",
+        lines: [
+          "Technology should strengthen relationships—not own them.",
+          "Everything we build starts with a simple belief:",
+          "Your business is yours.",
+          "Your relationships are yours.",
+          "Your celebrations are yours.",
+          "We're simply honored to help you care for them.",
+        ],
       },
     ],
   },
   luvPrinciples: {
     title: "Luv Principles",
-    intro: "Artificial intelligence should strengthen hospitality—not replace it.",
-    points: [
+    lines: [
+      "Hospitality deserves thoughtful technology.",
+      "Luv was created to help venues spend less time managing software and more time caring for people.",
+      "Everything Luv does is guided by one simple idea:",
+      "Technology should strengthen hospitality—not replace it.",
+    ],
+    subsections: [
       {
         title: "Suggestions First",
-        body: "Luv recommends.\nYou decide.",
+        lines: [
+          "Luv recommends.",
+          "You decide.",
+          "Luv is designed to surface thoughtful recommendations, identify opportunities, and help your team stay organized.",
+          "The final decision always belongs to your venue.",
+        ],
       },
       {
-        title: "Venue Control",
-        body: "Luv never takes over your business.",
+        title: "Your Venue Stays in Control",
+        lines: [
+          "Luv never replaces your judgment.",
+          "Whether you're responding to an inquiry, publishing a wedding website, assigning tasks, or communicating with clients, your venue remains in control.",
+          "Automation should support people—not remove them from the experience.",
+        ],
       },
       {
         title: "Transparent Guidance",
-        body: "Recommendations should be understandable whenever possible.",
+        lines: [
+          "When Luv recommends something, we believe you should understand why.",
+          "Recommendations should be understandable, relevant, and grounded in the information already available within your workspace.",
+          "Technology shouldn't feel mysterious.",
+        ],
       },
       {
-        title: "Privacy Respect",
-        body: "Customer information is never sold or used for advertising.",
+        title: "Built Around Your Relationships",
+        lines: [
+          "Luv exists because every relationship is different.",
+          "Rather than forcing every venue into identical workflows, Luv learns from the information already inside your workspace to help surface helpful next steps.",
+          "Every recommendation begins with the relationship—not a generic template.",
+        ],
+      },
+      {
+        title: "Privacy Always Matters",
+        lines: [
+          "Luv only works with information already available inside your Hello to Cheers workspace.",
+          "We don't sell your information.",
+          "We don't create advertising profiles from your business data.",
+          "Your information remains protected according to our Privacy Policy.",
+        ],
       },
       {
         title: "Hospitality Before Automation",
-        body: "Technology should support relationships—not replace them.",
+        lines: [
+          "The best hospitality is personal.",
+          "Luv exists to reduce repetitive work so your team has more time for conversations, celebrations, and the people who trust you with life's most meaningful events.",
+          "Technology should create more human moments—not fewer.",
+        ],
+      },
+      {
+        title: "Our Promise",
+        lines: [
+          "Luv was never created to replace the people who make hospitality exceptional.",
+          "It was created to quietly support them.",
+          "The best technology often feels almost invisible.",
+          "That's exactly how we think AI should work.",
+        ],
+      },
+    ],
+  },
+  invitedUsers: {
+    title: "Invited Users",
+    lines: [
+      "One celebration. One shared relationship.",
+      "Hello to Cheers is built around a simple idea:",
+      "Every celebration brings people together.",
+      "Venues.",
+      "Couples.",
+      "Vendors.",
+      "Guests.",
+      "Rather than creating disconnected systems for each person, Hello to Cheers keeps everyone connected around the same relationship while giving each participant an experience designed specifically for them.",
+    ],
+    subsections: [
+      {
+        title: "Venues",
+        lines: [
+          "Venues are our customers.",
+          "They subscribe to Hello to Cheers to manage their business, relationships, planning, communications, financial workflows, and celebrations.",
+          "Each venue controls its own workspace and decides who is invited to participate.",
+        ],
+      },
+      {
+        title: "Couples",
+        lines: [
+          "Couples access Hello to Cheers because their venue has invited them.",
+          "Their workspace is designed to help them collaborate with their venue throughout the planning journey.",
+          "Hello to Cheers provides the technology.",
+          "The venue remains responsible for its services, pricing, contracts, planning decisions, and event delivery.",
+        ],
+      },
+      {
+        title: "Vendors",
+        lines: [
+          "Vendors also participate through invitations from venues.",
+          "Their workspace helps them collaborate, communicate, and prepare for events while remaining connected to the shared celebration.",
+          "Hello to Cheers does not employ vendors, endorse vendors, or participate in agreements between venues and vendors.",
+        ],
+      },
+      {
+        title: "Team Members",
+        lines: [
+          "Venue owners decide which members of their team have access to their workspace.",
+          "Permissions determine what each person can see and do.",
+          "This helps venues collaborate confidently while protecting sensitive business information.",
+        ],
+      },
+      {
+        title: "One Shared Truth",
+        lines: [
+          "Although each person experiences Hello to Cheers differently, everyone is connected to the same underlying relationship.",
+          "Information doesn't need to be copied from one portal to another.",
+          "Updates stay connected.",
+          "Conversations stay together.",
+          "The celebration stays organized.",
+        ],
+      },
+      {
+        title: "Our Role",
+        lines: [
+          "Hello to Cheers exists to help everyone work together more thoughtfully.",
+          "We're the technology that supports the relationship.",
+          "The relationships themselves will always belong to the people behind the celebration.",
+        ],
       },
     ],
   },
