@@ -4598,7 +4598,7 @@ function TimelineCard({ token, onNavigate }: { token: string; onNavigate: (s: Po
         <div className="space-y-1.5">
           {upcoming.map((e) => (
             <p key={e.id} className="text-xs text-heading">
-              <span className="font-semibold">{e.entryTime}</span> — {e.title}
+              <span className="font-semibold">{fmtPortalTime(e.entryTime)}</span> — {e.title}
             </p>
           ))}
         </div>
