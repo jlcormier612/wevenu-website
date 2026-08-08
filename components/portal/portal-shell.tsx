@@ -56,6 +56,8 @@ import {
   type NextStepsItem,
 } from "@/lib/portal/next-steps";
 import { remainingBalanceFromSchedules, selectCanonicalPaymentSchedules } from "@/lib/portal/payment-schedules";
+import { resolvePlanningJourney } from "@/lib/portal/planning-journey";
+import { computePlanningProgress } from "@/lib/portal/planning-progress";
 import {
   selectWhatsHappeningForHome,
   WHATS_HAPPENING_VIEW_ALL_DESTINATION,
@@ -184,53 +186,107 @@ function getStoryLine(du: number | null): string {
 }
 
 // ── Planning journey milestone path ──────────────────────────────────────────
+// Thresholds live in lib/portal/planning-journey.ts (Couple Home Impl 4).
 
-const MILESTONES = [
-  { label: "12 mo", threshold: 365 },
-  { label: "9 mo",  threshold: 270 },
-  { label: "6 mo",  threshold: 180 },
-  { label: "3 mo",  threshold: 90  },
-  { label: "1 mo",  threshold: 30  },
-  { label: "Day",   threshold: 0   },
-];
-
-/** Emotional / temporal arc only — no competing readiness percentage (Couple Home Impl 1). */
+/**
+ * Wedding Journey — emotional Past / Now / Next strip.
+ * Date-based PlanningJourney milestones only (Couple Home Impl 4).
+ * Not a task list and not a second operational %.
+ */
 function PlanningJourney({ du }: { du: number | null }) {
-  if (du === null) return null;
-  const activeIdx = MILESTONES.findIndex(m => du > m.threshold);
+  const model = resolvePlanningJourney(du);
 
   return (
-    <div className="rounded-2xl border border-border bg-card px-4 py-4 space-y-2.5">
-      <p className="text-xs font-semibold text-heading">Wedding Journey</p>
-      <div className="flex items-center gap-0">
-        {MILESTONES.map((m, i) => {
-          const isPast = activeIdx > 0 && i < activeIdx;
-          const isCurrent = i === activeIdx || activeIdx === -1 && i === MILESTONES.length - 1;
-          return (
-            <React.Fragment key={m.label}>
-              <div className="flex flex-col items-center gap-1">
-                <div className={`rounded-full border-2 transition-all ${
-                  isCurrent ? "h-3.5 w-3.5 scale-110" : "h-3 w-3"
-                }`}
-                  style={{
-                    background: isCurrent ? ROSE : isPast ? SAGE : "white",
-                    borderColor: isCurrent ? ROSE : isPast ? SAGE : "#DED6CA",
-                    boxShadow: isCurrent ? `0 0 0 4px ${ROSE}25` : "none",
-                  }}
-                  aria-current={isCurrent ? "step" : undefined}
-                />
-                <p className="text-[9px] font-medium" style={{ color: isCurrent ? ROSE_DEEP : isPast ? SAGE : "#B8AEA1" }}>
-                  {m.label}{isCurrent ? " · You’re here" : isPast ? " · Done" : ""}
-                </p>
-              </div>
-              {i < MILESTONES.length - 1 && (
-                <div className="flex-1 h-0.5 mb-3" style={{ background: isPast ? SAGE : "#DED6CA" }} />
-              )}
-            </React.Fragment>
-          );
-        })}
+    <section
+      className="rounded-2xl border bg-card px-4 py-4 space-y-3 h-full"
+      style={{ borderColor: "#E8E3DC" }}
+      aria-labelledby="wedding-journey-heading"
+      aria-describedby="wedding-journey-summary"
+    >
+      <div>
+        <h2 id="wedding-journey-heading" className="text-sm font-semibold text-heading">
+          Wedding Journey
+        </h2>
+        <p id="wedding-journey-summary" className="text-[11px] text-muted-foreground mt-1 leading-snug">
+          {model.narrative}
+        </p>
       </div>
-    </div>
+
+      {model.kind === "undated" ? (
+        <p className="sr-only">{model.accessibleSummary}</p>
+      ) : (
+        <>
+          <p className="sr-only">{model.accessibleSummary}</p>
+          <div
+            className="flex items-start gap-0"
+            role="list"
+            aria-label="Wedding planning milestones"
+          >
+            {model.steps.map((step, i) => {
+              const isCurrent = step.state === "current" || step.state === "wedding_day";
+              const isPast = step.state === "completed";
+              const isWeddingDay = step.state === "wedding_day";
+              return (
+                <React.Fragment key={step.id}>
+                  <div
+                    role="listitem"
+                    className="flex flex-col items-center gap-1 min-w-0"
+                    aria-current={isCurrent ? "step" : undefined}
+                    aria-label={`${step.label}: ${step.statusLabel}`}
+                  >
+                    <span
+                      className={`rounded-full border-2 transition-all ${
+                        isCurrent ? "h-3.5 w-3.5 scale-110" : "h-3 w-3"
+                      }`}
+                      style={{
+                        background: isWeddingDay
+                          ? ROSE_DEEP
+                          : isCurrent
+                            ? ROSE
+                            : isPast
+                              ? SAGE
+                              : "white",
+                        borderColor: isWeddingDay
+                          ? ROSE_DEEP
+                          : isCurrent
+                            ? ROSE
+                            : isPast
+                              ? SAGE
+                              : "#DED6CA",
+                        boxShadow: isCurrent ? `0 0 0 4px ${ROSE}28` : "none",
+                      }}
+                      aria-hidden
+                    />
+                    <span
+                      className={`text-[9px] font-medium text-center leading-tight ${
+                        isCurrent ? "font-semibold" : ""
+                      }`}
+                      style={{
+                        color: isWeddingDay || isCurrent
+                          ? ROSE_DEEP
+                          : isPast
+                            ? SAGE
+                            : "#B8AEA1",
+                      }}
+                    >
+                      <span className="block">{step.shortLabel}</span>
+                      <span className="block opacity-90">{step.statusLabel}</span>
+                    </span>
+                  </div>
+                  {i < model.steps.length - 1 && (
+                    <div
+                      className="flex-1 h-0.5 mt-[6px] min-w-[6px]"
+                      style={{ background: isPast ? SAGE : "#DED6CA" }}
+                      aria-hidden
+                    />
+                  )}
+                </React.Fragment>
+              );
+            })}
+          </div>
+        </>
+      )}
+    </section>
   );
 }
 
@@ -1822,8 +1878,8 @@ function OverviewSection({
         onNavigate={onNavigate}
       />
 
-      {/* 5–6. Planning Progress + Wedding Journey */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      {/* 5–6. Planning Progress + Wedding Journey — operational % ∥ emotional arc */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-stretch">
         <WeddingPlanningProgressCard token={token} tasks={tasks} incompleteCount={p1Count ?? 0} onNavigate={onNavigate} />
         {(du === null || du >= 0) && <PlanningJourney du={du} />}
       </div>
@@ -5000,15 +5056,10 @@ function TimelineCard({ token, onNavigate }: { token: string; onNavigate: (s: Po
   );
 }
 
-// The four cards together, as one grid — "these four cards should
-// represent the operational relationship with the venue," placed
-// immediately below the hero on both mobile and desktop (not sidebar-only).
-// "A single large planning progress bar... every completed task moves it,
-// every upload moves it, every payment moves it, every questionnaire moves
-// it. This becomes addictive." (2026-07-23) — one composite percentage
-// across every system that already tracks completion, not a new metric:
-// required venue tasks, payment line items, the questionnaire, and sent
-// contracts. Placed directly below the hero, above the four venue cards.
+// Canonical Home operational % — Phase 1 WeddingPlanningProgressCard composite
+// (required tasks + payments + contracts + questionnaire). Couple Home Impl 4
+// keeps that formula; presentation adds a warm supporting line + setup state
+// when total === 0 (never a misleading 0%).
 function WeddingPlanningProgressCard({
   token, tasks, incompleteCount = 0, onNavigate,
 }: {
@@ -5032,7 +5083,12 @@ function WeddingPlanningProgressCard({
 
   if (paymentSchedules === null || questionnaire === undefined || documents === null) {
     return (
-      <div className="rounded-2xl border bg-card p-5" style={{ borderColor: "#E8E3DC" }}>
+      <div
+        className="rounded-2xl border bg-card p-5 h-full"
+        style={{ borderColor: "#E8E3DC" }}
+        aria-busy="true"
+        aria-label="Loading planning progress"
+      >
         <div className="h-4 w-36 rounded bg-muted animate-pulse mb-3" />
         <div className="h-3 rounded-full bg-muted animate-pulse" />
       </div>
@@ -5045,49 +5101,112 @@ function WeddingPlanningProgressCard({
   ).flatMap((s) => s.lineItems);
   const contracts = documents.filter((d) => d.docType === "contract" && (d.status === "sent" || d.status === "signed"));
 
-  const reqDone = required.filter((t) => t.status === "complete").length;
-  const payDone = paymentItems.filter((li) => li.status === "paid").length;
-  const contractDone = contracts.filter((c) => c.status === "signed").length;
-  const qInScope = Boolean(questionnaire);
-  const qDone = questionnaire && (questionnaire.status === "submitted" || questionnaire.status === "completed") ? 1 : 0;
+  const progress = computePlanningProgress({
+    requiredTasks: required,
+    paymentLineItems: paymentItems,
+    contracts,
+    questionnaire,
+  });
 
-  const completed = reqDone + payDone + contractDone + (qInScope ? qDone : 0);
-  const total = required.length + paymentItems.length + contracts.length + (qInScope ? 1 : 0);
+  const goToTasks = onNavigate ? () => onNavigate("tasks") : undefined;
+  const showReviewCta = Boolean(goToTasks) && (progress.kind === "empty" || incompleteCount > 0);
 
-  if (total === 0) return null;
-  const pct = Math.round((completed / total) * 100);
+  if (progress.kind === "empty") {
+    return (
+      <section
+        className="rounded-2xl border bg-card p-5 h-full space-y-3"
+        style={{ borderColor: "#E8E3DC" }}
+        aria-labelledby="planning-progress-heading"
+        aria-describedby="planning-progress-support"
+      >
+        <h2 id="planning-progress-heading" className="text-sm font-semibold text-heading">
+          Planning Progress
+        </h2>
+        <p id="planning-progress-support" className="text-[11px] text-muted-foreground leading-snug">
+          {progress.supportingStatement}
+        </p>
+        <p className="sr-only">{progress.accessibleLabel}</p>
+        {showReviewCta && goToTasks && (
+          <button
+            type="button"
+            onClick={goToTasks}
+            className="text-[11px] font-semibold hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 rounded-sm"
+            style={{ color: SAGE }}
+          >
+            Explore your planning →
+          </button>
+        )}
+      </section>
+    );
+  }
 
   return (
-    <div className="rounded-2xl border bg-card p-5" style={{ borderColor: "#E8E3DC" }}>
-      <div className="flex items-center justify-between mb-1">
-        <p className="text-sm font-semibold text-heading">Planning Progress</p>
-        <span className="font-heading text-xl font-bold" style={{ color: SAGE }}>{pct}%</span>
+    <section
+      className="rounded-2xl border bg-card p-5 h-full"
+      style={{ borderColor: "#E8E3DC" }}
+      aria-labelledby="planning-progress-heading"
+      aria-describedby="planning-progress-support"
+    >
+      <div className="flex items-baseline justify-between gap-3 mb-1">
+        <h2 id="planning-progress-heading" className="text-sm font-semibold text-heading">
+          Planning Progress
+        </h2>
+        <p
+          className="font-heading text-xl font-bold tabular-nums"
+          style={{ color: SAGE }}
+          aria-hidden
+        >
+          {progress.percent}%
+        </p>
       </div>
-      <p className="text-[11px] text-muted-foreground mb-3">
-        Based on required venue tasks, payments, contracts, and your questionnaire.
+      <p id="planning-progress-support" className="text-[11px] text-muted-foreground mb-1 leading-snug">
+        {progress.supportingStatement}
       </p>
-      <div className="h-3 rounded-full bg-muted overflow-hidden mb-3">
-        <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, background: `linear-gradient(90deg, var(--venue-primary), var(--venue-secondary))` }} />
+      <p className="text-[10px] text-muted-foreground/80 mb-3 leading-snug">
+        {progress.sourceNote}
+      </p>
+
+      <div
+        className="h-3 rounded-full bg-muted overflow-hidden mb-3"
+        role="progressbar"
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-valuenow={progress.percent}
+        aria-label={progress.accessibleLabel}
+      >
+        <div
+          className="h-full rounded-full transition-all"
+          style={{
+            width: `${progress.percent}%`,
+            background: "linear-gradient(90deg, var(--venue-primary), var(--venue-secondary))",
+          }}
+        />
       </div>
-      <div className="flex flex-wrap gap-1.5">
-        {[
-          required.length > 0 ? { label: "Required tasks", detail: `${reqDone}/${required.length}` } : null,
-          paymentItems.length > 0 ? { label: "Payments", detail: `${payDone}/${paymentItems.length}` } : null,
-          contracts.length > 0 ? { label: "Contracts", detail: `${contractDone}/${contracts.length}` } : null,
-          qInScope ? { label: "Questionnaire", detail: qDone ? "Done" : "Open" } : null,
-        ].filter((c): c is { label: string; detail: string } => Boolean(c)).map((c) => (
-          <span key={c.label} className="text-[10px] px-2 py-0.5 rounded-full bg-muted text-muted-foreground">
-            {c.label} · {c.detail}
-          </span>
-        ))}
-      </div>
-      {incompleteCount > 0 && onNavigate && (
-        <button type="button" onClick={() => onNavigate("tasks")}
-          className="mt-3 text-[11px] font-semibold hover:underline" style={{ color: SAGE }}>
+
+      {progress.categories.length > 0 && (
+        <ul className="flex flex-wrap gap-1.5 list-none p-0 m-0" aria-label="Planning progress details">
+          {progress.categories.map((c) => (
+            <li
+              key={c.label}
+              className="text-[10px] px-2 py-0.5 rounded-full bg-muted text-muted-foreground"
+            >
+              {c.label} · {c.detail}
+            </li>
+          ))}
+        </ul>
+      )}
+
+      {showReviewCta && goToTasks && (
+        <button
+          type="button"
+          onClick={goToTasks}
+          className="mt-3 text-[11px] font-semibold hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 rounded-sm"
+          style={{ color: SAGE }}
+        >
           Review what’s left
         </button>
       )}
-    </div>
+    </section>
   );
 }
 
