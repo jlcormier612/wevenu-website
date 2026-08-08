@@ -15,7 +15,7 @@ import {
   getRelationshipPatchesSync,
 } from "@/lib/program3/store";
 import { getTeamProfilesSync } from "@/lib/program4/store";
-import { deriveSalesStage } from "@/lib/sales-cs";
+import { deriveSalesStage, relationshipHasOpenSupport } from "@/lib/sales-cs";
 import type {
   Communication,
   FounderProgramStats,
@@ -470,9 +470,7 @@ export function getDashboardBuckets(): DashboardBuckets {
       Boolean(r.nextMilestoneAt),
   );
 
-  const supportRequests = relationships.filter(
-    (r) => r.supportOpenCount > 0 || r.status === "support",
-  );
+  const supportRequests = relationships.filter(relationshipHasOpenSupport);
 
   const recentActivity = [...snapshot.timelineEvents]
     .sort((a, b) => new Date(b.occurredAt).getTime() - new Date(a.occurredAt).getTime())

@@ -541,6 +541,21 @@ export function deriveCustomerSuccessStageBase(
   }
 }
 
+/**
+ * True when this relationship should count toward the CS open-support badge
+ * and appear under Needs Support (includes NPS / product feedback items).
+ */
+export function relationshipHasOpenSupport(
+  relationship: Pick<
+    Relationship,
+    "status" | "supportOpenCount" | "openFeedbackItems"
+  >,
+): boolean {
+  if ((relationship.supportOpenCount || 0) > 0) return true;
+  if (normalizeLifecycleStatus(relationship.status) === "support") return true;
+  return (relationship.openFeedbackItems ?? []).some((i) => i.status === "open");
+}
+
 /** Infer CS stage from legacy lifecycle status when customerSuccessStage unset. */
 export function deriveCustomerSuccessStage(
   relationship: Pick<
@@ -550,10 +565,11 @@ export function deriveCustomerSuccessStage(
     | "onboardingType"
     | "health"
     | "supportOpenCount"
+    | "openFeedbackItems"
   >,
 ): CustomerSuccessStage {
   // Pin open-support relationships in Needs Support until resolved.
-  if ((relationship.supportOpenCount || 0) > 0) return "needs_support";
+  if (relationshipHasOpenSupport(relationship)) return "needs_support";
   return deriveCustomerSuccessStageBase(relationship);
 }
 

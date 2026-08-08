@@ -2,6 +2,7 @@ import Link from "next/link";
 
 import { AutoArrivalBadge } from "@/components/relationships/auto-arrival-badge";
 import { CustomerSuccessBoard } from "@/components/relationships/customer-success-board";
+import { supportItemPreview } from "@/components/relationships/support-preview";
 import {
   DataTable,
   PageHeader,
@@ -32,12 +33,13 @@ import {
   isCsAutoArrivalStage,
   isInCustomerSuccessView,
   matchesCustomerSuccessFlag,
+  relationshipHasOpenSupport,
   resolveCustomerSuccessFlag,
   toCustomerHealthBadge,
   type CustomerSuccessFlag,
   type CustomerSuccessStage,
 } from "@/lib/sales-cs";
-import type { Subscription } from "@/lib/types";
+import type { Relationship, Subscription } from "@/lib/types";
 import { formatRelativeDay, welcomeBackBadgeLabel } from "@/lib/utils";
 import {
   acknowledgeStageAutoArrivals,
@@ -103,7 +105,16 @@ export default async function CustomerSuccessPage({
     await acknowledgeStageAutoArrivals("cs", stageFilter).catch(() => null);
   }
 
-  const all = getRelationships().filter(isInCustomerSuccessView);
+  // Include open-support / NPS feedback even when still on Sales (e.g. inquiry
+  // created via product feedback) so Needs Support is never an empty kanban
+  // while the sidebar badge counts them.
+  const byId = new Map<string, Relationship>();
+  for (const r of getRelationships()) {
+    if (isInCustomerSuccessView(r) || relationshipHasOpenSupport(r)) {
+      byId.set(r.id, r);
+    }
+  }
+  const all = [...byId.values()];
 
   let relationships =
     stageFilter === "all"
@@ -115,6 +126,8 @@ export default async function CustomerSuccessPage({
       matchesCustomerSuccessFlag(r, flagFilter),
     );
   }
+
+  const openSupportShown = relationships.filter(relationshipHasOpenSupport);
 
   const listHref = buildCsHref({
     view: "list",
@@ -276,6 +289,57 @@ export default async function CustomerSuccessPage({
         </p>
       ) : null}
 
+      {stageFilter === "needs_support" ? (
+        <Panel title="Needs support" className="mb-6">
+          {openSupportShown.length === 0 ? (
+            <p className="text-sm ws-muted">No open support or feedback.</p>
+          ) : (
+            <ul className="divide-y divide-[color-mix(in_srgb,var(--taupe-medium)_35%,transparent)]">
+              {openSupportShown.map((r) => {
+                const items = (r.openFeedbackItems ?? []).map((i) => ({
+                  id: i.id,
+                  type: i.type,
+                  subject: i.subject,
+                  body: i.body,
+                  createdAt: i.createdAt,
+                  status: i.status,
+                }));
+                const preview =
+                  supportItemPreview(items) ||
+                  (r.supportOpenCount > 0
+                    ? `${r.supportOpenCount} open`
+                    : "Open support");
+                const openCount =
+                  items.filter((i) => i.status === "open").length ||
+                  r.supportOpenCount ||
+                  0;
+                return (
+                  <li key={r.id} className="flex items-start justify-between gap-3 py-3 first:pt-0 last:pb-0">
+                    <div className="min-w-0">
+                      <Link
+                        href={`/relationships/${r.id}?panel=support&from=customer-success`}
+                        className="font-medium hover:text-[var(--heritage-sage)]"
+                      >
+                        {r.venue.name}
+                      </Link>
+                      <p className="mt-0.5 text-sm ws-muted">{preview}</p>
+                      {!isInCustomerSuccessView(r) ? (
+                        <p className="mt-0.5 text-xs ws-muted">
+                          Not yet in CS pipeline · still {r.currentStageLabel || r.status}
+                        </p>
+                      ) : null}
+                    </div>
+                    <span className="shrink-0 text-xs tabular-nums ws-muted">
+                      {openCount} open
+                    </span>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </Panel>
+      ) : null}
+
       {view === "pipeline" ? (
         <CustomerSuccessBoard
           relationships={relationships}
@@ -314,7 +378,7 @@ export default async function CustomerSuccessPage({
                 <div key={`${r.id}-venue`}>
                   <Link
                     href={`/relationships/${r.id}?from=customer-success${
-                      (r.supportOpenCount || 0) > 0 ? "&panel=support" : ""
+                      relationshipHasOpenSupport(r) ? "&panel=support" : ""
                     }`}
                     className="font-medium hover:text-[var(--heritage-sage)]"
                   >

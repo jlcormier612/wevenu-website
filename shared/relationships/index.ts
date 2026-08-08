@@ -47,6 +47,7 @@ export {
   isCsAutoArrivalStage,
   isInCustomerSuccessView,
   isInSalesView,
+  relationshipHasOpenSupport,
   normalizeSalesStage,
   normalizeCustomerSuccessStage,
   deriveSalesStage,
