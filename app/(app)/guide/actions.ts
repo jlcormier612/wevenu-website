@@ -2,10 +2,20 @@
 
 import { createClient } from "@/integrations/supabase/server";
 import { getCurrentVenue } from "@/lib/venue/service";
+import {
+  DEFAULT_SECTION_AUDIENCES,
+  normalizeSectionAudiences,
+  normalizeSectionOverrides,
+  type GuideAudience,
+  type GuideFaqEntry,
+  type GuideSectionKey,
+  type SectionOverrides,
+} from "@/lib/venue-guide/audience";
 
-export type FaqEntry     = { question: string; answer: string };
+export type FaqEntry = GuideFaqEntry;
 export type HotelBlock   = { name: string; url?: string; code?: string; notes?: string };
 export type VenueContact = { name: string; role: string; phone?: string; email?: string };
+export type { GuideAudience, GuideSectionKey, SectionOverrides };
 
 export type VenueGuideData = {
   parkingInfo:          string | null;
@@ -18,6 +28,8 @@ export type VenueGuideData = {
   thingsToDo:           string | null;
   faqs:                 FaqEntry[];
   importantContacts:    VenueContact[];
+  sectionAudiences:     Record<GuideSectionKey, GuideAudience>;
+  sectionOverrides:     SectionOverrides;
 };
 
 type DbRow = {
@@ -31,6 +43,8 @@ type DbRow = {
   things_to_do:          string | null;
   faqs:                  FaqEntry[];
   important_contacts:    VenueContact[];
+  section_audiences:     unknown;
+  section_overrides:     unknown;
 };
 
 function mapRow(row: DbRow): VenueGuideData {
@@ -45,6 +59,8 @@ function mapRow(row: DbRow): VenueGuideData {
     thingsToDo:           row.things_to_do,
     faqs:                 row.faqs                  ?? [],
     importantContacts:    row.important_contacts     ?? [],
+    sectionAudiences:     normalizeSectionAudiences(row.section_audiences),
+    sectionOverrides:     normalizeSectionOverrides(row.section_overrides),
   };
 }
 
@@ -71,6 +87,8 @@ type GuidePartial = {
   things_to_do?:          string | null;
   faqs?:                  FaqEntry[];
   important_contacts?:    VenueContact[];
+  section_audiences?:     Record<GuideSectionKey, GuideAudience>;
+  section_overrides?:     SectionOverrides;
 };
 
 export async function saveGuideAction(partial: GuidePartial): Promise<{ ok: boolean; error?: string }> {
@@ -82,4 +100,21 @@ export async function saveGuideAction(partial: GuidePartial): Promise<{ ok: bool
     .upsert({ venue_id: venue.id, ...partial }, { onConflict: "venue_id" });
   if (error) return { ok: false, error: error.message };
   return { ok: true };
+}
+
+export function emptyVenueGuideData(): VenueGuideData {
+  return {
+    parkingInfo: null,
+    transportation: null,
+    nearbyAccommodations: null,
+    hotelBlocks: [],
+    rainPlan: null,
+    policies: null,
+    ceremonyInstructions: null,
+    thingsToDo: null,
+    faqs: [],
+    importantContacts: [],
+    sectionAudiences: { ...DEFAULT_SECTION_AUDIENCES },
+    sectionOverrides: {},
+  };
 }

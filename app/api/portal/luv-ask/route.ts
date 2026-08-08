@@ -11,6 +11,10 @@
 
 import { NextResponse } from "next/server";
 import { createClient } from "@/integrations/supabase/server";
+import {
+  projectGuideForAudience,
+  type VenueGuideRaw,
+} from "@/lib/venue-guide/audience";
 
 type VenueInfo = {
   venueName?: string;
@@ -72,6 +76,7 @@ function buildContext(info: VenueInfo, venueName: string): string {
     `- Keep answers warm and personal — you're a trusted friend helping them plan, not a help desk.`,
     `- When you reference information from a specific section, set guideSection accordingly so couples can explore further.`,
     `- Never make up information about the venue.`,
+    `- Never reference vendor-only setup, load-in, or dock details — those are outside this couple-facing guide.`,
     ``,
     `--- VENUE KNOWLEDGE ---`,
   );
@@ -163,20 +168,26 @@ export async function POST(request: Request) {
   const { data: venueInfo, error: infoErr } = await supabase.rpc("get_venue_info_for_portal", { p_token: token });
   if (infoErr) return NextResponse.json({ error: infoErr.message }, { status: 500 });
 
-  const venueName = (venueInfo as { venue_name?: string } | null)?.venue_name ?? "your venue";
+  // get_venue_info_for_portal returns camelCase keys (no nested venue_name).
+  const projected = projectGuideForAudience(
+    (venueInfo ?? null) as VenueGuideRaw | null,
+    "clients",
+  );
+
+  const venueName = "your venue";
 
   const info: VenueInfo = {
     venueName,
-    parkingInfo:          venueInfo?.parking_info,
-    transportation:       venueInfo?.transportation,
-    faqs:                 venueInfo?.faqs,
-    policies:             venueInfo?.policies,
-    ceremonyInstructions: venueInfo?.ceremony_instructions,
-    rainPlan:             venueInfo?.rain_plan,
-    nearbyAccommodations: venueInfo?.nearby_accommodations,
-    thingsToDo:           venueInfo?.things_to_do,
-    importantContacts:    venueInfo?.important_contacts,
-    hotelBlocks:          venueInfo?.hotel_blocks,
+    parkingInfo:          projected?.parkingInfo ?? null,
+    transportation:       projected?.transportation ?? null,
+    faqs:                 projected?.faqs ?? [],
+    policies:             projected?.policies ?? null,
+    ceremonyInstructions: projected?.ceremonyInstructions ?? null,
+    rainPlan:             projected?.rainPlan ?? null,
+    nearbyAccommodations: projected?.nearbyAccommodations ?? null,
+    thingsToDo:           projected?.thingsToDo ?? null,
+    importantContacts:    (projected?.importantContacts ?? []) as VenueInfo["importantContacts"],
+    hotelBlocks:          (projected?.hotelBlocks ?? []) as VenueInfo["hotelBlocks"],
   };
 
   const systemPrompt = buildContext(info, venueName);

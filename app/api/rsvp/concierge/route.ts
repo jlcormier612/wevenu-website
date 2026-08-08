@@ -13,6 +13,10 @@
 
 import { NextResponse } from "next/server";
 import { createClient } from "@/integrations/supabase/server";
+import {
+  projectGuideForAudience,
+  type VenueGuideRaw,
+} from "@/lib/venue-guide/audience";
 
 type ConciergeContext = {
   couple?: { firstName?: string; partnerFirstName?: string };
@@ -24,18 +28,7 @@ type ConciergeContext = {
     travel?: { message?: string; hotels?: { name: string; url?: string; code?: string; notes?: string }[]; transportation?: { notes?: string } } | null;
     thingsToDo?: { title?: string; intro?: string; items?: { name: string; description?: string; address?: string }[] } | null;
   };
-  venueInfo?: {
-    parkingInfo?: string | null;
-    transportation?: string | null;
-    faqs?: { question: string; answer: string }[] | null;
-    policies?: string | null;
-    ceremonyInstructions?: string | null;
-    rainPlan?: string | null;
-    nearbyAccommodations?: string | null;
-    thingsToDo?: string | null;
-    importantContacts?: { name: string; role: string; phone?: string; email?: string }[] | null;
-    hotelBlocks?: { name: string; url?: string; code?: string; notes?: string }[] | null;
-  };
+  venueInfo?: VenueGuideRaw | null;
   error?: string;
 };
 
@@ -60,6 +53,7 @@ function buildContext(ctx: ConciergeContext): string {
     `- Never reveal any other guest's information — you don't have access to any, and none is provided to you.`,
     `- Never report on this guest's own RSVP status, meal choice, or activity — you're not a status dashboard.`,
     `- Keep the tone like a host who's genuinely glad they're coming, never like a customer-service bot.`,
+    `- Never reference vendor-only setup, load-in, or dock details.`,
     ``,
     `--- WHAT YOU KNOW ---`,
   );
@@ -98,7 +92,8 @@ function buildContext(ctx: ConciergeContext): string {
     for (const it of ttd.items) parts.push(`- ${it.name}${it.description ? `: ${it.description}` : ""}`);
   }
 
-  const vi = ctx.venueInfo;
+  // Guests see client-facing guide content only (never vendor overrides).
+  const vi = projectGuideForAudience(ctx.venueInfo ?? null, "clients");
   if (vi) {
     if (hasContent(vi.policies)) parts.push(`Venue Policies:\n${vi.policies}`);
     if (hasContent(vi.parkingInfo) || hasContent(vi.transportation)) {
@@ -112,7 +107,9 @@ function buildContext(ctx: ConciergeContext): string {
       parts.push(`Accommodations:`);
       if (hasContent(vi.nearbyAccommodations)) parts.push(vi.nearbyAccommodations!);
       if (vi.hotelBlocks?.length) {
-        for (const h of vi.hotelBlocks) parts.push(`- ${h.name}${h.code ? ` (booking code: ${h.code})` : ""}${h.url ? ` — ${h.url}` : ""}`);
+        for (const h of vi.hotelBlocks as { name: string; url?: string; code?: string; notes?: string }[]) {
+          parts.push(`- ${h.name}${h.code ? ` (booking code: ${h.code})` : ""}${h.url ? ` — ${h.url}` : ""}`);
+        }
       }
     }
     if (vi.faqs?.length) {
@@ -121,7 +118,9 @@ function buildContext(ctx: ConciergeContext): string {
     }
     if (vi.importantContacts?.length) {
       parts.push(`Important Contacts:`);
-      for (const c of vi.importantContacts) parts.push(`- ${c.name} (${c.role})${c.phone ? ` — ${c.phone}` : ""}`);
+      for (const c of vi.importantContacts as { name: string; role: string; phone?: string; email?: string }[]) {
+        parts.push(`- ${c.name} (${c.role})${c.phone ? ` — ${c.phone}` : ""}`);
+      }
     }
   }
 
