@@ -15,17 +15,44 @@ import * as React from "react";
 import { Check, CheckCircle2, Circle, Clock, FileText, Link2, Loader2, Pencil, Plus, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { formatTime } from "@/lib/timeline/constants";
+import { formatTime, formatTimelineDayHeader, isMultiDayEvent, maxDayOffset, timelineDayOptions, compareTimelineEntries } from "@/lib/timeline/constants";
 import { TIMELINE_AUDIENCES, type TimelineAudience } from "@/lib/timeline/types";
 import type { PortalTimeline, PortalTimelineEntry, PortalTimelineSection } from "@/lib/portal/types";
 import { celebrateLuv } from "@/lib/luv/celebrate";
 import { coupleCelebrationMessage } from "@/lib/luv/celebrations";
 
-const UNSECTIONED = "__unsectioned__";
+function formatEntryTimeRange(entryTime: string | null, endTime: string | null): string {
+  if (!entryTime && !endTime) return "";
+  if (entryTime && endTime) return `${formatTime(entryTime)} – ${formatTime(endTime)}`;
+  return formatTime(entryTime ?? endTime);
+}
+
+function DaySelect({
+  value, onChange, eventDate, eventEndDate,
+}: {
+  value: number;
+  onChange: (v: number) => void;
+  eventDate: string;
+  eventEndDate?: string | null;
+}) {
+  const options = timelineDayOptions(eventDate, eventEndDate);
+  if (options.length <= 1) return null;
+  return (
+    <select
+      value={value}
+      onChange={(e) => onChange(Number(e.target.value))}
+      className="h-8 rounded-md border border-input bg-background px-2 text-sm"
+      aria-label="Day"
+    >
+      {options.map((o) => (
+        <option key={o.value} value={o.value}>{o.label}</option>
+      ))}
+    </select>
+  );
+}
 
 function VisibilityPicker({
   entryId, token, audiences, onChanged,
@@ -67,24 +94,37 @@ function VisibilityPicker({
 }
 
 function EntryEditForm({
-  entry, onSave, onCancel, pending,
-}: { entry: PortalTimelineEntry; onSave: (title: string, description: string, entryTime: string) => void; onCancel: () => void; pending: boolean }) {
+  entry, eventDate, eventEndDate, onSave, onCancel, pending,
+}: {
+  entry: PortalTimelineEntry;
+  eventDate?: string | null;
+  eventEndDate?: string | null;
+  onSave: (title: string, description: string, entryTime: string, endTime: string, dayOffset: number) => void;
+  onCancel: () => void;
+  pending: boolean;
+}) {
   const [title, setTitle] = React.useState(entry.title);
   const [description, setDescription] = React.useState(entry.description ?? "");
   const [entryTime, setEntryTime] = React.useState(entry.entryTime ?? "");
+  const [endTime, setEndTime] = React.useState(entry.endTime ?? "");
+  const [dayOffset, setDayOffset] = React.useState(entry.dayOffset ?? 0);
 
   return (
     <div className="space-y-2.5 rounded-xl border border-primary/40 bg-primary/5 p-3">
-      <div className="grid gap-2 sm:grid-cols-[1fr_auto]">
+      <div className="grid gap-2 sm:grid-cols-[1fr_auto_auto_auto]">
         <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Title" className="h-8 text-sm" autoFocus />
-        <Input type="time" value={entryTime} onChange={(e) => setEntryTime(e.target.value)} className="h-8 w-28 text-sm" />
+        {eventDate && (
+          <DaySelect value={dayOffset} onChange={setDayOffset} eventDate={eventDate} eventEndDate={eventEndDate} />
+        )}
+        <Input type="time" value={entryTime} onChange={(e) => setEntryTime(e.target.value)} className="h-8 w-28 text-sm" aria-label="Start time" />
+        <Input type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)} className="h-8 w-28 text-sm" aria-label="End time" />
       </div>
       <Textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Details (optional)" rows={2} className="text-sm" />
       <div className="flex items-center justify-end gap-1.5">
         <Button type="button" variant="ghost" size="sm" onClick={onCancel} disabled={pending} className="h-7 px-2 text-xs">
           <X className="mr-1 h-3 w-3" /> Cancel
         </Button>
-        <Button type="button" size="sm" disabled={!title.trim() || pending} onClick={() => onSave(title, description, entryTime)} className="h-7 px-2 text-xs">
+        <Button type="button" size="sm" disabled={!title.trim() || pending} onClick={() => onSave(title, description, entryTime, endTime, dayOffset)} className="h-7 px-2 text-xs">
           {pending ? <Loader2 className="h-3 w-3 animate-spin" /> : <><Check className="mr-1 h-3 w-3" />Save</>}
         </Button>
       </div>
@@ -93,9 +133,11 @@ function EntryEditForm({
 }
 
 function EntryRow({
-  entry, token, onUpdated, onDeleted, onVisibilityChanged,
+  entry, token, eventDate, eventEndDate, onUpdated, onDeleted, onVisibilityChanged,
 }: {
   entry: PortalTimelineEntry; token: string;
+  eventDate?: string | null;
+  eventEndDate?: string | null;
   onUpdated: (entry: PortalTimelineEntry) => void;
   onDeleted: (id: string) => void;
   onVisibilityChanged: (id: string, audiences: string[]) => void;
@@ -104,16 +146,23 @@ function EntryRow({
   const [saving, setSaving] = React.useState(false);
   const [deleting, setDeleting] = React.useState(false);
 
-  async function handleSave(title: string, description: string, entryTime: string) {
+  async function handleSave(title: string, description: string, entryTime: string, endTime: string, dayOffset: number) {
     setSaving(true);
     const res = await fetch("/api/portal/timeline", {
       method: "POST", headers: { "content-type": "application/json" },
-      body: JSON.stringify({ token, entryId: entry.id, title, description, entryTime }),
+      body: JSON.stringify({ token, entryId: entry.id, title, description, entryTime, endTime, dayOffset }),
     });
     const data = await res.json() as { ok: boolean };
     setSaving(false);
     if (data.ok) {
-      onUpdated({ ...entry, title, description: description || null, entryTime: entryTime || null });
+      onUpdated({
+        ...entry,
+        title,
+        description: description || null,
+        entryTime: entryTime || null,
+        endTime: endTime || null,
+        dayOffset,
+      });
       setEditing(false);
     } else {
       toast.error("Could not save your changes.");
@@ -134,19 +183,28 @@ function EntryRow({
   }
 
   if (editing) {
-    return <EntryEditForm entry={entry} onSave={handleSave} onCancel={() => setEditing(false)} pending={saving} />;
+    return (
+      <EntryEditForm
+        entry={entry}
+        eventDate={eventDate}
+        eventEndDate={eventEndDate}
+        onSave={handleSave}
+        onCancel={() => setEditing(false)}
+        pending={saving}
+      />
+    );
   }
 
   const isOwnItem = entry.owner === "client";
 
   return (
-    <div className="rounded-xl border border-border bg-card p-3">
+    <div className="w-full rounded-xl border border-border/60 bg-card px-3 py-3">
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
-            {entry.entryTime ? (
+            {entry.entryTime || entry.endTime ? (
               <span className="flex items-center gap-1 text-xs font-semibold text-heading">
-                <Clock className="h-3 w-3" /> {formatTime(entry.entryTime)}
+                <Clock className="h-3 w-3" /> {formatEntryTimeRange(entry.entryTime, entry.endTime)}
               </span>
             ) : (
               <span className="text-[10px] italic text-muted-foreground">No time set</span>
@@ -204,12 +262,18 @@ function EntryRow({
 }
 
 function AddItemAction({
-  token, sectionId, onAdded,
-}: { token: string; sectionId: string; onAdded: (entry: PortalTimelineEntry) => void }) {
+  token, sectionId, defaultDayOffset = 0, eventDate, eventEndDate, onAdded,
+}: {
+  token: string; sectionId: string; defaultDayOffset?: number;
+  eventDate?: string | null; eventEndDate?: string | null;
+  onAdded: (entry: PortalTimelineEntry) => void;
+}) {
   const [adding, setAdding] = React.useState(false);
   const [title, setTitle] = React.useState("");
   const [description, setDescription] = React.useState("");
   const [entryTime, setEntryTime] = React.useState("");
+  const [endTime, setEndTime] = React.useState("");
+  const [dayOffset, setDayOffset] = React.useState(defaultDayOffset);
   const [saving, setSaving] = React.useState(false);
 
   async function handleSave() {
@@ -217,13 +281,13 @@ function AddItemAction({
     setSaving(true);
     const res = await fetch("/api/portal/timeline/add", {
       method: "POST", headers: { "content-type": "application/json" },
-      body: JSON.stringify({ token, sectionId, title, description, entryTime }),
+      body: JSON.stringify({ token, sectionId, title, description, entryTime, endTime, dayOffset }),
     });
     const data = await res.json() as { ok: boolean; entry?: PortalTimelineEntry };
     setSaving(false);
     if (data.ok && data.entry) {
       onAdded(data.entry);
-      setTitle(""); setDescription(""); setEntryTime(""); setAdding(false);
+      setTitle(""); setDescription(""); setEntryTime(""); setEndTime(""); setDayOffset(defaultDayOffset); setAdding(false);
     } else {
       toast.error("Could not add this item.");
     }
@@ -239,9 +303,13 @@ function AddItemAction({
 
   return (
     <div className="space-y-2.5 rounded-xl border border-primary/40 bg-primary/5 p-3">
-      <div className="grid gap-2 sm:grid-cols-[1fr_auto]">
+      <div className="grid gap-2 sm:grid-cols-[1fr_auto_auto_auto]">
         <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Title" className="h-8 text-sm" autoFocus />
-        <Input type="time" value={entryTime} onChange={(e) => setEntryTime(e.target.value)} className="h-8 w-28 text-sm" />
+        {eventDate && (
+          <DaySelect value={dayOffset} onChange={setDayOffset} eventDate={eventDate} eventEndDate={eventEndDate} />
+        )}
+        <Input type="time" value={entryTime} onChange={(e) => setEntryTime(e.target.value)} className="h-8 w-28 text-sm" aria-label="Start time" />
+        <Input type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)} className="h-8 w-28 text-sm" aria-label="End time" />
       </div>
       <Textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Details (optional)" rows={2} className="text-sm" />
       <div className="flex items-center justify-end gap-1.5">
@@ -290,7 +358,7 @@ function TimelineStatus({
   }
 
   return (
-    <div className="rounded-2xl border border-border bg-card p-4 space-y-2">
+    <div className="w-full rounded-xl border border-border/60 bg-card px-3 py-3 space-y-2">
       <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground">Timeline Status</p>
 
       {lastSubmittedAt ? (
@@ -327,20 +395,40 @@ function TimelineStatus({
 
 export function TimelineSection({
   token, clientId, initialSections, initialEntries, initialLastSubmittedAt = null, initialHasUnpublishedChanges = false,
+  eventDate = null, eventEndDate = null,
 }: {
   token: string; clientId: string;
   initialSections: PortalTimelineSection[]; initialEntries: PortalTimelineEntry[];
   initialLastSubmittedAt?: string | null; initialHasUnpublishedChanges?: boolean;
+  eventDate?: string | null;
+  eventEndDate?: string | null;
 }) {
-  const [entries, setEntries] = React.useState(initialEntries);
+  const [entries, setEntries] = React.useState(
+    initialEntries.map((e) => ({
+      ...e,
+      dayOffset: Number(e.dayOffset ?? 0) || 0,
+      endTime: e.endTime ? String(e.endTime).slice(0, 5) : null,
+    })),
+  );
   const [lastSubmittedAt, setLastSubmittedAt] = React.useState(initialLastSubmittedAt);
   const [hasUnpublishedChanges, setHasUnpublishedChanges] = React.useState(initialHasUnpublishedChanges);
+
+  const multiDay = isMultiDayEvent(eventDate, eventEndDate);
+  const dayOffsets = React.useMemo(() => {
+    if (!multiDay) return [null] as (number | null)[];
+    const max = maxDayOffset(eventDate, eventEndDate);
+    return Array.from({ length: max + 1 }, (_, i) => i);
+  }, [multiDay, eventDate, eventEndDate]);
 
   const refresh = React.useCallback(() => {
     fetch(`/api/portal/timeline?token=${token}`)
       .then((r) => r.json())
       .then((d: PortalTimeline) => {
-        setEntries(d.entries ?? []);
+        setEntries((d.entries ?? []).map((e) => ({
+          ...e,
+          dayOffset: Number(e.dayOffset ?? 0) || 0,
+          endTime: e.endTime ? String(e.endTime).slice(0, 5) : null,
+        })));
         setLastSubmittedAt(d.lastSubmittedAt ?? null);
         setHasUnpublishedChanges(d.hasUnpublishedChanges ?? false);
       })
@@ -348,12 +436,20 @@ export function TimelineSection({
   }, [token]);
 
   function handleUpdated(updated: PortalTimelineEntry) {
-    setEntries((prev) => prev.map((e) => (e.id === updated.id ? updated : e)));
+    setEntries((prev) => prev.map((e) => (e.id === updated.id ? {
+      ...updated,
+      dayOffset: Number(updated.dayOffset ?? 0) || 0,
+      endTime: updated.endTime ? String(updated.endTime).slice(0, 5) : null,
+    } : e)));
     setHasUnpublishedChanges(true);
   }
 
   function handleAdded(entry: PortalTimelineEntry) {
-    setEntries((prev) => [...prev, entry]);
+    setEntries((prev) => [...prev, {
+      ...entry,
+      dayOffset: Number(entry.dayOffset ?? 0) || 0,
+      endTime: entry.endTime ? String(entry.endTime).slice(0, 5) : null,
+    }]);
     setHasUnpublishedChanges(true);
   }
 
@@ -366,71 +462,95 @@ export function TimelineSection({
     setEntries((prev) => prev.map((e) => (e.id === id ? { ...e, audiences } : e)));
   }
 
-  const groups = React.useMemo(() => {
-    const map = new Map<string, PortalTimelineEntry[]>();
-    initialSections.forEach((s) => map.set(s.id, []));
-    map.set(UNSECTIONED, []);
-    for (const e of entries) {
-      const key = e.sectionId && map.has(e.sectionId) ? e.sectionId : UNSECTIONED;
-      map.get(key)!.push(e);
-    }
-    for (const [, list] of map) list.sort((a, b) => a.sortOrder - b.sortOrder);
-    return map;
-  }, [entries, initialSections]);
+  /** Whole-day chronological list — never section-first (that put 8pm client items above 6pm venue items). */
+  function entriesForDay(day: number | null) {
+    return entries
+      .filter((e) => day == null || Number(e.dayOffset ?? 0) === day)
+      .slice()
+      .sort(compareTimelineEntries);
+  }
 
   if (entries.length === 0 && initialSections.length === 0) {
     return (
       <div className="rounded-2xl border border-dashed border-border py-16 text-center px-6 space-y-2">
         <p className="text-2xl">🕒</p>
         <p className="text-sm font-medium text-heading">No timeline shared yet</p>
-        <p className="text-xs text-muted-foreground max-w-xs mx-auto">Your venue will share the day-of schedule here as it comes together.</p>
+        <p className="text-xs text-muted-foreground max-w-xs mx-auto">Your venue will share the Timeline here as it comes together.</p>
       </div>
     );
   }
 
-  const unsectioned = groups.get(UNSECTIONED) ?? [];
+  function renderDay(day: number | null) {
+    const list = entriesForDay(day);
+    const addTargetSectionId = initialSections.find((s) => s.clientCanAdd)?.id ?? null;
+    const sectionNameById = new Map(initialSections.map((s) => [s.id, s.name]));
+
+    return (
+      <>
+        {list.length > 0 && (
+          <div className="space-y-2">
+            {list.map((entry, index) => {
+              const sectionName = entry.sectionId ? sectionNameById.get(entry.sectionId) ?? null : null;
+              const prev = index > 0 ? list[index - 1] : null;
+              const prevSectionName = prev?.sectionId ? sectionNameById.get(prev.sectionId) ?? null : null;
+              const showSectionLabel = !!sectionName && sectionName !== prevSectionName;
+              return (
+                <div key={entry.id} className="space-y-1">
+                  {showSectionLabel && (
+                    <p className="pt-1 text-[10px] font-medium uppercase tracking-widest text-muted-foreground px-0.5">
+                      {sectionName}
+                    </p>
+                  )}
+                  <EntryRow
+                    entry={entry}
+                    token={token}
+                    eventDate={eventDate}
+                    eventEndDate={eventEndDate}
+                    onUpdated={handleUpdated}
+                    onDeleted={handleDeleted}
+                    onVisibilityChanged={handleVisibilityChanged}
+                  />
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {addTargetSectionId && (
+          <AddItemAction
+            token={token}
+            sectionId={addTargetSectionId}
+            defaultDayOffset={day ?? 0}
+            eventDate={eventDate}
+            eventEndDate={eventEndDate}
+            onAdded={handleAdded}
+          />
+        )}
+      </>
+    );
+  }
 
   return (
-    <div className="space-y-5">
+    <div className="w-full space-y-5">
       <TimelineStatus
         token={token} clientId={clientId}
         lastSubmittedAt={lastSubmittedAt} hasUnpublishedChanges={hasUnpublishedChanges}
         onSubmitted={refresh}
       />
 
-      {initialSections.map((section) => {
-        const list = groups.get(section.id) ?? [];
-        // A brand-new addable section can be legitimately empty until the
-        // couple (or venue) adds its first item — only hide sections that
-        // are both empty and not addable.
-        if (list.length === 0 && !section.clientCanAdd) return null;
+      {dayOffsets.map((day) => {
+        if (!multiDay || day == null || !eventDate) {
+          return <React.Fragment key="single">{renderDay(null)}</React.Fragment>;
+        }
         return (
-          <div key={section.id} className="space-y-2">
-            <div className="flex items-center gap-2">
-              <h3 className="font-heading text-sm font-semibold text-heading">{section.name}</h3>
-              {list.length > 0 && <Badge variant="outline" className="text-[10px]">{list.length}</Badge>}
-            </div>
-            <div className="space-y-2">
-              {list.map((entry) => (
-                <EntryRow key={entry.id} entry={entry} token={token} onUpdated={handleUpdated} onDeleted={handleDeleted} onVisibilityChanged={handleVisibilityChanged} />
-              ))}
-              {list.length === 0 && <p className="text-xs text-muted-foreground italic">Nothing here yet.</p>}
-            </div>
-            {section.clientCanAdd && <AddItemAction token={token} sectionId={section.id} onAdded={handleAdded} />}
+          <div key={day} className="space-y-4">
+            <h3 className="font-heading text-sm font-semibold text-heading border-b border-border pb-2">
+              {formatTimelineDayHeader(eventDate, day)}
+            </h3>
+            <div className="space-y-5">{renderDay(day)}</div>
           </div>
         );
       })}
-
-      {unsectioned.length > 0 && (
-        <div className="space-y-2">
-          {initialSections.length > 0 && <h3 className="font-heading text-sm font-semibold text-heading">Other</h3>}
-          <div className="space-y-2">
-            {unsectioned.map((entry) => (
-              <EntryRow key={entry.id} entry={entry} token={token} onUpdated={handleUpdated} onDeleted={handleDeleted} onVisibilityChanged={handleVisibilityChanged} />
-            ))}
-          </div>
-        </div>
-      )}
     </div>
   );
 }

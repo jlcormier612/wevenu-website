@@ -984,7 +984,7 @@ export function WeddingDayDashboard({
       <div className="grid gap-5 lg:grid-cols-[1fr_380px]">
         <div className="space-y-5">
 
-          <Section title="Run of Show" emoji="📋">
+          <Section title="Timeline" emoji="📋">
             <LiveTimeline entries={data?.timeline ?? []} onStatusChange={handleTimelineStatus} onDelay={handleDelay} />
           </Section>
 

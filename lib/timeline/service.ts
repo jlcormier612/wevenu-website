@@ -17,7 +17,6 @@ import type {
   TimelineEntryAttachment,
   TimelineEntryInput,
   TimelineEntryLink,
-  TimelineEntryStatus,
   TimelineRelatedLink,
   TimelineRelatedSourceType,
   TimelineSection,
@@ -71,14 +70,6 @@ export async function deleteEntry(entryId: string): Promise<TimelineActionResult
   return result as TimelineActionResult;
 }
 
-export async function setEntryStatus(entryId: string, status: TimelineEntryStatus): Promise<TimelineActionResult> {
-  const result = await withVenue(async (supabase, venueId) => {
-    await repo.setEntryStatus(supabase, venueId, entryId, status);
-    return { ok: true } as TimelineActionResult;
-  });
-  return result as TimelineActionResult;
-}
-
 export async function shiftEntriesAfter(
   eventId: string, afterEntryId: string, minutesDelta: number,
 ): Promise<TimelineActionResult & { shiftedCount?: number }> {
@@ -100,7 +91,7 @@ export async function reorderEntry(
 }
 
 export async function reorderEntries(
-  updates: { id: string; sectionId: string | null; sortOrder: number }[],
+  updates: { id: string; sectionId: string | null; sortOrder: number; dayOffset?: number }[],
 ): Promise<TimelineActionResult> {
   const result = await withVenue(async (supabase, venueId) => {
     await repo.reorderEntries(supabase, venueId, updates);

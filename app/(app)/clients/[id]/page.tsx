@@ -32,7 +32,7 @@ import { getTeamMembers } from "@/lib/team/service";
 import {
   getEntryAttachmentsForEvent, getEntryLinksForEvent, getRelatedLinksForEvent, getSections, getTimelineEntries,
 } from "@/lib/timeline/service";
-import { getTemplates as getTimelineTemplates } from "@/lib/timeline-templates/service";
+import { getTemplatesForLibrary as getTimelineTemplatesForLibrary } from "@/lib/timeline-templates/service";
 import { createClient } from "@/integrations/supabase/server";
 import { getCurrentVenue } from "@/lib/venue/service";
 import { getEventRecommendations } from "@/lib/vendor-recommendations/service";
@@ -82,14 +82,14 @@ export default async function BookingWorkspacePage({ params }: Props) {
   const [
     event, availableVendors, allInvoices, documents, vendorDocuments, questionnaire, eventTasks, allPlaybookTemplates,
     playbookApplications, readinessByKind, contextLinksByTask, timelineEntries, venue, vendorRecommendations,
-    spaces, contractTemplates, allContracts, timelineTemplates,
+    spaces, contractTemplates, allContracts, allTimelineTemplates,
     timelineSections, timelineLinksByEntry, timelineAttachmentsByEntry, timelineRelatedLinksByEntry,
     floorPlanTemplates, inventoryUsage,
   ] = await Promise.all([
     getEvent(eventId), getVendors(), getInvoices({}), getDocuments("event", eventId), getEventDocumentsFromVendors(eventId), getQuestionnaire(eventId),
     getEventTasks(eventId), getTemplatesForLibrary(), getEventPlaybookApplications(eventId), getEventTaskReadinessByKind(eventId),
     getEventTaskContextLinksForEvent(eventId), getTimelineEntries(eventId), getCurrentVenue(), getEventRecommendations(eventId),
-    getSpaces(), getContractTemplates(), getContracts(), getTimelineTemplates(),
+    getSpaces(), getContractTemplates(), getContracts(), getTimelineTemplatesForLibrary(),
     getSections(eventId), getEntryLinksForEvent(eventId), getEntryAttachmentsForEvent(eventId), getRelatedLinksForEvent(eventId),
     getFloorPlanTemplates(), getUsageForEvent(eventId),
   ]);
@@ -97,6 +97,7 @@ export default async function BookingWorkspacePage({ params }: Props) {
   // Archived templates aren't valid choices for applying to a booking —
   // same exclusion the old getTemplates() applied by default.
   const playbookTemplates = allPlaybookTemplates.filter((t) => !t.isArchived);
+  const timelineTemplates = allTimelineTemplates.filter((t) => !t.isArchived);
   const eventInvoices = allInvoices.filter((inv) => inv.eventId === eventId || inv.clientId === id);
   const spaceName = spaces.find((s) => s.id === event.spaceId)?.name ?? null;
   const contracts = allContracts.filter((c) => c.eventId === eventId || c.clientId === id);

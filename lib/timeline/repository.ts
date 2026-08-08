@@ -4,6 +4,8 @@
 import { createClient } from "@/integrations/supabase/server";
 import * as playbooksRepo from "@/lib/playbooks/repository";
 import {
+  clampDayOffset,
+  compareTimelineEntries,
   minutesToTime,
   timeToMinutes,
   type TimelineTemplate,
@@ -18,7 +20,7 @@ type DbClient = Awaited<ReturnType<typeof createClient>>;
 type EntryRow = {
   id: string; venue_id: string; event_id: string;
   title: string; description: string | null; notes: string | null;
-  entry_time: string | null; sort_order: number;
+  entry_time: string | null; day_offset: number; sort_order: number;
   audiences: string[]; section_id: string | null;
   owner: TimelineOwner; lock_state: TimelineLockState;
   status: TimelineEntryStatus;
@@ -35,6 +37,7 @@ function mapEntry(r: EntryRow): TimelineEntry {
     id: r.id, venueId: r.venue_id, eventId: r.event_id,
     title: r.title, description: r.description, notes: r.notes,
     entryTime: r.entry_time?.slice(0, 5) ?? null,
+    dayOffset: r.day_offset ?? 0,
     audiences: (r.audiences ?? ["venue"]) as TimelineAudience[],
     sectionId: r.section_id,
     sortOrder: r.sort_order,
@@ -46,8 +49,24 @@ function mapEntry(r: EntryRow): TimelineEntry {
   };
 }
 
+async function resolveClampedDayOffset(
+  client: DbClient, eventId: string, dayOffset: number | null | undefined,
+): Promise<number> {
+  const { data } = await client.from("events")
+    .select("event_date, event_end_date")
+    .eq("id", eventId)
+    .maybeSingle<{ event_date: string | null; event_end_date: string | null }>();
+  return clampDayOffset(dayOffset ?? 0, data?.event_date ?? null, data?.event_end_date);
+}
+
 function mapSection(r: SectionRow): TimelineSection {
   return { id: r.id, venueId: r.venue_id, eventId: r.event_id, name: r.name, sortOrder: r.sort_order, clientCanAdd: r.client_can_add, createdAt: r.created_at, updatedAt: r.updated_at };
+}
+
+/** Venue never owns guest publication — strip on write so legacy tags can't re-stick. */
+function sanitizeVenueAudiences(audiences: TimelineAudience[] | undefined): TimelineAudience[] {
+  const next = (audiences ?? ["venue"]).filter((a) => a !== "guests");
+  return next.length > 0 ? next : ["venue"];
 }
 
 // ---- Entries -------------------------------------------------------------------
@@ -60,8 +79,8 @@ function mapSection(r: SectionRow): TimelineSection {
  * live items plus the client's latest SUBMITTED snapshot, never the
  * client's live private draft (which would otherwise leak straight into
  * the coordinator's own editor, the exact Workspace Sovereignty violation
- * this whole model exists to prevent). Base order unchanged (time ASC,
- * nulls last, then sort_order, then created_at) — the SQL side already
+ * this whole model exists to prevent). Order is day_offset, then time ASC
+ * nulls last, then sort_order, then created_at — the SQL side already
  * orders each of the two merged sources this way; re-sorted here once
  * more since concatenating two internally-sorted arrays doesn't
  * interleave them into one global order.
@@ -77,6 +96,7 @@ export async function getTimelineEntries(
     title: e.title as string, description: (e.description as string | null) ?? null,
     notes: (e.notes as string | null) ?? null,
     entryTime: (e.entryTime as string | null)?.slice(0, 5) ?? null,
+    dayOffset: (e.dayOffset as number | null | undefined) ?? 0,
     audiences: (e.audiences ?? []) as TimelineAudience[],
     sectionId: (e.sectionId as string | null) ?? null,
     sortOrder: (e.sortOrder as number) ?? 0,
@@ -87,15 +107,7 @@ export async function getTimelineEntries(
     createdAt: (e.createdAt as string | null) ?? "",
     updatedAt: (e.updatedAt as string | null) ?? "",
   }));
-  entries.sort((a, b) => {
-    if ((a.entryTime ?? "") !== (b.entryTime ?? "")) {
-      if (a.entryTime == null) return 1;
-      if (b.entryTime == null) return -1;
-      return a.entryTime < b.entryTime ? -1 : 1;
-    }
-    if (a.sortOrder !== b.sortOrder) return a.sortOrder - b.sortOrder;
-    return a.createdAt < b.createdAt ? -1 : a.createdAt > b.createdAt ? 1 : 0;
-  });
+  entries.sort(compareTimelineEntries);
   return entries;
 }
 
@@ -107,6 +119,7 @@ export async function getTimelineEntries(
 export async function insertEntry(
   client: DbClient, venueId: string, eventId: string, input: TimelineEntryInput,
 ): Promise<TimelineEntry> {
+  const dayOffset = await resolveClampedDayOffset(client, eventId, input.dayOffset);
   const { data, error } = await client.from("timeline_entries")
     .insert({
       venue_id: venueId, event_id: eventId,
@@ -114,7 +127,8 @@ export async function insertEntry(
       description: input.description.trim() || null,
       notes: input.notes?.trim() || null,
       entry_time: input.entryTime || null,
-      audiences: input.audiences ?? ["venue"],
+      day_offset: dayOffset,
+      audiences: sanitizeVenueAudiences(input.audiences),
       section_id: input.sectionId ?? null,
       sort_order: input.sortOrder ?? 0,
       owner: "venue",
@@ -137,25 +151,31 @@ export async function insertEntry(
  * client-owned row still physically exists live in this table (so day-of
  * status tracking keeps working, per Q3) — that's not an invitation for
  * the coordinator's own content-save flow to mutate the couple's
- * still-private draft. (The quick day-of status toggle, setEntryStatus
- * below, is a genuinely separate, intentionally owner-agnostic function —
- * execution tracking is orthogonal to authorship.)
+ * still-private draft. Day-of status updates go through
+ * update_timeline_entry_status (Wedding Day Dashboard), not this content path.
  */
 export async function updateEntry(
   client: DbClient, venueId: string, entryId: string, input: TimelineEntryInput,
 ): Promise<void> {
-  const { data: current } = await client.from("timeline_entries").select("owner").eq("id", entryId).eq("venue_id", venueId).maybeSingle<{ owner: TimelineOwner }>();
+  const { data: current } = await client.from("timeline_entries")
+    .select("owner, event_id, day_offset")
+    .eq("id", entryId).eq("venue_id", venueId)
+    .maybeSingle<{ owner: TimelineOwner; event_id: string; day_offset: number }>();
   if (current?.owner !== "venue") throw new Error("This item belongs to the couple's own planning timeline and can't be edited here.");
 
+  const dayOffset = await resolveClampedDayOffset(
+    client, current.event_id, input.dayOffset !== undefined ? input.dayOffset : current.day_offset,
+  );
   const patch: Record<string, unknown> = {
     title: input.title.trim(),
     description: input.description.trim() || null,
     entry_time: input.entryTime || null,
+    day_offset: dayOffset,
   };
   if (input.notes !== undefined) patch.notes = input.notes.trim() || null;
   if (input.sectionId !== undefined) patch.section_id = input.sectionId;
   if (input.lockState !== undefined) patch.lock_state = input.lockState;
-  if (input.audiences !== undefined) patch.audiences = input.audiences;
+  if (input.audiences !== undefined) patch.audiences = sanitizeVenueAudiences(input.audiences);
   if (input.status !== undefined) patch.status = input.status;
   if (input.assignedToStaffId !== undefined) patch.assigned_to_staff_id = input.assignedToStaffId;
 
@@ -191,16 +211,6 @@ export async function deleteEntry(
   if (error) throw error;
 }
 
-/** Row-level Complete/Incomplete toggle — same `status` column the Wedding Day Dashboard's run-of-show toggle reads/writes. */
-export async function setEntryStatus(
-  client: DbClient, venueId: string, entryId: string, status: TimelineEntryStatus,
-): Promise<void> {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { error } = await (client.from("timeline_entries") as any)
-    .update({ status }).eq("id", entryId).eq("venue_id", venueId);
-  if (error) throw error;
-}
-
 /**
  * Delay recovery — "push everything after this entry back by N minutes."
  * Timeline entries have no duration/dependency model (a deliberate,
@@ -219,16 +229,18 @@ export async function shiftEntriesAfter(
   // planning items, which this surface can't even see live anyway.
   const { data: anchor, error: anchorError } = await client
     .from("timeline_entries")
-    .select("entry_time")
+    .select("entry_time, day_offset")
     .eq("id", afterEntryId).eq("venue_id", venueId).eq("event_id", eventId).eq("owner", "venue")
-    .maybeSingle<{ entry_time: string | null }>();
+    .maybeSingle<{ entry_time: string | null; day_offset: number }>();
   if (anchorError) throw anchorError;
   if (!anchor?.entry_time) return { shiftedCount: 0 };
+  const anchorDay = anchor.day_offset ?? 0;
 
   const { data: rows, error: fetchError } = await client
     .from("timeline_entries")
-    .select("id, entry_time")
+    .select("id, entry_time, day_offset")
     .eq("venue_id", venueId).eq("event_id", eventId).eq("owner", "venue")
+    .eq("day_offset", anchorDay)
     .not("entry_time", "is", null)
     .gt("entry_time", anchor.entry_time);
   if (fetchError) throw fetchError;
@@ -258,13 +270,14 @@ export async function reorderEntry(
   // owner='venue' so this coordinator-only path can never read or swap
   // sort_order on a couple-owned row that slipped through as `entryId`.
   const { data, error } = await client
-    .from("timeline_entries").select("id, entry_time, sort_order")
+    .from("timeline_entries").select("id, entry_time, day_offset, sort_order")
     .eq("event_id", eventId).eq("venue_id", venueId).eq("owner", "venue")
+    .order("day_offset", { ascending: true })
     .order("entry_time", { ascending: true, nullsFirst: false })
     .order("sort_order", { ascending: true })
     .order("created_at", { ascending: true });
   if (error) throw error;
-  const entries = data as { id: string; entry_time: string | null; sort_order: number }[];
+  const entries = data as { id: string; entry_time: string | null; day_offset: number; sort_order: number }[];
 
   const idx = entries.findIndex((e) => e.id === entryId);
   if (idx === -1) return;
@@ -274,8 +287,8 @@ export async function reorderEntry(
 
   const current = entries[idx];
   const neighbour = entries[neighbourIdx];
-  // Only swap within the same time group
-  if (current.entry_time !== neighbour.entry_time) return;
+  // Only swap within the same day + time group
+  if (current.day_offset !== neighbour.day_offset || current.entry_time !== neighbour.entry_time) return;
 
   await Promise.all([
     client.from("timeline_entries").update({ sort_order: neighbour.sort_order }).eq("id", current.id),
@@ -283,22 +296,27 @@ export async function reorderEntry(
   ]);
 }
 
-/** Drag-to-reorder within/between sections: one row per entry with its new section and position. */
+/** Drag-to-reorder within/between sections (and optionally days): one row per entry with its new section, day, and position. */
 // Same ownership guard as updateEntry — a client-owned item renders
 // read-only in the merged coordinator view, so drag-reordering should
 // never actually target one, but this is the drag-drop path's own
 // defense-in-depth against a stray id slipping through.
 export async function reorderEntries(
-  client: DbClient, venueId: string, updates: { id: string; sectionId: string | null; sortOrder: number }[],
+  client: DbClient, venueId: string, updates: { id: string; sectionId: string | null; sortOrder: number; dayOffset?: number }[],
 ): Promise<void> {
   if (updates.length === 0) return;
-  const { data: owned } = await client.from("timeline_entries").select("id")
+  const { data: owned } = await client.from("timeline_entries").select("id, event_id")
     .eq("venue_id", venueId).eq("owner", "venue").in("id", updates.map((u) => u.id));
-  const ownedIds = new Set((owned ?? []).map((r) => (r as { id: string }).id));
+  const ownedById = new Map((owned ?? []).map((r) => [(r as { id: string; event_id: string }).id, (r as { id: string; event_id: string }).event_id]));
   for (const u of updates) {
-    if (!ownedIds.has(u.id)) continue;
+    const eventId = ownedById.get(u.id);
+    if (!eventId) continue;
+    const patch: Record<string, unknown> = { section_id: u.sectionId, sort_order: u.sortOrder };
+    if (u.dayOffset !== undefined) {
+      patch.day_offset = await resolveClampedDayOffset(client, eventId, u.dayOffset);
+    }
     const { error } = await client.from("timeline_entries")
-      .update({ section_id: u.sectionId, sort_order: u.sortOrder })
+      .update(patch)
       .eq("id", u.id).eq("venue_id", venueId);
     if (error) throw error;
   }
@@ -324,6 +342,7 @@ export async function applyTemplate(
       title: te.title,
       description: te.description ?? null,
       entry_time: inRange ? minutesToTime(totalMinutes) : null,
+      day_offset: 0,
       sort_order: i,
     };
   });
@@ -396,7 +415,8 @@ export async function duplicateSection(
   const rows = sourceEntries.map((e, i) => ({
     venue_id: venueId, event_id: eventId, section_id: newSection.id,
     title: e.title, description: e.description, notes: e.notes, entry_time: e.entryTime,
-    audiences: e.audiences, owner: "venue" as const, lock_state: e.lockState,
+    day_offset: e.dayOffset ?? 0,
+    audiences: sanitizeVenueAudiences(e.audiences), owner: "venue" as const, lock_state: e.lockState,
     assigned_to_staff_id: e.assignedToStaffId, status: "not_started" as const,
     sort_order: i,
   }));

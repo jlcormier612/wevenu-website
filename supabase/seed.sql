@@ -106,12 +106,12 @@ begin
     'wedding', v_event_date, 120
   );
 
-  -- ── Event ─────────────────────────────────────────────────────────────────
+  -- ── Event (multi-day: Fri–Sun so venue Timeline Day picker is visible) ──
   insert into public.events (
-    id, venue_id, client_id, status, name, event_type, event_date, start_time, end_time, guest_count
+    id, venue_id, client_id, status, name, event_type, event_date, event_end_date, start_time, end_time, guest_count
   ) values (
     v_event_id, v_venue_id, v_client_id, 'confirmed', 'Emma & Jordan''s Wedding', 'wedding', v_event_date,
-    '16:00', '23:00', 120
+    v_event_date + 2, '16:00', '23:00', 120
   );
 
   -- ── Contract (signed) ────────────────────────────────────────────────────

@@ -15,13 +15,15 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    const { token, entryId, title, description, entryTime } = (await request.json()) as {
-      token?: string; entryId?: string; title?: string; description?: string; entryTime?: string;
+    const { token, entryId, title, description, entryTime, dayOffset, endTime } = (await request.json()) as {
+      token?: string; entryId?: string; title?: string; description?: string; entryTime?: string; dayOffset?: number; endTime?: string;
     };
     if (!token || !entryId || !title) {
       return NextResponse.json({ ok: false, error: "Missing token, entryId, or title." }, { status: 400 });
     }
-    const result = await updatePortalTimelineEntry(token, entryId, title, description ?? "", entryTime ?? "");
+    const result = await updatePortalTimelineEntry(
+      token, entryId, title, description ?? "", entryTime ?? "", undefined, dayOffset ?? 0, endTime ?? "",
+    );
     return NextResponse.json(result, { status: result.ok ? 200 : 422 });
   } catch {
     return NextResponse.json({ ok: false, error: "Internal error." }, { status: 500 });

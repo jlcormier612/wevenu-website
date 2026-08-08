@@ -63,7 +63,7 @@ import type { Invoice } from "@/lib/invoices/types";
 import type { Document } from "@/lib/documents/types";
 import type { Questionnaire } from "@/lib/events/questionnaire";
 import type { EventPlaybookApplication, EventReadiness, EventTask, EventTaskContextLink, PlaybookTemplateWithStats, TaskContact } from "@/lib/playbooks/types";
-import type { TimelineTemplate } from "@/lib/timeline-templates/types";
+import type { TimelineTemplateWithStats } from "@/lib/timeline-templates/types";
 import {
   EVENT_STATUSES,
   daysUntil,
@@ -158,12 +158,16 @@ function EventHeroCard({ event }: { event: EventWithDetails }) {
             </span>
           ) : null}
         </p>
-        {/* Day-of schedule row */}
+        {/* Day-of schedule row (multi-day: overall booking window, not daily hours) */}
         <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1 pt-2 text-sm text-muted-foreground">
           {event.startTime && (
-            <span className="flex items-center gap-1">
+            <span
+              className="flex items-center gap-1"
+              title={multiDay ? "Overall booking window — not the hour-by-hour schedule for each day" : undefined}
+            >
               <Clock className="h-3.5 w-3.5" />
               {event.setupTime ? `Setup ${formatTime(event.setupTime)} · ` : ""}
+              {multiDay ? "Overall " : ""}
               {formatTime(event.startTime)}
               {event.endTime ? ` → ${formatTime(event.endTime)}` : ""}
             </span>
@@ -266,7 +270,7 @@ export function EventDetail({
   eventTasks?: EventTask[];
   playbookTemplates?: PlaybookTemplateWithStats[];
   playbookApplications?: EventPlaybookApplication[];
-  timelineTemplates?: TimelineTemplate[];
+  timelineTemplates?: TimelineTemplateWithStats[];
   timelineSections?: TimelineSection[];
   timelineLinksByEntry?: Record<string, TimelineEntryLink[]>;
   timelineAttachmentsByEntry?: Record<string, TimelineEntryAttachment[]>;
@@ -347,6 +351,8 @@ export function EventDetail({
       else toast.error(result.message ?? "Could not update status.");
     });
   }
+
+  const multiDay = Boolean(event.eventEndDate && event.eventEndDate !== event.eventDate);
 
   return (
     <div className="space-y-5">
@@ -538,8 +544,8 @@ export function EventDetail({
               <CardContent className="space-y-3">
                 {[
                   { icon: Calendar, label: "Date", value: formatEventDateRange(event.eventDate, event.eventEndDate) },
-                  { icon: Clock, label: "Start", value: formatTime(event.startTime) },
-                  { icon: Clock, label: "End", value: formatTime(event.endTime) },
+                  { icon: Clock, label: multiDay ? "Overall start" : "Start", value: formatTime(event.startTime) },
+                  { icon: Clock, label: multiDay ? "Overall end" : "End", value: formatTime(event.endTime) },
                   { icon: Wrench, label: "Setup", value: formatTime(event.setupTime) },
                   { icon: Wrench, label: "Teardown", value: formatTime(event.teardownTime) },
                   { icon: Users, label: "Guests", value: event.guestCount != null ? `${event.guestCount.toLocaleString()}` : null },
@@ -630,8 +636,8 @@ export function EventDetail({
                 eventId={event.id}
                 venueId={event.venueId}
                 eventStartTime={event.startTime}
-                eventEndTime={event.endTime}
                 eventDate={event.eventDate}
+                eventEndDate={event.eventEndDate}
                 initialEntries={event.timeline ?? []}
                 initialSections={timelineSections}
                 initialLinksByEntry={timelineLinksByEntry}
@@ -644,6 +650,7 @@ export function EventDetail({
                 conversationId={conversationId}
                 invoices={invoices}
                 teamMembers={teamMembers}
+                timelineTemplates={timelineTemplates}
               />
             </CardContent>
           </Card>

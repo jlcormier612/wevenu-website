@@ -15,10 +15,8 @@ import * as React from "react";
 import { useRouter } from "next/navigation";
 import {
   Check,
-  CheckCircle2,
   ChevronDown,
   ChevronRight,
-  Circle,
   Clock,
   Copy,
   GripVertical,
@@ -38,7 +36,6 @@ import {
   renameSectionAction,
   reorderEntriesAction,
   reorderSectionsAction,
-  setEntryStatusAction,
   setSectionClientCanAddAction,
   updateEntryAction,
 } from "@/app/(app)/events/[id]/timeline-actions";
@@ -49,17 +46,18 @@ import { TimelineSummaryBar } from "@/components/events/timeline/timeline-summar
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useSyncedState } from "@/lib/hooks/use-synced-state";
-import { formatTime, getDueStatus } from "@/lib/timeline/constants";
+import { formatTime, formatTimelineDayHeader, getDueStatus, isMultiDayEvent, maxDayOffset } from "@/lib/timeline/constants";
 import type { Document } from "@/lib/documents/types";
 import type { FloorPlan } from "@/lib/floor-plans/types";
 import type { Invoice } from "@/lib/invoices/types";
 import type { EventTask } from "@/lib/playbooks/types";
 import type {
-  TimelineEntry, TimelineEntryAttachment, TimelineEntryInput, TimelineEntryLink, TimelineEntryStatus, TimelineRelatedLink, TimelineSection,
+  TimelineEntry, TimelineEntryAttachment, TimelineEntryInput, TimelineEntryLink, TimelineRelatedLink, TimelineSection,
 } from "@/lib/timeline/types";
-import { TIMELINE_AUDIENCES } from "@/lib/timeline/types";
+import { VENUE_TIMELINE_AUDIENCES } from "@/lib/timeline/types";
 import type { StaffMember } from "@/lib/team/types";
 import { cn } from "@/lib/utils";
+import type { TimelineTemplate } from "@/lib/timeline-templates/types";
 import type { EventVendorAssignment } from "@/lib/vendors/types";
 
 // Stable empty fallbacks — a fresh `[]`/`{}` literal on every render would
@@ -71,8 +69,19 @@ const EMPTY_ATTACHMENTS: Record<string, TimelineEntryAttachment[]> = {};
 const EMPTY_RELATED_LINKS: Record<string, TimelineRelatedLink[]> = {};
 
 const UNSECTIONED = "__unsectioned__";
-const DUE_STATUS_LABEL: Record<"upcoming" | "today" | "complete", string> = {
-  upcoming: "Upcoming", today: "Today", complete: "Complete",
+
+function daySectionKey(dayOffset: number | null, sectionId: string): string {
+  return dayOffset == null ? sectionId : `${dayOffset}::${sectionId}`;
+}
+
+function parseDaySectionKey(key: string): { dayOffset: number | null; sectionId: string } {
+  const sep = key.indexOf("::");
+  if (sep === -1) return { dayOffset: null, sectionId: key };
+  const day = Number(key.slice(0, sep));
+  return { dayOffset: Number.isFinite(day) ? day : 0, sectionId: key.slice(sep + 2) };
+}
+const DUE_STATUS_LABEL: Record<"upcoming" | "today", string> = {
+  upcoming: "Upcoming", today: "Today",
 };
 
 /** Bundled read-only "what can this entry link to" context — passed as one prop through Section/Row rather than five. */
@@ -86,17 +95,16 @@ type RelatedContext = {
 
 // ---- Single timeline entry row ----------------------------------------------
 
-const DUE_STATUS_BADGE: Record<"upcoming" | "today" | "complete", string> = {
+const DUE_STATUS_BADGE: Record<"upcoming" | "today", string> = {
   upcoming: "bg-muted text-muted-foreground",
   today: "bg-primary/10 text-primary",
-  complete: "bg-[#5D6F5D]/10 text-[#5D6F5D]",
 };
 
 function TimelineEntryRow({
   entry, eventId, venueId, sections, links, attachments, availableDocuments,
   relatedLinks, relatedContext, onRelatedChanged,
-  eventStartTime, eventDate, teamMembers, editing, onStartEdit, onCancelEdit, onDelete, onUpdate,
-  onLinksChanged, onAttachmentsChanged, onDragStart, onDragEnd, isDragOver, onSetStatus,
+  eventStartTime, eventDate, eventEndDate, teamMembers, editing, onStartEdit, onCancelEdit, onDelete, onUpdate,
+  onLinksChanged, onAttachmentsChanged, onDragStart, onDragEnd, isDragOver,
 }: {
   entry: TimelineEntry;
   eventId: string;
@@ -110,6 +118,7 @@ function TimelineEntryRow({
   onRelatedChanged: (links: TimelineRelatedLink[]) => void;
   eventStartTime: string | null;
   eventDate: string | null;
+  eventEndDate: string | null;
   teamMembers: StaffMember[];
   editing: boolean;
   onStartEdit: () => void;
@@ -121,12 +130,11 @@ function TimelineEntryRow({
   onDragStart: () => void;
   onDragEnd: () => void;
   isDragOver: boolean;
-  onSetStatus: (id: string, status: TimelineEntryStatus) => void;
 }) {
   const [updatePending, startUpdate] = React.useTransition();
 
-  const isEventStart = !!eventStartTime && entry.entryTime === eventStartTime.slice(0, 5);
-  const dueStatus = getDueStatus(entry.status, eventDate);
+  const isEventStart = !!eventStartTime && entry.entryTime === eventStartTime.slice(0, 5) && (entry.dayOffset ?? 0) === 0;
+  const dueStatus = getDueStatus(eventDate, entry.dayOffset ?? 0);
   const assignee = entry.assignedToStaffId ? teamMembers.find((m) => m.id === entry.assignedToStaffId) : null;
 
   function handleUpdate(input: TimelineEntryInput) {
@@ -144,11 +152,13 @@ function TimelineEntryRow({
     return (
       <TimelineEntryForm
         eventId={eventId} venueId={venueId} entryId={entry.id} sections={sections}
+        eventDate={eventDate} eventEndDate={eventEndDate}
         initial={{
           title: entry.title,
           description: entry.description ?? "",
           notes: entry.notes ?? "",
           entryTime: entry.entryTime ?? "",
+          dayOffset: entry.dayOffset ?? 0,
           audiences: entry.audiences,
           sectionId: entry.sectionId,
           lockState: entry.lockState,
@@ -181,7 +191,6 @@ function TimelineEntryRow({
       className={cn(
         "group flex items-start gap-2 rounded-sm border bg-card p-3 transition-colors",
         isDragOver ? "border-primary bg-primary/5" : "border-border hover:border-border/80",
-        entry.status === "complete" && "opacity-70",
       )}
     >
       {!isClientOwned && (
@@ -189,14 +198,6 @@ function TimelineEntryRow({
           <GripVertical className="h-4 w-4" />
         </div>
       )}
-      <button
-        type="button"
-        onClick={() => onSetStatus(entry.id, entry.status === "complete" ? "not_started" : "complete")}
-        className="mt-0.5 shrink-0 text-muted-foreground hover:text-primary"
-        aria-label={entry.status === "complete" ? "Mark incomplete" : "Mark complete"}
-      >
-        {entry.status === "complete" ? <CheckCircle2 className="h-4 w-4 text-[#5D6F5D]" /> : <Circle className="h-4 w-4" />}
-      </button>
       <div className="min-w-0 flex-1">
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0 flex-1">
@@ -223,7 +224,7 @@ function TimelineEntryRow({
                 </span>
               )}
             </div>
-            <p className={cn("mt-0.5 text-sm font-medium text-foreground", entry.status === "complete" && "line-through")}>{entry.title}</p>
+            <p className="mt-0.5 text-sm font-medium text-foreground">{entry.title}</p>
             {entry.description && (
               <p className="mt-0.5 whitespace-pre-wrap text-xs text-muted-foreground">
                 {entry.description}
@@ -234,12 +235,11 @@ function TimelineEntryRow({
                 Note: {entry.notes}
               </p>
             )}
-            {/* Publication badges — venue/client mutual visibility isn't
-                gated by a tag (see lib/timeline/types.ts), so only the
-                genuine external-audience tags ever render here. */}
-            {entry.audiences && entry.audiences.some(a => TIMELINE_AUDIENCES.some(t => t.value === a)) && (
+            {/* Publication badges — Guests are couple-owned and never shown
+                on the venue builder. Wedding party + vendors only. */}
+            {entry.audiences && entry.audiences.some(a => VENUE_TIMELINE_AUDIENCES.some(t => t.value === a)) && (
               <div className="mt-1.5 flex gap-1 flex-wrap">
-                {TIMELINE_AUDIENCES.filter(a => entry.audiences.includes(a.value)).map(a => (
+                {VENUE_TIMELINE_AUDIENCES.filter(a => entry.audiences.includes(a.value)).map(a => (
                   <span key={a.value} className="rounded-full px-1.5 py-0.5 text-[9px] font-semibold text-white"
                     style={{ background: a.color }}>
                     {a.emoji} {a.label}
@@ -288,10 +288,10 @@ function TimelineEntryRow({
 // ---- One section (or the virtual Unsectioned bucket) -------------------------
 
 function TimelineSectionBlock({
-  sectionKey, name, entries, isUnsectioned, clientCanAdd, eventId, venueId, sections, eventStartTime, eventDate, teamMembers,
+  sectionKey, name, entries, isUnsectioned, clientCanAdd, eventId, venueId, sections, eventStartTime, eventDate, eventEndDate, defaultDayOffset, teamMembers,
   linksByEntry, attachmentsByEntry, availableDocuments, relatedLinksByEntry, relatedContext,
-  editingEntryId, setEditingEntryId, onDeleteEntry, onUpdateEntry, onLinksChanged, onAttachmentsChanged, onRelatedChanged, onSetStatus,
-  addFormOpenFor, setAddFormOpenFor, onAddEntry, addPending,
+  editingEntryId, setEditingEntryId, onDeleteEntry, onUpdateEntry, onLinksChanged, onAttachmentsChanged, onRelatedChanged,
+  addFormOpenFor, setAddFormOpenFor, onAddEntry, addPending, showAddButton = true,
   draggable, onSectionDragStart, onSectionDragOver, onSectionDrop, onSectionDragEnd, sectionDragOver,
   onEntryDragStart, onEntryDragEnd, onEntryDragOverRow, onEntryDropRow, onEntryDragOverEnd, onEntryDropEnd, dragOverEntryId, dragOverEnd,
   onRename, onDelete, onToggleClientCanAdd, collapsed, onToggleCollapse, onDuplicate, matchesFilter,
@@ -306,6 +306,8 @@ function TimelineSectionBlock({
   sections: TimelineSection[];
   eventStartTime: string | null;
   eventDate: string | null;
+  eventEndDate: string | null;
+  defaultDayOffset: number;
   teamMembers: StaffMember[];
   linksByEntry: Record<string, TimelineEntryLink[]>;
   attachmentsByEntry: Record<string, TimelineEntryAttachment[]>;
@@ -319,11 +321,12 @@ function TimelineSectionBlock({
   onLinksChanged: (entryId: string, links: TimelineEntryLink[]) => void;
   onAttachmentsChanged: (entryId: string, attachments: TimelineEntryAttachment[]) => void;
   onRelatedChanged: (entryId: string, links: TimelineRelatedLink[]) => void;
-  onSetStatus: (entryId: string, status: TimelineEntryStatus) => void;
   addFormOpenFor: string | null;
   setAddFormOpenFor: (key: string | null) => void;
   onAddEntry: (sectionKey: string, input: TimelineEntryInput) => void;
   addPending: boolean;
+  /** Day-level Add covers null-section items; hide the in-band button for the unsectioned bucket. */
+  showAddButton?: boolean;
   draggable: boolean;
   onSectionDragStart?: () => void;
   onSectionDragOver?: (e: React.DragEvent) => void;
@@ -355,58 +358,64 @@ function TimelineSectionBlock({
     setRenaming(false);
   }
 
+  // Null-section items list flat under the day — no "Unsectioned" chrome.
+  const showHeader = !isUnsectioned;
+  const bodyCollapsed = showHeader && collapsed;
+
   return (
     <div
       className={cn("space-y-2 rounded-sm p-2 transition-colors", sectionDragOver && "bg-primary/5")}
       onDragOver={onSectionDragOver}
       onDrop={onSectionDrop}
     >
-      <div className="flex items-center gap-1.5">
-        {draggable && (
-          <span
-            draggable
-            onDragStart={onSectionDragStart}
-            onDragEnd={onSectionDragEnd}
-            className="cursor-grab text-muted-foreground"
-            aria-label="Drag to reorder section"
-          >
-            <GripVertical className="h-4 w-4" />
-          </span>
-        )}
-        <button type="button" onClick={onToggleCollapse} className="text-muted-foreground hover:text-foreground" aria-label={collapsed ? "Expand section" : "Collapse section"}>
-          {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-        </button>
-        {renaming ? (
-          <div className="flex items-center gap-1">
-            <Input
-              value={renameValue} onChange={(e) => setRenameValue(e.target.value)}
-              onKeyDown={(e) => { if (e.key === "Enter") commitRename(); if (e.key === "Escape") setRenaming(false); }}
-              autoFocus className="h-7 w-48 text-sm"
-            />
-            <button type="button" onClick={commitRename} className="rounded p-1 text-muted-foreground hover:text-foreground"><Check className="h-3.5 w-3.5" /></button>
-            <button type="button" onClick={() => setRenaming(false)} className="rounded p-1 text-muted-foreground hover:text-foreground"><X className="h-3.5 w-3.5" /></button>
-          </div>
-        ) : (
-          <button type="button" onClick={onToggleCollapse} className="font-heading text-sm font-semibold text-heading hover:underline">{name}</button>
-        )}
-        <span className="text-xs text-muted-foreground">({entries.length})</span>
-        {!isUnsectioned && !renaming && (
-          <div className="ml-1 flex items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100 hover:opacity-100">
-            <button type="button" onClick={() => { setRenameValue(name); setRenaming(true); }} className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground" aria-label="Rename section">
-              <Pencil className="h-3 w-3" />
-            </button>
-            <button type="button" onClick={onDuplicate} className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground" aria-label="Duplicate section">
-              <Copy className="h-3 w-3" />
-            </button>
-            <button type="button" onClick={onDelete} className="rounded p-1 text-muted-foreground hover:bg-destructive/10 hover:text-destructive" aria-label="Delete section">
-              <Trash2 className="h-3 w-3" />
-            </button>
-          </div>
-        )}
-      </div>
-      {collapsed ? null : (
+      {showHeader && (
+        <div className="flex items-center gap-1.5">
+          {draggable && (
+            <span
+              draggable
+              onDragStart={onSectionDragStart}
+              onDragEnd={onSectionDragEnd}
+              className="cursor-grab text-muted-foreground"
+              aria-label="Drag to reorder section"
+            >
+              <GripVertical className="h-4 w-4" />
+            </span>
+          )}
+          <button type="button" onClick={onToggleCollapse} className="text-muted-foreground hover:text-foreground" aria-label={collapsed ? "Expand section" : "Collapse section"}>
+            {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+          </button>
+          {renaming ? (
+            <div className="flex items-center gap-1">
+              <Input
+                value={renameValue} onChange={(e) => setRenameValue(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter") commitRename(); if (e.key === "Escape") setRenaming(false); }}
+                autoFocus className="h-7 w-48 text-sm"
+              />
+              <button type="button" onClick={commitRename} className="rounded p-1 text-muted-foreground hover:text-foreground"><Check className="h-3.5 w-3.5" /></button>
+              <button type="button" onClick={() => setRenaming(false)} className="rounded p-1 text-muted-foreground hover:text-foreground"><X className="h-3.5 w-3.5" /></button>
+            </div>
+          ) : (
+            <button type="button" onClick={onToggleCollapse} className="font-heading text-sm font-semibold text-heading hover:underline">{name}</button>
+          )}
+          <span className="text-xs text-muted-foreground">({entries.length})</span>
+          {!renaming && (
+            <div className="ml-1 flex items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100 hover:opacity-100">
+              <button type="button" onClick={() => { setRenameValue(name); setRenaming(true); }} className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground" aria-label="Rename section">
+                <Pencil className="h-3 w-3" />
+              </button>
+              <button type="button" onClick={onDuplicate} className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground" aria-label="Duplicate section">
+                <Copy className="h-3 w-3" />
+              </button>
+              <button type="button" onClick={onDelete} className="rounded p-1 text-muted-foreground hover:bg-destructive/10 hover:text-destructive" aria-label="Delete section">
+                <Trash2 className="h-3 w-3" />
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+      {bodyCollapsed ? null : (
         <>
-          {!isUnsectioned && (
+          {showHeader && (
             <label
               className="flex items-center gap-1.5 pl-1 text-[11px] text-muted-foreground"
               title="When checked, the client can add their own entries to this section from their own timeline. Their entries appear here with a &quot;From client's timeline&quot; badge."
@@ -416,7 +425,7 @@ function TimelineSectionBlock({
             </label>
           )}
 
-          <div className="space-y-2 pl-1">
+          <div className={cn("space-y-2", showHeader && "pl-1")}>
             {entries.map((entry, i) => matchesFilter(entry) && (
               <div
                 key={entry.id}
@@ -426,7 +435,8 @@ function TimelineSectionBlock({
                 <TimelineEntryRow
                   entry={entry} eventId={eventId} venueId={venueId} sections={sections}
                   links={linksByEntry[entry.id] ?? []} attachments={attachmentsByEntry[entry.id] ?? []}
-                  availableDocuments={availableDocuments} eventStartTime={eventStartTime} eventDate={eventDate} teamMembers={teamMembers}
+                  availableDocuments={availableDocuments} eventStartTime={eventStartTime}
+                  eventDate={eventDate} eventEndDate={eventEndDate} teamMembers={teamMembers}
                   relatedLinks={relatedLinksByEntry[entry.id] ?? []} relatedContext={relatedContext}
                   editing={editingEntryId === entry.id}
                   onStartEdit={() => setEditingEntryId(entry.id)}
@@ -436,7 +446,6 @@ function TimelineSectionBlock({
                   onLinksChanged={(links) => onLinksChanged(entry.id, links)}
                   onAttachmentsChanged={(attachments) => onAttachmentsChanged(entry.id, attachments)}
                   onRelatedChanged={(links) => onRelatedChanged(entry.id, links)}
-                  onSetStatus={onSetStatus}
                   onDragStart={() => onEntryDragStart(entry.id)}
                   onDragEnd={onEntryDragEnd}
                   isDragOver={dragOverEntryId === entry.id}
@@ -451,10 +460,15 @@ function TimelineSectionBlock({
               className={cn("h-3 rounded", dragOverEnd === sectionKey && "bg-primary/10")}
             />
 
-            {addFormOpenFor === sectionKey ? (
+            {showAddButton && (addFormOpenFor === sectionKey ? (
               <TimelineEntryForm
                 eventId={eventId} venueId={venueId} entryId={null} sections={sections}
-                initial={{ title: "", description: "", notes: "", entryTime: "", sectionId: isUnsectioned ? null : sectionKey }}
+                eventDate={eventDate} eventEndDate={eventEndDate}
+                initial={{
+                  title: "", description: "", notes: "", entryTime: "",
+                  dayOffset: defaultDayOffset,
+                  sectionId: isUnsectioned ? null : parseDaySectionKey(sectionKey).sectionId,
+                }}
                 teamMembers={teamMembers}
                 onSave={(input) => onAddEntry(sectionKey, input)}
                 onCancel={() => setAddFormOpenFor(null)}
@@ -469,7 +483,7 @@ function TimelineSectionBlock({
               >
                 <Plus className="h-3.5 w-3.5" /> Add item
               </button>
-            )}
+            ))}
           </div>
         </>
       )}
@@ -483,8 +497,8 @@ export function TimelineView({
   eventId,
   venueId,
   eventStartTime,
-  eventEndTime,
   eventDate = null,
+  eventEndDate = null,
   initialEntries,
   initialSections,
   initialLinksByEntry,
@@ -497,12 +511,13 @@ export function TimelineView({
   conversationId,
   invoices,
   teamMembers,
+  timelineTemplates = [],
 }: {
   eventId: string;
   venueId: string;
   eventStartTime: string | null;
-  eventEndTime: string | null;
   eventDate?: string | null;
+  eventEndDate?: string | null;
   initialEntries: TimelineEntry[];
   initialSections?: TimelineSection[];
   initialLinksByEntry?: Record<string, TimelineEntryLink[]>;
@@ -515,6 +530,8 @@ export function TimelineView({
   conversationId?: string | null;
   invoices?: Invoice[];
   teamMembers?: StaffMember[];
+  /** Venue Timeline Templates library for Apply — not the hardcoded starters. */
+  timelineTemplates?: (TimelineTemplate & { itemCount?: number })[];
 }) {
   const router = useRouter();
   // useSyncedState (not a plain useState(initial...)) — a real bug confirmed
@@ -565,7 +582,7 @@ export function TimelineView({
     }
     if (filterAssignedTo !== ALL_FILTER && entry.assignedToStaffId !== filterAssignedTo) return false;
     if (filterAudience !== ALL_FILTER && !entry.audiences.includes(filterAudience as TimelineEntry["audiences"][number])) return false;
-    if (filterStatus !== "all" && getDueStatus(entry.status, eventDate) !== filterStatus) return false;
+    if (filterStatus !== "all" && getDueStatus(eventDate, entry.dayOffset ?? 0) !== filterStatus) return false;
     return true;
   }
 
@@ -583,23 +600,42 @@ export function TimelineView({
 
   // Grouped, sorted view derived from flat state — server order stays a
   // sensible fallback (see getTimelineEntries), this is the display order.
+  // Multi-day keys are `${dayOffset}::${sectionId}`; single-day keeps plain section ids.
+  const multiDay = isMultiDayEvent(eventDate, eventEndDate);
+  const dayOffsets = React.useMemo(() => {
+    if (!multiDay) return [null] as (number | null)[];
+    const max = maxDayOffset(eventDate, eventEndDate);
+    return Array.from({ length: max + 1 }, (_, i) => i);
+  }, [multiDay, eventDate, eventEndDate]);
+
   const groups = React.useMemo(() => {
     const map = new Map<string, TimelineEntry[]>();
-    sections.forEach((s) => map.set(s.id, []));
-    map.set(UNSECTIONED, []);
+    for (const day of dayOffsets) {
+      sections.forEach((s) => map.set(daySectionKey(day, s.id), []));
+      map.set(daySectionKey(day, UNSECTIONED), []);
+    }
     for (const e of entries) {
-      const key = e.sectionId && map.has(e.sectionId) ? e.sectionId : UNSECTIONED;
+      const day = multiDay ? (e.dayOffset ?? 0) : null;
+      const sectionId = e.sectionId && sections.some((s) => s.id === e.sectionId) ? e.sectionId : UNSECTIONED;
+      const key = daySectionKey(day, sectionId);
+      if (!map.has(key)) map.set(key, []);
       map.get(key)!.push(e);
     }
     for (const [, list] of map) list.sort((a, b) => a.sortOrder - b.sortOrder);
     return map;
-  }, [entries, sections]);
+  }, [entries, sections, dayOffsets, multiDay]);
 
   function handleAdd(sectionKey: string, input: TimelineEntryInput) {
     startAdd(async () => {
-      const targetSectionId = sectionKey === UNSECTIONED ? null : sectionKey;
+      const { dayOffset, sectionId } = parseDaySectionKey(sectionKey);
+      const targetSectionId = sectionId === UNSECTIONED ? null : sectionId;
       const sortOrder = (groups.get(sectionKey) ?? []).length;
-      const result = await addEntryAction(eventId, { ...input, sectionId: targetSectionId, sortOrder });
+      const result = await addEntryAction(eventId, {
+        ...input,
+        sectionId: targetSectionId,
+        sortOrder,
+        dayOffset: input.dayOffset ?? dayOffset ?? 0,
+      });
       if (result.ok) {
         setEntries((prev) => [...prev, result.entry]);
         setAddFormOpenFor(null);
@@ -628,6 +664,7 @@ export function TimelineView({
               description: input.description || null,
               notes: input.notes || null,
               entryTime: input.entryTime || null,
+              dayOffset: input.dayOffset ?? e.dayOffset ?? 0,
               audiences: input.audiences ?? e.audiences,
               sectionId: input.sectionId !== undefined ? input.sectionId : e.sectionId,
               lockState: input.lockState !== undefined ? input.lockState : e.lockState,
@@ -641,13 +678,6 @@ export function TimelineView({
     setEditingEntryId(null);
   }
 
-  function handleSetStatus(entryId: string, status: TimelineEntryStatus) {
-    setEntries((prev) => prev.map((e) => (e.id === entryId ? { ...e, status, updatedAt: new Date().toISOString() } : e)));
-    setEntryStatusAction(entryId, eventId, status).then((result) => {
-      if (!result.ok) { toast.error(result.message ?? "Could not update status."); router.refresh(); }
-    });
-  }
-
   function handleToggleCollapse(sectionKey: string) {
     setCollapsedSectionIds((prev) => {
       const next = new Set(prev);
@@ -659,14 +689,16 @@ export function TimelineView({
   // ---- Entry drag-and-drop — persists the full list on every drop (cheap
   // at Timeline scale, and avoids partial-update edge cases). ----
   function commitEntryOrder(nextGroups: Map<string, TimelineEntry[]>) {
-    const updates: { id: string; sectionId: string | null; sortOrder: number }[] = [];
+    const updates: { id: string; sectionId: string | null; sortOrder: number; dayOffset?: number }[] = [];
     const next: TimelineEntry[] = [];
     for (const [key, list] of nextGroups) {
+      const parsed = parseDaySectionKey(key);
       list.forEach((e, i) => {
-        const sectionId = key === UNSECTIONED ? null : key;
-        const updated = { ...e, sectionId, sortOrder: i };
+        const sectionId = parsed.sectionId === UNSECTIONED ? null : parsed.sectionId;
+        const dayOffset = parsed.dayOffset ?? e.dayOffset ?? 0;
+        const updated = { ...e, sectionId, sortOrder: i, dayOffset };
         next.push(updated);
-        updates.push({ id: updated.id, sectionId, sortOrder: i });
+        updates.push({ id: updated.id, sectionId, sortOrder: i, dayOffset });
       });
     }
     setEntries(next);
@@ -684,13 +716,16 @@ export function TimelineView({
 
     const dragged = entries.find((e) => e.id === draggedId);
     if (!dragged) return;
-    const sourceKey = dragged.sectionId && groups.has(dragged.sectionId) ? dragged.sectionId : UNSECTIONED;
+    const sourceDay = multiDay ? (dragged.dayOffset ?? 0) : null;
+    const sourceSection = dragged.sectionId && sections.some((s) => s.id === dragged.sectionId) ? dragged.sectionId : UNSECTIONED;
+    const sourceKey = daySectionKey(sourceDay, sourceSection);
 
     const nextGroups = new Map(Array.from(groups.entries()).map(([k, v]) => [k, [...v]]));
     nextGroups.set(sourceKey, (nextGroups.get(sourceKey) ?? []).filter((e) => e.id !== draggedId));
     const targetList = [...(nextGroups.get(targetSectionKey) ?? [])];
     const insertAt = Math.max(0, Math.min(targetIndex, targetList.length));
-    targetList.splice(insertAt, 0, dragged);
+    const targetDay = parseDaySectionKey(targetSectionKey).dayOffset;
+    targetList.splice(insertAt, 0, { ...dragged, dayOffset: targetDay ?? dragged.dayOffset ?? 0 });
     nextGroups.set(targetSectionKey, targetList);
 
     commitEntryOrder(nextGroups);
@@ -747,6 +782,8 @@ export function TimelineView({
         setSections((p) => [...p, result.section]);
         setNewSectionName("");
         setAddingSection(false);
+        // Empty sections are hidden until they have items — open Add so the new band appears.
+        setAddFormOpenFor(daySectionKey(multiDay ? 0 : null, result.section.id));
       } else {
         toast.error(result.message ?? "Could not add section.");
       }
@@ -799,11 +836,12 @@ export function TimelineView({
   if (totalCount === 0 && sections.length === 0 && addFormOpenFor === null) {
     return (
       <div className="space-y-4">
-        <TimelineSummaryBar eventStartTime={eventStartTime} eventEndTime={eventEndTime} itemCount={0} lastUpdated={lastUpdatedIso} />
+        <TimelineSummaryBar itemCount={0} lastUpdated={lastUpdatedIso} />
         <div className="flex items-center justify-end">
           <TemplatePicker
             eventId={eventId}
             eventStartTime={eventStartTime}
+            templates={timelineTemplates}
             onApplied={() => router.refresh()}
           />
         </div>
@@ -813,15 +851,19 @@ export function TimelineView({
           </span>
           <p className="font-heading text-base font-medium text-heading">No timeline yet</p>
           <p className="mt-1 max-w-xs text-sm text-muted-foreground">
-            Build the day-of schedule entry by entry, or start from a template.
+            Build the Timeline entry by entry, or start from a template.
           </p>
           <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
-            <Button type="button" onClick={() => setAddFormOpenFor(UNSECTIONED)}>
+            <Button
+              type="button"
+              onClick={() => setAddFormOpenFor(multiDay ? daySectionKey(0, UNSECTIONED) : UNSECTIONED)}
+            >
               <Plus className="mr-1 h-4 w-4" /> Add First Entry
             </Button>
             <TemplatePicker
               eventId={eventId}
               eventStartTime={eventStartTime}
+              templates={timelineTemplates}
               onApplied={() => router.refresh()}
             />
           </div>
@@ -832,7 +874,7 @@ export function TimelineView({
 
   return (
     <div className="space-y-4">
-      <TimelineSummaryBar eventStartTime={eventStartTime} eventEndTime={eventEndTime} itemCount={totalCount} lastUpdated={lastUpdatedIso} />
+      <TimelineSummaryBar itemCount={totalCount} lastUpdated={lastUpdatedIso} />
 
       {/* Toolbar */}
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -847,6 +889,7 @@ export function TimelineView({
           <TemplatePicker
             eventId={eventId}
             eventStartTime={eventStartTime}
+            templates={timelineTemplates}
             onApplied={() => router.refresh()}
             existingEntryCount={totalCount}
           />
@@ -872,78 +915,143 @@ export function TimelineView({
         </div>
       </div>
 
-      {/* Sections, in order, then the Unsectioned bucket */}
+      {/* Multi-day: Day → Section → time. Single-day: section-first. */}
       <div className="space-y-5">
-        {sections.map((section) => (
-          <TimelineSectionBlock
-            key={section.id}
-            sectionKey={section.id}
-            name={section.name}
-            entries={groups.get(section.id) ?? []}
-            isUnsectioned={false}
-            clientCanAdd={section.clientCanAdd}
-            onToggleClientCanAdd={(value) => handleToggleClientCanAdd(section.id, value)}
-            eventId={eventId} venueId={venueId} sections={sections} eventStartTime={eventStartTime} eventDate={eventDate} teamMembers={members}
-            linksByEntry={linksByEntry} attachmentsByEntry={attachmentsByEntry} availableDocuments={availableDocuments ?? []}
-            relatedLinksByEntry={relatedLinksByEntry} relatedContext={relatedContext}
-            editingEntryId={editingEntryId} setEditingEntryId={setEditingEntryId}
-            onDeleteEntry={handleDelete} onUpdateEntry={handleUpdate}
-            onLinksChanged={handleLinksChanged} onAttachmentsChanged={handleAttachmentsChanged} onRelatedChanged={handleRelatedChanged}
-            onSetStatus={handleSetStatus}
-            addFormOpenFor={addFormOpenFor} setAddFormOpenFor={setAddFormOpenFor}
-            onAddEntry={handleAdd} addPending={addPending}
-            draggable
-            onSectionDragStart={() => handleSectionDragStart(section.id)}
-            onSectionDragOver={(e) => handleSectionDragOver(e, section.id)}
-            onSectionDrop={() => handleSectionDrop(section.id)}
-            onSectionDragEnd={handleSectionDragEnd}
-            sectionDragOver={dragOverSectionId === section.id}
-            onEntryDragStart={(id) => (dragEntryId.current = id)}
-            onEntryDragEnd={() => { dragEntryId.current = null; setDragOverEntryId(null); setDragOverEnd(null); }}
-            onEntryDragOverRow={handleEntryDragOverRow}
-            onEntryDropRow={handleEntryDropRow}
-            onEntryDragOverEnd={handleEntryDragOverEnd}
-            onEntryDropEnd={handleEntryDropEnd}
-            dragOverEntryId={dragOverEntryId}
-            dragOverEnd={dragOverEnd}
-            onRename={(name) => handleRenameSection(section.id, name)}
-            onDelete={() => handleDeleteSection(section)}
-            onDuplicate={() => handleDuplicateSection(section)}
-            collapsed={collapsedSectionIds.has(section.id)}
-            onToggleCollapse={() => handleToggleCollapse(section.id)}
-            matchesFilter={entryMatchesFilters}
-          />
-        ))}
+        {dayOffsets.map((day) => {
+          const dayKey = day;
+          const unsectionedKey = daySectionKey(dayKey, UNSECTIONED);
+          const unsectionedEntries = groups.get(unsectionedKey) ?? [];
+          // Flat under the day — no "Unsectioned" label. Day-level Add below
+          // keeps empty days reachable without a false section band.
+          const showUnsectioned = unsectionedEntries.length > 0;
 
-        {(sections.length > 0 || (groups.get(UNSECTIONED) ?? []).length > 0 || addFormOpenFor === UNSECTIONED) && (
-          <TimelineSectionBlock
-            sectionKey={UNSECTIONED}
-            name="Unsectioned"
-            entries={groups.get(UNSECTIONED) ?? []}
-            isUnsectioned
-            eventId={eventId} venueId={venueId} sections={sections} eventStartTime={eventStartTime} eventDate={eventDate} teamMembers={members}
-            linksByEntry={linksByEntry} attachmentsByEntry={attachmentsByEntry} availableDocuments={availableDocuments ?? []}
-            relatedLinksByEntry={relatedLinksByEntry} relatedContext={relatedContext}
-            editingEntryId={editingEntryId} setEditingEntryId={setEditingEntryId}
-            onDeleteEntry={handleDelete} onUpdateEntry={handleUpdate}
-            onLinksChanged={handleLinksChanged} onAttachmentsChanged={handleAttachmentsChanged} onRelatedChanged={handleRelatedChanged}
-            onSetStatus={handleSetStatus}
-            addFormOpenFor={addFormOpenFor} setAddFormOpenFor={setAddFormOpenFor}
-            onAddEntry={handleAdd} addPending={addPending}
-            draggable={false}
-            onEntryDragStart={(id) => (dragEntryId.current = id)}
-            onEntryDragEnd={() => { dragEntryId.current = null; setDragOverEntryId(null); setDragOverEnd(null); }}
-            onEntryDragOverRow={handleEntryDragOverRow}
-            onEntryDropRow={handleEntryDropRow}
-            onEntryDragOverEnd={handleEntryDragOverEnd}
-            onEntryDropEnd={handleEntryDropEnd}
-            dragOverEntryId={dragOverEntryId}
-            dragOverEnd={dragOverEnd}
-            collapsed={collapsedSectionIds.has(UNSECTIONED)}
-            onToggleCollapse={() => handleToggleCollapse(UNSECTIONED)}
-            matchesFilter={entryMatchesFilters}
-          />
-        )}
+          const dayAddForm = addFormOpenFor === unsectionedKey ? (
+            <TimelineEntryForm
+              eventId={eventId} venueId={venueId} entryId={null} sections={sections}
+              eventDate={eventDate} eventEndDate={eventEndDate}
+              initial={{
+                title: "", description: "", notes: "", entryTime: "",
+                dayOffset: dayKey ?? 0,
+                sectionId: null,
+              }}
+              teamMembers={members}
+              onSave={(input) => handleAdd(unsectionedKey, input)}
+              onCancel={() => setAddFormOpenFor(null)}
+              pending={addPending}
+              submitLabel="Add"
+            />
+          ) : (
+            <button
+              type="button"
+              onClick={() => setAddFormOpenFor(unsectionedKey)}
+              className="flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-xs text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+            >
+              <Plus className="h-3.5 w-3.5" /> Add item
+            </button>
+          );
+
+          const sectionBlocks = (
+            <>
+              {sections.map((section) => {
+                const key = daySectionKey(dayKey, section.id);
+                const sectionEntries = groups.get(key) ?? [];
+                // No empty section bands per day (Ceremony & Reception (0) shells).
+                // Keep the band visible while its Add form is open (e.g. after Add Section).
+                if (sectionEntries.length === 0 && addFormOpenFor !== key) return null;
+                return (
+                  <TimelineSectionBlock
+                    key={key}
+                    sectionKey={key}
+                    name={section.name}
+                    entries={sectionEntries}
+                    isUnsectioned={false}
+                    clientCanAdd={section.clientCanAdd}
+                    onToggleClientCanAdd={(value) => handleToggleClientCanAdd(section.id, value)}
+                    eventId={eventId} venueId={venueId} sections={sections}
+                    eventStartTime={eventStartTime} eventDate={eventDate} eventEndDate={eventEndDate}
+                    defaultDayOffset={dayKey ?? 0}
+                    teamMembers={members}
+                    linksByEntry={linksByEntry} attachmentsByEntry={attachmentsByEntry} availableDocuments={availableDocuments ?? []}
+                    relatedLinksByEntry={relatedLinksByEntry} relatedContext={relatedContext}
+                    editingEntryId={editingEntryId} setEditingEntryId={setEditingEntryId}
+                    onDeleteEntry={handleDelete} onUpdateEntry={handleUpdate}
+                    onLinksChanged={handleLinksChanged} onAttachmentsChanged={handleAttachmentsChanged} onRelatedChanged={handleRelatedChanged}
+                    addFormOpenFor={addFormOpenFor} setAddFormOpenFor={setAddFormOpenFor}
+                    onAddEntry={handleAdd} addPending={addPending}
+                    draggable={dayKey == null}
+                    onSectionDragStart={() => handleSectionDragStart(section.id)}
+                    onSectionDragOver={(e) => handleSectionDragOver(e, section.id)}
+                    onSectionDrop={() => handleSectionDrop(section.id)}
+                    onSectionDragEnd={handleSectionDragEnd}
+                    sectionDragOver={dragOverSectionId === section.id}
+                    onEntryDragStart={(id) => (dragEntryId.current = id)}
+                    onEntryDragEnd={() => { dragEntryId.current = null; setDragOverEntryId(null); setDragOverEnd(null); }}
+                    onEntryDragOverRow={handleEntryDragOverRow}
+                    onEntryDropRow={handleEntryDropRow}
+                    onEntryDragOverEnd={handleEntryDragOverEnd}
+                    onEntryDropEnd={handleEntryDropEnd}
+                    dragOverEntryId={dragOverEntryId}
+                    dragOverEnd={dragOverEnd}
+                    onRename={(name) => handleRenameSection(section.id, name)}
+                    onDelete={() => handleDeleteSection(section)}
+                    onDuplicate={() => handleDuplicateSection(section)}
+                    collapsed={collapsedSectionIds.has(key)}
+                    onToggleCollapse={() => handleToggleCollapse(key)}
+                    matchesFilter={entryMatchesFilters}
+                  />
+                );
+              })}
+
+              {showUnsectioned && (
+                <TimelineSectionBlock
+                  sectionKey={unsectionedKey}
+                  name="Unsectioned"
+                  entries={unsectionedEntries}
+                  isUnsectioned
+                  showAddButton={false}
+                  eventId={eventId} venueId={venueId} sections={sections}
+                  eventStartTime={eventStartTime} eventDate={eventDate} eventEndDate={eventEndDate}
+                  defaultDayOffset={dayKey ?? 0}
+                  teamMembers={members}
+                  linksByEntry={linksByEntry} attachmentsByEntry={attachmentsByEntry} availableDocuments={availableDocuments ?? []}
+                  relatedLinksByEntry={relatedLinksByEntry} relatedContext={relatedContext}
+                  editingEntryId={editingEntryId} setEditingEntryId={setEditingEntryId}
+                  onDeleteEntry={handleDelete} onUpdateEntry={handleUpdate}
+                  onLinksChanged={handleLinksChanged} onAttachmentsChanged={handleAttachmentsChanged} onRelatedChanged={handleRelatedChanged}
+                  addFormOpenFor={addFormOpenFor} setAddFormOpenFor={setAddFormOpenFor}
+                  onAddEntry={handleAdd} addPending={addPending}
+                  draggable={false}
+                  onEntryDragStart={(id) => (dragEntryId.current = id)}
+                  onEntryDragEnd={() => { dragEntryId.current = null; setDragOverEntryId(null); setDragOverEnd(null); }}
+                  onEntryDragOverRow={handleEntryDragOverRow}
+                  onEntryDropRow={handleEntryDropRow}
+                  onEntryDragOverEnd={handleEntryDragOverEnd}
+                  onEntryDropEnd={handleEntryDropEnd}
+                  dragOverEntryId={dragOverEntryId}
+                  dragOverEnd={dragOverEnd}
+                  collapsed={collapsedSectionIds.has(unsectionedKey)}
+                  onToggleCollapse={() => handleToggleCollapse(unsectionedKey)}
+                  matchesFilter={entryMatchesFilters}
+                />
+              )}
+
+              {dayAddForm}
+            </>
+          );
+
+          if (!multiDay || dayKey == null || !eventDate) {
+            return <React.Fragment key="single">{sectionBlocks}</React.Fragment>;
+          }
+
+          return (
+            <div key={dayKey} className="space-y-4">
+              <h3 className="font-heading text-sm font-semibold text-heading border-b border-border pb-2">
+                {formatTimelineDayHeader(eventDate, dayKey)}
+              </h3>
+              <div className="space-y-5">{sectionBlocks}</div>
+            </div>
+          );
+        })}
       </div>
     </div>
   );

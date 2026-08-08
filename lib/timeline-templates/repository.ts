@@ -1,4 +1,5 @@
 import { createClient } from "@/integrations/supabase/server";
+import { sanitizeVenueTemplateAudiences } from "@/lib/timeline-templates/constants";
 import type { TimelineAudience } from "@/lib/timeline/types";
 import type {
   TimelineTemplate,
@@ -10,7 +11,7 @@ import type {
 type DbClient = Awaited<ReturnType<typeof createClient>>;
 
 type TemplateRow = { id: string; venue_id: string; name: string; event_type: string | null; space_id: string | null; is_default: boolean; is_archived: boolean; created_at: string; updated_at: string; };
-type ItemRow = { id: string; template_id: string; venue_id: string; title: string; description: string | null; notes: string | null; time_of_day: string | null; minutes_offset: number | null; needs_review: boolean; audiences: string[]; sort_order: number; created_at: string; updated_at: string; };
+type ItemRow = { id: string; template_id: string; venue_id: string; title: string; description: string | null; notes: string | null; time_of_day: string | null; minutes_offset: number | null; day_offset: number; needs_review: boolean; audiences: string[]; sort_order: number; created_at: string; updated_at: string; };
 
 const mapTemplate = (r: TemplateRow): TimelineTemplate => ({
   id: r.id, venueId: r.venue_id, name: r.name, eventType: r.event_type, spaceId: r.space_id,
@@ -19,7 +20,8 @@ const mapTemplate = (r: TemplateRow): TimelineTemplate => ({
 
 const mapItem = (r: ItemRow): TimelineTemplateItem => ({
   id: r.id, templateId: r.template_id, venueId: r.venue_id, title: r.title, description: r.description,
-  notes: r.notes, timeOfDay: r.time_of_day, minutesOffset: r.minutes_offset, needsReview: r.needs_review,
+  notes: r.notes, timeOfDay: r.time_of_day, minutesOffset: r.minutes_offset,
+  dayOffset: r.day_offset ?? 0, needsReview: r.needs_review,
   audiences: r.audiences as TimelineAudience[], sortOrder: r.sort_order, createdAt: r.created_at, updatedAt: r.updated_at,
 });
 
@@ -115,8 +117,9 @@ export async function duplicateTemplateInto(client: DbClient, venueId: string, s
   for (const item of items) {
     await insertItem(client, venueId, newTemplateId, {
       title: item.title, description: item.description, notes: item.notes,
-      timeOfDay: item.timeOfDay, minutesOffset: item.minutesOffset, needsReview: item.needsReview,
-      audiences: item.audiences, sortOrder: item.sortOrder,
+      timeOfDay: item.timeOfDay, minutesOffset: item.minutesOffset, dayOffset: item.dayOffset,
+      needsReview: item.needsReview,
+      audiences: sanitizeVenueTemplateAudiences(item.audiences), sortOrder: item.sortOrder,
     });
   }
 
@@ -126,7 +129,9 @@ export async function duplicateTemplateInto(client: DbClient, venueId: string, s
 // ---- Items ---------------------------------------------------------------
 
 export async function getItems(client: DbClient, venueId: string, templateId: string): Promise<TimelineTemplateItem[]> {
-  const { data, error } = await client.from("timeline_template_items").select("*").eq("template_id", templateId).eq("venue_id", venueId).order("sort_order");
+  const { data, error } = await client.from("timeline_template_items").select("*").eq("template_id", templateId).eq("venue_id", venueId)
+    .order("day_offset", { ascending: true })
+    .order("sort_order", { ascending: true });
   if (error) throw error;
   return (data as ItemRow[]).map(mapItem);
 }
@@ -136,8 +141,9 @@ export async function insertItem(client: DbClient, venueId: string, templateId: 
     template_id: templateId, venue_id: venueId, title: input.title.trim(),
     description: input.description?.trim() || null, notes: input.notes?.trim() || null,
     time_of_day: input.timeOfDay || null, minutes_offset: input.minutesOffset,
+    day_offset: Math.max(0, Math.trunc(input.dayOffset ?? 0)),
     needs_review: input.needsReview ?? false,
-    audiences: input.audiences, sort_order: input.sortOrder,
+    audiences: sanitizeVenueTemplateAudiences(input.audiences), sort_order: input.sortOrder,
   }).select("id").single<{ id: string }>();
   if (error) throw error;
   return data.id;
@@ -154,8 +160,9 @@ export async function updateItem(client: DbClient, venueId: string, itemId: stri
   if (patch.notes !== undefined) row.notes = patch.notes?.trim() || null;
   if (patch.timeOfDay !== undefined) row.time_of_day = patch.timeOfDay || null;
   if (patch.minutesOffset !== undefined) row.minutes_offset = patch.minutesOffset;
+  if (patch.dayOffset !== undefined) row.day_offset = Math.max(0, Math.trunc(patch.dayOffset));
   if (patch.needsReview !== undefined) row.needs_review = patch.needsReview;
-  if (patch.audiences !== undefined) row.audiences = patch.audiences;
+  if (patch.audiences !== undefined) row.audiences = sanitizeVenueTemplateAudiences(patch.audiences);
   if (patch.sortOrder !== undefined) row.sort_order = patch.sortOrder;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { error } = await (client.from("timeline_template_items") as any).update(row).eq("id", itemId).eq("venue_id", venueId);

@@ -26,9 +26,10 @@ import type { FloorPlan } from "@/lib/floor-plans/types";
 import type { Invoice } from "@/lib/invoices/types";
 import type { EventTask } from "@/lib/playbooks/types";
 import type {
-  TimelineAudience, TimelineEntryAttachment, TimelineEntryInput, TimelineEntryLink, TimelineEntryStatus, TimelineRelatedLink, TimelineSection,
+  TimelineAudience, TimelineEntryAttachment, TimelineEntryInput, TimelineEntryLink, TimelineRelatedLink, TimelineSection,
 } from "@/lib/timeline/types";
-import { TIMELINE_AUDIENCES } from "@/lib/timeline/types";
+import { VENUE_TIMELINE_AUDIENCES } from "@/lib/timeline/types";
+import { timelineDayOptions } from "@/lib/timeline/constants";
 import type { StaffMember } from "@/lib/team/types";
 import type { EventVendorAssignment } from "@/lib/vendors/types";
 
@@ -40,6 +41,7 @@ export function TimelineEntryForm({
   links = [], attachments = [], availableDocuments = [], onLinksChanged, onAttachmentsChanged,
   relatedLinks = [], eventTasks = [], vendorAssignments = [], floorPlans = [], conversationId = null, invoices = [], onRelatedChanged,
   teamMembers = [],
+  eventDate = null, eventEndDate = null,
 }: {
   eventId: string;
   venueId: string;
@@ -63,11 +65,14 @@ export function TimelineEntryForm({
   invoices?: Invoice[];
   onRelatedChanged?: (links: TimelineRelatedLink[]) => void;
   teamMembers?: StaffMember[];
+  eventDate?: string | null;
+  eventEndDate?: string | null;
 }) {
   const [title, setTitle] = React.useState(initial.title);
   const [description, setDescription] = React.useState(initial.description);
   const [notes, setNotes] = React.useState(initial.notes ?? "");
   const [entryTime, setEntryTime] = React.useState(initial.entryTime);
+  const [dayOffset, setDayOffset] = React.useState(String(initial.dayOffset ?? 0));
   const [sectionId, setSectionId] = React.useState(initial.sectionId ?? NO_SECTION);
   const [audiences, setAudiences] = React.useState<TimelineAudience[]>(
     initial.audiences ?? ["venue"]
@@ -77,9 +82,10 @@ export function TimelineEntryForm({
   // one click to unlock. Never gates a cross-party edit; only the item's
   // own owner (always the venue, from this form) can toggle it.
   const [isLocked, setIsLocked] = React.useState((initial.lockState ?? "locked") === "locked");
-  const initialStatus: TimelineEntryStatus = initial.status ?? "not_started";
-  const [isComplete, setIsComplete] = React.useState(initialStatus === "complete");
   const [assignedToStaffId, setAssignedToStaffId] = React.useState(initial.assignedToStaffId ?? NO_ASSIGNEE);
+
+  const dayOptions = eventDate ? timelineDayOptions(eventDate, eventEndDate) : [];
+  const showDayPicker = dayOptions.length > 1;
 
   function toggleAudience(a: TimelineAudience) {
     setAudiences(prev =>
@@ -89,13 +95,14 @@ export function TimelineEntryForm({
 
   function handleSave() {
     onSave({
-      title, description, notes, entryTime, audiences,
+      title, description, notes, entryTime,
+      dayOffset: Number(dayOffset) || 0,
+      audiences,
       sectionId: sectionId === NO_SECTION ? null : sectionId,
       lockState: isLocked ? "locked" : "editable",
-      // Un-checking only ever falls back to not_started — in_progress (set
-      // by the live Wedding Day Dashboard) is preserved unless this box is
-      // the thing that changed it.
-      status: isComplete ? "complete" : (initialStatus === "complete" ? "not_started" : initialStatus),
+      // Preserve existing run-of-show status (Wedding Day Dashboard); schedule
+      // builders no longer mark items complete from this form.
+      status: initial.status ?? "not_started",
       assignedToStaffId: assignedToStaffId === NO_ASSIGNEE ? null : assignedToStaffId,
     });
   }
@@ -116,15 +123,34 @@ export function TimelineEntryForm({
             }}
           />
         </div>
-        <div className="space-y-1.5">
-          <Label htmlFor="et-time" className="text-xs">Time</Label>
-          <Input
-            id="et-time"
-            type="time"
-            value={entryTime}
-            onChange={(e) => setEntryTime(e.target.value)}
-            className="w-32"
-          />
+        <div className="flex flex-wrap gap-3">
+          {showDayPicker && (
+            <div className="space-y-1.5">
+              <Label className="text-xs">Day</Label>
+              <Select
+                value={dayOffset}
+                onValueChange={setDayOffset}
+                items={dayOptions.map((d) => ({ value: String(d.value), label: d.label }))}
+              >
+                <SelectTrigger className="h-9 text-sm w-[11.5rem]"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {dayOptions.map((d) => (
+                    <SelectItem key={d.value} value={String(d.value)}>{d.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+          <div className="space-y-1.5">
+            <Label htmlFor="et-time" className="text-xs">Time</Label>
+            <Input
+              id="et-time"
+              type="time"
+              value={entryTime}
+              onChange={(e) => setEntryTime(e.target.value)}
+              className="w-32"
+            />
+          </div>
         </div>
       </div>
 
@@ -152,11 +178,6 @@ export function TimelineEntryForm({
           </Select>
         </div>
       </div>
-
-      <label className="flex items-center gap-2 text-xs text-muted-foreground">
-        <input type="checkbox" checked={isComplete} onChange={(e) => setIsComplete(e.target.checked)} className="h-3.5 w-3.5" />
-        Mark as complete
-      </label>
 
       <label className="flex items-center gap-2 text-xs text-muted-foreground">
         <input type="checkbox" checked={isLocked} onChange={(e) => setIsLocked(e.target.checked)} className="h-3.5 w-3.5" />
@@ -191,12 +212,12 @@ export function TimelineEntryForm({
 
       {/* Publication — the venue's own items are always visible to the
           client (they're planning inside this framework); these tags are
-          purely about publishing further out, to guests/wedding
-          party/vendors, independent of anything else on this item. */}
+          purely about publishing further out to wedding party / vendors.
+          Guests are couple-owned — never offered here. */}
       <div className="space-y-1.5">
         <Label className="text-xs">Publish to</Label>
         <div className="flex gap-1.5 flex-wrap">
-          {TIMELINE_AUDIENCES.map(a => (
+          {VENUE_TIMELINE_AUDIENCES.map(a => (
             <button
               key={a.value}
               type="button"
@@ -212,11 +233,6 @@ export function TimelineEntryForm({
             </button>
           ))}
         </div>
-        {audiences.includes("guests") && (
-          <p className="text-[10px] text-muted-foreground">
-            🌿 This entry will appear on the wedding website&apos;s Day-of Schedule.
-          </p>
-        )}
       </div>
 
       <div className="space-y-1.5">

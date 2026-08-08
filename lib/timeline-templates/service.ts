@@ -105,7 +105,8 @@ export async function createTemplateFromImport(rawText: string, name: string, ev
       if (item.guessed) guessedCount++;
       await repo.insertItem(c, venueId, templateId, {
         title: item.title, description: item.description || null, notes: null,
-        timeOfDay: item.timeOfDay, minutesOffset: item.minutesOffset, needsReview: item.guessed,
+        timeOfDay: item.timeOfDay, minutesOffset: item.minutesOffset, dayOffset: 0,
+        needsReview: item.guessed,
         audiences: ["venue"], sortOrder: i,
       });
     }

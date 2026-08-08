@@ -44,6 +44,7 @@ export async function applyTimelineTemplateToEvent(
       description: item.description ?? "",
       notes: item.notes ?? "",
       entryTime,
+      dayOffset: item.dayOffset ?? 0,
       audiences: item.audiences,
     });
     if (!result.ok) return { ok: false, message: result.message ?? `Could not add "${item.title}".` };
