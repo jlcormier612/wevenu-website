@@ -114,7 +114,7 @@ export function VendorLuvBriefing({
       <CardHeader className="pb-3">
         <div className="flex items-center gap-2">
           <LuvHeart size={16} />
-          <h2 className="font-heading text-sm font-semibold text-heading">Today&apos;s Briefing</h2>
+          <h2 className="font-heading text-sm font-semibold text-heading">Today&apos;s briefing</h2>
           {totalUrgent > 0 && (
             <span className="ml-auto text-xs font-semibold text-destructive">
               {totalUrgent} need{totalUrgent === 1 ? "s" : ""} attention

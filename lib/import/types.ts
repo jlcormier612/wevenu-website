@@ -32,13 +32,13 @@ export const LEAD_FIELDS: ImportFieldDef[] = [
 ];
 
 export const VENDOR_FIELDS: ImportFieldDef[] = [
-  { key: "businessName", label: "Business Name", required: true  },
+  { key: "businessName", label: "Vendor name", required: true  },
   { key: "category",     label: "Category",      required: false },
-  { key: "contactName",  label: "Contact Name",  required: false },
+  { key: "contactName",  label: "Contact name",  required: false },
   { key: "email",        label: "Email",         required: false },
   { key: "phone",        label: "Phone",         required: false },
-  { key: "websiteUrl",   label: "Website",       required: false },
-  { key: "pricingTier",  label: "Pricing Tier",  required: false },
+  { key: "websiteUrl",   label: "Website URL",   required: false },
+  { key: "pricingTier",  label: "Pricing tier",  required: false },
   { key: "notes",        label: "Notes",         required: false },
 ];
 

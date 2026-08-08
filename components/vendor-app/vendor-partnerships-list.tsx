@@ -22,7 +22,14 @@ function formatDate(iso: string): string {
 // Exported so the venue-first Dashboard's "Current Promotion" card
 // (components/vendor-app/vendor-home.tsx) can reuse the exact same editor
 // rather than a second copy of this logic.
-export function PromotionEditor({ partnership }: { partnership: Pick<VendorPartnership, "id" | "promotionHeadline" | "promotionDetails"> }) {
+export function PromotionEditor({
+  partnership,
+  triggerRef,
+}: {
+  partnership: Pick<VendorPartnership, "id" | "promotionHeadline" | "promotionDetails">;
+  /** Optional external trigger (e.g. parent card click) that opens edit mode. */
+  triggerRef?: React.RefObject<HTMLButtonElement | null>;
+}) {
   const [editing, setEditing] = React.useState(false);
   const [headline, setHeadline] = React.useState(partnership.promotionHeadline ?? "");
   const [details, setDetails] = React.useState(partnership.promotionDetails ?? "");
@@ -52,27 +59,32 @@ export function PromotionEditor({ partnership }: { partnership: Pick<VendorPartn
 
   if (!editing) {
     return (
-      <div className="mt-3 pt-3 border-t border-border/60">
+      <div className="mt-3 border-t border-border/60 pt-3">
         {savedHeadline ? (
           <p className="text-xs font-medium text-foreground">🎁 {savedHeadline}</p>
         ) : (
-          <p className="text-xs text-muted-foreground">No promotion set for this venue's couples yet.</p>
+          <p className="text-xs text-muted-foreground">No promotion set for this venue&apos;s couples yet.</p>
         )}
-        <button type="button" onClick={() => setEditing(true)} className="text-[11px] font-medium text-primary hover:underline mt-1">
-          {savedHeadline ? "Edit promotion" : "Add a promotion →"}
+        <button
+          ref={triggerRef}
+          type="button"
+          onClick={() => setEditing(true)}
+          className="mt-2 inline-flex items-center gap-1 text-[11px] font-medium text-primary hover:underline"
+        >
+          {savedHeadline ? "Edit promotion →" : "Add a promotion →"}
         </button>
       </div>
     );
   }
 
   return (
-    <div className="mt-3 pt-3 border-t border-border/60 space-y-2">
+    <div className="mt-3 space-y-2 border-t border-border/60 pt-3">
       <input
         value={headline}
         onChange={(e) => setHeadline(e.target.value)}
         placeholder="e.g. Book by Sept 1 for a free engagement session"
         maxLength={120}
-        className="w-full text-xs rounded-lg border border-border px-2.5 py-1.5 bg-background"
+        className="w-full rounded-lg border border-border bg-background px-2.5 py-1.5 text-xs"
       />
       <textarea
         value={details}
@@ -80,15 +92,24 @@ export function PromotionEditor({ partnership }: { partnership: Pick<VendorPartn
         placeholder="Details couples should know about this offer…"
         rows={2}
         maxLength={500}
-        className="w-full text-xs rounded-lg border border-border px-2.5 py-1.5 bg-background resize-none"
+        className="w-full resize-none rounded-lg border border-border bg-background px-2.5 py-1.5 text-xs"
       />
       <div className="flex gap-2">
-        <Button type="button" size="sm" disabled={saving} onClick={handleSave} className="text-xs h-7">
+        <Button type="button" size="sm" disabled={saving} onClick={handleSave} className="h-7 text-xs">
           {saving ? "Saving…" : "Save"}
         </Button>
-        <Button type="button" size="sm" variant="outline" disabled={saving} onClick={() => {
-          setEditing(false); setHeadline(partnership.promotionHeadline ?? ""); setDetails(partnership.promotionDetails ?? "");
-        }} className="text-xs h-7">
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          disabled={saving}
+          onClick={() => {
+            setEditing(false);
+            setHeadline(partnership.promotionHeadline ?? "");
+            setDetails(partnership.promotionDetails ?? "");
+          }}
+          className="h-7 text-xs"
+        >
           Cancel
         </Button>
       </div>

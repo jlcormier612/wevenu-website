@@ -25,6 +25,7 @@
 
 import * as React from "react";
 import Link from "next/link";
+import { ChevronDown, ChevronUp, Mail } from "lucide-react";
 
 import { PromotionEditor } from "@/components/vendor-app/vendor-partnerships-list";
 import { getVendorActiveVenueAction } from "@/app/vendor/actions";
@@ -46,6 +47,40 @@ function initials(name: string): string {
   return name.split(" ").map((s) => s[0]).slice(0, 2).join("").toUpperCase();
 }
 
+function ContactRow({
+  fullName,
+  title,
+  role,
+  email,
+}: {
+  fullName: string;
+  title: string | null;
+  role: string | null;
+  email: string | null;
+}) {
+  return (
+    <div className="flex items-center gap-2.5">
+      <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-muted text-[10px] font-bold text-muted-foreground">
+        {initials(fullName)}
+      </div>
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-xs font-medium text-foreground">{fullName}</p>
+        <p className="text-[10px] text-muted-foreground">{title || role}</p>
+      </div>
+      {email ? (
+        <a
+          href={`mailto:${email}`}
+          className="inline-flex shrink-0 items-center gap-1 rounded-sm border border-border bg-background px-2 py-1 text-[10px] font-medium text-primary hover:bg-muted"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <Mail className="h-3 w-3" />
+          Email
+        </a>
+      ) : null}
+    </div>
+  );
+}
+
 export function VendorVenueHero({ initialVenue, partnerships, vendorCategory, allEvents }: {
   initialVenue: VendorActiveVenueContext;
   partnerships: VendorPartnership[];
@@ -54,6 +89,8 @@ export function VendorVenueHero({ initialVenue, partnerships, vendorCategory, al
 }) {
   const [context, setContext] = React.useState(initialVenue);
   const [switching, setSwitching] = React.useState(false);
+  const [showAllContacts, setShowAllContacts] = React.useState(false);
+  const promoEditRef = React.useRef<HTMLButtonElement | null>(null);
 
   async function switchVenue(venueId: string) {
     setSwitching(true);
@@ -91,12 +128,12 @@ export function VendorVenueHero({ initialVenue, partnerships, vendorCategory, al
         background: venue.heroImageUrl
           ? `url(${venue.heroImageUrl}) center/cover no-repeat`
           : `linear-gradient(155deg, ${venue.secondaryColor ?? "#4F5F4F"} 0%, ${venue.primaryColor ?? "#5D6F5D"} 100%)`,
-        minHeight: 220,
+        minHeight: "min(64vh, 560px)",
       }}>
         <div className="absolute inset-0" style={{
           background: "linear-gradient(to top, rgba(0,0,0,0.78) 0%, rgba(0,0,0,0.38) 45%, rgba(0,0,0,0.05) 100%)",
         }} />
-        <div className="relative flex flex-col justify-end gap-2 p-6" style={{ minHeight: 220 }}>
+        <div className="relative flex flex-col justify-end gap-2 p-6" style={{ minHeight: "min(64vh, 560px)" }}>
           <div className="flex items-center gap-2.5">
             {venue.logoUrl && (
               // eslint-disable-next-line @next/next/no-img-element
@@ -138,58 +175,87 @@ export function VendorVenueHero({ initialVenue, partnerships, vendorCategory, al
         </div>
       )}
 
-      {/* Who do I contact? / What's happening? / What's next? — one glance,
-          three columns, same footprint as the old two-column grid. */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+      {/* Who do I contact? / What's happening? / What's next? */}
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+        {/* Venue Contact — expand for full list + clear Email CTA */}
         <div className="rounded-sm border border-border bg-card p-4">
-          <p className="text-xs font-semibold text-foreground mb-3">👋 Venue Contact</p>
+          <p className="mb-3 text-xs font-semibold text-foreground">👋 Venue Contact</p>
           {!primaryContact ? (
             <p className="text-xs text-muted-foreground">No contacts listed yet.</p>
           ) : (
             <div className="space-y-2.5">
-              <div className="flex items-center gap-2.5">
-                <div className="h-7 w-7 rounded-full bg-muted flex items-center justify-center text-[10px] font-bold text-muted-foreground shrink-0">
-                  {initials(primaryContact.fullName)}
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="text-xs font-medium text-foreground truncate">{primaryContact.fullName}</p>
-                  <p className="text-[10px] text-muted-foreground">{primaryContact.title || primaryContact.role}</p>
-                </div>
-                {primaryContact.email && (
-                  <a href={`mailto:${primaryContact.email}`} className="text-[10px] text-primary hover:underline shrink-0">Email</a>
-                )}
-              </div>
-              {contacts.length > 1 && (
-                <p className="text-[10px] text-muted-foreground">+{contacts.length - 1} more contact{contacts.length - 1 === 1 ? "" : "s"}</p>
-              )}
+              {(showAllContacts ? contacts : contacts.slice(0, 1)).map((c) => (
+                <ContactRow
+                  key={c.id}
+                  fullName={c.fullName}
+                  title={c.title}
+                  role={c.role}
+                  email={c.email}
+                />
+              ))}
+              {contacts.length > 1 ? (
+                <button
+                  type="button"
+                  onClick={() => setShowAllContacts((v) => !v)}
+                  className="inline-flex items-center gap-1 text-[11px] font-medium text-primary hover:underline"
+                >
+                  {showAllContacts ? (
+                    <>Show less <ChevronUp className="h-3 w-3" /></>
+                  ) : (
+                    <>+{contacts.length - 1} more contact{contacts.length - 1 === 1 ? "" : "s"} <ChevronDown className="h-3 w-3" /></>
+                  )}
+                </button>
+              ) : null}
             </div>
           )}
         </div>
 
-        <div className="rounded-sm border border-border bg-card p-4">
+        {/* Current Promotion — card click opens editor */}
+        <div
+          role="button"
+          tabIndex={0}
+          className="cursor-pointer rounded-sm border border-border bg-card p-4 text-left transition-colors hover:border-primary/40 hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          onClick={() => promoEditRef.current?.click()}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              promoEditRef.current?.click();
+            }
+          }}
+        >
           <p className="text-xs font-semibold text-foreground">🎁 Current Promotion</p>
-          <p className="text-[10px] text-muted-foreground mt-0.5">What couples see on your profile at {venue.name}.</p>
-          <PromotionEditor partnership={partnership} />
+          <p className="mt-0.5 text-[10px] text-muted-foreground">What couples see on your profile at {venue.name}.</p>
+          <div onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
+            <PromotionEditor partnership={partnership} triggerRef={promoEditRef} />
+          </div>
         </div>
 
-        <div className="rounded-sm border border-border bg-card p-4">
-          <p className="text-xs font-semibold text-foreground mb-3">📅 Next Event</p>
-          {!nextEvent ? (
+        {/* Next Event — whole card opens the event */}
+        {nextEvent ? (
+          <Link
+            href={`/vendor/events/${nextEvent.assignmentId}`}
+            className="block rounded-sm border border-border bg-card p-4 transition-colors hover:border-primary/40 hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            <p className="mb-3 text-xs font-semibold text-foreground">📅 Next Event</p>
+            <p className="text-xs font-medium text-foreground">{nextEvent.eventName}</p>
+            <p className="mt-0.5 text-[10px] text-muted-foreground">
+              {formatEventDateRangeShort(nextEvent.eventDate!, nextEvent.eventEndDate)}
+            </p>
+            <p className="mt-2 text-[10px] text-muted-foreground">
+              {upcomingAtVenue.length} upcoming event{upcomingAtVenue.length === 1 ? "" : "s"} together
+            </p>
+            <p className="mt-1 text-[11px] font-medium text-primary">Open event →</p>
+          </Link>
+        ) : (
+          <Link
+            href="/vendor/events"
+            className="block rounded-sm border border-border bg-card p-4 transition-colors hover:border-primary/40 hover:bg-muted/30"
+          >
+            <p className="mb-3 text-xs font-semibold text-foreground">📅 Next Event</p>
             <p className="text-xs text-muted-foreground">Nothing booked here yet.</p>
-          ) : (
-            <>
-              <Link href={`/vendor/events/${nextEvent.assignmentId}`} className="text-xs font-medium text-foreground hover:text-primary">
-                {nextEvent.eventName}
-              </Link>
-              <p className="text-[10px] text-muted-foreground mt-0.5">
-                {formatEventDateRangeShort(nextEvent.eventDate!, nextEvent.eventEndDate)}
-              </p>
-              <p className="text-[10px] text-muted-foreground mt-2">
-                {upcomingAtVenue.length} upcoming event{upcomingAtVenue.length === 1 ? "" : "s"} together
-              </p>
-            </>
-          )}
-        </div>
+            <p className="mt-2 text-[11px] font-medium text-primary">View events →</p>
+          </Link>
+        )}
       </div>
     </div>
   );

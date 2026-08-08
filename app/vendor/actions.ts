@@ -46,6 +46,10 @@ export async function createVendorAccountAndClaimAction(
 
 export async function updateVendorProfileAction(input: VendorProfileInput): Promise<VendorActionResult> {
   if (!input.businessName.trim()) return { ok: false, errors: { businessName: "Business name is required." } };
+  if (!input.category.trim()) return { ok: false, errors: { category: "Category is required." } };
+  if (!input.contactName.trim()) return { ok: false, errors: { contactName: "Contact name is required." } };
+  if (!input.email.trim()) return { ok: false, errors: { email: "Email is required." } };
+  if (!input.websiteUrl.trim()) return { ok: false, errors: { websiteUrl: "Website is required." } };
   const result = await updateVendorProfile(input);
   if (result.ok) revalidatePath("/vendor/profile");
   return result;

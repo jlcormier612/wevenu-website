@@ -46,7 +46,7 @@ export default async function VendorAcceptPage({ searchParams }: Props) {
           <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
             You&apos;ve been invited
           </p>
-          <h1 className="text-2xl font-bold text-foreground">{vendorName}</h1>
+          <h1 className="font-heading text-2xl font-medium text-heading">{vendorName}</h1>
           {category && (
             <p className="text-sm text-muted-foreground capitalize">{category.replace(/_/g, " ")}</p>
           )}
@@ -71,7 +71,7 @@ function InvalidToken() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-muted/30 p-4">
       <div className="w-full max-w-md bg-background border border-border rounded-2xl p-8 shadow-sm text-center space-y-3">
-        <h1 className="text-xl font-bold text-foreground">Link Invalid or Expired</h1>
+        <h1 className="font-heading text-2xl font-medium text-heading">Link invalid or expired</h1>
         <p className="text-sm text-muted-foreground">
           This invitation link has already been used or is no longer valid.
           Ask your venue contact to resend the invitation.

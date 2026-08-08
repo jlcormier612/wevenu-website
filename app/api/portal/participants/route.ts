@@ -68,6 +68,8 @@ export async function POST(request: Request) {
           "",
           `${preview.coupleName} invited you to help plan their celebration with ${preview.venueName}.`,
           "",
+          "By accepting this invitation, you will be asked to review and accept the applicable Hello to Cheers Terms and Privacy Policy before accessing your workspace.",
+          "",
           "Create your account here:",
           acceptUrl,
           "",
@@ -76,6 +78,7 @@ export async function POST(request: Request) {
         html: [
           `<p>Hi ${firstName.trim()},</p>`,
           `<p>${preview.coupleName} invited you to help plan their celebration with ${preview.venueName}.</p>`,
+          `<p>By accepting this invitation, you will be asked to review and accept the applicable Hello to Cheers Terms and Privacy Policy before accessing your workspace.</p>`,
           `<p><a href="${acceptUrl}" style="background:${venueColor};color:#fff;padding:10px 20px;border-radius:8px;text-decoration:none;display:inline-block;">Create Your Account</a></p>`,
           `<p style="color:#888;font-size:12px;">This link is personal to you — please don't share it.</p>`,
         ].join(""),

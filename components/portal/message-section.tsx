@@ -5,9 +5,8 @@ import { FileText, Image as ImageIcon, Paperclip, RotateCcw, Send, X } from "luc
 import type { CoupleMessage, MessageAttachment, PortalThread } from "@/lib/messages/types";
 
 // Venue Brand Experience Phase 1: SAGE (the couple's own outgoing chat
-// bubble color) and LINEN (background tint) are now the venue's own brand.
-const SAGE  = "var(--venue-primary)";
-const LINEN = "var(--venue-neutral)";
+// bubble color) is the venue's primary brand color.
+const SAGE = "var(--venue-primary)";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -102,17 +101,19 @@ function Bubble({
         )}
         <div
           className={`max-w-[75%] rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed ${
-            isCouple ? "rounded-br-sm text-white" : "rounded-bl-sm"
+            isCouple
+              ? "rounded-br-sm text-white"
+              : "rounded-bl-sm border border-border/60 bg-muted text-foreground"
           }`}
-          style={isCouple ? { background: SAGE } : { background: "#EDE9E3", color: "#3D3A35" }}
+          style={isCouple ? { background: SAGE } : undefined}
         >
           {hasBody && <p>{msg.body}</p>}
           {msg.attachments?.map(att => (
             <AttachmentDisplay key={att.id} att={att} isCouple={isCouple} />
           ))}
           <span
-            className="block text-[10px] mt-1"
-            style={{ color: isCouple ? "rgba(255,255,255,0.55)" : "#9A9188" }}
+            className={`block text-[10px] mt-1 ${isCouple ? "" : "text-muted-foreground"}`}
+            style={isCouple ? { color: "rgba(255,255,255,0.55)" } : undefined}
           >
             {formatTime(msg.created_at)}
           </span>
@@ -340,13 +341,12 @@ export function PortalMessageSection({
 
   return (
     <div
-      className="flex flex-col rounded-2xl overflow-hidden relative"
+      className={`flex flex-col rounded-2xl overflow-hidden relative border border-border transition-colors ${
+        isDragging ? "bg-muted" : "bg-card"
+      }`}
       style={{
-        background: isDragging ? "#F0EDE7" : LINEN,
-        border:     "1px solid #DDD9D2",
-        minHeight:  400,
-        maxHeight:  "calc(100vh - 160px)",
-        transition: "background 0.15s",
+        minHeight: 400,
+        maxHeight: "calc(100vh - 160px)",
       }}
       onDragOver={onDragOver}
       onDragLeave={onDragLeave}
@@ -355,24 +355,21 @@ export function PortalMessageSection({
       {/* Drag overlay */}
       {isDragging && (
         <div className="absolute inset-0 z-10 flex items-center justify-center pointer-events-none">
-          <div className="rounded-2xl px-8 py-6 text-center" style={{ background: "rgba(247,245,241,0.9)", border: `2px dashed ${SAGE}` }}>
+          <div className="rounded-2xl px-8 py-6 text-center bg-card/90" style={{ border: `2px dashed ${SAGE}` }}>
             <Paperclip className="h-8 w-8 mx-auto mb-2" style={{ color: SAGE }} />
-            <p className="text-sm font-medium" style={{ color: "#2D2B28" }}>Drop files to attach</p>
+            <p className="text-sm font-medium text-foreground">Drop files to attach</p>
           </div>
         </div>
       )}
 
       {/* Header */}
-      <div
-        className="flex items-center gap-3 px-4 py-3 shrink-0"
-        style={{ background: "#EDEBE6", borderBottom: "1px solid #DDD9D2" }}
-      >
+      <div className="flex items-center gap-3 px-4 py-3 shrink-0 border-b border-border bg-card">
         <div className="h-8 w-8 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0" style={{ background: SAGE }}>
           {venueName[0]?.toUpperCase() ?? "V"}
         </div>
         <div>
-          <p className="text-sm font-semibold" style={{ color: "#2D2B28" }}>{venueName}</p>
-          <p className="text-[10px]" style={{ color: "#9A9188" }}>Your venue team</p>
+          <p className="text-sm font-semibold text-foreground">{venueName}</p>
+          <p className="text-[10px] text-muted-foreground">Your venue team</p>
         </div>
       </div>
 
@@ -415,7 +412,7 @@ export function PortalMessageSection({
 
       {/* Upload strip */}
       {uploads.length > 0 && (
-        <div className="shrink-0 flex gap-2 px-4 py-2 overflow-x-auto" style={{ borderTop: "1px solid #DDD9D2", background: "#EDEBE6" }}>
+        <div className="shrink-0 flex gap-2 px-4 py-2 overflow-x-auto border-t border-border bg-card">
           {uploads.map(u => (
             <UploadChip
               key={u.id}
@@ -428,14 +425,13 @@ export function PortalMessageSection({
       )}
 
       {/* Compose */}
-      <div className="shrink-0 px-4 py-3" style={{ borderTop: "1px solid #DDD9D2", background: "#EDEBE6" }}>
+      <div className="shrink-0 px-4 py-3 border-t border-border bg-card">
         <div className="flex items-end gap-2">
           {/* File picker */}
           <button
             type="button"
             onClick={() => fileInputRef.current?.click()}
-            className="h-10 w-10 rounded-xl flex items-center justify-center shrink-0 transition-opacity hover:opacity-70"
-            style={{ background: "#DDD9D2", color: "#5D6057" }}
+            className="h-10 w-10 rounded-xl flex items-center justify-center shrink-0 transition-opacity hover:opacity-70 bg-muted text-muted-foreground"
             title="Attach file"
           >
             <Paperclip className="h-4 w-4" />
@@ -455,12 +451,9 @@ export function PortalMessageSection({
             onKeyDown={handleKey}
             placeholder={`Message ${venueName}…`}
             rows={1}
-            className="flex-1 resize-none rounded-xl px-3.5 py-2.5 text-sm focus:outline-none min-h-[40px] max-h-[120px]"
+            className="flex-1 resize-none rounded-xl border border-border bg-card px-3.5 py-2.5 text-sm text-foreground focus:outline-none min-h-[40px] max-h-[120px]"
             style={{
-              background: "#FAFAF8",
-              border:     "1px solid #C8C2BB",
-              color:      "#2D2B28",
-              overflowY:  body.split("\n").length > 3 ? "auto" : "hidden",
+              overflowY: body.split("\n").length > 3 ? "auto" : "hidden",
             }}
           />
 

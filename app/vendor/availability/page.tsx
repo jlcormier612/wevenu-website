@@ -21,9 +21,9 @@ export default async function VendorAvailabilityPage() {
   if (!profile) redirect("/login");
 
   return (
-    <div className="space-y-6 max-w-2xl">
+    <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-foreground">Availability</h1>
+        <h1 className="font-heading text-2xl font-medium text-heading">Availability</h1>
         <p className="text-sm text-muted-foreground mt-1">
           Mark dates you're unavailable and set your inquiry preferences.
         </p>

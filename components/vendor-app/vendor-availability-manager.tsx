@@ -162,13 +162,13 @@ export function VendorAvailabilityManager({
     <div className="space-y-6">
       {/* Settings */}
       <div className="rounded-sm border border-border bg-card p-5 space-y-4">
-        <p className="text-sm font-medium text-heading">Availability settings</p>
+        <p className="text-sm font-medium text-heading">Availability Settings</p>
 
         <div className="flex items-center justify-between">
           <div>
             <p className="text-sm font-medium text-foreground">Open for new bookings</p>
             <p className="text-xs text-muted-foreground">
-              Signals to partner venues that you&apos;re available for more events. This isn&apos;t a public inquiry inbox.
+              Signals to partner venues and prospective clients that you&apos;re available for more events. This isn&apos;t a public inquiry inbox.
             </p>
           </div>
           <Switch checked={accepting} onCheckedChange={setAccepting} />
