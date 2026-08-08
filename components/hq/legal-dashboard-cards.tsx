@@ -1,3 +1,4 @@
+import { StatTile, StatTileGrid } from "@/components/dashboard-system/stat-tile";
 import type { LegalAdminDashboardSummary } from "@/lib/legal/admin-helpers";
 
 const CARDS: {
@@ -30,26 +31,25 @@ const CARDS: {
   },
 ];
 
+// Dashboard Component System, Phase 2 — shell migrated to StatTile
+// ("label-top" layout, matching this file's original plain-div rounded-xl
+// border p-4 tile exactly); copy and values unchanged.
 export function LegalDashboardCards({
   summary,
 }: {
   summary: LegalAdminDashboardSummary;
 }) {
   return (
-    <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+    <StatTileGrid className="lg:grid-cols-4">
       {CARDS.map((card) => (
-        <div
+        <StatTile
           key={card.key}
+          layout="label-top"
+          label={card.label}
+          value={card.format(summary)}
           className="rounded-xl border bg-card p-4"
-        >
-          <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-            {card.label}
-          </p>
-          <p className="mt-1 font-heading text-2xl font-bold text-heading">
-            {card.format(summary)}
-          </p>
-        </div>
+        />
       ))}
-    </div>
+    </StatTileGrid>
   );
 }

@@ -4,6 +4,7 @@ import * as React from "react";
 import { Pencil, Plus, Trash2, X, Check, ChevronDown, ChevronUp } from "lucide-react";
 import type { BudgetCategory, BudgetContributor, CoupleBudget } from "@/lib/portal/types";
 import { getBudgetObservations } from "@/lib/luv/portal-observations";
+import { ProgressRing } from "@/components/dashboard-system/progress";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -47,26 +48,11 @@ function catDef(key: string) {
   return BUDGET_CATS.find(c => c.key === key) ?? { key, label: key, emoji: "✨", suggestedPct: 0 };
 }
 
-// ── Progress ring ─────────────────────────────────────────────────────────────
-
-function ProgressRing({ pct, size = 96, stroke = 10, color = "var(--venue-accent)" }: {
-  pct: number; size?: number; stroke?: number; color?: string;
-}) {
-  const r = (size - stroke) / 2;
-  const circ = 2 * Math.PI * r;
-  const offset = circ - (Math.min(pct, 100) / 100) * circ;
-  const overColor = "#DC6A6A";
-  const displayColor = pct > 100 ? overColor : color;
-  return (
-    <svg width={size} height={size} style={{ transform: "rotate(-90deg)" }}>
-      <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="#EAE6E1" strokeWidth={stroke} />
-      <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke={displayColor} strokeWidth={stroke}
-        strokeDasharray={circ} strokeDashoffset={offset}
-        strokeLinecap="round"
-        style={{ transition: "stroke-dashoffset 0.6s ease, stroke 0.3s ease" }} />
-    </svg>
-  );
-}
+// Progress ring — Dashboard Component System, Phase 1 Step 4
+// (docs/dashboard-component-system-architecture.md §2.6). Local
+// definition removed in favor of the shared components/dashboard-system/
+// progress.tsx primitive; overColor passed explicitly below to preserve
+// this section's original over-100%-red behavior exactly.
 
 // ── Insights engine ───────────────────────────────────────────────────────────
 
@@ -625,7 +611,7 @@ function DashboardView({ budget, token, onUpdate }: {
       <section className="bg-card border border-border rounded-2xl p-5 space-y-4">
         <div className="flex items-start gap-5">
           <div className="relative shrink-0">
-            <ProgressRing pct={pctSpent} size={88} stroke={9} />
+            <ProgressRing pct={pctSpent} size={88} stroke={9} overColor="#DC6A6A" />
             <div className="absolute inset-0 flex flex-col items-center justify-center">
               <span className="text-sm font-bold leading-none">{Math.round(pctSpent)}%</span>
               <span className="text-[9px] text-muted-foreground leading-none mt-0.5">spent</span>

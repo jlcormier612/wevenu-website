@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Mail, MessageSquare, Smartphone } from "lucide-react";
 
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { StatTile } from "@/components/dashboard-system/stat-tile";
 import { CommunicationHealthWidget } from "@/components/communication/communication-health-widget";
 import { ReadinessChecklist } from "@/components/communication/readiness-checklist";
 import { MessageTimelinePopover } from "@/components/messaging/message-timeline-popover";
@@ -30,18 +31,26 @@ export default async function CommunicationHealthPage() {
       <CommunicationHealthWidget health={health} />
 
       {/* Plain counts, never a bare percentage — per the Trust Experience brief. */}
+      {/* Dashboard Component System, Phase 2 — shell migrated to StatTile
+          ("value-top", centered); each tile keeps its own shadcn Card
+          wrapper exactly as before (StatTile's "value-top" layout renders
+          a plain div, so nesting it inside the pre-existing Card/
+          CardContent reproduces the original markup precisely). */}
       <div className="grid grid-cols-3 gap-4">
-        <Card><CardContent className="pt-6 text-center">
-          <p className="text-2xl font-bold text-heading">{counts.sent}</p>
-          <p className="text-xs text-muted-foreground mt-1">messages sent (last {counts.windowDays} days)</p>
+        <Card><CardContent className="pt-6">
+          <StatTile layout="value-top" align="center" value={counts.sent} label={`messages sent (last ${counts.windowDays} days)`} />
         </CardContent></Card>
-        <Card><CardContent className="pt-6 text-center">
-          <p className="text-2xl font-bold text-success">{counts.delivered}</p>
-          <p className="text-xs text-muted-foreground mt-1">delivered successfully</p>
+        <Card><CardContent className="pt-6">
+          <StatTile layout="value-top" align="center" value={counts.delivered} label="delivered successfully" valueClassName="text-success" />
         </CardContent></Card>
-        <Card><CardContent className="pt-6 text-center">
-          <p className={`text-2xl font-bold ${counts.needsAttention > 0 ? "text-destructive" : "text-heading"}`}>{counts.needsAttention}</p>
-          <p className="text-xs text-muted-foreground mt-1">need{counts.needsAttention === 1 ? "s" : ""} your attention</p>
+        <Card><CardContent className="pt-6">
+          <StatTile
+            layout="value-top"
+            align="center"
+            value={counts.needsAttention}
+            label={`need${counts.needsAttention === 1 ? "s" : ""} your attention`}
+            valueClassName={counts.needsAttention > 0 ? "text-destructive" : "text-heading"}
+          />
         </CardContent></Card>
       </div>
 

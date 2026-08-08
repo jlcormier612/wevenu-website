@@ -2,15 +2,22 @@
 
 import * as React from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { StatTile } from "@/components/dashboard-system/stat-tile";
 import type { EventsMetrics } from "@/lib/analytics/types";
 
+// Dashboard Component System, Phase 2 — local StatBox removed in favor of
+// the shared StatTile ("label-top" layout); tabular-nums preserved via
+// valueClassName (additive, doesn't replace the default text color).
 function StatBox({ label, value, sub }: { label: string; value: string | number; sub?: string }) {
   return (
-    <div className="rounded-sm bg-muted/50 px-4 py-3">
-      <p className="text-[10px] text-muted-foreground uppercase tracking-wide mb-1">{label}</p>
-      <p className="text-2xl font-bold text-heading tabular-nums">{value}</p>
-      {sub && <p className="text-[11px] text-muted-foreground mt-0.5">{sub}</p>}
-    </div>
+    <StatTile
+      layout="label-top"
+      label={label}
+      value={value}
+      sub={sub}
+      valueClassName="tabular-nums"
+      className="rounded-sm bg-muted/50 px-4 py-3"
+    />
   );
 }
 

@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { RsvpPage } from "@/components/wedding-website/rsvp-page";
 import type { RsvpContext } from "@/app/rsvp/[token]/page";
+import { ProgressRing } from "@/components/dashboard-system/progress";
 import { FinalizeGuestCountCard } from "@/components/portal/finalize-guest-count-card";
 
 // Hosted Experience Platform Phase 4 — "preview as this guest." Self-contained
@@ -132,21 +133,9 @@ function parseCSV(text: string): { firstName: string; lastName?: string; email?:
 
 // ── Progress ring (reused from budget-section) ────────────────────────────────
 
-function ProgressRing({ pct, size = 80, stroke = 8, color = "var(--venue-accent)" }: {
-  pct: number; size?: number; stroke?: number; color?: string;
-}) {
-  const r    = (size - stroke) / 2;
-  const circ = 2 * Math.PI * r;
-  const offset = circ - (Math.min(pct, 100) / 100) * circ;
-  return (
-    <svg width={size} height={size} style={{ transform: "rotate(-90deg)" }}>
-      <circle cx={size/2} cy={size/2} r={r} fill="none" stroke="#EAE6E1" strokeWidth={stroke} />
-      <circle cx={size/2} cy={size/2} r={r} fill="none" stroke={color} strokeWidth={stroke}
-        strokeDasharray={circ} strokeDashoffset={offset} strokeLinecap="round"
-        style={{ transition: "stroke-dashoffset 0.6s ease" }} />
-    </svg>
-  );
-}
+// Progress ring — Dashboard Component System, Phase 1 Step 4. Local
+// definition removed in favor of the shared components/dashboard-system/
+// progress.tsx primitive (identical SVG math, same defaults).
 
 // ── RSVP Insights panel ───────────────────────────────────────────────────────
 

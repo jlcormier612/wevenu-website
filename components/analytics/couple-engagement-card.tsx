@@ -3,27 +3,20 @@
 import * as React from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { CoupleEngagement } from "@/lib/analytics/types";
+import { ProgressRing } from "@/components/dashboard-system/progress";
 
-function Ring({ pct, size = 64, stroke = 7, color = "#5D6F5D" }: {
-  pct: number; size?: number; stroke?: number; color?: string;
-}) {
-  const r    = (size - stroke) / 2;
-  const circ = 2 * Math.PI * r;
-  return (
-    <svg width={size} height={size} style={{ transform: "rotate(-90deg)" }} className="shrink-0">
-      <circle cx={size/2} cy={size/2} r={r} fill="none" stroke="var(--muted)" strokeWidth={stroke} />
-      <circle cx={size/2} cy={size/2} r={r} fill="none" stroke={color} strokeWidth={stroke}
-        strokeDasharray={circ} strokeDashoffset={circ - (Math.min(pct, 100) / 100) * circ}
-        strokeLinecap="round" style={{ transition: "stroke-dashoffset 0.7s ease" }} />
-    </svg>
-  );
-}
+// Ring — Dashboard Component System, Phase 1 Step 4. Local SVG-ring
+// definition removed in favor of the shared ProgressRing primitive;
+// trackColor passed explicitly below ("var(--muted)") to preserve this
+// card's original track color exactly (the shared default matches the
+// couple-portal's track color instead, since that's where this shape
+// originated).
 
 function RingStat({ label, pct, sub, color }: { label: string; pct: number; sub: string; color?: string }) {
   return (
     <div className="flex items-center gap-4">
-      <div className="relative">
-        <Ring pct={pct} color={color} />
+      <div className="relative shrink-0">
+        <ProgressRing pct={pct} size={64} stroke={7} color={color ?? "#5D6F5D"} trackColor="var(--muted)" />
         <div className="absolute inset-0 flex items-center justify-center">
           <span className="text-xs font-bold tabular-nums">{pct}%</span>
         </div>

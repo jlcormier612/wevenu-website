@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { PipelineSummary } from "@/components/dashboard-system/pipeline-summary";
 import type { LeadFunnel } from "@/lib/analytics/types";
 
 const STAGE_COLORS = ["#5D6F5D", "#7A8F7A", "#97A897", "#B4C1B4"];
@@ -26,6 +27,9 @@ function FunnelBar({ label, count, total, color }: {
   );
 }
 
+// Dashboard Component System, Phase 2 — shell migrated to
+// PipelineSummary; row content, "lost" divider, and by-source breakdown
+// (passed as `footer`) unchanged.
 export function LeadFunnelCard({ data }: { data: LeadFunnel | null }) {
   if (!data) return (
     <Card>
@@ -43,47 +47,50 @@ export function LeadFunnelCard({ data }: { data: LeadFunnel | null }) {
   ];
 
   return (
-    <Card>
-      <CardHeader className="pb-2">
-        <div className="flex items-center justify-between">
-          <CardTitle className="text-base">Lead Funnel</CardTitle>
-          <span className="text-xs font-semibold px-2 py-0.5 rounded-full"
-            style={{ background: "#5D6F5D20", color: "#3D5040" }}>
-            {data.conversionRate}% close rate
-          </span>
-        </div>
-      </CardHeader>
-      <CardContent className="space-y-3">
-        {stages.map((s, i) => (
-          <FunnelBar key={s.label} label={s.label} count={s.count} total={data.total} color={STAGE_COLORS[Math.min(i, STAGE_COLORS.length - 1)]} />
-        ))}
+    <PipelineSummary
+      title="Lead Funnel"
+      headerClassName="pb-2"
+      headerRight={
+        <span className="text-xs font-semibold px-2 py-0.5 rounded-full"
+          style={{ background: "#5D6F5D20", color: "#3D5040" }}>
+          {data.conversionRate}% close rate
+        </span>
+      }
+      stages={stages}
+      getKey={(s) => s.label}
+      renderStage={(s) => {
+        const i = stages.indexOf(s);
+        return <FunnelBar label={s.label} count={s.count} total={data.total} color={STAGE_COLORS[Math.min(i, STAGE_COLORS.length - 1)]} />;
+      }}
+      footer={
+        <>
+          {data.total > 0 && (
+            <div className="flex items-center gap-2 pt-1">
+              <span className="h-px flex-1 bg-border" />
+              <span className="text-[10px] text-muted-foreground uppercase tracking-wide">{data.lost} lost</span>
+              <span className="h-px flex-1 bg-border" />
+            </div>
+          )}
 
-        {data.total > 0 && (
-          <div className="flex items-center gap-2 pt-1">
-            <span className="h-px flex-1 bg-border" />
-            <span className="text-[10px] text-muted-foreground uppercase tracking-wide">{data.lost} lost</span>
-            <span className="h-px flex-1 bg-border" />
-          </div>
-        )}
-
-        {data.bySource.length > 0 && (
-          <div className="pt-1 space-y-1.5">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground/60">By Source</p>
-            {data.bySource.slice(0, 5).map(s => (
-              <div key={s.source} className="flex items-center gap-2 text-xs">
-                <span className="w-24 shrink-0 capitalize truncate text-muted-foreground">
-                  {s.source.replace(/_/g, " ")}
-                </span>
-                <div className="flex-1 h-1.5 rounded-full bg-muted overflow-hidden">
-                  <div className="h-full rounded-full bg-muted-foreground/30" style={{ width: `${s.total > 0 ? Math.round(s.total / data.total * 100) : 0}%` }} />
+          {data.bySource.length > 0 && (
+            <div className="pt-1 space-y-1.5">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground/60">By Source</p>
+              {data.bySource.slice(0, 5).map(s => (
+                <div key={s.source} className="flex items-center gap-2 text-xs">
+                  <span className="w-24 shrink-0 capitalize truncate text-muted-foreground">
+                    {s.source.replace(/_/g, " ")}
+                  </span>
+                  <div className="flex-1 h-1.5 rounded-full bg-muted overflow-hidden">
+                    <div className="h-full rounded-full bg-muted-foreground/30" style={{ width: `${s.total > 0 ? Math.round(s.total / data.total * 100) : 0}%` }} />
+                  </div>
+                  <span className="w-8 text-right tabular-nums text-muted-foreground/70">{s.total}</span>
+                  <span className="w-10 text-right tabular-nums text-[10px] font-medium" style={{ color: "#5D6F5D" }}>{s.rate}%</span>
                 </div>
-                <span className="w-8 text-right tabular-nums text-muted-foreground/70">{s.total}</span>
-                <span className="w-10 text-right tabular-nums text-[10px] font-medium" style={{ color: "#5D6F5D" }}>{s.rate}%</span>
-              </div>
-            ))}
-          </div>
-        )}
-      </CardContent>
-    </Card>
+              ))}
+            </div>
+          )}
+        </>
+      }
+    />
   );
 }

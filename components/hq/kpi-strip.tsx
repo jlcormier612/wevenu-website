@@ -1,3 +1,4 @@
+import { StatTile } from "@/components/dashboard-system/stat-tile";
 import type { BetaOverviewSummary } from "@/lib/hq/beta-types";
 
 export type StatusFilter = "all" | "healthy" | "at_risk" | "critical";
@@ -11,6 +12,15 @@ type Tile = {
   accent?: "success" | "warning" | "destructive";
 };
 
+const ACCENT_CLASS: Record<NonNullable<Tile["accent"]>, string> = {
+  success: "text-success",
+  warning: "text-warning",
+  destructive: "text-destructive",
+};
+
+// Dashboard Component System, Phase 2 — shell migrated to StatTile
+// ("label-top" layout, onClick + active instead of href); copy/values
+// and the filter/sort behavior itself unchanged.
 export function KpiStrip({
   kpis,
   statusFilter,
@@ -35,24 +45,19 @@ export function KpiStrip({
     { label: "Avg Couple Adoption", value: `${kpis.avgCoupleAdoptionPct}%`, active: sortKey === "coupleAdoptionPct", onClick: () => onSort("coupleAdoptionPct") },
   ];
 
-  const accentClass: Record<NonNullable<Tile["accent"]>, string> = {
-    success: "text-success",
-    warning: "text-warning",
-    destructive: "text-destructive",
-  };
-
   return (
     <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 xl:grid-cols-8">
       {tiles.map((tile) => (
-        <button
+        <StatTile
           key={tile.label}
-          type="button"
+          layout="label-top"
+          label={tile.label}
+          value={tile.value}
           onClick={tile.onClick}
-          className={`rounded-xl border p-3 text-left transition-colors hover:bg-muted/40 ${tile.active ? "border-primary ring-1 ring-primary/40 bg-primary/5" : "bg-card"}`}
-        >
-          <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">{tile.label}</p>
-          <p className={`mt-1 text-2xl font-bold font-heading ${tile.accent ? accentClass[tile.accent] : "text-heading"}`}>{tile.value}</p>
-        </button>
+          active={tile.active}
+          valueClassName={tile.accent ? ACCENT_CLASS[tile.accent] : undefined}
+          className="rounded-xl border p-3 text-left hover:bg-muted/40 bg-card"
+        />
       ))}
     </div>
   );

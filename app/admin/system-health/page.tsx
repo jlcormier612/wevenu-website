@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { StatTile } from "@/components/dashboard-system/stat-tile";
 import { getSystemHealthData } from "@/lib/hq/system-health-service";
 
 export const metadata: Metadata = { title: "System Health — Hello to Cheers HQ" };
@@ -18,15 +19,21 @@ function isStale(lastSeen: string | null, staleAfterHours: number): boolean {
   return hours > staleAfterHours;
 }
 
+// Dashboard Component System, Phase 2 — shell migrated to StatTile
+// ("label-top" layout); border/bg tint and value styling passed
+// explicitly since this tile's "value" is a status sentence, not a
+// number, with its own text-sm/font-semibold treatment distinct from
+// StatTile's default.
 function HeartbeatPill({ label, lastSeen, staleAfterHours }: { label: string; lastSeen: string | null; staleAfterHours: number }) {
   const stale = isStale(lastSeen, staleAfterHours);
   return (
-    <div className={`rounded-xl border p-3 ${stale ? "border-destructive/30 bg-destructive/5" : "border-success/25 bg-success/5"}`}>
-      <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">{label}</p>
-      <p className={`mt-1 text-sm font-semibold ${stale ? "text-destructive" : "text-success"}`}>
-        {stale ? "⚠ " : "✓ "}{fmtRelative(lastSeen)}
-      </p>
-    </div>
+    <StatTile
+      layout="label-top"
+      label={label}
+      value={`${stale ? "⚠ " : "✓ "}${fmtRelative(lastSeen)}`}
+      valueClassName={`text-sm font-semibold ${stale ? "text-destructive" : "text-success"}`}
+      className={`rounded-xl border p-3 ${stale ? "border-destructive/30 bg-destructive/5" : "border-success/25 bg-success/5"}`}
+    />
   );
 }
 
