@@ -495,6 +495,8 @@ export type ActivityItem = {
   emoji: string;
   label: string;
   occurredAt: string;
+  /** Present on journal events from `get_recent_activity` (`manual` | `auto`). */
+  source?: string;
 };
 
 export type RecentActivity = {

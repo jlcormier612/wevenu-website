@@ -56,6 +56,10 @@ import {
   type NextStepsItem,
 } from "@/lib/portal/next-steps";
 import { remainingBalanceFromSchedules, selectCanonicalPaymentSchedules } from "@/lib/portal/payment-schedules";
+import {
+  selectWhatsHappeningForHome,
+  WHATS_HAPPENING_VIEW_ALL_DESTINATION,
+} from "@/lib/portal/whats-happening";
 import { partitionByCompletion } from "@/lib/tasks/group-by-completion";
 import type { PortalRequestSummary } from "@/lib/requests/types";
 import { QuestionnairePortalSection } from "@/components/portal/questionnaire-section";
@@ -1931,54 +1935,106 @@ function WorkingWithYourVenue({
   );
 }
 
-function activityDestination(type: string): PortalSection | null {
-  if (type === "guest_added" || type.startsWith("guest")) return "guests";
-  if (type === "todo_completed" || type === "photo_uploaded") return "todos";
-  if (type === "journal_entry") return "story";
-  return null;
-}
-
 function WhatsHappeningCard({
   recentActivity, onNavigate,
 }: {
   recentActivity: RecentActivity | null;
   onNavigate: (s: PortalSection) => void;
 }) {
-  const items = (recentActivity?.activity ?? []).slice(0, 5);
+  // null = still loading or fetch failed — quiet fallback (do not claim “nothing new”).
+  const loaded = recentActivity != null;
+  const { visible, hasMore, showViewAll } = selectWhatsHappeningForHome(
+    recentActivity?.activity,
+  );
 
   return (
-    <div className="rounded-2xl border bg-card p-5" style={{ borderColor: "#E8E3DC" }}>
-      <p className="text-[10px] font-semibold uppercase tracking-widest mb-1" style={{ color: SAGE }}>What’s Happening</p>
+    <section
+      className="rounded-2xl border bg-card p-5"
+      style={{ borderColor: "#E8E3DC" }}
+      aria-labelledby="whats-happening-heading"
+    >
+      <h2
+        id="whats-happening-heading"
+        className="text-[10px] font-semibold uppercase tracking-widest mb-1"
+        style={{ color: SAGE }}
+      >
+        What’s Happening
+      </h2>
       <p className="text-[11px] text-muted-foreground mb-3">This week</p>
-      {items.length === 0 ? (
-        <p className="text-xs text-muted-foreground">Nothing new this week—enjoy a quiet moment.</p>
-      ) : (
+
+      {!loaded ? (
+        <p className="text-xs text-muted-foreground">
+          We’ll catch you up on anything new in a moment.
+        </p>
+      ) : visible.length === 0 ? (
         <div className="space-y-2">
-          {items.map((item, i) => {
-            const dest = activityDestination(item.type);
+          <p className="text-xs text-heading leading-snug">
+            Nothing new this week. Your wedding is right where you left it.
+          </p>
+          <button
+            type="button"
+            onClick={() => onNavigate("tasks")}
+            className="text-[11px] font-medium text-muted-foreground hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 rounded-sm"
+            style={{ color: SAGE }}
+          >
+            Continue with Your Next Steps →
+          </button>
+        </div>
+      ) : (
+        <ul className="space-y-1.5" aria-label="Recent wedding activity this week">
+          {visible.map((item) => {
             const body = (
               <div className="flex items-start gap-2.5 min-w-0">
-                <span className="text-sm shrink-0" aria-hidden>{item.emoji}</span>
-                <p className="text-xs text-heading leading-snug">{item.label}</p>
+                <span className="text-sm shrink-0 mt-0.5" aria-hidden>{item.emoji}</span>
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs text-heading leading-snug">{item.summary}</p>
+                  {item.whenLabel ? (
+                    <time
+                      className="text-[10px] text-muted-foreground mt-0.5 block"
+                      dateTime={item.occurredAt}
+                    >
+                      {item.whenLabel}
+                    </time>
+                  ) : null}
+                </div>
               </div>
             );
-            if (!dest) {
-              return <div key={`${item.type}-${item.occurredAt}-${i}`}>{body}</div>;
+
+            if (!item.destination) {
+              return (
+                <li key={item.key} className="px-2 py-1.5 -mx-2">
+                  <div aria-label={item.description}>{body}</div>
+                </li>
+              );
             }
+
             return (
-              <button
-                key={`${item.type}-${item.occurredAt}-${i}`}
-                type="button"
-                onClick={() => onNavigate(dest)}
-                className="w-full text-left rounded-xl px-2 py-1.5 -mx-2 hover:bg-muted/50 transition-colors"
-              >
-                {body}
-              </button>
+              <li key={item.key}>
+                <button
+                  type="button"
+                  onClick={() => onNavigate(item.destination!)}
+                  aria-label={item.description}
+                  className="w-full text-left rounded-xl px-2 py-1.5 -mx-2 hover:bg-muted/50 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
+                >
+                  {body}
+                </button>
+              </li>
             );
           })}
-        </div>
+        </ul>
       )}
-    </div>
+
+      {loaded && hasMore && showViewAll && WHATS_HAPPENING_VIEW_ALL_DESTINATION ? (
+        <button
+          type="button"
+          onClick={() => onNavigate(WHATS_HAPPENING_VIEW_ALL_DESTINATION)}
+          className="mt-3 text-[11px] font-medium hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 rounded-sm"
+          style={{ color: SAGE }}
+        >
+          View all activity →
+        </button>
+      ) : null}
+    </section>
   );
 }
 
@@ -4221,8 +4277,11 @@ export function PortalShell({
       .then((d: { profile?: CoupleProfile }) => setProfile(d.profile ?? null))
       .catch(() => {});
     fetch(`/api/portal/activity?token=${token}`)
-      .then(r => r.json())
-      .then((d: RecentActivity) => setRecentActivity(d))
+      .then(async (r) => {
+        if (!r.ok) throw new Error("activity_unavailable");
+        return r.json() as Promise<RecentActivity>;
+      })
+      .then((d) => setRecentActivity(d))
       .catch(() => {});
     fetch(`/api/portal/todos?token=${token}`)
       .then(r => r.json())
