@@ -124,6 +124,7 @@ export {
   upsertWalkthrough,
   upsertSubscription,
   appendNotification,
+  markNotificationsRead,
   mutateRelationship,
   syncRelationshipFromProduct,
   resolveWelcomeBackVerification,

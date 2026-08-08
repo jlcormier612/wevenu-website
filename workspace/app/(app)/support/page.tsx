@@ -26,7 +26,7 @@ function buildHref(surface: SurfaceFilter, status: StatusFilter): string {
 export default async function SupportPage({
   searchParams,
 }: {
-  searchParams: Promise<{ surface?: string; status?: string }>;
+  searchParams: Promise<{ surface?: string; status?: string; item?: string }>;
 }) {
   await ensureProgram4Data();
   const sp = await searchParams;
@@ -35,8 +35,16 @@ export default async function SupportPage({
     sp.surface === "vendor" || sp.surface === "client" ? sp.surface : "all";
   const status: StatusFilter =
     sp.status === "resolved" || sp.status === "all" ? sp.status : "open";
+  const focusItemId = sp.item?.trim() || null;
 
-  const items = getSupportInboxItems({ surface, status });
+  let items = getSupportInboxItems({ surface, status });
+  if (focusItemId && !items.some((i) => i.id === focusItemId)) {
+    const focused = getSupportInboxItems({
+      surface: "all",
+      status: "all",
+    }).find((i) => i.id === focusItemId);
+    if (focused) items = [focused, ...items];
+  }
   const openCount = getSupportInboxItems({ surface: "all", status: "open" }).length;
 
   return (
@@ -91,7 +99,7 @@ export default async function SupportPage({
         ))}
       </div>
 
-      <SupportInboxList items={items} />
+      <SupportInboxList items={items} focusItemId={focusItemId} />
     </div>
   );
 }

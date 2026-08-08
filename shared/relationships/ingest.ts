@@ -869,6 +869,13 @@ export async function ingestSupportRequest(input: {
       type: "support_request_submitted",
       title: "Support request",
       body: `${input.venueName?.trim() || person.firstName || input.email} submitted a support request.`,
+      href: null,
+      meta: {
+        panel: "support",
+        feedback_type: "support",
+        surface: "venue",
+        venue_name: input.venueName?.trim() || undefined,
+      },
     },
   }))!;
 }
@@ -1085,6 +1092,13 @@ export async function ingestProductFeedback(input: {
       type: isHelpOrBug ? "support_request_submitted" : "feedback_received",
       title: labels.notificationTitle,
       body: `${who} submitted ${labels.title.toLowerCase()} from product.`,
+      href: null,
+      meta: {
+        panel: "support",
+        feedback_type: feedbackType,
+        surface: "venue",
+        venue_name: input.venueName?.trim() || undefined,
+      },
     },
   }))!;
 }
@@ -1202,6 +1216,14 @@ export async function ingestProductPartnerFeedback(input: {
         body: `${who} submitted ${labels.title.toLowerCase()} from product.`,
         createdAt: now,
         read: false,
+        href: null,
+        meta: {
+          support_inbox_item_id: item.id,
+          panel: "support",
+          feedback_type: feedbackType,
+          surface,
+          venue_name: relatedVenueName ?? undefined,
+        },
       });
     }
 

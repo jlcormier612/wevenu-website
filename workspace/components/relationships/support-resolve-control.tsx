@@ -3,32 +3,10 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useTransition } from "react";
 
-export type SupportResolveItem = {
-  id: string;
-  type: string;
-  subject: string;
-  body?: string;
-  createdAt: string;
-  status: string;
-};
-
-const TYPE_LABELS: Record<string, string> = {
-  support: "Support",
-  bug: "Bug",
-  feature: "Idea",
-  nps: "NPS",
-  general: "Feedback",
-};
-
-function typeLabel(type: string): string {
-  return TYPE_LABELS[type] ?? "Feedback";
-}
-
-function snippet(text: string | undefined, max = 90): string {
-  const t = (text || "").replace(/\s+/g, " ").trim();
-  if (!t) return "";
-  return t.length > max ? `${t.slice(0, max - 1)}…` : t;
-}
+import {
+  type SupportResolveItem,
+  typeLabel,
+} from "@/components/relationships/support-preview";
 
 export function SupportResolveControl({
   relationshipId,
@@ -39,6 +17,7 @@ export function SupportResolveControl({
   items,
   compact = false,
   autoFocus = false,
+  focusItemId = null,
   canAct = true,
 }: {
   relationshipId: string;
@@ -51,6 +30,8 @@ export function SupportResolveControl({
   compact?: boolean;
   /** Scroll into view when deep-linked (`?panel=support`) */
   autoFocus?: boolean;
+  /** Scroll + highlight a specific open item (`?item=`) */
+  focusItemId?: string | null;
   /** Show Reply / Resolve controls */
   canAct?: boolean;
 }) {
@@ -63,19 +44,36 @@ export function SupportResolveControl({
   const [replySubject, setReplySubject] = useState("");
   const [replyBody, setReplyBody] = useState("");
   const [sendingReply, setSendingReply] = useState(false);
+  const [highlightedId, setHighlightedId] = useState<string | null>(null);
 
   const openItems = items.filter((i) => i.status === "open");
   const hasLegacyOnly = openCount > 0 && openItems.length === 0;
 
   useEffect(() => {
-    if (!autoFocus || compact) return;
-    const el = panelRef.current || document.getElementById("support");
-    if (!el) return;
+    if (compact) return;
+    const targetId = focusItemId?.trim() || null;
+    if (!autoFocus && !targetId) return;
+
     const t = window.setTimeout(() => {
-      el.scrollIntoView({ behavior: "smooth", block: "start" });
+      if (targetId) {
+        const row = document.getElementById(`support-item-${targetId}`);
+        if (row) {
+          row.scrollIntoView({ behavior: "smooth", block: "center" });
+          setHighlightedId(targetId);
+          return;
+        }
+      }
+      const el = panelRef.current || document.getElementById("support");
+      el?.scrollIntoView({ behavior: "smooth", block: "start" });
     }, 80);
     return () => window.clearTimeout(t);
-  }, [autoFocus, compact, openCount]);
+  }, [autoFocus, compact, focusItemId, openCount]);
+
+  useEffect(() => {
+    if (!highlightedId) return;
+    const t = window.setTimeout(() => setHighlightedId(null), 4000);
+    return () => window.clearTimeout(t);
+  }, [highlightedId]);
 
   async function onResolve(opts: { itemId?: string; all?: boolean }) {
     setError(null);
@@ -201,113 +199,122 @@ export function SupportResolveControl({
 
       {openItems.length > 0 ? (
         <ul className="mt-4 space-y-5">
-          {openItems.map((item) => (
-            <li
-              key={item.id}
-              className="border-b border-[color-mix(in_srgb,var(--taupe-medium)_30%,transparent)] pb-5 last:border-0 last:pb-0"
-            >
-              <div className="flex flex-wrap items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <p className="text-sm font-medium">
-                    {typeLabel(item.type)}
-                    {item.subject ? ` · ${item.subject}` : ""}
-                  </p>
-                  <p className="mt-0.5 text-xs ws-muted">
-                    {new Date(item.createdAt).toLocaleString("en-US", {
-                      dateStyle: "medium",
-                      timeStyle: "short",
-                    })}
-                  </p>
-                </div>
-                <div className="flex shrink-0 flex-wrap gap-2">
-                  {canAct ? (
-                    <>
-                      <button
-                        type="button"
-                        disabled={pending || sendingReply || !ownerEmail}
-                        title={
-                          ownerEmail
-                            ? "Reply to venue owner"
-                            : "Owner email missing"
-                        }
-                        onClick={() => startReply(item)}
-                        className="rounded-sm border border-[color-mix(in_srgb,var(--taupe-medium)_55%,transparent)] bg-[var(--true-white)] px-3 py-1.5 text-sm font-medium text-[var(--forest-sage)] disabled:opacity-60"
-                      >
-                        Reply
-                      </button>
-                      <button
-                        type="button"
-                        disabled={pending || sendingReply}
-                        onClick={() => void onResolve({ itemId: item.id })}
-                        className="rounded-sm bg-[var(--heritage-sage)] px-3 py-1.5 text-sm font-medium text-[var(--true-white)] disabled:opacity-60"
-                      >
-                        Resolve
-                      </button>
-                    </>
-                  ) : null}
-                </div>
-              </div>
-
-              {item.body ? (
-                <div className="mt-3 whitespace-pre-wrap rounded-sm bg-[color-mix(in_srgb,var(--header-linen)_70%,var(--true-white))] px-3 py-2.5 text-sm leading-relaxed text-[var(--forest-sage)]">
-                  {item.body}
-                </div>
-              ) : (
-                <p className="mt-3 text-sm ws-muted">
-                  No message body on this item — check Communications / Timeline
-                  for the inbound note.
-                </p>
-              )}
-
-              {replyingId === item.id ? (
-                <div className="mt-4 space-y-3 rounded-sm border border-[color-mix(in_srgb,var(--taupe-medium)_40%,transparent)] bg-[var(--true-white)] p-3">
-                  <p className="text-xs ws-muted">
-                    To: {ownerEmail || "—"} · Email reply to owner
-                  </p>
-                  <label className="block text-sm">
-                    <span className="ws-muted">Subject</span>
-                    <input
-                      type="text"
-                      value={replySubject}
-                      onChange={(e) => setReplySubject(e.target.value)}
-                      className="mt-1 w-full rounded-sm border border-[color-mix(in_srgb,var(--taupe-medium)_50%,transparent)] bg-[var(--natural-cream)] px-3 py-2 text-[var(--forest-sage)]"
-                    />
-                  </label>
-                  <label className="block text-sm">
-                    <span className="ws-muted">Message</span>
-                    <textarea
-                      value={replyBody}
-                      onChange={(e) => setReplyBody(e.target.value)}
-                      rows={6}
-                      className="mt-1 w-full rounded-sm border border-[color-mix(in_srgb,var(--taupe-medium)_50%,transparent)] bg-[var(--natural-cream)] px-3 py-2 text-[var(--forest-sage)]"
-                    />
-                  </label>
-                  <div className="flex flex-wrap gap-2">
-                    <button
-                      type="button"
-                      disabled={
-                        sendingReply ||
-                        !replySubject.trim() ||
-                        !replyBody.trim()
-                      }
-                      onClick={() => void onSendReply()}
-                      className="rounded-sm bg-[var(--heritage-sage)] px-4 py-2 text-sm font-medium text-[var(--true-white)] disabled:opacity-60"
-                    >
-                      {sendingReply ? "Sending…" : "Send reply"}
-                    </button>
-                    <button
-                      type="button"
-                      disabled={sendingReply}
-                      onClick={() => setReplyingId(null)}
-                      className="rounded-sm border border-[color-mix(in_srgb,var(--taupe-medium)_55%,transparent)] px-4 py-2 text-sm font-medium text-[var(--forest-sage)] disabled:opacity-60"
-                    >
-                      Cancel
-                    </button>
+          {openItems.map((item) => {
+            const focused =
+              highlightedId === item.id || focusItemId === item.id;
+            return (
+              <li
+                key={item.id}
+                id={`support-item-${item.id}`}
+                className={`scroll-mt-24 border-b border-[color-mix(in_srgb,var(--taupe-medium)_30%,transparent)] pb-5 last:border-0 last:pb-0 ${
+                  focused
+                    ? "rounded-sm ring-2 ring-[var(--heritage-sage)] ring-offset-2 ring-offset-[var(--true-white)]"
+                    : ""
+                }`}
+              >
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium">
+                      {typeLabel(item.type)}
+                      {item.subject ? ` · ${item.subject}` : ""}
+                    </p>
+                    <p className="mt-0.5 text-xs ws-muted">
+                      {new Date(item.createdAt).toLocaleString("en-US", {
+                        dateStyle: "medium",
+                        timeStyle: "short",
+                      })}
+                    </p>
+                  </div>
+                  <div className="flex shrink-0 flex-wrap gap-2">
+                    {canAct ? (
+                      <>
+                        <button
+                          type="button"
+                          disabled={pending || sendingReply || !ownerEmail}
+                          title={
+                            ownerEmail
+                              ? "Reply to venue owner"
+                              : "Owner email missing"
+                          }
+                          onClick={() => startReply(item)}
+                          className="rounded-sm border border-[color-mix(in_srgb,var(--taupe-medium)_55%,transparent)] bg-[var(--true-white)] px-3 py-1.5 text-sm font-medium text-[var(--forest-sage)] disabled:opacity-60"
+                        >
+                          Reply
+                        </button>
+                        <button
+                          type="button"
+                          disabled={pending || sendingReply}
+                          onClick={() => void onResolve({ itemId: item.id })}
+                          className="rounded-sm bg-[var(--heritage-sage)] px-3 py-1.5 text-sm font-medium text-[var(--true-white)] disabled:opacity-60"
+                        >
+                          Resolve
+                        </button>
+                      </>
+                    ) : null}
                   </div>
                 </div>
-              ) : null}
-            </li>
-          ))}
+
+                {item.body ? (
+                  <div className="mt-3 whitespace-pre-wrap rounded-sm bg-[color-mix(in_srgb,var(--header-linen)_70%,var(--true-white))] px-3 py-2.5 text-sm leading-relaxed text-[var(--forest-sage)]">
+                    {item.body}
+                  </div>
+                ) : (
+                  <p className="mt-3 text-sm ws-muted">
+                    No message body on this item — check Communications /
+                    Timeline for the inbound note.
+                  </p>
+                )}
+
+                {replyingId === item.id ? (
+                  <div className="mt-4 space-y-3 rounded-sm border border-[color-mix(in_srgb,var(--taupe-medium)_40%,transparent)] bg-[var(--true-white)] p-3">
+                    <p className="text-xs ws-muted">
+                      To: {ownerEmail || "—"} · Email reply to owner
+                    </p>
+                    <label className="block text-sm">
+                      <span className="ws-muted">Subject</span>
+                      <input
+                        type="text"
+                        value={replySubject}
+                        onChange={(e) => setReplySubject(e.target.value)}
+                        className="mt-1 w-full rounded-sm border border-[color-mix(in_srgb,var(--taupe-medium)_50%,transparent)] bg-[var(--natural-cream)] px-3 py-2 text-[var(--forest-sage)]"
+                      />
+                    </label>
+                    <label className="block text-sm">
+                      <span className="ws-muted">Message</span>
+                      <textarea
+                        value={replyBody}
+                        onChange={(e) => setReplyBody(e.target.value)}
+                        rows={6}
+                        className="mt-1 w-full rounded-sm border border-[color-mix(in_srgb,var(--taupe-medium)_50%,transparent)] bg-[var(--natural-cream)] px-3 py-2 text-[var(--forest-sage)]"
+                      />
+                    </label>
+                    <div className="flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        disabled={
+                          sendingReply ||
+                          !replySubject.trim() ||
+                          !replyBody.trim()
+                        }
+                        onClick={() => void onSendReply()}
+                        className="rounded-sm bg-[var(--heritage-sage)] px-4 py-2 text-sm font-medium text-[var(--true-white)] disabled:opacity-60"
+                      >
+                        {sendingReply ? "Sending…" : "Send reply"}
+                      </button>
+                      <button
+                        type="button"
+                        disabled={sendingReply}
+                        onClick={() => setReplyingId(null)}
+                        className="rounded-sm border border-[color-mix(in_srgb,var(--taupe-medium)_55%,transparent)] px-4 py-2 text-sm font-medium text-[var(--forest-sage)] disabled:opacity-60"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                ) : null}
+              </li>
+            );
+          })}
         </ul>
       ) : (
         <p className="mt-4 text-sm ws-muted">
@@ -329,23 +336,12 @@ export function SupportResolveControl({
       )}
 
       {pending ? <p className="mt-2 text-xs ws-muted">Saving…</p> : null}
-      {done ? <p className="mt-2 text-sm text-[var(--heritage-sage)]">{done}</p> : null}
-      {error ? <p className="mt-2 text-sm text-[var(--dusty-rose)]">{error}</p> : null}
+      {done ? (
+        <p className="mt-2 text-sm text-[var(--heritage-sage)]">{done}</p>
+      ) : null}
+      {error ? (
+        <p className="mt-2 text-sm text-[var(--dusty-rose)]">{error}</p>
+      ) : null}
     </div>
   );
-}
-
-/** Preview line for Today / list rows */
-export function supportItemPreview(items: SupportResolveItem[]): string {
-  const open = items.filter((i) => i.status === "open");
-  const first = open[0];
-  if (!first) return "Support open";
-  const label = typeLabel(first.type);
-  const bodySnip = snippet(first.body || first.subject);
-  if (open.length === 1) {
-    return bodySnip ? `${label}: ${bodySnip}` : label;
-  }
-  return bodySnip
-    ? `${label}: ${bodySnip} · +${open.length - 1} more`
-    : `${open.length} open items`;
 }

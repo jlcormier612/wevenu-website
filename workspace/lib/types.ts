@@ -330,6 +330,15 @@ export type OnboardingMilestone = {
   sortOrder: number;
 };
 
+export type NotificationMeta = {
+  feedback_item_id?: string;
+  support_inbox_item_id?: string;
+  panel?: "support";
+  feedback_type?: string;
+  surface?: "vendor" | "client" | "venue";
+  venue_name?: string;
+};
+
 export type Notification = {
   id: string;
   type: NotificationType;
@@ -338,6 +347,8 @@ export type Notification = {
   body: string;
   createdAt: string;
   read: boolean;
+  href?: string | null;
+  meta?: NotificationMeta;
 };
 
 export type Relationship = {

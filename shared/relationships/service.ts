@@ -1103,9 +1103,31 @@ export async function appendNotification(
       body: notification.body,
       createdAt: notification.createdAt || new Date().toISOString(),
       read: notification.read ?? false,
+      href: notification.href ?? null,
+      meta: notification.meta,
     };
     store.notifications.push(row);
     return row;
+  });
+  return result;
+}
+
+/** Mark one or more workspace CRM notifications as read. */
+export async function markNotificationsRead(
+  ids: string[],
+): Promise<{ marked: number }> {
+  const unique = [...new Set(ids.map((id) => id.trim()).filter(Boolean))];
+  if (unique.length === 0) return { marked: 0 };
+  const { result } = await withLiveStore((store) => {
+    let marked = 0;
+    for (const id of unique) {
+      const row = store.notifications.find((n) => n.id === id);
+      if (row && !row.read) {
+        row.read = true;
+        marked += 1;
+      }
+    }
+    return { marked };
   });
   return result;
 }
@@ -1441,6 +1463,8 @@ export async function mutateRelationship(opts: {
         stageLabelForStatus(relationship.status);
     }
 
+    let mintedFeedbackItemId: string | undefined;
+    let mintedFeedbackType: OpenFeedbackItem["type"] | undefined;
     if (opts.openFeedbackItem) {
       if (!relationship.openFeedbackItems) relationship.openFeedbackItems = [];
       const item: OpenFeedbackItem = {
@@ -1457,6 +1481,8 @@ export async function mutateRelationship(opts: {
         source: opts.openFeedbackItem.source,
       };
       relationship.openFeedbackItems.push(item);
+      mintedFeedbackItemId = item.id;
+      mintedFeedbackType = item.type;
       syncSupportOpenCountFromItems(relationship);
       if (item.status === "open") {
         promoteToNeedsSupport(relationship);
@@ -1579,6 +1605,16 @@ export async function mutateRelationship(opts: {
     }
 
     if (opts.notification) {
+      const feedbackMeta =
+        mintedFeedbackItemId != null
+          ? {
+              feedback_item_id: mintedFeedbackItemId,
+              panel: "support" as const,
+              feedback_type: mintedFeedbackType,
+              surface: "venue" as const,
+              venue_name: relationship.venue.name,
+            }
+          : undefined;
       store.notifications.push({
         id: `ntf_${randomUUID().replace(/-/g, "").slice(0, 12)}`,
         type: opts.notification.type,
@@ -1587,6 +1623,11 @@ export async function mutateRelationship(opts: {
         body: opts.notification.body,
         createdAt: opts.notification.createdAt || occurredAt,
         read: opts.notification.read ?? false,
+        href: null,
+        meta: {
+          ...feedbackMeta,
+          ...opts.notification.meta,
+        },
       });
     }
 

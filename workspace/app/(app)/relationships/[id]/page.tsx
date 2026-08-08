@@ -82,13 +82,14 @@ export default async function RelationshipDetailPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ from?: string; panel?: string }>;
+  searchParams: Promise<{ from?: string; panel?: string; item?: string }>;
 }) {
   const { id } = await params;
-  const { from, panel } = await searchParams;
+  const { from, panel, item } = await searchParams;
   const preferredView: SnapshotPreferredView | undefined =
     from === "sales" || from === "customer-success" ? from : undefined;
-  const focusSupport = panel === "support";
+  const focusSupport = panel === "support" || Boolean(item?.trim());
+  const focusItemId = item?.trim() || null;
   await ensureProgram4Data();
   await ensureProgram3Data();
   await ensureWhiteGloveChecklistsInWorkspace();
@@ -225,6 +226,7 @@ export default async function RelationshipDetailPage({
             status: i.status,
           }))}
           autoFocus={focusSupport}
+          focusItemId={focusItemId}
           canAct={canResolveSupport}
         />
       ) : null}

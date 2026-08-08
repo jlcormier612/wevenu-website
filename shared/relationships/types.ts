@@ -309,16 +309,6 @@ export type Walkthrough = {
   location?: string;
 };
 
-export type Notification = {
-  id: string;
-  type: NotificationType;
-  relationshipId: string;
-  title: string;
-  body: string;
-  createdAt: string;
-  read: boolean;
-};
-
 export type TaskPriority = "low" | "medium" | "high";
 export type TaskStatus = "open" | "in_progress" | "completed" | "cancelled";
 
@@ -344,6 +334,34 @@ export type ProductFeedbackType =
   | "feature"
   | "nps"
   | "general";
+
+/** Partner (vendor / client) Support inbox surface — defined early for NotificationMeta. */
+export type SupportInboxSurface = "vendor" | "client";
+
+/** Deep-link targets for CRM alerts (prefer meta over href). */
+export type NotificationMeta = {
+  /** Relationship openFeedbackItems[].id */
+  feedback_item_id?: string;
+  /** Support inbox (vendor/client) item id */
+  support_inbox_item_id?: string;
+  panel?: "support";
+  feedback_type?: ProductFeedbackType | string;
+  surface?: SupportInboxSurface | "venue";
+  venue_name?: string;
+};
+
+export type Notification = {
+  id: string;
+  type: NotificationType;
+  relationshipId: string;
+  title: string;
+  body: string;
+  createdAt: string;
+  read: boolean;
+  /** Prefer building href at render from meta; clear/omit when unused. */
+  href?: string | null;
+  meta?: NotificationMeta;
+};
 
 export type OpenFeedbackItemStatus = "open" | "acknowledged" | "resolved";
 
@@ -460,8 +478,6 @@ export type Relationship = {
  * Partner (vendor / client) product feedback — Support queue only.
  * Not attached to Relationship.openFeedbackItems; does not bump supportOpenCount.
  */
-export type SupportInboxSurface = "vendor" | "client";
-
 export type SupportInboxItemStatus = "open" | "acknowledged" | "resolved";
 
 export type SupportInboxItem = {

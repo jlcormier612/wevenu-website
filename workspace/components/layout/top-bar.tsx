@@ -1,10 +1,13 @@
-import Link from "next/link";
-
 import { logoutAction } from "@/app/(app)/team/auth-actions";
+import { NotificationNavLink } from "@/components/notifications/notification-nav-link";
 import { ThemeToggle } from "@/components/providers/theme-toggle";
+import { getNotifications, getRelationship } from "@/lib/data/store";
+import {
+  notificationDestinationLabel,
+  notificationHref,
+} from "@/lib/notifications/href";
 import type { TeamMemberProfile } from "@/lib/program4/types";
 import { ROLE_LABELS } from "@/lib/program4/labels";
-import { getNotifications } from "@/lib/data/store";
 import { formatRelativeDay } from "@/lib/utils";
 
 export function TopBar({
@@ -29,19 +32,26 @@ export function TopBar({
               <p className="text-sm text-muted-foreground">No new alerts</p>
             ) : (
               <ul className="space-y-0.5">
-                {unread.map((n) => (
-                  <li key={n.id} className="text-sm">
-                    <Link
-                      href={`/relationships/${n.relationshipId}`}
-                      className="text-foreground hover:text-primary"
-                    >
-                      {n.title}
-                      <span className="ml-2 text-muted-foreground">
-                        {formatRelativeDay(n.createdAt)}
-                      </span>
-                    </Link>
-                  </li>
-                ))}
+                {unread.map((n) => {
+                  const rel = getRelationship(n.relationshipId);
+                  return (
+                    <li key={n.id} className="text-sm">
+                      <NotificationNavLink
+                        notificationId={n.id}
+                        href={notificationHref(n)}
+                        className="text-foreground hover:text-primary"
+                      >
+                        {n.title}
+                        <span className="ml-2 text-muted-foreground">
+                          {formatRelativeDay(n.createdAt)}
+                        </span>
+                        <span className="ml-2 text-xs text-[var(--heritage-sage)]">
+                          {notificationDestinationLabel(n, rel?.venue.name)}
+                        </span>
+                      </NotificationNavLink>
+                    </li>
+                  );
+                })}
               </ul>
             )}
           </div>
