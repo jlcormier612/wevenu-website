@@ -8,8 +8,7 @@ export type WebsiteTheme =
   | "champagne"  // Champagne — golden, celebratory, warm
   | "velvet"     // Velvet — dramatic, burgundy, luxurious
   | "estate"     // European Estate — formal grounds, stone and ivy
-  | "rustic"     // Rustic — weathered wood, wildflowers
-  | "industrial"; // Industrial — exposed brick, black steel
+  | "rustic";    // Rustic — weathered wood, wildflowers
 
 export type FontPairing =
   | "classic_serif"   // Playfair Display + Lato
@@ -129,7 +128,15 @@ export type CatalogColorStory = {
   key: string;
   name: string;
   sortOrder: number;
-  tokens: { bg: string; accent: string; heroGradient: string; dark: boolean; [k: string]: unknown };
+  // Hosted Experience RC1, Part 2 — the six semantic roles are required,
+  // not optional: every color_stories row is authored data now, never
+  // derived at render time (see deriveSixRoles in curated-color-stories.ts).
+  tokens: {
+    bg: string; accent: string; heroGradient: string; dark: boolean;
+    colorPrimary: string; colorSecondary: string; colorAccent: string;
+    colorNeutral: string; colorBackground: string; colorText: string;
+    [k: string]: unknown;
+  };
 };
 
 export type CatalogTypographyStyle = {

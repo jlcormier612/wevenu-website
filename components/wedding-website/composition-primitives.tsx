@@ -151,9 +151,12 @@ function sectionWrapperStyle(recipe: CompositionRecipe, tc: CompositionTheme, in
 }
 
 function edgeWidthClass(edge: CompositionRecipe["edgeTreatment"], index: number): string {
-  if (edge === "full-bleed") return "relative left-1/2 right-1/2 -mx-[50vw] w-screen px-6 md:px-16";
-  if (edge === "wide") return "-mx-4 md:-mx-8";
-  if (edge === "alternating") return index % 2 === 0 ? "-mx-2 md:-mx-6" : "";
+  // WW-PREVIEW-01 — full-bleed/breakpoints resolve against the
+  // `@container/wedding` established once in wedding-website.tsx, not the
+  // outer browser viewport. See that file's root div for the full note.
+  if (edge === "full-bleed") return "relative left-1/2 right-1/2 -mx-[50cqw] w-[100cqw] px-6 @min-[768px]/wedding:px-16";
+  if (edge === "wide") return "-mx-4 @min-[768px]/wedding:-mx-8";
+  if (edge === "alternating") return index % 2 === 0 ? "-mx-2 @min-[768px]/wedding:-mx-6" : "";
   return "";
 }
 
@@ -192,10 +195,10 @@ function FramedList({ recipe, tc, color, items }: { recipe: CompositionRecipe; t
   const alternate = recipe.alternate === "background";
   const showCard = recipe.sectionFrame === "card";
   return (
-    <div className="grid gap-4 sm:grid-cols-2" style={{ gap: gapFor(recipe), maxWidth: widthFor(recipe), marginInline: recipe.itemAlign === "center" ? "auto" : undefined }}>
+    <div className="grid gap-4 @min-[640px]/wedding:grid-cols-2" style={{ gap: gapFor(recipe), maxWidth: widthFor(recipe), marginInline: recipe.itemAlign === "center" ? "auto" : undefined }}>
       {items.map((item, i) => (
         <div key={i}
-          className={featured && i === 0 ? "sm:col-span-2" : undefined}
+          className={featured && i === 0 ? "@min-[640px]/wedding:col-span-2" : undefined}
           style={{
             padding: "1.5rem",
             textAlign: recipe.itemAlign === "left" ? "left" : "center",
@@ -222,9 +225,9 @@ function EditorialList({ recipe, tc, color, items }: { recipe: CompositionRecipe
           return (
             <div key={i}>
               {i > 0 && <ItemSeparator recipe={recipe} tc={tc} color={color} />}
-              <div className="pt-5 md:flex md:items-baseline md:gap-8"
+              <div className="pt-5 @min-[768px]/wedding:flex @min-[768px]/wedding:items-baseline @min-[768px]/wedding:gap-8"
                 style={{ flexDirection: flip ? "row-reverse" : "row", marginLeft: !flip ? shift : undefined, marginRight: flip ? shift : undefined }}>
-                <div className="shrink-0 md:w-32">
+                <div className="shrink-0 @min-[768px]/wedding:w-32">
                   {useIndex ? (
                     <span className="text-xs font-mono opacity-40" style={{ color: tc.textMuted }}>{String(i + 1).padStart(2, "0")}</span>
                   ) : item.label ? (
@@ -336,7 +339,7 @@ export function WeddingPartyComposition({
   const shape = recipe.portraitShape ?? "circle";
   const alternate = recipe.alternate === "position";
   const offset = ASYMMETRY_OFFSET[recipe.asymmetry ?? "none"];
-  const cols = members.length <= 2 ? "grid-cols-2" : "grid-cols-2 sm:grid-cols-3";
+  const cols = members.length <= 2 ? "grid-cols-2" : "grid-cols-2 @min-[640px]/wedding:grid-cols-3";
 
   return (
     <div className={`grid ${cols}`} style={{ gap: gapFor(recipe), maxWidth: widthFor(recipe), marginInline: "auto" }}>
@@ -395,6 +398,32 @@ export function contrastText(hex: string): string {
 }
 
 /**
+ * Shared focal-position strategy for the couple's own hero/engagement
+ * photograph (Visual Acceptance Corrections, 2026-08-08).
+ *
+ * A flat `background-position: 50% 50%` crops evenly off the top and
+ * bottom of a photo whenever its container is wider (relative to its
+ * height) than the source image — which every full-bleed Hero, Collection
+ * card, and Photo Style card here is. Engagement/portrait photography
+ * routinely puts the subjects' heads close to the top of the frame, not
+ * dead center, so an even top/bottom crop slices into hair and heads
+ * first — confirmed against the fixture photo, whose heads start only a
+ * few percent down from the top edge.
+ *
+ * This biases the vertical anchor toward the top of the source instead,
+ * so any cropping a container forces comes off the bottom (dress,
+ * bouquet, background) rather than the couple's heads. One constant,
+ * reused everywhere a context wants to show "the couple" recognizably —
+ * the real Hero (wedding-website.tsx) and the Collection/Photo Style
+ * mini-previews (collection-preview.tsx) — never a per-card tweak.
+ *
+ * There is no per-photo focal-point field in the data model yet; this is
+ * the smallest mechanism that gets every preview context to a sensible,
+ * shared default without inventing that larger feature.
+ */
+export const PORTRAIT_FACE_FOCAL = "50% 8%";
+
+/**
  * Wraps one section in its assigned canvas moment + visual weight.
  *
  * `role` is undefined for every Collection except Coastal in this pass —
@@ -417,17 +446,28 @@ export function contrastText(hex: string): string {
  * single top margin, sized off the section that's about to begin, is the
  * same rhythm intent without the accidental doubling.
  *
- * "neutral" canvas gets a restrained background wash — `colors.bg` mixed
- * toward `colors.border` (the couple's own Color Story neutral/border
- * token, already used elsewhere for dividers, e.g. PairedPassage) — so
- * interlude-scale sections that aren't a full "soft"/"strong" moment can
- * still read as a distinct passage instead of vanishing into the page's
- * flat background. Deliberately NOT full-bleed (no `w-screen`/`vw`) —
- * unlike "soft"/"strong" this stays inside the normal content column, both
- * because a quiet tint shouldn't compete with a real color-field moment,
- * and because the `vw`-based full-bleed technique is the confirmed cause of
- * WW-PREVIEW-01 (separately tracked, not in scope for this pass) — giving
- * two more sections that same full-bleed treatment would only spread it.
+ * "neutral" canvas is a soft card surface built from the couple's actual
+ * Neutral role (`colors.border`, the same field PairedPassage's divider
+ * already uses), softened toward `colors.surface` (a stable near-white
+ * anchor never touched by the six custom-color overrides) — NOT toward
+ * `colors.bg`. Design System Correction (2026-08-08): the original formula
+ * was 82% `colors.bg` / 18% `colors.border` — dominated by Background, the
+ * opposite of what "neutral" should mean. For any palette where Neutral and
+ * Background happen to be close in value (true of most pale, ivory-forward
+ * wedding palettes, including every one of the 12 curated stories), that
+ * made the "neutral" card nearly invisible — indistinguishable from the
+ * flat page canvas — so three consecutive sections (a neutral pair, Music,
+ * another neutral pair) all read as one undifferentiated wash of
+ * Background, which is exactly the bug this correction fixes. Leaning on
+ * Neutral itself, blended toward a stable white-ish anchor instead of the
+ * page's own color, guarantees the card reads as a distinct surface
+ * regardless of how close the couple picked Neutral and Background.
+ * Deliberately NOT full-bleed (no `w-screen`/`vw`) — unlike "soft"/"strong"
+ * this stays inside the normal content column, both because a quiet tint
+ * shouldn't compete with a real color-field moment, and because the
+ * `vw`-based full-bleed technique is the confirmed cause of WW-PREVIEW-01
+ * (separately tracked) — giving two more sections that same full-bleed
+ * treatment would only spread it.
  */
 export function SectionCanvas({
   role, sparse, colors, children,
@@ -447,21 +487,47 @@ export function SectionCanvas({
   const isColorField = role.canvas === "soft" || role.canvas === "strong";
 
   if (!isColorField) {
-    const tint = role.canvas === "neutral" && colors.bg && colors.border
-      ? `color-mix(in srgb, ${colors.bg} 82%, ${colors.border} 18%)`
+    const tint = role.canvas === "neutral" && colors.border
+      ? `color-mix(in srgb, ${colors.border} 62%, ${colors.surface} 38%)`
       : undefined;
     if (!tint) return <div style={{ marginTop: margin }}>{children}</div>;
+    // A defined edge (the Neutral role's other listed job: "borders") so
+    // the card reads as a distinct surface even for palettes where Neutral
+    // and Background are both pale and close in value — the fill tint
+    // alone can be too subtle to rely on there, the edge never is.
     return (
-      <div style={{ marginTop: margin, background: tint, borderRadius: "1.5rem", padding: "2.5rem 2rem" }}>
+      <div style={{
+        marginTop: margin, background: tint, borderRadius: "1.5rem", padding: "2.5rem 2rem",
+        border: `1px solid color-mix(in srgb, ${colors.border} 55%, transparent)`,
+      }}>
         {children}
       </div>
     );
   }
 
-  const background = role.canvas === "strong" ? (colors.secondary || colors.accent) : colors.surface;
+  // Visual Composition Pass (2026-08-12) — "soft" and "strong" were grouped
+  // together as `isColorField` for the full-bleed WIDTH treatment, but only
+  // "strong" ever got an actual color: "soft" fell through to the exact
+  // same flat `colors.surface` as a plain section, so a Collection's "soft"
+  // moments (e.g. Garden Party's Event Details) rendered as indistinguishable
+  // white space — full-bleed in structure only, not in the "intentional
+  // tonal surface" the role is meant to read as. "soft" now washes toward
+  // Secondary at a gentle strength — present and legible as a deliberate
+  // surface, clearly quieter than "strong"'s full fill, which stays
+  // reserved for genuine high-emphasis moments (RSVP/CTA).
+  const background = role.canvas === "strong"
+    ? (colors.secondary || colors.accent)
+    : role.canvas === "soft"
+      ? `color-mix(in srgb, ${colors.secondary || colors.accent} 32%, ${colors.surface} 68%)`
+      : colors.surface;
   return (
     <div style={{ marginTop: margin }}>
-      <div className="relative left-1/2 right-1/2 -mx-[50vw] w-screen" style={{ background }}>
+      {/* WW-PREVIEW-01 — `cqw`/`100cqw` resolve against the `@container/
+          wedding` established once on WeddingWebsite's own root div, not
+          the outer browser viewport, so "full-bleed" means full width of
+          the rendered website itself in every context (public, Studio
+          desktop preview pane, Studio's simulated phone frame). */}
+      <div className="relative left-1/2 right-1/2 -mx-[50cqw] w-[100cqw]" style={{ background }}>
         <div className="max-w-5xl mx-auto px-6" style={{ paddingBlock: "4rem" }}>
           {children}
         </div>
@@ -525,10 +591,10 @@ export function ScheduleDateMoment({
   sparse?: boolean;
 }) {
   return (
-    <div className="text-center lg:text-left">
+    <div className="text-center @min-[1024px]/wedding:text-left">
       <p style={{
         fontFamily: tc.headingFont, fontStyle: tc.headingItalic ? "italic" : "normal",
-        fontSize: sparse ? "clamp(3rem, 6vw, 4.5rem)" : "clamp(5rem, 9vw, 8.5rem)", lineHeight: 0.9,
+        fontSize: sparse ? "clamp(3rem, 6cqw, 4.5rem)" : "clamp(5rem, 9cqw, 8.5rem)", lineHeight: 0.9,
         color: `${tc.text}25`,
       }}>
         {day}
@@ -569,22 +635,22 @@ export function EditorialOpening({
 }) {
   const lc = labelColor ?? color;
   return (
-    <div className="grid grid-cols-1 md:grid-cols-12 gap-8 md:gap-12 md:items-start">
-      <div className="md:col-span-4">
+    <div className="grid grid-cols-1 @min-[768px]/wedding:grid-cols-12 gap-8 @min-[768px]/wedding:gap-12 @min-[768px]/wedding:items-start">
+      <div className="@min-[768px]/wedding:col-span-4">
         {eyebrow && <p className="text-[10px] font-semibold uppercase tracking-[0.25em] mb-3" style={{ color: `${lc}95` }}>{eyebrow}</p>}
         {!photoUrl && <div style={{ height: "3px", width: "28px", background: color, marginBottom: "14px", borderRadius: "2px" }} />}
         <h2 style={{
           fontFamily: tc.headingFont, fontStyle: tc.headingItalic ? "italic" : "normal",
-          color: tc.text, fontSize: "clamp(1.7rem, 3.4vw, 2.4rem)", lineHeight: 1.15,
+          color: tc.text, fontSize: "clamp(1.7rem, 3.4cqw, 2.4rem)", lineHeight: 1.15,
         }}>
           {heading}
         </h2>
       </div>
-      <div className={photoUrl ? "md:col-span-5" : "md:col-span-6"}>
+      <div className={photoUrl ? "@min-[768px]/wedding:col-span-5" : "@min-[768px]/wedding:col-span-6"}>
         <p style={{ fontFamily: tc.bodyFont, color: tc.textMuted, fontSize: "1rem", lineHeight: 1.9 }}>{text}</p>
       </div>
       {photoUrl && (
-        <div className="md:col-span-3">
+        <div className="@min-[768px]/wedding:col-span-3">
           <div className="overflow-hidden" style={{ borderRadius: tc.cardRadius, aspectRatio: "3 / 4" }}>
             <img src={photoUrl} alt="" className="w-full h-full object-cover" />
           </div>
@@ -602,7 +668,8 @@ export function EditorialOpening({
 // composes ONLY when the caller has already confirmed both sides are
 // present and adjacent in the couple's own section order.
 const PAIR_SPAN: Record<number, string> = {
-  4: "md:col-span-4", 5: "md:col-span-5", 6: "md:col-span-6", 7: "md:col-span-7", 8: "md:col-span-8",
+  4: "@min-[768px]/wedding:col-span-4", 5: "@min-[768px]/wedding:col-span-5", 6: "@min-[768px]/wedding:col-span-6",
+  7: "@min-[768px]/wedding:col-span-7", 8: "@min-[768px]/wedding:col-span-8",
 };
 
 export function PairedPassage({
@@ -612,9 +679,9 @@ export function PairedPassage({
 }) {
   const rightSpan = (11 - leftSpan) as 4 | 5 | 6 | 7 | 8;
   return (
-    <div className="grid grid-cols-1 md:grid-cols-12 gap-10 md:gap-8 md:items-start">
+    <div className="grid grid-cols-1 @min-[768px]/wedding:grid-cols-12 gap-10 @min-[768px]/wedding:gap-8 @min-[768px]/wedding:items-start">
       <div className={PAIR_SPAN[leftSpan]}>{left}</div>
-      <div className="hidden md:block md:col-span-1">
+      <div className="hidden @min-[768px]/wedding:block @min-[768px]/wedding:col-span-1">
         {/* Step 11 — Color Story's `neutral` (-> border) role, otherwise
             unused anywhere in the renderer, gets its natural job: a rule. */}
         <div className="h-full w-px mx-auto" style={{ background: dividerColor }} />
@@ -682,7 +749,7 @@ export function DestinationFeature({
   // visual scale; the caller (wedding-website.tsx) already pairs this with
   // the section's own intro in a two-field composition on desktop.
   if (n === 1) {
-    return <DestinationEntry tc={tc} color={color} item={items[0]} headingSize="clamp(1.6rem, 3.2vw, 2.3rem)" />;
+    return <DestinationEntry tc={tc} color={color} item={items[0]} headingSize="clamp(1.6rem, 3.2cqw, 2.3rem)" />;
   }
 
   // Exactly two — a balanced pairing of comparable weight, reusing the same
@@ -704,11 +771,11 @@ export function DestinationFeature({
   // (visual rhythm, not a ranking — same weight of copy/detail either way).
   if (n === 3) {
     return (
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12">
-        <div className="lg:col-span-7">
-          <DestinationEntry tc={tc} color={color} item={items[0]} headingSize="clamp(1.4rem, 2.6vw, 1.75rem)" />
+      <div className="grid grid-cols-1 @min-[1024px]/wedding:grid-cols-12 gap-8 @min-[1024px]/wedding:gap-12">
+        <div className="@min-[1024px]/wedding:col-span-7">
+          <DestinationEntry tc={tc} color={color} item={items[0]} headingSize="clamp(1.4rem, 2.6cqw, 1.75rem)" />
         </div>
-        <div className="lg:col-span-5 space-y-7">
+        <div className="@min-[1024px]/wedding:col-span-5 space-y-7">
           <DestinationEntry tc={tc} color={color} item={items[1]} headingSize="1.2rem" />
           <div className="h-px" style={{ background: tc.border }} />
           <DestinationEntry tc={tc} color={color} item={items[2]} headingSize="1.2rem" />
@@ -726,12 +793,12 @@ export function DestinationFeature({
   // with a visibly empty cell beside it.
   const isOdd = n % 2 === 1;
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-x-10 gap-y-8">
+    <div className="grid grid-cols-1 @min-[768px]/wedding:grid-cols-2 gap-x-10 gap-y-8">
       {items.map((item, i) => {
         const isClosingRow = isOdd && i === n - 1;
         return (
           <div key={i}
-            className={isClosingRow ? "md:col-span-2" : undefined}
+            className={isClosingRow ? "@min-[768px]/wedding:col-span-2" : undefined}
             style={i >= 2 ? { borderTop: `1px solid ${tc.border}`, paddingTop: "1.5rem" } : undefined}>
             <DestinationEntry tc={tc} color={color} item={item} headingSize="1.15rem" />
           </div>
@@ -774,7 +841,7 @@ export function CompactInterlude({
   if (n === 1) {
     body = (
       <div className="max-w-md mx-auto">
-        <MusicEntry tc={tc} lc={lc} item={items[0]} size="clamp(1.5rem, 3vw, 2rem)" />
+        <MusicEntry tc={tc} lc={lc} item={items[0]} size="clamp(1.5rem, 3cqw, 2rem)" />
       </div>
     );
   } else if (n === 2) {
@@ -795,7 +862,7 @@ export function CompactInterlude({
     // no moment should read as more important than another. Column count
     // matches n exactly (3 or 4), so this can never leave an empty cell.
     body = (
-      <div className={`grid grid-cols-1 ${n === 3 ? "sm:grid-cols-3" : "sm:grid-cols-2"} gap-x-10 gap-y-8 max-w-2xl mx-auto`}>
+      <div className={`grid grid-cols-1 ${n === 3 ? "@min-[640px]/wedding:grid-cols-3" : "@min-[640px]/wedding:grid-cols-2"} gap-x-10 gap-y-8 max-w-2xl mx-auto`}>
         {items.map((item, i) => (
           <div key={i} className="text-center">
             <MusicEntry tc={tc} lc={lc} item={item} size="1.2rem" />

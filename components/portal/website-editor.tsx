@@ -15,9 +15,12 @@ import { ArrowDown, ArrowUp, Check, ChevronDown, ChevronUp, Copy, ExternalLink, 
 import { toast } from "sonner";
 
 import { ColorPickerTrigger } from "@/components/ui/color-picker";
-import type { CoupleWebsite, WebsiteContent, WebsiteSuggestions, HostedExperienceCatalog, CatalogCollection } from "@/lib/wedding-website/types";
+import type { CoupleWebsite, WebsiteContent, WebsiteSuggestions, HostedExperienceCatalog, CatalogCollection, PublicWebsite } from "@/lib/wedding-website/types";
 import { celebrateLuv } from "@/lib/luv/celebrate";
 import { coupleCelebrationMessage } from "@/lib/luv/celebrations";
+import { resolveDesignState } from "@/lib/wedding-website/design-state";
+import { deriveSixRoles, swatchGradient, type SixRoleColors } from "@/lib/wedding-website/curated-color-stories";
+import { CollectionPreview, ColorStoryPreview, TypographyPreview, PhotoStylePreview } from "@/components/portal/collection-preview";
 
 // ── Theme Studio (2026-07-24) ─────────────────────────────────────────────────
 // Four independent dimensions, catalog-driven end to end — no more hardcoded
@@ -1155,8 +1158,8 @@ const COLOR_ROLES: { key: "colorPrimary" | "colorSecondary" | "colorAccent" | "c
 ];
 
 function collectionSwatch(c: CatalogCollection): string {
-  return c.colorStories[0]?.tokens.heroGradient
-    ?? `linear-gradient(160deg, ${c.swatchAccent ?? "#B8AEA1"} 0%, ${c.swatchAccent ?? "#DED6CA"} 100%)`;
+  return c.colorStories[0] ? swatchGradient(c.colorStories[0].tokens)
+    : `linear-gradient(160deg, ${c.swatchAccent ?? "#B8AEA1"} 0%, ${c.swatchAccent ?? "#DED6CA"} 100%)`;
 }
 
 function DimensionCard({ eyebrow, title, subtitle, swatch, isOpen, onToggle, children }: {
@@ -1190,6 +1193,33 @@ function ThemeStudio({ site, onUpdate }: { site: CoupleWebsite; onUpdate: (patch
     fetch("/api/portal/website/catalog").then(r => r.json()).then(setCatalog).catch(() => {});
   }, []);
 
+  // Theme Studio Preview Polish (2026-08-14) — the Typography row's own
+  // closed swatch now renders a real font sample (not just "Aa" in the
+  // fallback font), which means it needs that font actually loaded even
+  // while collapsed — same real gap the Wizard's own Typography step had
+  // before its font-preloading fix. Always load the current selection's
+  // font; additionally load every option's font while the picker itself is
+  // open, so the full comparison grid below also shows real fonts.
+  const currentTypographyId = site.typographyStyleId;
+  React.useEffect(() => {
+    if (!catalog?.typographyStyles?.length) return;
+    const current = catalog.typographyStyles.find(t => t.id === currentTypographyId)
+      ?? catalog.typographyStyles.find(t => t.key === (site.fontPairing ?? "classic_serif"));
+    const urls = Array.from(new Set(
+      (open === "typography" ? catalog.typographyStyles : (current ? [current] : []))
+        .map(t => t.tokens.fontUrl).filter((u): u is string => !!u)
+    ));
+    const links = urls.map(url => {
+      const link = document.createElement("link");
+      link.rel = "stylesheet"; link.href = url;
+      link.setAttribute("data-wevenu-typography-preview", "1");
+      document.head.appendChild(link);
+      return link;
+    });
+    return () => { links.forEach(l => l.remove()); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [catalog?.typographyStyles, currentTypographyId, site.fontPairing, open]);
+
   if (!catalog) {
     return <div className="rounded-2xl border border-border bg-card p-4 text-xs text-muted-foreground">Loading design options…</div>;
   }
@@ -1197,11 +1227,35 @@ function ThemeStudio({ site, onUpdate }: { site: CoupleWebsite; onUpdate: (patch
   const collections = catalog.collections;
   const currentCollection = collections.find(c => c.id === site.collectionId)
     ?? collections.find(c => c.key === (site.theme ?? "classic")) ?? collections[0];
-  const currentColorStory = currentCollection?.colorStories.find(cs => cs.id === site.colorStoryId);
+  // Studio Canonical State Pass (2026-08-11) — one resolver, not a local
+  // re-derivation (see lib/wedding-website/design-state.ts for why the old
+  // `currentCollection?.colorStories.find(...)` scoping and raw-hex-
+  // presence `hasCustomColors` check were both wrong).
+  const { colorStory: currentColorStory, isCustomColors: hasCustomColors } = resolveDesignState(site, catalog);
   const currentTypography = catalog.typographyStyles.find(t => t.id === site.typographyStyleId)
     ?? catalog.typographyStyles.find(t => t.key === (site.fontPairing ?? "classic_serif"));
   const currentPhotoStyle = catalog.photoStyles.find(p => p.id === site.photoStyleId);
-  const hasCustomColors = !!(site.colorPrimary || site.colorSecondary || site.colorAccent || site.colorNeutral || site.colorBackground || site.colorText);
+
+  // Theme Studio Preview Polish (2026-08-14) — the six roles actually
+  // driving the site right now (curated story if one's selected and
+  // untouched, else the couple's own custom values), and the same real
+  // photo/title/subtitle the public Hero itself reads — shared by the
+  // Collection, Color Story, and Typography swatches below so all three
+  // (and the real website) always agree, never a second approximation.
+  const displayRoles: SixRoleColors = currentColorStory
+    ? deriveSixRoles(currentColorStory.tokens)
+    : {
+        colorPrimary: site.colorPrimary || "#DDD6C9", colorSecondary: site.colorSecondary || "#DDD6C9",
+        colorAccent: site.colorAccent || "#DDD6C9", colorNeutral: site.colorNeutral || "#DDD6C9",
+        colorBackground: site.colorBackground || "#DDD6C9", colorText: site.colorText || "#DDD6C9",
+      };
+  const previewPhoto = site.content?.home?.coverImageUrl || undefined;
+  const previewCoupleName = site.content?.home?.title || "Your Names";
+  const previewGalleryPhotos = site.content?.gallery?.photos?.length
+    ? site.content.gallery.photos
+    : (previewPhoto ? [previewPhoto, previewPhoto, previewPhoto] : []);
+  const previewBase: PublicWebsite = { content: site.content, colorPrimary: site.colorPrimary, colorSecondary: site.colorSecondary,
+    colorAccent: site.colorAccent, colorNeutral: site.colorNeutral, colorBackground: site.colorBackground, colorText: site.colorText };
 
   function clearColors(): ThemePatch {
     return { clearCustomColors: true, colorPrimary: null, colorSecondary: null, colorAccent: null, colorNeutral: null, colorBackground: null, colorText: null };
@@ -1214,7 +1268,14 @@ function ThemeStudio({ site, onUpdate }: { site: CoupleWebsite; onUpdate: (patch
       <DimensionCard
         eyebrow="Layout Collection" title={currentCollection?.name ?? "Choose a collection"}
         subtitle={currentCollection?.description}
-        swatch={<div className="h-14 w-20 rounded-xl shrink-0" style={{ background: currentCollection ? collectionSwatch(currentCollection) : "#EEE" }} />}
+        swatch={
+          <div key={`${currentCollection?.id}-${displayRoles.colorPrimary}-${currentTypography?.id}`}
+            className="h-14 w-20 rounded-xl shrink-0 overflow-hidden animate-in fade-in duration-300">
+            {currentCollection ? (
+              <CollectionPreview base={previewBase} collection={currentCollection} colorStory={currentColorStory} typography={currentTypography} width={80} height={56} />
+            ) : <div className="w-full h-full bg-muted" />}
+          </div>
+        }
         isOpen={open === "collection"} onToggle={() => setOpen(o => o === "collection" ? null : "collection")}
       >
         <p className="text-[11px] text-muted-foreground -mt-1">
@@ -1231,8 +1292,12 @@ function ThemeStudio({ site, onUpdate }: { site: CoupleWebsite; onUpdate: (patch
                   // never overwrites a couple's own choice once one exists.
                   const patch: ThemePatch = { theme: c.key as CoupleWebsite["theme"], collectionId: c.id };
                   if (!site.colorStoryId && !hasCustomColors && c.colorStories[0]) {
+                    const roles = deriveSixRoles(c.colorStories[0].tokens);
                     patch.themePalette = c.colorStories[0].name;
                     patch.colorStoryId = c.colorStories[0].id;
+                    patch.colorPrimary = roles.colorPrimary; patch.colorSecondary = roles.colorSecondary;
+                    patch.colorAccent = roles.colorAccent; patch.colorNeutral = roles.colorNeutral;
+                    patch.colorBackground = roles.colorBackground; patch.colorText = roles.colorText;
                   }
                   onUpdate(patch);
                 }}
@@ -1258,7 +1323,12 @@ function ThemeStudio({ site, onUpdate }: { site: CoupleWebsite; onUpdate: (patch
       <DimensionCard
         eyebrow="Color Story" title={hasCustomColors ? "Custom colors" : (currentColorStory?.name ?? "Choose your colors")}
         subtitle={hasCustomColors ? "Your own palette" : "Tap to customize every color"}
-        swatch={<div className="h-14 w-20 rounded-xl shrink-0" style={{ background: site.colorPrimary ?? currentColorStory?.tokens.heroGradient ?? "#EEE" }} />}
+        swatch={
+          <div key={`${currentColorStory?.id}-${displayRoles.colorPrimary}`}
+            className="h-14 w-20 rounded-xl shrink-0 overflow-hidden animate-in fade-in duration-300">
+            <ColorStoryPreview base={previewBase} />
+          </div>
+        }
         isOpen={open === "color"} onToggle={() => setOpen(o => o === "color" ? null : "color")}
       >
         {currentCollection && currentCollection.colorStories.length > 0 && (
@@ -1269,10 +1339,25 @@ function ThemeStudio({ site, onUpdate }: { site: CoupleWebsite; onUpdate: (patch
                 const isActive = !hasCustomColors && cs.id === site.colorStoryId;
                 return (
                   <button key={cs.id} type="button"
-                    onClick={() => onUpdate({ colorStoryId: cs.id, themePalette: cs.name, ...clearColors() })}
+                    onClick={() => {
+                      // Studio Canonical State Pass (2026-08-11) — must set
+                      // BOTH colorStoryId (so every summary can name this
+                      // story after reload) AND the six raw hex columns
+                      // (the real renderer reads those directly, never
+                      // colorStoryId — see resolveTheme). Previously this
+                      // set colorStoryId but nulled the six columns via
+                      // clearColors(), so the curated pick never actually
+                      // reached the real website.
+                      const roles = deriveSixRoles(cs.tokens);
+                      onUpdate({
+                        colorStoryId: cs.id, themePalette: cs.name, clearCustomColors: false,
+                        colorPrimary: roles.colorPrimary, colorSecondary: roles.colorSecondary, colorAccent: roles.colorAccent,
+                        colorNeutral: roles.colorNeutral, colorBackground: roles.colorBackground, colorText: roles.colorText,
+                      });
+                    }}
                     className="flex flex-col items-center gap-1.5">
                     <div className={`rounded-full border-2 transition-all ${isActive ? "h-10 w-10 border-foreground shadow-md" : "h-8 w-8 border-transparent hover:border-border"}`}
-                      style={{ background: cs.tokens.heroGradient }} />
+                      style={{ background: swatchGradient(cs.tokens) }} />
                     <p className={`text-[10px] ${isActive ? "font-semibold text-foreground" : "text-muted-foreground"}`}>{cs.name}</p>
                   </button>
                 );
@@ -1292,21 +1377,33 @@ function ThemeStudio({ site, onUpdate }: { site: CoupleWebsite; onUpdate: (patch
           </div>
           <p className="text-[11px] text-muted-foreground -mt-1">Any color set here overrides the preset — reused across the entire website: buttons, backgrounds, highlights, icons, links, RSVP, dividers, cards.</p>
           <div className="grid grid-cols-2 gap-2.5">
-            {COLOR_ROLES.map(r => {
-              const fallback = r.key === "colorAccent" ? currentColorStory?.tokens.accent
-                : r.key === "colorBackground" ? currentColorStory?.tokens.bg
-                : r.key === "colorText" ? currentColorStory?.tokens.dark ? "#F5F0E8" : "#2E2A24"
-                : "#BF9089";
-              return (
+            {(() => {
+              // Studio Canonical State Pass (2026-08-11) — this used to
+              // fall back to one hardcoded "#BF9089" for colorPrimary,
+              // colorSecondary, AND colorNeutral alike (only colorAccent/
+              // colorBackground/colorText had their own real fallback),
+              // which is exactly how a couple could see all six roles
+              // collapse to the same value: the moment currentColorStory
+              // failed to resolve (the collection-scoping bug above), every
+              // role missing its own raw column landed on that one shared
+              // literal. Each role now gets its own real fallback, derived
+              // from the correctly-resolved current Color Story.
+              const seeded = currentColorStory ? deriveSixRoles(currentColorStory.tokens) : null;
+              return COLOR_ROLES.map(r => (
                 <div key={r.key} className="space-y-1">
                   <p className="text-[10px] font-medium text-muted-foreground" title={r.hint}>{r.label}</p>
                   <ColorPickerTrigger
-                    value={(site[r.key] as string | undefined) ?? fallback ?? "#BF9089"}
-                    onChange={(v) => onUpdate({ [r.key]: v })}
+                    value={(site[r.key] as string | undefined) || seeded?.[r.key] || "#BF9089"}
+                    onChange={(v) => {
+                      // Editing any single role diverges from the curated
+                      // story, if one was active — clear colorStoryId so
+                      // every surface reads this as a custom palette.
+                      onUpdate({ [r.key]: v, colorStoryId: null });
+                    }}
                   />
                 </div>
-              );
-            })}
+              ));
+            })()}
           </div>
         </div>
       </DimensionCard>
@@ -1316,10 +1413,10 @@ function ThemeStudio({ site, onUpdate }: { site: CoupleWebsite; onUpdate: (patch
         eyebrow="Typography" title={currentTypography?.name ?? "Choose your typography"}
         subtitle={currentTypography?.tokens.sampleLabel}
         swatch={
-          <div className="h-14 w-20 rounded-xl shrink-0 bg-muted flex items-center justify-center px-1">
-            <p className="text-xs text-center leading-tight" style={{ fontFamily: currentTypography?.tokens.headingFont, fontStyle: currentTypography?.tokens.headingItalic ? "italic" : "normal" }}>
-              Aa
-            </p>
+          <div key={currentTypography?.id} className="h-14 w-20 rounded-xl shrink-0 bg-muted overflow-hidden animate-in fade-in duration-300">
+            {currentTypography ? (
+              <TypographyPreview typography={currentTypography} coupleName={previewCoupleName} tagline={site.content?.home?.subtitle} nameSize={10} taglineSize={6.5} />
+            ) : <div className="w-full h-full bg-muted" />}
           </div>
         }
         isOpen={open === "typography"} onToggle={() => setOpen(o => o === "typography" ? null : "typography")}
@@ -1332,8 +1429,11 @@ function ThemeStudio({ site, onUpdate }: { site: CoupleWebsite; onUpdate: (patch
               <button key={t.id} type="button"
                 onClick={() => onUpdate({ fontPairing: t.key as CoupleWebsite["fontPairing"], typographyStyleId: t.id })}
                 className={`rounded-xl border p-3 text-left transition-all ${isSelected ? "ring-2 ring-ring ring-offset-1 border-ring" : "border-border"}`}>
-                <p className="text-[15px]" style={{ fontFamily: t.tokens.headingFont, fontStyle: t.tokens.headingItalic ? "italic" : "normal" }}>{t.name}</p>
-                <p className="text-[10px] text-muted-foreground mt-0.5">{t.tokens.sampleLabel}</p>
+                <div className="h-6">
+                  <TypographyPreview typography={t} coupleName={previewCoupleName} showTagline={false} nameSize={15} align="left" />
+                </div>
+                <p className="text-[10px] font-semibold text-heading mt-1.5">{t.name}</p>
+                <p className="text-[10px] text-muted-foreground">{t.tokens.sampleLabel}</p>
               </button>
             );
           })}
@@ -1345,20 +1445,10 @@ function ThemeStudio({ site, onUpdate }: { site: CoupleWebsite; onUpdate: (patch
         eyebrow="Photo Style" title={currentPhotoStyle?.name ?? "Choose your photo style"}
         subtitle={currentPhotoStyle?.description}
         swatch={
-          <div className="h-14 w-20 rounded-xl shrink-0 overflow-hidden flex items-center justify-center"
-            style={{ background: "linear-gradient(135deg, #C9B89A 0%, #97AC9E 100%)" }}>
-            <div style={{
-              width: currentPhotoStyle?.tokens.imageScale === "large" ? "80%" : "55%",
-              aspectRatio: "1/1",
-              filter: currentPhotoStyle?.tokens.photoFilter,
-              borderRadius: currentPhotoStyle?.tokens.photoRadius,
-              background: "linear-gradient(160deg, #D8CFC2 0%, #EBE5DB 100%)",
-              border: currentPhotoStyle?.tokens.frameStyle === "border" ? "3px solid #fff" : currentPhotoStyle?.tokens.frameStyle === "polaroid" ? "4px solid #fff" : undefined,
-              boxShadow: currentPhotoStyle?.tokens.shadow === "lifted" ? "0 6px 14px rgba(0,0,0,0.3)"
-                : currentPhotoStyle?.tokens.shadow === "soft" ? "0 3px 8px rgba(0,0,0,0.18)"
-                : currentPhotoStyle?.tokens.frameStyle === "polaroid" ? "0 2px 6px rgba(0,0,0,0.25)" : undefined,
-              transform: currentPhotoStyle?.tokens.rotation && currentPhotoStyle.tokens.rotation !== "none" ? "rotate(-3deg)" : undefined,
-            }} />
+          <div key={currentPhotoStyle?.id} className="h-14 w-20 rounded-xl shrink-0 overflow-hidden bg-[#FAF8F4] animate-in fade-in duration-300">
+            {currentPhotoStyle && currentCollection ? (
+              <PhotoStylePreview collection={currentCollection} photoStyle={currentPhotoStyle} photos={previewGalleryPhotos} width={80} height={56} />
+            ) : <div className="w-full h-full bg-muted" />}
           </div>
         }
         isOpen={open === "photo"} onToggle={() => setOpen(o => o === "photo" ? null : "photo")}
@@ -1369,9 +1459,14 @@ function ThemeStudio({ site, onUpdate }: { site: CoupleWebsite; onUpdate: (patch
             const isSelected = p.id === currentPhotoStyle?.id;
             return (
               <button key={p.id} type="button" onClick={() => onUpdate({ photoStyleId: p.id })}
-                className={`rounded-xl border p-3 text-left transition-all ${isSelected ? "ring-2 ring-ring ring-offset-1 border-ring" : "border-border"}`}>
-                <p className="text-xs font-semibold text-heading">{p.name}</p>
-                <p className="text-[10px] text-muted-foreground mt-0.5">{p.description}</p>
+                className={`rounded-xl border overflow-hidden text-left transition-all ${isSelected ? "ring-2 ring-ring ring-offset-1 border-ring" : "border-border"}`}>
+                <div className="h-16">
+                  {currentCollection && <PhotoStylePreview collection={currentCollection} photoStyle={p} photos={previewGalleryPhotos} width={170} height={64} />}
+                </div>
+                <div className="px-3 py-2 bg-card border-t border-border/50">
+                  <p className="text-xs font-semibold text-heading">{p.name}</p>
+                  <p className="text-[10px] text-muted-foreground mt-0.5">{p.description}</p>
+                </div>
               </button>
             );
           })}
@@ -1400,6 +1495,33 @@ export function WebsiteEditor({
 }) {
   const [site, setSite] = React.useState(initialSite);
   const [content, setContent] = React.useState<WebsiteContent>(initialSite.content ?? {});
+
+  // Studio Canonical State Pass (2026-08-11) — `site` above is seeded once
+  // from `initialSite` and otherwise self-managed, which is correct for
+  // fields only this component owns (isPublished, hasPendingChanges, …).
+  // But the couple's four design dimensions can ALSO be saved by the
+  // sibling SetupWizard (WebsiteStudio renders both at once), which
+  // updates the parent's own copy directly without this component ever
+  // knowing — so ThemeStudio below kept showing whatever was selected
+  // before the wizard ran, stale until a full page reload. Re-sync just
+  // those fields whenever the parent's copy of them changes; every other
+  // locally-owned field is left alone.
+  React.useEffect(() => {
+    setSite(s => ({
+      ...s,
+      theme: initialSite.theme, collectionId: initialSite.collectionId, colorStoryId: initialSite.colorStoryId,
+      themePalette: initialSite.themePalette, fontPairing: initialSite.fontPairing,
+      typographyStyleId: initialSite.typographyStyleId, photoStyleId: initialSite.photoStyleId,
+      colorPrimary: initialSite.colorPrimary, colorSecondary: initialSite.colorSecondary, colorAccent: initialSite.colorAccent,
+      colorNeutral: initialSite.colorNeutral, colorBackground: initialSite.colorBackground, colorText: initialSite.colorText,
+    }));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    initialSite.theme, initialSite.collectionId, initialSite.colorStoryId, initialSite.themePalette,
+    initialSite.fontPairing, initialSite.typographyStyleId, initialSite.photoStyleId,
+    initialSite.colorPrimary, initialSite.colorSecondary, initialSite.colorAccent,
+    initialSite.colorNeutral, initialSite.colorBackground, initialSite.colorText,
+  ]);
   const [saving, setSaving] = React.useState<string | null>(null);
   const [publishing, setPublishing] = React.useState(false);
   const [previewMode, setPreviewMode] = React.useState<"desktop" | "mobile">("mobile");

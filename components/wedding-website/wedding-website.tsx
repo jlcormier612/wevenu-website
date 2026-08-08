@@ -12,6 +12,7 @@ import type { RsvpContext } from "@/app/rsvp/[token]/page";
 import {
   SectionComposition, ContentBlock, WeddingPartyComposition, edgeWidthClass,
   SectionCanvas, contrastText, ScheduleTimeline, ScheduleDateMoment, EditorialOpening, PairedPassage, DestinationFeature, CompactInterlude,
+  PORTRAIT_FACE_FOCAL,
   type CompositionItem, type CompositionRecipe, type PartyMember, type SectionRole, type SectionScale, type DestinationItem,
 } from "@/components/wedding-website/composition-primitives";
 
@@ -96,7 +97,7 @@ type PaletteConfig = {
 // palette. primary/secondary (2026-07-24) are the couple's own Color Story
 // primary/secondary — always populated (falling back to accent) so callers
 // never need an extra null-check beyond what tc.accent already required.
-type ThemeConfig = CollectionConfig & PaletteConfig & { primary: string; secondary: string };
+export type ThemeConfig = CollectionConfig & PaletteConfig & { primary: string; secondary: string };
 
 // Baseline for the layout/composition/photo-style fields — every current
 // Collection/Photo Style row in the DB now sets all of these explicitly
@@ -459,7 +460,7 @@ const TYPOGRAPHY_STYLES: Record<string, TypographyOverride> = {
 // same hardcoded fallback defaults the old, three-argument resolveTheme()
 // used, so a site with none of the new fields set (every site published
 // before this initiative) renders pixel-identical to before.
-function resolveTheme(site: PublicWebsite): ThemeConfig {
+export function resolveTheme(site: PublicWebsite): ThemeConfig {
   const key = site.theme ?? "classic";
   const collection = COLLECTIONS[key] ?? COLLECTIONS.classic;
   const palettes = PALETTES[key] ?? PALETTES.classic;
@@ -526,6 +527,53 @@ function resolveTheme(site: PublicWebsite): ThemeConfig {
     ...collection, ...layoutOverride, ...palette, ...colorOverride, ...typographyOverride, ...photoOverride,
     primary, secondary,
   };
+}
+
+// ── Typography rendering primitive ──────────────────────────────────────────
+// Shared Rendering Architecture, Phase 1 — the public page's font-loading
+// mechanism, extracted verbatim from WeddingWebsite's own useEffect so a
+// preview can load the couple's real heading/body fonts before rendering
+// text in them, the same way the public page always has. Known constraint
+// for Phase 2: this keys off one shared `data-wevenu-font` link, correct for
+// a single on-screen instance (the public page, or Studio's Live Preview)
+// but not yet safe for multiple simultaneous instances (e.g. several
+// Collection Preview cards each wanting a different font at once) — that
+// needs a per-instance key, deliberately not solved here since Phase 1 is
+// architecture-only and every current consumer only ever renders one at a
+// time.
+// Shared Rendering Architecture, Phase 2 — reference-counted by URL so many
+// simultaneous consumers (a Typography or Photo Style preview grid, each
+// card wanting a different font) can each call this hook without fighting
+// over one shared link element the way the original single `data-wevenu-
+// font` singleton did (a real constraint flagged, not solved, in Phase 1 —
+// every consumer before Phase 2 only ever rendered one instance at a time,
+// so it never surfaced). A link is added once per distinct URL no matter
+// how many components request it, and removed only once nothing needs it
+// anymore.
+const fontRefCounts = new Map<string, number>();
+
+export function useThemeFonts(fontUrl: string | null) {
+  React.useEffect(() => {
+    if (!fontUrl) return;
+    fontRefCounts.set(fontUrl, (fontRefCounts.get(fontUrl) ?? 0) + 1);
+    const selector = `link[data-wevenu-font-url="${CSS.escape(fontUrl)}"]`;
+    if (!document.head.querySelector(selector)) {
+      const link = document.createElement("link");
+      link.rel = "stylesheet";
+      link.href = fontUrl;
+      link.setAttribute("data-wevenu-font-url", fontUrl);
+      document.head.appendChild(link);
+    }
+    return () => {
+      const remaining = (fontRefCounts.get(fontUrl) ?? 1) - 1;
+      if (remaining <= 0) {
+        fontRefCounts.delete(fontUrl);
+        document.head.querySelector(selector)?.remove();
+      } else {
+        fontRefCounts.set(fontUrl, remaining);
+      }
+    };
+  }, [fontUrl]);
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -617,7 +665,7 @@ function SectionDivider({ style, color }: { style: ThemeConfig["divider"]; color
 // ── Section header — 5 typographic personalities ─────────────────────────────
 // Remove all colors and each style should still be immediately recognizable.
 
-function SectionHeader({ title, tc, accentColor }: { title: string; tc: ThemeConfig; accentColor: string }) {
+export function SectionHeader({ title, tc, accentColor }: { title: string; tc: ThemeConfig; accentColor: string }) {
   const color = accentColor;
 
   // Editorial — Velvet / Midnight
@@ -629,7 +677,7 @@ function SectionHeader({ title, tc, accentColor }: { title: string; tc: ThemeCon
         <h2 style={{
           fontFamily: tc.headingFont,
           color: tc.text,
-          fontSize: "clamp(0.65rem, 1.1vw, 0.8rem)",
+          fontSize: "clamp(0.65rem, 1.1cqw, 0.8rem)",
           fontWeight: tc.headingFont.includes("DM") ? 500 : 400,
           letterSpacing: "0.3em",
           textTransform: "uppercase",
@@ -669,7 +717,7 @@ function SectionHeader({ title, tc, accentColor }: { title: string; tc: ThemeCon
         <h2 style={{
           fontFamily: tc.headingFont,
           color: tc.text,
-          fontSize: "clamp(1.2rem, 2.5vw, 1.6rem)",
+          fontSize: "clamp(1.2rem, 2.5cqw, 1.6rem)",
           fontWeight: 600,
           letterSpacing: "-0.015em",
           lineHeight: 1.2,
@@ -706,8 +754,8 @@ function SectionHeader({ title, tc, accentColor }: { title: string; tc: ThemeCon
   // Centered, warm heading in accent color, framed by theme-specific ornamental dividers.
   // Rosé (italic Cormorant Garamond) gets larger — it's breathtaking at size.
   const headingSize = tc.headingItalic
-    ? "clamp(1.85rem, 4.5vw, 2.8rem)"
-    : "clamp(1.5rem, 3.5vw, 2.2rem)";
+    ? "clamp(1.85rem, 4.5cqw, 2.8rem)"
+    : "clamp(1.5rem, 3.5cqw, 2.2rem)";
 
   return (
     <div className="text-center mb-12">
@@ -760,7 +808,7 @@ function shadowFor(style: ThemeConfig["shadow"]): string {
   return "none";
 }
 
-function GalleryGrid({ photos, tc }: { photos: string[]; tc: ThemeConfig }) {
+export function GalleryGrid({ photos, tc }: { photos: string[]; tc: ThemeConfig }) {
   const gap = SPACING_GAP[tc.photoSpacing];
   const frame = (i: number, extraRotation = 0): React.CSSProperties => {
     const rot = rotationFor(tc.rotation, i) + extraRotation;
@@ -941,7 +989,7 @@ function GalleryGrid({ photos, tc }: { photos: string[]; tc: ThemeConfig }) {
 
   if (tc.galleryLayout === "grid") {
     return (
-      <div className={`grid ${tc.imageScale === "large" ? "grid-cols-2" : "grid-cols-2 md:grid-cols-3"}`} style={{ gap }}>
+      <div className={`grid ${tc.imageScale === "large" ? "grid-cols-2" : "grid-cols-2 @min-[768px]/wedding:grid-cols-3"}`} style={{ gap }}>
         {photos.map((url, i) => (
           <div key={i} className={`overflow-hidden ${spanFor(i, photos.length)}`} style={{ borderRadius: tc.photoRadius, ...frame(i) }}>
             <img src={url} alt="" style={{ ...imgStyle, aspectRatio: aspectFor(i) }} />
@@ -953,7 +1001,7 @@ function GalleryGrid({ photos, tc }: { photos: string[]; tc: ThemeConfig }) {
 
   // masonry — the original free-flowing columns treatment
   return (
-    <div className={`columns-2 space-y-3 ${tc.imageScale === "large" ? "md:columns-2" : "md:columns-3 lg:columns-4"}`} style={{ columnGap: gap }}>
+    <div className={`columns-2 space-y-3 ${tc.imageScale === "large" ? "@min-[768px]/wedding:columns-2" : "@min-[768px]/wedding:columns-3 @min-[1024px]/wedding:columns-4"}`} style={{ columnGap: gap }}>
       {photos.map((url, i) => (
         <div key={i} className="break-inside-avoid overflow-hidden" style={{ borderRadius: tc.photoRadius, marginBottom: gap, ...frame(i) }}>
           <img src={url} alt="" style={imgStyle} />
@@ -1020,9 +1068,19 @@ function RsvpSection({ accentColor, tc }: { accentColor: string; tc: ThemeConfig
   const [checking, setChecking] = React.useState(false);
   const [context, setContext] = React.useState<RsvpContext | null>(null);
 
-  const inputStyle = {
-    background: tc.dark ? "rgba(255,255,255,0.08)" : "rgba(255,255,255,0.9)",
-    border: `1px solid ${tc.dark ? "rgba(255,255,255,0.15)" : "#DED6CA"}`,
+  // Visual Regression Pass (2026-08-13) — shorthand `background`/`border`
+  // CSS in an inline style object is a known source of spurious React
+  // hydration mismatch warnings: the browser's CSSStyleDeclaration always
+  // expands a shorthand into every one of its longhand sub-properties
+  // (background-image, border-top-width, etc, mostly "initial"), and
+  // React's hydration diff compares against that expanded form rather than
+  // the shorthand string it rendered server-side. Longhand properties here
+  // avoid the expansion entirely — same visual result, no mismatch.
+  const inputStyle: React.CSSProperties = {
+    backgroundColor: tc.dark ? "rgba(255,255,255,0.08)" : "rgba(255,255,255,0.9)",
+    borderWidth: "1px",
+    borderStyle: "solid",
+    borderColor: tc.dark ? "rgba(255,255,255,0.15)" : "#DED6CA",
     color: tc.dark ? "#F5E8D0" : "#333",
     borderRadius: tc.buttonRadius,
   };
@@ -1054,14 +1112,14 @@ function RsvpSection({ accentColor, tc }: { accentColor: string; tc: ThemeConfig
   }
 
   return (
-    <div className="p-6 space-y-5" style={{ background: tc.dark ? "rgba(255,255,255,0.06)" : "rgba(255,255,255,0.85)", borderRadius: tc.cardRadius, color: tc.dark ? tc.text : "#333" }}>
+    <div className="p-6 space-y-5" style={{ backgroundColor: tc.dark ? "rgba(255,255,255,0.06)" : "rgba(255,255,255,0.85)", borderRadius: tc.cardRadius, color: tc.dark ? tc.text : "#333" }}>
       <form onSubmit={handleLookup} className="space-y-3">
         <p className="text-sm font-medium">Enter the RSVP code from your invitation</p>
         <input value={token} onChange={e => setToken(e.target.value)} placeholder="Your RSVP code"
           className="w-full px-4 py-3 text-sm focus:outline-none" style={inputStyle} />
         <button type="submit" disabled={!token.trim() || checking}
           className="w-full py-3 text-sm font-semibold text-white disabled:opacity-50"
-          style={{ background: accentColor, borderRadius: tc.buttonRadius }}>
+          style={{ backgroundColor: accentColor, borderRadius: tc.buttonRadius }}>
           {checking ? <Loader2 className="h-4 w-4 animate-spin mx-auto" /> : "Find My Invitation →"}
         </button>
       </form>
@@ -1079,22 +1137,15 @@ const FORMALITY_LABELS: Record<string, string> = {
   custom:       "",
 };
 
-// ── Category icons for Things To Do ──────────────────────────────────────────
-
-const CATEGORY_ICONS: Record<string, string> = {
-  restaurant: "🍽",
-  cafe:       "☕",
-  attraction: "🗺",
-  hotel:      "🏨",
-  shopping:   "🛍",
-  other:      "✦",
-};
-
-// Things To Do Sparse/Dense Fix — a text eyebrow for Coastal's own
-// DestinationFeature treatment (Step 8: "category as a small editorial
-// label"), kept separate from CATEGORY_ICONS above so every other
-// Collection's existing emoji-icon rendering (via the shared
-// CompositionItem `items` array and SectionComposition) is untouched.
+// ── Category labels for Things To Do ─────────────────────────────────────────
+// Visual Composition Pass (2026-08-12) — this used to be two parallel maps:
+// CATEGORY_ICONS (an emoji per category, used as the item's small eyebrow
+// label by every Collection without sectionRoles) and CATEGORY_LABELS (a
+// real text label, used only by Coastal's own DestinationFeature). An emoji
+// rendered at 10px as a section eyebrow is exactly the "tiny placeholder/
+// broken-image-looking icon" artifact this pass fixes — some platforms
+// render an unsupported/tiny emoji as a fallback tofu glyph indistinguishable
+// from a broken image. One real text label now, for every Collection.
 const CATEGORY_LABELS: Record<string, string> = {
   restaurant: "Restaurant",
   cafe:       "Café",
@@ -1106,32 +1157,20 @@ const CATEGORY_LABELS: Record<string, string> = {
 
 // ── Main public website ───────────────────────────────────────────────────────
 
-export function WeddingWebsite({
-  site, slug,
-  editMode = false,
-  activeSection = null,
-  onSectionClick,
-}: {
+// ── Hero primitive ────────────────────────────────────────────────────────────
+// Shared Rendering Architecture, Phase 1 — extracted verbatim from
+// WeddingWebsite's own inline JSX (no visual or behavioral change). This is
+// now the one place hero layout, cover-photo handling, overlay/scrim math,
+// and heading/eyebrow/date typography are decided. See docs/wedding-website-
+// shared-primitives.md for responsibility/inputs/outputs/consumers.
+export function Hero({ site, tc, editMode = false, onSectionClick }: {
   site: PublicWebsite;
-  slug: string;
+  tc: ThemeConfig;
   editMode?: boolean;
-  activeSection?: string | null;
   onSectionClick?: (key: string) => void;
 }) {
-  // resolveTheme is pure (no side effects), so it's safe to compute once,
-  // up front, and reuse for the password gate too — the gate now shows the
-  // couple's actual chosen Typography instead of a hardcoded font (Visual
-  // Expression Pass, guardrail #7), by sharing the exact same resolution
-  // chain the rest of the page uses rather than duplicating it by hand.
-  const tc = resolveTheme(site);
-  if (site.requires_password) {
-    return <PasswordGate slug={slug} accentColor={tc.primary} headingFont={tc.headingFont} headingItalic={tc.headingItalic} />;
-  }
-
-  // Theme supplies a natural accent; a couple's Color Story primary (Part 2)
-  // takes precedence, then the legacy single accentColor override, then the
-  // Collection/Color-Story-resolved default.
   const color = tc.primary;
+  const content = site.content ?? {};
   const couple = site.couple;
   const coupleName = couple
     ? [couple.firstName, couple.partnerFirstName].filter(Boolean).join(" & ")
@@ -1140,32 +1179,6 @@ export function WeddingWebsite({
   const eventEndDate = site.event?.eventEndDate;
   const eventDateLabel = eventDate ? formatEventDateRange(eventDate, eventEndDate) : null;
   const du = eventDate ? daysUntil(eventDate) : null;
-  const content = site.content ?? {};
-
-  // Section order & visibility: Hosted Experience Platform Phase 2 —
-  // prefer the ordered, visibility-filtered `sections` array from
-  // experience_sections (the server already excludes hidden sections, so
-  // no client-side filtering is needed) over the legacy sectionOrder
-  // array. Falls back to the pre-Phase-2 behavior when `sections` is
-  // absent or empty, so an experience that predates the Section Model
-  // (or a stale cached response) still renders exactly as before.
-  const DEFAULT_ORDER = ["story", "event", "gallery", "schedule", "travel", "dress_code", "bridal_party", "things_to_do", "music", "registry", "faq", "rsvp"];
-  const sectionOrder = site.sections?.length
-    ? site.sections.map(s => s.key).filter(k => k !== "home")
-    : (site.sectionOrder?.length ? site.sectionOrder : DEFAULT_ORDER);
-
-  // Load Google Fonts for this theme
-  React.useEffect(() => {
-    if (!tc.fontUrl) return;
-    const existing = document.head.querySelector(`link[data-wevenu-font]`);
-    if (existing) existing.remove();
-    const link = document.createElement("link");
-    link.rel = "stylesheet";
-    link.href = tc.fontUrl;
-    link.setAttribute("data-wevenu-font", "1");
-    document.head.appendChild(link);
-    return () => { link.remove(); };
-  }, [tc.fontUrl]);
 
   // Hero background — the couple's own cover photo always wins when set.
   // venues.hero_image_url (Coastal Premium Art-Direction Proof Pass,
@@ -1175,9 +1188,222 @@ export function WeddingWebsite({
   const heroImage = content.home?.coverImageUrl || site.venue?.heroImageUrl || null;
   const hascover = !!heroImage;
   const heroStyle: React.CSSProperties = hascover
-    ? { backgroundImage: `url(${heroImage})`, backgroundSize: "cover", backgroundPosition: "center",
+    ? { backgroundImage: `url(${heroImage})`, backgroundSize: "cover", backgroundPosition: PORTRAIT_FACE_FOCAL,
         filter: tc.photoFilter || undefined }
     : { background: tc.heroGradient };
+
+  // Visual Composition Pass (2026-08-12) — a Color Story's own heroTextColor
+  // is authored for a FLAT gradient hero (tc.heroGradient), where it's
+  // contrast-checked against a predictable, known color. It is NOT safe for
+  // a photographic hero: a couple's own photo has unpredictable, uneven
+  // luminance across its frame (sky vs. faces vs. shadow), so inheriting
+  // the Color Story's page-context text color here — which is what was
+  // happening — produced muddy, low-contrast type over busy photo regions
+  // regardless of which curated palette was picked. A photographic hero
+  // always uses light/white type over its own scrim (heroOverlayColor/
+  // heroOverlayOpacity, still Collection+palette-controlled) instead — the
+  // one universally reliable choice for an unpredictable background, and
+  // never Collection- or couple-specific.
+  const heroTextColor = hascover ? "#FFFFFF" : tc.heroTextColor;
+
+  // A Color Story authored with heroOverlayOpacity near 0 (Linen/Midnight/
+  // Velvet's flat "invitation" defaults, meant for zero-photo type-on-paper
+  // heroes) leaves photographic heroes with no scrim at all — legible only
+  // by luck of which region of the couple's photo happens to sit behind the
+  // eyebrow/name text. Same unpredictable-luminance problem as heroTextColor
+  // above, same fix: a photographic hero always gets a minimum scrim.
+  const heroOverlayOpacity = hascover ? Math.max(tc.heroOverlayOpacity, 0.2) : 0;
+
+  // Linen: invitation layout — no gradient, printed, centered text only
+  return tc.heroType === "invitation" && !hascover ? (
+    <div
+      className={`px-8 pt-20 pb-16 text-center ${editMode ? "group cursor-pointer relative" : ""}`}
+      style={{ background: tc.bg }}
+      onClick={editMode ? () => onSectionClick?.("home") : undefined}
+    >
+      {editMode && (
+        <button type="button" onClick={() => onSectionClick?.("home")}
+          className="absolute top-3 right-3 z-20 text-xs font-semibold px-2.5 py-1.5 rounded-xl text-white shadow-lg opacity-0 group-hover:opacity-100 transition-opacity"
+          style={{ background: `${color}CC` }}>
+          ✏ Edit home
+        </button>
+      )}
+      <div className="max-w-sm mx-auto" style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
+        <p style={{ fontFamily: tc.bodyFont, fontSize: "0.6rem", letterSpacing: "0.45em", textTransform: "uppercase", color: tc.textMuted, fontWeight: 400 }}>
+          {site.event?.eventType?.replace(/_/g, " ") ?? "Wedding"}
+        </p>
+        <h1 style={{ fontFamily: tc.headingFont, fontSize: "clamp(2.2rem, 6cqw, 3.8rem)", fontWeight: 400, lineHeight: 1.1, color: tc.text, letterSpacing: "0.03em" }}>
+          {content.home?.title ?? coupleName}
+        </h1>
+        <div style={{ height: "1px", width: "36px", background: `${color}50`, margin: "0 auto" }} />
+        {eventDate && (
+          <p style={{ fontFamily: tc.bodyFont, fontSize: "0.7rem", color: tc.textMuted, letterSpacing: "0.2em", textTransform: "uppercase", fontWeight: 400 }}>
+            {eventDateLabel}
+          </p>
+        )}
+        {content.event?.ceremony?.location && (
+          <p style={{ fontFamily: tc.headingFont, fontSize: "0.95rem", color: tc.text, letterSpacing: "0.04em" }}>
+            {content.event.ceremony.location}
+          </p>
+        )}
+      </div>
+    </div>
+  ) : (
+  <div
+    className={`relative flex flex-col ${tc.heroAlign === "left" ? "items-start justify-end pb-14 pl-8" : "items-center justify-center"} px-6 py-20 ${editMode ? "group cursor-pointer" : ""}`}
+    style={{
+      ...heroStyle, minHeight: tc.heroMinHeight,
+      // `width: 100%` pins width so aspect-ratio only ever solves for
+      // height — without it, once maxHeight clamps height below what
+      // the ratio would give a full-width box, Chromium renegotiates
+      // width down to (height * ratio) instead, breaking full-bleed.
+      ...(tc.heroAspectCap ? { width: "100%", aspectRatio: tc.heroAspectCap, maxHeight: tc.heroMaxHeight } : {}),
+    }}
+    onClick={editMode ? () => onSectionClick?.("home") : undefined}
+  >
+    {/* Overlay — softens cover photos; unused for gradient heroes */}
+    <div className="absolute inset-0"
+      style={{ background: tc.heroOverlayColor, opacity: heroOverlayOpacity }} />
+
+    {editMode && (
+      <button type="button" onClick={() => onSectionClick?.("home")}
+        className="absolute top-3 right-3 z-20 text-xs font-semibold px-2.5 py-1.5 rounded-xl text-white shadow-lg opacity-0 group-hover:opacity-100 transition-opacity"
+        style={{ background: `${color}CC` }}>
+        ✏ Edit home
+      </button>
+    )}
+
+    {tc.heroAlign === "left" ? (
+      // Editorial layout — Velvet / Midnight: left-bottom, magazine-cover energy
+      <div className="relative z-10 max-w-5xl w-full" style={{ color: heroTextColor }}>
+        <div className="mb-4 w-10 h-px" style={{ background: color }} />
+        <h1 style={{
+          fontFamily: tc.headingFont,
+          color: heroTextColor,
+          fontStyle: "normal",
+          fontSize: "clamp(3rem, 8cqw, 6rem)",
+          fontWeight: tc.headingFont.includes("DM Sans") ? 700 : 400,
+          lineHeight: 1.0,
+          letterSpacing: tc.headingFont.includes("DM Sans") ? "-0.02em" : "0.01em",
+          textShadow: "0 2px 30px rgba(0,0,0,0.4)",
+        }}>
+          {content.home?.title ?? coupleName}
+        </h1>
+        <div className="flex items-baseline gap-5 mt-5 flex-wrap">
+          {eventDate && (
+            <p style={{ fontFamily: tc.headingFont, fontSize: "1rem", opacity: 0.65 }}>
+              {eventDateLabel}
+            </p>
+          )}
+          {du !== null && du > 0 && (
+            <p className="text-sm opacity-35">{du} days to go</p>
+          )}
+        </div>
+        {content.home?.subtitle && (
+          <p className="mt-3 text-sm opacity-55" style={{ fontFamily: tc.bodyFont }}>{content.home.subtitle}</p>
+        )}
+      </div>
+    ) : (
+      // Centered layout — all other themes
+      tc.sectionRoles ? (
+        // Coastal Art-Direction Pass 2 (2026-08-03) — editorial hierarchy:
+        // eyebrow -> atmospheric phrase -> couple names (unmistakable
+        // primary identity) -> ONE authoritative date+location line.
+        // `subtitle` is a free-text field a couple can type anything
+        // into (Studio's own placeholder used to suggest a date, which
+        // is exactly the collision this fixes) — it now always reads as
+        // a lead-in phrase ahead of the names, never a second date
+        // candidate, and eventDate (the synced, authoritative source)
+        // is the only place a date is ever rendered in this hero.
+        <div className="relative z-10 max-w-3xl mx-auto text-center" style={{ color: heroTextColor }}>
+          <p className="text-xs font-semibold uppercase tracking-[0.3em] opacity-70 mb-5">
+            {site.event?.eventType?.replace(/_/g, " ") ?? "Wedding"}
+          </p>
+          {content.home?.subtitle && (
+            <p className="text-base @min-[768px]/wedding:text-lg italic opacity-80 mb-4" style={{ fontFamily: tc.headingFont }}>
+              {content.home.subtitle}
+            </p>
+          )}
+          <h1 style={{
+            fontFamily: tc.headingFont,
+            color: heroTextColor,
+            fontStyle: tc.headingItalic ? "italic" : "normal",
+            fontSize: "clamp(2.5rem, 8cqw, 5rem)",
+            fontWeight: 600,
+            lineHeight: 1.1,
+            textShadow: "0 2px 20px rgba(0,0,0,0.25)",
+          }}>
+            {content.home?.title ?? coupleName}
+          </h1>
+          {(eventDate || content.event?.ceremony?.location || site.venue?.name) && (
+            <p className="pt-5 text-base @min-[768px]/wedding:text-lg opacity-90" style={{ fontFamily: tc.headingFont, fontStyle: tc.headingItalic ? "italic" : "normal" }}>
+              {[eventDateLabel, content.event?.ceremony?.location ?? site.venue?.name ?? null]
+                .filter(Boolean).join(" · ")}
+            </p>
+          )}
+          {du !== null && du > 0 && (
+            <p className="text-sm opacity-60 pt-1">{du} days to go</p>
+          )}
+        </div>
+      ) : (
+      <div className="relative z-10 space-y-5 max-w-3xl mx-auto text-center" style={{ color: heroTextColor }}>
+        <p className="text-xs font-semibold uppercase tracking-[0.3em] opacity-70">
+          {site.event?.eventType?.replace(/_/g, " ") ?? "Wedding"}
+        </p>
+        <h1 style={{
+          fontFamily: tc.headingFont,
+          color: heroTextColor,
+          fontStyle: tc.headingItalic ? "italic" : "normal",
+          fontSize: "clamp(2.5rem, 8cqw, 5rem)",
+          fontWeight: 600,
+          lineHeight: 1.1,
+          textShadow: "0 2px 20px rgba(0,0,0,0.25)",
+        }}>
+          {content.home?.title ?? coupleName}
+        </h1>
+        {content.home?.subtitle && (
+          <p className="text-lg opacity-85" style={{ fontFamily: tc.bodyFont }}>{content.home.subtitle}</p>
+        )}
+        {eventDate && (
+          <div className="pt-4 space-y-1">
+            <p style={{ fontFamily: tc.headingFont, fontSize: "1.15rem", fontStyle: tc.headingItalic ? "italic" : "normal" }}>
+              {eventDateLabel}
+            </p>
+            {du !== null && du > 0 && (
+              <p className="text-sm opacity-60">{du} days to go</p>
+            )}
+          </div>
+        )}
+      </div>
+      )
+    )}
+  </div>
+  );
+}
+
+// ── Section primitive ─────────────────────────────────────────────────────────
+// Shared Rendering Architecture, Phase 1 — extracted verbatim from
+// WeddingWebsite's own nested renderSolo/renderPair closures (no visual or
+// behavioral change: same JSX, same conditionals, same shared composition
+// primitives, just parameterized by an explicit context object instead of
+// closing over WeddingWebsite's local scope). This is now the one place
+// that decides how any single content section — or a paired passage like
+// Dress Code + Wedding Party — renders, for any consumer that has a
+// resolved ThemeConfig and content. See docs/wedding-website-shared-
+// primitives.md for responsibility/inputs/outputs/consumers.
+export type SectionRenderContext = {
+  tc: ThemeConfig;
+  content: NonNullable<PublicWebsite["content"]>;
+  site: PublicWebsite;
+  color: string;
+  editMode: boolean;
+  activeSection: string | null;
+  onSectionClick?: (key: string) => void;
+};
+
+export function createSectionRenderer(ctx: SectionRenderContext) {
+  const { tc, content, site, color, editMode, activeSection, onSectionClick } = ctx;
+  const eventDate = site.event?.eventDate;
 
   // Wraps each section in an edit overlay when editMode=true, and — always,
   // edit mode or not — in the Collection's own scroll-reveal + scroll-snap
@@ -1209,50 +1435,6 @@ export function WeddingWebsite({
         </div>
       </div>
     );
-  }
-
-  // Coastal Art-Direction Pass 2 (2026-08-03) — whether each section
-  // currently has real content to show, mirroring the exact same
-  // null-guards each case below already uses. Computed up front, generically
-  // by content shape (never by section index), so the pairing decision below
-  // can never disagree with what actually renders.
-  const hasContent: Record<string, boolean> = {
-    story: !!content.story?.text || editMode,
-    event: !!(content.event?.ceremony || content.event?.reception),
-    gallery: !!content.gallery?.photos?.length,
-    schedule: !!content.schedule?.length,
-    travel: !!(content.travel?.message || content.travel?.hotels?.length || content.travel?.transportation?.notes),
-    dress_code: !!(content.dress_code?.formality || content.dress_code?.description),
-    bridal_party: !!content.bridal_party?.members?.length,
-    things_to_do: !!content.things_to_do?.items?.length,
-    music: !!(content.music?.ceremony || content.music?.cocktail || content.music?.reception || content.music?.lastDance),
-    registry: !!content.registry?.length,
-    faq: !!content.faq?.length,
-    rsvp: true,
-  };
-
-  // Groups adjacent sections into shared passages (Step 6/9) purely from
-  // data: both sides must name each other via sectionRoles.pairWith, be
-  // immediately adjacent in the couple's OWN section order (never a fixed
-  // index), and both currently have content. Reordered apart, hidden, or
-  // emptied — each falls back to rendering solo, its normal treatment.
-  const renderGroups: (string | [string, string])[] = [];
-  {
-    const paired = new Set<string>();
-    for (let i = 0; i < sectionOrder.length; i++) {
-      const key = sectionOrder[i];
-      if (paired.has(key)) continue;
-      const role = tc.sectionRoles?.[key];
-      const next = sectionOrder[i + 1];
-      const nextRole = next ? tc.sectionRoles?.[next] : undefined;
-      if (role?.pairWith && next && role.pairWith === next && nextRole?.pairWith === key
-        && hasContent[key] && hasContent[next]) {
-        renderGroups.push([key, next]);
-        paired.add(key); paired.add(next);
-      } else {
-        renderGroups.push(key);
-      }
-    }
   }
 
   const canvasColors = { surface: tc.surface, secondary: tc.secondary, accent: tc.accent, bg: tc.bg, border: tc.border };
@@ -1360,72 +1542,86 @@ export function WeddingWebsite({
               // Never falls back to the gallery, hero, or venue imagery.
               const storyPhoto = s.imageUrl ?? null;
 
+              // Architecture Correction (2026-08-07) — canvas (background
+              // weight, from sectionRoles) and story presentation (from the
+              // Collection's own storyStyle) are orthogonal concerns that
+              // this branch used to conflate: `tc.sectionRoles` truthiness
+              // alone used to pick EditorialOpening over storyStyle
+              // entirely, silently discarding Rosé's pull-quote and Linen's
+              // minimal treatment the moment either Collection gained
+              // sectionRoles for rhythm. storyStyle is now checked first,
+              // unconditionally, for every Collection; EditorialOpening is
+              // only ever the sectionRoles-enabled UPGRADE for the styles
+              // that were already a generic paragraph (prose/editorial) —
+              // never a replacement for a genuinely distinct treatment.
+              const storyBody = tc.storyStyle === "quote" ? (
+                // Rosé — large italic pull quote, centered, like a love letter
+                <div className="max-w-xl mx-auto text-center px-4">
+                  <p style={{
+                    fontFamily: tc.headingFont,
+                    fontStyle: "italic",
+                    fontSize: "clamp(1.35rem, 3cqw, 1.9rem)",
+                    lineHeight: 1.75,
+                    color,
+                    letterSpacing: "0.01em",
+                  }}>
+                    {s.text}
+                  </p>
+                </div>
+              ) : tc.storyStyle === "minimal" ? (
+                // Linen — quiet body-text scale, no headingFont, max breathing room
+                <div>
+                  <p style={{
+                    fontFamily: tc.bodyFont,
+                    fontSize: "0.9rem",
+                    lineHeight: 2.05,
+                    color: tc.textMuted,
+                    maxWidth: "520px",
+                  }}>
+                    {s.text}
+                  </p>
+                </div>
+              ) : tc.sectionRoles ? (
+                // prose/editorial storyStyle, rhythm-enabled Collection —
+                // the enhanced eyebrow+heading/text/photo grid.
+                <EditorialOpening tc={tc} color={color} labelColor={tc.accent || color} eyebrow="Our Story" heading={s.title ?? "How it began"} text={s.text} photoUrl={storyPhoto} />
+              ) : tc.storyStyle === "editorial" ? (
+                // Velvet / Midnight — left-aligned measured prose, body text scale
+                <div className="max-w-2xl">
+                  <p style={{
+                    fontFamily: tc.bodyFont,
+                    fontSize: "1rem",
+                    lineHeight: 1.9,
+                    color: tc.textMuted,
+                    letterSpacing: "0.01em",
+                  }}>
+                    {s.text}
+                  </p>
+                </div>
+              ) : (
+                // prose, no sectionRoles yet
+                <div className="max-w-xl mx-auto text-center px-4">
+                  <p style={{
+                    fontFamily: tc.headingFont,
+                    fontStyle: tc.headingItalic ? "italic" : "normal",
+                    fontSize: "clamp(1rem, 2cqw, 1.2rem)",
+                    lineHeight: 1.85,
+                    color: tc.text,
+                  }}>
+                    {s.text}
+                  </p>
+                </div>
+              );
+              // EditorialOpening supplies its own heading — every other
+              // branch still needs the Collection's own SectionHeader.
+              const needsHeader = !(tc.storyStyle !== "quote" && tc.storyStyle !== "minimal" && tc.sectionRoles);
+
               return (
                 <SectionCanvas key="story" role={tc.sectionRoles?.story} sparse={storySparse} colors={canvasColors}>
                 <SectionWrapper sectionKey="story">
                   <section>
-                    {tc.sectionRoles ? (
-                      <EditorialOpening tc={tc} color={color} labelColor={tc.accent || color} eyebrow="Our Story" heading={s.title ?? "How it began"} text={s.text} photoUrl={storyPhoto} />
-                    ) : (
-                      <>
-                    <SectionHeader title={s.title ?? "Our Story"} tc={tc} accentColor={color} />
-
-                    {tc.storyStyle === "quote" ? (
-                      // Rosé — large italic pull quote, centered, like a love letter
-                      <div className="max-w-xl mx-auto text-center px-4">
-                        <p style={{
-                          fontFamily: tc.headingFont,
-                          fontStyle: "italic",
-                          fontSize: "clamp(1.35rem, 3vw, 1.9rem)",
-                          lineHeight: 1.75,
-                          color,
-                          letterSpacing: "0.01em",
-                        }}>
-                          {s.text}
-                        </p>
-                      </div>
-                    ) : tc.storyStyle === "minimal" ? (
-                      // Linen — quiet body-text scale, no headingFont, max breathing room
-                      <div>
-                        <p style={{
-                          fontFamily: tc.bodyFont,
-                          fontSize: "0.9rem",
-                          lineHeight: 2.05,
-                          color: tc.textMuted,
-                          maxWidth: "520px",
-                        }}>
-                          {s.text}
-                        </p>
-                      </div>
-                    ) : tc.storyStyle === "editorial" ? (
-                      // Velvet / Midnight — left-aligned measured prose, body text scale
-                      <div className="max-w-2xl">
-                        <p style={{
-                          fontFamily: tc.bodyFont,
-                          fontSize: "1rem",
-                          lineHeight: 1.9,
-                          color: tc.textMuted,
-                          letterSpacing: "0.01em",
-                        }}>
-                          {s.text}
-                        </p>
-                      </div>
-                    ) : (
-                      // prose — Wildflower, Garden Party, Coastal, Champagne
-                      <div className="max-w-xl mx-auto text-center px-4">
-                        <p style={{
-                          fontFamily: tc.headingFont,
-                          fontStyle: tc.headingItalic ? "italic" : "normal",
-                          fontSize: "clamp(1rem, 2vw, 1.2rem)",
-                          lineHeight: 1.85,
-                          color: tc.text,
-                        }}>
-                          {s.text}
-                        </p>
-                      </div>
-                    )}
-                      </>
-                    )}
+                    {needsHeader && <SectionHeader title={s.title ?? "Our Story"} tc={tc} accentColor={color} />}
+                    {storyBody}
                   </section>
                 </SectionWrapper>
                 </SectionCanvas>
@@ -1471,13 +1667,13 @@ export function WeddingWebsite({
               return (
                 <SectionCanvas key="event" role={eventRole} colors={canvasColors}>
                 <SectionWrapper sectionKey="event">
-                  <section className={venueImage ? "grid gap-10 md:grid-cols-5 md:items-center" : undefined}>
-                    <div className={venueImage ? "md:col-span-3" : undefined}>
+                  <section className={venueImage ? "grid gap-10 @min-[768px]/wedding:grid-cols-5 @min-[768px]/wedding:items-center" : undefined}>
+                    <div className={venueImage ? "@min-[768px]/wedding:col-span-3" : undefined}>
                       <SectionHeader title="Event Details" tc={eventTc} accentColor={eventStrong ? eventFg : color} />
                       <SectionComposition recipe={eventTc} tc={eventTc} color={eventStrong ? eventFg : color} items={items} />
                     </div>
                     {venueImage && (
-                      <div className="md:col-span-2">
+                      <div className="@min-[768px]/wedding:col-span-2">
                         <div className="overflow-hidden" style={{ borderRadius: tc.cardRadius, aspectRatio: "4 / 5" }}>
                           <img src={venueImage} alt={site.venue?.name ?? "The venue"} className="w-full h-full object-cover" />
                         </div>
@@ -1545,38 +1741,21 @@ export function WeddingWebsite({
                   <section>
                     {tc.sectionRoles ? (
                       dateParts ? (
-                        // `lg:` (1024px viewport) — Schedule's canvas role is
-                        // "soft" (see SectionCanvas below), which paints its
-                        // full-bleed background using `w-screen`/`-mx-[50vw]`:
-                        // an intentional, pre-existing technique that always
-                        // measures the true browser viewport, never an
-                        // ancestor's rendered width. That makes a container
-                        // query no more (and no less) correct here than a
-                        // viewport breakpoint — both resolve identically on
-                        // the real public page, since `w-screen` guarantees
-                        // this section's content width already equals the
-                        // viewport at every real width. `lg:` is kept for
-                        // consistency with the rest of this file (Our Story's
-                        // EditorialOpening etc. all use viewport breakpoints).
-                        // Known limitation: Studio's mobile preview fakes
-                        // narrowness with a CSS-width-constrained container
-                        // inside a full desktop-width browser viewport, which
-                        // `w-screen` sees straight through — so this specific
-                        // "soft"-canvas section cannot be made to visually
-                        // collapse inside Studio's phone frame without either
-                        // a Studio-specific prop (explicitly out of scope —
-                        // "do not create a Studio-only Schedule renderer") or
-                        // changing SectionCanvas's shared full-bleed technique
-                        // (touches every "strong"/"soft" section on the page,
-                        // not just Schedule — out of this pass's scope). The
-                        // real guest-facing mobile page is unaffected — this
-                        // is a Studio-preview-only cosmetic gap.
-                        <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-16 lg:items-center">
-                          <div className="lg:col-span-7">{scheduleLeft}</div>
+                        // WW-PREVIEW-01 fix (2026-08-06) — was `lg:grid-cols-12`
+                        // (true browser viewport). Schedule's "soft" canvas full
+                        // -bleed background (SectionCanvas) and this grid now both
+                        // resolve against the same `@container/wedding` boundary
+                        // (WeddingWebsite's own root), so Studio's simulated phone
+                        // frame correctly collapses this to a single column instead
+                        // of the previously-documented Studio-only gap. The real
+                        // guest-facing mobile page is unaffected either way — it
+                        // was always narrower than 1024px already.
+                        <div className="grid grid-cols-1 @min-[1024px]/wedding:grid-cols-12 gap-10 @min-[1024px]/wedding:gap-16 @min-[1024px]/wedding:items-center">
+                          <div className="@min-[1024px]/wedding:col-span-7">{scheduleLeft}</div>
                           {/* Mobile/tablet default is clean timeline first (Step 6) —
                               the decorative date moment is a desktop-only field,
                               not a shrunk-down copy stacked underneath. */}
-                          <div className="hidden lg:block lg:col-span-5">
+                          <div className="hidden @min-[1024px]/wedding:block @min-[1024px]/wedding:col-span-5">
                             <ScheduleDateMoment tc={tc} color={tc.accent || color} day={dateParts.day} month={dateParts.month} year={dateParts.year} sparse={scheduleSparse} />
                           </div>
                         </div>
@@ -1673,7 +1852,7 @@ export function WeddingWebsite({
               const ttd = content.things_to_do;
               if (!ttd?.items?.length) return null;
               const items: CompositionItem[] = ttd.items.map(item => ({
-                label: CATEGORY_ICONS[item.category] ?? "✦",
+                label: CATEGORY_LABELS[item.category] ?? "Local Favorite",
                 heading: item.name,
                 body: item.description,
                 meta: item.address,
@@ -1704,12 +1883,12 @@ export function WeddingWebsite({
                       // left-aligned Coastal treatment they already use
                       // everywhere else on the page (Schedule's "Our Day"
                       // included) — never centered, on any viewport.
-                      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-14 lg:items-center">
-                        <div className="lg:col-span-5">
+                      <div className="grid grid-cols-1 @min-[1024px]/wedding:grid-cols-12 gap-8 @min-[1024px]/wedding:gap-14 @min-[1024px]/wedding:items-center">
+                        <div className="@min-[1024px]/wedding:col-span-5">
                           <SectionHeader title={ttd.title ?? "Things To Do"} tc={tc} accentColor={color} />
                           {ttd.intro && <p className="opacity-60 leading-relaxed" style={{ color: tc.textMuted }}>{ttd.intro}</p>}
                         </div>
-                        <div className="lg:col-span-7">
+                        <div className="@min-[1024px]/wedding:col-span-7">
                           <DestinationFeature tc={tc} color={color} items={destinationItems} />
                         </div>
                       </div>
@@ -1818,14 +1997,24 @@ export function WeddingWebsite({
               const quiet = tc.sectionComposition === "quiet";
               const rsvpRole = tc.sectionRoles?.rsvp;
               const bannerBg = rsvpRole?.canvas === "strong" ? tc.heroGradient : color;
-              const bannerFg = rsvpRole?.canvas === "strong" ? contrastText(tc.secondary || tc.primary) : "white";
+              // Phase 4A combination-matrix fix (2026-08-07) — this used to
+              // re-derive contrast from tc.primary/tc.secondary, but those
+              // are not necessarily the colors actually present in
+              // tc.heroGradient (e.g. Indigo's primary/secondary resolve to
+              // its light `accent` token, #BFB8CE, while its heroGradient is
+              // a near-black wash) — on a Color Story where the two diverge,
+              // that produced dark-on-dark, nearly invisible RSVP text.
+              // tc.heroTextColor is the Color Story's own curated color for
+              // exactly this gradient (already used by Hero, above) — reuse
+              // it instead of re-deriving contrast from the wrong source.
+              const bannerFg = rsvpRole?.canvas === "strong" ? tc.heroTextColor : "white";
               const rsvpCard = (
-                <div className={isBanner ? "p-10 md:p-16" : quiet ? "p-8 md:p-10" : "p-8 md:p-12 rounded-3xl"}
+                <div className={isBanner ? "p-10 @min-[768px]/wedding:p-16" : quiet ? "p-8 @min-[768px]/wedding:p-10" : "p-8 @min-[768px]/wedding:p-12 rounded-3xl"}
                   style={quiet
                     ? { background: "transparent", border: `1px solid ${color}30` }
                     : { background: bannerBg, borderRadius: isBanner ? 0 : tc.cardRadius }}>
                   <div className="text-center mb-8 max-w-xl mx-auto" style={{ color: quiet ? tc.text : bannerFg }}>
-                    <h2 style={{ fontFamily: tc.headingFont, color: quiet ? color : bannerFg, fontStyle: tc.headingItalic ? "italic" : "normal", fontSize: isBanner ? "clamp(2rem, 5vw, 3rem)" : "clamp(1.75rem, 4vw, 2.5rem)", fontWeight: 600 }}>
+                    <h2 style={{ fontFamily: tc.headingFont, color: quiet ? color : bannerFg, fontStyle: tc.headingItalic ? "italic" : "normal", fontSize: isBanner ? "clamp(2rem, 5cqw, 3rem)" : "clamp(1.75rem, 4cqw, 2.5rem)", fontWeight: 600 }}>
                       RSVP
                     </h2>
                     <p className="opacity-70 text-sm mt-2">Enter the code from your invitation to respond.</p>
@@ -1839,7 +2028,7 @@ export function WeddingWebsite({
               return (
                 <div key="rsvp" style={{ marginBlock: rsvpRole ? SCALE_MARGIN_RSVP[rsvpRole.scale] : undefined }}>
                 <SectionWrapper sectionKey="rsvp">
-                  <section className={isBanner ? "relative left-1/2 right-1/2 -mx-[50vw] w-screen" : undefined}>
+                  <section className={isBanner ? "relative left-1/2 right-1/2 -mx-[50cqw] w-[100cqw]" : undefined}>
                     {rsvpCard}
                   </section>
                 </SectionWrapper>
@@ -1851,175 +2040,129 @@ export function WeddingWebsite({
           }
   }
 
+  return { renderSection: renderSolo, renderSectionPair: renderPair };
+}
+
+export function WeddingWebsite({
+  site, slug,
+  editMode = false,
+  activeSection = null,
+  onSectionClick,
+}: {
+  site: PublicWebsite;
+  slug: string;
+  editMode?: boolean;
+  activeSection?: string | null;
+  onSectionClick?: (key: string) => void;
+}) {
+  // resolveTheme is pure (no side effects), so it's safe to compute once,
+  // up front, and reuse for the password gate too — the gate now shows the
+  // couple's actual chosen Typography instead of a hardcoded font (Visual
+  // Expression Pass, guardrail #7), by sharing the exact same resolution
+  // chain the rest of the page uses rather than duplicating it by hand.
+  const tc = resolveTheme(site);
+  if (site.requires_password) {
+    return <PasswordGate slug={slug} accentColor={tc.primary} headingFont={tc.headingFont} headingItalic={tc.headingItalic} />;
+  }
+
+  // Theme supplies a natural accent; a couple's Color Story primary (Part 2)
+  // takes precedence, then the legacy single accentColor override, then the
+  // Collection/Color-Story-resolved default.
+  const color = tc.primary;
+  const couple = site.couple;
+  const coupleName = couple
+    ? [couple.firstName, couple.partnerFirstName].filter(Boolean).join(" & ")
+    : "The Couple";
+  const eventDate = site.event?.eventDate;
+  const eventEndDate = site.event?.eventEndDate;
+  const eventDateLabel = eventDate ? formatEventDateRange(eventDate, eventEndDate) : null;
+  const du = eventDate ? daysUntil(eventDate) : null;
+  const content = site.content ?? {};
+
+  // Section order & visibility: Hosted Experience Platform Phase 2 —
+  // prefer the ordered, visibility-filtered `sections` array from
+  // experience_sections (the server already excludes hidden sections, so
+  // no client-side filtering is needed) over the legacy sectionOrder
+  // array. Falls back to the pre-Phase-2 behavior when `sections` is
+  // absent or empty, so an experience that predates the Section Model
+  // (or a stale cached response) still renders exactly as before.
+  const DEFAULT_ORDER = ["story", "event", "gallery", "schedule", "travel", "dress_code", "bridal_party", "things_to_do", "music", "registry", "faq", "rsvp"];
+  const sectionOrder = site.sections?.length
+    ? site.sections.map(s => s.key).filter(k => k !== "home")
+    : (site.sectionOrder?.length ? site.sectionOrder : DEFAULT_ORDER);
+
+  // Load Google Fonts for this theme
+  useThemeFonts(tc.fontUrl);
+
+  // Coastal Art-Direction Pass 2 (2026-08-03) — whether each section
+  // currently has real content to show, mirroring the exact same
+  // null-guards each case below already uses. Computed up front, generically
+  // by content shape (never by section index), so the pairing decision below
+  // can never disagree with what actually renders.
+  const hasContent: Record<string, boolean> = {
+    story: !!content.story?.text || editMode,
+    event: !!(content.event?.ceremony || content.event?.reception),
+    gallery: !!content.gallery?.photos?.length,
+    schedule: !!content.schedule?.length,
+    travel: !!(content.travel?.message || content.travel?.hotels?.length || content.travel?.transportation?.notes),
+    dress_code: !!(content.dress_code?.formality || content.dress_code?.description),
+    bridal_party: !!content.bridal_party?.members?.length,
+    things_to_do: !!content.things_to_do?.items?.length,
+    music: !!(content.music?.ceremony || content.music?.cocktail || content.music?.reception || content.music?.lastDance),
+    registry: !!content.registry?.length,
+    faq: !!content.faq?.length,
+    rsvp: true,
+  };
+
+  // Groups adjacent sections into shared passages (Step 6/9) purely from
+  // data: both sides must name each other via sectionRoles.pairWith, be
+  // immediately adjacent in the couple's OWN section order (never a fixed
+  // index), and both currently have content. Reordered apart, hidden, or
+  // emptied — each falls back to rendering solo, its normal treatment.
+  const renderGroups: (string | [string, string])[] = [];
+  {
+    const paired = new Set<string>();
+    for (let i = 0; i < sectionOrder.length; i++) {
+      const key = sectionOrder[i];
+      if (paired.has(key)) continue;
+      const role = tc.sectionRoles?.[key];
+      const next = sectionOrder[i + 1];
+      const nextRole = next ? tc.sectionRoles?.[next] : undefined;
+      if (role?.pairWith && next && role.pairWith === next && nextRole?.pairWith === key
+        && hasContent[key] && hasContent[next]) {
+        renderGroups.push([key, next]);
+        paired.add(key); paired.add(next);
+      } else {
+        renderGroups.push(key);
+      }
+    }
+  }
+
+  const { renderSection, renderSectionPair } = createSectionRenderer({
+    tc, content, site, color, editMode, activeSection, onSectionClick,
+  });
+
   return (
-    <div style={{ background: tc.bg, color: tc.text, fontFamily: tc.bodyFont, minHeight: "100vh" }}>
+    // WW-PREVIEW-01 fix (2026-08-06) — this root div is the ONE responsive
+    // container for the whole renderer. `@container/wedding` establishes
+    // `container-type: inline-size` (a named container, "wedding") here and
+    // ONLY here. Every viewport-relative rule below that means "respond to
+    // the width WeddingWebsite is actually being rendered at" — full-bleed
+    // `cqw` sizing and `@min-[Npx]/wedding:` breakpoint variants — resolves
+    // against THIS element's own rendered width, not the outer browser's.
+    // That width is already correct in every context that renders this
+    // component, with zero Studio-specific code needed here or in Studio:
+    // on the public page this div fills the page (cqw ≈ vw, no visual
+    // change); in Studio desktop preview it fills the preview pane (already
+    // narrower than the app window, since Studio's own sidebar takes space —
+    // exactly "the desktop preview surface width", not the full browser);
+    // in Studio's simulated phone frame it fills the ~375px frame. Size
+    // containment only applies to the inline (horizontal) axis, so the
+    // existing `minHeight: "100vh"` below is unaffected.
+    <div className="@container/wedding" style={{ background: tc.bg, color: tc.text, fontFamily: tc.bodyFont, minHeight: "100vh" }}>
 
       {/* ── Hero ── */}
-      {/* Linen: invitation layout — no gradient, printed, centered text only */}
-      {tc.heroType === "invitation" && !hascover ? (
-        <div
-          className={`px-8 pt-20 pb-16 text-center ${editMode ? "group cursor-pointer relative" : ""}`}
-          style={{ background: tc.bg }}
-          onClick={editMode ? () => onSectionClick?.("home") : undefined}
-        >
-          {editMode && (
-            <button type="button" onClick={() => onSectionClick?.("home")}
-              className="absolute top-3 right-3 z-20 text-xs font-semibold px-2.5 py-1.5 rounded-xl text-white shadow-lg opacity-0 group-hover:opacity-100 transition-opacity"
-              style={{ background: `${color}CC` }}>
-              ✏ Edit home
-            </button>
-          )}
-          <div className="max-w-sm mx-auto" style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
-            <p style={{ fontFamily: tc.bodyFont, fontSize: "0.6rem", letterSpacing: "0.45em", textTransform: "uppercase", color: tc.textMuted, fontWeight: 400 }}>
-              {site.event?.eventType?.replace(/_/g, " ") ?? "Wedding"}
-            </p>
-            <h1 style={{ fontFamily: tc.headingFont, fontSize: "clamp(2.2rem, 6vw, 3.8rem)", fontWeight: 400, lineHeight: 1.1, color: tc.text, letterSpacing: "0.03em" }}>
-              {content.home?.title ?? coupleName}
-            </h1>
-            <div style={{ height: "1px", width: "36px", background: `${color}50`, margin: "0 auto" }} />
-            {eventDate && (
-              <p style={{ fontFamily: tc.bodyFont, fontSize: "0.7rem", color: tc.textMuted, letterSpacing: "0.2em", textTransform: "uppercase", fontWeight: 400 }}>
-                {eventDateLabel}
-              </p>
-            )}
-            {content.event?.ceremony?.location && (
-              <p style={{ fontFamily: tc.headingFont, fontSize: "0.95rem", color: tc.text, letterSpacing: "0.04em" }}>
-                {content.event.ceremony.location}
-              </p>
-            )}
-          </div>
-        </div>
-      ) : (
-      <div
-        className={`relative flex flex-col ${tc.heroAlign === "left" ? "items-start justify-end pb-14 pl-8" : "items-center justify-center"} px-6 py-20 ${editMode ? "group cursor-pointer" : ""}`}
-        style={{
-          ...heroStyle, minHeight: tc.heroMinHeight,
-          // `width: 100%` pins width so aspect-ratio only ever solves for
-          // height — without it, once maxHeight clamps height below what
-          // the ratio would give a full-width box, Chromium renegotiates
-          // width down to (height * ratio) instead, breaking full-bleed.
-          ...(tc.heroAspectCap ? { width: "100%", aspectRatio: tc.heroAspectCap, maxHeight: tc.heroMaxHeight } : {}),
-        }}
-        onClick={editMode ? () => onSectionClick?.("home") : undefined}
-      >
-        {/* Overlay — softens cover photos; unused for gradient heroes */}
-        <div className="absolute inset-0"
-          style={{ background: tc.heroOverlayColor, opacity: hascover ? tc.heroOverlayOpacity : 0 }} />
-
-        {editMode && (
-          <button type="button" onClick={() => onSectionClick?.("home")}
-            className="absolute top-3 right-3 z-20 text-xs font-semibold px-2.5 py-1.5 rounded-xl text-white shadow-lg opacity-0 group-hover:opacity-100 transition-opacity"
-            style={{ background: `${color}CC` }}>
-            ✏ Edit home
-          </button>
-        )}
-
-        {tc.heroAlign === "left" ? (
-          // Editorial layout — Velvet / Midnight: left-bottom, magazine-cover energy
-          <div className="relative z-10 max-w-5xl w-full" style={{ color: tc.heroTextColor }}>
-            <div className="mb-4 w-10 h-px" style={{ background: color }} />
-            <h1 style={{
-              fontFamily: tc.headingFont,
-              color: tc.heroTextColor,
-              fontStyle: "normal",
-              fontSize: "clamp(3rem, 8vw, 6rem)",
-              fontWeight: tc.headingFont.includes("DM Sans") ? 700 : 400,
-              lineHeight: 1.0,
-              letterSpacing: tc.headingFont.includes("DM Sans") ? "-0.02em" : "0.01em",
-              textShadow: "0 2px 30px rgba(0,0,0,0.4)",
-            }}>
-              {content.home?.title ?? coupleName}
-            </h1>
-            <div className="flex items-baseline gap-5 mt-5 flex-wrap">
-              {eventDate && (
-                <p style={{ fontFamily: tc.headingFont, fontSize: "1rem", opacity: 0.65 }}>
-                  {eventDateLabel}
-                </p>
-              )}
-              {du !== null && du > 0 && (
-                <p className="text-sm opacity-35">{du} days to go</p>
-              )}
-            </div>
-            {content.home?.subtitle && (
-              <p className="mt-3 text-sm opacity-55" style={{ fontFamily: tc.bodyFont }}>{content.home.subtitle}</p>
-            )}
-          </div>
-        ) : (
-          // Centered layout — all other themes
-          tc.sectionRoles ? (
-            // Coastal Art-Direction Pass 2 (2026-08-03) — editorial hierarchy:
-            // eyebrow -> atmospheric phrase -> couple names (unmistakable
-            // primary identity) -> ONE authoritative date+location line.
-            // `subtitle` is a free-text field a couple can type anything
-            // into (Studio's own placeholder used to suggest a date, which
-            // is exactly the collision this fixes) — it now always reads as
-            // a lead-in phrase ahead of the names, never a second date
-            // candidate, and eventDate (the synced, authoritative source)
-            // is the only place a date is ever rendered in this hero.
-            <div className="relative z-10 max-w-3xl mx-auto text-center" style={{ color: tc.heroTextColor }}>
-              <p className="text-xs font-semibold uppercase tracking-[0.3em] opacity-70 mb-5">
-                {site.event?.eventType?.replace(/_/g, " ") ?? "Wedding"}
-              </p>
-              {content.home?.subtitle && (
-                <p className="text-base md:text-lg italic opacity-80 mb-4" style={{ fontFamily: tc.headingFont }}>
-                  {content.home.subtitle}
-                </p>
-              )}
-              <h1 style={{
-                fontFamily: tc.headingFont,
-                color: tc.heroTextColor,
-                fontStyle: tc.headingItalic ? "italic" : "normal",
-                fontSize: "clamp(2.5rem, 8vw, 5rem)",
-                fontWeight: 600,
-                lineHeight: 1.1,
-                textShadow: "0 2px 20px rgba(0,0,0,0.25)",
-              }}>
-                {content.home?.title ?? coupleName}
-              </h1>
-              {(eventDate || content.event?.ceremony?.location || site.venue?.name) && (
-                <p className="pt-5 text-base md:text-lg opacity-90" style={{ fontFamily: tc.headingFont, fontStyle: tc.headingItalic ? "italic" : "normal" }}>
-                  {[eventDateLabel, content.event?.ceremony?.location ?? site.venue?.name ?? null]
-                    .filter(Boolean).join(" · ")}
-                </p>
-              )}
-              {du !== null && du > 0 && (
-                <p className="text-sm opacity-60 pt-1">{du} days to go</p>
-              )}
-            </div>
-          ) : (
-          <div className="relative z-10 space-y-5 max-w-3xl mx-auto text-center" style={{ color: tc.heroTextColor }}>
-            <p className="text-xs font-semibold uppercase tracking-[0.3em] opacity-70">
-              {site.event?.eventType?.replace(/_/g, " ") ?? "Wedding"}
-            </p>
-            <h1 style={{
-              fontFamily: tc.headingFont,
-              color: tc.heroTextColor,
-              fontStyle: tc.headingItalic ? "italic" : "normal",
-              fontSize: "clamp(2.5rem, 8vw, 5rem)",
-              fontWeight: 600,
-              lineHeight: 1.1,
-              textShadow: "0 2px 20px rgba(0,0,0,0.25)",
-            }}>
-              {content.home?.title ?? coupleName}
-            </h1>
-            {content.home?.subtitle && (
-              <p className="text-lg opacity-85" style={{ fontFamily: tc.bodyFont }}>{content.home.subtitle}</p>
-            )}
-            {eventDate && (
-              <div className="pt-4 space-y-1">
-                <p style={{ fontFamily: tc.headingFont, fontSize: "1.15rem", fontStyle: tc.headingItalic ? "italic" : "normal" }}>
-                  {eventDateLabel}
-                </p>
-                {du !== null && du > 0 && (
-                  <p className="text-sm opacity-60">{du} days to go</p>
-                )}
-              </div>
-            )}
-          </div>
-          )
-        )}
-      </div>
-      )}
+      <Hero site={site} tc={tc} editMode={editMode} onSectionClick={onSectionClick} />
 
       {/* Welcome message — alignment and scale follow the theme's personality */}
       {content.home?.welcomeMessage && (
@@ -2036,10 +2179,10 @@ export function WeddingWebsite({
             fontFamily: tc.storyStyle === "quote" || tc.headerStyle === "romantic" ? tc.headingFont : tc.bodyFont,
             fontStyle: tc.headingItalic ? "italic" : "normal",
             fontSize: tc.storyStyle === "quote"
-              ? "clamp(1.15rem, 2.5vw, 1.45rem)"
+              ? "clamp(1.15rem, 2.5cqw, 1.45rem)"
               : tc.headerStyle === "minimal"
               ? "0.9rem"
-              : "clamp(1rem, 2vw, 1.2rem)",
+              : "clamp(1rem, 2cqw, 1.2rem)",
             lineHeight: 1.8,
             color: tc.headerStyle === "editorial" ? tc.textMuted : tc.headerStyle === "minimal" ? tc.textMuted : tc.text,
             textAlign: (tc.headerStyle === "editorial" || tc.headerStyle === "coastal") ? "left" : "center",
@@ -2067,7 +2210,7 @@ export function WeddingWebsite({
         }}
       >
 
-        {renderGroups.map(group => Array.isArray(group) ? renderPair(group[0], group[1]) : renderSolo(group))}
+        {renderGroups.map(group => Array.isArray(group) ? renderSectionPair(group[0], group[1]) : renderSection(group))}
 
       </div>
 
