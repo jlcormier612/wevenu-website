@@ -1,0 +1,175 @@
+{
+  "workPackage": "Couple Home \u2013 Implementation 5 \u2013 Your Wedding",
+  "url": "http://127.0.0.1:3000/p/seedcoupleportal00000000000000000000000000000001",
+  "unitTests": "lib/portal/your-wedding.test.ts \u2014 12 cases via npm test (full suite 137 pass)",
+  "sourceSectionOrderPreserved": true,
+  "desktop": {
+    "screenshot": "01-desktop-your-wedding.png",
+    "full": "01-desktop-your-wedding-full.png",
+    "layout": "3-column invite grid; below What\u2019s Happening / Journey",
+    "cards": 6,
+    "explicitCtas": true,
+    "warmEmptyInvitesObserved": true,
+    "heading": "Your Wedding",
+    "operationalAbove": true
+  },
+  "mobile": {
+    "screenshot": "02-mobile-your-wedding.png",
+    "full": "02-mobile-your-wedding-full.png",
+    "layout": "single-column stacked invites",
+    "cards": 6,
+    "explicitCtas": true,
+    "operationalAbove": true
+  },
+  "playwrightFirstPass": {
+    "desktop": {
+      "viewport": {
+        "width": 1280,
+        "height": 900
+      },
+      "headingsSample": [
+        "Your Next Steps",
+        "Wedding Journey",
+        "What\u2019s Happening",
+        "Your Wedding"
+      ],
+      "order": {
+        "nextSteps": 448,
+        "workingWith": null,
+        "progress": null,
+        "journey": 542,
+        "happening": null,
+        "yourWedding": null,
+        "luv": null,
+        "memories": null
+      },
+      "operationalAboveYourWedding": false,
+      "yourWeddingBelowWhatsHappening": false,
+      "yourWeddingBelowProgress": false,
+      "hasYourWeddingHeading": false,
+      "softPrompt": true,
+      "noNoDataLanguage": true,
+      "cards": [
+        {
+          "aria": "Wedding Website. Start your wedding website. Open Website",
+          "text": "\ud83c\udf10 Wedding Website Start your wedding website Open Website \u2192"
+        },
+        {
+          "aria": "Guest List. Begin your guest list. Open Guest List",
+          "text": "\ud83d\udc65 Guest List Begin your guest list Open Guest List \u2192"
+        },
+        {
+          "aria": "Budget. Set a budget whenever you\u2019re ready. Open Budget",
+          "text": "\ud83d\udcb0 Budget Set a budget whenever you\u2019re ready Open Budget \u2192"
+        },
+        {
+          "aria": "Seating. Arrange your celebration seating when you\u2019re ready. Open Seating",
+          "text": "\ud83e\ude91 Seating Arrange your celebration seating when you\u2019re ready Open Seating \u2192"
+        },
+        {
+          "aria": "Plans. Keep your personal planning notes here. Continue Plans",
+          "text": "\u2728 Plans Keep your personal planning notes here Continue Plans \u2192"
+        },
+        {
+          "aria": "Our Story. Start your story. Open Our Story",
+          "text": "\ud83d\udc8d Our Story Start your story Open Our Story \u2192"
+        }
+      ],
+      "cardCount": 6,
+      "hasExplicitCtas": true,
+      "destinationsExpected": [
+        "website",
+        "guests",
+        "budget",
+        "seating",
+        "todos",
+        "story"
+      ],
+      "navigated": {
+        "urlHash": "",
+        "sectionActive": "Emma & Jordan\n\n\u00b7\n\nSweet Daisy Barn & Farm\n\nOct 17, 2026 \u2013 Oct 19, 2026\n\nExport my data\n\ud83c\udfe0\nHome\n\u2705\nTasks\n6\n\ud83d\udd52\nTimeline\n\ud83d\udcc1\nDocuments\n\ud83d\udcb3\nPayments\n\ud83d\udcac\nMessages\n\ud83c\udfdb\ufe0f\nVenue Guide\n\ud83e\udd1d\nPreferred Vendors\nSWEET DAI",
+        "bodyHasGuests": true
+      },
+      "noDuplicateDashboardMarkers": true,
+      "screenshot": "01-desktop-your-wedding.png"
+    },
+    "mobile": {
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "headingsSample": [
+        "Your Next Steps",
+        "Wedding Journey",
+        "What\u2019s Happening",
+        "Your Wedding"
+      ],
+      "order": {
+        "nextSteps": 404,
+        "workingWith": null,
+        "progress": null,
+        "journey": 498,
+        "happening": null,
+        "yourWedding": null,
+        "luv": null,
+        "memories": null
+      },
+      "operationalAboveYourWedding": false,
+      "yourWeddingBelowWhatsHappening": false,
+      "yourWeddingBelowProgress": false,
+      "hasYourWeddingHeading": false,
+      "softPrompt": true,
+      "noNoDataLanguage": true,
+      "cards": [
+        {
+          "aria": "Wedding Website. Start your wedding website. Open Website",
+          "text": "\ud83c\udf10 Wedding Website Start your wedding website Open Website \u2192"
+        },
+        {
+          "aria": "Guest List. Begin your guest list. Open Guest List",
+          "text": "\ud83d\udc65 Guest List Begin your guest list Open Guest List \u2192"
+        },
+        {
+          "aria": "Budget. Set a budget whenever you\u2019re ready. Open Budget",
+          "text": "\ud83d\udcb0 Budget Set a budget whenever you\u2019re ready Open Budget \u2192"
+        },
+        {
+          "aria": "Seating. Arrange your celebration seating when you\u2019re ready. Open Seating",
+          "text": "\ud83e\ude91 Seating Arrange your celebration seating when you\u2019re ready Open Seating \u2192"
+        },
+        {
+          "aria": "Plans. Keep your personal planning notes here. Continue Plans",
+          "text": "\u2728 Plans Keep your personal planning notes here Continue Plans \u2192"
+        },
+        {
+          "aria": "Our Story. Start your story. Open Our Story",
+          "text": "\ud83d\udc8d Our Story Start your story Open Our Story \u2192"
+        }
+      ],
+      "cardCount": 6,
+      "hasExplicitCtas": true,
+      "destinationsExpected": [
+        "website",
+        "guests",
+        "budget",
+        "seating",
+        "todos",
+        "story"
+      ],
+      "navigated": {
+        "urlHash": "",
+        "sectionActive": "Emma & Jordan\n\n\u00b7\n\nSweet Daisy Barn & Farm\n\nExport my data\n\ud83c\udfe0\nHome\n\u2705\nTasks\n6\n\ud83d\udd52\nTimeline\n\ud83d\udcc1\nDocuments\n\ud83d\udcb3\nPayments\n\ud83d\udcac\nMessages\n\ud83c\udfdb\ufe0f\nGuide\n\ud83e\udd1d\nVendors\nSWEET DAISY BARN & FARM\n\nEmma & Jordan\n\n70 days until ",
+        "bodyHasGuests": true
+      },
+      "noDuplicateDashboardMarkers": true,
+      "screenshot": "02-mobile-your-wedding.png"
+    }
+  },
+  "files": [
+    "01-desktop-your-wedding-full.png",
+    "01-desktop-your-wedding.png",
+    "02-mobile-your-wedding-full.png",
+    "02-mobile-your-wedding.png",
+    "qa-results.json"
+  ]
+}

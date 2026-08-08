@@ -62,6 +62,15 @@ import {
   selectWhatsHappeningForHome,
   WHATS_HAPPENING_VIEW_ALL_DESTINATION,
 } from "@/lib/portal/whats-happening";
+import {
+  resolveBudgetLaunch,
+  resolveGuestsLaunch,
+  resolvePlansLaunch,
+  resolveSeatingLaunch,
+  resolveStoryLaunch,
+  resolveWebsiteLaunch,
+  type WeddingLaunchModel,
+} from "@/lib/portal/your-wedding";
 import { partitionByCompletion } from "@/lib/tasks/group-by-completion";
 import type { PortalRequestSummary } from "@/lib/requests/types";
 import { QuestionnairePortalSection } from "@/components/portal/questionnaire-section";
@@ -5213,69 +5222,82 @@ function WeddingPlanningProgressCard({
 // YourVenueCards retired — Couple Home Impl 1 composes Working With Your Venue + Next Steps directly.
 
 
-// Program 4, Initiative D, Phase 5 (2026-07-23) — "Only after the venue
-// section should the couple's own planning appear... These are engagement
-// tools. They should not compete visually with the venue relationship."
-// Quieter than YourVenueCards: smaller cards, muted icons, no white filled
-// buttons — a tap target, not an operational status card.
-//
-// Program 5 (2026-07-24) — "Those boxes become live status cards instead
-// of just buttons... Now they're actually useful." Each card below fetches
-// its own real number the same self-contained way VenueTeamCard/
-// PaymentsCard/TimelineCard already do — no shared aggregate endpoint,
-// consistent with the rest of this dashboard. Luv is deliberately absent
-// here now — she's the FloatingLuvWidget, not a planning box.
+// ── Your Wedding launches (Couple Home Impl 5) ───────────────────────────────
+// Curated invitations into couple-owned destinations — status presence only.
+// Destination pages remain SoT; no editors / dashboards / personal todo rows
+// live here. Luv stays below this section (P4).
 const GREEN = "#5F8A5B";
 
-function LaunchCard({ icon, label, status, statusColor, onClick }: {
-  icon: string; label: string; status: string | null; statusColor?: string; onClick: () => void;
+function WeddingLaunchCard({
+  icon, model, onNavigate,
+}: {
+  icon: string;
+  model: WeddingLaunchModel;
+  onNavigate: (s: PortalSection) => void;
 }) {
+  const statusColor =
+    model.tone === "complete" ? GREEN : "var(--muted-foreground)";
+
   return (
-    <button type="button" onClick={onClick}
-      className="rounded-xl border bg-card/60 px-3 py-3.5 text-left hover:bg-card hover:shadow-sm transition-all"
-      style={{ borderColor: "#EDE8E1" }}>
-      <p className="text-lg opacity-80">{icon}</p>
-      <p className="text-[11px] font-medium text-heading/85 mt-1.5 leading-snug">{label}</p>
-      {status && <p className="text-[10px] mt-0.5" style={{ color: statusColor ?? "var(--muted-foreground)" }}>{status}</p>}
+    <button
+      type="button"
+      onClick={() => onNavigate(model.destination)}
+      aria-label={model.accessibleLabel}
+      className="group w-full min-w-0 rounded-2xl border bg-card px-4 py-4 text-left transition-all hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
+      style={{ borderColor: "#E8E3DC" }}
+    >
+      <div className="flex items-start gap-3 min-w-0">
+        <span className="text-base shrink-0 mt-0.5 opacity-80" aria-hidden>{icon}</span>
+        <div className="min-w-0 flex-1 space-y-1">
+          <p className="text-sm font-semibold text-heading leading-snug">{model.label}</p>
+          <p className="text-[11px] leading-snug" style={{ color: statusColor }}>
+            {model.status}
+          </p>
+          <p
+            className="text-[11px] font-semibold mt-2 group-hover:underline"
+            style={{ color: SAGE }}
+          >
+            {model.cta} →
+          </p>
+        </div>
+      </div>
     </button>
   );
 }
 
-// "Wedding Website — Published ✓ or 82% complete" — reuses website-editor's
-// own ALL_SECTIONS/preview() predicates (imported as WEBSITE_ALL_SECTIONS)
-// so this card can never drift from what the Studio itself counts as a
-// filled section.
+// Reuses website-editor ALL_SECTIONS/preview() so Home never drifts from Studio.
 function WebsiteLaunchCard({ token, onNavigate }: { token: string; onNavigate: (s: PortalSection) => void }) {
-  const [site, setSite] = React.useState<CoupleWebsite | null>(null);
+  const [site, setSite] = React.useState<CoupleWebsite | null | undefined>(undefined);
 
   React.useEffect(() => {
     fetch(`/api/portal/website?token=${token}`).then(r => r.json())
       .then((d: CoupleWebsite) => setSite(d?.exists ? d : null)).catch(() => setSite(null));
   }, [token]);
 
-  let status: string | null = "Start your wedding website";
-  if (site) {
-    if (site.isPublished) {
-      status = "Published ✓";
-    } else {
-      const completed = WEBSITE_ALL_SECTIONS.filter(s => s.preview?.(site.content ?? {})).length;
-      status = `${Math.round((completed / WEBSITE_ALL_SECTIONS.length) * 100)}% complete`;
-    }
-  }
+  const completed = site
+    ? WEBSITE_ALL_SECTIONS.filter(s => s.preview?.(site.content ?? {})).length
+    : 0;
+  const model = resolveWebsiteLaunch({
+    exists: Boolean(site),
+    isPublished: Boolean(site?.isPublished),
+    completedSections: completed,
+    totalSections: WEBSITE_ALL_SECTIONS.length,
+  });
 
-  return <LaunchCard icon="🌐" label="Wedding Website" status={status} statusColor={site?.isPublished ? GREEN : undefined} onClick={() => onNavigate("website")} />;
+  return <WeddingLaunchCard icon="🌐" model={model} onNavigate={onNavigate} />;
 }
 
-// "Guest List — 128 invited, 97 confirmed" — guestStats is already fetched
-// once at the PortalShell level; no new request needed for this card.
+// guestStats fetched once at PortalShell — no extra Home request.
 function GuestsLaunchCard({ guestStats, onNavigate }: { guestStats: GuestStats | null; onNavigate: (s: PortalSection) => void }) {
-  const status = guestStats && guestStats.total > 0
-    ? `${guestStats.total} invited, ${guestStats.attending} confirmed`
-    : "Begin your guest list";
-  return <LaunchCard icon="👥" label="Guest List" status={status} onClick={() => onNavigate("guests")} />;
+  const model = resolveGuestsLaunch(
+    guestStats && guestStats.total > 0
+      ? { total: guestStats.total, attending: guestStats.attending }
+      : null,
+  );
+  return <WeddingLaunchCard icon="👥" model={model} onNavigate={onNavigate} />;
 }
 
-// "Budget — $24,800 of $30,000"
+// Canonical budget totals only — no new financial calculation.
 function BudgetLaunchCard({ token, onNavigate }: { token: string; onNavigate: (s: PortalSection) => void }) {
   const [budget, setBudget] = React.useState<CoupleBudget | null>(null);
 
@@ -5284,14 +5306,16 @@ function BudgetLaunchCard({ token, onNavigate }: { token: string; onNavigate: (s
       .then((d: { budget?: CoupleBudget | null }) => setBudget(d.budget ?? null)).catch(() => setBudget(null));
   }, [token]);
 
-  const fmt = (n: number) => new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(n);
   const spent = budget?.categories.reduce((sum, c) => sum + c.actualAmount, 0) ?? 0;
-  const status = budget && budget.totalBudget > 0 ? `${fmt(spent)} of ${fmt(budget.totalBudget)}` : null;
+  const model = resolveBudgetLaunch(
+    budget && budget.totalBudget > 0
+      ? { totalBudget: budget.totalBudget, spent }
+      : null,
+  );
 
-  return <LaunchCard icon="💰" label="Budget" status={status} onClick={() => onNavigate("budget")} />;
+  return <WeddingLaunchCard icon="💰" model={model} onNavigate={onNavigate} />;
 }
 
-// "Seating — 4 guests unassigned"
 function SeatingLaunchCard({ token, onNavigate }: { token: string; onNavigate: (s: PortalSection) => void }) {
   const [data, setData] = React.useState<SeatingData | null>(null);
 
@@ -5301,29 +5325,32 @@ function SeatingLaunchCard({ token, onNavigate }: { token: string; onNavigate: (
   }, [token]);
 
   const unassigned = data ? data.unassignedGuests.length + data.needsReassignment.length : 0;
-  const status = !data?.floorPlan ? null : unassigned > 0 ? `${unassigned} guest${unassigned === 1 ? "" : "s"} unassigned` : "All guests seated ✓";
+  const model = resolveSeatingLaunch(
+    data
+      ? {
+          hasFloorPlan: Boolean(data.floorPlan),
+          hadPriorWork: Boolean(data.hadPriorWork),
+          unassignedCount: unassigned,
+        }
+      : null,
+  );
 
-  return <LaunchCard icon="🪑" label="Seating" status={status} statusColor={data?.floorPlan && unassigned === 0 ? GREEN : undefined} onClick={() => onNavigate("seating")} />;
+  return <WeddingLaunchCard icon="🪑" model={model} onNavigate={onNavigate} />;
 }
 
-// "Plans — 8 saved ideas" (the Inspiration Board photo count, already part
-// of the profile fetch) falls back to the to-do count when there are no
-// saved ideas yet, rather than showing nothing.
+// Personal todos / ideas summary only — never listed as Next Steps rows.
 function PlansLaunchCard({ todoCount, profile, onNavigate }: { todoCount: number; profile: CoupleProfile | null; onNavigate: (s: PortalSection) => void }) {
-  const ideaCount = profile?.inspirationPhotos.length ?? 0;
-  const status = ideaCount > 0 ? `${ideaCount} saved idea${ideaCount === 1 ? "" : "s"}` : todoCount > 0 ? `${todoCount} on your list` : null;
-  return <LaunchCard icon="✨" label="Plans" status={status} onClick={() => onNavigate("todos")} />;
+  const model = resolvePlansLaunch({
+    ideaCount: profile?.inspirationPhotos.length ?? 0,
+    todoCount,
+  });
+  return <WeddingLaunchCard icon="✨" model={model} onNavigate={onNavigate} />;
 }
 
-// "Our Story — Published ✓" in the original directive assumed a publish
-// state this field doesn't have (it's the couple's private profile text,
-// not part of the published wedding website — see the website's own,
-// separate story section on the Website card above). Showing "Written ✓"
-// once they've saved something is the accurate equivalent rather than a
-// fabricated publish flag.
+// Private profile story text — not the published website story section.
 function StoryLaunchCard({ profile, onNavigate }: { profile: CoupleProfile | null; onNavigate: (s: PortalSection) => void }) {
-  const status = profile?.ourStory?.trim() ? "Written ✓" : "Start your story";
-  return <LaunchCard icon="💍" label="Our Story" status={status} statusColor={profile?.ourStory?.trim() ? GREEN : undefined} onClick={() => onNavigate("story")} />;
+  const model = resolveStoryLaunch({ ourStory: profile?.ourStory });
+  return <WeddingLaunchCard icon="💍" model={model} onNavigate={onNavigate} />;
 }
 
 // "I wouldn't leave Luv buried. Instead I'd give Luv one small card every
@@ -5437,9 +5464,20 @@ function YourWeddingSection({ token, guestStats, todoCount, profile, accessLevel
 }) {
   const showBudget = accessLevel !== "view_only";
   return (
-    <div className="space-y-2">
-      <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-muted-foreground/50">Your Wedding</p>
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+    <section className="space-y-3" aria-labelledby="your-wedding-heading">
+      <div>
+        <h2
+          id="your-wedding-heading"
+          className="text-[10px] font-semibold uppercase tracking-widest"
+          style={{ color: SAGE }}
+        >
+          Your Wedding
+        </h2>
+        <p className="text-[11px] text-muted-foreground mt-1 leading-snug">
+          What would you like to work on for your wedding?
+        </p>
+      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
         <WebsiteLaunchCard token={token} onNavigate={onNavigate} />
         <GuestsLaunchCard guestStats={guestStats} onNavigate={onNavigate} />
         {showBudget && <BudgetLaunchCard token={token} onNavigate={onNavigate} />}
@@ -5447,7 +5485,7 @@ function YourWeddingSection({ token, guestStats, todoCount, profile, accessLevel
         <PlansLaunchCard todoCount={todoCount} profile={profile} onNavigate={onNavigate} />
         <StoryLaunchCard profile={profile} onNavigate={onNavigate} />
       </div>
-    </div>
+    </section>
   );
 }
 
