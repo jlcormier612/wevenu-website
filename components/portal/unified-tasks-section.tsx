@@ -9,8 +9,8 @@ import {
 import { toast } from "sonner";
 
 import { LinkifiedText } from "@/components/shared/linkified-text";
-import { celebrateLuv } from "@/lib/luv/celebrate";
 import { formatEventRelativeDue, formatAbsoluteDueDate } from "@/lib/playbooks/due-dates";
+import { celebrateTaskComplete } from "@/lib/portal/celebrate-task";
 import { buildUnifiedTaskList, type UnifiedTask } from "@/lib/portal/unified-tasks";
 import { partitionByCompletion } from "@/lib/tasks/group-by-completion";
 import type { PortalSection, PortalTask, PortalVendorTask } from "@/lib/portal/types";
@@ -92,7 +92,7 @@ export function UnifiedTasksSection({
     setCompleting(null);
     if (data.ok) {
       setVenueTasks((p) => p.map((t) => t.id === rawId ? { ...t, status: "complete" as const, canComplete: false } : t));
-      celebrateLuv("Nice work — one less thing to worry about!");
+      celebrateTaskComplete("Nice work — one less thing to worry about!");
     } else {
       toast.error("Could not complete task.");
     }
@@ -119,7 +119,7 @@ export function UnifiedTasksSection({
             }
           : t,
       ));
-      celebrateLuv("Nice work — your vendor will see that it's done!");
+      celebrateTaskComplete("Nice work — your vendor will see that it's done!");
     } else {
       toast.error("Could not complete task.");
     }
