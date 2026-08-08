@@ -7,6 +7,9 @@
  *  - Recommended for You — venue-curated for this event (pick/submit)
  *  - All Our Vendors — full preferred directory (same pick/submit)
  *
+ * Browse is a compact list; full profile opens as an in-section detail
+ * view with Back (same swap pattern as Messages / couple↔vendor thread).
+ *
  * Commitment Alignment: picks stay private (picked_at) until Submit, which
  * reveals selected_at to the venue, creates event_vendor_assignments
  * (venue↔vendor + couple↔vendor conversations + vendor email), and completes
@@ -17,7 +20,7 @@
  */
 
 import * as React from "react";
-import { ExternalLink, Mail, MessageSquare, Phone, Check } from "lucide-react";
+import { ArrowLeft, Check, ExternalLink, Mail, MessageSquare, Phone } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -37,6 +40,7 @@ type PortalVendorRecommendation = {
   websiteUrl: string | null;
   email: string | null;
   phone: string | null;
+  contactName: string | null;
   instagramUrl: string | null;
   facebookUrl: string | null;
   pinterestUrl: string | null;
@@ -65,8 +69,6 @@ type PortalVendorDirectoryEntry = Omit<PortalVendorRecommendation, "note" | "id"
   preferenceLevel: string;
   recommendationId: string | null;
 };
-
-const PREFERENCE_BADGE: Record<string, string> = { featured: "⭐ Featured", preferred: "⭐ Preferred" };
 
 const PRICING_TIER_LABEL: Record<string, string> = {
   budget: "$", mid_range: "$$", premium: "$$$", luxury: "$$$$",
@@ -99,6 +101,7 @@ type CardVendor = {
   websiteUrl: string | null;
   email: string | null;
   phone: string | null;
+  contactName: string | null;
   instagramUrl: string | null;
   facebookUrl: string | null;
   pinterestUrl: string | null;
@@ -121,208 +124,352 @@ type CardVendor = {
   preferenceLevel?: string;
 };
 
-function VendorCard({
-  rec, onToggle, toggling, onMessage,
+function StatusChip({ rec }: { rec: CardVendor }) {
+  const isAssigned = !!rec.isAssigned;
+  const isSubmitted = !!rec.selectedAt;
+  const isPicked = !!rec.pickedAt;
+
+  if (isAssigned) {
+    return (
+      <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-[var(--venue-primary)] bg-[color-mix(in_srgb,var(--venue-primary)_10%,transparent)] border border-[color-mix(in_srgb,var(--venue-primary)_20%,transparent)] rounded-full px-2 py-0.5 shrink-0">
+        <Check className="h-3 w-3" /> On your team
+      </span>
+    );
+  }
+  if (isSubmitted) {
+    return (
+      <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-[var(--venue-primary)] bg-[color-mix(in_srgb,var(--venue-primary)_10%,transparent)] border border-[color-mix(in_srgb,var(--venue-primary)_20%,transparent)] rounded-full px-2 py-0.5 shrink-0">
+        <Check className="h-3 w-3" /> Chosen
+      </span>
+    );
+  }
+  if (isPicked) {
+    return (
+      <span className="text-[10px] font-medium text-muted-foreground bg-muted rounded-full px-2 py-0.5 shrink-0">
+        Picked
+      </span>
+    );
+  }
+  return null;
+}
+
+function VendorThumb({ rec }: { rec: CardVendor }) {
+  const emoji = CATEGORY_EMOJI[rec.category ?? "other"] ?? "⭐";
+  const thumb = rec.photoUrl ?? (rec.isClaimed ? (rec.heroImageUrl ?? rec.coverImageUrl) : null);
+
+  return (
+    <div
+      className="h-12 w-12 shrink-0 rounded-xl bg-muted flex items-center justify-center overflow-hidden text-lg"
+      style={thumb ? { backgroundImage: `url(${thumb})`, backgroundSize: "cover", backgroundPosition: "center" } : undefined}
+      aria-hidden
+    >
+      {!thumb && emoji}
+    </div>
+  );
+}
+
+function PickButton({
+  rec, toggling, onToggle,
+}: {
+  rec: CardVendor;
+  toggling?: boolean;
+  onToggle?: (picked: boolean) => void;
+}) {
+  const isAssigned = !!rec.isAssigned;
+  const isPicked = !!rec.pickedAt;
+  const isSubmitted = !!rec.selectedAt;
+
+  if (isAssigned && !isPicked && !isSubmitted) {
+    return (
+      <p className="text-[11px] text-muted-foreground leading-snug max-w-[9rem] text-right">
+        Assigned — ask your venue to change
+      </p>
+    );
+  }
+  if (!onToggle) return null;
+
+  return (
+    <button
+      type="button"
+      onClick={(e) => {
+        e.stopPropagation();
+        onToggle(!isPicked);
+      }}
+      disabled={toggling}
+      className={`shrink-0 text-xs font-semibold px-3 py-1.5 rounded-xl transition-colors disabled:opacity-60 ${
+        isPicked
+          ? "bg-[color-mix(in_srgb,var(--venue-primary)_10%,transparent)] text-[var(--venue-primary)] hover:bg-[color-mix(in_srgb,var(--venue-primary)_20%,transparent)]"
+          : "text-white hover:opacity-90"
+      }`}
+      style={isPicked ? undefined : { background: "var(--venue-primary)" }}
+    >
+      {toggling ? "Saving…" : isPicked ? "Unpick" : "Pick"}
+    </button>
+  );
+}
+
+function VendorListRow({
+  rec, onToggle, toggling, onView,
 }: {
   rec: CardVendor;
   onToggle?: (picked: boolean) => void;
   toggling?: boolean;
-  onMessage?: () => void;
+  onView: () => void;
 }) {
-  const [expanded, setExpanded] = React.useState(false);
-  const emoji = CATEGORY_EMOJI[rec.category ?? "other"] ?? "⭐";
-  const isAssigned = !!rec.isAssigned;
-  const isSubmitted = !!rec.selectedAt;
-  const isPicked = !!rec.pickedAt;
-  const preferenceBadge = rec.preferenceLevel ? PREFERENCE_BADGE[rec.preferenceLevel] : null;
-  const coverImage = rec.isClaimed ? (rec.coverImageUrl ?? rec.heroImageUrl ?? rec.photoUrl) : rec.photoUrl;
-  const hasExpandedContent = rec.isClaimed && (
-    rec.promotionHeadline || rec.packages.length > 0 || rec.faqs.length > 0 || rec.availabilityNotes || rec.heroImageUrl
-  );
+  const pricing = rec.pricingTier ? PRICING_TIER_LABEL[rec.pricingTier] : null;
 
   return (
-    <div className={`bg-card border rounded-2xl overflow-hidden flex flex-col transition-shadow ${
-      isAssigned
-        ? "border-[var(--venue-primary)] shadow-md"
-        : isSubmitted
-          ? "border-[color-mix(in_srgb,var(--venue-primary)_60%,transparent)] shadow-sm"
-          : isPicked
-            ? "border-[color-mix(in_srgb,var(--venue-primary)_50%,transparent)]"
-            : "border-border hover:shadow-md"
-    }`}>
-      <div className="h-40 bg-muted flex items-center justify-center text-4xl shrink-0 relative"
-        style={coverImage ? { backgroundImage: `url(${coverImage})`, backgroundSize: "cover", backgroundPosition: "center" } : {}}>
-        {!coverImage && emoji}
-        {rec.isClaimed && (
-          <span className="absolute top-2 left-2 text-[10px] font-semibold text-white bg-black/40 backdrop-blur-sm rounded-full px-2 py-0.5">
-            ✓ Claimed profile
-          </span>
-        )}
-      </div>
-
-      {rec.isClaimed && rec.promotionHeadline && (
-        <div className="px-4 pt-3 -mb-1">
-          <p className="text-xs font-semibold px-2 py-1.5 rounded-lg bg-[color-mix(in_srgb,var(--venue-primary)_10%,transparent)] text-[var(--venue-primary)]">
-            🎁 {rec.promotionHeadline}
-          </p>
-        </div>
-      )}
-
-      <div className="p-4 flex flex-col gap-2 flex-1">
+    <div
+      role="button"
+      tabIndex={0}
+      onClick={onView}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onView();
+        }
+      }}
+      className="flex w-full items-center gap-3 rounded-xl border border-border/60 bg-card px-3 py-3 text-left cursor-pointer hover:border-border transition-colors"
+    >
+      <VendorThumb rec={rec} />
+      <div className="min-w-0 flex-1">
         <div className="flex items-start justify-between gap-2">
-          <div>
-            <p className="font-semibold text-sm leading-tight">{rec.name}</p>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              {vendorCategoryLabel(rec.category)}
-              {rec.isClaimed && rec.pricingTier && PRICING_TIER_LABEL[rec.pricingTier] && (
-                <span className="ml-1.5 text-muted-foreground/70">{PRICING_TIER_LABEL[rec.pricingTier]}</span>
-              )}
-            </p>
-          </div>
-          {isAssigned ? (
-            <span className="flex items-center gap-1 text-[10px] font-semibold text-[var(--venue-primary)] bg-[color-mix(in_srgb,var(--venue-primary)_10%,transparent)] border border-[color-mix(in_srgb,var(--venue-primary)_20%,transparent)] rounded-full px-2 py-0.5 shrink-0">
-              <Check className="h-3 w-3" /> On your team
-            </span>
-          ) : isSubmitted ? (
-            <span className="flex items-center gap-1 text-[10px] font-semibold text-[var(--venue-primary)] bg-[color-mix(in_srgb,var(--venue-primary)_10%,transparent)] border border-[color-mix(in_srgb,var(--venue-primary)_20%,transparent)] rounded-full px-2 py-0.5 shrink-0">
-              <Check className="h-3 w-3" /> Chosen
-            </span>
-          ) : isPicked ? (
-            <span className="text-[10px] font-medium text-muted-foreground bg-muted rounded-full px-2 py-0.5 shrink-0">
-              Picked — not sent yet
-            </span>
-          ) : preferenceBadge && (
-            <span className="text-[10px] font-medium text-[var(--venue-primary)] bg-[color-mix(in_srgb,var(--venue-primary)_10%,transparent)] rounded-full px-2 py-0.5 shrink-0">
-              {preferenceBadge}
-            </span>
-          )}
+          <p className="text-sm font-medium text-heading truncate">{rec.name}</p>
+          <StatusChip rec={rec} />
         </div>
-
+        <p className="text-xs text-muted-foreground mt-0.5 truncate">
+          {vendorCategoryLabel(rec.category)}
+          {pricing && <span className="ml-1.5 text-muted-foreground/70">{pricing}</span>}
+        </p>
         {rec.note && (
-          <p className="text-xs text-primary bg-primary/5 rounded-md px-2 py-1">{rec.note}</p>
+          <p className="text-[11px] text-primary mt-0.5 truncate">{rec.note}</p>
         )}
-
-        {rec.description && (
-          <p className="text-xs text-muted-foreground leading-relaxed line-clamp-3">{rec.description}</p>
-        )}
-
-        <div className="flex items-center gap-2 flex-wrap pt-1">
-          {rec.websiteUrl && (
-            <a href={socialLink(rec.websiteUrl)!} target="_blank" rel="noopener noreferrer"
-              className="flex items-center justify-center h-8 w-8 rounded-lg border border-border text-muted-foreground hover:text-foreground hover:bg-muted transition-colors" title="Visit website">
-              <ExternalLink className="h-3.5 w-3.5" />
-            </a>
-          )}
-          {rec.phone && (
-            <a href={`tel:${rec.phone}`}
-              className="flex items-center justify-center h-8 w-8 rounded-lg border border-border text-muted-foreground hover:text-foreground hover:bg-muted transition-colors" title="Call">
-              <Phone className="h-3.5 w-3.5" />
-            </a>
-          )}
-          {rec.email && (
-            <a href={`mailto:${rec.email}`}
-              className="flex items-center justify-center h-8 w-8 rounded-lg border border-border text-muted-foreground hover:text-foreground hover:bg-muted transition-colors" title="Email">
-              <Mail className="h-3.5 w-3.5" />
-            </a>
-          )}
-          {rec.instagramUrl && (
-            <a href={socialLink(rec.instagramUrl)!} target="_blank" rel="noopener noreferrer"
-              className="flex items-center justify-center h-8 w-8 rounded-lg border border-border text-muted-foreground hover:text-foreground hover:bg-muted transition-colors text-[10px] font-bold" title="Instagram">
-              IG
-            </a>
-          )}
-          {rec.facebookUrl && (
-            <a href={socialLink(rec.facebookUrl)!} target="_blank" rel="noopener noreferrer"
-              className="flex items-center justify-center h-8 w-8 rounded-lg border border-border text-muted-foreground hover:text-foreground hover:bg-muted transition-colors text-[10px] font-bold" title="Facebook">
-              FB
-            </a>
-          )}
-          {rec.pinterestUrl && (
-            <a href={socialLink(rec.pinterestUrl)!} target="_blank" rel="noopener noreferrer"
-              className="flex items-center justify-center h-8 w-8 rounded-lg border border-border text-muted-foreground hover:text-foreground hover:bg-muted transition-colors text-[10px] font-bold" title="Pinterest">
-              P
-            </a>
-          )}
-          {rec.tiktokUrl && (
-            <a href={socialLink(rec.tiktokUrl)!} target="_blank" rel="noopener noreferrer"
-              className="flex items-center justify-center h-8 w-8 rounded-lg border border-border text-muted-foreground hover:text-foreground hover:bg-muted transition-colors text-[10px] font-bold" title="TikTok">
-              TT
-            </a>
-          )}
-        </div>
-
-        {hasExpandedContent && (
-          <>
-            <button type="button" onClick={() => setExpanded((v) => !v)}
-              className="text-[11px] font-medium text-[var(--venue-primary)] hover:underline text-left">
-              {expanded ? "Hide full profile" : "View full profile →"}
-            </button>
-            {expanded && (
-              <div className="space-y-3 pt-1 border-t border-border/60 mt-1">
-                {rec.promotionDetails && (
-                  <p className="text-xs text-muted-foreground leading-relaxed pt-2">{rec.promotionDetails}</p>
-                )}
-                {rec.serviceArea && (
-                  <p className="text-xs text-muted-foreground"><span className="font-medium text-foreground">Service area:</span> {rec.serviceArea}</p>
-                )}
-                {rec.availabilityNotes && (
-                  <p className="text-xs text-muted-foreground"><span className="font-medium text-foreground">Availability:</span> {rec.availabilityNotes}</p>
-                )}
-                {rec.packages.length > 0 && (
-                  <div className="space-y-1.5">
-                    <p className="text-[11px] font-semibold text-foreground uppercase tracking-wide">Packages</p>
-                    {rec.packages.map((pkg) => (
-                      <div key={pkg.id} className="rounded-lg bg-muted/50 px-2.5 py-1.5">
-                        <div className="flex items-baseline justify-between gap-2">
-                          <span className="text-xs font-medium">{pkg.name}</span>
-                          <span className="text-[11px] text-muted-foreground shrink-0">{fmtPackagePrice(pkg)}</span>
-                        </div>
-                        {pkg.description && <p className="text-[11px] text-muted-foreground mt-0.5">{pkg.description}</p>}
-                      </div>
-                    ))}
-                  </div>
-                )}
-                {rec.faqs.length > 0 && (
-                  <div className="space-y-1.5">
-                    <p className="text-[11px] font-semibold text-foreground uppercase tracking-wide">FAQs</p>
-                    {rec.faqs.map((faq) => (
-                      <div key={faq.id}>
-                        <p className="text-xs font-medium">{faq.question}</p>
-                        <p className="text-[11px] text-muted-foreground mt-0.5">{faq.answer}</p>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
-          </>
-        )}
-
-        {onMessage && rec.isAssigned && rec.coupleVendorConversationId && (
-          <button
-            type="button"
-            onClick={onMessage}
-            className="mt-auto flex w-full items-center justify-center gap-1.5 rounded-lg border border-[color-mix(in_srgb,var(--venue-primary)_30%,transparent)] bg-[color-mix(in_srgb,var(--venue-primary)_8%,transparent)] py-2 px-3 text-xs font-medium text-[var(--venue-primary)] hover:bg-[color-mix(in_srgb,var(--venue-primary)_14%,transparent)]"
-          >
-            <MessageSquare className="h-3.5 w-3.5" />
-            Message {rec.name}
-          </button>
-        )}
-
-        {onToggle && (
         <button
           type="button"
-          onClick={() => onToggle(!isPicked)}
-          disabled={toggling}
-          className={`mt-auto pt-2 w-full text-xs font-medium py-2 px-3 rounded-lg transition-colors ${
-            isPicked
-              ? "bg-[color-mix(in_srgb,var(--venue-primary)_10%,transparent)] text-[var(--venue-primary)] hover:bg-[color-mix(in_srgb,var(--venue-primary)_20%,transparent)]"
-              : "bg-[var(--venue-primary)] text-white hover:bg-[var(--venue-secondary)] disabled:opacity-60"
-          }`}
+          onClick={(e) => {
+            e.stopPropagation();
+            onView();
+          }}
+          className="text-[11px] font-medium text-[var(--venue-primary)] hover:underline mt-1"
         >
-          {toggling ? "Saving…" : isPicked ? (isSubmitted ? "Unpick (will remove on next submit)" : "Unpick") : "Pick this vendor"}
+          View profile
         </button>
-        )}
+      </div>
+      <PickButton rec={rec} toggling={toggling} onToggle={onToggle} />
+    </div>
+  );
+}
+
+function VendorDetail({
+  rec, onBack, onToggle, toggling, onMessage,
+}: {
+  rec: CardVendor;
+  onBack: () => void;
+  onToggle?: (picked: boolean) => void;
+  toggling?: boolean;
+  onMessage?: () => void;
+}) {
+  const coverImage = rec.isClaimed
+    ? (rec.coverImageUrl ?? rec.heroImageUrl ?? rec.photoUrl)
+    : rec.photoUrl;
+  const emoji = CATEGORY_EMOJI[rec.category ?? "other"] ?? "⭐";
+  const pricing = rec.pricingTier ? PRICING_TIER_LABEL[rec.pricingTier] : null;
+  const isAssigned = !!rec.isAssigned;
+  const isPicked = !!rec.pickedAt;
+  const isSubmitted = !!rec.selectedAt;
+  const hasContact = !!(rec.contactName || rec.websiteUrl || rec.phone || rec.email
+    || rec.instagramUrl || rec.facebookUrl || rec.pinterestUrl || rec.tiktokUrl);
+
+  return (
+    <div className="space-y-4">
+      <button
+        type="button"
+        onClick={onBack}
+        className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground"
+      >
+        <ArrowLeft className="h-3.5 w-3.5" /> Back to Preferred Vendors
+      </button>
+
+      <div className="rounded-2xl border border-border/60 bg-card overflow-hidden">
+        <div
+          className="h-44 bg-muted flex items-center justify-center text-4xl relative"
+          style={coverImage ? { backgroundImage: `url(${coverImage})`, backgroundSize: "cover", backgroundPosition: "center" } : undefined}
+        >
+          {!coverImage && emoji}
+          {rec.isClaimed && (
+            <span className="absolute top-3 left-3 text-[10px] font-semibold text-white bg-black/40 backdrop-blur-sm rounded-full px-2 py-0.5">
+              ✓ Claimed profile
+            </span>
+          )}
+        </div>
+
+        <div className="p-4 space-y-4">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <p className="font-semibold text-heading text-base leading-tight">{rec.name}</p>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                {vendorCategoryLabel(rec.category)}
+                {pricing && <span className="ml-1.5 text-muted-foreground/70">{pricing}</span>}
+              </p>
+            </div>
+            <StatusChip rec={rec} />
+          </div>
+
+          {rec.promotionHeadline && (
+            <p className="text-xs font-semibold px-2.5 py-2 rounded-lg bg-[color-mix(in_srgb,var(--venue-primary)_10%,transparent)] text-[var(--venue-primary)]">
+              {rec.promotionHeadline}
+            </p>
+          )}
+
+          {rec.note && (
+            <p className="text-xs text-primary bg-primary/5 rounded-md px-2.5 py-1.5">{rec.note}</p>
+          )}
+
+          {rec.description && (
+            <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-wrap">{rec.description}</p>
+          )}
+
+          {rec.promotionDetails && (
+            <p className="text-xs text-muted-foreground leading-relaxed">{rec.promotionDetails}</p>
+          )}
+
+          {rec.serviceArea && (
+            <p className="text-xs text-muted-foreground">
+              <span className="font-medium text-foreground">Service area:</span> {rec.serviceArea}
+            </p>
+          )}
+          {rec.availabilityNotes && (
+            <p className="text-xs text-muted-foreground">
+              <span className="font-medium text-foreground">Availability:</span> {rec.availabilityNotes}
+            </p>
+          )}
+
+          {rec.packages.length > 0 && (
+            <div className="space-y-2">
+              <p className="text-[11px] font-semibold text-foreground uppercase tracking-wide">Packages</p>
+              {rec.packages.map((pkg) => (
+                <div key={pkg.id} className="rounded-lg bg-muted/50 px-3 py-2">
+                  <div className="flex items-baseline justify-between gap-2">
+                    <span className="text-xs font-medium">{pkg.name}</span>
+                    <span className="text-[11px] text-muted-foreground shrink-0">{fmtPackagePrice(pkg)}</span>
+                  </div>
+                  {pkg.description && <p className="text-[11px] text-muted-foreground mt-0.5">{pkg.description}</p>}
+                </div>
+              ))}
+            </div>
+          )}
+
+          {rec.faqs.length > 0 && (
+            <div className="space-y-2">
+              <p className="text-[11px] font-semibold text-foreground uppercase tracking-wide">FAQs</p>
+              {rec.faqs.map((faq) => (
+                <div key={faq.id}>
+                  <p className="text-xs font-medium">{faq.question}</p>
+                  <p className="text-[11px] text-muted-foreground mt-0.5">{faq.answer}</p>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {hasContact && (
+            <div className="space-y-2 pt-1">
+              <p className="text-[11px] font-semibold text-foreground uppercase tracking-wide">Contact</p>
+              {rec.contactName && (
+                <p className="text-xs text-muted-foreground">
+                  <span className="font-medium text-foreground">Contact:</span> {rec.contactName}
+                </p>
+              )}
+              {rec.websiteUrl && (
+                <p className="text-xs">
+                  <a href={socialLink(rec.websiteUrl)!} target="_blank" rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 text-[var(--venue-primary)] hover:underline break-all">
+                    <ExternalLink className="h-3.5 w-3.5 shrink-0" />
+                    {rec.websiteUrl.replace(/^https?:\/\//, "")}
+                  </a>
+                </p>
+              )}
+              {rec.phone && (
+                <p className="text-xs">
+                  <a href={`tel:${rec.phone}`}
+                    className="inline-flex items-center gap-1.5 text-muted-foreground hover:text-foreground">
+                    <Phone className="h-3.5 w-3.5 shrink-0" />
+                    {rec.phone}
+                  </a>
+                </p>
+              )}
+              {rec.email && (
+                <p className="text-xs">
+                  <a href={`mailto:${rec.email}`}
+                    className="inline-flex items-center gap-1.5 text-muted-foreground hover:text-foreground break-all">
+                    <Mail className="h-3.5 w-3.5 shrink-0" />
+                    {rec.email}
+                  </a>
+                </p>
+              )}
+              {(rec.instagramUrl || rec.facebookUrl || rec.pinterestUrl || rec.tiktokUrl) && (
+                <div className="flex items-center gap-2 flex-wrap">
+                  {rec.instagramUrl && (
+                    <a href={socialLink(rec.instagramUrl)!} target="_blank" rel="noopener noreferrer"
+                      className="flex items-center justify-center h-8 w-8 rounded-lg border border-border text-muted-foreground hover:text-foreground hover:bg-muted transition-colors text-[10px] font-bold" title="Instagram">
+                      IG
+                    </a>
+                  )}
+                  {rec.facebookUrl && (
+                    <a href={socialLink(rec.facebookUrl)!} target="_blank" rel="noopener noreferrer"
+                      className="flex items-center justify-center h-8 w-8 rounded-lg border border-border text-muted-foreground hover:text-foreground hover:bg-muted transition-colors text-[10px] font-bold" title="Facebook">
+                      FB
+                    </a>
+                  )}
+                  {rec.pinterestUrl && (
+                    <a href={socialLink(rec.pinterestUrl)!} target="_blank" rel="noopener noreferrer"
+                      className="flex items-center justify-center h-8 w-8 rounded-lg border border-border text-muted-foreground hover:text-foreground hover:bg-muted transition-colors text-[10px] font-bold" title="Pinterest">
+                      P
+                    </a>
+                  )}
+                  {rec.tiktokUrl && (
+                    <a href={socialLink(rec.tiktokUrl)!} target="_blank" rel="noopener noreferrer"
+                      className="flex items-center justify-center h-8 w-8 rounded-lg border border-border text-muted-foreground hover:text-foreground hover:bg-muted transition-colors text-[10px] font-bold" title="TikTok">
+                      TT
+                    </a>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
+          <div className="flex flex-col gap-2 pt-1">
+            {onMessage && isAssigned && rec.coupleVendorConversationId && (
+              <button
+                type="button"
+                onClick={onMessage}
+                className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-[color-mix(in_srgb,var(--venue-primary)_30%,transparent)] bg-[color-mix(in_srgb,var(--venue-primary)_8%,transparent)] py-2.5 px-3 text-xs font-medium text-[var(--venue-primary)] hover:bg-[color-mix(in_srgb,var(--venue-primary)_14%,transparent)]"
+              >
+                <MessageSquare className="h-3.5 w-3.5" />
+                Message {rec.name}
+              </button>
+            )}
+
+            {isAssigned && !isPicked && !isSubmitted ? (
+              <p className="text-xs text-center text-muted-foreground leading-relaxed py-1">
+                Assigned — ask your venue to change
+              </p>
+            ) : onToggle ? (
+              <button
+                type="button"
+                onClick={() => onToggle(!isPicked)}
+                disabled={toggling}
+                className={`w-full text-xs font-semibold py-2.5 px-3 rounded-xl transition-colors disabled:opacity-60 ${
+                  isPicked
+                    ? "bg-[color-mix(in_srgb,var(--venue-primary)_10%,transparent)] text-[var(--venue-primary)] hover:bg-[color-mix(in_srgb,var(--venue-primary)_20%,transparent)]"
+                    : "text-white hover:opacity-90"
+                }`}
+                style={isPicked ? undefined : { background: "var(--venue-primary)" }}
+              >
+                {toggling ? "Saving…" : isPicked ? "Unpick" : "Pick this vendor"}
+              </button>
+            ) : null}
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -340,7 +487,7 @@ function SubmitBar({
 }) {
   if (pendingCount <= 0) return null;
   return (
-    <div className="rounded-2xl border border-border bg-card p-4 space-y-2">
+    <div className="sticky top-0 z-10 rounded-2xl border border-border bg-card/95 backdrop-blur-sm p-4 space-y-2 shadow-sm">
       {!confirmingSubmit ? (
         <div className="flex items-center justify-between gap-3 flex-wrap">
           <p className="text-sm text-foreground">
@@ -365,6 +512,12 @@ function SubmitBar({
   );
 }
 
+type ViewingVendor = {
+  vendorId: string;
+  source: "recommended" | "directory";
+  recommendationId?: string;
+};
+
 export function VendorSection({ token, clientId, venueName }: { token: string; clientId: string; venueName: string }) {
   const [recommendations, setRecommendations] = React.useState<PortalVendorRecommendation[]>([]);
   const [loading, setLoading] = React.useState(true);
@@ -375,6 +528,8 @@ export function VendorSection({ token, clientId, venueName }: { token: string; c
   const [directory, setDirectory] = React.useState<PortalVendorDirectoryEntry[]>([]);
   const [directoryLoading, setDirectoryLoading] = React.useState(true);
   const [tab, setTab] = React.useState<"recommended" | "directory">("recommended");
+  const [viewing, setViewing] = React.useState<ViewingVendor | null>(null);
+  const listScrollY = React.useRef(0);
   const [openThread, setOpenThread] = React.useState<{
     conversationId: string;
     vendorName: string;
@@ -470,14 +625,31 @@ export function VendorSection({ token, clientId, venueName }: { token: string; c
         method: "POST", headers: { "content-type": "application/json" },
         body: JSON.stringify({ token, clientId }),
       });
-      const data = await res.json() as { ok?: boolean; selectedCount?: number };
+      const data = await res.json() as {
+        ok?: boolean;
+        selectedCount?: number;
+        removalRequests?: Array<{ requestId: string }> | string | null;
+      };
       if (data.ok) {
         const n = data.selectedCount ?? 0;
-        toast.success(
-          n > 0
-            ? `Your vendors are submitted — ${venueName} and the vendors have been notified.`
-            : "Your vendor list is submitted — your venue can see it now.",
-        );
+        const removalCount = Array.isArray(data.removalRequests)
+          ? data.removalRequests.length
+          : typeof data.removalRequests === "string"
+            ? (JSON.parse(data.removalRequests) as unknown[]).length
+            : 0;
+        if (removalCount > 0) {
+          toast.success(
+            n > 0
+              ? `List updated — ${venueName} was asked to remove ${removalCount} vendor${removalCount === 1 ? "" : "s"} still assigned.`
+              : `Submitted — ${venueName} was asked to remove ${removalCount} vendor${removalCount === 1 ? "" : "s"} still assigned.`,
+          );
+        } else {
+          toast.success(
+            n > 0
+              ? `Your vendors are submitted — ${venueName} and the vendors have been notified.`
+              : "Your vendor list is submitted — your venue can see it now.",
+          );
+        }
         setConfirmingSubmit(false);
         await loadAll();
       } else {
@@ -485,6 +657,34 @@ export function VendorSection({ token, clientId, venueName }: { token: string; c
       }
     } finally { setSubmitting(false); }
   }
+
+  function openVendor(next: ViewingVendor) {
+    listScrollY.current = typeof window !== "undefined" ? window.scrollY : 0;
+    setViewing(next);
+    if (typeof window !== "undefined") window.scrollTo({ top: 0 });
+  }
+
+  function closeVendor() {
+    setViewing(null);
+    requestAnimationFrame(() => {
+      if (typeof window !== "undefined") window.scrollTo({ top: listScrollY.current });
+    });
+  }
+
+  // Resolve live vendor data for the open detail (picks update in place).
+  const viewingRec: CardVendor | null = (() => {
+    if (!viewing) return null;
+    if (viewing.source === "recommended") {
+      const r = recommendations.find((x) => x.vendorId === viewing.vendorId);
+      return r ?? null;
+    }
+    const v = directory.find((x) => x.vendorId === viewing.vendorId);
+    return v ? { ...v, note: null } : null;
+  })();
+
+  React.useEffect(() => {
+    if (viewing && !viewingRec) setViewing(null);
+  }, [viewing, viewingRec]);
 
   if (loading && directoryLoading) {
     return (
@@ -530,17 +730,9 @@ export function VendorSection({ token, clientId, venueName }: { token: string; c
     />
   );
 
-  return (
-    <div className="max-w-4xl mx-auto px-4 sm:px-6 py-6 space-y-6">
-      <div>
-        <p className="font-semibold text-heading">These are the vendors {venueName} trusts and loves working with.</p>
-        <p className="text-xs text-muted-foreground mt-0.5">
-          Pick from their recommendations or full vendor list. Your picks stay private until you submit —
-          then the venue and those vendors are notified. Once a vendor is on your team, you can message them directly here.
-        </p>
-      </div>
-
-      {openThread && (
+  if (openThread) {
+    return (
+      <div className="space-y-4">
         <PortalCoupleVendorThread
           token={token}
           clientId={clientId}
@@ -548,7 +740,46 @@ export function VendorSection({ token, clientId, venueName }: { token: string; c
           vendorName={openThread.vendorName}
           onBack={() => setOpenThread(null)}
         />
-      )}
+      </div>
+    );
+  }
+
+  if (viewing && viewingRec) {
+    const toggleKey = viewing.source === "recommended" && viewing.recommendationId
+      ? viewing.recommendationId
+      : `dir:${viewing.vendorId}`;
+    return (
+      <VendorDetail
+        rec={viewingRec}
+        onBack={closeVendor}
+        onToggle={
+          viewing.source === "recommended" && viewing.recommendationId
+            ? (picked) => handleToggleRecommendation(viewing.recommendationId!, viewing.vendorId, picked)
+            : (picked) => handleToggleDirectory(viewing.vendorId, picked)
+        }
+        toggling={togglingKey === toggleKey}
+        onMessage={
+          viewingRec.coupleVendorConversationId
+            ? () => setOpenThread({
+                conversationId: viewingRec.coupleVendorConversationId!,
+                vendorName: viewingRec.name,
+              })
+            : undefined
+        }
+      />
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <p className="font-semibold text-heading">These are the vendors {venueName} trusts and loves working with.</p>
+        <p className="text-xs text-muted-foreground mt-0.5">
+          Pick from their recommendations or full vendor list. Your picks stay private until you submit —
+          then the venue and those vendors are notified. Once a vendor is on your team, you can message them directly here.
+          If you change your mind after they&apos;re assigned, unpick and resubmit — your venue will be asked to update the assignment.
+        </p>
+      </div>
 
       {teamList.length > 0 && (
         <div className="rounded-2xl border border-[color-mix(in_srgb,var(--venue-primary)_25%,transparent)] bg-[color-mix(in_srgb,var(--venue-primary)_6%,transparent)] p-4 space-y-2">
@@ -556,14 +787,29 @@ export function VendorSection({ token, clientId, venueName }: { token: string; c
           <ul className="flex flex-wrap gap-2">
             {teamList.map((v) => (
               <li key={v.vendorId} className="flex items-center gap-1.5">
-                <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-card border border-border text-foreground">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const inRecs = recommendations.some((r) => r.vendorId === v.vendorId);
+                    const inDir = directory.some((d) => d.vendorId === v.vendorId);
+                    if (tab === "directory" && inDir) {
+                      openVendor({ vendorId: v.vendorId, source: "directory" });
+                    } else if (inRecs) {
+                      const r = recommendations.find((x) => x.vendorId === v.vendorId)!;
+                      openVendor({ vendorId: v.vendorId, source: "recommended", recommendationId: r.id });
+                    } else if (inDir) {
+                      openVendor({ vendorId: v.vendorId, source: "directory" });
+                    }
+                  }}
+                  className="text-xs font-medium px-2.5 py-1 rounded-full bg-card border border-border text-foreground hover:border-[color-mix(in_srgb,var(--venue-primary)_40%,transparent)]"
+                >
                   {v.name}
                   {v.isAssigned ? (
                     <span className="ml-1.5 text-muted-foreground">· booked</span>
                   ) : (
                     <span className="ml-1.5 text-muted-foreground">· chosen</span>
                   )}
-                </span>
+                </button>
                 {v.isAssigned && v.coupleVendorConversationId && (
                   <button
                     type="button"
@@ -589,45 +835,42 @@ export function VendorSection({ token, clientId, venueName }: { token: string; c
         </button>
         <button type="button" onClick={() => setTab("directory")}
           className={`px-3 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${tab === "directory" ? "border-[var(--venue-primary)] text-[var(--venue-primary)]" : "border-transparent text-muted-foreground hover:text-foreground"}`}>
-          All Our Vendors{directory.length > 0 && ` (${directory.length})`}
+          Preferred Vendors{directory.length > 0 && ` (${directory.length})`}
         </button>
       </div>
 
       {tab === "recommended" && (
-        <div className="space-y-6">
+        <div className="space-y-5">
           {submitBar}
           {!recommendations.length ? (
             <div className="py-16 text-center space-y-3 max-w-sm mx-auto px-4">
               <p className="text-3xl">🤝</p>
               <p className="font-semibold text-heading">No vendors recommended yet</p>
-              <p className="text-sm text-muted-foreground">Your venue will add recommendations here — or browse their full preferred list.</p>
+              <p className="text-sm text-muted-foreground">Your venue will add recommendations here — or browse their Preferred Vendors.</p>
               {directory.length > 0 && (
                 <button type="button" onClick={() => setTab("directory")} className="text-sm font-medium text-[var(--venue-primary)] hover:underline">
-                  Browse all {directory.length} of {venueName}&apos;s vendors →
+                  Browse all {directory.length} Preferred Vendors →
                 </button>
               )}
             </div>
           ) : (
             groupByCategory(recommendations).map(([category, recs]) => (
-              <div key={category} className="space-y-3">
+              <div key={category} className="space-y-2">
                 <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                   {CATEGORY_EMOJI[category] ?? "⭐"} {vendorCategoryLabel(category)}
                 </p>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div className="space-y-2">
                   {recs.map((r) => (
-                    <VendorCard
+                    <VendorListRow
                       key={r.id}
                       rec={r}
                       onToggle={(picked) => handleToggleRecommendation(r.id, r.vendorId, picked)}
                       toggling={togglingKey === r.id}
-                      onMessage={
-                        r.coupleVendorConversationId
-                          ? () => setOpenThread({
-                              conversationId: r.coupleVendorConversationId!,
-                              vendorName: r.name,
-                            })
-                          : undefined
-                      }
+                      onView={() => openVendor({
+                        vendorId: r.vendorId,
+                        source: "recommended",
+                        recommendationId: r.id,
+                      })}
                     />
                   ))}
                 </div>
@@ -646,31 +889,24 @@ export function VendorSection({ token, clientId, venueName }: { token: string; c
           <div className="py-16 text-center space-y-2 max-w-sm mx-auto px-4">
             <p className="text-3xl">🤝</p>
             <p className="font-semibold text-heading">No vendors listed yet</p>
-            <p className="text-sm text-muted-foreground">Your venue hasn&apos;t added any preferred vendors here yet.</p>
+            <p className="text-sm text-muted-foreground">Your venue hasn&apos;t added any Preferred Vendors here yet.</p>
           </div>
         ) : (
-          <div className="space-y-6">
+          <div className="space-y-5">
             {submitBar}
             {groupByCategory(directory).map(([category, vendors]) => (
-              <div key={category} className="space-y-3">
+              <div key={category} className="space-y-2">
                 <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                   {CATEGORY_EMOJI[category] ?? "⭐"} {vendorCategoryLabel(category)}
                 </p>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div className="space-y-2">
                   {vendors.map((v) => (
-                    <VendorCard
+                    <VendorListRow
                       key={v.id}
                       rec={{ ...v, note: null }}
                       onToggle={(picked) => handleToggleDirectory(v.vendorId, picked)}
                       toggling={togglingKey === `dir:${v.vendorId}`}
-                      onMessage={
-                        v.coupleVendorConversationId
-                          ? () => setOpenThread({
-                              conversationId: v.coupleVendorConversationId!,
-                              vendorName: v.name,
-                            })
-                          : undefined
-                      }
+                      onView={() => openVendor({ vendorId: v.vendorId, source: "directory" })}
                     />
                   ))}
                 </div>
