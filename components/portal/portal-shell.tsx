@@ -43,12 +43,13 @@ import {
   grantSupportAccessAction, revokeSupportGrantAction,
 } from "@/app/(portal)/p/[token]/account-actions";
 import { PortalLegalHistorySection } from "@/components/legal/legal-history-section";
-import { RequestsPortalSection, RequestsSummaryCard } from "@/components/portal/requests-section";
+import { RequestsPortalSection } from "@/components/portal/requests-section";
 import { LuvIntroCard } from "@/components/luv/luv-intro-card";
 import { UnifiedTasksSection } from "@/components/portal/unified-tasks-section";
-import { buildUnifiedTaskList } from "@/lib/portal/unified-tasks";
+import { buildUnifiedTaskList, ownershipLabel, type UnifiedTask } from "@/lib/portal/unified-tasks";
 import { partitionByCompletion } from "@/lib/tasks/group-by-completion";
 import type { PortalRequestSummary } from "@/lib/requests/types";
+import { formatAbsoluteDueDate } from "@/lib/playbooks/due-dates";
 import { QuestionnairePortalSection } from "@/components/portal/questionnaire-section";
 import { CoupleNotificationBell } from "@/components/portal/couple-notification-bell";
 import { WelcomeExperienceGate } from "@/components/legal/welcome-experience-gate";
@@ -181,18 +182,14 @@ const MILESTONES = [
   { label: "Day",   threshold: 0   },
 ];
 
-function PlanningJourney({ du, readiness }: { du: number | null; readiness: number }) {
+/** Emotional / temporal arc only — no competing readiness percentage (Couple Home Impl 1). */
+function PlanningJourney({ du }: { du: number | null }) {
   if (du === null) return null;
   const activeIdx = MILESTONES.findIndex(m => du > m.threshold);
-  const pct = readiness;
 
   return (
     <div className="rounded-2xl border border-border bg-card px-4 py-4 space-y-2.5">
-      <div className="flex items-center justify-between">
-        <p className="text-xs font-semibold text-heading">🌸 Wedding Journey</p>
-        <p className="text-xs font-semibold" style={{ color: ROSE_DEEP }}>{pct}% complete</p>
-      </div>
-      {/* Milestone dots */}
+      <p className="text-xs font-semibold text-heading">Wedding Journey</p>
       <div className="flex items-center gap-0">
         {MILESTONES.map((m, i) => {
           const isPast = activeIdx > 0 && i < activeIdx;
@@ -207,8 +204,12 @@ function PlanningJourney({ du, readiness }: { du: number | null; readiness: numb
                     background: isCurrent ? ROSE : isPast ? SAGE : "white",
                     borderColor: isCurrent ? ROSE : isPast ? SAGE : "#DED6CA",
                     boxShadow: isCurrent ? `0 0 0 4px ${ROSE}25` : "none",
-                  }} />
-                <p className="text-[9px] font-medium" style={{ color: isCurrent ? ROSE_DEEP : isPast ? SAGE : "#B8AEA1" }}>{m.label}</p>
+                  }}
+                  aria-current={isCurrent ? "step" : undefined}
+                />
+                <p className="text-[9px] font-medium" style={{ color: isCurrent ? ROSE_DEEP : isPast ? SAGE : "#B8AEA1" }}>
+                  {m.label}{isCurrent ? " · You’re here" : isPast ? " · Done" : ""}
+                </p>
               </div>
               {i < MILESTONES.length - 1 && (
                 <div className="flex-1 h-0.5 mb-3" style={{ background: isPast ? SAGE : "#DED6CA" }} />
@@ -1631,15 +1632,18 @@ function WeddingDaySection({
   );
 }
 
-// ── Overview ─────────────────────────────────────────────────────────────────
+// ── Overview — Couple Home Impl 1: approved section order / hierarchy ────────
 
 function OverviewSection({
-  token, context, tasks, guestStats, todoCount, profile, latestJournalEntry, onNavigate,
+  token, context, tasks, vendorTasks = [], timelineHasUnpublishedChanges = false,
+  guestStats, todoCount, profile, latestJournalEntry, onNavigate,
   recentActivity, showLuvIntro, onDismissLuvIntro,
 }: {
   token: string;
   context: PortalContext;
   tasks: PortalTask[];
+  vendorTasks?: PortalVendorTask[];
+  timelineHasUnpublishedChanges?: boolean;
   guestStats: GuestStats | null;
   todoCount: number;
   profile: CoupleProfile | null;
@@ -1656,28 +1660,40 @@ function OverviewSection({
     : 0;
   const coupleName = [context.client.firstName, context.client.partnerFirstName].filter(Boolean).join(" & ");
   const bracket = getSuggestionBracket(du);
-  const suggestions = (SUGGESTIONS_BY_BRACKET[bracket] ?? []).slice(0, 4);
-  // Program 4, Initiative D, Phase 2 (2026-07-23) — the venue's own hero
-  // photo, not the couple's; see venues.hero_image_url.
   const venueHeroPhotoUrl = context.venue.heroImageUrl;
+  const venueName = context.venue.name;
+  const accessLevel = context.accessLevel;
+  const canSeeFinancial = accessLevel !== "view_only";
+
+  const [p1Count, setP1Count] = React.useState<number | null>(null);
+  const nextStepsRef = React.useRef<HTMLDivElement | null>(null);
+
+  const heroStatusLine = p1Count === null
+    ? null
+    : p1Count > 0
+      ? `${p1Count} thing${p1Count === 1 ? "" : "s"} ${venueName} still needs from you`
+      : `You’re all set with ${venueName} for now`;
+
+  const heroSupport = p1Count !== null && p1Count > 0
+    ? "Your venue team is here with you—finish what helps your day come together."
+    : "Welcome to your wedding home.";
+
+  function focusNextSteps() {
+    if (nextStepsRef.current) {
+      nextStepsRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
+      return;
+    }
+    onNavigate("tasks");
+  }
 
   return (
     <div className="space-y-6">
 
-      {/* ── HERO — Program 4, Initiative D, Phase 2/3 (2026-07-23): "The
-          hero should no longer emphasize only the couple. Instead it
-          should welcome the couple into the venue." Hierarchy is the
-          directive's own list, top to bottom: venue photo → venue name →
-          welcome message → couple names → countdown → event date →
-          tagline → primary actions. One shared content layout regardless
-          of whether the venue has uploaded a hero photo (brand-gradient
-          fallback otherwise) — the hierarchy doesn't change, only the
-          backdrop does. ── */}
-      <div className="rounded-3xl overflow-hidden relative" style={{
+      {/* 1. Hero / Wedding Snapshot */}
+      <div className="rounded-3xl overflow-hidden relative min-h-[min(48vh,420px)] sm:min-h-[min(64vh,560px)]" style={{
         background: venueHeroPhotoUrl
           ? `url(${venueHeroPhotoUrl}) center/cover no-repeat`
           : `linear-gradient(155deg, var(--venue-secondary) 0%, var(--venue-primary) 38%, var(--venue-secondary) 100%)`,
-        minHeight: "min(64vh, 560px)",
       }}>
         {venueHeroPhotoUrl ? (
           <div className="absolute inset-0" style={{
@@ -1701,31 +1717,23 @@ function OverviewSection({
           </>
         )}
 
-        <div className="relative flex flex-col justify-end gap-3 p-8 sm:p-10" style={{ minHeight: "min(64vh, 560px)" }}>
-          {/* Venue name — first in the hierarchy */}
+        <div className="relative flex flex-col justify-end gap-3 p-8 sm:p-10 min-h-[min(48vh,420px)] sm:min-h-[min(64vh,560px)]">
           <div className="flex items-center gap-2.5">
             <span className="h-px w-5" style={{ background: `${ROSE}60` }} />
             <span className="text-[11px] font-semibold uppercase tracking-[0.28em]" style={{ color: "rgba(255,255,255,0.75)" }}>
-              {context.venue.name}
+              {venueName}
             </span>
           </div>
 
-          {/* Welcome message */}
-          <p className="font-heading italic leading-snug" style={{ color: `${ROSE}D0`, fontSize: "clamp(0.95rem, 2.2vw, 1.2rem)" }}>
-            Welcome to your wedding home.
-          </p>
-
-          {/* Couple names */}
           <p className="font-heading font-medium text-white leading-[0.92] tracking-tight" style={{ fontSize: "clamp(2.6rem, 7vw, 5.2rem)" }}>
             {coupleName}
           </p>
 
-          {/* Countdown + event date */}
           {context.event && du !== null ? (
             <div className="space-y-0.5 pt-1">
               <p className="font-heading font-semibold text-white" style={{ fontSize: "clamp(1.1rem, 2.6vw, 1.6rem)" }}>
-                {du > 0 ? `${du.toLocaleString()} Days Until Your Celebration`
-                  : du === 0 ? "Today Is Your Celebration ✦"
+                {du > 0 ? `${du.toLocaleString()} days until your celebration`
+                  : du === 0 ? "Today is the day"
                   : `Married ${formatPortalEventRangeShort(context.event.eventDate, context.event.eventEndDate)}`}
               </p>
               {du >= 0 && (
@@ -1735,30 +1743,37 @@ function OverviewSection({
               )}
             </div>
           ) : (
-            <p className="text-white/55 text-sm pt-1">Your planning journey has begun.</p>
+            <p className="text-white/55 text-sm pt-1">Your wedding home is ready whenever you are</p>
           )}
 
-          {/* Tagline */}
+          {heroStatusLine && (
+            <p className="text-sm font-medium" style={{ color: "rgba(255,255,255,0.85)" }}>
+              {heroStatusLine}
+            </p>
+          )}
+
           <p className="text-sm" style={{ color: "rgba(255,255,255,0.55)" }}>
-            Your venue team is here to guide you every step of the way.
+            {heroSupport}
           </p>
 
-          {/* Primary actions */}
           <div className="flex items-center gap-2 flex-wrap pt-2">
-            <button type="button" onClick={() => onNavigate("todos")}
-              className="text-xs font-semibold px-4 py-2.5 rounded-full text-white transition-opacity hover:opacity-90"
-              style={{ background: "var(--venue-primary)" }}>
-              Continue Your Journey
-            </button>
-            <button type="button" onClick={() => onNavigate("tasks")}
-              className="text-xs font-medium px-4 py-2.5 rounded-full text-white border transition-colors"
-              style={{ borderColor: "rgba(255,255,255,0.35)", background: "rgba(255,255,255,0.08)" }}>
-              Review Tasks
-            </button>
+            {p1Count !== null && p1Count > 0 ? (
+              <button type="button" onClick={() => onNavigate("tasks")}
+                className="text-xs font-semibold px-4 py-2.5 rounded-full text-white transition-opacity hover:opacity-90"
+                style={{ background: "var(--venue-primary)" }}>
+                Review what {venueName} needs
+              </button>
+            ) : (
+              <button type="button" onClick={() => onNavigate("todos")}
+                className="text-xs font-semibold px-4 py-2.5 rounded-full text-white transition-opacity hover:opacity-90"
+                style={{ background: "var(--venue-primary)" }}>
+                Continue planning
+              </button>
+            )}
             <button type="button" onClick={() => onNavigate("messages")}
               className="text-xs font-medium px-4 py-2.5 rounded-full text-white border transition-colors"
               style={{ borderColor: "rgba(255,255,255,0.35)", background: "rgba(255,255,255,0.08)" }}>
-              Message Venue
+              Message {venueName}
             </button>
             <button type="button" onClick={() => onNavigate("timeline")}
               className="text-xs font-medium px-4 py-2.5 rounded-full text-white border transition-colors"
@@ -1769,93 +1784,192 @@ function OverviewSection({
         </div>
       </div>
 
-      {/* ── Your Venue — Phase 4: the operational relationship, immediately below the hero ── */}
-      <YourVenueCards token={token} tasks={tasks} onNavigate={onNavigate} />
+      {/* 2. Venue Requests Summary — omit when N = 0 */}
+      {p1Count !== null && p1Count > 0 && (
+        <VenueRequestsBanner venueName={venueName} count={p1Count} onActivate={focusNextSteps} />
+      )}
 
-      {/* ── Your Wedding — personal planning, launched from here rather than a second nav row (Program 5) ── */}
-      <YourWeddingSection token={token} guestStats={guestStats} todoCount={todoCount} profile={profile} onNavigate={onNavigate} />
+      {/* 3. Your Next Steps (P1) */}
+      <div ref={nextStepsRef} id="your-next-steps">
+        <NextStepsCard
+          token={token}
+          tasks={tasks}
+          vendorTasks={vendorTasks}
+          timelineHasUnpublishedChanges={timelineHasUnpublishedChanges}
+          venueName={venueName}
+          onNavigate={onNavigate}
+          onAttentionCountChange={setP1Count}
+        />
+      </div>
 
-      {/* ── Keepsake Mode — replaces all planning when du < -3 ── */}
+      {/* 4. Working With Your Venue (P2) */}
+      <WorkingWithYourVenue
+        token={token}
+        venueName={venueName}
+        canSeeFinancial={canSeeFinancial}
+        onNavigate={onNavigate}
+      />
+
+      {/* 5–6. Planning Progress + Wedding Journey */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <WeddingPlanningProgressCard token={token} tasks={tasks} incompleteCount={p1Count ?? 0} onNavigate={onNavigate} />
+        {(du === null || du >= 0) && <PlanningJourney du={du} />}
+      </div>
+
+      {/* 7. What’s Happening — existing activity feed (no new last-visit intelligence) */}
+      <WhatsHappeningCard recentActivity={recentActivity} onNavigate={onNavigate} />
+
+      {/* 8. Your Wedding (P3) */}
+      <YourWeddingSection
+        token={token}
+        guestStats={guestStats}
+        todoCount={todoCount}
+        profile={profile}
+        accessLevel={accessLevel}
+        onNavigate={onNavigate}
+      />
+
+      {/* 9. Luv (P4) */}
+      <div className="space-y-3">
+        <LuvDailyCard token={token} du={du} guestStats={guestStats} readiness={readinessScore} bracket={bracket} recentActivity={recentActivity} onNavigate={onNavigate} />
+        {showLuvIntro && (
+          <LuvIntroCard
+            body="I'll help you stay organized throughout your planning."
+            ctaLabel={p1Count !== null && p1Count > 0 ? "Let's start with what your venue needs" : "Explore your plans"}
+            onCtaClick={() => onNavigate(p1Count !== null && p1Count > 0 ? "tasks" : "todos")}
+            onDismiss={onDismissLuvIntro}
+          />
+        )}
+      </div>
+
+      {/* 10. Memories / Planning Journal (P4) */}
+      <MemoryStrip entry={latestJournalEntry ?? null} onNavigate={onNavigate} />
+
+      {/* 11. Date-mode band — emphasizes; does not replace Hero + Next Steps */}
       {du !== null && du < -3 && context.event && (
         <KeepsakeSection
           token={token}
           du={du}
           eventDate={context.event.eventDate}
-          venueName={context.venue.name}
+          venueName={venueName}
           coupleName={coupleName}
         />
       )}
-
-      {/* ── Wedding Day Mode — replaces planning cards when ≤ 14 days out ── */}
       {du !== null && du <= 14 && du >= -3 && (
-        <WeddingDaySection token={token} tasks={tasks} du={du} venueName={context.venue.name} />
+        <WeddingDaySection token={token} tasks={tasks} du={du} venueName={venueName} />
       )}
 
-      {/* Everything below is one pool of small/medium cards — the couple's
-          own tail content (Memory Strip, Season, Journey, Snapshot, This
-          Month, Luv observation, Next Big Moment, Milestones) plus what
-          used to live in a fixed-width, desktop-only 320px sidebar
-          (Requests, Key Dates, Coming Up, Venue Note, Most Couples, This
-          Week, Luv Intro, Inspiration). A 320px sidebar next to one tall
-          narrow column is exactly why the page used to scroll forever on
-          one side while the other sat empty (2026-07-23 report). CSS
-          multi-column flow balances arbitrarily-sized cards across both
-          halves by actual height, not a fixed split — `break-inside-avoid`
-          keeps a card from being sliced across the column break, and
-          `empty:hidden` collapses a wrapper down to nothing when the card
-          inside it conditionally renders null, so a hidden card doesn't
-          leave a dead gap. */}
-      <div className="columns-1 lg:columns-2 gap-5 [column-fill:_balance]">
-        <div className="mb-5 break-inside-avoid empty:hidden">
-          <LuvDailyCard token={token} du={du} guestStats={guestStats} readiness={readinessScore} bracket={bracket} recentActivity={recentActivity} onNavigate={onNavigate} />
-        </div>
-        <div className="mb-5 break-inside-avoid empty:hidden">
-          <RequestsSummaryCard token={token} onNavigate={onNavigate} />
-        </div>
-        <div className="mb-5 break-inside-avoid empty:hidden">
-          <KeyDatesCard token={token} />
-        </div>
-        {latestJournalEntry && (
-          <div className="mb-5 break-inside-avoid">
-            <MemoryStrip entry={latestJournalEntry} onNavigate={onNavigate} />
-          </div>
-        )}
-        {context.event && du !== null && du > 14 && (
-          <div className="mb-5 break-inside-avoid">
-            <PlanningJourney du={du} readiness={readinessScore} />
-          </div>
-        )}
-        {(du === null || du > -3) && (
-          <div className="mb-5 break-inside-avoid">
-            <WeddingSnapshotCard du={du} guestStats={guestStats} todoCount={todoCount} readinessScore={readinessScore} />
-          </div>
-        )}
-        {context.event && (du === null || du > 14) && (
-          <div className="mb-5 break-inside-avoid">
-            <SeasonalInspirationCard eventDate={context.event.eventDate} bracket={bracket} suggestions={suggestions} onNavigate={onNavigate} />
-          </div>
-        )}
-        <div className="mb-5 break-inside-avoid">
-          <WeddingJourneySection guestStats={guestStats} />
-        </div>
-        <div className="mb-5 break-inside-avoid">
-          <ComingUpCard bracket={bracket} onNavigate={onNavigate} />
-        </div>
-        <div className="mb-5 break-inside-avoid">
-          <VenueNoteCard venueName={context.venue.name} />
-        </div>
-        {showLuvIntro && (
-          <div className="mb-5 break-inside-avoid">
-            <LuvIntroCard
-              body="I'll help you stay organized throughout your planning."
-              ctaLabel="Let's start with your first task"
-              onCtaClick={() => onNavigate("tasks")}
-              onDismiss={onDismissLuvIntro}
-            />
-          </div>
-        )}
-      </div>
+    </div>
+  );
+}
 
+function VenueRequestsBanner({
+  venueName, count, onActivate,
+}: {
+  venueName: string;
+  count: number;
+  onActivate: () => void;
+}) {
+  const copy = count === 1
+    ? `${venueName} is waiting on 1 thing from you.`
+    : `${venueName} is waiting on ${count} things from you.`;
+
+  return (
+    <button
+      type="button"
+      onClick={onActivate}
+      className="w-full text-left rounded-2xl px-4 py-3.5 transition-opacity hover:opacity-90"
+      style={{
+        border: `1px solid color-mix(in srgb, var(--venue-primary) 28%, #E8E3DC)`,
+        background: `color-mix(in srgb, var(--venue-primary) 6%, white)`,
+      }}
+    >
+      <p className="text-sm font-semibold text-heading leading-snug">{copy}</p>
+      <p className="text-[11px] text-muted-foreground mt-0.5">Jump to your next steps below.</p>
+    </button>
+  );
+}
+
+function WorkingWithYourVenue({
+  token, venueName, canSeeFinancial, onNavigate,
+}: {
+  token: string;
+  venueName: string;
+  canSeeFinancial: boolean;
+  onNavigate: (s: PortalSection) => void;
+}) {
+  return (
+    <div className="space-y-3">
+      <p className="text-[10px] font-bold uppercase tracking-[0.2em]" style={{ color: SAGE }}>Working With Your Venue</p>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+        <VenueTeamCard token={token} venueName={venueName} onNavigate={onNavigate} />
+        <div className="space-y-3">
+          {canSeeFinancial && <PaymentsCard token={token} onNavigate={onNavigate} />}
+          <TimelineCard token={token} onNavigate={onNavigate} />
+        </div>
+      </div>
+      <KeyDatesCard token={token} maxUpcoming={2} />
+      <div className="flex flex-wrap gap-x-4 gap-y-1 px-0.5">
+        <button type="button" onClick={() => onNavigate("guide")}
+          className="text-[11px] font-medium text-muted-foreground hover:underline" style={{ color: SAGE }}>
+          Explore your Venue Guide
+        </button>
+        <button type="button" onClick={() => onNavigate("vendors")}
+          className="text-[11px] font-medium text-muted-foreground hover:underline" style={{ color: SAGE }}>
+          Preferred vendors
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function activityDestination(type: string): PortalSection | null {
+  if (type === "guest_added" || type.startsWith("guest")) return "guests";
+  if (type === "todo_completed" || type === "photo_uploaded") return "todos";
+  if (type === "journal_entry") return "story";
+  return null;
+}
+
+function WhatsHappeningCard({
+  recentActivity, onNavigate,
+}: {
+  recentActivity: RecentActivity | null;
+  onNavigate: (s: PortalSection) => void;
+}) {
+  const items = (recentActivity?.activity ?? []).slice(0, 5);
+
+  return (
+    <div className="rounded-2xl border bg-card p-5" style={{ borderColor: "#E8E3DC" }}>
+      <p className="text-[10px] font-semibold uppercase tracking-widest mb-1" style={{ color: SAGE }}>What’s Happening</p>
+      <p className="text-[11px] text-muted-foreground mb-3">This week</p>
+      {items.length === 0 ? (
+        <p className="text-xs text-muted-foreground">Nothing new this week—enjoy a quiet moment.</p>
+      ) : (
+        <div className="space-y-2">
+          {items.map((item, i) => {
+            const dest = activityDestination(item.type);
+            const body = (
+              <div className="flex items-start gap-2.5 min-w-0">
+                <span className="text-sm shrink-0" aria-hidden>{item.emoji}</span>
+                <p className="text-xs text-heading leading-snug">{item.label}</p>
+              </div>
+            );
+            if (!dest) {
+              return <div key={`${item.type}-${item.occurredAt}-${i}`}>{body}</div>;
+            }
+            return (
+              <button
+                key={`${item.type}-${item.occurredAt}-${i}`}
+                type="button"
+                onClick={() => onNavigate(dest)}
+                className="w-full text-left rounded-xl px-2 py-1.5 -mx-2 hover:bg-muted/50 transition-colors"
+              >
+                {body}
+              </button>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
@@ -1868,14 +1982,24 @@ function MemoryStrip({
   entry: JournalEntry | null;
   onNavigate: (s: PortalSection) => void;
 }) {
-  if (!entry) return null;
+  if (!entry) {
+    return (
+      <button type="button" onClick={() => onNavigate("story")}
+        className="w-full text-left rounded-2xl px-4 py-3.5 transition-opacity hover:opacity-90"
+        style={{ border: `1px dashed ${ROSE}35`, background: `${ROSE}04` }}>
+        <p className="text-[10px] font-semibold uppercase tracking-[0.16em]" style={{ color: ROSE_DEEP }}>
+          A moment from your journey
+        </p>
+        <p className="text-xs text-muted-foreground mt-1">Capture a note in your planning journal when you’re ready.</p>
+      </button>
+    );
+  }
 
   return (
     <button type="button" onClick={() => onNavigate("story")}
       className="w-full text-left rounded-2xl flex items-center gap-4 p-4 group transition-all hover:shadow-sm"
       style={{ background: `${ROSE}08`, border: `1px solid ${ROSE}22` }}>
 
-      {/* Photo or icon */}
       {entry.mediaUrl ? (
         <img src={entry.mediaUrl} alt=""
           className="w-16 h-16 rounded-xl object-cover shrink-0" />
@@ -1886,10 +2010,9 @@ function MemoryStrip({
         </div>
       )}
 
-      {/* Content */}
       <div className="flex-1 min-w-0 space-y-0.5">
         <p className="text-[10px] font-semibold uppercase tracking-[0.16em]" style={{ color: ROSE_DEEP }}>
-          💗 A Moment From Your Journey
+          A moment from your journey
         </p>
         {entry.title && (
           <p className="text-sm font-semibold text-heading leading-snug truncate">{entry.title}</p>
@@ -1897,7 +2020,7 @@ function MemoryStrip({
         <p className="text-xs text-muted-foreground leading-relaxed line-clamp-2">{entry.body}</p>
         <p className="text-[10px] text-muted-foreground mt-0.5">{formatEntryDate(entry.entryDate)}</p>
         <p className="text-[10px] font-semibold mt-2 group-hover:underline" style={{ color: ROSE_DEEP }}>
-          View your journey →
+          Open your story →
         </p>
       </div>
     </button>
@@ -4093,6 +4216,13 @@ export function PortalShell({
       .then(r => r.json())
       .then((d: RecentActivity) => setRecentActivity(d))
       .catch(() => {});
+    fetch(`/api/portal/todos?token=${token}`)
+      .then(r => r.json())
+      .then((d: { todos?: CoupleTodo[] }) => {
+        const todos = d.todos ?? [];
+        setTodoCount(todos.filter((t) => !t.completed).length);
+      })
+      .catch(() => {});
     // Luv Experience Completion, Work Stream 5 — one-time intro card.
     fetch(`/api/portal/luv-intro?token=${token}`)
       .then(r => r.json())
@@ -4287,7 +4417,21 @@ export function PortalShell({
             a balanced multi-column flow that uses the full width. */}
         {isOverview ? (
           <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6">
-            <OverviewSection token={token} context={context} tasks={initialTasks} guestStats={guestStats} todoCount={todoCount} profile={profile} latestJournalEntry={profile?.latestJournalEntry ?? null} onNavigate={setActiveSection} recentActivity={recentActivity} showLuvIntro={showLuvIntro} onDismissLuvIntro={dismissLuvIntro} />
+            <OverviewSection
+              token={token}
+              context={context}
+              tasks={initialTasks}
+              vendorTasks={initialVendorTasks}
+              timelineHasUnpublishedChanges={initialTimelineHasUnpublishedChanges}
+              guestStats={guestStats}
+              todoCount={todoCount}
+              profile={profile}
+              latestJournalEntry={profile?.latestJournalEntry ?? null}
+              onNavigate={setActiveSection}
+              recentActivity={recentActivity}
+              showLuvIntro={showLuvIntro}
+              onDismissLuvIntro={dismissLuvIntro}
+            />
           </div>
         ) : activeSection === "website" ? (
           <div className="flex-1 min-h-0 overflow-hidden">
@@ -4342,7 +4486,7 @@ export function PortalShell({
 // "the couple should feel that the venue has already prepared everything
 // for them." Self-fetching like RequestsSummaryCard; renders nothing until
 // the venue has actually set at least one date.
-function KeyDatesCard({ token }: { token: string }) {
+function KeyDatesCard({ token, maxUpcoming = 2 }: { token: string; maxUpcoming?: number }) {
   const [keyDates, setKeyDates] = React.useState<PortalKeyDate[] | null>(null);
 
   React.useEffect(() => {
@@ -4355,13 +4499,11 @@ function KeyDatesCard({ token }: { token: string }) {
 
   const today = new Date().toISOString().slice(0, 10);
   const next = keyDates.find((k) => k.date >= today) ?? keyDates[0];
-  const upcoming = keyDates.filter((k) => k.id !== next.id).slice(0, 3);
+  const upcoming = keyDates.filter((k) => k.id !== next.id).slice(0, maxUpcoming);
 
   return (
     <div className="w-full rounded-2xl border bg-card p-5" style={{ borderColor: "#E8E3DC" }}>
-      <div className="flex items-center justify-between mb-3">
-        <span className="text-2xl">📅</span>
-      </div>
+      <p className="text-[10px] font-semibold uppercase tracking-widest mb-3" style={{ color: SAGE }}>Next key date</p>
       <p className="text-sm font-semibold text-heading leading-snug">{next.label}</p>
       <p className="text-[11px] text-muted-foreground mt-1">
         {new Date(next.date + "T12:00:00").toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}
@@ -4391,7 +4533,7 @@ function KeyDatesCard({ token }: { token: string }) {
 
 const ROLE_LABEL: Record<string, string> = { owner: "Owner", manager: "Venue Manager", coordinator: "Coordinator", staff: "Team" };
 
-function VenueTeamCard({ token, onNavigate }: { token: string; onNavigate: (s: PortalSection) => void }) {
+function VenueTeamCard({ token, venueName, onNavigate }: { token: string; venueName: string; onNavigate: (s: PortalSection) => void }) {
   const [team, setTeam] = React.useState<PortalVenueTeamMember[] | null>(null);
 
   React.useEffect(() => {
@@ -4400,17 +4542,21 @@ function VenueTeamCard({ token, onNavigate }: { token: string; onNavigate: (s: P
       .then((d: { team?: PortalVenueTeamMember[] }) => setTeam(d.team ?? []));
   }, [token]);
 
-  if (!team) return null;
+  if (!team) {
+    return (
+      <div className="rounded-2xl border bg-card p-5" style={{ borderColor: "#E8E3DC" }}>
+        <p className="text-[10px] font-semibold uppercase tracking-widest mb-3" style={{ color: SAGE }}>Venue Team</p>
+        <div className="space-y-2">
+          {[1, 2].map((i) => <div key={i} className="h-9 rounded-full bg-muted animate-pulse" />)}
+        </div>
+      </div>
+    );
+  }
   const shown = team.slice(0, 3);
 
-  // "Meet Your Venue Team" — 2026-07-23: "It feels dramatically more
-  // welcoming" than a single name. Each member gets their own row with
-  // role and a real Email action (venue_staff.email); Message stays one
-  // shared button since messaging is a single venue-wide thread, not
-  // per-staff-member.
   return (
     <div className="rounded-2xl border bg-card p-5" style={{ borderColor: "#E8E3DC" }}>
-      <p className="text-[10px] font-semibold uppercase tracking-widest mb-3" style={{ color: SAGE }}>👋 Meet Your Venue Team</p>
+      <p className="text-[10px] font-semibold uppercase tracking-widest mb-3" style={{ color: SAGE }}>Venue Team</p>
       {shown.length === 0 ? (
         <p className="text-xs text-muted-foreground">Your venue team will appear here.</p>
       ) : (
@@ -4438,7 +4584,7 @@ function VenueTeamCard({ token, onNavigate }: { token: string; onNavigate: (s: P
       <button type="button" onClick={() => onNavigate("messages")}
         className="mt-3.5 w-full text-xs font-semibold py-2 rounded-xl text-white transition-opacity hover:opacity-90"
         style={{ background: SAGE }}>
-        💬 Message
+        Message {venueName}
       </button>
     </div>
   );
@@ -4451,11 +4597,45 @@ function VenueTeamCard({ token, onNavigate }: { token: string; onNavigate: (s: P
 // Questionnaire" all show up here even though none of them live in the
 // venue_tasks table. Everything already existed; it just wasn't surfaced
 // on the dashboard yet.
-function NextStepsCard({ token, tasks, onNavigate }: { token: string; tasks: PortalTask[]; onNavigate: (s: PortalSection) => void }) {
+type PaymentScheduleLite = { title: string; lineItems: { id: string; label: string; amount: number; dueDate: string | null; status: string }[] };
+
+type HomeAttentionRow = {
+  id: string;
+  title: string;
+  dueDate: string | null;
+  isOverdue: boolean;
+  isRequired: boolean;
+  ownership: "venue" | "shared";
+};
+
+function plainDueLabel(dueDate: string | null, isOverdue: boolean): string | null {
+  if (!dueDate) return null;
+  const today = new Date().toISOString().slice(0, 10);
+  if (dueDate === today) return "Due today";
+  const tomorrow = new Date();
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  const tomIso = tomorrow.toISOString().slice(0, 10);
+  if (dueDate === tomIso) return "Due tomorrow";
+  if (isOverdue) return `Needed by ${formatAbsoluteDueDate(dueDate)}`;
+  return `Due ${formatAbsoluteDueDate(dueDate)}`;
+}
+
+function NextStepsCard({
+  token, tasks, vendorTasks = [], timelineHasUnpublishedChanges = false, venueName, onNavigate, onAttentionCountChange,
+}: {
+  token: string;
+  tasks: PortalTask[];
+  vendorTasks?: PortalVendorTask[];
+  timelineHasUnpublishedChanges?: boolean;
+  venueName: string;
+  onNavigate: (s: PortalSection) => void;
+  onAttentionCountChange?: (count: number) => void;
+}) {
   const [requests, setRequests] = React.useState<PortalRequestSummary[]>([]);
   const [paymentSchedules, setPaymentSchedules] = React.useState<PaymentScheduleLite[]>([]);
   const [questionnaire, setQuestionnaire] = React.useState<{ status: string } | null>(null);
   const [documents, setDocuments] = React.useState<{ id: string; docType: string; name: string; status: string | null; signToken?: string | null }[]>([]);
+  const [timelineUnpublished, setTimelineUnpublished] = React.useState(timelineHasUnpublishedChanges);
   const [loaded, setLoaded] = React.useState(false);
 
   React.useEffect(() => {
@@ -4464,61 +4644,154 @@ function NextStepsCard({ token, tasks, onNavigate }: { token: string; tasks: Por
       fetch(`/api/portal/payments?token=${token}`).then((r) => r.json()).catch(() => ({ schedules: [] })),
       fetch(`/api/portal/questionnaire?token=${token}`).then((r) => r.json()).catch(() => ({ questionnaire: null })),
       fetch(`/api/portal/documents?token=${token}`).then((r) => r.json()).catch(() => ({ documents: [] })),
-    ]).then(([requestsRes, paymentsRes, questionnaireRes, documentsRes]) => {
+      fetch(`/api/portal/timeline?token=${token}`).then((r) => r.json()).catch(() => ({ hasUnpublishedChanges: timelineHasUnpublishedChanges })),
+    ]).then(([requestsRes, paymentsRes, questionnaireRes, documentsRes, timelineRes]) => {
       setRequests(requestsRes.requests ?? []);
       setPaymentSchedules(paymentsRes.schedules ?? []);
       setQuestionnaire(questionnaireRes.questionnaire ? { status: questionnaireRes.questionnaire.status } : null);
       setDocuments(documentsRes.documents ?? []);
+      setTimelineUnpublished(!!timelineRes.hasUnpublishedChanges);
       setLoaded(true);
     });
-  }, [token]);
+  }, [token, timelineHasUnpublishedChanges]);
 
-  const required = tasks.filter((t) => t.isRequired);
-  const readiness = required.length > 0
-    ? Math.round((required.filter((t) => t.status === "complete").length / required.length) * 100)
-    : 0;
+  const unified: UnifiedTask[] = loaded
+    ? buildUnifiedTaskList({
+        venueTasks: tasks,
+        requests,
+        paymentSchedules,
+        questionnaire,
+        documents,
+        timelineHasUnpublishedChanges: timelineUnpublished,
+      }).filter((t) => !t.completed)
+    : [];
 
-  const items = loaded ? buildUnifiedTaskList({
-    venueTasks: tasks, requests, paymentSchedules, questionnaire, documents,
-    timelineHasUnpublishedChanges: false,
-  }).filter((t) => !t.completed).slice(0, 5) : [];
+  const today = new Date().toISOString().slice(0, 10);
+  const vendorRows: HomeAttentionRow[] = vendorTasks
+    .filter((t) => t.status !== "complete" && t.canComplete)
+    .map((t) => {
+      const overdue = Boolean(t.dueDate && t.dueDate < today);
+      return {
+        id: `vendor_${t.id}`,
+        title: t.title,
+        dueDate: t.dueDate,
+        isOverdue: overdue,
+        isRequired: false,
+        ownership: "venue" as const,
+      };
+    });
+
+  const rows: HomeAttentionRow[] = [
+    ...unified.map((t) => ({
+      id: t.id,
+      title: t.title,
+      dueDate: t.dueDate,
+      isOverdue: t.isOverdue,
+      isRequired: t.isRequired,
+      ownership: t.ownership,
+    })),
+    ...vendorRows,
+  ].sort((a, b) => {
+    if (a.isOverdue !== b.isOverdue) return a.isOverdue ? -1 : 1;
+    if (a.dueDate && b.dueDate) return a.dueDate.localeCompare(b.dueDate);
+    if (a.dueDate) return -1;
+    if (b.dueDate) return 1;
+    return 0;
+  });
+
+  const fullCount = rows.length;
+  const items = rows.slice(0, 5);
+
+  React.useEffect(() => {
+    if (loaded) onAttentionCountChange?.(fullCount);
+  }, [loaded, fullCount, onAttentionCountChange]);
 
   return (
-    <div className="rounded-2xl border bg-card p-5" style={{ borderColor: "#E8E3DC" }}>
-      <div className="flex items-center justify-between mb-3">
-        <p className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: SAGE }}>✅ Your Next Steps</p>
-        {required.length > 0 && <span className="text-[11px] font-semibold text-muted-foreground">{readiness}%</span>}
+    <div
+      className="rounded-2xl border bg-card p-5"
+      style={{
+        borderColor: fullCount > 0
+          ? "color-mix(in srgb, var(--venue-primary) 32%, #E8E3DC)"
+          : "#E8E3DC",
+        boxShadow: fullCount > 0 ? "0 1px 0 color-mix(in srgb, var(--venue-primary) 8%, transparent)" : undefined,
+      }}
+    >
+      <p className="text-[10px] font-semibold uppercase tracking-widest mb-0.5" style={{ color: SAGE }}>
+        What {venueName} needs from you
+      </p>
+      <div className="flex items-baseline justify-between gap-3 mb-3">
+        <p className="text-sm font-semibold text-heading">Your Next Steps</p>
+        {loaded && fullCount > 0 && (
+          <p className="text-[11px] text-muted-foreground shrink-0">
+            {fullCount} left for {venueName}
+          </p>
+        )}
       </div>
-      {required.length > 0 && (
-        <div className="h-1.5 rounded-full bg-muted overflow-hidden mb-3">
-          <div className="h-full rounded-full" style={{ width: `${readiness}%`, background: SAGE }} />
-        </div>
-      )}
+
       {!loaded ? (
-        <div className="space-y-1.5">
-          {[1, 2].map((i) => <div key={i} className="h-3.5 rounded-full bg-muted animate-pulse" style={{ width: `${70 - i * 10}%` }} />)}
+        <div className="space-y-2" aria-busy="true" aria-label="Loading what your venue needs">
+          {[1, 2, 3].map((i) => <div key={i} className="h-10 rounded-xl bg-muted animate-pulse" />)}
         </div>
       ) : items.length === 0 ? (
-        <p className="text-xs text-muted-foreground">You&apos;re all caught up — nothing due right now.</p>
+        <p className="text-xs text-muted-foreground">
+          You’re all caught up with what {venueName} needs right now.
+        </p>
       ) : (
-        <div className="space-y-1.5">
-          {items.map((t) => (
-            <p key={t.id} className="text-xs text-heading truncate flex items-center gap-1.5">
-              <Check className="h-3 w-3 shrink-0 opacity-40" /> {t.title}
-            </p>
-          ))}
+        <div className="space-y-2">
+          {items.map((t) => {
+            const due = plainDueLabel(t.dueDate, t.isOverdue);
+            return (
+              <button
+                key={t.id}
+                type="button"
+                onClick={() => onNavigate("tasks")}
+                className="w-full text-left rounded-xl px-3 py-2.5 transition-colors hover:bg-muted/40"
+                style={{
+                  border: t.isOverdue
+                    ? "1px solid color-mix(in srgb, var(--venue-primary) 35%, #E8E3DC)"
+                    : "1px solid #EDE8E1",
+                  background: t.isOverdue
+                    ? "color-mix(in srgb, var(--venue-primary) 5%, white)"
+                    : "transparent",
+                }}
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <p className="text-xs font-medium text-heading leading-snug">{t.title}</p>
+                  {t.isRequired && (
+                    <span className="text-[10px] text-muted-foreground shrink-0">Required</span>
+                  )}
+                </div>
+                <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 mt-1">
+                  <span className="text-[10px] font-medium" style={{ color: SAGE }}>
+                    {ownershipLabel(t.ownership)}
+                  </span>
+                  {t.isOverdue && (
+                    <span className="text-[10px] text-muted-foreground">
+                      {venueName} is waiting on this
+                    </span>
+                  )}
+                  {due && !t.isOverdue && (
+                    <span className="text-[10px] text-muted-foreground">{due}</span>
+                  )}
+                  {due && t.isOverdue && (
+                    <span className="text-[10px] text-muted-foreground">{due}</span>
+                  )}
+                </div>
+              </button>
+            );
+          })}
         </div>
       )}
       <button type="button" onClick={() => onNavigate("tasks")}
-        className="mt-3.5 w-full text-xs font-semibold py-2 rounded-xl text-white transition-opacity hover:opacity-90"
-        style={{ background: SAGE }}>
-        Open Tasks
+        className={`mt-3.5 w-full text-xs font-semibold py-2 rounded-xl transition-opacity hover:opacity-90 ${items.length === 0 ? "text-heading border" : "text-white"}`}
+        style={items.length === 0
+          ? { borderColor: "#E8E3DC", background: "transparent" }
+          : { background: SAGE }}>
+        Open all tasks
       </button>
     </div>
   );
 }
-
-type PaymentScheduleLite = { title: string; lineItems: { id: string; label: string; amount: number; dueDate: string | null; status: string }[] };
 
 function PaymentsCard({ token, onNavigate }: { token: string; onNavigate: (s: PortalSection) => void }) {
   const [schedules, setSchedules] = React.useState<PaymentScheduleLite[] | null>(null);
@@ -4547,7 +4820,7 @@ function PaymentsCard({ token, onNavigate }: { token: string; onNavigate: (s: Po
       {lineItems.length === 0 ? (
         <p className="text-xs text-muted-foreground">Your payment schedule will appear here.</p>
       ) : outstanding.length === 0 ? (
-        <p className="text-sm font-semibold text-heading">All paid up ✦</p>
+        <p className="text-sm font-semibold text-heading">All paid up.</p>
       ) : (
         <>
           <p className="font-heading text-2xl font-bold text-heading">{fmt(remaining)}</p>
@@ -4593,7 +4866,7 @@ function TimelineCard({ token, onNavigate }: { token: string; onNavigate: (s: Po
     <div className="rounded-2xl border bg-card p-5" style={{ borderColor: "#E8E3DC" }}>
       <p className="text-[10px] font-semibold uppercase tracking-widest mb-3" style={{ color: SAGE }}>🕒 Timeline</p>
       {upcoming.length === 0 ? (
-        <p className="text-xs text-muted-foreground">Your Timeline is being built with your venue.</p>
+        <p className="text-xs text-muted-foreground">Your Timeline is being built…</p>
       ) : (
         <div className="space-y-1.5">
           {upcoming.map((e) => (
@@ -4621,7 +4894,14 @@ function TimelineCard({ token, onNavigate }: { token: string; onNavigate: (s: Po
 // across every system that already tracks completion, not a new metric:
 // required venue tasks, payment line items, the questionnaire, and sent
 // contracts. Placed directly below the hero, above the four venue cards.
-function WeddingPlanningProgressCard({ token, tasks }: { token: string; tasks: PortalTask[] }) {
+function WeddingPlanningProgressCard({
+  token, tasks, incompleteCount = 0, onNavigate,
+}: {
+  token: string;
+  tasks: PortalTask[];
+  incompleteCount?: number;
+  onNavigate?: (s: PortalSection) => void;
+}) {
   const [paymentSchedules, setPaymentSchedules] = React.useState<PaymentScheduleLite[] | null>(null);
   const [questionnaire, setQuestionnaire] = React.useState<{ status: string } | null | undefined>(undefined);
   const [documents, setDocuments] = React.useState<{ docType: string; status: string | null }[] | null>(null);
@@ -4635,55 +4915,67 @@ function WeddingPlanningProgressCard({ token, tasks }: { token: string; tasks: P
       .then((d: { documents?: { docType: string; status: string | null }[] }) => setDocuments(d.documents ?? [])).catch(() => setDocuments([]));
   }, [token]);
 
-  if (paymentSchedules === null || questionnaire === undefined || documents === null) return null;
+  if (paymentSchedules === null || questionnaire === undefined || documents === null) {
+    return (
+      <div className="rounded-2xl border bg-card p-5" style={{ borderColor: "#E8E3DC" }}>
+        <div className="h-4 w-36 rounded bg-muted animate-pulse mb-3" />
+        <div className="h-3 rounded-full bg-muted animate-pulse" />
+      </div>
+    );
+  }
 
   const required = tasks.filter((t) => t.isRequired);
   const paymentItems = paymentSchedules.flatMap((s) => s.lineItems);
   const contracts = documents.filter((d) => d.docType === "contract" && (d.status === "sent" || d.status === "signed"));
 
-  let completed = 0;
-  let total = 0;
-  completed += required.filter((t) => t.status === "complete").length; total += required.length;
-  completed += paymentItems.filter((li) => li.status === "paid").length; total += paymentItems.length;
-  completed += contracts.filter((c) => c.status === "signed").length; total += contracts.length;
-  if (questionnaire) { total += 1; if (questionnaire.status === "submitted" || questionnaire.status === "completed") completed += 1; }
+  const reqDone = required.filter((t) => t.status === "complete").length;
+  const payDone = paymentItems.filter((li) => li.status === "paid").length;
+  const contractDone = contracts.filter((c) => c.status === "signed").length;
+  const qInScope = Boolean(questionnaire);
+  const qDone = questionnaire && (questionnaire.status === "submitted" || questionnaire.status === "completed") ? 1 : 0;
+
+  const completed = reqDone + payDone + contractDone + (qInScope ? qDone : 0);
+  const total = required.length + paymentItems.length + contracts.length + (qInScope ? 1 : 0);
 
   if (total === 0) return null;
   const pct = Math.round((completed / total) * 100);
 
   return (
     <div className="rounded-2xl border bg-card p-5" style={{ borderColor: "#E8E3DC" }}>
-      <div className="flex items-center justify-between mb-2">
-        <p className="text-sm font-semibold text-heading">Wedding Planning Progress</p>
+      <div className="flex items-center justify-between mb-1">
+        <p className="text-sm font-semibold text-heading">Planning Progress</p>
         <span className="font-heading text-xl font-bold" style={{ color: SAGE }}>{pct}%</span>
       </div>
-      <div className="h-3 rounded-full bg-muted overflow-hidden">
+      <p className="text-[11px] text-muted-foreground mb-3">
+        Based on required venue tasks, payments, contracts, and your questionnaire.
+      </p>
+      <div className="h-3 rounded-full bg-muted overflow-hidden mb-3">
         <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, background: `linear-gradient(90deg, var(--venue-primary), var(--venue-secondary))` }} />
       </div>
+      <div className="flex flex-wrap gap-1.5">
+        {[
+          required.length > 0 ? { label: "Required tasks", detail: `${reqDone}/${required.length}` } : null,
+          paymentItems.length > 0 ? { label: "Payments", detail: `${payDone}/${paymentItems.length}` } : null,
+          contracts.length > 0 ? { label: "Contracts", detail: `${contractDone}/${contracts.length}` } : null,
+          qInScope ? { label: "Questionnaire", detail: qDone ? "Done" : "Open" } : null,
+        ].filter((c): c is { label: string; detail: string } => Boolean(c)).map((c) => (
+          <span key={c.label} className="text-[10px] px-2 py-0.5 rounded-full bg-muted text-muted-foreground">
+            {c.label} · {c.detail}
+          </span>
+        ))}
+      </div>
+      {incompleteCount > 0 && onNavigate && (
+        <button type="button" onClick={() => onNavigate("tasks")}
+          className="mt-3 text-[11px] font-semibold hover:underline" style={{ color: SAGE }}>
+          Review what’s left
+        </button>
+      )}
     </div>
   );
 }
 
-// Program 4 dashboard restructure (2026-07-24), Part 3: "Immediately below
-// the hero should be operational planning only." Order is the directive's
-// own list — Venue Team, Next Steps, Payment Status, Timeline Progress,
-// Wedding Planning Progress — the same five cards as before, reordered so
-// the composite progress bar reads as the summary of the four cards above
-// it rather than a headline sitting in front of them.
-function YourVenueCards({ token, tasks, onNavigate }: { token: string; tasks: PortalTask[]; onNavigate: (s: PortalSection) => void }) {
-  return (
-    <div className="space-y-2">
-      <p className="text-[10px] font-bold uppercase tracking-[0.2em]" style={{ color: SAGE }}>Your Venue</p>
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        <VenueTeamCard token={token} onNavigate={onNavigate} />
-        <NextStepsCard token={token} tasks={tasks} onNavigate={onNavigate} />
-        <PaymentsCard token={token} onNavigate={onNavigate} />
-        <TimelineCard token={token} onNavigate={onNavigate} />
-      </div>
-      <WeddingPlanningProgressCard token={token} tasks={tasks} />
-    </div>
-  );
-}
+// YourVenueCards retired — Couple Home Impl 1 composes Working With Your Venue + Next Steps directly.
+
 
 // Program 4, Initiative D, Phase 5 (2026-07-23) — "Only after the venue
 // section should the couple's own planning appear... These are engagement
@@ -4725,7 +5017,7 @@ function WebsiteLaunchCard({ token, onNavigate }: { token: string; onNavigate: (
       .then((d: CoupleWebsite) => setSite(d?.exists ? d : null)).catch(() => setSite(null));
   }, [token]);
 
-  let status: string | null = null;
+  let status: string | null = "Start your wedding website";
   if (site) {
     if (site.isPublished) {
       status = "Published ✓";
@@ -4741,7 +5033,9 @@ function WebsiteLaunchCard({ token, onNavigate }: { token: string; onNavigate: (
 // "Guest List — 128 invited, 97 confirmed" — guestStats is already fetched
 // once at the PortalShell level; no new request needed for this card.
 function GuestsLaunchCard({ guestStats, onNavigate }: { guestStats: GuestStats | null; onNavigate: (s: PortalSection) => void }) {
-  const status = guestStats && guestStats.total > 0 ? `${guestStats.total} invited, ${guestStats.attending} confirmed` : null;
+  const status = guestStats && guestStats.total > 0
+    ? `${guestStats.total} invited, ${guestStats.attending} confirmed`
+    : "Begin your guest list";
   return <LaunchCard icon="👥" label="Guest List" status={status} onClick={() => onNavigate("guests")} />;
 }
 
@@ -4792,8 +5086,8 @@ function PlansLaunchCard({ todoCount, profile, onNavigate }: { todoCount: number
 // once they've saved something is the accurate equivalent rather than a
 // fabricated publish flag.
 function StoryLaunchCard({ profile, onNavigate }: { profile: CoupleProfile | null; onNavigate: (s: PortalSection) => void }) {
-  const status = profile?.ourStory?.trim() ? "Written ✓" : null;
-  return <LaunchCard icon="💍" label="Our Story" status={status} statusColor={status ? GREEN : undefined} onClick={() => onNavigate("story")} />;
+  const status = profile?.ourStory?.trim() ? "Written ✓" : "Start your story";
+  return <LaunchCard icon="💍" label="Our Story" status={status} statusColor={profile?.ourStory?.trim() ? GREEN : undefined} onClick={() => onNavigate("story")} />;
 }
 
 // "I wouldn't leave Luv buried. Instead I'd give Luv one small card every
@@ -4876,7 +5170,7 @@ function LuvDailyCard({
     <>
       <span style={{ color: ROSE, fontSize: 15 }}>💗</span>
       <p className="text-xs leading-relaxed" style={{ color: "#5A3235" }}>
-        <span className="font-semibold">Luv says…</span> "{message}"
+        <span className="font-semibold">Luv says…</span> &ldquo;{message}&rdquo;
         {actionable && <span className="font-semibold" style={{ color: ROSE_DEEP }}> Add to your plans →</span>}
       </p>
     </>
@@ -4886,7 +5180,7 @@ function LuvDailyCard({
     return (
       <button type="button" onClick={() => onNavigate("todos")}
         className="w-full text-left rounded-2xl px-4 py-3.5 flex items-start gap-2.5 hover:shadow-sm transition-all"
-        style={{ background: `${ROSE}08`, border: `1px solid ${ROSE}25` }}>
+        style={{ background: `${ROSE}06`, border: `1px solid ${ROSE}18` }}>
         {content}
       </button>
     );
@@ -4894,22 +5188,25 @@ function LuvDailyCard({
 
   return (
     <div className="rounded-2xl px-4 py-3.5 flex items-start gap-2.5"
-      style={{ background: `${ROSE}08`, border: `1px solid ${ROSE}25` }}>
+      style={{ background: `${ROSE}06`, border: `1px solid ${ROSE}18` }}>
       {content}
     </div>
   );
 }
 
-function YourWeddingSection({ token, guestStats, todoCount, profile, onNavigate }: {
-  token: string; guestStats: GuestStats | null; todoCount: number; profile: CoupleProfile | null; onNavigate: (s: PortalSection) => void;
+function YourWeddingSection({ token, guestStats, todoCount, profile, accessLevel = "couple", onNavigate }: {
+  token: string; guestStats: GuestStats | null; todoCount: number; profile: CoupleProfile | null;
+  accessLevel?: PortalContext["accessLevel"];
+  onNavigate: (s: PortalSection) => void;
 }) {
+  const showBudget = accessLevel !== "view_only";
   return (
     <div className="space-y-2">
       <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-muted-foreground/50">Your Wedding</p>
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
         <WebsiteLaunchCard token={token} onNavigate={onNavigate} />
         <GuestsLaunchCard guestStats={guestStats} onNavigate={onNavigate} />
-        <BudgetLaunchCard token={token} onNavigate={onNavigate} />
+        {showBudget && <BudgetLaunchCard token={token} onNavigate={onNavigate} />}
         <SeatingLaunchCard token={token} onNavigate={onNavigate} />
         <PlansLaunchCard todoCount={todoCount} profile={profile} onNavigate={onNavigate} />
         <StoryLaunchCard profile={profile} onNavigate={onNavigate} />
