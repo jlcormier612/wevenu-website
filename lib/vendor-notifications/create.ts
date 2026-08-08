@@ -10,7 +10,7 @@ export type CreateVendorNotificationInput = {
   vendorId: string;
   eventId?: string | null;
   assignmentId?: string | null;
-  type: "new_message" | "new_task" | "document_shared" | "assigned_to_event";
+  type: "new_message" | "new_task" | "document_shared" | "assigned_to_event" | "removed_from_event" | "task_completed";
   title: string;
   body?: string | null;
   link?: string | null;

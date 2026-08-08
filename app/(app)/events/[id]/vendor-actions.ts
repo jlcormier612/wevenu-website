@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 
 import { assignVendor, removeVendorAssignment, setVendorAssignmentPayment_, updateVendorAssignment_ } from "@/lib/vendors/service";
 import { addRecommendation, removeRecommendation } from "@/lib/vendor-recommendations/service";
+import { dismissRemovalRequest } from "@/lib/vendor-removal-requests/service";
 import type { EventVendorAssignment, VendorActionResult, VendorAssignmentInput } from "@/lib/vendors/types";
 import type { RecommendationActionResult } from "@/lib/vendor-recommendations/types";
 
@@ -38,6 +39,14 @@ export async function removeVendorAssignmentAction(
   assignmentId: string, eventId: string,
 ): Promise<VendorActionResult> {
   const result = await removeVendorAssignment(assignmentId);
+  if (result.ok) revalidateEvent(eventId);
+  return result;
+}
+
+export async function dismissVendorRemovalRequestAction(
+  requestId: string, eventId: string,
+): Promise<VendorActionResult> {
+  const result = await dismissRemovalRequest(requestId, eventId);
   if (result.ok) revalidateEvent(eventId);
   return result;
 }

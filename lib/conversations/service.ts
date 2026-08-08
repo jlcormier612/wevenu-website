@@ -12,6 +12,7 @@ import { isSupabaseConfigured } from "@/lib/env";
 import * as repo from "@/lib/conversations/repository";
 import {
   notifyCoupleOfVendorPortalMessage,
+  notifyCoupleOfVenuePortalMessage,
   notifyVendorOfCouplePortalMessage,
   notifyVendorOfVenuePortalMessage,
   notifyVenueOfVendorPortalMessage,
@@ -110,10 +111,11 @@ export async function sendConversationMessage(
   if (!result.ok) return { ok: false, message: result.error ?? "Could not send message." };
 
   // Portal-only: email/SMS already notified the counterparty via the
-  // provider send above. Venue↔vendor portal messages get a short “new
-  // message” email; couple portal / couple↔vendor use their own notify paths.
+  // provider send above. Route by thread kind — each helper no-ops when
+  // the conversation is the wrong kind.
   if (channel === "portal") {
     notifyVendorOfVenuePortalMessage(conversationId, trimmed);
+    notifyCoupleOfVenuePortalMessage(conversationId, trimmed);
   }
 
   return { ok: true, messageId: result.messageId! };

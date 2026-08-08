@@ -72,3 +72,22 @@ export async function markVendorNotificationsRead(
   const result = data as { ok?: boolean } | null;
   return { ok: result?.ok ?? false };
 }
+
+/** Empty ids = clear all for the current vendor; otherwise delete those rows. */
+export async function clearVendorNotifications(
+  ids: string[] = [],
+): Promise<{ ok: boolean }> {
+  if (!isSupabaseConfigured) return { ok: false };
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("clear_vendor_notifications", {
+    p_notification_ids: ids,
+  });
+
+  if (error) {
+    console.error("[clearVendorNotifications]", error.message);
+    return { ok: false };
+  }
+
+  const result = data as { ok?: boolean } | null;
+  return { ok: result?.ok ?? false };
+}

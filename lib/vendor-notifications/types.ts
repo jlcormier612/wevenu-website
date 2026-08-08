@@ -2,7 +2,9 @@ export type VendorNotificationType =
   | "new_message"
   | "new_task"
   | "document_shared"
-  | "assigned_to_event";
+  | "assigned_to_event"
+  | "removed_from_event"
+  | "task_completed";
 
 export type VendorNotification = {
   id: string;
