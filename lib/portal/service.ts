@@ -2,7 +2,7 @@ import { createClient } from "@/integrations/supabase/server";
 import { isSupabaseConfigured } from "@/lib/env";
 import { getCurrentVenue } from "@/lib/venue/service";
 import { recordEngagementEvent } from "@/lib/activation/service";
-import type { PortalContext, PortalKeyDate, PortalSession, PortalTask, PortalTimeline, PortalTimelineEntry, PortalTimelineSection } from "@/lib/portal/types";
+import type { PortalContext, PortalKeyDate, PortalSession, PortalTask, PortalTimeline, PortalTimelineEntry, PortalTimelineSection, PortalVendorTask } from "@/lib/portal/types";
 
 // ---- Token resolution (uses server Supabase client; SECURITY DEFINER functions
 //      validate the portal token internally so no coordinator session is needed) -
@@ -36,6 +36,33 @@ export async function resolvePortalTasks(token: string): Promise<PortalTask[]> {
   return ((data as Record<string, unknown>).tasks ?? []) as PortalTask[];
 }
 
+export async function resolvePortalVendorTasks(token: string): Promise<PortalVendorTask[]> {
+  if (!isSupabaseConfigured) return [];
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("get_portal_vendor_tasks", { p_token: token });
+  if (error || !data || (data as Record<string, unknown>).error) return [];
+  const rows = ((data as Record<string, unknown>).vendorTasks ?? []) as Record<string, unknown>[];
+  return rows.map((r) => ({
+    id: r.id as string,
+    title: r.title as string,
+    notes: (r.notes as string | null) ?? null,
+    dueDate: (r.dueDate as string | null) ?? null,
+    status: ((r.status as string) === "complete" ? "complete" : "pending") as "pending" | "complete",
+    coupleVisibility: (r.coupleVisibility === "owned" ? "owned" : "visible") as "visible" | "owned",
+    completedAt: (r.completedAt as string | null) ?? null,
+    completedBy: (r.completedBy as "couple" | "vendor" | null) ?? null,
+    vendorId: r.vendorId as string,
+    vendorName: (r.vendorName as string) || "Vendor",
+    canComplete: Boolean(r.canComplete),
+    attachments: ((r.attachments as PortalVendorTask["attachments"]) ?? []).map((a) => ({
+      id: a.id,
+      name: a.name,
+      storageUrl: a.storageUrl,
+      mimeType: a.mimeType ?? null,
+    })),
+  }));
+}
+
 // Program 4, Initiative C, Phase 3 (2026-07-23) — Key Dates the venue has
 // already set (rehearsal, tasting, final headcount, etc.) so the couple
 // feels the venue has already prepared everything for them.
@@ -57,11 +84,26 @@ export async function completePortalTask(token: string, taskId: string): Promise
   return { ok: true };
 }
 
+export async function completePortalVendorTask(
+  token: string,
+  taskId: string,
+): Promise<{ ok: boolean; error?: string }> {
+  if (!isSupabaseConfigured) return { ok: false, error: "Backend not configured." };
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("complete_portal_vendor_task", {
+    p_token: token,
+    p_task_id: taskId,
+  });
+  if (error) return { ok: false, error: error.message };
+  const d = data as Record<string, unknown>;
+  if (!d?.ok) return { ok: false, error: (d?.error as string) ?? "Could not complete task." };
+  return { ok: true };
+}
+
 // The Client Timeline — the couple's own always-live view (their own
-// draft + the venue's live structural framework), through
-// get_portal_run_of_show. Never gated by the couple's own submission
-// state (docs/client-workspace-product-architecture.md §12, refined
-// 2026-07-17).
+// draft + venue items tagged wedding_party), through get_portal_run_of_show.
+// Never gated by the couple's own submission state. Venue staff-only
+// framework items (no wedding_party audience) stay out of the portal.
 export async function resolvePortalTimeline(token: string): Promise<PortalTimeline> {
   const empty: PortalTimeline = { sections: [], entries: [], lastSubmittedAt: null, hasUnpublishedChanges: false };
   if (!isSupabaseConfigured) return empty;
@@ -71,20 +113,26 @@ export async function resolvePortalTimeline(token: string): Promise<PortalTimeli
   const d = data as Record<string, unknown>;
   return {
     sections: (d.sections ?? []) as PortalTimelineSection[],
-    entries: (d.entries ?? []) as PortalTimelineEntry[],
+    entries: ((d.entries ?? []) as PortalTimelineEntry[]).map((e) => ({
+      ...e,
+      dayOffset: Number(e.dayOffset ?? 0) || 0,
+      entryTime: e.entryTime ? String(e.entryTime).slice(0, 5) : null,
+      endTime: e.endTime ? String(e.endTime).slice(0, 5) : null,
+    })),
     lastSubmittedAt: (d.lastSubmittedAt as string | null) ?? null,
     hasUnpublishedChanges: (d.hasUnpublishedChanges as boolean) ?? false,
   };
 }
 
 export async function updatePortalTimelineEntry(
-  token: string, entryId: string, title: string, description: string, entryTime: string, sectionId?: string | null,
+  token: string, entryId: string, title: string, description: string, entryTime: string,
+  sectionId?: string | null, dayOffset = 0, endTime = "",
 ): Promise<{ ok: boolean; error?: string }> {
   if (!isSupabaseConfigured) return { ok: false, error: "Backend not configured." };
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("update_portal_timeline_entry", {
     p_token: token, p_entry_id: entryId, p_title: title, p_description: description, p_entry_time: entryTime,
-    p_section_id: sectionId ?? null,
+    p_section_id: sectionId ?? null, p_day_offset: dayOffset, p_end_time: endTime || null,
   });
   if (error) return { ok: false, error: error.message };
   const d = data as Record<string, unknown>;
@@ -96,17 +144,29 @@ export async function updatePortalTimelineEntry(
 // always owner='client', always private (audiences={}) until the couple
 // deliberately sets Visibility on it themselves.
 export async function addPortalTimelineEntry(
-  token: string, sectionId: string, title: string, description: string, entryTime: string,
+  token: string, sectionId: string, title: string, description: string, entryTime: string, dayOffset = 0, endTime = "",
 ): Promise<{ ok: boolean; entry?: PortalTimelineEntry; error?: string }> {
   if (!isSupabaseConfigured) return { ok: false, error: "Backend not configured." };
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("add_portal_timeline_entry", {
     p_token: token, p_section_id: sectionId, p_title: title, p_description: description, p_entry_time: entryTime,
+    p_day_offset: dayOffset, p_end_time: endTime || null,
   });
   if (error) return { ok: false, error: error.message };
   const d = data as Record<string, unknown>;
   if (!d?.ok) return { ok: false, error: (d?.error as string) ?? "Could not add this item." };
-  return { ok: true, entry: d.entry as PortalTimelineEntry };
+  const entry = d.entry as PortalTimelineEntry | undefined;
+  return {
+    ok: true,
+    entry: entry
+      ? {
+          ...entry,
+          dayOffset: Number(entry.dayOffset ?? dayOffset) || 0,
+          entryTime: entry.entryTime ? String(entry.entryTime).slice(0, 5) : (entryTime || null),
+          endTime: entry.endTime ? String(entry.endTime).slice(0, 5) : (endTime || null),
+        }
+      : undefined,
+  };
 }
 
 export async function deletePortalTimelineEntry(token: string, entryId: string): Promise<{ ok: boolean; error?: string }> {

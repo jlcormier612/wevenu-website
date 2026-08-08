@@ -74,6 +74,27 @@ export type PortalTask = {
   canComplete: boolean;  // true only for client_owned tasks the couple can act on
 };
 
+/** Vendor-owned task projected into the portal (not an event_tasks row). */
+export type PortalVendorTask = {
+  id: string;
+  title: string;
+  notes: string | null;
+  dueDate: string | null;
+  status: "pending" | "complete";
+  coupleVisibility: "visible" | "owned";
+  completedAt: string | null;
+  completedBy: "couple" | "vendor" | null;
+  vendorId: string;
+  vendorName: string;
+  canComplete: boolean;
+  attachments: {
+    id: string;
+    name: string;
+    storageUrl: string;
+    mimeType: string | null;
+  }[];
+};
+
 // Program 4, Initiative D, Phase 4 (2026-07-23) — "Your Venue Team" card.
 export type PortalVenueTeamMember = {
   id: string;
@@ -118,6 +139,10 @@ export type PortalTimelineEntry = {
   title: string;
   description: string | null;
   entryTime: string | null;
+  /** Optional end time ("HH:MM"); null when unset. */
+  endTime: string | null;
+  /** 0-based calendar day from event_date (multi-day events). */
+  dayOffset: number;
   sectionId: string | null;
   sortOrder: number;
   owner: "venue" | "client";

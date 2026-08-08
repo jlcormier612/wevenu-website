@@ -53,12 +53,12 @@ export function buildUnifiedTaskList(input: {
   const out: UnifiedTask[] = [];
 
   for (const t of input.venueTasks) {
-    if (t.status === "complete") continue;
+    const done = t.status === "complete";
     out.push({
       id: `task_${t.id}`, kind: "venue_task", title: t.title, description: t.description,
-      dueDate: t.dueDate, daysOffset: t.daysOffset, dueDateLocked: false, completed: false, targetSection: "tasks",
-      actionLabel: t.canComplete ? "Mark complete" : "View",
-      completableHere: t.canComplete,
+      dueDate: t.dueDate, daysOffset: t.daysOffset, dueDateLocked: false, completed: done, targetSection: "tasks",
+      actionLabel: done ? "Done" : t.canComplete ? "Mark complete" : "View",
+      completableHere: !done && t.canComplete,
     });
   }
 

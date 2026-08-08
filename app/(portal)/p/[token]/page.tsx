@@ -7,7 +7,7 @@ import {
   resolveCouplePortalLegalIdentity,
 } from "@/lib/legal/service";
 import type { CouplePortalLegalGateStatus } from "@/lib/legal/types";
-import { resolvePortalContext, resolvePortalTasks, resolvePortalTimeline } from "@/lib/portal/service";
+import { resolvePortalContext, resolvePortalTasks, resolvePortalTimeline, resolvePortalVendorTasks } from "@/lib/portal/service";
 
 type Props = { params: Promise<{ token: string }> };
 
@@ -39,9 +39,10 @@ async function resolvePortalLegalGate(
 
 export default async function PortalPage({ params }: Props) {
   const { token } = await params;
-  const [context, tasks, timeline, legalGate] = await Promise.all([
+  const [context, tasks, vendorTasks, timeline, legalGate] = await Promise.all([
     resolvePortalContext(token),
     resolvePortalTasks(token),
+    resolvePortalVendorTasks(token),
     resolvePortalTimeline(token),
     resolvePortalLegalGate(token),
   ]);
@@ -51,7 +52,7 @@ export default async function PortalPage({ params }: Props) {
 
   return (
     <PortalShell
-      token={token} context={context} initialTasks={tasks}
+      token={token} context={context} initialTasks={tasks} initialVendorTasks={vendorTasks}
       initialTimelineSections={timeline.sections} initialTimelineEntries={timeline.entries}
       initialTimelineLastSubmittedAt={timeline.lastSubmittedAt} initialTimelineHasUnpublishedChanges={timeline.hasUnpublishedChanges}
       initialLegalGate={legalGate}
