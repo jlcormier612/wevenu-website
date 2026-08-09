@@ -817,7 +817,19 @@ export function GalleryGrid({ photos, tc }: { photos: string[]; tc: ThemeConfig 
       boxShadow: shadowFor(tc.shadow),
     };
     if (tc.frameStyle === "polaroid") return { ...base, background: "#fff", padding: "10px 10px 28px", boxShadow: base.boxShadow === "none" ? "0 6px 20px rgba(0,0,0,0.18)" : base.boxShadow };
-    if (tc.frameStyle === "border") return { ...base, border: "6px solid #fff" };
+    if (tc.frameStyle === "border") {
+      // Hairline under the white mat so bordered styles (Film / Luxury /
+      // Gallery Wall) stay legible on light Studio thumbnail backgrounds —
+      // pure white mats previously disappeared against #FAF8F4 / pale Color
+      // Stories. Published pages with darker bands already read; this only
+      // adds a 1px edge, not a new frame vocabulary.
+      const matEdge = "0 0 0 1px rgba(0,0,0,0.12)";
+      return {
+        ...base,
+        border: "6px solid #fff",
+        boxShadow: base.boxShadow === "none" ? matEdge : `${base.boxShadow}, ${matEdge}`,
+      };
+    }
     return base;
   };
   // Two variants: the collage/scrapbook grids give each cell an explicit
@@ -913,11 +925,17 @@ export function GalleryGrid({ photos, tc }: { photos: string[]; tc: ThemeConfig 
             const bandIndex = Math.floor(i / 4);
             const rowShift = bandIndex * bandRowSpan;
             const [rowStart, rowEnd] = row.split(" / ").map(Number);
+            // Ambient collage tilt is part of Magazine's identity (rotation
+            // "subtle"/"scattered"). When Photo Style asks for rotation
+            // "none" (Gallery Wall — framed, axis-aligned salon layering),
+            // respect that so framed vs unframed layered styles don't share
+            // the same tilt signature. No new arrangement type.
+            const ambientTilt = tc.rotation === "none" ? 0 : (i % 2 === 0 ? -1.5 : 1.5);
             return (
               <div key={i} className="overflow-hidden"
                 style={{
                   gridColumn: col, gridRow: `${rowStart + rowShift} / ${rowEnd + rowShift}`, zIndex: z,
-                  borderRadius: tc.photoRadius, ...frame(i, i % 2 === 0 ? -1.5 : 1.5),
+                  borderRadius: tc.photoRadius, ...frame(i, ambientTilt),
                 }}>
                 <img src={url} alt="" style={collageImgStyle} />
               </div>
