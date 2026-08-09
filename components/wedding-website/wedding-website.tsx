@@ -76,9 +76,10 @@ type CollectionConfig = {
   frameStyle: "none" | "border" | "polaroid"; // Photo Style
   captionStyle: "none" | "minimal" | "handwritten"; // Photo Style (dormant — see resolveTheme)
   imageScale: "normal" | "large"; // Photo Style
-  // Photo Style — Wedding Website Visual Expression Pass (2026-08-03),
+  // Photo Style — Wedding Website Visual Expression Pass (2026-08-03) +
+  // Composition Phase B (2026-08-09): sparse / gallery-wall arrangements.
   // gallery-arrangement/per-image treatment, independent of Collection.
-  arrangement: "uniform" | "collage" | "scrapbook";
+  arrangement: "uniform" | "collage" | "scrapbook" | "sparse" | "gallery-wall";
   scalePattern: "uniform" | "alternating" | "hero-emphasis";
   rotation: "none" | "subtle" | "scattered";
   shadow: "none" | "soft" | "lifted";
@@ -948,15 +949,19 @@ export function GalleryGrid({ photos, tc }: { photos: string[]; tc: ThemeConfig 
     tc.scalePattern === "hero-emphasis" &&
     tc.frameStyle === "border" &&
     tc.photoSpacing === "generous";
-  const minimalAsym =
-    (tc.arrangement ?? "uniform") === "uniform" &&
-    (tc.scalePattern ?? "uniform") === "uniform" &&
-    tc.photoRadius === "50%" &&
-    tc.photoSpacing === "generous";
+  // Minimal sparse — gated on arrangement:"sparse" (quiet rectangles + air).
+  // Circles (photoRadius 50%) are no longer a style identity.
+  const sparseQuiet = (tc.arrangement ?? "uniform") === "sparse";
+  // Gallery Wall — dedicated salon-wall arrangement (≠ Magazine collage slots).
+  const galleryWall = tc.arrangement === "gallery-wall";
+  // Wildflower — organic unequal windows via alternating scale + soft radius;
+  // tilt is not required for identity (rotation may be none).
   const wildflowerOrganic =
     (tc.arrangement ?? "uniform") === "uniform" &&
     tc.scalePattern === "alternating" &&
-    tc.rotation === "scattered";
+    tc.frameStyle === "none" &&
+    tc.shadow === "soft" &&
+    parseFloat(String(tc.photoRadius || "0")) >= 0.5;
   const gap = contactSheet ? "0px" : SPACING_GAP[tc.photoSpacing];
   const frame = (i: number, extraRotation = 0): React.CSSProperties => {
     const rot = rotationFor(tc.rotation, i) + extraRotation;
@@ -966,14 +971,12 @@ export function GalleryGrid({ photos, tc }: { photos: string[]; tc: ThemeConfig 
     };
     if (tc.frameStyle === "polaroid") return { ...base, background: "#fff", padding: "10px 10px 28px", boxShadow: base.boxShadow === "none" ? "0 6px 20px rgba(0,0,0,0.18)" : base.boxShadow };
     if (tc.frameStyle === "border") {
-      // Gallery Wall (collage + lifted + no tilt) gets a darker outer edge
-      // so framed salon hangs ≠ Magazine's unframed overlaps.
-      const salonFrame =
-        tc.arrangement === "collage" && tc.rotation === "none" && tc.shadow === "lifted";
+      // Gallery Wall salon frames: white mat + darker outer edge.
+      const salonFrame = galleryWall;
       const matEdge = salonFrame
-        ? "0 0 0 1px rgba(0,0,0,0.35), 0 0 0 3px #1a1510"
+        ? "0 0 0 1px rgba(0,0,0,0.28), 0 0 0 2px #2a241c"
         : "0 0 0 1px rgba(0,0,0,0.12)";
-      const matWidth = contactSheet ? "8px" : salonFrame ? "7px" : "6px";
+      const matWidth = contactSheet ? "8px" : salonFrame ? "8px" : "6px";
       return {
         ...base,
         border: `${matWidth} solid #fff`,
@@ -995,25 +998,40 @@ export function GalleryGrid({ photos, tc }: { photos: string[]; tc: ThemeConfig 
     borderRadius: tc.frameStyle === "polaroid" ? 0 : tc.photoRadius,
   };
 
-  // ── Editorial essay — large portrait + smaller grainy support overlap ──
+  // ── Editorial essay — fashion-spread dominant + quiet support + air ──
   if (editorialEssay && photos.length >= 1) {
     const lead = photos[0]!;
-    const support = photos[1] ?? photos[0]!;
+    const support = photos[1];
     return (
-      <div style={{ position: "relative", width: "100%", maxWidth: "36rem", margin: "0 auto" }}>
-        <div className="overflow-hidden" style={{ width: "78%", marginInline: "0 auto" }}>
+      <div
+        style={{
+          position: "relative",
+          width: "100%",
+          maxWidth: "38rem",
+          margin: "0 auto",
+          padding: "0.35rem 0.5rem 1.25rem",
+          minHeight: support ? "0" : undefined,
+        }}
+      >
+        <div
+          className="overflow-hidden"
+          style={{
+            width: "68%",
+            marginLeft: "4%",
+          }}
+        >
           <img src={lead} alt="" style={{ ...imgStyle, aspectRatio: "4 / 5" }} />
         </div>
-        {photos.length > 1 && (
+        {support && (
           <div
             className="overflow-hidden"
             style={{
               position: "absolute",
-              width: "38%",
-              right: "2%",
-              bottom: "-4%",
+              width: "28%",
+              right: "6%",
+              bottom: "0.35rem",
               zIndex: 2,
-              boxShadow: "0 8px 24px rgba(0,0,0,0.22)",
+              boxShadow: "0 6px 20px rgba(0,0,0,0.14)",
             }}
           >
             <img
@@ -1022,28 +1040,74 @@ export function GalleryGrid({ photos, tc }: { photos: string[]; tc: ThemeConfig 
               style={{
                 ...imgStyle,
                 aspectRatio: "3 / 4",
-                filter: [tc.photoFilter, "grayscale(0.85)", "contrast(1.15)"].filter(Boolean).join(" "),
+                filter: tc.photoFilter || undefined,
+                opacity: 0.96,
               }}
             />
           </div>
         )}
-        <div style={{ height: photos.length > 1 ? "1.75rem" : 0 }} />
       </div>
     );
   }
 
-  // ── Luxury immersive — one dominant matted portrait (+ optional strip) ──
+  // ── Luxury — singular centered fine-art mat (±1 small secondary) ──
   if (luxuryImmersive && photos.length >= 1) {
+    const secondary = photos[1];
     return (
-      <div style={{ maxWidth: "28rem", margin: "0 auto", padding: "0.75rem 0.5rem" }}>
-        <div className="overflow-hidden" style={{ ...frame(0), marginBottom: photos.length > 1 ? "0.85rem" : 0 }}>
+      <div
+        style={{
+          maxWidth: "22rem",
+          margin: "0 auto",
+          padding: secondary ? "0.55rem 0.85rem 0.65rem" : "0.85rem 1.1rem",
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          gap: secondary ? "0.45rem" : 0,
+        }}
+      >
+        <div className="overflow-hidden" style={{ ...frame(0), width: "78%", maxWidth: "15rem" }}>
           <img src={photos[0]} alt="" style={{ ...imgStyle, aspectRatio: "4 / 5" }} />
         </div>
-        {photos.length > 1 && (
-          <div className="grid grid-cols-3" style={{ gap: SPACING_GAP.generous }}>
-            {photos.slice(1, 4).map((url, i) => (
-              <div key={i} className="overflow-hidden" style={frame(i + 1)}>
-                <img src={url} alt="" style={{ ...imgStyle, aspectRatio: "1 / 1" }} />
+        {secondary && (
+          <div className="overflow-hidden" style={{ ...frame(1), width: "28%", maxWidth: "5.25rem" }}>
+            <img src={secondary} alt="" style={{ ...imgStyle, aspectRatio: "1 / 1" }} />
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // ── Midnight cinematic — wide lead + dark field + 1–2 supports ──
+  if (midnightBand && photos.length >= 1) {
+    const supports = photos.length > 1 ? photos.slice(1, Math.min(3, photos.length)) : [];
+    return (
+      <div
+        style={{
+          background: "#0a0a0c",
+          padding: "0.75rem 0.65rem",
+          display: "flex",
+          flexDirection: "column",
+          gap: "0.5rem",
+          minHeight: "100%",
+          boxSizing: "border-box",
+        }}
+      >
+        <div className="overflow-hidden" style={{ flex: supports.length ? "0 0 auto" : 1 }}>
+          <img src={photos[0]} alt="" style={{ ...imgStyle, aspectRatio: "21 / 9", width: "100%" }} />
+        </div>
+        {supports.length > 0 && (
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: supports.length === 1 ? "1fr" : "1fr 1fr",
+              gap: "0.5rem",
+              maxWidth: supports.length === 1 ? "48%" : "100%",
+              marginInline: supports.length === 1 ? "auto" : undefined,
+            }}
+          >
+            {supports.map((url, i) => (
+              <div key={i} className="overflow-hidden">
+                <img src={url!} alt="" style={{ ...imgStyle, aspectRatio: "16 / 10" }} />
               </div>
             ))}
           </div>
@@ -1052,83 +1116,70 @@ export function GalleryGrid({ photos, tc }: { photos: string[]; tc: ThemeConfig 
     );
   }
 
-  // ── Midnight cinematic band — wide lead + three small squares on dark tray ──
-  if (midnightBand && photos.length >= 1) {
-    const strip = photos.length > 1 ? photos.slice(1, 4) : [photos[0], photos[0], photos[0]];
-    while (strip.length < 3) strip.push(photos[0]!);
+  // ── Minimal sparse — 1–2 rectangles + extreme whitespace (quiet luxury) ──
+  if (sparseQuiet && photos.length >= 1) {
+    const lead = photos[0]!;
+    const support = photos[1];
     return (
       <div
         style={{
-          background: "#0a0a0c",
-          padding: "0.65rem",
-          display: "flex",
-          flexDirection: "column",
-          gap: "0.45rem",
-        }}
-      >
-        <div className="overflow-hidden">
-          <img src={photos[0]} alt="" style={{ ...imgStyle, aspectRatio: "21 / 9" }} />
-        </div>
-        <div className="grid grid-cols-3" style={{ gap: "0.45rem" }}>
-          {strip.slice(0, 3).map((url, i) => (
-            <div key={i} className="overflow-hidden">
-              <img src={url!} alt="" style={{ ...imgStyle, aspectRatio: "1 / 1" }} />
-            </div>
-          ))}
-        </div>
-      </div>
-    );
-  }
-
-  // ── Minimal asymmetric — tall portrait + stacked circles + supporting vertical ──
-  if (minimalAsym && photos.length >= 2) {
-    const a = photos[0]!;
-    const b = photos[1]!;
-    const c = photos[2] ?? photos[0]!;
-    const d = photos[3] ?? photos[1]!;
-    return (
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "1.15fr 0.7fr 0.95fr",
-          gap: SPACING_GAP.generous,
-          alignItems: "center",
+          width: "100%",
           maxWidth: "40rem",
           margin: "0 auto",
-          padding: "0.5rem 0.25rem",
+          minHeight: "14rem",
+          padding: "1.75rem 1.5rem 2rem",
+          position: "relative",
+          boxSizing: "border-box",
         }}
       >
-        <div className="overflow-hidden" style={{ borderRadius: tc.photoRadius, gridRow: "1 / 3" }}>
-          <img src={a} alt="" style={{ ...imgStyle, aspectRatio: "3 / 4", borderRadius: tc.photoRadius }} />
+        <div
+          className="overflow-hidden"
+          style={{
+            width: support ? "46%" : "52%",
+            marginLeft: support ? "8%" : "24%",
+            marginTop: "0.25rem",
+          }}
+        >
+          <img src={lead} alt="" style={{ ...imgStyle, aspectRatio: "4 / 5" }} />
         </div>
-        <div style={{ display: "flex", flexDirection: "column", gap: SPACING_GAP.generous, alignItems: "center" }}>
-          <div className="overflow-hidden" style={{ width: "88%", borderRadius: "50%" }}>
-            <img src={b} alt="" style={{ ...imgStyle, aspectRatio: "1 / 1", borderRadius: "50%" }} />
+        {support && (
+          <div
+            className="overflow-hidden"
+            style={{
+              position: "absolute",
+              width: "22%",
+              right: "14%",
+              bottom: "12%",
+            }}
+          >
+            <img src={support} alt="" style={{ ...imgStyle, aspectRatio: "3 / 4" }} />
           </div>
-          <div className="overflow-hidden" style={{ width: "72%", borderRadius: "50%" }}>
-            <img src={c} alt="" style={{ ...imgStyle, aspectRatio: "1 / 1", borderRadius: "50%" }} />
-          </div>
-        </div>
-        <div className="overflow-hidden" style={{ borderRadius: tc.photoRadius }}>
-          <img src={d} alt="" style={{ ...imgStyle, aspectRatio: "4 / 5", borderRadius: tc.photoRadius }} />
-        </div>
+        )}
       </div>
     );
   }
 
-  // ── Wildflower organic cluster — free widths + uneven margins (≠ Scrapbook) ──
+  // ── Wildflower — organic rhythm via unequal windows (no tilt-as-identity) ──
   if (wildflowerOrganic) {
-    const widths = ["58%", "36%", "44%", "50%"];
-    const aspects = ["4 / 5", "1 / 1", "16 / 10", "5 / 6"];
+    const widths = ["54%", "38%", "42%", "48%"];
+    const aspects = ["4 / 5", "5 / 6", "16 / 10", "1 / 1"];
+    const margins = [
+      { marginTop: "0", marginLeft: "2%" },
+      { marginTop: "1.1rem", marginLeft: "4%" },
+      { marginTop: "0.15rem", marginLeft: "10%" },
+      { marginTop: "0.65rem", marginLeft: "0" },
+    ];
     return (
       <div
         style={{
           display: "flex",
           flexWrap: "wrap",
-          justifyContent: "center",
+          justifyContent: "flex-start",
           alignItems: "flex-start",
-          gap: "0.65rem 0.5rem",
-          padding: "0.35rem 0.15rem 0.75rem",
+          gap: "0.75rem 0.65rem",
+          padding: "0.5rem 0.35rem 1rem",
+          maxWidth: "40rem",
+          margin: "0 auto",
         }}
       >
         {photos.map((url, i) => (
@@ -1137,90 +1188,166 @@ export function GalleryGrid({ photos, tc }: { photos: string[]; tc: ThemeConfig 
             className="overflow-hidden"
             style={{
               width: widths[i % widths.length],
-              marginTop: i === 1 ? "1.25rem" : i === 3 ? "0.5rem" : "0",
-              marginLeft: i === 2 ? "6%" : undefined,
+              ...margins[i % margins.length],
               borderRadius: tc.photoRadius,
-              ...frame(i),
+              boxShadow: shadowFor(tc.shadow),
             }}
           >
-            <img src={url} alt="" style={{ ...imgStyle, aspectRatio: aspects[i % aspects.length] }} />
+            <img src={url} alt="" style={{ ...imgStyle, aspectRatio: aspects[i % aspects.length], borderRadius: tc.photoRadius }} />
           </div>
         ))}
       </div>
     );
   }
 
-  // ── Magazine: true layered collage — mixed scale, overlap, hierarchy ──
-  if (tc.arrangement === "collage") {
-    const n = photos.length;
-    const ROW_UNIT = "10cqw";
-    const ROW_GAP = "1.5cqw";
-    const patterns: Record<number, [string, string, number][]> = {
-      1: [["1 / 6", "1 / 8", 1]],
-      2: [
-        ["1 / 5", "1 / 7", 1],
-        ["4 / 7", "4 / 8", 2],
-      ],
-      3: [
-        ["1 / 5", "1 / 7", 1],
-        ["4 / 7", "1 / 5", 2],
-        ["4 / 7", "5 / 9", 3],
-      ],
-      4: [
-        ["1 / 5", "1 / 7", 1],
-        ["4 / 7", "1 / 5", 2],
-        ["1 / 4", "7 / 11", 2],
-        ["4 / 7", "6 / 10", 3],
-      ],
-    };
-    const band4 = patterns[4];
-    const bandRowSpan = Math.max(...band4.map(([, row]) => parseInt(row.split(" / ")[1], 10))) - 1;
-    const collageImgStyle: React.CSSProperties = { ...imgStyleFill, objectPosition: "50% 35%" };
+  // ── Gallery Wall — non-overlap framed salon (mats + deliberate air) ──
+  if (galleryWall) {
+    // Varied upright hangs; never shared Magazine collage slot ranges.
+    const n = Math.min(photos.length, 4);
+    const slots: { width: string; aspect: string; alignSelf?: string }[] =
+      n <= 1
+        ? [{ width: "48%", aspect: "4 / 5", alignSelf: "center" }]
+        : n === 2
+          ? [
+              { width: "38%", aspect: "4 / 5", alignSelf: "flex-end" },
+              { width: "44%", aspect: "5 / 6", alignSelf: "flex-start" },
+            ]
+          : n === 3
+            ? [
+                { width: "34%", aspect: "4 / 5", alignSelf: "center" },
+                { width: "28%", aspect: "1 / 1", alignSelf: "flex-end" },
+                { width: "30%", aspect: "5 / 6", alignSelf: "flex-start" },
+              ]
+            : [
+                { width: "30%", aspect: "4 / 5", alignSelf: "flex-end" },
+                { width: "36%", aspect: "5 / 6", alignSelf: "flex-start" },
+                { width: "26%", aspect: "1 / 1", alignSelf: "center" },
+                { width: "28%", aspect: "4 / 5", alignSelf: "flex-start" },
+              ];
     return (
-      <div style={{ containerType: "inline-size" }}>
-        <div
-          className="grid"
-          style={{
-            gridTemplateColumns: "repeat(6, 1fr)", gridAutoRows: ROW_UNIT,
-            columnGap: "0.75rem", rowGap: ROW_GAP,
-            overflow: "hidden",
-          }}
-        >
-          {photos.map((url, i) => {
-            const band = patterns[Math.min(n, 4) as 1 | 2 | 3 | 4];
-            const [col, row, z] = band[i % band.length];
-            const bandIndex = Math.floor(i / 4);
-            const rowShift = bandIndex * bandRowSpan;
-            const [rowStart, rowEnd] = row.split(" / ").map(Number);
-            const ambientTilt = tc.rotation === "none" ? 0 : (i % 2 === 0 ? -1.5 : 1.5);
-            return (
-              <div key={i} className="overflow-hidden"
-                style={{
-                  gridColumn: col, gridRow: `${rowStart + rowShift} / ${rowEnd + rowShift}`, zIndex: z,
-                  borderRadius: tc.photoRadius, ...frame(i, ambientTilt),
-                }}>
-                <img src={url} alt="" style={collageImgStyle} />
-              </div>
-            );
-          })}
-        </div>
+      <div
+        style={{
+          display: "flex",
+          flexWrap: "wrap",
+          justifyContent: "center",
+          alignItems: "flex-end",
+          columnGap: "1.15rem",
+          rowGap: "1.35rem",
+          padding: "1.1rem 0.85rem 1.25rem",
+          maxWidth: "42rem",
+          margin: "0 auto",
+        }}
+      >
+        {photos.slice(0, 4).map((url, i) => {
+          const slot = slots[i] ?? slots[slots.length - 1]!;
+          return (
+            <div
+              key={i}
+              className="overflow-hidden shrink-0"
+              style={{
+                width: slot.width,
+                alignSelf: slot.alignSelf as React.CSSProperties["alignSelf"],
+                ...frame(i),
+              }}
+            >
+              <img src={url} alt="" style={{ ...imgStyle, aspectRatio: slot.aspect }} />
+            </div>
+          );
+        })}
       </div>
     );
   }
 
-  // ── Scrapbook: collected, tactile, overlapping-adjacent placement ──
-  if (tc.arrangement === "scrapbook") {
+  // ── Magazine spread — designed page hierarchy (≠ salon, ≠ scrapbook) ──
+  if (tc.arrangement === "collage") {
+    const n = Math.min(photos.length, 4);
+    // Cover + subordinate grid — real magazine page, not overlapping scrap slots.
+    const collageImgStyle: React.CSSProperties = { ...imgStyleFill, objectPosition: "50% 35%" };
+    if (n <= 1) {
+      return (
+        <div style={{ padding: "0.35rem", maxWidth: "36rem", margin: "0 auto" }}>
+          <div className="overflow-hidden" style={{ borderRadius: tc.photoRadius, ...frame(0) }}>
+            <img src={photos[0]} alt="" style={{ ...imgStyle, aspectRatio: "4 / 5" }} />
+          </div>
+        </div>
+      );
+    }
     return (
-      <div className="flex flex-wrap justify-center" style={{ rowGap: "2rem", paddingInline: "1.5rem" }}>
-        {photos.map((url, i) => (
-          <div key={i} className="overflow-hidden shrink-0"
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "1.35fr 1fr",
+          gap: "0.55rem 0.65rem",
+          maxWidth: "40rem",
+          margin: "0 auto",
+          padding: "0.35rem 0.25rem",
+          alignItems: "stretch",
+        }}
+      >
+        <div
+          className="overflow-hidden"
+          style={{
+            gridRow: n >= 3 ? "1 / 3" : "1 / 2",
+            borderRadius: tc.photoRadius,
+            ...frame(0),
+          }}
+        >
+          <img src={photos[0]} alt="" style={{ ...collageImgStyle, aspectRatio: undefined, height: "100%", minHeight: "12rem" }} />
+        </div>
+        {photos.slice(1, 4).map((url, i) => (
+          <div
+            key={i}
+            className="overflow-hidden"
             style={{
-              width: "42%", maxWidth: "260px",
-              marginTop: i % 3 === 1 ? "1.5rem" : "0",
-              marginLeft: i > 0 ? "-1.25rem" : "0",
-              zIndex: i,
-              ...frame(i),
-            }}>
+              borderRadius: tc.photoRadius,
+              ...frame(i + 1),
+              // Subtle page hierarchy only — no ambient tilt identity.
+            }}
+          >
+            <img
+              src={url}
+              alt=""
+              style={{
+                ...collageImgStyle,
+                aspectRatio: i === 0 && n === 2 ? "4 / 5" : "5 / 4",
+                height: n >= 3 && i < 2 ? "100%" : undefined,
+              }}
+            />
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  // ── Scrapbook — elegant tactile page, restrained imperfect (not chaos) ──
+  if (tc.arrangement === "scrapbook") {
+    const tilts = [-2.2, 1.6, -1.1, 2.4];
+    return (
+      <div
+        className="flex flex-wrap justify-center"
+        style={{
+          rowGap: "1.35rem",
+          columnGap: "0.35rem",
+          paddingInline: "1.75rem",
+          paddingTop: "0.65rem",
+          paddingBottom: "1rem",
+          maxWidth: "38rem",
+          margin: "0 auto",
+        }}
+      >
+        {photos.map((url, i) => (
+          <div
+            key={i}
+            className="overflow-hidden shrink-0"
+            style={{
+              width: i % 3 === 0 ? "44%" : "40%",
+              maxWidth: "240px",
+              marginTop: i === 1 ? "0.85rem" : i === 3 ? "0.4rem" : "0",
+              marginLeft: i > 0 ? "-0.55rem" : "0",
+              zIndex: i + 1,
+              ...frame(i, tilts[i % tilts.length]! - rotationFor(tc.rotation, i)),
+            }}
+          >
             <img src={url} alt="" style={{ ...imgStyle, aspectRatio: "1 / 1" }} />
           </div>
         ))}
@@ -1229,6 +1356,7 @@ export function GalleryGrid({ photos, tc }: { photos: string[]; tc: ThemeConfig 
   }
 
   // ── Uniform arrangement — Film / Modern (and defensive fallbacks) ──
+  // LEAVE Film contact-sheet + Modern equal grid (B10 / B11).
   const spanFor = (i: number, total: number): string => {
     if (tc.scalePattern === "hero-emphasis" && i === 0 && total > 1) return "col-span-2 row-span-2";
     if (tc.scalePattern === "alternating" && i % 3 === 1) return "col-span-2";

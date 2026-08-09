@@ -258,9 +258,9 @@ export type CatalogPhotoStyle = {
     // Wedding Website Visual Expression Pass (2026-08-03) — how the
     // Photo Gallery's photographs are arranged/treated, independent of
     // the Collection's own section-shell composition. `arrangement`
-    // "collage"/"scrapbook" replace the per-image grid/masonry/film-strip
-    // loop entirely for that gallery instance; "uniform" decorates it.
-    arrangement?: "uniform" | "collage" | "scrapbook";
+    // "collage"/"scrapbook"/"sparse"/"gallery-wall" replace the per-image
+    // grid/masonry/film-strip loop for that gallery instance; "uniform" decorates it.
+    arrangement?: "uniform" | "collage" | "scrapbook" | "sparse" | "gallery-wall";
     scalePattern?: "uniform" | "alternating" | "hero-emphasis";
     rotation?: "none" | "subtle" | "scattered";
     shadow?: "none" | "soft" | "lifted";

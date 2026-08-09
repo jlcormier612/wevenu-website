@@ -1,0 +1,95 @@
+{
+  "stylesFound": [
+    "Editorial",
+    "Magazine",
+    "Film",
+    "Minimal",
+    "Modern",
+    "Luxury",
+    "Scrapbook",
+    "Wildflower",
+    "Midnight",
+    "Gallery Wall"
+  ],
+  "arrangements": {
+    "editorial": "uniform",
+    "magazine": "collage",
+    "film": "uniform",
+    "minimal": "sparse",
+    "modern": "uniform",
+    "luxury": "uniform",
+    "scrapbook": "scrapbook",
+    "wildflower": "uniform",
+    "midnight": "uniform",
+    "gallery_wall": "gallery-wall"
+  },
+  "pairs": {
+    "pair-editorial-luxury": true,
+    "pair-editorial-magazine": true,
+    "pair-film-modern": true,
+    "pair-magazine-gallery-wall": true,
+    "pair-scrapbook-gallery-wall": true,
+    "pair-scrapbook-wildflower": true,
+    "pair-wildflower-gallery-wall": true,
+    "pair-midnight-film": true,
+    "pair-midnight-luxury": true,
+    "pair-minimal-luxury": true
+  },
+  "selectPersist": {
+    "minimalReload": {
+      "hasRing": false,
+      "cls": "w-full flex items-center gap-4 p-4 text-left group"
+    }
+  },
+  "livePreview": {
+    "showsGalleryWall": true,
+    "hasLivePreview": true
+  },
+  "labelClipChecks": {
+    "Editorial": {
+      "ok": true,
+      "specimenH": 180,
+      "labelTop": 203,
+      "specimenBottom": 203,
+      "gap": 0,
+      "nameVisible": true,
+      "descText": "Fashion-spread hierarchy with quiet support",
+      "overflowHidden": true
+    },
+    "Minimal": {
+      "ok": true,
+      "specimenH": 180,
+      "labelTop": 458,
+      "specimenBottom": 458,
+      "gap": 0,
+      "nameVisible": true,
+      "descText": "Sparse quiet frames with breathing room",
+      "overflowHidden": true
+    },
+    "Gallery Wall": {
+      "ok": true,
+      "specimenH": 180,
+      "labelTop": 1223,
+      "specimenBottom": 1223,
+      "gap": 0,
+      "nameVisible": true,
+      "descText": "Curated salon wall with deliberate spacing",
+      "overflowHidden": true
+    },
+    "Scrapbook": {
+      "ok": true,
+      "specimenH": 180,
+      "labelTop": 968,
+      "specimenBottom": 968,
+      "gap": 0,
+      "nameVisible": true,
+      "descText": "Elegant memory page with soft layers",
+      "overflowHidden": true
+    }
+  },
+  "notes": [
+    "Catalog photo styles: 10",
+    "Minimal arrangement=sparse",
+    "Gallery Wall arrangement=gallery-wall"
+  ]
+}

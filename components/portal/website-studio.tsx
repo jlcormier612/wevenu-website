@@ -654,13 +654,15 @@ function SetupWizard({
             const isSelected = p.id === currentPhotoStyle?.id;
             return (
               <button key={p.id} type="button" onClick={() => setPhotoStyleId(p.id)}
-                className={`rounded-2xl border overflow-hidden text-left transition-all hover:scale-[1.01] ${isSelected ? "ring-2 ring-primary ring-offset-2 border-primary" : "border-border"}`}>
-                <div className="h-[156px] bg-[#FAF8F4]">
+                className={`rounded-2xl border overflow-hidden text-left transition-all hover:scale-[1.01] flex flex-col ${isSelected ? "ring-2 ring-primary ring-offset-2 border-primary" : "border-border"}`}>
+                {/* Specimen region — height must equal PhotoStylePreview height so the
+                    ScaledThumbnail never paints into the reserved label footer. */}
+                <div className="h-[188px] shrink-0 overflow-hidden bg-[#FAF8F4]">
                   {currentCollection && <PhotoStylePreview collection={currentCollection} photoStyle={p} photos={previewGalleryPhotos} width={226} height={188} naturalWidth={420} />}
                 </div>
-                <div className="px-3 py-2.5 bg-white border-t border-black/5">
-                  <p className="text-xs font-bold text-heading">{p.name}</p>
-                  <p className="text-[10px] text-muted-foreground mt-0.5">{p.description}</p>
+                <div className="px-3 py-2.5 bg-white border-t border-black/5 shrink-0 min-h-[3.5rem]">
+                  <p className="text-xs font-bold text-heading line-clamp-1">{p.name}</p>
+                  <p className="text-[10px] text-muted-foreground mt-0.5 line-clamp-2">{p.description}</p>
                 </div>
               </button>
             );

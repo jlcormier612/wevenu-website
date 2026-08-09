@@ -203,24 +203,29 @@ export function PhotoStylePreview({ collection, photoStyle, photos, width, heigh
   };
   const tc = resolveTheme(buildPreviewSite({ collection: previewCollection, photoStyle }));
   if (photos.length === 0) return <div className="w-full h-full bg-muted" />;
-  // Cap at 4 — enough for collage/scrapbook/hero-emphasis / cinematic band.
-  // Midnight/Luxury/Minimal benefit from seeing all four silhouettes.
+  // Cap at 4 — enough for collage/scrapbook/sparse/salon / hero bands.
   const previewPhotos = photos.slice(0, 4);
-  // Midnight's cinematic band and Minimal's asymmetric essay need a slightly
-  // taller natural frame so arrangement isn't cropped into a single face.
-  // Card CSS height may vary — composition over uniform thumbnail aspect.
+  // Tall compositions need a slightly taller natural frame so arrangement
+  // isn't cropped into a single face. Card CSS height may vary.
   const darkStyle = /brightness\(\s*0\.[0-7]/.test(photoStyle.tokens.photoFilter || "");
+  const arr = photoStyle.tokens.arrangement;
   const tallComposition =
     photoStyle.tokens.scalePattern === "hero-emphasis" ||
-    photoStyle.tokens.photoRadius === "50%" ||
-    photoStyle.tokens.arrangement === "scrapbook" ||
-    photoStyle.tokens.arrangement === "collage" ||
-    (photoStyle.tokens.scalePattern === "alternating" && photoStyle.tokens.rotation === "scattered") ||
+    arr === "sparse" ||
+    arr === "scrapbook" ||
+    arr === "collage" ||
+    arr === "gallery-wall" ||
+    (photoStyle.tokens.scalePattern === "alternating" && photoStyle.tokens.shadow === "soft") ||
     darkStyle;
   const effectiveNatural = tallComposition ? Math.max(naturalWidth, 400) : naturalWidth;
   return (
     <ScaledThumbnail width={width} height={height} naturalWidth={effectiveNatural}>
-      <div style={{ background: darkStyle ? "#0a0a0c" : tc.bg, padding: darkStyle ? "0.25rem" : "0.4rem" }}>
+      <div style={{
+        background: darkStyle ? "#0a0a0c" : tc.bg,
+        padding: darkStyle ? "0.35rem" : "0.4rem",
+        minHeight: "100%",
+        boxSizing: "border-box",
+      }}>
         <GalleryGrid photos={previewPhotos} tc={tc} />
       </div>
     </ScaledThumbnail>

@@ -1465,13 +1465,15 @@ function ThemeStudio({ site, onUpdate }: { site: CoupleWebsite; onUpdate: (patch
             const isSelected = p.id === currentPhotoStyle?.id;
             return (
               <button key={p.id} type="button" onClick={() => onUpdate({ photoStyleId: p.id })}
-                className={`rounded-xl border overflow-hidden text-left transition-all ${isSelected ? "ring-2 ring-ring ring-offset-1 border-ring" : "border-border"}`}>
-                <div className="h-[150px]">
+                className={`rounded-xl border overflow-hidden text-left transition-all flex flex-col ${isSelected ? "ring-2 ring-ring ring-offset-1 border-ring" : "border-border"}`}>
+                {/* Specimen region — height must equal PhotoStylePreview height so the
+                    ScaledThumbnail never paints into the reserved label footer. */}
+                <div className="h-[180px] shrink-0 overflow-hidden bg-[#FAF8F4]">
                   {currentCollection && <PhotoStylePreview collection={currentCollection} photoStyle={p} photos={previewGalleryPhotos} width={170} height={180} naturalWidth={400} />}
                 </div>
-                <div className="px-3 py-2 bg-card border-t border-border/50">
-                  <p className="text-xs font-semibold text-heading">{p.name}</p>
-                  <p className="text-[10px] text-muted-foreground mt-0.5">{p.description}</p>
+                <div className="px-3 py-2 bg-card border-t border-border/50 shrink-0 min-h-[3.25rem]">
+                  <p className="text-xs font-semibold text-heading line-clamp-1">{p.name}</p>
+                  <p className="text-[10px] text-muted-foreground mt-0.5 line-clamp-2">{p.description}</p>
                 </div>
               </button>
             );
