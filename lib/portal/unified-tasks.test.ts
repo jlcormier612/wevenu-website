@@ -338,7 +338,7 @@ describe("verified action completion policy", () => {
       { trigger: "contract_signed", section: "documents", label: "Review & sign", focus: "sign" },
       { trigger: "payment_received", section: "payments", label: "Pay now", focus: null },
       { trigger: "questionnaire_submitted", section: "questionnaire", label: "Complete form", focus: "form" },
-      { trigger: "document_uploaded_insurance", section: "documents", label: "Upload insurance", focus: null },
+      { trigger: "document_uploaded_insurance", section: "documents", label: "Upload insurance", focus: "upload" },
     ];
 
     for (const c of cases) {

@@ -18,7 +18,8 @@ export type PortalWorkspaceFocus =
   | "pick"
   | "submit"
   | "sign"
-  | "form";
+  | "form"
+  | "upload";
 
 const FOCUS_VALUES = new Set<PortalWorkspaceFocus>([
   "finalize",
@@ -26,6 +27,7 @@ const FOCUS_VALUES = new Set<PortalWorkspaceFocus>([
   "submit",
   "sign",
   "form",
+  "upload",
 ]);
 
 const PORTAL_SECTIONS = new Set<string>([

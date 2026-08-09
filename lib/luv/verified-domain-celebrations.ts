@@ -14,13 +14,16 @@ export type VerifiedCelebrationTrigger =
   | "seating_submitted"
   | "timeline_submitted"
   | "contract_signed"
-  | "questionnaire_submitted";
+  | "questionnaire_submitted"
+  | "document_uploaded_insurance";
 
 /**
  * Triggers intentionally NOT celebrated here (unsafe / unsupported):
  * - payment_received — any paid line; too broad (final_payment_received is separate)
- * - document_uploaded_insurance — couple path incomplete (Impl 1 STOP)
  * - null / Mark complete ack / Share timeline / Leave a review / package
+ *
+ * document_uploaded_insurance is celebrated only after the couple path proves
+ * classified + shared insurance (Impl 5) — not on venue/vendor docs alone.
  */
 const TRIGGER_TO_CELEBRATION: Record<VerifiedCelebrationTrigger, CelebrationType> = {
   guest_count_finalized: "guest_list_submitted",
@@ -29,6 +32,7 @@ const TRIGGER_TO_CELEBRATION: Record<VerifiedCelebrationTrigger, CelebrationType
   timeline_submitted: "timeline_submitted",
   contract_signed: "contract_signed",
   questionnaire_submitted: "questionnaire_submitted",
+  document_uploaded_insurance: "insurance_uploaded",
 };
 
 export function celebrationTypeForVerifiedTrigger(

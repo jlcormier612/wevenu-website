@@ -95,8 +95,8 @@ const TRIGGER_WORKSPACE: Record<
   // Payment already lands on Payments; no within-section focus change in Impl 3.
   payment_received: { section: "payments", actionLabel: "Pay now", focus: null },
   questionnaire_submitted: { section: "questionnaire", actionLabel: "Complete form", focus: "form" },
-  // Insurance: section only — couple completion path out of scope (no invent).
-  document_uploaded_insurance: { section: "documents", actionLabel: "Upload insurance", focus: null },
+  // Insurance: Documents upload control (Impl 5 — classified + share → trigger).
+  document_uploaded_insurance: { section: "documents", actionLabel: "Upload insurance", focus: "upload" },
   document_uploaded: { section: "documents", actionLabel: "Upload", focus: null },
 };
 

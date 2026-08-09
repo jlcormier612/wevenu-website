@@ -26,14 +26,14 @@ describe("celebrationTypeForVerifiedTrigger — eligible verified domains", () =
   it("maps questionnaire_submitted", () => {
     assert.equal(celebrationTypeForVerifiedTrigger("questionnaire_submitted"), "questionnaire_submitted");
   });
+  it("maps document_uploaded_insurance → insurance_uploaded (Impl 5 couple path)", () => {
+    assert.equal(celebrationTypeForVerifiedTrigger("document_uploaded_insurance"), "insurance_uploaded");
+  });
 });
 
 describe("celebrationTypeForVerifiedTrigger — must not invent celebrations", () => {
   it("does not map payment_received (unsafe / over-broad)", () => {
     assert.equal(celebrationTypeForVerifiedTrigger("payment_received"), null);
-  });
-  it("does not map insurance document upload", () => {
-    assert.equal(celebrationTypeForVerifiedTrigger("document_uploaded_insurance"), null);
   });
   it("does not map null / unknown / title-ish invention", () => {
     assert.equal(celebrationTypeForVerifiedTrigger(null), null);

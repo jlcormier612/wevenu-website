@@ -54,12 +54,13 @@ describe("portal workspace hash routing", () => {
     });
   });
 
-  it("formats deterministic hashes for the six domain targets", () => {
+  it("formats deterministic hashes for domain targets including insurance upload", () => {
     assert.equal(formatPortalHash("guests", "finalize"), "guests/finalize");
     assert.equal(formatPortalHash("vendors", "pick"), "vendors/pick");
     assert.equal(formatPortalHash("seating", "submit"), "seating/submit");
     assert.equal(formatPortalHash("timeline", "submit"), "timeline/submit");
     assert.equal(formatPortalHash("documents", "sign"), "documents/sign");
+    assert.equal(formatPortalHash("documents", "upload"), "documents/upload");
     assert.equal(formatPortalHash("questionnaire", "form"), "questionnaire/form");
     assert.equal(formatPortalHash("payments", null), "payments");
   });
@@ -68,9 +69,9 @@ describe("portal workspace hash routing", () => {
     assert.equal(portalFocusElementId("guests", "finalize"), "portal-focus-guests-finalize");
     assert.equal(portalFocusElementId("seating", "submit"), "portal-focus-seating-submit");
     assert.equal(portalFocusElementId("timeline", "submit"), "portal-focus-timeline-submit");
+    assert.equal(portalFocusElementId("documents", "upload"), "portal-focus-documents-upload");
   });
 });
-
 describe("workspace routing + completion safety", () => {
   const due = "2026-09-01";
   const empty = {
@@ -92,12 +93,14 @@ describe("workspace routing + completion safety", () => {
         task({ id: "4", title: "Submit timeline", status: "pending", dueDate: due, autoCompleteTrigger: "timeline_submitted" }),
         task({ id: "5", title: "Sign contract", status: "pending", dueDate: due, autoCompleteTrigger: "contract_signed" }),
         task({ id: "6", title: "Questionnaire", status: "pending", dueDate: due, autoCompleteTrigger: "questionnaire_submitted" }),
+        task({ id: "7", title: "Purchase event insurance", status: "pending", dueDate: due, autoCompleteTrigger: "document_uploaded_insurance" }),
       ],
     });
     for (const row of list) {
       assert.equal(row.completableHere, false, row.id);
       assert.ok(row.targetFocus, row.id);
     }
+    assert.equal(list.find((t) => t.id === "task_7")?.targetFocus, "upload");
   });
 
   it("Home compact label stays Review while preserving underlying focus routing", () => {

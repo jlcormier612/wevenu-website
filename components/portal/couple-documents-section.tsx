@@ -1,8 +1,13 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { coupleCelebrationMessage } from "@/lib/luv/celebrations";
+import { celebrateLuv } from "@/lib/luv/celebrate";
+import { shouldPresentVerifiedCelebration } from "@/lib/luv/verified-domain-celebrations";
+import { portalFocusElementId } from "@/lib/portal/workspace-routing";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -255,51 +260,121 @@ function QuestionnaireCard({ status, onNavigate }: { status: string; onNavigate:
 
 function UploadRow({ token, onDone }: { token: string; onDone: () => void }) {
   const [uploading, setUploading] = useState(false);
+  const [isInsurance, setIsInsurance] = useState(false);
   const [shareWithVenue, setShareWithVenue] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
+  // Deep-link from Tasks "Upload insurance" → classify + require share.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const applyFocus = () => {
+      const hash = window.location.hash.replace(/^#/, "");
+      if (hash === "documents/upload") {
+        setIsInsurance(true);
+        setShareWithVenue(true);
+      }
+    };
+    applyFocus();
+    window.addEventListener("hashchange", applyFocus);
+    return () => window.removeEventListener("hashchange", applyFocus);
+  }, []);
+
+  const handleInsuranceToggle = (checked: boolean) => {
+    setIsInsurance(checked);
+    if (checked) setShareWithVenue(true);
+  };
+
+  const handleShareToggle = (checked: boolean) => {
+    if (isInsurance && !checked) {
+      toast.error("Event insurance must be shared with your venue.");
+      return;
+    }
+    setShareWithVenue(checked);
+  };
+
   const handleFile = async (file: File) => {
+    if (isInsurance && !shareWithVenue) {
+      toast.error("Share with venue is required for event insurance.");
+      return;
+    }
     setUploading(true);
     try {
       const formData = new FormData();
       formData.append("file", file);
       formData.append("token", token);
-      formData.append("category", "document");
-      formData.append("visibility", shareWithVenue ? "venue" : "private");
+      formData.append("type", "document");
 
       const res = await fetch("/api/portal/upload", { method: "POST", body: formData });
-      const json = await res.json();
-      if (json.url) {
-        await fetch("/api/portal/documents", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            token,
-            name: file.name.replace(/\.[^.]+$/, ""),
-            fileUrl: json.url,
-            fileSize: file.size,
-            mimeType: file.type,
-            shareWithVenue,
-            sourceType: "upload",
-          }),
-        });
-        onDone();
+      const json = await res.json() as { ok?: boolean; url?: string; error?: string };
+      if (!json.url) {
+        toast.error(json.error ?? "Upload failed. Please try again.");
+        return;
       }
+
+      const docRes = await fetch("/api/portal/documents", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          token,
+          name: file.name.replace(/\.[^.]+$/, ""),
+          fileUrl: json.url,
+          fileSize: file.size,
+          mimeType: file.type || (file.name.toLowerCase().endsWith(".pdf") ? "application/pdf" : null),
+          shareWithVenue: isInsurance ? true : shareWithVenue,
+          sourceType: isInsurance ? "insurance" : "upload",
+        }),
+      });
+      const docJson = await docRes.json() as { id?: string; celebrated?: boolean; error?: string };
+      if (!docRes.ok || !docJson.id) {
+        toast.error(
+          docJson.error === "insurance_requires_share"
+            ? "Share with venue is required for event insurance."
+            : (docJson.error ?? "Could not save document."),
+        );
+        return;
+      }
+      if (shouldPresentVerifiedCelebration(docJson.celebrated)) {
+        celebrateLuv(coupleCelebrationMessage("insurance_uploaded"));
+      }
+      onDone();
     } finally {
       setUploading(false);
     }
   };
 
   return (
-    <div className="flex items-center gap-3">
+    <div
+      id={portalFocusElementId("documents", "upload")}
+      className="flex flex-col items-end gap-2 sm:flex-row sm:items-center sm:gap-3"
+    >
       <label className="flex items-center gap-2 text-xs text-gray-500 cursor-pointer hover:text-gray-700">
-        <input type="checkbox" checked={shareWithVenue} onChange={(e) => setShareWithVenue(e.target.checked)} className="rounded" />
-        Share with venue
+        <input
+          type="checkbox"
+          checked={isInsurance}
+          onChange={(e) => handleInsuranceToggle(e.target.checked)}
+          className="rounded"
+        />
+        Event insurance
       </label>
-      <input ref={fileRef} type="file" className="hidden"
-        onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFile(f); e.target.value = ""; }} />
+      <label className="flex items-center gap-2 text-xs text-gray-500 cursor-pointer hover:text-gray-700">
+        <input
+          type="checkbox"
+          checked={shareWithVenue || isInsurance}
+          onChange={(e) => handleShareToggle(e.target.checked)}
+          className="rounded"
+          disabled={isInsurance}
+        />
+        Share with venue{isInsurance ? " (required)" : ""}
+      </label>
+      <input
+        ref={fileRef}
+        type="file"
+        accept="image/*,.pdf,application/pdf"
+        className="hidden"
+        onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFile(f); e.target.value = ""; }}
+      />
       <Button size="sm" variant="outline" disabled={uploading} onClick={() => fileRef.current?.click()} className="text-xs">
-        {uploading ? "Uploading…" : "+ Upload document"}
+        {uploading ? "Uploading…" : isInsurance ? "+ Upload insurance" : "+ Upload document"}
       </Button>
     </div>
   );

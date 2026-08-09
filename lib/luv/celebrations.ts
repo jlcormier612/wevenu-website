@@ -18,7 +18,8 @@ export type CelebrationType =
   | "website_published"
   | "vendor_list_submitted"
   | "seating_submitted"
-  | "questionnaire_submitted";
+  | "questionnaire_submitted"
+  | "insurance_uploaded";
 
 /** Couple-facing milestones — first person, warm, brief. */
 export function coupleCelebrationMessage(
@@ -39,6 +40,8 @@ export function coupleCelebrationMessage(
       return "Your seating plan is submitted. 🎉";
     case "questionnaire_submitted":
       return "Your final details are in. 🎉";
+    case "insurance_uploaded":
+      return "Your event insurance is with your venue. 🎉";
   }
 }
 
@@ -61,5 +64,7 @@ export function coordinatorCelebrationMessage(type: CelebrationType, coupleName:
       return `${coupleName} submitted their seating plan. 🎉`;
     case "questionnaire_submitted":
       return `${coupleName} submitted their final details. 🎉`;
+    case "insurance_uploaded":
+      return `${coupleName} shared their event insurance. 🎉`;
   }
 }
