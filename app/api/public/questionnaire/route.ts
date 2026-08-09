@@ -35,5 +35,6 @@ export async function POST(request: NextRequest) {
   if (error || !data?.ok) {
     return NextResponse.json({ ok: false, message: data?.error ?? "Could not submit." }, { status: 400 });
   }
-  return NextResponse.json({ ok: true });
+  const celebrated = (data as { celebrated?: boolean }).celebrated === true;
+  return NextResponse.json({ ok: true, celebrated });
 }

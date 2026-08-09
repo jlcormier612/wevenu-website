@@ -23,6 +23,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { FloorPlanShapeSvg, DISPLAY_SHAPE_STYLE } from "@/components/floor-plan/floor-plan-shapes";
+import { celebrateLuv } from "@/lib/luv/celebrate";
+import { coupleCelebrationMessage } from "@/lib/luv/celebrations";
 import { getSeatingObservation } from "@/lib/luv/portal-observations";
 import {
   ACCESSIBILITY_LABELS, DIETARY_EMOJI, MEAL_EMOJI,
@@ -783,9 +785,14 @@ export default function SeatingSection({ token }: { token: string }) {
         method: "POST", headers: { "content-type": "application/json" },
         body: JSON.stringify({ token, floorPlanId }),
       });
-      const json = await res.json() as { ok?: boolean; error?: string };
+      const json = await res.json() as { ok?: boolean; error?: string; celebrated?: boolean };
       if (json.ok) {
-        toast.success("🎉 Your seating plan is submitted — your venue has it now.");
+        // Gate visual celebration on durable luv_celebrations insert (first submit only).
+        if (json.celebrated) {
+          celebrateLuv(coupleCelebrationMessage("seating_submitted"));
+        } else {
+          toast.success("Your seating plan is submitted — your venue has it now.");
+        }
         setConfirmingSubmit(false);
         fetch(`/api/portal/seating/floor-plans?token=${token}`).then(r => r.json())
           .then((d: { floorPlans?: SeatingFloorPlanSummary[] }) => setFloorPlans(d.floorPlans ?? []));

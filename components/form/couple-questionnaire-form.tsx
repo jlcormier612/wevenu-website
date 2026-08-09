@@ -13,6 +13,9 @@ import * as React from "react";
 
 import { CheckCircle, Loader2 } from "lucide-react";
 
+import { celebrateLuv } from "@/lib/luv/celebrate";
+import { coupleCelebrationMessage } from "@/lib/luv/celebrations";
+
 type QData = {
   questionnaire_id: string;
   event_name: string;
@@ -95,9 +98,14 @@ export function CoupleQuestionnaireForm({
           emergencyContactPhone: emergencyPhone, specialRequests,
         }),
       });
-      const result = await res.json();
-      if (result.ok) setState("success");
-      else { setError(result.message ?? "Something went wrong."); setState("idle"); }
+      const result = await res.json() as { ok?: boolean; celebrated?: boolean; message?: string };
+      if (result.ok) {
+        // Layered acknowledgment only when DB says this is the first fire.
+        if (result.celebrated) {
+          celebrateLuv(coupleCelebrationMessage("questionnaire_submitted"));
+        }
+        setState("success");
+      } else { setError(result.message ?? "Something went wrong."); setState("idle"); }
     } catch { setError("Network error. Please try again."); setState("idle"); }
   }
 

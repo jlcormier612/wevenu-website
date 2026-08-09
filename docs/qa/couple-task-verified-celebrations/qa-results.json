@@ -1,0 +1,98 @@
+{
+  "env": {
+    "BASE": "http://localhost:3000",
+    "TOKEN": "seedcouplepo…"
+  },
+  "beforeCelebrations": [
+    "website_published@2026-08-07 14:56:02.074504+00"
+  ],
+  "api": {
+    "guest_count": {
+      "firstCelebrated": true,
+      "secondCelebrated": false,
+      "firstOk": true,
+      "secondOk": true,
+      "pass": true
+    },
+    "seating": {
+      "firstCelebrated": true,
+      "secondCelebrated": false,
+      "firstOk": true,
+      "secondOk": true,
+      "firstError": null,
+      "pass": true
+    },
+    "vendors": {
+      "firstCelebrated": true,
+      "secondCelebrated": false,
+      "firstOk": true,
+      "secondOk": true,
+      "pass": true
+    },
+    "questionnaire": {
+      "firstCelebrated": true,
+      "secondCelebrated": false,
+      "firstOk": true,
+      "secondOk": true,
+      "pass": true
+    }
+  },
+  "ui": {
+    "01-desktop": {
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "resubmitGuest": {
+        "toastText": "",
+        "confettiLayerPresent": false,
+        "noReplayOk": true
+      },
+      "tasks": {
+        "hasLeaveReviewMarkComplete": false,
+        "markCompleteCount": 0,
+        "hasInsuranceUploadCta": false,
+        "noFakeDomainConfettiOnLoad": true
+      },
+      "home": {
+        "completeCtas": 0,
+        "reviewCtas": 0
+      }
+    },
+    "02-mobile": {
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "resubmitGuest": {
+        "toastText": "",
+        "confettiLayerPresent": false,
+        "noReplayOk": true
+      },
+      "tasks": {
+        "hasLeaveReviewMarkComplete": true,
+        "markCompleteCount": 1,
+        "hasInsuranceUploadCta": false,
+        "noFakeDomainConfettiOnLoad": true
+      },
+      "home": {
+        "completeCtas": 0,
+        "reviewCtas": 0
+      }
+    }
+  },
+  "afterCelebrations": [
+    "guest_list_submitted@2026-08-09 22:16:54.134923+00",
+    "questionnaire_submitted@2026-08-09 22:16:58.361192+00",
+    "seating_submitted@2026-08-09 22:16:57.847846+00",
+    "vendor_list_submitted@2026-08-09 22:16:58.016465+00",
+    "website_published@2026-08-07 14:56:02.074504+00"
+  ],
+  "confirmations": {
+    "noPaymentReceivedCelebrationRow": true,
+    "noInsuranceCelebrationRow": true,
+    "hasVendorSeatingQuestionnaire": true
+  },
+  "floorPlanRestoredTo": "hidden",
+  "summaryPass": true
+}

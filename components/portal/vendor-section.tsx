@@ -25,6 +25,8 @@ import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { PortalCoupleVendorThread } from "@/components/portal/couple-vendor-thread";
+import { celebrateLuv } from "@/lib/luv/celebrate";
+import { coupleCelebrationMessage } from "@/lib/luv/celebrations";
 import { vendorCategoryLabel } from "@/lib/vendors/constants";
 
 type VendorPackage = { id: string; name: string; description: string | null; price: number | null; priceType: string };
@@ -628,6 +630,7 @@ export function VendorSection({ token, clientId, venueName }: { token: string; c
       const data = await res.json() as {
         ok?: boolean;
         selectedCount?: number;
+        celebrated?: boolean;
         removalRequests?: Array<{ requestId: string }> | string | null;
       };
       if (data.ok) {
@@ -637,7 +640,10 @@ export function VendorSection({ token, clientId, venueName }: { token: string; c
           : typeof data.removalRequests === "string"
             ? (JSON.parse(data.removalRequests) as unknown[]).length
             : 0;
-        if (removalCount > 0) {
+        // One-time verified milestone only when luv_celebrations insert won.
+        if (data.celebrated) {
+          celebrateLuv(coupleCelebrationMessage("vendor_list_submitted"));
+        } else if (removalCount > 0) {
           toast.success(
             n > 0
               ? `List updated — ${venueName} was asked to remove ${removalCount} vendor${removalCount === 1 ? "" : "s"} still assigned.`
