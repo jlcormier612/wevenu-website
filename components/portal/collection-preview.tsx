@@ -20,6 +20,7 @@
 import * as React from "react";
 import { Hero, createSectionRenderer, GalleryGrid, useThemeFonts, resolveTheme, type ThemeConfig } from "@/components/wedding-website/wedding-website";
 import { buildPreviewSite } from "@/lib/wedding-website/preview-site";
+import { mergeStudioPreviewContent } from "@/lib/wedding-website/studio-preview-content";
 import type {
   PublicWebsite, WebsiteContent, CatalogCollection, CatalogColorStory,
   CatalogTypographyStyle, CatalogPhotoStyle,
@@ -57,7 +58,15 @@ function ScaledThumbnail({ width, height, naturalWidth, children }: {
 // the real Hero (and, when a section key is supplied, real Section content)
 // for a candidate Collection, at natural (page-realistic) scale, shrunk to
 // fit the caller's box via ScaledThumbnail.
-export function CollectionPreview({ base, content, collection, colorStory, typography, photoStyle, sectionKeys = [], width, height, naturalWidth = 320, heroFraction = 1 }: {
+//
+// Principle: "Show me the website." — composition, personality, type, story
+// treatment. Never includes Gallery (that is Photo Style's job).
+export function CollectionPreview({
+  base, content, collection, colorStory, typography, photoStyle,
+  sectionKeys = [], width, height, naturalWidth = 360, heroFraction = 1,
+  /** When true (default), inject Emma & Jordan story/title if missing — preview only. */
+  useRepresentativeContent = true,
+}: {
   base?: PublicWebsite;
   content?: WebsiteContent;
   collection: CatalogCollection;
@@ -71,11 +80,20 @@ export function CollectionPreview({ base, content, collection, colorStory, typog
   naturalWidth?: number;
   /** What fraction of the natural height the hero gets when sections are also shown below it. */
   heroFraction?: number;
+  useRepresentativeContent?: boolean;
 }) {
-  const site = buildPreviewSite({ base, content, collection, colorStory, typography, photoStyle });
+  const rawContent = content ?? base?.content;
+  const previewContent = useRepresentativeContent
+    ? mergeStudioPreviewContent(rawContent)
+    : (rawContent ?? {});
+  const site = buildPreviewSite({
+    base, content: previewContent, collection, colorStory, typography, photoStyle,
+    disableAnimation: true,
+  });
   const naturalHeight = height / (width / naturalWidth);
   const heroPx = `${Math.round(naturalHeight * heroFraction)}px`;
   const tc: ThemeConfig = { ...resolveTheme(site), heroMinHeight: heroPx, heroMaxHeight: heroPx, heroAspectCap: undefined };
+  useThemeFonts(tc.fontUrl);
   const { renderSection } = createSectionRenderer({
     tc, content: site.content ?? {}, site, color: tc.primary, editMode: false, activeSection: null,
   });
@@ -83,7 +101,11 @@ export function CollectionPreview({ base, content, collection, colorStory, typog
     <ScaledThumbnail width={width} height={height} naturalWidth={naturalWidth}>
       <div style={{ background: tc.bg }}>
         <Hero site={site} tc={tc} />
-        {sectionKeys.map(key => <React.Fragment key={key}>{renderSection(key)}</React.Fragment>)}
+        {sectionKeys.length > 0 && (
+          <div style={{ padding: "0.75rem 1.25rem 1.25rem" }}>
+            {sectionKeys.map(key => <React.Fragment key={key}>{renderSection(key)}</React.Fragment>)}
+          </div>
+        )}
       </div>
     </ScaledThumbnail>
   );
@@ -150,25 +172,38 @@ export function TypographyPreview({ typography, coupleName, tagline, showTagline
 // the real Photo Gallery section (a different implementation of the same
 // conceptual axes, already caught drifting: CollectionHeroChip's old hero
 // gradient formula omitted GalleryGrid's real middle color stop). Renders
-// the couple's own real gallery photos when they have any; repeats the one
-// cover photo they've chosen otherwise — never a synthetic per-slot crop
-// trick, since GalleryGrid has no such thing and a preview must show
-// exactly what the real Gallery section would do with the same photos.
-export function PhotoStylePreview({ collection, photoStyle, photos, width, height, naturalWidth = 320 }: {
+// the couple's own real gallery photos when they have any; fills to ≥3
+// distinct URLs via resolveStudioPreviewPhotos at the caller — never a
+// separate photo-layout renderer.
+//
+// Principle: "Show me how my photos will live inside it."
+export function PhotoStylePreview({ collection, photoStyle, photos, width, height, naturalWidth = 420 }: {
   collection: CatalogCollection;
   photoStyle: CatalogPhotoStyle;
   photos: string[];
   width: number;
   height: number;
-  /** See CollectionPreview's ScaledThumbnail doc. */
+  /** See CollectionPreview's ScaledThumbnail doc. Wider natural width fits more grid cells into a short card. */
   naturalWidth?: number;
 }) {
-  const tc = resolveTheme(buildPreviewSite({ collection, photoStyle }));
+  // Photo Style cards answer "how will my photos live inside it?" — keep the
+  // selected Collection constant for color/DNA fairness, but force the
+  // Collection gallery *shell* to grid for the thumbnail. film-strip uses
+  // browser `vw` widths that fill the ScaledThumbnail with a single cell
+  // (hiding filters/frames/circles/hero-emphasis). collage/scrapbook still
+  // replace the uniform loop via photoStyle tokens. Never written to DB.
+  const previewCollection: CatalogCollection = {
+    ...collection,
+    layoutConfig: { ...collection.layoutConfig, galleryLayout: "grid", animationStyle: "none" },
+  };
+  const tc = resolveTheme(buildPreviewSite({ collection: previewCollection, photoStyle }));
   if (photos.length === 0) return <div className="w-full h-full bg-muted" />;
+  // Cap at 4 — enough for collage/scrapbook/hero-emphasis without bloating thumbnails.
+  const previewPhotos = photos.slice(0, 4);
   return (
     <ScaledThumbnail width={width} height={height} naturalWidth={naturalWidth}>
-      <div style={{ background: tc.bg }}>
-        <GalleryGrid photos={photos} tc={tc} />
+      <div style={{ background: tc.bg, padding: "0.4rem" }}>
+        <GalleryGrid photos={previewPhotos} tc={tc} />
       </div>
     </ScaledThumbnail>
   );

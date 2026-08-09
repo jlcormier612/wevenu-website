@@ -27,6 +27,7 @@ import { ColorPickerTrigger } from "@/components/ui/color-picker";
 import { CollectionPreview, ColorStoryPreview, TypographyPreview, PhotoStylePreview } from "@/components/portal/collection-preview";
 import { resolveCuratedColorStories, deriveSixRoles, swatchGradient, type SixRoleColors } from "@/lib/wedding-website/curated-color-stories";
 import { resolveDesignState } from "@/lib/wedding-website/design-state";
+import { resolveStudioPreviewPhotos } from "@/lib/wedding-website/studio-preview-content";
 import { PORTRAIT_FACE_FOCAL } from "@/components/wedding-website/composition-primitives";
 import type { CoupleWebsite, WebsiteContent, WebsiteSuggestions, HostedExperienceCatalog, CatalogCollection, CatalogColorStory } from "@/lib/wedding-website/types";
 import type { PortalContext } from "@/lib/portal/types";
@@ -57,6 +58,7 @@ const COLLECTION_DESCRIPTORS: Record<string, string> = {
   velvet: "Dramatic, moody & candlelit",            // Velvet
   estate: "Romantic, refined & timeless",           // European Estate
   rustic: "Warm, weathered & organic",              // Rustic
+  industrial: "Bold, editorial & structured",       // Industrial
 };
 
 // Part 10 — what each role actually does in the accepted renderer. Verified
@@ -198,9 +200,13 @@ function SetupWizard({
   // on via buildPreviewSite(), reflecting this session's in-progress
   // choices (not yet saved) the same way `currentColorStory`/
   // `currentTypography` below already do.
-  const previewGalleryPhotos = site.content?.gallery?.photos?.length
-    ? site.content.gallery.photos
-    : (previewPhoto ? [previewPhoto, previewPhoto, previewPhoto] : []);
+  // Photo Style previews need ≥3 distinct URLs so GalleryGrid can show
+  // arrangement / hero-emphasis / circles — never three copies of one face.
+  const previewGalleryPhotos = resolveStudioPreviewPhotos({
+    galleryPhotos: site.content?.gallery?.photos,
+    coverPhoto: previewPhoto,
+    engagementPhotos: eng.map(p => p.url),
+  });
   const previewBase: PublicWebsite = {
     content: {
       ...site.content,
@@ -466,8 +472,8 @@ function SetupWizard({
         <button key={c.id} type="button"
           onClick={() => { setCollectionId(c.id); if (!colorStoryId && c.colorStories[0]) setColorStoryId(c.colorStories[0].id); }}
           className={`relative rounded-2xl overflow-hidden text-left bg-white border transition-all hover:scale-[1.01] ${isSelected ? "ring-2 ring-primary ring-offset-2 border-primary shadow-md" : "border-border"}`}>
-          <div className="relative aspect-[4/5] overflow-hidden">
-            <CollectionPreview base={previewBase} collection={c} colorStory={currentColorStory} typography={currentTypography} sectionKeys={["story"]} width={226} height={283} heroFraction={0.45} />
+          <div className="relative overflow-hidden" style={{ height: 320 }}>
+            <CollectionPreview base={previewBase} collection={c} colorStory={currentColorStory} typography={currentTypography} sectionKeys={["story"]} width={226} height={320} heroFraction={0.4} />
             {isSelected && (
               <div className="absolute top-2 right-2 h-5 w-5 rounded-full bg-white flex items-center justify-center shadow border border-primary/30">
                 <Check className="h-3 w-3 text-primary" strokeWidth={2.5} />
@@ -490,7 +496,7 @@ function SetupWizard({
             icon={PanelsTopLeft}
             eyebrow="YOUR WEBSITE STYLE"
             heading="Choose your Collection"
-            copy="Your Collection shapes how your wedding website feels — from the opening moment to photo layouts, section composition, spacing, and the way your story unfolds."
+            copy="Your Collection shapes how your whole wedding website feels — the opening moment, section composition, type hierarchy, spacing, and the way your story unfolds."
             secondaryLine="Don't worry about colors yet. You'll make those yours next."
           />
           <div className="grid grid-cols-2 gap-3">
@@ -637,7 +643,7 @@ function SetupWizard({
           icon={Sparkles}
           eyebrow="YOUR PHOTOS"
           heading="Choose your Photo Style"
-          copy="Choose how your photos are framed, layered, spaced, and styled throughout your website."
+          copy="Choose how your photographs are framed, layered, spaced, and filtered inside your website — independent of the Collection you already chose."
         />
         <div className="grid grid-cols-2 gap-3">
           {(catalog?.photoStyles ?? []).map(p => {
@@ -645,8 +651,8 @@ function SetupWizard({
             return (
               <button key={p.id} type="button" onClick={() => setPhotoStyleId(p.id)}
                 className={`rounded-2xl border overflow-hidden text-left transition-all hover:scale-[1.01] ${isSelected ? "ring-2 ring-primary ring-offset-2 border-primary" : "border-border"}`}>
-                <div className="h-20 bg-[#FAF8F4]">
-                  {currentCollection && <PhotoStylePreview collection={currentCollection} photoStyle={p} photos={previewGalleryPhotos} width={226} height={80} />}
+                <div className="h-[156px] bg-[#FAF8F4]">
+                  {currentCollection && <PhotoStylePreview collection={currentCollection} photoStyle={p} photos={previewGalleryPhotos} width={226} height={156} naturalWidth={440} />}
                 </div>
                 <div className="px-3 py-2.5 bg-white border-t border-black/5">
                   <p className="text-xs font-bold text-heading">{p.name}</p>

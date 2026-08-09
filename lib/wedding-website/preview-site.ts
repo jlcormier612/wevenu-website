@@ -21,7 +21,7 @@
  */
 import type {
   PublicWebsite, WebsiteContent, CatalogCollection, CatalogColorStory,
-  CatalogTypographyStyle, CatalogPhotoStyle,
+  CatalogTypographyStyle, CatalogPhotoStyle, CollectionLayoutConfig,
 } from "@/lib/wedding-website/types";
 import { deriveSixRoles } from "@/lib/wedding-website/curated-color-stories";
 
@@ -34,12 +34,33 @@ export function buildPreviewSite(opts: {
   colorStory?: CatalogColorStory;
   typography?: CatalogTypographyStyle;
   photoStyle?: CatalogPhotoStyle;
+  /**
+   * Thumbnail pickers only — forces `animationStyle: "none"` so
+   * IntersectionObserver scroll-reveal cannot leave sections blank.
+   * Never use for Live Preview / published rendering.
+   */
+  disableAnimation?: boolean;
 }): PublicWebsite {
   const roles = opts.colorStory ? deriveSixRoles(opts.colorStory.tokens) : null;
+
+  let layoutConfig: CollectionLayoutConfig | undefined = opts.collection
+    ? { ...opts.collection.layoutConfig }
+    : opts.base?.layoutConfig
+      ? { ...opts.base.layoutConfig }
+      : undefined;
+  if (opts.disableAnimation) {
+    layoutConfig = { ...(layoutConfig ?? {}), animationStyle: "none" };
+  }
+
   return {
     ...(opts.base ?? {}),
     ...(opts.content !== undefined ? { content: opts.content } : {}),
-    ...(opts.collection ? { layoutConfig: opts.collection.layoutConfig } : {}),
+    ...(opts.collection ? {
+      // Hardcode DNA (e.g. Coastal heroAspectCap) keys off site.theme —
+      // without this, every Collection preview silently inherits classic.
+      theme: opts.collection.key as PublicWebsite["theme"],
+      layoutConfig,
+    } : (layoutConfig ? { layoutConfig } : {})),
     ...(opts.colorStory ? {
       colorTokens: opts.colorStory.tokens,
       colorPrimary: roles!.colorPrimary, colorSecondary: roles!.colorSecondary, colorAccent: roles!.colorAccent,

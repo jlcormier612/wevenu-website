@@ -15,11 +15,12 @@ import { ArrowDown, ArrowUp, Check, ChevronDown, ChevronUp, Copy, ExternalLink, 
 import { toast } from "sonner";
 
 import { ColorPickerTrigger } from "@/components/ui/color-picker";
-import type { CoupleWebsite, WebsiteContent, WebsiteSuggestions, HostedExperienceCatalog, CatalogCollection, PublicWebsite } from "@/lib/wedding-website/types";
+import type { CoupleWebsite, WebsiteContent, WebsiteSuggestions, HostedExperienceCatalog, PublicWebsite } from "@/lib/wedding-website/types";
 import { celebrateLuv } from "@/lib/luv/celebrate";
 import { coupleCelebrationMessage } from "@/lib/luv/celebrations";
 import { resolveDesignState } from "@/lib/wedding-website/design-state";
 import { deriveSixRoles, swatchGradient, type SixRoleColors } from "@/lib/wedding-website/curated-color-stories";
+import { resolveStudioPreviewPhotos } from "@/lib/wedding-website/studio-preview-content";
 import { CollectionPreview, ColorStoryPreview, TypographyPreview, PhotoStylePreview } from "@/components/portal/collection-preview";
 
 // ── Theme Studio (2026-07-24) ─────────────────────────────────────────────────
@@ -1157,11 +1158,6 @@ const COLOR_ROLES: { key: "colorPrimary" | "colorSecondary" | "colorAccent" | "c
   { key: "colorText",       label: "Text",       hint: "Body copy color" },
 ];
 
-function collectionSwatch(c: CatalogCollection): string {
-  return c.colorStories[0] ? swatchGradient(c.colorStories[0].tokens)
-    : `linear-gradient(160deg, ${c.swatchAccent ?? "#B8AEA1"} 0%, ${c.swatchAccent ?? "#DED6CA"} 100%)`;
-}
-
 function DimensionCard({ eyebrow, title, subtitle, swatch, isOpen, onToggle, children }: {
   eyebrow: string; title: string; subtitle?: string | null;
   swatch: React.ReactNode; isOpen: boolean; onToggle: () => void; children: React.ReactNode;
@@ -1251,9 +1247,10 @@ function ThemeStudio({ site, onUpdate }: { site: CoupleWebsite; onUpdate: (patch
       };
   const previewPhoto = site.content?.home?.coverImageUrl || undefined;
   const previewCoupleName = site.content?.home?.title || "Your Names";
-  const previewGalleryPhotos = site.content?.gallery?.photos?.length
-    ? site.content.gallery.photos
-    : (previewPhoto ? [previewPhoto, previewPhoto, previewPhoto] : []);
+  const previewGalleryPhotos = resolveStudioPreviewPhotos({
+    galleryPhotos: site.content?.gallery?.photos,
+    coverPhoto: previewPhoto,
+  });
   const previewBase: PublicWebsite = { content: site.content, colorPrimary: site.colorPrimary, colorSecondary: site.colorSecondary,
     colorAccent: site.colorAccent, colorNeutral: site.colorNeutral, colorBackground: site.colorBackground, colorText: site.colorText };
 
@@ -1279,7 +1276,7 @@ function ThemeStudio({ site, onUpdate }: { site: CoupleWebsite; onUpdate: (patch
         isOpen={open === "collection"} onToggle={() => setOpen(o => o === "collection" ? null : "collection")}
       >
         <p className="text-[11px] text-muted-foreground -mt-1">
-          Page composition, hero layout, gallery layout, RSVP placement, motion. Collections make genuinely different websites — not just different colors.
+          How your whole website feels — opening moment, section composition, type hierarchy, spacing, and the way your story unfolds. Not just colors.
         </p>
         <div className="grid grid-cols-2 gap-3">
           {collections.map(c => {
@@ -1302,7 +1299,17 @@ function ThemeStudio({ site, onUpdate }: { site: CoupleWebsite; onUpdate: (patch
                   onUpdate(patch);
                 }}
                 className={`relative rounded-2xl overflow-hidden text-left transition-all hover:scale-[1.01] ${isSelected ? "ring-2 ring-offset-2 ring-ring" : ""}`}>
-                <div className="h-20 relative" style={{ background: collectionSwatch(c) }}>
+                <div className="relative overflow-hidden" style={{ height: 220 }}>
+                  <CollectionPreview
+                    base={previewBase}
+                    collection={c}
+                    colorStory={currentColorStory}
+                    typography={currentTypography}
+                    sectionKeys={["story"]}
+                    width={170}
+                    height={220}
+                    heroFraction={0.4}
+                  />
                   {isSelected && (
                     <div className="absolute top-2 right-2 h-5 w-5 rounded-full bg-white/90 flex items-center justify-center shadow">
                       <Check className="h-3 w-3 text-foreground" />
@@ -1453,15 +1460,15 @@ function ThemeStudio({ site, onUpdate }: { site: CoupleWebsite; onUpdate: (patch
         }
         isOpen={open === "photo"} onToggle={() => setOpen(o => o === "photo" ? null : "photo")}
       >
-        <p className="text-[11px] text-muted-foreground -mt-1">How your uploaded photos are presented — independent of Collection, Color Story, and Typography.</p>
+        <p className="text-[11px] text-muted-foreground -mt-1">How your photographs are framed, layered, spaced, and filtered — independent of Collection, Color Story, and Typography.</p>
         <div className="grid grid-cols-2 gap-2">
           {catalog.photoStyles.map(p => {
             const isSelected = p.id === currentPhotoStyle?.id;
             return (
               <button key={p.id} type="button" onClick={() => onUpdate({ photoStyleId: p.id })}
                 className={`rounded-xl border overflow-hidden text-left transition-all ${isSelected ? "ring-2 ring-ring ring-offset-1 border-ring" : "border-border"}`}>
-                <div className="h-16">
-                  {currentCollection && <PhotoStylePreview collection={currentCollection} photoStyle={p} photos={previewGalleryPhotos} width={170} height={64} />}
+                <div className="h-[150px]">
+                  {currentCollection && <PhotoStylePreview collection={currentCollection} photoStyle={p} photos={previewGalleryPhotos} width={170} height={150} naturalWidth={400} />}
                 </div>
                 <div className="px-3 py-2 bg-card border-t border-border/50">
                   <p className="text-xs font-semibold text-heading">{p.name}</p>
