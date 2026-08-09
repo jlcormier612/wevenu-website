@@ -114,13 +114,18 @@ describe("Next Steps Home presentation", () => {
     assert.equal(formatNextStepsDueLabel(null, false, TODAY), null);
   });
 
-  it("compacts CTAs to Review/Submit/Upload/Approve/Pay/Complete", () => {
+  it("compacts Home CTAs: checklist/nav Complete → Review; keeps Pay/Submit/Upload/Approve/Review", () => {
     assert.equal(compactNextStepsActionLabel({ actionLabel: "Pay now", kind: "payment" }), "Pay");
     assert.equal(compactNextStepsActionLabel({ actionLabel: "Review & submit", kind: "timeline" }), "Submit");
     assert.equal(compactNextStepsActionLabel({ actionLabel: "Upload", kind: "request" }), "Upload");
     assert.equal(compactNextStepsActionLabel({ actionLabel: "Approve proposal", kind: "request" }), "Approve");
-    assert.equal(compactNextStepsActionLabel({ actionLabel: "Mark complete", kind: "venue_task" }), "Complete");
     assert.equal(compactNextStepsActionLabel({ actionLabel: "Review & sign", kind: "contract" }), "Review");
+    // Home presentation only — navigates to Tasks; does not imply complete-in-place
+    assert.equal(compactNextStepsActionLabel({ actionLabel: "Mark complete", kind: "venue_task" }), "Review");
+    assert.equal(compactNextStepsActionLabel({ actionLabel: "Complete", kind: "vendor_task" }), "Review");
+    assert.equal(compactNextStepsActionLabel({ actionLabel: "View", kind: "venue_task" }), "Review");
+    assert.equal(compactNextStepsActionLabel({ actionLabel: "Mark complete", kind: "vendor_task" }), "Review");
+    assert.equal(compactNextStepsActionLabel({ actionLabel: "Complete form", kind: "questionnaire" }), "Review");
   });
 
   it("never includes personal todos from unified synthesis", () => {

@@ -128,20 +128,29 @@ export function formatNextStepsDueLabel(
   return `Due ${formatAbsoluteDueDate(dueDate)}`;
 }
 
-/** Compact Home CTA wording from existing destination actions. */
+/** Compact Home CTA wording from existing destination actions (navigate only — never implies complete-in-place). */
 export function compactNextStepsActionLabel(item: Pick<NextStepsItem, "actionLabel" | "kind">): string {
   const raw = item.actionLabel.trim();
   const lower = raw.toLowerCase();
 
   if (item.kind === "payment" || lower.includes("pay")) return "Pay";
   if (item.kind === "timeline" || lower.includes("submit")) return "Submit";
-  if (item.kind === "questionnaire" || lower === "mark complete" || lower === "complete" || lower === "complete form") {
-    return "Complete";
-  }
   if (lower.includes("upload")) return "Upload";
   if (lower.includes("approve")) return "Approve";
   if (lower.includes("review") || lower.includes("respond") || lower.includes("sign")) return "Review";
-  if (lower.includes("complete") || lower === "done") return "Complete";
+  // Checklist / vendor / questionnaire Home rows only navigate — "Complete" would imply finish-here.
+  if (
+    item.kind === "venue_task" ||
+    item.kind === "vendor_task" ||
+    item.kind === "questionnaire" ||
+    lower === "mark complete" ||
+    lower === "complete" ||
+    lower === "complete form" ||
+    lower.includes("complete") ||
+    lower === "done"
+  ) {
+    return "Review";
+  }
   if (lower === "view") return "Review";
   return raw;
 }
