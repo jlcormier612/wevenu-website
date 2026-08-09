@@ -1,0 +1,84 @@
+{
+  "beforeReference": {
+    "source": "docs/qa/couple-task-verified-action-completion/qa-results.json (Impl 1)",
+    "homeLeft": 9,
+    "homeHadChecklistFinalPayment": true,
+    "tasksPayNow": 4,
+    "tasksOpenHadChecklistFinalPayment": true,
+    "tasksOpenHadLedgerFinalPayment": true
+  },
+  "desktop": {
+    "viewport": {
+      "width": 1440,
+      "height": 900
+    },
+    "home": {
+      "text": "Emma & Jordan\n\n·\n\nSweet Daisy Barn & Farm\n\nOct 17, 2026 – Oct 19, 2026\n\nExport my data\n🏠\nHome\n✅\nTasks\n2\n🕒\nTimeline\n📁\nDocuments\n💳\nPayments\n💬\nMessages\n🏛️\nVenue Guide\n🤝\nPreferred Vendors\nSWEET DAISY BARN & FARM\n\nEmma & Jordan\n\n69 days until your celebration\n\nSaturday, October 17, 2026 – Monday, October 19, 2026\n\n8 things Sweet Daisy Barn & Farm still needs from you\n\nYour venue team is here with you—finish what helps your day come together.\n\nReview what Sweet Daisy Barn & Farm needs\nMessage Sweet Daisy Barn & Farm\nView Timeline\n\nSweet Daisy Barn & Farm is waiting on 8 things from you.\n\nJump to your next steps below.\n\nWHAT SWEET DAISY BARN & FARM NEEDS FROM YOU\n\nYour Next Steps\n\n8 left for Sweet Daisy Barn & Farm\n\nFROM YOUR VENUE\n\nSubmit your guest count\n\nRequired\n\nWe need your final headcount to plan seating, catering, and rentals.\n\nDue Sep 17\nSubmit\n\nSubmit your timeline\n\nRequired\n\nPlan your day-of schedule, then submit it so your venue has it.\n\nDue Oct 3\nSubmit\n\nShare timeline\n\nShare your timeline so your photographer knows when and where they'll be needed.\n\nDue Oct 3\nReview\n\nLeave a review\n\nWe'd love to hear about your experience.\n\nDue Oct 31\nReview\n\nSHARED PLANNING\n\nFirst Installment\n\nPayment Schedule — Emma / Carter / Jordan / Lee — payment due\n\nOverdue — needed by Apr 20\nSweet Daisy Barn & Farm is waiting on this\nPay\nView all 8 next steps →\n\nWORKING WITH YOUR VENUE\n\nVENUE TEAM\n\nJC\n\nJennifer Cormier\n\nOwner\n\n✉️\nSW\n\nSam Whitfield\n\nVenue Manager\n\n✉️\nMessage Sweet Daisy Barn & Farm\n\n💳 PAYMENTS\n\n$12,960\n\nremaining balance\n\nNext payment: First Installment — due Apr 20\n\nPayment plan progress\n0%\nPay Now\n\n🕒 TIMELINE\n\n10:00 AM — Family Brunch\n\n2:30 PM — Wedding Party Arrival\n\nView Timeline\nExplore your Venue Guide\nPreferred vendors\nPlanning Progress\n\n50%\n\nYou’re making real headway.\n\nBased on required venue tasks, payments, contracts, and your questionnaire.\n\nRequired tasks · 5/8\nPayments · 0/3\nQuestionnaire · Done\nReview what’s left\nWedding Journey\n\nThe day is drawing nearer — you’re right where you should be.\n\nWedding Journey. You are at About a month out. 4 milestones completed, 1 ahead. The day is drawing nearer — you’re right where you should be.\n\n12 mo\nDone\n9 mo\nDone\n6 mo\nDone\n3 mo\nDone\n1 mo\nYou’re here\nDay\nAhead\nWHAT’S HAPPENING\n\nThis week\n\n📸\n\nYou added an engagement photo\n\nMonday\nYOUR WEDDING\n\nWhat would you like to work on for your wedding?\n\n🌐\n\nWedding Website\n\n100% complete\n\nOpen Website →\n\n👥\n\nGuest List\n\n5 invited, 2 confirmed\n\nOpen Guest Lis",
+      "nextStepsSnippet": "Your Next Steps\n\n8 left for Sweet Daisy Barn & Farm\n\nFROM YOUR VENUE\n\nSubmit your guest count\n\nRequired\n\nWe need your final headcount to plan seating, catering, and rentals.\n\nDue Sep 17\nSubmit\n\nSubmit your timeline\n\nRequired\n\nPlan your day-of schedule, then submit it so your venue has it.\n\nDue Oct 3\nSubmit\n\nShare timeline\n\nShare your timeline so your photographer knows when and where they'll be needed.\n\nDue Oct 3\nReview\n\nLeave a review\n\nWe'd love to hear about your experience.\n\nDue Oct 31\nReview\n\nSHARED PLANNING\n\nFirst Installment\n\nPayment Schedule — Emma / Carter / Jordan / Lee — payment due\n\nOverdue — needed by Apr 20\nSweet Daisy Barn & Farm is waiting on this\nPay\nView all 8 next steps →\n\nWORKING WITH YOUR VENUE\n\nVENUE TEAM\n\nJC\n\nJennifer Cormier\n\nOwner\n\n✉️\nSW\n\nSam Whitfield\n\nVenue Manager\n\n✉️\nMessage Sweet Daisy Barn & Farm\n\n💳 PAYMENTS\n\n$12,960\n\nremaining balance\n\nNext payment: First ",
+      "leftMatch": "8",
+      "hasChecklistFinalInNextSteps": false,
+      "hasLedgerFinalInNextSteps": false,
+      "payCtas": 1,
+      "reviewCtas": 2,
+      "completeCtas": 0,
+      "submitCtas": 2
+    },
+    "tasks": {
+      "sample": "Emma & Jordan\n\n·\n\nSweet Daisy Barn & Farm\n\nOct 17, 2026 – Oct 19, 2026\n\nExport my data\n🏠\nHome\n✅\nTasks\n2\n🕒\nTimeline\n📁\nDocuments\n💳\nPayments\n💬\nMessages\n🏛️\nVenue Guide\n🤝\nPreferred Vendors\nFrom your venue\n\nEverything Sweet Daisy Barn & Farm needs from you, in one place — newest due date first.\n\n6/10 tasks complete\n\nFirst Installment\n\nPayment Schedule — Emma / Carter / Jordan / Lee — payment due\n\nDue Apr 20\n\nPay now\n\nSecond Installment\n\nPayment Schedule — Emma / Carter / Jordan / Lee — payment due\n\nDue Jul 19\n\nPay now\n\nSubmit your guest count\n\nWe need your final headcount to plan seating, catering, and rentals.\n\nDue Sep 17 · 30 days before\n\nSubmit guest count\n\nFinal Payment\n\nPayment Schedule — Emma / Carter / Jordan / Lee — payment due\n\nDue Sep 17\n\nPay now\n\nSubmit your timeline\n\nPlan your day-of schedule, then submit it so your venue has it.\n\nDue Oct 3 · 14 days before\n\nSubmit timeline\n\nLeave a review\n\nWe'd love to hear about your experience.\n\nDue Oct 31 · 14 days after\n\nMark complete\n\nSubmit your timeline updates\n\nYou've made changes your venue hasn't seen yet.\n\nReview & submit\n\n",
+      "payNow": 3,
+      "markComplete": 1,
+      "openHasChecklistFinalPayment": false,
+      "openHasLedgerFinalPayment": true,
+      "hasChecklistFinalPaymentPayNow": true,
+      "hasLedgerFinalPaymentPayNow": true
+    },
+    "payments": {
+      "sample": "Emma & Jordan\n\n·\n\nSweet Daisy Barn & Farm\n\nOct 17, 2026 – Oct 19, 2026\n\nExport my data\n🏠\nHome\n✅\nTasks\n2\n🕒\nTimeline\n📁\nDocuments\n💳\nPayments\n💬\nMessages\n🏛️\nVenue Guide\n🤝\nPreferred Vendors\nPayments\n\nYour financial picture with your venue — all in one place.\n\nPAYMENT SCHEDULE — EMMA / CARTER / JORDAN / LEE\n\n$12,960\n\nTotal contract value\n\n0% paid\n$12,960 remaining\n\nPaid\n\n$0\n\nRemaining\n\n$12,960\n\n💗\n\nFirst Installment (due April 20) hasn't been received yet. Reach out to your venue coordinator to arrange payment.\n\n💗\n\nYour next payment, Final Payment, is scheduled for September 17.\n\nPAYMENT SCHEDULE\n\n1\n\nFirst Installment\n\nDue Apr 20, 2026\n\n$4,320\n\nOverdue\nPay now\n2\n\nSecond Installment\n\nDue Jul 19, 2026\n\n$4,320\n\nOverdue\nPay now\n3\n\nFinal Payment\n\nDue Sep 17, 2026\n\n$4,321\n\nUpcoming\nPay now\n💗\n\nQuestions about payments?\n\nContact your venue coordinator through the Messages tab or reach out directly.\n\nSweet Daisy Barn & Farm\n💗",
+      "hasRemaining12960": true,
+      "hasFirst": true,
+      "hasSecond": true,
+      "hasFinal": true,
+      "payNowCount": 3
+    }
+  },
+  "mobile": {
+    "viewport": {
+      "width": 390,
+      "height": 844
+    },
+    "home": {
+      "text": "Emma & Jordan\n\n·\n\nSweet Daisy Barn & Farm\n\nExport my data\n🏠\nHome\n✅\nTasks\n2\n🕒\nTimeline\n📁\nDocuments\n💳\nPayments\n💬\nMessages\n🏛️\nGuide\n🤝\nVendors\nSWEET DAISY BARN & FARM\n\nEmma & Jordan\n\n69 days until your celebration\n\nSaturday, October 17, 2026 – Monday, October 19, 2026\n\n8 things Sweet Daisy Barn & Farm still needs from you\n\nYour venue team is here with you—finish what helps your day come together.\n\nReview what Sweet Daisy Barn & Farm needs\nMessage Sweet Daisy Barn & Farm\nView Timeline\n\nSweet Daisy Barn & Farm is waiting on 8 things from you.\n\nJump to your next steps below.\n\nWHAT SWEET DAISY BARN & FARM NEEDS FROM YOU\n\nYour Next Steps\n\n8 left for Sweet Daisy Barn & Farm\n\nFROM YOUR VENUE\n\nSubmit your guest count\n\nRequired\n\nWe need your final headcount to plan seating, catering, and rentals.\n\nDue Sep 17\nSubmit\n\nSubmit your timeline\n\nRequired\n\nPlan your day-of schedule, then submit it so your venue has it.\n\nDue Oct 3\nSubmit\n\nShare timeline\n\nShare your timeline so your photographer knows when and where they'll be needed.\n\nDue Oct 3\nReview\n\nLeave a review\n\nWe'd love to hear about your experience.\n\nDue Oct 31\nReview\n\nSHARED PLANNING\n\nFirst Installment\n\nPayment Schedule — Emma / Carter / Jordan / Lee — payment due\n\nOverdue — needed by Apr 20\nSweet Daisy Barn & Farm is waiting on this\nPay\nView all 8 next steps →\n\nWORKING WITH YOUR VENUE\n\nVENUE TEAM\n\nJC\n\nJennifer Cormier\n\nOwner\n\n✉️\nSW\n\nSam Whitfield\n\nVenue Manager\n\n✉️\nMessage Sweet Daisy Barn & Farm\n\n💳 PAYMENTS\n\n$12,960\n\nremaining balance\n\nNext payment: First Installment — due Apr 20\n\nPayment plan progress\n0%\nPay Now\n\n🕒 TIMELINE\n\n10:00 AM — Family Brunch\n\n2:30 PM — Wedding Party Arrival\n\nView Timeline\nExplore your Venue Guide\nPreferred vendors\nPlanning Progress\n\n50%\n\nYou’re making real headway.\n\nBased on required venue tasks, payments, contracts, and your questionnaire.\n\nRequired tasks · 5/8\nPayments · 0/3\nQuestionnaire · Done\nReview what’s left\nWedding Journey\n\nThe day is drawing nearer — you’re right where you should be.\n\nWedding Journey. You are at About a month out. 4 milestones completed, 1 ahead. The day is drawing nearer — you’re right where you should be.\n\n12 mo\nDone\n9 mo\nDone\n6 mo\nDone\n3 mo\nDone\n1 mo\nYou’re here\nDay\nAhead\nWHAT’S HAPPENING\n\nThis week\n\n📸\n\nYou added an engagement photo\n\nMonday\nYOUR WEDDING\n\nWhat would you like to work on for your wedding?\n\n🌐\n\nWedding Website\n\n100% complete\n\nOpen Website →\n\n👥\n\nGuest List\n\n5 invited, 2 confirmed\n\nOpen Guest List →\n\n💰\n\nBudget\n\n$0 of $30,000\n\nOpen Budget →",
+      "nextStepsSnippet": "Your Next Steps\n\n8 left for Sweet Daisy Barn & Farm\n\nFROM YOUR VENUE\n\nSubmit your guest count\n\nRequired\n\nWe need your final headcount to plan seating, catering, and rentals.\n\nDue Sep 17\nSubmit\n\nSubmit your timeline\n\nRequired\n\nPlan your day-of schedule, then submit it so your venue has it.\n\nDue Oct 3\nSubmit\n\nShare timeline\n\nShare your timeline so your photographer knows when and where they'll be needed.\n\nDue Oct 3\nReview\n\nLeave a review\n\nWe'd love to hear about your experience.\n\nDue Oct 31\nReview\n\nSHARED PLANNING\n\nFirst Installment\n\nPayment Schedule — Emma / Carter / Jordan / Lee — payment due\n\nOverdue — needed by Apr 20\nSweet Daisy Barn & Farm is waiting on this\nPay\nView all 8 next steps →\n\nWORKING WITH YOUR VENUE\n\nVENUE TEAM\n\nJC\n\nJennifer Cormier\n\nOwner\n\n✉️\nSW\n\nSam Whitfield\n\nVenue Manager\n\n✉️\nMessage Sweet Daisy Barn & Farm\n\n💳 PAYMENTS\n\n$12,960\n\nremaining balance\n\nNext payment: First ",
+      "leftMatch": "8",
+      "hasChecklistFinalInNextSteps": false,
+      "hasLedgerFinalInNextSteps": false,
+      "payCtas": 1,
+      "reviewCtas": 2,
+      "completeCtas": 0,
+      "submitCtas": 2
+    },
+    "tasks": {
+      "sample": "Emma & Jordan\n\n·\n\nSweet Daisy Barn & Farm\n\nExport my data\n🏠\nHome\n✅\nTasks\n2\n🕒\nTimeline\n📁\nDocuments\n💳\nPayments\n💬\nMessages\n🏛️\nGuide\n🤝\nVendors\nFrom your venue\n\nEverything Sweet Daisy Barn & Farm needs from you, in one place — newest due date first.\n\n6/10 tasks complete\n\nFirst Installment\n\nPayment Schedule — Emma / Carter / Jordan / Lee — payment due\n\nDue Apr 20\n\nPay now\n\nSecond Installment\n\nPayment Schedule — Emma / Carter / Jordan / Lee — payment due\n\nDue Jul 19\n\nPay now\n\nSubmit your guest count\n\nWe need your final headcount to plan seating, catering, and rentals.\n\nDue Sep 17 · 30 days before\n\nSubmit guest count\n\nFinal Payment\n\nPayment Schedule — Emma / Carter / Jordan / Lee — payment due\n\nDue Sep 17\n\nPay now\n\nSubmit your timeline\n\nPlan your day-of schedule, then submit it so your venue has it.\n\nDue Oct 3 · 14 days before\n\nSubmit timeline\n\nLeave a review\n\nWe'd love to hear about your experience.\n\nDue Oct 31 · 14 days after\n\nMark complete\n\nSubmit your timeline updates\n\nYou've made changes your venue hasn't seen yet.\n\nReview & submit\n\n",
+      "payNow": 3,
+      "markComplete": 1,
+      "openHasChecklistFinalPayment": false,
+      "openHasLedgerFinalPayment": true,
+      "hasChecklistFinalPaymentPayNow": true,
+      "hasLedgerFinalPaymentPayNow": true
+    },
+    "payments": {
+      "sample": "Emma & Jordan\n\n·\n\nSweet Daisy Barn & Farm\n\nExport my data\n🏠\nHome\n✅\nTasks\n2\n🕒\nTimeline\n📁\nDocuments\n💳\nPayments\n💬\nMessages\n🏛️\nGuide\n🤝\nVendors\nPayments\n\nYour financial picture with your venue — all in one place.\n\nPAYMENT SCHEDULE — EMMA / CARTER / JORDAN / LEE\n\n$12,960\n\nTotal contract value\n\n0% paid\n$12,960 remaining\n\nPaid\n\n$0\n\nRemaining\n\n$12,960\n\n💗\n\nFirst Installment (due April 20) hasn't been received yet. Reach out to your venue coordinator to arrange payment.\n\n💗\n\nYour next payment, Final Payment, is scheduled for September 17.\n\nPAYMENT SCHEDULE\n\n1\n\nFirst Installment\n\nDue Apr 20, 2026\n\n$4,320\n\nOverdue\nPay now\n2\n\nSecond Installment\n\nDue Jul 19, 2026\n\n$4,320\n\nOverdue\nPay now\n3\n\nFinal Payment\n\nDue Sep 17, 2026\n\n$4,321\n\nUpcoming\nPay now\n💗\n\nQuestions about payments?\n\nContact your venue coordinator through the Messages tab or reach out directly.\n\nSweet Daisy Barn & Farm\n💗",
+      "hasRemaining12960": true,
+      "hasFirst": true,
+      "hasSecond": true,
+      "hasFinal": true,
+      "payNowCount": 3
+    }
+  },
+  "checklist": {
+    "tasksOnlyLedgerFinalPayNow": true,
+    "homeTwinNotConsumingNextSteps": true,
+    "paymentsUnchanged": true,
+    "homeNoCompleteCta": true
+  }
+}

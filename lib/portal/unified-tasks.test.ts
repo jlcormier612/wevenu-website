@@ -468,3 +468,242 @@ describe("verified action completion policy", () => {
     );
   });
 });
+
+describe("payment attention twin suppression (Impl 2)", () => {
+  const due = "2026-09-17";
+  const nextWeek = new Date();
+  nextWeek.setDate(nextWeek.getDate() + 7);
+  const nIso = nextWeek.toISOString().slice(0, 10);
+
+  const finalPaymentMirror = () =>
+    task({
+      id: "et-final",
+      title: "Final payment",
+      status: "pending",
+      dueDate: due,
+      category: "financial",
+      visibility: "client_owned",
+      isRequired: true,
+      canComplete: false,
+      autoCompleteTrigger: "payment_received",
+    });
+
+  const unpaidFinalLine = () => ({
+    id: "sch",
+    title: "Payment Schedule",
+    invoiceId: "inv",
+    createdAt: "2026-08-01",
+    lineItems: [
+      { id: "li-final", label: "Final Payment", amount: 4321, dueDate: due, status: "pending" },
+    ],
+  });
+
+  // Case 1: unpaid line + payment_received mirror → Pay now only; mirror hidden
+  it("case 1: unpaid line hides payment_received checklist mirror; Pay now remains", () => {
+    const home = buildUnifiedTaskList({
+      ...emptyUnified,
+      venueTasks: [finalPaymentMirror()],
+      paymentSchedules: [unpaidFinalLine()],
+    });
+    const tasks = buildUnifiedTaskList({
+      ...emptyUnified,
+      venueTasks: [finalPaymentMirror()],
+      paymentSchedules: [unpaidFinalLine()],
+    });
+    for (const list of [home, tasks]) {
+      assert.equal(list.find((t) => t.id === "task_et-final"), undefined);
+      const payments = list.filter((t) => t.kind === "payment");
+      assert.equal(payments.length, 1);
+      assert.equal(payments[0]?.id, "payment_li-final");
+      assert.equal(payments[0]?.actionLabel, "Pay now");
+      assert.equal(payments[0]?.completableHere, false);
+    }
+    assert.deepEqual(home.map((t) => t.id), tasks.map((t) => t.id));
+  });
+
+  // Case 2: paid → financial attention gone; no synthetic checklist; mirror may reappear if still open
+  it("case 2: paid line removes payment attention; open mirror not inventing a Pay now twin", () => {
+    const list = buildUnifiedTaskList({
+      ...emptyUnified,
+      venueTasks: [finalPaymentMirror()],
+      paymentSchedules: [{
+        id: "sch",
+        title: "Payment Schedule",
+        invoiceId: "inv",
+        createdAt: "2026-08-01",
+        lineItems: [
+          { id: "li-final", label: "Final Payment", amount: 4321, dueDate: due, status: "paid" },
+        ],
+      }],
+    });
+    assert.equal(list.filter((t) => t.kind === "payment").length, 0);
+    // No unpaid obligation → checklist mirror stays visible (auto-complete owns completion when money lands)
+    const mirror = list.find((t) => t.id === "task_et-final");
+    assert.ok(mirror);
+    assert.equal(mirror?.kind, "venue_task");
+    assert.equal(mirror?.actionLabel, "Pay now");
+    assert.equal(mirror?.completableHere, false);
+  });
+
+  // Case 3: checklist only → keep visible
+  it("case 3: payment_received checklist stays when no payment line exists", () => {
+    const list = buildUnifiedTaskList({
+      ...emptyUnified,
+      venueTasks: [finalPaymentMirror()],
+      paymentSchedules: [],
+    });
+    assert.equal(list.filter((t) => t.kind === "payment").length, 0);
+    assert.equal(list.find((t) => t.id === "task_et-final")?.title, "Final payment");
+    assert.equal(list.find((t) => t.id === "task_et-final")?.completableHere, false);
+  });
+
+  // Case 4: payment line only → Pay now; no synthetic checklist
+  it("case 4: unpaid payment line alone does not invent a checklist mirror", () => {
+    const list = buildUnifiedTaskList({
+      ...emptyUnified,
+      venueTasks: [],
+      paymentSchedules: [unpaidFinalLine()],
+    });
+    assert.equal(list.length, 1);
+    assert.equal(list[0]?.kind, "payment");
+    assert.equal(list[0]?.id, "payment_li-final");
+    assert.equal(list.filter((t) => t.kind === "venue_task").length, 0);
+  });
+
+  // Case 5: multiple installments stay distinct; canonical schedules
+  it("case 5: multiple installments stay distinct; mirror still hidden; no title collapse", () => {
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 2);
+    const yIso = yesterday.toISOString().slice(0, 10);
+    const schedules = [
+      {
+        id: "sch-old",
+        title: "Old dup",
+        invoiceId: "inv-1",
+        createdAt: "2026-07-01",
+        lineItems: [
+          { id: "old-1", label: "First Installment", amount: 1000, dueDate: yIso, status: "overdue" },
+        ],
+      },
+      {
+        id: "sch-new",
+        title: "Canonical",
+        invoiceId: "inv-1",
+        createdAt: "2026-08-05",
+        lineItems: [
+          { id: "li-1", label: "First Installment", amount: 4319.57, dueDate: yIso, status: "overdue" },
+          { id: "li-2", label: "Second Installment", amount: 4319.57, dueDate: nIso, status: "pending" },
+          { id: "li-3", label: "Final Payment", amount: 4320.86, dueDate: due, status: "pending" },
+        ],
+      },
+    ];
+    assert.equal(selectCanonicalPaymentSchedules(schedules).length, 1);
+
+    const list = buildUnifiedTaskList({
+      ...emptyUnified,
+      venueTasks: [finalPaymentMirror()],
+      paymentSchedules: schedules,
+    });
+    const payments = list.filter((t) => t.kind === "payment");
+    assert.equal(payments.length, 3);
+    assert.deepEqual(payments.map((p) => p.title).sort(), [
+      "Final Payment",
+      "First Installment",
+      "Second Installment",
+    ]);
+    assert.equal(list.find((t) => t.id === "task_et-final"), undefined);
+    assert.equal(remainingBalanceFromSchedules(schedules), 4319.57 + 4319.57 + 4320.86);
+  });
+
+  // Case 6: never title-only dedupe — same title without payment_received stays
+  it("case 6: does not hide checklist by title alone when trigger is absent", () => {
+    const list = buildUnifiedTaskList({
+      ...emptyUnified,
+      venueTasks: [
+        task({
+          id: "lookalike",
+          title: "Final payment",
+          status: "pending",
+          dueDate: due,
+          category: "financial",
+          visibility: "client_owned",
+          canComplete: true,
+          autoCompleteTrigger: null,
+        }),
+      ],
+      paymentSchedules: [unpaidFinalLine()],
+    });
+    assert.ok(list.find((t) => t.id === "task_lookalike"));
+    assert.equal(list.find((t) => t.kind === "payment")?.id, "payment_li-final");
+  });
+
+  // Case 7: non-payment triggered tasks remain alongside unpaid lines
+  it("case 7: other domain checklist tasks remain when unpaid payments exist", () => {
+    const list = buildUnifiedTaskList({
+      ...emptyUnified,
+      venueTasks: [
+        finalPaymentMirror(),
+        task({
+          id: "gc",
+          title: "Submit your guest count",
+          status: "pending",
+          dueDate: due,
+          visibility: "client_owned",
+          canComplete: false,
+          autoCompleteTrigger: "guest_count_finalized",
+        }),
+        task({
+          id: "ins",
+          title: "Purchase event insurance",
+          status: "pending",
+          dueDate: due,
+          visibility: "client_owned",
+          canComplete: false,
+          autoCompleteTrigger: "document_uploaded_insurance",
+        }),
+      ],
+      paymentSchedules: [unpaidFinalLine()],
+    });
+    assert.equal(list.find((t) => t.id === "task_et-final"), undefined);
+    assert.ok(list.find((t) => t.id === "task_gc"));
+    assert.ok(list.find((t) => t.id === "task_ins"));
+    assert.equal(list.filter((t) => t.kind === "payment").length, 1);
+  });
+
+  // Case 8: trigger safety — suppression is attention-only; different-title
+  // payment_received still suppressed by trigger (not title); we do not invent
+  // installment-scoped auto-complete here (limitation documented in deliverable).
+  it("case 8: suppression keys on payment_received trigger regardless of title; completableHere stays false", () => {
+    const list = buildUnifiedTaskList({
+      ...emptyUnified,
+      venueTasks: [
+        task({
+          id: "odd-title",
+          title: "Settle remaining balance",
+          status: "pending",
+          dueDate: due,
+          category: "planning",
+          visibility: "client_owned",
+          canComplete: false,
+          autoCompleteTrigger: "payment_received",
+        }),
+      ],
+      paymentSchedules: [unpaidFinalLine()],
+    });
+    assert.equal(list.find((t) => t.id === "task_odd-title"), undefined);
+    const payment = list.find((t) => t.kind === "payment");
+    assert.equal(payment?.actionLabel, "Pay now");
+    assert.equal(payment?.completableHere, false);
+    // presentation policy for an isolated mirror (no unpaid lines) still blocks Mark complete
+    const alone = venueTaskPresentation(task({
+      id: "alone",
+      title: "Final payment",
+      status: "pending",
+      dueDate: due,
+      canComplete: true,
+      autoCompleteTrigger: "payment_received",
+    }));
+    assert.equal(alone.completableHere, false);
+    assert.equal(alone.actionLabel, "Pay now");
+  });
+});

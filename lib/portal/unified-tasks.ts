@@ -12,6 +12,12 @@
  * Verified Action Completion (Impl 1): venue_task rows with an
  * autoCompleteTrigger never complete in-place — CTA navigates to the
  * owning workspace; domain submit / pay / sign / upload fires the trigger.
+ *
+ * Payment Attention (Impl 2): when unpaid payment line items exist on the
+ * canonical schedule(s), omit venue_task mirrors wired to
+ * autoCompleteTrigger === "payment_received" from couple attention.
+ * Ledger rows own Pay now; checklist DB rows stay for venue lifecycle /
+ * eventual auto-complete. Gate is the trigger field — never title match.
  */
 import type { PortalRequestSummary } from "@/lib/requests/types";
 import type { PortalTask } from "@/lib/portal/types";
@@ -135,6 +141,14 @@ export function ownershipLabel(ownership: UnifiedTaskOwnership): string {
   return ownership === "shared" ? "Shared planning" : "From your venue";
 }
 
+/**
+ * Financial checklist mirrors that auto-complete on payment_received.
+ * Reliable domain link to the ledger path — not title / category matching.
+ */
+export function isPaymentReceivedMirror(t: Pick<PortalTask, "autoCompleteTrigger">): boolean {
+  return t.autoCompleteTrigger === "payment_received";
+}
+
 export function buildUnifiedTaskList(input: {
   venueTasks: PortalTask[];
   requests: PortalRequestSummary[];
@@ -146,7 +160,38 @@ export function buildUnifiedTaskList(input: {
   const out: UnifiedTask[] = [];
   const today = todayIso();
 
+  // One Payment Plan per Invoice — collapse duplicate schedules so the same
+  // underlying obligation never surfaces as multiple actionable rows.
+  // Canonicalize before venue_task emission so payment_received mirrors can
+  // be omitted when unpaid ledger lines already own couple attention.
+  const paymentSchedules = selectCanonicalPaymentSchedules(
+    input.paymentSchedules.map((s, i) => ({
+      ...s,
+      id: s.id ?? `anon_${i}`,
+    })),
+  );
+  const unpaidPaymentLines: {
+    scheduleTitle: string;
+    li: { id: string; label: string; amount: number; dueDate: string | null; status: string };
+  }[] = [];
+  const seenLineItemIds = new Set<string>();
+  for (const s of paymentSchedules) {
+    for (const li of s.lineItems) {
+      if (li.status === "paid" || li.status === "cancelled") continue;
+      if (seenLineItemIds.has(li.id)) continue;
+      seenLineItemIds.add(li.id);
+      unpaidPaymentLines.push({ scheduleTitle: s.title, li });
+    }
+  }
+  const hasUnpaidPaymentObligation = unpaidPaymentLines.length > 0;
+
   for (const t of input.venueTasks) {
+    // Impl 2: when money is owed on a canonical line, hide payment_received
+    // checklist mirrors from couple attention. DB row stays; auto-complete
+    // path stays. Never title-dedupe.
+    if (hasUnpaidPaymentObligation && isPaymentReceivedMirror(t) && t.status !== "complete") {
+      continue;
+    }
     const done = t.status === "complete";
     const overdue = !done && (t.status === "overdue" || isPastDue(t.dueDate, today));
     const presentation = venueTaskPresentation(t);
@@ -183,28 +228,14 @@ export function buildUnifiedTaskList(input: {
     });
   }
 
-  // One Payment Plan per Invoice — collapse duplicate schedules so the same
-  // underlying obligation never surfaces as multiple actionable rows.
-  const paymentSchedules = selectCanonicalPaymentSchedules(
-    input.paymentSchedules.map((s, i) => ({
-      ...s,
-      id: s.id ?? `anon_${i}`,
-    })),
-  );
-  const seenLineItemIds = new Set<string>();
-  for (const s of paymentSchedules) {
-    for (const li of s.lineItems) {
-      if (li.status === "paid" || li.status === "cancelled") continue;
-      if (seenLineItemIds.has(li.id)) continue;
-      seenLineItemIds.add(li.id);
-      const overdue = li.status === "overdue" || isPastDue(li.dueDate, today);
-      out.push({
-        id: `payment_${li.id}`, kind: "payment", title: li.label, description: `${s.title} — payment due`,
-        dueDate: li.dueDate, completed: false, isOverdue: overdue, isRequired: false, ownership: "shared",
-        targetSection: "payments", actionLabel: "Pay now",
-        completableHere: false,
-      });
-    }
+  for (const { scheduleTitle, li } of unpaidPaymentLines) {
+    const overdue = li.status === "overdue" || isPastDue(li.dueDate, today);
+    out.push({
+      id: `payment_${li.id}`, kind: "payment", title: li.label, description: `${scheduleTitle} — payment due`,
+      dueDate: li.dueDate, completed: false, isOverdue: overdue, isRequired: false, ownership: "shared",
+      targetSection: "payments", actionLabel: "Pay now",
+      completableHere: false,
+    });
   }
 
   if (input.questionnaire && input.questionnaire.status === "sent") {
