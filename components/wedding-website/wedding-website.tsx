@@ -809,7 +809,16 @@ function shadowFor(style: ThemeConfig["shadow"]): string {
 }
 
 export function GalleryGrid({ photos, tc }: { photos: string[]; tc: ThemeConfig }) {
-  const gap = SPACING_GAP[tc.photoSpacing];
+  // Contact-sheet fusion: bordered equal cells with tight spacing abut so
+  // white mats form continuous sheet lines (Film). Modern keeps paint
+  // between tiles (no frame). Collage / scrapbook / hero-emphasis paths
+  // never author this combo — Luxury uses generous + hero-emphasis.
+  const contactSheet =
+    tc.frameStyle === "border" &&
+    tc.photoSpacing === "tight" &&
+    (tc.scalePattern ?? "uniform") === "uniform" &&
+    (tc.arrangement ?? "uniform") === "uniform";
+  const gap = contactSheet ? "0px" : SPACING_GAP[tc.photoSpacing];
   const frame = (i: number, extraRotation = 0): React.CSSProperties => {
     const rot = rotationFor(tc.rotation, i) + extraRotation;
     const base: React.CSSProperties = {
@@ -823,10 +832,13 @@ export function GalleryGrid({ photos, tc }: { photos: string[]; tc: ThemeConfig 
       // pure white mats previously disappeared against #FAF8F4 / pale Color
       // Stories. Published pages with darker bands already read; this only
       // adds a 1px edge, not a new frame vocabulary.
+      // Contact-sheet (Film) uses a slightly thicker mat so equal cells read
+      // as one printed sheet vs Modern's flush grid — same frameStyle token.
       const matEdge = "0 0 0 1px rgba(0,0,0,0.12)";
+      const matWidth = contactSheet ? "8px" : "6px";
       return {
         ...base,
-        border: "6px solid #fff",
+        border: `${matWidth} solid #fff`,
         boxShadow: base.boxShadow === "none" ? matEdge : `${base.boxShadow}, ${matEdge}`,
       };
     }
@@ -969,7 +981,7 @@ export function GalleryGrid({ photos, tc }: { photos: string[]; tc: ThemeConfig 
     );
   }
 
-  // ── Uniform arrangement — Editorial/Film/Minimal/Modern/Luxury ──
+  // ── Uniform arrangement — Editorial/Film/Minimal/Modern/Luxury/Midnight ──
   // Collection's galleryLayout (grid/masonry/film-strip) still picks the
   // outer structure; scalePattern varies per-image size/emphasis within it.
   const spanFor = (i: number, total: number): string => {
@@ -978,7 +990,12 @@ export function GalleryGrid({ photos, tc }: { photos: string[]; tc: ThemeConfig 
     return "";
   };
   const aspectFor = (i: number): string => {
+    // Alternating = mixed portrait/landscape essay (Wildflower adds scattered
+    // rotation on the same pattern; Editorial no longer uses this axis).
     if (tc.scalePattern === "alternating") return i % 2 === 0 ? "4 / 5" : "16 / 10";
+    // Keep hero-emphasis lead square so supporting crops remain visible in
+    // Studio thumbnails — a tall portrait lead fills the card and collapses
+    // Editorial/Luxury/Midnight to a single crop (blind-ID failure).
     return "1 / 1";
   };
 
@@ -1006,7 +1023,7 @@ export function GalleryGrid({ photos, tc }: { photos: string[]; tc: ThemeConfig 
   }
 
   if (tc.galleryLayout === "grid") {
-    return (
+    const grid = (
       <div className={`grid ${tc.imageScale === "large" ? "grid-cols-2" : "grid-cols-2 @min-[768px]/wedding:grid-cols-3"}`} style={{ gap }}>
         {photos.map((url, i) => (
           <div key={i} className={`overflow-hidden ${spanFor(i, photos.length)}`} style={{ borderRadius: tc.photoRadius, ...frame(i) }}>
@@ -1015,10 +1032,27 @@ export function GalleryGrid({ photos, tc }: { photos: string[]; tc: ThemeConfig 
         ))}
       </div>
     );
+    // Film contact-sheet tray: a warm print mount behind fused equal cells so
+    // the equal-grid silhouette cannot be mistaken for Modern's flush tiles.
+    // Token-gated (border+tight+uniform only) — not a photo_styles key branch.
+    if (contactSheet) {
+      return (
+        <div
+          style={{
+            background: "linear-gradient(180deg, #f3ebe0 0%, #e8dcc8 100%)",
+            padding: "0.55rem",
+            boxShadow: "inset 0 0 0 1px rgba(0,0,0,0.08), 0 0 0 1px rgba(0,0,0,0.16), 0 8px 20px rgba(0,0,0,0.1)",
+          }}
+        >
+          {grid}
+        </div>
+      );
+    }
+    return grid;
   }
 
   // masonry — the original free-flowing columns treatment
-  return (
+  const masonry = (
     <div className={`columns-2 space-y-3 ${tc.imageScale === "large" ? "@min-[768px]/wedding:columns-2" : "@min-[768px]/wedding:columns-3 @min-[1024px]/wedding:columns-4"}`} style={{ columnGap: gap }}>
       {photos.map((url, i) => (
         <div key={i} className="break-inside-avoid overflow-hidden" style={{ borderRadius: tc.photoRadius, marginBottom: gap, ...frame(i) }}>
@@ -1027,6 +1061,20 @@ export function GalleryGrid({ photos, tc }: { photos: string[]; tc: ThemeConfig 
       ))}
     </div>
   );
+  if (contactSheet) {
+    return (
+      <div
+        style={{
+          background: "linear-gradient(180deg, #f3ebe0 0%, #e8dcc8 100%)",
+          padding: "0.55rem",
+          boxShadow: "inset 0 0 0 1px rgba(0,0,0,0.08), 0 0 0 1px rgba(0,0,0,0.16), 0 8px 20px rgba(0,0,0,0.1)",
+        }}
+      >
+        {masonry}
+      </div>
+    );
+  }
+  return masonry;
 }
 
 // ── Password gate ─────────────────────────────────────────────────────────────
