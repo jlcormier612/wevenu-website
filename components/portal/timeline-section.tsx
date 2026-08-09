@@ -358,7 +358,7 @@ function TimelineStatus({
   }
 
   return (
-    <div className="w-full rounded-xl border border-border/60 bg-card px-3 py-3 space-y-2">
+    <div id="portal-focus-timeline-submit" className="w-full rounded-xl border border-border/60 bg-card px-3 py-3 space-y-2">
       <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground">Timeline Status</p>
 
       {lastSubmittedAt ? (

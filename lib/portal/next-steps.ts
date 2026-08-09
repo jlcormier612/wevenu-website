@@ -7,6 +7,7 @@
  */
 import { formatAbsoluteDueDate } from "@/lib/playbooks/due-dates";
 import type { UnifiedTask, UnifiedTaskOwnership, UnifiedTaskTargetSection } from "@/lib/portal/unified-tasks";
+import type { PortalWorkspaceFocus } from "@/lib/portal/workspace-routing";
 
 export const NEXT_STEPS_HOME_CAP = 5;
 
@@ -19,6 +20,8 @@ export type NextStepsItem = {
   isRequired: boolean;
   ownership: UnifiedTaskOwnership;
   targetSection: UnifiedTaskTargetSection;
+  /** Same structured focus as UnifiedTask — Home Review navigates, never completes. */
+  targetFocus: PortalWorkspaceFocus | null;
   actionLabel: string;
   /** Optional kind for compact CTA wording; vendor rows may omit. */
   kind?: UnifiedTask["kind"] | "vendor_task";
@@ -164,6 +167,7 @@ export function fromUnifiedTask(t: UnifiedTask): NextStepsItem {
     isRequired: t.isRequired,
     ownership: t.ownership,
     targetSection: t.targetSection,
+    targetFocus: t.targetFocus,
     actionLabel: t.actionLabel,
     kind: t.kind,
   };

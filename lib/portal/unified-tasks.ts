@@ -22,6 +22,7 @@
 import type { PortalRequestSummary } from "@/lib/requests/types";
 import type { PortalTask } from "@/lib/portal/types";
 import { selectCanonicalPaymentSchedules } from "@/lib/portal/payment-schedules";
+import type { PortalWorkspaceFocus } from "@/lib/portal/workspace-routing";
 
 export type UnifiedTaskKind = "venue_task" | "request" | "contract" | "payment" | "questionnaire" | "timeline";
 
@@ -58,6 +59,12 @@ export type UnifiedTask = {
   // another section's real action (a payment button, a sign flow, a
   // questionnaire form); it always hands off to the section that owns it.
   targetSection: UnifiedTaskTargetSection;
+  /**
+   * Optional within-section focus (hash `#section/focus`). Structured
+   * metadata only — never derived from task titles. Navigation/focus
+   * never completes the task.
+   */
+  targetFocus: PortalWorkspaceFocus | null;
   actionLabel: string;
   // Only venue_task items without a domain autoCompleteTrigger complete
   // in place. Everything else is derived from the owning system's state
@@ -75,17 +82,22 @@ type PaymentSchedule = {
 
 type ContractDoc = { id: string; docType: string; name: string; status: string | null; signToken?: string | null };
 
-/** Domain trigger → couple workspace + CTA copy (never Mark complete). */
-const TRIGGER_WORKSPACE: Record<string, { section: UnifiedTaskTargetSection; actionLabel: string }> = {
-  guest_count_finalized: { section: "guests", actionLabel: "Submit guest count" },
-  vendor_selected: { section: "vendors", actionLabel: "Add vendors" },
-  seating_submitted: { section: "seating", actionLabel: "Submit seating" },
-  timeline_submitted: { section: "timeline", actionLabel: "Submit timeline" },
-  contract_signed: { section: "documents", actionLabel: "Review & sign" },
-  payment_received: { section: "payments", actionLabel: "Pay now" },
-  questionnaire_submitted: { section: "questionnaire", actionLabel: "Complete form" },
-  document_uploaded_insurance: { section: "documents", actionLabel: "Upload insurance" },
-  document_uploaded: { section: "documents", actionLabel: "Upload" },
+/** Domain trigger → couple workspace + CTA copy + exact focus (never Mark complete). */
+const TRIGGER_WORKSPACE: Record<
+  string,
+  { section: UnifiedTaskTargetSection; actionLabel: string; focus: PortalWorkspaceFocus | null }
+> = {
+  guest_count_finalized: { section: "guests", actionLabel: "Submit guest count", focus: "finalize" },
+  vendor_selected: { section: "vendors", actionLabel: "Add vendors", focus: "pick" },
+  seating_submitted: { section: "seating", actionLabel: "Submit seating", focus: "submit" },
+  timeline_submitted: { section: "timeline", actionLabel: "Submit timeline", focus: "submit" },
+  contract_signed: { section: "documents", actionLabel: "Review & sign", focus: "sign" },
+  // Payment already lands on Payments; no within-section focus change in Impl 3.
+  payment_received: { section: "payments", actionLabel: "Pay now", focus: null },
+  questionnaire_submitted: { section: "questionnaire", actionLabel: "Complete form", focus: "form" },
+  // Insurance: section only — couple completion path out of scope (no invent).
+  document_uploaded_insurance: { section: "documents", actionLabel: "Upload insurance", focus: null },
+  document_uploaded: { section: "documents", actionLabel: "Upload", focus: null },
 };
 
 /**
@@ -94,12 +106,13 @@ const TRIGGER_WORKSPACE: Record<string, { section: UnifiedTaskTargetSection; act
  */
 export function venueTaskPresentation(t: PortalTask): {
   targetSection: UnifiedTaskTargetSection;
+  targetFocus: PortalWorkspaceFocus | null;
   actionLabel: string;
   completableHere: boolean;
 } {
   const done = t.status === "complete";
   if (done) {
-    return { targetSection: "tasks", actionLabel: "Done", completableHere: false };
+    return { targetSection: "tasks", targetFocus: null, actionLabel: "Done", completableHere: false };
   }
 
   const trigger = t.autoCompleteTrigger ?? null;
@@ -108,17 +121,19 @@ export function venueTaskPresentation(t: PortalTask): {
     if (mapped) {
       return {
         targetSection: mapped.section,
+        targetFocus: mapped.focus,
         actionLabel: mapped.actionLabel,
         completableHere: false,
       };
     }
     // Unknown trigger still owned by the system — never Mark complete.
-    return { targetSection: "tasks", actionLabel: "View", completableHere: false };
+    return { targetSection: "tasks", targetFocus: null, actionLabel: "View", completableHere: false };
   }
 
   const canManual = Boolean(t.canComplete);
   return {
     targetSection: "tasks",
+    targetFocus: null,
     actionLabel: canManual ? "Mark complete" : "View",
     completableHere: canManual,
   };
@@ -200,6 +215,7 @@ export function buildUnifiedTaskList(input: {
       dueDate: t.dueDate, daysOffset: t.daysOffset, dueDateLocked: false, completed: done,
       isOverdue: overdue, isRequired: t.isRequired, ownership: "venue",
       targetSection: presentation.targetSection,
+      targetFocus: presentation.targetFocus,
       actionLabel: presentation.actionLabel,
       completableHere: presentation.completableHere,
     });
@@ -213,6 +229,7 @@ export function buildUnifiedTaskList(input: {
       id: `request_${r.id}`, kind: "request", title: r.title, description: r.description,
       dueDate: r.dueDate, completed: false, isOverdue: overdue, isRequired: false, ownership: "venue",
       targetSection: "requests",
+      targetFocus: null,
       actionLabel: r.requestType === "approval" ? "Review & respond" : r.requestType === "upload" ? "Upload" : "Respond",
       completableHere: false,
     });
@@ -223,7 +240,7 @@ export function buildUnifiedTaskList(input: {
     out.push({
       id: `contract_${d.id}`, kind: "contract", title: `Sign: ${d.name}`, description: "Your venue is waiting on your signature.",
       dueDate: null, completed: false, isOverdue: false, isRequired: false, ownership: "venue",
-      targetSection: "documents", actionLabel: "Review & sign",
+      targetSection: "documents", targetFocus: "sign", actionLabel: "Review & sign",
       completableHere: false,
     });
   }
@@ -233,7 +250,7 @@ export function buildUnifiedTaskList(input: {
     out.push({
       id: `payment_${li.id}`, kind: "payment", title: li.label, description: `${scheduleTitle} — payment due`,
       dueDate: li.dueDate, completed: false, isOverdue: overdue, isRequired: false, ownership: "shared",
-      targetSection: "payments", actionLabel: "Pay now",
+      targetSection: "payments", targetFocus: null, actionLabel: "Pay now",
       completableHere: false,
     });
   }
@@ -243,7 +260,7 @@ export function buildUnifiedTaskList(input: {
       id: "questionnaire", kind: "questionnaire", title: "Complete your final details form",
       description: "Guest count, songs, meal preferences, and day-of contacts.",
       dueDate: null, completed: false, isOverdue: false, isRequired: false, ownership: "venue",
-      targetSection: "questionnaire", actionLabel: "Complete form",
+      targetSection: "questionnaire", targetFocus: "form", actionLabel: "Complete form",
       completableHere: false,
     });
   }
@@ -253,7 +270,7 @@ export function buildUnifiedTaskList(input: {
       id: "timeline", kind: "timeline", title: "Submit your timeline updates",
       description: "You've made changes your venue hasn't seen yet.",
       dueDate: null, completed: false, isOverdue: false, isRequired: false, ownership: "shared",
-      targetSection: "timeline", actionLabel: "Review & submit",
+      targetSection: "timeline", targetFocus: "submit", actionLabel: "Review & submit",
       completableHere: false,
     });
   }

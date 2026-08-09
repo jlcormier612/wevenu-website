@@ -771,7 +771,7 @@ export function VendorSection({ token, clientId, venueName }: { token: string; c
   }
 
   return (
-    <div className="space-y-6">
+    <div id="portal-focus-vendors-pick" className="space-y-6">
       <div>
         <p className="font-semibold text-heading">These are the vendors {venueName} trusts and loves working with.</p>
         <p className="text-xs text-muted-foreground mt-0.5">

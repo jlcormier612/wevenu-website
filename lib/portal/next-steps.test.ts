@@ -19,6 +19,7 @@ function item(partial: Partial<NextStepsItem> & Pick<NextStepsItem, "id" | "titl
     isOverdue: false,
     isRequired: false,
     targetSection: "tasks",
+    targetFocus: null,
     actionLabel: "View",
     ...partial,
   };
@@ -166,6 +167,7 @@ describe("Next Steps Home presentation", () => {
         isRequired: t.isRequired,
         ownership: t.ownership,
         targetSection: t.targetSection,
+        targetFocus: t.targetFocus,
         actionLabel: t.actionLabel,
         kind: t.kind,
       })),

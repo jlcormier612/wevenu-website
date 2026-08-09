@@ -73,6 +73,13 @@ import {
 } from "@/lib/portal/your-wedding";
 import { resolveLuvHomeSuggestion } from "@/lib/portal/luv-suggestions";
 import { resolveHomeMemories } from "@/lib/portal/memories";
+import {
+  formatPortalHash,
+  parsePortalHash,
+  portalFocusElementId,
+  scrollToPortalFocus,
+  type PortalWorkspaceFocus,
+} from "@/lib/portal/workspace-routing";
 import { partitionByCompletion } from "@/lib/tasks/group-by-completion";
 import type { PortalRequestSummary } from "@/lib/requests/types";
 import { QuestionnairePortalSection } from "@/components/portal/questionnaire-section";
@@ -1692,7 +1699,7 @@ function OverviewSection({
   todoCount: number;
   profile: CoupleProfile | null;
   latestJournalEntry?: JournalEntry | null;
-  onNavigate: (s: PortalSection) => void;
+  onNavigate: (s: PortalSection, focus?: PortalWorkspaceFocus | null) => void;
   recentActivity: RecentActivity | null;
   showLuvIntro: boolean;
   onDismissLuvIntro: () => void;
@@ -4357,6 +4364,7 @@ export function PortalShell({
   initialLegalGate?: CouplePortalLegalGateStatus;
 }) {
   const [activeSection, setActiveSection] = React.useState<PortalSection>("overview");
+  const [workspaceFocus, setWorkspaceFocus] = React.useState<PortalWorkspaceFocus | null>(null);
   const [guestStats, setGuestStats] = React.useState<GuestStats | null>(null);
   const [todoCount, setTodoCount] = React.useState(0);
   const [profile, setProfile] = React.useState<CoupleProfile | null>(null);
@@ -4405,18 +4413,41 @@ export function PortalShell({
     };
   }, [token, hasServerLegalGate]);
 
-  // Deep-linkable by #hash (e.g. #guests, #seating) — same pattern the
-  // Booking Workspace's own tabs already use — so the venue-side Event
-  // Readiness card's "open in the couple's portal" links land on the
-  // relevant section instead of always Overview (Event Readiness — Phase 1).
+  // Deep-linkable by #hash (e.g. #guests, #seating/submit) — section tabs plus
+  // optional within-section focus for domain CTAs (Impl 3). Hash / focus only
+  // navigates; never completes a task.
+  const navigateTo = React.useCallback((
+    section: PortalSection,
+    focus: PortalWorkspaceFocus | null = null,
+  ) => {
+    setActiveSection(section);
+    setWorkspaceFocus(focus);
+    if (typeof window === "undefined") return;
+    const next = formatPortalHash(section, focus);
+    const current = window.location.hash.replace(/^#/, "");
+    if (current !== next) {
+      window.history.replaceState(null, "", `#${next}`);
+    }
+  }, []);
+
   React.useEffect(() => {
     if (needsLegalAcceptance) return;
     const syncFromHash = () => {
-      const hash = window.location.hash.replace("#", "");
-      if (hash) setActiveSection(hash as PortalSection);
+      const { section, focus } = parsePortalHash(window.location.hash);
+      if (section) {
+        setActiveSection(section);
+        setWorkspaceFocus(focus);
+      }
     };
     syncFromHash();
+    window.addEventListener("hashchange", syncFromHash);
+    return () => window.removeEventListener("hashchange", syncFromHash);
   }, [needsLegalAcceptance]);
+
+  React.useEffect(() => {
+    if (!workspaceFocus) return;
+    scrollToPortalFocus(portalFocusElementId(activeSection, workspaceFocus));
+  }, [activeSection, workspaceFocus]);
 
   React.useEffect(() => {
     if (needsLegalAcceptance) return;
@@ -4575,14 +4606,14 @@ export function PortalShell({
             </a>
             <CoupleNotificationBell
               token={token}
-              onNavigate={(section) => setActiveSection(section)}
+              onNavigate={(section) => navigateTo(section)}
             />
             {/* Account — Program 5 (2026-07-24): "That's a global function.
                 It doesn't belong with either planning area." The only
                 header-level nav control; everything else routes through
                 the single venue-operational row below or a dashboard
                 launch card. */}
-            <button type="button" onClick={() => setActiveSection("account")}
+            <button type="button" onClick={() => navigateTo("account")}
               title="Account"
               className="h-7 w-7 rounded-full flex items-center justify-center transition-colors hover:bg-muted/60 shrink-0"
               style={{ color: activeSection === "account" ? SAGE : "#6A6460" }}>
@@ -4605,7 +4636,7 @@ export function PortalShell({
               const badge = item.id === "tasks" && actionCount > 0 ? actionCount : 0;
               return (
                 <button key={item.id} type="button"
-                  onClick={() => item.available && setActiveSection(item.id)}
+                  onClick={() => item.available && navigateTo(item.id)}
                   className="relative flex-shrink-0 flex items-center gap-1.5 px-3 py-2.5 text-sm font-medium transition-all rounded-lg"
                   style={{
                     color: !item.available ? "#8A837D" : isActive ? SAGE : "#3D3833",
@@ -4646,7 +4677,7 @@ export function PortalShell({
               todoCount={todoCount}
               profile={profile}
               latestJournalEntry={profile?.latestJournalEntry ?? null}
-              onNavigate={setActiveSection}
+              onNavigate={navigateTo}
               recentActivity={recentActivity}
               showLuvIntro={showLuvIntro}
               onDismissLuvIntro={dismissLuvIntro}
@@ -4663,17 +4694,17 @@ export function PortalShell({
         ) : isSharedListColumn ? (
           /* Tasks | Timeline | Documents | Venue Guide — identical outer column (max-w + pad). */
           <div className="w-full max-w-2xl mx-auto px-4 sm:px-6 py-6">
-            {activeSection === "tasks"     && <UnifiedTasksSection token={token} initialTasks={initialTasks} initialVendorTasks={initialVendorTasks} venueName={context.venue.name} onNavigate={setActiveSection} />}
+            {activeSection === "tasks"     && <UnifiedTasksSection token={token} initialTasks={initialTasks} initialVendorTasks={initialVendorTasks} venueName={context.venue.name} onNavigate={navigateTo} />}
             {activeSection === "timeline"  && <TimelinePortalSection token={token} clientId={context.client.id} initialSections={initialTimelineSections} initialEntries={initialTimelineEntries} initialLastSubmittedAt={initialTimelineLastSubmittedAt} initialHasUnpublishedChanges={initialTimelineHasUnpublishedChanges} eventDate={context.event?.eventDate} eventEndDate={context.event?.eventEndDate} />}
-            {activeSection === "documents" && <CoupleDocumentsPortalSection token={token} onNavigate={setActiveSection} />}
-            {activeSection === "guide"     && <VenueGuidePortalSection token={token} context={context} onNavigate={setActiveSection} />}
+            {activeSection === "documents" && <CoupleDocumentsPortalSection token={token} onNavigate={navigateTo} />}
+            {activeSection === "guide"     && <VenueGuidePortalSection token={token} context={context} onNavigate={navigateTo} />}
           </div>
         ) : (
           <div className="w-full max-w-2xl mx-auto px-4 sm:px-6 py-6">
             {activeSection === "guests"    && <GuestPortalSection token={token} />}
             {activeSection === "todos"     && <TodoSection token={token} onCountChange={setTodoCount} eventDate={context.event?.eventDate} />}
             {(activeSection === "story" || activeSection === "journey") && (
-              <StoryAndJourneySection token={token} context={context} profile={profile} onProfileChange={setProfile} onNavigate={setActiveSection} initialTab={activeSection === "journey" ? "journey" : "story"} />
+              <StoryAndJourneySection token={token} context={context} profile={profile} onProfileChange={setProfile} onNavigate={navigateTo} initialTab={activeSection === "journey" ? "journey" : "story"} />
             )}
             {activeSection === "people"    && <OurPeopleSection token={token} context={context} />}
             {activeSection === "questionnaire" && <QuestionnairePortalSection token={token} />}
@@ -4682,7 +4713,7 @@ export function PortalShell({
             {activeSection === "payments"  && <PaymentPortalSection token={token} />}
             {activeSection === "messages"  && <PortalMessageSection token={token} venueName={context.venue.name} />}
             {activeSection === "account"   && <AccountSection token={token} context={context} venueName={context.venue.name} />}
-            {activeSection === "requests"  && <RequestsPortalSection token={token} onNavigate={setActiveSection} />}
+            {activeSection === "requests"  && <RequestsPortalSection token={token} onNavigate={navigateTo} />}
           </div>
         )}
       </main>
@@ -4694,7 +4725,7 @@ export function PortalShell({
       </footer>
 
       {/* Persistent across every tab, not just Overview — Program 5. */}
-      <FloatingLuvWidget token={token} onNavigateToGuide={() => setActiveSection("guide")} />
+      <FloatingLuvWidget token={token} onNavigateToGuide={() => navigateTo("guide")} />
     </div>
   );
 }
@@ -4833,7 +4864,7 @@ function NextStepsCard({
   vendorTasks?: PortalVendorTask[];
   timelineHasUnpublishedChanges?: boolean;
   venueName: string;
-  onNavigate: (s: PortalSection) => void;
+  onNavigate: (s: PortalSection, focus?: PortalWorkspaceFocus | null) => void;
   onAttentionCountChange?: (count: number) => void;
 }) {
   const [requests, setRequests] = React.useState<PortalRequestSummary[]>([]);
@@ -4887,6 +4918,7 @@ function NextStepsCard({
               isRequired: false,
               ownership: "venue",
               targetSection: "tasks",
+              targetFocus: null,
               actionLabel: "Complete",
               kind: "vendor_task",
             };
@@ -4928,7 +4960,7 @@ function NextStepsCard({
       >
         <button
           type="button"
-          onClick={() => onNavigate(t.targetSection)}
+          onClick={() => onNavigate(t.targetSection, t.targetFocus)}
           className="min-w-0 flex-1 text-left rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-1 focus-visible:ring-[var(--venue-primary)]"
           aria-label={aria}
         >
@@ -4959,7 +4991,7 @@ function NextStepsCard({
         </button>
         <button
           type="button"
-          onClick={() => onNavigate(t.targetSection)}
+          onClick={() => onNavigate(t.targetSection, t.targetFocus)}
           className="shrink-0 self-center text-[11px] font-semibold px-2.5 py-1.5 rounded-lg text-white transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-1"
           style={{ background: SAGE }}
           aria-label={`${cta}: ${t.title}`}

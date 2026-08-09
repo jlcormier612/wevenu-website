@@ -330,15 +330,15 @@ describe("verified action completion policy", () => {
   const due = "2026-09-01";
 
   it("triggered tasks never Mark complete and route to domain workspaces", () => {
-    const cases: { trigger: string; section: string; label: string }[] = [
-      { trigger: "guest_count_finalized", section: "guests", label: "Submit guest count" },
-      { trigger: "vendor_selected", section: "vendors", label: "Add vendors" },
-      { trigger: "seating_submitted", section: "seating", label: "Submit seating" },
-      { trigger: "timeline_submitted", section: "timeline", label: "Submit timeline" },
-      { trigger: "contract_signed", section: "documents", label: "Review & sign" },
-      { trigger: "payment_received", section: "payments", label: "Pay now" },
-      { trigger: "questionnaire_submitted", section: "questionnaire", label: "Complete form" },
-      { trigger: "document_uploaded_insurance", section: "documents", label: "Upload insurance" },
+    const cases: { trigger: string; section: string; label: string; focus: string | null }[] = [
+      { trigger: "guest_count_finalized", section: "guests", label: "Submit guest count", focus: "finalize" },
+      { trigger: "vendor_selected", section: "vendors", label: "Add vendors", focus: "pick" },
+      { trigger: "seating_submitted", section: "seating", label: "Submit seating", focus: "submit" },
+      { trigger: "timeline_submitted", section: "timeline", label: "Submit timeline", focus: "submit" },
+      { trigger: "contract_signed", section: "documents", label: "Review & sign", focus: "sign" },
+      { trigger: "payment_received", section: "payments", label: "Pay now", focus: null },
+      { trigger: "questionnaire_submitted", section: "questionnaire", label: "Complete form", focus: "form" },
+      { trigger: "document_uploaded_insurance", section: "documents", label: "Upload insurance", focus: null },
     ];
 
     for (const c of cases) {
@@ -354,6 +354,7 @@ describe("verified action completion policy", () => {
       const p = venueTaskPresentation(t);
       assert.equal(p.completableHere, false, c.trigger);
       assert.equal(p.targetSection, c.section, c.trigger);
+      assert.equal(p.targetFocus, c.focus, c.trigger);
       assert.equal(p.actionLabel, c.label, c.trigger);
       assert.notEqual(p.actionLabel.toLowerCase(), "mark complete");
       assert.notEqual(p.actionLabel.toLowerCase(), "complete");
@@ -377,12 +378,57 @@ describe("verified action completion policy", () => {
     });
     assert.equal(list[0]?.completableHere, false);
     assert.equal(list[0]?.targetSection, "guests");
+    assert.equal(list[0]?.targetFocus, "finalize");
     // Clicking CTA would navigate — never handleComplete
     assert.equal(list[0]?.actionLabel, "Submit guest count");
   });
 
-  it("non-triggered acknowledgment tasks keep Mark complete", () => {
-    const t = task({
+  it("workspace focus is structured from trigger/kind — never title text", () => {
+    const weirdTitle = buildUnifiedTaskList({
+      ...emptyUnified,
+      venueTasks: [
+        task({
+          id: "gc",
+          title: "Please upload seating somehow",
+          status: "pending",
+          dueDate: due,
+          visibility: "client_owned",
+          canComplete: false,
+          autoCompleteTrigger: "guest_count_finalized",
+        }),
+      ],
+    })[0];
+    assert.equal(weirdTitle?.targetSection, "guests");
+    assert.equal(weirdTitle?.targetFocus, "finalize");
+
+    const derived = buildUnifiedTaskList({
+      ...emptyUnified,
+      documents: [{ id: "c1", docType: "contract", name: "Agreement", status: "sent", signToken: "tok" }],
+      questionnaire: { status: "sent" },
+      timelineHasUnpublishedChanges: true,
+    });
+    assert.equal(derived.find((t) => t.kind === "contract")?.targetFocus, "sign");
+    assert.equal(derived.find((t) => t.kind === "questionnaire")?.targetFocus, "form");
+    assert.equal(derived.find((t) => t.kind === "timeline")?.targetFocus, "submit");
+  });
+
+  it("payment derived rows keep section-only routing (unchanged from Impl 2)", () => {
+    const list = buildUnifiedTaskList({
+      ...emptyUnified,
+      paymentSchedules: [{
+        id: "sch",
+        title: "Schedule",
+        lineItems: [{ id: "p1", label: "Final Payment", amount: 100, dueDate: due, status: "pending" }],
+      }],
+    });
+    const pay = list.find((t) => t.kind === "payment");
+    assert.equal(pay?.targetSection, "payments");
+    assert.equal(pay?.targetFocus, null);
+    assert.equal(pay?.completableHere, false);
+  });
+
+  it("null-trigger acknowledgment keeps Mark complete with no focus", () => {
+    const p = venueTaskPresentation(task({
       id: "pkg",
       title: "Choose your package",
       status: "pending",
@@ -390,11 +436,11 @@ describe("verified action completion policy", () => {
       visibility: "client_owned",
       canComplete: true,
       autoCompleteTrigger: null,
-    });
-    const p = venueTaskPresentation(t);
+    }));
     assert.equal(p.completableHere, true);
     assert.equal(p.actionLabel, "Mark complete");
     assert.equal(p.targetSection, "tasks");
+    assert.equal(p.targetFocus, null);
   });
 
   it("already-complete triggered tasks show Done and are not completable", () => {

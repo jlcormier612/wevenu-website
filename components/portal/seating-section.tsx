@@ -956,7 +956,7 @@ export default function SeatingSection({ token }: { token: string }) {
   // Submit action. Always rendered above whichever view (loading, empty,
   // dashboard, workspace) follows, so it's never lost switching views.
   const commitBar = (
-    <div className="space-y-2 mb-3">
+    <div id="portal-focus-seating-submit" className="space-y-2 mb-3">
       {floorPlans.length > 1 && (
         <div className="flex gap-1.5 flex-wrap">
           {floorPlans.map((fp) => (

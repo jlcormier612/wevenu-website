@@ -38,10 +38,12 @@ export function QuestionnairePortalSection({ token }: { token: string }) {
   }
 
   return (
-    <CoupleQuestionnaireForm
-      accessKey={data.access_key as string}
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      data={data as any}
-    />
+    <div id="portal-focus-questionnaire-form">
+      <CoupleQuestionnaireForm
+        accessKey={data.access_key as string}
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        data={data as any}
+      />
+    </div>
   );
 }

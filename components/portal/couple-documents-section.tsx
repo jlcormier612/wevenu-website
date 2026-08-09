@@ -360,7 +360,7 @@ export default function CoupleDocumentsSection({ token, onNavigate }: { token: s
   const isEmpty = documents.length === 0 && receipts.length === 0 && !questionnaire;
 
   return (
-    <div className="w-full space-y-8">
+    <div id="portal-focus-documents-sign" className="w-full space-y-8">
       <div className="flex items-start justify-between gap-3">
         <div>
           <h2 className="text-sm font-semibold text-heading">Documents</h2>

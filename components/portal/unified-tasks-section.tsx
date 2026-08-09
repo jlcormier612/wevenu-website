@@ -12,6 +12,7 @@ import { LinkifiedText } from "@/components/shared/linkified-text";
 import { formatEventRelativeDue, formatAbsoluteDueDate } from "@/lib/playbooks/due-dates";
 import { celebrateTaskComplete } from "@/lib/portal/celebrate-task";
 import { buildUnifiedTaskList, type UnifiedTask } from "@/lib/portal/unified-tasks";
+import type { PortalWorkspaceFocus } from "@/lib/portal/workspace-routing";
 import { partitionByCompletion } from "@/lib/tasks/group-by-completion";
 import type { PortalSection, PortalTask, PortalVendorTask } from "@/lib/portal/types";
 import type { PortalRequestSummary } from "@/lib/requests/types";
@@ -46,7 +47,7 @@ export function UnifiedTasksSection({
   initialTasks: PortalTask[];
   initialVendorTasks?: PortalVendorTask[];
   venueName: string;
-  onNavigate: (section: PortalSection) => void;
+  onNavigate: (section: PortalSection, focus?: PortalWorkspaceFocus | null) => void;
 }) {
   const [venueTasks, setVenueTasks] = React.useState(initialTasks);
   const [vendorTasks, setVendorTasks] = React.useState(initialVendorTasks);
@@ -239,7 +240,7 @@ export function UnifiedTasksSection({
           <button
             type="button"
             disabled={completing === item.id}
-            onClick={() => item.completableHere ? handleComplete(item.id) : onNavigate(item.targetSection)}
+            onClick={() => item.completableHere ? handleComplete(item.id) : onNavigate(item.targetSection, item.targetFocus)}
             className="shrink-0 text-xs font-semibold px-3 py-1.5 rounded-xl text-white transition-opacity hover:opacity-90 disabled:opacity-60"
             style={{ background: "var(--venue-primary)" }}
           >
