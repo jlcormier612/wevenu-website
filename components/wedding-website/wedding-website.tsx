@@ -12,7 +12,7 @@ import type { RsvpContext } from "@/app/rsvp/[token]/page";
 import {
   SectionComposition, ContentBlock, WeddingPartyComposition, edgeWidthClass,
   SectionCanvas, contrastText, ScheduleTimeline, ScheduleDateMoment, EditorialOpening, PairedPassage, DestinationFeature, CompactInterlude,
-  PORTRAIT_FACE_FOCAL,
+  PORTRAIT_FACE_FOCAL, PAPER_CHAMBER,
   type CompositionItem, type CompositionRecipe, type PartyMember, type SectionRole, type SectionScale, type DestinationItem,
 } from "@/components/wedding-website/composition-primitives";
 
@@ -32,9 +32,9 @@ type CollectionConfig = {
   bodyFont: string;
   headingItalic: boolean;
   fontUrl: string | null;
-  heroType: "full-bleed" | "invitation";
+  heroType: "full-bleed" | "invitation" | "inset";
   heroMinHeight: string;
-  heroAlign: "center" | "left";
+  heroAlign: "center" | "left" | "offset";
   /** Coastal Hero Crop Fix (2026-08-06) — optional, undefined for every
    * Collection but Coastal (byte-identical elsewhere). `background-size:
    * cover` + a flat `heroMinHeight` decouples the hero box's height from
@@ -47,9 +47,15 @@ type CollectionConfig = {
    * heroMaxHeight as the floor/ceiling) so height grows with width instead
    * of staying flat — the crop fraction stays roughly constant across
    * viewport widths instead of worsening. Still `cover`, still full-bleed,
-   * no letterboxing, no per-photo data. */
+   * no letterboxing, no per-photo data. Also used by Midnight cinematic. */
   heroAspectCap?: string;
   heroMaxHeight?: string;
+  /** Shared inset/framed/matted hero params — see heroType `"inset"`. */
+  heroInsetPadding?: string;
+  heroInsetRadius?: string;
+  heroInsetBorderWidth?: string;
+  heroInsetOffsetX?: string;
+  heroInsetOffsetY?: string;
   headerStyle: "romantic" | "formal" | "editorial" | "minimal" | "coastal";
   storyStyle: "quote" | "prose" | "editorial" | "minimal";
   divider: "botanical" | "rule" | "dots" | "ornament" | "none" | "deco";
@@ -185,37 +191,38 @@ function ScrollReveal({ style, scrollSnap, children }: { style: CollectionConfig
 // ── Collections ───────────────────────────────────────────────────────────────
 const COLLECTIONS: Record<string, Omit<CollectionConfig, keyof typeof LAYOUT_DEFAULTS>> = {
 
-  // Wildflower — English garden party, Playfair Display, pressed botanical elements
+  // Wildflower — organic asymmetry, offset type, botanical romantic (≠ Garden)
   classic: {
     headingFont: "'Playfair Display', Georgia, serif",
     bodyFont: "'Lato', system-ui, sans-serif",
     headingItalic: false,
     fontUrl: "https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=Lato:wght@300;400;600&display=swap",
-    heroType: "full-bleed", heroMinHeight: "65vh", heroAlign: "center",
+    heroType: "full-bleed", heroMinHeight: "65vh", heroAlign: "offset",
     headerStyle: "romantic", storyStyle: "prose",
     divider: "botanical", cardRadius: "1rem", buttonRadius: "0.75rem", photoRadius: "0.75rem",
     photoFilter: "saturate(0.85) brightness(1.05)",
   },
 
-  // Midnight — atmospheric indigo editorial, DM Sans, Vogue energy
+  // Midnight — wide cinematic hero + light paper story chamber (≠ Velvet dark)
   modern: {
     headingFont: "'DM Sans', system-ui, sans-serif",
     bodyFont: "'DM Sans', system-ui, sans-serif",
     headingItalic: false,
     fontUrl: "https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,700&display=swap",
-    heroType: "full-bleed", heroMinHeight: "75vh", heroAlign: "left",
+    heroType: "full-bleed", heroMinHeight: "42vh", heroAlign: "left",
+    heroAspectCap: "2.2 / 1", heroMaxHeight: "58vh",
     headerStyle: "editorial", storyStyle: "editorial",
     divider: "rule", cardRadius: "0.25rem", buttonRadius: "0", photoRadius: "0",
     photoFilter: "grayscale(0.5) contrast(1.1) brightness(0.9)",
   },
 
-  // Garden Party — English countryside, Georgia, Rifle Paper Co. charm
+  // Garden Party — immersive breathing center hero + airy conversational story
   garden: {
     headingFont: "Georgia, 'Times New Roman', serif",
     bodyFont: "system-ui, sans-serif",
     headingItalic: false,
     fontUrl: null,
-    heroType: "full-bleed", heroMinHeight: "60vh", heroAlign: "center",
+    heroType: "full-bleed", heroMinHeight: "72vh", heroAlign: "center",
     headerStyle: "romantic", storyStyle: "prose",
     divider: "dots", cardRadius: "1.5rem", buttonRadius: "99px", photoRadius: "1.5rem",
     photoFilter: "saturate(0.9) brightness(1.08)",
@@ -246,7 +253,7 @@ const COLLECTIONS: Record<string, Omit<CollectionConfig, keyof typeof LAYOUT_DEF
     photoFilter: "saturate(0.7) brightness(1.08) sepia(0.12)",
   },
 
-  // Coastal — Nantucket, Plus Jakarta Sans, clean airy photography
+  // Coastal — wide open geometry + offset editorial Story (EditorialOpening)
   coastal: {
     headingFont: "'Plus Jakarta Sans', system-ui, sans-serif",
     bodyFont: "'Plus Jakarta Sans', system-ui, sans-serif",
@@ -259,7 +266,7 @@ const COLLECTIONS: Record<string, Omit<CollectionConfig, keyof typeof LAYOUT_DEF
     photoFilter: "saturate(0.75) brightness(1.12) contrast(0.95)",
   },
 
-  // Champagne — Crane & Co. letterpress, Playfair Display, formal portrait tone
+  // Champagne — formal symmetry + framed Story + ✦ (no EditorialOpening)
   champagne: {
     headingFont: "'Playfair Display', Georgia, serif",
     bodyFont: "'Lato', system-ui, sans-serif",
@@ -272,6 +279,7 @@ const COLLECTIONS: Record<string, Omit<CollectionConfig, keyof typeof LAYOUT_DEF
   },
 
   // Velvet — Met Gala black-tie, Cormorant Garamond, candlelit drama, warm sepia
+  // Phase B: LEAVE unchanged (baseline for Midnight divergence).
   velvet: {
     headingFont: "'Cormorant Garamond', Georgia, serif",
     bodyFont: "system-ui, sans-serif",
@@ -283,25 +291,29 @@ const COLLECTIONS: Record<string, Omit<CollectionConfig, keyof typeof LAYOUT_DEF
     photoFilter: "sepia(0.35) contrast(1.1) brightness(0.9) saturate(0.8)",
   },
 
-  // European Estate — stone & ivy formality, EB Garamond, grand-house cadence
+  // European Estate — architectural inset hero + unmasked formal Story
   estate: {
     headingFont: "'EB Garamond', Georgia, serif",
     bodyFont: "'Lato', system-ui, sans-serif",
     headingItalic: false,
     fontUrl: "https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,600;1,400&family=Lato:wght@300;400;600&display=swap",
-    heroType: "full-bleed", heroMinHeight: "70vh", heroAlign: "center",
+    heroType: "inset", heroMinHeight: "68vh", heroAlign: "center",
+    heroInsetPadding: "1.75rem", heroInsetRadius: "0.125rem",
+    heroInsetBorderWidth: "1px", heroInsetOffsetX: "0", heroInsetOffsetY: "0",
     headerStyle: "formal", storyStyle: "prose",
     divider: "ornament", cardRadius: "0.125rem", buttonRadius: "0.25rem", photoRadius: "0.125rem",
     photoFilter: "saturate(0.82) contrast(1.06) brightness(1.02)",
   },
 
-  // Rustic — open-barn warmth, Source Serif, weathered & woodsy (≠ Wildflower)
+  // Rustic — tactile inset/mat hero (same primitive, irregular params) + left Story
   rustic: {
     headingFont: "'Source Serif 4', Georgia, serif",
     bodyFont: "system-ui, sans-serif",
     headingItalic: false,
     fontUrl: "https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&display=swap",
-    heroType: "full-bleed", heroMinHeight: "62vh", heroAlign: "center",
+    heroType: "inset", heroMinHeight: "58vh", heroAlign: "left",
+    heroInsetPadding: "0.85rem 0.85rem 1.45rem 0.85rem", heroInsetRadius: "0.4rem",
+    heroInsetBorderWidth: "0px", heroInsetOffsetX: "-0.65rem", heroInsetOffsetY: "0.45rem",
     headerStyle: "romantic", storyStyle: "prose",
     divider: "botanical", cardRadius: "0.5rem", buttonRadius: "0.375rem", photoRadius: "0.5rem",
     photoFilter: "saturate(1.05) contrast(0.96) brightness(1.04) sepia(0.08)",
@@ -1574,16 +1586,207 @@ export function Hero({ site, tc, editMode = false, onSectionClick }: {
     );
   }
 
+  const titleBlockLeft = (
+    <div className="relative z-10 max-w-5xl w-full" style={{ color: heroTextColor }}>
+      <div className="mb-4 w-10 h-px" style={{ background: color }} />
+      <h1 style={{
+        fontFamily: tc.headingFont,
+        color: heroTextColor,
+        fontStyle: "normal",
+        fontSize: "clamp(3rem, 8cqw, 6rem)",
+        fontWeight: tc.headingFont.includes("DM Sans") ? 700 : 400,
+        lineHeight: 1.0,
+        letterSpacing: tc.headingFont.includes("DM Sans") ? "-0.02em" : "0.01em",
+        textShadow: "0 2px 30px rgba(0,0,0,0.4)",
+      }}>
+        {content.home?.title ?? coupleName}
+      </h1>
+      <div className="flex items-baseline gap-5 mt-5 flex-wrap">
+        {eventDate && (
+          <p style={{ fontFamily: tc.headingFont, fontSize: "1rem", opacity: 0.65 }}>
+            {eventDateLabel}
+          </p>
+        )}
+        {du !== null && du > 0 && (
+          <p className="text-sm opacity-35">{du} days to go</p>
+        )}
+      </div>
+      {content.home?.subtitle && (
+        <p className="mt-3 text-sm opacity-55" style={{ fontFamily: tc.bodyFont }}>{content.home.subtitle}</p>
+      )}
+    </div>
+  );
+
+  const titleBlockOffset = (
+    // Wildflower — not dead-center, not full left editorial: shifted type mass.
+    <div className="relative z-10 max-w-xl w-[78%] text-left" style={{ color: heroTextColor, marginLeft: "4%", marginRight: "auto", alignSelf: "flex-start" }}>
+      <p className="text-xs font-semibold uppercase tracking-[0.3em] opacity-70 mb-4">
+        {site.event?.eventType?.replace(/_/g, " ") ?? "Wedding"}
+      </p>
+      <h1 style={{
+        fontFamily: tc.headingFont,
+        color: heroTextColor,
+        fontStyle: tc.headingItalic ? "italic" : "normal",
+        fontSize: "clamp(2.4rem, 7cqw, 4.6rem)",
+        fontWeight: 600,
+        lineHeight: 1.08,
+        textShadow: "0 2px 20px rgba(0,0,0,0.25)",
+      }}>
+        {content.home?.title ?? coupleName}
+      </h1>
+      {content.home?.subtitle && (
+        <p className="mt-4 text-base opacity-80" style={{ fontFamily: tc.headingFont, fontStyle: "italic" }}>
+          {content.home.subtitle}
+        </p>
+      )}
+      {eventDate && (
+        <p className="mt-5 text-sm opacity-75" style={{ fontFamily: tc.bodyFont, letterSpacing: "0.12em", textTransform: "uppercase" }}>
+          {eventDateLabel}
+        </p>
+      )}
+    </div>
+  );
+
+  const titleBlockCenter = tc.sectionRoles ? (
+    <div className="relative z-10 max-w-3xl mx-auto text-center" style={{ color: heroTextColor }}>
+      <p className="text-xs font-semibold uppercase tracking-[0.3em] opacity-70 mb-5">
+        {site.event?.eventType?.replace(/_/g, " ") ?? "Wedding"}
+      </p>
+      {content.home?.subtitle && (
+        <p className="text-base @min-[768px]/wedding:text-lg italic opacity-80 mb-4" style={{ fontFamily: tc.headingFont }}>
+          {content.home.subtitle}
+        </p>
+      )}
+      <h1 style={{
+        fontFamily: tc.headingFont,
+        color: heroTextColor,
+        fontStyle: tc.headingItalic ? "italic" : "normal",
+        fontSize: "clamp(2.5rem, 8cqw, 5rem)",
+        fontWeight: 600,
+        lineHeight: 1.1,
+        textShadow: "0 2px 20px rgba(0,0,0,0.25)",
+      }}>
+        {content.home?.title ?? coupleName}
+      </h1>
+      {(eventDate || content.event?.ceremony?.location || site.venue?.name) && (
+        <p className="pt-5 text-base @min-[768px]/wedding:text-lg opacity-90" style={{ fontFamily: tc.headingFont, fontStyle: tc.headingItalic ? "italic" : "normal" }}>
+          {[eventDateLabel, content.event?.ceremony?.location ?? site.venue?.name ?? null]
+            .filter(Boolean).join(" · ")}
+        </p>
+      )}
+      {du !== null && du > 0 && (
+        <p className="text-sm opacity-60 pt-1">{du} days to go</p>
+      )}
+    </div>
+  ) : (
+    <div className="relative z-10 space-y-5 max-w-3xl mx-auto text-center" style={{ color: heroTextColor }}>
+      <p className="text-xs font-semibold uppercase tracking-[0.3em] opacity-70">
+        {site.event?.eventType?.replace(/_/g, " ") ?? "Wedding"}
+      </p>
+      <h1 style={{
+        fontFamily: tc.headingFont,
+        color: heroTextColor,
+        fontStyle: tc.headingItalic ? "italic" : "normal",
+        fontSize: "clamp(2.5rem, 8cqw, 5rem)",
+        fontWeight: 600,
+        lineHeight: 1.1,
+        textShadow: "0 2px 20px rgba(0,0,0,0.25)",
+      }}>
+        {content.home?.title ?? coupleName}
+      </h1>
+      {content.home?.subtitle && (
+        <p className="text-lg opacity-85" style={{ fontFamily: tc.bodyFont }}>{content.home.subtitle}</p>
+      )}
+      {eventDate && (
+        <div className="pt-4 space-y-1">
+          <p style={{ fontFamily: tc.headingFont, fontSize: "1.15rem", fontStyle: tc.headingItalic ? "italic" : "normal" }}>
+            {eventDateLabel}
+          </p>
+          {du !== null && du > 0 && (
+            <p className="text-sm opacity-60">{du} days to go</p>
+          )}
+        </div>
+      )}
+    </div>
+  );
+
+  const titleInner =
+    tc.heroAlign === "left" ? titleBlockLeft
+      : tc.heroAlign === "offset" ? titleBlockOffset
+        : titleBlockCenter;
+
+  const heroShellClass =
+    tc.heroAlign === "left"
+      ? "relative flex flex-col items-start justify-end pb-14 pl-8 px-6 py-20"
+      : tc.heroAlign === "offset"
+        ? "relative flex flex-col items-start justify-end pb-12 px-6 pt-16"
+        : "relative flex flex-col items-center justify-center px-6 py-20";
+
+  const aspectStyle: React.CSSProperties = tc.heroAspectCap
+    ? { width: "100%", aspectRatio: tc.heroAspectCap, maxHeight: tc.heroMaxHeight }
+    : {};
+
+  // Collection Composition Phase B (STOP-2) — reusable inset/framed/matted
+  // hero. Estate (architectural symmetric) and Rustic (tactile irregular mat)
+  // parametrize the same primitive via layout_config — no Collection forks.
+  if (tc.heroType === "inset") {
+    const pad = tc.heroInsetPadding ?? "1.5rem";
+    const radius = tc.heroInsetRadius ?? "0.25rem";
+    const borderW = tc.heroInsetBorderWidth ?? "1px";
+    const ox = tc.heroInsetOffsetX ?? "0";
+    const oy = tc.heroInsetOffsetY ?? "0";
+    // Mat must read as a frame vs the surrounding page (Studio cards mount
+    // Hero on `tc.bg` — using the same bg for the outer shell collapses the
+    // inset silhouette). Prefer surface, then a border-tinted field.
+    const matBg = tc.surface && tc.surface !== tc.bg
+      ? tc.surface
+      : `color-mix(in srgb, ${tc.border} 48%, ${tc.bg} 52%)`;
+    return (
+      <div
+        className={editMode ? "group cursor-pointer relative" : "relative"}
+        style={{ background: matBg, padding: pad }}
+        onClick={editMode ? () => onSectionClick?.("home") : undefined}
+      >
+        {editMode && (
+          <button type="button" onClick={() => onSectionClick?.("home")}
+            className="absolute top-3 right-3 z-20 text-xs font-semibold px-2.5 py-1.5 rounded-xl text-white shadow-lg opacity-0 group-hover:opacity-100 transition-opacity"
+            style={{ background: `${color}CC` }}>
+            ✏ Edit home
+          </button>
+        )}
+        <div
+          className={heroShellClass}
+          style={{
+            ...heroStyle,
+            minHeight: tc.heroMinHeight,
+            ...aspectStyle,
+            borderRadius: radius,
+            border: borderW === "0" || borderW === "0px"
+              ? undefined
+              : `${borderW} solid color-mix(in srgb, ${tc.border} 70%, ${tc.text} 30%)`,
+            overflow: "hidden",
+            transform: `translate(${ox}, ${oy})`,
+            boxShadow: "0 10px 28px rgba(20,16,12,0.12)",
+          }}
+        >
+          <div className="absolute inset-0"
+            style={{ background: tc.heroOverlayColor, opacity: heroOverlayOpacity }} />
+          {titleInner}
+        </div>
+      </div>
+    );
+  }
+
   return (
   <div
-    className={`relative flex flex-col ${tc.heroAlign === "left" ? "items-start justify-end pb-14 pl-8" : "items-center justify-center"} px-6 py-20 ${editMode ? "group cursor-pointer" : ""}`}
+    className={`${heroShellClass}${editMode ? " group cursor-pointer" : ""}`}
     style={{
       ...heroStyle, minHeight: tc.heroMinHeight,
       // `width: 100%` pins width so aspect-ratio only ever solves for
       // height — without it, once maxHeight clamps height below what
       // the ratio would give a full-width box, Chromium renegotiates
       // width down to (height * ratio) instead, breaking full-bleed.
-      ...(tc.heroAspectCap ? { width: "100%", aspectRatio: tc.heroAspectCap, maxHeight: tc.heroMaxHeight } : {}),
+      ...aspectStyle,
     }}
     onClick={editMode ? () => onSectionClick?.("home") : undefined}
   >
@@ -1599,110 +1802,7 @@ export function Hero({ site, tc, editMode = false, onSectionClick }: {
       </button>
     )}
 
-    {tc.heroAlign === "left" ? (
-      // Editorial layout — Velvet / Midnight: left-bottom, magazine-cover energy
-      <div className="relative z-10 max-w-5xl w-full" style={{ color: heroTextColor }}>
-        <div className="mb-4 w-10 h-px" style={{ background: color }} />
-        <h1 style={{
-          fontFamily: tc.headingFont,
-          color: heroTextColor,
-          fontStyle: "normal",
-          fontSize: "clamp(3rem, 8cqw, 6rem)",
-          fontWeight: tc.headingFont.includes("DM Sans") ? 700 : 400,
-          lineHeight: 1.0,
-          letterSpacing: tc.headingFont.includes("DM Sans") ? "-0.02em" : "0.01em",
-          textShadow: "0 2px 30px rgba(0,0,0,0.4)",
-        }}>
-          {content.home?.title ?? coupleName}
-        </h1>
-        <div className="flex items-baseline gap-5 mt-5 flex-wrap">
-          {eventDate && (
-            <p style={{ fontFamily: tc.headingFont, fontSize: "1rem", opacity: 0.65 }}>
-              {eventDateLabel}
-            </p>
-          )}
-          {du !== null && du > 0 && (
-            <p className="text-sm opacity-35">{du} days to go</p>
-          )}
-        </div>
-        {content.home?.subtitle && (
-          <p className="mt-3 text-sm opacity-55" style={{ fontFamily: tc.bodyFont }}>{content.home.subtitle}</p>
-        )}
-      </div>
-    ) : (
-      // Centered layout — all other themes
-      tc.sectionRoles ? (
-        // Coastal Art-Direction Pass 2 (2026-08-03) — editorial hierarchy:
-        // eyebrow -> atmospheric phrase -> couple names (unmistakable
-        // primary identity) -> ONE authoritative date+location line.
-        // `subtitle` is a free-text field a couple can type anything
-        // into (Studio's own placeholder used to suggest a date, which
-        // is exactly the collision this fixes) — it now always reads as
-        // a lead-in phrase ahead of the names, never a second date
-        // candidate, and eventDate (the synced, authoritative source)
-        // is the only place a date is ever rendered in this hero.
-        <div className="relative z-10 max-w-3xl mx-auto text-center" style={{ color: heroTextColor }}>
-          <p className="text-xs font-semibold uppercase tracking-[0.3em] opacity-70 mb-5">
-            {site.event?.eventType?.replace(/_/g, " ") ?? "Wedding"}
-          </p>
-          {content.home?.subtitle && (
-            <p className="text-base @min-[768px]/wedding:text-lg italic opacity-80 mb-4" style={{ fontFamily: tc.headingFont }}>
-              {content.home.subtitle}
-            </p>
-          )}
-          <h1 style={{
-            fontFamily: tc.headingFont,
-            color: heroTextColor,
-            fontStyle: tc.headingItalic ? "italic" : "normal",
-            fontSize: "clamp(2.5rem, 8cqw, 5rem)",
-            fontWeight: 600,
-            lineHeight: 1.1,
-            textShadow: "0 2px 20px rgba(0,0,0,0.25)",
-          }}>
-            {content.home?.title ?? coupleName}
-          </h1>
-          {(eventDate || content.event?.ceremony?.location || site.venue?.name) && (
-            <p className="pt-5 text-base @min-[768px]/wedding:text-lg opacity-90" style={{ fontFamily: tc.headingFont, fontStyle: tc.headingItalic ? "italic" : "normal" }}>
-              {[eventDateLabel, content.event?.ceremony?.location ?? site.venue?.name ?? null]
-                .filter(Boolean).join(" · ")}
-            </p>
-          )}
-          {du !== null && du > 0 && (
-            <p className="text-sm opacity-60 pt-1">{du} days to go</p>
-          )}
-        </div>
-      ) : (
-      <div className="relative z-10 space-y-5 max-w-3xl mx-auto text-center" style={{ color: heroTextColor }}>
-        <p className="text-xs font-semibold uppercase tracking-[0.3em] opacity-70">
-          {site.event?.eventType?.replace(/_/g, " ") ?? "Wedding"}
-        </p>
-        <h1 style={{
-          fontFamily: tc.headingFont,
-          color: heroTextColor,
-          fontStyle: tc.headingItalic ? "italic" : "normal",
-          fontSize: "clamp(2.5rem, 8cqw, 5rem)",
-          fontWeight: 600,
-          lineHeight: 1.1,
-          textShadow: "0 2px 20px rgba(0,0,0,0.25)",
-        }}>
-          {content.home?.title ?? coupleName}
-        </h1>
-        {content.home?.subtitle && (
-          <p className="text-lg opacity-85" style={{ fontFamily: tc.bodyFont }}>{content.home.subtitle}</p>
-        )}
-        {eventDate && (
-          <div className="pt-4 space-y-1">
-            <p style={{ fontFamily: tc.headingFont, fontSize: "1.15rem", fontStyle: tc.headingItalic ? "italic" : "normal" }}>
-              {eventDateLabel}
-            </p>
-            {du !== null && du > 0 && (
-              <p className="text-sm opacity-60">{du} days to go</p>
-            )}
-          </div>
-        )}
-      </div>
-      )
-    )}
+    {titleInner}
   </div>
   );
 }
@@ -1868,18 +1968,63 @@ export function createSectionRenderer(ctx: SectionRenderContext) {
               // Never falls back to the gallery, hero, or venue imagery.
               const storyPhoto = s.imageUrl ?? null;
 
-              // Architecture Correction (2026-08-07) — canvas (background
-              // weight, from sectionRoles) and story presentation (from the
-              // Collection's own storyStyle) are orthogonal concerns that
-              // this branch used to conflate: `tc.sectionRoles` truthiness
-              // alone used to pick EditorialOpening over storyStyle
-              // entirely, silently discarding Rosé's pull-quote and Linen's
-              // minimal treatment the moment either Collection gained
-              // sectionRoles for rhythm. storyStyle is now checked first,
-              // unconditionally, for every Collection; EditorialOpening is
-              // only ever the sectionRoles-enabled UPGRADE for the styles
-              // that were already a generic paragraph (prose/editorial) —
-              // never a replacement for a genuinely distinct treatment.
+              // Collection Composition Phase B — Story presentation follows
+              // storyStyle first; EditorialOpening is only when the Story
+              // role explicitly asks for `treatment: "editorial-opening"`.
+              // Truthy sectionRoles alone no longer masks Champagne ✦ /
+              // Estate ♡ / Wildflower botanical / Garden dots headers.
+              const storyRole = tc.sectionRoles?.story;
+              const useEditorialOpening = storyRole?.treatment === "editorial-opening"
+                && tc.storyStyle !== "quote"
+                && tc.storyStyle !== "minimal";
+              // Paper chamber (STOP-1): ink tokens for the independent light
+              // field, so Midnight type stays readable on paper under a dark
+              // Color Story page.
+              const paperChamber = storyRole?.canvas === "paper";
+              const storyTc: ThemeConfig = paperChamber
+                ? {
+                    ...tc,
+                    bg: PAPER_CHAMBER.bg,
+                    surface: PAPER_CHAMBER.surface,
+                    text: PAPER_CHAMBER.text,
+                    textMuted: PAPER_CHAMBER.textMuted,
+                    border: PAPER_CHAMBER.border,
+                  }
+                : tc;
+
+              const asymmetryPad =
+                storyTc.asymmetry === "editorial" ? "2.75rem"
+                  : storyTc.asymmetry === "subtle" ? "1.35rem"
+                    : "0";
+              const storyLeft =
+                storyTc.itemAlign === "left"
+                || storyTc.heroAlign === "offset"
+                || storyTc.asymmetry === "editorial"
+                || storyTc.asymmetry === "subtle";
+
+              const proseBody = (
+                <p style={{
+                  fontFamily: storyTc.storyStyle === "editorial" ? storyTc.bodyFont : storyTc.headingFont,
+                  fontStyle: storyTc.storyStyle === "editorial"
+                    ? "normal"
+                    : (storyTc.headingItalic ? "italic" : "normal"),
+                  fontSize: storyTc.density === "airy" ? "clamp(1.05rem, 2.2cqw, 1.3rem)" : "clamp(1rem, 2cqw, 1.2rem)",
+                  lineHeight: storyTc.density === "airy" ? 2.05 : 1.85,
+                  color: storyTc.storyStyle === "editorial" ? storyTc.textMuted : storyTc.text,
+                  letterSpacing: "0.01em",
+                }}>
+                  {s.text}
+                </p>
+              );
+
+              // Champagne formal framed Story — structural ✦ identity.
+              // Estate (inset hero) shares formal headerStyle but must NOT
+              // inherit this card frame (architectural ≠ letterpress card).
+              const formalFramed =
+                storyTc.headerStyle === "formal"
+                && storyTc.sectionComposition === "framed"
+                && storyTc.heroType !== "inset";
+
               const storyBody = tc.storyStyle === "quote" ? (
                 // Rosé — large italic pull quote, centered, like a love letter
                 <div className="max-w-xl mx-auto text-center px-4">
@@ -1907,46 +2052,45 @@ export function createSectionRenderer(ctx: SectionRenderContext) {
                     {s.text}
                   </p>
                 </div>
-              ) : tc.sectionRoles ? (
-                // prose/editorial storyStyle, rhythm-enabled Collection —
-                // the enhanced eyebrow+heading/text/photo grid.
-                <EditorialOpening tc={tc} color={color} labelColor={tc.accent || color} eyebrow="Our Story" heading={s.title ?? "How it began"} text={s.text} photoUrl={storyPhoto} />
-              ) : tc.storyStyle === "editorial" ? (
-                // Velvet / Midnight — left-aligned measured prose, body text scale
-                <div className="max-w-2xl">
-                  <p style={{
-                    fontFamily: tc.bodyFont,
-                    fontSize: "1rem",
-                    lineHeight: 1.9,
-                    color: tc.textMuted,
-                    letterSpacing: "0.01em",
-                  }}>
-                    {s.text}
-                  </p>
+              ) : useEditorialOpening ? (
+                <EditorialOpening tc={storyTc} color={color} labelColor={storyTc.accent || color} eyebrow="Our Story" heading={s.title ?? "How it began"} text={s.text} photoUrl={storyPhoto} />
+              ) : formalFramed ? (
+                <div
+                  className="mx-auto text-center"
+                  style={{
+                    maxWidth: "34rem",
+                    border: `1px solid ${storyTc.border}`,
+                    borderRadius: storyTc.cardRadius,
+                    padding: "2.25rem 1.85rem",
+                  }}
+                >
+                  {proseBody}
+                </div>
+              ) : storyLeft ? (
+                <div style={{
+                  maxWidth: storyTc.contentWidth === "narrow" ? "28rem" : "36rem",
+                  marginLeft: asymmetryPad,
+                  marginRight: "auto",
+                  textAlign: "left",
+                }}>
+                  {proseBody}
                 </div>
               ) : (
-                // prose, no sectionRoles yet
-                <div className="max-w-xl mx-auto text-center px-4">
-                  <p style={{
-                    fontFamily: tc.headingFont,
-                    fontStyle: tc.headingItalic ? "italic" : "normal",
-                    fontSize: "clamp(1rem, 2cqw, 1.2rem)",
-                    lineHeight: 1.85,
-                    color: tc.text,
-                  }}>
-                    {s.text}
-                  </p>
+                <div className="max-w-xl mx-auto text-center px-4" style={{
+                  paddingInline: storyTc.density === "airy" ? "0.5rem" : undefined,
+                }}>
+                  {proseBody}
                 </div>
               );
               // EditorialOpening supplies its own heading — every other
               // branch still needs the Collection's own SectionHeader.
-              const needsHeader = !(tc.storyStyle !== "quote" && tc.storyStyle !== "minimal" && tc.sectionRoles);
+              const needsHeader = !useEditorialOpening;
 
               return (
-                <SectionCanvas key="story" role={tc.sectionRoles?.story} sparse={storySparse} colors={canvasColors}>
+                <SectionCanvas key="story" role={storyRole} sparse={storySparse} colors={canvasColors}>
                 <SectionWrapper sectionKey="story">
                   <section>
-                    {needsHeader && <SectionHeader title={s.title ?? "Our Story"} tc={tc} accentColor={color} />}
+                    {needsHeader && <SectionHeader title={s.title ?? "Our Story"} tc={storyTc} accentColor={color} />}
                     {storyBody}
                   </section>
                 </SectionWrapper>

@@ -21,6 +21,7 @@ import * as React from "react";
 import { Hero, createSectionRenderer, GalleryGrid, useThemeFonts, resolveTheme, type ThemeConfig } from "@/components/wedding-website/wedding-website";
 import { buildPreviewSite } from "@/lib/wedding-website/preview-site";
 import { mergeStudioPreviewContent } from "@/lib/wedding-website/studio-preview-content";
+import { resolveCollectionPreviewTheme } from "@/lib/wedding-website/collection-preview-theme";
 import type {
   PublicWebsite, WebsiteContent, CatalogCollection, CatalogColorStory,
   CatalogTypographyStyle, CatalogPhotoStyle,
@@ -93,13 +94,10 @@ export function CollectionPreview({
   const naturalHeight = height / (width / naturalWidth);
   const heroPx = `${Math.round(naturalHeight * heroFraction)}px`;
   const resolved = resolveTheme(site);
-  // Linen's invitation composition is photo-above-paper (or paper alone).
-  // Forcing a flat heroMinHeight/maxHeight collapses that into a single
-  // cropped band and erases the suite — keep invitation DNA intact and only
-  // pin hero box metrics for full-bleed Collections.
-  const tc: ThemeConfig = resolved.heroType === "invitation"
-    ? { ...resolved, heroAspectCap: undefined, heroMinHeight: heroPx, heroMaxHeight: undefined }
-    : { ...resolved, heroMinHeight: heroPx, heroMaxHeight: heroPx, heroAspectCap: undefined };
+  // Preview framing only — never invent a second renderer. Preserve
+  // Collection-defining geometry (aspect-cap / invitation suite); see
+  // resolveCollectionPreviewTheme.
+  const tc: ThemeConfig = resolveCollectionPreviewTheme(resolved, heroPx);
   useThemeFonts(tc.fontUrl);
   const { renderSection } = createSectionRenderer({
     tc, content: site.content ?? {}, site, color: tc.primary, editMode: false, activeSection: null,

@@ -33,7 +33,8 @@ import * as React from "react";
 // flat background repeated behind every section. Optional: a Collection
 // without sectionRoles (every Collection but Coastal, for this pass) is
 // completely unaffected — see SectionCanvas below.
-export type CanvasRole = "light" | "soft" | "strong" | "photographic" | "neutral";
+/** `paper` = independent light editorial chamber under any Color Story (incl. dark). */
+export type CanvasRole = "light" | "soft" | "strong" | "photographic" | "neutral" | "paper";
 export type SectionScale = "feature" | "standard" | "interlude";
 // Coastal Art-Direction Pass 2 (2026-08-03) — `pairWith` names the one other
 // section key this section may compose into a shared passage with, only
@@ -43,6 +44,15 @@ export type SectionScale = "feature" | "standard" | "interlude";
 // `tc.sectionRoles ? <NewPrimitive/> : <old/>` branches) — kept on the type
 // so the DB recipe and the TS shape stay in sync.
 export type SectionRole = { canvas: CanvasRole; scale: SectionScale; treatment?: string; pairWith?: string };
+
+/** Ink/surface for canvas `"paper"` — never derived from dark Color Story tokens. */
+export const PAPER_CHAMBER = {
+  bg: "#F6F3EC",
+  surface: "#FFFEFA",
+  text: "#1C1824",
+  textMuted: "#5C5668",
+  border: "#DDD6C8",
+} as const;
 
 export type CompositionRecipe = {
   sectionComposition?: "editorial" | "flowing" | "framed" | "quiet";
@@ -484,6 +494,23 @@ export function SectionCanvas({
 
   const scale: SectionScale = sparse && role.scale !== "feature" ? "interlude" : role.scale;
   const margin = SCALE_MARGIN[scale];
+
+  // Collection Composition Phase B (STOP-1) — independent light editorial
+  // chamber. Soft/strong/neutral stay Color-Story-derived; `paper` paints a
+  // fixed light field so a cinematic/dark hero Collection (Midnight) can
+  // carry a light magazine story without inventing a second renderer.
+  if (role.canvas === "paper") {
+    return (
+      <div style={{ marginTop: margin }}>
+        <div className="relative left-1/2 right-1/2 -mx-[50cqw] w-[100cqw]" style={{ background: PAPER_CHAMBER.bg }}>
+          <div className="max-w-5xl mx-auto px-6" style={{ paddingBlock: scale === "feature" ? "4.5rem" : "3.25rem" }}>
+            {children}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   const isColorField = role.canvas === "soft" || role.canvas === "strong";
 
   if (!isColorField) {

@@ -152,9 +152,22 @@ export type CatalogTypographyStyle = {
 // deliberately separate from color/typography/photo tokens above, which are
 // each their own independent dimension now (Part 6/7).
 export type CollectionLayoutConfig = {
-  heroType?: "full-bleed" | "invitation";
-  heroAlign?: "center" | "left";
+  heroType?: "full-bleed" | "invitation" | "inset";
+  heroAlign?: "center" | "left" | "offset";
   heroMinHeight?: string;
+  /** Bounds hero box width:height (e.g. Coastal `2 / 1`, Midnight cinematic). */
+  heroAspectCap?: string;
+  heroMaxHeight?: string;
+  /**
+   * Parameterized inset/framed/matted hero (shared primitive). Estate and
+   * Rustic use different recipes of the same `heroType: "inset"` path —
+   * never Collection-named forks.
+   */
+  heroInsetPadding?: string;
+  heroInsetRadius?: string;
+  heroInsetBorderWidth?: string;
+  heroInsetOffsetX?: string;
+  heroInsetOffsetY?: string;
   headerStyle?: "romantic" | "formal" | "editorial" | "minimal" | "coastal";
   storyStyle?: "quote" | "prose" | "editorial" | "minimal";
   divider?: "botanical" | "rule" | "dots" | "ornament" | "none" | "deco";
@@ -195,7 +208,8 @@ export type CollectionLayoutConfig = {
   [k: string]: unknown;
 };
 
-export type CanvasRole = "light" | "soft" | "strong" | "photographic" | "neutral";
+/** `paper` = independent light editorial chamber (STOP-1) — does not inherit dark Color Story fills. */
+export type CanvasRole = "light" | "soft" | "strong" | "photographic" | "neutral" | "paper";
 export type SectionScale = "feature" | "standard" | "interlude";
 // Coastal Art-Direction Pass 2 (2026-08-03) — page-level composition
 // primitives (Step 13). `treatment` selects which shared editorial
