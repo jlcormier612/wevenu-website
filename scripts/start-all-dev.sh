@@ -5,25 +5,21 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 LOG_DIR="${WEVERNU_DEV_LOG_DIR:-/tmp}"
+export PYTHONPATH="$ROOT/scripts${PYTHONPATH:+:$PYTHONPATH}"
 
 python3 - "$ROOT" "$LOG_DIR" <<'PY'
-import os, sys, subprocess, time, socket
+import os, sys, subprocess, time
+from dev_listen import ensure_port_clear_if_unhealthy, listening_ipv4, http_healthy
 
 root, log_dir = sys.argv[1], sys.argv[2]
 apps = [
-    ("Venue", 3000, root, os.path.join(log_dir, "wevenu-main-dev.log")),
-    ("Marketing", 3001, os.path.join(root, "marketing"), os.path.join(log_dir, "wevenu-marketing-dev.log")),
-    ("CRM", 3002, os.path.join(root, "workspace"), os.path.join(log_dir, "wevenu-workspace-dev.log")),
+    ("Venue", 3000, root, os.path.join(log_dir, "wevenu-main-dev.log"), "/login"),
+    ("Marketing", 3001, os.path.join(root, "marketing"), os.path.join(log_dir, "wevenu-marketing-dev.log"), "/"),
+    ("CRM", 3002, os.path.join(root, "workspace"), os.path.join(log_dir, "wevenu-workspace-dev.log"), "/"),
 ]
 
-def listening(port: int) -> bool:
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-        s.settimeout(0.3)
-        return s.connect_ex(("127.0.0.1", port)) == 0
-
-for name, port, cwd, log in apps:
-    if listening(port):
-        print(f"{name} already listening on :{port}")
+for name, port, cwd, log, path in apps:
+    if not ensure_port_clear_if_unhealthy(port, name, path=path):
         continue
     os.makedirs(os.path.dirname(log) or ".", exist_ok=True)
     with open(log, "ab", buffering=0) as fh:
@@ -39,12 +35,15 @@ for name, port, cwd, log in apps:
         )
     print(f"{name} starting on http://localhost:{port} (log: {log})")
 
-for _ in range(45):
-    if all(listening(p) for _, p, _, _ in apps):
+for _ in range(50):
+    if all(
+        listening_ipv4(port) and http_healthy(port, path=path, timeout=2.5)
+        for _, port, _, _, path in apps
+    ):
         break
     time.sleep(1)
 
-for name, port, _, _ in apps:
-    status = "OK" if listening(port) else "MISSING"
+for name, port, _, _, path in apps:
+    status = "OK" if http_healthy(port, path=path, timeout=2.5) else "MISSING"
     print(f"{status} :{port} ({name})")
 PY
