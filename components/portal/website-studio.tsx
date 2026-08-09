@@ -473,7 +473,11 @@ function SetupWizard({
           onClick={() => { setCollectionId(c.id); if (!colorStoryId && c.colorStories[0]) setColorStoryId(c.colorStories[0].id); }}
           className={`relative rounded-2xl overflow-hidden text-left bg-white border transition-all hover:scale-[1.01] ${isSelected ? "ring-2 ring-primary ring-offset-2 border-primary shadow-md" : "border-border"}`}>
           <div className="relative overflow-hidden" style={{ height: 320 }}>
-            <CollectionPreview base={previewBase} collection={c} colorStory={currentColorStory} typography={currentTypography} sectionKeys={["story"]} width={226} height={320} heroFraction={0.4} />
+            {/* Signature Color Story + Collection DNA fonts — not the
+                couple's currently selected Color/Typography — so each
+                card shows that Collection's authored identity (e.g. Midnight
+                stays dark; Linen stays quiet). Typography dimension is independent. */}
+            <CollectionPreview base={previewBase} collection={c} colorStory={c.colorStories[0]} sectionKeys={["story"]} width={226} height={340} heroFraction={0.38} />
             {isSelected && (
               <div className="absolute top-2 right-2 h-5 w-5 rounded-full bg-white flex items-center justify-center shadow border border-primary/30">
                 <Check className="h-3 w-3 text-primary" strokeWidth={2.5} />
@@ -652,7 +656,7 @@ function SetupWizard({
               <button key={p.id} type="button" onClick={() => setPhotoStyleId(p.id)}
                 className={`rounded-2xl border overflow-hidden text-left transition-all hover:scale-[1.01] ${isSelected ? "ring-2 ring-primary ring-offset-2 border-primary" : "border-border"}`}>
                 <div className="h-[156px] bg-[#FAF8F4]">
-                  {currentCollection && <PhotoStylePreview collection={currentCollection} photoStyle={p} photos={previewGalleryPhotos} width={226} height={156} naturalWidth={440} />}
+                  {currentCollection && <PhotoStylePreview collection={currentCollection} photoStyle={p} photos={previewGalleryPhotos} width={226} height={188} naturalWidth={420} />}
                 </div>
                 <div className="px-3 py-2.5 bg-white border-t border-black/5">
                   <p className="text-xs font-bold text-heading">{p.name}</p>

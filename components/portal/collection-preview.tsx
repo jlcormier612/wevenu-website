@@ -92,7 +92,14 @@ export function CollectionPreview({
   });
   const naturalHeight = height / (width / naturalWidth);
   const heroPx = `${Math.round(naturalHeight * heroFraction)}px`;
-  const tc: ThemeConfig = { ...resolveTheme(site), heroMinHeight: heroPx, heroMaxHeight: heroPx, heroAspectCap: undefined };
+  const resolved = resolveTheme(site);
+  // Linen's invitation composition is photo-above-paper (or paper alone).
+  // Forcing a flat heroMinHeight/maxHeight collapses that into a single
+  // cropped band and erases the suite — keep invitation DNA intact and only
+  // pin hero box metrics for full-bleed Collections.
+  const tc: ThemeConfig = resolved.heroType === "invitation"
+    ? { ...resolved, heroAspectCap: undefined, heroMinHeight: heroPx, heroMaxHeight: undefined }
+    : { ...resolved, heroMinHeight: heroPx, heroMaxHeight: heroPx, heroAspectCap: undefined };
   useThemeFonts(tc.fontUrl);
   const { renderSection } = createSectionRenderer({
     tc, content: site.content ?? {}, site, color: tc.primary, editMode: false, activeSection: null,
@@ -198,11 +205,24 @@ export function PhotoStylePreview({ collection, photoStyle, photos, width, heigh
   };
   const tc = resolveTheme(buildPreviewSite({ collection: previewCollection, photoStyle }));
   if (photos.length === 0) return <div className="w-full h-full bg-muted" />;
-  // Cap at 4 — enough for collage/scrapbook/hero-emphasis without bloating thumbnails.
+  // Cap at 4 — enough for collage/scrapbook/hero-emphasis / cinematic band.
+  // Midnight/Luxury/Minimal benefit from seeing all four silhouettes.
   const previewPhotos = photos.slice(0, 4);
+  // Midnight's cinematic band and Minimal's asymmetric essay need a slightly
+  // taller natural frame so arrangement isn't cropped into a single face.
+  // Card CSS height may vary — composition over uniform thumbnail aspect.
+  const darkStyle = /brightness\(\s*0\.[0-7]/.test(photoStyle.tokens.photoFilter || "");
+  const tallComposition =
+    photoStyle.tokens.scalePattern === "hero-emphasis" ||
+    photoStyle.tokens.photoRadius === "50%" ||
+    photoStyle.tokens.arrangement === "scrapbook" ||
+    photoStyle.tokens.arrangement === "collage" ||
+    (photoStyle.tokens.scalePattern === "alternating" && photoStyle.tokens.rotation === "scattered") ||
+    darkStyle;
+  const effectiveNatural = tallComposition ? Math.max(naturalWidth, 400) : naturalWidth;
   return (
-    <ScaledThumbnail width={width} height={height} naturalWidth={naturalWidth}>
-      <div style={{ background: tc.bg, padding: "0.4rem" }}>
+    <ScaledThumbnail width={width} height={height} naturalWidth={effectiveNatural}>
+      <div style={{ background: darkStyle ? "#0a0a0c" : tc.bg, padding: darkStyle ? "0.25rem" : "0.4rem" }}>
         <GalleryGrid photos={previewPhotos} tc={tc} />
       </div>
     </ScaledThumbnail>

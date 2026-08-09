@@ -8,7 +8,8 @@ export type WebsiteTheme =
   | "champagne"  // Champagne — golden, celebratory, warm
   | "velvet"     // Velvet — dramatic, burgundy, luxurious
   | "estate"     // European Estate — formal grounds, stone and ivy
-  | "rustic";    // Rustic — weathered wood, wildflowers
+  | "rustic"     // Rustic — weathered wood, wildflowers
+  | "industrial"; // Industrial — exposed brick, black steel
 
 export type FontPairing =
   | "classic_serif"   // Playfair Display + Lato

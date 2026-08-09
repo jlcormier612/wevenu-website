@@ -23,8 +23,9 @@ import {
 // aesthetic. Couples choose their identity first, then the mood.
 //
 // Collections: Wildflower · Midnight · Garden Party · Linen · Rosé · Coastal
-//              Champagne · Velvet
-// Each has 3 palettes. 8 × 3 = 24 distinct experiences.
+//              Champagne · Velvet · European Estate · Rustic · Industrial
+// Each has 3 palettes (Estate/Rustic/Industrial carry authored DNA here so
+// resolveTheme never silently inherits Wildflower fonts/filters).
 
 type CollectionConfig = {
   headingFont: string;
@@ -281,6 +282,42 @@ const COLLECTIONS: Record<string, Omit<CollectionConfig, keyof typeof LAYOUT_DEF
     divider: "rule", cardRadius: "0.25rem", buttonRadius: "0.375rem", photoRadius: "0.25rem",
     photoFilter: "sepia(0.35) contrast(1.1) brightness(0.9) saturate(0.8)",
   },
+
+  // European Estate — stone & ivy formality, EB Garamond, grand-house cadence
+  estate: {
+    headingFont: "'EB Garamond', Georgia, serif",
+    bodyFont: "'Lato', system-ui, sans-serif",
+    headingItalic: false,
+    fontUrl: "https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,600;1,400&family=Lato:wght@300;400;600&display=swap",
+    heroType: "full-bleed", heroMinHeight: "70vh", heroAlign: "center",
+    headerStyle: "formal", storyStyle: "prose",
+    divider: "ornament", cardRadius: "0.125rem", buttonRadius: "0.25rem", photoRadius: "0.125rem",
+    photoFilter: "saturate(0.82) contrast(1.06) brightness(1.02)",
+  },
+
+  // Rustic — open-barn warmth, Source Serif, weathered & woodsy (≠ Wildflower)
+  rustic: {
+    headingFont: "'Source Serif 4', Georgia, serif",
+    bodyFont: "system-ui, sans-serif",
+    headingItalic: false,
+    fontUrl: "https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&display=swap",
+    heroType: "full-bleed", heroMinHeight: "62vh", heroAlign: "center",
+    headerStyle: "romantic", storyStyle: "prose",
+    divider: "botanical", cardRadius: "0.5rem", buttonRadius: "0.375rem", photoRadius: "0.5rem",
+    photoFilter: "saturate(1.05) contrast(0.96) brightness(1.04) sepia(0.08)",
+  },
+
+  // Industrial — warehouse steel, Space Grotesk, bold & compact
+  industrial: {
+    headingFont: "'Space Grotesk', system-ui, sans-serif",
+    bodyFont: "'Space Grotesk', system-ui, sans-serif",
+    headingItalic: false,
+    fontUrl: "https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;700&display=swap",
+    heroType: "full-bleed", heroMinHeight: "75vh", heroAlign: "left",
+    headerStyle: "editorial", storyStyle: "minimal",
+    divider: "rule", cardRadius: "0", buttonRadius: "0", photoRadius: "0",
+    photoFilter: "grayscale(0.85) contrast(1.2) brightness(0.92)",
+  },
 };
 
 // ── Palettes — 3 per collection ───────────────────────────────────────────────
@@ -412,6 +449,54 @@ const PALETTES: Record<string, PaletteConfig[]> = {
       bg: "#1A1020", surface: "#241830", text: "#F0EAF5", textMuted: "#9880A8", border: "#3A2848", accent: "#C0A8CC",
       heroGradient: "linear-gradient(160deg, #140A18 0%, #28183A 50%, #3A2048 100%)",
       heroOverlayColor: "#080010", heroOverlayOpacity: 0.5, heroTextColor: "#F0EAF5", dark: true },
+  ],
+
+  // European Estate
+  estate: [
+    { name: "Stone",
+      bg: "#F7F5F0", surface: "#FFFEFA", text: "#2A281E", textMuted: "#78715C", border: "#E0DACB", accent: "#8A8060",
+      heroGradient: "linear-gradient(160deg, #5E5A40 0%, #8A8060 50%, #C4BC9E 100%)",
+      heroOverlayColor: "#1A1810", heroOverlayOpacity: 0.3, heroTextColor: "#FFFFFF", dark: false },
+    { name: "Ivy",
+      bg: "#F4F6F2", surface: "#FAFCF8", text: "#1E2818", textMuted: "#5A6A50", border: "#D0D8C8", accent: "#6A7A5A",
+      heroGradient: "linear-gradient(160deg, #3A4A30 0%, #6A7A5A 50%, #A8B898 100%)",
+      heroOverlayColor: "#0A1408", heroOverlayOpacity: 0.32, heroTextColor: "#F5FAF0", dark: false },
+    { name: "Limestone",
+      bg: "#F8F6F2", surface: "#FFFEFB", text: "#2C2820", textMuted: "#7A7260", border: "#E4DCD0", accent: "#A89878",
+      heroGradient: "linear-gradient(160deg, #6A5E48 0%, #A89878 55%, #D4C8B0 100%)",
+      heroOverlayColor: "#181408", heroOverlayOpacity: 0.28, heroTextColor: "#FFFAF2", dark: false },
+  ],
+
+  // Rustic
+  rustic: [
+    { name: "Barnwood",
+      bg: "#FAF6EF", surface: "#FFFDF8", text: "#2E2418", textMuted: "#7A6650", border: "#E4D6BE", accent: "#9A7A54",
+      heroGradient: "linear-gradient(160deg, #6A4E30 0%, #9A7A54 50%, #C8AE84 100%)",
+      heroOverlayColor: "#1E1408", heroOverlayOpacity: 0.32, heroTextColor: "#FFF8EC", dark: false },
+    { name: "Hayloft",
+      bg: "#FBF7F0", surface: "#FFFCF6", text: "#302818", textMuted: "#7A6A48", border: "#E8DCC4", accent: "#B49860",
+      heroGradient: "linear-gradient(160deg, #7A6030 0%, #B49860 55%, #D8C490 100%)",
+      heroOverlayColor: "#1A1004", heroOverlayOpacity: 0.3, heroTextColor: "#FFFAEF", dark: false },
+    { name: "Cedar",
+      bg: "#F8F4F0", surface: "#FEFBF8", text: "#2A2018", textMuted: "#6A5848", border: "#E0D0C0", accent: "#8A6850",
+      heroGradient: "linear-gradient(160deg, #5A4030 0%, #8A6850 55%, #C0A088 100%)",
+      heroOverlayColor: "#140C08", heroOverlayOpacity: 0.34, heroTextColor: "#FFF6F0", dark: false },
+  ],
+
+  // Industrial
+  industrial: [
+    { name: "Steel",
+      bg: "#161618", surface: "#1E1E22", text: "#EDECE8", textMuted: "#8A8880", border: "#2E2E34", accent: "#9A9AA0",
+      heroGradient: "linear-gradient(160deg, #0A0A0C 0%, #1A1A20 50%, #3A3A44 100%)",
+      heroOverlayColor: "#000000", heroOverlayOpacity: 0.55, heroTextColor: "#EDECE8", dark: true },
+    { name: "Brick",
+      bg: "#1A1412", surface: "#241C18", text: "#F0E8E0", textMuted: "#908078", border: "#3A2820", accent: "#B09080",
+      heroGradient: "linear-gradient(160deg, #120A08 0%, #2A1814 50%, #4A3028 100%)",
+      heroOverlayColor: "#080400", heroOverlayOpacity: 0.5, heroTextColor: "#F0E8E0", dark: true },
+    { name: "Concrete",
+      bg: "#18181A", surface: "#222226", text: "#E8E8EA", textMuted: "#848488", border: "#323238", accent: "#A8A8B0",
+      heroGradient: "linear-gradient(160deg, #101012 0%, #202028 55%, #404048 100%)",
+      heroOverlayColor: "#000000", heroOverlayOpacity: 0.52, heroTextColor: "#E8E8EA", dark: true },
   ],
 };
 
@@ -728,12 +813,18 @@ export function SectionHeader({ title, tc, accentColor }: { title: string; tc: T
     );
   }
 
-  // Formal — Champagne
-  // Thin rules bracketing a tiny all-caps label. Crane & Co. letterpress feeling.
+  // Formal — Champagne (deco ✦) vs European Estate (ornament ♡)
+  // Same formal letterpress grammar, distinct ornaments so the two
+  // framed-center Collections remain blind-ID separable.
   if (tc.headerStyle === "formal") {
+    const mark = tc.divider === "ornament" ? "♡" : tc.divider === "deco" ? "✦" : null;
     return (
       <div className="text-center mb-12">
-        <div className="mx-auto" style={{ height: "1px", width: "48px", background: `${color}40` }} />
+        <div className="mx-auto flex items-center justify-center gap-3" style={{ width: mark ? "120px" : "48px" }}>
+          <div style={{ height: "1px", flex: 1, background: `${color}40` }} />
+          {mark && <span style={{ color: `${color}70`, fontSize: mark === "♡" ? "14px" : "9px", letterSpacing: mark === "✦" ? "0.2em" : undefined }}>{mark}</span>}
+          <div style={{ height: "1px", flex: 1, background: `${color}40` }} />
+        </div>
         <p style={{
           fontFamily: "'Lato', system-ui, sans-serif",
           color: tc.textMuted,
@@ -745,7 +836,11 @@ export function SectionHeader({ title, tc, accentColor }: { title: string; tc: T
         }}>
           {title}
         </p>
-        <div className="mx-auto" style={{ height: "1px", width: "48px", background: `${color}40` }} />
+        <div className="mx-auto flex items-center justify-center gap-3" style={{ width: mark ? "120px" : "48px" }}>
+          <div style={{ height: "1px", flex: 1, background: `${color}40` }} />
+          {mark && <span style={{ color: `${color}70`, fontSize: mark === "♡" ? "14px" : "9px", letterSpacing: mark === "✦" ? "0.2em" : undefined }}>{mark}</span>}
+          <div style={{ height: "1px", flex: 1, background: `${color}40` }} />
+        </div>
       </div>
     );
   }
@@ -818,6 +913,38 @@ export function GalleryGrid({ photos, tc }: { photos: string[]; tc: ThemeConfig 
     tc.photoSpacing === "tight" &&
     (tc.scalePattern ?? "uniform") === "uniform" &&
     (tc.arrangement ?? "uniform") === "uniform";
+  // Dark cinematic grade (Midnight Photo Style) — used to pick the band
+  // silhouette without a photo_styles.key branch.
+  const darkCinematic = /brightness\(\s*0\.[0-7]/.test(tc.photoFilter || "");
+  // Token-gated silhouette families (Final Visual Pass) — each combo is
+  // unique in the catalog so published + Studio share one geometry path.
+  const editorialEssay =
+    (tc.arrangement ?? "uniform") === "uniform" &&
+    tc.scalePattern === "hero-emphasis" &&
+    tc.frameStyle === "none" &&
+    tc.photoSpacing === "tight" &&
+    tc.shadow === "none" &&
+    !darkCinematic;
+  const midnightBand =
+    (tc.arrangement ?? "uniform") === "uniform" &&
+    tc.scalePattern === "hero-emphasis" &&
+    tc.frameStyle === "none" &&
+    tc.photoSpacing === "tight" &&
+    darkCinematic;
+  const luxuryImmersive =
+    (tc.arrangement ?? "uniform") === "uniform" &&
+    tc.scalePattern === "hero-emphasis" &&
+    tc.frameStyle === "border" &&
+    tc.photoSpacing === "generous";
+  const minimalAsym =
+    (tc.arrangement ?? "uniform") === "uniform" &&
+    (tc.scalePattern ?? "uniform") === "uniform" &&
+    tc.photoRadius === "50%" &&
+    tc.photoSpacing === "generous";
+  const wildflowerOrganic =
+    (tc.arrangement ?? "uniform") === "uniform" &&
+    tc.scalePattern === "alternating" &&
+    tc.rotation === "scattered";
   const gap = contactSheet ? "0px" : SPACING_GAP[tc.photoSpacing];
   const frame = (i: number, extraRotation = 0): React.CSSProperties => {
     const rot = rotationFor(tc.rotation, i) + extraRotation;
@@ -827,15 +954,14 @@ export function GalleryGrid({ photos, tc }: { photos: string[]; tc: ThemeConfig 
     };
     if (tc.frameStyle === "polaroid") return { ...base, background: "#fff", padding: "10px 10px 28px", boxShadow: base.boxShadow === "none" ? "0 6px 20px rgba(0,0,0,0.18)" : base.boxShadow };
     if (tc.frameStyle === "border") {
-      // Hairline under the white mat so bordered styles (Film / Luxury /
-      // Gallery Wall) stay legible on light Studio thumbnail backgrounds —
-      // pure white mats previously disappeared against #FAF8F4 / pale Color
-      // Stories. Published pages with darker bands already read; this only
-      // adds a 1px edge, not a new frame vocabulary.
-      // Contact-sheet (Film) uses a slightly thicker mat so equal cells read
-      // as one printed sheet vs Modern's flush grid — same frameStyle token.
-      const matEdge = "0 0 0 1px rgba(0,0,0,0.12)";
-      const matWidth = contactSheet ? "8px" : "6px";
+      // Gallery Wall (collage + lifted + no tilt) gets a darker outer edge
+      // so framed salon hangs ≠ Magazine's unframed overlaps.
+      const salonFrame =
+        tc.arrangement === "collage" && tc.rotation === "none" && tc.shadow === "lifted";
+      const matEdge = salonFrame
+        ? "0 0 0 1px rgba(0,0,0,0.35), 0 0 0 3px #1a1510"
+        : "0 0 0 1px rgba(0,0,0,0.12)";
+      const matWidth = contactSheet ? "8px" : salonFrame ? "7px" : "6px";
       return {
         ...base,
         border: `${matWidth} solid #fff`,
@@ -844,54 +970,179 @@ export function GalleryGrid({ photos, tc }: { photos: string[]; tc: ThemeConfig 
     }
     return base;
   };
-  // Two variants: the collage/scrapbook grids give each cell an explicit
-  // pixel height (via gridAutoRows), so their images fill it with
-  // height:100%. The "uniform" grid/masonry/film-strip paths size rows
-  // from the image's own aspect-ratio instead — mixing height:100% with a
-  // CSS grid row track sized "auto" is a circular-sizing bug (the row has
-  // no independent height to fill, so it collapses towards zero).
   const imgStyleFill: React.CSSProperties = {
     display: "block", width: "100%", height: "100%", objectFit: "cover",
+    objectPosition: PORTRAIT_FACE_FOCAL,
     filter: tc.photoFilter || undefined,
     borderRadius: tc.frameStyle === "polaroid" ? 0 : tc.photoRadius,
   };
   const imgStyle: React.CSSProperties = {
     display: "block", width: "100%", objectFit: "cover",
+    objectPosition: PORTRAIT_FACE_FOCAL,
     filter: tc.photoFilter || undefined,
     borderRadius: tc.frameStyle === "polaroid" ? 0 : tc.photoRadius,
   };
 
+  // ── Editorial essay — large portrait + smaller grainy support overlap ──
+  if (editorialEssay && photos.length >= 1) {
+    const lead = photos[0]!;
+    const support = photos[1] ?? photos[0]!;
+    return (
+      <div style={{ position: "relative", width: "100%", maxWidth: "36rem", margin: "0 auto" }}>
+        <div className="overflow-hidden" style={{ width: "78%", marginInline: "0 auto" }}>
+          <img src={lead} alt="" style={{ ...imgStyle, aspectRatio: "4 / 5" }} />
+        </div>
+        {photos.length > 1 && (
+          <div
+            className="overflow-hidden"
+            style={{
+              position: "absolute",
+              width: "38%",
+              right: "2%",
+              bottom: "-4%",
+              zIndex: 2,
+              boxShadow: "0 8px 24px rgba(0,0,0,0.22)",
+            }}
+          >
+            <img
+              src={support}
+              alt=""
+              style={{
+                ...imgStyle,
+                aspectRatio: "3 / 4",
+                filter: [tc.photoFilter, "grayscale(0.85)", "contrast(1.15)"].filter(Boolean).join(" "),
+              }}
+            />
+          </div>
+        )}
+        <div style={{ height: photos.length > 1 ? "1.75rem" : 0 }} />
+      </div>
+    );
+  }
+
+  // ── Luxury immersive — one dominant matted portrait (+ optional strip) ──
+  if (luxuryImmersive && photos.length >= 1) {
+    return (
+      <div style={{ maxWidth: "28rem", margin: "0 auto", padding: "0.75rem 0.5rem" }}>
+        <div className="overflow-hidden" style={{ ...frame(0), marginBottom: photos.length > 1 ? "0.85rem" : 0 }}>
+          <img src={photos[0]} alt="" style={{ ...imgStyle, aspectRatio: "4 / 5" }} />
+        </div>
+        {photos.length > 1 && (
+          <div className="grid grid-cols-3" style={{ gap: SPACING_GAP.generous }}>
+            {photos.slice(1, 4).map((url, i) => (
+              <div key={i} className="overflow-hidden" style={frame(i + 1)}>
+                <img src={url} alt="" style={{ ...imgStyle, aspectRatio: "1 / 1" }} />
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // ── Midnight cinematic band — wide lead + three small squares on dark tray ──
+  if (midnightBand && photos.length >= 1) {
+    const strip = photos.length > 1 ? photos.slice(1, 4) : [photos[0], photos[0], photos[0]];
+    while (strip.length < 3) strip.push(photos[0]!);
+    return (
+      <div
+        style={{
+          background: "#0a0a0c",
+          padding: "0.65rem",
+          display: "flex",
+          flexDirection: "column",
+          gap: "0.45rem",
+        }}
+      >
+        <div className="overflow-hidden">
+          <img src={photos[0]} alt="" style={{ ...imgStyle, aspectRatio: "21 / 9" }} />
+        </div>
+        <div className="grid grid-cols-3" style={{ gap: "0.45rem" }}>
+          {strip.slice(0, 3).map((url, i) => (
+            <div key={i} className="overflow-hidden">
+              <img src={url!} alt="" style={{ ...imgStyle, aspectRatio: "1 / 1" }} />
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  // ── Minimal asymmetric — tall portrait + stacked circles + supporting vertical ──
+  if (minimalAsym && photos.length >= 2) {
+    const a = photos[0]!;
+    const b = photos[1]!;
+    const c = photos[2] ?? photos[0]!;
+    const d = photos[3] ?? photos[1]!;
+    return (
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "1.15fr 0.7fr 0.95fr",
+          gap: SPACING_GAP.generous,
+          alignItems: "center",
+          maxWidth: "40rem",
+          margin: "0 auto",
+          padding: "0.5rem 0.25rem",
+        }}
+      >
+        <div className="overflow-hidden" style={{ borderRadius: tc.photoRadius, gridRow: "1 / 3" }}>
+          <img src={a} alt="" style={{ ...imgStyle, aspectRatio: "3 / 4", borderRadius: tc.photoRadius }} />
+        </div>
+        <div style={{ display: "flex", flexDirection: "column", gap: SPACING_GAP.generous, alignItems: "center" }}>
+          <div className="overflow-hidden" style={{ width: "88%", borderRadius: "50%" }}>
+            <img src={b} alt="" style={{ ...imgStyle, aspectRatio: "1 / 1", borderRadius: "50%" }} />
+          </div>
+          <div className="overflow-hidden" style={{ width: "72%", borderRadius: "50%" }}>
+            <img src={c} alt="" style={{ ...imgStyle, aspectRatio: "1 / 1", borderRadius: "50%" }} />
+          </div>
+        </div>
+        <div className="overflow-hidden" style={{ borderRadius: tc.photoRadius }}>
+          <img src={d} alt="" style={{ ...imgStyle, aspectRatio: "4 / 5", borderRadius: tc.photoRadius }} />
+        </div>
+      </div>
+    );
+  }
+
+  // ── Wildflower organic cluster — free widths + uneven margins (≠ Scrapbook) ──
+  if (wildflowerOrganic) {
+    const widths = ["58%", "36%", "44%", "50%"];
+    const aspects = ["4 / 5", "1 / 1", "16 / 10", "5 / 6"];
+    return (
+      <div
+        style={{
+          display: "flex",
+          flexWrap: "wrap",
+          justifyContent: "center",
+          alignItems: "flex-start",
+          gap: "0.65rem 0.5rem",
+          padding: "0.35rem 0.15rem 0.75rem",
+        }}
+      >
+        {photos.map((url, i) => (
+          <div
+            key={i}
+            className="overflow-hidden"
+            style={{
+              width: widths[i % widths.length],
+              marginTop: i === 1 ? "1.25rem" : i === 3 ? "0.5rem" : "0",
+              marginLeft: i === 2 ? "6%" : undefined,
+              borderRadius: tc.photoRadius,
+              ...frame(i),
+            }}
+          >
+            <img src={url} alt="" style={{ ...imgStyle, aspectRatio: aspects[i % aspects.length] }} />
+          </div>
+        ))}
+      </div>
+    );
+  }
+
   // ── Magazine: true layered collage — mixed scale, overlap, hierarchy ──
-  // Overlapping ranges on a shared grid (not absolute positioning) so it
-  // reflows naturally at narrower widths. Hand-designed per photo count,
-  // never algorithmic/random, so low counts never look broken.
-  //
-  // Cropping-safety fix (Coastal Magazine Gallery Remediation): the row
-  // unit used to be a fixed rem length (2.75rem) while columns are fluid
-  // `1fr` tracks — at this section's ~56rem desktop container that made
-  // several slots as wide as 3.5x their height, so `object-fit: cover`
-  // cropped portrait-oriented wedding photography (faces, torsos) down to
-  // unreadable fragments. Row height is now expressed in `cqw` (a
-  // container-query unit — 1% of THIS grid's own rendered width, via
-  // `containerType: "inline-size"` below), so row height scales with
-  // column width continuously at every viewport, not just at the one
-  // width the old rem value happened to look right for. Every pattern
-  // below is hand-tuned against that unit so no slot's aspect ratio goes
-  // narrower than ~4:5 (portrait) or wider than ~3:2 (landscape) — varied,
-  // still editorial, never a sliver.
   if (tc.arrangement === "collage") {
     const n = photos.length;
     const ROW_UNIT = "10cqw";
     const ROW_GAP = "1.5cqw";
-    // [gridColumn, gridRow, zIndex] per slot, 6-column grid. Column-span
-    // to row-span is held to a safe ratio throughout (2col->3row,
-    // 3col->4row, 4col->6row, 5col->7row) so every slot's aspect ratio
-    // stays in the ~4:5–3:2 range regardless of which photo lands there —
-    // patterns don't know each photo's real orientation, so the bound is
-    // symmetric rather than tuned to any one image. Patterns defined for
-    // 1-4; 5+ repeats the 4-pattern in successive bands, shifted down by
-    // that pattern's own row-track count (computed below, not hardcoded)
-    // so bands never collide or overlap into each other.
     const patterns: Record<number, [string, string, number][]> = {
       1: [["1 / 6", "1 / 8", 1]],
       2: [
@@ -913,13 +1164,6 @@ export function GalleryGrid({ photos, tc }: { photos: string[]; tc: ThemeConfig 
     const band4 = patterns[4];
     const bandRowSpan = Math.max(...band4.map(([, row]) => parseInt(row.split(" / ")[1], 10))) - 1;
     const collageImgStyle: React.CSSProperties = { ...imgStyleFill, objectPosition: "50% 35%" };
-    // `cqw` on gridAutoRows must resolve against an ANCESTOR's containment,
-    // not the grid's own — a container-query length set on the same
-    // element that declares containment doesn't resolve against itself
-    // (spec-defined, to avoid circularity), it silently falls back to the
-    // viewport instead, which reintroduces exactly the container-width-vs-
-    // viewport-width mismatch this fix exists to remove. The grid and its
-    // `containerType: inline-size` therefore live on two different divs.
     return (
       <div style={{ containerType: "inline-size" }}>
         <div
@@ -933,15 +1177,9 @@ export function GalleryGrid({ photos, tc }: { photos: string[]; tc: ThemeConfig 
           {photos.map((url, i) => {
             const band = patterns[Math.min(n, 4) as 1 | 2 | 3 | 4];
             const [col, row, z] = band[i % band.length];
-            // Offset each successive band further down so 5+ photos stack in new rows, not on top of earlier ones.
             const bandIndex = Math.floor(i / 4);
             const rowShift = bandIndex * bandRowSpan;
             const [rowStart, rowEnd] = row.split(" / ").map(Number);
-            // Ambient collage tilt is part of Magazine's identity (rotation
-            // "subtle"/"scattered"). When Photo Style asks for rotation
-            // "none" (Gallery Wall — framed, axis-aligned salon layering),
-            // respect that so framed vs unframed layered styles don't share
-            // the same tilt signature. No new arrangement type.
             const ambientTilt = tc.rotation === "none" ? 0 : (i % 2 === 0 ? -1.5 : 1.5);
             return (
               <div key={i} className="overflow-hidden"
@@ -959,9 +1197,6 @@ export function GalleryGrid({ photos, tc }: { photos: string[]; tc: ThemeConfig 
   }
 
   // ── Scrapbook: collected, tactile, overlapping-adjacent placement ──
-  // Every photo polaroid-framed with scattered rotation; slight deliberate
-  // overlap between neighbors reads as "photos placed on a table," not a
-  // grid with rotated corners.
   if (tc.arrangement === "scrapbook") {
     return (
       <div className="flex flex-wrap justify-center" style={{ rowGap: "2rem", paddingInline: "1.5rem" }}>
@@ -981,21 +1216,14 @@ export function GalleryGrid({ photos, tc }: { photos: string[]; tc: ThemeConfig 
     );
   }
 
-  // ── Uniform arrangement — Editorial/Film/Minimal/Modern/Luxury/Midnight ──
-  // Collection's galleryLayout (grid/masonry/film-strip) still picks the
-  // outer structure; scalePattern varies per-image size/emphasis within it.
+  // ── Uniform arrangement — Film / Modern (and defensive fallbacks) ──
   const spanFor = (i: number, total: number): string => {
     if (tc.scalePattern === "hero-emphasis" && i === 0 && total > 1) return "col-span-2 row-span-2";
     if (tc.scalePattern === "alternating" && i % 3 === 1) return "col-span-2";
     return "";
   };
   const aspectFor = (i: number): string => {
-    // Alternating = mixed portrait/landscape essay (Wildflower adds scattered
-    // rotation on the same pattern; Editorial no longer uses this axis).
     if (tc.scalePattern === "alternating") return i % 2 === 0 ? "4 / 5" : "16 / 10";
-    // Keep hero-emphasis lead square so supporting crops remain visible in
-    // Studio thumbnails — a tall portrait lead fills the card and collapses
-    // Editorial/Luxury/Midnight to a single crop (blind-ID failure).
     return "1 / 1";
   };
 
@@ -1032,26 +1260,33 @@ export function GalleryGrid({ photos, tc }: { photos: string[]; tc: ThemeConfig 
         ))}
       </div>
     );
-    // Film contact-sheet tray: a warm print mount behind fused equal cells so
-    // the equal-grid silhouette cannot be mistaken for Modern's flush tiles.
-    // Token-gated (border+tight+uniform only) — not a photo_styles key branch.
     if (contactSheet) {
+      const sprocket = (
+        <div style={{ display: "flex", flexDirection: "column", justifyContent: "space-evenly", padding: "4px 3px", background: "#1a1510" }}>
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} style={{ width: 7, height: 5, borderRadius: 1, background: "#f3ebe0", opacity: 0.9 }} />
+          ))}
+        </div>
+      );
       return (
         <div
           style={{
             background: "linear-gradient(180deg, #f3ebe0 0%, #e8dcc8 100%)",
-            padding: "0.55rem",
+            padding: "0.45rem",
             boxShadow: "inset 0 0 0 1px rgba(0,0,0,0.08), 0 0 0 1px rgba(0,0,0,0.16), 0 8px 20px rgba(0,0,0,0.1)",
+            display: "flex",
+            gap: 0,
           }}
         >
-          {grid}
+          {sprocket}
+          <div style={{ flex: 1, minWidth: 0 }}>{grid}</div>
+          {sprocket}
         </div>
       );
     }
     return grid;
   }
 
-  // masonry — the original free-flowing columns treatment
   const masonry = (
     <div className={`columns-2 space-y-3 ${tc.imageScale === "large" ? "@min-[768px]/wedding:columns-2" : "@min-[768px]/wedding:columns-3 @min-[1024px]/wedding:columns-4"}`} style={{ columnGap: gap }}>
       {photos.map((url, i) => (
@@ -1280,21 +1515,13 @@ export function Hero({ site, tc, editMode = false, onSectionClick }: {
   // above, same fix: a photographic hero always gets a minimum scrim.
   const heroOverlayOpacity = hascover ? Math.max(tc.heroOverlayOpacity, 0.2) : 0;
 
-  // Linen: invitation layout — no gradient, printed, centered text only
-  return tc.heroType === "invitation" && !hascover ? (
-    <div
-      className={`px-8 pt-20 pb-16 text-center ${editMode ? "group cursor-pointer relative" : ""}`}
-      style={{ background: tc.bg }}
-      onClick={editMode ? () => onSectionClick?.("home") : undefined}
-    >
-      {editMode && (
-        <button type="button" onClick={() => onSectionClick?.("home")}
-          className="absolute top-3 right-3 z-20 text-xs font-semibold px-2.5 py-1.5 rounded-xl text-white shadow-lg opacity-0 group-hover:opacity-100 transition-opacity"
-          style={{ background: `${color}CC` }}>
-          ✏ Edit home
-        </button>
-      )}
-      <div className="max-w-sm mx-auto" style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
+  // Linen: invitation layout — when no cover, type-on-paper only; when a
+  // cover exists, photograph sits ABOVE a printed suite (names on paper),
+  // never as a full-bleed name-over-image hero. That keeps Linen blind-ID–
+  // distinct from Garden Party / Champagne even after a couple uploads.
+  if (tc.heroType === "invitation") {
+    const invitationBody = (
+      <div className="max-w-sm mx-auto px-8 py-14 text-center" style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
         <p style={{ fontFamily: tc.bodyFont, fontSize: "0.6rem", letterSpacing: "0.45em", textTransform: "uppercase", color: tc.textMuted, fontWeight: 400 }}>
           {site.event?.eventType?.replace(/_/g, " ") ?? "Wedding"}
         </p>
@@ -1313,8 +1540,41 @@ export function Hero({ site, tc, editMode = false, onSectionClick }: {
           </p>
         )}
       </div>
-    </div>
-  ) : (
+    );
+
+    return (
+      <div
+        className={editMode ? "group cursor-pointer relative" : undefined}
+        style={{ background: tc.bg }}
+        onClick={editMode ? () => onSectionClick?.("home") : undefined}
+      >
+        {editMode && (
+          <button type="button" onClick={() => onSectionClick?.("home")}
+            className="absolute top-3 right-3 z-20 text-xs font-semibold px-2.5 py-1.5 rounded-xl text-white shadow-lg opacity-0 group-hover:opacity-100 transition-opacity"
+            style={{ background: `${color}CC` }}>
+            ✏ Edit home
+          </button>
+        )}
+        {hascover && (
+          <div
+            style={{
+              width: "100%",
+              height: tc.heroMinHeight === "auto" ? "42vh" : tc.heroMinHeight,
+              minHeight: "220px",
+              maxHeight: "52vh",
+              backgroundImage: `url(${heroImage})`,
+              backgroundSize: "cover",
+              backgroundPosition: PORTRAIT_FACE_FOCAL,
+              filter: tc.photoFilter || undefined,
+            }}
+          />
+        )}
+        {invitationBody}
+      </div>
+    );
+  }
+
+  return (
   <div
     className={`relative flex flex-col ${tc.heroAlign === "left" ? "items-start justify-end pb-14 pl-8" : "items-center justify-center"} px-6 py-20 ${editMode ? "group cursor-pointer" : ""}`}
     style={{

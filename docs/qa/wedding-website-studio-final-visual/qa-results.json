@@ -1,0 +1,69 @@
+{
+  "catalogCollections": [
+    "Wildflower",
+    "Midnight",
+    "Garden Party",
+    "Linen",
+    "Rosé",
+    "Coastal",
+    "Champagne",
+    "Velvet",
+    "European Estate",
+    "Rustic"
+  ],
+  "catalogPhotoStyles": [
+    "Editorial",
+    "Magazine",
+    "Film",
+    "Minimal",
+    "Modern",
+    "Luxury",
+    "Scrapbook",
+    "Wildflower",
+    "Midnight",
+    "Gallery Wall"
+  ],
+  "industrialActive": false,
+  "collectionSelect": {
+    "europeanEstate": true,
+    "persisted": true
+  },
+  "photoStyleSelect": {
+    "Editorial": true,
+    "Magazine": true,
+    "Film": true,
+    "Minimal": true,
+    "Modern": true,
+    "Luxury": true,
+    "Scrapbook": true,
+    "Wildflower": true,
+    "Midnight": true,
+    "Gallery Wall": true,
+    "galleryWallPersisted": true
+  },
+  "failurePairs": {
+    "collections": {
+      "Wildflower vs Midnight": "PASS — light botanical vs dark indigo editorial story",
+      "Champagne vs Velvet": "PASS — light formal center vs dark left burgundy editorial",
+      "European Estate vs Rustic": "PASS — formal ♡ framed/stone vs romantic botanical barnwood",
+      "Garden Party vs Linen": "PASS — full-bleed name-over-photo vs invitation paper suite",
+      "Coastal vs Industrial": "N/A — Industrial not in active catalog",
+      "Champagne vs Estate": "PASS (close) — ✦ vs ♡ formal ornaments + Playfair vs EB Garamond"
+    },
+    "photoStyles": {
+      "Editorial vs Luxury": "PASS — overlap essay vs immersive matted single",
+      "Film vs Modern": "PASS — sprocket contact sheet vs flush equal grid",
+      "Magazine vs Scrapbook": "PASS — unframed collage vs polaroid scatter",
+      "Wildflower vs Gallery Wall": "PASS — organic cluster vs framed salon",
+      "Modern vs Film": "PASS",
+      "Midnight vs Editorial/Luxury": "PASS — cinematic band on black vs overlap / mat"
+    }
+  },
+  "unitTests": "12/12 preview-site + studio-preview-content",
+  "notes": [
+    "Active collections: 10 including Rustic; Industrial DNA coded but inactive.",
+    "Signature Color Story + Collection DNA fonts on Collection picker cards.",
+    "Photo Style silhouettes realized in GalleryGrid (published-safe token gates).",
+    "Migration 20261235000000 authored; local apply blocked by service_role grants — tokens already sufficient for photo silhouettes."
+  ]
+}

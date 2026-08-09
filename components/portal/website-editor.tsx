@@ -1299,16 +1299,15 @@ function ThemeStudio({ site, onUpdate }: { site: CoupleWebsite; onUpdate: (patch
                   onUpdate(patch);
                 }}
                 className={`relative rounded-2xl overflow-hidden text-left transition-all hover:scale-[1.01] ${isSelected ? "ring-2 ring-offset-2 ring-ring" : ""}`}>
-                <div className="relative overflow-hidden" style={{ height: 220 }}>
+                <div className="relative overflow-hidden" style={{ height: 248 }}>
                   <CollectionPreview
                     base={previewBase}
                     collection={c}
-                    colorStory={currentColorStory}
-                    typography={currentTypography}
+                    colorStory={c.colorStories[0]}
                     sectionKeys={["story"]}
                     width={170}
-                    height={220}
-                    heroFraction={0.4}
+                    height={248}
+                    heroFraction={0.38}
                   />
                   {isSelected && (
                     <div className="absolute top-2 right-2 h-5 w-5 rounded-full bg-white/90 flex items-center justify-center shadow">
@@ -1468,7 +1467,7 @@ function ThemeStudio({ site, onUpdate }: { site: CoupleWebsite; onUpdate: (patch
               <button key={p.id} type="button" onClick={() => onUpdate({ photoStyleId: p.id })}
                 className={`rounded-xl border overflow-hidden text-left transition-all ${isSelected ? "ring-2 ring-ring ring-offset-1 border-ring" : "border-border"}`}>
                 <div className="h-[150px]">
-                  {currentCollection && <PhotoStylePreview collection={currentCollection} photoStyle={p} photos={previewGalleryPhotos} width={170} height={150} naturalWidth={400} />}
+                  {currentCollection && <PhotoStylePreview collection={currentCollection} photoStyle={p} photos={previewGalleryPhotos} width={170} height={180} naturalWidth={400} />}
                 </div>
                 <div className="px-3 py-2 bg-card border-t border-border/50">
                   <p className="text-xs font-semibold text-heading">{p.name}</p>
