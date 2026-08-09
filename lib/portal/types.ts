@@ -71,7 +71,10 @@ export type PortalTask = {
   status: "pending" | "blocked" | "complete" | "overdue";
   isRequired: boolean;
   completedAt: string | null;
-  canComplete: boolean;  // true only for client_owned tasks the couple can act on
+  /** Domain auto-complete trigger from event_tasks; null = acknowledgment / manual. */
+  autoCompleteTrigger: string | null;
+  /** True only for client_owned tasks with no domain trigger (couple may Mark complete). */
+  canComplete: boolean;
 };
 
 /** Vendor-owned task projected into the portal (not an event_tasks row). */

@@ -33,7 +33,30 @@ export async function resolvePortalTasks(token: string): Promise<PortalTask[]> {
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("get_portal_tasks", { p_token: token });
   if (error || !data || (data as Record<string, unknown>).error) return [];
-  return ((data as Record<string, unknown>).tasks ?? []) as PortalTask[];
+  const rows = ((data as Record<string, unknown>).tasks ?? []) as Record<string, unknown>[];
+  return rows.map((r) => {
+    const trigger = (r.autoCompleteTrigger as string | null | undefined) ?? null;
+    // Defense in depth: never allow couple manual complete when a domain trigger owns it
+    // (covers pre-migration RPC responses that still omit the policy).
+    const canComplete = Boolean(r.canComplete) && !trigger;
+    return {
+      id: r.id as string,
+      title: r.title as string,
+      description: (r.description as string | null) ?? null,
+      category: (r.category as string) ?? "planning",
+      ownerType: (r.ownerType as string) ?? "couple",
+      visibility: (r.visibility === "client_visible" ? "client_visible" : "client_owned") as PortalTask["visibility"],
+      dueDate: (r.dueDate as string) ?? "",
+      daysOffset: Number(r.daysOffset ?? 0) || 0,
+      milestoneName: (r.milestoneName as string) ?? "",
+      milestoneKind: (r.milestoneKind as PortalTask["milestoneKind"]) ?? null,
+      status: (r.status as PortalTask["status"]) ?? "pending",
+      isRequired: Boolean(r.isRequired),
+      completedAt: (r.completedAt as string | null) ?? null,
+      autoCompleteTrigger: trigger,
+      canComplete,
+    };
+  });
 }
 
 export async function resolvePortalVendorTasks(token: string): Promise<PortalVendorTask[]> {

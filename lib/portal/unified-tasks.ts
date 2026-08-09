@@ -8,6 +8,10 @@
  *
  * Pure, I/O-free — the caller fetches from each system's own existing
  * endpoint and hands the results here.
+ *
+ * Verified Action Completion (Impl 1): venue_task rows with an
+ * autoCompleteTrigger never complete in-place — CTA navigates to the
+ * owning workspace; domain submit / pay / sign / upload fires the trigger.
  */
 import type { PortalRequestSummary } from "@/lib/requests/types";
 import type { PortalTask } from "@/lib/portal/types";
@@ -17,6 +21,17 @@ export type UnifiedTaskKind = "venue_task" | "request" | "contract" | "payment" 
 
 /** Home Next Steps ownership — couple personal todos never appear here. */
 export type UnifiedTaskOwnership = "venue" | "shared";
+
+export type UnifiedTaskTargetSection =
+  | "tasks"
+  | "requests"
+  | "documents"
+  | "payments"
+  | "questionnaire"
+  | "timeline"
+  | "guests"
+  | "vendors"
+  | "seating";
 
 export type UnifiedTask = {
   id: string;
@@ -36,11 +51,11 @@ export type UnifiedTask = {
   // Where completing this actually happens — Tasks never re-implements
   // another section's real action (a payment button, a sign flow, a
   // questionnaire form); it always hands off to the section that owns it.
-  targetSection: "tasks" | "requests" | "documents" | "payments" | "questionnaire" | "timeline";
+  targetSection: UnifiedTaskTargetSection;
   actionLabel: string;
-  // Only venue_task items complete in place, directly within the list —
-  // everything else's completion is derived from the owning system's own
-  // real state (paid, signed, submitted).
+  // Only venue_task items without a domain autoCompleteTrigger complete
+  // in place. Everything else is derived from the owning system's state
+  // (paid, signed, submitted) or navigates to that workspace.
   completableHere: boolean;
 };
 
@@ -53,6 +68,55 @@ type PaymentSchedule = {
 };
 
 type ContractDoc = { id: string; docType: string; name: string; status: string | null; signToken?: string | null };
+
+/** Domain trigger → couple workspace + CTA copy (never Mark complete). */
+const TRIGGER_WORKSPACE: Record<string, { section: UnifiedTaskTargetSection; actionLabel: string }> = {
+  guest_count_finalized: { section: "guests", actionLabel: "Submit guest count" },
+  vendor_selected: { section: "vendors", actionLabel: "Add vendors" },
+  seating_submitted: { section: "seating", actionLabel: "Submit seating" },
+  timeline_submitted: { section: "timeline", actionLabel: "Submit timeline" },
+  contract_signed: { section: "documents", actionLabel: "Review & sign" },
+  payment_received: { section: "payments", actionLabel: "Pay now" },
+  questionnaire_submitted: { section: "questionnaire", actionLabel: "Complete form" },
+  document_uploaded_insurance: { section: "documents", actionLabel: "Upload insurance" },
+  document_uploaded: { section: "documents", actionLabel: "Upload" },
+};
+
+/**
+ * Policy: domain-triggered checklist rows navigate to the owning section;
+ * only acknowledgment / non-triggered client_owned rows may Mark complete.
+ */
+export function venueTaskPresentation(t: PortalTask): {
+  targetSection: UnifiedTaskTargetSection;
+  actionLabel: string;
+  completableHere: boolean;
+} {
+  const done = t.status === "complete";
+  if (done) {
+    return { targetSection: "tasks", actionLabel: "Done", completableHere: false };
+  }
+
+  const trigger = t.autoCompleteTrigger ?? null;
+  if (trigger) {
+    const mapped = TRIGGER_WORKSPACE[trigger];
+    if (mapped) {
+      return {
+        targetSection: mapped.section,
+        actionLabel: mapped.actionLabel,
+        completableHere: false,
+      };
+    }
+    // Unknown trigger still owned by the system — never Mark complete.
+    return { targetSection: "tasks", actionLabel: "View", completableHere: false };
+  }
+
+  const canManual = Boolean(t.canComplete);
+  return {
+    targetSection: "tasks",
+    actionLabel: canManual ? "Mark complete" : "View",
+    completableHere: canManual,
+  };
+}
 
 function todayIso(): string {
   return new Date().toISOString().slice(0, 10);
@@ -85,13 +149,14 @@ export function buildUnifiedTaskList(input: {
   for (const t of input.venueTasks) {
     const done = t.status === "complete";
     const overdue = !done && (t.status === "overdue" || isPastDue(t.dueDate, today));
+    const presentation = venueTaskPresentation(t);
     out.push({
       id: `task_${t.id}`, kind: "venue_task", title: t.title, description: t.description,
       dueDate: t.dueDate, daysOffset: t.daysOffset, dueDateLocked: false, completed: done,
       isOverdue: overdue, isRequired: t.isRequired, ownership: "venue",
-      targetSection: "tasks",
-      actionLabel: done ? "Done" : t.canComplete ? "Mark complete" : "View",
-      completableHere: !done && t.canComplete,
+      targetSection: presentation.targetSection,
+      actionLabel: presentation.actionLabel,
+      completableHere: presentation.completableHere,
     });
   }
 

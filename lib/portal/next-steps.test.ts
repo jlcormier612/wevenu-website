@@ -35,6 +35,7 @@ function task(partial: Partial<PortalTask> & Pick<PortalTask, "id" | "title" | "
     milestoneKind: null,
     isRequired: false,
     completedAt: null,
+    autoCompleteTrigger: null,
     canComplete: true,
     ...partial,
   };

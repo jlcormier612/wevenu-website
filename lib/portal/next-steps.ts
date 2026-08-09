@@ -6,8 +6,7 @@
  * `buildUnifiedTaskList` + `selectCanonicalPaymentSchedules` (Tasks-compatible).
  */
 import { formatAbsoluteDueDate } from "@/lib/playbooks/due-dates";
-import type { UnifiedTask, UnifiedTaskOwnership } from "@/lib/portal/unified-tasks";
-import type { PortalSection } from "@/lib/portal/types";
+import type { UnifiedTask, UnifiedTaskOwnership, UnifiedTaskTargetSection } from "@/lib/portal/unified-tasks";
 
 export const NEXT_STEPS_HOME_CAP = 5;
 
@@ -19,7 +18,7 @@ export type NextStepsItem = {
   isOverdue: boolean;
   isRequired: boolean;
   ownership: UnifiedTaskOwnership;
-  targetSection: PortalSection;
+  targetSection: UnifiedTaskTargetSection;
   actionLabel: string;
   /** Optional kind for compact CTA wording; vendor rows may omit. */
   kind?: UnifiedTask["kind"] | "vendor_task";

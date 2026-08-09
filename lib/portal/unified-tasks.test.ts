@@ -6,8 +6,9 @@ import {
   selectCanonicalPaymentSchedules,
   type PortalPaymentScheduleLike,
 } from "@/lib/portal/payment-schedules";
-import { buildUnifiedTaskList, ownershipLabel } from "@/lib/portal/unified-tasks";
+import { buildUnifiedTaskList, ownershipLabel, venueTaskPresentation } from "@/lib/portal/unified-tasks";
 import type { PortalTask } from "@/lib/portal/types";
+import { compactNextStepsActionLabel } from "@/lib/portal/next-steps";
 
 function task(partial: Partial<PortalTask> & Pick<PortalTask, "id" | "title" | "status" | "dueDate">): PortalTask {
   return {
@@ -20,6 +21,7 @@ function task(partial: Partial<PortalTask> & Pick<PortalTask, "id" | "title" | "
     milestoneKind: null,
     isRequired: false,
     completedAt: null,
+    autoCompleteTrigger: null,
     canComplete: true,
     ...partial,
   };
@@ -32,6 +34,7 @@ function schedule(partial: PortalPaymentScheduleLike): PortalPaymentScheduleLike
 const emptyUnified = {
   venueTasks: [] as PortalTask[],
   requests: [] as never[],
+  paymentSchedules: [] as { id?: string; title: string; lineItems: { id: string; label: string; amount: number; dueDate: string | null; status: string }[] }[],
   questionnaire: null as { status: string } | null,
   documents: [] as never[],
   timelineHasUnpublishedChanges: false,
@@ -320,5 +323,148 @@ describe("payment obligation reconciliation", () => {
     assert.equal(overdue[0]?.id, "payment_over");
     assert.equal(overdue[0]?.isOverdue, true);
     assert.equal(list[0]?.id, "payment_over");
+  });
+});
+
+describe("verified action completion policy", () => {
+  const due = "2026-09-01";
+
+  it("triggered tasks never Mark complete and route to domain workspaces", () => {
+    const cases: { trigger: string; section: string; label: string }[] = [
+      { trigger: "guest_count_finalized", section: "guests", label: "Submit guest count" },
+      { trigger: "vendor_selected", section: "vendors", label: "Add vendors" },
+      { trigger: "seating_submitted", section: "seating", label: "Submit seating" },
+      { trigger: "timeline_submitted", section: "timeline", label: "Submit timeline" },
+      { trigger: "contract_signed", section: "documents", label: "Review & sign" },
+      { trigger: "payment_received", section: "payments", label: "Pay now" },
+      { trigger: "questionnaire_submitted", section: "questionnaire", label: "Complete form" },
+      { trigger: "document_uploaded_insurance", section: "documents", label: "Upload insurance" },
+    ];
+
+    for (const c of cases) {
+      const t = task({
+        id: c.trigger,
+        title: c.trigger,
+        status: "pending",
+        dueDate: due,
+        visibility: "client_owned",
+        canComplete: true, // even if API lagged, presentation must block
+        autoCompleteTrigger: c.trigger,
+      });
+      const p = venueTaskPresentation(t);
+      assert.equal(p.completableHere, false, c.trigger);
+      assert.equal(p.targetSection, c.section, c.trigger);
+      assert.equal(p.actionLabel, c.label, c.trigger);
+      assert.notEqual(p.actionLabel.toLowerCase(), "mark complete");
+      assert.notEqual(p.actionLabel.toLowerCase(), "complete");
+    }
+  });
+
+  it("navigation presentation does not imply in-list completion", () => {
+    const list = buildUnifiedTaskList({
+      ...emptyUnified,
+      venueTasks: [
+        task({
+          id: "gc",
+          title: "Submit your guest count",
+          status: "pending",
+          dueDate: due,
+          visibility: "client_owned",
+          canComplete: false,
+          autoCompleteTrigger: "guest_count_finalized",
+        }),
+      ],
+    });
+    assert.equal(list[0]?.completableHere, false);
+    assert.equal(list[0]?.targetSection, "guests");
+    // Clicking CTA would navigate — never handleComplete
+    assert.equal(list[0]?.actionLabel, "Submit guest count");
+  });
+
+  it("non-triggered acknowledgment tasks keep Mark complete", () => {
+    const t = task({
+      id: "pkg",
+      title: "Choose your package",
+      status: "pending",
+      dueDate: due,
+      visibility: "client_owned",
+      canComplete: true,
+      autoCompleteTrigger: null,
+    });
+    const p = venueTaskPresentation(t);
+    assert.equal(p.completableHere, true);
+    assert.equal(p.actionLabel, "Mark complete");
+    assert.equal(p.targetSection, "tasks");
+  });
+
+  it("already-complete triggered tasks show Done and are not completable", () => {
+    const t = task({
+      id: "done",
+      title: "Submit your guest count",
+      status: "complete",
+      dueDate: due,
+      autoCompleteTrigger: "guest_count_finalized",
+      canComplete: false,
+    });
+    const p = venueTaskPresentation(t);
+    assert.equal(p.actionLabel, "Done");
+    assert.equal(p.completableHere, false);
+  });
+
+  it("unknown triggers still block Mark complete", () => {
+    const p = venueTaskPresentation(task({
+      id: "x",
+      title: "Custom",
+      status: "pending",
+      dueDate: due,
+      canComplete: true,
+      autoCompleteTrigger: "future_custom_trigger",
+    }));
+    assert.equal(p.completableHere, false);
+    assert.equal(p.actionLabel, "View");
+  });
+
+  it("regression: derived payment/contract rows stay navigate-only; Home keeps Review for checklist Mark complete", () => {
+    const list = buildUnifiedTaskList({
+      ...emptyUnified,
+      documents: [{ id: "c1", docType: "contract", name: "Agreement", status: "sent", signToken: "tok" }],
+      paymentSchedules: [{
+        id: "sch",
+        title: "Schedule",
+        lineItems: [{ id: "p1", label: "Final Payment", amount: 100, dueDate: due, status: "pending" }],
+      }],
+      venueTasks: [
+        task({
+          id: "review",
+          title: "Leave a review",
+          status: "pending",
+          dueDate: due,
+          visibility: "client_owned",
+          canComplete: true,
+          autoCompleteTrigger: null,
+        }),
+      ],
+    });
+    const payment = list.find((t) => t.kind === "payment");
+    const contract = list.find((t) => t.kind === "contract");
+    const ack = list.find((t) => t.id === "task_review");
+    assert.equal(payment?.completableHere, false);
+    assert.equal(payment?.actionLabel, "Pay now");
+    assert.equal(contract?.completableHere, false);
+    assert.equal(contract?.actionLabel, "Review & sign");
+    assert.equal(ack?.completableHere, true);
+    assert.equal(ack?.actionLabel, "Mark complete");
+    assert.equal(
+      compactNextStepsActionLabel({ actionLabel: "Mark complete", kind: "venue_task" }),
+      "Review",
+    );
+    assert.equal(
+      compactNextStepsActionLabel({ actionLabel: "Submit guest count", kind: "venue_task" }),
+      "Submit",
+    );
+    assert.equal(
+      compactNextStepsActionLabel({ actionLabel: "Pay now", kind: "venue_task" }),
+      "Pay",
+    );
   });
 });
