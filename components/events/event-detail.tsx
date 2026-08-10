@@ -47,6 +47,7 @@ import { EventOrderPanel } from "@/components/event-orders/event-order-panel";
 import type { EventOrderWithDetails } from "@/lib/event-orders/types";
 import type { InventoryItem } from "@/lib/inventory/types";
 import type { Package } from "@/lib/packages/types";
+import { EventInventoryPanel } from "@/components/event-inventory/event-inventory-panel";
 import { RelationshipConversationTab } from "@/components/conversations/relationship-conversation-tab";
 import { ActivityTimelineView } from "@/components/conversations/activity-timeline";
 import type { ConversationMessage } from "@/lib/conversations/types";
@@ -260,6 +261,8 @@ export function EventDetail({
   eventOrder = null,
   packages = [],
   inventoryItems = [],
+  eventInventory = null,
+  inventoryTemplates = [],
   requestsByTaskId = {},
   requests = [],
   readinessSummary,
@@ -306,6 +309,10 @@ export function EventDetail({
   eventOrder?: EventOrderWithDetails | null;
   packages?: Package[];
   inventoryItems?: InventoryItem[];
+  // D5A — Event Inventory. Not feature-flagged (unlike Event Order above):
+  // additive to the venue-wide catalog every venue already has.
+  eventInventory?: import("@/lib/event-inventory/types").EventInventoryWithDetails | null;
+  inventoryTemplates?: import("@/lib/event-inventory/types").InventoryTemplate[];
   requestsByTaskId?: Record<string, import("@/lib/requests/types").Request>;
   requests?: import("@/lib/requests/types").Request[];
   readinessSummary: EventReadinessSummary;
@@ -490,6 +497,12 @@ export function EventDetail({
               )}
             </TabsTrigger>
           )}
+          <TabsTrigger value="inventory">
+            Inventory
+            {eventInventory && eventInventory.items.length > 0 && (
+              <span className="ml-1 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground">{eventInventory.items.length}</span>
+            )}
+          </TabsTrigger>
           <TabsTrigger value="invoice">
             Payments
             {invoices.length > 0 && <span className="ml-1 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground">{invoices.length}</span>}
@@ -766,6 +779,11 @@ export function EventDetail({
             <EventOrderPanel eventId={event.id} clientId={event.clientId} eventOrder={eventOrder} packages={packages} inventoryItems={inventoryItems} invoices={invoices} floorPlans={event.floorPlans} />
           </TabsContent>
         )}
+
+        {/* ── Event Inventory (D5A) ──────────────────────────────────── */}
+        <TabsContent value="inventory">
+          <EventInventoryPanel eventId={event.id} eventInventory={eventInventory} templates={inventoryTemplates} catalogItems={inventoryItems} />
+        </TabsContent>
 
         {/* ── Invoice / Payments ────────────────────────────────────── */}
         <TabsContent value="invoice">
