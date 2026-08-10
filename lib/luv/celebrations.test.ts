@@ -17,6 +17,7 @@ const COUPLE_TYPES: Exclude<CelebrationType, "final_payment_received">[] = [
   "questionnaire_submitted",
   "insurance_uploaded",
   "timeline_shared_with_vendor",
+  "final_payment_obligation_paid",
 ];
 
 describe("coupleCelebrationMessage — verified milestone copy", () => {
@@ -39,11 +40,13 @@ describe("coupleCelebrationMessage — verified milestone copy", () => {
   });
 });
 
-describe("coordinatorCelebrationMessage — includes payment readiness only", () => {
-  it("final_payment_received stays the only payment celebration message", () => {
-    const msg = coordinatorCelebrationMessage("final_payment_received", "Emma & Jordan");
-    assert.match(msg, /final payment/i);
-    assert.ok(!/installment|deposit|any payment/i.test(msg));
+describe("coordinatorCelebrationMessage — payment celebrations", () => {
+  it("final_payment_received (paid-in-full) stays distinct from obligation paid", () => {
+    const paidInFull = coordinatorCelebrationMessage("final_payment_received", "Emma & Jordan");
+    assert.match(paidInFull, /final payment/i);
+    assert.ok(!/obligation/i.test(paidInFull));
+    const obligation = coordinatorCelebrationMessage("final_payment_obligation_paid", "Emma & Jordan");
+    assert.match(obligation, /obligation/i);
   });
 
   it("covers newly verified couple domains for briefing", () => {

@@ -179,11 +179,11 @@ begin
   );
 
   insert into public.payment_line_items (
-    venue_id, schedule_id, label, amount, due_date, status, sort_order
+    venue_id, schedule_id, label, amount, due_date, status, sort_order, obligation_kind
   ) values
-    (v_venue_id, v_schedule_id, 'First Installment',  4319.57, v_event_date - interval '180 days', 'overdue', 0),
-    (v_venue_id, v_schedule_id, 'Second Installment', 4319.57, v_event_date - interval '90 days',  'overdue', 1),
-    (v_venue_id, v_schedule_id, 'Final Payment',      4320.86, v_event_date - interval '30 days',  'pending', 2);
+    (v_venue_id, v_schedule_id, 'First Installment',  4319.57, v_event_date - interval '180 days', 'overdue', 0, 'installment'),
+    (v_venue_id, v_schedule_id, 'Second Installment', 4319.57, v_event_date - interval '90 days',  'overdue', 1, 'installment'),
+    (v_venue_id, v_schedule_id, 'Final Payment',      4320.86, v_event_date - interval '30 days',  'pending', 2, 'final');
 
   -- ── Timeline ──────────────────────────────────────────────────────────────
   insert into public.timeline_sections (id, venue_id, event_id, name, sort_order) values

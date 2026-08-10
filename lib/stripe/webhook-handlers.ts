@@ -27,11 +27,16 @@ import type Stripe from "stripe";
 
 import { createAdminClient } from "@/integrations/supabase/admin";
 import * as paymentsRepo from "@/lib/payments/repository";
+import {
+  celebrateFinalPaymentObligationIfNeeded,
+  completeFinalPaymentTasksBoundToLine,
+} from "@/lib/payments/final-payment-obligation";
 import { triggerAutoComplete } from "@/lib/playbooks/service";
 import { computePaymentsReadiness } from "@/lib/readiness/compute";
 import { enqueueQuickBooksSync } from "@/lib/quickbooks/queue";
 import { postPaymentFailedMessage, postPaymentReceivedReceipt } from "@/lib/stripe/notify";
 import type { Invoice } from "@/lib/invoices/types";
+import type { PaymentObligationKind } from "@/lib/payments/types";
 
 type PiMetadata = {
   wevenu_payment_line_item_id?: string;
@@ -89,6 +94,24 @@ export async function handlePaymentIntentSucceeded(pi: Stripe.PaymentIntent): Pr
   if (eventId) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     await triggerAutoComplete(admin as any, venueId, eventId, "payment_received", "payment_line_item", itemId);
+    // Option B: complete only Final Payment tasks bound to THIS line.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await completeFinalPaymentTasksBoundToLine(admin as any, venueId, itemId);
+  }
+
+  // Final Payment obligation Luv (Impl 7) — distinct from paid-in-full below.
+  if (eventId) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: paidLine } = await (admin as any).from("payment_line_items")
+      .select("obligation_kind").eq("id", itemId).eq("venue_id", venueId).maybeSingle();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await celebrateFinalPaymentObligationIfNeeded(
+      admin as any,
+      venueId,
+      eventId,
+      itemId,
+      (paidLine?.obligation_kind as PaymentObligationKind | null) ?? null,
+    );
   }
 
   // Final Payment Received — same guard shape as markLineItemPaid: reads

@@ -27,6 +27,7 @@ type ScheduleRow = {
 type ItemRow = {
   id: string; venue_id: string; schedule_id: string; label: string;
   amount: number; due_date: string | null; status: PaymentLineItem["status"];
+  obligation_kind: PaymentLineItem["obligationKind"] | null;
   paid_at: string | null; paid_amount: number | null; payment_method: string | null;
   reference_number: string | null; notes: string | null; sort_order: number;
   refunded_amount: number | null; refunded_at: string | null; refund_reason: string | null;
@@ -63,6 +64,7 @@ function mapItem(r: ItemRow): PaymentLineItem {
   return {
     id: r.id, venueId: r.venue_id, scheduleId: r.schedule_id, label: r.label,
     amount: Number(r.amount), dueDate: r.due_date, status: r.status,
+    obligationKind: r.obligation_kind ?? null,
     paidAt: r.paid_at, paidAmount: r.paid_amount != null ? Number(r.paid_amount) : null,
     paymentMethod: r.payment_method, referenceNumber: r.reference_number,
     notes: r.notes, sortOrder: r.sort_order,
@@ -205,6 +207,7 @@ export async function insertLineItem(client: DbClient, venueId: string, schedule
       amount: parseFloat(input.amount.replace(/[$,]/g, "")),
       due_date: input.dueDate || null,
       sort_order: sortOrder,
+      obligation_kind: input.obligationKind ?? null,
     }).select().single<ItemRow>();
   if (error) throw error;
   return mapItem(data);
@@ -212,12 +215,16 @@ export async function insertLineItem(client: DbClient, venueId: string, schedule
 
 export async function updateLineItem(client: DbClient, venueId: string, itemId: string, input: LineItemInput): Promise<void> {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const patch: Record<string, unknown> = {
+    label: input.label.trim(),
+    amount: parseFloat(input.amount.replace(/[$,]/g, "")),
+    due_date: input.dueDate || null,
+  };
+  // Only overwrite kind when explicitly provided — never guess from label.
+  if (input.obligationKind) patch.obligation_kind = input.obligationKind;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { error } = await (client.from("payment_line_items") as any)
-    .update({
-      label: input.label.trim(),
-      amount: parseFloat(input.amount.replace(/[$,]/g, "")),
-      due_date: input.dueDate || null,
-    }).eq("id", itemId).eq("venue_id", venueId);
+    .update(patch).eq("id", itemId).eq("venue_id", venueId);
   if (error) throw error;
 }
 

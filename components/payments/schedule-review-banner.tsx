@@ -13,7 +13,11 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { formatMoney, SCHEDULE_PRESETS } from "@/lib/payments/constants";
+import { formatMoney, OBLIGATION_KIND_OPTIONS, SCHEDULE_PRESETS } from "@/lib/payments/constants";
+import type { PaymentObligationKind } from "@/lib/payments/types";
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
 
 type Mode = null | "regenerate" | "add_installment";
 
@@ -34,9 +38,16 @@ export function ScheduleReviewBanner({
   const [label, setLabel] = React.useState("");
   const [amount, setAmount] = React.useState(String(Math.max(0, invoiceTotal - scheduleTotal)));
   const [dueDate, setDueDate] = React.useState("");
+  const [obligationKind, setObligationKind] = React.useState<PaymentObligationKind | "">("");
   const [pending, startTransition] = React.useTransition();
 
-  function reset() { setMode(null); setLabel(""); setDueDate(""); setAmount(String(Math.max(0, invoiceTotal - scheduleTotal))); }
+  function reset() {
+    setMode(null);
+    setLabel("");
+    setDueDate("");
+    setObligationKind("");
+    setAmount(String(Math.max(0, invoiceTotal - scheduleTotal)));
+  }
 
   function handleKeep() {
     startTransition(async () => {
@@ -63,8 +74,14 @@ export function ScheduleReviewBanner({
   }
 
   function handleAddInstallment() {
+    if (!obligationKind) {
+      toast.error("Choose what kind of payment this is.");
+      return;
+    }
     startTransition(async () => {
-      const result = await addReviewInstallmentAction(scheduleId, { label, amount, dueDate });
+      const result = await addReviewInstallmentAction(scheduleId, {
+        label, amount, dueDate, obligationKind,
+      });
       if (!result.ok) toast.error(result.message ?? "Could not add installment.");
       else { toast.success("Installment added."); reset(); router.refresh(); }
     });
@@ -113,10 +130,26 @@ export function ScheduleReviewBanner({
 
       {mode === "add_installment" && (
         <div className="space-y-3 rounded-lg border border-border bg-card p-3">
-          <div className="grid gap-3 sm:grid-cols-[1fr_auto_auto] items-end">
+          <div className="grid gap-3 sm:grid-cols-[1fr_auto_auto_auto] items-end">
             <div className="space-y-1.5">
               <Label className="text-xs">Label</Label>
               <Input value={label} onChange={(e) => setLabel(e.target.value)} placeholder="Additional charges" autoFocus />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Kind *</Label>
+              <Select
+                value={obligationKind || "__none__"}
+                onValueChange={(v) => setObligationKind(v === "__none__" ? "" : v as PaymentObligationKind)}
+              >
+                <SelectTrigger className="w-36">
+                  <SelectValue placeholder="Choose…" />
+                </SelectTrigger>
+                <SelectContent>
+                  {OBLIGATION_KIND_OPTIONS.map((o) => (
+                    <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div className="space-y-1.5">
               <Label className="text-xs">Amount</Label>
@@ -129,7 +162,7 @@ export function ScheduleReviewBanner({
           </div>
           <div className="flex justify-end gap-2">
             <Button type="button" variant="ghost" size="sm" onClick={reset} disabled={pending}>Cancel</Button>
-            <Button type="button" size="sm" disabled={!label.trim() || !amount.trim() || pending} onClick={handleAddInstallment}>
+            <Button type="button" size="sm" disabled={!label.trim() || !amount.trim() || !obligationKind || pending} onClick={handleAddInstallment}>
               {pending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Add Installment"}
             </Button>
           </div>

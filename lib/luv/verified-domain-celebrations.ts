@@ -20,6 +20,8 @@ export type VerifiedCelebrationTrigger =
 /**
  * Triggers intentionally NOT celebrated here (unsafe / unsupported):
  * - payment_received — any paid line; too broad (final_payment_received is separate)
+ * - final_payment_obligation_paid — celebrated from mark-paid / Stripe when the
+ *   bound typed final line is paid (Impl 7), not via this playbook-trigger map
  * - null / Mark complete ack / Leave a review / package
  * - share_timeline playbook-style trigger string — vendor share uses dedicated
  *   celebration type timeline_shared_with_vendor from the share RPC (Impl 6),

@@ -1,222 +1,221 @@
 # Couple Tasks — Final Payment Verified Completion · Implementation 7
 
 **Date:** 2026-08-09  
-**Status:** **STOPPED — uniqueness / identity ambiguity after approved-model Phase 1.** No product implementation.  
-**Mode:** Approved model inspected in foreground; coding deferred per STOP condition #1 (user confirmed: report ambiguity).
+**Status:** **IMPLEMENTED — Option B** (durable task → `payment_line_item_id` binding)  
+**Mode:** Product implementation after Option B approval.
 
-**Priors (must remain intact — not mutated this pass):**  
-`5657066`, `0ad64af`, `fc843dc`, `358153b`, `56e98a4`, `8d52f38`, `192c728`, `d2be260`
+**Priors (must remain intact):**  
+`5657066`, `0ad64af`, `fc843dc`, `358153b`, `56e98a4`, `8d52f38`, `192c728`, `d2be260`, `23e5c13`, `6345ba4`
 
-**Prior investigation (accepted):** commit `23e5c13` — system cannot prove Final Payment obligation paid (no typed line role; `payment_received` too broad; Luv `final_payment_received` = paid-in-full).
-
----
-
-## Verdict
-
-`obligation_kind` typing is the correct direction and is **not sufficient by itself** to identify “the event’s Final Payment obligation.”
-
-An event can already have **more than one** line that would truthfully receive `obligation_kind = 'final'` (one per invoice payment plan from presets, plus coordinator-added lines). There is **no existing event-level canonical Final Payment identity**.
-
-Per approved WP STOP #1: **do not invent a heuristic. STOP.**
-
-Also: historical rows have **no authoritative non-label field** to backfill `final` (STOP #3 related). Forward-only typing is fine for new creates; classifying legacy as `final` from labels must not happen.
+**Rule:** ONLY COMPLETE / CELEBRATE WHAT THE SYSTEM CAN PROVE. Navigation/refresh never complete. Never infer Final from label at completion.
 
 ---
 
-## 1. Original STOP finding (accepted — `23e5c13`)
+## 1. Original STOP (accepted — `23e5c13` + prior STOP doc)
 
 - `payment_line_items.label` is free text — not identity  
 - `payment_received` = any payment on the event — too broad for Final Payment task  
-- Luv `final_payment_received` = event invoices paid in full via `computePaymentsReadiness` — not “Final Payment line paid”  
-- Couple “Final payment” template currently uses `autoCompleteTrigger: "payment_received"` (same as coordinator “Verify deposit”)
+- Luv `final_payment_received` = event invoices paid in full — not “Final Payment line paid”  
+- Couple “Final payment” template previously used `autoCompleteTrigger: "payment_received"` (same as coordinator “Verify deposit”)  
+- Multiple `final`-typed lines per event are possible (one schedule per invoice × multiple invoices)
 
 ---
 
-## 2. Approved model (reviewed, not built)
+## 2. Approved model (Option B — built)
 
-| # | Approval | Status after inspection |
+| # | Decision | Implementation |
 | --- | --- | --- |
-| 1 | Add `payment_line_items.obligation_kind` (`deposit` \| `installment` \| `final` …) at creation | Directionally sound; **blocked until uniqueness resolved** |
-| 2 | Verify Final Payment only when typed `final` line is paid | Needs unique target SoT first |
-| 3 | Keep `payment_received` broad | Confirmed must remain intact |
-| 4 | Narrow verified signal for Final Payment task | Blocked on #1 uniqueness |
-| 5 | Prefer no task→line FK if event-level final is unique | **Fails uniqueness test — see §5** |
-| 6 | Separate celebration from paid-in-full (`final_payment_obligation_paid`) | Still required when unblocked |
-| 7–8 | One-time `luv_celebrations`; preserve `fc843dc` twin suppression | Unchanged intent |
-| 9 | Safe creation / migration only | Secondary STOP on historical backfill |
+| 1 | Durable `obligation_kind` on lines | `deposit \| installment \| final \| other`; set at creation; nullable legacy |
+| 2 | Identity = task → line FK | `event_tasks.payment_line_item_id` → `payment_line_items.id` |
+| 3 | Verify = that line `status=paid` | Complete-by-line-id helper; not label |
+| 4 | Keep `payment_received` broad | Still fired on every mark-paid / Stripe success |
+| 5 | Couple Final does **not** use `payment_received` as proof | Trigger → `final_payment_obligation_paid` |
+| 6 | New celebration ≠ paid-in-full | `final_payment_obligation_paid` Luv type |
+| 7 | One-shot via unique constraint | Insert-only; `celebrated` / `obligationCelebrated` only on first win |
+| 8 | Preserve `fc843dc` twin suppression | Also suppress new Final trigger while unpaid lines exist |
+| 9 | No historical label backfill to `final` | Forward-only typing; seed sets kinds explicitly |
 
 ---
 
-## 3. Payment obligation SoT (current)
+## 3. Payment obligation SoT
 
-| Fact | Source of truth today |
+| Fact | Source of truth |
 | --- | --- |
 | A schedule line exists | `payment_line_items.id` |
-| That line is paid | `status = 'paid'` (+ Stripe/manual mark-paid paths) |
-| Remaining couple Pay Now attention | Canonical unpaid lines via `selectCanonicalPaymentSchedules` |
-| Checklist “Final payment” | `event_tasks` with `auto_complete_trigger = 'payment_received'` — **not** wired to a specific line |
-| Event paid in full | Invoice readiness `complete` → Luv `final_payment_received` |
-
-**Missing:** durable typed role on the line **plus** a defined event-level (or task-level) identity when multiple `final` lines can exist.
+| That line’s role | `payment_line_items.obligation_kind` (set at create; never from label at complete) |
+| That line is paid | `status = 'paid'` (Stripe / manual mark-paid) |
+| Which Final Payment task owns which line | `event_tasks.payment_line_item_id` (Option B) |
+| Couple Final Payment auto-complete trigger | `auto_complete_trigger = 'final_payment_obligation_paid'` |
+| Remaining Pay Now attention | Canonical unpaid lines (`selectCanonicalPaymentSchedules`) |
+| Event paid in full | Invoice readiness `complete` → Luv `final_payment_received` (unchanged) |
 
 ---
 
-## 4. Creation paths inspected (kinds would be assignable forward)
+## 4. `obligation_kind` semantics
 
-| Path | File / area | If kinds were added today |
+| Kind | Meaning | Creation sources |
 | --- | --- | --- |
-| Schedule presets | `SCHEDULE_PRESETS` in `lib/payments/constants.ts` → `createPaymentSchedule` / `regeneratePaymentSchedule` | Each preset item can carry an authoritative `obligation_kind` at create (not inferred from label later). Presets currently stamp one Final-labeled item **per schedule**. |
-| Retainer shortcut | `createRetainerInvoiceAndSchedule` | Single “Retainer” line → should be `deposit` (or explicit `retainer` if enum allows), **not** `final`. |
-| Manual add / review installment | `addLineItem` / `addReviewInstallment` + payment UI | Requires explicit coordinator pick of `obligation_kind`. Ambiguous free-text-only add must refuse or leave non-`final` (not guess). |
-| Seed Emma/Jordan | `supabase/seed.sql` thirds plan | Three lines; third is conventionally Final — seed can set kinds explicitly for **new** seeds only. |
-| Stripe mark paid | `handlePaymentIntentSucceeded` | Marks **whichever** line id was paid; does not know role until column exists. |
+| `deposit` | Deposit / retainer | Preset first lines; retainer shortcut (always deposit, never final) |
+| `installment` | Mid-plan payment | Preset middle lines |
+| `final` | Final Payment obligation for that schedule | Preset last lines only |
+| `other` | Explicit non-classified add | Manual create when coordinator chooses Other |
+| `null` | Legacy / untyped | Pre-migration rows; **not** treated as final |
 
-**Uniqueness risk is not “presets invent two finals on one schedule.”** It is **events that hold multiple invoices → multiple schedules → multiple preset finals**, plus **manual adds** of additional `final` lines on any schedule.
+**Never** infer `final` from label at completion time. Manual create **requires** an explicit kind.
 
 ---
 
-## 5. STOP #1 — Ambiguity: multiple `final` obligations per event
+## 5. Migration
 
-### Domain fact
+**File:** `supabase/migrations/20261241000000_couple_final_payment_verified_completion.sql`
 
-Booking financial architecture allows:
+1. `payment_line_items.obligation_kind` + CHECK (`deposit|installment|final|other` or null)  
+2. `event_tasks.payment_line_item_id` nullable FK → `payment_line_items(id)` **ON DELETE SET NULL**  
+3. Widen `luv_celebrations.celebration_type` → `final_payment_obligation_paid`  
+4. Safe trigger migrate (couple Final payment only):
 
-- **One payment schedule per invoice** (enforced)  
-- **Multiple invoices per event** (allowed — e.g. retainer invoice + main invoice, or additional invoices)  
-- Each non-custom preset creates **one** Final-labeled installment on **that** schedule  
-
-Therefore an event can truthfully have:
-
-```text
-Event
- ├─ Invoice A / Schedule A → … + Final (would be obligation_kind=final)
- └─ Invoice B / Schedule B → … + Final (would also be obligation_kind=final)
+```sql
+-- playbook_tasks + event_tasks where:
+--   auto_complete_trigger = 'payment_received'
+--   AND owner_type = 'couple'
+--   AND lower(trim(title)) = 'final payment'
+-- → final_payment_obligation_paid
+-- Does NOT touch coordinator "Verify deposit"
 ```
 
-`selectCanonicalPaymentSchedules` collapses **duplicate schedules for the same invoice_id**; it does **not** collapse multiple invoices into one Final Payment obligation. After canonicalization, **N invoice plans ⇒ up to N finals**.
+**Historical strategy:** Do **not** backfill `obligation_kind = 'final'` from labels. Legacy lines stay null. Existing unbound Final Payment tasks bind when a new typed `final` line is created/regenerated for that event. Emma seed sets kinds explicitly for **new** seeds.
 
-There is **no** existing:
+---
 
-- event-level `final_payment_line_item_id`  
-- “primary invoice” Final Payment pointer  
-- unique constraint limiting one `final` per event  
+## 6. Verification path
 
-Couple playbook has **one** “Final payment” task per event application — not one task per invoice/line.
+1. Coordinator/Stripe marks a line paid (`status=paid`).  
+2. Always fire `triggerAutoComplete(..., "payment_received", ...)` (broad).  
+3. Additionally `completeFinalPaymentTasksBoundToLine(lineId)` — completes open tasks where `payment_line_item_id = lineId` **and** trigger = `final_payment_obligation_paid`.  
+4. If paid line’s `obligation_kind = 'final'`, insert Luv `final_payment_obligation_paid` (first win).  
+5. Separately, if invoices readiness is complete, insert Luv `final_payment_received` (unchanged).
 
-### Why `obligation_kind='final'` alone is insufficient
+**Does not complete on:** navigate, refresh, render, refetch, Mark complete (disabled), deposit/installment/other paid lines (unless those lines are somehow bound — binding only runs for `obligation_kind=final`).
 
-| Candidate rule | Why it invents semantics |
+---
+
+## 7. Task auto-complete + binding
+
+**Trigger name:** `final_payment_obligation_paid`  
+**Template:** Client Planning “Final payment” uses this trigger (reference seed + migration for existing rows).
+
+**Binding (deterministic):** When inserting a line with `obligation_kind = 'final'`:
+
+1. Find open `event_tasks` on that event with trigger `final_payment_obligation_paid` and `payment_line_item_id IS NULL`  
+2. Order by `sort_order ASC`, then `id ASC`  
+3. Bind the first to the new line id  
+
+Multiple finals ⇒ each new final binds the next unbound Final Payment task.  
+On regenerate: deleting unresolved lines SET NULLs the FK; new finals rebind unbound tasks.
+
+**Manual Mark complete:** remains disabled (`completableHere: false`) for the verified trigger.
+
+---
+
+## 8. New celebration
+
+| Item | Value |
 | --- | --- |
-| Complete when **any** typed final is paid | Completes the event checklist while another invoice’s Final remains unpaid |
-| Complete when **all** typed finals are paid | Different product meaning; not in approval; still no single “the” Final |
-| Prefer newest / largest / last-due final | Ordering / amount heuristic — forbidden |
-| Prefer line whose label contains “Final” | Label matching — forbidden |
-| Use paid-in-full Luv | Conflates A with B — forbidden |
+| Type | `final_payment_obligation_paid` |
+| Gate | `luv_celebrations` unique `(client_id, celebration_type)` |
+| When | First time a typed `final` line is marked paid |
+| UI flag | `obligationCelebrated: true` on mark-paid result (coordinator toast) |
+| Not from | React completed-state effects, navigation, render |
 
-**No durable task↔line FK exists today**, and the approval said: only add one if required. After uniqueness fails, a durable relationship **is** required before safe completion wiring.
+Distinct from `final_payment_received` (paid-in-full).
 
 ---
 
-## 6. Secondary STOP — historical backfill
+## 9. Paid-in-full untouched
 
-| Source | Safe to classify as `final`? |
+- Luv type `final_payment_received` unchanged  
+- Still driven by `computePaymentsReadiness(...).status === "complete"`  
+- Return field `celebrated` still means paid-in-full  
+- Paying only non-final lines can still fire paid-in-full without claiming Final **obligation** paid  
+- Paying a typed final fires obligation Luv; paid-in-full only if invoices are complete
+
+---
+
+## 10. Attention preservation (`fc843dc`)
+
+- Unpaid canonical lines → ledger owns **Pay now**  
+- Suppress incomplete checklist mirrors for:
+  - `payment_received` (Impl 2)
+  - `final_payment_obligation_paid` (Impl 7 — prevents Final Payment twin beside Pay now)
+- Do **not** delete underlying `event_tasks`  
+- Once bound final is paid → task completes → attention resolves  
+- Non-payment domain tasks remain alongside unpaid lines
+
+---
+
+## 11. Tests
+
+```bash
+npx tsx --test \
+  lib/payments/final-payment-obligation.test.ts \
+  lib/luv/celebrations.test.ts \
+  lib/luv/verified-domain-celebrations.test.ts \
+  lib/portal/unified-tasks.test.ts \
+  lib/portal/next-steps.test.ts \
+  lib/portal/workspace-routing.test.ts
+```
+
+**Result: 77/77 pass** (Impl 7 acceptance matrix + Impl 1–4 / payment-attention suites).
+
+Acceptance coverage: deposit/installment/other unpaid suppress; final unpaid suppress; final paid complete row; multi-line; paid-in-full ≠ obligation; `completableHere` false; pure refresh; presets/kinds; Verify deposit still broad; celebration naming distinct.
+
+---
+
+## 12. Live QA (Emma / Jordan)
+
+**Not fully runnable in this pass.** Local app/migration apply for mark-paid against Emma seed was not exercised end-to-end here (no fresh portal mark-paid harness run against applied `20261241000000`).  
+
+**Automated substitute:** 77 unit tests covering binding rules, attention, triggers, and celebration identity.  
+
+**Recommended live smoke after `supabase db reset` / migration apply:**
+
+1. Confirm Emma thirds lines have `obligation_kind` installment/installment/final  
+2. Confirm couple Final payment task trigger = `final_payment_obligation_paid`  
+3. Bind via regenerate schedule or create new final line (seed kinds alone don’t attach FK until bind path runs)  
+4. Mark deposit paid → Final task pending; no obligation Luv  
+5. Mark final paid → task complete; `obligationCelebrated` once; Pay now for that line gone  
+6. Repeat mark / refresh → no second celebration; no side-effect complete  
+
+---
+
+## 13. Files changed
+
+| File | Change |
 | --- | --- |
-| Free-text `label` | **No** (explicit forbid) |
-| `sort_order` last on schedule | **No** (order ≠ role) |
-| Preset id stored on line | **Not stored** — cannot reconstruct |
-| Invoice / schedule metadata | No final-role field |
-
-**Strategy if later unblocked:** column nullable (or non-`final` default); populate **only** on create/regenerate/retainer/manual with explicit kind; leave historical `NULL` ≠ final. Never backfill `final` from label alone. Emma seed / regenerate can set kinds for fixture environments without classifying arbitrary production history.
-
----
-
-## 7–9. What was *not* built (intentionally)
-
-- No `obligation_kind` migration  
-- No new auto-complete trigger  
-- No new Luv celebration type  
-- No change to `payment_received` or `final_payment_received` paid-in-full semantics  
-- No change to `fc843dc` payment-attention twin suppression  
-- No Stripe / amount / Event Order / WW Studio / etc. changes  
+| `supabase/migrations/20261241000000_couple_final_payment_verified_completion.sql` | Schema + safe trigger migrate + Luv CHECK |
+| `supabase/seed.sql` | Emma lines set `obligation_kind` explicitly |
+| `lib/payments/final-payment-obligation.ts` | Bind / complete-by-line / celebrate helpers |
+| `lib/payments/final-payment-obligation.test.ts` | Acceptance matrix |
+| `lib/payments/{types,constants,validation,repository,service}.ts` | Kinds, create/regenerate/retainer/manual, mark-paid side effects |
+| `lib/stripe/webhook-handlers.ts` | Same narrow complete + obligation Luv as mark-paid |
+| `lib/playbooks/{constants,types,repository}.ts` | Trigger list + template + `paymentLineItemId` |
+| `lib/portal/unified-tasks.ts` | Route + twin suppress for new trigger |
+| `lib/portal/unified-tasks.test.ts` | Final mirror uses new trigger |
+| `lib/luv/{celebrations,verified-domain-celebrations}.ts` (+ tests) | New celebration type + copy |
+| `components/payments/{payment-schedule-detail,schedule-review-banner}.tsx` | Explicit kind UI; dual celebrate flags |
+| `docs/qa/couple-task-final-payment-verified-completion-implementation-7.md` | This report |
 
 ---
 
-## 10–11. Tests / Live QA
+## 14. Commit hash
 
-**Not run as an implementation suite** (no code path).  
-
-When unblocked, acceptance matrix from the WP still applies, plus all `fc843dc` cases in `lib/portal/unified-tasks.test.ts`.
+_Stamped after local commit._
 
 ---
 
-## 12. Files changed
+## Residual risks
 
-This report only:
-
-- `docs/qa/couple-task-final-payment-verified-completion-implementation-7.md`
-
----
-
-## 13. Commit hash
-
-**6345ba4**
-
----
-
-## STOP conditions (this pass)
-
-| # | Condition (approved WP) | Hit? |
-| --- | --- | --- |
-| 1 | Multiple Final Payment obligations without canonical identity | **Yes** — multi-invoice finals |
-| 2 | Creation paths cannot reliably establish kind | **No for forward** — presets/retainer/manual can carry explicit kind; **yes for guessing ambiguous manual history** |
-| 3 | Historical rows cannot be safely classified | **Yes** — no authoritative non-label source |
-| 4 | Completion semantics cannot prove final satisfied | Blocked by #1 (cannot name “the” final) |
-| 5 | Broader financial redesign required | **No** — a small identity rule is enough |
-| 6 | Paid-in-full celebration too coupled | **No if separated** as approved (`final_payment_obligation_paid`) |
-
----
-
-## Smallest next model change (choose one — do not invent in code)
-
-Approve **exactly one** identity rule before any implementation:
-
-### Option A — Enforce at most one non-cancelled `final` per event
-
-- Partial unique index / service reject when a second `final` would be created  
-- Then `obligation_kind='final'` **is** the event-level Final Payment SoT  
-- Product cost: multi-invoice events may not each carry a typed Final (second schedule uses `installment` / `other`, or coordinator must cancel the prior final)
-
-### Option B — Durable task → line relationship
-
-- Couple Final Payment task (or event) stores `payment_line_item_id` (or schedule+kind with uniqueness per schedule)  
-- Verification = that specific line reaches domain-paid  
-- Preserves multi-invoice finals; requires create/apply-playbook + schedule wiring to bind the task
-
-### Option C — Explicit product meaning: “all typed finals on canonical schedules”
-
-- Document that Final Payment task means **every** non-cancelled `final` on canonical schedules is paid  
-- Still not “the” singular obligation, but avoids heuristics if product accepts the meaning
-
-### Option D (rejected without product override)
-
-- Any-final / last-due / label / paid-in-full inference — **not recommended**; contradicts WP
-
-**Also confirm when implementing (already approved in spirit):**
-
-1. Preset items include authoritative `obligation_kind` at create/regenerate  
-2. Couple template trigger moves off `payment_received` to a narrow trigger (e.g. `final_payment_obligation_paid`)  
-3. Keep `payment_received` broad for Verify deposit / other consumers  
-4. New Luv type `final_payment_obligation_paid` ≠ existing `final_payment_received` (paid-in-full)  
-5. Preserve `fc843dc` twin suppression for unpaid `payment_received` mirrors  
-6. Historical: null / non-final only — no label backfill  
-
----
-
-## Confirmation
-
-- No payment processing / Stripe / schedule amount changes  
-- No reinterpretation of paid-in-full Luv  
-- No Wedding Website / Collections / Photo Styles / Share Timeline / Insurance / RSVP changes  
-- No inventive completion  
-
-**Next step:** Approve Option A, B, or C (or a written variant). Then implement under that identity rule + the approved typed field / celebration split.
+1. **Pre-existing schedules with null kinds** — Final Payment tasks stay unbound until a typed `final` line is created/regenerated; paying a legacy unlabeled “Final Payment” line will **not** complete the verified task (by design — no label inference).  
+2. **Multi-invoice events** — Multiple finals OK; each binds a separate unbound task if present. If only one Final Payment task exists, only the first unbound bind wins; later finals have no task until another Final Payment task exists.  
+3. **Luv uniqueness is per client** — Second final obligation on same client does not celebrate again (same pattern as other couple Luv types).  
+4. **Seed bind gap** — Seed sets kinds but does not create/bind `event_tasks` in `seed.sql`; binding occurs when schedule create/add/regenerate runs against an applied playbook.

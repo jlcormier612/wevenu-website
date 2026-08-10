@@ -1,6 +1,7 @@
 /**
  * Payments validation. Pure functions.
  */
+import { isPaymentObligationKind } from "@/lib/payments/final-payment-obligation";
 import type { LineItemInput, MarkPaidInput, PaymentErrors, ScheduleInput } from "@/lib/payments/types";
 
 export function validateScheduleInput(input: ScheduleInput): PaymentErrors {
@@ -10,7 +11,14 @@ export function validateScheduleInput(input: ScheduleInput): PaymentErrors {
   return errors;
 }
 
-export function validateLineItemInput(input: LineItemInput): PaymentErrors {
+/**
+ * @param opts.requireObligationKind — true for creates (never guess final from label).
+ *   Updates may omit obligationKind to leave the stored value unchanged.
+ */
+export function validateLineItemInput(
+  input: LineItemInput,
+  opts?: { requireObligationKind?: boolean },
+): PaymentErrors {
   const errors: PaymentErrors = {};
   if (!input.label.trim()) errors.label = "Label is required.";
   if (!input.amount.trim()) {
@@ -18,6 +26,13 @@ export function validateLineItemInput(input: LineItemInput): PaymentErrors {
   } else {
     const n = Number(input.amount.replace(/[$,]/g, ""));
     if (isNaN(n) || n < 0) errors.amount = "Enter a valid amount.";
+  }
+  if (opts?.requireObligationKind !== false) {
+    if (!input.obligationKind || !isPaymentObligationKind(input.obligationKind)) {
+      errors.obligationKind = "Choose what kind of payment this is (Deposit, Installment, Final, or Other).";
+    }
+  } else if (input.obligationKind != null && !isPaymentObligationKind(input.obligationKind)) {
+    errors.obligationKind = "Choose a valid payment kind.";
   }
   return errors;
 }

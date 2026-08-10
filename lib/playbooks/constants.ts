@@ -67,6 +67,7 @@ export const AUTO_COMPLETE_TRIGGERS: { value: string; label: string }[] = [
   { value: "",                      label: "Manual (coordinator marks complete)" },
   { value: "contract_signed",       label: "Contract signed" },
   { value: "payment_received",      label: "Any payment received" },
+  { value: "final_payment_obligation_paid", label: "Final Payment obligation paid" },
   { value: "questionnaire_submitted", label: "Final details submitted" },
   { value: "guest_count_finalized", label: "Guest count submitted" },
   { value: "seating_submitted",     label: "Seating plan submitted" },
@@ -210,7 +211,7 @@ export const STANDARD_CLIENT_PLANNING_TASKS: SeedTask[] = [
   { ...R, title: "Submit your guest count",  description: "We need your final headcount to plan seating, catering, and rentals.", ownerType: "couple", visibility: "client_owned", daysOffset: -30, category: "planning", milestoneIndex: 2, autoCompleteTrigger: "guest_count_finalized", isRequired: true, sortOrder: 5, dependsOnTaskId: null },
   { ...R, title: "Submit your seating plan", description: "Arrange your tables, then submit your seating plan so your venue has it for the day.", ownerType: "couple", visibility: "client_owned", daysOffset: -21, category: "planning", milestoneIndex: 2, autoCompleteTrigger: "seating_submitted", isRequired: true, sortOrder: 6, dependsOnTaskId: null },
   { ...R, title: "Submit your timeline",     description: "Plan your Timeline, then submit it so your venue has it.", ownerType: "couple", visibility: "client_owned", daysOffset: -14, category: "planning", milestoneIndex: 2, autoCompleteTrigger: "timeline_submitted", isRequired: true, sortOrder: 7, dependsOnTaskId: null },
-  { ...R, title: "Final payment",            description: null, ownerType: "couple", visibility: "client_owned", daysOffset: -30, category: "financial", milestoneIndex: 2, autoCompleteTrigger: "payment_received", isRequired: true, sortOrder: 8, dependsOnTaskId: null },
+  { ...R, title: "Final payment",            description: null, ownerType: "couple", visibility: "client_owned", daysOffset: -30, category: "financial", milestoneIndex: 2, autoCompleteTrigger: "final_payment_obligation_paid", isRequired: true, sortOrder: 8, dependsOnTaskId: null },
   { ...R, title: "Leave a review",           description: "We'd love to hear about your experience.", ownerType: "couple", visibility: "client_owned", daysOffset: 14, category: "communication", milestoneIndex: 3, autoCompleteTrigger: null, isRequired: false, sortOrder: 9, dependsOnTaskId: null },
 ];
 

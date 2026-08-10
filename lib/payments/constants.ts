@@ -1,7 +1,7 @@
 /**
  * Payments reference data and display helpers (Sprint 16).
  */
-import type { PaymentItemStatus, PaymentPlanReviewStatus, PaymentSchedule, PaymentLineItem } from "@/lib/payments/types";
+import type { PaymentItemStatus, PaymentObligationKind, PaymentPlanReviewStatus, PaymentSchedule, PaymentLineItem } from "@/lib/payments/types";
 
 export type Option = { value: string; label: string };
 
@@ -100,7 +100,13 @@ export type SchedulePreset = {
   id: string;
   label: string;
   description: string;
-  items: Array<{ label: string; pctOfTotal: number; offsetDaysFromEvent?: number }>;
+  items: Array<{
+    label: string;
+    pctOfTotal: number;
+    offsetDaysFromEvent?: number;
+    /** Authoritative — never re-derived from label later. */
+    obligationKind: PaymentObligationKind;
+  }>;
 };
 
 export const SCHEDULE_PRESETS: SchedulePreset[] = [
@@ -109,8 +115,8 @@ export const SCHEDULE_PRESETS: SchedulePreset[] = [
     label: "50% Deposit + 50% Final",
     description: "Two equal payments",
     items: [
-      { label: "Deposit (50%)", pctOfTotal: 50, offsetDaysFromEvent: -90 },
-      { label: "Final Payment (50%)", pctOfTotal: 50, offsetDaysFromEvent: -30 },
+      { label: "Deposit (50%)", pctOfTotal: 50, offsetDaysFromEvent: -90, obligationKind: "deposit" },
+      { label: "Final Payment (50%)", pctOfTotal: 50, offsetDaysFromEvent: -30, obligationKind: "final" },
     ],
   },
   {
@@ -118,9 +124,9 @@ export const SCHEDULE_PRESETS: SchedulePreset[] = [
     label: "Three Equal Installments",
     description: "Three payments of ≈ 33%",
     items: [
-      { label: "First Installment", pctOfTotal: 33.33, offsetDaysFromEvent: -180 },
-      { label: "Second Installment", pctOfTotal: 33.33, offsetDaysFromEvent: -90 },
-      { label: "Final Payment", pctOfTotal: 33.34, offsetDaysFromEvent: -30 },
+      { label: "First Installment", pctOfTotal: 33.33, offsetDaysFromEvent: -180, obligationKind: "installment" },
+      { label: "Second Installment", pctOfTotal: 33.33, offsetDaysFromEvent: -90, obligationKind: "installment" },
+      { label: "Final Payment", pctOfTotal: 33.34, offsetDaysFromEvent: -30, obligationKind: "final" },
     ],
   },
   {
@@ -128,8 +134,8 @@ export const SCHEDULE_PRESETS: SchedulePreset[] = [
     label: "30% Deposit + 70% Final",
     description: "Smaller deposit, larger final",
     items: [
-      { label: "Deposit (30%)", pctOfTotal: 30, offsetDaysFromEvent: -90 },
-      { label: "Final Payment (70%)", pctOfTotal: 70, offsetDaysFromEvent: -30 },
+      { label: "Deposit (30%)", pctOfTotal: 30, offsetDaysFromEvent: -90, obligationKind: "deposit" },
+      { label: "Final Payment (70%)", pctOfTotal: 70, offsetDaysFromEvent: -30, obligationKind: "final" },
     ],
   },
   {
@@ -139,3 +145,15 @@ export const SCHEDULE_PRESETS: SchedulePreset[] = [
     items: [],
   },
 ];
+
+export const OBLIGATION_KIND_OPTIONS: { value: PaymentObligationKind; label: string }[] = [
+  { value: "deposit", label: "Deposit" },
+  { value: "installment", label: "Installment" },
+  { value: "final", label: "Final Payment" },
+  { value: "other", label: "Other" },
+];
+
+export function obligationKindLabel(kind: PaymentObligationKind | null | undefined): string {
+  if (!kind) return "";
+  return OBLIGATION_KIND_OPTIONS.find((o) => o.value === kind)?.label ?? kind;
+}

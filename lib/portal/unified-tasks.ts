@@ -13,9 +13,10 @@
  * autoCompleteTrigger never complete in-place — CTA navigates to the
  * owning workspace; domain submit / pay / sign / upload fires the trigger.
  *
- * Payment Attention (Impl 2): when unpaid payment line items exist on the
- * canonical schedule(s), omit venue_task mirrors wired to
- * autoCompleteTrigger === "payment_received" from couple attention.
+ * Payment Attention (Impl 2 / Impl 7): when unpaid payment line items exist on
+ * the canonical schedule(s), omit venue_task mirrors wired to
+ * autoCompleteTrigger === "payment_received" OR
+ * "final_payment_obligation_paid" from couple attention.
  * Ledger rows own Pay now; checklist DB rows stay for venue lifecycle /
  * eventual auto-complete. Gate is the trigger field — never title match.
  */
@@ -23,6 +24,7 @@ import type { PortalRequestSummary } from "@/lib/requests/types";
 import type { PortalTask } from "@/lib/portal/types";
 import { selectCanonicalPaymentSchedules } from "@/lib/portal/payment-schedules";
 import type { PortalWorkspaceFocus } from "@/lib/portal/workspace-routing";
+import { FINAL_PAYMENT_OBLIGATION_TRIGGER } from "@/lib/payments/final-payment-obligation";
 
 export type UnifiedTaskKind = "venue_task" | "request" | "contract" | "payment" | "questionnaire" | "timeline";
 
@@ -94,6 +96,8 @@ const TRIGGER_WORKSPACE: Record<
   contract_signed: { section: "documents", actionLabel: "Review & sign", focus: "sign" },
   // Payment already lands on Payments; no within-section focus change in Impl 3.
   payment_received: { section: "payments", actionLabel: "Pay now", focus: null },
+  // Impl 7: verified Final Payment — same payments workspace; completableHere false.
+  final_payment_obligation_paid: { section: "payments", actionLabel: "Pay now", focus: null },
   questionnaire_submitted: { section: "questionnaire", actionLabel: "Complete form", focus: "form" },
   // Insurance: Documents upload control (Impl 5 — classified + share → trigger).
   document_uploaded_insurance: { section: "documents", actionLabel: "Upload insurance", focus: "upload" },
@@ -157,9 +161,18 @@ export function ownershipLabel(ownership: UnifiedTaskOwnership): string {
 }
 
 /**
- * Financial checklist mirrors that auto-complete on payment_received.
- * Reliable domain link to the ledger path — not title / category matching.
+ * Financial checklist mirrors that compete with ledger Pay now attention.
+ * payment_received (any payment) and final_payment_obligation_paid (typed final).
+ * Never title / category matching.
  */
+export function isPaymentAttentionMirror(t: Pick<PortalTask, "autoCompleteTrigger">): boolean {
+  return (
+    t.autoCompleteTrigger === "payment_received"
+    || t.autoCompleteTrigger === FINAL_PAYMENT_OBLIGATION_TRIGGER
+  );
+}
+
+/** @deprecated Prefer isPaymentAttentionMirror — kept for call-site clarity in older tests. */
 export function isPaymentReceivedMirror(t: Pick<PortalTask, "autoCompleteTrigger">): boolean {
   return t.autoCompleteTrigger === "payment_received";
 }
@@ -201,10 +214,10 @@ export function buildUnifiedTaskList(input: {
   const hasUnpaidPaymentObligation = unpaidPaymentLines.length > 0;
 
   for (const t of input.venueTasks) {
-    // Impl 2: when money is owed on a canonical line, hide payment_received
-    // checklist mirrors from couple attention. DB row stays; auto-complete
-    // path stays. Never title-dedupe.
-    if (hasUnpaidPaymentObligation && isPaymentReceivedMirror(t) && t.status !== "complete") {
+    // Impl 2 + Impl 7: when money is owed on a canonical line, hide payment
+    // checklist mirrors (broad + Final Payment verified) from couple attention.
+    // DB row stays; auto-complete path stays. Never title-dedupe.
+    if (hasUnpaidPaymentObligation && isPaymentAttentionMirror(t) && t.status !== "complete") {
       continue;
     }
     const done = t.status === "complete";

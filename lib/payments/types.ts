@@ -5,6 +5,13 @@
 /** "processing" — an ACH bank debit that's been initiated but hasn't settled yet (Stripe Connect, Sprint 4). Card payments go straight pending -> paid and never pass through it. */
 export type PaymentItemStatus = "pending" | "processing" | "overdue" | "paid" | "cancelled" | "partially_refunded" | "refunded";
 
+/**
+ * Authoritative role for a schedule line — set at creation from presets /
+ * explicit coordinator choice. Never inferred from label at completion.
+ * Null = legacy row (pre–Impl 7); not treated as Final Payment obligation.
+ */
+export type PaymentObligationKind = "deposit" | "installment" | "final" | "other";
+
 export type PaymentSchedule = {
   id: string;
   venueId: string;
@@ -41,6 +48,8 @@ export type PaymentLineItem = {
   amount: number;
   dueDate: string | null;
   status: PaymentItemStatus;
+  /** Null on legacy rows — never treat null as final. */
+  obligationKind: PaymentObligationKind | null;
   paidAt: string | null;
   paidAmount: number | null;
   paymentMethod: string | null;
@@ -104,6 +113,11 @@ export type LineItemInput = {
   label: string;
   amount: string;
   dueDate: string;
+  /**
+   * Required for new creates. Never defaulted from label.
+   * Updates may omit to leave the stored kind unchanged.
+   */
+  obligationKind?: PaymentObligationKind;
 };
 
 export type MarkPaidInput = {
@@ -117,7 +131,13 @@ export type MarkPaidInput = {
 export type PaymentErrors = Record<string, string>;
 
 export type PaymentActionResult =
-  | { ok: true; celebrated?: boolean }
+  | {
+      ok: true;
+      /** Paid-in-full Luv (`final_payment_received`) — unchanged semantics. */
+      celebrated?: boolean;
+      /** Final Payment obligation Luv (`final_payment_obligation_paid`) — first win only. */
+      obligationCelebrated?: boolean;
+    }
   | { ok: false; errors?: PaymentErrors; message?: string };
 
 export type CreateScheduleResult =

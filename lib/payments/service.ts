@@ -13,6 +13,11 @@ import {
   deriveScheduleStatus,
   SCHEDULE_PRESETS,
 } from "@/lib/payments/constants";
+import {
+  bindFinalPaymentTaskToLine,
+  celebrateFinalPaymentObligationIfNeeded,
+  completeFinalPaymentTasksBoundToLine,
+} from "@/lib/payments/final-payment-obligation";
 import type {
   AddLineItemResult,
   CreateRetainerResult,
@@ -106,6 +111,7 @@ export async function getUpcomingPayments(daysAhead = 30): Promise<PaymentLineIt
   return (data as Parameters<typeof repo.getAllLineItems>[0] extends any ? any[] : never[]).map((r: any) => ({
     id: r.id, venueId: r.venue_id, scheduleId: r.schedule_id, label: r.label,
     amount: Number(r.amount), dueDate: r.due_date, status: r.status as PaymentLineItem["status"],
+    obligationKind: (r.obligation_kind as PaymentLineItem["obligationKind"]) ?? null,
     paidAt: r.paid_at, paidAmount: r.paid_amount != null ? Number(r.paid_amount) : null,
     paymentMethod: r.payment_method, referenceNumber: r.reference_number,
     notes: r.notes, sortOrder: r.sort_order,
@@ -150,7 +156,7 @@ export async function createPaymentSchedule(
       title: input.title, clientId: invoice.clientId, eventId: invoice.eventId,
       totalAmount, notes: input.notes, invoiceId: input.invoiceId,
     });
-    // Apply preset line items
+    // Apply preset line items with authoritative obligation_kind (never from label later).
     if (presetId && presetId !== "custom") {
       const preset = SCHEDULE_PRESETS.find((p) => p.id === presetId);
       if (preset) {
@@ -163,9 +169,13 @@ export async function createPaymentSchedule(
             d.setDate(d.getDate() + pi.offsetDaysFromEvent);
             dueDate = d.toISOString().slice(0, 10);
           }
-          await repo.insertLineItem(supabase, venueId, scheduleId, {
+          const item = await repo.insertLineItem(supabase, venueId, scheduleId, {
             label: pi.label, amount: String(amt), dueDate: dueDate ?? "",
+            obligationKind: pi.obligationKind,
           }, i);
+          await bindFinalPaymentTaskToLine(
+            supabase, venueId, invoice.eventId, item.id, pi.obligationKind,
+          );
         }
       }
     }
@@ -208,6 +218,7 @@ export async function createRetainerInvoiceAndSchedule(input: {
 
   const scheduleLineResult = await addLineItem(scheduleResult.scheduleId, {
     label: "Retainer", amount: input.amount, dueDate: input.dueDate ?? "",
+    obligationKind: "deposit",
   });
   if (!scheduleLineResult.ok) return { ok: false, message: scheduleLineResult.message ?? "Could not add the retainer installment." };
 
@@ -217,21 +228,26 @@ export async function createRetainerInvoiceAndSchedule(input: {
 // ---- line items -------------------------------------------------------------
 
 export async function addLineItem(scheduleId: string, input: LineItemInput): Promise<AddLineItemResult> {
-  const errors = validateLineItemInput(input);
-  if (Object.keys(errors).length > 0) return { ok: false, errors, message: errors.label };
+  const errors = validateLineItemInput(input, { requireObligationKind: true });
+  if (Object.keys(errors).length > 0) return { ok: false, errors, message: errors.obligationKind ?? errors.label };
   const result = await withVenue(async (supabase, venueId) => {
     // Get current max sort_order
     const { data } = await supabase.from("payment_line_items")
       .select("sort_order").eq("schedule_id", scheduleId).order("sort_order", { ascending: false }).limit(1);
     const nextSort = ((data?.[0] as any)?.sort_order ?? -1) + 1;
     const item = await repo.insertLineItem(supabase, venueId, scheduleId, input, nextSort);
+    const { data: sch } = await supabase.from("payment_schedules")
+      .select("event_id").eq("id", scheduleId).maybeSingle<{ event_id: string | null }>();
+    await bindFinalPaymentTaskToLine(
+      supabase, venueId, sch?.event_id, item.id, input.obligationKind ?? null,
+    );
     return { ok: true, item } as AddLineItemResult;
   });
   return result as AddLineItemResult;
 }
 
 export async function updateLineItem_(itemId: string, scheduleId: string, input: LineItemInput): Promise<PaymentActionResult> {
-  const errors = validateLineItemInput(input);
+  const errors = validateLineItemInput(input, { requireObligationKind: false });
   if (Object.keys(errors).length > 0) return { ok: false, errors };
   const result = await withVenue(async (supabase, venueId) => {
     await repo.updateLineItem(supabase, venueId, itemId, input);
@@ -262,8 +278,11 @@ export async function markLineItemPaid(itemId: string, scheduleId: string, input
     // moment a payment actually lands — this was previously only logged as
     // an activity string, never wired (Vendor Management — Next Iteration,
     // 2026-07-10, item 4).
+    // Broad: any payment still fires payment_received (Verify deposit, etc.).
+    // Narrow: couple Final Payment uses payment_line_item_id binding (Option B).
     if (sch?.event_id) {
       await triggerAutoComplete(supabase, venueId, sch.event_id, "payment_received", "payment_line_item", itemId);
+      await completeFinalPaymentTasksBoundToLine(supabase, venueId, itemId);
     }
 
     void recordEngagementEvent({
@@ -273,6 +292,18 @@ export async function markLineItemPaid(itemId: string, scheduleId: string, input
       entityType: "payment_line_item",
       entityId:  itemId,
     });
+
+    // Final Payment obligation Luv (Impl 7) — typed final line paid once.
+    // Distinct from paid-in-full final_payment_received below.
+    let obligationCelebrated = false;
+    if (sch?.event_id) {
+      const { data: paidLine } = await supabase.from("payment_line_items")
+        .select("obligation_kind").eq("id", itemId).eq("venue_id", venueId)
+        .maybeSingle<{ obligation_kind: PaymentLineItem["obligationKind"] }>();
+      obligationCelebrated = await celebrateFinalPaymentObligationIfNeeded(
+        supabase, venueId, sch.event_id, itemId, paidLine?.obligation_kind ?? null,
+      );
+    }
 
     // Final Payment Received — Luv Experience Completion, Work Stream 3.
     // Reads computePaymentsReadiness's own "complete" status (never a
@@ -301,7 +332,7 @@ export async function markLineItemPaid(itemId: string, scheduleId: string, input
       }
     }
 
-    return { ok: true, celebrated } as PaymentActionResult;
+    return { ok: true, celebrated, obligationCelebrated } as PaymentActionResult;
   });
   return result as PaymentActionResult;
 }
@@ -467,7 +498,14 @@ export async function regeneratePaymentSchedule(scheduleId: string, presetId: st
           d.setDate(d.getDate() + pi.offsetDaysFromEvent);
           dueDate = d.toISOString().slice(0, 10);
         }
-        await repo.insertLineItem(supabase, venueId, scheduleId, { label: pi.label, amount: String(amt), dueDate: dueDate ?? "" }, i);
+        const item = await repo.insertLineItem(supabase, venueId, scheduleId, {
+          label: pi.label, amount: String(amt), dueDate: dueDate ?? "",
+          obligationKind: pi.obligationKind,
+        }, i);
+        // Deleted pending finals SET NULL task bindings; rebind unbound Final tasks.
+        await bindFinalPaymentTaskToLine(
+          supabase, venueId, schedule.eventId, item.id, pi.obligationKind,
+        );
       }
     }
     await repo.updateScheduleTotalAmount(supabase, venueId, scheduleId, invoiceTotal);

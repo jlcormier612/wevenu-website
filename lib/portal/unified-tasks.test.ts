@@ -531,7 +531,7 @@ describe("payment attention twin suppression (Impl 2)", () => {
       visibility: "client_owned",
       isRequired: true,
       canComplete: false,
-      autoCompleteTrigger: "payment_received",
+      autoCompleteTrigger: "final_payment_obligation_paid",
     });
 
   const unpaidFinalLine = () => ({

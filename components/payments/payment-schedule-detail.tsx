@@ -6,7 +6,6 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   AlertTriangle,
-  ArrowLeft,
   Calendar,
   Check,
   CreditCard,
@@ -33,6 +32,7 @@ import {
   ScheduleStatusBadge,
 } from "@/components/payments/payment-status-badge";
 import { ScheduleReviewBanner } from "@/components/payments/schedule-review-banner";
+import { BusinessAssetHeader } from "@/components/business-assets/asset-header";
 import { ActivityTimeline } from "@/components/leads/activity-timeline";
 import { QuickBooksSyncStatusBadge } from "@/components/quickbooks/sync-status-badge";
 import { Badge } from "@/components/ui/badge";
@@ -49,6 +49,7 @@ import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
 import {
   PAYMENT_METHODS,
+  OBLIGATION_KIND_OPTIONS,
   computeTotalPaid,
   daysUntil,
   formatDate,
@@ -60,6 +61,7 @@ import type {
   LineItemInput,
   MarkPaidInput,
   PaymentLineItem,
+  PaymentObligationKind,
   PaymentScheduleWithDetails,
 } from "@/lib/payments/types";
 import type { Invoice } from "@/lib/invoices/types";
@@ -74,16 +76,22 @@ function LineItemForm({
   onCancel,
   pending,
   submitLabel,
+  requireKind = true,
 }: {
   initial: LineItemInput;
   onSave: (input: LineItemInput) => void;
   onCancel: () => void;
   pending: boolean;
   submitLabel: string;
+  /** Creates require an explicit kind; edits may keep the stored value. */
+  requireKind?: boolean;
 }) {
   const [label, setLabel] = React.useState(initial.label);
   const [amount, setAmount] = React.useState(initial.amount);
   const [dueDate, setDueDate] = React.useState(initial.dueDate);
+  const [obligationKind, setObligationKind] = React.useState<PaymentObligationKind | "">(
+    initial.obligationKind ?? "",
+  );
 
   // Listen for "Fill remaining balance" events from the parent
   React.useEffect(() => {
@@ -95,11 +103,30 @@ function LineItemForm({
     return () => window.removeEventListener("fill-remaining", handler);
   }, []);
 
+  const kindReady = !requireKind || Boolean(obligationKind);
+
   return (
-    <div className="grid gap-3 sm:grid-cols-[1fr_auto_auto] items-end rounded-lg border border-ring bg-card p-3">
+    <div className="grid gap-3 sm:grid-cols-[1fr_auto_auto_auto] items-end rounded-lg border border-ring bg-card p-3">
       <div className="space-y-1.5">
         <Label className="text-xs">Label</Label>
         <Input value={label} onChange={(e) => setLabel(e.target.value)} placeholder="Deposit, Final Payment…" autoFocus />
+      </div>
+      <div className="space-y-1.5">
+        <Label className="text-xs">Kind *</Label>
+        <Select
+          value={obligationKind || "__none__"}
+          onValueChange={(v) => setObligationKind(v === "__none__" ? "" : v as PaymentObligationKind)}
+        >
+          <SelectTrigger className="w-36">
+            <SelectValue placeholder="Choose…" />
+          </SelectTrigger>
+          <SelectContent>
+            {!requireKind && <SelectItem value="__none__">Keep current</SelectItem>}
+            {OBLIGATION_KIND_OPTIONS.map((o) => (
+              <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
       <div className="space-y-1.5">
         <Label className="text-xs">Amount</Label>
@@ -109,10 +136,19 @@ function LineItemForm({
         <Label className="text-xs">Due date</Label>
         <Input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} className="w-36" />
       </div>
-      <div className="flex items-center gap-1.5 sm:col-span-3 justify-end">
+      <div className="flex items-center gap-1.5 sm:col-span-4 justify-end">
         <Button type="button" variant="ghost" size="sm" onClick={onCancel} disabled={pending}>Cancel</Button>
-        <Button type="button" size="sm" disabled={!label.trim() || !amount.trim() || pending}
-          onClick={() => onSave({ label, amount, dueDate })}>
+        <Button
+          type="button"
+          size="sm"
+          disabled={!label.trim() || !amount.trim() || !kindReady || pending}
+          onClick={() => onSave({
+            label,
+            amount,
+            dueDate,
+            ...(obligationKind ? { obligationKind } : {}),
+          })}
+        >
           <Check className="mr-1 h-3.5 w-3.5" />{pending ? "Saving…" : submitLabel}
         </Button>
       </div>
@@ -272,7 +308,12 @@ function LineItemRow({
     startEdit(async () => {
       const result = await updateLineItemAction(item.id, scheduleId, input);
       if (result.ok) {
-        onUpdate(item.id, { label: input.label.trim(), amount: parseFloat(input.amount), dueDate: input.dueDate || null });
+        onUpdate(item.id, {
+          label: input.label.trim(),
+          amount: parseFloat(input.amount),
+          dueDate: input.dueDate || null,
+          ...(input.obligationKind ? { obligationKind: input.obligationKind } : {}),
+        });
         setEditMode(false);
       } else toast.error(result.message ?? "Could not save.");
     });
@@ -286,6 +327,8 @@ function LineItemRow({
         setPayMode(false);
         if (result.celebrated) {
           celebrateLuv(coordinatorCelebrationMessage("final_payment_received", scheduleTitle));
+        } else if (result.obligationCelebrated) {
+          celebrateLuv(coordinatorCelebrationMessage("final_payment_obligation_paid", scheduleTitle));
         } else {
           toast.success("Payment recorded.");
         }
@@ -318,8 +361,21 @@ function LineItemRow({
   }
 
   if (editMode) {
-    return <LineItemForm initial={{ label: item.label, amount: String(item.amount), dueDate: item.dueDate ?? "" }}
-      onSave={handleEdit} onCancel={() => setEditMode(false)} pending={editPending} submitLabel="Save" />;
+    return (
+      <LineItemForm
+        initial={{
+          label: item.label,
+          amount: String(item.amount),
+          dueDate: item.dueDate ?? "",
+          obligationKind: item.obligationKind ?? undefined,
+        }}
+        onSave={handleEdit}
+        onCancel={() => setEditMode(false)}
+        pending={editPending}
+        submitLabel="Save"
+        requireKind={false}
+      />
+    );
   }
 
   return (
@@ -481,26 +537,19 @@ export function PaymentScheduleDetail({ schedule, invoice, currentUserRole }: { 
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div className="space-y-1.5">
-          <Button variant="ghost" size="sm" className="-ml-2 text-muted-foreground"
-            render={<Link href="/payments" />}>
-            <ArrowLeft className="mr-1 h-3.5 w-3.5" /> Payments
-          </Button>
-          <h1 className="font-heading text-2xl font-medium text-heading">{schedule.title}</h1>
-          {schedule.clientName && (
-            <Link href={`/clients/${schedule.clientId}`} className="text-sm text-muted-foreground hover:text-primary">
-              {schedule.clientName} →
-            </Link>
-          )}
-        </div>
-        <div className="flex items-center gap-2">
+      <BusinessAssetHeader
+        backHref="/payments"
+        backLabel="Payments"
+        whatIsThis="Payment Plan"
+        title={schedule.title}
+        status={<>
           {reviewStatus === "needs_review" && <Badge variant="warning">🟡 Needs Review</Badge>}
           {reviewStatus === "current" && invoice && <Badge variant="success">🟢 Current</Badge>}
           <ScheduleStatusBadge status={schedule.scheduleStatus} />
-        </div>
-      </div>
+        </>}
+        lastUpdated={new Date(schedule.updatedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+        relationship={schedule.clientName ? { name: schedule.clientName, href: `/clients/${schedule.clientId}` } : null}
+      />
 
       {/* Invoice context banner */}
       {invoice && (
