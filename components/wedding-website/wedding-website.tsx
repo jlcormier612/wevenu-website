@@ -2125,12 +2125,17 @@ export function createSectionRenderer(ctx: SectionRenderContext) {
   const { tc, content, site, color, editMode, activeSection, onSectionClick } = ctx;
   const eventDate = site.event?.eventDate;
 
-  // Wraps each section in an edit overlay when editMode=true, and — always,
-  // edit mode or not — in the Collection's own scroll-reveal + scroll-snap
-  // behavior (Part 1), so every section gets it with zero per-section edits.
+  // Wraps each section in an edit overlay when editMode=true, and — on the
+  // published site — in the Collection's own scroll-reveal + scroll-snap
+  // behavior (Part 1). Studio Live Preview always passes editMode: nested
+  // phone-frame overflow breaks IntersectionObserver (root = viewport), so
+  // fade/rise Collections (e.g. Wildflower/classic) stay opacity:0 and look
+  // like solid white voids before the gallery. Same idea as picker thumbs
+  // (`disableAnimation`) — preview surfaces must reveal immediately.
   function SectionWrapper({ sectionKey, children }: { sectionKey: string; children: React.ReactNode }) {
+    const revealStyle = editMode ? "none" : tc.animationStyle;
     const revealed = (
-      <ScrollReveal style={tc.animationStyle} scrollSnap={tc.scrollBehavior === "snap"}>
+      <ScrollReveal style={revealStyle} scrollSnap={!editMode && tc.scrollBehavior === "snap"}>
         {children}
       </ScrollReveal>
     );
