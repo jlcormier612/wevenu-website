@@ -1,11 +1,19 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
+import * as React from "react";
+import { renderToStaticMarkup } from "react-dom/server";
 
+import { PAPER_CHAMBER } from "@/components/wedding-website/composition-primitives";
+import {
+  Hero,
+  HERO_LEFT_TITLE_CLAMP,
+  HERO_MIN_BOX_CLASS,
+  resolveTheme,
+  storyBodyAlignsLeft,
+} from "@/components/wedding-website/wedding-website";
 import { resolveCollectionPreviewTheme } from "@/lib/wedding-website/collection-preview-theme";
 import { buildPreviewSite } from "@/lib/wedding-website/preview-site";
-import { resolveTheme, storyBodyAlignsLeft } from "@/components/wedding-website/wedding-website";
-import type { CatalogCollection, CollectionLayoutConfig } from "@/lib/wedding-website/types";
-import { PAPER_CHAMBER } from "@/components/wedding-website/composition-primitives";
+import type { CatalogCollection, CollectionLayoutConfig, PublicWebsite } from "@/lib/wedding-website/types";
 
 function collection(
   key: string,
@@ -395,5 +403,63 @@ describe("WW-AUDIT-01 storyBodyAlignsLeft (Approach A)", () => {
       }),
       false,
     );
+  });
+});
+
+describe("WW-AUDIT-02 inset / mobile hero clip", () => {
+  function insetSite(key: "rustic" | "estate"): PublicWebsite {
+    return buildPreviewSite({
+      collection: collection(key, PHASE_B[key]),
+      base: {
+        couple: { firstName: "Emma", lastName: null, partnerFirstName: "Jordan", partnerLastName: null },
+        content: {
+          home: {
+            title: "Emma & Jordan",
+            coverImageUrl: "https://example.com/hero.jpg",
+            subtitle: "Two hearts, one beautiful beginning",
+          },
+        },
+      } as PublicWebsite,
+    });
+  }
+
+  it("left-title clamp floor is below 3rem for narrow phones", () => {
+    assert.match(HERO_LEFT_TITLE_CLAMP, /clamp\(2\.15rem/);
+    assert.doesNotMatch(HERO_LEFT_TITLE_CLAMP, /clamp\(3rem/);
+  });
+
+  it("Rustic inset hero keeps type overflow visible and marks min-box for phone cqh", () => {
+    const site = insetSite("rustic");
+    const tc = resolveTheme(site);
+    assert.equal(tc.heroType, "inset");
+    assert.equal(tc.heroAlign, "left");
+
+    const html = renderToStaticMarkup(React.createElement(Hero, { site, tc }));
+    assert.match(html, /Emma &amp; Jordan|Emma & Jordan/);
+    assert.match(html, new RegExp(HERO_MIN_BOX_CLASS));
+    assert.match(html, /--ww-hero-min-height/);
+    assert.match(html, /2\.15rem/);
+    // Type shell must not use overflow:hidden (image is a separate layer).
+    assert.match(html, /overflow:\s*visible/);
+    assert.doesNotMatch(html, /overflow:\s*hidden/);
+  });
+
+  it("Estate inset hero shares the same non-clipping type shell", () => {
+    const site = insetSite("estate");
+    const tc = resolveTheme(site);
+    assert.equal(tc.heroType, "inset");
+    assert.equal(tc.heroAlign, "center");
+
+    const html = renderToStaticMarkup(React.createElement(Hero, { site, tc }));
+    assert.match(html, new RegExp(HERO_MIN_BOX_CLASS));
+    assert.match(html, /overflow:\s*visible/);
+    assert.doesNotMatch(html, /overflow:\s*hidden/);
+  });
+
+  it("desktop DNA min-heights remain vh-authored (art direction unchanged)", () => {
+    const rustic = themeFor("rustic", PHASE_B.rustic);
+    const estate = themeFor("estate", PHASE_B.estate);
+    assert.equal(rustic.heroMinHeight, "58vh");
+    assert.equal(estate.heroMinHeight, "68vh");
   });
 });

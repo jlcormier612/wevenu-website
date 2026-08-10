@@ -39,6 +39,63 @@ import type { PublicWebsite } from "@/lib/wedding-website/types";
 // mirrors ThemePatch in website-editor.tsx.
 type DesignPatch = Partial<CoupleWebsite & { fontPairing: string; clearCustomColors: boolean }>;
 
+/** WW-AUDIT-02 — Studio phone chrome: size-contain the scrollport so heroes
+ * can prefer frame-relative height (cqh), without affecting published pages
+ * or desktop Live Preview. */
+const PHONE_PREVIEW_FRAME_CSS = `
+.ww-phone-frame-scroll {
+  container-type: size;
+}
+.ww-phone-frame-scroll .ww-hero-min-box {
+  min-height: min(var(--ww-hero-min-height, 65vh), 78cqh) !important;
+}
+`;
+
+/**
+ * Phone bezel for Studio / Wizard mobile preview.
+ * Overflow clips only on the scrollport (bottom corners), not the whole
+ * device shell — so first-paint hero titles are not amputated by the top
+ * rounded overflow:hidden edge (WW-AUDIT-02).
+ *
+ * Screen height is explicit (not content-sized) so `container-type: size`
+ * can expose cqh to nested heroes without collapsing the scrollport.
+ */
+function PhonePreviewFrame({
+  maxHeight,
+  children,
+}: {
+  maxHeight: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div
+      className="w-full max-w-[375px] shrink-0"
+      style={{
+        boxShadow: "0 20px 60px rgba(0,0,0,0.2)",
+        borderRadius: "40px",
+        border: "8px solid #1A1A1A",
+        background: "white",
+      }}
+    >
+      <style dangerouslySetInnerHTML={{ __html: PHONE_PREVIEW_FRAME_CSS }} />
+      <div className="h-6 flex items-center justify-center shrink-0" style={{ background: "#1A1A1A" }}>
+        <div className="h-1.5 w-16 rounded-full" style={{ background: "#3A3A3A" }} />
+      </div>
+      <div
+        className="ww-phone-frame-scroll overflow-y-auto overflow-x-hidden"
+        style={{
+          height: maxHeight,
+          maxHeight,
+          borderBottomLeftRadius: "32px",
+          borderBottomRightRadius: "32px",
+        }}
+      >
+        {children}
+      </div>
+    </div>
+  );
+}
+
 function collectionSwatch(c: CatalogCollection): string {
   return c.colorStories[0] ? swatchGradient(c.colorStories[0].tokens)
     : `linear-gradient(160deg, ${c.swatchAccent ?? "#B8AEA1"} 0%, ${c.swatchAccent ?? "#DED6CA"} 100%)`;
@@ -766,14 +823,9 @@ function SetupWizard({
           </div>
         ) : (
           <div className="flex-1 overflow-y-auto min-h-0 py-6 px-3 flex justify-center" style={{ background: "#F0EDE8" }}>
-            <div className="w-full max-w-[375px] shrink-0" style={{ boxShadow: "0 20px 60px rgba(0,0,0,0.2)", borderRadius: "40px", overflow: "hidden", border: "8px solid #1A1A1A", background: "white" }}>
-              <div className="h-6 flex items-center justify-center" style={{ background: "#1A1A1A" }}>
-                <div className="h-1.5 w-16 rounded-full" style={{ background: "#3A3A3A" }} />
-              </div>
-              <div className="overflow-y-auto" style={{ maxHeight: "calc(100vh - 280px)" }}>
-                <WeddingWebsite site={livePreviewSite} slug={livePreviewSite.slug ?? "preview"} editMode={false} />
-              </div>
-            </div>
+            <PhonePreviewFrame maxHeight="calc(100vh - 280px)">
+              <WeddingWebsite site={livePreviewSite} slug={livePreviewSite.slug ?? "preview"} editMode={false} />
+            </PhonePreviewFrame>
           </div>
         )}
 
@@ -1284,22 +1336,15 @@ export function WebsiteStudio({
           ) : (
             // Mobile: centered phone frame
             <div className="flex-1 overflow-y-auto py-6 px-3 flex justify-center" style={{ background: "#F0EDE8" }}>
-              <div className="w-full max-w-[375px] shrink-0"
-                style={{ boxShadow: "0 20px 60px rgba(0,0,0,0.2)", borderRadius: "40px", overflow: "hidden", border: "8px solid #1A1A1A", background: "white" }}>
-                {/* Phone notch */}
-                <div className="h-6 flex items-center justify-center" style={{ background: "#1A1A1A" }}>
-                  <div className="h-1.5 w-16 rounded-full" style={{ background: "#3A3A3A" }} />
-                </div>
-                <div className="overflow-y-auto" style={{ maxHeight: "calc(100vh - 240px)" }}>
-                  <WeddingWebsite
-                    site={livePreviewSite}
-                    slug={previewSite.slug ?? "preview"}
-                    editMode
-                    activeSection={activeSection}
-                    onSectionClick={handleSectionClick}
-                  />
-                </div>
-              </div>
+              <PhonePreviewFrame maxHeight="calc(100vh - 240px)">
+                <WeddingWebsite
+                  site={livePreviewSite}
+                  slug={previewSite.slug ?? "preview"}
+                  editMode
+                  activeSection={activeSection}
+                  onSectionClick={handleSectionClick}
+                />
+              </PhonePreviewFrame>
             </div>
           )}
 

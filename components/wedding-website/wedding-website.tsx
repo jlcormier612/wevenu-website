@@ -1692,6 +1692,14 @@ const CATEGORY_LABELS: Record<string, string> = {
 // now the one place hero layout, cover-photo handling, overlay/scrim math,
 // and heading/eyebrow/date typography are decided. See docs/wedding-website-
 // shared-primitives.md for responsibility/inputs/outputs/consumers.
+
+/** Left-aligned hero title clamp (WW-AUDIT-02). Floor stays below 3rem so
+ * narrow phone containers can fit multi-line couple names. */
+export const HERO_LEFT_TITLE_CLAMP = "clamp(2.15rem, 8cqw, 6rem)";
+
+/** Class + CSS var target for Studio phone frame height capping (cqh). */
+export const HERO_MIN_BOX_CLASS = "ww-hero-min-box";
+
 export function Hero({ site, tc, editMode = false, onSectionClick }: {
   site: PublicWebsite;
   tc: ThemeConfig;
@@ -1809,7 +1817,10 @@ export function Hero({ site, tc, editMode = false, onSectionClick }: {
         fontFamily: tc.headingFont,
         color: heroTextColor,
         fontStyle: "normal",
-        fontSize: "clamp(3rem, 8cqw, 6rem)",
+        // WW-AUDIT-02: floor below 3rem so narrow ~359cqw phones can fit
+        // multi-line couple names inside an inset mat without clipping the
+        // first line under overflow / rounded corners.
+        fontSize: HERO_LEFT_TITLE_CLAMP,
         fontWeight: tc.headingFont.includes("DM Sans") ? 700 : 400,
         lineHeight: 1.0,
         letterSpacing: tc.headingFont.includes("DM Sans") ? "-0.02em" : "0.01em",
@@ -1942,6 +1953,13 @@ export function Hero({ site, tc, editMode = false, onSectionClick }: {
     ? { width: "100%", aspectRatio: tc.heroAspectCap, maxHeight: tc.heroMaxHeight }
     : {};
 
+  // Shared hero min-height surface for Studio phone frame CSS
+  // (`.ww-phone-frame-scroll .ww-hero-min-box` may cap with cqh).
+  const heroMinBoxStyle: React.CSSProperties = {
+    minHeight: tc.heroMinHeight,
+    ["--ww-hero-min-height" as string]: tc.heroMinHeight,
+  };
+
   // Collection Composition Phase B (STOP-2) — reusable inset/framed/matted
   // hero. Estate (architectural symmetric) and Rustic (tactile irregular mat)
   // parametrize the same primitive via layout_config — no Collection forks.
@@ -1970,23 +1988,37 @@ export function Hero({ site, tc, editMode = false, onSectionClick }: {
             ✏ Edit home
           </button>
         )}
+        {/* WW-AUDIT-02: clip the photo/overlay to the mat radius, but keep
+            the type layer overflow-visible so tall justify-end title blocks
+            (left Rustic) and large serif ink are not amputated by the
+            rounded overflow:hidden shell. Image stays cover-cropped. */}
         <div
-          className={heroShellClass}
+          className={`${heroShellClass} ${HERO_MIN_BOX_CLASS}`}
           style={{
-            ...heroStyle,
-            minHeight: tc.heroMinHeight,
+            ...heroMinBoxStyle,
             ...aspectStyle,
             borderRadius: radius,
             border: borderW === "0" || borderW === "0px"
               ? undefined
               : `${borderW} solid color-mix(in srgb, ${tc.border} 70%, ${tc.text} 30%)`,
-            overflow: "hidden",
+            overflow: "visible",
             transform: `translate(${ox}, ${oy})`,
             boxShadow: "0 10px 28px rgba(20,16,12,0.12)",
           }}
         >
-          <div className="absolute inset-0"
-            style={{ background: tc.heroOverlayColor, opacity: heroOverlayOpacity }} />
+          <div
+            aria-hidden
+            className="absolute inset-0"
+            style={{ ...heroStyle, borderRadius: radius }}
+          />
+          <div
+            className="absolute inset-0"
+            style={{
+              background: tc.heroOverlayColor,
+              opacity: heroOverlayOpacity,
+              borderRadius: radius,
+            }}
+          />
           {titleInner}
         </div>
       </div>
@@ -1995,9 +2027,10 @@ export function Hero({ site, tc, editMode = false, onSectionClick }: {
 
   return (
   <div
-    className={`${heroShellClass}${editMode ? " group cursor-pointer" : ""}`}
+    className={`${heroShellClass} ${HERO_MIN_BOX_CLASS}${editMode ? " group cursor-pointer" : ""}`}
     style={{
-      ...heroStyle, minHeight: tc.heroMinHeight,
+      ...heroStyle,
+      ...heroMinBoxStyle,
       // `width: 100%` pins width so aspect-ratio only ever solves for
       // height — without it, once maxHeight clamps height below what
       // the ratio would give a full-width box, Chromium renegotiates
