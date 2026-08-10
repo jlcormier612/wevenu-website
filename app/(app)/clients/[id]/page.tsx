@@ -13,6 +13,7 @@ import { getConversation, getConversationIdForRelationship } from "@/lib/convers
 import type { ConversationMessage } from "@/lib/conversations/types";
 import { getContracts, getTemplates as getContractTemplates } from "@/lib/contracts/service";
 import { getDocuments, getEventDocumentsFromVendors } from "@/lib/documents/service";
+import { getPinnedDocumentKeys, getRecentInteractionMap, getVenueWorkspaceDocuments } from "@/lib/document-workspace/service";
 import { getEvent } from "@/lib/events/service";
 import { getQuestionnaire } from "@/lib/events/questionnaire";
 import { getTemplates as getFloorPlanTemplates } from "@/lib/floor-plan-templates/service";
@@ -80,13 +81,15 @@ export default async function BookingWorkspacePage({ params }: Props) {
 
   const eventId = client.linkedEventId;
   const [
-    event, availableVendors, allInvoices, documents, vendorDocuments, questionnaire, eventTasks, allPlaybookTemplates,
+    event, availableVendors, allInvoices, documents, vendorDocuments, workspaceDocuments, pinnedDocumentKeys, recentDocumentEntries, questionnaire, eventTasks, allPlaybookTemplates,
     playbookApplications, readinessByKind, contextLinksByTask, timelineEntries, venue, vendorRecommendations,
     spaces, contractTemplates, allContracts, allTimelineTemplates,
     timelineSections, timelineLinksByEntry, timelineAttachmentsByEntry, timelineRelatedLinksByEntry,
     floorPlanTemplates, inventoryUsage,
   ] = await Promise.all([
-    getEvent(eventId), getVendors(), getInvoices({}), getDocuments("event", eventId), getEventDocumentsFromVendors(eventId), getQuestionnaire(eventId),
+    getEvent(eventId), getVendors(), getInvoices({}), getDocuments("event", eventId), getEventDocumentsFromVendors(eventId),
+    getVenueWorkspaceDocuments({ eventId }), getPinnedDocumentKeys().then((s) => [...s]), getRecentInteractionMap().then((m) => [...m.entries()]),
+    getQuestionnaire(eventId),
     getEventTasks(eventId), getTemplatesForLibrary(), getEventPlaybookApplications(eventId), getEventTaskReadinessByKind(eventId),
     getEventTaskContextLinksForEvent(eventId), getTimelineEntries(eventId), getCurrentVenue(), getEventRecommendations(eventId),
     getSpaces(), getContractTemplates(), getContracts(), getTimelineTemplatesForLibrary(),
@@ -173,6 +176,9 @@ export default async function BookingWorkspacePage({ params }: Props) {
     <EventDetail
       event={event} availableVendors={availableVendors} invoices={eventInvoices} documents={documents}
       vendorDocuments={vendorDocuments}
+      workspaceDocuments={workspaceDocuments}
+      pinnedDocumentKeys={pinnedDocumentKeys}
+      recentDocumentEntries={recentDocumentEntries}
       originatingLeadId={client.leadId}
       questionnaire={questionnaire} coupleEmail={coupleEmail} eventTasks={eventTasks}
       playbookTemplates={playbookTemplates} playbookApplications={playbookApplications}

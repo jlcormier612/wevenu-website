@@ -3,6 +3,8 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useTransition } from "react";
 
+import { greetingFirstName } from "@shared/relationships/normalize";
+
 import {
   type SupportResolveItem,
   typeLabel,
@@ -48,6 +50,10 @@ export function SupportResolveControl({
 
   const openItems = items.filter((i) => i.status === "open");
   const hasLegacyOnly = openCount > 0 && openItems.length === 0;
+  const greetName = greetingFirstName({
+    firstName: ownerFirstName,
+    email: ownerEmail,
+  });
 
   useEffect(() => {
     if (compact) return;
@@ -118,7 +124,7 @@ export function SupportResolveControl({
         ? item.subject
         : `Re: ${item.subject || "your message"}`,
     );
-    setReplyBody(ownerFirstName ? `Hi ${ownerFirstName},\n\n` : "Hi,\n\n");
+    setReplyBody(`Hi ${greetName},\n\n`);
   }
 
   async function onSendReply() {

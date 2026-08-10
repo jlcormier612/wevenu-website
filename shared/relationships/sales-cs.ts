@@ -551,9 +551,38 @@ export function relationshipHasOpenSupport(
     "status" | "supportOpenCount" | "openFeedbackItems"
   >,
 ): boolean {
-  if ((relationship.supportOpenCount || 0) > 0) return true;
-  if (normalizeLifecycleStatus(relationship.status) === "support") return true;
-  return (relationship.openFeedbackItems ?? []).some((i) => i.status === "open");
+  return countOpenSupportItems(relationship) > 0;
+}
+
+/**
+ * Open Feedback & support item count for one relationship.
+ * Prefers typed openFeedbackItems; falls back to supportOpenCount / legacy
+ * status overlay so badge totals match what CS sees on the board.
+ */
+export function countOpenSupportItems(
+  relationship: Pick<
+    Relationship,
+    "status" | "supportOpenCount" | "openFeedbackItems"
+  >,
+): number {
+  const openFromItems = (relationship.openFeedbackItems ?? []).filter(
+    (i) => i.status === "open",
+  ).length;
+  if (openFromItems > 0) return openFromItems;
+  if ((relationship.supportOpenCount || 0) > 0) {
+    return relationship.supportOpenCount || 0;
+  }
+  if (normalizeLifecycleStatus(relationship.status) === "support") return 1;
+  return 0;
+}
+
+/** Sum of open Feedback & support items across relationships (sidebar badge). */
+export function countOpenSupportItemsAcross(
+  relationships: Array<
+    Pick<Relationship, "status" | "supportOpenCount" | "openFeedbackItems">
+  >,
+): number {
+  return relationships.reduce((sum, r) => sum + countOpenSupportItems(r), 0);
 }
 
 /** Infer CS stage from legacy lifecycle status when customerSuccessStage unset. */

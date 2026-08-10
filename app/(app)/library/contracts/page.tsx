@@ -8,19 +8,22 @@ import { getTemplates } from "@/lib/contracts/service";
 
 export const metadata: Metadata = { title: "Contract Templates" };
 
-// The one page the sidebar's "Contracts" nav item actually links to
-// (lib/navigation.ts) — /contracts/templates is the same data, the same
+// The one page the sidebar's "Contract Templates" nav item actually links
+// to (lib/navigation.ts) — /contracts/templates is the same data, the same
 // CRUD routes, and (as of this pass) the same ContractTemplateList
 // component; the two pages were an isolated-implementation duplicate found
 // during the Template Platform audit, not a deliberate second surface, so
 // both are kept in sync here rather than removing either route outright.
+// Business Asset Experience Consolidation (BA4, Step 1A) renamed the
+// sidebar items that link here vs. to the real, signed contracts — this
+// page's own copy is kept in sync with that rename.
 export default async function ContractTemplatesLibraryPage() {
   const templates = await getTemplates(true);
   return (
     <div className="space-y-6">
       <PageHeader
         title="Contract Templates"
-        description="Reusable templates with merge fields. Applied when generating a contract for a lead or client. Active contracts are managed under Finance → Contracts."
+        description="Reusable contracts with fill-in details that auto-fill for each client. Signed and sent contracts are managed under Contracts, in Financials."
         actions={
           <Button render={<Link href="/contracts/templates/new" />}>+ New Template</Button>
         }

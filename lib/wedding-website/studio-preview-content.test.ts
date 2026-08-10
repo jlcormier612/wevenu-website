@@ -3,6 +3,7 @@ import { describe, it } from "node:test";
 
 import {
   PHOTO_STYLE_CANONICAL_COUNT,
+  PHOTO_STYLE_PREVIEW_MAX_COUNT,
   STUDIO_PREVIEW_COUPLE_NAME,
   STUDIO_PREVIEW_STORY_TEXT,
   mergeStudioPreviewContent,
@@ -44,6 +45,20 @@ describe("resolveStudioPreviewPhotos", () => {
       maxCount: 6,
     });
     assert.deepEqual(photos, ["a.jpg", "b.jpg", "c.jpg", "d.jpg", "e.jpg", "f.jpg"]);
+  });
+
+  it("includes up to 9 couple photos when sources allow (Film 3×3 densest)", () => {
+    assert.equal(PHOTO_STYLE_PREVIEW_MAX_COUNT, 9);
+    const nine = Array.from({ length: 12 }, (_, i) => `p${i}.jpg`);
+    const photos = resolveStudioPreviewPhotos({ galleryPhotos: nine });
+    assert.equal(photos.length, 9);
+    assert.deepEqual(photos, nine.slice(0, 9));
+  });
+
+  it("keeps thin galleries (e.g. 7) without padding past sources or fillers past min", () => {
+    const seven = Array.from({ length: 7 }, (_, i) => `g${i}.jpg`);
+    const photos = resolveStudioPreviewPhotos({ galleryPhotos: seven });
+    assert.deepEqual(photos, seven);
   });
 
   it("fills from cover and engagement before fillers", () => {

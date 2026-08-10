@@ -14,7 +14,7 @@ export default async function TemplatesPage() {
     <div className="space-y-6">
       <PageHeader
         title="Contract Templates"
-        description="Reusable templates with merge fields for quick contract generation."
+        description="Reusable contracts with fill-in details that auto-fill for each client."
         actions={
           <Button render={<Link href="/contracts/templates/new" />}>+ New Template</Button>
         }

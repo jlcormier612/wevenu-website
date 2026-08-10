@@ -250,7 +250,8 @@ export async function updateLineItem_(itemId: string, scheduleId: string, input:
   const errors = validateLineItemInput(input, { requireObligationKind: false });
   if (Object.keys(errors).length > 0) return { ok: false, errors };
   const result = await withVenue(async (supabase, venueId) => {
-    await repo.updateLineItem(supabase, venueId, itemId, input);
+    const outcome = await repo.updateLineItem(supabase, venueId, itemId, input);
+    if (!outcome.ok) return { ok: false, message: outcome.message } as PaymentActionResult;
     return { ok: true } as PaymentActionResult;
   });
   return result as PaymentActionResult;

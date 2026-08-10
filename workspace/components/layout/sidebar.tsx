@@ -76,7 +76,7 @@ export function Sidebar({
                       ? "bg-sidebar-primary/15 text-sidebar-primary"
                       : "bg-[color-mix(in_srgb,var(--dusty-rose)_28%,transparent)] text-[var(--dusty-rose)]",
                   )}
-                  title={`${openSupportCount} open support`}
+                  title={`${openSupportCount} open support item${openSupportCount === 1 ? "" : "s"}`}
                 >
                   {openSupportCount}
                 </span>

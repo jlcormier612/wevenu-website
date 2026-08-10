@@ -1,0 +1,14 @@
+Chrome /Users/jensmac/Library/Caches/ms-playwright/chromium-1228/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing SMOKE true
+
+=== PHASE A: Collections ===
+Collection Midnight
+
+=== PHASE B: Color Stories ===
+FINDING critical host apply: edit Collection failed Midnight  
+
+=== PHASE C: Photo Styles ===
+FINDING critical PS host setup: edit Collection failed   
+PS Magazine
+FINDING high edit Photo Style failed   Magazine
+
+Done. Findings 5. Evidence /Users/jensmac/Library/Mobile Documents/com~apple~CloudDocs/Wevenu Website/wevenu-website/docs/qa/wedding-website-studio-full-visual-review/manual-evidence/live

@@ -184,4 +184,4 @@ API proof DB intact: `GET /api/portal/tasks` still returns pending **Final payme
 Couple Tasks – Implementation 2 – Payment Attention and Final Payment Twin
 ```
 
-Hash recorded after commit in parent report.
+**Hash:** `fc843dc74ebc2cb76e1d291f1db8639a92cae5f4` (`fc843dc`) — local only; not pushed.

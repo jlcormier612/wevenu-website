@@ -23,13 +23,51 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { formatRelative } from "@/lib/leads/constants";
 import type { ContractTemplate } from "@/lib/contracts/types";
+
+// Work Package D2, Step 11-12 — an honest miniature of the real thing: the
+// template's own actual content, not a fake renderer. "What am I about to
+// use?", nothing more — same read-only text a coordinator would see on the
+// Contract Detail page's own "Contract Document" card, reused here rather
+// than building a second preview surface for the same content.
+function TemplatePreviewSheet({
+  template, open, onOpenChange,
+}: { template: ContractTemplate | null; open: boolean; onOpenChange: (open: boolean) => void }) {
+  return (
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent side="right" className="w-full sm:max-w-lg overflow-y-auto">
+        <SheetHeader className="mb-2">
+          <SheetTitle>{template?.name}</SheetTitle>
+          <div className="flex items-center gap-2 flex-wrap text-xs text-muted-foreground">
+            <span>Contract Template</span>
+            {template?.isDefault && <Badge variant="default">Default</Badge>}
+            {template && <span>· Updated {formatRelative(template.updatedAt)}</span>}
+          </div>
+        </SheetHeader>
+        {template && (
+          <div className="px-4 pb-6 space-y-4">
+            {template.description && <p className="text-sm text-muted-foreground">{template.description}</p>}
+            <div className="rounded-lg border border-border bg-background p-4 font-sans text-sm text-foreground whitespace-pre-wrap leading-relaxed max-h-[60vh] overflow-y-auto">
+              {template.content}
+            </div>
+            <Button size="sm" render={<Link href={`/contracts/new?templateId=${template.id}`} />}>
+              Use Template
+            </Button>
+          </div>
+        )}
+      </SheetContent>
+    </Sheet>
+  );
+}
 
 export function ContractTemplateList({ initialTemplates }: { initialTemplates: ContractTemplate[] }) {
   const router = useRouter();
   const [templates, setTemplates] = React.useState(initialTemplates);
   const [showArchived, setShowArchived] = React.useState(false);
   const [pendingId, setPendingId] = React.useState<string | null>(null);
+  const [previewing, setPreviewing] = React.useState<ContractTemplate | null>(null);
 
   const visible = templates.filter((t) => showArchived || !t.isArchived);
   const archivedCount = templates.filter((t) => t.isArchived).length;
@@ -98,20 +136,25 @@ export function ContractTemplateList({ initialTemplates }: { initialTemplates: C
                 </div>
               </div>
               {t.description && <CardDescription>{t.description}</CardDescription>}
+              <p className="text-xs text-muted-foreground">Updated {formatRelative(t.updatedAt)}</p>
             </CardHeader>
             <CardContent>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
+                <Button size="sm" variant="ghost" onClick={() => setPreviewing(t)}>
+                  Preview
+                </Button>
                 <Button size="sm" variant="outline" render={<Link href={`/contracts/templates/${t.id}/edit`} />}>
                   Edit
                 </Button>
-                <Button size="sm" render={<Link href="/contracts/new" />}>
-                  Use
+                <Button size="sm" render={<Link href={`/contracts/new?templateId=${t.id}`} />}>
+                  Use Template
                 </Button>
               </div>
             </CardContent>
           </Card>
         ))}
       </div>
+      <TemplatePreviewSheet template={previewing} open={previewing !== null} onOpenChange={(open) => { if (!open) setPreviewing(null); }} />
     </div>
   );
 }

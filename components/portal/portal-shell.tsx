@@ -46,7 +46,11 @@ import { PortalLegalHistorySection } from "@/components/legal/legal-history-sect
 import { RequestsPortalSection } from "@/components/portal/requests-section";
 import { LuvIntroCard } from "@/components/luv/luv-intro-card";
 import { UnifiedTasksSection } from "@/components/portal/unified-tasks-section";
-import { buildUnifiedTaskList, type UnifiedTask } from "@/lib/portal/unified-tasks";
+import {
+  buildUnifiedTaskList,
+  unifiedTaskCompletionCounts,
+  type UnifiedTask,
+} from "@/lib/portal/unified-tasks";
 import {
   isShareTimelineVendorAttention,
   shareTimelineWorkspace,
@@ -2918,7 +2922,11 @@ function OurPeopleSection({ token, context }: { token: string; context: PortalCo
 
 // ── Website Section ───────────────────────────────────────────────────────────
 
-function WebsiteSection({ token, context }: { token: string; context: PortalContext }) {
+function WebsiteSection({ token, context, onNavigate }: {
+  token: string;
+  context: PortalContext;
+  onNavigate: (s: PortalSection) => void;
+}) {
   const [site, setSite] = React.useState<import("@/lib/wedding-website/types").CoupleWebsite | null>(null);
   const [loading, setLoading] = React.useState(true);
   // Hooks must all be before any early returns (Rules of Hooks)
@@ -2956,7 +2964,14 @@ function WebsiteSection({ token, context }: { token: string; context: PortalCont
 
   return (
     <div className="h-full overflow-hidden">
-      <WebsiteStudio token={token} initialSite={site} origin={origin} initialGuests={guestData?.guests} context={context} />
+      <WebsiteStudio
+        token={token}
+        initialSite={site}
+        origin={origin}
+        initialGuests={guestData?.guests}
+        context={context}
+        onNavigateToGuests={() => onNavigate("guests")}
+      />
     </div>
   );
 }
@@ -4371,6 +4386,8 @@ export function PortalShell({
   const [workspaceFocus, setWorkspaceFocus] = React.useState<PortalWorkspaceFocus | null>(null);
   const [guestStats, setGuestStats] = React.useState<GuestStats | null>(null);
   const [todoCount, setTodoCount] = React.useState(0);
+  /** Tasks nav badge — open unified cards + share-timeline vendor attention. */
+  const [tasksAttentionCount, setTasksAttentionCount] = React.useState<number | null>(null);
   const [profile, setProfile] = React.useState<CoupleProfile | null>(null);
   const [recentActivity, setRecentActivity] = React.useState<RecentActivity | null>(null);
   const [showLuvIntro, setShowLuvIntro] = React.useState(false);
@@ -4484,6 +4501,52 @@ export function PortalShell({
       .catch(() => {});
   }, [token, needsLegalAcceptance]);
 
+  // Tasks badge must use the same open set as UnifiedTasksSection cards
+  // (not canComplete-only venue_tasks), including Pay now / timeline submit.
+  React.useEffect(() => {
+    if (needsLegalAcceptance) return;
+    let cancelled = false;
+    Promise.all([
+      fetch(`/api/portal/tasks?token=${token}`).then((r) => r.json()).catch(() => ({
+        tasks: initialTasks,
+        vendorTasks: initialVendorTasks,
+      })),
+      fetch(`/api/portal/requests?token=${token}`).then((r) => r.json()).catch(() => ({ requests: [] })),
+      fetch(`/api/portal/payments?token=${token}`).then((r) => r.json()).catch(() => ({ schedules: [] })),
+      fetch(`/api/portal/questionnaire?token=${token}`).then((r) => r.json()).catch(() => ({ questionnaire: null })),
+      fetch(`/api/portal/documents?token=${token}`).then((r) => r.json()).catch(() => ({ documents: [] })),
+      fetch(`/api/portal/timeline?token=${token}`).then((r) => r.json()).catch(() => ({
+        hasUnpublishedChanges: initialTimelineHasUnpublishedChanges,
+      })),
+    ]).then(([tasksRes, requestsRes, paymentsRes, questionnaireRes, documentsRes, timelineRes]) => {
+      if (cancelled) return;
+      const venueTasks = (tasksRes.tasks ?? initialTasks) as PortalTask[];
+      const vendorTasks = (tasksRes.vendorTasks ?? initialVendorTasks) as PortalVendorTask[];
+      const unified = buildUnifiedTaskList({
+        venueTasks,
+        requests: requestsRes.requests ?? [],
+        paymentSchedules: paymentsRes.schedules ?? [],
+        questionnaire: questionnaireRes.questionnaire
+          ? { status: questionnaireRes.questionnaire.status }
+          : null,
+        documents: documentsRes.documents ?? [],
+        timelineHasUnpublishedChanges: !!timelineRes.hasUnpublishedChanges,
+      });
+      const { open } = unifiedTaskCompletionCounts(unified);
+      const vendorShare = vendorTasks.filter((t) => isShareTimelineVendorAttention(t)).length;
+      setTasksAttentionCount(open + vendorShare);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    token,
+    needsLegalAcceptance,
+    initialTasks,
+    initialVendorTasks,
+    initialTimelineHasUnpublishedChanges,
+  ]);
+
   function dismissLuvIntro() {
     setShowLuvIntro(false);
     void fetch("/api/portal/luv-intro", {
@@ -4550,9 +4613,21 @@ export function PortalShell({
   const firstName = context.client.firstName;
   const partnerName = context.client.partnerFirstName;
   const coupleName = [firstName, partnerName].filter(Boolean).join(" & ");
-  const actionCount =
-    initialTasks.filter(t => t.canComplete && t.status !== "complete").length
-    + initialVendorTasks.filter((t) => isShareTimelineVendorAttention(t)).length;
+  const actionCount = tasksAttentionCount ?? (
+    // SSR / pre-fetch fallback — venue open checklist + timeline only
+    // (payments/requests need client fetch for full fidelity).
+    unifiedTaskCompletionCounts(
+      buildUnifiedTaskList({
+        venueTasks: initialTasks,
+        requests: [],
+        paymentSchedules: [],
+        questionnaire: null,
+        documents: [],
+        timelineHasUnpublishedChanges: initialTimelineHasUnpublishedChanges,
+      }),
+    ).open
+    + initialVendorTasks.filter((t) => isShareTimelineVendorAttention(t)).length
+  );
   const isOverview = activeSection === "overview";
   // Tasks | Timeline | Documents | Venue Guide share one column so white list cards align.
   const isSharedListColumn =
@@ -4641,6 +4716,7 @@ export function PortalShell({
               return (
                 <button key={item.id} type="button"
                   onClick={() => item.available && navigateTo(item.id)}
+                  aria-label={badge > 0 ? `${item.label}, ${badge} open tasks` : undefined}
                   className="relative flex-shrink-0 flex items-center gap-1.5 px-3 py-2.5 text-sm font-medium transition-all rounded-lg"
                   style={{
                     color: !item.available ? "#8A837D" : isActive ? SAGE : "#3D3833",
@@ -4652,6 +4728,7 @@ export function PortalShell({
                   <span className="sm:hidden text-[11px]">{item.shortLabel ?? item.label}</span>
                   {badge > 0 && (
                     <span className="h-4 w-4 rounded-full text-[8px] font-bold text-white flex items-center justify-center"
+                      title={badge === 1 ? "1 open task" : `${badge} open tasks`}
                       style={{ background: ROSE }}>{badge}</span>
                   )}
                 </button>
@@ -4689,7 +4766,7 @@ export function PortalShell({
           </div>
         ) : activeSection === "website" ? (
           <div className="flex-1 min-h-0 overflow-hidden">
-            <WebsiteSection token={token} context={context} />
+            <WebsiteSection token={token} context={context} onNavigate={navigateTo} />
           </div>
         ) : activeSection === "seating" ? (
           <div className="flex-1 min-h-0 overflow-hidden flex flex-col">
@@ -4698,7 +4775,7 @@ export function PortalShell({
         ) : isSharedListColumn ? (
           /* Tasks | Timeline | Documents | Venue Guide — identical outer column (max-w + pad). */
           <div className="w-full max-w-2xl mx-auto px-4 sm:px-6 py-6">
-            {activeSection === "tasks"     && <UnifiedTasksSection token={token} initialTasks={initialTasks} initialVendorTasks={initialVendorTasks} venueName={context.venue.name} onNavigate={navigateTo} />}
+            {activeSection === "tasks"     && <UnifiedTasksSection token={token} initialTasks={initialTasks} initialVendorTasks={initialVendorTasks} initialTimelineHasUnpublishedChanges={initialTimelineHasUnpublishedChanges} venueName={context.venue.name} onNavigate={navigateTo} />}
             {activeSection === "timeline"  && <TimelinePortalSection token={token} clientId={context.client.id} initialSections={initialTimelineSections} initialEntries={initialTimelineEntries} initialLastSubmittedAt={initialTimelineLastSubmittedAt} initialHasUnpublishedChanges={initialTimelineHasUnpublishedChanges} eventDate={context.event?.eventDate} eventEndDate={context.event?.eventEndDate} />}
             {activeSection === "documents" && <CoupleDocumentsPortalSection token={token} onNavigate={navigateTo} />}
             {activeSection === "guide"     && <VenueGuidePortalSection token={token} context={context} onNavigate={navigateTo} />}

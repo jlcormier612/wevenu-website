@@ -1,0 +1,13 @@
+{
+  "finishedAt": "2026-08-10T03:35:58.942Z",
+  "count": 1,
+  "findings": [
+    {
+      "severity": "high",
+      "area": "nav",
+      "collection": "Midnight",
+      "photoStyle": "Magazine",
+      "issue": "Could not open Photo Style Edit"
+    }
+  ]
+}

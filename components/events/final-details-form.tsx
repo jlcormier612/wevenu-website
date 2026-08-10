@@ -1,11 +1,21 @@
 "use client";
 
 /**
- * FinalDetailsForm — the event questionnaire.
+ * FinalDetailsForm — the event questionnaire's coordinator-facing view:
+ * send the link, watch its status, view/edit the couple's answers once
+ * submitted.
  *
- * Coordinator fills this in before the event. Eventually (Sprint 34+)
- * this can be sent to the client as a public form for them to complete.
- * For Sprint 33: coordinator-facing only.
+ * Business Asset Experience Consolidation (Work Package BA4B): grepping
+ * this repo for every real caller of this component and of
+ * saveQuestionnaireAction/QuestionnaireDisplay found none — this file is
+ * not currently rendered from any route. BA1/BA2/BA3 all described this as
+ * the live "Final Details" tab without that having been verified; it
+ * wasn't true when checked here. The certified header/waiting-state
+ * pattern is applied below regardless, so the component is correct and
+ * ready the moment it's wired into a real page — but that wiring is new
+ * surface area (a Planning-tab entry point doesn't exist today), out of
+ * this phase's own "no new architecture" scope. Flagged plainly rather
+ * than silently left for someone to rediscover later.
  */
 
 import * as React from "react";
@@ -14,6 +24,9 @@ import { CheckCircle, Copy, ExternalLink, Loader2, Send } from "lucide-react";
 import { toast } from "sonner";
 
 import { saveQuestionnaireAction, sendQuestionnaireAction } from "@/app/(app)/events/[id]/questionnaire-actions";
+import { BusinessAssetHeader } from "@/components/business-assets/asset-header";
+import { Badge } from "@/components/ui/badge";
+import type { WaitingOn } from "@/components/business-assets/waiting-state";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -23,14 +36,23 @@ import type { Questionnaire } from "@/lib/events/questionnaire";
 
 type QFields = Partial<Omit<Questionnaire, "id" | "venueId" | "eventId" | "status" | "submittedAt" | "createdAt" | "updatedAt">>;
 
+// "reviewed" is a real value in the status column but no code path ever
+// sets it (BA2 finding) — treated identically to "submitted" here, same as
+// every other real consumer in this codebase already does.
+const QUESTIONNAIRE_STATUS_LABEL: Record<string, string> = {
+  draft: "Draft", sent: "Sent", submitted: "Submitted", reviewed: "Submitted",
+};
+
 function SectionHeader({ children }: { children: React.ReactNode }) {
   return <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground pt-2">{children}</p>;
 }
 
-function Field({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
+function Field({ label, hint, required, children }: { label: string; hint?: string; required?: boolean; children: React.ReactNode }) {
   return (
     <div className="space-y-1.5">
-      <Label className="text-sm font-medium text-heading">{label}</Label>
+      <Label className="text-sm font-medium text-heading">
+        {label}{required && <span className="text-destructive"> *</span>}
+      </Label>
       {hint && <p className="text-xs text-muted-foreground">{hint}</p>}
       {children}
     </div>
@@ -106,6 +128,17 @@ export function FinalDetailsForm({
   }
 
   function handleSubmit() {
+    // Work Package D5 — client-side echo of the server's own required-field
+    // rule (lib/events/questionnaire.ts findMissingRequiredFields); the
+    // server enforces this regardless, this just avoids a round-trip.
+    const missing: string[] = [];
+    if (fields.finalGuestCount == null) missing.push("Final guest count");
+    if (!fields.emergencyContactName?.trim()) missing.push("Emergency contact name");
+    if (!fields.emergencyContactPhone?.trim()) missing.push("Emergency contact phone");
+    if (missing.length > 0) {
+      toast.error(`Add these before submitting: ${missing.join(", ")}.`);
+      return;
+    }
     if (!confirm("Mark these final details as submitted? This signals that planning is complete.")) return;
     startSubmit(async () => {
       const result = await saveQuestionnaireAction(eventId, fields, true);
@@ -117,6 +150,15 @@ export function FinalDetailsForm({
   if (isSubmitted) {
     return (
       <div className="space-y-4">
+        <BusinessAssetHeader
+          compact
+          whatIsThis="Questionnaire"
+          title="Final Details"
+          status={<Badge variant="success">{QUESTIONNAIRE_STATUS_LABEL[initial?.status ?? "submitted"]}</Badge>}
+          waitingOn="completed"
+          lastUpdated={initial?.updatedAt ? new Date(initial.updatedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "—"}
+          relationship={eventName ? { name: eventName } : null}
+        />
         <div className="flex items-center gap-2 rounded-sm border border-success/30 bg-success/5 px-4 py-3">
           <CheckCircle className="h-5 w-5 text-success shrink-0" />
           <div>
@@ -133,28 +175,34 @@ export function FinalDetailsForm({
     );
   }
 
+  const waitingOn: WaitingOn = !initial?.sentAt ? "venue" : initial.status === "submitted" ? "completed" : "client";
+  const statusSentence = !initial?.sentAt ? "Not yet sent to the client."
+    : initial.openedAt ? `Opened${initial.status === "submitted" ? " and submitted" : " — awaiting submission"}.`
+    : "Sent — waiting for the client to open it.";
+
   return (
     <div className="space-y-5">
+      <BusinessAssetHeader
+        compact
+        whatIsThis="Questionnaire"
+        title="Final Details"
+        status={<Badge variant={initial?.status === "submitted" ? "success" : initial?.sentAt ? "default" : "muted"}>{QUESTIONNAIRE_STATUS_LABEL[initial?.status ?? "draft"]}</Badge>}
+        waitingOn={waitingOn}
+        lastUpdated={initial?.updatedAt ? new Date(initial.updatedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "—"}
+        relationship={eventName ? { name: eventName } : null}
+        primaryAction={coupleEmail && initial?.status !== "submitted" && initial?.status !== "reviewed" && (
+          <Button type="button" size="sm" onClick={handleSend} disabled={sending}>
+            {sending ? <><Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />Sending…</> : <><Send className="mr-1 h-3.5 w-3.5" />Send to client</>}
+          </Button>
+        )}
+      />
+
       {/* Status + Send banner */}
       <div className="rounded-sm border border-border bg-muted/30 p-4 space-y-3">
-        {/* Status row */}
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="space-y-0.5">
-            <p className="text-sm font-medium text-heading">Questionnaire status</p>
-            <p className="text-xs text-muted-foreground">
-              {!initial?.sentAt ? "Not yet sent to the client."
-                : initial.openedAt ? `Opened${initial.status === "submitted" ? " and submitted" : " — awaiting submission"}.`
-                : "Sent — waiting for the client to open it."}
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
-            {coupleEmail && initial?.status !== "submitted" && initial?.status !== "reviewed" && (
-              <Button type="button" size="sm" onClick={handleSend} disabled={sending}>
-                {sending ? <><Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />Sending…</> : <><Send className="mr-1 h-3.5 w-3.5" />Send to client</>}
-              </Button>
-            )}
-          </div>
-        </div>
+        <p className="text-xs text-muted-foreground">{statusSentence}</p>
+        {!coupleEmail && (
+          <p className="text-xs text-muted-foreground">Add their email to the client record to send the questionnaire link.</p>
+        )}
         {/* Form URL (shown after sending or if already sent) */}
         {(currentFormUrl && (initial?.sentAt || formUrl)) && (
           <div className="flex items-center gap-2">
@@ -168,9 +216,6 @@ export function FinalDetailsForm({
               <Button type="button" variant="outline" size="sm"><ExternalLink className="h-3.5 w-3.5" /></Button>
             </a>
           </div>
-        )}
-        {!coupleEmail && (
-          <p className="text-xs text-muted-foreground">Add their email to the client record to send the questionnaire link.</p>
         )}
       </div>
 
@@ -199,7 +244,7 @@ export function FinalDetailsForm({
       {/* Guest & meal details */}
       <SectionHeader>Guests & meals</SectionHeader>
       <div className="grid gap-4 sm:grid-cols-2">
-        <Field label="Final guest count">
+        <Field label="Final guest count" required>
           <Input type="number" min="1" value={fields.finalGuestCount ?? ""}
             onChange={(e) => set("finalGuestCount", e.target.value ? parseInt(e.target.value) : undefined)}
             placeholder="175" className="w-32" />
@@ -240,11 +285,11 @@ export function FinalDetailsForm({
           placeholder="Florist: 10am. Band load-in: 2pm. Caterer: 3pm service entrance…" rows={3} />
       </Field>
       <div className="grid gap-4 sm:grid-cols-2">
-        <Field label="Emergency contact (day-of)">
+        <Field label="Emergency contact (day-of)" required>
           <Input value={fields.emergencyContactName ?? ""}
             onChange={(e) => set("emergencyContactName", e.target.value)} placeholder="Emily Carter" />
         </Field>
-        <Field label="Emergency phone">
+        <Field label="Emergency phone" required>
           <Input type="tel" value={fields.emergencyContactPhone ?? ""}
             onChange={(e) => set("emergencyContactPhone", e.target.value)} placeholder="(615) 555-0100" />
         </Field>

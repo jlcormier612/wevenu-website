@@ -11,6 +11,8 @@ import {
 } from "@/app/(app)/events/[id]/event-order-actions";
 import { AddLineSheet } from "@/components/event-orders/add-line-sheet";
 import { EventOrderInvoiceLink } from "@/components/event-orders/event-order-invoice-link";
+import { BusinessAssetHeader } from "@/components/business-assets/asset-header";
+import { ActivityTimeline } from "@/components/leads/activity-timeline";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -190,40 +192,38 @@ export function EventOrderPanel({
   return (
     <Card>
       <CardHeader>
-        <div className="flex items-center justify-between gap-4 flex-wrap">
-          <div className="space-y-1">
-            <div className="flex items-center gap-2">
-              <CardTitle className="text-base">Event Order</CardTitle>
-              <Badge variant={STATUS_VARIANT[displayStatus]}>
-                {DISPLAY_STATUS_LABEL[displayStatus]}{eventOrder.revision > 0 ? ` · v${eventOrder.revision}` : ""}
-              </Badge>
-            </div>
-            <CardDescription>The single record of what this event will actually receive.</CardDescription>
-          </div>
-          <div className="flex items-center gap-3 shrink-0">
-            <p className="text-sm text-muted-foreground">
-              Running total: <span className="font-semibold text-heading">{formatMoney(eventOrder.total)}</span>
-            </p>
-            {isFinalized ? (
-              <Button type="button" variant="outline" size="sm" disabled={lifecyclePending}
-                onClick={() => startLifecycle(async () => {
-                  const result = await reopenEventOrderAction(eventOrder.id, eventId);
-                  if (!result.ok) toast.error(result.message ?? "Could not reopen.");
-                })}>
-                {lifecyclePending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Reopen"}
-              </Button>
-            ) : (
-              <Button type="button" size="sm" disabled={lifecyclePending || (eventOrder.lines.length === 0)}
-                onClick={() => startLifecycle(async () => {
-                  const result = await finalizeEventOrderAction(eventOrder.id, eventId);
-                  if (!result.ok) toast.error(result.message ?? "Could not finalize.");
-                  else toast.success("Event Order finalized.");
-                })}>
-                {lifecyclePending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Finalize"}
-              </Button>
-            )}
-          </div>
-        </div>
+        <BusinessAssetHeader
+          compact
+          whatIsThis="Event Order"
+          title="Event Order"
+          status={
+            <Badge variant={STATUS_VARIANT[displayStatus]}>
+              {DISPLAY_STATUS_LABEL[displayStatus]}{eventOrder.revision > 0 ? ` · v${eventOrder.revision}` : ""}
+            </Badge>
+          }
+          lastUpdated={new Date(eventOrder.updatedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+          primaryAction={isFinalized ? (
+            <Button type="button" variant="outline" size="sm" disabled={lifecyclePending}
+              onClick={() => startLifecycle(async () => {
+                const result = await reopenEventOrderAction(eventOrder.id, eventId);
+                if (!result.ok) toast.error(result.message ?? "Could not reopen.");
+              })}>
+              {lifecyclePending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Reopen"}
+            </Button>
+          ) : (
+            <Button type="button" size="sm" disabled={lifecyclePending || (eventOrder.lines.length === 0)}
+              onClick={() => startLifecycle(async () => {
+                const result = await finalizeEventOrderAction(eventOrder.id, eventId);
+                if (!result.ok) toast.error(result.message ?? "Could not finalize.");
+                else toast.success("Event Order finalized.");
+              })}>
+              {lifecyclePending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Finalize"}
+            </Button>
+          )}
+        />
+        <p className="text-xs text-muted-foreground -mt-1">
+          The single record of what this event will actually receive. Running total: <span className="font-medium text-foreground">{formatMoney(eventOrder.total)}</span>
+        </p>
         {clientId && (
           <div className="pt-3 mt-3 border-t border-border/60">
             <EventOrderInvoiceLink eventOrderId={eventOrder.id} eventId={eventId} clientId={clientId} invoices={invoices} />
@@ -289,12 +289,9 @@ export function EventOrderPanel({
         {eventOrder.activities.length > 0 && (
           <details className="pt-2 border-t border-border/60">
             <summary className="cursor-pointer text-xs font-medium text-muted-foreground hover:text-foreground">Activity ({eventOrder.activities.length})</summary>
-            <div className="mt-2 space-y-1.5">
-              {eventOrder.activities.map((a) => (
-                <p key={a.id} className="text-xs text-muted-foreground">
-                  <span className="text-foreground">{a.title}</span>{a.description ? ` — ${a.description}` : ""}
-                </p>
-              ))}
+            {/* Same activity presentation Contracts already use (BA4, Step 4) — not a second timeline design. */}
+            <div className="mt-2">
+              <ActivityTimeline activities={eventOrder.activities} />
             </div>
           </details>
         )}

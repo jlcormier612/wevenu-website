@@ -35,6 +35,8 @@ export type Contract = {
   expiresAt: string | null;
   createdAt: string;
   updatedAt: string;
+  /** Work Package D4 — set only on a newly-created amendment; mirrors invoices.amendsInvoiceId exactly. */
+  amendsContractId: string | null;
   // Embedded from join
   clientName: string | null;
   eventDate: string | null;
@@ -78,13 +80,16 @@ export type NewContractInput = {
   eventId: string;
   title: string;
   content: string; // may be pre-filled from template merge
+  /** Work Package D4 — set only by createAmendmentFromContract. */
+  amendsContractId?: string;
 };
 
 export type ContractErrors = Record<string, string>;
 
 export type ContractActionResult =
   | { ok: true }
-  | { ok: false; errors?: ContractErrors; message?: string };
+  /** reason:"stale" — Work Package D4's concurrency check — a save was rejected because someone else saved first; the UI should prompt a reload, never silently overwrite. */
+  | { ok: false; errors?: ContractErrors; message?: string; reason?: "stale" | "not_editable" | "not_found" };
 
 export type CreateContractResult =
   | { ok: true; contractId: string }

@@ -43,7 +43,8 @@ import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DateHoldsSection } from "@/components/availability/date-holds-section";
-import { DocumentsSection } from "@/components/documents/documents-section";
+import { DocumentWorkspace } from "@/components/document-workspace/document-workspace";
+import type { WorkspaceDocument } from "@/lib/document-workspace/types";
 import { LuvDraftPanel } from "@/components/luv/luv-draft-panel";
 import { LuvHeart } from "@/components/dashboard/luv-widget";
 import { RelationshipConversationTab } from "@/components/conversations/relationship-conversation-tab";
@@ -89,7 +90,7 @@ function InfoRow({
 
 // ---- main component ---------------------------------------------------------
 
-export function LeadDetail({ lead, holds = [], spaces = [], documents = [], luvDrafts = [], autoLuvDraft, tourAppointments = [], conversationId = null, pipelineStages = [], currentPipelineStage = null, now }: { lead: LeadWithDetails; holds?: DateHold[]; spaces?: VenueSpace[]; documents?: Document[]; luvDrafts?: LuvDraft[]; autoLuvDraft?: string; tourAppointments?: import("@/lib/tours/types").TourAppointment[]; conversationId?: string | null; pipelineStages?: PipelineStage[]; currentPipelineStage?: PipelineStage | null; now: string }) {
+export function LeadDetail({ lead, holds = [], spaces = [], documents = [], workspaceDocuments = [], pinnedDocumentKeys = [], recentDocumentEntries = [], luvDrafts = [], autoLuvDraft, tourAppointments = [], conversationId = null, pipelineStages = [], currentPipelineStage = null, now }: { lead: LeadWithDetails; holds?: DateHold[]; spaces?: VenueSpace[]; documents?: Document[]; workspaceDocuments?: WorkspaceDocument[]; pinnedDocumentKeys?: string[]; recentDocumentEntries?: [string, string][]; luvDrafts?: LuvDraft[]; autoLuvDraft?: string; tourAppointments?: import("@/lib/tours/types").TourAppointment[]; conversationId?: string | null; pipelineStages?: PipelineStage[]; currentPipelineStage?: PipelineStage | null; now: string }) {
   // Controlled tabs — supports Luv→Messages bridge and ?luv= URL param routing
   const [activeTab, setActiveTab] = React.useState(autoLuvDraft ? "luv" : "overview");
   const [messagePrefill, setMessagePrefill] = React.useState<{ subject: string; body: string } | null>(null);
@@ -481,20 +482,14 @@ export function LeadDetail({ lead, holds = [], spaces = [], documents = [], luvD
 
         {/* ── Documents ────────────────────────────────────────────── */}
         <TabsContent value="documents">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Documents</CardTitle>
-              <CardDescription>Contracts, inspiration photos, questionnaires, and other files for this lead.</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <DocumentsSection
-                entityType="lead"
-                entityId={lead.id}
-                venueId={lead.venueId}
-                initialDocuments={documents}
-              />
-            </CardContent>
-          </Card>
+          <DocumentWorkspace
+            title="Documents"
+            description="Contracts, inspiration photos, questionnaires, and other files for this lead."
+            documents={workspaceDocuments}
+            initialPinnedKeys={pinnedDocumentKeys}
+            initialRecentEntries={recentDocumentEntries}
+            uploadTarget={{ entityType: "lead", entityId: lead.id, venueId: lead.venueId }}
+          />
         </TabsContent>
 
         {/* ── Luv ──────────────────────────────────────────────────── */}

@@ -10,6 +10,11 @@ import {
   midnightSupportGridColumn,
   pickMidnightSupportColumns,
 } from "@/lib/wedding-website/midnight-gallery-pack";
+import {
+  chunkFilmContactRows,
+  filmContactRowWidthPercent,
+  pickFilmContactColumns,
+} from "@/lib/wedding-website/film-gallery-pack";
 import { RsvpPage } from "@/components/wedding-website/rsvp-page";
 import { GuestConciergeWidget } from "@/components/wedding-website/guest-concierge";
 import type { RsvpContext } from "@/app/rsvp/[token]/page";
@@ -254,8 +259,10 @@ const COLLECTIONS: Record<string, Omit<CollectionConfig, keyof typeof LAYOUT_DEF
     photoFilter: "saturate(0.9) brightness(1.08)",
   },
 
-  // Linen — luxury stationery, letterpress, deckled edges, timeless B&W
+  // Linen — luxury stationery, letterpress, deckled edges, quiet invitation suite.
   // No hero gradient. Like opening a fine invitation suite.
+  // photoFilter is a legacy fallback only — Photo Style owns filters on live
+  // sites; CollectionPreview strips it so cards never invent a B&W mood.
   minimal: {
     headingFont: "Georgia, serif",
     bodyFont: "system-ui, sans-serif",
@@ -1541,16 +1548,45 @@ export function GalleryGrid({ photos, tc }: { photos: string[]; tc: ThemeConfig 
   }
 
   if (tc.galleryLayout === "grid") {
-    const grid = (
-      <div className={`grid ${tc.imageScale === "large" ? "grid-cols-2" : "grid-cols-2 @min-[768px]/wedding:grid-cols-3"}`} style={{ gap }}>
-        {photos.map((url, i) => (
-          <div key={i} className={`overflow-hidden ${spanFor(i, photos.length)}`} style={{ borderRadius: tc.photoRadius, ...frame(i) }}>
-            <img src={url} alt="" style={{ ...imgStyle, aspectRatio: aspectFor(i) }} />
-          </div>
-        ))}
-      </div>
-    );
+    // Film contact-sheet Option D: pack into 2–3 col rows; short final rows
+    // shrink + center so cream strip never paints empty tracks (same bug
+    // class as Midnight's orphan support cell, cream instead of near-black).
     if (contactSheet) {
+      const cols = pickFilmContactColumns(photos.length);
+      const rows = chunkFilmContactRows(photos, cols);
+      let photoIndex = 0;
+      const sheet = (
+        <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
+          {rows.map((row, rowIndex) => {
+            const widthPct = filmContactRowWidthPercent(row.length, cols);
+            return (
+              <div
+                key={rowIndex}
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: `repeat(${row.length}, 1fr)`,
+                  gap: 0,
+                  width: `${widthPct}%`,
+                  marginInline: "auto",
+                }}
+              >
+                {row.map((url) => {
+                  const i = photoIndex++;
+                  return (
+                    <div
+                      key={i}
+                      className="overflow-hidden"
+                      style={{ borderRadius: tc.photoRadius, ...frame(i) }}
+                    >
+                      <img src={url} alt="" style={{ ...imgStyle, aspectRatio: aspectFor(i) }} />
+                    </div>
+                  );
+                })}
+              </div>
+            );
+          })}
+        </div>
+      );
       const sprocket = (
         <div style={{ display: "flex", flexDirection: "column", justifyContent: "space-evenly", padding: "4px 3px", background: "#1a1510" }}>
           {Array.from({ length: 6 }).map((_, i) => (
@@ -1569,11 +1605,20 @@ export function GalleryGrid({ photos, tc }: { photos: string[]; tc: ThemeConfig 
           }}
         >
           {sprocket}
-          <div style={{ flex: 1, minWidth: 0 }}>{grid}</div>
+          <div style={{ flex: 1, minWidth: 0 }}>{sheet}</div>
           {sprocket}
         </div>
       );
     }
+    const grid = (
+      <div className={`grid ${tc.imageScale === "large" ? "grid-cols-2" : "grid-cols-2 @min-[768px]/wedding:grid-cols-3"}`} style={{ gap }}>
+        {photos.map((url, i) => (
+          <div key={i} className={`overflow-hidden ${spanFor(i, photos.length)}`} style={{ borderRadius: tc.photoRadius, ...frame(i) }}>
+            <img src={url} alt="" style={{ ...imgStyle, aspectRatio: aspectFor(i) }} />
+          </div>
+        ))}
+      </div>
+    );
     return grid;
   }
 

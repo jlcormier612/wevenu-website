@@ -6,7 +6,7 @@ import {
   selectCanonicalPaymentSchedules,
   type PortalPaymentScheduleLike,
 } from "@/lib/portal/payment-schedules";
-import { buildUnifiedTaskList, ownershipLabel, venueTaskPresentation } from "@/lib/portal/unified-tasks";
+import { buildUnifiedTaskList, ownershipLabel, unifiedTaskCompletionCounts, venueTaskPresentation } from "@/lib/portal/unified-tasks";
 import type { PortalTask } from "@/lib/portal/types";
 import { compactNextStepsActionLabel } from "@/lib/portal/next-steps";
 
@@ -92,6 +92,93 @@ describe("buildUnifiedTaskList attention ordering", () => {
   });
 });
 
+describe("unifiedTaskCompletionCounts (caption + badge)", () => {
+  const due = "2026-10-31";
+
+  it("includes payment + timeline overlays in open/total so X/Y matches cards", () => {
+    const venueTasks = [
+      ...Array.from({ length: 9 }, (_, i) =>
+        task({
+          id: `done-${i}`,
+          title: `Done ${i}`,
+          status: "complete",
+          dueDate: due,
+          canComplete: false,
+        }),
+      ),
+      task({
+        id: "review",
+        title: "Leave a review",
+        status: "pending",
+        dueDate: due,
+        visibility: "client_owned",
+        canComplete: true,
+        autoCompleteTrigger: null,
+      }),
+      // Incomplete payment mirror — hidden from attention when unpaid ledger exists
+      task({
+        id: "pay-mirror",
+        title: "Final payment",
+        status: "pending",
+        dueDate: due,
+        visibility: "client_owned",
+        canComplete: false,
+        autoCompleteTrigger: "payment_received",
+      }),
+    ];
+
+    const list = buildUnifiedTaskList({
+      ...emptyUnified,
+      venueTasks,
+      paymentSchedules: [{
+        id: "sch",
+        title: "Payment Schedule",
+        invoiceId: "inv",
+        createdAt: "2026-08-01",
+        lineItems: [
+          { id: "li-second", label: "Second Installment", amount: 1000, dueDate: "2026-07-19", status: "overdue" },
+        ],
+      }],
+      timelineHasUnpublishedChanges: true,
+    });
+
+    const counts = unifiedTaskCompletionCounts(list);
+    // Old bug: venue_tasks alone said 9/11 (or 9/10 without mirror) while
+    // three open cards showed (Pay now, review, timeline).
+    assert.equal(counts.done, 9);
+    assert.equal(counts.open, 3);
+    assert.equal(counts.total, 12);
+    assert.deepEqual(
+      list.filter((t) => !t.completed).map((t) => t.kind).sort(),
+      ["payment", "timeline", "venue_task"],
+    );
+    assert.equal(list.find((t) => t.id === "task_pay-mirror"), undefined);
+    // Badge coherence: open count === incomplete cards above COMPLETED
+    assert.equal(counts.open, list.filter((t) => !t.completed).length);
+  });
+
+  it("does not treat canComplete-only as the open set", () => {
+    const list = buildUnifiedTaskList({
+      ...emptyUnified,
+      venueTasks: [
+        task({
+          id: "gc",
+          title: "Submit your guest count",
+          status: "pending",
+          dueDate: due,
+          visibility: "client_owned",
+          canComplete: false,
+          autoCompleteTrigger: "guest_count_finalized",
+        }),
+      ],
+      timelineHasUnpublishedChanges: true,
+    });
+    const counts = unifiedTaskCompletionCounts(list);
+    assert.equal(counts.open, 2);
+    assert.equal(counts.done, 0);
+    assert.equal(counts.total, 2);
+  });
+});
 describe("payment obligation reconciliation", () => {
   const yesterday = new Date();
   yesterday.setDate(yesterday.getDate() - 2);

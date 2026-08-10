@@ -21,6 +21,7 @@ import { updateEventStatusAction } from "@/app/(app)/events/[id]/actions";
 import { sendAnniversaryMessageAction } from "@/app/(app)/events/[id]/anniversary-actions";
 import { BookingOverviewSummary } from "@/components/events/booking-overview-summary";
 import { EventReadinessCard } from "@/components/events/event-readiness-card";
+import { FinalDetailsForm } from "@/components/events/final-details-form";
 import type { EventReadinessSummary } from "@/lib/readiness/types";
 import { BookingSetupCard } from "@/components/events/booking-setup-card";
 import { TimelineSetupCard } from "@/components/events/timeline-setup-card";
@@ -61,6 +62,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { formatCurrency } from "@/lib/invoices/constants";
 import type { Invoice } from "@/lib/invoices/types";
 import type { Document } from "@/lib/documents/types";
+import type { WorkspaceDocument } from "@/lib/document-workspace/types";
 import type { Questionnaire } from "@/lib/events/questionnaire";
 import type { EventPlaybookApplication, EventReadiness, EventTask, EventTaskContextLink, PlaybookTemplateWithStats, TaskContact } from "@/lib/playbooks/types";
 import type { TimelineTemplateWithStats } from "@/lib/timeline-templates/types";
@@ -223,6 +225,9 @@ export function EventDetail({
   invoices = [],
   documents = [],
   vendorDocuments = [],
+  workspaceDocuments = [],
+  pinnedDocumentKeys = [],
+  recentDocumentEntries = [],
   questionnaire = null,
   coupleEmail = null,
   eventTasks = [],
@@ -265,6 +270,9 @@ export function EventDetail({
   invoices?: Invoice[];
   documents?: Document[];
   vendorDocuments?: (Document & { vendorName: string | null })[];
+  workspaceDocuments?: WorkspaceDocument[];
+  pinnedDocumentKeys?: string[];
+  recentDocumentEntries?: [string, string][];
   questionnaire?: Questionnaire | null;
   coupleEmail?: string | null;
   eventTasks?: EventTask[];
@@ -602,6 +610,30 @@ export function EventDetail({
               />
             </CardContent>
           </Card>
+
+          {/* Work Package D3 — FinalDetailsForm was fully built (including
+              the BA4B-certified header/waiting-state treatment) but had no
+              real route rendering it anywhere in the app; the Booking
+              workspace's Documents tab only ever showed a status badge,
+              never the couple's actual submitted answers. This is that
+              missing route — the coordinator's one real place to see and
+              edit final-details answers, using data already fetched for
+              this page (no new data fetching added). */}
+          <Card className="mt-4">
+            <CardHeader>
+              <CardTitle className="text-base">Final Details</CardTitle>
+              <CardDescription>Guest count, timing, music, and other day-of details — filled out by the couple or your team.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <FinalDetailsForm
+                eventId={event.id}
+                initial={questionnaire}
+                coupleEmail={coupleEmail}
+                coupleName={event.clientName}
+                eventName={event.name}
+              />
+            </CardContent>
+          </Card>
         </TabsContent>
 
         {/* ── Timeline ──────────────────────────────────────────────── */}
@@ -683,6 +715,9 @@ export function EventDetail({
           <BookingDocumentsTab
             entityType="event" entityId={event.id} venueId={event.venueId} documents={documents}
             vendorDocuments={vendorDocuments}
+            workspaceDocuments={workspaceDocuments}
+            pinnedDocumentKeys={pinnedDocumentKeys}
+            recentDocumentEntries={recentDocumentEntries}
             contractTemplates={contractTemplates} contracts={contracts} questionnaire={questionnaire}
             eventId={event.id} eventName={event.name} coupleEmail={coupleEmail} coupleName={event.clientName}
           />

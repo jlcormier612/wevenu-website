@@ -29,6 +29,11 @@ import { resolveCuratedColorStories, deriveSixRoles, swatchGradient, type SixRol
 import { resolveDesignState } from "@/lib/wedding-website/design-state";
 import { resolveStudioPreviewPhotos } from "@/lib/wedding-website/studio-preview-content";
 import { collectionDescriptor } from "@/lib/wedding-website/collection-descriptors";
+import {
+  bundlesDarkColorStoryOnSelect,
+  colorStoryBundlePatch,
+  resolveBundledColorStory,
+} from "@/lib/wedding-website/collection-color-bundle";
 import { PORTRAIT_FACE_FOCAL } from "@/components/wedding-website/composition-primitives";
 import type { CoupleWebsite, WebsiteContent, WebsiteSuggestions, HostedExperienceCatalog, CatalogCollection, CatalogColorStory } from "@/lib/wedding-website/types";
 import type { PortalContext } from "@/lib/portal/types";
@@ -314,13 +319,35 @@ function SetupWizard({
         // unambiguous match — no match means no save, never a guess.
         const collectionToSave = collections.find(c => c.id === collectionId);
         if (collectionToSave) {
-          await onSaveDesign({
-            theme: collectionToSave.key as CoupleWebsite["theme"], collectionId: collectionToSave.id,
-            ...(colorStoryId ? {} : (collectionToSave.colorStories[0]
-              ? { themePalette: collectionToSave.colorStories[0].name, colorStoryId: collectionToSave.colorStories[0].id }
-              : {})),
-          });
-          if (!colorStoryId && collectionToSave.colorStories[0]) setColorStoryId(collectionToSave.colorStories[0].id);
+          // Midnight identity exception (A+C): selecting Midnight rebundles a
+          // dark Color Story so Live Preview matches the nocturnal promise.
+          // Other Collections keep Color Story independence except first-time seed.
+          const bundled = resolveBundledColorStory(collectionToSave, allColorStories);
+          if (bundlesDarkColorStoryOnSelect(collectionToSave.key) && bundled) {
+            const roles = colorStoryBundlePatch(bundled);
+            await onSaveDesign({
+              theme: collectionToSave.key as CoupleWebsite["theme"],
+              collectionId: collectionToSave.id,
+              ...roles,
+            });
+            setColorStoryId(bundled.id);
+            setCustomColors({
+              colorPrimary: roles.colorPrimary,
+              colorSecondary: roles.colorSecondary,
+              colorAccent: roles.colorAccent,
+              colorNeutral: roles.colorNeutral,
+              colorBackground: roles.colorBackground,
+              colorText: roles.colorText,
+            });
+          } else {
+            await onSaveDesign({
+              theme: collectionToSave.key as CoupleWebsite["theme"], collectionId: collectionToSave.id,
+              ...(colorStoryId ? {} : (collectionToSave.colorStories[0]
+                ? { themePalette: collectionToSave.colorStories[0].name, colorStoryId: collectionToSave.colorStories[0].id }
+                : {})),
+            });
+            if (!colorStoryId && collectionToSave.colorStories[0]) setColorStoryId(collectionToSave.colorStories[0].id);
+          }
         }
       }
       if (step === "color") {
@@ -510,14 +537,39 @@ function SetupWizard({
       const isSelected = c.id === currentCollection?.id;
       return (
         <button key={c.id} type="button"
-          onClick={() => { setCollectionId(c.id); if (!colorStoryId && c.colorStories[0]) setColorStoryId(c.colorStories[0].id); }}
+          onClick={() => {
+            setCollectionId(c.id);
+            const bundled = resolveBundledColorStory(c, allColorStories);
+            if (bundlesDarkColorStoryOnSelect(c.key) && bundled) {
+              setColorStoryId(bundled.id);
+              const roles = deriveSixRoles(bundled.tokens);
+              setCustomColors({
+                colorPrimary: roles.colorPrimary,
+                colorSecondary: roles.colorSecondary,
+                colorAccent: roles.colorAccent,
+                colorNeutral: roles.colorNeutral,
+                colorBackground: roles.colorBackground,
+                colorText: roles.colorText,
+              });
+            } else if (!colorStoryId && c.colorStories[0]) {
+              setColorStoryId(c.colorStories[0].id);
+            }
+          }}
           className={`relative rounded-2xl overflow-hidden text-left bg-white border transition-all hover:scale-[1.01] ${isSelected ? "ring-2 ring-primary ring-offset-2 border-primary shadow-md" : "border-border"}`}>
           <div className="relative overflow-hidden" style={{ height: 320 }}>
             {/* Signature Color Story + Collection DNA fonts — not the
                 couple's currently selected Color/Typography — so each
                 card shows that Collection's authored identity (e.g. Midnight
                 stays dark; Linen stays quiet). Typography dimension is independent. */}
-            <CollectionPreview base={previewBase} collection={c} colorStory={c.colorStories[0]} sectionKeys={["story"]} width={226} height={340} heroFraction={0.38} />
+            <CollectionPreview
+              base={previewBase}
+              collection={c}
+              colorStory={resolveBundledColorStory(c, allColorStories) ?? c.colorStories[0]}
+              sectionKeys={["story"]}
+              width={226}
+              height={340}
+              heroFraction={0.38}
+            />
             {isSelected && (
               <div className="absolute top-2 right-2 h-5 w-5 rounded-full bg-white flex items-center justify-center shadow border border-primary/30">
                 <Check className="h-3 w-3 text-primary" strokeWidth={2.5} />
@@ -541,7 +593,7 @@ function SetupWizard({
             eyebrow="YOUR WEBSITE STYLE"
             heading="Choose your Collection"
             copy="Your Collection shapes how your whole wedding website feels — the opening moment, section composition, type hierarchy, spacing, and the way your story unfolds."
-            secondaryLine="Don't worry about colors yet. You'll make those yours next."
+            secondaryLine="Don't worry about colors or fonts yet. You'll make those yours next."
           />
           <div className="grid grid-cols-2 gap-3">
             {mainCollections.map(collectionCard)}
@@ -913,11 +965,13 @@ function CollectionCarousel({ catalog, site, coupleName, onChange }: {
     if (collections.length === 0) return;
     const next = collections[(idx + dir + collections.length) % collections.length];
     const patch: DesignPatch = { theme: next.key as CoupleWebsite["theme"], collectionId: next.id };
-    // A Collection change alone must never touch the Color Story (Studio
-    // Canonical State Pass, 2026-08-11) — only bootstrap a starting
-    // palette the couple has neither a curated selection nor custom colors
-    // at all yet.
-    if (!colorStory && !isCustomColors && next.colorStories[0]) {
+    // Midnight identity exception (A+C): always rebundle a dark Color Story.
+    // Otherwise Canonical State Pass — only bootstrap when no story/custom yet.
+    const allStories = collections.flatMap(c => c.colorStories);
+    const bundled = resolveBundledColorStory(next, allStories);
+    if (bundlesDarkColorStoryOnSelect(next.key) && bundled) {
+      Object.assign(patch, colorStoryBundlePatch(bundled));
+    } else if (!colorStory && !isCustomColors && next.colorStories[0]) {
       const roles = deriveSixRoles(next.colorStories[0].tokens);
       patch.themePalette = next.colorStories[0].name;
       patch.colorStoryId = next.colorStories[0].id;
@@ -958,7 +1012,7 @@ function CollectionCarousel({ catalog, site, coupleName, onChange }: {
         </button>
         <div className="flex-1 text-center">
           <p className="text-sm font-semibold text-heading">{current.name}</p>
-          <p className="text-[10px] text-muted-foreground leading-tight px-1 line-clamp-1">{current.description}</p>
+          <p className="text-[10px] text-muted-foreground leading-tight px-1 line-clamp-1">{collectionDescriptor(current.key, current.description)}</p>
         </div>
         <button type="button" onClick={() => go(1)} className="p-1.5 rounded-lg hover:bg-muted/60 text-muted-foreground hover:text-foreground transition-colors">
           <ChevronRight className="h-4 w-4" />
@@ -1034,13 +1088,15 @@ function SelectedDesignSummary({
 // ── Main Studio component ─────────────────────────────────────────────────────
 
 export function WebsiteStudio({
-  token, initialSite, origin, initialGuests, context,
+  token, initialSite, origin, initialGuests, context, onNavigateToGuests,
 }: {
   token: string;
   initialSite: CoupleWebsite;
   origin: string;
   initialGuests?: { id: string; firstName: string; lastName: string | null; email: string | null; rsvpStatus: string; rsvpSentAt?: string | null }[];
   context: PortalContext;
+  /** Portal shell navigates to Guests when the RSVP panel CTA is used. */
+  onNavigateToGuests?: () => void;
 }) {
   // Mirror the site + content for the live preview
   const [previewSite, setPreviewSite] = React.useState<CoupleWebsite>(initialSite);
@@ -1275,6 +1331,7 @@ export function WebsiteStudio({
               onAppearanceChanged={handleAppearanceChanged}
               focusSection={focusSection}
               hideStatusHeader={false}
+              onNavigateToGuests={onNavigateToGuests}
             />
           </div>
         </div>
@@ -1371,6 +1428,7 @@ type WebsiteEditorProps = {
   onAppearanceChanged?: (patch: DesignPatch) => void;
   focusSection?: string | null;
   hideStatusHeader?: boolean;
+  onNavigateToGuests?: () => void;
 };
 
 type WeddingWebsiteProps = {

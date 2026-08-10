@@ -14,6 +14,7 @@ import {
   Info,
   LayoutDashboard,
   LayoutGrid,
+  Library,
   ListChecks,
   type LucideIcon,
   MessageSquareDot,
@@ -85,11 +86,12 @@ export const NAV_SECTIONS: NavSection[] = [
   {
     label: "Resources/Templates",
     items: [
+      { title: "Library",     href: "/library",                    icon: Library },
       { title: "Vendors",     href: "/vendors",                    icon: Store },
       { title: "Planning",    href: "/library/playbooks",          icon: BookOpen },
       { title: "Timelines",   href: "/library/timeline-templates", icon: CalendarClock },
       { title: "Pipelines",   href: "/library/pipeline-templates", icon: GitBranch },
-      { title: "Contracts",   href: "/library/contracts",          icon: FileSignature },
+      { title: "Contract Templates", href: "/library/contracts",   icon: FileSignature },
       { title: "Packages",    href: "/library/packages",           icon: Boxes },
       { title: "Floor Plans", href: "/library/floor-plan-templates", icon: LayoutGrid },
       { title: "Inventory", href: "/library/inventory", icon: Package },
@@ -99,7 +101,7 @@ export const NAV_SECTIONS: NavSection[] = [
   {
     label: "Financials",
     items: [
-      { title: "Event Contracts", href: "/contracts", icon: FileSignature },
+      { title: "Contracts",       href: "/contracts", icon: FileSignature },
       { title: "Invoices",        href: "/invoices",  icon: FileText },
       { title: "Payments",        href: "/payments",  icon: CreditCard },
     ],

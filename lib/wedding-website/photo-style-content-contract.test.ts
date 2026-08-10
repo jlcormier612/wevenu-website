@@ -254,3 +254,43 @@ describe("Midnight Gallery Option D even-pack", () => {
     }
   });
 });
+
+describe("Film contact-sheet Option D even-pack", () => {
+  const urls = (n: number) =>
+    Array.from({ length: n }, (_, i) => `https://example.test/film-${i}.jpg`);
+
+  it("packs 7 photos as 3+3+1 with centered short final row (no empty cream track)", () => {
+    const html = renderToStaticMarkup(
+      React.createElement(GalleryGrid, { photos: urls(7), tc: themeFor("film") }),
+    );
+    assert.equal(countImgs(html), 7);
+    assert.match(html, /#f3ebe0|#e8dcc8/i);
+    // Full rows use 3 cols; orphan row uses 1 col at ~33% width centered.
+    assert.match(html, /grid-template-columns:\s*repeat\(3,\s*1fr\)/);
+    assert.match(html, /grid-template-columns:\s*repeat\(1,\s*1fr\)/);
+    assert.match(html, /width:\s*33\.33%/);
+    assert.match(html, /margin-inline:\s*auto/);
+    // Legacy fixed 3-col single grid would leave empty tracks beside rem=1.
+    assert.doesNotMatch(html, /@min-\[768px\]\/wedding:grid-cols-3/);
+  });
+
+  it("6 photos fill exact 3-col sheet rows", () => {
+    const html = renderToStaticMarkup(
+      React.createElement(GalleryGrid, { photos: urls(6), tc: themeFor("film") }),
+    );
+    assert.equal(countImgs(html), 6);
+    assert.match(html, /grid-template-columns:\s*repeat\(3,\s*1fr\)/);
+    assert.doesNotMatch(html, /grid-template-columns:\s*repeat\(1,/);
+    assert.doesNotMatch(html, /width:\s*33\.33%/);
+  });
+
+  it("9 photos fill a full 3×3 contact sheet (no short row)", () => {
+    const html = renderToStaticMarkup(
+      React.createElement(GalleryGrid, { photos: urls(9), tc: themeFor("film") }),
+    );
+    assert.equal(countImgs(html), 9);
+    assert.match(html, /grid-template-columns:\s*repeat\(3,\s*1fr\)/);
+    assert.doesNotMatch(html, /grid-template-columns:\s*repeat\(1,/);
+    assert.doesNotMatch(html, /width:\s*33\.33%/);
+  });
+});

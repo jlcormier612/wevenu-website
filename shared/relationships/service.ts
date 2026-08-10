@@ -1,6 +1,11 @@
 import { randomUUID } from "crypto";
 
-import { normalizeEmail, normalizeVenueName, splitPersonName } from "./normalize";
+import {
+  looksLikeEmailLocalPart,
+  normalizeEmail,
+  normalizeVenueName,
+  splitPersonName,
+} from "./normalize";
 import {
   deriveSalesStage,
   isCsAutoArrivalStage,
@@ -231,8 +236,14 @@ function applyOwnerVenueDefaults(
     relationship.venue.name = venueName;
   }
 
-  if (input.firstName?.trim() && !relationship.owner.firstName) {
-    relationship.owner.firstName = input.firstName.trim();
+  const incomingFirst = input.firstName?.trim() || "";
+  if (
+    incomingFirst &&
+    !looksLikeEmailLocalPart(incomingFirst) &&
+    (!relationship.owner.firstName ||
+      looksLikeEmailLocalPart(relationship.owner.firstName))
+  ) {
+    relationship.owner.firstName = incomingFirst;
   }
   if (input.lastName?.trim() && !relationship.owner.lastName) {
     relationship.owner.lastName = input.lastName.trim();
@@ -258,9 +269,9 @@ function createRelationship(input: FindOrCreateInput, now: string): Relationship
   const email = normalizeEmail(input.email);
   let firstName = input.firstName?.trim() || "";
   let lastName = input.lastName?.trim() || "";
-  if (!firstName && !lastName && email) {
-    const local = email.split("@")[0] || "Contact";
-    firstName = local;
+  // Never invent a person name from an email local-part (e.g. emma.carter).
+  if (firstName && looksLikeEmailLocalPart(firstName)) {
+    firstName = "";
   }
 
   const venueName =
@@ -637,9 +648,16 @@ function applyFieldPatch(
     }
   }
   if (patch.ownerFirstName !== undefined) {
-    relationship.owner.firstName =
-      takeStr(patch.ownerFirstName, relationship.owner.firstName) ??
-      relationship.owner.firstName;
+    const incoming = patch.ownerFirstName?.trim() || "";
+    if (incoming && !looksLikeEmailLocalPart(incoming)) {
+      if (
+        forceVenueOwner ||
+        !relationship.owner.firstName?.trim() ||
+        looksLikeEmailLocalPart(relationship.owner.firstName)
+      ) {
+        relationship.owner.firstName = incoming;
+      }
+    }
   }
   if (patch.ownerLastName !== undefined) {
     relationship.owner.lastName =

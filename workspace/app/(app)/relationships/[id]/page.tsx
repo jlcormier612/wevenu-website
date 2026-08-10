@@ -21,6 +21,7 @@ import {
 } from "@/lib/legal/product-legal";
 import { StatusMoveControl } from "@/components/relationships/status-move-control";
 import { SupportResolveControl } from "@/components/relationships/support-resolve-control";
+import { ResolvedSupportHistory } from "@/components/relationships/resolved-support-history";
 import { Panel, StatusPill } from "@/components/shared/ui";
 import { LogWalkthroughForm } from "@/components/walkthroughs/log-walkthrough-form";
 import {
@@ -136,8 +137,20 @@ export default async function RelationshipDetailPage({
   const openFeedbackItems = (relationship.openFeedbackItems ?? []).filter(
     (i) => i.status === "open",
   );
+  const feedbackItemsForUi = (relationship.openFeedbackItems ?? []).map((i) => ({
+    id: i.id,
+    type: i.type,
+    subject: i.subject,
+    body: i.body,
+    createdAt: i.createdAt,
+    status: i.status,
+    resolvedAt: i.resolvedAt,
+  }));
   const showSupportPanel =
     (relationship.supportOpenCount || 0) > 0 || openFeedbackItems.length > 0;
+  const hasResolvedFeedback = feedbackItemsForUi.some(
+    (i) => i.status === "resolved",
+  );
 
   const timeline = getTimelineForRelationship(id);
   const tasks = getTasks({ relationshipId: id });
@@ -217,18 +230,14 @@ export default async function RelationshipDetailPage({
           ownerEmail={relationship.owner.email}
           ownerFirstName={relationship.owner.firstName}
           openCount={relationship.supportOpenCount || 0}
-          items={(relationship.openFeedbackItems ?? []).map((i) => ({
-            id: i.id,
-            type: i.type,
-            subject: i.subject,
-            body: i.body,
-            createdAt: i.createdAt,
-            status: i.status,
-          }))}
+          items={feedbackItemsForUi}
           autoFocus={focusSupport}
           focusItemId={focusItemId}
           canAct={canResolveSupport}
         />
+      ) : null}
+      {hasResolvedFeedback ? (
+        <ResolvedSupportHistory items={feedbackItemsForUi} />
       ) : null}
       <LifecycleActions
         relationshipId={id}

@@ -10,6 +10,8 @@ export {
   normalizeEmail,
   normalizeVenueName,
   splitPersonName,
+  looksLikeEmailLocalPart,
+  greetingFirstName,
   mapPlanId,
   planDisplayName,
 } from "./normalize";
@@ -48,6 +50,8 @@ export {
   isInCustomerSuccessView,
   isInSalesView,
   relationshipHasOpenSupport,
+  countOpenSupportItems,
+  countOpenSupportItemsAcross,
   normalizeSalesStage,
   normalizeCustomerSuccessStage,
   deriveSalesStage,

@@ -37,10 +37,12 @@ type QData = {
 
 type State = "idle" | "submitting" | "success" | "already_submitted";
 
-function Field({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
+function Field({ label, hint, required, children }: { label: string; hint?: string; required?: boolean; children: React.ReactNode }) {
   return (
     <div className="space-y-1.5">
-      <label className="block text-sm font-medium text-gray-700">{label}</label>
+      <label className="block text-sm font-medium text-gray-700">
+        {label}{required && <span className="text-red-500"> *</span>}
+      </label>
       {hint && <p className="text-xs text-gray-500">{hint}</p>}
       {children}
     </div>
@@ -81,8 +83,21 @@ export function CoupleQuestionnaireForm({
   const [specialRequests, setSpecialRequests] = React.useState(data.special_requests ?? "");
   const [error, setError] = React.useState("");
 
+  function findMissing(): string[] {
+    const missing: string[] = [];
+    if (!guestCount.trim()) missing.push("Final guest count");
+    if (!emergencyName.trim()) missing.push("Emergency contact name");
+    if (!emergencyPhone.trim()) missing.push("Emergency contact phone");
+    return missing;
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    const missing = findMissing();
+    if (missing.length > 0) {
+      setError(`Please fill in: ${missing.join(", ")}.`);
+      return;
+    }
     setState("submitting");
     setError("");
 
@@ -154,7 +169,7 @@ export function CoupleQuestionnaireForm({
 
           {/* Guests & Meals */}
           <SectionHead>Guests & meals</SectionHead>
-          <Field label="Final guest count">
+          <Field label="Final guest count" required>
             <input type="number" min="1" value={guestCount}
               onChange={(e) => setGuestCount(e.target.value)} placeholder="175"
               className={inputCls + " w-32"} />
@@ -189,11 +204,11 @@ export function CoupleQuestionnaireForm({
           {/* Emergency contact */}
           <SectionHead>Day-of emergency contact</SectionHead>
           <div className="grid gap-4 sm:grid-cols-2">
-            <Field label="Name">
+            <Field label="Name" required>
               <input value={emergencyName} onChange={(e) => setEmergencyName(e.target.value)}
                 placeholder="Emily Carter" className={inputCls} />
             </Field>
-            <Field label="Phone">
+            <Field label="Phone" required>
               <input type="tel" value={emergencyPhone} onChange={(e) => setEmergencyPhone(e.target.value)}
                 placeholder="(615) 555-0100" className={inputCls} />
             </Field>

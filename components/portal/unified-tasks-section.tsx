@@ -15,7 +15,11 @@ import {
   SHARE_TIMELINE_ACTION_TYPE,
   shareTimelineWorkspace,
 } from "@/lib/portal/couple-share-timeline";
-import { buildUnifiedTaskList, type UnifiedTask } from "@/lib/portal/unified-tasks";
+import {
+  buildUnifiedTaskList,
+  unifiedTaskCompletionCounts,
+  type UnifiedTask,
+} from "@/lib/portal/unified-tasks";
 import type { PortalWorkspaceFocus } from "@/lib/portal/workspace-routing";
 import { partitionByCompletion } from "@/lib/tasks/group-by-completion";
 import type { PortalSection, PortalTask, PortalVendorTask } from "@/lib/portal/types";
@@ -45,11 +49,12 @@ function dueLabel(item: UnifiedTask): string {
  *   2. From your vendors — projected vendor_tasks shared via couple_visibility
  */
 export function UnifiedTasksSection({
-  token, initialTasks, initialVendorTasks = [], venueName, onNavigate,
+  token, initialTasks, initialVendorTasks = [], initialTimelineHasUnpublishedChanges = false, venueName, onNavigate,
 }: {
   token: string;
   initialTasks: PortalTask[];
   initialVendorTasks?: PortalVendorTask[];
+  initialTimelineHasUnpublishedChanges?: boolean;
   venueName: string;
   onNavigate: (section: PortalSection, focus?: PortalWorkspaceFocus | null) => void;
 }) {
@@ -59,7 +64,7 @@ export function UnifiedTasksSection({
   const [paymentSchedules, setPaymentSchedules] = React.useState<{ title: string; lineItems: { id: string; label: string; amount: number; dueDate: string | null; status: string }[] }[]>([]);
   const [questionnaire, setQuestionnaire] = React.useState<{ status: string } | null>(null);
   const [documents, setDocuments] = React.useState<{ id: string; docType: string; name: string; status: string | null; signToken?: string | null }[]>([]);
-  const [timelineUnpublished, setTimelineUnpublished] = React.useState(false);
+  const [timelineUnpublished, setTimelineUnpublished] = React.useState(initialTimelineHasUnpublishedChanges);
   const [loaded, setLoaded] = React.useState(false);
   const [completing, setCompleting] = React.useState<string | null>(null);
 
@@ -73,7 +78,9 @@ export function UnifiedTasksSection({
       fetch(`/api/portal/payments?token=${token}`).then((r) => r.json()).catch(() => ({ schedules: [] })),
       fetch(`/api/portal/questionnaire?token=${token}`).then((r) => r.json()).catch(() => ({ questionnaire: null })),
       fetch(`/api/portal/documents?token=${token}`).then((r) => r.json()).catch(() => ({ documents: [] })),
-      fetch(`/api/portal/timeline?token=${token}`).then((r) => r.json()).catch(() => ({ hasUnpublishedChanges: false })),
+      fetch(`/api/portal/timeline?token=${token}`).then((r) => r.json()).catch(() => ({
+        hasUnpublishedChanges: initialTimelineHasUnpublishedChanges,
+      })),
     ]);
     setVenueTasks(tasksRes.tasks ?? []);
     setVendorTasks(tasksRes.vendorTasks ?? []);
@@ -83,7 +90,7 @@ export function UnifiedTasksSection({
     setDocuments(documentsRes.documents ?? []);
     setTimelineUnpublished(!!timelineRes.hasUnpublishedChanges);
     setLoaded(true);
-  }, [token, initialTasks, initialVendorTasks]);
+  }, [token, initialTasks, initialVendorTasks, initialTimelineHasUnpublishedChanges]);
 
   React.useEffect(() => { void load(); }, [load]);
 
@@ -130,13 +137,12 @@ export function UnifiedTasksSection({
     }
   }
 
-  const doneVenueTasks = venueTasks.filter((t) => t.status === "complete").length;
-  const totalVenueTasks = venueTasks.length;
-
   const allItems = buildUnifiedTaskList({
     venueTasks, requests, paymentSchedules, questionnaire, documents,
     timelineHasUnpublishedChanges: timelineUnpublished,
   });
+  // Caption must match cards above COMPLETED — not raw venue_tasks alone.
+  const { done: doneVenueTasks, total: totalVenueTasks } = unifiedTaskCompletionCounts(allItems);
 
   const [filter, setFilter] = React.useState<"all" | "requests">("all");
   const requestCount = allItems.filter((i) => i.kind === "request").length;

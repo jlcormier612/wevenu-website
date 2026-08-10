@@ -16,9 +16,16 @@ export const STUDIO_PREVIEW_VENUE = "Sweet Daisy Barn & Farm";
  * Content count is a content contract — not a style contract.
  * Live/published GalleryGrid still renders every photo the couple uploaded;
  * Studio specimens normalize to this count so all 10 styles art-direct the
- * same set.
+ * same set (6 fills Film’s 3-col sheet exactly — no ghost cream tracks).
  */
 export const PHOTO_STYLE_CANONICAL_COUNT = 6;
+
+/**
+ * Live Preview may show up to this many distinct couple photos when available
+ * so Film’s densest 3×3 contact sheet can fill when sources allow. Layout
+ * packing still handles any remainder without empty cells.
+ */
+export const PHOTO_STYLE_PREVIEW_MAX_COUNT = 9;
 
 /** Short enough for quote / minimal / EditorialOpening to diverge in a card. */
 export const STUDIO_PREVIEW_STORY_TEXT =
@@ -71,7 +78,8 @@ export function mergeStudioPreviewContent(content?: WebsiteContent | null): Webs
 /**
  * Distinct photo URLs for Photo Style GalleryGrid previews.
  * Prefer couple gallery → cover → engagement, then representative fillers.
- * Defaults to the canonical 6-photo specimen contract.
+ * Pads to the canonical 6-photo specimen when sources are thin; when the
+ * couple has more, includes up to PHOTO_STYLE_PREVIEW_MAX_COUNT (Film 3×3).
  */
 export function resolveStudioPreviewPhotos(opts: {
   galleryPhotos?: string[] | null;
@@ -81,7 +89,7 @@ export function resolveStudioPreviewPhotos(opts: {
   maxCount?: number;
 } = {}): string[] {
   const minCount = opts.minCount ?? PHOTO_STYLE_CANONICAL_COUNT;
-  const maxCount = opts.maxCount ?? PHOTO_STYLE_CANONICAL_COUNT;
+  const maxCount = opts.maxCount ?? PHOTO_STYLE_PREVIEW_MAX_COUNT;
   const seen = new Set<string>();
   const out: string[] = [];
 

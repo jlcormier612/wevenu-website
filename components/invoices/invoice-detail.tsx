@@ -4,13 +4,15 @@ import * as React from "react";
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Mail, Printer, Receipt } from "lucide-react";
+import { Mail, Printer, Receipt } from "lucide-react";
 import { toast } from "sonner";
 
 import { sendInvoiceEmailAction, updateInvoiceStatusAction } from "@/app/(app)/invoices/actions";
 import { EventOrderDriftBanner } from "@/components/invoices/event-order-drift-banner";
 import { InvoiceLineItemsEditor } from "@/components/invoices/invoice-line-items-editor";
 import { InvoiceStatusBadge } from "@/components/invoices/invoice-status-badge";
+import { BusinessAssetActionRow, BusinessAssetHeader } from "@/components/business-assets/asset-header";
+import type { WaitingOn } from "@/components/business-assets/waiting-state";
 import { QuickBooksSyncStatusBadge } from "@/components/quickbooks/sync-status-badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -26,6 +28,12 @@ const STATUS_TRANSITIONS: Record<InvoiceStatus, { next: InvoiceStatus; label: st
   sent:  { next: "paid",  label: "Mark as Paid" },
   paid:  null,
   void:  null,
+};
+
+// Same "whose turn" question Contracts/Questionnaires/Messaging already
+// answer, generalized here (BA4, Step 1C).
+const INVOICE_WAITING_ON: Record<InvoiceStatus, WaitingOn> = {
+  draft: "venue", sent: "client", paid: "completed", void: "none",
 };
 
 export function InvoiceDetail({
@@ -47,21 +55,30 @@ export function InvoiceDetail({
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-start justify-between gap-4">
+      <BusinessAssetHeader
+        backHref="/invoices"
+        backLabel="Invoices"
+        whatIsThis="Invoice"
+        title={invoice.invoiceNumber}
+        status={<>
+          <InvoiceStatusBadge status={status} />
+          <QuickBooksSyncStatusBadge status={invoice.quickbooksSyncStatus} entityType="invoice" entityId={invoice.id} />
+        </>}
+        waitingOn={INVOICE_WAITING_ON[status]}
+        lastUpdated={new Date(invoice.updatedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+        relationship={invoice.clientName ? { name: invoice.clientName, href: `/clients/${invoice.clientId}` } : null}
+        primaryAction={transition && (
+          <Button type="button" size="sm" onClick={() => handleStatusChange(transition.next)} disabled={pending}>
+            {pending ? "Updating…" : transition.label}
+          </Button>
+        )}
+      />
+
+      {(invoice.eventDate || invoice.eventOrderRevisionAtFreeze != null || invoice.amendsInvoiceId || invoice.amendedByInvoiceId) && (
         <div className="space-y-1">
-          <button type="button" onClick={() => router.back()} className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors mb-2">
-            <ArrowLeft className="h-3.5 w-3.5" /> Invoices
-          </button>
-          <div className="flex items-center gap-3 flex-wrap">
-            <h1 className="text-2xl font-heading font-semibold text-heading">{invoice.invoiceNumber}</h1>
-            <InvoiceStatusBadge status={status} />
-            <QuickBooksSyncStatusBadge status={invoice.quickbooksSyncStatus} entityType="invoice" entityId={invoice.id} />
-          </div>
-          {invoice.clientName && (
-            <p className="text-sm text-muted-foreground">
-              {invoice.clientName}
-              {invoice.eventDate && ` · ${new Date(invoice.eventDate + "T12:00:00").toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}`}
+          {invoice.eventDate && (
+            <p className="text-xs text-muted-foreground">
+              {new Date(invoice.eventDate + "T12:00:00").toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}
             </p>
           )}
           {invoice.eventOrderRevisionAtFreeze != null && (
@@ -79,10 +96,10 @@ export function InvoiceDetail({
             </p>
           )}
         </div>
-        <div className="flex items-center gap-2 shrink-0">
-          <Button type="button" variant="outline" size="sm" render={<Link href={`/invoices/${invoice.id}/print`} target="_blank" />}>
-            <Printer className="mr-1 h-3.5 w-3.5" /> Print
-          </Button>
+      )}
+
+      <BusinessAssetActionRow
+        secondary={<>
           {invoice.clientId && status !== "void" && (
             <Button type="button" variant="outline" size="sm" disabled={emailPending}
               title={emailConfigured ? undefined : "No email provider is connected — this will open your own email client instead of sending in-app."}
@@ -108,13 +125,13 @@ export function InvoiceDetail({
               Void
             </Button>
           )}
-          {transition && (
-            <Button type="button" size="sm" onClick={() => handleStatusChange(transition.next)} disabled={pending}>
-              {pending ? "Updating…" : transition.label}
-            </Button>
-          )}
-        </div>
-      </div>
+        </>}
+        printOrDownload={
+          <Button type="button" variant="outline" size="sm" render={<Link href={`/invoices/${invoice.id}/print`} target="_blank" />}>
+            <Printer className="mr-1 h-3.5 w-3.5" /> Print
+          </Button>
+        }
+      />
 
       {eventOrderDrift && (
         <EventOrderDriftBanner

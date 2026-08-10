@@ -213,7 +213,21 @@ export async function insertLineItem(client: DbClient, venueId: string, schedule
   return mapItem(data);
 }
 
-export async function updateLineItem(client: DbClient, venueId: string, itemId: string, input: LineItemInput): Promise<void> {
+/**
+ * Work Package D5 — closes the exact gap named in the D5 research pass:
+ * "updateLineItem has no status guard at all... a paid line item's label/
+ * amount/due_date can be updated server-side unguarded." Mirrors
+ * deleteLineItem's own guard immediately below (same table, same terminal
+ * states) rather than inventing a new pattern — a payment that already
+ * happened, or was already refunded, is historical record, not an editable
+ * draft. Cancelled items stay editable (never money-moved, same as pending).
+ */
+export async function updateLineItem(client: DbClient, venueId: string, itemId: string, input: LineItemInput): Promise<{ ok: true } | { ok: false; message: string }> {
+  const { data: item } = await client.from("payment_line_items")
+    .select("status").eq("id", itemId).eq("venue_id", venueId).maybeSingle<{ status: string }>();
+  if (item?.status && ["paid", "partially_refunded", "refunded"].includes(item.status)) {
+    return { ok: false, message: "This payment has already been collected — its amount and due date are historical record and can't be edited." };
+  }
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const patch: Record<string, unknown> = {
     label: input.label.trim(),
@@ -226,6 +240,7 @@ export async function updateLineItem(client: DbClient, venueId: string, itemId: 
   const { error } = await (client.from("payment_line_items") as any)
     .update(patch).eq("id", itemId).eq("venue_id", venueId);
   if (error) throw error;
+  return { ok: true };
 }
 
 export async function markItemPaid(

@@ -161,6 +161,25 @@ export function ownershipLabel(ownership: UnifiedTaskOwnership): string {
 }
 
 /**
+ * Progress for the couple Tasks "From your venue" band — same set as the
+ * open cards above COMPLETED + completed rows below. Derived payment /
+ * timeline / request / contract rows only appear while open, so they
+ * grow the denominator until resolved (honest vs a venue_task-only X/Y).
+ */
+export function unifiedTaskCompletionCounts(items: readonly UnifiedTask[]): {
+  done: number;
+  total: number;
+  open: number;
+} {
+  let done = 0;
+  for (const item of items) {
+    if (item.completed) done += 1;
+  }
+  const total = items.length;
+  return { done, total, open: total - done };
+}
+
+/**
  * Financial checklist mirrors that compete with ledger Pay now attention.
  * payment_received (any payment) and final_payment_obligation_paid (typed final).
  * Never title / category matching.

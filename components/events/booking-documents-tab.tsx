@@ -4,18 +4,19 @@ import * as React from "react";
 
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { FileText, Loader2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { sendContractAction } from "@/app/(app)/contracts/actions";
 import { sendQuestionnaireAction } from "@/app/(app)/events/[id]/questionnaire-actions";
 import { ContractStatusBadge } from "@/components/contracts/contract-status-badge";
-import { DocumentsSection } from "@/components/documents/documents-section";
+import { DocumentWorkspace } from "@/components/document-workspace/document-workspace";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import type { Contract, ContractTemplate } from "@/lib/contracts/types";
 import type { Document, DocumentEntityType } from "@/lib/documents/types";
+import type { WorkspaceDocument } from "@/lib/document-workspace/types";
 import type { Questionnaire } from "@/lib/events/questionnaire";
 
 function formatSentDate(iso: string | null): string {
@@ -153,8 +154,8 @@ function SentRequestedSection({ contracts, questionnaire }: { contracts: Contrac
 // ---- Main -----------------------------------------------------------------------
 
 export function BookingDocumentsTab({
-  entityType, entityId, venueId, documents,
-  vendorDocuments = [],
+  entityType, entityId, venueId,
+  workspaceDocuments = [], pinnedDocumentKeys = [], recentDocumentEntries = [],
   contractTemplates, contracts, questionnaire,
   eventId, eventName, coupleEmail, coupleName,
 }: {
@@ -163,6 +164,9 @@ export function BookingDocumentsTab({
   venueId: string;
   documents: Document[];
   vendorDocuments?: (Document & { vendorName: string | null })[];
+  workspaceDocuments?: WorkspaceDocument[];
+  pinnedDocumentKeys?: string[];
+  recentDocumentEntries?: [string, string][];
   contractTemplates: ContractTemplate[];
   contracts: Contract[];
   questionnaire: Questionnaire | null;
@@ -171,8 +175,6 @@ export function BookingDocumentsTab({
   coupleEmail: string | null;
   coupleName: string | null;
 }) {
-  const venueOwned = documents.filter((d) => d.uploadedByType !== "vendor");
-
   return (
     <div className="space-y-4">
       <TemplatesSection
@@ -180,52 +182,14 @@ export function BookingDocumentsTab({
         eventId={eventId} coupleEmail={coupleEmail} coupleName={coupleName} eventName={eventName}
       />
       <SentRequestedSection contracts={contracts} questionnaire={questionnaire} />
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Uploaded</CardTitle>
-          <CardDescription>
-            Files uploaded by your venue or the client. Use the people icon to share with vendors.
-            Anything a Planning task links to already appears here — it&apos;s the same file, not a copy.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <DocumentsSection entityType={entityType} entityId={entityId} venueId={venueId} initialDocuments={venueOwned} />
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">From vendors</CardTitle>
-          <CardDescription>COIs, contracts, and other files vendors shared onto this event.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          {vendorDocuments.length === 0 ? (
-            <p className="py-4 text-center text-sm text-muted-foreground">No vendor documents yet.</p>
-          ) : (
-            <div className="divide-y divide-border rounded-sm border border-border">
-              {vendorDocuments.map((d) => (
-                <a
-                  key={d.id}
-                  href={d.storageUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-3 px-4 py-3 hover:bg-muted/40 transition-colors"
-                >
-                  <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-medium text-foreground">{d.name}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {d.vendorName ?? "Vendor"}
-                      {d.notes ? ` · ${d.notes}` : ""}
-                    </p>
-                  </div>
-                  <Badge variant="outline" className="text-xs shrink-0">{d.category}</Badge>
-                </a>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+      <DocumentWorkspace
+        title="Documents"
+        description="Every file for this booking — uploaded by your venue, the client, or shared by vendors — in one place. Anything a Planning task links to already appears here, the same file, not a copy."
+        documents={workspaceDocuments}
+        initialPinnedKeys={pinnedDocumentKeys}
+        initialRecentEntries={recentDocumentEntries}
+        uploadTarget={{ entityType, entityId, venueId }}
+      />
     </div>
   );
 }

@@ -142,12 +142,43 @@ export async function sendQuestionnaireToCouple(
   return { ok: true, formUrl };
 }
 
+/**
+ * Work Package D5 — the minimum "truthful completion" bar (D3 finding:
+ * "The Questionnaire form has zero required-field validation... A completely
+ * empty questionnaire can be submitted and marked complete"). There's no
+ * per-venue question configuration to defer to (BA1/D3 confirmed: one fixed
+ * global schema, no template layer) — so this is grounded in what the venue
+ * actually can't run the event without, not an invented global opinion:
+ * final guest count (catering/seating) and a day-of emergency contact
+ * (safety). Everything else on this form stays genuinely optional. Enforced
+ * at both real submission entry points — this function (coordinator path)
+ * and submit_questionnaire_as_couple() (couple path, see migration
+ * 20261247000000) — neither can be bypassed by the other.
+ */
+function findMissingRequiredFields(fields: {
+  finalGuestCount?: number | null;
+  emergencyContactName?: string | null;
+  emergencyContactPhone?: string | null;
+}): string[] {
+  const missing: string[] = [];
+  if (fields.finalGuestCount == null) missing.push("Final guest count");
+  if (!fields.emergencyContactName?.trim()) missing.push("Emergency contact name");
+  if (!fields.emergencyContactPhone?.trim()) missing.push("Emergency contact phone");
+  return missing;
+}
+
 export async function saveQuestionnaire(
   eventId: string,
   fields: Partial<Omit<Questionnaire, "id" | "venueId" | "eventId" | "status" | "submittedAt" | "createdAt" | "updatedAt">>,
   submit = false,
 ): Promise<{ ok: boolean; message?: string }> {
   if (!isSupabaseConfigured) return { ok: false, message: "Backend not configured." };
+  if (submit) {
+    const missing = findMissingRequiredFields(fields);
+    if (missing.length > 0) {
+      return { ok: false, message: `Add these before submitting: ${missing.join(", ")}.` };
+    }
+  }
   const venue = await getCurrentVenue();
   if (!venue) return { ok: false, message: "No venue found." };
   const supabase = await createClient();

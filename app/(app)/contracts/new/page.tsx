@@ -9,8 +9,10 @@ import { DEFAULT_TEMPLATE_CONTENT, DEFAULT_TEMPLATE_NAME, DEFAULT_TEMPLATE_DESCR
 
 export const metadata: Metadata = { title: "New Contract" };
 
-export default async function NewContractPage() {
-  const [templates, clients] = await Promise.all([getTemplates(), getClients()]);
+type Props = { searchParams: Promise<{ templateId?: string }> };
+
+export default async function NewContractPage({ searchParams }: Props) {
+  const [{ templateId }, templates, clients] = await Promise.all([searchParams, getTemplates(), getClients()]);
 
   // If venue has no templates yet, seed the default for them
   const displayTemplates = templates.length > 0
@@ -32,7 +34,7 @@ export default async function NewContractPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <NewContractForm templates={displayTemplates} clients={clients} />
+          <NewContractForm templates={displayTemplates} clients={clients} initialTemplateId={templateId} />
         </CardContent>
       </Card>
     </div>

@@ -5,6 +5,7 @@ export type SupportResolveItem = {
   body?: string;
   createdAt: string;
   status: string;
+  resolvedAt?: string | null;
 };
 
 const TYPE_LABELS: Record<string, string> = {

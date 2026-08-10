@@ -11,7 +11,10 @@ import {
   resolveTheme,
   storyBodyAlignsLeft,
 } from "@/components/wedding-website/wedding-website";
-import { resolveCollectionPreviewTheme } from "@/lib/wedding-website/collection-preview-theme";
+import {
+  COLLECTION_PREVIEW_NEUTRAL_PHOTO,
+  resolveCollectionPreviewTheme,
+} from "@/lib/wedding-website/collection-preview-theme";
 import { buildPreviewSite } from "@/lib/wedding-website/preview-site";
 import type { CatalogCollection, CollectionLayoutConfig, PublicWebsite } from "@/lib/wedding-website/types";
 
@@ -209,6 +212,80 @@ describe("resolveCollectionPreviewTheme", () => {
     assert.equal(preview.heroInsetPadding, "1.75rem");
     assert.equal(preview.heroMinHeight, "190px");
     assert.equal(preview.heroMaxHeight, "190px");
+  });
+
+  it("never keeps Collection / Photo Style photoFilter mood on picker cards", () => {
+    // Linen legacy DNA + Film-like sepia must not teach "Collection = B&W".
+    const linen = resolveCollectionPreviewTheme(
+      {
+        heroType: "invitation",
+        photoFilter: "grayscale(1) contrast(0.88) brightness(1.08)",
+      },
+      "160px",
+    );
+    assert.equal(linen.photoFilter, "none");
+
+    const midnight = resolveCollectionPreviewTheme(
+      {
+        heroType: "full-bleed",
+        heroAspectCap: "2.2 / 1",
+        photoFilter: "grayscale(0.5) contrast(1.1) brightness(0.9)",
+      },
+      "200px",
+    );
+    assert.equal(midnight.photoFilter, "none");
+    assert.equal(midnight.heroAspectCap, "2.2 / 1");
+
+    const ordinary = resolveCollectionPreviewTheme(
+      {
+        heroType: "full-bleed",
+        photoFilter: "sepia(0.28) saturate(0.78)",
+      },
+      "180px",
+    );
+    assert.equal(ordinary.photoFilter, "none");
+  });
+
+  it("neutralizes divergent Color Story photo overlay washes on picker cards", () => {
+    // Same cover photo must not read Midnight-darkened vs Rosé-warm vs
+    // Estate-cool — Collections do not own photo color/shade.
+    const midnight = resolveCollectionPreviewTheme(
+      {
+        heroType: "full-bleed",
+        heroAspectCap: "2.2 / 1",
+        photoFilter: "brightness(0.68) contrast(1.32)",
+        heroOverlayColor: "#000000",
+        heroOverlayOpacity: 0.55,
+      },
+      "200px",
+    );
+    const rose = resolveCollectionPreviewTheme(
+      {
+        heroType: "full-bleed",
+        photoFilter: "sepia(0.28) saturate(0.78)",
+        heroOverlayColor: "#2A1028",
+        heroOverlayOpacity: 0.3,
+      },
+      "180px",
+    );
+    const estate = resolveCollectionPreviewTheme(
+      {
+        heroType: "inset",
+        photoFilter: "saturate(0.82)",
+        heroOverlayColor: "#0A1A28",
+        heroOverlayOpacity: 0.4,
+      },
+      "190px",
+    );
+
+    for (const preview of [midnight, rose, estate]) {
+      assert.equal(preview.photoFilter, COLLECTION_PREVIEW_NEUTRAL_PHOTO.photoFilter);
+      assert.equal(preview.heroOverlayColor, COLLECTION_PREVIEW_NEUTRAL_PHOTO.heroOverlayColor);
+      assert.equal(preview.heroOverlayOpacity, COLLECTION_PREVIEW_NEUTRAL_PHOTO.heroOverlayOpacity);
+    }
+    // Geometry DNA preserved while tint is unified.
+    assert.equal(midnight.heroAspectCap, "2.2 / 1");
+    assert.equal(estate.heroType, "inset");
   });
 });
 

@@ -61,9 +61,14 @@ function ScaledThumbnail({ width, height, naturalWidth, children }: {
 // fit the caller's box via ScaledThumbnail.
 //
 // Principle: "Show me the website." — composition, personality, type, story
-// treatment. Never includes Gallery (that is Photo Style's job).
+// treatment. Never includes Gallery (that is Photo Style's job). Never paints
+// a Photo Style filter or Color-Story tinted photo wash on the hero — legacy
+// Collection photoFilter values (e.g. Linen grayscale) and palette
+// heroOverlayColor/Opacity washes would invent a photo-grade mood that Live
+// Preview / Photo Style contradict; resolveCollectionPreviewTheme forces a
+// shared natural photo treatment.
 export function CollectionPreview({
-  base, content, collection, colorStory, typography, photoStyle,
+  base, content, collection, colorStory, typography,
   sectionKeys = [], width, height, naturalWidth = 360, heroFraction = 1,
   /** When true (default), inject Emma & Jordan story/title if missing — preview only. */
   useRepresentativeContent = true,
@@ -73,6 +78,7 @@ export function CollectionPreview({
   collection: CatalogCollection;
   colorStory?: CatalogColorStory;
   typography?: CatalogTypographyStyle;
+  /** Ignored — Collection cards never apply Photo Style filters. Kept for call-site compatibility. */
   photoStyle?: CatalogPhotoStyle;
   sectionKeys?: string[];
   width: number;
@@ -87,16 +93,20 @@ export function CollectionPreview({
   const previewContent = useRepresentativeContent
     ? mergeStudioPreviewContent(rawContent)
     : (rawContent ?? {});
+  // Drop any leaked base.photoStyleTokens so resolveTheme cannot paint the
+  // couple's current Photo Style (or Collection grayscale fallback) onto a
+  // Collection DNA card. Photo Style has its own picker (PhotoStylePreview).
+  const collectionBase = base
+    ? { ...base, photoStyleTokens: null }
+    : undefined;
   const site = buildPreviewSite({
-    base, content: previewContent, collection, colorStory, typography, photoStyle,
+    base: collectionBase, content: previewContent, collection, colorStory, typography,
     disableAnimation: true,
   });
   const naturalHeight = height / (width / naturalWidth);
   const heroPx = `${Math.round(naturalHeight * heroFraction)}px`;
   const resolved = resolveTheme(site);
-  // Preview framing only — never invent a second renderer. Preserve
-  // Collection-defining geometry (aspect-cap / invitation suite); see
-  // resolveCollectionPreviewTheme.
+  // Preview framing + Photo Style honesty — see resolveCollectionPreviewTheme.
   const tc: ThemeConfig = resolveCollectionPreviewTheme(resolved, heroPx);
   useThemeFonts(tc.fontUrl);
   const { renderSection } = createSectionRenderer({

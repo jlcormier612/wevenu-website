@@ -15,13 +15,18 @@ import { ArrowDown, ArrowUp, Check, ChevronDown, ChevronUp, Copy, ExternalLink, 
 import { toast } from "sonner";
 
 import { ColorPickerTrigger } from "@/components/ui/color-picker";
-import type { CoupleWebsite, WebsiteContent, WebsiteSuggestions, HostedExperienceCatalog, PublicWebsite } from "@/lib/wedding-website/types";
+import type { CoupleWebsite, WebsiteContent, WebsiteSuggestions, HostedExperienceCatalog, PublicWebsite, CatalogColorStory } from "@/lib/wedding-website/types";
 import { celebrateLuv } from "@/lib/luv/celebrate";
 import { coupleCelebrationMessage } from "@/lib/luv/celebrations";
 import { resolveDesignState } from "@/lib/wedding-website/design-state";
-import { deriveSixRoles, swatchGradient, type SixRoleColors } from "@/lib/wedding-website/curated-color-stories";
+import { deriveSixRoles, resolveCuratedColorStories, swatchGradient, type SixRoleColors } from "@/lib/wedding-website/curated-color-stories";
 import { resolveStudioPreviewPhotos } from "@/lib/wedding-website/studio-preview-content";
 import { collectionDescriptor } from "@/lib/wedding-website/collection-descriptors";
+import {
+  bundlesDarkColorStoryOnSelect,
+  colorStoryBundlePatch,
+  resolveBundledColorStory,
+} from "@/lib/wedding-website/collection-color-bundle";
 import { CollectionPreview, ColorStoryPreview, TypographyPreview, PhotoStylePreview } from "@/components/portal/collection-preview";
 
 // ── Theme Studio (2026-07-24) ─────────────────────────────────────────────────
@@ -972,6 +977,96 @@ function FaqEditor({ content, onSave, onCancel }: { content: WebsiteContent; onS
   );
 }
 
+// ── RSVP section (synced from Guest List — not WebsiteContent) ───────────────
+// Kept out of ALL_SECTIONS so completion % only counts fillable content sections.
+// Still opens via Live Preview Edit (focusSection === "rsvp") like other accordions.
+
+function RsvpSectionEditor({
+  websiteUrl, onNavigateToGuests,
+}: {
+  websiteUrl: string | null;
+  onNavigateToGuests?: () => void;
+}) {
+  return (
+    <div className="space-y-3">
+      <span className="inline-flex text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-primary/10 text-primary">
+        Synced from Guest List
+      </span>
+      <p className="text-xs text-muted-foreground leading-relaxed">
+        RSVP is connected to your guest list — not freeform website copy. Manage guests, invitations, and RSVP questions in Guests.
+      </p>
+      {onNavigateToGuests && (
+        <button
+          type="button"
+          onClick={onNavigateToGuests}
+          className="w-full rounded-xl py-2.5 text-sm font-semibold bg-primary text-primary-foreground hover:opacity-90 transition-opacity"
+        >
+          Manage guests & RSVP questions
+        </button>
+      )}
+      {websiteUrl && (
+        <button
+          type="button"
+          onClick={() => {
+            navigator.clipboard.writeText(`${websiteUrl}#rsvp`);
+            toast.success("RSVP link copied!");
+          }}
+          className="w-full flex items-center justify-center gap-1.5 rounded-xl border border-border py-2.5 text-xs font-medium hover:bg-muted/40 transition-colors"
+        >
+          <Copy className="h-3.5 w-3.5" /> Copy RSVP link
+        </button>
+      )}
+    </div>
+  );
+}
+
+function RsvpSectionAccordion({
+  forceOpen, websiteUrl, onNavigateToGuests,
+}: {
+  forceOpen?: boolean;
+  websiteUrl: string | null;
+  onNavigateToGuests?: () => void;
+}) {
+  const [open, setOpen] = React.useState(false);
+  const accordionRef = React.useRef<HTMLDivElement>(null);
+
+  React.useEffect(() => {
+    if (forceOpen && !open) {
+      setOpen(true);
+      setTimeout(() => accordionRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" }), 50);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [forceOpen]);
+
+  return (
+    <div ref={accordionRef} className={`rounded-2xl border transition-colors ${open ? "border-ring bg-card" : "border-border bg-card"}`}>
+      <button type="button" onClick={() => setOpen(o => !o)}
+        className="w-full flex items-center gap-3 px-4 py-3.5 text-left min-w-0">
+        <span className="text-lg shrink-0">💗</span>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2">
+            <p className="text-sm font-medium text-heading">RSVP</p>
+            <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-primary/10 text-primary">Synced</span>
+          </div>
+          {!open && (
+            <p className="text-[11px] text-muted-foreground truncate mt-0.5">Managed from your guest list</p>
+          )}
+        </div>
+        {open ? <ChevronUp className="h-4 w-4 text-muted-foreground shrink-0" /> : <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" />}
+      </button>
+
+      {open && (
+        <div className="px-4 pb-4 border-t border-border/50 pt-4">
+          <p className="text-xs text-muted-foreground mb-3">
+            Guests respond here using the code from their invitation.
+          </p>
+          <RsvpSectionEditor websiteUrl={websiteUrl} onNavigateToGuests={onNavigateToGuests} />
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Section accordion ─────────────────────────────────────────────────────────
 
 function SectionAccordion({
@@ -1180,9 +1275,10 @@ function DimensionCard({ eyebrow, title, subtitle, swatch, isOpen, onToggle, chi
 }
 
 // The Theme Studio — four fully independent pickers, catalog-driven end to
-// end (Part 1–4): Layout Collection, Color Story (curated quick-start +
-// full custom 6-color picker, reusing the exact venue ColorPickerTrigger),
-// Typography, Photo Style. Choosing one never changes another.
+// end (Part 1–4): Layout Collection, Color Story (Collection Quick Start +
+// curated inspiration grid + full custom 6-color picker, reusing the exact
+// venue ColorPickerTrigger), Typography, Photo Style. Choosing one never
+// changes another.
 function ThemeStudio({ site, onUpdate }: { site: CoupleWebsite; onUpdate: (patch: ThemePatch) => void }) {
   const [open, setOpen] = React.useState<"collection" | "color" | "typography" | "photo" | null>(null);
   const [catalog, setCatalog] = React.useState<HostedExperienceCatalog | null>(null);
@@ -1224,6 +1320,10 @@ function ThemeStudio({ site, onUpdate }: { site: CoupleWebsite; onUpdate: (patch
   const collections = catalog.collections;
   const currentCollection = collections.find(c => c.id === site.collectionId)
     ?? collections.find(c => c.key === (site.theme ?? "classic")) ?? collections[0];
+  // Same collection-independent curated set the Setup Color step shows
+  // ("Need a little inspiration?") — Theme Studio Color panel must offer
+  // these too, not only the current Collection's 2–3 Quick Start natives.
+  const curatedColorStories = resolveCuratedColorStories(collections);
   // Studio Canonical State Pass (2026-08-11) — one resolver, not a local
   // re-derivation (see lib/wedding-website/design-state.ts for why the old
   // `currentCollection?.colorStories.find(...)` scoping and raw-hex-
@@ -1259,13 +1359,25 @@ function ThemeStudio({ site, onUpdate }: { site: CoupleWebsite; onUpdate: (patch
     return { clearCustomColors: true, colorPrimary: null, colorSecondary: null, colorAccent: null, colorNeutral: null, colorBackground: null, colorText: null };
   }
 
+  // Studio Canonical State — set BOTH colorStoryId (so summaries can name
+  // this story after reload) AND the six raw hex columns (the renderer
+  // reads those directly). Same write path as Setup Color step + Quick Start.
+  function applyColorStory(cs: CatalogColorStory) {
+    const roles = deriveSixRoles(cs.tokens);
+    onUpdate({
+      colorStoryId: cs.id, themePalette: cs.name, clearCustomColors: false,
+      colorPrimary: roles.colorPrimary, colorSecondary: roles.colorSecondary, colorAccent: roles.colorAccent,
+      colorNeutral: roles.colorNeutral, colorBackground: roles.colorBackground, colorText: roles.colorText,
+    });
+  }
+
   return (
     <div className="space-y-3">
 
       {/* ── Part 1: Layout Collection ── */}
       <DimensionCard
         eyebrow="Layout Collection" title={currentCollection?.name ?? "Choose a collection"}
-        subtitle={currentCollection?.description}
+        subtitle={currentCollection ? collectionDescriptor(currentCollection.key, currentCollection.description) : undefined}
         swatch={
           <div key={`${currentCollection?.id}-${displayRoles.colorPrimary}-${currentTypography?.id}`}
             className="h-14 w-20 rounded-xl shrink-0 overflow-hidden animate-in fade-in duration-300">
@@ -1285,11 +1397,16 @@ function ThemeStudio({ site, onUpdate }: { site: CoupleWebsite; onUpdate: (patch
             return (
               <button key={c.id} type="button"
                 onClick={() => {
-                  // First-time pick of a collection also seeds its own
-                  // default Color Story / Typography as a starting point —
-                  // never overwrites a couple's own choice once one exists.
+                  // Midnight identity exception (A+C): always rebundle a dark
+                  // Color Story so the nocturnal promise lands in Live Preview.
+                  // Other Collections: first-time seed only — never overwrite
+                  // an existing Color Story / custom palette (Canonical State).
                   const patch: ThemePatch = { theme: c.key as CoupleWebsite["theme"], collectionId: c.id };
-                  if (!site.colorStoryId && !hasCustomColors && c.colorStories[0]) {
+                  const allStories = collections.flatMap(col => col.colorStories);
+                  const bundled = resolveBundledColorStory(c, allStories);
+                  if (bundlesDarkColorStoryOnSelect(c.key) && bundled) {
+                    Object.assign(patch, colorStoryBundlePatch(bundled));
+                  } else if (!site.colorStoryId && !hasCustomColors && c.colorStories[0]) {
                     const roles = deriveSixRoles(c.colorStories[0].tokens);
                     patch.themePalette = c.colorStories[0].name;
                     patch.colorStoryId = c.colorStories[0].id;
@@ -1304,7 +1421,7 @@ function ThemeStudio({ site, onUpdate }: { site: CoupleWebsite; onUpdate: (patch
                   <CollectionPreview
                     base={previewBase}
                     collection={c}
-                    colorStory={c.colorStories[0]}
+                    colorStory={resolveBundledColorStory(c, collections.flatMap(col => col.colorStories)) ?? c.colorStories[0]}
                     sectionKeys={["story"]}
                     width={170}
                     height={248}
@@ -1346,26 +1463,38 @@ function ThemeStudio({ site, onUpdate }: { site: CoupleWebsite; onUpdate: (patch
                 const isActive = !hasCustomColors && cs.id === site.colorStoryId;
                 return (
                   <button key={cs.id} type="button"
-                    onClick={() => {
-                      // Studio Canonical State Pass (2026-08-11) — must set
-                      // BOTH colorStoryId (so every summary can name this
-                      // story after reload) AND the six raw hex columns
-                      // (the real renderer reads those directly, never
-                      // colorStoryId — see resolveTheme). Previously this
-                      // set colorStoryId but nulled the six columns via
-                      // clearColors(), so the curated pick never actually
-                      // reached the real website.
-                      const roles = deriveSixRoles(cs.tokens);
-                      onUpdate({
-                        colorStoryId: cs.id, themePalette: cs.name, clearCustomColors: false,
-                        colorPrimary: roles.colorPrimary, colorSecondary: roles.colorSecondary, colorAccent: roles.colorAccent,
-                        colorNeutral: roles.colorNeutral, colorBackground: roles.colorBackground, colorText: roles.colorText,
-                      });
-                    }}
+                    onClick={() => applyColorStory(cs)}
                     className="flex flex-col items-center gap-1.5">
                     <div className={`rounded-full border-2 transition-all ${isActive ? "h-10 w-10 border-foreground shadow-md" : "h-8 w-8 border-transparent hover:border-border"}`}
                       style={{ background: swatchGradient(cs.tokens) }} />
                     <p className={`text-[10px] ${isActive ? "font-semibold text-foreground" : "text-muted-foreground"}`}>{cs.name}</p>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* Same curated, collection-independent set as Setup's Color step */}
+        {curatedColorStories.length > 0 && (
+          <div className="space-y-2.5 pt-1">
+            <div className="space-y-0.5">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">Need a little inspiration?</p>
+              <p className="text-[11px] text-muted-foreground">Start with a curated Color Story, then make it completely yours.</p>
+            </div>
+            <div className="grid grid-cols-2 gap-2.5">
+              {curatedColorStories.map(cs => {
+                const isActive = !hasCustomColors && cs.id === site.colorStoryId;
+                return (
+                  <button key={cs.id} type="button" onClick={() => applyColorStory(cs)}
+                    className={`rounded-xl overflow-hidden text-left bg-white border transition-all hover:scale-[1.01] ${isActive ? "ring-2 ring-primary ring-offset-1 border-primary" : "border-border"}`}>
+                    <div className="h-9">
+                      <ColorStoryPreview colorStory={cs} />
+                    </div>
+                    <div className="px-2.5 py-2">
+                      <p className="text-[11px] font-bold text-heading">{cs.name}</p>
+                      {cs.mood ? <p className="text-[9px] text-muted-foreground mt-0.5">{cs.mood}</p> : null}
+                    </div>
                   </button>
                 );
               })}
@@ -1491,6 +1620,7 @@ function ThemeStudio({ site, onUpdate }: { site: CoupleWebsite; onUpdate: (patch
 export function WebsiteEditor({
   token, initialSite, origin, initialGuests,
   onSectionSaved, onAppearanceChanged, focusSection, hideStatusHeader,
+  onNavigateToGuests,
 }: {
   token: string;
   initialSite: CoupleWebsite;
@@ -1501,6 +1631,8 @@ export function WebsiteEditor({
   onAppearanceChanged?: (patch: Partial<CoupleWebsite & { fontPairing: string; clearCustomColors: boolean }>) => void;
   focusSection?: string | null;
   hideStatusHeader?: boolean;
+  /** Leave Studio for portal Guests (RSVP questions + guest list). */
+  onNavigateToGuests?: () => void;
 }) {
   const [site, setSite] = React.useState(initialSite);
   const [content, setContent] = React.useState<WebsiteContent>(initialSite.content ?? {});
@@ -1755,6 +1887,19 @@ export function WebsiteEditor({
       .map(key => ALL_SECTIONS.find(s => s.key === key))
       .filter((s): s is SectionDef => s != null);
   }, [sectionOrder]);
+
+  // RSVP is always on the public site by default; still force-show when Live
+  // Preview Edit focuses it so a hidden/legacy config never dead-ends Edit.
+  const showRsvpAccordion = React.useMemo(() => {
+    if (focusSection === "rsvp") return true;
+    if (site.sections?.length) {
+      return site.sections.some(s => s.key === "rsvp" && s.visibility !== "hidden");
+    }
+    if (site.sectionsEnabled?.length) {
+      return site.sectionsEnabled.includes("rsvp");
+    }
+    return true;
+  }, [focusSection, site.sections, site.sectionsEnabled]);
 
   return (
     <div className="space-y-4">
@@ -2057,6 +2202,13 @@ export function WebsiteEditor({
             forceOpen={focusSection === section.key}
           />
         ))}
+        {showRsvpAccordion && (
+          <RsvpSectionAccordion
+            forceOpen={focusSection === "rsvp"}
+            websiteUrl={websiteUrl}
+            onNavigateToGuests={onNavigateToGuests}
+          />
+        )}
       </div>
 
     </div>

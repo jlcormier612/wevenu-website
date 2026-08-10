@@ -22,6 +22,7 @@ type ContractRow = {
   template_id: string | null; title: string; content: string; status: Contract["status"];
   sign_token: string; signer_name: string | null; signed_at: string | null;
   sent_at: string | null; expires_at: string | null; created_at: string; updated_at: string;
+  amends_contract_id: string | null;
   clients?: { first_name: string; last_name: string; partner_first_name: string | null; partner_last_name: string | null } | null;
   events?: { event_date: string | null } | null;
   // Venue Brand Experience Phase 1 — only present in get_contract_by_token's
@@ -48,6 +49,7 @@ function mapContract(r: ContractRow): Contract {
     templateId: r.template_id, title: r.title, content: r.content, status: r.status,
     signToken: r.sign_token, signerName: r.signer_name, signedAt: r.signed_at,
     sentAt: r.sent_at, expiresAt: r.expires_at, createdAt: r.created_at, updatedAt: r.updated_at,
+    amendsContractId: r.amends_contract_id ?? null,
     clientName: cn, eventDate: r.events?.event_date ?? null,
     venue: r.venue,
   };
@@ -163,7 +165,8 @@ export async function insertContract(client: DbClient, venueId: string, input: N
   const templateId = input.templateId && input.templateId !== "__default__" ? input.templateId : null;
   const { data, error } = await client.from("contracts")
     .insert({ venue_id: venueId, client_id: input.clientId || null, event_id: input.eventId || null,
-      template_id: templateId, title: input.title.trim(), content: input.content })
+      template_id: templateId, title: input.title.trim(), content: input.content,
+      amends_contract_id: input.amendsContractId ?? null })
     .select("id").single<{ id: string }>();
   if (error) throw error;
   return data.id;
@@ -175,22 +178,52 @@ export async function insertContract(client: DbClient, venueId: string, input: N
  * draft, with no trace in the activity log. Now only draft contracts are
  * editable, and every edit is logged.
  */
-export async function updateContractContent(client: DbClient, venueId: string, id: string, title: string, content: string): Promise<{ ok: true } | { ok: false; message: string }> {
+/**
+ * Work Package D4 — optimistic concurrency. Confirmed by D3 as a real,
+ * unprotected defect: this previously did a blind fetch-then-overwrite
+ * with no version check at all, so two coordinators editing the same
+ * draft would silently last-write-wins with no warning to either party.
+ *
+ * `expectedUpdatedAt` is the `updated_at` value the caller's editor last
+ * loaded — already trigger-maintained on every UPDATE
+ * (`contracts_updated_at`), so it's a correct concurrency token with no
+ * new column needed. The UPDATE's own WHERE clause includes it: if
+ * another save has happened since the caller loaded the row, `updated_at`
+ * has moved on, the WHERE clause matches zero rows, and `.select("id")`
+ * on the update lets us tell "matched and updated" apart from "matched
+ * nothing" — Supabase's client returns an empty array, not an error, for
+ * the latter, so the row count is the only reliable signal.
+ */
+export async function updateContractContent(
+  client: DbClient, venueId: string, id: string, title: string, content: string, expectedUpdatedAt: string,
+): Promise<{ ok: true } | { ok: false; message: string; reason?: "stale" | "not_editable" | "not_found" }> {
   const { data: existing, error: fetchError } = await client
     .from("contracts")
     .select("status")
     .eq("id", id).eq("venue_id", venueId)
     .maybeSingle<{ status: Contract["status"] }>();
   if (fetchError) throw fetchError;
-  if (!existing) return { ok: false, message: "Contract not found." };
+  if (!existing) return { ok: false, message: "Contract not found.", reason: "not_found" };
   if (existing.status !== "draft") {
-    return { ok: false, message: "This contract has already been sent and can no longer be edited." };
+    return { ok: false, message: "This contract has already been sent and can no longer be edited.", reason: "not_editable" };
   }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { error } = await (client.from("contracts") as any).update({ title: title.trim(), content })
-    .eq("id", id).eq("venue_id", venueId);
+  const { data: updated, error } = await (client.from("contracts") as any).update({ title: title.trim(), content })
+    .eq("id", id).eq("venue_id", venueId).eq("updated_at", expectedUpdatedAt)
+    .select("id");
   if (error) throw error;
+
+  if (!updated || updated.length === 0) {
+    // Distinguishes "someone else saved first" from "not found"/"not
+    // editable" above, both already ruled out by the pre-check — the only
+    // remaining explanation for zero rows matched is a stale updated_at.
+    return {
+      ok: false,
+      reason: "stale",
+      message: "This contract was updated while you were editing it. Please review the latest version before saving your changes.",
+    };
+  }
 
   await insertContractActivity(client, venueId, id, "edited", "Contract content edited");
   return { ok: true };
@@ -206,6 +239,34 @@ export async function updateContractContent(client: DbClient, venueId: string, i
  * never already-cancelled — a signed contract's status cannot be changed by
  * this function at all, full stop.
  */
+/**
+ * Work Package D4 — the negotiation-loop gap D3/D4 research both
+ * confirmed: once sent, `updateContractContent` rejects every edit
+ * outright, and there was no path back to Draft short of Cancel
+ * (destroying the sign token/history) — meaning "client requests
+ * changes → venue edits → reshare," the lifecycle this whole work
+ * package describes, had no real mechanism to return to a working state
+ * at all. Mirrors `revertInvoiceToDraft`'s exact shape (same guard
+ * pattern already established and trusted elsewhere in this codebase) —
+ * only a *sent, unsigned* contract can reopen; signing wins the race if
+ * both happen close together, since this only ever matches `status='sent'`.
+ */
+export async function reopenForEditing(
+  client: DbClient, venueId: string, id: string,
+): Promise<{ ok: true } | { ok: false; message: string }> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: updated, error } = await (client.from("contracts") as any)
+    .update({ status: "draft" })
+    .eq("id", id).eq("venue_id", venueId).eq("status", "sent")
+    .select("id");
+  if (error) throw error;
+  if (!updated || updated.length === 0) {
+    return { ok: false, message: "Only a sent, unsigned contract can be reopened for editing." };
+  }
+  await insertContractActivity(client, venueId, id, "reopened", "Reopened for editing");
+  return { ok: true };
+}
+
 export async function updateContractStatus(
   client: DbClient,
   venueId: string,

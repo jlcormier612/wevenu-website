@@ -1,0 +1,205 @@
+{
+  "overlayInfo": {
+    "hasPortal": true,
+    "portalChildren": 0,
+    "portalDisplay": "block",
+    "hasDialog": false,
+    "dialogVisible": false,
+    "dialogText": null,
+    "errText": false
+  },
+  "dests": {
+    "#tasks": {
+      "url": "http://localhost:3000/p/seedcoupleportal00000000000000000000000000000001#tasks",
+      "h": "Your Next Steps",
+      "sample": "Emma & Jordan · Sweet Daisy Barn & Farm Oct 17, 2026 – Oct 19, 2026 Export my data 🏠 Home ✅ Tasks 6 🕒 Timeline 📁 Documents 💳 Payments 💬 Messages 🏛️ Venue Guide 🤝 Preferred Vendors SWEET DAISY BARN & FARM Emma & Jordan 69 days until your celebration Saturday, October 17, 2026 – Monday, October 19, 2026 10 things Sweet Daisy Barn & Farm still needs from you Your venue team is here with you—finish what helps your day come together. Review wha",
+      "hasPaySchedule": true,
+      "hasFromVenue": true,
+      "installment": 1,
+      "second": 0,
+      "money": [
+        "$12,960",
+        "$0",
+        "$30,000"
+      ]
+    },
+    "#payments": {
+      "url": "http://localhost:3000/p/seedcoupleportal00000000000000000000000000000001#payments",
+      "h": "Your Next Steps",
+      "sample": "Emma & Jordan · Sweet Daisy Barn & Farm Oct 17, 2026 – Oct 19, 2026 Export my data 🏠 Home ✅ Tasks 6 🕒 Timeline 📁 Documents 💳 Payments 💬 Messages 🏛️ Venue Guide 🤝 Preferred Vendors SWEET DAISY BARN & FARM Emma & Jordan 69 days until your celebration Saturday, October 17, 2026 – Monday, October 19, 2026 10 things Sweet Daisy Barn & Farm still needs from you Your venue team is here with you—finish what helps your day come together. Review wha",
+      "hasPaySchedule": true,
+      "hasFromVenue": true,
+      "installment": 1,
+      "second": 0,
+      "money": [
+        "$12,960",
+        "$0",
+        "$30,000"
+      ]
+    },
+    "#timeline": {
+      "url": "http://localhost:3000/p/seedcoupleportal00000000000000000000000000000001#timeline",
+      "h": "Your Next Steps",
+      "sample": "Emma & Jordan · Sweet Daisy Barn & Farm Oct 17, 2026 – Oct 19, 2026 Export my data 🏠 Home ✅ Tasks 6 🕒 Timeline 📁 Documents 💳 Payments 💬 Messages 🏛️ Venue Guide 🤝 Preferred Vendors SWEET DAISY BARN & FARM Emma & Jordan 69 days until your celebration Saturday, October 17, 2026 – Monday, October 19, 2026 10 things Sweet Daisy Barn & Farm still needs from you Your venue team is here with you—finish what helps your day come together. Review wha",
+      "hasPaySchedule": true,
+      "hasFromVenue": true,
+      "installment": 1,
+      "second": 0,
+      "money": [
+        "$12,960",
+        "$0",
+        "$30,000"
+      ]
+    },
+    "#messages": {
+      "url": "http://localhost:3000/p/seedcoupleportal00000000000000000000000000000001#messages",
+      "h": "Your Next Steps",
+      "sample": "Emma & Jordan · Sweet Daisy Barn & Farm Oct 17, 2026 – Oct 19, 2026 Export my data 🏠 Home ✅ Tasks 6 🕒 Timeline 📁 Documents 💳 Payments 💬 Messages 🏛️ Venue Guide 🤝 Preferred Vendors SWEET DAISY BARN & FARM Emma & Jordan 69 days until your celebration Saturday, October 17, 2026 – Monday, October 19, 2026 10 things Sweet Daisy Barn & Farm still needs from you Your venue team is here with you—finish what helps your day come together. Review wha",
+      "hasPaySchedule": true,
+      "hasFromVenue": true,
+      "installment": 1,
+      "second": 0,
+      "money": [
+        "$12,960",
+        "$0",
+        "$30,000"
+      ]
+    },
+    "#guests": {
+      "url": "http://localhost:3000/p/seedcoupleportal00000000000000000000000000000001#guests",
+      "h": "Your Next Steps",
+      "sample": "Emma & Jordan · Sweet Daisy Barn & Farm Oct 17, 2026 – Oct 19, 2026 Export my data 🏠 Home ✅ Tasks 6 🕒 Timeline 📁 Documents 💳 Payments 💬 Messages 🏛️ Venue Guide 🤝 Preferred Vendors SWEET DAISY BARN & FARM Emma & Jordan 69 days until your celebration Saturday, October 17, 2026 – Monday, October 19, 2026 10 things Sweet Daisy Barn & Farm still needs from you Your venue team is here with you—finish what helps your day come together. Review wha",
+      "hasPaySchedule": true,
+      "hasFromVenue": true,
+      "installment": 1,
+      "second": 0,
+      "money": [
+        "$12,960",
+        "$0",
+        "$30,000"
+      ]
+    },
+    "#website": {
+      "url": "http://localhost:3000/p/seedcoupleportal00000000000000000000000000000001#website",
+      "h": "Your Next Steps",
+      "sample": "Emma & Jordan · Sweet Daisy Barn & Farm Oct 17, 2026 – Oct 19, 2026 Export my data 🏠 Home ✅ Tasks 6 🕒 Timeline 📁 Documents 💳 Payments 💬 Messages 🏛️ Venue Guide 🤝 Preferred Vendors SWEET DAISY BARN & FARM Emma & Jordan 69 days until your celebration Saturday, October 17, 2026 – Monday, October 19, 2026 10 things Sweet Daisy Barn & Farm still needs from you Your venue team is here with you—finish what helps your day come together. Review wha",
+      "hasPaySchedule": true,
+      "hasFromVenue": true,
+      "installment": 1,
+      "second": 0,
+      "money": [
+        "$12,960",
+        "$0",
+        "$30,000"
+      ]
+    },
+    "#budget": {
+      "url": "http://localhost:3000/p/seedcoupleportal00000000000000000000000000000001#budget",
+      "h": "Your Next Steps",
+      "sample": "Emma & Jordan · Sweet Daisy Barn & Farm Oct 17, 2026 – Oct 19, 2026 Export my data 🏠 Home ✅ Tasks 6 🕒 Timeline 📁 Documents 💳 Payments 💬 Messages 🏛️ Venue Guide 🤝 Preferred Vendors SWEET DAISY BARN & FARM Emma & Jordan 69 days until your celebration Saturday, October 17, 2026 – Monday, October 19, 2026 10 things Sweet Daisy Barn & Farm still needs from you Your venue team is here with you—finish what helps your day come together. Review wha",
+      "hasPaySchedule": true,
+      "hasFromVenue": true,
+      "installment": 1,
+      "second": 0,
+      "money": [
+        "$12,960",
+        "$0",
+        "$30,000"
+      ]
+    },
+    "#seating": {
+      "url": "http://localhost:3000/p/seedcoupleportal00000000000000000000000000000001#seating",
+      "h": "Your Next Steps",
+      "sample": "Emma & Jordan · Sweet Daisy Barn & Farm Oct 17, 2026 – Oct 19, 2026 Export my data 🏠 Home ✅ Tasks 6 🕒 Timeline 📁 Documents 💳 Payments 💬 Messages 🏛️ Venue Guide 🤝 Preferred Vendors SWEET DAISY BARN & FARM Emma & Jordan 69 days until your celebration Saturday, October 17, 2026 – Monday, October 19, 2026 10 things Sweet Daisy Barn & Farm still needs from you Your venue team is here with you—finish what helps your day come together. Review wha",
+      "hasPaySchedule": true,
+      "hasFromVenue": true,
+      "installment": 1,
+      "second": 0,
+      "money": [
+        "$12,960",
+        "$0",
+        "$30,000"
+      ]
+    },
+    "#plans": {
+      "url": "http://localhost:3000/p/seedcoupleportal00000000000000000000000000000001#plans",
+      "h": "Your Next Steps",
+      "sample": "Emma & Jordan · Sweet Daisy Barn & Farm Oct 17, 2026 – Oct 19, 2026 Export my data 🏠 Home ✅ Tasks 6 🕒 Timeline 📁 Documents 💳 Payments 💬 Messages 🏛️ Venue Guide 🤝 Preferred Vendors SWEET DAISY BARN & FARM Emma & Jordan 69 days until your celebration Saturday, October 17, 2026 – Monday, October 19, 2026 10 things Sweet Daisy Barn & Farm still needs from you Your venue team is here with you—finish what helps your day come together. Review wha",
+      "hasPaySchedule": true,
+      "hasFromVenue": true,
+      "installment": 1,
+      "second": 0,
+      "money": [
+        "$12,960",
+        "$0",
+        "$30,000"
+      ]
+    },
+    "#story": {
+      "url": "http://localhost:3000/p/seedcoupleportal00000000000000000000000000000001#story",
+      "h": "Your Next Steps",
+      "sample": "Emma & Jordan · Sweet Daisy Barn & Farm Oct 17, 2026 – Oct 19, 2026 Export my data 🏠 Home ✅ Tasks 6 🕒 Timeline 📁 Documents 💳 Payments 💬 Messages 🏛️ Venue Guide 🤝 Preferred Vendors SWEET DAISY BARN & FARM Emma & Jordan 69 days until your celebration Saturday, October 17, 2026 – Monday, October 19, 2026 10 things Sweet Daisy Barn & Farm still needs from you Your venue team is here with you—finish what helps your day come together. Review wha",
+      "hasPaySchedule": true,
+      "hasFromVenue": true,
+      "installment": 1,
+      "second": 0,
+      "money": [
+        "$12,960",
+        "$0",
+        "$30,000"
+      ]
+    }
+  },
+  "viewAllResult": {
+    "found": 1,
+    "url": "http://localhost:3000/p/seedcoupleportal00000000000000000000000000000001",
+    "sample": "Emma & Jordan · Sweet Daisy Barn & Farm Oct 17, 2026 – Oct 19, 2026 Export my data 🏠 Home ✅ Tasks 6 🕒 Timeline 📁 Documents 💳 Payments 💬 Messages 🏛️ Venue Guide 🤝 Preferred Vendors From your venue Everything Sweet Daisy Barn & Farm needs from you, in one place — newest due date first. 5/10 tasks complete First Installment Payment Schedule — Emma / Carter / Jordan / Lee — payment due Due Apr 20 Pay now Second Installment Payment Schedule — Emma / Carter / Jordan / Lee — payment due Due Jul 19 Pay now Purchase event insurance Due in 9 days · 60 days before Mark complete Submit your guest count We need your final headcount to plan seating, catering, and rentals. Due Sep 17 · 30 days before Mark complete Final payment Due Sep 17 · 30 days before Mark complete Final Payment Payment Schedu",
+    "first": 1,
+    "second": 1,
+    "complete": 5,
+    "payNow": 3
+  },
+  "completeInfo": {
+    "count": 0
+  },
+  "afterNav": {
+    "navClick": {
+      "found": false,
+      "candidates": [
+        "Export my data",
+        "🏠 Home",
+        "✅ Tasks 6",
+        "🕒 Timeline",
+        "📁 Documents",
+        "💳 Payments",
+        "💬 Messages",
+        "🏛️ Venue Guide",
+        "🤝 Preferred Vendors",
+        "Review what Sweet Daisy Barn & Farm needs",
+        "Message Sweet Daisy Barn & Farm",
+        "View Timeline",
+        "Sweet Daisy Barn & Farm is waiting on 10 things from you. Jump to your next steps below.",
+        "Purchase event insurance Required Due Aug 18",
+        "Complete",
+        "Submit your guest count Required We need your final headcount to plan seating, catering, and rentals. Due Sep 17",
+        "Complete",
+        "Final payment Required Due Sep 17"
+      ]
+    },
+    "url": "http://localhost:3000/p/seedcoupleportal00000000000000000000000000000001",
+    "sample": "Emma & Jordan · Sweet Daisy Barn & Farm Oct 17, 2026 – Oct 19, 2026 Export my data 🏠 Home ✅ Tasks 6 🕒 Timeline 📁 Documents 💳 Payments 💬 Messages 🏛️ Venue Guide 🤝 Preferred Vendors SWEET DAISY BARN & FARM Emma & Jordan 69 days until your celebration Saturday, October 17, 2026 – Monday, October 19, 2026 10 things Sweet Daisy Barn & Farm still needs from you Your venue team is here with you—finish what helps your day come together. Review what Sweet Daisy Barn & Farm needs Message Sweet Daisy Barn & Farm View Timeline Sweet Daisy Barn & Farm is waiting on 10 things from you. Jump to your next steps below. WHAT SWEET DAISY BARN & FARM NEEDS FROM YOU Your Next Steps 10 left for Sweet Daisy"
+  },
+  "homeNS": {
+    "banner10": true,
+    "badge6": true,
+    "rem12960": false,
+    "rem38880": false,
+    "firstInHome": 1,
+    "secondInHome": 0,
+    "shareTimelineCopy": "impact my participation is supplied 2 weeks before the event, so I know when to be where.\n\nDue Oct 3\nCo",
+    "completeInPlaceButtons": 5,
+    "viewAll": "View all 10 next steps",
+    "journeyEmotionalOnly": true,
+    "progressOnePct": "42%"
+  }
+}

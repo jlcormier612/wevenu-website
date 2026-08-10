@@ -1,0 +1,579 @@
+{
+  "commit": "6f6fed5",
+  "stylesFound": [
+    "Editorial",
+    "Magazine",
+    "Film",
+    "Minimal",
+    "Modern",
+    "Luxury",
+    "Scrapbook",
+    "Wildflower",
+    "Midnight",
+    "Gallery Wall"
+  ],
+  "arrangements": {
+    "editorial": "uniform",
+    "magazine": "collage",
+    "film": "uniform",
+    "minimal": "sparse",
+    "modern": "uniform",
+    "luxury": "uniform",
+    "scrapbook": "scrapbook",
+    "wildflower": "uniform",
+    "midnight": "uniform",
+    "gallery_wall": "gallery-wall"
+  },
+  "surfaces": {
+    "themeStudio": "theme-studio",
+    "wizard": "photostyle"
+  },
+  "pairs": {
+    "studio-pair-editorial-luxury": true,
+    "studio-pair-film-modern": true,
+    "studio-pair-minimal-modern": true,
+    "studio-pair-magazine-scrapbook": true,
+    "studio-pair-scrapbook-gallery-wall": true,
+    "studio-pair-editorial-wildflower": true,
+    "studio-pair-luxury-gallery-wall": true
+  },
+  "labelClip": {
+    "wizard": {},
+    "studio": {
+      "Editorial": {
+        "ok": true,
+        "specimenH": 180,
+        "labelTop": 778,
+        "specimenBottom": 778,
+        "gap": 0,
+        "nameVisible": true,
+        "nameText": "Editorial",
+        "descText": "Fashion-spread hierarchy with quiet support",
+        "overflowHidden": true,
+        "imgCount": 2,
+        "imgs": [
+          {
+            "src": "http://127.0.0.1:54321/storage/v1/object/public/client-media/69cfd906-0d15-4e5c-8bab-ed106b411c34/dbfa69d6-47ad-4f9d-892",
+            "w": 107,
+            "h": 134,
+            "alt": ""
+          },
+          {
+            "src": "http://127.0.0.1:54321/storage/v1/object/public/client-media/69cfd906-0d15-4e5c-8bab-ed106b411c34/dbfa69d6-47ad-4f9d-892",
+            "w": 46,
+            "h": 61,
+            "alt": ""
+          }
+        ]
+      },
+      "Magazine": {
+        "ok": true,
+        "specimenH": 180,
+        "labelTop": 778,
+        "specimenBottom": 778,
+        "gap": 0,
+        "nameVisible": true,
+        "nameText": "Magazine",
+        "descText": "Designed magazine page with cover hierarchy",
+        "overflowHidden": true,
+        "imgCount": 4,
+        "imgs": [
+          {
+            "src": "http://127.0.0.1:54321/storage/v1/object/public/client-media/69cfd906-0d15-4e5c-8bab-ed106b411c34/dbfa69d6-47ad-4f9d-892",
+            "w": 90,
+            "h": 110,
+            "alt": ""
+          },
+          {
+            "src": "http://127.0.0.1:54321/storage/v1/object/public/client-media/69cfd906-0d15-4e5c-8bab-ed106b411c34/dbfa69d6-47ad-4f9d-892",
+            "w": 67,
+            "h": 53,
+            "alt": ""
+          },
+          {
+            "src": "http://127.0.0.1:54321/storage/v1/object/public/client-media/69cfd906-0d15-4e5c-8bab-ed106b411c34/dbfa69d6-47ad-4f9d-892",
+            "w": 67,
+            "h": 53,
+            "alt": ""
+          },
+          {
+            "src": "http://127.0.0.1:54321/storage/v1/object/public/client-media/69cfd906-0d15-4e5c-8bab-ed106b411c34/dbfa69d6-47ad-4f9d-892",
+            "w": 90,
+            "h": 72,
+            "alt": ""
+          }
+        ]
+      },
+      "Film": {
+        "ok": true,
+        "specimenH": 180,
+        "labelTop": 532,
+        "specimenBottom": 532,
+        "gap": 0,
+        "nameVisible": true,
+        "nameText": "Film",
+        "descText": "Contact-sheet prints with warm grain",
+        "overflowHidden": true,
+        "imgCount": 4,
+        "imgs": [
+          {
+            "src": "http://127.0.0.1:54321/storage/v1/object/public/client-media/69cfd906-0d15-4e5c-8bab-ed106b411c34/dbfa69d6-47ad-4f9d-892",
+            "w": 67,
+            "h": 67,
+            "alt": ""
+          },
+          {
+            "src": "http://127.0.0.1:54321/storage/v1/object/public/client-media/69cfd906-0d15-4e5c-8bab-ed106b411c34/dbfa69d6-47ad-4f9d-892",
+            "w": 67,
+            "h": 67,
+            "alt": ""
+          },
+          {
+            "src": "http://127.0.0.1:54321/storage/v1/object/public/client-media/69cfd906-0d15-4e5c-8bab-ed106b411c34/dbfa69d6-47ad-4f9d-892",
+            "w": 67,
+            "h": 67,
+            "alt": ""
+          },
+          {
+            "src": "http://127.0.0.1:54321/storage/v1/object/public/client-media/69cfd906-0d15-4e5c-8bab-ed106b411c34/dbfa69d6-47ad-4f9d-892",
+            "w": 67,
+            "h": 67,
+            "alt": ""
+          }
+        ]
+      },
+      "Minimal": {
+        "ok": true,
+        "specimenH": 180,
+        "labelTop": 532,
+        "specimenBottom": 532,
+        "gap": 0,
+        "nameVisible": true,
+        "nameText": "Minimal",
+        "descText": "Sparse quiet frames with breathing room",
+        "overflowHidden": true,
+        "imgCount": 2,
+        "imgs": [
+          {
+            "src": "http://127.0.0.1:54321/storage/v1/object/public/client-media/69cfd906-0d15-4e5c-8bab-ed106b411c34/dbfa69d6-47ad-4f9d-892",
+            "w": 66,
+            "h": 83,
+            "alt": ""
+          },
+          {
+            "src": "http://127.0.0.1:54321/storage/v1/object/public/client-media/69cfd906-0d15-4e5c-8bab-ed106b411c34/dbfa69d6-47ad-4f9d-892",
+            "w": 36,
+            "h": 48,
+            "alt": ""
+          }
+        ]
+      },
+      "Modern": {
+        "ok": true,
+        "specimenH": 180,
+        "labelTop": 787,
+        "specimenBottom": 787,
+        "gap": 0,
+        "nameVisible": true,
+        "nameText": "Modern",
+        "descText": "Perfect equal grid, crisp and even",
+        "overflowHidden": true,
+        "imgCount": 4,
+        "imgs": [
+          {
+            "src": "http://127.0.0.1:54321/storage/v1/object/public/client-media/69cfd906-0d15-4e5c-8bab-ed106b411c34/dbfa69d6-47ad-4f9d-892",
+            "w": 80,
+            "h": 80,
+            "alt": ""
+          },
+          {
+            "src": "http://127.0.0.1:54321/storage/v1/object/public/client-media/69cfd906-0d15-4e5c-8bab-ed106b411c34/dbfa69d6-47ad-4f9d-892",
+            "w": 80,
+            "h": 80,
+            "alt": ""
+          },
+          {
+            "src": "http://127.0.0.1:54321/storage/v1/object/public/client-media/69cfd906-0d15-4e5c-8bab-ed106b411c34/dbfa69d6-47ad-4f9d-892",
+            "w": 80,
+            "h": 80,
+            "alt": ""
+          },
+          {
+            "src": "http://127.0.0.1:54321/storage/v1/object/public/client-media/69cfd906-0d15-4e5c-8bab-ed106b411c34/dbfa69d6-47ad-4f9d-892",
+            "w": 80,
+            "h": 80,
+            "alt": ""
+          }
+        ]
+      },
+      "Luxury": {
+        "ok": true,
+        "specimenH": 180,
+        "labelTop": 787,
+        "specimenBottom": 787,
+        "gap": 0,
+        "nameVisible": true,
+        "nameText": "Luxury",
+        "descText": "Singular fine-art mat with calm presence",
+        "overflowHidden": true,
+        "imgCount": 2,
+        "imgs": [
+          {
+            "src": "http://127.0.0.1:54321/storage/v1/object/public/client-media/69cfd906-0d15-4e5c-8bab-ed106b411c34/dbfa69d6-47ad-4f9d-892",
+            "w": 97,
+            "h": 121,
+            "alt": ""
+          },
+          {
+            "src": "http://127.0.0.1:54321/storage/v1/object/public/client-media/69cfd906-0d15-4e5c-8bab-ed106b411c34/dbfa69d6-47ad-4f9d-892",
+            "w": 31,
+            "h": 31,
+            "alt": ""
+          }
+        ]
+      },
+      "Scrapbook": {
+        "ok": true,
+        "specimenH": 180,
+        "labelTop": 532,
+        "specimenBottom": 532,
+        "gap": 0,
+        "nameVisible": true,
+        "nameText": "Scrapbook",
+        "descText": "Elegant memory page with soft layers",
+        "overflowHidden": true,
+        "imgCount": 4,
+        "imgs": [
+          {
+            "src": "http://127.0.0.1:54321/storage/v1/object/public/client-media/69cfd906-0d15-4e5c-8bab-ed106b411c34/dbfa69d6-47ad-4f9d-892",
+            "w": 55,
+            "h": 55,
+            "alt": ""
+          },
+          {
+            "src": "http://127.0.0.1:54321/storage/v1/object/public/client-media/69cfd906-0d15-4e5c-8bab-ed106b411c34/dbfa69d6-47ad-4f9d-892",
+            "w": 49,
+            "h": 49,
+            "alt": ""
+          },
+          {
+            "src": "http://127.0.0.1:54321/storage/v1/object/public/client-media/69cfd906-0d15-4e5c-8bab-ed106b411c34/dbfa69d6-47ad-4f9d-892",
+            "w": 49,
+            "h": 49,
+            "alt": ""
+          },
+          {
+            "src": "http://127.0.0.1:54321/storage/v1/object/public/client-media/69cfd906-0d15-4e5c-8bab-ed106b411c34/dbfa69d6-47ad-4f9d-892",
+            "w": 56,
+            "h": 56,
+            "alt": ""
+          }
+        ]
+      },
+      "Wildflower": {
+        "ok": true,
+        "specimenH": 180,
+        "labelTop": 532,
+        "specimenBottom": 532,
+        "gap": 0,
+        "nameVisible": true,
+        "nameText": "Wildflower",
+        "descText": "Organic unequal windows with soft flow",
+        "overflowHidden": true,
+        "imgCount": 4,
+        "imgs": [
+          {
+            "src": "http://127.0.0.1:54321/storage/v1/object/public/client-media/69cfd906-0d15-4e5c-8bab-ed106b411c34/dbfa69d6-47ad-4f9d-892",
+            "w": 86,
+            "h": 108,
+            "alt": ""
+          },
+          {
+            "src": "http://127.0.0.1:54321/storage/v1/object/public/client-media/69cfd906-0d15-4e5c-8bab-ed106b411c34/dbfa69d6-47ad-4f9d-892",
+            "w": 61,
+            "h": 73,
+            "alt": ""
+          },
+          {
+            "src": "http://127.0.0.1:54321/storage/v1/object/public/client-media/69cfd906-0d15-4e5c-8bab-ed106b411c34/dbfa69d6-47ad-4f9d-892",
+            "w": 67,
+            "h": 42,
+            "alt": ""
+          },
+          {
+            "src": "http://127.0.0.1:54321/storage/v1/object/public/client-media/69cfd906-0d15-4e5c-8bab-ed106b411c34/dbfa69d6-47ad-4f9d-892",
+            "w": 77,
+            "h": 77,
+            "alt": ""
+          }
+        ]
+      },
+      "Midnight": {
+        "ok": true,
+        "specimenH": 180,
+        "labelTop": 787,
+        "specimenBottom": 787,
+        "gap": 0,
+        "nameVisible": true,
+        "nameText": "Midnight",
+        "descText": "Cinematic wide band on a dark field",
+        "overflowHidden": true,
+        "imgCount": 3,
+        "imgs": [
+          {
+            "src": "http://127.0.0.1:54321/storage/v1/object/public/client-media/69cfd906-0d15-4e5c-8bab-ed106b411c34/dbfa69d6-47ad-4f9d-892",
+            "w": 156,
+            "h": 67,
+            "alt": ""
+          },
+          {
+            "src": "http://127.0.0.1:54321/storage/v1/object/public/client-media/69cfd906-0d15-4e5c-8bab-ed106b411c34/dbfa69d6-47ad-4f9d-892",
+            "w": 77,
+            "h": 48,
+            "alt": ""
+          },
+          {
+            "src": "http://127.0.0.1:54321/storage/v1/object/public/client-media/69cfd906-0d15-4e5c-8bab-ed106b411c34/dbfa69d6-47ad-4f9d-892",
+            "w": 77,
+            "h": 48,
+            "alt": ""
+          }
+        ]
+      },
+      "Gallery Wall": {
+        "ok": true,
+        "specimenH": 180,
+        "labelTop": 787,
+        "specimenBottom": 787,
+        "gap": 0,
+        "nameVisible": true,
+        "nameText": "Gallery Wall",
+        "descText": "Curated salon wall with deliberate spacing",
+        "overflowHidden": true,
+        "imgCount": 4,
+        "imgs": [
+          {
+            "src": "http://127.0.0.1:54321/storage/v1/object/public/client-media/69cfd906-0d15-4e5c-8bab-ed106b411c34/dbfa69d6-47ad-4f9d-892",
+            "w": 39,
+            "h": 49,
+            "alt": ""
+          },
+          {
+            "src": "http://127.0.0.1:54321/storage/v1/object/public/client-media/69cfd906-0d15-4e5c-8bab-ed106b411c34/dbfa69d6-47ad-4f9d-892",
+            "w": 48,
+            "h": 58,
+            "alt": ""
+          },
+          {
+            "src": "http://127.0.0.1:54321/storage/v1/object/public/client-media/69cfd906-0d15-4e5c-8bab-ed106b411c34/dbfa69d6-47ad-4f9d-892",
+            "w": 33,
+            "h": 33,
+            "alt": ""
+          },
+          {
+            "src": "http://127.0.0.1:54321/storage/v1/object/public/client-media/69cfd906-0d15-4e5c-8bab-ed106b411c34/dbfa69d6-47ad-4f9d-892",
+            "w": 36,
+            "h": 45,
+            "alt": ""
+          }
+        ]
+      }
+    }
+  },
+  "photoContent": {
+    "studioDistinctSrcs": [
+      "http://127.0.0.1:54321/storage/v1/object/public/client-media/69cfd906-0d15-4e5c-8bab-ed106b411c34/dbfa69d6-47ad-4f9d-892"
+    ],
+    "studioDistinctCount": 1
+  },
+  "livePreview": {
+    "galleryWall": {
+      "summaryShows": true,
+      "hasLivePreview": true
+    },
+    "minimal": {
+      "summaryShows": true
+    }
+  },
+  "notes": [
+    "Catalog photo styles: 10",
+    "Minimal arrangement=sparse",
+    "Gallery Wall arrangement=gallery-wall",
+    "Wizard Photo Style step failed to open"
+  ],
+  "wizardRetry": {
+    "wizard": "photostyle",
+    "pairs": {
+      "wizard-pair-editorial-luxury": true,
+      "wizard-pair-film-modern": true,
+      "wizard-pair-minimal-modern": true,
+      "wizard-pair-magazine-scrapbook": true,
+      "wizard-pair-scrapbook-gallery-wall": true,
+      "wizard-pair-editorial-wildflower": true,
+      "wizard-pair-luxury-gallery-wall": true
+    },
+    "photos": {
+      "distinct": [
+        "http://127.0.0.1:54321/storage/v1/object/public/client-media/69cfd906-0d15-4e5c-8bab-ed106b411c34/dbfa69d6-47ad-4f9d-892d-4f06cb7f1844/gallery-1785809184072.png",
+        "http://127.0.0.1:54321/storage/v1/object/public/client-media/69cfd906-0d15-4e5c-8bab-ed106b411c34/dbfa69d6-47ad-4f9d-892d-4f06cb7f1844/gallery-1785809196144.png",
+        "http://127.0.0.1:54321/storage/v1/object/public/client-media/69cfd906-0d15-4e5c-8bab-ed106b411c34/dbfa69d6-47ad-4f9d-892d-4f06cb7f1844/gallery-1785809203192.png",
+        "http://127.0.0.1:54321/storage/v1/object/public/client-media/69cfd906-0d15-4e5c-8bab-ed106b411c34/dbfa69d6-47ad-4f9d-892d-4f06cb7f1844/gallery-1785809214615.png"
+      ],
+      "count": 4
+    },
+    "labelClip": {
+      "Editorial": {
+        "ok": true,
+        "specimenH": 188,
+        "gap": 0,
+        "overflowHidden": true,
+        "desc": "Fashion-spread hierarchy with quiet support",
+        "imgCount": 2,
+        "srcs": [
+          "http://127.0.0.1:54321/storage/v1/object/public/client-media/69cfd906-0d15-4e5c-8bab-ed106b411c34/dbfa69d6-47ad-4f9d-892d-4f06cb7f1844/gallery-1785809184072.png",
+          "http://127.0.0.1:54321/storage/v1/object/public/client-media/69cfd906-0d15-4e5c-8bab-ed106b411c34/dbfa69d6-47ad-4f9d-892d-4f06cb7f1844/gallery-1785809196144.png"
+        ]
+      },
+      "Magazine": {
+        "ok": true,
+        "specimenH": 188,
+        "gap": 0,
+        "overflowHidden": true,
+        "desc": "Designed magazine page with cover hierarchy",
+        "imgCount": 4,
+        "srcs": [
+          "http://127.0.0.1:54321/storage/v1/object/public/client-media/69cfd906-0d15-4e5c-8bab-ed106b411c34/dbfa69d6-47ad-4f9d-892d-4f06cb7f1844/gallery-1785809184072.png",
+          "http://127.0.0.1:54321/storage/v1/object/public/client-media/69cfd906-0d15-4e5c-8bab-ed106b411c34/dbfa69d6-47ad-4f9d-892d-4f06cb7f1844/gallery-1785809196144.png",
+          "http://127.0.0.1:54321/storage/v1/object/public/client-media/69cfd906-0d15-4e5c-8bab-ed106b411c34/dbfa69d6-47ad-4f9d-892d-4f06cb7f1844/gallery-1785809203192.png",
+          "http://127.0.0.1:54321/storage/v1/object/public/client-media/69cfd906-0d15-4e5c-8bab-ed106b411c34/dbfa69d6-47ad-4f9d-892d-4f06cb7f1844/gallery-1785809214615.png"
+        ]
+      },
+      "Film": {
+        "ok": true,
+        "specimenH": 188,
+        "gap": 0,
+        "overflowHidden": true,
+        "desc": "Contact-sheet prints with warm grain",
+        "imgCount": 4,
+        "srcs": [
+          "http://127.0.0.1:54321/storage/v1/object/public/client-media/69cfd906-0d15-4e5c-8bab-ed106b411c34/dbfa69d6-47ad-4f9d-892d-4f06cb7f1844/gallery-1785809184072.png",
+          "http://127.0.0.1:54321/storage/v1/object/public/client-media/69cfd906-0d15-4e5c-8bab-ed106b411c34/dbfa69d6-47ad-4f9d-892d-4f06cb7f1844/gallery-1785809196144.png",
+          "http://127.0.0.1:54321/storage/v1/object/public/client-media/69cfd906-0d15-4e5c-8bab-ed106b411c34/dbfa69d6-47ad-4f9d-892d-4f06cb7f1844/gallery-1785809203192.png",
+          "http://127.0.0.1:54321/storage/v1/object/public/client-media/69cfd906-0d15-4e5c-8bab-ed106b411c34/dbfa69d6-47ad-4f9d-892d-4f06cb7f1844/gallery-1785809214615.png"
+        ]
+      },
+      "Minimal": {
+        "ok": true,
+        "specimenH": 188,
+        "gap": 0,
+        "overflowHidden": true,
+        "desc": "Sparse quiet frames with breathing room",
+        "imgCount": 2,
+        "srcs": [
+          "http://127.0.0.1:54321/storage/v1/object/public/client-media/69cfd906-0d15-4e5c-8bab-ed106b411c34/dbfa69d6-47ad-4f9d-892d-4f06cb7f1844/gallery-1785809184072.png",
+          "http://127.0.0.1:54321/storage/v1/object/public/client-media/69cfd906-0d15-4e5c-8bab-ed106b411c34/dbfa69d6-47ad-4f9d-892d-4f06cb7f1844/gallery-1785809196144.png"
+        ]
+      },
+      "Modern": {
+        "ok": true,
+        "specimenH": 188,
+        "gap": 0,
+        "overflowHidden": true,
+        "desc": "Perfect equal grid, crisp and even",
+        "imgCount": 4,
+        "srcs": [
+          "http://127.0.0.1:54321/storage/v1/object/public/client-media/69cfd906-0d15-4e5c-8bab-ed106b411c34/dbfa69d6-47ad-4f9d-892d-4f06cb7f1844/gallery-1785809184072.png",
+          "http://127.0.0.1:54321/storage/v1/object/public/client-media/69cfd906-0d15-4e5c-8bab-ed106b411c34/dbfa69d6-47ad-4f9d-892d-4f06cb7f1844/gallery-1785809196144.png",
+          "http://127.0.0.1:54321/storage/v1/object/public/client-media/69cfd906-0d15-4e5c-8bab-ed106b411c34/dbfa69d6-47ad-4f9d-892d-4f06cb7f1844/gallery-1785809203192.png",
+          "http://127.0.0.1:54321/storage/v1/object/public/client-media/69cfd906-0d15-4e5c-8bab-ed106b411c34/dbfa69d6-47ad-4f9d-892d-4f06cb7f1844/gallery-1785809214615.png"
+        ]
+      },
+      "Luxury": {
+        "ok": true,
+        "specimenH": 188,
+        "gap": 0,
+        "overflowHidden": true,
+        "desc": "Singular fine-art mat with calm presence",
+        "imgCount": 2,
+        "srcs": [
+          "http://127.0.0.1:54321/storage/v1/object/public/client-media/69cfd906-0d15-4e5c-8bab-ed106b411c34/dbfa69d6-47ad-4f9d-892d-4f06cb7f1844/gallery-1785809184072.png",
+          "http://127.0.0.1:54321/storage/v1/object/public/client-media/69cfd906-0d15-4e5c-8bab-ed106b411c34/dbfa69d6-47ad-4f9d-892d-4f06cb7f1844/gallery-1785809196144.png"
+        ]
+      },
+      "Scrapbook": {
+        "ok": true,
+        "specimenH": 188,
+        "gap": 0,
+        "overflowHidden": true,
+        "desc": "Elegant memory page with soft layers",
+        "imgCount": 4,
+        "srcs": [
+          "http://127.0.0.1:54321/storage/v1/object/public/client-media/69cfd906-0d15-4e5c-8bab-ed106b411c34/dbfa69d6-47ad-4f9d-892d-4f06cb7f1844/gallery-1785809184072.png",
+          "http://127.0.0.1:54321/storage/v1/object/public/client-media/69cfd906-0d15-4e5c-8bab-ed106b411c34/dbfa69d6-47ad-4f9d-892d-4f06cb7f1844/gallery-1785809196144.png",
+          "http://127.0.0.1:54321/storage/v1/object/public/client-media/69cfd906-0d15-4e5c-8bab-ed106b411c34/dbfa69d6-47ad-4f9d-892d-4f06cb7f1844/gallery-1785809203192.png",
+          "http://127.0.0.1:54321/storage/v1/object/public/client-media/69cfd906-0d15-4e5c-8bab-ed106b411c34/dbfa69d6-47ad-4f9d-892d-4f06cb7f1844/gallery-1785809214615.png"
+        ]
+      },
+      "Wildflower": {
+        "ok": true,
+        "specimenH": 188,
+        "gap": 0,
+        "overflowHidden": true,
+        "desc": "Organic unequal windows with soft flow",
+        "imgCount": 4,
+        "srcs": [
+          "http://127.0.0.1:54321/storage/v1/object/public/client-media/69cfd906-0d15-4e5c-8bab-ed106b411c34/dbfa69d6-47ad-4f9d-892d-4f06cb7f1844/gallery-1785809184072.png",
+          "http://127.0.0.1:54321/storage/v1/object/public/client-media/69cfd906-0d15-4e5c-8bab-ed106b411c34/dbfa69d6-47ad-4f9d-892d-4f06cb7f1844/gallery-1785809196144.png",
+          "http://127.0.0.1:54321/storage/v1/object/public/client-media/69cfd906-0d15-4e5c-8bab-ed106b411c34/dbfa69d6-47ad-4f9d-892d-4f06cb7f1844/gallery-1785809203192.png",
+          "http://127.0.0.1:54321/storage/v1/object/public/client-media/69cfd906-0d15-4e5c-8bab-ed106b411c34/dbfa69d6-47ad-4f9d-892d-4f06cb7f1844/gallery-1785809214615.png"
+        ]
+      },
+      "Midnight": {
+        "ok": true,
+        "specimenH": 188,
+        "gap": 0,
+        "overflowHidden": true,
+        "desc": "Cinematic wide band on a dark field",
+        "imgCount": 3,
+        "srcs": [
+          "http://127.0.0.1:54321/storage/v1/object/public/client-media/69cfd906-0d15-4e5c-8bab-ed106b411c34/dbfa69d6-47ad-4f9d-892d-4f06cb7f1844/gallery-1785809184072.png",
+          "http://127.0.0.1:54321/storage/v1/object/public/client-media/69cfd906-0d15-4e5c-8bab-ed106b411c34/dbfa69d6-47ad-4f9d-892d-4f06cb7f1844/gallery-1785809196144.png",
+          "http://127.0.0.1:54321/storage/v1/object/public/client-media/69cfd906-0d15-4e5c-8bab-ed106b411c34/dbfa69d6-47ad-4f9d-892d-4f06cb7f1844/gallery-1785809203192.png"
+        ]
+      },
+      "Gallery Wall": {
+        "ok": true,
+        "specimenH": 188,
+        "gap": 0,
+        "overflowHidden": true,
+        "desc": "Curated salon wall with deliberate spacing",
+        "imgCount": 4,
+        "srcs": [
+          "http://127.0.0.1:54321/storage/v1/object/public/client-media/69cfd906-0d15-4e5c-8bab-ed106b411c34/dbfa69d6-47ad-4f9d-892d-4f06cb7f1844/gallery-1785809184072.png",
+          "http://127.0.0.1:54321/storage/v1/object/public/client-media/69cfd906-0d15-4e5c-8bab-ed106b411c34/dbfa69d6-47ad-4f9d-892d-4f06cb7f1844/gallery-1785809196144.png",
+          "http://127.0.0.1:54321/storage/v1/object/public/client-media/69cfd906-0d15-4e5c-8bab-ed106b411c34/dbfa69d6-47ad-4f9d-892d-4f06cb7f1844/gallery-1785809203192.png",
+          "http://127.0.0.1:54321/storage/v1/object/public/client-media/69cfd906-0d15-4e5c-8bab-ed106b411c34/dbfa69d6-47ad-4f9d-892d-4f06cb7f1844/gallery-1785809214615.png"
+        ]
+      }
+    },
+    "notes": [
+      {
+        "ok": true,
+        "row": "YOUR WEBSITE STYLE\n\nCollection\n\nVelvet\n\nEdit\n\nColor Story\n\nBlack Tie\n\nEdit\n\nTypography\n\nEditorial\n\nEdit\n\nPhoto Style\n\nWi"
+      }
+    ]
+  },
+  "visualAcceptance": {
+    "decision": "A",
+    "criticalPairsPass": 7,
+    "criticalPairsTotal": 7,
+    "stylesPass": 10,
+    "report": "docs/qa/wedding-website-studio-photo-style-phase-b-visual-acceptance.md",
+    "notes": [
+      "Beauty + structure accepted on Wizard + Theme Studio cards",
+      "B1 shell: studio 180 / wizard 188; gap 0; overflowHidden",
+      "Live Preview Our Photos fidelity OK for Gallery Wall / Minimal / Luxury",
+      "STOP \u2014 no further Photo Style implementation"
+    ]
+  }
+}

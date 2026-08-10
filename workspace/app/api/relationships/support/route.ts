@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { sendRelationshipEmail } from "@shared/email";
-import { resolveOpenFeedback } from "@shared/relationships";
+import { greetingFirstName, resolveOpenFeedback } from "@shared/relationships";
 
 import { getRelationship } from "@/lib/data/store";
 import { actorCan, getActingMember } from "@/lib/program4/session";
@@ -70,7 +70,10 @@ export async function POST(request: Request) {
         subject,
         body: text,
         venueName: relationship.venue.name,
-        firstName: relationship.owner.firstName,
+        firstName: greetingFirstName({
+          firstName: relationship.owner.firstName,
+          email: relationship.owner.email,
+        }),
       },
       subject,
       text,

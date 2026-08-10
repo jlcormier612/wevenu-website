@@ -1,27 +1,17 @@
 /**
  * Message template merge-field resolution — Communication Platform Phase 1
- * (mechanics) and Phase 2 (real call site: Scheduled Sends). Mirrors
- * lib/contracts/merge.ts's pattern.
+ * (mechanics) and Phase 2 (real call site: Scheduled Sends).
+ *
+ * The find-and-replace mechanics (mergeContent/extractTokens/MergeData) now
+ * live in lib/shared-merge/tokens.ts — this file and lib/contracts/merge.ts
+ * were hand-maintaining byte-for-byte duplicates of the same three exports
+ * (Work Package D2 consolidation). Everything below (buildMergeData and
+ * Message Templates' own field vocabulary) is genuinely specific to this
+ * system and stays here.
  */
+import { type MergeData } from "@/lib/shared-merge/tokens";
 
-export type MergeData = Record<string, string>;
-
-/** Replace all {{token}} occurrences. Unknown tokens are left as-is. */
-export function mergeContent(template: string, data: MergeData): string {
-  return template.replace(/\{\{(\w+)\}\}/g, (match, key) => {
-    const value = data[key as keyof MergeData];
-    return value !== undefined ? value : match;
-  });
-}
-
-/** Extract all {{token}} names from a template string. */
-export function extractTokens(template: string): string[] {
-  const tokens = new Set<string>();
-  for (const [, key] of template.matchAll(/\{\{(\w+)\}\}/g)) {
-    tokens.add(key);
-  }
-  return [...tokens];
-}
+export { mergeContent, extractTokens, type MergeData } from "@/lib/shared-merge/tokens";
 
 // ---- Merge context (Phase 2 — real call site: Scheduled Sends) -------------
 // task_name has no real value yet — nothing links a scheduled/sequenced

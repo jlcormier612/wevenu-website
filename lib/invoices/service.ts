@@ -127,9 +127,35 @@ async function enqueueInvoiceSyncIfNotDraft(c: Awaited<ReturnType<typeof createC
   }
 }
 
+/**
+ * Work Package D5 — the gap named directly above this function's own prior
+ * comment ("addLineItem/removeLineItem have no status guard at all") is now
+ * closed here, at the one place every real caller of either function goes
+ * through. A Draft invoice keeps its existing free-edit behavior; once it's
+ * left Draft, the architecture's own stated intent (see revertInvoiceToDraft's
+ * comment: "nothing here changes again without a human's explicit decision")
+ * is now actually enforced, not just documented. Reverting to Draft remains
+ * the one explicit path back to an editable state. This also protects D5's
+ * own new Event Inventory → Event Order → Invoice pipeline for free: that
+ * pipeline never calls addLineItem/removeLineItem at all (it only ever
+ * freezes lines once, on first send, via insertFrozenLinesFromEventOrder),
+ * so it was never going to hit this gap — but closing it here means no
+ * *future* caller can either.
+ */
+async function assertInvoiceEditable(c: Awaited<ReturnType<typeof createClient>>, venueId: string, invoiceId: string): Promise<InvoiceActionResult | null> {
+  const { data } = await c.from("invoices").select("status").eq("id", invoiceId).eq("venue_id", venueId).maybeSingle<{ status: string }>();
+  if (!data) return { ok: false, message: "Invoice not found." };
+  if (data.status !== "draft") {
+    return { ok: false, message: "This invoice is no longer a draft — revert it to draft before changing its line items." };
+  }
+  return null;
+}
+
 export async function addLineItem(invoiceId: string, input: InvoiceLineItemInput): Promise<AddLineItemResult> {
   if (!input.description.trim()) return { ok: false, errors: { description: "Description is required." } };
   const result = await withVenue(async (c, venueId) => {
+    const guard = await assertInvoiceEditable(c, venueId, invoiceId);
+    if (guard) return guard as AddLineItemResult;
     const item = await repo.addLineItem(c, venueId, invoiceId, input);
     await repo.insertActivity(c, venueId, invoiceId, "line_item_added", `Line item added: ${input.description.trim()}`);
     await enqueueInvoiceSyncIfNotDraft(c, venueId, invoiceId);
@@ -140,6 +166,8 @@ export async function addLineItem(invoiceId: string, input: InvoiceLineItemInput
 
 export async function removeLineItem(invoiceId: string, itemId: string): Promise<InvoiceActionResult> {
   const result = await withVenue(async (c, venueId) => {
+    const guard = await assertInvoiceEditable(c, venueId, invoiceId);
+    if (guard) return guard;
     await repo.removeLineItem(c, venueId, invoiceId, itemId);
     await repo.insertActivity(c, venueId, invoiceId, "line_item_removed", "Line item removed");
     await enqueueInvoiceSyncIfNotDraft(c, venueId, invoiceId);

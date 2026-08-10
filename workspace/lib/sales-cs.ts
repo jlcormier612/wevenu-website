@@ -31,6 +31,8 @@ export {
   isInCustomerSuccessView,
   isInSalesView,
   relationshipHasOpenSupport,
+  countOpenSupportItems,
+  countOpenSupportItemsAcross,
   normalizeSalesStage,
   normalizeCustomerSuccessStage,
   deriveSalesStage,

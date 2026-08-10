@@ -5,6 +5,7 @@ import { createClient } from "@/integrations/supabase/server";
 import { createAdminClient } from "@/integrations/supabase/admin";
 import { isSupabaseConfigured } from "@/lib/env";
 import * as repo from "@/lib/contracts/repository";
+import * as documentIntegration from "@/lib/contracts/document-integration";
 import { buildMergeData, mergeContent } from "@/lib/contracts/merge";
 import { recordEngagementEvent } from "@/lib/activation/service";
 import type {
@@ -140,6 +141,49 @@ export async function createContract(input: NewContractInput): Promise<CreateCon
   return result as CreateContractResult;
 }
 
+/**
+ * Work Package D4, Step 33 — "Create Amendment," not "Edit Final
+ * Contract." Only legal from a truly finalized contract (Document Domain
+ * status='finalized', not merely Contract status='signed' — matches
+ * Step 33's own framing: "A finalized Contract must be preservable").
+ * Clones title/client/event/content into a brand-new draft `contracts`
+ * row and a brand-new canonical Document — the original row, its
+ * signature, and its finalized PDF are never touched. Lineage back to
+ * the original is recorded immediately (recordAmendmentLineage); the
+ * original doesn't actually become `superseded` until the amendment
+ * itself is later finalized (see finalizeContractDocument).
+ */
+export async function createAmendmentFromContract(sourceContractId: string): Promise<CreateContractResult> {
+  const result = await withVenue(async (supabase, venueId) => {
+    const source = await repo.getContract(supabase, venueId, sourceContractId);
+    if (!source) return { ok: false, message: "Original contract not found." } as CreateContractResult;
+
+    const finalized = await documentIntegration.isContractFinalized(supabase, sourceContractId);
+    if (!finalized) {
+      return { ok: false, message: "Only a finalized contract can be amended." } as CreateContractResult;
+    }
+
+    // Document Domain lineage isn't recorded yet — the amendment has no
+    // canonical Document until it's actually sent (publishing happens in
+    // sendContract, same as any other contract's first send). The
+    // amends_contract_id column is what lets the UI show "this amends X"
+    // immediately, before that Document exists; sendContract reads this
+    // same column to record the Document Domain lineage once it can.
+    const newContractId = await repo.insertContract(supabase, venueId, {
+      templateId: source.templateId ?? "",
+      clientId: source.clientId ?? "",
+      eventId: source.eventId ?? "",
+      title: `${source.title} — Amendment`,
+      content: source.content,
+      amendsContractId: sourceContractId,
+    });
+    await repo.insertContractActivity(supabase, venueId, newContractId, "contract_created", `Amendment of "${source.title}" created`);
+
+    return { ok: true, contractId: newContractId } as CreateContractResult;
+  });
+  return result as CreateContractResult;
+}
+
 /** Build merge data from the current venue + client + event. */
 export async function buildContractMergeData(opts: {
   clientId?: string;
@@ -164,11 +208,11 @@ export async function buildContractMergeData(opts: {
   });
 }
 
-export async function updateContractContent_(id: string, title: string, content: string): Promise<ContractActionResult> {
+export async function updateContractContent_(id: string, title: string, content: string, expectedUpdatedAt: string): Promise<ContractActionResult> {
   if (!title.trim() || !content.trim()) return { ok: false, message: "Title and content are required." };
   const result = await withVenue(async (supabase, venueId) => {
-    const outcome = await repo.updateContractContent(supabase, venueId, id, title, content);
-    if (!outcome.ok) return { ok: false, message: outcome.message } as ContractActionResult;
+    const outcome = await repo.updateContractContent(supabase, venueId, id, title, content, expectedUpdatedAt);
+    if (!outcome.ok) return { ok: false, message: outcome.message, reason: outcome.reason } as ContractActionResult;
     return { ok: true } as ContractActionResult;
   });
   return result as ContractActionResult;
@@ -180,6 +224,30 @@ export async function sendContract(id: string): Promise<ContractActionResult> {
     const outcome = await repo.updateContractStatus(supabase, venueId, id, "sent", { sentAt: true });
     if (!outcome.ok) return { ok: false, message: outcome.message } as ContractActionResult;
     await repo.insertContractActivity(supabase, venueId, id, "sent", "Contract sent for signing");
+
+    // Work Package D4 — Document Domain integration. First send publishes
+    // the Contract into the Document Domain; every later send (after a
+    // reopen + edit) is a new, real version boundary — never a version
+    // per keystroke, only per actual reshare.
+    if (contract) {
+      const existingDocumentId = await documentIntegration.getContractDocumentId(supabase, id);
+      if (!existingDocumentId) {
+        const { documentId: newDocumentId } = await documentIntegration.publishContractDocument(supabase, contract);
+        // If this contract is an amendment (amends_contract_id set at
+        // creation, Step 33/34), this is the first moment a canonical
+        // Document exists for it — record the lineage now, same fact the
+        // amends_contract_id column already carries, in the certified
+        // Document Domain vocabulary too.
+        if (contract.amendsContractId) {
+          const priorDocumentId = await documentIntegration.getContractDocumentId(supabase, contract.amendsContractId);
+          if (priorDocumentId) {
+            await documentIntegration.recordAmendmentLineage(supabase, newDocumentId, priorDocumentId);
+          }
+        }
+      } else {
+        await documentIntegration.versionContractDocument(supabase, existingDocumentId, contract.content, { type: "venue", id: venueId });
+      }
+    }
 
     if (contract?.clientId) {
       const [client, venue] = await Promise.all([getClient(contract.clientId), getCurrentVenue()]);
@@ -216,6 +284,16 @@ export async function cancelContract(id: string): Promise<ContractActionResult> 
     const outcome = await repo.updateContractStatus(supabase, venueId, id, "cancelled");
     if (!outcome.ok) return { ok: false, message: outcome.message } as ContractActionResult;
     await repo.insertContractActivity(supabase, venueId, id, "cancelled", "Contract cancelled");
+    return { ok: true } as ContractActionResult;
+  });
+  return result as ContractActionResult;
+}
+
+/** Work Package D4 — closes the negotiation-loop gap; see repository.ts's own comment on reopenForEditing. */
+export async function reopenContractForEditing(id: string): Promise<ContractActionResult> {
+  const result = await withVenue(async (supabase, venueId) => {
+    const outcome = await repo.reopenForEditing(supabase, venueId, id);
+    if (!outcome.ok) return { ok: false, message: outcome.message } as ContractActionResult;
     return { ok: true } as ContractActionResult;
   });
   return result as ContractActionResult;

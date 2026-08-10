@@ -25,12 +25,16 @@ import type { ContractErrors, ContractTemplate } from "@/lib/contracts/types";
 export function NewContractForm({
   templates,
   clients,
+  initialTemplateId,
 }: {
   templates: ContractTemplate[];
   clients: Client[];
+  /** Carried from the Contract Templates list's own "Use" button (Work Package D2) — arriving here already knowing which template was chosen, instead of asking again. */
+  initialTemplateId?: string;
 }) {
   const router = useRouter();
-  const defaultTemplate = templates.find((t) => t.isDefault) ?? templates[0];
+  const requestedTemplate = initialTemplateId ? templates.find((t) => t.id === initialTemplateId) : undefined;
+  const defaultTemplate = requestedTemplate ?? templates.find((t) => t.isDefault) ?? templates[0];
 
   const [templateId, setTemplateId] = React.useState(defaultTemplate?.id ?? "");
   const [clientId, setClientId] = React.useState("");
@@ -79,6 +83,17 @@ export function NewContractForm({
   }
 
   function handleSubmit() {
+    // Work Package D2, Step 37 — a concise, plain-language confirmation
+    // before creating the working contract, naming the template and who
+    // it's for, same weight as this app's other confirm() dialogs
+    // (Contract Detail's "Cancel and void..."), not a new dialog system.
+    const client = clients.find((c) => c.id === clientId);
+    const template = templates.find((t) => t.id === templateId);
+    const clientLabel = client ? clientDisplayName(client.firstName, client.lastName, client.partnerFirstName, client.partnerLastName) : "this client";
+    const confirmed = confirm(
+      `Create ${clientLabel}'s contract?\n\nTemplate: ${template?.name ?? "—"}\n\nThis will create a new working contract you can send for signing.`,
+    );
+    if (!confirmed) return;
     startTransition(async () => {
       const result = await createContractAction({ templateId, clientId, eventId, title, content });
       if (result.ok) { toast.success("Contract created."); router.push(`/contracts/${result.contractId}`); return; }

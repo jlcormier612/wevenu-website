@@ -1,0 +1,68 @@
+{
+  "desktop": {
+    "viewport": {
+      "width": 1440,
+      "height": 900
+    },
+    "data": {
+      "text": "WHAT SWEET DAISY BARN & FARM NEEDS FROM YOU Your Next Steps 9 left for Sweet Daisy Barn & Farm FROM YOUR VENUE Submit your guest count Required We need your final headcount to plan seating, catering, and rentals. Due Sep 17 Review Final payment Required Due Sep 17 Review Submit your timeline Required Plan your day-of schedule, then submit it so your venue has it. Due Oct 3 Review Share timeline Share your timeline so your photographer knows when and where they'll be needed. Due Oct 3 Review Leave a review We'd love to hear about your experience. Due Oct 31 Review View all 9 next steps →",
+      "ctaLike": [
+        "Submit your guest count\n\nRequired\n\nWe need your final headcount to plan seating, catering, and rentals.\n\nDue Sep 17",
+        "Review",
+        "Review",
+        "Submit your timeline\n\nRequired\n\nPlan your day-of schedule, then submit it so your venue has it.\n\nDue Oct 3",
+        "Review",
+        "Review",
+        "Review",
+        "View all 9 next steps →"
+      ],
+      "completeCtas": 0,
+      "reviewCtas": 5,
+      "payCtas": 0,
+      "shareSnippet": "Share timeline Share your timeline so your photographer knows when and where they'll be needed. Due Oct 3 Review Leave a review We'd love to hear about your experience. Due Oct 31 Review View all 9 next steps →",
+      "hasOldCopy": false,
+      "hasNewCopy": true
+    },
+    "nav": {
+      "url": "http://localhost:3000/p/seedcoupleportal00000000000000000000000000000001",
+      "bodyHasTasks": true,
+      "sample": "Emma & Jordan · Sweet Daisy Barn & Farm Oct 17, 2026 – Oct 19, 2026 Export my data 🏠 Home ✅ Tasks 5 🕒 Timeline 📁 Documents 💳 Payments 💬 Messages 🏛️ Venue Guide 🤝 Preferred Vendors From your venue Everything Sweet Daisy Barn & Farm needs from you, in one place — newest due date first. 6/10 tasks complete First Installment Payment Schedule — Emma / Carter / Jordan / Lee — payment due Due Apr "
+    }
+  },
+  "mobile": {
+    "viewport": {
+      "width": 390,
+      "height": 844
+    },
+    "data": {
+      "text": "WHAT SWEET DAISY BARN & FARM NEEDS FROM YOU Your Next Steps 9 left for Sweet Daisy Barn & Farm FROM YOUR VENUE Submit your guest count Required We need your final headcount to plan seating, catering, and rentals. Due Sep 17 Review Final payment Required Due Sep 17 Review Submit your timeline Required Plan your day-of schedule, then submit it so your venue has it. Due Oct 3 Review Share timeline Share your timeline so your photographer knows when and where they'll be needed. Due Oct 3 Review Leave a review We'd love to hear about your experience. Due Oct 31 Review View all 9 next steps →",
+      "ctaLike": [
+        "Submit your guest count\n\nRequired\n\nWe need your final headcount to plan seating, catering, and rentals.\n\nDue Sep 17",
+        "Review",
+        "Review",
+        "Submit your timeline\n\nRequired\n\nPlan your day-of schedule, then submit it so your venue has it.\n\nDue Oct 3",
+        "Review",
+        "Review",
+        "Review",
+        "View all 9 next steps →"
+      ],
+      "completeCtas": 0,
+      "reviewCtas": 5,
+      "payCtas": 0,
+      "shareSnippet": "Share timeline Share your timeline so your photographer knows when and where they'll be needed. Due Oct 3 Review Leave a review We'd love to hear about your experience. Due Oct 31 Review View all 9 next steps →",
+      "hasOldCopy": false,
+      "hasNewCopy": true
+    },
+    "nav": {
+      "url": "http://localhost:3000/p/seedcoupleportal00000000000000000000000000000001",
+      "bodyHasTasks": true,
+      "sample": "Emma & Jordan · Sweet Daisy Barn & Farm Export my data 🏠 Home ✅ Tasks 5 🕒 Timeline 📁 Documents 💳 Payments 💬 Messages 🏛️ Guide 🤝 Vendors From your venue Everything Sweet Daisy Barn & Farm needs from you, in one place — newest due date first. 6/10 tasks complete First Installment Payment Schedule — Emma / Carter / Jordan / Lee — payment due Due Apr 20 Pay now Second Installment Payment Schedu"
+    }
+  },
+  "checklist": {
+    "1": true,
+    "2": true,
+    "3": true,
+    "4": true
+  }
+}

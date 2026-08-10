@@ -19,6 +19,7 @@ import {
   updateEventTaskScheduleAction,
 } from "@/app/(app)/playbooks/actions";
 import { DueDateComposer } from "@/components/playbooks/due-date-composer";
+import { BusinessAssetHeader } from "@/components/business-assets/asset-header";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -920,8 +921,42 @@ export function EventTaskList({
     </div>
   );
 
+  // Business Asset Experience Consolidation (BA4B, Step 5) — INTENTIONAL
+  // DIFFERENCE, not an oversight: unlike Contracts/Invoices/etc., a Task
+  // List has no single certified "status" to show in the shared header.
+  // Client Planning and Venue Planning are two independent applications
+  // (see the comment on PlaybookApplyRow below, "never merged into one
+  // status" predates this phase) — showing one fake combined status would
+  // be inventing state that doesn't exist. The header below shows real,
+  // already-computed counts instead, and "Review Tasks" scrolls to the
+  // existing list rather than adding a new action.
+  const mostRecentUpdate = tasks.length > 0
+    ? tasks.reduce((latest, t) => t.updatedAt > latest ? t.updatedAt : latest, tasks[0].updatedAt)
+    : null;
+  const openCount = overdue.length + blocked.length + pending.length;
+
   return (
     <div className="space-y-4">
+      <BusinessAssetHeader
+        compact
+        whatIsThis="Task List"
+        title="Task List"
+        status={
+          tasks.length === 0
+            ? <Badge variant="muted">No tasks yet</Badge>
+            : openCount === 0
+              ? <Badge variant="success">All complete</Badge>
+              : <Badge variant={overdue.length > 0 ? "destructive" : "default"}>{openCount} open{overdue.length > 0 ? ` · ${overdue.length} overdue` : ""}</Badge>
+        }
+        lastUpdated={mostRecentUpdate ? new Date(mostRecentUpdate).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "—"}
+        relationship={eventName ? { name: eventName } : null}
+        primaryAction={tasks.length > 0 && (
+          <Button type="button" variant="outline" size="sm"
+            onClick={() => document.getElementById("planning-task-list")?.scrollIntoView({ behavior: "smooth" })}>
+            Review Tasks
+          </Button>
+        )}
+      />
       {/* Two independent planning systems — never merged into one status */}
       <div className="space-y-2">
         {PLAYBOOK_KINDS.map((k) => (

@@ -1,0 +1,702 @@
+[
+  {
+    "file": "wizard-card-midnight.png",
+    "label": "wizard:midnight",
+    "wh": [
+      226,
+      377
+    ],
+    "story_med": 242.2,
+    "story_mode": "light",
+    "inset_score": -20.8,
+    "inset_likely": false,
+    "hero_h_px": 210,
+    "hero_aspect_proxy": 1.08,
+    "align_bias": "left-bias",
+    "left_w": 112,
+    "mid_w": 61,
+    "right_w": 0,
+    "light_row_frac": 0.45,
+    "dark_row_frac": 0.43
+  },
+  {
+    "file": "wizard-card-velvet.png",
+    "label": "wizard:velvet",
+    "wh": [
+      226,
+      378
+    ],
+    "story_med": 19.9,
+    "story_mode": "dark",
+    "inset_score": -12.6,
+    "inset_likely": false,
+    "hero_h_px": 282,
+    "hero_aspect_proxy": 0.8,
+    "align_bias": "left-bias",
+    "left_w": 38,
+    "mid_w": 22,
+    "right_w": 0,
+    "light_row_frac": 0.15,
+    "dark_row_frac": 0.72
+  },
+  {
+    "file": "wizard-card-champagne.png",
+    "label": "wizard:champagne",
+    "wh": [
+      226,
+      378
+    ],
+    "story_med": 247.8,
+    "story_mode": "light",
+    "inset_score": 0.2,
+    "inset_likely": false,
+    "hero_h_px": 205,
+    "hero_aspect_proxy": 1.1,
+    "align_bias": "right-bias",
+    "left_w": 2,
+    "mid_w": 1,
+    "right_w": 2,
+    "light_row_frac": 0.48,
+    "dark_row_frac": 0.02
+  },
+  {
+    "file": "wizard-card-european-estate.png",
+    "label": "wizard:european-estate",
+    "wh": [
+      226,
+      377
+    ],
+    "story_med": 100.0,
+    "story_mode": "mixed",
+    "inset_score": 164.6,
+    "inset_likely": true,
+    "hero_h_px": 233,
+    "hero_aspect_proxy": 0.97,
+    "align_bias": "left-bias",
+    "left_w": 153,
+    "mid_w": 2,
+    "right_w": 76,
+    "light_row_frac": 0.41,
+    "dark_row_frac": 0.03
+  },
+  {
+    "file": "wizard-card-rustic.png",
+    "label": "wizard:rustic",
+    "wh": [
+      226,
+      377
+    ],
+    "story_med": 242.4,
+    "story_mode": "light",
+    "inset_score": 147.1,
+    "inset_likely": true,
+    "hero_h_px": 1,
+    "hero_aspect_proxy": 226.0,
+    "align_bias": "centerish",
+    "left_w": 64,
+    "mid_w": 59,
+    "right_w": 38,
+    "light_row_frac": 0.51,
+    "dark_row_frac": 0.0
+  },
+  {
+    "file": "wizard-card-wildflower.png",
+    "label": "wizard:wildflower",
+    "wh": [
+      226,
+      377
+    ],
+    "story_med": 248.1,
+    "story_mode": "light",
+    "inset_score": -23.6,
+    "inset_likely": false,
+    "hero_h_px": 169,
+    "hero_aspect_proxy": 1.34,
+    "align_bias": "left-bias",
+    "left_w": 125,
+    "mid_w": 54,
+    "right_w": 0,
+    "light_row_frac": 0.58,
+    "dark_row_frac": 0.0
+  },
+  {
+    "file": "wizard-card-garden-party.png",
+    "label": "wizard:garden-party",
+    "wh": [
+      226,
+      377
+    ],
+    "story_med": 219.5,
+    "story_mode": "light",
+    "inset_score": 41.2,
+    "inset_likely": false,
+    "hero_h_px": 223,
+    "hero_aspect_proxy": 1.01,
+    "align_bias": "centerish",
+    "left_w": 10,
+    "mid_w": 12,
+    "right_w": 5,
+    "light_row_frac": 0.43,
+    "dark_row_frac": 0.0
+  },
+  {
+    "file": "wizard-card-coastal.png",
+    "label": "wizard:coastal",
+    "wh": [
+      226,
+      378
+    ],
+    "story_med": 250.9,
+    "story_mode": "light",
+    "inset_score": -27.5,
+    "inset_likely": false,
+    "hero_h_px": 131,
+    "hero_aspect_proxy": 1.73,
+    "align_bias": "centerish",
+    "left_w": 92,
+    "mid_w": 91,
+    "right_w": 83,
+    "light_row_frac": 0.66,
+    "dark_row_frac": 0.0
+  },
+  {
+    "file": "wizard-card-linen.png",
+    "label": "wizard:linen",
+    "wh": [
+      226,
+      377
+    ],
+    "story_med": 250.1,
+    "story_mode": "light",
+    "inset_score": -32.0,
+    "inset_likely": false,
+    "hero_h_px": 129,
+    "hero_aspect_proxy": 1.75,
+    "align_bias": "right-bias",
+    "left_w": 40,
+    "mid_w": 13,
+    "right_w": 65,
+    "light_row_frac": 0.7,
+    "dark_row_frac": 0.0
+  },
+  {
+    "file": "wizard-card-rose.png",
+    "label": "wizard:rose",
+    "wh": [
+      226,
+      378
+    ],
+    "story_med": 245.6,
+    "story_mode": "light",
+    "inset_score": 1.4,
+    "inset_likely": false,
+    "hero_h_px": 202,
+    "hero_aspect_proxy": 1.12,
+    "align_bias": "right-bias",
+    "left_w": 1,
+    "mid_w": 0,
+    "right_w": 2,
+    "light_row_frac": 0.49,
+    "dark_row_frac": 0.0
+  },
+  {
+    "file": "studio-card-midnight.png",
+    "label": "studio:midnight",
+    "wh": [
+      163,
+      300
+    ],
+    "story_med": 243.1,
+    "story_mode": "light",
+    "inset_score": -17.7,
+    "inset_likely": false,
+    "hero_h_px": 156,
+    "hero_aspect_proxy": 1.04,
+    "align_bias": "left-bias",
+    "left_w": 52,
+    "mid_w": 40,
+    "right_w": 0,
+    "light_row_frac": 0.48,
+    "dark_row_frac": 0.41
+  },
+  {
+    "file": "studio-card-velvet.png",
+    "label": "studio:velvet",
+    "wh": [
+      161,
+      298
+    ],
+    "story_med": 20.5,
+    "story_mode": "dark",
+    "inset_score": -13.3,
+    "inset_likely": false,
+    "hero_h_px": 222,
+    "hero_aspect_proxy": 0.73,
+    "align_bias": "centerish",
+    "left_w": 7,
+    "mid_w": 12,
+    "right_w": 0,
+    "light_row_frac": 0.16,
+    "dark_row_frac": 0.67
+  },
+  {
+    "file": "studio-card-champagne.png",
+    "label": "studio:champagne",
+    "wh": [
+      161,
+      298
+    ],
+    "story_med": 248.0,
+    "story_mode": "light",
+    "inset_score": -11.9,
+    "inset_likely": false,
+    "hero_h_px": 155,
+    "hero_aspect_proxy": 1.04,
+    "align_bias": "centerish",
+    "left_w": 1,
+    "mid_w": 4,
+    "right_w": 2,
+    "light_row_frac": 0.5,
+    "dark_row_frac": 0.02
+  },
+  {
+    "file": "studio-card-european-estate.png",
+    "label": "studio:european-estate",
+    "wh": [
+      161,
+      298
+    ],
+    "story_med": 108.4,
+    "story_mode": "mixed",
+    "inset_score": 157.3,
+    "inset_likely": true,
+    "hero_h_px": 175,
+    "hero_aspect_proxy": 0.92,
+    "align_bias": "left-bias",
+    "left_w": 90,
+    "mid_w": 1,
+    "right_w": 0,
+    "light_row_frac": 0.44,
+    "dark_row_frac": 0.01
+  },
+  {
+    "file": "studio-card-rustic.png",
+    "label": "studio:rustic",
+    "wh": [
+      163,
+      300
+    ],
+    "story_med": 243.8,
+    "story_mode": "light",
+    "inset_score": 39.4,
+    "inset_likely": false,
+    "hero_h_px": 144,
+    "hero_aspect_proxy": 1.13,
+    "align_bias": "centerish",
+    "left_w": 23,
+    "mid_w": 25,
+    "right_w": 0,
+    "light_row_frac": 0.53,
+    "dark_row_frac": 0.0
+  },
+  {
+    "file": "studio-card-wildflower.png",
+    "label": "studio:wildflower",
+    "wh": [
+      161,
+      298
+    ],
+    "story_med": 248.0,
+    "story_mode": "light",
+    "inset_score": -27.5,
+    "inset_likely": false,
+    "hero_h_px": 126,
+    "hero_aspect_proxy": 1.28,
+    "align_bias": "left-bias",
+    "left_w": 63,
+    "mid_w": 35,
+    "right_w": 0,
+    "light_row_frac": 0.6,
+    "dark_row_frac": 0.0
+  },
+  {
+    "file": "studio-card-garden-party.png",
+    "label": "studio:garden-party",
+    "wh": [
+      161,
+      298
+    ],
+    "story_med": 241.2,
+    "story_mode": "light",
+    "inset_score": 31.0,
+    "inset_likely": false,
+    "hero_h_px": 167,
+    "hero_aspect_proxy": 0.96,
+    "align_bias": "left-bias",
+    "left_w": 8,
+    "mid_w": 3,
+    "right_w": 6,
+    "light_row_frac": 0.45,
+    "dark_row_frac": 0.0
+  },
+  {
+    "file": "studio-card-coastal.png",
+    "label": "studio:coastal",
+    "wh": [
+      367,
+      161
+    ],
+    "story_med": 243.1,
+    "story_mode": "light",
+    "inset_score": 19.6,
+    "inset_likely": false,
+    "hero_h_px": 82,
+    "hero_aspect_proxy": 4.48,
+    "align_bias": "centerish",
+    "left_w": 0,
+    "mid_w": 28,
+    "right_w": 0,
+    "light_row_frac": 0.46,
+    "dark_row_frac": 0.0
+  },
+  {
+    "file": "studio-card-linen.png",
+    "label": "studio:linen",
+    "wh": [
+      161,
+      298
+    ],
+    "story_med": 250.1,
+    "story_mode": "light",
+    "inset_score": -29.0,
+    "inset_likely": false,
+    "hero_h_px": 97,
+    "hero_aspect_proxy": 1.66,
+    "align_bias": "right-bias",
+    "left_w": 22,
+    "mid_w": 6,
+    "right_w": 35,
+    "light_row_frac": 0.71,
+    "dark_row_frac": 0.0
+  },
+  {
+    "file": "studio-card-rose.png",
+    "label": "studio:rose",
+    "wh": [
+      161,
+      298
+    ],
+    "story_med": 246.4,
+    "story_mode": "light",
+    "inset_score": -9.4,
+    "inset_likely": false,
+    "hero_h_px": 152,
+    "hero_aspect_proxy": 1.06,
+    "align_bias": "left-bias",
+    "left_w": 3,
+    "mid_w": 2,
+    "right_w": 0,
+    "light_row_frac": 0.52,
+    "dark_row_frac": 0.0
+  },
+  {
+    "file": "card-midnight.png",
+    "label": "phaseb:midnight",
+    "wh": [
+      163,
+      300
+    ],
+    "story_med": 243.1,
+    "story_mode": "light",
+    "inset_score": -17.7,
+    "inset_likely": false,
+    "hero_h_px": 156,
+    "hero_aspect_proxy": 1.04,
+    "align_bias": "left-bias",
+    "left_w": 52,
+    "mid_w": 40,
+    "right_w": 0,
+    "light_row_frac": 0.48,
+    "dark_row_frac": 0.41
+  },
+  {
+    "file": "card-velvet.png",
+    "label": "phaseb:velvet",
+    "wh": [
+      161,
+      298
+    ],
+    "story_med": 20.5,
+    "story_mode": "dark",
+    "inset_score": -13.3,
+    "inset_likely": false,
+    "hero_h_px": 222,
+    "hero_aspect_proxy": 0.73,
+    "align_bias": "centerish",
+    "left_w": 7,
+    "mid_w": 12,
+    "right_w": 0,
+    "light_row_frac": 0.16,
+    "dark_row_frac": 0.67
+  },
+  {
+    "file": "card-champagne.png",
+    "label": "phaseb:champagne",
+    "wh": [
+      161,
+      298
+    ],
+    "story_med": 248.0,
+    "story_mode": "light",
+    "inset_score": -11.9,
+    "inset_likely": false,
+    "hero_h_px": 155,
+    "hero_aspect_proxy": 1.04,
+    "align_bias": "centerish",
+    "left_w": 1,
+    "mid_w": 4,
+    "right_w": 2,
+    "light_row_frac": 0.5,
+    "dark_row_frac": 0.02
+  },
+  {
+    "file": "card-european-estate.png",
+    "label": "phaseb:european-estate",
+    "wh": [
+      367,
+      157
+    ],
+    "story_med": 232.8,
+    "story_mode": "light",
+    "inset_score": 31.1,
+    "inset_likely": false,
+    "hero_h_px": 82,
+    "hero_aspect_proxy": 4.48,
+    "align_bias": "centerish",
+    "left_w": 0,
+    "mid_w": 20,
+    "right_w": 0,
+    "light_row_frac": 0.5,
+    "dark_row_frac": 0.0
+  },
+  {
+    "file": "card-rustic.png",
+    "label": "phaseb:rustic",
+    "wh": [
+      163,
+      300
+    ],
+    "story_med": 243.8,
+    "story_mode": "light",
+    "inset_score": 39.4,
+    "inset_likely": false,
+    "hero_h_px": 144,
+    "hero_aspect_proxy": 1.13,
+    "align_bias": "centerish",
+    "left_w": 23,
+    "mid_w": 25,
+    "right_w": 0,
+    "light_row_frac": 0.53,
+    "dark_row_frac": 0.0
+  },
+  {
+    "file": "card-wildflower.png",
+    "label": "phaseb:wildflower",
+    "wh": [
+      161,
+      298
+    ],
+    "story_med": 248.0,
+    "story_mode": "light",
+    "inset_score": -27.5,
+    "inset_likely": false,
+    "hero_h_px": 126,
+    "hero_aspect_proxy": 1.28,
+    "align_bias": "left-bias",
+    "left_w": 63,
+    "mid_w": 35,
+    "right_w": 0,
+    "light_row_frac": 0.6,
+    "dark_row_frac": 0.0
+  },
+  {
+    "file": "card-garden-party.png",
+    "label": "phaseb:garden-party",
+    "wh": [
+      161,
+      298
+    ],
+    "story_med": 241.2,
+    "story_mode": "light",
+    "inset_score": 31.0,
+    "inset_likely": false,
+    "hero_h_px": 167,
+    "hero_aspect_proxy": 0.96,
+    "align_bias": "left-bias",
+    "left_w": 8,
+    "mid_w": 3,
+    "right_w": 6,
+    "light_row_frac": 0.45,
+    "dark_row_frac": 0.0
+  },
+  {
+    "file": "card-coastal.png",
+    "label": "phaseb:coastal",
+    "wh": [
+      163,
+      300
+    ],
+    "story_med": 250.9,
+    "story_mode": "light",
+    "inset_score": -19.6,
+    "inset_likely": false,
+    "hero_h_px": 97,
+    "hero_aspect_proxy": 1.68,
+    "align_bias": "centerish",
+    "left_w": 52,
+    "mid_w": 46,
+    "right_w": 50,
+    "light_row_frac": 0.69,
+    "dark_row_frac": 0.0
+  },
+  {
+    "file": "card-linen.png",
+    "label": "phaseb:linen",
+    "wh": [
+      161,
+      298
+    ],
+    "story_med": 250.1,
+    "story_mode": "light",
+    "inset_score": -29.0,
+    "inset_likely": false,
+    "hero_h_px": 97,
+    "hero_aspect_proxy": 1.66,
+    "align_bias": "right-bias",
+    "left_w": 22,
+    "mid_w": 6,
+    "right_w": 35,
+    "light_row_frac": 0.71,
+    "dark_row_frac": 0.0
+  },
+  {
+    "file": "card-rose.png",
+    "label": "phaseb:rose",
+    "wh": [
+      161,
+      298
+    ],
+    "story_med": 246.4,
+    "story_mode": "light",
+    "inset_score": -9.4,
+    "inset_likely": false,
+    "hero_h_px": 152,
+    "hero_aspect_proxy": 1.06,
+    "align_bias": "left-bias",
+    "left_w": 3,
+    "mid_w": 2,
+    "right_w": 0,
+    "light_row_frac": 0.52,
+    "dark_row_frac": 0.0
+  },
+  {
+    "file": "live-preview-midnight.png",
+    "label": "live:midnight",
+    "wh": [
+      1280,
+      900
+    ],
+    "story_med": 138.1,
+    "story_mode": "mixed",
+    "inset_score": 16.6,
+    "inset_likely": false,
+    "hero_h_px": 6,
+    "hero_aspect_proxy": 213.33,
+    "align_bias": "centerish",
+    "left_w": 9560,
+    "mid_w": 10759,
+    "right_w": 10787,
+    "light_row_frac": 0.56,
+    "dark_row_frac": 0.0
+  },
+  {
+    "file": "live-preview-coastal.png",
+    "label": "live:coastal",
+    "wh": [
+      1280,
+      900
+    ],
+    "story_med": 115.0,
+    "story_mode": "mixed",
+    "inset_score": 24.5,
+    "inset_likely": false,
+    "hero_h_px": 6,
+    "hero_aspect_proxy": 213.33,
+    "align_bias": "left-bias",
+    "left_w": 15586,
+    "mid_w": 10759,
+    "right_w": 10787,
+    "light_row_frac": 0.38,
+    "dark_row_frac": 0.0
+  },
+  {
+    "file": "live-preview-estate.png",
+    "label": "live:estate",
+    "wh": [
+      1280,
+      900
+    ],
+    "story_med": 125.6,
+    "story_mode": "mixed",
+    "inset_score": 4.8,
+    "inset_likely": false,
+    "hero_h_px": 6,
+    "hero_aspect_proxy": 213.33,
+    "align_bias": "centerish",
+    "left_w": 10135,
+    "mid_w": 13447,
+    "right_w": 13475,
+    "light_row_frac": 0.36,
+    "dark_row_frac": 0.0
+  },
+  {
+    "file": "live-preview-rustic.png",
+    "label": "live:rustic",
+    "wh": [
+      1280,
+      900
+    ],
+    "story_med": 115.9,
+    "story_mode": "mixed",
+    "inset_score": 3.8,
+    "inset_likely": false,
+    "hero_h_px": 6,
+    "hero_aspect_proxy": 213.33,
+    "align_bias": "centerish",
+    "left_w": 9845,
+    "mid_w": 12679,
+    "right_w": 12707,
+    "light_row_frac": 0.42,
+    "dark_row_frac": 0.0
+  },
+  {
+    "file": "wizard-03-grayscale-blind.png",
+    "label": "wizard:grayscale-grid",
+    "wh": [
+      1280,
+      900
+    ],
+    "story_med": 206.2,
+    "story_mode": "light",
+    "inset_score": 189.0,
+    "inset_likely": true,
+    "hero_h_px": 302,
+    "hero_aspect_proxy": 4.24,
+    "align_bias": "right-bias",
+    "left_w": 15796,
+    "mid_w": 2027,
+    "right_w": 15480,
+    "light_row_frac": 0.59,
+    "dark_row_frac": 0.0
+  }
+]

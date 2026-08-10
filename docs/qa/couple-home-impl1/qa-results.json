@@ -1,0 +1,424 @@
+{
+  "notes": [
+    "=== LOGIN ===",
+    "Landed: http://localhost:3000/p/seedcoupleportal00000000000000000000000000000001",
+    "SHOT 01-desktop-home-top.png",
+    "SHOT 02-desktop-home-full.png",
+    "Section order: [\"banner\",\"next_steps\",\"working\",\"journey\",\"progress\",\"happening\",\"your_wedding\"]",
+    "NextSteps: {\"found\":true,\"ownershipUnique\":[\"Shared planning\"],\"ownershipCount\":5,\"rowCountEstimate\":6,\"rows\":[\"First Installment Shared planning Sweet Daisy Barn & Farm is waiting on this Needed by Apr 20\",\"Shared planning Sweet Daisy Barn & Farm is waiting on this Needed by Apr 20\",\"Final Payment Shared planning Sweet Daisy Barn & Farm is waiting on this Needed by May 25\",\"Shared planning Sweet Daisy Barn & Farm is waiting on this Needed by May 25\",\"Second Installment Shared planning Sweet Daisy Barn & Farm is waiting on this Needed by Jul 19\",\"Shared planning Sweet Daisy Barn & Farm is waiting on this Needed by Jul 19\"],\"hasOpenAll\":true,\"allCaughtUp\":false,\"overdueLanguage\":[\"waiting on this\",\"waiting on this\",\"waiting on this\",\"waiting on this\",\"waiting on this\"],\"preview\":\"WHAT SWEET DAISY BARN & FARM NEEDS FROM YOU\\n\\nYour Next Steps\\n\\n16 left for Sweet Daisy Barn & Farm\\n\\nFirst Installment\\n\\nShared planning\\nSweet Daisy Barn & Farm is waiting on this\\nNeeded by Apr 20\\n\\nFirst Installment\\n\\nShared planning\\nSweet Daisy Barn & Farm is waiting on this\\nNeeded by Apr 20\\n\\nFinal Payment\\n\\nShared planning\\nSweet Daisy Barn & Farm is waiting on this\\nNeeded by May 25\\n\\nSecond Install",
+    "OverflowX=false clipped=0",
+    "SHOT 03-desktop-mid-progress.png",
+    "SHOT 04-desktop-your-wedding.png",
+    "SHOT 05-desktop-bottom-p4.png",
+    "Banner focus Next Steps: true",
+    "=== MOBILE ===",
+    "SHOT 06-mobile-home-top.png",
+    "SHOT 07-mobile-home-full.png",
+    "Mobile order: [\"banner\",\"next_steps\",\"working\",\"progress\",\"journey\",\"happening\",\"your_wedding\"] p1BeforeP4=true",
+    "SHOT 08-mobile-mid.png",
+    "SHOT 09-mobile-bottom.png",
+    "=== FUNCTIONAL (from Home + Tasks) ===",
+    "=== TASKS REGRESSION ===",
+    "SHOT 10-desktop-tasks.png",
+    "SHOT 11-desktop-todos.png",
+    "SHOT 12-desktop-payments.png",
+    "SHOT 13-desktop-timeline.png"
+  ],
+  "desktop": {
+    "markers": {
+      "found": {
+        "hero_couple": true,
+        "venue_banner": true,
+        "your_next_steps": true,
+        "working_with_venue": true,
+        "planning_progress": true,
+        "wedding_journey": true,
+        "whats_happening": true,
+        "your_wedding": true,
+        "luv": true,
+        "memories": false,
+        "from_your_venue": false,
+        "shared_planning": true,
+        "for_your_wedding_label": false,
+        "open_all_tasks": true,
+        "all_caught_up": false,
+        "overdue_guilt": false,
+        "required_cue": true
+      },
+      "ordered": [
+        {
+          "id": "banner",
+          "y": 705,
+          "text": "Sweet Daisy Barn & Farm is waiting on 16 things from you. Jump to your next step"
+        },
+        {
+          "id": "next_steps",
+          "y": 834.75,
+          "text": "Your Next Steps"
+        },
+        {
+          "id": "working",
+          "y": 1277.25,
+          "text": "Working With Your Venue"
+        },
+        {
+          "id": "journey",
+          "y": 1748.75,
+          "text": "Wedding Journey 12 mo · Done 9 mo · Done 6 mo · Done 3 mo · Done 1 mo · You’re h"
+        },
+        {
+          "id": "progress",
+          "y": 1769.75,
+          "text": "Planning Progress 28%"
+        },
+        {
+          "id": "happening",
+          "y": 1948.25,
+          "text": "WHAT’S HAPPENING This week 📸 Added an engagement photo ✦ First engagement photo"
+        },
+        {
+          "id": "your_wedding",
+          "y": 2133.75,
+          "text": "Your Wedding"
+        }
+      ],
+      "heroName": true,
+      "url": "http://localhost:3000/p/seedcoupleportal00000000000000000000000000000001"
+    },
+    "nextSteps": {
+      "found": true,
+      "ownershipUnique": [
+        "Shared planning"
+      ],
+      "ownershipCount": 5,
+      "rowCountEstimate": 6,
+      "rows": [
+        "First Installment Shared planning Sweet Daisy Barn & Farm is waiting on this Needed by Apr 20",
+        "Shared planning Sweet Daisy Barn & Farm is waiting on this Needed by Apr 20",
+        "Final Payment Shared planning Sweet Daisy Barn & Farm is waiting on this Needed by May 25",
+        "Shared planning Sweet Daisy Barn & Farm is waiting on this Needed by May 25",
+        "Second Installment Shared planning Sweet Daisy Barn & Farm is waiting on this Needed by Jul 19",
+        "Shared planning Sweet Daisy Barn & Farm is waiting on this Needed by Jul 19"
+      ],
+      "hasOpenAll": true,
+      "allCaughtUp": false,
+      "overdueLanguage": [
+        "waiting on this",
+        "waiting on this",
+        "waiting on this",
+        "waiting on this",
+        "waiting on this"
+      ],
+      "preview": "WHAT SWEET DAISY BARN & FARM NEEDS FROM YOU\n\nYour Next Steps\n\n16 left for Sweet Daisy Barn & Farm\n\nFirst Installment\n\nShared planning\nSweet Daisy Barn & Farm is waiting on this\nNeeded by Apr 20\n\nFirst Installment\n\nShared planning\nSweet Daisy Barn & Farm is waiting on this\nNeeded by Apr 20\n\nFinal Payment\n\nShared planning\nSweet Daisy Barn & Farm is waiting on this\nNeeded by May 25\n\nSecond Installment\n\nShared planning\nSweet Daisy Barn & Farm is waiting on this\nNeeded by Jul 19\n\nSecond Installment\n\nShared planning\nSweet Daisy Barn & Farm is waiting on this\nNeeded by Jul 19\nOpen all tasks"
+    },
+    "overflow": {
+      "scrollW": 1440,
+      "clientW": 1440,
+      "overflowX": false,
+      "clipped": []
+    },
+    "hero": {
+      "coupleNames": true,
+      "venueEyebrow": true,
+      "countdown": true,
+      "statusNeeds": true,
+      "statusAllSet": false,
+      "reviewCta": true,
+      "continueCta": false,
+      "messageCta": true,
+      "timelineCta": true,
+      "noSnapshotGrid": true
+    },
+    "duplicates": {
+      "Your Next Steps": 1,
+      "Working With Your Venue": 0,
+      "What's Happening": 0,
+      "Your Wedding": 0,
+      "Wedding Planning Progress": 0
+    }
+  },
+  "mobile": {
+    "markers": {
+      "found": {
+        "hero_couple": true,
+        "venue_banner": true,
+        "your_next_steps": true,
+        "working_with_venue": true,
+        "planning_progress": true,
+        "wedding_journey": true,
+        "whats_happening": true,
+        "your_wedding": true,
+        "luv": true,
+        "memories": false,
+        "from_your_venue": false,
+        "shared_planning": true,
+        "for_your_wedding_label": false,
+        "open_all_tasks": true,
+        "all_caught_up": false,
+        "overdue_guilt": false,
+        "required_cue": true
+      },
+      "ordered": [
+        {
+          "id": "banner",
+          "y": 615.15625,
+          "text": "Sweet Daisy Barn & Farm is waiting on 16 things from you. Jump to your next step"
+        },
+        {
+          "id": "next_steps",
+          "y": 764.15625,
+          "text": "Your Next Steps"
+        },
+        {
+          "id": "working",
+          "y": 1291.65625,
+          "text": "Working With Your Venue"
+        },
+        {
+          "id": "progress",
+          "y": 1994.15625,
+          "text": "Planning Progress 28%"
+        },
+        {
+          "id": "journey",
+          "y": 2206.15625,
+          "text": "Wedding Journey 12 mo · Done 9 mo · Done 6 mo · Done 3 mo · Done 1 mo · You’re h"
+        },
+        {
+          "id": "happening",
+          "y": 2321.65625,
+          "text": "WHAT’S HAPPENING This week 📸 Added an engagement photo ✦ First engagement photo"
+        },
+        {
+          "id": "your_wedding",
+          "y": 2507.15625,
+          "text": "Your Wedding"
+        }
+      ],
+      "heroName": true,
+      "url": "http://localhost:3000/p/seedcoupleportal00000000000000000000000000000001"
+    },
+    "sectionOrder": [
+      {
+        "id": "banner",
+        "y": 615.15625,
+        "text": "Sweet Daisy Barn & Farm is waiting on 16 things from you. Jump to your next step"
+      },
+      {
+        "id": "next_steps",
+        "y": 764.15625,
+        "text": "Your Next Steps"
+      },
+      {
+        "id": "working",
+        "y": 1291.65625,
+        "text": "Working With Your Venue"
+      },
+      {
+        "id": "progress",
+        "y": 1994.15625,
+        "text": "Planning Progress 28%"
+      },
+      {
+        "id": "journey",
+        "y": 2206.15625,
+        "text": "Wedding Journey 12 mo · Done 9 mo · Done 6 mo · Done 3 mo · Done 1 mo · You’re h"
+      },
+      {
+        "id": "happening",
+        "y": 2321.65625,
+        "text": "WHAT’S HAPPENING This week 📸 Added an engagement photo ✦ First engagement photo"
+      },
+      {
+        "id": "your_wedding",
+        "y": 2507.15625,
+        "text": "Your Wedding"
+      }
+    ],
+    "overflow": {
+      "scrollW": 390,
+      "clientW": 390,
+      "overflowX": false,
+      "clipped": []
+    },
+    "nextSteps": {
+      "found": true,
+      "ownershipUnique": [
+        "Shared planning"
+      ],
+      "ownershipCount": 5,
+      "rowCountEstimate": 6,
+      "rows": [
+        "First Installment Shared planning Sweet Daisy Barn & Farm is waiting on this Needed by Apr 20",
+        "Shared planning Sweet Daisy Barn & Farm is waiting on this Needed by Apr 20",
+        "Final Payment Shared planning Sweet Daisy Barn & Farm is waiting on this Needed by May 25",
+        "Shared planning Sweet Daisy Barn & Farm is waiting on this Needed by May 25",
+        "Second Installment Shared planning Sweet Daisy Barn & Farm is waiting on this Needed by Jul 19",
+        "Shared planning Sweet Daisy Barn & Farm is waiting on this Needed by Jul 19"
+      ],
+      "hasOpenAll": true,
+      "allCaughtUp": false,
+      "overdueLanguage": [
+        "waiting on this",
+        "waiting on this",
+        "waiting on this",
+        "waiting on this",
+        "waiting on this"
+      ],
+      "preview": "WHAT SWEET DAISY BARN & FARM NEEDS FROM YOU\n\nYour Next Steps\n\n16 left for Sweet Daisy Barn & Farm\n\nFirst Installment\n\nShared planning\nSweet Daisy Barn & Farm is waiting on this\nNeeded by Apr 20\n\nFirst Installment\n\nShared planning\nSweet Daisy Barn & Farm is waiting on this\nNeeded by Apr 20\n\nFinal Payment\n\nShared planning\nSweet Daisy Barn & Farm is waiting on this\nNeeded by May 25\n\nSecond Installment\n\nShared planning\nSweet Daisy Barn & Farm is waiting on this\nNeeded by Jul 19\n\nSecond Installment\n\nShared planning\nSweet Daisy Barn & Farm is waiting on this\nNeeded by Jul 19\nOpen all tasks"
+    },
+    "heroReadable": true,
+    "p1BeforeP4": true,
+    "p1BeforeYourWedding": true,
+    "buttonSizes": [
+      {
+        "text": "Export my data",
+        "h": 33,
+        "w": 46
+      },
+      {
+        "text": "🏠\nHome",
+        "h": 40,
+        "w": 80
+      },
+      {
+        "text": "✅\nTasks\n6",
+        "h": 40,
+        "w": 101
+      },
+      {
+        "text": "🕒\nTimeline",
+        "h": 40,
+        "w": 93
+      },
+      {
+        "text": "📁\nDocuments",
+        "h": 40,
+        "w": 108
+      },
+      {
+        "text": "💳\nPayments",
+        "h": 40,
+        "w": 100
+      },
+      {
+        "text": "💬\nMessages",
+        "h": 40,
+        "w": 102
+      },
+      {
+        "text": "🏛️\nGuide",
+        "h": 40,
+        "w": 79
+      },
+      {
+        "text": "🤝\nVendors",
+        "h": 40,
+        "w": 92
+      },
+      {
+        "text": "Review what Sweet Daisy Barn & Farm need",
+        "h": 36,
+        "w": 292
+      },
+      {
+        "text": "Message Sweet Daisy Barn & Farm",
+        "h": 38,
+        "w": 233
+      },
+      {
+        "text": "View Timeline",
+        "h": 38,
+        "w": 114
+      },
+      {
+        "text": "Sweet Daisy Barn & Farm is waiting on 16",
+        "h": 87,
+        "w": 358
+      },
+      {
+        "text": "First Installment\n\nShared planning\nSweet",
+        "h": 75,
+        "w": 316
+      },
+      {
+        "text": "First Installment\n\nShared planning\nSweet",
+        "h": 75,
+        "w": 316
+      }
+    ]
+  },
+  "functional": {
+    "bannerClickFocusesNextSteps": true,
+    "venueRequiredExists": false,
+    "multipleVenueRequired": false,
+    "overduePresent": true,
+    "paymentInNextSteps": true,
+    "personalTodoInNextSteps": false,
+    "bannerPresent": true,
+    "activityPresent": true,
+    "noActivityCopy": false,
+    "timelineUnpublished": false,
+    "shameOverdueCopy": false,
+    "personalTodoExistsElsewhere": true,
+    "todosPreview": "Emma & Jordan · Sweet Daisy Barn & Farm Oct 17, 2026 – Oct 19, 2026 Export my data 🏠 Home ✅ Tasks 6 🕒 Timeline 📁 Documents 💳 Payments 💬 Messages 🏛️ Venue Guide 🤝 Preferred Vendors From your venue Everything Sweet Daisy Barn & Farm needs from you, in one place — newest due date first. 5/10 tasks complete First Installment Payment Schedule — Emma / Carter / Jordan / Lee — payment due Due Apr 20 Pay now First Installment Payment Schedule — Emma / Carter / Jordan / Lee — payment due Due Apr 2",
+    "paymentExistsDestination": true,
+    "paymentsPreview": "Emma & Jordan · Sweet Daisy Barn & Farm Oct 17, 2026 – Oct 19, 2026 Export my data 🏠 Home ✅ Tasks 6 🕒 Timeline 📁 Documents 💳 Payments 💬 Messages 🏛️ Venue Guide 🤝 Preferred Vendors From your venue Everything Sweet Daisy Barn & Farm needs from you, in one place — newest due date first. 5/10 tasks complete First Installment Payment Schedule — Emma / Carter / Jordan / Lee — payment due Due Apr 20 Pay now First Installment Payment Schedule — Emma / Carter / Jordan / Lee — payment due Due Apr 2",
+    "timelinePreview": "Emma & Jordan · Sweet Daisy Barn & Farm Oct 17, 2026 – Oct 19, 2026 Export my data 🏠 Home ✅ Tasks 6 🕒 Timeline 📁 Documents 💳 Payments 💬 Messages 🏛️ Venue Guide 🤝 Preferred Vendors From your venue Everything Sweet Daisy Barn & Farm needs from you, in one place — newest due date first. 5/10 tasks complete First Installment Payment Schedule — Emma / Carter / Jordan / Lee — payment due Due Apr 20 Pay now First Installment Payment Schedule — Emma / Carter / Jordan / Lee — payment due Due Apr 2",
+    "timelineHasUnpublishedCue": true,
+    "viewOnly": "COULD_NOT_REPRODUCE_WITHOUT_DB_OR_OTHER_ACCOUNT",
+    "noVenueRequiredClearState": "NOT_REPRODUCED_ON_EMMA_HAS_P1"
+  },
+  "tasks": {
+    "url": "http://localhost:3000/p/seedcoupleportal00000000000000000000000000000001",
+    "preview": "Emma & Jordan · Sweet Daisy Barn & Farm Oct 17, 2026 – Oct 19, 2026 Export my data 🏠 Home ✅ Tasks 6 🕒 Timeline 📁 Documents 💳 Payments 💬 Messages 🏛️ Venue Guide 🤝 Preferred Vendors From your venue Everything Sweet Daisy Barn & Farm needs from you, in one place — newest due date first. 5/10 tasks complete First Installment Payment Schedule — Emma / Carter / Jordan / Lee — payment due Due Apr 20 Pay now First Installment Payment Schedule — Emma / Carter / Jordan / Lee — payment due Due Apr 20 Pay now Final Payment Payment Schedule — Emma / Carter / Jordan / Lee — payment due Due May 25 Pay now Second Installment Payment Schedule — Emma / Carter / Jordan / Lee — payment due Due Jul 19 Pay now Second Installment Payment Schedule — Emma / Carter / Jordan / Lee — payment due Due Jul 19 Pay now Deposit Payment Schedule — Emma / Carter / Jordan / Lee — payment due Due Jul 31 Pay now Purchase event insurance Due in 10 days · 60 days before Mark complete Submit your guest count We need your final headcount to plan seating, catering, and rentals. Due Sep 17 · 30 days before Mark complete Final payment Due Sep 17 · 30 days before Mark complete Final Payment Payment Schedule — Emma / Cart",
+    "hasList": true,
+    "showsOverdueFirstCue": false,
+    "rowCount": 27,
+    "hasCompletableControl": true,
+    "observeOnly": true
+  },
+  "sectionOrder": [
+    {
+      "id": "banner",
+      "y": 705,
+      "text": "Sweet Daisy Barn & Farm is waiting on 16 things from you. Jump to your next step"
+    },
+    {
+      "id": "next_steps",
+      "y": 834.75,
+      "text": "Your Next Steps"
+    },
+    {
+      "id": "working",
+      "y": 1277.25,
+      "text": "Working With Your Venue"
+    },
+    {
+      "id": "journey",
+      "y": 1748.75,
+      "text": "Wedding Journey 12 mo · Done 9 mo · Done 6 mo · Done 3 mo · Done 1 mo · You’re h"
+    },
+    {
+      "id": "progress",
+      "y": 1769.75,
+      "text": "Planning Progress 28%"
+    },
+    {
+      "id": "happening",
+      "y": 1948.25,
+      "text": "WHAT’S HAPPENING This week 📸 Added an engagement photo ✦ First engagement photo"
+    },
+    {
+      "id": "your_wedding",
+      "y": 2133.75,
+      "text": "Your Wedding"
+    }
+  ],
+  "defects": [],
+  "meta": {
+    "homeUrl": "http://localhost:3000/p/seedcoupleportal00000000000000000000000000000001",
+    "loginOk": true,
+    "bodyPreview": "Emma & Jordan · Sweet Daisy Barn & Farm Oct 17, 2026 – Oct 19, 2026 Export my data 🏠 Home ✅ Tasks 6 🕒 Timeline 📁 Documents 💳 Payments 💬 Messages 🏛️ Venue Guide 🤝 Preferred Vendors SWEET DAISY BARN & FARM Emma & Jordan 70 days until your celebration Saturday, October 17, 2026 – Monday, October 19, 2026 16 things Sweet Daisy Barn & Farm still needs from you Your venue team is here with you—finish what helps your day come together. Review what Sweet Daisy Barn & Farm needs Message Sweet Daisy Barn & Farm View Timeline Sweet Daisy Barn & Farm is waiting on 16 things from you. Jump to your next steps below. WHAT SWEET DAISY BARN & FARM NEEDS FROM YOU Your Next Steps 16 left for Sweet Daisy Barn & Farm First Installment Shared planning Sweet Daisy Barn & Farm is waiting on this Needed by Apr 20 First Installment Shared planning Sweet Daisy Barn & Farm is waiting on this Needed by Apr 20 Final Payment Shared planning Sweet Daisy Barn & Farm is waiting on this Needed by May 25 Second Installment Shared planning Sweet Daisy Barn & Farm is waiting on this Needed by Jul 19 Second Installment Shared planning Sweet Daisy Barn & Farm is waiting on this Needed by Jul 19 Open all tasks WORKING WITH YOUR VENUE VENUE TEAM JC Jennifer Cormier Owner ✉️ SW Sam Whitfield Venue Manager ✉️ Message Sweet Daisy Barn & Farm 💳 PAYMENTS $38,880 remaining balance Next payment: First Installment — due Apr 20 Payment plan progress 0% Pay Now 🕒 TIMELINE 10:00 AM — Family Brunch 2:30 PM — Wedding Par"
+  }
+}

@@ -12,7 +12,10 @@ import {
   isImpersonating,
 } from "@/lib/program4/session";
 import { ensureProgram4Data } from "@/lib/program4/store";
-import { relationshipHasOpenSupport } from "@/lib/sales-cs";
+import {
+  countOpenSupportItemsAcross,
+  relationshipHasOpenSupport,
+} from "@/lib/sales-cs";
 
 export async function AppShell({ children }: { children: React.ReactNode }) {
   await ensureProgram4Data();
@@ -26,11 +29,12 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
   const permissions = permissionsForRole(actor.role);
   const unreadCount = getNotifications({ unreadOnly: true }).length;
   const openSupportRels = getRelationships().filter(relationshipHasOpenSupport);
-  const openSupportCount = openSupportRels.length;
+  // Badge = open Feedback & support *items* (not relationships).
+  const openSupportCount = countOpenSupportItemsAcross(openSupportRels);
   const openSupportHref =
-    openSupportCount === 1
+    openSupportRels.length === 1
       ? `/relationships/${openSupportRels[0].id}?panel=support&from=customer-success`
-      : openSupportCount > 1
+      : openSupportRels.length > 1
         ? "/customer-success?stage=needs_support&view=list"
         : "/customer-success?stage=needs_support";
   const homeHref = permissions.includes("view_business_dashboard")

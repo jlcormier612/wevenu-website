@@ -1,27 +1,18 @@
 /**
  * Contract merge-field resolution (Sprint 15).
  * Replaces {{field_name}} tokens with actual data.
+ *
+ * The find-and-replace mechanics (mergeContent/extractTokens/MergeData) now
+ * live in lib/shared-merge/tokens.ts — Work Package D2 found this file and
+ * lib/message-templates/merge.ts hand-maintaining byte-for-byte duplicates
+ * of the same three exports and consolidated them. Everything below this
+ * re-export (buildMergeData and Contracts' own field vocabulary) is
+ * genuinely specific to Contracts and stays here.
  */
 import { formatContractDate } from "@/lib/contracts/constants";
+import { type MergeData } from "@/lib/shared-merge/tokens";
 
-export type MergeData = Record<string, string>;
-
-/** Replace all {{token}} occurrences. Unknown tokens are left as-is. */
-export function mergeContent(template: string, data: MergeData): string {
-  return template.replace(/\{\{(\w+)\}\}/g, (match, key) => {
-    const value = data[key as keyof MergeData];
-    return value !== undefined ? value : match;
-  });
-}
-
-/** Extract all {{token}} names from a template string. */
-export function extractTokens(template: string): string[] {
-  const tokens = new Set<string>();
-  for (const [, key] of template.matchAll(/\{\{(\w+)\}\}/g)) {
-    tokens.add(key);
-  }
-  return [...tokens];
-}
+export { mergeContent, extractTokens, type MergeData } from "@/lib/shared-merge/tokens";
 
 export type MergeContext = {
   venueName: string;
