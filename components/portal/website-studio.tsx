@@ -374,7 +374,7 @@ function SetupWizard({
 
     return (
     <div className="fixed inset-0 z-50 flex flex-col items-center justify-center px-6 text-center"
-      style={{ background: "linear-gradient(160deg, var(--venue-primary) 0%, var(--venue-secondary) 60%, var(--venue-accent) 100%)" }}>
+      style={{ background: "var(--venue-primary)" }}>
       <div className="max-w-md space-y-6">
         <div className="space-y-2">
           <p className="text-white/60 text-xs font-semibold uppercase tracking-[0.3em]">Website Studio</p>
