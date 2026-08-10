@@ -6,6 +6,10 @@ import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
 import type { PublicWebsite, WebsiteTheme } from "@/lib/wedding-website/types";
+import {
+  midnightSupportGridColumn,
+  pickMidnightSupportColumns,
+} from "@/lib/wedding-website/midnight-gallery-pack";
 import { RsvpPage } from "@/components/wedding-website/rsvp-page";
 import { GuestConciergeWidget } from "@/components/wedding-website/guest-concierge";
 import type { RsvpContext } from "@/app/rsvp/[token]/page";
@@ -1141,9 +1145,12 @@ export function GalleryGrid({ photos, tc }: { photos: string[]; tc: ThemeConfig 
     );
   }
 
-  // ── Midnight cinematic — wide lead + dark field + full support row ──
+  // ── Midnight cinematic — wide lead + dark field + even-packed supports ──
+  // Option D: cols from {2,3,4} via pickMidnightSupportColumns (divisor-first;
+  // awkward counts center/span last-row remainder). Still renders every photo.
   if (midnightBand && photos.length >= 1) {
     const supports = photos.slice(1);
+    const supportCols = pickMidnightSupportColumns(supports.length);
     return (
       <div
         style={{
@@ -1152,26 +1159,32 @@ export function GalleryGrid({ photos, tc }: { photos: string[]; tc: ThemeConfig 
           display: "flex",
           flexDirection: "column",
           gap: "0.5rem",
-          minHeight: "100%",
           boxSizing: "border-box",
         }}
       >
-        <div className="overflow-hidden" style={{ flex: supports.length ? "0 0 auto" : 1 }}>
+        <div className="overflow-hidden" style={{ flex: "0 0 auto" }}>
           <img src={photos[0]} alt="" style={{ ...imgStyle, aspectRatio: "21 / 9", width: "100%" }} />
         </div>
         {supports.length > 0 && (
           <div
             style={{
               display: "grid",
-              gridTemplateColumns: `repeat(${Math.min(supports.length, 5)}, 1fr)`,
+              gridTemplateColumns: `repeat(${supportCols}, 1fr)`,
               gap: "0.4rem",
             }}
           >
-            {supports.map((url, i) => (
-              <div key={i} className="overflow-hidden">
-                <img src={url!} alt="" style={{ ...imgStyle, aspectRatio: "4 / 5" }} />
-              </div>
-            ))}
+            {supports.map((url, i) => {
+              const gridColumn = midnightSupportGridColumn(i, supports.length, supportCols);
+              return (
+                <div
+                  key={i}
+                  className="overflow-hidden"
+                  style={gridColumn ? { gridColumn } : undefined}
+                >
+                  <img src={url!} alt="" style={{ ...imgStyle, aspectRatio: "4 / 5" }} />
+                </div>
+              );
+            })}
           </div>
         )}
       </div>

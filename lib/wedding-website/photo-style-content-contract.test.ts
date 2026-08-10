@@ -224,3 +224,30 @@ describe("PhotoStylePreview picker thumb width", () => {
     assert.doesNotMatch(html, /width:\s*420px/);
   });
 });
+
+describe("Midnight Gallery Option D even-pack", () => {
+  const urls = (n: number) =>
+    Array.from({ length: n }, (_, i) => `https://example.test/photo-${i}.jpg`);
+
+  it("keeps cinematic lead + dark field and packs supports for 5/6/7/8", () => {
+    const tc = themeFor("midnight");
+    // supportCount → expected cols (Option D)
+    const cases: Array<{ photos: number; supportCols: number }> = [
+      { photos: 6, supportCols: 4 }, // 5 supports
+      { photos: 7, supportCols: 3 }, // 6 supports
+      { photos: 8, supportCols: 4 }, // 7 supports
+      { photos: 9, supportCols: 4 }, // 8 supports
+    ];
+    for (const { photos: n, supportCols } of cases) {
+      const html = renderToStaticMarkup(
+        React.createElement(GalleryGrid, { photos: urls(n), tc }),
+      );
+      assert.equal(countImgs(html), n, `Midnight truncated at ${n} photos`);
+      assert.match(html, /background:\s*(?:#0a0a0c|rgb\(10,\s*10,\s*12\))/i);
+      assert.match(html, /aspect-ratio:\s*21\s*\/\s*9/);
+      assert.match(html, new RegExp(`grid-template-columns:\\s*repeat\\(${supportCols},\\s*1fr\\)`));
+      assert.doesNotMatch(html, /min-height:\s*100%/);
+      assert.doesNotMatch(html, /grid-template-columns:\s*repeat\(5,/);
+    }
+  });
+});
