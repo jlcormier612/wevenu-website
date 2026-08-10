@@ -80,7 +80,7 @@ export async function applyTemplate(eventId: string, templateId: string, name: s
     if (!template) return { ok: false, message: "Template not found." } as CreateFloorPlanResult;
     const objects = await templatesRepo.getObjects(supabase, venueId, templateId);
 
-    const floorPlanId = await repo.createFloorPlan(supabase, venueId, eventId, name.trim(), spaceId);
+    const floorPlanId = await repo.createFloorPlan(supabase, venueId, eventId, name.trim(), spaceId, templateId);
     if (template.backgroundImageUrl) {
       await repo.updateFloorPlanBackground(supabase, venueId, floorPlanId, template.backgroundImageUrl, template.backgroundImageOpacity);
     }

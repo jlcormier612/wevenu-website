@@ -17,6 +17,7 @@ import { getPinnedDocumentKeys, getRecentInteractionMap, getVenueWorkspaceDocume
 import { getEvent } from "@/lib/events/service";
 import { getQuestionnaire } from "@/lib/events/questionnaire";
 import { getTemplates as getFloorPlanTemplates } from "@/lib/floor-plan-templates/service";
+import { getEventFloorPlanOffers } from "@/lib/floor-plan-offers/service";
 import { getGuestReadinessSummary } from "@/lib/guests/service";
 import { getUsageForEvent } from "@/lib/inventory/service";
 import { getInvoices } from "@/lib/invoices/service";
@@ -101,6 +102,7 @@ export default async function BookingWorkspacePage({ params }: Props) {
     getEventInventory(eventId), getInventoryTemplates(), getInventoryItems(),
   ]);
   if (!event) notFound();
+  const floorPlanOffers = await getEventFloorPlanOffers(eventId);
   // Archived templates aren't valid choices for applying to a booking —
   // same exclusion the old getTemplates() applied by default.
   const playbookTemplates = allPlaybookTemplates.filter((t) => !t.isArchived);
@@ -200,6 +202,7 @@ export default async function BookingWorkspacePage({ params }: Props) {
       conversationMessages={conversationMessages} spaceName={spaceName} clientStatus={client.status}
       contractTemplates={contractTemplates} contracts={contracts}
       floorPlanTemplates={floorPlanTemplates} spaces={spaces}
+      floorPlanOffers={floorPlanOffers}
       inventoryUsage={inventoryUsage}
       teamMembers={teamMembers}
       requestsByTaskId={requestsByTaskId}

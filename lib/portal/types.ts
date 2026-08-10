@@ -176,6 +176,20 @@ export type PortalFloorPlanDetail = {
   objects: PortalFloorPlanObject[];
 };
 
+/** Phase 2 — offered layout in the couple chooser. */
+export type PortalFloorPlanOfferSummary = {
+  offerId: string;
+  templateId: string;
+  name: string;
+  blurb: string | null;
+  spaceId: string | null;
+  sortOrder: number;
+  objectCount: number;
+  isCurrentSelection: boolean;
+  roomWidthFt: number;
+  roomDepthFt: number;
+};
+
 // A Timeline item as visible in the client portal — the couple's own
 // always-live view: the venue's live structural framework plus the
 // couple's own live draft, never gated by their own submission state

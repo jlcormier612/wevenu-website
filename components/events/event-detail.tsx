@@ -35,6 +35,7 @@ import type { EventVendorRecommendation } from "@/lib/vendor-recommendations/typ
 import { TimelineView } from "@/components/events/timeline/timeline-view";
 import { FloorPlanWorkspace } from "@/components/events/floor-plan-workspace";
 import type { FloorPlanTemplate } from "@/lib/floor-plan-templates/types";
+import type { EventFloorPlanOfferWithTemplate } from "@/lib/floor-plan-offers/types";
 import type { VenueSpace } from "@/lib/availability/types";
 import { BookingDocumentsTab } from "@/components/events/booking-documents-tab";
 import { RequestSummaryCard } from "@/components/events/request-summary-card";
@@ -254,6 +255,7 @@ export function EventDetail({
   contractTemplates = [],
   contracts = [],
   floorPlanTemplates = [],
+  floorPlanOffers = [],
   spaces = [],
   inventoryUsage = [],
   teamMembers = [],
@@ -301,6 +303,7 @@ export function EventDetail({
   contractTemplates?: import("@/lib/contracts/types").ContractTemplate[];
   contracts?: import("@/lib/contracts/types").Contract[];
   floorPlanTemplates?: FloorPlanTemplate[];
+  floorPlanOffers?: EventFloorPlanOfferWithTemplate[];
   spaces?: VenueSpace[];
   inventoryUsage?: import("@/lib/inventory/types").InventoryUsage[];
   teamMembers?: import("@/lib/team/types").StaffMember[];
@@ -715,9 +718,11 @@ export function EventDetail({
                 eventId={event.id}
                 floorPlans={event.floorPlans}
                 templates={floorPlanTemplates}
+                offers={floorPlanOffers}
                 spaces={spaces}
                 eventSpaceId={event.spaceId}
                 operationalFloorPlanId={event.operationalFloorPlanId}
+                coupleSelectedFloorPlanId={event.coupleSelectedFloorPlanId}
                 inventoryUsage={inventoryUsage}
               />
             </CardContent>

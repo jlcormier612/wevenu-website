@@ -23,7 +23,7 @@ import { toast } from "sonner";
 import {
   applyTemplateAction, createFloorPlanAction, deleteFloorPlanAction, duplicateFloorPlanAction,
   renameFloorPlanAction, setClientAccessAction, setCoupleShareAction, setOperationalFloorPlanAction,
-  setVendorAccessAction,
+  setVendorAccessAction, upsertFloorPlanOfferAction, updateFloorPlanOfferAction, withdrawFloorPlanOfferAction,
 } from "@/app/(app)/events/[id]/floor-plan-actions";
 import { Button } from "@/components/ui/button";
 import {
@@ -36,6 +36,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import type { VenueSpace } from "@/lib/availability/types";
+import type { EventFloorPlanOfferWithTemplate } from "@/lib/floor-plan-offers/types";
 import type { FloorPlan } from "@/lib/floor-plans/types";
 import type { FloorPlanTemplate } from "@/lib/floor-plan-templates/types";
 import type { InventoryUsage } from "@/lib/inventory/types";
@@ -204,9 +205,10 @@ function ShareWithVendorsToggle({ eventId, plan }: { eventId: string; plan: Floo
 }
 
 function FloorPlanCard({
-  eventId, plan, spaces, busy, isOperational, onRename, onDelete,
+  eventId, plan, spaces, busy, isOperational, isCoupleSelected, onRename, onDelete,
 }: {
-  eventId: string; plan: FloorPlan; spaces: VenueSpace[]; busy: boolean; isOperational: boolean;
+  eventId: string; plan: FloorPlan; spaces: VenueSpace[]; busy: boolean;
+  isOperational: boolean; isCoupleSelected: boolean;
   onRename: () => void; onDelete: () => void;
 }) {
   return (
@@ -229,6 +231,20 @@ function FloorPlanCard({
         </div>
       </div>
       <p className="text-xs text-muted-foreground">{spaceName(spaces, plan.spaceId) ?? "No space assigned"}</p>
+      {(isOperational || isCoupleSelected) && (
+        <div className="flex flex-wrap gap-1">
+          {isCoupleSelected && (
+            <span className="text-[10px] font-medium px-2 py-0.5 rounded-full border border-border text-muted-foreground">
+              Couple selected
+            </span>
+          )}
+          {isOperational && (
+            <span className="text-[10px] font-medium px-2 py-0.5 rounded-full border border-primary/40 bg-primary/10 text-primary">
+              Operational
+            </span>
+          )}
+        </div>
+      )}
       <div className="flex flex-wrap gap-1.5" onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}>
         <ShareFloorPlanToggle eventId={eventId} plan={plan} />
         <ShareForSeatingToggle eventId={eventId} plan={plan} />
@@ -239,16 +255,156 @@ function FloorPlanCard({
   );
 }
 
+/** Phase 2 — offer venue templates to the couple for this event (chooser source). */
+function OfferLayoutsPanel({
+  eventId, templates, offers,
+}: {
+  eventId: string;
+  templates: FloorPlanTemplate[];
+  offers: EventFloorPlanOfferWithTemplate[];
+}) {
+  const router = useRouter();
+  const [pending, startTransition] = React.useTransition();
+  const [templateId, setTemplateId] = React.useState("");
+  const [coupleLabel, setCoupleLabel] = React.useState("");
+  const [coupleBlurb, setCoupleBlurb] = React.useState("");
+
+  const offeredTemplateIds = new Set(offers.filter((o) => o.isOffered).map((o) => o.floorPlanTemplateId));
+  const availableTemplates = templates.filter((t) => !t.isArchived && !offeredTemplateIds.has(t.id));
+
+  function handleOffer() {
+    if (!templateId) return;
+    startTransition(async () => {
+      const result = await upsertFloorPlanOfferAction(eventId, {
+        templateId,
+        isOffered: true,
+        coupleLabel: coupleLabel.trim() || null,
+        coupleBlurb: coupleBlurb.trim() || null,
+        sortOrder: offers.length,
+      });
+      if (result.ok) {
+        setTemplateId("");
+        setCoupleLabel("");
+        setCoupleBlurb("");
+        toast.success("Layout offered to couple.");
+        router.refresh();
+      } else {
+        toast.error(result.message ?? "Could not offer layout.");
+      }
+    });
+  }
+
+  function handleWithdraw(offerId: string) {
+    startTransition(async () => {
+      const result = await withdrawFloorPlanOfferAction(eventId, offerId);
+      if (result.ok) {
+        toast.success("Removed from couple chooser. Selection and event plan kept.");
+        router.refresh();
+      } else {
+        toast.error(result.message ?? "Could not withdraw offer.");
+      }
+    });
+  }
+
+  function handleReenable(offerId: string) {
+    startTransition(async () => {
+      const result = await updateFloorPlanOfferAction(eventId, offerId, { isOffered: true });
+      if (result.ok) {
+        toast.success("Layout offered again.");
+        router.refresh();
+      } else {
+        toast.error(result.message ?? "Could not update offer.");
+      }
+    });
+  }
+
+  return (
+    <div className="space-y-3 rounded-sm border border-border bg-muted/15 p-4">
+      <div>
+        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Offer layouts to couple</p>
+        <p className="text-xs text-muted-foreground mt-1">
+          Choose which venue templates appear in &ldquo;Choose your layout.&rdquo; Does not share a Floor Plan or set operational.
+        </p>
+      </div>
+
+      {offers.length > 0 && (
+        <ul className="space-y-2">
+          {offers.map((o) => (
+            <li key={o.id} className="flex items-start justify-between gap-3 rounded-sm border border-border bg-card px-3 py-2">
+              <div className="min-w-0">
+                <p className="text-sm font-medium text-heading truncate">
+                  {o.coupleLabel?.trim() || o.templateName}
+                  {!o.isOffered && (
+                    <span className="ml-2 text-[10px] font-medium text-muted-foreground">(withdrawn)</span>
+                  )}
+                </p>
+                {o.coupleBlurb?.trim() && (
+                  <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{o.coupleBlurb}</p>
+                )}
+                <p className="text-[11px] text-muted-foreground mt-0.5">
+                  Template: {o.templateName} · {o.objectCount} elements
+                </p>
+              </div>
+              <div className="shrink-0">
+                {o.isOffered ? (
+                  <Button type="button" variant="outline" size="sm" disabled={pending} onClick={() => handleWithdraw(o.id)}>
+                    Withdraw
+                  </Button>
+                ) : (
+                  <Button type="button" variant="outline" size="sm" disabled={pending || o.templateArchived} onClick={() => handleReenable(o.id)}>
+                    Offer again
+                  </Button>
+                )}
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      <div className="grid gap-2 sm:grid-cols-2">
+        <div className="space-y-1.5 sm:col-span-2">
+          <Label className="text-xs">Template</Label>
+          <Select
+            value={templateId}
+            onValueChange={setTemplateId}
+            items={availableTemplates.map((t) => ({ value: t.id, label: t.name }))}
+          >
+            <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Choose a template to offer" /></SelectTrigger>
+            <SelectContent>
+              {availableTemplates.map((t) => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-1.5">
+          <Label className="text-xs">Couple label (optional)</Label>
+          <Input className="h-9 text-sm" value={coupleLabel} onChange={(e) => setCoupleLabel(e.target.value)} placeholder="e.g. Barn — seated dinner" />
+        </div>
+        <div className="space-y-1.5">
+          <Label className="text-xs">Couple blurb (optional)</Label>
+          <Input className="h-9 text-sm" value={coupleBlurb} onChange={(e) => setCoupleBlurb(e.target.value)} placeholder="What makes this layout different" />
+        </div>
+      </div>
+      <Button type="button" size="sm" disabled={pending || !templateId} onClick={handleOffer}>
+        {pending ? "Saving…" : "Offer layout"}
+      </Button>
+    </div>
+  );
+}
+
 export function FloorPlanWorkspace({
-  eventId, floorPlans, templates, spaces, eventSpaceId, operationalFloorPlanId = null, inventoryUsage = [],
+  eventId, floorPlans, templates, offers = [], spaces, eventSpaceId,
+  operationalFloorPlanId = null, coupleSelectedFloorPlanId = null, inventoryUsage = [],
 }: {
   eventId: string;
   floorPlans: FloorPlan[];
   templates: FloorPlanTemplate[];
+  offers?: EventFloorPlanOfferWithTemplate[];
   spaces: VenueSpace[];
   eventSpaceId: string | null;
   /** Phase 1 — durable SoR pointer from events.operational_floor_plan_id. */
   operationalFloorPlanId?: string | null;
+  /** Phase 2 — couple-selected event plan (independent of operational). */
+  coupleSelectedFloorPlanId?: string | null;
   /** Reporting only (Inventory Foundation task) — never blocks or reserves anything. */
   inventoryUsage?: InventoryUsage[];
 }) {
@@ -344,6 +500,8 @@ export function FloorPlanWorkspace({
         <Button type="button" onClick={() => { reset(); setOpen(true); }}>+ New Floor Plan</Button>
       </div>
 
+      <OfferLayoutsPanel eventId={eventId} templates={templates} offers={offers} />
+
       {sharedPlans.length > 1 && (
         <div className="rounded-lg border border-warning/40 bg-warning/10 px-3 py-2 text-xs text-warning-foreground">
           {sharedPlans.length} floor plans are shared for Seating at once — the couple only ever sees the most recently
@@ -364,6 +522,7 @@ export function FloorPlanWorkspace({
               key={plan.id} eventId={eventId} plan={plan} spaces={spaces}
               busy={busyPlanId === plan.id}
               isOperational={operationalFloorPlanId === plan.id}
+              isCoupleSelected={coupleSelectedFloorPlanId === plan.id}
               onRename={() => handleRenamePlan(plan)}
               onDelete={() => handleDeletePlan(plan)}
             />

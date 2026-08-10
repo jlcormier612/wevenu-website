@@ -50,6 +50,8 @@ export type FloorPlan = {
   // Phase 1 — Couple Floor Plan view: Share Floor Plan. Independent of
   // clientAccess (Enable Seating). Shared ⇒ reference-only view; no edit.
   sharedWithCouple: boolean;
+  // Phase 2 — template this event plan was cloned from (provenance snapshot).
+  sourceTemplateId: string | null;
   backgroundImageUrl: string | null;
   backgroundImageOpacity: number;
   backgroundLocked: boolean;

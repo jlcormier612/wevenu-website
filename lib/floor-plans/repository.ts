@@ -28,6 +28,7 @@ type PlanRow = {
   client_access: FloorPlanClientAccess;
   shared_with_vendors: boolean;
   shared_with_couple: boolean;
+  source_template_id: string | null;
   background_image_url: string | null; background_image_opacity: number; background_locked: boolean;
   room_width_ft: number; room_depth_ft: number; measurement_unit: MeasurementUnit;
   finalized_at: string | null;
@@ -49,6 +50,7 @@ const mapPlan = (r: PlanRow): FloorPlan => ({
   spaceId: r.space_id, clientAccess: r.client_access,
   sharedWithVendors: r.shared_with_vendors,
   sharedWithCouple: Boolean(r.shared_with_couple),
+  sourceTemplateId: r.source_template_id ?? null,
   backgroundImageUrl: r.background_image_url,
   backgroundImageOpacity: Number(r.background_image_opacity),
   backgroundLocked: r.background_locked,
@@ -109,10 +111,21 @@ export async function getAllFloorPlans(
 // ---- mutations --------------------------------------------------------------
 
 export async function createFloorPlan(
-  client: DbClient, venueId: string, eventId: string, name = "Floor Plan", spaceId: string | null = null,
+  client: DbClient,
+  venueId: string,
+  eventId: string,
+  name = "Floor Plan",
+  spaceId: string | null = null,
+  sourceTemplateId: string | null = null,
 ): Promise<string> {
   const { data, error } = await client.from("floor_plans")
-    .insert({ venue_id: venueId, event_id: eventId, name, space_id: spaceId })
+    .insert({
+      venue_id: venueId,
+      event_id: eventId,
+      name,
+      space_id: spaceId,
+      source_template_id: sourceTemplateId,
+    })
     .select("id").single<{ id: string }>();
   if (error) throw error;
   return data.id;

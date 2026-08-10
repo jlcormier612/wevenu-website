@@ -34,6 +34,8 @@ export type VenueEvent = {
   guestCount: number | null;
   /** Phase 1 — durable venue-controlled operational Floor Plan for this event. */
   operationalFloorPlanId: string | null;
+  /** Phase 2 — couple-selected event floor plan (independent of operational). */
+  coupleSelectedFloorPlanId: string | null;
   createdAt: string;
   updatedAt: string;
 };

@@ -177,6 +177,54 @@ export async function setOperationalFloorPlanAction(
   return result;
 }
 
+/** Phase 2 — offer a venue template to the couple for this event. */
+export async function upsertFloorPlanOfferAction(
+  eventId: string,
+  input: {
+    templateId: string;
+    sortOrder?: number;
+    isOffered?: boolean;
+    coupleLabel?: string | null;
+    coupleBlurb?: string | null;
+  },
+): Promise<{ ok: true; offerId: string } | FloorPlanActionResult> {
+  const { upsertEventFloorPlanOffer } = await import("@/lib/floor-plan-offers/service");
+  const result = await upsertEventFloorPlanOffer(eventId, input);
+  if (result.ok) { revalidateEvent(eventId); revalidateWorkspace(eventId); }
+  return result;
+}
+
+/** Phase 2 — update offer metadata / re-enable. */
+export async function updateFloorPlanOfferAction(
+  eventId: string,
+  offerId: string,
+  patch: {
+    sortOrder?: number;
+    isOffered?: boolean;
+    coupleLabel?: string | null;
+    coupleBlurb?: string | null;
+  },
+): Promise<FloorPlanActionResult> {
+  const { updateEventFloorPlanOffer } = await import("@/lib/floor-plan-offers/service");
+  const result = await updateEventFloorPlanOffer(offerId, patch);
+  if (result.ok) { revalidateEvent(eventId); revalidateWorkspace(eventId); }
+  return result;
+}
+
+/**
+ * Phase 2 — withdraw from couple chooser only.
+ * Does not clear couple_selected_floor_plan_id or delete the clone.
+ */
+export async function withdrawFloorPlanOfferAction(
+  eventId: string,
+  offerId: string,
+): Promise<FloorPlanActionResult> {
+  const { withdrawEventFloorPlanOffer } = await import("@/lib/floor-plan-offers/service");
+  const result = await withdrawEventFloorPlanOffer(offerId);
+  if (result.ok) { revalidateEvent(eventId); revalidateWorkspace(eventId); }
+  return result;
+}
+
 export async function updateRoomSettingsAction(
   planId: string, eventId: string, input: UpdateRoomSettingsInput,
 ): Promise<FloorPlanActionResult> {
