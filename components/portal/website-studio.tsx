@@ -819,12 +819,12 @@ function SetupWizard({
         {/* Real renderer, real scroll — enough of the site to actually experience it, never a thumbnail. */}
         {wizardPreviewDevice === "desktop" ? (
           <div className="flex-1 overflow-y-auto min-h-0" style={{ background: "#F0EDE8" }}>
-            <WeddingWebsite site={livePreviewSite} slug={livePreviewSite.slug ?? "preview"} editMode={false} />
+            <WeddingWebsite site={livePreviewSite} slug={livePreviewSite.slug ?? "preview"} editMode={false} disableScrollReveal />
           </div>
         ) : (
           <div className="flex-1 overflow-y-auto min-h-0 py-6 px-3 flex justify-center" style={{ background: "#F0EDE8" }}>
             <PhonePreviewFrame maxHeight="calc(100vh - 280px)">
-              <WeddingWebsite site={livePreviewSite} slug={livePreviewSite.slug ?? "preview"} editMode={false} />
+              <WeddingWebsite site={livePreviewSite} slug={livePreviewSite.slug ?? "preview"} editMode={false} disableScrollReveal />
             </PhonePreviewFrame>
           </div>
         )}
@@ -1328,6 +1328,7 @@ export function WebsiteStudio({
                   site={livePreviewSite}
                   slug={previewSite.slug ?? "preview"}
                   editMode
+                  disableScrollReveal
                   activeSection={activeSection}
                   onSectionClick={handleSectionClick}
                 />
@@ -1341,6 +1342,7 @@ export function WebsiteStudio({
                   site={livePreviewSite}
                   slug={previewSite.slug ?? "preview"}
                   editMode
+                  disableScrollReveal
                   activeSection={activeSection}
                   onSectionClick={handleSectionClick}
                 />
@@ -1375,6 +1377,7 @@ type WeddingWebsiteProps = {
   site: PublicWebsite;
   slug: string;
   editMode?: boolean;
+  disableScrollReveal?: boolean;
   activeSection?: string | null;
   onSectionClick?: (key: string) => void;
 };

@@ -149,6 +149,21 @@ const SCALE_MARGIN_RSVP: Record<SectionScale, string> = {
   feature: "7rem", standard: "4.5rem", interlude: "2rem",
 };
 
+/** Closest overflow scrollport — Studio phone frame nests the site in
+ * `.ww-phone-frame-scroll`; viewport-rooted IntersectionObserver never sees
+ * those sections as intersecting while you scroll the phone. */
+function closestScrollRoot(el: Element | null): Element | null {
+  let node = el?.parentElement ?? null;
+  while (node && node !== document.documentElement) {
+    const { overflowY } = getComputedStyle(node);
+    if (overflowY === "auto" || overflowY === "scroll" || overflowY === "overlay") {
+      return node;
+    }
+    node = node.parentElement;
+  }
+  return null;
+}
+
 // Scroll-reveal for animationStyle (Part 1) — a couple's Collection choice,
 // not per-section. Respects prefers-reduced-motion (architecture spec §11):
 // the observer still fires so content always ends visible, it just skips
@@ -157,15 +172,21 @@ function useScrollReveal(style: CollectionConfig["animationStyle"]) {
   const ref = React.useRef<HTMLDivElement>(null);
   const [revealed, setRevealed] = React.useState(style === "none");
   React.useEffect(() => {
-    if (style === "none" || !ref.current) return;
+    if (style === "none") {
+      setRevealed(true);
+      return;
+    }
+    if (!ref.current) return;
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
       setRevealed(true);
       return;
     }
     const el = ref.current;
+    setRevealed(false);
+    const root = closestScrollRoot(el);
     const io = new IntersectionObserver(([entry]) => {
       if (entry.isIntersecting) { setRevealed(true); io.unobserve(el); }
-    }, { threshold: 0.15 });
+    }, { root, threshold: 0.08, rootMargin: "24px 0px" });
     io.observe(el);
     return () => io.disconnect();
   }, [style]);
@@ -2117,25 +2138,28 @@ export type SectionRenderContext = {
   site: PublicWebsite;
   color: string;
   editMode: boolean;
+  /** Studio / wizard phone (and similar nested scroll surfaces). */
+  disableScrollReveal?: boolean;
   activeSection: string | null;
   onSectionClick?: (key: string) => void;
 };
 
 export function createSectionRenderer(ctx: SectionRenderContext) {
-  const { tc, content, site, color, editMode, activeSection, onSectionClick } = ctx;
+  const { tc, content, site, color, editMode, disableScrollReveal = false, activeSection, onSectionClick } = ctx;
   const eventDate = site.event?.eventDate;
 
   // Wraps each section in an edit overlay when editMode=true, and — on the
   // published site — in the Collection's own scroll-reveal + scroll-snap
-  // behavior (Part 1). Studio Live Preview always passes editMode: nested
-  // phone-frame overflow breaks IntersectionObserver (root = viewport), so
-  // fade/rise Collections (e.g. Wildflower/classic) stay opacity:0 and look
-  // like solid white voids before the gallery. Same idea as picker thumbs
-  // (`disableAnimation`) — preview surfaces must reveal immediately.
+  // behavior (Part 1). Studio / wizard phone frames pass disableScrollReveal:
+  // nested overflow used to leave fade/rise sections at opacity:0 (solid
+  // cream voids). Picker thumbs already force animationStyle none the same way.
   function SectionWrapper({ sectionKey, children }: { sectionKey: string; children: React.ReactNode }) {
-    const revealStyle = editMode ? "none" : tc.animationStyle;
+    const revealStyle = (editMode || disableScrollReveal) ? "none" : tc.animationStyle;
     const revealed = (
-      <ScrollReveal style={revealStyle} scrollSnap={!editMode && tc.scrollBehavior === "snap"}>
+      <ScrollReveal
+        style={revealStyle}
+        scrollSnap={!editMode && !disableScrollReveal && tc.scrollBehavior === "snap"}
+      >
         {children}
       </ScrollReveal>
     );
@@ -2821,12 +2845,15 @@ export function createSectionRenderer(ctx: SectionRenderContext) {
 export function WeddingWebsite({
   site, slug,
   editMode = false,
+  disableScrollReveal = false,
   activeSection = null,
   onSectionClick,
 }: {
   site: PublicWebsite;
   slug: string;
   editMode?: boolean;
+  /** Force sections visible — required inside Studio/wizard phone frames. */
+  disableScrollReveal?: boolean;
   activeSection?: string | null;
   onSectionClick?: (key: string) => void;
 }) {
@@ -2914,7 +2941,7 @@ export function WeddingWebsite({
   }
 
   const { renderSection, renderSectionPair } = createSectionRenderer({
-    tc, content, site, color, editMode, activeSection, onSectionClick,
+    tc, content, site, color, editMode, disableScrollReveal, activeSection, onSectionClick,
   });
 
   return (
