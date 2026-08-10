@@ -1272,15 +1272,26 @@ export function GalleryGrid({ photos, tc }: { photos: string[]; tc: ThemeConfig 
   }
 
   // ── Wildflower — organic rhythm via unequal windows (no tilt-as-identity) ──
+  // Containment: pairs must stay inside the gallery width. Additive %
+  // marginLeft + % width previously summed past 100% with column-gap, and
+  // intrinsic img min-width blocked flex-shrink — Studio phone (`overflow-x-
+  // hidden`) and desktop preview then hard-clipped faces at the container edge.
+  // Odd indices use marginLeft:auto so they sit right without protruding.
   if (wildflowerOrganic) {
-    const widths = ["54%", "38%", "42%", "48%"];
-    const aspects = ["4 / 5", "5 / 6", "16 / 10", "1 / 1"];
+    const widths = ["50%", "34%", "40%", "44%"];
+    const aspects = ["4 / 5", "5 / 6", "3 / 2", "1 / 1"];
     const margins = [
-      { marginTop: "0", marginLeft: "2%" },
-      { marginTop: "1.1rem", marginLeft: "4%" },
-      { marginTop: "0.15rem", marginLeft: "10%" },
-      { marginTop: "0.65rem", marginLeft: "0" },
+      { marginTop: "0", marginLeft: "2%", marginRight: "0" },
+      { marginTop: "1.1rem", marginLeft: "auto", marginRight: "2%" },
+      { marginTop: "0.15rem", marginLeft: "6%", marginRight: "0" },
+      { marginTop: "0.65rem", marginLeft: "auto", marginRight: "0" },
     ];
+    // Milder Y-anchor than PORTRAIT_FACE_FOCAL so short landscape windows
+    // (3/2) don't amputate jawlines the way a pure top-bias cover crop does.
+    const wildflowerImg: React.CSSProperties = {
+      ...imgStyle,
+      objectPosition: GALLERY_SPLIT_FACE_FOCAL,
+    };
     return (
       <div
         style={{
@@ -1289,9 +1300,11 @@ export function GalleryGrid({ photos, tc }: { photos: string[]; tc: ThemeConfig 
           justifyContent: "flex-start",
           alignItems: "flex-start",
           gap: "0.75rem 0.65rem",
-          padding: "0.5rem 0.35rem 1rem",
+          padding: "0.5rem 0.75rem 1rem",
           maxWidth: "40rem",
           margin: "0 auto",
+          boxSizing: "border-box",
+          width: "100%",
         }}
       >
         {photos.map((url, i) => (
@@ -1300,12 +1313,15 @@ export function GalleryGrid({ photos, tc }: { photos: string[]; tc: ThemeConfig 
             className="overflow-hidden"
             style={{
               width: widths[i % widths.length],
+              maxWidth: "100%",
+              minWidth: 0,
+              boxSizing: "border-box",
               ...margins[i % margins.length],
               borderRadius: tc.photoRadius,
               boxShadow: shadowFor(tc.shadow),
             }}
           >
-            <img src={url} alt="" style={{ ...imgStyle, aspectRatio: aspects[i % aspects.length], borderRadius: tc.photoRadius }} />
+            <img src={url} alt="" style={{ ...wildflowerImg, aspectRatio: aspects[i % aspects.length], borderRadius: tc.photoRadius }} />
           </div>
         ))}
       </div>

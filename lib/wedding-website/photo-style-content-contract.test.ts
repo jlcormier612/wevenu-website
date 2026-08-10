@@ -183,6 +183,23 @@ describe("WW-AUDIT-03 narrow gallery layouts", () => {
       edit.match(/@min-\[480px\]\/wedding:grid-cols-\[[^\]]+\]/)?.[0],
     );
   });
+
+  it("Wildflower organic cluster stays width-contained (no edge-clip path)", () => {
+    const html = renderToStaticMarkup(
+      React.createElement(GalleryGrid, { photos: specimen, tc: themeFor("wildflower") }),
+    );
+    assert.equal(countImgs(html), PHOTO_STYLE_CANONICAL_COUNT);
+    // Right-biased stagger via auto margin (not additive % left that overflows).
+    assert.match(html, /margin-left:\s*auto/);
+    assert.match(html, /min-width:\s*0/);
+    // No ultra-wide 16/10 window that amputates faces inside short cover crops.
+    assert.doesNotMatch(html, /16\s*\/\s*10/);
+    // Softened face focal for landscape/short cells (WW-AUDIT-03 family).
+    assert.match(html, /50%\s+22%/);
+    // Legacy overflowing left-push recipe must not return.
+    assert.doesNotMatch(html, /margin-left:\s*10%/);
+    assert.doesNotMatch(html, /width:\s*54%/);
+  });
 });
 
 describe("PhotoStylePreview picker thumb width", () => {

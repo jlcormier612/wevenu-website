@@ -88,6 +88,8 @@ describe("Photo Style Phase B resolveTheme DNA", () => {
     assert.equal(wf.scalePattern, "alternating");
     assert.equal(wf.rotation, "none");
     assert.equal(wf.frameStyle, "none");
+    assert.equal(wf.shadow, "soft");
+    assert.equal(wf.arrangement, "uniform");
     assert.ok(parseFloat(String(wf.photoRadius)) >= 0.5);
   });
 
