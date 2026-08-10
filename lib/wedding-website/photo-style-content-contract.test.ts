@@ -182,6 +182,11 @@ describe("WW-AUDIT-03 narrow gallery layouts", () => {
       mag.match(/@min-\[480px\]\/wedding:grid-cols-\[[^\]]+\]/)?.[0],
       edit.match(/@min-\[480px\]\/wedding:grid-cols-\[[^\]]+\]/)?.[0],
     );
+    // Mag fleet must keep aspect-intrinsic sizing — flex-fill + height:100%
+    // collapses in ScaledThumbnail auto-height parents (cream + photo sliver).
+    assert.match(mag, /flex:\s*0\s+0\s+auto/);
+    assert.match(mag, /aspect-ratio:\s*5\s*\/\s*4/);
+    assert.doesNotMatch(mag, /flex:\s*1\s+1\s+0/);
   });
 
   it("Wildflower organic cluster stays width-contained (no edge-clip path)", () => {

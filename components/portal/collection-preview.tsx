@@ -221,6 +221,8 @@ export function PhotoStylePreview({ collection, photoStyle, photos, width, heigh
   // Floor at 480cqw so Phase 3's Mag/Edit/Minimal stack never collapses
   // picker thumbs to identical lead crops. Live Preview + published still
   // measure real CSS container width and stack under ~480px.
+  // Mag GalleryGrid fleet is aspect-intrinsic (not flex-fill) so this auto-height
+  // ScaledThumbnail does not collapse to a cream + photo-sliver card.
   const effectiveNatural = Math.max(naturalWidth, 480);
   return (
     <ScaledThumbnail width={width} height={height} naturalWidth={effectiveNatural}>

@@ -1370,6 +1370,11 @@ export function GalleryGrid({ photos, tc }: { photos: string[]; tc: ThemeConfig 
   // WW-AUDIT-03: nested support column (same silhouette as desktop lead+stack)
   // so `@min-[480px]/wedding` can open the 2-col page without an ultra-narrow
   // lead strip on Studio/published mobile.
+  //
+  // Fleet cells MUST be aspect-ratio intrinsic (flex: 0 0 auto, img height auto).
+  // flex:1 1 0 + height:100% collapses to ~0 in auto-height parents — including
+  // PhotoStylePreview ScaledThumbnails at ≥480cqw (picker Mag≠Edit). Lead still
+  // stretches to the fleet column via items-stretch + h-full at ≥480.
   if (tc.arrangement === "collage") {
     const collageImgStyle: React.CSSProperties = { ...imgStyleFill, objectPosition: "50% 35%" };
     if (photos.length <= 1) {
@@ -1406,15 +1411,14 @@ export function GalleryGrid({ photos, tc }: { photos: string[]; tc: ThemeConfig 
             style={{ ...collageImgStyle, aspectRatio: undefined, height: "100%", width: "100%", objectFit: "cover" }}
           />
         </div>
-        <div style={{ display: "flex", flexDirection: "column", gap: "0.45rem", minHeight: 0 }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: "0.45rem" }}>
           {rest.map((url, i) => (
             <div
               key={i}
               className="overflow-hidden"
               style={{
                 borderRadius: tc.photoRadius,
-                flex: "1 1 0",
-                minHeight: 0,
+                flex: "0 0 auto",
                 ...frame(i + 1),
               }}
             >
@@ -1424,7 +1428,7 @@ export function GalleryGrid({ photos, tc }: { photos: string[]; tc: ThemeConfig 
                 style={{
                   ...collageImgStyle,
                   aspectRatio: i % 2 === 0 ? "5 / 4" : "4 / 5",
-                  height: "100%",
+                  height: "auto",
                   width: "100%",
                 }}
               />
