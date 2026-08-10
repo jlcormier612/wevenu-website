@@ -494,6 +494,8 @@ export type VendorPersonalTask = {
   source:            "manual" | "venue" | "luv" | "automation" | "template";
   notes:             string | null;
   coupleVisibility:  VendorTaskCoupleVisibility;
+  /** Couple-portal typed action; share_timeline = verified timeline share. */
+  actionType:        "share_timeline" | null;
   completedBy:       "couple" | "vendor" | null;
   completedAt:       string | null;
   createdAt:         string;
@@ -509,6 +511,7 @@ export type VendorPersonalTaskInput = {
   eventId:           string;
   notes:             string;
   coupleVisibility?: VendorTaskCoupleVisibility;
+  actionType?:       "share_timeline" | null;
 };
 
 // ── Sprint 106: Health score ──────────────────────────────────────────────────

@@ -53,16 +53,18 @@ type DraftRow = {
   title: string;
   daysOffset: string;
   notes: string;
+  actionType: "" | "share_timeline";
 };
 
 type ItemDraft = {
   title: string;
   daysOffset: string;
   notes: string;
+  actionType: "" | "share_timeline";
 };
 
 function newDraftRow(): DraftRow {
-  return { localId: crypto.randomUUID(), title: "", daysOffset: "", notes: "" };
+  return { localId: crypto.randomUUID(), title: "", daysOffset: "", notes: "", actionType: "" };
 }
 
 function itemToDraft(item: VendorTaskTemplateItem): ItemDraft {
@@ -70,11 +72,17 @@ function itemToDraft(item: VendorTaskTemplateItem): ItemDraft {
     title: item.title,
     daysOffset: item.daysOffset != null ? String(item.daysOffset) : "",
     notes: item.notes ?? "",
+    actionType: item.actionType === "share_timeline" ? "share_timeline" : "",
   };
 }
 
 function draftsEqual(a: ItemDraft, b: ItemDraft): boolean {
-  return a.title === b.title && a.daysOffset === b.daysOffset && a.notes === b.notes;
+  return (
+    a.title === b.title
+    && a.daysOffset === b.daysOffset
+    && a.notes === b.notes
+    && a.actionType === b.actionType
+  );
 }
 
 function packTagParts(pack: VendorTaskTemplate): string[] {
@@ -494,6 +502,7 @@ export function VendorTaskTemplatesManager({
       title: input.title.trim(),
       daysOffset: input.daysOffset.trim() ? parseDaysOffsetInput(input.daysOffset) : null,
       notes: input.notes.trim() || null,
+      actionType: input.actionType === "share_timeline" ? "share_timeline" : null,
       sortOrder: 0,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
@@ -519,6 +528,7 @@ export function VendorTaskTemplatesManager({
         title: draft.title,
         daysOffset: draft.daysOffset,
         notes: draft.notes,
+        actionType: draft.actionType === "share_timeline" ? "share_timeline" : null,
       });
       if (!item) return null;
       toast.success("Task added.");
@@ -538,7 +548,12 @@ export function VendorTaskTemplatesManager({
     }
     setSavingKey(`item-${itemId}`);
     try {
-      const result = await updateVendorTaskTemplateItemAction(itemId, draft);
+      const result = await updateVendorTaskTemplateItemAction(itemId, {
+        title: draft.title,
+        daysOffset: draft.daysOffset,
+        notes: draft.notes,
+        actionType: draft.actionType === "share_timeline" ? "share_timeline" : null,
+      });
       if (!result.ok) {
         toast.error(result.message ?? "Could not update task.");
         return false;
@@ -556,6 +571,7 @@ export function VendorTaskTemplatesManager({
                     ? parseDaysOffsetInput(draft.daysOffset)
                     : null,
                   notes: draft.notes.trim() || null,
+                  actionType: draft.actionType === "share_timeline" ? "share_timeline" : null,
                 }
               : i,
           ),
@@ -884,6 +900,29 @@ export function VendorTaskTemplatesManager({
                     </div>
 
                     <div className="pl-7 space-y-2">
+                      <div className="space-y-1.5">
+                        <Label>Couple action</Label>
+                        <Select
+                          value={draft.actionType || "__none__"}
+                          onValueChange={(v) =>
+                            updateItemDraft(item.id, {
+                              actionType: v === "share_timeline" ? "share_timeline" : "",
+                            })
+                          }
+                          items={[
+                            { value: "__none__", label: "None" },
+                            { value: "share_timeline", label: "Share timeline" },
+                          ]}
+                        >
+                          <SelectTrigger className="w-full sm:w-56">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="__none__">None</SelectItem>
+                            <SelectItem value="share_timeline">Share timeline</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
                       <Label>Notes</Label>
                       <NotesWithUpload
                         notes={draft.notes}
@@ -965,6 +1004,29 @@ export function VendorTaskTemplatesManager({
                     </div>
 
                     <div className="pl-7 space-y-2">
+                      <div className="space-y-1.5">
+                        <Label>Couple action</Label>
+                        <Select
+                          value={draft.actionType || "__none__"}
+                          onValueChange={(v) =>
+                            updateDraftRow(draft.localId, {
+                              actionType: v === "share_timeline" ? "share_timeline" : "",
+                            })
+                          }
+                          items={[
+                            { value: "__none__", label: "None" },
+                            { value: "share_timeline", label: "Share timeline" },
+                          ]}
+                        >
+                          <SelectTrigger className="w-full sm:w-56">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="__none__">None</SelectItem>
+                            <SelectItem value="share_timeline">Share timeline</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
                       <Label>Notes</Label>
                       <NotesWithUpload
                         notes={draft.notes}

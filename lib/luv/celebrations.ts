@@ -19,7 +19,8 @@ export type CelebrationType =
   | "vendor_list_submitted"
   | "seating_submitted"
   | "questionnaire_submitted"
-  | "insurance_uploaded";
+  | "insurance_uploaded"
+  | "timeline_shared_with_vendor";
 
 /** Couple-facing milestones — first person, warm, brief. */
 export function coupleCelebrationMessage(
@@ -42,6 +43,8 @@ export function coupleCelebrationMessage(
       return "Your final details are in. 🎉";
     case "insurance_uploaded":
       return "Your event insurance is with your venue. 🎉";
+    case "timeline_shared_with_vendor":
+      return "Your timeline is shared with your vendor. 🎉";
   }
 }
 
@@ -66,5 +69,7 @@ export function coordinatorCelebrationMessage(type: CelebrationType, coupleName:
       return `${coupleName} submitted their final details. 🎉`;
     case "insurance_uploaded":
       return `${coupleName} shared their event insurance. 🎉`;
+    case "timeline_shared_with_vendor":
+      return `${coupleName} shared their timeline with a vendor. 🎉`;
   }
 }

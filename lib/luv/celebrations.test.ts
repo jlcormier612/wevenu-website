@@ -16,6 +16,7 @@ const COUPLE_TYPES: Exclude<CelebrationType, "final_payment_received">[] = [
   "seating_submitted",
   "questionnaire_submitted",
   "insurance_uploaded",
+  "timeline_shared_with_vendor",
 ];
 
 describe("coupleCelebrationMessage — verified milestone copy", () => {
@@ -34,6 +35,7 @@ describe("coupleCelebrationMessage — verified milestone copy", () => {
     assert.match(coupleCelebrationMessage("seating_submitted"), /seating/i);
     assert.match(coupleCelebrationMessage("questionnaire_submitted"), /final details/i);
     assert.match(coupleCelebrationMessage("insurance_uploaded"), /insurance/i);
+    assert.match(coupleCelebrationMessage("timeline_shared_with_vendor"), /timeline/i);
   });
 });
 
@@ -60,6 +62,10 @@ describe("coordinatorCelebrationMessage — includes payment readiness only", ()
     assert.match(
       coordinatorCelebrationMessage("insurance_uploaded", "Emma & Jordan"),
       /insurance/i,
+    );
+    assert.match(
+      coordinatorCelebrationMessage("timeline_shared_with_vendor", "Emma & Jordan"),
+      /timeline/i,
     );
   });
 });

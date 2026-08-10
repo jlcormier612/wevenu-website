@@ -76,6 +76,9 @@ export async function resolvePortalVendorTasks(token: string): Promise<PortalVen
     completedBy: (r.completedBy as "couple" | "vendor" | null) ?? null,
     vendorId: r.vendorId as string,
     vendorName: (r.vendorName as string) || "Vendor",
+    actionType: (r.actionType === "share_timeline" ? "share_timeline" : null) as
+      | "share_timeline"
+      | null,
     canComplete: Boolean(r.canComplete),
     attachments: ((r.attachments as PortalVendorTask["attachments"]) ?? []).map((a) => ({
       id: a.id,
@@ -121,6 +124,40 @@ export async function completePortalVendorTask(
   const d = data as Record<string, unknown>;
   if (!d?.ok) return { ok: false, error: (d?.error as string) ?? "Could not complete task." };
   return { ok: true };
+}
+
+/** Couple commits a timeline share to one assigned vendor (Impl 6). */
+export async function sharePortalTimelineWithVendor(
+  token: string,
+  vendorId: string,
+): Promise<{
+  ok: boolean;
+  error?: string;
+  celebrated?: boolean;
+  alreadyShared?: boolean;
+  completedTaskIds?: string[];
+  vendorName?: string;
+  shareId?: string;
+}> {
+  if (!isSupabaseConfigured) return { ok: false, error: "Backend not configured." };
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("share_portal_timeline_with_vendor", {
+    p_token: token,
+    p_vendor_id: vendorId,
+  });
+  if (error) return { ok: false, error: error.message };
+  const d = data as Record<string, unknown>;
+  if (!d?.ok) return { ok: false, error: (d?.error as string) ?? "Could not share timeline." };
+  return {
+    ok: true,
+    celebrated: Boolean(d.celebrated),
+    alreadyShared: Boolean(d.alreadyShared),
+    completedTaskIds: Array.isArray(d.completedTaskIds)
+      ? (d.completedTaskIds as string[])
+      : [],
+    vendorName: typeof d.vendorName === "string" ? d.vendorName : undefined,
+    shareId: typeof d.shareId === "string" ? d.shareId : undefined,
+  };
 }
 
 // The Client Timeline — the couple's own always-live view (their own

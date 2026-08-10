@@ -11,6 +11,10 @@ import { toast } from "sonner";
 import { LinkifiedText } from "@/components/shared/linkified-text";
 import { formatEventRelativeDue, formatAbsoluteDueDate } from "@/lib/playbooks/due-dates";
 import { celebrateTaskComplete } from "@/lib/portal/celebrate-task";
+import {
+  SHARE_TIMELINE_ACTION_TYPE,
+  shareTimelineWorkspace,
+} from "@/lib/portal/couple-share-timeline";
 import { buildUnifiedTaskList, type UnifiedTask } from "@/lib/portal/unified-tasks";
 import type { PortalWorkspaceFocus } from "@/lib/portal/workspace-routing";
 import { partitionByCompletion } from "@/lib/tasks/group-by-completion";
@@ -152,12 +156,19 @@ export function UnifiedTasksSection({
 
   function renderVendorTask(t: PortalVendorTask) {
     const busy = completing === `vendor_${t.id}`;
+    const shareTimeline =
+      t.actionType === SHARE_TIMELINE_ACTION_TYPE
+      && t.status !== "complete"
+      && t.coupleVisibility === "owned";
+    const shareCta = shareTimelineWorkspace();
     return (
       <div
         key={t.id}
         className="flex w-full items-start gap-3 rounded-xl border border-border/60 bg-card px-3 py-3"
       >
-        {t.canComplete ? (
+        {shareTimeline ? (
+          <Circle className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground/50" />
+        ) : t.canComplete ? (
           <button
             type="button"
             disabled={busy}
@@ -213,7 +224,22 @@ export function UnifiedTasksSection({
           {t.coupleVisibility === "visible" && t.status !== "complete" && (
             <p className="mt-1 text-[11px] text-muted-foreground">View only — your vendor will mark this complete</p>
           )}
+          {shareTimeline && (
+            <p className="mt-1 text-[11px] text-muted-foreground">
+              Completes when you share your timeline with this vendor
+            </p>
+          )}
         </div>
+        {shareTimeline && (
+          <button
+            type="button"
+            onClick={() => onNavigate(shareCta.section, shareCta.focus)}
+            className="shrink-0 text-xs font-semibold px-3 py-1.5 rounded-xl text-white transition-opacity hover:opacity-90"
+            style={{ background: "var(--venue-primary)" }}
+          >
+            {shareCta.actionLabel}
+          </button>
+        )}
       </div>
     );
   }

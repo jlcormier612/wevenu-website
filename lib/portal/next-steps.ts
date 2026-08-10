@@ -138,6 +138,7 @@ export function compactNextStepsActionLabel(item: Pick<NextStepsItem, "actionLab
   if (item.kind === "payment" || lower.includes("pay")) return "Pay";
   if (item.kind === "timeline" || lower.includes("submit")) return "Submit";
   if (lower.includes("upload")) return "Upload";
+  if (lower.includes("share")) return "Share";
   if (lower.includes("approve")) return "Approve";
   if (lower.includes("review") || lower.includes("respond") || lower.includes("sign")) return "Review";
   // Checklist / vendor / questionnaire Home rows only navigate — "Complete" would imply finish-here.

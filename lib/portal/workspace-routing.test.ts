@@ -59,10 +59,16 @@ describe("portal workspace hash routing", () => {
     assert.equal(formatPortalHash("vendors", "pick"), "vendors/pick");
     assert.equal(formatPortalHash("seating", "submit"), "seating/submit");
     assert.equal(formatPortalHash("timeline", "submit"), "timeline/submit");
+    assert.equal(formatPortalHash("timeline", "share"), "timeline/share");
     assert.equal(formatPortalHash("documents", "sign"), "documents/sign");
     assert.equal(formatPortalHash("documents", "upload"), "documents/upload");
     assert.equal(formatPortalHash("questionnaire", "form"), "questionnaire/form");
     assert.equal(formatPortalHash("payments", null), "payments");
+    assert.deepEqual(parsePortalHash("#timeline/share"), {
+      section: "timeline",
+      focus: "share",
+    });
+    assert.equal(portalFocusElementId("timeline", "share"), "portal-focus-timeline-share");
   });
 
   it("builds section-scoped element ids", () => {

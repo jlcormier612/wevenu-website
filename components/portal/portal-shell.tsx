@@ -48,6 +48,10 @@ import { LuvIntroCard } from "@/components/luv/luv-intro-card";
 import { UnifiedTasksSection } from "@/components/portal/unified-tasks-section";
 import { buildUnifiedTaskList, type UnifiedTask } from "@/lib/portal/unified-tasks";
 import {
+  isShareTimelineVendorAttention,
+  shareTimelineWorkspace,
+} from "@/lib/portal/couple-share-timeline";
+import {
   compactNextStepsActionLabel,
   formatNextStepsDueLabel,
   fromUnifiedTask,
@@ -4548,7 +4552,7 @@ export function PortalShell({
   const coupleName = [firstName, partnerName].filter(Boolean).join(" & ");
   const actionCount =
     initialTasks.filter(t => t.canComplete && t.status !== "complete").length
-    + initialVendorTasks.filter(t => t.canComplete && t.status !== "complete").length;
+    + initialVendorTasks.filter((t) => isShareTimelineVendorAttention(t)).length;
   const isOverview = activeSection === "overview";
   // Tasks | Timeline | Documents | Venue Guide share one column so white list cards align.
   const isSharedListColumn =
@@ -4906,9 +4910,11 @@ function NextStepsCard({
           .filter((t: UnifiedTask) => !t.completed)
           .map(fromUnifiedTask),
         ...vendorTasks
-          .filter((t) => t.status !== "complete" && t.canComplete)
+          .filter((t) => isShareTimelineVendorAttention(t))
           .map((t): NextStepsItem => {
             const overdue = Boolean(t.dueDate && t.dueDate < today);
+            const shareWs =
+              t.actionType === "share_timeline" ? shareTimelineWorkspace() : null;
             return {
               id: `vendor_${t.id}`,
               title: t.title,
@@ -4917,9 +4923,9 @@ function NextStepsCard({
               isOverdue: overdue,
               isRequired: false,
               ownership: "venue",
-              targetSection: "tasks",
-              targetFocus: null,
-              actionLabel: "Complete",
+              targetSection: shareWs?.section ?? "tasks",
+              targetFocus: shareWs?.focus ?? null,
+              actionLabel: shareWs?.actionLabel ?? "Complete",
               kind: "vendor_task",
             };
           }),

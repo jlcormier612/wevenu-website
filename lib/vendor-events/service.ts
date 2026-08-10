@@ -393,6 +393,7 @@ export async function getVendorEventDetail(
         ? r.couple_visibility
         : "private"
     ) as VendorPersonalTask["coupleVisibility"],
+    actionType:       r.action_type === "share_timeline" ? "share_timeline" : null,
     completedBy:      (r.completed_by as "couple" | "vendor" | null) ?? null,
     completedAt:      (r.completed_at as string | null) ?? null,
     createdAt:        r.created_at as string,

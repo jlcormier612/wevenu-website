@@ -15,6 +15,8 @@ export type VendorTaskTemplateItem = {
   title:       string;
   daysOffset:  number | null;
   notes:       string | null;
+  /** Copied to vendor_tasks.action_type on apply. */
+  actionType:  "share_timeline" | null;
   sortOrder:   number;
   createdAt:   string;
   updatedAt:   string;
@@ -50,6 +52,7 @@ export type VendorTaskTemplateItemInput = {
   title:      string;
   daysOffset: string;
   notes:      string;
+  actionType?: "share_timeline" | "" | null;
 };
 
 export type VendorTaskAttachment = {

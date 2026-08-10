@@ -32,7 +32,9 @@ import { getVendorSharedFloorPlansForEventAction } from "@/app/vendor/floor-plan
 import { VendorRelativeDuePicker } from "@/components/vendor-app/vendor-relative-due-picker";
 import { LinkifiedText } from "@/components/shared/linkified-text";
 import { VendorConversationThread } from "@/components/vendor-app/vendor-conversation-thread";
-import { VendorEventDocumentFolder } from "@/components/vendor-app/vendor-event-document-folder";
+import { VendorEventSharePanel } from "@/components/vendor-app/vendor-event-share-panel";
+import { DocumentWorkspace } from "@/components/document-workspace/document-workspace";
+import { normalizeVendorEventDocuments } from "@/lib/document-workspace/vendor-normalize";
 import { VendorHandbookView } from "@/components/vendor-app/vendor-handbook-view";
 import { formatEventRelativeDue, offsetDate } from "@/lib/playbooks/due-dates";
 import { partitionByCompletion } from "@/lib/tasks/group-by-completion";
@@ -754,6 +756,7 @@ function TasksTab({
   const [applying, setApplying] = React.useState(false);
   const [applyShare, setApplyShare] = React.useState<VendorTaskCoupleVisibility>("private");
   const [newShare, setNewShare] = React.useState<VendorTaskCoupleVisibility>("private");
+  const [newActionType, setNewActionType] = React.useState<"" | "share_timeline">("");
   const focusRef = React.useRef<HTMLDivElement | null>(null);
   const [activeFocusId, setActiveFocusId] = React.useState<string | null>(focusTaskId);
 
@@ -871,6 +874,9 @@ function TasksTab({
         eventId:           detail.eventId,
         notes:             "",
         coupleVisibility:  newShare,
+        actionType:        newShare !== "private" && newActionType === "share_timeline"
+          ? "share_timeline"
+          : null,
       });
       if (!result.ok) {
         toast.error("message" in result ? (result.message ?? "Could not save task.") : "Could not save task.");
@@ -879,6 +885,7 @@ function TasksTab({
       setNewTitle("");
       setNewDaysOffset("");
       setNewShare("private");
+      setNewActionType("");
       router.refresh();
     });
   }
@@ -1136,7 +1143,11 @@ function TasksTab({
           />
           <Select
             value={newShare}
-            onValueChange={(v) => setNewShare(v as VendorTaskCoupleVisibility)}
+            onValueChange={(v) => {
+              const next = v as VendorTaskCoupleVisibility;
+              setNewShare(next);
+              if (next === "private") setNewActionType("");
+            }}
             items={COUPLE_SHARE_OPTIONS}
           >
             <SelectTrigger className="w-full sm:w-44">
@@ -1148,6 +1159,24 @@ function TasksTab({
               ))}
             </SelectContent>
           </Select>
+          {newShare !== "private" && (
+            <Select
+              value={newActionType || "__none__"}
+              onValueChange={(v) => setNewActionType(v === "share_timeline" ? "share_timeline" : "")}
+              items={[
+                { value: "__none__", label: "No couple action" },
+                { value: "share_timeline", label: "Share timeline" },
+              ]}
+            >
+              <SelectTrigger className="w-full sm:w-44">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__none__">No couple action</SelectItem>
+                <SelectItem value="share_timeline">Share timeline</SelectItem>
+              </SelectContent>
+            </Select>
+          )}
           <Button type="submit" size="sm" disabled={pending || !newTitle.trim()}>Add</Button>
         </form>
         {newShare !== "private" && (
@@ -1435,14 +1464,26 @@ function DocumentsTab({
     return <p className="py-8 text-center text-sm text-muted-foreground">Loading documents…</p>;
   }
 
+  const workspaceDocuments = normalizeVendorEventDocuments(detail, eventUploads, plans);
+
   return (
-    <VendorEventDocumentFolder
-      detail={detail}
-      library={library}
-      uploads={eventUploads}
-      floorPlans={plans}
-      highlight={highlight}
-    />
+    <div className={highlight ? "space-y-4 rounded-sm p-1 -m-1 ring-2 ring-primary/25 bg-primary/5" : "space-y-4"}>
+      <DocumentWorkspace
+        title="Event folder"
+        description={`Files for this booking — from ${detail.venueName}, shared by you, and (when enabled) with the couple.`}
+        documents={workspaceDocuments}
+        initialPinnedKeys={[]}
+        initialRecentEntries={[]}
+        pinningEnabled={false}
+      />
+      <VendorEventSharePanel
+        assignmentId={detail.assignmentId}
+        eventId={detail.eventId}
+        library={library}
+        uploads={eventUploads}
+        composeOnly
+      />
+    </div>
   );
 }
 

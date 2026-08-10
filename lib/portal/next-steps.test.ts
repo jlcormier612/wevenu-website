@@ -125,6 +125,7 @@ describe("Next Steps Home presentation", () => {
     // Home presentation only — navigates to Tasks; does not imply complete-in-place
     assert.equal(compactNextStepsActionLabel({ actionLabel: "Mark complete", kind: "venue_task" }), "Review");
     assert.equal(compactNextStepsActionLabel({ actionLabel: "Complete", kind: "vendor_task" }), "Review");
+    assert.equal(compactNextStepsActionLabel({ actionLabel: "Share timeline", kind: "vendor_task" }), "Share");
     assert.equal(compactNextStepsActionLabel({ actionLabel: "View", kind: "venue_task" }), "Review");
     assert.equal(compactNextStepsActionLabel({ actionLabel: "Mark complete", kind: "vendor_task" }), "Review");
     assert.equal(compactNextStepsActionLabel({ actionLabel: "Complete form", kind: "questionnaire" }), "Review");

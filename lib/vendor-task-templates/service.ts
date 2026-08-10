@@ -69,6 +69,7 @@ function mapItem(
     title:       r.title as string,
     daysOffset:  (r.days_offset as number | null) ?? null,
     notes:       (r.notes as string | null) ?? null,
+    actionType:  r.action_type === "share_timeline" ? "share_timeline" : null,
     sortOrder:   (r.sort_order as number) ?? 0,
     createdAt:   r.created_at as string,
     updatedAt:   r.updated_at as string,
@@ -280,6 +281,7 @@ export async function createVendorTaskTemplateItem(
         title:       input.title.trim(),
         days_offset: parseDaysOffset(input.daysOffset),
         notes:       input.notes.trim() || null,
+        action_type: input.actionType === "share_timeline" ? "share_timeline" : null,
         sort_order:  nextOrder,
       })
       .select("id")
@@ -304,6 +306,7 @@ export async function updateVendorTaskTemplateItem(
         title:       input.title.trim(),
         days_offset: parseDaysOffset(input.daysOffset),
         notes:       input.notes.trim() || null,
+        action_type: input.actionType === "share_timeline" ? "share_timeline" : null,
       })
       .eq("id", itemId);
     if (error) return { ok: false, message: error.message } as VendorActionResult;
@@ -519,6 +522,7 @@ export async function applyVendorTaskTemplates(opts: {
           source:             "template",
           status:             "pending",
           couple_visibility:  coupleVisibility,
+          action_type:        t.action_type === "share_timeline" ? "share_timeline" : null,
         })
         .select("id")
         .single();

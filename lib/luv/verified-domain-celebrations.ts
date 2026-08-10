@@ -20,7 +20,10 @@ export type VerifiedCelebrationTrigger =
 /**
  * Triggers intentionally NOT celebrated here (unsafe / unsupported):
  * - payment_received — any paid line; too broad (final_payment_received is separate)
- * - null / Mark complete ack / Share timeline / Leave a review / package
+ * - null / Mark complete ack / Leave a review / package
+ * - share_timeline playbook-style trigger string — vendor share uses dedicated
+ *   celebration type timeline_shared_with_vendor from the share RPC (Impl 6),
+ *   not this playbook-trigger map
  *
  * document_uploaded_insurance is celebrated only after the couple path proves
  * classified + shared insurance (Impl 5) — not on venue/vendor docs alone.

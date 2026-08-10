@@ -48,6 +48,7 @@ function mapTask(r: Record<string, unknown>): VendorPersonalTask {
     source:           (r.source as VendorPersonalTask["source"]) ?? "manual",
     notes:            (r.notes as string | null) ?? null,
     coupleVisibility: normalizeVisibility(r.couple_visibility),
+    actionType:       r.action_type === "share_timeline" ? "share_timeline" : null,
     completedBy:      (r.completed_by as "couple" | "vendor" | null) ?? null,
     completedAt:      (r.completed_at as string | null) ?? null,
     createdAt:        r.created_at as string,
@@ -106,6 +107,7 @@ export async function createVendorTask(
         notes:              input.notes || null,
         source:             "manual",
         couple_visibility:  normalizeVisibility(input.coupleVisibility),
+        action_type:        input.actionType === "share_timeline" ? "share_timeline" : null,
       })
       .select("id")
       .single();

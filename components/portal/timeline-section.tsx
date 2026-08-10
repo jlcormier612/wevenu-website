@@ -23,6 +23,12 @@ import { TIMELINE_AUDIENCES, type TimelineAudience } from "@/lib/timeline/types"
 import type { PortalTimeline, PortalTimelineEntry, PortalTimelineSection } from "@/lib/portal/types";
 import { celebrateLuv } from "@/lib/luv/celebrate";
 import { coupleCelebrationMessage } from "@/lib/luv/celebrations";
+import {
+  SHARE_TIMELINE_ACTION_TYPE,
+  shouldPresentShareTimelineCelebration,
+} from "@/lib/portal/couple-share-timeline";
+import { portalFocusElementId } from "@/lib/portal/workspace-routing";
+import type { PortalVendorTask } from "@/lib/portal/types";
 
 function formatEntryTimeRange(entryTime: string | null, endTime: string | null): string {
   if (!entryTime && !endTime) return "";
@@ -332,6 +338,121 @@ function formatSubmittedAt(iso: string): { date: string; time: string } {
   };
 }
 
+function ShareTimelineWithVendors({
+  token,
+  onShared,
+}: {
+  token: string;
+  onShared: () => void;
+}) {
+  const [vendorTasks, setVendorTasks] = React.useState<PortalVendorTask[]>([]);
+  const [loaded, setLoaded] = React.useState(false);
+  const [sharingVendorId, setSharingVendorId] = React.useState<string | null>(null);
+
+  const load = React.useCallback(() => {
+    fetch(`/api/portal/tasks?token=${token}`)
+      .then((r) => r.json())
+      .then((d: { vendorTasks?: PortalVendorTask[] }) => {
+        setVendorTasks(d.vendorTasks ?? []);
+        setLoaded(true);
+      })
+      .catch(() => setLoaded(true));
+  }, [token]);
+
+  React.useEffect(() => { load(); }, [load]);
+
+  const shareTargets = React.useMemo(() => {
+    const byVendor = new Map<string, { vendorId: string; vendorName: string; pending: boolean }>();
+    for (const t of vendorTasks) {
+      if (t.actionType !== SHARE_TIMELINE_ACTION_TYPE) continue;
+      if (t.coupleVisibility !== "owned") continue;
+      const prev = byVendor.get(t.vendorId);
+      const pending = t.status === "pending";
+      if (!prev) {
+        byVendor.set(t.vendorId, { vendorId: t.vendorId, vendorName: t.vendorName, pending });
+      } else if (pending) {
+        byVendor.set(t.vendorId, { ...prev, pending: true });
+      }
+    }
+    return [...byVendor.values()].sort((a, b) => a.vendorName.localeCompare(b.vendorName));
+  }, [vendorTasks]);
+
+  async function handleShare(vendorId: string) {
+    setSharingVendorId(vendorId);
+    const res = await fetch("/api/portal/timeline/share", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ token, vendorId }),
+    });
+    const data = await res.json() as {
+      ok: boolean;
+      celebrated?: boolean;
+      alreadyShared?: boolean;
+      vendorName?: string;
+      error?: string;
+    };
+    setSharingVendorId(null);
+    if (!data.ok) {
+      toast.error(data.error ?? "Couldn't share your timeline. Please try again.");
+      return;
+    }
+    if (shouldPresentShareTimelineCelebration(data.celebrated)) {
+      celebrateLuv(coupleCelebrationMessage("timeline_shared_with_vendor"));
+    } else {
+      toast.success(
+        data.vendorName
+          ? `Timeline shared with ${data.vendorName}.`
+          : "Timeline shared with your vendor.",
+      );
+    }
+    load();
+    onShared();
+  }
+
+  if (!loaded || shareTargets.length === 0) return null;
+
+  return (
+    <div
+      id={portalFocusElementId("timeline", "share")}
+      className="w-full rounded-xl border border-border/60 bg-card px-3 py-3 space-y-2"
+    >
+      <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground">
+        Share with your vendors
+      </p>
+      <p className="text-xs text-muted-foreground">
+        Share this timeline with a vendor who asked for it. Opening this page does not complete the task.
+      </p>
+      <ul className="space-y-2">
+        {shareTargets.map((v) => (
+          <li key={v.vendorId} className="flex items-center justify-between gap-2">
+            <div className="min-w-0">
+              <p className="text-sm font-medium text-heading truncate">{v.vendorName}</p>
+              <p className="text-[11px] text-muted-foreground">
+                {v.pending ? "Waiting for you to share" : "Shared"}
+              </p>
+            </div>
+            {v.pending ? (
+              <Button
+                type="button"
+                size="sm"
+                disabled={sharingVendorId === v.vendorId}
+                onClick={() => void handleShare(v.vendorId)}
+                className="shrink-0"
+              >
+                {sharingVendorId === v.vendorId ? "Sharing…" : "Share timeline"}
+              </Button>
+            ) : (
+              <span className="inline-flex items-center gap-1 text-xs text-[var(--venue-primary)] shrink-0">
+                <CheckCircle2 className="h-3.5 w-3.5" /> Shared
+              </span>
+            )}
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
 function TimelineStatus({
   token, clientId, lastSubmittedAt, hasUnpublishedChanges, onSubmitted,
 }: { token: string; clientId: string; lastSubmittedAt: string | null; hasUnpublishedChanges: boolean; onSubmitted: () => void }) {
@@ -472,10 +593,13 @@ export function TimelineSection({
 
   if (entries.length === 0 && initialSections.length === 0) {
     return (
-      <div className="rounded-2xl border border-dashed border-border py-16 text-center px-6 space-y-2">
-        <p className="text-2xl">🕒</p>
-        <p className="text-sm font-medium text-heading">No timeline shared yet</p>
-        <p className="text-xs text-muted-foreground max-w-xs mx-auto">Your venue will share the Timeline here as it comes together.</p>
+      <div className="w-full space-y-5">
+        <ShareTimelineWithVendors token={token} onShared={refresh} />
+        <div className="rounded-2xl border border-dashed border-border py-16 text-center px-6 space-y-2">
+          <p className="text-2xl">🕒</p>
+          <p className="text-sm font-medium text-heading">No timeline shared yet</p>
+          <p className="text-xs text-muted-foreground max-w-xs mx-auto">Your venue will share the Timeline here as it comes together.</p>
+        </div>
       </div>
     );
   }
@@ -537,6 +661,8 @@ export function TimelineSection({
         lastSubmittedAt={lastSubmittedAt} hasUnpublishedChanges={hasUnpublishedChanges}
         onSubmitted={refresh}
       />
+
+      <ShareTimelineWithVendors token={token} onShared={refresh} />
 
       {dayOffsets.map((day) => {
         if (!multiDay || day == null || !eventDate) {

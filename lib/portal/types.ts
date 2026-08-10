@@ -89,6 +89,11 @@ export type PortalVendorTask = {
   completedBy: "couple" | "vendor" | null;
   vendorId: string;
   vendorName: string;
+  /**
+   * Typed couple action (`share_timeline`); null = acknowledgment / manual.
+   * Never inferred from title.
+   */
+  actionType: "share_timeline" | null;
   canComplete: boolean;
   attachments: {
     id: string;
