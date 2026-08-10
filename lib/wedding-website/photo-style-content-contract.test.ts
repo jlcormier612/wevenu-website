@@ -13,7 +13,7 @@ import {
   PHOTO_STYLE_CANONICAL_COUNT,
   resolveStudioPreviewPhotos,
 } from "@/lib/wedding-website/studio-preview-content";
-import type { CatalogCollection, CatalogPhotoStyle } from "@/lib/wedding-website/types";
+import type { CatalogCollection, CatalogPhotoStyle, CatalogTypographyStyle } from "@/lib/wedding-website/types";
 import { PHASE_B_PHOTO_STYLE_TOKENS } from "@/lib/wedding-website/photo-style-phase-b-tokens";
 
 function collection(): CatalogCollection {
@@ -79,7 +79,37 @@ describe("Photo Style content contract", () => {
     );
     assert.match(html, /50%/);
     assert.equal(countImgs(html), 6);
-    // Must not be a rectangles-only fallback (no circular language).
-    assert.ok(!html.includes('border-radius:0') || html.includes("50%"));
+    // No tiny-thumbnail fallback (content-contract 9e7f364 regression).
+    assert.doesNotMatch(html, /3\.75rem|4\.1rem|4\.6rem/);
+  });
+
+  it("Photo Style selection does not change typography tokens", () => {
+    const base = collection();
+    const typography: CatalogTypographyStyle = {
+      id: "ty-1",
+      key: "elegant",
+      name: "Elegant",
+      sortOrder: 0,
+      tokens: {
+        headingFont: "'EB Garamond', Georgia, serif",
+        bodyFont: "'Lato', system-ui, sans-serif",
+        headingItalic: false,
+        fontUrl: "https://fonts.example/elegant.css",
+        sampleLabel: "Elegant",
+      },
+    };
+    for (const key of Object.keys(PHASE_B_PHOTO_STYLE_TOKENS)) {
+      const tc = resolveTheme(
+        buildPreviewSite({
+          collection: base,
+          typography,
+          photoStyle: photoStyle(key, PHASE_B_PHOTO_STYLE_TOKENS[key]!),
+        }),
+      );
+      assert.equal(tc.headingFont, typography.tokens.headingFont, `${key} changed headingFont`);
+      assert.equal(tc.bodyFont, typography.tokens.bodyFont, `${key} changed bodyFont`);
+      assert.equal(tc.fontUrl, typography.tokens.fontUrl, `${key} changed fontUrl`);
+      assert.equal(tc.headingItalic, false, `${key} changed headingItalic`);
+    }
   });
 });

@@ -605,24 +605,35 @@ export function resolveTheme(site: PublicWebsite): ThemeConfig {
     colorOverride.heroGradient = `linear-gradient(160deg, ${secondary} 0%, ${primary} 60%, ${primary} 100%)`;
   }
 
-  // Photo Style (Part 4, extended in the Visual Expression Pass) — fully
-  // independent of Collection; only touches photoFilter/photoRadius
-  // (Collection's own defaults) plus its own fields, never anything Color
-  // Story, Typography, or Collection's own sectionComposition/etc. own.
-  // `arrangement` (collage/scrapbook) overrides Collection's `galleryLayout`
-  // for the Photo Gallery section specifically — the one disclosed
-  // exception — nothing else Collection owns is touched.
-  const photoOverride = site.photoStyleTokens
-    ? { photoFilter: site.photoStyleTokens.photoFilter, photoRadius: site.photoStyleTokens.photoRadius,
-        frameStyle: site.photoStyleTokens.frameStyle, captionStyle: site.photoStyleTokens.captionStyle,
+  // Photo Style (Part 4 / Invariant 1) — ONLY photo presentation keys.
+  // Never merge raw photoStyleTokens (they must never carry fonts / Collection DNA).
+  // Typography and Collection composition must be unchanged by Photo Style selection.
+  const photoOverride: Partial<ThemeConfig> | null = site.photoStyleTokens
+    ? {
+        photoFilter: site.photoStyleTokens.photoFilter,
+        photoRadius: site.photoStyleTokens.photoRadius,
+        frameStyle: site.photoStyleTokens.frameStyle,
+        captionStyle: site.photoStyleTokens.captionStyle,
         imageScale: site.photoStyleTokens.imageScale,
-        arrangement: site.photoStyleTokens.arrangement, scalePattern: site.photoStyleTokens.scalePattern,
-        rotation: site.photoStyleTokens.rotation, shadow: site.photoStyleTokens.shadow,
-        photoSpacing: site.photoStyleTokens.spacing }
+        arrangement: site.photoStyleTokens.arrangement,
+        scalePattern: site.photoStyleTokens.scalePattern,
+        rotation: site.photoStyleTokens.rotation,
+        shadow: site.photoStyleTokens.shadow,
+        photoSpacing: site.photoStyleTokens.spacing,
+      }
     : null;
 
   return {
     ...collection, ...layoutOverride, ...palette, ...colorOverride, ...typographyOverride, ...photoOverride,
+    // Re-assert typography after photo merge so Photo Style can never win on type.
+    ...(typographyOverride
+      ? {
+          headingFont: typographyOverride.headingFont,
+          bodyFont: typographyOverride.bodyFont,
+          headingItalic: typographyOverride.headingItalic,
+          fontUrl: typographyOverride.fontUrl,
+        }
+      : {}),
     primary, secondary,
   };
 }
@@ -1120,71 +1131,103 @@ export function GalleryGrid({ photos, tc }: { photos: string[]; tc: ThemeConfig 
     );
   }
 
-  // ── Minimal sparse — oval/round frames + generous air (all photos) ──
+  // ── Minimal sparse — premium oval editorial (all photos, no tiny thumbs) ──
+  // Restored from pre–Phase-B `minimalAsym` DNA (tall oval + stacked circles +
+  // support), extended so the canonical 6-photo set stays meaningful-scale.
+  // Do NOT use a thumbnail-dot strip to "fit" remaining photos.
   if (sparseQuiet && photos.length >= 1) {
-    const lead = photos[0]!;
-    const rest = photos.slice(1);
-    const ovalRadius = tc.photoRadius && tc.photoRadius !== "0" ? tc.photoRadius : "50%";
-    const ovalImg: React.CSSProperties = {
+    const oval = (tc.photoRadius && tc.photoRadius !== "0") ? tc.photoRadius : "50%";
+    const [a, b, c, d, e, f] = [
+      photos[0]!,
+      photos[1] ?? photos[0]!,
+      photos[2] ?? photos[0]!,
+      photos[3] ?? photos[1] ?? photos[0]!,
+      photos[4] ?? photos[2] ?? photos[0]!,
+      photos[5] ?? photos[3] ?? photos[1] ?? photos[0]!,
+    ];
+    const ovalImg = (aspect: string): React.CSSProperties => ({
       ...imgStyle,
-      borderRadius: ovalRadius,
+      aspectRatio: aspect,
+      borderRadius: oval,
       objectFit: "cover",
       objectPosition: PORTRAIT_FACE_FOCAL,
-    };
+    });
+    const showSecondRow = photos.length >= 5;
     return (
       <div
         style={{
-          width: "100%",
-          maxWidth: "40rem",
+          maxWidth: "42rem",
           margin: "0 auto",
-          minHeight: "15rem",
-          padding: "1.5rem 1.25rem 1.85rem",
+          padding: "0.85rem 0.65rem 1.25rem",
           boxSizing: "border-box",
           display: "flex",
           flexDirection: "column",
-          alignItems: "center",
           gap: "1.35rem",
         }}
       >
         <div
-          className="overflow-hidden"
           style={{
-            width: rest.length ? "42%" : "48%",
-            maxWidth: "11rem",
-            borderRadius: ovalRadius,
-            aspectRatio: "3 / 4",
+            display: "grid",
+            gridTemplateColumns: photos.length >= 2 ? "1.15fr 0.72fr 0.95fr" : "1fr",
+            gap: "1.15rem",
+            alignItems: "center",
           }}
         >
-          <img src={lead} alt="" style={{ ...ovalImg, width: "100%", height: "100%", aspectRatio: undefined }} />
-        </div>
-        {rest.length > 0 && (
           <div
+            className="overflow-hidden"
             style={{
-              display: "flex",
-              flexWrap: "wrap",
-              justifyContent: "center",
-              alignItems: "center",
-              gap: "0.85rem 1.1rem",
-              width: "100%",
-              paddingInline: "0.5rem",
+              borderRadius: oval,
+              gridRow: photos.length >= 2 ? "1 / 3" : undefined,
+              width: photos.length >= 2 ? "100%" : "52%",
+              marginInline: photos.length >= 2 ? undefined : "auto",
             }}
           >
-            {rest.map((url, i) => {
-              const size = i % 3 === 0 ? "4.6rem" : i % 3 === 1 ? "3.75rem" : "4.1rem";
-              return (
-                <div
-                  key={i}
-                  className="overflow-hidden shrink-0"
-                  style={{
-                    width: size,
-                    height: size,
-                    borderRadius: ovalRadius,
-                  }}
-                >
-                  <img src={url} alt="" style={{ ...ovalImg, width: "100%", height: "100%", aspectRatio: undefined }} />
-                </div>
-              );
-            })}
+            <img src={a} alt="" style={ovalImg("3 / 4")} />
+          </div>
+          {photos.length >= 2 && (
+            <div
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                gap: "1.15rem",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <div className="overflow-hidden" style={{ width: "90%", borderRadius: oval }}>
+                <img src={b} alt="" style={ovalImg("1 / 1")} />
+              </div>
+              <div className="overflow-hidden" style={{ width: "78%", borderRadius: oval }}>
+                <img src={c} alt="" style={ovalImg("1 / 1")} />
+              </div>
+            </div>
+          )}
+          {photos.length >= 2 && (
+            <div className="overflow-hidden" style={{ borderRadius: oval, width: "100%" }}>
+              <img src={d} alt="" style={ovalImg("4 / 5")} />
+            </div>
+          )}
+        </div>
+        {showSecondRow && (
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: photos.length >= 6 ? "1fr 1fr" : "minmax(0, 18rem)",
+              justifyContent: "center",
+              gap: "1.25rem",
+              maxWidth: "34rem",
+              marginInline: "auto",
+              width: "100%",
+            }}
+          >
+            <div className="overflow-hidden" style={{ borderRadius: oval }}>
+              <img src={e} alt="" style={ovalImg("4 / 5")} />
+            </div>
+            {photos.length >= 6 && (
+              <div className="overflow-hidden" style={{ borderRadius: oval }}>
+                <img src={f} alt="" style={ovalImg("4 / 5")} />
+              </div>
+            )}
           </div>
         )}
       </div>
