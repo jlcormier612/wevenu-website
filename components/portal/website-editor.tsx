@@ -21,6 +21,7 @@ import { coupleCelebrationMessage } from "@/lib/luv/celebrations";
 import { resolveDesignState } from "@/lib/wedding-website/design-state";
 import { deriveSixRoles, swatchGradient, type SixRoleColors } from "@/lib/wedding-website/curated-color-stories";
 import { resolveStudioPreviewPhotos } from "@/lib/wedding-website/studio-preview-content";
+import { collectionDescriptor } from "@/lib/wedding-website/collection-descriptors";
 import { CollectionPreview, ColorStoryPreview, TypographyPreview, PhotoStylePreview } from "@/components/portal/collection-preview";
 
 // ── Theme Studio (2026-07-24) ─────────────────────────────────────────────────
@@ -1317,7 +1318,7 @@ function ThemeStudio({ site, onUpdate }: { site: CoupleWebsite; onUpdate: (patch
                 </div>
                 <div className="px-3 py-2 bg-card">
                   <p className="text-xs font-bold text-heading">{c.name}</p>
-                  <p className="text-[10px] text-muted-foreground mt-0.5 line-clamp-1">{c.description}</p>
+                  <p className="text-[10px] text-muted-foreground mt-0.5 line-clamp-1">{collectionDescriptor(c.key, c.description)}</p>
                 </div>
               </button>
             );

@@ -277,6 +277,21 @@ describe("Phase B Collection composition DNA", () => {
     assert.notEqual(PAPER_CHAMBER.text.toLowerCase(), "#ede8e2");
   });
 
+  it("Midnight paper story role remains flush-capable (no Color-Story soft/strong canvas)", () => {
+    const midnight = themeFor("modern", PHASE_B.modern);
+    assert.equal(midnight.sectionRoles?.story?.canvas, "paper");
+    assert.equal(midnight.sectionRoles?.story?.scale, "feature");
+  });
+
+  it("Rustic flowing-opening keeps left Collection DNA but scoped story treatment", () => {
+    const rustic = themeFor("rustic", PHASE_B.rustic);
+    assert.equal(rustic.itemAlign, "left");
+    assert.equal(rustic.asymmetry, "subtle");
+    assert.equal(rustic.sectionRoles?.story?.treatment, "flowing-opening");
+    assert.equal(rustic.headerStyle, "romantic");
+    assert.equal(rustic.divider, "botanical");
+  });
+
   it("Industrial hardcode remains available but is not required in active 10 DNA map", () => {
     const industrial = themeFor("industrial");
     assert.equal(industrial.heroAlign, "left");

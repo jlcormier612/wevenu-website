@@ -102,12 +102,18 @@ export function CollectionPreview({
   const { renderSection } = createSectionRenderer({
     tc, content: site.content ?? {}, site, color: tc.primary, editMode: false, activeSection: null,
   });
+  // Paper story chamber (Midnight) must sit flush under the cinematic hero.
+  // Top padding here would re-introduce a dark page-bg ribbon on cards.
+  const storyPaperFlush =
+    sectionKeys[0] === "story"
+    && tc.sectionRoles?.story?.canvas === "paper";
+
   return (
     <ScaledThumbnail width={width} height={height} naturalWidth={naturalWidth}>
       <div style={{ background: tc.bg }}>
         <Hero site={site} tc={tc} />
         {sectionKeys.length > 0 && (
-          <div style={{ padding: "0.75rem 1.25rem 1.25rem" }}>
+          <div style={{ padding: storyPaperFlush ? "0 0 1.25rem" : "0.75rem 1.25rem 1.25rem" }}>
             {sectionKeys.map(key => <React.Fragment key={key}>{renderSection(key)}</React.Fragment>)}
           </div>
         )}

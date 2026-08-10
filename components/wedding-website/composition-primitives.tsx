@@ -499,9 +499,13 @@ export function SectionCanvas({
   // chamber. Soft/strong/neutral stay Color-Story-derived; `paper` paints a
   // fixed light field so a cinematic/dark hero Collection (Midnight) can
   // carry a light magazine story without inventing a second renderer.
+  // Flush to the hero: do NOT apply scale marginTop. On a dark Color Story
+  // that margin was an empty dark/purple rectangle between the cinematic
+  // hero and the paper chamber (Midnight-only today). Breathing room lives
+  // inside the chamber via paddingBlock — not as page-bg gap above it.
   if (role.canvas === "paper") {
     return (
-      <div style={{ marginTop: margin }}>
+      <div>
         <div className="relative left-1/2 right-1/2 -mx-[50cqw] w-[100cqw]" style={{ background: PAPER_CHAMBER.bg }}>
           <div className="max-w-5xl mx-auto px-6" style={{ paddingBlock: scale === "feature" ? "4.5rem" : "3.25rem" }}>
             {children}

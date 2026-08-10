@@ -28,6 +28,7 @@ import { CollectionPreview, ColorStoryPreview, TypographyPreview, PhotoStylePrev
 import { resolveCuratedColorStories, deriveSixRoles, swatchGradient, type SixRoleColors } from "@/lib/wedding-website/curated-color-stories";
 import { resolveDesignState } from "@/lib/wedding-website/design-state";
 import { resolveStudioPreviewPhotos } from "@/lib/wedding-website/studio-preview-content";
+import { collectionDescriptor } from "@/lib/wedding-website/collection-descriptors";
 import { PORTRAIT_FACE_FOCAL } from "@/components/wedding-website/composition-primitives";
 import type { CoupleWebsite, WebsiteContent, WebsiteSuggestions, HostedExperienceCatalog, CatalogCollection, CatalogColorStory } from "@/lib/wedding-website/types";
 import type { PortalContext } from "@/lib/portal/types";
@@ -42,24 +43,6 @@ function collectionSwatch(c: CatalogCollection): string {
   return c.colorStories[0] ? swatchGradient(c.colorStories[0].tokens)
     : `linear-gradient(160deg, ${c.swatchAccent ?? "#B8AEA1"} 0%, ${c.swatchAccent ?? "#DED6CA"} 100%)`;
 }
-
-// Wedding Website Setup — Collection + Color Story Selection Experience
-// (2026-08-07) — 3-5 word emotional/design descriptors, mapped from each
-// Collection's own real layout_config identity (never invented against what
-// the renderer actually does). Keyed by the real `collections.key`.
-const COLLECTION_DESCRIPTORS: Record<string, string> = {
-  classic: "Organic, joyful & free-flowing",       // Wildflower
-  modern: "Moody, editorial & atmospheric",         // Midnight
-  garden: "Charming, English & countryside",        // Garden Party
-  minimal: "Quiet, minimal & intimate",             // Linen
-  romance: "Romantic, soft & poetic",               // Rosé
-  coastal: "Airy, editorial & effortless",          // Coastal
-  champagne: "Elegant, formal & polished",          // Champagne
-  velvet: "Dramatic, moody & candlelit",            // Velvet
-  estate: "Romantic, refined & timeless",           // European Estate
-  rustic: "Warm, weathered & organic",              // Rustic
-  industrial: "Bold, editorial & structured",       // Industrial
-};
 
 // Part 10 — what each role actually does in the accepted renderer. Verified
 // firsthand (Whole-Page Visual Rhythm pass, 2026-08-05): every role has a
@@ -487,7 +470,7 @@ function SetupWizard({
           {/* Clear vertical separation: preview → name → descriptor, never overlapping */}
           <div className="px-3 pt-2.5 pb-3 border-t border-black/5 space-y-0.5">
             <p className="text-xs font-bold text-heading">{c.name}</p>
-            <p className="text-[10px] text-muted-foreground leading-snug">{COLLECTION_DESCRIPTORS[c.key] ?? c.description}</p>
+            <p className="text-[10px] text-muted-foreground leading-snug">{collectionDescriptor(c.key, c.description)}</p>
           </div>
         </button>
       );

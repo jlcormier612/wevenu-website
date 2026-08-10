@@ -2124,11 +2124,16 @@ export function createSectionRenderer(ctx: SectionRenderContext) {
                 storyTc.asymmetry === "editorial" ? "2.75rem"
                   : storyTc.asymmetry === "subtle" ? "1.35rem"
                     : "0";
+              // Rustic flowing-opening: romantic header + botanical decor are
+              // centered — do not inherit Collection-wide left/asymmetry for
+              // the story body (that left-align is for hero/other sections).
+              const flowingOpening = storyRole?.treatment === "flowing-opening";
               const storyLeft =
-                storyTc.itemAlign === "left"
-                || storyTc.heroAlign === "offset"
-                || storyTc.asymmetry === "editorial"
-                || storyTc.asymmetry === "subtle";
+                !flowingOpening
+                && (storyTc.itemAlign === "left"
+                  || storyTc.heroAlign === "offset"
+                  || storyTc.asymmetry === "editorial"
+                  || storyTc.asymmetry === "subtle");
 
               const proseBody = (
                 <p style={{
