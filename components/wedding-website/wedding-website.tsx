@@ -774,6 +774,41 @@ function SectionDivider({ style, color }: { style: ThemeConfig["divider"]; color
 // ── Section header — 5 typographic personalities ─────────────────────────────
 // Remove all colors and each style should still be immediately recognizable.
 
+/**
+ * WW-AUDIT-01 Approach A — story *body* horizontal align follows the
+ * SectionHeader composition family, not Collection-wide itemAlign /
+ * heroAlign / asymmetry ORs (those still art-direct the hero and other
+ * sections — e.g. Wildflower offset hero stays).
+ *
+ * - romantic / formal → centered prose (welcome + ornaments are centered)
+ *   unless treatment is `editorial-opening` (magazine path)
+ * - coastal / editorial → left magazine columns
+ * - minimal / other → prior DNA OR-list fallback
+ */
+export function storyBodyAlignsLeft(input: {
+  headerStyle: ThemeConfig["headerStyle"];
+  itemAlign?: ThemeConfig["itemAlign"];
+  heroAlign?: ThemeConfig["heroAlign"];
+  asymmetry?: ThemeConfig["asymmetry"];
+  storyTreatment?: string | null;
+}): boolean {
+  const { headerStyle, storyTreatment } = input;
+  const editorialOpening = storyTreatment === "editorial-opening";
+
+  if (headerStyle === "romantic" || headerStyle === "formal") {
+    return editorialOpening;
+  }
+  if (headerStyle === "coastal" || headerStyle === "editorial") {
+    return true;
+  }
+  return (
+    input.itemAlign === "left"
+    || input.heroAlign === "offset"
+    || input.asymmetry === "editorial"
+    || input.asymmetry === "subtle"
+  );
+}
+
 export function SectionHeader({ title, tc, accentColor }: { title: string; tc: ThemeConfig; accentColor: string }) {
   const color = accentColor;
 
@@ -2177,16 +2212,17 @@ export function createSectionRenderer(ctx: SectionRenderContext) {
                 storyTc.asymmetry === "editorial" ? "2.75rem"
                   : storyTc.asymmetry === "subtle" ? "1.35rem"
                     : "0";
-              // Rustic flowing-opening: romantic header + botanical decor are
-              // centered — do not inherit Collection-wide left/asymmetry for
-              // the story body (that left-align is for hero/other sections).
-              const flowingOpening = storyRole?.treatment === "flowing-opening";
-              const storyLeft =
-                !flowingOpening
-                && (storyTc.itemAlign === "left"
-                  || storyTc.heroAlign === "offset"
-                  || storyTc.asymmetry === "editorial"
-                  || storyTc.asymmetry === "subtle");
+              // WW-AUDIT-01 Approach A: body align follows header family
+              // (romantic/formal center; coastal/editorial left). Collection
+              // DNA left/offset/asymmetry still drive the hero — not story
+              // prose when the header composition is already centered.
+              const storyLeft = storyBodyAlignsLeft({
+                headerStyle: storyTc.headerStyle,
+                itemAlign: storyTc.itemAlign,
+                heroAlign: storyTc.heroAlign,
+                asymmetry: storyTc.asymmetry,
+                storyTreatment: storyRole?.treatment,
+              });
 
               const proseBody = (
                 <p style={{

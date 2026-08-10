@@ -3,7 +3,7 @@ import { describe, it } from "node:test";
 
 import { resolveCollectionPreviewTheme } from "@/lib/wedding-website/collection-preview-theme";
 import { buildPreviewSite } from "@/lib/wedding-website/preview-site";
-import { resolveTheme } from "@/components/wedding-website/wedding-website";
+import { resolveTheme, storyBodyAlignsLeft } from "@/components/wedding-website/wedding-website";
 import type { CatalogCollection, CollectionLayoutConfig } from "@/lib/wedding-website/types";
 import { PAPER_CHAMBER } from "@/components/wedding-website/composition-primitives";
 
@@ -296,5 +296,104 @@ describe("Phase B Collection composition DNA", () => {
     const industrial = themeFor("industrial");
     assert.equal(industrial.heroAlign, "left");
     assert.equal(industrial.storyStyle, "minimal");
+  });
+});
+
+describe("WW-AUDIT-01 storyBodyAlignsLeft (Approach A)", () => {
+  it("Rustic romantic header centers story body despite left DNA (with or without flowing-opening)", () => {
+    const rustic = themeFor("rustic", PHASE_B.rustic);
+    assert.equal(
+      storyBodyAlignsLeft({
+        headerStyle: rustic.headerStyle,
+        itemAlign: rustic.itemAlign,
+        heroAlign: rustic.heroAlign,
+        asymmetry: rustic.asymmetry,
+        storyTreatment: rustic.sectionRoles?.story?.treatment,
+      }),
+      false,
+    );
+    // Stale DB without flowing-opening still centers via header family
+    assert.equal(
+      storyBodyAlignsLeft({
+        headerStyle: "romantic",
+        itemAlign: "left",
+        heroAlign: "left",
+        asymmetry: "subtle",
+        storyTreatment: undefined,
+      }),
+      false,
+    );
+  });
+
+  it("Wildflower romantic header centers story body; hero offset DNA preserved on theme", () => {
+    const wildflower = themeFor("classic", PHASE_B.classic);
+    assert.equal(wildflower.heroAlign, "offset");
+    assert.equal(wildflower.headerStyle, "romantic");
+    assert.equal(
+      storyBodyAlignsLeft({
+        headerStyle: wildflower.headerStyle,
+        itemAlign: wildflower.itemAlign,
+        heroAlign: wildflower.heroAlign,
+        asymmetry: wildflower.asymmetry,
+        storyTreatment: wildflower.sectionRoles?.story?.treatment,
+      }),
+      false,
+    );
+  });
+
+  it("Midnight / Coastal / Velvet editorial family stays left (magazine)", () => {
+    for (const key of ["modern", "coastal", "velvet"] as const) {
+      const tc = themeFor(key, PHASE_B[key]);
+      assert.equal(
+        storyBodyAlignsLeft({
+          headerStyle: tc.headerStyle,
+          itemAlign: tc.itemAlign,
+          heroAlign: tc.heroAlign,
+          asymmetry: tc.asymmetry,
+          storyTreatment: tc.sectionRoles?.story?.treatment,
+        }),
+        true,
+        `${key} should keep left magazine columns`,
+      );
+    }
+  });
+
+  it("Champagne / Estate / Garden remain centered; Rosé/Linen not left via header gate", () => {
+    const champagne = themeFor("champagne", PHASE_B.champagne);
+    const estate = themeFor("estate", PHASE_B.estate);
+    const garden = themeFor("garden", PHASE_B.garden);
+    const rose = themeFor("romance", PHASE_B.romance);
+    const linen = themeFor("minimal", PHASE_B.minimal);
+
+    for (const [name, tc] of [
+      ["champagne", champagne],
+      ["estate", estate],
+      ["garden", garden],
+      ["romance", rose],
+    ] as const) {
+      assert.equal(
+        storyBodyAlignsLeft({
+          headerStyle: tc.headerStyle,
+          itemAlign: tc.itemAlign,
+          heroAlign: tc.heroAlign,
+          asymmetry: tc.asymmetry,
+          storyTreatment: tc.sectionRoles?.story?.treatment,
+        }),
+        false,
+        `${name} should center story body`,
+      );
+    }
+    // Linen uses storyStyle minimal (quiet path); header family is minimal →
+    // DNA fallback with centered defaults stays not-left.
+    assert.equal(
+      storyBodyAlignsLeft({
+        headerStyle: linen.headerStyle,
+        itemAlign: linen.itemAlign,
+        heroAlign: linen.heroAlign,
+        asymmetry: linen.asymmetry,
+        storyTreatment: linen.sectionRoles?.story?.treatment,
+      }),
+      false,
+    );
   });
 });
