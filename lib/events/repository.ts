@@ -56,6 +56,7 @@ type EventRow = {
   start_time: string | null; end_time: string | null;
   setup_time: string | null; teardown_time: string | null;
   guest_count: number | null; created_at: string; updated_at: string;
+  operational_floor_plan_id: string | null;
   // embedded client name from join
   clients?: { first_name: string; last_name: string; partner_first_name: string | null; partner_last_name: string | null } | null;
 };
@@ -71,7 +72,9 @@ function mapEvent(r: EventRow): VenueEvent {
     eventEndDate: r.event_end_date && r.event_end_date !== r.event_date ? r.event_end_date : null,
     startTime: r.start_time, endTime: r.end_time,
     setupTime: r.setup_time, teardownTime: r.teardown_time,
-    guestCount: r.guest_count, createdAt: r.created_at, updatedAt: r.updated_at,
+    guestCount: r.guest_count,
+    operationalFloorPlanId: r.operational_floor_plan_id ?? null,
+    createdAt: r.created_at, updatedAt: r.updated_at,
   };
 }
 

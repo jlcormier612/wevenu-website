@@ -717,6 +717,7 @@ export function EventDetail({
                 templates={floorPlanTemplates}
                 spaces={spaces}
                 eventSpaceId={event.spaceId}
+                operationalFloorPlanId={event.operationalFloorPlanId}
                 inventoryUsage={inventoryUsage}
               />
             </CardContent>

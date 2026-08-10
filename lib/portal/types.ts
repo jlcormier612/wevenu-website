@@ -132,7 +132,49 @@ export type PortalKeyDate = {
   note: string | null;
 };
 
-export type PortalSection = "overview" | "guests" | "todos" | "budget" | "seating" | "people" | "website" | "story" | "journey" | "tasks" | "timeline" | "vendors" | "payments" | "documents" | "messages" | "ask" | "guide" | "account" | "requests" | "questionnaire";
+export type PortalSection = "overview" | "guests" | "todos" | "budget" | "seating" | "people" | "website" | "story" | "journey" | "tasks" | "timeline" | "vendors" | "payments" | "documents" | "messages" | "ask" | "guide" | "account" | "requests" | "questionnaire" | "floor_plans";
+
+/** Phase 1 — couple Floor Plan list item (layout view). */
+export type PortalFloorPlanSummary = {
+  id: string;
+  name: string;
+  isOperational: boolean;
+  spaceId: string | null;
+  createdAt: string;
+};
+
+export type PortalFloorPlanObject = {
+  id: string;
+  objectType: string;
+  label: string | null;
+  capacity: number | null;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  rotation: number;
+  sortOrder: number;
+  color: string | null;
+  notes: string | null;
+  displayShape: string | null;
+  inventoryItemId: string | null;
+};
+
+export type PortalFloorPlanDetail = {
+  plan: {
+    id: string;
+    name: string;
+    spaceId: string | null;
+    isOperational: boolean;
+    backgroundImageUrl: string | null;
+    backgroundImageOpacity: number;
+    roomWidthFt: number;
+    roomDepthFt: number;
+    measurementUnit: string;
+    notes: string | null;
+  };
+  objects: PortalFloorPlanObject[];
+};
 
 // A Timeline item as visible in the client portal — the couple's own
 // always-live view: the venue's live structural framework plus the

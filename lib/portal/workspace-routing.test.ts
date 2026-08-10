@@ -54,6 +54,14 @@ describe("portal workspace hash routing", () => {
     });
   });
 
+  it("accepts floor_plans as a deep-link section (Your Wedding → Floor Plan)", () => {
+    assert.deepEqual(parsePortalHash("#floor_plans"), {
+      section: "floor_plans",
+      focus: null,
+    });
+    assert.equal(formatPortalHash("floor_plans"), "floor_plans");
+  });
+
   it("formats deterministic hashes for domain targets including insurance upload", () => {
     assert.equal(formatPortalHash("guests", "finalize"), "guests/finalize");
     assert.equal(formatPortalHash("vendors", "pick"), "vendors/pick");

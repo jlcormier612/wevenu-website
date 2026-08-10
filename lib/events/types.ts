@@ -32,6 +32,8 @@ export type VenueEvent = {
   setupTime: string | null;
   teardownTime: string | null;
   guestCount: number | null;
+  /** Phase 1 — durable venue-controlled operational Floor Plan for this event. */
+  operationalFloorPlanId: string | null;
   createdAt: string;
   updatedAt: string;
 };

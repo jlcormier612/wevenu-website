@@ -22,7 +22,8 @@ import { toast } from "sonner";
 
 import {
   applyTemplateAction, createFloorPlanAction, deleteFloorPlanAction, duplicateFloorPlanAction,
-  renameFloorPlanAction, setClientAccessAction, setVendorAccessAction,
+  renameFloorPlanAction, setClientAccessAction, setCoupleShareAction, setOperationalFloorPlanAction,
+  setVendorAccessAction,
 } from "@/app/(app)/events/[id]/floor-plan-actions";
 import { Button } from "@/components/ui/button";
 import {
@@ -51,7 +52,8 @@ function spaceName(spaces: VenueSpace[], spaceId: string | null): string | null 
  * Seating Experience — Phase 1 resolves its one Floor Plan by
  * clientAccess != 'hidden'. This toggle is the only UI that ever sets it —
  * sharing here is what makes a Floor Plan's tables available to the
- * couple's Seating experience at all.
+ * couple's Seating experience at all. Independent of Share Floor Plan
+ * (layout view — shared_with_couple).
  */
 function ShareForSeatingToggle({ eventId, plan }: { eventId: string; plan: FloorPlan }) {
   const router = useRouter();
@@ -81,7 +83,83 @@ function ShareForSeatingToggle({ eventId, plan }: { eventId: string; plan: Floor
         </button>
       } />
       <TooltipContent>
-        {shared ? "Visible to the couple — tables here are available in Seating. Click to unshare." : "Not visible to the couple yet. Click to share for Seating."}
+        {shared
+          ? "Couple can assign guests to tables on this plan. Click to disable seating access."
+          : "Enable Seating for this plan. Independent of Share Floor Plan (layout view)."}
+      </TooltipContent>
+    </Tooltip>
+  );
+}
+
+/** Phase 1 — Share Floor Plan (couple layout view). Independent of Enable Seating. */
+function ShareFloorPlanToggle({ eventId, plan }: { eventId: string; plan: FloorPlan }) {
+  const router = useRouter();
+  const [shared, setShared] = React.useState(plan.sharedWithCouple);
+  const [pending, startTransition] = React.useTransition();
+
+  function toggle(e: React.MouseEvent) {
+    e.preventDefault();
+    e.stopPropagation();
+    const next = !shared;
+    startTransition(async () => {
+      const result = await setCoupleShareAction(plan.id, eventId, next);
+      if (result.ok) { setShared(next); router.refresh(); }
+      else toast.error(result.message ?? "Could not update Floor Plan sharing.");
+    });
+  }
+
+  return (
+    <Tooltip>
+      <TooltipTrigger render={
+        <button type="button" onClick={toggle} disabled={pending}
+          className={`self-start text-[10px] font-medium px-2 py-0.5 rounded-full border transition-colors ${
+            shared ? "border-primary/40 bg-primary/10 text-primary" : "border-border text-muted-foreground hover:border-primary/40"
+          }`}>
+          {pending ? "…" : shared ? "Shared Floor Plan" : "Share Floor Plan"}
+        </button>
+      } />
+      <TooltipContent>
+        {shared
+          ? "Couple can view this layout in Your Wedding → Floor Plan. Click to unshare."
+          : "Share this layout for the couple to view (reference-only). Independent of Seating."}
+      </TooltipContent>
+    </Tooltip>
+  );
+}
+
+/** Phase 1 — venue sets the durable operational Floor Plan for the event. */
+function SetOperationalToggle({
+  eventId, plan, isOperational,
+}: {
+  eventId: string; plan: FloorPlan; isOperational: boolean;
+}) {
+  const router = useRouter();
+  const [pending, startTransition] = React.useTransition();
+
+  function toggle(e: React.MouseEvent) {
+    e.preventDefault();
+    e.stopPropagation();
+    startTransition(async () => {
+      const result = await setOperationalFloorPlanAction(eventId, isOperational ? null : plan.id);
+      if (result.ok) router.refresh();
+      else toast.error(result.message ?? "Could not update operational Floor Plan.");
+    });
+  }
+
+  return (
+    <Tooltip>
+      <TooltipTrigger render={
+        <button type="button" onClick={toggle} disabled={pending}
+          className={`self-start text-[10px] font-medium px-2 py-0.5 rounded-full border transition-colors ${
+            isOperational ? "border-primary/40 bg-primary/10 text-primary" : "border-border text-muted-foreground hover:border-primary/40"
+          }`}>
+          {pending ? "…" : isOperational ? "Operational plan" : "Set as operational"}
+        </button>
+      } />
+      <TooltipContent>
+        {isOperational
+          ? "This is the event's operational Floor Plan. Click to clear."
+          : "Mark this as the Floor Plan this event is actually using."}
       </TooltipContent>
     </Tooltip>
   );
@@ -126,9 +204,9 @@ function ShareWithVendorsToggle({ eventId, plan }: { eventId: string; plan: Floo
 }
 
 function FloorPlanCard({
-  eventId, plan, spaces, busy, onRename, onDelete,
+  eventId, plan, spaces, busy, isOperational, onRename, onDelete,
 }: {
-  eventId: string; plan: FloorPlan; spaces: VenueSpace[]; busy: boolean;
+  eventId: string; plan: FloorPlan; spaces: VenueSpace[]; busy: boolean; isOperational: boolean;
   onRename: () => void; onDelete: () => void;
 }) {
   return (
@@ -151,22 +229,26 @@ function FloorPlanCard({
         </div>
       </div>
       <p className="text-xs text-muted-foreground">{spaceName(spaces, plan.spaceId) ?? "No space assigned"}</p>
-      <div className="flex flex-wrap gap-1.5">
+      <div className="flex flex-wrap gap-1.5" onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}>
+        <ShareFloorPlanToggle eventId={eventId} plan={plan} />
         <ShareForSeatingToggle eventId={eventId} plan={plan} />
         <ShareWithVendorsToggle eventId={eventId} plan={plan} />
+        <SetOperationalToggle eventId={eventId} plan={plan} isOperational={isOperational} />
       </div>
     </Link>
   );
 }
 
 export function FloorPlanWorkspace({
-  eventId, floorPlans, templates, spaces, eventSpaceId, inventoryUsage = [],
+  eventId, floorPlans, templates, spaces, eventSpaceId, operationalFloorPlanId = null, inventoryUsage = [],
 }: {
   eventId: string;
   floorPlans: FloorPlan[];
   templates: FloorPlanTemplate[];
   spaces: VenueSpace[];
   eventSpaceId: string | null;
+  /** Phase 1 — durable SoR pointer from events.operational_floor_plan_id. */
+  operationalFloorPlanId?: string | null;
   /** Reporting only (Inventory Foundation task) — never blocks or reserves anything. */
   inventoryUsage?: InventoryUsage[];
 }) {
@@ -281,6 +363,7 @@ export function FloorPlanWorkspace({
             <FloorPlanCard
               key={plan.id} eventId={eventId} plan={plan} spaces={spaces}
               busy={busyPlanId === plan.id}
+              isOperational={operationalFloorPlanId === plan.id}
               onRename={() => handleRenamePlan(plan)}
               onDelete={() => handleDeletePlan(plan)}
             />

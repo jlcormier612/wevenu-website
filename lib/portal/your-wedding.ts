@@ -191,6 +191,45 @@ export function resolveSeatingLaunch(input: {
 }
 
 /**
+ * Phase 1 — Your Wedding → Floor Plan (singular). Shown only when the venue
+ * has shared at least one layout (shared_with_couple). View-only.
+ */
+export function resolveFloorPlanLaunch(input: {
+  sharedCount: number;
+  hasOperational: boolean;
+  operationalName: string | null;
+} | null): WeddingLaunchModel | null {
+  if (!input || input.sharedCount <= 0) return null;
+
+  const label = "Floor Plan";
+  const destination: PortalSection = "floor_plans";
+  const cta = "Open Floor Plan";
+
+  if (input.hasOperational && input.operationalName) {
+    const status = input.operationalName;
+    return {
+      label,
+      status,
+      cta,
+      destination,
+      tone: "active",
+      accessibleLabel: `${label}. ${status}. ${cta}`,
+    };
+  }
+
+  const n = input.sharedCount;
+  const status = n === 1 ? "Shared by your venue" : `${n} layouts shared`;
+  return {
+    label,
+    status,
+    cta,
+    destination,
+    tone: "active",
+    accessibleLabel: `${label}. ${status}. ${cta}`,
+  };
+}
+
+/**
  * Plans summary: prefer existing inspiration-photo count, else incomplete
  * personal todos (loaded on cold Home). Personal todos never go to Next Steps.
  */

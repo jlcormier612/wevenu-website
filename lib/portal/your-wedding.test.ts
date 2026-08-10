@@ -4,6 +4,7 @@ import { describe, it } from "node:test";
 import {
   formatBudgetMoney,
   resolveBudgetLaunch,
+  resolveFloorPlanLaunch,
   resolveGuestsLaunch,
   resolvePlansLaunch,
   resolveSeatingLaunch,
@@ -128,6 +129,72 @@ describe("resolveSeatingLaunch", () => {
       }).status,
       "All guests seated ✓",
     );
+  });
+});
+
+describe("resolveFloorPlanLaunch", () => {
+  it("hides the Your Wedding card when nothing is shared", () => {
+    assert.equal(resolveFloorPlanLaunch(null), null);
+    assert.equal(resolveFloorPlanLaunch({
+      sharedCount: 0,
+      hasOperational: false,
+      operationalName: null,
+    }), null);
+  });
+
+  it("uses singular Floor Plan copy and opens floor_plans", () => {
+    const m = resolveFloorPlanLaunch({
+      sharedCount: 1,
+      hasOperational: false,
+      operationalName: null,
+    });
+    assert.ok(m);
+    assert.equal(m.label, "Floor Plan");
+    assert.equal(m.status, "Shared by your venue");
+    assert.equal(m.cta, "Open Floor Plan");
+    assert.equal(m.destination, "floor_plans");
+    assert.equal(m.tone, "active");
+    assert.match(m.accessibleLabel, /Floor Plan/);
+  });
+
+  it("reports multiple shared layouts without inventing an operational plan", () => {
+    const m = resolveFloorPlanLaunch({
+      sharedCount: 3,
+      hasOperational: false,
+      operationalName: null,
+    });
+    assert.ok(m);
+    assert.equal(m.status, "3 layouts shared");
+    assert.equal(m.destination, "floor_plans");
+  });
+
+  it("prefers operational plan name when venue set the durable pointer", () => {
+    const m = resolveFloorPlanLaunch({
+      sharedCount: 2,
+      hasOperational: true,
+      operationalName: "Barn Ceremony Layout",
+    });
+    assert.ok(m);
+    assert.equal(m.status, "Barn Ceremony Layout");
+    assert.equal(m.cta, "Open Floor Plan");
+    assert.equal(m.destination, "floor_plans");
+    assert.equal(m.tone, "active");
+  });
+
+  it("stays independent of seating — seating invite still returns when no seating share", () => {
+    // Layout share (this card) does not imply seating readiness.
+    assert.ok(resolveFloorPlanLaunch({
+      sharedCount: 1,
+      hasOperational: true,
+      operationalName: "Main",
+    }));
+    const seating = resolveSeatingLaunch({
+      hasFloorPlan: false,
+      hadPriorWork: false,
+      unassignedCount: 0,
+    });
+    assert.equal(seating.tone, "invite");
+    assert.equal(seating.destination, "seating");
   });
 });
 

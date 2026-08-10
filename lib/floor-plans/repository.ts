@@ -27,6 +27,7 @@ type PlanRow = {
   id: string; venue_id: string; event_id: string; name: string; space_id: string | null;
   client_access: FloorPlanClientAccess;
   shared_with_vendors: boolean;
+  shared_with_couple: boolean;
   background_image_url: string | null; background_image_opacity: number; background_locked: boolean;
   room_width_ft: number; room_depth_ft: number; measurement_unit: MeasurementUnit;
   finalized_at: string | null;
@@ -47,6 +48,7 @@ const mapPlan = (r: PlanRow): FloorPlan => ({
   id: r.id, venueId: r.venue_id, eventId: r.event_id, name: r.name,
   spaceId: r.space_id, clientAccess: r.client_access,
   sharedWithVendors: r.shared_with_vendors,
+  sharedWithCouple: Boolean(r.shared_with_couple),
   backgroundImageUrl: r.background_image_url,
   backgroundImageOpacity: Number(r.background_image_opacity),
   backgroundLocked: r.background_locked,
@@ -182,6 +184,31 @@ export async function setFloorPlanVendorAccess(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { error } = await (client.from("floor_plans") as any)
     .update({ shared_with_vendors: sharedWithVendors }).eq("id", planId).eq("venue_id", venueId);
+  if (error) throw error;
+}
+
+/** Phase 1 — Share Floor Plan with the couple (layout view). Independent of seating client_access. */
+export async function setFloorPlanCoupleShare(
+  client: DbClient, venueId: string, planId: string, sharedWithCouple: boolean,
+): Promise<void> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error } = await (client.from("floor_plans") as any)
+    .update({ shared_with_couple: sharedWithCouple }).eq("id", planId).eq("venue_id", venueId);
+  if (error) throw error;
+}
+
+/**
+ * Phase 1 — venue-controlled operational plan pointer on the event.
+ * Pass null to clear. Integrity: plan must belong to this event (DB trigger).
+ */
+export async function setEventOperationalFloorPlan(
+  client: DbClient, venueId: string, eventId: string, floorPlanId: string | null,
+): Promise<void> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error } = await (client.from("events") as any)
+    .update({ operational_floor_plan_id: floorPlanId })
+    .eq("id", eventId)
+    .eq("venue_id", venueId);
   if (error) throw error;
 }
 

@@ -75,6 +75,7 @@ import {
   resolveGuestsLaunch,
   resolvePlansLaunch,
   resolveSeatingLaunch,
+  resolveFloorPlanLaunch,
   resolveStoryLaunch,
   resolveWebsiteLaunch,
   type WeddingLaunchModel,
@@ -91,6 +92,7 @@ import {
 import { partitionByCompletion } from "@/lib/tasks/group-by-completion";
 import type { PortalRequestSummary } from "@/lib/requests/types";
 import { QuestionnairePortalSection } from "@/components/portal/questionnaire-section";
+import FloorPlanSection from "@/components/portal/floor-plan-section";
 import { CoupleNotificationBell } from "@/components/portal/couple-notification-bell";
 import { WelcomeExperienceGate } from "@/components/legal/welcome-experience-gate";
 import type { WelcomeExperienceDocument } from "@/components/welcome-experience";
@@ -4789,6 +4791,7 @@ export function PortalShell({
             )}
             {activeSection === "people"    && <OurPeopleSection token={token} context={context} />}
             {activeSection === "questionnaire" && <QuestionnairePortalSection token={token} />}
+            {activeSection === "floor_plans" && <FloorPlanSection token={token} />}
             {activeSection === "vendors"   && <VendorPortalSection token={token} context={context} />}
             {activeSection === "budget"    && <BudgetPortalSection token={token} />}
             {activeSection === "payments"  && <PaymentPortalSection token={token} />}
@@ -5540,6 +5543,36 @@ function SeatingLaunchCard({ token, onNavigate }: { token: string; onNavigate: (
   return <WeddingLaunchCard icon="🪑" model={model} onNavigate={onNavigate} />;
 }
 
+/** Phase 1 — shown only when venue shared at least one Floor Plan layout. */
+function FloorPlanLaunchCard({ token, onNavigate }: { token: string; onNavigate: (s: PortalSection) => void }) {
+  const [model, setModel] = React.useState<WeddingLaunchModel | null>(null);
+
+  React.useEffect(() => {
+    fetch(`/api/portal/floor-plans?token=${encodeURIComponent(token)}`)
+      .then(async (r) => {
+        const d = await r.json() as {
+          floorPlans?: { id: string; name: string; isOperational: boolean }[];
+          operationalFloorPlanId?: string | null;
+        };
+        const plans = d.floorPlans ?? [];
+        const operational = plans.find((p) => p.isOperational) ?? null;
+        setModel(resolveFloorPlanLaunch(
+          plans.length > 0
+            ? {
+                sharedCount: plans.length,
+                hasOperational: Boolean(operational),
+                operationalName: operational?.name ?? null,
+              }
+            : null,
+        ));
+      })
+      .catch(() => setModel(null));
+  }, [token]);
+
+  if (!model) return null;
+  return <WeddingLaunchCard icon="🗺️" model={model} onNavigate={onNavigate} />;
+}
+
 // Personal todos / ideas summary only — never listed as Next Steps rows.
 function PlansLaunchCard({ todoCount, profile, onNavigate }: { todoCount: number; profile: CoupleProfile | null; onNavigate: (s: PortalSection) => void }) {
   const model = resolvePlansLaunch({
@@ -5714,6 +5747,7 @@ function YourWeddingSection({ token, guestStats, todoCount, profile, accessLevel
         <GuestsLaunchCard guestStats={guestStats} onNavigate={onNavigate} />
         {showBudget && <BudgetLaunchCard token={token} onNavigate={onNavigate} />}
         <SeatingLaunchCard token={token} onNavigate={onNavigate} />
+        <FloorPlanLaunchCard token={token} onNavigate={onNavigate} />
         <PlansLaunchCard todoCount={todoCount} profile={profile} onNavigate={onNavigate} />
         <StoryLaunchCard profile={profile} onNavigate={onNavigate} />
       </div>

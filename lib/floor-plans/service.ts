@@ -141,6 +141,26 @@ export async function setVendorAccess(planId: string, sharedWithVendors: boolean
   return result as FloorPlanActionResult;
 }
 
+/** Phase 1 — Share Floor Plan (couple layout view). Not Enable Seating. */
+export async function setCoupleShare(planId: string, sharedWithCouple: boolean): Promise<FloorPlanActionResult> {
+  const result = await withVenue(async (supabase, venueId) => {
+    await repo.setFloorPlanCoupleShare(supabase, venueId, planId, sharedWithCouple);
+    return { ok: true } as FloorPlanActionResult;
+  });
+  return result as FloorPlanActionResult;
+}
+
+/** Phase 1 — set or clear the event's durable operational floor plan. */
+export async function setOperationalFloorPlan(
+  eventId: string, floorPlanId: string | null,
+): Promise<FloorPlanActionResult> {
+  const result = await withVenue(async (supabase, venueId) => {
+    await repo.setEventOperationalFloorPlan(supabase, venueId, eventId, floorPlanId);
+    return { ok: true } as FloorPlanActionResult;
+  });
+  return result as FloorPlanActionResult;
+}
+
 /** Sprint 1 — the vendor portal's "Floor Plans" section for one event. */
 export async function getVendorSharedFloorPlansForEvent(eventId: string): Promise<VendorFloorPlanSummary[]> {
   if (!isSupabaseConfigured) return [];

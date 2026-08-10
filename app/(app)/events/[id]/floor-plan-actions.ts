@@ -15,7 +15,9 @@ import {
   reorderObject,
   setBackgroundLocked,
   setClientAccess,
+  setCoupleShare,
   setFinalized,
+  setOperationalFloorPlan,
   setVendorAccess,
   updateBackground,
   updateNotes,
@@ -154,6 +156,24 @@ export async function setVendorAccessAction(
 ): Promise<FloorPlanActionResult> {
   const result = await setVendorAccess(planId, sharedWithVendors);
   if (result.ok) revalidateEvent(eventId);
+  return result;
+}
+
+/** Phase 1 — Share Floor Plan with the couple (layout view). Independent of Share for Seating. */
+export async function setCoupleShareAction(
+  planId: string, eventId: string, sharedWithCouple: boolean,
+): Promise<FloorPlanActionResult> {
+  const result = await setCoupleShare(planId, sharedWithCouple);
+  if (result.ok) revalidateEvent(eventId);
+  return result;
+}
+
+/** Phase 1 — venue sets the durable operational Floor Plan for this event (or clears it). */
+export async function setOperationalFloorPlanAction(
+  eventId: string, floorPlanId: string | null,
+): Promise<FloorPlanActionResult> {
+  const result = await setOperationalFloorPlan(eventId, floorPlanId);
+  if (result.ok) { revalidateEvent(eventId); revalidateWorkspace(eventId); }
   return result;
 }
 

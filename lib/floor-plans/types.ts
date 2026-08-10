@@ -47,6 +47,9 @@ export type FloorPlan = {
   // a separate flag since the couple and vendor audiences are gated
   // independently (a plan can be shared with one, both, or neither).
   sharedWithVendors: boolean;
+  // Phase 1 — Couple Floor Plan view: Share Floor Plan. Independent of
+  // clientAccess (Enable Seating). Shared ⇒ reference-only view; no edit.
+  sharedWithCouple: boolean;
   backgroundImageUrl: string | null;
   backgroundImageOpacity: number;
   backgroundLocked: boolean;
