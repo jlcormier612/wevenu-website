@@ -209,8 +209,9 @@ export function PhotoStylePreview({ collection, photoStyle, photos, width, heigh
   };
   const tc = resolveTheme(buildPreviewSite({ collection: previewCollection, photoStyle }));
   if (photos.length === 0) return <div className="w-full h-full bg-muted" />;
-  // Cap at 4 — enough for collage/scrapbook/sparse/salon / hero bands.
-  const previewPhotos = photos.slice(0, 4);
+  // Same photo set the caller built — never truncate by style. Content
+  // contract: every Photo Style art-directs all specimen photos.
+  const previewPhotos = photos;
   // Tall compositions need a slightly taller natural frame so arrangement
   // isn't cropped into a single face. Card CSS height may vary.
   const darkStyle = /brightness\(\s*0\.[0-7]/.test(photoStyle.tokens.photoFilter || "");

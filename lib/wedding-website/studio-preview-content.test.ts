@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
 import {
+  PHOTO_STYLE_CANONICAL_COUNT,
   STUDIO_PREVIEW_COUPLE_NAME,
   STUDIO_PREVIEW_STORY_TEXT,
   mergeStudioPreviewContent,
@@ -31,12 +32,18 @@ describe("mergeStudioPreviewContent", () => {
 });
 
 describe("resolveStudioPreviewPhotos", () => {
+  it("defaults to the canonical 6-photo specimen contract", () => {
+    const photos = resolveStudioPreviewPhotos();
+    assert.equal(photos.length, PHOTO_STYLE_CANONICAL_COUNT);
+    assert.equal(new Set(photos).size, PHOTO_STYLE_CANONICAL_COUNT);
+  });
+
   it("prefers distinct gallery URLs and caps at maxCount", () => {
     const photos = resolveStudioPreviewPhotos({
-      galleryPhotos: ["a.jpg", "b.jpg", "c.jpg", "d.jpg", "e.jpg"],
-      maxCount: 4,
+      galleryPhotos: ["a.jpg", "b.jpg", "c.jpg", "d.jpg", "e.jpg", "f.jpg", "g.jpg"],
+      maxCount: 6,
     });
-    assert.deepEqual(photos, ["a.jpg", "b.jpg", "c.jpg", "d.jpg"]);
+    assert.deepEqual(photos, ["a.jpg", "b.jpg", "c.jpg", "d.jpg", "e.jpg", "f.jpg"]);
   });
 
   it("fills from cover and engagement before fillers", () => {
@@ -44,16 +51,16 @@ describe("resolveStudioPreviewPhotos", () => {
       galleryPhotos: ["g1.jpg"],
       coverPhoto: "cover.jpg",
       engagementPhotos: ["e1.jpg", "e2.jpg"],
-      minCount: 3,
+      minCount: 4,
       maxCount: 4,
     });
     assert.deepEqual(photos, ["g1.jpg", "cover.jpg", "e1.jpg", "e2.jpg"]);
   });
 
-  it("uses ≥3 distinct filler photos when couple has none", () => {
-    const photos = resolveStudioPreviewPhotos({ minCount: 3 });
-    assert.ok(photos.length >= 3);
-    assert.equal(new Set(photos).size, photos.length);
+  it("uses distinct filler photos when couple has none", () => {
+    const photos = resolveStudioPreviewPhotos({ minCount: 6 });
+    assert.equal(photos.length, 6);
+    assert.equal(new Set(photos).size, 6);
     assert.ok(photos.every(p => p.startsWith("data:image/svg+xml")));
   });
 
@@ -62,6 +69,7 @@ describe("resolveStudioPreviewPhotos", () => {
       galleryPhotos: ["same.jpg", "same.jpg"],
       coverPhoto: "same.jpg",
       minCount: 3,
+      maxCount: 6,
     });
     assert.equal(photos[0], "same.jpg");
     assert.ok(photos.length >= 3);

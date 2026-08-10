@@ -11,11 +11,20 @@ import type { WebsiteContent } from "@/lib/wedding-website/types";
 export const STUDIO_PREVIEW_COUPLE_NAME = "Emma & Jordan";
 export const STUDIO_PREVIEW_VENUE = "Sweet Daisy Barn & Farm";
 
+/**
+ * Canonical Photo Style specimen size for Studio comparison cards.
+ * Content count is a content contract — not a style contract.
+ * Live/published GalleryGrid still renders every photo the couple uploaded;
+ * Studio specimens normalize to this count so all 10 styles art-direct the
+ * same set.
+ */
+export const PHOTO_STYLE_CANONICAL_COUNT = 6;
+
 /** Short enough for quote / minimal / EditorialOpening to diverge in a card. */
 export const STUDIO_PREVIEW_STORY_TEXT =
   "We met on a rainy Tuesday at a coffee shop that no longer exists, and somehow every season since has felt like the beginning of something we already knew. Now we're gathering everyone we love at Sweet Daisy Barn & Farm to say yes to forever.";
 
-/** Portrait / venue / detail silhouettes — used only when the couple has fewer than 3 distinct photo URLs. */
+/** Portrait / venue / detail silhouettes — used only when the couple has fewer than the specimen minimum. */
 function svgPhoto(w: number, h: number, c1: string, c2: string, accent: string): string {
   const svg =
     `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">` +
@@ -32,7 +41,9 @@ export const STUDIO_PREVIEW_FILLER_PHOTOS: string[] = [
   svgPhoto(720, 960, "#C4A484", "#8B6F5C", "#F5E6D3"), // portrait
   svgPhoto(960, 640, "#7A8B6F", "#4A5C3A", "#D9E2C8"), // venue / landscape
   svgPhoto(800, 800, "#BFA8A0", "#6E4E4E", "#F0E4DC"), // detail / square
-  svgPhoto(880, 720, "#8FA3B0", "#3D5566", "#D6E4EC"), // optional 4th
+  svgPhoto(880, 720, "#8FA3B0", "#3D5566", "#D6E4EC"), // soft blue
+  svgPhoto(700, 900, "#C9A9BE", "#6B4A5E", "#F3E4EC"), // mauve
+  svgPhoto(920, 700, "#D4C4A8", "#7A6A4E", "#F5EFE0"), // warm sand
 ];
 
 /**
@@ -58,8 +69,9 @@ export function mergeStudioPreviewContent(content?: WebsiteContent | null): Webs
 }
 
 /**
- * ≥3 distinct photo URLs for Photo Style GalleryGrid previews.
+ * Distinct photo URLs for Photo Style GalleryGrid previews.
  * Prefer couple gallery → cover → engagement, then representative fillers.
+ * Defaults to the canonical 6-photo specimen contract.
  */
 export function resolveStudioPreviewPhotos(opts: {
   galleryPhotos?: string[] | null;
@@ -67,9 +79,9 @@ export function resolveStudioPreviewPhotos(opts: {
   engagementPhotos?: string[] | null;
   minCount?: number;
   maxCount?: number;
-}): string[] {
-  const minCount = opts.minCount ?? 3;
-  const maxCount = opts.maxCount ?? 4;
+} = {}): string[] {
+  const minCount = opts.minCount ?? PHOTO_STYLE_CANONICAL_COUNT;
+  const maxCount = opts.maxCount ?? PHOTO_STYLE_CANONICAL_COUNT;
   const seen = new Set<string>();
   const out: string[] = [];
 

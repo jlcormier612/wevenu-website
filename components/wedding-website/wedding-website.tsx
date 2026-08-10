@@ -949,8 +949,9 @@ export function GalleryGrid({ photos, tc }: { photos: string[]; tc: ThemeConfig 
     tc.scalePattern === "hero-emphasis" &&
     tc.frameStyle === "border" &&
     tc.photoSpacing === "generous";
-  // Minimal sparse — gated on arrangement:"sparse" (quiet rectangles + air).
-  // Circles (photoRadius 50%) are no longer a style identity.
+  // Minimal sparse — gated on arrangement:"sparse" (oval/round frames + air).
+  // Content count is never reduced here — all photos render; restraint is
+  // whitespace + oval hierarchy, not omitting images.
   const sparseQuiet = (tc.arrangement ?? "uniform") === "sparse";
   // Gallery Wall — dedicated salon-wall arrangement (≠ Magazine collage slots).
   const galleryWall = tc.arrangement === "gallery-wall";
@@ -998,88 +999,93 @@ export function GalleryGrid({ photos, tc }: { photos: string[]; tc: ThemeConfig 
     borderRadius: tc.frameStyle === "polaroid" ? 0 : tc.photoRadius,
   };
 
-  // ── Editorial essay — fashion-spread dominant + quiet support + air ──
+  // ── Editorial essay — fashion-spread dominant + support fleet + air ──
+  // All photos render; style = hierarchy/scale, not truncation.
   if (editorialEssay && photos.length >= 1) {
     const lead = photos[0]!;
-    const support = photos[1];
+    const supports = photos.slice(1);
     return (
       <div
         style={{
           position: "relative",
           width: "100%",
-          maxWidth: "38rem",
+          maxWidth: "40rem",
           margin: "0 auto",
-          padding: "0.35rem 0.5rem 1.25rem",
-          minHeight: support ? "0" : undefined,
+          padding: "0.35rem 0.45rem 1rem",
+          display: "grid",
+          gridTemplateColumns: supports.length ? "1.55fr 1fr" : "1fr",
+          gap: "0.55rem 0.75rem",
+          alignItems: "start",
         }}
       >
-        <div
-          className="overflow-hidden"
-          style={{
-            width: "68%",
-            marginLeft: "4%",
-          }}
-        >
+        <div className="overflow-hidden" style={{ width: "100%" }}>
           <img src={lead} alt="" style={{ ...imgStyle, aspectRatio: "4 / 5" }} />
         </div>
-        {support && (
-          <div
-            className="overflow-hidden"
-            style={{
-              position: "absolute",
-              width: "28%",
-              right: "6%",
-              bottom: "0.35rem",
-              zIndex: 2,
-              boxShadow: "0 6px 20px rgba(0,0,0,0.14)",
-            }}
-          >
-            <img
-              src={support}
-              alt=""
-              style={{
-                ...imgStyle,
-                aspectRatio: "3 / 4",
-                filter: tc.photoFilter || undefined,
-                opacity: 0.96,
-              }}
-            />
+        {supports.length > 0 && (
+          <div style={{ display: "flex", flexDirection: "column", gap: "0.45rem", paddingTop: "0.35rem" }}>
+            {supports.map((url, i) => (
+              <div
+                key={i}
+                className="overflow-hidden"
+                style={{
+                  width: i % 2 === 0 ? "92%" : "78%",
+                  marginLeft: i % 2 === 0 ? "0" : "auto",
+                  boxShadow: "0 4px 14px rgba(0,0,0,0.1)",
+                  opacity: 0.97,
+                }}
+              >
+                <img src={url} alt="" style={{ ...imgStyle, aspectRatio: i % 3 === 1 ? "1 / 1" : "3 / 4" }} />
+              </div>
+            ))}
           </div>
         )}
       </div>
     );
   }
 
-  // ── Luxury — singular centered fine-art mat (±1 small secondary) ──
+  // ── Luxury — fine-art hero mat + elegant secondary fleet ──
   if (luxuryImmersive && photos.length >= 1) {
-    const secondary = photos[1];
+    const rest = photos.slice(1);
     return (
       <div
         style={{
-          maxWidth: "22rem",
+          maxWidth: "36rem",
           margin: "0 auto",
-          padding: secondary ? "0.55rem 0.85rem 0.65rem" : "0.85rem 1.1rem",
+          padding: "0.65rem 0.75rem 0.85rem",
           display: "flex",
           flexDirection: "column",
           alignItems: "center",
-          gap: secondary ? "0.45rem" : 0,
+          gap: rest.length ? "0.65rem" : 0,
         }}
       >
-        <div className="overflow-hidden" style={{ ...frame(0), width: "78%", maxWidth: "15rem" }}>
+        <div className="overflow-hidden" style={{ ...frame(0), width: "64%", maxWidth: "16rem" }}>
           <img src={photos[0]} alt="" style={{ ...imgStyle, aspectRatio: "4 / 5" }} />
         </div>
-        {secondary && (
-          <div className="overflow-hidden" style={{ ...frame(1), width: "28%", maxWidth: "5.25rem" }}>
-            <img src={secondary} alt="" style={{ ...imgStyle, aspectRatio: "1 / 1" }} />
+        {rest.length > 0 && (
+          <div
+            style={{
+              display: "flex",
+              flexWrap: "wrap",
+              justifyContent: "center",
+              gap: "0.45rem",
+              width: "100%",
+              maxWidth: "34rem",
+            }}
+          >
+            {rest.map((url, i) => (
+              <div key={i} className="overflow-hidden" style={{ ...frame(i + 1), width: "16%", minWidth: "3.25rem", maxWidth: "5rem" }}>
+                <img src={url} alt="" style={{ ...imgStyle, aspectRatio: "1 / 1" }} />
+              </div>
+            ))}
           </div>
         )}
       </div>
     );
   }
 
-  // ── Midnight cinematic — wide lead + dark field + 1–2 supports ──
+  // ── Midnight cinematic — wide lead + dark field + full support row ──
   if (midnightBand && photos.length >= 1) {
-    const supports = photos.length > 1 ? photos.slice(1, Math.min(3, photos.length)) : [];
+    const supports = photos.slice(1);
     return (
       <div
         style={{
@@ -1099,15 +1105,13 @@ export function GalleryGrid({ photos, tc }: { photos: string[]; tc: ThemeConfig 
           <div
             style={{
               display: "grid",
-              gridTemplateColumns: supports.length === 1 ? "1fr" : "1fr 1fr",
-              gap: "0.5rem",
-              maxWidth: supports.length === 1 ? "48%" : "100%",
-              marginInline: supports.length === 1 ? "auto" : undefined,
+              gridTemplateColumns: `repeat(${Math.min(supports.length, 5)}, 1fr)`,
+              gap: "0.4rem",
             }}
           >
             {supports.map((url, i) => (
               <div key={i} className="overflow-hidden">
-                <img src={url!} alt="" style={{ ...imgStyle, aspectRatio: "16 / 10" }} />
+                <img src={url!} alt="" style={{ ...imgStyle, aspectRatio: "4 / 5" }} />
               </div>
             ))}
           </div>
@@ -1116,43 +1120,71 @@ export function GalleryGrid({ photos, tc }: { photos: string[]; tc: ThemeConfig 
     );
   }
 
-  // ── Minimal sparse — 1–2 rectangles + extreme whitespace (quiet luxury) ──
+  // ── Minimal sparse — oval/round frames + generous air (all photos) ──
   if (sparseQuiet && photos.length >= 1) {
     const lead = photos[0]!;
-    const support = photos[1];
+    const rest = photos.slice(1);
+    const ovalRadius = tc.photoRadius && tc.photoRadius !== "0" ? tc.photoRadius : "50%";
+    const ovalImg: React.CSSProperties = {
+      ...imgStyle,
+      borderRadius: ovalRadius,
+      objectFit: "cover",
+      objectPosition: PORTRAIT_FACE_FOCAL,
+    };
     return (
       <div
         style={{
           width: "100%",
           maxWidth: "40rem",
           margin: "0 auto",
-          minHeight: "14rem",
-          padding: "1.75rem 1.5rem 2rem",
-          position: "relative",
+          minHeight: "15rem",
+          padding: "1.5rem 1.25rem 1.85rem",
           boxSizing: "border-box",
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          gap: "1.35rem",
         }}
       >
         <div
           className="overflow-hidden"
           style={{
-            width: support ? "46%" : "52%",
-            marginLeft: support ? "8%" : "24%",
-            marginTop: "0.25rem",
+            width: rest.length ? "42%" : "48%",
+            maxWidth: "11rem",
+            borderRadius: ovalRadius,
+            aspectRatio: "3 / 4",
           }}
         >
-          <img src={lead} alt="" style={{ ...imgStyle, aspectRatio: "4 / 5" }} />
+          <img src={lead} alt="" style={{ ...ovalImg, width: "100%", height: "100%", aspectRatio: undefined }} />
         </div>
-        {support && (
+        {rest.length > 0 && (
           <div
-            className="overflow-hidden"
             style={{
-              position: "absolute",
-              width: "22%",
-              right: "14%",
-              bottom: "12%",
+              display: "flex",
+              flexWrap: "wrap",
+              justifyContent: "center",
+              alignItems: "center",
+              gap: "0.85rem 1.1rem",
+              width: "100%",
+              paddingInline: "0.5rem",
             }}
           >
-            <img src={support} alt="" style={{ ...imgStyle, aspectRatio: "3 / 4" }} />
+            {rest.map((url, i) => {
+              const size = i % 3 === 0 ? "4.6rem" : i % 3 === 1 ? "3.75rem" : "4.1rem";
+              return (
+                <div
+                  key={i}
+                  className="overflow-hidden shrink-0"
+                  style={{
+                    width: size,
+                    height: size,
+                    borderRadius: ovalRadius,
+                  }}
+                >
+                  <img src={url} alt="" style={{ ...ovalImg, width: "100%", height: "100%", aspectRatio: undefined }} />
+                </div>
+              );
+            })}
           </div>
         )}
       </div>
@@ -1201,29 +1233,11 @@ export function GalleryGrid({ photos, tc }: { photos: string[]; tc: ThemeConfig 
   }
 
   // ── Gallery Wall — non-overlap framed salon (mats + deliberate air) ──
+  // All photos hang; style = framed salon spacing, not a 4-slot cap.
   if (galleryWall) {
-    // Varied upright hangs; never shared Magazine collage slot ranges.
-    const n = Math.min(photos.length, 4);
-    const slots: { width: string; aspect: string; alignSelf?: string }[] =
-      n <= 1
-        ? [{ width: "48%", aspect: "4 / 5", alignSelf: "center" }]
-        : n === 2
-          ? [
-              { width: "38%", aspect: "4 / 5", alignSelf: "flex-end" },
-              { width: "44%", aspect: "5 / 6", alignSelf: "flex-start" },
-            ]
-          : n === 3
-            ? [
-                { width: "34%", aspect: "4 / 5", alignSelf: "center" },
-                { width: "28%", aspect: "1 / 1", alignSelf: "flex-end" },
-                { width: "30%", aspect: "5 / 6", alignSelf: "flex-start" },
-              ]
-            : [
-                { width: "30%", aspect: "4 / 5", alignSelf: "flex-end" },
-                { width: "36%", aspect: "5 / 6", alignSelf: "flex-start" },
-                { width: "26%", aspect: "1 / 1", alignSelf: "center" },
-                { width: "28%", aspect: "4 / 5", alignSelf: "flex-start" },
-              ];
+    const aspects = ["4 / 5", "5 / 6", "1 / 1", "4 / 5", "5 / 6", "1 / 1"];
+    const widths = ["30%", "28%", "24%", "27%", "25%", "26%"];
+    const aligns = ["flex-end", "flex-start", "center", "flex-start", "flex-end", "center"] as const;
     return (
       <div
         style={{
@@ -1231,39 +1245,35 @@ export function GalleryGrid({ photos, tc }: { photos: string[]; tc: ThemeConfig 
           flexWrap: "wrap",
           justifyContent: "center",
           alignItems: "flex-end",
-          columnGap: "1.15rem",
-          rowGap: "1.35rem",
-          padding: "1.1rem 0.85rem 1.25rem",
+          columnGap: "0.95rem",
+          rowGap: "1.15rem",
+          padding: "1rem 0.75rem 1.15rem",
           maxWidth: "42rem",
           margin: "0 auto",
         }}
       >
-        {photos.slice(0, 4).map((url, i) => {
-          const slot = slots[i] ?? slots[slots.length - 1]!;
-          return (
-            <div
-              key={i}
-              className="overflow-hidden shrink-0"
-              style={{
-                width: slot.width,
-                alignSelf: slot.alignSelf as React.CSSProperties["alignSelf"],
-                ...frame(i),
-              }}
-            >
-              <img src={url} alt="" style={{ ...imgStyle, aspectRatio: slot.aspect }} />
-            </div>
-          );
-        })}
+        {photos.map((url, i) => (
+          <div
+            key={i}
+            className="overflow-hidden shrink-0"
+            style={{
+              width: widths[i % widths.length],
+              alignSelf: aligns[i % aligns.length],
+              ...frame(i),
+            }}
+          >
+            <img src={url} alt="" style={{ ...imgStyle, aspectRatio: aspects[i % aspects.length] }} />
+          </div>
+        ))}
       </div>
     );
   }
 
   // ── Magazine spread — designed page hierarchy (≠ salon, ≠ scrapbook) ──
+  // Cover + full subordinate grid — every photo participates.
   if (tc.arrangement === "collage") {
-    const n = Math.min(photos.length, 4);
-    // Cover + subordinate grid — real magazine page, not overlapping scrap slots.
     const collageImgStyle: React.CSSProperties = { ...imgStyleFill, objectPosition: "50% 35%" };
-    if (n <= 1) {
+    if (photos.length <= 1) {
       return (
         <div style={{ padding: "0.35rem", maxWidth: "36rem", margin: "0 auto" }}>
           <div className="overflow-hidden" style={{ borderRadius: tc.photoRadius, ...frame(0) }}>
@@ -1272,12 +1282,13 @@ export function GalleryGrid({ photos, tc }: { photos: string[]; tc: ThemeConfig 
         </div>
       );
     }
+    const rest = photos.slice(1);
     return (
       <div
         style={{
           display: "grid",
           gridTemplateColumns: "1.35fr 1fr",
-          gap: "0.55rem 0.65rem",
+          gap: "0.45rem 0.55rem",
           maxWidth: "40rem",
           margin: "0 auto",
           padding: "0.35rem 0.25rem",
@@ -1287,21 +1298,20 @@ export function GalleryGrid({ photos, tc }: { photos: string[]; tc: ThemeConfig 
         <div
           className="overflow-hidden"
           style={{
-            gridRow: n >= 3 ? "1 / 3" : "1 / 2",
+            gridRow: `1 / span ${Math.max(rest.length, 1)}`,
             borderRadius: tc.photoRadius,
             ...frame(0),
           }}
         >
-          <img src={photos[0]} alt="" style={{ ...collageImgStyle, aspectRatio: undefined, height: "100%", minHeight: "12rem" }} />
+          <img src={photos[0]} alt="" style={{ ...collageImgStyle, aspectRatio: undefined, height: "100%", minHeight: "12rem", objectFit: "cover" }} />
         </div>
-        {photos.slice(1, 4).map((url, i) => (
+        {rest.map((url, i) => (
           <div
             key={i}
             className="overflow-hidden"
             style={{
               borderRadius: tc.photoRadius,
               ...frame(i + 1),
-              // Subtle page hierarchy only — no ambient tilt identity.
             }}
           >
             <img
@@ -1309,8 +1319,8 @@ export function GalleryGrid({ photos, tc }: { photos: string[]; tc: ThemeConfig 
               alt=""
               style={{
                 ...collageImgStyle,
-                aspectRatio: i === 0 && n === 2 ? "4 / 5" : "5 / 4",
-                height: n >= 3 && i < 2 ? "100%" : undefined,
+                aspectRatio: i % 2 === 0 ? "5 / 4" : "4 / 5",
+                height: "100%",
               }}
             />
           </div>
