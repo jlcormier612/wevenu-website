@@ -12,7 +12,7 @@ import type { RsvpContext } from "@/app/rsvp/[token]/page";
 import {
   SectionComposition, ContentBlock, WeddingPartyComposition, edgeWidthClass,
   SectionCanvas, contrastText, ScheduleTimeline, ScheduleDateMoment, EditorialOpening, PairedPassage, DestinationFeature, CompactInterlude,
-  PORTRAIT_FACE_FOCAL, PAPER_CHAMBER,
+  PORTRAIT_FACE_FOCAL, GALLERY_SPLIT_FACE_FOCAL, PAPER_CHAMBER,
   type CompositionItem, type CompositionRecipe, type PartyMember, type SectionRole, type SectionScale, type DestinationItem,
 } from "@/components/wedding-website/composition-primitives";
 
@@ -1044,28 +1044,40 @@ export function GalleryGrid({ photos, tc }: { photos: string[]; tc: ThemeConfig 
     filter: tc.photoFilter || undefined,
     borderRadius: tc.frameStyle === "polaroid" ? 0 : tc.photoRadius,
   };
+  // WW-AUDIT-03 — split Mag/Edit/Minimal grids use a milder Y-anchor than
+  // PORTRAIT_FACE_FOCAL so cover crops in short cells don't amputate faces
+  // as hard; collage stays at its existing page-spread center bias.
+  const splitSafeImgStyle: React.CSSProperties = {
+    ...imgStyle,
+    objectPosition: GALLERY_SPLIT_FACE_FOCAL,
+  };
 
   // ── Editorial essay — fashion-spread dominant + support fleet + air ──
   // All photos render; style = hierarchy/scale, not truncation.
+  // WW-AUDIT-03: single column below 480cqw so the lead is never an
+  // unreadable ultra-narrow strip on Studio/published mobile.
   if (editorialEssay && photos.length >= 1) {
     const lead = photos[0]!;
     const supports = photos.slice(1);
     return (
       <div
+        className={
+          supports.length
+            ? "grid grid-cols-1 @min-[480px]/wedding:grid-cols-[1.55fr_1fr]"
+            : "grid grid-cols-1"
+        }
         style={{
           position: "relative",
           width: "100%",
           maxWidth: "40rem",
           margin: "0 auto",
           padding: "0.35rem 0.45rem 1rem",
-          display: "grid",
-          gridTemplateColumns: supports.length ? "1.55fr 1fr" : "1fr",
           gap: "0.55rem 0.75rem",
           alignItems: "start",
         }}
       >
         <div className="overflow-hidden" style={{ width: "100%" }}>
-          <img src={lead} alt="" style={{ ...imgStyle, aspectRatio: "4 / 5" }} />
+          <img src={lead} alt="" style={{ ...splitSafeImgStyle, aspectRatio: "4 / 5" }} />
         </div>
         {supports.length > 0 && (
           <div style={{ display: "flex", flexDirection: "column", gap: "0.45rem", paddingTop: "0.35rem" }}>
@@ -1080,7 +1092,7 @@ export function GalleryGrid({ photos, tc }: { photos: string[]; tc: ThemeConfig 
                   opacity: 0.97,
                 }}
               >
-                <img src={url} alt="" style={{ ...imgStyle, aspectRatio: i % 3 === 1 ? "1 / 1" : "3 / 4" }} />
+                <img src={url} alt="" style={{ ...splitSafeImgStyle, aspectRatio: i % 3 === 1 ? "1 / 1" : "3 / 4" }} />
               </div>
             ))}
           </div>
@@ -1170,6 +1182,8 @@ export function GalleryGrid({ photos, tc }: { photos: string[]; tc: ThemeConfig 
   // Restored from pre–Phase-B `minimalAsym` DNA (tall oval + stacked circles +
   // support), extended so the canonical 6-photo set stays meaningful-scale.
   // Do NOT use a thumbnail-dot strip to "fit" remaining photos.
+  // WW-AUDIT-03: below 480cqw collapse the 3-col band to lead-full + 2-col
+  // support so ovals stay meaningful (never tiny thumbs).
   if (sparseQuiet && photos.length >= 1) {
     const oval = (tc.photoRadius && tc.photoRadius !== "0") ? tc.photoRadius : "50%";
     const [a, b, c, d, e, f] = [
@@ -1181,11 +1195,11 @@ export function GalleryGrid({ photos, tc }: { photos: string[]; tc: ThemeConfig 
       photos[5] ?? photos[3] ?? photos[1] ?? photos[0]!,
     ];
     const ovalImg = (aspect: string): React.CSSProperties => ({
-      ...imgStyle,
+      ...splitSafeImgStyle,
       aspectRatio: aspect,
       borderRadius: oval,
       objectFit: "cover",
-      objectPosition: PORTRAIT_FACE_FOCAL,
+      objectPosition: GALLERY_SPLIT_FACE_FOCAL,
     });
     const showSecondRow = photos.length >= 5;
     return (
@@ -1201,33 +1215,25 @@ export function GalleryGrid({ photos, tc }: { photos: string[]; tc: ThemeConfig 
         }}
       >
         <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: photos.length >= 2 ? "1.15fr 0.72fr 0.95fr" : "1fr",
-            gap: "1.15rem",
-            alignItems: "center",
-          }}
+          className={
+            photos.length >= 2
+              ? "grid grid-cols-2 @min-[480px]/wedding:grid-cols-[1.15fr_0.72fr_0.95fr] items-center gap-[1.15rem]"
+              : "grid grid-cols-1 items-center gap-[1.15rem]"
+          }
         >
           <div
-            className="overflow-hidden"
-            style={{
-              borderRadius: oval,
-              gridRow: photos.length >= 2 ? "1 / 3" : undefined,
-              width: photos.length >= 2 ? "100%" : "52%",
-              marginInline: photos.length >= 2 ? undefined : "auto",
-            }}
+            className={
+              photos.length >= 2
+                ? "overflow-hidden col-span-2 @min-[480px]/wedding:col-span-1 @min-[480px]/wedding:row-span-2 w-full max-w-[20rem] @min-[480px]/wedding:max-w-none mx-auto @min-[480px]/wedding:mx-0"
+                : "overflow-hidden w-[52%] mx-auto"
+            }
+            style={{ borderRadius: oval }}
           >
             <img src={a} alt="" style={ovalImg("3 / 4")} />
           </div>
           {photos.length >= 2 && (
             <div
-              style={{
-                display: "flex",
-                flexDirection: "column",
-                gap: "1.15rem",
-                alignItems: "center",
-                justifyContent: "center",
-              }}
+              className="flex flex-col items-center justify-center gap-[1.15rem]"
             >
               <div className="overflow-hidden" style={{ width: "90%", borderRadius: oval }}>
                 <img src={b} alt="" style={ovalImg("1 / 1")} />
@@ -1238,22 +1244,18 @@ export function GalleryGrid({ photos, tc }: { photos: string[]; tc: ThemeConfig 
             </div>
           )}
           {photos.length >= 2 && (
-            <div className="overflow-hidden" style={{ borderRadius: oval, width: "100%" }}>
+            <div className="overflow-hidden w-full" style={{ borderRadius: oval }}>
               <img src={d} alt="" style={ovalImg("4 / 5")} />
             </div>
           )}
         </div>
         {showSecondRow && (
           <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: photos.length >= 6 ? "1fr 1fr" : "minmax(0, 18rem)",
-              justifyContent: "center",
-              gap: "1.25rem",
-              maxWidth: "34rem",
-              marginInline: "auto",
-              width: "100%",
-            }}
+            className={
+              photos.length >= 6
+                ? "grid grid-cols-2 justify-center gap-[1.25rem] w-full max-w-[34rem] mx-auto"
+                : "grid grid-cols-1 justify-center gap-[1.25rem] w-full max-w-[18rem] mx-auto"
+            }
           >
             <div className="overflow-hidden" style={{ borderRadius: oval }}>
               <img src={e} alt="" style={ovalImg("4 / 5")} />
@@ -1348,7 +1350,10 @@ export function GalleryGrid({ photos, tc }: { photos: string[]; tc: ThemeConfig 
   }
 
   // ── Magazine spread — designed page hierarchy (≠ salon, ≠ scrapbook) ──
-  // Cover + full subordinate grid — every photo participates.
+  // Cover + full subordinate fleet — every photo participates.
+  // WW-AUDIT-03: nested support column (same silhouette as desktop lead+stack)
+  // so `@min-[480px]/wedding` can open the 2-col page without an ultra-narrow
+  // lead strip on Studio/published mobile.
   if (tc.arrangement === "collage") {
     const collageImgStyle: React.CSSProperties = { ...imgStyleFill, objectPosition: "50% 35%" };
     if (photos.length <= 1) {
@@ -1363,46 +1368,53 @@ export function GalleryGrid({ photos, tc }: { photos: string[]; tc: ThemeConfig 
     const rest = photos.slice(1);
     return (
       <div
+        className="grid grid-cols-1 @min-[480px]/wedding:grid-cols-[1.35fr_1fr] items-stretch"
         style={{
-          display: "grid",
-          gridTemplateColumns: "1.35fr 1fr",
           gap: "0.45rem 0.55rem",
           maxWidth: "40rem",
           margin: "0 auto",
           padding: "0.35rem 0.25rem",
-          alignItems: "stretch",
         }}
       >
         <div
-          className="overflow-hidden"
+          className="overflow-hidden relative min-h-[12rem] aspect-[4/5] @min-[480px]/wedding:aspect-auto @min-[480px]/wedding:h-full @min-[480px]/wedding:min-h-0"
           style={{
-            gridRow: `1 / span ${Math.max(rest.length, 1)}`,
             borderRadius: tc.photoRadius,
             ...frame(0),
           }}
         >
-          <img src={photos[0]} alt="" style={{ ...collageImgStyle, aspectRatio: undefined, height: "100%", minHeight: "12rem", objectFit: "cover" }} />
+          <img
+            src={photos[0]}
+            alt=""
+            className="absolute inset-0 h-full w-full"
+            style={{ ...collageImgStyle, aspectRatio: undefined, height: "100%", width: "100%", objectFit: "cover" }}
+          />
         </div>
-        {rest.map((url, i) => (
-          <div
-            key={i}
-            className="overflow-hidden"
-            style={{
-              borderRadius: tc.photoRadius,
-              ...frame(i + 1),
-            }}
-          >
-            <img
-              src={url}
-              alt=""
+        <div style={{ display: "flex", flexDirection: "column", gap: "0.45rem", minHeight: 0 }}>
+          {rest.map((url, i) => (
+            <div
+              key={i}
+              className="overflow-hidden"
               style={{
-                ...collageImgStyle,
-                aspectRatio: i % 2 === 0 ? "5 / 4" : "4 / 5",
-                height: "100%",
+                borderRadius: tc.photoRadius,
+                flex: "1 1 0",
+                minHeight: 0,
+                ...frame(i + 1),
               }}
-            />
-          </div>
-        ))}
+            >
+              <img
+                src={url}
+                alt=""
+                style={{
+                  ...collageImgStyle,
+                  aspectRatio: i % 2 === 0 ? "5 / 4" : "4 / 5",
+                  height: "100%",
+                  width: "100%",
+                }}
+              />
+            </div>
+          ))}
+        </div>
       </div>
     );
   }

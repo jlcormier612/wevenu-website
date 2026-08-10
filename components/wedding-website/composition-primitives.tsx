@@ -434,6 +434,14 @@ export function contrastText(hex: string): string {
 export const PORTRAIT_FACE_FOCAL = "50% 8%";
 
 /**
+ * Milder cover-crop anchor for Magazine / Editorial / Minimal gallery
+ * grids (WW-AUDIT-03). Ultra-narrow split columns + `50% 8%` amputated
+ * faces; this keeps subjects framed when cells get short or stack.
+ * Hero / Collection previews keep {@link PORTRAIT_FACE_FOCAL}.
+ */
+export const GALLERY_SPLIT_FACE_FOCAL = "50% 22%";
+
+/**
  * Wraps one section in its assigned canvas moment + visual weight.
  *
  * `role` is undefined for every Collection except Coastal in this pass —

@@ -113,3 +113,56 @@ describe("Photo Style content contract", () => {
     }
   });
 });
+
+describe("WW-AUDIT-03 narrow gallery layouts", () => {
+  const specimen = resolveStudioPreviewPhotos();
+
+  it("Magazine stacks below 480cqw and keeps all 6 photos (no forced 2-col style)", () => {
+    const tc = themeFor("magazine");
+    const html = renderToStaticMarkup(
+      React.createElement(GalleryGrid, { photos: specimen, tc }),
+    );
+    assert.equal(countImgs(html), PHOTO_STYLE_CANONICAL_COUNT);
+    assert.match(html, /grid-cols-1/);
+    assert.match(html, /@min-\[480px\]\/wedding:grid-cols-\[1\.35fr_1fr\]/);
+    assert.doesNotMatch(html, /grid-template-columns:\s*1\.35fr\s+1fr/);
+    assert.match(html, /50%\s+35%/);
+  });
+
+  it("Editorial stacks below 480cqw and softens face crop", () => {
+    const tc = themeFor("editorial");
+    const html = renderToStaticMarkup(
+      React.createElement(GalleryGrid, { photos: specimen, tc }),
+    );
+    assert.equal(countImgs(html), PHOTO_STYLE_CANONICAL_COUNT);
+    assert.match(html, /grid-cols-1/);
+    assert.match(html, /@min-\[480px\]\/wedding:grid-cols-\[1\.55fr_1fr\]/);
+    assert.doesNotMatch(html, /grid-template-columns:\s*1\.55fr\s+1fr/);
+    assert.match(html, /50%\s+22%/);
+  });
+
+  it("Minimal collapses 3-col oval band under 480cqw without tiny thumbs", () => {
+    const tc = themeFor("minimal");
+    const html = renderToStaticMarkup(
+      React.createElement(GalleryGrid, { photos: specimen, tc }),
+    );
+    assert.equal(countImgs(html), PHOTO_STYLE_CANONICAL_COUNT);
+    assert.match(html, /grid-cols-2/);
+    assert.match(html, /@min-\[480px\]\/wedding:grid-cols-\[1\.15fr_0\.72fr_0\.95fr\]/);
+    assert.doesNotMatch(html, /grid-template-columns:\s*1\.15fr\s+0\.72fr\s+0\.95fr/);
+    assert.match(html, /50%/);
+    assert.doesNotMatch(html, /3\.75rem|4\.1rem|4\.6rem/);
+  });
+
+  it("Film / Modern / Luxury ≥720 art direction unchanged (no Mag/Edit stack)", () => {
+    for (const key of ["film", "modern", "luxury"] as const) {
+      const html = renderToStaticMarkup(
+        React.createElement(GalleryGrid, { photos: specimen, tc: themeFor(key) }),
+      );
+      assert.equal(countImgs(html), PHOTO_STYLE_CANONICAL_COUNT, `${key} photo count`);
+      assert.doesNotMatch(html, /@min-\[480px\]\/wedding:grid-cols-\[1\.35fr_1fr\]/);
+      assert.doesNotMatch(html, /@min-\[480px\]\/wedding:grid-cols-\[1\.55fr_1fr\]/);
+      assert.doesNotMatch(html, /@min-\[480px\]\/wedding:grid-cols-\[1\.15fr_0\.72fr_0\.95fr\]/);
+    }
+  });
+});
