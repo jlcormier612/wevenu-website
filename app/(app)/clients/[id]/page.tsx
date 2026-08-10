@@ -41,6 +41,7 @@ import { getVendors } from "@/lib/vendors/service";
 import { getEventOrder } from "@/lib/event-orders/service";
 import { getPackages } from "@/lib/packages/service";
 import { getItems as getInventoryItems } from "@/lib/inventory/service";
+import { getEventInventory, getTemplates as getInventoryTemplates } from "@/lib/event-inventory/service";
 
 type Props = { params: Promise<{ id: string }> };
 
@@ -85,7 +86,7 @@ export default async function BookingWorkspacePage({ params }: Props) {
     playbookApplications, readinessByKind, contextLinksByTask, timelineEntries, venue, vendorRecommendations,
     spaces, contractTemplates, allContracts, allTimelineTemplates,
     timelineSections, timelineLinksByEntry, timelineAttachmentsByEntry, timelineRelatedLinksByEntry,
-    floorPlanTemplates, inventoryUsage,
+    floorPlanTemplates, inventoryUsage, eventInventory, inventoryTemplates, inventoryCatalogItems,
   ] = await Promise.all([
     getEvent(eventId), getVendors(), getInvoices({}), getDocuments("event", eventId), getEventDocumentsFromVendors(eventId),
     getVenueWorkspaceDocuments({ eventId }), getPinnedDocumentKeys().then((s) => [...s]), getRecentInteractionMap().then((m) => [...m.entries()]),
@@ -95,6 +96,9 @@ export default async function BookingWorkspacePage({ params }: Props) {
     getSpaces(), getContractTemplates(), getContracts(), getTimelineTemplatesForLibrary(),
     getSections(eventId), getEntryLinksForEvent(eventId), getEntryAttachmentsForEvent(eventId), getRelatedLinksForEvent(eventId),
     getFloorPlanTemplates(), getUsageForEvent(eventId),
+    // D5A — Event Inventory is not feature-flagged (unlike Event Order):
+    // it's additive to the venue-wide catalog every venue already has.
+    getEventInventory(eventId), getInventoryTemplates(), getInventoryItems(),
   ]);
   if (!event) notFound();
   // Archived templates aren't valid choices for applying to a booking —
@@ -161,9 +165,12 @@ export default async function BookingWorkspacePage({ params }: Props) {
   // false skips these entirely rather than fetching and simply not rendering,
   // since most venues won't have the flag on.
   const eventOrderEnabled = venue?.eventOrderEnabled ?? false;
-  const [eventOrder, packages, inventoryItems] = eventOrderEnabled
-    ? await Promise.all([getEventOrder(eventId), getPackages(), getInventoryItems()])
-    : [null, [], []];
+  const [eventOrder, packages] = eventOrderEnabled
+    ? await Promise.all([getEventOrder(eventId), getPackages()])
+    : [null, []];
+  // Reused by both Event Order's Add-from-Inventory sheet (when the flag is
+  // on) and the always-on Event Inventory panel — one catalog fetch, not two.
+  const inventoryItems = inventoryCatalogItems;
   const readinessSummary = buildEventReadiness({
     eventId: event.id,
     readinessByKind, timelineEntries, guestSummary, seatingSummary,
@@ -202,6 +209,8 @@ export default async function BookingWorkspacePage({ params }: Props) {
       eventOrder={eventOrder}
       packages={packages}
       inventoryItems={inventoryItems}
+      eventInventory={eventInventory}
+      inventoryTemplates={inventoryTemplates}
     />
   );
 }
