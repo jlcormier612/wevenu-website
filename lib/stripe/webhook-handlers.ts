@@ -93,7 +93,7 @@ export async function handlePaymentIntentSucceeded(pi: Stripe.PaymentIntent): Pr
   }
   if (eventId) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await triggerAutoComplete(admin as any, venueId, eventId, "payment_received", "payment_line_item", itemId);
+    await triggerAutoComplete(admin as any, venueId, eventId, "payment_received", "payment", itemId);
     // Option B: complete only Final Payment tasks bound to THIS line.
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     await completeFinalPaymentTasksBoundToLine(admin as any, venueId, itemId);

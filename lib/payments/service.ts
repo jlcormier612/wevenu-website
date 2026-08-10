@@ -281,7 +281,7 @@ export async function markLineItemPaid(itemId: string, scheduleId: string, input
     // Broad: any payment still fires payment_received (Verify deposit, etc.).
     // Narrow: couple Final Payment uses payment_line_item_id binding (Option B).
     if (sch?.event_id) {
-      await triggerAutoComplete(supabase, venueId, sch.event_id, "payment_received", "payment_line_item", itemId);
+      await triggerAutoComplete(supabase, venueId, sch.event_id, "payment_received", "payment", itemId);
       await completeFinalPaymentTasksBoundToLine(supabase, venueId, itemId);
     }
 

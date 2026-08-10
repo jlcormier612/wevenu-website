@@ -659,11 +659,12 @@ export async function completeEventTask(
   };
   if (sourceType) patch.source_type = sourceType;
   if (sourceId) patch.source_id = sourceId;
-  const { data } = await client.from("event_tasks")
+  const { data, error } = await client.from("event_tasks")
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     .update(patch as any).eq("id", taskId).eq("venue_id", venueId)
     .select("title, event_id, notify_on_complete")
     .maybeSingle<{ title: string; event_id: string | null; notify_on_complete: boolean }>();
+  if (error) throw error;
   // Cancel pending reminders — task is done, no more notifications needed
   await cancelRemindersForTask(client, venueId, taskId);
   // Unblock dependent tasks

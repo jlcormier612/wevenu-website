@@ -89,7 +89,8 @@ export async function completeFinalPaymentTasksBoundToLine(
 
   const ids = ((data ?? []) as { id: string }[]).map((r) => r.id);
   for (const id of ids) {
-    await completeEventTask(client, venueId, id, "system", "payment_line_item", lineItemId);
+    // source_type must match event_tasks_source_type_check (payment, not payment_line_item).
+    await completeEventTask(client, venueId, id, "system", "payment", lineItemId);
   }
   return ids;
 }

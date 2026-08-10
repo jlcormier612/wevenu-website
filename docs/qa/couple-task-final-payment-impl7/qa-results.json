@@ -1,0 +1,45 @@
+{
+  "impl": 7,
+  "fixture": "Emma/Jordan",
+  "portal": "http://localhost:3000/p/seedcoupleportal00000000000000000000000000000001",
+  "at": "2026-08-10T01:59:00Z",
+  "migration": {
+    "file": "20261241000000_couple_final_payment_verified_completion.sql",
+    "applied": true,
+    "method": "docker exec supabase_db_wevenu-website psql"
+  },
+  "binding": {
+    "before": {
+      "obligation_kinds": "null (pre-migration seed)",
+      "payment_line_item_id": null,
+      "trigger": "final_payment_obligation_paid (migrated)"
+    },
+    "afterSetup": {
+      "kinds": ["installment", "installment", "final"],
+      "finalLineId": "dbb97688-f9d5-477a-9f6e-ae46df67465c",
+      "taskId": "d315e9d6-cbf2-4161-baeb-979abbebb74d",
+      "payment_line_item_id": "dbb97688-f9d5-477a-9f6e-ae46df67465c",
+      "bindMethod": "bindFinalPaymentTaskToLine (domain helper)"
+    }
+  },
+  "celebrationCounts": {
+    "afterFirstInstallment": {
+      "final_payment_obligation_paid": 0,
+      "final_payment_received": 0
+    },
+    "afterFinalPaid": {
+      "final_payment_obligation_paid": 1,
+      "final_payment_received": 0
+    },
+    "afterRefreshRemake": {
+      "final_payment_obligation_paid": 1,
+      "final_payment_received": 0
+    }
+  },
+  "bugFound": {
+    "id": "source_type_payment_line_item",
+    "symptom": "completeFinalPaymentTasksBoundToLine / payment_received auto-complete silently failed CHECK event_tasks_source_type_check",
+    "fix": "use source_type 'payment'; throw on completeEventTask update error"
+  },
+  "verdict": "PASS (after hotfix)"
+}

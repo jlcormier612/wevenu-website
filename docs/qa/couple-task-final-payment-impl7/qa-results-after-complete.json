@@ -1,0 +1,72 @@
+{
+  "phase": "after-complete",
+  "at": "2026-08-10T01:58:57.007Z",
+  "portal": "http://localhost:3000/p/seedcoupleportal00000000000000000000000000000001",
+  "desktop": {
+    "viewport": {
+      "width": 1440,
+      "height": 900
+    },
+    "home": {
+      "leftMatch": "3",
+      "nextStepsSnippet": "Your Next Steps\n\n3 left for Sweet Daisy Barn & Farm\n\nFROM YOUR VENUE\n\nLeave a review\n\nWe'd love to hear about your experience.\n\nDue Oct 31\nReview\n\nSHARED PLANNING\n\nSecond Installment\n\nPayment Schedule — Emma / Carter / Jordan / Lee — payment due\n\nOverdue — needed by Jul 19\nSweet Daisy Barn & Farm is waiting on this\nPay\n\nSubmit your timeline updates\n\nYou've made changes your venue hasn't seen yet.\n\nSubmit\nOpen all tasks\n\nWORKING WITH YOUR VENUE\n\nVENUE TEAM\n\nJC\n\nJennifer Cormier\n\nOwner\n\n✉️\nSW\n\nSam Whitfield\n\nVenue Manager\n\n✉️\nMessage Sweet Daisy Barn & Farm\n\n💳 PAYMENTS\n\n$4,320\n\nremaining balance\n\nNext payment: Second Installment — due Jul 19\n\nPayment plan progress\n67%\nPay Now\n\n🕒 TIMELINE\n\n10:00 AM — Family Brunch\n\n2:30 PM — Wedding Party Arrival\n\nView Timeline\nExplore your Venue Guide\nPreferred vendors\nPlanning Progress\n\n92%\n\nSo close — the finishing details are falling into place.\n\nBase",
+      "hasChecklistFinalInNextSteps": false,
+      "hasLedgerFinalInNextSteps": false,
+      "payNowInNextSteps": true
+    },
+    "tasks": {
+      "sample": "Emma & Jordan\n\n·\n\nSweet Daisy Barn & Farm\n\nOct 17, 2026 – Oct 19, 2026\n\nExport my data\n🏠\nHome\n✅\nTasks\n1\n🕒\nTimeline\n📁\nDocuments\n💳\nPayments\n💬\nMessages\n🏛️\nVenue Guide\n🤝\nPreferred Vendors\nFrom your venue\n\nEverything Sweet Daisy Barn & Farm needs from you, in one place — newest due date first.\n\n9/10 tasks complete\n\nSecond Installment\n\nPayment Schedule — Emma / Carter / Jordan / Lee — payment due\n\nDue Jul 19\n\nPay now\n\nLeave a review\n\nWe'd love to hear about your experience.\n\nDue Oct 31 · 14 days after\n\nMark complete\n\nSubmit your timeline updates\n\nYou've made changes your venue hasn't seen yet.\n\nReview & submit\n\n",
+      "payNow": 1,
+      "openHasChecklistFinalPayment": false,
+      "openHasLedgerFinalPayment": false,
+      "openHasChecklistFinalPayNow": false,
+      "openHasLedgerFinalPayNow": false,
+      "completedHasFinalPayment": true
+    },
+    "payments": {
+      "sample": "Emma & Jordan\n\n·\n\nSweet Daisy Barn & Farm\n\nOct 17, 2026 – Oct 19, 2026\n\nExport my data\n🏠\nHome\n✅\nTasks\n1\n🕒\nTimeline\n📁\nDocuments\n💳\nPayments\n💬\nMessages\n🏛️\nVenue Guide\n🤝\nPreferred Vendors\nPayments\n\nYour financial picture with your venue — all in one place.\n\nPAYMENT SCHEDULE — EMMA / CARTER / JORDAN / LEE\n\n$12,960\n\nTotal contract value\n\n67% paid\n$4,320 remaining\n\nPaid\n\n$8,640\n\nRemaining\n\n$4,320\n\n💗\n\nSecond Installment (due July 19) hasn't been received yet. Reach out to your venue coordinator to arrange payment.\n\nPAYMENT SCHEDULE\n\n✓\n\nFirst Installment\n\nPaid Invalid Date\n\nvia check\n\n$4,320\n\n✓ Paid\n2\n\nSecond Installment\n\nDue Jul 19, 2026\n\n$4,320\n\nOverdue\nPay now\n✓\n\nFinal Payment\n\nPaid Invalid Date\n\nvia check\n\n$4,321\n\n✓ Paid\n💗\n\nQuestions about payments?\n\nContact your venue coordinator through the Messages tab or reach out directly.\n\nSweet Daisy Barn & Farm\n💗",
+      "hasFirstUnpaid": true,
+      "hasFinalUnpaid": false,
+      "hasFinalPaid": true
+    },
+    "luvSample": "Emma & Jordan\n\n·\n\nSweet Daisy Barn & Farm\n\nOct 17, 2026 – Oct 19, 2026\n\nExport my data\n🏠\nHome\n✅\nTasks\n1\n🕒\nTimeline\n📁\nDocuments\n💳\nPayments\n💬\nMessages\n🏛️\nVenue Guide\n🤝\nPreferred Vendors\nPayments\n\nYour financial picture with your venue — all in one place.\n\nPAYMENT SCHEDULE — EMMA / CARTER / JORDAN / LEE\n\n$12,960\n\nTotal contract value\n\n67% paid\n$4,320 remaining\n\nPaid\n\n$8,640\n\nRemaining\n\n$4,320\n\n💗\n\nSecond Installment (due July 19) hasn't been received yet. Reach out to your venue coordinator to arrange payment.\n\nPAYMENT SCHEDULE\n\n✓\n\nFirst Installment\n\nPaid Invalid Date\n\nvia check\n\n$4,320\n\n✓ Paid\n2\n\nSecond Installment\n\nDue Jul 19, 2026\n\n$4,320\n\nOverdue\nPay now\n✓\n\nFinal Payment\n\nPaid Invalid Date\n\nvia check\n\n$4,321\n\n✓ Paid\n💗\n\nQuestions about payments?\n\nContact your venue coordinator thro"
+  },
+  "mobile": {
+    "viewport": {
+      "width": 390,
+      "height": 844
+    },
+    "home": {
+      "leftMatch": "3",
+      "nextStepsSnippet": "Your Next Steps\n\n3 left for Sweet Daisy Barn & Farm\n\nFROM YOUR VENUE\n\nLeave a review\n\nWe'd love to hear about your experience.\n\nDue Oct 31\nReview\n\nSHARED PLANNING\n\nSecond Installment\n\nPayment Schedule — Emma / Carter / Jordan / Lee — payment due\n\nOverdue — needed by Jul 19\nSweet Daisy Barn & Farm is waiting on this\nPay\n\nSubmit your timeline updates\n\nYou've made changes your venue hasn't seen yet.\n\nSubmit\nOpen all tasks\n\nWORKING WITH YOUR VENUE\n\nVENUE TEAM\n\nJC\n\nJennifer Cormier\n\nOwner\n\n✉️\nSW\n\nSam Whitfield\n\nVenue Manager\n\n✉️\nMessage Sweet Daisy Barn & Farm\n\n💳 PAYMENTS\n\n$4,320\n\nremaining balance\n\nNext payment: Second Installment — due Jul 19\n\nPayment plan progress\n67%\nPay Now\n\n🕒 TIMELINE\n\n10:00 AM — Family Brunch\n\n2:30 PM — Wedding Party Arrival\n\nView Timeline\nExplore your Venue Guide\nPreferred vendors\nPlanning Progress\n\n92%\n\nSo close — the finishing details are falling into place.\n\nBase",
+      "hasChecklistFinalInNextSteps": false,
+      "hasLedgerFinalInNextSteps": false,
+      "payNowInNextSteps": true
+    },
+    "tasks": {
+      "sample": "Emma & Jordan\n\n·\n\nSweet Daisy Barn & Farm\n\nExport my data\n🏠\nHome\n✅\nTasks\n1\n🕒\nTimeline\n📁\nDocuments\n💳\nPayments\n💬\nMessages\n🏛️\nGuide\n🤝\nVendors\nFrom your venue\n\nEverything Sweet Daisy Barn & Farm needs from you, in one place — newest due date first.\n\n9/10 tasks complete\n\nSecond Installment\n\nPayment Schedule — Emma / Carter / Jordan / Lee — payment due\n\nDue Jul 19\n\nPay now\n\nLeave a review\n\nWe'd love to hear about your experience.\n\nDue Oct 31 · 14 days after\n\nMark complete\n\nSubmit your timeline updates\n\nYou've made changes your venue hasn't seen yet.\n\nReview & submit\n\n",
+      "payNow": 1,
+      "openHasChecklistFinalPayment": false,
+      "openHasLedgerFinalPayment": false,
+      "openHasChecklistFinalPayNow": false,
+      "openHasLedgerFinalPayNow": false,
+      "completedHasFinalPayment": true
+    },
+    "payments": {
+      "sample": "Emma & Jordan\n\n·\n\nSweet Daisy Barn & Farm\n\nExport my data\n🏠\nHome\n✅\nTasks\n1\n🕒\nTimeline\n📁\nDocuments\n💳\nPayments\n💬\nMessages\n🏛️\nGuide\n🤝\nVendors\nPayments\n\nYour financial picture with your venue — all in one place.\n\nPAYMENT SCHEDULE — EMMA / CARTER / JORDAN / LEE\n\n$12,960\n\nTotal contract value\n\n67% paid\n$4,320 remaining\n\nPaid\n\n$8,640\n\nRemaining\n\n$4,320\n\n💗\n\nSecond Installment (due July 19) hasn't been received yet. Reach out to your venue coordinator to arrange payment.\n\nPAYMENT SCHEDULE\n\n✓\n\nFirst Installment\n\nPaid Invalid Date\n\nvia check\n\n$4,320\n\n✓ Paid\n2\n\nSecond Installment\n\nDue Jul 19, 2026\n\n$4,320\n\nOverdue\nPay now\n✓\n\nFinal Payment\n\nPaid Invalid Date\n\nvia check\n\n$4,321\n\n✓ Paid\n💗\n\nQuestions about payments?\n\nContact your venue coordinator through the Messages tab or reach out directly.\n\nSweet Daisy Barn & Farm\n💗",
+      "hasFirstUnpaid": true,
+      "hasFinalUnpaid": false,
+      "hasFinalPaid": true
+    },
+    "luvSample": "Emma & Jordan\n\n·\n\nSweet Daisy Barn & Farm\n\nExport my data\n🏠\nHome\n✅\nTasks\n1\n🕒\nTimeline\n📁\nDocuments\n💳\nPayments\n💬\nMessages\n🏛️\nGuide\n🤝\nVendors\nPayments\n\nYour financial picture with your venue — all in one place.\n\nPAYMENT SCHEDULE — EMMA / CARTER / JORDAN / LEE\n\n$12,960\n\nTotal contract value\n\n67% paid\n$4,320 remaining\n\nPaid\n\n$8,640\n\nRemaining\n\n$4,320\n\n💗\n\nSecond Installment (due July 19) hasn't been received yet. Reach out to your venue coordinator to arrange payment.\n\nPAYMENT SCHEDULE\n\n✓\n\nFirst Installment\n\nPaid Invalid Date\n\nvia check\n\n$4,320\n\n✓ Paid\n2\n\nSecond Installment\n\nDue Jul 19, 2026\n\n$4,320\n\nOverdue\nPay now\n✓\n\nFinal Payment\n\nPaid Invalid Date\n\nvia check\n\n$4,321\n\n✓ Paid\n💗\n\nQuestions about payments?\n\nContact your venue coordinator through the Messages tab or reach out directly.\n\n"
+  },
+  "apiTasksSummary": [
+    {
+      "id": "d315e9d6-cbf2-4161-baeb-979abbebb74d",
+      "title": "Final payment",
+      "status": "complete",
+      "autoCompleteTrigger": "final_payment_obligation_paid",
+      "canComplete": false
+    }
+  ]
+}
