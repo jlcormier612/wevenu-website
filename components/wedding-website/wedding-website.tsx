@@ -1057,12 +1057,6 @@ export function GalleryGrid({ photos, tc }: { photos: string[]; tc: ThemeConfig 
     }
     return base;
   };
-  const imgStyleFill: React.CSSProperties = {
-    display: "block", width: "100%", height: "100%", objectFit: "cover",
-    objectPosition: PORTRAIT_FACE_FOCAL,
-    filter: tc.photoFilter || undefined,
-    borderRadius: tc.frameStyle === "polaroid" ? 0 : tc.photoRadius,
-  };
   const imgStyle: React.CSSProperties = {
     display: "block", width: "100%", objectFit: "cover",
     objectPosition: PORTRAIT_FACE_FOCAL,
@@ -1401,21 +1395,24 @@ export function GalleryGrid({ photos, tc }: { photos: string[]; tc: ThemeConfig 
 
   // ── Magazine spread — designed page hierarchy (≠ salon, ≠ scrapbook) ──
   // Cover + full subordinate fleet — every photo participates.
-  // WW-AUDIT-03: nested support column (same silhouette as desktop lead+stack)
-  // so `@min-[480px]/wedding` can open the 2-col page without an ultra-narrow
-  // lead strip on Studio/published mobile.
+  // WW-AUDIT-03: stack below 480cqw. At ≥480, lead stays a fixed 4/5 cover
+  // (items-start) — NOT stretched to the full support-fleet height. Stretching
+  // a landscape specimen into a ~5-photo-tall column over-zooms into soft
+  // sky/bokeh (blurry left panel on picker thumbs + desktop Live Preview while
+  // phone stack looked fine). Editorial already uses fixed 4/5 lead; Mag matches.
   //
-  // Fleet cells MUST be aspect-ratio intrinsic (flex: 0 0 auto, img height auto).
-  // flex:1 1 0 + height:100% collapses to ~0 in auto-height parents — including
-  // PhotoStylePreview ScaledThumbnails at ≥480cqw (picker Mag≠Edit). Lead still
-  // stretches to the fleet column via items-stretch + h-full at ≥480.
+  // Fleet cells stay aspect-intrinsic (flex: 0 0 auto) so ScaledThumbnail
+  // Mag≠Edit cards do not collapse.
   if (tc.arrangement === "collage") {
-    const collageImgStyle: React.CSSProperties = { ...imgStyleFill, objectPosition: "50% 35%" };
+    const collageImgStyle: React.CSSProperties = {
+      ...imgStyle,
+      objectPosition: GALLERY_SPLIT_FACE_FOCAL,
+    };
     if (photos.length <= 1) {
       return (
         <div style={{ padding: "0.35rem", maxWidth: "36rem", margin: "0 auto" }}>
           <div className="overflow-hidden" style={{ borderRadius: tc.photoRadius, ...frame(0) }}>
-            <img src={photos[0]} alt="" style={{ ...imgStyle, aspectRatio: "4 / 5" }} />
+            <img src={photos[0]} alt="" style={{ ...collageImgStyle, aspectRatio: "4 / 5" }} />
           </div>
         </div>
       );
@@ -1423,7 +1420,7 @@ export function GalleryGrid({ photos, tc }: { photos: string[]; tc: ThemeConfig 
     const rest = photos.slice(1);
     return (
       <div
-        className="grid grid-cols-1 @min-[480px]/wedding:grid-cols-[1.35fr_1fr] items-stretch"
+        className="grid grid-cols-1 @min-[480px]/wedding:grid-cols-[1.35fr_1fr] items-start"
         style={{
           gap: "0.45rem 0.55rem",
           maxWidth: "40rem",
@@ -1432,7 +1429,7 @@ export function GalleryGrid({ photos, tc }: { photos: string[]; tc: ThemeConfig 
         }}
       >
         <div
-          className="overflow-hidden relative min-h-[12rem] aspect-[4/5] @min-[480px]/wedding:aspect-auto @min-[480px]/wedding:h-full @min-[480px]/wedding:min-h-0"
+          className="overflow-hidden relative w-full"
           style={{
             borderRadius: tc.photoRadius,
             ...frame(0),
@@ -1441,8 +1438,7 @@ export function GalleryGrid({ photos, tc }: { photos: string[]; tc: ThemeConfig 
           <img
             src={photos[0]}
             alt=""
-            className="absolute inset-0 h-full w-full"
-            style={{ ...collageImgStyle, aspectRatio: undefined, height: "100%", width: "100%", objectFit: "cover" }}
+            style={{ ...collageImgStyle, aspectRatio: "4 / 5", height: "auto", width: "100%" }}
           />
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: "0.45rem" }}>

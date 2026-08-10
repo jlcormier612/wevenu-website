@@ -125,8 +125,11 @@ describe("WW-AUDIT-03 narrow gallery layouts", () => {
     assert.equal(countImgs(html), PHOTO_STYLE_CANONICAL_COUNT);
     assert.match(html, /grid-cols-1/);
     assert.match(html, /@min-\[480px\]\/wedding:grid-cols-\[1\.35fr_1fr\]/);
+    assert.match(html, /items-start/);
     assert.doesNotMatch(html, /grid-template-columns:\s*1\.35fr\s+1fr/);
-    assert.match(html, /50%\s+35%/);
+    // Fixed 4/5 lead + face-safe crop (not stretch-to-fleet / 50% 35% sky mush)
+    assert.match(html, /aspect-ratio:4\s*\/\s*5/);
+    assert.match(html, /50%\s+22%/);
   });
 
   it("Editorial stacks below 480cqw and softens face crop", () => {
