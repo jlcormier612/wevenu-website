@@ -165,4 +165,40 @@ describe("WW-AUDIT-03 narrow gallery layouts", () => {
       assert.doesNotMatch(html, /@min-\[480px\]\/wedding:grid-cols-\[1\.15fr_0\.72fr_0\.95fr\]/);
     }
   });
+
+  it("Magazine vs Editorial keep distinct wide silhouettes (picker ≥480cqw DNA)", () => {
+    const mag = renderToStaticMarkup(
+      React.createElement(GalleryGrid, { photos: specimen, tc: themeFor("magazine") }),
+    );
+    const edit = renderToStaticMarkup(
+      React.createElement(GalleryGrid, { photos: specimen, tc: themeFor("editorial") }),
+    );
+    // Wide branches differ — Mag page-spread vs Editorial essay ratios.
+    // PhotoStylePreview floors ScaledThumbnail naturalWidth to ≥480 so picker
+    // cards activate these, while live phone/published still stack <480cqw.
+    assert.match(mag, /@min-\[480px\]\/wedding:grid-cols-\[1\.35fr_1fr\]/);
+    assert.match(edit, /@min-\[480px\]\/wedding:grid-cols-\[1\.55fr_1fr\]/);
+    assert.notEqual(
+      mag.match(/@min-\[480px\]\/wedding:grid-cols-\[[^\]]+\]/)?.[0],
+      edit.match(/@min-\[480px\]\/wedding:grid-cols-\[[^\]]+\]/)?.[0],
+    );
+  });
+});
+
+describe("PhotoStylePreview picker thumb width", () => {
+  it("floors ScaledThumbnail @container/wedding to ≥480 even if caller passes 420", async () => {
+    const { PhotoStylePreview } = await import("@/components/portal/collection-preview");
+    const html = renderToStaticMarkup(
+      React.createElement(PhotoStylePreview, {
+        collection: collection(),
+        photoStyle: photoStyle("magazine", PHASE_B_PHOTO_STYLE_TOKENS.magazine!),
+        photos: resolveStudioPreviewPhotos(),
+        width: 226,
+        height: 188,
+        naturalWidth: 420,
+      }),
+    );
+    assert.match(html, /width:\s*480px/);
+    assert.doesNotMatch(html, /width:\s*420px/);
+  });
 });

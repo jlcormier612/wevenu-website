@@ -188,13 +188,18 @@ export function TypographyPreview({ typography, coupleName, tagline, showTagline
 // separate photo-layout renderer.
 //
 // Principle: "Show me how my photos will live inside it."
-export function PhotoStylePreview({ collection, photoStyle, photos, width, height, naturalWidth = 420 }: {
+export function PhotoStylePreview({ collection, photoStyle, photos, width, height, naturalWidth = 480 }: {
   collection: CatalogCollection;
   photoStyle: CatalogPhotoStyle;
   photos: string[];
   width: number;
   height: number;
-  /** See CollectionPreview's ScaledThumbnail doc. Wider natural width fits more grid cells into a short card. */
+  /**
+   * See CollectionPreview's ScaledThumbnail doc. Must be ≥480 so Mag/Edit/Minimal
+   * use their wide GalleryGrid silhouettes in picker cards. Phase 3's
+   * `@min-[480px]/wedding` stack path is for real phone frames + published
+   * mobile (true CSS container width), not these scaled thumbs.
+   */
   naturalWidth?: number;
 }) {
   // Photo Style cards answer "how will my photos live inside it?" — keep the
@@ -212,19 +217,11 @@ export function PhotoStylePreview({ collection, photoStyle, photos, width, heigh
   // Same photo set the caller built — never truncate by style. Content
   // contract: every Photo Style art-directs all specimen photos.
   const previewPhotos = photos;
-  // Tall compositions need a slightly taller natural frame so arrangement
-  // isn't cropped into a single face. Card CSS height may vary.
   const darkStyle = /brightness\(\s*0\.[0-7]/.test(photoStyle.tokens.photoFilter || "");
-  const arr = photoStyle.tokens.arrangement;
-  const tallComposition =
-    photoStyle.tokens.scalePattern === "hero-emphasis" ||
-    arr === "sparse" ||
-    arr === "scrapbook" ||
-    arr === "collage" ||
-    arr === "gallery-wall" ||
-    (photoStyle.tokens.scalePattern === "alternating" && photoStyle.tokens.shadow === "soft") ||
-    darkStyle;
-  const effectiveNatural = tallComposition ? Math.max(naturalWidth, 400) : naturalWidth;
+  // Floor at 480cqw so Phase 3's Mag/Edit/Minimal stack never collapses
+  // picker thumbs to identical lead crops. Live Preview + published still
+  // measure real CSS container width and stack under ~480px.
+  const effectiveNatural = Math.max(naturalWidth, 480);
   return (
     <ScaledThumbnail width={width} height={height} naturalWidth={effectiveNatural}>
       <div style={{

@@ -698,7 +698,7 @@ function SetupWizard({
                 {/* Specimen region — height must equal PhotoStylePreview height so the
                     ScaledThumbnail never paints into the reserved label footer. */}
                 <div className="h-[188px] shrink-0 overflow-hidden bg-[#FAF8F4]">
-                  {currentCollection && <PhotoStylePreview collection={currentCollection} photoStyle={p} photos={previewGalleryPhotos} width={226} height={188} naturalWidth={420} />}
+                  {currentCollection && <PhotoStylePreview collection={currentCollection} photoStyle={p} photos={previewGalleryPhotos} width={226} height={188} naturalWidth={480} />}
                 </div>
                 <div className="px-3 py-2.5 bg-white border-t border-black/5 shrink-0 min-h-[3.5rem]">
                   <p className="text-xs font-bold text-heading line-clamp-1">{p.name}</p>

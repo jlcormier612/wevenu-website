@@ -1470,7 +1470,7 @@ function ThemeStudio({ site, onUpdate }: { site: CoupleWebsite; onUpdate: (patch
                 {/* Specimen region — height must equal PhotoStylePreview height so the
                     ScaledThumbnail never paints into the reserved label footer. */}
                 <div className="h-[180px] shrink-0 overflow-hidden bg-[#FAF8F4]">
-                  {currentCollection && <PhotoStylePreview collection={currentCollection} photoStyle={p} photos={previewGalleryPhotos} width={170} height={180} naturalWidth={400} />}
+                  {currentCollection && <PhotoStylePreview collection={currentCollection} photoStyle={p} photos={previewGalleryPhotos} width={170} height={180} naturalWidth={480} />}
                 </div>
                 <div className="px-3 py-2 bg-card border-t border-border/50 shrink-0 min-h-[3.25rem]">
                   <p className="text-xs font-semibold text-heading line-clamp-1">{p.name}</p>
