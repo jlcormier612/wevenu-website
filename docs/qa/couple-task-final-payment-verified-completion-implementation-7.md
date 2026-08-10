@@ -209,7 +209,10 @@ Acceptance coverage: deposit/installment/other unpaid suppress; final unpaid sup
 
 ## 14. Commit hash
 
-_Stamped after local commit._
+**Implementation:** `15683e8` — `feat: Final Payment verified completion via Option B line binding`  
+**Stamp commit:** _(this docs stamp)_
+
+Prior STOP docs: `6345ba4` / `b63d028` remain intact.
 
 ---
 
