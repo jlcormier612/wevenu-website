@@ -1,0 +1,116 @@
+{
+  "afterLogin": "http://localhost:3000/reporting/revenue",
+  "findings": [
+    {
+      "type": "welcome",
+      "url": "http://localhost:3000/library"
+    },
+    {
+      "type": "nav",
+      "path": "/library",
+      "status": 200,
+      "url": "http://localhost:3000/library",
+      "snippet": "OVERVIEW Dashboard Reports Calendar PIPELINE Leads CLIENTS Clients COMMUNICATION Inbox Message Templates Automations TO DO'S Tours Task Center RESOURCES/TEMPLATES Library Vendors Planning Timelines Pipelines Contract Templates Packages Floor Plans Inventory QR Campaigns FINANCIALS Contracts Invoices Payments OPERATIONS Settings Venue Guide Success Library Requests Give feedback Remediation Grove 1"
+    },
+    {
+      "type": "nav",
+      "path": "/library/brochures",
+      "status": 200,
+      "url": "http://localhost:3000/library/brochures",
+      "snippet": "OVERVIEW Dashboard Reports Calendar PIPELINE Leads CLIENTS Clients COMMUNICATION Inbox Message Templates Automations TO DO'S Tours Task Center RESOURCES/TEMPLATES Library Vendors Planning Timelines Pipelines Contract Templates Packages Floor Plans Inventory QR Campaigns FINANCIALS Contracts Invoices Payments OPERATIONS Settings Venue Guide Success Library Requests Give feedback Remediation Grove 1"
+    },
+    {
+      "type": "nav",
+      "path": "/packages",
+      "status": 200,
+      "url": "http://localhost:3000/packages",
+      "snippet": "OVERVIEW Dashboard Reports Calendar PIPELINE Leads CLIENTS Clients COMMUNICATION Inbox Message Templates Automations TO DO'S Tours Task Center RESOURCES/TEMPLATES Library Vendors Planning Timelines Pipelines Contract Templates Packages Floor Plans Inventory QR Campaigns FINANCIALS Contracts Invoices Payments OPERATIONS Settings Venue Guide Success Library Requests Give feedback Remediation Grove 1"
+    },
+    {
+      "type": "nav",
+      "path": "/reporting/saved",
+      "status": 200,
+      "url": "http://localhost:3000/reporting/saved",
+      "snippet": "OVERVIEW Dashboard Reports Calendar PIPELINE Leads CLIENTS Clients COMMUNICATION Inbox Message Templates Automations TO DO'S Tours Task Center RESOURCES/TEMPLATES Library Vendors Planning Timelines Pipelines Contract Templates Packages Floor Plans Inventory QR Campaigns FINANCIALS Contracts Invoices Payments OPERATIONS Settings Venue Guide Success Library Requests Give feedback Remediation Grove 1"
+    },
+    {
+      "type": "nav",
+      "path": "/reporting/sales",
+      "status": 200,
+      "url": "http://localhost:3000/reporting/sales",
+      "snippet": "OVERVIEW Dashboard Reports Calendar PIPELINE Leads CLIENTS Clients COMMUNICATION Inbox Message Templates Automations TO DO'S Tours Task Center RESOURCES/TEMPLATES Library Vendors Planning Timelines Pipelines Contract Templates Packages Floor Plans Inventory QR Campaigns FINANCIALS Contracts Invoices Payments OPERATIONS Settings Venue Guide Success Library Requests Give feedback Remediation Grove 1"
+    },
+    {
+      "type": "nav-error",
+      "path": "/reporting/bookings",
+      "msg": "TimeoutError: page.goto: Timeout 60000ms exceeded.\nCall log:\n  - navigating to \"http://localhost:3000/reporting/bookings\", waiting until \"domcontentloaded\"\n"
+    },
+    {
+      "type": "nav-error",
+      "path": "/reporting/revenue",
+      "msg": "TimeoutError: page.goto: Timeout 60000ms exceeded.\nCall log:\n  - navigating to \"http://localhost:3000/reporting/revenue\", waiting until \"domcontentloaded\"\n"
+    },
+    {
+      "type": "nav-error",
+      "path": "/reporting/events",
+      "msg": "Error: page.goto: net::ERR_ABORTED at http://localhost:3000/reporting/events\nCall log:\n  - navigating to \"http://localhost:3000/reporting/events\", waiting until \"domcontentloaded\"\n"
+    },
+    {
+      "type": "nav-error",
+      "path": "/guide",
+      "msg": "Error: page.goto: Target page, context or browser has been closed"
+    },
+    {
+      "type": "nav-error",
+      "path": "/library/timeline-templates",
+      "msg": "Error: page.goto: Target page, context or browser has been closed"
+    },
+    {
+      "type": "nav-error",
+      "path": "/library/floor-plan-templates",
+      "msg": "Error: page.goto: Target page, context or browser has been closed"
+    },
+    {
+      "type": "nav-error",
+      "path": "/library/event-order-templates",
+      "msg": "Error: page.goto: Target page, context or browser has been closed"
+    },
+    {
+      "type": "nav-error",
+      "path": "/library/contracts",
+      "msg": "Error: page.goto: Target page, context or browser has been closed"
+    },
+    {
+      "type": "nav-error",
+      "path": "/library/questionnaire-templates",
+      "msg": "Error: page.goto: Target page, context or browser has been closed"
+    },
+    {
+      "type": "nav-error",
+      "path": "/library/inventory",
+      "msg": "Error: page.goto: Target page, context or browser has been closed"
+    },
+    {
+      "type": "nav-error",
+      "path": "/communication/templates",
+      "msg": "Error: page.goto: Target page, context or browser has been closed"
+    },
+    {
+      "type": "nav-error",
+      "path": "/library/payment-schedules",
+      "msg": "Error: page.goto: Target page, context or browser has been closed"
+    },
+    {
+      "type": "brochure-detail-error",
+      "msg": "Error: page.goto: Target page, context or browser has been closed"
+    },
+    {
+      "type": "packages-error",
+      "msg": "Error: page.goto: Target page, context or browser has been closed"
+    },
+    {
+      "type": "saved-reports-error",
+      "msg": "Error: page.goto: Target page, context or browser has been closed"
+    }
+  ]
+}

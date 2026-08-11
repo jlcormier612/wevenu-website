@@ -9,6 +9,7 @@ import {
 import {
   completeVendorTask,
   createVendorTask,
+  returnVendorTask,
   uncompleteVendorTask,
   updateVendorTaskCoupleVisibility,
 } from "@/lib/vendor-tasks/service";
@@ -71,6 +72,19 @@ export async function completePersonalTaskAction(
   return result;
 }
 
+export async function returnPersonalTaskAction(
+  taskId: string,
+  assignmentId: string,
+  note: string,
+): Promise<VendorActionResult> {
+  const result = await returnVendorTask(taskId, note);
+  if (result.ok) {
+    revalidatePath(`/vendor/events/${assignmentId}`);
+    revalidatePath("/vendor/dashboard");
+  }
+  return result;
+}
+
 export async function uncompletePersonalTaskAction(
   taskId:       string,
   assignmentId: string,
@@ -87,8 +101,9 @@ export async function updatePersonalTaskCoupleVisibilityAction(
   taskId: string,
   assignmentId: string,
   coupleVisibility: VendorTaskCoupleVisibility,
+  opts?: { requireVendorConfirmation?: boolean },
 ): Promise<VendorActionResult> {
-  const result = await updateVendorTaskCoupleVisibility(taskId, coupleVisibility);
+  const result = await updateVendorTaskCoupleVisibility(taskId, coupleVisibility, opts);
   if (result.ok) {
     revalidatePath(`/vendor/events/${assignmentId}`);
     revalidatePath("/vendor/dashboard");

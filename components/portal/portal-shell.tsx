@@ -65,7 +65,12 @@ import {
 } from "@/lib/portal/next-steps";
 import { remainingBalanceFromSchedules, selectCanonicalPaymentSchedules } from "@/lib/portal/payment-schedules";
 import { resolvePlanningJourney } from "@/lib/portal/planning-journey";
-import { computePlanningProgress } from "@/lib/portal/planning-progress";
+import {
+  computePlanningProgress,
+  countOwnedPendingVendorRequests,
+  countVendorRequestsNeedingCoupleAction,
+  countVendorRequestsWaitingOnVendor,
+} from "@/lib/portal/planning-progress";
 import {
   selectWhatsHappeningForHome,
   WHATS_HAPPENING_VIEW_ALL_DESTINATION,
@@ -75,7 +80,6 @@ import {
   resolveGuestsLaunch,
   resolvePlansLaunch,
   resolveSeatingLaunch,
-  resolveFloorPlanLaunch,
   resolveStoryLaunch,
   resolveWebsiteLaunch,
   type WeddingLaunchModel,
@@ -92,6 +96,8 @@ import {
 import { partitionByCompletion } from "@/lib/tasks/group-by-completion";
 import type { PortalRequestSummary } from "@/lib/requests/types";
 import { QuestionnairePortalSection } from "@/components/portal/questionnaire-section";
+import { InventoryPortalSection } from "@/components/portal/inventory-section";
+import { EventOrderPortalSection } from "@/components/portal/event-order-section";
 import FloorPlanSection from "@/components/portal/floor-plan-section";
 import { CoupleNotificationBell } from "@/components/portal/couple-notification-bell";
 import { WelcomeExperienceGate } from "@/components/legal/welcome-experience-gate";
@@ -1729,12 +1735,6 @@ function OverviewSection({
   const [p1Count, setP1Count] = React.useState<number | null>(null);
   const nextStepsRef = React.useRef<HTMLDivElement | null>(null);
 
-  const heroStatusLine = p1Count === null
-    ? null
-    : p1Count > 0
-      ? `${p1Count} thing${p1Count === 1 ? "" : "s"} ${venueName} still needs from you`
-      : `You’re all set with ${venueName} for now`;
-
   const heroSupport = p1Count !== null && p1Count > 0
     ? "Your venue team is here with you—finish what helps your day come together."
     : "Welcome to your wedding home.";
@@ -1807,13 +1807,7 @@ function OverviewSection({
             <p className="text-white/55 text-sm pt-1">Your wedding home is ready whenever you are</p>
           )}
 
-          {heroStatusLine && (
-            <p className="text-sm font-medium" style={{ color: "rgba(255,255,255,0.85)" }}>
-              {heroStatusLine}
-            </p>
-          )}
-
-          <p className="text-sm" style={{ color: "rgba(255,255,255,0.55)" }}>
+          <p className="text-sm font-semibold" style={{ color: "rgba(255,255,255,0.85)" }}>
             {heroSupport}
           </p>
 
@@ -1873,7 +1867,13 @@ function OverviewSection({
 
       {/* 5–6. Planning Progress + Wedding Journey — operational % ∥ emotional arc */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-stretch">
-        <WeddingPlanningProgressCard token={token} tasks={tasks} incompleteCount={p1Count ?? 0} onNavigate={onNavigate} />
+        <WeddingPlanningProgressCard
+          token={token}
+          tasks={tasks}
+          vendorTasks={vendorTasks}
+          incompleteCount={p1Count ?? 0}
+          onNavigate={onNavigate}
+        />
         {(du === null || du >= 0) && <PlanningJourney du={du} />}
       </div>
 
@@ -1913,7 +1913,7 @@ function OverviewSection({
       </div>
 
       {/* 10. Memories / Planning Journal (P4) — Impl 7; last soft moment below Luv */}
-      <div className="pb-16 sm:pb-4" data-memories-home>
+      <div className="pb-2" data-memories-home>
         <MemoryStrip
           entry={latestJournalEntry ?? null}
           inspirationPhotos={profile?.inspirationPhotos ?? []}
@@ -4359,14 +4359,15 @@ function StoryAndJourneySection({
 // folds into Account as a second tab there, same move already made for
 // Story/Journey, rather than getting its own top-level slot.)
 const NAV_ITEMS: { id: PortalSection; icon: string; label: string; shortLabel?: string; available: boolean; group: "venue" }[] = [
-  { id: "overview",  icon: "🏠", label: "Home",              available: true, group: "venue" },
-  { id: "tasks",     icon: "✅", label: "Tasks",             available: true, group: "venue" },
-  { id: "timeline",  icon: "🕒", label: "Timeline",          available: true, group: "venue" },
-  { id: "documents", icon: "📁", label: "Documents",         available: true, group: "venue" },
-  { id: "payments",  icon: "💳", label: "Payments",          available: true, group: "venue" },
-  { id: "messages",  icon: "💬", label: "Messages",          available: true, group: "venue" },
-  { id: "guide",     icon: "🏛️", label: "Venue Guide",       shortLabel: "Guide",   available: true, group: "venue" },
-  { id: "vendors",   icon: "🤝", label: "Preferred Vendors", shortLabel: "Vendors", available: true, group: "venue" },
+  { id: "overview",    icon: "🏠", label: "Home",              available: true, group: "venue" },
+  { id: "tasks",       icon: "✅", label: "Tasks",             available: true, group: "venue" },
+  { id: "timeline",    icon: "🕒", label: "Timeline",          available: true, group: "venue" },
+  { id: "documents",   icon: "📁", label: "Documents",         shortLabel: "Docs",     available: true, group: "venue" },
+  { id: "floor_plans", icon: "🗺️", label: "Floor Plan",        available: true, group: "venue" },
+  { id: "payments",    icon: "💳", label: "Payments",          available: true, group: "venue" },
+  { id: "messages",    icon: "💬", label: "Messages",          available: true, group: "venue" },
+  { id: "guide",       icon: "🏛️", label: "Venue Guide",       shortLabel: "Guide",    available: true, group: "venue" },
+  { id: "vendors",     icon: "🤝", label: "Preferred Vendors", shortLabel: "Vendors",  available: true, group: "venue" },
 ];
 
 export function PortalShell({
@@ -4390,6 +4391,10 @@ export function PortalShell({
   const [todoCount, setTodoCount] = React.useState(0);
   /** Tasks nav badge — open unified cards + share-timeline vendor attention. */
   const [tasksAttentionCount, setTasksAttentionCount] = React.useState<number | null>(null);
+  /** Payments nav badge — overdue line items only. */
+  const [paymentsOverdueCount, setPaymentsOverdueCount] = React.useState(0);
+  /** Messages nav badge — unread venue messages. */
+  const [messagesUnreadCount, setMessagesUnreadCount] = React.useState(0);
   const [profile, setProfile] = React.useState<CoupleProfile | null>(null);
   const [recentActivity, setRecentActivity] = React.useState<RecentActivity | null>(null);
   const [showLuvIntro, setShowLuvIntro] = React.useState(false);
@@ -4503,8 +4508,7 @@ export function PortalShell({
       .catch(() => {});
   }, [token, needsLegalAcceptance]);
 
-  // Tasks badge must use the same open set as UnifiedTasksSection cards
-  // (not canComplete-only venue_tasks), including Pay now / timeline submit.
+  // Nav badges: Tasks (open unified cards), Payments (overdue only), Messages (unread).
   React.useEffect(() => {
     if (needsLegalAcceptance) return;
     let cancelled = false;
@@ -4520,10 +4524,27 @@ export function PortalShell({
       fetch(`/api/portal/timeline?token=${token}`).then((r) => r.json()).catch(() => ({
         hasUnpublishedChanges: initialTimelineHasUnpublishedChanges,
       })),
-    ]).then(([tasksRes, requestsRes, paymentsRes, questionnaireRes, documentsRes, timelineRes]) => {
+      fetch(`/api/portal/messages?token=${token}`).then((r) => r.json()).catch(() => ({ messages: [] })),
+    ]).then(([tasksRes, requestsRes, paymentsRes, questionnaireRes, documentsRes, timelineRes, messagesRes]) => {
       if (cancelled) return;
       const venueTasks = (tasksRes.tasks ?? initialTasks) as PortalTask[];
       const vendorTasks = (tasksRes.vendorTasks ?? initialVendorTasks) as PortalVendorTask[];
+      const schedules = (paymentsRes.schedules ?? []) as {
+        lineItems?: { status?: string }[];
+      }[];
+      const overduePayments = schedules.reduce((sum, s) => (
+        sum + (s.lineItems ?? []).filter((li) => li.status === "overdue").length
+      ), 0);
+      setPaymentsOverdueCount(overduePayments);
+
+      const messages = (messagesRes.messages ?? []) as {
+        sender_type?: string;
+        couple_read_at?: string | null;
+      }[];
+      setMessagesUnreadCount(
+        messages.filter((m) => m.sender_type === "venue" && !m.couple_read_at).length,
+      );
+
       const unified = buildUnifiedTaskList({
         venueTasks,
         requests: requestsRes.requests ?? [],
@@ -4640,7 +4661,7 @@ export function PortalShell({
 
   return (
     <div
-      className="h-screen flex flex-col overflow-hidden"
+      className="h-full flex flex-col overflow-hidden overscroll-none"
       style={{
         background: "var(--venue-neutral)",
         // Venue Brand Experience Phase 1 — the venue's own brand, cascading
@@ -4661,19 +4682,19 @@ export function PortalShell({
       {/* ── Sticky Header ── */}
       <header className="sticky top-0 z-30 bg-white/95 backdrop-blur border-b border-[#DED6CA]">
         {/* Venue + couple identity */}
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 py-2.5 flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
+        <div className="max-w-6xl mx-auto px-3 sm:px-4 py-2.5 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2.5 min-w-0">
             {context.venue.logoUrl && (
               // eslint-disable-next-line @next/next/no-img-element
               <img src={context.venue.logoUrl} alt={context.venue.name} className="h-7 w-7 rounded-full object-cover shrink-0" />
             )}
-            <p className="text-sm font-semibold text-heading leading-tight font-heading">{coupleName}</p>
-            <span className="text-muted-foreground/40 text-xs">·</span>
-            <p className="text-xs text-muted-foreground">{context.venue.name}</p>
+            <p className="text-sm font-semibold text-heading leading-tight font-heading truncate">{coupleName}</p>
+            <span className="text-muted-foreground/40 text-xs shrink-0">·</span>
+            <p className="text-xs text-muted-foreground truncate">{context.venue.name}</p>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 shrink-0">
             {context.event && (
-              <p className="text-xs text-muted-foreground hidden sm:block">
+              <p className="text-xs text-muted-foreground hidden lg:block">
                 {formatPortalEventRangeShort(context.event.eventDate, context.event.eventEndDate)}
               </p>
             )}
@@ -4704,44 +4725,59 @@ export function PortalShell({
         </div>
 
         {/* Navigation — Program 5 (2026-07-24): one row, venue-operational
-            only. "Your Wedding" no longer lives in the header — those
-            destinations (Website/Guests/Seating/Budget/Our Story/Plans)
-            are reached from the dashboard's launch cards instead (see
-            YourWeddingSection), so a couple isn't asked the same
-            "where do I go" question in two places. See NAV_ITEMS for the
-            full directive. */}
-        <div className="max-w-4xl mx-auto px-2 sm:px-4">
-          <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide py-1">
+            only. "Your Wedding" destinations (Website/Guests/Seating/Budget/
+            Our Story/Plans) stay on dashboard launch cards. Floor Plan is
+            venue-shared and lives in this top row with other venue surfaces. */}
+        <div className="max-w-6xl mx-auto px-2 sm:px-3">
+          <nav className="flex items-stretch justify-between gap-0 py-0.5" aria-label="Portal">
             {NAV_ITEMS.map(item => {
               const isActive = activeSection === item.id;
-              const badge = item.id === "tasks" && actionCount > 0 ? actionCount : 0;
+              const badge =
+                item.id === "tasks" ? (actionCount > 0 ? actionCount : 0)
+                  : item.id === "payments" ? paymentsOverdueCount
+                    : item.id === "messages" ? messagesUnreadCount
+                      : 0;
+              const badgeTitle =
+                item.id === "tasks"
+                  ? (badge === 1 ? "1 open task" : `${badge} open tasks`)
+                  : item.id === "payments"
+                    ? (badge === 1 ? "1 overdue payment" : `${badge} overdue payments`)
+                    : item.id === "messages"
+                      ? (badge === 1 ? "1 unread message" : `${badge} unread messages`)
+                      : "";
+              const badgeAria =
+                badge > 0 ? `${item.label}, ${badgeTitle}` : undefined;
               return (
                 <button key={item.id} type="button"
                   onClick={() => item.available && navigateTo(item.id)}
-                  aria-label={badge > 0 ? `${item.label}, ${badge} open tasks` : undefined}
-                  className="relative flex-shrink-0 flex items-center gap-1.5 px-3 py-2.5 text-sm font-medium transition-all rounded-lg"
+                  aria-label={badgeAria}
+                  title={item.label}
+                  className="relative flex min-w-0 flex-1 items-center justify-center gap-1 px-1 py-2 text-[12px] sm:text-[13px] font-medium transition-all rounded-md"
                   style={{
                     color: !item.available ? "#8A837D" : isActive ? SAGE : "#3D3833",
                     background: isActive ? `color-mix(in srgb, var(--venue-primary) 9%, transparent)` : "transparent",
                     fontWeight: isActive ? 700 : 500,
                   }}>
-                  <span className="text-sm">{item.icon}</span>
-                  <span className="hidden sm:inline">{item.label}</span>
-                  <span className="sm:hidden text-[11px]">{item.shortLabel ?? item.label}</span>
+                  <span className="text-sm shrink-0">{item.icon}</span>
+                  <span className="truncate">{item.shortLabel ?? item.label}</span>
                   {badge > 0 && (
-                    <span className="h-4 w-4 rounded-full text-[8px] font-bold text-white flex items-center justify-center"
-                      title={badge === 1 ? "1 open task" : `${badge} open tasks`}
-                      style={{ background: ROSE }}>{badge}</span>
+                    <span
+                      className="h-4 min-w-4 px-0.5 rounded-full text-[8px] font-bold text-white flex items-center justify-center shrink-0"
+                      title={badgeTitle}
+                      style={{ background: ROSE }}
+                    >
+                      {badge > 9 ? "9+" : badge}
+                    </span>
                   )}
                 </button>
               );
             })}
-          </div>
+          </nav>
         </div>
       </header>
 
       {/* ── Content ── */}
-      <main className="flex-1 min-h-0 w-full overflow-y-auto flex flex-col">
+      <main className="flex-1 min-h-0 w-full overflow-y-auto overscroll-y-contain flex flex-col">
         {/* Overview gets a full-canvas layout. Widened from max-w-4xl and no
             longer split into a 1fr-main / 320px-sidebar grid — a fixed
             narrow sidebar next to one tall column is what produced the
@@ -4749,7 +4785,7 @@ export function PortalShell({
             (2026-07-23); OverviewSection now lays every card out itself in
             a balanced multi-column flow that uses the full width. */}
         {isOverview ? (
-          <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6">
+          <div className="max-w-6xl mx-auto w-full px-4 sm:px-6 py-6">
             <OverviewSection
               token={token}
               context={context}
@@ -4791,6 +4827,8 @@ export function PortalShell({
             )}
             {activeSection === "people"    && <OurPeopleSection token={token} context={context} />}
             {activeSection === "questionnaire" && <QuestionnairePortalSection token={token} />}
+            {activeSection === "inventory" && <InventoryPortalSection token={token} />}
+            {activeSection === "event-order" && <EventOrderPortalSection token={token} />}
             {activeSection === "floor_plans" && <FloorPlanSection token={token} />}
             {activeSection === "vendors"   && <VendorPortalSection token={token} context={context} />}
             {activeSection === "budget"    && <BudgetPortalSection token={token} />}
@@ -4802,9 +4840,11 @@ export function PortalShell({
         )}
       </main>
 
-      {/* Venue Brand Experience Phase 1: "Powered by Hello to Cheers" removed — the
-          venue is the only visible brand on this customer-facing surface. */}
-      <footer className="text-center py-4 text-[10px] border-t border-border/30" style={{ color: TAUPE }}>
+      {/* Venue Brand Experience Phase 1: "Powered by Hello to Cheers" removed —
+          the venue is the only visible brand on this customer-facing surface.
+          Pinned outside the scroll region so couples cannot scroll past it
+          into empty page chrome. */}
+      <footer className="text-center py-3 text-[10px] border-t border-border/30 shrink-0" style={{ color: TAUPE }}>
         {context.venue.name}
       </footer>
 
@@ -5270,21 +5310,26 @@ function TimelineCard({ token, onNavigate }: { token: string; onNavigate: (s: Po
   );
 }
 
-// Canonical Home operational % — Phase 1 WeddingPlanningProgressCard composite
-// (required tasks + payments + contracts + questionnaire). Couple Home Impl 4
-// keeps that formula; presentation adds a warm supporting line + setup state
-// when total === 0 (never a misleading 0%).
+// Canonical Home operational % — Option A: primary readiness composite
+// (required tasks + payments + contracts + questionnaire). Vendor owned-pending
+// requests and personal couple_todos drive secondary card state/copy only.
 function WeddingPlanningProgressCard({
-  token, tasks, incompleteCount = 0, onNavigate,
+  token, tasks, vendorTasks = [], incompleteCount = 0, onNavigate,
 }: {
   token: string;
   tasks: PortalTask[];
+  /** Portal vendor tasks from overview — preferred source for owned-pending count. */
+  vendorTasks?: PortalVendorTask[];
   incompleteCount?: number;
   onNavigate?: (s: PortalSection) => void;
 }) {
   const [paymentSchedules, setPaymentSchedules] = React.useState<PaymentScheduleLite[] | null>(null);
   const [questionnaire, setQuestionnaire] = React.useState<{ status: string } | null | undefined>(undefined);
   const [documents, setDocuments] = React.useState<{ docType: string; status: string | null }[] | null>(null);
+  const [personalTodos, setPersonalTodos] = React.useState<CoupleTodo[] | null>(null);
+  const [liveVendorTasks, setLiveVendorTasks] = React.useState<PortalVendorTask[] | null>(
+    vendorTasks.length > 0 ? vendorTasks : null,
+  );
 
   React.useEffect(() => {
     fetch(`/api/portal/payments?token=${token}`).then((r) => r.json())
@@ -5293,9 +5338,20 @@ function WeddingPlanningProgressCard({
       .then((d: { questionnaire?: { status: string } | null }) => setQuestionnaire(d.questionnaire ?? null)).catch(() => setQuestionnaire(null));
     fetch(`/api/portal/documents?token=${token}`).then((r) => r.json())
       .then((d: { documents?: { docType: string; status: string | null }[] }) => setDocuments(d.documents ?? [])).catch(() => setDocuments([]));
-  }, [token]);
+    fetch(`/api/portal/todos?token=${token}`).then((r) => r.json())
+      .then((d: { todos?: CoupleTodo[] }) => setPersonalTodos(d.todos ?? [])).catch(() => setPersonalTodos([]));
+    fetch(`/api/portal/tasks?token=${token}`).then((r) => r.json())
+      .then((d: { vendorTasks?: PortalVendorTask[] }) => setLiveVendorTasks(d.vendorTasks ?? vendorTasks))
+      .catch(() => setLiveVendorTasks(vendorTasks));
+  }, [token, vendorTasks]);
 
-  if (paymentSchedules === null || questionnaire === undefined || documents === null) {
+  if (
+    paymentSchedules === null ||
+    questionnaire === undefined ||
+    documents === null ||
+    personalTodos === null ||
+    liveVendorTasks === null
+  ) {
     return (
       <div
         className="rounded-2xl border bg-card p-5 h-full"
@@ -5314,16 +5370,38 @@ function WeddingPlanningProgressCard({
     paymentSchedules.map((s, i) => ({ ...s, id: s.id ?? `anon_${i}` })),
   ).flatMap((s) => s.lineItems);
   const contracts = documents.filter((d) => d.docType === "contract" && (d.status === "sent" || d.status === "signed"));
+  const vendorOpenRequestCount = countOwnedPendingVendorRequests(liveVendorTasks);
+  const vendorWaitingOnVendorCount = countVendorRequestsWaitingOnVendor(liveVendorTasks);
+  const vendorCoupleActionCount = countVendorRequestsNeedingCoupleAction(liveVendorTasks);
 
   const progress = computePlanningProgress({
     requiredTasks: required,
     paymentLineItems: paymentItems,
     contracts,
     questionnaire,
+    personalTodos: personalTodos.map((t) => ({ completed: t.completed })),
+    venueAttentionIncompleteCount: incompleteCount,
+    vendorOpenRequestCount,
+    vendorWaitingOnVendorCount,
   });
 
-  const goToTasks = onNavigate ? () => onNavigate("tasks") : undefined;
-  const showReviewCta = Boolean(goToTasks) && (progress.kind === "empty" || incompleteCount > 0);
+  const reviewDestination = progress.reviewDestination;
+  // Waiting-only must never navigate back to an already-acked vendor task.
+  const goReview =
+    onNavigate && (reviewDestination === "tasks" || reviewDestination === "todos")
+      ? () => onNavigate(reviewDestination)
+      : undefined;
+  const hasPersonalIncomplete =
+    progress.kind === "ready"
+      ? progress.personalIncompleteCount > 0
+      : personalTodos.some((t) => !t.completed);
+  const showWaitingNote = reviewDestination === "waiting";
+  const showReviewCta =
+    Boolean(goReview) &&
+    (progress.kind === "empty" ||
+      incompleteCount > 0 ||
+      vendorCoupleActionCount > 0 ||
+      hasPersonalIncomplete);
 
   if (progress.kind === "empty") {
     return (
@@ -5334,16 +5412,16 @@ function WeddingPlanningProgressCard({
         aria-describedby="planning-progress-support"
       >
         <h2 id="planning-progress-heading" className="text-sm font-semibold text-heading">
-          Planning Progress
+          Your Planning Progress
         </h2>
         <p id="planning-progress-support" className="text-[11px] text-muted-foreground leading-snug">
           {progress.supportingStatement}
         </p>
         <p className="sr-only">{progress.accessibleLabel}</p>
-        {showReviewCta && goToTasks && (
+        {showReviewCta && goReview && (
           <button
             type="button"
-            onClick={goToTasks}
+            onClick={goReview}
             className="text-[11px] font-semibold hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 rounded-sm"
             style={{ color: SAGE }}
           >
@@ -5363,15 +5441,17 @@ function WeddingPlanningProgressCard({
     >
       <div className="flex items-baseline justify-between gap-3 mb-1">
         <h2 id="planning-progress-heading" className="text-sm font-semibold text-heading">
-          Planning Progress
+          Your Planning Progress
         </h2>
-        <p
-          className="font-heading text-xl font-bold tabular-nums"
-          style={{ color: SAGE }}
-          aria-hidden
-        >
-          {progress.percent}%
-        </p>
+        <div className="text-right shrink-0" aria-hidden>
+          <p
+            className="font-heading text-xl font-bold tabular-nums leading-none"
+            style={{ color: SAGE }}
+          >
+            {progress.percent}%
+          </p>
+          <p className="text-[10px] text-muted-foreground mt-0.5 leading-none">readiness</p>
+        </div>
       </div>
       <p id="planning-progress-support" className="text-[11px] text-muted-foreground mb-1 leading-snug">
         {progress.supportingStatement}
@@ -5410,10 +5490,16 @@ function WeddingPlanningProgressCard({
         </ul>
       )}
 
-      {showReviewCta && goToTasks && (
+      {showWaitingNote && (
+        <p className="mt-3 text-[11px] text-muted-foreground leading-snug">
+          Waiting for your vendor — nothing more for you right now.
+        </p>
+      )}
+
+      {showReviewCta && goReview && (
         <button
           type="button"
-          onClick={goToTasks}
+          onClick={goReview}
           className="mt-3 text-[11px] font-semibold hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 rounded-sm"
           style={{ color: SAGE }}
         >
@@ -5541,36 +5627,6 @@ function SeatingLaunchCard({ token, onNavigate }: { token: string; onNavigate: (
   );
 
   return <WeddingLaunchCard icon="🪑" model={model} onNavigate={onNavigate} />;
-}
-
-/** Phase 1 — shown only when venue shared at least one Floor Plan layout. */
-function FloorPlanLaunchCard({ token, onNavigate }: { token: string; onNavigate: (s: PortalSection) => void }) {
-  const [model, setModel] = React.useState<WeddingLaunchModel | null>(null);
-
-  React.useEffect(() => {
-    fetch(`/api/portal/floor-plans?token=${encodeURIComponent(token)}`)
-      .then(async (r) => {
-        const d = await r.json() as {
-          floorPlans?: { id: string; name: string; isOperational: boolean }[];
-          operationalFloorPlanId?: string | null;
-        };
-        const plans = d.floorPlans ?? [];
-        const operational = plans.find((p) => p.isOperational) ?? null;
-        setModel(resolveFloorPlanLaunch(
-          plans.length > 0
-            ? {
-                sharedCount: plans.length,
-                hasOperational: Boolean(operational),
-                operationalName: operational?.name ?? null,
-              }
-            : null,
-        ));
-      })
-      .catch(() => setModel(null));
-  }, [token]);
-
-  if (!model) return null;
-  return <WeddingLaunchCard icon="🗺️" model={model} onNavigate={onNavigate} />;
 }
 
 // Personal todos / ideas summary only — never listed as Next Steps rows.
@@ -5747,7 +5803,6 @@ function YourWeddingSection({ token, guestStats, todoCount, profile, accessLevel
         <GuestsLaunchCard guestStats={guestStats} onNavigate={onNavigate} />
         {showBudget && <BudgetLaunchCard token={token} onNavigate={onNavigate} />}
         <SeatingLaunchCard token={token} onNavigate={onNavigate} />
-        <FloorPlanLaunchCard token={token} onNavigate={onNavigate} />
         <PlansLaunchCard todoCount={todoCount} profile={profile} onNavigate={onNavigate} />
         <StoryLaunchCard profile={profile} onNavigate={onNavigate} />
       </div>

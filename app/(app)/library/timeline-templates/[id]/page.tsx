@@ -4,8 +4,10 @@ import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 
 import { TimelineTemplateEditor } from "@/components/timeline-templates/timeline-template-editor";
+import { Badge } from "@/components/ui/badge";
 import { getSpaces } from "@/lib/availability/service";
 import { eventTypeLabel } from "@/lib/leads/constants";
+import { getTimelineStarterMaster } from "@/lib/timeline-templates/starters";
 import { getItems, getTemplate } from "@/lib/timeline-templates/service";
 
 type Props = { params: Promise<{ id: string }> };
@@ -22,6 +24,9 @@ export default async function TimelineTemplateEditorPage({ params }: Props) {
   if (!template) notFound();
 
   const spaceName = template.spaceId ? spaces.find((s) => s.id === template.spaceId)?.name : null;
+  const master = template.sourceMasterKey
+    ? getTimelineStarterMaster(template.sourceMasterKey)
+    : undefined;
 
   return (
     <div className="space-y-6 max-w-3xl mx-auto">
@@ -29,11 +34,19 @@ export default async function TimelineTemplateEditorPage({ params }: Props) {
         <Link href="/library/timeline-templates" className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors">
           <ArrowLeft className="h-3.5 w-3.5" /> Timeline Templates
         </Link>
-        <h1 className="font-heading text-2xl font-medium text-heading">{template.name}</h1>
+        <div className="flex items-center gap-2 flex-wrap">
+          <h1 className="font-heading text-2xl font-medium text-heading">{template.name}</h1>
+          {template.sourceMasterKey && !template.isArchived && (
+            <Badge variant="muted">Starter</Badge>
+          )}
+        </div>
         <p className="text-sm text-muted-foreground">
           {template.eventType ? eventTypeLabel(template.eventType) : "Any event type"}
           {spaceName ? ` · ${spaceName}` : ""} · {items.length} item{items.length !== 1 ? "s" : ""}
         </p>
+        {master?.description && (
+          <p className="text-sm text-muted-foreground">{master.description}</p>
+        )}
       </div>
       <TimelineTemplateEditor templateId={id} initialItems={items} />
     </div>

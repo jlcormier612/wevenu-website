@@ -9,7 +9,8 @@ type DbClient = Awaited<ReturnType<typeof createClient>>;
 
 type OrderRow = {
   id: string; venue_id: string; event_id: string; status: "open" | "finalized";
-  revision: number; finalized_at: string | null; created_at: string; updated_at: string;
+  revision: number; finalized_at: string | null; shared_at: string | null; template_id: string | null;
+  created_at: string; updated_at: string;
 };
 type SectionRow = {
   id: string; event_order_id: string; venue_id: string; name: string; sort_order: number;
@@ -28,7 +29,8 @@ type ActivityRow = {
 
 const mapOrder = (r: OrderRow): EventOrder => ({
   id: r.id, venueId: r.venue_id, eventId: r.event_id, status: r.status,
-  revision: r.revision, finalizedAt: r.finalized_at, createdAt: r.created_at, updatedAt: r.updated_at,
+  revision: r.revision, finalizedAt: r.finalized_at, sharedAt: r.shared_at, templateId: r.template_id,
+  createdAt: r.created_at, updatedAt: r.updated_at,
 });
 const mapSection = (r: SectionRow): EventOrderSection => ({
   id: r.id, eventOrderId: r.event_order_id, venueId: r.venue_id, name: r.name,
@@ -80,9 +82,9 @@ export async function getEventOrderById(client: DbClient, venueId: string, event
 
 // ---- event order lifecycle -----------------------------------------------------
 
-export async function insertEventOrder(client: DbClient, venueId: string, eventId: string): Promise<string> {
+export async function insertEventOrder(client: DbClient, venueId: string, eventId: string, templateId: string | null = null): Promise<string> {
   const { data, error } = await client.from("event_orders")
-    .insert({ venue_id: venueId, event_id: eventId }).select("id").single<{ id: string }>();
+    .insert({ venue_id: venueId, event_id: eventId, template_id: templateId }).select("id").single<{ id: string }>();
   if (error) throw error;
   return data.id;
 }
@@ -99,6 +101,15 @@ export async function reopenEventOrder(client: DbClient, venueId: string, eventO
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { error } = await (client.from("event_orders") as any)
     .update({ status: "open", finalized_at: null })
+    .eq("id", eventOrderId).eq("venue_id", venueId);
+  if (error) throw error;
+}
+
+/** D5C — set only from shareEventOrderWithClient(); never cleared by reopen (the client's last-shared view stays visible/valid — the D4 pattern's own "private until shared, symmetrically" nuance doesn't apply here since Event Order has no draft-content-leak risk the way a live invoice projection does). */
+export async function setSharedAt(client: DbClient, venueId: string, eventOrderId: string): Promise<void> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error } = await (client.from("event_orders") as any)
+    .update({ shared_at: new Date().toISOString() })
     .eq("id", eventOrderId).eq("venue_id", venueId);
   if (error) throw error;
 }

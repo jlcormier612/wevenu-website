@@ -1,7 +1,7 @@
 import { createClient } from "@/integrations/supabase/server";
 import { isSupabaseConfigured } from "@/lib/env";
 import * as repo from "@/lib/invoices/repository";
-import { computeInvoiceTotals } from "@/lib/invoices/constants";
+import { computeInvoiceTotals, deriveRevenueCategory } from "@/lib/invoices/constants";
 import type {
   AddLineItemResult,
   CreateInvoiceResult,
@@ -21,7 +21,7 @@ import type {
 import { getEventOrder } from "@/lib/event-orders/service";
 import { eventOrderLinesFingerprint } from "@/lib/event-orders/constants";
 import type { EventOrderLine } from "@/lib/event-orders/types";
-import { getCurrentVenue } from "@/lib/venue/service";
+import { getCurrentVenue, getCurrentUserRole } from "@/lib/venue/service";
 import { enqueueQuickBooksSync } from "@/lib/quickbooks/queue";
 
 /**
@@ -37,12 +37,19 @@ const PROVENANCE_TO_INVOICE_TYPE: Record<string, InvoiceLineItemType> = {
 };
 
 function projectEventOrderLines(eventOrderLines: EventOrderLine[]): InvoiceLineItem[] {
-  return eventOrderLines.map((l) => ({
-    id: l.id, invoiceId: "", venueId: l.venueId, packageId: l.packageId,
-    type: PROVENANCE_TO_INVOICE_TYPE[l.provenance] ?? "item",
-    description: l.description, quantity: l.quantity, unitPrice: l.unitPrice, amount: l.amount,
-    sortOrder: l.sortOrder, createdAt: l.createdAt, eventOrderLineId: l.id,
-  }));
+  return eventOrderLines.map((l) => {
+    const type = PROVENANCE_TO_INVOICE_TYPE[l.provenance] ?? "item";
+    return {
+      id: l.id, invoiceId: "", venueId: l.venueId, packageId: l.packageId,
+      type,
+      description: l.description, quantity: l.quantity, unitPrice: l.unitPrice, amount: l.amount,
+      sortOrder: l.sortOrder, createdAt: l.createdAt, eventOrderLineId: l.id,
+      // Live projection, not a stored row — no package-category lookup here
+      // (same D5B fix as the stored write paths, minus the extra fetch this
+      // read-only preview doesn't warrant); refined at actual freeze time.
+      revenueCategory: deriveRevenueCategory(type),
+    };
+  });
 }
 
 async function withVenue<T>(fn: (c: Awaited<ReturnType<typeof createClient>>, venueId: string) => Promise<T>): Promise<T | InvoiceActionResult> {
@@ -178,6 +185,18 @@ export async function removeLineItem(invoiceId: string, itemId: string): Promise
 
 export async function updateInvoiceStatus(invoiceId: string, status: InvoiceStatus): Promise<InvoiceActionResult> {
   const result = await withVenue(async (c, venueId) => {
+    // Work Package D8 — void is the one status transition here with real,
+    // permanent consequence (an invoice off the books) and, unlike the
+    // Payments side's own delete/refund actions, had no explicit role check
+    // of its own — only the general, indirect RLS role exclusion on writes.
+    // Same weight class as those, so it gets the same direct app-layer
+    // check, matching lib/payments/service.ts's established pattern.
+    if (status === "void") {
+      const role = await getCurrentUserRole();
+      if (role !== "owner" && role !== "manager") {
+        return { ok: false, message: "Only an Owner or Manager can void an invoice." } as InvoiceActionResult;
+      }
+    }
     if (status === "sent") {
       const invoice = await repo.getInvoice(c, venueId, invoiceId);
       if (!invoice) return { ok: false, message: "Invoice not found." } as InvoiceActionResult;

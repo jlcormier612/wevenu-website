@@ -129,9 +129,22 @@ export async function setTemplateArchived(client: DbClient, venueId: string, id:
   if (error) throw error;
 }
 
-export async function deleteTemplate(client: DbClient, venueId: string, id: string): Promise<void> {
-  const { error } = await client.from("playbook_templates").delete().eq("id", id).eq("venue_id", venueId);
+/**
+ * Work Package D6 §57 — RLS's DELETE-role gate (Owner/Manager only,
+ * playbook_templates_delete_gate) blocks a disallowed delete by matching
+ * zero rows, not by raising a Postgres error — `.select("id")` on the
+ * delete is what makes a blocked delete distinguishable from a real one.
+ * Not currently reachable from any UI, but this action is exported and
+ * called from a server action, so the same false-positive-success risk
+ * applies as soon as it is.
+ */
+export async function deleteTemplate(client: DbClient, venueId: string, id: string): Promise<{ ok: true } | { ok: false; message: string }> {
+  const { data, error } = await client.from("playbook_templates").delete().eq("id", id).eq("venue_id", venueId).select("id");
   if (error) throw error;
+  if (!data || data.length === 0) {
+    return { ok: false, message: "Only an Owner or Manager can delete this template." };
+  }
+  return { ok: true };
 }
 
 /** Clone a template's milestones and tasks into a brand-new template — same kind as the source. */
@@ -246,9 +259,12 @@ export async function reorderMilestone(client: DbClient, venueId: string, templa
   await table.update({ sort_order: a.sortOrder }).eq("id", b.id).eq("venue_id", venueId);
 }
 
-export async function deleteMilestone(client: DbClient, venueId: string, milestoneId: string): Promise<void> {
-  const { error } = await client.from("playbook_milestones").delete().eq("id", milestoneId).eq("venue_id", venueId);
+/** Work Package D8 — same false-positive-success risk as deleteTemplate above, now closed by a matching RLS gate (playbook_milestones_delete_gate) + this rows-affected check. */
+export async function deleteMilestone(client: DbClient, venueId: string, milestoneId: string): Promise<{ ok: true } | { ok: false; message: string }> {
+  const { data, error } = await client.from("playbook_milestones").delete().eq("id", milestoneId).eq("venue_id", venueId).select("id");
   if (error) throw error;
+  if (!data || data.length === 0) return { ok: false, message: "Only an Owner or Manager can delete this." };
+  return { ok: true };
 }
 
 // ---- Template Tasks ----------------------------------------------------------
@@ -308,9 +324,12 @@ export async function updateTemplateTask(client: DbClient, venueId: string, task
   if (error) throw error;
 }
 
-export async function deleteTemplateTask(client: DbClient, venueId: string, taskId: string): Promise<void> {
-  const { error } = await client.from("playbook_tasks").delete().eq("id", taskId).eq("venue_id", venueId);
+/** Work Package D8 — same false-positive-success risk deleteTemplate above already closed (playbook_tasks_delete_gate exists in RLS), just never got the matching rows-affected check here. */
+export async function deleteTemplateTask(client: DbClient, venueId: string, taskId: string): Promise<{ ok: true } | { ok: false; message: string }> {
+  const { data, error } = await client.from("playbook_tasks").delete().eq("id", taskId).eq("venue_id", venueId).select("id");
   if (error) throw error;
+  if (!data || data.length === 0) return { ok: false, message: "Only an Owner or Manager can delete this task." };
+  return { ok: true };
 }
 
 // ---- Event Tasks -------------------------------------------------------------

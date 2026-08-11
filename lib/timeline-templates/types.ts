@@ -8,6 +8,8 @@ export type TimelineTemplate = {
   spaceId: string | null;
   isDefault: boolean;
   isArchived: boolean;
+  /** Hello to Cheers master key (TL-01 / TL-02 / TL-03) when provisioned from a starter. */
+  sourceMasterKey: string | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -17,6 +19,8 @@ export type TimelineTemplate = {
 export type TimelineTemplateWithStats = TimelineTemplate & {
   spaceName: string | null;
   itemCount: number;
+  /** Activity titles + dayOffset for library preview (presentation only). */
+  previewItems: { title: string; dayOffset: number }[];
 };
 
 export type TimelineTemplateItem = {

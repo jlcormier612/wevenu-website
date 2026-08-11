@@ -161,11 +161,16 @@ export function NewContractForm({
         <div className="flex items-center justify-between">
           <Label htmlFor="nc-content">Contract content</Label>
           <Button type="button" variant="outline" size="sm" onClick={handleMerge} disabled={!clientId || merging}>
-            {merging ? <><Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />Applying…</> : <><RefreshCw className="mr-1 h-3.5 w-3.5" />Apply merge fields</>}
+            {merging ? <><Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />Filling in…</> : <><RefreshCw className="mr-1 h-3.5 w-3.5" />Preview with {clientId ? "this client's" : "client"} details</>}
           </Button>
         </div>
         <p className="text-xs text-muted-foreground">
-          Select a client first, then click &quot;Apply merge fields&quot; to auto-fill merge tokens with their data. You can also edit freely.
+          {/* Work Package D6 §11 — merge fields are now always resolved
+              automatically when the contract is created (see
+              createContract in lib/contracts/service.ts), so this button
+              is a convenience to preview the real wording now, or to
+              re-fill after switching clients — not a required step. */}
+          Client details fill in automatically when you create the contract. Select a client and click above to preview the real wording now, or just edit the text below directly.
         </p>
         <Textarea id="nc-content" value={content} onChange={(e) => setContent(e.target.value)}
           rows={20} className="font-mono text-sm" />

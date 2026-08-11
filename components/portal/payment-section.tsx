@@ -5,7 +5,14 @@ import { getPaymentObservations } from "@/lib/luv/portal-observations";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
-type PaymentStatus = "pending" | "processing" | "overdue" | "paid" | "cancelled";
+// Work Package D8 — this was a hand-maintained copy of lib/payments/types.ts's
+// real PaymentItemStatus, missing "partially_refunded" and "refunded" (both
+// added there since). A refunded item fell through StatusPill's every
+// explicit branch to the generic default below, which reads like a normal
+// upcoming payment — a real, customer-facing correctness gap for a couple
+// checking their own portal. Kept as this component's own local type
+// (it receives plain data, not a live import) but now matching the real set.
+type PaymentStatus = "pending" | "processing" | "overdue" | "paid" | "cancelled" | "partially_refunded" | "refunded";
 
 type PortalPaymentItem = {
   id: string;
@@ -64,9 +71,23 @@ function daysUntilDate(iso: string): number {
 
 function computeTotals(schedule: PortalPaymentSchedule) {
   const paid = schedule.lineItems
-    .filter(i => i.status === "paid")
-    .reduce((s, i) => s + (i.paidAmount ?? i.amount), 0);
-  return { paid, remaining: schedule.totalAmount - paid };
+    .filter(i => i.status === "paid" || i.status === "partially_refunded")
+    .reduce((s, i) => s + (i.paidAmount ?? i.amount) - 0, 0);
+  // Refunded rows contribute 0 remaining owed from that line; portal RPC may
+  // not expose refundedAmount — prefer paidAmount when present.
+  return { paid, remaining: Math.max(0, schedule.totalAmount - paid) };
+}
+
+function nextUnpaidItem(items: PortalPaymentItem[]): PortalPaymentItem | null {
+  const open = items
+    .filter((i) => i.status === "pending" || i.status === "overdue" || i.status === "processing")
+    .sort((a, b) => {
+      if (!a.dueDate && !b.dueDate) return a.sortOrder - b.sortOrder;
+      if (!a.dueDate) return 1;
+      if (!b.dueDate) return -1;
+      return a.dueDate.localeCompare(b.dueDate) || a.sortOrder - b.sortOrder;
+    });
+  return open[0] ?? null;
 }
 
 // ── Status badge ──────────────────────────────────────────────────────────────
@@ -98,6 +119,30 @@ function StatusPill({ status, dueDate }: { status: PaymentStatus; dueDate: strin
       </span>
     );
   }
+  if (status === "refunded") {
+    return (
+      <span className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium"
+        style={{ background: "#F3F4F6", color: "#4B5563" }}>
+        Refunded
+      </span>
+    );
+  }
+  if (status === "partially_refunded") {
+    return (
+      <span className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium"
+        style={{ background: "#F3F4F6", color: "#4B5563" }}>
+        Partially refunded
+      </span>
+    );
+  }
+  if (status === "cancelled") {
+    return (
+      <span className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium"
+        style={{ background: "#F3F4F6", color: "#6B7280" }}>
+        Cancelled
+      </span>
+    );
+  }
   if (days !== null && days === 0) {
     return (
       <span className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium"
@@ -124,61 +169,87 @@ function StatusPill({ status, dueDate }: { status: PaymentStatus; dueDate: strin
 
 // ── Summary bar ───────────────────────────────────────────────────────────────
 
-function SummaryBar({ schedule }: { schedule: PortalPaymentSchedule }) {
+function SummaryBar({ schedule, token }: { schedule: PortalPaymentSchedule; token: string }) {
   const { paid, remaining } = computeTotals(schedule);
   const paidPct = schedule.totalAmount > 0 ? Math.round((paid / schedule.totalAmount) * 100) : 0;
   const allPaid = remaining <= 0;
+  const next = nextUnpaidItem(schedule.lineItems);
 
   return (
-    <div
-      className="rounded-2xl p-6 space-y-4"
-      style={{ background: `linear-gradient(135deg, #F7F4F0 0%, #F2EDE6 100%)`, border: "1px solid #E8E2D8" }}
-    >
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-widest mb-1" style={{ color: ROSE }}>
-            {schedule.title}
-          </p>
-          <p className="font-heading text-3xl font-medium text-heading">
-            {formatMoney(schedule.totalAmount, schedule.currency)}
-          </p>
-          <p className="text-sm text-muted-foreground mt-0.5">Total contract value</p>
-        </div>
-        {allPaid && (
-          <div className="flex h-12 w-12 items-center justify-center rounded-full text-2xl"
-            style={{ background: "#EDF7ED" }}>
-            ✓
+    <div className="space-y-4">
+      <div
+        className="rounded-2xl p-6 space-y-4"
+        style={{ background: `linear-gradient(135deg, #F7F4F0 0%, #F2EDE6 100%)`, border: "1px solid #E8E2D8" }}
+      >
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-widest mb-1" style={{ color: ROSE }}>
+              Your Payment Plan
+            </p>
+            <p className="font-heading text-3xl font-medium text-heading">
+              {formatMoney(schedule.totalAmount, schedule.currency)}
+            </p>
+            <p className="text-sm text-muted-foreground mt-0.5">Total</p>
           </div>
-        )}
-      </div>
+          {allPaid && (
+            <div className="flex h-12 w-12 items-center justify-center rounded-full text-2xl"
+              style={{ background: "#EDF7ED" }}>
+              ✓
+            </div>
+          )}
+        </div>
 
-      {/* Progress bar */}
-      <div className="space-y-1.5">
-        <div className="h-2.5 w-full rounded-full overflow-hidden" style={{ background: "#E8E2D8" }}>
-          <div
-            className="h-full rounded-full transition-all duration-700"
-            style={{ width: `${paidPct}%`, background: allPaid ? SAGE : ROSE }}
-          />
+        <div className="space-y-1.5">
+          <div className="h-2.5 w-full rounded-full overflow-hidden" style={{ background: "#E8E2D8" }}>
+            <div
+              className="h-full rounded-full transition-all duration-700"
+              style={{ width: `${paidPct}%`, background: allPaid ? SAGE : ROSE }}
+            />
+          </div>
+          <div className="flex justify-between text-xs text-muted-foreground">
+            <span>{paidPct}% paid</span>
+            {!allPaid && <span>{formatMoney(remaining, schedule.currency)} remaining</span>}
+          </div>
         </div>
-        <div className="flex justify-between text-xs text-muted-foreground">
-          <span>{paidPct}% paid</span>
-          {!allPaid && <span>{formatMoney(remaining, schedule.currency)} remaining</span>}
-        </div>
-      </div>
 
-      {/* Paid / Remaining pills */}
-      <div className="flex gap-4">
-        <div className="flex-1 rounded-xl p-3 text-center" style={{ background: "rgba(255,255,255,0.7)" }}>
-          <p className="text-xs text-muted-foreground mb-0.5">Paid</p>
-          <p className="text-base font-semibold" style={{ color: SAGE }}>{formatMoney(paid, schedule.currency)}</p>
-        </div>
-        {!allPaid && (
+        <div className="flex gap-4">
           <div className="flex-1 rounded-xl p-3 text-center" style={{ background: "rgba(255,255,255,0.7)" }}>
-            <p className="text-xs text-muted-foreground mb-0.5">Remaining</p>
-            <p className="text-base font-semibold text-heading">{formatMoney(remaining, schedule.currency)}</p>
+            <p className="text-xs text-muted-foreground mb-0.5">Paid</p>
+            <p className="text-base font-semibold" style={{ color: SAGE }}>{formatMoney(paid, schedule.currency)}</p>
           </div>
-        )}
+          {!allPaid && (
+            <div className="flex-1 rounded-xl p-3 text-center" style={{ background: "rgba(255,255,255,0.7)" }}>
+              <p className="text-xs text-muted-foreground mb-0.5">Remaining</p>
+              <p className="text-base font-semibold text-heading">{formatMoney(remaining, schedule.currency)}</p>
+            </div>
+          )}
+        </div>
       </div>
+
+      {next && (
+        <div
+          className="rounded-2xl p-5 space-y-3"
+          style={{ background: "#FAFAF9", border: `1px solid ${ROSE}40` }}
+        >
+          <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: ROSE }}>
+            Next Payment
+          </p>
+          <div className="flex flex-wrap items-end justify-between gap-3">
+            <div>
+              <p className="font-heading text-2xl font-medium text-heading">
+                {formatMoney(next.amount, schedule.currency)}
+              </p>
+              <p className="text-sm text-muted-foreground mt-0.5">
+                {next.label}
+                {next.dueDate ? ` · Due ${formatDate(next.dueDate)}` : ""}
+              </p>
+            </div>
+            {(next.status === "pending" || next.status === "overdue") && (
+              <PayNowButton token={token} itemId={next.id} />
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -392,11 +463,20 @@ export function PaymentSection({ token }: { token: string }) {
 
   return (
     <div className="space-y-6 px-1">
-      {checkoutNotice === "success" && (
-        <div className="rounded-xl px-4 py-3 text-sm font-medium" style={{ background: "#F7FBF8", border: "1px solid #B9D1C2", color: "#1F5C3D" }}>
-          Payment received — thank you! It may take a moment to show as paid below.
-        </div>
-      )}
+      {checkoutNotice === "success" && (() => {
+        const { remaining } = computeTotals(schedule);
+        const next = nextUnpaidItem(allItems);
+        return (
+          <div className="rounded-xl px-4 py-3 text-sm space-y-1" style={{ background: "#F7FBF8", border: "1px solid #B9D1C2", color: "#1F5C3D" }}>
+            <p className="font-medium">Payment received</p>
+            <p>Thank you! Your payment has been received.</p>
+            <p>Remaining balance: {formatMoney(remaining, schedule.currency)}</p>
+            {next?.dueDate && (
+              <p>Next payment due: {formatDate(next.dueDate)}{next.amount != null ? ` · ${formatMoney(next.amount, schedule.currency)}` : ""}</p>
+            )}
+          </div>
+        );
+      })()}
       {checkoutNotice === "cancelled" && (
         <div className="rounded-xl px-4 py-3 text-sm font-medium" style={{ background: "#FAFAF9", border: "1px solid #E8E2D8", color: "#57534E" }}>
           Checkout was cancelled — nothing was charged.
@@ -404,14 +484,14 @@ export function PaymentSection({ token }: { token: string }) {
       )}
       {/* Header */}
       <div>
-        <h2 className="font-heading text-2xl font-medium text-heading">Payments</h2>
+        <h2 className="font-heading text-2xl font-medium text-heading">Your Payments</h2>
         <p className="text-sm text-muted-foreground mt-1">
-          Your financial picture with your venue — all in one place.
+          What you&apos;ve paid, what&apos;s next, and how to pay.
         </p>
       </div>
 
       {/* Summary */}
-      <SummaryBar schedule={schedule} />
+      <SummaryBar schedule={schedule} token={token} />
 
       {/* Luv observations */}
       {luvObs.length > 0 && (

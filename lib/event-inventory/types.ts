@@ -37,6 +37,8 @@ export type EventInventoryItem = {
   isIncluded: boolean;
   notes: string | null;
   sortOrder: number;
+  /** D8 — set once this item has actually been pushed into the Event Order; null = still eligible. Per-item, not a single all-time flag on the Event Inventory as a whole, so items added after a first push remain reachable. */
+  addedToEventOrderAt: string | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -61,6 +63,8 @@ export type InventoryTemplate = {
   venueId: string;
   name: string;
   description: string | null;
+  /** Hello to Cheers master key (INV-01 / INV-02) when provisioned from a starter. */
+  sourceMasterKey: string | null;
   isArchived: boolean;
   createdAt: string;
   updatedAt: string;
@@ -100,6 +104,11 @@ export type EventInventoryActionResult =
   | { ok: true }
   /** reason:"stale" mirrors D4's Contract concurrency check exactly (lib/contracts/repository.ts) — see §38 of the D5 brief. */
   | { ok: false; errors?: EventInventoryErrors; message?: string; reason?: "stale" | "finalized" | "not_found" };
+
+/** D8 — carries back what actually happened so the UI can confirm real impact ("Added 3 items ($1,200)") instead of a bare generic toast. */
+export type AddToEventOrderResult =
+  | { ok: true; addedCount: number; addedTotal: number }
+  | { ok: false; message?: string };
 
 export type EnsureEventInventoryResult =
   | { ok: true; eventInventoryId: string }

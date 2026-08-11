@@ -1,0 +1,52 @@
+{
+  "pagesVisited": [
+    {
+      "path": "/library",
+      "url": "http://localhost:3000/library",
+      "ok": true,
+      "snippet": "OVERVIEW Dashboard Reports Calendar PIPELINE Leads CLIENTS Clients COMMUNICATION Inbox Message Templates Automations TO DO'S Tours Task Center RESOURCES/TEMPLATES Library Vendors Planning Timelines Pipelines Contract Templates Packages Floor Plans Inventory QR Campaigns FINANCIALS Contracts Invoices Payments OPERATIONS Settings Venue Guide Success Library Requests Give feedback Search ⌘K 68 O owne"
+    },
+    {
+      "path": "/packages",
+      "url": "http://localhost:3000/packages",
+      "ok": true,
+      "snippet": "OVERVIEW Dashboard Reports Calendar PIPELINE Leads CLIENTS Clients COMMUNICATION Inbox Message Templates Automations TO DO'S Tours Task Center RESOURCES/TEMPLATES Library Vendors Planning Timelines Pipelines Contract Templates Packages Floor Plans Inventory QR Campaigns FINANCIALS Contracts Invoices Payments OPERATIONS Settings Venue Guide Success Library Requests Give feedback Search ⌘K 68 O owne"
+    },
+    {
+      "path": "/guide",
+      "url": "http://localhost:3000/guide",
+      "ok": true,
+      "snippet": "OVERVIEW Dashboard Reports Calendar PIPELINE Leads CLIENTS Clients COMMUNICATION Inbox Message Templates Automations TO DO'S Tours Task Center RESOURCES/TEMPLATES Library Vendors Planning Timelines Pipelines Contract Templates Packages Floor Plans Inventory QR Campaigns FINANCIALS Contracts Invoices Payments OPERATIONS Settings Venue Guide Success Library Requests Give feedback Search ⌘K 68 O owne"
+    },
+    {
+      "path": "/library/brochures",
+      "url": "http://localhost:3000/library/brochures",
+      "ok": true,
+      "snippet": "OVERVIEW Dashboard Reports Calendar PIPELINE Leads CLIENTS Clients COMMUNICATION Inbox Message Templates Automations TO DO'S Tours Task Center RESOURCES/TEMPLATES Library Vendors Planning Timelines Pipelines Contract Templates Packages Floor Plans Inventory QR Campaigns FINANCIALS Contracts Invoices Payments OPERATIONS Settings Venue Guide Success Library Requests Give feedback Search ⌘K 68 O owne"
+    },
+    {
+      "path": "/reporting/saved",
+      "url": "http://localhost:3000/reporting/saved",
+      "ok": true,
+      "snippet": "OVERVIEW Dashboard Reports Calendar PIPELINE Leads CLIENTS Clients COMMUNICATION Inbox Message Templates Automations TO DO'S Tours Task Center RESOURCES/TEMPLATES Library Vendors Planning Timelines Pipelines Contract Templates Packages Floor Plans Inventory QR Campaigns FINANCIALS Contracts Invoices Payments OPERATIONS Settings Venue Guide Success Library Requests Give feedback Search ⌘K 68 O owne"
+    },
+    {
+      "path": "/communication/templates",
+      "url": "http://localhost:3000/communication/templates",
+      "ok": true,
+      "snippet": "OVERVIEW Dashboard Reports Calendar PIPELINE Leads CLIENTS Clients COMMUNICATION Inbox Message Templates Automations TO DO'S Tours Task Center RESOURCES/TEMPLATES Library Vendors Planning Timelines Pipelines Contract Templates Packages Floor Plans Inventory QR Campaigns FINANCIALS Contracts Invoices Payments OPERATIONS Settings Venue Guide Success Library Requests Give feedback Search ⌘K 68 O owne"
+    },
+    {
+      "path": "/library/contracts",
+      "url": "http://localhost:3000/library/contracts",
+      "ok": true,
+      "snippet": "OVERVIEW Dashboard Reports Calendar PIPELINE Leads CLIENTS Clients COMMUNICATION Inbox Message Templates Automations TO DO'S Tours Task Center RESOURCES/TEMPLATES Library Vendors Planning Timelines Pipelines Contract Templates Packages Floor Plans Inventory QR Campaigns FINANCIALS Contracts Invoices Payments OPERATIONS Settings Venue Guide Success Library Requests Give feedback Search ⌘K 68 O owne"
+    },
+    {
+      "path": "/library/questionnaire-templates",
+      "url": "http://localhost:3000/library/questionnaire-templates",
+      "ok": true,
+      "snippet": "OVERVIEW Dashboard Reports Calendar PIPELINE Leads CLIENTS Clients COMMUNICATION Inbox Message Templates Automations TO DO'S Tours Task Center RESOURCES/TEMPLATES Library Vendors Planning Timelines Pipelines Contract Templates Packages Floor Plans Inventory QR Campaigns FINANCIALS Contracts Invoices Payments OPERATIONS Settings Venue Guide Success Library Requests Give feedback Search ⌘K 68 O owne"
+    }
+  ]
+}

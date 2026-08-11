@@ -14,7 +14,8 @@ type InventoryRow = {
 type ItemRow = {
   id: string; event_inventory_id: string; venue_id: string; inventory_item_id: string | null;
   name: string; category: string | null; quantity: number; unit_price: number | null;
-  is_included: boolean; notes: string | null; sort_order: number; created_at: string; updated_at: string;
+  is_included: boolean; notes: string | null; sort_order: number;
+  added_to_event_order_at: string | null; created_at: string; updated_at: string;
 };
 type ActivityRow = {
   id: string; event_inventory_id: string; venue_id: string; type: string; title: string;
@@ -22,6 +23,7 @@ type ActivityRow = {
 };
 type TemplateRow = {
   id: string; venue_id: string; name: string; description: string | null; is_archived: boolean;
+  source_master_key: string | null;
   created_at: string; updated_at: string;
 };
 type TemplateItemRow = {
@@ -38,7 +40,8 @@ const mapItem = (r: ItemRow): EventInventoryItem => ({
   id: r.id, eventInventoryId: r.event_inventory_id, venueId: r.venue_id, inventoryItemId: r.inventory_item_id,
   name: r.name, category: r.category, quantity: Number(r.quantity),
   unitPrice: r.unit_price == null ? null : Number(r.unit_price),
-  isIncluded: r.is_included, notes: r.notes, sortOrder: r.sort_order, createdAt: r.created_at, updatedAt: r.updated_at,
+  isIncluded: r.is_included, notes: r.notes, sortOrder: r.sort_order,
+  addedToEventOrderAt: r.added_to_event_order_at, createdAt: r.created_at, updatedAt: r.updated_at,
 });
 const mapActivity = (r: ActivityRow): EventInventoryActivity => ({
   id: r.id, eventInventoryId: r.event_inventory_id, venueId: r.venue_id, type: r.type,
@@ -46,6 +49,7 @@ const mapActivity = (r: ActivityRow): EventInventoryActivity => ({
 });
 const mapTemplate = (r: TemplateRow): InventoryTemplate => ({
   id: r.id, venueId: r.venue_id, name: r.name, description: r.description,
+  sourceMasterKey: r.source_master_key ?? null,
   isArchived: r.is_archived, createdAt: r.created_at, updatedAt: r.updated_at,
 });
 const mapTemplateItem = (r: TemplateItemRow): InventoryTemplateItem => ({
@@ -150,6 +154,16 @@ export async function updateItem(
 
 export async function removeItem(client: DbClient, venueId: string, itemId: string): Promise<void> {
   const { error } = await client.from("event_inventory_items").delete().eq("id", itemId).eq("venue_id", venueId);
+  if (error) throw error;
+}
+
+/** D8 — marks these items as having actually reached the Event Order, so addToEventOrder's own dedupe check (and the panel's button-visibility check) never re-offer them, while newly added items independently remain eligible. */
+export async function markAddedToEventOrder(client: DbClient, venueId: string, itemIds: string[]): Promise<void> {
+  if (itemIds.length === 0) return;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error } = await (client.from("event_inventory_items") as any)
+    .update({ added_to_event_order_at: new Date().toISOString() })
+    .in("id", itemIds).eq("venue_id", venueId);
   if (error) throw error;
 }
 

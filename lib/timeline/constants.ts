@@ -1,15 +1,21 @@
 /**
- * Timeline reference data and hardcoded templates (Sprint 12).
+ * Timeline reference helpers + booking-picker starter templates.
  *
- * Templates are stored here as application data — no DB table needed.
- * Each template entry has a `minutesOffset` relative to the event's start_time
- * (0 = event start, -60 = 1 hour before, +120 = 2 hours after).
+ * Hello to Cheers starters live in lib/timeline-templates/starters.ts and are
+ * also provisioned into the venue Timeline Templates library. The booking
+ * picker still offers them as code fixtures (no invented clock times —
+ * minutesOffset stays null until the venue sets times on the Working Timeline).
  */
+
+import { getBookingPickerStarters } from "@/lib/timeline-templates/starters";
 
 export type TemplateEntry = {
   title: string;
   description?: string;
-  minutesOffset: number; // minutes from event start_time
+  /** Minutes from event start_time; null = untimed (no fake clock). */
+  minutesOffset: number | null;
+  /** 0-based day relative to event start when applied. */
+  dayOffset?: number;
 };
 
 export type TimelineTemplate = {
@@ -20,78 +26,23 @@ export type TimelineTemplate = {
   entries: TemplateEntry[];
 };
 
-export const TIMELINE_TEMPLATES: TimelineTemplate[] = [
-  {
-    id: "wedding-classic",
-    name: "Wedding — Classic",
-    description: "Full-day wedding from setup through teardown.",
-    entryCount: 14,
-    entries: [
-      { title: "Setup crew arrives", minutesOffset: -360 },
-      { title: "Florist and décor team begin setup", minutesOffset: -300 },
-      { title: "Catering team arrives", minutesOffset: -240 },
-      { title: "Venue ready for photography", minutesOffset: -120 },
-      { title: "Bridal party pre-ceremony photos", minutesOffset: -90 },
-      { title: "Doors open — guests begin arriving", minutesOffset: -30 },
-      { title: "Ceremony begins", description: "All guests seated.", minutesOffset: 0 },
-      { title: "Ceremony ends", minutesOffset: 60 },
-      { title: "Cocktail hour begins", minutesOffset: 60 },
-      { title: "Couple photos — golden hour", minutesOffset: 90 },
-      { title: "Reception opens — dinner service", minutesOffset: 120 },
-      { title: "First dance", minutesOffset: 150 },
-      { title: "Cake cutting", minutesOffset: 210 },
-      { title: "Last song — event ends", minutesOffset: 360 },
-      { title: "Teardown begins", minutesOffset: 360 },
-    ],
-  },
-  {
-    id: "wedding-simple",
-    name: "Wedding — Essentials",
-    description: "Core milestones for an intimate or shorter ceremony.",
-    entryCount: 8,
-    entries: [
-      { title: "Setup and preparation", minutesOffset: -180 },
-      { title: "Guests begin arriving", minutesOffset: -30 },
-      { title: "Ceremony begins", minutesOffset: 0 },
-      { title: "Ceremony ends", minutesOffset: 60 },
-      { title: "Reception begins", minutesOffset: 90 },
-      { title: "Dinner service", minutesOffset: 120 },
-      { title: "Cake cutting", minutesOffset: 180 },
-      { title: "Event concludes", minutesOffset: 240 },
-    ],
-  },
-  {
-    id: "corporate-halfday",
-    name: "Corporate — Half Day",
-    description: "Morning or afternoon professional event.",
-    entryCount: 7,
-    entries: [
-      { title: "A/V and room setup", minutesOffset: -60 },
-      { title: "Doors open — registration and networking", minutesOffset: 0 },
-      { title: "Welcome remarks — event begins", minutesOffset: 15 },
-      { title: "Main session", minutesOffset: 30 },
-      { title: "Break", minutesOffset: 120 },
-      { title: "Session resumes", minutesOffset: 135 },
-      { title: "Closing remarks — event concludes", minutesOffset: 240 },
-      { title: "Venue breakdown", minutesOffset: 240 },
-    ],
-  },
-  {
-    id: "celebration",
-    name: "Birthday / Celebration",
-    description: "Arrival through celebration and cake.",
-    entryCount: 6,
-    entries: [
-      { title: "Setup and decorations", minutesOffset: -60 },
-      { title: "Guests arrive", minutesOffset: 0 },
-      { title: "Welcome and introductions", minutesOffset: 30 },
-      { title: "Dinner service", minutesOffset: 60 },
-      { title: "Cake and dessert", minutesOffset: 120 },
-      { title: "Music and dancing", minutesOffset: 150 },
-      { title: "Event concludes", minutesOffset: 240 },
-    ],
-  },
-];
+/** Booking-picker starters — same TL-01/02/03 content as Library provision. */
+export const TIMELINE_TEMPLATES: TimelineTemplate[] = getBookingPickerStarters();
+
+/**
+ * Resolve absolute entry_time from a template/starter offset.
+ * When minutesOffset is null, returns null (never invents a clock time).
+ */
+export function resolveEntryTimeFromOffset(
+  minutesOffset: number | null | undefined,
+  startTime: string | null,
+): string | null {
+  if (minutesOffset === null || minutesOffset === undefined) return null;
+  const baseMinutes = startTime ? timeToMinutes(startTime.slice(0, 5)) : 12 * 60;
+  const totalMinutes = baseMinutes + minutesOffset;
+  if (totalMinutes < 0 || totalMinutes >= 24 * 60) return null;
+  return minutesToTime(totalMinutes);
+}
 
 /** Convert "HH:MM" to total minutes since midnight. */
 export function timeToMinutes(hhmm: string): number {

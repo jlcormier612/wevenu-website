@@ -15,7 +15,8 @@ import { getContracts, getTemplates as getContractTemplates } from "@/lib/contra
 import { getDocuments, getEventDocumentsFromVendors } from "@/lib/documents/service";
 import { getPinnedDocumentKeys, getRecentInteractionMap, getVenueWorkspaceDocuments } from "@/lib/document-workspace/service";
 import { getEvent } from "@/lib/events/service";
-import { getQuestionnaire } from "@/lib/events/questionnaire";
+import { getQuestionnaires, getQuestionnaireActivities } from "@/lib/events/questionnaire";
+import { getTemplates as getQuestionnaireTemplates } from "@/lib/questionnaire-templates/service";
 import { getTemplates as getFloorPlanTemplates } from "@/lib/floor-plan-templates/service";
 import { getEventFloorPlanOffers } from "@/lib/floor-plan-offers/service";
 import { getGuestReadinessSummary } from "@/lib/guests/service";
@@ -40,6 +41,7 @@ import { getCurrentVenue } from "@/lib/venue/service";
 import { getEventRecommendations } from "@/lib/vendor-recommendations/service";
 import { getVendors } from "@/lib/vendors/service";
 import { getEventOrder } from "@/lib/event-orders/service";
+import { getTemplates as getEventOrderTemplates } from "@/lib/event-order-templates/service";
 import { getPackages } from "@/lib/packages/service";
 import { getItems as getInventoryItems } from "@/lib/inventory/service";
 import { getEventInventory, getTemplates as getInventoryTemplates } from "@/lib/event-inventory/service";
@@ -83,7 +85,7 @@ export default async function BookingWorkspacePage({ params }: Props) {
 
   const eventId = client.linkedEventId;
   const [
-    event, availableVendors, allInvoices, documents, vendorDocuments, workspaceDocuments, pinnedDocumentKeys, recentDocumentEntries, questionnaire, eventTasks, allPlaybookTemplates,
+    event, availableVendors, allInvoices, documents, vendorDocuments, workspaceDocuments, pinnedDocumentKeys, recentDocumentEntries, questionnaires, eventTasks, allPlaybookTemplates,
     playbookApplications, readinessByKind, contextLinksByTask, timelineEntries, venue, vendorRecommendations,
     spaces, contractTemplates, allContracts, allTimelineTemplates,
     timelineSections, timelineLinksByEntry, timelineAttachmentsByEntry, timelineRelatedLinksByEntry,
@@ -91,7 +93,7 @@ export default async function BookingWorkspacePage({ params }: Props) {
   ] = await Promise.all([
     getEvent(eventId), getVendors(), getInvoices({}), getDocuments("event", eventId), getEventDocumentsFromVendors(eventId),
     getVenueWorkspaceDocuments({ eventId }), getPinnedDocumentKeys().then((s) => [...s]), getRecentInteractionMap().then((m) => [...m.entries()]),
-    getQuestionnaire(eventId),
+    getQuestionnaires(eventId),
     getEventTasks(eventId), getTemplatesForLibrary(), getEventPlaybookApplications(eventId), getEventTaskReadinessByKind(eventId),
     getEventTaskContextLinksForEvent(eventId), getTimelineEntries(eventId), getCurrentVenue(), getEventRecommendations(eventId),
     getSpaces(), getContractTemplates(), getContracts(), getTimelineTemplatesForLibrary(),
@@ -102,6 +104,14 @@ export default async function BookingWorkspacePage({ params }: Props) {
     getEventInventory(eventId), getInventoryTemplates(), getInventoryItems(),
   ]);
   if (!event) notFound();
+  // D5D — additive templates + activity logs for each working form.
+  const questionnaire = questionnaires.find((q) => q.kind === "final_details") ?? questionnaires[0] ?? null;
+  const [questionnaireTemplates, activityLists] = await Promise.all([
+    getQuestionnaireTemplates(),
+    Promise.all(questionnaires.map(async (q) => [q.id, await getQuestionnaireActivities(q.id)] as const)),
+  ]);
+  const questionnaireActivitiesById = Object.fromEntries(activityLists);
+  const questionnaireActivities = questionnaire ? (questionnaireActivitiesById[questionnaire.id] ?? []) : [];
   const floorPlanOffers = await getEventFloorPlanOffers(eventId);
   // Archived templates aren't valid choices for applying to a booking —
   // same exclusion the old getTemplates() applied by default.
@@ -167,9 +177,9 @@ export default async function BookingWorkspacePage({ params }: Props) {
   // false skips these entirely rather than fetching and simply not rendering,
   // since most venues won't have the flag on.
   const eventOrderEnabled = venue?.eventOrderEnabled ?? false;
-  const [eventOrder, packages] = eventOrderEnabled
-    ? await Promise.all([getEventOrder(eventId), getPackages()])
-    : [null, []];
+  const [eventOrder, packages, eventOrderTemplates] = eventOrderEnabled
+    ? await Promise.all([getEventOrder(eventId), getPackages(), getEventOrderTemplates()])
+    : [null, [], []];
   // Reused by both Event Order's Add-from-Inventory sheet (when the flag is
   // on) and the always-on Event Inventory panel — one catalog fetch, not two.
   const inventoryItems = inventoryCatalogItems;
@@ -189,7 +199,8 @@ export default async function BookingWorkspacePage({ params }: Props) {
       pinnedDocumentKeys={pinnedDocumentKeys}
       recentDocumentEntries={recentDocumentEntries}
       originatingLeadId={client.leadId}
-      questionnaire={questionnaire} coupleEmail={coupleEmail} eventTasks={eventTasks}
+      questionnaire={questionnaire} questionnaires={questionnaires} questionnaireTemplates={questionnaireTemplates} questionnaireActivities={questionnaireActivities} questionnaireActivitiesById={questionnaireActivitiesById}
+      coupleEmail={coupleEmail} eventTasks={eventTasks}
       playbookTemplates={playbookTemplates} playbookApplications={playbookApplications}
       timelineTemplates={timelineTemplates}
       timelineSections={timelineSections} timelineLinksByEntry={timelineLinksByEntry} timelineAttachmentsByEntry={timelineAttachmentsByEntry}
@@ -199,7 +210,7 @@ export default async function BookingWorkspacePage({ params }: Props) {
       linkableConversationMessages={linkableConversationMessages} vendorRecommendations={vendorRecommendations}
       portalToken={portalToken}
       conversationId={conversationId}
-      conversationMessages={conversationMessages} spaceName={spaceName} clientStatus={client.status}
+      conversationMessages={conversationMessages} spaceName={spaceName} venueName={venue?.name ?? "Your venue"} clientStatus={client.status}
       contractTemplates={contractTemplates} contracts={contracts}
       floorPlanTemplates={floorPlanTemplates} spaces={spaces}
       floorPlanOffers={floorPlanOffers}
@@ -214,6 +225,7 @@ export default async function BookingWorkspacePage({ params }: Props) {
       inventoryItems={inventoryItems}
       eventInventory={eventInventory}
       inventoryTemplates={inventoryTemplates}
+      eventOrderTemplates={eventOrderTemplates}
     />
   );
 }

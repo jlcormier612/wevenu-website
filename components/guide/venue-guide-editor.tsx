@@ -1,9 +1,11 @@
 "use client";
 
 import * as React from "react";
+import { useRouter } from "next/navigation";
 import { Check, ChevronDown, ChevronUp, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
+import { addFaqStarterAgainAction } from "@/app/(app)/guide/faq-starter-actions";
 import { saveGuideAction } from "@/app/(app)/guide/actions";
 import {
   emptyVenueGuideData,
@@ -17,6 +19,10 @@ import {
   type VenueGuideData,
   type VendorFaqEntry,
 } from "@/lib/guide/venue-guide-data";
+import {
+  getFaqStarterMaster,
+  type FaqStarterMasterKey,
+} from "@/lib/venue-guide/starters";
 import { LuvHeart } from "@/components/dashboard/luv-widget";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -24,6 +30,13 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 // ── Section definitions ──────────────────────────────────────────────────────
 
@@ -93,8 +106,8 @@ const SECTIONS: SectionDef[] = [
     key: "faqs",
     emoji: "❓",
     title: "FAQs",
-    description: "The questions you get asked most often — answered once, visible to every client.",
-    luvTip: "FAQs are the most-used section of the Venue Guide. Each answer here means one fewer coordinator message.",
+    description: "The questions you get asked most often — answered once. Hello to Cheers starters stay unpublished until you review and turn them on.",
+    luvTip: "FAQs are the most-used section of the Venue Guide. Each answer here means one fewer coordinator message. Publish starters only after they match your venue.",
     weight: 3,
     isFilled: (d) => d.faqs.length > 0,
   },
@@ -322,7 +335,161 @@ function TextSectionEditor({
 
 type SimpleFaq = { question: string; answer: string };
 
-function FaqListEditor({
+function FaqStarterRestoreMenu({ missingKeys }: { missingKeys: FaqStarterMasterKey[] }) {
+  const router = useRouter();
+  const [pending, startTransition] = React.useTransition();
+  if (missingKeys.length === 0) return null;
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger
+        render={
+          <Button type="button" variant="outline" size="sm" disabled={pending}>
+            Restore starters
+          </Button>
+        }
+      />
+      <DropdownMenuContent align="end" className="w-72">
+        <DropdownMenuLabel>Hello to Cheers starters</DropdownMenuLabel>
+        {missingKeys.map((key) => {
+          const master = getFaqStarterMaster(key);
+          if (!master) return null;
+          return (
+            <DropdownMenuItem
+              key={key}
+              onClick={() =>
+                startTransition(async () => {
+                  const r = await addFaqStarterAgainAction(key);
+                  if (r.ok) {
+                    toast.success("Starter added — your earlier customizations were left alone.");
+                    router.refresh();
+                  } else {
+                    toast.error(r.message);
+                  }
+                })
+              }
+            >
+              <span className="truncate">{master.question}</span>
+            </DropdownMenuItem>
+          );
+        })}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
+function ClientFaqListEditor({
+  title,
+  emptyHint,
+  items: initial,
+  onSave,
+  saving,
+  saveLabel,
+}: {
+  title?: string;
+  emptyHint: string;
+  items: FaqEntry[];
+  onSave: (items: FaqEntry[]) => Promise<void>;
+  saving: boolean;
+  saveLabel: string;
+}) {
+  const [items, setItems] = React.useState<FaqEntry[]>(initial);
+  const dirty = JSON.stringify(items) !== JSON.stringify(initial);
+
+  React.useEffect(() => {
+    setItems(initial);
+  }, [initial]);
+
+  function add() {
+    // Venue-authored FAQs are live by default (publisher intentionally writing).
+    setItems((p) => [...p, { question: "", answer: "", published: true }]);
+  }
+
+  function remove(i: number) {
+    setItems((p) => p.filter((_, idx) => idx !== i));
+  }
+
+  function update(i: number, patch: Partial<FaqEntry>) {
+    setItems((p) => p.map((item, idx) => (idx === i ? { ...item, ...patch } : item)));
+  }
+
+  return (
+    <div className="space-y-3">
+      {title && <p className="text-xs font-medium text-heading">{title}</p>}
+      {items.length === 0 ? (
+        <p className="text-sm text-muted-foreground py-2">{emptyHint}</p>
+      ) : (
+        <div className="space-y-4">
+          {items.map((faq, i) => {
+            const isStarter = Boolean(faq.source_master_key);
+            const isPublished = faq.published !== false;
+            return (
+              <div key={`${faq.source_master_key ?? "custom"}-${i}`} className="rounded-xl border border-border bg-muted/20 p-4 space-y-2.5">
+                <div className="flex items-start gap-2">
+                  <span className="text-xs font-semibold text-muted-foreground mt-2 w-4 shrink-0">{i + 1}</span>
+                  <div className="flex-1 space-y-2">
+                    <div className="flex flex-wrap items-center gap-2">
+                      {isStarter && <Badge variant="muted">Starter</Badge>}
+                      {isStarter && !isPublished && (
+                        <Badge variant="outline">Not published</Badge>
+                      )}
+                    </div>
+                    <Input
+                      value={faq.question}
+                      onChange={(e) => update(i, { question: e.target.value })}
+                      placeholder="Question — e.g. Can we have sparklers?"
+                      className="text-sm"
+                    />
+                    <Textarea
+                      value={faq.answer}
+                      onChange={(e) => update(i, { answer: e.target.value })}
+                      placeholder="Answer"
+                      rows={2}
+                      className="text-sm resize-none"
+                    />
+                    <label className="flex items-center gap-2 text-xs text-muted-foreground cursor-pointer pt-0.5">
+                      <Switch
+                        checked={isPublished}
+                        onCheckedChange={(on) => update(i, { published: on })}
+                      />
+                      {isPublished
+                        ? "Visible to clients, vendors, and brochures"
+                        : "Review only — not visible outside the Venue Guide yet"}
+                    </label>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => remove(i)}
+                    className="p-1.5 mt-1 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors shrink-0"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      <div className="flex items-center justify-between">
+        <Button type="button" variant="outline" size="sm" onClick={add} className="gap-1.5">
+          <Plus className="h-3.5 w-3.5" /> Add FAQ
+        </Button>
+        <div className="flex gap-2">
+          {dirty && (
+            <Button variant="outline" size="sm" onClick={() => setItems(initial)}>
+              Cancel
+            </Button>
+          )}
+          <Button size="sm" onClick={() => onSave(items)} disabled={saving || !dirty}>
+            {saving ? "Saving…" : saveLabel}
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function VendorFaqListEditor({
   title,
   emptyHint,
   questionPlaceholder,
@@ -343,6 +510,10 @@ function FaqListEditor({
 }) {
   const [items, setItems] = React.useState<SimpleFaq[]>(initial);
   const dirty = JSON.stringify(items) !== JSON.stringify(initial);
+
+  React.useEffect(() => {
+    setItems(initial);
+  }, [initial]);
 
   function add() {
     setItems((p) => [...p, { question: "", answer: "" }]);
@@ -422,6 +593,7 @@ function FaqsSectionEditor({
   onSaveVendor,
   savingClient,
   savingVendor,
+  missingStarterKeys,
 }: {
   sectionAudience: GuideAudience;
   clientFaqs: FaqEntry[];
@@ -430,37 +602,37 @@ function FaqsSectionEditor({
   onSaveVendor: (items: VendorFaqEntry[]) => Promise<void>;
   savingClient: boolean;
   savingVendor: boolean;
+  missingStarterKeys: FaqStarterMasterKey[];
 }) {
-  const clientSimple: SimpleFaq[] = clientFaqs.map((f) => ({
-    question: f.question,
-    answer: f.answer,
-  }));
-
   const showClient = sectionAudience === "both" || sectionAudience === "clients";
-  const showVendor = sectionAudience === "both" || sectionAudience === "vendors";
   // When vendors-only, edit the main faqs column (section is hidden from clients).
   const vendorUsesMainColumn = sectionAudience === "vendors";
 
   return (
     <div className="space-y-6">
+      {missingStarterKeys.length > 0 && (
+        <div className="flex items-center justify-between gap-3 rounded-xl border border-dashed border-border px-3.5 py-3">
+          <p className="text-xs text-muted-foreground">
+            Some Hello to Cheers starter FAQs are missing. Restore adds a fresh unpublished copy without changing your other answers.
+          </p>
+          <FaqStarterRestoreMenu missingKeys={missingStarterKeys} />
+        </div>
+      )}
+
       {showClient && !vendorUsesMainColumn && (
-        <FaqListEditor
+        <ClientFaqListEditor
           title={sectionAudience === "both" ? "Client FAQs" : undefined}
-          emptyHint="No FAQs yet. Add the questions clients ask most often."
-          questionPlaceholder="Question — e.g. Can we have sparklers?"
-          answerPlaceholder="Answer"
-          items={clientSimple}
+          emptyHint="No FAQs yet. Add the questions clients ask most often — or restore Hello to Cheers starters."
+          items={clientFaqs}
           saving={savingClient}
           saveLabel={sectionAudience === "both" ? "Save Client FAQs" : "Save FAQs"}
-          onSave={async (items) => {
-            await onSaveClient(items.map((f) => ({ question: f.question, answer: f.answer })));
-          }}
+          onSave={onSaveClient}
         />
       )}
 
       {sectionAudience === "both" && (
         <div className="border-t border-border pt-5">
-          <FaqListEditor
+          <VendorFaqListEditor
             title="Vendor FAQs"
             emptyHint="No vendor FAQs yet. Add questions vendors ask — load-in, COI, dock access…"
             questionPlaceholder="Question — e.g. Where is load-in?"
@@ -474,16 +646,12 @@ function FaqsSectionEditor({
       )}
 
       {vendorUsesMainColumn && (
-        <FaqListEditor
+        <ClientFaqListEditor
           emptyHint="No FAQs yet. Add the questions vendors ask most often."
-          questionPlaceholder="Question — e.g. Where is load-in?"
-          answerPlaceholder="Answer for vendors"
-          items={clientSimple}
+          items={clientFaqs}
           saving={savingClient}
           saveLabel="Save FAQs"
-          onSave={async (items) => {
-            await onSaveClient(items.map((f) => ({ question: f.question, answer: f.answer })));
-          }}
+          onSave={onSaveClient}
         />
       )}
     </div>
@@ -694,9 +862,19 @@ function VendorOverrideToggle({
 
 // ── Main editor ───────────────────────────────────────────────────────────────
 
-export function VenueGuideEditor({ initial }: { initial: VenueGuideData | null }) {
+export function VenueGuideEditor({
+  initial,
+  missingStarterKeys = [],
+}: {
+  initial: VenueGuideData | null;
+  missingStarterKeys?: FaqStarterMasterKey[];
+}) {
   const [data, setData]     = React.useState<VenueGuideData>(initial ?? emptyVenueGuideData());
   const [saving, setSaving] = React.useState<string | null>(null);
+
+  React.useEffect(() => {
+    if (initial) setData(initial);
+  }, [initial]);
 
   async function save(partial: Parameters<typeof saveGuideAction>[0], field: string) {
     setSaving(field);
@@ -948,6 +1126,7 @@ export function VenueGuideEditor({ initial }: { initial: VenueGuideData | null }
           vendorFaqs={vendorFaqs}
           savingClient={saving === "faqs"}
           savingVendor={saving === "section_overrides"}
+          missingStarterKeys={missingStarterKeys}
           onSaveClient={async items => {
             setData(d => ({ ...d, faqs: items }));
             await save({ faqs: items }, "faqs");

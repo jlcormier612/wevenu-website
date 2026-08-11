@@ -512,8 +512,8 @@ export function FloorPlanWorkspace({
 
       {floorPlans.length === 0 ? (
         <div className="flex flex-col items-center justify-center gap-1 rounded-sm border border-dashed border-border py-12 text-center">
-          <p className="text-sm font-medium text-heading">No floor plans yet</p>
-          <p className="text-xs text-muted-foreground">Apply a template, duplicate another booking&apos;s plan, or start from a blank room.</p>
+          <p className="text-sm font-medium text-heading">No Working Floor Plans yet</p>
+          <p className="text-xs text-muted-foreground">Apply a Floor Plan Template, duplicate another plan on this booking, or start from a blank room.</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">

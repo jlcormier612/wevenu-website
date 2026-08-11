@@ -23,7 +23,13 @@ export function PackageForm({ existing }: { existing?: PackageWithItems }) {
   const router = useRouter();
   const [input, setInput] = React.useState<PackageInput>(
     existing
-      ? { name: existing.name, description: existing.description ?? "", basePrice: String(existing.basePrice), category: existing.category ?? "", isActive: existing.isActive }
+      ? {
+          name: existing.name,
+          description: existing.description ?? "",
+          basePrice: existing.basePrice == null ? "" : String(existing.basePrice),
+          category: existing.category ?? "",
+          isActive: existing.isActive,
+        }
       : EMPTY_PACKAGE_INPUT,
   );
   const [errors, setErrors] = React.useState<PackageErrors>({});
@@ -58,9 +64,14 @@ export function PackageForm({ existing }: { existing?: PackageWithItems }) {
       </Field>
 
       <div className="grid gap-4 sm:grid-cols-2">
-        <Field label="Base price" htmlFor="pp" required error={errors.basePrice}>
+        <Field
+          label="Base price"
+          htmlFor="pp"
+          error={errors.basePrice}
+          hint="Optional until you price this offering. Leave blank rather than entering $0."
+        >
           <Input id="pp" value={input.basePrice} onChange={(e) => set("basePrice", e.target.value)}
-            placeholder="8,500" aria-invalid={errors.basePrice ? true : undefined} />
+            placeholder="Set your price" aria-invalid={errors.basePrice ? true : undefined} />
         </Field>
         <Field label="Category" htmlFor="pc">
           <Select value={input.category} onValueChange={(v) => set("category", v)}>

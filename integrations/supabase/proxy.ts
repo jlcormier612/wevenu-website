@@ -23,6 +23,8 @@ const PUBLIC_PATHS = [
   "/api/messaging/sms-inbound", // Twilio inbound SMS webhook (no user session; verifies its own signature)
   "/api/messaging/sms-status",  // Twilio outbound SMS status callback (no user session; verifies its own signature)
   "/sign",           // public contract signing — /sign/{token}
+  "/brochure",       // D7B — public brochure view — /brochure/{share_token}
+  "/api/brochures/public", // D7B — public brochure PDF — /api/brochures/public/{share_token}/pdf
   "/legal",          // public active legal documents — /legal/{document_type}
   "/terms",          // canonical public Venue Subscription Agreement
   "/privacy",        // canonical public Privacy Policy
@@ -51,6 +53,7 @@ const PUBLIC_PATHS = [
   "/api/facebook/webhook",           // Meta Lead Ads webhook — GET verification handshake + POST delivery, verifies its own signature
   "/api/facebook/sync/process",      // Facebook Lead Ads queue cron (vercel.json) — CRON_SECRET-guarded, not session-guarded
   "/api/facebook/reconcile/process", // Facebook Lead Ads reconciliation poll cron (vercel.json) — CRON_SECRET-guarded, not session-guarded
+  "/api/saved-reports/process",      // D7C — scheduled Saved Report delivery cron (vercel.json) — CRON_SECRET-guarded, not session-guarded
   "/api/webhooks/stripe-connect",    // Stripe Connect webhook — no user session, verifies its own signature (Sprint 4)
   "/api/internal/product-access",    // CRM → product access lock — Bearer PRODUCT_SYNC_API_KEY, not session-guarded
 ];

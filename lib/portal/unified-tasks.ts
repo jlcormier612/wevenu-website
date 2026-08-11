@@ -40,7 +40,9 @@ export type UnifiedTaskTargetSection =
   | "timeline"
   | "guests"
   | "vendors"
-  | "seating";
+  | "seating"
+  | "inventory"
+  | "event-order";
 
 export type UnifiedTask = {
   id: string;
@@ -72,6 +74,23 @@ export type UnifiedTask = {
   // in place. Everything else is derived from the owning system's state
   // (paid, signed, submitted) or navigates to that workspace.
   completableHere: boolean;
+  /**
+   * First venue-configured web link (playbook attachment → context link).
+   * When set on a null-trigger ack task, primary CTA opens this URL;
+   * confirm completes via complete_portal_task.
+   */
+  externalUrl: string | null;
+  /** Optional label from the attachment; fallback open copy uses seed-aware helpers. */
+  externalUrlLabel: string | null;
+  /** Couple may reopen this completed row (manual/ack venue_task only). */
+  undoableHere: boolean;
+  /**
+   * Secondary confirm label when externalUrl is present (e.g. "I've left my review").
+   * Null when there is no outbound + confirm pattern for this row.
+   */
+  confirmLabel: string | null;
+  /** Honest empty-state copy when a null-trigger task has no configured URL. */
+  missingLinkHint: string | null;
 };
 
 type PaymentSchedule = {
@@ -99,6 +118,14 @@ const TRIGGER_WORKSPACE: Record<
   // Impl 7: verified Final Payment — same payments workspace; completableHere false.
   final_payment_obligation_paid: { section: "payments", actionLabel: "Pay now", focus: null },
   questionnaire_submitted: { section: "questionnaire", actionLabel: "Complete form", focus: "form" },
+  // D5A — fires when the venue finalizes the Event Inventory (see
+  // lib/event-inventory/service.ts finalizeEventInventory); read-only for
+  // the couple, so there's nothing to "do" beyond looking.
+  inventory_finalized: { section: "inventory", actionLabel: "Review what's included", focus: null },
+  // D5C — fires when the venue shares the Event Order (see
+  // lib/event-orders/representation.ts shareEventOrderWithClient);
+  // read-only for the couple, same shape as inventory_finalized above.
+  event_order_shared: { section: "event-order", actionLabel: "Review event order", focus: null },
   // Insurance: Documents upload control (Impl 5 — classified + share → trigger).
   document_uploaded_insurance: { section: "documents", actionLabel: "Upload insurance", focus: "upload" },
   document_uploaded: { section: "documents", actionLabel: "Upload", focus: null },
@@ -107,16 +134,39 @@ const TRIGGER_WORKSPACE: Record<
 /**
  * Policy: domain-triggered checklist rows navigate to the owning section;
  * only acknowledgment / non-triggered client_owned rows may Mark complete.
+ *
+ * When a null-trigger task has a venue-configured web link, primary CTA
+ * opens the URL; confirmLabel completes via complete_portal_task.
  */
 export function venueTaskPresentation(t: PortalTask): {
   targetSection: UnifiedTaskTargetSection;
   targetFocus: PortalWorkspaceFocus | null;
   actionLabel: string;
   completableHere: boolean;
+  externalUrl: string | null;
+  externalUrlLabel: string | null;
+  undoableHere: boolean;
+  confirmLabel: string | null;
+  missingLinkHint: string | null;
 } {
   const done = t.status === "complete";
+  const firstLink = (t.links ?? []).find((l) => l.url?.trim());
+  const externalUrl = firstLink?.url.trim() || null;
+  const externalUrlLabel = firstLink?.label?.trim() || null;
+  const undoableHere = canCoupleUndoVenueTask(t);
+
   if (done) {
-    return { targetSection: "tasks", targetFocus: null, actionLabel: "Done", completableHere: false };
+    return {
+      targetSection: "tasks",
+      targetFocus: null,
+      actionLabel: "Done",
+      completableHere: false,
+      externalUrl,
+      externalUrlLabel,
+      undoableHere,
+      confirmLabel: null,
+      missingLinkHint: null,
+    };
   }
 
   const trigger = t.autoCompleteTrigger ?? null;
@@ -128,19 +178,96 @@ export function venueTaskPresentation(t: PortalTask): {
         targetFocus: mapped.focus,
         actionLabel: mapped.actionLabel,
         completableHere: false,
+        externalUrl: null,
+        externalUrlLabel: null,
+        undoableHere: false,
+        confirmLabel: null,
+        missingLinkHint: null,
       };
     }
     // Unknown trigger still owned by the system — never Mark complete.
-    return { targetSection: "tasks", targetFocus: null, actionLabel: "View", completableHere: false };
+    return {
+      targetSection: "tasks",
+      targetFocus: null,
+      actionLabel: "View",
+      completableHere: false,
+      externalUrl: null,
+      externalUrlLabel: null,
+      undoableHere: false,
+      confirmLabel: null,
+      missingLinkHint: null,
+    };
   }
 
   const canManual = Boolean(t.canComplete);
+  const outbound = ackOutboundCopy(t.title, externalUrlLabel);
+
+  if (externalUrl && canManual) {
+    return {
+      targetSection: "tasks",
+      targetFocus: null,
+      actionLabel: outbound.openLabel,
+      completableHere: true,
+      externalUrl,
+      externalUrlLabel,
+      undoableHere: false,
+      confirmLabel: outbound.confirmLabel,
+      missingLinkHint: null,
+    };
+  }
+
+  // No URL: soft Mark complete with honest copy (venue still needs to attach a link).
   return {
     targetSection: "tasks",
     targetFocus: null,
     actionLabel: canManual ? "Mark complete" : "View",
     completableHere: canManual,
+    externalUrl: null,
+    externalUrlLabel: null,
+    undoableHere: false,
+    confirmLabel: null,
+    missingLinkHint: canManual ? outbound.missingLinkHint : null,
   };
+}
+
+/**
+ * Presentation-only open/confirm copy for null-trigger outbound tasks.
+ * Seed titles get natural CTAs; other ack tasks with a link use generic copy.
+ * Never used for completion policy or routing.
+ */
+export function ackOutboundCopy(
+  title: string,
+  linkLabel?: string | null,
+): { openLabel: string; confirmLabel: string; missingLinkHint: string } {
+  const normalized = title.trim().toLowerCase();
+  if (normalized === "leave a review") {
+    return {
+      openLabel: linkLabel?.trim() || "Leave a review",
+      confirmLabel: "I've left my review",
+      missingLinkHint: "Your venue hasn't added a review link yet. You can still mark this complete once you've left feedback.",
+    };
+  }
+  if (normalized === "choose your package") {
+    return {
+      openLabel: linkLabel?.trim() || "Choose your package",
+      confirmLabel: "I've chosen my package",
+      missingLinkHint: "Your venue hasn't added a package link yet. You can still mark this complete once you've chosen.",
+    };
+  }
+  return {
+    openLabel: linkLabel?.trim() || "Open link",
+    confirmLabel: "Mark complete",
+    missingLinkHint: "Your venue hasn't attached a link for this yet. You can still mark it complete when you're done.",
+  };
+}
+
+/** Pure policy helper — couple undo only when API says canUndo and trigger is null. */
+export function canCoupleUndoVenueTask(t: Pick<PortalTask, "canUndo" | "autoCompleteTrigger" | "status">): boolean {
+  return (
+    t.status === "complete"
+    && Boolean(t.canUndo)
+    && (t.autoCompleteTrigger ?? null) === null
+  );
 }
 
 function todayIso(): string {
@@ -250,6 +377,11 @@ export function buildUnifiedTaskList(input: {
       targetFocus: presentation.targetFocus,
       actionLabel: presentation.actionLabel,
       completableHere: presentation.completableHere,
+      externalUrl: presentation.externalUrl,
+      externalUrlLabel: presentation.externalUrlLabel,
+      undoableHere: presentation.undoableHere,
+      confirmLabel: presentation.confirmLabel,
+      missingLinkHint: presentation.missingLinkHint,
     });
   }
 
@@ -264,6 +396,7 @@ export function buildUnifiedTaskList(input: {
       targetFocus: null,
       actionLabel: r.requestType === "approval" ? "Review & respond" : r.requestType === "upload" ? "Upload" : "Respond",
       completableHere: false,
+      externalUrl: null, externalUrlLabel: null, undoableHere: false, confirmLabel: null, missingLinkHint: null,
     });
   }
 
@@ -274,6 +407,7 @@ export function buildUnifiedTaskList(input: {
       dueDate: null, completed: false, isOverdue: false, isRequired: false, ownership: "venue",
       targetSection: "documents", targetFocus: "sign", actionLabel: "Review & sign",
       completableHere: false,
+      externalUrl: null, externalUrlLabel: null, undoableHere: false, confirmLabel: null, missingLinkHint: null,
     });
   }
 
@@ -284,6 +418,7 @@ export function buildUnifiedTaskList(input: {
       dueDate: li.dueDate, completed: false, isOverdue: overdue, isRequired: false, ownership: "shared",
       targetSection: "payments", targetFocus: null, actionLabel: "Pay now",
       completableHere: false,
+      externalUrl: null, externalUrlLabel: null, undoableHere: false, confirmLabel: null, missingLinkHint: null,
     });
   }
 
@@ -294,6 +429,7 @@ export function buildUnifiedTaskList(input: {
       dueDate: null, completed: false, isOverdue: false, isRequired: false, ownership: "venue",
       targetSection: "questionnaire", targetFocus: "form", actionLabel: "Complete form",
       completableHere: false,
+      externalUrl: null, externalUrlLabel: null, undoableHere: false, confirmLabel: null, missingLinkHint: null,
     });
   }
 
@@ -304,6 +440,7 @@ export function buildUnifiedTaskList(input: {
       dueDate: null, completed: false, isOverdue: false, isRequired: false, ownership: "shared",
       targetSection: "timeline", targetFocus: "submit", actionLabel: "Review & submit",
       completableHere: false,
+      externalUrl: null, externalUrlLabel: null, undoableHere: false, confirmLabel: null, missingLinkHint: null,
     });
   }
 

@@ -15,6 +15,7 @@ export type ContractTemplate = {
   // Planning/Timeline/Floor Plan Templates (Template Platform — Release
   // Readiness parity pass).
   isArchived: boolean;
+  sourceMasterKey: string | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -39,6 +40,7 @@ export type Contract = {
   amendsContractId: string | null;
   // Embedded from join
   clientName: string | null;
+  clientEmail: string | null;
   eventDate: string | null;
   // Venue Brand Experience Phase 1 — only populated by getContractByToken
   // (the public sign page's own read); every other Contract-producing

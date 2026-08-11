@@ -38,6 +38,11 @@ import { normalizeVendorEventDocuments } from "@/lib/document-workspace/vendor-n
 import { VendorHandbookView } from "@/components/vendor-app/vendor-handbook-view";
 import { formatEventRelativeDue, offsetDate } from "@/lib/playbooks/due-dates";
 import { partitionByCompletion } from "@/lib/tasks/group-by-completion";
+import {
+  vendorConfirmNeedsCoupleAck,
+  vendorConfirmReadyToConfirm,
+} from "@/lib/vendor-tasks/vendor-confirm-state";
+import { VendorNeedsChangesControl } from "@/components/vendor-app/vendor-needs-changes-control";
 import { eventTypeLabel } from "@/lib/leads/constants";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -80,11 +85,40 @@ function activityActorLabel(actor: VendorActivityItem["actor"]): string {
   return "Venue";
 }
 
-const COUPLE_SHARE_OPTIONS: { value: VendorTaskCoupleVisibility; label: string }[] = [
+const COUPLE_SHARE_OPTIONS: { value: string; label: string }[] = [
   { value: "private", label: "Private" },
   { value: "visible", label: "Visible to couple" },
-  { value: "owned", label: "Couple can complete" },
+  { value: "owned", label: "Couple can mark complete" },
+  { value: "owned_confirm", label: "Ask couple — I’ll confirm when done" },
 ];
+
+type CoupleShareSelectValue = "private" | "visible" | "owned" | "owned_confirm";
+
+function shareSelectValue(t: {
+  coupleVisibility: VendorTaskCoupleVisibility;
+  completionAuthority?: string;
+}): CoupleShareSelectValue {
+  if (
+    t.coupleVisibility === "owned"
+    && t.completionAuthority === "vendor_confirm"
+  ) {
+    return "owned_confirm";
+  }
+  return t.coupleVisibility;
+}
+
+function parseShareSelect(value: string): {
+  coupleVisibility: VendorTaskCoupleVisibility;
+  requireVendorConfirmation: boolean;
+} {
+  if (value === "owned_confirm") {
+    return { coupleVisibility: "owned", requireVendorConfirmation: true };
+  }
+  const coupleVisibility = (
+    value === "visible" || value === "owned" ? value : "private"
+  ) as VendorTaskCoupleVisibility;
+  return { coupleVisibility, requireVendorConfirmation: false };
+}
 
 const SHARE_LOCK_NOTICE =
   "Double-check before sharing — clients can\u2019t edit or delete these tasks from their portal after they\u2019re shared.";
@@ -754,8 +788,8 @@ function TasksTab({
   const [expandedPackIds, setExpandedPackIds] = React.useState<Set<string>>(new Set());
   const [packageFilter, setPackageFilter] = React.useState<string>("__all__");
   const [applying, setApplying] = React.useState(false);
-  const [applyShare, setApplyShare] = React.useState<VendorTaskCoupleVisibility>("private");
-  const [newShare, setNewShare] = React.useState<VendorTaskCoupleVisibility>("private");
+  const [applyShare, setApplyShare] = React.useState<CoupleShareSelectValue>("private");
+  const [newShare, setNewShare] = React.useState<CoupleShareSelectValue>("private");
   const [newActionType, setNewActionType] = React.useState<"" | "share_timeline">("");
   const focusRef = React.useRef<HTMLDivElement | null>(null);
   const [activeFocusId, setActiveFocusId] = React.useState<string | null>(focusTaskId);
@@ -845,12 +879,14 @@ function TasksTab({
   function handleUncompletePersonal(taskId: string) {
     startTransition(async () => { await uncompletePersonalTaskAction(taskId, detail.assignmentId); });
   }
-  function handleShareChange(taskId: string, coupleVisibility: VendorTaskCoupleVisibility) {
+  function handleShareChange(taskId: string, shareValue: string) {
     startTransition(async () => {
+      const { coupleVisibility, requireVendorConfirmation } = parseShareSelect(shareValue);
       const result = await updatePersonalTaskCoupleVisibilityAction(
         taskId,
         detail.assignmentId,
         coupleVisibility,
+        { requireVendorConfirmation },
       );
       if (!result.ok) {
         toast.error(result.message ?? "Could not update sharing.");
@@ -866,6 +902,7 @@ function TasksTab({
     e.preventDefault();
     if (!newTitle.trim()) return;
     startTransition(async () => {
+      const { coupleVisibility, requireVendorConfirmation } = parseShareSelect(newShare);
       const result = await createPersonalTaskAction(detail.assignmentId, {
         title:             newTitle.trim(),
         dueDate:           "",
@@ -873,10 +910,14 @@ function TasksTab({
         vendorInquiryId:   "",
         eventId:           detail.eventId,
         notes:             "",
-        coupleVisibility:  newShare,
-        actionType:        newShare !== "private" && newActionType === "share_timeline"
-          ? "share_timeline"
-          : null,
+        coupleVisibility,
+        actionType:
+          !requireVendorConfirmation
+          && coupleVisibility !== "private"
+          && newActionType === "share_timeline"
+            ? "share_timeline"
+            : null,
+        requireVendorConfirmation,
       });
       if (!result.ok) {
         toast.error("message" in result ? (result.message ?? "Could not save task.") : "Could not save task.");
@@ -897,7 +938,8 @@ function TasksTab({
       const result = await applyVendorTaskTemplatesAction(
         detail.assignmentId,
         [...selectedItemIds],
-        applyShare,
+        applyShare === "owned_confirm" ? "owned" : applyShare === "visible" || applyShare === "owned" ? applyShare : "private",
+        { requireVendorConfirmation: applyShare === "owned_confirm" },
       );
       if (!result.ok) {
         toast.error(result.message ?? "Could not apply Task Templates.");
@@ -973,6 +1015,13 @@ function TasksTab({
 
   function renderPersonalTask(t: (typeof detail.personalTasks)[number]) {
     const isFocused = activeFocusId === t.id;
+    const awaitingCoupleAck = vendorConfirmNeedsCoupleAck(t);
+    const readyToConfirm = vendorConfirmReadyToConfirm(t);
+    const coupleSaidDone =
+      t.completionAuthority === "vendor_confirm"
+      && t.coupleVisibility === "owned"
+      && t.status === "pending"
+      && Boolean(t.coupleAcknowledgedAt);
     return (
       <div
         key={t.id}
@@ -983,13 +1032,16 @@ function TasksTab({
         <div className="flex min-w-0 flex-1 items-start gap-3">
           <button
             type="button"
-            onClick={() =>
-              t.status === "pending"
-                ? handleCompletePersonal(t.id)
-                : handleUncompletePersonal(t.id)
-            }
-            disabled={pending}
-            className="mt-0.5 shrink-0 text-muted-foreground hover:text-primary transition-colors"
+            onClick={() => {
+              if (awaitingCoupleAck) {
+                toast.message("Wait until the couple says this is done before confirming.");
+                return;
+              }
+              if (t.status === "pending") handleCompletePersonal(t.id);
+              else handleUncompletePersonal(t.id);
+            }}
+            disabled={pending || awaitingCoupleAck}
+            className="mt-0.5 shrink-0 text-muted-foreground hover:text-primary transition-colors disabled:opacity-40"
           >
             {t.status === "complete"
               ? <CheckSquare className="h-4 w-4 text-success" />
@@ -1023,8 +1075,24 @@ function TasksTab({
                 ))}
               </div>
             )}
-            {t.completedBy === "couple" && t.status === "complete" && (
+            {coupleSaidDone && (
+              <p className="mt-1 text-[11px] font-medium text-foreground">
+                Couple says this is done — confirm when you&apos;ve reviewed it
+              </p>
+            )}
+            {awaitingCoupleAck && (
+              <p className="mt-1 text-[11px] text-muted-foreground">
+                Waiting for the couple to say this is done
+              </p>
+            )}
+            {/* vendor_confirm never attributes completion to the couple */}
+            {t.completedBy === "couple"
+              && t.status === "complete"
+              && t.completionAuthority !== "vendor_confirm" && (
               <p className="mt-1 text-[11px] text-muted-foreground">Completed by couple</p>
+            )}
+            {t.completedBy === "vendor" && t.status === "complete" && (
+              <p className="mt-1 text-[11px] text-muted-foreground">Completed by you</p>
             )}
           </div>
         </div>
@@ -1039,17 +1107,36 @@ function TasksTab({
               }) || t.dueDate}
             </p>
           )}
+          {readyToConfirm && (
+            <div className="flex flex-col items-stretch gap-1.5 sm:items-end">
+              <Button
+                type="button"
+                size="sm"
+                className="h-8"
+                disabled={pending}
+                onClick={() => handleCompletePersonal(t.id)}
+              >
+                Confirm
+              </Button>
+              <VendorNeedsChangesControl
+                taskId={t.id}
+                assignmentId={detail.assignmentId}
+                pending={pending}
+                onReturned={() => router.refresh()}
+              />
+            </div>
+          )}
           <div className="space-y-1">
             <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
               Share with couple
             </p>
             <Select
-              value={t.coupleVisibility}
-              onValueChange={(v) => handleShareChange(t.id, v as VendorTaskCoupleVisibility)}
+              value={shareSelectValue(t)}
+              onValueChange={(v) => handleShareChange(t.id, v)}
               items={COUPLE_SHARE_OPTIONS}
               disabled={pending}
             >
-              <SelectTrigger className="h-8 w-full min-w-[10.5rem] text-xs sm:w-44">
+              <SelectTrigger className="h-8 w-full min-w-[10.5rem] text-xs sm:w-52">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -1144,13 +1231,13 @@ function TasksTab({
           <Select
             value={newShare}
             onValueChange={(v) => {
-              const next = v as VendorTaskCoupleVisibility;
+              const next = v as CoupleShareSelectValue;
               setNewShare(next);
-              if (next === "private") setNewActionType("");
+              if (next === "private" || next === "owned_confirm") setNewActionType("");
             }}
             items={COUPLE_SHARE_OPTIONS}
           >
-            <SelectTrigger className="w-full sm:w-44">
+            <SelectTrigger className="w-full sm:w-56">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -1159,21 +1246,27 @@ function TasksTab({
               ))}
             </SelectContent>
           </Select>
-          {newShare !== "private" && (
+          {(newShare === "visible" || newShare === "owned") && (
             <Select
               value={newActionType || "__none__"}
               onValueChange={(v) => setNewActionType(v === "share_timeline" ? "share_timeline" : "")}
               items={[
-                { value: "__none__", label: "No couple action" },
-                { value: "share_timeline", label: "Share timeline" },
+                { value: "__none__", label: newShare === "owned" ? "Couple marks complete" : "No couple action" },
+                ...(newShare === "owned"
+                  ? [{ value: "share_timeline", label: "Share timeline" }]
+                  : []),
               ]}
             >
               <SelectTrigger className="w-full sm:w-44">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="__none__">No couple action</SelectItem>
-                <SelectItem value="share_timeline">Share timeline</SelectItem>
+                <SelectItem value="__none__">
+                  {newShare === "owned" ? "Couple marks complete" : "No couple action"}
+                </SelectItem>
+                {newShare === "owned" && (
+                  <SelectItem value="share_timeline">Share timeline</SelectItem>
+                )}
               </SelectContent>
             </Select>
           )}
@@ -1286,7 +1379,7 @@ function TasksTab({
               <p className="text-xs font-medium text-muted-foreground">Share with couple</p>
               <Select
                 value={applyShare}
-                onValueChange={(v) => setApplyShare(v as VendorTaskCoupleVisibility)}
+                onValueChange={(v) => setApplyShare(v as CoupleShareSelectValue)}
                 items={COUPLE_SHARE_OPTIONS}
               >
                 <SelectTrigger className="w-full">

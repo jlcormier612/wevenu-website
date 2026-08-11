@@ -5,6 +5,7 @@ import { ContractDetail } from "@/components/contracts/contract-detail";
 import { getContractDetail } from "@/lib/contracts/service";
 import { isContractFinalized } from "@/lib/contracts/document-integration";
 import { createClient } from "@/integrations/supabase/server";
+import { getCurrentVenue } from "@/lib/venue/service";
 
 type Props = { params: Promise<{ id: string }> };
 
@@ -16,9 +17,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function ContractDetailPage({ params }: Props) {
   const { id } = await params;
-  const contract = await getContractDetail(id);
+  const [contract, venue] = await Promise.all([getContractDetail(id), getCurrentVenue()]);
   if (!contract) notFound();
   const supabase = await createClient();
   const finalized = await isContractFinalized(supabase, id);
-  return <ContractDetail contract={contract} finalized={finalized} />;
+  return <ContractDetail contract={contract} finalized={finalized} venueName={venue?.name ?? "Your venue"} />;
 }

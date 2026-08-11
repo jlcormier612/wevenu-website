@@ -21,7 +21,7 @@ import { Button } from "@/components/ui/button";
  * a lock this control has never actually enforced (BA2/BA3 finding). The
  * behavior is unchanged; only the words now match it — "Ready" is a
  * checkpoint a coordinator can toggle any time, not a state that needs
- * "reopening."
+ * "reopening." Customer language for clearing Ready: "Make Changes".
  */
 export function FloorPlanFinalizeControl({
   planId, eventId, finalizedAt,
@@ -36,7 +36,7 @@ export function FloorPlanFinalizeControl({
     startTransition(async () => {
       const result = await setFloorPlanFinalizedAction(planId, eventId, !isFinalized);
       if (!result.ok) { toast.error(result.message ?? "Could not update this floor plan."); return; }
-      toast.success(isFinalized ? "No longer marked ready." : "Marked as ready.");
+      toast.success(isFinalized ? "Ready cleared — you can keep editing." : "Marked as ready.");
       router.refresh();
     });
   }
@@ -45,7 +45,7 @@ export function FloorPlanFinalizeControl({
     <div className="flex items-center gap-2">
       {isFinalized && <Badge variant="accent">Ready</Badge>}
       <Button type="button" variant="outline" size="sm" disabled={pending} onClick={handleToggle}>
-        {pending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : isFinalized ? "Unmark" : "Mark as Ready"}
+        {pending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : isFinalized ? "Make Changes" : "Mark as Ready"}
       </Button>
     </div>
   );

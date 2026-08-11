@@ -1,4 +1,4 @@
-export type CoupleNotificationType = "new_message";
+export type CoupleNotificationType = "new_message" | "task_needs_changes";
 
 export type CoupleNotification = {
   id: string;

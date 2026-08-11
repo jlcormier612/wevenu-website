@@ -95,7 +95,19 @@ export function paymentPlanReviewStatus(
   return "needs_review";
 }
 
-/** Schedule template presets for quick setup. */
+export const OBLIGATION_KIND_OPTIONS: { value: PaymentObligationKind; label: string }[] = [
+  { value: "deposit", label: "Initial Payment" },
+  { value: "installment", label: "Planning Payment" },
+  { value: "final", label: "Final Payment" },
+  { value: "other", label: "Other" },
+];
+
+export function obligationKindLabel(kind: PaymentObligationKind | null | undefined): string {
+  if (!kind) return "";
+  return OBLIGATION_KIND_OPTIONS.find((o) => o.value === kind)?.label ?? kind;
+}
+
+/** Schedule template presets for quick setup — structures only; amounts derive from the linked invoice. */
 export type SchedulePreset = {
   id: string;
   label: string;
@@ -109,51 +121,56 @@ export type SchedulePreset = {
   }>;
 };
 
+/**
+ * Hello to Cheers payment-plan starters + legacy certified splits.
+ * Percentages: keep existing thirds / 50-50 / 30-70 math; wedding_four uses
+ * equal quarters as structure (not a venue deposit policy).
+ * Do not invent cancellation fees, late fees, or legal payment language here.
+ */
 export const SCHEDULE_PRESETS: SchedulePreset[] = [
   {
-    id: "fifty_fifty",
-    label: "50% Deposit + 50% Final",
-    description: "Two equal payments",
-    items: [
-      { label: "Deposit (50%)", pctOfTotal: 50, offsetDaysFromEvent: -90, obligationKind: "deposit" },
-      { label: "Final Payment (50%)", pctOfTotal: 50, offsetDaysFromEvent: -30, obligationKind: "final" },
-    ],
-  },
-  {
     id: "thirds",
-    label: "Three Equal Installments",
-    description: "Three payments of ≈ 33%",
+    label: "Standard Wedding — 3 Payments",
+    description: "Initial payment when booked, a planning payment, and final payment before the event.",
     items: [
-      { label: "First Installment", pctOfTotal: 33.33, offsetDaysFromEvent: -180, obligationKind: "installment" },
-      { label: "Second Installment", pctOfTotal: 33.33, offsetDaysFromEvent: -90, obligationKind: "installment" },
+      { label: "Initial Payment", pctOfTotal: 33.33, offsetDaysFromEvent: -180, obligationKind: "deposit" },
+      { label: "Planning Payment", pctOfTotal: 33.33, offsetDaysFromEvent: -90, obligationKind: "installment" },
       { label: "Final Payment", pctOfTotal: 33.34, offsetDaysFromEvent: -30, obligationKind: "final" },
     ],
   },
   {
-    id: "deposit_30_70",
-    label: "30% Deposit + 70% Final",
-    description: "Smaller deposit, larger final",
+    id: "wedding_four",
+    label: "Standard Wedding — 4 Payments",
+    description: "Initial payment when booked, two planning payments, and final payment before the event.",
     items: [
-      { label: "Deposit (30%)", pctOfTotal: 30, offsetDaysFromEvent: -90, obligationKind: "deposit" },
-      { label: "Final Payment (70%)", pctOfTotal: 70, offsetDaysFromEvent: -30, obligationKind: "final" },
+      { label: "Initial Payment", pctOfTotal: 25, offsetDaysFromEvent: -180, obligationKind: "deposit" },
+      { label: "Planning Payment 1", pctOfTotal: 25, offsetDaysFromEvent: -120, obligationKind: "installment" },
+      { label: "Planning Payment 2", pctOfTotal: 25, offsetDaysFromEvent: -60, obligationKind: "installment" },
+      { label: "Final Payment", pctOfTotal: 25, offsetDaysFromEvent: -30, obligationKind: "final" },
     ],
   },
   {
     id: "custom",
-    label: "Custom",
-    description: "Start with a blank schedule",
+    label: "Custom Payment Schedule",
+    description: "Build a payment schedule that matches the way your venue does business.",
     items: [],
   },
+  {
+    id: "fifty_fifty",
+    label: "50% Initial + 50% Final",
+    description: "Two equal payments (certified split).",
+    items: [
+      { label: "Initial Payment (50%)", pctOfTotal: 50, offsetDaysFromEvent: -90, obligationKind: "deposit" },
+      { label: "Final Payment (50%)", pctOfTotal: 50, offsetDaysFromEvent: -30, obligationKind: "final" },
+    ],
+  },
+  {
+    id: "deposit_30_70",
+    label: "30% Initial + 70% Final",
+    description: "Smaller initial payment, larger final (certified split).",
+    items: [
+      { label: "Initial Payment (30%)", pctOfTotal: 30, offsetDaysFromEvent: -90, obligationKind: "deposit" },
+      { label: "Final Payment (70%)", pctOfTotal: 70, offsetDaysFromEvent: -30, obligationKind: "final" },
+    ],
+  },
 ];
-
-export const OBLIGATION_KIND_OPTIONS: { value: PaymentObligationKind; label: string }[] = [
-  { value: "deposit", label: "Deposit" },
-  { value: "installment", label: "Installment" },
-  { value: "final", label: "Final Payment" },
-  { value: "other", label: "Other" },
-];
-
-export function obligationKindLabel(kind: PaymentObligationKind | null | undefined): string {
-  if (!kind) return "";
-  return OBLIGATION_KIND_OPTIONS.find((o) => o.value === kind)?.label ?? kind;
-}

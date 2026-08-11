@@ -73,6 +73,17 @@ export type GuideFaqEntry = {
   audience?: GuideAudience;
   /** Legacy dual-answer field; prefer section_overrides.faqs.vendors. */
   answer_for_vendors?: string | null;
+  /**
+   * Hello to Cheers starter master key (FAQ-01…FAQ-12) when this entry was
+   * provisioned from a protected master. Venue-authored FAQs omit this.
+   */
+  source_master_key?: string | null;
+  /**
+   * Outbound visibility. `false` = Venue Guide editor only (not portal /
+   * brochure / handbook / concierge). Missing/`true` = live. Starters seed
+   * unpublished so fresh venues do not auto-publish unreviewed copy.
+   */
+  published?: boolean;
 };
 
 const AUDIENCE_VALUES = new Set<GuideAudience>(["clients", "vendors", "both"]);
@@ -177,6 +188,11 @@ export function isFaqVisibleTo(
   return visibility === asking;
 }
 
+/** Outbound surfaces only — editor retains unpublished starters for review. */
+export function isFaqPublished(faq: GuideFaqEntry): boolean {
+  return faq.published !== false;
+}
+
 export function resolveFaqAnswer(
   faq: GuideFaqEntry,
   asking: AskingAudience,
@@ -217,7 +233,13 @@ export function resolveFaqsForAudience(
 
   if (!Array.isArray(faqs)) return [];
   return faqs
-    .filter((f) => f && typeof f.question === "string" && isFaqVisibleTo(f, asking))
+    .filter(
+      (f) =>
+        f &&
+        typeof f.question === "string" &&
+        isFaqPublished(f) &&
+        isFaqVisibleTo(f, asking),
+    )
     .map((f) => ({
       question: f.question,
       answer: resolveFaqAnswer(f, asking),

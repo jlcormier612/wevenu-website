@@ -149,11 +149,24 @@ export default async function DashboardPage({ searchParams }: Props) {
       <section>
         <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-muted-foreground">Business Snapshot</p>
         <StatTileGrid className="sm:grid-cols-3 lg:grid-cols-6">
-          <StatTile layout="label-top" label="Venue Health" value={venueHealth ? `${venueHealth.score}` : "—"} className="rounded-xl border bg-card p-3" href="/analytics" />
-          <StatTile layout="label-top" label="Bookings" value={bookingsThisMonth.length} className="rounded-xl border bg-card p-3" href="/clients" />
-          <StatTile layout="label-top" label="Revenue" value={grossRevenue != null ? formatCurrencyShort(grossRevenue) : "—"} className="rounded-xl border bg-card p-3" href="/analytics" />
+          {/* Work Package R2 — this tile previously linked to /analytics, which
+              never actually rendered Venue Health anywhere (confirmed by
+              reading every /analytics card — that page showed Client/Relationship
+              Health, a different canonical metric). Left unlinked rather than
+              pointed at a redirect that lands somewhere equally unrelated. */}
+          {/* Work Package D8 — Bookings is scoped "this month" while Revenue
+              sat right next to it with no window at all (all-time under the
+              hood), so a venue owner could easily misread them as covering
+              the same period. Each figure's own time scope is a deliberate,
+              already-certified choice (a balance has no period to begin
+              with; all-time revenue is the more useful permanent snapshot
+              vs. a resetting monthly figure) — the fix is making the scope
+              visible via `sub`, not changing which window any metric uses. */}
+          <StatTile layout="label-top" label="Venue Health" value={venueHealth ? `${venueHealth.score}` : "—"} className="rounded-xl border bg-card p-3" />
+          <StatTile layout="label-top" label="Bookings" sub="This month" value={bookingsThisMonth.length} className="rounded-xl border bg-card p-3" href="/reporting/bookings" />
+          <StatTile layout="label-top" label="Revenue" sub="All time" value={grossRevenue != null ? formatCurrencyShort(grossRevenue) : "—"} className="rounded-xl border bg-card p-3" href="/reporting/revenue" />
           <StatTile layout="label-top" label="Pipeline" value={data.totalLeads} className="rounded-xl border bg-card p-3" href="/leads" />
-          <StatTile layout="label-top" label="Outstanding" value={outstandingBalance != null ? formatCurrencyShort(outstandingBalance) : "—"} severity={outstandingBalance && outstandingBalance > 0 ? "warning" : undefined} className="rounded-xl border bg-card p-3" href="/payments" />
+          <StatTile layout="label-top" label="Outstanding" sub="Current balance" value={outstandingBalance != null ? formatCurrencyShort(outstandingBalance) : "—"} severity={outstandingBalance && outstandingBalance > 0 ? "warning" : undefined} className="rounded-xl border bg-card p-3" href="/payments" />
           <StatTile layout="label-top" label="Upcoming Events" value={data.upcomingEvents.length} className="rounded-xl border bg-card p-3" href="/events" />
         </StatTileGrid>
       </section>
@@ -205,10 +218,10 @@ export default async function DashboardPage({ searchParams }: Props) {
       {/* Reports — navigation only, no report content on the Dashboard. */}
       <section>
         <Link
-          href="/analytics"
+          href="/reporting"
           className="flex items-center justify-between rounded-xl border border-border bg-card px-4 py-3 text-sm hover:bg-muted/40 transition-colors"
         >
-          <span className="font-medium text-foreground">View full Reports &amp; Analytics</span>
+          <span className="font-medium text-foreground">View full Reporting</span>
           <ChevronRight className="h-4 w-4 text-muted-foreground" />
         </Link>
       </section>

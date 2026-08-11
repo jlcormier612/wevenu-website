@@ -26,6 +26,7 @@ import {
   finalizeContractAction,
   getContractPdfUrlAction,
   reopenContractForEditingAction,
+  resendContractAction,
   sendContractAction,
   updateContractContentAction,
 } from "@/app/(app)/contracts/actions";
@@ -33,6 +34,7 @@ import { ContractStatusBadge } from "@/components/contracts/contract-status-badg
 import { BusinessAssetActionRow, BusinessAssetHeader } from "@/components/business-assets/asset-header";
 import type { WaitingOn } from "@/components/business-assets/waiting-state";
 import { ActivityTimeline } from "@/components/leads/activity-timeline";
+import { ShareDialog } from "@/components/sharing/share-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -41,6 +43,7 @@ import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
 import { formatContractDate } from "@/lib/contracts/constants";
 import type { ContractStatus, ContractWithDetails } from "@/lib/contracts/types";
+import { buildMergeData, mergeContent } from "@/lib/message-templates/merge";
 
 // Whose turn — draft is on the venue to send, sent is on the client to
 // sign, signed is done. Same "whose turn" question Questionnaires and
@@ -49,12 +52,11 @@ const CONTRACT_WAITING_ON: Record<ContractStatus, WaitingOn> = {
   draft: "venue", sent: "client", signed: "completed", cancelled: "none", expired: "none",
 };
 
-export function ContractDetail({ contract, finalized }: { contract: ContractWithDetails; finalized: boolean }) {
+export function ContractDetail({ contract, finalized, venueName }: { contract: ContractWithDetails; finalized: boolean; venueName: string }) {
   const router = useRouter();
   const [editing, setEditing] = React.useState(false);
   const [editTitle, setEditTitle] = React.useState(contract.title);
   const [editContent, setEditContent] = React.useState(contract.content);
-  const [sendPending, startSend] = React.useTransition();
   const [savePending, startSave] = React.useTransition();
   const [cancelPending, startCancel] = React.useTransition();
   const [deletePending, startDelete] = React.useTransition();
@@ -68,13 +70,16 @@ export function ContractDetail({ contract, finalized }: { contract: ContractWith
     ? `${window.location.origin}/sign/${contract.signToken}`
     : `/sign/${contract.signToken}`;
 
-  function handleSend() {
-    startSend(async () => {
-      const result = await sendContractAction(contract.id);
-      if (result.ok) { toast.success("Contract sent. Share the signing link with your client."); router.refresh(); }
-      else toast.error(result.message ?? "Could not send contract.");
-    });
-  }
+  // Work Package D5E — the unified Share experience. Recipient/explanation/
+  // default message are the only contract-specific inputs; the actual send
+  // still goes through sendContract()/resendContract() exactly as before —
+  // ShareDialog is presentation only.
+  const shareRecipient = { name: contract.clientName ?? "the client", contact: contract.clientEmail, relationshipLabel: "Client" };
+  const shareMergeData = buildMergeData({ venueName, clientName: contract.clientName ?? "", coordinatorName: venueName, eventDate: contract.eventDate });
+  const shareDefaultMessage = mergeContent(
+    `{{venue_name}} has sent you "${contract.title}" to review and sign.`,
+    shareMergeData,
+  );
 
   function handleSaveEdit() {
     startSave(async () => {
@@ -194,9 +199,27 @@ export function ContractDetail({ contract, finalized }: { contract: ContractWith
         relationship={contract.clientName ? { name: contract.clientName, href: `/clients/${contract.clientId}` } : null}
         primaryAction={
           contract.status === "draft" ? (
-            <Button size="sm" onClick={handleSend} disabled={sendPending}>
-              {sendPending ? <><Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />Sending…</> : <><Send className="mr-1 h-3.5 w-3.5" />Send for Signing</>}
-            </Button>
+            <ShareDialog
+              trigger={<Button size="sm"><Send className="mr-1 h-3.5 w-3.5" />Send for Signing</Button>}
+              title="Share Contract"
+              recipient={shareRecipient}
+              whatHappensNext="They'll review and sign the contract."
+              defaultMessage={shareDefaultMessage}
+              sendLabel="Send for Signing"
+              onSend={async (message) => sendContractAction(contract.id, message)}
+              onSent={() => router.refresh()}
+            />
+          ) : contract.status === "sent" ? (
+            <ShareDialog
+              trigger={<Button size="sm" variant="outline"><RotateCcw className="mr-1 h-3.5 w-3.5" />Resend</Button>}
+              title="Resend Contract"
+              recipient={shareRecipient}
+              whatHappensNext="They'll get another copy of the same signing link — nothing about the contract changes."
+              defaultMessage={shareDefaultMessage}
+              sendLabel="Resend"
+              onSend={async (message) => resendContractAction(contract.id, message)}
+              onSent={() => router.refresh()}
+            />
           ) : contract.status === "signed" && !finalized ? (
             <Button size="sm" onClick={handleFinalize} disabled={finalizePending}>
               {finalizePending ? <><Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />Finalizing…</> : <><Lock className="mr-1 h-3.5 w-3.5" />Finalize Contract</>}

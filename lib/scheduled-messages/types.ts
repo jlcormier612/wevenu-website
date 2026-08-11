@@ -20,6 +20,11 @@ export type ScheduledMessage = {
   errorMessage: string | null;
   createdAt: string;
   sequenceEnrollmentId: string | null; // set when this row was materialized by an Automated Series (Phase 3)
+  /** Optional pin — processor resolves live tour at send time. */
+  mergeTourAppointmentId: string | null;
+  /** Optional pin — processor resolves live payment line at send time. */
+  mergePaymentLineItemId: string | null;
+  mergeTaskName: string | null;
 };
 
 export type ScheduledMessageInput = {
@@ -29,6 +34,9 @@ export type ScheduledMessageInput = {
   emailSubject: string;
   body: string;
   scheduledFor: string; // ISO timestamp
+  mergeTourAppointmentId?: string | null;
+  mergePaymentLineItemId?: string | null;
+  mergeTaskName?: string | null;
 };
 
 export type ScheduledMessageErrors = Record<string, string>;

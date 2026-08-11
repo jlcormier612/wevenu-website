@@ -2,10 +2,23 @@ import { createClient } from "@/integrations/supabase/server";
 import { createAdminClient } from "@/integrations/supabase/admin";
 import { isSupabaseConfigured } from "@/lib/env";
 import * as repo from "@/lib/packages/repository";
-import type { CreatePackageResult, PackageActionResult, PackageInput, PackageItemInput, PackageWithItems } from "@/lib/packages/types";
+import { parsePackagePriceInput } from "@/lib/packages/constants";
+import type { CreatePackageResult, PackageActionResult, PackageErrors, PackageInput, PackageItemInput, PackageWithItems } from "@/lib/packages/types";
 import type { Package } from "@/lib/packages/types";
 import { getCurrentVenue } from "@/lib/venue/service";
 import { requireAdminUser } from "@/lib/hq/crm-service";
+
+function validatePackageInput(input: PackageInput): PackageErrors | null {
+  if (!input.name.trim()) return { name: "Package name is required." };
+  const price = parsePackagePriceInput(input.basePrice);
+  if (typeof price === "number" && Number.isNaN(price)) {
+    return { basePrice: "Enter a valid price, or leave blank until you set one." };
+  }
+  if (typeof price === "number" && price < 0) {
+    return { basePrice: "Price cannot be negative." };
+  }
+  return null;
+}
 
 async function withVenue<T>(fn: (c: Awaited<ReturnType<typeof createClient>>, venueId: string) => Promise<T>): Promise<T | PackageActionResult> {
   if (!isSupabaseConfigured) return { ok: false, message: "Backend not configured." };
@@ -22,6 +35,13 @@ export async function getPackages(activeOnly = false): Promise<Package[]> {
   const venue = await getCurrentVenue();
   if (!venue) return [];
   return repo.getPackages(await createClient(), venue.id, activeOnly);
+}
+
+export async function getPackagesWithItems(activeOnly = false): Promise<PackageWithItems[]> {
+  if (!isSupabaseConfigured) return [];
+  const venue = await getCurrentVenue();
+  if (!venue) return [];
+  return repo.getPackagesWithItems(await createClient(), venue.id, activeOnly);
 }
 
 export async function getPackage(id: string): Promise<PackageWithItems | null> {
@@ -41,10 +61,7 @@ export async function addPackageItem(packageId: string, input: PackageItemInput)
 }
 
 export async function removePackageItem(itemId: string): Promise<PackageActionResult> {
-  const result = await withVenue(async (c, venueId) => {
-    await repo.deletePackageItem(c, venueId, itemId);
-    return { ok: true } as PackageActionResult;
-  });
+  const result = await withVenue(async (c, venueId) => repo.deletePackageItem(c, venueId, itemId));
   return result as PackageActionResult;
 }
 
@@ -66,7 +83,8 @@ export async function findActiveDuplicatePackageForVenue(venueId: string, name: 
 }
 
 export async function createPackage(input: PackageInput): Promise<CreatePackageResult> {
-  if (!input.name.trim()) return { ok: false, errors: { name: "Package name is required." } };
+  const errors = validatePackageInput(input);
+  if (errors) return { ok: false, errors };
   const result = await withVenue(async (c, venueId) => {
     const packageId = await repo.insertPackage(c, venueId, input);
     return { ok: true, packageId } as CreatePackageResult;
@@ -78,13 +96,15 @@ export async function createPackage(input: PackageInput): Promise<CreatePackageR
 export async function createPackageForVenue(venueId: string, input: PackageInput): Promise<CreatePackageResult> {
   const actor = await requireAdminUser();
   if (!actor) return { ok: false, message: "Not signed in as an HQ admin." };
-  if (!input.name.trim()) return { ok: false, errors: { name: "Package name is required." } };
+  const errors = validatePackageInput(input);
+  if (errors) return { ok: false, errors };
   const packageId = await repo.insertPackage(createAdminClient(), venueId, input);
   return { ok: true, packageId };
 }
 
 export async function updatePackage_(id: string, input: PackageInput): Promise<PackageActionResult> {
-  if (!input.name.trim()) return { ok: false, errors: { name: "Package name is required." } };
+  const errors = validatePackageInput(input);
+  if (errors) return { ok: false, errors };
   const result = await withVenue(async (c, venueId) => {
     await repo.updatePackage(c, venueId, id, input);
     return { ok: true } as PackageActionResult;
@@ -93,10 +113,7 @@ export async function updatePackage_(id: string, input: PackageInput): Promise<P
 }
 
 export async function deletePackage_(id: string): Promise<PackageActionResult> {
-  const result = await withVenue(async (c, venueId) => {
-    await repo.deletePackage(c, venueId, id);
-    return { ok: true } as PackageActionResult;
-  });
+  const result = await withVenue(async (c, venueId) => repo.deletePackage(c, venueId, id));
   return result as PackageActionResult;
 }
 

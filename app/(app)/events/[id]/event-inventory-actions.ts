@@ -8,7 +8,7 @@ import {
   reopenEventInventory, setTemplateArchived, shareEventInventory, updateItem,
 } from "@/lib/event-inventory/service";
 import type {
-  AddItemResult, AddTemplateItemResult, CreateTemplateResult, EnsureEventInventoryResult,
+  AddItemResult, AddTemplateItemResult, AddToEventOrderResult, CreateTemplateResult, EnsureEventInventoryResult,
   EventInventoryActionResult, InventoryItemInput,
 } from "@/lib/event-inventory/types";
 
@@ -60,7 +60,7 @@ export async function removeEventInventoryItemAction(eventInventoryId: string, e
   return result;
 }
 
-export async function addEventInventoryToEventOrderAction(eventInventoryId: string, eventId: string): Promise<EventInventoryActionResult> {
+export async function addEventInventoryToEventOrderAction(eventInventoryId: string, eventId: string): Promise<AddToEventOrderResult> {
   const result = await addToEventOrder(eventInventoryId, eventId);
   if (result.ok) {
     revalidateEvent(eventId);
@@ -79,6 +79,19 @@ export async function createInventoryTemplateAction(name: string, description: s
 export async function setInventoryTemplateArchivedAction(id: string, isArchived: boolean): Promise<EventInventoryActionResult> {
   const result = await setTemplateArchived(id, isArchived);
   if (result.ok) revalidatePath("/library/inventory-templates");
+  return result;
+}
+
+export async function addInventoryTemplateStarterAgainAction(
+  masterKey: "INV-01" | "INV-02",
+): Promise<{ ok: true; templateId: string } | { ok: false; message: string }> {
+  const { addInventoryTemplateStarterAgain } = await import("@/lib/inventory/provision");
+  const result = await addInventoryTemplateStarterAgain(masterKey);
+  if (result.ok) {
+    revalidatePath("/library/inventory-templates");
+    revalidatePath("/library/inventory");
+    revalidatePath("/library");
+  }
   return result;
 }
 

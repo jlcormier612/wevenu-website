@@ -57,8 +57,17 @@ export const REVENUE_CATEGORIES = [
 ] as const;
 export type RevenueCategory = (typeof REVENUE_CATEGORIES)[number];
 
-/** Gross Booked Revenue broken out by Revenue Category, for booked clients only. Best-effort: rows backfilled with no confident signal (see the migration's own comment) will show under whichever category the backfill assigned, most commonly "Other." */
-export async function getGrossBookedRevenueByCategory(): Promise<{ category: RevenueCategory | "Uncategorized"; amount: number }[]> {
+/**
+ * Gross Booked Revenue broken out by Revenue Category, for booked clients
+ * only. Best-effort: rows backfilled with no confident signal (see the
+ * migration's own comment) will show under whichever category the backfill
+ * assigned, most commonly "Other." Work Package R1 — optional date window,
+ * filtered on booked_at (the exact same field/semantic
+ * canonical_gross_booked_revenue() itself windows on), so a report's
+ * category breakdown always matches its own headline Gross Booked Revenue
+ * number for the same range.
+ */
+export async function getGrossBookedRevenueByCategory(window?: DateWindow): Promise<{ category: RevenueCategory | "Uncategorized"; amount: number }[]> {
   if (!isSupabaseConfigured) return [];
   const venue = await getCurrentVenue();
   if (!venue) return [];
@@ -76,7 +85,10 @@ export async function getGrossBookedRevenueByCategory(): Promise<{ category: Rev
   // codebase's own documented preference for flat fetch + JS aggregation
   // over untested embedded-relationship filtering (lib/playbooks/
   // repository.ts's own precedent).
-  const { data: bookings } = await supabase.from("canonical_bookings").select("client_id").eq("venue_id", venue.id);
+  let bookingsQuery = supabase.from("canonical_bookings").select("client_id, booked_at").eq("venue_id", venue.id);
+  if (window?.from) bookingsQuery = bookingsQuery.gte("booked_at", window.from);
+  if (window?.to) bookingsQuery = bookingsQuery.lte("booked_at", window.to);
+  const { data: bookings } = await bookingsQuery;
   const bookedClientIds = new Set((bookings ?? []).map((b: { client_id: string }) => b.client_id));
 
   type Row = { amount: number; revenue_category: RevenueCategory | null; invoices: { client_id: string | null } | null };

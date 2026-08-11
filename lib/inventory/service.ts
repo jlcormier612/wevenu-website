@@ -165,16 +165,14 @@ export async function updateItemImage(id: string, imageUrl: string | null): Prom
 }
 
 /**
- * Seeds a new venue's Starter Inventory (Floor Plan Editor Completion,
- * Requirement 6) — ordinary, editable/archivable inventory_categories/
- * inventory_items rows, not a hardcoded list inside the editor. Called once
- * from lib/venue/service.ts right after a venue finishes setup; failures
- * are logged and swallowed there so a seeding issue never blocks venue
- * creation itself.
+ * Seeds a new venue's Standard Wedding Inventory catalog + Inventory Templates.
+ * Idempotent via source_master_key — never overwrites an existing catalog.
+ * Failures are logged and swallowed at the venue-create caller so seeding
+ * never blocks venue creation.
  */
 export async function seedStarterInventory(venueId: string): Promise<void> {
-  if (!isSupabaseConfigured) return;
-  await repo.seedStarterInventory(await createClient(), venueId);
+  const { seedStarterInventory: seed } = await import("@/lib/inventory/provision");
+  await seed(venueId);
 }
 
 // ---- Usage reporting (Requirement 6) -------------------------------------------

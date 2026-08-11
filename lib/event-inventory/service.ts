@@ -2,8 +2,8 @@ import { createClient } from "@/integrations/supabase/server";
 import { isSupabaseConfigured } from "@/lib/env";
 import * as repo from "@/lib/event-inventory/repository";
 import type {
-  AddItemResult, AddTemplateItemResult, CreateTemplateResult, EnsureEventInventoryResult, EventInventoryActionResult,
-  EventInventoryWithDetails, InventoryItemInput, InventoryTemplateWithItems,
+  AddItemResult, AddTemplateItemResult, AddToEventOrderResult, CreateTemplateResult, EnsureEventInventoryResult,
+  EventInventoryActionResult, EventInventoryWithDetails, InventoryItemInput, InventoryTemplateWithItems,
 } from "@/lib/event-inventory/types";
 import { getCurrentVenue, getCurrentUserRole } from "@/lib/venue/service";
 
@@ -80,6 +80,13 @@ export async function finalizeEventInventory(eventInventoryId: string): Promise<
     if (inv.status === "finalized") return { ok: false, message: "Already finalized." } as EventInventoryActionResult;
     await repo.setStatus(supabase, venueId, eventInventoryId, "finalized");
     await repo.insertActivity(supabase, venueId, eventInventoryId, "finalized", "Event Inventory finalized — agreed values are now locked");
+    // Same non-blocking, best-effort pattern questionnaire submission uses
+    // (app/(app)/events/[id]/questionnaire-actions.ts) — a no-op unless a
+    // venue has actually configured a Task with this trigger.
+    try {
+      const { triggerAutoComplete } = await import("@/lib/playbooks/service");
+      await triggerAutoComplete(supabase, venueId, inv.eventId, "inventory_finalized");
+    } catch { /* non-blocking */ }
     return { ok: true } as EventInventoryActionResult;
   });
   return result as EventInventoryActionResult;
@@ -97,7 +104,7 @@ export async function finalizeEventInventory(eventInventoryId: string): Promise<
  * extra charge has nothing to bill); everything downstream (Event Order →
  * Invoice freeze → Payment Schedule) already exists and is untouched.
  */
-export async function addToEventOrder(eventInventoryId: string, eventId: string): Promise<EventInventoryActionResult> {
+export async function addToEventOrder(eventInventoryId: string, eventId: string): Promise<AddToEventOrderResult> {
   const venue = await getCurrentVenue();
   if (!venue) return { ok: false, message: "No venue found." };
   const supabase = await createClient();
@@ -107,9 +114,23 @@ export async function addToEventOrder(eventInventoryId: string, eventId: string)
   if (inv.status !== "finalized") {
     return { ok: false, message: "Finalize the Event Inventory before adding it to the Event Order." };
   }
-  const billable = inv.items.filter((i) => i.unitPrice != null && i.unitPrice > 0);
+  // D8 — filters out items already pushed by a prior call, closing two real
+  // bugs at once: (1) no server-side guard previously existed against
+  // re-adding the same item twice (a double-click/retry/second tab would
+  // have duplicated every billable line's financial impact), and (2) the
+  // old all-time "has this Event Inventory ever been pushed" flag
+  // permanently hid the action after first use, blocking items added on a
+  // later Reopen from ever reaching the Event Order. Both are fixed by
+  // tracking eligibility per item instead of once for the whole Inventory.
+  const billable = inv.items.filter((i) => i.unitPrice != null && i.unitPrice > 0 && !i.addedToEventOrderAt);
   if (billable.length === 0) {
-    return { ok: false, message: "Nothing to add — every item here is included at no extra charge." };
+    const anyBillable = inv.items.some((i) => i.unitPrice != null && i.unitPrice > 0);
+    return {
+      ok: false,
+      message: anyBillable
+        ? "Everything billable here has already been added to the Event Order."
+        : "Nothing to add — every item here is included at no extra charge.",
+    };
   }
 
   const { ensureEventOrder, addLineFromInventory, addCustomLine, getEventOrder } = await import("@/lib/event-orders/service");
@@ -121,6 +142,8 @@ export async function addToEventOrder(eventInventoryId: string, eventId: string)
   if (!ensured.ok) return { ok: false, message: ensured.message };
 
   let added = 0;
+  let addedTotal = 0;
+  const addedItemIds: string[] = [];
   for (const item of billable) {
     const lineResult = item.inventoryItemId
       ? await addLineFromInventory(ensured.eventOrderId, {
@@ -130,12 +153,17 @@ export async function addToEventOrder(eventInventoryId: string, eventId: string)
       : await addCustomLine(ensured.eventOrderId, {
           description: item.name, quantity: String(item.quantity), unitPrice: String(item.unitPrice), sectionId: null,
         });
-    if (lineResult.ok) added++;
+    if (lineResult.ok) {
+      added++;
+      addedTotal += item.quantity * (item.unitPrice ?? 0);
+      addedItemIds.push(item.id);
+    }
   }
 
   if (added === 0) return { ok: false, message: "Could not add items to the Event Order." };
+  await repo.markAddedToEventOrder(supabase, venue.id, addedItemIds);
   await repo.insertActivity(supabase, venue.id, eventInventoryId, "added_to_event_order", `${added} item${added !== 1 ? "s" : ""} added to Event Order`);
-  return { ok: true };
+  return { ok: true, addedCount: added, addedTotal };
 }
 
 export async function reopenEventInventory(eventInventoryId: string): Promise<EventInventoryActionResult> {

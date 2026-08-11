@@ -2,17 +2,20 @@
 
 import * as React from "react";
 
-import { Loader2, Trash2 } from "lucide-react";
+import Link from "next/link";
+import { ExternalLink, Loader2, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 import {
-  addSectionAction, ensureEventOrderAction, finalizeEventOrderAction,
+  addSectionAction, ensureEventOrderAction, finalizeEventOrderAction, getEventOrderPdfUrlAction,
   removeLineAction, removeSectionAction, reopenEventOrderAction, setSectionFloorPlanAction,
+  shareEventOrderWithClientAction,
 } from "@/app/(app)/events/[id]/event-order-actions";
 import { AddLineSheet } from "@/components/event-orders/add-line-sheet";
 import { EventOrderInvoiceLink } from "@/components/event-orders/event-order-invoice-link";
 import { BusinessAssetHeader } from "@/components/business-assets/asset-header";
 import { ActivityTimeline } from "@/components/leads/activity-timeline";
+import { ShareDialog } from "@/components/sharing/share-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -24,14 +27,44 @@ import {
 } from "@/components/ui/select";
 import { DISPLAY_STATUS_LABEL, PROVENANCE_LABEL, eventOrderDisplayStatus, formatMoney } from "@/lib/event-orders/constants";
 import type { EventOrderDisplayStatus, EventOrderLine, EventOrderSection, EventOrderWithDetails } from "@/lib/event-orders/types";
+import type { EventOrderTemplate } from "@/lib/event-order-templates/types";
 import type { FloorPlan } from "@/lib/floor-plans/types";
 import type { InventoryItem } from "@/lib/inventory/types";
 import type { Invoice } from "@/lib/invoices/types";
+import { buildMergeData, mergeContent } from "@/lib/message-templates/merge";
 import type { Package } from "@/lib/packages/types";
 
 const STATUS_VARIANT: Record<EventOrderDisplayStatus, "outline" | "accent" | "muted"> = {
   open: "outline", finalized: "accent", amended: "muted",
 };
+
+type EventOrderOverview = {
+  eventName?: string | null;
+  eventDate: string | null;
+  eventType?: string | null;
+  guestCount: number | null;
+  spaceName: string | null;
+  ceremonyStartTime: string | null;
+  receptionStartTime: string | null;
+};
+
+function paymentSummaryFromInvoices(invoices: Invoice[]) {
+  const active = invoices.filter((i) => i.status !== "void");
+  if (active.length === 0) return null;
+  const contractedTotal = active.reduce((s, i) => s + i.total, 0);
+  const balance = active.reduce((s, i) => s + i.balanceDue, 0);
+  const amountPaid = Math.max(0, contractedTotal - balance);
+  const next = active
+    .filter((i) => i.balanceDue > 0 && i.dueDate)
+    .sort((a, b) => String(a.dueDate).localeCompare(String(b.dueDate)))[0] ?? null;
+  return {
+    contractedTotal,
+    amountPaid,
+    balance,
+    nextPaymentDue: next?.balanceDue ?? null,
+    nextPaymentDueDate: next?.dueDate ?? null,
+  };
+}
 
 function LineRow({ line, onRemove, removing }: { line: EventOrderLine; onRemove: () => void; removing: boolean }) {
   return (
@@ -128,20 +161,52 @@ function SectionFloorPlanLink({
 }
 
 export function EventOrderPanel({
-  eventId, clientId, eventOrder, packages, inventoryItems, invoices, floorPlans,
+  eventId, clientId, clientName, clientEmail, venueName, eventOrder, packages, inventoryItems, invoices, floorPlans, overview,
+  templates = [],
 }: {
   eventId: string;
   clientId: string | null;
+  clientName?: string | null;
+  clientEmail?: string | null;
+  venueName?: string;
   eventOrder: EventOrderWithDetails | null;
   packages: Package[];
   inventoryItems: InventoryItem[];
   invoices: Invoice[];
   floorPlans: FloorPlan[];
+  /** D5C — read-only display of already-authoritative upstream data (Event/Guest Count/Questionnaire). Never a second source of truth — Event Order never stores any of this itself. */
+  overview?: EventOrderOverview | null;
+  /** D7A — Event Order Templates, applied only at creation (mirrors EventInventoryPanel's own templates prop exactly). */
+  templates?: EventOrderTemplate[];
 }) {
   const [starting, startStarting] = React.useTransition();
+  const [templateId, setTemplateId] = React.useState("blank");
   const [lifecyclePending, startLifecycle] = React.useTransition();
+  const [downloading, startDownload] = React.useTransition();
   const [removingId, setRemovingId] = React.useState<string | null>(null);
   const [removingSectionId, setRemovingSectionId] = React.useState<string | null>(null);
+  const paymentSummary = paymentSummaryFromInvoices(invoices);
+
+  // Work Package D5E — unified Share experience.
+  const shareRecipient = clientName ? { name: clientName, contact: clientEmail ?? null, relationshipLabel: "Client" } : null;
+  const shareMergeData = buildMergeData({
+    venueName: venueName ?? "Your venue", clientName: clientName ?? "", coordinatorName: venueName ?? "",
+    eventDate: overview?.eventDate ?? null,
+  });
+  const shareDefaultMessage = mergeContent("We've shared your Event Order for {{event_date}}. Please review it when you have a chance.", shareMergeData);
+  async function handleShareSend(eventOrderId: string, message: string) {
+    const result = await shareEventOrderWithClientAction(eventOrderId, eventId, message);
+    if (result.ok) toast.success("Shared with client.");
+    return result;
+  }
+
+  function handleDownload(eventOrderId: string) {
+    startDownload(async () => {
+      const result = await getEventOrderPdfUrlAction(eventOrderId);
+      if (result.ok) window.open(result.url, "_blank", "noopener,noreferrer");
+      else toast.error(result.message ?? "Could not open the Event Order PDF.");
+    });
+  }
 
   if (!eventOrder) {
     return (
@@ -153,13 +218,28 @@ export function EventOrderPanel({
         <CardContent>
           <div className="flex flex-col items-center justify-center gap-3 py-10 text-center">
             <p className="text-sm text-muted-foreground">No Event Order yet.</p>
-            <Button type="button" size="sm" disabled={starting}
-              onClick={() => startStarting(async () => {
-                const result = await ensureEventOrderAction(eventId);
-                if (!result.ok) toast.error(result.message ?? "Could not start Event Order.");
-              })}>
-              {starting ? <><Loader2 className="mr-1.5 h-4 w-4 animate-spin" />Starting…</> : "Start Event Order"}
-            </Button>
+            <div className="flex items-center gap-2">
+              {templates.length > 0 && (
+                <Select
+                  value={templateId}
+                  onValueChange={setTemplateId}
+                  items={[{ value: "blank", label: "Start blank" }, ...templates.map((t) => ({ value: t.id, label: t.name }))]}
+                >
+                  <SelectTrigger className="w-64"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="blank">Start blank</SelectItem>
+                    {templates.map((t) => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              )}
+              <Button type="button" size="sm" disabled={starting}
+                onClick={() => startStarting(async () => {
+                  const result = await ensureEventOrderAction(eventId, templateId === "blank" ? null : templateId);
+                  if (!result.ok) toast.error(result.message ?? "Could not start Event Order.");
+                })}>
+                {starting ? <><Loader2 className="mr-1.5 h-4 w-4 animate-spin" />Starting…</> : "Start Event Order"}
+              </Button>
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -202,28 +282,64 @@ export function EventOrderPanel({
             </Badge>
           }
           lastUpdated={new Date(eventOrder.updatedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
-          primaryAction={isFinalized ? (
-            <Button type="button" variant="outline" size="sm" disabled={lifecyclePending}
-              onClick={() => startLifecycle(async () => {
-                const result = await reopenEventOrderAction(eventOrder.id, eventId);
-                if (!result.ok) toast.error(result.message ?? "Could not reopen.");
-              })}>
-              {lifecyclePending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Reopen"}
-            </Button>
-          ) : (
-            <Button type="button" size="sm" disabled={lifecyclePending || (eventOrder.lines.length === 0)}
-              onClick={() => startLifecycle(async () => {
-                const result = await finalizeEventOrderAction(eventOrder.id, eventId);
-                if (!result.ok) toast.error(result.message ?? "Could not finalize.");
-                else toast.success("Event Order finalized.");
-              })}>
-              {lifecyclePending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Finalize"}
-            </Button>
-          )}
+          primaryAction={
+            !isFinalized ? (
+              <Button type="button" size="sm" disabled={lifecyclePending || (eventOrder.lines.length === 0)}
+                onClick={() => startLifecycle(async () => {
+                  const result = await finalizeEventOrderAction(eventOrder.id, eventId);
+                  if (!result.ok) toast.error(result.message ?? "Could not finalize.");
+                  else toast.success("Event Order finalized.");
+                })}>
+                {lifecyclePending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Finalize"}
+              </Button>
+            ) : eventOrder.sharedAt ? (
+              <Button type="button" size="sm" disabled={downloading} onClick={() => handleDownload(eventOrder.id)}>
+                {downloading ? <><Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />Opening…</> : "Download PDF"}
+              </Button>
+            ) : (
+              <ShareDialog
+                trigger={<Button type="button" size="sm">Share with Client</Button>}
+                title="Share Event Order"
+                recipient={shareRecipient}
+                whatHappensNext="They'll review the Event Order."
+                defaultMessage={shareDefaultMessage}
+                sendLabel="Share"
+                onSend={(message) => handleShareSend(eventOrder.id, message)}
+              />
+            )
+          }
         />
         <p className="text-xs text-muted-foreground -mt-1">
           The single record of what this event will actually receive. Running total: <span className="font-medium text-foreground">{formatMoney(eventOrder.total)}</span>
         </p>
+        {isFinalized && (
+          <div className="flex items-center gap-2 -mt-1">
+            {eventOrder.sharedAt && (
+              <ShareDialog
+                trigger={<Button type="button" variant="ghost" size="sm">Update Shared Copy</Button>}
+                title="Update Shared Copy"
+                recipient={shareRecipient}
+                whatHappensNext="They'll see the current version — you're sharing an updated version of what they already have."
+                defaultMessage={shareDefaultMessage}
+                sendLabel="Share"
+                onSend={(message) => handleShareSend(eventOrder.id, message)}
+              />
+            )}
+            <Button type="button" variant="ghost" size="sm" className="text-muted-foreground" disabled={lifecyclePending}
+              onClick={() => startLifecycle(async () => {
+                const result = await reopenEventOrderAction(eventOrder.id, eventId);
+                if (!result.ok) toast.error(result.message ?? "Could not reopen.");
+              })}>
+              {lifecyclePending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Reopen for Editing"}
+            </Button>
+          </div>
+        )}
+        {eventOrder.sharedAt && (
+          <p className="text-xs text-muted-foreground -mt-1">
+            Shared with client {new Date(eventOrder.sharedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}.
+            {isFinalized ? "" : " Reopening won't remove what they already have — share again once you're ready."}
+          </p>
+        )}
         {clientId && (
           <div className="pt-3 mt-3 border-t border-border/60">
             <EventOrderInvoiceLink eventOrderId={eventOrder.id} eventId={eventId} clientId={clientId} invoices={invoices} />
@@ -231,6 +347,83 @@ export function EventOrderPanel({
         )}
       </CardHeader>
       <CardContent className="space-y-6">
+        {(overview || clientName || venueName) && (
+          <div className="rounded-lg border border-border bg-muted/20 p-4 space-y-3">
+            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Event Overview</p>
+            <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm">
+              {(overview?.eventName || clientName) && (
+                <div><span className="text-muted-foreground">Event </span><span className="font-medium text-foreground">{overview?.eventName || clientName}</span></div>
+              )}
+              {clientName && (
+                <div><span className="text-muted-foreground">Client </span><span className="font-medium text-foreground">{clientName}</span></div>
+              )}
+              {overview?.eventDate && (
+                <div><span className="text-muted-foreground">Date </span><span className="font-medium text-foreground">{new Date(overview.eventDate + "T12:00:00").toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}</span></div>
+              )}
+              {overview?.eventType && (
+                <div><span className="text-muted-foreground">Type </span><span className="font-medium text-foreground capitalize">{overview.eventType}</span></div>
+              )}
+              {venueName && (
+                <div><span className="text-muted-foreground">Venue </span><span className="font-medium text-foreground">{venueName}</span></div>
+              )}
+              {overview?.guestCount != null && (
+                <div><span className="text-muted-foreground">Guests </span><span className="font-medium text-foreground">{overview.guestCount}</span></div>
+              )}
+              {overview?.spaceName && (
+                <div><span className="text-muted-foreground">Spaces </span><span className="font-medium text-foreground">{overview.spaceName}</span></div>
+              )}
+              {overview?.ceremonyStartTime && (
+                <div><span className="text-muted-foreground">Ceremony </span><span className="font-medium text-foreground">{overview.ceremonyStartTime}</span></div>
+              )}
+              {overview?.receptionStartTime && (
+                <div><span className="text-muted-foreground">Reception </span><span className="font-medium text-foreground">{overview.receptionStartTime}</span></div>
+              )}
+            </div>
+            <p className="text-xs text-muted-foreground">Drawn from the event booking — edit those details on Overview, not here.</p>
+          </div>
+        )}
+
+        {paymentSummary && (
+          <div className="rounded-lg border border-border bg-muted/20 p-4 space-y-2">
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Payment Summary</p>
+              <Link href={`/events/${eventId}#invoice`} className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground">
+                Open payments <ExternalLink className="h-3 w-3" />
+              </Link>
+            </div>
+            <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm">
+              <div><span className="text-muted-foreground">Contracted </span><span className="font-medium text-foreground">{formatMoney(paymentSummary.contractedTotal)}</span></div>
+              <div><span className="text-muted-foreground">Paid </span><span className="font-medium text-foreground">{formatMoney(paymentSummary.amountPaid)}</span></div>
+              <div><span className="text-muted-foreground">Balance </span><span className="font-medium text-foreground">{formatMoney(paymentSummary.balance)}</span></div>
+              {paymentSummary.nextPaymentDue != null && (
+                <div>
+                  <span className="text-muted-foreground">Next due </span>
+                  <span className="font-medium text-foreground">
+                    {formatMoney(paymentSummary.nextPaymentDue)}
+                    {paymentSummary.nextPaymentDueDate
+                      ? ` · ${new Date(paymentSummary.nextPaymentDueDate + "T12:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}`
+                      : ""}
+                  </span>
+                </div>
+              )}
+            </div>
+            <p className="text-xs text-muted-foreground">From invoices for this event — not recalculated by the Event Order.</p>
+          </div>
+        )}
+
+        <div className="rounded-lg border border-border bg-muted/10 p-4 space-y-2">
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Final Event Readiness</p>
+          <p className="text-xs text-muted-foreground">Complete the real work in each area — this Event Order does not mark those workflows done.</p>
+          <div className="flex flex-wrap gap-2">
+            <Button type="button" size="sm" variant="outline" render={<Link href={`/events/${eventId}#overview`} />}>Final Details / Overview</Button>
+            <Button type="button" size="sm" variant="outline" render={<Link href={`/events/${eventId}#inventory`} />}>Working Inventory</Button>
+            <Button type="button" size="sm" variant="outline" render={<Link href={`/events/${eventId}#floorplan`} />}>Floor Plan</Button>
+            <Button type="button" size="sm" variant="outline" render={<Link href={`/events/${eventId}#vendors`} />}>Vendors</Button>
+            <Button type="button" size="sm" variant="outline" render={<Link href={`/events/${eventId}#timeline`} />}>Timeline</Button>
+            <Button type="button" size="sm" variant="outline" render={<Link href={`/events/${eventId}#invoice`} />}>Payments</Button>
+          </div>
+        </div>
+
         {eventOrder.sections.map((section) => {
           const lines = eventOrder.lines.filter((l) => l.sectionId === section.id);
           return (

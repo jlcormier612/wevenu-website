@@ -74,8 +74,8 @@ export default async function SettingsPage() {
         title="Settings"
         description="Edit your venue information, hours, brand, and preferences."
       />
-      <VenueSettings initial={settings.input} venueId={settings.venueId} />
-      {venue && <StripeConnectSection venue={venue} />}
+      <VenueSettings initial={settings.input} venueId={settings.venueId} publicReviewUrl={venue?.publicReviewUrl ?? ""} />
+      {venue && <div id="stripe"><StripeConnectSection venue={venue} /></div>}
       {venue && <QuickBooksConnectSection venueId={venue.id} connection={quickbooksConnection} syncLog={quickbooksSyncLog} />}
       {venue && <FacebookConnectSection venueId={venue.id} connection={facebookConnection} leadForms={facebookLeadForms} recentLog={facebookLog} />}
 

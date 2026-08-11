@@ -14,8 +14,10 @@ import {
   updateLogoAction,
   updateHeroImageAction,
   updateStoryAction,
+  updatePublicReviewUrlAction,
 } from "@/app/(app)/settings/actions";
 import { ImageUpload } from "@/components/ui/image-upload";
+import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import {
   BrandStep,
@@ -94,11 +96,14 @@ function SettingsSection({
 export function VenueSettings({
   initial,
   venueId,
+  publicReviewUrl: initialReviewUrl = "",
 }: {
   initial: VenueSetupInput;
   venueId: string;
+  publicReviewUrl?: string;
 }) {
   const [input, setInput] = React.useState<VenueSetupInput>(initial);
+  const [publicReviewUrl, setPublicReviewUrl] = React.useState(initialReviewUrl);
   const [errors, setErrors] = React.useState<VenueSetupErrors>({});
 
   const set = React.useCallback(
@@ -251,6 +256,23 @@ export function VenueSettings({
           rows={4}
           maxLength={1000}
           placeholder="Tell couples what makes your venue special…"
+        />
+      </SettingsSection>
+
+      <SettingsSection
+        title="Public review link"
+        description="Optional. Shown in Post-Event Feedback when a couple says they're comfortable sharing a review publicly. Leave blank if you don't have a destination yet — Hello to Cheers will not invent one."
+        onSave={async () => {
+          const result = await updatePublicReviewUrlAction(publicReviewUrl.trim() || null);
+          if (result.ok) toast.success("Saved");
+          else toast.error(result.message ?? "Could not save.");
+        }}
+      >
+        <Input
+          type="url"
+          value={publicReviewUrl}
+          onChange={(e) => setPublicReviewUrl(e.target.value)}
+          placeholder="https://g.page/r/… or your Google / WeddingWire review URL"
         />
       </SettingsSection>
 

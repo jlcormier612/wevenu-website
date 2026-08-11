@@ -13,6 +13,7 @@ import { InvoiceLineItemsEditor } from "@/components/invoices/invoice-line-items
 import { InvoiceStatusBadge } from "@/components/invoices/invoice-status-badge";
 import { BusinessAssetActionRow, BusinessAssetHeader } from "@/components/business-assets/asset-header";
 import type { WaitingOn } from "@/components/business-assets/waiting-state";
+import { ActivityTimeline } from "@/components/leads/activity-timeline";
 import { QuickBooksSyncStatusBadge } from "@/components/quickbooks/sync-status-badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -141,6 +142,37 @@ export function InvoiceDetail({
         />
       )}
 
+      {/* Amount Due Now — contracted vs paid vs remaining */}
+      <Card>
+        <CardContent className="pt-6">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <div>
+              <p className="text-xs uppercase tracking-wide text-muted-foreground">Total Contracted</p>
+              <p className="text-xl font-semibold text-heading">{formatCurrency(invoice.total)}</p>
+            </div>
+            <div>
+              <p className="text-xs uppercase tracking-wide text-muted-foreground">Paid to Date</p>
+              <p className="text-xl font-semibold text-success">{formatCurrency(Math.max(0, invoice.total - invoice.balanceDue))}</p>
+            </div>
+            <div>
+              <p className="text-xs uppercase tracking-wide text-muted-foreground">Balance Remaining</p>
+              <p className="text-xl font-semibold text-heading">{formatCurrency(invoice.balanceDue)}</p>
+            </div>
+            <div className="rounded-lg border border-border bg-muted/20 px-3 py-2">
+              <p className="text-xs uppercase tracking-wide text-muted-foreground">Amount Due Now</p>
+              <p className={`text-2xl font-semibold ${invoice.balanceDue > 0 ? "text-heading" : "text-success"}`}>
+                {invoice.balanceDue > 0 ? formatCurrency(invoice.balanceDue) : "Paid in Full"}
+              </p>
+              {invoice.dueDate && invoice.balanceDue > 0 && (
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Due {new Date(invoice.dueDate + "T12:00:00").toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}
+                </p>
+              )}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Line items */}
       <Card>
         <CardHeader>
@@ -227,6 +259,17 @@ export function InvoiceDetail({
               </Button>
             </div>
           </CardContent>
+        </Card>
+      )}
+
+      {/* Work Package D8 — invoice_activities was already recorded (status
+          changes, sends) but never rendered anywhere; this is now the fifth
+          of five Business Asset detail pages to show it, matching Contract/
+          Event Order/Brochure/Questionnaire. */}
+      {invoice.activities.length > 0 && (
+        <Card>
+          <CardHeader><CardTitle className="text-base">Activity</CardTitle></CardHeader>
+          <CardContent><ActivityTimeline activities={invoice.activities} /></CardContent>
         </Card>
       )}
     </div>

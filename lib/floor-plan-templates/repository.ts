@@ -13,7 +13,7 @@ type DbClient = Awaited<ReturnType<typeof createClient>>;
 
 type TemplateRow = {
   id: string; venue_id: string; name: string; event_type: string | null; space_id: string | null;
-  is_default: boolean; is_archived: boolean;
+  is_default: boolean; is_archived: boolean; source_master_key: string | null;
   background_image_url: string | null; background_image_opacity: number; background_locked: boolean;
   room_width_ft: number; room_depth_ft: number; measurement_unit: MeasurementUnit;
   created_at: string; updated_at: string;
@@ -31,7 +31,7 @@ type ObjRow = {
 
 const mapTemplate = (r: TemplateRow): FloorPlanTemplate => ({
   id: r.id, venueId: r.venue_id, name: r.name, eventType: r.event_type, spaceId: r.space_id,
-  isDefault: r.is_default, isArchived: r.is_archived,
+  isDefault: r.is_default, isArchived: r.is_archived, sourceMasterKey: r.source_master_key ?? null,
   backgroundImageUrl: r.background_image_url, backgroundImageOpacity: Number(r.background_image_opacity),
   backgroundLocked: r.background_locked,
   roomWidthFt: Number(r.room_width_ft), roomDepthFt: Number(r.room_depth_ft), measurementUnit: r.measurement_unit,
@@ -70,24 +70,49 @@ export async function getTemplate(client: DbClient, venueId: string, id: string)
 export async function getTemplatesWithStats(client: DbClient, venueId: string): Promise<FloorPlanTemplateWithStats[]> {
   const [{ data: templateRows, error: templateError }, { data: objRows, error: objError }, { data: spaceRows, error: spaceError }] = await Promise.all([
     client.from("floor_plan_templates").select("*").eq("venue_id", venueId).order("name"),
-    client.from("floor_plan_template_objects").select("template_id").eq("venue_id", venueId),
+    client.from("floor_plan_template_objects").select("id, template_id, object_type, label, x, y, width, height, rotation, color, display_shape, sort_order")
+      .eq("venue_id", venueId)
+      .order("sort_order", { ascending: true }),
     client.from("venue_spaces").select("id, name").eq("venue_id", venueId),
   ]);
   if (templateError) throw templateError;
   if (objError) throw objError;
   if (spaceError) throw spaceError;
 
-  const objectCounts = new Map<string, number>();
-  for (const row of objRows as { template_id: string }[]) objectCounts.set(row.template_id, (objectCounts.get(row.template_id) ?? 0) + 1);
+  const previewByTemplate = new Map<string, FloorPlanTemplateWithStats["previewObjects"]>();
+  for (const row of objRows as {
+    id: string; template_id: string; object_type: ObjectType; label: string | null;
+    x: number; y: number; width: number; height: number; rotation: number;
+    color: string | null; display_shape: DisplayShape | null;
+  }[]) {
+    const list = previewByTemplate.get(row.template_id) ?? [];
+    list.push({
+      id: row.id,
+      objectType: row.object_type,
+      label: row.label,
+      x: Number(row.x),
+      y: Number(row.y),
+      width: Number(row.width),
+      height: Number(row.height),
+      rotation: Number(row.rotation),
+      color: row.color ?? null,
+      displayShape: row.display_shape ?? null,
+    });
+    previewByTemplate.set(row.template_id, list);
+  }
 
   const spaceNames = new Map<string, string>();
   for (const row of spaceRows as { id: string; name: string }[]) spaceNames.set(row.id, row.name);
 
-  return (templateRows as TemplateRow[]).map((r) => ({
-    ...mapTemplate(r),
-    spaceName: r.space_id ? spaceNames.get(r.space_id) ?? null : null,
-    objectCount: objectCounts.get(r.id) ?? 0,
-  }));
+  return (templateRows as TemplateRow[]).map((r) => {
+    const previewObjects = previewByTemplate.get(r.id) ?? [];
+    return {
+      ...mapTemplate(r),
+      spaceName: r.space_id ? spaceNames.get(r.space_id) ?? null : null,
+      objectCount: previewObjects.length,
+      previewObjects,
+    };
+  });
 }
 
 export async function insertTemplate(client: DbClient, venueId: string, name: string, eventType: string | null, spaceId: string | null): Promise<string> {

@@ -6,7 +6,12 @@ import { createAdminClient } from "@/integrations/supabase/admin";
 import { isSupabaseConfigured } from "@/lib/env";
 import * as repo from "@/lib/contracts/repository";
 import * as documentIntegration from "@/lib/contracts/document-integration";
-import { buildMergeData, mergeContent } from "@/lib/contracts/merge";
+import { buildMergeData, mergeContent, extractTokens, assertCustomerSafeContractContent } from "@/lib/contracts/merge";
+import { getSpaces } from "@/lib/availability/service";
+import { getEventOrder } from "@/lib/event-orders/service";
+import { getPaymentSchedules, getPaymentSchedule } from "@/lib/payments/service";
+import { computeTotalPaid } from "@/lib/payments/constants";
+import { formatContractDate } from "@/lib/contracts/constants";
 import { recordEngagementEvent } from "@/lib/activation/service";
 import type {
   Contract,
@@ -81,10 +86,7 @@ export async function updateTemplate_(id: string, input: TemplateInput): Promise
 }
 
 export async function deleteTemplate_(id: string): Promise<ContractActionResult> {
-  const result = await withVenue(async (supabase, venueId) => {
-    await repo.deleteTemplate(supabase, venueId, id);
-    return { ok: true } as ContractActionResult;
-  });
+  const result = await withVenue(async (supabase, venueId) => repo.deleteTemplate(supabase, venueId, id));
   return result as ContractActionResult;
 }
 
@@ -134,7 +136,20 @@ export async function createContract(input: NewContractInput): Promise<CreateCon
   const errors = validateNewContractInput(input);
   if (Object.keys(errors).length > 0) return { ok: false, errors };
   const result = await withVenue(async (supabase, venueId) => {
-    const contractId = await repo.insertContract(supabase, venueId, input);
+    const mergeData = await buildContractMergeData({
+      clientId: input.clientId, eventId: input.eventId, contractTitle: input.title,
+    });
+    const resolvedContent = mergeContent(input.content, mergeData);
+    // Drafts may still hold venue-policy placeholders (filled before send).
+    // Unresolved {{tokens}} must never land in a working contract.
+    const leftover = extractTokens(resolvedContent);
+    if (leftover.length > 0) {
+      return {
+        ok: false,
+        message: `Some details couldn't be filled in yet: ${leftover.map((t) => `{{${t}}}`).join(", ")}. Check the booking, client, and event, or remove those tokens before creating the agreement.`,
+      } as CreateContractResult;
+    }
+    const contractId = await repo.insertContract(supabase, venueId, { ...input, content: resolvedContent });
     await repo.insertContractActivity(supabase, venueId, contractId, "contract_created", "Contract created");
     return { ok: true, contractId } as CreateContractResult;
   });
@@ -184,7 +199,7 @@ export async function createAmendmentFromContract(sourceContractId: string): Pro
   return result as CreateContractResult;
 }
 
-/** Build merge data from the current venue + client + event. */
+/** Build merge data from the current venue + client + event + booking domains. */
 export async function buildContractMergeData(opts: {
   clientId?: string;
   eventId?: string;
@@ -195,15 +210,165 @@ export async function buildContractMergeData(opts: {
     opts.clientId ? getClient(opts.clientId) : Promise.resolve(null),
     opts.eventId ? getEvent(opts.eventId) : Promise.resolve(null),
   ]);
+
+  const addressParts = [
+    venue?.addressLine1,
+    venue?.addressLine2,
+    [venue?.city, venue?.stateRegion].filter(Boolean).join(", "),
+    venue?.postalCode,
+  ].filter((p) => p && String(p).trim());
+  const venueAddress = addressParts.length > 0 ? addressParts.join("\n") : null;
+
+  let eventSpaces = "No event spaces are listed on this booking yet.";
+  let venueAccessHours = "Event hours will follow your booking and Timeline.";
+  let ceremonySummary = "No separate ceremony details are listed on this booking yet.";
+  let receptionSummary = "No separate reception details are listed on this booking yet.";
+  let packageSection = "No package is currently selected for this booking.";
+  let includedItemsSummary = "No included items are listed on this booking yet.";
+  let additionalItemsSummary = "No additional or optional items are listed on this booking yet.";
+  let paymentScheduleSummary = "No payment schedule is on file for this celebration yet.";
+  let contractTotal: string | null = null;
+  let balanceRemaining: string | null = null;
+  let vendorsOnFile = "No vendors are currently listed for this celebration.";
+  let coordinatorName: string | null = null;
+
+  if (venue) {
+    try {
+      const details = await (await import("@/lib/venue/repository")).getVenueFullDetails(await createClient());
+      if (details?.ownerName?.trim()) coordinatorName = details.ownerName.trim();
+    } catch { /* optional */ }
+  }
+
+  if (event) {
+    const fmtTime = (t: string | null) => {
+      if (!t) return null;
+      const [h, m] = t.split(":");
+      const hour = Number(h);
+      const ampm = hour >= 12 ? "PM" : "AM";
+      const h12 = ((hour + 11) % 12) + 1;
+      return `${h12}:${m ?? "00"} ${ampm}`;
+    };
+    const start = fmtTime(event.startTime);
+    const end = fmtTime(event.endTime);
+    if (start || end) {
+      venueAccessHours = [start ? `Start ${start}` : null, end ? `End ${end}` : null].filter(Boolean).join(" · ");
+    }
+    if (event.setupTime || event.teardownTime) {
+      const setup = fmtTime(event.setupTime);
+      const tear = fmtTime(event.teardownTime);
+      const extra = [setup ? `Setup from ${setup}` : null, tear ? `Teardown by ${tear}` : null].filter(Boolean).join(" · ");
+      if (extra) {
+        venueAccessHours = venueAccessHours.includes("Start") || venueAccessHours.includes("End")
+          ? `${venueAccessHours}\n${extra}`
+          : extra;
+      }
+    }
+
+    try {
+      const spaces = await getSpaces();
+      const space = event.spaceId ? spaces.find((s) => s.id === event.spaceId) : null;
+      if (space?.name) eventSpaces = space.name;
+    } catch { /* optional */ }
+
+    try {
+      const order = await getEventOrder(event.id);
+      if (order?.lines?.length) {
+        const packageLines = order.lines.filter((l) => l.provenance === "package");
+        const included = order.lines.filter((l) => l.provenance === "package" || l.provenance === "inventory");
+        const additional = order.lines.filter((l) => l.provenance === "custom");
+        if (packageLines.length > 0) {
+          const names = [...new Set(packageLines.map((l) => l.description))];
+          packageSection = `Selected package / services:\n${names.map((n) => `• ${n}`).join("\n")}`;
+        }
+        if (included.length > 0) {
+          includedItemsSummary = included.map((l) => `• ${l.description}${l.quantity ? ` × ${l.quantity}` : ""}`).join("\n");
+        }
+        if (additional.length > 0) {
+          additionalItemsSummary = additional.map((l) => `• ${l.description}${l.quantity ? ` × ${l.quantity}` : ""}`).join("\n");
+        }
+      }
+    } catch { /* Event Order may be disabled */ }
+
+    try {
+      const schedules = await getPaymentSchedules();
+      const forEvent = schedules.filter((s) => s.eventId === event.id);
+      if (forEvent.length > 0) {
+        const detail = await getPaymentSchedule(forEvent[0].id);
+        if (detail) {
+          const currency = detail.currency || "USD";
+          const fmt = (n: number) =>
+            new Intl.NumberFormat("en-US", { style: "currency", currency }).format(n);
+          paymentScheduleSummary = detail.lineItems
+            .map((li) => {
+              const due = li.dueDate ? formatContractDate(li.dueDate) : "Date TBD";
+              return `• ${li.label}: ${fmt(li.amount)} — due ${due}${li.status === "paid" ? " (paid)" : ""}`;
+            })
+            .join("\n");
+          contractTotal = fmt(detail.totalAmount);
+          const paid = computeTotalPaid(detail.lineItems);
+          balanceRemaining = fmt(Math.max(0, detail.totalAmount - paid));
+        }
+      }
+    } catch { /* optional */ }
+
+    try {
+      const supabase = await createClient();
+      const { data: assignments } = await supabase.from("event_vendor_assignments")
+        .select("role, vendors(name)")
+        .eq("event_id", event.id)
+        .eq("venue_id", event.venueId);
+      const rows = (assignments ?? []) as { role?: string | null; vendors?: { name?: string } | null }[];
+      if (rows.length > 0) {
+        vendorsOnFile = rows
+          .map((a) => `• ${a.vendors?.name ?? "Vendor"}${a.role ? ` — ${a.role}` : ""}`)
+          .join("\n");
+      }
+    } catch { /* optional */ }
+
+    try {
+      const supabase = await createClient();
+      const { data: q } = await supabase.from("event_questionnaires")
+        .select("ceremony_start_time, ceremony_location, reception_start_time, reception_location")
+        .eq("event_id", event.id).eq("kind", "final_details").maybeSingle<{
+          ceremony_start_time: string | null; ceremony_location: string | null;
+          reception_start_time: string | null; reception_location: string | null;
+        }>();
+      if (q) {
+        const cer = [q.ceremony_location, q.ceremony_start_time].filter(Boolean).join(" · ");
+        const rec = [q.reception_location, q.reception_start_time].filter(Boolean).join(" · ");
+        if (cer) ceremonySummary = cer;
+        if (rec) receptionSummary = rec;
+      }
+    } catch { /* optional */ }
+  }
+
   return buildMergeData({
     venueName: venue?.name ?? "",
+    venueAddress: venueAddress ?? "Address on file with the venue",
+    venuePhone: venue?.phone?.trim() || "Phone on file with the venue",
+    venueEmail: venue?.email?.trim() || "Email on file with the venue",
     clientFirstName: client?.firstName ?? "",
     clientLastName: client?.lastName ?? "",
     partnerFirstName: client?.partnerFirstName ?? null,
     partnerLastName: client?.partnerLastName ?? null,
+    clientEmail: client?.email?.trim() || "Email on the client record",
+    clientPhone: client?.phone?.trim() || "Phone on the client record",
+    eventName: event?.name || "Your celebration",
     eventDate: event?.eventDate ?? client?.eventDate ?? null,
     eventType: event?.eventType ?? client?.eventType ?? null,
     guestCount: event?.guestCount ?? client?.guestCount ?? null,
+    eventSpaces,
+    coordinatorName: coordinatorName || "Your venue team",
+    venueAccessHours,
+    ceremonySummary,
+    receptionSummary,
+    packageSection,
+    includedItemsSummary,
+    additionalItemsSummary,
+    paymentScheduleSummary,
+    contractTotal: contractTotal ?? "See payment schedule",
+    balanceRemaining: balanceRemaining ?? "See payment schedule",
+    vendorsOnFile,
     contractTitle: opts.contractTitle ?? "",
   });
 }
@@ -218,26 +383,56 @@ export async function updateContractContent_(id: string, title: string, content:
   return result as ContractActionResult;
 }
 
-export async function sendContract(id: string): Promise<ContractActionResult> {
+/** Shared by sendContract (first send) and resendContract (D5E) — the actual invite email. */
+async function sendContractInviteEmail(contract: ContractWithDetails, customMessage?: string): Promise<void> {
+  if (!contract.clientId) return;
+  const [client, venue] = await Promise.all([getClient(contract.clientId), getCurrentVenue()]);
+  if (!client?.email || !venue) return;
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://app.wevenu.com";
+  const signUrl = `${baseUrl}/sign/${contract.signToken}`;
+  const brand = { name: venue.name ?? "Your venue", logoUrl: venue.logoUrl, primaryColor: venue.primaryColor };
+  const ctx = { brand, recipientFirstName: client.firstName, contractTitle: contract.title, signUrl, customMessage };
+  await sendEmail({
+    to: client.email,
+    subject: buildContractInviteSubject(ctx),
+    text: buildContractInviteText(ctx),
+    html: buildContractInviteHtml(ctx),
+  });
+}
+
+export async function sendContract(id: string, customMessage?: string): Promise<ContractActionResult> {
   const result = await withVenue(async (supabase, venueId) => {
     const contract = await repo.getContract(supabase, venueId, id);
+    if (!contract) return { ok: false, message: "Contract not found." } as ContractActionResult;
+
+    // Re-merge any tokens that may have been pasted after create, then refuse
+    // customer send when unresolved tokens or starter policy placeholders remain.
+    let content = contract.content;
+    if (extractTokens(content).length > 0) {
+      const mergeData = await buildContractMergeData({
+        clientId: contract.clientId ?? undefined,
+        eventId: contract.eventId ?? undefined,
+        contractTitle: contract.title,
+      });
+      content = mergeContent(content, mergeData);
+      await repo.forceResolveContractContent(supabase, venueId, id, content);
+      contract.content = content;
+    }
+
+    const safety = assertCustomerSafeContractContent(content);
+    if (!safety.ok) {
+      return { ok: false, message: safety.message } as ContractActionResult;
+    }
+
     const outcome = await repo.updateContractStatus(supabase, venueId, id, "sent", { sentAt: true });
     if (!outcome.ok) return { ok: false, message: outcome.message } as ContractActionResult;
     await repo.insertContractActivity(supabase, venueId, id, "sent", "Contract sent for signing");
 
-    // Work Package D4 — Document Domain integration. First send publishes
-    // the Contract into the Document Domain; every later send (after a
-    // reopen + edit) is a new, real version boundary — never a version
-    // per keystroke, only per actual reshare.
-    if (contract) {
+    // Work Package D4 — Document Domain integration.
+    {
       const existingDocumentId = await documentIntegration.getContractDocumentId(supabase, id);
       if (!existingDocumentId) {
         const { documentId: newDocumentId } = await documentIntegration.publishContractDocument(supabase, contract);
-        // If this contract is an amendment (amends_contract_id set at
-        // creation, Step 33/34), this is the first moment a canonical
-        // Document exists for it — record the lineage now, same fact the
-        // amends_contract_id column already carries, in the certified
-        // Document Domain vocabulary too.
         if (contract.amendsContractId) {
           const priorDocumentId = await documentIntegration.getContractDocumentId(supabase, contract.amendsContractId);
           if (priorDocumentId) {
@@ -249,31 +444,30 @@ export async function sendContract(id: string): Promise<ContractActionResult> {
       }
     }
 
-    if (contract?.clientId) {
-      const [client, venue] = await Promise.all([getClient(contract.clientId), getCurrentVenue()]);
-      if (client?.email && venue) {
-        const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://app.wevenu.com";
-        const signUrl = `${baseUrl}/sign/${contract.signToken}`;
-        const brand = {
-          name: venue.name ?? "Your venue",
-          logoUrl: venue.logoUrl,
-          primaryColor: venue.primaryColor,
-        };
-        const ctx = {
-          brand,
-          recipientFirstName: client.firstName,
-          contractTitle: contract.title,
-          signUrl,
-        };
-        await sendEmail({
-          to: client.email,
-          subject: buildContractInviteSubject(ctx),
-          text: buildContractInviteText(ctx),
-          html: buildContractInviteHtml(ctx),
-        });
-      }
-    }
+    await sendContractInviteEmail(contract, customMessage);
 
+    return { ok: true } as ContractActionResult;
+  });
+  return result as ContractActionResult;
+}
+
+/**
+ * Work Package D5E — "Resend" for a contract already `sent` and still
+ * awaiting signature (brief Step 11): "another delivery of the same
+ * working contract, not creation of a new contract." Unlike sendContract(),
+ * this never touches status or the Document Domain — nothing about the
+ * contract changed, so there's nothing to re-publish or version. Just the
+ * email, again, plus its own activity entry.
+ */
+export async function resendContract(id: string, customMessage?: string): Promise<ContractActionResult> {
+  const result = await withVenue(async (supabase, venueId) => {
+    const contract = await repo.getContract(supabase, venueId, id);
+    if (!contract) return { ok: false, message: "Contract not found." } as ContractActionResult;
+    if (contract.status !== "sent") {
+      return { ok: false, message: "Only a contract that's already been sent and is still awaiting signature can be resent." } as ContractActionResult;
+    }
+    await sendContractInviteEmail(contract, customMessage);
+    await repo.insertContractActivity(supabase, venueId, id, "resent", "Contract resent for signing");
     return { ok: true } as ContractActionResult;
   });
   return result as ContractActionResult;

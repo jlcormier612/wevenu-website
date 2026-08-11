@@ -18,7 +18,7 @@ export default async function NewContractPage({ searchParams }: Props) {
   const displayTemplates = templates.length > 0
     ? templates
     : [{ id: "__default__", venueId: "", name: DEFAULT_TEMPLATE_NAME, description: DEFAULT_TEMPLATE_DESCRIPTION,
-         content: DEFAULT_TEMPLATE_CONTENT, isDefault: true, isArchived: false, createdAt: "", updatedAt: "" }];
+         content: DEFAULT_TEMPLATE_CONTENT, isDefault: true, isArchived: false, sourceMasterKey: null, createdAt: "", updatedAt: "" }];
 
   return (
     <div className="space-y-6">

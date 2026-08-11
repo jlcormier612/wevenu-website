@@ -2,21 +2,28 @@ import type { Metadata } from "next";
 
 import { MessageTemplateList } from "@/components/communication/message-template-list";
 import { MessageTemplateStarterPicker } from "@/components/communication/message-template-starter-picker";
+import { AddHelloToCheersStarters } from "@/components/communication/add-hello-to-cheers-starters";
 import { PageHeader } from "@/components/shell/module-placeholder";
 import { getTemplates } from "@/lib/message-templates/service";
+import { ensureStarterMessageTemplatesForCurrentVenue } from "@/lib/message-templates/provision";
+import { STARTER_MESSAGE_MASTERS } from "@/lib/message-templates/starters";
 
 export const metadata: Metadata = { title: "Message Templates" };
 
 export default async function MessageTemplatesPage() {
+  await ensureStarterMessageTemplatesForCurrentVenue();
   const templates = await getTemplates(true);
+  const presentKeys = new Set(templates.map((t) => t.sourceMasterKey).filter(Boolean));
+  const missingMasters = STARTER_MESSAGE_MASTERS.filter((m) => !presentKeys.has(m.key));
 
   return (
     <div className="space-y-6">
       <PageHeader
         title="Message Templates"
-        description="Reusable email and text messages, ready to send from Planning tasks once that connection ships."
+        description="Reusable email and text messages for couples — including Hello to Cheers starters you can edit to sound like your venue."
         actions={
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <AddHelloToCheersStarters missingMasters={missingMasters.map((m) => ({ key: m.key, name: m.name }))} />
             <MessageTemplateStarterPicker existingTemplates={templates.filter((t) => !t.isArchived)} variant="import" />
             <MessageTemplateStarterPicker existingTemplates={templates.filter((t) => !t.isArchived)} />
           </div>

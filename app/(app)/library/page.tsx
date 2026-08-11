@@ -3,7 +3,7 @@ import Link from "next/link";
 
 import {
   BookOpen, Boxes, CalendarClock, ClipboardList, FileSignature, FileText, GitBranch,
-  HelpCircle, LayoutGrid, Mail, Megaphone, Package, QrCode,
+  HelpCircle, Layers, LayoutGrid, Mail, Megaphone, Package, QrCode,
 } from "lucide-react";
 
 import { PageHeader } from "@/components/shell/module-placeholder";
@@ -16,14 +16,24 @@ import { getTemplatesForLibrary as getFloorPlanTemplates } from "@/lib/floor-pla
 import { getTemplates as getPipelineTemplates } from "@/lib/pipeline-templates/service";
 import { getPackages } from "@/lib/packages/service";
 import { getItemsForLibrary } from "@/lib/inventory/service";
+import { getTemplates as getInventoryTemplates } from "@/lib/event-inventory/service";
+import { getTemplates as getQuestionnaireTemplates } from "@/lib/questionnaire-templates/service";
 import { getQrCampaigns } from "@/lib/qr-campaigns/service";
+import { getTemplates as getEventOrderTemplates } from "@/lib/event-order-templates/service";
+import { getBrochures } from "@/lib/brochures/service";
+import { getSavedReports } from "@/lib/saved-reports/service";
+import { loadVenueGuideAction } from "@/app/(app)/guide/actions";
+import { getPaymentPlanStarters } from "@/lib/payments/starters";
+import { ensureFaqStartersForCurrentVenue } from "@/lib/venue-guide/provision";
+import { ensureBrochureStartersForCurrentVenue } from "@/lib/brochures/provision";
+import { ensureSavedReportStartersForCurrentVenue } from "@/lib/saved-reports/provision";
 
 export const metadata: Metadata = { title: "Library" };
 
 // Work Package BA4, Step 1B — the Library landing page. Organizes the
-// existing template destinations only; nothing here is a new template type,
-// and nothing under "Coming later" is implemented — those cards are
-// disabled on purpose, per the brief's own instruction.
+// existing template destinations. Work Package D7 replaced the "Coming
+// later" placeholders with real capabilities one at a time as each one
+// actually shipped — see docs/library-remaining-capabilities-implementation.md.
 
 type LibraryCard = {
   title: string;
@@ -51,23 +61,6 @@ function ToolboxCard({ title, description, href, count, icon: Icon }: LibraryCar
   return href ? <Link href={href}>{body}</Link> : body;
 }
 
-function ComingLaterCard({ title, description, icon: Icon }: Omit<LibraryCard, "href" | "count">) {
-  return (
-    <div className="flex h-full items-start gap-3 rounded-sm border border-dashed border-border bg-muted/10 p-4 opacity-60">
-      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground">
-        <Icon className="h-4 w-4" />
-      </div>
-      <div className="min-w-0 flex-1 space-y-1">
-        <div className="flex items-center gap-2">
-          <p className="text-sm font-medium text-heading">{title}</p>
-          <Badge variant="outline">Coming later</Badge>
-        </div>
-        <p className="text-xs text-muted-foreground">{description}</p>
-      </div>
-    </div>
-  );
-}
-
 function Group({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <section className="space-y-3">
@@ -89,9 +82,15 @@ export default async function LibraryPage() {
   // archived" toggle (e.g. contract-template-list.tsx's own pattern), so
   // the fix belongs here — filtering client-side for the count — not in
   // the shared fetcher, which other real callers still need unfiltered.
+  await Promise.all([
+    ensureFaqStartersForCurrentVenue(),
+    ensureBrochureStartersForCurrentVenue(),
+    ensureSavedReportStartersForCurrentVenue(),
+  ]);
   const [
     contractTemplates, playbookTemplatesAll, timelineTemplatesAll, floorPlanTemplatesAll,
-    pipelineTemplates, packagesAll, inventoryItemsAll, qrCampaigns, messageTemplates,
+    pipelineTemplates, packagesAll, inventoryItemsAll, qrCampaigns, messageTemplates, inventoryTemplates,
+    questionnaireTemplates, eventOrderTemplatesAll, brochuresAll, savedReports, venueGuide,
   ] = await Promise.all([
     getContractTemplates(),
     getPlaybookTemplates(),
@@ -102,7 +101,16 @@ export default async function LibraryPage() {
     getItemsForLibrary(),
     getQrCampaigns(),
     getMessageTemplates(),
+    getInventoryTemplates(),
+    getQuestionnaireTemplates(),
+    getEventOrderTemplates(true),
+    getBrochures(true),
+    getSavedReports(),
+    loadVenueGuideAction(),
   ]);
+  const faqCount = venueGuide?.faqs.length ?? 0;
+  const eventOrderTemplates = eventOrderTemplatesAll.filter((t) => !t.isArchived);
+  const brochures = brochuresAll.filter((b) => !b.isArchived);
   const playbookTemplates = playbookTemplatesAll.filter((t) => !t.isArchived);
   const timelineTemplates = timelineTemplatesAll.filter((t) => !t.isArchived);
   const floorPlanTemplates = floorPlanTemplatesAll.filter((t) => !t.isArchived);
@@ -118,12 +126,18 @@ export default async function LibraryPage() {
 
       <Group title="Agreements">
         <ToolboxCard title="Contract Templates" description="Reusable contracts with fill-in details, ready to send." href="/library/contracts" count={contractTemplates.length} icon={FileSignature} />
-        <ComingLaterCard title="Questionnaire Templates" description="A customizable final-details form for your venue. Today, every event uses one built-in questionnaire." icon={FileText} />
+        <ToolboxCard title="Planning Forms" description="Client Planning Questionnaire, Final Details, and Post-Event Feedback starters." href="/library/questionnaire-templates" count={questionnaireTemplates.length} icon={FileText} />
       </Group>
 
       <Group title="Pricing &amp; Packages">
-        <ToolboxCard title="Packages" description="What you sell — priced, ready to add to any invoice." href="/packages" count={packages.length} icon={Boxes} />
-        <ToolboxCard title="Inventory" description="Tables, chairs, decor — everything you set up for a booking." href="/library/inventory" count={inventoryItems.length} icon={Package} />
+        <ToolboxCard title="Packages" description="What you offer — customize inclusions and set your price before adding to an event or invoice." href="/packages" count={packages.length} icon={Boxes} />
+        <ToolboxCard title="Inventory" description="What your venue provides — customize examples, then use them on events." href="/library/inventory" count={inventoryItems.length} icon={Package} />
+        <ToolboxCard title="Inventory Templates" description="What you typically use for a wedding — Ceremony + Reception or Reception Only starters." href="/library/inventory-templates" count={inventoryTemplates.length} icon={Layers} />
+        {/* D8 — count was a hardcoded literal 3; matched today's real
+            starter list by coincidence, but would have silently gone stale
+            the moment a starter was added or removed. Every other Library
+            card computes its own count — this now does too. */}
+        <ToolboxCard title="Payment Schedules" description="Starter payment plans — 3-payment, 4-payment, or custom — always tied to a real invoice total." href="/library/payment-schedules" count={getPaymentPlanStarters().length} icon={ClipboardList} />
       </Group>
 
       <Group title="Planning">
@@ -131,21 +145,21 @@ export default async function LibraryPage() {
         <ToolboxCard title="Timeline Templates" description="Reusable day-of schedules for any booking." href="/library/timeline-templates" count={timelineTemplates.length} icon={CalendarClock} />
         <ToolboxCard title="Pipeline Templates" description="How a lead moves through your booking process." href="/library/pipeline-templates" count={pipelineTemplates.length} icon={GitBranch} />
         <ToolboxCard title="Floor Plan Templates" description="Reusable room layouts for any booking." href="/library/floor-plan-templates" count={floorPlanTemplates.length} icon={LayoutGrid} />
-        <ComingLaterCard title="Event Orders" description="A reusable starting point for what a booking receives — today, every Event Order is built from scratch per event." icon={ClipboardList} />
+        <ToolboxCard title="Event Order Templates" description="Reusable starting points for the Event Orders you create for your events." href="/library/event-order-templates" count={eventOrderTemplates.length} icon={ClipboardList} />
       </Group>
 
       <Group title="Communication">
         <ToolboxCard title="Message Templates" description="Emails and texts you send often, ready to reuse." href="/communication/templates" count={messageTemplates.length} icon={Mail} />
-        <ToolboxCard title="FAQs" description="Answers your clients and vendors see in the Venue Guide." href="/guide" icon={HelpCircle} />
+        <ToolboxCard title="Venue Guide" description="Parking, policies, FAQs, and other answers. Hello to Cheers starter FAQs are ready to review and publish." href="/guide" count={faqCount} icon={HelpCircle} />
       </Group>
 
       <Group title="Marketing">
         <ToolboxCard title="QR Campaigns" description="Trackable QR codes for print materials and signage." href="/library/qr-campaigns" count={qrCampaigns.length} icon={QrCode} />
-        <ComingLaterCard title="Brochures" description="A reusable, brandable overview of your venue to share with prospects." icon={Megaphone} />
+        <ToolboxCard title="Brochures" description="Reusable, brandable overviews of your venue to share with prospects." href="/library/brochures" count={brochures.length} icon={Megaphone} />
       </Group>
 
       <Group title="Reports">
-        <ComingLaterCard title="Saved Reports" description="Export or schedule the analytics you check most." icon={FileText} />
+        <ToolboxCard title="Saved Reports" description="Reports you've saved to return to quickly, or have delivered to you." href="/reporting/saved" count={savedReports.length} icon={FileText} />
       </Group>
     </div>
   );

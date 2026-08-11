@@ -1,0 +1,149 @@
+{
+  "createdAt": "2026-08-11T21:14:37.517Z",
+  "venueA": {
+    "id": "da6d18ec-a51e-486f-8cb2-4332df1b6a93",
+    "email": "rem-a-1786482835265@example.com",
+    "userId": "8ce8186b-0a7d-40e2-a46b-c9df468ab44f"
+  },
+  "venueB": {
+    "id": "995706a5-b9e1-4636-b995-2cd8e2c5980d",
+    "email": "rem-b-1786482835265@example.com",
+    "userId": "48980819-058a-4981-a0df-4ab89ac7ec06"
+  },
+  "brochureId": "c1a3d34f-0744-496b-a124-cb28566d8b4a",
+  "brochureShareToken": "4da686b4-d121-47ed-ba3c-8ed846965bc1",
+  "reports": [
+    {
+      "id": "e90e9db1-e84b-43cb-ad21-8edb05fd6d51",
+      "name": "Bookings",
+      "source_master_key": "SR-BOOKINGS",
+      "report_path": "/reporting/bookings",
+      "date_preset": "this_month"
+    },
+    {
+      "id": "5a09485c-7f24-48e6-b06d-b1ae4b16fced",
+      "name": "Events",
+      "source_master_key": "SR-EVENTS",
+      "report_path": "/reporting/events",
+      "date_preset": "this_month"
+    },
+    {
+      "id": "a57b23fe-3f66-4015-aa29-ce8e103e2eb7",
+      "name": "Revenue",
+      "source_master_key": "SR-REVENUE",
+      "report_path": "/reporting/revenue",
+      "date_preset": "this_month"
+    },
+    {
+      "id": "864ff2d2-aa26-4efa-a55a-10cd8f5164fd",
+      "name": "Sales",
+      "source_master_key": "SR-SALES",
+      "report_path": "/reporting/sales",
+      "date_preset": "this_month"
+    }
+  ],
+  "findings": [
+    {
+      "id": "brochure.exists",
+      "ok": true,
+      "detail": "count=1 BR-01=Venue Overview"
+    },
+    {
+      "id": "brochure.masterName",
+      "ok": true,
+      "detail": "name=Venue Overview"
+    },
+    {
+      "id": "savedReports.four",
+      "ok": true,
+      "detail": "keys=SR-BOOKINGS,SR-EVENTS,SR-REVENUE,SR-SALES count=4"
+    },
+    {
+      "id": "savedReports.canonicalPaths",
+      "ok": true,
+      "detail": "[\"/reporting/bookings\",\"/reporting/events\",\"/reporting/revenue\",\"/reporting/sales\"]"
+    },
+    {
+      "id": "finance.invoices",
+      "ok": true,
+      "detail": "count=0"
+    },
+    {
+      "id": "finance.payments",
+      "ok": false,
+      "detail": "count=null"
+    },
+    {
+      "id": "finance.payment_schedules",
+      "ok": true,
+      "detail": "count=0"
+    },
+    {
+      "id": "reprovision.brochureSkipped",
+      "ok": true,
+      "detail": "{\"created\":[],\"skipped\":[\"BR-01\"]}"
+    },
+    {
+      "id": "reprovision.reportsSkipped",
+      "ok": true,
+      "detail": "{\"created\":[],\"skipped\":[\"SR-SALES\",\"SR-BOOKINGS\",\"SR-REVENUE\",\"SR-EVENTS\"]}"
+    },
+    {
+      "id": "customize.brochurePreserved",
+      "ok": true,
+      "detail": "{\"name\":\"Our Venue Overview REM\",\"welcome_text\":\"REM customized welcome — our barn story.\"}"
+    },
+    {
+      "id": "customize.reportPreserved",
+      "ok": true,
+      "detail": "{\"name\":\"Our Sales REM\"}"
+    },
+    {
+      "id": "master.brochure",
+      "ok": true,
+      "detail": "Venue Overview"
+    },
+    {
+      "id": "master.reports",
+      "ok": true,
+      "detail": "Sales"
+    },
+    {
+      "id": "rls.brochure",
+      "ok": true,
+      "detail": "leak=0"
+    },
+    {
+      "id": "rls.savedReports",
+      "ok": true,
+      "detail": "leak=0"
+    },
+    {
+      "id": "public.brochureHttp",
+      "ok": true,
+      "detail": "status=200"
+    },
+    {
+      "id": "public.faqSafety",
+      "ok": true,
+      "detail": "unpublishedFAQVisible=false"
+    },
+    {
+      "id": "public.rpcFaqsFiltered",
+      "ok": true,
+      "detail": "rpcFaqCount=0"
+    },
+    {
+      "id": "public.brochurePdf",
+      "ok": true,
+      "detail": "status=200 content-type=application/pdf"
+    },
+    {
+      "id": "package.copyFixed",
+      "ok": true,
+      "detail": "library Packages card copy"
+    }
+  ],
+  "passCount": 19,
+  "failCount": 1
+}

@@ -15,7 +15,9 @@ type DbClient = Awaited<ReturnType<typeof createClient>>;
 
 type TemplateRow = {
   id: string; venue_id: string; name: string; description: string | null;
-  content: string; is_default: boolean; is_archived: boolean; created_at: string; updated_at: string;
+  content: string; is_default: boolean; is_archived: boolean;
+  source_master_key: string | null;
+  created_at: string; updated_at: string;
 };
 type ContractRow = {
   id: string; venue_id: string; client_id: string | null; event_id: string | null;
@@ -23,7 +25,7 @@ type ContractRow = {
   sign_token: string; signer_name: string | null; signed_at: string | null;
   sent_at: string | null; expires_at: string | null; created_at: string; updated_at: string;
   amends_contract_id: string | null;
-  clients?: { first_name: string; last_name: string; partner_first_name: string | null; partner_last_name: string | null } | null;
+  clients?: { first_name: string; last_name: string; partner_first_name: string | null; partner_last_name: string | null; email: string | null } | null;
   events?: { event_date: string | null } | null;
   // Venue Brand Experience Phase 1 — only present in get_contract_by_token's
   // response (the public sign page's own read).
@@ -32,9 +34,12 @@ type ContractRow = {
 type ActRow = { id: string; venue_id: string; contract_id: string; type: string; title: string; description: string | null; created_at: string; };
 
 function mapTemplate(r: TemplateRow): ContractTemplate {
-  return { id: r.id, venueId: r.venue_id, name: r.name, description: r.description,
+  return {
+    id: r.id, venueId: r.venue_id, name: r.name, description: r.description,
     content: r.content, isDefault: r.is_default, isArchived: r.is_archived,
-    createdAt: r.created_at, updatedAt: r.updated_at };
+    sourceMasterKey: r.source_master_key ?? null,
+    createdAt: r.created_at, updatedAt: r.updated_at,
+  };
 }
 
 function mapContract(r: ContractRow): Contract {
@@ -50,7 +55,7 @@ function mapContract(r: ContractRow): Contract {
     signToken: r.sign_token, signerName: r.signer_name, signedAt: r.signed_at,
     sentAt: r.sent_at, expiresAt: r.expires_at, createdAt: r.created_at, updatedAt: r.updated_at,
     amendsContractId: r.amends_contract_id ?? null,
-    clientName: cn, eventDate: r.events?.event_date ?? null,
+    clientName: cn, clientEmail: r.clients?.email ?? null, eventDate: r.events?.event_date ?? null,
     venue: r.venue,
   };
 }
@@ -97,9 +102,22 @@ export async function updateTemplate(client: DbClient, venueId: string, id: stri
   if (error) throw error;
 }
 
-export async function deleteTemplate(client: DbClient, venueId: string, id: string): Promise<void> {
-  const { error } = await client.from("contract_templates").delete().eq("id", id).eq("venue_id", venueId);
+/**
+ * Work Package D6 §57 — RLS's DELETE-role gate (Owner/Manager only,
+ * contract_templates_delete_gate) blocks a disallowed delete by matching
+ * zero rows, not by raising a Postgres error. Before this fix, that meant
+ * a Staff/Coordinator delete attempt silently did nothing in the database
+ * while the caller still reported `{ ok: true }` — a false-positive
+ * success, worse than a blocked action with an honest error. `.select("id")`
+ * on the delete surfaces which rows actually matched.
+ */
+export async function deleteTemplate(client: DbClient, venueId: string, id: string): Promise<{ ok: true } | { ok: false; message: string }> {
+  const { data, error } = await client.from("contract_templates").delete().eq("id", id).eq("venue_id", venueId).select("id");
   if (error) throw error;
+  if (!data || data.length === 0) {
+    return { ok: false, message: "Only an Owner or Manager can delete this template." };
+  }
+  return { ok: true };
 }
 
 export async function setTemplateArchived(client: DbClient, venueId: string, id: string, isArchived: boolean): Promise<void> {
@@ -133,7 +151,7 @@ export async function getContracts(client: DbClient, venueId: string): Promise<C
 export async function getContract(client: DbClient, venueId: string, id: string): Promise<ContractWithDetails | null> {
   const [cRes, aRes] = await Promise.all([
     client.from("contracts")
-      .select("*, clients(first_name, last_name, partner_first_name, partner_last_name), events(event_date)")
+      .select("*, clients(first_name, last_name, partner_first_name, partner_last_name, email), events(event_date)")
       .eq("id", id).eq("venue_id", venueId).maybeSingle<ContractRow>(),
     client.from("contract_activities").select("*").eq("contract_id", id).order("created_at", { ascending: false }),
   ]);
@@ -322,6 +340,21 @@ export async function deleteContract(client: DbClient, venueId: string, id: stri
   const { error } = await client.from("contracts").delete().eq("id", id).eq("venue_id", venueId);
   if (error) throw error;
   return { ok: true };
+}
+
+/**
+ * Work Package D6 §11 — internal-only, no status/concurrency gate. The
+ * Contract type documents `content` as "rendered (tokens already
+ * resolved)", but nothing enforced that until now (see createContract/
+ * sendContract in service.ts). This is solely a system-triggered safety
+ * net for content that still contains literal {{tokens}} at send time —
+ * never called from a user-facing action, so it doesn't need the edit
+ * guards updateContractContent enforces.
+ */
+export async function forceResolveContractContent(client: DbClient, venueId: string, id: string, content: string): Promise<void> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error } = await (client.from("contracts") as any).update({ content }).eq("id", id).eq("venue_id", venueId);
+  if (error) throw error;
 }
 
 export async function insertContractActivity(client: DbClient, venueId: string, contractId: string, type: string, title: string, description?: string): Promise<void> {

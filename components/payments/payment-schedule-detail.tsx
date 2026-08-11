@@ -543,7 +543,13 @@ export function PaymentScheduleDetail({ schedule, invoice, currentUserRole }: { 
         whatIsThis="Payment Plan"
         title={schedule.title}
         status={<>
-          {reviewStatus === "needs_review" && <Badge variant="warning">🟡 Needs Review</Badge>}
+          {/* Work Package D8 — this used to say "Needs Review," nearly
+              identical wording to ScheduleStatusBadge's own "Needs
+              Attention" right next to it for a completely different
+              problem (an overdue/refunded installment vs. this schedule
+              no longer matching its invoice). Named for what's actually
+              wrong instead. */}
+          {reviewStatus === "needs_review" && <Badge variant="warning">🟡 Out of Sync with Invoice</Badge>}
           {reviewStatus === "current" && invoice && <Badge variant="success">🟢 Current</Badge>}
           <ScheduleStatusBadge status={schedule.scheduleStatus} />
         </>}
@@ -578,7 +584,13 @@ export function PaymentScheduleDetail({ schedule, invoice, currentUserRole }: { 
 
       {/* Summary */}
       <Card>
-        <CardContent className="pt-5">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base">Your Payment Plan</CardTitle>
+          <CardDescription>
+            Payment Plan shows the overall schedule. An Invoice asks for a payment now. A Payment is what was actually received.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
           <div className="grid grid-cols-3 gap-4 text-center sm:text-left sm:grid-cols-3">
             <div>
               <p className="text-xs text-muted-foreground uppercase tracking-wide">Total</p>
@@ -595,10 +607,26 @@ export function PaymentScheduleDetail({ schedule, invoice, currentUserRole }: { 
               </p>
             </div>
           </div>
-          <div className="mt-4 h-2 w-full overflow-hidden rounded-full bg-muted">
+          <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
             <div className="h-full rounded-full bg-success transition-all" style={{ width: `${pctPaid}%` }} />
           </div>
-          <p className="mt-1 text-xs text-muted-foreground">{Math.round(pctPaid)}% paid</p>
+          <p className="text-xs text-muted-foreground">{Math.round(pctPaid)}% paid</p>
+          {(() => {
+            const next = items
+              .filter((i) => i.status === "pending" || i.status === "overdue" || i.status === "processing")
+              .sort((a, b) => String(a.dueDate ?? "9999").localeCompare(String(b.dueDate ?? "9999")))[0];
+            if (!next) return null;
+            return (
+              <div className="rounded-lg border border-border bg-muted/20 px-4 py-3">
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Next Payment</p>
+                <p className="text-lg font-semibold text-heading mt-0.5">
+                  {formatMoney(next.amount)}
+                  {next.dueDate ? ` · due ${formatDate(next.dueDate)}` : ""}
+                </p>
+                <p className="text-sm text-muted-foreground">{next.label}</p>
+              </div>
+            );
+          })()}
         </CardContent>
       </Card>
 
@@ -657,17 +685,25 @@ export function PaymentScheduleDetail({ schedule, invoice, currentUserRole }: { 
         </CardContent>
       </Card>
 
-      {/* TR-M1: online payment collection isn't built yet — see docs/trust-risk-register.md */}
+      {/* Work Package D8 — TR-M1's own "coming soon" card was stale: real
+          Stripe Checkout collection shipped for the client portal's own
+          "Pay now" button (components/portal/payment-section.tsx) since
+          this card was last written, and this component has no venue/
+          Stripe-status prop threaded in to conditionally hide it, so the
+          copy below is written to be true in both states rather than
+          overclaiming a connection that may not exist yet. */}
       <Card className="border-dashed border-muted-foreground/30">
         <CardContent className="py-6 flex items-center gap-4">
           <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-sm bg-muted text-muted-foreground">
             <CreditCard className="h-5 w-5" />
           </span>
           <div className="min-w-0 flex-1">
-            <p className="text-sm font-medium text-heading">Online payment collection — coming soon</p>
+            <p className="text-sm font-medium text-heading">Online payment collection</p>
             <p className="text-xs text-muted-foreground mt-0.5">
-              Accepting deposits and installments directly through Hello to Cheers isn&apos;t live yet. Keep recording
-              payments here as you collect them today.
+              Your clients can pay pending and overdue installments directly from their portal with a card, once
+              you&apos;ve connected a Stripe account. Connect or check your status in{" "}
+              <a href="/settings#stripe" className="underline hover:text-foreground">Settings</a>. Payments recorded
+              here manually still work exactly as they do today.
             </p>
           </div>
         </CardContent>

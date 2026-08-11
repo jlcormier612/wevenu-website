@@ -1,4 +1,5 @@
 import {
+  BarChart3,
   Boxes,
   BookOpen,
   CalendarCheck,
@@ -24,7 +25,6 @@ import {
   Repeat,
   Settings,
   Store,
-  TrendingUp,
   Users,
   Workflow,
 } from "lucide-react";
@@ -53,6 +53,7 @@ export const NAV_SECTIONS: NavSection[] = [
     label: "Overview",
     items: [
       { title: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
+      { title: "Reports",   href: "/reporting",  icon: BarChart3 },
       { title: "Calendar",  href: "/calendar",   icon: CalendarDays },
     ],
   },
@@ -112,7 +113,6 @@ export const NAV_SECTIONS: NavSection[] = [
       { title: "Settings",    href: "/settings",    icon: Settings },
       { title: "Venue Guide", href: "/guide",       icon: Info },
       { title: "Success Library", href: "/success-library", icon: GraduationCap },
-      { title: "Analytics",   href: "/analytics",   icon: TrendingUp },
       { title: "Requests", href: "/requests", icon: ListChecks },
     ],
   },

@@ -4,26 +4,21 @@ import Link from "next/link";
 import { ContractTemplateList } from "@/components/contracts/contract-template-list";
 import { PageHeader } from "@/components/shell/module-placeholder";
 import { Button } from "@/components/ui/button";
+import { ensureContractStartersForCurrentVenue } from "@/lib/contracts/provision";
 import { getTemplates } from "@/lib/contracts/service";
 
 export const metadata: Metadata = { title: "Contract Templates" };
 
 // The one page the sidebar's "Contract Templates" nav item actually links
-// to (lib/navigation.ts) — /contracts/templates is the same data, the same
-// CRUD routes, and (as of this pass) the same ContractTemplateList
-// component; the two pages were an isolated-implementation duplicate found
-// during the Template Platform audit, not a deliberate second surface, so
-// both are kept in sync here rather than removing either route outright.
-// Business Asset Experience Consolidation (BA4, Step 1A) renamed the
-// sidebar items that link here vs. to the real, signed contracts — this
-// page's own copy is kept in sync with that rename.
+// to (lib/navigation.ts) — /contracts/templates is the same data.
 export default async function ContractTemplatesLibraryPage() {
+  await ensureContractStartersForCurrentVenue();
   const templates = await getTemplates(true);
   return (
     <div className="space-y-6">
       <PageHeader
         title="Contract Templates"
-        description="Reusable contracts with fill-in details that auto-fill for each client. Signed and sent contracts are managed under Contracts, in Financials."
+        description="Reusable agreements with event details filled in from Hello to Cheers. Signed agreements live under Contracts."
         actions={
           <Button render={<Link href="/contracts/templates/new" />}>+ New Template</Button>
         }
@@ -33,7 +28,7 @@ export default async function ContractTemplatesLibraryPage() {
         <div className="flex flex-col items-center justify-center rounded-sm border border-dashed border-border bg-card/40 py-16 text-center">
           <p className="font-heading text-lg font-medium text-heading">No contract templates yet</p>
           <p className="mt-1 mb-4 text-sm text-muted-foreground">
-            Create a template to streamline contract generation.
+            Create a template, or refresh to load the Wedding Venue Agreement starter.
           </p>
           <Button render={<Link href="/contracts/templates/new" />}>+ New Template</Button>
         </div>

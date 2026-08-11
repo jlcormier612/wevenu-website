@@ -93,11 +93,11 @@ export function TemplatePicker({
         <SheetHeader className="mb-6">
           <SheetTitle>Apply a Timeline Template</SheetTitle>
           <p className="text-sm text-muted-foreground">
-            Choose a starting point from your library. All entries are fully editable after applying.
+            Choose a starting point from your library or a Hello to Cheers starter. All entries are fully editable after applying.
             {eventStartTime ? (
-              <> Times are calculated from your event start time ({formatTime(eventStartTime)}).</>
+              <> When a template includes relative offsets, times resolve from your event start ({formatTime(eventStartTime)}).</>
             ) : (
-              <> Set a start time on the event to get accurate times.</>
+              <> Starter activities ship without clock times — add times on the Working Timeline after applying.</>
             )}
           </p>
         </SheetHeader>
@@ -114,14 +114,12 @@ export function TemplatePicker({
           </div>
         )}
 
-        {!eventStartTime && (
-          <div className="mb-3 flex items-start gap-2.5 rounded-lg border border-warning/40 bg-warning/10 px-3.5 py-3 text-sm">
-            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-warning-foreground" />
+        {!eventStartTime && selected?.source === "starter" && (
+          <div className="mb-3 flex items-start gap-2.5 rounded-lg border border-border bg-muted/30 px-3.5 py-3 text-sm">
             <div className="space-y-0.5">
-              <p className="font-medium text-warning-foreground">No start time set</p>
+              <p className="font-medium text-foreground">No invented times</p>
               <p className="text-xs text-muted-foreground">
-                Template times will be calculated from noon. Set a start time on the event
-                for accurate scheduling.
+                Starter templates include activities and sequence only. Set times on the Working Timeline after applying.
               </p>
             </div>
           </div>
@@ -188,11 +186,12 @@ export function TemplatePicker({
             <div>
               <h3 className="text-sm font-medium text-foreground">Starter templates</h3>
               <p className="text-xs text-muted-foreground">
-                Built-in starting points — not saved to your library.
+                Hello to Cheers starting points — activities and sequence, no invented clock times.
               </p>
             </div>
             {TIMELINE_TEMPLATES.map((template) => {
               const isSelected = selected?.source === "starter" && selected.id === template.id;
+              const dayCount = new Set(template.entries.map((e) => e.dayOffset ?? 0)).size;
               return (
                 <button
                   key={template.id}
@@ -208,6 +207,7 @@ export function TemplatePicker({
                     <p className="font-medium text-foreground">{template.name}</p>
                     <span className="shrink-0 text-xs text-muted-foreground">
                       {template.entries.length} entries
+                      {dayCount > 1 ? ` · ${dayCount} days` : ""}
                     </span>
                   </div>
                   <p className="mt-0.5 text-sm text-muted-foreground">{template.description}</p>

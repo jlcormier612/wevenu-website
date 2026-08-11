@@ -3,7 +3,7 @@
 import * as React from "react";
 
 import {
-  CheckCircle2, CheckSquare, Circle, Clock, FileSignature, MessageSquare,
+  CheckCircle2, CheckSquare, Circle, Clock, ExternalLink, FileSignature, MessageSquare,
   Paperclip, Receipt, Upload as UploadIcon, Loader2,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -22,6 +22,7 @@ import {
 } from "@/lib/portal/unified-tasks";
 import type { PortalWorkspaceFocus } from "@/lib/portal/workspace-routing";
 import { partitionByCompletion } from "@/lib/tasks/group-by-completion";
+import { vendorConfirmCouplePhase } from "@/lib/vendor-tasks/vendor-confirm-state";
 import type { PortalSection, PortalTask, PortalVendorTask } from "@/lib/portal/types";
 import type { PortalRequestSummary } from "@/lib/requests/types";
 
@@ -67,6 +68,7 @@ export function UnifiedTasksSection({
   const [timelineUnpublished, setTimelineUnpublished] = React.useState(initialTimelineHasUnpublishedChanges);
   const [loaded, setLoaded] = React.useState(false);
   const [completing, setCompleting] = React.useState<string | null>(null);
+  const [undoing, setUndoing] = React.useState<string | null>(null);
 
   const load = React.useCallback(async () => {
     const [tasksRes, requestsRes, paymentsRes, questionnaireRes, documentsRes, timelineRes] = await Promise.all([
@@ -103,10 +105,55 @@ export function UnifiedTasksSection({
     const data = await res.json() as { ok: boolean };
     setCompleting(null);
     if (data.ok) {
-      setVenueTasks((p) => p.map((t) => t.id === rawId ? { ...t, status: "complete" as const, canComplete: false } : t));
+      const completed = venueTasks.find((t) => t.id === rawId);
+      const undoable =
+        !(completed?.autoCompleteTrigger ?? null)
+        && completed?.visibility === "client_owned";
+      setVenueTasks((p) => p.map((t) =>
+        t.id === rawId
+          ? { ...t, status: "complete" as const, canComplete: false, canUndo: undoable, completedAt: new Date().toISOString() }
+          : t,
+      ));
       celebrateTaskComplete("Nice work — one less thing to worry about!");
+      if (undoable) {
+        toast.message("Task completed", {
+          action: {
+            label: "Undo",
+            onClick: () => { void handleUndo(taskId); },
+          },
+          duration: 4000,
+        });
+      } else {
+        toast.success("Task completed");
+      }
     } else {
       toast.error("Could not complete task.");
+    }
+  }
+
+  async function handleUndo(taskId: string) {
+    const rawId = taskId.replace(/^task_/, "");
+    setUndoing(taskId);
+    const res = await fetch("/api/portal/undo-task", {
+      method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ token, taskId: rawId }),
+    });
+    const data = await res.json() as { ok: boolean };
+    setUndoing(null);
+    if (data.ok) {
+      setVenueTasks((p) => p.map((t) =>
+        t.id === rawId
+          ? {
+              ...t,
+              status: "pending" as const,
+              canComplete: !(t.autoCompleteTrigger ?? null) && t.visibility === "client_owned",
+              canUndo: false,
+              completedAt: null,
+            }
+          : t,
+      ));
+      toast.success("Task reopened.");
+    } else {
+      toast.error("Could not undo task.");
     }
   }
 
@@ -126,6 +173,7 @@ export function UnifiedTasksSection({
               ...t,
               status: "complete" as const,
               canComplete: false,
+              canAcknowledge: false,
               completedBy: "couple" as const,
               completedAt: new Date().toISOString(),
             }
@@ -134,6 +182,35 @@ export function UnifiedTasksSection({
       celebrateTaskComplete("Nice work — your vendor will see that it's done!");
     } else {
       toast.error("Could not complete task.");
+    }
+  }
+
+  async function handleAcknowledgeVendorTask(taskId: string) {
+    setCompleting(`vendor_ack_${taskId}`);
+    const res = await fetch("/api/portal/acknowledge-vendor-task", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ token, taskId }),
+    });
+    const data = await res.json() as { ok: boolean };
+    setCompleting(null);
+    if (data.ok) {
+      setVendorTasks((p) => p.map((t) =>
+        t.id === taskId
+          ? {
+              ...t,
+              coupleAcknowledgedAt: new Date().toISOString(),
+              canAcknowledge: false,
+              canComplete: false,
+              status: "pending" as const,
+              vendorReturnNote: null,
+              returnedAt: null,
+            }
+          : t,
+      ));
+      toast.success("Got it — waiting for your vendor to confirm.");
+    } else {
+      toast.error("Could not update this request.");
     }
   }
 
@@ -161,12 +238,23 @@ export function UnifiedTasksSection({
   }
 
   function renderVendorTask(t: PortalVendorTask) {
-    const busy = completing === `vendor_${t.id}`;
+    const busy = completing === `vendor_${t.id}` || completing === `vendor_ack_${t.id}`;
     const shareTimeline =
       t.actionType === SHARE_TIMELINE_ACTION_TYPE
       && t.status !== "complete"
       && t.coupleVisibility === "owned";
     const shareCta = shareTimelineWorkspace();
+    const confirmPhase = vendorConfirmCouplePhase({
+      completionAuthority: t.completionAuthority,
+      status: t.status,
+      coupleAcknowledgedAt: t.coupleAcknowledgedAt,
+    });
+    const canAck = Boolean(t.canAcknowledge) || (
+      t.completionAuthority === "vendor_confirm"
+      && t.coupleVisibility === "owned"
+      && t.status === "pending"
+      && !t.coupleAcknowledgedAt
+    );
     return (
       <div
         key={t.id}
@@ -174,6 +262,8 @@ export function UnifiedTasksSection({
       >
         {shareTimeline ? (
           <Circle className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground/50" />
+        ) : confirmPhase === "waiting" ? (
+          <Clock className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
         ) : t.canComplete ? (
           <button
             type="button"
@@ -230,6 +320,25 @@ export function UnifiedTasksSection({
           {t.coupleVisibility === "visible" && t.status !== "complete" && (
             <p className="mt-1 text-[11px] text-muted-foreground">View only — your vendor will mark this complete</p>
           )}
+          {confirmPhase === "waiting" && (
+            <div className="mt-1 space-y-0.5">
+              <p className="text-[11px] font-medium text-muted-foreground">Waiting for your vendor</p>
+              <p className="text-[11px] text-muted-foreground">
+                Your vendor will review this and confirm when it&apos;s complete.
+              </p>
+            </div>
+          )}
+          {confirmPhase === "complete" && t.completedBy === "vendor" && (
+            <p className="mt-1 text-[11px] text-muted-foreground">Confirmed by your vendor</p>
+          )}
+          {t.vendorReturnNote && t.status === "pending" && confirmPhase === "open" && (
+            <div className="mt-1.5 rounded-lg border border-border/70 bg-muted/40 px-2.5 py-2">
+              <p className="text-[11px] font-medium text-heading">Your vendor needs a few changes</p>
+              <p className="mt-0.5 text-[11px] text-muted-foreground whitespace-pre-wrap">
+                {t.vendorReturnNote}
+              </p>
+            </div>
+          )}
           {shareTimeline && (
             <p className="mt-1 text-[11px] text-muted-foreground">
               Completes when you share your timeline with this vendor
@@ -246,39 +355,87 @@ export function UnifiedTasksSection({
             {shareCta.actionLabel}
           </button>
         )}
+        {canAck && confirmPhase === "open" && (
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => void handleAcknowledgeVendorTask(t.id)}
+            className="shrink-0 text-xs font-semibold px-3 py-1.5 rounded-xl text-white transition-opacity hover:opacity-90 disabled:opacity-60"
+            style={{ background: "var(--venue-primary)" }}
+          >
+            {busy ? "Saving…" : "I've done this"}
+          </button>
+        )}
       </div>
     );
   }
 
   function renderVenueItem(item: UnifiedTask) {
     const Icon = KIND_ICON[item.kind];
+    const busy = completing === item.id;
+    const undoBusy = undoing === item.id;
+    const hasOutbound = Boolean(item.externalUrl && item.confirmLabel && !item.completed);
+
     return (
-      <div key={item.id} className="flex w-full items-center gap-3 rounded-xl border border-border/60 bg-card px-3 py-3">
+      <div key={item.id} className="flex w-full items-start gap-3 rounded-xl border border-border/60 bg-card px-3 py-3">
         {item.completed ? (
-          <CheckSquare className="h-4 w-4 shrink-0 text-success" />
+          <CheckSquare className="mt-0.5 h-4 w-4 shrink-0 text-success" />
         ) : (
-          <Icon className="h-4 w-4 shrink-0 text-muted-foreground" />
+          <Icon className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
         )}
         <div className="min-w-0 flex-1">
           <p className={`text-sm font-medium text-heading ${item.completed ? "line-through text-muted-foreground" : ""}`}>
             {item.title}
           </p>
           {item.description && <p className="text-xs text-muted-foreground mt-0.5">{item.description}</p>}
+          {!item.completed && item.missingLinkHint && (
+            <p className="text-xs text-muted-foreground mt-1">{item.missingLinkHint}</p>
+          )}
           {(item.dueDate || item.daysOffset != null) && (
             <p className="text-[11px] text-muted-foreground mt-0.5">{dueLabel(item)}</p>
           )}
         </div>
-        {!item.completed && (
+        {item.completed && item.undoableHere ? (
           <button
             type="button"
-            disabled={completing === item.id}
-            onClick={() => item.completableHere ? handleComplete(item.id) : onNavigate(item.targetSection, item.targetFocus)}
+            disabled={undoBusy}
+            onClick={() => void handleUndo(item.id)}
+            className="shrink-0 text-xs font-semibold px-3 py-1.5 rounded-xl border border-border/80 text-heading transition-opacity hover:opacity-80 disabled:opacity-60"
+          >
+            {undoBusy ? <Loader2 className="h-3 w-3 animate-spin" /> : "Undo"}
+          </button>
+        ) : hasOutbound ? (
+          <div className="flex shrink-0 flex-col items-stretch gap-1.5 sm:flex-row sm:items-center">
+            <a
+              href={item.externalUrl!}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center justify-center gap-1 text-xs font-semibold px-3 py-1.5 rounded-xl text-white transition-opacity hover:opacity-90"
+              style={{ background: "var(--venue-primary)" }}
+            >
+              <ExternalLink className="h-3 w-3" />
+              {item.actionLabel}
+            </a>
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => void handleComplete(item.id)}
+              className="text-xs font-semibold px-3 py-1.5 rounded-xl border border-border/80 text-heading transition-opacity hover:opacity-80 disabled:opacity-60"
+            >
+              {busy ? <Loader2 className="h-3 w-3 animate-spin mx-auto" /> : item.confirmLabel}
+            </button>
+          </div>
+        ) : !item.completed ? (
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => item.completableHere ? void handleComplete(item.id) : onNavigate(item.targetSection, item.targetFocus)}
             className="shrink-0 text-xs font-semibold px-3 py-1.5 rounded-xl text-white transition-opacity hover:opacity-90 disabled:opacity-60"
             style={{ background: "var(--venue-primary)" }}
           >
-            {completing === item.id ? <Loader2 className="h-3 w-3 animate-spin" /> : item.actionLabel}
+            {busy ? <Loader2 className="h-3 w-3 animate-spin" /> : item.actionLabel}
           </button>
-        )}
+        ) : null}
       </div>
     );
   }

@@ -1,22 +1,36 @@
 /**
  * Invoice print document — no sidebar, branded with venue logo and colors.
  * Follows the print-via-browser pattern used for day-of sheets and floor plans.
+ * Presentation polish only — totals come from the canonical invoice / payment system.
  */
 
 import { formatCurrency, invoiceStatusLabel, lineItemTypeLabel } from "@/lib/invoices/constants";
 import type { InvoiceWithLineItems } from "@/lib/invoices/types";
+import { paymentMilestoneDescription } from "@/lib/payments/starters";
+import type { PaymentObligationKind } from "@/lib/payments/types";
 import type { Venue } from "@/lib/venue/types";
+
+export type InvoicePrintMilestone = {
+  label: string;
+  obligationKind: PaymentObligationKind | null;
+};
 
 export function InvoicePrintDocument({
   invoice,
   venue,
+  milestone = null,
 }: {
   invoice: InvoiceWithLineItems;
   venue: Venue;
+  /** Next unpaid schedule item, when a linked Payment Plan exists. */
+  milestone?: InvoicePrintMilestone | null;
 }) {
   const primaryColor = venue.primaryColor ?? "#5D6F5D";
   const hasDiscount = invoice.discountAmount > 0;
   const hasTax = invoice.taxAmount > 0;
+  const paidToDate = Math.max(0, invoice.total - invoice.balanceDue);
+  const amountDueNow = invoice.balanceDue;
+  const venueDisplayName = venue.businessName ?? venue.name;
 
   const addressParts = [
     venue.addressLine1,
@@ -25,6 +39,9 @@ export function InvoicePrintDocument({
     venue.country !== "United States" ? venue.country : null,
   ].filter(Boolean);
 
+  const defaultNotes = `Thank you for choosing ${venueDisplayName} for your celebration. If you have any questions about this invoice, please contact our team.`;
+  const notes = invoice.notes?.trim() || defaultNotes;
+
   return (
     <div className="min-h-screen bg-white font-sans text-black print:text-black">
       {/* ── Header ─────────────────────────────────────────────────────── */}
@@ -32,6 +49,7 @@ export function InvoicePrintDocument({
         <div className="flex items-start justify-between gap-6">
           <div className="flex items-center gap-4">
             {venue.logoUrl && (
+              // eslint-disable-next-line @next/next/no-img-element
               <img src={venue.logoUrl} alt={venue.name}
                 className="h-12 w-12 rounded-lg object-contain"
                 style={{ background: "rgba(255,255,255,0.15)" }} />
@@ -48,22 +66,52 @@ export function InvoicePrintDocument({
         </div>
       </div>
 
+      {/* ── Amount Due Now ─────────────────────────────────────────────── */}
+      {amountDueNow > 0 && (
+        <div className="border-b border-gray-200 px-12 py-6" style={{ background: "#FAFAF8" }}>
+          <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-1">Amount Due Now</p>
+          <p className="text-3xl font-bold text-gray-900">{formatCurrency(amountDueNow)}</p>
+          {invoice.dueDate && (
+            <p className="text-sm text-gray-600 mt-1">
+              Due {new Date(invoice.dueDate + "T12:00:00").toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}
+            </p>
+          )}
+          {milestone && (
+            <p className="text-sm text-gray-600 mt-2 max-w-xl">
+              <span className="font-medium text-gray-800">{milestone.label}. </span>
+              {paymentMilestoneDescription(milestone.obligationKind, milestone.label)}
+            </p>
+          )}
+        </div>
+      )}
+
       {/* ── Meta row ───────────────────────────────────────────────────── */}
       <div className="border-b border-gray-200 bg-gray-50 px-12 py-4">
-        <div className="grid grid-cols-3 gap-8 text-sm">
+        <div className="grid grid-cols-2 gap-8 text-sm md:grid-cols-4">
           <div>
             <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-1">Bill To</p>
             <p className="font-medium">{invoice.clientName ?? "—"}</p>
           </div>
+          {(invoice.eventName || invoice.eventDate) && (
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-1">Event</p>
+              {invoice.eventName && <p className="font-medium">{invoice.eventName}</p>}
+              {invoice.eventDate && (
+                <p className="text-gray-600">
+                  {new Date(invoice.eventDate + "T12:00:00").toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}
+                </p>
+              )}
+            </div>
+          )}
           {invoice.issuedAt && (
             <div>
-              <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-1">Issue Date</p>
+              <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-1">Issued</p>
               <p>{new Date(invoice.issuedAt).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}</p>
             </div>
           )}
           {invoice.dueDate && (
             <div>
-              <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-1">Due Date</p>
+              <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-1">Due</p>
               <p className="font-medium">{new Date(invoice.dueDate + "T12:00:00").toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}</p>
             </div>
           )}
@@ -72,13 +120,14 @@ export function InvoicePrintDocument({
 
       {/* ── Line items ─────────────────────────────────────────────────── */}
       <div className="px-12 py-8">
+        <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-3">Charges</p>
         <table className="w-full text-sm border-collapse">
           <thead>
             <tr className="border-b-2 border-gray-300">
               <th className="pb-2 text-left font-semibold text-gray-700 w-1/2">Description</th>
               <th className="pb-2 text-center font-semibold text-gray-700 w-20">Type</th>
               <th className="pb-2 text-right font-semibold text-gray-700 w-16">Qty</th>
-              <th className="pb-2 text-right font-semibold text-gray-700 w-24">Unit Price</th>
+              <th className="pb-2 text-right font-semibold text-gray-700 w-24">Rate</th>
               <th className="pb-2 text-right font-semibold text-gray-700 w-24">Amount</th>
             </tr>
           </thead>
@@ -97,16 +146,16 @@ export function InvoicePrintDocument({
           </tbody>
         </table>
 
-        {/* Totals */}
+        {/* Totals — contracted vs paid vs remaining vs due now */}
         <div className="mt-6 flex justify-end">
-          <div className="w-64 space-y-2 text-sm">
+          <div className="w-72 space-y-2 text-sm">
             <div className="flex justify-between text-gray-700">
               <span>Subtotal</span>
               <span>{formatCurrency(invoice.subtotal)}</span>
             </div>
             {hasDiscount && (
               <div className="flex justify-between text-green-700">
-                <span>Discounts / Deposits</span>
+                <span>Adjustments</span>
                 <span>−{formatCurrency(invoice.discountAmount)}</span>
               </div>
             )}
@@ -117,29 +166,37 @@ export function InvoicePrintDocument({
               </div>
             )}
             <div className="flex justify-between border-t-2 border-gray-300 pt-2 text-base font-bold text-gray-900">
-              <span>Total</span>
+              <span>Total Contracted</span>
               <span>{formatCurrency(invoice.total)}</span>
             </div>
-            <div className={`flex justify-between font-semibold ${invoice.balanceDue > 0 ? "text-red-700" : "text-green-700"}`}>
-              <span>Balance Due</span>
-              <span>{invoice.balanceDue > 0 ? formatCurrency(invoice.balanceDue) : "Paid in Full"}</span>
+            <div className="flex justify-between text-gray-700">
+              <span>Paid to Date</span>
+              <span>{formatCurrency(paidToDate)}</span>
+            </div>
+            <div className="flex justify-between text-gray-700">
+              <span>Balance Remaining</span>
+              <span>{formatCurrency(invoice.balanceDue)}</span>
+            </div>
+            <div className={`flex justify-between font-semibold pt-1 ${amountDueNow > 0 ? "text-red-700" : "text-green-700"}`}>
+              <span>Amount Due Now</span>
+              <span>{amountDueNow > 0 ? formatCurrency(amountDueNow) : "Paid in Full"}</span>
             </div>
           </div>
         </div>
       </div>
 
       {/* ── Notes ──────────────────────────────────────────────────────── */}
-      {invoice.notes && (
-        <div className="border-t border-gray-200 px-12 py-6">
-          <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-2">Notes</p>
-          <p className="text-sm text-gray-700 whitespace-pre-line">{invoice.notes}</p>
-        </div>
-      )}
+      <div className="border-t border-gray-200 px-12 py-6">
+        <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-2">
+          Notes from {venueDisplayName}
+        </p>
+        <p className="text-sm text-gray-700 whitespace-pre-line">{notes}</p>
+      </div>
 
       {/* ── Venue contact footer ────────────────────────────────────────── */}
       <div className="border-t border-gray-200 px-12 py-6 mt-4">
         <div className="text-xs text-gray-500 space-y-0.5">
-          <p className="font-medium text-gray-700">{venue.businessName ?? venue.name}</p>
+          <p className="font-medium text-gray-700">{venueDisplayName}</p>
           {addressParts.map((line, i) => <p key={i}>{line}</p>)}
           {venue.email && <p>{venue.email}</p>}
           {venue.phone && <p>{venue.phone}</p>}
@@ -147,7 +204,6 @@ export function InvoicePrintDocument({
         </div>
       </div>
 
-      {/* Print styles */}
       <style>{`
         @media print {
           @page { margin: 0; }

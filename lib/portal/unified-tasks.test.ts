@@ -6,7 +6,14 @@ import {
   selectCanonicalPaymentSchedules,
   type PortalPaymentScheduleLike,
 } from "@/lib/portal/payment-schedules";
-import { buildUnifiedTaskList, ownershipLabel, unifiedTaskCompletionCounts, venueTaskPresentation } from "@/lib/portal/unified-tasks";
+import {
+  ackOutboundCopy,
+  buildUnifiedTaskList,
+  canCoupleUndoVenueTask,
+  ownershipLabel,
+  unifiedTaskCompletionCounts,
+  venueTaskPresentation,
+} from "@/lib/portal/unified-tasks";
 import type { PortalTask } from "@/lib/portal/types";
 import { compactNextStepsActionLabel } from "@/lib/portal/next-steps";
 
@@ -24,6 +31,8 @@ function task(partial: Partial<PortalTask> & Pick<PortalTask, "id" | "title" | "
     autoCompleteTrigger: null,
     canComplete: true,
     ...partial,
+    canUndo: partial.canUndo ?? false,
+    links: partial.links ?? [],
   };
 }
 
@@ -840,3 +849,154 @@ describe("payment attention twin suppression (Impl 2)", () => {
     assert.equal(alone.actionLabel, "Pay now");
   });
 });
+
+describe("ack outbound + couple undo (A/C/D)", () => {
+  const due = "2026-10-31";
+
+  it("Leave a review with a link uses open + confirm, not bare Mark complete", () => {
+    const p = venueTaskPresentation(task({
+      id: "review",
+      title: "Leave a review",
+      status: "pending",
+      dueDate: due,
+      visibility: "client_owned",
+      canComplete: true,
+      autoCompleteTrigger: null,
+      links: [{ id: "l1", url: "https://g.page/r/example", label: "Google review" }],
+    }));
+    assert.equal(p.externalUrl, "https://g.page/r/example");
+    assert.equal(p.actionLabel, "Google review");
+    assert.equal(p.confirmLabel, "I've left my review");
+    assert.equal(p.completableHere, true);
+    assert.equal(p.missingLinkHint, null);
+  });
+
+  it("Choose your package with a link uses package confirm copy", () => {
+    const p = venueTaskPresentation(task({
+      id: "pkg",
+      title: "Choose your package",
+      status: "pending",
+      dueDate: due,
+      visibility: "client_owned",
+      canComplete: true,
+      autoCompleteTrigger: null,
+      links: [{ id: "l2", url: "https://venue.example/packages", label: null }],
+    }));
+    assert.equal(p.actionLabel, "Choose your package");
+    assert.equal(p.confirmLabel, "I've chosen my package");
+    assert.equal(p.externalUrl, "https://venue.example/packages");
+  });
+
+  it("Leave a review without a link keeps Mark complete and missing-link hint", () => {
+    const p = venueTaskPresentation(task({
+      id: "review",
+      title: "Leave a review",
+      status: "pending",
+      dueDate: due,
+      visibility: "client_owned",
+      canComplete: true,
+      autoCompleteTrigger: null,
+      links: [],
+    }));
+    assert.equal(p.actionLabel, "Mark complete");
+    assert.equal(p.confirmLabel, null);
+    assert.equal(p.externalUrl, null);
+    assert.match(p.missingLinkHint ?? "", /review link/i);
+  });
+
+  it("completed manual ack is undoable; verified completion is not", () => {
+    assert.equal(canCoupleUndoVenueTask({
+      status: "complete",
+      canUndo: true,
+      autoCompleteTrigger: null,
+    }), true);
+    assert.equal(canCoupleUndoVenueTask({
+      status: "complete",
+      canUndo: true,
+      autoCompleteTrigger: "timeline_submitted",
+    }), false);
+    assert.equal(canCoupleUndoVenueTask({
+      status: "pending",
+      canUndo: false,
+      autoCompleteTrigger: null,
+    }), false);
+  });
+
+  it("completed Leave a review with canUndo surfaces undoableHere on the unified row", () => {
+    const list = buildUnifiedTaskList({
+      ...emptyUnified,
+      venueTasks: [
+        task({
+          id: "review",
+          title: "Leave a review",
+          status: "complete",
+          dueDate: due,
+          visibility: "client_owned",
+          canComplete: false,
+          canUndo: true,
+          autoCompleteTrigger: null,
+        }),
+      ],
+    });
+    const row = list.find((t) => t.id === "task_review");
+    assert.equal(row?.undoableHere, true);
+    assert.equal(row?.completableHere, false);
+  });
+
+  it("ackOutboundCopy covers seed titles", () => {
+    assert.equal(ackOutboundCopy("Leave a review").confirmLabel, "I've left my review");
+    assert.equal(ackOutboundCopy("Choose your package").confirmLabel, "I've chosen my package");
+  });
+
+  it("uses first non-empty link URL only; ignores blank urls", () => {
+    const p = venueTaskPresentation(task({
+      id: "pkg2",
+      title: "Choose your package",
+      status: "pending",
+      dueDate: due,
+      visibility: "client_owned",
+      canComplete: true,
+      links: [
+        { id: "empty", url: "   ", label: "skip" },
+        { id: "good", url: "https://ok.example/p", label: "Packages" },
+      ],
+    }));
+    assert.equal(p.externalUrl, "https://ok.example/p");
+    assert.equal(p.actionLabel, "Packages");
+  });
+
+  it("never attaches outbound confirm to domain-trigger rows even if links exist", () => {
+    const p = venueTaskPresentation(task({
+      id: "gc",
+      title: "Leave a review",
+      status: "pending",
+      dueDate: due,
+      visibility: "client_owned",
+      canComplete: true,
+      autoCompleteTrigger: "guest_count_finalized",
+      links: [{ id: "l", url: "https://evil.example", label: "Nope" }],
+    }));
+    assert.equal(p.completableHere, false);
+    assert.equal(p.externalUrl, null);
+    assert.equal(p.confirmLabel, null);
+    assert.equal(p.actionLabel, "Submit guest count");
+  });
+
+  it("verified completions are never undoableHere even if canUndo lags true", () => {
+    assert.equal(
+      venueTaskPresentation(task({
+        id: "b",
+        title: "Submit your guest count",
+        status: "complete",
+        dueDate: due,
+        canComplete: false,
+        canUndo: true,
+        autoCompleteTrigger: "guest_count_finalized",
+      })).undoableHere,
+      false,
+    );
+  });
+
+
+});
+

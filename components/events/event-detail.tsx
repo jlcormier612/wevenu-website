@@ -21,7 +21,7 @@ import { updateEventStatusAction } from "@/app/(app)/events/[id]/actions";
 import { sendAnniversaryMessageAction } from "@/app/(app)/events/[id]/anniversary-actions";
 import { BookingOverviewSummary } from "@/components/events/booking-overview-summary";
 import { EventReadinessCard } from "@/components/events/event-readiness-card";
-import { FinalDetailsForm } from "@/components/events/final-details-form";
+import { QuestionnaireFamilyPanel } from "@/components/events/questionnaire-family-panel";
 import type { EventReadinessSummary } from "@/lib/readiness/types";
 import { BookingSetupCard } from "@/components/events/booking-setup-card";
 import { TimelineSetupCard } from "@/components/events/timeline-setup-card";
@@ -65,7 +65,9 @@ import { formatCurrency } from "@/lib/invoices/constants";
 import type { Invoice } from "@/lib/invoices/types";
 import type { Document } from "@/lib/documents/types";
 import type { WorkspaceDocument } from "@/lib/document-workspace/types";
-import type { Questionnaire } from "@/lib/events/questionnaire";
+import type { Questionnaire, QuestionnaireActivity } from "@/lib/events/questionnaire";
+import type { QuestionnaireTemplate } from "@/lib/questionnaire-templates/service";
+// QuestionnaireFamilyPanel replaces the single FinalDetailsForm surface.
 import type { EventPlaybookApplication, EventReadiness, EventTask, EventTaskContextLink, PlaybookTemplateWithStats, TaskContact } from "@/lib/playbooks/types";
 import type { TimelineTemplateWithStats } from "@/lib/timeline-templates/types";
 import {
@@ -231,6 +233,10 @@ export function EventDetail({
   pinnedDocumentKeys = [],
   recentDocumentEntries = [],
   questionnaire = null,
+  questionnaires = [],
+  questionnaireTemplates = [],
+  questionnaireActivities = [],
+  questionnaireActivitiesById = {},
   coupleEmail = null,
   eventTasks = [],
   playbookTemplates = [],
@@ -251,6 +257,7 @@ export function EventDetail({
   conversationId = null,
   conversationMessages = [],
   spaceName = null,
+  venueName = "Your venue",
   clientStatus = null,
   contractTemplates = [],
   contracts = [],
@@ -265,6 +272,7 @@ export function EventDetail({
   inventoryItems = [],
   eventInventory = null,
   inventoryTemplates = [],
+  eventOrderTemplates = [],
   requestsByTaskId = {},
   requests = [],
   readinessSummary,
@@ -279,6 +287,10 @@ export function EventDetail({
   pinnedDocumentKeys?: string[];
   recentDocumentEntries?: [string, string][];
   questionnaire?: Questionnaire | null;
+  questionnaires?: Questionnaire[];
+  questionnaireTemplates?: QuestionnaireTemplate[];
+  questionnaireActivities?: QuestionnaireActivity[];
+  questionnaireActivitiesById?: Record<string, QuestionnaireActivity[]>;
   coupleEmail?: string | null;
   eventTasks?: EventTask[];
   playbookTemplates?: PlaybookTemplateWithStats[];
@@ -299,6 +311,7 @@ export function EventDetail({
   conversationId?: string | null;
   conversationMessages?: ConversationMessage[];
   spaceName?: string | null;
+  venueName?: string;
   clientStatus?: ClientStatus | null;
   contractTemplates?: import("@/lib/contracts/types").ContractTemplate[];
   contracts?: import("@/lib/contracts/types").Contract[];
@@ -316,6 +329,8 @@ export function EventDetail({
   // additive to the venue-wide catalog every venue already has.
   eventInventory?: import("@/lib/event-inventory/types").EventInventoryWithDetails | null;
   inventoryTemplates?: import("@/lib/event-inventory/types").InventoryTemplate[];
+  // D7A — Event Order Templates. Same additive, non-feature-flagged shape as inventoryTemplates above.
+  eventOrderTemplates?: import("@/lib/event-order-templates/types").EventOrderTemplate[];
   requestsByTaskId?: Record<string, import("@/lib/requests/types").Request>;
   requests?: import("@/lib/requests/types").Request[];
   readinessSummary: EventReadinessSummary;
@@ -354,11 +369,11 @@ export function EventDetail({
     // using either feature.
     if (status === "complete") {
       const orderUnfinalized = eventOrderEnabled && eventOrder?.status !== "finalized";
-      const floorPlanUnfinalized = event.floorPlans.length > 0 && !event.floorPlans.some((fp) => fp.finalizedAt);
-      if (orderUnfinalized || floorPlanUnfinalized) {
+      const floorPlanNotReady = event.floorPlans.length > 0 && !event.floorPlans.some((fp) => fp.finalizedAt);
+      if (orderUnfinalized || floorPlanNotReady) {
         const parts = [
           orderUnfinalized && "the Event Order isn't finalized",
-          floorPlanUnfinalized && "the Floor Plan isn't finalized",
+          floorPlanNotReady && "no Floor Plan is marked Ready",
         ].filter(Boolean).join(" and ");
         if (!confirm(`Heads up — ${parts} yet. Mark this event complete anyway?`)) return;
       }
@@ -627,26 +642,28 @@ export function EventDetail({
             </CardContent>
           </Card>
 
-          {/* Work Package D3 — FinalDetailsForm was fully built (including
-              the BA4B-certified header/waiting-state treatment) but had no
-              real route rendering it anywhere in the app; the Booking
-              workspace's Documents tab only ever showed a status badge,
-              never the couple's actual submitted answers. This is that
-              missing route — the coordinator's one real place to see and
-              edit final-details answers, using data already fetched for
-              this page (no new data fetching added). */}
+          {/* Questionnaire Family — Client Planning, Final Details, Post-Event Feedback */}
           <Card className="mt-4">
             <CardHeader>
-              <CardTitle className="text-base">Final Details</CardTitle>
-              <CardDescription>Guest count, timing, music, and other day-of details — filled out by the couple or your team.</CardDescription>
+              <CardTitle className="text-base">Planning forms</CardTitle>
+              <CardDescription>
+                Client Planning Questionnaire, Final Details, and Post-Event Feedback — sent to the couple when you need them.
+              </CardDescription>
             </CardHeader>
             <CardContent>
-              <FinalDetailsForm
+              <QuestionnaireFamilyPanel
                 eventId={event.id}
-                initial={questionnaire}
+                questionnaires={questionnaires.length > 0 ? questionnaires : (questionnaire ? [questionnaire] : [])}
+                templates={questionnaireTemplates}
+                activitiesById={
+                  Object.keys(questionnaireActivitiesById).length > 0
+                    ? questionnaireActivitiesById
+                    : (questionnaire ? { [questionnaire.id]: questionnaireActivities } : {})
+                }
                 coupleEmail={coupleEmail}
                 coupleName={event.clientName}
                 eventName={event.name}
+                venueName={venueName}
               />
             </CardContent>
           </Card>
@@ -782,7 +799,16 @@ export function EventDetail({
         {/* ── Event Order ──────────────────────────────────────────── */}
         {eventOrderEnabled && (
           <TabsContent value="event-order">
-            <EventOrderPanel eventId={event.id} clientId={event.clientId} eventOrder={eventOrder} packages={packages} inventoryItems={inventoryItems} invoices={invoices} floorPlans={event.floorPlans} />
+            <EventOrderPanel eventId={event.id} clientId={event.clientId} clientName={event.clientName} clientEmail={coupleEmail} venueName={venueName} eventOrder={eventOrder} packages={packages} inventoryItems={inventoryItems} invoices={invoices} floorPlans={event.floorPlans} templates={eventOrderTemplates}
+              overview={{
+                eventName: event.name,
+                eventDate: event.eventDate,
+                eventType: event.eventType,
+                guestCount: event.guestCount,
+                spaceName,
+                ceremonyStartTime: questionnaire?.ceremonyStartTime ?? null,
+                receptionStartTime: questionnaire?.receptionStartTime ?? null,
+              }} />
           </TabsContent>
         )}
 

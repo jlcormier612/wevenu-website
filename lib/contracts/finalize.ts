@@ -35,6 +35,12 @@ export async function finalizeContract(contractId: string): Promise<ContractActi
     return { ok: false, message: "Only a signed contract can be finalized." };
   }
 
+  const { assertCustomerSafeContractContent } = await import("@/lib/contracts/starters");
+  const safety = assertCustomerSafeContractContent(contract.content);
+  if (!safety.ok) {
+    return { ok: false, message: safety.message };
+  }
+
   const supabase = await createClient();
   const documentId = await documentIntegration.getContractDocumentId(supabase, contractId);
   if (!documentId) {

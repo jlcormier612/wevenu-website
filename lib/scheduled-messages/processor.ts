@@ -18,7 +18,7 @@ import { sendEmail } from "@/lib/email/send";
 import { sendSms } from "@/lib/sms/send";
 import { toE164 } from "@/lib/sms/phone";
 import { translateEmailFailure, translateSmsFailure } from "@/lib/communication/failure-messages";
-import { buildMergeData, mergeContent } from "@/lib/message-templates/merge";
+import { resolveForCustomerSend } from "@/lib/message-templates/merge";
 import { isEnrollmentSequencePaused } from "@/lib/message-sequences/repository";
 import * as repo from "@/lib/scheduled-messages/repository";
 import type { ProcessScheduledResult, ScheduledMessage } from "@/lib/scheduled-messages/types";
@@ -38,47 +38,44 @@ async function findOrCreateConversation(
 }
 
 async function processOne(supabase: ReturnType<typeof createAdminClient>, msg: ScheduledMessage): Promise<{ ok: boolean; error?: string }> {
-  const ctx = await repo.getMergeContextForRelationship(supabase, msg.venueId, msg.relationshipId);
+  const ctx = await repo.getMergeContextForRelationship(supabase, msg.venueId, msg.relationshipId, {
+    tourAppointmentId: msg.mergeTourAppointmentId,
+    paymentLineItemId: msg.mergePaymentLineItemId,
+    taskName: msg.mergeTaskName,
+  });
   if (!ctx) return { ok: false, error: "Couldn't find who this message belongs to." };
   const contact = await repo.getRecipientContactForRelationship(supabase, msg.relationshipId);
 
-  const mergeData = buildMergeData(ctx);
-  const resolvedBody = mergeContent(msg.body, mergeData);
+  // Content is stored with raw {{tokens}}; resolve fresh at send time so a
+  // rescheduled tour or edited payment is never sent stale.
+  const resolved = resolveForCustomerSend(msg.body, msg.emailSubject, ctx);
+  if (!resolved.ok) return { ok: false, error: resolved.message };
 
   let providerId: string | undefined;
 
   if (msg.channel === "email") {
     if (!contact.email) return { ok: false, error: "No email address on file for this contact." };
-    const resolvedSubject = mergeContent(msg.emailSubject ?? "", mergeData);
-    const result = await sendEmail({ to: contact.email, subject: resolvedSubject, text: resolvedBody });
+    if (!resolved.subject) return { ok: false, error: "An email needs a subject line." };
+    const result = await sendEmail({ to: contact.email, subject: resolved.subject, text: resolved.body });
     if (!result.ok) return { ok: false, error: translateEmailFailure(result.message) };
     providerId = result.providerId;
   } else {
     if (!contact.phone) return { ok: false, error: "No phone number on file for this contact." };
     const e164 = toE164(contact.phone);
     if (!e164) return { ok: false, error: "The phone number on file isn't valid." };
-    const result = await sendSms({ to: e164, body: resolvedBody });
+    const result = await sendSms({ to: e164, body: resolved.body });
     if (!result.ok) return { ok: false, error: translateSmsFailure(result.message) };
     providerId = result.providerId;
   }
 
   const conversationId = await findOrCreateConversation(supabase, msg.venueId, msg.relationshipId);
   if (conversationId) {
-    // touch_conversation_on_message already updates last_message_at /
-    // venue_unread on insert — no manual follow-up update needed here,
-    // same as the SMS inbound webhook.
-    // RC2 — this was previously inserted as sender_type: "venue_staff",
-    // making an Automation-sent message indistinguishable from one a
-    // coordinator personally typed. "system" already exists in the check
-    // constraint and is already handled correctly everywhere this renders
-    // (Bubble treats venue_staff/system identically for alignment) — this
-    // was a real bug, not a missing mechanism.
     await supabase.from("conversation_messages").insert({
       conversation_id: conversationId,
       venue_id: msg.venueId,
       sender_type: "system",
       channel: msg.channel,
-      body: resolvedBody,
+      body: resolved.body,
       provider_id: providerId ?? null,
       status: "accepted",
       channel_metadata: msg.sequenceEnrollmentId ? { sequenceEnrollmentId: msg.sequenceEnrollmentId } : null,

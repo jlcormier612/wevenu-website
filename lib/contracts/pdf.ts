@@ -38,10 +38,17 @@ const styles = StyleSheet.create({
   // against real generated PDFs; see docs/contract-lifecycle-implementation.md.
   page: { paddingTop: 56, paddingBottom: 64, paddingHorizontal: 56, fontSize: 10.5, fontFamily: "Helvetica", color: "#2A2622" },
   header: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 28, paddingBottom: 16, borderBottomWidth: 1.5 },
+  // Work Package D8 — a real bug caught by rendering with a realistic long
+  // client name: neither header column had a width bound, so react-pdf
+  // never wrapped the title text — it just overflowed left, straight over
+  // the venue name. Both columns now get an explicit maxWidth so long
+  // content wraps onto a second line within its own column instead of
+  // colliding with its sibling.
+  venueBlock: { maxWidth: "48%" },
   logo: { width: 44, height: 44, objectFit: "contain", marginBottom: 6 },
   venueName: { fontSize: 13, fontFamily: "Helvetica-Bold" },
   venueMeta: { fontSize: 8.5, color: "#6B6459", marginTop: 2 },
-  titleBlock: { alignItems: "flex-end" },
+  titleBlock: { alignItems: "flex-end", maxWidth: "48%" },
   title: { fontSize: 16, fontFamily: "Helvetica-Bold", textAlign: "right" },
   statusLine: { fontSize: 9, color: "#6B6459", marginTop: 3 },
   metaGrid: { flexDirection: "row", flexWrap: "wrap", marginBottom: 20, gap: 24 },
@@ -59,9 +66,22 @@ const styles = StyleSheet.create({
   footer: { position: "absolute", bottom: 28, left: 56, right: 56, flexDirection: "row", justifyContent: "space-between", fontSize: 8, color: "#928C7F", borderTopWidth: 0.5, borderTopColor: "#E5E0D4", paddingTop: 6 },
 });
 
+/**
+ * Work Package D6 — a real bug caught by rendering an actual PDF: this
+ * function is used for both `contract.eventDate` (a date-only "YYYY-MM-DD"
+ * string, which `new Date(iso)` parses as UTC midnight — displaying it in
+ * a timezone west of UTC rolls it back a day) and `contract.createdAt`/
+ * `signedAt` (full timestamps, unaffected). A signed contract PDF was
+ * showing two different event dates on the same page: the header
+ * metadata (this function, off by one) and the body content (merged via
+ * lib/contracts/constants.ts's formatContractDate, which parses y/m/d
+ * directly and was correct). Same guard `lib/event-orders/pdf.ts` already
+ * uses correctly for its own date-only field.
+ */
 function fmtDate(iso: string | null): string {
   if (!iso) return "—";
-  return new Date(iso).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
+  const d = iso.length === 10 ? new Date(`${iso}T12:00:00`) : new Date(iso);
+  return d.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
 }
 
 function ContractPdfDocument({ contract, venue }: { contract: Contract; venue: Venue }) {
@@ -74,7 +94,7 @@ function ContractPdfDocument({ contract, venue }: { contract: Contract; venue: V
     React.createElement(Document, { title: contract.title, author: venueDisplayName },
       React.createElement(Page, { size: "LETTER", style: styles.page },
         React.createElement(View, { style: [styles.header, { borderBottomColor: brandColor }] },
-          React.createElement(View, null,
+          React.createElement(View, { style: styles.venueBlock },
             venue.logoUrl ? React.createElement(Image, { src: venue.logoUrl, style: styles.logo }) : null,
             React.createElement(Text, { style: styles.venueName }, venueDisplayName),
             addressLine ? React.createElement(Text, { style: styles.venueMeta }, addressLine) : null,
@@ -105,7 +125,15 @@ function ContractPdfDocument({ contract, venue }: { contract: Contract; venue: V
           React.createElement(Text, { style: styles.contentText }, contract.content),
         ),
 
-        contract.signedAt ? React.createElement(View, { style: styles.signatureBlock },
+        // Work Package D8 — a real bug caught by rendering with a
+        // realistic, longer contract body: the "SIGNATURE" heading landed
+        // alone at the bottom of one page while the signer name/date/
+        // disclaimer it belongs to flowed to the next — an orphaned
+        // heading, the same class of bug already fixed for Brochures
+        // (lib/brochures/pdf.ts). `wrap: false` keeps the whole block
+        // (heading + content) together, moved to the next page as one
+        // unit if it doesn't fit — safe here since the block is short.
+        contract.signedAt ? React.createElement(View, { style: styles.signatureBlock, wrap: false },
           React.createElement(Text, { style: styles.signatureTitle }, "Signature"),
           React.createElement(View, { style: styles.signatureRow },
             React.createElement(View, null,

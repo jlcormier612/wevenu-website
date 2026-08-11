@@ -113,8 +113,14 @@ export async function applyVendorTaskTemplatesAction(
   assignmentId: string,
   itemIds: string[],
   coupleVisibility: "private" | "visible" | "owned" = "private",
+  opts?: { requireVendorConfirmation?: boolean },
 ): Promise<VendorActionResult & { createdCount?: number; warnedNoEventDate?: boolean }> {
-  const result = await applyVendorTaskTemplates({ assignmentId, itemIds, coupleVisibility });
+  const result = await applyVendorTaskTemplates({
+    assignmentId,
+    itemIds,
+    coupleVisibility,
+    requireVendorConfirmation: opts?.requireVendorConfirmation,
+  });
   if (result.ok) {
     revalidatePath(`/vendor/events/${assignmentId}`);
     revalidatePath("/vendor/dashboard");

@@ -8,6 +8,7 @@ import { offsetDate } from "@/lib/playbooks/due-dates";
 import { parseDaysOffsetInput } from "@/lib/vendor-task-templates/presets";
 import { getVendorUser } from "@/lib/vendor-auth/service";
 import { getVendorEventDetail, getVendorEvents } from "@/lib/vendor-events/service";
+import { deriveCompletionAuthority } from "@/lib/vendor-tasks/completion-authority";
 import type { VendorActionResult } from "@/lib/vendors/types";
 import type {
   VendorTaskTemplate,
@@ -426,6 +427,8 @@ export async function applyVendorTaskTemplates(opts: {
   templateIds?: string[];
   /** Share applied tasks with the couple (default private). */
   coupleVisibility?: "private" | "visible" | "owned";
+  /** Phase 2: owned + vendor_confirm dual-state for applied tasks. */
+  requireVendorConfirmation?: boolean;
 }): Promise<VendorActionResult & { createdCount?: number; warnedNoEventDate?: boolean }> {
   let itemIds = [...new Set((opts.itemIds ?? []).filter(Boolean))];
 
@@ -508,6 +511,14 @@ export async function applyVendorTaskTemplates(opts: {
         opts.coupleVisibility === "visible" || opts.coupleVisibility === "owned"
           ? opts.coupleVisibility
           : "private";
+      const actionType = t.action_type === "share_timeline" ? "share_timeline" : null;
+      const requireVendorConfirmation =
+        Boolean(opts.requireVendorConfirmation)
+        && coupleVisibility === "owned"
+        && actionType == null;
+      const completionAuthority = requireVendorConfirmation
+        ? "vendor_confirm"
+        : deriveCompletionAuthority({ coupleVisibility, actionType });
       const { data: inserted, error: insertError } = await supabase
         .from("vendor_tasks")
         .insert({
@@ -522,7 +533,8 @@ export async function applyVendorTaskTemplates(opts: {
           source:             "template",
           status:             "pending",
           couple_visibility:  coupleVisibility,
-          action_type:        t.action_type === "share_timeline" ? "share_timeline" : null,
+          action_type:        actionType,
+          completion_authority: completionAuthority,
         })
         .select("id")
         .single();

@@ -13,6 +13,8 @@ import { createClient } from "@/integrations/supabase/server";
 import { isSupabaseConfigured } from "@/lib/env";
 import { getCurrentVenue } from "@/lib/venue/service";
 
+export type DateWindow = { from?: string; to?: string };
+
 export type ConversionFunnel = {
   counts: {
     inquiry: number; tourScheduled: number; proposalSent: number;
@@ -35,14 +37,22 @@ export type ConversionFunnel = {
  * into another's response. A caller that needs multiple stages in one
  * request should call this once and read the fields it needs, rather
  * than relying on caching inside this function.
+ *
+ * Work Package R1 — optional date window (each stage filtered by the
+ * originating lead's created_at; see migration 20261257000000's own
+ * comment for why that's the one consistent semantic across all seven
+ * stages). Omitted window = the original all-time behavior, unchanged.
  */
-export async function getConversionFunnel(): Promise<ConversionFunnel | null> {
+export async function getConversionFunnel(window?: DateWindow): Promise<ConversionFunnel | null> {
   if (!isSupabaseConfigured) return null;
   const venue = await getCurrentVenue();
   if (!venue) return null;
 
   const supabase = await createClient();
-  const { data, error } = await supabase.rpc("canonical_conversion_funnel");
+  const { data, error } = await supabase.rpc("canonical_conversion_funnel", {
+    p_from: window?.from ?? null,
+    p_to: window?.to ?? null,
+  });
   if (error || !data) return null;
   return data as ConversionFunnel;
 }

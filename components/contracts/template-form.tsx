@@ -95,6 +95,12 @@ export function TemplateForm({ template }: { template?: ContractTemplate | null 
 
   return (
     <div className="space-y-6">
+      <div className="rounded-lg border border-border bg-muted/30 px-4 py-3 text-sm text-muted-foreground">
+        This is your <span className="font-medium text-heading">template</span>
+        {isEdit ? " — edits here do not change agreements already created for clients." : "."}
+        {" "}Your agreement should use language approved for your venue. Hello to Cheers provides this template as a starting structure and does not provide legal advice.
+      </div>
+
       {!isEdit && (
         <div className="rounded-lg border border-dashed border-border p-4">
           {!importOpen ? (
@@ -146,7 +152,7 @@ export function TemplateForm({ template }: { template?: ContractTemplate | null 
         <div className="space-y-1.5 sm:col-span-2">
           <Label htmlFor="tn">Template name *</Label>
           <Input id="tn" value={input.name} onChange={(e) => set("name", e.target.value)}
-            placeholder="Standard Venue Rental Agreement" aria-invalid={errors.name ? true : undefined} />
+            placeholder="Wedding Venue Agreement" aria-invalid={errors.name ? true : undefined} />
           {errors.name && <p className="text-xs text-destructive">{errors.name}</p>}
         </div>
         <div className="space-y-1.5 sm:col-span-2">

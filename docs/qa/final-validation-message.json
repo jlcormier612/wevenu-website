@@ -1,0 +1,27 @@
+{
+  "templateKey": "MSG-02",
+  "tourId": "03f2cf99-a29b-4f10-9934-b496c4f975c1",
+  "ctx": {
+    "venueName": "Sweet Daisy Barn & Farm",
+    "clientName": "Priya Natarajan",
+    "coordinatorName": "Jennifer Cormier",
+    "eventDate": null,
+    "eventName": null,
+    "tourDatetime": "Tuesday, August 18, 2026 at 5:32 PM",
+    "paymentLabel": null,
+    "paymentAmount": null,
+    "paymentDueDate": null,
+    "taskName": null
+  },
+  "resolved": {
+    "ok": true,
+    "body": "Hi Priya Natarajan,\n\nWe’re looking forward to welcoming you to Sweet Daisy Barn & Farm on Tuesday, August 18, 2026 at 5:32 PM for your tour.\n\nWe’ll walk through the spaces, talk through how the venue works, and answer any questions you have about planning your celebration here.\n\nIf anything changes before your visit, just reply to this message and we’ll be happy to help.\n\nSee you soon,\n\nJennifer Cormier\nSweet Daisy Barn & Farm",
+    "subject": "Your tour at Sweet Daisy Barn & Farm is confirmed"
+  },
+  "sendResult": {
+    "ok": true,
+    "method": "mailto",
+    "mailtoUrl": "mailto:priya.lifecycle.test%40example.com?subject=Your+tour+at+Sweet+Daisy+Barn+%26+Farm+is+confirmed&body=Hi+Priya+Natarajan%2C%0A%0AWe%E2%80%99re+looking+forward+to+welcoming+you+to+Sweet+Daisy+Barn+%26+Farm+on+Tuesday%2C+August+18%2C+2026+at+5%3A32+PM+for+your+tour.%0A%0AWe%E2%80%99ll+walk+through+the+spaces%2C+talk+through+how+the+venue+works%2C+and+answer+any+questions+you+have+about+planning+your+celebration+here.%0A%0AIf+anything+changes+before+your+visit%2C+just+reply+to+this+message+and+we%E2%80%99ll+be+happy+to+help.%0A%0ASee+you+soon%2C%0A%0AJennifer+Cormier%0ASweet+Daisy+Barn+%26+Farm"
+  },
+  "mailtoBodyPreview": "Hi Priya Natarajan,\n\nWe’re looking forward to welcoming you to Sweet Daisy Barn & Farm on Tuesday, August 18, 2026 at 5:32 PM for your tour.\n\nWe’ll walk through the spaces, talk through how the venue works, and answer any questions you have about planning your celebration here.\n\nIf anything changes before your visit, just reply to this message and we’ll be happy to help.\n\nSee you soon,\n\nJennifer Cormier\nSweet Daisy Barn & Farm"
+}

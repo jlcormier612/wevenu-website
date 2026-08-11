@@ -13,6 +13,7 @@ type TemplateRow = {
   id: string; venue_id: string; name: string; category: string;
   email_subject: string | null; email_body: string | null; sms_body: string | null;
   is_archived: boolean;
+  source_master_key: string | null;
   created_at: string; updated_at: string;
 };
 
@@ -22,6 +23,7 @@ function mapTemplate(r: TemplateRow): MessageTemplate {
     category: r.category as MessageTemplate["category"],
     emailSubject: r.email_subject, emailBody: r.email_body, smsBody: r.sms_body,
     isArchived: r.is_archived,
+    sourceMasterKey: r.source_master_key ?? null,
     createdAt: r.created_at, updatedAt: r.updated_at,
   };
 }
@@ -41,7 +43,12 @@ export async function getTemplate(client: DbClient, venueId: string, id: string)
   return data ? mapTemplate(data) : null;
 }
 
-export async function insertTemplate(client: DbClient, venueId: string, input: MessageTemplateInput): Promise<string> {
+export async function insertTemplate(
+  client: DbClient,
+  venueId: string,
+  input: MessageTemplateInput,
+  opts?: { sourceMasterKey?: string | null },
+): Promise<string> {
   const { data, error } = await client.from("message_templates")
     .insert({
       venue_id: venueId,
@@ -50,10 +57,55 @@ export async function insertTemplate(client: DbClient, venueId: string, input: M
       email_subject: input.emailBody.trim() ? (input.emailSubject.trim() || null) : null,
       email_body: input.emailBody.trim() || null,
       sms_body: input.smsBody.trim() || null,
+      source_master_key: opts?.sourceMasterKey ?? null,
     })
     .select("id").single<{ id: string }>();
   if (error) throw error;
   return data.id;
+}
+
+export async function getTemplateByMasterKey(
+  client: DbClient, venueId: string, sourceMasterKey: string,
+): Promise<MessageTemplate | null> {
+  const { data, error } = await client.from("message_templates").select("*")
+    .eq("venue_id", venueId).eq("source_master_key", sourceMasterKey)
+    .order("created_at", { ascending: true }).limit(1)
+    .maybeSingle<TemplateRow>();
+  if (error) throw error;
+  return data ? mapTemplate(data) : null;
+}
+
+export async function getTemplatesByName(
+  client: DbClient, venueId: string, name: string,
+): Promise<MessageTemplate[]> {
+  const { data, error } = await client.from("message_templates").select("*")
+    .eq("venue_id", venueId).eq("name", name);
+  if (error) throw error;
+  return ((data ?? []) as TemplateRow[]).map(mapTemplate);
+}
+
+export async function adoptSourceMasterKey(
+  client: DbClient, venueId: string, id: string, sourceMasterKey: string,
+): Promise<void> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error } = await (client.from("message_templates") as any)
+    .update({ source_master_key: sourceMasterKey })
+    .eq("id", id).eq("venue_id", venueId);
+  if (error) throw error;
+}
+
+/** Unique name among this venue's templates — appends (Starter) / (Starter 2)…. */
+export async function uniqueTemplateName(
+  client: DbClient, venueId: string, baseName: string,
+): Promise<string> {
+  const existing = await getTemplates(client, venueId, true);
+  const names = new Set(existing.map((t) => t.name));
+  if (!names.has(baseName)) return baseName;
+  const starter = `${baseName} (Starter)`;
+  if (!names.has(starter)) return starter;
+  let n = 2;
+  while (names.has(`${baseName} (Starter ${n})`)) n += 1;
+  return `${baseName} (Starter ${n})`;
 }
 
 export async function updateTemplate(client: DbClient, venueId: string, id: string, input: MessageTemplateInput): Promise<void> {
@@ -87,12 +139,20 @@ export async function deleteTemplate(client: DbClient, venueId: string, id: stri
     };
   }
 
-  const { error } = await client.from("message_templates").delete().eq("id", id).eq("venue_id", venueId);
+  // Work Package D6 §57 — RLS's DELETE-role gate (Owner/Manager only,
+  // message_templates_delete_gate) blocks a disallowed delete by matching
+  // zero rows, not by raising a Postgres error — `.select("id")` on the
+  // delete is what makes that visible, so a blocked Staff/Coordinator
+  // delete is correctly reported as denied instead of a false "deleted."
+  const { data, error } = await client.from("message_templates").delete().eq("id", id).eq("venue_id", venueId).select("id");
   if (error) {
     if (error.code === "23503") {
       return { ok: false, message: "This template is still in use elsewhere — remove it from there first." };
     }
     throw error;
+  }
+  if (!data || data.length === 0) {
+    return { ok: false, message: "Only an Owner or Manager can delete this template." };
   }
   return { ok: true };
 }

@@ -133,81 +133,8 @@ export async function updateItemImage(client: DbClient, venueId: string, id: str
   if (error) throw error;
 }
 
-// ---- Starter Inventory (Floor Plan Editor Completion, Requirement 6) --------
-// Seeded once, at venue creation, as ordinary editable/archivable Inventory
-// records — never read directly by the editor itself, which only ever
-// consumes Inventory through the normal getFloorPlanEligibleItems() query.
-
-type StarterItem = Omit<InventoryItemInput, "categoryId">;
-
-const STARTER_CATEGORIES: { name: string; items: StarterItem[] }[] = [
-  {
-    name: "Tables",
-    items: [
-      { name: "60\" Round", quantityAvailable: 10, width: 60, length: 60, height: null, shape: "round", color: null, printableName: null, availableForFloorPlans: true },
-      { name: "72\" Round", quantityAvailable: 10, width: 72, length: 72, height: null, shape: "round", color: null, printableName: null, availableForFloorPlans: true },
-      { name: "6' Banquet", quantityAvailable: 10, width: 72, length: 30, height: null, shape: "rectangular", color: null, printableName: null, availableForFloorPlans: true },
-      { name: "8' Banquet", quantityAvailable: 10, width: 96, length: 30, height: null, shape: "rectangular", color: null, printableName: null, availableForFloorPlans: true },
-      { name: "Cocktail", quantityAvailable: 8, width: 30, length: 30, height: null, shape: "round", color: null, printableName: null, availableForFloorPlans: true },
-      { name: "Sweetheart", quantityAvailable: 1, width: 48, length: 24, height: null, shape: "rectangular", color: null, printableName: null, availableForFloorPlans: true },
-    ],
-  },
-  {
-    name: "Seating",
-    items: [
-      { name: "Chair", quantityAvailable: 150, width: 20, length: 20, height: null, shape: "square", color: null, printableName: null, availableForFloorPlans: true },
-    ],
-  },
-  {
-    name: "Reception",
-    items: [
-      { name: "Dance Floor", quantityAvailable: 1, width: 144, length: 144, height: null, shape: "custom", color: null, printableName: null, availableForFloorPlans: true },
-      { name: "DJ", quantityAvailable: 1, width: 96, length: 48, height: null, shape: "rectangular", color: null, printableName: null, availableForFloorPlans: true },
-      { name: "Stage", quantityAvailable: 1, width: 200, length: 80, height: null, shape: "rectangular", color: null, printableName: null, availableForFloorPlans: true },
-      { name: "Bar", quantityAvailable: 1, width: 140, length: 50, height: null, shape: "rectangular", color: null, printableName: null, availableForFloorPlans: true },
-      { name: "Buffet", quantityAvailable: 1, width: 96, length: 30, height: null, shape: "rectangular", color: null, printableName: null, availableForFloorPlans: true },
-      { name: "Cake Table", quantityAvailable: 1, width: 60, length: 40, height: null, shape: "rectangular", color: null, printableName: null, availableForFloorPlans: true },
-    ],
-  },
-  {
-    name: "Ceremony",
-    items: [
-      { name: "Arbor", quantityAvailable: 1, width: 80, length: 20, height: null, shape: "rectangular", color: null, printableName: null, availableForFloorPlans: true },
-      { name: "Altar", quantityAvailable: 1, width: 60, length: 30, height: null, shape: "rectangular", color: null, printableName: null, availableForFloorPlans: true },
-      { name: "Aisle", quantityAvailable: 1, width: 40, length: 200, height: null, shape: "rectangular", color: null, printableName: null, availableForFloorPlans: true },
-    ],
-  },
-  {
-    name: "Miscellaneous",
-    items: [
-      { name: "Gift Table", quantityAvailable: 1, width: 90, length: 40, height: null, shape: "rectangular", color: null, printableName: null, availableForFloorPlans: true },
-      { name: "Sign-in Table", quantityAvailable: 1, width: 72, length: 24, height: null, shape: "rectangular", color: null, printableName: null, availableForFloorPlans: true },
-      { name: "Lounge Seating", quantityAvailable: 2, width: 80, length: 80, height: null, shape: "custom", color: null, printableName: null, availableForFloorPlans: true },
-    ],
-  },
-];
-
-/**
- * Runs once, right after a venue finishes setup, so the Floor Plan editor
- * has real inventory to work with immediately (Requirement 6) instead of
- * an empty toolbar. Ordinary rows in inventory_categories/inventory_items —
- * fully editable and archivable by the venue afterward, same as anything
- * they'd add by hand. Not idempotent by itself; callers should only invoke
- * this once, at venue creation.
- */
-export async function seedStarterInventory(client: DbClient, venueId: string): Promise<void> {
-  for (let i = 0; i < STARTER_CATEGORIES.length; i++) {
-    const { name, items } = STARTER_CATEGORIES[i];
-    const { data: category, error: categoryError } = await client.from("inventory_categories")
-      .insert({ venue_id: venueId, name, sort_order: i })
-      .select("id").single<{ id: string }>();
-    if (categoryError) throw categoryError;
-
-    const rows = items.map((item) => ({ venue_id: venueId, ...itemRow({ ...item, categoryId: category.id }) }));
-    const { error: itemsError } = await client.from("inventory_items").insert(rows);
-    if (itemsError) throw itemsError;
-  }
-}
+// Legacy floor-plan-only starter list retired — see lib/inventory/starters.ts +
+// lib/inventory/provision.ts for the Hello to Cheers Standard Wedding Inventory.
 
 // ---- Usage reporting (Requirement 6 — reporting only, never enforced) --------
 

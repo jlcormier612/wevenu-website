@@ -17,15 +17,16 @@ import { Textarea } from "@/components/ui/textarea";
 import { clientDisplayName } from "@/lib/clients/constants";
 import type { Client } from "@/lib/clients/types";
 import type { InvoiceErrors, InvoiceInput } from "@/lib/invoices/types";
+import { defaultInvoiceNotes } from "@/lib/payments/starters";
 
 export function NewInvoiceForm({
-  clients, prefillClientId, prefillEventId,
-}: { clients: Client[]; prefillClientId?: string; prefillEventId?: string }) {
+  clients, prefillClientId, prefillEventId, venueName = "us",
+}: { clients: Client[]; prefillClientId?: string; prefillEventId?: string; venueName?: string }) {
   const router = useRouter();
   const [input, setInput] = React.useState<InvoiceInput>({
     clientId: prefillClientId ?? "",
     eventId: prefillEventId ?? "",
-    notes: "",
+    notes: defaultInvoiceNotes(venueName),
     dueDate: "",
   });
   const [errors, setErrors] = React.useState<InvoiceErrors>({});
@@ -72,9 +73,9 @@ export function NewInvoiceForm({
         </Field>
       </div>
 
-      <Field label="Notes" htmlFor="inv-notes" hint="Visible on the invoice record. Not sent to clients automatically.">
+      <Field label="Notes from your venue" htmlFor="inv-notes" hint="Shown on the printed invoice. Safe starter copy — customize anytime.">
         <Textarea id="inv-notes" value={input.notes} onChange={(e) => setInput((p) => ({ ...p, notes: e.target.value }))}
-          placeholder="Any notes about this invoice…" rows={2} />
+          placeholder="Thank you for choosing us…" rows={3} />
       </Field>
 
       <div className="flex items-center justify-end gap-3 pt-2">

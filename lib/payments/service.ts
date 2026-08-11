@@ -18,6 +18,7 @@ import {
   celebrateFinalPaymentObligationIfNeeded,
   completeFinalPaymentTasksBoundToLine,
 } from "@/lib/payments/final-payment-obligation";
+import { allocatePresetAmounts } from "@/lib/payments/starters";
 import type {
   AddLineItemResult,
   CreateRetainerResult,
@@ -160,9 +161,10 @@ export async function createPaymentSchedule(
     if (presetId && presetId !== "custom") {
       const preset = SCHEDULE_PRESETS.find((p) => p.id === presetId);
       if (preset) {
+        const amounts = allocatePresetAmounts(totalAmount, preset.items);
         for (let i = 0; i < preset.items.length; i++) {
           const pi = preset.items[i];
-          const amt = Math.round((totalAmount * pi.pctOfTotal) / 100 * 100) / 100;
+          const amt = amounts[i] ?? 0;
           let dueDate: string | undefined;
           if (eventDate && pi.offsetDaysFromEvent != null) {
             const d = new Date(eventDate + "T12:00:00");
@@ -206,18 +208,25 @@ export async function createRetainerInvoiceAndSchedule(input: {
   });
   if (!invoiceResult.ok) return { ok: false, message: invoiceResult.message ?? "Could not create the invoice." };
 
+  // Work Package D8 — the action itself stays "Create Retainer Invoice"
+  // (a recognizable, deliberate venue-side term for what's happening), but
+  // the actual generated content a client reads is labeled "Deposit" —
+  // matching the obligationKind: "deposit" this already sets, and the same
+  // word a venue building a schedule by hand would see for this same
+  // obligation kind. Two different words for one concept was the real gap,
+  // not the shortcut's own name.
   const lineResult = await addInvoiceLineItem(invoiceResult.invoiceId, {
-    type: "item", description: "Retainer", quantity: "1", unitPrice: input.amount, packageId: "",
+    type: "item", description: "Deposit", quantity: "1", unitPrice: input.amount, packageId: "",
   });
-  if (!lineResult.ok) return { ok: false, message: lineResult.message ?? "Could not add the retainer line item." };
+  if (!lineResult.ok) return { ok: false, message: lineResult.message ?? "Could not add the deposit line item." };
 
   const scheduleResult = await createPaymentSchedule({
-    title: "Retainer", invoiceId: invoiceResult.invoiceId, notes: "",
+    title: "Deposit", invoiceId: invoiceResult.invoiceId, notes: "",
   }, "custom");
   if (!scheduleResult.ok) return { ok: false, message: scheduleResult.message ?? "Could not create the payment schedule." };
 
   const scheduleLineResult = await addLineItem(scheduleResult.scheduleId, {
-    label: "Retainer", amount: input.amount, dueDate: input.dueDate ?? "",
+    label: "Deposit", amount: input.amount, dueDate: input.dueDate ?? "",
     obligationKind: "deposit",
   });
   if (!scheduleLineResult.ok) return { ok: false, message: scheduleLineResult.message ?? "Could not add the retainer installment." };
@@ -490,9 +499,10 @@ export async function regeneratePaymentSchedule(scheduleId: string, presetId: st
 
     const preset = SCHEDULE_PRESETS.find((p) => p.id === presetId);
     if (preset && preset.items.length > 0) {
+      const amounts = allocatePresetAmounts(remaining, preset.items);
       for (let i = 0; i < preset.items.length; i++) {
         const pi = preset.items[i];
-        const amt = Math.round((remaining * pi.pctOfTotal) / 100 * 100) / 100;
+        const amt = amounts[i] ?? 0;
         let dueDate: string | undefined;
         if (schedule.eventDate && pi.offsetDaysFromEvent != null) {
           const d = new Date(schedule.eventDate + "T12:00:00");

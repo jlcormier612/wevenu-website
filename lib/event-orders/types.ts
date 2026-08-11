@@ -23,6 +23,10 @@ export type EventOrder = {
   status: EventOrderStatus;
   revision: number;
   finalizedAt: string | null;
+  /** D5C — set only by shareEventOrderWithClient(); null = never shared, the client sees nothing (get_event_order_for_portal requires this to be set). */
+  sharedAt: string | null;
+  /** D7A — provenance only, set once at creation. Never re-read live: editing or deleting the template afterward never touches this Event Order. */
+  templateId: string | null;
   createdAt: string;
   updatedAt: string;
 };

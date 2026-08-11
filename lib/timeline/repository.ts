@@ -7,6 +7,7 @@ import {
   clampDayOffset,
   compareTimelineEntries,
   minutesToTime,
+  resolveEntryTimeFromOffset,
   timeToMinutes,
   type TimelineTemplate,
 } from "@/lib/timeline/constants";
@@ -323,29 +324,24 @@ export async function reorderEntries(
 }
 
 /**
- * Apply a timeline template to an event, computing absolute times from
- * the event's start_time. If start_time is null, noon (12:00) is used.
+ * Apply a hardcoded booking-picker starter to an event.
+ * When minutesOffset is null, entry_time stays empty (no invented times).
+ * dayOffset is copied through (Wedding Weekend uses 0/1/2).
  * Appends to any existing entries — does not replace them.
  */
 export async function applyTemplate(
   client: DbClient, venueId: string, eventId: string,
   template: TimelineTemplate, startTime: string | null,
 ): Promise<void> {
-  const baseMinutes = startTime ? timeToMinutes(startTime.slice(0, 5)) : 12 * 60;
-
-  const rows = template.entries.map((te, i) => {
-    const totalMinutes = baseMinutes + te.minutesOffset;
-    const inRange = totalMinutes >= 0 && totalMinutes < 24 * 60;
-    return {
-      venue_id: venueId,
-      event_id: eventId,
-      title: te.title,
-      description: te.description ?? null,
-      entry_time: inRange ? minutesToTime(totalMinutes) : null,
-      day_offset: 0,
-      sort_order: i,
-    };
-  });
+  const rows = template.entries.map((te, i) => ({
+    venue_id: venueId,
+    event_id: eventId,
+    title: te.title,
+    description: te.description ?? null,
+    entry_time: resolveEntryTimeFromOffset(te.minutesOffset, startTime),
+    day_offset: Math.max(0, Math.trunc(te.dayOffset ?? 0)),
+    sort_order: i,
+  }));
 
   const { error } = await client.from("timeline_entries").insert(rows);
   if (error) throw error;

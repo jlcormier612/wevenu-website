@@ -496,6 +496,13 @@ export type VendorPersonalTask = {
   coupleVisibility:  VendorTaskCoupleVisibility;
   /** Couple-portal typed action; share_timeline = verified timeline share. */
   actionType:        "share_timeline" | null;
+  /** Durable completion gate — stamped at write from visibility×action_type. */
+  completionAuthority: "couple_acknowledge" | "vendor_confirm" | "action_verified";
+  /** Phase 2 vendor_confirm: couple ack timestamp (status stays pending). */
+  coupleAcknowledgedAt: string | null;
+  /** Needs-changes v1: last return note from vendor (cleared when couple re-acks). */
+  vendorReturnNote: string | null;
+  returnedAt: string | null;
   completedBy:       "couple" | "vendor" | null;
   completedAt:       string | null;
   createdAt:         string;
@@ -512,6 +519,12 @@ export type VendorPersonalTaskInput = {
   notes:             string;
   coupleVisibility?: VendorTaskCoupleVisibility;
   actionType?:       "share_timeline" | null;
+  /**
+   * Phase 2: when true with coupleVisibility=owned (and not share_timeline),
+   * stamps completion_authority=vendor_confirm (dual-state). Existing owned
+   * default remains couple_acknowledge.
+   */
+  requireVendorConfirmation?: boolean;
 };
 
 // ── Sprint 106: Health score ──────────────────────────────────────────────────

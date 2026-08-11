@@ -7,25 +7,39 @@ import type { CreatePackageResult, PackageActionResult, PackageInput, PackageIte
 
 export async function createPackageAction(input: PackageInput): Promise<CreatePackageResult> {
   const result = await createPackage(input);
-  if (result.ok) revalidatePath("/packages");
+  if (result.ok) {
+    revalidatePath("/packages");
+    revalidatePath("/library/packages");
+    revalidatePath("/library");
+  }
   return result;
 }
 
 export async function updatePackageAction(id: string, input: PackageInput): Promise<PackageActionResult> {
   const result = await updatePackage_(id, input);
-  if (result.ok) { revalidatePath("/packages"); revalidatePath(`/packages/${id}`); }
+  if (result.ok) {
+    revalidatePath("/packages");
+    revalidatePath("/library/packages");
+    revalidatePath(`/packages/${id}`);
+  }
   return result;
 }
 
 export async function deletePackageAction(id: string): Promise<PackageActionResult> {
   const result = await deletePackage_(id);
-  if (result.ok) revalidatePath("/packages");
+  if (result.ok) {
+    revalidatePath("/packages");
+    revalidatePath("/library/packages");
+  }
   return result;
 }
 
 export async function duplicatePackageAction(id: string, newName: string): Promise<CreatePackageResult> {
   const result = await duplicatePackage_(id, newName);
-  if (result.ok) revalidatePath("/packages");
+  if (result.ok) {
+    revalidatePath("/packages");
+    revalidatePath("/library/packages");
+  }
   return result;
 }
 

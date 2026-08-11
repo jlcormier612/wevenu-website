@@ -38,6 +38,7 @@ function ItemRow({ item, eventInventoryId, eventId, catalogItems, editable, onRe
         <span className="text-foreground">{item.name}</span>
         {item.category && <span className="ml-2 text-xs text-muted-foreground">{item.category}</span>}
         {item.notes && <p className="mt-0.5 text-xs text-muted-foreground truncate">{item.notes}</p>}
+        {item.addedToEventOrderAt && <p className="mt-0.5 text-xs text-success">✓ In the Event Order</p>}
       </div>
       <span className="text-muted-foreground text-right w-12">×{item.quantity}</span>
       <span className="text-right w-24 font-medium text-foreground">
@@ -114,7 +115,10 @@ export function EventInventoryPanel({
   const isFinalized = inv.status === "finalized";
   const isDraft = inv.status === "draft";
   const billableTotal = inv.items.reduce((sum, i) => sum + (i.unitPrice ?? 0) * i.quantity, 0);
-  const alreadyPushedToEventOrder = inv.activities.some((a) => a.type === "added_to_event_order");
+  // D8 — per-item, not a permanent all-time flag: reflects exactly what's
+  // still eligible right now, so items added after a prior push (Reopen →
+  // add more → Finalize again) correctly bring this button back.
+  const hasUnpushedBillable = inv.items.some((i) => i.unitPrice != null && i.unitPrice > 0 && !i.addedToEventOrderAt);
 
   async function handleRemove(item: EventInventoryItem) {
     if (!confirm(`Remove "${item.name}"?`)) return;
@@ -135,11 +139,11 @@ export function EventInventoryPanel({
           lastUpdated={new Date(inv.updatedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
           primaryAction={isFinalized ? (
             <div className="flex items-center gap-2">
-              {!alreadyPushedToEventOrder && billableTotal > 0 && (
+              {hasUnpushedBillable && (
                 <Button type="button" variant="outline" size="sm" disabled={lifecyclePending}
                   onClick={() => startLifecycle(async () => {
                     const result = await addEventInventoryToEventOrderAction(inv.id, eventId);
-                    if (result.ok) toast.success("Added to Event Order.");
+                    if (result.ok) toast.success(`Added ${result.addedCount} item${result.addedCount === 1 ? "" : "s"} (${formatMoney(result.addedTotal)}) to the Event Order.`);
                     else toast.error(result.message ?? "Could not add to Event Order.");
                   })}>
                   Add to Event Order

@@ -8,10 +8,13 @@ import {
   Check,
   Circle,
   Clock,
+  Eye,
   FileText,
   Pencil,
-  Phone,
   PlusCircle,
+  Phone,
+  RotateCcw,
+  Send,
   UserPlus,
 } from "lucide-react";
 
@@ -37,6 +40,13 @@ const TYPE_ICON: Record<string, React.ElementType> = {
   last_contacted:      Phone,
   lead_updated:        Pencil,
   relationship_updated: Circle,
+  sent:                Send,
+  resent:              Send,
+  opened:              Eye,
+  submitted:           Check,
+  reviewed:            Check,
+  reopened:            RotateCcw,
+  shared:              Send,
 };
 
 const TYPE_COLOR: Record<string, string> = {
@@ -51,6 +61,13 @@ const TYPE_COLOR: Record<string, string> = {
   last_contacted:      "bg-accent/60 text-heading",
   lead_updated:        "bg-muted text-muted-foreground",
   relationship_updated: "bg-muted text-muted-foreground",
+  sent:                "bg-primary/15 text-primary",
+  resent:              "bg-primary/15 text-primary",
+  opened:              "bg-accent/60 text-heading",
+  submitted:           "bg-success/15 text-success",
+  reviewed:            "bg-success/15 text-success",
+  reopened:            "bg-warning/15 text-warning-foreground",
+  shared:              "bg-primary/15 text-primary",
 };
 
 function ActivityItem({ activity }: { activity: ActivityRecord }) {

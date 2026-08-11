@@ -266,8 +266,8 @@ export async function getVendorFloorPlan(
 }
 
 /**
- * Phase 4 — the "Final" checkpoint reconciliation is anchored to. Reversible
- * (clear it to reopen) — mirrors event_orders.finalized_at exactly. Never
+ * Phase 4 — the "Ready" checkpoint reconciliation is anchored to. Reversible
+ * (clear it via Make Changes) — mirrors event_orders.finalized_at exactly. Never
  * gates placement editing; it's a coordinator's own print-ready checkpoint,
  * not a lock.
  */

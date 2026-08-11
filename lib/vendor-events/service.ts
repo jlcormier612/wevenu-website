@@ -6,6 +6,7 @@ import { getVendorSharedFloorPlans } from "@/lib/floor-plans/repository";
 import { getVendorUser } from "@/lib/vendor-auth/service";
 import { getVendorNotifications } from "@/lib/vendor-notifications/service";
 import { vendorHasPendingLeaveRequest } from "@/lib/vendor-removal-requests/service";
+import { deriveCompletionAuthority } from "@/lib/vendor-tasks/completion-authority";
 import type { VendorNotification } from "@/lib/vendor-notifications/types";
 import type {
   VendorActionResult,
@@ -375,30 +376,47 @@ export async function getVendorEventDetail(
     }
   }
 
-  const personalTasks: VendorPersonalTask[] = personalTaskRows.map((r) => ({
-    id:               r.id as string,
-    vendorId:         r.vendor_id as string,
-    vendorInquiryId:  (r.vendor_inquiry_id as string | null) ?? null,
-    eventId:          (r.event_id as string | null) ?? null,
-    title:            r.title as string,
-    dueDate:          (r.due_date as string | null) ?? null,
-    daysOffset:       (r.days_offset as number | null) ?? null,
-    templateId:       (r.template_id as string | null) ?? null,
-    templateItemId:   (r.template_item_id as string | null) ?? null,
-    status:           (r.status as "pending" | "complete") ?? "pending",
-    source:           (r.source as VendorPersonalTask["source"]) ?? "manual",
-    notes:            (r.notes as string | null) ?? null,
-    coupleVisibility: (
+  const personalTasks: VendorPersonalTask[] = personalTaskRows.map((r) => {
+    const coupleVisibility = (
       ["private", "visible", "owned"].includes(r.couple_visibility as string)
         ? r.couple_visibility
         : "private"
-    ) as VendorPersonalTask["coupleVisibility"],
-    actionType:       r.action_type === "share_timeline" ? "share_timeline" : null,
-    completedBy:      (r.completed_by as "couple" | "vendor" | null) ?? null,
-    completedAt:      (r.completed_at as string | null) ?? null,
-    createdAt:        r.created_at as string,
-    attachments:      attachmentsByTask.get(r.id as string) ?? [],
-  }));
+    ) as VendorPersonalTask["coupleVisibility"];
+    const actionType = (
+      r.action_type === "share_timeline" ? "share_timeline" : null
+    ) as VendorPersonalTask["actionType"];
+    const completionAuthority = (
+      r.completion_authority === "couple_acknowledge" ||
+      r.completion_authority === "vendor_confirm" ||
+      r.completion_authority === "action_verified"
+        ? r.completion_authority
+        : deriveCompletionAuthority({ coupleVisibility, actionType })
+    ) as VendorPersonalTask["completionAuthority"];
+    return {
+      id:               r.id as string,
+      vendorId:         r.vendor_id as string,
+      vendorInquiryId:  (r.vendor_inquiry_id as string | null) ?? null,
+      eventId:          (r.event_id as string | null) ?? null,
+      title:            r.title as string,
+      dueDate:          (r.due_date as string | null) ?? null,
+      daysOffset:       (r.days_offset as number | null) ?? null,
+      templateId:       (r.template_id as string | null) ?? null,
+      templateItemId:   (r.template_item_id as string | null) ?? null,
+      status:           (r.status as "pending" | "complete") ?? "pending",
+      source:           (r.source as VendorPersonalTask["source"]) ?? "manual",
+      notes:            (r.notes as string | null) ?? null,
+      coupleVisibility,
+      actionType,
+      completionAuthority,
+      coupleAcknowledgedAt: (r.couple_acknowledged_at as string | null) ?? null,
+      vendorReturnNote: (r.vendor_return_note as string | null) ?? null,
+      returnedAt:       (r.returned_at as string | null) ?? null,
+      completedBy:      (r.completed_by as "couple" | "vendor" | null) ?? null,
+      completedAt:      (r.completed_at as string | null) ?? null,
+      createdAt:        r.created_at as string,
+      attachments:      attachmentsByTask.get(r.id as string) ?? [],
+    };
+  });
 
   const documents: VendorDocument[] = payload.documents.map((r) => ({
     id:         r.id,

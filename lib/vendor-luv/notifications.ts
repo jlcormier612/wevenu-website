@@ -102,6 +102,21 @@ function notificationCopy(n: VendorNotification): {
         link: taskFocusLink(n),
       };
     }
+    case "task_acknowledged": {
+      // Acknowledgement is NOT final completion — never reuse task_completed copy.
+      const taskTitle = context
+        ?.replace(/^Waiting for your confirmation:\s*/i, "")
+        ?.replace(/^Couple says they.ve completed:\s*/i, "")
+        ?? null;
+      return {
+        label: "Needs your confirmation",
+        detail: taskTitle
+          ? `Couple says they've completed a task: ${taskTitle}`
+          : (n.title?.trim() || "Couple says they've completed a task — confirm it"),
+        eventName: null,
+        link: taskFocusLink(n),
+      };
+    }
     default:
       return {
         label: "Alert",
@@ -114,9 +129,9 @@ function notificationCopy(n: VendorNotification): {
 
 function dedupeKey(n: VendorNotification): string {
   // Per-task alerts must stay distinct — grouping by assignment would collapse them.
-  if (n.type === "task_completed") {
+  if (n.type === "task_completed" || n.type === "task_acknowledged") {
     const taskId = extractTaskFocusId(n.link);
-    return `task_completed:${taskId ?? n.id}`;
+    return `${n.type}:${taskId ?? n.id}`;
   }
   const scope = n.assignmentId ?? n.eventId ?? n.id;
   return `${n.type}:${scope}`;

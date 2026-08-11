@@ -2,39 +2,42 @@
 
 /**
  * FinalDetailsForm — the event questionnaire's coordinator-facing view:
- * send the link, watch its status, view/edit the couple's answers once
- * submitted.
- *
- * Business Asset Experience Consolidation (Work Package BA4B): grepping
- * this repo for every real caller of this component and of
- * saveQuestionnaireAction/QuestionnaireDisplay found none — this file is
- * not currently rendered from any route. BA1/BA2/BA3 all described this as
- * the live "Final Details" tab without that having been verified; it
- * wasn't true when checked here. The certified header/waiting-state
- * pattern is applied below regardless, so the component is correct and
- * ready the moment it's wired into a real page — but that wiring is new
- * surface area (a Planning-tab entry point doesn't exist today), out of
- * this phase's own "no new architecture" scope. Flagged plainly rather
- * than silently left for someone to rediscover later.
+ * apply a template, send the link, watch its status, view/edit the
+ * couple's answers, reopen if they need to change something after
+ * submitting.
  */
 
 import * as React from "react";
 
-import { CheckCircle, Copy, ExternalLink, Loader2, Send } from "lucide-react";
+import { CheckCircle, Copy, ExternalLink, Loader2, RotateCcw, Send } from "lucide-react";
 import { toast } from "sonner";
 
-import { saveQuestionnaireAction, sendQuestionnaireAction } from "@/app/(app)/events/[id]/questionnaire-actions";
+import {
+  applyQuestionnaireTemplateAction, reopenQuestionnaireAction,
+  saveQuestionnaireAction, sendQuestionnaireAction,
+} from "@/app/(app)/events/[id]/questionnaire-actions";
+import { ActivityTimeline } from "@/components/leads/activity-timeline";
 import { BusinessAssetHeader } from "@/components/business-assets/asset-header";
+import { ShareDialog } from "@/components/sharing/share-dialog";
 import { Badge } from "@/components/ui/badge";
 import type { WaitingOn } from "@/components/business-assets/waiting-state";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
-import type { Questionnaire } from "@/lib/events/questionnaire";
+import type { Questionnaire, QuestionnaireActivity } from "@/lib/events/questionnaire";
+import { CONFIGURABLE_FIELDS, type ConfigurableField } from "@/lib/events/questionnaire-constants";
+import { buildMergeData, mergeContent } from "@/lib/message-templates/merge";
+import type { QuestionnaireTemplate } from "@/lib/questionnaire-templates/service";
 
-type QFields = Partial<Omit<Questionnaire, "id" | "venueId" | "eventId" | "status" | "submittedAt" | "createdAt" | "updatedAt">>;
+type QFields = Partial<Omit<Questionnaire, "id" | "venueId" | "eventId" | "status" | "submittedAt" | "createdAt" | "updatedAt" | "templateId" | "includedFields" | "requiredFields">>;
+
+const FIELD_KEY_TO_QFIELD: Record<ConfigurableField, keyof QFields> = {
+  meal_notes: "mealNotes", processional_song: "processionalSong", recessional_song: "recessionalSong",
+  first_dance_song: "firstDanceSong", parent_dances: "parentDances", special_requests: "specialRequests",
+};
 
 // "reviewed" is a real value in the status column but no code path ever
 // sets it (BA2 finding) — treated identically to "submitted" here, same as
@@ -65,12 +68,18 @@ export function FinalDetailsForm({
   coupleEmail,
   coupleName,
   eventName,
+  venueName,
+  templates,
+  activities,
 }: {
   eventId: string;
   initial: Questionnaire | null;
   coupleEmail?: string | null;
   coupleName?: string | null;
   eventName?: string | null;
+  venueName?: string;
+  templates: QuestionnaireTemplate[];
+  activities: QuestionnaireActivity[];
 }) {
   const [fields, setFields] = React.useState<QFields>({
     ceremonyStartTime:    initial?.ceremonyStartTime    ?? "",
@@ -88,25 +97,54 @@ export function FinalDetailsForm({
     vendorNotes:          initial?.vendorNotes          ?? "",
     specialRequests:      initial?.specialRequests      ?? "",
   });
+  // Work Package D5D — optimistic concurrency token: the row's own
+  // updated_at, refreshed after every successful save so the *next* save
+  // still detects a real conflict rather than false-positiving against
+  // its own prior write.
+  const [expectedUpdatedAt, setExpectedUpdatedAt] = React.useState<string | undefined>(initial?.updatedAt);
   const [saving, startSave] = React.useTransition();
   const [submitting, startSubmit] = React.useTransition();
-  const [sending, startSend] = React.useTransition();
+  const [reopening, startReopen] = React.useTransition();
+  const [applyingTemplate, startApplyTemplate] = React.useTransition();
+  const [selectedTemplateId, setSelectedTemplateId] = React.useState<string>("");
   const [formUrl, setFormUrl] = React.useState<string | null>(null);
   const [copiedUrl, setCopiedUrl] = React.useState(false);
   const isSubmitted = initial?.status === "submitted" || initial?.status === "reviewed";
+  const requiredFields = initial?.requiredFields ?? [];
+  const includedFields = initial?.includedFields ?? [...CONFIGURABLE_FIELDS];
+  const canApplyTemplate = !initial || initial.status === "draft";
 
   const appUrl = typeof window !== "undefined" ? window.location.origin : "";
   const currentFormUrl = formUrl ?? (initial?.accessKey ? `${appUrl}/questionnaire/${initial.accessKey}` : null);
 
-  function handleSend() {
-    if (!coupleEmail) return;
-    startSend(async () => {
-      const result = await sendQuestionnaireAction(eventId, coupleEmail, coupleName ?? "there", eventName ?? "your event");
-      if (result.ok) {
-        toast.success("Questionnaire link sent!");
-        if (result.formUrl) setFormUrl(result.formUrl);
-      } else toast.error(result.message ?? "Could not send.");
+  function handleApplyTemplate() {
+    if (!selectedTemplateId) return;
+    startApplyTemplate(async () => {
+      const result = await applyQuestionnaireTemplateAction(selectedTemplateId, eventId);
+      if (result.ok) toast.success("Template applied.");
+      else toast.error(result.message ?? "Could not apply template.");
     });
+  }
+
+  // Work Package D5E — unified Share experience. sendQuestionnaireAction
+  // itself already tells first-send from resend apart (lib/events/questionnaire.ts
+  // sendQuestionnaireToCouple's isResend check) — this dialog is shown for
+  // both cases with the same trigger, matching the couple's own single
+  // working questionnaire either way.
+  const shareRecipient = coupleName ? { name: coupleName, contact: coupleEmail ?? null, relationshipLabel: "Client" } : null;
+  const shareMergeData = buildMergeData({ venueName: venueName ?? "Your venue", clientName: coupleName ?? "", coordinatorName: venueName ?? "", eventDate: null, eventName: eventName ?? "" });
+  const shareDefaultMessage = mergeContent(
+    "Your final details form for {{event_name}} is ready! Please take a few minutes to fill in your guest count, song selections, meal preferences, and any special requests.",
+    shareMergeData,
+  );
+  async function handleShareSend(message: string) {
+    if (!coupleEmail) return { ok: false, message: "Add their email to the client record first." };
+    const result = await sendQuestionnaireAction(eventId, coupleEmail, coupleName ?? "there", eventName ?? "your event", undefined, message);
+    if (result.ok) {
+      toast.success(initial?.sentAt ? "Questionnaire resent." : "Questionnaire sent.");
+      if (result.formUrl) setFormUrl(result.formUrl);
+    }
+    return result;
   }
 
   function handleCopyUrl() {
@@ -121,29 +159,44 @@ export function FinalDetailsForm({
 
   function handleSave() {
     startSave(async () => {
-      const result = await saveQuestionnaireAction(eventId, fields, false);
-      if (result.ok) toast.success("Final details saved.");
+      const result = await saveQuestionnaireAction(eventId, fields, false, { expectedUpdatedAt });
+      if (result.ok) { toast.success("Final details saved."); if (result.updatedAt) setExpectedUpdatedAt(result.updatedAt); }
+      else if (result.reason === "stale") toast.error("The couple updated this form while you were editing. Refresh the page to see their latest answers before saving.");
       else toast.error(result.message ?? "Could not save.");
     });
   }
 
   function handleSubmit() {
-    // Work Package D5 — client-side echo of the server's own required-field
-    // rule (lib/events/questionnaire.ts findMissingRequiredFields); the
-    // server enforces this regardless, this just avoids a round-trip.
+    // Work Package D5/D5D — client-side echo of the server's own dynamic
+    // required-field rule (lib/events/questionnaire.ts findMissingRequiredFields);
+    // the server enforces this regardless, this just avoids a round-trip.
     const missing: string[] = [];
     if (fields.finalGuestCount == null) missing.push("Final guest count");
     if (!fields.emergencyContactName?.trim()) missing.push("Emergency contact name");
     if (!fields.emergencyContactPhone?.trim()) missing.push("Emergency contact phone");
+    for (const key of requiredFields) {
+      const qField = FIELD_KEY_TO_QFIELD[key as ConfigurableField];
+      if (qField && !String(fields[qField] ?? "").trim()) missing.push(key.replace(/_/g, " "));
+    }
     if (missing.length > 0) {
       toast.error(`Add these before submitting: ${missing.join(", ")}.`);
       return;
     }
     if (!confirm("Mark these final details as submitted? This signals that planning is complete.")) return;
     startSubmit(async () => {
-      const result = await saveQuestionnaireAction(eventId, fields, true);
-      if (result.ok) toast.success("Final details submitted. Planning Progress updated.");
+      const result = await saveQuestionnaireAction(eventId, fields, true, { requiredFields, expectedUpdatedAt });
+      if (result.ok) { toast.success("Final details submitted. Planning Progress updated."); if (result.updatedAt) setExpectedUpdatedAt(result.updatedAt); }
+      else if (result.reason === "stale") toast.error("The couple updated this form while you were editing. Refresh the page to see their latest answers before submitting.");
       else toast.error(result.message ?? "Could not submit.");
+    });
+  }
+
+  function handleReopen() {
+    if (!confirm("Reopen this questionnaire so the couple can make changes? It'll return to \"Sent\" until they resubmit.")) return;
+    startReopen(async () => {
+      const result = await reopenQuestionnaireAction(eventId);
+      if (result.ok) toast.success("Reopened for editing.");
+      else toast.error(result.message ?? "Could not reopen.");
     });
   }
 
@@ -158,6 +211,11 @@ export function FinalDetailsForm({
           waitingOn="completed"
           lastUpdated={initial?.updatedAt ? new Date(initial.updatedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "—"}
           relationship={eventName ? { name: eventName } : null}
+          primaryAction={
+            <Button type="button" size="sm" variant="outline" onClick={handleReopen} disabled={reopening}>
+              {reopening ? <><Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />Reopening…</> : <><RotateCcw className="mr-1 h-3.5 w-3.5" />Reopen for editing</>}
+            </Button>
+          }
         />
         <div className="flex items-center gap-2 rounded-sm border border-success/30 bg-success/5 px-4 py-3">
           <CheckCircle className="h-5 w-5 text-success shrink-0" />
@@ -171,6 +229,12 @@ export function FinalDetailsForm({
           </div>
         </div>
         <QuestionnaireDisplay q={initial!} />
+        {activities.length > 0 && (
+          <div className="pt-2">
+            <SectionHeader>Activity</SectionHeader>
+            <div className="pt-2"><ActivityTimeline activities={activities} /></div>
+          </div>
+        )}
       </div>
     );
   }
@@ -191,15 +255,26 @@ export function FinalDetailsForm({
         lastUpdated={initial?.updatedAt ? new Date(initial.updatedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "—"}
         relationship={eventName ? { name: eventName } : null}
         primaryAction={coupleEmail && initial?.status !== "submitted" && initial?.status !== "reviewed" && (
-          <Button type="button" size="sm" onClick={handleSend} disabled={sending}>
-            {sending ? <><Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />Sending…</> : <><Send className="mr-1 h-3.5 w-3.5" />Send to client</>}
-          </Button>
+          <ShareDialog
+            trigger={<Button type="button" size="sm"><Send className="mr-1 h-3.5 w-3.5" />{initial?.sentAt ? "Resend" : "Send to client"}</Button>}
+            title={initial?.sentAt ? "Resend Questionnaire" : "Send Questionnaire"}
+            recipient={shareRecipient}
+            whatHappensNext="They'll complete the questionnaire."
+            defaultMessage={shareDefaultMessage}
+            sendLabel={initial?.sentAt ? "Resend" : "Send"}
+            onSend={handleShareSend}
+          />
         )}
       />
 
       {/* Status + Send banner */}
       <div className="rounded-sm border border-border bg-muted/30 p-4 space-y-3">
-        <p className="text-xs text-muted-foreground">{statusSentence}</p>
+        <div className="flex items-center justify-between gap-2">
+          <p className="text-xs text-muted-foreground">{statusSentence}</p>
+          <a href={`/events/${eventId}/questionnaire-preview`} target="_blank" rel="noopener noreferrer" className="shrink-0">
+            <Button type="button" variant="ghost" size="sm">Preview as client</Button>
+          </a>
+        </div>
         {!coupleEmail && (
           <p className="text-xs text-muted-foreground">Add their email to the client record to send the questionnaire link.</p>
         )}
@@ -218,6 +293,27 @@ export function FinalDetailsForm({
           </div>
         )}
       </div>
+
+      {/* Work Package D5D — apply a template to configure which optional
+          questions this event's couple sees/must answer. Only while still
+          a draft (not yet sent) — a template changing what's required out
+          from under a couple mid-form would be confusing, not helpful. */}
+      {canApplyTemplate && templates.length > 0 && (
+        <div className="rounded-sm border border-border bg-muted/30 p-4 space-y-2">
+          <p className="text-xs font-medium text-heading">
+            {initial?.templateId ? "Questionnaire template applied" : "Use a template? (optional)"}
+          </p>
+          <div className="flex items-center gap-2">
+            <Select value={selectedTemplateId} onValueChange={setSelectedTemplateId} items={templates.map((t) => ({ value: t.id, label: t.name }))}>
+              <SelectTrigger className="w-56"><SelectValue placeholder="Choose a template…" /></SelectTrigger>
+              <SelectContent>{templates.filter((t) => !t.isArchived).map((t) => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}</SelectContent>
+            </Select>
+            <Button type="button" variant="outline" size="sm" onClick={handleApplyTemplate} disabled={!selectedTemplateId || applyingTemplate}>
+              {applyingTemplate ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Apply"}
+            </Button>
+          </div>
+        </div>
+      )}
 
       {/* Logistics */}
       <SectionHeader>Day-of logistics</SectionHeader>
@@ -250,7 +346,8 @@ export function FinalDetailsForm({
             placeholder="175" className="w-32" />
         </Field>
       </div>
-      <Field label="Meal notes" hint="Entrée counts, dietary requirements, children's meals, etc.">
+      <Field label="Meal notes" required={requiredFields.includes("meal_notes")}
+        hint={!includedFields.includes("meal_notes") ? "Not asked in the couple's form." : "Entrée counts, dietary requirements, children's meals, etc."}>
         <Textarea value={fields.mealNotes ?? ""} onChange={(e) => set("mealNotes", e.target.value)}
           placeholder="Chicken: 85 · Fish: 45 · Vegan: 12 · Children's: 8…" rows={3} />
       </Field>
@@ -259,19 +356,23 @@ export function FinalDetailsForm({
       {/* Music */}
       <SectionHeader>Music & programme</SectionHeader>
       <div className="grid gap-4 sm:grid-cols-2">
-        <Field label="Processional song">
+        <Field label="Processional song" required={requiredFields.includes("processional_song")}
+          hint={!includedFields.includes("processional_song") ? "Not asked in the couple's form." : undefined}>
           <Input value={fields.processionalSong ?? ""}
             onChange={(e) => set("processionalSong", e.target.value)} placeholder="Canon in D — Pachelbel" />
         </Field>
-        <Field label="Recessional song">
+        <Field label="Recessional song" required={requiredFields.includes("recessional_song")}
+          hint={!includedFields.includes("recessional_song") ? "Not asked in the couple's form." : undefined}>
           <Input value={fields.recessionalSong ?? ""}
             onChange={(e) => set("recessionalSong", e.target.value)} placeholder="Signed, Sealed, Delivered" />
         </Field>
-        <Field label="First dance song">
+        <Field label="First dance song" required={requiredFields.includes("first_dance_song")}
+          hint={!includedFields.includes("first_dance_song") ? "Not asked in the couple's form." : undefined}>
           <Input value={fields.firstDanceSong ?? ""}
             onChange={(e) => set("firstDanceSong", e.target.value)} placeholder="At Last — Etta James" />
         </Field>
-        <Field label="Parent dances" hint="Optional — mother/father dances">
+        <Field label="Parent dances" required={requiredFields.includes("parent_dances")}
+          hint={!includedFields.includes("parent_dances") ? "Not asked in the couple's form." : "Optional — mother/father dances"}>
           <Input value={fields.parentDances ?? ""}
             onChange={(e) => set("parentDances", e.target.value)} placeholder="My Girl · Wind Beneath My Wings" />
         </Field>
@@ -298,7 +399,8 @@ export function FinalDetailsForm({
       <Separator />
       {/* Special requests */}
       <SectionHeader>Special requests</SectionHeader>
-      <Field label="Anything else the team should know">
+      <Field label="Anything else the team should know" required={requiredFields.includes("special_requests")}
+        hint={!includedFields.includes("special_requests") ? "Not asked in the couple's form." : undefined}>
         <Textarea value={fields.specialRequests ?? ""} onChange={(e) => set("specialRequests", e.target.value)}
           placeholder="Allergy alerts, accessibility needs, surprises, personal touches…" rows={4} />
       </Field>
@@ -314,6 +416,13 @@ export function FinalDetailsForm({
       <p className="text-xs text-muted-foreground text-right">
         Submitting marks this questionnaire complete in your Planning Progress checklist.
       </p>
+
+      {activities.length > 0 && (
+        <div className="pt-2">
+          <SectionHeader>Activity</SectionHeader>
+          <div className="pt-2"><ActivityTimeline activities={activities} /></div>
+        </div>
+      )}
     </div>
   );
 }

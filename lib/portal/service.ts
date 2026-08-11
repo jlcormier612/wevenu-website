@@ -2,7 +2,7 @@ import { createClient } from "@/integrations/supabase/server";
 import { isSupabaseConfigured } from "@/lib/env";
 import { getCurrentVenue } from "@/lib/venue/service";
 import { recordEngagementEvent } from "@/lib/activation/service";
-import type { PortalContext, PortalKeyDate, PortalSession, PortalTask, PortalTimeline, PortalTimelineEntry, PortalTimelineSection, PortalVendorTask } from "@/lib/portal/types";
+import type { PortalContext, PortalKeyDate, PortalSession, PortalTask, PortalTaskLink, PortalTimeline, PortalTimelineEntry, PortalTimelineSection, PortalVendorTask } from "@/lib/portal/types";
 
 // ---- Token resolution (uses server Supabase client; SECURITY DEFINER functions
 //      validate the portal token internally so no coordinator session is needed) -
@@ -39,6 +39,15 @@ export async function resolvePortalTasks(token: string): Promise<PortalTask[]> {
     // Defense in depth: never allow couple manual complete when a domain trigger owns it
     // (covers pre-migration RPC responses that still omit the policy).
     const canComplete = Boolean(r.canComplete) && !trigger;
+    const canUndo = Boolean(r.canUndo) && !trigger && (r.status as string) === "complete";
+    const rawLinks = Array.isArray(r.links) ? (r.links as Record<string, unknown>[]) : [];
+    const links: PortalTaskLink[] = rawLinks
+      .map((l) => ({
+        id: String(l.id ?? ""),
+        url: String(l.url ?? "").trim(),
+        label: typeof l.label === "string" && l.label.trim() ? l.label.trim() : null,
+      }))
+      .filter((l) => l.id && l.url);
     return {
       id: r.id as string,
       title: r.title as string,
@@ -55,6 +64,8 @@ export async function resolvePortalTasks(token: string): Promise<PortalTask[]> {
       completedAt: (r.completedAt as string | null) ?? null,
       autoCompleteTrigger: trigger,
       canComplete,
+      canUndo,
+      links,
     };
   });
 }
@@ -79,7 +90,18 @@ export async function resolvePortalVendorTasks(token: string): Promise<PortalVen
     actionType: (r.actionType === "share_timeline" ? "share_timeline" : null) as
       | "share_timeline"
       | null,
+    completionAuthority: (
+      r.completionAuthority === "couple_acknowledge" ||
+      r.completionAuthority === "vendor_confirm" ||
+      r.completionAuthority === "action_verified"
+        ? r.completionAuthority
+        : undefined
+    ) as PortalVendorTask["completionAuthority"],
+    coupleAcknowledgedAt: (r.coupleAcknowledgedAt as string | null | undefined) ?? null,
+    vendorReturnNote: (r.vendorReturnNote as string | null | undefined) ?? null,
+    returnedAt: (r.returnedAt as string | null | undefined) ?? null,
     canComplete: Boolean(r.canComplete),
+    canAcknowledge: Boolean(r.canAcknowledge),
     attachments: ((r.attachments as PortalVendorTask["attachments"]) ?? []).map((a) => ({
       id: a.id,
       name: a.name,
@@ -110,6 +132,17 @@ export async function completePortalTask(token: string, taskId: string): Promise
   return { ok: true };
 }
 
+/** Reopen a couple-completed manual/ack task (null autoCompleteTrigger only). */
+export async function undoPortalTask(token: string, taskId: string): Promise<{ ok: boolean; error?: string }> {
+  if (!isSupabaseConfigured) return { ok: false, error: "Backend not configured." };
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("undo_portal_task", { p_token: token, p_task_id: taskId });
+  if (error) return { ok: false, error: error.message };
+  const d = data as Record<string, unknown>;
+  if (!d?.ok) return { ok: false, error: (d?.error as string) ?? "Could not undo task." };
+  return { ok: true };
+}
+
 export async function completePortalVendorTask(
   token: string,
   taskId: string,
@@ -124,6 +157,26 @@ export async function completePortalVendorTask(
   const d = data as Record<string, unknown>;
   if (!d?.ok) return { ok: false, error: (d?.error as string) ?? "Could not complete task." };
   return { ok: true };
+}
+
+/** Phase 2 — couple acknowledgement for owned vendor_confirm (not final complete). */
+export async function acknowledgePortalVendorTask(
+  token: string,
+  taskId: string,
+): Promise<{ ok: boolean; error?: string; alreadyAcknowledged?: boolean }> {
+  if (!isSupabaseConfigured) return { ok: false, error: "Backend not configured." };
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("acknowledge_portal_vendor_task", {
+    p_token: token,
+    p_task_id: taskId,
+  });
+  if (error) return { ok: false, error: error.message };
+  const d = data as Record<string, unknown>;
+  if (!d?.ok) return { ok: false, error: (d?.error as string) ?? "Could not acknowledge task." };
+  return {
+    ok: true,
+    alreadyAcknowledged: Boolean(d.alreadyAcknowledged),
+  };
 }
 
 /** Couple commits a timeline share to one assigned vendor (Impl 6). */

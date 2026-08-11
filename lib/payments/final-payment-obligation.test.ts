@@ -41,6 +41,8 @@ function task(partial: Partial<PortalTask> & Pick<PortalTask, "id" | "title" | "
     autoCompleteTrigger: null,
     canComplete: false,
     ...partial,
+    canUndo: partial.canUndo ?? false,
+    links: partial.links ?? [],
   };
 }
 
@@ -59,7 +61,7 @@ describe("Impl 7 — obligation_kind at creation (never from label)", () => {
     assert.ok(thirds);
     assert.deepEqual(
       thirds!.items.map((i) => i.obligationKind),
-      ["installment", "installment", "final"],
+      ["deposit", "installment", "final"],
     );
     const fifty = SCHEDULE_PRESETS.find((p) => p.id === "fifty_fifty");
     assert.equal(fifty!.items[0]?.obligationKind, "deposit");

@@ -37,7 +37,7 @@ function Row({ label, value }: { label: string; value: React.ReactNode }) {
   );
 }
 
-/** Step 4 — one Preview panel, every document renders the same sections. Type-specific facts live only inside "Representation," never a new layout. */
+/** Step 4 — one Preview panel, every document renders the same sections. Type-specific facts live only inside "Details," never a new layout. */
 export function DocumentPreviewSheet({
   doc,
   open,
@@ -116,9 +116,12 @@ export function DocumentPreviewSheet({
             <Row label="Owner" value={doc.uploadedByType === "vendor" ? "Vendor" : "Venue"} />
           </section>
 
-          {/* Representation — type-specific facts only, never a new layout */}
+          {/* Work Package D6 — this section header used to read
+              "Representation," a Document Domain engineering term that had
+              leaked straight into customer-facing UI. Renamed to "Details";
+              still type-specific facts only, never a new layout. */}
           <section className="space-y-2">
-            <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Representation</h3>
+            <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Details</h3>
             {doc.docType === "contract" && (
               <>
                 <Row label="Status" value={doc.rawStatus} />

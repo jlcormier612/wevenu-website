@@ -56,6 +56,13 @@ export type PortalContext = {
   };
 };
 
+/** Venue-configured web link on a portal task (from event_task_context_links). */
+export type PortalTaskLink = {
+  id: string;
+  url: string;
+  label: string | null;
+};
+
 // A task as visible in the client portal
 export type PortalTask = {
   id: string;
@@ -75,6 +82,13 @@ export type PortalTask = {
   autoCompleteTrigger: string | null;
   /** True only for client_owned tasks with no domain trigger (couple may Mark complete). */
   canComplete: boolean;
+  /**
+   * True only for completed client_owned manual/ack tasks (null trigger).
+   * Couples may reopen these; domain-verified completions cannot be undone here.
+   */
+  canUndo: boolean;
+  /** Web links attached via playbook attachments / event context links. */
+  links: PortalTaskLink[];
 };
 
 /** Vendor-owned task projected into the portal (not an event_tasks row). */
@@ -94,7 +108,16 @@ export type PortalVendorTask = {
    * Never inferred from title.
    */
   actionType: "share_timeline" | null;
+  /** Durable completion gate when projected from DB. */
+  completionAuthority?: "couple_acknowledge" | "vendor_confirm" | "action_verified";
+  /** Phase 2 vendor_confirm: couple ack (status remains pending until vendor confirms). */
+  coupleAcknowledgedAt?: string | null;
+  /** Needs-changes v1: last vendor return note (cleared on re-ack). */
+  vendorReturnNote?: string | null;
+  returnedAt?: string | null;
   canComplete: boolean;
+  /** Phase 2 — acknowledge owned vendor_confirm without completing. */
+  canAcknowledge?: boolean;
   attachments: {
     id: string;
     name: string;
@@ -132,7 +155,7 @@ export type PortalKeyDate = {
   note: string | null;
 };
 
-export type PortalSection = "overview" | "guests" | "todos" | "budget" | "seating" | "people" | "website" | "story" | "journey" | "tasks" | "timeline" | "vendors" | "payments" | "documents" | "messages" | "ask" | "guide" | "account" | "requests" | "questionnaire" | "floor_plans";
+export type PortalSection = "overview" | "guests" | "todos" | "budget" | "seating" | "people" | "website" | "story" | "journey" | "tasks" | "timeline" | "vendors" | "payments" | "documents" | "messages" | "ask" | "guide" | "account" | "requests" | "questionnaire" | "inventory" | "floor_plans" | "event-order";
 
 /** Phase 1 — couple Floor Plan list item (layout view). */
 export type PortalFloorPlanSummary = {

@@ -18,6 +18,7 @@ const CTA: Record<string, string> = {
   document_shared: "View document",
   assigned_to_event: "Open event",
   task_completed: "View task",
+  task_acknowledged: "Confirm task",
 };
 
 function relativeTime(iso: string): string {

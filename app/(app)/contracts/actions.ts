@@ -14,6 +14,7 @@ import {
   duplicateTemplate_,
   mergeContent,
   reopenContractForEditing,
+  resendContract,
   sendContract,
   setTemplateArchived_,
   updateContractContent_,
@@ -57,7 +58,20 @@ export async function setTemplateArchivedAction(id: string, isArchived: boolean)
 
 export async function duplicateTemplateAction(id: string, newName: string): Promise<CreateTemplateResult> {
   const result = await duplicateTemplate_(id, newName);
-  if (result.ok) revalidatePath("/contracts/templates");
+  if (result.ok) {
+    revalidatePath("/contracts/templates");
+    revalidatePath("/library/contracts");
+  }
+  return result;
+}
+
+export async function addContractStarterAgainAction(): Promise<CreateTemplateResult> {
+  const { addContractStarterAgain } = await import("@/lib/contracts/provision");
+  const result = await addContractStarterAgain("CTR-01");
+  if (result.ok) {
+    revalidatePath("/contracts/templates");
+    revalidatePath("/library/contracts");
+  }
   return result;
 }
 
@@ -109,12 +123,19 @@ async function refreshContractLeadScore(contractId: string): Promise<void> {
   } catch { /* non-blocking */ }
 }
 
-export async function sendContractAction(id: string): Promise<ContractActionResult> {
-  const result = await sendContract(id);
+export async function sendContractAction(id: string, customMessage?: string): Promise<ContractActionResult> {
+  const result = await sendContract(id, customMessage);
   if (result.ok) {
     revalidatePath(`/contracts/${id}`);
     void refreshContractLeadScore(id);
   }
+  return result;
+}
+
+/** Work Package D5E — resend, distinct from send: no status/Document Domain changes, see lib/contracts/service.ts resendContract(). */
+export async function resendContractAction(id: string, customMessage?: string): Promise<ContractActionResult> {
+  const result = await resendContract(id, customMessage);
+  if (result.ok) revalidatePath(`/contracts/${id}`);
   return result;
 }
 

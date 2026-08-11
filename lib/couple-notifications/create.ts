@@ -7,7 +7,7 @@ import { createAdminClient } from "@/integrations/supabase/admin";
 
 export type CreateCoupleNotificationInput = {
   clientId: string;
-  type?: "new_message";
+  type?: "new_message" | "task_needs_changes";
   title: string;
   body?: string | null;
   link?: string | null;

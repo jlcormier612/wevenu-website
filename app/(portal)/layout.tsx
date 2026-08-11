@@ -33,8 +33,14 @@ const LIGHT_THEME_VARS = {
 } as CSSProperties;
 
 export default function PortalLayout({ children }: { children: ReactNode }) {
+  // Pin to the visible viewport. `min-h-svh` alone let the document scroll past
+  // PortalShell’s h-screen box and expose this layout’s white background as a
+  // large empty band under the venue footer on Home.
   return (
-    <div className="min-h-svh font-sans" style={LIGHT_THEME_VARS}>
+    <div
+      className="h-svh overflow-hidden font-sans"
+      style={{ ...LIGHT_THEME_VARS, background: "var(--natural-cream)" }}
+    >
       {children}
     </div>
   );

@@ -1,21 +1,24 @@
 "use client";
 
 /**
- * Contract Templates list — Template Platform Release Readiness parity pass.
- * Brings this grid up to the same Duplicate + Archive/Restore actions
- * Playbooks/Timeline Templates/Floor Plan Templates already have, instead of
- * hard-delete being the only removal path.
+ * Contract Templates list — includes Hello to Cheers Wedding Venue Agreement
+ * starter badge + Add starter again (non-destructive).
  */
 
 import * as React from "react";
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Archive, ArchiveRestore, Copy, Loader2, MoreHorizontal, Pencil, Trash2 } from "lucide-react";
+import {
+  Archive, ArchiveRestore, BookPlus, Copy, Loader2, MoreHorizontal, Pencil, Trash2,
+} from "lucide-react";
 import { toast } from "sonner";
 
 import {
-  deleteTemplateAction, duplicateTemplateAction, setTemplateArchivedAction,
+  addContractStarterAgainAction,
+  deleteTemplateAction,
+  duplicateTemplateAction,
+  setTemplateArchivedAction,
 } from "@/app/(app)/contracts/actions";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -27,11 +30,6 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sh
 import { formatRelative } from "@/lib/leads/constants";
 import type { ContractTemplate } from "@/lib/contracts/types";
 
-// Work Package D2, Step 11-12 — an honest miniature of the real thing: the
-// template's own actual content, not a fake renderer. "What am I about to
-// use?", nothing more — same read-only text a coordinator would see on the
-// Contract Detail page's own "Contract Document" card, reused here rather
-// than building a second preview surface for the same content.
 function TemplatePreviewSheet({
   template, open, onOpenChange,
 }: { template: ContractTemplate | null; open: boolean; onOpenChange: (open: boolean) => void }) {
@@ -42,6 +40,7 @@ function TemplatePreviewSheet({
           <SheetTitle>{template?.name}</SheetTitle>
           <div className="flex items-center gap-2 flex-wrap text-xs text-muted-foreground">
             <span>Contract Template</span>
+            {template?.sourceMasterKey && <Badge variant="muted">Starter</Badge>}
             {template?.isDefault && <Badge variant="default">Default</Badge>}
             {template && <span>· Updated {formatRelative(template.updatedAt)}</span>}
           </div>
@@ -52,9 +51,14 @@ function TemplatePreviewSheet({
             <div className="rounded-lg border border-border bg-background p-4 font-sans text-sm text-foreground whitespace-pre-wrap leading-relaxed max-h-[60vh] overflow-y-auto">
               {template.content}
             </div>
-            <Button size="sm" render={<Link href={`/contracts/new?templateId=${template.id}`} />}>
-              Use Template
-            </Button>
+            <div className="flex flex-wrap gap-2">
+              <Button size="sm" variant="outline" render={<Link href={`/contracts/templates/${template.id}/edit`} />}>
+                Edit
+              </Button>
+              <Button size="sm" render={<Link href={`/contracts/new?templateId=${template.id}`} />}>
+                Use Template
+              </Button>
+            </div>
           </div>
         )}
       </SheetContent>
@@ -62,12 +66,21 @@ function TemplatePreviewSheet({
   );
 }
 
-export function ContractTemplateList({ initialTemplates }: { initialTemplates: ContractTemplate[] }) {
+export function ContractTemplateList({
+  initialTemplates,
+  showAddStarter = true,
+}: {
+  initialTemplates: ContractTemplate[];
+  showAddStarter?: boolean;
+}) {
   const router = useRouter();
   const [templates, setTemplates] = React.useState(initialTemplates);
   const [showArchived, setShowArchived] = React.useState(false);
   const [pendingId, setPendingId] = React.useState<string | null>(null);
   const [previewing, setPreviewing] = React.useState<ContractTemplate | null>(null);
+  const [addingStarter, startAddStarter] = React.useTransition();
+
+  React.useEffect(() => { setTemplates(initialTemplates); }, [initialTemplates]);
 
   const visible = templates.filter((t) => showArchived || !t.isArchived);
   const archivedCount = templates.filter((t) => t.isArchived).length;
@@ -99,11 +112,31 @@ export function ContractTemplateList({ initialTemplates }: { initialTemplates: C
 
   return (
     <div className="space-y-3">
-      {archivedCount > 0 && (
-        <button type="button" onClick={() => setShowArchived((v) => !v)} className="text-xs text-muted-foreground hover:text-foreground underline">
-          {showArchived ? "Hide archived" : `Show ${archivedCount} archived`}
-        </button>
-      )}
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        {archivedCount > 0 ? (
+          <button type="button" onClick={() => setShowArchived((v) => !v)} className="text-xs text-muted-foreground hover:text-foreground underline">
+            {showArchived ? "Hide archived" : `Show ${archivedCount} archived`}
+          </button>
+        ) : <span />}
+        {showAddStarter && (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            disabled={addingStarter}
+            onClick={() => startAddStarter(async () => {
+              const r = await addContractStarterAgainAction();
+              if (r.ok) {
+                toast.success("Starter added — your earlier customizations were left alone.");
+                router.refresh();
+              } else toast.error(r.message ?? "Could not add starter.");
+            })}
+          >
+            {addingStarter ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <BookPlus className="mr-1.5 h-4 w-4" />}
+            Add Wedding Venue Agreement again
+          </Button>
+        )}
+      </div>
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {visible.map((t) => (
           <Card key={t.id} className={t.isDefault ? "border-primary/30" : t.isArchived ? "opacity-60" : ""}>
@@ -111,7 +144,8 @@ export function ContractTemplateList({ initialTemplates }: { initialTemplates: C
               <div className="flex items-start justify-between gap-2">
                 <CardTitle className="text-base">{t.name}</CardTitle>
                 <div className="flex shrink-0 items-center gap-1">
-                  {t.isDefault && <Badge variant="default">Default</Badge>}
+                  {t.sourceMasterKey && !t.isArchived && <Badge variant="muted" className="text-[10px]">Starter</Badge>}
+                  {t.isDefault && <Badge variant="default" className="text-[10px]">Default</Badge>}
                   {t.isArchived && <Badge variant="muted" className="text-[10px]">Archived</Badge>}
                   <DropdownMenu>
                     <DropdownMenuTrigger render={<Button variant="ghost" size="icon-sm" aria-label="Template options" />}>
@@ -154,7 +188,7 @@ export function ContractTemplateList({ initialTemplates }: { initialTemplates: C
           </Card>
         ))}
       </div>
-      <TemplatePreviewSheet template={previewing} open={previewing !== null} onOpenChange={(open) => { if (!open) setPreviewing(null); }} />
+      <TemplatePreviewSheet template={previewing} open={!!previewing} onOpenChange={(o) => { if (!o) setPreviewing(null); }} />
     </div>
   );
 }

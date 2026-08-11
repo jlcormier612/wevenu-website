@@ -108,9 +108,20 @@ async function insertStages(client: DbClient, venueId: string, templateId: strin
   if (error) throw error;
 }
 
-export async function deleteTemplate(client: DbClient, venueId: string, id: string): Promise<void> {
-  const { error } = await client.from("pipeline_templates").delete().eq("id", id).eq("venue_id", venueId);
+/**
+ * Work Package D6 §57 — RLS's DELETE-role gate (Owner/Manager only,
+ * pipeline_templates_delete_gate) blocks a disallowed delete by matching
+ * zero rows, not by raising a Postgres error — `.select("id")` on the
+ * delete is what makes a blocked delete distinguishable from a real one,
+ * so Staff/Coordinator gets an honest denial instead of a false "deleted."
+ */
+export async function deleteTemplate(client: DbClient, venueId: string, id: string): Promise<{ ok: true } | { ok: false; message: string }> {
+  const { data, error } = await client.from("pipeline_templates").delete().eq("id", id).eq("venue_id", venueId).select("id");
   if (error) throw error;
+  if (!data || data.length === 0) {
+    return { ok: false, message: "Only an Owner or Manager can delete this template." };
+  }
+  return { ok: true };
 }
 
 // Template Platform — Release Readiness: Duplicate, mirroring the identical

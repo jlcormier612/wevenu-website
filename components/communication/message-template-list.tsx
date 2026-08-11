@@ -74,6 +74,9 @@ export function MessageTemplateList({ initialTemplates }: { initialTemplates: Me
               <div className="flex items-start justify-between gap-2">
                 <CardTitle className="text-base">{t.name}</CardTitle>
                 <div className="flex shrink-0 items-center gap-1">
+                  {t.sourceMasterKey && !t.isArchived && (
+                    <Badge variant="muted" className="text-[10px]">Starter</Badge>
+                  )}
                   {t.emailBody && <Badge variant="muted" className="text-[10px]">Email</Badge>}
                   {t.smsBody && <Badge variant="muted" className="text-[10px]">SMS</Badge>}
                   {t.isArchived && <Badge variant="muted" className="text-[10px]">Archived</Badge>}
