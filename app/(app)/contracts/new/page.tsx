@@ -4,8 +4,10 @@ import { NewContractForm } from "@/components/contracts/new-contract-form";
 import { PageHeader } from "@/components/shell/module-placeholder";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { getClients } from "@/lib/clients/service";
+import { getClientContacts } from "@/lib/contacts/service";
 import { getTemplates } from "@/lib/contracts/service";
 import { DEFAULT_TEMPLATE_CONTENT, DEFAULT_TEMPLATE_NAME, DEFAULT_TEMPLATE_DESCRIPTION } from "@/lib/contracts/constants";
+import type { ClientContact } from "@/lib/contacts/types";
 
 export const metadata: Metadata = { title: "New Contract" };
 
@@ -14,7 +16,11 @@ type Props = { searchParams: Promise<{ templateId?: string }> };
 export default async function NewContractPage({ searchParams }: Props) {
   const [{ templateId }, templates, clients] = await Promise.all([searchParams, getTemplates(), getClients()]);
 
-  // If venue has no templates yet, seed the default for them
+  const contactsByClientId: Record<string, ClientContact[]> = {};
+  await Promise.all(clients.map(async (c) => {
+    contactsByClientId[c.id] = await getClientContacts(c.id);
+  }));
+
   const displayTemplates = templates.length > 0
     ? templates
     : [{ id: "__default__", venueId: "", name: DEFAULT_TEMPLATE_NAME, description: DEFAULT_TEMPLATE_DESCRIPTION,
@@ -34,7 +40,12 @@ export default async function NewContractPage({ searchParams }: Props) {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <NewContractForm templates={displayTemplates} clients={clients} initialTemplateId={templateId} />
+          <NewContractForm
+            templates={displayTemplates}
+            clients={clients}
+            initialTemplateId={templateId}
+            contactsByClientId={contactsByClientId}
+          />
         </CardContent>
       </Card>
     </div>

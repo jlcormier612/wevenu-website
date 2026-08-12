@@ -24,6 +24,7 @@ import {
   type FaqStarterMasterKey,
 } from "@/lib/venue-guide/starters";
 import { LuvHeart } from "@/components/dashboard/luv-widget";
+import { librarySavedToastMessage } from "@/components/library/use-library-unsaved-guard";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
@@ -614,6 +615,7 @@ function FaqsSectionEditor({
         <div className="flex items-center justify-between gap-3 rounded-xl border border-dashed border-border px-3.5 py-3">
           <p className="text-xs text-muted-foreground">
             Some Hello to Cheers starter FAQs are missing. Restore adds a fresh unpublished copy without changing your other answers.
+            Publishing is controlled per FAQ with the toggle — nothing becomes public until you save with Publish on.
           </p>
           <FaqStarterRestoreMenu missingKeys={missingStarterKeys} />
         </div>
@@ -625,7 +627,7 @@ function FaqsSectionEditor({
           emptyHint="No FAQs yet. Add the questions clients ask most often — or restore Hello to Cheers starters."
           items={clientFaqs}
           saving={savingClient}
-          saveLabel={sectionAudience === "both" ? "Save Client FAQs" : "Save FAQs"}
+          saveLabel="Save changes"
           onSave={onSaveClient}
         />
       )}
@@ -639,7 +641,7 @@ function FaqsSectionEditor({
             answerPlaceholder="Answer for vendors"
             items={vendorFaqs}
             saving={savingVendor}
-            saveLabel="Save Vendor FAQs"
+            saveLabel="Save changes"
             onSave={onSaveVendor}
           />
         </div>
@@ -650,7 +652,7 @@ function FaqsSectionEditor({
           emptyHint="No FAQs yet. Add the questions vendors ask most often."
           items={clientFaqs}
           saving={savingClient}
-          saveLabel="Save FAQs"
+          saveLabel="Save changes"
           onSave={onSaveClient}
         />
       )}
@@ -880,7 +882,7 @@ export function VenueGuideEditor({
     setSaving(field);
     const result = await saveGuideAction(partial);
     if (result.ok) {
-      toast.success("Guide updated.");
+      toast.success(librarySavedToastMessage());
     } else {
       toast.error(result.error ?? "Could not save. Please try again.");
     }

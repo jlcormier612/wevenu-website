@@ -7,7 +7,6 @@ import {
   Check,
   Copy,
   Download,
-  ExternalLink,
   FilePlus2,
   Loader2,
   Lock,
@@ -29,6 +28,8 @@ import {
   resendContractAction,
   sendContractAction,
   updateContractContentAction,
+  venueSignContractAction,
+  withdrawVenueSignatureAction,
 } from "@/app/(app)/contracts/actions";
 import { ContractStatusBadge } from "@/components/contracts/contract-status-badge";
 import { BusinessAssetActionRow, BusinessAssetHeader } from "@/components/business-assets/asset-header";
@@ -38,16 +39,16 @@ import { ShareDialog } from "@/components/sharing/share-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
 import { formatContractDate } from "@/lib/contracts/constants";
+import { CONTRACT_SIGNATURE_CONSENT_TEXT, deriveContractSigningUiState } from "@/lib/contracts/signers";
 import type { ContractStatus, ContractWithDetails } from "@/lib/contracts/types";
 import { buildMergeData, mergeContent } from "@/lib/message-templates/merge";
 
-// Whose turn — draft is on the venue to send, sent is on the client to
-// sign, signed is done. Same "whose turn" question Questionnaires and
-// Messaging already answer, generalized here (BA4, Step 1C).
 const CONTRACT_WAITING_ON: Record<ContractStatus, WaitingOn> = {
   draft: "venue", sent: "client", signed: "completed", cancelled: "none", expired: "none",
 };
@@ -64,22 +65,40 @@ export function ContractDetail({ contract, finalized, venueName }: { contract: C
   const [finalizePending, startFinalize] = React.useTransition();
   const [pdfPending, startPdf] = React.useTransition();
   const [amendPending, startAmend] = React.useTransition();
-  const [copied, setCopied] = React.useState(false);
+  const [venueSignPending, startVenueSign] = React.useTransition();
+  const [withdrawPending, startWithdraw] = React.useTransition();
+  const [venueSignerName, setVenueSignerName] = React.useState("");
+  const [venueConsent, setVenueConsent] = React.useState(false);
+  const [showVenueSign, setShowVenueSign] = React.useState(false);
 
-  const signUrl = typeof window !== "undefined"
-    ? `${window.location.origin}/sign/${contract.signToken}`
-    : `/sign/${contract.signToken}`;
+  const signers = contract.signers ?? [];
+  const venueSigner = signers.find((s) => s.signerType === "venue");
+  const clientSigners = signers.filter((s) => s.signerType === "client");
+  const requiredClients = clientSigners.filter((s) => s.isRequired);
+  const requiredClientSigned = requiredClients.filter((s) => s.signedAt).length;
+  const venueSigned = Boolean(venueSigner?.signedAt);
+  const uiState = deriveContractSigningUiState({
+    status: contract.status,
+    venueSigned,
+    requiredClientTotal: requiredClients.length || 1,
+    requiredClientSigned,
+    expiresAt: contract.expiresAt,
+  });
 
-  // Work Package D5E — the unified Share experience. Recipient/explanation/
-  // default message are the only contract-specific inputs; the actual send
-  // still goes through sendContract()/resendContract() exactly as before —
-  // ShareDialog is presentation only.
-  const shareRecipient = { name: contract.clientName ?? "the client", contact: contract.clientEmail, relationshipLabel: "Client" };
+  const primaryClientSigner = requiredClients[0];
+
+  const shareRecipient = {
+    name: primaryClientSigner?.signerName ?? contract.clientName ?? "the client",
+    contact: primaryClientSigner?.signerEmail ?? contract.clientEmail,
+    relationshipLabel: "Client",
+  };
   const shareMergeData = buildMergeData({ venueName, clientName: contract.clientName ?? "", coordinatorName: venueName, eventDate: contract.eventDate });
   const shareDefaultMessage = mergeContent(
     `{{venue_name}} has sent you "${contract.title}" to review and sign.`,
     shareMergeData,
   );
+
+  const canEditContent = contract.status === "draft" && !venueSigned;
 
   function handleSaveEdit() {
     startSave(async () => {
@@ -103,7 +122,11 @@ export function ContractDetail({ contract, finalized, venueName }: { contract: C
   }
 
   function handleCancel() {
-    if (!confirm("Cancel and void this contract? This cannot be undone.")) return;
+    if (!confirm(
+      "Cancel and void this contract?\n\n"
+      + "This stops the client signing link (withdraw). It cannot be undone.\n\n"
+      + "Emails already delivered are not recalled.",
+    )) return;
     startCancel(async () => {
       const result = await cancelContractAction(contract.id);
       if (result.ok) { toast.success("Contract cancelled."); router.refresh(); }
@@ -161,11 +184,27 @@ export function ContractDetail({ contract, finalized, venueName }: { contract: C
     });
   }
 
-  function copyLink() {
-    navigator.clipboard?.writeText(signUrl).then(() => {
-      setCopied(true);
-      toast.success("Signing link copied.");
-      setTimeout(() => setCopied(false), 2000);
+  function handleVenueSign() {
+    if (!venueSignerName.trim()) { toast.error("Please enter your full name."); return; }
+    if (!venueConsent) { toast.error("Please confirm you agree this constitutes your legal signature."); return; }
+    startVenueSign(async () => {
+      const result = await venueSignContractAction(contract.id, venueSignerName, venueConsent);
+      if (result.ok) {
+        toast.success("Signed by venue. Ready to release to the client.");
+        setShowVenueSign(false);
+        router.refresh();
+      } else {
+        toast.error(result.message ?? "Could not record venue signature.");
+      }
+    });
+  }
+
+  function handleWithdrawVenueSign() {
+    if (!confirm("Withdraw the venue signature so this agreement can be edited?")) return;
+    startWithdraw(async () => {
+      const result = await withdrawVenueSignatureAction(contract.id);
+      if (result.ok) { toast.success("Venue signature withdrawn."); router.refresh(); }
+      else toast.error(result.message ?? "Could not withdraw signature.");
     });
   }
 
@@ -183,12 +222,9 @@ export function ContractDetail({ contract, finalized, venueName }: { contract: C
         whatIsThis="Contract"
         title={contract.title}
         status={
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-1.5 flex-wrap">
             <ContractStatusBadge status={contract.status} />
-            {/* Finalized is a fact derived from the Document Domain (isContractFinalized),
-                deliberately never re-derived from contract.status alone — "signed" and
-                "finalized" are different moments in the D4 lifecycle and must never be
-                conflated in the UI even though both currently only ever apply to signed contracts. */}
+            <Badge variant="outline">{uiState.label}</Badge>
             {finalized && (
               <Badge variant="success"><Lock className="mr-1 h-3 w-3" />Finalized</Badge>
             )}
@@ -198,14 +234,18 @@ export function ContractDetail({ contract, finalized, venueName }: { contract: C
         lastUpdated={formatContractDate(contract.updatedAt.slice(0, 10))}
         relationship={contract.clientName ? { name: contract.clientName, href: `/clients/${contract.clientId}` } : null}
         primaryAction={
-          contract.status === "draft" ? (
+          contract.status === "draft" && !venueSigned ? (
+            <Button size="sm" onClick={() => setShowVenueSign(true)}>
+              <Pencil className="mr-1 h-3.5 w-3.5" />Sign contract
+            </Button>
+          ) : contract.status === "draft" && venueSigned ? (
             <ShareDialog
-              trigger={<Button size="sm"><Send className="mr-1 h-3.5 w-3.5" />Send for Signing</Button>}
-              title="Share Contract"
+              trigger={<Button size="sm"><Send className="mr-1 h-3.5 w-3.5" />Release to client</Button>}
+              title="Release Contract"
               recipient={shareRecipient}
-              whatHappensNext="They'll review and sign the contract."
+              whatHappensNext="Each required client signer receives their own signing link. The agreement is already signed by the venue."
               defaultMessage={shareDefaultMessage}
-              sendLabel="Send for Signing"
+              sendLabel="Release to client"
               onSend={async (message) => sendContractAction(contract.id, message)}
               onSent={() => router.refresh()}
             />
@@ -214,7 +254,7 @@ export function ContractDetail({ contract, finalized, venueName }: { contract: C
               trigger={<Button size="sm" variant="outline"><RotateCcw className="mr-1 h-3.5 w-3.5" />Resend</Button>}
               title="Resend Contract"
               recipient={shareRecipient}
-              whatHappensNext="They'll get another copy of the same signing link — nothing about the contract changes."
+              whatHappensNext="They'll get another copy of their signing link — nothing about the contract changes."
               defaultMessage={shareDefaultMessage}
               sendLabel="Resend"
               onSend={async (message) => resendContractAction(contract.id, message)}
@@ -236,9 +276,14 @@ export function ContractDetail({ contract, finalized, venueName }: { contract: C
       )}
       <BusinessAssetActionRow
         secondary={<>
-          {contract.status === "draft" && (
+          {canEditContent && (
             <Button variant="outline" size="sm" onClick={() => setEditing(true)}>
               <Pencil className="mr-1 h-3.5 w-3.5" /> Edit
+            </Button>
+          )}
+          {contract.status === "draft" && venueSigned && (
+            <Button variant="outline" size="sm" onClick={handleWithdrawVenueSign} disabled={withdrawPending}>
+              {withdrawPending ? <><Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />Withdrawing…</> : "Withdraw signature"}
             </Button>
           )}
           {contract.status === "sent" && (
@@ -266,6 +311,81 @@ export function ContractDetail({ contract, finalized, venueName }: { contract: C
         </>}
       />
 
+      {/* Venue sign form — same content the client will see */}
+      {showVenueSign && contract.status === "draft" && !venueSigned && (
+        <Card className="border-primary/30">
+          <CardHeader>
+            <CardTitle className="text-base">Sign as venue</CardTitle>
+            <CardDescription>
+              Review the agreement below, then sign. Release to the client is only available after this step.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="rounded-md border bg-muted/30 p-4 max-h-64 overflow-y-auto">
+              <pre className="whitespace-pre-wrap text-sm font-sans">{contract.content}</pre>
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="venue-signer-name">Full legal name *</Label>
+              <Input
+                id="venue-signer-name"
+                value={venueSignerName}
+                onChange={(e) => setVenueSignerName(e.target.value)}
+                placeholder="Enter your full name"
+              />
+            </div>
+            <div className="flex items-start gap-2">
+              <Checkbox
+                id="venue-consent"
+                checked={venueConsent}
+                onCheckedChange={(c) => setVenueConsent(c === true)}
+                className="mt-0.5"
+              />
+              <Label htmlFor="venue-consent" className="text-xs font-normal leading-snug">
+                {CONTRACT_SIGNATURE_CONSENT_TEXT}
+              </Label>
+            </div>
+            <div className="flex gap-2">
+              <Button onClick={handleVenueSign} disabled={venueSignPending}>
+                {venueSignPending ? <><Loader2 className="mr-1 h-4 w-4 animate-spin" />Signing…</> : "Sign contract"}
+              </Button>
+              <Button variant="outline" onClick={() => setShowVenueSign(false)} disabled={venueSignPending}>Cancel</Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Signers status */}
+      {signers.length > 0 && (
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base">Signatures</CardTitle>
+            <CardDescription>{uiState.label}</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-2 text-sm">
+            {venueSigner && (
+              <div className="flex justify-between gap-4">
+                <span>Venue{venueSigner.signerName ? ` — ${venueSigner.signerName}` : ""}</span>
+                <span className="text-muted-foreground">
+                  {venueSigner.signedAt
+                    ? `Signed ${formatContractDate(venueSigner.signedAt.slice(0, 10))}`
+                    : "Awaiting venue signature"}
+                </span>
+              </div>
+            )}
+            {clientSigners.map((s) => (
+              <div key={s.id} className="flex justify-between gap-4">
+                <span>{s.signerName ?? "Client"}{s.signerEmail ? ` (${s.signerEmail})` : ""}</span>
+                <span className="text-muted-foreground">
+                  {s.signedAt
+                    ? `Signed ${formatContractDate(s.signedAt.slice(0, 10))}`
+                    : contract.status === "sent" ? "Awaiting signature" : "Not yet released"}
+                </span>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      )}
+
       {/* Amendment lineage — this contract was cloned from an earlier finalized one (Step 33). */}
       {contract.amendsContractId && (
         <p className="text-xs text-muted-foreground">
@@ -279,19 +399,28 @@ export function ContractDetail({ contract, finalized, venueName }: { contract: C
       {/* Signing link banner (sent state) */}
       {contract.status === "sent" && (
         <Card className="border-primary/20 bg-primary/5">
-          <CardContent className="py-4">
-            <p className="mb-2 text-sm font-medium text-heading">Share this link with your client to sign:</p>
-            <div className="flex items-center gap-2">
-              <code className="flex-1 truncate rounded-md border border-border bg-background px-3 py-1.5 text-xs text-foreground">
-                {signUrl}
-              </code>
-              <Button size="sm" variant="outline" onClick={copyLink}>
-                {copied ? <><Check className="mr-1 h-3.5 w-3.5 text-success" />Copied</> : <><Copy className="mr-1 h-3.5 w-3.5" />Copy</>}
-              </Button>
-              <Button size="sm" variant="ghost" render={<a href={signUrl} target="_blank" rel="noopener noreferrer" />}>
-                <ExternalLink className="h-3.5 w-3.5" />
-              </Button>
-            </div>
+          <CardContent className="py-4 space-y-3">
+            <p className="text-sm font-medium text-heading">Client signing links:</p>
+            {(requiredClients.length > 0 ? requiredClients : [{ id: "legacy", signToken: contract.signToken, signerName: contract.clientName, signerEmail: contract.clientEmail } as const]).map((s) => {
+              const url = typeof window !== "undefined"
+                ? `${window.location.origin}/sign/${s.signToken}`
+                : `/sign/${s.signToken}`;
+              return (
+                <div key={s.id} className="space-y-1">
+                  <p className="text-xs text-muted-foreground">{s.signerName ?? "Client"}{s.signerEmail ? ` · ${s.signerEmail}` : ""}</p>
+                  <div className="flex items-center gap-2">
+                    <code className="flex-1 truncate rounded-md border border-border bg-background px-3 py-1.5 text-xs text-foreground">
+                      {url}
+                    </code>
+                    <Button size="sm" variant="outline" onClick={() => {
+                      navigator.clipboard?.writeText(url).then(() => toast.success("Signing link copied."));
+                    }}>
+                      <Copy className="mr-1 h-3.5 w-3.5" />Copy
+                    </Button>
+                  </div>
+                </div>
+              );
+            })}
           </CardContent>
         </Card>
       )}
@@ -305,7 +434,8 @@ export function ContractDetail({ contract, finalized, venueName }: { contract: C
             </span>
             <div>
               <p className="text-sm font-medium text-foreground">
-                Signed by {contract.signerName} on {contract.signedAt ? formatContractDate(contract.signedAt.slice(0, 10)) : "—"}
+                Fully signed{contract.signerName ? ` — last signature by ${contract.signerName}` : ""}
+                {contract.signedAt ? ` on ${formatContractDate(contract.signedAt.slice(0, 10))}` : ""}
               </p>
               <p className="text-xs text-muted-foreground">
                 {finalized ? "This agreement is finalized. The final PDF is the official record." : "Finalize this contract to lock the signed content and generate the official final PDF."}

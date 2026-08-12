@@ -37,6 +37,10 @@ export default function PaymentSchedulesLibraryPage() {
         <p className="mt-1">
           These starters are venue-safe structures only — no cancellation fees, late fees, or legal payment language.
         </p>
+        <p className="mt-1">
+          <span className="font-medium text-foreground">Use payment plan</span> opens the invoice-tied create flow —
+          it does not email or publish anything to a client by itself.
+        </p>
       </div>
 
       <div className="grid gap-4 md:grid-cols-3">
@@ -68,6 +72,12 @@ export default function PaymentSchedulesLibraryPage() {
                   Start blank — add payments, name them, set amounts and due dates, and review the total against the invoice.
                 </p>
               )}
+              <Button size="sm" render={<Link href="/payments/new" />}>
+                Use payment plan
+              </Button>
+              <p className="text-[11px] text-muted-foreground">
+                Opens the invoice-tied schedule flow. Nothing is sent to a client from this Library page.
+              </p>
             </CardContent>
           </Card>
         ))}

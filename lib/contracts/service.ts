@@ -28,14 +28,20 @@ import {
   validateTemplateInput,
 } from "@/lib/contracts/validation";
 import { getClient } from "@/lib/clients/service";
+import { getClientContacts } from "@/lib/contacts/service";
 import { getEvent } from "@/lib/events/service";
 import { getCurrentVenue, getCurrentUserRole } from "@/lib/venue/service";
+import { getCurrentStaffMember } from "@/lib/team/service";
 import { sendEmail } from "@/lib/email/send";
 import {
   buildContractInviteSubject,
   buildContractInviteText,
   buildContractInviteHtml,
 } from "@/lib/email/contract-invite";
+import { CONTRACT_SIGNATURE_CONSENT_TEXT, hashContractContent } from "@/lib/contracts/signers";
+import type { ClientSignerSeed } from "@/lib/contracts/repository";
+
+export { hashContractContent } from "@/lib/contracts/signers";
 
 async function withVenue<T>(
   fn: (supabase: Awaited<ReturnType<typeof createClient>>, venueId: string) => Promise<T>,
@@ -47,6 +53,76 @@ async function withVenue<T>(
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { ok: false, message: "Session expired." };
   return fn(supabase, venue.id);
+}
+
+async function currentActor(
+  venueId: string,
+): Promise<{ userId: string | null; label: string | null }> {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  const staff = await getCurrentStaffMember(venueId);
+  return { userId: user?.id ?? null, label: staff?.name ?? user?.email ?? null };
+}
+
+/** Resolve required client signers — never auto-assumes couple = 2. */
+async function resolveClientSignerSeeds(
+  clientId: string,
+  selectedContactIds?: string[],
+): Promise<{ ok: true; seeds: ClientSignerSeed[] } | { ok: false; message: string }> {
+  const client = await getClient(clientId);
+  if (!client) return { ok: false, message: "Client not found." };
+  const contacts = await getClientContacts(clientId);
+
+  if (selectedContactIds && selectedContactIds.length > 0) {
+    const seeds: ClientSignerSeed[] = [];
+    for (const contactId of selectedContactIds) {
+      const contact = contacts.find((c) => c.id === contactId);
+      if (!contact) return { ok: false, message: "One of the selected signers was not found." };
+      if (!contact.email?.trim()) {
+        return {
+          ok: false,
+          message: `${contact.firstName} has no email on file — add an email before making them a required signer.`,
+        };
+      }
+      seeds.push({
+        clientContactId: contact.id,
+        signerRefId: contact.id,
+        signerName: [contact.firstName, contact.lastName].filter(Boolean).join(" "),
+        signerEmail: contact.email.trim(),
+        signerRole: contact.roleLabel || contact.relationship || null,
+      });
+    }
+    return { ok: true, seeds };
+  }
+
+  // Default: one required signer from primary contact, else the client record
+  const primary = contacts.find((c) => c.isPrimary && c.email?.trim())
+    ?? contacts.find((c) => c.email?.trim());
+  if (primary?.email?.trim()) {
+    return {
+      ok: true,
+      seeds: [{
+        clientContactId: primary.id,
+        signerRefId: primary.id,
+        signerName: [primary.firstName, primary.lastName].filter(Boolean).join(" "),
+        signerEmail: primary.email.trim(),
+        signerRole: primary.roleLabel || primary.relationship || "primary",
+      }],
+    };
+  }
+  if (!client.email?.trim()) {
+    return { ok: false, message: "This client has no email on file — add one before creating a contract." };
+  }
+  return {
+    ok: true,
+    seeds: [{
+      clientContactId: null,
+      signerRefId: client.id,
+      signerName: [client.firstName, client.lastName].filter(Boolean).join(" "),
+      signerEmail: client.email.trim(),
+      signerRole: "primary",
+    }],
+  };
 }
 
 // ---- templates --------------------------------------------------------------
@@ -123,7 +199,16 @@ export async function getContractDetail(id: string): Promise<ContractWithDetails
 }
 
 /** Get a contract by its public sign_token (no auth required). */
-export async function getContractByToken(token: string): Promise<Contract | null> {
+export async function getContractByToken(token: string): Promise<(Contract & {
+  tokenSigner?: {
+    id: string | null;
+    signerType: string;
+    signerName: string | null;
+    signerEmail: string | null;
+    signedAt: string | null;
+    legacy: boolean;
+  } | null;
+}) | null> {
   if (!isSupabaseConfigured) return null;
   return repo.getContractByToken(await createClient(), token);
 }
@@ -136,6 +221,16 @@ export async function createContract(input: NewContractInput): Promise<CreateCon
   const errors = validateNewContractInput(input);
   if (Object.keys(errors).length > 0) return { ok: false, errors };
   const result = await withVenue(async (supabase, venueId) => {
+    if (input.templateId) {
+      const tmpl = await repo.getTemplate(supabase, venueId, input.templateId);
+      if (!tmpl) return { ok: false, message: "Template not found." } as CreateContractResult;
+      if (tmpl.isArchived) {
+        return { ok: false, message: "This template is archived. Restore it in the Library before creating a contract." } as CreateContractResult;
+      }
+    }
+    const signerSeeds = await resolveClientSignerSeeds(input.clientId, input.clientSignerContactIds);
+    if (!signerSeeds.ok) return { ok: false, message: signerSeeds.message } as CreateContractResult;
+
     const mergeData = await buildContractMergeData({
       clientId: input.clientId, eventId: input.eventId, contractTitle: input.title,
     });
@@ -150,7 +245,12 @@ export async function createContract(input: NewContractInput): Promise<CreateCon
       } as CreateContractResult;
     }
     const contractId = await repo.insertContract(supabase, venueId, { ...input, content: resolvedContent });
-    await repo.insertContractActivity(supabase, venueId, contractId, "contract_created", "Contract created");
+    await repo.insertContractSigners(supabase, venueId, contractId, signerSeeds.seeds);
+    const actor = await currentActor(venueId);
+    await repo.insertContractActivity(
+      supabase, venueId, contractId, "contract_created", "Contract created",
+      undefined, actor.userId, actor.label,
+    );
     return { ok: true, contractId } as CreateContractResult;
   });
   return result as CreateContractResult;
@@ -184,6 +284,12 @@ export async function createAmendmentFromContract(sourceContractId: string): Pro
     // amends_contract_id column is what lets the UI show "this amends X"
     // immediately, before that Document exists; sendContract reads this
     // same column to record the Document Domain lineage once it can.
+    if (!source.clientId) {
+      return { ok: false, message: "This contract has no client — cannot create an amendment." } as CreateContractResult;
+    }
+    const seeds = await resolveClientSignerSeeds(source.clientId);
+    if (!seeds.ok) return { ok: false, message: seeds.message } as CreateContractResult;
+
     const newContractId = await repo.insertContract(supabase, venueId, {
       templateId: source.templateId ?? "",
       clientId: source.clientId ?? "",
@@ -192,7 +298,14 @@ export async function createAmendmentFromContract(sourceContractId: string): Pro
       content: source.content,
       amendsContractId: sourceContractId,
     });
-    await repo.insertContractActivity(supabase, venueId, newContractId, "contract_created", `Amendment of "${source.title}" created`);
+    // Fresh venue-then-client cycle — never inherit prior signers
+    await repo.insertContractSigners(supabase, venueId, newContractId, seeds.seeds);
+    const actor = await currentActor(venueId);
+    await repo.insertContractActivity(
+      supabase, venueId, newContractId, "contract_created",
+      `Amendment of "${source.title}" created`,
+      undefined, actor.userId, actor.label,
+    );
 
     return { ok: true, contractId: newContractId } as CreateContractResult;
   });
@@ -383,14 +496,44 @@ export async function updateContractContent_(id: string, title: string, content:
   return result as ContractActionResult;
 }
 
-/** Shared by sendContract (first send) and resendContract (D5E) — the actual invite email. */
-async function sendContractInviteEmail(contract: ContractWithDetails, customMessage?: string): Promise<void> {
-  if (!contract.clientId) return;
-  const [client, venue] = await Promise.all([getClient(contract.clientId), getCurrentVenue()]);
-  if (!client?.email || !venue) return;
+/** Shared by sendContract (first send) and resendContract — per-signer invite emails. */
+async function sendContractInviteEmails(
+  contract: ContractWithDetails,
+  customMessage?: string,
+): Promise<void> {
+  const venue = await getCurrentVenue();
+  if (!venue) return;
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://app.wevenu.com";
-  const signUrl = `${baseUrl}/sign/${contract.signToken}`;
   const brand = { name: venue.name ?? "Your venue", logoUrl: venue.logoUrl, primaryColor: venue.primaryColor };
+
+  const clientSigners = (contract.signers ?? []).filter((s) => s.signerType === "client" && s.isRequired);
+  if (clientSigners.length > 0) {
+    for (const signer of clientSigners) {
+      if (!signer.signerEmail) continue;
+      const signUrl = `${baseUrl}/sign/${signer.signToken}`;
+      const firstName = (signer.signerName ?? "there").split(/\s+/)[0] || "there";
+      const ctx = {
+        brand,
+        recipientFirstName: firstName,
+        contractTitle: contract.title,
+        signUrl,
+        customMessage,
+      };
+      await sendEmail({
+        to: signer.signerEmail,
+        subject: buildContractInviteSubject(ctx),
+        text: buildContractInviteText(ctx),
+        html: buildContractInviteHtml(ctx),
+      });
+    }
+    return;
+  }
+
+  // Legacy fallback — shared contracts.sign_token to client.email
+  if (!contract.clientId) return;
+  const client = await getClient(contract.clientId);
+  if (!client?.email) return;
+  const signUrl = `${baseUrl}/sign/${contract.signToken}`;
   const ctx = { brand, recipientFirstName: client.firstName, contractTitle: contract.title, signUrl, customMessage };
   await sendEmail({
     to: client.email,
@@ -400,33 +543,92 @@ async function sendContractInviteEmail(contract: ContractWithDetails, customMess
   });
 }
 
+export async function venueSignContract(
+  id: string,
+  signerName: string,
+  consent: boolean,
+): Promise<ContractActionResult> {
+  const result = await withVenue(async (supabase, venueId) => {
+    const role = await getCurrentUserRole();
+    if (role !== "owner" && role !== "manager") {
+      return { ok: false, message: "Only an Owner or Manager can sign for the venue." } as ContractActionResult;
+    }
+    if (!signerName.trim()) return { ok: false, message: "Please enter your full name." } as ContractActionResult;
+    if (!consent) {
+      return { ok: false, message: "Please confirm you agree this constitutes your legal signature." } as ContractActionResult;
+    }
+
+    const contract = await repo.getContract(supabase, venueId, id);
+    if (!contract) return { ok: false, message: "Contract not found." } as ContractActionResult;
+
+    const safety = assertCustomerSafeContractContent(contract.content);
+    if (!safety.ok) return { ok: false, message: safety.message } as ContractActionResult;
+
+    const { headers } = await import("next/headers");
+    const headerList = await headers();
+    const forwardedFor = headerList.get("x-forwarded-for");
+    const ip = forwardedFor ? forwardedFor.split(",")[0].trim() : null;
+    const userAgent = headerList.get("user-agent");
+    const actor = await currentActor(venueId);
+    const venue = await getCurrentVenue();
+    const staff = await getCurrentStaffMember(venueId);
+
+    const outcome = await repo.venueSignContract(supabase, venueId, id, {
+      signerName: signerName.trim(),
+      signerEmail: venue?.email ?? staff?.email ?? null,
+      signerRole: role,
+      signerRefId: actor.userId ?? "",
+      consent,
+      consentText: CONTRACT_SIGNATURE_CONSENT_TEXT,
+      contentHash: hashContractContent(contract.content),
+      ip,
+      userAgent,
+      actorId: actor.userId,
+      actorLabel: actor.label,
+    });
+    if (!outcome.ok) return { ok: false, message: outcome.message } as ContractActionResult;
+    return { ok: true } as ContractActionResult;
+  });
+  return result as ContractActionResult;
+}
+
+export async function withdrawVenueSignature(id: string): Promise<ContractActionResult> {
+  const result = await withVenue(async (supabase, venueId) => {
+    const role = await getCurrentUserRole();
+    if (role !== "owner" && role !== "manager") {
+      return { ok: false, message: "Only an Owner or Manager can withdraw the venue signature." } as ContractActionResult;
+    }
+    const actor = await currentActor(venueId);
+    const outcome = await repo.clearVenueSignature(supabase, venueId, id, actor.userId, actor.label);
+    if (!outcome.ok) return { ok: false, message: outcome.message } as ContractActionResult;
+    return { ok: true } as ContractActionResult;
+  });
+  return result as ContractActionResult;
+}
+
 export async function sendContract(id: string, customMessage?: string): Promise<ContractActionResult> {
   const result = await withVenue(async (supabase, venueId) => {
     const contract = await repo.getContract(supabase, venueId, id);
     if (!contract) return { ok: false, message: "Contract not found." } as ContractActionResult;
 
-    // Re-merge any tokens that may have been pasted after create, then refuse
-    // customer send when unresolved tokens or starter policy placeholders remain.
-    let content = contract.content;
-    if (extractTokens(content).length > 0) {
-      const mergeData = await buildContractMergeData({
-        clientId: contract.clientId ?? undefined,
-        eventId: contract.eventId ?? undefined,
-        contractTitle: contract.title,
-      });
-      content = mergeContent(content, mergeData);
-      await repo.forceResolveContractContent(supabase, venueId, id, content);
-      contract.content = content;
+    const venueSigner = (contract.signers ?? []).find((s) => s.signerType === "venue");
+    if (!venueSigner?.signedAt) {
+      return { ok: false, message: "The venue must sign this contract before it can be released to the client." } as ContractActionResult;
     }
 
-    const safety = assertCustomerSafeContractContent(content);
+    // Content is immutable after venue sign — do not force-resolve tokens here.
+    const safety = assertCustomerSafeContractContent(contract.content);
     if (!safety.ok) {
       return { ok: false, message: safety.message } as ContractActionResult;
     }
 
     const outcome = await repo.updateContractStatus(supabase, venueId, id, "sent", { sentAt: true });
     if (!outcome.ok) return { ok: false, message: outcome.message } as ContractActionResult;
-    await repo.insertContractActivity(supabase, venueId, id, "sent", "Contract sent for signing");
+    const actor = await currentActor(venueId);
+    await repo.insertContractActivity(
+      supabase, venueId, id, "sent", "Contract released for client signature",
+      undefined, actor.userId, actor.label,
+    );
 
     // Work Package D4 — Document Domain integration.
     {
@@ -444,7 +646,8 @@ export async function sendContract(id: string, customMessage?: string): Promise<
       }
     }
 
-    await sendContractInviteEmail(contract, customMessage);
+    const refreshed = await repo.getContract(supabase, venueId, id);
+    await sendContractInviteEmails(refreshed ?? contract, customMessage);
 
     return { ok: true } as ContractActionResult;
   });
@@ -453,11 +656,7 @@ export async function sendContract(id: string, customMessage?: string): Promise<
 
 /**
  * Work Package D5E — "Resend" for a contract already `sent` and still
- * awaiting signature (brief Step 11): "another delivery of the same
- * working contract, not creation of a new contract." Unlike sendContract(),
- * this never touches status or the Document Domain — nothing about the
- * contract changed, so there's nothing to re-publish or version. Just the
- * email, again, plus its own activity entry.
+ * awaiting signature.
  */
 export async function resendContract(id: string, customMessage?: string): Promise<ContractActionResult> {
   const result = await withVenue(async (supabase, venueId) => {
@@ -466,8 +665,12 @@ export async function resendContract(id: string, customMessage?: string): Promis
     if (contract.status !== "sent") {
       return { ok: false, message: "Only a contract that's already been sent and is still awaiting signature can be resent." } as ContractActionResult;
     }
-    await sendContractInviteEmail(contract, customMessage);
-    await repo.insertContractActivity(supabase, venueId, id, "resent", "Contract resent for signing");
+    await sendContractInviteEmails(contract, customMessage);
+    const actor = await currentActor(venueId);
+    await repo.insertContractActivity(
+      supabase, venueId, id, "resent", "Contract resent for signing",
+      undefined, actor.userId, actor.label,
+    );
     return { ok: true } as ContractActionResult;
   });
   return result as ContractActionResult;
@@ -477,7 +680,11 @@ export async function cancelContract(id: string): Promise<ContractActionResult> 
   const result = await withVenue(async (supabase, venueId) => {
     const outcome = await repo.updateContractStatus(supabase, venueId, id, "cancelled");
     if (!outcome.ok) return { ok: false, message: outcome.message } as ContractActionResult;
-    await repo.insertContractActivity(supabase, venueId, id, "cancelled", "Contract cancelled");
+    const actor = await currentActor(venueId);
+    await repo.insertContractActivity(
+      supabase, venueId, id, "cancelled", "Contract cancelled",
+      undefined, actor.userId, actor.label,
+    );
     return { ok: true } as ContractActionResult;
   });
   return result as ContractActionResult;
@@ -486,7 +693,8 @@ export async function cancelContract(id: string): Promise<ContractActionResult> 
 /** Work Package D4 — closes the negotiation-loop gap; see repository.ts's own comment on reopenForEditing. */
 export async function reopenContractForEditing(id: string): Promise<ContractActionResult> {
   const result = await withVenue(async (supabase, venueId) => {
-    const outcome = await repo.reopenForEditing(supabase, venueId, id);
+    const actor = await currentActor(venueId);
+    const outcome = await repo.reopenForEditing(supabase, venueId, id, actor.userId, actor.label);
     if (!outcome.ok) return { ok: false, message: outcome.message } as ContractActionResult;
     return { ok: true } as ContractActionResult;
   });
@@ -506,12 +714,12 @@ export async function deleteContract_(id: string): Promise<ContractActionResult>
   return result as ContractActionResult;
 }
 
-/** Public action — signs via the SECURITY DEFINER RPC (no venue auth needed). */
+/** Public action — signs via SECURITY DEFINER RPC (per-signer or legacy). */
 export async function signContractByToken(
   token: string,
   signerName: string,
   consent: boolean,
-): Promise<{ ok: boolean; message?: string; clientId?: string | null; celebrated?: boolean }> {
+): Promise<{ ok: boolean; message?: string; clientId?: string | null; celebrated?: boolean; fullyExecuted?: boolean }> {
   if (!isSupabaseConfigured) return { ok: false, message: "Backend not configured." };
   if (!signerName.trim()) return { ok: false, message: "Please enter your full name." };
   if (!consent) return { ok: false, message: "Please confirm you agree this constitutes your legal signature." };
@@ -523,13 +731,72 @@ export async function signContractByToken(
   const ip = forwardedFor ? forwardedFor.split(",")[0].trim() : null;
   const userAgent = headerList.get("user-agent");
 
-  // Look up venue_id/event_id/client_id before signing so we can fire the
-  // engagement event and the "contract signed" playbook trigger — this is
-  // the one place that should ever fire it (TR-L4: it previously fired on
-  // send, not on signature). Goes through the token-validating RPC (TR-L6),
-  // not a direct table read.
   const contractRow = await repo.getContractByToken(supabase, token);
+  if (!contractRow) return { ok: false, message: "This contract is not available for signing." };
 
+  // Expiration (also enforced in RPC — defense in depth)
+  if (contractRow.expiresAt && contractRow.expiresAt < new Date().toISOString().slice(0, 10)) {
+    return { ok: false, message: "This signing link has expired." };
+  }
+
+  if (contractRow.status !== "sent") {
+    return { ok: false, message: "This contract is not available for signing." };
+  }
+
+  const contentHash = hashContractContent(contractRow.content);
+  const isLegacy = contractRow.tokenSigner?.legacy === true || !contractRow.tokenSigner?.id;
+
+  if (!isLegacy) {
+    if (contractRow.tokenSigner?.signerType === "venue") {
+      return { ok: false, message: "This contract is not available for signing." };
+    }
+    if (contractRow.tokenSigner?.signedAt) {
+      return { ok: false, message: "This contract is not available for signing." };
+    }
+
+    const { data, error } = await supabase.rpc("sign_contract_signer", {
+      p_token: token,
+      p_signer: signerName.trim(),
+      p_ip: ip,
+      p_user_agent: userAgent,
+      p_consent: consent,
+      p_consent_text: CONTRACT_SIGNATURE_CONSENT_TEXT,
+      p_content_hash: contentHash,
+    });
+    if (error) return { ok: false, message: error.message };
+    const result = data as { ok: boolean; celebrated?: boolean; fully_executed?: boolean; reason?: string } | null;
+    if (!result?.ok) {
+      if (result?.reason === "content_hash_mismatch") {
+        return { ok: false, message: "This agreement could not be completed because its content no longer matches what was signed. Please contact the venue." };
+      }
+      return { ok: false, message: "This contract is not available for signing." };
+    }
+
+    if (result.fully_executed && contractRow.venueId) {
+      void recordEngagementEvent({
+        venueId: contractRow.venueId,
+        eventType: "contract.signed",
+        actorType: "couple",
+        entityType: "contract",
+        entityId: contractRow.id,
+      });
+      if (contractRow.eventId) {
+        const { triggerAutoComplete } = await import("@/lib/playbooks/service");
+        const admin = createAdminClient();
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        await triggerAutoComplete(admin as any, contractRow.venueId, contractRow.eventId, "contract_signed");
+      }
+    }
+
+    return {
+      ok: true,
+      clientId: contractRow.clientId ?? null,
+      celebrated: result.celebrated === true,
+      fullyExecuted: result.fully_executed === true,
+    };
+  }
+
+  // Legacy shared-token path for in-flight contracts
   const { data, error } = await supabase.rpc("sign_contract", {
     p_token: token,
     p_signer: signerName.trim(),
@@ -541,17 +808,14 @@ export async function signContractByToken(
   const result = data as { ok: boolean; celebrated?: boolean } | null;
   if (!result?.ok) return { ok: false, message: "This contract is not available for signing." };
 
-  if (contractRow?.venueId) {
+  if (contractRow.venueId) {
     void recordEngagementEvent({
-      venueId:   contractRow.venueId,
+      venueId: contractRow.venueId,
       eventType: "contract.signed",
       actorType: "couple",
       entityType: "contract",
-      entityId:  contractRow.id,
+      entityId: contractRow.id,
     });
-
-    // The couple has no venue_staff session here, so use the admin client —
-    // the RPC above already validated the token and flipped status to signed.
     if (contractRow.eventId) {
       const { triggerAutoComplete } = await import("@/lib/playbooks/service");
       const admin = createAdminClient();
@@ -560,7 +824,7 @@ export async function signContractByToken(
     }
   }
 
-  return { ok: true, clientId: contractRow?.clientId ?? null, celebrated: result.celebrated === true };
+  return { ok: true, clientId: contractRow.clientId ?? null, celebrated: result.celebrated === true, fullyExecuted: true };
 }
 
 export { mergeContent };

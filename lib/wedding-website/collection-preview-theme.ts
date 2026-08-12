@@ -51,10 +51,17 @@ export const COLLECTION_PREVIEW_NEUTRAL_PHOTO = {
  * remaining wash is why picker cards still looked like different photo
  * grades after the first photoFilter pass.
  */
+// Release Readiness Reconciliation remediation: every branch below always
+// touches heroMinHeight/heroMaxHeight (and the invitation branch always
+// sets heroAspectCap too), regardless of whether the caller's own `T`
+// happened to include them — bare `T` as the return type let the result's
+// inferred shape stay as narrow as whatever the caller passed in, so a
+// caller that omitted e.g. heroMaxHeight from its input literal couldn't
+// type-safely read it off the result even though it's always really there.
 export function resolveCollectionPreviewTheme<T extends PreviewHeroThemeInput>(
   resolved: T,
   heroPx: string,
-): T {
+): T & Pick<PreviewHeroThemeInput, "heroMinHeight" | "heroMaxHeight" | "heroAspectCap"> {
   const neutralPhoto = { ...COLLECTION_PREVIEW_NEUTRAL_PHOTO };
 
   if (resolved.heroType === "invitation") {

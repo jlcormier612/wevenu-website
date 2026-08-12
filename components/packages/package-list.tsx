@@ -4,15 +4,19 @@ import * as React from "react";
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Archive, ArchiveRestore, BookPlus, Copy, Eye, Loader2, MoreHorizontal, Pencil, Plus, Trash2 } from "lucide-react";
+import { Archive, ArchiveRestore, BookPlus, Copy, Loader2, Pencil, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { addPackageStarterAgainAction } from "@/app/(app)/library/packages/actions";
 import { deletePackageAction, duplicatePackageAction, updatePackageAction } from "@/app/(app)/packages/actions";
+import { LIBRARY_LABELS, archiveToggleLabel } from "@/components/library/labels";
+import { LibraryArchivedSection } from "@/components/library/library-archived-section";
+import { LibraryAssetCard } from "@/components/library/library-asset-card";
+import { partitionArchived } from "@/components/library/partition-archived";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
-  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger,
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { formatPrice } from "@/lib/packages/constants";
@@ -110,7 +114,9 @@ function PackagePreviewSheet({
               )}
             </div>
             <div className="flex flex-wrap gap-2">
-              <Button size="sm" render={<Link href={`/packages/${pkg.id}`} />}>Edit package</Button>
+              <Button size="sm" variant="outline" render={<Link href={`/packages/${pkg.id}`} />}>
+                {LIBRARY_LABELS.edit}
+              </Button>
             </div>
           </div>
         )}
@@ -152,9 +158,13 @@ export function PackageList({
 
   async function handleDelete(pkg: Package) {
     if (!confirm(`Delete "${pkg.name}"? This cannot be undone.`)) return;
-    setPackages((p) => p.filter((x) => x.id !== pkg.id));
+    setLoadingId(pkg.id);
     const result = await deletePackageAction(pkg.id);
-    if (!result.ok) { toast.error(result.message ?? "Could not delete."); router.refresh(); }
+    setLoadingId(null);
+    if (result.ok) {
+      setPackages((p) => p.filter((x) => x.id !== pkg.id));
+      toast.success("Package deleted.");
+    } else toast.error(result.message ?? "Could not delete.");
   }
 
   async function handleDuplicate(pkg: Package) {
@@ -192,6 +202,53 @@ export function PackageList({
     );
   }
 
+  const { active, archived } = partitionArchived(packages, (pkg) => !pkg.isActive);
+
+  function cardFor(pkg: Package | PackageWithItems, archivedView: boolean) {
+    return (
+      <LibraryAssetCard
+        key={pkg.id}
+        title={pkg.name}
+        description={pkg.description ? <span className="line-clamp-2">{pkg.description}</span> : undefined}
+        isStarter={Boolean(pkg.sourceMasterKey)}
+        isArchived={!pkg.isActive}
+        badges={pkg.category ? <Badge variant="muted" className="text-[10px]">{pkg.category}</Badge> : undefined}
+        primaryActions={archivedView
+          ? [
+              { id: "preview", label: LIBRARY_LABELS.preview, onClick: () => openPreview(pkg), emphasis: "preview" },
+              { id: "restore", label: LIBRARY_LABELS.restore, onClick: () => handleToggleActive(pkg), emphasis: "edit" },
+            ]
+          : [
+              { id: "preview", label: LIBRARY_LABELS.preview, onClick: () => openPreview(pkg), emphasis: "preview" },
+              { id: "edit", label: LIBRARY_LABELS.edit, href: `/packages/${pkg.id}`, emphasis: "edit" },
+            ]}
+        overflowPending={loadingId === pkg.id}
+        overflowItems={archivedView ? [] : [
+          { id: "edit", label: LIBRARY_LABELS.edit, href: `/packages/${pkg.id}`, icon: <Pencil className="mr-2 h-3.5 w-3.5" /> },
+          { id: "duplicate", label: LIBRARY_LABELS.duplicate, onClick: () => handleDuplicate(pkg), icon: <Copy className="mr-2 h-3.5 w-3.5" /> },
+          {
+            id: "archive",
+            label: archiveToggleLabel(!pkg.isActive),
+            onClick: () => handleToggleActive(pkg),
+            separatorBefore: true,
+            icon: pkg.isActive ? <Archive className="mr-2 h-3.5 w-3.5" /> : <ArchiveRestore className="mr-2 h-3.5 w-3.5" />,
+          },
+          {
+            id: "delete",
+            label: LIBRARY_LABELS.delete,
+            onClick: () => handleDelete(pkg),
+            destructive: true,
+            icon: <Trash2 className="mr-2 h-3.5 w-3.5" />,
+          },
+        ]}
+      >
+        <p className={`text-lg font-semibold text-heading ${pkg.basePrice == null ? "text-base text-muted-foreground font-medium" : ""}`}>
+          {formatPrice(pkg.basePrice)}
+        </p>
+      </LibraryAssetCard>
+    );
+  }
+
   return (
     <div className="space-y-4">
       {missingStarterKeys.length > 0 && (
@@ -199,57 +256,21 @@ export function PackageList({
           <StarterMenu missingKeys={missingStarterKeys} />
         </div>
       )}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {packages.map((pkg) => (
-          <div
-            key={pkg.id}
-            className={`group relative rounded-sm border bg-card p-5 transition-opacity ${pkg.isActive ? "border-border" : "border-border opacity-60"}`}
-          >
-            <div className="flex items-center gap-2 flex-wrap mb-3">
-              {pkg.category && <Badge variant="muted" className="text-xs">{pkg.category}</Badge>}
-              {pkg.sourceMasterKey && pkg.isActive && (
-                <Badge variant="muted" className="text-xs">Starter</Badge>
-              )}
-              {!pkg.isActive && <Badge variant="muted" className="text-xs">Archived</Badge>}
-            </div>
-            <div className="space-y-1 mb-4">
-              <h3 className="font-medium text-heading text-sm leading-tight">{pkg.name}</h3>
-              {pkg.description && <p className="text-xs text-muted-foreground line-clamp-2">{pkg.description}</p>}
-            </div>
-            <div className="flex items-center justify-between">
-              <p className={`text-lg font-semibold text-heading ${pkg.basePrice == null ? "text-base text-muted-foreground font-medium" : ""}`}>
-                {formatPrice(pkg.basePrice)}
-              </p>
-              <div className="flex items-center gap-1">
-                <DropdownMenu>
-                  <DropdownMenuTrigger render={<Button variant="ghost" size="icon-sm" aria-label="Package options" />}>
-                    {loadingId === pkg.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <MoreHorizontal className="h-3.5 w-3.5" />}
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem onClick={() => openPreview(pkg)}>
-                      <Eye className="mr-2 h-3.5 w-3.5" /> Preview
-                    </DropdownMenuItem>
-                    <DropdownMenuItem render={<Link href={`/packages/${pkg.id}`} />}>
-                      <Pencil className="mr-2 h-3.5 w-3.5" /> Edit
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => handleDuplicate(pkg)}>
-                      <Copy className="mr-2 h-3.5 w-3.5" /> Duplicate
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={() => handleToggleActive(pkg)}>
-                      {pkg.isActive ? <Archive className="mr-2 h-3.5 w-3.5" /> : <ArchiveRestore className="mr-2 h-3.5 w-3.5" />}
-                      {pkg.isActive ? "Archive" : "Restore"}
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => handleDelete(pkg)} className="text-destructive focus:text-destructive">
-                      <Trash2 className="mr-2 h-3.5 w-3.5" /> Delete
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
+      <p className="text-xs text-muted-foreground">
+        Packages are reusable structures for booking. Archiving hides them from the active list — it does not send anything to a client.
+      </p>
+      {active.length === 0 ? (
+        <p className="text-sm text-muted-foreground py-8 text-center">No active packages. Restore one from Archived, or add a new package.</p>
+      ) : (
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {active.map((pkg) => cardFor(pkg, false))}
+        </div>
+      )}
+      <LibraryArchivedSection count={archived.length}>
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {archived.map((pkg) => cardFor(pkg, true))}
+        </div>
+      </LibraryArchivedSection>
       <PackagePreviewSheet pkg={preview} open={!!preview} onOpenChange={(o) => { if (!o) setPreview(null); }} />
     </div>
   );

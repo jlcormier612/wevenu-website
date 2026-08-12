@@ -7,7 +7,7 @@
 
 import * as React from "react";
 
-import { CheckCircle, Copy, ExternalLink, Loader2, RotateCcw, Send } from "lucide-react";
+import { CheckCircle, Copy, ExternalLink, Loader2, RotateCcw, Send, ShieldOff } from "lucide-react";
 import { toast } from "sonner";
 
 import {
@@ -15,9 +15,11 @@ import {
   reopenQuestionnaireAction,
   saveQuestionnaireAction,
   sendQuestionnaireAction,
+  withdrawQuestionnaireAccessAction,
 } from "@/app/(app)/events/[id]/questionnaire-actions";
 import { ActivityTimeline } from "@/components/leads/activity-timeline";
 import { BusinessAssetHeader } from "@/components/business-assets/asset-header";
+import { LIBRARY_LABELS } from "@/components/library/labels";
 import { ShareDialog } from "@/components/sharing/share-dialog";
 import { Badge } from "@/components/ui/badge";
 import type { WaitingOn } from "@/components/business-assets/waiting-state";
@@ -33,6 +35,7 @@ import {
   kindLabel,
   type QuestionnaireKind,
 } from "@/lib/questionnaire-family/definitions";
+import { resolveQuestionnaireFields } from "@/lib/questionnaire-family/resolve";
 import type { QuestionnaireTemplate } from "@/lib/questionnaire-templates/service";
 
 const KINDS: QuestionnaireKind[] = ["client_planning", "final_details", "post_event_feedback"];
@@ -59,8 +62,15 @@ function Field({ label, required, children }: { label: string; required?: boolea
 }
 
 function AnswerRows({ q }: { q: Questionnaire }) {
-  const master = getQuestionnaireMasterByKind(q.kind);
   const family = q.additional?.family ?? {};
+  const fields = resolveQuestionnaireFields({
+    kind: q.kind,
+    includedFields: q.includedFields,
+    requiredFields: q.requiredFields,
+    customFields: q.customFields,
+    masterOverrides: q.masterOverrides,
+    fieldOrder: q.fieldOrder,
+  });
   const columns: Record<string, string | number | null | undefined> = {
     meal_notes: q.mealNotes,
     processional_song: q.processionalSong,
@@ -77,6 +87,7 @@ function AnswerRows({ q }: { q: Questionnaire }) {
     reception_location: q.receptionLocation,
     final_guest_count: q.finalGuestCount,
   };
+  const shown = new Set<string>();
 
   return (
     <div className="rounded-sm border border-border bg-card p-4 space-y-0">
@@ -86,13 +97,14 @@ function AnswerRows({ q }: { q: Questionnaire }) {
           <span className="text-sm text-foreground">{q.finalGuestCount}</span>
         </div>
       )}
-      {master.fields.map((f) => {
+      {fields.map((f) => {
         let value: string | number | null | undefined;
         if (f.destination === "column" && f.column) value = columns[f.column];
         else if (f.destination === "event_guest_count") value = q.finalGuestCount;
         else if (f.destination === "family") value = family[f.id];
         else return null;
         if (value == null || value === "") return null;
+        shown.add(f.id);
         return (
           <div key={f.id} className="flex gap-4 py-2 border-b border-border last:border-0">
             <span className="w-52 shrink-0 text-xs text-muted-foreground">{f.label}</span>
@@ -100,7 +112,7 @@ function AnswerRows({ q }: { q: Questionnaire }) {
           </div>
         );
       })}
-      {Object.entries(family).filter(([k]) => !master.fields.some((f) => f.id === k)).map(([k, v]) => (
+      {Object.entries(family).filter(([k]) => !shown.has(k)).map(([k, v]) => (
         v ? (
           <div key={k} className="flex gap-4 py-2 border-b border-border last:border-0">
             <span className="w-52 shrink-0 text-xs text-muted-foreground">{k.replace(/_/g, " ")}</span>
@@ -138,6 +150,7 @@ function KindPanel({
   const [selectedTemplateId, setSelectedTemplateId] = React.useState("");
   const [applying, startApply] = React.useTransition();
   const [reopening, startReopen] = React.useTransition();
+  const [withdrawing, startWithdraw] = React.useTransition();
   const [saving, startSave] = React.useTransition();
   const [formUrl, setFormUrl] = React.useState<string | null>(null);
   const [copiedUrl, setCopiedUrl] = React.useState(false);
@@ -154,23 +167,44 @@ function KindPanel({
   });
 
   const isSubmitted = initial?.status === "submitted" || initial?.status === "reviewed";
+  /** Withdraw is sent → draft only; submitted forms use Reopen. */
+  const canWithdrawAccess = initial?.status === "sent";
   const canApplyTemplate = !initial || initial.status === "draft";
   const appUrl = typeof window !== "undefined" ? window.location.origin : "";
   const currentFormUrl = formUrl ?? (initial?.accessKey ? `${appUrl}/questionnaire/${initial.accessKey}` : null);
-  const waitingOn: WaitingOn = !initial?.sentAt ? "venue" : isSubmitted ? "completed" : "client";
+  const waitingOn: WaitingOn = !initial?.sentAt || initial.status === "draft" ? "venue" : isSubmitted ? "completed" : "client";
+  const sentLabel = initial?.sentAt
+    ? new Date(initial.sentAt).toLocaleString("en-US", { month: "short", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit" })
+    : null;
 
   const shareRecipient = coupleName ? { name: coupleName, contact: coupleEmail ?? null, relationshipLabel: "Client" } : null;
   const shareMergeData = buildMergeData({ venueName: venueName ?? "Your venue", clientName: coupleName ?? "", coordinatorName: venueName ?? "", eventDate: null, eventName: eventName ?? "" });
   const shareDefaultMessage = mergeContent(SHARE_BODY[kind], shareMergeData);
+  const sendConsequence = initial?.status === "sent" || isSubmitted
+    ? "Emails a fresh link to the same form. Their previous link still works. This does not delete answers."
+    : "Emails the client a secure link to complete this form. Until then only your venue can see this draft.";
 
   async function handleShareSend(message: string) {
     if (!coupleEmail) return { ok: false, message: "Add their email to the client record first." };
     const result = await sendQuestionnaireAction(eventId, coupleEmail, coupleName ?? "there", eventName ?? "your event", undefined, message, kind);
     if (result.ok) {
-      toast.success(initial?.sentAt ? "Form resent." : "Form sent.");
+      toast.success(initial?.status === "sent" || isSubmitted ? "Questionnaire resent." : "Questionnaire sent.");
       if (result.formUrl) setFormUrl(result.formUrl);
     }
     return result;
+  }
+
+  function handleWithdraw() {
+    if (!confirm(
+      "Stop client access to this form?\n\n"
+      + "The public link will stop working. Answers already saved stay on the event.\n\n"
+      + "This does not recall or delete emails already delivered.",
+    )) return;
+    startWithdraw(async () => {
+      const r = await withdrawQuestionnaireAccessAction(eventId, kind);
+      if (r.ok) toast.success("Client access stopped. The form is a draft again.");
+      else toast.error(r.message ?? "Could not stop access.");
+    });
   }
 
   if (isSubmitted && initial) {
@@ -186,7 +220,7 @@ function KindPanel({
           relationship={eventName ? { name: eventName } : null}
           primaryAction={
             <Button type="button" size="sm" variant="outline" onClick={() => {
-              if (!confirm("Reopen so the couple can make changes?")) return;
+              if (!confirm("Reopen so the couple can make changes? This sets the form back to Sent so they can use the link again.")) return;
               startReopen(async () => {
                 const r = await reopenQuestionnaireAction(eventId, kind);
                 if (r.ok) toast.success("Reopened.");
@@ -198,6 +232,7 @@ function KindPanel({
             </Button>
           }
         />
+        {sentLabel && <p className="text-xs text-muted-foreground">Last sent {sentLabel}</p>}
         <AnswerRows q={initial} />
         {activities.length > 0 && (
           <div className="pt-2">
@@ -215,21 +250,36 @@ function KindPanel({
         compact
         whatIsThis="Planning form"
         title={kindLabel(kind)}
-        status={<Badge variant={initial?.sentAt ? "default" : "muted"}>{STATUS_LABEL[initial?.status ?? "draft"]}</Badge>}
+        status={<Badge variant={initial?.status === "sent" ? "default" : "muted"}>{STATUS_LABEL[initial?.status ?? "draft"]}</Badge>}
         waitingOn={waitingOn}
         lastUpdated={initial?.updatedAt ? new Date(initial.updatedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "—"}
         relationship={eventName ? { name: eventName } : null}
-        primaryAction={coupleEmail && (
-          <ShareDialog
-            trigger={<Button type="button" size="sm"><Send className="mr-1 h-3.5 w-3.5" />{initial?.sentAt ? "Resend" : "Send to client"}</Button>}
-            title={initial?.sentAt ? `Resend ${kindLabel(kind)}` : `Send ${kindLabel(kind)}`}
-            recipient={shareRecipient}
-            whatHappensNext="They'll complete the form."
-            defaultMessage={shareDefaultMessage}
-            sendLabel={initial?.sentAt ? "Resend" : "Send"}
-            onSend={handleShareSend}
-          />
-        )}
+        primaryAction={
+          <div className="flex flex-wrap items-center gap-2">
+            {coupleEmail && (
+              <ShareDialog
+                trigger={(
+                  <Button type="button" size="sm">
+                    <Send className="mr-1 h-3.5 w-3.5" />
+                    {initial?.status === "sent" ? "Resend Questionnaire" : LIBRARY_LABELS.sendQuestionnaire}
+                  </Button>
+                )}
+                title={initial?.status === "sent" ? `Resend ${kindLabel(kind)}` : LIBRARY_LABELS.sendQuestionnaire}
+                recipient={shareRecipient}
+                whatHappensNext={sendConsequence}
+                defaultMessage={shareDefaultMessage}
+                sendLabel={initial?.status === "sent" ? "Resend Questionnaire" : LIBRARY_LABELS.sendQuestionnaire}
+                onSend={handleShareSend}
+              />
+            )}
+            {canWithdrawAccess && (
+              <Button type="button" size="sm" variant="outline" onClick={handleWithdraw} disabled={withdrawing}>
+                {withdrawing ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> : <ShieldOff className="mr-1 h-3.5 w-3.5" />}
+                {LIBRARY_LABELS.stopClientAccess}
+              </Button>
+            )}
+          </div>
+        }
       />
 
       <p className="text-sm text-muted-foreground">{master.description}</p>
@@ -237,7 +287,11 @@ function KindPanel({
       <div className="rounded-sm border border-border bg-muted/30 p-4 space-y-3">
         <div className="flex items-center justify-between gap-2">
           <p className="text-xs text-muted-foreground">
-            {!initial?.sentAt ? "Not yet sent." : initial.openedAt ? "Opened — awaiting submission." : "Sent — waiting for the client to open it."}
+            {initial?.status === "draft" || !initial
+              ? "Draft — not visible to the client until you send."
+              : initial.openedAt
+                ? `Sent ${sentLabel ?? ""} — opened, awaiting submission.`
+                : `Sent ${sentLabel ?? ""} — waiting for the client to open it.`}
           </p>
           <a href={`/events/${eventId}/questionnaire-preview?kind=${kind}`} target="_blank" rel="noopener noreferrer">
             <Button type="button" variant="ghost" size="sm">Preview as client</Button>
@@ -263,19 +317,27 @@ function KindPanel({
 
       {canApplyTemplate && kindTemplates.length > 0 && (
         <div className="rounded-sm border border-border bg-muted/30 p-4 space-y-2">
-          <p className="text-xs font-medium text-heading">{initial?.templateId ? "Form template applied" : "Use a library form? (optional)"}</p>
+          <p className="text-xs font-medium text-heading">{initial?.templateId ? "Library form applied (draft only)" : "Apply a library form? (optional)"}</p>
+          <p className="text-xs text-muted-foreground">Applies field configuration to this draft. Does not send anything to the client.</p>
           <div className="flex items-center gap-2">
             <Select value={selectedTemplateId} onValueChange={setSelectedTemplateId} items={kindTemplates.map((t) => ({ value: t.id, label: t.name }))}>
               <SelectTrigger className="w-64"><SelectValue placeholder="Choose…" /></SelectTrigger>
               <SelectContent>{kindTemplates.map((t) => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}</SelectContent>
             </Select>
             <Button type="button" variant="outline" size="sm" disabled={!selectedTemplateId || applying}
-              onClick={() => startApply(async () => {
-                const r = await applyQuestionnaireTemplateAction(selectedTemplateId, eventId);
-                if (r.ok) toast.success("Applied.");
-                else toast.error(r.message ?? "Could not apply.");
-              })}>
-              {applying ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Apply"}
+              onClick={() => {
+                const tmpl = kindTemplates.find((t) => t.id === selectedTemplateId);
+                if (!confirm(
+                  `Create draft questionnaire from "${tmpl?.name ?? "this template"}"?\n\n`
+                  + "This updates the draft form on this event only. It does not email the client.",
+                )) return;
+                startApply(async () => {
+                  const r = await applyQuestionnaireTemplateAction(selectedTemplateId, eventId);
+                  if (r.ok) toast.success("Draft questionnaire created.");
+                  else toast.error(r.message ?? "Could not apply.");
+                });
+              }}>
+              {applying ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : LIBRARY_LABELS.createQuestionnaire}
             </Button>
           </div>
         </div>

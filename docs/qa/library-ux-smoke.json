@@ -1,0 +1,98 @@
+{
+  "at": "2026-08-11T22:34:25.049Z",
+  "notes": [
+    {
+      "name": "Messages",
+      "path": "/communication/templates",
+      "ok": true,
+      "hasEditOrPrimary": true,
+      "hasUnarchive": false,
+      "overflowOrActions": true,
+      "url": "http://localhost:3000/communication/templates"
+    },
+    {
+      "name": "Questionnaires & Feedback",
+      "path": "/library/questionnaire-templates",
+      "ok": true,
+      "hasEditOrPrimary": true,
+      "hasUnarchive": false,
+      "overflowOrActions": true,
+      "url": "http://localhost:3000/library/questionnaire-templates"
+    },
+    {
+      "name": "Contracts",
+      "path": "/library/contracts",
+      "ok": true,
+      "hasEditOrPrimary": true,
+      "hasUnarchive": false,
+      "overflowOrActions": true,
+      "url": "http://localhost:3000/library/contracts"
+    },
+    {
+      "name": "Payment Plans",
+      "path": "/library/payment-schedules",
+      "ok": false,
+      "err": "TimeoutError: page.goto: Timeout 12000ms exceeded.\nCall log:\n  - navigating to \"http://localhost:3000/library/payment-schedules\", waiting until \"domcontentloaded\"\n"
+    },
+    {
+      "name": "Event Orders",
+      "path": "/library/event-order-templates",
+      "ok": true,
+      "hasEditOrPrimary": true,
+      "hasUnarchive": false,
+      "overflowOrActions": true,
+      "url": "http://localhost:3000/library/event-order-templates"
+    },
+    {
+      "name": "Inventory Templates",
+      "path": "/library/inventory-templates",
+      "ok": false,
+      "err": "TimeoutError: page.goto: Timeout 12000ms exceeded.\nCall log:\n  - navigating to \"http://localhost:3000/library/inventory-templates\", waiting until \"domcontentloaded\"\n"
+    },
+    {
+      "name": "Timelines",
+      "path": "/library/timeline-templates",
+      "ok": true,
+      "hasEditOrPrimary": true,
+      "hasUnarchive": false,
+      "overflowOrActions": true,
+      "url": "http://localhost:3000/library/timeline-templates"
+    },
+    {
+      "name": "Floor Plans",
+      "path": "/library/floor-plan-templates",
+      "ok": false,
+      "err": "TimeoutError: page.goto: Timeout 12000ms exceeded.\nCall log:\n  - navigating to \"http://localhost:3000/library/floor-plan-templates\", waiting until \"domcontentloaded\"\n"
+    },
+    {
+      "name": "Packages",
+      "path": "/packages",
+      "ok": false,
+      "err": "TimeoutError: page.goto: Timeout 12000ms exceeded.\nCall log:\n  - navigating to \"http://localhost:3000/packages\", waiting until \"domcontentloaded\"\n"
+    },
+    {
+      "name": "FAQs",
+      "path": "/guide",
+      "ok": false,
+      "err": "TimeoutError: page.goto: Timeout 12000ms exceeded.\nCall log:\n  - navigating to \"http://localhost:3000/guide\", waiting until \"domcontentloaded\"\n"
+    },
+    {
+      "name": "Brochures",
+      "path": "/library/brochures",
+      "ok": true,
+      "hasEditOrPrimary": true,
+      "hasUnarchive": false,
+      "overflowOrActions": true,
+      "url": "http://localhost:3000/library/brochures"
+    },
+    {
+      "name": "Saved Reports",
+      "path": "/reporting/saved",
+      "ok": true,
+      "hasEditOrPrimary": true,
+      "hasUnarchive": false,
+      "overflowOrActions": true,
+      "url": "http://localhost:3000/reporting/saved"
+    }
+  ]
+}

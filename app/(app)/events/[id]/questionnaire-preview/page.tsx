@@ -73,6 +73,9 @@ export default async function QuestionnairePreviewPage({
         vendor_notes: questionnaire?.vendorNotes ?? null,
         included_fields: questionnaire?.includedFields?.length ? questionnaire.includedFields : master.fields.map((f) => f.id),
         required_fields: questionnaire?.requiredFields?.length ? questionnaire.requiredFields : master.fields.filter((f) => f.required).map((f) => f.id),
+        custom_fields: questionnaire?.customFields ?? [],
+        master_overrides: questionnaire?.masterOverrides ?? {},
+        field_order: questionnaire?.fieldOrder ?? null,
         additional: questionnaire?.additional ?? null,
       }}
     />

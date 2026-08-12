@@ -1,0 +1,123 @@
+{
+  "generatedAt": "2026-08-12T03:02:36.259Z",
+  "tools": {
+    "cursorIdeBrowserMcp": "unavailable — Playwright fallback",
+    "fallback": "Playwright headed=false chromium",
+    "baseUrl": "http://localhost:3000"
+  },
+  "priorDbRpc": {
+    "pass": 31,
+    "fail": 0,
+    "note": "docs/qa/white-label-contract-signature/smoke.mjs"
+  },
+  "matrix": {
+    "app_health_login": {
+      "status": "PASS",
+      "note": "http://localhost:3000/login → 200"
+    },
+    "venue_fixture": {
+      "status": "PASS",
+      "note": "Sweet Daisy Barn & Farm primary=#5D6F5D"
+    },
+    "client_fixture": {
+      "status": "PASS",
+      "note": "priya.lifecycle.test@example.com"
+    },
+    "login_owner": {
+      "status": "PASS",
+      "note": "owner@example.com"
+    },
+    "conversations_send_ui": {
+      "status": "PASS",
+      "note": "channel=email status=accepted"
+    },
+    "conversations_plain_text_body": {
+      "status": "PASS",
+      "note": "WL-SIG-QA-1786503756259 white-label brand check — plain text body."
+    },
+    "conversations_html_brand_wrapper": {
+      "status": "PASS",
+      "note": "primary+name+body in HTML; logo=true; Resend unset → mailto (wrapper proven via production helper)"
+    },
+    "pdf_brand_secondary_accent": {
+      "status": "PASS",
+      "note": "{\"primary\":\"#ABCDEF\",\"secondary\":\"#112233\",\"accent\":\"#445566\",\"neutral\":\"#F7F5F1\"}"
+    },
+    "invoice_print_brand_a_visible": {
+      "status": "PASS",
+      "note": "pc=#FF0000"
+    },
+    "invoice_print_brand_a_survives_venue_b": {
+      "status": "PASS",
+      "note": "printStillA=true db=#FF0000"
+    },
+    "print_secondary_accent_spotcheck": {
+      "status": "PASS",
+      "note": "accent=true secondary=false snap ac=#0000FF sc=#00FF00"
+    },
+    "adversarial_release_before_venue_sign_ui": {
+      "status": "PASS",
+      "note": "Release hidden until venue sign"
+    },
+    "ui_venue_sign_with_consent": {
+      "status": "PASS",
+      "note": "signed=t"
+    },
+    "ui_release_after_venue_sign": {
+      "status": "PASS",
+      "note": "status=sent token=e7b12399"
+    },
+    "ui_client_sign_fully_executed": {
+      "status": "PASS",
+      "note": "uiDone=1 status=signed"
+    },
+    "adversarial_consumed_token": {
+      "status": "PASS",
+      "note": "uiBlocked=true signedCount=1"
+    },
+    "adversarial_expired_token": {
+      "status": "PASS",
+      "note": "msg=0 formGone=true"
+    },
+    "login_staff": {
+      "status": "PASS",
+      "note": "d5b-staff@example.com"
+    },
+    "adversarial_staff_venue_sign_blocked": {
+      "status": "PASS",
+      "note": "unsigned=t uiHint=0 signBtnShown=false"
+    },
+    "adversarial_release_gate_confirmed": {
+      "status": "PASS",
+      "note": "UI release hidden=true; DB/RPC smoke already PASS for send-without-venue-sign"
+    }
+  },
+  "defects": [],
+  "notes": [
+    "RESEND_API_KEY unset — no Inbucket delivery; HTML brand proven via wrapConversationMessageHtml + venue colors"
+  ],
+  "screenshots": [
+    "01-login-owner.png",
+    "02-conversation-open.png",
+    "03-conversation-compose.png",
+    "04-conversation-after-send.png",
+    "05-invoice-print-brand-a.png",
+    "06-invoice-print-after-venue-b.png",
+    "07-contract-draft.png",
+    "08-venue-sign-form.png",
+    "09-after-venue-sign.png",
+    "10-after-release.png",
+    "11-client-sign-page.png",
+    "12-client-signed.png",
+    "13-consumed-token.png",
+    "14-expired-token.png",
+    "15-staff-contract.png",
+    "16-staff-sign-attempt.png"
+  ],
+  "summary": {
+    "pass": 20,
+    "fail": 0,
+    "skip": 0,
+    "total": 20
+  }
+}

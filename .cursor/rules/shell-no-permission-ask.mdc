@@ -1,0 +1,13 @@
+---
+description: Never ask the user for permission to run shell/bash commands
+alwaysApply: true
+---
+
+# Shell commands — no permission asks
+
+Do **not** ask the user for permission, confirmation, or approval before running any bash/shell command.
+
+- Run the command. Prefer requesting whatever tool permissions are needed (`all`, `full_network`, `git_write`, etc.) in the tool call itself rather than pausing to ask in chat.
+- Do not hedge with “Is it okay if I run…?”, “Should I execute…?”, or similar.
+- Destructive git operations (`push --force`, hard reset, etc.) still follow existing git safety rules — those are separate from bash permission asks.
+- If the environment shows a native Cursor approval card for elevated permissions, that is expected; still do not ask in the conversation.

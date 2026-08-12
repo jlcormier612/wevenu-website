@@ -19,6 +19,7 @@
  */
 import * as React from "react";
 import { Document, Page, Text, View, Image, StyleSheet, Font, renderToBuffer } from "@react-pdf/renderer";
+import { resolvePdfBrandColors } from "@/lib/collateral/pdf-brand";
 import type { Contract } from "@/lib/contracts/types";
 import type { Venue } from "@/lib/venue/types";
 
@@ -55,6 +56,8 @@ const styles = StyleSheet.create({
   metaItem: { minWidth: 140 },
   metaLabel: { fontSize: 8, textTransform: "uppercase", letterSpacing: 0.5, color: "#928C7F" },
   metaValue: { fontSize: 10.5, marginTop: 2 },
+  sectionRule: { borderBottomWidth: 1, marginBottom: 10, marginTop: 4, paddingBottom: 4 },
+  sectionHead: { fontSize: 9, fontFamily: "Helvetica-Bold", textTransform: "uppercase", letterSpacing: 0.5 },
   contentBlock: { marginTop: 4 },
   contentText: { fontSize: 10.5, lineHeight: 1.6 },
   signatureBlock: { marginTop: 32, paddingTop: 20, borderTopWidth: 1, borderTopColor: "#D8D2C4" },
@@ -85,7 +88,7 @@ function fmtDate(iso: string | null): string {
 }
 
 function ContractPdfDocument({ contract, venue }: { contract: Contract; venue: Venue }) {
-  const brandColor = venue.primaryColor || "#5D6F5D";
+  const brand = resolvePdfBrandColors(venue);
   const venueDisplayName = venue.name || venue.businessName || "Your Venue";
   const addressLine = [venue.addressLine1, venue.addressLine2].filter(Boolean).join(", ");
   const contactLine = [venue.email, venue.phone, venue.website].filter(Boolean).join("  ·  ");
@@ -93,7 +96,7 @@ function ContractPdfDocument({ contract, venue }: { contract: Contract; venue: V
   return (
     React.createElement(Document, { title: contract.title, author: venueDisplayName },
       React.createElement(Page, { size: "LETTER", style: styles.page },
-        React.createElement(View, { style: [styles.header, { borderBottomColor: brandColor }] },
+        React.createElement(View, { style: [styles.header, { borderBottomColor: brand.primary }] },
           React.createElement(View, { style: styles.venueBlock },
             venue.logoUrl ? React.createElement(Image, { src: venue.logoUrl, style: styles.logo }) : null,
             React.createElement(Text, { style: styles.venueName }, venueDisplayName),
@@ -121,6 +124,10 @@ function ContractPdfDocument({ contract, venue }: { contract: Contract; venue: V
           ),
         ),
 
+        React.createElement(View, { style: [styles.sectionRule, { borderBottomColor: brand.secondary }] },
+          React.createElement(Text, { style: [styles.sectionHead, { color: brand.secondary }] }, "Agreement"),
+        ),
+
         React.createElement(View, { style: styles.contentBlock },
           React.createElement(Text, { style: styles.contentText }, contract.content),
         ),
@@ -134,7 +141,7 @@ function ContractPdfDocument({ contract, venue }: { contract: Contract; venue: V
         // (heading + content) together, moved to the next page as one
         // unit if it doesn't fit — safe here since the block is short.
         contract.signedAt ? React.createElement(View, { style: styles.signatureBlock, wrap: false },
-          React.createElement(Text, { style: styles.signatureTitle }, "Signature"),
+          React.createElement(Text, { style: [styles.signatureTitle, { color: brand.secondary }] }, "Signature"),
           React.createElement(View, { style: styles.signatureRow },
             React.createElement(View, null,
               React.createElement(Text, { style: styles.signatureName }, contract.signerName || "—"),

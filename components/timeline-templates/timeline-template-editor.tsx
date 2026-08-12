@@ -20,6 +20,8 @@ import { AlertTriangle, GripVertical, Loader2, Pencil, Plus, Trash2 } from "luci
 import { toast } from "sonner";
 
 import { addItemAction, deleteItemAction, reorderItemsAction, updateItemAction } from "@/app/(app)/timeline-templates/actions";
+import { LibrarySaveStatus, useLibrarySaveStatus } from "@/components/library/library-save-status";
+import { librarySavedToastMessage, useLibraryUnsavedGuard } from "@/components/library/use-library-unsaved-guard";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -66,6 +68,10 @@ export function TimelineTemplateEditor({ templateId, initialItems }: { templateI
   const [form, setForm] = React.useState<TimelineTemplateItemInput>(() => emptyForm(0));
   const [saving, setSaving] = React.useState(false);
   const [deletingId, setDeletingId] = React.useState<string | null>(null);
+  const saveUi = useLibrarySaveStatus();
+  const sheetBaseline = React.useRef("");
+  const sheetDirty = sheetOpen && JSON.stringify(form) !== sheetBaseline.current;
+  const { confirmLeave } = useLibraryUnsavedGuard(sheetDirty);
 
   const dragIndex = React.useRef<number | null>(null);
   const [dragOverIndex, setDragOverIndex] = React.useState<number | null>(null);
@@ -78,13 +84,17 @@ export function TimelineTemplateEditor({ templateId, initialItems }: { templateI
 
   function openAdd() {
     setEditingId(null);
-    setForm(emptyForm(items.length));
+    const next = emptyForm(items.length);
+    setForm(next);
+    sheetBaseline.current = JSON.stringify(next);
     setSheetOpen(true);
   }
 
   function openEdit(item: TimelineTemplateItem) {
     setEditingId(item.id);
-    setForm(itemToForm(item));
+    const next = itemToForm(item);
+    setForm(next);
+    sheetBaseline.current = JSON.stringify(next);
     setSheetOpen(true);
   }
 
@@ -112,6 +122,7 @@ export function TimelineTemplateEditor({ templateId, initialItems }: { templateI
             : it))
           .sort((a, b) => (a.dayOffset ?? 0) - (b.dayOffset ?? 0) || a.sortOrder - b.sortOrder));
         setSheetOpen(false);
+        toast.success(librarySavedToastMessage());
       } else {
         toast.error(result.message ?? "Could not save item.");
       }
@@ -154,8 +165,14 @@ export function TimelineTemplateEditor({ templateId, initialItems }: { templateI
       const next = [...p];
       const [moved] = next.splice(from, 1);
       next.splice(index, 0, moved);
+      saveUi.markSaving();
       reorderItemsAction(templateId, next.map((it) => it.id)).then((result) => {
-        if (!result.ok) toast.error(result.message ?? "Could not save the new order.");
+        if (!result.ok) {
+          saveUi.markError();
+          toast.error(result.message ?? "Could not save the new order.");
+        } else {
+          saveUi.markSaved();
+        }
       });
       return next;
     });
@@ -165,9 +182,15 @@ export function TimelineTemplateEditor({ templateId, initialItems }: { templateI
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h2 className="font-heading text-lg font-medium text-heading">Timeline Items</h2>
-        <Button type="button" size="sm" onClick={openAdd}><Plus className="mr-1.5 h-3.5 w-3.5" />Add Item</Button>
+      <div className="flex items-center justify-between gap-2">
+        <div>
+          <h2 className="font-heading text-lg font-medium text-heading">Timeline Items</h2>
+          <p className="text-xs text-muted-foreground">Item edits use Save changes. Reordering saves automatically.</p>
+        </div>
+        <div className="flex items-center gap-3">
+          <LibrarySaveStatus status={saveUi.status} model="autosave" />
+          <Button type="button" size="sm" onClick={openAdd}><Plus className="mr-1.5 h-3.5 w-3.5" />Add Item</Button>
+        </div>
       </div>
 
       {items.length === 0 ? (
@@ -237,7 +260,10 @@ export function TimelineTemplateEditor({ templateId, initialItems }: { templateI
         </div>
       )}
 
-      <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
+      <Sheet open={sheetOpen} onOpenChange={(next) => {
+        if (!next && sheetDirty && !confirmLeave()) return;
+        setSheetOpen(next);
+      }}>
         <SheetContent side="right" className="w-full sm:max-w-lg overflow-y-auto">
           <SheetHeader className="mb-6">
             <SheetTitle>{editingId ? "Edit Item" : "Add Item"}</SheetTitle>
@@ -310,9 +336,10 @@ export function TimelineTemplateEditor({ templateId, initialItems }: { templateI
             </div>
           </div>
           <div className="mt-6 flex items-center justify-end gap-2">
-            <Button type="button" variant="outline" onClick={() => setSheetOpen(false)} disabled={saving}>Cancel</Button>
-            <Button type="button" disabled={!form.title.trim() || saving} onClick={handleSave}>
-              {saving ? <><Loader2 className="mr-1.5 h-4 w-4 animate-spin" />Saving…</> : editingId ? "Save Changes" : "Add Item"}
+            <LibrarySaveStatus status={saving ? "saving" : sheetDirty ? "dirty" : "idle"} model="explicit" className="mr-auto" />
+            <Button type="button" variant="outline" onClick={() => { if (confirmLeave()) setSheetOpen(false); }} disabled={saving}>Cancel</Button>
+            <Button type="button" disabled={!form.title.trim() || saving || (editingId != null && !sheetDirty)} onClick={handleSave}>
+              {saving ? <><Loader2 className="mr-1.5 h-4 w-4 animate-spin" />Saving…</> : editingId ? "Save changes" : "Add Item"}
             </Button>
           </div>
         </SheetContent>

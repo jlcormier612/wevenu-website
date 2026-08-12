@@ -29,6 +29,7 @@ export function BusinessAssetHeader({
   relationship,
   primaryAction,
   compact = false,
+  beforeNavigate,
 }: {
   /**
    * Back link — omit entirely for assets reached inside a Relationship
@@ -38,6 +39,8 @@ export function BusinessAssetHeader({
    */
   backHref?: string;
   backLabel?: string;
+  /** Return false to cancel navigation (e.g. unsaved-changes confirm). */
+  beforeNavigate?: () => boolean;
   /** "What is this?" — a short, plain category word, e.g. "Contract," "Invoice." Never the asset's own title. */
   whatIsThis: string;
   title: string;
@@ -56,7 +59,15 @@ export function BusinessAssetHeader({
   return (
     <div className="space-y-3">
       {backHref && (
-        <Button variant="ghost" size="sm" className="-ml-2 text-muted-foreground" render={<Link href={backHref} />}>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="-ml-2 text-muted-foreground"
+          render={<Link href={backHref} />}
+          onClick={(e) => {
+            if (beforeNavigate && !beforeNavigate()) e.preventDefault();
+          }}
+        >
           <ArrowLeft className="mr-1 h-3.5 w-3.5" /> {backLabel}
         </Button>
       )}

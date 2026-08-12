@@ -116,21 +116,35 @@ export async function setSequenceStatus(client: DbClient, venueId: string, id: s
 
 // ---- Enrollment ----------------------------------------------------------------
 
+type RelationshipNameCols = {
+  first_name: string | null;
+  last_name: string | null;
+  email: string | null;
+};
+
 type EnrollmentRow = {
   id: string; venue_id: string; sequence_id: string; relationship_id: string;
   status: SequenceEnrollmentStatus; enrolled_at: string; exited_at: string | null;
   message_sequences?: { name: string } | null;
-  venue_customer_relationships?: { display_name: string | null } | null;
+  venue_customer_relationships?: RelationshipNameCols | null;
 };
+
+/** venue_customer_relationships has first/last/email — no display_name column. */
+function relationshipDisplayName(r: RelationshipNameCols | null | undefined): string {
+  const name = [r?.first_name, r?.last_name].filter(Boolean).join(" ").trim();
+  if (name) return name;
+  if (r?.email?.trim()) return r.email.trim();
+  return "Unnamed";
+}
 
 export async function getEnrollmentsForSequence(client: DbClient, venueId: string, sequenceId: string): Promise<SequenceEnrollment[]> {
   const { data, error } = await client.from("sequence_enrollments")
-    .select("*, message_sequences(name), venue_customer_relationships(display_name)")
+    .select("*, message_sequences(name), venue_customer_relationships(first_name, last_name, email)")
     .eq("venue_id", venueId).eq("sequence_id", sequenceId).order("enrolled_at", { ascending: false });
   if (error) throw error;
   return (data as EnrollmentRow[]).map((r) => ({
     id: r.id, venueId: r.venue_id, sequenceId: r.sequence_id, sequenceName: r.message_sequences?.name ?? "",
-    relationshipId: r.relationship_id, relationshipName: r.venue_customer_relationships?.display_name ?? "Unnamed",
+    relationshipId: r.relationship_id, relationshipName: relationshipDisplayName(r.venue_customer_relationships),
     status: r.status, enrolledAt: r.enrolled_at, exitedAt: r.exited_at,
   }));
 }
@@ -138,13 +152,13 @@ export async function getEnrollmentsForSequence(client: DbClient, venueId: strin
 /** Active Automations for one Relationship (Communication Workspace Completion) — the reverse of getEnrollmentsForSequence. */
 export async function getEnrollmentsForRelationship(client: DbClient, venueId: string, relationshipId: string): Promise<SequenceEnrollment[]> {
   const { data, error } = await client.from("sequence_enrollments")
-    .select("*, message_sequences(name), venue_customer_relationships(display_name)")
+    .select("*, message_sequences(name), venue_customer_relationships(first_name, last_name, email)")
     .eq("venue_id", venueId).eq("relationship_id", relationshipId).eq("status", "active")
     .order("enrolled_at", { ascending: false });
   if (error) throw error;
   return (data as EnrollmentRow[]).map((r) => ({
     id: r.id, venueId: r.venue_id, sequenceId: r.sequence_id, sequenceName: r.message_sequences?.name ?? "",
-    relationshipId: r.relationship_id, relationshipName: r.venue_customer_relationships?.display_name ?? "Unnamed",
+    relationshipId: r.relationship_id, relationshipName: relationshipDisplayName(r.venue_customer_relationships),
     status: r.status, enrolledAt: r.enrolled_at, exitedAt: r.exited_at,
   }));
 }
@@ -260,13 +274,22 @@ export async function isEnrollmentSequencePaused(client: AnyDbClient, enrollment
   return data?.message_sequences?.status === "paused";
 }
 
-/** Manual enrollment search — name lookup across every lead/client relationship in the venue. */
+/** Manual enrollment search — name/email lookup across every lead/client relationship in the venue. */
 export async function searchRelationships(client: DbClient, venueId: string, query: string): Promise<{ id: string; displayName: string }[]> {
+  const q = query.trim();
+  if (!q) return [];
+  const pattern = `%${q}%`;
   const { data, error } = await client.from("venue_customer_relationships")
-    .select("id, display_name").eq("venue_id", venueId)
-    .ilike("display_name", `%${query}%`).order("display_name").limit(10);
+    .select("id, first_name, last_name, email")
+    .eq("venue_id", venueId)
+    .or(`first_name.ilike.${pattern},last_name.ilike.${pattern},email.ilike.${pattern}`)
+    .order("last_name", { ascending: true, nullsFirst: false })
+    .limit(10);
   if (error) throw error;
-  return (data as { id: string; display_name: string | null }[]).map((r) => ({ id: r.id, displayName: r.display_name ?? "Unnamed" }));
+  return ((data ?? []) as ({ id: string } & RelationshipNameCols)[]).map((r) => ({
+    id: r.id,
+    displayName: relationshipDisplayName(r),
+  }));
 }
 
 // ---- Rule-based enrollment (auto-enroll on a trigger) -------------------------

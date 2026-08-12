@@ -19,6 +19,8 @@ import {
   setTemplateArchived_,
   updateContractContent_,
   updateTemplate_,
+  venueSignContract,
+  withdrawVenueSignature,
 } from "@/lib/contracts/service";
 import { finalizeContract, getContractPdfUrl } from "@/lib/contracts/finalize";
 import type {
@@ -129,6 +131,22 @@ export async function sendContractAction(id: string, customMessage?: string): Pr
     revalidatePath(`/contracts/${id}`);
     void refreshContractLeadScore(id);
   }
+  return result;
+}
+
+export async function venueSignContractAction(
+  id: string,
+  signerName: string,
+  consent: boolean,
+): Promise<ContractActionResult> {
+  const result = await venueSignContract(id, signerName, consent);
+  if (result.ok) revalidatePath(`/contracts/${id}`);
+  return result;
+}
+
+export async function withdrawVenueSignatureAction(id: string): Promise<ContractActionResult> {
+  const result = await withdrawVenueSignature(id);
+  if (result.ok) revalidatePath(`/contracts/${id}`);
   return result;
 }
 

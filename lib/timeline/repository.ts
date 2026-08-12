@@ -199,17 +199,35 @@ export async function getLastTimelineSubmission(client: DbClient, venueId: strin
   return data?.created_at ?? null;
 }
 
-// Same ownership guard as updateEntry, same reason — the coordinator can
-// only ever delete their own items through this path.
+/**
+ * Same ownership guard as updateEntry, same reason — the coordinator can
+ * only ever delete their own items through this path.
+ *
+ * Release Readiness Reconciliation remediation: `timeline_entries_delete_gate`
+ * (`20261002000000_tr_g6_core_object_delete_role_gate.sql`) restricts DELETE
+ * to Owner/Manager at the RLS layer, but this previously only checked
+ * `error` — a RESTRICTIVE policy blocks a disallowed delete by matching zero
+ * rows, not by raising one, so a Coordinator/Staff attempt was silently
+ * no-op-ing while the caller reported success. `.select("id")` surfaces
+ * which row actually matched, same fix shape already shipped for
+ * contracts/payments/invoices. The ownership check now also returns a
+ * result instead of throwing, matching that same established pattern.
+ */
 export async function deleteEntry(
   client: DbClient, venueId: string, entryId: string,
-): Promise<void> {
+): Promise<{ ok: true } | { ok: false; message: string }> {
   const { data: current } = await client.from("timeline_entries").select("owner").eq("id", entryId).eq("venue_id", venueId).maybeSingle<{ owner: TimelineOwner }>();
-  if (current?.owner !== "venue") throw new Error("This item belongs to the couple's own planning timeline and can't be deleted here.");
+  if (current?.owner !== "venue") {
+    return { ok: false, message: "This item belongs to the couple's own planning timeline and can't be deleted here." };
+  }
 
-  const { error } = await client.from("timeline_entries")
-    .delete().eq("id", entryId).eq("venue_id", venueId);
+  const { data, error } = await client.from("timeline_entries")
+    .delete().eq("id", entryId).eq("venue_id", venueId).select("id");
   if (error) throw error;
+  if (!data || data.length === 0) {
+    return { ok: false, message: "Only an Owner or Manager can delete a timeline item." };
+  }
+  return { ok: true };
 }
 
 /**

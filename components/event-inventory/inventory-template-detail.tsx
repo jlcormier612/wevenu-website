@@ -10,6 +10,7 @@ import {
   addInventoryTemplateItemAction, deleteInventoryTemplateAction, removeInventoryTemplateItemAction,
 } from "@/app/(app)/events/[id]/event-inventory-actions";
 import { BusinessAssetHeader } from "@/components/business-assets/asset-header";
+import { LibrarySaveStatus, useLibrarySaveStatus } from "@/components/library/library-save-status";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -23,7 +24,13 @@ function formatMoney(n: number): string {
   return n.toLocaleString("en-US", { style: "currency", currency: "USD" });
 }
 
-function AddTemplateItemInline({ templateId, catalogItems }: { templateId: string; catalogItems: InventoryItem[] }) {
+function AddTemplateItemInline({
+  templateId, onPersist,
+}: {
+  templateId: string;
+  catalogItems: InventoryItem[];
+  onPersist: (phase: "saving" | "saved" | "error", message?: string) => void;
+}) {
   const [adding, setAdding] = React.useState(false);
   const [name, setName] = React.useState("");
   const [category, setCategory] = React.useState("");
@@ -38,9 +45,10 @@ function AddTemplateItemInline({ templateId, catalogItems }: { templateId: strin
     if (!name.trim()) return;
     const input: InventoryItemInput = { name, category, quantity, unitPrice, isIncluded };
     startTransition(async () => {
+      onPersist("saving");
       const result = await addInventoryTemplateItemAction(templateId, input);
-      if (result.ok) reset();
-      else toast.error(result.message ?? "Could not add item.");
+      if (result.ok) { reset(); onPersist("saved"); }
+      else { onPersist("error", result.message); toast.error(result.message ?? "Could not add item."); }
     });
   }
 
@@ -76,13 +84,22 @@ export function InventoryTemplateDetail({ template, catalogItems }: { template: 
   const [removingId, setRemovingId] = React.useState<string | null>(null);
   const [deleting, startDelete] = React.useTransition();
   const router = useRouter();
+  const saveUi = useLibrarySaveStatus();
+
+  function onPersist(phase: "saving" | "saved" | "error", message?: string) {
+    if (phase === "saving") saveUi.markSaving();
+    else if (phase === "saved") saveUi.markSaved();
+    else { saveUi.markError(); if (message) toast.error(message); }
+  }
 
   async function handleRemove(itemId: string, name: string) {
     if (!confirm(`Remove "${name}"?`)) return;
     setRemovingId(itemId);
+    onPersist("saving");
     const result = await removeInventoryTemplateItemAction(template.id, itemId);
     setRemovingId(null);
-    if (!result.ok) toast.error(result.message ?? "Could not remove item.");
+    if (!result.ok) onPersist("error", result.message ?? "Could not remove item.");
+    else onPersist("saved");
   }
 
   function handleDelete() {
@@ -101,16 +118,23 @@ export function InventoryTemplateDetail({ template, catalogItems }: { template: 
         backLabel="Inventory Templates"
         whatIsThis="Inventory Template"
         title={template.name}
-        status={template.isArchived ? <Badge variant="muted">Archived</Badge> : <Badge variant="outline">Active</Badge>}
+        status={
+          <>
+            {template.sourceMasterKey && !template.isArchived && <Badge variant="muted">Starter</Badge>}
+            {template.isArchived ? <Badge variant="muted">Archived</Badge> : <Badge variant="outline">Active</Badge>}
+          </>
+        }
         lastUpdated={new Date(template.updatedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
       />
       {template.description && <p className="text-sm text-muted-foreground">{template.description}</p>}
 
       <Card>
-        <CardHeader className="flex-row items-center justify-between">
+        <CardHeader className="flex-row items-center justify-between gap-2">
           <p className="text-sm font-medium text-heading">Items ({template.items.length})</p>
+          <LibrarySaveStatus status={saveUi.status} model="autosave" />
         </CardHeader>
         <CardContent className="space-y-4">
+          <p className="text-xs text-muted-foreground">Items save as soon as you add or remove them.</p>
           {template.items.length === 0 ? (
             <p className="text-sm text-muted-foreground py-4 text-center">No items yet.</p>
           ) : (
@@ -132,7 +156,7 @@ export function InventoryTemplateDetail({ template, catalogItems }: { template: 
               ))}
             </div>
           )}
-          <AddTemplateItemInline templateId={template.id} catalogItems={catalogItems} />
+          <AddTemplateItemInline templateId={template.id} catalogItems={catalogItems} onPersist={onPersist} />
         </CardContent>
       </Card>
 

@@ -7,6 +7,8 @@ import { Loader2, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 
 import { createTemplateAction, updateTemplateAction } from "@/app/(app)/contracts/actions";
+import { LibrarySaveStatus } from "@/components/library/library-save-status";
+import { librarySavedToastMessage, useLibraryUnsavedGuard } from "@/components/library/use-library-unsaved-guard";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -30,9 +32,12 @@ export function TemplateForm({ template }: { template?: ContractTemplate | null 
   // content/isDefault so the form has something to show) — only a real,
   // persisted template has an id, so that's the actual edit-vs-create signal.
   const isEdit = !!template?.id;
+  const [baseline] = React.useState(() => JSON.stringify(buildInitial(template)));
   const [input, setInput] = React.useState<TemplateInput>(() => buildInitial(template));
   const [errors, setErrors] = React.useState<ContractErrors>({});
   const [pending, startTransition] = React.useTransition();
+  const dirty = JSON.stringify(input) !== baseline;
+  const { confirmLeave } = useLibraryUnsavedGuard(dirty);
 
   const [importOpen, setImportOpen] = React.useState(false);
   const [importText, setImportText] = React.useState("");
@@ -84,7 +89,7 @@ export function TemplateForm({ template }: { template?: ContractTemplate | null 
         ? await updateTemplateAction(template!.id, input)
         : await createTemplateAction(input);
       if (result.ok) {
-        toast.success(isEdit ? "Template updated." : "Template created.");
+        toast.success(isEdit ? librarySavedToastMessage() : "Template created.");
         router.push("/contracts/templates");
         return;
       }
@@ -201,8 +206,9 @@ export function TemplateForm({ template }: { template?: ContractTemplate | null 
       </div>
 
       <div className="flex items-center justify-end gap-3">
-        <Button type="button" variant="outline" onClick={() => router.back()} disabled={pending}>Cancel</Button>
-        <Button type="button" onClick={handleSubmit} disabled={pending}>
+        <LibrarySaveStatus status={pending ? "saving" : dirty ? "dirty" : "idle"} model="explicit" className="mr-auto" />
+        <Button type="button" variant="outline" onClick={() => { if (confirmLeave()) router.back(); }} disabled={pending}>Cancel</Button>
+        <Button type="button" onClick={handleSubmit} disabled={pending || (isEdit && !dirty)}>
           {pending ? <><Loader2 className="mr-1 h-4 w-4 animate-spin" />Saving…</> : isEdit ? "Save changes" : "Create template"}
         </Button>
       </div>

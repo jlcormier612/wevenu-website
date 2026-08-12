@@ -8,6 +8,13 @@ import { createClient } from "@/integrations/supabase/server";
 import { isSupabaseConfigured } from "@/lib/env";
 import { sendEmail } from "@/lib/email/send";
 import { kindLabel, getQuestionnaireMasterByKind, masterIncludedFieldIds, masterRequiredFieldIds, type QuestionnaireKind } from "@/lib/questionnaire-family/definitions";
+import {
+  sanitizeCustomFields,
+  sanitizeFieldOrder,
+  sanitizeMasterOverrides,
+  type CustomQuestionnaireField,
+  type MasterOverrides,
+} from "@/lib/questionnaire-family/resolve";
 import { getCurrentVenue } from "@/lib/venue/service";
 
 import { CONFIGURABLE_FIELDS, type ConfigurableField, type QuestionnaireStatus } from "@/lib/events/questionnaire-constants";
@@ -26,6 +33,9 @@ export type Questionnaire = {
   templateId: string | null;
   includedFields: string[];
   requiredFields: string[];
+  customFields: CustomQuestionnaireField[];
+  masterOverrides: MasterOverrides;
+  fieldOrder: string[];
   ceremonyStartTime: string | null;
   receptionStartTime: string | null;
   ceremonyLocation: string | null;
@@ -50,6 +60,7 @@ type QRow = {
   id: string; venue_id: string; event_id: string; kind: string | null; status: string;
   access_key: string; sent_at: string | null; opened_at: string | null; thread_id: string | null;
   template_id: string | null; included_fields: string[] | null; required_fields: string[] | null;
+  custom_fields?: unknown; master_overrides?: unknown; field_order?: string[] | null;
   ceremony_start_time: string | null; reception_start_time: string | null;
   ceremony_location: string | null; reception_location: string | null;
   final_guest_count: number | null; meal_notes: string | null;
@@ -62,12 +73,18 @@ type QRow = {
 };
 
 function mapQ(r: QRow): Questionnaire {
+  const kind = ((r.kind || "final_details") as QuestionnaireKind);
+  const customs = sanitizeCustomFields(kind, r.custom_fields ?? []);
+  const included = r.included_fields ?? [...CONFIGURABLE_FIELDS];
   return {
     id: r.id, venueId: r.venue_id, eventId: r.event_id,
-    kind: ((r.kind || "final_details") as QuestionnaireKind),
+    kind,
     status: r.status as QuestionnaireStatus,
     accessKey: r.access_key, sentAt: r.sent_at, openedAt: r.opened_at, threadId: r.thread_id,
-    templateId: r.template_id, includedFields: r.included_fields ?? [...CONFIGURABLE_FIELDS], requiredFields: r.required_fields ?? [],
+    templateId: r.template_id, includedFields: included, requiredFields: r.required_fields ?? [],
+    customFields: customs,
+    masterOverrides: sanitizeMasterOverrides(kind, r.master_overrides ?? {}),
+    fieldOrder: sanitizeFieldOrder(kind, included, customs, r.field_order),
     ceremonyStartTime: r.ceremony_start_time, receptionStartTime: r.reception_start_time,
     ceremonyLocation: r.ceremony_location, receptionLocation: r.reception_location,
     finalGuestCount: r.final_guest_count, mealNotes: r.meal_notes,
@@ -82,7 +99,7 @@ function mapQ(r: QRow): Questionnaire {
 
 async function logActivity(
   supabase: Awaited<ReturnType<typeof createClient>>, venueId: string, questionnaireId: string,
-  type: "sent" | "resent" | "opened" | "submitted" | "reviewed" | "reopened", title: string, description?: string,
+  type: "sent" | "resent" | "opened" | "submitted" | "reviewed" | "reopened" | "access_withdrawn", title: string, description?: string,
 ): Promise<void> {
   try {
     await supabase.from("questionnaire_activities").insert({
@@ -340,5 +357,35 @@ export async function reopenQuestionnaire(
   if (error) return { ok: false, message: error.message };
   if (!data) return { ok: false, message: "That form isn't currently submitted." };
   await logActivity(supabase, venue.id, data.id, "reopened", `${kindLabel(kind)} reopened`, "Coordinator reopened the form");
+  return { ok: true };
+}
+
+/**
+ * Stops couple access via the public /questionnaire/{access_key} link without
+ * deleting answers or rotating the key. Public RPC only serves sent|submitted|reviewed,
+ * so draft removes access. Only sent → draft (submitted/reviewed use Reopen instead).
+ * Does NOT recall emails already delivered.
+ */
+export async function withdrawQuestionnaireAccess(
+  eventId: string,
+  kind: QuestionnaireKind = "final_details",
+): Promise<{ ok: boolean; message?: string }> {
+  if (!isSupabaseConfigured) return { ok: false, message: "Backend not configured." };
+  const venue = await getCurrentVenue();
+  if (!venue) return { ok: false, message: "No venue found." };
+  const supabase = await createClient();
+
+  const { data, error } = await supabase.from("event_questionnaires")
+    .update({ status: "draft" })
+    .eq("event_id", eventId).eq("venue_id", venue.id).eq("kind", kind)
+    .eq("status", "sent")
+    .select("id").maybeSingle<{ id: string }>();
+  if (error) return { ok: false, message: error.message };
+  if (!data) return { ok: false, message: "Only a sent (not yet submitted) form can have client access stopped." };
+  await logActivity(
+    supabase, venue.id, data.id, "access_withdrawn",
+    `${kindLabel(kind)} client access stopped`,
+    "Coordinator closed the public form link (emails already sent were not recalled)",
+  );
   return { ok: true };
 }

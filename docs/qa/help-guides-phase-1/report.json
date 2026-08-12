@@ -1,0 +1,20 @@
+{
+  "at": "2026-08-12T22:03:00.000Z",
+  "base": "http://localhost:3000",
+  "note": "Core path validated in Playwright. Legacy redirects moved to next.config permanent redirects after page-level redirect flake under Turbopack.",
+  "summary": { "pass": 12, "fail": 0, "total": 12, "legacyRedirects": "configured in next.config.ts" },
+  "results": [
+    { "name": "login", "pass": true },
+    { "name": "nav-help-guides", "pass": true },
+    { "name": "nav-no-success-library", "pass": true },
+    { "name": "home-title", "pass": true },
+    { "name": "home-tagline", "pass": true },
+    { "name": "twelve-areas", "pass": true, "note": "all present" },
+    { "name": "empty-state-copy", "pass": true },
+    { "name": "no-luv-owns-title", "pass": true },
+    { "name": "article-1", "pass": true, "note": "Getting Paid, On Time + Contracts & Payments" },
+    { "name": "article-best-practice", "pass": true },
+    { "name": "article-back-link", "pass": true },
+    { "name": "article-2", "pass": true, "note": "Inviting Your First Couple + Working With Clients" }
+  ]
+}

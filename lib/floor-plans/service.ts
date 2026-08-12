@@ -226,7 +226,8 @@ export async function renameFloorPlan(planId: string, name: string): Promise<Flo
 
 export async function deleteFloorPlan(planId: string): Promise<FloorPlanActionResult> {
   const result = await withVenue(async (supabase, venueId) => {
-    await repo.deleteFloorPlan(supabase, venueId, planId);
+    const outcome = await repo.deleteFloorPlan(supabase, venueId, planId);
+    if (!outcome.ok) return { ok: false, message: outcome.message } as FloorPlanActionResult;
     return { ok: true } as FloorPlanActionResult;
   });
   return result as FloorPlanActionResult;
@@ -254,7 +255,8 @@ export async function updateObject_(
 
 export async function deleteObject_(objId: string): Promise<FloorPlanActionResult> {
   const result = await withVenue(async (supabase, venueId) => {
-    await repo.deleteObject(supabase, venueId, objId);
+    const outcome = await repo.deleteObject(supabase, venueId, objId);
+    if (!outcome.ok) return { ok: false, message: outcome.message } as FloorPlanActionResult;
     return { ok: true } as FloorPlanActionResult;
   });
   return result as FloorPlanActionResult;
@@ -262,7 +264,8 @@ export async function deleteObject_(objId: string): Promise<FloorPlanActionResul
 
 export async function clearFloorPlan(planId: string): Promise<FloorPlanActionResult> {
   const result = await withVenue(async (supabase, venueId) => {
-    await repo.clearAllObjects(supabase, venueId, planId);
+    const outcome = await repo.clearAllObjects(supabase, venueId, planId);
+    if (!outcome.ok) return { ok: false, message: outcome.message } as FloorPlanActionResult;
     return { ok: true } as FloorPlanActionResult;
   });
   return result as FloorPlanActionResult;

@@ -2,9 +2,8 @@
 
 import * as React from "react";
 
-import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Archive, ArchiveRestore, BookPlus, Copy, Loader2, MoreVertical, Trash2 } from "lucide-react";
+import { Archive, ArchiveRestore, BookPlus, Copy, Loader2, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 import {
@@ -12,9 +11,11 @@ import {
   createEventOrderTemplateAction, deleteEventOrderTemplateAction,
   duplicateEventOrderTemplateAction, setEventOrderTemplateArchivedAction,
 } from "@/app/(app)/library/event-order-templates/actions";
-import { Badge } from "@/components/ui/badge";
+import { LIBRARY_LABELS, archiveToggleLabel } from "@/components/library/labels";
+import { LibraryArchivedSection } from "@/components/library/library-archived-section";
+import { LibraryAssetCard } from "@/components/library/library-asset-card";
+import { partitionArchived } from "@/components/library/partition-archived";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
@@ -109,7 +110,7 @@ function StarterMenu({ missingKeys }: { missingKeys: EventOrderStarterMasterKey[
   );
 }
 
-function TemplateCard({ template }: { template: EventOrderTemplate }) {
+function TemplateCard({ template, archivedView }: { template: EventOrderTemplate; archivedView?: boolean }) {
   const router = useRouter();
   const [pendingId, setPendingId] = React.useState<string | null>(null);
 
@@ -118,6 +119,7 @@ function TemplateCard({ template }: { template: EventOrderTemplate }) {
     const result = await setEventOrderTemplateArchivedAction(template.id, !template.isArchived);
     setPendingId(null);
     if (!result.ok) toast.error(result.message ?? "Could not update template.");
+    else toast.success(template.isArchived ? "Template restored." : "Template archived.");
   }
 
   async function handleDuplicate() {
@@ -133,44 +135,41 @@ function TemplateCard({ template }: { template: EventOrderTemplate }) {
     setPendingId(template.id);
     const result = await deleteEventOrderTemplateAction(template.id);
     setPendingId(null);
-    if (!result.ok) toast.error(result.message ?? "Could not delete template.");
+    if (result.ok) toast.success("Template deleted.");
+    else toast.error(result.message ?? "Could not delete template.");
   }
 
-  const pending = pendingId === template.id;
-
   return (
-    <Card>
-      <CardContent className="flex items-center justify-between gap-4 py-4">
-        <Link href={`/library/event-order-templates/${template.id}`} className="min-w-0 flex-1">
-          <div className="flex items-center gap-2 flex-wrap">
-            <p className="font-medium text-heading">{template.name}</p>
-            {template.sourceMasterKey && !template.isArchived && (
-              <Badge variant="muted" className="text-[10px]">Starter</Badge>
-            )}
-            {template.isArchived && <Badge variant="muted">Archived</Badge>}
-          </div>
-          {template.description && <p className="text-sm text-muted-foreground truncate">{template.description}</p>}
-          <p className="text-xs text-muted-foreground mt-0.5">Updated {formatRelative(template.updatedAt)}</p>
-        </Link>
-        <DropdownMenu>
-          <DropdownMenuTrigger render={
-            <Button type="button" variant="ghost" size="sm" disabled={pending}>
-              {pending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <MoreVertical className="h-3.5 w-3.5" />}
-            </Button>
-          } />
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={handleDuplicate}><Copy className="mr-2 h-3.5 w-3.5" />Duplicate</DropdownMenuItem>
-            <DropdownMenuItem onClick={handleArchiveToggle}>
-              {template.isArchived ? <ArchiveRestore className="mr-2 h-3.5 w-3.5" /> : <Archive className="mr-2 h-3.5 w-3.5" />}
-              {template.isArchived ? "Restore" : "Archive"}
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={handleDelete} className="text-destructive focus:text-destructive">
-              <Trash2 className="mr-2 h-3.5 w-3.5" /> Delete
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </CardContent>
-    </Card>
+    <LibraryAssetCard
+      layout="row"
+      title={template.name}
+      description={template.description}
+      meta={`Updated ${formatRelative(template.updatedAt)}`}
+      href={archivedView ? undefined : `/library/event-order-templates/${template.id}`}
+      isStarter={Boolean(template.sourceMasterKey)}
+      isArchived={template.isArchived}
+      primaryActions={archivedView
+        ? [{ id: "restore", label: LIBRARY_LABELS.restore, onClick: handleArchiveToggle, emphasis: "edit" }]
+        : [{ id: "edit", label: LIBRARY_LABELS.edit, href: `/library/event-order-templates/${template.id}`, emphasis: "edit" }]}
+      overflowPending={pendingId === template.id}
+      overflowItems={archivedView ? [] : [
+        { id: "duplicate", label: LIBRARY_LABELS.duplicate, onClick: handleDuplicate, icon: <Copy className="mr-2 h-3.5 w-3.5" /> },
+        {
+          id: "archive",
+          label: archiveToggleLabel(template.isArchived),
+          onClick: handleArchiveToggle,
+          icon: template.isArchived ? <ArchiveRestore className="mr-2 h-3.5 w-3.5" /> : <Archive className="mr-2 h-3.5 w-3.5" />,
+        },
+        {
+          id: "delete",
+          label: LIBRARY_LABELS.delete,
+          onClick: handleDelete,
+          destructive: true,
+          separatorBefore: true,
+          icon: <Trash2 className="mr-2 h-3.5 w-3.5" />,
+        },
+      ]}
+    />
   );
 }
 
@@ -181,33 +180,34 @@ export function EventOrderTemplateList({
   templates: EventOrderTemplate[];
   missingStarterKeys?: EventOrderStarterMasterKey[];
 }) {
-  const [showArchived, setShowArchived] = React.useState(false);
-  const archivedCount = templates.filter((t) => t.isArchived).length;
-  const visible = templates.filter((t) => showArchived || !t.isArchived);
+  const { active, archived } = partitionArchived(templates, (t) => t.isArchived);
 
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-2 flex-wrap">
-        {archivedCount > 0 ? (
-          <button type="button" onClick={() => setShowArchived((v) => !v)} className="text-xs text-muted-foreground hover:text-foreground underline">
-            {showArchived ? "Hide archived" : `Show ${archivedCount} archived`}
-          </button>
-        ) : <span />}
+        <p className="text-xs text-muted-foreground">
+          Editing a template never changes an Event Order already on a booking, and never shares with the client.
+        </p>
         <div className="flex items-center gap-2">
           <StarterMenu missingKeys={missingStarterKeys} />
           <NewTemplateSheet />
         </div>
       </div>
-      {visible.length === 0 ? (
+      {active.length === 0 ? (
         <div className="flex flex-col items-center justify-center rounded-sm border border-dashed border-border bg-card/40 py-16 text-center">
           <p className="font-heading text-lg font-medium text-heading">No Event Order Templates yet</p>
           <p className="mt-1 text-sm text-muted-foreground">Create one to reuse the same starting point — sections and standard lines — for every event that fits it.</p>
         </div>
       ) : (
         <div className="space-y-2">
-          {visible.map((t) => <TemplateCard key={t.id} template={t} />)}
+          {active.map((t) => <TemplateCard key={t.id} template={t} />)}
         </div>
       )}
+      <LibraryArchivedSection count={archived.length}>
+        <div className="space-y-2">
+          {archived.map((t) => <TemplateCard key={t.id} template={t} archivedView />)}
+        </div>
+      </LibraryArchivedSection>
     </div>
   );
 }

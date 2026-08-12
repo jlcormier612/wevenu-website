@@ -12,6 +12,9 @@ import {
   removeEventOrderTemplateSectionAction, updateEventOrderTemplateAction,
 } from "@/app/(app)/library/event-order-templates/actions";
 import { BusinessAssetHeader } from "@/components/business-assets/asset-header";
+import { LIBRARY_LABELS } from "@/components/library/labels";
+import { LibrarySaveStatus, useLibrarySaveStatus } from "@/components/library/library-save-status";
+import { librarySavedToastMessage, useLibraryUnsavedGuard } from "@/components/library/use-library-unsaved-guard";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -31,17 +34,27 @@ function RenameSheet({ template }: { template: EventOrderTemplateWithDetails }) 
   const [description, setDescription] = React.useState(template.description ?? "");
   const [error, setError] = React.useState("");
   const [pending, startTransition] = React.useTransition();
+  const dirty = name !== template.name || description !== (template.description ?? "");
+  const { confirmLeave } = useLibraryUnsavedGuard(open && dirty);
 
   function handleSave() {
     startTransition(async () => {
       const result = await updateEventOrderTemplateAction(template.id, { name, description });
-      if (result.ok) { setOpen(false); setError(""); toast.success("Template updated."); }
+      if (result.ok) { setOpen(false); setError(""); toast.success(librarySavedToastMessage()); }
       else setError(result.errors?.name ?? result.message ?? "Could not save.");
     });
   }
 
   return (
-    <Sheet open={open} onOpenChange={setOpen}>
+    <Sheet open={open} onOpenChange={(next) => {
+      if (!next && dirty && !confirmLeave()) return;
+      setOpen(next);
+      if (next) {
+        setName(template.name);
+        setDescription(template.description ?? "");
+        setError("");
+      }
+    }}>
       <Button type="button" variant="ghost" size="sm" onClick={() => setOpen(true)}>
         <Pencil className="mr-1.5 h-3.5 w-3.5" />Edit
       </Button>
@@ -58,10 +71,13 @@ function RenameSheet({ template }: { template: EventOrderTemplateWithDetails }) 
           </div>
         </div>
         {error && <p className="mt-3 text-sm text-destructive">{error}</p>}
-        <div className="mt-6 flex justify-end gap-2">
-          <Button type="button" variant="outline" onClick={() => setOpen(false)} disabled={pending}>Cancel</Button>
-          <Button type="button" disabled={!name.trim() || pending} onClick={handleSave}>
-            {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save"}
+        <div className="mt-6 flex items-center justify-end gap-2">
+          <LibrarySaveStatus status={pending ? "saving" : dirty ? "dirty" : "idle"} model="explicit" className="mr-auto" />
+          <Button type="button" variant="outline" onClick={() => {
+            if (confirmLeave()) setOpen(false);
+          }} disabled={pending}>{LIBRARY_LABELS.cancel}</Button>
+          <Button type="button" disabled={!name.trim() || pending || !dirty} onClick={handleSave}>
+            {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : LIBRARY_LABELS.saveChanges}
           </Button>
         </div>
       </SheetContent>
@@ -69,7 +85,12 @@ function RenameSheet({ template }: { template: EventOrderTemplateWithDetails }) 
   );
 }
 
-function AddSectionInline({ templateId }: { templateId: string }) {
+function AddSectionInline({
+  templateId, onPersist,
+}: {
+  templateId: string;
+  onPersist: (phase: "saving" | "saved" | "error", message?: string) => void;
+}) {
   const [adding, setAdding] = React.useState(false);
   const [name, setName] = React.useState("");
   const [pending, startTransition] = React.useTransition();
@@ -77,9 +98,10 @@ function AddSectionInline({ templateId }: { templateId: string }) {
   function handleAdd() {
     if (!name.trim()) return;
     startTransition(async () => {
+      onPersist("saving");
       const result = await addEventOrderTemplateSectionAction(templateId, name);
-      if (result.ok) { setName(""); setAdding(false); }
-      else toast.error(result.message ?? "Could not add section.");
+      if (result.ok) { setName(""); setAdding(false); onPersist("saved"); }
+      else { onPersist("error", result.message); toast.error(result.message ?? "Could not add section."); }
     });
   }
 
@@ -96,7 +118,13 @@ function AddSectionInline({ templateId }: { templateId: string }) {
   );
 }
 
-function AddLineInline({ templateId, sectionId }: { templateId: string; sectionId: string | null }) {
+function AddLineInline({
+  templateId, sectionId, onPersist,
+}: {
+  templateId: string;
+  sectionId: string | null;
+  onPersist: (phase: "saving" | "saved" | "error", message?: string) => void;
+}) {
   const [adding, setAdding] = React.useState(false);
   const [description, setDescription] = React.useState("");
   const [quantity, setQuantity] = React.useState("1");
@@ -108,9 +136,10 @@ function AddLineInline({ templateId, sectionId }: { templateId: string; sectionI
   function handleAdd() {
     if (!description.trim()) return;
     startTransition(async () => {
+      onPersist("saving");
       const result = await addEventOrderTemplateLineAction(templateId, { description, quantity, unitPrice: unitPrice || "0", sectionId });
-      if (result.ok) reset();
-      else toast.error(result.message ?? "Could not add line.");
+      if (result.ok) { reset(); onPersist("saved"); }
+      else { onPersist("error", result.message); toast.error(result.message ?? "Could not add line."); }
     });
   }
 
@@ -137,21 +166,32 @@ export function EventOrderTemplateDetail({ template }: { template: EventOrderTem
   const router = useRouter();
   const [removingId, setRemovingId] = React.useState<string | null>(null);
   const [deleting, startDelete] = React.useTransition();
+  const saveUi = useLibrarySaveStatus();
   const unsectioned = template.lines.filter((l) => !l.sectionId);
+
+  function onPersist(phase: "saving" | "saved" | "error", message?: string) {
+    if (phase === "saving") saveUi.markSaving();
+    else if (phase === "saved") saveUi.markSaved();
+    else { saveUi.markError(); if (message) toast.error(message); }
+  }
 
   async function handleRemoveLine(lineId: string) {
     setRemovingId(lineId);
+    onPersist("saving");
     const result = await removeEventOrderTemplateLineAction(template.id, lineId);
     setRemovingId(null);
-    if (!result.ok) toast.error(result.message ?? "Could not remove line.");
+    if (!result.ok) onPersist("error", result.message ?? "Could not remove line.");
+    else onPersist("saved");
   }
 
   async function handleRemoveSection(sectionId: string, name: string) {
     if (!confirm(`Remove "${name}"? Its lines will stay, unsectioned.`)) return;
     setRemovingId(sectionId);
+    onPersist("saving");
     const result = await removeEventOrderTemplateSectionAction(template.id, sectionId);
     setRemovingId(null);
-    if (!result.ok) toast.error(result.message ?? "Could not remove section.");
+    if (!result.ok) onPersist("error", result.message ?? "Could not remove section.");
+    else onPersist("saved");
   }
 
   function handleDelete() {
@@ -183,9 +223,12 @@ export function EventOrderTemplateDetail({ template }: { template: EventOrderTem
 
       <Card>
         <CardContent className="space-y-6 py-6">
-          <p className="text-xs text-muted-foreground">
-            Sections and lines here are a starting point — applying this template to an event copies them in, ready to customize. Editing this template later never changes an Event Order already created from it.
-          </p>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p className="text-xs text-muted-foreground">
+              Sections and lines save as you add or remove them. Applying this template to an event copies them in. Editing here never changes an Event Order already created from it.
+            </p>
+            <LibrarySaveStatus status={saveUi.status} model="autosave" />
+          </div>
           {template.sections.map((section) => {
             const lines = template.lines.filter((l) => l.sectionId === section.id);
             return (
@@ -193,7 +236,7 @@ export function EventOrderTemplateDetail({ template }: { template: EventOrderTem
                 <div className="flex items-center justify-between gap-2">
                   <p className="text-sm font-semibold text-heading">{section.name}</p>
                   <div className="flex items-center gap-2">
-                    <AddLineInline templateId={template.id} sectionId={section.id} />
+                    <AddLineInline templateId={template.id} sectionId={section.id} onPersist={onPersist} />
                     <button type="button" onClick={() => handleRemoveSection(section.id, section.name)} disabled={removingId === section.id}
                       className="rounded p-1 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors" aria-label="Remove section">
                       {removingId === section.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
@@ -239,8 +282,8 @@ export function EventOrderTemplateDetail({ template }: { template: EventOrderTem
               </div>
             )}
             <div className="flex items-center gap-2">
-              <AddLineInline templateId={template.id} sectionId={null} />
-              <AddSectionInline templateId={template.id} />
+              <AddLineInline templateId={template.id} sectionId={null} onPersist={onPersist} />
+              <AddSectionInline templateId={template.id} onPersist={onPersist} />
             </div>
           </div>
         </CardContent>

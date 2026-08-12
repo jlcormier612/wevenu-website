@@ -8,7 +8,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
-import { CoupleFamilyQuestionnaireForm } from "@/components/form/couple-family-questionnaire-form";
+import { CoupleFamilyQuestionnaireForm, type FamilyQuestionnaireData } from "@/components/form/couple-family-questionnaire-form";
 import { createClient } from "@/integrations/supabase/server";
 import { kindLabel, type QuestionnaireKind } from "@/lib/questionnaire-family/definitions";
 
@@ -101,6 +101,9 @@ export default async function CoupleQuestionnairePage({ params }: Props) {
         vendor_notes: (row.vendor_notes as string | null) ?? null,
         included_fields: (row.included_fields as string[]) ?? [],
         required_fields: (row.required_fields as string[]) ?? [],
+        custom_fields: (row.custom_fields as FamilyQuestionnaireData["custom_fields"]) ?? [],
+        master_overrides: (row.master_overrides as FamilyQuestionnaireData["master_overrides"]) ?? {},
+        field_order: (row.field_order as string[] | null) ?? null,
         additional: (row.additional as { family?: Record<string, string> }) ?? null,
         updated_at: row.updated_at as string | undefined,
         known_vendors: knownVendors,

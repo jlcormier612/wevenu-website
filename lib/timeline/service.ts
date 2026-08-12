@@ -64,7 +64,8 @@ export async function updateEntry(entryId: string, input: TimelineEntryInput): P
 
 export async function deleteEntry(entryId: string): Promise<TimelineActionResult> {
   const result = await withVenue(async (supabase, venueId) => {
-    await repo.deleteEntry(supabase, venueId, entryId);
+    const outcome = await repo.deleteEntry(supabase, venueId, entryId);
+    if (!outcome.ok) return { ok: false, message: outcome.message } as TimelineActionResult;
     return { ok: true } as TimelineActionResult;
   });
   return result as TimelineActionResult;

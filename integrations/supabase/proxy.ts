@@ -37,6 +37,7 @@ const PUBLIC_PATHS = [
   "/p",              // client portal workspace — /p/{access_token}
   "/v",              // vendor portal workspace — /v/{access_token}
   "/vendor/accept",  // vendor invitation claim — accessible before auth
+  "/join",           // staff team-invite acceptance — accessible before auth, same shape as /vendor/accept
   "/book",           // public tour scheduling — /book/{tour_embed_key}
   "/w",              // public wedding website — /w/{slug}
   "/qr",             // QR Lead Capture scan-and-redirect — /qr/{code}, plus /qr/inactive
@@ -44,8 +45,16 @@ const PUBLIC_PATHS = [
   "/api/portal",        // portal API endpoints — complete tasks, invites, etc.
   "/api/rsvp",          // guest-token-authenticated RSVP API endpoints (concierge, etc.)
   "/api/vendor",        // vendor portal API endpoints
-  "/api/notifications", // notification delivery engine — secret-guarded, not session-guarded
-  "/api/tours",         // public tour slot queries and bookings
+  // Release Readiness Reconciliation remediation: these were previously the
+  // bare prefixes "/api/notifications"/"/api/tours", which also matched
+  // "/api/notifications/preferences"+"/read" (staff-only, cookie-session)
+  // and "/api/tours/outcome"+"/status" (coordinator-only) — safe only by
+  // coincidence, since those routes independently check auth internally.
+  // Narrowed to exactly the sub-paths that are genuinely meant to be
+  // reachable without a session.
+  "/api/notifications/process", // notification delivery engine cron/manual-trigger — secret-guarded, not session-guarded
+  "/api/tours/book",             // public tour booking widget — embed-key-authenticated, not session-guarded
+  "/api/tours/slots",            // public tour slot queries — embed-key-authenticated, not session-guarded
   "/api/digest",                     // daily digest cron (vercel.json) — CRON_SECRET-guarded, not session-guarded
   "/api/communication/scheduled",    // Scheduled Sends cron (vercel.json) — CRON_SECRET-guarded, not session-guarded
   "/api/automation/process",         // Automation engine cron (vercel.json) — CRON_SECRET-guarded, not session-guarded

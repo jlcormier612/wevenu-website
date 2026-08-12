@@ -13,6 +13,7 @@
  */
 import * as React from "react";
 import { Document, Page, Text, View, Image, StyleSheet, renderToBuffer } from "@react-pdf/renderer";
+import { resolvePdfBrandColors } from "@/lib/collateral/pdf-brand";
 import type { EventOrderWithDetails } from "@/lib/event-orders/types";
 import type { Venue } from "@/lib/venue/types";
 import { formatMoney } from "@/lib/event-orders/constants";
@@ -70,15 +71,16 @@ function LineRow({ description, quantity, amount }: { description: string; quant
 }
 
 function EventOrderPdfDocument({ eventOrder, venue, ctx }: { eventOrder: EventOrderWithDetails; venue: Venue; ctx: EventOrderPdfContext }) {
-  const brandColor = venue.primaryColor || "#5D6F5D";
+  const brand = resolvePdfBrandColors(venue);
   const venueDisplayName = venue.name || venue.businessName || "Your Venue";
   const addressLine = [venue.addressLine1, venue.addressLine2].filter(Boolean).join(", ");
   const contactLine = [venue.email, venue.phone, venue.website].filter(Boolean).join("  ·  ");
   const unsectioned = eventOrder.lines.filter((l) => !l.sectionId);
+  const sectionHeadStyle = [styles.sectionHead, { color: brand.secondary, borderBottomWidth: 1, borderBottomColor: brand.secondary, paddingBottom: 4 }];
 
   return React.createElement(Document, { title: `Event Order — ${ctx.eventName}`, author: venueDisplayName },
     React.createElement(Page, { size: "LETTER", style: styles.page },
-      React.createElement(View, { style: [styles.header, { borderBottomColor: brandColor }] },
+      React.createElement(View, { style: [styles.header, { borderBottomColor: brand.primary }] },
         React.createElement(View, { style: styles.venueBlock },
           venue.logoUrl ? React.createElement(Image, { src: venue.logoUrl, style: styles.logo }) : null,
           React.createElement(Text, { style: styles.venueName }, venueDisplayName),
@@ -90,7 +92,7 @@ function EventOrderPdfDocument({ eventOrder, venue, ctx }: { eventOrder: EventOr
         ),
       ),
 
-      React.createElement(Text, { style: styles.sectionHead }, "Event Overview"),
+      React.createElement(Text, { style: sectionHeadStyle }, "Event Overview"),
       React.createElement(View, { style: styles.overviewGrid },
         React.createElement(View, { style: styles.overviewItem },
           React.createElement(Text, { style: styles.overviewLabel }, "Date"),
@@ -110,7 +112,7 @@ function EventOrderPdfDocument({ eventOrder, venue, ctx }: { eventOrder: EventOr
         ) : null,
       ),
 
-      React.createElement(Text, { style: styles.sectionHead }, "Order Details"),
+      React.createElement(Text, { style: sectionHeadStyle }, "Order Details"),
       eventOrder.sections.length === 0 && eventOrder.lines.length === 0
         ? React.createElement(Text, { style: styles.emptyNote }, "Nothing added yet.")
         : null,

@@ -1,13 +1,11 @@
 /**
- * Luv's Success Library (Hospitality Success Platform §4, 2026-07-22).
- * Server-only. Platform-wide content — every function here reads/writes
- * success_library_articles directly, with no venue_id scoping (the table
- * has none); RLS itself is what separates "any authenticated venue user
- * reads published articles" from "only HQ staff can write, drafts
- * included" — see the migration's own policies.
+ * Help & Guides content service (canonical store: success_library_articles).
+ * Server-only. Platform-wide content — no venue_id scoping; RLS separates
+ * "any authenticated venue user reads published" from "HQ staff writes drafts."
  */
 import { createClient } from "@/integrations/supabase/server";
 import { isSupabaseConfigured } from "@/lib/env";
+import { HELP_GUIDE_AREAS } from "@/lib/help-guides/areas";
 import { requireAdminUser } from "@/lib/hq/crm-service";
 import type {
   RelatedFeatureLink,
@@ -36,13 +34,20 @@ const SELECT_COLUMNS = "id, slug, title, goal_category, why_it_matters, when_to_
 
 // ---- venue-facing reads (published only, via RLS) --------------------------
 
+/**
+ * All 12 Help & Guides areas in IA order, including empty categories.
+ * Articles whose goal_category is outside the taxonomy still appear under
+ * that label at the end (legacy safety) so nothing becomes undiscoverable.
+ */
 export async function getPublishedCategories(): Promise<SuccessLibraryCategory[]> {
-  if (!isSupabaseConfigured) return [];
+  if (!isSupabaseConfigured) {
+    return HELP_GUIDE_AREAS.map((a) => ({ category: a.category, description: a.description, articles: [] }));
+  }
   const supabase = await createClient();
   const { data } = await supabase.from("success_library_articles")
     .select("slug, title, goal_category")
     .eq("status", "published")
-    .order("goal_category").order("title");
+    .order("title");
   const rows = (data ?? []) as { slug: string; title: string; goal_category: string }[];
 
   const byCategory = new Map<string, { slug: string; title: string }[]>();
@@ -51,7 +56,19 @@ export async function getPublishedCategories(): Promise<SuccessLibraryCategory[]
     list.push({ slug: r.slug, title: r.title });
     byCategory.set(r.goal_category, list);
   }
-  return Array.from(byCategory.entries()).map(([category, articles]) => ({ category, articles }));
+
+  const known = new Set(HELP_GUIDE_AREAS.map((a) => a.category));
+  const areas: SuccessLibraryCategory[] = HELP_GUIDE_AREAS.map((a) => ({
+    category: a.category,
+    description: a.description,
+    articles: byCategory.get(a.category) ?? [],
+  }));
+
+  for (const [category, articles] of byCategory) {
+    if (known.has(category)) continue;
+    areas.push({ category, description: "", articles });
+  }
+  return areas;
 }
 
 export async function getPublishedArticleBySlug(slug: string): Promise<SuccessLibraryArticle | null> {

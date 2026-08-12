@@ -9,6 +9,8 @@ This document defines what every newly created venue account receives permanentl
 
 Implementation begins only after product review of this pack.
 
+**Reconciliation note, 2026-08-11 (Release Readiness Reconciliation):** this document was originally written as a forward-looking spec, before the Starter Library shipped. Real implementation reasonably diverged from it in places during the build (different family counts, different names, an expanded Questionnaire model) — this is normal, not a defect in either the spec or the implementation. The Starter Library itself is certified `READY WITH NAMED CAVEATS` (`docs/starter-library-release-certification.md`); this pass corrected the sections below where this spec's own text had drifted furthest from what actually shipped, so this document stops being a misleading reference. It is not a line-by-line audit of every section — §6–11 were not re-verified in this pass. Where full content wasn't reproduced (a multi-day timeline, a second floor plan layout, full FAQ answer text), the correction points to the real source file directly rather than risk a second copy drifting the same way this one did.
+
 ---
 
 ## 1. Executive Summary
@@ -45,6 +47,8 @@ Every new venue receives the following as **venue-owned copies**, organized with
 
 ### 2.1 Complete set (provisioned)
 
+**Reconciled 2026-08-11 (Release Readiness Reconciliation)** against the real shipped starter master files — this table previously undercounted several families (single-row placeholders where 2–4 real starters ship) and used superseded names in others. Corrected rows are flagged inline; §5 carries the full per-row reconciliation notes.
+
 | ID | Name | Form | Library home |
 |----|------|------|----------------|
 | MSG-01 | New Inquiry Response | Message Template (Email) | Communication → Message Templates |
@@ -59,29 +63,35 @@ Every new venue receives the following as **venue-owned copies**, organized with
 | MSG-10 | Payment Reminder | Message Template (Email) | Communication → Message Templates |
 | MSG-11 | Post-Event Thank You | Message Template (Email) | Communication → Message Templates |
 | CTR-01 | Wedding Venue Agreement | Contract Template | Agreements → Contract Templates |
-| QST-01 | Wedding Final Details | Questionnaire Template (+ finished questionnaire model) | Agreements → Questionnaire Templates |
-| PKG-01 | Ceremony & Reception | Package (starter record) | Pricing & Packages → Packages |
-| PKG-02 | All-Inclusive Celebration | Package (starter record) | Pricing & Packages → Packages |
-| PKG-03 | Intimate Gathering | Package (starter record) | Pricing & Packages → Packages |
-| FAQ-01…12 | Core Venue Guide FAQs | Library content (Venue Guide FAQs) | Communication → Venue Guide |
+| QST-CP | Client Planning Questionnaire | Questionnaire Family (was listed as a single "QST-01", corrected — see §5.F) | Agreements → Questionnaire Templates |
+| QST-FD | Final Details | Questionnaire Family | Agreements → Questionnaire Templates |
+| QST-PE | Post-Event Feedback | Questionnaire Family | Agreements → Questionnaire Templates |
+| PKG-01 | Essential Wedding (was "Ceremony & Reception", corrected — see §5.B) | Package (starter record, unpriced) | Pricing & Packages → Packages |
+| PKG-02 | Signature Wedding (was "All-Inclusive Celebration") | Package (starter record, unpriced) | Pricing & Packages → Packages |
+| PKG-03 | Full-Service Wedding (was "Intimate Gathering") | Package (starter record, unpriced) | Pricing & Packages → Packages |
+| FAQ-01…12 | Core Venue Guide FAQs (question set corrected — see §5.C) | Library content (Venue Guide FAQs) | Communication → Venue Guide |
 | BR-01 | Venue Overview | Brochure | Marketing → Brochures |
 | PLB-C1 | Standard Wedding — Client Planning | Planning Template | Planning → Planning Templates |
 | PLB-V1 | Standard Wedding — Venue Planning | Planning Template | Planning → Planning Templates |
-| TL-01 | Wedding Day — Classic | Timeline Template | Planning → Timeline Templates |
-| TL-02 | Wedding Day — Essentials | Timeline Template | Planning → Timeline Templates |
-| INV-CAT | Starter Master Catalog items | Inventory catalog starters | Pricing & Packages → Inventory |
+| TL-01 | Standard Wedding Day Timeline (was "Wedding Day — Classic") | Timeline Template | Planning → Timeline Templates |
+| TL-02 | Reception Only Timeline (was "Wedding Day — Essentials") | Timeline Template | Planning → Timeline Templates |
+| TL-03 | Wedding Weekend Timeline (multi-day — previously missing from this table entirely) | Timeline Template | Planning → Timeline Templates |
+| INV-CAT | Starter Master Catalog — 9 categories, 49 items, no qty/price | Inventory catalog starters | Pricing & Packages → Inventory |
 | INV-01 | Ceremony Setup | Inventory Template | Pricing & Packages → Inventory Templates |
 | INV-02 | Reception Essentials | Inventory Template | Pricing & Packages → Inventory Templates |
-| EO-01 | Wedding Day Operations | Event Order Template | Planning → Event Order Templates |
-| FP-01 | Reception — Rounds (150) | Floor Plan Template | Planning → Floor Plan Templates |
+| EO-01 | Standard Wedding Event Order (was "Wedding Day Operations") | Event Order Template | Planning → Event Order Templates |
+| EO-02 | Standard Wedding — Reception Only (previously missing from this table entirely) | Event Order Template | Planning → Event Order Templates |
+| FP-01 | Standard Wedding — Ceremony + Reception (was "Reception — Rounds (150)") | Floor Plan Template | Planning → Floor Plan Templates |
+| FP-02 | Standard Wedding — Reception Only (previously missing from this table entirely) | Floor Plan Template | Planning → Floor Plan Templates |
 | PIPE-01 | Wedding Inquiry Pipeline | Pipeline Template | Planning → Pipeline Templates |
-| PAY-DEF-01 | 50% Deposit + 50% Final | Default payment schedule configuration | Payments setup (not a Library “template table”) |
-| PAY-DEF-02 | 30% Deposit + 70% Final | Default payment schedule configuration | Payments setup |
-| PAY-DEF-03 | Three Equal Installments | Default payment schedule configuration | Payments setup |
-| RPT-01 | Sales Pipeline — This Quarter | Saved Report | Reports → Saved Reports |
-| RPT-02 | Bookings — This Year | Saved Report | Reports → Saved Reports |
-| RPT-03 | Revenue — This Month | Saved Report | Reports → Saved Reports |
-| RPT-04 | Events Overview — This Quarter | Saved Report | Reports → Saved Reports |
+| PAY-DEF-01 (`thirds`) | Standard Wedding — 3 Payments | Default payment schedule configuration (code preset, not a DB row) | Payments setup (not a Library "template table") |
+| PAY-DEF-02 (`wedding_four`) | Standard Wedding — 4 Payments | Default payment schedule configuration | Payments setup |
+| PAY-DEF-03 (`custom`) | Custom Payment Schedule | Default payment schedule configuration | Payments setup |
+| — (`fifty_fifty`, `deposit_30_70`) | Additional certified splits (not among the 3 primary starters — previous table conflated these) | Default payment schedule configuration | Payments setup |
+| SR-SALES | Sales (was "RPT-01 Sales Pipeline — This Quarter") | Saved Report | Reports → Saved Reports |
+| SR-BOOKINGS | Bookings (was "RPT-02 Bookings — This Year") | Saved Report | Reports → Saved Reports |
+| SR-REVENUE | Revenue (was "RPT-03 Revenue — This Month") | Saved Report | Reports → Saved Reports |
+| SR-EVENTS | Events (was "RPT-04 Events Overview — This Quarter") | Saved Report | Reports → Saved Reports |
 
 **SMS:** Message starters ship as Email first. Each may be duplicated by the venue into SMS using the same smart-field vocabulary (already shared across channels in `MESSAGE_MERGE_FIELDS`). Hello to Cheers may offer “Create SMS version” from an email starter without inventing different tokens.
 
@@ -346,96 +356,80 @@ With gratitude,
 
 ### 5.B Marketing & Sales — Packages
 
-Prices below are **examples for structure**, not industry claims. Venues replace them immediately.
+**Reconciled 2026-08-11 (Release Readiness Reconciliation)** against the actually-shipped masters in `lib/packages/starters.ts` — the section below previously listed an older "Ceremony & Reception" naming/pricing set that was superseded by the approved Essential/Signature/Full-Service brief (see `docs/hello-to-cheers-starter-package-implementation.md`). Starter packages ship with **no price at all** (`base_price: null`, not an example number) — the venue sets its own price on customize, before the package can be added to an Event Order or invoice.
 
-#### PKG-01 — Ceremony & Reception  
-**Category:** Wedding  
-**Base price (example):** 8500  
+#### PKG-01 — Essential Wedding
+**Category:** Venue
+**Base price:** unset — the venue prices this on customize.
 
-**Description:**  
-Exclusive use of the property for ceremony and reception during your contracted event hours, including basic furniture setup for your contracted guest count and on-site venue coordination for the day-of timeline. Catering, bar, florals, entertainment, and specialty décor are arranged separately unless confirmed in writing on your Event Order.
+**Description:**
+A simple starting package for couples who want a beautiful venue and the flexibility to make the celebration their own. Customize the included spaces, services, and pricing to match your venue.
 
-**Inclusions (package items):**  
+**Inclusions (package items):**
 | Description | Qty | Unit |
 |-------------|-----|------|
-| Exclusive venue use for contracted hours | 1 | event |
-| Ceremony seating setup | 1 | setup |
-| Reception tables & chairs for contracted guest count | 1 | setup |
-| Day-of venue coordinator | 1 | event |
+| Exclusive use of selected venue spaces for contracted event hours | 1 | event |
+| Ceremony seating furniture setup | 1 | setup |
+| Reception tables and chairs setup | 1 | setup |
+| Day-of venue contact | 1 | event |
 | Client planning portal access | 1 | booking |
 
-#### PKG-02 — All-Inclusive Celebration  
-**Category:** Wedding  
-**Base price (example):** 14500  
+#### PKG-02 — Signature Wedding
+**Category:** Venue
+**Base price:** unset — the venue prices this on customize.
 
-**Description:**  
-For couples who want a clearer package boundary: ceremony and reception spaces, tables and chairs for the contracted guest count, linens for guest tables, place-setting setup labor, and venue day-of coordination. Food, beverage, specialty rentals, and entertainment still appear on your final Event Order when selected.
+**Description:**
+A more complete wedding experience with the essentials handled for you. Customize the included services, spaces, and enhancements to reflect what your venue provides.
 
-**Inclusions:**  
+**Inclusions:**
 | Description | Qty | Unit |
 |-------------|-----|------|
-| Exclusive venue use for contracted hours | 1 | event |
-| Ceremony & reception setup | 1 | setup |
-| Guest table linens | 1 | set |
-| Place-setting setup | 1 | set |
-| Day-of venue coordinator | 1 | event |
-| Preferential planning timeline | 1 | booking |
+| Exclusive use of selected venue spaces for contracted event hours | 1 | event |
+| Ceremony and reception furniture setup | 1 | setup |
+| Guest table linens (as provided by venue) | 1 | set |
+| Day-of venue coordination | 1 | event |
+| Planning timeline guidance | 1 | booking |
+| Client planning portal access | 1 | booking |
 
-#### PKG-03 — Intimate Gathering  
-**Category:** Wedding  
-**Base price (example):** 4500  
+#### PKG-03 — Full-Service Wedding
+**Category:** Venue
+**Base price:** unset — the venue prices this on customize.
 
-**Description:**  
-Designed for smaller ceremonies and celebrations (typical comfort up to ~60 guests, confirmed against your spaces). Includes ceremony or celebration space for contracted hours, essential furniture setup, and venue support for a simpler day.
+**Description:**
+A comprehensive starting package designed to take more of the event details off the couple's plate. Customize the included services, spaces, and enhancements to match what your venue actually provides.
 
-**Inclusions:**  
+**Inclusions:**
 | Description | Qty | Unit |
 |-------------|-----|------|
-| Exclusive use of selected spaces | 1 | event |
-| Essential furniture setup | 1 | setup |
-| On-site venue contact | 1 | event |
+| Exclusive use of selected venue spaces for contracted event hours | 1 | event |
+| Ceremony and reception furniture setup | 1 | setup |
+| Guest table linens (as provided by venue) | 1 | set |
+| Place-setting setup support (as provided by venue) | 1 | set |
+| Expanded day-of venue coordination | 1 | event |
+| Planning timeline guidance and check-ins | 1 | booking |
+| Vendor load-in and load-out coordination support | 1 | event |
+| Client planning portal access | 1 | booking |
 
 ---
 
 ### 5.C Venue Guide FAQs (FAQ-01…12)
 
-These are **example venue answers**, editable. They must not read as universal industry law.
+**Reconciled 2026-08-11 (Release Readiness Reconciliation):** the twelve questions previously listed here (capacity, payment expectations, parking, rain plan, décor/open flame, accessibility, food & beverage, last-minute changes) were an earlier draft set superseded by the approved brief the finished product actually shipped — already flagged as documentation debt, not a runtime gap, in `docs/hello-to-cheers-starter-faq-implementation.md` ("this finished product uses the approved brief set... not §5.C"). The real, live FAQ-01…12 questions (from `lib/venue-guide/starters.ts`, the authoritative source — full answer text not duplicated here) are:
 
-1. **What is included with a venue rental?**  
-   Your agreement and selected package outline exactly what is included — typically exclusive use of the spaces for your event hours and the furniture or services listed there. Anything not listed can be added as an option or arranged through your vendors.
+1. What is included with our venue rental?
+2. Can we tour the venue before booking?
+3. How far in advance should we book our wedding?
+4. Can we have both our ceremony and reception at the venue?
+5. What happens if we want to change our guest count?
+6. Can we choose our own vendors?
+7. When should we finalize our event details?
+8. Can we customize the layout for our event?
+9. When will we receive our final event details?
+10. What time can we arrive to set up?
+11. What should we bring with us on the wedding day?
+12. What happens after our wedding?
 
-2. **How many guests can you comfortably host?**  
-   Comfortable capacity depends on which spaces you use and how you arrange seating. We’ll confirm the right guest count for your date during your tour and again in your agreement.
-
-3. **Can we bring our own vendors?**  
-   Yes, many couples work with preferred or outside vendors. We’ll share any requirements for insurance, load-in windows, and day-of contacts so everyone can set up smoothly.
-
-4. **When is the final guest count due?**  
-   You’ll see the due date on your planning checklist. We use that number for seating, rentals, and staffing — timely confirmation keeps the day calm.
-
-5. **What are your payment expectations?**  
-   A deposit reserves your date; remaining payments follow the schedule on your invoice and client portal. We’ll remind you before each due date.
-
-6. **Is parking available?**  
-   Parking details for guests and vendors are listed in this Venue Guide. If your guest count needs overflow parking or a shuttle, we’ll help you plan for it.
-
-7. **What is your rain plan?**  
-   We’ll walk you through indoor or covered options that fit your spaces. The plan you’ve confirmed should also appear on your Event Order.
-
-8. **Can we hang décor or use open flame?**  
-   Décor guidelines protect the property and your guests. Share your plans early; restricted items and approved alternatives are listed in venue policies.
-
-9. **What are setup and end times?**  
-   Your contracted access window covers vendor load-in, guest arrival, and load-out. The Event Order confirms exact times for your date.
-
-10. **Is the venue accessible?**  
-    We’re happy to discuss accessibility for ceremony, reception, restrooms, and parking. Tell us what your guests need so we can plan thoughtfully.
-
-11. **Who handles food and beverage?**  
-    Policies vary by venue. Your package, Event Order, or guide will say whether you use preferred caterers, in-house options, or outside catering — and any alcohol service rules you must follow under your own agreements.
-
-12. **How do we communicate changes close to the event?**  
-    Use your client portal and reply to your coordinator. Last-minute changes may affect inventory, staffing, and your Event Order — earlier is always better.
+All twelve provision as venue-owned, editable copies with `published: false` by default (confirmed in the Starter Library Release Certification) — a venue must explicitly publish before any FAQ is guest-visible.
 
 **Also seed lightly (Venue Guide sections, not FAQ cards):** short editable placeholders for Parking, Rain Plan, and Policies — empty labels invite the venue to fill property truth, with one-line examples:
 
@@ -479,78 +473,21 @@ Use brand green default stage color (`#5D6F5D`) unless the venue overrides. Mark
 
 ---
 
-### 5.F Questionnaire — QST-01 Wedding Final Details
+### 5.F Questionnaires — QST-CP / QST-FD / QST-PE
 
-#### Finished-product requirement
+**Reconciled 2026-08-11 (Release Readiness Reconciliation).** This section previously described a single, aspirational "QST-01 Wedding Final Details" form and explicitly flagged the underlying capability as "not adequate... expand the questionnaire capability, then provision this template." The Questionnaire Authoring workstream has since shipped that expansion: the Starter Library provisions a real **3-questionnaire family** on every new venue, not one form — full field-by-field content lives in `lib/questionnaire-family/definitions.ts` (the authoritative source; not duplicated here to avoid a second copy silently drifting from the shipped content the way this section itself just did).
 
-A couple completing “Wedding Final Details” should answer a **complete, calm, day-of-useful form** — not a thin song list with an emergency contact bolted on.
+| Key | Name | Kind |
+|---|---|---|
+| QST-CP | Client Planning Questionnaire | `client_planning` |
+| QST-FD | Final Details | `final_details` |
+| QST-PE | Post-Event Feedback | `post_event_feedback` |
 
-Today’s product only toggles six optional fields (`meal_notes`, processional/recessional/first dance songs, `parent_dances`, `special_requests`) while always requiring guest count + emergency contact, and collecting timing/location/vendor notes on the questionnaire row. **That model is not adequate for the finished QST-01.** Expand the questionnaire capability (see §14), then provision this template.
-
-#### Client-facing presentation (ordered)
-
-**Intro**  
-*Please complete these details so {{venue_name}} can prepare your day. Your answers update your venue team directly — no PDFs required.*
-
-**Section 1 — Celebration basics**  
-| # | Question | Type | Required | Notes |
-|---|----------|------|----------|-------|
-| 1 | Final guest count (adults + children you’re planning for) | number | Yes | Always required |
-| 2 | Ceremony start time | time | Yes | |
-| 3 | Ceremony location / space | short text | Yes | |
-| 4 | Reception start time | time | Yes | |
-| 5 | Reception location / space | short text | Yes | |
-
-**Section 2 — Day-of contacts**  
-| # | Question | Type | Required |
-|---|----------|------|----------|
-| 6 | Emergency contact name | short text | Yes |
-| 7 | Emergency contact phone | phone | Yes |
-| 8 | Day-of planner / wedding coordinator name (if not the venue) | short text | No |
-| 9 | Day-of planner phone | phone | No |
-
-**Section 3 — Food & hospitality**  
-| # | Question | Type | Required |
-|---|----------|------|----------|
-| 10 | Meal service style (plated, buffet, stations, family-style, other) | short text | Yes |
-| 11 | Meal notes (allergies, dietary counts, children’s meals, vendor meals) | long text | Yes |
-| 12 | Bar / beverage notes for venue coordination | long text | No |
-
-**Section 4 — Music & moments**  
-| # | Question | Type | Required |
-|---|----------|------|----------|
-| 13 | Processional song | short text | No |
-| 14 | Recessional song | short text | No |
-| 15 | First dance song | short text | No |
-| 16 | Parent / family dances | long text | No |
-| 17 | Special announcements or toasts to note | long text | No |
-
-**Section 5 — Vendors & logistics**  
-| # | Question | Type | Required |
-|---|----------|------|----------|
-| 18 | Key vendor contacts the venue should know (photo, florist, catering, DJ/band) | long text | No |
-| 19 | Setup or load-in notes | long text | No |
-| 20 | Accessibility or mobility notes for guests | long text | No |
-
-**Section 6 — Anything else**  
-| # | Question | Type | Required |
-|---|----------|------|----------|
-| 21 | Special requests | long text | No |
-
-**Submit confirmation:**  
-*Thank you — your final details are with the {{venue_name}} team.*
+All three provision as venue-owned copies with protected code masters (same `source_master_key` skip-on-reprovision model as every other starter family), and share the questionnaire lifecycle already covered elsewhere in this document (autosave, concurrency, notification, Template layer — see `docs/questionnaire-working-experience-d5d-completion.md` and the D5D/Questionnaire Authoring completion reports for the full build record).
 
 #### Venue-facing result
 
-A single reviewed record per event showing each answered field, submitted timestamp, and activity (sent / opened / submitted / reviewed / reopened) — already aligned with D5 questionnaire lifecycle.
-
-#### Template settings (once expanded model exists)
-
-| Setting | Value |
-|---------|--------|
-| Name | Wedding Final Details |
-| Description | Day-of details your team needs to run the celebration — guest count, timing, contacts, meals, music, and logistics. |
-| Included | All fields above |
+A single reviewed record per event per questionnaire kind, showing each answered field, submitted timestamp, and activity (sent / opened / submitted / reviewed / reopened).
 | Required | 1–7, 10–11 |
 
 ---
@@ -660,10 +597,16 @@ Date: ___________________________________
 
 ---
 
-### 5.H Event Order Template — EO-01 Wedding Day Operations
+### 5.H Event Order Templates — EO-01 / EO-02
 
-**Name:** Wedding Day Operations  
-**Description:** A complete starting Event Order for a wedding celebration — overview lines, ceremony, cocktail, reception, timing, and operations.
+**Reconciled 2026-08-11 (Release Readiness Reconciliation)** against `lib/event-order-templates/starters.ts` — corrected the EO-01 name (was "Wedding Day Operations") and added **EO-02**, a real second starter this section previously omitted entirely.
+
+| Key | Name | Description |
+|---|---|---|
+| EO-01 | Standard Wedding Event Order | A complete starting point for organizing the details your team needs to prepare for and run a wedding. Customize the sections and information to match the way your venue operates. |
+| EO-02 | Standard Wedding — Reception Only | A lighter Event Order for celebrations where the ceremony is not held at your venue. Same structure — without ceremony-specific sections. |
+
+EO-01's sections and lines below are still accurate; EO-02's are not reproduced here — see the source file directly.
 
 **Sections and lines** (custom lines; quantities are realistic starters venues edit; unit prices $0 for process lines; modest example pricing on rental-like lines):
 
@@ -766,7 +709,17 @@ Provision `STANDARD_VENUE_WORKFLOW_*` and strengthen descriptions:
 
 ### 5.K Timeline Templates
 
-#### TL-01 — Wedding Day — Classic  
+**Reconciled 2026-08-11 (Release Readiness Reconciliation)** against `lib/timeline-templates/starters.ts` — corrected TL-01/TL-02 names (were "Classic"/"Essentials", real masters use the names below) and added **TL-03**, a real third starter this section previously omitted entirely.
+
+| Key | Name |
+|---|---|
+| TL-01 | Standard Wedding Day Timeline |
+| TL-02 | Reception Only Timeline |
+| TL-03 | Wedding Weekend Timeline (multi-day — day offsets 0/1/2, verified in the Starter Library certification) |
+
+TL-03's full multi-day activity list is not reproduced here — see `lib/timeline-templates/starters.ts` directly (the authoritative source) rather than risk a second copy drifting the way this section's own TL-01/TL-02 names just did.
+
+#### TL-01 — Standard Wedding Day Timeline
 Single-day template (Day 1). Minutes relative to ceremony start (0). Audiences: venue (+ couple where appropriate).
 
 | Title | Minutes | Audience hint |
@@ -787,7 +740,7 @@ Single-day template (Day 1). Minutes relative to ceremony start (0). Audiences: 
 | Last song — event ends | 360 | venue, couple |
 | Teardown begins | 360 | venue |
 
-#### TL-02 — Wedding Day — Essentials  
+#### TL-02 — Reception Only Timeline
 
 | Title | Minutes |
 |-------|---------|
@@ -804,11 +757,22 @@ Single-day template (Day 1). Minutes relative to ceremony start (0). Audiences: 
 
 ---
 
-### 5.L Floor Plan Template — FP-01 Reception — Rounds (150)
+### 5.L Floor Plan Templates — FP-01 / FP-02
+
+**Reconciled 2026-08-11 (Release Readiness Reconciliation)** against `lib/floor-plan-templates/starters.ts` — corrected the FP-01 name (was "Reception — Rounds (150)") and added **FP-02**, a real second starter this section previously omitted entirely.
+
+| Key | Name |
+|---|---|
+| FP-01 | Standard Wedding — Ceremony + Reception |
+| FP-02 | Standard Wedding — Reception Only |
+
+FP-02's full object layout is not reproduced here — see `lib/floor-plan-templates/starters.ts` directly.
+
+#### FP-01 — Standard Wedding — Ceremony + Reception
 
 | Field | Value |
 |-------|-------|
-| Name | Reception — Rounds (150) |
+| Name | Standard Wedding — Ceremony + Reception |
 | Event type | wedding |
 | Room | 60 ft × 40 ft (example; venue edits to real space) |
 | Unit | feet |
@@ -822,7 +786,7 @@ Single-day template (Day 1). Minutes relative to ceremony start (0). Audiences: 
 - 2 × Bar stations  
 - Ceremony chairs are **not** required on this reception template (use a second layout or blank for ceremony lawn if desired)
 
-**Customer experience:** “Start from Reception — Rounds (150), rename it for your ballroom, resize to your real measurements, apply to an event.”
+**Customer experience:** “Start from Standard Wedding — Ceremony + Reception, rename it for your ballroom, resize to your real measurements, apply to an event.”
 
 ---
 
@@ -856,14 +820,16 @@ No provisioned “Invoice Template” document. Finished experience:
 
 ### 5.N Saved Reports
 
-Only canonical report paths (`SAVED_REPORT_PATHS`). No invented metrics.
+**Reconciled 2026-08-11 (Release Readiness Reconciliation)** against `lib/saved-reports/starters.ts` — corrected ID scheme (was `RPT-0N`, real masters use `SR-*`) and names/date presets (all four default to `this_month`, not the varied quarter/year mix previously listed here). Only canonical report paths. No invented metrics.
 
-| ID | Name | Path | Date preset | Purpose |
-|----|------|------|-------------|---------|
-| RPT-01 | Sales Pipeline — This Quarter | `/reporting/sales` | `this_quarter` | Watch inquiry→booked movement |
-| RPT-02 | Bookings — This Year | `/reporting/bookings` | `this_year` | Booked volume for the year |
-| RPT-03 | Revenue — This Month | `/reporting/revenue` | `this_month` | Cash / revenue pulse |
-| RPT-04 | Events Overview — This Quarter | `/reporting/events` | `this_quarter` | Operational event load |
+| Key | Name | Path | Date preset |
+|----|------|------|-------------|
+| SR-SALES | Sales | `/reporting/sales` | `this_month` |
+| SR-BOOKINGS | Bookings | `/reporting/bookings` | `this_month` |
+| SR-REVENUE | Revenue | `/reporting/revenue` | `this_month` |
+| SR-EVENTS | Events | `/reporting/events` | `this_month` |
+
+These four auto-seed on every new venue (D7C + the 2026-08-11 Starter Library remediation pass) — this is no longer a "Coming later" capability.
 
 Comparison behavior follows Reporting’s shared date-range resolver (automatic prior-period comparison labels). Saved reports store path + preset only — filters beyond that are not in the Saved Report model today; do not invent filter JSON unless Reporting gains it (§14 only if product expands Saved Reports).
 

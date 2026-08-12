@@ -763,21 +763,14 @@ async function main() {
     }),
   );
 
-  const workingOk =
-    (countsA.working_event_orders as { count?: number })?.count === 0 &&
-    (countsA.working_working_inventories as { count?: number })?.count === 0;
-  find(
-    "provision.noWorkingCommitments",
-    workingOk || true,
-    // working_floor_plans table name may differ
-    JSON.stringify({
-      event_orders: countsA.working_event_orders,
-      working_inventories: countsA.working_working_inventories,
-      floor_plans: countsA.working_floor_plans,
-    }),
-  );
-  // Reclassify working commitments properly
-  findings.pop();
+  // Release Readiness Reconciliation remediation: this call previously
+  // duplicated the classification below with a type-broken placeholder
+  // (`workingOk || true`, a boolean where a Finding["classification"]
+  // string was expected) whose result was immediately discarded via
+  // `findings.pop()` right after — genuinely dead code with no effect on
+  // the harness's actual evidence, but it still sat inside next build's
+  // typecheck scope and broke the production build. Removed; the one real
+  // classification (below) is unchanged.
   find(
     "provision.noWorkingCommitments",
     (countsA.working_event_orders as { count?: number })?.count === 0

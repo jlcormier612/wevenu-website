@@ -12,6 +12,7 @@
  */
 import * as React from "react";
 import { Document, Page, Text, View, Image, StyleSheet, Font, renderToBuffer } from "@react-pdf/renderer";
+import { resolvePdfBrandColors } from "@/lib/collateral/pdf-brand";
 import type { BrochureRenderData } from "@/lib/brochures/types";
 
 Font.registerHyphenationCallback((word) => [word]);
@@ -50,15 +51,16 @@ function fmtMoney(n: number | null | undefined): string {
 
 function BrochurePdfDocument({ data }: { data: BrochureRenderData }) {
   const { brochure, venue, packages, faqs } = data;
-  const brandColor = venue.primaryColor || "#5D6F5D";
+  const brand = resolvePdfBrandColors(venue);
   const venueDisplayName = venue.name || venue.businessName || "Your Venue";
   const contactLine = [venue.email, venue.phone, venue.website].filter(Boolean).join("  ·  ");
   const welcomeText = brochure.welcomeText || venue.story || "";
+  const sectionHeadStyle = [styles.sectionHead, { color: brand.secondary, borderBottomWidth: 1, borderBottomColor: brand.secondary, paddingBottom: 4 }];
 
   return (
     React.createElement(Document, { title: brochure.name, author: venueDisplayName },
       React.createElement(Page, { size: "LETTER", style: styles.page },
-        React.createElement(View, { style: [styles.header, { borderBottomColor: brandColor }] },
+        React.createElement(View, { style: [styles.header, { borderBottomColor: brand.primary }] },
           React.createElement(View, { style: styles.venueBlock },
             venue.logoUrl ? React.createElement(Image, { src: venue.logoUrl, style: styles.logo }) : null,
             React.createElement(Text, { style: styles.venueName }, venueDisplayName),
@@ -81,13 +83,13 @@ function BrochurePdfDocument({ data }: { data: BrochureRenderData }) {
         // allowed to flow normally after that) so a big list never gets
         // force-pushed as one unbreakable block.
         welcomeText ? React.createElement(View, { wrap: false },
-          React.createElement(Text, { style: styles.sectionHead }, "Welcome"),
+          React.createElement(Text, { style: sectionHeadStyle }, "Welcome"),
           React.createElement(Text, { style: styles.bodyText }, welcomeText),
         ) : null,
 
         brochure.includePackages && packages.length > 0 ? React.createElement(View, null,
           React.createElement(View, { wrap: false },
-            React.createElement(Text, { style: styles.sectionHead }, "Packages"),
+            React.createElement(Text, { style: sectionHeadStyle }, "Packages"),
             React.createElement(View, { style: styles.packageRow },
               React.createElement(Text, { style: styles.packageName }, packages[0].name),
               packages[0].description ? React.createElement(Text, { style: styles.packageDescription }, packages[0].description) : null,
@@ -103,7 +105,7 @@ function BrochurePdfDocument({ data }: { data: BrochureRenderData }) {
 
         brochure.includeFaqs && faqs.length > 0 ? React.createElement(View, null,
           React.createElement(View, { wrap: false },
-            React.createElement(Text, { style: styles.sectionHead }, "Frequently Asked Questions"),
+            React.createElement(Text, { style: sectionHeadStyle }, "Frequently Asked Questions"),
             React.createElement(View, { style: styles.faqRow },
               React.createElement(Text, { style: styles.faqQuestion }, faqs[0].question),
               React.createElement(Text, { style: styles.faqAnswer }, faqs[0].answer),
@@ -116,7 +118,7 @@ function BrochurePdfDocument({ data }: { data: BrochureRenderData }) {
         ) : null,
 
         brochure.closingText ? React.createElement(View, { wrap: false },
-          React.createElement(Text, { style: styles.sectionHead }, "Next Steps"),
+          React.createElement(Text, { style: sectionHeadStyle }, "Next Steps"),
           React.createElement(Text, { style: styles.closingText }, brochure.closingText),
         ) : null,
 

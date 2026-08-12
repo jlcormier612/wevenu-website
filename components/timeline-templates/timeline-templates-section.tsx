@@ -17,6 +17,9 @@ import { addTimelineStarterAgainAction } from "@/app/(app)/library/timeline-temp
 import {
   duplicateTemplateAction, renameTemplateAction, setTemplateArchivedAction, setTemplateDefaultAction,
 } from "@/app/(app)/timeline-templates/actions";
+import { LIBRARY_LABELS } from "@/components/library/labels";
+import { LibraryArchivedSection } from "@/components/library/library-archived-section";
+import { partitionArchived } from "@/components/library/partition-archived";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -149,7 +152,7 @@ function StarterMenu({ missingKeys }: { missingKeys: TimelineStarterMasterKey[] 
 }
 
 function TemplateCard({
-  template, busy, onRename, onDuplicate, onSetDefault, onArchiveToggle, onPreview,
+  template, busy, onRename, onDuplicate, onSetDefault, onArchiveToggle, onPreview, archivedView,
 }: {
   template: TimelineTemplateWithStats;
   busy: boolean;
@@ -158,37 +161,37 @@ function TemplateCard({
   onSetDefault: () => void;
   onArchiveToggle: () => void;
   onPreview: () => void;
+  archivedView?: boolean;
 }) {
   const router = useRouter();
   const eventType = template.eventType ? eventTypeLabel(template.eventType) : "Any event type";
 
   return (
     <div
-      role="link"
-      tabIndex={0}
-      onClick={() => router.push(`/library/timeline-templates/${template.id}`)}
-      onKeyDown={(e) => { if (e.key === "Enter") router.push(`/library/timeline-templates/${template.id}`); }}
-      className={`group flex cursor-pointer flex-col gap-2 rounded-sm border border-border bg-card p-4 transition-colors hover:border-primary/40 hover:bg-muted/20 ${template.isArchived ? "opacity-60" : ""}`}
+      className={`group flex flex-col gap-2 rounded-sm border border-border bg-card p-4 transition-colors ${template.isArchived ? "opacity-60" : ""}`}
     >
       <div className="flex items-start justify-between gap-2">
         <p className="min-w-0 truncate text-sm font-medium text-heading">{template.name}</p>
-        <div onClick={(e) => e.stopPropagation()} className="shrink-0">
-          <DropdownMenu>
-            <DropdownMenuTrigger render={<Button variant="ghost" size="icon" className="h-7 w-7" disabled={busy} />}>
-              {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <MoreHorizontal className="h-3.5 w-3.5" />}
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={onPreview}><Eye className="mr-2 h-3.5 w-3.5" />Preview</DropdownMenuItem>
-              <DropdownMenuItem onClick={onDuplicate}>Duplicate</DropdownMenuItem>
-              <DropdownMenuItem onClick={onRename}>Rename</DropdownMenuItem>
-              {!template.isArchived && !template.isDefault && (
-                <DropdownMenuItem onClick={onSetDefault}>Set as Default</DropdownMenuItem>
-              )}
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={onArchiveToggle}>{template.isArchived ? "Unarchive" : "Archive"}</DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
+        {!archivedView && (
+          <div className="shrink-0">
+            <DropdownMenu>
+              <DropdownMenuTrigger render={<Button variant="ghost" size="icon" className="h-7 w-7" disabled={busy} />}>
+                {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <MoreHorizontal className="h-3.5 w-3.5" />}
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={onPreview}><Eye className="mr-2 h-3.5 w-3.5" />Preview</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => router.push(`/library/timeline-templates/${template.id}`)}>Edit</DropdownMenuItem>
+                <DropdownMenuItem onClick={onDuplicate}>Duplicate</DropdownMenuItem>
+                <DropdownMenuItem onClick={onRename}>Rename</DropdownMenuItem>
+                {!template.isArchived && !template.isDefault && (
+                  <DropdownMenuItem onClick={onSetDefault}>Set as Default</DropdownMenuItem>
+                )}
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={onArchiveToggle}>{template.isArchived ? "Restore" : "Archive"}</DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        )}
       </div>
 
       <div className="flex flex-wrap items-center gap-1.5">
@@ -215,6 +218,19 @@ function TemplateCard({
       <p className="mt-auto text-xs text-muted-foreground">
         {template.itemCount} item{template.itemCount !== 1 ? "s" : ""} · Updated {formatRelative(template.updatedAt)}
       </p>
+
+      <div className="flex flex-wrap items-center gap-2 pt-1">
+        <Button type="button" size="sm" variant="ghost" onClick={onPreview}>{LIBRARY_LABELS.preview}</Button>
+        {archivedView ? (
+          <Button type="button" size="sm" variant="outline" onClick={onArchiveToggle} disabled={busy}>
+            {LIBRARY_LABELS.restore}
+          </Button>
+        ) : (
+          <Button type="button" size="sm" variant="outline" render={<Link href={`/library/timeline-templates/${template.id}`} />}>
+            {LIBRARY_LABELS.edit}
+          </Button>
+        )}
+      </div>
     </div>
   );
 }
@@ -271,11 +287,15 @@ export function TimelineTemplatesSection({
     const result = await withBusy(id, () => setTemplateArchivedAction(id, !isArchived));
     if (result.ok) {
       setTemplates((p) => p.map((t) => (t.id === id ? { ...t, isArchived: !isArchived, isDefault: !isArchived ? false : t.isDefault } : t)));
-      toast.success(isArchived ? "Template unarchived." : "Template archived.");
+      toast.success(isArchived ? "Template restored." : "Template archived.");
     }
   }
 
   const sorted = React.useMemo(() => sortTemplates(templates), [templates]);
+  const { active, archived } = React.useMemo(
+    () => partitionArchived(sorted, (t) => t.isArchived),
+    [sorted],
+  );
 
   if (templates.length === 0) {
     return (
@@ -291,24 +311,40 @@ export function TimelineTemplatesSection({
     );
   }
 
+  function renderCard(t: TimelineTemplateWithStats, archivedView: boolean) {
+    return (
+      <TemplateCard
+        key={t.id} template={t} busy={busyId === t.id} archivedView={archivedView}
+        onPreview={() => setPreviewing(t)}
+        onRename={() => handleRename(t.id, t.name)}
+        onDuplicate={() => handleDuplicate(t.id, t.name)}
+        onSetDefault={() => handleSetDefault(t.id, t)}
+        onArchiveToggle={() => handleArchiveToggle(t.id, t.isArchived)}
+      />
+    );
+  }
+
   return (
     <div className="space-y-4">
       <div className="flex justify-end gap-2 flex-wrap">
         <StarterMenu missingKeys={missingStarterKeys} />
-        <TimelineTemplateStarterPicker existingTemplates={templates} spaces={spaces} />
+        <TimelineTemplateStarterPicker existingTemplates={active} spaces={spaces} />
       </div>
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        {sorted.map((t) => (
-          <TemplateCard
-            key={t.id} template={t} busy={busyId === t.id}
-            onPreview={() => setPreviewing(t)}
-            onRename={() => handleRename(t.id, t.name)}
-            onDuplicate={() => handleDuplicate(t.id, t.name)}
-            onSetDefault={() => handleSetDefault(t.id, t)}
-            onArchiveToggle={() => handleArchiveToggle(t.id, t.isArchived)}
-          />
-        ))}
-      </div>
+      <p className="text-xs text-muted-foreground">
+        Edit reusable timelines here. Applying a timeline to a booking happens on the event — never as a client send from the Library.
+      </p>
+      {active.length === 0 ? (
+        <p className="text-sm text-muted-foreground py-8 text-center">No active timeline templates.</p>
+      ) : (
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {active.map((t) => renderCard(t, false))}
+        </div>
+      )}
+      <LibraryArchivedSection count={archived.length}>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {archived.map((t) => renderCard(t, true))}
+        </div>
+      </LibraryArchivedSection>
       <TemplatePreviewSheet
         template={previewing}
         open={!!previewing}

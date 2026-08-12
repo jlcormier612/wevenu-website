@@ -2010,6 +2010,10 @@ function WhatsHappeningCard({
   const { visible, hasMore, showViewAll } = selectWhatsHappeningForHome(
     recentActivity?.activity,
   );
+  // Local const so TS narrows the nullable module export across the
+  // onClick closure below — a plain reference to the imported binding
+  // doesn't stay narrowed once captured in a nested function.
+  const viewAllDestination = WHATS_HAPPENING_VIEW_ALL_DESTINATION;
 
   return (
     <section
@@ -2088,10 +2092,10 @@ function WhatsHappeningCard({
         </ul>
       )}
 
-      {loaded && hasMore && showViewAll && WHATS_HAPPENING_VIEW_ALL_DESTINATION ? (
+      {loaded && hasMore && showViewAll && viewAllDestination ? (
         <button
           type="button"
-          onClick={() => onNavigate(WHATS_HAPPENING_VIEW_ALL_DESTINATION)}
+          onClick={() => onNavigate(viewAllDestination)}
           className="mt-3 text-[11px] font-medium hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 rounded-sm"
           style={{ color: SAGE }}
         >

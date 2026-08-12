@@ -126,7 +126,7 @@ export default async function LibraryPage() {
 
       <Group title="Agreements">
         <ToolboxCard title="Contract Templates" description="Reusable contracts with fill-in details, ready to send." href="/library/contracts" count={contractTemplates.length} icon={FileSignature} />
-        <ToolboxCard title="Planning Forms" description="Client Planning Questionnaire, Final Details, and Post-Event Feedback starters." href="/library/questionnaire-templates" count={questionnaireTemplates.length} icon={FileText} />
+        <ToolboxCard title="Questionnaires & Feedback" description="Client Planning Questionnaire, Final Details, and Post-Event Feedback starters." href="/library/questionnaire-templates" count={questionnaireTemplates.length} icon={FileText} />
       </Group>
 
       <Group title="Pricing &amp; Packages">

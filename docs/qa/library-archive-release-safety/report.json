@@ -1,0 +1,73 @@
+{
+  "at": "2026-08-12T00:12:18.090Z",
+  "tools": {
+    "cursorIdeBrowserMcp": "unavailable — Playwright fallback",
+    "fallback": "Playwright headed=false chromium"
+  },
+  "matrix": {
+    "login": {
+      "status": "PASS",
+      "note": ""
+    },
+    "A": {
+      "status": "PASS",
+      "note": "Archived open: Use=0, Restore=2, Preview~=2"
+    },
+    "B": {
+      "status": "PASS",
+      "note": "status=draft template applied=4bec55b2…"
+    },
+    "C": {
+      "status": "PASS",
+      "note": "landed events; Preview=1 Send=1; urlHadEvents=false"
+    },
+    "D": {
+      "status": "PASS",
+      "note": "Send sheet copy mentions email/link behavior"
+    },
+    "E": {
+      "status": "PASS",
+      "note": "Sent status + timestamp text present"
+    },
+    "F": {
+      "status": "PASS",
+      "note": "withdraw → draft; public RPC rows=0"
+    },
+    "G": {
+      "status": "PASS",
+      "note": "reopen→sent; Apply hidden when non-draft (Create=0)"
+    },
+    "ARCH_PACKAGES": {
+      "status": "PASS",
+      "note": "Packages: shellOk=true; Archived UI none yet (empty archived OK)"
+    },
+    "ARCH_MESSAGES": {
+      "status": "PASS",
+      "note": "Messages: shellOk=true; Archived UI none yet (empty archived OK)"
+    },
+    "ARCH_CONTRACTS": {
+      "status": "PASS",
+      "note": "Contracts: shellOk=true; Archived UI present"
+    },
+    "ARCH_CONTRACTS_USE": {
+      "status": "PASS",
+      "note": "Use Template in archived=0"
+    },
+    "ARCH_PACKAGES_SEEDED": {
+      "status": "PASS",
+      "note": "Use=0 Restore=1"
+    },
+    "ARCH_MESSAGES_SEEDED": {
+      "status": "PASS",
+      "note": "Use/Send=0 Restore=1"
+    }
+  },
+  "defects": [],
+  "notes": [
+    "Applied access_withdrawn activity constraint in local DB",
+    "Use flow landed url=http://localhost:3000/clients/dbfa69d6-47ad-4f9d-892d-4f06cb7f1844 marker=qa-create-1786493445339",
+    "dialog: Stop client access to this form?\n\nThe public link will stop working. Answers already saved stay on the event.\n\nThis does not recall or delete emails already del",
+    "dialog: Reopen so the couple can make changes? This sets the form back to Sent so they can use the link again.",
+    "Seeded Archived spot-check for Packages + Messages after A–G pass"
+  ]
+}

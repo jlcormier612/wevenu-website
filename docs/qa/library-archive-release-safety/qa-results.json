@@ -1,0 +1,8 @@
+{
+  "at": "2026-08-11T23:51:59.913Z",
+  "base": "http://localhost:3000",
+  "checks": [],
+  "defects": [
+    "page.goto: Timeout 60000ms exceeded.\nCall log:\n  - navigating to \"http://localhost:3000/login\", waiting until \"commit\"\n\n    at login (/Users/jensmac/Library/Mobile Documents/com~apple~CloudDocs/Wevenu Website/wevenu-website/docs/qa/library-archive-release-safety/smoke.mjs:34:14)\n    at /Users/jensmac/Library/Mobile Documents/com~apple~CloudDocs/Wevenu Website/wevenu-website/docs/qa/library-archive-release-safety/smoke.mjs:58:26"
+  ]
+}

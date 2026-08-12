@@ -62,11 +62,14 @@ export type ContractActivity = {
   type: string;
   title: string;
   description: string | null;
+  actorId: string | null;
+  actorLabel: string | null;
   createdAt: string;
 };
 
 export type ContractWithDetails = Contract & {
   activities: ContractActivity[];
+  signers: import("@/lib/contracts/signers").ContractSigner[];
 };
 
 export type TemplateInput = {
@@ -84,6 +87,12 @@ export type NewContractInput = {
   content: string; // may be pre-filled from template merge
   /** Work Package D4 — set only by createAmendmentFromContract. */
   amendsContractId?: string;
+  /**
+   * Client contact ids selected as required signers. Empty/undefined → default
+   * one required signer from the client's primary contact (or client record).
+   * Never auto-assumes couple = two signers.
+   */
+  clientSignerContactIds?: string[];
 };
 
 export type ContractErrors = Record<string, string>;

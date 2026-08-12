@@ -8,6 +8,9 @@ import { toast } from "sonner";
 
 import { removeScheduleAction, setScheduleAction } from "@/app/(app)/reporting/saved-reports-actions";
 import { BusinessAssetHeader } from "@/components/business-assets/asset-header";
+import { LIBRARY_LABELS } from "@/components/library/labels";
+import { LibrarySaveStatus } from "@/components/library/library-save-status";
+import { librarySavedToastMessage, useLibraryUnsavedGuard } from "@/components/library/use-library-unsaved-guard";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -36,10 +39,17 @@ export function SavedReportDetail({
   const [dayOfWeek, setDayOfWeek] = React.useState(String(schedule?.dayOfWeek ?? 1));
   const [email, setEmail] = React.useState(schedule?.recipientEmail || defaultRecipientEmail);
   const [saving, startSave] = React.useTransition();
+  const baseline = React.useMemo(() => ({
+    dayOfWeek: String(schedule?.dayOfWeek ?? 1),
+    email: schedule?.recipientEmail || defaultRecipientEmail,
+  }), [schedule, defaultRecipientEmail]);
+  const dirty = scheduleOn && (dayOfWeek !== baseline.dayOfWeek || email !== baseline.email);
+  const { confirmLeave } = useLibraryUnsavedGuard(dirty);
 
   const qs = new URLSearchParams({ range: report.datePreset, ...(report.customFrom ? { from: report.customFrom } : {}), ...(report.customTo ? { to: report.customTo } : {}) }).toString();
 
   function handleToggle(next: boolean) {
+    if (!next && dirty && !confirmLeave()) return;
     setScheduleOn(next);
     startSave(async () => {
       const result = next
@@ -53,7 +63,7 @@ export function SavedReportDetail({
   function handleSaveSchedule() {
     startSave(async () => {
       const result = await setScheduleAction(report.id, Number(dayOfWeek), email);
-      if (result.ok) toast.success("Schedule updated.");
+      if (result.ok) toast.success(librarySavedToastMessage());
       else toast.error(result.message ?? "Could not update schedule.");
     });
   }
@@ -63,6 +73,7 @@ export function SavedReportDetail({
       <BusinessAssetHeader
         backHref="/reporting/saved"
         backLabel="Saved Reports"
+        beforeNavigate={confirmLeave}
         whatIsThis="Saved Report"
         title={report.name}
         status={<span className="text-xs text-muted-foreground">{SAVED_REPORT_PATH_LABEL[report.reportPath]} · {presetLabel(report.datePreset)}</span>}
@@ -78,7 +89,13 @@ export function SavedReportDetail({
       />
 
       <Card>
-        <CardHeader><p className="text-sm font-medium text-heading">Schedule</p></CardHeader>
+        <CardHeader className="flex-row items-center justify-between gap-2">
+          <p className="text-sm font-medium text-heading">Schedule</p>
+          <LibrarySaveStatus
+            status={saving ? "saving" : dirty ? "dirty" : "idle"}
+            model={scheduleOn ? "explicit" : "autosave"}
+          />
+        </CardHeader>
         <CardContent className="space-y-4">
           {!canSchedule ? (
             <p className="text-sm text-muted-foreground">Only an Owner or Manager can schedule a report for recurring delivery.</p>
@@ -88,7 +105,7 @@ export function SavedReportDetail({
                 <Switch checked={scheduleOn} onCheckedChange={handleToggle} disabled={saving} />
                 <Label className="cursor-pointer">
                   Email me this report weekly
-                  <span className="block text-xs font-normal text-muted-foreground mt-0.5">Sent with the same relative period each time — "This Month" stays current, it's never frozen.</span>
+                  <span className="block text-xs font-normal text-muted-foreground mt-0.5">Sent with the same relative period each time — &quot;This Month&quot; stays current, it&apos;s never frozen.</span>
                 </Label>
               </div>
               {scheduleOn && (
@@ -104,8 +121,8 @@ export function SavedReportDetail({
                     <Label className="text-sm font-medium text-heading">Send to</Label>
                     <div className="flex gap-2">
                       <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@yourvenue.com" />
-                      <Button type="button" size="sm" disabled={saving || !email.trim()} onClick={handleSaveSchedule}>
-                        {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Save"}
+                      <Button type="button" size="sm" disabled={saving || !email.trim() || !dirty} onClick={handleSaveSchedule}>
+                        {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : LIBRARY_LABELS.saveChanges}
                       </Button>
                     </div>
                   </div>

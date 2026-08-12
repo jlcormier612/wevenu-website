@@ -301,7 +301,7 @@ export function EventOrderPanel({
                 trigger={<Button type="button" size="sm">Share with Client</Button>}
                 title="Share Event Order"
                 recipient={shareRecipient}
-                whatHappensNext="They'll review the Event Order."
+                whatHappensNext="They'll review the Event Order. Applying a Library template earlier only built this working order — Share is what makes it visible to the client."
                 defaultMessage={shareDefaultMessage}
                 sendLabel="Share"
                 onSend={(message) => handleShareSend(eventOrder.id, message)}
@@ -337,7 +337,9 @@ export function EventOrderPanel({
         {eventOrder.sharedAt && (
           <p className="text-xs text-muted-foreground -mt-1">
             Shared with client {new Date(eventOrder.sharedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}.
-            {isFinalized ? "" : " Reopening won't remove what they already have — share again once you're ready."}
+            {isFinalized
+              ? " Re-sharing updates what they see. There is no separate revoke — the shared timestamp stays once first shared."
+              : " Reopening won't remove what they already have — share again once you're ready. The shared timestamp is not cleared on reopen."}
           </p>
         )}
         {clientId && (

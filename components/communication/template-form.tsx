@@ -9,6 +9,8 @@ import { toast } from "sonner";
 import { createTemplateAction, importTemplateAction, updateTemplateAction } from "@/app/(app)/communication/templates/actions";
 import { TemplateAttachmentsField } from "@/components/communication/template-attachments-field";
 import { TemplatePreview } from "@/components/communication/template-preview";
+import { LibrarySaveStatus } from "@/components/library/library-save-status";
+import { librarySavedToastMessage, useLibraryUnsavedGuard } from "@/components/library/use-library-unsaved-guard";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -45,10 +47,13 @@ export function TemplateForm({
 }) {
   const router = useRouter();
   const isEdit = !!template;
+  const [baseline] = React.useState(() => JSON.stringify(buildInitial(template)));
   const [input, setInput] = React.useState<MessageTemplateInput>(() => buildInitial(template));
   const [errors, setErrors] = React.useState<MessageTemplateErrors>({});
   const [pending, startTransition] = React.useTransition();
   const [mode, setMode] = React.useState<"edit" | "preview">("edit");
+  const dirty = JSON.stringify(input) !== baseline;
+  const { confirmLeave } = useLibraryUnsavedGuard(dirty);
 
   const [importOpen, setImportOpen] = React.useState(false);
   const [importText, setImportText] = React.useState("");
@@ -87,7 +92,7 @@ export function TemplateForm({
         ? await updateTemplateAction(template!.id, input)
         : await createTemplateAction(input);
       if (result.ok) {
-        toast.success(isEdit ? "Template updated." : "Template created.");
+        toast.success(isEdit ? librarySavedToastMessage() : "Template created.");
         router.push("/communication/templates");
         return;
       }
@@ -246,8 +251,9 @@ export function TemplateForm({
       </Tabs>
 
       <div className="flex items-center justify-end gap-3">
-        <Button type="button" variant="outline" onClick={() => router.back()} disabled={pending}>Cancel</Button>
-        <Button type="button" onClick={handleSubmit} disabled={pending}>
+        <LibrarySaveStatus status={pending ? "saving" : dirty ? "dirty" : "idle"} model="explicit" className="mr-auto" />
+        <Button type="button" variant="outline" onClick={() => { if (confirmLeave()) router.back(); }} disabled={pending}>Cancel</Button>
+        <Button type="button" onClick={handleSubmit} disabled={pending || (isEdit && !dirty)}>
           {pending ? <><Loader2 className="mr-1 h-4 w-4 animate-spin" />Saving…</> : isEdit ? "Save changes" : "Create template"}
         </Button>
       </div>

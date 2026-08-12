@@ -346,7 +346,12 @@ export function EventDetail({
   React.useEffect(() => {
     const syncFromHash = () => {
       const hash = window.location.hash.replace("#", "");
-      if (hash) setActiveTab(hash);
+      if (hash === "questionnaires") {
+        setActiveTab("playbook");
+        requestAnimationFrame(() => {
+          document.getElementById("questionnaires")?.scrollIntoView({ behavior: "smooth", block: "start" });
+        });
+      } else if (hash) setActiveTab(hash);
       // Vendor-thread deep links: /events/{id}?conversation=… → /clients/…?conversation=…
       // Server redirects drop #vendors; open Vendors when a thread id is present.
       else if (new URLSearchParams(window.location.search).get("conversation")) {
@@ -643,11 +648,11 @@ export function EventDetail({
           </Card>
 
           {/* Questionnaire Family — Client Planning, Final Details, Post-Event Feedback */}
-          <Card className="mt-4">
+          <Card className="mt-4" id="questionnaires">
             <CardHeader>
-              <CardTitle className="text-base">Planning forms</CardTitle>
+              <CardTitle className="text-base">Questionnaires</CardTitle>
               <CardDescription>
-                Client Planning Questionnaire, Final Details, and Post-Event Feedback — sent to the couple when you need them.
+                Client Planning Questionnaire, Final Details, and Post-Event Feedback — create a draft from the Library, review as the client, then send when ready.
               </CardDescription>
             </CardHeader>
             <CardContent>

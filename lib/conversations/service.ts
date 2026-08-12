@@ -33,6 +33,7 @@ import type {
 import { sendSms } from "@/lib/sms/send";
 import { toE164 } from "@/lib/sms/phone";
 import { sendEmail } from "@/lib/email/send";
+import { wrapConversationMessageHtml } from "@/lib/email/conversation-brand";
 import { translateEmailFailure, translateSmsFailure } from "@/lib/communication/failure-messages";
 import { extractTokens, resolveForCustomerSend } from "@/lib/message-templates/merge";
 import { getMergeContextForRelationship } from "@/lib/scheduled-messages/repository";
@@ -140,7 +141,17 @@ export async function sendConversationMessage(
     if (!email) {
       return { ok: false, message: "This client has no email address on file — add one to their record to send an email." };
     }
-    const emailResult = await sendEmail({ to: email, subject, text: trimmed });
+    // Merge resolution already ran above when tokens were present. Wrap the
+    // resolved plain-text body in the shared venue-brand shell; keep `text`
+    // as the plain-text fallback (Workstream A).
+    const venue = await getCurrentVenue();
+    const brand = {
+      name: venue?.name ?? "Your venue",
+      logoUrl: venue?.logoUrl,
+      primaryColor: venue?.primaryColor ?? "#5D6F5D",
+    };
+    const html = wrapConversationMessageHtml(brand, trimmed);
+    const emailResult = await sendEmail({ to: email, subject, text: trimmed, html });
     if (!emailResult.ok) return { ok: false, message: translateEmailFailure(emailResult.message) };
     providerId = emailResult.providerId;
     status = "accepted";

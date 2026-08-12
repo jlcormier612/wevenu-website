@@ -171,9 +171,7 @@ export function GettingStartedCard({
                         {step.ctaLabel} →
                       </Link>
                     )}
-                    {/* Luv's Success Library §4.2 — secondary "read more"
-                        affordance, always after the primary "let's do this
-                        together" CTA above, never replacing it. */}
+                    {/* Help & Guides — secondary "read more" affordance after the primary CTA. */}
                     {step.articleHref && (
                       <Link
                         href={step.articleHref}

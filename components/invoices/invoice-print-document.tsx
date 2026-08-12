@@ -8,6 +8,7 @@ import { formatCurrency, invoiceStatusLabel, lineItemTypeLabel } from "@/lib/inv
 import type { InvoiceWithLineItems } from "@/lib/invoices/types";
 import { paymentMilestoneDescription } from "@/lib/payments/starters";
 import type { PaymentObligationKind } from "@/lib/payments/types";
+import { resolvePrintBrandColors } from "@/lib/collateral/print-brand";
 import type { Venue } from "@/lib/venue/types";
 
 export type InvoicePrintMilestone = {
@@ -25,19 +26,45 @@ export function InvoicePrintDocument({
   /** Next unpaid schedule item, when a linked Payment Plan exists. */
   milestone?: InvoicePrintMilestone | null;
 }) {
-  const primaryColor = venue.primaryColor ?? "#5D6F5D";
+  // Prefer branding frozen at send time; pre-existing sent invoices without a
+  // snapshot fall back to live venue branding (documented — no silent backfill).
+  const snap = invoice.brandingSnapshot;
+  const brandSource = snap
+    ? {
+        primaryColor: snap.primaryColor,
+        secondaryColor: snap.secondaryColor,
+        accentColor: snap.accentColor,
+        neutralColor: snap.neutralColor,
+      }
+    : venue;
+  const brand = resolvePrintBrandColors(brandSource);
+  const primaryColor = brand.primary;
+  const accentColor = brand.accent;
+  const neutralColor = brand.neutral;
   const hasDiscount = invoice.discountAmount > 0;
   const hasTax = invoice.taxAmount > 0;
   const paidToDate = Math.max(0, invoice.total - invoice.balanceDue);
   const amountDueNow = invoice.balanceDue;
-  const venueDisplayName = venue.businessName ?? venue.name;
+  const venueDisplayName = snap?.businessName ?? snap?.name ?? venue.businessName ?? venue.name;
+  const logoUrl = snap?.logoUrl ?? venue.logoUrl;
+  const displayName = snap?.name ?? venue.name;
+  const email = snap?.email ?? venue.email;
+  const phone = snap?.phone ?? venue.phone;
+  const website = snap?.website ?? venue.website;
 
-  const addressParts = [
-    venue.addressLine1,
-    venue.addressLine2,
-    venue.city && venue.stateRegion ? `${venue.city}, ${venue.stateRegion} ${venue.postalCode ?? ""}`.trim() : null,
-    venue.country !== "United States" ? venue.country : null,
-  ].filter(Boolean);
+  const addressParts = snap
+    ? [
+        snap.addressLine1,
+        snap.addressLine2,
+        snap.city && snap.stateRegion ? `${snap.city}, ${snap.stateRegion} ${snap.postalCode ?? ""}`.trim() : null,
+        snap.country && snap.country !== "United States" ? snap.country : null,
+      ].filter(Boolean)
+    : [
+        venue.addressLine1,
+        venue.addressLine2,
+        venue.city && venue.stateRegion ? `${venue.city}, ${venue.stateRegion} ${venue.postalCode ?? ""}`.trim() : null,
+        venue.country !== "United States" ? venue.country : null,
+      ].filter(Boolean);
 
   const defaultNotes = `Thank you for choosing ${venueDisplayName} for your celebration. If you have any questions about this invoice, please contact our team.`;
   const notes = invoice.notes?.trim() || defaultNotes;
@@ -48,15 +75,15 @@ export function InvoicePrintDocument({
       <div style={{ backgroundColor: primaryColor }} className="px-12 py-8">
         <div className="flex items-start justify-between gap-6">
           <div className="flex items-center gap-4">
-            {venue.logoUrl && (
+            {logoUrl && (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={venue.logoUrl} alt={venue.name}
+              <img src={logoUrl} alt={displayName}
                 className="h-12 w-12 rounded-lg object-contain"
                 style={{ background: "rgba(255,255,255,0.15)" }} />
             )}
             <div className="text-white">
               <p className="text-xs font-semibold uppercase tracking-widest opacity-70">Invoice</p>
-              <p className="mt-0.5 text-2xl font-bold">{venue.name}</p>
+              <p className="mt-0.5 text-2xl font-bold">{displayName}</p>
             </div>
           </div>
           <div className="text-right text-white">
@@ -68,9 +95,9 @@ export function InvoicePrintDocument({
 
       {/* ── Amount Due Now ─────────────────────────────────────────────── */}
       {amountDueNow > 0 && (
-        <div className="border-b border-gray-200 px-12 py-6" style={{ background: "#FAFAF8" }}>
+        <div className="border-b border-gray-200 px-12 py-6" style={{ background: neutralColor }}>
           <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-1">Amount Due Now</p>
-          <p className="text-3xl font-bold text-gray-900">{formatCurrency(amountDueNow)}</p>
+          <p className="text-3xl font-bold" style={{ color: accentColor }}>{formatCurrency(amountDueNow)}</p>
           {invoice.dueDate && (
             <p className="text-sm text-gray-600 mt-1">
               Due {new Date(invoice.dueDate + "T12:00:00").toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}
@@ -177,7 +204,8 @@ export function InvoicePrintDocument({
               <span>Balance Remaining</span>
               <span>{formatCurrency(invoice.balanceDue)}</span>
             </div>
-            <div className={`flex justify-between font-semibold pt-1 ${amountDueNow > 0 ? "text-red-700" : "text-green-700"}`}>
+            <div className={`flex justify-between font-semibold pt-1 ${amountDueNow > 0 ? "" : "text-green-700"}`}
+              style={amountDueNow > 0 ? { color: accentColor } : undefined}>
               <span>Amount Due Now</span>
               <span>{amountDueNow > 0 ? formatCurrency(amountDueNow) : "Paid in Full"}</span>
             </div>
@@ -198,9 +226,9 @@ export function InvoicePrintDocument({
         <div className="text-xs text-gray-500 space-y-0.5">
           <p className="font-medium text-gray-700">{venueDisplayName}</p>
           {addressParts.map((line, i) => <p key={i}>{line}</p>)}
-          {venue.email && <p>{venue.email}</p>}
-          {venue.phone && <p>{venue.phone}</p>}
-          {venue.website && <p>{venue.website}</p>}
+          {email && <p>{email}</p>}
+          {phone && <p>{phone}</p>}
+          {website && <p>{website}</p>}
         </div>
       </div>
 

@@ -18,6 +18,9 @@ import {
 } from "@/app/(app)/floor-plan-templates/actions";
 import { FloorPlanLayoutPreview } from "@/components/floor-plan/floor-plan-layout-preview";
 import { FloorPlanTemplateStarterPicker } from "@/components/floor-plan-templates/floor-plan-template-starter-picker";
+import { LIBRARY_LABELS } from "@/components/library/labels";
+import { LibraryArchivedSection } from "@/components/library/library-archived-section";
+import { partitionArchived } from "@/components/library/partition-archived";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -138,7 +141,7 @@ function StarterMenu({ missingKeys }: { missingKeys: FloorPlanStarterMasterKey[]
 }
 
 function TemplateCard({
-  template, busy, onRename, onDuplicate, onSetDefault, onArchiveToggle, onPreview,
+  template, busy, onRename, onDuplicate, onSetDefault, onArchiveToggle, onPreview, archivedView,
 }: {
   template: FloorPlanTemplateWithStats;
   busy: boolean;
@@ -147,42 +150,42 @@ function TemplateCard({
   onSetDefault: () => void;
   onArchiveToggle: () => void;
   onPreview: () => void;
+  archivedView?: boolean;
 }) {
   const router = useRouter();
   const eventType = template.eventType ? eventTypeLabel(template.eventType) : "Any event type";
 
   return (
     <div
-      role="link"
-      tabIndex={0}
-      onClick={() => router.push(`/library/floor-plan-templates/${template.id}`)}
-      onKeyDown={(e) => { if (e.key === "Enter") router.push(`/library/floor-plan-templates/${template.id}`); }}
-      className={`group flex cursor-pointer flex-col gap-2 rounded-xl border border-border bg-card p-4 transition-colors hover:border-primary/40 hover:bg-muted/20 ${template.isArchived ? "opacity-60" : ""}`}
+      className={`group flex flex-col gap-2 rounded-xl border border-border bg-card p-4 transition-colors ${template.isArchived ? "opacity-60" : ""}`}
     >
       <div className="flex items-start justify-between gap-2">
         <p className="min-w-0 truncate text-sm font-medium text-heading">{template.name}</p>
-        <div onClick={(e) => e.stopPropagation()} className="shrink-0">
-          <DropdownMenu>
-            <DropdownMenuTrigger render={<Button variant="ghost" size="icon" className="h-7 w-7" disabled={busy} aria-label="Template actions" />}>
-              {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <MoreHorizontal className="h-3.5 w-3.5" />}
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={onPreview}><Eye className="mr-2 h-3.5 w-3.5" />Preview</DropdownMenuItem>
-              <DropdownMenuItem onClick={onDuplicate}>Duplicate</DropdownMenuItem>
-              <DropdownMenuItem onClick={onRename}>Rename</DropdownMenuItem>
-              {!template.isArchived && !template.isDefault && (
-                <DropdownMenuItem onClick={onSetDefault}>Set as Default</DropdownMenuItem>
-              )}
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={onArchiveToggle}>{template.isArchived ? "Unarchive" : "Archive"}</DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
+        {!archivedView && (
+          <div className="shrink-0">
+            <DropdownMenu>
+              <DropdownMenuTrigger render={<Button variant="ghost" size="icon" className="h-7 w-7" disabled={busy} aria-label="Template actions" />}>
+                {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <MoreHorizontal className="h-3.5 w-3.5" />}
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={onPreview}><Eye className="mr-2 h-3.5 w-3.5" />Preview</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => router.push(`/library/floor-plan-templates/${template.id}`)}>Edit</DropdownMenuItem>
+                <DropdownMenuItem onClick={onDuplicate}>Duplicate</DropdownMenuItem>
+                <DropdownMenuItem onClick={onRename}>Rename</DropdownMenuItem>
+                {!template.isArchived && !template.isDefault && (
+                  <DropdownMenuItem onClick={onSetDefault}>Set as Default</DropdownMenuItem>
+                )}
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={onArchiveToggle}>{template.isArchived ? "Restore" : "Archive"}</DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        )}
       </div>
 
       <div
-        className="rounded-lg border border-border/60 overflow-hidden"
-        onClick={(e) => { e.stopPropagation(); onPreview(); }}
+        className="rounded-lg border border-border/60 overflow-hidden cursor-pointer"
+        onClick={onPreview}
       >
         <FloorPlanLayoutPreview
           planName={template.name}
@@ -209,6 +212,19 @@ function TemplateCard({
       <p className="mt-auto text-xs text-muted-foreground">
         {template.objectCount} item{template.objectCount !== 1 ? "s" : ""} · Updated {formatRelative(template.updatedAt)}
       </p>
+
+      <div className="flex flex-wrap items-center gap-2 pt-1">
+        <Button type="button" size="sm" variant="ghost" onClick={onPreview}>{LIBRARY_LABELS.preview}</Button>
+        {archivedView ? (
+          <Button type="button" size="sm" variant="outline" onClick={onArchiveToggle} disabled={busy}>
+            {LIBRARY_LABELS.restore}
+          </Button>
+        ) : (
+          <Button type="button" size="sm" variant="outline" render={<Link href={`/library/floor-plan-templates/${template.id}`} />}>
+            {LIBRARY_LABELS.edit}
+          </Button>
+        )}
+      </div>
     </div>
   );
 }
@@ -270,7 +286,7 @@ export function FloorPlanTemplatesSection({
     const result = await withBusy(id, () => setTemplateArchivedAction(id, !isArchived));
     if (result.ok) {
       setTemplates((p) => p.map((t) => (t.id === id ? { ...t, isArchived: !isArchived, isDefault: !isArchived ? false : t.isDefault } : t)));
-      toast.success(isArchived ? "Template unarchived." : "Template archived.");
+      toast.success(isArchived ? "Template restored." : "Template archived.");
     }
   }
 
@@ -280,6 +296,10 @@ export function FloorPlanTemplatesSection({
     if (search.trim() && !t.name.toLowerCase().includes(search.trim().toLowerCase())) return false;
     return true;
   }), [sorted, search, eventTypeFilter]);
+  const { active: filteredActive, archived: filteredArchived } = React.useMemo(
+    () => partitionArchived(filtered, (t) => t.isArchived),
+    [filtered],
+  );
   const activeTemplates = React.useMemo(() => templates.filter((t) => !t.isArchived), [templates]);
 
   if (templates.length === 0) {
@@ -293,6 +313,19 @@ export function FloorPlanTemplatesSection({
           <FloorPlanTemplateStarterPicker existingTemplates={activeTemplates} spaces={spaces} venueId={venueId} />
         </div>
       </div>
+    );
+  }
+
+  function renderCard(t: FloorPlanTemplateWithStats, archivedView: boolean) {
+    return (
+      <TemplateCard
+        key={t.id} template={t} busy={busyId === t.id} archivedView={archivedView}
+        onPreview={() => setPreviewing(t)}
+        onRename={() => handleRename(t.id, t.name)}
+        onDuplicate={() => handleDuplicate(t.id, t.name)}
+        onSetDefault={() => handleSetDefault(t.id, t)}
+        onArchiveToggle={() => handleArchiveToggle(t.id, t.isArchived)}
+      />
     );
   }
 
@@ -323,24 +356,25 @@ export function FloorPlanTemplatesSection({
           <FloorPlanTemplateStarterPicker existingTemplates={activeTemplates} spaces={spaces} venueId={venueId} />
         </div>
       </div>
-      {filtered.length === 0 ? (
+      <p className="text-xs text-muted-foreground">
+        Edit reusable layouts here. Applying a floor plan to a booking happens on the event — not as a client send from the Library.
+      </p>
+      {filteredActive.length === 0 ? (
         <div className="rounded-xl border border-dashed border-border py-10 text-center">
-          <p className="text-sm text-muted-foreground">No templates match your search.</p>
+          <p className="text-sm text-muted-foreground">
+            {filtered.length === 0 ? "No templates match your search." : "No active floor plan templates match your search."}
+          </p>
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {filtered.map((t) => (
-            <TemplateCard
-              key={t.id} template={t} busy={busyId === t.id}
-              onPreview={() => setPreviewing(t)}
-              onRename={() => handleRename(t.id, t.name)}
-              onDuplicate={() => handleDuplicate(t.id, t.name)}
-              onSetDefault={() => handleSetDefault(t.id, t)}
-              onArchiveToggle={() => handleArchiveToggle(t.id, t.isArchived)}
-            />
-          ))}
+          {filteredActive.map((t) => renderCard(t, false))}
         </div>
       )}
+      <LibraryArchivedSection count={filteredArchived.length}>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {filteredArchived.map((t) => renderCard(t, true))}
+        </div>
+      </LibraryArchivedSection>
       <TemplatePreviewSheet
         template={previewing}
         open={!!previewing}

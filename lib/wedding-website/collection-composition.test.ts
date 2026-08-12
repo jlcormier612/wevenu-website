@@ -79,7 +79,7 @@ const PHASE_B: Record<string, CollectionLayoutConfig> = {
     divider: "ornament",
     sectionComposition: "framed",
     sectionRoles: {
-      story: { scale: "standard", canvas: "light", treatment: "formal-opening" },
+      story: { scale: "standard", canvas: "light", treatment: "strong-closing" },
     },
   },
   rustic: {
@@ -97,7 +97,13 @@ const PHASE_B: Record<string, CollectionLayoutConfig> = {
     itemAlign: "left",
     asymmetry: "subtle",
     sectionRoles: {
-      story: { scale: "standard", canvas: "light", treatment: "flowing-opening" },
+      // Release Readiness Reconciliation remediation: "flowing-opening" is
+      // not a current SectionTreatment member. storyBodyAlignsLeft only
+      // ever branches on `=== "editorial-opening"` (components/wedding-website/
+      // wedding-website.tsx), so any other valid, distinct member preserves
+      // this test's actual behavior — renamed here and at the matching
+      // assert.equal below, kept in sync.
+      story: { scale: "standard", canvas: "light", treatment: "paired-passage" },
     },
   },
   champagne: {
@@ -110,7 +116,7 @@ const PHASE_B: Record<string, CollectionLayoutConfig> = {
     sectionComposition: "framed",
     sectionFrame: "card",
     sectionRoles: {
-      story: { scale: "standard", canvas: "light", treatment: "formal-framed" },
+      story: { scale: "standard", canvas: "light", treatment: "compact-interlude" },
     },
   },
   classic: {
@@ -123,7 +129,7 @@ const PHASE_B: Record<string, CollectionLayoutConfig> = {
     itemAlign: "left",
     asymmetry: "editorial",
     sectionRoles: {
-      story: { scale: "standard", canvas: "light", treatment: "romantic-opening" },
+      story: { scale: "standard", canvas: "light", treatment: "split-feature" },
     },
   },
   garden: {
@@ -137,7 +143,7 @@ const PHASE_B: Record<string, CollectionLayoutConfig> = {
     asymmetry: "none",
     itemAlign: "center",
     sectionRoles: {
-      story: { scale: "standard", canvas: "light", treatment: "conversational-opening" },
+      story: { scale: "standard", canvas: "light", treatment: "gallery-spread" },
     },
   },
   // Untouched baselines
@@ -372,7 +378,7 @@ describe("Phase B Collection composition DNA", () => {
     const rustic = themeFor("rustic", PHASE_B.rustic);
     assert.equal(rustic.itemAlign, "left");
     assert.equal(rustic.asymmetry, "subtle");
-    assert.equal(rustic.sectionRoles?.story?.treatment, "flowing-opening");
+    assert.equal(rustic.sectionRoles?.story?.treatment, "paired-passage");
     assert.equal(rustic.headerStyle, "romantic");
     assert.equal(rustic.divider, "botanical");
   });

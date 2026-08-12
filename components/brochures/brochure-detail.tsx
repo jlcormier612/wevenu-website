@@ -8,6 +8,8 @@ import { toast } from "sonner";
 
 import { deleteBrochureAction, sendBrochureToLeadAction, updateBrochureAction } from "@/app/(app)/library/brochures/actions";
 import { BusinessAssetHeader } from "@/components/business-assets/asset-header";
+import { LibrarySaveStatus } from "@/components/library/library-save-status";
+import { librarySavedToastMessage, useLibraryUnsavedGuard } from "@/components/library/use-library-unsaved-guard";
 import { ActivityTimeline } from "@/components/leads/activity-timeline";
 import { ShareDialog } from "@/components/sharing/share-dialog";
 import { Badge } from "@/components/ui/badge";
@@ -51,7 +53,7 @@ function SendToLead({ brochureId, leads }: { brochureId: string; leads: Lead[] }
         trigger={<Button type="button" size="sm" disabled={!recipient}><Send className="mr-1.5 h-3.5 w-3.5" />Share</Button>}
         title="Share Brochure"
         recipient={recipient}
-        whatHappensNext="They'll get an email with a link to view it — no account needed."
+        whatHappensNext="They'll get an email with a link to view this brochure — no account needed. Editing the brochure later updates what that link shows; there is no separate revoke action today."
         defaultMessage=""
         sendLabel="Send"
         onSend={handleSend}
@@ -70,6 +72,7 @@ export function BrochureDetail({ brochure, leads }: { brochure: BrochureWithActi
   const [dirty, setDirty] = React.useState(false);
   const [saving, startSave] = React.useTransition();
   const [deleting, startDelete] = React.useTransition();
+  const { confirmLeave } = useLibraryUnsavedGuard(dirty);
 
   function markDirty<T>(setter: (v: T) => void) {
     return (v: T) => { setter(v); setDirty(true); };
@@ -78,7 +81,7 @@ export function BrochureDetail({ brochure, leads }: { brochure: BrochureWithActi
   function handleSave() {
     startSave(async () => {
       const result = await updateBrochureAction(brochure.id, { name, welcomeText, includePackages, includeFaqs, closingText });
-      if (result.ok) { toast.success("Brochure saved."); setDirty(false); }
+      if (result.ok) { toast.success(librarySavedToastMessage()); setDirty(false); }
       else toast.error(result.message ?? "Could not save.");
     });
   }
@@ -97,6 +100,7 @@ export function BrochureDetail({ brochure, leads }: { brochure: BrochureWithActi
       <BusinessAssetHeader
         backHref="/library/brochures"
         backLabel="Brochures"
+        beforeNavigate={confirmLeave}
         whatIsThis="Brochure"
         title={brochure.name}
         status={brochure.isArchived ? <Badge variant="muted">Archived</Badge> : <Badge variant="outline">Active</Badge>}
@@ -143,9 +147,10 @@ export function BrochureDetail({ brochure, leads }: { brochure: BrochureWithActi
             <Label className="text-sm font-medium text-heading">Next steps <span className="font-normal text-muted-foreground">(optional)</span></Label>
             <Textarea value={closingText} onChange={(e) => markDirty(setClosingText)(e.target.value)} rows={3} placeholder="How should they get in touch?" />
           </div>
-          <div className="flex justify-end">
+          <div className="flex items-center justify-end gap-3">
+            <LibrarySaveStatus status={saving ? "saving" : dirty ? "dirty" : "idle"} model="explicit" className="mr-auto" />
             <Button type="button" disabled={!dirty || !name.trim() || saving} onClick={handleSave}>
-              {saving ? <><Loader2 className="mr-1.5 h-4 w-4 animate-spin" />Saving…</> : "Save"}
+              {saving ? <><Loader2 className="mr-1.5 h-4 w-4 animate-spin" />Saving…</> : "Save changes"}
             </Button>
           </div>
         </CardContent>
@@ -153,7 +158,12 @@ export function BrochureDetail({ brochure, leads }: { brochure: BrochureWithActi
 
       <Card>
         <CardHeader><p className="text-sm font-medium text-heading">Share with a prospect</p></CardHeader>
-        <CardContent>
+        <CardContent className="space-y-3">
+          <p className="text-xs text-muted-foreground">
+            Share sends an email with a view link. The public link for this brochure stays the same after you send —
+            there is no separate revoke action. Archive hides the brochure from your Library list; previously shared
+            links keep working until you delete the brochure.
+          </p>
           {leads.filter((l) => l.email).length === 0 ? (
             <p className="text-sm text-muted-foreground">No leads with an email address yet.</p>
           ) : (

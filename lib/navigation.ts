@@ -55,6 +55,7 @@ export const NAV_SECTIONS: NavSection[] = [
       { title: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
       { title: "Reports",   href: "/reporting",  icon: BarChart3 },
       { title: "Calendar",  href: "/calendar",   icon: CalendarDays },
+      { title: "Help & Guides", href: "/help", icon: GraduationCap },
     ],
   },
   {
@@ -112,7 +113,6 @@ export const NAV_SECTIONS: NavSection[] = [
     items: [
       { title: "Settings",    href: "/settings",    icon: Settings },
       { title: "Venue Guide", href: "/guide",       icon: Info },
-      { title: "Success Library", href: "/success-library", icon: GraduationCap },
       { title: "Requests", href: "/requests", icon: ListChecks },
     ],
   },

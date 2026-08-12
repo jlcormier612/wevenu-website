@@ -457,6 +457,15 @@ export async function cancelLineItem(client: DbClient, venueId: string, itemId: 
   if (error) throw error;
 }
 
+/**
+ * Release Readiness Reconciliation remediation: `payment_line_items_delete`
+ * (`20260716000000_tr_g1_permissions_enforcement.sql`) restricts DELETE to
+ * Owner/Manager at the RLS layer, but blocks a disallowed delete by
+ * matching zero rows, not by raising an error — this previously reported
+ * `{ ok: true }` even when a Coordinator/Staff attempt silently deleted
+ * nothing. `.select("id")` on the delete surfaces which row actually
+ * matched, same fix shape already shipped for contracts/packages/playbooks.
+ */
 export async function deleteLineItem(
   client: DbClient,
   venueId: string,
@@ -467,8 +476,11 @@ export async function deleteLineItem(
   if (item?.status === "paid") {
     return { ok: false, message: "This payment has already been collected and can't be deleted. Cancel it instead if it needs to be removed from the schedule." };
   }
-  const { error } = await client.from("payment_line_items").delete().eq("id", itemId).eq("venue_id", venueId);
+  const { data, error } = await client.from("payment_line_items").delete().eq("id", itemId).eq("venue_id", venueId).select("id");
   if (error) throw error;
+  if (!data || data.length === 0) {
+    return { ok: false, message: "Only an Owner or Manager can delete a payment." };
+  }
   return { ok: true };
 }
 
@@ -482,8 +494,11 @@ export async function deleteSchedule(
   if (paidItems && paidItems.length > 0) {
     return { ok: false, message: "This schedule has at least one collected payment and can't be deleted, to preserve the financial record." };
   }
-  const { error } = await client.from("payment_schedules").delete().eq("id", scheduleId).eq("venue_id", venueId);
+  const { data, error } = await client.from("payment_schedules").delete().eq("id", scheduleId).eq("venue_id", venueId).select("id");
   if (error) throw error;
+  if (!data || data.length === 0) {
+    return { ok: false, message: "Only an Owner or Manager can delete a payment schedule." };
+  }
   return { ok: true };
 }
 

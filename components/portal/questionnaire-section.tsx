@@ -37,7 +37,7 @@ export function QuestionnairePortalSection({ token }: { token: string }) {
       <div className="max-w-xl mx-auto px-4 py-16 text-center">
         <p className="text-sm font-medium text-heading">Nothing waiting yet</p>
         <p className="text-xs text-muted-foreground mt-1">
-          When your venue sends a planning form, Final Details, or feedback request, it will appear here.
+          When your venue sends a questionnaire, Final Details, or feedback request, it will appear here.
         </p>
       </div>
     );

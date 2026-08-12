@@ -4,7 +4,7 @@ import * as React from "react";
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { BookPlus, Loader2 } from "lucide-react";
+import { BookPlus, Loader2, Archive, ArchiveRestore } from "lucide-react";
 import { toast } from "sonner";
 
 import {
@@ -12,9 +12,11 @@ import {
   createInventoryTemplateAction,
   setInventoryTemplateArchivedAction,
 } from "@/app/(app)/events/[id]/event-inventory-actions";
-import { Badge } from "@/components/ui/badge";
+import { LIBRARY_LABELS, archiveToggleLabel } from "@/components/library/labels";
+import { LibraryArchivedSection } from "@/components/library/library-archived-section";
+import { LibraryAssetCard } from "@/components/library/library-asset-card";
+import { partitionArchived } from "@/components/library/partition-archived";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
@@ -103,33 +105,39 @@ function StarterMenu({ missingKeys }: { missingKeys: InventoryTemplateStarterKey
   );
 }
 
-function TemplateCard({ template }: { template: InventoryTemplate }) {
+function TemplateCard({ template, archivedView }: { template: InventoryTemplate; archivedView?: boolean }) {
   const [pending, startTransition] = React.useTransition();
+  function toggleArchive() {
+    startTransition(async () => {
+      const result = await setInventoryTemplateArchivedAction(template.id, !template.isArchived);
+      if (!result.ok) toast.error(result.message ?? "Could not update.");
+      else toast.success(template.isArchived ? "Template restored." : "Template archived.");
+    });
+  }
   return (
-    <Card>
-      <CardContent className="flex items-center justify-between gap-4 py-4">
-        <Link href={`/library/inventory-templates/${template.id}`} className="min-w-0 flex-1">
-          <div className="flex items-center gap-2 flex-wrap">
-            <p className="font-medium text-heading">{template.name}</p>
-            {template.sourceMasterKey && !template.isArchived && (
-              <Badge variant="muted" className="text-[10px]">Starter</Badge>
-            )}
-            {template.isArchived && <Badge variant="muted">Archived</Badge>}
-          </div>
-          {template.description && <p className="text-sm text-muted-foreground truncate">{template.description}</p>}
-          <p className="text-xs text-muted-foreground mt-0.5">Updated {formatRelative(template.updatedAt)}</p>
-        </Link>
-        <div className="flex items-center gap-2 shrink-0">
-          <Button type="button" variant="ghost" size="sm" disabled={pending}
-            onClick={() => startTransition(async () => {
-              const result = await setInventoryTemplateArchivedAction(template.id, !template.isArchived);
-              if (!result.ok) toast.error(result.message ?? "Could not update.");
-            })}>
-            {pending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : template.isArchived ? "Unarchive" : "Archive"}
-          </Button>
-        </div>
-      </CardContent>
-    </Card>
+    <LibraryAssetCard
+      layout="row"
+      title={template.name}
+      description={template.description}
+      meta={`Updated ${formatRelative(template.updatedAt)}`}
+      href={archivedView ? undefined : `/library/inventory-templates/${template.id}`}
+      isStarter={Boolean(template.sourceMasterKey)}
+      isArchived={template.isArchived}
+      primaryActions={archivedView
+        ? [{ id: "restore", label: LIBRARY_LABELS.restore, onClick: toggleArchive, emphasis: "edit" }]
+        : [{ id: "edit", label: LIBRARY_LABELS.edit, href: `/library/inventory-templates/${template.id}`, emphasis: "edit" }]}
+      overflowPending={pending}
+      overflowItems={archivedView ? [] : [
+        {
+          id: "archive",
+          label: archiveToggleLabel(template.isArchived),
+          onClick: toggleArchive,
+          icon: template.isArchived
+            ? <ArchiveRestore className="mr-2 h-3.5 w-3.5" />
+            : <Archive className="mr-2 h-3.5 w-3.5" />,
+        },
+      ]}
+    />
   );
 }
 
@@ -140,21 +148,36 @@ export function InventoryTemplateList({
   templates: InventoryTemplate[];
   missingStarterKeys?: InventoryTemplateStarterKey[];
 }) {
+  const { active, archived } = partitionArchived(templates, (t) => t.isArchived);
   return (
     <div className="space-y-4">
       <div className="flex justify-end gap-2 flex-wrap">
         <StarterMenu missingKeys={missingStarterKeys} />
         <CreateTemplateSheet />
       </div>
+      <p className="text-xs text-muted-foreground">
+        Templates are reusable packing lists. Applying one to an event happens on the booking — not as a client send from the Library.
+      </p>
       {templates.length === 0 ? (
         <div className="flex flex-col items-center justify-center rounded-sm border border-dashed border-border bg-card/40 py-16 text-center">
           <p className="font-heading text-lg font-medium text-heading">No inventory templates yet</p>
           <p className="mt-1 text-sm text-muted-foreground">Create one to reuse across events, or restore a Hello to Cheers starter.</p>
         </div>
       ) : (
-        <div className="space-y-2">
-          {templates.map((t) => <TemplateCard key={t.id} template={t} />)}
-        </div>
+        <>
+          {active.length === 0 ? (
+            <p className="text-sm text-muted-foreground py-8 text-center">No active inventory templates.</p>
+          ) : (
+            <div className="space-y-2">
+              {active.map((t) => <TemplateCard key={t.id} template={t} />)}
+            </div>
+          )}
+          <LibraryArchivedSection count={archived.length}>
+            <div className="space-y-2">
+              {archived.map((t) => <TemplateCard key={t.id} template={t} archivedView />)}
+            </div>
+          </LibraryArchivedSection>
+        </>
       )}
     </div>
   );

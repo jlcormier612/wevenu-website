@@ -279,15 +279,30 @@ export async function removeTemplateItem(itemId: string): Promise<EventInventory
   return result as EventInventoryActionResult;
 }
 
-/** Delete restricted to Owner/Manager — same permission shape as Contract delete (D4) and Payment line item delete. */
+/**
+ * Delete restricted to Owner/Manager — same permission shape as Contract
+ * delete (D4) and Payment line item delete.
+ *
+ * Release Readiness Reconciliation remediation: `inventory_templates_delete_gate`
+ * is the RLS backstop for the role check above, but a RESTRICTIVE policy
+ * blocks a disallowed delete by matching zero rows, not by raising an
+ * error — this previously only checked `error`, so a direct-API call
+ * bypassing this function's own role check would have silently no-op'd
+ * while still reporting `{ ok: true }`. `.select("id")` surfaces which row
+ * actually matched, same fix shape already shipped for
+ * contracts/payments/invoices/timeline/floor plans.
+ */
 export async function deleteTemplate(id: string): Promise<EventInventoryActionResult> {
   const result = await withVenue(async (supabase, venueId) => {
     const role = await getCurrentUserRole();
     if (role !== "owner" && role !== "manager") {
       return { ok: false, message: "Only an Owner or Manager can delete a template." } as EventInventoryActionResult;
     }
-    const { error } = await supabase.from("inventory_templates").delete().eq("id", id).eq("venue_id", venueId);
+    const { data, error } = await supabase.from("inventory_templates").delete().eq("id", id).eq("venue_id", venueId).select("id");
     if (error) return { ok: false, message: error.message } as EventInventoryActionResult;
+    if (!data || data.length === 0) {
+      return { ok: false, message: "Only an Owner or Manager can delete a template." } as EventInventoryActionResult;
+    }
     return { ok: true } as EventInventoryActionResult;
   });
   return result as EventInventoryActionResult;

@@ -1,0 +1,45 @@
+{
+  "at": "2026-08-11T22:34:48.482Z",
+  "notes": [
+    {
+      "path": "/library/payment-schedules",
+      "ok": true,
+      "status": 200,
+      "url": "http://localhost:3000/library/payment-schedules",
+      "snippet": "OVERVIEW Dashboard Reports Calendar PIPELINE Leads CLIENTS Clients COMMUNICATION Inbox Message Templates Automations TO DO'S Tours Task Center RESOURCES/TEMPLAT",
+      "hasUnarchive": false
+    },
+    {
+      "path": "/library/inventory-templates",
+      "ok": true,
+      "status": 200,
+      "url": "http://localhost:3000/library/inventory-templates",
+      "snippet": "OVERVIEW Dashboard Reports Calendar PIPELINE Leads CLIENTS Clients COMMUNICATION Inbox Message Templates Automations TO DO'S Tours Task Center RESOURCES/TEMPLAT",
+      "hasUnarchive": false
+    },
+    {
+      "path": "/library/floor-plan-templates",
+      "ok": true,
+      "status": 200,
+      "url": "http://localhost:3000/library/floor-plan-templates",
+      "snippet": "OVERVIEW Dashboard Reports Calendar PIPELINE Leads CLIENTS Clients COMMUNICATION Inbox Message Templates Automations TO DO'S Tours Task Center RESOURCES/TEMPLAT",
+      "hasUnarchive": false
+    },
+    {
+      "path": "/packages",
+      "ok": true,
+      "status": 200,
+      "url": "http://localhost:3000/packages",
+      "snippet": "OVERVIEW Dashboard Reports Calendar PIPELINE Leads CLIENTS Clients COMMUNICATION Inbox Message Templates Automations TO DO'S Tours Task Center RESOURCES/TEMPLAT",
+      "hasUnarchive": false
+    },
+    {
+      "path": "/guide",
+      "ok": true,
+      "status": 200,
+      "url": "http://localhost:3000/guide",
+      "snippet": "OVERVIEW Dashboard Reports Calendar PIPELINE Leads CLIENTS Clients COMMUNICATION Inbox Message Templates Automations TO DO'S Tours Task Center RESOURCES/TEMPLAT",
+      "hasUnarchive": false
+    }
+  ]
+}

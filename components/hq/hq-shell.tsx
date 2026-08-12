@@ -37,7 +37,7 @@ const NAV: NavItem[] = [
   // until White-Glove's Onboarding Engagement (Hospitality Success
   // Platform §2.2a) gave it something real to stand on.
   { href: "/admin/onboarding", label: "Customer Success", icon: HandHeart },
-  { href: "/admin/success-library", label: "Success Library", icon: GraduationCap },
+  { href: "/admin/success-library", label: "Help & Guides", icon: GraduationCap },
   { href: "/admin/support", label: "Support", icon: Headset, badgeKey: "support" },
   { href: "/admin/analytics", label: "Analytics", icon: LineChart },
   { href: "/admin/system-health", label: "System Health", icon: Siren },

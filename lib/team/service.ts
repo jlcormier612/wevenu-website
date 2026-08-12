@@ -188,6 +188,17 @@ export async function acceptTeamInvitation(
   return { ok: true, venueId: data.venueId };
 }
 
+/**
+ * Release Readiness Reconciliation remediation: both `.update()`s below
+ * previously checked only `error`, not rows-affected. `venue_staff_update`
+ * RLS restricts a row to a match with `canManageStaff`'s own rule
+ * (Manager may only touch a non-owner staff/coordinator row) — a
+ * RESTRICTIVE-shaped mismatch blocks by matching zero rows, not by raising
+ * an error, so a blocked update (e.g. a direct RPC call bypassing this
+ * function's own `canManageStaff` check) previously still reported
+ * `{ ok: true }`. `.select("id")` on the update surfaces which row
+ * actually matched, same fix shape already shipped for contracts/payments.
+ */
 export async function removeStaffMember(staffId: string): Promise<TeamActionResult> {
   return withVenue(async (supabase) => {
     const actingRole = await getCurrentUserRole();
@@ -197,12 +208,16 @@ export async function removeStaffMember(staffId: string): Promise<TeamActionResu
       return { ok: false, error: "Only an Owner can remove a Manager. Managers can remove Staff or Coordinator members." };
     }
     // Soft delete — cannot remove owner
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from("venue_staff")
       .update({ is_active: false })
       .eq("id", staffId)
-      .eq("is_owner", false);
+      .eq("is_owner", false)
+      .select("id");
     if (error) return { ok: false, error: error.message };
+    if (!data || data.length === 0) {
+      return { ok: false, error: "This team member couldn't be removed — the change wasn't permitted." };
+    }
     return { ok: true };
   }) as Promise<TeamActionResult>;
 }
@@ -218,12 +233,16 @@ export async function updateStaffRole(
     if (!canManageStaff(actingRole, role, target?.role ?? null)) {
       return { ok: false, error: "Only an Owner can assign or change a Manager. Managers can only manage Staff/Coordinator roles." };
     }
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from("venue_staff")
       .update({ role })
       .eq("id", staffId)
-      .eq("is_owner", false);
+      .eq("is_owner", false)
+      .select("id");
     if (error) return { ok: false, error: error.message };
+    if (!data || data.length === 0) {
+      return { ok: false, error: "This role change couldn't be made — it wasn't permitted." };
+    }
     return { ok: true };
   }) as Promise<TeamActionResult>;
 }

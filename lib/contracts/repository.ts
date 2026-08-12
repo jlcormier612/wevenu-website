@@ -10,6 +10,7 @@ import type {
   NewContractInput,
   TemplateInput,
 } from "@/lib/contracts/types";
+import type { ContractSigner } from "@/lib/contracts/signers";
 
 type DbClient = Awaited<ReturnType<typeof createClient>>;
 
@@ -27,11 +28,30 @@ type ContractRow = {
   amends_contract_id: string | null;
   clients?: { first_name: string; last_name: string; partner_first_name: string | null; partner_last_name: string | null; email: string | null } | null;
   events?: { event_date: string | null } | null;
-  // Venue Brand Experience Phase 1 — only present in get_contract_by_token's
-  // response (the public sign page's own read).
   venue?: { name: string | null; primaryColor: string | null; secondaryColor: string | null; accentColor: string | null; neutralColor: string | null; logoUrl: string | null } | null;
+  signer?: {
+    id: string | null;
+    signerType: string;
+    signerName: string | null;
+    signerEmail: string | null;
+    signedAt: string | null;
+    legacy: boolean;
+  } | null;
 };
-type ActRow = { id: string; venue_id: string; contract_id: string; type: string; title: string; description: string | null; created_at: string; };
+type ActRow = {
+  id: string; venue_id: string; contract_id: string; type: string; title: string;
+  description: string | null; created_at: string;
+  actor_id: string | null; actor_label: string | null;
+};
+type SignerRow = {
+  id: string; contract_id: string; venue_id: string; signer_type: "venue" | "client";
+  signer_role: string | null; signer_ref_id: string | null; client_contact_id: string | null;
+  signer_name: string | null; signer_email: string | null; is_required: boolean;
+  sign_order: number; sign_token: string; signed_at: string | null;
+  signer_ip: string | null; signer_user_agent: string | null;
+  consent_confirmed: boolean | null; consent_text: string | null; content_hash: string | null;
+  created_at: string; updated_at: string;
+};
 
 function mapTemplate(r: TemplateRow): ContractTemplate {
   return {
@@ -57,6 +77,40 @@ function mapContract(r: ContractRow): Contract {
     amendsContractId: r.amends_contract_id ?? null,
     clientName: cn, clientEmail: r.clients?.email ?? null, eventDate: r.events?.event_date ?? null,
     venue: r.venue,
+  };
+}
+
+function mapSigner(r: SignerRow): ContractSigner {
+  return {
+    id: r.id,
+    contractId: r.contract_id,
+    venueId: r.venue_id,
+    signerType: r.signer_type,
+    signerRole: r.signer_role,
+    signerRefId: r.signer_ref_id,
+    clientContactId: r.client_contact_id,
+    signerName: r.signer_name,
+    signerEmail: r.signer_email,
+    isRequired: r.is_required,
+    signOrder: r.sign_order,
+    signToken: r.sign_token,
+    signedAt: r.signed_at,
+    signerIp: r.signer_ip,
+    signerUserAgent: r.signer_user_agent,
+    consentConfirmed: r.consent_confirmed,
+    consentText: r.consent_text,
+    contentHash: r.content_hash,
+    createdAt: r.created_at,
+    updatedAt: r.updated_at,
+  };
+}
+
+function mapActivity(r: ActRow): ContractActivity {
+  return {
+    id: r.id, venueId: r.venue_id, contractId: r.contract_id, type: r.type,
+    title: r.title, description: r.description,
+    actorId: r.actor_id ?? null, actorLabel: r.actor_label ?? null,
+    createdAt: r.created_at,
   };
 }
 
@@ -149,16 +203,22 @@ export async function getContracts(client: DbClient, venueId: string): Promise<C
 }
 
 export async function getContract(client: DbClient, venueId: string, id: string): Promise<ContractWithDetails | null> {
-  const [cRes, aRes] = await Promise.all([
+  const [cRes, aRes, sRes] = await Promise.all([
     client.from("contracts")
       .select("*, clients(first_name, last_name, partner_first_name, partner_last_name, email), events(event_date)")
       .eq("id", id).eq("venue_id", venueId).maybeSingle<ContractRow>(),
     client.from("contract_activities").select("*").eq("contract_id", id).order("created_at", { ascending: false }),
+    client.from("contract_signers").select("*").eq("contract_id", id).eq("venue_id", venueId).order("sign_order").order("created_at"),
   ]);
   if (cRes.error) throw cRes.error;
   if (aRes.error) throw aRes.error;
+  if (sRes.error) throw sRes.error;
   if (!cRes.data) return null;
-  return { ...mapContract(cRes.data as unknown as ContractRow), activities: (aRes.data as ActRow[]).map(r => ({ id: r.id, venueId: r.venue_id, contractId: r.contract_id, type: r.type, title: r.title, description: r.description, createdAt: r.created_at })) };
+  return {
+    ...mapContract(cRes.data as unknown as ContractRow),
+    activities: (aRes.data as ActRow[]).map(mapActivity),
+    signers: (sRes.data as SignerRow[]).map(mapSigner),
+  };
 }
 
 /**
@@ -168,11 +228,169 @@ export async function getContract(client: DbClient, venueId: string, id: string)
  * request to read a sent/signed contract by status alone, with no
  * sign_token check at the database layer. The RPC validates the token
  * server-side, the same pattern used by get_portal_context/sign_contract.
+ * Also enforces expires_at and resolves per-signer tokens.
  */
-export async function getContractByToken(client: DbClient, token: string): Promise<Contract | null> {
+export async function getContractByToken(client: DbClient, token: string): Promise<(Contract & {
+  tokenSigner?: ContractRow["signer"];
+}) | null> {
   const { data, error } = await client.rpc("get_contract_by_token", { p_token: token });
   if (error) throw error;
-  return data ? mapContract(data as unknown as ContractRow) : null;
+  if (!data) return null;
+  const row = data as unknown as ContractRow;
+  return { ...mapContract(row), tokenSigner: row.signer ?? null };
+}
+
+export async function getSignersForContract(client: DbClient, venueId: string, contractId: string): Promise<ContractSigner[]> {
+  const { data, error } = await client.from("contract_signers")
+    .select("*").eq("contract_id", contractId).eq("venue_id", venueId)
+    .order("sign_order").order("created_at");
+  if (error) throw error;
+  return (data as SignerRow[]).map(mapSigner);
+}
+
+export type ClientSignerSeed = {
+  clientContactId: string | null;
+  signerRefId: string | null;
+  signerName: string;
+  signerEmail: string;
+  signerRole: string | null;
+};
+
+export async function insertContractSigners(
+  client: DbClient,
+  venueId: string,
+  contractId: string,
+  clientSigners: ClientSignerSeed[],
+): Promise<void> {
+  // Venue signer placeholder (unsigned) — sign_order 0; clients parallel at 1
+  const rows = [
+    {
+      contract_id: contractId,
+      venue_id: venueId,
+      signer_type: "venue",
+      signer_role: null,
+      signer_ref_id: null,
+      client_contact_id: null,
+      signer_name: null,
+      signer_email: null,
+      is_required: true,
+      sign_order: 0,
+    },
+    ...clientSigners.map((s) => ({
+      contract_id: contractId,
+      venue_id: venueId,
+      signer_type: "client" as const,
+      signer_role: s.signerRole,
+      signer_ref_id: s.signerRefId,
+      client_contact_id: s.clientContactId,
+      signer_name: s.signerName,
+      signer_email: s.signerEmail,
+      is_required: true,
+      sign_order: 1,
+    })),
+  ];
+  const { error } = await client.from("contract_signers").insert(rows);
+  if (error) throw error;
+}
+
+export async function venueSignContract(
+  client: DbClient,
+  venueId: string,
+  contractId: string,
+  opts: {
+    signerName: string;
+    signerEmail: string | null;
+    signerRole: string;
+    signerRefId: string;
+    consent: boolean;
+    consentText: string;
+    contentHash: string;
+    ip: string | null;
+    userAgent: string | null;
+    actorId: string | null;
+    actorLabel: string | null;
+  },
+): Promise<{ ok: true } | { ok: false; message: string }> {
+  const { data: contract, error: cErr } = await client.from("contracts")
+    .select("id, status, content")
+    .eq("id", contractId).eq("venue_id", venueId)
+    .maybeSingle<{ id: string; status: Contract["status"]; content: string }>();
+  if (cErr) throw cErr;
+  if (!contract) return { ok: false, message: "Contract not found." };
+  if (contract.status !== "draft") {
+    return { ok: false, message: "Only a draft contract can be signed by the venue." };
+  }
+  if (!opts.consent) {
+    return { ok: false, message: "Please confirm you agree this constitutes your legal signature." };
+  }
+
+  const { data: venueSigner, error: sErr } = await client.from("contract_signers")
+    .select("id, signed_at")
+    .eq("contract_id", contractId).eq("venue_id", venueId).eq("signer_type", "venue")
+    .maybeSingle<{ id: string; signed_at: string | null }>();
+  if (sErr) throw sErr;
+  if (!venueSigner) return { ok: false, message: "Venue signer record not found." };
+  if (venueSigner.signed_at) return { ok: false, message: "This contract has already been signed by the venue." };
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: updated, error } = await (client.from("contract_signers") as any)
+    .update({
+      signed_at: new Date().toISOString(),
+      signer_name: opts.signerName.trim(),
+      signer_email: opts.signerEmail,
+      signer_role: opts.signerRole,
+      signer_ref_id: opts.signerRefId,
+      signer_ip: opts.ip,
+      signer_user_agent: opts.userAgent,
+      consent_confirmed: true,
+      consent_text: opts.consentText,
+      content_hash: opts.contentHash,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", venueSigner.id)
+    .eq("venue_id", venueId)
+    .eq("signer_type", "venue")
+    .is("signed_at", null)
+    .select("id");
+  if (error) throw error;
+  if (!updated || updated.length === 0) {
+    return { ok: false, message: "Could not record the venue signature." };
+  }
+
+  await insertContractActivity(
+    client, venueId, contractId, "venue_signed", "Signed by venue",
+    `Signed by ${opts.signerName.trim()}`,
+    opts.actorId, opts.actorLabel,
+  );
+  return { ok: true };
+}
+
+export async function clearVenueSignature(
+  client: DbClient, venueId: string, contractId: string,
+  actorId: string | null, actorLabel: string | null,
+): Promise<{ ok: true } | { ok: false; message: string }> {
+  const { data: contract } = await client.from("contracts")
+    .select("status").eq("id", contractId).eq("venue_id", venueId)
+    .maybeSingle<{ status: Contract["status"] }>();
+  if (!contract) return { ok: false, message: "Contract not found." };
+  if (contract.status !== "draft") {
+    return { ok: false, message: "Only a draft contract's venue signature can be withdrawn." };
+  }
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error } = await (client.from("contract_signers") as any)
+    .update({
+      signed_at: null, signer_ip: null, signer_user_agent: null,
+      consent_confirmed: null, consent_text: null, content_hash: null,
+      signer_ref_id: null, updated_at: new Date().toISOString(),
+    })
+    .eq("contract_id", contractId).eq("venue_id", venueId).eq("signer_type", "venue");
+  if (error) throw error;
+  await insertContractActivity(
+    client, venueId, contractId, "venue_signature_withdrawn",
+    "Venue signature withdrawn", "Withdrawn so the agreement can be edited",
+    actorId, actorLabel,
+  );
+  return { ok: true };
 }
 
 export async function insertContract(client: DbClient, venueId: string, input: NewContractInput): Promise<string> {
@@ -191,26 +409,8 @@ export async function insertContract(client: DbClient, venueId: string, input: N
 }
 
 /**
- * TR-L1 (Trust Risk Register): this used to have no status check at all —
- * a signed contract's legally-binding text could be edited exactly like a
- * draft, with no trace in the activity log. Now only draft contracts are
- * editable, and every edit is logged.
- */
-/**
- * Work Package D4 — optimistic concurrency. Confirmed by D3 as a real,
- * unprotected defect: this previously did a blind fetch-then-overwrite
- * with no version check at all, so two coordinators editing the same
- * draft would silently last-write-wins with no warning to either party.
- *
- * `expectedUpdatedAt` is the `updated_at` value the caller's editor last
- * loaded — already trigger-maintained on every UPDATE
- * (`contracts_updated_at`), so it's a correct concurrency token with no
- * new column needed. The UPDATE's own WHERE clause includes it: if
- * another save has happened since the caller loaded the row, `updated_at`
- * has moved on, the WHERE clause matches zero rows, and `.select("id")`
- * on the update lets us tell "matched and updated" apart from "matched
- * nothing" — Supabase's client returns an empty array, not an error, for
- * the latter, so the row count is the only reliable signal.
+ * TR-L1 + venue-first signing: editable only while draft AND venue has not
+ * yet signed. Once the venue signer has signed_at set, content is immutable.
  */
 export async function updateContractContent(
   client: DbClient, venueId: string, id: string, title: string, content: string, expectedUpdatedAt: string,
@@ -226,6 +426,18 @@ export async function updateContractContent(
     return { ok: false, message: "This contract has already been sent and can no longer be edited.", reason: "not_editable" };
   }
 
+  const { data: venueSigner } = await client.from("contract_signers")
+    .select("signed_at")
+    .eq("contract_id", id).eq("venue_id", venueId).eq("signer_type", "venue")
+    .maybeSingle<{ signed_at: string | null }>();
+  if (venueSigner?.signed_at) {
+    return {
+      ok: false,
+      message: "This contract has been signed by the venue and can no longer be edited. Withdraw the venue signature first if changes are needed.",
+      reason: "not_editable",
+    };
+  }
+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: updated, error } = await (client.from("contracts") as any).update({ title: title.trim(), content })
     .eq("id", id).eq("venue_id", venueId).eq("updated_at", expectedUpdatedAt)
@@ -233,9 +445,6 @@ export async function updateContractContent(
   if (error) throw error;
 
   if (!updated || updated.length === 0) {
-    // Distinguishes "someone else saved first" from "not found"/"not
-    // editable" above, both already ruled out by the pre-check — the only
-    // remaining explanation for zero rows matched is a stale updated_at.
     return {
       ok: false,
       reason: "stale",
@@ -248,40 +457,43 @@ export async function updateContractContent(
 }
 
 /**
- * TR-L5 (Trust Risk Register): sendContract/cancelContract previously had no
- * status guard at all — calling send on an already-signed contract silently
- * flipped it back to 'sent' and re-armed the still-valid sign_token for a
- * second signature, overwriting the original signer name/timestamp/IP/
- * consent. Now enforces the same transitions the UI already assumes:
- * send only from 'draft', cancel only from 'draft' or 'sent'. Never signed,
- * never already-cancelled — a signed contract's status cannot be changed by
- * this function at all, full stop.
- */
-/**
- * Work Package D4 — the negotiation-loop gap D3/D4 research both
- * confirmed: once sent, `updateContractContent` rejects every edit
- * outright, and there was no path back to Draft short of Cancel
- * (destroying the sign token/history) — meaning "client requests
- * changes → venue edits → reshare," the lifecycle this whole work
- * package describes, had no real mechanism to return to a working state
- * at all. Mirrors `revertInvoiceToDraft`'s exact shape (same guard
- * pattern already established and trusted elsewhere in this codebase) —
- * only a *sent, unsigned* contract can reopen; signing wins the race if
- * both happen close together, since this only ever matches `status='sent'`.
+ * Reopen sent → draft for negotiation. Clears venue + client signature
+ * evidence so content becomes editable again under the venue-first model.
  */
 export async function reopenForEditing(
   client: DbClient, venueId: string, id: string,
+  actorId?: string | null, actorLabel?: string | null,
 ): Promise<{ ok: true } | { ok: false; message: string }> {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: updated, error } = await (client.from("contracts") as any)
-    .update({ status: "draft" })
+    .update({ status: "draft", sent_at: null, is_couple_visible: false })
     .eq("id", id).eq("venue_id", venueId).eq("status", "sent")
     .select("id");
   if (error) throw error;
   if (!updated || updated.length === 0) {
     return { ok: false, message: "Only a sent, unsigned contract can be reopened for editing." };
   }
-  await insertContractActivity(client, venueId, id, "reopened", "Reopened for editing");
+
+  // Clear all signature evidence; keep signer rows and regenerate unique tokens
+  const { data: existingSigners } = await client.from("contract_signers")
+    .select("id").eq("contract_id", id).eq("venue_id", venueId);
+  for (const row of existingSigners ?? []) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await (client.from("contract_signers") as any)
+      .update({
+        signed_at: null, signer_ip: null, signer_user_agent: null,
+        consent_confirmed: null, consent_text: null, content_hash: null,
+        sign_token: crypto.randomUUID(),
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", (row as { id: string }).id)
+      .eq("venue_id", venueId);
+  }
+
+  await insertContractActivity(
+    client, venueId, id, "reopened", "Reopened for editing",
+    undefined, actorId ?? null, actorLabel ?? null,
+  );
   return { ok: true };
 }
 
@@ -299,6 +511,18 @@ export async function updateContractStatus(
   if (status === "sent" && current.status !== "draft") {
     return { ok: false, message: "Only a draft contract can be sent for signing." };
   }
+  if (status === "sent") {
+    const { data: venueSigner } = await client.from("contract_signers")
+      .select("signed_at")
+      .eq("contract_id", id).eq("venue_id", venueId).eq("signer_type", "venue")
+      .maybeSingle<{ signed_at: string | null }>();
+    // New-model contracts always have a venue signer row; require signed_at.
+    // Legacy contracts created before this migration may have zero signer rows
+    // — those are not created anymore; block release without venue signature.
+    if (!venueSigner?.signed_at) {
+      return { ok: false, message: "The venue must sign this contract before it can be released to the client." };
+    }
+  }
   if (status === "cancelled" && !["draft", "sent"].includes(current.status)) {
     return { ok: false, message: "A signed contract cannot be cancelled this way — it's a permanent record." };
   }
@@ -306,10 +530,6 @@ export async function updateContractStatus(
   const update: Record<string, unknown> = { status };
   if (extra?.sentAt) {
     update.sent_at = new Date().toISOString();
-    // Commitment Alignment Sprint (docs/commitment-lifecycle-architecture.md
-    // §9, Documents item) — Private until intentionally shared. Sending is
-    // the one existing action that means "the couple should see this now";
-    // this is the only place that ever sets is_couple_visible to true.
     update.is_couple_visible = true;
   }
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -318,13 +538,6 @@ export async function updateContractStatus(
   return { ok: true };
 }
 
-/**
- * TR-L2 (Trust Risk Register): this used to hard-delete any contract
- * regardless of status — a signed contract (the actual legal record) could
- * be permanently destroyed the same way a draft could. Now only draft or
- * cancelled contracts can be deleted; sent/signed contracts must be
- * cancelled first, preserving the record.
- */
 export async function deleteContract(client: DbClient, venueId: string, id: string): Promise<{ ok: true } | { ok: false; message: string }> {
   const { data: existing, error: fetchError } = await client
     .from("contracts")
@@ -337,28 +550,50 @@ export async function deleteContract(client: DbClient, venueId: string, id: stri
     return { ok: false, message: "Only draft or cancelled contracts can be deleted. Cancel this contract first." };
   }
 
-  const { error } = await client.from("contracts").delete().eq("id", id).eq("venue_id", venueId);
+  const { data, error } = await client.from("contracts").delete().eq("id", id).eq("venue_id", venueId).select("id");
   if (error) throw error;
+  if (!data || data.length === 0) {
+    return { ok: false, message: "Only an Owner or Manager can delete a contract." };
+  }
   return { ok: true };
 }
 
 /**
- * Work Package D6 §11 — internal-only, no status/concurrency gate. The
- * Contract type documents `content` as "rendered (tokens already
- * resolved)", but nothing enforced that until now (see createContract/
- * sendContract in service.ts). This is solely a system-triggered safety
- * net for content that still contains literal {{tokens}} at send time —
- * never called from a user-facing action, so it doesn't need the edit
- * guards updateContractContent enforces.
+ * Work Package D6 §11 — internal-only. Also blocked once venue has signed
+ * (force-resolve must not alter committed content).
  */
 export async function forceResolveContractContent(client: DbClient, venueId: string, id: string, content: string): Promise<void> {
+  const { data: venueSigner } = await client.from("contract_signers")
+    .select("signed_at")
+    .eq("contract_id", id).eq("venue_id", venueId).eq("signer_type", "venue")
+    .maybeSingle<{ signed_at: string | null }>();
+  if (venueSigner?.signed_at) {
+    throw new Error("Cannot modify content after the venue has signed.");
+  }
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { error } = await (client.from("contracts") as any).update({ content }).eq("id", id).eq("venue_id", venueId);
   if (error) throw error;
 }
 
-export async function insertContractActivity(client: DbClient, venueId: string, contractId: string, type: string, title: string, description?: string): Promise<void> {
+export async function insertContractActivity(
+  client: DbClient,
+  venueId: string,
+  contractId: string,
+  type: string,
+  title: string,
+  description?: string,
+  actorId?: string | null,
+  actorLabel?: string | null,
+): Promise<void> {
   const { error } = await client.from("contract_activities")
-    .insert({ venue_id: venueId, contract_id: contractId, type, title, description: description ?? null });
+    .insert({
+      venue_id: venueId,
+      contract_id: contractId,
+      type,
+      title,
+      description: description ?? null,
+      actor_id: actorId ?? null,
+      actor_label: actorLabel ?? null,
+    });
   if (error) throw error;
 }

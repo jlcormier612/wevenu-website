@@ -61,6 +61,7 @@ import {
   updateObjectAction,
   updateRoomSettingsAction,
 } from "@/app/(app)/events/[id]/floor-plan-actions";
+import { LibrarySaveStatus, useLibrarySaveStatus } from "@/components/library/library-save-status";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -633,6 +634,21 @@ export function FloorPlanEditor({
   const [uploading, setUploading] = React.useState(false);
   const [creating, setCreating] = React.useState(false);
   const svgRef = React.useRef<SVGSVGElement>(null);
+  const saveUi = useLibrarySaveStatus();
+
+  async function persistObjectUpdate(
+    objId: string,
+    input: Parameters<FloorPlanEditorActions["updateObject"]>[1],
+  ) {
+    saveUi.markSaving();
+    const result = await boundActions.updateObject(objId, input);
+    if (!result.ok) {
+      saveUi.markError();
+      toast.error(result.message ?? "Unable to save changes. Please try again.");
+      return;
+    }
+    saveUi.markSaved();
+  }
 
   // Category palette
   const categoriesWithItems = React.useMemo(() => {
@@ -881,9 +897,9 @@ export function FloorPlanEditor({
     }
     const obj = objects.find((o) => o.id === interaction.id);
     if (obj) {
-      if (interaction.kind === "move") void boundActions.updateObject(obj.id, { x: obj.x, y: obj.y });
-      else if (interaction.kind === "resize") void boundActions.updateObject(obj.id, { width: obj.width, height: obj.height });
-      else if (interaction.kind === "rotate") void boundActions.updateObject(obj.id, { rotation: obj.rotation });
+      if (interaction.kind === "move") void persistObjectUpdate(obj.id, { x: obj.x, y: obj.y });
+      else if (interaction.kind === "resize") void persistObjectUpdate(obj.id, { width: obj.width, height: obj.height });
+      else if (interaction.kind === "rotate") void persistObjectUpdate(obj.id, { rotation: obj.rotation });
     }
     setInteraction(null);
   }
@@ -891,7 +907,7 @@ export function FloorPlanEditor({
   // --- Local state update + DB save for properties ---
   function handlePropertyUpdate(id: string, patch: Partial<FloorPlanCanvasObject>) {
     setObjects((prev) => prev.map((o) => o.id === id ? { ...o, ...patch } : o));
-    void boundActions.updateObject(id, patch);
+    void persistObjectUpdate(id, patch);
   }
 
   async function handleDelete(id: string) {
@@ -1068,6 +1084,10 @@ export function FloorPlanEditor({
   return (
     <TooltipProvider>
     <div className="space-y-4">
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-xs text-muted-foreground">Changes save automatically as you edit.</p>
+        <LibrarySaveStatus status={saveUi.status} model="autosave" />
+      </div>
       {/* Palette: category chips */}
       <div className="flex flex-wrap items-center gap-1.5">
         {categoriesWithItems.map((cat) => (

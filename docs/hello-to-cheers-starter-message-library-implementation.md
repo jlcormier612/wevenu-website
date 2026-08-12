@@ -73,7 +73,7 @@ Customer-facing gate: `resolveForCustomerSend` / `assertCustomerSafeMergedConten
 5. **Add starter again** (`addStarterMessageAgain`): always inserts a **new** row with a unique name (`Name`, then `Name (Starter)`, then `Name (Starter 2)`…). Never updates an existing row.
 
 Column: `message_templates.source_master_key`  
-Migration: `supabase/migrations/20261268000000_message_starter_library.sql`
+Migration: `supabase/migrations/20261268000001_message_starter_library.sql`
 
 ---
 
@@ -176,7 +176,7 @@ Path: `/communication/templates`
 - `lib/venue/service.ts` — seed on venue create  
 - `app/(app)/communication/templates/{page,actions}.ts(x)`  
 - `components/communication/{message-template-list,add-hello-to-cheers-starters}.tsx`  
-- `supabase/migrations/20261268000000_message_starter_library.sql`  
+- `supabase/migrations/20261268000001_message_starter_library.sql`  
 
 ---
 

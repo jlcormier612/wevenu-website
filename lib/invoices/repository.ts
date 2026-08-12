@@ -4,6 +4,7 @@ import type {
   AddLineItemResult,
   Invoice,
   InvoiceActivity,
+  InvoiceBrandingSnapshot,
   InvoiceInput,
   InvoiceLineItem,
   InvoiceLineItemInput,
@@ -21,6 +22,7 @@ type InvoiceRow = {
   event_order_id: string | null; event_order_dismissed_fingerprint: string | null;
   amends_invoice_id: string | null; event_order_revision_at_freeze: number | null;
   quickbooks_sync_status: "not_synced" | "pending" | "synced" | "failed";
+  branding_snapshot: InvoiceBrandingSnapshot | null;
   created_at: string; updated_at: string;
   clients?: { first_name: string; last_name: string; partner_first_name: string | null; partner_last_name: string | null } | null;
   events?: { name: string; event_date: string } | null;
@@ -38,6 +40,7 @@ function mapInvoice(r: InvoiceRow, amendedBy?: { id: string; invoiceNumber: stri
     amendsInvoiceId: r.amends_invoice_id, eventOrderRevisionAtFreeze: r.event_order_revision_at_freeze,
     amendedByInvoiceId: amendedBy?.id ?? null, amendedByInvoiceNumber: amendedBy?.invoiceNumber ?? null,
     quickbooksSyncStatus: r.quickbooks_sync_status,
+    brandingSnapshot: r.branding_snapshot ?? null,
     createdAt: r.created_at, updatedAt: r.updated_at, clientName: cn, eventDate: r.events?.event_date ?? null, eventName: r.events?.name ?? null,
   };
 }
@@ -220,15 +223,29 @@ export async function addLineItem(client: DbClient, venueId: string, invoiceId: 
   return mapItem(data);
 }
 
-export async function removeLineItem(client: DbClient, venueId: string, invoiceId: string, itemId: string): Promise<void> {
-  const { error } = await client.from("invoice_line_items").delete().eq("id", itemId).eq("venue_id", venueId);
+/**
+ * Release Readiness Reconciliation remediation: `invoice_line_items_delete_gate`
+ * (`20261002000000_tr_g6_core_object_delete_role_gate.sql`) restricts DELETE
+ * to Owner/Manager at the RLS layer, but the app layer (`assertInvoiceEditable`
+ * in `lib/invoices/service.ts`) never checked role, only that the invoice is
+ * still a draft — a Coordinator/Staff attempt was silently no-op-ing while
+ * the caller went on to log a "line item removed" activity entry and enqueue
+ * a QuickBooks sync as if it had. `.select("id")` surfaces which row
+ * actually matched, same fix shape already shipped for contracts/payments.
+ */
+export async function removeLineItem(client: DbClient, venueId: string, invoiceId: string, itemId: string): Promise<{ ok: true } | { ok: false; message: string }> {
+  const { data, error } = await client.from("invoice_line_items").delete().eq("id", itemId).eq("venue_id", venueId).select("id");
   if (error) throw error;
+  if (!data || data.length === 0) {
+    return { ok: false, message: "Only an Owner or Manager can remove an invoice line item." };
+  }
   await recomputeInvoiceTotals(client, venueId, invoiceId);
+  return { ok: true };
 }
 
 export async function updateInvoiceStatus(
   client: DbClient, venueId: string, invoiceId: string, status: InvoiceStatus,
-  extra?: { eventOrderRevisionAtFreeze?: number },
+  extra?: { eventOrderRevisionAtFreeze?: number; brandingSnapshot?: InvoiceBrandingSnapshot },
 ): Promise<void> {
   const patch: Record<string, unknown> = { status };
   if (status === "sent") {
@@ -239,6 +256,17 @@ export async function updateInvoiceStatus(
     // this is the only place that ever sets is_couple_visible to true.
     patch.is_couple_visible = true;
     if (extra?.eventOrderRevisionAtFreeze != null) patch.event_order_revision_at_freeze = extra.eventOrderRevisionAtFreeze;
+    // Presentation-only snapshot at draft→sent. Never overwrite an existing
+    // snapshot (paid/void transitions must not re-capture branding).
+    if (extra?.brandingSnapshot) {
+      const { data: current } = await client.from("invoices")
+        .select("branding_snapshot, status")
+        .eq("id", invoiceId).eq("venue_id", venueId)
+        .maybeSingle<{ branding_snapshot: InvoiceBrandingSnapshot | null; status: InvoiceStatus }>();
+      if (current?.status === "draft" && !current.branding_snapshot) {
+        patch.branding_snapshot = extra.brandingSnapshot;
+      }
+    }
   }
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { error } = await (client.from("invoices") as any).update(patch).eq("id", invoiceId).eq("venue_id", venueId);

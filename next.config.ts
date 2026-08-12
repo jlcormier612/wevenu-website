@@ -10,6 +10,12 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+  async redirects() {
+    return [
+      { source: "/success-library", destination: "/help", permanent: true },
+      { source: "/success-library/:slug", destination: "/help/:slug", permanent: true },
+    ];
+  },
 };
 
 export default nextConfig;

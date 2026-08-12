@@ -2,7 +2,13 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/integrations/supabase/server";
-import { reopenQuestionnaire, saveQuestionnaire, sendQuestionnaireToCouple, type Questionnaire } from "@/lib/events/questionnaire";
+import {
+  reopenQuestionnaire,
+  saveQuestionnaire,
+  sendQuestionnaireToCouple,
+  withdrawQuestionnaireAccess,
+  type Questionnaire,
+} from "@/lib/events/questionnaire";
 import {
   addQuestionnaireStarterAgain,
   ensureQuestionnaireFamilyForCurrentVenue,
@@ -76,9 +82,21 @@ export async function reopenQuestionnaireAction(
   return result;
 }
 
+export async function withdrawQuestionnaireAccessAction(
+  eventId: string,
+  kind: QuestionnaireKind = "final_details",
+): Promise<{ ok: boolean; message?: string }> {
+  const result = await withdrawQuestionnaireAccess(eventId, kind);
+  if (result.ok) revalidatePath(`/events/${eventId}`);
+  return result;
+}
+
 export async function applyQuestionnaireTemplateAction(templateId: string, eventId: string): Promise<{ ok: boolean; message?: string }> {
   const result = await templates.applyTemplateToEvent(templateId, eventId);
-  if (result.ok) revalidatePath(`/events/${eventId}`);
+  if (result.ok) {
+    revalidatePath(`/events/${eventId}`);
+    revalidatePath("/library/questionnaire-templates");
+  }
   return result;
 }
 
@@ -88,9 +106,17 @@ export async function createQuestionnaireTemplateAction(
   kind: QuestionnaireKind,
   includedFields: string[],
   requiredFields: string[],
+  authoring?: {
+    customFields?: unknown;
+    masterOverrides?: unknown;
+    fieldOrder?: unknown;
+  },
 ) {
-  const result = await templates.createTemplate(name, description, kind, includedFields, requiredFields);
-  if (result.ok) revalidatePath("/library/questionnaire-templates");
+  const result = await templates.createTemplate(name, description, kind, includedFields, requiredFields, authoring);
+  if (result.ok) {
+    revalidatePath("/library/questionnaire-templates");
+    if (result.template?.id) revalidatePath(`/library/questionnaire-templates/${result.template.id}`);
+  }
   return result;
 }
 
@@ -101,21 +127,56 @@ export async function updateQuestionnaireTemplateAction(
   kind: QuestionnaireKind,
   includedFields: string[],
   requiredFields: string[],
+  authoring?: {
+    customFields?: unknown;
+    masterOverrides?: unknown;
+    fieldOrder?: unknown;
+  },
 ) {
-  const result = await templates.updateTemplate(id, name, description, kind, includedFields, requiredFields);
-  if (result.ok) revalidatePath("/library/questionnaire-templates");
+  const result = await templates.updateTemplate(id, name, description, kind, includedFields, requiredFields, authoring);
+  if (result.ok) {
+    revalidatePath("/library/questionnaire-templates");
+    revalidatePath(`/library/questionnaire-templates/${id}`);
+  }
+  return result;
+}
+
+export async function saveQuestionnaireAuthoringAction(
+  id: string,
+  input: {
+    name: string;
+    description: string;
+    includedFields: string[];
+    requiredFields: string[];
+    customFields?: unknown;
+    masterOverrides?: unknown;
+    fieldOrder?: unknown;
+  },
+) {
+  const result = await templates.saveQuestionnaireAuthoring(id, input);
+  if (result.ok) {
+    revalidatePath("/library/questionnaire-templates");
+    revalidatePath(`/library/questionnaire-templates/${id}`);
+    revalidatePath(`/library/questionnaire-templates/${id}/preview`);
+  }
   return result;
 }
 
 export async function setQuestionnaireTemplateArchivedAction(id: string, isArchived: boolean) {
   const result = await templates.setTemplateArchived(id, isArchived);
-  if (result.ok) revalidatePath("/library/questionnaire-templates");
+  if (result.ok) {
+    revalidatePath("/library/questionnaire-templates");
+    revalidatePath(`/library/questionnaire-templates/${id}`);
+  }
   return result;
 }
 
 export async function duplicateQuestionnaireTemplateAction(id: string, newName: string) {
   const result = await templates.duplicateTemplate(id, newName);
-  if (result.ok) revalidatePath("/library/questionnaire-templates");
+  if (result.ok) {
+    revalidatePath("/library/questionnaire-templates");
+    if (result.templateId) revalidatePath(`/library/questionnaire-templates/${result.templateId}`);
+  }
   return result;
 }
 

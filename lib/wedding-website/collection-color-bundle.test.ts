@@ -11,19 +11,11 @@ import type { CatalogCollection, CatalogColorStory } from "@/lib/wedding-website
 function story(partial: Partial<CatalogColorStory> & { key: string; name: string; id: string }): CatalogColorStory {
   return {
     sortOrder: 0,
-    tokens: {
-      bg: "#0a0a0a",
-      accent: "#333",
-      dark: true,
-      colorPrimary: "#111",
-      colorSecondary: "#222",
-      colorAccent: "#333",
-      colorNeutral: "#444",
-      colorBackground: "#0a0a0a",
-      colorText: "#eee",
-      heroGradient: "none",
-    },
     ...partial,
+    // A duplicate `tokens` key here previously tripped TS1117 (object
+    // literal, same property twice) — only this second one ever took
+    // effect at runtime (later duplicate keys win), so the first was dead
+    // weight; removed above, this deep-merge is unchanged.
     tokens: {
       bg: "#0a0a0a",
       accent: "#333",

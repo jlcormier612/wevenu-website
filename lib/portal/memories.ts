@@ -8,10 +8,10 @@
  * Destination SoT remains Story (`story`). Never task, progress, or venue ops.
  */
 
-import type { ClientMedia, JournalEntry, PortalSection } from "@/lib/portal/types";
+import type { ClientMedia, JournalEntry } from "@/lib/portal/types";
 
 export const MEMORIES_HEADING = "A moment from your journey";
-export const MEMORIES_DESTINATION: PortalSection = "story";
+export const MEMORIES_DESTINATION: "story" = "story";
 /** Very small horizontal collection — never a gallery. */
 export const MEMORIES_PHOTO_CAP = 3;
 

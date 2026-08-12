@@ -11,6 +11,7 @@ import type {
   EventOrderPriceChange,
   Invoice,
   InvoiceActionResult,
+  InvoiceBrandingSnapshot,
   InvoiceInput,
   InvoiceLineItem,
   InvoiceLineItemInput,
@@ -22,7 +23,29 @@ import { getEventOrder } from "@/lib/event-orders/service";
 import { eventOrderLinesFingerprint } from "@/lib/event-orders/constants";
 import type { EventOrderLine } from "@/lib/event-orders/types";
 import { getCurrentVenue, getCurrentUserRole } from "@/lib/venue/service";
+import type { Venue } from "@/lib/venue/types";
 import { enqueueQuickBooksSync } from "@/lib/quickbooks/queue";
+
+function captureInvoiceBrandingSnapshot(venue: Venue): InvoiceBrandingSnapshot {
+  return {
+    name: venue.name,
+    businessName: venue.businessName,
+    logoUrl: venue.logoUrl,
+    primaryColor: venue.primaryColor,
+    secondaryColor: venue.secondaryColor,
+    accentColor: venue.accentColor,
+    neutralColor: venue.neutralColor,
+    email: venue.email,
+    phone: venue.phone,
+    website: venue.website,
+    addressLine1: venue.addressLine1,
+    addressLine2: venue.addressLine2,
+    city: venue.city,
+    stateRegion: venue.stateRegion,
+    postalCode: venue.postalCode,
+    country: venue.country,
+  };
+}
 
 /**
  * Booking Financial Architecture Phase 3a — a Draft Invoice linked to an
@@ -175,7 +198,8 @@ export async function removeLineItem(invoiceId: string, itemId: string): Promise
   const result = await withVenue(async (c, venueId) => {
     const guard = await assertInvoiceEditable(c, venueId, invoiceId);
     if (guard) return guard;
-    await repo.removeLineItem(c, venueId, invoiceId, itemId);
+    const outcome = await repo.removeLineItem(c, venueId, invoiceId, itemId);
+    if (!outcome.ok) return { ok: false, message: outcome.message } as InvoiceActionResult;
     await repo.insertActivity(c, venueId, invoiceId, "line_item_removed", "Line item removed");
     await enqueueInvoiceSyncIfNotDraft(c, venueId, invoiceId);
     return { ok: true } as InvoiceActionResult;
@@ -200,6 +224,8 @@ export async function updateInvoiceStatus(invoiceId: string, status: InvoiceStat
     if (status === "sent") {
       const invoice = await repo.getInvoice(c, venueId, invoiceId);
       if (!invoice) return { ok: false, message: "Invoice not found." } as InvoiceActionResult;
+      const venue = await getCurrentVenue();
+      const brandingSnapshot = venue ? captureInvoiceBrandingSnapshot(venue) : undefined;
       if (invoice.status === "draft" && invoice.eventOrderId) {
         // Phase 3b: the commitment moment. Event Order's currently-live-
         // projected lines get copied into real, permanent invoice_line_items
@@ -216,18 +242,22 @@ export async function updateInvoiceStatus(invoiceId: string, status: InvoiceStat
           // Booking Financial Architecture Phase 3c — a permanent trace of
           // which Event Order revision produced this invoice, independent
           // of whatever revision Event Order has moved to since.
-          await repo.updateInvoiceStatus(c, venueId, invoiceId, status, { eventOrderRevisionAtFreeze: eventOrder.revision });
+          await repo.updateInvoiceStatus(c, venueId, invoiceId, status, {
+            eventOrderRevisionAtFreeze: eventOrder.revision,
+            brandingSnapshot,
+          });
           await repo.insertActivity(c, venueId, invoiceId, "status_changed", `Status updated to ${status}`);
           void enqueueQuickBooksSync(venueId, "invoice", invoiceId, { status });
           return { ok: true } as InvoiceActionResult;
         }
       }
+      await repo.updateInvoiceStatus(c, venueId, invoiceId, status, { brandingSnapshot });
+      await repo.insertActivity(c, venueId, invoiceId, "status_changed", `Status updated to ${status}`);
+      void enqueueQuickBooksSync(venueId, "invoice", invoiceId, { status });
+      return { ok: true } as InvoiceActionResult;
     }
     await repo.updateInvoiceStatus(c, venueId, invoiceId, status);
     await repo.insertActivity(c, venueId, invoiceId, "status_changed", `Status updated to ${status}`);
-    if (status === "sent") {
-      void enqueueQuickBooksSync(venueId, "invoice", invoiceId, { status });
-    }
     return { ok: true } as InvoiceActionResult;
   });
   return result as InvoiceActionResult;

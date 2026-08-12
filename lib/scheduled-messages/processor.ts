@@ -15,6 +15,7 @@
  */
 import { createAdminClient } from "@/integrations/supabase/admin";
 import { sendEmail } from "@/lib/email/send";
+import { wrapConversationMessageHtml } from "@/lib/email/conversation-brand";
 import { sendSms } from "@/lib/sms/send";
 import { toE164 } from "@/lib/sms/phone";
 import { translateEmailFailure, translateSmsFailure } from "@/lib/communication/failure-messages";
@@ -56,7 +57,18 @@ async function processOne(supabase: ReturnType<typeof createAdminClient>, msg: S
   if (msg.channel === "email") {
     if (!contact.email) return { ok: false, error: "No email address on file for this contact." };
     if (!resolved.subject) return { ok: false, error: "An email needs a subject line." };
-    const result = await sendEmail({ to: contact.email, subject: resolved.subject, text: resolved.body });
+    // Merge already resolved above. Brand with live venue identity at send time.
+    const { data: venue } = await supabase.from("venues")
+      .select("name, logo_url, primary_color")
+      .eq("id", msg.venueId)
+      .maybeSingle<{ name: string | null; logo_url: string | null; primary_color: string | null }>();
+    const brand = {
+      name: venue?.name ?? "Your venue",
+      logoUrl: venue?.logo_url,
+      primaryColor: venue?.primary_color ?? "#5D6F5D",
+    };
+    const html = wrapConversationMessageHtml(brand, resolved.body);
+    const result = await sendEmail({ to: contact.email, subject: resolved.subject, text: resolved.body, html });
     if (!result.ok) return { ok: false, error: translateEmailFailure(result.message) };
     providerId = result.providerId;
   } else {

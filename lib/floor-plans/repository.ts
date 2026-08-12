@@ -396,11 +396,23 @@ export async function renameFloorPlan(
 // seated guests against never drops their seating decisions — the same
 // "coordinator editing is never gated by Seating's state" rule the
 // architecture doc already establishes for individual object deletes.
+/**
+ * Release Readiness Reconciliation remediation: `floor_plans_delete_gate`
+ * restricts DELETE to Owner/Manager at the RLS layer, but this previously
+ * only checked `error` — a RESTRICTIVE policy blocks a disallowed delete by
+ * matching zero rows, not by raising one. `.select("id")` surfaces which
+ * row actually matched, same fix shape already shipped for
+ * contracts/payments/invoices/timeline entries.
+ */
 export async function deleteFloorPlan(
   client: DbClient, venueId: string, planId: string,
-): Promise<void> {
-  const { error } = await client.from("floor_plans").delete().eq("id", planId).eq("venue_id", venueId);
+): Promise<{ ok: true } | { ok: false; message: string }> {
+  const { data, error } = await client.from("floor_plans").delete().eq("id", planId).eq("venue_id", venueId).select("id");
   if (error) throw error;
+  if (!data || data.length === 0) {
+    return { ok: false, message: "Only an Owner or Manager can delete a floor plan." };
+  }
+  return { ok: true };
 }
 
 export async function insertObject(
@@ -480,12 +492,21 @@ export async function updateObject(
   if (error) throw error;
 }
 
+/**
+ * Release Readiness Reconciliation remediation: `floor_plan_objects_delete_gate`
+ * restricts DELETE to Owner/Manager at the RLS layer, same fix shape as
+ * deleteFloorPlan above.
+ */
 export async function deleteObject(
   client: DbClient, venueId: string, objId: string,
-): Promise<void> {
-  const { error } = await client.from("floor_plan_objects")
-    .delete().eq("id", objId).eq("venue_id", venueId);
+): Promise<{ ok: true } | { ok: false; message: string }> {
+  const { data, error } = await client.from("floor_plan_objects")
+    .delete().eq("id", objId).eq("venue_id", venueId).select("id");
   if (error) throw error;
+  if (!data || data.length === 0) {
+    return { ok: false, message: "Only an Owner or Manager can delete this object." };
+  }
+  return { ok: true };
 }
 
 /**
@@ -517,10 +538,26 @@ export async function reorderObject(
   if (e2) throw e2;
 }
 
+/**
+ * Release Readiness Reconciliation remediation: same RLS gate as
+ * deleteObject above, but this is a bulk delete where 0 rows-affected is
+ * also the *correct* outcome for a plan that already had no objects — so
+ * unlike a single-row delete, "0 rows changed" alone can't distinguish
+ * "blocked" from "nothing to clear." Counts existing objects first and only
+ * reports failure if objects existed but survived the delete.
+ */
 export async function clearAllObjects(
   client: DbClient, venueId: string, planId: string,
-): Promise<void> {
-  const { error } = await client.from("floor_plan_objects")
-    .delete().eq("floor_plan_id", planId).eq("venue_id", venueId);
+): Promise<{ ok: true } | { ok: false; message: string }> {
+  const { data: before } = await client.from("floor_plan_objects")
+    .select("id").eq("floor_plan_id", planId).eq("venue_id", venueId);
+  if (!before || before.length === 0) return { ok: true };
+
+  const { data: deleted, error } = await client.from("floor_plan_objects")
+    .delete().eq("floor_plan_id", planId).eq("venue_id", venueId).select("id");
   if (error) throw error;
+  if (!deleted || deleted.length < before.length) {
+    return { ok: false, message: "Only an Owner or Manager can clear this floor plan." };
+  }
+  return { ok: true };
 }

@@ -81,7 +81,13 @@ export async function finalizeContract(contractId: string): Promise<ContractActi
     throw err;
   }
 
-  await insertContractActivity(supabase, venue.id, contractId, "finalized", "Contract finalized — final signed copy generated");
+  await insertContractActivity(
+    supabase, venue.id, contractId, "finalized",
+    "Contract finalized — final signed copy generated",
+    undefined,
+    user?.id ?? null,
+    null,
+  );
 
   return { ok: true };
 }

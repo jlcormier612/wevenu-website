@@ -14,9 +14,14 @@ import { celebrateLuv } from "@/lib/luv/celebrate";
 import { coupleCelebrationMessage } from "@/lib/luv/celebrations";
 import {
   getQuestionnaireMasterByKind,
-  type QuestionnaireFieldDef,
   type QuestionnaireKind,
 } from "@/lib/questionnaire-family/definitions";
+import {
+  resolveQuestionnaireFields,
+  type CustomQuestionnaireField,
+  type MasterOverrides,
+  type ResolvedQuestionnaireField,
+} from "@/lib/questionnaire-family/resolve";
 
 export type FamilyQuestionnaireData = {
   questionnaire_id: string;
@@ -46,6 +51,9 @@ export type FamilyQuestionnaireData = {
   vendor_notes?: string | null;
   included_fields?: string[];
   required_fields?: string[];
+  custom_fields?: CustomQuestionnaireField[] | null;
+  master_overrides?: MasterOverrides | null;
+  field_order?: string[] | null;
   additional?: { family?: Record<string, string> } | null;
   updated_at?: string;
   known_vendors?: { name: string; role?: string | null }[];
@@ -111,16 +119,15 @@ export function CoupleFamilyQuestionnaireForm({
   const master = getQuestionnaireMasterByKind(kind);
   const alreadySubmitted = !previewMode && (data.status === "submitted" || data.status === "reviewed");
   const primary = data.venue_primary_color || "#5D6F5D";
-  const masterIds = master.fields.map((f) => f.id);
-  const snapshot = data.included_fields ?? [];
-  const snapshotLooksLikeFamily = snapshot.some((id) => masterIds.includes(id));
-  const included = new Set(snapshotLooksLikeFamily && snapshot.length ? snapshot : masterIds);
-  const requiredDefault = master.fields.filter((f) => f.required).map((f) => f.id);
-  const requiredSnapshot = data.required_fields ?? [];
-  const required = new Set(
-    requiredSnapshot.some((id) => masterIds.includes(id)) ? requiredSnapshot : requiredDefault,
-  );
-  const fields = master.fields.filter((f) => included.has(f.id));
+  const fields = resolveQuestionnaireFields({
+    kind,
+    includedFields: data.included_fields,
+    requiredFields: data.required_fields,
+    customFields: data.custom_fields,
+    masterOverrides: data.master_overrides,
+    fieldOrder: data.field_order,
+  });
+  const required = new Set(fields.filter((f) => f.required).map((f) => f.id));
   const familyInit = data.additional?.family ?? {};
 
   const eventDate = data.event_date
@@ -157,7 +164,16 @@ export function CoupleFamilyQuestionnaireForm({
     setFamily((prev) => ({ ...prev, [id]: value }));
   }
 
-  function visibleFields(): QuestionnaireFieldDef[] {
+  function parseMulti(raw: string | undefined): string[] {
+    if (!raw?.trim()) return [];
+    try {
+      const parsed = JSON.parse(raw) as unknown;
+      if (Array.isArray(parsed)) return parsed.map(String);
+    } catch { /* comma-separated */ }
+    return raw.split(",").map((s) => s.trim()).filter(Boolean);
+  }
+
+  function visibleFields(): ResolvedQuestionnaireField[] {
     return fields.filter((f) => {
       const controller = fields.find((c) => c.followUpId === f.id);
       if (!controller?.showFollowUpWhen) return true;
@@ -169,7 +185,7 @@ export function CoupleFamilyQuestionnaireForm({
   function findMissing(): string[] {
     const missing: string[] = [];
     for (const f of visibleFields()) {
-      if (!required.has(f.id) && !f.required) continue;
+      if (!required.has(f.id)) continue;
       if (f.type === "guest_count_confirm") {
         if (!guestConfirm) missing.push("Guest count confirmation");
         else if (guestConfirm === "no" && !guestCount.trim()) missing.push("Updated guest count");
@@ -437,10 +453,50 @@ export function CoupleFamilyQuestionnaireForm({
             const value = f.destination === "column" && f.column
               ? (columns[f.column] ?? "")
               : (family[f.id] ?? "");
+            const isReq = required.has(f.id);
+            const customType = f.customType;
 
-            if (f.type === "single_choice" || f.type === "rating_1_5") {
+            if (customType === "multiple_choice") {
+              const selected = new Set(parseMulti(value));
               return (
-                <FieldShell key={f.id} label={label} hint={f.helper} required={required.has(f.id) || f.required}>
+                <FieldShell key={f.id} label={label} hint={f.helper} required={isReq}>
+                  <div className="space-y-2">
+                    {(f.options ?? []).map((opt) => (
+                      <label key={opt.value} className="flex items-start gap-2 text-sm">
+                        <input
+                          type="checkbox"
+                          checked={selected.has(opt.value)}
+                          onChange={() => {
+                            const next = new Set(selected);
+                            if (next.has(opt.value)) next.delete(opt.value);
+                            else next.add(opt.value);
+                            setFamilyField(f.id, JSON.stringify([...next]));
+                          }}
+                        />
+                        <span>{opt.label}</span>
+                      </label>
+                    ))}
+                  </div>
+                </FieldShell>
+              );
+            }
+
+            if (customType === "date") {
+              return (
+                <FieldShell key={f.id} label={label} hint={f.helper} required={isReq}>
+                  <input
+                    className={inputCls}
+                    type="date"
+                    value={value}
+                    onChange={(e) => setFamilyField(f.id, e.target.value)}
+                  />
+                </FieldShell>
+              );
+            }
+
+            if (customType === "yes_no" || customType === "single_choice" || f.type === "single_choice" || f.type === "rating_1_5") {
+              return (
+                <FieldShell key={f.id} label={label} hint={f.helper} required={isReq}>
                   <div className="space-y-2">
                     {(f.options ?? []).map((opt) => (
                       <label key={opt.value} className="flex items-start gap-2 text-sm">
@@ -469,9 +525,9 @@ export function CoupleFamilyQuestionnaireForm({
               );
             }
 
-            const isLong = f.type === "long_text" || f.type === "people_notes" || f.type === "conditional_long_text";
+            const isLong = customType === "long_text" || f.type === "long_text" || f.type === "people_notes" || f.type === "conditional_long_text";
             return (
-              <FieldShell key={f.id} label={label} hint={f.helper} required={required.has(f.id) || f.required}>
+              <FieldShell key={f.id} label={label} hint={f.helper} required={isReq}>
                 {isLong ? (
                   <textarea
                     className={inputCls}

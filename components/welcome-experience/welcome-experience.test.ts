@@ -59,6 +59,14 @@ function makeLegalDoc(
     createdAt: partial.createdAt ?? "2026-01-01T00:00:00.000Z",
     updatedAt: partial.updatedAt ?? "2026-01-01T00:00:00.000Z",
     ...partial,
+    // Kept last (after the spread, not before like the other defaults
+    // above): both fields are typed `string | null` with no `undefined`,
+    // and computing them ahead of `...partial` let the spread's own
+    // `Partial<LegalDocument>`-derived optionality reintroduce `undefined`
+    // into the merged type. Defaulting after the spread closes that off
+    // unconditionally.
+    publishedBy: partial.publishedBy ?? null,
+    publishedAt: partial.publishedAt ?? null,
   };
 }
 
