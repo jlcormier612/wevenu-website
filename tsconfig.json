@@ -43,5 +43,5 @@
     ".next/dev/types/**/*.ts",
     "**/*.mts"
   ],
-  "exclude": ["node_modules", "marketing", "workspace"]
+  "exclude": ["node_modules", "marketing", "workspace", "scripts"]
 }

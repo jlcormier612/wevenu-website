@@ -1,0 +1,49 @@
+# Deploys infra/htc-ecr-repos.json — the long-lived ECR foundation stack —
+# to the Sandbox environment. Manual trigger only, never on push: this stack
+# is meant to be created once and then left alone; routine app deploys go
+# through deploy-sandbox.yml instead. Re-running this is safe (idempotent
+# no-op if nothing in the template changed) but should be rare.
+#
+# Requires infra/htc-github-oidc.json to have already been deployed manually
+# (see docs/github-actions-deployment-implementation.md) — this workflow has
+# no AWS access at all until that one-time bootstrap exists.
+
+name: Deploy foundation stack (Sandbox)
+
+on:
+  workflow_dispatch: {}
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  deploy-ecr-foundation:
+    name: Deploy ECR foundation stack
+    runs-on: ubuntu-latest
+    environment: sandbox
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+
+      - name: Deploy htc-ecr-repos.json
+        run: |
+          aws cloudformation deploy \
+            --template-file infra/htc-ecr-repos.json \
+            --stack-name "${{ vars.ECR_STACK_NAME }}" \
+            --parameter-overrides EnvironmentName=sandbox \
+            --role-arn "${{ vars.CFN_EXECUTION_ROLE_ARN }}" \
+            --no-fail-on-empty-changeset
+
+      - name: Show repository URIs
+        run: |
+          aws cloudformation describe-stacks \
+            --stack-name "${{ vars.ECR_STACK_NAME }}" \
+            --query "Stacks[0].Outputs" \
+            --output table

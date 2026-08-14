@@ -1,0 +1,19 @@
+# Keeps the Docker build context small — without this, `docker build` sends
+# the whole repo (node_modules, .next build caches, .git history) to the
+# daemon, which is multiple GB and can time out mid-transfer (confirmed this
+# session: an unfiltered build context reached 8GB+ and failed).
+#
+# Applies to all three Dockerfiles (root, marketing/, workspace/) — each is
+# built with the repo root as context.
+
+**/node_modules
+**/.next
+.git
+**/.git
+*.tsbuildinfo
+.DS_Store
+**/.DS_Store
+docs
+STARTER-LIBRARY.md
+supabase/.branches
+supabase/.temp
