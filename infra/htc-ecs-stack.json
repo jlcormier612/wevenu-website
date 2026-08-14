@@ -126,8 +126,6 @@
       "Properties": { "SubnetId": { "Ref": "PublicSubnet2" }, "RouteTableId": { "Ref": "PublicRouteTable" } }
     },
 
-    "_comment_networking": "Sandbox-first choice: ECS tasks run in the PUBLIC subnets above (locked down by SecurityGroup, not by network isolation) rather than private subnets + NAT Gateway. This is cheaper and simpler for a first Sandbox validation. Moving tasks to private subnets + NAT is a real, later hardening step, not required for the first E2E test — see 'open decisions' in the deployment plan.",
-
     "AlbSecurityGroup": {
       "Type": "AWS::EC2::SecurityGroup",
       "Properties": {
@@ -159,8 +157,6 @@
         "ClusterSettings": [{ "Name": "containerInsights", "Value": "enabled" }]
       }
     },
-
-    "_comment_ecr": "ECR repositories are deliberately NOT in this stack — see infra/htc-ecr-repos.json. They're long-lived (must survive every app-stack redeploy) and this stack's compute resources are not; bundling them here created a bootstrap conflict for a CI-driven pipeline (a failed first stack creation would roll back and delete the repos along with everything else). Deploy the foundation stack first; VenueAppImage/MarketingImage/WorkspaceImage below take the resulting repo URIs (with a tag) as plain string parameters, so this stack never needs to reference the foundation stack's resources directly.",
 
     "VenueAppLogGroup": { "Type": "AWS::Logs::LogGroup", "Properties": { "LogGroupName": { "Fn::Sub": "/ecs/htc-${EnvironmentName}/venue-app" }, "RetentionInDays": 30 } },
     "MarketingLogGroup": { "Type": "AWS::Logs::LogGroup", "Properties": { "LogGroupName": { "Fn::Sub": "/ecs/htc-${EnvironmentName}/marketing" }, "RetentionInDays": 30 } },
@@ -194,11 +190,11 @@
         }]
       }
     },
-    "_comment_task_role": "Confirmed by direct search this session: zero AWS SDK calls anywhere in the app code (all 'storage'/'database' access is Supabase-over-HTTPS). This role is intentionally near-empty — it exists because ECS requires a task role, not because the app needs AWS API access.",
     "EcsTaskRole": {
       "Type": "AWS::IAM::Role",
       "Properties": {
         "RoleName": { "Fn::Sub": "htc-${EnvironmentName}-ecs-task" },
+        "Description": "Intentionally near-empty: zero AWS SDK calls exist anywhere in the app code (all storage/database access is Supabase-over-HTTPS). This role exists because ECS requires a task role, not because the app needs AWS API access.",
         "AssumeRolePolicyDocument": {
           "Version": "2012-10-17",
           "Statement": [{ "Effect": "Allow", "Principal": { "Service": "ecs-tasks.amazonaws.com" }, "Action": "sts:AssumeRole" }]
@@ -206,12 +202,11 @@
       }
     },
 
-    "_comment_secrets": "Placeholder values only (CHANGE_ME) — CloudFormation cannot create a Secrets Manager secret with no value. Populate the real values with `aws secretsmanager put-secret-value` (or the Console) immediately after stack creation, never in this template. PRODUCT_SYNC_API_KEY must end up byte-identical across all three apps — it's one secret, referenced by all three task definitions below, not three separate values.",
-
     "SupabaseServiceRoleKeySecret": {
       "Type": "AWS::SecretsManager::Secret",
       "Properties": {
         "Name": { "Fn::Sub": "htc/${EnvironmentName}/supabase-service-role-key" },
+        "Description": "Placeholder value only (CHANGE_ME) — CloudFormation cannot create a Secrets Manager secret with no value. Populate the real value with aws secretsmanager put-secret-value (or the Console) immediately after stack creation, never in this template.",
         "SecretString": "{\"value\":\"CHANGE_ME\"}"
       }
     },
@@ -226,6 +221,7 @@
       "Type": "AWS::SecretsManager::Secret",
       "Properties": {
         "Name": { "Fn::Sub": "htc/${EnvironmentName}/product-sync-api-key" },
+        "Description": "Placeholder value only (CHANGE_ME). Must end up byte-identical across all three apps once populated — it's one secret, referenced by all three task definitions below, not three separate values.",
         "SecretString": "{\"value\":\"CHANGE_ME\"}"
       }
     },
@@ -366,8 +362,6 @@
       }
     },
 
-    "_comment_health_checks": "Health-check paths and expected status codes are not guesses — they match this repo's own local dev tooling (scripts/dev_listen.py) and were re-confirmed by actually running each container this session. Venue app /login = 200. Marketing / = 200. Workspace / = 307 (its own session gate redirects unauthenticated requests) — Matcher is 200-399 for workspace specifically, not the default 200, because that redirect is correct, intentional behavior, not a failure.",
-
     "VenueAppTargetGroup": {
       "Type": "AWS::ElasticLoadBalancingV2::TargetGroup",
       "Properties": {
@@ -424,8 +418,6 @@
       }
     },
 
-    "_comment_listener_rules": "Host-header rules on the HTTP listener let this be smoke-tested before any real DNS/cert exists: curl -H \"Host: <hostname>\" http://<alb-dns-name>/. Mirror the same rules onto HttpsListener once CertificateArn is supplied — omitted here for brevity; duplicate VenueAppHttpRule/WorkspaceHttpRule onto the HTTPS listener when a cert exists.",
-
     "VenueAppHttpRule": {
       "Type": "AWS::ElasticLoadBalancingV2::ListenerRule",
       "Properties": {
@@ -464,7 +456,6 @@
         "LoadBalancers": [{ "ContainerName": "venue-app", "ContainerPort": 3000, "TargetGroupArn": { "Ref": "VenueAppTargetGroup" } }]
       }
     },
-    "_comment_marketing_workspace_count": "DesiredCount fixed at 1 for both, per the approved deployment plan — their CRM/Relationship data is a local on-disk JSON store, not Postgres; more than one task would each see a different (or empty) copy of it. Not autoscaled. Explicitly not redesigned/migrated as part of this deployment.",
     "MarketingService": {
       "Type": "AWS::ECS::Service",
       "DependsOn": ["HttpListener"],
