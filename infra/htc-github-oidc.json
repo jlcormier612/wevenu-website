@@ -25,8 +25,6 @@
   },
 
   "Resources": {
-    "_comment_thumbprint": "GitHub's OIDC thumbprint below is the well-known, publicly documented value for token.actions.githubusercontent.com (AWS has trusted the root CA directly since 2023, making the literal leaf thumbprint largely a formality AWS still requires the field for) — not a secret, safe to commit.",
-
     "GithubOidcProvider": {
       "Type": "AWS::IAM::OIDCProvider",
       "Condition": "CreateOidcProvider",
@@ -37,12 +35,11 @@
       }
     },
 
-    "_comment_execution_role": "Assumed by the cloudformation.amazonaws.com service (not by GitHub Actions directly) to actually provision the compute/foundation stacks' resources. The GitHub Actions role below only ever gets iam:PassRole to this one role — it never holds these broader permissions itself. Scoped to the htc-sandbox-* naming/tag prefix everywhere the underlying AWS service supports resource-level scoping; EC2 networking and ELBv2 creation actions are left at Resource:* because those specific AWS actions don't support finer scoping (a documented AWS limitation, not a scoping choice made here).",
-
     "CloudFormationExecutionRole": {
       "Type": "AWS::IAM::Role",
       "Properties": {
         "RoleName": "htc-sandbox-cfn-execution",
+        "Description": "Assumed by cloudformation.amazonaws.com (not GitHub Actions directly) to provision the compute/foundation stacks. The GitHub Actions deploy role only ever gets iam:PassRole to this one role. Scoped to htc-sandbox-* wherever the underlying AWS service supports resource-level scoping; EC2 networking and ELBv2 creation actions are left at Resource:* because those actions don't support finer scoping (a documented AWS limitation, not a scoping choice made here).",
         "AssumeRolePolicyDocument": {
           "Version": "2012-10-17",
           "Statement": [{ "Effect": "Allow", "Principal": { "Service": "cloudformation.amazonaws.com" }, "Action": "sts:AssumeRole" }]
@@ -122,8 +119,7 @@
                 "Sid": "SecretsCreateOnlyNotWrite",
                 "Effect": "Allow",
                 "Action": ["secretsmanager:CreateSecret", "secretsmanager:DeleteSecret", "secretsmanager:DescribeSecret", "secretsmanager:TagResource"],
-                "Resource": [{ "Fn::Sub": "arn:aws:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:htc/sandbox/*" }],
-                "_comment": "Deliberately no secretsmanager:PutSecretValue/GetSecretValue here. CreateSecret already sets the initial (CHANGE_ME placeholder) value as part of creation — that's all this role ever needs. Populating the real value afterward is a human-only action outside this role's permissions entirely."
+                "Resource": [{ "Fn::Sub": "arn:aws:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:htc/sandbox/*" }]
               }
             ]
           }
@@ -131,12 +127,11 @@
       }
     },
 
-    "_comment_deploy_role": "Assumed by GitHub Actions via OIDC, trust-scoped to this exact repo and the 'sandbox' GitHub Environment specifically — not the whole repo, so a workflow run outside that Environment (e.g. a random branch push with no Environment context) cannot assume it.",
-
     "GithubActionsSandboxDeployRole": {
       "Type": "AWS::IAM::Role",
       "Properties": {
         "RoleName": "htc-sandbox-github-actions-deploy",
+        "Description": "Assumed by GitHub Actions via OIDC, trust-scoped to this exact repo and the 'sandbox' GitHub Environment specifically - a workflow run outside that Environment (e.g. a random branch push with no Environment context) cannot assume it.",
         "AssumeRolePolicyDocument": {
           "Version": "2012-10-17",
           "Statement": [{
@@ -177,11 +172,17 @@
               {
                 "Sid": "CloudFormationScoped",
                 "Effect": "Allow",
-                "Action": ["cloudformation:CreateStack", "cloudformation:UpdateStack", "cloudformation:DescribeStacks", "cloudformation:DescribeStackEvents", "cloudformation:CreateChangeSet", "cloudformation:ExecuteChangeSet", "cloudformation:DescribeChangeSet", "cloudformation:GetTemplate", "cloudformation:ListChangeSets"],
+                "Action": ["cloudformation:CreateStack", "cloudformation:UpdateStack", "cloudformation:DescribeStackEvents", "cloudformation:CreateChangeSet", "cloudformation:ExecuteChangeSet", "cloudformation:DescribeChangeSet", "cloudformation:GetTemplate", "cloudformation:ListChangeSets"],
                 "Resource": [
                   { "Fn::Sub": "arn:aws:cloudformation:${AWS::Region}:${AWS::AccountId}:stack/htc-sandbox/*" },
                   { "Fn::Sub": "arn:aws:cloudformation:${AWS::Region}:${AWS::AccountId}:stack/htc-sandbox-ecr/*" }
                 ]
+              },
+              {
+                "Sid": "CloudFormationDescribeStacksNoResourceLevelSupportOnNewStacks",
+                "Effect": "Allow",
+                "Action": "cloudformation:DescribeStacks",
+                "Resource": "*"
               },
               {
                 "Sid": "PassOnlyTheCfnExecutionRole",
@@ -204,8 +205,7 @@
                 "Sid": "ElbReadOnlyForVerification",
                 "Effect": "Allow",
                 "Action": ["elasticloadbalancing:DescribeLoadBalancers", "elasticloadbalancing:DescribeTargetGroups", "elasticloadbalancing:DescribeTargetHealth"],
-                "Resource": "*",
-                "_comment": "ELBv2 Describe* actions don't support resource-level restriction — a documented AWS limitation, not a scoping choice made here."
+                "Resource": "*"
               }
             ]
           }
