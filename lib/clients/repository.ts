@@ -256,9 +256,22 @@ export async function insertKeyDate(client: DbClient, venueId: string, clientId:
   return mapKD(data);
 }
 
-export async function deleteKeyDate(client: DbClient, venueId: string, kdId: string): Promise<void> {
-  const { error } = await client.from("client_key_dates").delete().eq("id", kdId).eq("venue_id", venueId);
+/**
+ * Delete a key date. Returns ok:false when zero rows were affected (RLS
+ * delete gate blocked Staff/Coordinator, or id/venue mismatch) so callers
+ * cannot treat a silent no-op as success — same shape as contracts /
+ * invoices / floor plans / timeline deletes.
+ */
+export async function deleteKeyDate(
+  client: DbClient, venueId: string, kdId: string,
+): Promise<{ ok: true } | { ok: false; message: string }> {
+  const { data, error } = await client.from("client_key_dates")
+    .delete().eq("id", kdId).eq("venue_id", venueId).select("id");
   if (error) throw error;
+  if (!data || data.length === 0) {
+    return { ok: false, message: "Only an Owner or Manager can delete a key date." };
+  }
+  return { ok: true };
 }
 
 export async function insertClientActivity(client: DbClient, venueId: string, clientId: string, type: string, title: string, description?: string): Promise<void> {

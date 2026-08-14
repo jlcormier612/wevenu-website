@@ -10,7 +10,7 @@ import { ensurePackageStartersForCurrentVenue } from "@/lib/packages/provision";
 import { getPackagesWithItems } from "@/lib/packages/service";
 import { PACKAGE_STARTER_MASTERS, type PackageStarterMasterKey } from "@/lib/packages/starters";
 
-export const metadata: Metadata = { title: "Packages & Inventory" };
+export const metadata: Metadata = { title: "Packages" };
 
 export default async function PackagesPage() {
   await ensurePackageStartersForCurrentVenue();
@@ -26,7 +26,7 @@ export default async function PackagesPage() {
     <div className="space-y-6">
       <div className="flex items-start justify-between gap-4">
         <PageHeader
-          title="Packages & Inventory"
+          title="Packages"
           description="Define your venue offerings. Customize starters, set pricing, then use them on invoices and Event Orders."
         />
         <Button type="button" render={<Link href="/packages/new" />} className="shrink-0">

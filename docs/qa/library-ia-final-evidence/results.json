@@ -1,0 +1,192 @@
+{
+  "startedAt": "2026-08-13T03:02:40.840Z",
+  "checks": [
+    {
+      "name": "login",
+      "pass": true,
+      "detail": "http://localhost:3000/dashboard"
+    },
+    {
+      "name": "agreements",
+      "pass": true,
+      "detail": "[\"Contract Templates\",\"Questionnaires & Feedback\"]"
+    },
+    {
+      "name": "pricing-packages",
+      "pass": true,
+      "detail": "[\"Packages\",\"Payment Schedules\"]"
+    },
+    {
+      "name": "planning",
+      "pass": true,
+      "detail": "[\"Planning Templates\",\"Timeline Templates\",\"Floor Plan Templates\",\"Event Order Templates\",\"Inventory\",\"Inventory Templates\"]"
+    },
+    {
+      "name": "communication",
+      "pass": true,
+      "detail": "[\"Message Templates\"]"
+    },
+    {
+      "name": "marketing",
+      "pass": true,
+      "detail": "[\"QR Campaigns\",\"Brochures\"]"
+    },
+    {
+      "name": "reports",
+      "pass": true,
+      "detail": "[\"Saved Reports\"]"
+    },
+    {
+      "name": "no-pipeline-on-library",
+      "pass": true,
+      "detail": "[\"Contract Templates\",\"Questionnaires & Feedback\",\"Packages\",\"Payment Schedules\",\"Planning Templates\",\"Timeline Templates\",\"Floor Plan Templates\",\"Event Order Templates\",\"Inventory\",\"Inventory Templates\",\"Message Templates\",\"QR Campaigns\",\"Brochures\",\"Saved Reports\"]"
+    },
+    {
+      "name": "no-venue-guide-card",
+      "pass": true,
+      "detail": "[\"Contract Templates\",\"Questionnaires & Feedback\",\"Packages\",\"Payment Schedules\",\"Planning Templates\",\"Timeline Templates\",\"Floor Plan Templates\",\"Event Order Templates\",\"Inventory\",\"Inventory Templates\",\"Message Templates\",\"QR Campaigns\",\"Brochures\",\"Saved Reports\"]"
+    },
+    {
+      "name": "inventory-not-in-pricing",
+      "pass": true,
+      "detail": "[\"/packages\",\"/library/payment-schedules\"]"
+    },
+    {
+      "name": "inventory-in-planning",
+      "pass": true,
+      "detail": "[\"/library/playbooks\",\"/library/timeline-templates\",\"/library/floor-plan-templates\",\"/library/event-order-templates\",\"/library/inventory\",\"/library/inventory-templates\"]"
+    },
+    {
+      "name": "library-description-exact",
+      "pass": true,
+      "detail": "Your venue's toolbox — the things you set up once and use again and again: agreements, packages, planning tools, marketing, and more."
+    },
+    {
+      "name": "library-title-unchanged",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "packages-visible-title",
+      "pass": true,
+      "detail": "Packages"
+    },
+    {
+      "name": "packages-doc-title-no-inventory",
+      "pass": true,
+      "detail": "Packages · Hello to Cheers"
+    },
+    {
+      "name": "packages-doc-title-packages",
+      "pass": true,
+      "detail": "Packages · Hello to Cheers"
+    },
+    {
+      "name": "packages-no-ampersand-inventory-label",
+      "pass": true,
+      "detail": "body scanned"
+    },
+    {
+      "name": "packages-list-works",
+      "pass": true,
+      "detail": "buttons/links present"
+    },
+    {
+      "name": "packages-card-navigates",
+      "pass": true,
+      "detail": "http://localhost:3000/packages"
+    }
+  ],
+  "errors": [],
+  "sectionSummaries": [
+    {
+      "title": "Agreements",
+      "links": [
+        {
+          "href": "/library/contracts",
+          "title": "Contract Templates"
+        },
+        {
+          "href": "/library/questionnaire-templates",
+          "title": "Questionnaires & Feedback"
+        }
+      ]
+    },
+    {
+      "title": "Pricing & Packages",
+      "links": [
+        {
+          "href": "/packages",
+          "title": "Packages"
+        },
+        {
+          "href": "/library/payment-schedules",
+          "title": "Payment Schedules"
+        }
+      ]
+    },
+    {
+      "title": "Planning",
+      "links": [
+        {
+          "href": "/library/playbooks",
+          "title": "Planning Templates"
+        },
+        {
+          "href": "/library/timeline-templates",
+          "title": "Timeline Templates"
+        },
+        {
+          "href": "/library/floor-plan-templates",
+          "title": "Floor Plan Templates"
+        },
+        {
+          "href": "/library/event-order-templates",
+          "title": "Event Order Templates"
+        },
+        {
+          "href": "/library/inventory",
+          "title": "Inventory"
+        },
+        {
+          "href": "/library/inventory-templates",
+          "title": "Inventory Templates"
+        }
+      ]
+    },
+    {
+      "title": "Communication",
+      "links": [
+        {
+          "href": "/communication/templates",
+          "title": "Message Templates"
+        }
+      ]
+    },
+    {
+      "title": "Marketing",
+      "links": [
+        {
+          "href": "/library/qr-campaigns",
+          "title": "QR Campaigns"
+        },
+        {
+          "href": "/library/brochures",
+          "title": "Brochures"
+        }
+      ]
+    },
+    {
+      "title": "Reports",
+      "links": [
+        {
+          "href": "/reporting/saved",
+          "title": "Saved Reports"
+        }
+      ]
+    }
+  ],
+  "finishedAt": "2026-08-13T03:02:48.598Z",
+  "passCount": 19,
+  "failCount": 0
+}

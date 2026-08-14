@@ -19,12 +19,14 @@ import { toast } from "sonner";
 
 import { updateEventStatusAction } from "@/app/(app)/events/[id]/actions";
 import { sendAnniversaryMessageAction } from "@/app/(app)/events/[id]/anniversary-actions";
+import { KeyDatesSection } from "@/components/clients/key-dates-section";
 import { BookingOverviewSummary } from "@/components/events/booking-overview-summary";
 import { EventReadinessCard } from "@/components/events/event-readiness-card";
 import { QuestionnaireFamilyPanel } from "@/components/events/questionnaire-family-panel";
 import type { EventReadinessSummary } from "@/lib/readiness/types";
 import { BookingSetupCard } from "@/components/events/booking-setup-card";
 import { TimelineSetupCard } from "@/components/events/timeline-setup-card";
+import type { ClientKeyDate } from "@/lib/clients/types";
 import { EventFeedbackSection } from "@/components/events/event-feedback-section";
 import { EventNotesSection } from "@/components/events/event-notes-section";
 import { EventStatusBadge } from "@/components/events/event-status-badge";
@@ -277,6 +279,7 @@ export function EventDetail({
   requests = [],
   readinessSummary,
   originatingLeadId = null,
+  keyDates = [],
 }: {
   event: EventWithDetails;
   availableVendors?: import("@/lib/vendors/types").Vendor[];
@@ -339,6 +342,9 @@ export function EventDetail({
   // Lead's own activity history (status changes, prior notes) had no
   // reachable path once converted, even though it was never deleted.
   originatingLeadId?: string | null;
+  // Key Dates — already fetched on the Booking Workspace page via getClient();
+  // mounted in Overview beside Event summary (existing KeyDatesSection).
+  keyDates?: ClientKeyDate[];
 }) {
   const router = useRouter();
   const [statusPending, startStatus] = React.useTransition();
@@ -612,6 +618,12 @@ export function EventDetail({
                     </Link>
                   </p>
                 )}
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader><CardTitle className="text-base">Key Dates</CardTitle></CardHeader>
+              <CardContent>
+                <KeyDatesSection clientId={event.clientId!} initialKeyDates={keyDates} />
               </CardContent>
             </Card>
           </div>

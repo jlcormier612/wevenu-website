@@ -6,17 +6,30 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { SEQUENCE_TRIGGER_TYPES } from "@/lib/message-sequences/constants";
+import { ensureStarterAutomationsForCurrentVenue } from "@/lib/message-sequences/provision";
 import { getSequences } from "@/lib/message-sequences/service";
+import { triggerStageDisplayLabel } from "@/lib/message-sequences/stage-labels";
+import { getActiveTemplate } from "@/lib/pipeline-templates/service";
 
 export const metadata: Metadata = { title: "Automations" };
 
-function triggerLabel(triggerType: string | null): string {
-  if (!triggerType) return "Manual only";
-  return SEQUENCE_TRIGGER_TYPES.find((t) => t.value === triggerType)?.label ?? triggerType;
-}
-
 export default async function SeriesPage() {
-  const series = await getSequences();
+  await ensureStarterAutomationsForCurrentVenue();
+  const [series, activeTemplate] = await Promise.all([getSequences(), getActiveTemplate()]);
+  const stages = (activeTemplate?.stages ?? []).map((s) => ({
+    name: s.name,
+    canonicalStage: s.canonicalStage,
+    sortOrder: s.sortOrder,
+  }));
+
+  function triggerSummary(triggerType: string | null, triggerStage: string | null): string {
+    if (!triggerType) return "Manual only";
+    const typeLabel = SEQUENCE_TRIGGER_TYPES.find((t) => t.value === triggerType)?.label ?? triggerType;
+    if (triggerType === "lead_stage_changed" && triggerStage) {
+      return `${typeLabel} · ${triggerStageDisplayLabel(triggerStage, stages)}`;
+    }
+    return typeLabel;
+  }
 
   return (
     <div className="space-y-6">
@@ -47,7 +60,7 @@ export default async function SeriesPage() {
                     {s.status === "active" ? "Active" : "Paused"}
                   </Badge>
                 </div>
-                <CardDescription>{triggerLabel(s.triggerType)}</CardDescription>
+                <CardDescription>{triggerSummary(s.triggerType, s.triggerStage)}</CardDescription>
               </CardHeader>
               <CardContent>
                 <Button size="sm" variant="outline" render={<Link href={`/communication/series/${s.id}/edit`} />}>

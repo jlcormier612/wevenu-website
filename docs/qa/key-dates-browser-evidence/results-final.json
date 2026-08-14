@@ -1,0 +1,66 @@
+{
+  "finishedAt": "2026-08-13T22:59:32.718Z",
+  "passed": true,
+  "checks": [
+    {
+      "name": "overview_has_key_dates_card",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "name": "loads_seeded_key_date",
+      "ok": true,
+      "detail": "Final KD 1786661936313"
+    },
+    {
+      "name": "ui_create_persisted",
+      "ok": true,
+      "detail": "{\"createDb\":\"1\",\"inUi\":true}"
+    },
+    {
+      "name": "delete_target_visible",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "name": "delete_db_gone",
+      "ok": true,
+      "detail": "0"
+    },
+    {
+      "name": "delete_ui_persisted",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "name": "nonexistent_delete_zero_rows",
+      "ok": true,
+      "detail": "{\"delData\":[],\"delErr\":null}"
+    },
+    {
+      "name": "staff_delete_gate_blocked",
+      "ok": true,
+      "detail": "{\"gateDel\":[],\"stillThere\":\"1\"}"
+    },
+    {
+      "name": "portal_next_key_date",
+      "ok": true,
+      "detail": "{\"hasNext\":true,\"shows\":true,\"sample\":\"Emma & Jordan · Sweet Daisy Barn & Farm Oct 17, 2026 – Oct 19, 2026 Export my data 2 🏠 Home ✅ Tasks 4 🕒 Timeline 📁 Docs 🗺️ Floor Plan 💳 Payments 1 💬 Messages 🏛️ Guide 🤝 Vendors SWEET DAISY BARN & FARM Emma & Jordan 65 days until your celebration Saturday, October 17, 2026 – Monday, October 19, 2026 Your venue team is here with you—finish what helps your day come together. Review what Sweet Daisy Barn & Farm needs Message Sweet Daisy Barn & Farm View Timeline Sweet Daisy Barn & Farm is wa\"}"
+    },
+    {
+      "name": "rls_policies_intact",
+      "ok": true,
+      "detail": "2"
+    }
+  ],
+  "labels": {
+    "mount": "VERIFIED LIVE",
+    "load": "VERIFIED LIVE + DATABASE",
+    "create": "VERIFIED LIVE + DATABASE",
+    "delete": "VERIFIED LIVE + DATABASE",
+    "nonexistentDelete": "VERIFIED DATABASE",
+    "staffGate": "VERIFIED DATABASE",
+    "portal": "VERIFIED LIVE",
+    "edit": "N/A — existing KeyDatesSection has add/delete only (no update API)"
+  }
+}

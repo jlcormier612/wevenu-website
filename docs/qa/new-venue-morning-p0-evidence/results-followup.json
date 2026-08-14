@@ -1,0 +1,69 @@
+{
+  "checks": [
+    {
+      "name": "lost-candidate",
+      "pass": true,
+      "detail": "P0Canc Validation status=new"
+    },
+    {
+      "name": "lost-confirm-shows",
+      "pass": true,
+      "detail": "Move this lead?\n\nThis stage has an active Automation. Moving this lead here will enroll them and may send the messages you've configured.\n\nCancel\nContinue"
+    },
+    {
+      "name": "confirm-copy-ok",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "lost-cancel-no-change",
+      "pass": true,
+      "detail": "after=new"
+    },
+    {
+      "name": "lost-continue-commits",
+      "pass": true,
+      "detail": "status=lost"
+    },
+    {
+      "name": "lost-continue-enrolls",
+      "pass": true,
+      "detail": "0d495e9f-94a0-471d-a7ee-00faf41ccfe2"
+    },
+    {
+      "name": "cancelled-candidate",
+      "pass": true,
+      "detail": "P0Lost"
+    },
+    {
+      "name": "cancelled-confirm-shows",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "cancelled-cancel-keeps",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "ordinary-no-confirm",
+      "pass": true,
+      "detail": "no dialog"
+    },
+    {
+      "name": "ordinary-committed",
+      "pass": true,
+      "detail": "status=contacted"
+    },
+    {
+      "name": "booked-no-confirm",
+      "pass": true,
+      "detail": "no dialog"
+    },
+    {
+      "name": "proposal-confirm-shows",
+      "pass": true,
+      "detail": null
+    }
+  ]
+}

@@ -2,6 +2,10 @@
  * Contracts domain types (Sprint 15 — Contracts Foundation).
  */
 
+import type { ContractBrandingSnapshot } from "@/lib/contracts/branding";
+
+export type { ContractBrandingSnapshot };
+
 export type ContractStatus = "draft" | "sent" | "signed" | "cancelled" | "expired";
 
 export type ContractTemplate = {
@@ -38,6 +42,12 @@ export type Contract = {
   updatedAt: string;
   /** Work Package D4 — set only on a newly-created amendment; mirrors invoices.amendsInvoiceId exactly. */
   amendsContractId: string | null;
+  /**
+   * Presentation-only branding frozen at draft→sent (release). Never
+   * overwritten. Pre-existing contracts without a snapshot fall back to
+   * live venue branding (no silent backfill).
+   */
+  brandingSnapshot: ContractBrandingSnapshot | null;
   // Embedded from join
   clientName: string | null;
   clientEmail: string | null;

@@ -1,0 +1,80 @@
+{
+  "checks": [
+    {
+      "name": "owner-login",
+      "ok": true,
+      "detail": "http://localhost:3000/dashboard"
+    },
+    {
+      "name": "owner-preference-header",
+      "ok": true,
+      "detail": "Preference column present"
+    },
+    {
+      "name": "owner-no-status-only-header",
+      "ok": true,
+      "detail": "Status renamed or Preference present"
+    },
+    {
+      "name": "owner-claimed-label",
+      "ok": true,
+      "detail": "Claimed visible"
+    },
+    {
+      "name": "owner-not-claimed-label",
+      "ok": true,
+      "detail": "Not claimed visible"
+    },
+    {
+      "name": "owner-no-invited-in-table",
+      "ok": true,
+      "detail": "no Invited in table"
+    },
+    {
+      "name": "owner-seed-rows-visible",
+      "ok": true,
+      "detail": "bakers=true golden=true preferred=true"
+    },
+    {
+      "name": "manager-login",
+      "ok": true,
+      "detail": "http://localhost:3000/welcome?returnTo=%2Fdashboard&context=versionUpdate"
+    },
+    {
+      "name": "manager-preference-header",
+      "ok": false,
+      "detail": "missing Preference"
+    },
+    {
+      "name": "manager-no-status-only-header",
+      "ok": true,
+      "detail": "Status renamed or Preference present"
+    },
+    {
+      "name": "manager-claimed-label",
+      "ok": false,
+      "detail": "no Claimed text"
+    },
+    {
+      "name": "manager-not-claimed-label",
+      "ok": false,
+      "detail": "no Not claimed text"
+    },
+    {
+      "name": "manager-no-invited-in-table",
+      "ok": true,
+      "detail": "no Invited in table"
+    },
+    {
+      "name": "manager-seed-rows-visible",
+      "ok": false,
+      "detail": "bakers=false golden=false preferred=false"
+    },
+    {
+      "name": "manager-detail-edit-visible",
+      "ok": false,
+      "detail": "no Edit"
+    }
+  ],
+  "errors": []
+}

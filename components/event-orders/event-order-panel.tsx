@@ -13,6 +13,7 @@ import {
 } from "@/app/(app)/events/[id]/event-order-actions";
 import { AddLineSheet } from "@/components/event-orders/add-line-sheet";
 import { EventOrderInvoiceLink } from "@/components/event-orders/event-order-invoice-link";
+import { EventOrderZeroTotalConfirmDialog } from "@/components/event-orders/zero-total-confirm";
 import { BusinessAssetHeader } from "@/components/business-assets/asset-header";
 import { ActivityTimeline } from "@/components/leads/activity-timeline";
 import { ShareDialog } from "@/components/sharing/share-dialog";
@@ -26,6 +27,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { DISPLAY_STATUS_LABEL, PROVENANCE_LABEL, eventOrderDisplayStatus, formatMoney } from "@/lib/event-orders/constants";
+import { eventOrderRequiresZeroTotalWarning } from "@/lib/event-orders/zero-total-warning";
 import type { EventOrderDisplayStatus, EventOrderLine, EventOrderSection, EventOrderWithDetails } from "@/lib/event-orders/types";
 import type { EventOrderTemplate } from "@/lib/event-order-templates/types";
 import type { FloorPlan } from "@/lib/floor-plans/types";
@@ -185,6 +187,9 @@ export function EventOrderPanel({
   const [downloading, startDownload] = React.useTransition();
   const [removingId, setRemovingId] = React.useState<string | null>(null);
   const [removingSectionId, setRemovingSectionId] = React.useState<string | null>(null);
+  const [zeroTotalConfirm, setZeroTotalConfirm] = React.useState<null | { kind: "finalize" | "share" }>(null);
+  const shareConfirmResolveRef = React.useRef<((result: { ok: boolean; message?: string; cancelled?: boolean }) => void) | null>(null);
+  const shareConfirmMessageRef = React.useRef<string>("");
   const paymentSummary = paymentSummaryFromInvoices(invoices);
 
   // Work Package D5E — unified Share experience.
@@ -194,10 +199,60 @@ export function EventOrderPanel({
     eventDate: overview?.eventDate ?? null,
   });
   const shareDefaultMessage = mergeContent("We've shared your Event Order for {{event_date}}. Please review it when you have a chance.", shareMergeData);
-  async function handleShareSend(eventOrderId: string, message: string) {
+
+  async function runFinalize(eventOrderId: string) {
+    const result = await finalizeEventOrderAction(eventOrderId, eventId);
+    if (!result.ok) toast.error(result.message ?? "Could not finalize.");
+    else toast.success("Event Order finalized.");
+  }
+
+  async function runShare(eventOrderId: string, message: string) {
     const result = await shareEventOrderWithClientAction(eventOrderId, eventId, message);
     if (result.ok) toast.success("Shared with client.");
     return result;
+  }
+
+  async function handleShareSend(eventOrderId: string, message: string) {
+    if (eventOrder && eventOrderRequiresZeroTotalWarning(eventOrder.total, eventOrder.lines.length)) {
+      return new Promise<{ ok: boolean; message?: string; cancelled?: boolean }>((resolve) => {
+        shareConfirmResolveRef.current = resolve;
+        shareConfirmMessageRef.current = message;
+        setZeroTotalConfirm({ kind: "share" });
+      });
+    }
+    return runShare(eventOrderId, message);
+  }
+
+  function requestFinalize(eventOrderId: string, total: number, lineCount: number) {
+    if (eventOrderRequiresZeroTotalWarning(total, lineCount)) {
+      setZeroTotalConfirm({ kind: "finalize" });
+      return;
+    }
+    startLifecycle(async () => { await runFinalize(eventOrderId); });
+  }
+
+  function handleZeroTotalCancel() {
+    const resolve = shareConfirmResolveRef.current;
+    shareConfirmResolveRef.current = null;
+    setZeroTotalConfirm(null);
+    if (resolve) resolve({ ok: false, cancelled: true });
+  }
+
+  function handleZeroTotalContinue() {
+    const kind = zeroTotalConfirm?.kind;
+    const resolve = shareConfirmResolveRef.current;
+    const message = shareConfirmMessageRef.current;
+    shareConfirmResolveRef.current = null;
+    setZeroTotalConfirm(null);
+    if (!eventOrder || !kind) return;
+    if (kind === "finalize") {
+      startLifecycle(async () => { await runFinalize(eventOrder.id); });
+      return;
+    }
+    startLifecycle(async () => {
+      const result = await runShare(eventOrder.id, message);
+      if (resolve) resolve(result);
+    });
   }
 
   function handleDownload(eventOrderId: string) {
@@ -270,6 +325,7 @@ export function EventOrderPanel({
   }
 
   return (
+    <>
     <Card>
       <CardHeader>
         <BusinessAssetHeader
@@ -285,11 +341,7 @@ export function EventOrderPanel({
           primaryAction={
             !isFinalized ? (
               <Button type="button" size="sm" disabled={lifecyclePending || (eventOrder.lines.length === 0)}
-                onClick={() => startLifecycle(async () => {
-                  const result = await finalizeEventOrderAction(eventOrder.id, eventId);
-                  if (!result.ok) toast.error(result.message ?? "Could not finalize.");
-                  else toast.success("Event Order finalized.");
-                })}>
+                onClick={() => requestFinalize(eventOrder.id, eventOrder.total, eventOrder.lines.length)}>
                 {lifecyclePending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Finalize"}
               </Button>
             ) : eventOrder.sharedAt ? (
@@ -492,5 +544,12 @@ export function EventOrderPanel({
         )}
       </CardContent>
     </Card>
+    <EventOrderZeroTotalConfirmDialog
+      open={zeroTotalConfirm !== null}
+      actionLabel={zeroTotalConfirm?.kind === "share" ? "Share" : "Finalize"}
+      onCancel={handleZeroTotalCancel}
+      onContinue={handleZeroTotalContinue}
+    />
+    </>
   );
 }

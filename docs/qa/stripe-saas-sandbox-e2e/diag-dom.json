@@ -1,0 +1,203 @@
+{
+  "buttons": [
+    {
+      "text": "",
+      "className": "Button AccordionButton AccordionButton-open AccordionButton-expandedClickArea AccordionButton-expandedFocusArea Button--link Button--sm",
+      "disabled": false,
+      "ariaDisabled": null,
+      "type": "button",
+      "testid": "card-accordion-item-button",
+      "visible": false
+    },
+    {
+      "text": "Clear",
+      "className": "Button AddressAutocomplete--clear-button Button--link Button--md",
+      "disabled": false,
+      "ariaDisabled": null,
+      "type": "button",
+      "testid": null,
+      "visible": true
+    },
+    {
+      "text": "",
+      "className": "Button AccordionButton AccordionButton-open AccordionButton-expandedClickArea AccordionButton-expandedFocusArea Button--link Button--sm",
+      "disabled": false,
+      "ariaDisabled": null,
+      "type": "button",
+      "testid": "cashapp-accordion-item-button",
+      "visible": false
+    },
+    {
+      "text": "",
+      "className": "Button AccordionButton AccordionButton-open AccordionButton-expandedClickArea AccordionButton-expandedFocusArea Button--link Button--sm",
+      "disabled": false,
+      "ariaDisabled": null,
+      "type": "button",
+      "testid": "klarna-accordion-item-button",
+      "visible": false
+    },
+    {
+      "text": "",
+      "className": "Button AccordionButton AccordionButton-open AccordionButton-expandedClickArea AccordionButton-expandedFocusArea Button--link Button--sm",
+      "disabled": false,
+      "ariaDisabled": null,
+      "type": "button",
+      "testid": "link_instant_debit-accordion-item-button",
+      "visible": false
+    },
+    {
+      "text": "Subscribe\nProcessing",
+      "className": "SubmitButton SubmitButton--complete",
+      "disabled": false,
+      "ariaDisabled": null,
+      "type": "submit",
+      "testid": "hosted-payment-submit-button",
+      "visible": true
+    }
+  ],
+  "inputs": [
+    {
+      "name": "payment-method-accordion-item-title",
+      "type": "radio",
+      "value": "card",
+      "required": false,
+      "ariaInvalid": null,
+      "autocomplete": "",
+      "placeholder": ""
+    },
+    {
+      "name": "cardNumber",
+      "type": "text",
+      "value": "4242 4242 4242 4242",
+      "required": false,
+      "ariaInvalid": "false",
+      "autocomplete": "cc-number",
+      "placeholder": "1234 1234 1234 1234"
+    },
+    {
+      "name": "cardExpiry",
+      "type": "text",
+      "value": "12 / 34",
+      "required": false,
+      "ariaInvalid": "false",
+      "autocomplete": "cc-exp",
+      "placeholder": "MM / YY"
+    },
+    {
+      "name": "cardCvc",
+      "type": "text",
+      "value": "123",
+      "required": false,
+      "ariaInvalid": "false",
+      "autocomplete": "cc-csc",
+      "placeholder": "CVC"
+    },
+    {
+      "name": "billingName",
+      "type": "text",
+      "value": "HTC E2E Tester",
+      "required": false,
+      "ariaInvalid": "false",
+      "autocomplete": "cc-name",
+      "placeholder": "Full name on card"
+    },
+    {
+      "name": "billingCountry",
+      "type": "select-one",
+      "value": "US",
+      "required": false,
+      "ariaInvalid": null,
+      "autocomplete": "billing country"
+    },
+    {
+      "name": "billingAddressLine1",
+      "type": "text",
+      "value": "123 Test Lane",
+      "required": false,
+      "ariaInvalid": "false",
+      "autocomplete": "",
+      "placeholder": "Address"
+    },
+    {
+      "name": "billingAddressLine2",
+      "type": "text",
+      "value": "",
+      "required": false,
+      "ariaInvalid": "false",
+      "autocomplete": "billing address-line2",
+      "placeholder": "Address line 2"
+    },
+    {
+      "name": "billingLocality",
+      "type": "text",
+      "value": "Austin",
+      "required": false,
+      "ariaInvalid": "false",
+      "autocomplete": "billing address-level2",
+      "placeholder": "City"
+    },
+    {
+      "name": "billingPostalCode",
+      "type": "text",
+      "value": "78701",
+      "required": false,
+      "ariaInvalid": "false",
+      "autocomplete": "billing postal-code",
+      "placeholder": "ZIP"
+    },
+    {
+      "name": "billingAdministrativeArea",
+      "type": "select-one",
+      "value": "TX",
+      "required": false,
+      "ariaInvalid": null,
+      "autocomplete": "billing address-level1"
+    },
+    {
+      "name": "payment-method-accordion-item-title",
+      "type": "radio",
+      "value": "cashapp",
+      "required": false,
+      "ariaInvalid": null,
+      "autocomplete": "",
+      "placeholder": ""
+    },
+    {
+      "name": "payment-method-accordion-item-title",
+      "type": "radio",
+      "value": "klarna",
+      "required": false,
+      "ariaInvalid": null,
+      "autocomplete": "",
+      "placeholder": ""
+    },
+    {
+      "name": "payment-method-accordion-item-title",
+      "type": "radio",
+      "value": "link_instant_debit",
+      "required": false,
+      "ariaInvalid": null,
+      "autocomplete": "",
+      "placeholder": ""
+    },
+    {
+      "name": "enableStripePass",
+      "type": "checkbox",
+      "value": "on",
+      "required": false,
+      "ariaInvalid": null,
+      "autocomplete": "",
+      "placeholder": ""
+    },
+    {
+      "name": "",
+      "type": "checkbox",
+      "value": "on",
+      "required": false,
+      "ariaInvalid": null,
+      "autocomplete": "",
+      "placeholder": ""
+    }
+  ],
+  "href": "https://checkout.stripe.com/c/pay/cs_test_a1F8wQT69DUIWHS68gqKSdCU6LNi3GVUEvD920iUsk6FbKMvcx6tVIbZ2K#fidnandhYHdWcXxpYCc%2FJ2FgY2RwaXEnKSdicGRmZGhqaWBTZHdsZGtxJz8nZmprcXdqaScpJ2R1bE5gfCc%2FJ3VuWnFgdnFaMDRQMTc3M0B3UHRPTTJrbnFfZ1BHf2t9bnRvdUpndjExRzVBa29iX1BnSTNmRDJMQ1JzUlFNNHZEX2dhbn1kbV9PQlwyXGNPNERAaEB0R0h3aVJNaVN1R1w1NU9OUzc2cGZhJyknY3dqaFZgd3Ngdyc%2FcXdwYCknZ2RmbmJ3anBrYUZqaWp3Jz8nJmNjY2NjYycpJ2lkfGpwcVF8dWAnPyd2bGtiaWBabHFgaCcpJ2BrZGdpYFVpZGZgbWppYWB3dic%2FcXdwYHgl"
+}

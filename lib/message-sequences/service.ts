@@ -119,6 +119,22 @@ export async function cancelEnrollment_(enrollmentId: string): Promise<SequenceA
   return result as SequenceActionResult;
 }
 
+export async function pauseEnrollment_(enrollmentId: string): Promise<SequenceActionResult> {
+  const result = await withVenue(async (supabase, venueId) => {
+    await repo.pauseEnrollment(supabase, venueId, enrollmentId);
+    return { ok: true } as SequenceActionResult;
+  });
+  return result as SequenceActionResult;
+}
+
+export async function resumeEnrollment_(enrollmentId: string): Promise<SequenceActionResult> {
+  const result = await withVenue(async (supabase, venueId) => {
+    await repo.resumeEnrollment(supabase, venueId, enrollmentId);
+    return { ok: true } as SequenceActionResult;
+  });
+  return result as SequenceActionResult;
+}
+
 // ---- Cross-domain hook points ---------------------------------------------
 //
 // These accept an already-authenticated client from the CALLING domain's own
@@ -148,6 +164,25 @@ export async function triggerSequencesForRelationship(
     enrollmentIds.push(enrollmentId);
   }
   return enrollmentIds;
+}
+
+/**
+ * Preview of triggerSequencesForRelationship for lead_stage_changed — same
+ * matching + already-enrolled skip, without inserting. Used to disclose
+ * before a Pipeline stage move commits. Also returns the first matching
+ * sequence id (for first-step message preview) when enrollment would occur.
+ */
+export async function wouldEnrollOnStageChange(
+  supabase: AnyDbClient, venueId: string, relationshipId: string, triggerStage: string,
+): Promise<{ wouldEnroll: boolean; sequenceId: string | null }> {
+  const sequences = await repo.getActiveSequencesForTrigger(
+    supabase, venueId, "lead_stage_changed", triggerStage,
+  );
+  for (const seq of sequences) {
+    if (await repo.hasActiveEnrollment(supabase, seq.id, relationshipId)) continue;
+    return { wouldEnroll: true, sequenceId: seq.id };
+  }
+  return { wouldEnroll: false, sequenceId: null };
 }
 
 /** Stop on booking (§3.3) — called once a lead becomes a client. */

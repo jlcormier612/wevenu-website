@@ -1,0 +1,18 @@
+{
+  "log": [
+    "unchecked_link",
+    "card:input[autocomplete=\"cc-number\"]",
+    "exp:input[autocomplete=\"cc-exp\"]",
+    "cvc:input[autocomplete=\"cc-csc\"]",
+    "name:input[autocomplete=\"cc-name\"]",
+    "zip:input[name=\"billingPostalCode\"]",
+    "city:input[name=\"billingLocality\"]",
+    "state:select",
+    "address:suggestion_clicked",
+    "address:zip=02169",
+    "clicked_subscribe",
+    "body_snip:Back | Hello to Cheers sandbox | Sandbox | Subscribe to Gather | $119.00 | per | month | Gather | Monthly Platform Subscription, For 'Up to 25 Celebrations' | Billed monthly | $149.00 | Subtotal | $149.00 | Founding Weven/First 100 Discount | -$30.00 | $30.00 off | Tax | $0.00 | Total due today | $119.00 |  | OR |  | Contact information | Email | htc-e2e-1786662606@example.com | Payment method | Card | Card information | Visa, Mastercard, American Expres",
+    "alerts:[\"\",\"\",\"\",\"\",\"\",\"\"]"
+  ],
+  "finalUrl": "https://checkout.stripe.com/c/pay/cs_test_a1r1WxA1lHfjTf4LhGzOepsMqzHg5mnLnPbsrN9yyG1vEkXNOQui8ulAs1#fidnandhYHdWcXxpYCc%2FJ2FgY2RwaXEnKSdicGRmZGhqaWBTZHdsZGtxJz8nZmprcXdqaScpJ2R1bE5gfCc%2FJ3VuWnFgdnFaMDRQMTc3M0B3UHRPTTJrbnFfZ1BHf2t9bnRvdUpndjExRzVBa29iX1BnSTNmRDJMQ1JzUlFNNHZEX2dhbn1kbV9PQlwyXGNPNERAaEB0R0h3aVJNaVN1R1w1NU9OUzc2cGZhJyknY3dqaFZgd3Ngdyc%2FcXdwYCknZ2RmbmJ3anBrYUZqaWp3Jz8nJmNjY2NjYycpJ2lkfGpwcVF8dWAnPyd2bGtiaWBabHFgaCcpJ2BrZGdpYFVpZGZgbWppYWB3dic%2FcXdwYHgl"
+}

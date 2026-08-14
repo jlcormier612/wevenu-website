@@ -5,6 +5,7 @@ import { notFound } from "next/navigation";
 import { ActivityTimeline } from "@/components/hq/venue-detail/activity-timeline";
 import { CommunicationDiagnosticsSection } from "@/components/hq/venue-detail/communication-diagnostics-section";
 import { EngagementSection } from "@/components/hq/venue-detail/engagement-section";
+import { EventOrderEnableSection } from "@/components/hq/venue-detail/event-order-enable-section";
 import { LuvInsights } from "@/components/hq/venue-detail/luv-insights";
 import { OverviewSection } from "@/components/hq/venue-detail/overview-section";
 import { SupportSection } from "@/components/hq/venue-detail/support-section";
@@ -45,6 +46,8 @@ export default async function VenueHqDetailPage({ params }: Props) {
       <EngagementSection team={detail.team} vendors={detail.vendors} couples={detail.couples} />
 
       <SupportSection venueId={venueId} notes={detail.notes} tasks={detail.tasks} crmState={detail.crmState} />
+
+      <EventOrderEnableSection venueId={venueId} enabled={detail.venue.eventOrderEnabled} />
 
       <CommunicationDiagnosticsSection diagnostics={diagnostics} />
     </div>

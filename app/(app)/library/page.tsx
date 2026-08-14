@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import {
-  BookOpen, Boxes, CalendarClock, ClipboardList, FileSignature, FileText, GitBranch,
-  HelpCircle, Layers, LayoutGrid, Mail, Megaphone, Package, QrCode,
+  BookOpen, Boxes, CalendarClock, ClipboardList, FileSignature, FileText,
+  Layers, LayoutGrid, Mail, Megaphone, Package, QrCode,
 } from "lucide-react";
 
 import { PageHeader } from "@/components/shell/module-placeholder";
@@ -13,7 +13,6 @@ import { getTemplates as getMessageTemplates } from "@/lib/message-templates/ser
 import { getTemplatesForLibrary as getPlaybookTemplates } from "@/lib/playbooks/service";
 import { getTemplatesForLibrary as getTimelineTemplates } from "@/lib/timeline-templates/service";
 import { getTemplatesForLibrary as getFloorPlanTemplates } from "@/lib/floor-plan-templates/service";
-import { getTemplates as getPipelineTemplates } from "@/lib/pipeline-templates/service";
 import { getPackages } from "@/lib/packages/service";
 import { getItemsForLibrary } from "@/lib/inventory/service";
 import { getTemplates as getInventoryTemplates } from "@/lib/event-inventory/service";
@@ -22,9 +21,7 @@ import { getQrCampaigns } from "@/lib/qr-campaigns/service";
 import { getTemplates as getEventOrderTemplates } from "@/lib/event-order-templates/service";
 import { getBrochures } from "@/lib/brochures/service";
 import { getSavedReports } from "@/lib/saved-reports/service";
-import { loadVenueGuideAction } from "@/app/(app)/guide/actions";
 import { getPaymentPlanStarters } from "@/lib/payments/starters";
-import { ensureFaqStartersForCurrentVenue } from "@/lib/venue-guide/provision";
 import { ensureBrochureStartersForCurrentVenue } from "@/lib/brochures/provision";
 import { ensureSavedReportStartersForCurrentVenue } from "@/lib/saved-reports/provision";
 
@@ -83,20 +80,18 @@ export default async function LibraryPage() {
   // the fix belongs here — filtering client-side for the count — not in
   // the shared fetcher, which other real callers still need unfiltered.
   await Promise.all([
-    ensureFaqStartersForCurrentVenue(),
     ensureBrochureStartersForCurrentVenue(),
     ensureSavedReportStartersForCurrentVenue(),
   ]);
   const [
     contractTemplates, playbookTemplatesAll, timelineTemplatesAll, floorPlanTemplatesAll,
-    pipelineTemplates, packagesAll, inventoryItemsAll, qrCampaigns, messageTemplates, inventoryTemplates,
-    questionnaireTemplates, eventOrderTemplatesAll, brochuresAll, savedReports, venueGuide,
+    packagesAll, inventoryItemsAll, qrCampaigns, messageTemplates, inventoryTemplates,
+    questionnaireTemplates, eventOrderTemplatesAll, brochuresAll, savedReports,
   ] = await Promise.all([
     getContractTemplates(),
     getPlaybookTemplates(),
     getTimelineTemplates(),
     getFloorPlanTemplates(),
-    getPipelineTemplates(),
     getPackages(true),
     getItemsForLibrary(),
     getQrCampaigns(),
@@ -106,9 +101,7 @@ export default async function LibraryPage() {
     getEventOrderTemplates(true),
     getBrochures(true),
     getSavedReports(),
-    loadVenueGuideAction(),
   ]);
-  const faqCount = venueGuide?.faqs.length ?? 0;
   const eventOrderTemplates = eventOrderTemplatesAll.filter((t) => !t.isArchived);
   const brochures = brochuresAll.filter((b) => !b.isArchived);
   const playbookTemplates = playbookTemplatesAll.filter((t) => !t.isArchived);
@@ -121,7 +114,7 @@ export default async function LibraryPage() {
     <div className="space-y-8">
       <PageHeader
         title="Library"
-        description="Your venue's toolbox — everything reusable, in one place. Templates you build once and use for every wedding."
+        description="Your venue's toolbox — the things you set up once and use again and again: agreements, packages, planning tools, marketing, and more."
       />
 
       <Group title="Agreements">
@@ -131,8 +124,6 @@ export default async function LibraryPage() {
 
       <Group title="Pricing &amp; Packages">
         <ToolboxCard title="Packages" description="What you offer — customize inclusions and set your price before adding to an event or invoice." href="/packages" count={packages.length} icon={Boxes} />
-        <ToolboxCard title="Inventory" description="What your venue provides — customize examples, then use them on events." href="/library/inventory" count={inventoryItems.length} icon={Package} />
-        <ToolboxCard title="Inventory Templates" description="What you typically use for a wedding — Ceremony + Reception or Reception Only starters." href="/library/inventory-templates" count={inventoryTemplates.length} icon={Layers} />
         {/* D8 — count was a hardcoded literal 3; matched today's real
             starter list by coincidence, but would have silently gone stale
             the moment a starter was added or removed. Every other Library
@@ -143,14 +134,14 @@ export default async function LibraryPage() {
       <Group title="Planning">
         <ToolboxCard title="Planning Templates" description="The task checklists you've refined over the years." href="/library/playbooks" count={playbookTemplates.length} icon={BookOpen} />
         <ToolboxCard title="Timeline Templates" description="Reusable day-of schedules for any booking." href="/library/timeline-templates" count={timelineTemplates.length} icon={CalendarClock} />
-        <ToolboxCard title="Pipeline Templates" description="How a lead moves through your booking process." href="/library/pipeline-templates" count={pipelineTemplates.length} icon={GitBranch} />
         <ToolboxCard title="Floor Plan Templates" description="Reusable room layouts for any booking." href="/library/floor-plan-templates" count={floorPlanTemplates.length} icon={LayoutGrid} />
         <ToolboxCard title="Event Order Templates" description="Reusable starting points for the Event Orders you create for your events." href="/library/event-order-templates" count={eventOrderTemplates.length} icon={ClipboardList} />
+        <ToolboxCard title="Inventory" description="What your venue provides — customize examples, then use them on events." href="/library/inventory" count={inventoryItems.length} icon={Package} />
+        <ToolboxCard title="Inventory Templates" description="What you typically use for a wedding — Ceremony + Reception or Reception Only starters." href="/library/inventory-templates" count={inventoryTemplates.length} icon={Layers} />
       </Group>
 
       <Group title="Communication">
         <ToolboxCard title="Message Templates" description="Emails and texts you send often, ready to reuse." href="/communication/templates" count={messageTemplates.length} icon={Mail} />
-        <ToolboxCard title="Venue Guide" description="Parking, policies, FAQs, and other answers. Hello to Cheers starter FAQs are ready to review and publish." href="/guide" count={faqCount} icon={HelpCircle} />
       </Group>
 
       <Group title="Marketing">

@@ -6,8 +6,15 @@
 import type { ScheduledMessageChannel } from "@/lib/scheduled-messages/types";
 
 export type SequenceStatus = "active" | "paused";
-export type SequenceTriggerType = "lead_created" | "lead_stage_changed";
-export type SequenceEnrollmentStatus = "active" | "completed" | "exited_reply" | "exited_booking" | "cancelled";
+export type SequenceTriggerType = "lead_created" | "lead_stage_changed" | "tour_completed";
+export type SequenceEnrollmentStatus =
+  | "active"
+  | "completed"
+  | "exited_reply"
+  | "exited_booking"
+  | "exited_lost"
+  | "exited_cancelled"
+  | "cancelled";
 
 export type MessageSequence = {
   id: string;
@@ -55,6 +62,12 @@ export type SequenceEnrollment = {
   status: SequenceEnrollmentStatus;
   enrolledAt: string;
   exitedAt: string | null;
+  /** Set while this one person is paused; status stays active. */
+  pausedAt: string | null;
+  /** Progress from scheduled_messages linked to this enrollment (when loaded). */
+  stepsTotal?: number;
+  stepsSent?: number;
+  nextScheduledFor?: string | null;
 };
 
 export type SequenceErrors = Record<string, string>;

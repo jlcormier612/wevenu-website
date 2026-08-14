@@ -1,0 +1,73 @@
+{
+  "startedAt": "2026-08-13T00:26:21.554Z",
+  "base": "http://localhost:3000",
+  "login": {
+    "ok": false,
+    "url": "http://localhost:3000/login"
+  },
+  "seriesList": {
+    "url": "http://localhost:3000/communication/series",
+    "hasAutomationsTitle": true,
+    "hasNewInquiryWelcome": true,
+    "hasSequenceWord": false,
+    "sample": "OVERVIEW Dashboard Reports Calendar Help & Guides PIPELINE Leads CLIENTS Clients COMMUNICATION Inbox Message Templates Automations TO DO'S Tours Task Center RESOURCES/TEMPLATES Library Vendors Planning Timelines Pipelines Contract Templates Packages Floor Plans Inventory QR Campaigns FINANCIALS Contracts Invoices Payments OPERATIONS Settings Venue Guide Requests Give feedback Search ⌘K 87 O owner@example.com Automations Automated follow-ups that go out on their own — a Welcome Automation for new inquiries, a Reminder Automation before a tour. Communication should never require you to remember what to send next. + New Automation New Inquiry Follow-up Active A new inquiry comes in Edit New Inquiry Welcome Active A new inquiry comes in Edit"
+  },
+  "newForm": {
+    "editNoteVisible": true,
+    "openedStagePicker": true,
+    "stageLabels": [
+      "Manual only — I'll enroll people myself",
+      "A new inquiry comes in",
+      "A lead reaches a pipeline stage",
+      "New · New Lead",
+      "Contacted · Tour Scheduled",
+      "Qualified · Tour Scheduled",
+      "Proposal Sent",
+      "Won · Booked",
+      "Lost",
+      "Cancelled"
+    ],
+    "stageCount": 10,
+    "foundCanonical": [
+      "New",
+      "Contacted",
+      "Qualified",
+      "Proposal Sent",
+      "Won",
+      "Lost",
+      "Cancelled"
+    ],
+    "allSevenPresent": true,
+    "hasVenueStyleSeparator": true,
+    "sample": "OVERVIEW Dashboard Reports Calendar Help & Guides PIPELINE Leads CLIENTS Clients COMMUNICATION Inbox Message Templates Automations TO DO'S Tours Task Center RESOURCES/TEMPLATES Library Vendors Planning Timelines Pipelines Contract Templates Packages Floor Plans Inventory QR Campaigns FINANCIALS Contracts Invoices Payments OPERATIONS Settings Venue Guide Requests Give feedback Search ⌘K 87 O owner@example.com New Automation Build a set of steps that send automatically, in order, from your Templates. Automation editor Choose what starts it, then add steps. Each step sends a Template on its own s"
+  },
+  "editForm": {
+    "href": "/communication/series/fd5d172e-a457-4231-8238-849f4a91dc6c/edit",
+    "editNoteVisible": true,
+    "hasEnrollmentsSection": true,
+    "hasStepProgress": true,
+    "hasForbiddenTerms": {
+      "sequenceEnrollment": false,
+      "materialized": false,
+      "scheduler": false,
+      "cron": false,
+      "executionEngine": false,
+      "canonicalStage": false
+    },
+    "sample": "OVERVIEW Dashboard Reports Calendar Help & Guides PIPELINE Leads CLIENTS Clients COMMUNICATION Inbox Message Templates Automations TO DO'S Tours Task Center RESOURCES/TEMPLATES Library Vendors Planning Timelines Pipelines Contract Templates Packages Floor Plans Inventory QR Campaigns FINANCIALS Contracts Invoices Payments OPERATIONS Settings Venue Guide Requests Give feedback Search ⌘K 87 O owner@example.com Edit · New Inquiry Follow-up Update the steps or who this automation starts for. Pause Automation editor Changes to steps only affect enrollments made after you save. Editing an Automation applies to new enrollments only. People already enrolled keep the steps that were set when they joined. Automation name * Starts when… A new inquiry comes in Steps + Add step Step 1 Channel Email Template Auto Inquiry Reply Days after enrolling Cancel Save changes Enrolled People join this automation automatically, or you can add someone yourself below. Priya Natarajan Stopped — booked Ron Cormie"
+  },
+  "enrollments": {
+    "progressCount": 2,
+    "progressSamples": [
+      "Step 1 of 1",
+      "Step 1 of 1"
+    ]
+  },
+  "activity": {
+    "url": "http://localhost:3000/leads",
+    "hasAutomationLifecycle": false,
+    "sample": "OVERVIEW Dashboard Reports Calendar Help & Guides PIPELINE Leads CLIENTS Clients COMMUNICATION Inbox Message Templates Automations TO DO'S Tours Task Center RESOURCES/TEMPLATES Library Vendors Planning Timelines Pipelines Contract Templates Packages Floor Plans Inventory QR Campaigns FINANCIALS Contracts Invoices Payments OPERATIONS Settings Venue Guide Requests Give feedback Search ⌘K 87 O owner@example.com Leads Manage leads and track them through your pipeline. Pipeline Templates Board view Import Leads + New Lead Most Recent Stage: All 4 New Lead 2 Follow-up 0 Tour Scheduled 1 Tour Completed 0 Proposal Issued 0 Contract Out 0 Booked 1 Cancelled 0 Lost 0 Type: All Wedding 2 Corporate Event 1 Anniversary 1 NAME EVENT DATE GUESTS BUDGET STATUS RECEIVED Priya Natarajan priya.lifecycle.test"
+  },
+  "errors": [],
+  "finishedAt": "2026-08-13T00:27:09.051Z"
+}

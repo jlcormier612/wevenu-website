@@ -14,9 +14,9 @@ import {
 import { fetchActiveVenueLegalDocuments } from "@/lib/legal/product-legal";
 import { syncCheckoutStartedToRelationship } from "@/lib/relationships/bridge";
 import {
+  getCheckoutPricingForPlan,
   getMarketingSiteUrl,
   getOnboardingAddonPriceId,
-  getPriceIdForPlan,
   getStripe,
   isSubscriptionPlanId,
 } from "@/lib/stripe/config";
@@ -91,7 +91,7 @@ export async function POST(request: Request) {
     }
 
     const stripe = getStripe();
-    const priceId = getPriceIdForPlan(plan, { founder: founderActive });
+    const pricing = getCheckoutPricingForPlan(plan, { founder: founderActive });
     const siteUrl = getMarketingSiteUrl();
 
     const forwardedFor = request.headers.get("x-forwarded-for");
@@ -113,6 +113,7 @@ export async function POST(request: Request) {
       welcome_back: welcomeBack ? "true" : "false",
       onboarding_type: onboardingType,
       founding_member: foundingMember ? "true" : "false",
+      pricing_mode: pricing.mode,
     };
     if (venueName) {
       metadata.venue_name = venueName;
@@ -134,7 +135,7 @@ export async function POST(request: Request) {
     }
 
     const lineItems: { price: string; quantity: number }[] = [
-      { price: priceId, quantity: 1 },
+      { price: pricing.priceId, quantity: 1 },
     ];
 
     if (onboardingPackage.stripePriceEnv) {
@@ -155,7 +156,10 @@ export async function POST(request: Request) {
       cancel_url: relationshipId
         ? `${siteUrl}/pricing?canceled=1&relationship_id=${encodeURIComponent(relationshipId)}`
         : `${siteUrl}/pricing?canceled=1`,
-      allow_promotion_codes: true,
+      // Stripe forbids allow_promotion_codes together with discounts.
+      ...(pricing.foundingCouponId
+        ? { discounts: [{ coupon: pricing.foundingCouponId }] }
+        : { allow_promotion_codes: pricing.allowPromotionCodes }),
       billing_address_collection: "required",
       automatic_tax: { enabled: true },
       tax_id_collection: { enabled: true },
@@ -165,13 +169,12 @@ export async function POST(request: Request) {
       metadata,
     };
 
+    // Subscription mode always creates/uses a Customer — `customer_creation`
+    // is payment-mode only and Stripe rejects it here.
     if (body.stripe_customer_id?.trim()) {
       sessionParams.customer = body.stripe_customer_id.trim();
     } else if (customerEmail) {
       sessionParams.customer_email = customerEmail;
-      sessionParams.customer_creation = "always";
-    } else {
-      sessionParams.customer_creation = "always";
     }
 
     const session = await stripe.checkout.sessions.create(sessionParams);

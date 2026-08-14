@@ -14,6 +14,7 @@ import { getCurrentVenue } from "@/lib/venue/service";
 import { getEvent } from "@/lib/events/service";
 import { getClient } from "@/lib/clients/service";
 import { getSpaces } from "@/lib/availability/service";
+import { shareBlockedWhenNotFinalized } from "@/lib/event-orders/lifecycle-gates";
 import { getEventOrder } from "@/lib/event-orders/service";
 import * as repo from "@/lib/event-orders/repository";
 import * as documentIntegration from "@/lib/event-orders/document-integration";
@@ -52,9 +53,8 @@ export async function shareEventOrderWithClient(eventOrderId: string, customMess
   const supabase = await createClient();
   const eventOrder = await repo.getEventOrderById(supabase, venue.id, eventOrderId);
   if (!eventOrder) return { ok: false, message: "Event Order not found." };
-  if (eventOrder.status !== "finalized") {
-    return { ok: false, message: "Mark the Event Order Ready before sharing it with the client." };
-  }
+  const shareBlocked = shareBlockedWhenNotFinalized(eventOrder.status);
+  if (shareBlocked) return shareBlocked;
 
   const full = await getEventOrder(eventOrder.eventId);
   if (!full) return { ok: false, message: "Event Order not found." };

@@ -205,6 +205,12 @@ export async function submitVenueSetup(
       console.error("Could not seed starter message templates:", seedError);
     }
     try {
+      const { seedStarterAutomations } = await import("@/lib/message-sequences/provision");
+      await seedStarterAutomations(venueId);
+    } catch (seedError) {
+      console.error("Could not seed starter automations:", seedError);
+    }
+    try {
       const { seedContractStarters } = await import("@/lib/contracts/provision");
       await seedContractStarters(venueId);
     } catch (seedError) {

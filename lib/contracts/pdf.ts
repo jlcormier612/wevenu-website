@@ -20,6 +20,7 @@
 import * as React from "react";
 import { Document, Page, Text, View, Image, StyleSheet, Font, renderToBuffer } from "@react-pdf/renderer";
 import { resolvePdfBrandColors } from "@/lib/collateral/pdf-brand";
+import { resolveContractBrandPresentation } from "@/lib/contracts/branding";
 import type { Contract } from "@/lib/contracts/types";
 import type { Venue } from "@/lib/venue/types";
 
@@ -88,17 +89,28 @@ function fmtDate(iso: string | null): string {
 }
 
 function ContractPdfDocument({ contract, venue }: { contract: Contract; venue: Venue }) {
-  const brand = resolvePdfBrandColors(venue);
-  const venueDisplayName = venue.name || venue.businessName || "Your Venue";
-  const addressLine = [venue.addressLine1, venue.addressLine2].filter(Boolean).join(", ");
-  const contactLine = [venue.email, venue.phone, venue.website].filter(Boolean).join("  ·  ");
+  // Prefer branding frozen at release; pre-existing contracts without a
+  // snapshot fall back to live venue branding (no silent backfill).
+  const brandFields = resolveContractBrandPresentation(contract.brandingSnapshot, venue);
+  const brand = resolvePdfBrandColors(brandFields ?? venue);
+  const venueDisplayName = brandFields?.businessName || brandFields?.name || venue.name || venue.businessName || "Your Venue";
+  const addressLine = [
+    brandFields?.addressLine1 ?? venue.addressLine1,
+    brandFields?.addressLine2 ?? venue.addressLine2,
+  ].filter(Boolean).join(", ");
+  const contactLine = [
+    brandFields?.email ?? venue.email,
+    brandFields?.phone ?? venue.phone,
+    brandFields?.website ?? venue.website,
+  ].filter(Boolean).join("  ·  ");
+  const logoUrl = brandFields?.logoUrl ?? venue.logoUrl;
 
   return (
     React.createElement(Document, { title: contract.title, author: venueDisplayName },
       React.createElement(Page, { size: "LETTER", style: styles.page },
         React.createElement(View, { style: [styles.header, { borderBottomColor: brand.primary }] },
           React.createElement(View, { style: styles.venueBlock },
-            venue.logoUrl ? React.createElement(Image, { src: venue.logoUrl, style: styles.logo }) : null,
+            logoUrl ? React.createElement(Image, { src: logoUrl, style: styles.logo }) : null,
             React.createElement(Text, { style: styles.venueName }, venueDisplayName),
             addressLine ? React.createElement(Text, { style: styles.venueMeta }, addressLine) : null,
           ),

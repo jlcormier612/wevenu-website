@@ -25,7 +25,11 @@ import {
   validateTaskInput,
 } from "@/lib/leads/validation";
 import { getCurrentVenue } from "@/lib/venue/service";
-import { triggerSequencesForRelationship } from "@/lib/message-sequences/service";
+import { exitActiveEnrollmentsForRelationship } from "@/lib/message-sequences/repository";
+import {
+  triggerSequencesForRelationship,
+  wouldEnrollOnStageChange,
+} from "@/lib/message-sequences/service";
 import { CANONICAL_STAGE_TO_LEAD_STATUS } from "@/lib/leads/pipeline-stage-mapping";
 import type { CanonicalStage } from "@/lib/pipeline-templates/types";
 import { ingestLead } from "@/lib/lead-intake/pipeline";
@@ -231,9 +235,22 @@ export async function updateLeadStatus(
     }
 
     // Rule-based Series enrollment (§3.2) — must never block a status change.
+    // Terminal Lost/Cancelled: exit existing active enrollments FIRST, then
+    // fire the stage-change trigger so a purpose-built Lost/Cancelled
+    // Automation can enroll without being immediately exited.
     const { data: lead } = await supabase.from("leads").select("relationship_id")
       .eq("id", leadId).maybeSingle<{ relationship_id: string | null }>();
     if (lead?.relationship_id) {
+      if (status === "lost" || status === "cancelled") {
+        const exitReason = status === "lost" ? "exited_lost" : "exited_cancelled";
+        try {
+          await exitActiveEnrollmentsForRelationship(
+            supabase, venueId, lead.relationship_id, exitReason,
+          );
+        } catch (e) {
+          console.error(`Series exit (${exitReason}) failed:`, e);
+        }
+      }
       void triggerSequencesForRelationship(supabase, venueId, lead.relationship_id, "lead_stage_changed", status)
         .catch((e) => console.error("Series enrollment (lead_stage_changed) failed:", e));
     }
@@ -298,6 +315,91 @@ export async function updateLeadPipelineStage(leadId: string, stageId: string): 
     return { ok: true } as LeadActionResult;
   });
   return result as LeadActionResult;
+}
+
+/**
+ * Preview only — does this Pipeline stage move create a new Automation
+ * enrollment? Uses the same stage→LeadStatus mapping and the same
+ * lead_stage_changed matching as updateLeadPipelineStage / updateLeadStatus.
+ * When enrollment would occur, also resolves the first step's message via the
+ * same merge path as Scheduled Sends (informational only — never writes).
+ */
+export async function wouldEnrollOnPipelineStageMove(
+  leadId: string,
+  stageId: string,
+): Promise<
+  | {
+      ok: true;
+      wouldEnroll: boolean;
+      preview: import("@/lib/message-sequences/confirm-preview").AutomationMessagePreview | null;
+    }
+  | { ok: false; message: string }
+> {
+  if (!isSupabaseConfigured) return { ok: false, message: "Backend not configured." };
+  const venue = await getCurrentVenue();
+  if (!venue) return { ok: false, message: "No venue found. Complete setup first." };
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { ok: false, message: "Session expired. Please sign in again." };
+
+  const { data: stage } = await supabase.from("pipeline_stages").select("canonical_stage")
+    .eq("id", stageId).eq("venue_id", venue.id).maybeSingle<{ canonical_stage: CanonicalStage }>();
+  if (!stage) return { ok: false, message: "That pipeline stage no longer exists." };
+
+  const mappedStatus = CANONICAL_STAGE_TO_LEAD_STATUS[stage.canonical_stage];
+  const { data: lead } = await supabase.from("leads").select("relationship_id")
+    .eq("id", leadId).eq("venue_id", venue.id).maybeSingle<{ relationship_id: string | null }>();
+  if (!lead?.relationship_id) return { ok: true, wouldEnroll: false, preview: null };
+
+  const match = await wouldEnrollOnStageChange(
+    supabase, venue.id, lead.relationship_id, mappedStatus,
+  );
+  if (!match.wouldEnroll || !match.sequenceId) {
+    return { ok: true, wouldEnroll: false, preview: null };
+  }
+
+  const preview = await loadFirstStepPreview(
+    supabase, venue.id, lead.relationship_id, match.sequenceId,
+  );
+  return { ok: true, wouldEnroll: true, preview };
+}
+
+async function loadFirstStepPreview(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  venueId: string,
+  relationshipId: string,
+  sequenceId: string,
+): Promise<import("@/lib/message-sequences/confirm-preview").AutomationMessagePreview> {
+  const { resolveFirstStepPreview, AUTOMATION_PREVIEW_UNAVAILABLE } = await import(
+    "@/lib/message-sequences/confirm-preview"
+  );
+  const { getMergeContextForRelationship } = await import("@/lib/scheduled-messages/repository");
+
+  const { data: step } = await supabase.from("sequence_steps")
+    .select("template_id, channel")
+    .eq("sequence_id", sequenceId)
+    .order("sort_order")
+    .limit(1)
+    .maybeSingle<{ template_id: string; channel: "email" | "sms" }>();
+
+  if (!step) {
+    return { ok: false, fallback: AUTOMATION_PREVIEW_UNAVAILABLE };
+  }
+
+  const { data: template } = await supabase.from("message_templates")
+    .select("email_subject, email_body, sms_body")
+    .eq("id", step.template_id)
+    .maybeSingle<{ email_subject: string | null; email_body: string | null; sms_body: string | null }>();
+
+  const mergeContext = await getMergeContextForRelationship(supabase, venueId, relationshipId);
+
+  return resolveFirstStepPreview({
+    channel: step.channel,
+    emailSubject: template?.email_subject ?? null,
+    emailBody: template?.email_body ?? null,
+    smsBody: template?.sms_body ?? null,
+    mergeContext,
+  });
 }
 
 // ---- notes ------------------------------------------------------------------

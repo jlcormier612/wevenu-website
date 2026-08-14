@@ -1,0 +1,93 @@
+{
+  "venueGuideInMainCards": false,
+  "hasSidebarVenueGuide": true,
+  "sectionSummaries": [
+    {
+      "title": "AGREEMENTS",
+      "links": [
+        {
+          "href": "/library/contracts",
+          "text": "Contract Templates 1 Reusable contracts with fill-in details, ready to send."
+        },
+        {
+          "href": "/library/questionnaire-templates",
+          "text": "Questionnaires & Feedback 3 Client Planning Questionnaire, Final Details, and Post-Event Feedback starters."
+        }
+      ]
+    },
+    {
+      "title": "PRICING & PACKAGES",
+      "links": [
+        {
+          "href": "/packages",
+          "text": "Packages 3 What you offer — customize inclusions and set your price before adding to an event or invoice."
+        },
+        {
+          "href": "/library/inventory",
+          "text": "Inventory 7 What your venue provides — customize examples, then use them on events."
+        },
+        {
+          "href": "/library/inventory-templates",
+          "text": "Inventory Templates 2 What you typically use for a wedding — Ceremony + Reception or Reception Only starters."
+        },
+        {
+          "href": "/library/payment-schedules",
+          "text": "Payment Schedules 3 Starter payment plans — 3-payment, 4-payment, or custom — always tied to a real invoice total."
+        }
+      ]
+    },
+    {
+      "title": "PLANNING",
+      "links": [
+        {
+          "href": "/library/playbooks",
+          "text": "Planning Templates 2 The task checklists you've refined over the years."
+        },
+        {
+          "href": "/library/timeline-templates",
+          "text": "Timeline Templates 5 Reusable day-of schedules for any booking."
+        },
+        {
+          "href": "/library/floor-plan-templates",
+          "text": "Floor Plan Templates 3 Reusable room layouts for any booking."
+        },
+        {
+          "href": "/library/event-order-templates",
+          "text": "Event Order Templates 4 Reusable starting points for the Event Orders you create for your events."
+        }
+      ]
+    },
+    {
+      "title": "COMMUNICATION",
+      "links": [
+        {
+          "href": "/communication/templates",
+          "text": "Message Templates 11 Emails and texts you send often, ready to reuse."
+        }
+      ]
+    },
+    {
+      "title": "MARKETING",
+      "links": [
+        {
+          "href": "/library/qr-campaigns",
+          "text": "QR Campaigns 0 Trackable QR codes for print materials and signage."
+        },
+        {
+          "href": "/library/brochures",
+          "text": "Brochures 1 Reusable, brandable overviews of your venue to share with prospects."
+        }
+      ]
+    },
+    {
+      "title": "REPORTS",
+      "links": [
+        {
+          "href": "/reporting/saved",
+          "text": "Saved Reports 4 Reports you've saved to return to quickly, or have delivered to you."
+        }
+      ]
+    }
+  ],
+  "mainHasVenueGuideString": false
+}

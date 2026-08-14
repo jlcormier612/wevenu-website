@@ -1,0 +1,186 @@
+{
+  "email": "htc-e2e-1786661877147@example.com",
+  "sessionId": "cs_test_a1bKkLDgPdb0gyn6gsjkf2leFzc8RFN5h45zuZu9qd0mFjeegdiMJdq5hi",
+  "paid": {
+    "id": "cs_test_a1bKkLDgPdb0gyn6gsjkf2leFzc8RFN5h45zuZu9qd0mFjeegdiMJdq5hi",
+    "object": "checkout.session",
+    "adaptive_pricing": {
+      "enabled": true
+    },
+    "after_expiration": null,
+    "allow_promotion_codes": null,
+    "amount_subtotal": 14900,
+    "amount_total": 11900,
+    "automatic_tax": {
+      "enabled": true,
+      "liability": {
+        "type": "self"
+      },
+      "provider": "stripe",
+      "status": "complete"
+    },
+    "billing_address_collection": "required",
+    "branding_settings": {
+      "background_color": "#ffffff",
+      "border_style": "rounded",
+      "button_color": "#0074d4",
+      "display_name": "Hello to Cheers sandbox",
+      "font_family": "default",
+      "icon": null,
+      "logo": null
+    },
+    "cancel_url": "http://localhost:3001/pricing?canceled=1",
+    "client_reference_id": null,
+    "client_secret": null,
+    "collected_information": null,
+    "consent": null,
+    "consent_collection": null,
+    "created": 1786661878,
+    "currency": "usd",
+    "currency_conversion": null,
+    "custom_fields": [],
+    "custom_text": {
+      "after_submit": null,
+      "shipping_address": null,
+      "submit": null,
+      "terms_of_service_acceptance": null
+    },
+    "customer": null,
+    "customer_account": null,
+    "customer_creation": "always",
+    "customer_details": null,
+    "customer_email": null,
+    "discounts": [
+      {
+        "coupon": "FOUNDING100",
+        "promotion_code": null
+      }
+    ],
+    "expires_at": 1786748277,
+    "integration_identifier": null,
+    "invoice": null,
+    "invoice_creation": null,
+    "livemode": false,
+    "locale": null,
+    "managed_payments": {
+      "enabled": false
+    },
+    "metadata": {
+      "founding_member": "true",
+      "legal_accept_ip": "::ffff:127.0.0.1",
+      "legal_accept_ua": "node",
+      "legal_accepted": "true",
+      "legal_accepted_at": "2026-08-13T22:57:57.594Z",
+      "legal_privacy_document_id": "85330889-7606-4610-88ea-b3e15f5126db",
+      "legal_tos_document_id": "0abd6dff-4178-4853-aa05-b9cee02b7411",
+      "onboarding_type": "self_guided",
+      "plan_name": "Gather",
+      "plan_tier": "starter",
+      "pricing_mode": "gather_founding_coupon",
+      "welcome_back": "false",
+      "wevenu_plan": "starter"
+    },
+    "mode": "subscription",
+    "origin_context": null,
+    "payment_intent": null,
+    "payment_link": null,
+    "payment_method_collection": "always",
+    "payment_method_configuration_details": {
+      "id": "pmc_1U422cErUqJH7nkt6NbgoTWj",
+      "parent": null
+    },
+    "payment_method_options": {
+      "card": {
+        "request_three_d_secure": "automatic"
+      }
+    },
+    "payment_method_types": [
+      "card",
+      "klarna",
+      "link",
+      "cashapp",
+      "amazon_pay"
+    ],
+    "payment_status": "unpaid",
+    "permissions": null,
+    "phone_number_collection": {
+      "enabled": false
+    },
+    "recovered_from": null,
+    "saved_payment_method_options": {
+      "allow_redisplay_filters": [
+        "always"
+      ],
+      "payment_method_remove": "disabled",
+      "payment_method_save": null
+    },
+    "setup_intent": null,
+    "shipping_address_collection": null,
+    "shipping_cost": null,
+    "shipping_options": [],
+    "status": "open",
+    "submit_type": null,
+    "subscription": null,
+    "success_url": "http://localhost:3001/pricing/success?session_id={CHECKOUT_SESSION_ID}",
+    "tax_id_collection": {
+      "enabled": true,
+      "required": "never"
+    },
+    "total_details": {
+      "amount_discount": 3000,
+      "amount_shipping": 0,
+      "amount_tax": 0
+    },
+    "ui_mode": "hosted_page",
+    "url": "https://checkout.stripe.com/c/pay/cs_test_a1bKkLDgPdb0gyn6gsjkf2leFzc8RFN5h45zuZu9qd0mFjeegdiMJdq5hi#fidnandhYHdWcXxpYCc%2FJ2FgY2RwaXEnKSdicGRmZGhqaWBTZHdsZGtxJz8nZmprcXdqaScpJ2R1bE5gfCc%2FJ3VuWnFgdnFaMDRQMTc3M0B3UHRPTTJrbnFfZ1BHf2t9bnRvdUpndjExRzVBa29iX1BnSTNmRDJMQ1JzUlFNNHZEX2dhbn1kbV9PQlwyXGNPNERAaEB0R0h3aVJNaVN1R1w1NU9OUzc2cGZhJyknY3dqaFZgd3Ngdyc%2FcXdwYCknZ2RmbmJ3anBrYUZqaWp3Jz8nJmNjY2NjYycpJ2lkfGpwcVF8dWAnPyd2bGtiaWBabHFgaCcpJ2BrZGdpYFVpZGZgbWppYWB3dic%2FcXdwYHgl",
+    "wallet_options": null
+  },
+  "enrollment": null,
+  "checks": [
+    {
+      "name": "marketing",
+      "pass": true,
+      "detail": "200"
+    },
+    {
+      "name": "checkout_session",
+      "pass": true,
+      "detail": "cs_test_a1bKkLDgPdb0gyn6gsjkf2leFzc8RFN5h45zuZu9qd0mFjeegdiMJdq5hi"
+    },
+    {
+      "name": "email_filled",
+      "pass": true,
+      "detail": "htc-e2e-1786661877147@example.com"
+    },
+    {
+      "name": "card_fill",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "name": "redirect",
+      "pass": false,
+      "detail": "https://checkout.stripe.com/c/pay/cs_test_a1bKkLDgPdb0gyn6gsjkf2leFzc8RFN5h45zuZu9qd0mFjeegdiMJdq5hi#fidnandhYHdWcXxpYCc%2FJ2FgY2RwaXEnKSdicGRmZGhqaWBTZHdsZGtxJz8nZmprcXdqaScpJ2R1bE5gfCc%2FJ3VuWnFgdnFaMDRQMTc3M0B3UHRPTTJrbnFfZ1BHf2t9bnRvdUpndjExRzVBa29iX1BnSTNmRDJMQ1JzUlFNNHZEX2dhbn1kbV9PQlwyXGNPNERAaEB0R0h3aVJNaVN1R1w1NU9OUzc2cGZhJyknY3dqaFZgd3Ngdyc%2FcXdwYCknZ2RmbmJ3anBrYUZqaWp3Jz8nJmNjY2NjYycpJ2lkfGpwcVF8dWAnPyd2bGtiaWBabHFgaCcpJ2BrZGdpYFVpZGZgbWppYWB3dic%2FcXdwYHgl"
+    },
+    {
+      "name": "checkout_paid",
+      "pass": false,
+      "detail": "status=open payment=unpaid total=11900"
+    },
+    {
+      "name": "webhook_completed",
+      "pass": false,
+      "detail": ""
+    },
+    {
+      "name": "provision_log",
+      "pass": false,
+      "detail": ""
+    },
+    {
+      "name": "enrollment_db",
+      "pass": false,
+      "detail": "missing"
+    }
+  ]
+}

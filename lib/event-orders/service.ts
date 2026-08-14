@@ -1,5 +1,10 @@
 import { createClient } from "@/integrations/supabase/server";
 import { isSupabaseConfigured } from "@/lib/env";
+import {
+  finalizeBlockedWhenAlreadyFinalized,
+  mutationBlockedWhenFinalized,
+  reopenBlockedWhenNotFinalized,
+} from "@/lib/event-orders/lifecycle-gates";
 import * as repo from "@/lib/event-orders/repository";
 import * as templatesRepo from "@/lib/event-order-templates/repository";
 import type {
@@ -31,10 +36,7 @@ async function assertOpen(
 ): Promise<EventOrderActionResult | null> {
   const order = await repo.getEventOrderById(supabase, venueId, eventOrderId);
   if (!order) return { ok: false, message: "Event Order not found." };
-  if (order.status === "finalized") {
-    return { ok: false, message: "This Event Order is finalized — reopen it to make changes." };
-  }
-  return null;
+  return mutationBlockedWhenFinalized(order.status);
 }
 
 // ---- read -----------------------------------------------------------------------
@@ -94,7 +96,8 @@ export async function finalizeEventOrder(eventOrderId: string): Promise<EventOrd
   const result = await withVenue(async (supabase, venueId) => {
     const order = await repo.getEventOrderById(supabase, venueId, eventOrderId);
     if (!order) return { ok: false, message: "Event Order not found." } as EventOrderActionResult;
-    if (order.status === "finalized") return { ok: false, message: "Already finalized." } as EventOrderActionResult;
+    const blocked = finalizeBlockedWhenAlreadyFinalized(order.status);
+    if (blocked) return blocked;
     await repo.finalizeEventOrder(supabase, venueId, eventOrderId, order.revision + 1);
     await repo.insertActivity(supabase, venueId, eventOrderId, "finalized", `Finalized — v${order.revision + 1}`);
     return { ok: true } as EventOrderActionResult;
@@ -106,7 +109,8 @@ export async function reopenEventOrder(eventOrderId: string): Promise<EventOrder
   const result = await withVenue(async (supabase, venueId) => {
     const order = await repo.getEventOrderById(supabase, venueId, eventOrderId);
     if (!order) return { ok: false, message: "Event Order not found." } as EventOrderActionResult;
-    if (order.status !== "finalized") return { ok: false, message: "This Event Order isn't finalized." } as EventOrderActionResult;
+    const blocked = reopenBlockedWhenNotFinalized(order.status);
+    if (blocked) return blocked;
     await repo.reopenEventOrder(supabase, venueId, eventOrderId);
     await repo.insertActivity(supabase, venueId, eventOrderId, "reopened", `Reopened for changes — was v${order.revision}`);
     return { ok: true } as EventOrderActionResult;

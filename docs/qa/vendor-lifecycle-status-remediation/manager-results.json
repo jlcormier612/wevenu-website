@@ -1,0 +1,45 @@
+{
+  "checks": [
+    {
+      "name": "manager-login",
+      "ok": true,
+      "detail": "http://localhost:3000/dashboard"
+    },
+    {
+      "name": "manager-past-welcome",
+      "ok": true,
+      "detail": "http://localhost:3000/dashboard"
+    },
+    {
+      "name": "manager-preference-header",
+      "ok": false,
+      "detail": ""
+    },
+    {
+      "name": "manager-claimed",
+      "ok": false,
+      "detail": ""
+    },
+    {
+      "name": "manager-not-claimed",
+      "ok": false,
+      "detail": ""
+    },
+    {
+      "name": "manager-no-invited",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "manager-seed",
+      "ok": true,
+      "detail": "OVERVIEW\n\nDashboard\nReports\nCalendar\nHelp & Guides\n\nSALES\n\nLeads\nTours\n\nCLIENTS\n\nClients\nVendors\n\nCOMMUNICATION\n\nInbox\nAutomations\n\nTASKS\n\nTask Center\nRequests\n\nFINANCIALS\n\nContracts\nInvoices\nPayments"
+    },
+    {
+      "name": "manager-view-link",
+      "ok": false,
+      "detail": "no view link; url=http://localhost:3000/vendors"
+    }
+  ],
+  "errors": []
+}

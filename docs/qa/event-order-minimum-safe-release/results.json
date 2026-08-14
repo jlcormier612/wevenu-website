@@ -1,0 +1,92 @@
+{
+  "pass": 17,
+  "fail": 0,
+  "results": [
+    {
+      "name": "precondition-flag-false",
+      "pass": true,
+      "note": "f"
+    },
+    {
+      "name": "login",
+      "pass": true,
+      "note": "http://localhost:3000/dashboard"
+    },
+    {
+      "name": "on-hq-venue-page",
+      "pass": true,
+      "note": "http://localhost:3000/admin/venues/69cfd906-0d15-4e5c-8bab-ed106b411c34"
+    },
+    {
+      "name": "hq-section-visible",
+      "pass": true,
+      "note": ""
+    },
+    {
+      "name": "hq-enable-button",
+      "pass": true,
+      "note": ""
+    },
+    {
+      "name": "db-enabled-via-hq",
+      "pass": true,
+      "note": "t"
+    },
+    {
+      "name": "hq-enabled-state",
+      "pass": true,
+      "note": ""
+    },
+    {
+      "name": "has-event",
+      "pass": true,
+      "note": "f84c5f57-3f5e-481a-bdb4-02d5606a157e|0a0674ac-e771-4a3e-b641-648381e080bc"
+    },
+    {
+      "name": "eo-tab-visible",
+      "pass": true,
+      "note": "Bookings\nPriya Natarajan — wedding\nView original inquiry\nComplete\nChange status\nEdit\nDay-of Sheet\nBooking Schedule\n\nJune 12, 2027\n\nSaturday · In 302 days\n\n120 guests\nOverview\nPlanning\nTimeline\nFloor Plans\nDocuments\nVendors\nEvent Order\n130\nInventory\nP"
+    },
+    {
+      "name": "eo-total-zero",
+      "pass": true,
+      "note": "Running total: $0"
+    },
+    {
+      "name": "zero-warning-appears",
+      "pass": true,
+      "note": ""
+    },
+    {
+      "name": "zero-warning-copy",
+      "pass": true,
+      "note": "Event Order totals $0.00\n\nThis Event Order currently totals $0.00. If pricing is still incomplete, Cancel and add Packag"
+    },
+    {
+      "name": "cancel-stays-editable",
+      "pass": true,
+      "note": ""
+    },
+    {
+      "name": "continue-finalizes",
+      "pass": true,
+      "note": ""
+    },
+    {
+      "name": "db-restored-false",
+      "pass": true,
+      "note": ""
+    },
+    {
+      "name": "eo-tab-hidden-when-disabled",
+      "pass": true,
+      "note": ""
+    },
+    {
+      "name": "final-flag-false",
+      "pass": true,
+      "note": "f"
+    }
+  ],
+  "venueId": "69cfd906-0d15-4e5c-8bab-ed106b411c34"
+}

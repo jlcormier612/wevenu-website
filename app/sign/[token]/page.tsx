@@ -3,6 +3,7 @@ import type { CSSProperties } from "react";
 import { notFound } from "next/navigation";
 
 import { SignForm } from "@/app/sign/[token]/sign-form";
+import { resolveContractBrandPresentation } from "@/lib/contracts/branding";
 import { getContractByToken } from "@/lib/contracts/service";
 
 type Props = { params: Promise<{ token: string }> };
@@ -49,6 +50,9 @@ export default async function SignPage({ params }: Props) {
   }
 
   const venue = contract.venue;
+  // Prefer branding frozen at release; pre-existing contracts without a
+  // snapshot fall back to live venue branding (no silent backfill).
+  const brand = resolveContractBrandPresentation(contract.brandingSnapshot, venue);
 
   return (
     <div
@@ -56,21 +60,21 @@ export default async function SignPage({ params }: Props) {
       style={{
         // Venue Brand Experience Phase 1 — this page previously didn't even
         // know the venue's own name, let alone its brand.
-        "--venue-primary": venue?.primaryColor ?? "#5D6F5D",
-        "--venue-secondary": venue?.secondaryColor ?? "#4F5F4F",
-        "--venue-accent": venue?.accentColor ?? "#B8AEA1",
-        "--venue-neutral": venue?.neutralColor ?? "#F7F5F1",
+        "--venue-primary": brand?.primaryColor ?? "#5D6F5D",
+        "--venue-secondary": brand?.secondaryColor ?? "#4F5F4F",
+        "--venue-accent": brand?.accentColor ?? "#B8AEA1",
+        "--venue-neutral": brand?.neutralColor ?? "#F7F5F1",
       } as CSSProperties}
     >
       <div className="mx-auto max-w-3xl space-y-8">
         {/* Header */}
         <div className="rounded-xl bg-white shadow-sm border-t-4 border border-gray-200 px-8 py-6" style={{ borderTopColor: "var(--venue-primary)" }}>
           <div className="flex items-center gap-3 mb-3">
-            {venue?.logoUrl && (
+            {brand?.logoUrl && (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={venue.logoUrl} alt={venue.name ?? ""} className="h-9 w-9 rounded-full object-cover shrink-0" />
+              <img src={brand.logoUrl} alt={brand.name ?? ""} className="h-9 w-9 rounded-full object-cover shrink-0" />
             )}
-            {venue?.name && <p className="text-sm font-semibold text-gray-700">{venue.name}</p>}
+            {brand?.name && <p className="text-sm font-semibold text-gray-700">{brand.name}</p>}
           </div>
           <p className="text-xs font-semibold uppercase tracking-widest text-gray-400">
             Agreement for Review &amp; Signature

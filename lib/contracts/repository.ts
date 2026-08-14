@@ -5,6 +5,7 @@ import { createClient } from "@/integrations/supabase/server";
 import type {
   Contract,
   ContractActivity,
+  ContractBrandingSnapshot,
   ContractTemplate,
   ContractWithDetails,
   NewContractInput,
@@ -26,6 +27,7 @@ type ContractRow = {
   sign_token: string; signer_name: string | null; signed_at: string | null;
   sent_at: string | null; expires_at: string | null; created_at: string; updated_at: string;
   amends_contract_id: string | null;
+  branding_snapshot: ContractBrandingSnapshot | null;
   clients?: { first_name: string; last_name: string; partner_first_name: string | null; partner_last_name: string | null; email: string | null } | null;
   events?: { event_date: string | null } | null;
   venue?: { name: string | null; primaryColor: string | null; secondaryColor: string | null; accentColor: string | null; neutralColor: string | null; logoUrl: string | null } | null;
@@ -75,6 +77,7 @@ function mapContract(r: ContractRow): Contract {
     signToken: r.sign_token, signerName: r.signer_name, signedAt: r.signed_at,
     sentAt: r.sent_at, expiresAt: r.expires_at, createdAt: r.created_at, updatedAt: r.updated_at,
     amendsContractId: r.amends_contract_id ?? null,
+    brandingSnapshot: r.branding_snapshot ?? null,
     clientName: cn, clientEmail: r.clients?.email ?? null, eventDate: r.events?.event_date ?? null,
     venue: r.venue,
   };
@@ -502,10 +505,12 @@ export async function updateContractStatus(
   venueId: string,
   id: string,
   status: Contract["status"],
-  extra?: { sentAt?: boolean },
+  extra?: { sentAt?: boolean; brandingSnapshot?: ContractBrandingSnapshot },
 ): Promise<{ ok: true } | { ok: false; message: string }> {
   const { data: current } = await client.from("contracts")
-    .select("status").eq("id", id).eq("venue_id", venueId).maybeSingle<{ status: Contract["status"] }>();
+    .select("status, branding_snapshot")
+    .eq("id", id).eq("venue_id", venueId)
+    .maybeSingle<{ status: Contract["status"]; branding_snapshot: ContractBrandingSnapshot | null }>();
   if (!current) return { ok: false, message: "Contract not found." };
 
   if (status === "sent" && current.status !== "draft") {
@@ -531,6 +536,11 @@ export async function updateContractStatus(
   if (extra?.sentAt) {
     update.sent_at = new Date().toISOString();
     update.is_couple_visible = true;
+  }
+  // Presentation-only snapshot at draft→sent. Never overwrite an existing
+  // snapshot (re-send / later transitions must not re-capture branding).
+  if (extra?.brandingSnapshot && current.status === "draft" && !current.branding_snapshot) {
+    update.branding_snapshot = extra.brandingSnapshot;
   }
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { error } = await (client.from("contracts") as any).update(update).eq("id", id).eq("venue_id", venueId);

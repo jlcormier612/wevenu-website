@@ -1,6 +1,7 @@
 /**
  * Automated Series constants — Communication Platform Phase 3.
  */
+import { LEAD_STATUSES } from "@/lib/leads/constants";
 import type { SequenceTriggerType } from "@/lib/message-sequences/types";
 
 // Deliberately small, real, and already-observable — not an exhaustive
@@ -9,17 +10,15 @@ import type { SequenceTriggerType } from "@/lib/message-sequences/types";
 export const SEQUENCE_TRIGGER_TYPES: { value: SequenceTriggerType; label: string; description: string }[] = [
   { value: "lead_created",       label: "A new inquiry comes in",       description: "Starts the moment a lead is added — manually or from your inquiry form." },
   { value: "lead_stage_changed", label: "A lead reaches a pipeline stage", description: "Starts when a lead moves to the stage you choose." },
+  { value: "tour_completed",     label: "A tour is completed",          description: "Starts when a venue tour is marked completed." },
 ];
 
-// Mirrors LEAD_STATUSES (lib/leads/constants.ts) — kept as a separate,
-// smaller list here on purpose: "won" and "lost"/"cancelled" are real
-// stages a lead can reach, but enrolling a Series *on* the moment a lead is
-// won contradicts "stop on booking" (§3.3) firing at that same instant, and
-// lost/cancelled implies nothing further should go out at all. Only the
-// stages that plausibly want a follow-up series are offered.
-export const SEQUENCE_TRIGGER_STAGES: { value: string; label: string }[] = [
-  { value: "new",           label: "New" },
-  { value: "contacted",     label: "Contacted" },
-  { value: "qualified",     label: "Qualified" },
-  { value: "proposal_sent", label: "Proposal Sent" },
-];
+/**
+ * Stage picker values = all LeadStatus values. Stored on
+ * message_sequences.trigger_stage as LeadStatus (not venue-customized
+ * Pipeline stage names). Venue stage names are resolved at render time.
+ */
+export const SEQUENCE_TRIGGER_STAGES: { value: string; label: string }[] = LEAD_STATUSES.map((s) => ({
+  value: s.value,
+  label: s.label,
+}));

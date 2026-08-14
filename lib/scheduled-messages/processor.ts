@@ -20,7 +20,7 @@ import { sendSms } from "@/lib/sms/send";
 import { toE164 } from "@/lib/sms/phone";
 import { translateEmailFailure, translateSmsFailure } from "@/lib/communication/failure-messages";
 import { resolveForCustomerSend } from "@/lib/message-templates/merge";
-import { isEnrollmentSequencePaused } from "@/lib/message-sequences/repository";
+import { isEnrollmentSequencePaused, maybeCompleteEnrollmentAfterSend } from "@/lib/message-sequences/repository";
 import * as repo from "@/lib/scheduled-messages/repository";
 import type { ProcessScheduledResult, ScheduledMessage } from "@/lib/scheduled-messages/types";
 
@@ -112,6 +112,10 @@ export async function processDueScheduledMessages(): Promise<ProcessScheduledRes
       if (outcome.ok) {
         await repo.markSent(supabase, msg.id);
         result.sent += 1;
+        if (msg.sequenceEnrollmentId) {
+          await maybeCompleteEnrollmentAfterSend(supabase, msg.venueId, msg.sequenceEnrollmentId)
+            .catch((e) => console.error("Enrollment complete after final step failed:", e));
+        }
       } else {
         await repo.markFailed(supabase, msg.id, outcome.error ?? "Unknown error.");
         result.failed += 1;

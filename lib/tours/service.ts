@@ -547,6 +547,19 @@ export async function updateTourStatus(
         metadata: { appointment_id: appointmentId, status },
       }).then(null, () => {});
     }
+
+    // Tour Completed Automation trigger — same path as lead_created / lead_stage_changed.
+    if (status === "completed" && appt.lead_id) {
+      void (async () => {
+        const { data: lead } = await supabase.from("leads").select("relationship_id")
+          .eq("id", appt.lead_id!).maybeSingle<{ relationship_id: string | null }>();
+        if (!lead?.relationship_id) return;
+        const { triggerSequencesForRelationship } = await import("@/lib/message-sequences/service");
+        await triggerSequencesForRelationship(
+          supabase, venue.id, lead.relationship_id, "tour_completed",
+        );
+      })().catch((e) => console.error("Series enrollment (tour_completed) failed:", e));
+    }
   }
 
   return { ok: true };

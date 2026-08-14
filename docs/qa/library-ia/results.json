@@ -1,0 +1,279 @@
+{
+  "checks": [
+    {
+      "name": "login",
+      "ok": true,
+      "detail": "http://localhost:3000/dashboard"
+    },
+    {
+      "name": "library loads",
+      "ok": true,
+      "detail": "OVERVIEW Dashboard Reports Calendar Help & Guides SALES Leads Tours CLIENTS Clients Vendors COMMUNICATION Inbox Automations TASKS Task Center Requests FINANCIALS Contracts Invoices Payments LIBRARY Li"
+    },
+    {
+      "name": "no Venue Guide card",
+      "ok": true,
+      "detail": "main section cards have no Venue Guide;/guide absent from Library cards; sidebar Venue Guide expected"
+    },
+    {
+      "name": "no Pipeline Templates card",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "has Packages",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "has Message Templates",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "has Agreements",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "has Pricing",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "has Planning",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "has Communication",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "has Marketing",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "has Reports",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "has Questionnaires",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "has Contract Templates",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "has Inventory",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "has Inventory Templates",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "has Payment Schedules",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "has Planning Templates",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "has Timeline Templates",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "has Floor Plan Templates",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "has Event Order Templates",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "has QR Campaigns",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "has Brochures",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "has Saved Reports",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "packages card href /packages",
+      "ok": true,
+      "detail": "/packages"
+    },
+    {
+      "name": "Communication has single card",
+      "ok": true,
+      "detail": "cards=1"
+    },
+    {
+      "name": "packages page loads",
+      "ok": true,
+      "detail": "http://localhost:3000/packages"
+    },
+    {
+      "name": "library/packages redirects to /packages",
+      "ok": true,
+      "detail": "http://localhost:3000/packages"
+    },
+    {
+      "name": "venue guide loads",
+      "ok": true,
+      "detail": "OVERVIEW Dashboard Reports Calendar Help & Guides SALES Leads Tours CLIENTS Clients Vendors COMMUNICATION Inbox Automations TASKS Task Center Requests FINANCIALS Contracts Invoices Payments LIBRARY Li"
+    },
+    {
+      "name": "sidebar/nav has Venue Guide",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "sidebar has Library",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "leads has Pipeline Templates entry",
+      "ok": true,
+      "detail": "OVERVIEW Dashboard Reports Calendar Help & Guides SALES Leads Tours CLIENTS Clients Vendors COMMUNICATION Inbox Automations TASKS Task Center Requests FINANCIALS Contracts Invoices Payments LIBRARY Library YOUR VENUE Settings Venue Guide Give feedbac"
+    },
+    {
+      "name": "pipeline deep link loads",
+      "ok": true,
+      "detail": "http://localhost:3000/library/pipeline-templates"
+    },
+    {
+      "name": "route /library/contracts",
+      "ok": true,
+      "detail": "status=200 url=http://localhost:3000/library/contracts"
+    },
+    {
+      "name": "route /library/questionnaire-templates",
+      "ok": true,
+      "detail": "status=200 url=http://localhost:3000/library/questionnaire-templates"
+    },
+    {
+      "name": "route /library/inventory",
+      "ok": true,
+      "detail": "status=200 url=http://localhost:3000/library/inventory"
+    },
+    {
+      "name": "route /library/inventory-templates",
+      "ok": true,
+      "detail": "status=200 url=http://localhost:3000/library/inventory-templates"
+    },
+    {
+      "name": "route /library/payment-schedules",
+      "ok": true,
+      "detail": "status=200 url=http://localhost:3000/library/payment-schedules"
+    },
+    {
+      "name": "route /library/playbooks",
+      "ok": true,
+      "detail": "status=200 url=http://localhost:3000/library/playbooks"
+    },
+    {
+      "name": "route /library/timeline-templates",
+      "ok": true,
+      "detail": "status=200 url=http://localhost:3000/library/timeline-templates"
+    },
+    {
+      "name": "route /library/floor-plan-templates",
+      "ok": true,
+      "detail": "status=200 url=http://localhost:3000/library/floor-plan-templates"
+    },
+    {
+      "name": "route /library/event-order-templates",
+      "ok": true,
+      "detail": "status=200 url=http://localhost:3000/library/event-order-templates"
+    },
+    {
+      "name": "route /communication/templates",
+      "ok": true,
+      "detail": "status=200 url=http://localhost:3000/communication/templates"
+    },
+    {
+      "name": "route /library/qr-campaigns",
+      "ok": true,
+      "detail": "status=200 url=http://localhost:3000/library/qr-campaigns"
+    },
+    {
+      "name": "route /library/brochures",
+      "ok": true,
+      "detail": "status=200 url=http://localhost:3000/library/brochures"
+    },
+    {
+      "name": "route /reporting/saved",
+      "ok": true,
+      "detail": "status=200 url=http://localhost:3000/reporting/saved"
+    },
+    {
+      "name": "questionnaires naming",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "questionnaires archive/starter cues present or empty ok",
+      "ok": true,
+      "detail": "OVERVIEW Dashboard Reports Calendar Help & Guides SALES Leads Tours CLIENTS Clients Vendors COMMUNICATION Inbox Automations TASKS Task Center Requests FINANCIALS Contracts Invoices Payments LIBRARY Li"
+    },
+    {
+      "name": "contracts page usable",
+      "ok": true,
+      "detail": "OVERVIEW Dashboard Reports Calendar Help & Guides SALES Leads Tours CLIENTS Clients Vendors COMMUNICATION Inbox Automations TASKS Task Center Requests FINANCIALS Contracts Invoices Payments LIBRARY Li"
+    },
+    {
+      "name": "mobile library no Venue Guide",
+      "ok": true,
+      "detail": "mobile main content has no Venue Guide card (sidebar may still list it)"
+    },
+    {
+      "name": "mobile library has Message Templates",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "mobile library has Packages",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "mobile library readable groups",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "no Venue Guide Library card (main scoped)",
+      "ok": true,
+      "detail": "sectionSummaries confirm Communication has Message Templates only; no /guide card"
+    }
+  ],
+  "errors": [],
+  "pass": 54,
+  "fail": 0,
+  "finishedAt": "2026-08-13T02:43:15.181Z",
+  "note": "Initial body-wide 'no Venue Guide card' matched sidebar Your Venue \u2192 Venue Guide; re-validated against main section cards."
+}

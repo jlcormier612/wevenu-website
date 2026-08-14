@@ -28,6 +28,32 @@ export async function listVenueEnrollments(): Promise<VenueEnrollmentRecord[]> {
   }
 }
 
+/** Idempotency lookup — Stripe Checkout Session id is the durable purchase key. */
+export async function findEnrollmentByCheckoutSessionId(
+  checkoutSessionId: string | null | undefined,
+): Promise<VenueEnrollmentRecord | null> {
+  const id = checkoutSessionId?.trim();
+  if (!id) return null;
+  const rows = await listVenueEnrollments();
+  for (let i = rows.length - 1; i >= 0; i -= 1) {
+    if (rows[i]?.stripeCheckoutSessionId === id) return rows[i]!;
+  }
+  return null;
+}
+
+/** Idempotency lookup by Stripe Subscription id. */
+export async function findEnrollmentBySubscriptionId(
+  subscriptionId: string | null | undefined,
+): Promise<VenueEnrollmentRecord | null> {
+  const id = subscriptionId?.trim();
+  if (!id) return null;
+  const rows = await listVenueEnrollments();
+  for (let i = rows.length - 1; i >= 0; i -= 1) {
+    if (rows[i]?.stripeSubscriptionId === id) return rows[i]!;
+  }
+  return null;
+}
+
 /** Update Welcome Back verification (staff / future automation). Never called from checkout. */
 export async function updateWelcomeBackVerified(
   id: string,

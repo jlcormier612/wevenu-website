@@ -2,6 +2,10 @@
  * Shared white-label wrapper for customer-facing transactional emails.
  * Venue Brand Experience Phase 1 — "a couple should remember the venue,
  * not the software." No Hello to Cheers attribution anywhere in the output.
+ *
+ * Intentional palette ceiling: email branding accepts Primary only
+ * (`primaryColor`). Secondary / Accent / Neutral are not used here — HTML
+ * email is a constrained medium; expanding the palette is out of scope.
  */
 
 export type EmailVenueBrand = {

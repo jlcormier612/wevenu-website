@@ -47,7 +47,7 @@ export type ShareDialogProps = {
   /** Label on the send button — "Send" by default, "Resend" for a resend flow. */
   sendLabel?: string;
   /** The asset's own real send function. Message is the (possibly-edited) body text. */
-  onSend: (message: string) => Promise<{ ok: boolean; message?: string }>;
+  onSend: (message: string) => Promise<{ ok: boolean; message?: string; cancelled?: boolean }>;
   /** Called once the send genuinely succeeds — e.g. router.refresh(). */
   onSent?: () => void;
 };
@@ -74,6 +74,8 @@ export function ShareDialog({ trigger, title, recipient, whatHappensNext, defaul
       if (result.ok) {
         setState("success");
         onSent?.();
+      } else if (result.cancelled) {
+        setState("idle");
       } else {
         setState("error");
         setError(result.message ?? "Couldn't send. Please try again.");

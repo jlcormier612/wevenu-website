@@ -39,6 +39,7 @@ import {
   buildContractInviteHtml,
 } from "@/lib/email/contract-invite";
 import { CONTRACT_SIGNATURE_CONSENT_TEXT, hashContractContent } from "@/lib/contracts/signers";
+import { captureContractBrandingSnapshot } from "@/lib/contracts/branding";
 import type { ClientSignerSeed } from "@/lib/contracts/repository";
 
 export { hashContractContent } from "@/lib/contracts/signers";
@@ -622,7 +623,12 @@ export async function sendContract(id: string, customMessage?: string): Promise<
       return { ok: false, message: safety.message } as ContractActionResult;
     }
 
-    const outcome = await repo.updateContractStatus(supabase, venueId, id, "sent", { sentAt: true });
+    const venue = await getCurrentVenue();
+    const brandingSnapshot = venue ? captureContractBrandingSnapshot(venue) : undefined;
+    const outcome = await repo.updateContractStatus(supabase, venueId, id, "sent", {
+      sentAt: true,
+      brandingSnapshot,
+    });
     if (!outcome.ok) return { ok: false, message: outcome.message } as ContractActionResult;
     const actor = await currentActor(venueId);
     await repo.insertContractActivity(

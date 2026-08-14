@@ -99,7 +99,7 @@ export async function getVenueHqDetail(venueId: string): Promise<HqVenueDetail |
 
   const [venueRes, overview, teamRes, vendorRes, clientsRes, portalRes, eventsRes, milestonesRes, notesRes, tasksRes, luvObservations] =
     await Promise.all([
-      supabase.from("venues").select("id, name, email, phone, timezone, created_at").eq("id", venueId).maybeSingle(),
+      supabase.from("venues").select("id, name, email, phone, timezone, created_at, event_order_enabled").eq("id", venueId).maybeSingle(),
       getBetaOverview(),
       supabase
         .from("venue_staff")
@@ -150,7 +150,10 @@ export async function getVenueHqDetail(venueId: string): Promise<HqVenueDetail |
   const summary = overview?.venues.find((v) => v.venueId === venueId);
   if (!summary) return null;
 
-  const v = venueRes.data as { id: string; name: string; email: string | null; phone: string | null; timezone: string; created_at: string };
+  const v = venueRes.data as {
+    id: string; name: string; email: string | null; phone: string | null; timezone: string; created_at: string;
+    event_order_enabled: boolean | null;
+  };
 
   const portalByClient = new Map<string, string>();
   for (const r of (portalRes.data ?? []) as { client_id: string; last_accessed_at: string | null }[]) {
@@ -232,7 +235,10 @@ export async function getVenueHqDetail(venueId: string): Promise<HqVenueDetail |
   };
 
   return {
-    venue: { id: v.id, name: v.name, email: v.email, phone: v.phone, timezone: v.timezone, createdAt: v.created_at },
+    venue: {
+      id: v.id, name: v.name, email: v.email, phone: v.phone, timezone: v.timezone, createdAt: v.created_at,
+      eventOrderEnabled: v.event_order_enabled ?? false,
+    },
     activation: {
       score: summary.score,
       previousScore: summary.previousScore,

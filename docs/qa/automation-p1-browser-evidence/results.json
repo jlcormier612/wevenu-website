@@ -1,0 +1,164 @@
+{
+  "startedAt": "2026-08-13T03:34:35.125Z",
+  "checks": [
+    {
+      "name": "login",
+      "pass": true,
+      "detail": "http://localhost:3000/dashboard"
+    },
+    {
+      "name": "trigger-has-tour-completed",
+      "pass": true,
+      "detail": "Manual only — I'll enroll people myself | A new inquiry comes in | A lead reaches a pipeline stage | A tour is completed"
+    },
+    {
+      "name": "trigger-keeps-lead-created",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "trigger-keeps-stage",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "db-venue",
+      "pass": true,
+      "detail": "69cfd906-0d15-4e5c-8bab-ed106b411c34"
+    },
+    {
+      "name": "db-tour-automation",
+      "pass": true,
+      "detail": "172dd27d-1b5b-4717-b131-f2a2cd8bdf18"
+    },
+    {
+      "name": "db-tour-appt",
+      "pass": true,
+      "detail": "03f2cf99-a29b-4f10-9934-b496c4f975c1|ee379d67-20be-46e7-a045-60fc82703ab0|6c819a02-48e4-482c-9073-4b2df50907b6"
+    },
+    {
+      "name": "tour-complete-api",
+      "pass": true,
+      "detail": "{\"status\":200,\"body\":\"{\\\"ok\\\":true}\"}"
+    },
+    {
+      "name": "tour-completed-enrolls",
+      "pass": true,
+      "detail": "11b49844-917f-46c8-9830-c373cc01b80f"
+    },
+    {
+      "name": "no-duplicate-active",
+      "pass": true,
+      "detail": "count=1"
+    },
+    {
+      "name": "repeat-complete-no-dup",
+      "pass": true,
+      "detail": "count=1"
+    },
+    {
+      "name": "pause-ui-visible",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "pause-status-active",
+      "pass": true,
+      "detail": "active"
+    },
+    {
+      "name": "pause-paused-at-set",
+      "pass": true,
+      "detail": "t"
+    },
+    {
+      "name": "pause-keeps-scheduled",
+      "pass": true,
+      "detail": "scheduled=1"
+    },
+    {
+      "name": "pause-would-skip-send",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "resume-ui-visible",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "resume-clears-paused-at",
+      "pass": true,
+      "detail": "f"
+    },
+    {
+      "name": "resume-sets-resumed-at",
+      "pass": true,
+      "detail": "t"
+    },
+    {
+      "name": "resume-dates-unchanged",
+      "pass": true,
+      "detail": "2026-08-13 03:34:41.886+00 => 2026-08-13 03:34:41.886+00"
+    },
+    {
+      "name": "db-stage-automation",
+      "pass": true,
+      "detail": "ed0c8c94-ab5d-464a-9f0e-fbb08878d96d"
+    },
+    {
+      "name": "confirm-target-lead",
+      "pass": true,
+      "detail": "394af794-00a3-4cb4-bd2f-19fb3079b9c2|aa171159-f6f6-4b63-bccd-32d6fab9dbd9|won"
+    },
+    {
+      "name": "confirm-lead-picked",
+      "pass": true,
+      "detail": "38d2abe4-34da-4d54-bb81-208efe7ecd5b|0d7fb4c2-ec9b-4837-8cb1-443cf3840ac5|new"
+    },
+    {
+      "name": "stage-control",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "stage-option",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "confirm-dialog-shown",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "confirm-has-copy",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "confirm-has-preview",
+      "pass": true,
+      "detail": "Move this lead?\n\nThis stage has an active Automation. Moving this lead here will enroll them and may send the messages you've configured.\n\nFIRST MESSAGE\n\nThank you for reaching out to Sweet Daisy Barn & Farm\n\nHi Buppy Robicheau,\n\nThank you for reaching out to Sweet Daisy Barn & F"
+    },
+    {
+      "name": "cancel-no-status-change",
+      "pass": true,
+      "detail": "new vs new"
+    },
+    {
+      "name": "continue-enrolls",
+      "pass": true,
+      "detail": "c4bb3999-365e-4b07-a946-1df77e776d4b"
+    },
+    {
+      "name": "no-page-errors",
+      "pass": true,
+      "detail": []
+    }
+  ],
+  "errors": [],
+  "finishedAt": "2026-08-13T03:35:00.785Z",
+  "passCount": 31,
+  "failCount": 0
+}

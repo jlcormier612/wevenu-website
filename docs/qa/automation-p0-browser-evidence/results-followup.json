@@ -1,0 +1,40 @@
+{
+  "errors": [],
+  "progress": {
+    "matches": [
+      "Step 1 of 2 · Next Aug 12, 11:28 PM P0Comp Validation Compl",
+      "Step 1 of 1 · Next Aug 12, 9:28 PM Priya Natarajan Stopped ",
+      "Step 1 of 1",
+      "Step 1 of 1"
+    ],
+    "hasNext": true,
+    "hasP0Prog": true,
+    "editNote": true
+  },
+  "starterEdit": {
+    "titleHasWelcome": true,
+    "triggerLeadCreated": true,
+    "editNote": true,
+    "forbidden": {
+      "sequenceEnrollment": false,
+      "materialized": false,
+      "cron": false,
+      "scheduler": false
+    }
+  },
+  "activity": {
+    "url": "http://localhost:3000/leads/394af794-00a3-4cb4-bd2f-19fb3079b9c2",
+    "hasEnrolled": true,
+    "hasStoppedLost": true,
+    "automationLines": [
+      "Automations TO DO'S Tours Task Center RESOURCES/TEMPLATES Library Vendors Planning Timelin",
+      "Enrolled in automation: New Inquiry Follow-up Today Enrolled in automation: P0 Lost Goodbye Today Auto"
+    ],
+    "sample": "OVERVIEW Dashboard Reports Calendar Help & Guides PIPELINE Leads CLIENTS Clients COMMUNICATION Inbox Message Templates Automations TO DO'S Tours Task Center RESOURCES/TEMPLATES Library Vendors Planning Timelines Pipelines Contract Templates Packages Floor Plans Inventory QR Campaigns FINANCIALS Contracts Invoices Payments OPERATIONS Settings Venue Guide Requests Give feedback Search ⌘K 90 O owner@example.com Leads P0Lost Validation New Lead Change stage Edit Relationship + Add details Follow-up: — Last contacted: — Tour: — No relationship details yet. Click \"Add details\" to record next steps, follow-up dates, and tour scheduling. Overview Conversation Notes Tasks Activity 1 Documents Luv Activity A chronological record of everything that has happened with this lead. Inquiry received Source: Website Today Enrolled in automation: New Inquiry Follow-up Today Enrolled in automation: P0 Lost Goodbye Today Automation stopped (lost): New Inquiry Follow-up Today"
+  },
+  "priyaActivity": {
+    "url": "http://localhost:3000/leads/ee379d67-20be-46e7-a045-60fc82703ab0",
+    "hasAutomation": true,
+    "sample": "OVERVIEW Dashboard Reports Calendar Help & Guides PIPELINE Leads CLIENTS Clients COMMUNICATION Inbox Message Templates Automations TO DO'S Tours Task Center RESOURCES/TEMPLATES Library Vendors Planning Timelines Pipelines Contract Templates Packages Floor Plans Inventory QR Campaigns FINANCIALS Contracts Invoices Payments OPERATIONS Settings Venue Guide Requests Give feedback Search ⌘K 90 O owner@example.com Leads Priya Natarajan Wedding · Jun 12, 2027 · 120 guests Booked Change stage Edit View Client → Relationship Edit Follow-up: — Last contacted: — Tour: Aug 18, 2026 at 17:32 Overview Conversation Notes Tasks Activity 2 Documents Luv Activity A chronological record of everything that has happened with this lead. Contract signed: WL Sig UI WL-SIG-QA-1786503756259 Today Contract sent: WL "
+  }
+}

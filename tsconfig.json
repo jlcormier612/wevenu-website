@@ -30,7 +30,9 @@
       "@shared/product-sync": ["./shared/product-sync/index.ts"],
       "@shared/product-sync/*": ["./shared/product-sync/*"],
       "@shared/email": ["./shared/email/index.ts"],
-      "@shared/email/*": ["./shared/email/*"]
+      "@shared/email/*": ["./shared/email/*"],
+      "@shared/product-account": ["./shared/product-account/index.ts"],
+      "@shared/product-account/*": ["./shared/product-account/*"]
     }
   },
   "include": [

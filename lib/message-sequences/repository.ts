@@ -125,9 +125,18 @@ type RelationshipNameCols = {
 type EnrollmentRow = {
   id: string; venue_id: string; sequence_id: string; relationship_id: string;
   status: SequenceEnrollmentStatus; enrolled_at: string; exited_at: string | null;
+  paused_at: string | null;
   message_sequences?: { name: string } | null;
   venue_customer_relationships?: RelationshipNameCols | null;
 };
+
+function mapEnrollment(r: EnrollmentRow): SequenceEnrollment {
+  return {
+    id: r.id, venueId: r.venue_id, sequenceId: r.sequence_id, sequenceName: r.message_sequences?.name ?? "",
+    relationshipId: r.relationship_id, relationshipName: relationshipDisplayName(r.venue_customer_relationships),
+    status: r.status, enrolledAt: r.enrolled_at, exitedAt: r.exited_at, pausedAt: r.paused_at ?? null,
+  };
+}
 
 /** venue_customer_relationships has first/last/email — no display_name column. */
 function relationshipDisplayName(r: RelationshipNameCols | null | undefined): string {
@@ -142,11 +151,8 @@ export async function getEnrollmentsForSequence(client: DbClient, venueId: strin
     .select("*, message_sequences(name), venue_customer_relationships(first_name, last_name, email)")
     .eq("venue_id", venueId).eq("sequence_id", sequenceId).order("enrolled_at", { ascending: false });
   if (error) throw error;
-  return (data as EnrollmentRow[]).map((r) => ({
-    id: r.id, venueId: r.venue_id, sequenceId: r.sequence_id, sequenceName: r.message_sequences?.name ?? "",
-    relationshipId: r.relationship_id, relationshipName: relationshipDisplayName(r.venue_customer_relationships),
-    status: r.status, enrolledAt: r.enrolled_at, exitedAt: r.exited_at,
-  }));
+  const enrollments = (data as EnrollmentRow[]).map(mapEnrollment);
+  return enrichEnrollmentsWithProgress(client, enrollments);
 }
 
 /** Active Automations for one Relationship (Communication Workspace Completion) — the reverse of getEnrollmentsForSequence. */
@@ -156,11 +162,45 @@ export async function getEnrollmentsForRelationship(client: DbClient, venueId: s
     .eq("venue_id", venueId).eq("relationship_id", relationshipId).eq("status", "active")
     .order("enrolled_at", { ascending: false });
   if (error) throw error;
-  return (data as EnrollmentRow[]).map((r) => ({
-    id: r.id, venueId: r.venue_id, sequenceId: r.sequence_id, sequenceName: r.message_sequences?.name ?? "",
-    relationshipId: r.relationship_id, relationshipName: relationshipDisplayName(r.venue_customer_relationships),
-    status: r.status, enrolledAt: r.enrolled_at, exitedAt: r.exited_at,
-  }));
+  const enrollments = (data as EnrollmentRow[]).map(mapEnrollment);
+  return enrichEnrollmentsWithProgress(client, enrollments);
+}
+
+type ProgressRow = {
+  sequence_enrollment_id: string;
+  status: string;
+  scheduled_for: string;
+};
+
+async function enrichEnrollmentsWithProgress(
+  client: AnyDbClient, enrollments: SequenceEnrollment[],
+): Promise<SequenceEnrollment[]> {
+  if (enrollments.length === 0) return enrollments;
+  const ids = enrollments.map((e) => e.id);
+  const { data, error } = await client.from("scheduled_messages")
+    .select("sequence_enrollment_id, status, scheduled_for")
+    .in("sequence_enrollment_id", ids);
+  if (error) throw error;
+  const byEnrollment = new Map<string, ProgressRow[]>();
+  for (const row of (data ?? []) as ProgressRow[]) {
+    const list = byEnrollment.get(row.sequence_enrollment_id) ?? [];
+    list.push(row);
+    byEnrollment.set(row.sequence_enrollment_id, list);
+  }
+  return enrollments.map((e) => {
+    const rows = byEnrollment.get(e.id) ?? [];
+    const stepsTotal = rows.length;
+    const stepsSent = rows.filter((r) => r.status === "sent").length;
+    const next = rows
+      .filter((r) => r.status === "scheduled")
+      .sort((a, b) => a.scheduled_for.localeCompare(b.scheduled_for))[0];
+    return {
+      ...e,
+      stepsTotal,
+      stepsSent,
+      nextScheduledFor: next?.scheduled_for ?? null,
+    };
+  });
 }
 
 export async function hasActiveEnrollment(client: AnyDbClient, sequenceId: string, relationshipId: string): Promise<boolean> {
@@ -232,22 +272,72 @@ export async function cancelEnrollment(client: DbClient, venueId: string, enroll
   await exitEnrollments(client, venueId, [enrollmentId], "cancelled");
 }
 
+/** Pause one enrollment — status stays active; paused_at set. Does not touch scheduled_messages. */
+export async function pauseEnrollment(client: DbClient, venueId: string, enrollmentId: string): Promise<void> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error } = await (client.from("sequence_enrollments") as any)
+    .update({ paused_at: new Date().toISOString(), resumed_at: null })
+    .eq("id", enrollmentId).eq("venue_id", venueId).eq("status", "active");
+  if (error) throw error;
+}
+
+/** Resume one enrollment — clears paused_at; does not rewrite scheduled_for dates. */
+export async function resumeEnrollment(client: DbClient, venueId: string, enrollmentId: string): Promise<void> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error } = await (client.from("sequence_enrollments") as any)
+    .update({ paused_at: null, resumed_at: new Date().toISOString() })
+    .eq("id", enrollmentId).eq("venue_id", venueId).eq("status", "active");
+  if (error) throw error;
+}
+
 /**
- * Stop on reply / stop on booking (§3.3) — exits every active enrollment
- * for a relationship, across every sequence it might be in at once, and
- * cancels their still-pending steps. Called from the inbound email/SMS
- * webhooks (admin client, no venueId known ahead of query — pass what the
- * webhook already resolved) and from the booking hooks (authenticated
- * client).
+ * Stop on reply / stop on booking / stop on lost or cancelled (§3.3) —
+ * exits every active enrollment for a relationship, across every sequence
+ * it might be in at once, and cancels their still-pending steps. Called
+ * from the inbound email/SMS webhooks (admin client), booking hooks, and
+ * lead status updates for terminal Lost/Cancelled.
  */
 export async function exitActiveEnrollmentsForRelationship(
-  client: AnyDbClient, venueId: string, relationshipId: string, reason: "exited_reply" | "exited_booking",
+  client: AnyDbClient,
+  venueId: string,
+  relationshipId: string,
+  reason: "exited_reply" | "exited_booking" | "exited_lost" | "exited_cancelled",
 ): Promise<void> {
   const { data } = await client.from("sequence_enrollments").select("id")
     .eq("venue_id", venueId).eq("relationship_id", relationshipId).eq("status", "active");
   const ids = ((data ?? []) as { id: string }[]).map((r) => r.id);
   if (ids.length === 0) return;
   await exitEnrollments(client, venueId, ids, reason);
+}
+
+/**
+ * Mark an enrollment completed when its final materialized step has sent.
+ * Sets exited_at so completion shares the same "ended" timestamp pattern
+ * as reply/booking/lost exits.
+ */
+export async function completeEnrollment(
+  client: AnyDbClient, venueId: string, enrollmentId: string,
+): Promise<void> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error } = await (client.from("sequence_enrollments") as any)
+    .update({ status: "completed", exited_at: new Date().toISOString() })
+    .eq("id", enrollmentId).eq("venue_id", venueId).eq("status", "active");
+  if (error) throw error;
+}
+
+/**
+ * After a successful send of a sequence-backed scheduled message: if no
+ * other steps remain scheduled (or failed still pending), flip enrollment
+ * to completed. Failed remaining steps do not block completion of the
+ * "last successful final step" path — only remaining `scheduled` rows do.
+ */
+export async function maybeCompleteEnrollmentAfterSend(
+  client: AnyDbClient, venueId: string, enrollmentId: string,
+): Promise<void> {
+  const { data } = await client.from("scheduled_messages").select("id")
+    .eq("sequence_enrollment_id", enrollmentId).eq("status", "scheduled").limit(1);
+  if ((data ?? []).length > 0) return;
+  await completeEnrollment(client, venueId, enrollmentId);
 }
 
 async function exitEnrollments(client: AnyDbClient, venueId: string, enrollmentIds: string[], status: SequenceEnrollmentStatus): Promise<void> {
@@ -263,15 +353,16 @@ async function exitEnrollments(client: AnyDbClient, venueId: string, enrollmentI
 
 /**
  * The Scheduled Sends processor calls this before sending a Series-produced
- * step — Pause (§3, "no new steps will send") only means something if a
- * paused sequence's already-materialized future steps actually stop, not
- * just that no *new* enrollments happen.
+ * step — skip when the whole Automation is paused OR this one enrollment
+ * has paused_at set. Leaves the scheduled_messages row scheduled (no delete).
  */
 export async function isEnrollmentSequencePaused(client: AnyDbClient, enrollmentId: string): Promise<boolean> {
-  const { data } = await client.from("sequence_enrollments").select("message_sequences(status)")
+  const { data } = await client.from("sequence_enrollments").select("paused_at, message_sequences(status)")
     .eq("id", enrollmentId)
-    .maybeSingle<{ message_sequences: { status: string } | null }>();
-  return data?.message_sequences?.status === "paused";
+    .maybeSingle<{ paused_at: string | null; message_sequences: { status: string } | null }>();
+  if (!data) return false;
+  if (data.paused_at) return true;
+  return data.message_sequences?.status === "paused";
 }
 
 /** Manual enrollment search — name/email lookup across every lead/client relationship in the venue. */
