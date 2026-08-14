@@ -27,7 +27,11 @@ permissions:
   contents: read
 
 env:
-  AWS_REGION: ${{ vars.AWS_REGION }}
+  # Fixed, not a GitHub variable — this pipeline is Sandbox-only, single-region
+  # by design (confirmed us-east-1), so there's no reason to depend on a
+  # variable that was never going to vary and would silently break this step
+  # if left unset.
+  AWS_REGION: us-east-1
 
 jobs:
   build-and-push:
@@ -79,7 +83,7 @@ jobs:
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
-          aws-region: ${{ vars.AWS_REGION }}
+          aws-region: us-east-1
 
       - name: Log in to ECR
         id: ecr-login
@@ -114,7 +118,7 @@ jobs:
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
-          aws-region: ${{ vars.AWS_REGION }}
+          aws-region: us-east-1
 
       - name: Resolve ECR registry
         id: ecr-login
@@ -153,7 +157,7 @@ jobs:
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
-          aws-region: ${{ vars.AWS_REGION }}
+          aws-region: us-east-1
 
       - name: Wait for ECS services to stabilize
         run: |
