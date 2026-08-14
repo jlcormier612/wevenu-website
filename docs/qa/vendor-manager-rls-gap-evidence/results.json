@@ -1,0 +1,99 @@
+{
+  "startedAt": "2026-08-13T20:53:58.696Z",
+  "checks": [
+    {
+      "name": "owner-login",
+      "pass": true,
+      "detail": "http://localhost:3000/dashboard"
+    },
+    {
+      "name": "owner-list-not-empty",
+      "pass": true,
+      "detail": "list rendered"
+    },
+    {
+      "name": "owner-seed-rows",
+      "pass": true,
+      "detail": "hits=5"
+    },
+    {
+      "name": "owner-preference-relationship",
+      "pass": true,
+      "detail": "columns present"
+    },
+    {
+      "name": "owner-no-platypus-leak",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "name": "owner-detail",
+      "pass": true,
+      "detail": "http://localhost:3000/vendors/9ab1bf28-fb48-4a0a-8da2-0828efec6f4e"
+    },
+    {
+      "name": "manager-login",
+      "pass": true,
+      "detail": "http://localhost:3000/dashboard"
+    },
+    {
+      "name": "manager-list-not-empty",
+      "pass": true,
+      "detail": "hits=5"
+    },
+    {
+      "name": "manager-seed-rows",
+      "pass": true,
+      "detail": "hits=Baker's Dozen|Cuppity Cakes|Golden Hour Photography|Harah's Hair|Nail Studio"
+    },
+    {
+      "name": "manager-no-platypus-leak",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "name": "manager-cross-venue-isolation",
+      "pass": true,
+      "detail": "Blue Ridge absent"
+    },
+    {
+      "name": "manager-unclaimed-detail",
+      "pass": true,
+      "detail": "http://localhost:3000/vendors/9ab1bf28-fb48-4a0a-8da2-0828efec6f4e"
+    },
+    {
+      "name": "manager-unclaimed-edit-form",
+      "pass": true,
+      "detail": "form fields"
+    },
+    {
+      "name": "manager-unclaimed-edit",
+      "pass": true,
+      "detail": "phone=555-8733"
+    },
+    {
+      "name": "manager-claimed-identity-lock",
+      "pass": true,
+      "detail": "banner=true vnDisabled=true"
+    },
+    {
+      "name": "manager-insert-vendor",
+      "pass": true,
+      "detail": "RLS Mgr Vendor 38733"
+    },
+    {
+      "name": "manager-cleanup-new-vendor",
+      "pass": true,
+      "detail": "c1be4017-ffee-4dbb-bf21-12e9e32639ee"
+    },
+    {
+      "name": "incidental-conversations",
+      "pass": true,
+      "detail": "no seed vendor name on conversations (may be empty data)"
+    }
+  ],
+  "errors": [],
+  "finishedAt": "2026-08-13T20:55:30.652Z",
+  "passed": 18,
+  "failed": 0
+}

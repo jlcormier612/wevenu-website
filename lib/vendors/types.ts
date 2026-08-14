@@ -244,6 +244,8 @@ export type EventVendorAssignment = {
   // no refunds — that's the couple-side payment system's shape, not this.
   agreedFee:       number | null;
   paymentStatus:   "pending" | "paid";
+  /** Pending remove asks from couple and/or vendor — venue confirms Remove. */
+  pendingRemovalRequests?: import("@/lib/vendor-removal-requests/types").EventVendorRemovalRequest[];
 };
 
 export type VendorWithEvents = Vendor & {
@@ -276,6 +278,8 @@ export type PortalVendor = {
   instagramUrl:    string | null;
   pricingTier:     VendorPricingTier | null;
   email:           string | null;
+  phone:           string | null;
+  contactName:     string | null;
 };
 
 // ── Input / form types ────────────────────────────────────────────────────────
@@ -467,26 +471,60 @@ export type VendorInquiryInput = {
 
 // ── Sprint 106: Personal tasks ────────────────────────────────────────────────
 
+export type VendorTaskCoupleVisibility = "private" | "visible" | "owned";
+
+export type VendorPersonalTaskAttachment = {
+  id:         string;
+  name:       string;
+  storageUrl: string;
+  mimeType:   string | null;
+};
+
 export type VendorPersonalTask = {
-  id:              string;
-  vendorId:        string;
-  vendorInquiryId: string | null;
-  eventId:         string | null;
-  title:           string;
-  dueDate:         string | null;
-  status:          "pending" | "complete";
-  source:          "manual" | "venue" | "luv" | "automation";
-  notes:           string | null;
-  completedAt:     string | null;
-  createdAt:       string;
+  id:                string;
+  vendorId:          string;
+  vendorInquiryId:   string | null;
+  eventId:           string | null;
+  title:             string;
+  dueDate:           string | null;
+  daysOffset:        number | null;
+  templateId:        string | null;
+  templateItemId:    string | null;
+  status:            "pending" | "complete";
+  source:            "manual" | "venue" | "luv" | "automation" | "template";
+  notes:             string | null;
+  coupleVisibility:  VendorTaskCoupleVisibility;
+  /** Couple-portal typed action; share_timeline = verified timeline share. */
+  actionType:        "share_timeline" | null;
+  /** Durable completion gate — stamped at write from visibility×action_type. */
+  completionAuthority: "couple_acknowledge" | "vendor_confirm" | "action_verified";
+  /** Phase 2 vendor_confirm: couple ack timestamp (status stays pending). */
+  coupleAcknowledgedAt: string | null;
+  /** Needs-changes v1: last return note from vendor (cleared when couple re-acks). */
+  vendorReturnNote: string | null;
+  returnedAt: string | null;
+  completedBy:       "couple" | "vendor" | null;
+  completedAt:       string | null;
+  createdAt:         string;
+  attachments?:      VendorPersonalTaskAttachment[];
 };
 
 export type VendorPersonalTaskInput = {
-  title:           string;
-  dueDate:         string;
-  vendorInquiryId: string;
-  eventId:         string;
-  notes:           string;
+  title:             string;
+  dueDate:           string;
+  /** Relative to event_date when eventId is set; takes precedence over dueDate. */
+  daysOffset?:       string | number | null;
+  vendorInquiryId:   string;
+  eventId:           string;
+  notes:             string;
+  coupleVisibility?: VendorTaskCoupleVisibility;
+  actionType?:       "share_timeline" | null;
+  /**
+   * Phase 2: when true with coupleVisibility=owned (and not share_timeline),
+   * stamps completion_authority=vendor_confirm (dual-state). Existing owned
+   * default remains couple_acknowledge.
+   */
+  requireVendorConfirmation?: boolean;
 };
 
 // ── Sprint 106: Health score ──────────────────────────────────────────────────
@@ -515,12 +553,26 @@ export type VendorEventListItem = {
   isUpcoming:   boolean;
 };
 
+/** Hybrid attention feed on vendor event Overview (not an audit log). */
+export type VendorActivityType =
+  | "message_waiting"
+  | "new_task"
+  | "document_shared"
+  | "task_complete";
+
 export type VendorActivityItem = {
   id:          string;
-  type:        "task_complete" | "document_upload" | "message" | "status_change";
+  type:        VendorActivityType;
   description: string;
   occurredAt:  string;
-  actor:       "vendor" | "venue";
+  actor:       "vendor" | "venue" | "couple";
+  /** Action-needed stays until addressed; FYI falls off after 72h. */
+  needsAction: boolean;
+  /** Deep-link into the event workspace tab. */
+  hrefTab?:    "messages" | "tasks" | "documents";
+  thread?:     "venue" | "couple";
+  /** Soft-ack: mark these vendor_notifications read on row click / Documents navigate. */
+  notificationIds?: string[];
 };
 
 export type VendorEventDetail = {
@@ -547,6 +599,8 @@ export type VendorEventDetail = {
   // the vendor surface (payments happen outside Hello to Cheers).
   agreedFee:      number | null;
   paymentStatus:  "pending" | "paid";
+  /** True when this vendor already asked the venue to remove them. */
+  hasPendingLeaveRequest: boolean;
   timeline:       import("@/lib/vendor-portal/types").VendorTimelineEntry[];
   eventTasks:     import("@/lib/vendor-portal/types").VendorTask[];
   personalTasks:  VendorPersonalTask[];

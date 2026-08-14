@@ -1,9 +1,7 @@
 import Link from "next/link";
 import { AlertTriangle, Clock } from "lucide-react";
 
-import {
-  Card, CardContent, CardDescription, CardHeader, CardTitle,
-} from "@/components/ui/card";
+import { AttentionList } from "@/components/dashboard-system/attention-list";
 import { daysUntil, formatDate, formatMoney } from "@/lib/payments/constants";
 import type { DashboardPayment } from "@/lib/dashboard/types";
 import { cn } from "@/lib/utils";
@@ -33,51 +31,41 @@ function PaymentRow({ p }: { p: DashboardPayment }) {
   );
 }
 
+// Dashboard Component System, Phase 1 Step 2 — shell migrated to
+// AttentionList; row content and copy unchanged.
 export function OverduePaymentsWidget({ payments }: { payments: DashboardPayment[] }) {
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2 text-base">
-          <AlertTriangle className="h-4 w-4 text-destructive" />
-          Overdue Payments
-          {payments.length > 0 && (
-            <span className="rounded-full bg-destructive/10 px-2 py-0.5 text-xs font-semibold text-destructive">{payments.length}</span>
-          )}
-        </CardTitle>
-        <CardDescription>Payments past their due date.</CardDescription>
-      </CardHeader>
-      <CardContent>
-        {payments.length === 0 ? (
-          <p className="py-3 text-center text-sm text-muted-foreground">No overdue payments. You&apos;re all caught up.</p>
-        ) : (
-          <div className="divide-y divide-border">
-            {payments.map((p) => <PaymentRow key={p.id} p={p} />)}
-          </div>
-        )}
-      </CardContent>
-    </Card>
+    <AttentionList
+      icon={<AlertTriangle className="h-4 w-4 text-destructive" />}
+      title="Overdue Payments"
+      description="Payments past their due date."
+      headerRight={
+        payments.length > 0 && (
+          <span className="rounded-full bg-destructive/10 px-2 py-0.5 text-xs font-semibold text-destructive">{payments.length}</span>
+        )
+      }
+      items={payments}
+      getKey={(p) => p.id}
+      emptyState={
+        <p className="py-3 text-center text-sm text-muted-foreground">No overdue payments. You&apos;re all caught up.</p>
+      }
+      renderRow={(p) => <PaymentRow p={p} />}
+    />
   );
 }
 
 export function UpcomingPaymentsWidget({ payments }: { payments: DashboardPayment[] }) {
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2 text-base">
-          <Clock className="h-4 w-4 text-primary" />
-          Upcoming Payments
-        </CardTitle>
-        <CardDescription>Payments due in the next 30 days.</CardDescription>
-      </CardHeader>
-      <CardContent>
-        {payments.length === 0 ? (
-          <p className="py-3 text-center text-sm text-muted-foreground">No payments due soon.</p>
-        ) : (
-          <div className="divide-y divide-border">
-            {payments.slice(0, 6).map((p) => <PaymentRow key={p.id} p={p} />)}
-          </div>
-        )}
-      </CardContent>
-    </Card>
+    <AttentionList
+      icon={<Clock className="h-4 w-4 text-primary" />}
+      title="Upcoming Payments"
+      description="Payments due in the next 30 days."
+      items={payments.slice(0, 6)}
+      getKey={(p) => p.id}
+      emptyState={
+        <p className="py-3 text-center text-sm text-muted-foreground">No payments due soon.</p>
+      }
+      renderRow={(p) => <PaymentRow p={p} />}
+    />
   );
 }

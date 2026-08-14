@@ -40,6 +40,8 @@ import { TaskCompleteButton } from "@/components/tasks/task-complete-button";
 import { WelcomeBackVerifyControl } from "@/components/relationships/welcome-back-verify-control";
 import {
   computeRelationshipHealth,
+  greetingFirstName,
+  looksLikeEmailLocalPart,
   normalizeLifecycleStatus,
   WHITE_GLOVE_CHECKLIST_MARKER,
 } from "@shared/relationships";
@@ -79,6 +81,31 @@ function formatPaymentLabel(status: string | null | undefined): string {
   const raw = String(status).trim();
   if (raw.toLowerCase() === "manual") return "Manual (no Stripe)";
   return raw.replace(/_/g, " ");
+}
+
+/** Open + resolved Feedback & support counts for venue health surfaces. */
+function formatSupportHealthLabel(
+  openCount: number,
+  items: Relationship["openFeedbackItems"] | undefined,
+): string {
+  const open = Math.max(0, openCount || 0);
+  const resolved = (items ?? []).filter((i) => i.status === "resolved").length;
+  if (resolved > 0) {
+    return `${open} open · ${resolved} resolved`;
+  }
+  return String(open);
+}
+
+function ownerDisplayName(relationship: Relationship): string {
+  const first = greetingFirstName({
+    firstName: relationship.owner.firstName,
+    email: relationship.owner.email,
+  });
+  const last = looksLikeEmailLocalPart(relationship.owner.firstName)
+    ? ""
+    : (relationship.owner.lastName || "").trim();
+  const name = [first === "there" ? "" : first, last].filter(Boolean).join(" ");
+  return name || "—";
 }
 
 /**
@@ -355,8 +382,11 @@ export function RelationshipSnapshot({
               }
             />
             <SnapItem
-              label="Support requests"
-              value={String(health.supportOpenCount)}
+              label="Support & feedback"
+              value={formatSupportHealthLabel(
+                health.supportOpenCount,
+                relationship.openFeedbackItems,
+              )}
             />
             <SnapItem label="Next Milestone" value={nextMilestoneValue} />
             <SnapItem label="Open Tasks" value={String(openTasks)} />
@@ -504,8 +534,11 @@ export function CustomerSuccessPanels({
             value={daysSince != null ? String(daysSince) : "—"}
           />
           <Row
-            label="Open Support Issues"
-            value={String(health.supportOpenCount)}
+            label="Support & feedback"
+            value={formatSupportHealthLabel(
+              health.supportOpenCount,
+              relationship.openFeedbackItems,
+            )}
           />
           <Row label="Health badge" value={HEALTH_BADGE_LABELS[badge]} />
         </div>
@@ -610,10 +643,7 @@ export function RelationshipDetails({ relationship }: { relationship: Relationsh
         </DetailBlock>
 
         <DetailBlock title="Owner Information">
-          <Row
-            label="Name"
-            value={`${relationship.owner.firstName} ${relationship.owner.lastName}`}
-          />
+          <Row label="Name" value={ownerDisplayName(relationship)} />
           <Row label="Title" value={relationship.owner.title ?? "—"} />
           <Row label="Email" value={relationship.owner.email} />
           <Row label="Phone" value={relationship.owner.phone ?? "—"} />

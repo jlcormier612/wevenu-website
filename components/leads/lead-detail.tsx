@@ -18,9 +18,14 @@ import {
 import { toast } from "sonner";
 
 import { convertLeadToClientAction } from "@/app/(app)/clients/actions";
-import { updateLeadPipelineStageAction, updateLeadStatusAction } from "@/app/(app)/leads/[id]/actions";
+import {
+  updateLeadPipelineStageAction,
+  updateLeadStatusAction,
+  wouldEnrollOnPipelineStageMoveAction,
+} from "@/app/(app)/leads/[id]/actions";
 import { ActivityTimelineView } from "@/components/conversations/activity-timeline";
 import { LeadStatusBadge } from "@/components/leads/lead-status-badge";
+import { PipelineAutomationConfirmDialog } from "@/components/leads/pipeline-automation-confirm";
 import { Badge } from "@/components/ui/badge";
 import { NotesSection } from "@/components/leads/notes-section";
 import { RelationshipCard } from "@/components/leads/relationship-card";
@@ -43,7 +48,8 @@ import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DateHoldsSection } from "@/components/availability/date-holds-section";
-import { DocumentsSection } from "@/components/documents/documents-section";
+import { DocumentWorkspace } from "@/components/document-workspace/document-workspace";
+import type { WorkspaceDocument } from "@/lib/document-workspace/types";
 import { LuvDraftPanel } from "@/components/luv/luv-draft-panel";
 import { LuvHeart } from "@/components/dashboard/luv-widget";
 import { RelationshipConversationTab } from "@/components/conversations/relationship-conversation-tab";
@@ -89,7 +95,7 @@ function InfoRow({
 
 // ---- main component ---------------------------------------------------------
 
-export function LeadDetail({ lead, holds = [], spaces = [], documents = [], luvDrafts = [], autoLuvDraft, tourAppointments = [], conversationId = null, pipelineStages = [], currentPipelineStage = null, now }: { lead: LeadWithDetails; holds?: DateHold[]; spaces?: VenueSpace[]; documents?: Document[]; luvDrafts?: LuvDraft[]; autoLuvDraft?: string; tourAppointments?: import("@/lib/tours/types").TourAppointment[]; conversationId?: string | null; pipelineStages?: PipelineStage[]; currentPipelineStage?: PipelineStage | null; now: string }) {
+export function LeadDetail({ lead, holds = [], spaces = [], documents = [], workspaceDocuments = [], pinnedDocumentKeys = [], recentDocumentEntries = [], luvDrafts = [], autoLuvDraft, tourAppointments = [], conversationId = null, pipelineStages = [], currentPipelineStage = null, now }: { lead: LeadWithDetails; holds?: DateHold[]; spaces?: VenueSpace[]; documents?: Document[]; workspaceDocuments?: WorkspaceDocument[]; pinnedDocumentKeys?: string[]; recentDocumentEntries?: [string, string][]; luvDrafts?: LuvDraft[]; autoLuvDraft?: string; tourAppointments?: import("@/lib/tours/types").TourAppointment[]; conversationId?: string | null; pipelineStages?: PipelineStage[]; currentPipelineStage?: PipelineStage | null; now: string }) {
   // Controlled tabs — supports Luv→Messages bridge and ?luv= URL param routing
   const [activeTab, setActiveTab] = React.useState(autoLuvDraft ? "luv" : "overview");
   const [messagePrefill, setMessagePrefill] = React.useState<{ subject: string; body: string } | null>(null);
@@ -101,6 +107,8 @@ export function LeadDetail({ lead, holds = [], spaces = [], documents = [], luvD
   const router = useRouter();
   const [statusPending, startStatus] = React.useTransition();
   const [convertPending, startConvert] = React.useTransition();
+  const [confirmStageId, setConfirmStageId] = React.useState<string | null>(null);
+  const [confirmPreview, setConfirmPreview] = React.useState<import("@/lib/message-sequences/confirm-preview").AutomationMessagePreview | null>(null);
 
   function handleConvert() {
     startConvert(async () => {
@@ -138,9 +146,32 @@ export function LeadDetail({ lead, holds = [], spaces = [], documents = [], luvD
   // Stage updates leads.status underneath via the existing canonical
   // mapping (lib/leads/pipeline-stage-mapping.ts). Only shown when the
   // venue has an active Pipeline Template; falls back to the plain status
-  // control otherwise.
+  // control otherwise. Confirms before commit when the move would enroll
+  // in an Automation.
+  function commitStageChange(stageId: string) {
+    startStatus(async () => {
+      const result = await updateLeadPipelineStageAction(lead.id, stageId);
+      if (result.ok) {
+        toast.success("Stage updated.");
+        router.refresh();
+      } else {
+        toast.error(result.message ?? "Could not update stage.");
+      }
+    });
+  }
+
   function handleStageChange(stageId: string) {
     startStatus(async () => {
+      const check = await wouldEnrollOnPipelineStageMoveAction(lead.id, stageId);
+      if (!check.ok) {
+        toast.error(check.message ?? "Could not check this move.");
+        return;
+      }
+      if (check.wouldEnroll) {
+        setConfirmStageId(stageId);
+        setConfirmPreview(check.preview);
+        return;
+      }
       const result = await updateLeadPipelineStageAction(lead.id, stageId);
       if (result.ok) {
         toast.success("Stage updated.");
@@ -155,6 +186,21 @@ export function LeadDetail({ lead, holds = [], spaces = [], documents = [], luvD
 
   return (
     <div className="space-y-5">
+      <PipelineAutomationConfirmDialog
+        open={confirmStageId != null}
+        preview={confirmPreview}
+        onCancel={() => {
+          setConfirmStageId(null);
+          setConfirmPreview(null);
+        }}
+        onContinue={() => {
+          if (!confirmStageId) return;
+          const stageId = confirmStageId;
+          setConfirmStageId(null);
+          setConfirmPreview(null);
+          commitStageChange(stageId);
+        }}
+      />
       {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="space-y-1.5">
@@ -481,20 +527,14 @@ export function LeadDetail({ lead, holds = [], spaces = [], documents = [], luvD
 
         {/* ── Documents ────────────────────────────────────────────── */}
         <TabsContent value="documents">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Documents</CardTitle>
-              <CardDescription>Contracts, inspiration photos, questionnaires, and other files for this lead.</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <DocumentsSection
-                entityType="lead"
-                entityId={lead.id}
-                venueId={lead.venueId}
-                initialDocuments={documents}
-              />
-            </CardContent>
-          </Card>
+          <DocumentWorkspace
+            title="Documents"
+            description="Contracts, inspiration photos, questionnaires, and other files for this lead."
+            documents={workspaceDocuments}
+            initialPinnedKeys={pinnedDocumentKeys}
+            initialRecentEntries={recentDocumentEntries}
+            uploadTarget={{ entityType: "lead", entityId: lead.id, venueId: lead.venueId }}
+          />
         </TabsContent>
 
         {/* ── Luv ──────────────────────────────────────────────────── */}

@@ -8,6 +8,7 @@ export const NAV_ITEMS: NavItem[] = [
   { href: "/today", label: "Today" },
   { href: "/sales", label: "Sales" },
   { href: "/customer-success", label: "Customer Success" },
+  { href: "/support", label: "Support" },
   { href: "/walkthroughs", label: "Walkthroughs" },
   { href: "/onboarding", label: "White Glove" },
   { href: "/tasks", label: "Tasks" },

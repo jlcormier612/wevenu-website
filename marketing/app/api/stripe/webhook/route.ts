@@ -16,7 +16,7 @@ import {
   parseWelcomeBackRequested,
 } from "@/lib/marketing/enrollment";
 import { syncSubscriptionLifecycleToRelationship } from "@/lib/relationships/bridge";
-import { getMarketingSiteUrl, getStripe } from "@/lib/stripe/config";
+import { getMarketingSiteUrl, getStripe, shouldProvisionFromCheckoutSession } from "@/lib/stripe/config";
 import {
   estimateMrrCentsFromPlan,
   mrrCentsFromStripeSubscription,
@@ -220,6 +220,24 @@ async function handleCheckoutCompleted(
   const subscription = await loadSubscriptionForMrr(stripe, subscriptionId);
   const mrrCents = resolveMrrCents(subscription, plan);
 
+  if (
+    !shouldProvisionFromCheckoutSession({
+      paymentStatus: session.payment_status,
+      subscriptionStatus: subscription?.status ?? null,
+    })
+  ) {
+    console.info(
+      "[stripe] checkout.session.completed — skip provisioning (payment not successful)",
+      {
+        sessionId: session.id,
+        paymentStatus: session.payment_status,
+        subscriptionStatus: subscription?.status ?? null,
+        subscriptionId,
+      },
+    );
+    return;
+  }
+
   try {
     const record = await createVenueEnrollment({
       stripeSubscriptionId: subscriptionId,
@@ -245,6 +263,8 @@ async function handleCheckoutCompleted(
       onboardingType: record.onboardingType,
       mrrCents: record.mrrCents,
       relationshipId: meta.relationship_id || null,
+      legalAccepted: meta.legal_accepted === "true",
+      pricingMode: meta.pricing_mode || null,
     });
   } catch (error) {
     console.error("[stripe] failed to create venue enrollment", error);

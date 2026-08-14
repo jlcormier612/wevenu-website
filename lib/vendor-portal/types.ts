@@ -35,6 +35,8 @@ export type VendorEvent = {
 export type VendorTimelineEntry = {
   id: string;
   time: string | null;
+  /** 0-based calendar day from event_date (multi-day events). */
+  dayOffset: number;
   title: string;
   description: string | null;
   audiences: string[];

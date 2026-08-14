@@ -3,12 +3,14 @@ import type { Metadata } from "next";
 import { PageHeader } from "@/components/shell/module-placeholder";
 import { FloorPlanTemplatesSection } from "@/components/floor-plan-templates/floor-plan-templates-section";
 import { getSpaces } from "@/lib/availability/service";
+import { ensureFloorPlanStartersForCurrentVenue } from "@/lib/floor-plan-templates/provision";
 import { getTemplatesForLibrary } from "@/lib/floor-plan-templates/service";
 import { getCurrentVenue } from "@/lib/venue/service";
 
 export const metadata: Metadata = { title: "Floor Plan Templates" };
 
 export default async function FloorPlanTemplatesPage() {
+  await ensureFloorPlanStartersForCurrentVenue();
   const [templates, spaces, venue] = await Promise.all([getTemplatesForLibrary(), getSpaces(), getCurrentVenue()]);
   return (
     <div className="space-y-6">

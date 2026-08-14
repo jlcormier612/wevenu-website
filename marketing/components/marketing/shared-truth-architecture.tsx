@@ -107,7 +107,7 @@ export function SharedTruthArchitecture({ className }: { className?: string }) {
   const strengths = [venue, couple, vendor] as const;
 
   const captionIndex = activeCaptionIndex(progress, reduced);
-  const caption = captionIndex >= 0 ? STAGES[captionIndex].caption : null;
+  const caption = captionIndex >= 0 ? (STAGES.at(captionIndex)?.caption ?? null) : null;
 
   // Full art blooms as the network completes — “ONE SHARED TRUTH” illuminated
   const fullReveal = reduced

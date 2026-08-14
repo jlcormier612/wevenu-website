@@ -1,8 +1,7 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft } from "lucide-react";
 
+import { BusinessAssetHeader } from "@/components/business-assets/asset-header";
 import { FloorPlanEditor } from "@/components/floor-plan/floor-plan-editor";
 import { FloorPlanFinalizeControl } from "@/components/floor-plan/floor-plan-finalize-control";
 import { FloorPlanReconciliationBanner } from "@/components/floor-plan/floor-plan-reconciliation-banner";
@@ -34,19 +33,16 @@ export default async function FloorPlanEditorPage({ params }: Props) {
 
   return (
     <div className="space-y-6 max-w-5xl mx-auto">
-      <div className="flex items-start justify-between gap-4">
-        <div className="space-y-1">
-          <Link
-            href={event.clientId ? `/clients/${event.clientId}#floorplan` : "/events"}
-            className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
-          >
-            <ArrowLeft className="h-3.5 w-3.5" /> Floor Plans
-          </Link>
-          <h1 className="font-heading text-2xl font-medium text-heading">{plan.name}</h1>
-          <p className="text-sm text-muted-foreground">{event.name}</p>
-        </div>
-        <FloorPlanFinalizeControl planId={plan.id} eventId={event.id} finalizedAt={plan.finalizedAt} />
-      </div>
+      <BusinessAssetHeader
+        backHref={event.clientId ? `/clients/${event.clientId}#floorplan` : "/events"}
+        backLabel="Floor Plans"
+        whatIsThis="Floor Plan"
+        title={plan.name}
+        status={null}
+        lastUpdated={new Date(plan.updatedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+        relationship={event.clientId ? { name: event.name, href: `/clients/${event.clientId}` } : { name: event.name }}
+        primaryAction={<FloorPlanFinalizeControl planId={plan.id} eventId={event.id} finalizedAt={plan.finalizedAt} />}
+      />
       <FloorPlanReconciliationBanner reconciliation={reconciliation} />
       <FloorPlanEditor
         initialPlan={plan}

@@ -13,7 +13,7 @@
  */
 
 import { addEntry } from "@/lib/timeline/service";
-import { minutesToTime, timeToMinutes } from "@/lib/timeline/constants";
+import { resolveEntryTimeFromOffset } from "@/lib/timeline/constants";
 import type { TimelineActionResult } from "@/lib/timeline/types";
 import { getItems } from "@/lib/timeline-templates/service";
 
@@ -23,27 +23,19 @@ export async function applyTimelineTemplateToEvent(
   const items = await getItems(templateId);
   if (items.length === 0) return { ok: false, message: "This timeline template has no items yet." };
 
-  // Same "calculate from noon when no start time is set" fallback the
-  // existing hardcoded-template picker already uses (components/events/
-  // timeline/template-picker.tsx) — kept identical rather than inventing a
-  // second convention for the same situation.
-  const baseMinutes = timeToMinutes(eventStartTime || "12:00");
-
   for (const item of items) {
-    let entryTime = item.timeOfDay ?? "";
-    if (!entryTime && item.minutesOffset !== null) {
-      // Same day-boundary guard as the existing hardcoded-template applier
-      // (lib/timeline/repository.ts's applyTemplate) — an offset that lands
-      // before midnight or past it leaves the entry untimed rather than
-      // silently wrapping to a nonsensical clock time.
-      const totalMinutes = baseMinutes + item.minutesOffset;
-      if (totalMinutes >= 0 && totalMinutes < 24 * 60) entryTime = minutesToTime(totalMinutes);
-    }
+    // Prefer explicit clock anchors on the template item; otherwise resolve
+    // from minutesOffset. When both are null, entryTime stays empty — starters
+    // never invent fake times.
+    const entryTime = item.timeOfDay
+      ?? resolveEntryTimeFromOffset(item.minutesOffset, eventStartTime)
+      ?? "";
     const result = await addEntry(eventId, {
       title: item.title,
       description: item.description ?? "",
       notes: item.notes ?? "",
       entryTime,
+      dayOffset: item.dayOffset ?? 0,
       audiences: item.audiences,
     });
     if (!result.ok) return { ok: false, message: result.message ?? `Could not add "${item.title}".` };

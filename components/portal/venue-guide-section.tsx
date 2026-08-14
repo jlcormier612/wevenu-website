@@ -66,6 +66,9 @@ function hasAny(...vals: (string | null | undefined | unknown[])[]): boolean {
   });
 }
 
+// Matches Tasks / Timeline / Documents row bars in the couple portal.
+const CONTENT_BAR = "w-full rounded-xl border border-border/60 bg-card px-3 py-3";
+
 // ── Section wrapper ───────────────────────────────────────────────────────────
 
 function GuideSection({ emoji, title, children }: { emoji: string; title: string; children: React.ReactNode }) {
@@ -84,9 +87,11 @@ function GuideSection({ emoji, title, children }: { emoji: string; title: string
 
 function TextBlock({ text }: { text: string }) {
   return (
-    <p className="text-sm leading-relaxed whitespace-pre-line" style={{ color: "#4A4440" }}>
-      {text}
-    </p>
+    <div className={CONTENT_BAR}>
+      <p className="text-sm leading-relaxed whitespace-pre-line" style={{ color: "#4A4440" }}>
+        {text}
+      </p>
+    </div>
   );
 }
 
@@ -94,7 +99,7 @@ function TextBlock({ text }: { text: string }) {
 
 function HotelCard({ hotel }: { hotel: HotelBlock }) {
   return (
-    <div className="rounded-2xl border p-4 space-y-1.5" style={{ borderColor: BORDER, background: "#FDFCFA" }}>
+    <div className={`${CONTENT_BAR} space-y-1.5`}>
       <div className="flex items-start justify-between gap-2">
         <p className="text-sm font-medium" style={{ color: "#2D2A28" }}>{hotel.name}</p>
         {hotel.url && (
@@ -121,7 +126,7 @@ function HotelCard({ hotel }: { hotel: HotelBlock }) {
 
 function ContactCard({ contact }: { contact: ContactEntry }) {
   return (
-    <div className="rounded-2xl border p-4 space-y-2" style={{ borderColor: BORDER, background: "#FDFCFA" }}>
+    <div className={`${CONTENT_BAR} space-y-2`}>
       <div>
         <p className="text-sm font-medium" style={{ color: "#2D2A28" }}>{contact.name}</p>
         {contact.role && (
@@ -156,7 +161,7 @@ const TEAM_ROLE_LABEL: Record<string, string> = { owner: "Owner", manager: "Venu
 
 function TeamMemberCard({ member }: { member: PortalVenueTeamMember }) {
   return (
-    <div className="rounded-2xl border p-4 flex items-center gap-3" style={{ borderColor: BORDER, background: "#FDFCFA" }}>
+    <div className={`${CONTENT_BAR} flex items-center gap-3`}>
       <div className="h-9 w-9 rounded-full flex items-center justify-center text-xs font-bold text-white shrink-0" style={{ background: SAGE }}>
         {member.fullName.split(" ").map((s) => s[0]).slice(0, 2).join("").toUpperCase()}
       </div>
@@ -178,7 +183,7 @@ function TeamMemberCard({ member }: { member: PortalVenueTeamMember }) {
 
 function SpaceCard({ space }: { space: PortalVenueSpace }) {
   return (
-    <div className="rounded-2xl border p-4 space-y-1" style={{ borderColor: BORDER, background: "#FDFCFA" }}>
+    <div className={`${CONTENT_BAR} space-y-1`}>
       <div className="flex items-start justify-between gap-2">
         <p className="text-sm font-medium" style={{ color: "#2D2A28" }}>{space.name}</p>
         {space.capacity != null && (
@@ -196,12 +201,11 @@ function SpaceCard({ space }: { space: PortalVenueSpace }) {
 
 function FaqItem({ faq, open, onToggle }: { faq: FaqEntry; open: boolean; onToggle: () => void }) {
   return (
-    <div className="rounded-2xl border overflow-hidden" style={{ borderColor: BORDER }}>
+    <div className="w-full rounded-xl border border-border/60 bg-card overflow-hidden">
       <button
         type="button"
         onClick={onToggle}
-        className="w-full flex items-start justify-between gap-3 px-4 py-3.5 text-left transition-colors"
-        style={{ background: open ? `color-mix(in srgb, var(--venue-primary) 3%, transparent)` : "#FDFCFA" }}>
+        className="w-full flex items-start justify-between gap-3 px-3 py-3 text-left">
         <p className="text-sm font-medium leading-snug" style={{ color: "#2D2A28" }}>{faq.question}</p>
         {open
           ? <ChevronUp className="h-4 w-4 shrink-0 mt-0.5" style={{ color: TAUPE }} />
@@ -209,7 +213,7 @@ function FaqItem({ faq, open, onToggle }: { faq: FaqEntry; open: boolean; onTogg
         }
       </button>
       {open && (
-        <div className="px-4 pb-4 pt-1" style={{ background: `color-mix(in srgb, var(--venue-primary) 2%, transparent)` }}>
+        <div className="px-3 pb-3 pt-0">
           <p className="text-sm leading-relaxed whitespace-pre-line" style={{ color: "#4A4440" }}>
             {faq.answer}
           </p>
@@ -339,9 +343,9 @@ export function VenueGuideSection({ token, context, onNavigate }: { token: strin
 
       {/* Loading */}
       {loading && (
-        <div className="space-y-4">
+        <div className="space-y-3">
           {[1,2,3].map(i => (
-            <div key={i} className="rounded-2xl border p-4 space-y-2 animate-pulse" style={{ borderColor: BORDER }}>
+            <div key={i} className={`${CONTENT_BAR} space-y-2 animate-pulse`}>
               <div className="h-3 w-32 rounded-full bg-gray-100" />
               <div className="h-3 w-full rounded-full bg-gray-100" />
               <div className="h-3 w-3/4 rounded-full bg-gray-100" />
@@ -365,7 +369,7 @@ export function VenueGuideSection({ token, context, onNavigate }: { token: strin
       {/* ── About the Venue — always shown; name/address always exist ── */}
       {!loading && (!q || matches(context.venue.name, q) || matches(context.venue.website, q)) && (
         <GuideSection emoji="📍" title="About the Venue">
-          <div className="rounded-2xl border p-4 space-y-2" style={{ borderColor: BORDER, background: "#FDFCFA" }}>
+          <div className={`${CONTENT_BAR} space-y-2`}>
             <p className="text-sm font-semibold" style={{ color: "#2D2A28" }}>{context.venue.name}</p>
             {(context.venue.addressLine1 || context.venue.city) && (
               <p className="text-xs leading-relaxed" style={{ color: TAUPE }}>
@@ -428,10 +432,7 @@ export function VenueGuideSection({ token, context, onNavigate }: { token: strin
               </div>
             )}
             {data?.nearbyAccommodations && (!q || matches(data.nearbyAccommodations, q)) && (
-              <>
-                {filteredHotels.length > 0 && <div className="h-px" style={{ background: BORDER }} />}
-                <TextBlock text={data.nearbyAccommodations} />
-              </>
+              <TextBlock text={data.nearbyAccommodations} />
             )}
           </div>
         </GuideSection>
@@ -487,7 +488,7 @@ export function VenueGuideSection({ token, context, onNavigate }: { token: strin
       {/* ── Contact Information — the venue's own phone/email always leads,
           plus any additional named contacts they've entered ── */}
       {!loading && showContacts && (
-        <GuideSection emoji="📞" title="Contact Information">
+        <GuideSection emoji="📞" title="Important Contacts">
           <div className="space-y-2">
             {(context.venue.phone || context.venue.email) && (!q || matches(context.venue.phone, q) || matches(context.venue.email, q)) && (
               <ContactCard contact={{ name: context.venue.name, role: "Main line", phone: context.venue.phone, email: context.venue.email }} />
@@ -502,8 +503,7 @@ export function VenueGuideSection({ token, context, onNavigate }: { token: strin
       {!loading && (!q || matches("preferred vendors", q)) && (
         <GuideSection emoji="🤝" title="Preferred Vendors">
           <button type="button" onClick={() => onNavigate("vendors")}
-            className="w-full text-left rounded-2xl border p-4 flex items-center justify-between gap-3 hover:shadow-sm transition-all"
-            style={{ borderColor: BORDER, background: "#FDFCFA" }}>
+            className={`${CONTENT_BAR} text-left flex items-center justify-between gap-3 hover:opacity-90 transition-opacity`}>
             <p className="text-sm leading-relaxed" style={{ color: "#4A4440" }}>
               {context.venue.name} has already vetted a list of trusted vendors for you to browse.
             </p>

@@ -5,7 +5,7 @@ import { notFound } from "next/navigation";
 import { SuccessLibraryForm } from "@/components/hq/success-library-form";
 import { getArticleForAdmin } from "@/lib/success-library/service";
 
-export const metadata: Metadata = { title: "Edit Article — Success Library" };
+export const metadata: Metadata = { title: "Edit Article — Help & Guides" };
 
 type Props = { params: Promise<{ id: string }> };
 
@@ -16,7 +16,7 @@ export default async function EditSuccessLibraryArticlePage({ params }: Props) {
 
   return (
     <div className="space-y-6">
-      <Link href="/admin/success-library" className="text-xs text-muted-foreground hover:text-foreground transition-colors">← Success Library</Link>
+      <Link href="/admin/success-library" className="text-xs text-muted-foreground hover:text-foreground transition-colors">← Help &amp; Guides</Link>
       <h1 className="font-heading text-2xl font-semibold text-heading">{article.title}</h1>
       <SuccessLibraryForm article={article} />
     </div>

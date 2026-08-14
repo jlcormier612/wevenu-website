@@ -1,0 +1,40 @@
+{
+  "workPackage": "Couple Home – Implementation 4 – Planning Progress and Wedding Journey",
+  "url": "http://localhost:3000/p/seedcoupleportal00000000000000000000000000000001",
+  "progressSource": "WeddingPlanningProgressCard composite via computePlanningProgress (required tasks + canonical payment lines + contracts + questionnaire)",
+  "journeySource": "PlanningJourney date milestones via resolvePlanningJourney (daysUntil thresholds unchanged)",
+  "newCalculations": "none",
+  "unitTests": "12/12 pass (lib/portal/planning-progress.test.ts + planning-journey.test.ts)",
+  "checks": {
+    "desktop": {
+      "hasPlanningProgress": true,
+      "hasWeddingJourney": true,
+      "warmSupportingStatement": "You’re making real headway.",
+      "sourceNote": "Based on required venue tasks, payments, contracts, and your questionnaire.",
+      "percent": "42%",
+      "operationalProgressbarCount": 1,
+      "journeyCurrent": "1 mo · You’re here",
+      "sideBySide": true,
+      "nextStepsPresent": true,
+      "whatsHappeningPresent": true,
+      "noMilestonesStub": true,
+      "noHealthProductivityScore": true
+    },
+    "mobile": {
+      "hasPlanningProgress": true,
+      "hasWeddingJourney": true,
+      "operationalProgressbarCount": 1,
+      "stackedProgressThenJourney": true,
+      "nextStepsPresent": true,
+      "whatsHappeningPresent": true
+    }
+  },
+  "files": [
+    "01-desktop-progress-journey.png",
+    "01-desktop-home-full.png",
+    "02-mobile-progress-journey.png",
+    "02-mobile-home-full.png",
+    "qa-results.json"
+  ],
+  "timestamp": "2026-08-08T19:09:13.679Z"
+}

@@ -16,6 +16,11 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { VENDOR_CATEGORIES, vendorCategoryLabel } from "@/lib/vendors/constants";
+import {
+  vendorClaimStateLabel,
+  vendorPreferenceBadgeKind,
+  vendorPreferenceSortRank,
+} from "@/lib/vendors/list-presentation";
 import type { Vendor } from "@/lib/vendors/types";
 
 type FilterKey = "all" | string;
@@ -50,8 +55,8 @@ export function VendorList({ vendors }: { vendors: Vendor[] }) {
       switch (sort) {
         case "za":        return b.businessName.localeCompare(a.businessName);
         case "preferred": {
-          const lvl = (v: Vendor) => v.preferenceLevel === "featured" ? 2 : v.preferenceLevel === "preferred" ? 1 : 0;
-          return lvl(b) - lvl(a) || a.businessName.localeCompare(b.businessName);
+          return vendorPreferenceSortRank(b.preferenceLevel) - vendorPreferenceSortRank(a.preferenceLevel)
+            || a.businessName.localeCompare(b.businessName);
         }
         case "newest":    return (b.createdAt ?? "") < (a.createdAt ?? "") ? -1 : 1;
         default:          return a.businessName.localeCompare(b.businessName);
@@ -128,12 +133,16 @@ export function VendorList({ vendors }: { vendors: Vendor[] }) {
                 <TableHead>Category</TableHead>
                 <TableHead>Contact</TableHead>
                 <TableHead>Phone</TableHead>
-                <TableHead>Status</TableHead>
+                <TableHead>Preference</TableHead>
+                <TableHead>Relationship</TableHead>
                 <TableHead className="w-16" />
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filtered.map((vendor) => (
+              {filtered.map((vendor) => {
+                const preferenceBadge = vendorPreferenceBadgeKind(vendor.preferenceLevel);
+                const claimLabel = vendorClaimStateLabel(vendor.isClaimed);
+                return (
                 <TableRow key={vendor.id} className="group">
                   <TableCell className="font-medium text-foreground">
                     <Link href={`/vendors/${vendor.id}`} className="hover:text-primary">
@@ -148,16 +157,27 @@ export function VendorList({ vendors }: { vendors: Vendor[] }) {
                     {vendor.phone ?? "—"}
                   </TableCell>
                   <TableCell>
-                    {vendor.preferenceLevel === "featured" && (
+                    {preferenceBadge === "featured" && (
                       <Badge className="gap-1 bg-amber-100 text-amber-800 border-amber-200 hover:bg-amber-100">
                         ⭐ Featured
                       </Badge>
                     )}
-                    {vendor.preferenceLevel === "preferred" && (
+                    {preferenceBadge === "preferred" && (
                       <Badge variant="outline" className="gap-1 text-[#3D5040] border-[#5D6F5D]/30">
                         ✓ Preferred
                       </Badge>
                     )}
+                  </TableCell>
+                  <TableCell>
+                    <span
+                      className={`text-xs ${
+                        vendor.isClaimed
+                          ? "text-muted-foreground"
+                          : "text-muted-foreground/80"
+                      }`}
+                    >
+                      {claimLabel}
+                    </span>
                   </TableCell>
                   <TableCell>
                     <Button variant="ghost" size="sm"
@@ -166,7 +186,8 @@ export function VendorList({ vendors }: { vendors: Vendor[] }) {
                     </Button>
                   </TableCell>
                 </TableRow>
-              ))}
+                );
+              })}
             </TableBody>
           </Table>
         </div>

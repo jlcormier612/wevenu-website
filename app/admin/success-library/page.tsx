@@ -4,7 +4,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { getAllArticlesForAdmin } from "@/lib/success-library/service";
 
-export const metadata: Metadata = { title: "Success Library — Hello to Cheers HQ" };
+export const metadata: Metadata = { title: "Help & Guides — Hello to Cheers HQ" };
 
 export default async function SuccessLibraryAdminPage() {
   const articles = await getAllArticlesForAdmin();
@@ -19,8 +19,10 @@ export default async function SuccessLibraryAdminPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="font-heading text-2xl font-semibold text-heading">Luv&apos;s Success Library</h1>
-          <p className="text-sm text-muted-foreground">Platform-wide help content, organized by business goal — every venue reads the published set.</p>
+          <h1 className="font-heading text-2xl font-semibold text-heading">Help &amp; Guides</h1>
+          <p className="text-sm text-muted-foreground">
+            HQ-authored venue help content. Published articles appear in Help &amp; Guides for every venue.
+          </p>
         </div>
         <Button render={<Link href="/admin/success-library/new" />}>New Article</Button>
       </div>

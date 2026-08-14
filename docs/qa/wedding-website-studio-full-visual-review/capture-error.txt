@@ -1,0 +1,6 @@
+locator.waitFor: Timeout 30000ms exceeded.
+Call log:
+  - waiting for getByRole('button', { name: /Wedding Website/i }).or(getByText('Open Website')).first() to be visible
+
+    at openStudio (/Users/jensmac/Library/Mobile Documents/com~apple~CloudDocs/Wevenu Website/wevenu-website/docs/qa/wedding-website-studio-full-visual-review/capture-full.mjs:108:16)
+    at async main (/Users/jensmac/Library/Mobile Documents/com~apple~CloudDocs/Wevenu Website/wevenu-website/docs/qa/wedding-website-studio-full-visual-review/capture-full.mjs:351:3)

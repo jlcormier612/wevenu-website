@@ -20,7 +20,7 @@ import type {
 
 export { DEMO_LOGIN };
 
-const SESSION_TTL_MS = 1000 * 60 * 60 * 24 * 14; // 14 days
+const SESSION_TTL_MS = 1000 * 60 * 60 * 24 * 30; // 30 days — match ws_session cookie maxAge
 
 function invitesPath() {
   return filePath(PROGRAM4_FILES.teamInvites);

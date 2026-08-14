@@ -4,17 +4,35 @@
  *
  * Presentation layer only: sections mirror DailyBriefingWidget so Luv feels
  * like one character across portals.
+ *
+ * Notification-backed Needs-you-now rows can be soft-dismissed (mark read);
+ * hard clear remains on the notification bell.
  */
 "use client";
 
+import * as React from "react";
 import Link from "next/link";
-import { AlertTriangle, CalendarClock, CheckCircle2, Info } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { AlertTriangle, CalendarClock, CheckCircle2, Info, X } from "lucide-react";
 
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { LuvHeart } from "@/components/dashboard/luv-widget";
 import type { BriefingItem, LuvBriefing } from "@/lib/luv/briefing-types";
 
 const DUSTY_ROSE = "#D8A7AA";
+
+async function markVendorNotificationsRead(ids: string[]) {
+  if (ids.length === 0) return;
+  try {
+    await fetch("/api/vendor/notifications/read", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ids }),
+    });
+  } catch {
+    // never crash the briefing over a failed ack
+  }
+}
 
 function formatDate(iso: string | null): string {
   if (!iso) return "";
@@ -26,25 +44,58 @@ function formatDate(iso: string | null): string {
   });
 }
 
-function Row({ item, icon: Icon, tone }: { item: BriefingItem; icon: React.ElementType; tone: string }) {
+function Row({
+  item,
+  icon: Icon,
+  tone,
+  onDismiss,
+}: {
+  item: BriefingItem;
+  icon: React.ElementType;
+  tone: string;
+  onDismiss?: (item: BriefingItem) => void;
+}) {
+  const dismissIds = item.dismissNotificationIds ?? [];
+  const canDismiss = dismissIds.length > 0 && onDismiss;
+
   return (
-    <Link
-      href={item.link}
-      className="flex items-start gap-2.5 rounded-sm px-2 py-1.5 -mx-2 hover:bg-muted/50 transition-colors"
-    >
-      <Icon className={`h-3.5 w-3.5 shrink-0 mt-0.5 ${tone}`} />
-      <div className="min-w-0 flex-1">
-        {/* Primary line is the actionable "what" — never truncate mid-reason. */}
-        <p className="text-sm text-heading line-clamp-2">{item.detail}</p>
-        {(item.eventName || item.eventDate) && (
-          <p className="text-xs text-muted-foreground truncate">
-            {item.eventName}
-            {item.eventName && item.eventDate ? " · " : ""}
-            {formatDate(item.eventDate)}
-          </p>
-        )}
-      </div>
-    </Link>
+    <div className="group relative flex items-start gap-1 rounded-sm -mx-2 hover:bg-muted/50 transition-colors">
+      <Link
+        href={item.link}
+        className="flex min-w-0 flex-1 items-start gap-2.5 px-2 py-1.5"
+        onClick={() => {
+          if (dismissIds.length > 0) void markVendorNotificationsRead(dismissIds);
+        }}
+      >
+        <Icon className={`h-3.5 w-3.5 shrink-0 mt-0.5 ${tone}`} />
+        <div className="min-w-0 flex-1">
+          {/* Primary line is the actionable "what" — never truncate mid-reason. */}
+          <p className="text-sm text-heading line-clamp-2">{item.detail}</p>
+          {(item.eventName || item.eventDate) && (
+            <p className="text-xs text-muted-foreground truncate">
+              {item.eventName}
+              {item.eventName && item.eventDate ? " · " : ""}
+              {formatDate(item.eventDate)}
+            </p>
+          )}
+        </div>
+      </Link>
+      {canDismiss && (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            onDismiss(item);
+          }}
+          className="mr-1 mt-1.5 shrink-0 rounded p-1 text-muted-foreground opacity-70 transition-opacity hover:bg-muted hover:text-foreground group-hover:opacity-100 sm:opacity-100"
+          aria-label="Dismiss"
+          title="Dismiss"
+        >
+          <X className="h-3.5 w-3.5" />
+        </button>
+      )}
+    </div>
   );
 }
 
@@ -54,12 +105,14 @@ function Section({
   icon,
   tone,
   emptyText,
+  onDismiss,
 }: {
   title: string;
   items: BriefingItem[];
   icon: React.ElementType;
   tone: string;
   emptyText?: string;
+  onDismiss?: (item: BriefingItem) => void;
 }) {
   if (items.length === 0 && !emptyText) return null;
   return (
@@ -73,7 +126,7 @@ function Section({
       ) : (
         <div className="space-y-0.5">
           {items.slice(0, 8).map((item) => (
-            <Row key={item.id} item={item} icon={icon} tone={tone} />
+            <Row key={item.id} item={item} icon={icon} tone={tone} onDismiss={onDismiss} />
           ))}
         </div>
       )}
@@ -95,12 +148,22 @@ export function VendorLuvBriefing({
   /** Home embed: show urgent + coming up only, with link to full Luv page. */
   compact?: boolean;
 }) {
-  const totalUrgent = briefing.needsAttentionNow.length;
+  const router = useRouter();
+  const [hiddenIds, setHiddenIds] = React.useState<string[]>([]);
+
+  const visibleNeeds = briefing.needsAttentionNow.filter((i) => !hiddenIds.includes(i.id));
+  const totalUrgent = visibleNeeds.length;
   const hasAnything =
-    briefing.needsAttentionNow.length > 0 ||
+    visibleNeeds.length > 0 ||
     briefing.comingUpThisWeek.length > 0 ||
     briefing.resolvedSinceLastLooked.length > 0 ||
     briefing.informational.length > 0;
+
+  function handleDismiss(item: BriefingItem) {
+    const ids = item.dismissNotificationIds ?? [];
+    setHiddenIds((prev) => (prev.includes(item.id) ? prev : [...prev, item.id]));
+    void markVendorNotificationsRead(ids).then(() => router.refresh());
+  }
 
   if (!hasAnything && !isPrimarySurface) return null;
 
@@ -114,7 +177,7 @@ export function VendorLuvBriefing({
       <CardHeader className="pb-3">
         <div className="flex items-center gap-2">
           <LuvHeart size={16} />
-          <h2 className="font-heading text-sm font-semibold text-heading">Today&apos;s Briefing</h2>
+          <h2 className="font-heading text-sm font-semibold text-heading">Today&apos;s briefing</h2>
           {totalUrgent > 0 && (
             <span className="ml-auto text-xs font-semibold text-destructive">
               {totalUrgent} need{totalUrgent === 1 ? "s" : ""} attention
@@ -137,9 +200,10 @@ export function VendorLuvBriefing({
           <>
             <Section
               title="Needs you now"
-              items={briefing.needsAttentionNow}
+              items={visibleNeeds}
               icon={AlertTriangle}
               tone="text-destructive"
+              onDismiss={handleDismiss}
             />
             <Section
               title="Coming up this week"

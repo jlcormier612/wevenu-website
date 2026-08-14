@@ -101,8 +101,7 @@ export function TimelineDocument({
                     </div>
                     <div className="min-w-0 flex-1 pb-1.5 border-b border-gray-50">
                       <p className={`leading-snug ${
-                        entry.status === "complete" ? "text-gray-400 line-through"
-                        : isStart ? "font-semibold text-gray-900" : "text-gray-700"
+                        isStart ? "font-semibold text-gray-900" : "text-gray-700"
                       }`}>
                         {entry.title}
                       </p>

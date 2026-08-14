@@ -15,6 +15,13 @@ import { Button } from "@/components/ui/button";
  * Finalize/Reopen control exactly (components/event-orders/event-order-panel.tsx).
  * Reversible, and never gates placement editing before, during, or after —
  * this is a coordinator's own checkpoint, not a lock.
+ *
+ * Business Asset Experience Consolidation (Work Package BA4, Step 1D): the
+ * label used to say "Final" / "Mark Final" / "Reopen" — words that promise
+ * a lock this control has never actually enforced (BA2/BA3 finding). The
+ * behavior is unchanged; only the words now match it — "Ready" is a
+ * checkpoint a coordinator can toggle any time, not a state that needs
+ * "reopening." Customer language for clearing Ready: "Make Changes".
  */
 export function FloorPlanFinalizeControl({
   planId, eventId, finalizedAt,
@@ -29,16 +36,16 @@ export function FloorPlanFinalizeControl({
     startTransition(async () => {
       const result = await setFloorPlanFinalizedAction(planId, eventId, !isFinalized);
       if (!result.ok) { toast.error(result.message ?? "Could not update this floor plan."); return; }
-      toast.success(isFinalized ? "Reopened." : "Marked final.");
+      toast.success(isFinalized ? "Ready cleared — you can keep editing." : "Marked as ready.");
       router.refresh();
     });
   }
 
   return (
     <div className="flex items-center gap-2">
-      {isFinalized && <Badge variant="accent">Final</Badge>}
+      {isFinalized && <Badge variant="accent">Ready</Badge>}
       <Button type="button" variant="outline" size="sm" disabled={pending} onClick={handleToggle}>
-        {pending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : isFinalized ? "Reopen" : "Mark Final"}
+        {pending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : isFinalized ? "Make Changes" : "Mark as Ready"}
       </Button>
     </div>
   );

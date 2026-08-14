@@ -24,30 +24,91 @@
 import * as React from "react";
 
 import {
-  CalendarDays, Check, CheckSquare, Clock, Loader2,
+  CalendarDays, Check, CheckSquare, Clock, Loader2, MessageCircle,
   Plus, Settings, Trash2, Users, X,
 } from "lucide-react";
 import { toast } from "sonner";
 
+import { FeedbackSheet } from "@/components/feedback/feedback-sheet";
+
 import type {
   ClientMedia, CoupleBudget, CoupleProfile, CoupleTodo, CoupleGuest,
   GuestStats, JournalEntry, PortalContext, PortalKeyDate, PortalSection, PortalTask,
-  RecentActivity, SeatingData, TodoCategory, PortalParticipant, PortalActivity,
+  PortalVendorTask, RecentActivity, SeatingData, TodoCategory, PortalParticipant, PortalActivity,
   PortalTimelineEntry, PortalTimelineSection, PortalVenueTeamMember,
 } from "@/lib/portal/types";
-import { getAnniversaryObservations, getCountdownObservation, getOverviewObservation, getWeddingDayObservations } from "@/lib/luv/portal-observations";
+import { getAnniversaryObservations, getCountdownObservation, getWeddingDayObservations } from "@/lib/luv/portal-observations";
 import {
   type AccountState, getAccountStateAction, changePasswordAction, revokeSessionAction,
   grantSupportAccessAction, revokeSupportGrantAction,
 } from "@/app/(portal)/p/[token]/account-actions";
-import { RequestsPortalSection, RequestsSummaryCard } from "@/components/portal/requests-section";
+import { PortalLegalHistorySection } from "@/components/legal/legal-history-section";
+import { RequestsPortalSection } from "@/components/portal/requests-section";
 import { LuvIntroCard } from "@/components/luv/luv-intro-card";
 import { UnifiedTasksSection } from "@/components/portal/unified-tasks-section";
-import { buildUnifiedTaskList } from "@/lib/portal/unified-tasks";
+import {
+  buildUnifiedTaskList,
+  unifiedTaskCompletionCounts,
+  type UnifiedTask,
+} from "@/lib/portal/unified-tasks";
+import {
+  isShareTimelineVendorAttention,
+  shareTimelineWorkspace,
+} from "@/lib/portal/couple-share-timeline";
+import {
+  compactNextStepsActionLabel,
+  formatNextStepsDueLabel,
+  fromUnifiedTask,
+  groupNextStepsForDisplay,
+  selectNextStepsForHome,
+  type NextStepsItem,
+} from "@/lib/portal/next-steps";
+import { remainingBalanceFromSchedules, selectCanonicalPaymentSchedules } from "@/lib/portal/payment-schedules";
+import { resolvePlanningJourney } from "@/lib/portal/planning-journey";
+import {
+  computePlanningProgress,
+  countOwnedPendingVendorRequests,
+  countVendorRequestsNeedingCoupleAction,
+  countVendorRequestsWaitingOnVendor,
+} from "@/lib/portal/planning-progress";
+import {
+  selectWhatsHappeningForHome,
+  WHATS_HAPPENING_VIEW_ALL_DESTINATION,
+} from "@/lib/portal/whats-happening";
+import {
+  resolveBudgetLaunch,
+  resolveGuestsLaunch,
+  resolvePlansLaunch,
+  resolveSeatingLaunch,
+  resolveStoryLaunch,
+  resolveWebsiteLaunch,
+  type WeddingLaunchModel,
+} from "@/lib/portal/your-wedding";
+import { resolveLuvHomeSuggestion } from "@/lib/portal/luv-suggestions";
+import { resolveHomeMemories } from "@/lib/portal/memories";
+import {
+  formatPortalHash,
+  parsePortalHash,
+  portalFocusElementId,
+  scrollToPortalFocus,
+  type PortalWorkspaceFocus,
+} from "@/lib/portal/workspace-routing";
+import { partitionByCompletion } from "@/lib/tasks/group-by-completion";
 import type { PortalRequestSummary } from "@/lib/requests/types";
 import { QuestionnairePortalSection } from "@/components/portal/questionnaire-section";
+import { InventoryPortalSection } from "@/components/portal/inventory-section";
+import { EventOrderPortalSection } from "@/components/portal/event-order-section";
+import FloorPlanSection from "@/components/portal/floor-plan-section";
+import { CoupleNotificationBell } from "@/components/portal/couple-notification-bell";
+import { WelcomeExperienceGate } from "@/components/legal/welcome-experience-gate";
+import type { WelcomeExperienceDocument } from "@/components/welcome-experience";
 import { ALL_SECTIONS as WEBSITE_ALL_SECTIONS } from "@/components/portal/website-editor";
 import type { CoupleWebsite } from "@/lib/wedding-website/types";
+import {
+  copyForWelcomeContext,
+  inferWelcomeContext,
+} from "@/lib/legal/welcome-integration";
+import type { CouplePortalLegalGateStatus } from "@/lib/legal/types";
 
 // Venue Brand Experience Phase 1: SAGE/LINEN/CREAM were Hello to Cheers' own hardcoded
 // palette, now the venue's own brand via CSS custom properties injected on
@@ -90,21 +151,6 @@ function daysUntil(iso: string) {
   return Math.ceil((new Date(iso + "T12:00:00").getTime() - Date.now()) / 86_400_000);
 }
 
-function ReadinessRing({ score, size = 64 }: { score: number; size?: number }) {
-  const r = (size - 8) / 2;
-  const circ = 2 * Math.PI * r;
-  const dash = (score / 100) * circ;
-  return (
-    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
-      <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke={CREAM} strokeWidth={5} />
-      <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke={SAGE} strokeWidth={5}
-        strokeDasharray={`${dash} ${circ}`} strokeLinecap="round"
-        transform={`rotate(-90 ${size / 2} ${size / 2})`} />
-      <text x={size / 2} y={size / 2 + 4} textAnchor="middle" fontSize={11} fontWeight={600} fill={SAGE}>{score}%</text>
-    </svg>
-  );
-}
-
 // ── Floral line art — hero corner decoration ──────────────────────────────────
 
 function FloralLineart() {
@@ -136,22 +182,6 @@ function FloralLineart() {
   );
 }
 
-// ── Luv message generator (contextual, warm) ─────────────────────────────────
-
-function getLuvMessage(du: number | null, guestTotal: number, readiness: number): string {
-  if (du === null) return "Your wedding planning is underway. You're doing beautifully.";
-  if (du < 0) return "You made it. Every detail of how you got here lives in this space — revisit it whenever you want to remember.";
-  if (du === 0) return "Today is your wedding day. Everything you've planned leads to this moment. You're going to be extraordinary.";
-  if (du > 365) return "You have a beautiful journey ahead. The earlier you start, the more you can enjoy every moment.";
-  if (du > 270) return "This is such an exciting time. Most couples at your stage are locking in their venue and photographer.";
-  if (du > 180 && guestTotal === 0) return "Your guest list is the heart of your celebration. Now is a wonderful time to start building it.";
-  if (du > 180) return `With ${guestTotal} guests on your list, you're building something beautiful. Invitations typically go out 2–3 months out.`;
-  if (du > 90 && readiness < 50) return "You have everything you need to make this incredible. A few focused weeks of planning will bring it all together.";
-  if (du > 90) return "You're making wonderful progress. The details are coming together exactly as they should.";
-  if (du > 30) return "The final weeks before a wedding are often the most magical. Your special day is almost here.";
-  return "Your wedding day is so close. Breathe, celebrate, and enjoy every moment of this journey.";
-}
-
 // Short poetic line for the hero — storytelling, not status.
 function getStoryLine(du: number | null): string {
   if (du === null) return "A love story, beautifully in progress.";
@@ -174,53 +204,107 @@ function getStoryLine(du: number | null): string {
 }
 
 // ── Planning journey milestone path ──────────────────────────────────────────
+// Thresholds live in lib/portal/planning-journey.ts (Couple Home Impl 4).
 
-const MILESTONES = [
-  { label: "12 mo", threshold: 365 },
-  { label: "9 mo",  threshold: 270 },
-  { label: "6 mo",  threshold: 180 },
-  { label: "3 mo",  threshold: 90  },
-  { label: "1 mo",  threshold: 30  },
-  { label: "Day",   threshold: 0   },
-];
-
-function PlanningJourney({ du, readiness }: { du: number | null; readiness: number }) {
-  if (du === null) return null;
-  const activeIdx = MILESTONES.findIndex(m => du > m.threshold);
-  const pct = readiness;
+/**
+ * Wedding Journey — emotional Past / Now / Next strip.
+ * Date-based PlanningJourney milestones only (Couple Home Impl 4).
+ * Not a task list and not a second operational %.
+ */
+function PlanningJourney({ du }: { du: number | null }) {
+  const model = resolvePlanningJourney(du);
 
   return (
-    <div className="rounded-2xl border border-border bg-card px-4 py-4 space-y-2.5">
-      <div className="flex items-center justify-between">
-        <p className="text-xs font-semibold text-heading">🌸 Wedding Journey</p>
-        <p className="text-xs font-semibold" style={{ color: ROSE_DEEP }}>{pct}% complete</p>
+    <section
+      className="rounded-2xl border bg-card px-4 py-4 space-y-3 h-full"
+      style={{ borderColor: "#E8E3DC" }}
+      aria-labelledby="wedding-journey-heading"
+      aria-describedby="wedding-journey-summary"
+    >
+      <div>
+        <h2 id="wedding-journey-heading" className="text-sm font-semibold text-heading">
+          Wedding Journey
+        </h2>
+        <p id="wedding-journey-summary" className="text-[11px] text-muted-foreground mt-1 leading-snug">
+          {model.narrative}
+        </p>
       </div>
-      {/* Milestone dots */}
-      <div className="flex items-center gap-0">
-        {MILESTONES.map((m, i) => {
-          const isPast = activeIdx > 0 && i < activeIdx;
-          const isCurrent = i === activeIdx || activeIdx === -1 && i === MILESTONES.length - 1;
-          return (
-            <React.Fragment key={m.label}>
-              <div className="flex flex-col items-center gap-1">
-                <div className={`rounded-full border-2 transition-all ${
-                  isCurrent ? "h-3.5 w-3.5 scale-110" : "h-3 w-3"
-                }`}
-                  style={{
-                    background: isCurrent ? ROSE : isPast ? SAGE : "white",
-                    borderColor: isCurrent ? ROSE : isPast ? SAGE : "#DED6CA",
-                    boxShadow: isCurrent ? `0 0 0 4px ${ROSE}25` : "none",
-                  }} />
-                <p className="text-[9px] font-medium" style={{ color: isCurrent ? ROSE_DEEP : isPast ? SAGE : "#B8AEA1" }}>{m.label}</p>
-              </div>
-              {i < MILESTONES.length - 1 && (
-                <div className="flex-1 h-0.5 mb-3" style={{ background: isPast ? SAGE : "#DED6CA" }} />
-              )}
-            </React.Fragment>
-          );
-        })}
-      </div>
-    </div>
+
+      {model.kind === "undated" ? (
+        <p className="sr-only">{model.accessibleSummary}</p>
+      ) : (
+        <>
+          <p className="sr-only">{model.accessibleSummary}</p>
+          <div
+            className="flex items-start gap-0"
+            role="list"
+            aria-label="Wedding planning milestones"
+          >
+            {model.steps.map((step, i) => {
+              const isCurrent = step.state === "current" || step.state === "wedding_day";
+              const isPast = step.state === "completed";
+              const isWeddingDay = step.state === "wedding_day";
+              return (
+                <React.Fragment key={step.id}>
+                  <div
+                    role="listitem"
+                    className="flex flex-col items-center gap-1 min-w-0"
+                    aria-current={isCurrent ? "step" : undefined}
+                    aria-label={`${step.label}: ${step.statusLabel}`}
+                  >
+                    <span
+                      className={`rounded-full border-2 transition-all ${
+                        isCurrent ? "h-3.5 w-3.5 scale-110" : "h-3 w-3"
+                      }`}
+                      style={{
+                        background: isWeddingDay
+                          ? ROSE_DEEP
+                          : isCurrent
+                            ? ROSE
+                            : isPast
+                              ? SAGE
+                              : "white",
+                        borderColor: isWeddingDay
+                          ? ROSE_DEEP
+                          : isCurrent
+                            ? ROSE
+                            : isPast
+                              ? SAGE
+                              : "#DED6CA",
+                        boxShadow: isCurrent ? `0 0 0 4px ${ROSE}28` : "none",
+                      }}
+                      aria-hidden
+                    />
+                    <span
+                      className={`text-[9px] font-medium text-center leading-tight ${
+                        isCurrent ? "font-semibold" : ""
+                      }`}
+                      style={{
+                        color: isWeddingDay || isCurrent
+                          ? ROSE_DEEP
+                          : isPast
+                            ? SAGE
+                            : "#B8AEA1",
+                      }}
+                    >
+                      <span className="block">{step.shortLabel}</span>
+                      <span className="block opacity-90">{step.statusLabel}</span>
+                    </span>
+                  </div>
+                  {i < model.steps.length - 1 && (
+                    <div
+                      className="flex-1 h-0.5 mt-[6px] min-w-[6px]"
+                      style={{ background: isPast ? SAGE : "#DED6CA" }}
+                      aria-hidden
+                    />
+                  )}
+                </React.Fragment>
+              );
+            })}
+          </div>
+        </>
+      )}
+    </section>
   );
 }
 
@@ -243,17 +327,7 @@ const SEASON_CONTENT: Record<Season, { emoji: string; title: string; copy: strin
   winter: { emoji: "❄️", title: "A Winter Wedding", copy: "Twinkling lights and intimate gatherings — winter weddings feel like a fairytale.", sparkle: "❄️ · ✨ · 🤍" },
 };
 
-// ── "Most Couples Like You" — reassuring social proof (copy bank now used
-//    by Luv's own message rotation instead of a standalone card) ───────────
-
-const SOCIAL_PROOF_BY_BRACKET: Record<string, string> = {
-  "12+": "Most couples this far out are choosing their venue and starting their guest list. You're exactly on track.",
-  "9-12": "Most couples at 9–12 months are locking in photographers, florists, and caterers. This is the season of big decisions.",
-  "6-9": "Most couples at 6–9 months are sending invitations and booking hair & makeup trials.",
-  "3-6": "Most couples at 3–6 months are finalizing their guest count and building their day-of timeline.",
-  "1-3": "Most couples in the final stretch are writing vows and confirming details with every vendor.",
-  "<1": "Most couples this close are simply trying to enjoy the moment — you've already done the hard part.",
-};
+// Social-proof / milestone banks live in lib/portal/luv-suggestions.ts (Impl 6).
 
 // ── Journal milestone labels ──────────────────────────────────────────────────
 // Shared between OurStorySection (form) and journal entry display
@@ -329,16 +403,7 @@ function WeddingSnapshotCard({
   );
 }
 
-// ── Next Big Moment — surfaces the most relevant next step ───────────────────
-
-const NEXT_MILESTONE_BY_BRACKET: Record<string, { emoji: string; title: string; desc: string }> = {
-  "12+": { emoji: "👥", title: "Start your guest list", desc: "One of the most exciting parts of planning — who will celebrate with you?" },
-  "9-12":{ emoji: "🌸", title: "Book your florist", desc: "Talented florists book up fast. Now is the perfect time to lock in your vision." },
-  "6-9": { emoji: "💌", title: "Send your save the dates", desc: "Let your guests know the date so they can make it a priority." },
-  "3-6": { emoji: "📬", title: "Mail your invitations", desc: "The most tangible moment of your celebration — the invitation in hand." },
-  "1-3": { emoji: "📝", title: "Write your vows", desc: "The most personal words of your entire wedding. Give them the time they deserve." },
-  "<1":  { emoji: "😌", title: "Take a deep breath", desc: "You've done the hard part. Now enjoy the countdown to the best day of your life." },
-};
+// Next Big Moment milestone bank lives in lib/portal/luv-suggestions.ts (Impl 6).
 
 // ── Venue Note — warm message from the venue team ────────────────────────────
 
@@ -1634,20 +1699,23 @@ function WeddingDaySection({
   );
 }
 
-// ── Overview ─────────────────────────────────────────────────────────────────
+// ── Overview — Couple Home Impl 1: approved section order / hierarchy ────────
 
 function OverviewSection({
-  token, context, tasks, guestStats, todoCount, profile, latestJournalEntry, onNavigate,
+  token, context, tasks, vendorTasks = [], timelineHasUnpublishedChanges = false,
+  guestStats, todoCount, profile, latestJournalEntry, onNavigate,
   recentActivity, showLuvIntro, onDismissLuvIntro,
 }: {
   token: string;
   context: PortalContext;
   tasks: PortalTask[];
+  vendorTasks?: PortalVendorTask[];
+  timelineHasUnpublishedChanges?: boolean;
   guestStats: GuestStats | null;
   todoCount: number;
   profile: CoupleProfile | null;
   latestJournalEntry?: JournalEntry | null;
-  onNavigate: (s: PortalSection) => void;
+  onNavigate: (s: PortalSection, focus?: PortalWorkspaceFocus | null) => void;
   recentActivity: RecentActivity | null;
   showLuvIntro: boolean;
   onDismissLuvIntro: () => void;
@@ -1659,28 +1727,34 @@ function OverviewSection({
     : 0;
   const coupleName = [context.client.firstName, context.client.partnerFirstName].filter(Boolean).join(" & ");
   const bracket = getSuggestionBracket(du);
-  const suggestions = (SUGGESTIONS_BY_BRACKET[bracket] ?? []).slice(0, 4);
-  // Program 4, Initiative D, Phase 2 (2026-07-23) — the venue's own hero
-  // photo, not the couple's; see venues.hero_image_url.
   const venueHeroPhotoUrl = context.venue.heroImageUrl;
+  const venueName = context.venue.name;
+  const accessLevel = context.accessLevel;
+  const canSeeFinancial = accessLevel !== "view_only";
+
+  const [p1Count, setP1Count] = React.useState<number | null>(null);
+  const nextStepsRef = React.useRef<HTMLDivElement | null>(null);
+
+  const heroSupport = p1Count !== null && p1Count > 0
+    ? "Your venue team is here with you—finish what helps your day come together."
+    : "Welcome to your wedding home.";
+
+  function focusNextSteps() {
+    if (nextStepsRef.current) {
+      nextStepsRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
+      return;
+    }
+    onNavigate("tasks");
+  }
 
   return (
     <div className="space-y-6">
 
-      {/* ── HERO — Program 4, Initiative D, Phase 2/3 (2026-07-23): "The
-          hero should no longer emphasize only the couple. Instead it
-          should welcome the couple into the venue." Hierarchy is the
-          directive's own list, top to bottom: venue photo → venue name →
-          welcome message → couple names → countdown → event date →
-          tagline → primary actions. One shared content layout regardless
-          of whether the venue has uploaded a hero photo (brand-gradient
-          fallback otherwise) — the hierarchy doesn't change, only the
-          backdrop does. ── */}
-      <div className="rounded-3xl overflow-hidden relative" style={{
+      {/* 1. Hero / Wedding Snapshot */}
+      <div className="rounded-3xl overflow-hidden relative min-h-[min(48vh,420px)] sm:min-h-[min(64vh,560px)]" style={{
         background: venueHeroPhotoUrl
           ? `url(${venueHeroPhotoUrl}) center/cover no-repeat`
           : `linear-gradient(155deg, var(--venue-secondary) 0%, var(--venue-primary) 38%, var(--venue-secondary) 100%)`,
-        minHeight: "min(64vh, 560px)",
       }}>
         {venueHeroPhotoUrl ? (
           <div className="absolute inset-0" style={{
@@ -1704,31 +1778,23 @@ function OverviewSection({
           </>
         )}
 
-        <div className="relative flex flex-col justify-end gap-3 p-8 sm:p-10" style={{ minHeight: "min(64vh, 560px)" }}>
-          {/* Venue name — first in the hierarchy */}
+        <div className="relative flex flex-col justify-end gap-3 p-8 sm:p-10 min-h-[min(48vh,420px)] sm:min-h-[min(64vh,560px)]">
           <div className="flex items-center gap-2.5">
             <span className="h-px w-5" style={{ background: `${ROSE}60` }} />
             <span className="text-[11px] font-semibold uppercase tracking-[0.28em]" style={{ color: "rgba(255,255,255,0.75)" }}>
-              {context.venue.name}
+              {venueName}
             </span>
           </div>
 
-          {/* Welcome message */}
-          <p className="font-heading italic leading-snug" style={{ color: `${ROSE}D0`, fontSize: "clamp(0.95rem, 2.2vw, 1.2rem)" }}>
-            Welcome to your wedding home.
-          </p>
-
-          {/* Couple names */}
           <p className="font-heading font-medium text-white leading-[0.92] tracking-tight" style={{ fontSize: "clamp(2.6rem, 7vw, 5.2rem)" }}>
             {coupleName}
           </p>
 
-          {/* Countdown + event date */}
           {context.event && du !== null ? (
             <div className="space-y-0.5 pt-1">
               <p className="font-heading font-semibold text-white" style={{ fontSize: "clamp(1.1rem, 2.6vw, 1.6rem)" }}>
-                {du > 0 ? `${du.toLocaleString()} Days Until Your Celebration`
-                  : du === 0 ? "Today Is Your Celebration ✦"
+                {du > 0 ? `${du.toLocaleString()} days until your celebration`
+                  : du === 0 ? "Today is the day"
                   : `Married ${formatPortalEventRangeShort(context.event.eventDate, context.event.eventEndDate)}`}
               </p>
               {du >= 0 && (
@@ -1738,30 +1804,31 @@ function OverviewSection({
               )}
             </div>
           ) : (
-            <p className="text-white/55 text-sm pt-1">Your planning journey has begun.</p>
+            <p className="text-white/55 text-sm pt-1">Your wedding home is ready whenever you are</p>
           )}
 
-          {/* Tagline */}
-          <p className="text-sm" style={{ color: "rgba(255,255,255,0.55)" }}>
-            Your venue team is here to guide you every step of the way.
+          <p className="text-sm font-semibold" style={{ color: "rgba(255,255,255,0.85)" }}>
+            {heroSupport}
           </p>
 
-          {/* Primary actions */}
           <div className="flex items-center gap-2 flex-wrap pt-2">
-            <button type="button" onClick={() => onNavigate("todos")}
-              className="text-xs font-semibold px-4 py-2.5 rounded-full text-white transition-opacity hover:opacity-90"
-              style={{ background: "var(--venue-primary)" }}>
-              Continue Your Journey
-            </button>
-            <button type="button" onClick={() => onNavigate("tasks")}
-              className="text-xs font-medium px-4 py-2.5 rounded-full text-white border transition-colors"
-              style={{ borderColor: "rgba(255,255,255,0.35)", background: "rgba(255,255,255,0.08)" }}>
-              Review Tasks
-            </button>
+            {p1Count !== null && p1Count > 0 ? (
+              <button type="button" onClick={() => onNavigate("tasks")}
+                className="text-xs font-semibold px-4 py-2.5 rounded-full text-white transition-opacity hover:opacity-90"
+                style={{ background: "var(--venue-primary)" }}>
+                Review what {venueName} needs
+              </button>
+            ) : (
+              <button type="button" onClick={() => onNavigate("todos")}
+                className="text-xs font-semibold px-4 py-2.5 rounded-full text-white transition-opacity hover:opacity-90"
+                style={{ background: "var(--venue-primary)" }}>
+                Continue planning
+              </button>
+            )}
             <button type="button" onClick={() => onNavigate("messages")}
               className="text-xs font-medium px-4 py-2.5 rounded-full text-white border transition-colors"
               style={{ borderColor: "rgba(255,255,255,0.35)", background: "rgba(255,255,255,0.08)" }}>
-              Message Venue
+              Message {venueName}
             </button>
             <button type="button" onClick={() => onNavigate("timeline")}
               className="text-xs font-medium px-4 py-2.5 rounded-full text-white border transition-colors"
@@ -1772,138 +1839,412 @@ function OverviewSection({
         </div>
       </div>
 
-      {/* ── Your Venue — Phase 4: the operational relationship, immediately below the hero ── */}
-      <YourVenueCards token={token} tasks={tasks} onNavigate={onNavigate} />
+      {/* 2. Venue Requests Summary — omit when N = 0 */}
+      {p1Count !== null && p1Count > 0 && (
+        <VenueRequestsBanner venueName={venueName} count={p1Count} onActivate={focusNextSteps} />
+      )}
 
-      {/* ── Your Wedding — personal planning, launched from here rather than a second nav row (Program 5) ── */}
-      <YourWeddingSection token={token} guestStats={guestStats} todoCount={todoCount} profile={profile} onNavigate={onNavigate} />
+      {/* 3. Your Next Steps (P1) */}
+      <div ref={nextStepsRef} id="your-next-steps">
+        <NextStepsCard
+          token={token}
+          tasks={tasks}
+          vendorTasks={vendorTasks}
+          timelineHasUnpublishedChanges={timelineHasUnpublishedChanges}
+          venueName={venueName}
+          onNavigate={onNavigate}
+          onAttentionCountChange={setP1Count}
+        />
+      </div>
 
-      {/* ── Keepsake Mode — replaces all planning when du < -3 ── */}
+      {/* 4. Working With Your Venue (P2) */}
+      <WorkingWithYourVenue
+        token={token}
+        venueName={venueName}
+        canSeeFinancial={canSeeFinancial}
+        onNavigate={onNavigate}
+      />
+
+      {/* 5–6. Planning Progress + Wedding Journey — operational % ∥ emotional arc */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-stretch">
+        <WeddingPlanningProgressCard
+          token={token}
+          tasks={tasks}
+          vendorTasks={vendorTasks}
+          incompleteCount={p1Count ?? 0}
+          onNavigate={onNavigate}
+        />
+        {(du === null || du >= 0) && <PlanningJourney du={du} />}
+      </div>
+
+      {/* 7. What’s Happening — existing activity feed (no new last-visit intelligence) */}
+      <WhatsHappeningCard recentActivity={recentActivity} onNavigate={onNavigate} />
+
+      {/* 8. Your Wedding (P3) */}
+      <YourWeddingSection
+        token={token}
+        guestStats={guestStats}
+        todoCount={todoCount}
+        profile={profile}
+        accessLevel={accessLevel}
+        onNavigate={onNavigate}
+      />
+
+      {/* 9. Luv (P4) — suggestions-first; never above operational sections */}
+      <div className="space-y-3" data-luv-home>
+        <LuvDailyCard
+          token={token}
+          du={du}
+          guestStats={guestStats}
+          readiness={readinessScore}
+          bracket={bracket}
+          recentActivity={recentActivity}
+          venueAttentionCount={p1Count ?? 0}
+          onNavigate={onNavigate}
+        />
+        {showLuvIntro && (
+          <LuvIntroCard
+            body="I'm here with thoughtful ideas whenever you'd like one — warm, optional, and never in the way."
+            ctaLabel={p1Count !== null && p1Count > 0 ? "See what your venue shared" : "Explore your plans"}
+            onCtaClick={() => onNavigate(p1Count !== null && p1Count > 0 ? "tasks" : "todos")}
+            onDismiss={onDismissLuvIntro}
+          />
+        )}
+      </div>
+
+      {/* 10. Memories / Planning Journal (P4) — Impl 7; last soft moment below Luv */}
+      <div className="pb-2" data-memories-home>
+        <MemoryStrip
+          entry={latestJournalEntry ?? null}
+          inspirationPhotos={profile?.inspirationPhotos ?? []}
+          onNavigate={onNavigate}
+        />
+      </div>
+
+      {/* 11. Date-mode band — emphasizes; does not replace Hero + Next Steps */}
       {du !== null && du < -3 && context.event && (
         <KeepsakeSection
           token={token}
           du={du}
           eventDate={context.event.eventDate}
-          venueName={context.venue.name}
+          venueName={venueName}
           coupleName={coupleName}
         />
       )}
-
-      {/* ── Wedding Day Mode — replaces planning cards when ≤ 14 days out ── */}
       {du !== null && du <= 14 && du >= -3 && (
-        <WeddingDaySection token={token} tasks={tasks} du={du} venueName={context.venue.name} />
+        <WeddingDaySection token={token} tasks={tasks} du={du} venueName={venueName} />
       )}
-
-      {/* Everything below is one pool of small/medium cards — the couple's
-          own tail content (Memory Strip, Season, Journey, Snapshot, This
-          Month, Luv observation, Next Big Moment, Milestones) plus what
-          used to live in a fixed-width, desktop-only 320px sidebar
-          (Requests, Key Dates, Coming Up, Venue Note, Most Couples, This
-          Week, Luv Intro, Inspiration). A 320px sidebar next to one tall
-          narrow column is exactly why the page used to scroll forever on
-          one side while the other sat empty (2026-07-23 report). CSS
-          multi-column flow balances arbitrarily-sized cards across both
-          halves by actual height, not a fixed split — `break-inside-avoid`
-          keeps a card from being sliced across the column break, and
-          `empty:hidden` collapses a wrapper down to nothing when the card
-          inside it conditionally renders null, so a hidden card doesn't
-          leave a dead gap. */}
-      <div className="columns-1 lg:columns-2 gap-5 [column-fill:_balance]">
-        <div className="mb-5 break-inside-avoid empty:hidden">
-          <LuvDailyCard token={token} du={du} guestStats={guestStats} readiness={readinessScore} bracket={bracket} recentActivity={recentActivity} onNavigate={onNavigate} />
-        </div>
-        <div className="mb-5 break-inside-avoid empty:hidden">
-          <RequestsSummaryCard token={token} onNavigate={onNavigate} />
-        </div>
-        <div className="mb-5 break-inside-avoid empty:hidden">
-          <KeyDatesCard token={token} />
-        </div>
-        {latestJournalEntry && (
-          <div className="mb-5 break-inside-avoid">
-            <MemoryStrip entry={latestJournalEntry} onNavigate={onNavigate} />
-          </div>
-        )}
-        {context.event && du !== null && du > 14 && (
-          <div className="mb-5 break-inside-avoid">
-            <PlanningJourney du={du} readiness={readinessScore} />
-          </div>
-        )}
-        {(du === null || du > -3) && (
-          <div className="mb-5 break-inside-avoid">
-            <WeddingSnapshotCard du={du} guestStats={guestStats} todoCount={todoCount} readinessScore={readinessScore} />
-          </div>
-        )}
-        {context.event && (du === null || du > 14) && (
-          <div className="mb-5 break-inside-avoid">
-            <SeasonalInspirationCard eventDate={context.event.eventDate} bracket={bracket} suggestions={suggestions} onNavigate={onNavigate} />
-          </div>
-        )}
-        <div className="mb-5 break-inside-avoid">
-          <WeddingJourneySection guestStats={guestStats} />
-        </div>
-        <div className="mb-5 break-inside-avoid">
-          <ComingUpCard bracket={bracket} onNavigate={onNavigate} />
-        </div>
-        <div className="mb-5 break-inside-avoid">
-          <VenueNoteCard venueName={context.venue.name} />
-        </div>
-        {showLuvIntro && (
-          <div className="mb-5 break-inside-avoid">
-            <LuvIntroCard
-              body="I'll help you stay organized throughout your planning."
-              ctaLabel="Let's start with your first task"
-              onCtaClick={() => onNavigate("tasks")}
-              onDismiss={onDismissLuvIntro}
-            />
-          </div>
-        )}
-      </div>
 
     </div>
   );
 }
 
-// ── Memory Strip ─────────────────────────────────────────────────────────────
-
-function MemoryStrip({
-  entry, onNavigate,
+function VenueRequestsBanner({
+  venueName, count, onActivate,
 }: {
-  entry: JournalEntry | null;
-  onNavigate: (s: PortalSection) => void;
+  venueName: string;
+  count: number;
+  onActivate: () => void;
 }) {
-  if (!entry) return null;
+  const copy = count === 1
+    ? `${venueName} is waiting on 1 thing from you.`
+    : `${venueName} is waiting on ${count} things from you.`;
 
   return (
-    <button type="button" onClick={() => onNavigate("story")}
-      className="w-full text-left rounded-2xl flex items-center gap-4 p-4 group transition-all hover:shadow-sm"
-      style={{ background: `${ROSE}08`, border: `1px solid ${ROSE}22` }}>
+    <button
+      type="button"
+      onClick={onActivate}
+      className="w-full text-left rounded-2xl px-4 py-3.5 transition-opacity hover:opacity-90"
+      style={{
+        border: `1px solid color-mix(in srgb, var(--venue-primary) 28%, #E8E3DC)`,
+        background: `color-mix(in srgb, var(--venue-primary) 6%, white)`,
+      }}
+    >
+      <p className="text-sm font-semibold text-heading leading-snug">{copy}</p>
+      <p className="text-[11px] text-muted-foreground mt-0.5">Jump to your next steps below.</p>
+    </button>
+  );
+}
 
-      {/* Photo or icon */}
-      {entry.mediaUrl ? (
-        <img src={entry.mediaUrl} alt=""
-          className="w-16 h-16 rounded-xl object-cover shrink-0" />
-      ) : (
-        <div className="w-14 h-14 rounded-xl flex items-center justify-center shrink-0 text-2xl"
-          style={{ background: `${ROSE}18` }}>
-          {entry.source === "auto" ? "✦" : "📖"}
+function WorkingWithYourVenue({
+  token, venueName, canSeeFinancial, onNavigate,
+}: {
+  token: string;
+  venueName: string;
+  canSeeFinancial: boolean;
+  onNavigate: (s: PortalSection) => void;
+}) {
+  return (
+    <div className="space-y-3">
+      <p className="text-[10px] font-bold uppercase tracking-[0.2em]" style={{ color: SAGE }}>Working With Your Venue</p>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+        <VenueTeamCard token={token} venueName={venueName} onNavigate={onNavigate} />
+        <div className="space-y-3">
+          {canSeeFinancial && <PaymentsCard token={token} onNavigate={onNavigate} />}
+          <TimelineCard token={token} onNavigate={onNavigate} />
         </div>
+      </div>
+      <KeyDatesCard token={token} maxUpcoming={2} />
+      <div className="flex flex-wrap gap-x-4 gap-y-1 px-0.5">
+        <button type="button" onClick={() => onNavigate("guide")}
+          className="text-[11px] font-medium text-muted-foreground hover:underline" style={{ color: SAGE }}>
+          Explore your Venue Guide
+        </button>
+        <button type="button" onClick={() => onNavigate("vendors")}
+          className="text-[11px] font-medium text-muted-foreground hover:underline" style={{ color: SAGE }}>
+          Preferred vendors
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function WhatsHappeningCard({
+  recentActivity, onNavigate,
+}: {
+  recentActivity: RecentActivity | null;
+  onNavigate: (s: PortalSection) => void;
+}) {
+  // null = still loading or fetch failed — quiet fallback (do not claim “nothing new”).
+  const loaded = recentActivity != null;
+  const { visible, hasMore, showViewAll } = selectWhatsHappeningForHome(
+    recentActivity?.activity,
+  );
+  // Local const so TS narrows the nullable module export across the
+  // onClick closure below — a plain reference to the imported binding
+  // doesn't stay narrowed once captured in a nested function.
+  const viewAllDestination = WHATS_HAPPENING_VIEW_ALL_DESTINATION;
+
+  return (
+    <section
+      className="rounded-2xl border bg-card p-5"
+      style={{ borderColor: "#E8E3DC" }}
+      aria-labelledby="whats-happening-heading"
+    >
+      <h2
+        id="whats-happening-heading"
+        className="text-[10px] font-semibold uppercase tracking-widest mb-1"
+        style={{ color: SAGE }}
+      >
+        What’s Happening
+      </h2>
+      <p className="text-[11px] text-muted-foreground mb-3">This week</p>
+
+      {!loaded ? (
+        <p className="text-xs text-muted-foreground">
+          We’ll catch you up on anything new in a moment.
+        </p>
+      ) : visible.length === 0 ? (
+        <div className="space-y-2">
+          <p className="text-xs text-heading leading-snug">
+            Nothing new this week. Your wedding is right where you left it.
+          </p>
+          <button
+            type="button"
+            onClick={() => onNavigate("tasks")}
+            className="text-[11px] font-medium text-muted-foreground hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 rounded-sm"
+            style={{ color: SAGE }}
+          >
+            Continue with Your Next Steps →
+          </button>
+        </div>
+      ) : (
+        <ul className="space-y-1.5" aria-label="Recent wedding activity this week">
+          {visible.map((item) => {
+            const body = (
+              <div className="flex items-start gap-2.5 min-w-0">
+                <span className="text-sm shrink-0 mt-0.5" aria-hidden>{item.emoji}</span>
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs text-heading leading-snug">{item.summary}</p>
+                  {item.whenLabel ? (
+                    <time
+                      className="text-[10px] text-muted-foreground mt-0.5 block"
+                      dateTime={item.occurredAt}
+                    >
+                      {item.whenLabel}
+                    </time>
+                  ) : null}
+                </div>
+              </div>
+            );
+
+            if (!item.destination) {
+              return (
+                <li key={item.key} className="px-2 py-1.5 -mx-2">
+                  <div aria-label={item.description}>{body}</div>
+                </li>
+              );
+            }
+
+            return (
+              <li key={item.key}>
+                <button
+                  type="button"
+                  onClick={() => onNavigate(item.destination!)}
+                  aria-label={item.description}
+                  className="w-full text-left rounded-xl px-2 py-1.5 -mx-2 hover:bg-muted/50 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
+                >
+                  {body}
+                </button>
+              </li>
+            );
+          })}
+        </ul>
       )}
 
-      {/* Content */}
-      <div className="flex-1 min-w-0 space-y-0.5">
-        <p className="text-[10px] font-semibold uppercase tracking-[0.16em]" style={{ color: ROSE_DEEP }}>
-          💗 A Moment From Your Journey
+      {loaded && hasMore && showViewAll && viewAllDestination ? (
+        <button
+          type="button"
+          onClick={() => onNavigate(viewAllDestination)}
+          className="mt-3 text-[11px] font-medium hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 rounded-sm"
+          style={{ color: SAGE }}
+        >
+          View all activity →
+        </button>
+      ) : null}
+    </section>
+  );
+}
+
+// ── Memory Strip (Couple Home Impl 7) ─────────────────────────────────────────
+// Soft P4 delight from existing journal + inspirationPhotos → Story only.
+
+function MemoryStrip({
+  entry, inspirationPhotos = [], onNavigate,
+}: {
+  entry: JournalEntry | null;
+  inspirationPhotos?: ClientMedia[];
+  onNavigate: (s: PortalSection) => void;
+}) {
+  const model = resolveHomeMemories({
+    latestJournalEntry: entry,
+    inspirationPhotos,
+  });
+
+  const shellClass =
+    "w-full text-left rounded-2xl px-4 py-3.5 transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2";
+
+  if (model.kind === "empty") {
+    return (
+      <section aria-labelledby="memories-heading" data-memories-kind="empty">
+        <button
+          type="button"
+          onClick={() => onNavigate(model.destination)}
+          aria-label={model.accessibleLabel}
+          className={shellClass}
+          style={{ border: `1px dashed ${ROSE}30`, background: `${ROSE}04` }}
+        >
+          <h2
+            id="memories-heading"
+            className="text-[10px] font-semibold uppercase tracking-[0.16em]"
+            style={{ color: ROSE_DEEP }}
+          >
+            {model.heading}
+          </h2>
+          <p className="text-sm text-heading mt-1.5 leading-snug" style={{ color: "#5A3235" }}>
+            {model.inviteLine}
+          </p>
+          <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
+            {model.supportLine}
+          </p>
+          <p className="text-[11px] font-medium mt-2.5" style={{ color: ROSE_DEEP }}>
+            {model.ctaLabel} →
+          </p>
+        </button>
+      </section>
+    );
+  }
+
+  const hasCollection = model.collection.length > 0;
+  const hasFeatured = Boolean(model.featured);
+  const showIconFallback = !hasFeatured && !hasCollection;
+
+  return (
+    <section aria-labelledby="memories-heading" data-memories-kind="preview">
+      <button
+        type="button"
+        onClick={() => onNavigate(model.destination)}
+        aria-label={model.accessibleLabel}
+        className={`${shellClass} group`}
+        style={{ background: `${ROSE}06`, border: `1px solid ${ROSE}18` }}
+      >
+        <h2
+          id="memories-heading"
+          className="text-[10px] font-semibold uppercase tracking-[0.16em]"
+          style={{ color: ROSE_DEEP }}
+        >
+          {model.heading}
+        </h2>
+
+        {hasCollection ? (
+          <div className="mt-2.5 flex gap-1.5 overflow-hidden" aria-hidden={model.collection.every((p) => !p.alt)}>
+            {model.collection.map((p) => (
+              <img
+                key={p.id}
+                src={p.url}
+                alt={p.alt}
+                className="h-14 w-14 sm:h-16 sm:w-16 rounded-lg object-cover shrink-0"
+              />
+            ))}
+          </div>
+        ) : null}
+
+        <div className={`flex items-center gap-3 min-w-0 ${hasCollection ? "mt-2.5" : "mt-2"}`}>
+          {hasFeatured && model.featured ? (
+            <img
+              src={model.featured.url}
+              alt={model.featured.alt}
+              className="w-14 h-14 sm:w-16 sm:h-16 rounded-xl object-cover shrink-0"
+            />
+          ) : null}
+
+          {showIconFallback ? (
+            <div
+              className="w-12 h-12 sm:w-14 sm:h-14 rounded-xl flex items-center justify-center shrink-0 text-xl"
+              style={{ background: `${ROSE}16` }}
+              aria-hidden
+            >
+              {entry?.source === "auto" ? "✦" : "📖"}
+            </div>
+          ) : null}
+
+          {(model.title || model.excerpt || model.dateLabel || !hasCollection) && (
+            <div className="flex-1 min-w-0 space-y-0.5">
+              {model.title ? (
+                <p className="text-sm font-semibold text-heading leading-snug truncate">
+                  {model.title}
+                </p>
+              ) : null}
+              {model.excerpt ? (
+                <p className="text-xs text-muted-foreground leading-relaxed line-clamp-2">
+                  {model.excerpt}
+                </p>
+              ) : !model.title && hasFeatured ? (
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  A little piece of your wedding.
+                </p>
+              ) : null}
+              {model.dateLabel ? (
+                <p className="text-[10px] text-muted-foreground">{model.dateLabel}</p>
+              ) : null}
+            </div>
+          )}
+        </div>
+
+        {hasCollection && !model.title && !model.excerpt ? (
+          <p className="text-xs text-muted-foreground mt-2 leading-relaxed">
+            A little piece of your wedding.
+          </p>
+        ) : null}
+
+        <p
+          className="text-[11px] font-medium mt-2.5 group-hover:underline"
+          style={{ color: ROSE_DEEP }}
+        >
+          {model.ctaLabel} →
         </p>
-        {entry.title && (
-          <p className="text-sm font-semibold text-heading leading-snug truncate">{entry.title}</p>
-        )}
-        <p className="text-xs text-muted-foreground leading-relaxed line-clamp-2">{entry.body}</p>
-        <p className="text-[10px] text-muted-foreground mt-0.5">{formatEntryDate(entry.entryDate)}</p>
-        <p className="text-[10px] font-semibold mt-2 group-hover:underline" style={{ color: ROSE_DEEP }}>
-          View your journey →
-        </p>
-      </div>
-    </button>
+      </button>
+    </section>
   );
 }
 
@@ -2062,8 +2403,10 @@ function TodoSection({ token, onCountChange, eventDate }: { token: string; onCou
     }
   }
 
-  const open = todos.filter(t => !t.completed);
-  const done = todos.filter(t => t.completed);
+  const { open, completed: done } = partitionByCompletion(todos, {
+    isComplete: (t) => t.completed,
+    getDueDate: (t) => t.dueDate,
+  });
 
   return (
     <div className="space-y-4">
@@ -2585,7 +2928,11 @@ function OurPeopleSection({ token, context }: { token: string; context: PortalCo
 
 // ── Website Section ───────────────────────────────────────────────────────────
 
-function WebsiteSection({ token, context }: { token: string; context: PortalContext }) {
+function WebsiteSection({ token, context, onNavigate }: {
+  token: string;
+  context: PortalContext;
+  onNavigate: (s: PortalSection) => void;
+}) {
   const [site, setSite] = React.useState<import("@/lib/wedding-website/types").CoupleWebsite | null>(null);
   const [loading, setLoading] = React.useState(true);
   // Hooks must all be before any early returns (Rules of Hooks)
@@ -2623,7 +2970,14 @@ function WebsiteSection({ token, context }: { token: string; context: PortalCont
 
   return (
     <div className="h-full overflow-hidden">
-      <WebsiteStudio token={token} initialSite={site} origin={origin} initialGuests={guestData?.guests} context={context} />
+      <WebsiteStudio
+        token={token}
+        initialSite={site}
+        origin={origin}
+        initialGuests={guestData?.guests}
+        context={context}
+        onNavigateToGuests={() => onNavigate("guests")}
+      />
     </div>
   );
 }
@@ -2667,16 +3021,21 @@ function CoupleDocumentsPortalSection({ token, onNavigate }: { token: string; on
 
 function TimelinePortalSection({
   token, clientId, initialSections, initialEntries, initialLastSubmittedAt, initialHasUnpublishedChanges,
+  eventDate = null, eventEndDate = null,
 }: {
   token: string; clientId: string;
   initialSections: PortalTimelineSection[]; initialEntries: PortalTimelineEntry[];
   initialLastSubmittedAt: string | null; initialHasUnpublishedChanges: boolean;
+  eventDate?: string | null;
+  eventEndDate?: string | null;
 }) {
   const { TimelineSection } = require("@/components/portal/timeline-section") as {
     TimelineSection: React.ComponentType<{
       token: string; clientId: string;
       initialSections: PortalTimelineSection[]; initialEntries: PortalTimelineEntry[];
       initialLastSubmittedAt: string | null; initialHasUnpublishedChanges: boolean;
+      eventDate?: string | null;
+      eventEndDate?: string | null;
     }>;
   };
   return (
@@ -2684,6 +3043,7 @@ function TimelinePortalSection({
       token={token} clientId={clientId}
       initialSections={initialSections} initialEntries={initialEntries}
       initialLastSubmittedAt={initialLastSubmittedAt} initialHasUnpublishedChanges={initialHasUnpublishedChanges}
+      eventDate={eventDate} eventEndDate={eventEndDate}
     />
   );
 }
@@ -2695,22 +3055,33 @@ function TimelinePortalSection({
 // existing LuvAskSection chat UI unchanged — same lazy require() pattern
 // as every other section here, deferred until the couple actually opens
 // the panel rather than loaded on every dashboard visit.
+// ── Ask Luv FAB — deeper entry only; Home card stays non-chat (Impl 6).
+// Mounted once at PortalShell root. Does not auto-open over Next Steps.
 function FloatingLuvWidget({ token, onNavigateToGuide }: { token: string; onNavigateToGuide: () => void }) {
   const [open, setOpen] = React.useState(false);
 
   return (
     <>
       {open && (
-        <div className="fixed inset-0 z-40 sm:inset-auto sm:bottom-24 sm:right-6 sm:w-[400px] sm:h-[620px] sm:max-h-[80vh] flex flex-col bg-card sm:rounded-3xl sm:shadow-2xl sm:border overflow-hidden"
-          style={{ borderColor: "#E8E3DC" }}>
+        <div
+          className="fixed inset-0 z-40 sm:inset-auto sm:bottom-24 sm:right-6 sm:w-[400px] sm:h-[620px] sm:max-h-[80vh] flex flex-col bg-card sm:rounded-3xl sm:shadow-2xl sm:border overflow-hidden"
+          style={{ borderColor: "#E8E3DC" }}
+          role="dialog"
+          aria-label="Ask Luv"
+          aria-modal="true"
+        >
           <div className="flex items-center justify-between px-4 py-2.5 border-b shrink-0" style={{ borderColor: "#EDE8E1" }}>
             <div className="flex items-center gap-1.5">
-              <span style={{ color: ROSE }}>💗</span>
+              <span style={{ color: ROSE }} aria-hidden>💗</span>
               <p className="text-xs font-semibold text-heading">Ask Luv</p>
             </div>
-            <button type="button" onClick={() => setOpen(false)}
-              className="h-7 w-7 rounded-full flex items-center justify-center text-muted-foreground hover:bg-muted/60 transition-colors">
-              <X className="h-4 w-4" />
+            <button
+              type="button"
+              onClick={() => setOpen(false)}
+              aria-label="Close Ask Luv"
+              className="h-7 w-7 rounded-full flex items-center justify-center text-muted-foreground hover:bg-muted/60 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
+            >
+              <X className="h-4 w-4" aria-hidden />
             </button>
           </div>
           <div className="flex-1 overflow-y-auto">
@@ -2723,11 +3094,16 @@ function FloatingLuvWidget({ token, onNavigateToGuide }: { token: string; onNavi
           </div>
         </div>
       )}
-      <button type="button" onClick={() => setOpen(o => !o)}
-        title="Ask Luv"
-        className="fixed bottom-5 right-5 z-40 h-14 w-14 rounded-full shadow-lg flex items-center justify-center text-2xl transition-transform hover:scale-105"
-        style={{ background: open ? "#3D3833" : ROSE }}>
-        {open ? <X className="h-5 w-5 text-white" /> : "💗"}
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        aria-label={open ? "Close Ask Luv" : "Ask Luv"}
+        aria-expanded={open}
+        aria-haspopup="dialog"
+        className="fixed bottom-5 right-5 z-40 h-12 w-12 sm:h-14 sm:w-14 rounded-full shadow-lg flex items-center justify-center text-xl sm:text-2xl transition-transform hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
+        style={{ background: open ? "#3D3833" : ROSE }}
+      >
+        {open ? <X className="h-5 w-5 text-white" aria-hidden /> : <span aria-hidden>💗</span>}
       </button>
     </>
   );
@@ -3849,6 +4225,45 @@ function AccountSettingsPanel({ venueName }: { venueName: string }) {
           </div>
         )}
       </div>
+
+      <PortalLegalHistorySection items={state.legalHistory} />
+    </div>
+  );
+}
+
+function PortalProductFeedbackCard({
+  token,
+  venueId,
+}: {
+  token: string;
+  venueId: string;
+}) {
+  return (
+    <div className="rounded-2xl border border-border bg-card p-4 space-y-3">
+      <div className="flex items-start gap-3">
+        <div
+          className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full"
+          style={{ background: `${SAGE}18`, color: SAGE }}
+        >
+          <MessageCircle className="h-4 w-4" />
+        </div>
+        <div className="min-w-0 flex-1 space-y-1">
+          <p className="text-sm font-semibold text-heading">Share feedback</p>
+          <p className="text-xs text-muted-foreground leading-relaxed">
+            Tell Hello to Cheers what would make planning easier — help, bugs, ideas, or a quick rating.
+            This goes to our team, not your venue.
+          </p>
+        </div>
+      </div>
+      <FeedbackSheet surface="client" portalToken={token} relatedVenueId={venueId}>
+        <button
+          type="button"
+          className="text-xs font-semibold px-4 py-2 rounded-xl text-white"
+          style={{ background: SAGE }}
+        >
+          Give feedback
+        </button>
+      </FeedbackSheet>
     </div>
   );
 }
@@ -3875,9 +4290,14 @@ function AccountSection({ token, context, venueName }: { token: string; context:
           </button>
         ))}
       </div>
-      {tab === "account"
-        ? <AccountSettingsPanel venueName={venueName} />
-        : <OurPeopleSection token={token} context={context} />}
+      {tab === "account" ? (
+        <div className="space-y-6">
+          <AccountSettingsPanel venueName={venueName} />
+          <PortalProductFeedbackCard token={token} venueId={context.venue.id} />
+        </div>
+      ) : (
+        <OurPeopleSection token={token} context={context} />
+      )}
     </div>
   );
 }
@@ -3943,48 +4363,126 @@ function StoryAndJourneySection({
 // folds into Account as a second tab there, same move already made for
 // Story/Journey, rather than getting its own top-level slot.)
 const NAV_ITEMS: { id: PortalSection; icon: string; label: string; shortLabel?: string; available: boolean; group: "venue" }[] = [
-  { id: "overview",  icon: "🏠", label: "Home",              available: true, group: "venue" },
-  { id: "tasks",     icon: "✅", label: "Tasks",             available: true, group: "venue" },
-  { id: "timeline",  icon: "🕒", label: "Timeline",          available: true, group: "venue" },
-  { id: "documents", icon: "📁", label: "Documents",         available: true, group: "venue" },
-  { id: "payments",  icon: "💳", label: "Payments",          available: true, group: "venue" },
-  { id: "messages",  icon: "💬", label: "Messages",          available: true, group: "venue" },
-  { id: "guide",     icon: "🏛️", label: "Venue Guide",       shortLabel: "Guide",   available: true, group: "venue" },
-  { id: "vendors",   icon: "🤝", label: "Preferred Vendors", shortLabel: "Vendors", available: true, group: "venue" },
+  { id: "overview",    icon: "🏠", label: "Home",              available: true, group: "venue" },
+  { id: "tasks",       icon: "✅", label: "Tasks",             available: true, group: "venue" },
+  { id: "timeline",    icon: "🕒", label: "Timeline",          available: true, group: "venue" },
+  { id: "documents",   icon: "📁", label: "Documents",         shortLabel: "Docs",     available: true, group: "venue" },
+  { id: "floor_plans", icon: "🗺️", label: "Floor Plan",        available: true, group: "venue" },
+  { id: "payments",    icon: "💳", label: "Payments",          available: true, group: "venue" },
+  { id: "messages",    icon: "💬", label: "Messages",          available: true, group: "venue" },
+  { id: "guide",       icon: "🏛️", label: "Venue Guide",       shortLabel: "Guide",    available: true, group: "venue" },
+  { id: "vendors",     icon: "🤝", label: "Preferred Vendors", shortLabel: "Vendors",  available: true, group: "venue" },
 ];
 
 export function PortalShell({
-  token, context, initialTasks, initialTimelineSections = [], initialTimelineEntries = [],
+  token, context, initialTasks, initialVendorTasks = [], initialTimelineSections = [], initialTimelineEntries = [],
   initialTimelineLastSubmittedAt = null, initialTimelineHasUnpublishedChanges = false,
+  initialLegalGate,
 }: {
   token: string;
   context: PortalContext;
   initialTasks: PortalTask[];
+  initialVendorTasks?: PortalVendorTask[];
   initialTimelineSections?: PortalTimelineSection[];
   initialTimelineEntries?: PortalTimelineEntry[];
   initialTimelineLastSubmittedAt?: string | null;
   initialTimelineHasUnpublishedChanges?: boolean;
+  initialLegalGate?: CouplePortalLegalGateStatus;
 }) {
   const [activeSection, setActiveSection] = React.useState<PortalSection>("overview");
+  const [workspaceFocus, setWorkspaceFocus] = React.useState<PortalWorkspaceFocus | null>(null);
   const [guestStats, setGuestStats] = React.useState<GuestStats | null>(null);
   const [todoCount, setTodoCount] = React.useState(0);
+  /** Tasks nav badge — open unified cards + share-timeline vendor attention. */
+  const [tasksAttentionCount, setTasksAttentionCount] = React.useState<number | null>(null);
+  /** Payments nav badge — overdue line items only. */
+  const [paymentsOverdueCount, setPaymentsOverdueCount] = React.useState(0);
+  /** Messages nav badge — unread venue messages. */
+  const [messagesUnreadCount, setMessagesUnreadCount] = React.useState(0);
   const [profile, setProfile] = React.useState<CoupleProfile | null>(null);
   const [recentActivity, setRecentActivity] = React.useState<RecentActivity | null>(null);
   const [showLuvIntro, setShowLuvIntro] = React.useState(false);
+  const [needsLegalAcceptance, setNeedsLegalAcceptance] = React.useState(
+    () => initialLegalGate?.needsAcceptance ?? true,
+  );
+  const [legalDocuments, setLegalDocuments] = React.useState(
+    () => initialLegalGate?.documents ?? [],
+  );
+  const [hasPriorLegalAcceptance, setHasPriorLegalAcceptance] =
+    React.useState(false);
 
-  // Deep-linkable by #hash (e.g. #guests, #seating) — same pattern the
-  // Booking Workspace's own tabs already use — so the venue-side Event
-  // Readiness card's "open in the couple's portal" links land on the
-  // relevant section instead of always Overview (Event Readiness — Phase 1).
+  const hasServerLegalGate = Boolean(initialLegalGate);
+
   React.useEffect(() => {
-    const syncFromHash = () => {
-      const hash = window.location.hash.replace("#", "");
-      if (hash) setActiveSection(hash as PortalSection);
+    // Re-check on every visit/mount so version bumps are caught even when SSR
+    // already supplied a gate status (stale acceptance vs newly active docs).
+    let cancelled = false;
+    fetch(`/api/portal/legal?token=${encodeURIComponent(token)}`)
+      .then(async (r) => {
+        const d = (await r.json().catch(() => null)) as {
+          needsAcceptance?: boolean;
+          hasPriorAcceptance?: boolean;
+          documents?: typeof legalDocuments;
+        } | null;
+        if (cancelled) return;
+        // Fail closed on transport/API errors — never unlock from a non-ok body
+        // (e.g. `{ error }` would make Boolean(undefined) === false).
+        if (!r.ok || typeof d?.needsAcceptance !== "boolean") {
+          if (!hasServerLegalGate) setNeedsLegalAcceptance(true);
+          return;
+        }
+        setNeedsLegalAcceptance(d.needsAcceptance);
+        if (typeof d.hasPriorAcceptance === "boolean") {
+          setHasPriorLegalAcceptance(d.hasPriorAcceptance);
+        }
+        if (Array.isArray(d.documents)) setLegalDocuments(d.documents);
+      })
+      .catch(() => {
+        if (!cancelled && !hasServerLegalGate) setNeedsLegalAcceptance(true);
+      });
+    return () => {
+      cancelled = true;
     };
-    syncFromHash();
+  }, [token, hasServerLegalGate]);
+
+  // Deep-linkable by #hash (e.g. #guests, #seating/submit) — section tabs plus
+  // optional within-section focus for domain CTAs (Impl 3). Hash / focus only
+  // navigates; never completes a task.
+  const navigateTo = React.useCallback((
+    section: PortalSection,
+    focus: PortalWorkspaceFocus | null = null,
+  ) => {
+    setActiveSection(section);
+    setWorkspaceFocus(focus);
+    if (typeof window === "undefined") return;
+    const next = formatPortalHash(section, focus);
+    const current = window.location.hash.replace(/^#/, "");
+    if (current !== next) {
+      window.history.replaceState(null, "", `#${next}`);
+    }
   }, []);
 
   React.useEffect(() => {
+    if (needsLegalAcceptance) return;
+    const syncFromHash = () => {
+      const { section, focus } = parsePortalHash(window.location.hash);
+      if (section) {
+        setActiveSection(section);
+        setWorkspaceFocus(focus);
+      }
+    };
+    syncFromHash();
+    window.addEventListener("hashchange", syncFromHash);
+    return () => window.removeEventListener("hashchange", syncFromHash);
+  }, [needsLegalAcceptance]);
+
+  React.useEffect(() => {
+    if (!workspaceFocus) return;
+    scrollToPortalFocus(portalFocusElementId(activeSection, workspaceFocus));
+  }, [activeSection, workspaceFocus]);
+
+  React.useEffect(() => {
+    if (needsLegalAcceptance) return;
     fetch(`/api/portal/guests?token=${token}`)
       .then(r => r.json())
       .then((d: { stats?: GuestStats }) => setGuestStats(d.stats ?? null))
@@ -3994,15 +4492,87 @@ export function PortalShell({
       .then((d: { profile?: CoupleProfile }) => setProfile(d.profile ?? null))
       .catch(() => {});
     fetch(`/api/portal/activity?token=${token}`)
+      .then(async (r) => {
+        if (!r.ok) throw new Error("activity_unavailable");
+        return r.json() as Promise<RecentActivity>;
+      })
+      .then((d) => setRecentActivity(d))
+      .catch(() => {});
+    fetch(`/api/portal/todos?token=${token}`)
       .then(r => r.json())
-      .then((d: RecentActivity) => setRecentActivity(d))
+      .then((d: { todos?: CoupleTodo[] }) => {
+        const todos = d.todos ?? [];
+        setTodoCount(todos.filter((t) => !t.completed).length);
+      })
       .catch(() => {});
     // Luv Experience Completion, Work Stream 5 — one-time intro card.
     fetch(`/api/portal/luv-intro?token=${token}`)
       .then(r => r.json())
       .then((d: { seen?: boolean }) => setShowLuvIntro(d.seen === false))
       .catch(() => {});
-  }, [token]);
+  }, [token, needsLegalAcceptance]);
+
+  // Nav badges: Tasks (open unified cards), Payments (overdue only), Messages (unread).
+  React.useEffect(() => {
+    if (needsLegalAcceptance) return;
+    let cancelled = false;
+    Promise.all([
+      fetch(`/api/portal/tasks?token=${token}`).then((r) => r.json()).catch(() => ({
+        tasks: initialTasks,
+        vendorTasks: initialVendorTasks,
+      })),
+      fetch(`/api/portal/requests?token=${token}`).then((r) => r.json()).catch(() => ({ requests: [] })),
+      fetch(`/api/portal/payments?token=${token}`).then((r) => r.json()).catch(() => ({ schedules: [] })),
+      fetch(`/api/portal/questionnaire?token=${token}`).then((r) => r.json()).catch(() => ({ questionnaire: null })),
+      fetch(`/api/portal/documents?token=${token}`).then((r) => r.json()).catch(() => ({ documents: [] })),
+      fetch(`/api/portal/timeline?token=${token}`).then((r) => r.json()).catch(() => ({
+        hasUnpublishedChanges: initialTimelineHasUnpublishedChanges,
+      })),
+      fetch(`/api/portal/messages?token=${token}`).then((r) => r.json()).catch(() => ({ messages: [] })),
+    ]).then(([tasksRes, requestsRes, paymentsRes, questionnaireRes, documentsRes, timelineRes, messagesRes]) => {
+      if (cancelled) return;
+      const venueTasks = (tasksRes.tasks ?? initialTasks) as PortalTask[];
+      const vendorTasks = (tasksRes.vendorTasks ?? initialVendorTasks) as PortalVendorTask[];
+      const schedules = (paymentsRes.schedules ?? []) as {
+        lineItems?: { status?: string }[];
+      }[];
+      const overduePayments = schedules.reduce((sum, s) => (
+        sum + (s.lineItems ?? []).filter((li) => li.status === "overdue").length
+      ), 0);
+      setPaymentsOverdueCount(overduePayments);
+
+      const messages = (messagesRes.messages ?? []) as {
+        sender_type?: string;
+        couple_read_at?: string | null;
+      }[];
+      setMessagesUnreadCount(
+        messages.filter((m) => m.sender_type === "venue" && !m.couple_read_at).length,
+      );
+
+      const unified = buildUnifiedTaskList({
+        venueTasks,
+        requests: requestsRes.requests ?? [],
+        paymentSchedules: paymentsRes.schedules ?? [],
+        questionnaire: questionnaireRes.questionnaire
+          ? { status: questionnaireRes.questionnaire.status }
+          : null,
+        documents: documentsRes.documents ?? [],
+        timelineHasUnpublishedChanges: !!timelineRes.hasUnpublishedChanges,
+      });
+      const { open } = unifiedTaskCompletionCounts(unified);
+      const vendorShare = vendorTasks.filter((t) => isShareTimelineVendorAttention(t)).length;
+      setTasksAttentionCount(open + vendorShare);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    token,
+    needsLegalAcceptance,
+    initialTasks,
+    initialVendorTasks,
+    initialTimelineHasUnpublishedChanges,
+  ]);
 
   function dismissLuvIntro() {
     setShowLuvIntro(false);
@@ -4012,15 +4582,90 @@ export function PortalShell({
     });
   }
 
+  if (needsLegalAcceptance && legalDocuments.length > 0) {
+    const welcomeDocs: WelcomeExperienceDocument[] = legalDocuments.map(
+      (d) => ({
+        id: d.id,
+        documentType: d.documentType,
+        title: d.title,
+        version: d.version,
+        effectiveDate: "",
+        viewHref: d.path,
+      }),
+    );
+    const welcomeContext = inferWelcomeContext({
+      userType: "couple",
+      hasPriorAcceptance: hasPriorLegalAcceptance,
+    });
+    const copy = copyForWelcomeContext(welcomeContext);
+    return (
+      <WelcomeExperienceGate
+        heading={copy.heading}
+        introduction={copy.introduction}
+        documents={welcomeDocs}
+        context={welcomeContext}
+        returnTo={`/p/${token}`}
+        portalToken={token}
+        onSuccess={() => setNeedsLegalAcceptance(false)}
+      />
+    );
+  }
+
+  // needsAcceptance without reviewable docs is either still loading (SSR
+  // fail-closed) or a transient legal-status error — never show Continue with
+  // an empty list, and never unlock the workspace until the API clears the gate.
+  if (needsLegalAcceptance) {
+    return (
+      <main
+        className="flex min-h-svh w-full flex-col items-center justify-center px-4 py-10"
+        style={{
+          background:
+            "color-mix(in oklch, var(--linen), var(--taupe-dark) 45%)",
+        }}
+        data-welcome-experience-pending
+      >
+        <div className="w-full max-w-md rounded-lg border border-[color-mix(in_srgb,var(--taupe-medium)_40%,transparent)] bg-[var(--true-white)] px-6 py-8 text-center shadow-sm">
+          <p className="font-heading text-xl text-[var(--forest-sage)]">
+            Preparing your workspace
+          </p>
+          <p className="mt-3 text-sm leading-relaxed text-[color-mix(in_oklch,var(--forest-sage)_70%,transparent)]">
+            We&apos;re confirming a few required documents. Refresh if this
+            takes too long, or contact your venue for help.
+          </p>
+        </div>
+      </main>
+    );
+  }
+
   const firstName = context.client.firstName;
   const partnerName = context.client.partnerFirstName;
   const coupleName = [firstName, partnerName].filter(Boolean).join(" & ");
-  const actionCount = initialTasks.filter(t => t.canComplete && t.status !== "complete").length;
+  const actionCount = tasksAttentionCount ?? (
+    // SSR / pre-fetch fallback — venue open checklist + timeline only
+    // (payments/requests need client fetch for full fidelity).
+    unifiedTaskCompletionCounts(
+      buildUnifiedTaskList({
+        venueTasks: initialTasks,
+        requests: [],
+        paymentSchedules: [],
+        questionnaire: null,
+        documents: [],
+        timelineHasUnpublishedChanges: initialTimelineHasUnpublishedChanges,
+      }),
+    ).open
+    + initialVendorTasks.filter((t) => isShareTimelineVendorAttention(t)).length
+  );
   const isOverview = activeSection === "overview";
+  // Tasks | Timeline | Documents | Venue Guide share one column so white list cards align.
+  const isSharedListColumn =
+    activeSection === "tasks"
+    || activeSection === "timeline"
+    || activeSection === "documents"
+    || activeSection === "guide";
 
   return (
     <div
-      className="h-screen flex flex-col overflow-hidden"
+      className="h-full flex flex-col overflow-hidden overscroll-none"
       style={{
         background: "var(--venue-neutral)",
         // Venue Brand Experience Phase 1 — the venue's own brand, cascading
@@ -4041,19 +4686,19 @@ export function PortalShell({
       {/* ── Sticky Header ── */}
       <header className="sticky top-0 z-30 bg-white/95 backdrop-blur border-b border-[#DED6CA]">
         {/* Venue + couple identity */}
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 py-2.5 flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
+        <div className="max-w-6xl mx-auto px-3 sm:px-4 py-2.5 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2.5 min-w-0">
             {context.venue.logoUrl && (
               // eslint-disable-next-line @next/next/no-img-element
               <img src={context.venue.logoUrl} alt={context.venue.name} className="h-7 w-7 rounded-full object-cover shrink-0" />
             )}
-            <p className="text-sm font-semibold text-heading leading-tight font-heading">{coupleName}</p>
-            <span className="text-muted-foreground/40 text-xs">·</span>
-            <p className="text-xs text-muted-foreground">{context.venue.name}</p>
+            <p className="text-sm font-semibold text-heading leading-tight font-heading truncate">{coupleName}</p>
+            <span className="text-muted-foreground/40 text-xs shrink-0">·</span>
+            <p className="text-xs text-muted-foreground truncate">{context.venue.name}</p>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 shrink-0">
             {context.event && (
-              <p className="text-xs text-muted-foreground hidden sm:block">
+              <p className="text-xs text-muted-foreground hidden lg:block">
                 {formatPortalEventRangeShort(context.event.eventDate, context.event.eventEndDate)}
               </p>
             )}
@@ -4065,12 +4710,16 @@ export function PortalShell({
             >
               Export my data
             </a>
+            <CoupleNotificationBell
+              token={token}
+              onNavigate={(section) => navigateTo(section)}
+            />
             {/* Account — Program 5 (2026-07-24): "That's a global function.
                 It doesn't belong with either planning area." The only
                 header-level nav control; everything else routes through
                 the single venue-operational row below or a dashboard
                 launch card. */}
-            <button type="button" onClick={() => setActiveSection("account")}
+            <button type="button" onClick={() => navigateTo("account")}
               title="Account"
               className="h-7 w-7 rounded-full flex items-center justify-center transition-colors hover:bg-muted/60 shrink-0"
               style={{ color: activeSection === "account" ? SAGE : "#6A6460" }}>
@@ -4080,42 +4729,59 @@ export function PortalShell({
         </div>
 
         {/* Navigation — Program 5 (2026-07-24): one row, venue-operational
-            only. "Your Wedding" no longer lives in the header — those
-            destinations (Website/Guests/Seating/Budget/Our Story/Plans)
-            are reached from the dashboard's launch cards instead (see
-            YourWeddingSection), so a couple isn't asked the same
-            "where do I go" question in two places. See NAV_ITEMS for the
-            full directive. */}
-        <div className="max-w-4xl mx-auto px-2 sm:px-4">
-          <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide py-1">
+            only. "Your Wedding" destinations (Website/Guests/Seating/Budget/
+            Our Story/Plans) stay on dashboard launch cards. Floor Plan is
+            venue-shared and lives in this top row with other venue surfaces. */}
+        <div className="max-w-6xl mx-auto px-2 sm:px-3">
+          <nav className="flex items-stretch justify-between gap-0 py-0.5" aria-label="Portal">
             {NAV_ITEMS.map(item => {
               const isActive = activeSection === item.id;
-              const badge = item.id === "tasks" && actionCount > 0 ? actionCount : 0;
+              const badge =
+                item.id === "tasks" ? (actionCount > 0 ? actionCount : 0)
+                  : item.id === "payments" ? paymentsOverdueCount
+                    : item.id === "messages" ? messagesUnreadCount
+                      : 0;
+              const badgeTitle =
+                item.id === "tasks"
+                  ? (badge === 1 ? "1 open task" : `${badge} open tasks`)
+                  : item.id === "payments"
+                    ? (badge === 1 ? "1 overdue payment" : `${badge} overdue payments`)
+                    : item.id === "messages"
+                      ? (badge === 1 ? "1 unread message" : `${badge} unread messages`)
+                      : "";
+              const badgeAria =
+                badge > 0 ? `${item.label}, ${badgeTitle}` : undefined;
               return (
                 <button key={item.id} type="button"
-                  onClick={() => item.available && setActiveSection(item.id)}
-                  className="relative flex-shrink-0 flex items-center gap-1.5 px-3 py-2.5 text-sm font-medium transition-all rounded-lg"
+                  onClick={() => item.available && navigateTo(item.id)}
+                  aria-label={badgeAria}
+                  title={item.label}
+                  className="relative flex min-w-0 flex-1 items-center justify-center gap-1 px-1 py-2 text-[12px] sm:text-[13px] font-medium transition-all rounded-md"
                   style={{
                     color: !item.available ? "#8A837D" : isActive ? SAGE : "#3D3833",
                     background: isActive ? `color-mix(in srgb, var(--venue-primary) 9%, transparent)` : "transparent",
                     fontWeight: isActive ? 700 : 500,
                   }}>
-                  <span className="text-sm">{item.icon}</span>
-                  <span className="hidden sm:inline">{item.label}</span>
-                  <span className="sm:hidden text-[11px]">{item.shortLabel ?? item.label}</span>
+                  <span className="text-sm shrink-0">{item.icon}</span>
+                  <span className="truncate">{item.shortLabel ?? item.label}</span>
                   {badge > 0 && (
-                    <span className="h-4 w-4 rounded-full text-[8px] font-bold text-white flex items-center justify-center"
-                      style={{ background: ROSE }}>{badge}</span>
+                    <span
+                      className="h-4 min-w-4 px-0.5 rounded-full text-[8px] font-bold text-white flex items-center justify-center shrink-0"
+                      title={badgeTitle}
+                      style={{ background: ROSE }}
+                    >
+                      {badge > 9 ? "9+" : badge}
+                    </span>
                   )}
                 </button>
               );
             })}
-          </div>
+          </nav>
         </div>
       </header>
 
       {/* ── Content ── */}
-      <main className="flex-1 min-h-0 w-full overflow-y-auto flex flex-col">
+      <main className="flex-1 min-h-0 w-full overflow-y-auto overscroll-y-contain flex flex-col">
         {/* Overview gets a full-canvas layout. Widened from max-w-4xl and no
             longer split into a 1fr-main / 320px-sidebar grid — a fixed
             narrow sidebar next to one tall column is what produced the
@@ -4123,48 +4789,71 @@ export function PortalShell({
             (2026-07-23); OverviewSection now lays every card out itself in
             a balanced multi-column flow that uses the full width. */}
         {isOverview ? (
-          <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6">
-            <OverviewSection token={token} context={context} tasks={initialTasks} guestStats={guestStats} todoCount={todoCount} profile={profile} latestJournalEntry={profile?.latestJournalEntry ?? null} onNavigate={setActiveSection} recentActivity={recentActivity} showLuvIntro={showLuvIntro} onDismissLuvIntro={dismissLuvIntro} />
+          <div className="max-w-6xl mx-auto w-full px-4 sm:px-6 py-6">
+            <OverviewSection
+              token={token}
+              context={context}
+              tasks={initialTasks}
+              vendorTasks={initialVendorTasks}
+              timelineHasUnpublishedChanges={initialTimelineHasUnpublishedChanges}
+              guestStats={guestStats}
+              todoCount={todoCount}
+              profile={profile}
+              latestJournalEntry={profile?.latestJournalEntry ?? null}
+              onNavigate={navigateTo}
+              recentActivity={recentActivity}
+              showLuvIntro={showLuvIntro}
+              onDismissLuvIntro={dismissLuvIntro}
+            />
           </div>
         ) : activeSection === "website" ? (
           <div className="flex-1 min-h-0 overflow-hidden">
-            <WebsiteSection token={token} context={context} />
+            <WebsiteSection token={token} context={context} onNavigate={navigateTo} />
           </div>
         ) : activeSection === "seating" ? (
           <div className="flex-1 min-h-0 overflow-hidden flex flex-col">
             <SeatingPortalSection token={token} />
           </div>
+        ) : isSharedListColumn ? (
+          /* Tasks | Timeline | Documents | Venue Guide — identical outer column (max-w + pad). */
+          <div className="w-full max-w-2xl mx-auto px-4 sm:px-6 py-6">
+            {activeSection === "tasks"     && <UnifiedTasksSection token={token} initialTasks={initialTasks} initialVendorTasks={initialVendorTasks} initialTimelineHasUnpublishedChanges={initialTimelineHasUnpublishedChanges} venueName={context.venue.name} onNavigate={navigateTo} />}
+            {activeSection === "timeline"  && <TimelinePortalSection token={token} clientId={context.client.id} initialSections={initialTimelineSections} initialEntries={initialTimelineEntries} initialLastSubmittedAt={initialTimelineLastSubmittedAt} initialHasUnpublishedChanges={initialTimelineHasUnpublishedChanges} eventDate={context.event?.eventDate} eventEndDate={context.event?.eventEndDate} />}
+            {activeSection === "documents" && <CoupleDocumentsPortalSection token={token} onNavigate={navigateTo} />}
+            {activeSection === "guide"     && <VenueGuidePortalSection token={token} context={context} onNavigate={navigateTo} />}
+          </div>
         ) : (
-          <div className="max-w-2xl mx-auto px-4 sm:px-6 py-6">
+          <div className="w-full max-w-2xl mx-auto px-4 sm:px-6 py-6">
             {activeSection === "guests"    && <GuestPortalSection token={token} />}
             {activeSection === "todos"     && <TodoSection token={token} onCountChange={setTodoCount} eventDate={context.event?.eventDate} />}
             {(activeSection === "story" || activeSection === "journey") && (
-              <StoryAndJourneySection token={token} context={context} profile={profile} onProfileChange={setProfile} onNavigate={setActiveSection} initialTab={activeSection === "journey" ? "journey" : "story"} />
+              <StoryAndJourneySection token={token} context={context} profile={profile} onProfileChange={setProfile} onNavigate={navigateTo} initialTab={activeSection === "journey" ? "journey" : "story"} />
             )}
             {activeSection === "people"    && <OurPeopleSection token={token} context={context} />}
-            {activeSection === "guide"     && <VenueGuidePortalSection token={token} context={context} onNavigate={setActiveSection} />}
-            {activeSection === "tasks"     && <UnifiedTasksSection token={token} initialTasks={initialTasks} venueName={context.venue.name} onNavigate={setActiveSection} />}
             {activeSection === "questionnaire" && <QuestionnairePortalSection token={token} />}
-            {activeSection === "timeline"  && <TimelinePortalSection token={token} clientId={context.client.id} initialSections={initialTimelineSections} initialEntries={initialTimelineEntries} initialLastSubmittedAt={initialTimelineLastSubmittedAt} initialHasUnpublishedChanges={initialTimelineHasUnpublishedChanges} />}
+            {activeSection === "inventory" && <InventoryPortalSection token={token} />}
+            {activeSection === "event-order" && <EventOrderPortalSection token={token} />}
+            {activeSection === "floor_plans" && <FloorPlanSection token={token} />}
             {activeSection === "vendors"   && <VendorPortalSection token={token} context={context} />}
             {activeSection === "budget"    && <BudgetPortalSection token={token} />}
-            {activeSection === "documents" && <CoupleDocumentsPortalSection token={token} onNavigate={setActiveSection} />}
             {activeSection === "payments"  && <PaymentPortalSection token={token} />}
             {activeSection === "messages"  && <PortalMessageSection token={token} venueName={context.venue.name} />}
             {activeSection === "account"   && <AccountSection token={token} context={context} venueName={context.venue.name} />}
-            {activeSection === "requests"  && <RequestsPortalSection token={token} onNavigate={setActiveSection} />}
+            {activeSection === "requests"  && <RequestsPortalSection token={token} onNavigate={navigateTo} />}
           </div>
         )}
       </main>
 
-      {/* Venue Brand Experience Phase 1: "Powered by Hello to Cheers" removed — the
-          venue is the only visible brand on this customer-facing surface. */}
-      <footer className="text-center py-4 text-[10px] border-t border-border/30" style={{ color: TAUPE }}>
+      {/* Venue Brand Experience Phase 1: "Powered by Hello to Cheers" removed —
+          the venue is the only visible brand on this customer-facing surface.
+          Pinned outside the scroll region so couples cannot scroll past it
+          into empty page chrome. */}
+      <footer className="text-center py-3 text-[10px] border-t border-border/30 shrink-0" style={{ color: TAUPE }}>
         {context.venue.name}
       </footer>
 
       {/* Persistent across every tab, not just Overview — Program 5. */}
-      <FloatingLuvWidget token={token} onNavigateToGuide={() => setActiveSection("guide")} />
+      <FloatingLuvWidget token={token} onNavigateToGuide={() => navigateTo("guide")} />
     </div>
   );
 }
@@ -4175,7 +4864,7 @@ export function PortalShell({
 // "the couple should feel that the venue has already prepared everything
 // for them." Self-fetching like RequestsSummaryCard; renders nothing until
 // the venue has actually set at least one date.
-function KeyDatesCard({ token }: { token: string }) {
+function KeyDatesCard({ token, maxUpcoming = 2 }: { token: string; maxUpcoming?: number }) {
   const [keyDates, setKeyDates] = React.useState<PortalKeyDate[] | null>(null);
 
   React.useEffect(() => {
@@ -4188,13 +4877,11 @@ function KeyDatesCard({ token }: { token: string }) {
 
   const today = new Date().toISOString().slice(0, 10);
   const next = keyDates.find((k) => k.date >= today) ?? keyDates[0];
-  const upcoming = keyDates.filter((k) => k.id !== next.id).slice(0, 3);
+  const upcoming = keyDates.filter((k) => k.id !== next.id).slice(0, maxUpcoming);
 
   return (
     <div className="w-full rounded-2xl border bg-card p-5" style={{ borderColor: "#E8E3DC" }}>
-      <div className="flex items-center justify-between mb-3">
-        <span className="text-2xl">📅</span>
-      </div>
+      <p className="text-[10px] font-semibold uppercase tracking-widest mb-3" style={{ color: SAGE }}>Next key date</p>
       <p className="text-sm font-semibold text-heading leading-snug">{next.label}</p>
       <p className="text-[11px] text-muted-foreground mt-1">
         {new Date(next.date + "T12:00:00").toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}
@@ -4224,7 +4911,7 @@ function KeyDatesCard({ token }: { token: string }) {
 
 const ROLE_LABEL: Record<string, string> = { owner: "Owner", manager: "Venue Manager", coordinator: "Coordinator", staff: "Team" };
 
-function VenueTeamCard({ token, onNavigate }: { token: string; onNavigate: (s: PortalSection) => void }) {
+function VenueTeamCard({ token, venueName, onNavigate }: { token: string; venueName: string; onNavigate: (s: PortalSection) => void }) {
   const [team, setTeam] = React.useState<PortalVenueTeamMember[] | null>(null);
 
   React.useEffect(() => {
@@ -4233,17 +4920,21 @@ function VenueTeamCard({ token, onNavigate }: { token: string; onNavigate: (s: P
       .then((d: { team?: PortalVenueTeamMember[] }) => setTeam(d.team ?? []));
   }, [token]);
 
-  if (!team) return null;
+  if (!team) {
+    return (
+      <div className="rounded-2xl border bg-card p-5" style={{ borderColor: "#E8E3DC" }}>
+        <p className="text-[10px] font-semibold uppercase tracking-widest mb-3" style={{ color: SAGE }}>Venue Team</p>
+        <div className="space-y-2">
+          {[1, 2].map((i) => <div key={i} className="h-9 rounded-full bg-muted animate-pulse" />)}
+        </div>
+      </div>
+    );
+  }
   const shown = team.slice(0, 3);
 
-  // "Meet Your Venue Team" — 2026-07-23: "It feels dramatically more
-  // welcoming" than a single name. Each member gets their own row with
-  // role and a real Email action (venue_staff.email); Message stays one
-  // shared button since messaging is a single venue-wide thread, not
-  // per-staff-member.
   return (
     <div className="rounded-2xl border bg-card p-5" style={{ borderColor: "#E8E3DC" }}>
-      <p className="text-[10px] font-semibold uppercase tracking-widest mb-3" style={{ color: SAGE }}>👋 Meet Your Venue Team</p>
+      <p className="text-[10px] font-semibold uppercase tracking-widest mb-3" style={{ color: SAGE }}>Venue Team</p>
       {shown.length === 0 ? (
         <p className="text-xs text-muted-foreground">Your venue team will appear here.</p>
       ) : (
@@ -4271,7 +4962,7 @@ function VenueTeamCard({ token, onNavigate }: { token: string; onNavigate: (s: P
       <button type="button" onClick={() => onNavigate("messages")}
         className="mt-3.5 w-full text-xs font-semibold py-2 rounded-xl text-white transition-opacity hover:opacity-90"
         style={{ background: SAGE }}>
-        💬 Message
+        Message {venueName}
       </button>
     </div>
   );
@@ -4284,11 +4975,31 @@ function VenueTeamCard({ token, onNavigate }: { token: string; onNavigate: (s: P
 // Questionnaire" all show up here even though none of them live in the
 // venue_tasks table. Everything already existed; it just wasn't surfaced
 // on the dashboard yet.
-function NextStepsCard({ token, tasks, onNavigate }: { token: string; tasks: PortalTask[]; onNavigate: (s: PortalSection) => void }) {
+type PaymentScheduleLite = {
+  id?: string;
+  title: string;
+  invoiceId?: string | null;
+  createdAt?: string | null;
+  totalAmount?: number;
+  lineItems: { id: string; label: string; amount: number; dueDate: string | null; status: string }[];
+};
+
+function NextStepsCard({
+  token, tasks, vendorTasks = [], timelineHasUnpublishedChanges = false, venueName, onNavigate, onAttentionCountChange,
+}: {
+  token: string;
+  tasks: PortalTask[];
+  vendorTasks?: PortalVendorTask[];
+  timelineHasUnpublishedChanges?: boolean;
+  venueName: string;
+  onNavigate: (s: PortalSection, focus?: PortalWorkspaceFocus | null) => void;
+  onAttentionCountChange?: (count: number) => void;
+}) {
   const [requests, setRequests] = React.useState<PortalRequestSummary[]>([]);
   const [paymentSchedules, setPaymentSchedules] = React.useState<PaymentScheduleLite[]>([]);
   const [questionnaire, setQuestionnaire] = React.useState<{ status: string } | null>(null);
   const [documents, setDocuments] = React.useState<{ id: string; docType: string; name: string; status: string | null; signToken?: string | null }[]>([]);
+  const [timelineUnpublished, setTimelineUnpublished] = React.useState(timelineHasUnpublishedChanges);
   const [loaded, setLoaded] = React.useState(false);
 
   React.useEffect(() => {
@@ -4297,61 +5008,216 @@ function NextStepsCard({ token, tasks, onNavigate }: { token: string; tasks: Por
       fetch(`/api/portal/payments?token=${token}`).then((r) => r.json()).catch(() => ({ schedules: [] })),
       fetch(`/api/portal/questionnaire?token=${token}`).then((r) => r.json()).catch(() => ({ questionnaire: null })),
       fetch(`/api/portal/documents?token=${token}`).then((r) => r.json()).catch(() => ({ documents: [] })),
-    ]).then(([requestsRes, paymentsRes, questionnaireRes, documentsRes]) => {
+      fetch(`/api/portal/timeline?token=${token}`).then((r) => r.json()).catch(() => ({ hasUnpublishedChanges: timelineHasUnpublishedChanges })),
+    ]).then(([requestsRes, paymentsRes, questionnaireRes, documentsRes, timelineRes]) => {
       setRequests(requestsRes.requests ?? []);
       setPaymentSchedules(paymentsRes.schedules ?? []);
       setQuestionnaire(questionnaireRes.questionnaire ? { status: questionnaireRes.questionnaire.status } : null);
       setDocuments(documentsRes.documents ?? []);
+      setTimelineUnpublished(!!timelineRes.hasUnpublishedChanges);
       setLoaded(true);
     });
-  }, [token]);
+  }, [token, timelineHasUnpublishedChanges]);
 
-  const required = tasks.filter((t) => t.isRequired);
-  const readiness = required.length > 0
-    ? Math.round((required.filter((t) => t.status === "complete").length / required.length) * 100)
-    : 0;
+  const today = new Date().toISOString().slice(0, 10);
 
-  const items = loaded ? buildUnifiedTaskList({
-    venueTasks: tasks, requests, paymentSchedules, questionnaire, documents,
-    timelineHasUnpublishedChanges: false,
-  }).slice(0, 5) : [];
+  const incomplete: NextStepsItem[] = loaded
+    ? [
+        ...buildUnifiedTaskList({
+          venueTasks: tasks,
+          requests,
+          paymentSchedules,
+          questionnaire,
+          documents,
+          timelineHasUnpublishedChanges: timelineUnpublished,
+        })
+          .filter((t: UnifiedTask) => !t.completed)
+          .map(fromUnifiedTask),
+        ...vendorTasks
+          .filter((t) => isShareTimelineVendorAttention(t))
+          .map((t): NextStepsItem => {
+            const overdue = Boolean(t.dueDate && t.dueDate < today);
+            const shareWs =
+              t.actionType === "share_timeline" ? shareTimelineWorkspace() : null;
+            return {
+              id: `vendor_${t.id}`,
+              title: t.title,
+              description: t.notes || (t.vendorName ? `From ${t.vendorName}` : null),
+              dueDate: t.dueDate,
+              isOverdue: overdue,
+              isRequired: false,
+              ownership: "venue",
+              targetSection: shareWs?.section ?? "tasks",
+              targetFocus: shareWs?.focus ?? null,
+              actionLabel: shareWs?.actionLabel ?? "Complete",
+              kind: "vendor_task",
+            };
+          }),
+      ]
+    : [];
+
+  const { visible, total: fullCount, hasMore } = selectNextStepsForHome(incomplete);
+  const groups = groupNextStepsForDisplay(visible);
+
+  React.useEffect(() => {
+    if (loaded) onAttentionCountChange?.(fullCount);
+  }, [loaded, fullCount, onAttentionCountChange]);
+
+  function renderRow(t: NextStepsItem) {
+    const due = formatNextStepsDueLabel(t.dueDate, t.isOverdue);
+    const cta = compactNextStepsActionLabel(t);
+    const ownershipText = t.ownership === "shared" ? "Shared planning" : "From your venue";
+    const aria = [
+      t.title,
+      ownershipText,
+      t.isRequired ? "Required" : null,
+      due,
+      `Action: ${cta}`,
+    ].filter(Boolean).join(". ");
+
+    return (
+      <div
+        key={t.id}
+        className="flex items-start gap-2.5 rounded-xl px-3 py-2.5"
+        style={{
+          border: t.isOverdue
+            ? "1px solid color-mix(in srgb, var(--venue-primary) 35%, #E8E3DC)"
+            : "1px solid #EDE8E1",
+          background: t.isOverdue
+            ? "color-mix(in srgb, var(--venue-primary) 5%, white)"
+            : "transparent",
+        }}
+      >
+        <button
+          type="button"
+          onClick={() => onNavigate(t.targetSection, t.targetFocus)}
+          className="min-w-0 flex-1 text-left rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-1 focus-visible:ring-[var(--venue-primary)]"
+          aria-label={aria}
+        >
+          <div className="flex items-start justify-between gap-2">
+            <p className="text-xs font-medium text-heading leading-snug">{t.title}</p>
+            {t.isRequired && (
+              <span className="text-[10px] text-muted-foreground shrink-0">Required</span>
+            )}
+          </div>
+          {t.description && (
+            <p className="text-[10px] text-muted-foreground mt-0.5 line-clamp-1">{t.description}</p>
+          )}
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 mt-1">
+            {due && (
+              <span
+                className="text-[10px] text-muted-foreground"
+                style={t.isOverdue ? { fontWeight: 600 } : undefined}
+              >
+                {due}
+              </span>
+            )}
+            {t.isOverdue && (
+              <span className="text-[10px] text-muted-foreground">
+                {venueName} is waiting on this
+              </span>
+            )}
+          </div>
+        </button>
+        <button
+          type="button"
+          onClick={() => onNavigate(t.targetSection, t.targetFocus)}
+          className="shrink-0 self-center text-[11px] font-semibold px-2.5 py-1.5 rounded-lg text-white transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-1"
+          style={{ background: SAGE }}
+          aria-label={`${cta}: ${t.title}`}
+        >
+          {cta}
+        </button>
+      </div>
+    );
+  }
+
+  function renderGroup(label: string, rows: NextStepsItem[]) {
+    if (rows.length === 0) return null;
+    return (
+      <div className="space-y-1.5" role="group" aria-label={label}>
+        <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground px-0.5">
+          {label}
+        </p>
+        <div className="space-y-1.5">{rows.map(renderRow)}</div>
+      </div>
+    );
+  }
 
   return (
-    <div className="rounded-2xl border bg-card p-5" style={{ borderColor: "#E8E3DC" }}>
-      <div className="flex items-center justify-between mb-3">
-        <p className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: SAGE }}>✅ Your Next Steps</p>
-        {required.length > 0 && <span className="text-[11px] font-semibold text-muted-foreground">{readiness}%</span>}
+    <div
+      className="rounded-2xl border bg-card p-5"
+      style={{
+        borderColor: fullCount > 0
+          ? "color-mix(in srgb, var(--venue-primary) 32%, #E8E3DC)"
+          : "#E8E3DC",
+        boxShadow: fullCount > 0 ? "0 1px 0 color-mix(in srgb, var(--venue-primary) 8%, transparent)" : undefined,
+      }}
+    >
+      <p className="text-[10px] font-semibold uppercase tracking-widest mb-0.5" style={{ color: SAGE }}>
+        What {venueName} needs from you
+      </p>
+      <div className="flex items-baseline justify-between gap-3 mb-3">
+        <h2 className="text-sm font-semibold text-heading">Your Next Steps</h2>
+        {loaded && fullCount > 0 && (
+          <p className="text-[11px] text-muted-foreground shrink-0" aria-live="polite">
+            {fullCount} left for {venueName}
+          </p>
+        )}
       </div>
-      {required.length > 0 && (
-        <div className="h-1.5 rounded-full bg-muted overflow-hidden mb-3">
-          <div className="h-full rounded-full" style={{ width: `${readiness}%`, background: SAGE }} />
-        </div>
-      )}
+
       {!loaded ? (
-        <div className="space-y-1.5">
-          {[1, 2].map((i) => <div key={i} className="h-3.5 rounded-full bg-muted animate-pulse" style={{ width: `${70 - i * 10}%` }} />)}
+        <div className="space-y-2" aria-busy="true" aria-label="Loading your next steps">
+          {[1, 2, 3].map((i) => <div key={i} className="h-10 rounded-xl bg-muted animate-pulse" />)}
         </div>
-      ) : items.length === 0 ? (
-        <p className="text-xs text-muted-foreground">You&apos;re all caught up — nothing due right now.</p>
+      ) : visible.length === 0 ? (
+        <div className="space-y-3">
+          <p className="text-xs text-muted-foreground">
+            You’re all caught up with what {venueName} needs right now.
+          </p>
+          <p className="text-[11px] text-muted-foreground">
+            When you’re ready, keep wedding planning moving in Plans, Guests, or your website.
+          </p>
+          <button
+            type="button"
+            onClick={() => onNavigate("todos")}
+            className="w-full text-xs font-semibold py-2 rounded-xl text-white transition-opacity hover:opacity-90"
+            style={{ background: SAGE }}
+          >
+            Continue planning
+          </button>
+          <button
+            type="button"
+            onClick={() => onNavigate("tasks")}
+            className="w-full text-[11px] font-medium text-muted-foreground hover:text-heading transition-colors"
+          >
+            Open all tasks
+          </button>
+        </div>
       ) : (
-        <div className="space-y-1.5">
-          {items.map((t) => (
-            <p key={t.id} className="text-xs text-heading truncate flex items-center gap-1.5">
-              <Check className="h-3 w-3 shrink-0 opacity-40" /> {t.title}
-            </p>
-          ))}
+        <div className="space-y-3.5">
+          {renderGroup("From your venue", groups.venue)}
+          {renderGroup("Shared planning", groups.shared)}
         </div>
       )}
-      <button type="button" onClick={() => onNavigate("tasks")}
-        className="mt-3.5 w-full text-xs font-semibold py-2 rounded-xl text-white transition-opacity hover:opacity-90"
-        style={{ background: SAGE }}>
-        Open Tasks
-      </button>
+
+      {loaded && visible.length > 0 && (
+        <button
+          type="button"
+          onClick={() => onNavigate("tasks")}
+          className={`mt-3.5 w-full text-xs font-semibold py-2 rounded-xl transition-opacity hover:opacity-90 ${
+            hasMore ? "text-white" : "text-heading border"
+          }`}
+          style={hasMore
+            ? { background: SAGE }
+            : { borderColor: "#E8E3DC", background: "transparent" }}
+        >
+          {hasMore ? `View all ${fullCount} next steps →` : "Open all tasks"}
+        </button>
+      )}
     </div>
   );
 }
-
-type PaymentScheduleLite = { title: string; lineItems: { id: string; label: string; amount: number; dueDate: string | null; status: string }[] };
 
 function PaymentsCard({ token, onNavigate }: { token: string; onNavigate: (s: PortalSection) => void }) {
   const [schedules, setSchedules] = React.useState<PaymentScheduleLite[] | null>(null);
@@ -4363,9 +5229,12 @@ function PaymentsCard({ token, onNavigate }: { token: string; onNavigate: (s: Po
   }, [token]);
 
   if (!schedules) return null;
-  const lineItems = schedules.flatMap((s) => s.lineItems);
-  const outstanding = lineItems.filter((li) => li.status !== "paid");
-  const remaining = outstanding.reduce((sum, li) => sum + li.amount, 0);
+  const canonical = selectCanonicalPaymentSchedules(
+    schedules.map((s, i) => ({ ...s, id: s.id ?? `anon_${i}` })),
+  );
+  const lineItems = canonical.flatMap((s) => s.lineItems);
+  const outstanding = lineItems.filter((li) => li.status !== "paid" && li.status !== "cancelled");
+  const remaining = remainingBalanceFromSchedules(canonical);
   const total = lineItems.reduce((sum, li) => sum + li.amount, 0);
   const paidPct = total > 0 ? Math.round(((total - remaining) / total) * 100) : 0;
   const next = outstanding.filter((li) => li.dueDate).sort((a, b) => (a.dueDate! < b.dueDate! ? -1 : 1))[0] ?? null;
@@ -4380,7 +5249,7 @@ function PaymentsCard({ token, onNavigate }: { token: string; onNavigate: (s: Po
       {lineItems.length === 0 ? (
         <p className="text-xs text-muted-foreground">Your payment schedule will appear here.</p>
       ) : outstanding.length === 0 ? (
-        <p className="text-sm font-semibold text-heading">All paid up ✦</p>
+        <p className="text-sm font-semibold text-heading">All paid up.</p>
       ) : (
         <>
           <p className="font-heading text-2xl font-bold text-heading">{fmt(remaining)}</p>
@@ -4426,12 +5295,12 @@ function TimelineCard({ token, onNavigate }: { token: string; onNavigate: (s: Po
     <div className="rounded-2xl border bg-card p-5" style={{ borderColor: "#E8E3DC" }}>
       <p className="text-[10px] font-semibold uppercase tracking-widest mb-3" style={{ color: SAGE }}>🕒 Timeline</p>
       {upcoming.length === 0 ? (
-        <p className="text-xs text-muted-foreground">Your day-of schedule is being built with your venue.</p>
+        <p className="text-xs text-muted-foreground">Your Timeline is being built…</p>
       ) : (
         <div className="space-y-1.5">
           {upcoming.map((e) => (
             <p key={e.id} className="text-xs text-heading">
-              <span className="font-semibold">{e.entryTime}</span> — {e.title}
+              <span className="font-semibold">{fmtPortalTime(e.entryTime)}</span> — {e.title}
             </p>
           ))}
         </div>
@@ -4445,19 +5314,26 @@ function TimelineCard({ token, onNavigate }: { token: string; onNavigate: (s: Po
   );
 }
 
-// The four cards together, as one grid — "these four cards should
-// represent the operational relationship with the venue," placed
-// immediately below the hero on both mobile and desktop (not sidebar-only).
-// "A single large planning progress bar... every completed task moves it,
-// every upload moves it, every payment moves it, every questionnaire moves
-// it. This becomes addictive." (2026-07-23) — one composite percentage
-// across every system that already tracks completion, not a new metric:
-// required venue tasks, payment line items, the questionnaire, and sent
-// contracts. Placed directly below the hero, above the four venue cards.
-function WeddingPlanningProgressCard({ token, tasks }: { token: string; tasks: PortalTask[] }) {
+// Canonical Home operational % — Option A: primary readiness composite
+// (required tasks + payments + contracts + questionnaire). Vendor owned-pending
+// requests and personal couple_todos drive secondary card state/copy only.
+function WeddingPlanningProgressCard({
+  token, tasks, vendorTasks = [], incompleteCount = 0, onNavigate,
+}: {
+  token: string;
+  tasks: PortalTask[];
+  /** Portal vendor tasks from overview — preferred source for owned-pending count. */
+  vendorTasks?: PortalVendorTask[];
+  incompleteCount?: number;
+  onNavigate?: (s: PortalSection) => void;
+}) {
   const [paymentSchedules, setPaymentSchedules] = React.useState<PaymentScheduleLite[] | null>(null);
   const [questionnaire, setQuestionnaire] = React.useState<{ status: string } | null | undefined>(undefined);
   const [documents, setDocuments] = React.useState<{ docType: string; status: string | null }[] | null>(null);
+  const [personalTodos, setPersonalTodos] = React.useState<CoupleTodo[] | null>(null);
+  const [liveVendorTasks, setLiveVendorTasks] = React.useState<PortalVendorTask[] | null>(
+    vendorTasks.length > 0 ? vendorTasks : null,
+  );
 
   React.useEffect(() => {
     fetch(`/api/portal/payments?token=${token}`).then((r) => r.json())
@@ -4466,119 +5342,257 @@ function WeddingPlanningProgressCard({ token, tasks }: { token: string; tasks: P
       .then((d: { questionnaire?: { status: string } | null }) => setQuestionnaire(d.questionnaire ?? null)).catch(() => setQuestionnaire(null));
     fetch(`/api/portal/documents?token=${token}`).then((r) => r.json())
       .then((d: { documents?: { docType: string; status: string | null }[] }) => setDocuments(d.documents ?? [])).catch(() => setDocuments([]));
-  }, [token]);
+    fetch(`/api/portal/todos?token=${token}`).then((r) => r.json())
+      .then((d: { todos?: CoupleTodo[] }) => setPersonalTodos(d.todos ?? [])).catch(() => setPersonalTodos([]));
+    fetch(`/api/portal/tasks?token=${token}`).then((r) => r.json())
+      .then((d: { vendorTasks?: PortalVendorTask[] }) => setLiveVendorTasks(d.vendorTasks ?? vendorTasks))
+      .catch(() => setLiveVendorTasks(vendorTasks));
+  }, [token, vendorTasks]);
 
-  if (paymentSchedules === null || questionnaire === undefined || documents === null) return null;
+  if (
+    paymentSchedules === null ||
+    questionnaire === undefined ||
+    documents === null ||
+    personalTodos === null ||
+    liveVendorTasks === null
+  ) {
+    return (
+      <div
+        className="rounded-2xl border bg-card p-5 h-full"
+        style={{ borderColor: "#E8E3DC" }}
+        aria-busy="true"
+        aria-label="Loading planning progress"
+      >
+        <div className="h-4 w-36 rounded bg-muted animate-pulse mb-3" />
+        <div className="h-3 rounded-full bg-muted animate-pulse" />
+      </div>
+    );
+  }
 
   const required = tasks.filter((t) => t.isRequired);
-  const paymentItems = paymentSchedules.flatMap((s) => s.lineItems);
+  const paymentItems = selectCanonicalPaymentSchedules(
+    paymentSchedules.map((s, i) => ({ ...s, id: s.id ?? `anon_${i}` })),
+  ).flatMap((s) => s.lineItems);
   const contracts = documents.filter((d) => d.docType === "contract" && (d.status === "sent" || d.status === "signed"));
+  const vendorOpenRequestCount = countOwnedPendingVendorRequests(liveVendorTasks);
+  const vendorWaitingOnVendorCount = countVendorRequestsWaitingOnVendor(liveVendorTasks);
+  const vendorCoupleActionCount = countVendorRequestsNeedingCoupleAction(liveVendorTasks);
 
-  let completed = 0;
-  let total = 0;
-  completed += required.filter((t) => t.status === "complete").length; total += required.length;
-  completed += paymentItems.filter((li) => li.status === "paid").length; total += paymentItems.length;
-  completed += contracts.filter((c) => c.status === "signed").length; total += contracts.length;
-  if (questionnaire) { total += 1; if (questionnaire.status === "submitted" || questionnaire.status === "completed") completed += 1; }
+  const progress = computePlanningProgress({
+    requiredTasks: required,
+    paymentLineItems: paymentItems,
+    contracts,
+    questionnaire,
+    personalTodos: personalTodos.map((t) => ({ completed: t.completed })),
+    venueAttentionIncompleteCount: incompleteCount,
+    vendorOpenRequestCount,
+    vendorWaitingOnVendorCount,
+  });
 
-  if (total === 0) return null;
-  const pct = Math.round((completed / total) * 100);
+  const reviewDestination = progress.reviewDestination;
+  // Waiting-only must never navigate back to an already-acked vendor task.
+  const goReview =
+    onNavigate && (reviewDestination === "tasks" || reviewDestination === "todos")
+      ? () => onNavigate(reviewDestination)
+      : undefined;
+  const hasPersonalIncomplete =
+    progress.kind === "ready"
+      ? progress.personalIncompleteCount > 0
+      : personalTodos.some((t) => !t.completed);
+  const showWaitingNote = reviewDestination === "waiting";
+  const showReviewCta =
+    Boolean(goReview) &&
+    (progress.kind === "empty" ||
+      incompleteCount > 0 ||
+      vendorCoupleActionCount > 0 ||
+      hasPersonalIncomplete);
+
+  if (progress.kind === "empty") {
+    return (
+      <section
+        className="rounded-2xl border bg-card p-5 h-full space-y-3"
+        style={{ borderColor: "#E8E3DC" }}
+        aria-labelledby="planning-progress-heading"
+        aria-describedby="planning-progress-support"
+      >
+        <h2 id="planning-progress-heading" className="text-sm font-semibold text-heading">
+          Your Planning Progress
+        </h2>
+        <p id="planning-progress-support" className="text-[11px] text-muted-foreground leading-snug">
+          {progress.supportingStatement}
+        </p>
+        <p className="sr-only">{progress.accessibleLabel}</p>
+        {showReviewCta && goReview && (
+          <button
+            type="button"
+            onClick={goReview}
+            className="text-[11px] font-semibold hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 rounded-sm"
+            style={{ color: SAGE }}
+          >
+            Explore your planning →
+          </button>
+        )}
+      </section>
+    );
+  }
 
   return (
-    <div className="rounded-2xl border bg-card p-5" style={{ borderColor: "#E8E3DC" }}>
-      <div className="flex items-center justify-between mb-2">
-        <p className="text-sm font-semibold text-heading">Wedding Planning Progress</p>
-        <span className="font-heading text-xl font-bold" style={{ color: SAGE }}>{pct}%</span>
+    <section
+      className="rounded-2xl border bg-card p-5 h-full"
+      style={{ borderColor: "#E8E3DC" }}
+      aria-labelledby="planning-progress-heading"
+      aria-describedby="planning-progress-support"
+    >
+      <div className="flex items-baseline justify-between gap-3 mb-1">
+        <h2 id="planning-progress-heading" className="text-sm font-semibold text-heading">
+          Your Planning Progress
+        </h2>
+        <div className="text-right shrink-0" aria-hidden>
+          <p
+            className="font-heading text-xl font-bold tabular-nums leading-none"
+            style={{ color: SAGE }}
+          >
+            {progress.percent}%
+          </p>
+          <p className="text-[10px] text-muted-foreground mt-0.5 leading-none">readiness</p>
+        </div>
       </div>
-      <div className="h-3 rounded-full bg-muted overflow-hidden">
-        <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, background: `linear-gradient(90deg, var(--venue-primary), var(--venue-secondary))` }} />
+      <p id="planning-progress-support" className="text-[11px] text-muted-foreground mb-1 leading-snug">
+        {progress.supportingStatement}
+      </p>
+      <p className="text-[10px] text-muted-foreground/80 mb-3 leading-snug">
+        {progress.sourceNote}
+      </p>
+
+      <div
+        className="h-3 rounded-full bg-muted overflow-hidden mb-3"
+        role="progressbar"
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-valuenow={progress.percent}
+        aria-label={progress.accessibleLabel}
+      >
+        <div
+          className="h-full rounded-full transition-all"
+          style={{
+            width: `${progress.percent}%`,
+            background: "linear-gradient(90deg, var(--venue-primary), var(--venue-secondary))",
+          }}
+        />
       </div>
-    </div>
+
+      {progress.categories.length > 0 && (
+        <ul className="flex flex-wrap gap-1.5 list-none p-0 m-0" aria-label="Planning progress details">
+          {progress.categories.map((c) => (
+            <li
+              key={c.label}
+              className="text-[10px] px-2 py-0.5 rounded-full bg-muted text-muted-foreground"
+            >
+              {c.label} · {c.detail}
+            </li>
+          ))}
+        </ul>
+      )}
+
+      {showWaitingNote && (
+        <p className="mt-3 text-[11px] text-muted-foreground leading-snug">
+          Waiting for your vendor — nothing more for you right now.
+        </p>
+      )}
+
+      {showReviewCta && goReview && (
+        <button
+          type="button"
+          onClick={goReview}
+          className="mt-3 text-[11px] font-semibold hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 rounded-sm"
+          style={{ color: SAGE }}
+        >
+          Review what’s left
+        </button>
+      )}
+    </section>
   );
 }
 
-// Program 4 dashboard restructure (2026-07-24), Part 3: "Immediately below
-// the hero should be operational planning only." Order is the directive's
-// own list — Venue Team, Next Steps, Payment Status, Timeline Progress,
-// Wedding Planning Progress — the same five cards as before, reordered so
-// the composite progress bar reads as the summary of the four cards above
-// it rather than a headline sitting in front of them.
-function YourVenueCards({ token, tasks, onNavigate }: { token: string; tasks: PortalTask[]; onNavigate: (s: PortalSection) => void }) {
-  return (
-    <div className="space-y-2">
-      <p className="text-[10px] font-bold uppercase tracking-[0.2em]" style={{ color: SAGE }}>Your Venue</p>
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        <VenueTeamCard token={token} onNavigate={onNavigate} />
-        <NextStepsCard token={token} tasks={tasks} onNavigate={onNavigate} />
-        <PaymentsCard token={token} onNavigate={onNavigate} />
-        <TimelineCard token={token} onNavigate={onNavigate} />
-      </div>
-      <WeddingPlanningProgressCard token={token} tasks={tasks} />
-    </div>
-  );
-}
+// YourVenueCards retired — Couple Home Impl 1 composes Working With Your Venue + Next Steps directly.
 
-// Program 4, Initiative D, Phase 5 (2026-07-23) — "Only after the venue
-// section should the couple's own planning appear... These are engagement
-// tools. They should not compete visually with the venue relationship."
-// Quieter than YourVenueCards: smaller cards, muted icons, no white filled
-// buttons — a tap target, not an operational status card.
-//
-// Program 5 (2026-07-24) — "Those boxes become live status cards instead
-// of just buttons... Now they're actually useful." Each card below fetches
-// its own real number the same self-contained way VenueTeamCard/
-// PaymentsCard/TimelineCard already do — no shared aggregate endpoint,
-// consistent with the rest of this dashboard. Luv is deliberately absent
-// here now — she's the FloatingLuvWidget, not a planning box.
+
+// ── Your Wedding launches (Couple Home Impl 5) ───────────────────────────────
+// Curated invitations into couple-owned destinations — status presence only.
+// Destination pages remain SoT; no editors / dashboards / personal todo rows
+// live here. Luv stays below this section (P4).
 const GREEN = "#5F8A5B";
 
-function LaunchCard({ icon, label, status, statusColor, onClick }: {
-  icon: string; label: string; status: string | null; statusColor?: string; onClick: () => void;
+function WeddingLaunchCard({
+  icon, model, onNavigate,
+}: {
+  icon: string;
+  model: WeddingLaunchModel;
+  onNavigate: (s: PortalSection) => void;
 }) {
+  const statusColor =
+    model.tone === "complete" ? GREEN : "var(--muted-foreground)";
+
   return (
-    <button type="button" onClick={onClick}
-      className="rounded-xl border bg-card/60 px-3 py-3.5 text-left hover:bg-card hover:shadow-sm transition-all"
-      style={{ borderColor: "#EDE8E1" }}>
-      <p className="text-lg opacity-80">{icon}</p>
-      <p className="text-[11px] font-medium text-heading/85 mt-1.5 leading-snug">{label}</p>
-      {status && <p className="text-[10px] mt-0.5" style={{ color: statusColor ?? "var(--muted-foreground)" }}>{status}</p>}
+    <button
+      type="button"
+      onClick={() => onNavigate(model.destination)}
+      aria-label={model.accessibleLabel}
+      className="group w-full min-w-0 rounded-2xl border bg-card px-4 py-4 text-left transition-all hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
+      style={{ borderColor: "#E8E3DC" }}
+    >
+      <div className="flex items-start gap-3 min-w-0">
+        <span className="text-base shrink-0 mt-0.5 opacity-80" aria-hidden>{icon}</span>
+        <div className="min-w-0 flex-1 space-y-1">
+          <p className="text-sm font-semibold text-heading leading-snug">{model.label}</p>
+          <p className="text-[11px] leading-snug" style={{ color: statusColor }}>
+            {model.status}
+          </p>
+          <p
+            className="text-[11px] font-semibold mt-2 group-hover:underline"
+            style={{ color: SAGE }}
+          >
+            {model.cta} →
+          </p>
+        </div>
+      </div>
     </button>
   );
 }
 
-// "Wedding Website — Published ✓ or 82% complete" — reuses website-editor's
-// own ALL_SECTIONS/preview() predicates (imported as WEBSITE_ALL_SECTIONS)
-// so this card can never drift from what the Studio itself counts as a
-// filled section.
+// Reuses website-editor ALL_SECTIONS/preview() so Home never drifts from Studio.
 function WebsiteLaunchCard({ token, onNavigate }: { token: string; onNavigate: (s: PortalSection) => void }) {
-  const [site, setSite] = React.useState<CoupleWebsite | null>(null);
+  const [site, setSite] = React.useState<CoupleWebsite | null | undefined>(undefined);
 
   React.useEffect(() => {
     fetch(`/api/portal/website?token=${token}`).then(r => r.json())
       .then((d: CoupleWebsite) => setSite(d?.exists ? d : null)).catch(() => setSite(null));
   }, [token]);
 
-  let status: string | null = null;
-  if (site) {
-    if (site.isPublished) {
-      status = "Published ✓";
-    } else {
-      const completed = WEBSITE_ALL_SECTIONS.filter(s => s.preview?.(site.content ?? {})).length;
-      status = `${Math.round((completed / WEBSITE_ALL_SECTIONS.length) * 100)}% complete`;
-    }
-  }
+  const completed = site
+    ? WEBSITE_ALL_SECTIONS.filter(s => s.preview?.(site.content ?? {})).length
+    : 0;
+  const model = resolveWebsiteLaunch({
+    exists: Boolean(site),
+    isPublished: Boolean(site?.isPublished),
+    completedSections: completed,
+    totalSections: WEBSITE_ALL_SECTIONS.length,
+  });
 
-  return <LaunchCard icon="🌐" label="Wedding Website" status={status} statusColor={site?.isPublished ? GREEN : undefined} onClick={() => onNavigate("website")} />;
+  return <WeddingLaunchCard icon="🌐" model={model} onNavigate={onNavigate} />;
 }
 
-// "Guest List — 128 invited, 97 confirmed" — guestStats is already fetched
-// once at the PortalShell level; no new request needed for this card.
+// guestStats fetched once at PortalShell — no extra Home request.
 function GuestsLaunchCard({ guestStats, onNavigate }: { guestStats: GuestStats | null; onNavigate: (s: PortalSection) => void }) {
-  const status = guestStats && guestStats.total > 0 ? `${guestStats.total} invited, ${guestStats.attending} confirmed` : null;
-  return <LaunchCard icon="👥" label="Guest List" status={status} onClick={() => onNavigate("guests")} />;
+  const model = resolveGuestsLaunch(
+    guestStats && guestStats.total > 0
+      ? { total: guestStats.total, attending: guestStats.attending }
+      : null,
+  );
+  return <WeddingLaunchCard icon="👥" model={model} onNavigate={onNavigate} />;
 }
 
-// "Budget — $24,800 of $30,000"
+// Canonical budget totals only — no new financial calculation.
 function BudgetLaunchCard({ token, onNavigate }: { token: string; onNavigate: (s: PortalSection) => void }) {
   const [budget, setBudget] = React.useState<CoupleBudget | null>(null);
 
@@ -4587,14 +5601,16 @@ function BudgetLaunchCard({ token, onNavigate }: { token: string; onNavigate: (s
       .then((d: { budget?: CoupleBudget | null }) => setBudget(d.budget ?? null)).catch(() => setBudget(null));
   }, [token]);
 
-  const fmt = (n: number) => new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(n);
   const spent = budget?.categories.reduce((sum, c) => sum + c.actualAmount, 0) ?? 0;
-  const status = budget && budget.totalBudget > 0 ? `${fmt(spent)} of ${fmt(budget.totalBudget)}` : null;
+  const model = resolveBudgetLaunch(
+    budget && budget.totalBudget > 0
+      ? { totalBudget: budget.totalBudget, spent }
+      : null,
+  );
 
-  return <LaunchCard icon="💰" label="Budget" status={status} onClick={() => onNavigate("budget")} />;
+  return <WeddingLaunchCard icon="💰" model={model} onNavigate={onNavigate} />;
 }
 
-// "Seating — 4 guests unassigned"
 function SeatingLaunchCard({ token, onNavigate }: { token: string; onNavigate: (s: PortalSection) => void }) {
   const [data, setData] = React.useState<SeatingData | null>(null);
 
@@ -4604,57 +5620,52 @@ function SeatingLaunchCard({ token, onNavigate }: { token: string; onNavigate: (
   }, [token]);
 
   const unassigned = data ? data.unassignedGuests.length + data.needsReassignment.length : 0;
-  const status = !data?.floorPlan ? null : unassigned > 0 ? `${unassigned} guest${unassigned === 1 ? "" : "s"} unassigned` : "All guests seated ✓";
+  const model = resolveSeatingLaunch(
+    data
+      ? {
+          hasFloorPlan: Boolean(data.floorPlan),
+          hadPriorWork: Boolean(data.hadPriorWork),
+          unassignedCount: unassigned,
+        }
+      : null,
+  );
 
-  return <LaunchCard icon="🪑" label="Seating" status={status} statusColor={data?.floorPlan && unassigned === 0 ? GREEN : undefined} onClick={() => onNavigate("seating")} />;
+  return <WeddingLaunchCard icon="🪑" model={model} onNavigate={onNavigate} />;
 }
 
-// "Plans — 8 saved ideas" (the Inspiration Board photo count, already part
-// of the profile fetch) falls back to the to-do count when there are no
-// saved ideas yet, rather than showing nothing.
+// Personal todos / ideas summary only — never listed as Next Steps rows.
 function PlansLaunchCard({ todoCount, profile, onNavigate }: { todoCount: number; profile: CoupleProfile | null; onNavigate: (s: PortalSection) => void }) {
-  const ideaCount = profile?.inspirationPhotos.length ?? 0;
-  const status = ideaCount > 0 ? `${ideaCount} saved idea${ideaCount === 1 ? "" : "s"}` : todoCount > 0 ? `${todoCount} on your list` : null;
-  return <LaunchCard icon="✨" label="Plans" status={status} onClick={() => onNavigate("todos")} />;
+  const model = resolvePlansLaunch({
+    ideaCount: profile?.inspirationPhotos.length ?? 0,
+    todoCount,
+  });
+  return <WeddingLaunchCard icon="✨" model={model} onNavigate={onNavigate} />;
 }
 
-// "Our Story — Published ✓" in the original directive assumed a publish
-// state this field doesn't have (it's the couple's private profile text,
-// not part of the published wedding website — see the website's own,
-// separate story section on the Website card above). Showing "Written ✓"
-// once they've saved something is the accurate equivalent rather than a
-// fabricated publish flag.
+// Private profile story text — not the published website story section.
 function StoryLaunchCard({ profile, onNavigate }: { profile: CoupleProfile | null; onNavigate: (s: PortalSection) => void }) {
-  const status = profile?.ourStory?.trim() ? "Written ✓" : null;
-  return <LaunchCard icon="💍" label="Our Story" status={status} statusColor={status ? GREEN : undefined} onClick={() => onNavigate("story")} />;
+  const model = resolveStoryLaunch({ ourStory: profile?.ourStory });
+  return <WeddingLaunchCard icon="💍" model={model} onNavigate={onNavigate} />;
 }
 
-// "I wouldn't leave Luv buried. Instead I'd give Luv one small card every
-// day... Tiny. Never overwhelming." (2026-07-23) — promoted out of the
-// desktop-only sidebar into the main dashboard flow. Tries specific,
-// real signals first (an upcoming key date within the week, an
-// unstarted questionnaire), then falls back to the existing mood-based
-// getLuvMessage() — never a blank or generic-feeling card.
-// Luv, the single coaching surface (2026-07-24): "One card. One voice.
-// Never multiple coaching widgets." This absorbs every other Luv-voiced or
-// coaching-flavored card that used to sit next to it on the dashboard —
-// Most Couples Like You (social proof), Next Big Moment (the next
-// milestone suggestion), This Week (activity digest), and the unlabeled
-// "Luv observation" quote card — as additional candidate messages in the
-// same priority chain that already existed for key dates and the
-// questionnaire. Nothing here is new copy or a new planning concept; every
-// message reuses the exact text bank the card it replaced already had.
-// Still exactly one small card, still falls back to the same generic mood
-// message as before when nothing more specific applies.
+// Couple Home Impl 6 — Luv Suggestions:
+// One quiet suggestion card under Your Wedding (P4). Existing priority chain
+// via resolveLuvHomeSuggestion — warm, optional, never silently acts, and
+// skips venue-owned signals when Your Next Steps already has attention.
 function LuvDailyCard({
-  token, du, guestStats, readiness, bracket, recentActivity, onNavigate,
+  token, du, guestStats, readiness, bracket, recentActivity, venueAttentionCount, onNavigate,
 }: {
-  token: string; du: number | null; guestStats: GuestStats | null; readiness: number;
-  bracket: string; recentActivity: RecentActivity | null; onNavigate: (s: PortalSection) => void;
+  token: string;
+  du: number | null;
+  guestStats: GuestStats | null;
+  readiness: number;
+  bracket: string;
+  recentActivity: RecentActivity | null;
+  venueAttentionCount: number;
+  onNavigate: (s: PortalSection) => void;
 }) {
   const [keyDates, setKeyDates] = React.useState<PortalKeyDate[] | null>(null);
   const [questionnaire, setQuestionnaire] = React.useState<{ status: string } | null | undefined>(undefined);
-  const guestTotal = guestStats?.total ?? 0;
 
   React.useEffect(() => {
     fetch(`/api/portal/key-dates?token=${token}`).then((r) => r.json())
@@ -4663,91 +5674,143 @@ function LuvDailyCard({
       .then((d: { questionnaire?: { status: string } | null }) => setQuestionnaire(d.questionnaire ?? null)).catch(() => setQuestionnaire(null));
   }, [token]);
 
-  if (keyDates === null || questionnaire === undefined) return null;
+  if (keyDates === null || questionnaire === undefined) {
+    return (
+      <section
+        className="rounded-2xl px-4 py-3.5"
+        style={{ background: `${ROSE}05`, border: `1px solid ${ROSE}14` }}
+        aria-labelledby="luv-suggestions-heading"
+        aria-busy="true"
+      >
+        <h2
+          id="luv-suggestions-heading"
+          className="text-[10px] font-semibold uppercase tracking-widest"
+          style={{ color: ROSE_DEEP }}
+        >
+          From Luv
+        </h2>
+        <p className="text-xs text-muted-foreground mt-1.5">A thought for you in a moment…</p>
+      </section>
+    );
+  }
 
   const today = new Date();
   const inSevenDays = new Date(today.getTime() + 7 * 86400000);
   const soonKeyDate = keyDates
-    .filter((k) => { const d = new Date(k.date + "T12:00:00"); return d >= today && d <= inSevenDays; })
+    .filter((k) => {
+      const d = new Date(k.date + "T12:00:00");
+      return d >= today && d <= inSevenDays;
+    })
     .sort((a, b) => (a.date < b.date ? -1 : 1))[0] ?? null;
 
-  const observation = getOverviewObservation(
-    guestStats ? { total: guestStats.total, attending: guestStats.attending } : null,
-    readiness, du,
+  const questionnaireOpen = Boolean(
+    questionnaire && questionnaire.status !== "submitted" && questionnaire.status !== "completed",
   );
 
-  let message: string;
-  let actionable = false;
-  if (soonKeyDate) {
-    const weekday = new Date(soonKeyDate.date + "T12:00:00").toLocaleDateString("en-US", { weekday: "long" });
-    message = `Your ${soonKeyDate.label.toLowerCase()} is ${weekday}.`;
-  } else if (observation) {
-    message = observation.text;
-  } else if ((recentActivity?.totalThisWeek ?? 0) > 0) {
-    const n = recentActivity!.totalThisWeek;
-    message = `You completed ${n} planning ${n === 1 ? "item" : "items"} this week.`;
-  } else if (questionnaire && questionnaire.status !== "submitted" && questionnaire.status !== "completed") {
-    message = "Your questionnaire is ready whenever you'd like to fill it out.";
-  } else if (du === null || du > 14) {
-    // Both are real bracket-keyed content this card absorbed (Next Big
-    // Moment vs. Most Couples Like You) with no other signal to choose
-    // between them — alternate by day so "one small card every day"
-    // actually varies day to day instead of always picking the same one.
-    if (today.getDate() % 2 === 0) {
-      const milestone = guestTotal === 0 && bracket !== "<1"
-        ? NEXT_MILESTONE_BY_BRACKET["12+"] : NEXT_MILESTONE_BY_BRACKET[bracket] ?? NEXT_MILESTONE_BY_BRACKET["6-9"];
-      message = `${milestone.title}. ${milestone.desc}`;
-      actionable = true;
-    } else {
-      message = SOCIAL_PROOF_BY_BRACKET[bracket] ?? SOCIAL_PROOF_BY_BRACKET["6-9"];
-    }
-  } else {
-    message = getLuvMessage(du, guestTotal, readiness);
-  }
+  const suggestion = resolveLuvHomeSuggestion({
+    daysUntil: du,
+    guestTotal: guestStats?.total ?? 0,
+    guestAttending: guestStats?.attending ?? 0,
+    readiness,
+    bracket,
+    totalThisWeek: recentActivity?.totalThisWeek ?? 0,
+    questionnaireOpen,
+    soonKeyDate: soonKeyDate ? { label: soonKeyDate.label, date: soonKeyDate.date } : null,
+    venueAttentionCount,
+    dayOfMonth: today.getDate(),
+  });
 
-  const content = (
-    <>
-      <span style={{ color: ROSE, fontSize: 15 }}>💗</span>
-      <p className="text-xs leading-relaxed" style={{ color: "#5A3235" }}>
-        <span className="font-semibold">Luv says…</span> "{message}"
-        {actionable && <span className="font-semibold" style={{ color: ROSE_DEEP }}> Add to your plans →</span>}
-      </p>
-    </>
+  const hasCta = Boolean(suggestion.destination && suggestion.ctaLabel);
+
+  const inner = (
+    <div className="flex items-start gap-2.5">
+      <span className="mt-0.5 shrink-0 text-[15px]" style={{ color: ROSE }} aria-hidden>
+        💗
+      </span>
+      <div className="min-w-0 space-y-1.5">
+        <h2
+          id="luv-suggestions-heading"
+          className="text-[10px] font-semibold uppercase tracking-widest"
+          style={{ color: ROSE_DEEP }}
+        >
+          From Luv
+        </h2>
+        <p className="text-xs leading-relaxed text-heading" style={{ color: "#5A3235" }}>
+          {suggestion.message}
+        </p>
+        {hasCta && (
+          <p
+            className="text-[11px] font-medium"
+            style={{ color: ROSE_DEEP }}
+          >
+            {suggestion.ctaLabel} →
+          </p>
+        )}
+      </div>
+    </div>
   );
 
-  if (actionable) {
+  if (hasCta && suggestion.destination) {
+    const destination = suggestion.destination;
     return (
-      <button type="button" onClick={() => onNavigate("todos")}
-        className="w-full text-left rounded-2xl px-4 py-3.5 flex items-start gap-2.5 hover:shadow-sm transition-all"
-        style={{ background: `${ROSE}08`, border: `1px solid ${ROSE}25` }}>
-        {content}
-      </button>
+      <section
+        aria-labelledby="luv-suggestions-heading"
+        className="rounded-2xl"
+        style={{ background: `${ROSE}05`, border: `1px solid ${ROSE}14` }}
+      >
+        <button
+          type="button"
+          onClick={() => onNavigate(destination)}
+          aria-label={suggestion.accessibleLabel}
+          className="w-full text-left rounded-2xl px-4 py-3.5 transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
+        >
+          {inner}
+        </button>
+      </section>
     );
   }
 
   return (
-    <div className="rounded-2xl px-4 py-3.5 flex items-start gap-2.5"
-      style={{ background: `${ROSE}08`, border: `1px solid ${ROSE}25` }}>
-      {content}
-    </div>
+    <section
+      aria-labelledby="luv-suggestions-heading"
+      aria-label={suggestion.accessibleLabel}
+      className="rounded-2xl px-4 py-3.5"
+      style={{ background: `${ROSE}05`, border: `1px solid ${ROSE}14` }}
+    >
+      {inner}
+    </section>
   );
 }
 
-function YourWeddingSection({ token, guestStats, todoCount, profile, onNavigate }: {
-  token: string; guestStats: GuestStats | null; todoCount: number; profile: CoupleProfile | null; onNavigate: (s: PortalSection) => void;
+function YourWeddingSection({ token, guestStats, todoCount, profile, accessLevel = "couple", onNavigate }: {
+  token: string; guestStats: GuestStats | null; todoCount: number; profile: CoupleProfile | null;
+  accessLevel?: PortalContext["accessLevel"];
+  onNavigate: (s: PortalSection) => void;
 }) {
+  const showBudget = accessLevel !== "view_only";
   return (
-    <div className="space-y-2">
-      <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-muted-foreground/50">Your Wedding</p>
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+    <section className="space-y-3" aria-labelledby="your-wedding-heading">
+      <div>
+        <h2
+          id="your-wedding-heading"
+          className="text-[10px] font-semibold uppercase tracking-widest"
+          style={{ color: SAGE }}
+        >
+          Your Wedding
+        </h2>
+        <p className="text-[11px] text-muted-foreground mt-1 leading-snug">
+          What would you like to work on for your wedding?
+        </p>
+      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
         <WebsiteLaunchCard token={token} onNavigate={onNavigate} />
         <GuestsLaunchCard guestStats={guestStats} onNavigate={onNavigate} />
-        <BudgetLaunchCard token={token} onNavigate={onNavigate} />
+        {showBudget && <BudgetLaunchCard token={token} onNavigate={onNavigate} />}
         <SeatingLaunchCard token={token} onNavigate={onNavigate} />
         <PlansLaunchCard todoCount={todoCount} profile={profile} onNavigate={onNavigate} />
         <StoryLaunchCard profile={profile} onNavigate={onNavigate} />
       </div>
-    </div>
+    </section>
   );
 }
 

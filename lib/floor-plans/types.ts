@@ -47,6 +47,11 @@ export type FloorPlan = {
   // a separate flag since the couple and vendor audiences are gated
   // independently (a plan can be shared with one, both, or neither).
   sharedWithVendors: boolean;
+  // Phase 1 — Couple Floor Plan view: Share Floor Plan. Independent of
+  // clientAccess (Enable Seating). Shared ⇒ reference-only view; no edit.
+  sharedWithCouple: boolean;
+  // Phase 2 — template this event plan was cloned from (provenance snapshot).
+  sourceTemplateId: string | null;
   backgroundImageUrl: string | null;
   backgroundImageOpacity: number;
   backgroundLocked: boolean;
@@ -58,7 +63,8 @@ export type FloorPlan = {
   measurementUnit: MeasurementUnit;
   // Phase 4 — the print-ready checkpoint reconciliation is anchored to.
   // Mirrors event_orders.finalized_at's shape exactly. Never gates editing
-  // — placement stays open before, during, and after Final.
+  // — placement stays open before, during, and after Ready (customer language;
+  // column remains finalized_at). Not an immutability lock.
   finalizedAt: string | null;
   createdAt: string;
   updatedAt: string;

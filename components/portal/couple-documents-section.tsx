@@ -1,8 +1,13 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { coupleCelebrationMessage } from "@/lib/luv/celebrations";
+import { celebrateLuv } from "@/lib/luv/celebrate";
+import { shouldPresentVerifiedCelebration } from "@/lib/luv/verified-domain-celebrations";
+import { portalFocusElementId } from "@/lib/portal/workspace-routing";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -26,7 +31,8 @@ type CoupleDocument = {
   content?: string | null;
   signToken?: string | null;
   lineItems?: LineItem[];
-  uploadedBy: "couple" | "venue";
+  uploadedBy: "couple" | "venue" | "vendor";
+  vendorName?: string | null;
   shareWithVenue?: boolean;
   createdAt: string;
 };
@@ -82,17 +88,17 @@ function ContractCard({ doc }: { doc: CoupleDocument }) {
   const needsSignature = doc.status === "sent" && !!doc.signToken;
 
   return (
-    <div className={`rounded-xl border overflow-hidden ${needsSignature ? "border-amber-300 bg-amber-50/30" : "border-gray-100"}`}>
-      <div className="flex items-center gap-3 px-4 py-3">
+    <div className={`w-full rounded-xl border overflow-hidden ${needsSignature ? "border-amber-300 bg-amber-50/30" : "border-border/60 bg-card"}`}>
+      <div className="flex items-center gap-3 px-3 py-3">
         <div className="w-9 h-9 rounded-lg flex items-center justify-center text-lg border bg-blue-50 text-blue-700 border-blue-100 shrink-0">📝</div>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-sm font-medium text-[#2D3D2D] truncate">{doc.name}</span>
+            <span className="text-sm font-medium text-heading truncate">{doc.name}</span>
             {doc.status && STATUS_BADGE[doc.status] && (
               <Badge className={`text-[10px] px-1.5 py-0 border ${STATUS_BADGE[doc.status].color}`}>{STATUS_BADGE[doc.status].label}</Badge>
             )}
           </div>
-          <div className="flex items-center gap-3 mt-0.5 text-[11px] text-gray-400">
+          <div className="flex items-center gap-3 mt-0.5 text-[11px] text-muted-foreground">
             {doc.signedAt ? <span>Signed {fmtDate(doc.signedAt)}</span> : <span>Sent {fmtDate(doc.createdAt)}</span>}
           </div>
         </div>
@@ -102,12 +108,12 @@ function ContractCard({ doc }: { doc: CoupleDocument }) {
         </button>
       </div>
       {expanded && doc.content && (
-        <div className="px-4 pb-4 border-t border-gray-100 pt-3">
-          <p className="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed max-h-80 overflow-y-auto">{doc.content}</p>
+        <div className="px-3 pb-3 border-t border-border/40 pt-3">
+          <p className="text-sm text-muted-foreground whitespace-pre-wrap leading-relaxed max-h-80 overflow-y-auto">{doc.content}</p>
         </div>
       )}
       {needsSignature && (
-        <div className="px-4 pb-3">
+        <div className="px-3 pb-3">
           <a href={`/sign/${doc.signToken}`} target="_blank" rel="noopener noreferrer">
             <Button size="sm" className="text-xs">Review &amp; sign →</Button>
           </a>
@@ -124,17 +130,17 @@ function InvoiceCard({ doc }: { doc: CoupleDocument }) {
   const hasBalance = (doc.balanceDue ?? 0) > 0;
 
   return (
-    <div className={`rounded-xl border overflow-hidden ${hasBalance ? "border-amber-300 bg-amber-50/30" : "border-gray-100"}`}>
-      <div className="flex items-center gap-3 px-4 py-3">
+    <div className={`w-full rounded-xl border overflow-hidden ${hasBalance ? "border-amber-300 bg-amber-50/30" : "border-border/60 bg-card"}`}>
+      <div className="flex items-center gap-3 px-3 py-3">
         <div className="w-9 h-9 rounded-lg flex items-center justify-center text-lg border bg-amber-50 text-amber-700 border-amber-100 shrink-0">🧾</div>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-sm font-medium text-[#2D3D2D] truncate">{doc.name}</span>
+            <span className="text-sm font-medium text-heading truncate">{doc.name}</span>
             {doc.status && STATUS_BADGE[doc.status] && (
               <Badge className={`text-[10px] px-1.5 py-0 border ${STATUS_BADGE[doc.status].color}`}>{STATUS_BADGE[doc.status].label}</Badge>
             )}
           </div>
-          <div className="flex items-center gap-3 mt-0.5 text-[11px] text-gray-400">
+          <div className="flex items-center gap-3 mt-0.5 text-[11px] text-muted-foreground">
             <span>Total {fmtCurrency(doc.amount ?? 0)}</span>
             {hasBalance && <span className="text-amber-700 font-medium">· {fmtCurrency(doc.balanceDue!)} due</span>}
           </div>
@@ -144,17 +150,17 @@ function InvoiceCard({ doc }: { doc: CoupleDocument }) {
         </button>
       </div>
       {expanded && doc.lineItems && (
-        <div className="px-4 pb-4 border-t border-gray-100 pt-3 space-y-1.5">
+        <div className="px-3 pb-3 border-t border-border/40 pt-3 space-y-1.5">
           {doc.lineItems.map((li) => (
-            <div key={li.id} className="flex items-center justify-between text-xs text-gray-600">
-              <span>{li.description} {li.quantity !== 1 && <span className="text-gray-400">× {li.quantity}</span>}</span>
+            <div key={li.id} className="flex items-center justify-between text-xs text-muted-foreground">
+              <span>{li.description} {li.quantity !== 1 && <span className="opacity-70">× {li.quantity}</span>}</span>
               <span className="font-mono">{fmtCurrency(li.amount)}</span>
             </div>
           ))}
         </div>
       )}
       {hasBalance && (
-        <div className="px-4 pb-3">
+        <div className="px-3 pb-3">
           <a href="#payments">
             <Button size="sm" variant="outline" className="text-xs">Go to Payments →</Button>
           </a>
@@ -168,18 +174,25 @@ function InvoiceCard({ doc }: { doc: CoupleDocument }) {
 
 function DocRow({ doc }: { doc: CoupleDocument }) {
   const meta = DOC_META[doc.docType] ?? DOC_META.other;
+  const fromVendor =
+    doc.uploadedBy === "vendor"
+      ? (doc.vendorName?.trim() ? `From ${doc.vendorName.trim()}` : "From your vendors")
+      : null;
 
   return (
-    <div className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50/60 transition-colors group rounded-lg">
+    <div className="flex w-full items-center gap-3 rounded-xl border border-border/60 bg-card px-3 py-3 group">
       <div className={`w-9 h-9 rounded-lg flex items-center justify-center text-lg border ${meta.color}`}>{meta.emoji}</div>
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 flex-wrap">
-          <span className="text-sm font-medium text-[#2D3D2D] truncate">{doc.name}</span>
+          <span className="text-sm font-medium text-heading truncate">{doc.name}</span>
           {doc.uploadedBy === "couple" && (
-            <Badge variant="outline" className="text-[10px] px-1.5 py-0 text-gray-400 border-gray-200">Your upload</Badge>
+            <Badge variant="outline" className="text-[10px] px-1.5 py-0 text-muted-foreground border-border">Your upload</Badge>
+          )}
+          {fromVendor && (
+            <Badge variant="outline" className="text-[10px] px-1.5 py-0 text-muted-foreground border-border">{fromVendor}</Badge>
           )}
         </div>
-        <div className="flex items-center gap-3 mt-0.5 text-[11px] text-gray-400">
+        <div className="flex items-center gap-3 mt-0.5 text-[11px] text-muted-foreground">
           <span>{meta.label}</span>
           {doc.amount != null && <span>· {fmtCurrency(doc.amount)}</span>}
           {doc.fileSize && <span>· {fmtBytes(doc.fileSize)}</span>}
@@ -188,7 +201,7 @@ function DocRow({ doc }: { doc: CoupleDocument }) {
       </div>
       {doc.fileUrl && (
         <a href={doc.fileUrl} target="_blank" rel="noopener noreferrer"
-          className="opacity-0 group-hover:opacity-100 text-xs text-[var(--venue-primary)] hover:text-[var(--venue-secondary)] transition-opacity px-2 py-1 rounded border border-transparent hover:border-[color-mix(in_srgb,var(--venue-primary)_20%,transparent)]">
+          className="shrink-0 text-xs font-semibold text-[var(--venue-primary)] hover:opacity-80 transition-opacity">
           Open ↗
         </a>
       )}
@@ -198,11 +211,11 @@ function DocRow({ doc }: { doc: CoupleDocument }) {
 
 function ReceiptRow({ r }: { r: PaidLineItem }) {
   return (
-    <div className="flex items-center gap-3 px-4 py-3">
+    <div className="flex w-full items-center gap-3 rounded-xl border border-border/60 bg-card px-3 py-3">
       <div className="w-9 h-9 rounded-lg flex items-center justify-center text-lg border bg-green-50 text-green-700 border-green-100 shrink-0">🧾</div>
       <div className="flex-1 min-w-0">
-        <span className="text-sm font-medium text-[#2D3D2D]">{r.label}</span>
-        <div className="flex items-center gap-3 mt-0.5 text-[11px] text-gray-400">
+        <span className="text-sm font-medium text-heading">{r.label}</span>
+        <div className="flex items-center gap-3 mt-0.5 text-[11px] text-muted-foreground">
           <span>{fmtCurrency(r.paidAmount ?? r.amount)} paid</span>
           <span>· {fmtDate(r.paidAt)}</span>
           {r.paymentMethod && <span>· {r.paymentMethod}</span>}
@@ -229,16 +242,16 @@ function QuestionnaireCard({ status, onNavigate }: { status: string; onNavigate:
 
   return (
     <button type="button" onClick={() => onNavigate("questionnaire")}
-      className={`w-full text-left flex items-center gap-3 px-4 py-3 rounded-xl border transition-colors hover:bg-gray-50/60 ${isDone ? "border-gray-100" : "border-amber-300 bg-amber-50/30"}`}>
+      className={`w-full text-left flex items-center gap-3 rounded-xl border px-3 py-3 transition-opacity hover:opacity-90 ${isDone ? "border-border/60 bg-card" : "border-amber-300 bg-amber-50/30"}`}>
       <div className="w-9 h-9 rounded-lg flex items-center justify-center text-lg border bg-purple-50 text-purple-700 border-purple-100 shrink-0">📋</div>
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 flex-wrap">
-          <span className="text-sm font-medium text-[#2D3D2D]">Final Details Questionnaire</span>
+          <span className="text-sm font-medium text-heading">Final Details Questionnaire</span>
           <Badge className={`text-[10px] px-1.5 py-0 border ${badge.color}`}>{badge.label}</Badge>
         </div>
-        <p className="text-[11px] text-gray-400 mt-0.5">Meal selections, music, emergency contact, and more.</p>
+        <p className="text-[11px] text-muted-foreground mt-0.5">Meal selections, music, emergency contact, and more.</p>
       </div>
-      <span className="text-xs text-[var(--venue-primary)] shrink-0">{isDone ? "Review →" : "Complete →"}</span>
+      <span className="text-xs font-semibold text-[var(--venue-primary)] shrink-0">{isDone ? "Review →" : "Complete →"}</span>
     </button>
   );
 }
@@ -247,51 +260,121 @@ function QuestionnaireCard({ status, onNavigate }: { status: string; onNavigate:
 
 function UploadRow({ token, onDone }: { token: string; onDone: () => void }) {
   const [uploading, setUploading] = useState(false);
+  const [isInsurance, setIsInsurance] = useState(false);
   const [shareWithVenue, setShareWithVenue] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
+  // Deep-link from Tasks "Upload insurance" → classify + require share.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const applyFocus = () => {
+      const hash = window.location.hash.replace(/^#/, "");
+      if (hash === "documents/upload") {
+        setIsInsurance(true);
+        setShareWithVenue(true);
+      }
+    };
+    applyFocus();
+    window.addEventListener("hashchange", applyFocus);
+    return () => window.removeEventListener("hashchange", applyFocus);
+  }, []);
+
+  const handleInsuranceToggle = (checked: boolean) => {
+    setIsInsurance(checked);
+    if (checked) setShareWithVenue(true);
+  };
+
+  const handleShareToggle = (checked: boolean) => {
+    if (isInsurance && !checked) {
+      toast.error("Event insurance must be shared with your venue.");
+      return;
+    }
+    setShareWithVenue(checked);
+  };
+
   const handleFile = async (file: File) => {
+    if (isInsurance && !shareWithVenue) {
+      toast.error("Share with venue is required for event insurance.");
+      return;
+    }
     setUploading(true);
     try {
       const formData = new FormData();
       formData.append("file", file);
       formData.append("token", token);
-      formData.append("category", "document");
-      formData.append("visibility", shareWithVenue ? "venue" : "private");
+      formData.append("type", "document");
 
       const res = await fetch("/api/portal/upload", { method: "POST", body: formData });
-      const json = await res.json();
-      if (json.url) {
-        await fetch("/api/portal/documents", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            token,
-            name: file.name.replace(/\.[^.]+$/, ""),
-            fileUrl: json.url,
-            fileSize: file.size,
-            mimeType: file.type,
-            shareWithVenue,
-            sourceType: "upload",
-          }),
-        });
-        onDone();
+      const json = await res.json() as { ok?: boolean; url?: string; error?: string };
+      if (!json.url) {
+        toast.error(json.error ?? "Upload failed. Please try again.");
+        return;
       }
+
+      const docRes = await fetch("/api/portal/documents", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          token,
+          name: file.name.replace(/\.[^.]+$/, ""),
+          fileUrl: json.url,
+          fileSize: file.size,
+          mimeType: file.type || (file.name.toLowerCase().endsWith(".pdf") ? "application/pdf" : null),
+          shareWithVenue: isInsurance ? true : shareWithVenue,
+          sourceType: isInsurance ? "insurance" : "upload",
+        }),
+      });
+      const docJson = await docRes.json() as { id?: string; celebrated?: boolean; error?: string };
+      if (!docRes.ok || !docJson.id) {
+        toast.error(
+          docJson.error === "insurance_requires_share"
+            ? "Share with venue is required for event insurance."
+            : (docJson.error ?? "Could not save document."),
+        );
+        return;
+      }
+      if (shouldPresentVerifiedCelebration(docJson.celebrated)) {
+        celebrateLuv(coupleCelebrationMessage("insurance_uploaded"));
+      }
+      onDone();
     } finally {
       setUploading(false);
     }
   };
 
   return (
-    <div className="flex items-center gap-3">
+    <div
+      id={portalFocusElementId("documents", "upload")}
+      className="flex flex-col items-end gap-2 sm:flex-row sm:items-center sm:gap-3"
+    >
       <label className="flex items-center gap-2 text-xs text-gray-500 cursor-pointer hover:text-gray-700">
-        <input type="checkbox" checked={shareWithVenue} onChange={(e) => setShareWithVenue(e.target.checked)} className="rounded" />
-        Share with venue
+        <input
+          type="checkbox"
+          checked={isInsurance}
+          onChange={(e) => handleInsuranceToggle(e.target.checked)}
+          className="rounded"
+        />
+        Event insurance
       </label>
-      <input ref={fileRef} type="file" className="hidden"
-        onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFile(f); e.target.value = ""; }} />
+      <label className="flex items-center gap-2 text-xs text-gray-500 cursor-pointer hover:text-gray-700">
+        <input
+          type="checkbox"
+          checked={shareWithVenue || isInsurance}
+          onChange={(e) => handleShareToggle(e.target.checked)}
+          className="rounded"
+          disabled={isInsurance}
+        />
+        Share with venue{isInsurance ? " (required)" : ""}
+      </label>
+      <input
+        ref={fileRef}
+        type="file"
+        accept="image/*,.pdf,application/pdf"
+        className="hidden"
+        onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFile(f); e.target.value = ""; }}
+      />
       <Button size="sm" variant="outline" disabled={uploading} onClick={() => fileRef.current?.click()} className="text-xs">
-        {uploading ? "Uploading…" : "+ Upload document"}
+        {uploading ? "Uploading…" : isInsurance ? "+ Upload insurance" : "+ Upload document"}
       </Button>
     </div>
   );
@@ -345,33 +428,34 @@ export default function CoupleDocumentsSection({ token, onNavigate }: { token: s
   const contracts = documents.filter((d) => d.docType === "contract");
   const invoices = documents.filter((d) => d.docType === "invoice");
   const venueShared = documents.filter((d) => d.uploadedBy === "venue" && d.docType !== "contract" && d.docType !== "invoice");
+  const vendorShared = documents.filter((d) => d.uploadedBy === "vendor" && d.docType !== "contract" && d.docType !== "invoice");
   const coupleUploaded = documents.filter((d) => d.uploadedBy === "couple");
 
   const pendingSignature = contracts.filter((c) => c.status === "sent" && c.signToken);
   const isEmpty = documents.length === 0 && receipts.length === 0 && !questionnaire;
 
   return (
-    <div className="max-w-2xl mx-auto px-4 py-6">
-      <div className="flex items-center justify-between mb-5">
+    <div id="portal-focus-documents-sign" className="w-full space-y-8">
+      <div className="flex items-start justify-between gap-3">
         <div>
-          <h2 className="text-lg font-semibold text-[#2D3D2D]">Documents</h2>
-          <p className="text-xs text-gray-400 mt-0.5">
-            Contracts, invoices, receipts, and anything your venue shares — all in one place.
+          <h2 className="text-sm font-semibold text-heading">Documents</h2>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Contracts, invoices, receipts, and anything your venue or vendors share — all in one place.
           </p>
         </div>
         <UploadRow token={token} onDone={load} />
       </div>
 
       {isEmpty && (
-        <div className="text-center py-16 border border-dashed border-gray-200 rounded-xl text-gray-400">
+        <div className="text-center py-16 border border-dashed border-border rounded-xl text-muted-foreground">
           <div className="text-4xl mb-3">📂</div>
-          <p className="text-sm font-medium">No documents yet</p>
-          <p className="text-xs mt-1">Contracts, invoices, and shared files from your venue will appear here automatically.</p>
+          <p className="text-sm font-medium text-heading">No documents yet</p>
+          <p className="text-xs mt-1">Contracts, invoices, and shared files from your venue or vendors will appear here automatically.</p>
         </div>
       )}
 
       {pendingSignature.length > 0 && (
-        <div className="mb-6 rounded-xl border border-amber-300 bg-amber-50/40 px-4 py-3">
+        <div className="w-full rounded-xl border border-amber-300 bg-amber-50/40 px-3 py-3">
           <p className="text-sm font-semibold text-amber-800">
             ✍️ {pendingSignature.length} contract{pendingSignature.length === 1 ? "" : "s"} waiting for your signature
           </p>
@@ -379,51 +463,52 @@ export default function CoupleDocumentsSection({ token, onNavigate }: { token: s
       )}
 
       {contracts.length > 0 && (
-        <div className="mb-6">
-          <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2 px-1">Contracts</h3>
+        <section className="space-y-3">
+          <h3 className="text-sm font-semibold text-heading">Contracts</h3>
           <div className="space-y-2">{contracts.map((doc) => <ContractCard key={doc.id} doc={doc} />)}</div>
-        </div>
+        </section>
       )}
 
       {questionnaire && onNavigate && (
-        <div className="mb-6">
-          <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2 px-1">Questionnaire</h3>
+        <section className="space-y-3">
+          <h3 className="text-sm font-semibold text-heading">Questionnaire</h3>
           <QuestionnaireCard status={questionnaire.status} onNavigate={onNavigate} />
-        </div>
+        </section>
       )}
 
       {invoices.length > 0 && (
-        <div className="mb-6">
-          <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2 px-1">Invoices</h3>
+        <section className="space-y-3">
+          <h3 className="text-sm font-semibold text-heading">Invoices</h3>
           <div className="space-y-2">{invoices.map((doc) => <InvoiceCard key={doc.id} doc={doc} />)}</div>
-        </div>
+        </section>
       )}
 
       {receipts.length > 0 && (
-        <div className="mb-6">
-          <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2 px-1">Receipts</h3>
-          <div className="border border-gray-100 rounded-xl overflow-hidden divide-y divide-gray-50">
-            {receipts.map((r) => <ReceiptRow key={r.id} r={r} />)}
-          </div>
-        </div>
+        <section className="space-y-3">
+          <h3 className="text-sm font-semibold text-heading">Receipts</h3>
+          <div className="space-y-2">{receipts.map((r) => <ReceiptRow key={r.id} r={r} />)}</div>
+        </section>
       )}
 
       {venueShared.length > 0 && (
-        <div className="mb-6">
-          <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2 px-1">From Your Venue</h3>
-          <div className="border border-gray-100 rounded-xl overflow-hidden divide-y divide-gray-50">
-            {venueShared.map((doc) => <DocRow key={doc.id} doc={doc} />)}
-          </div>
-        </div>
+        <section className="space-y-3">
+          <h3 className="text-sm font-semibold text-heading">From your venue</h3>
+          <div className="space-y-2">{venueShared.map((doc) => <DocRow key={doc.id} doc={doc} />)}</div>
+        </section>
+      )}
+
+      {vendorShared.length > 0 && (
+        <section className="space-y-3">
+          <h3 className="text-sm font-semibold text-heading">From your vendors</h3>
+          <div className="space-y-2">{vendorShared.map((doc) => <DocRow key={doc.id} doc={doc} />)}</div>
+        </section>
       )}
 
       {coupleUploaded.length > 0 && (
-        <div className="mb-6">
-          <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2 px-1">Your Uploads</h3>
-          <div className="border border-gray-100 rounded-xl overflow-hidden divide-y divide-gray-50">
-            {coupleUploaded.map((doc) => <DocRow key={doc.id} doc={doc} />)}
-          </div>
-        </div>
+        <section className="space-y-3">
+          <h3 className="text-sm font-semibold text-heading">Your uploads</h3>
+          <div className="space-y-2">{coupleUploaded.map((doc) => <DocRow key={doc.id} doc={doc} />)}</div>
+        </section>
       )}
     </div>
   );

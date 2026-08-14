@@ -18,6 +18,9 @@ type ScheduledMessageRow = {
   channel: ScheduledMessage["channel"]; email_subject: string | null; body: string;
   scheduled_for: string; status: ScheduledMessage["status"]; sent_at: string | null;
   error_message: string | null; created_at: string; sequence_enrollment_id: string | null;
+  merge_tour_appointment_id: string | null;
+  merge_payment_line_item_id: string | null;
+  merge_task_name: string | null;
 };
 
 function mapScheduledMessage(r: ScheduledMessageRow): ScheduledMessage {
@@ -27,6 +30,9 @@ function mapScheduledMessage(r: ScheduledMessageRow): ScheduledMessage {
     scheduledFor: r.scheduled_for, status: r.status, sentAt: r.sent_at,
     errorMessage: r.error_message, createdAt: r.created_at,
     sequenceEnrollmentId: r.sequence_enrollment_id,
+    mergeTourAppointmentId: r.merge_tour_appointment_id ?? null,
+    mergePaymentLineItemId: r.merge_payment_line_item_id ?? null,
+    mergeTaskName: r.merge_task_name ?? null,
   };
 }
 
@@ -40,6 +46,9 @@ export async function insertScheduledMessage(client: DbClient, venueId: string, 
       email_subject: input.channel === "email" ? (input.emailSubject.trim() || null) : null,
       body: input.body,
       scheduled_for: input.scheduledFor,
+      merge_tour_appointment_id: input.mergeTourAppointmentId ?? null,
+      merge_payment_line_item_id: input.mergePaymentLineItemId ?? null,
+      merge_task_name: input.mergeTaskName ?? null,
     })
     .select("id").single<{ id: string }>();
   if (error) throw error;
@@ -104,15 +113,25 @@ export async function markFailed(client: AnyDbClient, id: string, errorMessage: 
 /**
  * Resolves merge-field context for a relationship — venue name, the
  * counterparty's display name (whichever of lead/client is linked, matching
- * getConversationRecipientPhone's lookup order), and the event date if one
- * exists (a client's linked event, or a lead's own tentative event_date —
- * Sales Series are a primary pre-booking capability per the approved design,
- * so a lead without a booked event should still get a real date when it has
- * one on file).
+ * getConversationRecipientPhone's lookup order), event date/name when one
+ * exists, plus live tour_datetime / payment_* when authoritative rows exist.
+ *
+ * Tour and payment values are read fresh at send time (not scheduled-time
+ * snapshots) so a rescheduled tour or edited payment line is reflected.
  */
 export async function getMergeContextForRelationship(
   client: AnyDbClient, venueId: string, relationshipId: string,
+  opts?: {
+    coordinatorName?: string | null;
+    tourAppointmentId?: string | null;
+    paymentLineItemId?: string | null;
+    taskName?: string | null;
+  },
 ): Promise<MergeContext | null> {
+  const { resolvePaymentMergeForRelationship, resolveTourDatetimeForRelationship } = await import(
+    "@/lib/message-templates/merge-context"
+  );
+
   const { data: venue } = await client.from("venues").select("name").eq("id", venueId).maybeSingle<{ name: string }>();
   const { data: staff } = await client.from("venue_staff").select("full_name")
     .eq("venue_id", venueId).eq("is_owner", true).maybeSingle<{ full_name: string }>();
@@ -130,20 +149,38 @@ export async function getMergeContextForRelationship(
     return partner ? `${primary} & ${partner}` : primary;
   };
 
+  const coordinatorName = (opts?.coordinatorName?.trim()
+    || staff?.full_name
+    || venue?.name
+    || "");
+
+  const tourDatetime = await resolveTourDatetimeForRelationship(
+    client, venueId, relationshipId, opts?.tourAppointmentId,
+  );
+  const payment = await resolvePaymentMergeForRelationship(
+    client, venueId, relationshipId, opts?.paymentLineItemId,
+  );
+
   const { data: client_ } = await client.from("clients")
     .select("first_name, last_name, partner_first_name, partner_last_name, id")
     .eq("relationship_id", relationshipId).maybeSingle<PersonRow & { id: string }>();
 
   if (client_) {
     const { data: event } = await client.from("events")
-      .select("event_date").eq("client_id", client_.id).eq("venue_id", venueId)
+      .select("event_date, name").eq("client_id", client_.id).eq("venue_id", venueId)
       .not("status", "in", "(cancelled,complete)").order("event_date").limit(1)
-      .maybeSingle<{ event_date: string | null }>();
+      .maybeSingle<{ event_date: string | null; name: string | null }>();
     return {
       venueName: venue?.name ?? "",
       clientName: displayName(client_),
-      coordinatorName: staff?.full_name ?? venue?.name ?? "",
+      coordinatorName,
       eventDate: event?.event_date ?? null,
+      eventName: event?.name ?? null,
+      tourDatetime,
+      paymentLabel: payment?.paymentLabel ?? null,
+      paymentAmount: payment?.paymentAmount ?? null,
+      paymentDueDate: payment?.paymentDueDate ?? null,
+      taskName: opts?.taskName ?? null,
     };
   }
 
@@ -154,8 +191,14 @@ export async function getMergeContextForRelationship(
     return {
       venueName: venue?.name ?? "",
       clientName: displayName(lead),
-      coordinatorName: staff?.full_name ?? venue?.name ?? "",
+      coordinatorName,
       eventDate: lead.event_date,
+      eventName: null,
+      tourDatetime,
+      paymentLabel: payment?.paymentLabel ?? null,
+      paymentAmount: payment?.paymentAmount ?? null,
+      paymentDueDate: payment?.paymentDueDate ?? null,
+      taskName: opts?.taskName ?? null,
     };
   }
 

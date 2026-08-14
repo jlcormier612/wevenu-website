@@ -1,6 +1,7 @@
-/** Shared helpers for rendering Hello to Cheers product emails. */
-
 import type { EmailTemplateVars } from "../types";
+import { greetingFirstName } from "../../relationships/normalize";
+
+/** Shared helpers for rendering Hello to Cheers product emails. */
 
 export function str(vars: EmailTemplateVars, key: string, fallback = ""): string {
   const value = vars[key];
@@ -18,7 +19,12 @@ export function escapeHtml(s: string): string {
 }
 
 export function firstName(vars: EmailTemplateVars): string {
-  return str(vars, "firstName") || str(vars, "ownerFirstName") || "there";
+  return greetingFirstName({
+    firstName: str(vars, "firstName") || str(vars, "ownerFirstName") || null,
+    fullName: str(vars, "fullName") || str(vars, "ownerFullName") || null,
+    email: str(vars, "email") || str(vars, "ownerEmail") || null,
+    fallback: "there",
+  });
 }
 
 export function venueName(vars: EmailTemplateVars): string {

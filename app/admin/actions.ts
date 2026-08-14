@@ -9,6 +9,7 @@ import {
   completeVenueTask,
   markVenueContacted,
   recordViewAs,
+  setEventOrderEnabled,
   setNextContact,
 } from "@/lib/hq/crm-service";
 
@@ -48,4 +49,12 @@ export async function markVenueContactedAction(venueId: string): Promise<void> {
 export async function startViewAsAction(venueId: string): Promise<void> {
   await recordViewAs(venueId);
   redirect(`/admin/venues/${venueId}/view-as`);
+}
+
+/** HQ-only: enable or disable Event Orders for one venue. Does not mutate Event Order rows. */
+export async function setEventOrderEnabledAction(venueId: string, formData: FormData): Promise<void> {
+  const enabled = String(formData.get("enabled") ?? "") === "true";
+  const result = await setEventOrderEnabled(venueId, enabled);
+  if (!result.ok) throw new Error(result.message);
+  revalidatePath(`/admin/venues/${venueId}`);
 }

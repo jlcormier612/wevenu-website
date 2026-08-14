@@ -3,6 +3,8 @@ import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 
 import { getSupabaseConfig, isSupabaseConfigured } from "@/lib/env";
+import { decideLegalProxyEnforcement } from "@/lib/legal/enforce-legal-in-proxy";
+import { shouldSkipLegalEnforcement } from "@/lib/legal/welcome-middleware";
 
 /**
  * Routes that do not require an authenticated session.
@@ -21,9 +23,21 @@ const PUBLIC_PATHS = [
   "/api/messaging/sms-inbound", // Twilio inbound SMS webhook (no user session; verifies its own signature)
   "/api/messaging/sms-status",  // Twilio outbound SMS status callback (no user session; verifies its own signature)
   "/sign",           // public contract signing — /sign/{token}
+  "/brochure",       // D7B — public brochure view — /brochure/{share_token}
+  "/api/brochures/public", // D7B — public brochure PDF — /api/brochures/public/{share_token}/pdf
+  "/legal",          // public active legal documents — /legal/{document_type}
+  "/terms",          // canonical public Venue Subscription Agreement
+  "/privacy",        // canonical public Privacy Policy
+  "/cookies",        // canonical public Cookie Policy
+  "/acceptable-use", // canonical public Acceptable Use Policy
+  "/end-user-terms", // canonical public End User Terms (couples)
+  "/vendor-terms",   // canonical public Vendor Terms
+  "/api/legal",      // public legal metadata (active document ids / versions)
+  "/api/internal/legal", // CRM → legal acceptances — Bearer PRODUCT_SYNC_API_KEY
   "/p",              // client portal workspace — /p/{access_token}
   "/v",              // vendor portal workspace — /v/{access_token}
   "/vendor/accept",  // vendor invitation claim — accessible before auth
+  "/join",           // staff team-invite acceptance — accessible before auth, same shape as /vendor/accept
   "/book",           // public tour scheduling — /book/{tour_embed_key}
   "/w",              // public wedding website — /w/{slug}
   "/qr",             // QR Lead Capture scan-and-redirect — /qr/{code}, plus /qr/inactive
@@ -31,8 +45,16 @@ const PUBLIC_PATHS = [
   "/api/portal",        // portal API endpoints — complete tasks, invites, etc.
   "/api/rsvp",          // guest-token-authenticated RSVP API endpoints (concierge, etc.)
   "/api/vendor",        // vendor portal API endpoints
-  "/api/notifications", // notification delivery engine — secret-guarded, not session-guarded
-  "/api/tours",         // public tour slot queries and bookings
+  // Release Readiness Reconciliation remediation: these were previously the
+  // bare prefixes "/api/notifications"/"/api/tours", which also matched
+  // "/api/notifications/preferences"+"/read" (staff-only, cookie-session)
+  // and "/api/tours/outcome"+"/status" (coordinator-only) — safe only by
+  // coincidence, since those routes independently check auth internally.
+  // Narrowed to exactly the sub-paths that are genuinely meant to be
+  // reachable without a session.
+  "/api/notifications/process", // notification delivery engine cron/manual-trigger — secret-guarded, not session-guarded
+  "/api/tours/book",             // public tour booking widget — embed-key-authenticated, not session-guarded
+  "/api/tours/slots",            // public tour slot queries — embed-key-authenticated, not session-guarded
   "/api/digest",                     // daily digest cron (vercel.json) — CRON_SECRET-guarded, not session-guarded
   "/api/communication/scheduled",    // Scheduled Sends cron (vercel.json) — CRON_SECRET-guarded, not session-guarded
   "/api/automation/process",         // Automation engine cron (vercel.json) — CRON_SECRET-guarded, not session-guarded
@@ -40,8 +62,10 @@ const PUBLIC_PATHS = [
   "/api/facebook/webhook",           // Meta Lead Ads webhook — GET verification handshake + POST delivery, verifies its own signature
   "/api/facebook/sync/process",      // Facebook Lead Ads queue cron (vercel.json) — CRON_SECRET-guarded, not session-guarded
   "/api/facebook/reconcile/process", // Facebook Lead Ads reconciliation poll cron (vercel.json) — CRON_SECRET-guarded, not session-guarded
+  "/api/saved-reports/process",      // D7C — scheduled Saved Report delivery cron (vercel.json) — CRON_SECRET-guarded, not session-guarded
   "/api/webhooks/stripe-connect",    // Stripe Connect webhook — no user session, verifies its own signature (Sprint 4)
   "/api/internal/product-access",    // CRM → product access lock — Bearer PRODUCT_SYNC_API_KEY, not session-guarded
+  "/api/internal/enrollment",        // CRM/Workspace → venue enrollment + activation bridge — Bearer PRODUCT_SYNC_API_KEY, not session-guarded
 ];
 
 /** Authenticated routes still reachable when the venue SaaS account is suspended. */
@@ -88,6 +112,24 @@ function nextWithPathname(request: NextRequest, pathname: string): NextResponse 
 }
 
 /**
+ * Copy Set-Cookie headers from the session-bearing response onto a new one.
+ * Redirects / JSON after getUser() must preserve refreshed auth cookies —
+ * otherwise a silent JWT refresh is dropped and the next navigation looks logged out.
+ * Never clears cookies on fail-open legal / lock paths.
+ */
+function withSessionCookies(
+  from: NextResponse,
+  to: NextResponse,
+): NextResponse {
+  // Pass the full cookie record so maxAge / path / sameSite survive redirects.
+  // Setting only name+value would collapse refreshed auth cookies into session cookies.
+  from.cookies.getAll().forEach((cookie) => {
+    to.cookies.set(cookie);
+  });
+  return to;
+}
+
+/**
  * Refreshes the Supabase session on every request and enforces route
  * protection. This runs in the Next.js 16 Proxy (formerly Middleware).
  *
@@ -118,7 +160,18 @@ export async function updateSession(
   });
 
   const { url, anonKey } = getSupabaseConfig();
+  // Local browser uses http://localhost — never mark cookies Secure locally or
+  // Chrome/Safari drop them after soft reloads. Prod (https) still gets Secure.
+  const isLocalHttp =
+    request.nextUrl.hostname === "localhost" ||
+    request.nextUrl.hostname === "127.0.0.1";
+
   const supabase = createServerClient(url, anonKey, {
+    cookieOptions: {
+      path: "/",
+      sameSite: "lax",
+      secure: isLocalHttp ? false : undefined,
+    },
     cookies: {
       getAll() {
         return request.cookies.getAll();
@@ -127,11 +180,20 @@ export async function updateSession(
         cookiesToSet.forEach(({ name, value }) => {
           request.cookies.set(name, value);
         });
+        // Preserve cookies already queued on supabaseResponse when setAll runs
+        // more than once (rapid navigations / concurrent cookie chunks).
+        const prior = supabaseResponse.cookies.getAll();
         supabaseResponse = NextResponse.next({
           request: { headers: requestHeaders },
         });
+        prior.forEach((cookie) => {
+          supabaseResponse.cookies.set(cookie.name, cookie.value);
+        });
         cookiesToSet.forEach(({ name, value, options }) => {
-          supabaseResponse.cookies.set(name, value, options);
+          supabaseResponse.cookies.set(name, value, {
+            ...options,
+            ...(isLocalHttp ? { secure: false } : null),
+          });
         });
       },
     },
@@ -146,7 +208,10 @@ export async function updateSession(
   if (!user && !isPublicPath(pathname)) {
     const loginUrl = request.nextUrl.clone();
     loginUrl.pathname = "/login";
-    return NextResponse.redirect(loginUrl);
+    return withSessionCookies(
+      supabaseResponse,
+      NextResponse.redirect(loginUrl),
+    );
   }
 
   // Wevenu HQ (/admin/* and /api/admin/*) — defense in depth alongside the
@@ -156,11 +221,17 @@ export async function updateSession(
     const { data: isAdmin } = await supabase.rpc("is_hq_admin");
     if (!isAdmin) {
       if (pathname.startsWith("/api/admin")) {
-        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+        return withSessionCookies(
+          supabaseResponse,
+          NextResponse.json({ error: "Forbidden" }, { status: 403 }),
+        );
       }
       const dashboardUrl = request.nextUrl.clone();
       dashboardUrl.pathname = "/dashboard";
-      return NextResponse.redirect(dashboardUrl);
+      return withSessionCookies(
+        supabaseResponse,
+        NextResponse.redirect(dashboardUrl),
+      );
     }
     // HQ admins skip venue suspend hard-lock.
     return supabaseResponse;
@@ -189,18 +260,61 @@ export async function updateSession(
 
     if (isLocked && !isSuspendedAllowPath(pathname)) {
       if (pathname.startsWith("/api/")) {
-        return NextResponse.json(
-          {
-            error:
-              "Subscription inactive. Update your payment method to restore access.",
-            code: "account_suspended",
-          },
-          { status: 403 },
+        return withSessionCookies(
+          supabaseResponse,
+          NextResponse.json(
+            {
+              error:
+                "Subscription inactive. Update your payment method to restore access.",
+              code: "account_suspended",
+            },
+            { status: 403 },
+          ),
         );
       }
       const suspendedUrl = request.nextUrl.clone();
       suspendedUrl.pathname = "/billing/suspended";
-      return NextResponse.redirect(suspendedUrl);
+      return withSessionCookies(
+        supabaseResponse,
+        NextResponse.redirect(suspendedUrl),
+      );
+    }
+  }
+
+  // Legal Acceptance Middleware (WP4) — one enforcement path for returning
+  // users + signup/setup. Compliant users pass through unchanged.
+  // Fail-open (inside decideLegalProxyEnforcement) never clears cookies.
+  if (
+    user &&
+    !isPublicPath(pathname) &&
+    !shouldSkipLegalEnforcement(pathname)
+  ) {
+    const legalDecision = await decideLegalProxyEnforcement({
+      user,
+      pathname,
+      search: request.nextUrl.search,
+      supabase,
+    });
+    if (legalDecision.action === "redirect_welcome") {
+      return withSessionCookies(
+        supabaseResponse,
+        NextResponse.redirect(
+          new URL(legalDecision.welcomePath, request.nextUrl.origin),
+        ),
+      );
+    }
+    if (legalDecision.action === "block_api") {
+      return withSessionCookies(
+        supabaseResponse,
+        NextResponse.json(
+          {
+            error: "Legal acceptance required.",
+            code: legalDecision.code,
+            welcomePath: legalDecision.welcomePath,
+          },
+          { status: 403 },
+        ),
+      );
     }
   }
 
@@ -221,7 +335,10 @@ export async function updateSession(
     ) {
       const suspendedUrl = request.nextUrl.clone();
       suspendedUrl.pathname = "/billing/suspended";
-      return NextResponse.redirect(suspendedUrl);
+      return withSessionCookies(
+        supabaseResponse,
+        NextResponse.redirect(suspendedUrl),
+      );
     }
 
     // Honor ?next= for post-auth return (e.g. vendor invitation claim).
@@ -230,7 +347,10 @@ export async function updateSession(
     const nextRaw = request.nextUrl.searchParams.get("next");
     const safeNext = safeInternalNextPath(nextRaw, request.nextUrl.origin);
     if (safeNext) {
-      return NextResponse.redirect(new URL(safeNext, request.nextUrl.origin));
+      return withSessionCookies(
+        supabaseResponse,
+        NextResponse.redirect(new URL(safeNext, request.nextUrl.origin)),
+      );
     }
 
     const { data: vu } = await supabase
@@ -242,7 +362,10 @@ export async function updateSession(
     const destUrl = request.nextUrl.clone();
     destUrl.pathname = vu ? "/vendor/dashboard" : "/dashboard";
     destUrl.search = "";
-    return NextResponse.redirect(destUrl);
+    return withSessionCookies(
+      supabaseResponse,
+      NextResponse.redirect(destUrl),
+    );
   }
 
   return supabaseResponse;

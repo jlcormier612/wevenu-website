@@ -14,6 +14,8 @@ import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { createCategoryAction, createItemAction, updateItemAction, updateItemImageAction } from "@/app/(app)/library/inventory/actions";
+import { LibrarySaveStatus } from "@/components/library/library-save-status";
+import { librarySavedToastMessage, useLibraryUnsavedGuard } from "@/components/library/use-library-unsaved-guard";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -51,6 +53,23 @@ export function InventoryItemForm({
   const [availableForFloorPlans, setAvailableForFloorPlans] = React.useState(item?.availableForFloorPlans ?? false);
   const [file, setFile] = React.useState<File | null>(null);
   const [pending, setPending] = React.useState(false);
+
+  const [baseline] = React.useState(() => JSON.stringify({
+    name: item?.name ?? "",
+    categoryId: item?.categoryId ?? NO_CATEGORY,
+    quantityAvailable: item ? String(item.quantityAvailable) : "0",
+    width: item?.width != null ? String(item.width) : "",
+    length: item?.length != null ? String(item.length) : "",
+    height: item?.height != null ? String(item.height) : "",
+    shape: item?.shape ?? NO_SHAPE,
+    color: item?.color ?? "",
+    printableName: item?.printableName ?? "",
+    availableForFloorPlans: item?.availableForFloorPlans ?? false,
+  }));
+  const dirty = JSON.stringify({
+    name, categoryId, quantityAvailable, width, length, height, shape, color, printableName, availableForFloorPlans,
+  }) !== baseline || !!file;
+  const { confirmLeave } = useLibraryUnsavedGuard(dirty);
 
   async function handleAddCategory() {
     const proposed = window.prompt("New category name");
@@ -108,7 +127,7 @@ export function InventoryItemForm({
         itemId = result.itemId;
       }
       await uploadImage(itemId);
-      toast.success(item ? "Item updated." : "Item created.");
+      toast.success(item ? librarySavedToastMessage() : "Item created.");
       router.push("/library/inventory");
       router.refresh();
     })();
@@ -198,9 +217,10 @@ export function InventoryItemForm({
       </div>
 
       <div className="flex items-center justify-end gap-2 pt-2">
-        <Button type="button" variant="outline" onClick={() => router.push("/library/inventory")} disabled={pending}>Cancel</Button>
-        <Button type="button" disabled={!name.trim() || pending} onClick={handleSubmit}>
-          {pending ? <><Loader2 className="mr-1.5 h-4 w-4 animate-spin" />Saving…</> : item ? "Save Changes" : "Create Item"}
+        <LibrarySaveStatus status={pending ? "saving" : dirty ? "dirty" : "idle"} model="explicit" className="mr-auto" />
+        <Button type="button" variant="outline" onClick={() => { if (confirmLeave()) router.push("/library/inventory"); }} disabled={pending}>Cancel</Button>
+        <Button type="button" disabled={!name.trim() || pending || (!!item && !dirty)} onClick={handleSubmit}>
+          {pending ? <><Loader2 className="mr-1.5 h-4 w-4 animate-spin" />Saving…</> : item ? "Save changes" : "Create Item"}
         </Button>
       </div>
     </div>

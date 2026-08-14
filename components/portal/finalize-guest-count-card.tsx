@@ -74,7 +74,10 @@ export function FinalizeGuestCountCard({ token }: { token: string }) {
   const suggestionDiffers = !hasSubmission || status.lastSubmission!.count !== status.liveSuggestedCount;
 
   return (
-    <div className="rounded-2xl border border-border bg-card p-4 space-y-3">
+    <div
+      id="portal-focus-guests-finalize"
+      className="rounded-2xl border border-border bg-card p-4 space-y-3"
+    >
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-sm font-semibold text-heading">Guest Count</p>

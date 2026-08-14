@@ -21,7 +21,6 @@ import {
   reorderEntries,
   reorderEntry,
   reorderSections,
-  setEntryStatus,
   setSectionClientCanAdd,
   shiftEntriesAfter,
   updateEntry,
@@ -35,12 +34,40 @@ import type {
   DuplicateSectionResult,
   TimelineActionResult,
   TimelineEntryInput,
-  TimelineEntryStatus,
   TimelineRelatedSourceType,
 } from "@/lib/timeline/types";
 
 function revalidateEvent(eventId: string) {
   revalidatePath(`/events/${eventId}`);
+}
+
+/**
+ * Venue Publish-to-Vendors is live in timeline_entries, but vendor event
+ * pages were only revalidated from vendor-side actions. Prefetched / open
+ * RSC payloads could keep an empty Timeline after the venue tagged Vendors.
+ * Bust assigned vendors' event routes (and Home) so the Timeline tab updates.
+ */
+async function revalidateVendorEventTimelines(eventId: string) {
+  try {
+    const { createClient } = await import("@/integrations/supabase/server");
+    const supabase = await createClient();
+    const { data } = await supabase
+      .from("event_vendor_assignments")
+      .select("id")
+      .eq("event_id", eventId);
+    for (const row of data ?? []) {
+      revalidatePath(`/vendor/events/${row.id as string}`);
+    }
+    revalidatePath("/vendor/dashboard");
+    revalidatePath("/vendor/events");
+  } catch {
+    // Non-blocking — venue save already succeeded.
+  }
+}
+
+async function revalidateTimelineSurfaces(eventId: string) {
+  revalidateEvent(eventId);
+  await revalidateVendorEventTimelines(eventId);
 }
 
 // Corrected on review: this is NOT a §8 violation. addEntryAction only
@@ -66,7 +93,7 @@ export async function addEntryAction(
 ): Promise<AddEntryResult> {
   const result = await addEntry(eventId, input);
   if (result.ok) {
-    revalidateEvent(eventId);
+    await revalidateTimelineSurfaces(eventId);
     void triggerTimelineAutoComplete(eventId);
   }
   return result;
@@ -76,7 +103,7 @@ export async function updateEntryAction(
   entryId: string, eventId: string, input: TimelineEntryInput,
 ): Promise<TimelineActionResult> {
   const result = await updateEntry(entryId, input);
-  if (result.ok) revalidateEvent(eventId);
+  if (result.ok) await revalidateTimelineSurfaces(eventId);
   return result;
 }
 
@@ -84,15 +111,7 @@ export async function deleteEntryAction(
   entryId: string, eventId: string,
 ): Promise<TimelineActionResult> {
   const result = await deleteEntry(entryId);
-  if (result.ok) revalidateEvent(eventId);
-  return result;
-}
-
-export async function setEntryStatusAction(
-  entryId: string, eventId: string, status: TimelineEntryStatus,
-): Promise<TimelineActionResult> {
-  const result = await setEntryStatus(entryId, status);
-  if (result.ok) revalidateEvent(eventId);
+  if (result.ok) await revalidateTimelineSurfaces(eventId);
   return result;
 }
 
@@ -113,7 +132,7 @@ export async function reorderEntryAction(
 }
 
 export async function reorderEntriesAction(
-  eventId: string, updates: { id: string; sectionId: string | null; sortOrder: number }[],
+  eventId: string, updates: { id: string; sectionId: string | null; sortOrder: number; dayOffset?: number }[],
 ): Promise<TimelineActionResult> {
   const result = await reorderEntries(updates);
   if (result.ok) revalidateEvent(eventId);
@@ -124,7 +143,7 @@ export async function applyTemplateAction(
   eventId: string, templateId: string, eventStartTime: string | null,
 ): Promise<TimelineActionResult> {
   const result = await applyTemplate(eventId, templateId, eventStartTime);
-  if (result.ok) revalidateEvent(eventId);
+  if (result.ok) await revalidateTimelineSurfaces(eventId);
   return result;
 }
 
@@ -156,7 +175,7 @@ export async function reorderSectionsAction(eventId: string, orderedSectionIds: 
 
 export async function duplicateSectionAction(eventId: string, sourceSectionId: string, sortOrder: number): Promise<DuplicateSectionResult> {
   const result = await duplicateSection(eventId, sourceSectionId, sortOrder);
-  if (result.ok) revalidateEvent(eventId);
+  if (result.ok) await revalidateTimelineSurfaces(eventId);
   return result;
 }
 

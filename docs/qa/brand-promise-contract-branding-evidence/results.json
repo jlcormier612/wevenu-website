@@ -1,0 +1,50 @@
+{
+  "startedAt": "2026-08-13T02:32:12.727Z",
+  "checks": [
+    {
+      "name": "login",
+      "pass": true,
+      "detail": "http://localhost:3000/dashboard"
+    },
+    {
+      "name": "brand-copy-old-gone",
+      "pass": true,
+      "detail": "old claim gone"
+    },
+    {
+      "name": "brand-copy-new-present",
+      "pass": true,
+      "detail": "truthful copy present"
+    },
+    {
+      "name": "four-color-controls",
+      "pass": true,
+      "detail": "Primary:2, Secondary:2, Accent:2, Neutral:2"
+    },
+    {
+      "name": "admin-no-venue-primary-var",
+      "pass": true,
+      "detail": "root --venue-primary=\"\""
+    },
+    {
+      "name": "sign-page-loaded",
+      "pass": true,
+      "detail": "url=http://localhost:3000/sign/79d61f59-bb04-44ee-89b7-c2b100e93f4b; primary=#AA1111"
+    },
+    {
+      "name": "sign-page-uses-snapshot-a",
+      "pass": true,
+      "detail": "--venue-primary=#AA1111"
+    },
+    {
+      "name": "live-venue-is-brand-b-but-page-shows-a",
+      "pass": true,
+      "detail": "immutability via render path"
+    }
+  ],
+  "errors": [
+    "pageerror:Hydration failed because the server rendered text didn't match the client. As a result this tree will be regenerated on the client. This can happen if a SSR-ed Client Component used:\n\n- A server/client branch `if (typeof window !== 'undefined')`.\n- Variable input such as `Date.now()` or `Math.random()` which changes each time it's called.\n- Date formatting in a user's locale which doesn't match the server.\n- External changing data without sending a snapshot of it along with the HTML.\n- Invalid HTML tag nesting.\n\nIt can also happen if the client has a browser extension installed which messes with the HTML before React loaded.\n\nhttps://react.dev/link/hydration-mismatch\n\n  ...\n    <RedirectBoundary>\n      <RedirectErrorBoundary router={{...}}>\n        <InnerLayoutRouter url=\"/settings\" tree={[...]} params={{}} cacheNode={{rsc:{...}, ...}} segmentPath={[...]} ...>\n          <SegmentViewNode type=\"page\" pagePath=\"(app)/sett...\">\n            <SegmentTrieNode>\n            <SettingsPage>\n              <div className=\"space-y-6\">\n                <div>\n                <VenueSettings>\n                <div>\n                <QuickBooksConnectSection>\n                <FacebookConnectSection>\n                <div>\n                <div>\n                <div>\n                <div>\n                <div>\n                <div>\n                <div>\n                <Card>\n                  <div data-slot=\"card\" data-size=\"default\" className={\"group/ca...\"} id=\"tours\">\n                    <div>\n                    <CardContent>\n                      <div data-slot=\"card-content\" className=\"px-(--card...\">\n                        ...\n                          <div className=\"space-y-1.5\">\n                            <Label>\n                            <p>\n                            <div className=\"flex gap-2\">\n                              <div className=\"flex-1 rou...\">\n                                <p className=\"text-[11px] font-mono text-muted-foreground break-all\">\n+                                 http://localhost:3000/book/b2b19e98bd61d274beab8580707afea3\n-                                 /book/b2b19e98bd61d274beab8580707afea3\n                              ...\n                          ...\n                ...\n          ...\n        ...\n",
+    "Error: create contract A: permission denied for table contracts\n    at file:///Users/jensmac/Library/Mobile%20Documents/com%7Eapple%7ECloudDocs/Wevenu%20Website/wevenu-website/[eval1]:131:21\n    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)"
+  ],
+  "finishedAt": "2026-08-13T02:32:50.017Z"
+}

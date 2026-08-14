@@ -108,6 +108,8 @@ export type Venue = {
   secondaryColor: string;
   accentColor: string;
   neutralColor: string;
+  /** Optional public review URL shown after Post-Event Feedback Yes. */
+  publicReviewUrl: string | null;
   currency: string;
   weekStartsOn: number;
   stripeAccountId: string | null;

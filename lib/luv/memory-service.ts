@@ -126,7 +126,7 @@ export function computeMemoryObservations(
           priority:    "low",
           message:     `${name} is historically quieter for your venue.`,
           detail:      `Past years show about ${Math.round(thisMonth.avg)} inquiries in ${name}. A slower pace is normal — a good time for planning or marketing.`,
-          link:        "/analytics",
+          link:        "/reporting/sales",
           actionLabel: "View trends →",
         });
       }

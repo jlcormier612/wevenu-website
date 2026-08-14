@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { SEQUENCE_TRIGGER_STAGES, SEQUENCE_TRIGGER_TYPES } from "@/lib/message-sequences/constants";
+import { triggerStageDisplayLabel, type StageNameLookup } from "@/lib/message-sequences/stage-labels";
 import type {
   CreateSequenceResult, MessageSequenceInput, MessageSequenceWithSteps, SequenceErrors, SequenceStepInput,
 } from "@/lib/message-sequences/types";
@@ -32,12 +33,26 @@ function emptyStep(): SequenceStepInput {
   return { templateId: "", channel: "email", offsetDays: 1 };
 }
 
-export function SeriesForm({ series, templates }: { series?: MessageSequenceWithSteps | null; templates: MessageTemplate[] }) {
+export function SeriesForm({
+  series,
+  templates,
+  pipelineStages = [],
+}: {
+  series?: MessageSequenceWithSteps | null;
+  templates: MessageTemplate[];
+  /** Active Pipeline Template stages for venue name display beside LeadStatus. */
+  pipelineStages?: StageNameLookup[];
+}) {
   const router = useRouter();
   const isEdit = !!series;
   const [input, setInput] = React.useState<MessageSequenceInput>(() => buildInitial(series));
   const [errors, setErrors] = React.useState<SequenceErrors>({});
   const [pending, startTransition] = React.useTransition();
+
+  const stageItems = SEQUENCE_TRIGGER_STAGES.map((s) => ({
+    value: s.value,
+    label: triggerStageDisplayLabel(s.value, pipelineStages),
+  }));
 
   const set = <K extends keyof MessageSequenceInput>(key: K, v: MessageSequenceInput[K]) => {
     setInput((p) => ({ ...p, [key]: v }));
@@ -85,6 +100,10 @@ export function SeriesForm({ series, templates }: { series?: MessageSequenceWith
 
   return (
     <div className="space-y-6">
+      <p className="rounded-lg border border-border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
+        Editing an Automation applies to new enrollments only. People already enrolled keep the steps that were set when they joined.
+      </p>
+
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="space-y-1.5">
           <Label htmlFor="sn">Automation name *</Label>
@@ -112,12 +131,12 @@ export function SeriesForm({ series, templates }: { series?: MessageSequenceWith
       </div>
 
       {input.triggerType === "lead_stage_changed" && (
-        <div className="max-w-xs space-y-1.5">
+        <div className="max-w-md space-y-1.5">
           <Label htmlFor="sstage">Which stage?</Label>
-          <Select value={input.triggerStage ?? ""} onValueChange={(v) => set("triggerStage", v)} items={SEQUENCE_TRIGGER_STAGES}>
+          <Select value={input.triggerStage ?? ""} onValueChange={(v) => set("triggerStage", v)} items={stageItems}>
             <SelectTrigger id="sstage" className="h-9 text-sm" aria-invalid={errors.triggerStage ? true : undefined}><SelectValue placeholder="Choose a stage" /></SelectTrigger>
             <SelectContent>
-              {SEQUENCE_TRIGGER_STAGES.map((s) => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}
+              {stageItems.map((s) => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}
             </SelectContent>
           </Select>
           {errors.triggerStage && <p className="text-xs text-destructive">{errors.triggerStage}</p>}

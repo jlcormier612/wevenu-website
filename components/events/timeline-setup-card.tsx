@@ -59,7 +59,7 @@ export function TimelineSetupCard({
     <Card className="border-primary/30 bg-primary/5">
       <CardHeader>
         <CardTitle className="text-base">Set up this booking&apos;s timeline</CardTitle>
-        <CardDescription>Apply a starting run-of-show — fully editable after, and never linked back to the template.</CardDescription>
+        <CardDescription>Apply a starting Timeline — fully editable after, and never linked back to the template.</CardDescription>
       </CardHeader>
       <CardContent>
         <div className="flex items-center gap-2 rounded-lg border border-dashed border-border px-3 py-2">

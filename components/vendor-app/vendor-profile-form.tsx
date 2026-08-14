@@ -80,6 +80,8 @@ export function VendorProfileForm({ profile }: { profile: VendorProfile }) {
 
   return (
     <div className="space-y-5 rounded-sm border border-border bg-card p-6">
+      <p className="text-sm font-medium text-heading">Business details</p>
+
       {/* Logo */}
       <div className="flex items-center gap-4">
         {input.logoUrl ? (
@@ -104,13 +106,11 @@ export function VendorProfileForm({ profile }: { profile: VendorProfile }) {
         </div>
       </div>
 
-      <Separator />
-
       <div className="grid gap-4 sm:grid-cols-2">
         <Field label="Business name" htmlFor="pf-biz" required>
           <Input id="pf-biz" value={input.businessName} onChange={(e) => set("businessName", e.target.value)} />
         </Field>
-        <Field label="Category" htmlFor="pf-cat">
+        <Field label="Category" htmlFor="pf-cat" required>
           <Select value={input.category} onValueChange={(v) => set("category", v)} items={VENDOR_CATEGORIES}>
             <SelectTrigger id="pf-cat"><SelectValue placeholder="Select category" /></SelectTrigger>
             <SelectContent>
@@ -126,19 +126,19 @@ export function VendorProfileForm({ profile }: { profile: VendorProfile }) {
       </Field>
 
       <Separator />
-      <p className="text-sm font-medium text-heading">Contact</p>
+      <p className="text-sm font-medium text-heading">Contact information</p>
 
       <div className="grid gap-4 sm:grid-cols-2">
-        <Field label="Contact name" htmlFor="pf-cn">
+        <Field label="Contact name" htmlFor="pf-cn" required>
           <Input id="pf-cn" value={input.contactName} onChange={(e) => set("contactName", e.target.value)} />
         </Field>
-        <Field label="Email" htmlFor="pf-em">
+        <Field label="Email" htmlFor="pf-em" required>
           <Input id="pf-em" type="email" value={input.email} onChange={(e) => set("email", e.target.value)} />
         </Field>
         <Field label="Phone" htmlFor="pf-ph">
           <Input id="pf-ph" type="tel" value={input.phone} onChange={(e) => set("phone", e.target.value)} />
         </Field>
-        <Field label="Website" htmlFor="pf-web">
+        <Field label="Website URL" htmlFor="pf-web" required>
           <Input id="pf-web" value={input.websiteUrl} onChange={(e) => set("websiteUrl", e.target.value)} placeholder="https://yourbusiness.com" />
         </Field>
       </div>
@@ -155,13 +155,13 @@ export function VendorProfileForm({ profile }: { profile: VendorProfile }) {
         <Field label="Pinterest" htmlFor="pf-pin">
           <Input id="pf-pin" value={input.pinterestUrl} onChange={(e) => set("pinterestUrl", e.target.value)} />
         </Field>
-        <Field label="TikTok" htmlFor="pf-tt">
+        <Field label="Other" htmlFor="pf-tt">
           <Input id="pf-tt" value={input.tiktokUrl} onChange={(e) => set("tiktokUrl", e.target.value)} />
         </Field>
       </div>
 
       <Separator />
-      <p className="text-sm font-medium text-heading">Business details</p>
+      <p className="text-sm font-medium text-heading">Service & pricing</p>
 
       <div className="grid gap-4 sm:grid-cols-2">
         <Field label="Service area" htmlFor="pf-area" hint="e.g. Nashville, TN · 50 mile radius">
@@ -191,6 +191,15 @@ export function VendorProfileForm({ profile }: { profile: VendorProfile }) {
       <p className="text-sm font-medium text-heading">Visibility</p>
 
       <div className="space-y-3">
+        <div className="flex items-center justify-between rounded-lg border border-border p-4">
+          <div>
+            <p className="text-sm font-medium text-foreground">Open for new bookings</p>
+            <p className="text-xs text-muted-foreground">
+              Signals to partner venues and prospective clients that you&apos;re available for more events. This isn&apos;t a public inquiry inbox.
+            </p>
+          </div>
+          <Switch checked={input.acceptingInquiries} onCheckedChange={(v) => set("acceptingInquiries", v)} />
+        </div>
         <div className="rounded-lg border border-dashed border-border p-4">
           <div className="flex items-center justify-between gap-3">
             <div>
@@ -203,15 +212,6 @@ export function VendorProfileForm({ profile }: { profile: VendorProfile }) {
               Coming soon
             </span>
           </div>
-        </div>
-        <div className="flex items-center justify-between rounded-lg border border-border p-4">
-          <div>
-            <p className="text-sm font-medium text-foreground">Open for new bookings</p>
-            <p className="text-xs text-muted-foreground">
-              Signals to partner venues that you&apos;re available for more events. This isn&apos;t a public inquiry inbox.
-            </p>
-          </div>
-          <Switch checked={input.acceptingInquiries} onCheckedChange={(v) => set("acceptingInquiries", v)} />
         </div>
       </div>
 

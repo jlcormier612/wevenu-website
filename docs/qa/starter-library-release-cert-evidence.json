@@ -1,0 +1,1148 @@
+{
+  "createdAt": "2026-08-11T21:04:19.489Z",
+  "inventory": {
+    "messages": 11,
+    "messageKeys": [
+      "MSG-01",
+      "MSG-02",
+      "MSG-03",
+      "MSG-04",
+      "MSG-05",
+      "MSG-06",
+      "MSG-07",
+      "MSG-08",
+      "MSG-09",
+      "MSG-10",
+      "MSG-11"
+    ],
+    "questionnaires": 3,
+    "questionnaireKeys": [
+      "QST-CP:Client Planning Questionnaire",
+      "QST-FD:Final Details",
+      "QST-PE:Post-Event Feedback"
+    ],
+    "contracts": 1,
+    "contractKeys": [
+      "CTR-01:Wedding Venue Agreement"
+    ],
+    "paymentPrimary": [
+      "Standard Wedding — 3 Payments",
+      "Standard Wedding — 4 Payments",
+      "Custom Payment Schedule"
+    ],
+    "paymentAdditional": [
+      "50% Initial + 50% Final",
+      "30% Initial + 70% Final"
+    ],
+    "paymentStarterIds": [
+      "thirds",
+      "wedding_four",
+      "custom"
+    ],
+    "eventOrders": [
+      "EO-01:Standard Wedding Event Order",
+      "EO-02:Standard Wedding — Reception Only"
+    ],
+    "inventoryCatalogCategories": 9,
+    "inventoryCatalogItems": 49,
+    "inventoryTemplates": [
+      "INV-01:Standard Wedding — Ceremony + Reception",
+      "INV-02:Standard Wedding — Reception Only"
+    ],
+    "timelines": [
+      "TL-01:Standard Wedding Day Timeline",
+      "TL-02:Reception Only Timeline",
+      "TL-03:Wedding Weekend Timeline"
+    ],
+    "floorPlans": [
+      "FP-01:Standard Wedding — Ceremony + Reception",
+      "FP-02:Standard Wedding — Reception Only"
+    ],
+    "packages": [
+      "PKG-01:Essential Wedding",
+      "PKG-02:Signature Wedding",
+      "PKG-03:Full-Service Wedding"
+    ],
+    "faqs": 12,
+    "brochureSeededOnCreate": false,
+    "savedReportsSeededOnCreate": false
+  },
+  "venueA": {
+    "id": "b18b5d67-8535-4c41-a791-4ab6bde3589f",
+    "email": "cert-a-1786482244561@example.com",
+    "userId": "f14789fc-38e6-4b31-90fa-a5e1d16cfc87",
+    "seedMs": 9420
+  },
+  "venueB": {
+    "id": "58397d69-b789-4edf-bc8f-2cf663586ce5",
+    "email": "cert-b-1786482244561@example.com",
+    "userId": "74549514-964d-446c-ad18-6317ac3f78c9",
+    "seedMs": 819
+  },
+  "countsA": {
+    "messages": [
+      {
+        "id": "82ba9d57-fb10-4b47-9de6-7e224e4f80f2",
+        "name": "New Inquiry Response",
+        "source_master_key": "MSG-01"
+      },
+      {
+        "id": "302eaa69-ddd8-4696-a354-c4ebce255293",
+        "name": "Tour Confirmation",
+        "source_master_key": "MSG-02"
+      },
+      {
+        "id": "9faa490c-b2d9-4675-a5c9-edbda2003009",
+        "name": "Tour Follow-Up",
+        "source_master_key": "MSG-04"
+      },
+      {
+        "id": "baea2b4a-3cae-4210-b085-83873ae69956",
+        "name": "Contract Reminder",
+        "source_master_key": "MSG-06"
+      },
+      {
+        "id": "4ce9c46d-7b83-4c1a-ad6b-29c00ff2c322",
+        "name": "Final Guest Count Reminder",
+        "source_master_key": "MSG-08"
+      },
+      {
+        "id": "5cefe89d-1376-4493-87d4-81d3391bac5c",
+        "name": "Payment Reminder",
+        "source_master_key": "MSG-10"
+      },
+      {
+        "id": "a4555e16-c6ec-4f10-bd1a-7157275ecf63",
+        "name": "Tour Reminder",
+        "source_master_key": "MSG-03"
+      },
+      {
+        "id": "afda28ab-d113-43fe-84de-851370d2f43f",
+        "name": "Proposal Follow-Up",
+        "source_master_key": "MSG-05"
+      },
+      {
+        "id": "503913b4-6f98-41b4-a3c9-ac131f73aae3",
+        "name": "Final Details Reminder",
+        "source_master_key": "MSG-07"
+      },
+      {
+        "id": "4b6a25f2-ec0f-49db-97f8-a5d046676c2d",
+        "name": "Almost Here",
+        "source_master_key": "MSG-09"
+      },
+      {
+        "id": "01e922bc-f649-4b46-87e3-c2808bf0a363",
+        "name": "Post-Event Thank You",
+        "source_master_key": "MSG-11"
+      }
+    ],
+    "questionnaires": [
+      {
+        "id": "17c919c3-6a6a-4ebd-8a1a-33c35d82b3e9",
+        "name": "Client Planning Questionnaire",
+        "source_master_key": "QST-CP"
+      },
+      {
+        "id": "1fe544ee-ed26-4cec-bc80-9002e5fba77c",
+        "name": "Post-Event Feedback",
+        "source_master_key": "QST-PE"
+      },
+      {
+        "id": "be913dd1-0c15-4542-836f-fac685cf0e1f",
+        "name": "Final Details",
+        "source_master_key": "QST-FD"
+      }
+    ],
+    "contracts": [
+      {
+        "id": "efd21fa9-92bc-4b5c-a74e-1a9fb9fa8d9d",
+        "name": "Wedding Venue Agreement",
+        "source_master_key": "CTR-01"
+      }
+    ],
+    "eventOrders": [
+      {
+        "id": "51b93790-9db7-4a08-8d6f-3802848ee1d8",
+        "name": "Standard Wedding Event Order",
+        "source_master_key": "EO-01"
+      },
+      {
+        "id": "271583d8-3b95-4117-9cd5-acdcfca1da83",
+        "name": "Standard Wedding — Reception Only",
+        "source_master_key": "EO-02"
+      }
+    ],
+    "invTemplates": [
+      {
+        "id": "bf5de3b5-18e8-4b82-b4c1-7570c23d1bc5",
+        "name": "Standard Wedding — Ceremony + Reception",
+        "source_master_key": "INV-01"
+      },
+      {
+        "id": "05fd50f2-27af-4672-aa37-9a260d9ade17",
+        "name": "Standard Wedding — Reception Only",
+        "source_master_key": "INV-02"
+      }
+    ],
+    "invItems": [
+      {
+        "id": "94f188dd-e864-43e9-a24d-da7928c9757c",
+        "name": "60\" Round Table"
+      },
+      {
+        "id": "d8b87ad6-78b3-4b91-a777-d6e432c2a823",
+        "name": "72\" Round Table"
+      },
+      {
+        "id": "d22d01fb-93ec-4248-8f67-ea2923dbb383",
+        "name": "6' Banquet Table"
+      },
+      {
+        "id": "e29e83b8-a652-4136-b924-77e853a5e6b9",
+        "name": "8' Banquet Table"
+      },
+      {
+        "id": "69ab1241-359f-432c-9d01-744aafb194f4",
+        "name": "Cocktail Table"
+      },
+      {
+        "id": "d6666b6c-6e0b-49cf-b190-c42ba1ff0102",
+        "name": "Sweetheart Table"
+      },
+      {
+        "id": "75e2de45-8466-40c9-9191-9295985369c4",
+        "name": "Head Table"
+      },
+      {
+        "id": "86fbc06c-db45-41ac-9f64-7661d98ddc17",
+        "name": "Cake Table"
+      },
+      {
+        "id": "880a5d59-38f4-48a1-a7aa-0604bd1fd589",
+        "name": "Gift / Card Table"
+      },
+      {
+        "id": "0630cc34-015f-40ae-a4fa-974ff88ff2c2",
+        "name": "Registration / Welcome Table"
+      },
+      {
+        "id": "ef76e16b-82fc-4d7c-9e19-ffd676bc3352",
+        "name": "Folding Chair"
+      },
+      {
+        "id": "3c5defa1-38f5-4503-bb0d-06b0e7ef2b5b",
+        "name": "Banquet Chair"
+      },
+      {
+        "id": "5b853356-aa06-4c16-a6e6-6023a7ebfaa3",
+        "name": "Chiavari Chair"
+      },
+      {
+        "id": "d81b7138-6016-49e6-a7c5-94695dea5002",
+        "name": "Cross-Back Chair"
+      },
+      {
+        "id": "b5563376-bdaf-40eb-91b6-56b799b02aeb",
+        "name": "Ceremony Chair"
+      },
+      {
+        "id": "ae7e054d-a880-41de-8954-23f2cbc8a743",
+        "name": "Bar Stool"
+      },
+      {
+        "id": "d14ba555-42a8-41f2-bb31-4ff92b06d534",
+        "name": "90\" Round Linen"
+      },
+      {
+        "id": "5fd6bdef-72aa-41ea-81da-fa7260cd5345",
+        "name": "108\" Round Linen"
+      },
+      {
+        "id": "d4f9ab6c-f38f-4452-a782-483888a77cf5",
+        "name": "120\" Round Linen"
+      },
+      {
+        "id": "847bd074-0a6e-4e1f-86ef-fb88ea15fa50",
+        "name": "6' Banquet Linen"
+      },
+      {
+        "id": "4988e111-33e0-4e95-85a4-84375e990de0",
+        "name": "8' Banquet Linen"
+      },
+      {
+        "id": "6cf20e08-f4df-49b6-a327-b22765fa4f48",
+        "name": "Cocktail Table Linen"
+      },
+      {
+        "id": "38d895af-ecc0-4917-8584-68d08b818253",
+        "name": "Napkin"
+      },
+      {
+        "id": "3c9dede9-577e-459a-9bf7-980120edebf3",
+        "name": "Ceremony Arbor"
+      },
+      {
+        "id": "e559cda9-915f-41c0-a5fa-3e63ea927e8c",
+        "name": "Aisle Runner"
+      },
+      {
+        "id": "f3e4dc57-5e1c-456c-b78d-438bf0207abd",
+        "name": "Signing Table"
+      },
+      {
+        "id": "c43a0799-0187-4c47-bf5f-9a647be9efcb",
+        "name": "Signing Chairs"
+      },
+      {
+        "id": "c7671e86-073e-4036-b6ff-c3b67270dcec",
+        "name": "Reserved Seating Sign"
+      },
+      {
+        "id": "8a10125d-a2bc-4da6-8285-ab58f9cbc331",
+        "name": "Dance Floor"
+      },
+      {
+        "id": "b1354d41-d32e-4367-ab76-72bd0befb2bb",
+        "name": "Bar"
+      },
+      {
+        "id": "5ef7d371-6507-4b7a-9560-a120be0146f4",
+        "name": "Buffet Table"
+      },
+      {
+        "id": "9f20a7c5-8e11-410d-a834-f2f9ad07432d",
+        "name": "Dessert Table"
+      },
+      {
+        "id": "b395e23e-d20b-495d-9055-47d4233b5a8b",
+        "name": "DJ / Band Table"
+      },
+      {
+        "id": "a362229f-9549-4933-a09a-0e418739f7eb",
+        "name": "Dinner Plate"
+      },
+      {
+        "id": "bf12615d-c922-404c-acc8-cc08d6a31f18",
+        "name": "Salad Plate"
+      },
+      {
+        "id": "5d43362e-26f6-4ef7-9001-d1c40c2c8691",
+        "name": "Water Glass"
+      },
+      {
+        "id": "dcfb5a8d-adbb-4160-bb73-66fed9f96328",
+        "name": "Wine Glass"
+      },
+      {
+        "id": "952b3610-1a74-4e2b-8c06-ea27cd09bd7b",
+        "name": "Champagne Glass"
+      },
+      {
+        "id": "57c8e8e0-1309-4d97-8ea5-61704af4af89",
+        "name": "Flatware Place Setting"
+      },
+      {
+        "id": "18fa693f-52a7-40b8-a9ac-f7b3d4695128",
+        "name": "Microphone"
+      },
+      {
+        "id": "e833f643-f297-4323-a136-0b6a24968b0a",
+        "name": "Speaker"
+      },
+      {
+        "id": "ad065bcf-68ec-4ff0-b86a-cf9f99b27e8b",
+        "name": "Podium"
+      },
+      {
+        "id": "61d06657-3552-4307-87b4-5be4474f8382",
+        "name": "Projector"
+      },
+      {
+        "id": "ef130e14-c663-47c6-b3b7-61f82e0618be",
+        "name": "Easel"
+      },
+      {
+        "id": "93df957a-cc26-4968-a26f-8afa5459eb42",
+        "name": "Welcome Sign Stand"
+      },
+      {
+        "id": "ec55fb2c-dbff-48c0-aab2-409bfb4aea21",
+        "name": "Table Number Stand"
+      },
+      {
+        "id": "17bb4eda-51fc-426d-a351-72157e0b5dec",
+        "name": "Getting Ready Room"
+      },
+      {
+        "id": "029ffbd8-b62b-4dda-9874-cfc898bfc313",
+        "name": "Coat Rack"
+      },
+      {
+        "id": "0b5e7483-3fb4-412c-a553-e8ca49d102a1",
+        "name": "High Chair"
+      }
+    ],
+    "timelines": [
+      {
+        "id": "358d54ac-c402-4666-839c-945e184ce9ef",
+        "name": "Standard Wedding Day Timeline",
+        "source_master_key": "TL-01"
+      },
+      {
+        "id": "9ff05d15-af69-4caa-899c-d0bc103a0baa",
+        "name": "Reception Only Timeline",
+        "source_master_key": "TL-02"
+      },
+      {
+        "id": "822c155e-01b1-424c-875d-7fbe4e1e8e18",
+        "name": "Wedding Weekend Timeline",
+        "source_master_key": "TL-03"
+      }
+    ],
+    "floorPlans": [
+      {
+        "id": "107ec8cb-e0b5-4a9d-8963-71345696001c",
+        "name": "Standard Wedding — Ceremony + Reception",
+        "source_master_key": "FP-01"
+      },
+      {
+        "id": "c2cb1afb-4dfc-4b62-8729-bfc19f8217ca",
+        "name": "Standard Wedding — Reception Only",
+        "source_master_key": "FP-02"
+      }
+    ],
+    "packages": [
+      {
+        "id": "fd8d430d-abc5-4faa-ac9a-4ef2ab244571",
+        "name": "Essential Wedding",
+        "source_master_key": "PKG-01"
+      },
+      {
+        "id": "77333062-ff5c-4d71-ba8f-7f0ce16d815a",
+        "name": "Signature Wedding",
+        "source_master_key": "PKG-02"
+      },
+      {
+        "id": "b9e4d37a-4d6c-467d-a560-e9568e6b2053",
+        "name": "Full-Service Wedding",
+        "source_master_key": "PKG-03"
+      }
+    ],
+    "brochures": {
+      "error": "permission denied for table brochures",
+      "fallbackError": "permission denied for table brochures",
+      "rows": []
+    },
+    "savedReports": {
+      "error": "permission denied for table saved_reports",
+      "fallbackError": "permission denied for table saved_reports",
+      "rows": []
+    },
+    "faqs": [
+      {
+        "answer": "Your venue rental includes the spaces, furnishings, and services listed in your selected package. Review your package details for everything included with your event, and ask our team if you're unsure whether something is included.",
+        "audience": "both",
+        "question": "What is included with our venue rental?",
+        "published": false,
+        "source_master_key": "FAQ-01"
+      },
+      {
+        "answer": "Absolutely! We recommend touring the venue so you can see the spaces, ask questions, and get a feel for how your celebration could come together. Contact our team to schedule a tour.",
+        "audience": "both",
+        "question": "Can we tour the venue before booking?",
+        "published": false,
+        "source_master_key": "FAQ-02"
+      },
+      {
+        "answer": "Popular wedding dates can book well in advance, especially during peak wedding seasons. If you have a specific date in mind, we recommend reaching out as early as possible. Our team can let you know which dates are currently available.",
+        "audience": "both",
+        "question": "How far in advance should we book our wedding?",
+        "published": false,
+        "source_master_key": "FAQ-03"
+      },
+      {
+        "answer": "Many couples choose to host both their ceremony and reception with us. Depending on your venue and package, different spaces or layouts may be available for each part of the celebration. Ask our team about the options for your event.",
+        "audience": "both",
+        "question": "Can we have both our ceremony and reception at the venue?",
+        "published": false,
+        "source_master_key": "FAQ-04"
+      },
+      {
+        "answer": "We understand that guest counts can change as your plans come together. Your final guest count helps us prepare your event, seating, and other details. Let us know when your guest list changes so we can confirm any updates that may affect your event.",
+        "audience": "both",
+        "question": "What happens if we want to change our guest count?",
+        "published": false,
+        "source_master_key": "FAQ-05"
+      },
+      {
+        "answer": "Vendor policies vary by venue and by service. Some venues offer a preferred vendor list, while others allow couples to bring in their own vendors. We'll let you know which options apply to your event and package.",
+        "audience": "both",
+        "question": "Can we choose our own vendors?",
+        "published": false,
+        "source_master_key": "FAQ-06"
+      },
+      {
+        "answer": "We'll work with you throughout the planning process to gather the details we need for your celebration. As your event approaches, we'll confirm important information such as guest count, layout, timeline, vendors, and other event-day details.",
+        "audience": "both",
+        "question": "When should we finalize our event details?",
+        "published": false,
+        "source_master_key": "FAQ-07"
+      },
+      {
+        "answer": "Absolutely. Your floor plan can be customized to fit the way you'd like your celebration to flow. Depending on your venue's layout and the options available, you can work with our team to arrange seating and other event details.",
+        "audience": "both",
+        "question": "Can we customize the layout for our event?",
+        "published": false,
+        "source_master_key": "FAQ-08"
+      },
+      {
+        "answer": "We'll gather your final event information as your celebration approaches and confirm the details with you before the big day. Your event team will let you know when it's time to review and finalize your plans.",
+        "audience": "both",
+        "question": "When will we receive our final event details?",
+        "published": false,
+        "source_master_key": "FAQ-09"
+      },
+      {
+        "answer": "Your available setup and access times depend on your event, package, and venue schedule. We'll confirm your access window with you as part of the event planning process.",
+        "audience": "both",
+        "question": "What time can we arrive to set up?",
+        "published": false,
+        "source_master_key": "FAQ-10"
+      },
+      {
+        "answer": "This depends on your package and the plans you've made for your event. Your team will help you understand what the venue provides and what you'll need to bring, including any personal décor, specialty items, or other details you've chosen for your celebration.",
+        "audience": "both",
+        "question": "What should we bring with us on the wedding day?",
+        "published": false,
+        "source_master_key": "FAQ-11"
+      },
+      {
+        "answer": "Once your celebration is over, we'll help wrap up any remaining venue details and make sure you know about anything that still needs your attention. We'd also love to hear about your experience and see your favorite memories from the day.",
+        "audience": "both",
+        "question": "What happens after our wedding?",
+        "published": false,
+        "source_master_key": "FAQ-12"
+      }
+    ],
+    "fin_invoices": {
+      "count": 0
+    },
+    "fin_invoice_lines": {
+      "count": 0
+    },
+    "fin_payment_schedules": {
+      "count": 0
+    },
+    "fin_payment_schedule_items": {
+      "count": 0
+    },
+    "fin_payments": {
+      "count": 0
+    },
+    "working_event_orders": {
+      "error": ""
+    },
+    "working_working_inventories": {
+      "count": 0
+    },
+    "working_floor_plans": {
+      "error": ""
+    }
+  },
+  "countsB": {
+    "messages": [
+      {
+        "id": "02152dc4-c415-4186-b6a2-564632917674",
+        "name": "New Inquiry Response",
+        "source_master_key": "MSG-01"
+      },
+      {
+        "id": "65ecc13a-4511-4ca5-ab07-8f3964df27d4",
+        "name": "Tour Confirmation",
+        "source_master_key": "MSG-02"
+      },
+      {
+        "id": "89912d2a-8a55-4ad7-a395-7b5af62876b0",
+        "name": "Tour Reminder",
+        "source_master_key": "MSG-03"
+      },
+      {
+        "id": "71b7de66-8f92-4f62-9019-9ba4a9e5e2db",
+        "name": "Tour Follow-Up",
+        "source_master_key": "MSG-04"
+      },
+      {
+        "id": "7d3fd3fa-a6dd-4586-aa15-addf4f59f187",
+        "name": "Proposal Follow-Up",
+        "source_master_key": "MSG-05"
+      },
+      {
+        "id": "e0be72b2-321f-4341-95e6-b9db23c0b178",
+        "name": "Contract Reminder",
+        "source_master_key": "MSG-06"
+      },
+      {
+        "id": "e75da394-006f-4803-8083-3871ed53d613",
+        "name": "Final Details Reminder",
+        "source_master_key": "MSG-07"
+      },
+      {
+        "id": "47003602-ef42-42f8-a45a-c7dc65940ee0",
+        "name": "Final Guest Count Reminder",
+        "source_master_key": "MSG-08"
+      },
+      {
+        "id": "12129ea9-e972-4eda-8c30-437e9c6d3a17",
+        "name": "Almost Here",
+        "source_master_key": "MSG-09"
+      },
+      {
+        "id": "7238a560-e191-4d92-a10e-90fb4366dcb4",
+        "name": "Payment Reminder",
+        "source_master_key": "MSG-10"
+      },
+      {
+        "id": "a80519ec-bfae-406b-8444-6f6e590bbb45",
+        "name": "Post-Event Thank You",
+        "source_master_key": "MSG-11"
+      }
+    ],
+    "questionnaires": [
+      {
+        "id": "2c6c9854-ddc3-42e4-8d51-d6db7ddc7406",
+        "name": "Client Planning Questionnaire",
+        "source_master_key": "QST-CP"
+      },
+      {
+        "id": "8890a743-237d-4e09-afb6-8dabd1e4e0b9",
+        "name": "Final Details",
+        "source_master_key": "QST-FD"
+      },
+      {
+        "id": "a903e8fd-3e2f-4d78-a2d5-d4f7b7b06e01",
+        "name": "Post-Event Feedback",
+        "source_master_key": "QST-PE"
+      }
+    ],
+    "contracts": [
+      {
+        "id": "54869425-448d-4a08-a0a4-079e2610afa9",
+        "name": "Wedding Venue Agreement",
+        "source_master_key": "CTR-01"
+      }
+    ],
+    "eventOrders": [
+      {
+        "id": "5c0e4d08-4f58-4bb9-8f74-8945575bcdbf",
+        "name": "Standard Wedding Event Order",
+        "source_master_key": "EO-01"
+      },
+      {
+        "id": "bef5920c-5a10-45e9-9f51-87abde0ca700",
+        "name": "Standard Wedding — Reception Only",
+        "source_master_key": "EO-02"
+      }
+    ],
+    "invTemplates": [
+      {
+        "id": "06c740bc-66dc-4f60-b75f-6184a4cf7c35",
+        "name": "Standard Wedding — Ceremony + Reception",
+        "source_master_key": "INV-01"
+      },
+      {
+        "id": "2616aecf-6a15-4eb8-bda7-582096e997b2",
+        "name": "Standard Wedding — Reception Only",
+        "source_master_key": "INV-02"
+      }
+    ],
+    "invItems": [
+      {
+        "id": "1983438c-7dd2-4220-a950-f8aa81dd4438",
+        "name": "60\" Round Table"
+      },
+      {
+        "id": "974bc48d-3bb0-4d55-b8e7-e4fcd8a117e4",
+        "name": "72\" Round Table"
+      },
+      {
+        "id": "14c03a0c-97c5-412b-ab11-b295ca1cc46c",
+        "name": "6' Banquet Table"
+      },
+      {
+        "id": "8a3af9ea-ba8a-48a1-b3fb-050ae55934be",
+        "name": "8' Banquet Table"
+      },
+      {
+        "id": "e6268990-e035-45ac-aed6-205700641ac7",
+        "name": "Cocktail Table"
+      },
+      {
+        "id": "c5be6252-9841-4fa6-b414-920f2071fd7a",
+        "name": "Sweetheart Table"
+      },
+      {
+        "id": "8e2fee17-e5c8-4970-a2d0-5272fabc164c",
+        "name": "Head Table"
+      },
+      {
+        "id": "0c146367-d6e6-47b2-ade0-1961b94662dd",
+        "name": "Cake Table"
+      },
+      {
+        "id": "55d49fa4-49e0-46dc-b740-efda3823ff20",
+        "name": "Gift / Card Table"
+      },
+      {
+        "id": "d97d9c39-832f-43f1-a15f-8cdf973929ac",
+        "name": "Registration / Welcome Table"
+      },
+      {
+        "id": "f681fbb2-8c03-4564-a76e-0571f3dcaa9a",
+        "name": "Folding Chair"
+      },
+      {
+        "id": "84c8e18f-2156-4164-ad7c-b9b8405a7ecb",
+        "name": "Banquet Chair"
+      },
+      {
+        "id": "3d3313c9-0c99-4779-a7c1-56151984fa39",
+        "name": "Chiavari Chair"
+      },
+      {
+        "id": "beedeb30-7663-4990-b346-07faefdb07a6",
+        "name": "Cross-Back Chair"
+      },
+      {
+        "id": "a847f966-00e0-43c4-975c-0a3721c77138",
+        "name": "Ceremony Chair"
+      },
+      {
+        "id": "f857e4b1-ebb2-4859-8afe-fb09d0eea4eb",
+        "name": "Bar Stool"
+      },
+      {
+        "id": "38e3954c-a481-4791-8d8c-c8dd761aec65",
+        "name": "90\" Round Linen"
+      },
+      {
+        "id": "e224a2dc-4a35-4cab-9dde-a63ab70af775",
+        "name": "108\" Round Linen"
+      },
+      {
+        "id": "3269c919-c992-4aca-b5c1-1c94f59e8161",
+        "name": "120\" Round Linen"
+      },
+      {
+        "id": "8b6296fa-6055-4681-82a6-4a67189636a3",
+        "name": "6' Banquet Linen"
+      },
+      {
+        "id": "530f2dd6-3a48-48c5-b8df-eb5ca0818871",
+        "name": "8' Banquet Linen"
+      },
+      {
+        "id": "c669977b-52da-47de-ba89-8bfb515b09cd",
+        "name": "Cocktail Table Linen"
+      },
+      {
+        "id": "c4616a00-21f3-43b5-ba85-6a18e0f3dd45",
+        "name": "Napkin"
+      },
+      {
+        "id": "5599e0dc-4410-441e-a948-fa15970bd7c9",
+        "name": "Ceremony Arbor"
+      },
+      {
+        "id": "0c43faaf-9191-4ddd-a005-d55101e41f6d",
+        "name": "Aisle Runner"
+      },
+      {
+        "id": "fa656cbe-8c12-49ea-8dce-ea97dbcc1d87",
+        "name": "Signing Table"
+      },
+      {
+        "id": "6f6c996d-4414-451b-81c3-2cce294be7d8",
+        "name": "Signing Chairs"
+      },
+      {
+        "id": "d62c7021-0fbb-475e-b6a9-95c7f3c19cd4",
+        "name": "Reserved Seating Sign"
+      },
+      {
+        "id": "f3c2319f-87ca-4c48-8cf1-104e7cf20c46",
+        "name": "Dance Floor"
+      },
+      {
+        "id": "d863bb60-3acb-411e-a9a7-3e11cbf3190c",
+        "name": "Bar"
+      },
+      {
+        "id": "f0803cda-f1fc-494c-8277-41039c0ce367",
+        "name": "Buffet Table"
+      },
+      {
+        "id": "1405e05c-4a11-4ceb-a618-7a8728b2f095",
+        "name": "Dessert Table"
+      },
+      {
+        "id": "ddd438cd-7b30-4239-8f42-529dc584996b",
+        "name": "DJ / Band Table"
+      },
+      {
+        "id": "dd296bf9-ea5d-49b6-84b3-0bb50f49a9b4",
+        "name": "Dinner Plate"
+      },
+      {
+        "id": "19815450-f19c-4182-8855-a2959ac52edd",
+        "name": "Salad Plate"
+      },
+      {
+        "id": "8f73ed8d-671c-42cd-8583-9678d19049e3",
+        "name": "Water Glass"
+      },
+      {
+        "id": "5538c222-c2f0-43ea-b83a-b04d271c7abd",
+        "name": "Wine Glass"
+      },
+      {
+        "id": "4a72c3c2-1170-461a-9d74-0291da2f663a",
+        "name": "Champagne Glass"
+      },
+      {
+        "id": "bc694290-ad2f-4fb2-9c84-c19547ac3e8f",
+        "name": "Flatware Place Setting"
+      },
+      {
+        "id": "318aa0d4-dc29-448f-9ef0-a028bbb1b2eb",
+        "name": "Microphone"
+      },
+      {
+        "id": "1853130f-d20a-4ac0-8483-5139a744680a",
+        "name": "Speaker"
+      },
+      {
+        "id": "2e768f79-997b-49f8-aabd-1928a1109a58",
+        "name": "Podium"
+      },
+      {
+        "id": "8b68e69c-cc96-4d2e-9040-70d3cb4b80d7",
+        "name": "Projector"
+      },
+      {
+        "id": "aba86bc4-a0cf-48a3-a934-cc7671c0c8f6",
+        "name": "Easel"
+      },
+      {
+        "id": "8e57f6df-c605-4f7a-9aa3-b84108b463c2",
+        "name": "Welcome Sign Stand"
+      },
+      {
+        "id": "f5806b25-0e52-44ca-936d-5515a5093100",
+        "name": "Table Number Stand"
+      },
+      {
+        "id": "ce92436a-9297-482a-8c59-ef8975e9ca4b",
+        "name": "Getting Ready Room"
+      },
+      {
+        "id": "0bc0fded-e002-420e-b9c5-538abb720471",
+        "name": "Coat Rack"
+      },
+      {
+        "id": "ca2bf8a9-6f01-4c2f-9b15-d0089f97b97c",
+        "name": "High Chair"
+      }
+    ],
+    "timelines": [
+      {
+        "id": "8259840e-6b0e-4da3-aa64-7188da849052",
+        "name": "Standard Wedding Day Timeline",
+        "source_master_key": "TL-01"
+      },
+      {
+        "id": "274f5b30-1e84-480b-9e4b-3e65259bd277",
+        "name": "Reception Only Timeline",
+        "source_master_key": "TL-02"
+      },
+      {
+        "id": "742b8392-6b22-4af4-bdad-8597d6677054",
+        "name": "Wedding Weekend Timeline",
+        "source_master_key": "TL-03"
+      }
+    ],
+    "floorPlans": [
+      {
+        "id": "42f37e52-6243-4811-a10d-1b66b78859d0",
+        "name": "Standard Wedding — Ceremony + Reception",
+        "source_master_key": "FP-01"
+      },
+      {
+        "id": "5b0732d1-24ea-417a-aeab-9126da1d4f2a",
+        "name": "Standard Wedding — Reception Only",
+        "source_master_key": "FP-02"
+      }
+    ],
+    "packages": [
+      {
+        "id": "1404ad00-071f-485a-af1a-a597cce462db",
+        "name": "Essential Wedding",
+        "source_master_key": "PKG-01"
+      },
+      {
+        "id": "0275f880-e6ad-467e-b261-c42d34fb0793",
+        "name": "Signature Wedding",
+        "source_master_key": "PKG-02"
+      },
+      {
+        "id": "ffea0a8f-b205-485f-8c65-6a6bde823efb",
+        "name": "Full-Service Wedding",
+        "source_master_key": "PKG-03"
+      }
+    ],
+    "brochures": {
+      "error": "permission denied for table brochures",
+      "fallbackError": "permission denied for table brochures",
+      "rows": []
+    },
+    "savedReports": {
+      "error": "permission denied for table saved_reports",
+      "fallbackError": "permission denied for table saved_reports",
+      "rows": []
+    },
+    "faqs": [
+      {
+        "answer": "Your venue rental includes the spaces, furnishings, and services listed in your selected package. Review your package details for everything included with your event, and ask our team if you're unsure whether something is included.",
+        "audience": "both",
+        "question": "What is included with our venue rental?",
+        "published": false,
+        "source_master_key": "FAQ-01"
+      },
+      {
+        "answer": "Absolutely! We recommend touring the venue so you can see the spaces, ask questions, and get a feel for how your celebration could come together. Contact our team to schedule a tour.",
+        "audience": "both",
+        "question": "Can we tour the venue before booking?",
+        "published": false,
+        "source_master_key": "FAQ-02"
+      },
+      {
+        "answer": "Popular wedding dates can book well in advance, especially during peak wedding seasons. If you have a specific date in mind, we recommend reaching out as early as possible. Our team can let you know which dates are currently available.",
+        "audience": "both",
+        "question": "How far in advance should we book our wedding?",
+        "published": false,
+        "source_master_key": "FAQ-03"
+      },
+      {
+        "answer": "Many couples choose to host both their ceremony and reception with us. Depending on your venue and package, different spaces or layouts may be available for each part of the celebration. Ask our team about the options for your event.",
+        "audience": "both",
+        "question": "Can we have both our ceremony and reception at the venue?",
+        "published": false,
+        "source_master_key": "FAQ-04"
+      },
+      {
+        "answer": "We understand that guest counts can change as your plans come together. Your final guest count helps us prepare your event, seating, and other details. Let us know when your guest list changes so we can confirm any updates that may affect your event.",
+        "audience": "both",
+        "question": "What happens if we want to change our guest count?",
+        "published": false,
+        "source_master_key": "FAQ-05"
+      },
+      {
+        "answer": "Vendor policies vary by venue and by service. Some venues offer a preferred vendor list, while others allow couples to bring in their own vendors. We'll let you know which options apply to your event and package.",
+        "audience": "both",
+        "question": "Can we choose our own vendors?",
+        "published": false,
+        "source_master_key": "FAQ-06"
+      },
+      {
+        "answer": "We'll work with you throughout the planning process to gather the details we need for your celebration. As your event approaches, we'll confirm important information such as guest count, layout, timeline, vendors, and other event-day details.",
+        "audience": "both",
+        "question": "When should we finalize our event details?",
+        "published": false,
+        "source_master_key": "FAQ-07"
+      },
+      {
+        "answer": "Absolutely. Your floor plan can be customized to fit the way you'd like your celebration to flow. Depending on your venue's layout and the options available, you can work with our team to arrange seating and other event details.",
+        "audience": "both",
+        "question": "Can we customize the layout for our event?",
+        "published": false,
+        "source_master_key": "FAQ-08"
+      },
+      {
+        "answer": "We'll gather your final event information as your celebration approaches and confirm the details with you before the big day. Your event team will let you know when it's time to review and finalize your plans.",
+        "audience": "both",
+        "question": "When will we receive our final event details?",
+        "published": false,
+        "source_master_key": "FAQ-09"
+      },
+      {
+        "answer": "Your available setup and access times depend on your event, package, and venue schedule. We'll confirm your access window with you as part of the event planning process.",
+        "audience": "both",
+        "question": "What time can we arrive to set up?",
+        "published": false,
+        "source_master_key": "FAQ-10"
+      },
+      {
+        "answer": "This depends on your package and the plans you've made for your event. Your team will help you understand what the venue provides and what you'll need to bring, including any personal décor, specialty items, or other details you've chosen for your celebration.",
+        "audience": "both",
+        "question": "What should we bring with us on the wedding day?",
+        "published": false,
+        "source_master_key": "FAQ-11"
+      },
+      {
+        "answer": "Once your celebration is over, we'll help wrap up any remaining venue details and make sure you know about anything that still needs your attention. We'd also love to hear about your experience and see your favorite memories from the day.",
+        "audience": "both",
+        "question": "What happens after our wedding?",
+        "published": false,
+        "source_master_key": "FAQ-12"
+      }
+    ],
+    "fin_invoices": {
+      "count": 0
+    },
+    "fin_invoice_lines": {
+      "count": 0
+    },
+    "fin_payment_schedules": {
+      "count": 0
+    },
+    "fin_payment_schedule_items": {
+      "count": 0
+    },
+    "fin_payments": {
+      "count": 0
+    },
+    "working_event_orders": {
+      "error": ""
+    },
+    "working_working_inventories": {
+      "count": 0
+    },
+    "working_floor_plans": {
+      "error": ""
+    }
+  },
+  "findings": [
+    {
+      "id": "provision.messages",
+      "classification": "PASS",
+      "detail": "Expected 11 MSG keys, got 11: MSG-01,MSG-02,MSG-04,MSG-06,MSG-08,MSG-10,MSG-03,MSG-05,MSG-07,MSG-09,MSG-11"
+    },
+    {
+      "id": "provision.questionnaires",
+      "classification": "PASS",
+      "detail": "Expected 3, got 3: QST-CP,QST-PE,QST-FD"
+    },
+    {
+      "id": "provision.contract",
+      "classification": "PASS",
+      "detail": "keys=CTR-01"
+    },
+    {
+      "id": "provision.eventOrders",
+      "classification": "PASS",
+      "detail": "keys=EO-01,EO-02"
+    },
+    {
+      "id": "provision.inventoryTemplates",
+      "classification": "PASS",
+      "detail": "keys=INV-01,INV-02; catalogItems=49"
+    },
+    {
+      "id": "provision.timelines",
+      "classification": "PASS",
+      "detail": "keys=TL-01,TL-02,TL-03"
+    },
+    {
+      "id": "provision.floorPlans",
+      "classification": "PASS",
+      "detail": "keys=FP-01,FP-02"
+    },
+    {
+      "id": "provision.packages",
+      "classification": "PASS",
+      "detail": "keys=PKG-01,PKG-02,PKG-03"
+    },
+    {
+      "id": "provision.packages.unpriced",
+      "classification": "PASS",
+      "detail": "all starters unpriced=true; sample=[{\"source_master_key\":\"PKG-01\",\"base_price\":null},{\"source_master_key\":\"PKG-02\",\"base_price\":null},{\"source_master_key\":\"PKG-03\",\"base_price\":null}]"
+    },
+    {
+      "id": "provision.faqs",
+      "classification": "PASS",
+      "detail": "{\"total\":12,\"publishedCount\":0,\"unpublishedStarterCount\":12,\"allStartersUnpublished\":true}"
+    },
+    {
+      "id": "financial.provisionSideEffects",
+      "classification": "PASS",
+      "detail": "{\"invoices\":{\"count\":0},\"lines\":{\"count\":0},\"schedules\":{\"count\":0},\"scheduleItems\":{\"count\":0},\"payments\":{\"count\":0}}"
+    },
+    {
+      "id": "provision.noWorkingCommitments",
+      "classification": "PASS WITH NAMED CAVEAT",
+      "detail": "{\"event_orders\":{\"error\":\"\"},\"working_inventories\":{\"count\":0},\"floor_plans\":{\"error\":\"\"}}"
+    },
+    {
+      "id": "provision.brochures",
+      "classification": "PASS WITH NAMED CAVEAT",
+      "detail": "Brochures are Library capability created by venue (+ New Brochure), not seeded. count=?"
+    },
+    {
+      "id": "provision.savedReports",
+      "classification": "PASS WITH NAMED CAVEAT",
+      "detail": "Saved Reports are save-actions on Reporting pages (Sales/Bookings/Revenue/Events paths), not seeded masters. count=?"
+    },
+    {
+      "id": "provision.paymentPlans",
+      "classification": "INTENTIONAL DIFFERENCE",
+      "detail": "Payment plan starters are code presets (thirds, wedding_four, custom + additional fifty_fifty,deposit_30_70), not venue-seeded rows. Zero financial rows after provision confirmed separately."
+    },
+    {
+      "id": "idempotency.customsPreserved",
+      "classification": "PASS",
+      "detail": "{\"preserved\":{\"message\":true,\"package\":true,\"timeline\":true,\"faq\":true},\"repro\":{\"inventory\":{\"catalog\":\"skipped\",\"templates\":{\"created\":[],\"skipped\":[\"INV-01\",\"INV-02\"]}},\"messages\":{\"created\":[],\"adopted\":[],\"skipped\":[\"MSG-01\",\"MSG-02\",\"MSG-03\",\"MSG-04\",\"MSG-05\",\"MSG-06\",\"MSG-07\",\"MSG-08\",\"MSG-09\",\"MSG-10\",\"MSG-11\"]},\"contracts\":{\"created\":[],\"skipped\":[\"CTR-01\"]},\"questionnaires\":{\"created\":[],\"skipped\":[\"QST-CP\",\"QST-FD\",\"QST-PE\"]},\"eventOrders\":{\"created\":[],\"skipped\":[\"EO-01\",\"EO-02\"]},\"timelines\":{\"created\":[],\"skipped\":[\"TL-01\",\"TL-02\",\"TL-03\"]},\"floorPlans\":{\"created\":[],\"skipped\":[\"FP-01\",\"FP-02\"]},\"packages\":{\"created\":[],\"skipped\":[\"PKG-01\",\"PKG-02\",\"PKG-03\"]},\"faqs\":{\"created\":[],\"skipped\":[\"FAQ-01\",\"FAQ-02\",\"FAQ-03\",\"FAQ-04\",\"FAQ-05\",\"FAQ-06\",\"FAQ-07\",\"FAQ-08\",\"FAQ-09\",\"FAQ-10\",\"FAQ-11\",\"FAQ-12\"]}}}"
+    },
+    {
+      "id": "master.protection",
+      "classification": "PASS",
+      "detail": "Masters are code fixtures; venue DB customizations do not mutate starters.ts constants."
+    },
+    {
+      "id": "security.crossVenueRLS",
+      "classification": "PASS",
+      "detail": "{\"message_templates\":0,\"packages\":0,\"timeline_templates\":0,\"floor_plan_templates\":0,\"inventory_templates\":0,\"event_order_templates\":0,\"contract_templates\":0,\"questionnaire_templates\":0,\"brochures\":0,\"saved_reports\":0}"
+    },
+    {
+      "id": "isolation.venueBUntouched",
+      "classification": "PASS",
+      "detail": "Venue B MSG-01 name=New Inquiry Response"
+    },
+    {
+      "id": "catalog.commitmentBoundary",
+      "classification": "PASS WITH NAMED CAVEAT",
+      "detail": "{\"ok\":false,\"stage\":\"event_order_insert\",\"error\":\"Could not find the 'title' column of 'event_orders' in the schema cache\",\"eventId\":\"6d2607c9-ab76-4548-968e-0261b0486427\"}"
+    },
+    {
+      "id": "financial.afterCustomizeStillZero",
+      "classification": "PASS",
+      "detail": "{\"invoices\":{\"count\":0},\"payments\":{\"count\":0},\"schedules\":{\"count\":0}}"
+    },
+    {
+      "id": "timeline.multiDayMaster",
+      "classification": "PASS",
+      "detail": "TL-03 dayOffsets=0,1,2; itemCount=48"
+    },
+    {
+      "id": "performance.seedDuration",
+      "classification": "PASS",
+      "detail": "Venue A seed duration 9420ms; Venue B 819ms"
+    }
+  ],
+  "summary": {
+    "pass": 18,
+    "caveat": 4,
+    "intentional": 1,
+    "fixed": 0,
+    "gap": 0
+  }
+}

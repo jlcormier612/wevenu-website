@@ -42,7 +42,7 @@ export function VendorEventsList({ events }: { events: VendorEventListItem[] }) 
 
   return (
     <div className="space-y-6">
-      <h1 className="text-xl font-bold text-foreground">Events</h1>
+      <h1 className="font-heading text-2xl font-medium text-heading">Events</h1>
 
       {events.length === 0 ? (
         <div className="rounded-sm border border-dashed border-border py-14 text-center">

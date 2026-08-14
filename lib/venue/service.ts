@@ -6,6 +6,7 @@
  * repository. Components and server actions call into here — never into the
  * repository or Supabase directly. Server-only.
  */
+import { cache } from "react";
 import { createClient } from "@/integrations/supabase/server";
 import { isSupabaseConfigured } from "@/lib/env";
 import * as repository from "@/lib/venue/repository";
@@ -82,8 +83,18 @@ function pushVenueProfileToCrm(
 /**
  * The current user's venue, or null if none exists / not authenticated /
  * Supabase not configured. Used by route gating and the workspace.
+ *
+ * Work Package R3 — wrapped in React's request-scoped `cache()`: Reporting
+ * found this called a dozen-plus times on a single Overview page render
+ * (every `lib/metrics/*` function resolves its own venue independently).
+ * `cache()` dedupes identical calls within one render pass only — never
+ * across requests/users, so this carries none of the cross-venue-leakage
+ * risk a module-level cache would (the exact hazard this codebase has
+ * already been burned by elsewhere). The venue cannot change mid-request,
+ * so memoizing it for the request's lifetime is simply correct, not a
+ * shortcut.
  */
-export async function getCurrentVenue(): Promise<Venue | null> {
+export const getCurrentVenue = cache(async (): Promise<Venue | null> => {
   if (!isSupabaseConfigured) return null;
   const supabase = await createClient();
   const {
@@ -91,7 +102,7 @@ export async function getCurrentVenue(): Promise<Venue | null> {
   } = await supabase.auth.getUser();
   if (!user) return null;
   return repository.getVenueForCurrentUser(supabase);
-}
+});
 
 /**
  * The current user's role on their venue ('owner' | 'manager' | 'coordinator'
@@ -145,6 +156,31 @@ export async function submitVenueSetup(
     return { ok: false, errors };
   }
 
+  // WP4 — finalize only after Legal Acceptance Engine is satisfied (Welcome Experience).
+  try {
+    const { legalAcceptanceService } = await import("@/lib/legal/acceptance-engine");
+    const legal = await legalAcceptanceService.requiresAcceptance({
+      userId: user.id,
+      userType: "venue_owner",
+    });
+    if (legal.requiresAcceptance) {
+      return {
+        ok: false,
+        errors: {},
+        message:
+          "Please review and accept the required documents before creating your venue workspace.",
+      };
+    }
+  } catch (legalError) {
+    console.error("[setup] legal acceptance check failed", legalError);
+    return {
+      ok: false,
+      errors: {},
+      message:
+        "We couldn't verify legal acceptance. Please try again from the Welcome screen.",
+    };
+  }
+
   // Idempotency: if a completed venue already exists, treat as success.
   const existing = await repository.getVenueForCurrentUser(supabase);
   if (existing?.setupCompleted) {
@@ -161,6 +197,72 @@ export async function submitVenueSetup(
       // Non-fatal — a new venue without a seeded starter catalog can still
       // add Inventory by hand; it should never block venue creation itself.
       console.error("Could not seed starter inventory:", seedError);
+    }
+    try {
+      const { seedStarterMessageTemplates } = await import("@/lib/message-templates/provision");
+      await seedStarterMessageTemplates(venueId);
+    } catch (seedError) {
+      console.error("Could not seed starter message templates:", seedError);
+    }
+    try {
+      const { seedStarterAutomations } = await import("@/lib/message-sequences/provision");
+      await seedStarterAutomations(venueId);
+    } catch (seedError) {
+      console.error("Could not seed starter automations:", seedError);
+    }
+    try {
+      const { seedContractStarters } = await import("@/lib/contracts/provision");
+      await seedContractStarters(venueId);
+    } catch (seedError) {
+      console.error("Could not seed contract starters:", seedError);
+    }
+    try {
+      const { seedQuestionnaireFamily } = await import("@/lib/questionnaire-family/provision");
+      await seedQuestionnaireFamily(venueId);
+    } catch (seedError) {
+      console.error("Could not seed questionnaire family:", seedError);
+    }
+    try {
+      const { seedEventOrderStarters } = await import("@/lib/event-order-templates/provision");
+      await seedEventOrderStarters(venueId);
+    } catch (seedError) {
+      console.error("Could not seed event order starters:", seedError);
+    }
+    try {
+      const { seedTimelineStarters } = await import("@/lib/timeline-templates/provision");
+      await seedTimelineStarters(venueId);
+    } catch (seedError) {
+      console.error("Could not seed timeline starters:", seedError);
+    }
+    try {
+      const { seedFloorPlanStarters } = await import("@/lib/floor-plan-templates/provision");
+      await seedFloorPlanStarters(venueId);
+    } catch (seedError) {
+      console.error("Could not seed floor plan starters:", seedError);
+    }
+    try {
+      const { seedPackageStarters } = await import("@/lib/packages/provision");
+      await seedPackageStarters(venueId);
+    } catch (seedError) {
+      console.error("Could not seed package starters:", seedError);
+    }
+    try {
+      const { seedFaqStarters } = await import("@/lib/venue-guide/provision");
+      await seedFaqStarters(venueId);
+    } catch (seedError) {
+      console.error("Could not seed FAQ starters:", seedError);
+    }
+    try {
+      const { seedBrochureStarters } = await import("@/lib/brochures/provision");
+      await seedBrochureStarters(venueId);
+    } catch (seedError) {
+      console.error("Could not seed brochure starters:", seedError);
+    }
+    try {
+      const { seedSavedReportStarters } = await import("@/lib/saved-reports/provision");
+      await seedSavedReportStarters(venueId);
+    } catch (seedError) {
+      console.error("Could not seed saved report starters:", seedError);
     }
     pushVenueProfileToCrm(venueId, input, "setup_submit");
     return { ok: true, venueId };
@@ -348,6 +450,22 @@ export async function saveBusinessHoursSection(
   if (Object.keys(errors).length > 0) return { ok: false, errors };
   return withVenue(async (supabase, venueId) => {
     await repository.upsertBusinessHours(supabase, venueId, input.businessHours);
+    return { ok: true };
+  });
+}
+
+/** Save: public review destination for Post-Event Feedback. */
+export async function updatePublicReviewUrl(
+  url: string | null,
+): Promise<{ ok: boolean; message?: string }> {
+  return withVenue(async (supabase, venueId) => {
+    const trimmed = (url ?? "").trim();
+    const normalized = trimmed
+      ? (/^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`)
+      : null;
+    await repository.updateVenueFields(supabase, venueId, {
+      public_review_url: normalized,
+    });
     return { ok: true };
   });
 }

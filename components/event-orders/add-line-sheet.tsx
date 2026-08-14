@@ -59,6 +59,10 @@ export function AddLineSheet({
       if (source === "package") {
         const pkg = packages.find((p) => p.id === packageId);
         if (!pkg) { setError("Choose a package."); return; }
+        if (pkg.basePrice == null) {
+          setError("Set a price on this package in Packages before adding it to an Event Order.");
+          return;
+        }
         const result = await addLineFromPackageAction(eventOrderId, eventId, pkg.id, pkg.name, pkg.basePrice, sectionId);
         if (result.ok) { onAdded(result.line); toast.success("Added to Event Order."); setOpen(false); reset(); }
         else { setError(result.message ?? "Could not add."); toast.error(result.message ?? "Could not add."); }
@@ -107,7 +111,7 @@ export function AddLineSheet({
                   {packages.filter((p) => p.isActive).map((p) => (
                     <button key={p.id} type="button" onClick={() => setPackageId(p.id)}
                       className={`w-full rounded-lg border px-3 py-2 text-left text-sm transition-colors ${packageId === p.id ? "border-primary bg-primary/10 font-medium" : "border-border hover:border-primary/40"}`}>
-                      {p.name} — {formatMoney(p.basePrice)}
+                      {p.name} — {p.basePrice == null ? "Set your price" : formatMoney(p.basePrice)}
                     </button>
                   ))}
                 </div>

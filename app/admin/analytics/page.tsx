@@ -1,17 +1,16 @@
 import type { Metadata } from "next";
 
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { StatTile } from "@/components/dashboard-system/stat-tile";
 import { getHqAnalytics } from "@/lib/hq/analytics-service";
 
 export const metadata: Metadata = { title: "Analytics — Hello to Cheers HQ" };
 
+// Dashboard Component System, Phase 2 — local StatCard removed in favor of
+// the shared StatTile ("label-top" layout); same className as the
+// original plain-div tile, copy/values unchanged.
 function StatCard({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-xl border bg-card p-3">
-      <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">{label}</p>
-      <p className="mt-1 text-2xl font-bold font-heading text-heading">{value}</p>
-    </div>
-  );
+  return <StatTile layout="label-top" label={label} value={value} className="rounded-xl border bg-card p-3" />;
 }
 
 export default async function AnalyticsPage() {

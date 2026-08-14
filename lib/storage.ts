@@ -67,3 +67,15 @@ export function resolveImageFile(file: File): { ext: string; mime: string } | nu
   const match = file.name.toLowerCase().match(/\.[a-z0-9]+$/);
   return match ? KNOWN_IMAGE_EXTENSIONS[match[0]] ?? null : null;
 }
+
+/** Image types plus PDF — couple document / COI uploads (portal Documents). */
+export function resolvePortalDocumentFile(file: File): { ext: string; mime: string } | null {
+  if (file.type === "application/pdf") {
+    return { ext: "pdf", mime: "application/pdf" };
+  }
+  const match = file.name.toLowerCase().match(/\.[a-z0-9]+$/);
+  if (match?.[0] === ".pdf") {
+    return { ext: "pdf", mime: "application/pdf" };
+  }
+  return resolveImageFile(file);
+}

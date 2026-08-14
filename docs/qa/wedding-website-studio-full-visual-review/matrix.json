@@ -1,0 +1,152 @@
+{
+  "startedAt": "2026-08-10T03:35:42.696Z",
+  "smoke": true,
+  "collections": [
+    {
+      "key": "classic",
+      "name": "Wildflower"
+    },
+    {
+      "key": "modern",
+      "name": "Midnight"
+    },
+    {
+      "key": "garden",
+      "name": "Garden Party"
+    },
+    {
+      "key": "minimal",
+      "name": "Linen"
+    },
+    {
+      "key": "romance",
+      "name": "Rosé"
+    },
+    {
+      "key": "coastal",
+      "name": "Coastal"
+    },
+    {
+      "key": "champagne",
+      "name": "Champagne"
+    },
+    {
+      "key": "velvet",
+      "name": "Velvet"
+    },
+    {
+      "key": "estate",
+      "name": "European Estate"
+    },
+    {
+      "key": "rustic",
+      "name": "Rustic"
+    }
+  ],
+  "curatedColorStories": [
+    {
+      "key": "coastal-blue",
+      "name": "Coastal Blue",
+      "id": "104ef402-98d9-4bc7-8f5e-fa4faf5298f3"
+    },
+    {
+      "key": "sage-garden",
+      "name": "Sage Garden",
+      "id": "4f473737-7c3b-4c04-9efd-3a7f4d6ee043"
+    },
+    {
+      "key": "dusty-rose",
+      "name": "Dusty Rose",
+      "id": "78b5c2a1-f819-4ed3-814b-2d230f8ef3cb"
+    },
+    {
+      "key": "peach-bellini",
+      "name": "Peach Bellini",
+      "id": "7afd7fbb-8008-419c-a8ef-1cf916d0a281"
+    },
+    {
+      "key": "lavender-haze",
+      "name": "Lavender Haze",
+      "id": "6e787048-9761-4450-8780-12a9415a14c3"
+    },
+    {
+      "key": "champagne-curated",
+      "name": "Champagne",
+      "id": "81389a80-cb4c-4869-9c8a-4ee97456a536"
+    },
+    {
+      "key": "terracotta-curated",
+      "name": "Terracotta",
+      "id": "efdc60ea-2a84-4f15-abc8-cb8b4057f1f2"
+    },
+    {
+      "key": "french-blue",
+      "name": "French Blue",
+      "id": "37c45b3a-f1ac-4a18-8bd8-b5bacf97918a"
+    },
+    {
+      "key": "black-tie",
+      "name": "Black Tie",
+      "id": "301e0b97-a991-4949-aef9-b0849b232a8b"
+    },
+    {
+      "key": "berry",
+      "name": "Berry",
+      "id": "8b02ea4e-7271-42be-8963-e023d3bbab5d"
+    },
+    {
+      "key": "golden-hour",
+      "name": "Golden Hour",
+      "id": "d1300ff8-17b0-4816-9b62-b57a4ec8afa9"
+    },
+    {
+      "key": "meadow",
+      "name": "Meadow",
+      "id": "9562ccbe-e6ed-4db6-a46f-59ac7b1d077f"
+    }
+  ],
+  "photoStyles": [
+    {
+      "key": "editorial",
+      "name": "Editorial"
+    },
+    {
+      "key": "magazine",
+      "name": "Magazine"
+    },
+    {
+      "key": "film",
+      "name": "Film"
+    },
+    {
+      "key": "minimal",
+      "name": "Minimal"
+    },
+    {
+      "key": "modern",
+      "name": "Modern"
+    },
+    {
+      "key": "luxury",
+      "name": "Luxury"
+    },
+    {
+      "key": "scrapbook",
+      "name": "Scrapbook"
+    },
+    {
+      "key": "wildflower",
+      "name": "Wildflower"
+    },
+    {
+      "key": "midnight",
+      "name": "Midnight"
+    },
+    {
+      "key": "gallery_wall",
+      "name": "Gallery Wall"
+    }
+  ],
+  "finishedAt": "2026-08-10T03:35:58.943Z",
+  "findingCount": 1
+}

@@ -17,6 +17,7 @@ import { StripeConnectSection } from "@/components/settings/stripe-connect-secti
 import { QuickBooksConnectSection } from "@/components/settings/quickbooks-connect-section";
 import { FacebookConnectSection } from "@/components/settings/facebook-connect-section";
 import { VenueSettings } from "@/components/settings/venue-settings";
+import { LegalHistorySection } from "@/components/legal/legal-history-section";
 import {
   Card,
   CardContent,
@@ -25,6 +26,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { getCapacityRules, getSpaces } from "@/lib/availability/service";
+import { listLegalAcceptancesForCurrentUser } from "@/lib/legal/service";
 import { getLuvSettings } from "@/lib/luv/settings";
 import { getCurrentVenue, getVenueSettings } from "@/lib/venue/service";
 import { getNotificationStats } from "@/lib/notifications/stats";
@@ -48,8 +50,8 @@ export const metadata: Metadata = { title: "Settings" };
  * Route is protected by the (app) layout (venue existence already confirmed).
  */
 export default async function SettingsPage() {
-  const [settings, venue, spaces, capacityRules, luvSettings, notifStats, notifPrefs, tourSettings, intakeHealth, eventCompletedNudgeRule, quickbooksConnection, quickbooksSyncLog, tourAvailabilityWindows, tourAvailabilityExceptions, emailIntakeStatus, facebookConnection, facebookLeadForms, facebookLog] = await Promise.all([
-    getVenueSettings(), getCurrentVenue(), getSpaces(), getCapacityRules(), getLuvSettings(), getNotificationStats(), getNotificationPreferences(), getTourSettings(), getIntakeHealthSummary(), getEventCompletedNudgeRule(), getQuickBooksConnection(), getRecentQuickBooksSyncLog(), getTourAvailabilityWindows(), getTourAvailabilityExceptions(), getEmailIntakeStatus(), getFacebookConnection(), getFacebookLeadForms(), getRecentFacebookLog(),
+  const [settings, venue, spaces, capacityRules, luvSettings, notifStats, notifPrefs, tourSettings, intakeHealth, eventCompletedNudgeRule, quickbooksConnection, quickbooksSyncLog, tourAvailabilityWindows, tourAvailabilityExceptions, emailIntakeStatus, facebookConnection, facebookLeadForms, facebookLog, legalHistory] = await Promise.all([
+    getVenueSettings(), getCurrentVenue(), getSpaces(), getCapacityRules(), getLuvSettings(), getNotificationStats(), getNotificationPreferences(), getTourSettings(), getIntakeHealthSummary(), getEventCompletedNudgeRule(), getQuickBooksConnection(), getRecentQuickBooksSyncLog(), getTourAvailabilityWindows(), getTourAvailabilityExceptions(), getEmailIntakeStatus(), getFacebookConnection(), getFacebookLeadForms(), getRecentFacebookLog(), listLegalAcceptancesForCurrentUser(),
   ]);
 
   if (!settings) {
@@ -72,8 +74,8 @@ export default async function SettingsPage() {
         title="Settings"
         description="Edit your venue information, hours, brand, and preferences."
       />
-      <VenueSettings initial={settings.input} venueId={settings.venueId} />
-      {venue && <StripeConnectSection venue={venue} />}
+      <VenueSettings initial={settings.input} venueId={settings.venueId} publicReviewUrl={venue?.publicReviewUrl ?? ""} />
+      {venue && <div id="stripe"><StripeConnectSection venue={venue} /></div>}
       {venue && <QuickBooksConnectSection venueId={venue.id} connection={quickbooksConnection} syncLog={quickbooksSyncLog} />}
       {venue && <FacebookConnectSection venueId={venue.id} connection={facebookConnection} leadForms={facebookLeadForms} recentLog={facebookLog} />}
 
@@ -122,6 +124,9 @@ export default async function SettingsPage() {
           <Link href="/settings/team" className="text-sm font-medium text-primary hover:underline">Manage Team →</Link>
         </CardContent>
       </Card>
+
+      {/* ── Legal History (signed-in staff user) ───────────────────── */}
+      <LegalHistorySection items={legalHistory} />
 
       {/* ── Availability & Spaces ───────────────────────────────────── */}
       <Card>

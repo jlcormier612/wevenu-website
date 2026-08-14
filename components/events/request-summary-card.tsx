@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { StatTile, StatTileGrid } from "@/components/dashboard-system/stat-tile";
 import type { Request } from "@/lib/requests/types";
 
 /**
@@ -32,14 +33,19 @@ export function RequestSummaryCard({ requests }: { requests: Request[] }) {
         <Link href="/requests" className="text-xs text-primary hover:underline">Open Request Dashboard →</Link>
       </CardHeader>
       <CardContent>
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <StatTileGrid>
           {stats.map((s) => (
-            <div key={s.label} className="rounded-lg border border-border bg-muted/20 px-3 py-2">
-              <p className="text-xl font-semibold text-foreground">{s.value}</p>
-              <p className="text-xs text-muted-foreground">{s.label}</p>
-            </div>
+            <StatTile
+              key={s.label}
+              layout="value-top"
+              size="sm"
+              value={s.value}
+              label={s.label}
+              valueClassName="font-semibold text-foreground"
+              className="rounded-lg border border-border bg-muted/20 px-3 py-2"
+            />
           ))}
-        </div>
+        </StatTileGrid>
       </CardContent>
     </Card>
   );

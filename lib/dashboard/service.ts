@@ -523,7 +523,7 @@ async function buildGuidedSetupChecklist(venue: Venue, activationScore: Activati
         ctaLabel: copy?.ctaLabel ?? "Take me there",
         ctaHref: item.href,
         articleTitle: article?.title,
-        articleHref: article ? `/success-library/${article.slug}` : undefined,
+        articleHref: article ? `/help/${article.slug}` : undefined,
       };
     }),
   ];

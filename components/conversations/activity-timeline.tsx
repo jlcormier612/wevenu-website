@@ -17,7 +17,7 @@
 import * as React from "react";
 import {
   CalendarClock, CheckCircle2, Circle, FileSignature,
-  MessageCircle, Receipt, Truck, UserPlus, Users, Wallet,
+  MessageCircle, Receipt, Truck, UserPlus, Users, Wallet, Workflow,
 } from "lucide-react";
 
 import { getActivityTimelineAction } from "@/app/(app)/messaging/actions";
@@ -35,6 +35,7 @@ const SOURCE_ICON: Record<ActivityTimelineSource, React.ElementType> = {
   guests: Users,
   vendor: Truck,
   conversation: MessageCircle,
+  automation: Workflow,
 };
 
 const SOURCE_COLOR: Record<ActivityTimelineSource, string> = {
@@ -49,6 +50,7 @@ const SOURCE_COLOR: Record<ActivityTimelineSource, string> = {
   guests: "bg-muted text-muted-foreground",
   vendor: "bg-warning/15 text-warning-foreground",
   conversation: "bg-info/15 text-info",
+  automation: "bg-primary/15 text-primary",
 };
 
 function formatWhen(iso: string): string {

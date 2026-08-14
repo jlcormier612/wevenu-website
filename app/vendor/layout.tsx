@@ -2,6 +2,7 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 
 import { VendorAppShell } from "@/components/vendor-app/vendor-app-shell";
+import { createClient } from "@/integrations/supabase/server";
 import { isSupabaseConfigured } from "@/lib/env";
 import { getVendorBriefing, getVendorLuvAttentionCount } from "@/lib/luv/vendor-observations";
 import { getVendorUser } from "@/lib/vendor-auth/service";
@@ -15,6 +16,11 @@ function isVendorAcceptPath(pathname: string): boolean {
   return pathname === "/vendor/accept" || pathname.startsWith("/vendor/accept/");
 }
 
+/**
+ * Vendor workspace shell. Legal acceptance is enforced by Legal Middleware
+ * (`integrations/supabase/proxy.ts` → `/welcome`) so invitees and returning
+ * vendors see Welcome Experience once — not a parallel staff-legal gate.
+ */
 export default async function VendorLayout({ children }: { children: React.ReactNode }) {
   // Invitation claim is public (proxy PUBLIC_PATHS) and must not require an
   // existing vendor_users row — first-time claimers have a session (or none)
@@ -29,6 +35,12 @@ export default async function VendorLayout({ children }: { children: React.React
 
   const vendorUser = await getVendorUser();
   if (!vendorUser) redirect("/login");
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
 
   const [profile, pendingTaskCount, conversationInbox, home, luvExtras] = await Promise.all([
     getVendorProfile(vendorUser.vendorId),

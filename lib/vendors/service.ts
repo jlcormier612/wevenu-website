@@ -27,6 +27,8 @@ import {
   markAssignmentBooked,
 } from "@/lib/vendor-availability/sync";
 import { notifyVendorOfEventAssignment } from "@/lib/vendors/notify-assignment";
+import { notifyVendorOfEventRemoval } from "@/lib/vendors/notify-removal";
+import { approvePendingRequestsForAssignment } from "@/lib/vendor-removal-requests/service";
 
 async function withVenue<T>(
   fn: (supabase: Awaited<ReturnType<typeof createClient>>, venueId: string) => Promise<T>,
@@ -60,7 +62,25 @@ export async function getEventVendorAssignments(eventId: string): Promise<EventV
   if (!isSupabaseConfigured) return [];
   const venue = await getCurrentVenue();
   if (!venue) return [];
-  return repo.getEventVendorAssignments(await createClient(), venue.id, eventId);
+  const supabase = await createClient();
+  const assignments = await repo.getEventVendorAssignments(supabase, venue.id, eventId);
+  if (assignments.length === 0) return assignments;
+
+  const { getPendingRemovalRequestsForEvent } = await import("@/lib/vendor-removal-requests/service");
+  const pending = await getPendingRemovalRequestsForEvent(eventId);
+  if (pending.length === 0) return assignments;
+
+  const byAssignment = new Map<string, typeof pending>();
+  for (const req of pending) {
+    if (!req.assignmentId) continue;
+    const list = byAssignment.get(req.assignmentId) ?? [];
+    list.push(req);
+    byAssignment.set(req.assignmentId, list);
+  }
+  return assignments.map((a) => ({
+    ...a,
+    pendingRemovalRequests: byAssignment.get(a.id) ?? [],
+  }));
 }
 
 // ---- vendor CRUD ------------------------------------------------------------
@@ -210,12 +230,45 @@ export async function assignVendor(
 }
 
 export async function removeVendorAssignment(assignmentId: string): Promise<VendorActionResult> {
+  let notify: {
+    venueId: string;
+    venueName: string;
+    eventId: string;
+    vendorId: string;
+  } | null = null;
+
   const result = await withVenue(async (supabase, venueId) => {
+    // Snapshot before DELETE — conversations / assignment row are gone after cascade.
+    const { data: prior } = await supabase
+      .from("event_vendor_assignments")
+      .select("id, event_id, vendor_id")
+      .eq("id", assignmentId)
+      .eq("venue_id", venueId)
+      .maybeSingle<{ id: string; event_id: string; vendor_id: string }>();
+
+    if (prior) {
+      await approvePendingRequestsForAssignment(supabase, venueId, assignmentId);
+    }
+
     await repo.deleteVendorAssignment(supabase, venueId, assignmentId);
     // Free the Booked day if this assignment was the occupant (manual blocks stay).
     await clearAssignmentBooked(assignmentId);
+
+    if (prior) {
+      const venue = await getCurrentVenue();
+      notify = {
+        venueId,
+        venueName: venue?.name ?? "Your venue",
+        eventId: prior.event_id,
+        vendorId: prior.vendor_id,
+      };
+    }
     return { ok: true } as VendorActionResult;
   });
+
+  if ((result as VendorActionResult).ok && notify) {
+    notifyVendorOfEventRemoval(notify);
+  }
   return result as VendorActionResult;
 }
 

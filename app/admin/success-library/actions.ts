@@ -20,6 +20,7 @@ export async function updateArticleAction(id: string, input: SuccessLibraryArtic
   if (result.ok) {
     revalidatePath("/admin/success-library");
     revalidatePath(`/admin/success-library/${id}/edit`);
+    revalidatePath("/help");
     revalidatePath("/success-library");
   }
   return result;
@@ -29,6 +30,7 @@ export async function deleteArticleAction(id: string) {
   const result = await deleteArticle(id);
   if (result.ok) {
     revalidatePath("/admin/success-library");
+    revalidatePath("/help");
     revalidatePath("/success-library");
   }
   return result;

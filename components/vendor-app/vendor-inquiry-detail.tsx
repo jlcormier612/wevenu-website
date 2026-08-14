@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { INQUIRY_STATUSES, INQUIRY_STATUS_VARIANT } from "@/lib/vendors/constants";
 import { updateVendorInquiryAction, deleteVendorInquiryAction, createVendorInquiryAction } from "@/app/vendor/inquiries/actions";
 import { createVendorTaskAction, completeVendorTaskAction } from "@/app/vendor/tasks/actions";
+import { partitionByCompletion } from "@/lib/tasks/group-by-completion";
 import type { VendorInquiry, InquiryStatus, VendorPersonalTask } from "@/lib/vendors/types";
 
 function formatDate(iso: string | null): string {
@@ -78,6 +79,36 @@ export function VendorInquiryDetail({
     });
   }
 
+  const { open: openTasks, completed: completedTasks } = partitionByCompletion(linkedTasks, {
+    isComplete: (t) => t.status === "complete",
+    getDueDate: (t) => t.dueDate,
+  });
+
+  function renderInquiryTask(t: VendorPersonalTask) {
+    return (
+      <li key={t.id} className="flex items-start gap-2.5">
+        <button
+          type="button"
+          onClick={() => t.status === "pending" && handleCompleteTask(t.id)}
+          disabled={taskPending || t.status === "complete"}
+          className="mt-0.5 shrink-0 text-muted-foreground hover:text-primary transition-colors disabled:opacity-50"
+        >
+          {t.status === "complete"
+            ? <CheckSquare className="h-4 w-4 text-success" />
+            : <Circle className="h-4 w-4" />}
+        </button>
+        <div className="min-w-0 flex-1">
+          <p className={`text-sm ${t.status === "complete" ? "line-through text-muted-foreground" : "text-foreground"}`}>
+            {t.title}
+          </p>
+          {t.dueDate && (
+            <p className="text-xs text-muted-foreground">{formatDate(t.dueDate)}</p>
+          )}
+        </div>
+      </li>
+    );
+  }
+
   return (
     <div className="space-y-6 max-w-4xl">
       {/* Back + title */}
@@ -90,7 +121,7 @@ export function VendorInquiryDetail({
 
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-xl font-bold text-foreground">{inquiry.contactName ?? "Unnamed Contact"}</h1>
+          <h1 className="font-heading text-2xl font-medium text-heading">{inquiry.contactName ?? "Unnamed contact"}</h1>
           <div className="flex flex-wrap items-center gap-2 mt-1 text-sm text-muted-foreground">
             {inquiry.contactEmail && <span>{inquiry.contactEmail}</span>}
             {inquiry.venueName   && <span>· {inquiry.venueName}</span>}
@@ -152,7 +183,7 @@ export function VendorInquiryDetail({
           {/* Follow-up */}
           {inquiry.followUpAt && (
             <div className="rounded-sm border border-border bg-card p-4">
-              <h2 className="text-sm font-semibold text-foreground mb-1">Follow-up Scheduled</h2>
+              <h2 className="text-sm font-semibold text-foreground mb-1">Follow-up scheduled</h2>
               <p className="text-sm text-muted-foreground">{formatDate(inquiry.followUpAt)}</p>
             </div>
           )}
@@ -161,32 +192,21 @@ export function VendorInquiryDetail({
         {/* Right: linked tasks */}
         <div className="space-y-5">
           <div className="rounded-sm border border-border bg-card p-4 space-y-4">
-            <h2 className="text-sm font-semibold text-foreground">Tasks for this Inquiry</h2>
+            <h2 className="text-sm font-semibold text-foreground">Tasks for this inquiry</h2>
 
             {linkedTasks.length > 0 ? (
               <ul className="space-y-2">
-                {linkedTasks.map((t) => (
-                  <li key={t.id} className="flex items-start gap-2.5">
-                    <button
-                      type="button"
-                      onClick={() => t.status === "pending" && handleCompleteTask(t.id)}
-                      disabled={taskPending || t.status === "complete"}
-                      className="mt-0.5 shrink-0 text-muted-foreground hover:text-primary transition-colors disabled:opacity-50"
-                    >
-                      {t.status === "complete"
-                        ? <CheckSquare className="h-4 w-4 text-success" />
-                        : <Circle className="h-4 w-4" />}
-                    </button>
-                    <div className="min-w-0 flex-1">
-                      <p className={`text-sm ${t.status === "complete" ? "line-through text-muted-foreground" : "text-foreground"}`}>
-                        {t.title}
-                      </p>
-                      {t.dueDate && (
-                        <p className="text-xs text-muted-foreground">{formatDate(t.dueDate)}</p>
-                      )}
-                    </div>
+                {openTasks.map(renderInquiryTask)}
+                {completedTasks.length > 0 && (
+                  <li className="list-none space-y-2 pt-2">
+                    <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                      Completed
+                    </p>
+                    <ul className="space-y-2">
+                      {completedTasks.map(renderInquiryTask)}
+                    </ul>
                   </li>
-                ))}
+                )}
               </ul>
             ) : (
               <p className="text-xs text-muted-foreground">No tasks yet.</p>

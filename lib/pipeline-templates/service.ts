@@ -70,10 +70,7 @@ export async function updateTemplate_(id: string, input: PipelineTemplateInput):
 }
 
 export async function deleteTemplate_(id: string): Promise<PipelineTemplateActionResult> {
-  const result = await withVenue(async (supabase, venueId) => {
-    await repo.deleteTemplate(supabase, venueId, id);
-    return { ok: true } as PipelineTemplateActionResult;
-  });
+  const result = await withVenue(async (supabase, venueId) => repo.deleteTemplate(supabase, venueId, id));
   return result as PipelineTemplateActionResult;
 }
 

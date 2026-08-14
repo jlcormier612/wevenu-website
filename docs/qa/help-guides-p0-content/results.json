@@ -1,0 +1,291 @@
+{
+  "pass": 57,
+  "fail": 0,
+  "results": [
+    {
+      "name": "login",
+      "pass": true,
+      "note": "http://localhost:3000/dashboard"
+    },
+    {
+      "name": "area:Getting Started",
+      "pass": true,
+      "note": ""
+    },
+    {
+      "name": "area:Finding & Booking Clients",
+      "pass": true,
+      "note": ""
+    },
+    {
+      "name": "area:Working With Clients",
+      "pass": true,
+      "note": ""
+    },
+    {
+      "name": "area:Contracts & Payments",
+      "pass": true,
+      "note": ""
+    },
+    {
+      "name": "area:Planning the Event",
+      "pass": true,
+      "note": ""
+    },
+    {
+      "name": "area:Building the Event",
+      "pass": true,
+      "note": ""
+    },
+    {
+      "name": "area:Event Day",
+      "pass": true,
+      "note": ""
+    },
+    {
+      "name": "area:After the Event",
+      "pass": true,
+      "note": ""
+    },
+    {
+      "name": "area:Vendors",
+      "pass": true,
+      "note": ""
+    },
+    {
+      "name": "area:Your Venue",
+      "pass": true,
+      "note": ""
+    },
+    {
+      "name": "area:Reports",
+      "pass": true,
+      "note": ""
+    },
+    {
+      "name": "area:Guided Journeys",
+      "pass": true,
+      "note": ""
+    },
+    {
+      "name": "no-Automations-category",
+      "pass": true,
+      "note": ""
+    },
+    {
+      "name": "first-morning-present",
+      "pass": true,
+      "note": ""
+    },
+    {
+      "name": "existing:Creating Your First Package",
+      "pass": true,
+      "note": ""
+    },
+    {
+      "name": "existing:Inviting Your First Couple",
+      "pass": true,
+      "note": ""
+    },
+    {
+      "name": "existing:Getting Paid, On Time",
+      "pass": true,
+      "note": ""
+    },
+    {
+      "name": "existing:Turning a Lead into a Signed Client",
+      "pass": true,
+      "note": ""
+    },
+    {
+      "name": "existing:Vendor Network",
+      "pass": true,
+      "note": ""
+    },
+    {
+      "name": "lead-capture-present",
+      "pass": true,
+      "note": ""
+    },
+    {
+      "name": "automation-under-FB:What is an Automation?",
+      "pass": true,
+      "note": ""
+    },
+    {
+      "name": "automation-under-FB:Can I pause an Automation for just one person?",
+      "pass": true,
+      "note": ""
+    },
+    {
+      "name": "automation-under-FB:Why did this person get this message?",
+      "pass": true,
+      "note": ""
+    },
+    {
+      "name": "automation-under-FB:What happens to an Automation if someone is marked Lost, Cancelled, or books?",
+      "pass": true,
+      "note": ""
+    },
+    {
+      "name": "article:getting-started-what-to-set-up-before-i-start",
+      "pass": true,
+      "note": "What should I set up before I start?"
+    },
+    {
+      "name": "article:how-does-my-pipeline-work",
+      "pass": true,
+      "note": "How does my Pipeline work?"
+    },
+    {
+      "name": "article:can-i-customize-my-pipeline-stages",
+      "pass": true,
+      "note": "Can I customize my Pipeline stages?"
+    },
+    {
+      "name": "article:what-happens-when-i-move-a-lead-into-a-stage-with-an-automation",
+      "pass": true,
+      "note": "What happens when I move a lead into a stage with an Automation?"
+    },
+    {
+      "name": "article:whats-the-difference-between-a-lead-and-a-client",
+      "pass": true,
+      "note": "What's the difference between a Lead and a Client?"
+    },
+    {
+      "name": "article:who-signs-a-contract-first-and-what-happens-after",
+      "pass": true,
+      "note": "Who signs a contract first, and what happens after?"
+    },
+    {
+      "name": "article:can-more-than-one-person-sign-a-contract",
+      "pass": true,
+      "note": "Can more than one person sign a contract?"
+    },
+    {
+      "name": "article:can-couples-pay-online",
+      "pass": true,
+      "note": "Can couples pay online?"
+    },
+    {
+      "name": "article:what-do-sent-paid-and-void-mean-on-an-invoice",
+      "pass": true,
+      "note": "What do Sent, Paid, and Void mean on an invoice?"
+    },
+    {
+      "name": "article:whats-the-difference-between-a-package-inventory-and-an-inventory-template",
+      "pass": true,
+      "note": "What's the difference between a Package, Inventory, and an Inventory Template?"
+    },
+    {
+      "name": "article:what-do-the-floor-plan-studio-icons-mean",
+      "pass": true,
+      "note": "What do the Floor Plan Studio icons mean?"
+    },
+    {
+      "name": "article:how-do-i-move-an-object-thats-behind-another-one",
+      "pass": true,
+      "note": "How do I move an object that's behind another one?"
+    },
+    {
+      "name": "article:what-is-an-automation",
+      "pass": true,
+      "note": "What is an Automation?"
+    },
+    {
+      "name": "article:can-i-pause-an-automation-for-just-one-person",
+      "pass": true,
+      "note": "Can I pause an Automation for just one person?"
+    },
+    {
+      "name": "article:why-did-this-person-get-this-message",
+      "pass": true,
+      "note": "Why did this person get this message?"
+    },
+    {
+      "name": "article:what-happens-to-an-automation-if-someone-is-marked-lost-cancelled-or-books",
+      "pass": true,
+      "note": "What happens to an Automation if someone is marked Lost, Cancelled, or books?"
+    },
+    {
+      "name": "article:where-do-my-venue-colors-actually-show-up",
+      "pass": true,
+      "note": "Where do my venue colors actually show up?"
+    },
+    {
+      "name": "article:how-do-i-start-collecting-inquiries-from-my-website",
+      "pass": true,
+      "note": "How do I start collecting inquiries from my website?"
+    },
+    {
+      "name": "stripe-has-Connect with Stripe",
+      "pass": true,
+      "note": ""
+    },
+    {
+      "name": "stripe-screens-may-differ",
+      "pass": true,
+      "note": ""
+    },
+    {
+      "name": "stripe-no-invented-screen-path",
+      "pass": true,
+      "note": ""
+    },
+    {
+      "name": "stripe-never-paste-credentials",
+      "pass": true,
+      "note": ""
+    },
+    {
+      "name": "first-morning-unchanged",
+      "pass": true,
+      "note": ""
+    },
+    {
+      "name": "spot:can-i-customize-my-pipeline-stages",
+      "pass": true,
+      "note": "Can I customize my Pipeline stages?"
+    },
+    {
+      "name": "spot:what-happens-when-i-move-a-lead-into-a-stage-with-an-automation",
+      "pass": true,
+      "note": "What happens when I move a lead into a stage with an Automation?"
+    },
+    {
+      "name": "spot:who-signs-a-contract-first-and-what-happens-after",
+      "pass": true,
+      "note": "Who signs a contract first, and what happens after?"
+    },
+    {
+      "name": "spot:can-more-than-one-person-sign-a-contract",
+      "pass": true,
+      "note": "Can more than one person sign a contract?"
+    },
+    {
+      "name": "spot:whats-the-difference-between-a-package-inventory-and-an-inventory-template",
+      "pass": true,
+      "note": "What's the difference between a Package, Inventory, and an Inventory Template?"
+    },
+    {
+      "name": "spot:what-do-the-floor-plan-studio-icons-mean",
+      "pass": true,
+      "note": "What do the Floor Plan Studio icons mean?"
+    },
+    {
+      "name": "spot:can-i-pause-an-automation-for-just-one-person",
+      "pass": true,
+      "note": "Can I pause an Automation for just one person?"
+    },
+    {
+      "name": "spot:how-do-i-start-collecting-inquiries-from-my-website",
+      "pass": true,
+      "note": "How do I start collecting inquiries from my website?"
+    },
+    {
+      "name": "spot:where-do-my-venue-colors-actually-show-up",
+      "pass": true,
+      "note": "Where do my venue colors actually show up?"
+    }
+  ]
+}

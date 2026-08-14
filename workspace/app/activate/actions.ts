@@ -2,10 +2,10 @@
 
 import { redirect } from "next/navigation";
 
-import { recordOwnerActivationCredential } from "@shared/product-sync";
+import { activateVenueAccount } from "@shared/product-account";
 import { completeAccountActivation } from "@shared/relationships";
 
-import { hashPassword } from "@/lib/program4/password";
+import { completeVenueActivateLegalViaProduct } from "@/lib/legal/product-legal";
 
 function productLoginUrl(): string {
   const base = (
@@ -21,11 +21,20 @@ export async function activateAccountAction(
   formData: FormData,
 ): Promise<{ error?: string }> {
   const token = String(formData.get("token") || "").trim();
+  const email = String(formData.get("email") || "").trim();
   const password = String(formData.get("password") || "");
   const confirm = String(formData.get("confirm") || "");
+  const relationshipId = String(formData.get("relationshipId") || "").trim();
+  const legalAccepted =
+    String(formData.get("legalAccepted") || "").toLowerCase() === "true";
 
   if (!token) {
     return { error: "This activation link is invalid or has already been used." };
+  }
+  if (!legalAccepted) {
+    return {
+      error: "Please agree to the Terms of Service and Privacy Policy to continue.",
+    };
   }
   if (password.length < 8) {
     return { error: "Password must be at least 8 characters." };
@@ -34,23 +43,36 @@ export async function activateAccountAction(
     return { error: "Passwords do not match." };
   }
 
-  const result = await completeAccountActivation({ token });
-  if (!result.ok) {
-    return { error: result.message };
+  // Record legal acceptances immediately before completing CRM account activation.
+  if (email) {
+    const legal = await completeVenueActivateLegalViaProduct({
+      email,
+      relationshipId: relationshipId || null,
+      legalAccepted: true,
+    });
+    if (!legal.ok) {
+      return { error: legal.message };
+    }
   }
 
-  // Simulated product sync: persist password hash locally so the enroll →
-  // activate loop is testable without a real product Auth user.
-  try {
-    await recordOwnerActivationCredential({
-      relationshipId: result.relationship.id,
-      email: result.relationship.owner.email,
-      passwordHash: hashPassword(password),
-      ownerAccountId: result.relationship.productSync?.ownerAccountId,
-    });
-  } catch (error) {
-    console.error("[activate] failed to record local owner credential", error);
-    // Relationship is already marked activated — still send them to login.
+  // Real account first: creates/finds the auth.users row, sets the real
+  // password, and creates the venues row (see
+  // docs/postgres-auth-architecture-findings.md §6). Runs before the local
+  // Relationship is marked activated below, so a failure here leaves both
+  // sides consistently "not yet activated" and safely retryable — the
+  // activation token is only consumed on real success.
+  const bridged = await activateVenueAccount({ token, password });
+  if (!bridged.ok) {
+    console.error("[activate] product account bridge failed", bridged.error);
+    return { error: "We couldn't set up your account just now. Please try again in a moment." };
+  }
+
+  const result = await completeAccountActivation({ token });
+  if (!result.ok) {
+    // Real account already exists at this point — not a reason to block
+    // the owner from signing in; the local Relationship record is a
+    // CRM/sales-ops concern, not the auth boundary.
+    console.error("[activate] local relationship activation failed after real account succeeded", result.message);
   }
 
   redirect(`${productLoginUrl()}?activated=1`);

@@ -1,5 +1,9 @@
 import { createClient } from "@/integrations/supabase/server";
 import { isSupabaseConfigured } from "@/lib/env";
+import {
+  projectGuideForAudience,
+  type VenueGuideRaw,
+} from "@/lib/venue-guide/audience";
 
 export type VendorHandbookVenue = {
   id: string;
@@ -25,6 +29,8 @@ export type VendorHandbookInfo = {
   thingsToDo: string | null;
   faqs: { question: string; answer: string }[];
   importantContacts: { name: string; role: string; phone?: string; email?: string }[];
+  /** Prefer load-in oriented parking label when true. */
+  parkingUsesVendorOverride: boolean;
 };
 
 export type VendorHandbook = {
@@ -32,20 +38,27 @@ export type VendorHandbook = {
   operationalInfo: VendorHandbookInfo | null;
 };
 
-type RawInfo = {
-  parkingInfo: string | null; transportation: string | null; nearbyAccommodations: string | null;
-  hotelBlocks: VendorHandbookInfo["hotelBlocks"] | null; rainPlan: string | null; policies: string | null;
-  ceremonyInstructions: string | null; thingsToDo: string | null;
-  faqs: VendorHandbookInfo["faqs"] | null; importantContacts: VendorHandbookInfo["importantContacts"] | null;
-} | null;
+type RawInfo = (VenueGuideRaw & {
+  hotelBlocks?: VendorHandbookInfo["hotelBlocks"] | null;
+  faqs?: VendorHandbookInfo["faqs"] | null;
+  importantContacts?: VendorHandbookInfo["importantContacts"] | null;
+}) | null;
 
 function mapInfo(raw: RawInfo): VendorHandbookInfo | null {
-  if (!raw) return null;
+  const projected = projectGuideForAudience(raw, "vendors");
+  if (!projected) return null;
   return {
-    parkingInfo: raw.parkingInfo, transportation: raw.transportation,
-    nearbyAccommodations: raw.nearbyAccommodations, hotelBlocks: raw.hotelBlocks ?? [],
-    rainPlan: raw.rainPlan, policies: raw.policies, ceremonyInstructions: raw.ceremonyInstructions,
-    thingsToDo: raw.thingsToDo, faqs: raw.faqs ?? [], importantContacts: raw.importantContacts ?? [],
+    parkingInfo: projected.parkingInfo,
+    transportation: projected.transportation,
+    nearbyAccommodations: projected.nearbyAccommodations,
+    hotelBlocks: (projected.hotelBlocks ?? []) as VendorHandbookInfo["hotelBlocks"],
+    rainPlan: projected.rainPlan,
+    policies: projected.policies,
+    ceremonyInstructions: projected.ceremonyInstructions,
+    thingsToDo: projected.thingsToDo,
+    faqs: projected.faqs,
+    importantContacts: (projected.importantContacts ?? []) as VendorHandbookInfo["importantContacts"],
+    parkingUsesVendorOverride: projected.parkingUsesVendorOverride,
   };
 }
 

@@ -1,0 +1,18 @@
+{
+  "taskPayments": {
+    "first": 1,
+    "second": 1,
+    "hasPayNow": true,
+    "hasInsurance": true,
+    "payNowCount": 3,
+    "sample": "Tasks 6 🕒 Timeline 📁 Documents 💳 Payments 💬 Messages 🏛️ Venue Guide 🤝 Preferred Vendors From your venue Everything Sweet Daisy Barn & Farm needs from you, in one place — newest due date first. 5/10 tasks complete First Installment Payment Schedule — Emma / Carter / Jordan / Lee — payment due Due Apr 20 Pay now Second Installment Payment Schedule — Emma / Carter / Jordan / Lee — payment due Due Jul 19 Pay now Purchase event insurance Due in 10 days · 60 days before Mark complete Submit your guest count We need your final headcount to plan seating, catering, and rentals. Due Sep 17 · 30 days before Mark complete Final payment Due Sep 17 · 30 days before Mark complete Final Payment Payment Schedule — Emma / Carter / Jordan / Lee — payment due Due Sep 17 Pay now Submit your timeline Plan your day-of schedule, then submit it so your venue has it. Due Oct 3 · 14 days before Mark complete"
+  },
+  "payments": {
+    "has12960": true,
+    "has38880": false,
+    "first": 2,
+    "second": 1,
+    "remaining": "$12,960 remaining",
+    "sample": "Payments 💬 Messages 🏛️ Venue Guide 🤝 Preferred Vendors Payments Your financial picture with your venue — all in one place. PAYMENT SCHEDULE — EMMA / CARTER / JORDAN / LEE $12,960 Total contract value 0% paid $12,960 remaining Paid $0 Remaining $12,960 💗 First Installment (due April 20) hasn't been received yet. Reach out to your venue coordinator to arrange payment. 💗 Your next payment, Final Payment, is scheduled for September 17. PAYMENT SCHEDULE 1 First Installment Due Apr 20, 2026 $4,320 Overdue Pay now 2 Second Installment Due Jul 19, 2026 $4,320 Overdue Pay now 3 Final Payment Due Sep 17, 2026 $4,321 Upcoming Pay now 💗 Questions about payments? Contact your venue coordinator thro"
+  }
+}

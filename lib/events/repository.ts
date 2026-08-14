@@ -16,9 +16,37 @@ import type {
 import { getFloorPlansByEvent } from "@/lib/floor-plans/repository";
 import { getTimelineEntries } from "@/lib/timeline/repository";
 import { getEventVendorAssignments } from "@/lib/vendors/repository";
+import type { EventVendorRemovalRequest } from "@/lib/vendor-removal-requests/types";
 
 type DbClient = Awaited<ReturnType<typeof createClient>>;
 
+type RemovalRequestRow = {
+  id: string;
+  venue_id: string;
+  event_id: string;
+  vendor_id: string;
+  assignment_id: string | null;
+  requested_by: "couple" | "vendor";
+  reason: string | null;
+  status: "pending" | "approved" | "dismissed";
+  created_at: string;
+  resolved_at: string | null;
+};
+
+function mapRemovalRequest(r: RemovalRequestRow): EventVendorRemovalRequest {
+  return {
+    id: r.id,
+    venueId: r.venue_id,
+    eventId: r.event_id,
+    vendorId: r.vendor_id,
+    assignmentId: r.assignment_id,
+    requestedBy: r.requested_by,
+    reason: r.reason,
+    status: r.status,
+    createdAt: r.created_at,
+    resolvedAt: r.resolved_at,
+  };
+}
 // ---- row types --------------------------------------------------------------
 
 type EventRow = {
@@ -28,6 +56,8 @@ type EventRow = {
   start_time: string | null; end_time: string | null;
   setup_time: string | null; teardown_time: string | null;
   guest_count: number | null; created_at: string; updated_at: string;
+  operational_floor_plan_id: string | null;
+  couple_selected_floor_plan_id: string | null;
   // embedded client name from join
   clients?: { first_name: string; last_name: string; partner_first_name: string | null; partner_last_name: string | null } | null;
 };
@@ -43,7 +73,10 @@ function mapEvent(r: EventRow): VenueEvent {
     eventEndDate: r.event_end_date && r.event_end_date !== r.event_date ? r.event_end_date : null,
     startTime: r.start_time, endTime: r.end_time,
     setupTime: r.setup_time, teardownTime: r.teardown_time,
-    guestCount: r.guest_count, createdAt: r.created_at, updatedAt: r.updated_at,
+    guestCount: r.guest_count,
+    operationalFloorPlanId: r.operational_floor_plan_id ?? null,
+    coupleSelectedFloorPlanId: r.couple_selected_floor_plan_id ?? null,
+    createdAt: r.created_at, updatedAt: r.updated_at,
   };
 }
 
@@ -73,7 +106,7 @@ export async function getEvents(client: DbClient, venueId: string, filters?: { q
 }
 
 export async function getEvent(client: DbClient, venueId: string, eventId: string): Promise<EventWithDetails | null> {
-  const [evRes, nRes, tRes, aRes, timeline, vendorAssignments, floorPlans, gcsRes] = await Promise.all([
+  const [evRes, nRes, tRes, aRes, timeline, vendorAssignments, floorPlans, gcsRes, removalRes] = await Promise.all([
     client.from("events")
       .select("*, clients(first_name, last_name, partner_first_name, partner_last_name)")
       .eq("id", eventId).eq("venue_id", venueId).maybeSingle<EventRow>(),
@@ -86,12 +119,29 @@ export async function getEvent(client: DbClient, venueId: string, eventId: strin
     // Commitment Lifecycle Architecture §9 — latest Guest Count Submission,
     // shown distinctly from a coordinator's own manual guest_count entry.
     client.rpc("get_latest_guest_count_submission", { p_venue_id: venueId, p_event_id: eventId }),
+    client
+      .from("event_vendor_removal_requests")
+      .select("*")
+      .eq("event_id", eventId)
+      .eq("venue_id", venueId)
+      .eq("status", "pending")
+      .order("created_at", { ascending: true }),
   ]);
   if (evRes.error) throw evRes.error;
   if (nRes.error) throw nRes.error;
   if (tRes.error) throw tRes.error;
   if (aRes.error) throw aRes.error;
   if (!evRes.data) return null;
+
+  const pendingByAssignment = new Map<string, EventVendorRemovalRequest[]>();
+  for (const raw of (removalRes.data ?? []) as RemovalRequestRow[]) {
+    const req = mapRemovalRequest(raw);
+    if (!req.assignmentId) continue;
+    const list = pendingByAssignment.get(req.assignmentId) ?? [];
+    list.push(req);
+    pendingByAssignment.set(req.assignmentId, list);
+  }
+
   return {
     ...mapEvent(evRes.data),
     clientName: clientNameFromRow(evRes.data),
@@ -99,7 +149,10 @@ export async function getEvent(client: DbClient, venueId: string, eventId: strin
     team: (tRes.data as TeamRow[]).map(mapTeam),
     activities: (aRes.data as ActRow[]).map(mapAct),
     timeline,
-    vendorAssignments,
+    vendorAssignments: vendorAssignments.map((a) => ({
+      ...a,
+      pendingRemovalRequests: pendingByAssignment.get(a.id) ?? [],
+    })),
     floorPlans,
     guestCountSubmission: (gcsRes.data as { count: number; submittedAt: string } | null) ?? null,
   };

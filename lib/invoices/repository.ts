@@ -1,9 +1,10 @@
 import { createClient } from "@/integrations/supabase/server";
-import { computeInvoiceTotals, generateInvoiceNumber } from "@/lib/invoices/constants";
+import { computeInvoiceTotals, deriveRevenueCategory, generateInvoiceNumber } from "@/lib/invoices/constants";
 import type {
   AddLineItemResult,
   Invoice,
   InvoiceActivity,
+  InvoiceBrandingSnapshot,
   InvoiceInput,
   InvoiceLineItem,
   InvoiceLineItemInput,
@@ -21,11 +22,12 @@ type InvoiceRow = {
   event_order_id: string | null; event_order_dismissed_fingerprint: string | null;
   amends_invoice_id: string | null; event_order_revision_at_freeze: number | null;
   quickbooks_sync_status: "not_synced" | "pending" | "synced" | "failed";
+  branding_snapshot: InvoiceBrandingSnapshot | null;
   created_at: string; updated_at: string;
   clients?: { first_name: string; last_name: string; partner_first_name: string | null; partner_last_name: string | null } | null;
   events?: { name: string; event_date: string } | null;
 };
-type LineItemRow = { id: string; invoice_id: string; venue_id: string; package_id: string | null; type: InvoiceLineItem["type"]; description: string; quantity: number; unit_price: number; amount: number; sort_order: number; created_at: string; event_order_line_id: string | null; };
+type LineItemRow = { id: string; invoice_id: string; venue_id: string; package_id: string | null; type: InvoiceLineItem["type"]; description: string; quantity: number; unit_price: number; amount: number; sort_order: number; created_at: string; event_order_line_id: string | null; revenue_category: string | null; };
 type ActivityRow = { id: string; venue_id: string; invoice_id: string; type: string; title: string; description: string | null; created_at: string; };
 
 function mapInvoice(r: InvoiceRow, amendedBy?: { id: string; invoiceNumber: string } | null): Invoice {
@@ -38,10 +40,11 @@ function mapInvoice(r: InvoiceRow, amendedBy?: { id: string; invoiceNumber: stri
     amendsInvoiceId: r.amends_invoice_id, eventOrderRevisionAtFreeze: r.event_order_revision_at_freeze,
     amendedByInvoiceId: amendedBy?.id ?? null, amendedByInvoiceNumber: amendedBy?.invoiceNumber ?? null,
     quickbooksSyncStatus: r.quickbooks_sync_status,
+    brandingSnapshot: r.branding_snapshot ?? null,
     createdAt: r.created_at, updatedAt: r.updated_at, clientName: cn, eventDate: r.events?.event_date ?? null, eventName: r.events?.name ?? null,
   };
 }
-const mapItem = (r: LineItemRow): InvoiceLineItem => ({ id: r.id, invoiceId: r.invoice_id, venueId: r.venue_id, packageId: r.package_id, type: r.type, description: r.description, quantity: Number(r.quantity), unitPrice: Number(r.unit_price), amount: Number(r.amount), sortOrder: r.sort_order, createdAt: r.created_at, eventOrderLineId: r.event_order_line_id });
+const mapItem = (r: LineItemRow): InvoiceLineItem => ({ id: r.id, invoiceId: r.invoice_id, venueId: r.venue_id, packageId: r.package_id, type: r.type, description: r.description, quantity: Number(r.quantity), unitPrice: Number(r.unit_price), amount: Number(r.amount), sortOrder: r.sort_order, createdAt: r.created_at, eventOrderLineId: r.event_order_line_id, revenueCategory: r.revenue_category });
 const mapActivity = (r: ActivityRow): InvoiceActivity => ({ id: r.id, venueId: r.venue_id, invoiceId: r.invoice_id, type: r.type, title: r.title, description: r.description, createdAt: r.created_at });
 
 // ---- Invoices ---------------------------------------------------------------
@@ -58,16 +61,25 @@ export async function getInvoices(client: DbClient, venueId: string, filters?: {
 }
 
 export async function getInvoice(client: DbClient, venueId: string, id: string): Promise<InvoiceWithLineItems | null> {
-  const [invRes, itemsRes, amendedByRes] = await Promise.all([
+  const [invRes, itemsRes, amendedByRes, activitiesRes] = await Promise.all([
     client.from("invoices").select("*, clients(first_name, last_name, partner_first_name, partner_last_name), events(name, event_date)").eq("id", id).eq("venue_id", venueId).maybeSingle<InvoiceRow>(),
     client.from("invoice_line_items").select("*").eq("invoice_id", id).order("sort_order").order("created_at"),
     client.from("invoices").select("id, invoice_number").eq("amends_invoice_id", id).eq("venue_id", venueId).maybeSingle<{ id: string; invoice_number: string }>(),
+    // D8 — invoice_activities has been written to (insertActivity, below)
+    // since this table existed but never read anywhere; Invoice Detail was
+    // the one Business Asset page of five missing its ActivityTimeline.
+    client.from("invoice_activities").select("*").eq("invoice_id", id).order("created_at", { ascending: false }),
   ]);
   if (invRes.error) throw invRes.error;
   if (itemsRes.error) throw itemsRes.error;
+  if (activitiesRes.error) throw activitiesRes.error;
   if (!invRes.data) return null;
   const amendedBy = amendedByRes.data ? { id: amendedByRes.data.id, invoiceNumber: amendedByRes.data.invoice_number } : null;
-  return { ...mapInvoice(invRes.data, amendedBy), lineItems: (itemsRes.data as LineItemRow[]).map(mapItem) };
+  return {
+    ...mapInvoice(invRes.data, amendedBy),
+    lineItems: (itemsRes.data as LineItemRow[]).map(mapItem),
+    activities: (activitiesRes.data as ActivityRow[]).map(mapActivity),
+  };
 }
 
 export async function getInvoicesForClient(client: DbClient, venueId: string, clientId: string): Promise<Invoice[]> {
@@ -143,11 +155,22 @@ export async function insertFrozenLinesFromEventOrder(
   lines: { eventOrderLineId: string; packageId: string | null; type: InvoiceLineItem["type"]; description: string; quantity: number; unitPrice: number; amount: number; sortOrder: number }[],
 ): Promise<void> {
   if (lines.length === 0) return;
+
+  // D5B — same write-path fix as addLineItem above. Batch-fetch every
+  // distinct package's category once rather than per line.
+  const packageIds = [...new Set(lines.map((l) => l.packageId).filter((id): id is string => !!id))];
+  const categoryByPackageId = new Map<string, string | null>();
+  if (packageIds.length > 0) {
+    const { data: pkgs } = await client.from("packages").select("id, category").in("id", packageIds);
+    for (const p of (pkgs ?? []) as { id: string; category: string | null }[]) categoryByPackageId.set(p.id, p.category);
+  }
+
   const { error } = await client.from("invoice_line_items").insert(
     lines.map((l) => ({
       invoice_id: invoiceId, venue_id: venueId, event_order_line_id: l.eventOrderLineId,
       package_id: l.packageId, type: l.type, description: l.description,
       quantity: l.quantity, unit_price: l.unitPrice, amount: l.amount, sort_order: l.sortOrder,
+      revenue_category: deriveRevenueCategory(l.type, l.packageId ? categoryByPackageId.get(l.packageId) : null),
     })),
   );
   if (error) throw error;
@@ -181,23 +204,48 @@ export async function addLineItem(client: DbClient, venueId: string, invoiceId: 
   // Get current sort order max
   const { data: existing } = await client.from("invoice_line_items").select("sort_order").eq("invoice_id", invoiceId).order("sort_order", { ascending: false }).limit(1);
   const sortOrder = ((existing?.[0] as { sort_order: number } | undefined)?.sort_order ?? -1) + 1;
+
+  // D5B — a real write-path gap, found live: revenue_category was only ever
+  // set by a one-time backfill (20261221000000), never by the actual write
+  // path. See deriveRevenueCategory's own doc comment.
+  let packageCategory: string | null = null;
+  if (input.type === "package" && input.packageId) {
+    const { data: pkg } = await client.from("packages").select("category").eq("id", input.packageId).maybeSingle<{ category: string | null }>();
+    packageCategory = pkg?.category ?? null;
+  }
+  const revenueCategory = deriveRevenueCategory(input.type, packageCategory);
+
   const { data, error } = await client.from("invoice_line_items")
-    .insert({ invoice_id: invoiceId, venue_id: venueId, package_id: input.packageId || null, type: input.type, description: input.description.trim(), quantity: qty, unit_price: price, amount, sort_order: sortOrder, discount_type: input.discountType ?? null, discount_value: input.discountValue ? parseFloat(input.discountValue) : null })
+    .insert({ invoice_id: invoiceId, venue_id: venueId, package_id: input.packageId || null, type: input.type, description: input.description.trim(), quantity: qty, unit_price: price, amount, sort_order: sortOrder, discount_type: input.discountType ?? null, discount_value: input.discountValue ? parseFloat(input.discountValue) : null, revenue_category: revenueCategory })
     .select().single<LineItemRow>();
   if (error) throw error;
   await recomputeInvoiceTotals(client, venueId, invoiceId);
   return mapItem(data);
 }
 
-export async function removeLineItem(client: DbClient, venueId: string, invoiceId: string, itemId: string): Promise<void> {
-  const { error } = await client.from("invoice_line_items").delete().eq("id", itemId).eq("venue_id", venueId);
+/**
+ * Release Readiness Reconciliation remediation: `invoice_line_items_delete_gate`
+ * (`20261002000000_tr_g6_core_object_delete_role_gate.sql`) restricts DELETE
+ * to Owner/Manager at the RLS layer, but the app layer (`assertInvoiceEditable`
+ * in `lib/invoices/service.ts`) never checked role, only that the invoice is
+ * still a draft — a Coordinator/Staff attempt was silently no-op-ing while
+ * the caller went on to log a "line item removed" activity entry and enqueue
+ * a QuickBooks sync as if it had. `.select("id")` surfaces which row
+ * actually matched, same fix shape already shipped for contracts/payments.
+ */
+export async function removeLineItem(client: DbClient, venueId: string, invoiceId: string, itemId: string): Promise<{ ok: true } | { ok: false; message: string }> {
+  const { data, error } = await client.from("invoice_line_items").delete().eq("id", itemId).eq("venue_id", venueId).select("id");
   if (error) throw error;
+  if (!data || data.length === 0) {
+    return { ok: false, message: "Only an Owner or Manager can remove an invoice line item." };
+  }
   await recomputeInvoiceTotals(client, venueId, invoiceId);
+  return { ok: true };
 }
 
 export async function updateInvoiceStatus(
   client: DbClient, venueId: string, invoiceId: string, status: InvoiceStatus,
-  extra?: { eventOrderRevisionAtFreeze?: number },
+  extra?: { eventOrderRevisionAtFreeze?: number; brandingSnapshot?: InvoiceBrandingSnapshot },
 ): Promise<void> {
   const patch: Record<string, unknown> = { status };
   if (status === "sent") {
@@ -208,6 +256,17 @@ export async function updateInvoiceStatus(
     // this is the only place that ever sets is_couple_visible to true.
     patch.is_couple_visible = true;
     if (extra?.eventOrderRevisionAtFreeze != null) patch.event_order_revision_at_freeze = extra.eventOrderRevisionAtFreeze;
+    // Presentation-only snapshot at draft→sent. Never overwrite an existing
+    // snapshot (paid/void transitions must not re-capture branding).
+    if (extra?.brandingSnapshot) {
+      const { data: current } = await client.from("invoices")
+        .select("branding_snapshot, status")
+        .eq("id", invoiceId).eq("venue_id", venueId)
+        .maybeSingle<{ branding_snapshot: InvoiceBrandingSnapshot | null; status: InvoiceStatus }>();
+      if (current?.status === "draft" && !current.branding_snapshot) {
+        patch.branding_snapshot = extra.brandingSnapshot;
+      }
+    }
   }
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { error } = await (client.from("invoices") as any).update(patch).eq("id", invoiceId).eq("venue_id", venueId);

@@ -12,6 +12,7 @@ import { isSupabaseConfigured } from "@/lib/env";
 import * as repo from "@/lib/conversations/repository";
 import {
   notifyCoupleOfVendorPortalMessage,
+  notifyCoupleOfVenuePortalMessage,
   notifyVendorOfCouplePortalMessage,
   notifyVendorOfVenuePortalMessage,
   notifyVenueOfVendorPortalMessage,
@@ -32,7 +33,12 @@ import type {
 import { sendSms } from "@/lib/sms/send";
 import { toE164 } from "@/lib/sms/phone";
 import { sendEmail } from "@/lib/email/send";
+import { wrapConversationMessageHtml } from "@/lib/email/conversation-brand";
 import { translateEmailFailure, translateSmsFailure } from "@/lib/communication/failure-messages";
+import { extractTokens, resolveForCustomerSend } from "@/lib/message-templates/merge";
+import { getMergeContextForRelationship } from "@/lib/scheduled-messages/repository";
+import { getCurrentStaffMember } from "@/lib/team/service";
+import { getCurrentVenue } from "@/lib/venue/service";
 
 export async function getConversationInbox(): Promise<{ conversations: ConversationSummary[]; totalUnread: number }> {
   if (!isSupabaseConfigured) return { conversations: [], totalUnread: 0 };
@@ -61,7 +67,42 @@ export async function sendConversationMessage(
   const attachmentOnlyAllowed = hasAttachment && (channel === "portal" || channel === "internal_note");
   if (!body.trim() && !attachmentOnlyAllowed) return { ok: false, message: "Message can't be empty." };
   const supabase = await createClient();
-  const trimmed = body.trim();
+  let trimmed = body.trim();
+  let subject = emailSubject?.trim();
+
+  // Work Package D8 — the same principle D6 already applied to Contracts:
+  // never let a literal {{merge_field}} reach a real client. Picking a
+  // Message Template into this compose box previously loaded raw,
+  // unresolved tokens straight into the textarea — Send Now shipped them
+  // verbatim, since only the separate Scheduled Sends path
+  // (lib/scheduled-messages/processor.ts) ever called mergeContent. Every
+  // send-capable channel goes through this one function, so resolving here
+  // covers all of them at once, regardless of what UI composed the message.
+  //
+  // Starter Message Library: tour/payment tokens resolve from live authoritative
+  // rows; unresolved tokens after merge fail the send (customer-safe).
+  if (extractTokens(trimmed).length > 0 || (subject && extractTokens(subject).length > 0)) {
+    const [venue, relationshipId] = await Promise.all([
+      getCurrentVenue(),
+      repo.getRelationshipIdForConversation(supabase, conversationId),
+    ]);
+    const staff = venue ? await getCurrentStaffMember(venue.id) : null;
+    const ctx = venue && relationshipId
+      ? await getMergeContextForRelationship(supabase, venue.id, relationshipId, {
+          coordinatorName: staff?.name ?? null,
+        })
+      : null;
+    if (!ctx) {
+      return {
+        ok: false,
+        message: "This message still has fill-in details that need a client conversation context before sending.",
+      };
+    }
+    const resolved = resolveForCustomerSend(trimmed, subject, ctx);
+    if (!resolved.ok) return { ok: false, message: resolved.message };
+    trimmed = resolved.body;
+    subject = resolved.subject ?? undefined;
+  }
 
   // Email and SMS are the two channels with a real external send behind
   // them — attempt the actual send *before* recording it, so the
@@ -93,14 +134,24 @@ export async function sendConversationMessage(
     providerId = smsResult.providerId;
     status = "accepted";
   } else if (channel === "email") {
-    if (!emailSubject?.trim()) {
+    if (!subject) {
       return { ok: false, message: "An email needs a subject line." };
     }
     const email = await repo.getConversationRecipientEmail(supabase, conversationId);
     if (!email) {
       return { ok: false, message: "This client has no email address on file — add one to their record to send an email." };
     }
-    const emailResult = await sendEmail({ to: email, subject: emailSubject.trim(), text: trimmed });
+    // Merge resolution already ran above when tokens were present. Wrap the
+    // resolved plain-text body in the shared venue-brand shell; keep `text`
+    // as the plain-text fallback (Workstream A).
+    const venue = await getCurrentVenue();
+    const brand = {
+      name: venue?.name ?? "Your venue",
+      logoUrl: venue?.logoUrl,
+      primaryColor: venue?.primaryColor ?? "#5D6F5D",
+    };
+    const html = wrapConversationMessageHtml(brand, trimmed);
+    const emailResult = await sendEmail({ to: email, subject, text: trimmed, html });
     if (!emailResult.ok) return { ok: false, message: translateEmailFailure(emailResult.message) };
     providerId = emailResult.providerId;
     status = "accepted";
@@ -110,10 +161,11 @@ export async function sendConversationMessage(
   if (!result.ok) return { ok: false, message: result.error ?? "Could not send message." };
 
   // Portal-only: email/SMS already notified the counterparty via the
-  // provider send above. Venue↔vendor portal messages get a short “new
-  // message” email; couple portal / couple↔vendor use their own notify paths.
+  // provider send above. Route by thread kind — each helper no-ops when
+  // the conversation is the wrong kind.
   if (channel === "portal") {
     notifyVendorOfVenuePortalMessage(conversationId, trimmed);
+    notifyCoupleOfVenuePortalMessage(conversationId, trimmed);
   }
 
   return { ok: true, messageId: result.messageId! };

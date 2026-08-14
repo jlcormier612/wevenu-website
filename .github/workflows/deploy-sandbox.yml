@@ -1,0 +1,189 @@
+# Builds all three apps, pushes SHA-tagged images to ECR, deploys/updates
+# infra/htc-ecs-stack.json (the application/compute stack), waits for the
+# three ECS services to stabilize, then verifies each app's real HTTP
+# endpoint through the ALB before the run is allowed to succeed.
+#
+# Prerequisites, both one-time and both outside this workflow's reach:
+#   1. infra/htc-github-oidc.json deployed manually (OIDC provider + the two
+#      IAM roles this workflow assumes/passes).
+#   2. infra/htc-ecr-repos.json deployed via deploy-foundation-sandbox.yml
+#      (or manually) — the three ECR repos this workflow pushes into.
+# See docs/github-actions-deployment-implementation.md.
+#
+# No application secret values are read, held, or passed by this workflow —
+# they live only in AWS Secrets Manager, referenced by the CloudFormation
+# template itself. No long-lived AWS credentials are used — authentication
+# is via GitHub's OIDC token, scoped to the "sandbox" Environment below.
+
+name: Deploy Sandbox
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: {}
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  AWS_REGION: ${{ vars.AWS_REGION }}
+
+jobs:
+  build-and-push:
+    name: Build & push (${{ matrix.name }})
+    runs-on: ubuntu-latest
+    environment: sandbox
+    strategy:
+      matrix:
+        include:
+          - name: venue-app
+            dockerfile: Dockerfile
+            repo_var: htc-sandbox-venue-app
+            build_args: |
+              NEXT_PUBLIC_SUPABASE_URL=${{ vars.NEXT_PUBLIC_SUPABASE_URL }}
+              NEXT_PUBLIC_SUPABASE_ANON_KEY=${{ vars.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+              NEXT_PUBLIC_APP_URL=${{ vars.NEXT_PUBLIC_APP_URL }}
+              NEXT_PUBLIC_MARKETING_URL=${{ vars.NEXT_PUBLIC_MARKETING_URL }}
+              NEXT_PUBLIC_STRIPE_CLIENT_ID=${{ vars.NEXT_PUBLIC_STRIPE_CLIENT_ID }}
+              NEXT_PUBLIC_FACEBOOK_APP_ID=${{ vars.NEXT_PUBLIC_FACEBOOK_APP_ID }}
+              NEXT_PUBLIC_QUICKBOOKS_CLIENT_ID=${{ vars.NEXT_PUBLIC_QUICKBOOKS_CLIENT_ID }}
+              NEXT_PUBLIC_TURNSTILE_SITE_KEY=${{ vars.NEXT_PUBLIC_TURNSTILE_SITE_KEY }}
+              NEXT_PUBLIC_NOTIFICATIONS_SECRET=${{ vars.NEXT_PUBLIC_NOTIFICATIONS_SECRET }}
+              NEXT_PUBLIC_WEVENU_ADMIN=${{ vars.NEXT_PUBLIC_WEVENU_ADMIN }}
+          - name: marketing
+            dockerfile: marketing/Dockerfile
+            repo_var: htc-sandbox-marketing
+            build_args: |
+              NEXT_PUBLIC_MARKETING_URL=${{ vars.NEXT_PUBLIC_MARKETING_URL }}
+              NEXT_PUBLIC_SITE_URL=${{ vars.NEXT_PUBLIC_SITE_URL }}
+              NEXT_PUBLIC_PRODUCT_APP_URL=${{ vars.NEXT_PUBLIC_PRODUCT_APP_URL }}
+              NEXT_PUBLIC_CALENDLY_URL=${{ vars.NEXT_PUBLIC_CALENDLY_URL }}
+          - name: workspace
+            dockerfile: workspace/Dockerfile
+            repo_var: htc-sandbox-workspace
+            build_args: |
+              NEXT_PUBLIC_APP_URL=${{ vars.NEXT_PUBLIC_APP_URL }}
+              NEXT_PUBLIC_MARKETING_URL=${{ vars.NEXT_PUBLIC_MARKETING_URL }}
+              NEXT_PUBLIC_PRODUCT_APP_URL=${{ vars.NEXT_PUBLIC_PRODUCT_APP_URL }}
+              NEXT_PUBLIC_SITE_URL=${{ vars.NEXT_PUBLIC_SITE_URL }}
+              NEXT_PUBLIC_WORKSPACE_URL=${{ vars.NEXT_PUBLIC_WORKSPACE_URL }}
+    steps:
+      - name: Checkout
+        # Full checkout, repo root — marketing/ and workspace/ both import
+        # ../shared/*, so a shallow/sparse checkout or per-app subdirectory
+        # checkout would break their build context.
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+
+      - name: Log in to ECR
+        id: ecr-login
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build
+        env:
+          BUILD_ARGS: ${{ matrix.build_args }}
+          IMAGE_URI: ${{ steps.ecr-login.outputs.registry }}/${{ matrix.repo_var }}:${{ github.sha }}
+        run: |
+          ARGS=()
+          while IFS= read -r line; do
+            [ -n "$line" ] && ARGS+=(--build-arg "$line")
+          done <<< "$BUILD_ARGS"
+          docker build -f "${{ matrix.dockerfile }}" -t "$IMAGE_URI" "${ARGS[@]}" .
+
+      - name: Push
+        env:
+          IMAGE_URI: ${{ steps.ecr-login.outputs.registry }}/${{ matrix.repo_var }}:${{ github.sha }}
+        run: docker push "$IMAGE_URI"
+
+  deploy:
+    name: Deploy application stack
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    environment: sandbox
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+
+      - name: Resolve ECR registry
+        id: ecr-login
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Deploy htc-ecs-stack.json
+        env:
+          REGISTRY: ${{ steps.ecr-login.outputs.registry }}
+          SHA: ${{ github.sha }}
+        run: |
+          aws cloudformation deploy \
+            --template-file infra/htc-ecs-stack.json \
+            --stack-name "${{ vars.CFN_STACK_NAME }}" \
+            --parameter-overrides \
+              EnvironmentName=sandbox \
+              VenueAppImage="$REGISTRY/htc-sandbox-venue-app:$SHA" \
+              MarketingImage="$REGISTRY/htc-sandbox-marketing:$SHA" \
+              WorkspaceImage="$REGISTRY/htc-sandbox-workspace:$SHA" \
+              VenueAppHostname="${{ vars.VENUE_APP_HOSTNAME }}" \
+              MarketingHostname="${{ vars.MARKETING_HOSTNAME }}" \
+              WorkspaceHostname="${{ vars.WORKSPACE_HOSTNAME }}" \
+              FromEmailAddress="${{ vars.FROM_EMAIL_ADDRESS }}" \
+              EmailReplyTo="${{ vars.EMAIL_REPLY_TO }}" \
+              SupabaseUrl="${{ vars.SUPABASE_URL }}" \
+            --capabilities CAPABILITY_NAMED_IAM \
+            --role-arn "${{ vars.CFN_EXECUTION_ROLE_ARN }}" \
+            --no-fail-on-empty-changeset
+
+  verify:
+    name: Wait & verify
+    needs: deploy
+    runs-on: ubuntu-latest
+    environment: sandbox
+    steps:
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+
+      - name: Wait for ECS services to stabilize
+        run: |
+          aws ecs wait services-stable \
+            --cluster htc-sandbox \
+            --services htc-sandbox-venue-app htc-sandbox-marketing htc-sandbox-workspace
+
+      - name: Verify ALB endpoints
+        run: |
+          ALB_DNS=$(aws cloudformation describe-stacks \
+            --stack-name "${{ vars.CFN_STACK_NAME }}" \
+            --query "Stacks[0].Outputs[?OutputKey=='AlbDnsName'].OutputValue" \
+            --output text)
+
+          check() {
+            local host="$1" path="$2" expected_pattern="$3" label="$4"
+            local code
+            code=$(curl -s -o /dev/null -w "%{http_code}" -H "Host: $host" "http://$ALB_DNS$path")
+            echo "$label ($host$path) -> $code"
+            if ! [[ "$code" =~ $expected_pattern ]]; then
+              echo "::error::$label returned $code, expected pattern $expected_pattern"
+              exit 1
+            fi
+          }
+
+          # Venue app's /login is always a clean 200. Marketing's / is a
+          # clean 200. Workspace's / issues its own 307 session-gate
+          # redirect by design — confirmed by actually running the
+          # container, not assumed — so 200-399 is the correct pass range
+          # there, matching the ALB target group's own health-check matcher.
+          check "${{ vars.VENUE_APP_HOSTNAME }}" "/login" "^200$" "venue app"
+          check "${{ vars.MARKETING_HOSTNAME }}" "/" "^200$" "marketing"
+          check "${{ vars.WORKSPACE_HOSTNAME }}" "/" "^(2|3)[0-9]{2}$" "workspace"

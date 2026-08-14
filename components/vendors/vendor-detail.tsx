@@ -8,7 +8,7 @@ import { ArrowLeft, ExternalLink, Globe, Mail, Pencil, Phone, Star, Trash2 } fro
 import { toast } from "sonner";
 
 import { deleteVendorAction, reactivateVendorAction, sendVendorInviteAction } from "@/app/(app)/vendors/actions";
-import { DocumentsSection } from "@/components/documents/documents-section";
+import { DocumentWorkspace } from "@/components/document-workspace/document-workspace";
 import { VendorCategoryBadge } from "@/components/vendors/vendor-category-badge";
 import { VendorConversationRollup } from "@/components/vendors/vendor-conversation-rollup";
 import { VendorReviews } from "@/components/vendors/vendor-reviews";
@@ -18,13 +18,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { formatTime } from "@/lib/vendors/constants";
 import type { VendorReview, VendorWithEvents } from "@/lib/vendors/types";
-import type { Document } from "@/lib/documents/types";
+import type { WorkspaceDocument } from "@/lib/document-workspace/types";
 import type { VendorRollupConversation } from "@/lib/conversations/types";
 
 export function VendorDetail({
-  vendor, documents = [], reviews = [], conversations = [],
+  vendor, workspaceDocuments = [], pinnedDocumentKeys = [], recentDocumentEntries = [], reviews = [], conversations = [],
 }: {
-  vendor: VendorWithEvents; documents?: Document[]; reviews?: VendorReview[]; conversations?: VendorRollupConversation[];
+  vendor: VendorWithEvents; workspaceDocuments?: WorkspaceDocument[]; pinnedDocumentKeys?: string[]; recentDocumentEntries?: [string, string][]; reviews?: VendorReview[]; conversations?: VendorRollupConversation[];
 }) {
   const router = useRouter();
   const [deletePending, startDelete] = React.useTransition();
@@ -123,7 +123,7 @@ export function VendorDetail({
           </TabsTrigger>
           <TabsTrigger value="documents">
             Documents
-            {documents.length > 0 && <span className="ml-1 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground">{documents.length}</span>}
+            {workspaceDocuments.length > 0 && <span className="ml-1 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground">{workspaceDocuments.length}</span>}
           </TabsTrigger>
         </TabsList>
 
@@ -261,20 +261,14 @@ export function VendorDetail({
         </TabsContent>
 
         <TabsContent value="documents">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Documents</CardTitle>
-              <CardDescription>Contracts, insurance certificates, menus, and other vendor files.</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <DocumentsSection
-                entityType="vendor"
-                entityId={vendor.id}
-                venueId={vendor.venueId}
-                initialDocuments={documents}
-              />
-            </CardContent>
-          </Card>
+          <DocumentWorkspace
+            title="Documents"
+            description="Contracts, insurance certificates, menus, and other vendor files."
+            documents={workspaceDocuments}
+            initialPinnedKeys={pinnedDocumentKeys}
+            initialRecentEntries={recentDocumentEntries}
+            uploadTarget={{ entityType: "vendor", entityId: vendor.id, venueId: vendor.venueId }}
+          />
         </TabsContent>
       </Tabs>
     </div>

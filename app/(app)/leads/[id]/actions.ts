@@ -14,6 +14,7 @@ import {
   updateNote,
   updateRelationshipFields,
   updateTask,
+  wouldEnrollOnPipelineStageMove,
 } from "@/lib/leads/service";
 import { refreshLeadScore } from "@/lib/leads/scores";
 import type {
@@ -57,6 +58,21 @@ export async function updateLeadPipelineStageAction(
     void refreshLeadScore(leadId).catch(() => {}); // same as status changes — the underlying status did change
   }
   return result;
+}
+
+/** Preview before commit — does not move the lead or enroll anyone. */
+export async function wouldEnrollOnPipelineStageMoveAction(
+  leadId: string,
+  stageId: string,
+): Promise<
+  | {
+      ok: true;
+      wouldEnroll: boolean;
+      preview: import("@/lib/message-sequences/confirm-preview").AutomationMessagePreview | null;
+    }
+  | { ok: false; message: string }
+> {
+  return wouldEnrollOnPipelineStageMove(leadId, stageId);
 }
 
 export async function addNoteAction(

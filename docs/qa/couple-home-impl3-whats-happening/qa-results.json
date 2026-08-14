@@ -1,0 +1,29 @@
+{
+  "workPackage": "Couple Home – Implementation 3 – What's Happening",
+  "url": "http://localhost:3000/p/seedcoupleportal00000000000000000000000000000001",
+  "activitySource": "GET /api/portal/activity → get_recent_activity",
+  "fixturePayload": {
+    "types": ["photo_uploaded", "journal_entry(auto)"],
+    "note": "Auto journal excluded from Home; one meaningful photo remains"
+  },
+  "checks": {
+    "desktop": {
+      "hasWhatsHappening": true,
+      "thisWeekSubhead": true,
+      "nextStepsAbove": true,
+      "max5": true,
+      "warmSummary": "You added an engagement photo",
+      "autoJournalExcluded": true,
+      "noViewAllInvented": true,
+      "noTechErrors": true
+    },
+    "mobile": {
+      "hasWhatsHappening": true,
+      "thisWeekSubhead": true,
+      "nextStepsAbove": true,
+      "max5": true,
+      "itemCount": 1,
+      "noTechErrors": true
+    }
+  }
+}

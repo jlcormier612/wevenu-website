@@ -13,13 +13,14 @@ import type {
 } from "@/lib/event-orders/types";
 import { createInvoice, linkInvoiceToEventOrder } from "@/lib/invoices/service";
 import type { CreateInvoiceResult, InvoiceActionResult as InvoiceOpResult } from "@/lib/invoices/types";
+import { getEventOrderPdfUrl, shareEventOrderWithClient } from "@/lib/event-orders/representation";
 
 function revalidateEvent(eventId: string) {
   revalidatePath(`/events/${eventId}`);
 }
 
-export async function ensureEventOrderAction(eventId: string): Promise<EnsureEventOrderResult> {
-  const result = await ensureEventOrder(eventId);
+export async function ensureEventOrderAction(eventId: string, templateId?: string | null): Promise<EnsureEventOrderResult> {
+  const result = await ensureEventOrder(eventId, templateId ?? null);
   if (result.ok) revalidateEvent(eventId);
   return result;
 }
@@ -110,4 +111,14 @@ export async function linkEventOrderToInvoiceAction(eventOrderId: string, eventI
   const result = await linkInvoiceToEventOrder(invoiceId, eventOrderId);
   if (result.ok) revalidateEvent(eventId);
   return result;
+}
+
+export async function shareEventOrderWithClientAction(eventOrderId: string, eventId: string, customMessage?: string): Promise<EventOrderActionResult> {
+  const result = await shareEventOrderWithClient(eventOrderId, customMessage);
+  if (result.ok) revalidateEvent(eventId);
+  return result;
+}
+
+export async function getEventOrderPdfUrlAction(eventOrderId: string) {
+  return getEventOrderPdfUrl(eventOrderId);
 }

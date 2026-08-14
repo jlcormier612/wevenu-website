@@ -2,6 +2,7 @@
  * Hello to Cheers HQ — Customer Success workflow mutations (notes, tasks, next
  * contact date) plus the View-As audit log write. Server-only.
  */
+import { createAdminClient } from "@/integrations/supabase/admin";
 import { createClient } from "@/integrations/supabase/server";
 import { isSupabaseConfigured } from "@/lib/env";
 import { getHqAdmin } from "@/lib/hq/service";
@@ -90,4 +91,30 @@ export async function recordViewAs(venueId: string): Promise<void> {
     actorType: "hq_admin",
     actorId: actor.userId,
   });
+}
+
+/**
+ * HQ-only Event Orders rollout toggle for one venue.
+ * Updates only venues.event_order_enabled — does not create, delete, or
+ * mutate Event Order rows. Uses the service-role client (same pattern as
+ * other HQ venue mutations that must bypass venue-scoped RLS).
+ */
+export async function setEventOrderEnabled(
+  venueId: string,
+  enabled: boolean,
+): Promise<{ ok: true } | { ok: false; message: string }> {
+  const actor = await requireAdminUser();
+  if (!actor) return { ok: false, message: "Not signed in as an HQ admin." };
+  if (!isSupabaseConfigured) return { ok: false, message: "Backend not configured." };
+  try {
+    const admin = createAdminClient();
+    const { error } = await admin
+      .from("venues")
+      .update({ event_order_enabled: enabled })
+      .eq("id", venueId);
+    if (error) return { ok: false, message: error.message };
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, message: e instanceof Error ? e.message : "Could not update Event Orders flag." };
+  }
 }

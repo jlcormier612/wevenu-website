@@ -1,0 +1,222 @@
+{
+  "workPackage": "Couple Tasks – Implementation 3 – Exact Workspace Routing",
+  "portal": "http://localhost:3000/p/seedcoupleportal00000000000000000000000000000001",
+  "desktop": {
+    "viewport": {
+      "width": 1440,
+      "height": 900
+    },
+    "hashLandings": {
+      "guests/finalize": {
+        "focusPresent": true,
+        "marker": true,
+        "hash": "#guests/finalize",
+        "sample": "Emma & Jordan · Sweet Daisy Barn & Farm Oct 17, 2026 – Oct 19, 2026 Export my data 🏠 Home ✅ Tasks 2 🕒 Timeline 📁 Documents 💳 Payments 💬 Messages 🏛️ Venue Guide 🤝 Preferred Vendors NOT YET SENT 5 INVITED 0 AWAITING RESPONSE 0 RESPONDED 0 Guest Count Not yet submitted to you"
+      },
+      "vendors/pick": {
+        "focusPresent": true,
+        "marker": true,
+        "hash": "#vendors/pick",
+        "sample": "Emma & Jordan · Sweet Daisy Barn & Farm Oct 17, 2026 – Oct 19, 2026 Export my data 🏠 Home ✅ Tasks 2 🕒 Timeline 📁 Documents 💳 Payments 💬 Messages 🏛️ Venue Guide 🤝 Preferred Vendors These are the vendors Sweet Daisy Barn & Farm trusts and loves working with. Pick from their "
+      },
+      "seating/submit": {
+        "focusPresent": true,
+        "marker": true,
+        "hash": "#seating/submit",
+        "sample": "Emma & Jordan · Sweet Daisy Barn & Farm Oct 17, 2026 – Oct 19, 2026 Export my data 🏠 Home ✅ Tasks 2 🕒 Timeline 📁 Documents 💳 Payments 💬 Messages 🏛️ Venue Guide 🤝 Preferred Vendors 🪑 No floor plan shared for seating yet. Check with your venue — seating opens up once they s"
+      },
+      "timeline/submit": {
+        "focusPresent": true,
+        "marker": true,
+        "hash": "#timeline/submit",
+        "sample": "Emma & Jordan · Sweet Daisy Barn & Farm Oct 17, 2026 – Oct 19, 2026 Export my data 🏠 Home ✅ Tasks 2 🕒 Timeline 📁 Documents 💳 Payments 💬 Messages 🏛️ Venue Guide 🤝 Preferred Vendors TIMELINE STATUS Not yet submitted You have unpublished changes. Submit Timeline to Venue Satu"
+      },
+      "documents/sign": {
+        "focusPresent": false,
+        "marker": true,
+        "hash": "#documents/sign",
+        "sample": "Emma & Jordan · Sweet Daisy Barn & Farm Oct 17, 2026 – Oct 19, 2026 Export my data 🏠 Home ✅ Tasks 2 🕒 Timeline 📁 Documents 💳 Payments 💬 Messages 🏛️ Venue Guide 🤝 Preferred Vendors Documents Contracts, invoices, receipts, and anything your venue or vendors share — all in on"
+      },
+      "questionnaire/form": {
+        "focusPresent": true,
+        "marker": true,
+        "hash": "#questionnaire/form",
+        "sample": "Emma & Jordan · Sweet Daisy Barn & Farm Oct 17, 2026 – Oct 19, 2026 Export my data 🏠 Home ✅ Tasks 2 🕒 Timeline 📁 Documents 💳 Payments 💬 Messages 🏛️ Venue Guide 🤝 Preferred Vendors Already submitted! Your final details have already been submitted. Reach out to your coordina"
+      }
+    },
+    "ctaClicks": {
+      "guest_count": {
+        "found": true,
+        "hash": "#guests/finalize",
+        "focusPresent": true,
+        "url": "http://localhost:3000/p/seedcoupleportal00000000000000000000000000000001#guests/finalize"
+      },
+      "vendors": {
+        "found": false
+      },
+      "seating": {
+        "found": false
+      },
+      "timeline": {
+        "found": true,
+        "hash": "#timeline/submit",
+        "focusPresent": true,
+        "url": "http://localhost:3000/p/seedcoupleportal00000000000000000000000000000001#timeline/submit"
+      },
+      "contract": {
+        "found": false
+      },
+      "questionnaire": {
+        "found": false
+      }
+    },
+    "home": {
+      "leftMatch": null,
+      "completeCtas": 0,
+      "reviewCtas": 0,
+      "submitCtas": 0,
+      "payCtas": 0,
+      "nextStepsSnippet": ""
+    },
+    "paymentsUnchanged": {
+      "hasRemaining12960": true,
+      "hasFirst": true,
+      "hasFinal": true,
+      "payNowCount": 3
+    },
+    "incompleteAfterNav": {
+      "guestStatus": "pending",
+      "guestCanComplete": false,
+      "timelineStatus": "pending",
+      "timelineCanComplete": false
+    },
+    "tasks": {
+      "submitGuestCount": true,
+      "addVendors": false,
+      "submitSeating": false,
+      "submitTimeline": true,
+      "reviewSign": false,
+      "completeForm": false,
+      "markComplete": 1,
+      "payNow": 3,
+      "openHasChecklistFinalPayment": false,
+      "sample": "Emma & Jordan · Sweet Daisy Barn & Farm Oct 17, 2026 – Oct 19, 2026 Export my data 🏠 Home ✅ Tasks 2 🕒 Timeline 📁 Documents 💳 Payments 💬 Messages 🏛️ Venue Guide 🤝 Preferred Vendors From your venue Everything Sweet Daisy Barn & Farm needs from you, in one place — newest due date first. 6/10 tasks complete First Installment Payment Schedule — Emma / Carter / Jordan / Lee — payment due Due Apr 20 Pay now Second Installment Payment Schedule — Emma / Carter / Jordan / Lee — payment due Due Jul 19 Pay now Submit your guest count We need your final headcount to plan seating, catering, and rentals. Due Sep 17 · 30 days before Submit guest count Final Payment Payment Schedule — Emma / Carter / Jordan / Lee — payment due Due Sep 17 Pay now Submit your timeline Plan your day-of schedule, then submit it so your venue has it. Due Oct 3 · 14 days before Submit timeline Leave a review We'd love to hear about your experience. Due Oct 31 · 14 days after Mark complete Submit your timeline updates You've made changes your venue hasn't seen yet. Review & submit "
+    },
+    "manualCompleteBlocked": {
+      "status": 422,
+      "body": {
+        "ok": false,
+        "error": "domain_verified_use_workspace"
+      }
+    }
+  },
+  "mobile": {
+    "viewport": {
+      "width": 390,
+      "height": 844
+    },
+    "hashLandings": {
+      "guests/finalize": {
+        "focusPresent": true,
+        "marker": true,
+        "hash": "#guests/finalize",
+        "sample": "Emma & Jordan · Sweet Daisy Barn & Farm Export my data 🏠 Home ✅ Tasks 2 🕒 Timeline 📁 Documents 💳 Payments 💬 Messages 🏛️ Guide 🤝 Vendors NOT YET SENT 5 INVITED 0 AWAITING RESPONSE 0 RESPONDED 0 Guest Count Not yet submitted to your venue. 2 2 currently attending, based on y"
+      },
+      "vendors/pick": {
+        "focusPresent": true,
+        "marker": true,
+        "hash": "#vendors/pick",
+        "sample": "Emma & Jordan · Sweet Daisy Barn & Farm Export my data 🏠 Home ✅ Tasks 2 🕒 Timeline 📁 Documents 💳 Payments 💬 Messages 🏛️ Guide 🤝 Vendors These are the vendors Sweet Daisy Barn & Farm trusts and loves working with. Pick from their recommendations or full vendor list. Your pi"
+      },
+      "seating/submit": {
+        "focusPresent": true,
+        "marker": true,
+        "hash": "#seating/submit",
+        "sample": "Emma & Jordan · Sweet Daisy Barn & Farm Export my data 🏠 Home ✅ Tasks 2 🕒 Timeline 📁 Documents 💳 Payments 💬 Messages 🏛️ Guide 🤝 Vendors 🪑 No floor plan shared for seating yet. Check with your venue — seating opens up once they share the room layout. Sweet Daisy Barn & Far"
+      },
+      "timeline/submit": {
+        "focusPresent": true,
+        "marker": true,
+        "hash": "#timeline/submit",
+        "sample": "Emma & Jordan · Sweet Daisy Barn & Farm Export my data 🏠 Home ✅ Tasks 2 🕒 Timeline 📁 Documents 💳 Payments 💬 Messages 🏛️ Guide 🤝 Vendors TIMELINE STATUS Not yet submitted You have unpublished changes. Submit Timeline to Venue Saturday, Oct 17 6:00 PM 🔒 From your venue Rehe"
+      },
+      "documents/sign": {
+        "focusPresent": false,
+        "marker": true,
+        "hash": "#documents/sign",
+        "sample": "Emma & Jordan · Sweet Daisy Barn & Farm Export my data 🏠 Home ✅ Tasks 2 🕒 Timeline 📁 Documents 💳 Payments 💬 Messages 🏛️ Guide 🤝 Vendors Documents Contracts, invoices, receipts, and anything your venue or vendors share — all in one place. Share with venue + Upload document "
+      },
+      "questionnaire/form": {
+        "focusPresent": true,
+        "marker": true,
+        "hash": "#questionnaire/form",
+        "sample": "Emma & Jordan · Sweet Daisy Barn & Farm Export my data 🏠 Home ✅ Tasks 2 🕒 Timeline 📁 Documents 💳 Payments 💬 Messages 🏛️ Guide 🤝 Vendors Already submitted! Your final details have already been submitted. Reach out to your coordinator if you need to make changes. Sweet Daisy"
+      }
+    },
+    "ctaClicks": {
+      "guest_count": {
+        "found": true,
+        "hash": "#guests/finalize",
+        "focusPresent": true,
+        "url": "http://localhost:3000/p/seedcoupleportal00000000000000000000000000000001#guests/finalize"
+      },
+      "vendors": {
+        "found": false
+      },
+      "seating": {
+        "found": false
+      },
+      "timeline": {
+        "found": true,
+        "hash": "#timeline/submit",
+        "focusPresent": true,
+        "url": "http://localhost:3000/p/seedcoupleportal00000000000000000000000000000001#timeline/submit"
+      },
+      "contract": {
+        "found": false
+      },
+      "questionnaire": {
+        "found": false
+      }
+    },
+    "home": {
+      "leftMatch": null,
+      "completeCtas": 0,
+      "reviewCtas": 0,
+      "submitCtas": 0,
+      "payCtas": 0,
+      "nextStepsSnippet": ""
+    },
+    "paymentsUnchanged": {
+      "hasRemaining12960": true,
+      "hasFirst": true,
+      "hasFinal": true,
+      "payNowCount": 3
+    },
+    "incompleteAfterNav": {
+      "guestStatus": "pending",
+      "guestCanComplete": false,
+      "timelineStatus": "pending",
+      "timelineCanComplete": false
+    },
+    "tasks": {
+      "submitGuestCount": true,
+      "addVendors": false,
+      "submitSeating": false,
+      "submitTimeline": true,
+      "reviewSign": false,
+      "completeForm": false,
+      "markComplete": 1,
+      "payNow": 3,
+      "openHasChecklistFinalPayment": false,
+      "sample": "Emma & Jordan · Sweet Daisy Barn & Farm Export my data 🏠 Home ✅ Tasks 2 🕒 Timeline 📁 Documents 💳 Payments 💬 Messages 🏛️ Guide 🤝 Vendors From your venue Everything Sweet Daisy Barn & Farm needs from you, in one place — newest due date first. 6/10 tasks complete First Installment Payment Schedule — Emma / Carter / Jordan / Lee — payment due Due Apr 20 Pay now Second Installment Payment Schedule — Emma / Carter / Jordan / Lee — payment due Due Jul 19 Pay now Submit your guest count We need your final headcount to plan seating, catering, and rentals. Due Sep 17 · 30 days before Submit guest count Final Payment Payment Schedule — Emma / Carter / Jordan / Lee — payment due Due Sep 17 Pay now Submit your timeline Plan your day-of schedule, then submit it so your venue has it. Due Oct 3 · 14 days before Submit timeline Leave a review We'd love to hear about your experience. Due Oct 31 · 14 days after Mark complete Submit your timeline updates You've made changes your venue hasn't seen yet. Review & submit "
+    },
+    "manualCompleteBlocked": {
+      "status": 422,
+      "body": {
+        "ok": false,
+        "error": "domain_verified_use_workspace"
+      }
+    }
+  }
+}

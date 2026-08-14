@@ -7,9 +7,17 @@ import {
   personFromFields,
   type FindOrCreateResult,
 } from "./service";
-import { loadLiveStore } from "./store";
-import type { OnboardingType, PlanId, ProductFeedbackType, SubscriptionStatus } from "./types";
+import { loadLiveStore, withLiveStore } from "./store";
+import type {
+  OnboardingType,
+  PlanId,
+  ProductFeedbackType,
+  SubscriptionStatus,
+  SupportInboxItem,
+  SupportInboxSurface,
+} from "./types";
 import { ensureWhiteGloveChecklist } from "./white-glove-checklist";
+import { randomUUID } from "crypto";
 
 async function maybeEnsureWhiteGloveChecklist(
   result: FindOrCreateResult | null | undefined,
@@ -861,6 +869,13 @@ export async function ingestSupportRequest(input: {
       type: "support_request_submitted",
       title: "Support request",
       body: `${input.venueName?.trim() || person.firstName || input.email} submitted a support request.`,
+      href: null,
+      meta: {
+        panel: "support",
+        feedback_type: "support",
+        surface: "venue",
+        venue_name: input.venueName?.trim() || undefined,
+      },
     },
   }))!;
 }
@@ -927,8 +942,11 @@ export async function ingestProductFeedback(input: {
   subject?: string | null;
   body?: string | null;
   rating?: number | null;
+  allowPublicShare?: boolean;
   productFeedbackId?: string | null;
   sourceUrl?: string | null;
+  /** Bug-report screenshot URLs / paths when present. */
+  attachments?: Array<{ url: string; path?: string; file_name?: string }> | null;
 }): Promise<FindOrCreateResult | null> {
   const email = input.email?.trim() || null;
   const productVenueId = input.productVenueId.trim();
@@ -988,6 +1006,16 @@ export async function ingestProductFeedback(input: {
     person.firstName ||
     email ||
     productVenueId;
+  const attachmentUrls = (input.attachments ?? [])
+    .map((a) => a?.url?.trim())
+    .filter((u): u is string => Boolean(u));
+  const attachmentLines =
+    attachmentUrls.length > 0
+      ? [
+          `Screenshots (${attachmentUrls.length}):`,
+          ...attachmentUrls.map((u, i) => `${i + 1}. ${u}`),
+        ]
+      : [];
 
   return (await mutateRelationship({
     find: {
@@ -1015,6 +1043,7 @@ export async function ingestProductFeedback(input: {
           input.body,
           input.rating != null ? `Rating: ${input.rating}/10` : null,
           input.sourceUrl ? `URL: ${input.sourceUrl}` : null,
+          ...attachmentLines,
         ]) || undefined,
       productFeedbackId: input.productFeedbackId ?? undefined,
       source: "product",
@@ -1027,6 +1056,7 @@ export async function ingestProductFeedback(input: {
           input.body,
           input.rating != null ? `Rating: ${input.rating}/10` : null,
           input.sourceUrl ? `URL: ${input.sourceUrl}` : null,
+          ...attachmentLines,
         ]) || undefined,
       occurredAt: now,
       meta: {
@@ -1034,7 +1064,11 @@ export async function ingestProductFeedback(input: {
         product_feedback_id: input.productFeedbackId ?? null,
         product_venue_id: productVenueId || null,
         rating: input.rating ?? null,
+        allow_public_share: input.allowPublicShare === true,
         source: "product",
+        attachment_count: attachmentUrls.length,
+        attachment_urls:
+          attachmentUrls.length > 0 ? attachmentUrls.join("\n") : null,
       },
     },
     communication: {
@@ -1044,6 +1078,8 @@ export async function ingestProductFeedback(input: {
         input.body,
         input.rating != null ? `Rating: ${input.rating}/10` : null,
         input.venueName ? `Venue: ${input.venueName}` : null,
+        input.allowPublicShare === true ? "Public share consent: yes" : null,
+        ...attachmentLines,
       ]),
       direction: "inbound",
       occurredAt: now,
@@ -1056,6 +1092,143 @@ export async function ingestProductFeedback(input: {
       type: isHelpOrBug ? "support_request_submitted" : "feedback_received",
       title: labels.notificationTitle,
       body: `${who} submitted ${labels.title.toLowerCase()} from product.`,
+      href: null,
+      meta: {
+        panel: "support",
+        feedback_type: feedbackType,
+        surface: "venue",
+        venue_name: input.venueName?.trim() || undefined,
+      },
     },
   }))!;
+}
+
+/**
+ * Vendor / client product feedback → CRM Support inbox.
+ * Does NOT write Relationship.openFeedbackItems or bump supportOpenCount / health.
+ */
+export async function ingestProductPartnerFeedback(input: {
+  surface: SupportInboxSurface;
+  productVenueId?: string | null;
+  vendorId?: string | null;
+  clientId?: string | null;
+  email?: string | null;
+  actorName?: string | null;
+  feedbackType: string;
+  subject?: string | null;
+  body?: string | null;
+  rating?: number | null;
+  allowPublicShare?: boolean;
+  productFeedbackId?: string | null;
+  sourceUrl?: string | null;
+  /** Bug-report screenshot URLs / paths when present. */
+  attachments?: Array<{ url: string; path?: string; file_name?: string }> | null;
+}): Promise<SupportInboxItem | null> {
+  const surface = input.surface === "client" ? "client" : "vendor";
+  const feedbackType = normalizeProductFeedbackType(input.feedbackType);
+  const labels = PRODUCT_FEEDBACK_LABELS[feedbackType];
+  const subject =
+    input.subject?.trim() ||
+    (feedbackType === "nps" && input.rating != null
+      ? `NPS ${input.rating}/10`
+      : labels.subject);
+  const now = new Date().toISOString();
+  const productVenueId = input.productVenueId?.trim() || null;
+  const attachmentUrls = (input.attachments ?? [])
+    .map((a) => a?.url?.trim())
+    .filter((u): u is string => Boolean(u));
+  const attachmentLines =
+    attachmentUrls.length > 0
+      ? [
+          `Screenshots (${attachmentUrls.length}):`,
+          ...attachmentUrls.map((u, i) => `${i + 1}. ${u}`),
+        ]
+      : [];
+
+  const { result } = await withLiveStore((store) => {
+    if (!store.supportInboxItems) store.supportInboxItems = [];
+
+    // Dedupe by product feedback id when present
+    if (input.productFeedbackId) {
+      const existing = store.supportInboxItems.find(
+        (i) => i.productFeedbackId === input.productFeedbackId,
+      );
+      if (existing) return existing;
+    }
+
+    let relatedRelationshipId: string | null = null;
+    let relatedVenueName: string | null = null;
+    if (productVenueId) {
+      const rel = store.relationships.find(
+        (r) => r.productSync?.venueId?.trim() === productVenueId,
+      );
+      if (rel) {
+        relatedRelationshipId = rel.id;
+        relatedVenueName = rel.venue.name || null;
+      }
+    }
+
+    const item: SupportInboxItem = {
+      id: `sfi_${randomUUID().replace(/-/g, "").slice(0, 12)}`,
+      surface,
+      type: feedbackType,
+      subject,
+      body:
+        safeBody([
+          input.body,
+          input.rating != null ? `Rating: ${input.rating}/10` : null,
+          input.sourceUrl ? `URL: ${input.sourceUrl}` : null,
+          ...attachmentLines,
+        ]) || undefined,
+      rating: input.rating ?? null,
+      allowPublicShare: input.allowPublicShare === true,
+      actorName: input.actorName?.trim() || null,
+      actorEmail: input.email?.trim() || null,
+      vendorId: input.vendorId?.trim() || null,
+      clientId: input.clientId?.trim() || null,
+      relatedVenueId: productVenueId,
+      relatedRelationshipId,
+      relatedVenueName,
+      productFeedbackId: input.productFeedbackId ?? null,
+      sourceUrl: input.sourceUrl ?? null,
+      attachmentCount: attachmentUrls.length > 0 ? attachmentUrls.length : undefined,
+      attachmentUrls: attachmentUrls.length > 0 ? attachmentUrls : undefined,
+      status: "open",
+      createdAt: now,
+      resolvedAt: null,
+    };
+
+    store.supportInboxItems.unshift(item);
+
+    if (relatedRelationshipId) {
+      const who =
+        input.actorName?.trim() ||
+        input.email?.trim() ||
+        (surface === "client" ? "Client" : "Vendor");
+      store.notifications.unshift({
+        id: `ntf_${randomUUID().replace(/-/g, "").slice(0, 12)}`,
+        type:
+          feedbackType === "support" || feedbackType === "bug"
+            ? "support_request_submitted"
+            : "feedback_received",
+        relationshipId: relatedRelationshipId,
+        title: `${surface === "client" ? "Client" : "Vendor"}: ${labels.notificationTitle}`,
+        body: `${who} submitted ${labels.title.toLowerCase()} from product.`,
+        createdAt: now,
+        read: false,
+        href: null,
+        meta: {
+          support_inbox_item_id: item.id,
+          panel: "support",
+          feedback_type: feedbackType,
+          surface,
+          venue_name: relatedVenueName ?? undefined,
+        },
+      });
+    }
+
+    return item;
+  });
+
+  return result;
 }

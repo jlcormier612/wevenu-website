@@ -1,0 +1,41 @@
+{
+  "workPackage": "Couple Home – Implementation 7 – Memories",
+  "url": "http://127.0.0.1:3000/p/seedcoupleportal00000000000000000000000000000001",
+  "desktop": {
+    "viewport": {
+      "width": 1280,
+      "height": 900
+    },
+    "kind": "preview",
+    "memText": "A MOMENT FROM YOUR JOURNEY First engagement photo Your first engagement photo is here. This is the beginning of your visual story. August 4, 2026 Open your story →",
+    "height": 159.5,
+    "overflowX": false,
+    "orderOk": true,
+    "textOrderOk": true,
+    "lastSoftOk": true,
+    "forbidden": false,
+    "hasStoryCta": true,
+    "hasHeading": true,
+    "keyboardOk": true,
+    "storyLanded": true
+  },
+  "mobile": {
+    "viewport": {
+      "width": 390,
+      "height": 844
+    },
+    "kind": "preview",
+    "memText": "A MOMENT FROM YOUR JOURNEY First engagement photo Your first engagement photo is here. This is the beginning of your visual story. August 4, 2026 Open your story →",
+    "height": 220.75,
+    "overflowX": false,
+    "orderOk": true,
+    "textOrderOk": true,
+    "lastSoftOk": true,
+    "forbidden": false,
+    "hasStoryCta": true,
+    "hasHeading": true,
+    "keyboardOk": true,
+    "storyLanded": true
+  },
+  "pass": true
+}

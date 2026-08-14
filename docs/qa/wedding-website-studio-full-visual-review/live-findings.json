@@ -1,0 +1,56 @@
+{
+  "finishedAt": "2026-08-10T03:49:58.323Z",
+  "smoke": true,
+  "count": 5,
+  "findings": [
+    {
+      "severity": "critical",
+      "issue": "Blank or missing Live Preview",
+      "collection": "Midnight",
+      "phase": "A",
+      "device": "desktop",
+      "chrome": {},
+      "hero": {
+        "err": "no-preview",
+        "device": "desktop"
+      },
+      "story": {
+        "err": "no-preview",
+        "device": "desktop"
+      }
+    },
+    {
+      "severity": "critical",
+      "issue": "Blank or missing Live Preview",
+      "collection": "Midnight",
+      "phase": "A",
+      "device": "mobile",
+      "chrome": {},
+      "hero": {
+        "err": "no-preview",
+        "device": "mobile"
+      },
+      "story": {
+        "err": "no-preview",
+        "device": "mobile"
+      }
+    },
+    {
+      "severity": "critical",
+      "area": "nav",
+      "collection": "Midnight",
+      "issue": "host apply: edit Collection failed"
+    },
+    {
+      "severity": "critical",
+      "area": "nav",
+      "issue": "PS host setup: edit Collection failed"
+    },
+    {
+      "severity": "high",
+      "area": "nav",
+      "photoStyle": "Magazine",
+      "issue": "edit Photo Style failed"
+    }
+  ]
+}

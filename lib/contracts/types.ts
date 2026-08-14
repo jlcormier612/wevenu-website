@@ -2,6 +2,10 @@
  * Contracts domain types (Sprint 15 — Contracts Foundation).
  */
 
+import type { ContractBrandingSnapshot } from "@/lib/contracts/branding";
+
+export type { ContractBrandingSnapshot };
+
 export type ContractStatus = "draft" | "sent" | "signed" | "cancelled" | "expired";
 
 export type ContractTemplate = {
@@ -15,6 +19,7 @@ export type ContractTemplate = {
   // Planning/Timeline/Floor Plan Templates (Template Platform — Release
   // Readiness parity pass).
   isArchived: boolean;
+  sourceMasterKey: string | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -35,8 +40,17 @@ export type Contract = {
   expiresAt: string | null;
   createdAt: string;
   updatedAt: string;
+  /** Work Package D4 — set only on a newly-created amendment; mirrors invoices.amendsInvoiceId exactly. */
+  amendsContractId: string | null;
+  /**
+   * Presentation-only branding frozen at draft→sent (release). Never
+   * overwritten. Pre-existing contracts without a snapshot fall back to
+   * live venue branding (no silent backfill).
+   */
+  brandingSnapshot: ContractBrandingSnapshot | null;
   // Embedded from join
   clientName: string | null;
+  clientEmail: string | null;
   eventDate: string | null;
   // Venue Brand Experience Phase 1 — only populated by getContractByToken
   // (the public sign page's own read); every other Contract-producing
@@ -58,11 +72,14 @@ export type ContractActivity = {
   type: string;
   title: string;
   description: string | null;
+  actorId: string | null;
+  actorLabel: string | null;
   createdAt: string;
 };
 
 export type ContractWithDetails = Contract & {
   activities: ContractActivity[];
+  signers: import("@/lib/contracts/signers").ContractSigner[];
 };
 
 export type TemplateInput = {
@@ -78,13 +95,22 @@ export type NewContractInput = {
   eventId: string;
   title: string;
   content: string; // may be pre-filled from template merge
+  /** Work Package D4 — set only by createAmendmentFromContract. */
+  amendsContractId?: string;
+  /**
+   * Client contact ids selected as required signers. Empty/undefined → default
+   * one required signer from the client's primary contact (or client record).
+   * Never auto-assumes couple = two signers.
+   */
+  clientSignerContactIds?: string[];
 };
 
 export type ContractErrors = Record<string, string>;
 
 export type ContractActionResult =
   | { ok: true }
-  | { ok: false; errors?: ContractErrors; message?: string };
+  /** reason:"stale" — Work Package D4's concurrency check — a save was rejected because someone else saved first; the UI should prompt a reload, never silently overwrite. */
+  | { ok: false; errors?: ContractErrors; message?: string; reason?: "stale" | "not_editable" | "not_found" };
 
 export type CreateContractResult =
   | { ok: true; contractId: string }

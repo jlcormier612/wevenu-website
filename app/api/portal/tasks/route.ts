@@ -1,18 +1,17 @@
 import { NextResponse } from "next/server";
-import { resolvePortalTasks } from "@/lib/portal/service";
+import { resolvePortalTasks, resolvePortalVendorTasks } from "@/lib/portal/service";
 
 /**
- * GET /api/portal/tasks — venue-assigned tasks, client-fetchable.
+ * GET /api/portal/tasks — venue-assigned tasks + shared vendor→couple tasks.
  *
- * Tasks were previously only ever resolved server-side at page load
- * (`initialTasks`, app/(portal)/p/[token]/page.tsx) with no client route to
- * refresh them. The unified Tasks operational home (Client Collaboration
- * Workspace, 2026-07-22) needs to refetch after completing an item, the
- * same refetch-after-write pattern every other portal section already uses.
+ * vendorTasks is a separate array (not mixed into venue tasks).
  */
 export async function GET(request: Request) {
   const token = new URL(request.url).searchParams.get("token") ?? "";
   if (!token) return NextResponse.json({ error: "missing_token" }, { status: 400 });
-  const tasks = await resolvePortalTasks(token);
-  return NextResponse.json({ tasks });
+  const [tasks, vendorTasks] = await Promise.all([
+    resolvePortalTasks(token),
+    resolvePortalVendorTasks(token),
+  ]);
+  return NextResponse.json({ tasks, vendorTasks });
 }

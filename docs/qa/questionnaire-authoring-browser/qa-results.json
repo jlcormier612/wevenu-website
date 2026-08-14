@@ -1,0 +1,198 @@
+{
+  "at": "2026-08-11T23:12:57.979Z",
+  "tools": {
+    "cursorIdeBrowserMcp": "unavailable — not in MCP catalog this session",
+    "fallback": "Playwright headed=false chromium (prior QA pattern)"
+  },
+  "steps": [
+    {
+      "kind": "login",
+      "ok": true,
+      "url": "http://localhost:3000/dashboard",
+      "email": "owner@example.com"
+    },
+    {
+      "kind": "screenshot",
+      "name": "01-library-hub.png"
+    },
+    {
+      "kind": "screenshot",
+      "name": "02-questionnaire-list.png"
+    },
+    {
+      "kind": "screenshot",
+      "name": "03-client-planning-editor.png"
+    },
+    {
+      "kind": "screenshot",
+      "name": "04-editor-dirty.png"
+    },
+    {
+      "kind": "dialog",
+      "type": "confirm",
+      "message": "You have unsaved changes. Leave without saving?",
+      "mode": "dismiss"
+    },
+    {
+      "kind": "db_after_save",
+      "dbName": "Client Planning Questionnaire QA-authoring-1786489977979",
+      "customsSnippet": "[{\"id\": \"custom_6aba192b286b\", \"type\": \"single_choice\", \"label\": \"QA custom question 1786489977979\", \"helper\": \"Choice A\", \"options\": [{\"label\": \"Option 1\", \"value\": \"option_1\"}, {\"label\": \"Option 2\",",
+      "overridesSnippet": "{\"excited_about\": {\"label\": \"QA overridden wording QA-authoring-1786489977979\"}}"
+    },
+    {
+      "kind": "screenshot",
+      "name": "05-editor-saved.png"
+    },
+    {
+      "kind": "screenshot",
+      "name": "06-preview.png"
+    },
+    {
+      "kind": "screenshot",
+      "name": "99-error.png"
+    },
+    {
+      "kind": "before_apply",
+      "beforeApply": ""
+    },
+    {
+      "kind": "before_apply",
+      "beforeApply": ""
+    },
+    {
+      "kind": "after_apply",
+      "afterApply": "05afca23-ea08-4f90-9426-d02ec5b57bfc|draft|[{\"id\": \"custom_6aba192b286b\", \"type\": \"single_choice\", \"label\": \"QA custom question 1786489977979\", \"helper\": \"Choice A\", \"options\": [{\"label\": \"Option 1\", \"va|4bec55b2-e174-42b7-b23e-e930d1be8963|true",
+      "url": "http://localhost:3000/library/questionnaire-templates"
+    },
+    {
+      "kind": "isolation",
+      "sentId": "05afca23-ea08-4f90-9426-d02ec5b57bfc",
+      "beforeSnap": "sent|c82dfdb8c39492ebf62ef6e8ae1741ca|f6fc4bb4397de51be615ea2323186ae7|d4149309417b7863ad6cd5035a59d64c",
+      "afterSnap": "sent|c82dfdb8c39492ebf62ef6e8ae1741ca|f6fc4bb4397de51be615ea2323186ae7|d4149309417b7863ad6cd5035a59d64c",
+      "libName": "Client Planning Questionnaire QA-authoring-1786489977979"
+    },
+    {
+      "kind": "rls",
+      "rls": "questionnaire_templates_all:(venue_id = current_user_venue_id()) || questionnaire_templates_delete_gate:(current_user_role() = ANY (ARRAY['owner'::text, 'manager'::text]))",
+      "sweet": "true|Client Planning Questionnaire QA-authoring-1786489977979",
+      "other": "3d82e1df-1195-4f18-82fb-55e16994c3dc|[]"
+    },
+    {
+      "kind": "isolation_retry",
+      "sentId": "05afca23-ea08-4f90-9426-d02ec5b57bfc",
+      "beforeSnap": "sent|c82dfdb8c39492ebf62ef6e8ae1741ca|f6fc4bb4397de51be615ea2323186ae7|d4149309417b7863ad6cd5035a59d64c",
+      "afterSnap": "sent|c82dfdb8c39492ebf62ef6e8ae1741ca|f6fc4bb4397de51be615ea2323186ae7|d4149309417b7863ad6cd5035a59d64c",
+      "libName": "Client Planning Questionnaire QA-authoring-1786489977979 Isolation-1786490345307 Isolation-1786490472672",
+      "isolationMarker": "Isolation-1786490472672",
+      "sawDirty": true,
+      "enabled": true
+    }
+  ],
+  "matrix": {
+    "auth": {
+      "status": "PASS",
+      "note": "Signed in as owner@example.com"
+    },
+    "library_category_label": {
+      "status": "PASS",
+      "note": "Visible on /library"
+    },
+    "list_shows_three_starters": {
+      "status": "PASS",
+      "note": "List page body text"
+    },
+    "full_page_editor_client_planning": {
+      "status": "PASS",
+      "note": "url=http://localhost:3000/library/questionnaire-templates/4bec55b2-e174-42b7-b23e-e930d1be8963; heading=1; dialogs=0"
+    },
+    "full_page_editor_final_details": {
+      "status": "PASS",
+      "note": "http://localhost:3000/library/questionnaire-templates/2dd16b96-a034-4d18-823f-996dd86c1d3c"
+    },
+    "full_page_editor_post_event_feedback": {
+      "status": "PASS",
+      "note": "http://localhost:3000/library/questionnaire-templates/0ddf0964-8e52-4fb8-9ced-88e9d505fec2"
+    },
+    "rename": {
+      "status": "PASS",
+      "note": "Renamed with marker QA-authoring-1786489977979"
+    },
+    "edit_question_wording": {
+      "status": "PASS",
+      "note": "Was: What are you most excited about for your"
+    },
+    "toggle_required": {
+      "status": "PASS",
+      "note": "Clicked first Required checkbox label"
+    },
+    "reorder_move_down": {
+      "status": "PASS",
+      "note": "Clicked Move down"
+    },
+    "hide_question": {
+      "status": "PASS",
+      "note": "Toggled Ask this question off on 3rd field"
+    },
+    "add_custom_question": {
+      "status": "PASS",
+      "note": "QA custom question 1786489977979"
+    },
+    "unsaved_leave_warning": {
+      "status": "PASS",
+      "note": "You have unsaved changes. Leave without saving?"
+    },
+    "unsaved_stay_after_dismiss": {
+      "status": "PASS",
+      "note": "Remained on editor after dismiss"
+    },
+    "explicit_save": {
+      "status": "PASS",
+      "note": "uiHint=true; dbName=Client Planning Questionnaire QA-authoring-1786489977979; customsHasCustom=true; overridesLen=80"
+    },
+    "preview_couple_renderer": {
+      "status": "PASS",
+      "note": "Preview shell / form present"
+    },
+    "preview_reflects_edits": {
+      "status": "PASS",
+      "note": "Custom/override text visible"
+    },
+    "preview_route_final_details": {
+      "status": "PASS",
+      "note": "http://localhost:3000/library/questionnaire-templates/2dd16b96-a034-4d18-823f-996dd86c1d3c/preview"
+    },
+    "preview_route_post_event_feedback": {
+      "status": "PASS",
+      "note": "http://localhost:3000/library/questionnaire-templates/0ddf0964-8e52-4fb8-9ced-88e9d505fec2/preview"
+    },
+    "use_questionnaire_apply": {
+      "status": "PASS",
+      "note": "url=http://localhost:3000/library/questionnaire-templates; after=05afca23-ea08-4f90-9426-d02ec5b57bfc|draft|[{\"id\": \"custom_6aba192b286b\", \"type\": \"single_choice\", \"label\": \"QA custom question 1786489977979\", \"helper\": \"Choice A\", \"options\": [{\"label\": \"Option 1\", \"va|4bec55b2-e174-42"
+    },
+    "working_form_isolation": {
+      "status": "PASS",
+      "note": "libUpdated=true; snapshotUnchanged=true; sawDirty=true; saveEnabledInitially=true; lib=Client Planning Questionnaire QA-authoring-1786489977979 Isolation-1786490345307 Isolation; before=sent|c82dfdb8c39492ebf62ef6e8ae1741ca|f6fc4bb4397de51be615ea2323186ae7|d4149309417b7863ad6cd5035a59d64c; after=sent|c82dfdb8c39492ebf62ef6e8ae1741ca|f6fc4bb4397de51be615ea2323186ae7|d4149309417b7863ad6cd5035a59d64c"
+    },
+    "cross_venue_rls_sql": {
+      "status": "PASS",
+      "note": "venueScoped=true; otherHasSweetMarker=false; sweet=true|Client Planning Questionnaire QA-authoring-1786489977979; rls=questionnaire_templates_all:(venue_id = current_user_venue_id()) || questionnaire_templates_delete_gate:(current_user_role() = ANY (ARRAY['owner'::text, 'manage"
+    },
+    "use_questionnaire_navigation": {
+      "status": "PASS",
+      "note": "After sheet-close fix: lands on /events/d2ee4a16-6d35-4d3b-86fd-9c0d24fdfa11"
+    }
+  },
+  "defects": [
+    "Error: Command failed: docker exec -i supabase_db_wevenu-website psql -U postgres -d postgres -t -A -F | -c select id, status, coalesce(custom_fields::text,'[]'), name from event_questionnaires where event_id='d2ee4a16-6d35-4d3b-86fd-9c0d24fdfa11' and kind='client_planning' order by updated_at desc limit 1\nERROR:  column \"name\" does not exist\nLINE 1: ...t id, status, coalesce(custom_fields::text,'[]'), name from ...\n                                                             ^\n\n    at genericNodeError (node:internal/errors:998:15)\n    at wrappedFn (node:internal/errors:543:14)\n    at checkExecSyncError (node:child_process:925:11)\n    at execFileSync (node:child_process:961:15)\n    at sql (file:///Users/jensmac/Library/Mobile%20Documents/com%7Eapple%7ECloudDocs/Wevenu%20Website/wevenu-website/docs/qa/questionnaire-authoring-browser/capture.mjs:45:10)\n    at main (file:///Users/jensmac/Library/Mobile%20Documents/com%7Eapple%7ECloudDocs/Wevenu%20Website/wevenu-website/docs/qa/questionnaire-authoring-browser/capture.mjs:341:25)",
+    "locator.click: Error: strict mode violation: locator('div').filter({ hasText: 'QA-authoring-1786489977979' }).filter({ has: getByRole('button', { name: /Use Questionnaire/i }) }).first().getByRole('button', { name: /Use Questionnaire/i }) resolved to 4 elements:\n    1) <button disabled tabindex=\"0\" type=\"button\" data-disabled=\"\" data-slot=\"button\" class=\"group/button inline-flex shrink-0 items-center justify-center border border-transparent bg-clip-padding font-medium whitespace-nowrap transition-all outline-none select-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 active:not-aria-[haspopup]:translate-y-px disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructiv…>Use Questionnaire</button> aka getByRole('button', { name: 'Use Questionnaire' }).first()\n    2) <button tabindex=\"0\" type=\"button\" data-slot=\"button\" class=\"group/button inline-flex shrink-0 items-center justify-center border border-transparent bg-clip-padding font-medium whitespace-nowrap transition-all outline-none select-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 active:not-aria-[haspopup]:translate-y-px disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 dark:aria-invalid:bor…>Use Questionnaire</button> aka getByRole('button', { name: 'Use Questionnaire' }).nth(1)\n    3) <button tabindex=\"0\" type=\"button\" data-slot=\"button\" class=\"group/button inline-flex shrink-0 items-center justify-center border border-transparent bg-clip-padding font-medium whitespace-nowrap transition-all outline-none select-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 active:not-aria-[haspopup]:translate-y-px disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 dark:aria-invalid:bor…>Use Questionnaire</button> aka getByRole('button', { name: 'Use Questionnaire' }).nth(2)\n    4) <button tabindex=\"0\" type=\"button\" data-slot=\"button\" class=\"group/button inline-flex shrink-0 items-center justify-center border border-transparent bg-clip-padding font-medium whitespace-nowrap transition-all outline-none select-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 active:not-aria-[haspopup]:translate-y-px disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 dark:aria-invalid:bor…>Use Questionnaire</button> aka getByRole('button', { name: 'Use Questionnaire' }).nth(3)\n\nCall log:\n  - waiting for locator('div').filter({ hasText: 'QA-authoring-1786489977979' }).filter({ has: getByRole('button', { name: /Use Questionnaire/i }) }).first().getByRole('button', { name: /Use Questionnaire/i })\n\n    at /Users/jensmac/Library/Mobile Documents/com~apple~CloudDocs/Wevenu Website/wevenu-website/docs/qa/questionnaire-authoring-browser/continue.mjs:89:70",
+    "working_form_isolation: before=sent|c82dfdb8c39492ebf62ef6e8ae1741ca|f6fc4bb4397de51be615ea2323186ae7|d4149309417b7863ad6cd5035a59d64c after=sent|c82dfdb8c39492ebf62ef6e8ae1741ca|f6fc4bb4397de51be615ea2323186ae7|d4149309417b7863ad6cd5035a59d64c lib=Client Planning Questionnaire QA-authoring-1786489977979"
+  ],
+  "notes": [
+    "Promoted 05afca23-ea08-4f90-9426-d02ec5b57bfc → sent via SQL for isolation (UI send not exercised)",
+    "Sent working-form hashes unchanged after Library edit (isolation holds).",
+    "Fixes during validation: editor baseline-after-save; Use Questionnaire router.push before sheet close.",
+    "cursor-ide-browser MCP unavailable; Playwright Chromium used instead."
+  ],
+  "continuedAt": "2026-08-11T23:18:51.820Z",
+  "isolationRetryAt": "2026-08-11T23:21:08.386Z"
+}

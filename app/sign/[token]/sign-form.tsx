@@ -12,8 +12,8 @@ import { Label } from "@/components/ui/label";
 import { celebrateLuv } from "@/lib/luv/celebrate";
 import { coupleCelebrationMessage } from "@/lib/luv/celebrations";
 
-export function SignForm({ token }: { token: string }) {
-  const [name, setName] = React.useState("");
+export function SignForm({ token, expectedName }: { token: string; expectedName?: string | null }) {
+  const [name, setName] = React.useState(expectedName ?? "");
   const [consent, setConsent] = React.useState(false);
   const [error, setError] = React.useState("");
   const [done, setDone] = React.useState(false);
@@ -53,8 +53,9 @@ export function SignForm({ token }: { token: string }) {
         <p className="text-sm font-semibold text-gray-800">Sign this agreement</p>
       </div>
       <p className="text-sm text-gray-600">
-        By entering your full name and clicking "Sign Agreement," you agree to all terms
+        By entering your full name and clicking &quot;Sign Agreement,&quot; you agree to all terms
         and conditions set forth in this document.
+        {expectedName ? " Please confirm your name below." : null}
       </p>
       <div className="space-y-1.5">
         <Label htmlFor="signer-name" className="text-sm text-gray-700">Full legal name *</Label>
@@ -81,7 +82,7 @@ export function SignForm({ token }: { token: string }) {
         </Label>
       </div>
       <div className="flex items-center gap-2 text-xs text-gray-500">
-        <span>Today's date:</span>
+        <span>Today&apos;s date:</span>
         <span className="font-medium">
           {new Date().toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}
         </span>

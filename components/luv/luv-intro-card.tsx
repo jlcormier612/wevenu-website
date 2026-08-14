@@ -33,7 +33,7 @@ export function LuvIntroCard({
         type="button"
         aria-label="Dismiss"
         onClick={onDismiss}
-        className="absolute right-3 top-3 text-muted-foreground hover:text-foreground"
+        className="absolute right-3 top-3 text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 rounded-sm"
       >
         <X className="h-4 w-4" />
       </button>
@@ -56,7 +56,7 @@ export function LuvIntroCard({
             <button
               type="button"
               onClick={() => { onDismiss(); onCtaClick?.(); }}
-              className="text-sm font-medium underline underline-offset-2"
+              className="text-sm font-medium underline underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 rounded-sm"
               style={{ color: "#5D6F5D" }}
             >
               {ctaLabel} →

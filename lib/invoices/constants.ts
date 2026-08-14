@@ -18,6 +18,47 @@ export const LINE_ITEM_TYPES: { value: InvoiceLineItemType; label: string }[] = 
   { value: "inventory", label: "Inventory / Rental" },
 ];
 
+/**
+ * Work Package D5B — the canonical Metric Registry's 11 Revenue Categories
+ * (supabase/migrations/20261221000000_canonical_metrics_foundation.sql)
+ * were backfilled onto existing rows exactly once, at migration time, by a
+ * one-off SQL `UPDATE ... WHERE revenue_category IS NULL`. Confirmed live
+ * (a real transactional INSERT test): nothing in the write path ever
+ * populated this column going forward — every invoice_line_item created
+ * since that migration shipped (including every line D5A's Event
+ * Inventory → Event Order handoff produces) has silently carried
+ * `revenue_category = NULL` ever since. This is that same mapping,
+ * ported to TypeScript verbatim and applied at the two real write paths
+ * (lib/invoices/repository.ts addLineItem / insertFrozenLinesFromEventOrder)
+ * — not a new formula, not a new category, the existing one actually
+ * reaching new rows. 'addon'/'item' (the generic default) still carry no
+ * reliable signal and map to 'Other', exactly as the original backfill's
+ * own comment already documented — a real, pre-existing, honestly-labeled
+ * limitation, not something this fix invents or hides.
+ */
+export function deriveRevenueCategory(
+  type: InvoiceLineItemType, packageCategory?: string | null,
+): string {
+  switch (type) {
+    case "tax": return "Taxes";
+    case "discount": return "Discounts";
+    // A 'deposit'-typed line reduces the invoice total the same way a
+    // discount does (see computeInvoiceTotals below) — mapped consistently
+    // with that existing behavior, not because a deposit is conceptually a discount.
+    case "deposit": return "Discounts";
+    case "inventory": return "Inventory";
+    case "fee": return "Service Charges";
+    case "package": {
+      const c = (packageCategory ?? "").toLowerCase();
+      if (c.includes("venue")) return "Venue Rental";
+      if (c.includes("cater") || c.includes("food")) return "Food & Beverage";
+      if (c.includes("bar") || c.includes("alcohol")) return "Alcohol";
+      return "Packages";
+    }
+    default: return "Other"; // 'addon' | 'item' — no reliable signal, same as the original backfill
+  }
+}
+
 export function invoiceStatusLabel(status: InvoiceStatus): string {
   return INVOICE_STATUSES.find((s) => s.value === status)?.label ?? status;
 }

@@ -1,0 +1,21 @@
+{
+  "selected": {
+    "Editorial": true,
+    "Magazine": true,
+    "Film": true,
+    "Minimal": true,
+    "Modern": true,
+    "Luxury": true,
+    "Scrapbook": true,
+    "Wildflower": true,
+    "Midnight": true,
+    "Gallery Wall": true
+  },
+  "found": 10,
+  "persisted": {
+    "selected": true,
+    "cls": "rounded-xl border overflow-hidden text-left transition-all ring-2 ring-ring ring-offset-1 border-ring"
+  },
+  "wizardCount": 10,
+  "summaryHasGalleryWall": true
+}

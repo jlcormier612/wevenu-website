@@ -1,0 +1,29 @@
+{
+  "activityStatus": 200,
+  "payload": {
+    "activity": [
+      {
+        "type": "photo_uploaded",
+        "emoji": "📸",
+        "label": "Added an engagement photo",
+        "source": "manual",
+        "occurredAt": "2026-08-04T02:07:58.040311+00:00"
+      },
+      {
+        "type": "journal_entry",
+        "emoji": "✦",
+        "label": "First engagement photo",
+        "source": "auto",
+        "occurredAt": "2026-08-04T02:07:58.040311+00:00"
+      }
+    ],
+    "totalThisWeek": 2
+  },
+  "sectionText": {
+    "text": "WHAT’S HAPPENING\n\nThis week\n\n📸\n\nYou added an engagement photo\n\nMonday",
+    "liCount": 1
+  },
+  "nextStepsAbove": true,
+  "max5": true,
+  "noViewAllUnlessDest": true
+}

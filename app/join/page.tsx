@@ -44,7 +44,12 @@ export default async function JoinPage({ searchParams }: Props) {
     const { data: { user } } = await supabase.auth.getUser();
 
     if (!user) {
-      redirect(`/login?redirect=/join?token=${token}`);
+      // `/login` only ever reads `?next=` (see components/auth/login-form.tsx
+      // + app/auth/actions.ts's safeInternalNextPath) — the same mechanism
+      // /vendor/accept relies on to return an invitation claimer to the
+      // right place after signing in. This previously used `?redirect=`,
+      // a param /login never reads, silently stranding every invitee here.
+      redirect(`/login?next=${encodeURIComponent(`/join?token=${token}`)}`);
     }
 
     // Accept the invitation

@@ -1,6 +1,11 @@
 import { randomUUID } from "crypto";
 
-import { normalizeEmail, normalizeVenueName, splitPersonName } from "./normalize";
+import {
+  looksLikeEmailLocalPart,
+  normalizeEmail,
+  normalizeVenueName,
+  splitPersonName,
+} from "./normalize";
 import {
   deriveSalesStage,
   isCsAutoArrivalStage,
@@ -231,8 +236,14 @@ function applyOwnerVenueDefaults(
     relationship.venue.name = venueName;
   }
 
-  if (input.firstName?.trim() && !relationship.owner.firstName) {
-    relationship.owner.firstName = input.firstName.trim();
+  const incomingFirst = input.firstName?.trim() || "";
+  if (
+    incomingFirst &&
+    !looksLikeEmailLocalPart(incomingFirst) &&
+    (!relationship.owner.firstName ||
+      looksLikeEmailLocalPart(relationship.owner.firstName))
+  ) {
+    relationship.owner.firstName = incomingFirst;
   }
   if (input.lastName?.trim() && !relationship.owner.lastName) {
     relationship.owner.lastName = input.lastName.trim();
@@ -258,9 +269,9 @@ function createRelationship(input: FindOrCreateInput, now: string): Relationship
   const email = normalizeEmail(input.email);
   let firstName = input.firstName?.trim() || "";
   let lastName = input.lastName?.trim() || "";
-  if (!firstName && !lastName && email) {
-    const local = email.split("@")[0] || "Contact";
-    firstName = local;
+  // Never invent a person name from an email local-part (e.g. emma.carter).
+  if (firstName && looksLikeEmailLocalPart(firstName)) {
+    firstName = "";
   }
 
   const venueName =
@@ -637,9 +648,16 @@ function applyFieldPatch(
     }
   }
   if (patch.ownerFirstName !== undefined) {
-    relationship.owner.firstName =
-      takeStr(patch.ownerFirstName, relationship.owner.firstName) ??
-      relationship.owner.firstName;
+    const incoming = patch.ownerFirstName?.trim() || "";
+    if (incoming && !looksLikeEmailLocalPart(incoming)) {
+      if (
+        forceVenueOwner ||
+        !relationship.owner.firstName?.trim() ||
+        looksLikeEmailLocalPart(relationship.owner.firstName)
+      ) {
+        relationship.owner.firstName = incoming;
+      }
+    }
   }
   if (patch.ownerLastName !== undefined) {
     relationship.owner.lastName =
@@ -1103,9 +1121,31 @@ export async function appendNotification(
       body: notification.body,
       createdAt: notification.createdAt || new Date().toISOString(),
       read: notification.read ?? false,
+      href: notification.href ?? null,
+      meta: notification.meta,
     };
     store.notifications.push(row);
     return row;
+  });
+  return result;
+}
+
+/** Mark one or more workspace CRM notifications as read. */
+export async function markNotificationsRead(
+  ids: string[],
+): Promise<{ marked: number }> {
+  const unique = [...new Set(ids.map((id) => id.trim()).filter(Boolean))];
+  if (unique.length === 0) return { marked: 0 };
+  const { result } = await withLiveStore((store) => {
+    let marked = 0;
+    for (const id of unique) {
+      const row = store.notifications.find((n) => n.id === id);
+      if (row && !row.read) {
+        row.read = true;
+        marked += 1;
+      }
+    }
+    return { marked };
   });
   return result;
 }
@@ -1441,6 +1481,8 @@ export async function mutateRelationship(opts: {
         stageLabelForStatus(relationship.status);
     }
 
+    let mintedFeedbackItemId: string | undefined;
+    let mintedFeedbackType: OpenFeedbackItem["type"] | undefined;
     if (opts.openFeedbackItem) {
       if (!relationship.openFeedbackItems) relationship.openFeedbackItems = [];
       const item: OpenFeedbackItem = {
@@ -1457,6 +1499,8 @@ export async function mutateRelationship(opts: {
         source: opts.openFeedbackItem.source,
       };
       relationship.openFeedbackItems.push(item);
+      mintedFeedbackItemId = item.id;
+      mintedFeedbackType = item.type;
       syncSupportOpenCountFromItems(relationship);
       if (item.status === "open") {
         promoteToNeedsSupport(relationship);
@@ -1579,6 +1623,16 @@ export async function mutateRelationship(opts: {
     }
 
     if (opts.notification) {
+      const feedbackMeta =
+        mintedFeedbackItemId != null
+          ? {
+              feedback_item_id: mintedFeedbackItemId,
+              panel: "support" as const,
+              feedback_type: mintedFeedbackType,
+              surface: "venue" as const,
+              venue_name: relationship.venue.name,
+            }
+          : undefined;
       store.notifications.push({
         id: `ntf_${randomUUID().replace(/-/g, "").slice(0, 12)}`,
         type: opts.notification.type,
@@ -1587,6 +1641,11 @@ export async function mutateRelationship(opts: {
         body: opts.notification.body,
         createdAt: opts.notification.createdAt || occurredAt,
         read: opts.notification.read ?? false,
+        href: null,
+        meta: {
+          ...feedbackMeta,
+          ...opts.notification.meta,
+        },
       });
     }
 
@@ -1725,6 +1784,42 @@ export async function setWalkthroughStatus(
     store.timelineEvents.push(timelineEvent);
 
     return { walkthrough, relationship, timelineEvent } as const;
+  });
+
+  return result;
+}
+
+export type ResolveSupportInboxResult = {
+  item: import("./types").SupportInboxItem;
+};
+
+/**
+ * Mark a vendor/client Support inbox item resolved.
+ * Does not touch Relationship.supportOpenCount / openFeedbackItems.
+ */
+export async function resolveSupportInboxItem(opts: {
+  itemId: string;
+  note?: string | null;
+}): Promise<ResolveSupportInboxResult | { error: string }> {
+  const itemId = opts.itemId.trim();
+  if (!itemId) return { error: "itemId required" };
+
+  const { result } = await withLiveStore((store) => {
+    if (!store.supportInboxItems) store.supportInboxItems = [];
+    const item = store.supportInboxItems.find((i) => i.id === itemId);
+    if (!item) return { error: "Support inbox item not found" } as const;
+    if (item.status === "resolved") {
+      return { item } as const;
+    }
+    const now = new Date().toISOString();
+    item.status = "resolved";
+    item.resolvedAt = now;
+    if (opts.note?.trim()) {
+      item.body = [item.body, `Resolved note: ${opts.note.trim()}`]
+        .filter(Boolean)
+        .join("\n\n");
+    }
+    return { item } as const;
   });
 
   return result;

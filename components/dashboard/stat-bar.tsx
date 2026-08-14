@@ -1,4 +1,3 @@
-import Link from "next/link";
 import {
   AlertTriangle,
   CalendarDays,
@@ -6,8 +5,8 @@ import {
   Sparkles,
 } from "lucide-react";
 
-import { Card, CardContent } from "@/components/ui/card";
-import { cn } from "@/lib/utils";
+import { StatTile, StatTileGrid } from "@/components/dashboard-system/stat-tile";
+import type { Severity } from "@/lib/dashboard-system/severity";
 import type { DashboardData } from "@/lib/dashboard/types";
 
 type Stat = {
@@ -15,48 +14,15 @@ type Stat = {
   count: number;
   label: string;
   href: string;
-  tone: "urgent" | "action" | "info" | "positive";
+  severity?: Severity;
 };
 
-function StatCard({ icon: Icon, count, label, href, tone }: Stat) {
-  const toneClass = {
-    urgent:   count > 0 ? "border-destructive/30 bg-destructive/5"  : "",
-    action:   count > 0 ? "border-warning/30 bg-warning/5"          : "",
-    info:     "",
-    positive: count > 0 ? "border-primary/25 bg-primary/5"          : "",
-  }[tone];
-
-  const iconClass = {
-    urgent:   count > 0 ? "bg-destructive/10 text-destructive"  : "bg-muted text-muted-foreground",
-    action:   count > 0 ? "bg-warning/15 text-warning-foreground" : "bg-muted text-muted-foreground",
-    info:     "bg-muted text-muted-foreground",
-    positive: count > 0 ? "bg-primary/10 text-primary"           : "bg-muted text-muted-foreground",
-  }[tone];
-
-  const countClass = {
-    urgent:   count > 0 ? "text-destructive"        : "text-heading",
-    action:   count > 0 ? "text-warning-foreground" : "text-heading",
-    info:     "text-heading",
-    positive: count > 0 ? "text-primary"            : "text-heading",
-  }[tone];
-
-  return (
-    <Link href={href} className="block">
-      <Card className={cn("transition-colors", toneClass)}>
-        <CardContent className="flex items-center gap-3 p-4">
-          <span className={cn("flex h-11 w-11 shrink-0 items-center justify-center rounded-sm", iconClass)}>
-            <Icon className="h-5 w-5" />
-          </span>
-          <div>
-            <p className={cn("text-2xl font-semibold leading-none", countClass)}>{count}</p>
-            <p className="mt-1 text-xs text-muted-foreground">{label}</p>
-          </div>
-        </CardContent>
-      </Card>
-    </Link>
-  );
-}
-
+// Dashboard Component System, Phase 1 Step 3 (docs/dashboard-component-
+// system-architecture.md §2.1) — StatBar is now a thin composition of the
+// canonical StatTile; the old per-tone color logic (previously duplicated
+// here) now lives once in lib/dashboard-system/severity.ts. Tone mapping
+// preserved exactly: urgent->critical, action->warning, positive->opportunity,
+// info->no severity (neutral tile).
 export function StatBar({ data }: { data: DashboardData }) {
   const stats: Stat[] = [
     {
@@ -64,36 +30,35 @@ export function StatBar({ data }: { data: DashboardData }) {
       count: data.newLeadCount,
       label: "New inquiries",
       href: "/leads",
-      tone: "positive",
+      severity: "opportunity",
     },
     {
       icon: AlertTriangle,
       count: data.needsAttention.length,
       label: "Needs attention",
       href: "/leads",
-      tone: "urgent",
+      severity: "critical",
     },
     {
       icon: CalendarDays,
       count: data.followupsDue.length + data.upcomingTours.length,
       label: "Follow-ups & tours",
       href: "/leads",
-      tone: "action",
+      severity: "warning",
     },
     {
       icon: CheckSquare,
       count: data.openTaskCount,
       label: "Open tasks",
       href: "/leads",
-      tone: "info",
     },
   ];
 
   return (
-    <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+    <StatTileGrid>
       {stats.map((s) => (
-        <StatCard key={s.label} {...s} />
+        <StatTile key={s.label} icon={s.icon} value={s.count} label={s.label} href={s.href} severity={s.severity} />
       ))}
-    </div>
+    </StatTileGrid>
   );
 }

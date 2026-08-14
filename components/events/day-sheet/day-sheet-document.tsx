@@ -9,6 +9,7 @@
 import type { EventWithDetails } from "@/lib/events/types";
 import { formatDate, formatTime } from "@/lib/events/constants";
 import { eventTypeLabel } from "@/lib/leads/constants";
+import { resolvePrintBrandColors } from "@/lib/collateral/print-brand";
 import type { Venue } from "@/lib/venue/types";
 import { vendorCategoryLabel } from "@/lib/vendors/constants";
 import type { Questionnaire } from "@/lib/events/questionnaire";
@@ -58,6 +59,7 @@ export function DaySheetDocument({
   venue: Venue;
   questionnaire?: Questionnaire | null;
 }) {
+  const brand = resolvePrintBrandColors(venue);
   const startTime5 = event.startTime?.slice(0, 5) ?? null;
 
   const dayName = new Date(event.eventDate + "T12:00:00").toLocaleDateString(
@@ -82,7 +84,7 @@ export function DaySheetDocument({
       {/* ── Header bar ─────────────────────────────────────────────────── */}
       <div
         className="px-10 py-5"
-        style={{ backgroundColor: venue.primaryColor }}
+        style={{ backgroundColor: brand.primary }}
       >
         <div className="flex items-end justify-between">
           <div className="flex items-center gap-4 text-white">
@@ -138,7 +140,8 @@ export function DaySheetDocument({
                   {/* Time column */}
                   <div className="w-20 shrink-0 text-right">
                     <span
-                      className={`text-xs font-semibold ${isStart ? "text-gray-900" : "text-gray-400"}`}
+                      className={`text-xs font-semibold ${isStart ? "" : "text-gray-400"}`}
+                      style={isStart ? { color: brand.accent } : undefined}
                     >
                       {entry.entryTime ? formatTime(entry.entryTime) : ""}
                     </span>
@@ -151,7 +154,7 @@ export function DaySheetDocument({
                       {isStart && (
                         <span
                           className="mr-1.5 text-xs font-bold"
-                          style={{ color: venue.primaryColor }}
+                          style={{ color: brand.accent }}
                           aria-hidden
                         >
                           ★

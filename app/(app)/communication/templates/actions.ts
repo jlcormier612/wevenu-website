@@ -6,9 +6,14 @@ import {
   addTemplateAttachment, createTemplate, deleteTemplate_, duplicateTemplate_,
   removeTemplateAttachment, setTemplateArchived_, updateTemplate_,
 } from "@/lib/message-templates/service";
+import {
+  addStarterMessageAgain,
+  provisionMissingStartersIgnoringNameCollision,
+} from "@/lib/message-templates/provision";
 import type {
   CreateMessageTemplateResult, MessageTemplateActionResult, MessageTemplateCategory, MessageTemplateInput,
 } from "@/lib/message-templates/types";
+import type { StarterMessageMasterKey } from "@/lib/message-templates/starters";
 import { proposeMessageTemplate } from "@/lib/luv/message-template-import";
 import type { ImportChannel, LuvMessageTemplateProposal } from "@/lib/luv/message-template-import";
 
@@ -63,5 +68,17 @@ export async function addTemplateAttachmentAction(
 export async function removeTemplateAttachmentAction(attachmentId: string, templateId: string): Promise<MessageTemplateActionResult> {
   const result = await removeTemplateAttachment(attachmentId);
   if (result.ok) revalidatePath(`/communication/templates/${templateId}/edit`);
+  return result;
+}
+
+export async function addStarterMessageAgainAction(key: StarterMessageMasterKey): Promise<CreateMessageTemplateResult> {
+  const result = await addStarterMessageAgain(key);
+  if (result.ok) revalidatePath("/communication/templates");
+  return result;
+}
+
+export async function provisionMissingStartersAction(): Promise<MessageTemplateActionResult & { created?: string[] }> {
+  const result = await provisionMissingStartersIgnoringNameCollision();
+  if (result.ok) revalidatePath("/communication/templates");
   return result;
 }

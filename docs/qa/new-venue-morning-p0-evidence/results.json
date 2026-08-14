@@ -1,0 +1,99 @@
+{
+  "startedAt": "2026-08-13T01:36:05.384Z",
+  "checks": [
+    {
+      "name": "login",
+      "pass": true,
+      "detail": "http://localhost:3000/dashboard"
+    },
+    {
+      "name": "pipeline-copy-no-stale",
+      "pass": true,
+      "detail": "stale copy gone"
+    },
+    {
+      "name": "pipeline-copy-truthful",
+      "pass": true,
+      "detail": "truthful copy present"
+    },
+    {
+      "name": "pipeline-edit-opens",
+      "pass": true,
+      "detail": "http://localhost:3000/library/pipeline-templates"
+    },
+    {
+      "name": "leads-pipeline-reflects-stages",
+      "pass": true,
+      "detail": "stage header nodes≈9"
+    },
+    {
+      "name": "db-active-stage-automations",
+      "pass": true,
+      "detail": "[{\"name\":\"P0 Lost Goodbye\",\"stage\":\"lost\"},{\"name\":\"P0 Cancelled Goodbye\",\"stage\":\"cancelled\"},{\"name\":\"P0 Proposal Nudge\",\"stage\":\"proposal_sent\"}]"
+    },
+    {
+      "name": "safety-candidate",
+      "pass": false,
+      "detail": "lead=P0Canc Validation; dest=undefined; auto=P0 Proposal Nudge"
+    },
+    {
+      "name": "help-getting-started-listed",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "help-getting-started-not-empty",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "help-other-articles-unchanged",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "help-article-opens",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "help-article-category",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "help-article-answer",
+      "pass": false,
+      "detail": null
+    },
+    {
+      "name": "help-article-dashboard-labels",
+      "pass": false,
+      "detail": null
+    },
+    {
+      "name": "help-article-nav-truth",
+      "pass": false,
+      "detail": null
+    },
+    {
+      "name": "help-back-nav",
+      "pass": true,
+      "detail": "http://localhost:3000/help"
+    },
+    {
+      "name": "cancel-path-verified",
+      "pass": false,
+      "detail": null
+    },
+    {
+      "name": "ordinary-path-noted",
+      "pass": false,
+      "detail": null
+    }
+  ],
+  "errors": [],
+  "finishedAt": "2026-08-13T01:36:16.392Z",
+  "passCount": 12,
+  "failCount": 6
+}

@@ -28,6 +28,27 @@ export type InvoiceLineItem = {
    * Order.
    */
   eventOrderLineId: string | null;
+  /** D5B — the canonical Metric Registry's Revenue Category (see lib/invoices/constants.ts deriveRevenueCategory). Null on rows written before this was wired into the write path. */
+  revenueCategory: string | null;
+};
+
+export type InvoiceBrandingSnapshot = {
+  name: string;
+  businessName: string | null;
+  logoUrl: string | null;
+  primaryColor: string;
+  secondaryColor: string;
+  accentColor: string;
+  neutralColor: string;
+  email: string | null;
+  phone: string | null;
+  website: string | null;
+  addressLine1: string | null;
+  addressLine2: string | null;
+  city: string | null;
+  stateRegion: string | null;
+  postalCode: string | null;
+  country: string | null;
 };
 
 export type Invoice = {
@@ -63,10 +84,18 @@ export type Invoice = {
   amendedByInvoiceId: string | null;
   amendedByInvoiceNumber: string | null;
   quickbooksSyncStatus: "not_synced" | "pending" | "synced" | "failed";
+  /**
+   * Presentation-only branding frozen at draft→sent. Never overwritten on
+   * paid/void. Pre-existing sent invoices without a snapshot fall back to
+   * live venue branding (no silent backfill).
+   */
+  brandingSnapshot: InvoiceBrandingSnapshot | null;
 };
 
 export type InvoiceWithLineItems = Invoice & {
   lineItems: InvoiceLineItem[];
+  /** D8 — was recorded (lib/invoices/repository.ts's own insertActivity) but never read/rendered anywhere; the one Business Asset detail page of five missing its ActivityTimeline. */
+  activities: InvoiceActivity[];
 };
 
 export type InvoiceActivity = {

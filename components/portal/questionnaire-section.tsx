@@ -2,46 +2,73 @@
 
 import { useEffect, useState } from "react";
 
-import { CoupleQuestionnaireForm } from "@/components/form/couple-questionnaire-form";
+import { CoupleFamilyQuestionnaireForm, type FamilyQuestionnaireData } from "@/components/form/couple-family-questionnaire-form";
+import { kindLabel, type QuestionnaireKind } from "@/lib/questionnaire-family/definitions";
 
 /**
- * Questionnaire, surfaced inside the portal itself (Client Collaboration
- * Workspace, 2026-07-22) — the venue assigns it, the couple sees and
- * completes it without ever leaving their workspace or needing an emailed
- * link. Reuses CoupleQuestionnaireForm unchanged; only the entry point
- * (resolved via portal session) is new.
+ * Questionnaire section in the client portal — lists each open form by name
+ * (Client Planning / Final Details / Post-Event Feedback).
  */
 export function QuestionnairePortalSection({ token }: { token: string }) {
-  const [data, setData] = useState<Record<string, unknown> | null | undefined>(undefined);
+  const [rows, setRows] = useState<FamilyQuestionnaireData[] | null | undefined>(undefined);
+  const [activeKey, setActiveKey] = useState<string | null>(null);
 
   useEffect(() => {
     fetch(`/api/portal/questionnaire?token=${token}`)
       .then((r) => r.json())
-      .then((d: { questionnaire: Record<string, unknown> | null }) => setData(d.questionnaire))
-      .catch(() => setData(null));
+      .then((d: { questionnaires?: FamilyQuestionnaireData[] }) => {
+        const list = (d.questionnaires ?? []).map((q) => ({
+          ...q,
+          kind: (q.kind || "final_details") as QuestionnaireKind,
+        }));
+        setRows(list);
+        const open = list.find((q) => q.status === "sent") ?? list[0];
+        setActiveKey(open?.access_key ?? open?.questionnaire_id ?? null);
+      })
+      .catch(() => setRows(null));
   }, [token]);
 
-  if (data === undefined) {
+  if (rows === undefined) {
     return <div className="flex items-center justify-center h-64 text-gray-400"><div className="animate-pulse">Loading…</div></div>;
   }
 
-  if (!data) {
+  if (!rows || rows.length === 0) {
     return (
       <div className="max-w-xl mx-auto px-4 py-16 text-center">
-        <div className="text-4xl mb-3">📋</div>
         <p className="text-sm font-medium text-heading">Nothing waiting yet</p>
         <p className="text-xs text-muted-foreground mt-1">
-          Your venue will send your final details form (guest count, songs, meal preferences) closer to your event — it'll appear here automatically.
+          When your venue sends a questionnaire, Final Details, or feedback request, it will appear here.
         </p>
       </div>
     );
   }
 
+  const active = rows.find((r) => (r.access_key ?? r.questionnaire_id) === activeKey) ?? rows[0];
+
   return (
-    <CoupleQuestionnaireForm
-      accessKey={data.access_key as string}
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      data={data as any}
-    />
+    <div id="portal-focus-questionnaire-form" className="space-y-4">
+      {rows.length > 1 && (
+        <div className="flex flex-wrap gap-2 px-4 pt-4">
+          {rows.map((r) => {
+            const key = r.access_key ?? r.questionnaire_id;
+            const selected = key === (active.access_key ?? active.questionnaire_id);
+            return (
+              <button
+                key={key}
+                type="button"
+                onClick={() => setActiveKey(key)}
+                className={`rounded-full border px-3 py-1.5 text-xs ${selected ? "border-primary bg-primary/10 font-medium" : "border-border"}`}
+              >
+                {kindLabel(r.kind)}{r.status === "submitted" || r.status === "reviewed" ? " · Done" : ""}
+              </button>
+            );
+          })}
+        </div>
+      )}
+      <CoupleFamilyQuestionnaireForm
+        accessKey={active.access_key as string}
+        data={active}
+      />
+    </div>
   );
 }

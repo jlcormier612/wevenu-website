@@ -89,10 +89,7 @@ export async function setTemplateArchived_(id: string, isArchived: boolean): Pro
 }
 
 export async function deleteTemplate_(id: string): Promise<PlaybookActionResult> {
-  const result = await withVenue(async (c, venueId) => {
-    await repo.deleteTemplate(c, venueId, id);
-    return { ok: true } as PlaybookActionResult;
-  });
+  const result = await withVenue(async (c, venueId) => repo.deleteTemplate(c, venueId, id));
   return result as PlaybookActionResult;
 }
 
@@ -140,10 +137,7 @@ export async function reorderMilestone(templateId: string, milestoneId: string, 
 }
 
 export async function deleteMilestone(milestoneId: string): Promise<PlaybookActionResult> {
-  const result = await withVenue(async (c, venueId) => {
-    await repo.deleteMilestone(c, venueId, milestoneId);
-    return { ok: true } as PlaybookActionResult;
-  });
+  const result = await withVenue(async (c, venueId) => repo.deleteMilestone(c, venueId, milestoneId));
   return result as PlaybookActionResult;
 }
 
@@ -183,10 +177,7 @@ export async function updateTemplateTask_(taskId: string, patch: Partial<Omit<Pl
 }
 
 export async function deleteTemplateTask_(taskId: string): Promise<PlaybookActionResult> {
-  const result = await withVenue(async (c, venueId) => {
-    await repo.deleteTemplateTask(c, venueId, taskId);
-    return { ok: true } as PlaybookActionResult;
-  });
+  const result = await withVenue(async (c, venueId) => repo.deleteTemplateTask(c, venueId, taskId));
   return result as PlaybookActionResult;
 }
 

@@ -1,7 +1,7 @@
 import { createClient } from "@/integrations/supabase/server";
 import { isSupabaseConfigured } from "@/lib/env";
 import * as repo from "@/lib/invoices/repository";
-import { computeInvoiceTotals } from "@/lib/invoices/constants";
+import { computeInvoiceTotals, deriveRevenueCategory } from "@/lib/invoices/constants";
 import type {
   AddLineItemResult,
   CreateInvoiceResult,
@@ -11,6 +11,7 @@ import type {
   EventOrderPriceChange,
   Invoice,
   InvoiceActionResult,
+  InvoiceBrandingSnapshot,
   InvoiceInput,
   InvoiceLineItem,
   InvoiceLineItemInput,
@@ -21,8 +22,30 @@ import type {
 import { getEventOrder } from "@/lib/event-orders/service";
 import { eventOrderLinesFingerprint } from "@/lib/event-orders/constants";
 import type { EventOrderLine } from "@/lib/event-orders/types";
-import { getCurrentVenue } from "@/lib/venue/service";
+import { getCurrentVenue, getCurrentUserRole } from "@/lib/venue/service";
+import type { Venue } from "@/lib/venue/types";
 import { enqueueQuickBooksSync } from "@/lib/quickbooks/queue";
+
+function captureInvoiceBrandingSnapshot(venue: Venue): InvoiceBrandingSnapshot {
+  return {
+    name: venue.name,
+    businessName: venue.businessName,
+    logoUrl: venue.logoUrl,
+    primaryColor: venue.primaryColor,
+    secondaryColor: venue.secondaryColor,
+    accentColor: venue.accentColor,
+    neutralColor: venue.neutralColor,
+    email: venue.email,
+    phone: venue.phone,
+    website: venue.website,
+    addressLine1: venue.addressLine1,
+    addressLine2: venue.addressLine2,
+    city: venue.city,
+    stateRegion: venue.stateRegion,
+    postalCode: venue.postalCode,
+    country: venue.country,
+  };
+}
 
 /**
  * Booking Financial Architecture Phase 3a — a Draft Invoice linked to an
@@ -37,12 +60,19 @@ const PROVENANCE_TO_INVOICE_TYPE: Record<string, InvoiceLineItemType> = {
 };
 
 function projectEventOrderLines(eventOrderLines: EventOrderLine[]): InvoiceLineItem[] {
-  return eventOrderLines.map((l) => ({
-    id: l.id, invoiceId: "", venueId: l.venueId, packageId: l.packageId,
-    type: PROVENANCE_TO_INVOICE_TYPE[l.provenance] ?? "item",
-    description: l.description, quantity: l.quantity, unitPrice: l.unitPrice, amount: l.amount,
-    sortOrder: l.sortOrder, createdAt: l.createdAt, eventOrderLineId: l.id,
-  }));
+  return eventOrderLines.map((l) => {
+    const type = PROVENANCE_TO_INVOICE_TYPE[l.provenance] ?? "item";
+    return {
+      id: l.id, invoiceId: "", venueId: l.venueId, packageId: l.packageId,
+      type,
+      description: l.description, quantity: l.quantity, unitPrice: l.unitPrice, amount: l.amount,
+      sortOrder: l.sortOrder, createdAt: l.createdAt, eventOrderLineId: l.id,
+      // Live projection, not a stored row — no package-category lookup here
+      // (same D5B fix as the stored write paths, minus the extra fetch this
+      // read-only preview doesn't warrant); refined at actual freeze time.
+      revenueCategory: deriveRevenueCategory(type),
+    };
+  });
 }
 
 async function withVenue<T>(fn: (c: Awaited<ReturnType<typeof createClient>>, venueId: string) => Promise<T>): Promise<T | InvoiceActionResult> {
@@ -127,9 +157,35 @@ async function enqueueInvoiceSyncIfNotDraft(c: Awaited<ReturnType<typeof createC
   }
 }
 
+/**
+ * Work Package D5 — the gap named directly above this function's own prior
+ * comment ("addLineItem/removeLineItem have no status guard at all") is now
+ * closed here, at the one place every real caller of either function goes
+ * through. A Draft invoice keeps its existing free-edit behavior; once it's
+ * left Draft, the architecture's own stated intent (see revertInvoiceToDraft's
+ * comment: "nothing here changes again without a human's explicit decision")
+ * is now actually enforced, not just documented. Reverting to Draft remains
+ * the one explicit path back to an editable state. This also protects D5's
+ * own new Event Inventory → Event Order → Invoice pipeline for free: that
+ * pipeline never calls addLineItem/removeLineItem at all (it only ever
+ * freezes lines once, on first send, via insertFrozenLinesFromEventOrder),
+ * so it was never going to hit this gap — but closing it here means no
+ * *future* caller can either.
+ */
+async function assertInvoiceEditable(c: Awaited<ReturnType<typeof createClient>>, venueId: string, invoiceId: string): Promise<InvoiceActionResult | null> {
+  const { data } = await c.from("invoices").select("status").eq("id", invoiceId).eq("venue_id", venueId).maybeSingle<{ status: string }>();
+  if (!data) return { ok: false, message: "Invoice not found." };
+  if (data.status !== "draft") {
+    return { ok: false, message: "This invoice is no longer a draft — revert it to draft before changing its line items." };
+  }
+  return null;
+}
+
 export async function addLineItem(invoiceId: string, input: InvoiceLineItemInput): Promise<AddLineItemResult> {
   if (!input.description.trim()) return { ok: false, errors: { description: "Description is required." } };
   const result = await withVenue(async (c, venueId) => {
+    const guard = await assertInvoiceEditable(c, venueId, invoiceId);
+    if (guard) return guard as AddLineItemResult;
     const item = await repo.addLineItem(c, venueId, invoiceId, input);
     await repo.insertActivity(c, venueId, invoiceId, "line_item_added", `Line item added: ${input.description.trim()}`);
     await enqueueInvoiceSyncIfNotDraft(c, venueId, invoiceId);
@@ -140,7 +196,10 @@ export async function addLineItem(invoiceId: string, input: InvoiceLineItemInput
 
 export async function removeLineItem(invoiceId: string, itemId: string): Promise<InvoiceActionResult> {
   const result = await withVenue(async (c, venueId) => {
-    await repo.removeLineItem(c, venueId, invoiceId, itemId);
+    const guard = await assertInvoiceEditable(c, venueId, invoiceId);
+    if (guard) return guard;
+    const outcome = await repo.removeLineItem(c, venueId, invoiceId, itemId);
+    if (!outcome.ok) return { ok: false, message: outcome.message } as InvoiceActionResult;
     await repo.insertActivity(c, venueId, invoiceId, "line_item_removed", "Line item removed");
     await enqueueInvoiceSyncIfNotDraft(c, venueId, invoiceId);
     return { ok: true } as InvoiceActionResult;
@@ -150,9 +209,23 @@ export async function removeLineItem(invoiceId: string, itemId: string): Promise
 
 export async function updateInvoiceStatus(invoiceId: string, status: InvoiceStatus): Promise<InvoiceActionResult> {
   const result = await withVenue(async (c, venueId) => {
+    // Work Package D8 — void is the one status transition here with real,
+    // permanent consequence (an invoice off the books) and, unlike the
+    // Payments side's own delete/refund actions, had no explicit role check
+    // of its own — only the general, indirect RLS role exclusion on writes.
+    // Same weight class as those, so it gets the same direct app-layer
+    // check, matching lib/payments/service.ts's established pattern.
+    if (status === "void") {
+      const role = await getCurrentUserRole();
+      if (role !== "owner" && role !== "manager") {
+        return { ok: false, message: "Only an Owner or Manager can void an invoice." } as InvoiceActionResult;
+      }
+    }
     if (status === "sent") {
       const invoice = await repo.getInvoice(c, venueId, invoiceId);
       if (!invoice) return { ok: false, message: "Invoice not found." } as InvoiceActionResult;
+      const venue = await getCurrentVenue();
+      const brandingSnapshot = venue ? captureInvoiceBrandingSnapshot(venue) : undefined;
       if (invoice.status === "draft" && invoice.eventOrderId) {
         // Phase 3b: the commitment moment. Event Order's currently-live-
         // projected lines get copied into real, permanent invoice_line_items
@@ -169,18 +242,22 @@ export async function updateInvoiceStatus(invoiceId: string, status: InvoiceStat
           // Booking Financial Architecture Phase 3c — a permanent trace of
           // which Event Order revision produced this invoice, independent
           // of whatever revision Event Order has moved to since.
-          await repo.updateInvoiceStatus(c, venueId, invoiceId, status, { eventOrderRevisionAtFreeze: eventOrder.revision });
+          await repo.updateInvoiceStatus(c, venueId, invoiceId, status, {
+            eventOrderRevisionAtFreeze: eventOrder.revision,
+            brandingSnapshot,
+          });
           await repo.insertActivity(c, venueId, invoiceId, "status_changed", `Status updated to ${status}`);
           void enqueueQuickBooksSync(venueId, "invoice", invoiceId, { status });
           return { ok: true } as InvoiceActionResult;
         }
       }
+      await repo.updateInvoiceStatus(c, venueId, invoiceId, status, { brandingSnapshot });
+      await repo.insertActivity(c, venueId, invoiceId, "status_changed", `Status updated to ${status}`);
+      void enqueueQuickBooksSync(venueId, "invoice", invoiceId, { status });
+      return { ok: true } as InvoiceActionResult;
     }
     await repo.updateInvoiceStatus(c, venueId, invoiceId, status);
     await repo.insertActivity(c, venueId, invoiceId, "status_changed", `Status updated to ${status}`);
-    if (status === "sent") {
-      void enqueueQuickBooksSync(venueId, "invoice", invoiceId, { status });
-    }
     return { ok: true } as InvoiceActionResult;
   });
   return result as InvoiceActionResult;

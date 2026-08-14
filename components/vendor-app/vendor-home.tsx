@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useTransition } from "react";
-import { CalendarDays, MessageSquare, CheckSquare, Circle, Clock, FileText } from "lucide-react";
+import { CalendarDays, MessageSquare, CheckSquare, Circle, Clock } from "lucide-react";
 
 import { completeVendorTaskAction } from "@/app/vendor/tasks/actions";
 import { formatTime } from "@/lib/vendors/constants";
@@ -11,6 +11,7 @@ import type { LuvBriefing } from "@/lib/luv/briefing-types";
 import { VendorVenueHero } from "@/components/vendor-app/vendor-venue-hero";
 import { VendorLuvBriefing } from "@/components/vendor-app/vendor-luv-briefing";
 import { VendorLuvIntro } from "@/components/vendor-app/vendor-luv-intro";
+import { vendorCounterpartyDisplayName } from "@/lib/conversations/vendor-counterparty";
 import type { VendorActiveVenueContext, VendorPartnership } from "@/lib/vendors/types";
 
 function formatDate(iso: string | null): string {
@@ -47,9 +48,9 @@ function Card({ icon: Icon, title, href, count, children }: {
  * Vendor Workspace Realignment, Phase 4 (2026-07-22) — Home rebuilt around
  * exactly the questions a vendor asks each morning: what events need me
  * today, what messages need a reply, what tasks are due, what's next on my
- * schedule, what documents need attention. Replaces the old CRM-style
- * dashboard (stat tiles, business health score, Luv coaching) entirely —
- * see docs/vendor-workspace-realignment-audit.md.
+ * schedule. Replaces the old CRM-style dashboard (stat tiles, business
+ * health score, Luv coaching) entirely — see
+ * docs/vendor-workspace-realignment-audit.md.
  *
  * Venue-First Dashboard (2026-07-24) — "The vendor should always feel like
  * they are working with a venue, not browsing a marketplace." The venue
@@ -57,7 +58,7 @@ function Card({ icon: Icon, title, href, count, children }: {
  * daily-attention cards below — same design language as the Couple
  * Workspace's own venue-first hero. Everything below is unchanged in
  * substance, just reordered per the directive's own list: Upcoming Events,
- * Outstanding Tasks, Messages, then Coming Up/Documents ("Recent Activity").
+ * Outstanding Tasks, Messages, then Coming Up ("Recent Activity").
  */
 export function VendorHome({ greetingName, data, briefing, showLuvIntro, activeVenue, partnerships, vendorCategory }: {
   greetingName: string;
@@ -71,13 +72,12 @@ export function VendorHome({ greetingName, data, briefing, showLuvIntro, activeV
   const [pending, startTransition] = useTransition();
 
   // Only show the empty state when nothing on Home needs attention —
-  // including Coming Up and Documents, not just today's action queue.
+  // including Coming Up, not just today's action queue.
   const nothingNeedsAttention =
     data.eventsToday.length === 0 &&
     data.unreadConversations.length === 0 &&
     data.tasksDue.length === 0 &&
-    data.nextTimeline.length === 0 &&
-    data.recentDocuments.length === 0;
+    data.nextTimeline.length === 0;
 
   function handleCompleteTask(taskId: string) {
     startTransition(async () => {
@@ -125,44 +125,59 @@ export function VendorHome({ greetingName, data, briefing, showLuvIntro, activeV
         </Card>
       )}
 
-      {/* What tasks are due — completable inline, or open Tasks with context */}
+      {/* What tasks are due — completable inline, or open the event Tasks tab */}
       {data.tasksDue.length > 0 && (
-        <Card icon={CheckSquare} title="Outstanding Tasks" href="/vendor/tasks" count={data.tasksDue.length}>
+        <Card
+          icon={CheckSquare}
+          title="Outstanding tasks"
+          href="/vendor/events"
+          count={data.tasksDue.length}
+        >
           <div className="divide-y divide-border">
-            {data.tasksDue.slice(0, 5).map((t) => (
-              <div key={t.id} className="flex items-center gap-3 px-4 py-3">
-                <button
-                  type="button"
-                  onClick={() => handleCompleteTask(t.id)}
-                  disabled={pending}
-                  className="shrink-0 text-muted-foreground hover:text-primary transition-colors"
-                  aria-label={`Mark "${t.title}" complete`}
-                >
-                  <Circle className="h-4 w-4" />
-                </button>
-                <Link
-                  href={`/vendor/tasks?focus=${encodeURIComponent(t.id)}`}
-                  className="min-w-0 flex-1 flex items-center justify-between gap-4 hover:opacity-80 transition-opacity"
-                >
-                  <p className="text-sm text-foreground truncate">{t.title}</p>
-                  {t.dueDate && <p className="text-xs text-muted-foreground shrink-0">{formatDate(t.dueDate)}</p>}
-                </Link>
-              </div>
-            ))}
+            {data.tasksDue.slice(0, 5).map((t) => {
+              const ev = t.eventId
+                ? data.allEvents.find((e) => e.eventId === t.eventId)
+                : undefined;
+              const href = ev
+                ? `/vendor/events/${ev.assignmentId}?tab=tasks&focus=${encodeURIComponent(t.id)}`
+                : "/vendor/events";
+              return (
+                <div key={t.id} className="flex items-center gap-3 px-4 py-3">
+                  <button
+                    type="button"
+                    onClick={() => handleCompleteTask(t.id)}
+                    disabled={pending}
+                    className="shrink-0 text-muted-foreground hover:text-primary transition-colors"
+                    aria-label={`Mark "${t.title}" complete`}
+                  >
+                    <Circle className="h-4 w-4" />
+                  </button>
+                  <Link
+                    href={href}
+                    className="min-w-0 flex-1 flex items-center justify-between gap-4 hover:opacity-80 transition-opacity"
+                  >
+                    <p className="text-sm text-foreground truncate">{t.title}</p>
+                    {t.dueDate && <p className="text-xs text-muted-foreground shrink-0">{formatDate(t.dueDate)}</p>}
+                  </Link>
+                </div>
+              );
+            })}
           </div>
         </Card>
       )}
 
       {/* What messages need a reply */}
       {data.unreadConversations.length > 0 && (
-        <Card icon={MessageSquare} title="Messages Needing a Reply" href="/vendor/messages" count={data.unreadConversations.length}>
+        <Card icon={MessageSquare} title="Messages needing a reply" href="/vendor/messages" count={data.unreadConversations.length}>
           <div className="divide-y divide-border">
             {data.unreadConversations.slice(0, 5).map((c) => (
               <Link key={c.conversationId} href={`/vendor/messages/${c.conversationId}`} className="flex items-center justify-between gap-4 px-4 py-3 hover:bg-muted/40 transition-colors">
                 <div className="min-w-0">
                   <p className="text-sm font-medium text-foreground truncate">
                     {c.eventName}
-                    <span className="ml-1.5 font-normal text-muted-foreground">· {c.counterpartyLabel}</span>
+                    <span className="ml-1.5 font-normal text-muted-foreground">
+                      · {vendorCounterpartyDisplayName(c.counterpartyLabel, c.venueName, c.coupleName)}
+                    </span>
                   </p>
                   {c.latestMessage && <p className="text-xs text-muted-foreground truncate">{c.latestMessage.body}</p>}
                 </div>
@@ -175,13 +190,22 @@ export function VendorHome({ greetingName, data, briefing, showLuvIntro, activeV
         </Card>
       )}
 
-      {/* What's next on my schedule */}
+      {/* What's next on my schedule — deep-link to the event Timeline when known */}
       {data.nextTimeline.length > 0 && (
-        <Card icon={Clock} title="Coming Up" href="/vendor/timeline" count={data.nextTimeline.length}>
+        <Card
+          icon={Clock}
+          title="Coming up"
+          href={
+            data.nextTimeline.length === 1
+              ? `/vendor/events/${data.nextTimeline[0].assignmentId}?tab=timeline`
+              : "/vendor/events"
+          }
+          count={data.nextTimeline.length}
+        >
           <div className="divide-y divide-border">
             {data.nextTimeline.map((ev) => (
               <div key={ev.assignmentId} className="px-4 py-3">
-                <Link href={`/vendor/events/${ev.assignmentId}`} className="text-sm font-medium text-foreground hover:text-primary">{ev.eventName}</Link>
+                <Link href={`/vendor/events/${ev.assignmentId}?tab=timeline`} className="text-sm font-medium text-foreground hover:text-primary">{ev.eventName}</Link>
                 <div className="mt-1 space-y-1">
                   {ev.entries.slice(0, 3).map((entry) => (
                     <p key={entry.id} className="text-xs text-muted-foreground">
@@ -189,22 +213,6 @@ export function VendorHome({ greetingName, data, briefing, showLuvIntro, activeV
                     </p>
                   ))}
                 </div>
-              </div>
-            ))}
-          </div>
-        </Card>
-      )}
-
-      {/* What documents need attention */}
-      {data.recentDocuments.length > 0 && (
-        <Card icon={FileText} title="Documents" href="/vendor/documents" count={data.recentDocuments.length}>
-          <div className="divide-y divide-border">
-            {data.recentDocuments.map((ev) => (
-              <div key={ev.assignmentId} className="px-4 py-3">
-                <Link href={`/vendor/events/${ev.assignmentId}`} className="text-sm font-medium text-foreground hover:text-primary">{ev.eventName}</Link>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  {ev.documents.length + ev.floorPlans.length} item{ev.documents.length + ev.floorPlans.length === 1 ? "" : "s"} shared
-                </p>
               </div>
             ))}
           </div>

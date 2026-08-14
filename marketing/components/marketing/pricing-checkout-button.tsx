@@ -35,6 +35,7 @@ export function PricingCheckoutButton({
   async function startCheckout(selection: {
     onboardingType: OnboardingType;
     welcomeBack: boolean;
+    legalAccepted: boolean;
   }) {
     setLoading(true);
     setError(null);
@@ -46,6 +47,7 @@ export function PricingCheckoutButton({
           plan: planId,
           welcome_back: selection.welcomeBack,
           onboarding_type: selection.onboardingType,
+          legal_accepted: selection.legalAccepted,
         }),
       });
       const data = (await res.json()) as { url?: string; error?: string };

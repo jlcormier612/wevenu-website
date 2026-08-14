@@ -3,9 +3,10 @@
 import * as React from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
-import { Bell } from "lucide-react";
+import { Bell, Trash2 } from "lucide-react";
 
 import type { VendorNotification } from "@/lib/vendor-notifications/types";
+import { normalizeVendorTaskDeepLink } from "@/lib/vendor-luv/notifications";
 import { cn } from "@/lib/utils";
 
 const PANEL_WIDTH = 320;
@@ -16,6 +17,8 @@ const CTA: Record<string, string> = {
   new_task: "View task",
   document_shared: "View document",
   assigned_to_event: "Open event",
+  task_completed: "View task",
+  task_acknowledged: "Confirm task",
 };
 
 function relativeTime(iso: string): string {
@@ -31,8 +34,9 @@ function relativeTime(iso: string): string {
 }
 
 /**
- * Vendor notification center — history feed with mark-one / mark-all read.
- * Lives in VendorAppShell (sidebar + mobile header), matching venue NotificationBell.
+ * Vendor notification center — history feed with mark-one / mark-all read
+ * and clear-one / clear-all dismiss. Lives in VendorAppShell (sidebar + mobile
+ * header), matching venue NotificationBell.
  *
  * Panel is portaled + fixed so a 320px dropdown is never clipped/off-screen
  * when the trigger sits in the narrow left sidebar (absolute right-0 would
@@ -161,7 +165,30 @@ export function VendorNotificationBell({
     });
   }
 
+  async function clearAll() {
+    setNotifications([]);
+    setUnreadCount(0);
+    await fetch("/api/vendor/notifications/clear", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ids: [] }),
+    });
+  }
+
+  async function clearOne(id: string, wasUnread: boolean) {
+    setNotifications((prev) => prev.filter((n) => n.id !== id));
+    if (wasUnread) {
+      setUnreadCount((prev) => Math.max(0, prev - 1));
+    }
+    await fetch("/api/vendor/notifications/clear", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ids: [id] }),
+    });
+  }
+
   const hasUnread = unreadCount > 0;
+  const hasNotifications = notifications.length > 0;
 
   const panel =
     open && coords && mounted
@@ -186,15 +213,28 @@ export function VendorNotificationBell({
                   </span>
                 )}
               </div>
-              {hasUnread && (
-                <button
-                  type="button"
-                  onClick={() => void markAllRead()}
-                  className="text-xs text-primary hover:underline"
-                >
-                  Mark all read
-                </button>
-              )}
+              <div className="flex items-center gap-2">
+                {hasUnread && (
+                  <button
+                    type="button"
+                    onClick={() => void markAllRead()}
+                    className="text-xs text-primary hover:underline"
+                  >
+                    Mark all read
+                  </button>
+                )}
+                {hasNotifications && (
+                  <button
+                    type="button"
+                    onClick={() => void clearAll()}
+                    className="inline-flex items-center gap-1 rounded px-1 py-0.5 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-destructive"
+                    aria-label="Clear all notifications"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                    Clear all
+                  </button>
+                )}
+              </div>
             </div>
 
             <div className="overflow-y-auto" style={{ maxHeight: 380 }}>
@@ -214,6 +254,7 @@ export function VendorNotificationBell({
                   {notifications.map((n) => {
                     const isUnread = !n.readAt;
                     const cta = CTA[n.type] ?? "View";
+                    const href = normalizeVendorTaskDeepLink(n.link) ?? n.link;
 
                     const item = (
                       <div
@@ -239,19 +280,34 @@ export function VendorNotificationBell({
                             >
                               {n.title}
                             </p>
-                            {isUnread && (
-                              <span
-                                className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-primary"
-                                aria-hidden="true"
-                              />
-                            )}
+                            <div className="flex shrink-0 items-start gap-1">
+                              {isUnread && (
+                                <span
+                                  className="mt-1.5 h-1.5 w-1.5 rounded-full bg-primary"
+                                  aria-hidden="true"
+                                />
+                              )}
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  void clearOne(n.id, isUnread);
+                                }}
+                                className="rounded p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-destructive"
+                                aria-label="Dismiss"
+                                title="Dismiss"
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </button>
+                            </div>
                           </div>
                           {n.body && (
                             <p className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">
                               {n.body}
                             </p>
                           )}
-                          {n.link && (
+                          {href && (
                             <p className="mt-1 text-[10px] font-semibold text-primary">
                               {cta} →
                             </p>
@@ -263,8 +319,8 @@ export function VendorNotificationBell({
                       </div>
                     );
 
-                    return n.link ? (
-                      <Link key={n.id} href={n.link} className="block">
+                    return href ? (
+                      <Link key={n.id} href={href} className="block">
                         {item}
                       </Link>
                     ) : (

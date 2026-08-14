@@ -541,6 +541,50 @@ export function deriveCustomerSuccessStageBase(
   }
 }
 
+/**
+ * True when this relationship should count toward the CS open-support badge
+ * and appear under Needs Support (includes NPS / product feedback items).
+ */
+export function relationshipHasOpenSupport(
+  relationship: Pick<
+    Relationship,
+    "status" | "supportOpenCount" | "openFeedbackItems"
+  >,
+): boolean {
+  return countOpenSupportItems(relationship) > 0;
+}
+
+/**
+ * Open Feedback & support item count for one relationship.
+ * Prefers typed openFeedbackItems; falls back to supportOpenCount / legacy
+ * status overlay so badge totals match what CS sees on the board.
+ */
+export function countOpenSupportItems(
+  relationship: Pick<
+    Relationship,
+    "status" | "supportOpenCount" | "openFeedbackItems"
+  >,
+): number {
+  const openFromItems = (relationship.openFeedbackItems ?? []).filter(
+    (i) => i.status === "open",
+  ).length;
+  if (openFromItems > 0) return openFromItems;
+  if ((relationship.supportOpenCount || 0) > 0) {
+    return relationship.supportOpenCount || 0;
+  }
+  if (normalizeLifecycleStatus(relationship.status) === "support") return 1;
+  return 0;
+}
+
+/** Sum of open Feedback & support items across relationships (sidebar badge). */
+export function countOpenSupportItemsAcross(
+  relationships: Array<
+    Pick<Relationship, "status" | "supportOpenCount" | "openFeedbackItems">
+  >,
+): number {
+  return relationships.reduce((sum, r) => sum + countOpenSupportItems(r), 0);
+}
+
 /** Infer CS stage from legacy lifecycle status when customerSuccessStage unset. */
 export function deriveCustomerSuccessStage(
   relationship: Pick<
@@ -550,10 +594,11 @@ export function deriveCustomerSuccessStage(
     | "onboardingType"
     | "health"
     | "supportOpenCount"
+    | "openFeedbackItems"
   >,
 ): CustomerSuccessStage {
   // Pin open-support relationships in Needs Support until resolved.
-  if ((relationship.supportOpenCount || 0) > 0) return "needs_support";
+  if (relationshipHasOpenSupport(relationship)) return "needs_support";
   return deriveCustomerSuccessStageBase(relationship);
 }
 

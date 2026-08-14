@@ -66,6 +66,7 @@ import {
   updateVenueLogo,
   updateVenueHeroImage,
   updateVenueStory,
+  updatePublicReviewUrl,
 } from "@/lib/venue/service";
 import {
   connectStripeAccount,
@@ -94,6 +95,12 @@ export async function updateHeroImageAction(url: string | null): Promise<void> {
 export async function updateStoryAction(story: string): Promise<void> {
   await updateVenueStory(story);
   revalidatePath("/", "layout");
+}
+
+export async function updatePublicReviewUrlAction(url: string | null): Promise<{ ok: boolean; message?: string }> {
+  const result = await updatePublicReviewUrl(url);
+  if (result.ok) revalidatePath("/settings");
+  return result;
 }
 
 export async function connectStripeAction(accountId: string): Promise<void> {

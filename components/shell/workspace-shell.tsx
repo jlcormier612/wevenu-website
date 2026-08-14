@@ -50,7 +50,7 @@ export function WorkspaceShell({
           <SidebarNav />
         </div>
         <div className="shrink-0 border-t border-sidebar-border px-3 py-3">
-          <FeedbackSheet />
+          <FeedbackSheet surface="venue" />
         </div>
       </aside>
 

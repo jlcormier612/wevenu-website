@@ -4,12 +4,14 @@ import * as React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  CalendarDays, CheckSquare, Clock, FileText, Heart,
+  CalendarDays, CheckSquare, FileText, Heart,
   LayoutDashboard, LogOut, Menu, MessageSquare,
   User, X,
 } from "lucide-react";
 
 import { signOut } from "@/app/auth/actions";
+import { getVendorEventVenueIdAction } from "@/app/vendor/events/actions";
+import { FeedbackSheet } from "@/components/feedback/feedback-sheet";
 import { ThemeToggle } from "@/components/providers/theme-toggle";
 import { VendorNotificationBell } from "@/components/vendor-app/vendor-notification-bell";
 import type { VendorRole } from "@/lib/vendors/types";
@@ -17,19 +19,18 @@ import { cn } from "@/lib/utils";
 
 // Luv sits in nav (reachable surface) the way venue puts her on Today —
 // same job (attention + next actions), vendor-scoped. Health/CRM coaching
-// stay out of primary nav.
+// stay out of primary nav. Timeline lives per-event (not a global nav item).
 const NAV = [
   { href: "/vendor/dashboard", label: "Home",         icon: LayoutDashboard },
   { href: "/vendor/luv",       label: "Luv",           icon: Heart,          badge: "luv" as const },
   { href: "/vendor/events",    label: "Events",        icon: CalendarDays    },
-  { href: "/vendor/timeline",  label: "Run of show",   icon: Clock           },
-  { href: "/vendor/tasks",     label: "Tasks",         icon: CheckSquare,    badge: "task" as const },
-  { href: "/vendor/documents", label: "Documents",     icon: FileText        },
+  { href: "/vendor/task-templates", label: "Task Templates", icon: CheckSquare },
+  { href: "/vendor/documents", label: "Document Library", icon: FileText    },
   { href: "/vendor/messages",  label: "Messages",      icon: MessageSquare,  badge: "message" as const },
   { href: "/vendor/profile",   label: "Profile",       icon: User            },
 ];
 
-type BadgeKey = "task" | "message" | "luv";
+type BadgeKey = "message" | "luv";
 
 function NavItem({
   href, label, icon: Icon, badgeCount, onNavigate,
@@ -78,7 +79,6 @@ export function VendorAppShell({
   category,
   logoUrl,
   role,
-  pendingTaskCount,
   unreadMessageCount,
   luvAttentionCount,
   children,
@@ -87,6 +87,7 @@ export function VendorAppShell({
   category:         string | null;
   logoUrl?:         string | null;
   role:             VendorRole;
+  /** @deprecated Task templates nav no longer shows a pending badge. */
   pendingTaskCount?: number;
   unreadMessageCount?: number;
   /** Count for Luv nav badge — needsAttentionNow from shared briefing. */
@@ -96,7 +97,6 @@ export function VendorAppShell({
   const [mobileOpen, setMobileOpen] = React.useState(false);
 
   const badges: Record<BadgeKey, number | undefined> = {
-    task:    pendingTaskCount,
     message: unreadMessageCount,
     luv:     luvAttentionCount,
   };
@@ -176,6 +176,24 @@ function SidebarContent({
   badges:       Record<BadgeKey, number | undefined>;
   onNavigate?:  () => void;
 }) {
+  const pathname = usePathname();
+  const [relatedVenueId, setRelatedVenueId] = React.useState<string | null>(null);
+
+  React.useEffect(() => {
+    const match = pathname.match(/^\/vendor\/events\/([^/]+)/);
+    if (!match?.[1]) {
+      setRelatedVenueId(null);
+      return;
+    }
+    let cancelled = false;
+    void getVendorEventVenueIdAction(match[1]).then((id) => {
+      if (!cancelled) setRelatedVenueId(id);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [pathname]);
+
   return (
     <>
       {/* Header */}
@@ -222,7 +240,8 @@ function SidebarContent({
         ))}
       </nav>
 
-      <div className="mt-auto border-t px-3 py-3">
+      <div className="mt-auto shrink-0 border-t border-sidebar-border px-3 py-3 space-y-0.5">
+        <FeedbackSheet surface="vendor" relatedVenueId={relatedVenueId} />
         <form action={signOut}>
           <button
             type="submit"

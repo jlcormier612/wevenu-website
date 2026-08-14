@@ -1,0 +1,40 @@
+{
+  "collections": [
+    "Wildflower",
+    "Midnight",
+    "Garden Party",
+    "Linen",
+    "Rosé",
+    "Coastal",
+    "Champagne",
+    "Velvet",
+    "European Estate",
+    "Rustic"
+  ],
+  "curated": [
+    "Coastal Blue",
+    "Sage Garden",
+    "Dusty Rose",
+    "Peach Bellini",
+    "Lavender Haze",
+    "Champagne",
+    "Terracotta",
+    "French Blue",
+    "Black Tie",
+    "Berry",
+    "Golden Hour",
+    "Meadow"
+  ],
+  "photoStyles": [
+    "Editorial",
+    "Magazine",
+    "Film",
+    "Minimal",
+    "Modern",
+    "Luxury",
+    "Scrapbook",
+    "Wildflower",
+    "Midnight",
+    "Gallery Wall"
+  ]
+}

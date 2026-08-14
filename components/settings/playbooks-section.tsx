@@ -5,10 +5,9 @@
  * every template shows what it is, what type it is, how big it is, and when
  * it last changed. Each card's action menu is the one place to Edit,
  * Duplicate, Rename, Set as Default, or Archive it (Planning Templates
- * Library Rebuild, 2026-07-10). Archived templates stay visible here (muted,
- * sorted last) so there's a way back via Unarchive — they only disappear
- * from the booking-apply flows, per getTemplates()'s archived-exclusion
- * default.
+ * Library Rebuild, 2026-07-10). Archived templates live in a separate
+ * Archived section (Preview/Restore). They remain excluded from booking-
+ * apply flows via getTemplates()'s default.
  */
 
 import * as React from "react";
@@ -21,6 +20,9 @@ import {
   duplicateTemplateAction, renameTemplateAction,
   setTemplateArchivedAction, setTemplateDefaultAction,
 } from "@/app/(app)/playbooks/actions";
+import { LIBRARY_LABELS } from "@/components/library/labels";
+import { LibraryArchivedSection } from "@/components/library/library-archived-section";
+import { partitionArchived } from "@/components/library/partition-archived";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -56,7 +58,7 @@ function sortTemplates(templates: PlaybookTemplateWithStats[], sort: SortKey): P
 }
 
 function TemplateCard({
-  template, busy, onRename, onDuplicate, onSetDefault, onArchiveToggle,
+  template, busy, onRename, onDuplicate, onSetDefault, onArchiveToggle, archivedView,
 }: {
   template: PlaybookTemplateWithStats;
   busy: boolean;
@@ -64,6 +66,7 @@ function TemplateCard({
   onDuplicate: () => void;
   onSetDefault: () => void;
   onArchiveToggle: () => void;
+  archivedView?: boolean;
 }) {
   const router = useRouter();
   const eventType = template.eventType ? eventTypeLabel(template.eventType) : "All event types";
@@ -78,23 +81,25 @@ function TemplateCard({
     >
       <div className="flex items-start justify-between gap-2">
         <p className="min-w-0 truncate text-sm font-medium text-heading">{template.name}</p>
-        <div onClick={(e) => e.stopPropagation()} className="shrink-0">
-          <DropdownMenu>
-            <DropdownMenuTrigger render={<Button variant="ghost" size="icon" className="h-7 w-7" disabled={busy} />}>
-              {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <MoreHorizontal className="h-3.5 w-3.5" />}
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => router.push(`/library/playbooks/${template.id}`)}>Edit</DropdownMenuItem>
-              <DropdownMenuItem onClick={onDuplicate}>Duplicate</DropdownMenuItem>
-              <DropdownMenuItem onClick={onRename}>Rename</DropdownMenuItem>
-              {!template.isArchived && !template.isDefault && (
-                <DropdownMenuItem onClick={onSetDefault}>Set as Default</DropdownMenuItem>
-              )}
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={onArchiveToggle}>{template.isArchived ? "Unarchive" : "Archive"}</DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
+        {!archivedView && (
+          <div onClick={(e) => e.stopPropagation()} className="shrink-0">
+            <DropdownMenu>
+              <DropdownMenuTrigger render={<Button variant="ghost" size="icon" className="h-7 w-7" disabled={busy} />}>
+                {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <MoreHorizontal className="h-3.5 w-3.5" />}
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => router.push(`/library/playbooks/${template.id}`)}>Edit</DropdownMenuItem>
+                <DropdownMenuItem onClick={onDuplicate}>Duplicate</DropdownMenuItem>
+                <DropdownMenuItem onClick={onRename}>Rename</DropdownMenuItem>
+                {!template.isArchived && !template.isDefault && (
+                  <DropdownMenuItem onClick={onSetDefault}>Set as Default</DropdownMenuItem>
+                )}
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={onArchiveToggle}>{template.isArchived ? "Restore" : "Archive"}</DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        )}
       </div>
 
       <div className="flex flex-wrap items-center gap-1.5">
@@ -107,6 +112,13 @@ function TemplateCard({
       <p className="mt-auto text-xs text-muted-foreground">
         {template.taskCount} task{template.taskCount !== 1 ? "s" : ""} · Updated {formatRelative(template.updatedAt)}
       </p>
+      {archivedView && (
+        <div className="pt-1" onClick={(e) => e.stopPropagation()}>
+          <Button type="button" size="sm" variant="outline" onClick={onArchiveToggle} disabled={busy}>
+            {LIBRARY_LABELS.restore}
+          </Button>
+        </div>
+      )}
     </div>
   );
 }
@@ -157,7 +169,7 @@ export function PlaybooksSection({ initialTemplates }: { initialTemplates: Playb
     const result = await withBusy(id, () => setTemplateArchivedAction(id, !isArchived));
     if (result.ok) {
       setTemplates((p) => p.map((t) => (t.id === id ? { ...t, isArchived: !isArchived, isDefault: !isArchived ? false : t.isDefault } : t)));
-      toast.success(isArchived ? "Template unarchived." : "Template archived.");
+      toast.success(isArchived ? "Template restored." : "Template archived.");
     }
   }
 
@@ -221,25 +233,45 @@ export function PlaybooksSection({ initialTemplates }: { initialTemplates: Playb
         </Select>
       </div>
 
-      {filtered.length === 0 ? (
-        <p className="py-8 text-center text-sm text-muted-foreground">No templates match these filters.</p>
-      ) : (
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {filtered.map((t) => (
-            <TemplateCard
-              key={t.id} template={t} busy={busyId === t.id}
-              onRename={() => handleRename(t.id, t.name)}
-              onDuplicate={() => handleDuplicate(t.id, t.name)}
-              onSetDefault={() => handleSetDefault(t.id, t)}
-              onArchiveToggle={() => handleArchiveToggle(t.id, t.isArchived)}
-            />
-          ))}
-        </div>
-      )}
+      {(() => {
+        const { active, archived } = partitionArchived(filtered, (t) => t.isArchived);
+        return (
+          <>
+            {active.length === 0 ? (
+              <p className="py-8 text-center text-sm text-muted-foreground">No active templates match these filters.</p>
+            ) : (
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                {active.map((t) => (
+                  <TemplateCard
+                    key={t.id} template={t} busy={busyId === t.id}
+                    onRename={() => handleRename(t.id, t.name)}
+                    onDuplicate={() => handleDuplicate(t.id, t.name)}
+                    onSetDefault={() => handleSetDefault(t.id, t)}
+                    onArchiveToggle={() => handleArchiveToggle(t.id, t.isArchived)}
+                  />
+                ))}
+              </div>
+            )}
+            <LibraryArchivedSection count={archived.length}>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                {archived.map((t) => (
+                  <TemplateCard
+                    key={t.id} template={t} busy={busyId === t.id} archivedView
+                    onRename={() => handleRename(t.id, t.name)}
+                    onDuplicate={() => handleDuplicate(t.id, t.name)}
+                    onSetDefault={() => handleSetDefault(t.id, t)}
+                    onArchiveToggle={() => handleArchiveToggle(t.id, t.isArchived)}
+                  />
+                ))}
+              </div>
+            </LibraryArchivedSection>
+          </>
+        );
+      })()}
 
       <div className="flex gap-2 pt-2 border-t border-border/60">
-        <PlaybookStarterPicker existingTemplates={templates} compact />
-        <PlaybookStarterPicker existingTemplates={templates} compact variant="import" />
+        <PlaybookStarterPicker existingTemplates={templates.filter((t) => !t.isArchived)} compact />
+        <PlaybookStarterPicker existingTemplates={templates.filter((t) => !t.isArchived)} compact variant="import" />
       </div>
     </div>
   );

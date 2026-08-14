@@ -1,5 +1,6 @@
 /**
- * Luv's Success Library (Hospitality Success Platform §4, 2026-07-22).
+ * Help & Guides content store (formerly Success Library).
+ * Table remains success_library_articles — canonical HQ-authored pipeline.
  * Pure types — no framework or database imports.
  */
 
@@ -37,8 +38,9 @@ export type SuccessLibraryArticleInput = {
   status: SuccessLibraryArticleStatus;
 };
 
-/** Landing page grouping — one goal category, its published articles. */
+/** Landing page grouping — one Help & Guides area and its published articles (may be empty). */
 export type SuccessLibraryCategory = {
   category: string;
+  description: string;
   articles: { slug: string; title: string }[];
 };

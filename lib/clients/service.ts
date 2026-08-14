@@ -411,7 +411,8 @@ export async function addKeyDate(clientId: string, input: KeyDateInput): Promise
 
 export async function deleteKeyDate_(kdId: string): Promise<ClientActionResult> {
   const result = await withVenue(async (supabase, venueId) => {
-    await repo.deleteKeyDate(supabase, venueId, kdId);
+    const outcome = await repo.deleteKeyDate(supabase, venueId, kdId);
+    if (!outcome.ok) return { ok: false, message: outcome.message } as ClientActionResult;
     return { ok: true } as ClientActionResult;
   });
   return result as ClientActionResult;

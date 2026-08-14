@@ -11,11 +11,12 @@ import {
   getOnboardingPackage,
   getPlanDisplayName,
 } from "@/lib/marketing/onboarding-packages";
+import { fetchActiveVenueLegalDocuments } from "@/lib/legal/product-legal";
 import { syncCheckoutStartedToRelationship } from "@/lib/relationships/bridge";
 import {
+  getCheckoutPricingForPlan,
   getMarketingSiteUrl,
   getOnboardingAddonPriceId,
-  getPriceIdForPlan,
   getStripe,
   isSubscriptionPlanId,
 } from "@/lib/stripe/config";
@@ -33,6 +34,7 @@ export const runtime = "nodejs";
  * - welcome_back: "true" | "false"
  * - onboarding_type: self_guided | white_glove
  * - relationship_id (Path 2 — Send Subscription Link from Relationship Workspace)
+ * - legal_accepted / legal document ids / accept IP+UA (public pricing flow)
  */
 export async function POST(request: Request) {
   try {
@@ -48,6 +50,8 @@ export async function POST(request: Request) {
       customer_email?: string;
       /** Prefer Stripe customer when re-linking */
       stripe_customer_id?: string;
+      /** Required for public Pricing checkout (not Path 2 CRM links). */
+      legal_accepted?: unknown;
     };
     const plan = body.plan;
 
@@ -67,10 +71,39 @@ export async function POST(request: Request) {
     const planName = getPlanDisplayName(plan);
     const relationshipId = body.relationship_id?.trim() || "";
     const customerEmail = body.customer_email?.trim() || "";
+    const isPath2 = Boolean(relationshipId);
+    const legalAccepted =
+      body.legal_accepted === true ||
+      body.legal_accepted === "true" ||
+      body.legal_accepted === 1 ||
+      body.legal_accepted === "1";
+
+    // Public Pricing flow must accept Venue ToS + Privacy before Checkout.
+    // Path 2 (CRM Send Subscription Link) keeps prior behavior (no blocking).
+    if (!isPath2 && !legalAccepted) {
+      return NextResponse.json(
+        {
+          error:
+            "Please agree to the Terms of Service and Privacy Policy to continue.",
+        },
+        { status: 400 },
+      );
+    }
 
     const stripe = getStripe();
-    const priceId = getPriceIdForPlan(plan, { founder: founderActive });
+    const pricing = getCheckoutPricingForPlan(plan, { founder: founderActive });
     const siteUrl = getMarketingSiteUrl();
+
+    const forwardedFor = request.headers.get("x-forwarded-for");
+    const legalIp = forwardedFor
+      ? forwardedFor.split(",")[0]?.trim() || ""
+      : request.headers.get("x-real-ip")?.trim() || "";
+    const legalUa = request.headers.get("user-agent")?.trim() || "";
+    const legalAcceptedAt = new Date().toISOString();
+
+    const activeLegal = legalAccepted
+      ? await fetchActiveVenueLegalDocuments()
+      : null;
 
     const metadata: Record<string, string> = {
       plan_tier: plan,
@@ -80,6 +113,7 @@ export async function POST(request: Request) {
       welcome_back: welcomeBack ? "true" : "false",
       onboarding_type: onboardingType,
       founding_member: foundingMember ? "true" : "false",
+      pricing_mode: pricing.mode,
     };
     if (venueName) {
       metadata.venue_name = venueName;
@@ -87,9 +121,21 @@ export async function POST(request: Request) {
     if (relationshipId) {
       metadata.relationship_id = relationshipId;
     }
+    if (legalAccepted) {
+      metadata.legal_accepted = "true";
+      metadata.legal_accepted_at = legalAcceptedAt;
+      if (legalIp) metadata.legal_accept_ip = legalIp.slice(0, 128);
+      if (legalUa) metadata.legal_accept_ua = legalUa.slice(0, 512);
+      if (activeLegal?.venueTermsOfServiceId) {
+        metadata.legal_tos_document_id = activeLegal.venueTermsOfServiceId;
+      }
+      if (activeLegal?.privacyPolicyId) {
+        metadata.legal_privacy_document_id = activeLegal.privacyPolicyId;
+      }
+    }
 
     const lineItems: { price: string; quantity: number }[] = [
-      { price: priceId, quantity: 1 },
+      { price: pricing.priceId, quantity: 1 },
     ];
 
     if (onboardingPackage.stripePriceEnv) {
@@ -110,7 +156,10 @@ export async function POST(request: Request) {
       cancel_url: relationshipId
         ? `${siteUrl}/pricing?canceled=1&relationship_id=${encodeURIComponent(relationshipId)}`
         : `${siteUrl}/pricing?canceled=1`,
-      allow_promotion_codes: true,
+      // Stripe forbids allow_promotion_codes together with discounts.
+      ...(pricing.foundingCouponId
+        ? { discounts: [{ coupon: pricing.foundingCouponId }] }
+        : { allow_promotion_codes: pricing.allowPromotionCodes }),
       billing_address_collection: "required",
       automatic_tax: { enabled: true },
       tax_id_collection: { enabled: true },
@@ -120,13 +169,12 @@ export async function POST(request: Request) {
       metadata,
     };
 
+    // Subscription mode always creates/uses a Customer — `customer_creation`
+    // is payment-mode only and Stripe rejects it here.
     if (body.stripe_customer_id?.trim()) {
       sessionParams.customer = body.stripe_customer_id.trim();
     } else if (customerEmail) {
       sessionParams.customer_email = customerEmail;
-      sessionParams.customer_creation = "always";
-    } else {
-      sessionParams.customer_creation = "always";
     }
 
     const session = await stripe.checkout.sessions.create(sessionParams);

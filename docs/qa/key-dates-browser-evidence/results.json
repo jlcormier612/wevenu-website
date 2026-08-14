@@ -1,0 +1,175 @@
+{
+  "startedAt": "2026-08-13T22:53:49.709Z",
+  "base": "http://localhost:3000",
+  "clientId": "dbfa69d6-47ad-4f9d-892d-4f06cb7f1844",
+  "checks": [
+    {
+      "name": "login_owner",
+      "ok": true,
+      "detail": "owner@example.com"
+    },
+    {
+      "name": "overview_event_summary",
+      "ok": true,
+      "detail": "Event summary card"
+    },
+    {
+      "name": "overview_key_dates_card",
+      "ok": true,
+      "detail": "Key Dates card title"
+    },
+    {
+      "name": "overview_add_affordance",
+      "ok": true,
+      "detail": "Add key date button"
+    },
+    {
+      "name": "create_visible",
+      "ok": true,
+      "detail": "QA Key Date 1786661629440"
+    },
+    {
+      "name": "create_in_database",
+      "ok": true,
+      "detail": "efb4cb23-3222-4c28-bcb2-6a1e99449aa0|QA Key Date 1786661629440|2026-09-15"
+    },
+    {
+      "name": "persist_after_reload",
+      "ok": true,
+      "detail": "QA Key Date 1786661629440"
+    },
+    {
+      "name": "layout_still_has_event_summary",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "name": "dashboard_key_date_visible_or_linked",
+      "ok": false,
+      "detail": "UNVERIFIED"
+    },
+    {
+      "name": "dashboard_landing_shows_key_dates",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "name": "calendar_key_date_visible_or_linked",
+      "ok": false,
+      "detail": "UNVERIFIED"
+    },
+    {
+      "name": "calendar_landing_shows_key_dates",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "name": "delete_click",
+      "ok": true,
+      "detail": "QA Key Date 1786661629440"
+    },
+    {
+      "name": "delete_removed_from_ui",
+      "ok": true,
+      "detail": "QA Key Date 1786661629440"
+    },
+    {
+      "name": "delete_in_database",
+      "ok": true,
+      "detail": "0"
+    },
+    {
+      "name": "delete_persisted",
+      "ok": true,
+      "detail": "QA Key Date 1786661629440"
+    },
+    {
+      "name": "second_create_delete_cycle",
+      "ok": true,
+      "detail": "QA Key Date 1786661629440-2"
+    },
+    {
+      "name": "staff_gate_row_created",
+      "ok": true,
+      "detail": "59ae1279-a4ce-4689-b294-9e993575e02f"
+    },
+    {
+      "name": "login_staff",
+      "ok": true,
+      "detail": "d5b-staff@example.com"
+    },
+    {
+      "name": "staff_delete_blocked_in_db",
+      "ok": true,
+      "detail": "1"
+    },
+    {
+      "name": "staff_delete_no_false_success",
+      "ok": true,
+      "detail": "row absent in UI but DB retained (refresh race) — DB is authoritative"
+    },
+    {
+      "name": "login_owner_cleanup",
+      "ok": true,
+      "detail": "owner@example.com"
+    },
+    {
+      "name": "staff_gate_cleanup",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "name": "portal_seed_created",
+      "ok": true,
+      "detail": "Portal Smoke 1786661745441"
+    },
+    {
+      "name": "portal_next_key_date",
+      "ok": true,
+      "detail": "VERIFIED LIVE"
+    },
+    {
+      "name": "portal_empty_when_none",
+      "ok": true,
+      "detail": "remaining=3"
+    }
+  ],
+  "errors": [],
+  "notes": [
+    "Dashboard Attention List link not clicked; fell back to direct client URL",
+    "Calendar link not clicked; fell back to direct client URL"
+  ],
+  "verification": {
+    "createDb": {
+      "row": "efb4cb23-3222-4c28-bcb2-6a1e99449aa0|QA Key Date 1786661629440|2026-09-15",
+      "label": "VERIFIED DATABASE"
+    },
+    "deleteDb": {
+      "count": "0",
+      "label": "VERIFIED DATABASE"
+    },
+    "staffDeleteGate": {
+      "stillInDb": "1",
+      "staffUiStillShows": false,
+      "label": "VERIFIED LIVE"
+    },
+    "portal": {
+      "url": "http://localhost:3000/p/seedcoupleportal00000000000000000000000000000001",
+      "hasNextKeyDateHeading": true,
+      "showsCreatedLabel": true,
+      "sample": "Emma & Jordan · Sweet Daisy Barn & Farm Oct 17, 2026 – Oct 19, 2026 Export my data 2 🏠 Home ✅ Tasks 4 🕒 Timeline 📁 Docs 🗺️ Floor Plan 💳 Payments 1 💬 Messages 🏛️ Guide 🤝 Vendors SWEET DAISY BARN & FARM Emma & Jordan 65 days until your celebration Saturday, October 17, 2026 – Monday, October 19, 2026 Your venue team is here with you—finish what helps your day come together. Review what Sweet Daisy Barn & Farm needs Message Sweet Daisy Barn & Farm View Timeline Sweet Daisy Barn & Farm is waiting on 4 things from you. Jump to your next steps below. WHAT SWEET DAISY BARN & FARM NEEDS FROM Y",
+      "label": "VERIFIED LIVE"
+    },
+    "portalEmpty": {
+      "remaining": "3",
+      "nextKeyDateAbsent": false,
+      "label": "VERIFIED LIVE"
+    },
+    "crossVenue": {
+      "note": "RLS uses current_user_venue_id(); not modified. Live cross-venue browser not required when 0 rows remain for Emma.",
+      "label": "VERIFIED SOURCE"
+    }
+  },
+  "finishedAt": "2026-08-13T22:56:06.973Z",
+  "passed": false
+}

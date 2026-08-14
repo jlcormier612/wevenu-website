@@ -14,10 +14,12 @@ export type Package = {
   venueId: string;
   name: string;
   description: string | null;
-  basePrice: number;
+  /** Null = unpriced catalog row (Hello to Cheers starters). Never treat null as $0. */
+  basePrice: number | null;
   category: string | null;
   isActive: boolean;
   sortOrder: number;
+  sourceMasterKey: string | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -29,6 +31,7 @@ export type PackageItemInput = { description: string; quantity: string; unit: st
 export type PackageInput = {
   name: string;
   description: string;
+  /** Empty string = unpriced. */
   basePrice: string;
   category: string;
   isActive: boolean;

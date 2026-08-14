@@ -5,6 +5,19 @@ import {
   isFounderPricingActive,
 } from "@/lib/marketing/enrollment";
 import type { SubscriptionPlanId } from "@/lib/marketing/pricing-page";
+import {
+  resolveCheckoutPricing,
+  resolveGatherPriceId,
+  type CheckoutPricingResolution,
+} from "@/lib/stripe/checkout-pricing";
+
+export {
+  resolveCheckoutPricing,
+  resolveFoundingCouponId,
+  resolveGatherPriceId,
+  shouldProvisionFromCheckoutSession,
+  type CheckoutPricingResolution,
+} from "@/lib/stripe/checkout-pricing";
 
 let stripeClient: Stripe | null = null;
 
@@ -27,18 +40,6 @@ export function getMarketingSiteUrl(): string {
   ).replace(/\/$/, "");
 }
 
-const PRICE_ENV_STANDARD: Record<SubscriptionPlanId, string> = {
-  starter: "STRIPE_PRICE_STARTER",
-  growing: "STRIPE_PRICE_GROWING",
-  professional: "STRIPE_PRICE_PROFESSIONAL",
-};
-
-const PRICE_ENV_FOUNDER: Record<SubscriptionPlanId, string> = {
-  starter: "STRIPE_PRICE_STARTER_FOUNDER",
-  growing: "STRIPE_PRICE_GROWING_FOUNDER",
-  professional: "STRIPE_PRICE_PROFESSIONAL_FOUNDER",
-};
-
 function readPriceEnv(envName: string): string | null {
   const priceId = process.env[envName]?.trim();
   if (!priceId || priceId.endsWith("...")) return null;
@@ -47,8 +48,8 @@ function readPriceEnv(envName: string): string | null {
 
 /**
  * Resolves the recurring Price ID for a plan.
- * While the Founder Program is active, prefers Founder Price IDs when set;
- * otherwise falls back to the standard Price ID.
+ * Gather (starter): canonical Gather Price ($149); Founding uses coupon at Checkout
+ * (see resolveCheckoutPricing). Other plans: Founder Price IDs while program active.
  */
 export function getPriceIdForPlan(
   plan: SubscriptionPlanId,
@@ -56,18 +57,17 @@ export function getPriceIdForPlan(
 ): string {
   const useFounder =
     options?.founder ?? isFounderPricingActive(getEnrollmentConfig());
+  return resolveCheckoutPricing(plan, { founder: useFounder }).priceId;
+}
 
-  if (useFounder) {
-    const founderPrice = readPriceEnv(PRICE_ENV_FOUNDER[plan]);
-    if (founderPrice) return founderPrice;
-  }
-
-  const standardEnv = PRICE_ENV_STANDARD[plan];
-  const standardPrice = readPriceEnv(standardEnv);
-  if (!standardPrice) {
-    throw new Error(`${standardEnv} is not configured.`);
-  }
-  return standardPrice;
+/** Full Checkout pricing resolution (price + optional Founding coupon). */
+export function getCheckoutPricingForPlan(
+  plan: SubscriptionPlanId,
+  options?: { founder?: boolean },
+): CheckoutPricingResolution {
+  const useFounder =
+    options?.founder ?? isFounderPricingActive(getEnrollmentConfig());
+  return resolveCheckoutPricing(plan, { founder: useFounder });
 }
 
 /**
@@ -85,4 +85,9 @@ export function getWhiteGlovePriceId(): string | null {
 
 export function isSubscriptionPlanId(value: string): value is SubscriptionPlanId {
   return value === "starter" || value === "growing" || value === "professional";
+}
+
+/** @deprecated Prefer resolveGatherPriceId — alias for ops docs */
+export function getGatherPriceId(): string {
+  return resolveGatherPriceId();
 }

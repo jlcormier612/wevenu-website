@@ -6,17 +6,23 @@ import { createClient } from "@/integrations/supabase/server";
 import {
   buildContractMergeData,
   cancelContract,
+  createAmendmentFromContract,
   createContract,
   createTemplate,
   deleteContract_,
   deleteTemplate_,
   duplicateTemplate_,
   mergeContent,
+  reopenContractForEditing,
+  resendContract,
   sendContract,
   setTemplateArchived_,
   updateContractContent_,
   updateTemplate_,
+  venueSignContract,
+  withdrawVenueSignature,
 } from "@/lib/contracts/service";
+import { finalizeContract, getContractPdfUrl } from "@/lib/contracts/finalize";
 import type {
   ContractActionResult,
   ContractErrors,
@@ -54,7 +60,20 @@ export async function setTemplateArchivedAction(id: string, isArchived: boolean)
 
 export async function duplicateTemplateAction(id: string, newName: string): Promise<CreateTemplateResult> {
   const result = await duplicateTemplate_(id, newName);
-  if (result.ok) revalidatePath("/contracts/templates");
+  if (result.ok) {
+    revalidatePath("/contracts/templates");
+    revalidatePath("/library/contracts");
+  }
+  return result;
+}
+
+export async function addContractStarterAgainAction(): Promise<CreateTemplateResult> {
+  const { addContractStarterAgain } = await import("@/lib/contracts/provision");
+  const result = await addContractStarterAgain("CTR-01");
+  if (result.ok) {
+    revalidatePath("/contracts/templates");
+    revalidatePath("/library/contracts");
+  }
   return result;
 }
 
@@ -106,8 +125,8 @@ async function refreshContractLeadScore(contractId: string): Promise<void> {
   } catch { /* non-blocking */ }
 }
 
-export async function sendContractAction(id: string): Promise<ContractActionResult> {
-  const result = await sendContract(id);
+export async function sendContractAction(id: string, customMessage?: string): Promise<ContractActionResult> {
+  const result = await sendContract(id, customMessage);
   if (result.ok) {
     revalidatePath(`/contracts/${id}`);
     void refreshContractLeadScore(id);
@@ -115,8 +134,31 @@ export async function sendContractAction(id: string): Promise<ContractActionResu
   return result;
 }
 
-export async function updateContractContentAction(id: string, title: string, content: string): Promise<ContractActionResult> {
-  const result = await updateContractContent_(id, title, content);
+export async function venueSignContractAction(
+  id: string,
+  signerName: string,
+  consent: boolean,
+): Promise<ContractActionResult> {
+  const result = await venueSignContract(id, signerName, consent);
+  if (result.ok) revalidatePath(`/contracts/${id}`);
+  return result;
+}
+
+export async function withdrawVenueSignatureAction(id: string): Promise<ContractActionResult> {
+  const result = await withdrawVenueSignature(id);
+  if (result.ok) revalidatePath(`/contracts/${id}`);
+  return result;
+}
+
+/** Work Package D5E — resend, distinct from send: no status/Document Domain changes, see lib/contracts/service.ts resendContract(). */
+export async function resendContractAction(id: string, customMessage?: string): Promise<ContractActionResult> {
+  const result = await resendContract(id, customMessage);
+  if (result.ok) revalidatePath(`/contracts/${id}`);
+  return result;
+}
+
+export async function updateContractContentAction(id: string, title: string, content: string, expectedUpdatedAt: string): Promise<ContractActionResult> {
+  const result = await updateContractContent_(id, title, content, expectedUpdatedAt);
   if (result.ok) revalidatePath(`/contracts/${id}`);
   return result;
 }
@@ -125,6 +167,26 @@ export async function cancelContractAction(id: string): Promise<ContractActionRe
   const result = await cancelContract(id);
   if (result.ok) { revalidatePath(`/contracts/${id}`); revalidatePath("/contracts"); }
   return result;
+}
+
+export async function reopenContractForEditingAction(id: string): Promise<ContractActionResult> {
+  const result = await reopenContractForEditing(id);
+  if (result.ok) revalidatePath(`/contracts/${id}`);
+  return result;
+}
+
+export async function finalizeContractAction(id: string): Promise<ContractActionResult> {
+  const result = await finalizeContract(id);
+  if (result.ok) revalidatePath(`/contracts/${id}`);
+  return result;
+}
+
+export async function getContractPdfUrlAction(id: string) {
+  return getContractPdfUrl(id);
+}
+
+export async function createAmendmentFromContractAction(id: string): Promise<CreateContractResult> {
+  return createAmendmentFromContract(id);
 }
 
 export async function deleteContractAction(id: string): Promise<ContractActionResult> {

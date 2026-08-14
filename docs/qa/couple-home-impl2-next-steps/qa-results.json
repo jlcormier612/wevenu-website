@@ -1,0 +1,40 @@
+{
+  "desktop": {
+    "title": true,
+    "groupVenue": true,
+    "groupShared": false,
+    "venueBeforeShared": true,
+    "viewAllMatch": "View all 10 next steps",
+    "viewAllCount": 10,
+    "openAll": false,
+    "ctaCount": 5,
+    "capOk": true,
+    "firstInstallmentCount": 0,
+    "secondInstallmentCount": 0,
+    "noDuplicatePayments": true,
+    "forYourWeddingAbsent": true,
+    "personalTodoAbsent": true,
+    "rem12960": true,
+    "rem38880Absent": true,
+    "preview": "WHAT SWEET DAISY BARN & FARM NEEDS FROM YOU Your Next Steps 10 left for Sweet Daisy Barn & Farm FROM YOUR VENUE Purchase event insurance Required Due Aug 18 Complete Submit your guest count Required We need your final headcount to plan seating, catering, and rentals. Due Sep 17 Complete Final payment Required Due Sep 17 Complete Submit your timeline Required Plan your day-of schedule, then submit it so your venue has it. Due Oct 3 Complete Share timeline Please ensure the times of the different aspects of the event that impact my participation is supplied 2 weeks before the event, so I know when to be where. Due Oct 3 Complete View all 10 next steps →"
+  },
+  "mobile": {
+    "title": true,
+    "groupVenue": true,
+    "groupShared": false,
+    "venueBeforeShared": true,
+    "viewAllMatch": "View all 10 next steps",
+    "viewAllCount": 10,
+    "openAll": false,
+    "ctaCount": 5,
+    "capOk": true,
+    "firstInstallmentCount": 0,
+    "secondInstallmentCount": 0,
+    "noDuplicatePayments": true,
+    "forYourWeddingAbsent": true,
+    "personalTodoAbsent": true,
+    "rem12960": true,
+    "rem38880Absent": true,
+    "preview": "WHAT SWEET DAISY BARN & FARM NEEDS FROM YOU Your Next Steps 10 left for Sweet Daisy Barn & Farm FROM YOUR VENUE Purchase event insurance Required Due Aug 18 Complete Submit your guest count Required We need your final headcount to plan seating, catering, and rentals. Due Sep 17 Complete Final payment Required Due Sep 17 Complete Submit your timeline Required Plan your day-of schedule, then submit it so your venue has it. Due Oct 3 Complete Share timeline Please ensure the times of the different aspects of the event that impact my participation is supplied 2 weeks before the event, so I know when to be where. Due Oct 3 Complete View all 10 next steps →"
+  }
+}

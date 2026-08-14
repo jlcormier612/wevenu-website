@@ -8,11 +8,41 @@
  *
  * Pure, I/O-free — the caller fetches from each system's own existing
  * endpoint and hands the results here.
+ *
+ * Verified Action Completion (Impl 1): venue_task rows with an
+ * autoCompleteTrigger never complete in-place — CTA navigates to the
+ * owning workspace; domain submit / pay / sign / upload fires the trigger.
+ *
+ * Payment Attention (Impl 2 / Impl 7): when unpaid payment line items exist on
+ * the canonical schedule(s), omit venue_task mirrors wired to
+ * autoCompleteTrigger === "payment_received" OR
+ * "final_payment_obligation_paid" from couple attention.
+ * Ledger rows own Pay now; checklist DB rows stay for venue lifecycle /
+ * eventual auto-complete. Gate is the trigger field — never title match.
  */
 import type { PortalRequestSummary } from "@/lib/requests/types";
 import type { PortalTask } from "@/lib/portal/types";
+import { selectCanonicalPaymentSchedules } from "@/lib/portal/payment-schedules";
+import type { PortalWorkspaceFocus } from "@/lib/portal/workspace-routing";
+import { FINAL_PAYMENT_OBLIGATION_TRIGGER } from "@/lib/payments/final-payment-obligation";
 
 export type UnifiedTaskKind = "venue_task" | "request" | "contract" | "payment" | "questionnaire" | "timeline";
+
+/** Home Next Steps ownership — couple personal todos never appear here. */
+export type UnifiedTaskOwnership = "venue" | "shared";
+
+export type UnifiedTaskTargetSection =
+  | "tasks"
+  | "requests"
+  | "documents"
+  | "payments"
+  | "questionnaire"
+  | "timeline"
+  | "guests"
+  | "vendors"
+  | "seating"
+  | "inventory"
+  | "event-order";
 
 export type UnifiedTask = {
   id: string;
@@ -24,23 +54,274 @@ export type UnifiedTask = {
   daysOffset?: number | null;
   dueDateLocked?: boolean;
   completed: boolean;
+  /** Overdue venue need / past-due shared obligation — sorted before upcoming. */
+  isOverdue: boolean;
+  /** Venue-required cue for Home list rows (venue_task only when isRequired). */
+  isRequired: boolean;
+  ownership: UnifiedTaskOwnership;
   // Where completing this actually happens — Tasks never re-implements
   // another section's real action (a payment button, a sign flow, a
   // questionnaire form); it always hands off to the section that owns it.
-  targetSection: "tasks" | "requests" | "documents" | "payments" | "questionnaire" | "timeline";
+  targetSection: UnifiedTaskTargetSection;
+  /**
+   * Optional within-section focus (hash `#section/focus`). Structured
+   * metadata only — never derived from task titles. Navigation/focus
+   * never completes the task.
+   */
+  targetFocus: PortalWorkspaceFocus | null;
   actionLabel: string;
-  // Only venue_task items complete in place, directly within the list —
-  // everything else's completion is derived from the owning system's own
-  // real state (paid, signed, submitted).
+  // Only venue_task items without a domain autoCompleteTrigger complete
+  // in place. Everything else is derived from the owning system's state
+  // (paid, signed, submitted) or navigates to that workspace.
   completableHere: boolean;
+  /**
+   * First venue-configured web link (playbook attachment → context link).
+   * When set on a null-trigger ack task, primary CTA opens this URL;
+   * confirm completes via complete_portal_task.
+   */
+  externalUrl: string | null;
+  /** Optional label from the attachment; fallback open copy uses seed-aware helpers. */
+  externalUrlLabel: string | null;
+  /** Couple may reopen this completed row (manual/ack venue_task only). */
+  undoableHere: boolean;
+  /**
+   * Secondary confirm label when externalUrl is present (e.g. "I've left my review").
+   * Null when there is no outbound + confirm pattern for this row.
+   */
+  confirmLabel: string | null;
+  /** Honest empty-state copy when a null-trigger task has no configured URL. */
+  missingLinkHint: string | null;
 };
 
 type PaymentSchedule = {
+  id?: string;
   title: string;
+  invoiceId?: string | null;
+  createdAt?: string | null;
   lineItems: { id: string; label: string; amount: number; dueDate: string | null; status: string }[];
 };
 
 type ContractDoc = { id: string; docType: string; name: string; status: string | null; signToken?: string | null };
+
+/** Domain trigger → couple workspace + CTA copy + exact focus (never Mark complete). */
+const TRIGGER_WORKSPACE: Record<
+  string,
+  { section: UnifiedTaskTargetSection; actionLabel: string; focus: PortalWorkspaceFocus | null }
+> = {
+  guest_count_finalized: { section: "guests", actionLabel: "Submit guest count", focus: "finalize" },
+  vendor_selected: { section: "vendors", actionLabel: "Add vendors", focus: "pick" },
+  seating_submitted: { section: "seating", actionLabel: "Submit seating", focus: "submit" },
+  timeline_submitted: { section: "timeline", actionLabel: "Submit timeline", focus: "submit" },
+  contract_signed: { section: "documents", actionLabel: "Review & sign", focus: "sign" },
+  // Payment already lands on Payments; no within-section focus change in Impl 3.
+  payment_received: { section: "payments", actionLabel: "Pay now", focus: null },
+  // Impl 7: verified Final Payment — same payments workspace; completableHere false.
+  final_payment_obligation_paid: { section: "payments", actionLabel: "Pay now", focus: null },
+  questionnaire_submitted: { section: "questionnaire", actionLabel: "Complete form", focus: "form" },
+  // D5A — fires when the venue finalizes the Event Inventory (see
+  // lib/event-inventory/service.ts finalizeEventInventory); read-only for
+  // the couple, so there's nothing to "do" beyond looking.
+  inventory_finalized: { section: "inventory", actionLabel: "Review what's included", focus: null },
+  // D5C — fires when the venue shares the Event Order (see
+  // lib/event-orders/representation.ts shareEventOrderWithClient);
+  // read-only for the couple, same shape as inventory_finalized above.
+  event_order_shared: { section: "event-order", actionLabel: "Review event order", focus: null },
+  // Insurance: Documents upload control (Impl 5 — classified + share → trigger).
+  document_uploaded_insurance: { section: "documents", actionLabel: "Upload insurance", focus: "upload" },
+  document_uploaded: { section: "documents", actionLabel: "Upload", focus: null },
+};
+
+/**
+ * Policy: domain-triggered checklist rows navigate to the owning section;
+ * only acknowledgment / non-triggered client_owned rows may Mark complete.
+ *
+ * When a null-trigger task has a venue-configured web link, primary CTA
+ * opens the URL; confirmLabel completes via complete_portal_task.
+ */
+export function venueTaskPresentation(t: PortalTask): {
+  targetSection: UnifiedTaskTargetSection;
+  targetFocus: PortalWorkspaceFocus | null;
+  actionLabel: string;
+  completableHere: boolean;
+  externalUrl: string | null;
+  externalUrlLabel: string | null;
+  undoableHere: boolean;
+  confirmLabel: string | null;
+  missingLinkHint: string | null;
+} {
+  const done = t.status === "complete";
+  const firstLink = (t.links ?? []).find((l) => l.url?.trim());
+  const externalUrl = firstLink?.url.trim() || null;
+  const externalUrlLabel = firstLink?.label?.trim() || null;
+  const undoableHere = canCoupleUndoVenueTask(t);
+
+  if (done) {
+    return {
+      targetSection: "tasks",
+      targetFocus: null,
+      actionLabel: "Done",
+      completableHere: false,
+      externalUrl,
+      externalUrlLabel,
+      undoableHere,
+      confirmLabel: null,
+      missingLinkHint: null,
+    };
+  }
+
+  const trigger = t.autoCompleteTrigger ?? null;
+  if (trigger) {
+    const mapped = TRIGGER_WORKSPACE[trigger];
+    if (mapped) {
+      return {
+        targetSection: mapped.section,
+        targetFocus: mapped.focus,
+        actionLabel: mapped.actionLabel,
+        completableHere: false,
+        externalUrl: null,
+        externalUrlLabel: null,
+        undoableHere: false,
+        confirmLabel: null,
+        missingLinkHint: null,
+      };
+    }
+    // Unknown trigger still owned by the system — never Mark complete.
+    return {
+      targetSection: "tasks",
+      targetFocus: null,
+      actionLabel: "View",
+      completableHere: false,
+      externalUrl: null,
+      externalUrlLabel: null,
+      undoableHere: false,
+      confirmLabel: null,
+      missingLinkHint: null,
+    };
+  }
+
+  const canManual = Boolean(t.canComplete);
+  const outbound = ackOutboundCopy(t.title, externalUrlLabel);
+
+  if (externalUrl && canManual) {
+    return {
+      targetSection: "tasks",
+      targetFocus: null,
+      actionLabel: outbound.openLabel,
+      completableHere: true,
+      externalUrl,
+      externalUrlLabel,
+      undoableHere: false,
+      confirmLabel: outbound.confirmLabel,
+      missingLinkHint: null,
+    };
+  }
+
+  // No URL: soft Mark complete with honest copy (venue still needs to attach a link).
+  return {
+    targetSection: "tasks",
+    targetFocus: null,
+    actionLabel: canManual ? "Mark complete" : "View",
+    completableHere: canManual,
+    externalUrl: null,
+    externalUrlLabel: null,
+    undoableHere: false,
+    confirmLabel: null,
+    missingLinkHint: canManual ? outbound.missingLinkHint : null,
+  };
+}
+
+/**
+ * Presentation-only open/confirm copy for null-trigger outbound tasks.
+ * Seed titles get natural CTAs; other ack tasks with a link use generic copy.
+ * Never used for completion policy or routing.
+ */
+export function ackOutboundCopy(
+  title: string,
+  linkLabel?: string | null,
+): { openLabel: string; confirmLabel: string; missingLinkHint: string } {
+  const normalized = title.trim().toLowerCase();
+  if (normalized === "leave a review") {
+    return {
+      openLabel: linkLabel?.trim() || "Leave a review",
+      confirmLabel: "I've left my review",
+      missingLinkHint: "Your venue hasn't added a review link yet. You can still mark this complete once you've left feedback.",
+    };
+  }
+  if (normalized === "choose your package") {
+    return {
+      openLabel: linkLabel?.trim() || "Choose your package",
+      confirmLabel: "I've chosen my package",
+      missingLinkHint: "Your venue hasn't added a package link yet. You can still mark this complete once you've chosen.",
+    };
+  }
+  return {
+    openLabel: linkLabel?.trim() || "Open link",
+    confirmLabel: "Mark complete",
+    missingLinkHint: "Your venue hasn't attached a link for this yet. You can still mark it complete when you're done.",
+  };
+}
+
+/** Pure policy helper — couple undo only when API says canUndo and trigger is null. */
+export function canCoupleUndoVenueTask(t: Pick<PortalTask, "canUndo" | "autoCompleteTrigger" | "status">): boolean {
+  return (
+    t.status === "complete"
+    && Boolean(t.canUndo)
+    && (t.autoCompleteTrigger ?? null) === null
+  );
+}
+
+function todayIso(): string {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function isPastDue(dueDate: string | null | undefined, today = todayIso()): boolean {
+  return Boolean(dueDate && dueDate < today);
+}
+
+export function ownershipForKind(kind: UnifiedTaskKind): UnifiedTaskOwnership {
+  if (kind === "payment" || kind === "timeline") return "shared";
+  return "venue";
+}
+
+export function ownershipLabel(ownership: UnifiedTaskOwnership): string {
+  return ownership === "shared" ? "Shared planning" : "From your venue";
+}
+
+/**
+ * Progress for the couple Tasks "From your venue" band — same set as the
+ * open cards above COMPLETED + completed rows below. Derived payment /
+ * timeline / request / contract rows only appear while open, so they
+ * grow the denominator until resolved (honest vs a venue_task-only X/Y).
+ */
+export function unifiedTaskCompletionCounts(items: readonly UnifiedTask[]): {
+  done: number;
+  total: number;
+  open: number;
+} {
+  let done = 0;
+  for (const item of items) {
+    if (item.completed) done += 1;
+  }
+  const total = items.length;
+  return { done, total, open: total - done };
+}
+
+/**
+ * Financial checklist mirrors that compete with ledger Pay now attention.
+ * payment_received (any payment) and final_payment_obligation_paid (typed final).
+ * Never title / category matching.
+ */
+export function isPaymentAttentionMirror(t: Pick<PortalTask, "autoCompleteTrigger">): boolean {
+  return (
+    t.autoCompleteTrigger === "payment_received"
+    || t.autoCompleteTrigger === FINAL_PAYMENT_OBLIGATION_TRIGGER
+  );
+}
+
+/** @deprecated Prefer isPaymentAttentionMirror — kept for call-site clarity in older tests. */
+export function isPaymentReceivedMirror(t: Pick<PortalTask, "autoCompleteTrigger">): boolean {
+  return t.autoCompleteTrigger === "payment_received";
+}
 
 export function buildUnifiedTaskList(input: {
   venueTasks: PortalTask[];
@@ -51,25 +332,71 @@ export function buildUnifiedTaskList(input: {
   timelineHasUnpublishedChanges: boolean;
 }): UnifiedTask[] {
   const out: UnifiedTask[] = [];
+  const today = todayIso();
+
+  // One Payment Plan per Invoice — collapse duplicate schedules so the same
+  // underlying obligation never surfaces as multiple actionable rows.
+  // Canonicalize before venue_task emission so payment_received mirrors can
+  // be omitted when unpaid ledger lines already own couple attention.
+  const paymentSchedules = selectCanonicalPaymentSchedules(
+    input.paymentSchedules.map((s, i) => ({
+      ...s,
+      id: s.id ?? `anon_${i}`,
+    })),
+  );
+  const unpaidPaymentLines: {
+    scheduleTitle: string;
+    li: { id: string; label: string; amount: number; dueDate: string | null; status: string };
+  }[] = [];
+  const seenLineItemIds = new Set<string>();
+  for (const s of paymentSchedules) {
+    for (const li of s.lineItems) {
+      if (li.status === "paid" || li.status === "cancelled") continue;
+      if (seenLineItemIds.has(li.id)) continue;
+      seenLineItemIds.add(li.id);
+      unpaidPaymentLines.push({ scheduleTitle: s.title, li });
+    }
+  }
+  const hasUnpaidPaymentObligation = unpaidPaymentLines.length > 0;
 
   for (const t of input.venueTasks) {
-    if (t.status === "complete") continue;
+    // Impl 2 + Impl 7: when money is owed on a canonical line, hide payment
+    // checklist mirrors (broad + Final Payment verified) from couple attention.
+    // DB row stays; auto-complete path stays. Never title-dedupe.
+    if (hasUnpaidPaymentObligation && isPaymentAttentionMirror(t) && t.status !== "complete") {
+      continue;
+    }
+    const done = t.status === "complete";
+    const overdue = !done && (t.status === "overdue" || isPastDue(t.dueDate, today));
+    const presentation = venueTaskPresentation(t);
     out.push({
       id: `task_${t.id}`, kind: "venue_task", title: t.title, description: t.description,
-      dueDate: t.dueDate, daysOffset: t.daysOffset, dueDateLocked: false, completed: false, targetSection: "tasks",
-      actionLabel: t.canComplete ? "Mark complete" : "View",
-      completableHere: t.canComplete,
+      dueDate: t.dueDate, daysOffset: t.daysOffset, dueDateLocked: false, completed: done,
+      isOverdue: overdue, isRequired: t.isRequired, ownership: "venue",
+      targetSection: presentation.targetSection,
+      targetFocus: presentation.targetFocus,
+      actionLabel: presentation.actionLabel,
+      completableHere: presentation.completableHere,
+      externalUrl: presentation.externalUrl,
+      externalUrlLabel: presentation.externalUrlLabel,
+      undoableHere: presentation.undoableHere,
+      confirmLabel: presentation.confirmLabel,
+      missingLinkHint: presentation.missingLinkHint,
     });
   }
 
   for (const r of input.requests) {
     if (r.status === "submitted" || r.status === "reviewed" || r.status === "completed" || r.status === "cancelled") continue;
     if (!r.clientActionEnabled) continue;
+    const overdue = isPastDue(r.dueDate, today);
     out.push({
       id: `request_${r.id}`, kind: "request", title: r.title, description: r.description,
-      dueDate: r.dueDate, completed: false, targetSection: "requests",
+      dueDate: r.dueDate, completed: false, isOverdue: overdue, isRequired: false, ownership: "venue",
+      targetSection: "requests",
+      targetFocus: null,
       actionLabel: r.requestType === "approval" ? "Review & respond" : r.requestType === "upload" ? "Upload" : "Respond",
       completableHere: false,
+      externalUrl: null, externalUrlLabel: null, undoableHere: false, confirmLabel: null, missingLinkHint: null,
     });
   }
 
@@ -77,28 +404,32 @@ export function buildUnifiedTaskList(input: {
     if (d.docType !== "contract" || d.status !== "sent" || !d.signToken) continue;
     out.push({
       id: `contract_${d.id}`, kind: "contract", title: `Sign: ${d.name}`, description: "Your venue is waiting on your signature.",
-      dueDate: null, completed: false, targetSection: "documents", actionLabel: "Review & sign",
+      dueDate: null, completed: false, isOverdue: false, isRequired: false, ownership: "venue",
+      targetSection: "documents", targetFocus: "sign", actionLabel: "Review & sign",
       completableHere: false,
+      externalUrl: null, externalUrlLabel: null, undoableHere: false, confirmLabel: null, missingLinkHint: null,
     });
   }
 
-  for (const s of input.paymentSchedules) {
-    for (const li of s.lineItems) {
-      if (li.status === "paid" || li.status === "cancelled") continue;
-      out.push({
-        id: `payment_${li.id}`, kind: "payment", title: li.label, description: `${s.title} — payment due`,
-        dueDate: li.dueDate, completed: false, targetSection: "payments", actionLabel: "Pay now",
-        completableHere: false,
-      });
-    }
+  for (const { scheduleTitle, li } of unpaidPaymentLines) {
+    const overdue = li.status === "overdue" || isPastDue(li.dueDate, today);
+    out.push({
+      id: `payment_${li.id}`, kind: "payment", title: li.label, description: `${scheduleTitle} — payment due`,
+      dueDate: li.dueDate, completed: false, isOverdue: overdue, isRequired: false, ownership: "shared",
+      targetSection: "payments", targetFocus: null, actionLabel: "Pay now",
+      completableHere: false,
+      externalUrl: null, externalUrlLabel: null, undoableHere: false, confirmLabel: null, missingLinkHint: null,
+    });
   }
 
   if (input.questionnaire && input.questionnaire.status === "sent") {
     out.push({
       id: "questionnaire", kind: "questionnaire", title: "Complete your final details form",
       description: "Guest count, songs, meal preferences, and day-of contacts.",
-      dueDate: null, completed: false, targetSection: "questionnaire", actionLabel: "Complete form",
+      dueDate: null, completed: false, isOverdue: false, isRequired: false, ownership: "venue",
+      targetSection: "questionnaire", targetFocus: "form", actionLabel: "Complete form",
       completableHere: false,
+      externalUrl: null, externalUrlLabel: null, undoableHere: false, confirmLabel: null, missingLinkHint: null,
     });
   }
 
@@ -106,15 +437,17 @@ export function buildUnifiedTaskList(input: {
     out.push({
       id: "timeline", kind: "timeline", title: "Submit your timeline updates",
       description: "You've made changes your venue hasn't seen yet.",
-      dueDate: null, completed: false, targetSection: "timeline", actionLabel: "Review & submit",
+      dueDate: null, completed: false, isOverdue: false, isRequired: false, ownership: "shared",
+      targetSection: "timeline", targetFocus: "submit", actionLabel: "Review & submit",
       completableHere: false,
+      externalUrl: null, externalUrlLabel: null, undoableHere: false, confirmLabel: null, missingLinkHint: null,
     });
   }
 
-  // Chronological — dated items first (soonest due date first), undated
-  // items (respond-when-you-can requests, the questionnaire, timeline)
-  // trail at the end rather than sorting arbitrarily first.
+  // Attention order: overdue first, then earliest due date, undated last
+  // (stable within equal buckets).
   return out.sort((a, b) => {
+    if (a.isOverdue !== b.isOverdue) return a.isOverdue ? -1 : 1;
     if (a.dueDate && b.dueDate) return a.dueDate.localeCompare(b.dueDate);
     if (a.dueDate) return -1;
     if (b.dueDate) return 1;

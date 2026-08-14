@@ -15,11 +15,21 @@
 // "public" (the old vocabulary's unused value, no picker UI ever) is dropped.
 export type TimelineAudience = "venue" | "client" | "wedding_party" | "guests" | "vendors";
 
-export const TIMELINE_AUDIENCES: { value: TimelineAudience; label: string; color: string; emoji: string }[] = [
+type TimelineAudienceOption = { value: TimelineAudience; label: string; color: string; emoji: string };
+
+// Full external-audience picker — couples own guest visibility (wedding
+// website Day-of Schedule). Venue builders must use VENUE_TIMELINE_AUDIENCES.
+export const TIMELINE_AUDIENCES: TimelineAudienceOption[] = [
   { value: "wedding_party", label: "Wedding Party", color: "#A98CC7", emoji: "💐" },
   { value: "guests",        label: "Guests",        color: "#5D6F5D", emoji: "🌿" },
   { value: "vendors",       label: "Vendors",       color: "#C7A66A", emoji: "🚚" },
 ];
+
+// Guests are couple-owned — venues never choose guest publication on their
+// timeline items (or anywhere else). Wedding party + vendors only.
+export const VENUE_TIMELINE_AUDIENCES: TimelineAudienceOption[] = TIMELINE_AUDIENCES.filter(
+  (a) => a.value !== "guests",
+);
 
 // docs/commitment-lifecycle-architecture.md §4 — who authored this item.
 // "shared" deliberately omitted (approved 2026-07-17): Delegation (§7)
@@ -46,8 +56,9 @@ export type TimelineSection = {
 };
 
 // Shared with the live Wedding Day Dashboard run-of-show toggle (same
-// column, same values) — completing an item in the Booking Timeline editor
-// and the day-of dashboard are the same fact, not two separate ones.
+// column, same values). Schedule builders (venue / couple / vendor Timeline
+// tabs) no longer mark items complete — that remains a day-of execution
+// concern on the Wedding Day Dashboard.
 export type TimelineEntryStatus = "not_started" | "in_progress" | "complete";
 
 export type TimelineEntry = {
@@ -58,6 +69,8 @@ export type TimelineEntry = {
   description: string | null;
   notes: string | null;
   entryTime: string | null; // "HH:MM" or null
+  /** 0-based calendar day from event_date (multi-day events). */
+  dayOffset: number;
   audiences: TimelineAudience[];
   sectionId: string | null; // null = unsectioned
   sortOrder: number;
@@ -80,6 +93,8 @@ export type TimelineEntryInput = {
   description: string;
   notes?: string;
   entryTime: string; // "HH:MM" or ""
+  /** 0-based calendar day from event_date; clamped to the event span on write. */
+  dayOffset?: number;
   audiences?: TimelineAudience[];
   sectionId?: string | null;
   sortOrder?: number;
@@ -88,8 +103,8 @@ export type TimelineEntryInput = {
   assignedToStaffId?: string | null;
 };
 
-/** Upcoming / Today / Complete — computed from status + the event's own date, never stored. */
-export type TimelineDueStatus = "upcoming" | "today" | "complete";
+/** Upcoming / Today — computed from the event's own date + day_offset, never stored. */
+export type TimelineDueStatus = "upcoming" | "today";
 
 // Resolved at read-time from the documents table — never duplicated here, so
 // a renamed document is reflected automatically. Same shape/spirit as

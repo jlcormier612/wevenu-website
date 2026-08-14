@@ -15,7 +15,7 @@ import {
   getRelationshipPatchesSync,
 } from "@/lib/program3/store";
 import { getTeamProfilesSync } from "@/lib/program4/store";
-import { deriveSalesStage } from "@/lib/sales-cs";
+import { deriveSalesStage, relationshipHasOpenSupport } from "@/lib/sales-cs";
 import type {
   Communication,
   FounderProgramStats,
@@ -367,6 +367,23 @@ export function getNotifications(opts?: { unreadOnly?: boolean }): Notification[
     .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 }
 
+/** Vendor + client Support inbox (not venue Relationship.openFeedbackItems). */
+export function getSupportInboxItems(opts?: {
+  surface?: "vendor" | "client" | "all";
+  status?: "open" | "resolved" | "all";
+}) {
+  const live = hasLiveRelationshipsSync() ? loadLiveStoreSync() : null;
+  const items = live?.supportInboxItems ?? [];
+  const surface = opts?.surface ?? "all";
+  const status = opts?.status ?? "open";
+  return [...items]
+    .filter((i) => (surface === "all" ? true : i.surface === surface))
+    .filter((i) => (status === "all" ? true : i.status === status))
+    .sort(
+      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+    );
+}
+
 export function getFounderProgram(): FounderProgramStats {
   return getData().founderProgram;
 }
@@ -453,9 +470,7 @@ export function getDashboardBuckets(): DashboardBuckets {
       Boolean(r.nextMilestoneAt),
   );
 
-  const supportRequests = relationships.filter(
-    (r) => r.supportOpenCount > 0 || r.status === "support",
-  );
+  const supportRequests = relationships.filter(relationshipHasOpenSupport);
 
   const recentActivity = [...snapshot.timelineEvents]
     .sort((a, b) => new Date(b.occurredAt).getTime() - new Date(a.occurredAt).getTime())

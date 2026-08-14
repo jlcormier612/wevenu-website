@@ -7,6 +7,8 @@ import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { createPackageAction, updatePackageAction } from "@/app/(app)/packages/actions";
+import { LibrarySaveStatus } from "@/components/library/library-save-status";
+import { librarySavedToastMessage, useLibraryUnsavedGuard } from "@/components/library/use-library-unsaved-guard";
 import { Field } from "@/components/setup/field";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -21,13 +23,21 @@ import type { PackageErrors, PackageInput, PackageWithItems } from "@/lib/packag
 
 export function PackageForm({ existing }: { existing?: PackageWithItems }) {
   const router = useRouter();
-  const [input, setInput] = React.useState<PackageInput>(
-    existing
-      ? { name: existing.name, description: existing.description ?? "", basePrice: String(existing.basePrice), category: existing.category ?? "", isActive: existing.isActive }
-      : EMPTY_PACKAGE_INPUT,
-  );
+  const initial = existing
+    ? {
+        name: existing.name,
+        description: existing.description ?? "",
+        basePrice: existing.basePrice == null ? "" : String(existing.basePrice),
+        category: existing.category ?? "",
+        isActive: existing.isActive,
+      }
+    : EMPTY_PACKAGE_INPUT;
+  const [baseline] = React.useState(() => JSON.stringify(initial));
+  const [input, setInput] = React.useState<PackageInput>(initial);
   const [errors, setErrors] = React.useState<PackageErrors>({});
   const [pending, startTransition] = React.useTransition();
+  const dirty = JSON.stringify(input) !== baseline;
+  const { confirmLeave } = useLibraryUnsavedGuard(dirty);
 
   const set = <K extends keyof PackageInput>(k: K, v: PackageInput[K]) => {
     setInput((p) => ({ ...p, [k]: v }));
@@ -40,7 +50,7 @@ export function PackageForm({ existing }: { existing?: PackageWithItems }) {
         ? await updatePackageAction(existing.id, input)
         : await createPackageAction(input);
       if (result.ok) {
-        toast.success(existing ? "Package updated." : "Package created.");
+        toast.success(existing ? librarySavedToastMessage() : "Package created.");
         router.push("/packages");
         router.refresh();
         return;
@@ -58,9 +68,14 @@ export function PackageForm({ existing }: { existing?: PackageWithItems }) {
       </Field>
 
       <div className="grid gap-4 sm:grid-cols-2">
-        <Field label="Base price" htmlFor="pp" required error={errors.basePrice}>
+        <Field
+          label="Base price"
+          htmlFor="pp"
+          error={errors.basePrice}
+          hint="Optional until you price this offering. Leave blank rather than entering $0."
+        >
           <Input id="pp" value={input.basePrice} onChange={(e) => set("basePrice", e.target.value)}
-            placeholder="8,500" aria-invalid={errors.basePrice ? true : undefined} />
+            placeholder="Set your price" aria-invalid={errors.basePrice ? true : undefined} />
         </Field>
         <Field label="Category" htmlFor="pc">
           <Select value={input.category} onValueChange={(v) => set("category", v)}>
@@ -83,8 +98,9 @@ export function PackageForm({ existing }: { existing?: PackageWithItems }) {
       </div>
 
       <div className="flex items-center justify-end gap-3 pt-2">
-        <Button type="button" variant="outline" onClick={() => router.back()} disabled={pending}>Cancel</Button>
-        <Button type="button" onClick={handleSubmit} disabled={pending}>
+        <LibrarySaveStatus status={pending ? "saving" : dirty ? "dirty" : "idle"} model="explicit" className="mr-auto" />
+        <Button type="button" variant="outline" onClick={() => { if (confirmLeave()) router.back(); }} disabled={pending}>Cancel</Button>
+        <Button type="button" onClick={handleSubmit} disabled={pending || (!!existing && !dirty)}>
           {pending ? <><Loader2 className="mr-1 h-4 w-4 animate-spin" />Saving…</> : existing ? "Save changes" : "Create Package"}
         </Button>
       </div>

@@ -27,7 +27,7 @@ export default async function VendorPartnershipsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-foreground">Your Venues</h1>
+        <h1 className="font-heading text-2xl font-medium text-heading">Your Venues</h1>
         <p className="text-sm text-muted-foreground mt-1">
           Every venue you work with on Hello to Cheers, and the promotion couples see on your profile at each one.
         </p>

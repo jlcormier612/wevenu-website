@@ -8,6 +8,8 @@ export type FloorPlanTemplate = {
   spaceId: string | null;
   isDefault: boolean;
   isArchived: boolean;
+  /** Hello to Cheers master key (FP-01 / FP-02) when provisioned from a starter. */
+  sourceMasterKey: string | null;
   backgroundImageUrl: string | null;
   backgroundImageOpacity: number;
   backgroundLocked: boolean;
@@ -20,9 +22,24 @@ export type FloorPlanTemplate = {
 
 // The library card grid needs the space name and object count alongside the
 // base row — computed alongside the list, never stored.
+export type FloorPlanTemplatePreviewObject = {
+  id: string;
+  objectType: ObjectType;
+  label: string | null;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  rotation: number;
+  color: string | null;
+  displayShape: DisplayShape | null;
+};
+
 export type FloorPlanTemplateWithStats = FloorPlanTemplate & {
   spaceName: string | null;
   objectCount: number;
+  /** Objects for Library preview SVG (presentation only — real shape renderer). */
+  previewObjects: FloorPlanTemplatePreviewObject[];
 };
 
 export type FloorPlanTemplateObject = {

@@ -5,18 +5,26 @@
  * Also upserts the shared Relationship (timeline + subscription metadata),
  * then sends product emails (Welcome / Founder / White Glove Welcome),
  * then enqueues Product Sync for Launch Yourself only (White Glove defers until Launch Workspace).
+ *
+ * Idempotent on stripeCheckoutSessionId / stripeSubscriptionId — webhook retries
+ * must not duplicate venues, emails, or activations.
  */
 
 import { randomUUID } from "crypto";
 
 import { activationUrlFromToken, sendEnrollmentProductEmails } from "@shared/email";
 import { enqueueProductSync } from "@shared/product-sync";
+import { upsertVenueEnrollment } from "@shared/product-account";
 import {
   DEFAULT_WHITE_GLOVE_TIMELINE_DAYS,
   whiteGloveTimelineLabel,
 } from "@shared/relationships";
 import { notifySubscriptionEnrollment } from "@/lib/crm/notify";
-import { storeVenueEnrollment } from "@/lib/crm/store";
+import {
+  findEnrollmentByCheckoutSessionId,
+  findEnrollmentBySubscriptionId,
+  storeVenueEnrollment,
+} from "@/lib/crm/store";
 import type { CreateVenueEnrollmentInput, VenueEnrollmentRecord } from "@/lib/crm/types";
 import { onboardingLabel, yesNo } from "@/lib/marketing/enrollment";
 import { getPlanDisplayName } from "@/lib/marketing/onboarding-packages";
@@ -33,6 +41,18 @@ import { syncEnrollmentToRelationship } from "@/lib/relationships/bridge";
 export async function createVenueEnrollment(
   input: CreateVenueEnrollmentInput,
 ): Promise<VenueEnrollmentRecord> {
+  const existing =
+    (await findEnrollmentByCheckoutSessionId(input.stripeCheckoutSessionId)) ||
+    (await findEnrollmentBySubscriptionId(input.stripeSubscriptionId));
+  if (existing) {
+    console.info("[crm] idempotent enrollment reuse", {
+      enrollmentId: existing.id,
+      checkoutSessionId: existing.stripeCheckoutSessionId,
+      subscriptionId: existing.stripeSubscriptionId,
+    });
+    return existing;
+  }
+
   const now = new Date().toISOString();
   const record: VenueEnrollmentRecord = {
     id: randomUUID(),
@@ -57,14 +77,40 @@ export async function createVenueEnrollment(
   await notifySubscriptionEnrollment(record);
   const synced = await syncEnrollmentToRelationship(record);
 
-  // Order: token minted in enterOnboardingAfterPurchase → welcome email with
-  // Activate Account link → product sync (Launch Yourself only).
+  // Order: token minted in enterOnboardingAfterPurchase → real Postgres
+  // enrollment record (docs/postgres-auth-architecture-findings.md §6) →
+  // welcome email with Activate Account link → product sync (Launch
+  // Yourself only). The Postgres bridge is what /activate/actions.ts's
+  // activate call validates against; the local Relationship record above
+  // is unchanged and keeps driving CRM/sales-ops concerns (dunning,
+  // health scoring, Luv) as it already did.
   if (synced?.relationshipId && record.customerEmail) {
     const isLaunchYourself = record.onboardingType !== "white_glove";
     const activateUrl =
       isLaunchYourself && synced.activationToken
         ? activationUrlFromToken(synced.activationToken)
         : null;
+
+    const bridged = await upsertVenueEnrollment({
+      stripeCheckoutSessionId: record.stripeCheckoutSessionId,
+      stripeCustomerId: record.stripeCustomerId,
+      stripeSubscriptionId: record.stripeSubscriptionId,
+      venueName: record.venueName,
+      ownerEmail: record.customerEmail,
+      plan: record.plan,
+      onboardingType: isLaunchYourself ? "self_setup" : "white_glove",
+      activationToken: isLaunchYourself ? synced.activationToken ?? null : null,
+    });
+    if (!bridged.ok) {
+      // Non-fatal: the local Relationship record + welcome email still
+      // proceed (unchanged from today's behavior). Logged loudly because
+      // it means activation will not be able to create a real account
+      // until this is retried/fixed — see docs/postgres-auth-architecture-findings.md.
+      console.error("[crm] Postgres enrollment bridge failed — activation will not work until resolved", {
+        enrollmentId: record.id,
+        error: bridged.error,
+      });
+    }
 
     try {
       const emailResults = await sendEnrollmentProductEmails({

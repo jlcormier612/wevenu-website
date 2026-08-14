@@ -1,0 +1,51 @@
+{
+  "startedAt": "2026-08-13T22:56:49.763Z",
+  "DATE": "2026-08-18",
+  "LABEL": "DashCal KD 1786661809763",
+  "checks": [
+    {
+      "name": "created",
+      "ok": true,
+      "detail": "DashCal KD 1786661809763|2026-08-18"
+    },
+    {
+      "name": "dashboard_shows_label",
+      "ok": true,
+      "detail": "VERIFIED LIVE"
+    },
+    {
+      "name": "dashboard_navigates_to_client",
+      "ok": true,
+      "detail": "http://localhost:3000/clients/dbfa69d6-47ad-4f9d-892d-4f06cb7f1844"
+    },
+    {
+      "name": "dashboard_dest_has_key_dates_card",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "name": "calendar_shows_key_date",
+      "ok": false,
+      "detail": "label or type"
+    },
+    {
+      "name": "calendar_dest_client",
+      "ok": true,
+      "detail": "http://localhost:3000/clients/dbfa69d6-47ad-4f9d-892d-4f06cb7f1844"
+    },
+    {
+      "name": "calendar_dest_has_key_dates",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "name": "cleanup",
+      "ok": true,
+      "detail": null
+    }
+  ],
+  "errors": [
+    "calendar click did not navigate; used direct URL"
+  ],
+  "passed": false
+}

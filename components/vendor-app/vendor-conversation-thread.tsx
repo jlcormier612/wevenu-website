@@ -11,6 +11,11 @@ import {
 } from "@/app/vendor/messages/actions";
 import { Button } from "@/components/ui/button";
 import type { VendorConversationMessage } from "@/lib/conversations/types";
+import {
+  vendorCounterpartyDisplayName,
+  vendorHiddenCounterpartyPhrase,
+} from "@/lib/conversations/vendor-counterparty";
+import { cn } from "@/lib/utils";
 
 function formatTime(iso: string): string {
   return new Date(iso).toLocaleString("en-US", {
@@ -33,7 +38,7 @@ function AttachmentList({ attachments, isVendor }: { attachments: VendorConversa
           target="_blank"
           rel="noopener noreferrer"
           className={`block ${isImageAttachment(a.mimeType) ? "" : "flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-xs underline-offset-2 hover:underline"} ${
-            isImageAttachment(a.mimeType) ? "" : isVendor ? "bg-primary-foreground/10" : "bg-background/60"
+            isImageAttachment(a.mimeType) ? "" : isVendor ? "bg-white/15 dark:bg-[var(--forest-sage)]/10" : "bg-background/60"
           }`}
         >
           {isImageAttachment(a.mimeType) ? (
@@ -48,12 +53,27 @@ function AttachmentList({ attachments, isVendor }: { attachments: VendorConversa
   );
 }
 
-function Bubble({ msg }: { msg: VendorConversationMessage }) {
+function Bubble({
+  msg,
+  audience,
+}: {
+  msg: VendorConversationMessage;
+  audience: "venue" | "couple";
+}) {
   const isVendor = msg.senderType === "vendor";
   const isAutomated = msg.senderType === "system";
+  // Light: heritage-sage + white. Dark staff tokens: soft-sage + forest-sage.
+  // Avoid color-mix / arbitrary var() text overrides — they produced murky
+  // bubbles with unreadable foreground in couple threads.
+  const incomingTone =
+    audience === "couple"
+      ? "bg-[color-mix(in_oklch,var(--dusty-rose)_12%,var(--muted))] text-foreground dark:bg-[color-mix(in_oklch,var(--dusty-rose)_28%,transparent)] dark:ring-1 dark:ring-[color-mix(in_oklch,var(--dusty-rose)_45%,transparent)]"
+      : "bg-muted text-foreground dark:bg-white/10 dark:ring-1 dark:ring-white/15";
+  const outgoingTone =
+    "bg-[var(--heritage-sage)] text-white dark:bg-[var(--soft-sage)] dark:text-[var(--forest-sage)]";
   return (
     <div className={`flex ${isVendor ? "justify-end" : "justify-start"}`}>
-      <div className={`max-w-[75%] rounded-lg px-4 py-2.5 ${isVendor ? "bg-primary text-primary-foreground" : "bg-muted text-foreground"}`}>
+      <div className={cn("max-w-[75%] rounded-lg px-4 py-2.5", isVendor ? outgoingTone : incomingTone)}>
         {isAutomated && (
           <div className="mb-1 flex items-center gap-1 text-[10px] opacity-75">
             <Bot className="h-3 w-3" /> Automated
@@ -61,7 +81,14 @@ function Bubble({ msg }: { msg: VendorConversationMessage }) {
         )}
         {msg.body && <p className="whitespace-pre-wrap text-sm">{msg.body}</p>}
         <AttachmentList attachments={msg.attachments} isVendor={isVendor} />
-        <p className={`mt-1 text-[10px] ${isVendor ? "text-primary-foreground/70" : "text-muted-foreground"}`}>
+        <p
+          className={cn(
+            "mt-1 text-[10px]",
+            isVendor
+              ? "text-white/70 dark:text-[color-mix(in_oklch,var(--forest-sage)_72%,transparent)]"
+              : "text-muted-foreground",
+          )}
+        >
           {formatTime(msg.sentAt)}
         </p>
       </div>
@@ -159,41 +186,74 @@ export function VendorConversationThread({
     if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); void send(); }
   }
 
+  const recipientName = vendorCounterpartyDisplayName(counterpartyLabel, venueName, coupleName);
+  const hiddenParty = vendorHiddenCounterpartyPhrase(counterpartyLabel);
+  const sendLabel = sending ? "Sending…" : `Send to ${recipientName}`;
+  const audience: "venue" | "couple" = counterpartyLabel === "Couple" ? "couple" : "venue";
+  const isCouple = audience === "couple";
+
   return (
-    <div className={`flex min-h-0 flex-col overflow-hidden rounded-sm border border-border bg-card ${showHeader ? "h-full" : "h-[480px]"}`}>
+    <div
+      className={cn(
+        "flex min-h-0 flex-col overflow-hidden rounded-sm border bg-card",
+        showHeader ? "h-full" : "h-[480px]",
+        isCouple
+          ? "border-[color-mix(in_oklch,var(--dusty-rose)_30%,var(--border))] dark:border-[color-mix(in_oklch,var(--dusty-rose)_42%,transparent)]"
+          : "border-[color-mix(in_oklch,var(--forest-sage)_24%,var(--border))] dark:border-white/20",
+      )}
+    >
       {showHeader && (
-        <div className="flex shrink-0 items-center gap-2 border-b border-border px-4 py-3">
+        <div
+          className={cn(
+            "flex shrink-0 items-center gap-2 border-b px-4 py-3",
+            isCouple
+              ? "border-[color-mix(in_oklch,var(--dusty-rose)_22%,var(--border))] bg-[color-mix(in_oklch,var(--dusty-rose)_8%,transparent)] dark:border-[color-mix(in_oklch,var(--dusty-rose)_35%,transparent)] dark:bg-[color-mix(in_oklch,var(--dusty-rose)_16%,transparent)]"
+              : "border-[color-mix(in_oklch,var(--forest-sage)_18%,var(--border))] bg-[color-mix(in_oklch,var(--forest-sage)_6%,transparent)] dark:border-white/15 dark:bg-white/6",
+          )}
+        >
           <Link href="/vendor/messages" className="text-muted-foreground hover:text-foreground">
             <ArrowLeft className="h-4 w-4" />
           </Link>
           <div className="min-w-0">
             <p className="truncate text-sm font-medium text-foreground">
               {eventName?.trim() || "Conversation"}
-              {counterpartyLabel ? (
-                <span className="ml-1.5 font-normal text-muted-foreground">· {counterpartyLabel}</span>
-              ) : null}
+              <span className="ml-1.5 font-normal text-muted-foreground">· {recipientName}</span>
             </p>
-            {(counterpartyLabel === "Couple"
-              ? coupleName?.trim()
-              : venueName?.trim()) && (
-              <p className="truncate text-xs text-muted-foreground">
-                {counterpartyLabel === "Couple" ? coupleName : venueName}
-              </p>
-            )}
           </div>
         </div>
       )}
+
+      <div
+        className={cn(
+          "shrink-0 border-b px-4 py-2",
+          isCouple
+            ? "border-[color-mix(in_oklch,var(--dusty-rose)_22%,var(--border))] bg-[color-mix(in_oklch,var(--dusty-rose)_12%,var(--muted))] dark:border-[color-mix(in_oklch,var(--dusty-rose)_35%,transparent)] dark:bg-[color-mix(in_oklch,var(--dusty-rose)_18%,transparent)]"
+            : "border-[color-mix(in_oklch,var(--forest-sage)_18%,var(--border))] bg-[color-mix(in_oklch,var(--forest-sage)_8%,var(--muted))] dark:border-white/15 dark:bg-white/8",
+        )}
+      >
+        <p className="text-xs font-medium text-foreground">Talking to {recipientName}</p>
+        <p className="text-[11px] text-muted-foreground">
+          {`${hiddenParty.charAt(0).toUpperCase()}${hiddenParty.slice(1)} cannot see this thread.`}
+        </p>
+      </div>
 
       <div className="min-h-0 flex-1 space-y-3 overflow-y-auto p-4">
         {messages.length === 0 ? (
           <p className="text-center text-sm text-muted-foreground py-8">No messages yet — say hello.</p>
         ) : (
-          messages.map((m) => <Bubble key={m.id} msg={m} />)
+          messages.map((m) => <Bubble key={m.id} msg={m} audience={audience} />)
         )}
         <div ref={bottomRef} />
       </div>
 
-      <div className="shrink-0 space-y-2 border-t border-border p-3">
+      <div
+        className={cn(
+          "shrink-0 space-y-2 border-t p-3",
+          isCouple
+            ? "border-[color-mix(in_oklch,var(--dusty-rose)_22%,var(--border))] dark:border-[color-mix(in_oklch,var(--dusty-rose)_35%,transparent)]"
+            : "border-[color-mix(in_oklch,var(--forest-sage)_18%,var(--border))] dark:border-white/15",
+        )}
+      >
         {pendingFile && (
           <div className="flex items-center gap-1.5 rounded-lg border border-border bg-muted/30 px-2 py-1.5 text-xs w-fit">
             <Paperclip className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
@@ -225,7 +285,7 @@ export function VendorConversationThread({
             <Paperclip className="h-4 w-4" />
           </Button>
           <Button type="button" size="sm" disabled={(!body.trim() && !pendingFile) || sending || uploadingFile} onClick={() => void send()}>
-            {sending ? "Sending…" : "Send"}
+            {sendLabel}
           </Button>
         </div>
       </div>

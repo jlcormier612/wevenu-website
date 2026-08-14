@@ -15,9 +15,19 @@ import { ArrowDown, ArrowUp, Check, ChevronDown, ChevronUp, Copy, ExternalLink, 
 import { toast } from "sonner";
 
 import { ColorPickerTrigger } from "@/components/ui/color-picker";
-import type { CoupleWebsite, WebsiteContent, WebsiteSuggestions, HostedExperienceCatalog, CatalogCollection } from "@/lib/wedding-website/types";
+import type { CoupleWebsite, WebsiteContent, WebsiteSuggestions, HostedExperienceCatalog, PublicWebsite, CatalogColorStory } from "@/lib/wedding-website/types";
 import { celebrateLuv } from "@/lib/luv/celebrate";
 import { coupleCelebrationMessage } from "@/lib/luv/celebrations";
+import { resolveDesignState } from "@/lib/wedding-website/design-state";
+import { deriveSixRoles, resolveCuratedColorStories, swatchGradient, type SixRoleColors } from "@/lib/wedding-website/curated-color-stories";
+import { resolveStudioPreviewPhotos } from "@/lib/wedding-website/studio-preview-content";
+import { collectionDescriptor } from "@/lib/wedding-website/collection-descriptors";
+import {
+  bundlesDarkColorStoryOnSelect,
+  colorStoryBundlePatch,
+  resolveBundledColorStory,
+} from "@/lib/wedding-website/collection-color-bundle";
+import { CollectionPreview, ColorStoryPreview, TypographyPreview, PhotoStylePreview } from "@/components/portal/collection-preview";
 
 // ── Theme Studio (2026-07-24) ─────────────────────────────────────────────────
 // Four independent dimensions, catalog-driven end to end — no more hardcoded
@@ -967,6 +977,96 @@ function FaqEditor({ content, onSave, onCancel }: { content: WebsiteContent; onS
   );
 }
 
+// ── RSVP section (synced from Guest List — not WebsiteContent) ───────────────
+// Kept out of ALL_SECTIONS so completion % only counts fillable content sections.
+// Still opens via Live Preview Edit (focusSection === "rsvp") like other accordions.
+
+function RsvpSectionEditor({
+  websiteUrl, onNavigateToGuests,
+}: {
+  websiteUrl: string | null;
+  onNavigateToGuests?: () => void;
+}) {
+  return (
+    <div className="space-y-3">
+      <span className="inline-flex text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-primary/10 text-primary">
+        Synced from Guest List
+      </span>
+      <p className="text-xs text-muted-foreground leading-relaxed">
+        RSVP is connected to your guest list — not freeform website copy. Manage guests, invitations, and RSVP questions in Guests.
+      </p>
+      {onNavigateToGuests && (
+        <button
+          type="button"
+          onClick={onNavigateToGuests}
+          className="w-full rounded-xl py-2.5 text-sm font-semibold bg-primary text-primary-foreground hover:opacity-90 transition-opacity"
+        >
+          Manage guests & RSVP questions
+        </button>
+      )}
+      {websiteUrl && (
+        <button
+          type="button"
+          onClick={() => {
+            navigator.clipboard.writeText(`${websiteUrl}#rsvp`);
+            toast.success("RSVP link copied!");
+          }}
+          className="w-full flex items-center justify-center gap-1.5 rounded-xl border border-border py-2.5 text-xs font-medium hover:bg-muted/40 transition-colors"
+        >
+          <Copy className="h-3.5 w-3.5" /> Copy RSVP link
+        </button>
+      )}
+    </div>
+  );
+}
+
+function RsvpSectionAccordion({
+  forceOpen, websiteUrl, onNavigateToGuests,
+}: {
+  forceOpen?: boolean;
+  websiteUrl: string | null;
+  onNavigateToGuests?: () => void;
+}) {
+  const [open, setOpen] = React.useState(false);
+  const accordionRef = React.useRef<HTMLDivElement>(null);
+
+  React.useEffect(() => {
+    if (forceOpen && !open) {
+      setOpen(true);
+      setTimeout(() => accordionRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" }), 50);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [forceOpen]);
+
+  return (
+    <div ref={accordionRef} className={`rounded-2xl border transition-colors ${open ? "border-ring bg-card" : "border-border bg-card"}`}>
+      <button type="button" onClick={() => setOpen(o => !o)}
+        className="w-full flex items-center gap-3 px-4 py-3.5 text-left min-w-0">
+        <span className="text-lg shrink-0">💗</span>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2">
+            <p className="text-sm font-medium text-heading">RSVP</p>
+            <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-primary/10 text-primary">Synced</span>
+          </div>
+          {!open && (
+            <p className="text-[11px] text-muted-foreground truncate mt-0.5">Managed from your guest list</p>
+          )}
+        </div>
+        {open ? <ChevronUp className="h-4 w-4 text-muted-foreground shrink-0" /> : <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" />}
+      </button>
+
+      {open && (
+        <div className="px-4 pb-4 border-t border-border/50 pt-4">
+          <p className="text-xs text-muted-foreground mb-3">
+            Guests respond here using the code from their invitation.
+          </p>
+          <RsvpSectionEditor websiteUrl={websiteUrl} onNavigateToGuests={onNavigateToGuests} />
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Section accordion ─────────────────────────────────────────────────────────
 
 function SectionAccordion({
@@ -1154,11 +1254,6 @@ const COLOR_ROLES: { key: "colorPrimary" | "colorSecondary" | "colorAccent" | "c
   { key: "colorText",       label: "Text",       hint: "Body copy color" },
 ];
 
-function collectionSwatch(c: CatalogCollection): string {
-  return c.colorStories[0]?.tokens.heroGradient
-    ?? `linear-gradient(160deg, ${c.swatchAccent ?? "#B8AEA1"} 0%, ${c.swatchAccent ?? "#DED6CA"} 100%)`;
-}
-
 function DimensionCard({ eyebrow, title, subtitle, swatch, isOpen, onToggle, children }: {
   eyebrow: string; title: string; subtitle?: string | null;
   swatch: React.ReactNode; isOpen: boolean; onToggle: () => void; children: React.ReactNode;
@@ -1180,15 +1275,43 @@ function DimensionCard({ eyebrow, title, subtitle, swatch, isOpen, onToggle, chi
 }
 
 // The Theme Studio — four fully independent pickers, catalog-driven end to
-// end (Part 1–4): Layout Collection, Color Story (curated quick-start +
-// full custom 6-color picker, reusing the exact venue ColorPickerTrigger),
-// Typography, Photo Style. Choosing one never changes another.
+// end (Part 1–4): Layout Collection, Color Story (Collection Quick Start +
+// curated inspiration grid + full custom 6-color picker, reusing the exact
+// venue ColorPickerTrigger), Typography, Photo Style. Choosing one never
+// changes another.
 function ThemeStudio({ site, onUpdate }: { site: CoupleWebsite; onUpdate: (patch: ThemePatch) => void }) {
   const [open, setOpen] = React.useState<"collection" | "color" | "typography" | "photo" | null>(null);
   const [catalog, setCatalog] = React.useState<HostedExperienceCatalog | null>(null);
   React.useEffect(() => {
     fetch("/api/portal/website/catalog").then(r => r.json()).then(setCatalog).catch(() => {});
   }, []);
+
+  // Theme Studio Preview Polish (2026-08-14) — the Typography row's own
+  // closed swatch now renders a real font sample (not just "Aa" in the
+  // fallback font), which means it needs that font actually loaded even
+  // while collapsed — same real gap the Wizard's own Typography step had
+  // before its font-preloading fix. Always load the current selection's
+  // font; additionally load every option's font while the picker itself is
+  // open, so the full comparison grid below also shows real fonts.
+  const currentTypographyId = site.typographyStyleId;
+  React.useEffect(() => {
+    if (!catalog?.typographyStyles?.length) return;
+    const current = catalog.typographyStyles.find(t => t.id === currentTypographyId)
+      ?? catalog.typographyStyles.find(t => t.key === (site.fontPairing ?? "classic_serif"));
+    const urls = Array.from(new Set(
+      (open === "typography" ? catalog.typographyStyles : (current ? [current] : []))
+        .map(t => t.tokens.fontUrl).filter((u): u is string => !!u)
+    ));
+    const links = urls.map(url => {
+      const link = document.createElement("link");
+      link.rel = "stylesheet"; link.href = url;
+      link.setAttribute("data-wevenu-typography-preview", "1");
+      document.head.appendChild(link);
+      return link;
+    });
+    return () => { links.forEach(l => l.remove()); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [catalog?.typographyStyles, currentTypographyId, site.fontPairing, open]);
 
   if (!catalog) {
     return <div className="rounded-2xl border border-border bg-card p-4 text-xs text-muted-foreground">Loading design options…</div>;
@@ -1197,14 +1320,55 @@ function ThemeStudio({ site, onUpdate }: { site: CoupleWebsite; onUpdate: (patch
   const collections = catalog.collections;
   const currentCollection = collections.find(c => c.id === site.collectionId)
     ?? collections.find(c => c.key === (site.theme ?? "classic")) ?? collections[0];
-  const currentColorStory = currentCollection?.colorStories.find(cs => cs.id === site.colorStoryId);
+  // Same collection-independent curated set the Setup Color step shows
+  // ("Need a little inspiration?") — Theme Studio Color panel must offer
+  // these too, not only the current Collection's 2–3 Quick Start natives.
+  const curatedColorStories = resolveCuratedColorStories(collections);
+  // Studio Canonical State Pass (2026-08-11) — one resolver, not a local
+  // re-derivation (see lib/wedding-website/design-state.ts for why the old
+  // `currentCollection?.colorStories.find(...)` scoping and raw-hex-
+  // presence `hasCustomColors` check were both wrong).
+  const { colorStory: currentColorStory, isCustomColors: hasCustomColors } = resolveDesignState(site, catalog);
   const currentTypography = catalog.typographyStyles.find(t => t.id === site.typographyStyleId)
     ?? catalog.typographyStyles.find(t => t.key === (site.fontPairing ?? "classic_serif"));
   const currentPhotoStyle = catalog.photoStyles.find(p => p.id === site.photoStyleId);
-  const hasCustomColors = !!(site.colorPrimary || site.colorSecondary || site.colorAccent || site.colorNeutral || site.colorBackground || site.colorText);
+
+  // Theme Studio Preview Polish (2026-08-14) — the six roles actually
+  // driving the site right now (curated story if one's selected and
+  // untouched, else the couple's own custom values), and the same real
+  // photo/title/subtitle the public Hero itself reads — shared by the
+  // Collection, Color Story, and Typography swatches below so all three
+  // (and the real website) always agree, never a second approximation.
+  const displayRoles: SixRoleColors = currentColorStory
+    ? deriveSixRoles(currentColorStory.tokens)
+    : {
+        colorPrimary: site.colorPrimary || "#DDD6C9", colorSecondary: site.colorSecondary || "#DDD6C9",
+        colorAccent: site.colorAccent || "#DDD6C9", colorNeutral: site.colorNeutral || "#DDD6C9",
+        colorBackground: site.colorBackground || "#DDD6C9", colorText: site.colorText || "#DDD6C9",
+      };
+  const previewPhoto = site.content?.home?.coverImageUrl || undefined;
+  const previewCoupleName = site.content?.home?.title || "Your Names";
+  const previewGalleryPhotos = resolveStudioPreviewPhotos({
+    galleryPhotos: site.content?.gallery?.photos,
+    coverPhoto: previewPhoto,
+  });
+  const previewBase: PublicWebsite = { content: site.content, colorPrimary: site.colorPrimary, colorSecondary: site.colorSecondary,
+    colorAccent: site.colorAccent, colorNeutral: site.colorNeutral, colorBackground: site.colorBackground, colorText: site.colorText };
 
   function clearColors(): ThemePatch {
     return { clearCustomColors: true, colorPrimary: null, colorSecondary: null, colorAccent: null, colorNeutral: null, colorBackground: null, colorText: null };
+  }
+
+  // Studio Canonical State — set BOTH colorStoryId (so summaries can name
+  // this story after reload) AND the six raw hex columns (the renderer
+  // reads those directly). Same write path as Setup Color step + Quick Start.
+  function applyColorStory(cs: CatalogColorStory) {
+    const roles = deriveSixRoles(cs.tokens);
+    onUpdate({
+      colorStoryId: cs.id, themePalette: cs.name, clearCustomColors: false,
+      colorPrimary: roles.colorPrimary, colorSecondary: roles.colorSecondary, colorAccent: roles.colorAccent,
+      colorNeutral: roles.colorNeutral, colorBackground: roles.colorBackground, colorText: roles.colorText,
+    });
   }
 
   return (
@@ -1213,12 +1377,19 @@ function ThemeStudio({ site, onUpdate }: { site: CoupleWebsite; onUpdate: (patch
       {/* ── Part 1: Layout Collection ── */}
       <DimensionCard
         eyebrow="Layout Collection" title={currentCollection?.name ?? "Choose a collection"}
-        subtitle={currentCollection?.description}
-        swatch={<div className="h-14 w-20 rounded-xl shrink-0" style={{ background: currentCollection ? collectionSwatch(currentCollection) : "#EEE" }} />}
+        subtitle={currentCollection ? collectionDescriptor(currentCollection.key, currentCollection.description) : undefined}
+        swatch={
+          <div key={`${currentCollection?.id}-${displayRoles.colorPrimary}-${currentTypography?.id}`}
+            className="h-14 w-20 rounded-xl shrink-0 overflow-hidden animate-in fade-in duration-300">
+            {currentCollection ? (
+              <CollectionPreview base={previewBase} collection={currentCollection} colorStory={currentColorStory} typography={currentTypography} width={80} height={56} />
+            ) : <div className="w-full h-full bg-muted" />}
+          </div>
+        }
         isOpen={open === "collection"} onToggle={() => setOpen(o => o === "collection" ? null : "collection")}
       >
         <p className="text-[11px] text-muted-foreground -mt-1">
-          Page composition, hero layout, gallery layout, RSVP placement, motion. Collections make genuinely different websites — not just different colors.
+          How your whole website feels — opening moment, section composition, type hierarchy, spacing, and the way your story unfolds. Not just colors.
         </p>
         <div className="grid grid-cols-2 gap-3">
           {collections.map(c => {
@@ -1226,18 +1397,36 @@ function ThemeStudio({ site, onUpdate }: { site: CoupleWebsite; onUpdate: (patch
             return (
               <button key={c.id} type="button"
                 onClick={() => {
-                  // First-time pick of a collection also seeds its own
-                  // default Color Story / Typography as a starting point —
-                  // never overwrites a couple's own choice once one exists.
+                  // Midnight identity exception (A+C): always rebundle a dark
+                  // Color Story so the nocturnal promise lands in Live Preview.
+                  // Other Collections: first-time seed only — never overwrite
+                  // an existing Color Story / custom palette (Canonical State).
                   const patch: ThemePatch = { theme: c.key as CoupleWebsite["theme"], collectionId: c.id };
-                  if (!site.colorStoryId && !hasCustomColors && c.colorStories[0]) {
+                  const allStories = collections.flatMap(col => col.colorStories);
+                  const bundled = resolveBundledColorStory(c, allStories);
+                  if (bundlesDarkColorStoryOnSelect(c.key) && bundled) {
+                    Object.assign(patch, colorStoryBundlePatch(bundled));
+                  } else if (!site.colorStoryId && !hasCustomColors && c.colorStories[0]) {
+                    const roles = deriveSixRoles(c.colorStories[0].tokens);
                     patch.themePalette = c.colorStories[0].name;
                     patch.colorStoryId = c.colorStories[0].id;
+                    patch.colorPrimary = roles.colorPrimary; patch.colorSecondary = roles.colorSecondary;
+                    patch.colorAccent = roles.colorAccent; patch.colorNeutral = roles.colorNeutral;
+                    patch.colorBackground = roles.colorBackground; patch.colorText = roles.colorText;
                   }
                   onUpdate(patch);
                 }}
                 className={`relative rounded-2xl overflow-hidden text-left transition-all hover:scale-[1.01] ${isSelected ? "ring-2 ring-offset-2 ring-ring" : ""}`}>
-                <div className="h-20 relative" style={{ background: collectionSwatch(c) }}>
+                <div className="relative overflow-hidden" style={{ height: 248 }}>
+                  <CollectionPreview
+                    base={previewBase}
+                    collection={c}
+                    colorStory={resolveBundledColorStory(c, collections.flatMap(col => col.colorStories)) ?? c.colorStories[0]}
+                    sectionKeys={["story"]}
+                    width={170}
+                    height={248}
+                    heroFraction={0.38}
+                  />
                   {isSelected && (
                     <div className="absolute top-2 right-2 h-5 w-5 rounded-full bg-white/90 flex items-center justify-center shadow">
                       <Check className="h-3 w-3 text-foreground" />
@@ -1246,7 +1435,7 @@ function ThemeStudio({ site, onUpdate }: { site: CoupleWebsite; onUpdate: (patch
                 </div>
                 <div className="px-3 py-2 bg-card">
                   <p className="text-xs font-bold text-heading">{c.name}</p>
-                  <p className="text-[10px] text-muted-foreground mt-0.5 line-clamp-1">{c.description}</p>
+                  <p className="text-[10px] text-muted-foreground mt-0.5 line-clamp-1">{collectionDescriptor(c.key, c.description)}</p>
                 </div>
               </button>
             );
@@ -1258,7 +1447,12 @@ function ThemeStudio({ site, onUpdate }: { site: CoupleWebsite; onUpdate: (patch
       <DimensionCard
         eyebrow="Color Story" title={hasCustomColors ? "Custom colors" : (currentColorStory?.name ?? "Choose your colors")}
         subtitle={hasCustomColors ? "Your own palette" : "Tap to customize every color"}
-        swatch={<div className="h-14 w-20 rounded-xl shrink-0" style={{ background: site.colorPrimary ?? currentColorStory?.tokens.heroGradient ?? "#EEE" }} />}
+        swatch={
+          <div key={`${currentColorStory?.id}-${displayRoles.colorPrimary}`}
+            className="h-14 w-20 rounded-xl shrink-0 overflow-hidden animate-in fade-in duration-300">
+            <ColorStoryPreview base={previewBase} />
+          </div>
+        }
         isOpen={open === "color"} onToggle={() => setOpen(o => o === "color" ? null : "color")}
       >
         {currentCollection && currentCollection.colorStories.length > 0 && (
@@ -1269,11 +1463,38 @@ function ThemeStudio({ site, onUpdate }: { site: CoupleWebsite; onUpdate: (patch
                 const isActive = !hasCustomColors && cs.id === site.colorStoryId;
                 return (
                   <button key={cs.id} type="button"
-                    onClick={() => onUpdate({ colorStoryId: cs.id, themePalette: cs.name, ...clearColors() })}
+                    onClick={() => applyColorStory(cs)}
                     className="flex flex-col items-center gap-1.5">
                     <div className={`rounded-full border-2 transition-all ${isActive ? "h-10 w-10 border-foreground shadow-md" : "h-8 w-8 border-transparent hover:border-border"}`}
-                      style={{ background: cs.tokens.heroGradient }} />
+                      style={{ background: swatchGradient(cs.tokens) }} />
                     <p className={`text-[10px] ${isActive ? "font-semibold text-foreground" : "text-muted-foreground"}`}>{cs.name}</p>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* Same curated, collection-independent set as Setup's Color step */}
+        {curatedColorStories.length > 0 && (
+          <div className="space-y-2.5 pt-1">
+            <div className="space-y-0.5">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">Need a little inspiration?</p>
+              <p className="text-[11px] text-muted-foreground">Start with a curated Color Story, then make it completely yours.</p>
+            </div>
+            <div className="grid grid-cols-2 gap-2.5">
+              {curatedColorStories.map(cs => {
+                const isActive = !hasCustomColors && cs.id === site.colorStoryId;
+                return (
+                  <button key={cs.id} type="button" onClick={() => applyColorStory(cs)}
+                    className={`rounded-xl overflow-hidden text-left bg-white border transition-all hover:scale-[1.01] ${isActive ? "ring-2 ring-primary ring-offset-1 border-primary" : "border-border"}`}>
+                    <div className="h-9">
+                      <ColorStoryPreview colorStory={cs} />
+                    </div>
+                    <div className="px-2.5 py-2">
+                      <p className="text-[11px] font-bold text-heading">{cs.name}</p>
+                      {cs.mood ? <p className="text-[9px] text-muted-foreground mt-0.5">{cs.mood}</p> : null}
+                    </div>
                   </button>
                 );
               })}
@@ -1292,21 +1513,33 @@ function ThemeStudio({ site, onUpdate }: { site: CoupleWebsite; onUpdate: (patch
           </div>
           <p className="text-[11px] text-muted-foreground -mt-1">Any color set here overrides the preset — reused across the entire website: buttons, backgrounds, highlights, icons, links, RSVP, dividers, cards.</p>
           <div className="grid grid-cols-2 gap-2.5">
-            {COLOR_ROLES.map(r => {
-              const fallback = r.key === "colorAccent" ? currentColorStory?.tokens.accent
-                : r.key === "colorBackground" ? currentColorStory?.tokens.bg
-                : r.key === "colorText" ? currentColorStory?.tokens.dark ? "#F5F0E8" : "#2E2A24"
-                : "#BF9089";
-              return (
+            {(() => {
+              // Studio Canonical State Pass (2026-08-11) — this used to
+              // fall back to one hardcoded "#BF9089" for colorPrimary,
+              // colorSecondary, AND colorNeutral alike (only colorAccent/
+              // colorBackground/colorText had their own real fallback),
+              // which is exactly how a couple could see all six roles
+              // collapse to the same value: the moment currentColorStory
+              // failed to resolve (the collection-scoping bug above), every
+              // role missing its own raw column landed on that one shared
+              // literal. Each role now gets its own real fallback, derived
+              // from the correctly-resolved current Color Story.
+              const seeded = currentColorStory ? deriveSixRoles(currentColorStory.tokens) : null;
+              return COLOR_ROLES.map(r => (
                 <div key={r.key} className="space-y-1">
                   <p className="text-[10px] font-medium text-muted-foreground" title={r.hint}>{r.label}</p>
                   <ColorPickerTrigger
-                    value={(site[r.key] as string | undefined) ?? fallback ?? "#BF9089"}
-                    onChange={(v) => onUpdate({ [r.key]: v })}
+                    value={(site[r.key] as string | undefined) || seeded?.[r.key] || "#BF9089"}
+                    onChange={(v) => {
+                      // Editing any single role diverges from the curated
+                      // story, if one was active — clear colorStoryId so
+                      // every surface reads this as a custom palette.
+                      onUpdate({ [r.key]: v, colorStoryId: null });
+                    }}
                   />
                 </div>
-              );
-            })}
+              ));
+            })()}
           </div>
         </div>
       </DimensionCard>
@@ -1316,10 +1549,10 @@ function ThemeStudio({ site, onUpdate }: { site: CoupleWebsite; onUpdate: (patch
         eyebrow="Typography" title={currentTypography?.name ?? "Choose your typography"}
         subtitle={currentTypography?.tokens.sampleLabel}
         swatch={
-          <div className="h-14 w-20 rounded-xl shrink-0 bg-muted flex items-center justify-center px-1">
-            <p className="text-xs text-center leading-tight" style={{ fontFamily: currentTypography?.tokens.headingFont, fontStyle: currentTypography?.tokens.headingItalic ? "italic" : "normal" }}>
-              Aa
-            </p>
+          <div key={currentTypography?.id} className="h-14 w-20 rounded-xl shrink-0 bg-muted overflow-hidden animate-in fade-in duration-300">
+            {currentTypography ? (
+              <TypographyPreview typography={currentTypography} coupleName={previewCoupleName} tagline={site.content?.home?.subtitle} nameSize={10} taglineSize={6.5} />
+            ) : <div className="w-full h-full bg-muted" />}
           </div>
         }
         isOpen={open === "typography"} onToggle={() => setOpen(o => o === "typography" ? null : "typography")}
@@ -1332,8 +1565,11 @@ function ThemeStudio({ site, onUpdate }: { site: CoupleWebsite; onUpdate: (patch
               <button key={t.id} type="button"
                 onClick={() => onUpdate({ fontPairing: t.key as CoupleWebsite["fontPairing"], typographyStyleId: t.id })}
                 className={`rounded-xl border p-3 text-left transition-all ${isSelected ? "ring-2 ring-ring ring-offset-1 border-ring" : "border-border"}`}>
-                <p className="text-[15px]" style={{ fontFamily: t.tokens.headingFont, fontStyle: t.tokens.headingItalic ? "italic" : "normal" }}>{t.name}</p>
-                <p className="text-[10px] text-muted-foreground mt-0.5">{t.tokens.sampleLabel}</p>
+                <div className="h-6">
+                  <TypographyPreview typography={t} coupleName={previewCoupleName} showTagline={false} nameSize={15} align="left" />
+                </div>
+                <p className="text-[10px] font-semibold text-heading mt-1.5">{t.name}</p>
+                <p className="text-[10px] text-muted-foreground">{t.tokens.sampleLabel}</p>
               </button>
             );
           })}
@@ -1345,33 +1581,30 @@ function ThemeStudio({ site, onUpdate }: { site: CoupleWebsite; onUpdate: (patch
         eyebrow="Photo Style" title={currentPhotoStyle?.name ?? "Choose your photo style"}
         subtitle={currentPhotoStyle?.description}
         swatch={
-          <div className="h-14 w-20 rounded-xl shrink-0 overflow-hidden flex items-center justify-center"
-            style={{ background: "linear-gradient(135deg, #C9B89A 0%, #97AC9E 100%)" }}>
-            <div style={{
-              width: currentPhotoStyle?.tokens.imageScale === "large" ? "80%" : "55%",
-              aspectRatio: "1/1",
-              filter: currentPhotoStyle?.tokens.photoFilter,
-              borderRadius: currentPhotoStyle?.tokens.photoRadius,
-              background: "linear-gradient(160deg, #D8CFC2 0%, #EBE5DB 100%)",
-              border: currentPhotoStyle?.tokens.frameStyle === "border" ? "3px solid #fff" : currentPhotoStyle?.tokens.frameStyle === "polaroid" ? "4px solid #fff" : undefined,
-              boxShadow: currentPhotoStyle?.tokens.shadow === "lifted" ? "0 6px 14px rgba(0,0,0,0.3)"
-                : currentPhotoStyle?.tokens.shadow === "soft" ? "0 3px 8px rgba(0,0,0,0.18)"
-                : currentPhotoStyle?.tokens.frameStyle === "polaroid" ? "0 2px 6px rgba(0,0,0,0.25)" : undefined,
-              transform: currentPhotoStyle?.tokens.rotation && currentPhotoStyle.tokens.rotation !== "none" ? "rotate(-3deg)" : undefined,
-            }} />
+          <div key={currentPhotoStyle?.id} className="h-14 w-20 rounded-xl shrink-0 overflow-hidden bg-[#FAF8F4] animate-in fade-in duration-300">
+            {currentPhotoStyle && currentCollection ? (
+              <PhotoStylePreview collection={currentCollection} photoStyle={currentPhotoStyle} photos={previewGalleryPhotos} width={80} height={56} />
+            ) : <div className="w-full h-full bg-muted" />}
           </div>
         }
         isOpen={open === "photo"} onToggle={() => setOpen(o => o === "photo" ? null : "photo")}
       >
-        <p className="text-[11px] text-muted-foreground -mt-1">How your uploaded photos are presented — independent of Collection, Color Story, and Typography.</p>
+        <p className="text-[11px] text-muted-foreground -mt-1">How your photographs are framed, layered, spaced, and filtered — independent of Collection, Color Story, and Typography.</p>
         <div className="grid grid-cols-2 gap-2">
           {catalog.photoStyles.map(p => {
             const isSelected = p.id === currentPhotoStyle?.id;
             return (
               <button key={p.id} type="button" onClick={() => onUpdate({ photoStyleId: p.id })}
-                className={`rounded-xl border p-3 text-left transition-all ${isSelected ? "ring-2 ring-ring ring-offset-1 border-ring" : "border-border"}`}>
-                <p className="text-xs font-semibold text-heading">{p.name}</p>
-                <p className="text-[10px] text-muted-foreground mt-0.5">{p.description}</p>
+                className={`rounded-xl border overflow-hidden text-left transition-all flex flex-col ${isSelected ? "ring-2 ring-ring ring-offset-1 border-ring" : "border-border"}`}>
+                {/* Specimen region — height must equal PhotoStylePreview height so the
+                    ScaledThumbnail never paints into the reserved label footer. */}
+                <div className="h-[180px] shrink-0 overflow-hidden bg-[#FAF8F4]">
+                  {currentCollection && <PhotoStylePreview collection={currentCollection} photoStyle={p} photos={previewGalleryPhotos} width={170} height={180} naturalWidth={480} />}
+                </div>
+                <div className="px-3 py-2 bg-card border-t border-border/50 shrink-0 min-h-[3.25rem]">
+                  <p className="text-xs font-semibold text-heading line-clamp-1">{p.name}</p>
+                  <p className="text-[10px] text-muted-foreground mt-0.5 line-clamp-2">{p.description}</p>
+                </div>
               </button>
             );
           })}
@@ -1387,6 +1620,7 @@ function ThemeStudio({ site, onUpdate }: { site: CoupleWebsite; onUpdate: (patch
 export function WebsiteEditor({
   token, initialSite, origin, initialGuests,
   onSectionSaved, onAppearanceChanged, focusSection, hideStatusHeader,
+  onNavigateToGuests,
 }: {
   token: string;
   initialSite: CoupleWebsite;
@@ -1397,9 +1631,38 @@ export function WebsiteEditor({
   onAppearanceChanged?: (patch: Partial<CoupleWebsite & { fontPairing: string; clearCustomColors: boolean }>) => void;
   focusSection?: string | null;
   hideStatusHeader?: boolean;
+  /** Leave Studio for portal Guests (RSVP questions + guest list). */
+  onNavigateToGuests?: () => void;
 }) {
   const [site, setSite] = React.useState(initialSite);
   const [content, setContent] = React.useState<WebsiteContent>(initialSite.content ?? {});
+
+  // Studio Canonical State Pass (2026-08-11) — `site` above is seeded once
+  // from `initialSite` and otherwise self-managed, which is correct for
+  // fields only this component owns (isPublished, hasPendingChanges, …).
+  // But the couple's four design dimensions can ALSO be saved by the
+  // sibling SetupWizard (WebsiteStudio renders both at once), which
+  // updates the parent's own copy directly without this component ever
+  // knowing — so ThemeStudio below kept showing whatever was selected
+  // before the wizard ran, stale until a full page reload. Re-sync just
+  // those fields whenever the parent's copy of them changes; every other
+  // locally-owned field is left alone.
+  React.useEffect(() => {
+    setSite(s => ({
+      ...s,
+      theme: initialSite.theme, collectionId: initialSite.collectionId, colorStoryId: initialSite.colorStoryId,
+      themePalette: initialSite.themePalette, fontPairing: initialSite.fontPairing,
+      typographyStyleId: initialSite.typographyStyleId, photoStyleId: initialSite.photoStyleId,
+      colorPrimary: initialSite.colorPrimary, colorSecondary: initialSite.colorSecondary, colorAccent: initialSite.colorAccent,
+      colorNeutral: initialSite.colorNeutral, colorBackground: initialSite.colorBackground, colorText: initialSite.colorText,
+    }));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    initialSite.theme, initialSite.collectionId, initialSite.colorStoryId, initialSite.themePalette,
+    initialSite.fontPairing, initialSite.typographyStyleId, initialSite.photoStyleId,
+    initialSite.colorPrimary, initialSite.colorSecondary, initialSite.colorAccent,
+    initialSite.colorNeutral, initialSite.colorBackground, initialSite.colorText,
+  ]);
   const [saving, setSaving] = React.useState<string | null>(null);
   const [publishing, setPublishing] = React.useState(false);
   const [previewMode, setPreviewMode] = React.useState<"desktop" | "mobile">("mobile");
@@ -1624,6 +1887,19 @@ export function WebsiteEditor({
       .map(key => ALL_SECTIONS.find(s => s.key === key))
       .filter((s): s is SectionDef => s != null);
   }, [sectionOrder]);
+
+  // RSVP is always on the public site by default; still force-show when Live
+  // Preview Edit focuses it so a hidden/legacy config never dead-ends Edit.
+  const showRsvpAccordion = React.useMemo(() => {
+    if (focusSection === "rsvp") return true;
+    if (site.sections?.length) {
+      return site.sections.some(s => s.key === "rsvp" && s.visibility !== "hidden");
+    }
+    if (site.sectionsEnabled?.length) {
+      return site.sectionsEnabled.includes("rsvp");
+    }
+    return true;
+  }, [focusSection, site.sections, site.sectionsEnabled]);
 
   return (
     <div className="space-y-4">
@@ -1926,6 +2202,13 @@ export function WebsiteEditor({
             forceOpen={focusSection === section.key}
           />
         ))}
+        {showRsvpAccordion && (
+          <RsvpSectionAccordion
+            forceOpen={focusSection === "rsvp"}
+            websiteUrl={websiteUrl}
+            onNavigateToGuests={onNavigateToGuests}
+          />
+        )}
       </div>
 
     </div>

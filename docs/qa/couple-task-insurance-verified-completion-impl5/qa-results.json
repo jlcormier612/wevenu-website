@@ -1,0 +1,172 @@
+{
+  "before": {
+    "tasks": [
+      {
+        "id": "e0637004-263c-4367-96fb-f4c59329862e",
+        "title": "Purchase event insurance",
+        "status": "pending",
+        "completed_at": null,
+        "completed_by": null,
+        "source_type": null,
+        "source_id": null,
+        "owner_type": "couple",
+        "visibility": "client_owned"
+      }
+    ],
+    "coupleTask": {
+      "id": "e0637004-263c-4367-96fb-f4c59329862e",
+      "title": "Purchase event insurance",
+      "status": "pending",
+      "completed_at": null,
+      "completed_by": null,
+      "source_type": null,
+      "source_id": null,
+      "owner_type": "couple",
+      "visibility": "client_owned"
+    },
+    "vendorCoiTask": null
+  },
+  "after": {
+    "tasks": [
+      {
+        "id": "e0637004-263c-4367-96fb-f4c59329862e",
+        "title": "Purchase event insurance",
+        "status": "complete",
+        "completed_at": "2026-08-09T23:53:05.993+00:00",
+        "completed_by": "system",
+        "source_type": "document",
+        "source_id": "6255c56a-f76f-4964-8209-ab675b944dfe"
+      }
+    ],
+    "celebrations": [
+      {
+        "id": "7b70b396-e347-4681-aa6e-ea8d5c91eaf7",
+        "celebration_type": "insurance_uploaded",
+        "fired_at": "2026-08-09T23:53:06.091255+00:00",
+        "entity_id": "6255c56a-f76f-4964-8209-ab675b944dfe"
+      }
+    ],
+    "durableDoc": {
+      "id": "6255c56a-f76f-4964-8209-ab675b944dfe",
+      "source_type": "insurance",
+      "share_with_venue": true,
+      "uploaded_by": "couple",
+      "mime_type": "application/pdf",
+      "name": "Emma Event Insurance QA"
+    },
+    "portalInsuranceRow": {
+      "id": "e0637004-263c-4367-96fb-f4c59329862e",
+      "title": "Purchase event insurance",
+      "description": null,
+      "category": "document",
+      "ownerType": "couple",
+      "visibility": "client_owned",
+      "dueDate": "2026-08-18",
+      "daysOffset": -60,
+      "milestoneName": "Planning",
+      "milestoneKind": null,
+      "status": "complete",
+      "isRequired": true,
+      "completedAt": "2026-08-09T23:53:05.993+00:00",
+      "autoCompleteTrigger": "document_uploaded_insurance",
+      "canComplete": false
+    }
+  },
+  "probes": {
+    "pdfUpload": {
+      "status": 200,
+      "ok": true,
+      "error": null,
+      "url": true
+    },
+    "imageUpload": {
+      "status": 200,
+      "ok": true,
+      "error": null
+    },
+    "coverStillRejectsPdf": {
+      "status": 400,
+      "body": {
+        "ok": false,
+        "error": "Only image files are accepted (JPG, PNG, GIF, WEBP, HEIC, and similar)."
+      }
+    },
+    "firstCommit": {
+      "status": 200,
+      "body": {
+        "id": "6255c56a-f76f-4964-8209-ab675b944dfe",
+        "celebrated": true
+      }
+    },
+    "secondCommit": {
+      "status": 200,
+      "body": {
+        "id": "b5a28b38-108a-4679-a94d-cb76525ecf8a",
+        "celebrated": false
+      }
+    },
+    "manualComplete": {
+      "status": 422,
+      "body": {
+        "ok": false,
+        "error": "task_not_found_or_not_completable"
+      }
+    }
+  },
+  "isolation": {
+    "vendorDocId": null,
+    "vendorError": "permission denied for table documents",
+    "coupleTaskStillPendingAfterVendorDoc": true,
+    "vendorDocumentsInsertWithoutTriggerLeavesCouplePending": true,
+    "codePathNote": "share_vendor_document_to_event RPC inserts documents only; no triggerAutoComplete"
+  },
+  "errors": {
+    "insuranceWithoutShare": {
+      "status": 400,
+      "body": {
+        "error": "insurance_requires_share"
+      }
+    },
+    "genericSharedUpload": {
+      "status": 200,
+      "body": {
+        "id": "4700866e-f98b-4295-9301-6c0cb5930ed0",
+        "celebrated": false
+      }
+    },
+    "taskStillPendingAfterErrors": true
+  },
+  "cleanup": {
+    "finalRestore": {
+      "commit": {
+        "id": "9a2531ce-1f70-4242-a899-fb095d1d1f0e",
+        "celebrated": false
+      },
+      "final": {
+        "status": "complete",
+        "completed_by": "system",
+        "source_type": "document"
+      }
+    }
+  },
+  "pass": {
+    "pdfUpload": true,
+    "imageUpload": true,
+    "coverRejectsPdf": true,
+    "firstCelebrated": true,
+    "secondNotCelebrated": true,
+    "taskComplete": true,
+    "taskSystem": true,
+    "durableInsuranceShared": true,
+    "vendorDidNotCompleteCouple": true,
+    "insuranceWithoutShareRejected": true,
+    "errorsLeftPending": true,
+    "noVendorCoiTaskOnSeed": true
+  },
+  "ids": {
+    "event_id": "d2ee4a16-6d35-4d3b-86fd-9c0d24fdfa11",
+    "client_id": "dbfa69d6-47ad-4f9d-892d-4f06cb7f1844",
+    "venue_id": "69cfd906-0d15-4e5c-8bab-ed106b411c34",
+    "access_level": "couple"
+  }
+}

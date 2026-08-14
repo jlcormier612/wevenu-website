@@ -8,6 +8,7 @@ import { CheckSquare, Circle, Plus, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { completeVendorTaskAction, uncompleteVendorTaskAction, deleteVendorTaskAction, createVendorTaskAction } from "@/app/vendor/tasks/actions";
+import { sortByDueDateAsc } from "@/lib/tasks/group-by-completion";
 import type { VendorPersonalTask } from "@/lib/vendors/types";
 
 function formatDate(iso: string | null): string {
@@ -31,6 +32,7 @@ const SOURCE_LABELS: Record<VendorPersonalTask["source"], string> = {
   venue:      "Venue",
   luv:        "✦ Luv",
   automation: "Auto",
+  template:   "Template",
 };
 
 type Group = "overdue" | "today" | "this_week" | "later" | "no_date" | "complete";
@@ -49,10 +51,10 @@ function groupTask(t: VendorPersonalTask): Group {
 const GROUP_ORDER: Group[] = ["overdue", "today", "this_week", "later", "no_date", "complete"];
 const GROUP_LABELS: Record<Group, string> = {
   overdue:   "Overdue",
-  today:     "Due Today",
-  this_week: "Due This Week",
+  today:     "Due today",
+  this_week: "Due this week",
   later:     "Later",
-  no_date:   "No Due Date",
+  no_date:   "No due date",
   complete:  "Completed",
 };
 
@@ -69,10 +71,23 @@ export function VendorTasksList({
   const [newDue, setNewDue]        = React.useState("");
   const [formError, setFormError]  = React.useState<string | null>(null);
   const focusRef = React.useRef<HTMLDivElement | null>(null);
+  const [activeFocusId, setActiveFocusId] = React.useState<string | null>(focusTaskId);
 
+  // Deep-link highlight — scroll + brief ring, then clear visual emphasis.
   React.useEffect(() => {
-    if (!focusTaskId || !focusRef.current) return;
-    focusRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
+    if (!focusTaskId) {
+      setActiveFocusId(null);
+      return;
+    }
+    setActiveFocusId(focusTaskId);
+    const scrollTimer = window.setTimeout(() => {
+      focusRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }, 50);
+    const clearTimer = window.setTimeout(() => setActiveFocusId(null), 2800);
+    return () => {
+      window.clearTimeout(scrollTimer);
+      window.clearTimeout(clearTimer);
+    };
   }, [focusTaskId]);
 
   function handleToggle(t: VendorPersonalTask) {
@@ -111,12 +126,11 @@ export function VendorTasksList({
     });
   }
 
-  // Group tasks
+  // Group tasks (due-date order within each bucket, including Completed)
   const groups = new Map<Group, VendorPersonalTask[]>();
   for (const g of GROUP_ORDER) groups.set(g, []);
-  for (const t of tasks) {
-    const g = groupTask(t);
-    groups.get(g)!.push(t);
+  for (const t of sortByDueDateAsc(tasks, (item) => item.dueDate)) {
+    groups.get(groupTask(t))!.push(t);
   }
 
   const pendingCount = tasks.filter((t) => t.status === "pending").length;
@@ -126,7 +140,7 @@ export function VendorTasksList({
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-bold text-foreground">Tasks</h1>
+          <h1 className="font-heading text-2xl font-medium text-heading">Tasks</h1>
           <p className="text-sm text-muted-foreground">{pendingCount} pending</p>
         </div>
         <Button size="sm" onClick={() => setShowForm(true)}>
@@ -139,7 +153,7 @@ export function VendorTasksList({
       {showForm && (
         <div className="rounded-sm border border-border bg-card p-4 space-y-3">
           <div className="flex items-center justify-between">
-            <h2 className="text-sm font-semibold text-foreground">New Task</h2>
+            <h2 className="text-sm font-semibold text-foreground">New task</h2>
             <button type="button" onClick={() => setShowForm(false)} className="text-muted-foreground hover:text-foreground">
               <X className="h-4 w-4" />
             </button>
@@ -197,7 +211,9 @@ export function VendorTasksList({
                   id={`task-${t.id}`}
                   ref={focusTaskId === t.id ? focusRef : undefined}
                   className={`flex items-start gap-3 px-4 py-3 group ${
-                    focusTaskId === t.id ? "bg-primary/5 ring-1 ring-inset ring-primary/30" : ""
+                    activeFocusId === t.id
+                      ? "bg-primary/5 ring-1 ring-inset ring-primary/30 transition-colors duration-500"
+                      : ""
                   }`}
                 >
                   <button

@@ -1,10 +1,9 @@
 import Link from "next/link";
 
 import { LuvBriefingCard } from "@/components/luv/luv-briefing";
-import {
-  SupportResolveControl,
-  supportItemPreview,
-} from "@/components/relationships/support-resolve-control";
+import { NotificationNavLink } from "@/components/notifications/notification-nav-link";
+import { SupportResolveControl } from "@/components/relationships/support-resolve-control";
+import { supportItemPreview } from "@/components/relationships/support-preview";
 import {
   DataTable,
   PageHeader,
@@ -17,6 +16,10 @@ import {
   getRelationship,
   getTeamMember,
 } from "@/lib/data/store";
+import {
+  notificationDestinationLabel,
+  notificationHref,
+} from "@/lib/notifications/href";
 import { loadLuvBriefing } from "@/lib/luv/load";
 import { actorCan, getActingMember } from "@/lib/program4/session";
 import { ensureProgram4Data } from "@/lib/program4/store";
@@ -190,17 +193,16 @@ export default async function TodayPage() {
           <ul className="space-y-4">
             {d.unreadNotifications.map((n) => {
               const rel = getRelationship(n.relationshipId);
-              const isSupport =
-                n.type === "support_request_submitted" ||
-                n.type === "feedback_received";
+              const href = notificationHref(n);
+              const destination = notificationDestinationLabel(
+                n,
+                rel?.venue.name,
+              );
               return (
                 <li key={n.id}>
-                  <Link
-                    href={
-                      isSupport
-                        ? `/relationships/${n.relationshipId}?panel=support`
-                        : `/relationships/${n.relationshipId}`
-                    }
+                  <NotificationNavLink
+                    notificationId={n.id}
+                    href={href}
                     className="block hover:opacity-80"
                   >
                     <p className="font-medium">{n.title}</p>
@@ -208,7 +210,10 @@ export default async function TodayPage() {
                       {n.body}
                       {rel ? ` · ${formatRelativeDay(n.createdAt)}` : null}
                     </p>
-                  </Link>
+                    <p className="mt-1 text-xs font-medium text-[var(--heritage-sage)]">
+                      {destination}
+                    </p>
+                  </NotificationNavLink>
                 </li>
               );
             })}

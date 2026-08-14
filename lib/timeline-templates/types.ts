@@ -8,6 +8,8 @@ export type TimelineTemplate = {
   spaceId: string | null;
   isDefault: boolean;
   isArchived: boolean;
+  /** Hello to Cheers master key (TL-01 / TL-02 / TL-03) when provisioned from a starter. */
+  sourceMasterKey: string | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -17,6 +19,8 @@ export type TimelineTemplate = {
 export type TimelineTemplateWithStats = TimelineTemplate & {
   spaceName: string | null;
   itemCount: number;
+  /** Activity titles + dayOffset for library preview (presentation only). */
+  previewItems: { title: string; dayOffset: number }[];
 };
 
 export type TimelineTemplateItem = {
@@ -28,6 +32,9 @@ export type TimelineTemplateItem = {
   notes: string | null;
   timeOfDay: string | null; // "HH:MM" or null — an absolute clock anchor, independent of minutesOffset
   minutesOffset: number | null; // minutes relative to the event's start time; null = untimed
+  // 0-based day relative to event start when applied (Day 1 = 0). Templates
+  // have no calendar range, so the editor labels these "Day 1", "Day 2", …
+  dayOffset: number;
   // True when this item's timing was estimated (or never set) by an import,
   // rather than confirmed by a coordinator — surfaced in the editor until
   // touched. Added 2026-07-22 per template-import review: previously this
@@ -46,6 +53,7 @@ export type TimelineTemplateItemInput = {
   notes: string | null;
   timeOfDay: string | null;
   minutesOffset: number | null;
+  dayOffset?: number;
   // Optional at the write boundary — omitted by every hand-authored item
   // (defaults to false at the repository layer); only the import path sets
   // this explicitly.

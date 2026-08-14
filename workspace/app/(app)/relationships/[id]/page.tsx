@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 
 import { LuvMark } from "@/components/luv/luv-mark";
 import { LuvRelationshipAdvisor } from "@/components/luv/luv-relationship-advisor";
+import { LegalComplianceCard } from "@/components/relationships/legal-compliance-card";
 import { LifecycleActions } from "@/components/relationships/lifecycle-actions";
 import { ProductSyncPanel } from "@/components/relationships/product-sync-panel";
 import {
@@ -14,8 +15,13 @@ import {
   resolveSnapshotMode,
   type SnapshotPreferredView,
 } from "@/components/relationships/relationship-workspace";
+import {
+  fetchLegalComplianceViaProduct,
+  legalHistoryHrefForRelationship,
+} from "@/lib/legal/product-legal";
 import { StatusMoveControl } from "@/components/relationships/status-move-control";
 import { SupportResolveControl } from "@/components/relationships/support-resolve-control";
+import { ResolvedSupportHistory } from "@/components/relationships/resolved-support-history";
 import { Panel, StatusPill } from "@/components/shared/ui";
 import { LogWalkthroughForm } from "@/components/walkthroughs/log-walkthrough-form";
 import {
@@ -77,13 +83,14 @@ export default async function RelationshipDetailPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ from?: string; panel?: string }>;
+  searchParams: Promise<{ from?: string; panel?: string; item?: string }>;
 }) {
   const { id } = await params;
-  const { from, panel } = await searchParams;
+  const { from, panel, item } = await searchParams;
   const preferredView: SnapshotPreferredView | undefined =
     from === "sales" || from === "customer-success" ? from : undefined;
-  const focusSupport = panel === "support";
+  const focusSupport = panel === "support" || Boolean(item?.trim());
+  const focusItemId = item?.trim() || null;
   await ensureProgram4Data();
   await ensureProgram3Data();
   await ensureWhiteGloveChecklistsInWorkspace();
@@ -130,8 +137,20 @@ export default async function RelationshipDetailPage({
   const openFeedbackItems = (relationship.openFeedbackItems ?? []).filter(
     (i) => i.status === "open",
   );
+  const feedbackItemsForUi = (relationship.openFeedbackItems ?? []).map((i) => ({
+    id: i.id,
+    type: i.type,
+    subject: i.subject,
+    body: i.body,
+    createdAt: i.createdAt,
+    status: i.status,
+    resolvedAt: i.resolvedAt,
+  }));
   const showSupportPanel =
     (relationship.supportOpenCount || 0) > 0 || openFeedbackItems.length > 0;
+  const hasResolvedFeedback = feedbackItemsForUi.some(
+    (i) => i.status === "resolved",
+  );
 
   const timeline = getTimelineForRelationship(id);
   const tasks = getTasks({ relationshipId: id });
@@ -140,6 +159,15 @@ export default async function RelationshipDetailPage({
   const invoices = getInvoices(id);
   const subscriptions = getSubscriptions(id);
   const milestones = getOnboardingMilestones(id);
+  // RW records are venue entities today; entityType prepares couple/vendor subjects.
+  const legalCompliance = await fetchLegalComplianceViaProduct({
+    relationshipId: id,
+    email: relationship.owner.email,
+  });
+  const legalHistoryHref = legalHistoryHrefForRelationship({
+    relationshipId: id,
+    email: relationship.owner.email,
+  });
   const workflows = getWorkflowsSync();
   const runs = getWorkflowRunsSync({ relationshipId: id });
   const sequences = getSequencesSync();
@@ -202,17 +230,14 @@ export default async function RelationshipDetailPage({
           ownerEmail={relationship.owner.email}
           ownerFirstName={relationship.owner.firstName}
           openCount={relationship.supportOpenCount || 0}
-          items={(relationship.openFeedbackItems ?? []).map((i) => ({
-            id: i.id,
-            type: i.type,
-            subject: i.subject,
-            body: i.body,
-            createdAt: i.createdAt,
-            status: i.status,
-          }))}
+          items={feedbackItemsForUi}
           autoFocus={focusSupport}
+          focusItemId={focusItemId}
           canAct={canResolveSupport}
         />
+      ) : null}
+      {hasResolvedFeedback ? (
+        <ResolvedSupportHistory items={feedbackItemsForUi} />
       ) : null}
       <LifecycleActions
         relationshipId={id}
@@ -233,6 +258,10 @@ export default async function RelationshipDetailPage({
       />
       <StatusMoveControl relationship={relationship} />
       <CustomerSuccessPanels relationship={relationship} />
+      <LegalComplianceCard
+        summary={legalCompliance}
+        historyHref={legalHistoryHref}
+      />
       {showCustomerActions ? (
         <ProductSyncPanel
           relationshipId={id}

@@ -1,0 +1,26 @@
+{
+  "catalogCollections": [
+    "Wildflower",
+    "Midnight",
+    "Garden Party",
+    "Linen",
+    "Rosé",
+    "Coastal",
+    "Champagne",
+    "Velvet",
+    "European Estate",
+    "Rustic"
+  ],
+  "industrialActive": false,
+  "pairs": {
+    "pair-midnight-velvet": true,
+    "pair-champagne-estate": true,
+    "pair-champagne-rustic": true,
+    "pair-estate-rustic": true,
+    "pair-wildflower-garden": true,
+    "pair-linen-rose": true
+  },
+  "notes": [
+    "Active collections: 10"
+  ]
+}

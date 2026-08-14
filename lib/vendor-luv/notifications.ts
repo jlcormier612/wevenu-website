@@ -1,13 +1,15 @@
 /**
  * Map vendor_notifications → VendorLuvExtras.notifications.
  *
- * Light touch only: assignment / document alerts that aren't already covered
- * by vendor-home message/task observations, plus an unread rollup that deep-
- * links into the bell feed. Not a duplicate notification center.
+ * Light touch only: assignment / document / task-completed alerts that aren't
+ * already covered by vendor-home message/task observations, plus an unread
+ * rollup that deep-links into the bell feed. Not a duplicate notification
+ * center.
  *
- * Detail must state the *what* (new assignment, document shared) — never the
- * bare couple·venue string from notification bodies. That context belongs in
- * eventName so the briefing row reads like venue Today.
+ * Detail must state the *what* (new assignment, document shared, task done) —
+ * never a bare couple·venue string from notification bodies as the primary
+ * line. That context belongs in eventName so the briefing row reads like
+ * venue Today.
  */
 import type { BriefingItem } from "@/lib/luv/briefing-types";
 import type { VendorNotification } from "@/lib/vendor-notifications/types";
@@ -17,17 +19,45 @@ const HOME_COVERED = new Set(["new_message", "new_task"]);
 
 export const VENDOR_NOTIFICATIONS_FEED_HREF = "/vendor/dashboard?notifications=1";
 
+/** Normalize legacy `taskId=` links to the event page's `focus=` param. */
+export function normalizeVendorTaskDeepLink(link: string | null | undefined): string | null {
+  if (!link) return null;
+  return link.replace(/([?&])taskId=/g, "$1focus=");
+}
+
+function extractTaskFocusId(link: string | null | undefined): string | null {
+  if (!link) return null;
+  const m = link.match(/[?&](?:focus|taskId)=([^&]+)/);
+  if (!m?.[1]) return null;
+  try {
+    return decodeURIComponent(m[1]);
+  } catch {
+    return m[1];
+  }
+}
+
 function eventLink(n: VendorNotification, tab: "overview" | "documents"): string {
   if (n.assignmentId) {
     return `/vendor/events/${n.assignmentId}?tab=${tab}${tab === "documents" ? "&highlight=documents" : ""}`;
   }
-  return n.link || VENDOR_NOTIFICATIONS_FEED_HREF;
+  return normalizeVendorTaskDeepLink(n.link) || VENDOR_NOTIFICATIONS_FEED_HREF;
+}
+
+function taskFocusLink(n: VendorNotification): string {
+  const taskId = extractTaskFocusId(n.link);
+  if (n.assignmentId && taskId) {
+    return `/vendor/events/${n.assignmentId}?tab=tasks&focus=${encodeURIComponent(taskId)}`;
+  }
+  if (n.assignmentId) {
+    return `/vendor/events/${n.assignmentId}?tab=tasks`;
+  }
+  return normalizeVendorTaskDeepLink(n.link) || VENDOR_NOTIFICATIONS_FEED_HREF;
 }
 
 /**
  * Prefer an actionable sentence. Notification `body` is often just
  * "Emma & Jordan · Sweet Daisy Barn" — useful as event context, not as the
- * primary briefing line.
+ * primary briefing line. For task_completed, body is the task title.
  */
 function notificationCopy(n: VendorNotification): {
   label: string;
@@ -61,17 +91,48 @@ function notificationCopy(n: VendorNotification): {
         link: eventLink(n, "documents"),
       };
     }
+    case "task_completed": {
+      const taskTitle = context;
+      return {
+        label: "Task completed",
+        detail: taskTitle
+          ? `Couple completed a task: ${taskTitle}`
+          : (n.title?.trim() || "Couple completed a task"),
+        eventName: null,
+        link: taskFocusLink(n),
+      };
+    }
+    case "task_acknowledged": {
+      // Acknowledgement is NOT final completion — never reuse task_completed copy.
+      const taskTitle = context
+        ?.replace(/^Waiting for your confirmation:\s*/i, "")
+        ?.replace(/^Couple says they.ve completed:\s*/i, "")
+        ?? null;
+      return {
+        label: "Needs your confirmation",
+        detail: taskTitle
+          ? `Couple says they've completed a task: ${taskTitle}`
+          : (n.title?.trim() || "Couple says they've completed a task — confirm it"),
+        eventName: null,
+        link: taskFocusLink(n),
+      };
+    }
     default:
       return {
         label: "Alert",
         detail: (n.title?.trim() || "Unread alert").slice(0, 140),
         eventName: context,
-        link: n.link || VENDOR_NOTIFICATIONS_FEED_HREF,
+        link: normalizeVendorTaskDeepLink(n.link) || VENDOR_NOTIFICATIONS_FEED_HREF,
       };
   }
 }
 
 function dedupeKey(n: VendorNotification): string {
+  // Per-task alerts must stay distinct — grouping by assignment would collapse them.
+  if (n.type === "task_completed" || n.type === "task_acknowledged") {
+    const taskId = extractTaskFocusId(n.link);
+    return `${n.type}:${taskId ?? n.id}`;
+  }
   const scope = n.assignmentId ?? n.eventId ?? n.id;
   return `${n.type}:${scope}`;
 }
@@ -107,11 +168,13 @@ export function vendorNotificationsToBriefingItems(
       label: copy.label,
       detail: extra > 0 ? `${copy.detail} (${group.length} unread)` : copy.detail,
       link: copy.link,
+      dismissNotificationIds: group.map((n) => n.id),
     };
   });
 
   const remaining = grouped.slice(3).reduce((sum, g) => sum + g.length, 0);
   if (remaining > 0) {
+    const overflowIds = grouped.slice(3).flatMap((g) => g.map((n) => n.id));
     items.push({
       id: "notif-unread-more",
       eventId: null,
@@ -123,6 +186,7 @@ export function vendorNotificationsToBriefingItems(
           ? "1 more unread alert in your notification feed"
           : `${remaining} more unread alerts in your notification feed`,
       link: VENDOR_NOTIFICATIONS_FEED_HREF,
+      dismissNotificationIds: overflowIds,
     });
   }
 

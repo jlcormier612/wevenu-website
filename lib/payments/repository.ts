@@ -27,6 +27,7 @@ type ScheduleRow = {
 type ItemRow = {
   id: string; venue_id: string; schedule_id: string; label: string;
   amount: number; due_date: string | null; status: PaymentLineItem["status"];
+  obligation_kind: PaymentLineItem["obligationKind"] | null;
   paid_at: string | null; paid_amount: number | null; payment_method: string | null;
   reference_number: string | null; notes: string | null; sort_order: number;
   refunded_amount: number | null; refunded_at: string | null; refund_reason: string | null;
@@ -63,6 +64,7 @@ function mapItem(r: ItemRow): PaymentLineItem {
   return {
     id: r.id, venueId: r.venue_id, scheduleId: r.schedule_id, label: r.label,
     amount: Number(r.amount), dueDate: r.due_date, status: r.status,
+    obligationKind: r.obligation_kind ?? null,
     paidAt: r.paid_at, paidAmount: r.paid_amount != null ? Number(r.paid_amount) : null,
     paymentMethod: r.payment_method, referenceNumber: r.reference_number,
     notes: r.notes, sortOrder: r.sort_order,
@@ -205,20 +207,40 @@ export async function insertLineItem(client: DbClient, venueId: string, schedule
       amount: parseFloat(input.amount.replace(/[$,]/g, "")),
       due_date: input.dueDate || null,
       sort_order: sortOrder,
+      obligation_kind: input.obligationKind ?? null,
     }).select().single<ItemRow>();
   if (error) throw error;
   return mapItem(data);
 }
 
-export async function updateLineItem(client: DbClient, venueId: string, itemId: string, input: LineItemInput): Promise<void> {
+/**
+ * Work Package D5 — closes the exact gap named in the D5 research pass:
+ * "updateLineItem has no status guard at all... a paid line item's label/
+ * amount/due_date can be updated server-side unguarded." Mirrors
+ * deleteLineItem's own guard immediately below (same table, same terminal
+ * states) rather than inventing a new pattern — a payment that already
+ * happened, or was already refunded, is historical record, not an editable
+ * draft. Cancelled items stay editable (never money-moved, same as pending).
+ */
+export async function updateLineItem(client: DbClient, venueId: string, itemId: string, input: LineItemInput): Promise<{ ok: true } | { ok: false; message: string }> {
+  const { data: item } = await client.from("payment_line_items")
+    .select("status").eq("id", itemId).eq("venue_id", venueId).maybeSingle<{ status: string }>();
+  if (item?.status && ["paid", "partially_refunded", "refunded"].includes(item.status)) {
+    return { ok: false, message: "This payment has already been collected — its amount and due date are historical record and can't be edited." };
+  }
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const patch: Record<string, unknown> = {
+    label: input.label.trim(),
+    amount: parseFloat(input.amount.replace(/[$,]/g, "")),
+    due_date: input.dueDate || null,
+  };
+  // Only overwrite kind when explicitly provided — never guess from label.
+  if (input.obligationKind) patch.obligation_kind = input.obligationKind;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { error } = await (client.from("payment_line_items") as any)
-    .update({
-      label: input.label.trim(),
-      amount: parseFloat(input.amount.replace(/[$,]/g, "")),
-      due_date: input.dueDate || null,
-    }).eq("id", itemId).eq("venue_id", venueId);
+    .update(patch).eq("id", itemId).eq("venue_id", venueId);
   if (error) throw error;
+  return { ok: true };
 }
 
 export async function markItemPaid(
@@ -435,6 +457,15 @@ export async function cancelLineItem(client: DbClient, venueId: string, itemId: 
   if (error) throw error;
 }
 
+/**
+ * Release Readiness Reconciliation remediation: `payment_line_items_delete`
+ * (`20260716000000_tr_g1_permissions_enforcement.sql`) restricts DELETE to
+ * Owner/Manager at the RLS layer, but blocks a disallowed delete by
+ * matching zero rows, not by raising an error — this previously reported
+ * `{ ok: true }` even when a Coordinator/Staff attempt silently deleted
+ * nothing. `.select("id")` on the delete surfaces which row actually
+ * matched, same fix shape already shipped for contracts/packages/playbooks.
+ */
 export async function deleteLineItem(
   client: DbClient,
   venueId: string,
@@ -445,8 +476,11 @@ export async function deleteLineItem(
   if (item?.status === "paid") {
     return { ok: false, message: "This payment has already been collected and can't be deleted. Cancel it instead if it needs to be removed from the schedule." };
   }
-  const { error } = await client.from("payment_line_items").delete().eq("id", itemId).eq("venue_id", venueId);
+  const { data, error } = await client.from("payment_line_items").delete().eq("id", itemId).eq("venue_id", venueId).select("id");
   if (error) throw error;
+  if (!data || data.length === 0) {
+    return { ok: false, message: "Only an Owner or Manager can delete a payment." };
+  }
   return { ok: true };
 }
 
@@ -460,8 +494,11 @@ export async function deleteSchedule(
   if (paidItems && paidItems.length > 0) {
     return { ok: false, message: "This schedule has at least one collected payment and can't be deleted, to preserve the financial record." };
   }
-  const { error } = await client.from("payment_schedules").delete().eq("id", scheduleId).eq("venue_id", venueId);
+  const { data, error } = await client.from("payment_schedules").delete().eq("id", scheduleId).eq("venue_id", venueId).select("id");
   if (error) throw error;
+  if (!data || data.length === 0) {
+    return { ok: false, message: "Only an Owner or Manager can delete a payment schedule." };
+  }
   return { ok: true };
 }
 

@@ -73,7 +73,7 @@ export function VendorInquiryPipeline({
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-bold text-foreground">Inquiries</h1>
+          <h1 className="font-heading text-2xl font-medium text-heading">Inquiries</h1>
           <p className="text-sm text-muted-foreground">{total} total</p>
         </div>
         <Button size="sm" onClick={() => setShowForm(true)}>
@@ -86,7 +86,7 @@ export function VendorInquiryPipeline({
       {showForm && (
         <div className="rounded-sm border border-border bg-card p-5 space-y-4">
           <div className="flex items-center justify-between">
-            <h2 className="font-semibold text-sm text-foreground">New Inquiry</h2>
+            <h2 className="font-semibold text-sm text-foreground">New inquiry</h2>
             <button type="button" onClick={() => setShowForm(false)} className="text-muted-foreground hover:text-foreground">
               <X className="h-4 w-4" />
             </button>
@@ -94,7 +94,7 @@ export function VendorInquiryPipeline({
           <form onSubmit={handleSubmit} className="space-y-3">
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="text-xs font-medium text-muted-foreground">Contact Name</label>
+                <label className="text-xs font-medium text-muted-foreground">Contact name</label>
                 <input
                   className="mt-1 w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
                   placeholder="Jane Smith"
@@ -113,7 +113,7 @@ export function VendorInquiryPipeline({
                 />
               </div>
               <div>
-                <label className="text-xs font-medium text-muted-foreground">Event Date</label>
+                <label className="text-xs font-medium text-muted-foreground">Event date</label>
                 <input
                   type="date"
                   className="mt-1 w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
@@ -122,7 +122,7 @@ export function VendorInquiryPipeline({
                 />
               </div>
               <div>
-                <label className="text-xs font-medium text-muted-foreground">Event Type</label>
+                <label className="text-xs font-medium text-muted-foreground">Event type</label>
                 <input
                   className="mt-1 w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
                   placeholder="Wedding, Corporate…"

@@ -40,6 +40,7 @@ type VenueRow = {
   secondary_color: string;
   accent_color: string;
   neutral_color: string;
+  public_review_url: string | null;
   currency: string;
   week_starts_on: number;
   stripe_account_id: string | null;
@@ -90,6 +91,7 @@ function mapVenue(r: VenueRow): Venue {
     secondaryColor: r.secondary_color,
     accentColor: r.accent_color ?? "#B8AEA1",
     neutralColor: r.neutral_color ?? "#F7F5F1",
+    publicReviewUrl: r.public_review_url ?? null,
     currency: r.currency,
     weekStartsOn: r.week_starts_on,
     stripeAccountId: r.stripe_account_id,

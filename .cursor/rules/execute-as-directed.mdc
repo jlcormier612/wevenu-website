@@ -1,0 +1,30 @@
+---
+description: Follow specs exactly, protect the rest of the system, report real issues and proceed
+alwaysApply: true
+---
+
+# Execute as directed
+
+## 1. Do exactly what was presented
+
+When the user (or an approved product brief) specifies content, behavior, structure, naming, or steps:
+
+- Implement it **exactly** as given.
+- Do **not** rewrite, shorten, embellish, “improve,” reinterpret, or substitute alternative wording/copy.
+- Do **not** invent Wave/defer framing to skip required work when directed to build it.
+- If a required capability is missing, implement or clearly flag the **exact** gap — do not quietly change the customer-facing spec to hide it.
+
+## 2. Protect the rest of the system
+
+While implementing:
+
+- Prefer existing architecture, patterns, and shared engines over parallel systems.
+- Limit changes to what the request needs; avoid drive-by refactors and unrelated edits.
+- Preserve unrelated features, RLS/permissions, lifecycle behavior, and existing tests unless the request requires changing them.
+- Before merging logic into shared paths, check call sites so you don’t break other flows.
+
+## 3. Raise real issues; otherwise proceed
+
+- **Do** bring legitimate problems you discover while working (regressions, security/data-isolation risks, broken invariants, spec contradictions, migration danger).
+- **Do not** pause for permission on routine next steps, confirmatory menus, or “any preference?” questions when the direction is already clear.
+- When in doubt on style that isn’t specified, match neighboring code — and keep moving.

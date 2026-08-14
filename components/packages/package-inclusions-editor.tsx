@@ -6,6 +6,7 @@ import { Check, Loader2, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { addPackageItemAction, removePackageItemAction } from "@/app/(app)/packages/actions";
+import { LibrarySaveStatus, useLibrarySaveStatus } from "@/components/library/library-save-status";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -28,30 +29,46 @@ export function PackageInclusionsEditor({
   const [unit, setUnit] = React.useState("");
   const [addPending, startAdd] = React.useTransition();
   const [removingId, setRemovingId] = React.useState<string | null>(null);
+  const saveUi = useLibrarySaveStatus();
 
   function handleAdd() {
     if (!description.trim()) return;
     startAdd(async () => {
+      saveUi.markSaving();
       const result = await addPackageItemAction(packageId, { description, quantity, unit });
       if (result.ok && "item" in result) {
         setItems((p) => [...p, result.item]);
         setDescription(""); setQuantity("1"); setUnit(""); setShowAdd(false);
-      } else toast.error("message" in result ? result.message ?? "Could not add." : "Could not add.");
+        saveUi.markSaved();
+      } else {
+        saveUi.markError();
+        toast.error("message" in result ? result.message ?? "Could not add." : "Could not add.");
+      }
     });
   }
 
   async function handleRemove(itemId: string) {
     setRemovingId(itemId);
+    saveUi.markSaving();
     const result = await removePackageItemAction(packageId, itemId);
     setRemovingId(null);
-    if (result.ok) setItems((p) => p.filter((i) => i.id !== itemId));
-    else toast.error(result.message ?? "Could not remove.");
+    if (result.ok) {
+      setItems((p) => p.filter((i) => i.id !== itemId));
+      saveUi.markSaved();
+    } else {
+      saveUi.markError();
+      toast.error(result.message ?? "Could not remove.");
+    }
   }
 
   return (
     <div className="space-y-3">
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-xs text-muted-foreground">Inclusions save as soon as you add or remove them.</p>
+        <LibrarySaveStatus status={saveUi.status} model="autosave" />
+      </div>
       {items.length === 0 && !showAdd && (
-        <p className="text-xs text-muted-foreground py-2">No inclusions listed yet. Add what's included in this package.</p>
+        <p className="text-xs text-muted-foreground py-2">No inclusions listed yet. Add what&apos;s included in this package.</p>
       )}
       {items.length > 0 && (
         <ul className="space-y-1.5">
@@ -88,7 +105,7 @@ export function PackageInclusionsEditor({
           <div className="flex items-center gap-1.5 sm:col-span-3 justify-end">
             <Button type="button" variant="ghost" size="sm" onClick={() => setShowAdd(false)} disabled={addPending}>Cancel</Button>
             <Button type="button" size="sm" disabled={!description.trim() || addPending} onClick={handleAdd}>
-              {addPending ? <><Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />Adding…</> : <><Check className="mr-1 h-3.5 w-3.5" />Add</>}
+              {addPending ? <><Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />Saving…</> : <><Check className="mr-1 h-3.5 w-3.5" />Add</>}
             </Button>
           </div>
         </div>

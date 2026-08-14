@@ -1,0 +1,32 @@
+{
+  "finishedAt": "2026-08-13T23:17:00.000Z",
+  "verdict": "self_setup_PASS",
+  "sessionId": "cs_test_a1F8wQT69DUIWHS68gqKSdCU6LNi3GVUEvD920iUsk6FbKMvcx6tVIbZ2K",
+  "subscriptionId": "sub_1U47o5ErUqJH7nktQWT1iXdb",
+  "customerId": "cus_V4GKep361rZBDo",
+  "email": "htc-e2e-diag@example.com",
+  "venueName": "HTC Diag",
+  "amountTotal": 11900,
+  "paymentStatus": "paid",
+  "enrollmentId": "180bbf2e-cd12-4afe-b87d-d877e9e1f0e3",
+  "relationshipId": "rel_544d6ac47781",
+  "checks": [
+    { "name": "keys_are_test", "pass": true, "detail": "sk_test_…OiTI pk_test_…3ucd" },
+    { "name": "htc_sandbox_account", "pass": true, "detail": "acct_1U4226ErUqJH7nkt Hello to Cheers sandbox" },
+    { "name": "gather_price_149", "pass": true, "detail": "price_1U42LNErUqJH7nktdpRin9ev amount=14900" },
+    { "name": "founding_coupon_30", "pass": true, "detail": "FOUNDING100 off=3000" },
+    { "name": "founder_program_active", "pass": true, "detail": "active=true spots=100" },
+    { "name": "marketing_3001", "pass": true, "detail": "status=200" },
+    { "name": "stripe_listen_forward", "pass": true, "detail": "whsec_…b0d1 matches env; [200] forwards" },
+    { "name": "self_guided_checkout_session", "pass": true, "detail": "founding=true gather_founding_coupon" },
+    { "name": "checkout_paid_119", "pass": true, "detail": "complete paid amount_total=11900" },
+    { "name": "success_page", "pass": true, "detail": "04-success.png" },
+    { "name": "webhook_200_provision", "pass": true, "detail": "checkout.session.completed → enrollment 180bbf2e…" },
+    { "name": "founder_welcome_dryrun", "pass": true, "detail": "email_sent founder_welcome simulated; RESEND unset" },
+    { "name": "product_sync_simulated", "pass": true, "detail": "product_sync_completed local adapter" },
+    { "name": "no_connect", "pass": true, "detail": "SaaS path only" },
+    { "name": "wg_price_env", "pass": false, "detail": "STRIPE_PRICE_WHITE_GLOVE MISSING" },
+    { "name": "white_glove_checkout_live", "pass": false, "detail": "HTTP 503" }
+  ],
+  "acceptanceDoc": "docs/stripe-saas-sandbox-e2e-acceptance.md"
+}

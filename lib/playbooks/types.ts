@@ -135,6 +135,11 @@ export type EventTask = {
   milestoneName: string;           // snapshot, copied at apply-time — not a live reference
   milestoneKind: MilestoneKind | null;
   autoCompleteTrigger: string | null;
+  /**
+   * Option B: Final Payment task bound to a specific payment line.
+   * Null until a final line is created/bound for this event.
+   */
+  paymentLineItemId: string | null;
   isRequired: boolean;
   status: TaskStatus;
   dependsOnEventTaskId: string | null;

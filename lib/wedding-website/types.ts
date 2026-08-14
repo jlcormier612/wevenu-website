@@ -19,7 +19,10 @@ export type FontPairing =
   | "luxury"          // EB Garamond
   | "minimal"         // Inter
   | "calligraphy"     // Great Vibes + Lato
-  | "elegant";        // Cormorant italic
+  | "elegant"         // Cormorant italic
+  | "playful"         // Fraunces + Karla
+  | "indie_flower"    // Indie Flower + Nunito
+  | "shadows_into_light"; // Shadows Into Light + Source Sans 3
 
 export type WebsiteSection =
   | "home"
@@ -129,7 +132,15 @@ export type CatalogColorStory = {
   key: string;
   name: string;
   sortOrder: number;
-  tokens: { bg: string; accent: string; heroGradient: string; dark: boolean; [k: string]: unknown };
+  // Hosted Experience RC1, Part 2 — the six semantic roles are required,
+  // not optional: every color_stories row is authored data now, never
+  // derived at render time (see deriveSixRoles in curated-color-stories.ts).
+  tokens: {
+    bg: string; accent: string; heroGradient: string; dark: boolean;
+    colorPrimary: string; colorSecondary: string; colorAccent: string;
+    colorNeutral: string; colorBackground: string; colorText: string;
+    [k: string]: unknown;
+  };
 };
 
 export type CatalogTypographyStyle = {
@@ -144,9 +155,22 @@ export type CatalogTypographyStyle = {
 // deliberately separate from color/typography/photo tokens above, which are
 // each their own independent dimension now (Part 6/7).
 export type CollectionLayoutConfig = {
-  heroType?: "full-bleed" | "invitation";
-  heroAlign?: "center" | "left";
+  heroType?: "full-bleed" | "invitation" | "inset";
+  heroAlign?: "center" | "left" | "offset";
   heroMinHeight?: string;
+  /** Bounds hero box width:height (e.g. Coastal `2 / 1`, Midnight cinematic). */
+  heroAspectCap?: string;
+  heroMaxHeight?: string;
+  /**
+   * Parameterized inset/framed/matted hero (shared primitive). Estate and
+   * Rustic use different recipes of the same `heroType: "inset"` path —
+   * never Collection-named forks.
+   */
+  heroInsetPadding?: string;
+  heroInsetRadius?: string;
+  heroInsetBorderWidth?: string;
+  heroInsetOffsetX?: string;
+  heroInsetOffsetY?: string;
   headerStyle?: "romantic" | "formal" | "editorial" | "minimal" | "coastal";
   storyStyle?: "quote" | "prose" | "editorial" | "minimal";
   divider?: "botanical" | "rule" | "dots" | "ornament" | "none" | "deco";
@@ -187,7 +211,8 @@ export type CollectionLayoutConfig = {
   [k: string]: unknown;
 };
 
-export type CanvasRole = "light" | "soft" | "strong" | "photographic" | "neutral";
+/** `paper` = independent light editorial chamber (STOP-1) — does not inherit dark Color Story fills. */
+export type CanvasRole = "light" | "soft" | "strong" | "photographic" | "neutral" | "paper";
 export type SectionScale = "feature" | "standard" | "interlude";
 // Coastal Art-Direction Pass 2 (2026-08-03) — page-level composition
 // primitives (Step 13). `treatment` selects which shared editorial
@@ -236,9 +261,9 @@ export type CatalogPhotoStyle = {
     // Wedding Website Visual Expression Pass (2026-08-03) — how the
     // Photo Gallery's photographs are arranged/treated, independent of
     // the Collection's own section-shell composition. `arrangement`
-    // "collage"/"scrapbook" replace the per-image grid/masonry/film-strip
-    // loop entirely for that gallery instance; "uniform" decorates it.
-    arrangement?: "uniform" | "collage" | "scrapbook";
+    // "collage"/"scrapbook"/"sparse"/"gallery-wall" replace the per-image
+    // grid/masonry/film-strip loop for that gallery instance; "uniform" decorates it.
+    arrangement?: "uniform" | "collage" | "scrapbook" | "sparse" | "gallery-wall";
     scalePattern?: "uniform" | "alternating" | "hero-emphasis";
     rotation?: "none" | "subtle" | "scattered";
     shadow?: "none" | "soft" | "lifted";

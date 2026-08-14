@@ -3,10 +3,10 @@
  *
  * Accepts a multipart form with:
  *   token: portal access token
- *   file: image file
- *   type: 'cover' | 'couple' | 'gallery' | 'story' | ... (any short label —
+ *   file: image file (default) or image/PDF when type=document
+ *   type: 'cover' | 'couple' | 'gallery' | 'story' | 'document' | ... (any short label —
  *         used only as the stored file's name prefix, not validated against
- *         a fixed enum)
+ *         a fixed enum). When type is "document", PDF is accepted (couple COI).
  *
  * Uploads to Supabase Storage bucket 'client-media' using service role key.
  * Returns the public URL.
@@ -21,7 +21,7 @@
 
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import { resolveImageFile } from "@/lib/storage";
+import { resolveImageFile, resolvePortalDocumentFile } from "@/lib/storage";
 
 function getServiceClient() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -45,13 +45,16 @@ export async function POST(request: Request) {
       return NextResponse.json({ ok: false, error: "File too large. Maximum 10MB." }, { status: 400 });
     }
 
-    // Falls back to the filename's own extension when the browser doesn't
-    // report a MIME type at all — common for HEIC/HEIF straight off an
-    // iPhone, which used to be rejected outright here (client portal
-    // feedback, 2026-07-22).
-    const resolved = resolveImageFile(file);
+    // Document uploads (COIs) accept PDF + images; website/media stays images-only.
+    const allowDocuments = type === "document";
+    const resolved = allowDocuments ? resolvePortalDocumentFile(file) : resolveImageFile(file);
     if (!resolved) {
-      return NextResponse.json({ ok: false, error: "Only image files are accepted (JPG, PNG, GIF, WEBP, HEIC, and similar)." }, { status: 400 });
+      return NextResponse.json({
+        ok: false,
+        error: allowDocuments
+          ? "Only PDF or image files are accepted (JPG, PNG, GIF, WEBP, HEIC, PDF)."
+          : "Only image files are accepted (JPG, PNG, GIF, WEBP, HEIC, and similar).",
+      }, { status: 400 });
     }
 
     const supabase = getServiceClient();

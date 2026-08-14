@@ -1,9 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/integrations/supabase/server";
+import {
+  attachmentMetaFields,
+  normalizeFeedbackAttachments,
+  type FeedbackAttachment,
+} from "@/lib/feedback/attachments";
 import { sendFeedbackEmail } from "@/lib/feedback/notify";
+
+type FeedbackSurface = "venue" | "vendor";
 
 /**
  * Soft product → CRM mirror + customer ack. Never blocks the feedback POST.
+ * Venue-sourced feedback only (CRM links by product venue id).
  */
 function pushFeedbackToCrm(input: {
   productVenueId: string;
@@ -13,8 +21,10 @@ function pushFeedbackToCrm(input: {
   subject?: string | null;
   body?: string | null;
   rating?: number | null;
+  allowPublicShare?: boolean;
   productFeedbackId?: string | null;
   sourceUrl?: string | null;
+  attachments?: FeedbackAttachment[];
 }): void {
   void (async () => {
     try {
@@ -27,8 +37,10 @@ function pushFeedbackToCrm(input: {
         subject: input.subject,
         body: input.body,
         rating: input.rating,
+        allowPublicShare: input.allowPublicShare,
         productFeedbackId: input.productFeedbackId,
         sourceUrl: input.sourceUrl,
+        attachments: input.attachments,
       });
 
       if (!result?.relationship?.id) {
@@ -52,6 +64,8 @@ function pushFeedbackToCrm(input: {
         meta: {
           product_feedback_id: input.productFeedbackId ?? null,
           product_venue_id: input.productVenueId,
+          allow_public_share: input.allowPublicShare ?? false,
+          attachment_count: input.attachments?.length ?? 0,
         },
       });
       console.info("[product→crm] feedback confirmation", {
@@ -66,17 +80,179 @@ function pushFeedbackToCrm(input: {
   })();
 }
 
+function pushPartnerFeedbackToCrm(input: {
+  surface: "vendor" | "client";
+  productVenueId?: string | null;
+  vendorId?: string | null;
+  clientId?: string | null;
+  email?: string | null;
+  actorName?: string | null;
+  feedbackType: string;
+  subject?: string | null;
+  body?: string | null;
+  rating?: number | null;
+  allowPublicShare?: boolean;
+  productFeedbackId?: string | null;
+  sourceUrl?: string | null;
+  attachments?: FeedbackAttachment[];
+}): void {
+  void (async () => {
+    try {
+      const { ingestProductPartnerFeedback } = await import("@shared/relationships");
+      if (typeof ingestProductPartnerFeedback !== "function") return;
+      await ingestProductPartnerFeedback(input);
+    } catch (error) {
+      console.error("[product→crm] partner feedback sync failed:", error);
+    }
+  })();
+}
+
+function notifyMetaFrom(
+  metadata: Record<string, string | number | boolean | null>,
+  attachments: FeedbackAttachment[],
+): Record<string, string | number | boolean | null> {
+  if (attachments.length === 0) return metadata;
+  return {
+    ...metadata,
+    attachment_count: attachments.length,
+    attachment_urls: attachments.map((a) => a.url).join("\n"),
+  };
+}
+
 export async function POST(req: NextRequest) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const { type, subject, body, rating, metadata: clientMeta } = await req.json() as {
-    type: string; subject?: string; body?: string; rating?: number;
-    metadata?: { current_url?: string; user_agent?: string };
+  const {
+    type,
+    subject,
+    body,
+    rating,
+    surface: rawSurface,
+    allow_public_share: rawAllowPublicShare,
+    related_venue_id: rawRelatedVenueId,
+    attachments: rawAttachments,
+    metadata: clientMeta,
+  } = await req.json() as {
+    type: string;
+    subject?: string;
+    body?: string;
+    rating?: number;
+    surface?: FeedbackSurface;
+    allow_public_share?: boolean;
+    related_venue_id?: string | null;
+    attachments?: unknown;
+    metadata?: {
+      current_url?: string;
+      user_agent?: string;
+      surface?: string;
+      related_venue_id?: string | null;
+    };
   };
 
   if (!type) return NextResponse.json({ error: "Missing type" }, { status: 400 });
+
+  const surface: FeedbackSurface = rawSurface === "vendor" ? "vendor" : "venue";
+  // Consent only applies to NPS; ignore client true for other types.
+  const allowPublicShare = type === "nps" && rawAllowPublicShare === true;
+  const attachments = normalizeFeedbackAttachments(rawAttachments, type);
+  const attachmentFields = attachmentMetaFields(attachments);
+
+  const trimmedSubject = subject?.trim() || null;
+  const trimmedBody = body?.trim() ?? "";
+
+  const relatedVenueId = (
+    (typeof rawRelatedVenueId === "string" && rawRelatedVenueId.trim())
+    || (typeof clientMeta?.related_venue_id === "string" && clientMeta.related_venue_id.trim())
+    || null
+  );
+
+  if (surface === "vendor") {
+    const { data: vu } = await supabase
+      .from("vendor_users")
+      .select("vendor_id, vendors(business_name, created_at)")
+      .eq("user_id", user.id)
+      .eq("is_active", true)
+      .maybeSingle<{
+        vendor_id: string;
+        vendors: { business_name: string; created_at: string } | null;
+      }>();
+
+    if (!vu) return NextResponse.json({ error: "No vendor" }, { status: 400 });
+
+    const daysSinceSignup = vu.vendors?.created_at
+      ? Math.floor((Date.now() - new Date(vu.vendors.created_at).getTime()) / 86_400_000)
+      : null;
+
+    const actorLabel = vu.vendors?.business_name ?? "Unknown vendor";
+    const metadata = {
+      current_url:        clientMeta?.current_url ?? null,
+      user_agent:         clientMeta?.user_agent  ?? null,
+      subscription_tier:  null,
+      days_since_signup:  daysSinceSignup,
+      venue_name:         null as string | null,
+      vendor_name:        actorLabel,
+      user_email:         user.email ?? null,
+      surface,
+      allow_public_share: allowPublicShare,
+      related_venue_id:   relatedVenueId,
+      ...attachmentFields,
+    };
+
+    const { data: inserted, error } = await supabase
+      .from("venue_feedback")
+      .insert({
+        venue_id:           relatedVenueId,
+        vendor_id:          vu.vendor_id,
+        client_id:          null,
+        user_id:            user.id,
+        type,
+        subject:            trimmedSubject,
+        body:               trimmedBody,
+        rating:             rating ?? null,
+        allow_public_share: allowPublicShare,
+        surface:            "vendor",
+        metadata,
+      })
+      .select("id")
+      .single<{ id: string }>();
+
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+    void sendFeedbackEmail({
+      type,
+      subject:   trimmedSubject,
+      body:      trimmedBody,
+      rating:    rating ?? null,
+      userEmail: user.email ?? "unknown",
+      venueName: actorLabel,
+      metadata:  notifyMetaFrom({
+        current_url: metadata.current_url,
+        surface,
+        related_venue_id: relatedVenueId,
+        allow_public_share: allowPublicShare,
+      }, attachments),
+    });
+
+    pushPartnerFeedbackToCrm({
+      surface: "vendor",
+      productVenueId: relatedVenueId,
+      vendorId: vu.vendor_id,
+      email: user.email ?? null,
+      actorName: actorLabel,
+      feedbackType: type,
+      subject: trimmedSubject,
+      body: trimmedBody,
+      rating: rating ?? null,
+      allowPublicShare,
+      productFeedbackId: inserted?.id ?? null,
+      sourceUrl: metadata.current_url,
+      attachments,
+    });
+
+    return NextResponse.json({ ok: true, id: inserted?.id ?? null });
+  }
 
   // Resolve venue + days since signup
   const { data: vu } = await supabase
@@ -98,20 +274,24 @@ export async function POST(req: NextRequest) {
     days_since_signup:  daysSinceSignup,
     venue_name:         vu.venues?.name ?? null,
     user_email:         user.email ?? null,
+    surface,
+    allow_public_share: allowPublicShare,
+    ...attachmentFields,
   };
-
-  const trimmedSubject = subject?.trim() || null;
-  const trimmedBody = body?.trim() ?? "";
 
   const { data: inserted, error } = await supabase
     .from("venue_feedback")
     .insert({
-      venue_id: vu.venue_id,
-      user_id:  user.id,
+      venue_id:           vu.venue_id,
+      vendor_id:          null,
+      client_id:          null,
+      user_id:            user.id,
       type,
-      subject:  trimmedSubject,
-      body:     trimmedBody,
-      rating:   rating ?? null,
+      subject:            trimmedSubject,
+      body:               trimmedBody,
+      rating:             rating ?? null,
+      allow_public_share: allowPublicShare,
+      surface:            "venue",
       metadata,
     })
     .select("id")
@@ -126,7 +306,11 @@ export async function POST(req: NextRequest) {
     rating:    rating ?? null,
     userEmail: user.email ?? "unknown",
     venueName: vu.venues?.name ?? "Unknown venue",
-    metadata,
+    metadata:  notifyMetaFrom({
+      current_url: metadata.current_url,
+      surface,
+      allow_public_share: allowPublicShare,
+    }, attachments),
   });
 
   pushFeedbackToCrm({
@@ -137,8 +321,10 @@ export async function POST(req: NextRequest) {
     subject: trimmedSubject,
     body: trimmedBody,
     rating: rating ?? null,
+    allowPublicShare,
     productFeedbackId: inserted?.id ?? null,
     sourceUrl: metadata.current_url,
+    attachments,
   });
 
   return NextResponse.json({ ok: true, id: inserted?.id ?? null });

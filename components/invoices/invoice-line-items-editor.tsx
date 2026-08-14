@@ -69,7 +69,13 @@ export function InvoiceLineItemsEditor({
   const isEditable = invoiceStatus === "draft";
 
   function handlePackagePick(pkg: Package) {
-    setInput({ type: "package", description: pkg.name, quantity: "1", unitPrice: String(pkg.basePrice), packageId: pkg.id });
+    setInput({
+      type: "package",
+      description: pkg.name,
+      quantity: "1",
+      unitPrice: pkg.basePrice == null ? "" : String(pkg.basePrice),
+      packageId: pkg.id,
+    });
   }
 
   function handleAdd() {
@@ -107,7 +113,7 @@ export function InvoiceLineItemsEditor({
               <button key={pkg.id} type="button"
                 onClick={() => { handlePackagePick(pkg); setShowAdd(true); }}
                 className="rounded-lg border border-border bg-card px-3 py-1.5 text-xs font-medium text-foreground hover:border-primary/40 hover:bg-muted/40 transition-colors">
-                {pkg.name} — {formatCurrency(pkg.basePrice)}
+                {pkg.name} — {pkg.basePrice == null ? "Set your price" : formatCurrency(pkg.basePrice)}
               </button>
             ))}
           </div>

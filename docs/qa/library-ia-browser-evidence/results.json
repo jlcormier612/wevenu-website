@@ -1,0 +1,177 @@
+{
+  "checks": [
+    {
+      "name": "library loads",
+      "ok": true,
+      "detail": "Library\n\nYour venue's toolbox — everything reusable, in one place. Templates you build once and use for every wedding.\n\nAGREEMENTS\n\nContract Templates\n\n1\n\nReusable contracts with fill-in details, read"
+    },
+    {
+      "name": "no Venue Guide card",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "no Pipeline Templates card",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "has Packages",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "has Message Templates",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "has Agreements",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "has Pricing",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "has Planning",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "has Communication",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "has Marketing",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "has Reports",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "packages card href /packages",
+      "ok": true,
+      "detail": "/packages"
+    },
+    {
+      "name": "packages page 200/load",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "library/packages redirects to /packages",
+      "ok": true,
+      "detail": "http://localhost:3000/packages"
+    },
+    {
+      "name": "venue guide loads",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "leads has Pipeline Templates entry",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "pipeline deep link loads",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "route /library/contracts",
+      "ok": true,
+      "detail": "status=200"
+    },
+    {
+      "name": "route /library/questionnaire-templates",
+      "ok": true,
+      "detail": "status=200"
+    },
+    {
+      "name": "route /library/inventory",
+      "ok": true,
+      "detail": "status=200"
+    },
+    {
+      "name": "route /library/inventory-templates",
+      "ok": true,
+      "detail": "status=200"
+    },
+    {
+      "name": "route /library/payment-schedules",
+      "ok": true,
+      "detail": "status=200"
+    },
+    {
+      "name": "route /library/playbooks",
+      "ok": true,
+      "detail": "status=200"
+    },
+    {
+      "name": "route /library/timeline-templates",
+      "ok": true,
+      "detail": "status=200"
+    },
+    {
+      "name": "route /library/floor-plan-templates",
+      "ok": true,
+      "detail": "status=200"
+    },
+    {
+      "name": "route /library/event-order-templates",
+      "ok": true,
+      "detail": "status=200"
+    },
+    {
+      "name": "route /communication/templates",
+      "ok": true,
+      "detail": "status=200"
+    },
+    {
+      "name": "route /library/qr-campaigns",
+      "ok": true,
+      "detail": "status=200"
+    },
+    {
+      "name": "route /library/brochures",
+      "ok": true,
+      "detail": "status=200"
+    },
+    {
+      "name": "route /reporting/saved",
+      "ok": true,
+      "detail": "status=200"
+    },
+    {
+      "name": "mobile library no Venue Guide",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "mobile library has Message Templates",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "sidebar has Venue Guide",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "sidebar Library only once section",
+      "ok": true,
+      "detail": ""
+    }
+  ],
+  "errors": [],
+  "pass": 34,
+  "fail": 0
+}

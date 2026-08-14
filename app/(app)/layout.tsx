@@ -12,6 +12,10 @@ import { recordStaffActivity } from "@/lib/activation/service";
  * (defense in depth alongside the proxy), then enforces the foundational rule:
  * nothing in VenueOS exists until the venue exists. Without a completed venue,
  * the user is sent to Venue Setup.
+ *
+ * Legal acceptance for returning users is enforced by Legal Middleware in
+ * `integrations/supabase/proxy.ts` → `/welcome` (WP4). This layout no longer
+ * mounts a parallel staff-legal gate.
  */
 export default async function WorkspaceLayout({
   children,

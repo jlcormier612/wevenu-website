@@ -9,6 +9,7 @@ import { toast } from "sonner";
 
 import {
   assignVendorAction,
+  dismissVendorRemovalRequestAction,
   removeVendorAssignmentAction,
   setVendorAssignmentPaymentAction,
 } from "@/app/(app)/events/[id]/vendor-actions";
@@ -26,6 +27,7 @@ import { useSyncedState } from "@/lib/hooks/use-synced-state";
 import type { Document } from "@/lib/documents/types";
 import { formatTime, vendorCategoryLabel } from "@/lib/vendors/constants";
 import type { EventVendorAssignment, Vendor } from "@/lib/vendors/types";
+import type { EventVendorRemovalRequest } from "@/lib/vendor-removal-requests/types";
 
 // ── Check-in badge ────────────────────────────────────────────────────────────
 
@@ -164,10 +166,40 @@ export function EventVendorsSection({
     });
   }
 
-  async function handleRemove(assignmentId: string) {
+  async function handleRemove(assignmentId: string, vendorName: string) {
+    if (!confirm(`Remove ${vendorName} from this event? They'll lose access to the event workspace and conversations for this booking.`)) {
+      return;
+    }
     setAssignments(prev => prev.filter(a => a.id !== assignmentId));
     const result = await removeVendorAssignmentAction(assignmentId, eventId);
-    if (!result.ok) { toast.error("Could not remove vendor."); router.refresh(); }
+    if (!result.ok) {
+      toast.error("Could not remove vendor.");
+      router.refresh();
+      return;
+    }
+    toast.success(`${vendorName} removed from this event.`);
+    router.refresh();
+  }
+
+  async function handleDismissRequest(req: EventVendorRemovalRequest) {
+    setAssignments((prev) =>
+      prev.map((a) =>
+        a.id !== req.assignmentId
+          ? a
+          : {
+              ...a,
+              pendingRemovalRequests: (a.pendingRemovalRequests ?? []).filter((r) => r.id !== req.id),
+            },
+      ),
+    );
+    const result = await dismissVendorRemovalRequestAction(req.id, eventId);
+    if (!result.ok) {
+      toast.error(result.message ?? "Could not dismiss request.");
+      router.refresh();
+      return;
+    }
+    toast.success("Request dismissed — vendor stays assigned.");
+    router.refresh();
   }
 
   return (
@@ -225,13 +257,52 @@ export function EventVendorsSection({
                     </button>
                   )}
                   <button type="button"
-                    onClick={() => handleRemove(a.id)}
+                    onClick={() => handleRemove(a.id, a.vendorName)}
                     className="opacity-0 transition-opacity group-hover:opacity-100 text-muted-foreground hover:text-destructive"
                     aria-label="Remove vendor">
                     <Trash2 className="h-3.5 w-3.5" />
                   </button>
                 </div>
               </div>
+
+              {(a.pendingRemovalRequests ?? []).length > 0 && (
+                <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 space-y-2">
+                  {(a.pendingRemovalRequests ?? []).map((req) => (
+                    <div key={req.id} className="flex flex-wrap items-start justify-between gap-2">
+                      <div className="min-w-0 space-y-0.5">
+                        <p className="text-xs font-medium text-amber-900">
+                          {req.requestedBy === "couple"
+                            ? `Couple withdrew ${a.vendorName} — remove from event?`
+                            : `${a.vendorName} requested to leave`}
+                        </p>
+                        {req.reason && (
+                          <p className="text-[11px] text-amber-800/80 italic">“{req.reason}”</p>
+                        )}
+                      </div>
+                      <div className="flex shrink-0 items-center gap-1.5">
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          className="h-7 text-xs"
+                          onClick={() => handleDismissRequest(req)}
+                        >
+                          Dismiss request
+                        </Button>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="destructive"
+                          className="h-7 text-xs"
+                          onClick={() => handleRemove(a.id, a.vendorName)}
+                        >
+                          Remove
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
 
               {/* Row 2: Check-in status + payment */}
               <div className="flex flex-wrap items-center gap-3 pt-0.5 border-t border-border/50">

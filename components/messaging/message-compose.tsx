@@ -68,6 +68,11 @@ export function MessageCompose({
       toast.error("Please fill in all required fields.");
       return;
     }
+    if (!confirm(
+      `Send this message to ${toEmail.trim()}?\n\n`
+      + `Subject: ${subject.trim()}\n\n`
+      + "This emails the recipient now. It does not recall messages already sent.",
+    )) return;
     startSend(async () => {
       const input: ComposeInput = {
         toEmail: toEmail.trim(), toName: defaultToName, subject: subject.trim(), body: body.trim(), luvDraftId,

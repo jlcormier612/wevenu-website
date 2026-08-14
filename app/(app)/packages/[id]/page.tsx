@@ -21,11 +21,20 @@ export default async function EditPackagePage({ params }: Props) {
   if (!pkg) notFound();
   return (
     <div className="space-y-6">
-      <PageHeader title={`Edit · ${pkg.name}`} description="Update this package's details and pricing." />
+      <PageHeader
+        title={`Edit · ${pkg.name}`}
+        description={
+          pkg.sourceMasterKey
+            ? "Hello to Cheers starter — customize inclusions and set your pricing. Changes never rewrite Event Orders or invoices that already used this package."
+            : "Update this package's details and pricing."
+        }
+      />
       <Card>
         <CardHeader>
           <CardTitle>Package details</CardTitle>
-          <CardDescription>Changes apply to future invoices — existing line items are not updated.</CardDescription>
+          <CardDescription>
+            Catalog changes apply to future invoices and Event Orders only — existing committed lines keep their snapshotted values.
+          </CardDescription>
         </CardHeader>
         <CardContent><PackageForm existing={pkg} /></CardContent>
       </Card>

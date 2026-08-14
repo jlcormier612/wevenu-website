@@ -1,0 +1,34 @@
+{
+  "workPackage": "Couple Home – Implementation 6 – Luv Suggestions",
+  "url": "http://127.0.0.1:3000/p/seedcoupleportal00000000000000000000000000000001",
+  "desktop": {
+    "viewport": {
+      "width": 1280,
+      "height": 900
+    },
+    "luvText": "💗 FROM LUV You completed 2 planning items this week — lovely momentum.",
+    "hasFromLuv": true,
+    "hasVenueNeeds": false,
+    "hasForbidden": false,
+    "hasChatUI": false,
+    "fabVisible": true,
+    "fabOverlapsNextStepsAtRest": false,
+    "orderOk": true,
+    "fabOpensPanel": true
+  },
+  "mobile": {
+    "viewport": {
+      "width": 390,
+      "height": 844
+    },
+    "luvText": "💗 FROM LUV You completed 2 planning items this week — lovely momentum.",
+    "hasFromLuv": true,
+    "hasVenueNeeds": false,
+    "hasForbidden": false,
+    "hasChatUI": false,
+    "fabVisible": true,
+    "fabOverlapsNextStepsAtRest": false,
+    "orderOk": true,
+    "fabOpensPanel": true
+  }
+}

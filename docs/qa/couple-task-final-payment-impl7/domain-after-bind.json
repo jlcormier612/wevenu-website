@@ -1,0 +1,51 @@
+{
+  "label": "after-bind",
+  "at": "2026-08-10T01:54:53.119Z",
+  "lines": [
+    {
+      "id": "ca5b437f-2098-4ad7-890a-b1c98702a73e",
+      "label": "First Installment",
+      "status": "overdue",
+      "obligation_kind": "installment",
+      "paid_amount": null,
+      "sort_order": 0
+    },
+    {
+      "id": "ad6d4268-bae1-478a-9694-a9248aa51d4d",
+      "label": "Second Installment",
+      "status": "overdue",
+      "obligation_kind": "installment",
+      "paid_amount": null,
+      "sort_order": 1
+    },
+    {
+      "id": "dbb97688-f9d5-477a-9f6e-ae46df67465c",
+      "label": "Final Payment",
+      "status": "pending",
+      "obligation_kind": "final",
+      "paid_amount": null,
+      "sort_order": 2
+    }
+  ],
+  "finalTask": {
+    "id": "d315e9d6-cbf2-4161-baeb-979abbebb74d",
+    "title": "Final payment",
+    "status": "pending",
+    "auto_complete_trigger": "final_payment_obligation_paid",
+    "payment_line_item_id": "dbb97688-f9d5-477a-9f6e-ae46df67465c",
+    "completed_at": null
+  },
+  "celebrationCounts": {
+    "final_payment_obligation_paid": 0,
+    "final_payment_received": 0
+  },
+  "celebrations": [],
+  "invoices": [
+    {
+      "id": "227dee3e-967a-4d8f-bd80-a249f5ca5ab6",
+      "status": "sent",
+      "total": 12960,
+      "balance_due": 12960
+    }
+  ]
+}

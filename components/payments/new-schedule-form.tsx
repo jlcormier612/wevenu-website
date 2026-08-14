@@ -14,8 +14,11 @@ import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
 import { formatCurrency } from "@/lib/invoices/constants";
 import type { Invoice } from "@/lib/invoices/types";
-import { SCHEDULE_PRESETS } from "@/lib/payments/constants";
 import type { PaymentErrors, ScheduleInput } from "@/lib/payments/types";
+import {
+  getAdditionalSchedulePresets,
+  getPaymentPlanStarters,
+} from "@/lib/payments/starters";
 
 /**
  * Booking Financial Architecture Phase 1: a Payment Schedule always belongs
@@ -25,19 +28,22 @@ import type { PaymentErrors, ScheduleInput } from "@/lib/payments/types";
  */
 export function NewScheduleForm({ linkedInvoice }: { linkedInvoice: Invoice }) {
   const router = useRouter();
+  const starters = getPaymentPlanStarters();
+  const additional = getAdditionalSchedulePresets();
   const [input, setInput] = React.useState<ScheduleInput>({
-    title: linkedInvoice.clientName ? `Payment Schedule — ${linkedInvoice.clientName}` : `Payment Schedule — ${linkedInvoice.invoiceNumber}`,
+    title: linkedInvoice.clientName ? `Payment Plan — ${linkedInvoice.clientName}` : `Payment Plan — ${linkedInvoice.invoiceNumber}`,
     invoiceId: linkedInvoice.id,
     notes: "",
   });
-  const [presetId, setPresetId] = React.useState("fifty_fifty");
+  const [presetId, setPresetId] = React.useState(starters[0]?.id ?? "thirds");
+  const [showAdditional, setShowAdditional] = React.useState(false);
   const [errors, setErrors] = React.useState<PaymentErrors>({});
   const [pending, startTransition] = React.useTransition();
 
   function handleSubmit() {
     startTransition(async () => {
       const result = await createScheduleAction(input, presetId, linkedInvoice.eventDate ?? null);
-      if (result.ok) { toast.success("Payment schedule created."); router.push(`/payments/${result.scheduleId}`); return; }
+      if (result.ok) { toast.success("Payment plan created."); router.push(`/payments/${result.scheduleId}`); return; }
       if (result.errors) setErrors(result.errors);
       toast.error(result.message ?? "Please fix the highlighted fields.");
     });
@@ -57,17 +63,22 @@ export function NewScheduleForm({ linkedInvoice }: { linkedInvoice: Invoice }) {
         </p>
       </div>
 
-      <Field label="Schedule title *" htmlFor="ps-title" error={errors.title}>
+      <Field label="Plan title *" htmlFor="ps-title" error={errors.title}>
         <Input id="ps-title" value={input.title}
           onChange={(e) => { setInput((p) => ({ ...p, title: e.target.value })); setErrors((p) => { const n = {...p}; delete n.title; return n; }); }}
-          placeholder="Payment Schedule — Client Name" aria-invalid={errors.title ? true : undefined} />
+          placeholder="Payment Plan — Client Name" aria-invalid={errors.title ? true : undefined} />
       </Field>
 
       <Separator />
       <div className="space-y-3">
-        <p className="text-sm font-medium text-heading">Payment structure</p>
-        <div className="grid gap-2 sm:grid-cols-2">
-          {SCHEDULE_PRESETS.map((preset) => (
+        <div>
+          <p className="text-sm font-medium text-heading">Starting schedule</p>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Choose a starting schedule, then adjust it to match the way your venue collects payments.
+          </p>
+        </div>
+        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+          {starters.map((preset) => (
             <button
               key={preset.id}
               type="button"
@@ -76,11 +87,44 @@ export function NewScheduleForm({ linkedInvoice }: { linkedInvoice: Invoice }) {
             >
               <p className="text-sm font-medium text-foreground">{preset.label}</p>
               <p className="text-xs text-muted-foreground mt-0.5">{preset.description}</p>
+              {preset.items.length > 0 && (
+                <ul className="mt-2 space-y-0.5 text-[11px] text-muted-foreground">
+                  {preset.items.map((item) => (
+                    <li key={item.label}>• {item.label}</li>
+                  ))}
+                </ul>
+              )}
             </button>
           ))}
         </div>
+        {additional.length > 0 && (
+          <div className="space-y-2">
+            <button
+              type="button"
+              className="text-xs text-muted-foreground underline hover:text-foreground"
+              onClick={() => setShowAdditional((v) => !v)}
+            >
+              {showAdditional ? "Hide additional splits" : "Show additional certified splits"}
+            </button>
+            {showAdditional && (
+              <div className="grid gap-2 sm:grid-cols-2">
+                {additional.map((preset) => (
+                  <button
+                    key={preset.id}
+                    type="button"
+                    onClick={() => setPresetId(preset.id)}
+                    className={`rounded-lg border p-3 text-left transition-colors ${presetId === preset.id ? "border-primary bg-primary/5" : "border-border hover:border-primary/40 hover:bg-muted/40"}`}
+                  >
+                    <p className="text-sm font-medium text-foreground">{preset.label}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">{preset.description}</p>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
         <p className="text-xs text-muted-foreground">
-          Dates are calculated from the event date, when known. You can adjust everything after creation.
+          Amounts are calculated from the invoice total. Dates use the event date when known. You can rename, add, remove, and adjust everything after creation.
         </p>
       </div>
 
@@ -93,7 +137,7 @@ export function NewScheduleForm({ linkedInvoice }: { linkedInvoice: Invoice }) {
       <div className="flex items-center justify-end gap-3">
         <Button type="button" variant="outline" onClick={() => router.back()} disabled={pending}>Cancel</Button>
         <Button type="button" onClick={handleSubmit} disabled={pending}>
-          {pending ? <><Loader2 className="mr-1 h-4 w-4 animate-spin" />Creating…</> : "Create Schedule"}
+          {pending ? <><Loader2 className="mr-1 h-4 w-4 animate-spin" />Creating…</> : "Create Payment Plan"}
         </Button>
       </div>
     </div>

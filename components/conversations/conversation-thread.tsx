@@ -596,12 +596,29 @@ export function ConversationThread({
 
       {summary && automations.length > 0 && (
         <div className="shrink-0 space-y-1.5 border-t border-border/60 px-3 py-2">
-          {automations.map((a) => (
-            <div key={a.id} className="flex items-center gap-2 rounded-lg border border-dashed border-border bg-muted/30 px-3 py-2">
-              <Workflow className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-              <p className="text-xs font-medium text-heading">In &ldquo;{a.sequenceName}&rdquo; automation</p>
-            </div>
-          ))}
+          {automations.map((a) => {
+            const total = a.stepsTotal ?? 0;
+            const sent = a.stepsSent ?? 0;
+            const stepNum = total > 0 ? Math.min(sent + 1, total) : null;
+            const next = a.nextScheduledFor
+              ? new Date(a.nextScheduledFor).toLocaleString("en-US", {
+                  month: "short", day: "numeric", hour: "numeric", minute: "2-digit",
+                })
+              : null;
+            return (
+              <div key={a.id} className="flex items-center gap-2 rounded-lg border border-dashed border-border bg-muted/30 px-3 py-2">
+                <Workflow className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                <div className="min-w-0">
+                  <p className="text-xs font-medium text-heading">In &ldquo;{a.sequenceName}&rdquo; automation</p>
+                  {stepNum != null && (
+                    <p className="text-[10px] text-muted-foreground">
+                      Step {stepNum} of {total}{next ? ` · Next ${next}` : ""}
+                    </p>
+                  )}
+                </div>
+              </div>
+            );
+          })}
         </div>
       )}
 

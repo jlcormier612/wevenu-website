@@ -3,6 +3,8 @@
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 
+import { greetingFirstName } from "@shared/relationships/normalize";
+
 type OwnerPanel = "task" | "message" | "note" | null;
 
 type Props = {
@@ -49,6 +51,12 @@ export function LifecycleActions({
   const [plan, setPlan] = useState(planId === "none" ? "gather" : planId);
   const [wg, setWg] = useState(onboardingType === "white_glove");
 
+  const greetName = greetingFirstName({
+    firstName: ownerFirstName,
+    email: ownerEmail,
+  });
+  const replyGreeting = `Hi ${greetName},\n\n`;
+
   const [ownerPanel, setOwnerPanel] = useState<OwnerPanel>(null);
   const [taskTitle, setTaskTitle] = useState("");
   const [taskDue, setTaskDue] = useState(() => {
@@ -60,9 +68,7 @@ export function LifecycleActions({
   const [msgSubject, setMsgSubject] = useState(
     venueName ? `Following up — ${venueName}` : "Following up",
   );
-  const [msgBody, setMsgBody] = useState(
-    ownerFirstName ? `Hi ${ownerFirstName},\n\n` : "Hi,\n\n",
-  );
+  const [msgBody, setMsgBody] = useState(replyGreeting);
   const [noteText, setNoteText] = useState("");
   const [ownerBusy, setOwnerBusy] = useState(false);
 
@@ -129,7 +135,7 @@ export function LifecycleActions({
         setTaskTitle("");
         setTaskDescription("");
       } else if (action === "send_message") {
-        setMsgBody(ownerFirstName ? `Hi ${ownerFirstName},\n\n` : "Hi,\n\n");
+        setMsgBody(replyGreeting);
       } else {
         setNoteText("");
       }

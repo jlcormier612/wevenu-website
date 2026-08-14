@@ -1,50 +1,41 @@
-import type { Metadata } from "next";
+import { redirect } from "next/navigation";
 
-import { PageHeader } from "@/components/shell/module-placeholder";
-import { LeadFunnelCard } from "@/components/analytics/lead-funnel-card";
-import { EventsCard } from "@/components/analytics/events-card";
-import { PaymentsCard } from "@/components/analytics/payments-card";
-import { CoupleEngagementCard } from "@/components/analytics/couple-engagement-card";
-import { FeatureAdoptionCard } from "@/components/analytics/feature-adoption-card";
-import { HealthScoresSection } from "@/components/analytics/health-scores-section";
-import { LuvRollUpCard } from "@/components/luv/luv-roll-up-card";
-import { getVenueAnalytics, getClientHealthScores } from "@/lib/analytics/service";
-
-export const metadata: Metadata = { title: "Analytics" };
-
-export default async function AnalyticsPage() {
-  const [analytics, health] = await Promise.all([
-    getVenueAnalytics(),
-    getClientHealthScores(),
-  ]);
-
-  return (
-    <div className="space-y-6">
-      <PageHeader
-        title="Analytics"
-        description="Lead conversion, client engagement, and venue performance."
-      />
-
-      {/* Luv Roll-Up — synthesized AI observations at the top */}
-      <LuvRollUpCard />
-
-      {/* Top grid — funnel + events */}
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        <LeadFunnelCard data={analytics?.leadFunnel ?? null} />
-        <EventsCard data={analytics?.events ?? null} />
-      </div>
-
-      {/* Middle grid — payments + engagement */}
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        <PaymentsCard data={analytics?.payments ?? null} />
-        <CoupleEngagementCard data={analytics?.coupleEngagement ?? null} />
-      </div>
-
-      {/* Feature Adoption — full width */}
-      <FeatureAdoptionCard data={analytics?.featureAdoption ?? null} />
-
-      {/* Client Health — full width */}
-      <HealthScoresSection data={health} />
-    </div>
-  );
+/**
+ * Work Package R2 — legacy Analytics retirement (brief §49/§51).
+ *
+ * Every capability this page had is now accounted for in /reporting:
+ *   - Lead Funnel (leads.status='won' proxy) + by-source     → superseded by
+ *     the canonical Sales report (real Booking definition, not a proxy).
+ *   - Events upcoming/this-month/next-month/12mo trend       → superseded by
+ *     the Events report's own date-range-filterable trend.
+ *   - Events avg guest count                                  → migrated to
+ *     the Events report.
+ *   - Payments totalCollected/totalBilled/completionRate/
+ *     totalOutstanding (all non-canonical, duplicate formulas
+ *     per lib/metrics/registry.ts's own "legacy_unmigrated"
+ *     entries)                                                 → superseded
+ *     by the Revenue report's canonical Payments Collected / Outstanding
+ *     Balance.
+ *   - Payments overdue count/amount                            → migrated
+ *     into the Revenue report's Outstanding Balance detail (per-client
+ *     "Overdue" flag).
+ *   - Client Health (canonical Relationship Health)            → migrated,
+ *     compact form, into the Bookings report's "Clients Needing Attention."
+ *   - Client Engagement (portal adoption / RSVP completion) and
+ *     Feature Adoption (8 platform-usage rates)                → deliberately
+ *     deferred, not migrated — no canonical Metric Registry definition
+ *     exists for either, and they answer a product-adoption question, not
+ *     a Sales/Bookings/Revenue/Events business question. Documented as a
+ *     Canonical Metric Gap in docs/reporting-depth-and-consolidation-
+ *     implementation.md rather than silently dropped or force-fit into an
+ *     IA category that doesn't fit them.
+ *   - Luv Roll-Up                                               → explicitly
+ *     out of Reporting's scope (brief §55); Luv's own surfaces are
+ *     unaffected by this retirement.
+ *
+ * A plain redirect, not a deletion — existing bookmarks/links still land
+ * somewhere real (brief §51).
+ */
+export default function AnalyticsPage() {
+  redirect("/reporting");
 }

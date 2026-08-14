@@ -15,6 +15,7 @@ import {
   computeRiskSection,
   countAutoArrivalsForStage,
   deriveCustomerSuccessStage,
+  relationshipHasOpenSupport,
   toCustomerHealthBadge,
   type CustomerSuccessStage,
 } from "@/lib/sales-cs";
@@ -184,7 +185,7 @@ export function CustomerSuccessBoard({
                       <div className="flex items-start justify-between gap-2">
                         <Link
                           href={`/relationships/${r.id}?from=customer-success${
-                            (r.supportOpenCount || 0) > 0 ? "&panel=support" : ""
+                            relationshipHasOpenSupport(r) ? "&panel=support" : ""
                           }`}
                           className="font-medium hover:text-[var(--heritage-sage)]"
                         >

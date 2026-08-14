@@ -23,7 +23,10 @@ export async function POST(request: Request) {
   try {
     const form = await request.formData();
     const file = form.get("file") as File | null;
-    const scope = (form.get("scope")?.toString() || "library") as "library" | "event";
+    const scope = (form.get("scope")?.toString() || "library") as
+      | "library"
+      | "event"
+      | "task-template";
     const eventId = form.get("eventId")?.toString();
 
     if (!file) return NextResponse.json({ ok: false, error: "No file." }, { status: 400 });
@@ -49,9 +52,12 @@ export async function POST(request: Request) {
     const safe = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
     const ext = safe.includes(".") ? safe.split(".").pop() : "bin";
     const id = crypto.randomUUID();
-    const path = scope === "event" && eventId
-      ? `${vendorUser.vendor_id}/events/${eventId}/${id}.${ext}`
-      : `${vendorUser.vendor_id}/library/${id}.${ext}`;
+    const path =
+      scope === "event" && eventId
+        ? `${vendorUser.vendor_id}/events/${eventId}/${id}.${ext}`
+        : scope === "task-template"
+          ? `${vendorUser.vendor_id}/task-templates/${id}.${ext}`
+          : `${vendorUser.vendor_id}/library/${id}.${ext}`;
 
     const supabase = serviceClient();
     const { error: uploadErr } = await supabase.storage

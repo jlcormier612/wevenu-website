@@ -8,6 +8,10 @@
  * this task doesn't touch. Drag-and-drop reuses the same native HTML5
  * primitives as the Pipeline Template stage editor and Pipeline Board — no
  * new dependency.
+ *
+ * day_offset (2026-08): templates aren't bound to a calendar range, so the
+ * Day field uses "Day 1" / "Day 2" labels. Applied bookings clamp against
+ * the event's actual end date.
  */
 
 import * as React from "react";
@@ -16,25 +20,35 @@ import { AlertTriangle, GripVertical, Loader2, Pencil, Plus, Trash2 } from "luci
 import { toast } from "sonner";
 
 import { addItemAction, deleteItemAction, reorderItemsAction, updateItemAction } from "@/app/(app)/timeline-templates/actions";
+import { LibrarySaveStatus, useLibrarySaveStatus } from "@/components/library/library-save-status";
+import { librarySavedToastMessage, useLibraryUnsavedGuard } from "@/components/library/use-library-unsaved-guard";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Textarea } from "@/components/ui/textarea";
-import { TIMELINE_AUDIENCES } from "@/lib/timeline-templates/constants";
+import {
+  TEMPLATE_DAY_OFFSET_OPTIONS,
+  VENUE_TIMELINE_AUDIENCES,
+  formatTemplateDayLabel,
+} from "@/lib/timeline-templates/constants";
 import type { TimelineTemplateItem, TimelineTemplateItemInput } from "@/lib/timeline-templates/types";
 import type { TimelineAudience } from "@/lib/timeline/types";
 
 function emptyForm(sortOrder: number): TimelineTemplateItemInput {
-  return { title: "", description: null, notes: null, timeOfDay: null, minutesOffset: null, needsReview: false, audiences: ["venue"], sortOrder };
+  return {
+    title: "", description: null, notes: null, timeOfDay: null, minutesOffset: null,
+    dayOffset: 0, needsReview: false, audiences: ["venue"], sortOrder,
+  };
 }
 
 function itemToForm(item: TimelineTemplateItem): TimelineTemplateItemInput {
   return {
     title: item.title, description: item.description, notes: item.notes,
-    timeOfDay: item.timeOfDay, minutesOffset: item.minutesOffset, needsReview: item.needsReview,
-    audiences: item.audiences, sortOrder: item.sortOrder,
+    timeOfDay: item.timeOfDay, minutesOffset: item.minutesOffset, dayOffset: item.dayOffset ?? 0,
+    needsReview: item.needsReview, audiences: item.audiences, sortOrder: item.sortOrder,
   };
 }
 
@@ -54,19 +68,33 @@ export function TimelineTemplateEditor({ templateId, initialItems }: { templateI
   const [form, setForm] = React.useState<TimelineTemplateItemInput>(() => emptyForm(0));
   const [saving, setSaving] = React.useState(false);
   const [deletingId, setDeletingId] = React.useState<string | null>(null);
+  const saveUi = useLibrarySaveStatus();
+  const sheetBaseline = React.useRef("");
+  const sheetDirty = sheetOpen && JSON.stringify(form) !== sheetBaseline.current;
+  const { confirmLeave } = useLibraryUnsavedGuard(sheetDirty);
 
   const dragIndex = React.useRef<number | null>(null);
   const [dragOverIndex, setDragOverIndex] = React.useState<number | null>(null);
 
+  const dayOptions = React.useMemo(() => {
+    const maxUsed = items.reduce((m, it) => Math.max(m, it.dayOffset ?? 0), 0);
+    const max = Math.max(TEMPLATE_DAY_OFFSET_OPTIONS[TEMPLATE_DAY_OFFSET_OPTIONS.length - 1], maxUsed, form.dayOffset ?? 0);
+    return Array.from({ length: max + 1 }, (_, i) => i);
+  }, [items, form.dayOffset]);
+
   function openAdd() {
     setEditingId(null);
-    setForm(emptyForm(items.length));
+    const next = emptyForm(items.length);
+    setForm(next);
+    sheetBaseline.current = JSON.stringify(next);
     setSheetOpen(true);
   }
 
   function openEdit(item: TimelineTemplateItem) {
     setEditingId(item.id);
-    setForm(itemToForm(item));
+    const next = itemToForm(item);
+    setForm(next);
+    sheetBaseline.current = JSON.stringify(next);
     setSheetOpen(true);
   }
 
@@ -83,13 +111,18 @@ export function TimelineTemplateEditor({ templateId, initialItems }: { templateI
     // Saving through this form is itself the review — a coordinator who
     // opened an imported item and clicked Save has looked at its timing,
     // whether or not they changed it. needsReview always clears here.
-    const reviewed = { ...form, needsReview: false };
+    const reviewed = { ...form, dayOffset: form.dayOffset ?? 0, needsReview: false };
     if (editingId) {
       const result = await updateItemAction(editingId, templateId, reviewed);
       setSaving(false);
       if (result.ok) {
-        setItems((p) => p.map((it) => (it.id === editingId ? { ...it, ...reviewed, description: reviewed.description, notes: reviewed.notes } : it)));
+        setItems((p) => p
+          .map((it) => (it.id === editingId
+            ? { ...it, ...reviewed, description: reviewed.description, notes: reviewed.notes, dayOffset: reviewed.dayOffset ?? 0 }
+            : it))
+          .sort((a, b) => (a.dayOffset ?? 0) - (b.dayOffset ?? 0) || a.sortOrder - b.sortOrder));
         setSheetOpen(false);
+        toast.success(librarySavedToastMessage());
       } else {
         toast.error(result.message ?? "Could not save item.");
       }
@@ -100,9 +133,10 @@ export function TimelineTemplateEditor({ templateId, initialItems }: { templateI
         const now = new Date().toISOString();
         setItems((p) => [...p, {
           id: result.itemId!, templateId, venueId: "", title: reviewed.title, description: reviewed.description,
-          notes: reviewed.notes, timeOfDay: reviewed.timeOfDay, minutesOffset: reviewed.minutesOffset, needsReview: false,
+          notes: reviewed.notes, timeOfDay: reviewed.timeOfDay, minutesOffset: reviewed.minutesOffset,
+          dayOffset: reviewed.dayOffset ?? 0, needsReview: false,
           audiences: reviewed.audiences, sortOrder: reviewed.sortOrder, createdAt: now, updatedAt: now,
-        }]);
+        }].sort((a, b) => (a.dayOffset ?? 0) - (b.dayOffset ?? 0) || a.sortOrder - b.sortOrder));
         setSheetOpen(false);
       } else {
         toast.error((result as { message?: string }).message ?? "Could not add item.");
@@ -131,18 +165,32 @@ export function TimelineTemplateEditor({ templateId, initialItems }: { templateI
       const next = [...p];
       const [moved] = next.splice(from, 1);
       next.splice(index, 0, moved);
+      saveUi.markSaving();
       reorderItemsAction(templateId, next.map((it) => it.id)).then((result) => {
-        if (!result.ok) toast.error(result.message ?? "Could not save the new order.");
+        if (!result.ok) {
+          saveUi.markError();
+          toast.error(result.message ?? "Could not save the new order.");
+        } else {
+          saveUi.markSaved();
+        }
       });
       return next;
     });
   }
 
+  const multiDayTemplate = items.some((it) => (it.dayOffset ?? 0) > 0);
+
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h2 className="font-heading text-lg font-medium text-heading">Timeline Items</h2>
-        <Button type="button" size="sm" onClick={openAdd}><Plus className="mr-1.5 h-3.5 w-3.5" />Add Item</Button>
+      <div className="flex items-center justify-between gap-2">
+        <div>
+          <h2 className="font-heading text-lg font-medium text-heading">Timeline Items</h2>
+          <p className="text-xs text-muted-foreground">Item edits use Save changes. Reordering saves automatically.</p>
+        </div>
+        <div className="flex items-center gap-3">
+          <LibrarySaveStatus status={saveUi.status} model="autosave" />
+          <Button type="button" size="sm" onClick={openAdd}><Plus className="mr-1.5 h-3.5 w-3.5" />Add Item</Button>
+        </div>
       </div>
 
       {items.length === 0 ? (
@@ -154,6 +202,7 @@ export function TimelineTemplateEditor({ templateId, initialItems }: { templateI
         <div className="space-y-2">
           {items.map((item, index) => {
             const timing = summarizeTiming(item);
+            const showDayBadge = multiDayTemplate || (item.dayOffset ?? 0) > 0;
             return (
               <div
                 key={item.id}
@@ -171,6 +220,11 @@ export function TimelineTemplateEditor({ templateId, initialItems }: { templateI
                 </div>
                 <div className="min-w-0 flex-1 space-y-1">
                   <div className="flex flex-wrap items-center gap-2">
+                    {showDayBadge && (
+                      <Badge variant="secondary" className="text-[10px] font-medium">
+                        {formatTemplateDayLabel(item.dayOffset ?? 0)}
+                      </Badge>
+                    )}
                     <p className="text-sm font-medium text-foreground">{item.title}</p>
                     {timing ? (
                       <span className="text-xs text-muted-foreground">{timing}</span>
@@ -187,7 +241,7 @@ export function TimelineTemplateEditor({ templateId, initialItems }: { templateI
                   {item.notes && <p className="text-xs italic text-muted-foreground">Note: {item.notes}</p>}
                   <div className="flex flex-wrap gap-1">
                     {item.audiences.map((a) => {
-                      const meta = TIMELINE_AUDIENCES.find((t) => t.value === a);
+                      const meta = VENUE_TIMELINE_AUDIENCES.find((t) => t.value === a);
                       return <Badge key={a} variant="outline" className="text-[10px]">{meta?.emoji} {meta?.label ?? a}</Badge>;
                     })}
                   </div>
@@ -206,7 +260,10 @@ export function TimelineTemplateEditor({ templateId, initialItems }: { templateI
         </div>
       )}
 
-      <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
+      <Sheet open={sheetOpen} onOpenChange={(next) => {
+        if (!next && sheetDirty && !confirmLeave()) return;
+        setSheetOpen(next);
+      }}>
         <SheetContent side="right" className="w-full sm:max-w-lg overflow-y-auto">
           <SheetHeader className="mb-6">
             <SheetTitle>{editingId ? "Edit Item" : "Add Item"}</SheetTitle>
@@ -216,7 +273,22 @@ export function TimelineTemplateEditor({ templateId, initialItems }: { templateI
               <Label className="text-xs">Title</Label>
               <Input value={form.title} onChange={(e) => setForm((p) => ({ ...p, title: e.target.value }))} placeholder="Ceremony begins" className="h-9 text-sm" />
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-3 gap-3">
+              <div className="space-y-1.5">
+                <Label className="text-xs">Day</Label>
+                <Select
+                  value={String(form.dayOffset ?? 0)}
+                  onValueChange={(v) => setForm((p) => ({ ...p, dayOffset: Number(v) || 0 }))}
+                  items={dayOptions.map((d) => ({ value: String(d), label: formatTemplateDayLabel(d) }))}
+                >
+                  <SelectTrigger className="h-9 text-sm w-full"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {dayOptions.map((d) => (
+                      <SelectItem key={d} value={String(d)}>{formatTemplateDayLabel(d)}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
               <div className="space-y-1.5">
                 <Label className="text-xs">Time</Label>
                 <Input
@@ -234,7 +306,9 @@ export function TimelineTemplateEditor({ templateId, initialItems }: { templateI
                 />
               </div>
             </div>
-            <p className="-mt-2 text-[11px] text-muted-foreground">Relative Time is minutes from the event&apos;s start time (negative = before, 0 = at start). Time is an optional fixed clock time.</p>
+            <p className="-mt-2 text-[11px] text-muted-foreground">
+              Day is relative to the event start (Day 1 = first calendar day). Relative Time is minutes from the event&apos;s start time (negative = before). Time is an optional fixed clock time.
+            </p>
             <div className="space-y-1.5">
               <Label className="text-xs">Description</Label>
               <Textarea value={form.description ?? ""} onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))} className="min-h-16 text-sm" />
@@ -242,7 +316,7 @@ export function TimelineTemplateEditor({ templateId, initialItems }: { templateI
             <div className="space-y-1.5">
               <Label className="text-xs">Audience</Label>
               <div className="flex flex-wrap gap-1.5">
-                {TIMELINE_AUDIENCES.map((a) => (
+                {VENUE_TIMELINE_AUDIENCES.map((a) => (
                   <button
                     key={a.value}
                     type="button"
@@ -262,9 +336,10 @@ export function TimelineTemplateEditor({ templateId, initialItems }: { templateI
             </div>
           </div>
           <div className="mt-6 flex items-center justify-end gap-2">
-            <Button type="button" variant="outline" onClick={() => setSheetOpen(false)} disabled={saving}>Cancel</Button>
-            <Button type="button" disabled={!form.title.trim() || saving} onClick={handleSave}>
-              {saving ? <><Loader2 className="mr-1.5 h-4 w-4 animate-spin" />Saving…</> : editingId ? "Save Changes" : "Add Item"}
+            <LibrarySaveStatus status={saving ? "saving" : sheetDirty ? "dirty" : "idle"} model="explicit" className="mr-auto" />
+            <Button type="button" variant="outline" onClick={() => { if (confirmLeave()) setSheetOpen(false); }} disabled={saving}>Cancel</Button>
+            <Button type="button" disabled={!form.title.trim() || saving || (editingId != null && !sheetDirty)} onClick={handleSave}>
+              {saving ? <><Loader2 className="mr-1.5 h-4 w-4 animate-spin" />Saving…</> : editingId ? "Save changes" : "Add Item"}
             </Button>
           </div>
         </SheetContent>

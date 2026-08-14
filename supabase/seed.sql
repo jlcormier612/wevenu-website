@@ -31,6 +31,7 @@ declare
   v_contract_id     uuid := gen_random_uuid();
   v_vendor_id       uuid := gen_random_uuid();
   v_invoice_id      uuid := gen_random_uuid();
+  v_schedule_id     uuid := gen_random_uuid();
   v_section_id      uuid := gen_random_uuid();
   v_event_date      date := current_date + interval '90 days';
   -- Deterministic portal token so docs/smoke scripts can deep-link without
@@ -106,12 +107,12 @@ begin
     'wedding', v_event_date, 120
   );
 
-  -- ── Event ─────────────────────────────────────────────────────────────────
+  -- ── Event (multi-day: Fri–Sun so venue Timeline Day picker is visible) ──
   insert into public.events (
-    id, venue_id, client_id, status, name, event_type, event_date, start_time, end_time, guest_count
+    id, venue_id, client_id, status, name, event_type, event_date, event_end_date, start_time, end_time, guest_count
   ) values (
     v_event_id, v_venue_id, v_client_id, 'confirmed', 'Emma & Jordan''s Wedding', 'wedding', v_event_date,
-    '16:00', '23:00', 120
+    v_event_date + 2, '16:00', '23:00', 120
   );
 
   -- ── Contract (signed) ────────────────────────────────────────────────────
@@ -164,8 +165,25 @@ begin
     subtotal, tax_amount, total, balance_due, due_date, issued_at
   ) values (
     v_invoice_id, v_venue_id, v_client_id, v_event_id, 'INV-SEED-0001', 'sent',
-    12000.00, 960.00, 12960.00, 6480.00, v_event_date - interval '30 days', now() - interval '14 days'
+    12000.00, 960.00, 12960.00, 12960.00, v_event_date - interval '30 days', now() - interval '14 days'
   );
+
+  -- ── Payment schedule (exactly one plan per invoice) ───────────────────────
+  -- Thirds preset matches lib/payments/constants.ts SCHEDULE_PRESETS "thirds".
+  insert into public.payment_schedules (
+    id, venue_id, client_id, event_id, invoice_id, title, total_amount, currency, created_at
+  ) values (
+    v_schedule_id, v_venue_id, v_client_id, v_event_id, v_invoice_id,
+    'Payment Schedule — Emma / Carter / Jordan / Lee',
+    12960.00, 'USD', now() - interval '14 days'
+  );
+
+  insert into public.payment_line_items (
+    venue_id, schedule_id, label, amount, due_date, status, sort_order, obligation_kind
+  ) values
+    (v_venue_id, v_schedule_id, 'First Installment',  4319.57, v_event_date - interval '180 days', 'overdue', 0, 'installment'),
+    (v_venue_id, v_schedule_id, 'Second Installment', 4319.57, v_event_date - interval '90 days',  'overdue', 1, 'installment'),
+    (v_venue_id, v_schedule_id, 'Final Payment',      4320.86, v_event_date - interval '30 days',  'pending', 2, 'final');
 
   -- ── Timeline ──────────────────────────────────────────────────────────────
   insert into public.timeline_sections (id, venue_id, event_id, name, sort_order) values

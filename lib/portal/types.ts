@@ -56,6 +56,13 @@ export type PortalContext = {
   };
 };
 
+/** Venue-configured web link on a portal task (from event_task_context_links). */
+export type PortalTaskLink = {
+  id: string;
+  url: string;
+  label: string | null;
+};
+
 // A task as visible in the client portal
 export type PortalTask = {
   id: string;
@@ -71,7 +78,52 @@ export type PortalTask = {
   status: "pending" | "blocked" | "complete" | "overdue";
   isRequired: boolean;
   completedAt: string | null;
-  canComplete: boolean;  // true only for client_owned tasks the couple can act on
+  /** Domain auto-complete trigger from event_tasks; null = acknowledgment / manual. */
+  autoCompleteTrigger: string | null;
+  /** True only for client_owned tasks with no domain trigger (couple may Mark complete). */
+  canComplete: boolean;
+  /**
+   * True only for completed client_owned manual/ack tasks (null trigger).
+   * Couples may reopen these; domain-verified completions cannot be undone here.
+   */
+  canUndo: boolean;
+  /** Web links attached via playbook attachments / event context links. */
+  links: PortalTaskLink[];
+};
+
+/** Vendor-owned task projected into the portal (not an event_tasks row). */
+export type PortalVendorTask = {
+  id: string;
+  title: string;
+  notes: string | null;
+  dueDate: string | null;
+  status: "pending" | "complete";
+  coupleVisibility: "visible" | "owned";
+  completedAt: string | null;
+  completedBy: "couple" | "vendor" | null;
+  vendorId: string;
+  vendorName: string;
+  /**
+   * Typed couple action (`share_timeline`); null = acknowledgment / manual.
+   * Never inferred from title.
+   */
+  actionType: "share_timeline" | null;
+  /** Durable completion gate when projected from DB. */
+  completionAuthority?: "couple_acknowledge" | "vendor_confirm" | "action_verified";
+  /** Phase 2 vendor_confirm: couple ack (status remains pending until vendor confirms). */
+  coupleAcknowledgedAt?: string | null;
+  /** Needs-changes v1: last vendor return note (cleared on re-ack). */
+  vendorReturnNote?: string | null;
+  returnedAt?: string | null;
+  canComplete: boolean;
+  /** Phase 2 — acknowledge owned vendor_confirm without completing. */
+  canAcknowledge?: boolean;
+  attachments: {
+    id: string;
+    name: string;
+    storageUrl: string;
+    mimeType: string | null;
+  }[];
 };
 
 // Program 4, Initiative D, Phase 4 (2026-07-23) — "Your Venue Team" card.
@@ -103,7 +155,63 @@ export type PortalKeyDate = {
   note: string | null;
 };
 
-export type PortalSection = "overview" | "guests" | "todos" | "budget" | "seating" | "people" | "website" | "story" | "journey" | "tasks" | "timeline" | "vendors" | "payments" | "documents" | "messages" | "ask" | "guide" | "account" | "requests" | "questionnaire";
+export type PortalSection = "overview" | "guests" | "todos" | "budget" | "seating" | "people" | "website" | "story" | "journey" | "tasks" | "timeline" | "vendors" | "payments" | "documents" | "messages" | "ask" | "guide" | "account" | "requests" | "questionnaire" | "inventory" | "floor_plans" | "event-order";
+
+/** Phase 1 — couple Floor Plan list item (layout view). */
+export type PortalFloorPlanSummary = {
+  id: string;
+  name: string;
+  isOperational: boolean;
+  spaceId: string | null;
+  createdAt: string;
+};
+
+export type PortalFloorPlanObject = {
+  id: string;
+  objectType: string;
+  label: string | null;
+  capacity: number | null;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  rotation: number;
+  sortOrder: number;
+  color: string | null;
+  notes: string | null;
+  displayShape: string | null;
+  inventoryItemId: string | null;
+};
+
+export type PortalFloorPlanDetail = {
+  plan: {
+    id: string;
+    name: string;
+    spaceId: string | null;
+    isOperational: boolean;
+    backgroundImageUrl: string | null;
+    backgroundImageOpacity: number;
+    roomWidthFt: number;
+    roomDepthFt: number;
+    measurementUnit: string;
+    notes: string | null;
+  };
+  objects: PortalFloorPlanObject[];
+};
+
+/** Phase 2 — offered layout in the couple chooser. */
+export type PortalFloorPlanOfferSummary = {
+  offerId: string;
+  templateId: string;
+  name: string;
+  blurb: string | null;
+  spaceId: string | null;
+  sortOrder: number;
+  objectCount: number;
+  isCurrentSelection: boolean;
+  roomWidthFt: number;
+  roomDepthFt: number;
+};
 
 // A Timeline item as visible in the client portal — the couple's own
 // always-live view: the venue's live structural framework plus the
@@ -118,6 +226,10 @@ export type PortalTimelineEntry = {
   title: string;
   description: string | null;
   entryTime: string | null;
+  /** Optional end time ("HH:MM"); null when unset. */
+  endTime: string | null;
+  /** 0-based calendar day from event_date (multi-day events). */
+  dayOffset: number;
   sectionId: string | null;
   sortOrder: number;
   owner: "venue" | "client";
@@ -470,6 +582,8 @@ export type ActivityItem = {
   emoji: string;
   label: string;
   occurredAt: string;
+  /** Present on journal events from `get_recent_activity` (`manual` | `auto`). */
+  source?: string;
 };
 
 export type RecentActivity = {

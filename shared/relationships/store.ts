@@ -10,6 +10,7 @@ import type {
   Relationship,
   RelationshipTask,
   Subscription,
+  SupportInboxItem,
   TimelineEvent,
   Walkthrough,
 } from "./types";
@@ -22,6 +23,7 @@ const EMPTY_STORE: LiveRelationshipStore = {
   subscriptions: [],
   notifications: [],
   tasks: [],
+  supportInboxItems: [],
 };
 
 async function ensureDataDir(): Promise<string> {
@@ -106,6 +108,9 @@ function readStoreFromDir(dir: string): LiveRelationshipStore {
     subscriptions: readJsonlSync<Subscription>(path.join(dir, STORE_FILES.subscriptions)),
     notifications: readJsonlSync<Notification>(path.join(dir, STORE_FILES.notifications)),
     tasks: readJsonlSync<RelationshipTask>(path.join(dir, STORE_FILES.tasks)),
+    supportInboxItems: readJsonlSync<SupportInboxItem>(
+      path.join(dir, STORE_FILES.supportInboxItems),
+    ),
   };
 }
 
@@ -128,6 +133,7 @@ export async function loadLiveStore(): Promise<LiveRelationshipStore> {
     subscriptions,
     notifications,
     tasks,
+    supportInboxItems,
   ] = await Promise.all([
     readJsonl<Relationship>(path.join(dir, STORE_FILES.relationships)),
     readJsonl<TimelineEvent>(path.join(dir, STORE_FILES.timelineEvents)),
@@ -136,6 +142,7 @@ export async function loadLiveStore(): Promise<LiveRelationshipStore> {
     readJsonl<Subscription>(path.join(dir, STORE_FILES.subscriptions)),
     readJsonl<Notification>(path.join(dir, STORE_FILES.notifications)),
     readJsonl<RelationshipTask>(path.join(dir, STORE_FILES.tasks)),
+    readJsonl<SupportInboxItem>(path.join(dir, STORE_FILES.supportInboxItems)),
   ]);
 
   return {
@@ -146,6 +153,7 @@ export async function loadLiveStore(): Promise<LiveRelationshipStore> {
     subscriptions,
     notifications,
     tasks,
+    supportInboxItems,
   };
 }
 
@@ -161,6 +169,7 @@ export function hasLiveRelationshipsSync(): boolean {
 export async function saveLiveStore(store: LiveRelationshipStore): Promise<void> {
   const dir = await ensureDataDir();
   if (!store.tasks) store.tasks = [];
+  if (!store.supportInboxItems) store.supportInboxItems = [];
   await Promise.all([
     writeJsonlAtomic(path.join(dir, STORE_FILES.relationships), store.relationships),
     writeJsonlAtomic(path.join(dir, STORE_FILES.timelineEvents), store.timelineEvents),
@@ -169,6 +178,7 @@ export async function saveLiveStore(store: LiveRelationshipStore): Promise<void>
     writeJsonlAtomic(path.join(dir, STORE_FILES.subscriptions), store.subscriptions),
     writeJsonlAtomic(path.join(dir, STORE_FILES.notifications), store.notifications),
     writeJsonlAtomic(path.join(dir, STORE_FILES.tasks), store.tasks),
+    writeJsonlAtomic(path.join(dir, STORE_FILES.supportInboxItems), store.supportInboxItems),
   ]);
 }
 

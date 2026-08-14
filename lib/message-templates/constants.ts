@@ -31,15 +31,17 @@ export type MergeFieldMeta = {
 
 // Shared across Email and SMS (§2.5, decided 2026-07-13) — the vocabulary a
 // coordinator writes with is consistent regardless of channel, even though
-// the written content itself never is. task_name / days_until_event are
-// meant for templates sent from a Planning task — that connection point is
-// built in a later phase, but the tokens are part of the vocabulary now so
-// a coordinator can write toward them today.
+// the written content itself never is.
 export const MESSAGE_MERGE_FIELDS: MergeFieldMeta[] = [
   { key: "venue_name",        label: "Venue Name",         description: "Your venue's name" },
   { key: "client_name",       label: "Client Name",        description: "Full client name (e.g., Emily & James Carter)" },
   { key: "coordinator_name",  label: "Coordinator Name",   description: "The team member sending this message" },
   { key: "event_date",        label: "Event Date",         description: "Formatted event date (e.g., June 12, 2027)" },
-  { key: "task_name",         label: "Task Name",          description: "The Planning task this message relates to, when sent from one" },
+  { key: "event_name",        label: "Event Name",         description: "The event's name, when available" },
   { key: "days_until_event",  label: "Days Until Event",   description: "Number of days remaining before the event" },
+  { key: "tour_datetime",     label: "Tour Date & Time",   description: "The couple's scheduled tour, in your venue timezone" },
+  { key: "payment_label",     label: "Payment Label",      description: "The payment plan line (e.g., Deposit)" },
+  { key: "payment_amount",    label: "Payment Amount",     description: "Amount due on that payment line" },
+  { key: "payment_due_date",  label: "Payment Due Date",   description: "Due date on that payment line" },
+  { key: "task_name",         label: "Task Name",          description: "The Planning task this message relates to, when sent from one" },
 ];

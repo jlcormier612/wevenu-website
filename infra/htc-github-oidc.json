@@ -1,0 +1,222 @@
+{
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Description": "Hello to Cheers — GitHub Actions OIDC bootstrap. Creates the IAM OIDC identity provider (if one doesn't already exist in this account), the Sandbox GitHub Actions deploy role, and the CloudFormation execution role it's allowed to pass. This is the one piece of this whole pipeline that cannot be deployed by GitHub Actions itself — a workflow has no AWS credentials until this exists. Deploy manually, once, with your own AWS credentials. See docs/github-actions-deployment-implementation.md for the exact command and the reasoning.",
+
+  "Parameters": {
+    "GitHubOrg": {
+      "Type": "String",
+      "Default": "jlcormier612",
+      "Description": "GitHub org/user that owns the repo — confirmed from this repo's own git remote."
+    },
+    "GitHubRepo": {
+      "Type": "String",
+      "Default": "wevenu-website",
+      "Description": "Confirmed from this repo's own git remote (jlcormier612/wevenu-website)."
+    },
+    "ExistingOidcProviderArn": {
+      "Type": "String",
+      "Default": "",
+      "Description": "Leave blank to have this template create the token.actions.githubusercontent.com OIDC provider. If this AWS account already has one (only one can exist per URL per account — a previous project may have created it already), paste its ARN here instead and this template will reuse it rather than fail on a duplicate."
+    }
+  },
+
+  "Conditions": {
+    "CreateOidcProvider": { "Fn::Equals": [{ "Ref": "ExistingOidcProviderArn" }, ""] }
+  },
+
+  "Resources": {
+    "_comment_thumbprint": "GitHub's OIDC thumbprint below is the well-known, publicly documented value for token.actions.githubusercontent.com (AWS has trusted the root CA directly since 2023, making the literal leaf thumbprint largely a formality AWS still requires the field for) — not a secret, safe to commit.",
+
+    "GithubOidcProvider": {
+      "Type": "AWS::IAM::OIDCProvider",
+      "Condition": "CreateOidcProvider",
+      "Properties": {
+        "Url": "https://token.actions.githubusercontent.com",
+        "ClientIdList": ["sts.amazonaws.com"],
+        "ThumbprintList": ["6938fd4d98bab03faadb97b34396831e3780aea1"]
+      }
+    },
+
+    "_comment_execution_role": "Assumed by the cloudformation.amazonaws.com service (not by GitHub Actions directly) to actually provision the compute/foundation stacks' resources. The GitHub Actions role below only ever gets iam:PassRole to this one role — it never holds these broader permissions itself. Scoped to the htc-sandbox-* naming/tag prefix everywhere the underlying AWS service supports resource-level scoping; EC2 networking and ELBv2 creation actions are left at Resource:* because those specific AWS actions don't support finer scoping (a documented AWS limitation, not a scoping choice made here).",
+
+    "CloudFormationExecutionRole": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "RoleName": "htc-sandbox-cfn-execution",
+        "AssumeRolePolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [{ "Effect": "Allow", "Principal": { "Service": "cloudformation.amazonaws.com" }, "Action": "sts:AssumeRole" }]
+        },
+        "Policies": [{
+          "PolicyName": "HtcSandboxProvisioning",
+          "PolicyDocument": {
+            "Version": "2012-10-17",
+            "Statement": [
+              {
+                "Sid": "NetworkingNoResourceLevelSupport",
+                "Effect": "Allow",
+                "Action": [
+                  "ec2:CreateVpc", "ec2:DeleteVpc", "ec2:ModifyVpcAttribute", "ec2:DescribeVpcs",
+                  "ec2:CreateSubnet", "ec2:DeleteSubnet", "ec2:DescribeSubnets", "ec2:ModifySubnetAttribute",
+                  "ec2:CreateInternetGateway", "ec2:DeleteInternetGateway", "ec2:AttachInternetGateway", "ec2:DetachInternetGateway", "ec2:DescribeInternetGateways",
+                  "ec2:CreateRouteTable", "ec2:DeleteRouteTable", "ec2:CreateRoute", "ec2:DeleteRoute", "ec2:AssociateRouteTable", "ec2:DisassociateRouteTable", "ec2:DescribeRouteTables",
+                  "ec2:CreateSecurityGroup", "ec2:DeleteSecurityGroup", "ec2:AuthorizeSecurityGroupIngress", "ec2:AuthorizeSecurityGroupEgress", "ec2:RevokeSecurityGroupIngress", "ec2:RevokeSecurityGroupEgress", "ec2:DescribeSecurityGroups",
+                  "ec2:DescribeAvailabilityZones", "ec2:DescribeAccountAttributes", "ec2:CreateTags", "ec2:DescribeTags"
+                ],
+                "Resource": "*"
+              },
+              {
+                "Sid": "EcsScoped",
+                "Effect": "Allow",
+                "Action": [
+                  "ecs:CreateCluster", "ecs:DeleteCluster", "ecs:DescribeClusters", "ecs:UpdateClusterSettings",
+                  "ecs:CreateService", "ecs:UpdateService", "ecs:DeleteService", "ecs:DescribeServices",
+                  "ecs:TagResource"
+                ],
+                "Resource": [
+                  { "Fn::Sub": "arn:aws:ecs:${AWS::Region}:${AWS::AccountId}:cluster/htc-sandbox" },
+                  { "Fn::Sub": "arn:aws:ecs:${AWS::Region}:${AWS::AccountId}:service/htc-sandbox/*" }
+                ]
+              },
+              {
+                "Sid": "EcsTaskDefinitionsNoResourceLevelSupport",
+                "Effect": "Allow",
+                "Action": ["ecs:RegisterTaskDefinition", "ecs:DeregisterTaskDefinition", "ecs:DescribeTaskDefinition"],
+                "Resource": "*"
+              },
+              {
+                "Sid": "ElbNoResourceLevelSupportOnCreate",
+                "Effect": "Allow",
+                "Action": [
+                  "elasticloadbalancing:CreateLoadBalancer", "elasticloadbalancing:DeleteLoadBalancer", "elasticloadbalancing:DescribeLoadBalancers", "elasticloadbalancing:ModifyLoadBalancerAttributes",
+                  "elasticloadbalancing:CreateTargetGroup", "elasticloadbalancing:DeleteTargetGroup", "elasticloadbalancing:DescribeTargetGroups", "elasticloadbalancing:ModifyTargetGroup", "elasticloadbalancing:ModifyTargetGroupAttributes",
+                  "elasticloadbalancing:CreateListener", "elasticloadbalancing:DeleteListener", "elasticloadbalancing:DescribeListeners", "elasticloadbalancing:ModifyListener",
+                  "elasticloadbalancing:CreateRule", "elasticloadbalancing:DeleteRule", "elasticloadbalancing:DescribeRules", "elasticloadbalancing:ModifyRule",
+                  "elasticloadbalancing:AddTags", "elasticloadbalancing:DescribeTags"
+                ],
+                "Resource": "*"
+              },
+              {
+                "Sid": "LogsScoped",
+                "Effect": "Allow",
+                "Action": ["logs:CreateLogGroup", "logs:DeleteLogGroup", "logs:DescribeLogGroups", "logs:PutRetentionPolicy", "logs:TagResource"],
+                "Resource": [{ "Fn::Sub": "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/ecs/htc-sandbox/*" }]
+              },
+              {
+                "Sid": "IamRoleManagementScopedToHtcSandboxRoles",
+                "Effect": "Allow",
+                "Action": ["iam:CreateRole", "iam:DeleteRole", "iam:GetRole", "iam:PutRolePolicy", "iam:DeleteRolePolicy", "iam:AttachRolePolicy", "iam:DetachRolePolicy", "iam:TagRole"],
+                "Resource": [{ "Fn::Sub": "arn:aws:iam::${AWS::AccountId}:role/htc-sandbox-*" }]
+              },
+              {
+                "Sid": "PassOnlyTheEcsTaskRolesThisStackCreates",
+                "Effect": "Allow",
+                "Action": "iam:PassRole",
+                "Resource": [
+                  { "Fn::Sub": "arn:aws:iam::${AWS::AccountId}:role/htc-sandbox-ecs-task-execution" },
+                  { "Fn::Sub": "arn:aws:iam::${AWS::AccountId}:role/htc-sandbox-ecs-task" }
+                ],
+                "Condition": { "StringEquals": { "iam:PassedToService": "ecs-tasks.amazonaws.com" } }
+              },
+              {
+                "Sid": "SecretsCreateOnlyNotWrite",
+                "Effect": "Allow",
+                "Action": ["secretsmanager:CreateSecret", "secretsmanager:DeleteSecret", "secretsmanager:DescribeSecret", "secretsmanager:TagResource"],
+                "Resource": [{ "Fn::Sub": "arn:aws:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:htc/sandbox/*" }],
+                "_comment": "Deliberately no secretsmanager:PutSecretValue/GetSecretValue here. CreateSecret already sets the initial (CHANGE_ME placeholder) value as part of creation — that's all this role ever needs. Populating the real value afterward is a human-only action outside this role's permissions entirely."
+              }
+            ]
+          }
+        }]
+      }
+    },
+
+    "_comment_deploy_role": "Assumed by GitHub Actions via OIDC, trust-scoped to this exact repo and the 'sandbox' GitHub Environment specifically — not the whole repo, so a workflow run outside that Environment (e.g. a random branch push with no Environment context) cannot assume it.",
+
+    "GithubActionsSandboxDeployRole": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "RoleName": "htc-sandbox-github-actions-deploy",
+        "AssumeRolePolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [{
+            "Effect": "Allow",
+            "Principal": {
+              "Federated": {
+                "Fn::If": ["CreateOidcProvider", { "Ref": "GithubOidcProvider" }, { "Ref": "ExistingOidcProviderArn" }]
+              }
+            },
+            "Action": "sts:AssumeRoleWithWebIdentity",
+            "Condition": {
+              "StringEquals": { "token.actions.githubusercontent.com:aud": "sts.amazonaws.com" },
+              "StringLike": { "token.actions.githubusercontent.com:sub": { "Fn::Sub": "repo:${GitHubOrg}/${GitHubRepo}:environment:sandbox" } }
+            }
+          }]
+        },
+        "Policies": [{
+          "PolicyName": "HtcSandboxDeploy",
+          "PolicyDocument": {
+            "Version": "2012-10-17",
+            "Statement": [
+              {
+                "Sid": "EcrAuth",
+                "Effect": "Allow",
+                "Action": "ecr:GetAuthorizationToken",
+                "Resource": "*"
+              },
+              {
+                "Sid": "EcrPushScoped",
+                "Effect": "Allow",
+                "Action": ["ecr:BatchCheckLayerAvailability", "ecr:InitiateLayerUpload", "ecr:UploadLayerPart", "ecr:CompleteLayerUpload", "ecr:PutImage", "ecr:BatchGetImage"],
+                "Resource": [
+                  { "Fn::Sub": "arn:aws:ecr:${AWS::Region}:${AWS::AccountId}:repository/htc-sandbox-venue-app" },
+                  { "Fn::Sub": "arn:aws:ecr:${AWS::Region}:${AWS::AccountId}:repository/htc-sandbox-marketing" },
+                  { "Fn::Sub": "arn:aws:ecr:${AWS::Region}:${AWS::AccountId}:repository/htc-sandbox-workspace" }
+                ]
+              },
+              {
+                "Sid": "CloudFormationScoped",
+                "Effect": "Allow",
+                "Action": ["cloudformation:CreateStack", "cloudformation:UpdateStack", "cloudformation:DescribeStacks", "cloudformation:DescribeStackEvents", "cloudformation:CreateChangeSet", "cloudformation:ExecuteChangeSet", "cloudformation:DescribeChangeSet", "cloudformation:GetTemplate", "cloudformation:ListChangeSets"],
+                "Resource": [
+                  { "Fn::Sub": "arn:aws:cloudformation:${AWS::Region}:${AWS::AccountId}:stack/htc-sandbox/*" },
+                  { "Fn::Sub": "arn:aws:cloudformation:${AWS::Region}:${AWS::AccountId}:stack/htc-sandbox-ecr/*" }
+                ]
+              },
+              {
+                "Sid": "PassOnlyTheCfnExecutionRole",
+                "Effect": "Allow",
+                "Action": "iam:PassRole",
+                "Resource": { "Fn::GetAtt": ["CloudFormationExecutionRole", "Arn"] },
+                "Condition": { "StringEquals": { "iam:PassedToService": "cloudformation.amazonaws.com" } }
+              },
+              {
+                "Sid": "EcsReadOnlyForVerification",
+                "Effect": "Allow",
+                "Action": ["ecs:DescribeServices", "ecs:DescribeTasks", "ecs:ListTasks"],
+                "Resource": [
+                  { "Fn::Sub": "arn:aws:ecs:${AWS::Region}:${AWS::AccountId}:cluster/htc-sandbox" },
+                  { "Fn::Sub": "arn:aws:ecs:${AWS::Region}:${AWS::AccountId}:service/htc-sandbox/*" },
+                  { "Fn::Sub": "arn:aws:ecs:${AWS::Region}:${AWS::AccountId}:task/htc-sandbox/*" }
+                ]
+              },
+              {
+                "Sid": "ElbReadOnlyForVerification",
+                "Effect": "Allow",
+                "Action": ["elasticloadbalancing:DescribeLoadBalancers", "elasticloadbalancing:DescribeTargetGroups", "elasticloadbalancing:DescribeTargetHealth"],
+                "Resource": "*",
+                "_comment": "ELBv2 Describe* actions don't support resource-level restriction — a documented AWS limitation, not a scoping choice made here."
+              }
+            ]
+          }
+        }]
+      }
+    }
+  },
+
+  "Outputs": {
+    "GithubActionsSandboxDeployRoleArn": { "Value": { "Fn::GetAtt": ["GithubActionsSandboxDeployRole", "Arn"] }, "Description": "Set as the AWS_DEPLOY_ROLE_ARN GitHub Environment variable on the sandbox Environment." },
+    "CloudFormationExecutionRoleArn": { "Value": { "Fn::GetAtt": ["CloudFormationExecutionRole", "Arn"] }, "Description": "Set as the CFN_EXECUTION_ROLE_ARN GitHub Environment variable on the sandbox Environment." },
+    "OidcProviderArnUsed": { "Value": { "Fn::If": ["CreateOidcProvider", { "Ref": "GithubOidcProvider" }, { "Ref": "ExistingOidcProviderArn" }] } }
+  }
+}

@@ -16,6 +16,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useSyncedState } from "@/lib/hooks/use-synced-state";
 import { formatDate, isOverdue, isDueToday } from "@/lib/leads/constants";
+import { partitionByCompletion } from "@/lib/tasks/group-by-completion";
 import type { LeadTask } from "@/lib/leads/types";
 import { cn } from "@/lib/utils";
 
@@ -201,8 +202,10 @@ export function TasksSection({
     if (!result.ok) toast.error(result.message ?? "Could not update task.");
   }
 
-  const open = tasks.filter((t) => !t.completed);
-  const done = tasks.filter((t) => t.completed);
+  const { open, completed: done } = partitionByCompletion(tasks, {
+    isComplete: (t) => t.completed,
+    getDueDate: (t) => t.dueDate,
+  });
 
   return (
     <div className="space-y-4">

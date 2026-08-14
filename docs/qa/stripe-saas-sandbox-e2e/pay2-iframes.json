@@ -1,0 +1,42 @@
+[
+  {
+    "name": "link-login",
+    "title": "",
+    "src": "https://js.stripe.com/v3/link-login-inner-2c8d5af4ad136a1ba3e125685cadcdda.html#debugMode=false&publishableApiKey=pk_test_51U4226ErUqJH7nktZbUBznxkqjp"
+  },
+  {
+    "name": "stripe-origin-frame",
+    "title": "",
+    "src": "https://js.stripe.com/v3/checkout-inner-origin-frame-0d14e10c21db7a8fcef8c07f778b0f64.html#debugMode=false&prefetchOriginsHint=false&publishableApiKey"
+  },
+  {
+    "name": "__privateStripeFrame6284",
+    "title": "Secure express checkout frame",
+    "src": "https://js.stripe.com/v3/elements-inner-express-checkout-49894fa2927f95ae2c11cee01d0a58aa.html#__shared_params__[version]=v3&__shared_params__[light_e"
+  },
+  {
+    "name": "__privateStripeFrame6286",
+    "title": "Secure express checkout frame",
+    "src": "https://js.stripe.com/v3/elements-inner-express-checkout-49894fa2927f95ae2c11cee01d0a58aa.html#__shared_params__[version]=v3&__shared_params__[light_e"
+  },
+  {
+    "name": "__privateStripeController6281",
+    "title": "",
+    "src": "https://js.stripe.com/v3/controller-9e9c3a32dc82cbe87517c4f3156ace2f.html#__shared_params__[version]=v3&__shared_params__[light_experiment_assignments"
+  },
+  {
+    "name": "hcaptcha-invisible",
+    "title": "",
+    "src": "https://js.stripe.com/v3/hcaptcha-invisible-94f1188f90888ba4d6fb74970657ee47.html#debugMode=false&parentOrigin=https%3A%2F%2Fcheckout.stripe.com"
+  },
+  {
+    "name": "__privateStripeMetricsController6280",
+    "title": "",
+    "src": "https://js.stripe.com/v3/m-outer-3437aaddcdf6922d623e172c2d6f9278.html#url=https%3A%2F%2Fcheckout.stripe.com%2Fc%2Fpay%2Fcs_test_a1bKkLDgPdb0gyn6gsjkf"
+  },
+  {
+    "name": "address-autocomplete-iframe",
+    "title": "",
+    "src": "https://js.stripe.com/v3/checkout-inner-address-autocomplete-7ebc06a5a6c6d3623e03533b23e21154.html#debugMode=false&parentOrigin=https%3A%2F%2Fcheckout"
+  }
+]

@@ -7,20 +7,31 @@ import {
   getMySupportGrants, grantSupportAccess, revokeSupportGrant,
 } from "@/lib/client-auth/service";
 import type { AuthSessionInfo, ClientAuthResult, SupportAccessGrant } from "@/lib/client-auth/types";
+import { listLegalAcceptancesForCurrentUser } from "@/lib/legal/service";
+import type { LegalAcceptanceHistoryItem } from "@/lib/legal/types";
 
 export type AccountState = {
   loggedIn: boolean;
   sessions: AuthSessionInfo[];
   grants: SupportAccessGrant[];
+  legalHistory: LegalAcceptanceHistoryItem[];
 };
 
 export async function getAccountStateAction(): Promise<AccountState> {
-  if (!isSupabaseConfigured) return { loggedIn: false, sessions: [], grants: [] };
+  if (!isSupabaseConfigured) {
+    return { loggedIn: false, sessions: [], grants: [], legalHistory: [] };
+  }
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return { loggedIn: false, sessions: [], grants: [] };
-  const [sessions, grants] = await Promise.all([getMyAuthSessions(), getMySupportGrants()]);
-  return { loggedIn: true, sessions, grants };
+  if (!user) {
+    return { loggedIn: false, sessions: [], grants: [], legalHistory: [] };
+  }
+  const [sessions, grants, legalHistory] = await Promise.all([
+    getMyAuthSessions(),
+    getMySupportGrants(),
+    listLegalAcceptancesForCurrentUser(),
+  ]);
+  return { loggedIn: true, sessions, grants, legalHistory };
 }
 
 export async function changePasswordAction(newPassword: string): Promise<ClientAuthResult> {

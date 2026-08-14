@@ -1,0 +1,52 @@
+{
+  "phase": "collection-composition-phase-b-visual-acceptance",
+  "commit": "e11644b",
+  "date": "2026-08-09",
+  "productMutations": false,
+  "phaseCStarted": false,
+  "activeCollections": 10,
+  "industrialActive": false,
+  "surfaces": {
+    "wizard": true,
+    "themeStudio": true,
+    "livePreview": ["coastal", "estate", "midnight", "rustic"]
+  },
+  "criticalPairs": {
+    "midnight-vs-velvet": "PASS",
+    "champagne-vs-european-estate": "PASS",
+    "champagne-vs-rustic": "PASS",
+    "european-estate-vs-rustic": "PASS",
+    "wildflower-vs-garden-party": "PASS",
+    "coastal-vs-midnight": "PASS",
+    "linen-vs-rose": "PASS"
+  },
+  "overall": "CONDITIONAL_PASS_CARDS_STOP_NO_PHASE_C",
+  "remainingFailures": [
+    {
+      "id": "estate-live-inset-divergence",
+      "summary": "European Estate inset mat clear on Wizard/Studio cards but weak/absent in Live Preview hero",
+      "classification": "preview honesty / Live path framing"
+    },
+    {
+      "id": "coastal-live-wide-dilution",
+      "summary": "Coastal wide aspect-cap clear on cards; desktop Live Preview frame fill under-communicates panoramic band",
+      "classification": "preview framing"
+    },
+    {
+      "id": "champagne-framed-story-clip",
+      "summary": "Champagne formal framed Story card mid-clipped by heroFraction; ✦ header still readable",
+      "classification": "preview framing"
+    },
+    {
+      "id": "rustic-studio-inset-weaker",
+      "summary": "Rustic inset stronger on Wizard than Theme Studio crops",
+      "classification": "preview framing"
+    },
+    {
+      "id": "color-story-independence",
+      "summary": "Foreign Color Story can persist after Collection select (e.g. Coastal Blue on Midnight)",
+      "classification": "content / product dimension independence"
+    }
+  ],
+  "recommendation": "STOP — no Phase C; pair composition DNA accepted on picker cards"
+}

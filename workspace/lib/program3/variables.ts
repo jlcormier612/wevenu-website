@@ -1,4 +1,5 @@
 import type { Relationship } from "@/lib/types";
+import { greetingFirstName } from "@shared/relationships/normalize";
 
 export type TemplateVars = Record<string, string>;
 
@@ -6,7 +7,11 @@ export type TemplateVars = Record<string, string>;
 export function varsForRelationship(relationship: Relationship): TemplateVars {
   return {
     venue_name: relationship.venue.name,
-    owner_first_name: relationship.owner.firstName || "there",
+    owner_first_name: greetingFirstName({
+      firstName: relationship.owner.firstName,
+      lastName: relationship.owner.lastName,
+      email: relationship.owner.email,
+    }),
     owner_last_name: relationship.owner.lastName || "",
     owner_email: relationship.owner.email || "",
     plan: relationship.planName && relationship.planName !== "—" ? relationship.planName : "your plan",

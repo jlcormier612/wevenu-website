@@ -5,16 +5,23 @@
   "scripts": {
     "dev": "next dev --port 3000",
     "dev:marketing": "npm run dev --prefix marketing",
+    "dev:marketing:detach": "bash scripts/start-marketing-dev.sh",
     "dev:workspace": "npm run dev --prefix workspace",
     "dev:workspace:detach": "bash scripts/start-workspace-dev.sh",
+    "dev:venue:detach": "bash scripts/start-venue-dev.sh",
+    "dev:all:detach": "bash scripts/start-all-dev.sh",
     "build": "next build",
     "start": "next start --port 3000",
     "lint": "eslint",
+    "postinstall": "patch-package",
+    "test": "tsx --test lib/**/*.test.ts lib/legal/**/*.test.ts lib/venue-guide/**/*.test.ts components/welcome-experience/**/*.test.ts workspace/lib/legal/**/*.test.ts",
+    "test:watch": "tsx --test --watch lib/**/*.test.ts lib/legal/**/*.test.ts lib/venue-guide/**/*.test.ts components/welcome-experience/**/*.test.ts workspace/lib/legal/**/*.test.ts",
     "process:lifecycle": "node scripts/process-lifecycle.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.110.0",
     "@base-ui/react": "^1.6.0",
+    "@react-pdf/renderer": "^4.6.0",
     "@supabase/ssr": "^0.12.0",
     "@supabase/supabase-js": "^2.108.2",
     "@types/papaparse": "^5.5.2",
@@ -44,7 +51,9 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.2.9",
+    "patch-package": "^8.0.1",
     "tailwindcss": "^4",
+    "tsx": "^4.23.11",
     "typescript": "^5"
   }
 }

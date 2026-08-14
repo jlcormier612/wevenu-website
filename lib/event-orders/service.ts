@@ -1,6 +1,12 @@
 import { createClient } from "@/integrations/supabase/server";
 import { isSupabaseConfigured } from "@/lib/env";
+import {
+  finalizeBlockedWhenAlreadyFinalized,
+  mutationBlockedWhenFinalized,
+  reopenBlockedWhenNotFinalized,
+} from "@/lib/event-orders/lifecycle-gates";
 import * as repo from "@/lib/event-orders/repository";
+import * as templatesRepo from "@/lib/event-order-templates/repository";
 import type {
   AddCustomLineInput, AddInventoryLineInput, AddLineResult, AddSectionResult,
   EnsureEventOrderResult, EventOrderActionResult, EventOrderWithDetails,
@@ -30,10 +36,7 @@ async function assertOpen(
 ): Promise<EventOrderActionResult | null> {
   const order = await repo.getEventOrderById(supabase, venueId, eventOrderId);
   if (!order) return { ok: false, message: "Event Order not found." };
-  if (order.status === "finalized") {
-    return { ok: false, message: "This Event Order is finalized — reopen it to make changes." };
-  }
-  return null;
+  return mutationBlockedWhenFinalized(order.status);
 }
 
 // ---- read -----------------------------------------------------------------------
@@ -48,12 +51,42 @@ export async function getEventOrder(eventId: string): Promise<EventOrderWithDeta
 
 // ---- lifecycle --------------------------------------------------------------------
 
-export async function ensureEventOrder(eventId: string): Promise<EnsureEventOrderResult> {
+/**
+ * Work Package D7A — optional `templateId` applies an Event Order
+ * Template's structure (section names + standard lines) at creation time.
+ * Only ever consulted here, on first creation — an Event Order that
+ * already exists is returned as-is regardless of `templateId`, matching
+ * `ensureEventInventory(eventId, templateId)`'s exact same "apply once,
+ * never re-apply" contract. Every line is inserted through the same
+ * `insertSection`/`insertCustomLine` this file's other mutators already
+ * use (provenance: "custom" — a template line has no live Package/
+ * Inventory reference to preserve) — no second line-insertion mechanism.
+ */
+export async function ensureEventOrder(eventId: string, templateId: string | null = null): Promise<EnsureEventOrderResult> {
   const result = await withVenue(async (supabase, venueId) => {
     const existing = await repo.getEventOrderByEvent(supabase, venueId, eventId);
     if (existing) return { ok: true, eventOrderId: existing.id } as EnsureEventOrderResult;
-    const eventOrderId = await repo.insertEventOrder(supabase, venueId, eventId);
-    await repo.insertActivity(supabase, venueId, eventOrderId, "started", "Event Order started");
+    const eventOrderId = await repo.insertEventOrder(supabase, venueId, eventId, templateId);
+
+    const template = templateId ? await templatesRepo.getTemplateWithDetails(supabase, venueId, templateId) : null;
+    if (template) {
+      const sectionIdMap = new Map<string, string>();
+      let sectionSort = 0;
+      for (const s of [...template.sections].sort((a, b) => a.sortOrder - b.sortOrder)) {
+        const created = await repo.insertSection(supabase, venueId, eventOrderId, s.name, sectionSort++);
+        sectionIdMap.set(s.id, created.id);
+      }
+      let lineSort = 0;
+      for (const l of [...template.lines].sort((a, b) => a.sortOrder - b.sortOrder)) {
+        const sectionId = l.sectionId ? sectionIdMap.get(l.sectionId) ?? null : null;
+        await repo.insertCustomLine(supabase, venueId, eventOrderId, {
+          description: l.description, quantity: String(l.quantity), unitPrice: String(l.unitPrice), sectionId,
+        }, lineSort++);
+      }
+      await repo.insertActivity(supabase, venueId, eventOrderId, "started", `Event Order started from template: ${template.name}`);
+    } else {
+      await repo.insertActivity(supabase, venueId, eventOrderId, "started", "Event Order started");
+    }
     return { ok: true, eventOrderId } as EnsureEventOrderResult;
   });
   return result as EnsureEventOrderResult;
@@ -63,7 +96,8 @@ export async function finalizeEventOrder(eventOrderId: string): Promise<EventOrd
   const result = await withVenue(async (supabase, venueId) => {
     const order = await repo.getEventOrderById(supabase, venueId, eventOrderId);
     if (!order) return { ok: false, message: "Event Order not found." } as EventOrderActionResult;
-    if (order.status === "finalized") return { ok: false, message: "Already finalized." } as EventOrderActionResult;
+    const blocked = finalizeBlockedWhenAlreadyFinalized(order.status);
+    if (blocked) return blocked;
     await repo.finalizeEventOrder(supabase, venueId, eventOrderId, order.revision + 1);
     await repo.insertActivity(supabase, venueId, eventOrderId, "finalized", `Finalized — v${order.revision + 1}`);
     return { ok: true } as EventOrderActionResult;
@@ -75,7 +109,8 @@ export async function reopenEventOrder(eventOrderId: string): Promise<EventOrder
   const result = await withVenue(async (supabase, venueId) => {
     const order = await repo.getEventOrderById(supabase, venueId, eventOrderId);
     if (!order) return { ok: false, message: "Event Order not found." } as EventOrderActionResult;
-    if (order.status !== "finalized") return { ok: false, message: "This Event Order isn't finalized." } as EventOrderActionResult;
+    const blocked = reopenBlockedWhenNotFinalized(order.status);
+    if (blocked) return blocked;
     await repo.reopenEventOrder(supabase, venueId, eventOrderId);
     await repo.insertActivity(supabase, venueId, eventOrderId, "reopened", `Reopened for changes — was v${order.revision}`);
     return { ok: true } as EventOrderActionResult;

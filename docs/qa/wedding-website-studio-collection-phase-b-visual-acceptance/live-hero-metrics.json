@@ -1,0 +1,42 @@
+[
+  {
+    "file": "live-hero-midnight.png",
+    "inset_score": 19.0,
+    "inset_likely": false,
+    "lower_med": 245.1,
+    "hero_aspect": 750.0,
+    "hero_h": 1,
+    "edge_m": 110.2,
+    "cen_m": 91.2
+  },
+  {
+    "file": "live-hero-coastal.png",
+    "inset_score": 15.7,
+    "inset_likely": false,
+    "lower_med": 81.2,
+    "hero_aspect": 750.0,
+    "hero_h": 1,
+    "edge_m": 108.6,
+    "cen_m": 92.9
+  },
+  {
+    "file": "live-hero-estate.png",
+    "inset_score": 20.2,
+    "inset_likely": false,
+    "lower_med": 82.9,
+    "hero_aspect": 750.0,
+    "hero_h": 1,
+    "edge_m": 123.1,
+    "cen_m": 102.9
+  },
+  {
+    "file": "live-hero-rustic.png",
+    "inset_score": 27.2,
+    "inset_likely": false,
+    "lower_med": 93.3,
+    "hero_aspect": 750.0,
+    "hero_h": 1,
+    "edge_m": 124.2,
+    "cen_m": 97.0
+  }
+]

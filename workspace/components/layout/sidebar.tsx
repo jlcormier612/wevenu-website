@@ -12,6 +12,8 @@ import { cn } from "@/lib/utils";
 type SidebarProps = {
   unreadCount: number;
   openSupportCount?: number;
+  /** Deep-link when badge is shown (single open → relationship; else CS triage list). */
+  openSupportHref?: string;
   permissions: Permission[];
   homeHref: string;
 };
@@ -19,6 +21,7 @@ type SidebarProps = {
 export function Sidebar({
   unreadCount,
   openSupportCount = 0,
+  openSupportHref = "/customer-success?stage=needs_support&view=list",
   permissions,
   homeHref,
 }: SidebarProps) {
@@ -56,11 +59,7 @@ export function Sidebar({
           return (
             <Link
               key={item.href}
-              href={
-                showSupportBadge
-                  ? "/customer-success?stage=needs_support"
-                  : item.href
-              }
+              href={showSupportBadge ? openSupportHref : item.href}
               className={cn(
                 "flex items-center justify-between gap-2 rounded-sm px-3 py-2.5 text-[0.95rem] tracking-wide transition-colors",
                 active
@@ -77,7 +76,7 @@ export function Sidebar({
                       ? "bg-sidebar-primary/15 text-sidebar-primary"
                       : "bg-[color-mix(in_srgb,var(--dusty-rose)_28%,transparent)] text-[var(--dusty-rose)]",
                   )}
-                  title={`${openSupportCount} open support`}
+                  title={`${openSupportCount} open support item${openSupportCount === 1 ? "" : "s"}`}
                 >
                   {openSupportCount}
                 </span>

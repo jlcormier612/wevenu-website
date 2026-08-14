@@ -1,0 +1,159 @@
+{
+  "method": "API/SQL controlled (no browser)",
+  "fixture": "[QA temp] Send final song selections",
+  "taskId": "f6add1a5-f671-48e6-8084-dbe7c33413d5",
+  "steps": [
+    {
+      "kind": "db",
+      "label": "0_open",
+      "status": "pending",
+      "acked": false,
+      "note": "",
+      "returned": false,
+      "hasCompletedAt": false,
+      "completedBy": null,
+      "raw": "pending|f||f|f|"
+    },
+    {
+      "kind": "home",
+      "actionable": 1,
+      "waiting": 0,
+      "payDone": 2,
+      "payTotal": 3,
+      "readinessApprox": 92
+    },
+    {
+      "kind": "portal",
+      "raw": "{\"title\": \"[QA temp] Send final song selections\", \"status\": \"pending\", \"returnedAt\": null, \"canComplete\": false, \"completedBy\": null, \"canAcknowledge\": true, \"vendorReturnNote\": null, \"completionAuthority\": \"vendor_confirm\", \"coupleAcknowledgedAt\": null}"
+    },
+    {
+      "kind": "rpc",
+      "name": "acknowledge",
+      "result": "{\"ok\": true, \"vendorName\": \"Golden Hour Photography\"}"
+    },
+    {
+      "kind": "db",
+      "label": "1_acked",
+      "status": "pending",
+      "acked": true,
+      "note": "",
+      "returned": false,
+      "hasCompletedAt": false,
+      "completedBy": null,
+      "raw": "pending|t||f|f|"
+    },
+    {
+      "kind": "home",
+      "actionable": 0,
+      "waiting": 1,
+      "payDone": 2,
+      "payTotal": 3,
+      "readinessApprox": 92
+    },
+    {
+      "kind": "portal",
+      "raw": "{\"title\": \"[QA temp] Send final song selections\", \"status\": \"pending\", \"returnedAt\": null, \"canComplete\": false, \"completedBy\": null, \"canAcknowledge\": false, \"vendorReturnNote\": null, \"completionAuthority\": \"vendor_confirm\", \"coupleAcknowledgedAt\": \"2026-08-11T16:42:04.666023+00:00\"}"
+    },
+    {
+      "kind": "rpc",
+      "name": "return",
+      "result": "BEGIN\nd47f4d83-c063-4af8-897a-026ec0fa6e16\nauthenticated\n{\"sub\":\"d47f4d83-c063-4af8-897a-026ec0fa6e16\",\"role\":\"authenticated\"}\n{\"ok\": true}\nCOMMIT"
+    },
+    {
+      "kind": "db",
+      "label": "2_returned",
+      "status": "pending",
+      "acked": false,
+      "note": "We're still missing the reception playlist. Please add those selections and subm",
+      "returned": true,
+      "hasCompletedAt": false,
+      "completedBy": null,
+      "raw": "pending|f|We're still missing the reception playlist. Please add those selections and subm|t|f|"
+    },
+    {
+      "kind": "home",
+      "actionable": 1,
+      "waiting": 0,
+      "payDone": 2,
+      "payTotal": 3,
+      "readinessApprox": 92
+    },
+    {
+      "kind": "portal",
+      "raw": "{\"title\": \"[QA temp] Send final song selections\", \"status\": \"pending\", \"returnedAt\": \"2026-08-11T16:42:06.778255+00:00\", \"canComplete\": false, \"completedBy\": null, \"canAcknowledge\": true, \"vendorReturnNote\": \"We're still missing the reception playlist. Please add those selections and submit again.\", \"completionAuthority\": \"vendor_confirm\", \"coupleAcknowledgedAt\": null}"
+    },
+    {
+      "kind": "db",
+      "label": "3_reacked",
+      "status": "pending",
+      "acked": true,
+      "note": "",
+      "returned": false,
+      "hasCompletedAt": false,
+      "completedBy": null,
+      "raw": "pending|t||f|f|"
+    },
+    {
+      "kind": "home",
+      "actionable": 0,
+      "waiting": 1,
+      "payDone": 2,
+      "payTotal": 3,
+      "readinessApprox": 92
+    },
+    {
+      "kind": "rpc",
+      "name": "confirm",
+      "result": "BEGIN\nd47f4d83-c063-4af8-897a-026ec0fa6e16\nauthenticated\n{\"sub\":\"d47f4d83-c063-4af8-897a-026ec0fa6e16\",\"role\":\"authenticated\"}\n{\"ok\": true}\nCOMMIT"
+    },
+    {
+      "kind": "db",
+      "label": "4_confirmed",
+      "status": "complete",
+      "acked": true,
+      "note": "",
+      "returned": false,
+      "hasCompletedAt": true,
+      "completedBy": "vendor",
+      "raw": "complete|t||f|t|vendor"
+    },
+    {
+      "kind": "home",
+      "actionable": 0,
+      "waiting": 0,
+      "payDone": 2,
+      "payTotal": 3,
+      "readinessApprox": 92
+    },
+    {
+      "kind": "portal",
+      "raw": "{\"title\": \"[QA temp] Send final song selections\", \"status\": \"complete\", \"returnedAt\": null, \"canComplete\": false, \"completedBy\": \"vendor\", \"canAcknowledge\": false, \"vendorReturnNote\": null, \"completionAuthority\": \"vendor_confirm\", \"coupleAcknowledgedAt\": \"2026-08-11T16:42:09.341729+00:00\"}"
+    },
+    {
+      "kind": "notif",
+      "rows": [
+        "task_acknowledged|Couple says they've completed a task|Waiting for your confirmation: [QA temp] Send final song selections"
+      ]
+    },
+    {
+      "kind": "couple_notif",
+      "rows": [
+        "task_needs_changes|Your vendor needs changes|Golden Hour Photography needs changes on: [QA temp] Send final song se"
+      ]
+    }
+  ],
+  "defects": [],
+  "matrix": {
+    "1_open": "PASS",
+    "2_couple_ack": "PASS",
+    "3_home_waiting": "PASS",
+    "4_needs_changes": "PASS",
+    "5_home_actionable": "PASS",
+    "6_reack_clears_note": "PASS",
+    "7_vendor_confirm": "PASS",
+    "8_readiness_stable": "PASS",
+    "9_luv_ack_not_completed": "PASS",
+    "10_couple_needs_changes_notif": "PASS"
+  },
+  "verdict": "PASS"
+}

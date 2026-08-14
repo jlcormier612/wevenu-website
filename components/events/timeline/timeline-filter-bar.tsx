@@ -8,12 +8,12 @@
 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import type { StaffMember } from "@/lib/team/types";
-import { TIMELINE_AUDIENCES, type TimelineSection } from "@/lib/timeline/types";
+import { VENUE_TIMELINE_AUDIENCES, type TimelineSection } from "@/lib/timeline/types";
 
 export const ALL_FILTER = "__all__";
 const ALL = ALL_FILTER;
 
-export type TimelineStatusFilter = "all" | "upcoming" | "today" | "complete";
+export type TimelineStatusFilter = "all" | "upcoming" | "today";
 
 export function TimelineFilterBar({
   sections, teamMembers,
@@ -51,23 +51,22 @@ export function TimelineFilterBar({
         </SelectContent>
       </Select>
 
-      <Select value={audience} onValueChange={onAudienceChange} items={[{ value: ALL, label: "All Audiences" }, ...TIMELINE_AUDIENCES.map((a) => ({ value: a.value, label: a.label }))]}>
+      <Select value={audience} onValueChange={onAudienceChange} items={[{ value: ALL, label: "All Audiences" }, ...VENUE_TIMELINE_AUDIENCES.map((a) => ({ value: a.value, label: a.label }))]}>
         <SelectTrigger className="h-8 w-36 text-xs"><SelectValue /></SelectTrigger>
         <SelectContent>
           <SelectItem value={ALL}>All Audiences</SelectItem>
-          {TIMELINE_AUDIENCES.map((a) => <SelectItem key={a.value} value={a.value}>{a.emoji} {a.label}</SelectItem>)}
+          {VENUE_TIMELINE_AUDIENCES.map((a) => <SelectItem key={a.value} value={a.value}>{a.emoji} {a.label}</SelectItem>)}
         </SelectContent>
       </Select>
 
       <Select value={status} onValueChange={(v) => onStatusChange(v as TimelineStatusFilter)} items={[
-        { value: "all", label: "All Statuses" }, { value: "upcoming", label: "Upcoming" }, { value: "today", label: "Today" }, { value: "complete", label: "Complete" },
+        { value: "all", label: "All Statuses" }, { value: "upcoming", label: "Upcoming" }, { value: "today", label: "Today" },
       ]}>
         <SelectTrigger className="h-8 w-32 text-xs"><SelectValue /></SelectTrigger>
         <SelectContent>
           <SelectItem value="all">All Statuses</SelectItem>
           <SelectItem value="upcoming">Upcoming</SelectItem>
           <SelectItem value="today">Today</SelectItem>
-          <SelectItem value="complete">Complete</SelectItem>
         </SelectContent>
       </Select>
     </div>

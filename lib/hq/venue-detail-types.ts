@@ -8,6 +8,8 @@ export type HqVenueSummary = {
   phone: string | null;
   timezone: string;
   createdAt: string;
+  /** HQ rollout gate — Event Order tab availability for this venue. */
+  eventOrderEnabled: boolean;
 };
 
 export type HqActivationDetail = {

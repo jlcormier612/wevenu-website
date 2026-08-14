@@ -1,0 +1,131 @@
+{
+  "method": "path_a_checkout_LIVE + sandbox_subscription_paid_API + signed_checkout.session.completed_webhook",
+  "email": "htc-e2e-1786662340707@example.com",
+  "venueName": "HTC E2E Venue 1786662340707",
+  "pathASessionId": "cs_test_a11UZnZD4hvcUTcrJrQxVt2jWtiCzPaH8A4USJGU9NuZMfvUitoWxqJL9F",
+  "fakeCheckoutSessionId": "cs_test_e2e_1786662340707",
+  "customerId": "cus_V4GDTYSnKoMqjN",
+  "subscriptionId": "sub_1U47gyErUqJH7nktlxJZxIAy",
+  "invoiceAmountPaid": 11900,
+  "enrollment": {
+    "id": "a5e2e7a5-f249-4e12-822a-a046d71b5a81",
+    "createdAt": "2026-08-13T23:05:46.895Z",
+    "updatedAt": "2026-08-13T23:05:46.895Z",
+    "stripeSubscriptionId": "sub_1U47gyErUqJH7nktlxJZxIAy",
+    "stripeCustomerId": "cus_V4GDTYSnKoMqjN",
+    "stripeCheckoutSessionId": "cs_test_e2e_1786662340707",
+    "venueName": "HTC E2E Venue 1786662340707",
+    "customerEmail": "htc-e2e-1786662340707@example.com",
+    "plan": "starter",
+    "planName": "Gather",
+    "foundingMember": true,
+    "welcomeBackRequested": false,
+    "welcomeBackVerified": "none",
+    "onboardingType": "self_guided",
+    "paymentStatus": "successful",
+    "mrrCents": 14900
+  },
+  "relationship": {
+    "id": "rel_061aeb84c93a",
+    "status": "onboarding",
+    "onboardingType": "self_guided",
+    "foundingMember": true,
+    "accessDisabled": false,
+    "stripeSubscriptionId": "sub_1U47gyErUqJH7nktlxJZxIAy",
+    "email": "htc-e2e-1786662340707@example.com"
+  },
+  "checks": [
+    {
+      "name": "keys_test",
+      "pass": true,
+      "detail": "sk_test"
+    },
+    {
+      "name": "htc_account",
+      "pass": true,
+      "detail": "acct_1U4226ErUqJH7nkt"
+    },
+    {
+      "name": "gather_149",
+      "pass": true,
+      "detail": "14900"
+    },
+    {
+      "name": "coupon_30",
+      "pass": true,
+      "detail": "FOUNDING100 3000"
+    },
+    {
+      "name": "path_a_checkout",
+      "pass": true,
+      "detail": "session=cs_test_a11UZnZD4hvcUTcrJrQxVt2jWtiCzPaH8A4USJGU9NuZMfvUitoWxqJL9F founding=true"
+    },
+    {
+      "name": "path_a_amount_119",
+      "pass": true,
+      "detail": "amount_total=11900"
+    },
+    {
+      "name": "path_a_meta",
+      "pass": true,
+      "detail": "gather_founding_coupon"
+    },
+    {
+      "name": "wg_live_blocked",
+      "pass": true,
+      "detail": "HTTP 503 STRIPE_PRICE_WHITE_GLOVE is not configured."
+    },
+    {
+      "name": "hosted_checkout_ui_pay",
+      "pass": false,
+      "detail": "UNVERIFIED \u2014 Playwright filled card but Subscribe did not complete; browser MCP cannot access Stripe card iframes"
+    },
+    {
+      "name": "subscription_active",
+      "pass": true,
+      "detail": "status=active id=sub_1U47gyErUqJH7nktlxJZxIAy"
+    },
+    {
+      "name": "invoice_paid_119ish",
+      "pass": true,
+      "detail": "amount_paid=11900 total=11900"
+    },
+    {
+      "name": "webhook_signature_200",
+      "pass": true,
+      "detail": "HTTP 200 {\"received\":true}"
+    },
+    {
+      "name": "provision_log",
+      "pass": true,
+      "detail": "enrollment log"
+    },
+    {
+      "name": "enrollment_db",
+      "pass": true,
+      "detail": "id=a5e2e7a5-f249-4e12-822a-a046d71b5a81 onboarding=self_guided founding=true mrr=14900 plan=starter"
+    },
+    {
+      "name": "relationship_db",
+      "pass": true,
+      "detail": "id=rel_061aeb84c93a status=onboarding onboarding=self_guided founding=True accessDisabled=False"
+    },
+    {
+      "name": "welcome_email",
+      "pass": true,
+      "detail": "dry-run/timeline evidence"
+    },
+    {
+      "name": "no_connect",
+      "pass": true,
+      "detail": "SOURCE confirmed \u2014 SaaS webhook path only"
+    },
+    {
+      "name": "wg_source",
+      "pass": true,
+      "detail": "SOURCE: white_glove defers product sync; LIVE checkout blocked by missing STRIPE_PRICE_WHITE_GLOVE"
+    }
+  ],
+  "finishedAt": "2026-08-13T23:05:51.188Z",
+  "note": "relationship found in shared/relationships/.data/relationships.jsonl (jsonl, not json)"
+}

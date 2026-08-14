@@ -16,7 +16,7 @@ export default async function VendorPackagesPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-foreground">Service Packages</h1>
+        <h1 className="font-heading text-2xl font-medium text-heading">Packages</h1>
         <p className="text-sm text-muted-foreground mt-1">
           Define the services you offer so venues can match you to the right events.
         </p>

@@ -1,0 +1,337 @@
+{
+  "passed": 66,
+  "failed": 0,
+  "total": 66,
+  "results": [
+    {
+      "name": "login",
+      "pass": true,
+      "note": "http://localhost:3000/dashboard"
+    },
+    {
+      "name": "areas-count-12",
+      "pass": true,
+      "note": "12"
+    },
+    {
+      "name": "area:Getting Started",
+      "pass": true,
+      "note": ""
+    },
+    {
+      "name": "area:Finding & Booking Clients",
+      "pass": true,
+      "note": ""
+    },
+    {
+      "name": "area:Working With Clients",
+      "pass": true,
+      "note": ""
+    },
+    {
+      "name": "area:Contracts & Payments",
+      "pass": true,
+      "note": ""
+    },
+    {
+      "name": "area:Planning the Event",
+      "pass": true,
+      "note": ""
+    },
+    {
+      "name": "area:Building the Event",
+      "pass": true,
+      "note": ""
+    },
+    {
+      "name": "area:Event Day",
+      "pass": true,
+      "note": ""
+    },
+    {
+      "name": "area:After the Event",
+      "pass": true,
+      "note": ""
+    },
+    {
+      "name": "area:Vendors",
+      "pass": true,
+      "note": ""
+    },
+    {
+      "name": "area:Your Venue",
+      "pass": true,
+      "note": ""
+    },
+    {
+      "name": "area:Reports",
+      "pass": true,
+      "note": ""
+    },
+    {
+      "name": "area:Guided Journeys",
+      "pass": true,
+      "note": ""
+    },
+    {
+      "name": "guided-journeys-empty",
+      "pass": true,
+      "note": "Guided Journeys\n\nMulti-step paths across Hello to Cheers.\n\nGuides for this area are coming soon."
+    },
+    {
+      "name": "event-day-has-3",
+      "pass": true,
+      "note": "Event Day\n\nDay sheets and day-of coordination.\n\nWhat is the Day Sheet, and how do I get one?\nWhat is the Wedding Day Dashboard, and when do I use it?\nWhere do I see my event-day tasks?\n"
+    },
+    {
+      "name": "after-the-event-has-2",
+      "pass": true,
+      "note": "After the Event\n\nFeedback, reviews, and closeout.\n\nHow do I collect feedback from a couple after their event?\nHow do I mark an event complete, and what happens when I do?\n"
+    },
+    {
+      "name": "reports-has-3",
+      "pass": true,
+      "note": "Reports\n\nUnderstand how your venue is performing.\n\nHow do I save a report and find it again later?\nWhat can I see in Reports?\nWhich report should I use for a specific question?\n"
+    },
+    {
+      "name": "preserved:Getting Started: Your First Morning",
+      "pass": true,
+      "note": ""
+    },
+    {
+      "name": "preserved:What should I set up before I start?",
+      "pass": true,
+      "note": ""
+    },
+    {
+      "name": "preserved:Creating Your First Package",
+      "pass": true,
+      "note": ""
+    },
+    {
+      "name": "preserved:Inviting Your First Couple to Their Port",
+      "pass": true,
+      "note": ""
+    },
+    {
+      "name": "preserved:Getting Paid, On Time",
+      "pass": true,
+      "note": ""
+    },
+    {
+      "name": "preserved:Turning a Lead into a Signed Client",
+      "pass": true,
+      "note": ""
+    },
+    {
+      "name": "preserved:Getting the Most from Your Vendor Networ",
+      "pass": true,
+      "note": ""
+    },
+    {
+      "name": "preserved:How does my Pipeline work?",
+      "pass": true,
+      "note": ""
+    },
+    {
+      "name": "preserved:Can I customize my Pipeline stages?",
+      "pass": true,
+      "note": ""
+    },
+    {
+      "name": "preserved:What happens when I move a lead into a s",
+      "pass": true,
+      "note": ""
+    },
+    {
+      "name": "preserved:What's the difference between a Lead and",
+      "pass": true,
+      "note": ""
+    },
+    {
+      "name": "preserved:Who signs a contract first, and what hap",
+      "pass": true,
+      "note": ""
+    },
+    {
+      "name": "preserved:Can more than one person sign a contract",
+      "pass": true,
+      "note": ""
+    },
+    {
+      "name": "preserved:Can couples pay online?",
+      "pass": true,
+      "note": ""
+    },
+    {
+      "name": "preserved:What do Sent, Paid, and Void mean on an ",
+      "pass": true,
+      "note": ""
+    },
+    {
+      "name": "preserved:What's the difference between a Package,",
+      "pass": true,
+      "note": ""
+    },
+    {
+      "name": "preserved:What do the Floor Plan Studio icons mean",
+      "pass": true,
+      "note": ""
+    },
+    {
+      "name": "preserved:How do I move an object that's behind an",
+      "pass": true,
+      "note": ""
+    },
+    {
+      "name": "preserved:What is an Automation?",
+      "pass": true,
+      "note": ""
+    },
+    {
+      "name": "preserved:Can I pause an Automation for just one p",
+      "pass": true,
+      "note": ""
+    },
+    {
+      "name": "preserved:Why did this person get this message?",
+      "pass": true,
+      "note": ""
+    },
+    {
+      "name": "preserved:What happens to an Automation if someone",
+      "pass": true,
+      "note": ""
+    },
+    {
+      "name": "preserved:Where do my venue colors actually show u",
+      "pass": true,
+      "note": ""
+    },
+    {
+      "name": "preserved:How do I start collecting inquiries from",
+      "pass": true,
+      "note": ""
+    },
+    {
+      "name": "article:event-day-sheet",
+      "pass": true,
+      "note": "What is the Day Sheet, and how do I get one?"
+    },
+    {
+      "name": "article-category:event-day-sheet",
+      "pass": true,
+      "note": "EVENT DAY"
+    },
+    {
+      "name": "back-nav:event-day-sheet",
+      "pass": true,
+      "note": "http://localhost:3000/help"
+    },
+    {
+      "name": "article:wedding-day-dashboard",
+      "pass": true,
+      "note": "What is the Wedding Day Dashboard, and when do I use it?"
+    },
+    {
+      "name": "article-category:wedding-day-dashboard",
+      "pass": true,
+      "note": "EVENT DAY"
+    },
+    {
+      "name": "back-nav:wedding-day-dashboard",
+      "pass": true,
+      "note": "http://localhost:3000/help"
+    },
+    {
+      "name": "article:event-day-tasks",
+      "pass": true,
+      "note": "Where do I see my event-day tasks?"
+    },
+    {
+      "name": "article-category:event-day-tasks",
+      "pass": true,
+      "note": "EVENT DAY"
+    },
+    {
+      "name": "back-nav:event-day-tasks",
+      "pass": true,
+      "note": "http://localhost:3000/help"
+    },
+    {
+      "name": "article:mark-event-complete",
+      "pass": true,
+      "note": "How do I mark an event complete, and what happens when I do?"
+    },
+    {
+      "name": "article-category:mark-event-complete",
+      "pass": true,
+      "note": "AFTER THE EVENT"
+    },
+    {
+      "name": "back-nav:mark-event-complete",
+      "pass": true,
+      "note": "http://localhost:3000/help"
+    },
+    {
+      "name": "article:post-event-feedback",
+      "pass": true,
+      "note": "How do I collect feedback from a couple after their event?"
+    },
+    {
+      "name": "article-category:post-event-feedback",
+      "pass": true,
+      "note": "AFTER THE EVENT"
+    },
+    {
+      "name": "back-nav:post-event-feedback",
+      "pass": true,
+      "note": "http://localhost:3000/help"
+    },
+    {
+      "name": "article:what-can-i-see-in-reports",
+      "pass": true,
+      "note": "What can I see in Reports?"
+    },
+    {
+      "name": "article-category:what-can-i-see-in-reports",
+      "pass": true,
+      "note": "REPORTS"
+    },
+    {
+      "name": "back-nav:what-can-i-see-in-reports",
+      "pass": true,
+      "note": "http://localhost:3000/help"
+    },
+    {
+      "name": "article:which-report-should-i-use",
+      "pass": true,
+      "note": "Which report should I use for a specific question?"
+    },
+    {
+      "name": "article-category:which-report-should-i-use",
+      "pass": true,
+      "note": "REPORTS"
+    },
+    {
+      "name": "back-nav:which-report-should-i-use",
+      "pass": true,
+      "note": "http://localhost:3000/help"
+    },
+    {
+      "name": "article:save-a-report",
+      "pass": true,
+      "note": "How do I save a report and find it again later?"
+    },
+    {
+      "name": "article-category:save-a-report",
+      "pass": true,
+      "note": "REPORTS"
+    },
+    {
+      "name": "back-nav:save-a-report",
+      "pass": true,
+      "note": "http://localhost:3000/help"
+    }
+  ]
+}

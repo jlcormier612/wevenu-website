@@ -1,12 +1,19 @@
 import { createClient } from "@/integrations/supabase/server";
 import { isSupabaseConfigured } from "@/lib/env";
 import { clientDisplayName } from "@/lib/clients/constants";
+import * as conversationsRepo from "@/lib/conversations/repository";
+import { getVendorSharedFloorPlans } from "@/lib/floor-plans/repository";
 import { getVendorUser } from "@/lib/vendor-auth/service";
+import { getVendorNotifications } from "@/lib/vendor-notifications/service";
+import { vendorHasPendingLeaveRequest } from "@/lib/vendor-removal-requests/service";
+import { deriveCompletionAuthority } from "@/lib/vendor-tasks/completion-authority";
+import type { VendorNotification } from "@/lib/vendor-notifications/types";
 import type {
   VendorActionResult,
   VendorEventDetail,
   VendorEventListItem,
   VendorActivityItem,
+  VendorPersonalTask,
 } from "@/lib/vendors/types";
 import type {
   VendorTimelineEntry,
@@ -15,7 +22,205 @@ import type {
   VendorDocumentsByEvent,
   VendorTimelineByEvent,
 } from "@/lib/vendor-portal/types";
-import type { VendorPersonalTask } from "@/lib/vendors/types";
+
+const ACTIVITY_FYI_MS = 72 * 60 * 60 * 1000;
+const ACTIVITY_CAP = 5;
+
+const ACTION_TYPE_RANK: Record<string, number> = {
+  message_waiting: 0,
+  new_task: 1,
+  document_shared: 2,
+};
+
+function withinFyiWindow(iso: string, nowMs: number): boolean {
+  const t = Date.parse(iso);
+  if (!Number.isFinite(t) || t <= 0) return false;
+  return nowMs - t <= ACTIVITY_FYI_MS;
+}
+
+function newestIso(isos: string[]): string | null {
+  const valid = isos.filter((s) => {
+    const t = Date.parse(s);
+    return Number.isFinite(t) && t > 0;
+  });
+  if (valid.length === 0) return null;
+  return valid.sort((a, b) => b.localeCompare(a))[0]!;
+}
+
+/** Soft-ack via notification read_at; missing notif older than 72h = addressed. */
+function softAckState(
+  notifs: VendorNotification[],
+  assetOccurredAt: string | null | undefined,
+  nowMs: number,
+): { addressed: boolean; unreadIds: string[]; occurredAt: string | null } {
+  if (notifs.length > 0) {
+    const unread = notifs.filter((n) => !n.readAt);
+    const stamp =
+      newestIso(unread.map((n) => n.createdAt)) ??
+      newestIso(notifs.map((n) => n.createdAt)) ??
+      assetOccurredAt ??
+      null;
+    if (unread.length === 0) {
+      return { addressed: true, unreadIds: [], occurredAt: stamp };
+    }
+    return {
+      addressed: false,
+      unreadIds: unread.map((n) => n.id),
+      occurredAt: stamp,
+    };
+  }
+  if (!assetOccurredAt || !Number.isFinite(Date.parse(assetOccurredAt)) || Date.parse(assetOccurredAt) <= 0) {
+    return { addressed: true, unreadIds: [], occurredAt: null };
+  }
+  if (!withinFyiWindow(assetOccurredAt, nowMs)) {
+    return { addressed: true, unreadIds: [], occurredAt: assetOccurredAt };
+  }
+  return { addressed: false, unreadIds: [], occurredAt: assetOccurredAt };
+}
+
+function buildVendorActivityFeed(input: {
+  assignmentId: string;
+  eventId: string;
+  eventTasks: VendorTask[];
+  documents: VendorDocument[];
+  notifications: VendorNotification[];
+  conversations: Awaited<ReturnType<typeof conversationsRepo.getVendorConversationInbox>>["conversations"];
+  floorPlans: { id: string; name: string; updatedAt: string }[];
+}): VendorActivityItem[] {
+  const nowMs = Date.now();
+  const scoped = input.notifications.filter(
+    (n) => n.assignmentId === input.assignmentId || n.eventId === input.eventId,
+  );
+  const taskNotifs = scoped.filter((n) => n.type === "new_task");
+  const docNotifs = scoped.filter((n) => n.type === "document_shared");
+  const items: VendorActivityItem[] = [];
+
+  // message_waiting — prefer conversation unread over notification read_at
+  for (const thread of input.conversations.filter((c) => c.eventId === input.eventId)) {
+    if (thread.contactUnread <= 0) continue;
+    const occurredAt = thread.lastMessageAt ?? newestIso(
+      scoped.filter((n) => n.type === "new_message").map((n) => n.createdAt),
+    );
+    if (!occurredAt) continue;
+    const actor = thread.counterpartyLabel === "Couple" ? "couple" as const : "venue" as const;
+    items.push({
+      id: `msg-${thread.conversationId}`,
+      type: "message_waiting",
+      description: `${thread.counterpartyLabel} is waiting on a reply`,
+      occurredAt,
+      actor,
+      needsAction: true,
+      hrefTab: "messages",
+      thread: thread.conversationKind === "couple_vendor" ? "couple" : "venue",
+    });
+  }
+
+  // new_task — open tasks; soft-ack via new_task notification read_at
+  for (const task of input.eventTasks) {
+    if (task.status === "complete") continue;
+    const matches = taskNotifs.filter((n) => n.body === task.title);
+    // No matching notif and no task created_at in this RPC → treat as addressed (no ghosts)
+    if (matches.length === 0) continue;
+    const { addressed, unreadIds, occurredAt } = softAckState(matches, null, nowMs);
+    if (addressed || !occurredAt) continue;
+    items.push({
+      id: `task-${task.id}`,
+      type: "new_task",
+      description: `New task: ${task.title}`,
+      occurredAt,
+      actor: "venue",
+      needsAction: true,
+      hrefTab: "tasks",
+      notificationIds: unreadIds,
+    });
+  }
+
+  // document_shared — venue docs + floor plans; soft-ack via notif read_at
+  const claimedDocNotifIds = new Set<string>();
+
+  for (const doc of input.documents) {
+    const matches = docNotifs.filter((n) => n.body === doc.name);
+    matches.forEach((n) => claimedDocNotifIds.add(n.id));
+    const { addressed, unreadIds, occurredAt } = softAckState(matches, doc.createdAt ?? null, nowMs);
+    if (addressed || !occurredAt) continue;
+    items.push({
+      id: `doc-${doc.id}`,
+      type: "document_shared",
+      description: `Document shared: ${doc.name}`,
+      occurredAt,
+      actor: "venue",
+      needsAction: true,
+      hrefTab: "documents",
+      notificationIds: unreadIds,
+    });
+  }
+
+  for (const plan of input.floorPlans) {
+    const matches = docNotifs.filter(
+      (n) => n.body === plan.name || n.body === (plan.name.trim() || "Floor plan"),
+    );
+    matches.forEach((n) => claimedDocNotifIds.add(n.id));
+    const { addressed, unreadIds, occurredAt } = softAckState(matches, plan.updatedAt, nowMs);
+    if (addressed || !occurredAt) continue;
+    items.push({
+      id: `fp-${plan.id}`,
+      type: "document_shared",
+      description: `Floor plan shared: ${plan.name.trim() || "Floor plan"}`,
+      occurredAt,
+      actor: "venue",
+      needsAction: true,
+      hrefTab: "documents",
+      notificationIds: unreadIds,
+    });
+  }
+
+  // Unmatched document_shared notifs (rename / race) — still action-needed while unread
+  for (const n of docNotifs) {
+    if (claimedDocNotifIds.has(n.id) || n.readAt) continue;
+    items.push({
+      id: `docnotif-${n.id}`,
+      type: "document_shared",
+      description: n.body?.trim()
+        ? `${n.title.includes("Floor plan") ? "Floor plan" : "Document"} shared: ${n.body.trim()}`
+        : (n.title || "Document shared"),
+      occurredAt: n.createdAt,
+      actor: "venue",
+      needsAction: true,
+      hrefTab: "documents",
+      notificationIds: [n.id],
+    });
+  }
+
+  // task_complete — FYI only within 72h; skip vendor-owned (self) completes
+  for (const task of input.eventTasks) {
+    if (!task.completedAt || task.status !== "complete") continue;
+    if (!withinFyiWindow(task.completedAt, nowMs)) continue;
+    if (task.visibility === "vendor_owned") continue;
+    items.push({
+      id: `done-${task.id}`,
+      type: "task_complete",
+      description: `Completed: ${task.title}`,
+      occurredAt: task.completedAt,
+      actor: "venue",
+      needsAction: false,
+      hrefTab: "tasks",
+    });
+  }
+
+  const action = items
+    .filter((i) => i.needsAction)
+    .sort((a, b) => {
+      const ra = ACTION_TYPE_RANK[a.type] ?? 9;
+      const rb = ACTION_TYPE_RANK[b.type] ?? 9;
+      if (ra !== rb) return ra - rb;
+      return b.occurredAt.localeCompare(a.occurredAt);
+    });
+  const fyi = items
+    .filter((i) => !i.needsAction)
+    .sort((a, b) => b.occurredAt.localeCompare(a.occurredAt));
+
+  return [...action, ...fyi].slice(0, ACTIVITY_CAP);
+}
 
 async function withVendor<T>(
   fn: (supabase: Awaited<ReturnType<typeof createClient>>, vendorId: string) => Promise<T>,
@@ -47,7 +252,13 @@ export async function getVendorEvents(): Promise<VendorEventListItem[]> {
   };
 
   const { data, error } = await supabase.rpc("get_vendor_events");
-  if (error) throw error;
+  // Soft-fail: layout + home call this on every vendor navigation / server-action
+  // refresh. Throwing a raw PostgREST/Kong object surfaces as opaque
+  // `{message: ...}` Runtime Errors even when the triggering mutation succeeded.
+  if (error) {
+    console.error("[getVendorEvents]", error.message);
+    return [];
+  }
   if (!data || "error" in data) return [];
 
   return ((data.events ?? []) as Row[]).map((r) => ({
@@ -96,13 +307,13 @@ export async function getVendorEventDetail(
     } | null;
     event: { id: string; name: string; event_date: string | null; event_end_date: string | null; event_type: string | null; venue_id: string; venue_name: string } | null;
     client: { first_name: string | null; last_name: string | null; partner_first_name: string | null; partner_last_name: string | null; email: string | null; phone: string | null } | null;
-    timeline: { id: string; entry_time: string | null; title: string; description: string | null; audiences: string[] }[];
+    timeline: { id: string; entry_time: string | null; day_offset?: number; title: string; description: string | null; audiences: string[] }[];
     event_tasks: { id: string; title: string; description: string | null; category: string; visibility: string; due_date: string | null; days_offset: number | null; due_date_locked?: boolean; status: string; is_required: boolean; completed_at: string | null }[];
     documents: { id: string; name: string; category: string; storage_url: string; mime_type: string | null; notes: string | null; created_at?: string | null }[];
   };
 
   const { data, error } = await supabase.rpc("get_vendor_event_detail", { p_assignment_id: assignmentId });
-  if (error) throw error;
+  if (error) throw new Error(error.message);
   if (!data) return null;
   const payload = data as DetailPayload;
   if (!payload.assignment || !payload.event) return null;
@@ -118,12 +329,13 @@ export async function getVendorEventDetail(
     .eq("event_id", eventId)
     .order("due_date", { ascending: true, nullsFirst: false });
 
-  const timeline: VendorTimelineEntry[] = payload.timeline.map((r) => ({
+  const timeline: VendorTimelineEntry[] = (payload.timeline ?? []).map((r) => ({
     id:          r.id,
     time:        r.entry_time,
+    dayOffset:   r.day_offset ?? 0,
     title:       r.title,
     description: r.description,
-    audiences:   r.audiences,
+    audiences:   r.audiences ?? [],
   }));
 
   const eventTasks: VendorTask[] = payload.event_tasks.map((r) => ({
@@ -141,19 +353,70 @@ export async function getVendorEventDetail(
     canComplete: r.visibility === "vendor_owned",
   }));
 
-  const personalTasks: VendorPersonalTask[] = ((personalTaskData ?? []) as PersonalTaskRow[]).map((r) => ({
-    id:              r.id as string,
-    vendorId:        r.vendor_id as string,
-    vendorInquiryId: (r.vendor_inquiry_id as string | null) ?? null,
-    eventId:         (r.event_id as string | null) ?? null,
-    title:           r.title as string,
-    dueDate:         (r.due_date as string | null) ?? null,
-    status:          (r.status as "pending" | "complete") ?? "pending",
-    source:          (r.source as VendorPersonalTask["source"]) ?? "manual",
-    notes:           (r.notes as string | null) ?? null,
-    completedAt:     (r.completed_at as string | null) ?? null,
-    createdAt:       r.created_at as string,
-  }));
+  const personalTaskRows = (personalTaskData ?? []) as PersonalTaskRow[];
+  const personalTaskIds = personalTaskRows.map((r) => r.id as string);
+  const attachmentsByTask = new Map<string, { id: string; name: string; storageUrl: string; mimeType: string | null }[]>();
+  if (personalTaskIds.length > 0) {
+    const { data: attData } = await supabase
+      .from("vendor_task_attachments")
+      .select("id, vendor_task_id, name, storage_url, mime_type")
+      .in("vendor_task_id", personalTaskIds)
+      .order("sort_order", { ascending: true });
+    for (const a of (attData ?? []) as {
+      id: string; vendor_task_id: string; name: string; storage_url: string; mime_type: string | null;
+    }[]) {
+      const list = attachmentsByTask.get(a.vendor_task_id) ?? [];
+      list.push({
+        id: a.id,
+        name: a.name,
+        storageUrl: a.storage_url,
+        mimeType: a.mime_type,
+      });
+      attachmentsByTask.set(a.vendor_task_id, list);
+    }
+  }
+
+  const personalTasks: VendorPersonalTask[] = personalTaskRows.map((r) => {
+    const coupleVisibility = (
+      ["private", "visible", "owned"].includes(r.couple_visibility as string)
+        ? r.couple_visibility
+        : "private"
+    ) as VendorPersonalTask["coupleVisibility"];
+    const actionType = (
+      r.action_type === "share_timeline" ? "share_timeline" : null
+    ) as VendorPersonalTask["actionType"];
+    const completionAuthority = (
+      r.completion_authority === "couple_acknowledge" ||
+      r.completion_authority === "vendor_confirm" ||
+      r.completion_authority === "action_verified"
+        ? r.completion_authority
+        : deriveCompletionAuthority({ coupleVisibility, actionType })
+    ) as VendorPersonalTask["completionAuthority"];
+    return {
+      id:               r.id as string,
+      vendorId:         r.vendor_id as string,
+      vendorInquiryId:  (r.vendor_inquiry_id as string | null) ?? null,
+      eventId:          (r.event_id as string | null) ?? null,
+      title:            r.title as string,
+      dueDate:          (r.due_date as string | null) ?? null,
+      daysOffset:       (r.days_offset as number | null) ?? null,
+      templateId:       (r.template_id as string | null) ?? null,
+      templateItemId:   (r.template_item_id as string | null) ?? null,
+      status:           (r.status as "pending" | "complete") ?? "pending",
+      source:           (r.source as VendorPersonalTask["source"]) ?? "manual",
+      notes:            (r.notes as string | null) ?? null,
+      coupleVisibility,
+      actionType,
+      completionAuthority,
+      coupleAcknowledgedAt: (r.couple_acknowledged_at as string | null) ?? null,
+      vendorReturnNote: (r.vendor_return_note as string | null) ?? null,
+      returnedAt:       (r.returned_at as string | null) ?? null,
+      completedBy:      (r.completed_by as "couple" | "vendor" | null) ?? null,
+      completedAt:      (r.completed_at as string | null) ?? null,
+      createdAt:        r.created_at as string,
+      attachments:      attachmentsByTask.get(r.id as string) ?? [],
+    };
+  });
 
   const documents: VendorDocument[] = payload.documents.map((r) => ({
     id:         r.id,
@@ -165,33 +428,27 @@ export async function getVendorEventDetail(
     createdAt:  r.created_at ?? null,
   }));
 
-  // Activity feed: derive from tasks + docs sorted by time.
-  // Never emit epoch-zero timestamps (Dec 31, 1969 / Jan 1, 1970) — skip
-  // items without a real occurredAt when the RPC has not yet been migrated.
-  const activityFeed: VendorActivityItem[] = [
-    ...eventTasks
-      .filter((t) => t.completedAt)
-      .map((t) => ({
-        id:          t.id,
-        type:        "task_complete" as const,
-        description: `Completed: ${t.title}`,
-        occurredAt:  t.completedAt!,
-        actor:       "venue" as const,
-      })),
-    ...documents
-      .filter((d) => {
-        if (!d.createdAt) return false;
-        const ms = Date.parse(d.createdAt);
-        return Number.isFinite(ms) && ms > 0;
-      })
-      .map((d) => ({
-        id:          d.id,
-        type:        "document_upload" as const,
-        description: `Document shared: ${d.name}`,
-        occurredAt:  d.createdAt!,
-        actor:       "venue" as const,
-      })),
-  ].sort((a, b) => b.occurredAt.localeCompare(a.occurredAt));
+  // Hybrid Recent Activity: action-needed (unread / soft-ack) + FYI ≤72h.
+  // Reuses conversation unread + vendor_notifications — no separate ack table.
+  const [{ notifications }, inbox, floorPlans, hasPendingLeaveRequest] = await Promise.all([
+    getVendorNotifications(80),
+    conversationsRepo.getVendorConversationInbox(supabase),
+    getVendorSharedFloorPlans(supabase, eventId).catch((err) => {
+      console.error("[getVendorEventDetail] floor plans for activity:", err);
+      return [] as Awaited<ReturnType<typeof getVendorSharedFloorPlans>>;
+    }),
+    vendorHasPendingLeaveRequest(assignmentId),
+  ]);
+
+  const activityFeed = buildVendorActivityFeed({
+    assignmentId,
+    eventId,
+    eventTasks,
+    documents,
+    notifications,
+    conversations: inbox.conversations,
+    floorPlans,
+  });
 
   const coupleName = clientDisplayName(
     payload.client?.first_name ?? "", payload.client?.last_name ?? "",
@@ -218,6 +475,7 @@ export async function getVendorEventDetail(
     setupCompleteAt: ass.setup_complete_at,
     agreedFee:       ass.agreed_fee != null ? Number(ass.agreed_fee) : null,
     paymentStatus:   ass.payment_status,
+    hasPendingLeaveRequest,
     timeline,
     eventTasks,
     personalTasks,
@@ -334,7 +592,10 @@ export async function getVendorDocumentsAcrossEvents(): Promise<VendorDocumentsB
   };
 
   const { data, error } = await supabase.rpc("get_vendor_documents");
-  if (error) throw error;
+  if (error) {
+    console.error("[getVendorDocumentsAcrossEvents]", error.message);
+    return [];
+  }
   if (!data || "error" in data) return [];
 
   return ((data.events ?? []) as Row[]).map((r) => ({
@@ -360,16 +621,22 @@ export async function getVendorTimelineAcrossEvents(): Promise<VendorTimelineByE
 
   type Row = {
     assignmentId: string; eventId: string; eventName: string; eventDate: string | null; eventEndDate: string | null; venueName: string;
-    entries: { id: string; time: string | null; title: string; description: string | null }[];
+    entries: { id: string; time: string | null; dayOffset?: number; title: string; description: string | null }[];
   };
 
   const { data, error } = await supabase.rpc("get_vendor_timeline");
-  if (error) throw error;
+  if (error) {
+    console.error("[getVendorTimelineAcrossEvents]", error.message);
+    return [];
+  }
   if (!data || "error" in data) return [];
 
   return ((data.events ?? []) as Row[]).map((r) => ({
     assignmentId: r.assignmentId, eventId: r.eventId, eventName: r.eventName,
     eventDate: r.eventDate, eventEndDate: r.eventEndDate ?? null, venueName: r.venueName,
-    entries: r.entries.map((e) => ({ id: e.id, time: e.time, title: e.title, description: e.description, audiences: ["vendors"] })),
+    entries: r.entries.map((e) => ({
+      id: e.id, time: e.time, dayOffset: e.dayOffset ?? 0,
+      title: e.title, description: e.description, audiences: ["vendors"],
+    })),
   }));
 }

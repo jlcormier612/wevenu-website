@@ -1,0 +1,59 @@
+{
+  "completeProbe": [
+    {
+      "tag": "BUTTON",
+      "type": "button",
+      "disabled": false,
+      "className": "shrink-0 self-center text-[11px] font-semibold px-2.5 py-1.5 rounded-lg text-whi",
+      "inForm": false,
+      "nearestHref": null,
+      "row": "Purchase event insurance Required Due Aug 18 Complete"
+    },
+    {
+      "tag": "BUTTON",
+      "type": "button",
+      "disabled": false,
+      "className": "shrink-0 self-center text-[11px] font-semibold px-2.5 py-1.5 rounded-lg text-whi",
+      "inForm": false,
+      "nearestHref": null,
+      "row": "Submit your guest count Required We need your final headcount to plan seating, catering, and rentals. Due Sep 17 Complete"
+    },
+    {
+      "tag": "BUTTON",
+      "type": "button",
+      "disabled": false,
+      "className": "shrink-0 self-center text-[11px] font-semibold px-2.5 py-1.5 rounded-lg text-whi",
+      "inForm": false,
+      "nearestHref": null,
+      "row": "Final payment Required Due Sep 17 Complete"
+    }
+  ],
+  "countBefore": 0,
+  "timelineLand": {
+    "url": "http://localhost:3000/p/seedcoupleportal00000000000000000000000000000001",
+    "sample": "Emma & Jordan · Sweet Daisy Barn & Farm Oct 17, 2026 – Oct 19, 2026 Export my data 🏠 Home ✅ Tasks 6 🕒 Timeline 📁 Documents 💳 Payments 💬 Messages 🏛️ Venue Guide 🤝 Preferred Vendors TIMELINE STATUS Not yet submitted You have unpublished changes. Submit Timeline to Venue Saturday, Oct 17 6:00 PM 🔒 From your venue Rehearsal Dinner Family dinner",
+    "looksLikeTimeline": true
+  },
+  "paymentsLand": {
+    "url": "http://localhost:3000/p/seedcoupleportal00000000000000000000000000000001",
+    "sample": "Emma & Jordan · Sweet Daisy Barn & Farm Oct 17, 2026 – Oct 19, 2026 Export my data 🏠 Home ✅ Tasks 6 🕒 Timeline 📁 Documents 💳 Payments 💬 Messages 🏛️ Venue Guide 🤝 Preferred Vendors Payments Your financial picture with your venue — all in one place. PAYMENT SCHEDULE — EMMA / CARTER / JORDAN / LEE $12,960 Total contract value 0% paid $12,960 remaining Paid $0 Remaining $12,960 💗 First Installment (due April 20) hasn't been received yet. Reach out to your venue coordinator to arrange payment. 💗 Your next payment, Final Payment, is scheduled for September 17. PAYMENT SCHEDULE 1 First Installment Due Apr 20, 2026 $4,320 Overdue Pay now 2 Second Installment Due Jul 19, 2026 $4,320 Overdue Pay now 3 Final Payment Due Sep 17, 2026 $4,321 Upcoming Pay now 💗 Questions about payments? Contact your venue coordinator through the Messages tab or reach out directly. Sweet Daisy Barn & Farm 💗",
+    "money": [
+      "$12,960",
+      "$0",
+      "$4,320",
+      "$4,321"
+    ],
+    "has38880": false,
+    "firstCount": 2,
+    "looksLikePayments": true
+  },
+  "messagesLand": {
+    "sample": "Emma & Jordan · Sweet Daisy Barn & Farm Oct 17, 2026 – Oct 19, 2026 Export my data 🏠 Home ✅ Tasks 6 🕒 Timeline 📁 Documents 💳 Payments 💬 Messages 🏛️ Venue Guide 🤝 Preferred Vendors S Sweet Daisy Barn & Farm Your venue team August 5, 2026 S Just checking in to make sure you received the floor p",
+    "ok": true
+  },
+  "fabOpen": {
+    "sample": "ust 4, 2026 Open your story → Sweet Daisy Barn & Farm 💗 Ask Luv Ask Luv Ask anything about your venue — policies, parking, hotel recommendations, what to expect on the day. Luv searches the venue's information and answers right here. 🏛️ Browse everything in your Venue Guide TRY ASKING: Can we have sparklers? Is there parking for guests? What hotels do you recommend? What's the rain plan? When is our final payment due? Can we bring our own caterer? Press Enter to send · Shift+Enter for new line",
+    "hasAsk": true
+  },
+  "mobOverflow": 0
+}

@@ -1,0 +1,512 @@
+{
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Description": "Hello to Cheers — application/compute stack: ECS, ALB, networking, task definitions, services, IAM, logging. ECR repositories live in the separate infra/htc-ecr-repos.json foundation stack, deployed first. See docs/aws-cloudformation-ecs-deployment-plan.md, docs/aws-ecs-deployment-implementation.md, and docs/github-actions-deployment-implementation.md. Same template for sandbox and production, distinguished by EnvironmentName/parameter values, not by separate templates.",
+
+  "Parameters": {
+    "EnvironmentName": {
+      "Type": "String",
+      "Default": "sandbox",
+      "AllowedValues": ["sandbox", "production"],
+      "Description": "Used in resource naming/tags. Deploy to sandbox first and review before ever using production."
+    },
+    "VpcCidr": { "Type": "String", "Default": "10.20.0.0/16" },
+    "PublicSubnet1Cidr": { "Type": "String", "Default": "10.20.0.0/24" },
+    "PublicSubnet2Cidr": { "Type": "String", "Default": "10.20.1.0/24" },
+
+    "VenueAppImage": {
+      "Type": "String",
+      "Description": "Full ECR image URI:tag for the venue/product app. Build+push happens outside this template (see Dockerfile at repo root)."
+    },
+    "MarketingImage": {
+      "Type": "String",
+      "Description": "Full ECR image URI:tag for marketing/. Build+push happens outside this template (see marketing/Dockerfile)."
+    },
+    "WorkspaceImage": {
+      "Type": "String",
+      "Description": "Full ECR image URI:tag for workspace/. Build+push happens outside this template (see workspace/Dockerfile)."
+    },
+
+    "VenueAppHostname": {
+      "Type": "String",
+      "Default": "app.sandbox.hellotocheers.com",
+      "Description": "Used only for ALB host-header listener rules. No DNS record is created by this template (open decision — see docs). Before DNS exists, test with curl -H \"Host: <this value>\" against the ALB's own DNS name."
+    },
+    "MarketingHostname": {
+      "Type": "String",
+      "Default": "sandbox.hellotocheers.com"
+    },
+    "WorkspaceHostname": {
+      "Type": "String",
+      "Default": "workspace.sandbox.hellotocheers.com"
+    },
+
+    "CertificateArn": {
+      "Type": "String",
+      "Default": "",
+      "Description": "ACM certificate ARN for HTTPS. Leave blank for a first Sandbox smoke test over plain HTTP — the HTTPS listener is only created if this is set (see the HasCertificate Condition). Requesting/validating a real cert is a manual AWS step, not something this template can do."
+    },
+
+    "FromEmailAddress": {
+      "Type": "String",
+      "Default": "Hello to Cheers <hello@hellotocheers.com>",
+      "Description": "Non-secret. Venue app reads this as FROM_EMAIL; marketing/workspace read the same value as EMAIL_FROM (two variable names, confirmed in code — see docs/resend-production-setup-findings.md)."
+    },
+    "EmailReplyTo": {
+      "Type": "String",
+      "Default": "jen@hellotocheers.com",
+      "Description": "Non-secret. Read only by marketing/workspace (EMAIL_REPLY_TO) — the venue app has no global Reply-To config, confirmed in code."
+    },
+    "SupabaseUrl": {
+      "Type": "String",
+      "Description": "Non-secret (public Supabase project URL). Runtime value for the venue app's SUPABASE-adjacent server env; the NEXT_PUBLIC_ build-time copy is a separate Docker build-arg concern, not set here."
+    }
+  },
+
+  "Conditions": {
+    "HasCertificate": { "Fn::Not": [{ "Fn::Equals": [{ "Ref": "CertificateArn" }, ""] }] },
+    "IsProduction": { "Fn::Equals": [{ "Ref": "EnvironmentName" }, "production"] }
+  },
+
+  "Resources": {
+
+    "Vpc": {
+      "Type": "AWS::EC2::VPC",
+      "Properties": {
+        "CidrBlock": { "Ref": "VpcCidr" },
+        "EnableDnsHostnames": true,
+        "EnableDnsSupport": true,
+        "Tags": [{ "Key": "Name", "Value": { "Fn::Sub": "htc-${EnvironmentName}-vpc" } }]
+      }
+    },
+    "InternetGateway": { "Type": "AWS::EC2::InternetGateway" },
+    "VpcGatewayAttachment": {
+      "Type": "AWS::EC2::VPCGatewayAttachment",
+      "Properties": { "VpcId": { "Ref": "Vpc" }, "InternetGatewayId": { "Ref": "InternetGateway" } }
+    },
+
+    "PublicSubnet1": {
+      "Type": "AWS::EC2::Subnet",
+      "Properties": {
+        "VpcId": { "Ref": "Vpc" },
+        "CidrBlock": { "Ref": "PublicSubnet1Cidr" },
+        "AvailabilityZone": { "Fn::Select": [0, { "Fn::GetAZs": "" }] },
+        "MapPublicIpOnLaunch": true,
+        "Tags": [{ "Key": "Name", "Value": { "Fn::Sub": "htc-${EnvironmentName}-public-1" } }]
+      }
+    },
+    "PublicSubnet2": {
+      "Type": "AWS::EC2::Subnet",
+      "Properties": {
+        "VpcId": { "Ref": "Vpc" },
+        "CidrBlock": { "Ref": "PublicSubnet2Cidr" },
+        "AvailabilityZone": { "Fn::Select": [1, { "Fn::GetAZs": "" }] },
+        "MapPublicIpOnLaunch": true,
+        "Tags": [{ "Key": "Name", "Value": { "Fn::Sub": "htc-${EnvironmentName}-public-2" } }]
+      }
+    },
+    "PublicRouteTable": {
+      "Type": "AWS::EC2::RouteTable",
+      "Properties": { "VpcId": { "Ref": "Vpc" } }
+    },
+    "PublicRoute": {
+      "Type": "AWS::EC2::Route",
+      "DependsOn": "VpcGatewayAttachment",
+      "Properties": {
+        "RouteTableId": { "Ref": "PublicRouteTable" },
+        "DestinationCidrBlock": "0.0.0.0/0",
+        "GatewayId": { "Ref": "InternetGateway" }
+      }
+    },
+    "PublicSubnet1RouteAssoc": {
+      "Type": "AWS::EC2::SubnetRouteTableAssociation",
+      "Properties": { "SubnetId": { "Ref": "PublicSubnet1" }, "RouteTableId": { "Ref": "PublicRouteTable" } }
+    },
+    "PublicSubnet2RouteAssoc": {
+      "Type": "AWS::EC2::SubnetRouteTableAssociation",
+      "Properties": { "SubnetId": { "Ref": "PublicSubnet2" }, "RouteTableId": { "Ref": "PublicRouteTable" } }
+    },
+
+    "_comment_networking": "Sandbox-first choice: ECS tasks run in the PUBLIC subnets above (locked down by SecurityGroup, not by network isolation) rather than private subnets + NAT Gateway. This is cheaper and simpler for a first Sandbox validation. Moving tasks to private subnets + NAT is a real, later hardening step, not required for the first E2E test — see 'open decisions' in the deployment plan.",
+
+    "AlbSecurityGroup": {
+      "Type": "AWS::EC2::SecurityGroup",
+      "Properties": {
+        "GroupDescription": "ALB — public HTTP/HTTPS",
+        "VpcId": { "Ref": "Vpc" },
+        "SecurityGroupIngress": [
+          { "IpProtocol": "tcp", "FromPort": 80, "ToPort": 80, "CidrIp": "0.0.0.0/0" },
+          { "IpProtocol": "tcp", "FromPort": 443, "ToPort": 443, "CidrIp": "0.0.0.0/0" }
+        ],
+        "SecurityGroupEgress": [{ "IpProtocol": "-1", "CidrIp": "0.0.0.0/0" }]
+      }
+    },
+    "EcsTaskSecurityGroup": {
+      "Type": "AWS::EC2::SecurityGroup",
+      "Properties": {
+        "GroupDescription": "ECS tasks — inbound only from the ALB, on the container port; outbound HTTPS to Supabase/Resend/Stripe and cross-app calls",
+        "VpcId": { "Ref": "Vpc" },
+        "SecurityGroupIngress": [
+          { "IpProtocol": "tcp", "FromPort": 3000, "ToPort": 3000, "SourceSecurityGroupId": { "Ref": "AlbSecurityGroup" } }
+        ],
+        "SecurityGroupEgress": [{ "IpProtocol": "-1", "CidrIp": "0.0.0.0/0" }]
+      }
+    },
+
+    "EcsCluster": {
+      "Type": "AWS::ECS::Cluster",
+      "Properties": {
+        "ClusterName": { "Fn::Sub": "htc-${EnvironmentName}" },
+        "ClusterSettings": [{ "Name": "containerInsights", "Value": "enabled" }]
+      }
+    },
+
+    "_comment_ecr": "ECR repositories are deliberately NOT in this stack — see infra/htc-ecr-repos.json. They're long-lived (must survive every app-stack redeploy) and this stack's compute resources are not; bundling them here created a bootstrap conflict for a CI-driven pipeline (a failed first stack creation would roll back and delete the repos along with everything else). Deploy the foundation stack first; VenueAppImage/MarketingImage/WorkspaceImage below take the resulting repo URIs (with a tag) as plain string parameters, so this stack never needs to reference the foundation stack's resources directly.",
+
+    "VenueAppLogGroup": { "Type": "AWS::Logs::LogGroup", "Properties": { "LogGroupName": { "Fn::Sub": "/ecs/htc-${EnvironmentName}/venue-app" }, "RetentionInDays": 30 } },
+    "MarketingLogGroup": { "Type": "AWS::Logs::LogGroup", "Properties": { "LogGroupName": { "Fn::Sub": "/ecs/htc-${EnvironmentName}/marketing" }, "RetentionInDays": 30 } },
+    "WorkspaceLogGroup": { "Type": "AWS::Logs::LogGroup", "Properties": { "LogGroupName": { "Fn::Sub": "/ecs/htc-${EnvironmentName}/workspace" }, "RetentionInDays": 30 } },
+
+    "EcsTaskExecutionRole": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "RoleName": { "Fn::Sub": "htc-${EnvironmentName}-ecs-task-execution" },
+        "AssumeRolePolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [{ "Effect": "Allow", "Principal": { "Service": "ecs-tasks.amazonaws.com" }, "Action": "sts:AssumeRole" }]
+        },
+        "ManagedPolicyArns": ["arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"],
+        "Policies": [{
+          "PolicyName": "ReadHtcSecrets",
+          "PolicyDocument": {
+            "Version": "2012-10-17",
+            "Statement": [{
+              "Effect": "Allow",
+              "Action": ["secretsmanager:GetSecretValue"],
+              "Resource": [
+                { "Ref": "SupabaseServiceRoleKeySecret" },
+                { "Ref": "ResendApiKeySecret" },
+                { "Ref": "ProductSyncApiKeySecret" },
+                { "Ref": "StripeConnectSecrets" },
+                { "Ref": "StripeSaasSecrets" }
+              ]
+            }]
+          }
+        }]
+      }
+    },
+    "_comment_task_role": "Confirmed by direct search this session: zero AWS SDK calls anywhere in the app code (all 'storage'/'database' access is Supabase-over-HTTPS). This role is intentionally near-empty — it exists because ECS requires a task role, not because the app needs AWS API access.",
+    "EcsTaskRole": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "RoleName": { "Fn::Sub": "htc-${EnvironmentName}-ecs-task" },
+        "AssumeRolePolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [{ "Effect": "Allow", "Principal": { "Service": "ecs-tasks.amazonaws.com" }, "Action": "sts:AssumeRole" }]
+        }
+      }
+    },
+
+    "_comment_secrets": "Placeholder values only (CHANGE_ME) — CloudFormation cannot create a Secrets Manager secret with no value. Populate the real values with `aws secretsmanager put-secret-value` (or the Console) immediately after stack creation, never in this template. PRODUCT_SYNC_API_KEY must end up byte-identical across all three apps — it's one secret, referenced by all three task definitions below, not three separate values.",
+
+    "SupabaseServiceRoleKeySecret": {
+      "Type": "AWS::SecretsManager::Secret",
+      "Properties": {
+        "Name": { "Fn::Sub": "htc/${EnvironmentName}/supabase-service-role-key" },
+        "SecretString": "{\"value\":\"CHANGE_ME\"}"
+      }
+    },
+    "ResendApiKeySecret": {
+      "Type": "AWS::SecretsManager::Secret",
+      "Properties": {
+        "Name": { "Fn::Sub": "htc/${EnvironmentName}/resend-api-key" },
+        "SecretString": "{\"value\":\"CHANGE_ME\"}"
+      }
+    },
+    "ProductSyncApiKeySecret": {
+      "Type": "AWS::SecretsManager::Secret",
+      "Properties": {
+        "Name": { "Fn::Sub": "htc/${EnvironmentName}/product-sync-api-key" },
+        "SecretString": "{\"value\":\"CHANGE_ME\"}"
+      }
+    },
+    "StripeSaasSecrets": {
+      "Type": "AWS::SecretsManager::Secret",
+      "Properties": {
+        "Name": { "Fn::Sub": "htc/${EnvironmentName}/stripe-saas" },
+        "Description": "marketing/'s Stripe SaaS billing keys — STRIPE_SECRET_KEY + STRIPE_WEBHOOK_SECRET, separate from Connect below",
+        "SecretString": "{\"STRIPE_SECRET_KEY\":\"CHANGE_ME\",\"STRIPE_WEBHOOK_SECRET\":\"CHANGE_ME\"}"
+      }
+    },
+    "StripeConnectSecrets": {
+      "Type": "AWS::SecretsManager::Secret",
+      "Properties": {
+        "Name": { "Fn::Sub": "htc/${EnvironmentName}/stripe-connect" },
+        "Description": "Venue app's existing Stripe Connect keys — not part of the first E2E path, included for completeness",
+        "SecretString": "{\"STRIPE_SECRET_KEY\":\"CHANGE_ME\",\"STRIPE_WEBHOOK_SECRET\":\"CHANGE_ME\"}"
+      }
+    },
+
+    "VenueAppTaskDefinition": {
+      "Type": "AWS::ECS::TaskDefinition",
+      "Properties": {
+        "Family": { "Fn::Sub": "htc-${EnvironmentName}-venue-app" },
+        "RequiresCompatibilities": ["FARGATE"],
+        "NetworkMode": "awsvpc",
+        "Cpu": "512",
+        "Memory": "1024",
+        "ExecutionRoleArn": { "Fn::GetAtt": ["EcsTaskExecutionRole", "Arn"] },
+        "TaskRoleArn": { "Fn::GetAtt": ["EcsTaskRole", "Arn"] },
+        "ContainerDefinitions": [{
+          "Name": "venue-app",
+          "Image": { "Ref": "VenueAppImage" },
+          "PortMappings": [{ "ContainerPort": 3000, "Protocol": "tcp" }],
+          "Environment": [
+            { "Name": "NODE_ENV", "Value": "production" },
+            { "Name": "SUPABASE_URL", "Value": { "Ref": "SupabaseUrl" } },
+            { "Name": "FROM_EMAIL", "Value": { "Ref": "FromEmailAddress" } }
+          ],
+          "Secrets": [
+            { "Name": "SUPABASE_SERVICE_ROLE_KEY", "ValueFrom": { "Fn::Sub": "${SupabaseServiceRoleKeySecret}:value::" } },
+            { "Name": "RESEND_API_KEY", "ValueFrom": { "Fn::Sub": "${ResendApiKeySecret}:value::" } },
+            { "Name": "PRODUCT_SYNC_API_KEY", "ValueFrom": { "Fn::Sub": "${ProductSyncApiKeySecret}:value::" } },
+            { "Name": "STRIPE_SECRET_KEY", "ValueFrom": { "Fn::Sub": "${StripeConnectSecrets}:STRIPE_SECRET_KEY::" } },
+            { "Name": "STRIPE_WEBHOOK_SECRET", "ValueFrom": { "Fn::Sub": "${StripeConnectSecrets}:STRIPE_WEBHOOK_SECRET::" } }
+          ],
+          "LogConfiguration": {
+            "LogDriver": "awslogs",
+            "Options": {
+              "awslogs-group": { "Ref": "VenueAppLogGroup" },
+              "awslogs-region": { "Ref": "AWS::Region" },
+              "awslogs-stream-prefix": "venue-app"
+            }
+          }
+        }]
+      }
+    },
+    "MarketingTaskDefinition": {
+      "Type": "AWS::ECS::TaskDefinition",
+      "Properties": {
+        "Family": { "Fn::Sub": "htc-${EnvironmentName}-marketing" },
+        "RequiresCompatibilities": ["FARGATE"],
+        "NetworkMode": "awsvpc",
+        "Cpu": "256",
+        "Memory": "512",
+        "ExecutionRoleArn": { "Fn::GetAtt": ["EcsTaskExecutionRole", "Arn"] },
+        "TaskRoleArn": { "Fn::GetAtt": ["EcsTaskRole", "Arn"] },
+        "ContainerDefinitions": [{
+          "Name": "marketing",
+          "Image": { "Ref": "MarketingImage" },
+          "PortMappings": [{ "ContainerPort": 3000, "Protocol": "tcp" }],
+          "Environment": [
+            { "Name": "NODE_ENV", "Value": "production" },
+            { "Name": "EMAIL_FROM", "Value": { "Ref": "FromEmailAddress" } },
+            { "Name": "EMAIL_REPLY_TO", "Value": { "Ref": "EmailReplyTo" } },
+            { "Name": "PRODUCT_API_BASE_URL", "Value": { "Fn::Sub": "https://${VenueAppHostname}" } }
+          ],
+          "Secrets": [
+            { "Name": "RESEND_API_KEY", "ValueFrom": { "Fn::Sub": "${ResendApiKeySecret}:value::" } },
+            { "Name": "PRODUCT_SYNC_API_KEY", "ValueFrom": { "Fn::Sub": "${ProductSyncApiKeySecret}:value::" } },
+            { "Name": "STRIPE_SECRET_KEY", "ValueFrom": { "Fn::Sub": "${StripeSaasSecrets}:STRIPE_SECRET_KEY::" } },
+            { "Name": "STRIPE_WEBHOOK_SECRET", "ValueFrom": { "Fn::Sub": "${StripeSaasSecrets}:STRIPE_WEBHOOK_SECRET::" } }
+          ],
+          "LogConfiguration": {
+            "LogDriver": "awslogs",
+            "Options": {
+              "awslogs-group": { "Ref": "MarketingLogGroup" },
+              "awslogs-region": { "Ref": "AWS::Region" },
+              "awslogs-stream-prefix": "marketing"
+            }
+          }
+        }]
+      }
+    },
+    "WorkspaceTaskDefinition": {
+      "Type": "AWS::ECS::TaskDefinition",
+      "Properties": {
+        "Family": { "Fn::Sub": "htc-${EnvironmentName}-workspace" },
+        "RequiresCompatibilities": ["FARGATE"],
+        "NetworkMode": "awsvpc",
+        "Cpu": "256",
+        "Memory": "512",
+        "ExecutionRoleArn": { "Fn::GetAtt": ["EcsTaskExecutionRole", "Arn"] },
+        "TaskRoleArn": { "Fn::GetAtt": ["EcsTaskRole", "Arn"] },
+        "ContainerDefinitions": [{
+          "Name": "workspace",
+          "Image": { "Ref": "WorkspaceImage" },
+          "PortMappings": [{ "ContainerPort": 3000, "Protocol": "tcp" }],
+          "Environment": [
+            { "Name": "NODE_ENV", "Value": "production" },
+            { "Name": "EMAIL_FROM", "Value": { "Ref": "FromEmailAddress" } },
+            { "Name": "PRODUCT_API_BASE_URL", "Value": { "Fn::Sub": "https://${VenueAppHostname}" } }
+          ],
+          "Secrets": [
+            { "Name": "RESEND_API_KEY", "ValueFrom": { "Fn::Sub": "${ResendApiKeySecret}:value::" } },
+            { "Name": "PRODUCT_SYNC_API_KEY", "ValueFrom": { "Fn::Sub": "${ProductSyncApiKeySecret}:value::" } }
+          ],
+          "LogConfiguration": {
+            "LogDriver": "awslogs",
+            "Options": {
+              "awslogs-group": { "Ref": "WorkspaceLogGroup" },
+              "awslogs-region": { "Ref": "AWS::Region" },
+              "awslogs-stream-prefix": "workspace"
+            }
+          }
+        }]
+      }
+    },
+
+    "Alb": {
+      "Type": "AWS::ElasticLoadBalancingV2::LoadBalancer",
+      "Properties": {
+        "Name": { "Fn::Sub": "htc-${EnvironmentName}-alb" },
+        "Scheme": "internet-facing",
+        "Type": "application",
+        "Subnets": [{ "Ref": "PublicSubnet1" }, { "Ref": "PublicSubnet2" }],
+        "SecurityGroups": [{ "Ref": "AlbSecurityGroup" }]
+      }
+    },
+
+    "_comment_health_checks": "Health-check paths and expected status codes are not guesses — they match this repo's own local dev tooling (scripts/dev_listen.py) and were re-confirmed by actually running each container this session. Venue app /login = 200. Marketing / = 200. Workspace / = 307 (its own session gate redirects unauthenticated requests) — Matcher is 200-399 for workspace specifically, not the default 200, because that redirect is correct, intentional behavior, not a failure.",
+
+    "VenueAppTargetGroup": {
+      "Type": "AWS::ElasticLoadBalancingV2::TargetGroup",
+      "Properties": {
+        "Name": { "Fn::Sub": "htc-${EnvironmentName}-venue-app" },
+        "Port": 3000, "Protocol": "HTTP", "TargetType": "ip", "VpcId": { "Ref": "Vpc" },
+        "HealthCheckPath": "/login",
+        "HealthCheckIntervalSeconds": 30,
+        "HealthyThresholdCount": 2,
+        "UnhealthyThresholdCount": 3,
+        "Matcher": { "HttpCode": "200" }
+      }
+    },
+    "MarketingTargetGroup": {
+      "Type": "AWS::ElasticLoadBalancingV2::TargetGroup",
+      "Properties": {
+        "Name": { "Fn::Sub": "htc-${EnvironmentName}-marketing" },
+        "Port": 3000, "Protocol": "HTTP", "TargetType": "ip", "VpcId": { "Ref": "Vpc" },
+        "HealthCheckPath": "/",
+        "HealthCheckIntervalSeconds": 30,
+        "HealthyThresholdCount": 2,
+        "UnhealthyThresholdCount": 3,
+        "Matcher": { "HttpCode": "200" }
+      }
+    },
+    "WorkspaceTargetGroup": {
+      "Type": "AWS::ElasticLoadBalancingV2::TargetGroup",
+      "Properties": {
+        "Name": { "Fn::Sub": "htc-${EnvironmentName}-workspace" },
+        "Port": 3000, "Protocol": "HTTP", "TargetType": "ip", "VpcId": { "Ref": "Vpc" },
+        "HealthCheckPath": "/",
+        "HealthCheckIntervalSeconds": 30,
+        "HealthyThresholdCount": 2,
+        "UnhealthyThresholdCount": 3,
+        "Matcher": { "HttpCode": "200-399" }
+      }
+    },
+
+    "HttpListener": {
+      "Type": "AWS::ElasticLoadBalancingV2::Listener",
+      "Properties": {
+        "LoadBalancerArn": { "Ref": "Alb" },
+        "Port": 80, "Protocol": "HTTP",
+        "DefaultActions": [{ "Type": "forward", "TargetGroupArn": { "Ref": "MarketingTargetGroup" } }]
+      }
+    },
+    "HttpsListener": {
+      "Type": "AWS::ElasticLoadBalancingV2::Listener",
+      "Condition": "HasCertificate",
+      "Properties": {
+        "LoadBalancerArn": { "Ref": "Alb" },
+        "Port": 443, "Protocol": "HTTPS",
+        "Certificates": [{ "CertificateArn": { "Ref": "CertificateArn" } }],
+        "DefaultActions": [{ "Type": "forward", "TargetGroupArn": { "Ref": "MarketingTargetGroup" } }]
+      }
+    },
+
+    "_comment_listener_rules": "Host-header rules on the HTTP listener let this be smoke-tested before any real DNS/cert exists: curl -H \"Host: <hostname>\" http://<alb-dns-name>/. Mirror the same rules onto HttpsListener once CertificateArn is supplied — omitted here for brevity; duplicate VenueAppHttpRule/WorkspaceHttpRule onto the HTTPS listener when a cert exists.",
+
+    "VenueAppHttpRule": {
+      "Type": "AWS::ElasticLoadBalancingV2::ListenerRule",
+      "Properties": {
+        "ListenerArn": { "Ref": "HttpListener" },
+        "Priority": 10,
+        "Conditions": [{ "Field": "host-header", "Values": [{ "Ref": "VenueAppHostname" }] }],
+        "Actions": [{ "Type": "forward", "TargetGroupArn": { "Ref": "VenueAppTargetGroup" } }]
+      }
+    },
+    "WorkspaceHttpRule": {
+      "Type": "AWS::ElasticLoadBalancingV2::ListenerRule",
+      "Properties": {
+        "ListenerArn": { "Ref": "HttpListener" },
+        "Priority": 20,
+        "Conditions": [{ "Field": "host-header", "Values": [{ "Ref": "WorkspaceHostname" }] }],
+        "Actions": [{ "Type": "forward", "TargetGroupArn": { "Ref": "WorkspaceTargetGroup" } }]
+      }
+    },
+
+    "VenueAppService": {
+      "Type": "AWS::ECS::Service",
+      "DependsOn": ["VenueAppHttpRule"],
+      "Properties": {
+        "ServiceName": { "Fn::Sub": "htc-${EnvironmentName}-venue-app" },
+        "Cluster": { "Ref": "EcsCluster" },
+        "TaskDefinition": { "Ref": "VenueAppTaskDefinition" },
+        "DesiredCount": 1,
+        "LaunchType": "FARGATE",
+        "NetworkConfiguration": {
+          "AwsvpcConfiguration": {
+            "AssignPublicIp": "ENABLED",
+            "Subnets": [{ "Ref": "PublicSubnet1" }, { "Ref": "PublicSubnet2" }],
+            "SecurityGroups": [{ "Ref": "EcsTaskSecurityGroup" }]
+          }
+        },
+        "LoadBalancers": [{ "ContainerName": "venue-app", "ContainerPort": 3000, "TargetGroupArn": { "Ref": "VenueAppTargetGroup" } }]
+      }
+    },
+    "_comment_marketing_workspace_count": "DesiredCount fixed at 1 for both, per the approved deployment plan — their CRM/Relationship data is a local on-disk JSON store, not Postgres; more than one task would each see a different (or empty) copy of it. Not autoscaled. Explicitly not redesigned/migrated as part of this deployment.",
+    "MarketingService": {
+      "Type": "AWS::ECS::Service",
+      "DependsOn": ["HttpListener"],
+      "Properties": {
+        "ServiceName": { "Fn::Sub": "htc-${EnvironmentName}-marketing" },
+        "Cluster": { "Ref": "EcsCluster" },
+        "TaskDefinition": { "Ref": "MarketingTaskDefinition" },
+        "DesiredCount": 1,
+        "LaunchType": "FARGATE",
+        "NetworkConfiguration": {
+          "AwsvpcConfiguration": {
+            "AssignPublicIp": "ENABLED",
+            "Subnets": [{ "Ref": "PublicSubnet1" }, { "Ref": "PublicSubnet2" }],
+            "SecurityGroups": [{ "Ref": "EcsTaskSecurityGroup" }]
+          }
+        },
+        "LoadBalancers": [{ "ContainerName": "marketing", "ContainerPort": 3000, "TargetGroupArn": { "Ref": "MarketingTargetGroup" } }]
+      }
+    },
+    "WorkspaceService": {
+      "Type": "AWS::ECS::Service",
+      "DependsOn": ["WorkspaceHttpRule"],
+      "Properties": {
+        "ServiceName": { "Fn::Sub": "htc-${EnvironmentName}-workspace" },
+        "Cluster": { "Ref": "EcsCluster" },
+        "TaskDefinition": { "Ref": "WorkspaceTaskDefinition" },
+        "DesiredCount": 1,
+        "LaunchType": "FARGATE",
+        "NetworkConfiguration": {
+          "AwsvpcConfiguration": {
+            "AssignPublicIp": "ENABLED",
+            "Subnets": [{ "Ref": "PublicSubnet1" }, { "Ref": "PublicSubnet2" }],
+            "SecurityGroups": [{ "Ref": "EcsTaskSecurityGroup" }]
+          }
+        },
+        "LoadBalancers": [{ "ContainerName": "workspace", "ContainerPort": 3000, "TargetGroupArn": { "Ref": "WorkspaceTargetGroup" } }]
+      }
+    }
+  },
+
+  "Outputs": {
+    "AlbDnsName": { "Value": { "Fn::GetAtt": ["Alb", "DNSName"] }, "Description": "Use with curl -H \"Host: <app hostname>\" for pre-DNS smoke testing" },
+    "EcsClusterName": { "Value": { "Ref": "EcsCluster" } }
+  }
+}

@@ -406,7 +406,11 @@ export async function getVendorConversationInbox(
   client: DbClient,
 ): Promise<{ conversations: VendorConversationSummary[]; totalUnread: number }> {
   const { data, error } = await client.rpc("get_vendor_conversation_inbox");
-  if (error) throw error;
+  // Soft-fail: vendor layout loads this on every navigation / server-action refresh.
+  if (error) {
+    console.error("[getVendorConversationInbox]", error.message);
+    return { conversations: [], totalUnread: 0 };
+  }
   if (!data || "error" in data) return { conversations: [], totalUnread: 0 };
   const rows = (data.conversations ?? []) as VendorInboxRow[];
   return {

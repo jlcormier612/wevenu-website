@@ -65,7 +65,7 @@ export function VendorLibrarySection({
           expiresAt: expiresAt || null,
         });
         if (!result.ok) { toast.error(result.message ?? "Could not save."); return; }
-        toast.success("Added to your library.");
+        toast.success("Added to Document Library.");
         resetForm();
         router.refresh();
       } catch (err) {
@@ -75,12 +75,12 @@ export function VendorLibrarySection({
   }
 
   function handleDelete(doc: VendorLibraryDocument) {
-    if (!confirm(`Remove "${doc.name}" from your library?`)) return;
+    if (!confirm(`Remove "${doc.name}" from Document Library?`)) return;
     startTransition(async () => {
       const result = await deleteVendorLibraryDocumentAction(doc.id);
       if (result.ok) {
         setDocs((prev) => prev.filter((d) => d.id !== doc.id));
-        toast.success("Removed from library.");
+        toast.success("Removed from Document Library.");
         router.refresh();
       } else toast.error(result.message ?? "Could not delete.");
     });
@@ -89,13 +89,10 @@ export function VendorLibrarySection({
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between gap-3">
-        <div>
-          <h2 className="text-sm font-semibold text-foreground">Your library</h2>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            Reusable COIs, W-9s, rate cards — attach them to events when needed.
-          </p>
-        </div>
-        <Button size="sm" variant="outline" onClick={() => setShowUpload((v) => !v)}>
+        <p className="text-xs text-muted-foreground">
+          Reusable files (COIs, W-9s, rate cards) you store here to then share with both venues and clients when needed.
+        </p>
+        <Button size="sm" variant="outline" className="shrink-0" onClick={() => setShowUpload((v) => !v)}>
           <Upload className="h-3.5 w-3.5 mr-1.5" />
           Upload
         </Button>
@@ -137,7 +134,7 @@ export function VendorLibrarySection({
           <div className="flex justify-end gap-2">
             <Button type="button" variant="ghost" size="sm" onClick={resetForm} disabled={pending}>Cancel</Button>
             <Button type="button" size="sm" onClick={handleUpload} disabled={pending || !file}>
-              {pending ? <><Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />Uploading…</> : "Save to library"}
+              {pending ? <><Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />Uploading…</> : "Save to Document Library"}
             </Button>
           </div>
         </div>
@@ -146,7 +143,7 @@ export function VendorLibrarySection({
       {docs.length === 0 ? (
         <div className="rounded-sm border border-dashed border-border py-10 text-center">
           <FileText className="h-7 w-7 mx-auto mb-2 text-muted-foreground" />
-          <p className="text-sm text-muted-foreground">No library documents yet.</p>
+          <p className="text-sm text-muted-foreground">No documents yet.</p>
         </div>
       ) : (
         <div className="rounded-sm border border-border bg-card divide-y divide-border">

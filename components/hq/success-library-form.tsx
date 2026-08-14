@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { GAP_COPY } from "@/lib/dashboard/gap-copy";
+import { HELP_GUIDE_AREAS, isHelpGuideCategory } from "@/lib/help-guides/areas";
 import type { RelatedFeatureLink, SuccessLibraryArticle, SuccessLibraryArticleInput } from "@/lib/success-library/types";
 
 const GAP_KEYS = Object.keys(GAP_COPY);
@@ -27,7 +28,11 @@ export function SuccessLibraryForm({ article }: { article?: SuccessLibraryArticl
 
   const [title, setTitle] = React.useState(article?.title ?? "");
   const [slug, setSlug] = React.useState(article?.slug ?? "");
-  const [goalCategory, setGoalCategory] = React.useState(article?.goalCategory ?? "");
+  const [goalCategory, setGoalCategory] = React.useState(
+    article?.goalCategory && isHelpGuideCategory(article.goalCategory)
+      ? article.goalCategory
+      : (article?.goalCategory || HELP_GUIDE_AREAS[0].category),
+  );
   const [whyItMatters, setWhyItMatters] = React.useState(article?.whyItMatters ?? "");
   const [whenToUse, setWhenToUse] = React.useState(article?.whenToUse ?? "");
   const [bestPractices, setBestPractices] = React.useState(article?.bestPractices ?? "");
@@ -103,8 +108,20 @@ export function SuccessLibraryForm({ article }: { article?: SuccessLibraryArticl
       </div>
 
       <div className="space-y-1.5">
-        <Label htmlFor="sl-category">Goal category</Label>
-        <Input id="sl-category" value={goalCategory} onChange={(e) => setGoalCategory(e.target.value)} placeholder="Growing Your Venue" />
+        <Label htmlFor="sl-category">Help &amp; Guides area</Label>
+        <select
+          id="sl-category"
+          className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
+          value={goalCategory}
+          onChange={(e) => setGoalCategory(e.target.value)}
+        >
+          {HELP_GUIDE_AREAS.map((a) => (
+            <option key={a.id} value={a.category}>{a.category}</option>
+          ))}
+          {article?.goalCategory && !isHelpGuideCategory(article.goalCategory) ? (
+            <option value={article.goalCategory}>{article.goalCategory} (legacy)</option>
+          ) : null}
+        </select>
       </div>
 
       <div className="space-y-1.5">

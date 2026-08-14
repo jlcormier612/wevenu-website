@@ -27,6 +27,11 @@ export type MessageTemplate = {
   // Planning/Timeline/Floor Plan Templates (Template Platform — Release
   // Readiness parity pass).
   isArchived: boolean;
+  /**
+   * Hello to Cheers starter master key (e.g. MSG-01). Null for venue-authored
+   * templates. Masters are code fixtures — this only tags the venue-owned copy.
+   */
+  sourceMasterKey: string | null;
   createdAt: string;
   updatedAt: string;
 };

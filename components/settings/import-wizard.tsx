@@ -33,7 +33,7 @@ const ENTITY_META: Record<EntityType, { label: string; resultPath: string; descr
   leads:     { label: "Leads",     resultPath: "/leads",            description: "Import prospect inquiries into your leads pipeline." },
   vendors:   { label: "Vendors",   resultPath: "/vendors",          description: "Import your existing vendor contacts and relationships." },
   inventory: { label: "Inventory Templates", resultPath: "/library/inventory", description: "Import your tables, chairs, decor, and other physical inventory." },
-  packages:  { label: "Package Templates",   resultPath: "/library/packages",  description: "Import your existing service packages and pricing." },
+  packages:  { label: "Package Templates",   resultPath: "/packages",  description: "Import your existing service packages and pricing." },
 };
 
 const NEXT_STEP: Record<EntityType, { cta: string; href: string; detail: string }> = {
@@ -59,7 +59,7 @@ const NEXT_STEP: Record<EntityType, { cta: string; href: string; detail: string 
   },
   packages: {
     cta:    "Review your packages",
-    href:   "/library/packages",
+    href:   "/packages",
     detail: "Double-check pricing and descriptions, then packages are ready to add to invoices.",
   },
 };

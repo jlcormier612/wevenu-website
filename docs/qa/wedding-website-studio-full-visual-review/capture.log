@@ -1,0 +1,12 @@
+Launching Chrome: /Users/jensmac/Library/Caches/ms-playwright/chromium-1228/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing
+SMOKE=true PORTAL=http://localhost:3000/p/seedcoupleportal00000000000000000000000000000001
+On studio: {"hasStudio":true,"hasStyle":true,"hasPreview":true,"hasVendors":false,"titleSample":"Emma & Jordan · Sweet Daisy Barn & Farm Oct 17, 2026 – Oct 19, 2026 Export my data 🏠 Home ✅ Tasks 1 🕒 Timeline 📁 Documents 💳 Payments 💬 Messages 🏛️ Venue Guide 🤝 Preferred Vendors WEBSITE "}
+Catalog: 10 collections, 12 curated CS, 10 photo styles
+SMOKE matrix: Midnight Black Tie Magazine
+
+=== Collection: Midnight ===
+  Color: Black Tie
+  Photo Style: Magazine
+{"severity":"high","area":"nav","collection":"Midnight","photoStyle":"Magazine","issue":"Could not open Photo Style Edit"}
+
+Done. Findings: 1. Evidence: /Users/jensmac/Library/Mobile Documents/com~apple~CloudDocs/Wevenu Website/wevenu-website/docs/qa/wedding-website-studio-full-visual-review/evidence

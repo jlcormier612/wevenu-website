@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 
 import {
   cancelEnrollment_, createSequence, deleteSequence_, enrollRelationshipManually,
-  searchRelationships, setSequenceStatus_, updateSequence_,
+  pauseEnrollment_, resumeEnrollment_, searchRelationships, setSequenceStatus_, updateSequence_,
 } from "@/lib/message-sequences/service";
 import type {
   CreateSequenceResult, EnrollResult, MessageSequenceInput, SequenceActionResult,
@@ -46,6 +46,18 @@ export async function enrollRelationshipAction(sequenceId: string, relationshipI
 
 export async function cancelEnrollmentAction(sequenceId: string, enrollmentId: string): Promise<SequenceActionResult> {
   const result = await cancelEnrollment_(enrollmentId);
+  if (result.ok) revalidatePath(`/communication/series/${sequenceId}/edit`);
+  return result;
+}
+
+export async function pauseEnrollmentAction(sequenceId: string, enrollmentId: string): Promise<SequenceActionResult> {
+  const result = await pauseEnrollment_(enrollmentId);
+  if (result.ok) revalidatePath(`/communication/series/${sequenceId}/edit`);
+  return result;
+}
+
+export async function resumeEnrollmentAction(sequenceId: string, enrollmentId: string): Promise<SequenceActionResult> {
+  const result = await resumeEnrollment_(enrollmentId);
   if (result.ok) revalidatePath(`/communication/series/${sequenceId}/edit`);
   return result;
 }

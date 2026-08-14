@@ -1,0 +1,157 @@
+{
+  "createdAt": "2026-08-11T21:34:25.041Z",
+  "pass": 30,
+  "fail": 0,
+  "checks": [
+    {
+      "id": "message.mergeOk",
+      "ok": true,
+      "detail": "ok"
+    },
+    {
+      "id": "message.noUnresolvedTokens",
+      "ok": true,
+      "detail": "Your tour at Sweet Daisy Barn & Farm is confirmed\nHi Priya Natarajan,\n\nWe’re looking forward to welcoming you to Sweet Daisy Barn & Farm on Tuesday, August 18, 2026 at 5:32 PM for your tour.\n\nWe’ll wa"
+    },
+    {
+      "id": "message.tourResolved",
+      "ok": true,
+      "detail": "includes Tuesday, August 18, 2026 at 5:32 PM"
+    },
+    {
+      "id": "message.venueResolved",
+      "ok": true,
+      "detail": "venue name present"
+    },
+    {
+      "id": "message.clientResolved",
+      "ok": true,
+      "detail": "client name present"
+    },
+    {
+      "id": "message.sendPathOk",
+      "ok": true,
+      "detail": "{\"ok\":true,\"method\":\"mailto\",\"mailtoUrl\":\"mailto:priya.lifecycle.test%40example.com?subject=Your+tour+at+Sweet+Daisy+Barn+%26+Farm+is+confirmed&body=Hi+Priya+Natarajan%2C%0A%0AWe%E2%80%99re+looking+forward+to+welcoming+you+to+Sweet+Daisy+Barn+%26+Farm+on+Tuesday%2C+August+18%2C+2026+at+5%3A32+PM+for+your+tour.%0A%0AWe%E2%80%99ll+walk+through+the+spaces%2C+talk+through+how+the+venue+works%2C+and+answer+any+questions+you+have+about+planning+your+celebration+here.%0A%0AIf+anything+changes+before+your+visit%2C+just+reply+to+this+message+and+we%E2%80%99ll+be+happy+to+help.%0A%0ASee+you+soon%2C%0A%0AJennifer+Cormier%0ASweet+Daisy+Barn+%26+Farm\"}"
+    },
+    {
+      "id": "message.customerFacingContainsTour",
+      "ok": true,
+      "detail": "mailto body has tour"
+    },
+    {
+      "id": "message.outputClean",
+      "ok": true,
+      "detail": "no tokens in output"
+    },
+    {
+      "id": "contract.templateIsCtr01",
+      "ok": true,
+      "detail": "CTR-01"
+    },
+    {
+      "id": "contract.mergeNoTokens",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "contract.customerSafe",
+      "ok": true,
+      "detail": "safe"
+    },
+    {
+      "id": "contract.pdfGenerated",
+      "ok": true,
+      "detail": "bytes=2572028"
+    },
+    {
+      "id": "contract.venue",
+      "ok": true,
+      "detail": "venue in PDF"
+    },
+    {
+      "id": "contract.client",
+      "ok": true,
+      "detail": "client in PDF"
+    },
+    {
+      "id": "contract.eventDate",
+      "ok": true,
+      "detail": "event date in PDF"
+    },
+    {
+      "id": "contract.packageInfo",
+      "ok": true,
+      "detail": "package language in PDF"
+    },
+    {
+      "id": "contract.paymentInfo",
+      "ok": true,
+      "detail": "payment language in PDF"
+    },
+    {
+      "id": "contract.noTokens",
+      "ok": true,
+      "detail": "no merge tokens"
+    },
+    {
+      "id": "contract.noPlaceholders",
+      "ok": true,
+      "detail": "no policy placeholder marker"
+    },
+    {
+      "id": "contract.footerOrPagination",
+      "ok": true,
+      "detail": "textChars=4611"
+    },
+    {
+      "id": "ui.loggedIn",
+      "ok": true,
+      "detail": "http://localhost:3000/dashboard"
+    },
+    {
+      "id": "ui.library",
+      "ok": true,
+      "detail": "http://localhost:3000/library :: OVERVIEW Dashboard Reports Calendar PIPELINE Leads CLIENTS Clients COMMUNICATION Inbox Message Templates Automations TO "
+    },
+    {
+      "id": "ui.packages",
+      "ok": true,
+      "detail": "http://localhost:3000/packages :: OVERVIEW Dashboard Reports Calendar PIPELINE Leads CLIENTS Clients COMMUNICATION Inbox Message Templates Automations TO "
+    },
+    {
+      "id": "ui.guide",
+      "ok": true,
+      "detail": "http://localhost:3000/guide :: OVERVIEW Dashboard Reports Calendar PIPELINE Leads CLIENTS Clients COMMUNICATION Inbox Message Templates Automations TO "
+    },
+    {
+      "id": "ui.library.brochures",
+      "ok": true,
+      "detail": "http://localhost:3000/library/brochures :: OVERVIEW Dashboard Reports Calendar PIPELINE Leads CLIENTS Clients COMMUNICATION Inbox Message Templates Automations TO "
+    },
+    {
+      "id": "ui.reporting.saved",
+      "ok": true,
+      "detail": "http://localhost:3000/reporting/saved :: OVERVIEW Dashboard Reports Calendar PIPELINE Leads CLIENTS Clients COMMUNICATION Inbox Message Templates Automations TO "
+    },
+    {
+      "id": "ui.communication.templates",
+      "ok": true,
+      "detail": "http://localhost:3000/communication/templates :: OVERVIEW Dashboard Reports Calendar PIPELINE Leads CLIENTS Clients COMMUNICATION Inbox Message Templates Automations TO "
+    },
+    {
+      "id": "ui.library.contracts",
+      "ok": true,
+      "detail": "http://localhost:3000/library/contracts :: OVERVIEW Dashboard Reports Calendar PIPELINE Leads CLIENTS Clients COMMUNICATION Inbox Message Templates Automations TO "
+    },
+    {
+      "id": "ui.library.questionnaire-templates",
+      "ok": true,
+      "detail": "http://localhost:3000/library/questionnaire-templates :: OVERVIEW Dashboard Reports Calendar PIPELINE Leads CLIENTS Clients COMMUNICATION Inbox Message Templates Automations TO "
+    },
+    {
+      "id": "ui.packagesNoPricedReadyPhrase",
+      "ok": true,
+      "detail": "ok"
+    }
+  ]
+}

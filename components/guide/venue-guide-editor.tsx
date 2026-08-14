@@ -1,22 +1,48 @@
 "use client";
 
 import * as React from "react";
+import { useRouter } from "next/navigation";
 import { Check, ChevronDown, ChevronUp, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
+import { addFaqStarterAgainAction } from "@/app/(app)/guide/faq-starter-actions";
 import { saveGuideAction } from "@/app/(app)/guide/actions";
-import type { FaqEntry, HotelBlock, VenueContact, VenueGuideData } from "@/app/(app)/guide/actions";
+import {
+  emptyVenueGuideData,
+  type DualCopySectionKey,
+  type FaqEntry,
+  type GuideAudience,
+  type GuideSectionKey,
+  type HotelBlock,
+  type SectionOverrides,
+  type VenueContact,
+  type VenueGuideData,
+  type VendorFaqEntry,
+} from "@/lib/guide/venue-guide-data";
+import {
+  getFaqStarterMaster,
+  type FaqStarterMasterKey,
+} from "@/lib/venue-guide/starters";
 import { LuvHeart } from "@/components/dashboard/luv-widget";
+import { librarySavedToastMessage } from "@/components/library/use-library-unsaved-guard";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
+import { Switch } from "@/components/ui/switch";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 // ── Section definitions ──────────────────────────────────────────────────────
 
 type SectionDef = {
-  key: string;
+  key: GuideSectionKey;
   emoji: string;
   title: string;
   description: string;
@@ -81,8 +107,8 @@ const SECTIONS: SectionDef[] = [
     key: "faqs",
     emoji: "❓",
     title: "FAQs",
-    description: "The questions you get asked most often — answered once, visible to every client.",
-    luvTip: "FAQs are the most-used section of the Venue Guide. Each answer here means one fewer coordinator message.",
+    description: "The questions you get asked most often — answered once. Hello to Cheers starters stay unpublished until you review and turn them on.",
+    luvTip: "FAQs are the most-used section of the Venue Guide. Each answer here means one fewer coordinator message. Publish starters only after they match your venue.",
     weight: 3,
     isFilled: (d) => d.faqs.length > 0,
   },
@@ -177,6 +203,48 @@ function CompletionMeter({ data }: { data: VenueGuideData }) {
 
 // ── Shared components ─────────────────────────────────────────────────────────
 
+const AUDIENCE_OPTIONS: { value: GuideAudience; label: string }[] = [
+  { value: "both", label: "Both" },
+  { value: "clients", label: "Clients" },
+  { value: "vendors", label: "Vendors" },
+];
+
+function AudienceControl({
+  value,
+  onChange,
+  disabled,
+}: {
+  value: GuideAudience;
+  onChange: (v: GuideAudience) => void;
+  disabled?: boolean;
+}) {
+  return (
+    <div className="flex items-center gap-2 flex-wrap">
+      <span className="text-[11px] text-muted-foreground shrink-0">Visible to</span>
+      <div className="inline-flex rounded-lg border border-border bg-muted/30 p-0.5">
+        {AUDIENCE_OPTIONS.map((opt) => {
+          const active = value === opt.value;
+          return (
+            <button
+              key={opt.value}
+              type="button"
+              disabled={disabled}
+              onClick={() => onChange(opt.value)}
+              className={`px-2.5 py-1 text-[11px] font-medium rounded-md transition-colors ${
+                active
+                  ? "bg-background text-heading shadow-sm"
+                  : "text-muted-foreground hover:text-heading"
+              }`}
+            >
+              {opt.label}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 function LuvTip({ text }: { text: string }) {
   return (
     <div className="flex items-start gap-2 rounded-xl px-3.5 py-2.5 text-xs leading-relaxed"
@@ -266,28 +334,205 @@ function TextSectionEditor({
 
 // ── FAQs editor ───────────────────────────────────────────────────────────────
 
-function FaqsEditor({ faqs, onSave, saving }: {
-  faqs: FaqEntry[]; onSave: (items: FaqEntry[]) => Promise<void>; saving: boolean;
+type SimpleFaq = { question: string; answer: string };
+
+function FaqStarterRestoreMenu({ missingKeys }: { missingKeys: FaqStarterMasterKey[] }) {
+  const router = useRouter();
+  const [pending, startTransition] = React.useTransition();
+  if (missingKeys.length === 0) return null;
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger
+        render={
+          <Button type="button" variant="outline" size="sm" disabled={pending}>
+            Restore starters
+          </Button>
+        }
+      />
+      <DropdownMenuContent align="end" className="w-72">
+        <DropdownMenuLabel>Hello to Cheers starters</DropdownMenuLabel>
+        {missingKeys.map((key) => {
+          const master = getFaqStarterMaster(key);
+          if (!master) return null;
+          return (
+            <DropdownMenuItem
+              key={key}
+              onClick={() =>
+                startTransition(async () => {
+                  const r = await addFaqStarterAgainAction(key);
+                  if (r.ok) {
+                    toast.success("Starter added — your earlier customizations were left alone.");
+                    router.refresh();
+                  } else {
+                    toast.error(r.message);
+                  }
+                })
+              }
+            >
+              <span className="truncate">{master.question}</span>
+            </DropdownMenuItem>
+          );
+        })}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
+function ClientFaqListEditor({
+  title,
+  emptyHint,
+  items: initial,
+  onSave,
+  saving,
+  saveLabel,
+}: {
+  title?: string;
+  emptyHint: string;
+  items: FaqEntry[];
+  onSave: (items: FaqEntry[]) => Promise<void>;
+  saving: boolean;
+  saveLabel: string;
 }) {
-  const [items, setItems] = React.useState<FaqEntry[]>(faqs);
-  const dirty = JSON.stringify(items) !== JSON.stringify(faqs);
+  const [items, setItems] = React.useState<FaqEntry[]>(initial);
+  const dirty = JSON.stringify(items) !== JSON.stringify(initial);
+
+  React.useEffect(() => {
+    setItems(initial);
+  }, [initial]);
 
   function add() {
-    setItems(p => [...p, { question: "", answer: "" }]);
+    // Venue-authored FAQs are live by default (publisher intentionally writing).
+    setItems((p) => [...p, { question: "", answer: "", published: true }]);
   }
 
   function remove(i: number) {
-    setItems(p => p.filter((_, idx) => idx !== i));
+    setItems((p) => p.filter((_, idx) => idx !== i));
   }
 
-  function update(i: number, key: keyof FaqEntry, val: string) {
-    setItems(p => p.map((item, idx) => idx === i ? { ...item, [key]: val } : item));
+  function update(i: number, patch: Partial<FaqEntry>) {
+    setItems((p) => p.map((item, idx) => (idx === i ? { ...item, ...patch } : item)));
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
+      {title && <p className="text-xs font-medium text-heading">{title}</p>}
       {items.length === 0 ? (
-        <p className="text-sm text-muted-foreground py-2">No FAQs yet. Add the questions clients ask most often.</p>
+        <p className="text-sm text-muted-foreground py-2">{emptyHint}</p>
+      ) : (
+        <div className="space-y-4">
+          {items.map((faq, i) => {
+            const isStarter = Boolean(faq.source_master_key);
+            const isPublished = faq.published !== false;
+            return (
+              <div key={`${faq.source_master_key ?? "custom"}-${i}`} className="rounded-xl border border-border bg-muted/20 p-4 space-y-2.5">
+                <div className="flex items-start gap-2">
+                  <span className="text-xs font-semibold text-muted-foreground mt-2 w-4 shrink-0">{i + 1}</span>
+                  <div className="flex-1 space-y-2">
+                    <div className="flex flex-wrap items-center gap-2">
+                      {isStarter && <Badge variant="muted">Starter</Badge>}
+                      {isStarter && !isPublished && (
+                        <Badge variant="outline">Not published</Badge>
+                      )}
+                    </div>
+                    <Input
+                      value={faq.question}
+                      onChange={(e) => update(i, { question: e.target.value })}
+                      placeholder="Question — e.g. Can we have sparklers?"
+                      className="text-sm"
+                    />
+                    <Textarea
+                      value={faq.answer}
+                      onChange={(e) => update(i, { answer: e.target.value })}
+                      placeholder="Answer"
+                      rows={2}
+                      className="text-sm resize-none"
+                    />
+                    <label className="flex items-center gap-2 text-xs text-muted-foreground cursor-pointer pt-0.5">
+                      <Switch
+                        checked={isPublished}
+                        onCheckedChange={(on) => update(i, { published: on })}
+                      />
+                      {isPublished
+                        ? "Visible to clients, vendors, and brochures"
+                        : "Review only — not visible outside the Venue Guide yet"}
+                    </label>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => remove(i)}
+                    className="p-1.5 mt-1 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors shrink-0"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      <div className="flex items-center justify-between">
+        <Button type="button" variant="outline" size="sm" onClick={add} className="gap-1.5">
+          <Plus className="h-3.5 w-3.5" /> Add FAQ
+        </Button>
+        <div className="flex gap-2">
+          {dirty && (
+            <Button variant="outline" size="sm" onClick={() => setItems(initial)}>
+              Cancel
+            </Button>
+          )}
+          <Button size="sm" onClick={() => onSave(items)} disabled={saving || !dirty}>
+            {saving ? "Saving…" : saveLabel}
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function VendorFaqListEditor({
+  title,
+  emptyHint,
+  questionPlaceholder,
+  answerPlaceholder,
+  items: initial,
+  onSave,
+  saving,
+  saveLabel,
+}: {
+  title?: string;
+  emptyHint: string;
+  questionPlaceholder: string;
+  answerPlaceholder: string;
+  items: SimpleFaq[];
+  onSave: (items: SimpleFaq[]) => Promise<void>;
+  saving: boolean;
+  saveLabel: string;
+}) {
+  const [items, setItems] = React.useState<SimpleFaq[]>(initial);
+  const dirty = JSON.stringify(items) !== JSON.stringify(initial);
+
+  React.useEffect(() => {
+    setItems(initial);
+  }, [initial]);
+
+  function add() {
+    setItems((p) => [...p, { question: "", answer: "" }]);
+  }
+
+  function remove(i: number) {
+    setItems((p) => p.filter((_, idx) => idx !== i));
+  }
+
+  function update(i: number, patch: Partial<SimpleFaq>) {
+    setItems((p) => p.map((item, idx) => (idx === i ? { ...item, ...patch } : item)));
+  }
+
+  return (
+    <div className="space-y-3">
+      {title && <p className="text-xs font-medium text-heading">{title}</p>}
+      {items.length === 0 ? (
+        <p className="text-sm text-muted-foreground py-2">{emptyHint}</p>
       ) : (
         <div className="space-y-4">
           {items.map((faq, i) => (
@@ -297,20 +542,23 @@ function FaqsEditor({ faqs, onSave, saving }: {
                 <div className="flex-1 space-y-2">
                   <Input
                     value={faq.question}
-                    onChange={e => update(i, "question", e.target.value)}
-                    placeholder="Question — e.g. Can we have sparklers?"
+                    onChange={(e) => update(i, { question: e.target.value })}
+                    placeholder={questionPlaceholder}
                     className="text-sm"
                   />
                   <Textarea
                     value={faq.answer}
-                    onChange={e => update(i, "answer", e.target.value)}
-                    placeholder="Answer"
+                    onChange={(e) => update(i, { answer: e.target.value })}
+                    placeholder={answerPlaceholder}
                     rows={2}
                     className="text-sm resize-none"
                   />
                 </div>
-                <button type="button" onClick={() => remove(i)}
-                  className="p-1.5 mt-1 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors shrink-0">
+                <button
+                  type="button"
+                  onClick={() => remove(i)}
+                  className="p-1.5 mt-1 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors shrink-0"
+                >
                   <Trash2 className="h-3.5 w-3.5" />
                 </button>
               </div>
@@ -325,15 +573,89 @@ function FaqsEditor({ faqs, onSave, saving }: {
         </Button>
         <div className="flex gap-2">
           {dirty && (
-            <Button variant="outline" size="sm" onClick={() => setItems(faqs)}>
+            <Button variant="outline" size="sm" onClick={() => setItems(initial)}>
               Cancel
             </Button>
           )}
           <Button size="sm" onClick={() => onSave(items)} disabled={saving || !dirty}>
-            {saving ? "Saving…" : "Save FAQs"}
+            {saving ? "Saving…" : saveLabel}
           </Button>
         </div>
       </div>
+    </div>
+  );
+}
+
+function FaqsSectionEditor({
+  sectionAudience,
+  clientFaqs,
+  vendorFaqs,
+  onSaveClient,
+  onSaveVendor,
+  savingClient,
+  savingVendor,
+  missingStarterKeys,
+}: {
+  sectionAudience: GuideAudience;
+  clientFaqs: FaqEntry[];
+  vendorFaqs: VendorFaqEntry[];
+  onSaveClient: (items: FaqEntry[]) => Promise<void>;
+  onSaveVendor: (items: VendorFaqEntry[]) => Promise<void>;
+  savingClient: boolean;
+  savingVendor: boolean;
+  missingStarterKeys: FaqStarterMasterKey[];
+}) {
+  const showClient = sectionAudience === "both" || sectionAudience === "clients";
+  // When vendors-only, edit the main faqs column (section is hidden from clients).
+  const vendorUsesMainColumn = sectionAudience === "vendors";
+
+  return (
+    <div className="space-y-6">
+      {missingStarterKeys.length > 0 && (
+        <div className="flex items-center justify-between gap-3 rounded-xl border border-dashed border-border px-3.5 py-3">
+          <p className="text-xs text-muted-foreground">
+            Some Hello to Cheers starter FAQs are missing. Restore adds a fresh unpublished copy without changing your other answers.
+            Publishing is controlled per FAQ with the toggle — nothing becomes public until you save with Publish on.
+          </p>
+          <FaqStarterRestoreMenu missingKeys={missingStarterKeys} />
+        </div>
+      )}
+
+      {showClient && !vendorUsesMainColumn && (
+        <ClientFaqListEditor
+          title={sectionAudience === "both" ? "Client FAQs" : undefined}
+          emptyHint="No FAQs yet. Add the questions clients ask most often — or restore Hello to Cheers starters."
+          items={clientFaqs}
+          saving={savingClient}
+          saveLabel="Save changes"
+          onSave={onSaveClient}
+        />
+      )}
+
+      {sectionAudience === "both" && (
+        <div className="border-t border-border pt-5">
+          <VendorFaqListEditor
+            title="Vendor FAQs"
+            emptyHint="No vendor FAQs yet. Add questions vendors ask — load-in, COI, dock access…"
+            questionPlaceholder="Question — e.g. Where is load-in?"
+            answerPlaceholder="Answer for vendors"
+            items={vendorFaqs}
+            saving={savingVendor}
+            saveLabel="Save changes"
+            onSave={onSaveVendor}
+          />
+        </div>
+      )}
+
+      {vendorUsesMainColumn && (
+        <ClientFaqListEditor
+          emptyHint="No FAQs yet. Add the questions vendors ask most often."
+          items={clientFaqs}
+          saving={savingClient}
+          saveLabel="Save changes"
+          onSave={onSaveClient}
+        />
+      )}
     </div>
   );
 }
@@ -462,9 +784,14 @@ function ContactsEditor({ contacts, onSave, saving }: {
 // ── Section card wrapper ──────────────────────────────────────────────────────
 
 function SectionCard({
-  section, isFilled, children,
+  section, isFilled, audience, onAudienceChange, audienceSaving, children,
 }: {
-  section: SectionDef; isFilled: boolean; children: React.ReactNode;
+  section: SectionDef;
+  isFilled: boolean;
+  audience: GuideAudience;
+  onAudienceChange: (v: GuideAudience) => void;
+  audienceSaving?: boolean;
+  children: React.ReactNode;
 }) {
   const [open, setOpen] = React.useState(false);
 
@@ -478,7 +805,14 @@ function SectionCard({
       />
       {open && (
         <CardContent className="pt-0 pb-5 space-y-4 border-t border-border">
-          <p className="text-xs text-muted-foreground pt-4">{section.description}</p>
+          <div className="flex items-start justify-between gap-3 flex-wrap pt-4">
+            <p className="text-xs text-muted-foreground flex-1 min-w-[12rem]">{section.description}</p>
+            <AudienceControl
+              value={audience}
+              onChange={onAudienceChange}
+              disabled={audienceSaving}
+            />
+          </div>
           {section.luvTip && <LuvTip text={section.luvTip} />}
           {children}
         </CardContent>
@@ -487,35 +821,141 @@ function SectionCard({
   );
 }
 
+function VendorOverrideToggle({
+  enabled,
+  onToggle,
+  label,
+  vendorLabel,
+  vendorValue,
+  vendorPlaceholder,
+  onVendorSave,
+  saving,
+}: {
+  enabled: boolean;
+  onToggle: (on: boolean) => void;
+  label: string;
+  vendorLabel: string;
+  vendorValue: string;
+  vendorPlaceholder: string;
+  onVendorSave: (v: string) => Promise<void>;
+  saving: boolean;
+}) {
+  return (
+    <div className="space-y-3 rounded-xl border border-dashed border-border px-3.5 py-3">
+      <label className="flex items-center gap-2 text-xs text-muted-foreground cursor-pointer">
+        <Switch checked={enabled} onCheckedChange={onToggle} />
+        Different for vendors
+      </label>
+      {enabled && (
+        <div className="space-y-1.5">
+          <p className="text-xs font-medium text-heading">{vendorLabel}</p>
+          <TextSectionEditor
+            label={label}
+            value={vendorValue}
+            placeholder={vendorPlaceholder}
+            saving={saving}
+            onSave={onVendorSave}
+          />
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Main editor ───────────────────────────────────────────────────────────────
 
-export function VenueGuideEditor({ initial }: { initial: VenueGuideData | null }) {
-  const empty: VenueGuideData = {
-    parkingInfo: null, transportation: null, nearbyAccommodations: null,
-    hotelBlocks: [], rainPlan: null, policies: null, ceremonyInstructions: null,
-    thingsToDo: null, faqs: [], importantContacts: [],
-  };
-
-  const [data, setData]     = React.useState<VenueGuideData>(initial ?? empty);
+export function VenueGuideEditor({
+  initial,
+  missingStarterKeys = [],
+}: {
+  initial: VenueGuideData | null;
+  missingStarterKeys?: FaqStarterMasterKey[];
+}) {
+  const [data, setData]     = React.useState<VenueGuideData>(initial ?? emptyVenueGuideData());
   const [saving, setSaving] = React.useState<string | null>(null);
+
+  React.useEffect(() => {
+    if (initial) setData(initial);
+  }, [initial]);
 
   async function save(partial: Parameters<typeof saveGuideAction>[0], field: string) {
     setSaving(field);
     const result = await saveGuideAction(partial);
     if (result.ok) {
-      toast.success("Guide updated.");
+      toast.success(librarySavedToastMessage());
     } else {
       toast.error(result.error ?? "Could not save. Please try again.");
     }
     setSaving(null);
   }
 
+  async function setSectionAudience(key: GuideSectionKey, audience: GuideAudience) {
+    const nextAudiences = { ...data.sectionAudiences, [key]: audience };
+    setData(d => ({ ...d, sectionAudiences: nextAudiences }));
+    await save({ section_audiences: nextAudiences }, "section_audiences");
+  }
+
+  async function setSectionOverride(
+    key: DualCopySectionKey,
+    vendors: string | null | undefined,
+  ) {
+    const nextOverrides: SectionOverrides = { ...data.sectionOverrides };
+    if (vendors === undefined || vendors === null) {
+      const { [key]: _removed, ...rest } = nextOverrides;
+      void _removed;
+      setData(d => ({ ...d, sectionOverrides: rest }));
+      await save({ section_overrides: rest }, "section_overrides");
+      return;
+    }
+    nextOverrides[key] = { vendors };
+    setData(d => ({ ...d, sectionOverrides: nextOverrides }));
+    await save({ section_overrides: nextOverrides }, "section_overrides");
+  }
+
+  async function setVendorFaqs(vendors: VendorFaqEntry[]) {
+    const nextOverrides: SectionOverrides = { ...data.sectionOverrides };
+    const cleaned = vendors
+      .map((f) => ({ question: f.question, answer: f.answer }))
+      .filter((f) => f.question.trim().length > 0 || f.answer.trim().length > 0);
+    if (cleaned.length === 0) {
+      const { faqs: _removed, ...rest } = nextOverrides;
+      void _removed;
+      setData((d) => ({ ...d, sectionOverrides: rest }));
+      await save({ section_overrides: rest }, "section_overrides");
+      return;
+    }
+    nextOverrides.faqs = { vendors: cleaned };
+    setData((d) => ({ ...d, sectionOverrides: nextOverrides }));
+    await save({ section_overrides: nextOverrides }, "section_overrides");
+  }
+
+  function sectionProps(key: GuideSectionKey) {
+    const def = SECTIONS.find(s => s.key === key)!;
+    return {
+      section: def,
+      isFilled: def.isFilled(data),
+      audience: data.sectionAudiences[key],
+      onAudienceChange: (v: GuideAudience) => void setSectionAudience(key, v),
+      audienceSaving: saving === "section_audiences",
+    };
+  }
+
+  const parkingVendorCopy = data.sectionOverrides.parking?.vendors ?? "";
+  const policiesVendorCopy = data.sectionOverrides.policies?.vendors ?? "";
+  const ceremonyVendorCopy = data.sectionOverrides.ceremony?.vendors ?? "";
+  const thingsVendorCopy = data.sectionOverrides.things?.vendors ?? "";
+  const parkingDual = typeof data.sectionOverrides.parking?.vendors === "string";
+  const policiesDual = typeof data.sectionOverrides.policies?.vendors === "string";
+  const ceremonyDual = typeof data.sectionOverrides.ceremony?.vendors === "string";
+  const thingsDual = typeof data.sectionOverrides.things?.vendors === "string";
+  const vendorFaqs = data.sectionOverrides.faqs?.vendors ?? [];
+
   return (
     <div className="space-y-4 max-w-3xl">
       <CompletionMeter data={data} />
 
       {/* Parking & Transportation */}
-      <SectionCard section={SECTIONS[0]} isFilled={SECTIONS[0].isFilled(data)}>
+      <SectionCard {...sectionProps("parking")}>
         <div className="space-y-4">
           <div className="space-y-1.5">
             <p className="text-xs font-medium text-heading">Parking</p>
@@ -531,6 +971,16 @@ export function VenueGuideEditor({ initial }: { initial: VenueGuideData | null }
               }}
             />
           </div>
+          <VendorOverrideToggle
+            enabled={parkingDual}
+            onToggle={(on) => void setSectionOverride("parking", on ? "" : undefined)}
+            label="Vendor Parking"
+            vendorLabel="Vendor parking / load-in"
+            vendorValue={parkingVendorCopy}
+            vendorPlaceholder="Load-in access, vendor lot, dock instructions, setup vehicle rules…"
+            saving={saving === "section_overrides"}
+            onVendorSave={async v => { await setSectionOverride("parking", v); }}
+          />
           <div className="space-y-1.5">
             <p className="text-xs font-medium text-heading">Transportation & Directions</p>
             <TextSectionEditor
@@ -549,7 +999,7 @@ export function VenueGuideEditor({ initial }: { initial: VenueGuideData | null }
       </SectionCard>
 
       {/* Accommodations */}
-      <SectionCard section={SECTIONS[1]} isFilled={SECTIONS[1].isFilled(data)}>
+      <SectionCard {...sectionProps("accommodations")}>
         <div className="space-y-4">
           <div className="space-y-1.5">
             <p className="text-xs font-medium text-heading">Hotel Blocks</p>
@@ -579,7 +1029,7 @@ export function VenueGuideEditor({ initial }: { initial: VenueGuideData | null }
       </SectionCard>
 
       {/* Weather & Rain Plan */}
-      <SectionCard section={SECTIONS[2]} isFilled={SECTIONS[2].isFilled(data)}>
+      <SectionCard {...sectionProps("weather")}>
         <TextSectionEditor
           label="Rain Plan"
           value={data.rainPlan ?? ""}
@@ -593,61 +1043,104 @@ export function VenueGuideEditor({ initial }: { initial: VenueGuideData | null }
       </SectionCard>
 
       {/* Policies & Rules */}
-      <SectionCard section={SECTIONS[3]} isFilled={SECTIONS[3].isFilled(data)}>
-        <TextSectionEditor
-          label="Policies"
-          value={data.policies ?? ""}
-          placeholder="Sparklers, open flames, outside catering, alcohol rules, décor restrictions, noise curfew, cleanup expectations…"
-          saving={saving === "policies"}
-          onSave={async v => {
-            setData(d => ({ ...d, policies: v || null }));
-            await save({ policies: v || null }, "policies");
-          }}
-        />
+      <SectionCard {...sectionProps("policies")}>
+        <div className="space-y-4">
+          <TextSectionEditor
+            label="Policies"
+            value={data.policies ?? ""}
+            placeholder="Sparklers, open flames, outside catering, alcohol rules, décor restrictions, noise curfew, cleanup expectations…"
+            saving={saving === "policies"}
+            onSave={async v => {
+              setData(d => ({ ...d, policies: v || null }));
+              await save({ policies: v || null }, "policies");
+            }}
+          />
+          <VendorOverrideToggle
+            enabled={policiesDual}
+            onToggle={(on) => void setSectionOverride("policies", on ? "" : undefined)}
+            label="Vendor Policies"
+            vendorLabel="Vendor rules"
+            vendorValue={policiesVendorCopy}
+            vendorPlaceholder="Insurance, load-in window, approved deliveries, floor protection, teardown expectations…"
+            saving={saving === "section_overrides"}
+            onVendorSave={async v => { await setSectionOverride("policies", v); }}
+          />
+        </div>
       </SectionCard>
 
       {/* Ceremony & Arrival */}
-      <SectionCard section={SECTIONS[4]} isFilled={SECTIONS[4].isFilled(data)}>
-        <TextSectionEditor
-          label="Ceremony Instructions"
-          value={data.ceremonyInstructions ?? ""}
-          placeholder="Guest arrival time, seating arrangement, ceremony start, photo restrictions during ceremony…"
-          saving={saving === "ceremony_instructions"}
-          onSave={async v => {
-            setData(d => ({ ...d, ceremonyInstructions: v || null }));
-            await save({ ceremony_instructions: v || null }, "ceremony_instructions");
-          }}
-        />
+      <SectionCard {...sectionProps("ceremony")}>
+        <div className="space-y-4">
+          <TextSectionEditor
+            label="Ceremony Instructions"
+            value={data.ceremonyInstructions ?? ""}
+            placeholder="Guest arrival time, seating arrangement, ceremony start, photo restrictions during ceremony…"
+            saving={saving === "ceremony_instructions"}
+            onSave={async v => {
+              setData(d => ({ ...d, ceremonyInstructions: v || null }));
+              await save({ ceremony_instructions: v || null }, "ceremony_instructions");
+            }}
+          />
+          <VendorOverrideToggle
+            enabled={ceremonyDual}
+            onToggle={(on) => void setSectionOverride("ceremony", on ? "" : undefined)}
+            label="Vendor Ceremony"
+            vendorLabel="Vendor arrival / setup"
+            vendorValue={ceremonyVendorCopy}
+            vendorPlaceholder="Vendor arrival window, setup access, ceremony-day load-in, restricted areas…"
+            saving={saving === "section_overrides"}
+            onVendorSave={async v => { await setSectionOverride("ceremony", v); }}
+          />
+        </div>
       </SectionCard>
 
       {/* Things To Know */}
-      <SectionCard section={SECTIONS[5]} isFilled={SECTIONS[5].isFilled(data)}>
-        <TextSectionEditor
-          label="Things To Know"
-          value={data.thingsToDo ?? ""}
-          placeholder="Setup rules, load-in times, what's included vs. not, tips for the day, anything else clients should know…"
-          saving={saving === "things_to_do"}
-          onSave={async v => {
-            setData(d => ({ ...d, thingsToDo: v || null }));
-            await save({ things_to_do: v || null }, "things_to_do");
-          }}
-        />
+      <SectionCard {...sectionProps("things")}>
+        <div className="space-y-4">
+          <TextSectionEditor
+            label="Things To Know"
+            value={data.thingsToDo ?? ""}
+            placeholder="Setup rules, load-in times, what's included vs. not, tips for the day, anything else clients should know…"
+            saving={saving === "things_to_do"}
+            onSave={async v => {
+              setData(d => ({ ...d, thingsToDo: v || null }));
+              await save({ things_to_do: v || null }, "things_to_do");
+            }}
+          />
+          <VendorOverrideToggle
+            enabled={thingsDual}
+            onToggle={(on) => void setSectionOverride("things", on ? "" : undefined)}
+            label="Vendor Notes"
+            vendorLabel="Things vendors should know"
+            vendorValue={thingsVendorCopy}
+            vendorPlaceholder="Power drops, floor protection, teardown windows, preferred vendor entrance…"
+            saving={saving === "section_overrides"}
+            onVendorSave={async v => { await setSectionOverride("things", v); }}
+          />
+        </div>
       </SectionCard>
 
       {/* FAQs */}
-      <SectionCard section={SECTIONS[6]} isFilled={SECTIONS[6].isFilled(data)}>
-        <FaqsEditor
-          faqs={data.faqs}
-          saving={saving === "faqs"}
-          onSave={async items => {
+      <SectionCard {...sectionProps("faqs")}>
+        <FaqsSectionEditor
+          sectionAudience={data.sectionAudiences.faqs}
+          clientFaqs={data.faqs}
+          vendorFaqs={vendorFaqs}
+          savingClient={saving === "faqs"}
+          savingVendor={saving === "section_overrides"}
+          missingStarterKeys={missingStarterKeys}
+          onSaveClient={async items => {
             setData(d => ({ ...d, faqs: items }));
             await save({ faqs: items }, "faqs");
+          }}
+          onSaveVendor={async items => {
+            await setVendorFaqs(items);
           }}
         />
       </SectionCard>
 
       {/* Important Contacts */}
-      <SectionCard section={SECTIONS[7]} isFilled={SECTIONS[7].isFilled(data)}>
+      <SectionCard {...sectionProps("contacts")}>
         <ContactsEditor
           contacts={data.importantContacts}
           saving={saving === "important_contacts"}

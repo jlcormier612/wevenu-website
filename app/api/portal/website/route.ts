@@ -26,7 +26,13 @@ export async function POST(request: Request) {
     sectionsEnabled?: string[];
     scheduleSync?: boolean;
     collectionId?: string;
-    colorStoryId?: string;
+    // Studio Canonical State Pass (2026-08-11) — explicit `null` (not just
+    // omitted) is a real, distinct signal here: "this Color Story just
+    // diverged from a curated one into a custom palette, clear the
+    // reference." See the update_my_website migration note on why the
+    // RPC needs its own p_clear_color_story_id rather than inferring this
+    // from a null p_color_story_id (which already means "not sent").
+    colorStoryId?: string | null;
     typographyStyleId?: string;
     photoStyleId?: string;
     colorPrimary?: string;
@@ -77,6 +83,7 @@ export async function POST(request: Request) {
     // itself only ever sends these three going forward.
     p_collection_id:       collectionId       ?? null,
     p_color_story_id:      colorStoryId       ?? null,
+    p_clear_color_story_id: colorStoryId === null,
     p_typography_style_id: typographyStyleId  ?? null,
     // Photo Style + full custom Color Story (2026-07-24) — Part 2/4's two
     // fully independent dimensions.

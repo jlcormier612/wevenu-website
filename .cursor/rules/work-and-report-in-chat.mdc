@@ -1,0 +1,10 @@
+---
+description: Do work in this chat (no subagents) and always paste a full completion report
+alwaysApply: true
+---
+
+# Work and report in chat
+
+1. **Do the work alone in this chat.** Do not delegate to background subagents, Task tool workers, or parallel agents unless the user explicitly asks to use subagents. Inspect, implement, test, and verify yourself.
+
+2. **Always paste a full report in the chat when complete.** When a task finishes, include the complete deliverable/report in the assistant message (not only a short summary or a link to an agent). Prefer the user's requested report structure when one was specified; otherwise include files changed, what was done, verification/test results, and any intentional gaps.

@@ -105,7 +105,7 @@ export function getVendorBriefing(input: VendorLuvInput): LuvBriefing {
     const ev = t.eventId ? eventById.get(t.eventId) : undefined;
     const taskLink = ev
       ? `/vendor/events/${ev.assignmentId}?tab=tasks&focus=${encodeURIComponent(t.id)}`
-      : `/vendor/tasks?focus=${encodeURIComponent(t.id)}`;
+      : "/vendor/events";
     needsAttentionNow.push({
       id: `task-${t.id}`,
       eventId: t.eventId,
@@ -159,37 +159,16 @@ export function getVendorBriefing(input: VendorLuvInput): LuvBriefing {
       eventId: tl.eventId,
       eventName: eventWhom(tl.eventName, tl.venueName),
       eventDate: tl.eventDate,
-      label: "Run of show",
+      label: "Timeline",
       detail: first.time
-        ? `Next on the run of show: ${first.time} · ${first.title}`
-        : `Next on the run of show: ${first.title}`,
+        ? `Next on the Timeline: ${first.time} · ${first.title}`
+        : `Next on the Timeline: ${first.title}`,
       link: `/vendor/events/${tl.assignmentId}?tab=timeline`,
     });
   }
 
-  for (const doc of home.recentDocuments) {
-    const count = doc.documents.length + doc.floorPlans.length;
-    if (count === 0) continue;
-    const firstName =
-      doc.documents[0]?.name ?? doc.floorPlans[0]?.name ?? null;
-    informational.push({
-      id: `docs-${doc.assignmentId}`,
-      eventId: doc.eventId,
-      eventName: eventWhom(doc.eventName, doc.venueName),
-      eventDate: doc.eventDate,
-      label: "Shared documents",
-      detail:
-        count === 1 && firstName
-          ? `Document shared: ${firstName}`
-          : count === 1
-            ? "1 file shared for this event"
-            : `${count} files shared for this event`,
-      link: `/vendor/events/${doc.assignmentId}?tab=documents&highlight=documents`,
-    });
-  }
-
   // Unread vendor_notifications after home rows exist, so we can skip
-  // duplicates (assignment when event is today; docs when already listed).
+  // duplicates (assignment when event is today).
   if (extras?.notifications?.length) {
     const eventTodayIds = new Set(
       needsAttentionNow
@@ -197,13 +176,9 @@ export function getVendorBriefing(input: VendorLuvInput): LuvBriefing {
         .map((i) => i.eventId)
         .filter(Boolean),
     );
-    const docsEventIds = new Set(
-      informational.filter((i) => i.id.startsWith("docs-")).map((i) => i.eventId).filter(Boolean),
-    );
 
     for (const n of extras.notifications) {
       if (n.label === "New assignment" && n.eventId && eventTodayIds.has(n.eventId)) continue;
-      if (n.label === "Shared with you" && n.eventId && docsEventIds.has(n.eventId)) continue;
       needsAttentionNow.push(n);
     }
   }

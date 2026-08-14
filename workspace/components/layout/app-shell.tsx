@@ -12,6 +12,10 @@ import {
   isImpersonating,
 } from "@/lib/program4/session";
 import { ensureProgram4Data } from "@/lib/program4/store";
+import {
+  countOpenSupportItemsAcross,
+  relationshipHasOpenSupport,
+} from "@/lib/sales-cs";
 
 export async function AppShell({ children }: { children: React.ReactNode }) {
   await ensureProgram4Data();
@@ -24,9 +28,15 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
   const impersonating = await isImpersonating();
   const permissions = permissionsForRole(actor.role);
   const unreadCount = getNotifications({ unreadOnly: true }).length;
-  const openSupportCount = getRelationships().filter(
-    (r) => (r.supportOpenCount || 0) > 0 || r.status === "support",
-  ).length;
+  const openSupportRels = getRelationships().filter(relationshipHasOpenSupport);
+  // Badge = open Feedback & support *items* (not relationships).
+  const openSupportCount = countOpenSupportItemsAcross(openSupportRels);
+  const openSupportHref =
+    openSupportRels.length === 1
+      ? `/relationships/${openSupportRels[0].id}?panel=support&from=customer-success`
+      : openSupportRels.length > 1
+        ? "/customer-success?stage=needs_support&view=list"
+        : "/customer-success?stage=needs_support";
   const homeHref = permissions.includes("view_business_dashboard")
     ? "/business"
     : "/today";
@@ -50,6 +60,7 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
       <Sidebar
         unreadCount={unreadCount}
         openSupportCount={openSupportCount}
+        openSupportHref={openSupportHref}
         permissions={permissions}
         homeHref={homeHref}
       />

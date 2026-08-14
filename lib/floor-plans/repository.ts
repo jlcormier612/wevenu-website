@@ -27,6 +27,8 @@ type PlanRow = {
   id: string; venue_id: string; event_id: string; name: string; space_id: string | null;
   client_access: FloorPlanClientAccess;
   shared_with_vendors: boolean;
+  shared_with_couple: boolean;
+  source_template_id: string | null;
   background_image_url: string | null; background_image_opacity: number; background_locked: boolean;
   room_width_ft: number; room_depth_ft: number; measurement_unit: MeasurementUnit;
   finalized_at: string | null;
@@ -47,6 +49,8 @@ const mapPlan = (r: PlanRow): FloorPlan => ({
   id: r.id, venueId: r.venue_id, eventId: r.event_id, name: r.name,
   spaceId: r.space_id, clientAccess: r.client_access,
   sharedWithVendors: r.shared_with_vendors,
+  sharedWithCouple: Boolean(r.shared_with_couple),
+  sourceTemplateId: r.source_template_id ?? null,
   backgroundImageUrl: r.background_image_url,
   backgroundImageOpacity: Number(r.background_image_opacity),
   backgroundLocked: r.background_locked,
@@ -107,10 +111,21 @@ export async function getAllFloorPlans(
 // ---- mutations --------------------------------------------------------------
 
 export async function createFloorPlan(
-  client: DbClient, venueId: string, eventId: string, name = "Floor Plan", spaceId: string | null = null,
+  client: DbClient,
+  venueId: string,
+  eventId: string,
+  name = "Floor Plan",
+  spaceId: string | null = null,
+  sourceTemplateId: string | null = null,
 ): Promise<string> {
   const { data, error } = await client.from("floor_plans")
-    .insert({ venue_id: venueId, event_id: eventId, name, space_id: spaceId })
+    .insert({
+      venue_id: venueId,
+      event_id: eventId,
+      name,
+      space_id: spaceId,
+      source_template_id: sourceTemplateId,
+    })
     .select("id").single<{ id: string }>();
   if (error) throw error;
   return data.id;
@@ -185,6 +200,31 @@ export async function setFloorPlanVendorAccess(
   if (error) throw error;
 }
 
+/** Phase 1 — Share Floor Plan with the couple (layout view). Independent of seating client_access. */
+export async function setFloorPlanCoupleShare(
+  client: DbClient, venueId: string, planId: string, sharedWithCouple: boolean,
+): Promise<void> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error } = await (client.from("floor_plans") as any)
+    .update({ shared_with_couple: sharedWithCouple }).eq("id", planId).eq("venue_id", venueId);
+  if (error) throw error;
+}
+
+/**
+ * Phase 1 — venue-controlled operational plan pointer on the event.
+ * Pass null to clear. Integrity: plan must belong to this event (DB trigger).
+ */
+export async function setEventOperationalFloorPlan(
+  client: DbClient, venueId: string, eventId: string, floorPlanId: string | null,
+): Promise<void> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error } = await (client.from("events") as any)
+    .update({ operational_floor_plan_id: floorPlanId })
+    .eq("id", eventId)
+    .eq("venue_id", venueId);
+  if (error) throw error;
+}
+
 /**
  * Sprint 1 — Vendor Event Assets, vendor side. Vendors have no RLS read on
  * floor_plans (same reasoning as every other vendor-facing table in this
@@ -226,8 +266,8 @@ export async function getVendorFloorPlan(
 }
 
 /**
- * Phase 4 — the "Final" checkpoint reconciliation is anchored to. Reversible
- * (clear it to reopen) — mirrors event_orders.finalized_at exactly. Never
+ * Phase 4 — the "Ready" checkpoint reconciliation is anchored to. Reversible
+ * (clear it via Make Changes) — mirrors event_orders.finalized_at exactly. Never
  * gates placement editing; it's a coordinator's own print-ready checkpoint,
  * not a lock.
  */
@@ -356,11 +396,23 @@ export async function renameFloorPlan(
 // seated guests against never drops their seating decisions — the same
 // "coordinator editing is never gated by Seating's state" rule the
 // architecture doc already establishes for individual object deletes.
+/**
+ * Release Readiness Reconciliation remediation: `floor_plans_delete_gate`
+ * restricts DELETE to Owner/Manager at the RLS layer, but this previously
+ * only checked `error` — a RESTRICTIVE policy blocks a disallowed delete by
+ * matching zero rows, not by raising one. `.select("id")` surfaces which
+ * row actually matched, same fix shape already shipped for
+ * contracts/payments/invoices/timeline entries.
+ */
 export async function deleteFloorPlan(
   client: DbClient, venueId: string, planId: string,
-): Promise<void> {
-  const { error } = await client.from("floor_plans").delete().eq("id", planId).eq("venue_id", venueId);
+): Promise<{ ok: true } | { ok: false; message: string }> {
+  const { data, error } = await client.from("floor_plans").delete().eq("id", planId).eq("venue_id", venueId).select("id");
   if (error) throw error;
+  if (!data || data.length === 0) {
+    return { ok: false, message: "Only an Owner or Manager can delete a floor plan." };
+  }
+  return { ok: true };
 }
 
 export async function insertObject(
@@ -440,12 +492,21 @@ export async function updateObject(
   if (error) throw error;
 }
 
+/**
+ * Release Readiness Reconciliation remediation: `floor_plan_objects_delete_gate`
+ * restricts DELETE to Owner/Manager at the RLS layer, same fix shape as
+ * deleteFloorPlan above.
+ */
 export async function deleteObject(
   client: DbClient, venueId: string, objId: string,
-): Promise<void> {
-  const { error } = await client.from("floor_plan_objects")
-    .delete().eq("id", objId).eq("venue_id", venueId);
+): Promise<{ ok: true } | { ok: false; message: string }> {
+  const { data, error } = await client.from("floor_plan_objects")
+    .delete().eq("id", objId).eq("venue_id", venueId).select("id");
   if (error) throw error;
+  if (!data || data.length === 0) {
+    return { ok: false, message: "Only an Owner or Manager can delete this object." };
+  }
+  return { ok: true };
 }
 
 /**
@@ -477,10 +538,26 @@ export async function reorderObject(
   if (e2) throw e2;
 }
 
+/**
+ * Release Readiness Reconciliation remediation: same RLS gate as
+ * deleteObject above, but this is a bulk delete where 0 rows-affected is
+ * also the *correct* outcome for a plan that already had no objects — so
+ * unlike a single-row delete, "0 rows changed" alone can't distinguish
+ * "blocked" from "nothing to clear." Counts existing objects first and only
+ * reports failure if objects existed but survived the delete.
+ */
 export async function clearAllObjects(
   client: DbClient, venueId: string, planId: string,
-): Promise<void> {
-  const { error } = await client.from("floor_plan_objects")
-    .delete().eq("floor_plan_id", planId).eq("venue_id", venueId);
+): Promise<{ ok: true } | { ok: false; message: string }> {
+  const { data: before } = await client.from("floor_plan_objects")
+    .select("id").eq("floor_plan_id", planId).eq("venue_id", venueId);
+  if (!before || before.length === 0) return { ok: true };
+
+  const { data: deleted, error } = await client.from("floor_plan_objects")
+    .delete().eq("floor_plan_id", planId).eq("venue_id", venueId).select("id");
   if (error) throw error;
+  if (!deleted || deleted.length < before.length) {
+    return { ok: false, message: "Only an Owner or Manager can clear this floor plan." };
+  }
+  return { ok: true };
 }

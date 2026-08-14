@@ -19,11 +19,14 @@ import { toast } from "sonner";
 
 import { updateEventStatusAction } from "@/app/(app)/events/[id]/actions";
 import { sendAnniversaryMessageAction } from "@/app/(app)/events/[id]/anniversary-actions";
+import { KeyDatesSection } from "@/components/clients/key-dates-section";
 import { BookingOverviewSummary } from "@/components/events/booking-overview-summary";
 import { EventReadinessCard } from "@/components/events/event-readiness-card";
+import { QuestionnaireFamilyPanel } from "@/components/events/questionnaire-family-panel";
 import type { EventReadinessSummary } from "@/lib/readiness/types";
 import { BookingSetupCard } from "@/components/events/booking-setup-card";
 import { TimelineSetupCard } from "@/components/events/timeline-setup-card";
+import type { ClientKeyDate } from "@/lib/clients/types";
 import { EventFeedbackSection } from "@/components/events/event-feedback-section";
 import { EventNotesSection } from "@/components/events/event-notes-section";
 import { EventStatusBadge } from "@/components/events/event-status-badge";
@@ -34,6 +37,7 @@ import type { EventVendorRecommendation } from "@/lib/vendor-recommendations/typ
 import { TimelineView } from "@/components/events/timeline/timeline-view";
 import { FloorPlanWorkspace } from "@/components/events/floor-plan-workspace";
 import type { FloorPlanTemplate } from "@/lib/floor-plan-templates/types";
+import type { EventFloorPlanOfferWithTemplate } from "@/lib/floor-plan-offers/types";
 import type { VenueSpace } from "@/lib/availability/types";
 import { BookingDocumentsTab } from "@/components/events/booking-documents-tab";
 import { RequestSummaryCard } from "@/components/events/request-summary-card";
@@ -46,6 +50,7 @@ import { EventOrderPanel } from "@/components/event-orders/event-order-panel";
 import type { EventOrderWithDetails } from "@/lib/event-orders/types";
 import type { InventoryItem } from "@/lib/inventory/types";
 import type { Package } from "@/lib/packages/types";
+import { EventInventoryPanel } from "@/components/event-inventory/event-inventory-panel";
 import { RelationshipConversationTab } from "@/components/conversations/relationship-conversation-tab";
 import { ActivityTimelineView } from "@/components/conversations/activity-timeline";
 import type { ConversationMessage } from "@/lib/conversations/types";
@@ -61,9 +66,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { formatCurrency } from "@/lib/invoices/constants";
 import type { Invoice } from "@/lib/invoices/types";
 import type { Document } from "@/lib/documents/types";
-import type { Questionnaire } from "@/lib/events/questionnaire";
+import type { WorkspaceDocument } from "@/lib/document-workspace/types";
+import type { Questionnaire, QuestionnaireActivity } from "@/lib/events/questionnaire";
+import type { QuestionnaireTemplate } from "@/lib/questionnaire-templates/service";
+// QuestionnaireFamilyPanel replaces the single FinalDetailsForm surface.
 import type { EventPlaybookApplication, EventReadiness, EventTask, EventTaskContextLink, PlaybookTemplateWithStats, TaskContact } from "@/lib/playbooks/types";
-import type { TimelineTemplate } from "@/lib/timeline-templates/types";
+import type { TimelineTemplateWithStats } from "@/lib/timeline-templates/types";
 import {
   EVENT_STATUSES,
   daysUntil,
@@ -158,12 +166,16 @@ function EventHeroCard({ event }: { event: EventWithDetails }) {
             </span>
           ) : null}
         </p>
-        {/* Day-of schedule row */}
+        {/* Day-of schedule row (multi-day: overall booking window, not daily hours) */}
         <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1 pt-2 text-sm text-muted-foreground">
           {event.startTime && (
-            <span className="flex items-center gap-1">
+            <span
+              className="flex items-center gap-1"
+              title={multiDay ? "Overall booking window — not the hour-by-hour schedule for each day" : undefined}
+            >
               <Clock className="h-3.5 w-3.5" />
               {event.setupTime ? `Setup ${formatTime(event.setupTime)} · ` : ""}
+              {multiDay ? "Overall " : ""}
               {formatTime(event.startTime)}
               {event.endTime ? ` → ${formatTime(event.endTime)}` : ""}
             </span>
@@ -219,7 +231,14 @@ export function EventDetail({
   invoices = [],
   documents = [],
   vendorDocuments = [],
+  workspaceDocuments = [],
+  pinnedDocumentKeys = [],
+  recentDocumentEntries = [],
   questionnaire = null,
+  questionnaires = [],
+  questionnaireTemplates = [],
+  questionnaireActivities = [],
+  questionnaireActivitiesById = {},
   coupleEmail = null,
   eventTasks = [],
   playbookTemplates = [],
@@ -240,10 +259,12 @@ export function EventDetail({
   conversationId = null,
   conversationMessages = [],
   spaceName = null,
+  venueName = "Your venue",
   clientStatus = null,
   contractTemplates = [],
   contracts = [],
   floorPlanTemplates = [],
+  floorPlanOffers = [],
   spaces = [],
   inventoryUsage = [],
   teamMembers = [],
@@ -251,22 +272,33 @@ export function EventDetail({
   eventOrder = null,
   packages = [],
   inventoryItems = [],
+  eventInventory = null,
+  inventoryTemplates = [],
+  eventOrderTemplates = [],
   requestsByTaskId = {},
   requests = [],
   readinessSummary,
   originatingLeadId = null,
+  keyDates = [],
 }: {
   event: EventWithDetails;
   availableVendors?: import("@/lib/vendors/types").Vendor[];
   invoices?: Invoice[];
   documents?: Document[];
   vendorDocuments?: (Document & { vendorName: string | null })[];
+  workspaceDocuments?: WorkspaceDocument[];
+  pinnedDocumentKeys?: string[];
+  recentDocumentEntries?: [string, string][];
   questionnaire?: Questionnaire | null;
+  questionnaires?: Questionnaire[];
+  questionnaireTemplates?: QuestionnaireTemplate[];
+  questionnaireActivities?: QuestionnaireActivity[];
+  questionnaireActivitiesById?: Record<string, QuestionnaireActivity[]>;
   coupleEmail?: string | null;
   eventTasks?: EventTask[];
   playbookTemplates?: PlaybookTemplateWithStats[];
   playbookApplications?: EventPlaybookApplication[];
-  timelineTemplates?: TimelineTemplate[];
+  timelineTemplates?: TimelineTemplateWithStats[];
   timelineSections?: TimelineSection[];
   timelineLinksByEntry?: Record<string, TimelineEntryLink[]>;
   timelineAttachmentsByEntry?: Record<string, TimelineEntryAttachment[]>;
@@ -282,10 +314,12 @@ export function EventDetail({
   conversationId?: string | null;
   conversationMessages?: ConversationMessage[];
   spaceName?: string | null;
+  venueName?: string;
   clientStatus?: ClientStatus | null;
   contractTemplates?: import("@/lib/contracts/types").ContractTemplate[];
   contracts?: import("@/lib/contracts/types").Contract[];
   floorPlanTemplates?: FloorPlanTemplate[];
+  floorPlanOffers?: EventFloorPlanOfferWithTemplate[];
   spaces?: VenueSpace[];
   inventoryUsage?: import("@/lib/inventory/types").InventoryUsage[];
   teamMembers?: import("@/lib/team/types").StaffMember[];
@@ -294,6 +328,12 @@ export function EventDetail({
   eventOrder?: EventOrderWithDetails | null;
   packages?: Package[];
   inventoryItems?: InventoryItem[];
+  // D5A — Event Inventory. Not feature-flagged (unlike Event Order above):
+  // additive to the venue-wide catalog every venue already has.
+  eventInventory?: import("@/lib/event-inventory/types").EventInventoryWithDetails | null;
+  inventoryTemplates?: import("@/lib/event-inventory/types").InventoryTemplate[];
+  // D7A — Event Order Templates. Same additive, non-feature-flagged shape as inventoryTemplates above.
+  eventOrderTemplates?: import("@/lib/event-order-templates/types").EventOrderTemplate[];
   requestsByTaskId?: Record<string, import("@/lib/requests/types").Request>;
   requests?: import("@/lib/requests/types").Request[];
   readinessSummary: EventReadinessSummary;
@@ -302,6 +342,9 @@ export function EventDetail({
   // Lead's own activity history (status changes, prior notes) had no
   // reachable path once converted, even though it was never deleted.
   originatingLeadId?: string | null;
+  // Key Dates — already fetched on the Booking Workspace page via getClient();
+  // mounted in Overview beside Event summary (existing KeyDatesSection).
+  keyDates?: ClientKeyDate[];
 }) {
   const router = useRouter();
   const [statusPending, startStatus] = React.useTransition();
@@ -309,7 +352,12 @@ export function EventDetail({
   React.useEffect(() => {
     const syncFromHash = () => {
       const hash = window.location.hash.replace("#", "");
-      if (hash) setActiveTab(hash);
+      if (hash === "questionnaires") {
+        setActiveTab("playbook");
+        requestAnimationFrame(() => {
+          document.getElementById("questionnaires")?.scrollIntoView({ behavior: "smooth", block: "start" });
+        });
+      } else if (hash) setActiveTab(hash);
       // Vendor-thread deep links: /events/{id}?conversation=… → /clients/…?conversation=…
       // Server redirects drop #vendors; open Vendors when a thread id is present.
       else if (new URLSearchParams(window.location.search).get("conversation")) {
@@ -332,11 +380,11 @@ export function EventDetail({
     // using either feature.
     if (status === "complete") {
       const orderUnfinalized = eventOrderEnabled && eventOrder?.status !== "finalized";
-      const floorPlanUnfinalized = event.floorPlans.length > 0 && !event.floorPlans.some((fp) => fp.finalizedAt);
-      if (orderUnfinalized || floorPlanUnfinalized) {
+      const floorPlanNotReady = event.floorPlans.length > 0 && !event.floorPlans.some((fp) => fp.finalizedAt);
+      if (orderUnfinalized || floorPlanNotReady) {
         const parts = [
           orderUnfinalized && "the Event Order isn't finalized",
-          floorPlanUnfinalized && "the Floor Plan isn't finalized",
+          floorPlanNotReady && "no Floor Plan is marked Ready",
         ].filter(Boolean).join(" and ");
         if (!confirm(`Heads up — ${parts} yet. Mark this event complete anyway?`)) return;
       }
@@ -347,6 +395,8 @@ export function EventDetail({
       else toast.error(result.message ?? "Could not update status.");
     });
   }
+
+  const multiDay = Boolean(event.eventEndDate && event.eventEndDate !== event.eventDate);
 
   return (
     <div className="space-y-5">
@@ -476,6 +526,12 @@ export function EventDetail({
               )}
             </TabsTrigger>
           )}
+          <TabsTrigger value="inventory">
+            Inventory
+            {eventInventory && eventInventory.items.length > 0 && (
+              <span className="ml-1 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground">{eventInventory.items.length}</span>
+            )}
+          </TabsTrigger>
           <TabsTrigger value="invoice">
             Payments
             {invoices.length > 0 && <span className="ml-1 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground">{invoices.length}</span>}
@@ -538,8 +594,8 @@ export function EventDetail({
               <CardContent className="space-y-3">
                 {[
                   { icon: Calendar, label: "Date", value: formatEventDateRange(event.eventDate, event.eventEndDate) },
-                  { icon: Clock, label: "Start", value: formatTime(event.startTime) },
-                  { icon: Clock, label: "End", value: formatTime(event.endTime) },
+                  { icon: Clock, label: multiDay ? "Overall start" : "Start", value: formatTime(event.startTime) },
+                  { icon: Clock, label: multiDay ? "Overall end" : "End", value: formatTime(event.endTime) },
                   { icon: Wrench, label: "Setup", value: formatTime(event.setupTime) },
                   { icon: Wrench, label: "Teardown", value: formatTime(event.teardownTime) },
                   { icon: Users, label: "Guests", value: event.guestCount != null ? `${event.guestCount.toLocaleString()}` : null },
@@ -562,6 +618,12 @@ export function EventDetail({
                     </Link>
                   </p>
                 )}
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader><CardTitle className="text-base">Key Dates</CardTitle></CardHeader>
+              <CardContent>
+                <KeyDatesSection clientId={event.clientId!} initialKeyDates={keyDates} />
               </CardContent>
             </Card>
           </div>
@@ -593,6 +655,32 @@ export function EventDetail({
                 linkableConversationMessages={linkableConversationMessages}
                 requestsByTaskId={requestsByTaskId}
                 staffOptions={teamMembers.map((m) => ({ id: m.id, name: m.name }))}
+              />
+            </CardContent>
+          </Card>
+
+          {/* Questionnaire Family — Client Planning, Final Details, Post-Event Feedback */}
+          <Card className="mt-4" id="questionnaires">
+            <CardHeader>
+              <CardTitle className="text-base">Questionnaires</CardTitle>
+              <CardDescription>
+                Client Planning Questionnaire, Final Details, and Post-Event Feedback — create a draft from the Library, review as the client, then send when ready.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <QuestionnaireFamilyPanel
+                eventId={event.id}
+                questionnaires={questionnaires.length > 0 ? questionnaires : (questionnaire ? [questionnaire] : [])}
+                templates={questionnaireTemplates}
+                activitiesById={
+                  Object.keys(questionnaireActivitiesById).length > 0
+                    ? questionnaireActivitiesById
+                    : (questionnaire ? { [questionnaire.id]: questionnaireActivities } : {})
+                }
+                coupleEmail={coupleEmail}
+                coupleName={event.clientName}
+                eventName={event.name}
+                venueName={venueName}
               />
             </CardContent>
           </Card>
@@ -630,8 +718,8 @@ export function EventDetail({
                 eventId={event.id}
                 venueId={event.venueId}
                 eventStartTime={event.startTime}
-                eventEndTime={event.endTime}
                 eventDate={event.eventDate}
+                eventEndDate={event.eventEndDate}
                 initialEntries={event.timeline ?? []}
                 initialSections={timelineSections}
                 initialLinksByEntry={timelineLinksByEntry}
@@ -644,6 +732,7 @@ export function EventDetail({
                 conversationId={conversationId}
                 invoices={invoices}
                 teamMembers={teamMembers}
+                timelineTemplates={timelineTemplates}
               />
             </CardContent>
           </Card>
@@ -663,8 +752,11 @@ export function EventDetail({
                 eventId={event.id}
                 floorPlans={event.floorPlans}
                 templates={floorPlanTemplates}
+                offers={floorPlanOffers}
                 spaces={spaces}
                 eventSpaceId={event.spaceId}
+                operationalFloorPlanId={event.operationalFloorPlanId}
+                coupleSelectedFloorPlanId={event.coupleSelectedFloorPlanId}
                 inventoryUsage={inventoryUsage}
               />
             </CardContent>
@@ -676,6 +768,9 @@ export function EventDetail({
           <BookingDocumentsTab
             entityType="event" entityId={event.id} venueId={event.venueId} documents={documents}
             vendorDocuments={vendorDocuments}
+            workspaceDocuments={workspaceDocuments}
+            pinnedDocumentKeys={pinnedDocumentKeys}
+            recentDocumentEntries={recentDocumentEntries}
             contractTemplates={contractTemplates} contracts={contracts} questionnaire={questionnaire}
             eventId={event.id} eventName={event.name} coupleEmail={coupleEmail} coupleName={event.clientName}
           />
@@ -721,9 +816,23 @@ export function EventDetail({
         {/* ── Event Order ──────────────────────────────────────────── */}
         {eventOrderEnabled && (
           <TabsContent value="event-order">
-            <EventOrderPanel eventId={event.id} clientId={event.clientId} eventOrder={eventOrder} packages={packages} inventoryItems={inventoryItems} invoices={invoices} floorPlans={event.floorPlans} />
+            <EventOrderPanel eventId={event.id} clientId={event.clientId} clientName={event.clientName} clientEmail={coupleEmail} venueName={venueName} eventOrder={eventOrder} packages={packages} inventoryItems={inventoryItems} invoices={invoices} floorPlans={event.floorPlans} templates={eventOrderTemplates}
+              overview={{
+                eventName: event.name,
+                eventDate: event.eventDate,
+                eventType: event.eventType,
+                guestCount: event.guestCount,
+                spaceName,
+                ceremonyStartTime: questionnaire?.ceremonyStartTime ?? null,
+                receptionStartTime: questionnaire?.receptionStartTime ?? null,
+              }} />
           </TabsContent>
         )}
+
+        {/* ── Event Inventory (D5A) ──────────────────────────────────── */}
+        <TabsContent value="inventory">
+          <EventInventoryPanel eventId={event.id} eventInventory={eventInventory} templates={inventoryTemplates} catalogItems={inventoryItems} />
+        </TabsContent>
 
         {/* ── Invoice / Payments ────────────────────────────────────── */}
         <TabsContent value="invoice">

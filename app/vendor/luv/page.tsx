@@ -17,7 +17,7 @@ export default async function VendorLuvPage() {
   return (
     <div className="w-full space-y-6">
       <div>
-        <h1 className="text-xl font-bold text-foreground">Luv</h1>
+        <h1 className="font-heading text-2xl font-medium text-heading">Luv</h1>
         <p className="text-sm text-muted-foreground">
           What needs your attention today, {greetingName}.
         </p>
@@ -26,7 +26,7 @@ export default async function VendorLuvPage() {
       <VendorLuvIntro
         show={showIntro}
         ctaLabel="Review your open tasks"
-        ctaHref="/vendor/tasks"
+        ctaHref="/vendor/events"
       />
 
       <VendorLuvBriefing briefing={briefing} isPrimarySurface />

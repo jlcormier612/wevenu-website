@@ -1,0 +1,28 @@
+{
+  "steps": [
+    {
+      "kind": "db",
+      "label": "baseline",
+      "status": "pending",
+      "acked": false,
+      "note": "",
+      "returned": false,
+      "hasCompletedAt": false,
+      "completedBy": null,
+      "raw": "pending|f||f|f|"
+    },
+    {
+      "kind": "homeCounts",
+      "actionable": 1,
+      "waiting": 0,
+      "payDone": 2,
+      "payTotal": 3,
+      "readinessApprox": 92,
+      "raw": "1|0|2|3"
+    }
+  ],
+  "defects": [
+    "page.goto: Target page, context or browser has been closed\nCall log:\n  - navigating to \"http://localhost:3000/p/seedcoupleportal00000000000000000000000000000001#tasks\", waiting until \"domcontentloaded\"\n\n    at /Users/jensmac/Library/Mobile Documents/com~apple~CloudDocs/Wevenu Website/wevenu-website/docs/qa/vendor-confirm-needs-changes-browser/capture.mjs:113:16\n    at async openCoupleTasks (/Users/jensmac/Library/Mobile Documents/com~apple~CloudDocs/Wevenu Website/wevenu-website/docs/qa/vendor-confirm-needs-changes-browser/capture.mjs:112:3)\n    at async main (/Users/jensmac/Library/Mobile Documents/com~apple~CloudDocs/Wevenu Website/wevenu-website/docs/qa/vendor-confirm-needs-changes-browser/capture.mjs:203:5)"
+  ],
+  "matrix": {}
+}

@@ -6,6 +6,11 @@
     "skipLibCheck": true,
     "strict": true,
     "noEmit": true,
+    // Required by shared/email/_smoke.mts + shared/relationships/_smoke*.mts,
+    // which import sibling .ts modules with an explicit extension so they run
+    // directly under a TS-aware runtime (tsx) without a build step. Safe only
+    // because noEmit is already true above — this option requires it.
+    "allowImportingTsExtensions": true,
     "esModuleInterop": true,
     "module": "esnext",
     "moduleResolution": "bundler",
@@ -25,7 +30,9 @@
       "@shared/product-sync": ["./shared/product-sync/index.ts"],
       "@shared/product-sync/*": ["./shared/product-sync/*"],
       "@shared/email": ["./shared/email/index.ts"],
-      "@shared/email/*": ["./shared/email/*"]
+      "@shared/email/*": ["./shared/email/*"],
+      "@shared/product-account": ["./shared/product-account/index.ts"],
+      "@shared/product-account/*": ["./shared/product-account/*"]
     }
   },
   "include": [
@@ -36,5 +43,5 @@
     ".next/dev/types/**/*.ts",
     "**/*.mts"
   ],
-  "exclude": ["node_modules", "marketing", "workspace"]
+  "exclude": ["node_modules", "marketing", "workspace", "scripts"]
 }
