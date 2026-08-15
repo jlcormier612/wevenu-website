@@ -1,6 +1,6 @@
 {
   "AWSTemplateFormatVersion": "2010-09-09",
-  "Description": "Hello to Cheers — application/compute stack: ECS, ALB, networking, task definitions, services, IAM, logging. ECR repositories live in the separate infra/htc-ecr-repos.json foundation stack, deployed first. See docs/aws-cloudformation-ecs-deployment-plan.md, docs/aws-ecs-deployment-implementation.md, and docs/github-actions-deployment-implementation.md. Same template for sandbox and production, distinguished by EnvironmentName/parameter values, not by separate templates.",
+  "Description": "Hello to Cheers - application/compute stack: ECS, ALB, networking, task definitions, services, IAM, logging. ECR repositories live in the separate infra/htc-ecr-repos.json foundation stack, deployed first. See docs/aws-cloudformation-ecs-deployment-plan.md, docs/aws-ecs-deployment-implementation.md, and docs/github-actions-deployment-implementation.md. Same template for sandbox and production, distinguished by EnvironmentName/parameter values, not by separate templates.",
 
   "Parameters": {
     "EnvironmentName": {
@@ -29,7 +29,7 @@
     "VenueAppHostname": {
       "Type": "String",
       "Default": "app.sandbox.hellotocheers.com",
-      "Description": "Used only for ALB host-header listener rules. No DNS record is created by this template (open decision — see docs). Before DNS exists, test with curl -H \"Host: <this value>\" against the ALB's own DNS name."
+      "Description": "Used only for ALB host-header listener rules. No DNS record is created by this template (open decision - see docs). Before DNS exists, test with curl -H \"Host: <this value>\" against the ALB's own DNS name."
     },
     "MarketingHostname": {
       "Type": "String",
@@ -43,18 +43,18 @@
     "CertificateArn": {
       "Type": "String",
       "Default": "",
-      "Description": "ACM certificate ARN for HTTPS. Leave blank for a first Sandbox smoke test over plain HTTP — the HTTPS listener is only created if this is set (see the HasCertificate Condition). Requesting/validating a real cert is a manual AWS step, not something this template can do."
+      "Description": "ACM certificate ARN for HTTPS. Leave blank for a first Sandbox smoke test over plain HTTP - the HTTPS listener is only created if this is set (see the HasCertificate Condition). Requesting/validating a real cert is a manual AWS step, not something this template can do."
     },
 
     "FromEmailAddress": {
       "Type": "String",
       "Default": "Hello to Cheers <hello@hellotocheers.com>",
-      "Description": "Non-secret. Venue app reads this as FROM_EMAIL; marketing/workspace read the same value as EMAIL_FROM (two variable names, confirmed in code — see docs/resend-production-setup-findings.md)."
+      "Description": "Non-secret. Venue app reads this as FROM_EMAIL; marketing/workspace read the same value as EMAIL_FROM (two variable names, confirmed in code - see docs/resend-production-setup-findings.md)."
     },
     "EmailReplyTo": {
       "Type": "String",
       "Default": "jen@hellotocheers.com",
-      "Description": "Non-secret. Read only by marketing/workspace (EMAIL_REPLY_TO) — the venue app has no global Reply-To config, confirmed in code."
+      "Description": "Non-secret. Read only by marketing/workspace (EMAIL_REPLY_TO) - the venue app has no global Reply-To config, confirmed in code."
     },
     "SupabaseUrl": {
       "Type": "String",
@@ -129,7 +129,7 @@
     "AlbSecurityGroup": {
       "Type": "AWS::EC2::SecurityGroup",
       "Properties": {
-        "GroupDescription": "ALB — public HTTP/HTTPS",
+        "GroupDescription": "ALB - public HTTP/HTTPS",
         "VpcId": { "Ref": "Vpc" },
         "SecurityGroupIngress": [
           { "IpProtocol": "tcp", "FromPort": 80, "ToPort": 80, "CidrIp": "0.0.0.0/0" },
@@ -141,7 +141,7 @@
     "EcsTaskSecurityGroup": {
       "Type": "AWS::EC2::SecurityGroup",
       "Properties": {
-        "GroupDescription": "ECS tasks — inbound only from the ALB, on the container port; outbound HTTPS to Supabase/Resend/Stripe and cross-app calls",
+        "GroupDescription": "ECS tasks - inbound only from the ALB, on the container port; outbound HTTPS to Supabase/Resend/Stripe and cross-app calls",
         "VpcId": { "Ref": "Vpc" },
         "SecurityGroupIngress": [
           { "IpProtocol": "tcp", "FromPort": 3000, "ToPort": 3000, "SourceSecurityGroupId": { "Ref": "AlbSecurityGroup" } }
@@ -206,7 +206,7 @@
       "Type": "AWS::SecretsManager::Secret",
       "Properties": {
         "Name": { "Fn::Sub": "htc/${EnvironmentName}/supabase-service-role-key" },
-        "Description": "Placeholder value only (CHANGE_ME) — CloudFormation cannot create a Secrets Manager secret with no value. Populate the real value with aws secretsmanager put-secret-value (or the Console) immediately after stack creation, never in this template.",
+        "Description": "Placeholder value only (CHANGE_ME) - CloudFormation cannot create a Secrets Manager secret with no value. Populate the real value with aws secretsmanager put-secret-value (or the Console) immediately after stack creation, never in this template.",
         "SecretString": "{\"value\":\"CHANGE_ME\"}"
       }
     },
@@ -221,7 +221,7 @@
       "Type": "AWS::SecretsManager::Secret",
       "Properties": {
         "Name": { "Fn::Sub": "htc/${EnvironmentName}/product-sync-api-key" },
-        "Description": "Placeholder value only (CHANGE_ME). Must end up byte-identical across all three apps once populated — it's one secret, referenced by all three task definitions below, not three separate values.",
+        "Description": "Placeholder value only (CHANGE_ME). Must end up byte-identical across all three apps once populated - it's one secret, referenced by all three task definitions below, not three separate values.",
         "SecretString": "{\"value\":\"CHANGE_ME\"}"
       }
     },
@@ -229,7 +229,7 @@
       "Type": "AWS::SecretsManager::Secret",
       "Properties": {
         "Name": { "Fn::Sub": "htc/${EnvironmentName}/stripe-saas" },
-        "Description": "marketing/'s Stripe SaaS billing keys — STRIPE_SECRET_KEY + STRIPE_WEBHOOK_SECRET, separate from Connect below",
+        "Description": "marketing/'s Stripe SaaS billing keys - STRIPE_SECRET_KEY + STRIPE_WEBHOOK_SECRET, separate from Connect below",
         "SecretString": "{\"STRIPE_SECRET_KEY\":\"CHANGE_ME\",\"STRIPE_WEBHOOK_SECRET\":\"CHANGE_ME\"}"
       }
     },
@@ -237,7 +237,7 @@
       "Type": "AWS::SecretsManager::Secret",
       "Properties": {
         "Name": { "Fn::Sub": "htc/${EnvironmentName}/stripe-connect" },
-        "Description": "Venue app's existing Stripe Connect keys — not part of the first E2E path, included for completeness",
+        "Description": "Venue app's existing Stripe Connect keys - not part of the first E2E path, included for completeness",
         "SecretString": "{\"STRIPE_SECRET_KEY\":\"CHANGE_ME\",\"STRIPE_WEBHOOK_SECRET\":\"CHANGE_ME\"}"
       }
     },
