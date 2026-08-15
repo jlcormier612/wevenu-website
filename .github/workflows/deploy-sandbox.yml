@@ -155,14 +155,15 @@ jobs:
       # empty string to a CloudFormation parameter and discovering the
       # break one resource at a time (e.g. an empty ListenerRule condition,
       # "A condition value cannot be empty") several minutes into resource
-      # creation. Only SupabaseUrl remains here - the hostnames/email were
-      # promoted to hardcoded values below (see that step's comment); a real
-      # Supabase Sandbox project genuinely doesn't exist yet, so this one
-      # can't be hardcoded and must keep failing loudly until it's set.
+      # creation. Only SupabaseUrl/SupabaseAnonKey remain here - the hostnames/
+      # email were promoted to hardcoded values below (see that step's comment).
+      # Both use the same NEXT_PUBLIC_* vars as the build step - one variable
+      # feeds both build-time inlining and the runtime ECS environment, so they
+      # can never diverge.
       - name: Validate required deploy configuration
         run: |
           missing=()
-          [ -z "${{ vars.SUPABASE_URL }}" ] && missing+=("SUPABASE_URL")
+          [ -z "${{ vars.NEXT_PUBLIC_SUPABASE_URL }}" ] && missing+=("NEXT_PUBLIC_SUPABASE_URL")
           [ -z "${{ vars.NEXT_PUBLIC_SUPABASE_ANON_KEY }}" ] && missing+=("NEXT_PUBLIC_SUPABASE_ANON_KEY")
           if [ ${#missing[@]} -gt 0 ]; then
             echo "::error::Missing required sandbox Environment variable(s), needed to deploy infra/htc-ecs-stack.json: ${missing[*]}"
@@ -187,7 +188,7 @@ jobs:
               WorkspaceHostname=workspace.sandbox.hellotocheers.com \
               FromEmailAddress="Hello to Cheers <jennifer@hellotocheers.com>" \
               EmailReplyTo=jennifer@hellotocheers.com \
-              SupabaseUrl="${{ vars.SUPABASE_URL }}" \
+              SupabaseUrl="${{ vars.NEXT_PUBLIC_SUPABASE_URL }}" \
               SupabaseAnonKey="${{ vars.NEXT_PUBLIC_SUPABASE_ANON_KEY }}" \
             --capabilities CAPABILITY_NAMED_IAM \
             --role-arn "${{ vars.CFN_EXECUTION_ROLE_ARN }}" \
