@@ -462,6 +462,7 @@
         "TaskDefinition": { "Ref": "VenueAppTaskDefinition" },
         "DesiredCount": 1,
         "LaunchType": "FARGATE",
+        "HealthCheckGracePeriodSeconds": 120,
         "NetworkConfiguration": {
           "AwsvpcConfiguration": {
             "AssignPublicIp": "ENABLED",
@@ -482,6 +483,7 @@
         "TaskDefinition": { "Ref": "MarketingTaskDefinition" },
         "DesiredCount": 1,
         "LaunchType": "FARGATE",
+        "HealthCheckGracePeriodSeconds": 120,
         "NetworkConfiguration": {
           "AwsvpcConfiguration": {
             "AssignPublicIp": "ENABLED",
@@ -502,6 +504,7 @@
         "TaskDefinition": { "Ref": "WorkspaceTaskDefinition" },
         "DesiredCount": 1,
         "LaunchType": "FARGATE",
+        "HealthCheckGracePeriodSeconds": 120,
         "NetworkConfiguration": {
           "AwsvpcConfiguration": {
             "AssignPublicIp": "ENABLED",
