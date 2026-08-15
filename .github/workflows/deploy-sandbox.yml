@@ -41,14 +41,24 @@ jobs:
     strategy:
       matrix:
         include:
+          # NEXT_PUBLIC_APP_URL / NEXT_PUBLIC_MARKETING_URL / NEXT_PUBLIC_SITE_URL /
+          # NEXT_PUBLIC_PRODUCT_APP_URL / NEXT_PUBLIC_WORKSPACE_URL below are
+          # hardcoded, not vars.* — same reasoning as AWS_REGION above: these
+          # are the Sandbox environment's own fixed hostnames (see
+          # infra/htc-ecs-stack.json's VenueAppHostname/MarketingHostname/
+          # WorkspaceHostname parameter Defaults, which they match exactly),
+          # never meant to vary, and a silently-empty vars.* reference here
+          # previously baked broken absolute URLs into every image. Only
+          # Supabase (real project not yet provisioned) and the six genuinely
+          # optional integrations remain vars.*-driven.
           - name: venue-app
             dockerfile: Dockerfile
             repo_var: htc-sandbox-venue-app
             build_args: |
               NEXT_PUBLIC_SUPABASE_URL=${{ vars.NEXT_PUBLIC_SUPABASE_URL }}
               NEXT_PUBLIC_SUPABASE_ANON_KEY=${{ vars.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
-              NEXT_PUBLIC_APP_URL=${{ vars.NEXT_PUBLIC_APP_URL }}
-              NEXT_PUBLIC_MARKETING_URL=${{ vars.NEXT_PUBLIC_MARKETING_URL }}
+              NEXT_PUBLIC_APP_URL=https://app.sandbox.hellotocheers.com
+              NEXT_PUBLIC_MARKETING_URL=https://sandbox.hellotocheers.com
               NEXT_PUBLIC_STRIPE_CLIENT_ID=${{ vars.NEXT_PUBLIC_STRIPE_CLIENT_ID }}
               NEXT_PUBLIC_FACEBOOK_APP_ID=${{ vars.NEXT_PUBLIC_FACEBOOK_APP_ID }}
               NEXT_PUBLIC_QUICKBOOKS_CLIENT_ID=${{ vars.NEXT_PUBLIC_QUICKBOOKS_CLIENT_ID }}
@@ -59,19 +69,19 @@ jobs:
             dockerfile: marketing/Dockerfile
             repo_var: htc-sandbox-marketing
             build_args: |
-              NEXT_PUBLIC_MARKETING_URL=${{ vars.NEXT_PUBLIC_MARKETING_URL }}
-              NEXT_PUBLIC_SITE_URL=${{ vars.NEXT_PUBLIC_SITE_URL }}
-              NEXT_PUBLIC_PRODUCT_APP_URL=${{ vars.NEXT_PUBLIC_PRODUCT_APP_URL }}
+              NEXT_PUBLIC_MARKETING_URL=https://sandbox.hellotocheers.com
+              NEXT_PUBLIC_SITE_URL=https://sandbox.hellotocheers.com
+              NEXT_PUBLIC_PRODUCT_APP_URL=https://app.sandbox.hellotocheers.com
               NEXT_PUBLIC_CALENDLY_URL=${{ vars.NEXT_PUBLIC_CALENDLY_URL }}
           - name: workspace
             dockerfile: workspace/Dockerfile
             repo_var: htc-sandbox-workspace
             build_args: |
-              NEXT_PUBLIC_APP_URL=${{ vars.NEXT_PUBLIC_APP_URL }}
-              NEXT_PUBLIC_MARKETING_URL=${{ vars.NEXT_PUBLIC_MARKETING_URL }}
-              NEXT_PUBLIC_PRODUCT_APP_URL=${{ vars.NEXT_PUBLIC_PRODUCT_APP_URL }}
-              NEXT_PUBLIC_SITE_URL=${{ vars.NEXT_PUBLIC_SITE_URL }}
-              NEXT_PUBLIC_WORKSPACE_URL=${{ vars.NEXT_PUBLIC_WORKSPACE_URL }}
+              NEXT_PUBLIC_APP_URL=https://app.sandbox.hellotocheers.com
+              NEXT_PUBLIC_MARKETING_URL=https://sandbox.hellotocheers.com
+              NEXT_PUBLIC_PRODUCT_APP_URL=https://app.sandbox.hellotocheers.com
+              NEXT_PUBLIC_SITE_URL=https://sandbox.hellotocheers.com
+              NEXT_PUBLIC_WORKSPACE_URL=https://workspace.sandbox.hellotocheers.com
     steps:
       - name: Checkout
         # Full checkout, repo root — marketing/ and workspace/ both import
@@ -88,6 +98,22 @@ jobs:
       - name: Log in to ECR
         id: ecr-login
         uses: aws-actions/amazon-ecr-login@v2
+
+      # Fails the run immediately, with every missing value named at once,
+      # instead of baking an empty NEXT_PUBLIC_SUPABASE_URL/ANON_KEY into a
+      # pushed image and only discovering it's broken once a container is
+      # already running (or not at all, since these aren't checked by the
+      # ALB health check — see Verify ALB endpoints below).
+      - name: Validate required build configuration
+        if: matrix.name == 'venue-app'
+        run: |
+          missing=()
+          [ -z "${{ vars.NEXT_PUBLIC_SUPABASE_URL }}" ] && missing+=("NEXT_PUBLIC_SUPABASE_URL")
+          [ -z "${{ vars.NEXT_PUBLIC_SUPABASE_ANON_KEY }}" ] && missing+=("NEXT_PUBLIC_SUPABASE_ANON_KEY")
+          if [ ${#missing[@]} -gt 0 ]; then
+            echo "::error::Missing required sandbox Environment variable(s), needed to build a working venue-app image: ${missing[*]}"
+            exit 1
+          fi
 
       - name: Build
         env:
@@ -124,6 +150,24 @@ jobs:
         id: ecr-login
         uses: aws-actions/amazon-ecr-login@v2
 
+      # Fails the run immediately, naming every missing value at once,
+      # instead of letting `aws cloudformation deploy` silently pass an
+      # empty string to a CloudFormation parameter and discovering the
+      # break one resource at a time (e.g. an empty ListenerRule condition,
+      # "A condition value cannot be empty") several minutes into resource
+      # creation. Only SupabaseUrl remains here — the hostnames/email were
+      # promoted to hardcoded values below (see that step's comment); a real
+      # Supabase Sandbox project genuinely doesn't exist yet, so this one
+      # can't be hardcoded and must keep failing loudly until it's set.
+      - name: Validate required deploy configuration
+        run: |
+          missing=()
+          [ -z "${{ vars.SUPABASE_URL }}" ] && missing+=("SUPABASE_URL")
+          if [ ${#missing[@]} -gt 0 ]; then
+            echo "::error::Missing required sandbox Environment variable(s), needed to deploy infra/htc-ecs-stack.json: ${missing[*]}"
+            exit 1
+          fi
+
       - name: Deploy htc-ecs-stack.json
         env:
           REGISTRY: ${{ steps.ecr-login.outputs.registry }}
@@ -137,11 +181,11 @@ jobs:
               VenueAppImage="$REGISTRY/htc-sandbox-venue-app:$SHA" \
               MarketingImage="$REGISTRY/htc-sandbox-marketing:$SHA" \
               WorkspaceImage="$REGISTRY/htc-sandbox-workspace:$SHA" \
-              VenueAppHostname="${{ vars.VENUE_APP_HOSTNAME }}" \
-              MarketingHostname="${{ vars.MARKETING_HOSTNAME }}" \
-              WorkspaceHostname="${{ vars.WORKSPACE_HOSTNAME }}" \
-              FromEmailAddress="${{ vars.FROM_EMAIL_ADDRESS }}" \
-              EmailReplyTo="${{ vars.EMAIL_REPLY_TO }}" \
+              VenueAppHostname=app.sandbox.hellotocheers.com \
+              MarketingHostname=sandbox.hellotocheers.com \
+              WorkspaceHostname=workspace.sandbox.hellotocheers.com \
+              FromEmailAddress="Hello to Cheers <jennifer@hellotocheers.com>" \
+              EmailReplyTo=jennifer@hellotocheers.com \
               SupabaseUrl="${{ vars.SUPABASE_URL }}" \
             --capabilities CAPABILITY_NAMED_IAM \
             --role-arn "${{ vars.CFN_EXECUTION_ROLE_ARN }}" \
@@ -188,6 +232,11 @@ jobs:
           # redirect by design — confirmed by actually running the
           # container, not assumed — so 200-399 is the correct pass range
           # there, matching the ALB target group's own health-check matcher.
-          check "${{ vars.VENUE_APP_HOSTNAME }}" "/login" "^200$" "venue app"
-          check "${{ vars.MARKETING_HOSTNAME }}" "/" "^200$" "marketing"
-          check "${{ vars.WORKSPACE_HOSTNAME }}" "/" "^(2|3)[0-9]{2}$" "workspace"
+          #
+          # Hardcoded, matching the deploy job's own VenueAppHostname/
+          # MarketingHostname/WorkspaceHostname parameter overrides — these
+          # must always agree with what was actually deployed, so they are
+          # not independently vars.*-sourced here.
+          check "app.sandbox.hellotocheers.com" "/login" "^200$" "venue app"
+          check "sandbox.hellotocheers.com" "/" "^200$" "marketing"
+          check "workspace.sandbox.hellotocheers.com" "/" "^(2|3)[0-9]{2}$" "workspace"
