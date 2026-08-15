@@ -60,22 +60,3 @@ export async function GET() {
 
   return NextResponse.json({ ok: true, checks }, { status: 200 });
 }
-
-  try {
-    const admin = createAdminClient();
-    // legal_documents, not lead_sources: confirmed via this repo's own grants
-    // table that service_role has full SELECT here, unlike ~115 other public
-    // tables where only anon/authenticated were ever granted SELECT (a real,
-    // separate, much larger finding - see the Sandbox infra report, not
-    // silently fixed here).
-    const { error } = await admin.from("legal_documents").select("document_type").limit(1);
-    if (error) throw error;
-    checks.supabase = "ok";
-  } catch (error) {
-    checks.supabase = "error";
-    console.error("[health] supabase check failed", error);
-    return NextResponse.json({ ok: false, checks }, { status: 503 });
-  }
-
-  return NextResponse.json({ ok: true, checks }, { status: 200 });
-}
