@@ -1,12 +1,12 @@
 {
   "AWSTemplateFormatVersion": "2010-09-09",
-  "Description": "Hello to Cheers — GitHub Actions OIDC bootstrap. Creates the IAM OIDC identity provider (if one doesn't already exist in this account), the Sandbox GitHub Actions deploy role, and the CloudFormation execution role it's allowed to pass. This is the one piece of this whole pipeline that cannot be deployed by GitHub Actions itself — a workflow has no AWS credentials until this exists. Deploy manually, once, with your own AWS credentials. See docs/github-actions-deployment-implementation.md for the exact command and the reasoning.",
+  "Description": "Hello to Cheers - GitHub Actions OIDC bootstrap. Creates the IAM OIDC identity provider (if one doesn't already exist in this account), the Sandbox GitHub Actions deploy role, and the CloudFormation execution role it's allowed to pass. This is the one piece of this whole pipeline that cannot be deployed by GitHub Actions itself - a workflow has no AWS credentials until this exists. Deploy manually, once, with your own AWS credentials. See docs/github-actions-deployment-implementation.md for the exact command and the reasoning.",
 
   "Parameters": {
     "GitHubOrg": {
       "Type": "String",
       "Default": "jlcormier612",
-      "Description": "GitHub org/user that owns the repo — confirmed from this repo's own git remote."
+      "Description": "GitHub org/user that owns the repo - confirmed from this repo's own git remote."
     },
     "GitHubRepo": {
       "Type": "String",
@@ -16,7 +16,7 @@
     "ExistingOidcProviderArn": {
       "Type": "String",
       "Default": "",
-      "Description": "Leave blank to have this template create the token.actions.githubusercontent.com OIDC provider. If this AWS account already has one (only one can exist per URL per account — a previous project may have created it already), paste its ARN here instead and this template will reuse it rather than fail on a duplicate."
+      "Description": "Leave blank to have this template create the token.actions.githubusercontent.com OIDC provider. If this AWS account already has one (only one can exist per URL per account - a previous project may have created it already), paste its ARN here instead and this template will reuse it rather than fail on a duplicate."
     }
   },
 
@@ -187,7 +187,7 @@
               {
                 "Sid": "CloudFormationDescribeStacksNoResourceLevelSupportOnNewStacks",
                 "Effect": "Allow",
-                "Action": "cloudformation:DescribeStacks",
+                "Action": ["cloudformation:DescribeStacks", "cloudformation:GetTemplateSummary"],
                 "Resource": "*"
               },
               {
@@ -212,6 +212,12 @@
                 "Effect": "Allow",
                 "Action": ["elasticloadbalancing:DescribeLoadBalancers", "elasticloadbalancing:DescribeTargetGroups", "elasticloadbalancing:DescribeTargetHealth"],
                 "Resource": "*"
+              },
+              {
+                "Sid": "SecretsReadOnlyForVerification",
+                "Effect": "Allow",
+                "Action": ["secretsmanager:DescribeSecret", "secretsmanager:GetSecretValue"],
+                "Resource": [{ "Fn::Sub": "arn:aws:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:htc/sandbox/*" }]
               }
             ]
           }

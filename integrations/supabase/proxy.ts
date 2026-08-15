@@ -66,6 +66,7 @@ const PUBLIC_PATHS = [
   "/api/webhooks/stripe-connect",    // Stripe Connect webhook — no user session, verifies its own signature (Sprint 4)
   "/api/internal/product-access",    // CRM → product access lock — Bearer PRODUCT_SYNC_API_KEY, not session-guarded
   "/api/internal/enrollment",        // CRM/Workspace → venue enrollment + activation bridge — Bearer PRODUCT_SYNC_API_KEY, not session-guarded
+  "/api/health",                     // deployment health check — no session, no secret; read-only, returns booleans only, never data
 ];
 
 /** Authenticated routes still reachable when the venue SaaS account is suspended. */
