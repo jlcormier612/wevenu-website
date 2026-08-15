@@ -240,3 +240,59 @@ jobs:
           check "app.sandbox.hellotocheers.com" "/login" "^200$" "venue app"
           check "sandbox.hellotocheers.com" "/" "^200$" "marketing"
           check "workspace.sandbox.hellotocheers.com" "/" "^(2|3)[0-9]{2}$" "workspace"
+
+          # /login returning 200 only proves the page shell rendered - it
+          # does not require a successful Supabase query, so a container
+          # with entirely broken Supabase credentials still passes the
+          # check above. /api/health (app/api/health/route.ts) runs one
+          # real, read-only Supabase query with the container's actual
+          # runtime credentials and only returns 200 if it succeeds - this
+          # is the check that actually proves the deployed app can talk to
+          # its database, not just that the process is up.
+          check "app.sandbox.hellotocheers.com" "/api/health" "^200$" "venue app real Supabase connectivity"
+
+      - name: Validate Secrets Manager values are populated
+        # describe-secret confirms existence without ever reading the value.
+        # get-secret-value is only used to check for the literal CHANGE_ME
+        # placeholder the CloudFormation template inserts at stack creation
+        # (infra/htc-ecs-stack.json) - the value is masked immediately and
+        # never echoed, logged, or compared to anything but that one known
+        # placeholder string.
+        run: |
+          check_secret() {
+            local id="$1" jsonpath="$2" label="$3"
+            if ! aws secretsmanager describe-secret --secret-id "$id" >/dev/null 2>&1; then
+              echo "::error::Secret '$id' ($label) does not exist in Secrets Manager - the stack was not deployed correctly."
+              exit 1
+            fi
+            local val
+            val=$(aws secretsmanager get-secret-value --secret-id "$id" --query SecretString --output text | jq -r "$jsonpath")
+            echo "::add-mask::$val"
+            if [ -z "$val" ] || [[ "$val" == *"CHANGE_ME"* ]]; then
+              echo "::warning::Secret '$id' ($label) still contains its CHANGE_ME placeholder - populate the real value with 'aws secretsmanager put-secret-value' before this capability will work."
+            else
+              echo "$id ($label): populated"
+            fi
+          }
+          check_secret "htc/sandbox/supabase-service-role-key" ".value" "Supabase service-role key"
+          check_secret "htc/sandbox/resend-api-key" ".value" "Resend API key"
+          check_secret "htc/sandbox/product-sync-api-key" ".value" "Product sync API key"
+          check_secret "htc/sandbox/stripe-saas" ".STRIPE_SECRET_KEY" "Stripe SaaS secret key"
+          check_secret "htc/sandbox/stripe-connect" ".STRIPE_SECRET_KEY" "Stripe Connect secret key"
+          echo "All 5 expected secrets exist. Any '::warning::' above means that specific capability (not the deploy itself) won't work until the real value is set - see the Sandbox infra report for which ones are required vs. deferrable."
+
+      - name: Verify Sandbox database readiness (optional)
+        # Runs scripts/verify-sandbox-database.sh against the real project
+        # only if SANDBOX_DB_URL is set - this is deliberately NOT one of
+        # the required sandbox Environment variables, since it's a new,
+        # optional capability this pass adds, not an existing requirement.
+        # Skips cleanly (does not fail the workflow) when unset, with a
+        # clear note on how to enable it going forward.
+        run: |
+          if [ -z "${{ vars.SANDBOX_DB_URL }}" ]; then
+            echo "SANDBOX_DB_URL is not set - skipping full database verification (migrations/extensions/reference data/RLS/buckets)."
+            echo "To enable this check on every future deploy, add a 'SANDBOX_DB_URL' sandbox Environment variable with the project's Session Pooler connection string (Supabase Dashboard -> Project Settings -> Database -> Connection string)."
+            exit 0
+          fi
+          sudo apt-get update -qq && sudo apt-get install -qq -y postgresql-client
+          bash scripts/verify-sandbox-database.sh "${{ vars.SANDBOX_DB_URL }}"
