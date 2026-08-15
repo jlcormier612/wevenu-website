@@ -29,36 +29,42 @@
     "VenueAppHostname": {
       "Type": "String",
       "Default": "app.sandbox.hellotocheers.com",
-      "Description": "Used only for ALB host-header listener rules. No DNS record is created by this template (open decision - see docs). Before DNS exists, test with curl -H \"Host: <this value>\" against the ALB's own DNS name."
+      "MinLength": 1,
+      "Description": "Used only for ALB host-header listener rules. No DNS record is created by this template (open decision - see docs). Before DNS exists, test with curl -H \"Host: <this value>\" against the ALB's own DNS name. MinLength enforced: an empty value here produces an empty ListenerRule condition, which CloudFormation rejects at resource-creation time with an opaque error rather than a clear parameter-validation failure."
     },
     "MarketingHostname": {
       "Type": "String",
-      "Default": "sandbox.hellotocheers.com"
+      "Default": "sandbox.hellotocheers.com",
+      "MinLength": 1
     },
     "WorkspaceHostname": {
       "Type": "String",
-      "Default": "workspace.sandbox.hellotocheers.com"
+      "Default": "workspace.sandbox.hellotocheers.com",
+      "MinLength": 1
     },
 
     "CertificateArn": {
       "Type": "String",
       "Default": "",
-      "Description": "ACM certificate ARN for HTTPS. Leave blank for a first Sandbox smoke test over plain HTTP - the HTTPS listener is only created if this is set (see the HasCertificate Condition). Requesting/validating a real cert is a manual AWS step, not something this template can do."
+      "Description": "ACM certificate ARN for HTTPS. Leave blank for a first Sandbox smoke test over plain HTTP - the HTTPS listener is only created if this is set (see the HasCertificate Condition). Requesting/validating a real cert is a manual AWS step, not something this template can do. Deliberately no MinLength here - unlike every other parameter in this file, an empty value is this parameter's own correct, intentional default, not a missing-configuration bug."
     },
 
     "FromEmailAddress": {
       "Type": "String",
-      "Default": "Hello to Cheers <hello@hellotocheers.com>",
-      "Description": "Non-secret. Venue app reads this as FROM_EMAIL; marketing/workspace read the same value as EMAIL_FROM (two variable names, confirmed in code - see docs/resend-production-setup-findings.md)."
+      "Default": "Hello to Cheers <jennifer@hellotocheers.com>",
+      "MinLength": 1,
+      "Description": "Non-secret. Venue app reads this as FROM_EMAIL; marketing/workspace read the same value as EMAIL_FROM (two variable names, confirmed in code - see docs/resend-production-setup-findings.md). hello@hellotocheers.com does not exist as a real mailbox; jennifer@hellotocheers.com is the confirmed real Sandbox address."
     },
     "EmailReplyTo": {
       "Type": "String",
-      "Default": "jen@hellotocheers.com",
-      "Description": "Non-secret. Read only by marketing/workspace (EMAIL_REPLY_TO) - the venue app has no global Reply-To config, confirmed in code."
+      "Default": "jennifer@hellotocheers.com",
+      "MinLength": 1,
+      "Description": "Non-secret. Read only by marketing/workspace (EMAIL_REPLY_TO) - the venue app has no global Reply-To config, confirmed in code. Same real-mailbox correction as FromEmailAddress."
     },
     "SupabaseUrl": {
       "Type": "String",
-      "Description": "Non-secret (public Supabase project URL). Runtime value for the venue app's SUPABASE-adjacent server env; the NEXT_PUBLIC_ build-time copy is a separate Docker build-arg concern, not set here."
+      "MinLength": 1,
+      "Description": "Non-secret (public Supabase project URL). Runtime value for the venue app's SUPABASE-adjacent server env; the NEXT_PUBLIC_ build-time copy is a separate Docker build-arg concern, not set here. No Default: a real Sandbox Supabase project must exist and this must be supplied explicitly - MinLength additionally rejects an explicitly-empty override rather than silently accepting one."
     }
   },
 
