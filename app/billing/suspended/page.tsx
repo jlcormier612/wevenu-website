@@ -115,7 +115,7 @@ export default async function BillingSuspendedPage() {
             <p className="text-center text-xs text-muted-foreground">
               Need help?{" "}
               <Link
-                href="mailto:hello@hellotocheers.com"
+                href="mailto:jennifer@hellotocheers.com"
                 className="underline underline-offset-2"
               >
                 Contact support
