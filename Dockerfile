@@ -1,11 +1,11 @@
-# Venue / product app — ECS deployment.
+# Venue / product app - ECS deployment.
 # docs/aws-cloudformation-ecs-deployment-plan.md
 #
 # Build context: repo root.
 #   docker build -f Dockerfile -t htc-venue-app .
 #
 # NEXT_PUBLIC_* values are baked into the client bundle at BUILD time, not
-# read at container runtime — pass real values via --build-arg in the image
+# read at container runtime - pass real values via --build-arg in the image
 # build step of the deploy pipeline. All other (server-only) env vars are
 # supplied at ECS task runtime via Secrets Manager/Parameter Store, not here.
 

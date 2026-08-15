@@ -7,7 +7,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 /**
- * Deployment health check — deliberately deeper than "the process is up."
+ * Deployment health check - deliberately deeper than "the process is up."
  *
  * ECS's own target-group health check and the Sandbox deploy workflow's
  * ALB curl checks only prove a container is running and serving HTTP; a

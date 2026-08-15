@@ -6,11 +6,13 @@
     "GitHubOrg": {
       "Type": "String",
       "Default": "jlcormier612",
-      "Description": "GitHub org/user that owns the repo - confirmed from this repo's own git remote."
+      "MinLength": 1,
+      "Description": "GitHub org/user that owns the repo - confirmed from this repo's own git remote. MinLength enforced: this value scopes the OIDC trust policy's repo condition - an empty override would produce an overly broad or malformed trust condition instead of a clear parameter-validation failure."
     },
     "GitHubRepo": {
       "Type": "String",
       "Default": "wevenu-website",
+      "MinLength": 1,
       "Description": "Confirmed from this repo's own git remote (jlcormier612/wevenu-website)."
     },
     "ExistingOidcProviderArn": {

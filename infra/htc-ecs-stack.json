@@ -15,14 +15,17 @@
 
     "VenueAppImage": {
       "Type": "String",
+      "MinLength": 1,
       "Description": "Full ECR image URI:tag for the venue/product app. Build+push happens outside this template (see Dockerfile at repo root)."
     },
     "MarketingImage": {
       "Type": "String",
+      "MinLength": 1,
       "Description": "Full ECR image URI:tag for marketing/. Build+push happens outside this template (see marketing/Dockerfile)."
     },
     "WorkspaceImage": {
       "Type": "String",
+      "MinLength": 1,
       "Description": "Full ECR image URI:tag for workspace/. Build+push happens outside this template (see workspace/Dockerfile)."
     },
 

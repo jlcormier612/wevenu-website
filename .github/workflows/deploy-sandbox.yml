@@ -7,12 +7,12 @@
 #   1. infra/htc-github-oidc.json deployed manually (OIDC provider + the two
 #      IAM roles this workflow assumes/passes).
 #   2. infra/htc-ecr-repos.json deployed via deploy-foundation-sandbox.yml
-#      (or manually) — the three ECR repos this workflow pushes into.
+#      (or manually) - the three ECR repos this workflow pushes into.
 # See docs/github-actions-deployment-implementation.md.
 #
-# No application secret values are read, held, or passed by this workflow —
+# No application secret values are read, held, or passed by this workflow -
 # they live only in AWS Secrets Manager, referenced by the CloudFormation
-# template itself. No long-lived AWS credentials are used — authentication
+# template itself. No long-lived AWS credentials are used - authentication
 # is via GitHub's OIDC token, scoped to the "sandbox" Environment below.
 
 name: Deploy Sandbox
@@ -27,7 +27,7 @@ permissions:
   contents: read
 
 env:
-  # Fixed, not a GitHub variable — this pipeline is Sandbox-only, single-region
+  # Fixed, not a GitHub variable - this pipeline is Sandbox-only, single-region
   # by design (confirmed us-east-1), so there's no reason to depend on a
   # variable that was never going to vary and would silently break this step
   # if left unset.
@@ -43,7 +43,7 @@ jobs:
         include:
           # NEXT_PUBLIC_APP_URL / NEXT_PUBLIC_MARKETING_URL / NEXT_PUBLIC_SITE_URL /
           # NEXT_PUBLIC_PRODUCT_APP_URL / NEXT_PUBLIC_WORKSPACE_URL below are
-          # hardcoded, not vars.* — same reasoning as AWS_REGION above: these
+          # hardcoded, not vars.* - same reasoning as AWS_REGION above: these
           # are the Sandbox environment's own fixed hostnames (see
           # infra/htc-ecs-stack.json's VenueAppHostname/MarketingHostname/
           # WorkspaceHostname parameter Defaults, which they match exactly),
@@ -84,7 +84,7 @@ jobs:
               NEXT_PUBLIC_WORKSPACE_URL=https://workspace.sandbox.hellotocheers.com
     steps:
       - name: Checkout
-        # Full checkout, repo root — marketing/ and workspace/ both import
+        # Full checkout, repo root - marketing/ and workspace/ both import
         # ../shared/*, so a shallow/sparse checkout or per-app subdirectory
         # checkout would break their build context.
         uses: actions/checkout@v4
@@ -103,7 +103,7 @@ jobs:
       # instead of baking an empty NEXT_PUBLIC_SUPABASE_URL/ANON_KEY into a
       # pushed image and only discovering it's broken once a container is
       # already running (or not at all, since these aren't checked by the
-      # ALB health check — see Verify ALB endpoints below).
+      # ALB health check - see Verify ALB endpoints below).
       - name: Validate required build configuration
         if: matrix.name == 'venue-app'
         run: |
@@ -155,7 +155,7 @@ jobs:
       # empty string to a CloudFormation parameter and discovering the
       # break one resource at a time (e.g. an empty ListenerRule condition,
       # "A condition value cannot be empty") several minutes into resource
-      # creation. Only SupabaseUrl remains here — the hostnames/email were
+      # creation. Only SupabaseUrl remains here - the hostnames/email were
       # promoted to hardcoded values below (see that step's comment); a real
       # Supabase Sandbox project genuinely doesn't exist yet, so this one
       # can't be hardcoded and must keep failing loudly until it's set.
@@ -229,12 +229,12 @@ jobs:
 
           # Venue app's /login is always a clean 200. Marketing's / is a
           # clean 200. Workspace's / issues its own 307 session-gate
-          # redirect by design — confirmed by actually running the
-          # container, not assumed — so 200-399 is the correct pass range
+          # redirect by design - confirmed by actually running the
+          # container, not assumed - so 200-399 is the correct pass range
           # there, matching the ALB target group's own health-check matcher.
           #
           # Hardcoded, matching the deploy job's own VenueAppHostname/
-          # MarketingHostname/WorkspaceHostname parameter overrides — these
+          # MarketingHostname/WorkspaceHostname parameter overrides - these
           # must always agree with what was actually deployed, so they are
           # not independently vars.*-sourced here.
           check "app.sandbox.hellotocheers.com" "/login" "^200$" "venue app"

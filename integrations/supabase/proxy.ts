@@ -14,18 +14,18 @@ const PUBLIC_PATHS = [
   "/client/login",   // couple/client portal login
   "/client/accept",  // primary couple invite accept (pre-auth)
   "/client/accept-participant", // delegate invite accept (pre-auth)
-  "/form",           // public venue inquiry forms — /form/{embedKey}
-  "/questionnaire",  // public final details forms — /questionnaire/{accessKey}
-  "/api/public",     // public API routes — /api/public/inquire, /api/public/questionnaire
+  "/form",           // public venue inquiry forms - /form/{embedKey}
+  "/questionnaire",  // public final details forms - /questionnaire/{accessKey}
+  "/api/public",     // public API routes - /api/public/inquire, /api/public/questionnaire
   "/api/messaging/inbound",  // Resend inbound email webhook (no user session)
-  "/api/leads/email-intake", // Resend inbound webhook for the Email Intake Engine (no user session; verifies its own secret) — found unreachable during Sprint 3 assessment, same allowlist-omission class as the QuickBooks sync cron
+  "/api/leads/email-intake", // Resend inbound webhook for the Email Intake Engine (no user session; verifies its own secret) - found unreachable during Sprint 3 assessment, same allowlist-omission class as the QuickBooks sync cron
   "/api/messaging/webhook",  // Resend delivery webhook (no user session)
   "/api/messaging/sms-inbound", // Twilio inbound SMS webhook (no user session; verifies its own signature)
   "/api/messaging/sms-status",  // Twilio outbound SMS status callback (no user session; verifies its own signature)
-  "/sign",           // public contract signing — /sign/{token}
-  "/brochure",       // D7B — public brochure view — /brochure/{share_token}
-  "/api/brochures/public", // D7B — public brochure PDF — /api/brochures/public/{share_token}/pdf
-  "/legal",          // public active legal documents — /legal/{document_type}
+  "/sign",           // public contract signing - /sign/{token}
+  "/brochure",       // D7B - public brochure view - /brochure/{share_token}
+  "/api/brochures/public", // D7B - public brochure PDF - /api/brochures/public/{share_token}/pdf
+  "/legal",          // public active legal documents - /legal/{document_type}
   "/terms",          // canonical public Venue Subscription Agreement
   "/privacy",        // canonical public Privacy Policy
   "/cookies",        // canonical public Cookie Policy
@@ -33,40 +33,40 @@ const PUBLIC_PATHS = [
   "/end-user-terms", // canonical public End User Terms (couples)
   "/vendor-terms",   // canonical public Vendor Terms
   "/api/legal",      // public legal metadata (active document ids / versions)
-  "/api/internal/legal", // CRM → legal acceptances — Bearer PRODUCT_SYNC_API_KEY
-  "/p",              // client portal workspace — /p/{access_token}
-  "/v",              // vendor portal workspace — /v/{access_token}
-  "/vendor/accept",  // vendor invitation claim — accessible before auth
-  "/join",           // staff team-invite acceptance — accessible before auth, same shape as /vendor/accept
-  "/book",           // public tour scheduling — /book/{tour_embed_key}
-  "/w",              // public wedding website — /w/{slug}
-  "/qr",             // QR Lead Capture scan-and-redirect — /qr/{code}, plus /qr/inactive
-  "/rsvp",           // public RSVP submission — /rsvp/{rsvp_token}
-  "/api/portal",        // portal API endpoints — complete tasks, invites, etc.
+  "/api/internal/legal", // CRM -> legal acceptances - Bearer PRODUCT_SYNC_API_KEY
+  "/p",              // client portal workspace - /p/{access_token}
+  "/v",              // vendor portal workspace - /v/{access_token}
+  "/vendor/accept",  // vendor invitation claim - accessible before auth
+  "/join",           // staff team-invite acceptance - accessible before auth, same shape as /vendor/accept
+  "/book",           // public tour scheduling - /book/{tour_embed_key}
+  "/w",              // public wedding website - /w/{slug}
+  "/qr",             // QR Lead Capture scan-and-redirect - /qr/{code}, plus /qr/inactive
+  "/rsvp",           // public RSVP submission - /rsvp/{rsvp_token}
+  "/api/portal",        // portal API endpoints - complete tasks, invites, etc.
   "/api/rsvp",          // guest-token-authenticated RSVP API endpoints (concierge, etc.)
   "/api/vendor",        // vendor portal API endpoints
   // Release Readiness Reconciliation remediation: these were previously the
   // bare prefixes "/api/notifications"/"/api/tours", which also matched
   // "/api/notifications/preferences"+"/read" (staff-only, cookie-session)
-  // and "/api/tours/outcome"+"/status" (coordinator-only) — safe only by
+  // and "/api/tours/outcome"+"/status" (coordinator-only) - safe only by
   // coincidence, since those routes independently check auth internally.
   // Narrowed to exactly the sub-paths that are genuinely meant to be
   // reachable without a session.
-  "/api/notifications/process", // notification delivery engine cron/manual-trigger — secret-guarded, not session-guarded
-  "/api/tours/book",             // public tour booking widget — embed-key-authenticated, not session-guarded
-  "/api/tours/slots",            // public tour slot queries — embed-key-authenticated, not session-guarded
-  "/api/digest",                     // daily digest cron (vercel.json) — CRON_SECRET-guarded, not session-guarded
-  "/api/communication/scheduled",    // Scheduled Sends cron (vercel.json) — CRON_SECRET-guarded, not session-guarded
-  "/api/automation/process",         // Automation engine cron (vercel.json) — CRON_SECRET-guarded, not session-guarded
-  "/api/quickbooks/sync/process",    // QuickBooks sync queue cron (vercel.json) — CRON_SECRET-guarded, not session-guarded
-  "/api/facebook/webhook",           // Meta Lead Ads webhook — GET verification handshake + POST delivery, verifies its own signature
-  "/api/facebook/sync/process",      // Facebook Lead Ads queue cron (vercel.json) — CRON_SECRET-guarded, not session-guarded
-  "/api/facebook/reconcile/process", // Facebook Lead Ads reconciliation poll cron (vercel.json) — CRON_SECRET-guarded, not session-guarded
-  "/api/saved-reports/process",      // D7C — scheduled Saved Report delivery cron (vercel.json) — CRON_SECRET-guarded, not session-guarded
-  "/api/webhooks/stripe-connect",    // Stripe Connect webhook — no user session, verifies its own signature (Sprint 4)
-  "/api/internal/product-access",    // CRM → product access lock — Bearer PRODUCT_SYNC_API_KEY, not session-guarded
-  "/api/internal/enrollment",        // CRM/Workspace → venue enrollment + activation bridge — Bearer PRODUCT_SYNC_API_KEY, not session-guarded
-  "/api/health",                     // deployment health check — no session, no secret; read-only, returns booleans only, never data
+  "/api/notifications/process", // notification delivery engine cron/manual-trigger - secret-guarded, not session-guarded
+  "/api/tours/book",             // public tour booking widget - embed-key-authenticated, not session-guarded
+  "/api/tours/slots",            // public tour slot queries - embed-key-authenticated, not session-guarded
+  "/api/digest",                     // daily digest cron (vercel.json) - CRON_SECRET-guarded, not session-guarded
+  "/api/communication/scheduled",    // Scheduled Sends cron (vercel.json) - CRON_SECRET-guarded, not session-guarded
+  "/api/automation/process",         // Automation engine cron (vercel.json) - CRON_SECRET-guarded, not session-guarded
+  "/api/quickbooks/sync/process",    // QuickBooks sync queue cron (vercel.json) - CRON_SECRET-guarded, not session-guarded
+  "/api/facebook/webhook",           // Meta Lead Ads webhook - GET verification handshake + POST delivery, verifies its own signature
+  "/api/facebook/sync/process",      // Facebook Lead Ads queue cron (vercel.json) - CRON_SECRET-guarded, not session-guarded
+  "/api/facebook/reconcile/process", // Facebook Lead Ads reconciliation poll cron (vercel.json) - CRON_SECRET-guarded, not session-guarded
+  "/api/saved-reports/process",      // D7C - scheduled Saved Report delivery cron (vercel.json) - CRON_SECRET-guarded, not session-guarded
+  "/api/webhooks/stripe-connect",    // Stripe Connect webhook - no user session, verifies its own signature (Sprint 4)
+  "/api/internal/product-access",    // CRM -> product access lock - Bearer PRODUCT_SYNC_API_KEY, not session-guarded
+  "/api/internal/enrollment",        // CRM/Workspace -> venue enrollment + activation bridge - Bearer PRODUCT_SYNC_API_KEY, not session-guarded
+  "/api/health",                     // deployment health check - no session, no secret; read-only, returns booleans only, never data
 ];
 
 /** Authenticated routes still reachable when the venue SaaS account is suspended. */
@@ -114,7 +114,7 @@ function nextWithPathname(request: NextRequest, pathname: string): NextResponse 
 
 /**
  * Copy Set-Cookie headers from the session-bearing response onto a new one.
- * Redirects / JSON after getUser() must preserve refreshed auth cookies —
+ * Redirects / JSON after getUser() must preserve refreshed auth cookies -
  * otherwise a silent JWT refresh is dropped and the next navigation looks logged out.
  * Never clears cookies on fail-open legal / lock paths.
  */
@@ -161,7 +161,7 @@ export async function updateSession(
   });
 
   const { url, anonKey } = getSupabaseConfig();
-  // Local browser uses http://localhost — never mark cookies Secure locally or
+  // Local browser uses http://localhost - never mark cookies Secure locally or
   // Chrome/Safari drop them after soft reloads. Prod (https) still gets Secure.
   const isLocalHttp =
     request.nextUrl.hostname === "localhost" ||
@@ -215,9 +215,9 @@ export async function updateSession(
     );
   }
 
-  // Wevenu HQ (/admin/* and /api/admin/*) — defense in depth alongside the
+  // Wevenu HQ (/admin/* and /api/admin/*) - defense in depth alongside the
   // layout-level check in app/admin/layout.tsx. See
-  // docs/wevenu-hq-architecture.md §5.
+  // docs/wevenu-hq-architecture.md section 5.
   if (user && (pathname.startsWith("/admin") || pathname.startsWith("/api/admin"))) {
     const { data: isAdmin } = await supabase.rpc("is_hq_admin");
     if (!isAdmin) {
@@ -238,7 +238,7 @@ export async function updateSession(
     return supabaseResponse;
   }
 
-  // CRM Suspend / unpaid dunning hard-lock — venue staff cannot use the app.
+  // CRM Suspend / unpaid dunning hard-lock - venue staff cannot use the app.
   // Public couple/guest surfaces stay on PUBLIC_PATHS above. Suspend screen +
   // billing portal API remain reachable so payment can be updated.
   if (user && !isPublicPath(pathname)) {
@@ -250,7 +250,7 @@ export async function updateSession(
         account_status: string | null;
       }>();
 
-    // If migration is not applied yet, the select may error — do not brick the app.
+    // If migration is not applied yet, the select may error - do not brick the app.
     const isLocked =
       !venueLockError &&
       Boolean(
@@ -282,7 +282,7 @@ export async function updateSession(
     }
   }
 
-  // Legal Acceptance Middleware (WP4) — one enforcement path for returning
+  // Legal Acceptance Middleware (WP4) - one enforcement path for returning
   // users + signup/setup. Compliant users pass through unchanged.
   // Fail-open (inside decideLegalProxyEnforcement) never clears cookies.
   if (
@@ -319,7 +319,7 @@ export async function updateSession(
     }
   }
 
-  // Only redirect logged-in users away from /login — not from public couple/guest surfaces.
+  // Only redirect logged-in users away from /login - not from public couple/guest surfaces.
   // Coordinators need to be able to preview /p/{token}, /w/{slug}, /book/{key} etc.
   if (user && pathname === "/login") {
     const { data: lockedVenue } = await supabase
@@ -343,7 +343,7 @@ export async function updateSession(
     }
 
     // Honor ?next= for post-auth return (e.g. vendor invitation claim).
-    // Must stay same-origin and relative — never open a login ↔ accept loop
+    // Must stay same-origin and relative - never open a login <-> accept loop
     // by bouncing claimers who have a session but no vendor_users row yet.
     const nextRaw = request.nextUrl.searchParams.get("next");
     const safeNext = safeInternalNextPath(nextRaw, request.nextUrl.origin);

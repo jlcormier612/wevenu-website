@@ -1,13 +1,13 @@
 {
   "AWSTemplateFormatVersion": "2010-09-09",
-  "Description": "Hello to Cheers — ECR foundation stack: the 3 container repositories only. Deployed once per environment, before infra/htc-ecs-stack.json (the application/compute stack) ever runs. Long-lived on purpose: unlike the compute stack, this one is not expected to be torn down/rolled back as part of routine deploys, so a failed application-stack deploy can never take these repositories down with it. See docs/github-actions-deployment-implementation.md.",
+  "Description": "Hello to Cheers - ECR foundation stack: the 3 container repositories only. Deployed once per environment, before infra/htc-ecs-stack.json (the application/compute stack) ever runs. Long-lived on purpose: unlike the compute stack, this one is not expected to be torn down/rolled back as part of routine deploys, so a failed application-stack deploy can never take these repositories down with it. See docs/github-actions-deployment-implementation.md.",
 
   "Parameters": {
     "EnvironmentName": {
       "Type": "String",
       "Default": "sandbox",
       "AllowedValues": ["sandbox", "production"],
-      "Description": "Must match the EnvironmentName used for the corresponding application stack (infra/htc-ecs-stack.json) — repository names are derived from it the same way."
+      "Description": "Must match the EnvironmentName used for the corresponding application stack (infra/htc-ecs-stack.json) - repository names are derived from it the same way."
     }
   },
 
