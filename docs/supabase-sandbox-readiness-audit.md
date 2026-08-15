@@ -77,7 +77,9 @@ No self-service path exists anywhere in the app to become an HQ admin (confirmed
 
 ## 5. Storage buckets
 
-**All 10 buckets are fully captured by migrations**, each via an idempotent `insert into storage.buckets (...) on conflict (id) do nothing` — no manual Dashboard bucket-creation step required, as long as migrations are applied in full:
+**Correction (this pass):** the original version of this audit undercounted at 10 buckets. Directly queried against the real local dev database, there are **11**. `couple-messages` was missed.
+
+**All 11 buckets are fully captured by migrations**, each via an idempotent `insert into storage.buckets (...) on conflict (id) do nothing` — no manual Dashboard bucket-creation step required, as long as migrations are applied in full:
 
 | Bucket | Public? | Migration |
 |---|---|---|
@@ -85,6 +87,7 @@ No self-service path exists anywhere in the app to become an HQ admin (confirmed
 | `uploads` | public | `20260627020000_uploads_bucket.sql` |
 | `documents` | public (deliberate — RLS-guarded instead, per the migration's own comment) | `20260627120000_documents.sql` |
 | `client-media` | public, with file-size/MIME restrictions | `20260629270000_couple_profiles.sql` |
+| `couple-messages` | public | `20260702960000_sprint955_message_polish.sql` |
 | `inventory` | public | `20260816000000_inventory_foundation.sql` |
 | `request-uploads` | public | `20260823000000_request_experience_phase1.sql` |
 | `vendors` | public | `20261154000000_vendor_logo_storage_bucket.sql` |
@@ -93,6 +96,14 @@ No self-service path exists anywhere in the app to become an HQ admin (confirmed
 | `event-order-representations` | **private** | `20261252000000_event_order_representation_and_sharing.sql` |
 
 One caveat, stated honestly: this audit confirmed the bucket *rows* exist via migration, and confirmed (from source, not freshly re-verified line-by-line here) that access to the private buckets goes through signed URLs plus RLS policies on `storage.objects` — that RLS layer was already certified correct in earlier phases of this engagement (D4/D5C/D6). This pass didn't re-audit every bucket's `storage.objects` policy individually; it confirmed the buckets themselves are migration-complete, which was the specific question asked.
+
+## 6. `service_role` table-level grants — a real, separate finding (this pass)
+
+Building `app/api/health/route.ts` (a real Supabase connectivity check, part of this pass's Sandbox verification work) surfaced a genuine gap: querying `public.lead_sources` via the service-role admin client failed with `permission denied for table lead_sources`, even though `service_role` has RLS-bypass. **RLS bypass and object-level `GRANT`s are independent in Postgres** — a role can bypass RLS entirely and still be refused by a missing `GRANT SELECT`.
+
+Checked systematically: **115 of 224 public tables** have `SELECT` granted to `authenticated` but not to `service_role`. `legal_documents` is a confirmed counter-example with full `service_role` CRUD grants already in place, so this isn't universal — it looks like tables that were only ever queried through session-based (`anon`/`authenticated`) code paths never picked up a `service_role` grant, because nothing needed one until now.
+
+**Not fixed in this pass** — deliberately. This is a real, moderately large finding, but fixing 115 tables' grants is its own reviewable piece of work, not a side effect of building a health-check endpoint. The health check itself was pointed at `legal_documents` instead (already correctly granted) to avoid this gap entirely. Flagging here so it isn't lost: any future service-role/admin-client code path against one of the other 114 tables should expect the same `permission denied` failure until this is addressed directly.
 
 ---
 
