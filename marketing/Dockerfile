@@ -1,7 +1,7 @@
-# Marketing site — ECS deployment.
+# Marketing site - ECS deployment.
 # docs/aws-cloudformation-ecs-deployment-plan.md
 #
-# Build context MUST be the repo root, not marketing/ itself — this app
+# Build context MUST be the repo root, not marketing/ itself - this app
 # imports @shared/relationships, @shared/email, @shared/product-account from
 # ../shared (confirmed via marketing/tsconfig.json + next.config.ts's
 # outputFileTracingRoot). Building with marketing/ alone as context cannot
@@ -9,7 +9,7 @@
 #
 #   docker build -f marketing/Dockerfile -t htc-marketing .
 #
-# NEXT_PUBLIC_* values are baked into the client bundle at BUILD time — pass
+# NEXT_PUBLIC_* values are baked into the client bundle at BUILD time - pass
 # real values via --build-arg in the deploy pipeline's image build step.
 
 FROM node:22-alpine AS deps
@@ -37,7 +37,7 @@ RUN npm run build
 
 # .next/standalone (traced from the repo root) contains both a root-level
 # node_modules (shared/'s own deps) and a marketing/ subfolder (this app's
-# server.js + its own node_modules) — confirmed by inspecting the actual
+# server.js + its own node_modules) - confirmed by inspecting the actual
 # build output, not assumed from Next.js docs alone. Copying the whole
 # standalone dir preserves that structure correctly.
 FROM node:22-alpine AS runner
