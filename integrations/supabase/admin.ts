@@ -9,7 +9,10 @@ import { createClient } from "@supabase/supabase-js";
  * and Server Actions after validating the caller's portal token.
  */
 export function createAdminClient() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  // SUPABASE_URL (non-NEXT_PUBLIC_) is a plain runtime env var present in the
+  // ECS task definition from initial deployment. NEXT_PUBLIC_SUPABASE_URL is the
+  // build-time-inlined copy; fall back to SUPABASE_URL when it's missing at runtime.
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL;
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!url || !serviceKey) {
     throw new Error("Supabase admin credentials not configured. Set SUPABASE_SERVICE_ROLE_KEY.");

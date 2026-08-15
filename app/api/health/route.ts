@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 
 import { createAdminClient } from "@/integrations/supabase/admin";
-import { isSupabaseConfigured } from "@/lib/env";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -16,7 +15,7 @@ export const dynamic = "force-dynamic";
  * since that page's own render doesn't require a successful query.
  *
  * This route runs one real, cheap, read-only query using the exact
- * runtime credentials (NEXT_PUBLIC_SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY)
+ * runtime credentials (SUPABASE_URL / NEXT_PUBLIC_SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY)
  * the container was actually given, via the service-role admin client -
  * the same one every real server action depends on. No request body, no
  * auth required (this must be reachable from the deploy workflow's own
@@ -30,11 +29,37 @@ export async function GET() {
     supabase: "skipped",
   };
 
-  if (!isSupabaseConfigured) {
+  // Check admin client prerequisites directly - SUPABASE_URL (non-NEXT_PUBLIC_)
+  // is a plain runtime env var guaranteed to be present in ECS; NEXT_PUBLIC_* may
+  // be inlined at build time and frozen, making runtime ECS values irrelevant.
+  const hasUrl = Boolean(
+    process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL,
+  );
+  const hasServiceKey = Boolean(process.env.SUPABASE_SERVICE_ROLE_KEY);
+  if (!hasUrl || !hasServiceKey) {
     checks.env = "error";
     return NextResponse.json({ ok: false, checks }, { status: 503 });
   }
   checks.env = "ok";
+
+  try {
+    const admin = createAdminClient();
+    // legal_documents, not lead_sources: confirmed via this repo's own grants
+    // table that service_role has full SELECT here, unlike ~115 other public
+    // tables where only anon/authenticated were ever granted SELECT (a real,
+    // separate, much larger finding - see the Sandbox infra report, not
+    // silently fixed here).
+    const { error } = await admin.from("legal_documents").select("document_type").limit(1);
+    if (error) throw error;
+    checks.supabase = "ok";
+  } catch (error) {
+    checks.supabase = "error";
+    console.error("[health] supabase check failed", error);
+    return NextResponse.json({ ok: false, checks }, { status: 503 });
+  }
+
+  return NextResponse.json({ ok: true, checks }, { status: 200 });
+}
 
   try {
     const admin = createAdminClient();

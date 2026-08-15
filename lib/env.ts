@@ -19,8 +19,15 @@ export const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
  * the application still runs: the auth UI renders and protected routes redirect
  * to the login screen. Live credentials are an expected infrastructure
  * dependency, not a product blocker.
+ *
+ * Uses SUPABASE_URL (non-NEXT_PUBLIC_) as the primary URL signal on the server.
+ * Next.js inlines NEXT_PUBLIC_* into the compiled server bundle at build time,
+ * so runtime ECS environment variables with that prefix are ignored. SUPABASE_URL
+ * is a plain env var that is always read from the actual process environment.
  */
-export const isSupabaseConfigured = Boolean(supabaseUrl && supabaseAnonKey);
+export const isSupabaseConfigured = Boolean(
+  (process.env.SUPABASE_URL || supabaseUrl) && supabaseAnonKey,
+);
 
 /**
  * Returns the validated Supabase config or throws. Call only after confirming
