@@ -67,7 +67,12 @@
     "SupabaseUrl": {
       "Type": "String",
       "MinLength": 1,
-      "Description": "Non-secret (public Supabase project URL). Runtime value for the venue app's SUPABASE-adjacent server env; the NEXT_PUBLIC_ build-time copy is a separate Docker build-arg concern, not set here. No Default: a real Sandbox Supabase project must exist and this must be supplied explicitly - MinLength additionally rejects an explicitly-empty override rather than silently accepting one."
+      "Description": "Non-secret (public Supabase project URL). Injected as both SUPABASE_URL and NEXT_PUBLIC_SUPABASE_URL at runtime - Next.js only inlines NEXT_PUBLIC_* into client bundles, not server-side code, so server Route Handlers and the proxy read it from process.env at runtime. No Default: a real Supabase project must exist and this must be supplied explicitly."
+    },
+    "SupabaseAnonKey": {
+      "Type": "String",
+      "MinLength": 1,
+      "Description": "Public Supabase anon/publishable key. Browser-safe by design (Supabase RLS enforces access). Injected as NEXT_PUBLIC_SUPABASE_ANON_KEY at runtime - same reason as SupabaseUrl: Next.js server-side code reads NEXT_PUBLIC_* from process.env, not from the client bundle. No Default: must be supplied explicitly."
     }
   },
 
@@ -268,6 +273,8 @@
           "Environment": [
             { "Name": "NODE_ENV", "Value": "production" },
             { "Name": "SUPABASE_URL", "Value": { "Ref": "SupabaseUrl" } },
+            { "Name": "NEXT_PUBLIC_SUPABASE_URL", "Value": { "Ref": "SupabaseUrl" } },
+            { "Name": "NEXT_PUBLIC_SUPABASE_ANON_KEY", "Value": { "Ref": "SupabaseAnonKey" } },
             { "Name": "FROM_EMAIL", "Value": { "Ref": "FromEmailAddress" } }
           ],
           "Secrets": [
@@ -462,7 +469,8 @@
             "SecurityGroups": [{ "Ref": "EcsTaskSecurityGroup" }]
           }
         },
-        "LoadBalancers": [{ "ContainerName": "venue-app", "ContainerPort": 3000, "TargetGroupArn": { "Ref": "VenueAppTargetGroup" } }]
+        "LoadBalancers": [{ "ContainerName": "venue-app", "ContainerPort": 3000, "TargetGroupArn": { "Ref": "VenueAppTargetGroup" } }],
+        "HealthCheckGracePeriodSeconds": 120
       }
     },
     "MarketingService": {
@@ -481,7 +489,8 @@
             "SecurityGroups": [{ "Ref": "EcsTaskSecurityGroup" }]
           }
         },
-        "LoadBalancers": [{ "ContainerName": "marketing", "ContainerPort": 3000, "TargetGroupArn": { "Ref": "MarketingTargetGroup" } }]
+        "LoadBalancers": [{ "ContainerName": "marketing", "ContainerPort": 3000, "TargetGroupArn": { "Ref": "MarketingTargetGroup" } }],
+        "HealthCheckGracePeriodSeconds": 120
       }
     },
     "WorkspaceService": {
@@ -500,7 +509,8 @@
             "SecurityGroups": [{ "Ref": "EcsTaskSecurityGroup" }]
           }
         },
-        "LoadBalancers": [{ "ContainerName": "workspace", "ContainerPort": 3000, "TargetGroupArn": { "Ref": "WorkspaceTargetGroup" } }]
+        "LoadBalancers": [{ "ContainerName": "workspace", "ContainerPort": 3000, "TargetGroupArn": { "Ref": "WorkspaceTargetGroup" } }],
+        "HealthCheckGracePeriodSeconds": 120
       }
     }
   },

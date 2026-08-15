@@ -163,6 +163,7 @@ jobs:
         run: |
           missing=()
           [ -z "${{ vars.SUPABASE_URL }}" ] && missing+=("SUPABASE_URL")
+          [ -z "${{ vars.NEXT_PUBLIC_SUPABASE_ANON_KEY }}" ] && missing+=("NEXT_PUBLIC_SUPABASE_ANON_KEY")
           if [ ${#missing[@]} -gt 0 ]; then
             echo "::error::Missing required sandbox Environment variable(s), needed to deploy infra/htc-ecs-stack.json: ${missing[*]}"
             exit 1
@@ -187,6 +188,7 @@ jobs:
               FromEmailAddress="Hello to Cheers <jennifer@hellotocheers.com>" \
               EmailReplyTo=jennifer@hellotocheers.com \
               SupabaseUrl="${{ vars.SUPABASE_URL }}" \
+              SupabaseAnonKey="${{ vars.NEXT_PUBLIC_SUPABASE_ANON_KEY }}" \
             --capabilities CAPABILITY_NAMED_IAM \
             --role-arn "${{ vars.CFN_EXECUTION_ROLE_ARN }}" \
             --no-fail-on-empty-changeset
