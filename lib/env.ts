@@ -35,11 +35,13 @@ export const isSupabaseConfigured = Boolean(
  * `isSupabaseConfigured` (or where a missing config is genuinely fatal).
  */
 export function getSupabaseConfig(): { url: string; anonKey: string } {
-  if (!supabaseUrl || !supabaseAnonKey) {
+  const url = process.env.SUPABASE_URL || supabaseUrl;
+  const anonKey = process.env.SUPABASE_ANON_KEY || supabaseAnonKey;
+  if (!url || !anonKey) {
     throw new Error(
       "Supabase is not configured. Set NEXT_PUBLIC_SUPABASE_URL and " +
         "NEXT_PUBLIC_SUPABASE_ANON_KEY in your environment.",
     );
   }
-  return { url: supabaseUrl, anonKey: supabaseAnonKey };
+  return { url, anonKey };
 }
