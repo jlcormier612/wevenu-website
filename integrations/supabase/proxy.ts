@@ -161,9 +161,10 @@ export async function updateSession(
   });
 
   const { url, anonKey } = getSupabaseConfig();
-  // Local browser uses http://localhost - never mark cookies Secure locally or
-  // Chrome/Safari drop them after soft reloads. Prod (https) still gets Secure.
+  // Never mark cookies Secure over HTTP — browser drops them on subsequent requests.
+  // Covers localhost dev AND HTTP-only staging/sandbox environments.
   const isLocalHttp =
+    request.nextUrl.protocol === "http:" ||
     request.nextUrl.hostname === "localhost" ||
     request.nextUrl.hostname === "127.0.0.1";
 
