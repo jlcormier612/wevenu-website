@@ -9,9 +9,6 @@ const nextConfig: NextConfig = {
   // file tracer includes those sibling files (they live outside this app's
   // own directory), not just so Turbopack can resolve them at build time.
   outputFileTracingRoot: path.join(__dirname, ".."),
-  turbopack: {
-    root: path.join(__dirname, ".."),
-  },
   images: {
     remotePatterns: [
       {
