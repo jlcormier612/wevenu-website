@@ -178,7 +178,7 @@ export function VenueSettings({
       {/* 3 — Business hours */}
       <SettingsSection
         title="Business hours"
-        description="When your venue is open for tours and events."
+        description="When your venue is open for business. These are your venue's general business hours — when your venue is open and available for business. Your tour availability is set separately, so you don't need to schedule tour times here."
         onSave={() => save(saveBusinessHoursAction)}
       >
         <BusinessHoursStep {...stepProps} />

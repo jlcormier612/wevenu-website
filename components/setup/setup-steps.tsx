@@ -155,12 +155,12 @@ export const STEP_META: Record<
     whatHappensNext: "Last step — review everything and create your venue.",
   },
   review: {
-    title: "Ready to go",
-    description: "Here's what's ready — confirm your details, then create your venue.",
-    whatWereDoing: "Review everything before your venue goes live.",
-    whyItMatters: "This is your last chance to double-check details before your workspace is created.",
-    whatYouNeed: "A quick look through each section below.",
-    whatHappensNext: "Once you confirm, your venue workspace is ready to use.",
+    title: "You're off to a great start",
+    description: "We've got the basics in place. Next, we'll walk you through the rest of your setup, one step at a time.",
+    whatWereDoing: "Getting your venue workspace ready so you can start building out the rest of your Hello to Cheers experience.",
+    whyItMatters: "These first details give us the foundation we need to help you get everything else set up correctly.",
+    whatYouNeed: "Nothing else right now — you've already given us what we need to get started. And don't worry — you can come back and make edits at any point along the way.",
+    whatHappensNext: "We'll keep walking you through the next steps, including bringing in your existing business information, setting up your offerings and tools, and getting your team ready.",
   },
 };
 
@@ -838,7 +838,7 @@ function ReviewSection({
 // Real counts only — queried live via getSetupReadyCountsAction. A domain
 // with 0 is simply omitted, never shown as a fabricated accomplishment.
 
-function ReadyToGoSummary({ venueName }: { venueName: string }) {
+function ReadyToGoSummary({ ownerFirstName }: { ownerFirstName: string }) {
   const counts = useSetupReadyCounts();
   const items: string[] = [];
   if (counts) {
@@ -852,7 +852,8 @@ function ReadyToGoSummary({ venueName }: { venueName: string }) {
   return (
     <div className="rounded-lg border border-primary/20 bg-primary/5 p-4 space-y-2">
       <p className="text-sm font-medium text-heading">
-        {venueName.trim() || "Your venue"} is ready.
+        {ownerFirstName ? `Great start, ${ownerFirstName}! ` : "Great start! "}
+        We&apos;re ready for the next step.
       </p>
       <div className="flex items-center gap-2 text-sm text-foreground">
         <Check className="h-3.5 w-3.5 shrink-0 text-success" />
@@ -887,7 +888,7 @@ export function ReviewStep({ input, goToStep }: StepProps) {
 
   return (
     <div className="space-y-4">
-      <ReadyToGoSummary venueName={input.name} />
+      <ReadyToGoSummary ownerFirstName={input.ownerFullName.trim().split(/\s+/)[0] ?? ""} />
 
       <ReviewSection title="Venue information" step="venue-info" goToStep={goToStep}>
         <SummaryRow label="Name" value={input.name} />

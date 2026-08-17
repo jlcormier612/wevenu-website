@@ -205,15 +205,19 @@ export function SetupWizard({
   }
 
   if (complete) {
+    const ownerFirstName = input.ownerFullName.trim().split(/\s+/)[0] ?? "";
     return (
       <div className="mx-auto max-w-xl space-y-8 py-16 text-center">
         <span className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-primary/10 text-primary">
           <CheckCircle2 className="h-8 w-8" />
         </span>
         <div className="space-y-2">
-          <h1 className="font-heading text-2xl font-medium tracking-tight text-heading">Your venue is ready</h1>
+          <h1 className="font-heading text-2xl font-medium tracking-tight text-heading">
+            {ownerFirstName ? `Great start, ${ownerFirstName}!` : "Great start!"}
+          </h1>
           <p className="text-sm text-muted-foreground">
-            <span className="font-medium text-foreground">{input.name}</span> is set up and your workspace is live.
+            We&apos;re ready for the next step — we&apos;ll keep walking you through the
+            rest of your setup, one step at a time.
           </p>
         </div>
         <Button size="lg" onClick={() => { router.push("/dashboard"); router.refresh(); }}>
