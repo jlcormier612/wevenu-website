@@ -40,13 +40,9 @@ import type {
   VenueSetupInput,
 } from "@/lib/venue/types";
 import { type SetupStepId } from "@/lib/venue/validation";
-import { getLeadCaptureStepDataAction, getPaymentsStepDataAction } from "@/app/setup/actions";
-import { QuickBooksConnectSection } from "@/components/settings/quickbooks-connect-section";
-import { StripeConnectSection } from "@/components/settings/stripe-connect-section";
+import { getLeadCaptureStepDataAction } from "@/app/setup/actions";
 import { WebsiteFormsSection } from "@/components/settings/website-forms-section";
 import type { Venue } from "@/lib/venue/types";
-import type { QuickBooksConnection } from "@/lib/quickbooks/types";
-import type { QuickBooksSyncLogEntry } from "@/lib/quickbooks/service";
 import type { EmailIntakeStatus } from "@/lib/lead-intake/email-status";
 
 /**
@@ -144,15 +140,7 @@ export const STEP_META: Record<
     whatWereDoing: "Check the contacts, vendors, and events already on your books.",
     whyItMatters: "These are the people and relationships your business runs on.",
     whatYouNeed: "Nothing required here — bring contacts or vendors over now, or add them later.",
-    whatHappensNext: "Next, connect the accounting tools you use for payments.",
-  },
-  payments: {
-    title: "Payments",
-    description: "Connect the accounting tools you use to take deposits and payments.",
-    whatWereDoing: "Connect the accounting tools you use to take deposits and payments.",
-    whyItMatters: "This keeps your invoices, payments, and refunds in sync without manual re-entry.",
-    whatYouNeed: "A few minutes, and your QuickBooks or Stripe login if you use them.",
-    whatHappensNext: "Last step — review everything and create your venue.",
+    whatHappensNext: "Next, review everything and create your venue.",
   },
   review: {
     title: "You're off to a great start",
@@ -715,52 +703,6 @@ export function OwnerStep({ input, errors, set }: StepProps) {
   );
 }
 
-// ---- Payments (Guided Setup §1.2, 2026-07-22 — folded in from the old
-// separate ?financial=1 post-creation screen; this is the one step whose
-// content is server-fetched rather than local wizard state, since Stripe/
-// QuickBooks connect both need real venue/connection data no client-side
-// VenueSetupInput carries) ---------------------------------------------------
-
-export function PaymentsStep() {
-  const [data, setData] = React.useState<{
-    venue: Venue | null;
-    quickbooksConnection: QuickBooksConnection | null;
-    quickbooksSyncLog: QuickBooksSyncLogEntry[];
-  } | null>(null);
-
-  React.useEffect(() => {
-    void getPaymentsStepDataAction().then(setData);
-  }, []);
-
-  if (!data) {
-    return <p className="py-8 text-center text-sm text-muted-foreground">Loading…</p>;
-  }
-
-  if (!data.venue) {
-    return (
-      <p className="py-8 text-center text-sm text-muted-foreground">
-        Still setting up your venue — go back a step, then return here in a moment.
-      </p>
-    );
-  }
-
-  return (
-    <div className="space-y-6">
-      <p className="text-sm text-muted-foreground">
-        Connect the accounting tools you already use. You can always change
-        this later from Settings — nothing here is required to continue.
-      </p>
-      <QuickBooksConnectSection
-        venueId={data.venue.id}
-        connection={data.quickbooksConnection}
-        syncLog={data.quickbooksSyncLog}
-        returnTo="onboarding"
-      />
-      <StripeConnectSection venue={data.venue} returnTo="onboarding" />
-    </div>
-  );
-}
-
 // ---- Lead Capture (Onboarding sequence correction, 2026-08-17 — introduces
 // the existing lead-capture functionality during onboarding rather than
 // leaving it undiscovered in Settings. Reuses WebsiteFormsSection exactly as
@@ -937,10 +879,6 @@ export function ReviewStep({ input, goToStep }: StepProps) {
           label="Week starts on"
           value={labelFor(WEEK_START_OPTIONS, String(input.weekStartsOn))}
         />
-      </ReviewSection>
-
-      <ReviewSection title="Payments" step="payments" goToStep={goToStep}>
-        <SummaryRow label="Stripe" value="Not connected" />
       </ReviewSection>
     </div>
   );

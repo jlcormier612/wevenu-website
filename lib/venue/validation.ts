@@ -54,11 +54,6 @@ export const SETUP_STEPS = [
   "business-tools",
   "lead-capture",
   "your-people",
-  // Onboarding sequence correction (2026-08-17): Payments/financial setup
-  // moved out of the initial "Your Venue" stage — it belongs in the later
-  // portion of onboarding, after migration, offerings, tools, lead capture,
-  // and people, not immediately after basic venue information.
-  "payments",
   "review",
 ] as const;
 
@@ -88,7 +83,6 @@ export const STEP_FIELDS: Record<SetupStepId, string[]> = {
   "business-tools": [],
   "lead-capture": [],
   "your-people": [],
-  payments: [],
   review: [],
 };
 
@@ -97,14 +91,15 @@ export const STEP_FIELDS: Record<SetupStepId, string[]> = {
  * what a venue actually experiences as one topic even though it's several
  * form steps internally. Business sequence (2026-08-17): Venue → Bring
  * Your Business → Your Offerings → Business Tools / Lead Capture → Your
- * People → Financials → Ready. */
+ * People → Ready. Financial/accounting integrations (QuickBooks, Stripe)
+ * are not part of initial setup — they remain available from Settings,
+ * introduced later once the venue is actually ready to configure them. */
 export const SETUP_STAGES = [
   { id: "venue", label: "Your Venue" },
   { id: "bring-your-business", label: "Bring Your Business" },
   { id: "your-offerings", label: "Your Offerings" },
   { id: "business-tools", label: "Business Tools / Lead Capture" },
   { id: "your-people", label: "Your People" },
-  { id: "financials", label: "Financials" },
   { id: "ready", label: "Ready to Go" },
 ] as const;
 
@@ -121,7 +116,6 @@ export const STAGE_FOR_STEP: Record<SetupStepId, SetupStageId> = {
   "business-tools": "business-tools",
   "lead-capture": "business-tools",
   "your-people": "your-people",
-  payments: "financials",
   review: "ready",
 };
 

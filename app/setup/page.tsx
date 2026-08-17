@@ -22,14 +22,9 @@ export const dynamic = "force-dynamic";
  * alongside the proxy). If a venue has already completed setup, the
  * workspace exists — send the user there instead of re-running setup.
  *
- * Guided Setup §1.2 (2026-07-22): Financial Setup (QuickBooks/Stripe
- * connect) used to be a separate post-creation ?financial=1 screen here,
- * reached only after the wizard finished. It's now the wizard's own
- * "payments" step (components/setup/setup-steps.tsx's PaymentsStep) — this
- * page no longer has a financial-specific branch. The QuickBooks/Stripe
- * OAuth callbacks still redirect back to this plain URL when initiated
- * from onboarding; since setup isn't complete yet at that point, the
- * resume logic below naturally lands back on the "payments" step.
+ * Financial/accounting setup (QuickBooks/Stripe connect) is not part of
+ * this wizard — those integrations live in Settings, reachable once the
+ * venue has finished initial setup.
  */
 export default async function SetupPage() {
   if (!isSupabaseConfigured) {

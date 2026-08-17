@@ -13,7 +13,6 @@ import {
   LeadCaptureStep,
   OwnerStep,
   PathChoiceStep,
-  PaymentsStep,
   ReviewStep,
   STEP_META,
   VenueDetailsStep,
@@ -82,10 +81,8 @@ export function SetupWizard({
   const [input, setInput] = React.useState<VenueSetupInput>(
     () => initialInput ?? createInitialSetupInput(ownerEmail),
   );
-  // Guided Setup §1.2 (2026-07-22) — Financial Setup folded into the
-  // "payments" step, so the separate post-creation ?financial=1 screen is
-  // gone; this inline flag is what shows the short completion moment that
-  // used to live there before handing off to the dashboard.
+  // Guided Setup — this inline flag shows the short completion moment
+  // before handing off to the dashboard, rather than a separate route.
   const [complete, setComplete] = React.useState(false);
   const [stepIndex, setStepIndex] = React.useState(() =>
     initialInput ? SCREENS.indexOf(resumeStep ?? "venue-info") : 0,
@@ -323,7 +320,6 @@ export function SetupWizard({
           {step === "business-tools" && <BusinessToolsStep />}
           {step === "lead-capture" && <LeadCaptureStep />}
           {step === "your-people" && <YourPeopleStep goToStep={goToStep} />}
-          {step === "payments" && <PaymentsStep />}
           {step === "review" && <ReviewStep {...stepProps} />}
         </CardContent>
       </Card>
