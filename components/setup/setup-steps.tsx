@@ -84,9 +84,9 @@ export const STEP_META: Record<
   },
   "business-hours": {
     title: "Business hours",
-    description: "When your venue is open for tours and events.",
-    whatWereDoing: "Set when your venue is open for tours and events.",
-    whyItMatters: "This controls when couples and your team can schedule time with you.",
+    description: "When your venue is open for business.",
+    whatWereDoing: "Set your venue's general business hours.",
+    whyItMatters: "These are your venue's general business hours — when your venue is open and available for business. Your tour availability is set separately, so you don't need to schedule tour times here.",
     whatYouNeed: "Your open and close times for each day of the week.",
     whatHappensNext: "Next, choose your brand colors.",
   },
