@@ -112,6 +112,13 @@ export function QuestionnaireAuthoringWorkspace({
   const [savedFlash, setSavedFlash] = React.useState(false);
   const dirty = JSON.stringify(state) !== baseline;
   const { confirmLeave } = useLibraryUnsavedGuard(dirty && !pending);
+  // Sandbox E2E finding (2026-08-17): clicking "Add question" correctly
+  // added the field and it correctly saved/persisted, but on any template
+  // with existing content the new field landed off-screen with zero
+  // feedback, making a successful action look like it did nothing. Tracks
+  // which field to bring into view on its next render; cleared once done
+  // so it never re-fires on unrelated re-renders.
+  const focusFieldId = React.useRef<string | null>(null);
 
   const masterById = React.useMemo(
     () => new Map(master.fields.map((f) => [f.id, f])),
@@ -204,6 +211,7 @@ export function QuestionnaireAuthoringWorkspace({
       type: "long_text",
       destination: "family",
     };
+    focusFieldId.current = id;
     patch({
       customs: [...state.customs, field],
       included: [...state.included, id],
@@ -396,6 +404,14 @@ export function QuestionnaireAuthoringWorkspace({
                         <Textarea
                           rows={2}
                           value={label}
+                          ref={(el) => {
+                            if (el && focusFieldId.current === id) {
+                              focusFieldId.current = null;
+                              el.scrollIntoView({ behavior: "smooth", block: "center" });
+                              el.focus();
+                              el.select();
+                            }
+                          }}
                           onChange={(e) => {
                             if (isCustom) updateCustom(id, { label: e.target.value });
                             else updateMasterWording(id, e.target.value, helper);
