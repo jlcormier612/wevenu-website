@@ -40,60 +40,127 @@ import type {
   VenueSetupInput,
 } from "@/lib/venue/types";
 import { type SetupStepId } from "@/lib/venue/validation";
-import { getPaymentsStepDataAction } from "@/app/setup/actions";
+import { getLeadCaptureStepDataAction, getPaymentsStepDataAction } from "@/app/setup/actions";
 import { QuickBooksConnectSection } from "@/components/settings/quickbooks-connect-section";
 import { StripeConnectSection } from "@/components/settings/stripe-connect-section";
+import { WebsiteFormsSection } from "@/components/settings/website-forms-section";
 import type { Venue } from "@/lib/venue/types";
 import type { QuickBooksConnection } from "@/lib/quickbooks/types";
 import type { QuickBooksSyncLogEntry } from "@/lib/quickbooks/service";
+import type { EmailIntakeStatus } from "@/lib/lead-intake/email-status";
 
+/**
+ * Shared onboarding guidance (2026-08-17) — every step tells the venue what
+ * we're doing, why it matters, what they need, and what happens next.
+ * Rendered once by the wizard shell (components/setup/setup-wizard.tsx), not
+ * per-step, so every step gets the same consistent guidance treatment.
+ */
 export const STEP_META: Record<
   SetupStepId,
-  { title: string; description: string }
+  {
+    title: string;
+    description: string;
+    whatWereDoing: string;
+    whyItMatters: string;
+    whatYouNeed: string;
+    whatHappensNext: string;
+  }
 > = {
   "venue-info": {
     title: "Venue information",
     description: "The essentials your guests and contracts will reference.",
+    whatWereDoing: "Tell us the basics about your venue.",
+    whyItMatters: "This is what shows up on contracts, invoices, and anywhere couples look you up.",
+    whatYouNeed: "Your venue's name, contact details, and address.",
+    whatHappensNext: "We'll move on to your venue's profile — type, capacity, and time zone.",
   },
   "venue-details": {
     title: "Venue profile",
     description: "Type, capacity, and the time zone your venue runs on.",
+    whatWereDoing: "Set your venue's type, capacity, and time zone.",
+    whyItMatters: "These drive availability, scheduling, and how your venue is categorized.",
+    whatYouNeed: "Your venue type, maximum guest capacity, and the time zone you operate in.",
+    whatHappensNext: "Next, set your regular business hours.",
   },
   "business-hours": {
     title: "Business hours",
     description: "When your venue is open for tours and events.",
+    whatWereDoing: "Set when your venue is open for tours and events.",
+    whyItMatters: "This controls when couples and your team can schedule time with you.",
+    whatYouNeed: "Your open and close times for each day of the week.",
+    whatHappensNext: "Next, choose your brand colors.",
   },
   brand: {
     title: "Brand settings",
     description: "Make the workspace feel like your venue.",
+    whatWereDoing: "Choose the colors that make this workspace feel like your venue.",
+    whyItMatters: "Your brand colors appear across your workspace and in what couples see.",
+    whatYouNeed: "Four colors — primary, secondary, accent, and neutral. You can add a logo later from Settings.",
+    whatHappensNext: "Next, confirm who owns this venue and a couple of basic settings.",
   },
   owner: {
     title: "Owner & settings",
     description: "Who owns this venue, plus a couple of basics.",
-  },
-  payments: {
-    title: "Payments",
-    description: "Connect the accounting tools you use to take deposits and payments.",
+    whatWereDoing: "Confirm the venue owner and a couple of basic settings.",
+    whyItMatters: "The owner is recorded on the account, and currency/week-start affect how dates and totals are shown.",
+    whatYouNeed: "The owner's name, title, and email, plus your currency and preferred week start.",
+    whatHappensNext: "With the basics done, we'll help you bring over anything you already have.",
   },
   "bring-your-business": {
     title: "Bring your business",
     description: "Already have information somewhere else? Start with what you have.",
+    whatWereDoing: "Bring in the leads, clients, and business you already have.",
+    whyItMatters: "Starting with your real data means your workspace is useful from day one, not empty.",
+    whatYouNeed: "A CSV/Excel export, files, or nothing at all if you'd rather start fresh.",
+    whatHappensNext: "Next, we'll check what packages and inventory you're offering.",
   },
   "your-offerings": {
     title: "Your offerings",
     description: "Packages and inventory — what you sell and what you set up with.",
+    whatWereDoing: "Check your packages and inventory.",
+    whyItMatters: "These are what couples see and what your team books against.",
+    whatYouNeed: "Nothing required here — bring these over now or add them later from the Library.",
+    whatHappensNext: "Next, we'll check your contract wording, message templates, and planning checklists.",
   },
   "business-tools": {
     title: "Your business tools",
     description: "Contract wording, message wording, and planning checklists.",
+    whatWereDoing: "Check your contract wording, message templates, and planning checklists.",
+    whyItMatters: "These are the reusable tools your team relies on for every event.",
+    whatYouNeed: "Nothing required here — these can be added anytime once you're in.",
+    whatHappensNext: "Next, set up how new inquiries reach you.",
+  },
+  "lead-capture": {
+    title: "Lead capture",
+    description: "How new inquiries reach Hello to Cheers.",
+    whatWereDoing: "Set up how new inquiries reach Hello to Cheers.",
+    whyItMatters: "Every inquiry — from your website, a QR code, or email — should land in one place instead of getting lost.",
+    whatYouNeed: "A few minutes to review your inquiry form link and, if you use one, your website.",
+    whatHappensNext: "Next, we'll check the contacts, vendors, and events already on your books.",
   },
   "your-people": {
     title: "Your people & business",
     description: "Contacts, vendors, and the events already on your books.",
+    whatWereDoing: "Check the contacts, vendors, and events already on your books.",
+    whyItMatters: "These are the people and relationships your business runs on.",
+    whatYouNeed: "Nothing required here — bring contacts or vendors over now, or add them later.",
+    whatHappensNext: "Next, connect the accounting tools you use for payments.",
+  },
+  payments: {
+    title: "Payments",
+    description: "Connect the accounting tools you use to take deposits and payments.",
+    whatWereDoing: "Connect the accounting tools you use to take deposits and payments.",
+    whyItMatters: "This keeps your invoices, payments, and refunds in sync without manual re-entry.",
+    whatYouNeed: "A few minutes, and your QuickBooks or Stripe login if you use them.",
+    whatHappensNext: "Last step — review everything and create your venue.",
   },
   review: {
     title: "Ready to go",
     description: "Here's what's ready — confirm your details, then create your venue.",
+    whatWereDoing: "Review everything before your venue goes live.",
+    whyItMatters: "This is your last chance to double-check details before your workspace is created.",
+    whatYouNeed: "A quick look through each section below.",
+    whatHappensNext: "Once you confirm, your venue workspace is ready to use.",
   },
 };
 
@@ -691,6 +758,45 @@ export function PaymentsStep() {
       />
       <StripeConnectSection venue={data.venue} returnTo="onboarding" />
     </div>
+  );
+}
+
+// ---- Lead Capture (Onboarding sequence correction, 2026-08-17 — introduces
+// the existing lead-capture functionality during onboarding rather than
+// leaving it undiscovered in Settings. Reuses WebsiteFormsSection exactly as
+// rendered on the Settings page; no parallel lead-capture system.) ----------
+
+export function LeadCaptureStep() {
+  const [data, setData] = React.useState<{
+    venue: Venue | null;
+    appUrl: string;
+    leadEmailAddress: string | null;
+    emailIntakeStatus: EmailIntakeStatus | null;
+  } | null>(null);
+
+  React.useEffect(() => {
+    void getLeadCaptureStepDataAction().then(setData);
+  }, []);
+
+  if (!data) {
+    return <p className="py-8 text-center text-sm text-muted-foreground">Loading…</p>;
+  }
+
+  if (!data.venue) {
+    return (
+      <p className="py-8 text-center text-sm text-muted-foreground">
+        Still setting up your venue — go back a step, then return here in a moment.
+      </p>
+    );
+  }
+
+  return (
+    <WebsiteFormsSection
+      embedKey={data.venue.embedKey}
+      appUrl={data.appUrl}
+      leadEmailAddress={data.leadEmailAddress}
+      emailIntakeStatus={data.emailIntakeStatus}
+    />
   );
 }
 

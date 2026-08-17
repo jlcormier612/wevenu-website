@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 
 import { getCurrentVenue, getSetupReadyCounts, saveSetupProgress, submitVenueSetup, type SetupReadyCounts, type SubmitSetupResult } from "@/lib/venue/service";
 import { getQuickBooksConnection, getRecentQuickBooksSyncLog, type QuickBooksSyncLogEntry } from "@/lib/quickbooks/service";
+import { getEmailIntakeStatus, type EmailIntakeStatus } from "@/lib/lead-intake/email-status";
 import type { QuickBooksConnection } from "@/lib/quickbooks/types";
 import type { Venue, VenueSetupInput } from "@/lib/venue/types";
 
@@ -55,6 +56,35 @@ export async function getPaymentsStepDataAction(): Promise<{
     getRecentQuickBooksSyncLog(),
   ]);
   return { venue, quickbooksConnection, quickbooksSyncLog };
+}
+
+/**
+ * Onboarding sequence correction (2026-08-17) — the wizard's "lead-capture"
+ * step introduces the existing lead-capture functionality (inquiry form
+ * link/embed, email intake) rather than a parallel system. Same
+ * session-resolution pattern as getPaymentsStepDataAction; mirrors exactly
+ * what app/(app)/settings/page.tsx already passes to WebsiteFormsSection.
+ */
+export async function getLeadCaptureStepDataAction(): Promise<{
+  venue: Venue | null;
+  appUrl: string;
+  leadEmailAddress: string | null;
+  emailIntakeStatus: EmailIntakeStatus | null;
+}> {
+  const [venue, emailIntakeStatus] = await Promise.all([
+    getCurrentVenue(),
+    getEmailIntakeStatus(),
+  ]);
+  const leadEmailAddress =
+    venue && process.env.RESEND_INBOUND_ADDRESS
+      ? `leads+${venue.leadEmailKey}@${process.env.RESEND_INBOUND_ADDRESS.replace(/^.*@/, "")}`
+      : null;
+  return {
+    venue,
+    appUrl: process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000",
+    leadEmailAddress,
+    emailIntakeStatus,
+  };
 }
 
 /**

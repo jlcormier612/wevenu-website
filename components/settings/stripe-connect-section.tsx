@@ -167,11 +167,7 @@ export function StripeConnectSection({ venue, returnTo = "settings" }: { venue: 
             {!isConfigured ? (
               <div className="rounded-lg border border-border bg-muted/30 p-4">
                 <p className="text-sm text-muted-foreground">
-                  To enable online payments, add{" "}
-                  <code className="text-xs bg-muted rounded px-1 py-0.5">NEXT_PUBLIC_STRIPE_CLIENT_ID</code>
-                  {" "}and{" "}
-                  <code className="text-xs bg-muted rounded px-1 py-0.5">STRIPE_SECRET_KEY</code>
-                  {" "}to your environment variables.
+                  Online payments aren&apos;t available for your account yet. Contact support to get this connected.
                 </p>
               </div>
             ) : (

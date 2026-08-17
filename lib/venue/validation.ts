@@ -42,17 +42,23 @@ export const SETUP_STEPS = [
   "business-hours",
   "brand",
   "owner",
-  "payments",
   // Pre-Launch Commercial Readiness, Initiative 1 (2026-08-03) — Guided
-  // Setup's 6-stage journey. These four have no fields of their own (no
+  // Setup's business-sequence journey. These have no fields of their own (no
   // validation to run) — they're the Bring Your Business / Offerings /
-  // Business Tools / People stages, each either real-data-driven (a status
-  // check against live counts) or an embedded flow (Migration Center)
-  // that writes through its own existing, already-validated create paths.
+  // Business Tools / Lead Capture / People stages, each either real-data-
+  // driven (a status check against live counts) or an embedded flow
+  // (Migration Center, Lead Capture) that writes through its own existing,
+  // already-validated create paths.
   "bring-your-business",
   "your-offerings",
   "business-tools",
+  "lead-capture",
   "your-people",
+  // Onboarding sequence correction (2026-08-17): Payments/financial setup
+  // moved out of the initial "Your Venue" stage — it belongs in the later
+  // portion of onboarding, after migration, offerings, tools, lead capture,
+  // and people, not immediately after basic venue information.
+  "payments",
   "review",
 ] as const;
 
@@ -77,24 +83,28 @@ export const STEP_FIELDS: Record<SetupStepId, string[]> = {
   "business-hours": ["businessHours"],
   brand: ["primaryColor", "secondaryColor", "accentColor", "neutralColor"],
   owner: ["ownerFullName", "ownerEmail", "ownerTitle", "currency", "weekStartsOn"],
-  payments: [],
   "bring-your-business": [],
   "your-offerings": [],
   "business-tools": [],
+  "lead-capture": [],
   "your-people": [],
+  payments: [],
   review: [],
 };
 
-/** The 6-stage grouping Guided Setup presents in its header — "Your Venue"
- * bundles the 6 pre-existing settings steps under one umbrella, matching
+/** The stage grouping Guided Setup presents in its header — "Your Venue"
+ * bundles the 5 pre-existing settings steps under one umbrella, matching
  * what a venue actually experiences as one topic even though it's several
- * form steps internally. */
+ * form steps internally. Business sequence (2026-08-17): Venue → Bring
+ * Your Business → Your Offerings → Business Tools / Lead Capture → Your
+ * People → Financials → Ready. */
 export const SETUP_STAGES = [
   { id: "venue", label: "Your Venue" },
   { id: "bring-your-business", label: "Bring Your Business" },
   { id: "your-offerings", label: "Your Offerings" },
-  { id: "business-tools", label: "Your Business Tools" },
-  { id: "your-people", label: "Your People & Business" },
+  { id: "business-tools", label: "Business Tools / Lead Capture" },
+  { id: "your-people", label: "Your People" },
+  { id: "financials", label: "Financials" },
   { id: "ready", label: "Ready to Go" },
 ] as const;
 
@@ -106,11 +116,12 @@ export const STAGE_FOR_STEP: Record<SetupStepId, SetupStageId> = {
   "business-hours": "venue",
   brand: "venue",
   owner: "venue",
-  payments: "venue",
   "bring-your-business": "bring-your-business",
   "your-offerings": "your-offerings",
   "business-tools": "business-tools",
+  "lead-capture": "business-tools",
   "your-people": "your-people",
+  payments: "financials",
   review: "ready",
 };
 

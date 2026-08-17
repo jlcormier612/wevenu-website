@@ -216,11 +216,7 @@ export function QuickBooksConnectSection({
             {!isConfigured ? (
               <div className="rounded-lg border border-border bg-muted/30 p-4">
                 <p className="text-sm text-muted-foreground">
-                  To enable QuickBooks, add{" "}
-                  <code className="text-xs bg-muted rounded px-1 py-0.5">NEXT_PUBLIC_QUICKBOOKS_CLIENT_ID</code>
-                  {" "}and{" "}
-                  <code className="text-xs bg-muted rounded px-1 py-0.5">QUICKBOOKS_CLIENT_SECRET</code>
-                  {" "}to your environment variables.
+                  QuickBooks isn&apos;t available for your account yet. Contact support to get this connected.
                 </p>
               </div>
             ) : (

@@ -10,6 +10,7 @@ import { saveSetupProgressAction, submitVenueSetupAction } from "@/app/setup/act
 import {
   BrandStep,
   BusinessHoursStep,
+  LeadCaptureStep,
   OwnerStep,
   PathChoiceStep,
   PaymentsStep,
@@ -280,13 +281,34 @@ export function SetupWizard({
           <CardTitle className="text-xl">{meta.title}</CardTitle>
           <CardDescription>{meta.description}</CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-6">
+          {/* Shared onboarding guidance (2026-08-17) — every step answers
+              the same four questions, rendered once here by the wizard
+              shell rather than ad hoc per step. */}
+          <div className="grid gap-3 rounded-lg border border-border bg-muted/30 p-4 text-sm sm:grid-cols-2">
+            <div>
+              <p className="font-medium text-heading">What we&apos;re doing</p>
+              <p className="text-muted-foreground">{meta.whatWereDoing}</p>
+            </div>
+            <div>
+              <p className="font-medium text-heading">Why it matters</p>
+              <p className="text-muted-foreground">{meta.whyItMatters}</p>
+            </div>
+            <div>
+              <p className="font-medium text-heading">What you need</p>
+              <p className="text-muted-foreground">{meta.whatYouNeed}</p>
+            </div>
+            <div>
+              <p className="font-medium text-heading">What happens next</p>
+              <p className="text-muted-foreground">{meta.whatHappensNext}</p>
+            </div>
+          </div>
+
           {step === "venue-info" && <VenueInfoStep {...stepProps} />}
           {step === "venue-details" && <VenueDetailsStep {...stepProps} />}
           {step === "business-hours" && <BusinessHoursStep {...stepProps} />}
           {step === "brand" && <BrandStep {...stepProps} />}
           {step === "owner" && <OwnerStep {...stepProps} />}
-          {step === "payments" && <PaymentsStep />}
           {step === "bring-your-business" && (
             <BringYourBusinessStep
               onAdvance={() => advanceFromStep("bring-your-business")}
@@ -295,7 +317,9 @@ export function SetupWizard({
           )}
           {step === "your-offerings" && <YourOfferingsStep goToStep={goToStep} />}
           {step === "business-tools" && <BusinessToolsStep />}
+          {step === "lead-capture" && <LeadCaptureStep />}
           {step === "your-people" && <YourPeopleStep goToStep={goToStep} />}
+          {step === "payments" && <PaymentsStep />}
           {step === "review" && <ReviewStep {...stepProps} />}
         </CardContent>
       </Card>
