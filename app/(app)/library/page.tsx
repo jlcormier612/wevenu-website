@@ -117,7 +117,7 @@ export default async function LibraryPage() {
         description="Your venue's toolbox — the things you set up once and use again and again: agreements, packages, planning tools, marketing, and more."
       />
 
-      <Group title="Agreements">
+      <Group title="Agreements & Forms">
         <ToolboxCard title="Contract Templates" description="Reusable contracts with fill-in details, ready to send." href="/library/contracts" count={contractTemplates.length} icon={FileSignature} />
         <ToolboxCard title="Questionnaires & Feedback" description="Client Planning Questionnaire, Final Details, and Post-Event Feedback starters." href="/library/questionnaire-templates" count={questionnaireTemplates.length} icon={FileText} />
       </Group>
