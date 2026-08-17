@@ -11,6 +11,12 @@ export const metadata: Metadata = {
   title: "Set up your venue",
 };
 
+// Redirects based on isSupabaseConfigured before touching a dynamic API —
+// without this, Next.js can statically prerender that redirect at build
+// time and cache it indefinitely, serving it to every request regardless
+// of actual session state.
+export const dynamic = "force-dynamic";
+
 /**
  * Venue Setup entry. Requires an authenticated user (defense in depth
  * alongside the proxy). If a venue has already completed setup, the

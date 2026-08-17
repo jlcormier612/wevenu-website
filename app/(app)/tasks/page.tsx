@@ -10,6 +10,10 @@ import { isSupabaseConfigured } from "@/lib/env";
 export const metadata: Metadata = { title: "Task Center" };
 
 export const revalidate = 0; // always fresh — this is the coordinator's live workspace
+// Belt-and-suspenders alongside revalidate=0: without this, a page that
+// redirects based on isSupabaseConfigured before touching a dynamic API can
+// still be statically prerendered at build time and cached indefinitely.
+export const dynamic = "force-dynamic";
 
 export default async function TaskCenterPage() {
   if (!isSupabaseConfigured) {

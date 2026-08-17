@@ -16,6 +16,12 @@ function isVendorAcceptPath(pathname: string): boolean {
   return pathname === "/vendor/accept" || pathname.startsWith("/vendor/accept/");
 }
 
+// Redirects based on isSupabaseConfigured before touching a dynamic API —
+// without this, Next.js can statically prerender that redirect at build
+// time and cache it indefinitely, serving it to every request regardless
+// of actual session state.
+export const dynamic = "force-dynamic";
+
 /**
  * Vendor workspace shell. Legal acceptance is enforced by Legal Middleware
  * (`integrations/supabase/proxy.ts` → `/welcome`) so invitees and returning

@@ -7,6 +7,13 @@ import { getVendorUser } from "@/lib/vendor-auth/service";
 import { getCurrentVenue } from "@/lib/venue/service";
 import { recordStaffActivity } from "@/lib/activation/service";
 
+// Reads cookies via createClient()/redirects based on isSupabaseConfigured
+// before any dynamic API call — without this, Next.js can statically
+// prerender the redirect at build time (when Supabase env vars may be
+// unavailable) and cache it indefinitely, serving a stale redirect to
+// every real request regardless of actual session state.
+export const dynamic = "force-dynamic";
+
 /**
  * Protected layout for the venue workspace. Confirms an authenticated session
  * (defense in depth alongside the proxy), then enforces the foundational rule:

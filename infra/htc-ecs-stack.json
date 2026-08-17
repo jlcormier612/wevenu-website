@@ -454,6 +454,27 @@
       }
     },
 
+    "VenueAppHttpsRule": {
+      "Type": "AWS::ElasticLoadBalancingV2::ListenerRule",
+      "Condition": "HasCertificate",
+      "Properties": {
+        "ListenerArn": { "Ref": "HttpsListener" },
+        "Priority": 10,
+        "Conditions": [{ "Field": "host-header", "Values": [{ "Ref": "VenueAppHostname" }] }],
+        "Actions": [{ "Type": "forward", "TargetGroupArn": { "Ref": "VenueAppTargetGroup" } }]
+      }
+    },
+    "WorkspaceHttpsRule": {
+      "Type": "AWS::ElasticLoadBalancingV2::ListenerRule",
+      "Condition": "HasCertificate",
+      "Properties": {
+        "ListenerArn": { "Ref": "HttpsListener" },
+        "Priority": 20,
+        "Conditions": [{ "Field": "host-header", "Values": [{ "Ref": "WorkspaceHostname" }] }],
+        "Actions": [{ "Type": "forward", "TargetGroupArn": { "Ref": "WorkspaceTargetGroup" } }]
+      }
+    },
+
     "VenueAppService": {
       "Type": "AWS::ECS::Service",
       "DependsOn": ["VenueAppHttpRule"],

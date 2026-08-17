@@ -26,6 +26,14 @@ export const metadata: Metadata = {
   title: "Welcome",
 };
 
+// Redirects based on isSupabaseConfigured before touching a dynamic API —
+// without this, Next.js can statically prerender that redirect at build
+// time and cache it indefinitely, serving it to every request regardless
+// of actual session state. This previously caused a login redirect loop:
+// every authenticated visitor got the build-time-baked "redirect to
+// /login" instead of the real Welcome/legal-acceptance experience.
+export const dynamic = "force-dynamic";
+
 type Props = {
   searchParams: Promise<{
     returnTo?: string;

@@ -21,6 +21,12 @@ export const metadata: Metadata = {
   title: "Subscription inactive",
 };
 
+// Redirects based on isSupabaseConfigured before touching a dynamic API —
+// without this, Next.js can statically prerender that redirect at build
+// time and cache it indefinitely, serving it to every request regardless
+// of actual session state.
+export const dynamic = "force-dynamic";
+
 const LIGHT_THEME_VARS = {
   "--background": "var(--true-white)",
   "--foreground": "var(--black)",
