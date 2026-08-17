@@ -228,6 +228,28 @@ export async function insertTemplateItem(client: DbClient, venueId: string, temp
   return mapTemplateItem(data);
 }
 
+/** Same optimistic-concurrency shape as updateItem() above (event inventory) — expectedUpdatedAt from the caller's own row, zero rows affected means someone else saved first. */
+export async function updateTemplateItem(
+  client: DbClient, venueId: string, itemId: string, input: InventoryItemInput, expectedUpdatedAt: string,
+): Promise<{ ok: true } | { ok: false; reason: "stale" | "not_found" }> {
+  const quantity = parseFloat(input.quantity) || 1;
+  const unitPrice = input.unitPrice?.trim() ? parseFloat(input.unitPrice.replace(/[$,]/g, "")) : null;
+  const { data: existing } = await client.from("inventory_template_items").select("id").eq("id", itemId).eq("venue_id", venueId).maybeSingle<{ id: string }>();
+  if (!existing) return { ok: false, reason: "not_found" };
+
+  const { data, error } = await client.from("inventory_template_items")
+    .update({
+      name: input.name.trim(), category: input.category?.trim() || null,
+      quantity, unit_price: unitPrice, is_included: input.isIncluded, notes: input.notes?.trim() || null,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } as any)
+    .eq("id", itemId).eq("venue_id", venueId).eq("updated_at", expectedUpdatedAt)
+    .select("id");
+  if (error) throw error;
+  if (!data || data.length === 0) return { ok: false, reason: "stale" };
+  return { ok: true };
+}
+
 export async function removeTemplateItem(client: DbClient, venueId: string, itemId: string): Promise<void> {
   const { error } = await client.from("inventory_template_items").delete().eq("id", itemId).eq("venue_id", venueId);
   if (error) throw error;

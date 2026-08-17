@@ -271,6 +271,26 @@ export async function addTemplateItem(templateId: string, input: InventoryItemIn
   return result as AddTemplateItemResult;
 }
 
+/** No assertNotFinalized guard — templates have no finalized status (same as addTemplateItem/removeTemplateItem above). */
+export async function updateTemplateItem(
+  itemId: string, input: InventoryItemInput, expectedUpdatedAt: string,
+): Promise<EventInventoryActionResult> {
+  if (!input.name.trim()) return { ok: false, errors: { name: "Item name is required." } };
+  const result = await withVenue(async (supabase, venueId) => {
+    const outcome = await repo.updateTemplateItem(supabase, venueId, itemId, input, expectedUpdatedAt);
+    if (!outcome.ok) {
+      return {
+        ok: false, reason: outcome.reason,
+        message: outcome.reason === "stale"
+          ? "Someone else updated this item first. Review the latest version before saving."
+          : "Item not found.",
+      } as EventInventoryActionResult;
+    }
+    return { ok: true } as EventInventoryActionResult;
+  });
+  return result as EventInventoryActionResult;
+}
+
 export async function removeTemplateItem(itemId: string): Promise<EventInventoryActionResult> {
   const result = await withVenue(async (supabase, venueId) => {
     await repo.removeTemplateItem(supabase, venueId, itemId);

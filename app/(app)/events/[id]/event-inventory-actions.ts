@@ -5,7 +5,7 @@ import { revalidatePath } from "next/cache";
 import {
   addItem, addTemplateItem, addToEventOrder, createTemplate, deleteTemplate,
   ensureEventInventory, finalizeEventInventory, removeItem, removeTemplateItem,
-  reopenEventInventory, setTemplateArchived, shareEventInventory, updateItem,
+  reopenEventInventory, setTemplateArchived, shareEventInventory, updateItem, updateTemplateItem,
 } from "@/lib/event-inventory/service";
 import type {
   AddItemResult, AddTemplateItemResult, AddToEventOrderResult, CreateTemplateResult, EnsureEventInventoryResult,
@@ -103,6 +103,14 @@ export async function deleteInventoryTemplateAction(id: string): Promise<EventIn
 
 export async function addInventoryTemplateItemAction(templateId: string, input: InventoryItemInput): Promise<AddTemplateItemResult> {
   const result = await addTemplateItem(templateId, input);
+  if (result.ok) revalidatePath(`/library/inventory-templates/${templateId}`);
+  return result;
+}
+
+export async function updateInventoryTemplateItemAction(
+  templateId: string, itemId: string, input: InventoryItemInput, expectedUpdatedAt: string,
+): Promise<EventInventoryActionResult> {
+  const result = await updateTemplateItem(itemId, input, expectedUpdatedAt);
   if (result.ok) revalidatePath(`/library/inventory-templates/${templateId}`);
   return result;
 }

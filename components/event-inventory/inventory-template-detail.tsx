@@ -11,6 +11,7 @@ import {
 } from "@/app/(app)/events/[id]/event-inventory-actions";
 import { BusinessAssetHeader } from "@/components/business-assets/asset-header";
 import { LibrarySaveStatus, useLibrarySaveStatus } from "@/components/library/library-save-status";
+import { TemplateItemEditSheet } from "@/components/event-inventory/template-item-edit-sheet";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -140,7 +141,7 @@ export function InventoryTemplateDetail({ template, catalogItems }: { template: 
           ) : (
             <div>
               {template.items.map((item) => (
-                <div key={item.id} className="group grid grid-cols-[1fr_auto_auto_auto_auto] items-center gap-3 py-2 border-b border-border last:border-0 text-sm">
+                <div key={item.id} className="group grid grid-cols-[1fr_auto_auto_auto_auto_auto] items-center gap-3 py-2 border-b border-border last:border-0 text-sm">
                   <div className="min-w-0">
                     <span className="text-foreground">{item.name}</span>
                     {item.category && <span className="ml-2 text-xs text-muted-foreground">{item.category}</span>}
@@ -148,6 +149,7 @@ export function InventoryTemplateDetail({ template, catalogItems }: { template: 
                   <span className="text-muted-foreground text-right w-12">×{item.quantity}</span>
                   <span className="text-right w-24 font-medium text-foreground">{item.unitPrice != null ? formatMoney(item.unitPrice) : "—"}</span>
                   <Badge variant={item.isIncluded ? "outline" : "accent"} className="w-fit justify-self-end">{item.isIncluded ? "Included" : "Additional"}</Badge>
+                  <TemplateItemEditSheet templateId={template.id} item={item} onPersist={onPersist} />
                   <button type="button" onClick={() => handleRemove(item.id, item.name)} disabled={removingId === item.id}
                     className="opacity-0 group-hover:opacity-100 rounded p-1 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-opacity justify-self-end">
                     {removingId === item.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
