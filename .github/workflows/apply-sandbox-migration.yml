@@ -75,8 +75,28 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Install psql
-        run: sudo apt-get update -qq && sudo apt-get install -qq -y postgresql-client
+      - name: Ensure psql is available
+        # ubuntu-latest already ships psql preinstalled, so the fallback
+        # install below should never actually run in practice. It exists
+        # only as a defensive path if a future runner image drops it - and
+        # is written non-interactively on purpose: a plain `apt-get install`
+        # on current ubuntu-latest images can hang indefinitely on
+        # needrestart's interactive "which services should be restarted?"
+        # prompt, which has no TTY to answer it in CI. NEEDRESTART_MODE=a
+        # and DEBIAN_FRONTEND=noninteractive both suppress that prompt;
+        # timeout-minutes is a hard backstop in case something unforeseen
+        # still blocks, so this fails loudly instead of hanging for hours.
+        timeout-minutes: 3
+        run: |
+          if command -v psql >/dev/null 2>&1; then
+            echo "psql already present: $(psql --version)"
+          else
+            echo "psql not preinstalled on this runner - installing non-interactively."
+            export DEBIAN_FRONTEND=noninteractive
+            export NEEDRESTART_MODE=a
+            sudo apt-get update -qq
+            sudo apt-get install -qq -y --no-install-recommends postgresql-client
+          fi
 
       - name: Preflight - validate the entire batch before applying anything
         run: |
