@@ -50,7 +50,19 @@ const mapChannel = (r: ChannelRow): LeadCaptureChannelState => ({
   verifiedAt: r.verified_at,
 });
 
-/** Row-existence is never itself a signal here — every column defaults to null/false. */
+/**
+ * Row-existence is never itself a signal here — every column defaults to
+ * null/false.
+ *
+ * Setup Hub's own page fires getSetupHubState() and
+ * getLeadCaptureStageStatus() concurrently (same Promise.all), and both
+ * call this — so for a venue's very first load, two requests can both see
+ * no row and both attempt the insert. Postgres's unique constraint on
+ * venue_id correctly rejects the loser, but that showed up as an unhandled
+ * 23505 crashing the page (blank render) instead of the harmless race it
+ * actually is. Treat that one error code as "someone else just created it"
+ * and re-read, rather than as a real failure.
+ */
 export async function getOrCreateState(client: DbClient, venueId: string, onboardingType: "self_setup" | "white_glove" = "self_setup"): Promise<SetupHubState> {
   const { data, error } = await client.from("venue_setup_hub_state").select("*").eq("venue_id", venueId).maybeSingle<StateRow>();
   if (error) throw error;
@@ -59,7 +71,15 @@ export async function getOrCreateState(client: DbClient, venueId: string, onboar
   const { data: created, error: insertError } = await client.from("venue_setup_hub_state")
     .insert({ venue_id: venueId, onboarding_type: onboardingType })
     .select("*").single<StateRow>();
-  if (insertError) throw insertError;
+  if (insertError) {
+    if (insertError.code === "23505") {
+      const { data: existing, error: refetchError } = await client
+        .from("venue_setup_hub_state").select("*").eq("venue_id", venueId).single<StateRow>();
+      if (refetchError) throw refetchError;
+      return mapState(existing);
+    }
+    throw insertError;
+  }
   return mapState(created);
 }
 
