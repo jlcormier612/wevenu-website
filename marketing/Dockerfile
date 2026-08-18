@@ -49,6 +49,12 @@ COPY --from=builder /repo/marketing/.next/standalone ./
 COPY --from=builder /repo/marketing/.next/static ./marketing/.next/static
 COPY --from=builder /repo/marketing/public ./marketing/public
 
+# Checkout webhooks persist enrollments to process.cwd()/.data and the
+# relationship store under shared/relationships/.data. The nextjs user must
+# be able to create those directories in the running container.
+RUN mkdir -p /app/marketing/.data /app/marketing/.next/cache /app/shared/relationships/.data \
+  && chown -R nextjs:nodejs /app
+
 USER nextjs
 EXPOSE 3000
 ENV PORT=3000 HOSTNAME=0.0.0.0

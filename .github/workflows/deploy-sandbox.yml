@@ -195,14 +195,13 @@ jobs:
               SupabaseUrl="${{ vars.NEXT_PUBLIC_SUPABASE_URL }}" \
               SupabaseAnonKey="${{ vars.NEXT_PUBLIC_SUPABASE_ANON_KEY }}" \
               ResendInboundAddress="${{ vars.RESEND_INBOUND_ADDRESS }}" \
-              StripePriceStarter="${{ vars.STRIPE_PRICE_STARTER }}" \
-              StripePriceStarterFounder="${{ vars.STRIPE_PRICE_STARTER_FOUNDER }}" \
-              StripePriceGrowing="${{ vars.STRIPE_PRICE_GROWING }}" \
-              StripePriceGrowingFounder="${{ vars.STRIPE_PRICE_GROWING_FOUNDER }}" \
-              StripePriceProfessional="${{ vars.STRIPE_PRICE_PROFESSIONAL }}" \
-              StripePriceProfessionalFounder="${{ vars.STRIPE_PRICE_PROFESSIONAL_FOUNDER }}" \
-              StripePriceWhiteGlove="${{ vars.STRIPE_PRICE_WHITE_GLOVE }}" \
-              StripeFoundingCouponId="${{ vars.STRIPE_FOUNDING_COUPON_ID }}" \
+              StripePriceStarter=price_1U42LNErUqJH7nktdpRin9ev \
+              StripePriceGrowing=price_1U5rfoErUqJH7nkts2RnCCtg \
+              StripePriceGrowingFounder=price_1U5rfoErUqJH7nktxJONRlCq \
+              StripePriceProfessional=price_1U5rfpErUqJH7nktREPKO5zo \
+              StripePriceProfessionalFounder=price_1U5rfqErUqJH7nktQg0wIXla \
+              StripePriceWhiteGlove=price_1U5rfrErUqJH7nktV23SeLsM \
+              StripeFoundingCouponId=FOUNDING100 \
             --capabilities CAPABILITY_NAMED_IAM \
             --role-arn "${{ vars.CFN_EXECUTION_ROLE_ARN }}" \
             --no-fail-on-empty-changeset
