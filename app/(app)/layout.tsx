@@ -1,3 +1,4 @@
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 
 import { WorkspaceShell } from "@/components/shell/workspace-shell";
@@ -17,8 +18,9 @@ export const dynamic = "force-dynamic";
 /**
  * Protected layout for the venue workspace. Confirms an authenticated session
  * (defense in depth alongside the proxy), then enforces the foundational rule:
- * nothing in VenueOS exists until the venue exists. Without a completed venue,
- * the user is sent to Venue Setup.
+ * nothing in VenueOS exists until the venue exists. No venue row yet sends
+ * the user to the Venue Setup wizard (which can create one); a venue that
+ * exists but hasn't finished setup sends them to Setup Hub instead.
  *
  * Legal acceptance for returning users is enforced by Legal Middleware in
  * `integrations/supabase/proxy.ts` → `/welcome` (WP4). This layout no longer
@@ -43,10 +45,25 @@ export default async function WorkspaceLayout({
   }
 
   const venue = await getCurrentVenue();
-  if (!venue?.setupCompleted) {
+  if (!venue) {
+    // No venue row at all (e.g. activation never finished creating one) —
+    // Setup Hub itself requires a venue to render anything and returns
+    // blank without one, so this case still goes through the wizard that
+    // can create one from scratch.
     const vendorUser = await getVendorUser();
     if (vendorUser) redirect("/vendor/dashboard");
     redirect("/setup");
+  }
+  if (!venue.setupCompleted) {
+    const vendorUser = await getVendorUser();
+    if (vendorUser) redirect("/vendor/dashboard");
+    // /setup-hub itself lives inside this same (app) group, so without this
+    // check every request for it would re-enter this branch and redirect
+    // to itself in a loop. Everything else under (app) still bounces to it.
+    const pathname = (await headers()).get("x-pathname") ?? "";
+    if (!pathname.startsWith("/setup-hub")) {
+      redirect("/setup-hub");
+    }
   }
 
   // Defense in depth alongside proxy hard-lock for CRM Suspend / unpaid dunning.

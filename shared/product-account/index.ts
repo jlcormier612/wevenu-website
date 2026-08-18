@@ -40,6 +40,19 @@ export type ActivateAccountResult =
   | { ok: true; venueId: string; alreadyActivated: boolean }
   | { ok: false; error: string };
 
+export type EnrollmentLookupResult =
+  | {
+      ok: true;
+      found: true;
+      venueName: string;
+      onboardingType: OnboardingType;
+      status: "pending" | "activated";
+      /** Same value the welcome email links to; null for white_glove or once activated. */
+      activationToken: string | null;
+    }
+  | { ok: true; found: false }
+  | { ok: false; error: string };
+
 function baseUrl(): string {
   return (process.env.PRODUCT_API_BASE_URL?.trim() || "http://localhost:3000").replace(/\/$/, "");
 }
@@ -88,4 +101,13 @@ export async function activateVenueAccount(input: {
   password: string;
 }): Promise<ActivateAccountResult> {
   return postInternal<ActivateAccountResult>("/api/internal/enrollment/activate", input);
+}
+
+/** Read-only lookup used by the Stripe Checkout success page — no side effects. */
+export async function getEnrollmentBySession(
+  stripeCheckoutSessionId: string,
+): Promise<EnrollmentLookupResult> {
+  return postInternal<EnrollmentLookupResult>("/api/internal/enrollment/by-session", {
+    stripeCheckoutSessionId,
+  });
 }
