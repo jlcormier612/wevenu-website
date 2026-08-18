@@ -16,6 +16,7 @@ import {
   MessageSquareDot,
   Repeat,
   Settings,
+  SquareCheckBig,
   Store,
   Users,
   Workflow,
@@ -95,6 +96,7 @@ export const NAV_SECTIONS: NavSection[] = [
   {
     label: "Your Venue",
     items: [
+      { title: "Setup", href: "/setup-hub", icon: SquareCheckBig },
       { title: "Settings", href: "/settings", icon: Settings },
       { title: "Venue Guide", href: "/guide", icon: Info },
     ],

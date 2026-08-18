@@ -592,6 +592,19 @@ const EMPTY_SETUP_READY_COUNTS: SetupReadyCounts = {
  * checks (Offerings/Business Tools/People) and the "Ready to Go" summary.
  * A count of 0 for a domain is simply omitted by the caller, never shown as
  * a false "0 packages ready."
+ *
+ * Platform-seeded starter content (source_master_key IS NOT NULL) is
+ * excluded everywhere the column exists (packages, contract_templates,
+ * message_templates) — otherwise every venue reads as having already
+ * "configured" these domains purely from unconditional starter-seeding at
+ * venue creation (seedPackageStarters/seedContractStarters/
+ * seedStarterMessageTemplates, all called from submitVenueSetup), before
+ * they've authored anything. Continuous Setup Experience plan §C.
+ *
+ * inventory_items has no source_master_key column at all (only its parent
+ * inventory_categories/inventory_templates do), so this count remains
+ * unfiltered pending a schema decision (plan §I #4) — a known, documented
+ * limitation, not an oversight.
  */
 export async function getSetupReadyCounts(venueId: string): Promise<SetupReadyCounts> {
   if (!isSupabaseConfigured) return EMPTY_SETUP_READY_COUNTS;
@@ -603,13 +616,13 @@ export async function getSetupReadyCounts(venueId: string): Promise<SetupReadyCo
     vendorRelationships, clients, leads, upcomingEvents,
   ] = await Promise.all([
     supabase.from("packages").select("id", { count: "exact", head: true })
-      .eq("venue_id", venueId).eq("is_active", true),
+      .eq("venue_id", venueId).eq("is_active", true).is("source_master_key", null),
     supabase.from("inventory_items").select("id", { count: "exact", head: true })
       .eq("venue_id", venueId).eq("is_archived", false),
     supabase.from("contract_templates").select("id", { count: "exact", head: true })
-      .eq("venue_id", venueId).eq("is_archived", false),
+      .eq("venue_id", venueId).eq("is_archived", false).is("source_master_key", null),
     supabase.from("message_templates").select("id", { count: "exact", head: true })
-      .eq("venue_id", venueId).eq("is_archived", false),
+      .eq("venue_id", venueId).eq("is_archived", false).is("source_master_key", null),
     supabase.from("playbook_templates").select("id", { count: "exact", head: true })
       .eq("venue_id", venueId).eq("is_archived", false),
     supabase.from("venue_vendor_relationships").select("id", { count: "exact", head: true })
