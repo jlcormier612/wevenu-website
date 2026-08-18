@@ -73,7 +73,22 @@
       "Type": "String",
       "MinLength": 1,
       "Description": "Public Supabase anon/publishable key. Browser-safe by design (Supabase RLS enforces access). Injected as both SUPABASE_ANON_KEY (plain runtime var, always read from process.env) and NEXT_PUBLIC_SUPABASE_ANON_KEY (for client bundle baking). No Default: must be supplied explicitly."
-    }
+    },
+
+    "ResendInboundAddress": {
+      "Type": "String",
+      "Default": "",
+      "Description": "Venue app's Email Intake Engine domain suffix (RESEND_INBOUND_ADDRESS) - the per-venue forwarding address becomes leads+{key}@<the domain part of this value>. Deliberately no MinLength: an empty value is this parameter's own correct, intentional default until a real Resend Inbound domain + MX record exist (see docs/rc-launch-validation-runbook.md) - same pattern as CertificateArn above."
+    },
+
+    "StripePriceStarter": { "Type": "String", "Default": "", "Description": "Stripe Price ID (marketing/, STRIPE_PRICE_STARTER) for the Gather plan. Empty is a valid default until a real Price exists in the Stripe Dashboard - same pattern as CertificateArn." },
+    "StripePriceStarterFounder": { "Type": "String", "Default": "", "Description": "Stripe Price ID (STRIPE_PRICE_STARTER_FOUNDER), Gather founder variant. Empty is a valid default." },
+    "StripePriceGrowing": { "Type": "String", "Default": "", "Description": "Stripe Price ID (STRIPE_PRICE_GROWING) for the Celebrate plan. Empty is a valid default until a real Price exists in the Stripe Dashboard." },
+    "StripePriceGrowingFounder": { "Type": "String", "Default": "", "Description": "Stripe Price ID (STRIPE_PRICE_GROWING_FOUNDER), Celebrate founder variant. Empty is a valid default." },
+    "StripePriceProfessional": { "Type": "String", "Default": "", "Description": "Stripe Price ID (STRIPE_PRICE_PROFESSIONAL) for the Flourish plan. Empty is a valid default until a real Price exists in the Stripe Dashboard." },
+    "StripePriceProfessionalFounder": { "Type": "String", "Default": "", "Description": "Stripe Price ID (STRIPE_PRICE_PROFESSIONAL_FOUNDER), Flourish founder variant. Empty is a valid default." },
+    "StripePriceWhiteGlove": { "Type": "String", "Default": "", "Description": "Stripe Price ID (STRIPE_PRICE_WHITE_GLOVE), one-time White Glove onboarding add-on. Empty is a valid default." },
+    "StripeFoundingCouponId": { "Type": "String", "Default": "", "Description": "Stripe Coupon ID (STRIPE_FOUNDING_COUPON_ID), applies to Gather only. Empty is a valid default." }
   },
 
   "Conditions": {
@@ -197,7 +212,8 @@
                 { "Ref": "ResendApiKeySecret" },
                 { "Ref": "ProductSyncApiKeySecret" },
                 { "Ref": "StripeConnectSecrets" },
-                { "Ref": "StripeSaasSecrets" }
+                { "Ref": "StripeSaasSecrets" },
+                { "Ref": "QuickBooksSecrets" }
               ]
             }]
           }
@@ -255,6 +271,14 @@
         "SecretString": "{\"STRIPE_SECRET_KEY\":\"CHANGE_ME\",\"STRIPE_WEBHOOK_SECRET\":\"CHANGE_ME\"}"
       }
     },
+    "QuickBooksSecrets": {
+      "Type": "AWS::SecretsManager::Secret",
+      "Properties": {
+        "Name": { "Fn::Sub": "htc/${EnvironmentName}/quickbooks" },
+        "Description": "Venue app's QuickBooks Online OAuth app keys - QUICKBOOKS_CLIENT_ID + QUICKBOOKS_CLIENT_SECRET, from a real Intuit Developer Portal app. Placeholder value only (CHANGE_ME) - populate with aws secretsmanager put-secret-value after the Intuit app exists, never in this template.",
+        "SecretString": "{\"QUICKBOOKS_CLIENT_ID\":\"CHANGE_ME\",\"QUICKBOOKS_CLIENT_SECRET\":\"CHANGE_ME\"}"
+      }
+    },
 
     "VenueAppTaskDefinition": {
       "Type": "AWS::ECS::TaskDefinition",
@@ -276,14 +300,18 @@
             { "Name": "NEXT_PUBLIC_SUPABASE_URL", "Value": { "Ref": "SupabaseUrl" } },
             { "Name": "SUPABASE_ANON_KEY", "Value": { "Ref": "SupabaseAnonKey" } },
             { "Name": "NEXT_PUBLIC_SUPABASE_ANON_KEY", "Value": { "Ref": "SupabaseAnonKey" } },
-            { "Name": "FROM_EMAIL", "Value": { "Ref": "FromEmailAddress" } }
+            { "Name": "FROM_EMAIL", "Value": { "Ref": "FromEmailAddress" } },
+            { "Name": "RESEND_INBOUND_ADDRESS", "Value": { "Ref": "ResendInboundAddress" } },
+            { "Name": "QUICKBOOKS_ENVIRONMENT", "Value": { "Fn::If": ["IsProduction", "production", "sandbox"] } }
           ],
           "Secrets": [
             { "Name": "SUPABASE_SERVICE_ROLE_KEY", "ValueFrom": { "Fn::Sub": "${SupabaseServiceRoleKeySecret}:value::" } },
             { "Name": "RESEND_API_KEY", "ValueFrom": { "Fn::Sub": "${ResendApiKeySecret}:value::" } },
             { "Name": "PRODUCT_SYNC_API_KEY", "ValueFrom": { "Fn::Sub": "${ProductSyncApiKeySecret}:value::" } },
             { "Name": "STRIPE_SECRET_KEY", "ValueFrom": { "Fn::Sub": "${StripeConnectSecrets}:STRIPE_SECRET_KEY::" } },
-            { "Name": "STRIPE_WEBHOOK_SECRET", "ValueFrom": { "Fn::Sub": "${StripeConnectSecrets}:STRIPE_WEBHOOK_SECRET::" } }
+            { "Name": "STRIPE_WEBHOOK_SECRET", "ValueFrom": { "Fn::Sub": "${StripeConnectSecrets}:STRIPE_WEBHOOK_SECRET::" } },
+            { "Name": "QUICKBOOKS_CLIENT_ID", "ValueFrom": { "Fn::Sub": "${QuickBooksSecrets}:QUICKBOOKS_CLIENT_ID::" } },
+            { "Name": "QUICKBOOKS_CLIENT_SECRET", "ValueFrom": { "Fn::Sub": "${QuickBooksSecrets}:QUICKBOOKS_CLIENT_SECRET::" } }
           ],
           "LogConfiguration": {
             "LogDriver": "awslogs",
@@ -314,7 +342,15 @@
             { "Name": "NODE_ENV", "Value": "production" },
             { "Name": "EMAIL_FROM", "Value": { "Ref": "FromEmailAddress" } },
             { "Name": "EMAIL_REPLY_TO", "Value": { "Ref": "EmailReplyTo" } },
-            { "Name": "PRODUCT_API_BASE_URL", "Value": { "Fn::Sub": "https://${VenueAppHostname}" } }
+            { "Name": "PRODUCT_API_BASE_URL", "Value": { "Fn::Sub": "https://${VenueAppHostname}" } },
+            { "Name": "STRIPE_PRICE_STARTER", "Value": { "Ref": "StripePriceStarter" } },
+            { "Name": "STRIPE_PRICE_STARTER_FOUNDER", "Value": { "Ref": "StripePriceStarterFounder" } },
+            { "Name": "STRIPE_PRICE_GROWING", "Value": { "Ref": "StripePriceGrowing" } },
+            { "Name": "STRIPE_PRICE_GROWING_FOUNDER", "Value": { "Ref": "StripePriceGrowingFounder" } },
+            { "Name": "STRIPE_PRICE_PROFESSIONAL", "Value": { "Ref": "StripePriceProfessional" } },
+            { "Name": "STRIPE_PRICE_PROFESSIONAL_FOUNDER", "Value": { "Ref": "StripePriceProfessionalFounder" } },
+            { "Name": "STRIPE_PRICE_WHITE_GLOVE", "Value": { "Ref": "StripePriceWhiteGlove" } },
+            { "Name": "STRIPE_FOUNDING_COUPON_ID", "Value": { "Ref": "StripeFoundingCouponId" } }
           ],
           "Secrets": [
             { "Name": "RESEND_API_KEY", "ValueFrom": { "Fn::Sub": "${ResendApiKeySecret}:value::" } },

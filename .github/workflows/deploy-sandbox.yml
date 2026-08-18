@@ -194,6 +194,15 @@ jobs:
               EmailReplyTo=jennifer@hellotocheers.com \
               SupabaseUrl="${{ vars.NEXT_PUBLIC_SUPABASE_URL }}" \
               SupabaseAnonKey="${{ vars.NEXT_PUBLIC_SUPABASE_ANON_KEY }}" \
+              ResendInboundAddress="${{ vars.RESEND_INBOUND_ADDRESS }}" \
+              StripePriceStarter="${{ vars.STRIPE_PRICE_STARTER }}" \
+              StripePriceStarterFounder="${{ vars.STRIPE_PRICE_STARTER_FOUNDER }}" \
+              StripePriceGrowing="${{ vars.STRIPE_PRICE_GROWING }}" \
+              StripePriceGrowingFounder="${{ vars.STRIPE_PRICE_GROWING_FOUNDER }}" \
+              StripePriceProfessional="${{ vars.STRIPE_PRICE_PROFESSIONAL }}" \
+              StripePriceProfessionalFounder="${{ vars.STRIPE_PRICE_PROFESSIONAL_FOUNDER }}" \
+              StripePriceWhiteGlove="${{ vars.STRIPE_PRICE_WHITE_GLOVE }}" \
+              StripeFoundingCouponId="${{ vars.STRIPE_FOUNDING_COUPON_ID }}" \
             --capabilities CAPABILITY_NAMED_IAM \
             --role-arn "${{ vars.CFN_EXECUTION_ROLE_ARN }}" \
             --no-fail-on-empty-changeset
@@ -286,7 +295,8 @@ jobs:
           check_secret "htc/sandbox/product-sync-api-key" ".value" "Product sync API key"
           check_secret "htc/sandbox/stripe-saas" ".STRIPE_SECRET_KEY" "Stripe SaaS secret key"
           check_secret "htc/sandbox/stripe-connect" ".STRIPE_SECRET_KEY" "Stripe Connect secret key"
-          echo "All 5 expected secrets exist. Any '::warning::' above means that specific capability (not the deploy itself) won't work until the real value is set - see the Sandbox infra report for which ones are required vs. deferrable."
+          check_secret "htc/sandbox/quickbooks" ".QUICKBOOKS_CLIENT_ID" "QuickBooks client ID"
+          echo "All 6 expected secrets exist. Any '::warning::' above means that specific capability (not the deploy itself) won't work until the real value is set - see the Sandbox infra report for which ones are required vs. deferrable."
 
       - name: Verify Sandbox database readiness (optional)
         # Runs scripts/verify-sandbox-database.sh against the real project

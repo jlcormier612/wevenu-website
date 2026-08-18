@@ -250,11 +250,7 @@ export function FacebookConnectSection({
             {!isConfigured ? (
               <div className="rounded-lg border border-border bg-muted/30 p-4">
                 <p className="text-sm text-muted-foreground">
-                  To enable Facebook Lead Ads, add{" "}
-                  <code className="text-xs bg-muted rounded px-1 py-0.5">NEXT_PUBLIC_FACEBOOK_APP_ID</code>
-                  {" "}and{" "}
-                  <code className="text-xs bg-muted rounded px-1 py-0.5">FACEBOOK_APP_SECRET</code>
-                  {" "}to your environment variables.
+                  Facebook / Instagram Lead Ads isn&apos;t available for your account yet. Contact support to get this connected.
                 </p>
               </div>
             ) : (
