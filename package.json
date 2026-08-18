@@ -14,8 +14,8 @@
     "start": "next start --port 3000",
     "lint": "eslint",
     "postinstall": "patch-package",
-    "test": "tsx --test lib/**/*.test.ts lib/legal/**/*.test.ts lib/venue-guide/**/*.test.ts components/welcome-experience/**/*.test.ts workspace/lib/legal/**/*.test.ts",
-    "test:watch": "tsx --test --watch lib/**/*.test.ts lib/legal/**/*.test.ts lib/venue-guide/**/*.test.ts components/welcome-experience/**/*.test.ts workspace/lib/legal/**/*.test.ts",
+    "test": "tsx --test lib/**/*.test.ts lib/legal/**/*.test.ts lib/venue-guide/**/*.test.ts components/welcome-experience/**/*.test.ts workspace/lib/legal/**/*.test.ts shared/**/*.test.ts",
+    "test:watch": "tsx --test --watch lib/**/*.test.ts lib/legal/**/*.test.ts lib/venue-guide/**/*.test.ts components/welcome-experience/**/*.test.ts workspace/lib/legal/**/*.test.ts shared/**/*.test.ts",
     "process:lifecycle": "node scripts/process-lifecycle.mjs"
   },
   "dependencies": {

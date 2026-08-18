@@ -1,7 +1,10 @@
 /**
  * POST /api/messaging/inbound
  *
- * Handles inbound email from Resend's inbound routing feature.
+ * Handles inbound email from Resend's inbound routing feature. Reply-
+ * matching only — an inbound email always maps to an *existing* lead/
+ * client and can never originate a new one (see app/api/leads/email-intake
+ * /route.ts for the route that does the opposite, by design).
  *
  * Setup required (external):
  *   1. In Resend Dashboard → Inbound → Add Domain → verify your domain
@@ -15,30 +18,25 @@
  *   3. Sender email matches a known lead/client → creates new thread
  *   4. Unknown sender → logs and skips (future: unmatched queue)
  *
- * Resend inbound payload:
- * {
- *   "from": "sender@example.com",
- *   "to": ["thread+abc123@replies.venue.com"],
- *   "subject": "Re: Your venue",
- *   "text": "body text",
- *   "html": "<p>body</p>",
- *   "headers": [{"name": "In-Reply-To", "value": "<resend-id>"}]
- * }
+ * Resend's real email.received webhook payload is metadata only — no body,
+ * no headers. Signature verification and the follow-up GET
+ * /emails/receiving/{email_id} call (which is what actually returns
+ * text/html/headers, including In-Reply-To) are shared with
+ * app/api/leads/email-intake/route.ts via lib/resend/inbound-webhook.ts —
+ * see that module's doc comment for the verified details of both.
  */
 
 import { type NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/integrations/supabase/admin";
 import { exitActiveEnrollmentsForRelationship } from "@/lib/message-sequences/repository";
 import { shouldAdvanceStatus } from "@/lib/communication/status";
-
-type InboundPayload = {
-  from: string;
-  to: string[];
-  subject?: string;
-  text?: string;
-  html?: string;
-  headers?: { name: string; value: string }[];
-};
+import {
+  fetchReceivedEmailContent,
+  findHeaderValue,
+  htmlToText,
+  verifySvixSignature,
+  type ResendInboundWebhookEvent,
+} from "@/lib/resend/inbound-webhook";
 
 function parseFromEmail(from: string): { email: string; name: string | null } {
   const match = from.match(/^(.*?)\s*<(.+)>$/);
@@ -55,22 +53,42 @@ function extractThreadIdFromTo(toAddresses: string[]): string | null {
 }
 
 export async function POST(request: NextRequest) {
-  // Basic auth check: Resend sends a secret token as a query param or header
-  const secret = process.env.RESEND_WEBHOOK_SECRET;
-  const providedSecret = request.nextUrl.searchParams.get("secret");
-  if (secret && providedSecret !== secret) {
-    return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
+  // Svix verification needs the exact raw body — parsing first would break it.
+  const rawBody = await request.text();
+
+  const webhookSecret = process.env.RESEND_WEBHOOK_SECRET;
+  if (webhookSecret) {
+    const verified = verifySvixSignature(
+      rawBody,
+      {
+        id: request.headers.get("svix-id"),
+        timestamp: request.headers.get("svix-timestamp"),
+        signature: request.headers.get("svix-signature"),
+      },
+      webhookSecret,
+    );
+    if (!verified) {
+      return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
+    }
   }
 
-  let payload: InboundPayload;
+  let event: ResendInboundWebhookEvent;
   try {
-    payload = await request.json();
+    event = JSON.parse(rawBody);
   } catch {
     return NextResponse.json({ error: "Invalid JSON." }, { status: 400 });
   }
 
-  const { email: fromEmail, name: fromName } = parseFromEmail(payload.from ?? "");
-  const body = payload.text ?? payload.html?.replace(/<[^>]+>/g, "") ?? "";
+  if (event.type !== "email.received" || !event.data) {
+    // Not an inbound-email event — acknowledge and ignore rather than error.
+    return NextResponse.json({ ok: true });
+  }
+
+  const { email_id, from, to, subject } = event.data;
+  const content = await fetchReceivedEmailContent(email_id);
+  const body = content?.text || (content?.html ? htmlToText(content.html) : "") || "";
+
+  const { email: fromEmail, name: fromName } = parseFromEmail(from ?? "");
   if (!fromEmail || !body) return NextResponse.json({ ok: true });
 
   // TR-M7: this is a webhook call with no Supabase session, so it must use
@@ -79,11 +97,11 @@ export async function POST(request: NextRequest) {
   const supabase = createAdminClient();
 
   // --- 1. Match by subaddressing (thread+{id}@domain) ---
-  let threadId = extractThreadIdFromTo(payload.to ?? []);
+  let threadId = extractThreadIdFromTo(to ?? []);
 
   // --- 2. Match by In-Reply-To header → provider_id ---
-  if (!threadId) {
-    const inReplyTo = payload.headers?.find((h) => h.name.toLowerCase() === "in-reply-to")?.value;
+  if (!threadId && content?.headers) {
+    const inReplyTo = findHeaderValue(content.headers, "in-reply-to");
     if (inReplyTo) {
       const provId = inReplyTo.replace(/[<>]/g, "").trim();
       const { data: msg } = await supabase.from("messages")
@@ -141,7 +159,7 @@ export async function POST(request: NextRequest) {
       .insert({
         venue_id: venueId,
         [entityCol]: entityId,
-        subject: payload.subject?.replace(/^Re:\s*/i, "").trim() ?? null,
+        subject: subject?.replace(/^Re:\s*/i, "").trim() ?? null,
         channel: "email",
         status: "active",
         last_message_at: new Date().toISOString(),
@@ -159,9 +177,9 @@ export async function POST(request: NextRequest) {
     direction: "inbound",
     from_name: fromName,
     from_email: fromEmail,
-    subject: payload.subject ?? null,
+    subject: subject ?? null,
     body: body.trim(),
-    body_html: payload.html ?? null,
+    body_html: content?.html || null,
     channel: "email",
     status: "received",
     sent_at: new Date().toISOString(),

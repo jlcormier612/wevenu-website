@@ -14,6 +14,19 @@
  * domain}, the same Resend inbound infrastructure and subaddressing
  * convention already used for reply-threading.
  *
+ * Resend's real email.received webhook payload (verified against Resend's
+ * own current docs, 2026-08): {type, created_at, data: {email_id, from,
+ * to, subject, cc, bcc, received_for, message_id, attachments}}. Resend's
+ * own docs state plainly: "Webhooks do not include the email body,
+ * headers, or attachments, only their metadata." The actual text/html
+ * body requires a follow-up GET /emails/receiving/{email_id} call
+ * (fetchReceivedEmailContent below).
+ *
+ * Signature verification and the Retrieve-API body fetch are shared with
+ * app/api/messaging/inbound/route.ts (the other consumer of this same
+ * Resend webhook model) via lib/resend/inbound-webhook.ts — see that
+ * module's doc comment for the verified details of both.
+ *
  * The parser (lib/lead-intake/email-extract.ts) is generic — it extracts
  * "an inquiry" from whatever arrives, with no per-marketplace detection
  * logic. Extracted leads get a confidence score; low-confidence ones still
@@ -28,14 +41,12 @@ import { createAdminClient } from "@/integrations/supabase/admin";
 import { extractInquiryFromEmail } from "@/lib/lead-intake/email-extract";
 import { ingestLead } from "@/lib/lead-intake/pipeline";
 import { logIntakeAttempt, markIntakeAttempt } from "@/lib/lead-intake/attempt-log";
-
-type InboundPayload = {
-  from: string;
-  to: string[];
-  subject?: string;
-  text?: string;
-  html?: string;
-};
+import {
+  fetchReceivedEmailContent,
+  htmlToText,
+  verifySvixSignature,
+  type ResendInboundWebhookEvent,
+} from "@/lib/resend/inbound-webhook";
 
 function extractLeadEmailKey(toAddresses: string[]): string | null {
   for (const addr of toAddresses) {
@@ -46,39 +57,60 @@ function extractLeadEmailKey(toAddresses: string[]): string | null {
 }
 
 export async function POST(request: NextRequest) {
-  const secret = process.env.RESEND_WEBHOOK_SECRET;
-  const providedSecret = request.nextUrl.searchParams.get("secret");
-  if (secret && providedSecret !== secret) {
-    return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
+  // Svix verification needs the exact raw body — parsing first would break it.
+  const rawBody = await request.text();
+
+  const webhookSecret = process.env.RESEND_WEBHOOK_SECRET;
+  if (webhookSecret) {
+    const verified = verifySvixSignature(
+      rawBody,
+      {
+        id: request.headers.get("svix-id"),
+        timestamp: request.headers.get("svix-timestamp"),
+        signature: request.headers.get("svix-signature"),
+      },
+      webhookSecret,
+    );
+    if (!verified) {
+      return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
+    }
   }
 
-  let payload: InboundPayload;
+  let event: ResendInboundWebhookEvent;
   try {
-    payload = await request.json();
+    event = JSON.parse(rawBody);
   } catch {
     return NextResponse.json({ error: "Invalid JSON." }, { status: 400 });
   }
 
+  if (event.type !== "email.received" || !event.data) {
+    // Not an inbound-email event — acknowledge and ignore rather than error.
+    return NextResponse.json({ ok: true });
+  }
+
+  const { email_id, from, to, subject } = event.data;
   const admin = createAdminClient();
-  const subject = payload.subject ?? "";
-  const body = payload.text ?? payload.html?.replace(/<[^>]+>/g, "") ?? "";
-  const leadEmailKey = extractLeadEmailKey(payload.to ?? []);
+  const leadEmailKey = extractLeadEmailKey(to ?? []);
 
   if (!leadEmailKey) {
     // No recognizable subaddress — nothing to log against a venue. Same
     // "unknown sender, log and skip" posture as the reply-matching webhook.
-    console.warn("Email intake: no lead_email_key found in To addresses:", payload.to);
+    console.warn("Email intake: no lead_email_key found in To addresses:", to);
     return NextResponse.json({ ok: true });
   }
 
   const { data: venueRows } = await admin.rpc("get_venue_by_lead_email_key", { p_key: leadEmailKey });
   const venue = venueRows?.[0] as { id: string; name: string } | undefined;
 
+  const content = await fetchReceivedEmailContent(email_id);
+  const body = content?.text || (content?.html ? htmlToText(content.html) : "") || "";
+  const rawPayload = { type: event.type, email_id, from, to, subject, contentRetrieved: Boolean(content) };
+
   if (!venue) {
     // A stale or guessed key — still worth a durable record, venue_id null.
     await logIntakeAttempt(admin, {
       venueId: null, source: "email_parsed_generic", trustTier: "email_parsed",
-      rawPayload: payload, normalizedPayload: {
+      rawPayload, normalizedPayload: {
         firstName: "", lastName: "", email: null, phone: null, partnerFirstName: null, partnerLastName: null,
         partnerEmail: null, eventType: null, eventDate: null, endDate: null, guestCount: null,
         estimatedBudget: null, inquiryMessage: null, inquiryDate: null, confidenceScore: null, sourceData: {},
@@ -87,12 +119,12 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ ok: true });
   }
 
-  const extraction = await extractInquiryFromEmail(subject, body);
+  const extraction = await extractInquiryFromEmail(subject ?? "", body);
 
   if (!extraction.ok) {
     const attemptId = await logIntakeAttempt(admin, {
       venueId: venue.id, source: "email_parsed_generic", trustTier: "email_parsed",
-      rawPayload: payload, normalizedPayload: {
+      rawPayload, normalizedPayload: {
         firstName: "", lastName: "", email: null, phone: null, partnerFirstName: null, partnerLastName: null,
         partnerEmail: null, eventType: null, eventDate: null, endDate: null, guestCount: null,
         estimatedBudget: null, inquiryMessage: null, inquiryDate: null, confidenceScore: null, sourceData: {},
@@ -107,7 +139,7 @@ export async function POST(request: NextRequest) {
     venueId: venue.id,
     source: "email_parsed_generic",
     trustTier: "email_parsed",
-    rawPayload: payload,
+    rawPayload,
     input: extraction.input,
     create: async (normalized) => {
       const { data, error } = await admin.rpc("ingest_lead", {

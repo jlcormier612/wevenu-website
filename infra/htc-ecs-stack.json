@@ -213,7 +213,9 @@
                 { "Ref": "ProductSyncApiKeySecret" },
                 { "Ref": "StripeConnectSecrets" },
                 { "Ref": "StripeSaasSecrets" },
-                { "Ref": "QuickBooksSecrets" }
+                { "Ref": "QuickBooksSecrets" },
+                { "Ref": "AnthropicApiKeySecret" },
+                { "Ref": "ResendWebhookSecretSecret" }
               ]
             }]
           }
@@ -253,6 +255,22 @@
         "Name": { "Fn::Sub": "htc/${EnvironmentName}/product-sync-api-key" },
         "Description": "Placeholder value only (CHANGE_ME). Must end up byte-identical across all three apps once populated - it's one secret, referenced by all three task definitions below, not three separate values.",
         "SecretString": "{\"value\":\"CHANGE_ME\"}"
+      }
+    },
+    "AnthropicApiKeySecret": {
+      "Type": "AWS::SecretsManager::Secret",
+      "Properties": {
+        "Name": { "Fn::Sub": "htc/${EnvironmentName}/anthropic-api-key" },
+        "Description": "Placeholder value only (CHANGE_ME). Powers the Email Intake Engine's inquiry extraction (lib/lead-intake/email-extract.ts) - a real Anthropic API key from console.anthropic.com.",
+        "SecretString": "{\"value\":\"CHANGE_ME\"}"
+      }
+    },
+    "ResendWebhookSecretSecret": {
+      "Type": "AWS::SecretsManager::Secret",
+      "Properties": {
+        "Name": { "Fn::Sub": "htc/${EnvironmentName}/resend-webhook-secret" },
+        "Description": "Placeholder is an EMPTY string, not CHANGE_ME, deliberately - both app/api/leads/email-intake/route.ts and app/api/messaging/inbound/route.ts treat an unset RESEND_WEBHOOK_SECRET as 'skip signature verification, stay open' and a set one as 'enforce Svix verification'; a non-empty placeholder would flip on enforcement with a value that can never verify anything, silently breaking both endpoints. Populate with the real Signing Secret from Resend Dashboard -> Webhooks once the endpoint is configured there - both routes now implement Svix verification identically (shared via lib/resend/inbound-webhook.ts), so this is safe to populate for both at once.",
+        "SecretString": "{\"value\":\"\"}"
       }
     },
     "StripeSaasSecrets": {
@@ -311,7 +329,9 @@
             { "Name": "STRIPE_SECRET_KEY", "ValueFrom": { "Fn::Sub": "${StripeConnectSecrets}:STRIPE_SECRET_KEY::" } },
             { "Name": "STRIPE_WEBHOOK_SECRET", "ValueFrom": { "Fn::Sub": "${StripeConnectSecrets}:STRIPE_WEBHOOK_SECRET::" } },
             { "Name": "QUICKBOOKS_CLIENT_ID", "ValueFrom": { "Fn::Sub": "${QuickBooksSecrets}:QUICKBOOKS_CLIENT_ID::" } },
-            { "Name": "QUICKBOOKS_CLIENT_SECRET", "ValueFrom": { "Fn::Sub": "${QuickBooksSecrets}:QUICKBOOKS_CLIENT_SECRET::" } }
+            { "Name": "QUICKBOOKS_CLIENT_SECRET", "ValueFrom": { "Fn::Sub": "${QuickBooksSecrets}:QUICKBOOKS_CLIENT_SECRET::" } },
+            { "Name": "ANTHROPIC_API_KEY", "ValueFrom": { "Fn::Sub": "${AnthropicApiKeySecret}:value::" } },
+            { "Name": "RESEND_WEBHOOK_SECRET", "ValueFrom": { "Fn::Sub": "${ResendWebhookSecretSecret}:value::" } }
           ],
           "LogConfiguration": {
             "LogDriver": "awslogs",
@@ -343,6 +363,7 @@
             { "Name": "EMAIL_FROM", "Value": { "Ref": "FromEmailAddress" } },
             { "Name": "EMAIL_REPLY_TO", "Value": { "Ref": "EmailReplyTo" } },
             { "Name": "PRODUCT_API_BASE_URL", "Value": { "Fn::Sub": "https://${VenueAppHostname}" } },
+            { "Name": "WORKSPACE_URL", "Value": { "Fn::Sub": "https://${WorkspaceHostname}" } },
             { "Name": "STRIPE_GATHER_PRICE_ID", "Value": { "Ref": "StripePriceStarter" } },
             { "Name": "STRIPE_PRICE_STARTER", "Value": { "Ref": "StripePriceStarter" } },
             { "Name": "STRIPE_PRICE_STARTER_FOUNDER", "Value": { "Ref": "StripePriceStarterFounder" } },
