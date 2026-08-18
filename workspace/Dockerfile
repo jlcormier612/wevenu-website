@@ -49,6 +49,12 @@ COPY --from=builder /repo/workspace/.next/standalone ./
 COPY --from=builder /repo/workspace/.next/static ./workspace/.next/static
 COPY --from=builder /repo/workspace/public ./workspace/public
 
+# Activation and CRM reads/writes the relationship store at
+# shared/relationships/.data (cwd=/app → /app/shared/...). The nextjs user
+# must own that tree or /activate 500s with EACCES on mkdir /app/shared.
+RUN mkdir -p /app/shared/relationships/.data \
+  && chown -R nextjs:nodejs /app
+
 USER nextjs
 EXPOSE 3000
 ENV PORT=3000 HOSTNAME=0.0.0.0
