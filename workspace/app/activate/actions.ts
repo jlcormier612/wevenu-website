@@ -67,12 +67,18 @@ export async function activateAccountAction(
     return { error: "We couldn't set up your account just now. Please try again in a moment." };
   }
 
-  const result = await completeAccountActivation({ token });
-  if (!result.ok) {
-    // Real account already exists at this point — not a reason to block
-    // the owner from signing in; the local Relationship record is a
-    // CRM/sales-ops concern, not the auth boundary.
-    console.error("[activate] local relationship activation failed after real account succeeded", result.message);
+  // Real account already exists at this point — a failure here (including
+  // a thrown error, e.g. the local file store's directory not being
+  // writable in this container) is not a reason to block the owner from
+  // signing in; the local Relationship record is a CRM/sales-ops concern,
+  // not the auth boundary. Must not throw past this point.
+  try {
+    const result = await completeAccountActivation({ token });
+    if (!result.ok) {
+      console.error("[activate] local relationship activation failed after real account succeeded", result.message);
+    }
+  } catch (error) {
+    console.error("[activate] local relationship activation threw after real account succeeded", error);
   }
 
   redirect(`${productLoginUrl()}?activated=1`);

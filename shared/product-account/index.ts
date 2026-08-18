@@ -53,6 +53,12 @@ export type EnrollmentLookupResult =
   | { ok: true; found: false }
   | { ok: false; error: string };
 
+export type TokenLookupResult =
+  | { ok: true; found: false }
+  | { ok: true; found: true; reason: "already_activated" | "expired" }
+  | { ok: true; found: true; reason: "valid"; id: string; venueName: string; ownerEmail: string }
+  | { ok: false; error: string };
+
 function baseUrl(): string {
   return (process.env.PRODUCT_API_BASE_URL?.trim() || "http://localhost:3000").replace(/\/$/, "");
 }
@@ -109,5 +115,14 @@ export async function getEnrollmentBySession(
 ): Promise<EnrollmentLookupResult> {
   return postInternal<EnrollmentLookupResult>("/api/internal/enrollment/by-session", {
     stripeCheckoutSessionId,
+  });
+}
+
+/** Read-only lookup used by the Activate Account page — no side effects. */
+export async function getEnrollmentByActivationToken(
+  activationToken: string,
+): Promise<TokenLookupResult> {
+  return postInternal<TokenLookupResult>("/api/internal/enrollment/by-token", {
+    activationToken,
   });
 }

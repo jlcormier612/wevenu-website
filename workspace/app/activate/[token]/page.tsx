@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-import { lookupActivationToken } from "@shared/relationships";
+import { getEnrollmentByActivationToken } from "@shared/product-account";
 
 import { ActivateAccountForm } from "@/components/activate/activate-account-form";
 
@@ -47,6 +47,11 @@ function ActivationErrorPanel({
   );
 }
 
+const NOT_FOUND_MESSAGE = "This activation link is invalid or has already been used.";
+const ALREADY_ACTIVATED_MESSAGE = "This account is already activated. Sign in with your password.";
+const EXPIRED_MESSAGE = "This activation link has expired. Reply to your welcome email and we'll send a fresh one.";
+const LOOKUP_FAILED_MESSAGE = "We couldn't check this activation link just now. Please try again in a moment.";
+
 export default async function ActivateAccountPage({
   params,
 }: {
@@ -54,36 +59,35 @@ export default async function ActivateAccountPage({
 }) {
   const { token: rawToken } = await params;
   const token = decodeURIComponent(rawToken || "").trim();
-  const lookup = await lookupActivationToken(token);
+  const lookup = token
+    ? await getEnrollmentByActivationToken(token)
+    : ({ ok: true, found: false } as const);
 
   if (!lookup.ok) {
-    const showLogin = lookup.reason === "already_activated";
-    const title =
-      lookup.reason === "expired"
-        ? "Link expired"
-        : lookup.reason === "already_activated"
-          ? "Already activated"
-          : lookup.reason === "access_disabled"
-            ? "Account unavailable"
-            : "Invalid link";
-    return (
-      <ActivationErrorPanel
-        title={title}
-        message={lookup.message}
-        showLogin={showLogin}
-      />
-    );
+    return <ActivationErrorPanel title="Invalid link" message={LOOKUP_FAILED_MESSAGE} />;
   }
 
-  const { relationship } = lookup;
-  const email = relationship.owner.email?.trim() || "";
-  const venueName = relationship.venue.name?.trim() || "your venue";
+  if (!lookup.found) {
+    return <ActivationErrorPanel title="Invalid link" message={NOT_FOUND_MESSAGE} />;
+  }
+
+  if (lookup.reason !== "valid") {
+    if (lookup.reason === "already_activated") {
+      return (
+        <ActivationErrorPanel title="Already activated" message={ALREADY_ACTIVATED_MESSAGE} showLogin />
+      );
+    }
+    return <ActivationErrorPanel title="Link expired" message={EXPIRED_MESSAGE} />;
+  }
+
+  const email = lookup.ownerEmail.trim();
+  const venueName = lookup.venueName;
 
   if (!email) {
     return (
       <ActivationErrorPanel
         title="Missing email"
-        message="This relationship has no owner email on file. Contact Hello to Cheers support."
+        message="This enrollment has no owner email on file. Contact Hello to Cheers support."
       />
     );
   }
@@ -98,12 +102,7 @@ export default async function ActivateAccountPage({
         <p className="mt-3 text-[1.05rem] leading-relaxed ws-muted">
           Create a password for {venueName} to open Hello to Cheers.
         </p>
-        <ActivateAccountForm
-          token={token}
-          email={email}
-          venueName={venueName}
-          relationshipId={relationship.id}
-        />
+        <ActivateAccountForm token={token} email={email} venueName={venueName} />
       </div>
     </div>
   );
