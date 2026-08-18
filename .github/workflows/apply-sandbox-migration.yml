@@ -1,0 +1,205 @@
+# Applies one or more explicitly-named, already-approved migration files to
+# the Sandbox Supabase database.
+#
+# Deliberately NOT wired to deploy-sandbox.yml or any push trigger -
+# workflow_dispatch only, so a deploy never mutates the database and a
+# migration is never applied without a human explicitly naming it and typing
+# APPLY. See docs/supabase-sandbox-setup-runbook.md §3 and the (now
+# superseded by this workflow) local apply-sandbox-migrations.sh for the
+# proven psql/ON_ERROR_STOP/bookkeeping-after-success pattern this mirrors.
+#
+# Credential: SANDBOX_DB_URL must be a GitHub *Secret* on the "sandbox"
+# Environment (Settings -> Environments -> sandbox -> Secrets) - never a
+# Variable, since Variables are not redacted from logs. Nothing in this
+# workflow echoes, interpolates into an echoed string, or otherwise logs
+# that value.
+#
+# Safety model, in order:
+#   1. confirm must literally equal APPLY, checked before anything else runs.
+#   2. Full preflight across every requested file - existence, not-already-
+#      applied, and order/collision checks - runs to completion for the
+#      whole batch before any file is applied. Any single failure stops the
+#      entire batch; nothing is applied.
+#   3. Only after preflight passes clean does the apply loop start. Each
+#      file is applied with ON_ERROR_STOP=1; the bookkeeping row is written
+#      only after that file's SQL succeeded. A mid-batch failure stops
+#      immediately - already-applied files in the batch are not rolled back
+#      (each file is its own psql invocation, matching the existing local
+#      script's behavior exactly; Postgres DDL here is not wrapped in one
+#      cross-file transaction).
+#   4. scripts/verify-sandbox-database.sh (existing, read-only, unmodified)
+#      runs afterward against the same connection.
+#
+# No AWS credentials are used or needed - this workflow only ever talks to
+# Supabase via psql.
+
+name: Apply Sandbox Migration
+
+on:
+  workflow_dispatch:
+    inputs:
+      migration_files:
+        description: 'Migration filename(s) under supabase/migrations/, comma-separated (e.g. 20261295000000_setup_hub_state.sql)'
+        required: true
+        type: string
+      confirm:
+        description: 'Type APPLY to confirm these migration(s) are reviewed and approved for Sandbox'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+# Only one migration-apply run at a time, and never concurrently with a
+# deploy that might be mid-verify against the same database.
+concurrency:
+  group: sandbox-database
+  cancel-in-progress: false
+
+jobs:
+  apply:
+    name: Apply approved migration(s)
+    runs-on: ubuntu-latest
+    environment: sandbox
+    env:
+      SANDBOX_DB_URL: ${{ secrets.SANDBOX_DB_URL }}
+    steps:
+      - name: Require explicit confirmation
+        run: |
+          if [ "${{ inputs.confirm }}" != "APPLY" ]; then
+            echo "::error::confirm must be exactly 'APPLY' - refusing to proceed. Nothing was touched."
+            exit 1
+          fi
+          echo "Confirmed."
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install psql
+        run: sudo apt-get update -qq && sudo apt-get install -qq -y postgresql-client
+
+      - name: Preflight - validate the entire batch before applying anything
+        run: |
+          set -uo pipefail
+
+          if [ -z "$SANDBOX_DB_URL" ]; then
+            echo "::error::SANDBOX_DB_URL secret is not set on the sandbox Environment. Nothing was touched."
+            exit 1
+          fi
+
+          # The 4 known timestamp-collision groups already documented in
+          # docs/supabase-sandbox-setup-runbook.md §3 and mirrored in
+          # apply-sandbox-migrations.sh - same list, not re-derived.
+          KNOWN_COLLISIONS="20261175000000 20261176000000 20261177000000 20261222000000"
+
+          IFS=',' read -ra RAW_FILES <<< "${{ inputs.migration_files }}"
+          FAILED=0
+          declare -a CHECKED_FILES=()
+
+          MAX_TRACKED=$(psql "$SANDBOX_DB_URL" -t -A -c "select coalesce(max(version), '') from supabase_migrations.schema_migrations;")
+          if [ $? -ne 0 ]; then
+            echo "::error::Could not query supabase_migrations.schema_migrations - check the connection. Nothing was touched."
+            exit 1
+          fi
+          echo "Currently tracked max version: ${MAX_TRACKED:-none}"
+
+          for raw in "${RAW_FILES[@]}"; do
+            f=$(echo "$raw" | xargs)
+            [ -z "$f" ] && continue
+            PATH_F="supabase/migrations/$f"
+
+            if [ ! -f "$PATH_F" ]; then
+              echo "::error::$f not found under supabase/migrations/."
+              FAILED=1
+              continue
+            fi
+
+            version=$(basename "$f" | sed -E 's/^([0-9]+)_.*/\1/')
+
+            already=$(psql "$SANDBOX_DB_URL" -t -A -c "select version from supabase_migrations.schema_migrations where version = '$version';")
+            if [ $? -ne 0 ]; then
+              echo "::error::Preflight query failed for $f."
+              FAILED=1
+              continue
+            fi
+            if [ -n "$already" ]; then
+              echo "::error::$f (version $version) is already recorded as applied. Refusing to re-run any part of this batch."
+              FAILED=1
+              continue
+            fi
+
+            if [ -n "$MAX_TRACKED" ] && [ "$version" \< "$MAX_TRACKED" ]; then
+              if echo "$KNOWN_COLLISIONS" | grep -qw "$version"; then
+                echo "INFO: $f (version $version) sorts before the tracked max ($MAX_TRACKED) - expected, this is one of the 4 documented collision-group timestamps."
+              else
+                echo "::error::$f (version $version) sorts before the currently tracked max ($MAX_TRACKED) and is not one of the documented collision timestamps - this looks like a migration-order conflict, not applying."
+                FAILED=1
+                continue
+              fi
+            fi
+
+            echo "Preflight OK: $f (version $version)"
+            CHECKED_FILES+=("$f")
+          done
+
+          if [ "$FAILED" -ne 0 ]; then
+            echo "::error::Preflight failed for one or more requested files - see errors above. Nothing in this batch was applied."
+            exit 1
+          fi
+
+          if [ "${#CHECKED_FILES[@]}" -eq 0 ]; then
+            echo "::error::No valid migration files were parsed from the input. Nothing was touched."
+            exit 1
+          fi
+
+          printf '%s\n' "${CHECKED_FILES[@]}" | sort > /tmp/migration-batch.txt
+          echo "Preflight passed for the full batch:"
+          cat /tmp/migration-batch.txt
+
+      - name: Apply the batch (only reached if preflight passed)
+        run: |
+          set -uo pipefail
+          APPLIED=()
+
+          while IFS= read -r f; do
+            [ -z "$f" ] && continue
+            PATH_F="supabase/migrations/$f"
+            version=$(basename "$f" | sed -E 's/^([0-9]+)_.*/\1/')
+            name=$(basename "$f" | sed -E 's/^[0-9]+_(.*)\.sql$/\1/')
+
+            echo "Applying $f..."
+            psql "$SANDBOX_DB_URL" -v ON_ERROR_STOP=1 -f "$PATH_F"
+            if [ $? -ne 0 ]; then
+              echo "::error::$f failed to apply. STOPPING - not attempting any remaining files in this batch. Already-applied files above this line were not rolled back."
+              exit 1
+            fi
+
+            insert_result=$(psql "$SANDBOX_DB_URL" -v ON_ERROR_STOP=1 -t -A -c \
+              "insert into supabase_migrations.schema_migrations (version, name) values ('$version', '$name') on conflict (version) do nothing returning version;")
+            if [ $? -ne 0 ]; then
+              echo "::error::$f's SQL applied successfully, but the schema_migrations bookkeeping insert failed. Investigate before re-running - do not blindly re-apply this file's SQL."
+              exit 1
+            fi
+            if [ -z "$insert_result" ]; then
+              echo "::warning::$f applied, but its version ($version) was already tracked at insert time (unexpected after preflight passed - investigate)."
+            fi
+
+            echo "Applied and recorded: $f"
+            APPLIED+=("$f")
+          done < /tmp/migration-batch.txt
+
+          printf '%s\n' "${APPLIED[@]}" > /tmp/migration-applied.txt
+
+      - name: Verify Sandbox database (existing script, read-only)
+        run: bash scripts/verify-sandbox-database.sh "$SANDBOX_DB_URL"
+
+      - name: Summary
+        if: always()
+        run: |
+          echo "## Sandbox migration run" >> "$GITHUB_STEP_SUMMARY"
+          if [ -f /tmp/migration-applied.txt ] && [ -s /tmp/migration-applied.txt ]; then
+            echo "Applied and recorded:" >> "$GITHUB_STEP_SUMMARY"
+            sed 's/^/- /' /tmp/migration-applied.txt >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "No files were applied (preflight did not pass, or the job failed before applying anything)." >> "$GITHUB_STEP_SUMMARY"
+          fi
