@@ -11,26 +11,35 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
+import { getTourSlotPreviewAction } from "@/app/(app)/settings/tour-actions";
 import { TourAvailabilityEditor } from "@/components/settings/tour-availability-editor";
 import type { TourAvailabilityException, TourAvailabilityWindow, TourSettings } from "@/lib/tours/types";
 
-function SlotPreview({ tourKey }: { tourKey: string }) {
+function localIsoDate(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+function SlotPreview({ refreshKey }: { refreshKey: number }) {
   const [slots, setSlots] = React.useState<{ start: string; time: string; date: string }[]>([]);
-  const [loading, setLoading] = React.useState(false);
+  const [loading, setLoading] = React.useState(true);
   React.useEffect(() => {
+    let cancelled = false;
     setLoading(true);
     const today = new Date();
-    const start = today.toISOString().slice(0, 10);
-    const end = new Date(today.getTime() + 14 * 86400000).toISOString().slice(0, 10);
-    fetch(`/api/tours/slots?key=${tourKey}&start=${start}&end=${end}`)
-      .then(r => r.json())
-      .then((d: { slots: { start: string; time: string; date: string }[] }) => setSlots(d.slots ?? []))
-      .catch(() => {})
-      .finally(() => setLoading(false));
-  }, [tourKey]);
+    const start = localIsoDate(today);
+    const end = localIsoDate(new Date(today.getFullYear(), today.getMonth(), today.getDate() + 14));
+    getTourSlotPreviewAction(start, end)
+      .then((next) => { if (!cancelled) setSlots(next ?? []); })
+      .catch(() => { if (!cancelled) setSlots([]); })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, [refreshKey]);
 
   if (loading) return <p className="text-xs text-muted-foreground">Loading available slots…</p>;
-  if (!slots.length) return <p className="text-xs text-muted-foreground">No slots available in the next 14 days. Check your business hours in Settings → Hours.</p>;
+  if (!slots.length) return <p className="text-xs text-muted-foreground">No slots available in the next 14 days.</p>;
 
   const grouped = slots.reduce<Record<string, string[]>>((acc, s) => {
     if (!acc[s.date]) acc[s.date] = [];
@@ -60,12 +69,14 @@ type Props = {
   initialSettings: TourSettings;
   initialWindows: TourAvailabilityWindow[];
   initialExceptions: TourAvailabilityException[];
+  loadError?: string | null;
 };
 
-export function TourSettingsSection({ initialSettings, initialWindows, initialExceptions }: Props) {
+export function TourSettingsSection({ initialSettings, initialWindows, initialExceptions, loadError = null }: Props) {
   const router = useRouter();
   const [s, setS] = React.useState(initialSettings);
   const [saving, startSave] = React.useTransition();
+  const [previewRefreshKey, setPreviewRefreshKey] = React.useState(0);
 
   const bookingUrl = typeof window !== "undefined"
     ? `${window.location.origin}/book/${s.tourEmbedKey}`
@@ -81,6 +92,7 @@ export function TourSettingsSection({ initialSettings, initialWindows, initialEx
       const result = await updateTourSettingsAction(s);
       if (result.ok) {
         toast.success("Tour settings saved.");
+        setPreviewRefreshKey((n) => n + 1);
         router.refresh();
       } else {
         toast.error("Could not save settings.");
@@ -155,13 +167,18 @@ export function TourSettingsSection({ initialSettings, initialWindows, initialEx
             </div>
           </div>
 
-          <TourAvailabilityEditor initialWindows={initialWindows} initialExceptions={initialExceptions} />
+          <TourAvailabilityEditor
+            initialWindows={initialWindows}
+            initialExceptions={initialExceptions}
+            loadError={loadError}
+            onAvailabilityChanged={() => setPreviewRefreshKey((n) => n + 1)}
+          />
 
           {/* Available slot preview — always the output of the availability
               configured above, never a separate source of truth. */}
           <div className="rounded-xl border border-border bg-muted/20 p-4 space-y-2">
             <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Available Slot Preview</p>
-            <SlotPreview tourKey={s.tourEmbedKey} />
+            <SlotPreview refreshKey={previewRefreshKey} />
           </div>
         </>
       )}

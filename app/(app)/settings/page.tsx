@@ -32,7 +32,8 @@ import { getCurrentVenue, getVenueSettings } from "@/lib/venue/service";
 import { getNotificationStats } from "@/lib/notifications/stats";
 import { isEmailConfigured } from "@/lib/email/send";
 import { getNotificationPreferences } from "@/lib/notifications/preferences";
-import { getTourAvailabilityExceptions, getTourAvailabilityWindows, getTourSettings } from "@/lib/tours/service";
+import { editorHydrationFromAvailability } from "@/lib/tours/availability-read";
+import { getTourAvailability, getTourSettings } from "@/lib/tours/service";
 import { getIntakeHealthSummary } from "@/lib/lead-intake/monitoring";
 import { getEmailIntakeStatus } from "@/lib/lead-intake/email-status";
 import { getEventCompletedNudgeRule } from "@/lib/automation/service";
@@ -50,9 +51,11 @@ export const metadata: Metadata = { title: "Settings" };
  * Route is protected by the (app) layout (venue existence already confirmed).
  */
 export default async function SettingsPage() {
-  const [settings, venue, spaces, capacityRules, luvSettings, notifStats, notifPrefs, tourSettings, intakeHealth, eventCompletedNudgeRule, quickbooksConnection, quickbooksSyncLog, tourAvailabilityWindows, tourAvailabilityExceptions, emailIntakeStatus, facebookConnection, facebookLeadForms, facebookLog, legalHistory] = await Promise.all([
-    getVenueSettings(), getCurrentVenue(), getSpaces(), getCapacityRules(), getLuvSettings(), getNotificationStats(), getNotificationPreferences(), getTourSettings(), getIntakeHealthSummary(), getEventCompletedNudgeRule(), getQuickBooksConnection(), getRecentQuickBooksSyncLog(), getTourAvailabilityWindows(), getTourAvailabilityExceptions(), getEmailIntakeStatus(), getFacebookConnection(), getFacebookLeadForms(), getRecentFacebookLog(), listLegalAcceptancesForCurrentUser(),
+  const [settings, venue, spaces, capacityRules, luvSettings, notifStats, notifPrefs, tourSettings, intakeHealth, eventCompletedNudgeRule, quickbooksConnection, quickbooksSyncLog, tourAvailability, emailIntakeStatus, facebookConnection, facebookLeadForms, facebookLog, legalHistory] = await Promise.all([
+    getVenueSettings(), getCurrentVenue(), getSpaces(), getCapacityRules(), getLuvSettings(), getNotificationStats(), getNotificationPreferences(), getTourSettings(), getIntakeHealthSummary(), getEventCompletedNudgeRule(), getQuickBooksConnection(), getRecentQuickBooksSyncLog(), getTourAvailability(), getEmailIntakeStatus(), getFacebookConnection(), getFacebookLeadForms(), getRecentFacebookLog(), listLegalAcceptancesForCurrentUser(),
   ]);
+  const { windows: tourAvailabilityWindows, exceptions: tourAvailabilityExceptions, loadError: tourAvailabilityLoadError } =
+    editorHydrationFromAvailability(tourAvailability);
 
   if (!settings) {
     return (
@@ -195,6 +198,7 @@ export default async function SettingsPage() {
               initialSettings={tourSettings}
               initialWindows={tourAvailabilityWindows}
               initialExceptions={tourAvailabilityExceptions}
+              loadError={tourAvailabilityLoadError}
             />
           </CardContent>
         </Card>
