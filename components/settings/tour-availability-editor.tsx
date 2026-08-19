@@ -35,9 +35,11 @@ function toEditable(windows: TourAvailabilityWindow[]): EditableWindow[] {
 export function TourAvailabilityEditor({
   initialWindows,
   initialExceptions,
+  onAvailabilityChanged,
 }: {
   initialWindows: TourAvailabilityWindow[];
   initialExceptions: TourAvailabilityException[];
+  onAvailabilityChanged?: () => void;
 }) {
   const [windows, setWindows] = React.useState<EditableWindow[]>(() => toEditable(initialWindows));
   const [savingWindows, startSaveWindows] = React.useTransition();
@@ -81,8 +83,12 @@ export function TourAvailabilityEditor({
       const result = await replaceTourAvailabilityWindowsAction(
         windows.map(({ dayOfWeek, startTime, endTime }) => ({ dayOfWeek, startTime, endTime })),
       );
-      if (result.ok) toast.success("Weekly availability saved.");
-      else toast.error("Could not save weekly availability.");
+      if (result.ok) {
+        toast.success("Weekly availability saved.");
+        onAvailabilityChanged?.();
+      } else {
+        toast.error("Could not save weekly availability.");
+      }
     });
   }
 
@@ -106,6 +112,7 @@ export function TourAvailabilityEditor({
           id: crypto.randomUUID(), startDate: newException.startDate, endDate, label: newException.label.trim() || null,
         }].sort((a, b) => a.startDate.localeCompare(b.startDate)));
         setNewException({ startDate: "", endDate: "", label: "" });
+        onAvailabilityChanged?.();
       } else {
         toast.error("Could not add blocked date.");
       }
@@ -118,6 +125,7 @@ export function TourAvailabilityEditor({
       if (result.ok) {
         toast.success("Blocked date removed.");
         setExceptions((prev) => prev.filter((e) => e.id !== id));
+        onAvailabilityChanged?.();
       } else {
         toast.error("Could not remove blocked date.");
       }

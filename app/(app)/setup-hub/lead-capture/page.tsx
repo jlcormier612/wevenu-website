@@ -53,8 +53,8 @@ export default async function LeadCaptureSetupPage() {
         leadEmailAddress={leadEmailAddress}
         emailIntakeStatus={emailIntakeStatus}
         tourSettings={tourSettings}
-        tourWindowsCount={tourWindows.length}
-        tourExceptionsCount={tourExceptions.length}
+        tourWindows={tourWindows}
+        tourExceptions={tourExceptions}
         facebookConnection={facebookConnection}
         facebookLeadForms={facebookLeadForms}
         facebookLog={facebookLog}

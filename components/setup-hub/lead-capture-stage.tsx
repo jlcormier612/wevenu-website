@@ -20,7 +20,7 @@ import type { IntakeHealthSummary } from "@/lib/lead-intake/monitoring";
 import type { EmailIntakeStatus } from "@/lib/lead-intake/email-status";
 import type { QrCampaign, QrCampaignAnalytics } from "@/lib/qr-campaigns/types";
 import type { LeadCaptureChannelKey, LeadCaptureStageStatus } from "@/lib/setup-hub/types";
-import type { TourSettings } from "@/lib/tours/types";
+import type { TourAvailabilityException, TourAvailabilityWindow, TourSettings } from "@/lib/tours/types";
 
 function ChannelBadge({ configuredAt, verifiedAt, hasVerification }: { configuredAt: string | null; verifiedAt: string | null; hasVerification: boolean }) {
   if (!configuredAt) return <Badge variant="muted">Not yet configured</Badge>;
@@ -81,7 +81,7 @@ function ChannelActions({
 
 export function LeadCaptureStage({
   venueId, embedKey, appUrl, leadEmailAddress, emailIntakeStatus,
-  tourSettings, tourWindowsCount, tourExceptionsCount,
+  tourSettings, tourWindows, tourExceptions,
   facebookConnection, facebookLeadForms, facebookLog,
   qrCampaigns, qrAnalytics, intakeHealth, stageStatus,
 }: {
@@ -91,8 +91,8 @@ export function LeadCaptureStage({
   leadEmailAddress: string | null;
   emailIntakeStatus: EmailIntakeStatus | null;
   tourSettings: TourSettings | null;
-  tourWindowsCount: number;
-  tourExceptionsCount: number;
+  tourWindows: TourAvailabilityWindow[];
+  tourExceptions: TourAvailabilityException[];
   facebookConnection: FacebookConnection | null;
   facebookLeadForms: FacebookLeadForm[];
   facebookLog: FacebookLeadLogEntry[];
@@ -199,8 +199,12 @@ export function LeadCaptureStage({
                 <ChannelBadge configuredAt={tour.configuredAt} verifiedAt={tour.verifiedAt} hasVerification />
               </CardHeader>
               <CardContent className="space-y-4">
-                <TourSettingsSection initialSettings={tourSettings} initialWindows={[]} initialExceptions={[]} />
-                <p className="text-xs text-muted-foreground">{tourWindowsCount} availability window{tourWindowsCount === 1 ? "" : "s"}, {tourExceptionsCount} exception{tourExceptionsCount === 1 ? "" : "s"} — manage full availability from Settings.</p>
+                <TourSettingsSection
+                  initialSettings={tourSettings}
+                  initialWindows={tourWindows}
+                  initialExceptions={tourExceptions}
+                />
+                <p className="text-xs text-muted-foreground">{tourWindows.length} availability window{tourWindows.length === 1 ? "" : "s"}, {tourExceptions.length} exception{tourExceptions.length === 1 ? "" : "s"} — manage full availability from Settings.</p>
                 <ChannelActions channel="tour_booking" configuredAt={tour.configuredAt} verifiedAt={tour.verifiedAt} hasVerification
                   testHref={tourSettings.tourEmbedKey ? `${appUrl}/book/${tourSettings.tourEmbedKey}` : undefined} onChanged={onChanged} />
               </CardContent>
