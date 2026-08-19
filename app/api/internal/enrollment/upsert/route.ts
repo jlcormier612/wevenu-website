@@ -33,6 +33,8 @@ type UpsertBody = {
   stripeSubscriptionId?: string | null;
   venueName?: string;
   ownerEmail?: string;
+  ownerFirstName?: string | null;
+  ownerLastName?: string | null;
   plan?: string | null;
   onboardingType?: string;
   activationToken?: string | null;
@@ -85,6 +87,8 @@ export async function POST(request: Request) {
       stripe_subscription_id: body.stripeSubscriptionId?.trim() || null,
       venue_name: venueName,
       owner_email: ownerEmail,
+      owner_first_name: body.ownerFirstName?.trim() || null,
+      owner_last_name: body.ownerLastName?.trim() || null,
       plan: body.plan?.trim() || null,
       onboarding_type: onboardingType,
     };
