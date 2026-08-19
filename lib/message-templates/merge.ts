@@ -22,6 +22,16 @@ export { mergeContent, extractTokens, type MergeData } from "@/lib/shared-merge/
 export type MergeContext = {
   venueName: string;
   clientName: string;
+  /**
+   * Separate first/last, when the caller has them on hand (clients/leads
+   * already store these as canonical separate columns). Optional so every
+   * existing call site keeps working unchanged — but when present, these
+   * back real {{first_name}}/{{last_name}} tokens. Never derived by
+   * splitting clientName; a caller without real separate data simply
+   * omits these and the tokens stay unresolved rather than guessed.
+   */
+  clientFirstName?: string | null;
+  clientLastName?: string | null;
   coordinatorName: string;
   eventDate: string | null;  // ISO "YYYY-MM-DD"
   /** Work Package D5E — share dialogs; optional on scheduled sends. */
@@ -73,6 +83,12 @@ export function buildMergeData(ctx: MergeContext): MergeData {
     days_until_event:  daysUntil(ctx.eventDate),
   };
 
+  if (ctx.clientFirstName) {
+    data.first_name = ctx.clientFirstName;
+  }
+  if (ctx.clientLastName) {
+    data.last_name = ctx.clientLastName;
+  }
   if (ctx.eventName != null && ctx.eventName !== "") {
     data.event_name = ctx.eventName;
   }

@@ -125,9 +125,14 @@ async function resolveCustomerEmailAndVenue(
           customerEmail = customer.email;
         }
         if (!venueName) {
-          const fromName = customer.name?.trim();
+          // Deliberately does NOT fall back to customer.name (Stripe's
+          // billing "Name" field) — that's the subscriber's own billing
+          // name, not necessarily the venue's, and using it here is
+          // exactly the "derive venue name from a person's name" pattern
+          // this was written to stop. customer.metadata is our own data
+          // (set when the Customer was created), safe to re-read.
           const fromMeta = customer.metadata?.venue_name?.trim();
-          venueName = fromMeta || fromName || "";
+          venueName = fromMeta || "";
         }
       }
     } catch (error) {
@@ -211,6 +216,12 @@ async function handleCheckoutCompleted(
       null,
     meta.venue_name?.trim() || "",
   );
+  // Collected directly at checkout (see marketing/components/marketing/
+  // onboarding-selection.tsx) — never derived from Stripe's billing "Name"
+  // field, which is one combined string and isn't necessarily the
+  // subscriber's own name at all.
+  const ownerFirstName = meta.owner_first_name?.trim() || null;
+  const ownerLastName = meta.owner_last_name?.trim() || null;
 
   const subscriptionId =
     typeof session.subscription === "string"
@@ -245,7 +256,8 @@ async function handleCheckoutCompleted(
       stripeCheckoutSessionId: session.id,
       venueName,
       customerEmail,
-      customerName: session.customer_details?.name?.trim() || null,
+      customerFirstName: ownerFirstName,
+      customerLastName: ownerLastName,
       plan,
       planName: meta.plan_name?.trim() || null,
       foundingMember,

@@ -26,6 +26,9 @@ export type UpsertEnrollmentInput = {
   stripeSubscriptionId?: string | null;
   venueName: string;
   ownerEmail: string;
+  /** Collected at checkout, never derived by splitting a combined name. */
+  ownerFirstName?: string | null;
+  ownerLastName?: string | null;
   plan?: string | null;
   onboardingType: OnboardingType;
   /** Absent for white_glove — matches existing behavior (no activation URL). */

@@ -125,9 +125,21 @@ jobs:
           IMAGE_URI: ${{ steps.ecr-login.outputs.registry }}/${{ matrix.repo_var }}:${{ github.sha }}
         run: |
           ARGS=()
-          while IFS= read -r line; do
-            [ -n "$line" ] && ARGS+=(--build-arg "$line")
+          while IFS= read -r line || [ -n "$line" ]; do
+            if [ -z "$line" ]; then
+              continue
+            fi
+            ARGS+=(--build-arg "$line")
           done <<< "$BUILD_ARGS"
+          # Pass URL/anon key on the argv (same interpolation as the validate
+          # step) so they cannot be dropped if BUILD_ARGS is masked/emptied
+          # when exported as a step env blob. Last --build-arg for a name wins.
+          if [ "${{ matrix.name }}" = "venue-app" ]; then
+            ARGS+=(
+              --build-arg "NEXT_PUBLIC_SUPABASE_URL=${{ vars.NEXT_PUBLIC_SUPABASE_URL }}"
+              --build-arg "NEXT_PUBLIC_SUPABASE_ANON_KEY=${{ vars.NEXT_PUBLIC_SUPABASE_ANON_KEY }}"
+            )
+          fi
           docker build -f "${{ matrix.dockerfile }}" -t "$IMAGE_URI" "${ARGS[@]}" .
 
       - name: Push

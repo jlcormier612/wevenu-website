@@ -35,6 +35,8 @@ export type MergeFieldMeta = {
 export const MESSAGE_MERGE_FIELDS: MergeFieldMeta[] = [
   { key: "venue_name",        label: "Venue Name",         description: "Your venue's name" },
   { key: "client_name",       label: "Client Name",        description: "Full client name (e.g., Emily & James Carter)" },
+  { key: "first_name",        label: "First Name",         description: "The client's first name only (e.g., Emily)" },
+  { key: "last_name",         label: "Last Name",          description: "The client's last name only (e.g., Carter)" },
   { key: "coordinator_name",  label: "Coordinator Name",   description: "The team member sending this message" },
   { key: "event_date",        label: "Event Date",         description: "Formatted event date (e.g., June 12, 2027)" },
   { key: "event_name",        label: "Event Name",         description: "The event's name, when available" },

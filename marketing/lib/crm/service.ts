@@ -17,7 +17,6 @@ import { enqueueProductSync } from "@shared/product-sync";
 import { upsertVenueEnrollment } from "@shared/product-account";
 import {
   DEFAULT_WHITE_GLOVE_TIMELINE_DAYS,
-  splitPersonName,
   whiteGloveTimelineLabel,
 } from "@shared/relationships";
 import { notifySubscriptionEnrollment } from "@/lib/crm/notify";
@@ -64,6 +63,8 @@ export async function createVenueEnrollment(
     stripeCheckoutSessionId: input.stripeCheckoutSessionId ?? null,
     venueName: input.venueName?.trim() || "Unknown venue",
     customerEmail: input.customerEmail?.trim() || null,
+    customerFirstName: input.customerFirstName?.trim() || null,
+    customerLastName: input.customerLastName?.trim() || null,
     plan: input.plan,
     planName: input.planName?.trim() || getPlanDisplayName(input.plan),
     foundingMember: input.foundingMember,
@@ -76,10 +77,10 @@ export async function createVenueEnrollment(
 
   await storeVenueEnrollment(record);
   await notifySubscriptionEnrollment(record);
-  const person = splitPersonName(input.customerName);
+  // Real, separately-collected fields — never a split of a combined string.
   const synced = await syncEnrollmentToRelationship(record, {
-    firstName: person.firstName || null,
-    lastName: person.lastName || null,
+    firstName: record.customerFirstName,
+    lastName: record.customerLastName,
   });
 
   // Order: token minted in enterOnboardingAfterPurchase → real Postgres
@@ -102,6 +103,8 @@ export async function createVenueEnrollment(
       stripeSubscriptionId: record.stripeSubscriptionId,
       venueName: record.venueName,
       ownerEmail: record.customerEmail,
+      ownerFirstName: record.customerFirstName,
+      ownerLastName: record.customerLastName,
       plan: record.plan,
       onboardingType: isLaunchYourself ? "self_setup" : "white_glove",
       activationToken: isLaunchYourself ? synced.activationToken ?? null : null,
@@ -123,8 +126,11 @@ export async function createVenueEnrollment(
         customerEmail: record.customerEmail,
         venueName: synced.venueName || record.venueName,
         planName: record.planName || getPlanDisplayName(record.plan),
-        firstName: person.firstName || synced.firstName || null,
-        fullName: input.customerName?.trim() || null,
+        firstName: record.customerFirstName || synced.firstName || null,
+        fullName:
+          record.customerFirstName && record.customerLastName
+            ? `${record.customerFirstName} ${record.customerLastName}`
+            : null,
         foundingMember: record.foundingMember,
         welcomeBackRequested: record.welcomeBackRequested,
         onboardingType: record.onboardingType,

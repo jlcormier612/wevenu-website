@@ -45,6 +45,9 @@ export async function POST(request: Request) {
       welcome_back_requested?: unknown;
       onboarding_type?: string;
       venue_name?: string;
+      /** Subscriber's own name — collected at checkout, never derived from Stripe's billing name. */
+      first_name?: string;
+      last_name?: string;
       /** Existing Relationship — Path 2 subscription link */
       relationship_id?: string;
       customer_email?: string;
@@ -68,6 +71,8 @@ export async function POST(request: Request) {
     const onboardingType = parseOnboardingType(body.onboarding_type);
     const onboardingPackage = getOnboardingPackage(onboardingType);
     const venueName = body.venue_name?.trim() || "";
+    const firstName = body.first_name?.trim() || "";
+    const lastName = body.last_name?.trim() || "";
     const planName = getPlanDisplayName(plan);
     const relationshipId = body.relationship_id?.trim() || "";
     const customerEmail = body.customer_email?.trim() || "";
@@ -85,6 +90,20 @@ export async function POST(request: Request) {
         {
           error:
             "Please agree to the Terms of Service and Privacy Policy to continue.",
+        },
+        { status: 400 },
+      );
+    }
+
+    // Public Pricing flow must collect the subscriber's own name and the
+    // venue's name directly — never Stripe's billing "Name" field, which is
+    // one combined string and may not even be the venue's name at all (a
+    // person can type anything there). Path 2 (CRM link) already has this
+    // data from the Relationship record, so it isn't blocked here.
+    if (!isPath2 && (!venueName || !firstName || !lastName)) {
+      return NextResponse.json(
+        {
+          error: "Please tell us your venue's name and your name to continue.",
         },
         { status: 400 },
       );
@@ -117,6 +136,12 @@ export async function POST(request: Request) {
     };
     if (venueName) {
       metadata.venue_name = venueName;
+    }
+    if (firstName) {
+      metadata.owner_first_name = firstName;
+    }
+    if (lastName) {
+      metadata.owner_last_name = lastName;
     }
     if (relationshipId) {
       metadata.relationship_id = relationshipId;
