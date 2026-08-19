@@ -81,7 +81,7 @@ function ChannelActions({
 
 export function LeadCaptureStage({
   venueId, embedKey, appUrl, leadEmailAddress, emailIntakeStatus,
-  tourSettings, tourWindows, tourExceptions,
+  tourSettings, tourWindows, tourExceptions, tourAvailabilityLoadError,
   facebookConnection, facebookLeadForms, facebookLog,
   qrCampaigns, qrAnalytics, intakeHealth, stageStatus,
 }: {
@@ -93,6 +93,7 @@ export function LeadCaptureStage({
   tourSettings: TourSettings | null;
   tourWindows: TourAvailabilityWindow[];
   tourExceptions: TourAvailabilityException[];
+  tourAvailabilityLoadError?: string | null;
   facebookConnection: FacebookConnection | null;
   facebookLeadForms: FacebookLeadForm[];
   facebookLog: FacebookLeadLogEntry[];
@@ -203,8 +204,13 @@ export function LeadCaptureStage({
                   initialSettings={tourSettings}
                   initialWindows={tourWindows}
                   initialExceptions={tourExceptions}
+                  loadError={tourAvailabilityLoadError}
                 />
-                <p className="text-xs text-muted-foreground">{tourWindows.length} availability window{tourWindows.length === 1 ? "" : "s"}, {tourExceptions.length} exception{tourExceptions.length === 1 ? "" : "s"} — manage full availability from Settings.</p>
+                <p className="text-xs text-muted-foreground">
+                  {tourAvailabilityLoadError
+                    ? "Tour availability could not be loaded."
+                    : `${tourWindows.length} availability window${tourWindows.length === 1 ? "" : "s"}, ${tourExceptions.length} exception${tourExceptions.length === 1 ? "" : "s"} — manage full availability from Settings.`}
+                </p>
                 <ChannelActions channel="tour_booking" configuredAt={tour.configuredAt} verifiedAt={tour.verifiedAt} hasVerification
                   testHref={tourSettings.tourEmbedKey ? `${appUrl}/book/${tourSettings.tourEmbedKey}` : undefined} onChanged={onChanged} />
               </CardContent>

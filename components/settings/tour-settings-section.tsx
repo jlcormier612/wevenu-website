@@ -69,9 +69,10 @@ type Props = {
   initialSettings: TourSettings;
   initialWindows: TourAvailabilityWindow[];
   initialExceptions: TourAvailabilityException[];
+  loadError?: string | null;
 };
 
-export function TourSettingsSection({ initialSettings, initialWindows, initialExceptions }: Props) {
+export function TourSettingsSection({ initialSettings, initialWindows, initialExceptions, loadError = null }: Props) {
   const router = useRouter();
   const [s, setS] = React.useState(initialSettings);
   const [saving, startSave] = React.useTransition();
@@ -169,6 +170,7 @@ export function TourSettingsSection({ initialSettings, initialWindows, initialEx
           <TourAvailabilityEditor
             initialWindows={initialWindows}
             initialExceptions={initialExceptions}
+            loadError={loadError}
             onAvailabilityChanged={() => setPreviewRefreshKey((n) => n + 1)}
           />
 

@@ -3,6 +3,7 @@ import { createAdminClient } from "@/integrations/supabase/admin";
 import { isSupabaseConfigured } from "@/lib/env";
 import { getCurrentVenue } from "@/lib/venue/service";
 import { getVenueTimezone, utcToVenueLocalParts } from "@/lib/venue/timezone";
+import { parseCoordinatorTourAvailability, type TourAvailabilityLoad } from "@/lib/tours/availability-read";
 import type { BookingResult, CoordinatorTourResult, SimpleTourResult, TourAvailabilityException, TourAvailabilityExceptionInput, TourAvailabilityWindow, TourAvailabilityWindowInput, TourSettings, TourSlot, TourVenueInfo } from "@/lib/tours/types";
 import type { CalendarItem } from "@/lib/calendar/types";
 import { eventTypeLabel, leadDisplayName } from "@/lib/leads/constants";
@@ -271,18 +272,32 @@ export async function updateTourSettings(patch: Partial<Omit<TourSettings, "tour
 }
 
 // ── Weekly availability + exceptions (Tour Scheduling Completion) ------------
+// Authoritative read is get_coordinator_tour_availability (security definer,
+// current_user_venue_id). Table SELECT must never be interpreted as "no hours."
 
-export async function getTourAvailabilityWindows(): Promise<TourAvailabilityWindow[]> {
-  if (!isSupabaseConfigured) return [];
-  const venue = await getCurrentVenue();
-  if (!venue) return [];
+export async function getTourAvailability(): Promise<TourAvailabilityLoad> {
+  if (!isSupabaseConfigured) {
+    console.error("getTourAvailability: backend not configured");
+    return { ok: false, error: "Backend not configured." };
+  }
   const supabase = await createClient();
-  const { data } = await supabase.from("tour_availability_windows")
-    .select("id, day_of_week, start_time, end_time, sort_order")
-    .eq("venue_id", venue.id)
-    .order("day_of_week").order("sort_order").order("start_time");
-  return ((data ?? []) as { id: string; day_of_week: number; start_time: string; end_time: string; sort_order: number }[])
-    .map((r) => ({ id: r.id, dayOfWeek: r.day_of_week, startTime: r.start_time.slice(0, 5), endTime: r.end_time.slice(0, 5), sortOrder: r.sort_order }));
+  const { data, error } = await supabase.rpc("get_coordinator_tour_availability");
+  if (error) {
+    console.error("get_coordinator_tour_availability failed:", error);
+    return { ok: false, error: "Could not load tour availability." };
+  }
+  const parsed = parseCoordinatorTourAvailability(data);
+  if (!parsed.ok) {
+    console.error("get_coordinator_tour_availability returned a failed payload:", parsed.error);
+  }
+  return parsed;
+}
+
+/** @deprecated Prefer getTourAvailability — throws on read failure so callers cannot treat errors as []. */
+export async function getTourAvailabilityWindows(): Promise<TourAvailabilityWindow[]> {
+  const result = await getTourAvailability();
+  if (!result.ok) throw new Error(result.error);
+  return result.windows;
 }
 
 /**
@@ -307,17 +322,11 @@ export async function replaceTourAvailabilityWindows(windows: TourAvailabilityWi
   return { ok: !insertError };
 }
 
+/** @deprecated Prefer getTourAvailability — throws on read failure so callers cannot treat errors as []. */
 export async function getTourAvailabilityExceptions(): Promise<TourAvailabilityException[]> {
-  if (!isSupabaseConfigured) return [];
-  const venue = await getCurrentVenue();
-  if (!venue) return [];
-  const supabase = await createClient();
-  const { data } = await supabase.from("tour_availability_exceptions")
-    .select("id, start_date, end_date, label")
-    .eq("venue_id", venue.id)
-    .order("start_date");
-  return ((data ?? []) as { id: string; start_date: string; end_date: string; label: string | null }[])
-    .map((r) => ({ id: r.id, startDate: r.start_date, endDate: r.end_date, label: r.label }));
+  const result = await getTourAvailability();
+  if (!result.ok) throw new Error(result.error);
+  return result.exceptions;
 }
 
 export async function addTourAvailabilityException(input: TourAvailabilityExceptionInput): Promise<{ ok: boolean }> {

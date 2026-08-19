@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { useSyncedState } from "@/lib/hooks/use-synced-state";
 import { DAYS_OF_WEEK } from "@/lib/venue/constants";
 import type {
   TourAvailabilityException,
@@ -35,16 +36,20 @@ function toEditable(windows: TourAvailabilityWindow[]): EditableWindow[] {
 export function TourAvailabilityEditor({
   initialWindows,
   initialExceptions,
+  loadError = null,
   onAvailabilityChanged,
 }: {
   initialWindows: TourAvailabilityWindow[];
   initialExceptions: TourAvailabilityException[];
+  /** When set, the editor must not present an empty schedule or allow Save. */
+  loadError?: string | null;
   onAvailabilityChanged?: () => void;
 }) {
-  const [windows, setWindows] = React.useState<EditableWindow[]>(() => toEditable(initialWindows));
+  const editableFromServer = React.useMemo(() => toEditable(initialWindows), [initialWindows]);
+  const [windows, setWindows] = useSyncedState(editableFromServer);
   const [savingWindows, startSaveWindows] = React.useTransition();
 
-  const [exceptions, setExceptions] = React.useState<TourAvailabilityException[]>(initialExceptions);
+  const [exceptions, setExceptions] = useSyncedState(initialExceptions);
   const [newException, setNewException] = React.useState({ startDate: "", endDate: "", label: "" });
   const [savingException, startSaveException] = React.useTransition();
 
@@ -73,6 +78,7 @@ export function TourAvailabilityEditor({
   }
 
   function handleSaveWindows() {
+    if (loadError) return;
     for (const w of windows) {
       if (w.endTime <= w.startTime) {
         toast.error("Each window's end time must be after its start time.");
@@ -93,6 +99,7 @@ export function TourAvailabilityEditor({
   }
 
   function handleAddException() {
+    if (loadError) return;
     if (!newException.startDate) {
       toast.error("Choose a start date.");
       return;
@@ -130,6 +137,14 @@ export function TourAvailabilityEditor({
         toast.error("Could not remove blocked date.");
       }
     });
+  }
+
+  if (loadError) {
+    return (
+      <p className="text-sm text-destructive">
+        Could not load tour availability. Refresh the page to try again.
+      </p>
+    );
   }
 
   return (
