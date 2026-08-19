@@ -359,6 +359,8 @@ export async function ingestCheckoutStarted(input: {
 export async function ingestSubscriptionPurchased(input: {
   email?: string | null;
   venueName?: string | null;
+  firstName?: string | null;
+  lastName?: string | null;
   plan?: string | null;
   planName?: string | null;
   foundingMember: boolean;
@@ -443,6 +445,8 @@ export async function ingestSubscriptionPurchased(input: {
       salesStage: "closed_won",
       customerSuccessStage: isWhiteGlove ? "implementation" : "onboarding",
       ownerEmail: input.email,
+      ownerFirstName: input.firstName,
+      ownerLastName: input.lastName,
       venueName: input.venueName,
     },
     event: {

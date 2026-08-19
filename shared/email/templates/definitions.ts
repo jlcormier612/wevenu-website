@@ -11,8 +11,7 @@ import {
 } from "./helpers";
 
 function activateUrlFromVars(vars: Parameters<EmailTemplateDefinition["render"]>[0]): string {
-  const fromVars = String(vars.activateUrl || "").trim();
-  return fromVars || marketingUrl("/product");
+  return String(vars.activateUrl || "").trim();
 }
 
 function launchYourselfBodyParts(input: {
@@ -26,7 +25,7 @@ function launchYourselfBodyParts(input: {
   const beforeActivate = founding
     ? [
         `Hi ${name},`,
-        `Thank you for joining Hello to Cheers as a Founding Member for ${venue}.`,
+        `Thank you for joining Hello to Cheers as a Founding Member. We're so excited to welcome ${venue}.`,
         `Your ${plan} Founding subscription is confirmed — you're ready to set up your workspace.`,
         `Founding Members help shape what we build next, and you'll always have a direct line to us.`,
       ]
@@ -37,9 +36,8 @@ function launchYourselfBodyParts(input: {
       ];
   const afterActivate = [
     `Activate Account: ${activateUrl}`,
-    `What happens next: open the link, create your password, and take your first steps in Hello to Cheers at your own pace.`,
-    `Getting started: ${marketingUrl("/product")}`,
-    `Resources & guides: ${marketingUrl("/resources")}`,
+    `What happens next`,
+    `Activate your account, create your password, and we'll walk you through the important pieces of your venue setup, one step at a time. You can take it at your own pace.`,
     `Questions? Just reply to this email — Jennifer and the team are listening.`,
   ];
   return { beforeActivate, afterActivate };

@@ -19,6 +19,7 @@ export type EnrollmentEmailContext = {
   venueName: string;
   planName: string;
   firstName?: string | null;
+  fullName?: string | null;
   foundingMember: boolean;
   welcomeBackRequested: boolean;
   onboardingType: "self_guided" | "white_glove" | "none" | string;
@@ -31,6 +32,7 @@ export type EnrollmentEmailContext = {
 function baseVars(ctx: EnrollmentEmailContext): EmailTemplateVars {
   return {
     firstName: ctx.firstName?.trim() || null,
+    fullName: ctx.fullName?.trim() || null,
     venueName: ctx.venueName,
     planName: ctx.planName,
     schedulingUrl: ctx.schedulingUrl ?? null,

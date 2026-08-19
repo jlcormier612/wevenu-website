@@ -52,4 +52,9 @@ export type CreateVenueEnrollmentInput = {
   onboardingType: OnboardingType;
   paymentStatus?: VenueEnrollmentRecord["paymentStatus"];
   mrrCents?: number | null;
+  /**
+   * Stripe Checkout billing name (`customer_details.name`). Used to greet the
+   * person in the welcome email. Not stored on the enrollment row.
+   */
+  customerName?: string | null;
 };

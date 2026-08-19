@@ -128,7 +128,13 @@ export async function syncInquiryToRelationship(
 
 export async function syncEnrollmentToRelationship(
   record: VenueEnrollmentRecord,
-): Promise<{ relationshipId: string; activationToken: string | null } | null> {
+  owner?: { firstName?: string | null; lastName?: string | null },
+): Promise<{
+  relationshipId: string;
+  activationToken: string | null;
+  firstName: string;
+  venueName: string;
+} | null> {
   try {
     const mrrCents =
       typeof record.mrrCents === "number" && record.mrrCents > 0
@@ -138,6 +144,8 @@ export async function syncEnrollmentToRelationship(
     const result = await ingestSubscriptionPurchased({
       email: record.customerEmail,
       venueName: record.venueName,
+      firstName: owner?.firstName,
+      lastName: owner?.lastName,
       plan: record.plan,
       planName: record.planName,
       foundingMember: record.foundingMember,
@@ -156,6 +164,8 @@ export async function syncEnrollmentToRelationship(
     return {
       relationshipId: result.relationship.id,
       activationToken: result.relationship.activationToken ?? null,
+      firstName: result.relationship.owner.firstName,
+      venueName: result.relationship.venue.name,
     };
   } catch (error) {
     console.error("[relationships] failed to sync enrollment", record.id, error);

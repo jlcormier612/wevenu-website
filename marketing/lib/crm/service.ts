@@ -17,6 +17,7 @@ import { enqueueProductSync } from "@shared/product-sync";
 import { upsertVenueEnrollment } from "@shared/product-account";
 import {
   DEFAULT_WHITE_GLOVE_TIMELINE_DAYS,
+  splitPersonName,
   whiteGloveTimelineLabel,
 } from "@shared/relationships";
 import { notifySubscriptionEnrollment } from "@/lib/crm/notify";
@@ -75,7 +76,11 @@ export async function createVenueEnrollment(
 
   await storeVenueEnrollment(record);
   await notifySubscriptionEnrollment(record);
-  const synced = await syncEnrollmentToRelationship(record);
+  const person = splitPersonName(input.customerName);
+  const synced = await syncEnrollmentToRelationship(record, {
+    firstName: person.firstName || null,
+    lastName: person.lastName || null,
+  });
 
   // Order: token minted in enterOnboardingAfterPurchase → real Postgres
   // enrollment record (docs/postgres-auth-architecture-findings.md §6) →
@@ -116,8 +121,10 @@ export async function createVenueEnrollment(
       const emailResults = await sendEnrollmentProductEmails({
         relationshipId: synced.relationshipId,
         customerEmail: record.customerEmail,
-        venueName: record.venueName,
+        venueName: synced.venueName || record.venueName,
         planName: record.planName || getPlanDisplayName(record.plan),
+        firstName: person.firstName || synced.firstName || null,
+        fullName: input.customerName?.trim() || null,
         foundingMember: record.foundingMember,
         welcomeBackRequested: record.welcomeBackRequested,
         onboardingType: record.onboardingType,

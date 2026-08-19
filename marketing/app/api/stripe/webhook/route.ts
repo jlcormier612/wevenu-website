@@ -245,6 +245,7 @@ async function handleCheckoutCompleted(
       stripeCheckoutSessionId: session.id,
       venueName,
       customerEmail,
+      customerName: session.customer_details?.name?.trim() || null,
       plan,
       planName: meta.plan_name?.trim() || null,
       foundingMember,
