@@ -198,6 +198,7 @@ export function VenueSettings({
             bucket="uploads"
             path={`${venueId}/logo`}
             label="Logo"
+            objectFit="contain"
             hint="Square or horizontal format. PNG, SVG or JPG, up to 5 MB."
             onUpload={async (url) => {
               set("logoUrl", url);
@@ -229,6 +230,7 @@ export function VenueSettings({
             bucket="uploads"
             path={`${venueId}/hero`}
             label="Wedding home photo"
+            objectFit="cover"
             hint="Wide/landscape format. PNG or JPG, up to 5 MB."
             onUpload={async (url) => {
               set("heroImageUrl", url);

@@ -13,7 +13,7 @@ import * as React from "react";
 import { Image as ImageIcon, Loader2, Trash2, Upload } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { uploadToStorage } from "@/lib/storage/upload";
+import { bustCache, uploadToStorage } from "@/lib/storage/upload";
 import { cn } from "@/lib/utils";
 
 export function ImageUpload({
@@ -27,6 +27,7 @@ export function ImageUpload({
   accept = "image/*",
   maxSizeMB = 5,
   aspectRatio,
+  objectFit = "contain",
   className,
 }: {
   currentUrl: string | null | undefined;
@@ -42,13 +43,26 @@ export function ImageUpload({
   maxSizeMB?: number;
   /** Optional CSS aspect-ratio class applied to the preview container. */
   aspectRatio?: string;
+  /** contain = show the whole image (logos). cover = fill the frame (photos). */
+  objectFit?: "contain" | "cover";
   className?: string;
 }) {
   const inputRef = React.useRef<HTMLInputElement>(null);
+  const blobRef = React.useRef<string | null>(null);
   const [uploading, setUploading] = React.useState(false);
   const [removing, setRemoving] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
-  const [preview, setPreview] = React.useState<string | null>(currentUrl ?? null);
+  const [preview, setPreview] = React.useState<string | null>(() =>
+    currentUrl ? bustCache(currentUrl) : null,
+  );
+
+  React.useEffect(() => {
+    if (blobRef.current) {
+      URL.revokeObjectURL(blobRef.current);
+      blobRef.current = null;
+    }
+    setPreview(currentUrl ? bustCache(currentUrl) : null);
+  }, [currentUrl]);
 
   async function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -61,17 +75,27 @@ export function ImageUpload({
     }
 
     // Optimistic local preview
+    if (blobRef.current) URL.revokeObjectURL(blobRef.current);
     const objectUrl = URL.createObjectURL(file);
+    blobRef.current = objectUrl;
     setPreview(objectUrl);
     setUploading(true);
 
     try {
       const url = await uploadToStorage(bucket, path, file);
       await onUpload(url);
-      setPreview(url);
+      if (blobRef.current) {
+        URL.revokeObjectURL(blobRef.current);
+        blobRef.current = null;
+      }
+      setPreview(bustCache(url));
     } catch (err) {
       setError(err instanceof Error ? err.message : "Upload failed.");
-      setPreview(currentUrl ?? null);
+      if (blobRef.current) {
+        URL.revokeObjectURL(blobRef.current);
+        blobRef.current = null;
+      }
+      setPreview(currentUrl ? bustCache(currentUrl) : null);
     } finally {
       setUploading(false);
       // Reset the input so the same file can be re-selected after an error
@@ -95,16 +119,21 @@ export function ImageUpload({
       {/* Preview */}
       <div
         className={cn(
-          "relative flex items-center justify-center overflow-hidden rounded-sm border border-border bg-muted/40",
+          "relative flex items-center justify-center overflow-hidden rounded-sm border border-border bg-background",
           aspectRatio,
           !aspectRatio && "h-40 w-40",
         )}
       >
         {preview ? (
+          // eslint-disable-next-line @next/next/no-img-element
           <img
             src={preview}
             alt={label}
-            className="h-full w-full object-contain"
+            className={cn(
+              "h-full w-full object-center",
+              objectFit === "cover" ? "object-cover" : "object-contain",
+            )}
+            onError={() => setPreview(null)}
           />
         ) : (
           <ImageIcon className="h-8 w-8 text-muted-foreground" />

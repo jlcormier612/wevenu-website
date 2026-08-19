@@ -46,6 +46,8 @@ export function ReviewReferralNudgeSection({ initialRule }: { initialRule: Autom
   }
 
   const params = initialRule.actionParams as { offsetDays?: number; subject?: string };
+  const offsetDays = Number.isFinite(Number(params.offsetDays)) ? Number(params.offsetDays) : 3;
+  const subject = params.subject ?? "How was your day with us?";
 
   return (
     <div className="space-y-4">
@@ -54,9 +56,7 @@ export function ReviewReferralNudgeSection({ initialRule }: { initialRule: Autom
         <Label className="cursor-pointer">Automatically ask for a review and referral after each event</Label>
       </div>
       <p className="text-xs text-muted-foreground">
-        When an event is marked complete, an email goes out {params.offsetDays ?? 3} days later — subject
-        &ldquo;{params.subject ?? "How was your day with us?"}&rdquo;. It sends once per event, through this couple&apos;s
-        existing Conversation, exactly like any other Scheduled Send.
+        {`When an event is marked complete, an email goes out ${offsetDays} days later — subject “${subject}”. It sends once per event, through this couple's existing Conversation, exactly like any other Scheduled Send.`}
       </p>
     </div>
   );
