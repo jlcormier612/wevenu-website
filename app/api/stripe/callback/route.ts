@@ -16,10 +16,8 @@ import { getCurrentVenue } from "@/lib/venue/service";
  *     /api/stripe/callback?code=xxx&state={venueId}:{returnTo}
  *  4. This route exchanges the code for an account ID and stores it.
  *  5. Redirects back to wherever the connect flow started — /settings, or
- *     plain /setup for onboarding (which naturally resumes at the
- *     "payments" step via the wizard's existing setup_last_step
- *     resumability, the same mechanism the QuickBooks callback already
- *     relies on) — with a success or error param.
+ *     /setup-hub/financials when connecting from Setup Hub Financials — with
+ *     a success or error param.
  *
  * Requires:
  *   STRIPE_SECRET_KEY      — server-only Stripe secret key
@@ -34,8 +32,8 @@ export async function GET(request: NextRequest) {
 
   const [stateVenueId, stateReturnTo] = (state ?? "").split(":");
   const destinationUrl = stateReturnTo === "onboarding"
-    ? new URL("/setup", origin)
-    : new URL("/settings", origin);
+    ? new URL("/setup-hub/financials", origin)
+    : new URL("/settings/integrations", origin);
 
   if (error) {
     destinationUrl.searchParams.set("stripe_error", errorDescription ?? error);

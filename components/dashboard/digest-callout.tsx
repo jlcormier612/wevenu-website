@@ -21,7 +21,7 @@ export function DigestCallout() {
       <p className="flex-1 text-muted-foreground leading-relaxed">
         You&apos;ll get a morning email each day with your priorities.{" "}
         Don&apos;t want it?{" "}
-        <Link href="/settings#notifications" className="font-medium text-foreground underline underline-offset-2">
+        <Link href="/settings/communications#notifications" className="font-medium text-foreground underline underline-offset-2">
           Turn it off in Notification Preferences →
         </Link>
       </p>

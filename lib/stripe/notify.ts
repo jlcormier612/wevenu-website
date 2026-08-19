@@ -103,6 +103,16 @@ export async function postPaymentReceivedReceipt(admin: any, venueId: string, cl
   });
 
   await postSystemMessage(admin, venueId, clientId, body);
+
+  await admin.rpc("create_venue_notification", {
+    p_venue_id: venueId,
+    p_event_id: null,
+    p_type: "payment_received",
+    p_title: "Payment received",
+    p_body: `A payment of ${formatMoney(paidAmount)} was received.`,
+    p_link: "/payments",
+    p_emoji: "💳",
+  });
 }
 
 /** Posted on payment_intent.payment_failed (an ACH debit that failed after initiating). */
@@ -110,4 +120,14 @@ export async function postPaymentReceivedReceipt(admin: any, venueId: string, cl
 export async function postPaymentFailedMessage(admin: any, venueId: string, clientId: string, label: string, reason: string | null): Promise<void> {
   const body = `Payment failed: ${label}${reason ? ` — ${reason}` : ""}. The payment was not collected; you can try again from your payment schedule.`;
   await postSystemMessage(admin, venueId, clientId, body);
+
+  await admin.rpc("create_venue_notification", {
+    p_venue_id: venueId,
+    p_event_id: null,
+    p_type: "payment_failed",
+    p_title: "Payment failed",
+    p_body: `${label}${reason ? ` — ${reason}` : ""}. The payment was not collected.`,
+    p_link: "/payments",
+    p_emoji: "⚠️",
+  });
 }

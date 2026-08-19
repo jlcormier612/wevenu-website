@@ -1,4 +1,5 @@
 import { createClient } from "@/integrations/supabase/server";
+import { cadenceIntervalDays, getReminderCadence } from "@/lib/notifications/obligations";
 import { clampDaysOffset, daysBetween, offsetDate } from "@/lib/playbooks/due-dates";
 import type {
   EventPlaybookApplication,
@@ -488,6 +489,7 @@ async function createRemindersForTask(
   const reminders: Array<{
     venue_id: string; event_task_id: string;
     reminder_type: string; notify_role: string; scheduled_for: string;
+    after_due_recur_interval_days?: number;
   }> = [];
 
   const notifyRole: TaskReminderRole = task.ownerType === "couple" ? "couple"
@@ -531,6 +533,24 @@ async function createRemindersForTask(
       reminder_type: "overdue", notify_role: "coordinator",
       scheduled_for: offsetDatetime(dueMidnight, 3),
     });
+  }
+
+  // Couple-owned tasks also get a recurring "still waiting on you" reminder
+  // once overdue — the coordinator escalation above is a one-time heads-up
+  // to the venue; this is the client-facing chase, on the venue's
+  // configured cadence, continuing until the task is complete (checked at
+  // send time in engine.ts, same as every other task reminder).
+  if (notifyRole === "couple") {
+    const cadence = await getReminderCadence();
+    const interval = cadenceIntervalDays(cadence.taskAfterDueCadence);
+    if (interval) {
+      reminders.push({
+        venue_id: venueId, event_task_id: eventTaskId,
+        reminder_type: "overdue", notify_role: "couple",
+        scheduled_for: offsetDatetime(dueMidnight, 1),
+        after_due_recur_interval_days: interval,
+      });
+    }
   }
 
   if (!reminders.length) return;

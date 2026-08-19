@@ -226,7 +226,7 @@ export function computeTrendObservations(trends: VenueTrends): LuvObservation[] 
     threshold:      20,
     positive: pct => `Tour attendance is up ${pct}% this month — your availability is working.`,
     warning:  pct => `Tour bookings fell ${pct}% this month. Check your available slots.`,
-    link:           "/settings",
+    link:           "/settings/leads",
     warningLabel:   "Tour settings →",
   }));
 
@@ -272,7 +272,7 @@ export function computeTrendObservations(trends: VenueTrends): LuvObservation[] 
       kind:        "inference",
       priority:    "low",
       message:     `${bestTourDay} tours convert at ${bestTourDayRate}% — ${multiplier}× better than your average. Consider prioritizing them.`,
-      link:        "/settings",
+      link:        "/settings/leads",
       actionLabel: "Tour settings →",
     });
   }

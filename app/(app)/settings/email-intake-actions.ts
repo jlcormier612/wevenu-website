@@ -5,6 +5,6 @@ import { connectEmailIntake } from "@/lib/lead-intake/email-status";
 
 export async function connectEmailIntakeAction(): Promise<{ ok: boolean }> {
   const result = await connectEmailIntake();
-  if (result.ok) revalidatePath("/settings");
+  if (result.ok) revalidatePath("/settings/leads");
   return result;
 }

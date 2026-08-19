@@ -22,7 +22,7 @@ export async function GET(request: NextRequest) {
   const error = searchParams.get("error");
   const errorDescription = searchParams.get("error_description");
 
-  const settingsUrl = new URL("/settings", origin);
+  const settingsUrl = new URL("/settings/integrations", origin);
 
   if (error) {
     settingsUrl.searchParams.set("facebook_error", errorDescription ?? error);

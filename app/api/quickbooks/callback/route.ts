@@ -21,10 +21,8 @@ import { QUICKBOOKS_TOKEN_URL } from "@/lib/quickbooks/config";
  *     /api/quickbooks/callback?code=xxx&realmId=yyy&state={venueId}:{returnTo}
  *  4. This route exchanges the code for tokens and stores them.
  *  5. Redirects back to wherever the connect flow started — /settings, or
- *     plain /setup for onboarding, which naturally resumes at the
- *     "payments" step via the wizard's existing setup_last_step
- *     resumability (no ?financial=1 query param anymore — that separate
- *     post-creation screen is gone) — with a success or error param.
+ *     /setup-hub/financials when connecting from Setup Hub Financials — with
+ *     a success or error param.
  *     The `returnTo` half of `state` isn't itself trust-sensitive (it only
  *     picks which page shows the toast), so it's read even before the CSRF
  *     check below can run.
@@ -43,8 +41,8 @@ export async function GET(request: NextRequest) {
 
   const [stateVenueId, stateReturnTo] = (state ?? "").split(":");
   const destinationUrl = stateReturnTo === "onboarding"
-    ? new URL("/setup", origin)
-    : new URL("/settings", origin);
+    ? new URL("/setup-hub/financials", origin)
+    : new URL("/settings/integrations", origin);
 
   if (error) {
     destinationUrl.searchParams.set("quickbooks_error", errorDescription ?? error);

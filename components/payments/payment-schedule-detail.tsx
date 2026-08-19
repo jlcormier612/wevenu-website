@@ -702,7 +702,7 @@ export function PaymentScheduleDetail({ schedule, invoice, currentUserRole }: { 
             <p className="text-xs text-muted-foreground mt-0.5">
               Your clients can pay pending and overdue installments directly from their portal with a card, once
               you&apos;ve connected a Stripe account. Connect or check your status in{" "}
-              <a href="/settings#stripe" className="underline hover:text-foreground">Settings</a>. Payments recorded
+              <a href="/settings/integrations#stripe" className="underline hover:text-foreground">Settings</a>. Payments recorded
               here manually still work exactly as they do today.
             </p>
           </div>

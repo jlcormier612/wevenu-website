@@ -33,12 +33,14 @@ import { getEvent } from "@/lib/events/service";
 import { getCurrentVenue, getCurrentUserRole } from "@/lib/venue/service";
 import { getCurrentStaffMember } from "@/lib/team/service";
 import { sendEmail } from "@/lib/email/send";
+import { createRemindersForContract, getReminderCadence } from "@/lib/notifications/obligations";
 import {
   buildContractInviteSubject,
   buildContractInviteText,
   buildContractInviteHtml,
 } from "@/lib/email/contract-invite";
 import { CONTRACT_SIGNATURE_CONSENT_TEXT, hashContractContent } from "@/lib/contracts/signers";
+import { applyRequiredSignerSignatureBlocks } from "@/lib/contracts/signature-blocks";
 import { captureContractBrandingSnapshot } from "@/lib/contracts/branding";
 import type { ClientSignerSeed } from "@/lib/contracts/repository";
 
@@ -235,7 +237,10 @@ export async function createContract(input: NewContractInput): Promise<CreateCon
     const mergeData = await buildContractMergeData({
       clientId: input.clientId, eventId: input.eventId, contractTitle: input.title,
     });
-    const resolvedContent = mergeContent(input.content, mergeData);
+    const resolvedContent = applyRequiredSignerSignatureBlocks(
+      mergeContent(input.content, mergeData),
+      signerSeeds.seeds.map((s) => s.signerName),
+    );
     // Drafts may still hold venue-policy placeholders (filled before send).
     // Unresolved {{tokens}} must never land in a working contract.
     const leftover = extractTokens(resolvedContent);
@@ -255,6 +260,32 @@ export async function createContract(input: NewContractInput): Promise<CreateCon
     return { ok: true, contractId } as CreateContractResult;
   });
   return result as CreateContractResult;
+}
+
+/** Live preview of merged contract body, including per-signer signature blocks. */
+export async function previewContractContent(opts: {
+  templateContent: string;
+  clientId: string;
+  eventId: string;
+  contractTitle: string;
+  clientSignerContactIds?: string[];
+}): Promise<{ ok: true; content: string } | { ok: false; message: string }> {
+  try {
+    const signerSeeds = await resolveClientSignerSeeds(opts.clientId, opts.clientSignerContactIds);
+    if (!signerSeeds.ok) return { ok: false, message: signerSeeds.message };
+    const mergeData = await buildContractMergeData({
+      clientId: opts.clientId,
+      eventId: opts.eventId,
+      contractTitle: opts.contractTitle,
+    });
+    const content = applyRequiredSignerSignatureBlocks(
+      mergeContent(opts.templateContent, mergeData),
+      signerSeeds.seeds.map((s) => s.signerName),
+    );
+    return { ok: true, content };
+  } catch {
+    return { ok: false, message: "Could not preview contract." };
+  }
 }
 
 /**
@@ -288,7 +319,13 @@ export async function createAmendmentFromContract(sourceContractId: string): Pro
     if (!source.clientId) {
       return { ok: false, message: "This contract has no client — cannot create an amendment." } as CreateContractResult;
     }
-    const seeds = await resolveClientSignerSeeds(source.clientId);
+    const priorContactIds = (source.signers ?? [])
+      .filter((s) => s.signerType === "client" && s.isRequired && s.clientContactId)
+      .map((s) => s.clientContactId as string);
+    const seeds = await resolveClientSignerSeeds(
+      source.clientId,
+      priorContactIds.length > 0 ? priorContactIds : undefined,
+    );
     if (!seeds.ok) return { ok: false, message: seeds.message } as CreateContractResult;
 
     const newContractId = await repo.insertContract(supabase, venueId, {
@@ -516,6 +553,7 @@ async function sendContractInviteEmails(
       const ctx = {
         brand,
         recipientFirstName: firstName,
+        recipientFullName: signer.signerName,
         contractTitle: contract.title,
         signUrl,
         customMessage,
@@ -535,7 +573,14 @@ async function sendContractInviteEmails(
   const client = await getClient(contract.clientId);
   if (!client?.email) return;
   const signUrl = `${baseUrl}/sign/${contract.signToken}`;
-  const ctx = { brand, recipientFirstName: client.firstName, contractTitle: contract.title, signUrl, customMessage };
+  const ctx = {
+    brand,
+    recipientFirstName: client.firstName,
+    recipientFullName: [client.firstName, client.lastName].filter(Boolean).join(" ") || client.firstName,
+    contractTitle: contract.title,
+    signUrl,
+    customMessage,
+  };
   await sendEmail({
     to: client.email,
     subject: buildContractInviteSubject(ctx),
@@ -654,6 +699,9 @@ export async function sendContract(id: string, customMessage?: string): Promise<
 
     const refreshed = await repo.getContract(supabase, venueId, id);
     await sendContractInviteEmails(refreshed ?? contract, customMessage);
+
+    const cadence = await getReminderCadence();
+    await createRemindersForContract(supabase, venueId, id, (refreshed ?? contract).expiresAt, cadence);
 
     return { ok: true } as ContractActionResult;
   });

@@ -10,8 +10,13 @@ import {
 } from "@/lib/tours/service";
 import type { TourAvailabilityExceptionInput, TourAvailabilityWindowInput, TourSettings, TourSlot } from "@/lib/tours/types";
 
+// Shared by both the tour-settings save (now Settings > Leads & Booking)
+// and the three availability-editor actions below (now Settings >
+// Availability & Capacity) — revalidating both routes from one place is
+// simpler and no less correct than splitting this helper in two.
 function revalidateTourAvailabilitySurfaces() {
   revalidatePath("/settings/leads");
+  revalidatePath("/settings/availability");
   revalidatePath("/setup-hub/lead-capture");
   revalidatePath("/setup-hub");
 }

@@ -76,7 +76,7 @@ export function SetupHubOverview({
     {
       key: "your-venue",
       title: "Your Venue",
-      href: "/settings",
+      href: "/settings/business",
       hrefLabel: "Go to Settings",
       status: yourVenueDone ? "complete" : null,
       detail: yourVenueDone ? "You've looked this over." : "Take a look whenever you're ready.",
@@ -91,7 +91,7 @@ export function SetupHubOverview({
     {
       key: "calendar-availability",
       title: "Calendar & Availability",
-      href: "/settings#capacity",
+      href: "/settings/availability",
       hrefLabel: "Go to Settings",
       status: calendarDone ? "complete" : null,
       detail: `${spacesCount} space${spacesCount === 1 ? "" : "s"} added · Scheduling capacity ${hasCapacityRules ? "set" : "using the defaults"} · Online tour booking ${tourSchedulingEnabled ? "on" : "off"}.`,
@@ -236,13 +236,15 @@ export function SetupHubOverview({
                         <ChevronRight className="h-3 w-3" />
                       </Link>
                       {s.action}
-                      <Link
-                        href="/help"
-                        className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground hover:underline"
-                      >
-                        <HelpCircle className="h-3 w-3" />
-                        Learn how
-                      </Link>
+                      {copy?.helpHref && copy.helpTitle && (
+                        <Link
+                          href={copy.helpHref}
+                          className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground hover:underline"
+                        >
+                          <HelpCircle className="h-3 w-3" />
+                          {copy.helpTitle}
+                        </Link>
+                      )}
                     </div>
                   </div>
                 </div>

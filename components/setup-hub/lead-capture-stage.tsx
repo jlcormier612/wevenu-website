@@ -200,17 +200,12 @@ export function LeadCaptureStage({
                 <ChannelBadge configuredAt={tour.configuredAt} verifiedAt={tour.verifiedAt} hasVerification />
               </CardHeader>
               <CardContent className="space-y-4">
-                <TourSettingsSection
-                  initialSettings={tourSettings}
-                  initialWindows={tourWindows}
-                  initialExceptions={tourExceptions}
-                  loadError={tourAvailabilityLoadError}
-                />
-                <p className="text-xs text-muted-foreground">
-                  {tourAvailabilityLoadError
-                    ? "Tour availability could not be loaded."
-                    : `${tourWindows.length} availability window${tourWindows.length === 1 ? "" : "s"}, ${tourExceptions.length} exception${tourExceptions.length === 1 ? "" : "s"} — manage full availability from Settings.`}
-                </p>
+                <TourSettingsSection initialSettings={tourSettings} />
+                {tourAvailabilityLoadError ? (
+                  <p className="text-xs text-destructive">Could not load tour availability. Refresh the page to try again.</p>
+                ) : (
+                  <p className="text-xs text-muted-foreground">{tourWindows.length} availability window{tourWindows.length === 1 ? "" : "s"}, {tourExceptions.length} exception{tourExceptions.length === 1 ? "" : "s"} — manage full availability from Settings.</p>
+                )}
                 <ChannelActions channel="tour_booking" configuredAt={tour.configuredAt} verifiedAt={tour.verifiedAt} hasVerification
                   testHref={tourSettings.tourEmbedKey ? `${appUrl}/book/${tourSettings.tourEmbedKey}` : undefined} onChanged={onChanged} />
               </CardContent>

@@ -2,7 +2,7 @@
 
 import * as React from "react";
 
-import { AlertTriangle, Bell, CheckCircle2, Loader2, Mail, MessageSquare, Smartphone, XCircle } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Loader2, XCircle } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -13,10 +13,6 @@ type NotificationStats = {
   sentLast24h: number;
   failedLast24h: number;
   lastProcessedAt: string | null;
-};
-
-const CHANNEL_ICONS = {
-  email: Mail, sms: Smartphone, in_app: Bell, push: MessageSquare,
 };
 
 function StatCard({ label, count, tone }: { label: string; count: number; tone: "neutral" | "success" | "failed" }) {
@@ -137,29 +133,6 @@ export function NotificationsSection({
             ? <><Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />Sending…</>
             : <><CheckCircle2 className="mr-1.5 h-3.5 w-3.5" />Send Now</>}
         </Button>
-      </div>
-
-      {/* Channel overview */}
-      <div className="space-y-2">
-        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Delivery Channels</p>
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-          {(["email", "sms", "in_app", "push"] as const).map((ch) => {
-            const Icon = CHANNEL_ICONS[ch];
-            const isActive = ch === "email" && emailConfigured;
-            return (
-              <div key={ch} className={`flex items-center gap-2 rounded-lg border px-3 py-2.5 ${isActive ? "border-border bg-card" : "border-border/40 bg-muted/20 opacity-50"}`}>
-                <Icon className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                <div>
-                  <p className="text-xs font-medium text-heading capitalize">{ch.replace("_", "-")}</p>
-                  <p className="text-[10px] text-muted-foreground">{isActive ? "Active" : "Coming soon"}</p>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-        <p className="text-[11px] text-muted-foreground">
-          Email is active today. SMS, in-app, and push notifications are coming soon.
-        </p>
       </div>
     </div>
   );

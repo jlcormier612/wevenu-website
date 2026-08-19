@@ -15,6 +15,13 @@ export async function GET() {
     prefFeedbackReceived?: boolean;
     prefReferralReceived?: boolean;
     prefMessageReceived?: boolean;
+    prefClientSubmittedInfo?: boolean;
+    prefPaymentFailed?: boolean;
+    prefPaymentOverdue?: boolean;
+    prefPaymentReceived?: boolean;
+    prefContractRequiresAttention?: boolean;
+    prefContractSigned?: boolean;
+    prefFinalGuestCountSubmitted?: boolean;
     channelEmail?: boolean;
     channelSms?: boolean;
     channelPush?: boolean;
@@ -27,24 +34,38 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
   const body = await req.json() as {
-    prefNewLead?:          boolean;
-    prefRsvpReceived?:     boolean;
-    prefTaskCompleted?:    boolean;
-    prefVendorCheckedIn?:  boolean;
-    prefFeedbackReceived?: boolean;
-    prefReferralReceived?: boolean;
-    prefMessageReceived?:  boolean;
+    prefNewLead?:                   boolean;
+    prefRsvpReceived?:              boolean;
+    prefTaskCompleted?:             boolean;
+    prefVendorCheckedIn?:           boolean;
+    prefFeedbackReceived?:          boolean;
+    prefReferralReceived?:          boolean;
+    prefMessageReceived?:           boolean;
+    prefClientSubmittedInfo?:       boolean;
+    prefPaymentFailed?:             boolean;
+    prefPaymentOverdue?:            boolean;
+    prefPaymentReceived?:           boolean;
+    prefContractRequiresAttention?: boolean;
+    prefContractSigned?:            boolean;
+    prefFinalGuestCountSubmitted?:  boolean;
   };
 
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("update_notification_preferences", {
-    p_pref_new_lead:          body.prefNewLead          ?? null,
-    p_pref_rsvp_received:     body.prefRsvpReceived     ?? null,
-    p_pref_task_completed:    body.prefTaskCompleted     ?? null,
-    p_pref_vendor_checked_in: body.prefVendorCheckedIn  ?? null,
-    p_pref_feedback_received: body.prefFeedbackReceived ?? null,
-    p_pref_referral_received: body.prefReferralReceived ?? null,
-    p_pref_message_received:  body.prefMessageReceived  ?? null,
+    p_pref_new_lead:                    body.prefNewLead                   ?? null,
+    p_pref_rsvp_received:               body.prefRsvpReceived              ?? null,
+    p_pref_task_completed:              body.prefTaskCompleted             ?? null,
+    p_pref_vendor_checked_in:           body.prefVendorCheckedIn           ?? null,
+    p_pref_feedback_received:           body.prefFeedbackReceived          ?? null,
+    p_pref_referral_received:           body.prefReferralReceived          ?? null,
+    p_pref_message_received:            body.prefMessageReceived           ?? null,
+    p_pref_client_submitted_info:       body.prefClientSubmittedInfo       ?? null,
+    p_pref_payment_failed:              body.prefPaymentFailed             ?? null,
+    p_pref_payment_overdue:             body.prefPaymentOverdue            ?? null,
+    p_pref_payment_received:            body.prefPaymentReceived           ?? null,
+    p_pref_contract_requires_attention: body.prefContractRequiresAttention ?? null,
+    p_pref_contract_signed:             body.prefContractSigned            ?? null,
+    p_pref_final_guest_count_submitted: body.prefFinalGuestCountSubmitted  ?? null,
   });
 
   if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
