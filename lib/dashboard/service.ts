@@ -562,11 +562,15 @@ async function buildGuidedSetupChecklist(venue: Venue, activationScore: Activati
   return {
     // Disappears entirely once every step is done — no lingering graduation
     // card, so the dashboard reclaims that space rather than keeping a
-    // permanent "you're done" card on screen. Also stays hidden for a
-    // Setup-Hub-path venue until it has actually graduated (see the
-    // function's own doc comment) — setupCompleted true means the legacy
-    // wizard path, unaffected by this addition.
-    show: !allComplete && !venue.onboardingDismissed && (venue.setupCompleted || readyToInviteCouples),
+    // permanent "you're done" card on screen. Never shown at all on the
+    // Setup Hub path (setupCompleted false), graduated or not — its own
+    // copy ("You're X% set up," "ready to welcome its next couple," payment/
+    // usage milestones) is exactly the language Setup Hub replaced, and
+    // showing it post-graduation as a "nudge" still surfaces that language
+    // to a customer who should never see it. setupCompleted true is the
+    // legacy wizard path, unaffected by this addition. readyToInviteCouples
+    // is threaded through call sites for that reason alone, not used here.
+    show: !allComplete && !venue.onboardingDismissed && venue.setupCompleted,
     steps,
     completedCount,
     totalSteps: steps.length,
