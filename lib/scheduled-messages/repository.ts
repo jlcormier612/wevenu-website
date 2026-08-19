@@ -173,8 +173,6 @@ export async function getMergeContextForRelationship(
     return {
       venueName: venue?.name ?? "",
       clientName: displayName(client_),
-      clientFirstName: client_.first_name || null,
-      clientLastName: client_.last_name || null,
       coordinatorName,
       eventDate: event?.event_date ?? null,
       eventName: event?.name ?? null,
@@ -193,8 +191,6 @@ export async function getMergeContextForRelationship(
     return {
       venueName: venue?.name ?? "",
       clientName: displayName(lead),
-      clientFirstName: lead.first_name || null,
-      clientLastName: lead.last_name || null,
       coordinatorName,
       eventDate: lead.event_date,
       eventName: null,

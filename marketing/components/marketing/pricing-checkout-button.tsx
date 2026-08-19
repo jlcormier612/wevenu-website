@@ -10,18 +10,11 @@ import type { SubscriptionPlanId } from "@/lib/marketing/pricing-page";
 import { HOVER_FILL, HOVER_LINK, HOVER_OUTLINE } from "@/lib/marketing/rhythm";
 import { cn } from "@/lib/utils";
 
-const FOCUS_RING =
-  "focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[var(--heritage-sage)]";
-
 type PricingCheckoutButtonProps = {
   planId: SubscriptionPlanId;
   label: string;
-  /** primary — selected plan CTA; secondary — unselected outline peers */
+  /** primary — one filled plan CTA; secondary — quiet outline peers */
   variant?: "primary" | "secondary";
-  /** Whether this plan is the current selection. Independent of checkout. */
-  pressed?: boolean;
-  /** Called when the user chooses this plan, before the onboarding step opens. */
-  onSelect?: () => void;
   className?: string;
 };
 
@@ -32,9 +25,7 @@ type PricingCheckoutButtonProps = {
 export function PricingCheckoutButton({
   planId,
   label,
-  variant = "secondary",
-  pressed = false,
-  onSelect,
+  variant = "primary",
   className,
 }: PricingCheckoutButtonProps) {
   const [open, setOpen] = useState(false);
@@ -45,9 +36,6 @@ export function PricingCheckoutButton({
     onboardingType: OnboardingType;
     welcomeBack: boolean;
     legalAccepted: boolean;
-    venueName: string;
-    firstName: string;
-    lastName: string;
   }) {
     setLoading(true);
     setError(null);
@@ -60,9 +48,6 @@ export function PricingCheckoutButton({
           welcome_back: selection.welcomeBack,
           onboarding_type: selection.onboardingType,
           legal_accepted: selection.legalAccepted,
-          venue_name: selection.venueName,
-          first_name: selection.firstName,
-          last_name: selection.lastName,
         }),
       });
       const data = (await res.json()) as { url?: string; error?: string };
@@ -80,20 +65,17 @@ export function PricingCheckoutButton({
     <div>
       <button
         type="button"
-        aria-pressed={pressed}
         onClick={() => {
-          onSelect?.();
           setError(null);
           setOpen(true);
         }}
         disabled={loading}
         className={cn(
           "inline-flex w-full items-center justify-center rounded-full px-6 py-3 text-sm tracking-wide transition duration-200 ease-out disabled:opacity-60",
-          FOCUS_RING,
           variant === "primary" &&
             `bg-[var(--heritage-sage)] text-[var(--true-white)] ${HOVER_FILL}`,
           variant === "secondary" &&
-            `border border-[var(--heritage-sage)]/35 bg-transparent text-[var(--forest-sage)] ${HOVER_OUTLINE} hover:border-[var(--heritage-sage)]/70 hover:text-[var(--forest-sage)]`,
+            `border border-[var(--heritage-sage)]/35 bg-transparent text-[var(--forest-sage)] ${HOVER_OUTLINE}`,
           className,
         )}
       >

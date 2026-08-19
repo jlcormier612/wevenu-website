@@ -23,8 +23,6 @@ export const MERGE_FIELDS: MergeFieldMeta[] = [
   { key: "client_name", label: "Client Name", description: "Couple / client display name" },
   { key: "couple_name", label: "Client Name (alias)", description: "Same as client_name — kept for older templates" },
   { key: "primary_contact_name", label: "Primary Contact", description: "First person's full name" },
-  { key: "first_name", label: "First Name", description: "The primary client's first name only" },
-  { key: "last_name", label: "Last Name", description: "The primary client's last name only" },
   { key: "client_email", label: "Client Email", description: "Email on the client record" },
   { key: "client_phone", label: "Client Phone", description: "Phone on the client record" },
   { key: "event_name", label: "Event Name", description: "Name of the celebration" },

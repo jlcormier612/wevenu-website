@@ -26,9 +26,6 @@ type OnboardingSelectionProps = {
     onboardingType: OnboardingType;
     welcomeBack: boolean;
     legalAccepted: boolean;
-    venueName: string;
-    firstName: string;
-    lastName: string;
   }) => void;
 };
 
@@ -50,9 +47,6 @@ export function OnboardingSelection({
   const [welcomeBack, setWelcomeBack] = useState(false);
   const [legalAccepted, setLegalAccepted] = useState(false);
   const [pendingType, setPendingType] = useState<OnboardingType | null>(null);
-  const [venueName, setVenueName] = useState("");
-  const [firstName, setFirstName] = useState("");
-  const [lastName, setLastName] = useState("");
 
   useEffect(() => {
     if (!open) return;
@@ -60,9 +54,6 @@ export function OnboardingSelection({
     setWelcomeBack(false);
     setLegalAccepted(false);
     setPendingType(null);
-    setVenueName("");
-    setFirstName("");
-    setLastName("");
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     closeRef.current?.focus();
@@ -75,20 +66,11 @@ export function OnboardingSelection({
     if (!loading) setPendingType(null);
   }, [loading]);
 
-  const detailsComplete = Boolean(venueName.trim() && firstName.trim() && lastName.trim());
-
   function continueWith(type: OnboardingType) {
-    if (!legalAccepted || !detailsComplete) return;
+    if (!legalAccepted) return;
     setSelected(type);
     setPendingType(type);
-    onContinue({
-      onboardingType: type,
-      welcomeBack,
-      legalAccepted: true,
-      venueName: venueName.trim(),
-      firstName: firstName.trim(),
-      lastName: lastName.trim(),
-    });
+    onContinue({ onboardingType: type, welcomeBack, legalAccepted: true });
   }
 
   useEffect(() => {
@@ -151,44 +133,6 @@ export function OnboardingSelection({
               ))}
             </div>
 
-            <div className="mt-8 grid gap-4 border-t border-[var(--taupe-medium)]/40 pt-8 sm:grid-cols-2">
-              <label className="block text-sm sm:col-span-2">
-                <span className="text-[var(--forest-sage)]/80">Your venue&apos;s name</span>
-                <input
-                  type="text"
-                  value={venueName}
-                  onChange={(e) => setVenueName(e.target.value)}
-                  disabled={loading}
-                  placeholder="Sally Sunshine Events"
-                  className="mt-1.5 w-full rounded-sm border border-[var(--taupe-medium)] bg-[var(--true-white)] px-3 py-2.5 text-sm text-[var(--forest-sage)] outline-none focus:border-[var(--heritage-sage)]"
-                />
-              </label>
-              <label className="block text-sm">
-                <span className="text-[var(--forest-sage)]/80">Your first name</span>
-                <input
-                  type="text"
-                  value={firstName}
-                  onChange={(e) => setFirstName(e.target.value)}
-                  disabled={loading}
-                  placeholder="Sally"
-                  autoComplete="given-name"
-                  className="mt-1.5 w-full rounded-sm border border-[var(--taupe-medium)] bg-[var(--true-white)] px-3 py-2.5 text-sm text-[var(--forest-sage)] outline-none focus:border-[var(--heritage-sage)]"
-                />
-              </label>
-              <label className="block text-sm">
-                <span className="text-[var(--forest-sage)]/80">Your last name</span>
-                <input
-                  type="text"
-                  value={lastName}
-                  onChange={(e) => setLastName(e.target.value)}
-                  disabled={loading}
-                  placeholder="Sunshine"
-                  autoComplete="family-name"
-                  className="mt-1.5 w-full rounded-sm border border-[var(--taupe-medium)] bg-[var(--true-white)] px-3 py-2.5 text-sm text-[var(--forest-sage)] outline-none focus:border-[var(--heritage-sage)]"
-                />
-              </label>
-            </div>
-
             <div className="mt-8 space-y-3 border-t border-[var(--taupe-medium)]/40 pt-8">
               <p className="text-sm leading-[1.6] text-[var(--forest-sage)]/70">
                 {copy.welcomeBack.prompt}
@@ -243,7 +187,7 @@ export function OnboardingSelection({
             <div className="mt-8 grid gap-4 md:grid-cols-2">
               {ONBOARDING_PACKAGES.map((pkg) => {
                 const isSelected = selected === pkg.id;
-                const continueDisabled = loading || !legalAccepted || !detailsComplete;
+                const continueDisabled = loading || !legalAccepted;
                 return (
                   <article
                     key={pkg.id}
