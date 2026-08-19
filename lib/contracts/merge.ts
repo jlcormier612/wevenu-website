@@ -69,6 +69,10 @@ export function buildMergeData(ctx: MergeContext): MergeData {
     contract_title: ctx.contractTitle,
   };
 
+  setIfPresent(data, "first_name", ctx.clientFirstName);
+  setIfPresent(data, "last_name", ctx.clientLastName);
+  setIfPresent(data, "full_name", primary);
+
   setIfPresent(data, "venue_address", ctx.venueAddress);
   setIfPresent(data, "venue_phone", ctx.venuePhone);
   setIfPresent(data, "venue_email", ctx.venueEmail);
