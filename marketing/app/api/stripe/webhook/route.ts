@@ -125,9 +125,10 @@ async function resolveCustomerEmailAndVenue(
           customerEmail = customer.email;
         }
         if (!venueName) {
-          const fromName = customer.name?.trim();
-          const fromMeta = customer.metadata?.venue_name?.trim();
-          venueName = fromMeta || fromName || "";
+          // Never fall back to Stripe's billing name here — that's the
+          // subscriber's own name, not the venue's. Only an explicit
+          // venue_name in Customer metadata is a legitimate source.
+          venueName = customer.metadata?.venue_name?.trim() || "";
         }
       }
     } catch (error) {
@@ -212,6 +213,9 @@ async function handleCheckoutCompleted(
     meta.venue_name?.trim() || "",
   );
 
+  const ownerFirstName = meta.owner_first_name?.trim() || null;
+  const ownerLastName = meta.owner_last_name?.trim() || null;
+
   const subscriptionId =
     typeof session.subscription === "string"
       ? session.subscription
@@ -245,7 +249,8 @@ async function handleCheckoutCompleted(
       stripeCheckoutSessionId: session.id,
       venueName,
       customerEmail,
-      customerName: session.customer_details?.name?.trim() || null,
+      customerFirstName: ownerFirstName,
+      customerLastName: ownerLastName,
       plan,
       planName: meta.plan_name?.trim() || null,
       foundingMember,

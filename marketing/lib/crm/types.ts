@@ -19,6 +19,9 @@ export type VenueEnrollmentRecord = {
   stripeCheckoutSessionId: string | null;
   venueName: string;
   customerEmail: string | null;
+  /** Subscriber first/last name, collected at checkout — never split from a combined string. */
+  customerFirstName: string | null;
+  customerLastName: string | null;
   /** Plan tier id (starter | growing | professional) */
   plan: SubscriptionPlanId | string;
   /** Display name when known (Gather | Celebrate | Flourish) */
@@ -53,8 +56,10 @@ export type CreateVenueEnrollmentInput = {
   paymentStatus?: VenueEnrollmentRecord["paymentStatus"];
   mrrCents?: number | null;
   /**
-   * Stripe Checkout billing name (`customer_details.name`). Used to greet the
-   * person in the welcome email. Not stored on the enrollment row.
+   * Subscriber first/last name, collected directly at checkout (never split
+   * from Stripe's billing name). Used to greet the person in the welcome
+   * email and stored on the enrollment row.
    */
-  customerName?: string | null;
+  customerFirstName?: string | null;
+  customerLastName?: string | null;
 };

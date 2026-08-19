@@ -18,6 +18,9 @@ type PricingCheckoutButtonProps = {
   className?: string;
 };
 
+const FOCUS_RING =
+  "focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[var(--heritage-sage)]";
+
 /**
  * Pricing card CTA → onboarding selection → single Stripe Checkout Session.
  * Welcome Back checkbox lives on the selection step (never blocks checkout).
@@ -36,6 +39,9 @@ export function PricingCheckoutButton({
     onboardingType: OnboardingType;
     welcomeBack: boolean;
     legalAccepted: boolean;
+    venueName: string;
+    firstName: string;
+    lastName: string;
   }) {
     setLoading(true);
     setError(null);
@@ -48,6 +54,9 @@ export function PricingCheckoutButton({
           welcome_back: selection.welcomeBack,
           onboarding_type: selection.onboardingType,
           legal_accepted: selection.legalAccepted,
+          venue_name: selection.venueName,
+          first_name: selection.firstName,
+          last_name: selection.lastName,
         }),
       });
       const data = (await res.json()) as { url?: string; error?: string };
@@ -72,6 +81,7 @@ export function PricingCheckoutButton({
         disabled={loading}
         className={cn(
           "inline-flex w-full items-center justify-center rounded-full px-6 py-3 text-sm tracking-wide transition duration-200 ease-out disabled:opacity-60",
+          FOCUS_RING,
           variant === "primary" &&
             `bg-[var(--heritage-sage)] text-[var(--true-white)] ${HOVER_FILL}`,
           variant === "secondary" &&

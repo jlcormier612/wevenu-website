@@ -45,6 +45,8 @@ export async function POST(request: Request) {
       welcome_back_requested?: unknown;
       onboarding_type?: string;
       venue_name?: string;
+      first_name?: string;
+      last_name?: string;
       /** Existing Relationship — Path 2 subscription link */
       relationship_id?: string;
       customer_email?: string;
@@ -68,6 +70,8 @@ export async function POST(request: Request) {
     const onboardingType = parseOnboardingType(body.onboarding_type);
     const onboardingPackage = getOnboardingPackage(onboardingType);
     const venueName = body.venue_name?.trim() || "";
+    const ownerFirstName = body.first_name?.trim() || "";
+    const ownerLastName = body.last_name?.trim() || "";
     const planName = getPlanDisplayName(plan);
     const relationshipId = body.relationship_id?.trim() || "";
     const customerEmail = body.customer_email?.trim() || "";
@@ -85,6 +89,19 @@ export async function POST(request: Request) {
         {
           error:
             "Please agree to the Terms of Service and Privacy Policy to continue.",
+        },
+        { status: 400 },
+      );
+    }
+
+    // Public Pricing flow must collect distinct subscriber first/last name and
+    // venue name at checkout — never derived later from Stripe's billing name.
+    // Path 2 (CRM Send Subscription Link) already carries these on the
+    // Relationship and keeps prior behavior.
+    if (!isPath2 && (!venueName || !ownerFirstName || !ownerLastName)) {
+      return NextResponse.json(
+        {
+          error: "Please tell us your venue's name and your name to continue.",
         },
         { status: 400 },
       );
@@ -117,6 +134,12 @@ export async function POST(request: Request) {
     };
     if (venueName) {
       metadata.venue_name = venueName;
+    }
+    if (ownerFirstName) {
+      metadata.owner_first_name = ownerFirstName;
+    }
+    if (ownerLastName) {
+      metadata.owner_last_name = ownerLastName;
     }
     if (relationshipId) {
       metadata.relationship_id = relationshipId;
