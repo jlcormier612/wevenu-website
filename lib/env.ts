@@ -20,14 +20,15 @@ export const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
  * to the login screen. Live credentials are an expected infrastructure
  * dependency, not a product blocker.
  *
- * Uses SUPABASE_URL / SUPABASE_ANON_KEY (non-NEXT_PUBLIC_) as primary signals
- * on the server. Next.js inlines NEXT_PUBLIC_* into the compiled server bundle
- * at build time, so runtime ECS values with that prefix are ignored. The plain
- * vars are always read from the actual process environment at runtime.
+ * Browser bundles can only see NEXT_PUBLIC_* values, and those must appear as
+ * direct `process.env.NEXT_PUBLIC_*` identifiers so Next can inline them at
+ * `next build`. Server code still falls back to SUPABASE_URL / SUPABASE_ANON_KEY
+ * from the ECS runtime, because Next inlines NEXT_PUBLIC_* into the server
+ * bundle at build time and would otherwise ignore later runtime values.
  */
 export const isSupabaseConfigured = Boolean(
-  (process.env.SUPABASE_URL || supabaseUrl) &&
-  (process.env.SUPABASE_ANON_KEY || supabaseAnonKey),
+  (process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL) &&
+    (process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY),
 );
 
 /**
@@ -35,8 +36,10 @@ export const isSupabaseConfigured = Boolean(
  * `isSupabaseConfigured` (or where a missing config is genuinely fatal).
  */
 export function getSupabaseConfig(): { url: string; anonKey: string } {
-  const url = process.env.SUPABASE_URL || supabaseUrl;
-  const anonKey = process.env.SUPABASE_ANON_KEY || supabaseAnonKey;
+  const url =
+    process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL;
+  const anonKey =
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY;
   if (!url || !anonKey) {
     throw new Error(
       "Supabase is not configured. Set NEXT_PUBLIC_SUPABASE_URL and " +

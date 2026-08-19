@@ -41,6 +41,15 @@ ENV NEXT_PUBLIC_SUPABASE_URL=$NEXT_PUBLIC_SUPABASE_URL \
     NEXT_PUBLIC_NOTIFICATIONS_SECRET=$NEXT_PUBLIC_NOTIFICATIONS_SECRET \
     NEXT_PUBLIC_WEVENU_ADMIN=$NEXT_PUBLIC_WEVENU_ADMIN \
     NEXT_TELEMETRY_DISABLED=1
+# Fail the image build rather than shipping a client bundle that inlined "".
+# Also write .env.production so Next/Turbopack inlines NEXT_PUBLIC_* from an
+# env file during `next build` (process.env alone was compiling to empty).
+RUN test -n "$NEXT_PUBLIC_SUPABASE_URL" \
+    && test -n "$NEXT_PUBLIC_SUPABASE_ANON_KEY" \
+    && printf '%s\n' \
+      "NEXT_PUBLIC_SUPABASE_URL=${NEXT_PUBLIC_SUPABASE_URL}" \
+      "NEXT_PUBLIC_SUPABASE_ANON_KEY=${NEXT_PUBLIC_SUPABASE_ANON_KEY}" \
+      > .env.production
 RUN npm run build
 
 FROM node:22-alpine AS runner

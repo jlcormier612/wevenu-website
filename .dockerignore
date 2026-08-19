@@ -14,6 +14,7 @@
 *.tsbuildinfo
 .DS_Store
 **/.DS_Store
+**/.env*
 docs
 STARTER-LIBRARY.md
 supabase/.branches
