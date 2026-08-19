@@ -24,6 +24,7 @@ import { computeSetupGapObservations } from "@/lib/luv/setup-observations";
 import { getDailyBriefing } from "@/lib/luv/briefing-service";
 import { getArticlesForGapKeys } from "@/lib/success-library/service";
 import { getNotificationPreferences } from "@/lib/notifications/preferences";
+import { isVenueReadyToInviteCouples } from "@/lib/setup-hub/service";
 import { refreshAllLeadScores, generateMomentumLanguage, getMomentumTier } from "@/lib/leads/scores";
 import { LEAD_STATUSES } from "@/lib/leads/constants";
 import type { Lead } from "@/lib/leads/types";
@@ -153,7 +154,15 @@ function attentionReason(lead: Lead, today: string): string {
 export async function getDashboardData(): Promise<DashboardData | null> {
   if (!isSupabaseConfigured) return null;
   const venue = await getCurrentVenue();
-  if (!venue?.setupCompleted) return null;
+  if (!venue) return null;
+  // A venue graduates into the normal product either via the legacy wizard
+  // (setupCompleted) or via Setup Hub's readyToInviteCouples (Continuous
+  // Setup Experience, Phase 6) — see app/(app)/layout.tsx's gate for the
+  // full reasoning. Without this second check, a Setup-Hub-graduated venue
+  // would pass the layout gate but still see a blank "Dashboard unavailable"
+  // here, since setup_completed is never set on that path.
+  const readyToInviteCouples = venue.setupCompleted ? false : await isVenueReadyToInviteCouples(venue.id);
+  if (!venue.setupCompleted && !readyToInviteCouples) return null;
   const supabase = await createClient();
 
   const today = new Date().toISOString().slice(0, 10);
@@ -436,7 +445,7 @@ export async function getDashboardData(): Promise<DashboardData | null> {
     venueName: venue.name,
     ownerFirstName,
     todayIso: today,
-    onboarding: await buildGuidedSetupChecklist(venue, activationScore),
+    onboarding: await buildGuidedSetupChecklist(venue, activationScore, readyToInviteCouples),
     briefing,
     needsAttention,
     followupsDue,
@@ -494,8 +503,21 @@ export async function getDashboardData(): Promise<DashboardData | null> {
 // just the feature it's missing — "Luv says 'I'll walk through it with
 // you,' not 'here's an article.'"
 
-/** Presentation layer over the Activation Engine's own checklist — see the note above. No independent computation of "what's done" happens here. */
-async function buildGuidedSetupChecklist(venue: Venue, activationScore: ActivationScore | null): Promise<OnboardingStatus> {
+/**
+ * Presentation layer over the Activation Engine's own checklist — see the
+ * note above. No independent computation of "what's done" happens here.
+ *
+ * Continuous Setup Experience, Phase 6 (docs/continuous-setup-experience-
+ * implementation-plan.md): this card is product-usage/engagement nudging,
+ * not foundational setup — Setup Hub owns setup now. For a venue on the
+ * legacy wizard path (setupCompleted), nothing changes here — this card
+ * has always been their only "getting started" surface. For a venue on the
+ * Setup Hub path, it stays hidden until readyToInviteCouples, so it can
+ * never compete with Setup Hub as "the setup experience" — it only appears
+ * once setup is actually done, as the plan's own "swap what gates the
+ * dashboard's Activation card... to the new readiness field" describes.
+ */
+async function buildGuidedSetupChecklist(venue: Venue, activationScore: ActivationScore | null, readyToInviteCouples: boolean): Promise<OnboardingStatus> {
   const items = activationScore?.checklist ?? [];
 
   // Luv's Success Library §4.2 (2026-07-22) — a published article tagged
@@ -540,8 +562,11 @@ async function buildGuidedSetupChecklist(venue: Venue, activationScore: Activati
   return {
     // Disappears entirely once every step is done — no lingering graduation
     // card, so the dashboard reclaims that space rather than keeping a
-    // permanent "you're done" card on screen.
-    show: !allComplete && !venue.onboardingDismissed,
+    // permanent "you're done" card on screen. Also stays hidden for a
+    // Setup-Hub-path venue until it has actually graduated (see the
+    // function's own doc comment) — setupCompleted true means the legacy
+    // wizard path, unaffected by this addition.
+    show: !allComplete && !venue.onboardingDismissed && (venue.setupCompleted || readyToInviteCouples),
     steps,
     completedCount,
     totalSteps: steps.length,

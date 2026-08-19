@@ -573,6 +573,7 @@ export type SetupReadyCounts = {
   inventory: number;
   contractTemplates: number;
   communicationTemplates: number;
+  questionnaireTemplates: number;
   playbookTemplates: number;
   vendorRelationships: number;
   contacts: number;
@@ -580,7 +581,7 @@ export type SetupReadyCounts = {
 };
 
 const EMPTY_SETUP_READY_COUNTS: SetupReadyCounts = {
-  packages: 0, inventory: 0, contractTemplates: 0, communicationTemplates: 0,
+  packages: 0, inventory: 0, contractTemplates: 0, communicationTemplates: 0, questionnaireTemplates: 0,
   playbookTemplates: 0, vendorRelationships: 0, contacts: 0, upcomingEvents: 0,
 };
 
@@ -595,16 +596,22 @@ const EMPTY_SETUP_READY_COUNTS: SetupReadyCounts = {
  *
  * Platform-seeded starter content (source_master_key IS NOT NULL) is
  * excluded everywhere the column exists (packages, contract_templates,
- * message_templates) — otherwise every venue reads as having already
- * "configured" these domains purely from unconditional starter-seeding at
- * venue creation (seedPackageStarters/seedContractStarters/
+ * message_templates, questionnaire_templates) — otherwise every venue reads
+ * as having already "configured" these domains purely from unconditional
+ * starter-seeding at venue creation (seedPackageStarters/seedContractStarters/
  * seedStarterMessageTemplates, all called from submitVenueSetup), before
  * they've authored anything. Continuous Setup Experience plan §C.
+ * playbook_templates has no starter-seeding path today at all, so any row
+ * there is genuinely venue-authored — no filter needed for it (yet).
  *
- * inventory_items has no source_master_key column at all (only its parent
- * inventory_categories/inventory_templates do), so this count remains
- * unfiltered pending a schema decision (plan §I #4) — a known, documented
- * limitation, not an oversight.
+ * inventory_items itself has no source_master_key column (only its parent
+ * inventory_categories/inventory_templates do) — approximated here via the
+ * category's own source_master_key. A one-off item a venue adds into an
+ * existing starter category (e.g. a custom item under the seeded "Tables"
+ * category) is undercounted by this approximation — a known, documented
+ * limitation (plan §I #4's join-based option), not an oversight. A direct
+ * schema column on inventory_items would resolve it precisely but needs a
+ * migration + backfill; not done here to keep this the smallest correct fix.
  */
 export async function getSetupReadyCounts(venueId: string): Promise<SetupReadyCounts> {
   if (!isSupabaseConfigured) return EMPTY_SETUP_READY_COUNTS;
@@ -612,16 +619,21 @@ export async function getSetupReadyCounts(venueId: string): Promise<SetupReadyCo
   const today = new Date().toISOString().slice(0, 10);
 
   const [
-    packages, inventory, contractTemplates, communicationTemplates, playbookTemplates,
+    packages, inventoryRows, contractTemplates, communicationTemplates, questionnaireTemplates, playbookTemplates,
     vendorRelationships, clients, leads, upcomingEvents,
   ] = await Promise.all([
     supabase.from("packages").select("id", { count: "exact", head: true })
       .eq("venue_id", venueId).eq("is_active", true).is("source_master_key", null),
-    supabase.from("inventory_items").select("id", { count: "exact", head: true })
+    // No source_master_key on inventory_items itself — approximated via the
+    // category's own key (see doc comment above). head:false since the
+    // exclusion has to be computed client-side from the embedded category.
+    supabase.from("inventory_items").select("id, inventory_categories(source_master_key)")
       .eq("venue_id", venueId).eq("is_archived", false),
     supabase.from("contract_templates").select("id", { count: "exact", head: true })
       .eq("venue_id", venueId).eq("is_archived", false).is("source_master_key", null),
     supabase.from("message_templates").select("id", { count: "exact", head: true })
+      .eq("venue_id", venueId).eq("is_archived", false).is("source_master_key", null),
+    supabase.from("questionnaire_templates").select("id", { count: "exact", head: true })
       .eq("venue_id", venueId).eq("is_archived", false).is("source_master_key", null),
     supabase.from("playbook_templates").select("id", { count: "exact", head: true })
       .eq("venue_id", venueId).eq("is_archived", false),
@@ -635,11 +647,18 @@ export async function getSetupReadyCounts(venueId: string): Promise<SetupReadyCo
       .eq("venue_id", venueId).neq("status", "cancelled").gte("event_date", today),
   ]);
 
+  type InventoryRow = { id: string; inventory_categories: { source_master_key: string | null } | null };
+  const inventoryData = (inventoryRows.data ?? []) as unknown as InventoryRow[];
+  const nonStarterInventoryCount = inventoryData.filter(
+    (r) => !r.inventory_categories?.source_master_key,
+  ).length;
+
   return {
     packages: packages.count ?? 0,
-    inventory: inventory.count ?? 0,
+    inventory: nonStarterInventoryCount,
     contractTemplates: contractTemplates.count ?? 0,
     communicationTemplates: communicationTemplates.count ?? 0,
+    questionnaireTemplates: questionnaireTemplates.count ?? 0,
     playbookTemplates: playbookTemplates.count ?? 0,
     vendorRelationships: vendorRelationships.count ?? 0,
     contacts: (clients.count ?? 0) + (leads.count ?? 0),

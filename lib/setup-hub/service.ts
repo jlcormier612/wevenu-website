@@ -122,3 +122,15 @@ export async function setReadyToInviteCouples(ready: boolean): Promise<{ ok: boo
   });
   return { ok: result === true };
 }
+
+/**
+ * Setup Hub -> Dashboard graduation signal. Takes venueId directly (not the
+ * withVenue "current user's venue" pattern) since callers — the app layout
+ * gate and the dashboard's own data guard — already have the venue from
+ * their own getCurrentVenue() call and would otherwise redo it.
+ */
+export async function isVenueReadyToInviteCouples(venueId: string): Promise<boolean> {
+  if (!isSupabaseConfigured) return false;
+  const client = await createClient();
+  return repo.getReadyToInviteCouples(client, venueId);
+}

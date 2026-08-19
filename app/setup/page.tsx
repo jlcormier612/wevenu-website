@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { SetupWizard } from "@/components/setup/setup-wizard";
 import { createClient } from "@/integrations/supabase/server";
 import { isSupabaseConfigured } from "@/lib/env";
+import { isVenueReadyToInviteCouples } from "@/lib/setup-hub/service";
 import { getCurrentVenue, getVenueSettings } from "@/lib/venue/service";
 import { SETUP_STEPS, type SetupStepId } from "@/lib/venue/validation";
 
@@ -42,6 +43,14 @@ export default async function SetupPage() {
   const venue = await getCurrentVenue();
 
   if (venue?.setupCompleted) {
+    redirect("/dashboard");
+  }
+
+  // A venue can also graduate via Setup Hub (readyToInviteCouples) without
+  // this legacy column ever being set — see app/(app)/layout.tsx's own
+  // gate for the full explanation. Direct navigation here shouldn't
+  // resurface the old wizard for an already-graduated venue.
+  if (venue && (await isVenueReadyToInviteCouples(venue.id))) {
     redirect("/dashboard");
   }
 

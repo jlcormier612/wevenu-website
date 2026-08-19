@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { WorkspaceShell } from "@/components/shell/workspace-shell";
 import { createClient } from "@/integrations/supabase/server";
 import { isSupabaseConfigured } from "@/lib/env";
+import { isVenueReadyToInviteCouples } from "@/lib/setup-hub/service";
 import { getVendorUser } from "@/lib/vendor-auth/service";
 import { getCurrentVenue } from "@/lib/venue/service";
 import { recordStaffActivity } from "@/lib/activation/service";
@@ -55,14 +56,25 @@ export default async function WorkspaceLayout({
     redirect("/setup");
   }
   if (!venue.setupCompleted) {
-    const vendorUser = await getVendorUser();
-    if (vendorUser) redirect("/vendor/dashboard");
-    // /setup-hub itself lives inside this same (app) group, so without this
-    // check every request for it would re-enter this branch and redirect
-    // to itself in a loop. Everything else under (app) still bounces to it.
-    const pathname = (await headers()).get("x-pathname") ?? "";
-    if (!pathname.startsWith("/setup-hub")) {
-      redirect("/setup-hub");
+    // Continuous Setup Experience, Phase 6 (docs/continuous-setup-experience-
+    // implementation-plan.md) — the graduation signal. Never venues.setup_
+    // completed itself: that column stays the legacy wizard's alone (see
+    // lib/setup-hub/service.ts's own header comment) — this venue can be
+    // fully graduated via Setup Hub and setup_completed will still read
+    // false forever. readyToInviteCouples is the deliberate, reversible
+    // owner action (§B) that lets a Setup-Hub-only venue reach the rest of
+    // the app without ever touching that column.
+    const ready = await isVenueReadyToInviteCouples(venue.id);
+    if (!ready) {
+      const vendorUser = await getVendorUser();
+      if (vendorUser) redirect("/vendor/dashboard");
+      // /setup-hub itself lives inside this same (app) group, so without this
+      // check every request for it would re-enter this branch and redirect
+      // to itself in a loop. Everything else under (app) still bounces to it.
+      const pathname = (await headers()).get("x-pathname") ?? "";
+      if (!pathname.startsWith("/setup-hub")) {
+        redirect("/setup-hub");
+      }
     }
   }
 

@@ -128,6 +128,20 @@ export async function setReadyToInviteCouples(client: DbClient, venueId: string,
   if (error) throw error;
 }
 
+/**
+ * Plain read, no create-on-missing side effect — used by the Setup Hub ->
+ * Dashboard graduation gate (app/(app)/layout.tsx, lib/dashboard/service.ts),
+ * which runs on every request and must not write a row just because a page
+ * loaded. No row yet means the venue has never declared readiness, which is
+ * correctly "not ready" (default false), not an error.
+ */
+export async function getReadyToInviteCouples(client: DbClient, venueId: string): Promise<boolean> {
+  const { data, error } = await client.from("venue_setup_hub_state")
+    .select("ready_to_invite_couples").eq("venue_id", venueId).maybeSingle<{ ready_to_invite_couples: boolean }>();
+  if (error) throw error;
+  return data?.ready_to_invite_couples === true;
+}
+
 // ---- Lead Capture channels ---------------------------------------------------
 
 export async function getLeadCaptureChannels(client: DbClient, venueId: string): Promise<LeadCaptureChannelState[]> {
