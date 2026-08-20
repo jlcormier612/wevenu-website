@@ -15,7 +15,12 @@ export type SourceKey =
   | "weddingwire"
   | "planning_pod"
   | "honeybook"
-  | "weven_legacy";
+  | "weven_legacy"
+  // Registered in code only for this phase (lib/migration/sources/
+  // tripleseat.ts) — deliberately no source_profiles DB row yet, per this
+  // slice's explicit "no schema changes" boundary. Not yet selectable in
+  // the live product until a later, separate migration adds that row.
+  | "tripleseat";
 
 export type SourceProfile = {
   key: SourceKey;

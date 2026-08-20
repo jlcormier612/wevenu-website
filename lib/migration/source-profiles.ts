@@ -16,6 +16,7 @@ import type { SourceAdapter, SourceKey, SourceProfile } from "@/lib/migration/ty
 import { genericCsvAdapter } from "@/lib/migration/sources/generic-csv";
 import { wevenLegacyAdapter } from "@/lib/migration/sources/weven-legacy";
 import { honeybookAdapter } from "@/lib/migration/sources/honeybook";
+import { tripleseatAdapter } from "@/lib/migration/sources/tripleseat";
 
 const ADAPTERS: Record<SourceKey, SourceAdapter> = {
   generic_csv: genericCsvAdapter,
@@ -33,6 +34,7 @@ const ADAPTERS: Record<SourceKey, SourceAdapter> = {
   // exactly what's verified vs. deliberately not assumed).
   weven_legacy: wevenLegacyAdapter,
   honeybook: honeybookAdapter,
+  tripleseat: tripleseatAdapter,
 };
 
 export function getSourceAdapter(key: SourceKey): SourceAdapter {
