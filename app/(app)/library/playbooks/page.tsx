@@ -12,7 +12,7 @@ export default async function PlaybooksLibraryPage() {
     <div className="space-y-6">
       <PageHeader
         title="Planning Templates"
-        description="The planning checklists you've refined over the years — organized by event type, ready to open and apply to any event."
+        description="Reusable checklists you refine once, then apply to each event. Open a template to see what's inside — applying always creates that event's own editable copy."
       />
       <PlaybooksSection initialTemplates={templates} />
     </div>

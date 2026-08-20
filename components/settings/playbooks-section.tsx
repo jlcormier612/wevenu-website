@@ -82,7 +82,16 @@ function TemplateCard({
       <div className="flex items-start justify-between gap-2">
         <p className="min-w-0 truncate text-sm font-medium text-heading">{template.name}</p>
         {!archivedView && (
-          <div onClick={(e) => e.stopPropagation()} className="shrink-0">
+          <div onClick={(e) => e.stopPropagation()} className="flex shrink-0 items-center gap-1">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="h-7 px-2 text-xs"
+              onClick={() => router.push(`/library/playbooks/${template.id}`)}
+            >
+              Open
+            </Button>
             <DropdownMenu>
               <DropdownMenuTrigger render={<Button variant="ghost" size="icon" className="h-7 w-7" disabled={busy} />}>
                 {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <MoreHorizontal className="h-3.5 w-3.5" />}

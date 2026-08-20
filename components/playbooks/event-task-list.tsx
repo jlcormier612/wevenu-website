@@ -5,13 +5,13 @@ import * as React from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
-  Check, CircleDashed, AlertTriangle, Clock, Minus, Loader2, Plus, ChevronDown, ChevronRight,
+  Check, CircleDashed, AlertTriangle, Clock, Minus, Loader2, ChevronDown, ChevronRight,
   FileText, Link2, MessageSquare, Clock3, X, Mail, ArrowUpRight,
 } from "lucide-react";
 import { toast } from "sonner";
 
 import {
-  addEventTaskContextLinkAction, applyPlaybookAction, completeTaskAction,
+  addEventTaskContextLinkAction, completeTaskAction,
   createRequestForTaskAction,
   releasePlaybookAction,
   removeEventTaskContextLinkAction, setTaskStatusAction, updateEventTaskAssignmentAction,
@@ -19,6 +19,7 @@ import {
   updateEventTaskScheduleAction,
 } from "@/app/(app)/playbooks/actions";
 import { DueDateComposer } from "@/components/playbooks/due-date-composer";
+import { PlaybookApplyPreviewSheet } from "@/components/playbooks/playbook-apply-preview-sheet";
 import { BusinessAssetHeader } from "@/components/business-assets/asset-header";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -35,6 +36,7 @@ import {
   formatScheduledTime, isScheduledActivity, offsetForDirection,
   PLAYBOOK_KINDS, STATUS_CONFIG, taskActionHref, taskActionLabel,
 } from "@/lib/playbooks/constants";
+import { applyPreviewKindCopy } from "@/lib/playbooks/apply-preview";
 import type { DueDateDirection } from "@/lib/playbooks/constants";
 import type {
   EventPlaybookApplication, EventTask, EventTaskContextLink, EventReadiness, PlaybookKind, PlaybookTemplateWithStats, TaskContact,
@@ -647,17 +649,8 @@ export function PlaybookApplyRow({
 }) {
   const meta = PLAYBOOK_KINDS.find((k) => k.value === kind)!;
   const [selectedTemplate, setSelectedTemplate] = React.useState(preselectTemplateId ?? templates[0]?.id ?? "");
-  const [applying, startApply] = React.useTransition();
   const [releasing, startRelease] = React.useTransition();
-
-  async function handleApply() {
-    if (!selectedTemplate) return;
-    startApply(async () => {
-      const result = await applyPlaybookAction(eventId, selectedTemplate, eventDate);
-      if (result.ok) { toast.success(`${meta.label} checklist applied — tasks generated.`); onApplied(); }
-      else toast.error(result.message ?? "Could not apply playbook.");
-    });
-  }
+  const [previewOpen, setPreviewOpen] = React.useState(false);
 
   function handleEditDraft() {
     document.getElementById("planning-task-list")?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -700,11 +693,16 @@ export function PlaybookApplyRow({
           {readiness && (
             <p className="mt-1.5 pl-6 text-[11px] text-muted-foreground">{readiness.completedRequired} of {readiness.totalRequired} tasks</p>
           )}
-          <div className="mt-2 pl-6 flex items-center gap-2">
-            <Button type="button" size="sm" variant="outline" onClick={handleEditDraft} className="h-7 px-2 text-xs">Edit Draft</Button>
+          <div className="mt-2 pl-6 flex flex-wrap items-center gap-2">
+            <Button type="button" size="sm" variant="outline" onClick={handleEditDraft} className="h-7 px-2 text-xs">
+              Edit this event&apos;s checklist
+            </Button>
             <Button type="button" size="sm" onClick={handleRelease} disabled={releasing} className="h-7 px-2 text-xs">
               {releasing ? <Loader2 className="h-3 w-3 animate-spin" /> : `Release to ${clientName ?? "Client"}`}
             </Button>
+            <p className="w-full text-[11px] text-muted-foreground">
+              You&apos;re editing this event&apos;s copy — changes here don&apos;t update the Library template.
+            </p>
           </div>
         </div>
       );
@@ -766,17 +764,20 @@ export function PlaybookApplyRow({
     );
   }
 
-  // Picking between two similarly-named templates ("Standard" vs "Standard —
-  // Copy") with no way to tell them apart was a real gap — counts are the
-  // cheapest possible differentiator, reusing the Library page's own stats
-  // (Planning Release Readiness Fixes, UX Improvements).
+  // Choose → Preview → Apply (2026-08): Apply never runs from this row
+  // alone — Preview opens the sheet so the venue sees milestones/tasks
+  // before committing a copy onto the event.
   const selectedStats = templates.find((t) => t.id === selectedTemplate);
+  const kindCopy = applyPreviewKindCopy(kind);
 
   return (
     <div className="rounded-lg border border-dashed border-border px-3 py-2">
       <div className="flex items-center gap-2">
         <span className="text-sm">{meta.emoji}</span>
-        <p className="text-xs text-muted-foreground flex-1">No {meta.label} checklist applied</p>
+        <div className="min-w-0 flex-1">
+          <p className="text-xs text-muted-foreground">No {kindCopy.label.toLowerCase()} applied</p>
+          <p className="text-[11px] text-muted-foreground/90 line-clamp-2">{kindCopy.explanation}</p>
+        </div>
         <Select value={selectedTemplate} onValueChange={setSelectedTemplate} items={templates.map((t) => ({ value: t.id, label: t.name }))}>
           <SelectTrigger className="h-7 w-40 text-xs shrink-0"><SelectValue /></SelectTrigger>
           <SelectContent>
@@ -787,15 +788,32 @@ export function PlaybookApplyRow({
             ))}
           </SelectContent>
         </Select>
-        <Button type="button" size="sm" onClick={handleApply} disabled={applying} className="h-7 px-2 text-xs shrink-0">
-          {applying ? <Loader2 className="h-3 w-3 animate-spin" /> : <><Plus className="mr-1 h-3 w-3" />Apply</>}
+        <Button
+          type="button"
+          size="sm"
+          onClick={() => setPreviewOpen(true)}
+          disabled={!selectedTemplate}
+          className="h-7 px-2 text-xs shrink-0"
+        >
+          Preview
         </Button>
       </div>
       {selectedStats && (
         <p className="mt-1 pl-6 text-[11px] text-muted-foreground">
-          {selectedStats.milestoneCount} milestone{selectedStats.milestoneCount === 1 ? "" : "s"} · {selectedStats.taskCount} task{selectedStats.taskCount === 1 ? "" : "s"}
+          {selectedStats.milestoneCount} milestone{selectedStats.milestoneCount === 1 ? "" : "s"} · {selectedStats.taskCount} task{selectedStats.taskCount === 1 ? "" : "s"} — preview to see what&apos;s included before applying
         </p>
       )}
+      {selectedTemplate ? (
+        <PlaybookApplyPreviewSheet
+          open={previewOpen}
+          onOpenChange={setPreviewOpen}
+          templateId={selectedTemplate}
+          kind={kind}
+          eventId={eventId}
+          eventDate={eventDate}
+          onApplied={onApplied}
+        />
+      ) : null}
     </div>
   );
 }

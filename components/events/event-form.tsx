@@ -8,6 +8,8 @@ import { toast } from "sonner";
 
 import { createEventAction } from "@/app/(app)/events/actions";
 import { applyPlaybookAction } from "@/app/(app)/playbooks/actions";
+import { PlaybookApplyPreviewSheet } from "@/components/playbooks/playbook-apply-preview-sheet";
+import { applyPreviewKindCopy } from "@/lib/playbooks/apply-preview";
 import { PLAYBOOK_KINDS } from "@/lib/playbooks/constants";
 import type { PlaybookKind, PlaybookTemplateWithStats } from "@/lib/playbooks/types";
 import { ConflictWarning } from "@/components/availability/conflict-warning";
@@ -160,6 +162,7 @@ export function EventForm({
   // 2026-07-08). Each starts unselected; there's no meaningful "default"
   // playbook to preselect when multiple exist per kind.
   const [selected, setSelected] = React.useState<Record<PlaybookKind, string>>({ client: "", venue: "" });
+  const [previewKind, setPreviewKind] = React.useState<PlaybookKind | null>(null);
 
   const set = <K extends keyof EventInput>(key: K, v: EventInput[K]) => {
     setInput((p) => ({ ...p, [key]: v }));
@@ -194,43 +197,70 @@ export function EventForm({
   }
 
   const templatesByKind = (kind: PlaybookKind) => playbookTemplates.filter((t) => t.kind === kind);
+  const previewTemplateId = previewKind ? selected[previewKind] : "";
 
   return (
     <div className="space-y-6">
       <EventFormFields input={input} errors={errors} set={set} onSubmit={handleSubmit} pending={pending} spaces={spaces} />
-      {/* Template application — shown after core fields; Client Planning and Venue Planning are separate systems, applied independently */}
       {playbookTemplates.length > 0 && (
         <div className="rounded-sm border border-border bg-muted/30 p-4 space-y-3">
-          <p className="text-sm font-medium text-heading">Apply planning checklists</p>
+          <p className="text-sm font-medium text-heading">Starting checklists (optional)</p>
           <p className="text-xs text-muted-foreground -mt-2">
-            Tasks and reminders are generated automatically from the event date. Both are optional and independent.
+            Preview what&apos;s included before you create the event. Applying creates this event&apos;s own copy — later Library edits won&apos;t change it.
           </p>
           {PLAYBOOK_KINDS.map((k) => {
             const options = templatesByKind(k.value);
             if (options.length === 0) return null;
+            const kindCopy = applyPreviewKindCopy(k.value);
             return (
-              <div key={k.value} className="flex items-center justify-between gap-4">
-                <p className="text-xs text-muted-foreground">{k.emoji} {k.label}</p>
-                <Select
-                  value={selected[k.value]}
-                  onValueChange={(v) => setSelected((p) => ({ ...p, [k.value]: v }))}
-                  items={[{ value: "", label: `No ${k.label} checklist` }, ...options.map((t) => ({ value: t.id, label: t.name }))]}
-                >
-                  <SelectTrigger className="h-8 w-52 text-sm shrink-0">
-                    <SelectValue placeholder={`Select ${k.label}…`} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="">{`No ${k.label} checklist`}</SelectItem>
-                    {options.map((t) => (
-                      <SelectItem key={t.id} value={t.id}>
-                        {t.name} <span className="text-muted-foreground">— {t.milestoneCount} milestone{t.milestoneCount === 1 ? "" : "s"}, {t.taskCount} task{t.taskCount === 1 ? "" : "s"}</span>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+              <div key={k.value} className="space-y-1.5">
+                <div className="flex items-center justify-between gap-4">
+                  <div className="min-w-0">
+                    <p className="text-xs font-medium text-heading">{k.emoji} {kindCopy.label}</p>
+                    <p className="text-[11px] text-muted-foreground line-clamp-2">{kindCopy.explanation}</p>
+                  </div>
+                  <div className="flex shrink-0 items-center gap-2">
+                    <Select
+                      value={selected[k.value]}
+                      onValueChange={(v) => setSelected((p) => ({ ...p, [k.value]: v }))}
+                      items={[{ value: "", label: `No ${kindCopy.label}` }, ...options.map((t) => ({ value: t.id, label: t.name }))]}
+                    >
+                      <SelectTrigger className="h-8 w-44 text-sm">
+                        <SelectValue placeholder={`Select…`} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="">{`No ${kindCopy.label}`}</SelectItem>
+                        {options.map((t) => (
+                          <SelectItem key={t.id} value={t.id}>
+                            {t.name} <span className="text-muted-foreground">— {t.taskCount} tasks</span>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="h-8"
+                      disabled={!selected[k.value]}
+                      onClick={() => setPreviewKind(k.value)}
+                    >
+                      Preview
+                    </Button>
+                  </div>
+                </div>
               </div>
             );
           })}
+          {previewKind && previewTemplateId ? (
+            <PlaybookApplyPreviewSheet
+              open
+              onOpenChange={(v) => { if (!v) setPreviewKind(null); }}
+              templateId={previewTemplateId}
+              kind={previewKind}
+              canApply={false}
+            />
+          ) : null}
         </div>
       )}
     </div>

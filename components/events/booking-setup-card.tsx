@@ -41,7 +41,9 @@ export function BookingSetupCard({
     <Card className="border-primary/30 bg-primary/5">
       <CardHeader>
         <CardTitle className="text-base">Set up this booking</CardTitle>
-        <CardDescription>Apply your starting checklists — everything stays fully editable after.</CardDescription>
+        <CardDescription>
+          Choose a Client and/or Venue checklist, preview what&apos;s included, then apply — everything stays editable for this event afterward.
+        </CardDescription>
       </CardHeader>
       <CardContent className="space-y-2">
         {PLAYBOOK_KINDS.map((k) => {
