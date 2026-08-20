@@ -61,7 +61,11 @@ describe("source-profiles registry — Weven wired in, not silently falling back
   });
 
   it("sources with no adapter yet still correctly fall back to generic", () => {
+    // honeybook is deliberately not asserted here anymore — it has its own
+    // real adapter now (lib/migration/sources/honeybook.ts, honeybook.test.ts
+    // covers its registration). Kept to the sources genuinely still unbuilt.
     assert.equal(getSourceAdapter("planning_pod"), genericCsvAdapter);
-    assert.equal(getSourceAdapter("honeybook"), genericCsvAdapter);
+    assert.equal(getSourceAdapter("the_knot"), genericCsvAdapter);
+    assert.equal(getSourceAdapter("weddingwire"), genericCsvAdapter);
   });
 });

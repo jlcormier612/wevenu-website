@@ -51,10 +51,19 @@ const ENTITY_LABEL: Record<MigrationEntityType, string> = {
 };
 const COMMITTABLE_ENTITIES: MigrationEntityType[] = ["client", "lead", "vendor"];
 
+// "name" (a single combined-name column) is a separate, optional slot from
+// firstName/lastName — some sources (verified for HoneyBook's contacts
+// export) only have one name column, not two. Mapping a column here lets
+// a source adapter with real split logic (see lib/migration/sources/
+// honeybook.ts) do a best-effort split; a source with no such logic
+// simply reuses genericCsvAdapter's own "missing a first and last name"
+// rejection, exactly as before this slot existed. Source-agnostic by
+// design — any future adapter can read row.name the same way.
 const FIELD_KEYS_BY_ENTITY: Record<MigrationEntityType, { key: string; label: string; required: boolean }[]> = {
   client: [
     { key: "firstName", label: "First name", required: true },
     { key: "lastName", label: "Last name", required: true },
+    { key: "name", label: "Full name (only if your file has ONE combined name column instead of separate first/last)", required: false },
     { key: "partnerFirstName", label: "Partner first name", required: false },
     { key: "partnerLastName", label: "Partner last name", required: false },
     { key: "email", label: "Email", required: false },
@@ -68,6 +77,7 @@ const FIELD_KEYS_BY_ENTITY: Record<MigrationEntityType, { key: string; label: st
   lead: [
     { key: "firstName", label: "First name", required: true },
     { key: "lastName", label: "Last name", required: true },
+    { key: "name", label: "Full name (only if your file has ONE combined name column instead of separate first/last)", required: false },
     { key: "email", label: "Email", required: false },
     { key: "phone", label: "Phone", required: false },
     { key: "eventDate", label: "Event date (YYYY-MM-DD)", required: false },
