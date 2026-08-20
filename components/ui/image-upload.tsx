@@ -27,6 +27,8 @@ export function ImageUpload({
   accept = "image/*",
   maxSizeMB = 5,
   aspectRatio,
+  /** How the preview fills its frame. Prefer `cover` for photos meant to fill a hero/card. */
+  objectFit = "contain",
   className,
 }: {
   currentUrl: string | null | undefined;
@@ -42,6 +44,7 @@ export function ImageUpload({
   maxSizeMB?: number;
   /** Optional CSS aspect-ratio class applied to the preview container. */
   aspectRatio?: string;
+  objectFit?: "contain" | "cover";
   className?: string;
 }) {
   const inputRef = React.useRef<HTMLInputElement>(null);
@@ -49,6 +52,10 @@ export function ImageUpload({
   const [removing, setRemoving] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const [preview, setPreview] = React.useState<string | null>(currentUrl ?? null);
+
+  React.useEffect(() => {
+    setPreview(currentUrl ?? null);
+  }, [currentUrl]);
 
   async function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -104,7 +111,10 @@ export function ImageUpload({
           <img
             src={preview}
             alt={label}
-            className="h-full w-full object-contain"
+            className={cn(
+              "h-full w-full",
+              objectFit === "cover" ? "object-cover" : "object-contain",
+            )}
           />
         ) : (
           <ImageIcon className="h-8 w-8 text-muted-foreground" />

@@ -33,7 +33,10 @@ export async function uploadToStorage(
   if (error) throw new Error(error.message);
 
   const { data } = supabase.storage.from(bucket).getPublicUrl(fullPath);
-  return data.publicUrl;
+  // Upsert keeps the same public path — without a cache-buster, couple portal /
+  // sidebar keep showing the previous image until a hard refresh (or forever
+  // behind a CDN). Persist a unique query so consumers re-fetch.
+  return bustCache(data.publicUrl);
 }
 
 /** Remove a file from storage. Tries common image extensions. */
