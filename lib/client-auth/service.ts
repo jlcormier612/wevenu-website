@@ -9,11 +9,12 @@
  *     client_user_id = auth.uid()): accept an invitation, sign in, manage
  *     their own password/sessions, and grant/revoke temporary support access.
  */
-import { createClient } from "@/integrations/supabase/server";
+import { createClient, createClientPortalAuthClient } from "@/integrations/supabase/server";
 import { createAdminClient } from "@/integrations/supabase/admin";
 import { isSupabaseConfigured } from "@/lib/env";
 import { getCurrentVenue } from "@/lib/venue/service";
 import { sendEmail } from "@/lib/email/send";
+import { resolveInvitationAccountEmail } from "@/lib/client-auth/resolve-invitation-email";
 import type {
   ClientInvitation, ClientAuthResult, AcceptClientInvitationResult,
   AuthSessionInfo, SupportAccessGrant,
@@ -66,26 +67,38 @@ async function sendClientInviteEmail(
     text: [
       `Hi ${coupleName},`,
       "",
-      `${venueName} has invited you to create your own account for your wedding planning workspace.`,
+      `${venueName} invited you to join your private planning space on Hello to Cheers.`,
       "",
-      "By accepting this invitation, you will be asked to review and accept the applicable Hello to Cheers Terms and Privacy Policy before accessing your workspace.",
+      "Hello to Cheers is where you'll keep the important details of your celebration together — planning tasks, venue information, and the things your team shares with you along the way.",
       "",
-      "Create your account here:",
+      "Create your account to get started:",
       acceptUrl,
+      "",
+      "By accepting, you'll be asked to review the Hello to Cheers Terms and Privacy Policy before entering your workspace.",
       "",
       "This link is personal to you — please don't share it.",
       "",
       venueName,
     ].join("\n"),
     html: [
-      `<p>Hi ${coupleName},</p>`,
-      `<p>${venueName} has invited you to create your own account for your wedding planning workspace.</p>`,
-      `<p>By accepting this invitation, you will be asked to review and accept the applicable Hello to Cheers Terms and Privacy Policy before accessing your workspace.</p>`,
+      `<p>Hi ${escapeHtml(coupleName)},</p>`,
+      `<p><strong>${escapeHtml(venueName)}</strong> invited you to join your private planning space on Hello to Cheers.</p>`,
+      `<p>Hello to Cheers is where you'll keep the important details of your celebration together — planning tasks, venue information, and the things your team shares with you along the way.</p>`,
+      `<p>Create your account to get started.</p>`,
       `<p><a href="${acceptUrl}" style="background:${primaryColor};color:#fff;padding:10px 20px;border-radius:8px;text-decoration:none;display:inline-block;">Create Your Account</a></p>`,
+      `<p style="color:#888;font-size:12px;">By accepting, you'll be asked to review the Hello to Cheers Terms and Privacy Policy before entering your workspace.</p>`,
       `<p style="color:#888;font-size:12px;">This link is personal to you — please don't share it.</p>`,
-      `<p style="color:#888;font-size:12px;">${venueName}</p>`,
+      `<p style="color:#888;font-size:12px;">${escapeHtml(venueName)}</p>`,
     ].join(""),
   });
+}
+
+function escapeHtml(s: string): string {
+  return s
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
 }
 
 export async function inviteClient(
@@ -208,7 +221,18 @@ async function createAndSignInAccount(email: string, password: string): Promise<
     return { ok: false, error: createErr.message };
   }
 
-  const supabase = await createClient();
+  // Client auth cookies only — never replace a venue or vendor session.
+  const supabase = await createClientPortalAuthClient();
+  const {
+    data: { user: existing },
+  } = await supabase.auth.getUser();
+  if (
+    existing?.email &&
+    existing.email.trim().toLowerCase() !== email.trim().toLowerCase()
+  ) {
+    await supabase.auth.signOut();
+  }
+
   const { error: signInErr } = await supabase.auth.signInWithPassword({ email, password });
   if (signInErr) {
     return {
@@ -221,39 +245,98 @@ async function createAndSignInAccount(email: string, password: string): Promise<
   return { ok: true };
 }
 
+function accessTokenFromAcceptRpc(data: unknown): string | null {
+  if (!data || typeof data !== "object") return null;
+  const row = data as Record<string, unknown>;
+  const token = row.accessToken ?? row.access_token;
+  return typeof token === "string" && token.trim() ? token.trim() : null;
+}
+
+function clientIdFromAcceptRpc(data: unknown): string | null {
+  if (!data || typeof data !== "object") return null;
+  const row = data as Record<string, unknown>;
+  const id = row.clientId ?? row.client_id;
+  return typeof id === "string" && id.trim() ? id.trim() : null;
+}
+
 export async function acceptClientInvitation(
   token: string, email: string, password: string,
 ): Promise<AcceptClientInvitationResult> {
   if (!isSupabaseConfigured) return { ok: false, error: "Backend not configured." };
-  const signIn = await createAndSignInAccount(email, password);
+
+  // Invitation email is authoritative. A disabled <input> does not submit,
+  // which previously left `email` empty and failed auth createUser with
+  // "Cannot create a user without either an email or phone".
+  const invitation = await peekClientInvitation(token);
+  if (!invitation || invitation.status !== "pending" || invitation.expired) {
+    return { ok: false, error: "Invalid or expired invitation." };
+  }
+  const resolved = resolveInvitationAccountEmail({
+    invitationEmail: invitation.email,
+    submittedEmail: email,
+  });
+  if (!resolved.ok) return { ok: false, error: resolved.error };
+
+  const signIn = await createAndSignInAccount(resolved.email, password);
   if (!signIn.ok) return { ok: false, error: signIn.error };
 
-  const supabase = await createClient();
+  const supabase = await createClientPortalAuthClient();
   const { data, error } = await supabase.rpc("accept_client_invitation", { p_token: token });
   if (error) return { ok: false, error: error.message };
-  if (!data?.ok) return { ok: false, error: data?.error ?? "Invalid or expired invitation." };
-  return { ok: true, clientId: data.clientId, accessToken: data.accessToken };
+  if (!data || (data as { ok?: boolean }).ok === false) {
+    return {
+      ok: false,
+      error: (data as { error?: string } | null)?.error ?? "Invalid or expired invitation.",
+    };
+  }
+  const accessToken = accessTokenFromAcceptRpc(data);
+  const clientId = clientIdFromAcceptRpc(data);
+  if (!accessToken || !clientId) {
+    return { ok: false, error: "Invitation accepted, but the planning workspace link was missing. Try signing in." };
+  }
+  return { ok: true, clientId, accessToken };
 }
 
 export async function acceptParticipantInvitation(
   token: string, email: string, password: string,
 ): Promise<AcceptClientInvitationResult> {
   if (!isSupabaseConfigured) return { ok: false, error: "Backend not configured." };
-  const signIn = await createAndSignInAccount(email, password);
+
+  const invitation = await peekParticipantInvitation(token);
+  if (!invitation || invitation.inviteStatus !== "pending") {
+    return { ok: false, error: "Invalid or expired invitation." };
+  }
+  const resolved = resolveInvitationAccountEmail({
+    invitationEmail: invitation.email,
+    submittedEmail: email,
+  });
+  if (!resolved.ok) return { ok: false, error: resolved.error };
+
+  const signIn = await createAndSignInAccount(resolved.email, password);
   if (!signIn.ok) return { ok: false, error: signIn.error };
 
-  const supabase = await createClient();
+  const supabase = await createClientPortalAuthClient();
   const { data, error } = await supabase.rpc("accept_couple_participant_invitation", { p_token: token });
   if (error) return { ok: false, error: error.message };
-  if (!data?.ok) return { ok: false, error: data?.error ?? "Invalid or expired invitation." };
-  return { ok: true, clientId: data.clientId, accessToken: data.accessToken };
+  if (!data || (data as { ok?: boolean }).ok === false) {
+    return {
+      ok: false,
+      error: (data as { error?: string } | null)?.error ?? "Invalid or expired invitation.",
+    };
+  }
+  const accessToken = accessTokenFromAcceptRpc(data);
+  const clientId = clientIdFromAcceptRpc(data);
+  if (!accessToken || !clientId) {
+    return { ok: false, error: "Invitation accepted, but the planning workspace link was missing. Try signing in." };
+  }
+  return { ok: true, clientId, accessToken };
 }
 
 // ── Client-side: sign in, own account management ────────────────────────────
 
 export async function signInClient(email: string, password: string): Promise<ClientAuthResult> {
   if (!isSupabaseConfigured) return { ok: false, error: "Backend not configured." };
-  const supabase = await createClient();
+  const supabase = await createClientPortalAuthClient();
   const { error } = await supabase.auth.signInWithPassword({ email, password });
   if (error) return { ok: false, error: error.message };
   return { ok: true };
@@ -262,7 +345,7 @@ export async function signInClient(email: string, password: string): Promise<Cli
 /** The portal URL for whichever account (primary client or delegate) is signed in. */
 export async function getMyPortalUrl(): Promise<string | null> {
   if (!isSupabaseConfigured) return null;
-  const supabase = await createClient();
+  const supabase = await createClientPortalAuthClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return null;
   const { data } = await supabase.from("client_portal_sessions").select("access_token")
@@ -273,7 +356,7 @@ export async function getMyPortalUrl(): Promise<string | null> {
 
 export async function changeMyPassword(newPassword: string): Promise<ClientAuthResult> {
   if (!isSupabaseConfigured) return { ok: false, error: "Backend not configured." };
-  const supabase = await createClient();
+  const supabase = await createClientPortalAuthClient();
   const { error } = await supabase.auth.updateUser({ password: newPassword });
   if (error) return { ok: false, error: error.message };
   return { ok: true };
@@ -281,7 +364,7 @@ export async function changeMyPassword(newPassword: string): Promise<ClientAuthR
 
 export async function getMyAuthSessions(): Promise<AuthSessionInfo[]> {
   if (!isSupabaseConfigured) return [];
-  const supabase = await createClient();
+  const supabase = await createClientPortalAuthClient();
   const { data, error } = await supabase.rpc("get_my_auth_sessions");
   if (error) return [];
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -293,7 +376,7 @@ export async function getMyAuthSessions(): Promise<AuthSessionInfo[]> {
 
 export async function revokeMyAuthSession(sessionId: string): Promise<ClientAuthResult> {
   if (!isSupabaseConfigured) return { ok: false, error: "Backend not configured." };
-  const supabase = await createClient();
+  const supabase = await createClientPortalAuthClient();
   const { data, error } = await supabase.rpc("revoke_my_auth_session", { p_session_id: sessionId });
   if (error) return { ok: false, error: error.message };
   if (!data?.ok) return { ok: false, error: data?.error ?? "Could not revoke session." };
@@ -304,7 +387,7 @@ export async function revokeMyAuthSession(sessionId: string): Promise<ClientAuth
 
 export async function getMySupportGrants(): Promise<SupportAccessGrant[]> {
   if (!isSupabaseConfigured) return [];
-  const supabase = await createClient();
+  const supabase = await createClientPortalAuthClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return [];
   const { data } = await supabase.from("client_support_access_grants").select("*")
@@ -316,7 +399,7 @@ export async function grantSupportAccess(
   hours: number, label?: string,
 ): Promise<ClientAuthResult> {
   if (!isSupabaseConfigured) return { ok: false, error: "Backend not configured." };
-  const supabase = await createClient();
+  const supabase = await createClientPortalAuthClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { ok: false, error: "Session expired." };
 
@@ -337,7 +420,7 @@ export async function grantSupportAccess(
 
 export async function revokeSupportGrant(grantId: string): Promise<ClientAuthResult> {
   if (!isSupabaseConfigured) return { ok: false, error: "Backend not configured." };
-  const supabase = await createClient();
+  const supabase = await createClientPortalAuthClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { ok: false, error: "Session expired." };
   const { error } = await supabase.from("client_support_access_grants")

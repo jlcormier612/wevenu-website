@@ -14,7 +14,7 @@ export function VendorAcceptUnauthPanel({
   inviteEmail: string | null;
 }) {
   const [mode, setMode] = React.useState<Mode>("choose");
-  const signInHref = `/login?next=${encodeURIComponent(`/vendor/accept?token=${token}`)}`;
+  const signInHref = `/vendor/login?next=${encodeURIComponent(`/vendor/accept?token=${token}`)}`;
 
   if (mode === "create") {
     return (

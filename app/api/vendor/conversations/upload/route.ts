@@ -10,7 +10,7 @@
  * select the way the venue-side route does it.
  */
 import { NextResponse } from "next/server";
-import { createClient as createAuthClient } from "@/integrations/supabase/server";
+import { createVendorClient as createAuthClient } from "@/integrations/supabase/server";
 import { createClient } from "@supabase/supabase-js";
 
 const BUCKET = "couple-messages";

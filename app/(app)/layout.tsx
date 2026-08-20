@@ -5,7 +5,6 @@ import { WorkspaceShell } from "@/components/shell/workspace-shell";
 import { createClient } from "@/integrations/supabase/server";
 import { isSupabaseConfigured } from "@/lib/env";
 import { isVenueReadyToInviteCouples } from "@/lib/setup-hub/service";
-import { getVendorUser } from "@/lib/vendor-auth/service";
 import { getCurrentVenue } from "@/lib/venue/service";
 import { recordStaffActivity } from "@/lib/activation/service";
 
@@ -17,15 +16,9 @@ import { recordStaffActivity } from "@/lib/activation/service";
 export const dynamic = "force-dynamic";
 
 /**
- * Protected layout for the venue workspace. Confirms an authenticated session
- * (defense in depth alongside the proxy), then enforces the foundational rule:
- * nothing in VenueOS exists until the venue exists. No venue row yet sends
- * the user to the Venue Setup wizard (which can create one); a venue that
- * exists but hasn't finished setup sends them to Setup Hub instead.
- *
- * Legal acceptance for returning users is enforced by Legal Middleware in
- * `integrations/supabase/proxy.ts` → `/welcome` (WP4). This layout no longer
- * mounts a parallel staff-legal gate.
+ * Protected layout for the venue workspace. Uses the venue auth cookie jar
+ * only — vendor/client sessions in the same browser do not satisfy this gate
+ * and are never overwritten by venue routing.
  */
 export default async function WorkspaceLayout({
   children,
@@ -36,7 +29,7 @@ export default async function WorkspaceLayout({
     redirect("/login");
   }
 
-  const supabase = await createClient();
+  const supabase = await createClient("venue");
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -47,27 +40,13 @@ export default async function WorkspaceLayout({
 
   const venue = await getCurrentVenue();
   if (!venue) {
-    // No venue row at all (e.g. activation never finished creating one) —
-    // Setup Hub itself requires a venue to render anything and returns
-    // blank without one, so this case still goes through the wizard that
-    // can create one from scratch.
-    const vendorUser = await getVendorUser();
-    if (vendorUser) redirect("/vendor/dashboard");
+    // No venue row — venue onboarding. Vendor/client sessions are separate
+    // cookie jars and must not be treated as substitutes here.
     redirect("/setup");
   }
   if (!venue.setupCompleted) {
-    // Continuous Setup Experience, Phase 6 (docs/continuous-setup-experience-
-    // implementation-plan.md) — the graduation signal. Never venues.setup_
-    // completed itself: that column stays the legacy wizard's alone (see
-    // lib/setup-hub/service.ts's own header comment) — this venue can be
-    // fully graduated via Setup Hub and setup_completed will still read
-    // false forever. readyToInviteCouples is the deliberate, reversible
-    // owner action (§B) that lets a Setup-Hub-only venue reach the rest of
-    // the app without ever touching that column.
     const ready = await isVenueReadyToInviteCouples(venue.id);
     if (!ready) {
-      const vendorUser = await getVendorUser();
-      if (vendorUser) redirect("/vendor/dashboard");
       // /setup-hub itself lives inside this same (app) group, so without this
       // check every request for it would re-enter this branch and redirect
       // to itself in a loop. Everything else under (app) still bounces to it.
@@ -78,7 +57,6 @@ export default async function WorkspaceLayout({
     }
   }
 
-  // Defense in depth alongside proxy hard-lock for CRM Suspend / unpaid dunning.
   if (venue.accessDisabled || venue.accountStatus === "suspended") {
     redirect("/billing/suspended");
   }

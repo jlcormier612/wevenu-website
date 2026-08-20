@@ -3,7 +3,7 @@
  * All writes go through SECURITY DEFINER RPCs; storage upload uses the
  * service-role API route so vendors never need documents-bucket RLS.
  */
-import { createClient } from "@/integrations/supabase/server";
+import { createVendorClient as createClient } from "@/integrations/supabase/server";
 import { isSupabaseConfigured } from "@/lib/env";
 import type { DocumentCategory } from "@/lib/documents/types";
 import type {

@@ -2,7 +2,7 @@
  * Vendor FAQs service. Server-only. Mirrors lib/vendor-packages/service.ts
  * exactly — same shape of vendor-owned content, same withVendor() guard.
  */
-import { createClient } from "@/integrations/supabase/server";
+import { createVendorClient as createClient } from "@/integrations/supabase/server";
 import { isSupabaseConfigured } from "@/lib/env";
 import { getVendorUser } from "@/lib/vendor-auth/service";
 import type { VendorActionResult, VendorFaq, VendorFaqInput } from "@/lib/vendors/types";

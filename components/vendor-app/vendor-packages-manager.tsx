@@ -18,7 +18,7 @@ import {
   deleteVendorPackageAction,
   toggleVendorPackageAction,
   updateVendorPackageAction,
-} from "@/app/vendor/packages/actions";
+} from "@/app/vendor/(workspace)/packages/actions";
 import type { VendorPackage, VendorPackageInput } from "@/lib/vendors/types";
 
 const PRICE_TYPE_LABELS: Record<VendorPackageInput["priceType"], string> = {

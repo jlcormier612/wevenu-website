@@ -4,6 +4,7 @@
 
 import { createAdminClient } from "@/integrations/supabase/admin";
 import { createClient } from "@/integrations/supabase/server";
+import type { AuthSessionScope } from "@/lib/auth/session-scope";
 import { isSupabaseConfigured } from "@/lib/env";
 import { requireLegalAdminUser } from "@/lib/legal/admin-service";
 import {
@@ -262,12 +263,14 @@ function documentTitleForHistory(
  * inactive historical versions resolve via service role (active-only SELECT
  * policy would otherwise hide titles). Never mutates.
  */
-export async function listLegalAcceptancesForCurrentUser(): Promise<
+export async function listLegalAcceptancesForCurrentUser(
+  scope: AuthSessionScope = "venue",
+): Promise<
   LegalAcceptanceHistoryItem[]
 > {
   if (!isSupabaseConfigured) return [];
 
-  const supabase = await createClient();
+  const supabase = await createClient(scope);
   const {
     data: { user },
   } = await supabase.auth.getUser();

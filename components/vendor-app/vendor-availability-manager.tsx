@@ -13,7 +13,7 @@ import {
   loadAvailabilityMonthAction,
   unblockDateAction,
   updateAvailabilitySettingsAction,
-} from "@/app/vendor/availability/actions";
+} from "@/app/vendor/(workspace)/availability/actions";
 import type { VendorAvailability } from "@/lib/vendors/types";
 
 const MONTH_NAMES = [

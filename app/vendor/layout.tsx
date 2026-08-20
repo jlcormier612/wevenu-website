@@ -1,90 +1,12 @@
-import { headers } from "next/headers";
-import { redirect } from "next/navigation";
-
-import { VendorAppShell } from "@/components/vendor-app/vendor-app-shell";
-import { createClient } from "@/integrations/supabase/server";
-import { isSupabaseConfigured } from "@/lib/env";
-import { getVendorBriefing, getVendorLuvAttentionCount } from "@/lib/luv/vendor-observations";
-import { getVendorUser } from "@/lib/vendor-auth/service";
-import { getVendorHomeData } from "@/lib/vendor-home/service";
-import { getVendorLuvExtras } from "@/lib/vendor-luv/service";
-import { getVendorProfile } from "@/lib/vendor-profile/service";
-import { getPendingTaskCount } from "@/lib/vendor-tasks/service";
-import { getVendorConversationInbox } from "@/lib/conversations/service";
-
-function isVendorAcceptPath(pathname: string): boolean {
-  return pathname === "/vendor/accept" || pathname.startsWith("/vendor/accept/");
-}
-
-// Redirects based on isSupabaseConfigured before touching a dynamic API —
-// without this, Next.js can statically prerender that redirect at build
-// time and cache it indefinitely, serving it to every request regardless
-// of actual session state.
-export const dynamic = "force-dynamic";
-
 /**
- * Vendor workspace shell. Legal acceptance is enforced by Legal Middleware
- * (`integrations/supabase/proxy.ts` → `/welcome`) so invitees and returning
- * vendors see Welcome Experience once — not a parallel staff-legal gate.
+ * Vendor segment root. Claim (`/vendor/accept`) and the authenticated
+ * workspace (`(workspace)/*`) are siblings so claim never shares the shell
+ * layout — soft nav after accept always mounts VendorAppShell.
  */
-export default async function VendorLayout({ children }: { children: React.ReactNode }) {
-  // Invitation claim is public (proxy PUBLIC_PATHS) and must not require an
-  // existing vendor_users row — first-time claimers have a session (or none)
-  // but no membership until ClaimButton succeeds. Skipping the shell here
-  // avoids login ↔ accept loops with ?next=.
-  const pathname = (await headers()).get("x-pathname") ?? "";
-  if (isVendorAcceptPath(pathname)) {
-    return children;
-  }
-
-  if (!isSupabaseConfigured) redirect("/login");
-
-  const vendorUser = await getVendorUser();
-  if (!vendorUser) redirect("/login");
-
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
-
-  const [profile, pendingTaskCount, conversationInbox, home, luvExtras] = await Promise.all([
-    getVendorProfile(vendorUser.vendorId),
-    getPendingTaskCount(vendorUser.vendorId),
-    getVendorConversationInbox(),
-    getVendorHomeData(vendorUser.vendorId),
-    getVendorLuvExtras(),
-  ]);
-
-  const briefing = getVendorBriefing({
-    home,
-    profile: profile
-      ? {
-          businessName: profile.businessName,
-          contactName: profile.contactName,
-          category: profile.category,
-          description: profile.description,
-          email: profile.email,
-          phone: profile.phone,
-          pricingTier: profile.pricingTier,
-          serviceArea: profile.serviceArea,
-          insuranceExpiry: profile.insuranceExpiry,
-        }
-      : null,
-    extras: luvExtras,
-  });
-
-  return (
-    <VendorAppShell
-      businessName={profile?.businessName ?? "Your Business"}
-      category={profile?.category ?? null}
-      logoUrl={profile?.logoUrl ?? null}
-      role={vendorUser.role}
-      pendingTaskCount={pendingTaskCount}
-      unreadMessageCount={conversationInbox.totalUnread}
-      luvAttentionCount={getVendorLuvAttentionCount(briefing)}
-    >
-      {children}
-    </VendorAppShell>
-  );
+export default function VendorRootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return children;
 }

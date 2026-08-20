@@ -8,8 +8,8 @@ import { ArrowLeft, CheckSquare, Circle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { INQUIRY_STATUSES, INQUIRY_STATUS_VARIANT } from "@/lib/vendors/constants";
-import { updateVendorInquiryAction, deleteVendorInquiryAction, createVendorInquiryAction } from "@/app/vendor/inquiries/actions";
-import { createVendorTaskAction, completeVendorTaskAction } from "@/app/vendor/tasks/actions";
+import { updateVendorInquiryAction, deleteVendorInquiryAction, createVendorInquiryAction } from "@/app/vendor/(workspace)/inquiries/actions";
+import { createVendorTaskAction, completeVendorTaskAction } from "@/app/vendor/(workspace)/tasks/actions";
 import { partitionByCompletion } from "@/lib/tasks/group-by-completion";
 import type { VendorInquiry, InquiryStatus, VendorPersonalTask } from "@/lib/vendors/types";
 

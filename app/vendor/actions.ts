@@ -77,7 +77,14 @@ export async function markVendorLuvIntroSeenAction(): Promise<void> {
 export async function claimVendorProfileAction(claimToken: string): Promise<
   { ok: true; vendorId: string; alreadyVendor: boolean } | { ok: false; message: string }
 > {
-  return claimVendorProfile(claimToken);
+  const result = await claimVendorProfile(claimToken);
+  if (!result.ok) return result;
+
+  // Server redirect (not client router.push) so we leave the claim tree and
+  // mount `(workspace)` layout with VendorAppShell — soft nav within the old
+  // shared layout could leave dashboard content without navigation.
+  revalidatePath("/vendor", "layout");
+  redirect("/vendor/dashboard");
 }
 
 // Venue-First Dashboard's lightweight switcher (2026-07-24) — only rendered

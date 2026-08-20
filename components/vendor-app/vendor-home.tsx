@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useTransition } from "react";
 import { CalendarDays, MessageSquare, CheckSquare, Circle, Clock } from "lucide-react";
 
-import { completeVendorTaskAction } from "@/app/vendor/tasks/actions";
+import { completeVendorTaskAction } from "@/app/vendor/(workspace)/tasks/actions";
 import { formatTime } from "@/lib/vendors/constants";
 import type { VendorHomeData } from "@/lib/vendor-home/service";
 import type { LuvBriefing } from "@/lib/luv/briefing-types";

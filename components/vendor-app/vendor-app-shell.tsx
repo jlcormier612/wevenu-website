@@ -4,13 +4,13 @@ import * as React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  CalendarDays, CheckSquare, FileText, Heart,
+  ArrowLeftRight, CalendarDays, CheckSquare, FileText, Heart,
   LayoutDashboard, LogOut, Menu, MessageSquare,
   User, X,
 } from "lucide-react";
 
-import { signOut } from "@/app/auth/actions";
-import { getVendorEventVenueIdAction } from "@/app/vendor/events/actions";
+import { signOutVendor } from "@/app/auth/portal-session-actions";
+import { getVendorEventVenueIdAction } from "@/app/vendor/(workspace)/events/actions";
 import { FeedbackSheet } from "@/components/feedback/feedback-sheet";
 import { ThemeToggle } from "@/components/providers/theme-toggle";
 import { VendorNotificationBell } from "@/components/vendor-app/vendor-notification-bell";
@@ -105,7 +105,7 @@ export function VendorAppShell({
 
   return (
     <div className="htc-staff flex h-svh w-full overflow-hidden bg-background font-sans text-foreground">
-      {/* Desktop sidebar — same sidebar tokens as WorkspaceShell */}
+      {/* Desktop sidebar — same pattern as WorkspaceShell (`hidden` + `lg:flex`) */}
       <aside className="hidden w-[15.5rem] shrink-0 flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground lg:flex">
         <SidebarContent
           businessName={businessName}
@@ -115,7 +115,7 @@ export function VendorAppShell({
         />
       </aside>
 
-      {/* Mobile overlay */}
+      {/* Mobile / narrow overlay drawer */}
       {mobileOpen && (
         <div className="fixed inset-0 z-40 lg:hidden">
           <div className="absolute inset-0 bg-black/40" onClick={closeMobile} />
@@ -124,6 +124,7 @@ export function VendorAppShell({
               type="button"
               className="absolute right-4 top-4 text-sidebar-foreground/70 hover:text-sidebar-foreground"
               onClick={closeMobile}
+              aria-label="Close navigation"
             >
               <X className="h-5 w-5" />
             </button>
@@ -138,18 +139,25 @@ export function VendorAppShell({
         </div>
       )}
 
-      {/* Main content */}
+      {/* Main column — always-visible top chrome (venue WorkspaceShell parity).
+          Previously the entire header was `lg:hidden`, so any desktop-width
+          case where the sidebar failed to paint left the portal with no nav. */}
       <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
-        {/* Mobile top bar — page chrome tokens (like venue header), not sidebar */}
-        <header className="flex items-center gap-3 border-b border-border/40 bg-background/95 px-4 py-3 backdrop-blur supports-[backdrop-filter]:bg-background/60 lg:hidden">
-          <button type="button" onClick={() => setMobileOpen(true)} className="text-muted-foreground hover:text-foreground">
+        <header className="sticky top-0 z-30 flex items-center gap-3 border-b border-border/40 bg-background/95 px-4 py-3 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+          <button
+            type="button"
+            onClick={() => setMobileOpen(true)}
+            className="text-muted-foreground hover:text-foreground lg:hidden"
+            aria-label="Open navigation"
+          >
             <Menu className="h-5 w-5" />
           </button>
           {logoUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
             <img src={logoUrl} alt="" className="h-6 w-6 shrink-0 rounded-sm object-cover" />
           ) : null}
           <span className="truncate text-sm font-semibold text-foreground">{businessName}</span>
-          <div className="ml-auto flex items-center gap-1">
+          <div className="ml-auto flex items-center gap-1 lg:hidden">
             <VendorNotificationBell />
             <ThemeToggle />
           </div>
@@ -241,8 +249,16 @@ function SidebarContent({
       </nav>
 
       <div className="mt-auto shrink-0 border-t border-sidebar-border px-3 py-3 space-y-0.5">
+        <Link
+          href="/workspaces"
+          onClick={onNavigate}
+          className="flex w-full items-center gap-3 rounded-sm px-3 py-2.5 text-[0.95rem] tracking-wide text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+        >
+          <ArrowLeftRight className="h-4 w-4 shrink-0 text-sidebar-foreground/70" />
+          Switch workspace
+        </Link>
         <FeedbackSheet surface="vendor" relatedVenueId={relatedVenueId} />
-        <form action={signOut}>
+        <form action={signOutVendor}>
           <button
             type="submit"
             className="flex w-full items-center gap-3 rounded-sm px-3 py-2.5 text-[0.95rem] tracking-wide text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"

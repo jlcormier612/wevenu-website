@@ -289,6 +289,8 @@ describe("legal middleware decisions", () => {
       "/legal/privacy_policy",
       "/api/legal/welcome",
       "/vendor/accept",
+      "/vendor/login",
+      "/workspaces",
       "/p/abc",
     ]) {
       assert.equal(shouldSkipLegalEnforcement(pathname), true, pathname);

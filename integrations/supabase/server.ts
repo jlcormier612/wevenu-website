@@ -2,18 +2,29 @@ import { cookies } from "next/headers";
 
 import { createServerClient } from "@supabase/ssr";
 
+import {
+  cookieNameForScope,
+  supabaseProjectRef,
+  type AuthSessionScope,
+} from "@/lib/auth/session-scope";
 import { getSupabaseConfig } from "@/lib/env";
 
 /**
- * Creates a Supabase client for use in Server Components, Server Actions and
- * Route Handlers. Reads/writes the session via Next.js cookies (async in
- * Next.js 16). Only call this when `isSupabaseConfigured` is true.
+ * Creates a Supabase client for Server Components, Server Actions and Route
+ * Handlers. Scope selects which auth cookie jar to read/write:
+ * - venue (default): staff workspace — library default cookie name
+ * - vendor: vendor portal — isolated cookie name
+ * - client: couple account login — isolated cookie name
+ *
+ * Call only when `isSupabaseConfigured` is true.
  */
-export async function createClient() {
+export async function createClient(scope: AuthSessionScope = "venue") {
   const { url, anonKey } = getSupabaseConfig();
   const cookieStore = await cookies();
+  const cookieName = cookieNameForScope(scope, supabaseProjectRef(url));
 
   return createServerClient(url, anonKey, {
+    ...(cookieName ? { cookieOptions: { name: cookieName } } : null),
     cookies: {
       getAll() {
         return cookieStore.getAll();
@@ -30,4 +41,14 @@ export async function createClient() {
       },
     },
   });
+}
+
+/** Vendor portal session — never shares venue staff cookies. */
+export async function createVendorClient() {
+  return createClient("vendor");
+}
+
+/** Couple / client account session — never shares venue staff cookies. */
+export async function createClientPortalAuthClient() {
+  return createClient("client");
 }

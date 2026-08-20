@@ -6,7 +6,7 @@
  *   - claimVendorProfile()   — claims a vendor profile via claim_token
  *   - getActorContext()      — resolves actor type for routing
  */
-import { createClient } from "@/integrations/supabase/server";
+import { createVendorClient as createClient } from "@/integrations/supabase/server";
 import { createAdminClient } from "@/integrations/supabase/admin";
 import { isSupabaseConfigured } from "@/lib/env";
 import { recordEngagementEvent } from "@/lib/activation/service";
@@ -55,6 +55,16 @@ async function createAndSignInVendorAccount(
   }
 
   const supabase = await createClient();
+  const {
+    data: { user: existing },
+  } = await supabase.auth.getUser();
+  if (
+    existing?.email &&
+    existing.email.trim().toLowerCase() !== email.trim().toLowerCase()
+  ) {
+    await supabase.auth.signOut();
+  }
+
   const { error: signInErr } = await supabase.auth.signInWithPassword({ email, password });
   if (signInErr) {
     return {

@@ -7,7 +7,7 @@
  * `vendors` bucket (already public-read + authenticated insert).
  */
 import { NextResponse } from "next/server";
-import { createClient as createAuthClient } from "@/integrations/supabase/server";
+import { createVendorClient as createAuthClient } from "@/integrations/supabase/server";
 import { createClient } from "@supabase/supabase-js";
 
 const BUCKET = "vendors";

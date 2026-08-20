@@ -1,13 +1,17 @@
 import type { Metadata } from "next";
-import { createClient } from "@/integrations/supabase/server";
+import { createVendorClient } from "@/integrations/supabase/server";
 import { isSupabaseConfigured } from "@/lib/env";
-import { ClaimButton } from "@/components/vendor-app/claim-button";
+import { VendorAcceptAuthedPanel } from "@/components/vendor-app/vendor-accept-authed-panel";
 import { VendorAcceptUnauthPanel } from "@/components/vendor-app/vendor-accept-unauth-panel";
 
 export const metadata: Metadata = { title: "Accept Invitation — Hello to Cheers" };
 
 type Props = { searchParams: Promise<{ token?: string }> };
 
+/**
+ * Vendor invitation claim. Auth state is read from the vendor cookie jar only
+ * so an existing venue session in the same browser never auto-claims.
+ */
 export default async function VendorAcceptPage({ searchParams }: Props) {
   const { token } = await searchParams;
 
@@ -15,8 +19,7 @@ export default async function VendorAcceptPage({ searchParams }: Props) {
     return <InvalidToken />;
   }
 
-  // Security-definer RPC — works pre-auth (reads vendor by claim_token)
-  const supabase = await createClient();
+  const supabase = await createVendorClient();
   const { data: vendor } = isSupabaseConfigured
     ? await supabase.rpc("get_vendor_by_claim_token", { p_token: token })
     : { data: null };
@@ -33,7 +36,7 @@ export default async function VendorAcceptPage({ searchParams }: Props) {
     : [{ data: { user: null } }, { data: null }];
 
   const vendorName = vendor.businessName ?? "your business";
-  const category   = vendor.category ?? null;
+  const category = vendor.category ?? null;
   const inviteEmail =
     invitePreview && typeof invitePreview === "object" && "email" in invitePreview
       ? String((invitePreview as { email?: string }).email ?? "").trim() || null
@@ -52,13 +55,25 @@ export default async function VendorAcceptPage({ searchParams }: Props) {
           )}
         </div>
 
-        <div className="rounded-lg border border-border bg-muted/40 p-4 text-sm text-foreground leading-relaxed">
-          A venue has set up this profile for your business on Hello to Cheers. Claim it to manage your
-          profile, service packages, availability, and venue relationships — all in one place.
+        <div className="rounded-lg border border-border bg-muted/40 p-4 text-sm text-foreground leading-relaxed space-y-3">
+          <p>
+            A venue would love to connect with you on Hello to Cheers. They&apos;ve added{" "}
+            {vendorName} to their trusted vendor network and created a starting profile for your business.
+          </p>
+          <p>
+            Claiming your profile lets you keep your business information up to date, manage the
+            services and packages you offer, share your availability, and build venue relationships —
+            all in one place.
+          </p>
+          <p>It only takes a minute to get started.</p>
         </div>
 
         {user ? (
-          <ClaimButton token={token} />
+          <VendorAcceptAuthedPanel
+            token={token}
+            sessionEmail={user.email ?? null}
+            inviteEmail={inviteEmail}
+          />
         ) : (
           <VendorAcceptUnauthPanel token={token} inviteEmail={inviteEmail} />
         )}

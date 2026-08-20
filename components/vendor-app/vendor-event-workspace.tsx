@@ -22,13 +22,13 @@ import {
   toggleAssignmentCheckinAction,
   getVendorHandbookForEventAction,
   requestToLeaveEventAction,
-} from "@/app/vendor/events/actions";
-import { applyVendorTaskTemplatesAction } from "@/app/vendor/task-templates/actions";
+} from "@/app/vendor/(workspace)/events/actions";
+import { applyVendorTaskTemplatesAction } from "@/app/vendor/(workspace)/task-templates/actions";
 import {
   getVendorConversationAction,
   getVendorConversationIdsForEventAction,
-} from "@/app/vendor/messages/actions";
-import { getVendorSharedFloorPlansForEventAction } from "@/app/vendor/floor-plans/actions";
+} from "@/app/vendor/(workspace)/messages/actions";
+import { getVendorSharedFloorPlansForEventAction } from "@/app/vendor/(workspace)/floor-plans/actions";
 import { VendorRelativeDuePicker } from "@/components/vendor-app/vendor-relative-due-picker";
 import { LinkifiedText } from "@/components/shared/linkified-text";
 import { VendorConversationThread } from "@/components/vendor-app/vendor-conversation-thread";

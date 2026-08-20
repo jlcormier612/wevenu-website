@@ -7,7 +7,7 @@ import { CheckSquare, Circle, Plus, X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { completeVendorTaskAction, uncompleteVendorTaskAction, deleteVendorTaskAction, createVendorTaskAction } from "@/app/vendor/tasks/actions";
+import { completeVendorTaskAction, uncompleteVendorTaskAction, deleteVendorTaskAction, createVendorTaskAction } from "@/app/vendor/(workspace)/tasks/actions";
 import { sortByDueDateAsc } from "@/lib/tasks/group-by-completion";
 import type { VendorPersonalTask } from "@/lib/vendors/types";
 

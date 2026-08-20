@@ -5,7 +5,7 @@
  * new_message rows are reconciled against the live vendor conversation inbox
  * so CASCADE-deleted threads cannot leave ghost unread badges.
  */
-import { createClient } from "@/integrations/supabase/server";
+import { createVendorClient as createClient } from "@/integrations/supabase/server";
 import { isSupabaseConfigured } from "@/lib/env";
 import * as conversationsRepo from "@/lib/conversations/repository";
 import { reconcileVendorMessageNotifications } from "./reconcile-message-notifications";

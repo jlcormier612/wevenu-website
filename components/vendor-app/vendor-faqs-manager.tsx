@@ -12,7 +12,7 @@ import {
   createVendorFaqAction,
   deleteVendorFaqAction,
   updateVendorFaqAction,
-} from "@/app/vendor/faqs/actions";
+} from "@/app/vendor/(workspace)/faqs/actions";
 import type { VendorFaq, VendorFaqInput } from "@/lib/vendors/types";
 
 const EMPTY_INPUT: VendorFaqInput = { question: "", answer: "" };

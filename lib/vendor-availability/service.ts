@@ -1,7 +1,7 @@
 /**
  * Vendor availability service. Server-only.
  */
-import { createClient } from "@/integrations/supabase/server";
+import { createVendorClient as createClient } from "@/integrations/supabase/server";
 import { isSupabaseConfigured } from "@/lib/env";
 import { getVendorUser } from "@/lib/vendor-auth/service";
 import { reconcileVendorEventAvailability } from "@/lib/vendor-availability/sync";

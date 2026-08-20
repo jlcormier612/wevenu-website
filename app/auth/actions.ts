@@ -3,27 +3,13 @@
 import { redirect } from "next/navigation";
 
 import { createClient } from "@/integrations/supabase/server";
+import { safeInternalNextPath } from "@/lib/auth/portal-home";
+import { resolveAuthenticatedHomePath } from "@/lib/auth/resolve-home";
 import { isSupabaseConfigured } from "@/lib/env";
 
 export type AuthFormState = {
   error?: string;
 };
-
-/**
- * Same-origin relative post-login paths only. Blocks open redirects.
- */
-function safeInternalNextPath(raw: unknown): string | null {
-  if (typeof raw !== "string") return null;
-  const trimmed = raw.trim();
-  if (!trimmed.startsWith("/") || trimmed.startsWith("//")) return null;
-  try {
-    const url = new URL(trimmed, "http://localhost");
-    if (url.pathname === "/login") return null;
-    return `${url.pathname}${url.search}${url.hash}`;
-  } catch {
-    return null;
-  }
-}
 
 /**
  * Authenticates a user with email + password via Supabase Auth and redirects to
@@ -78,34 +64,26 @@ export async function signIn(
   }
 
   // Prefer ?next= (e.g. /vendor/accept?token=…) so invitation claimers return
-  // to the claim page after signing in. Fall back by actor type.
-  if (next) {
-    redirect(next);
-  }
-
+  // to the claim page after signing in. Multi-role → /workspaces chooser.
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (user) {
-    const { data: vu } = await supabase
-      .from("vendor_users")
-      .select("vendor_id")
-      .eq("user_id", user.id)
-      .eq("is_active", true)
-      .maybeSingle();
-    if (vu) redirect("/vendor/dashboard");
+  if (!user) {
+    redirect("/login");
   }
 
-  // redirect() throws internally and must be outside the try/catch above.
-  redirect("/dashboard");
+  redirect(
+    await resolveAuthenticatedHomePath(supabase, user.id, { next }),
+  );
 }
 
 /**
- * Signs the current user out and returns them to the login screen.
+ * Signs the current venue user out (venue cookie jar only) and returns them
+ * to the venue login screen. Vendor/client sessions in this browser are kept.
  */
 export async function signOut(): Promise<void> {
   if (isSupabaseConfigured) {
-    const supabase = await createClient();
+    const supabase = await createClient("venue");
     await supabase.auth.signOut();
   }
   redirect("/login");
