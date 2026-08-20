@@ -14,12 +14,16 @@
  *    (lib/facebook/processor.ts) is required to fetch that, and doing it
  *    synchronously here risks Meta timing out the webhook and retrying
  *    unnecessarily.
+ *
+ * After enqueue, `after()` kicks the queue processor so a lead does not
+ * wait for the next cron tick. Cron remains the crash/retry backstop.
  */
 import { createHmac, timingSafeEqual } from "node:crypto";
-import { type NextRequest, NextResponse } from "next/server";
+import { after, type NextRequest, NextResponse } from "next/server";
 
 import { createAdminClient } from "@/integrations/supabase/admin";
 import * as repo from "@/lib/facebook/repository";
+import { processFacebookLeadQueue } from "@/lib/facebook/processor";
 
 export async function GET(request: NextRequest) {
   const { searchParams } = request.nextUrl;
@@ -49,7 +53,11 @@ export async function POST(request: NextRequest) {
   const rawBody = await request.text();
 
   const appSecret = process.env.FACEBOOK_APP_SECRET;
-  if (appSecret) {
+  if (!appSecret) {
+    if (process.env.NODE_ENV === "production") {
+      return NextResponse.json({ error: "Facebook webhook is not configured." }, { status: 500 });
+    }
+  } else {
     const signature = request.headers.get("x-hub-signature-256");
     if (!verifySignature(rawBody, signature, appSecret)) {
       return NextResponse.json({ error: "Invalid signature." }, { status: 401 });
@@ -64,6 +72,7 @@ export async function POST(request: NextRequest) {
   }
 
   const admin = createAdminClient();
+  let enqueued = 0;
 
   for (const entry of payload.entry ?? []) {
     for (const change of entry.changes ?? []) {
@@ -71,16 +80,26 @@ export async function POST(request: NextRequest) {
       const { leadgen_id: leadgenId, page_id: pageId, form_id: formId } = change.value;
 
       const { data: connectionRows } = await admin.from("facebook_connections")
-        .select("venue_id").eq("page_id", pageId).eq("status", "connected").limit(1);
-      const venueId = (connectionRows as { venue_id: string }[] | null)?.[0]?.venue_id;
-      if (!venueId) continue; // Page not connected to any venue — nothing to do.
+        .select("venue_id").eq("page_id", pageId).eq("status", "connected");
 
-      const { data: formRows } = await admin.from("facebook_lead_forms")
-        .select("id").eq("venue_id", venueId).eq("form_id", formId).eq("is_enabled", true).limit(1);
-      if (!formRows?.length) continue; // Form not enabled for this venue — skip, per design.
+      for (const row of (connectionRows ?? []) as { venue_id: string }[]) {
+        const venueId = row.venue_id;
+        const { data: formRows } = await admin.from("facebook_lead_forms")
+          .select("id").eq("venue_id", venueId).eq("form_id", formId).eq("is_enabled", true).limit(1);
+        if (!formRows?.length) continue;
 
-      await repo.enqueueLead(admin, { venueId, leadgenId, formId, pageId });
+        await repo.enqueueLead(admin, { venueId, leadgenId, formId, pageId });
+        enqueued++;
+      }
     }
+  }
+
+  if (enqueued > 0) {
+    after(() => {
+      void processFacebookLeadQueue().catch((err) => {
+        console.error("[facebook webhook] queue processor:", err instanceof Error ? err.message : err);
+      });
+    });
   }
 
   return NextResponse.json({ ok: true });

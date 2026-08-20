@@ -102,9 +102,18 @@ export function eventTypeLabel(value: string | null): string {
   return EVENT_TYPES.find((e) => e.value === value)?.label ?? value;
 }
 
+/** Intake/registry keys that are not offered on the manual New Lead picker. */
+const INTAKE_SOURCE_LABELS: Record<string, string> = {
+  facebook_lead_ads: "Facebook Lead Ads",
+  email_parsed_generic: "Email (auto-detected)",
+  tour_scheduling: "Tour Request",
+};
+
 export function sourceLabel(value: string | null): string {
   if (!value) return "";
-  return LEAD_SOURCES.find((s) => s.value === value)?.label ?? value;
+  return LEAD_SOURCES.find((s) => s.value === value)?.label
+    ?? INTAKE_SOURCE_LABELS[value]
+    ?? value;
 }
 
 /**

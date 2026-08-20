@@ -1,4 +1,5 @@
 import type { FacebookConnection, FacebookLeadForm, FacebookLeadLogEntry } from "@/lib/facebook/types";
+import { STALE_PROCESSING_MS } from "@/lib/facebook/lead-mapping";
 
 type ConnectionRow = {
   venue_id: string; page_id: string | null; page_name: string | null; status: FacebookConnection["status"];
@@ -133,14 +134,32 @@ export async function setFormEnabled(client: any, venueId: string, formId: strin
 export type FacebookQueueRow = {
   id: string; venue_id: string; leadgen_id: string; form_id: string; page_id: string;
   status: string; attempt_count: number; max_attempts: number;
+  last_attempted_at?: string | null;
 };
 
+/**
+ * Idempotent enqueue. Unique (venue_id, leadgen_id) covers every status —
+ * a Meta redelivery after success is a no-op, not a second pending row.
+ */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function enqueueLead(client: any, input: { venueId: string; leadgenId: string; formId: string; pageId: string }): Promise<void> {
   const { error } = await client.from("facebook_lead_queue").upsert({
     venue_id: input.venueId, leadgen_id: input.leadgenId, form_id: input.formId, page_id: input.pageId,
     status: "pending", next_attempt_at: new Date().toISOString(),
   }, { onConflict: "venue_id,leadgen_id", ignoreDuplicates: true });
+  if (error) throw error;
+}
+
+/** Worker crash recovery — processing rows older than 5 minutes go back on the retry path. */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export async function reclaimStaleProcessing(client: any, staleMs = STALE_PROCESSING_MS): Promise<void> {
+  const cutoff = new Date(Date.now() - staleMs).toISOString();
+  const { error } = await client.from("facebook_lead_queue").update({
+    status: "failed_retrying",
+    next_attempt_at: new Date().toISOString(),
+    last_error: "Worker interrupted before completion — retrying.",
+    last_error_at: new Date().toISOString(),
+  }).eq("status", "processing").or(`last_attempted_at.is.null,last_attempted_at.lt.${cutoff}`);
   if (error) throw error;
 }
 
