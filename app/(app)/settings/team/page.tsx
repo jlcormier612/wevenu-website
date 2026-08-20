@@ -71,6 +71,18 @@ export default async function TeamDataSettingsPage() {
 
       <Card>
         <CardHeader>
+          <CardTitle className="text-base">Migration Center</CardTitle>
+          <CardDescription>
+            Switching from another venue-management system? Bring over your existing clients, leads, and vendors — we'll recognize duplicates and import quietly, with no surprise emails to your customers.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Link href="/settings/migration" className="text-sm font-medium text-primary hover:underline">Open Migration Center →</Link>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
           <CardTitle className="text-base">Your Data</CardTitle>
           <CardDescription>
             Your data belongs to you. Download a complete copy of your clients, events, contracts,
