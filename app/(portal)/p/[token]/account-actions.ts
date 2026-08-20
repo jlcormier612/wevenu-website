@@ -1,6 +1,6 @@
 "use server";
 
-import { createClient } from "@/integrations/supabase/server";
+import { createClientPortalAuthClient } from "@/integrations/supabase/server";
 import { isSupabaseConfigured } from "@/lib/env";
 import {
   changeMyPassword, getMyAuthSessions, revokeMyAuthSession,
@@ -21,7 +21,7 @@ export async function getAccountStateAction(): Promise<AccountState> {
   if (!isSupabaseConfigured) {
     return { loggedIn: false, sessions: [], grants: [], legalHistory: [] };
   }
-  const supabase = await createClient();
+  const supabase = await createClientPortalAuthClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) {
     return { loggedIn: false, sessions: [], grants: [], legalHistory: [] };
@@ -29,7 +29,7 @@ export async function getAccountStateAction(): Promise<AccountState> {
   const [sessions, grants, legalHistory] = await Promise.all([
     getMyAuthSessions(),
     getMySupportGrants(),
-    listLegalAcceptancesForCurrentUser(),
+    listLegalAcceptancesForCurrentUser("client"),
   ]);
   return { loggedIn: true, sessions, grants, legalHistory };
 }

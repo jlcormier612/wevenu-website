@@ -7,7 +7,7 @@
  * (current_user_venue_id()), so unlike lib/leads/service.ts there's no
  * venueId to thread through here.
  */
-import { createClient } from "@/integrations/supabase/server";
+import { createClient, createVendorClient } from "@/integrations/supabase/server";
 import { isSupabaseConfigured } from "@/lib/env";
 import * as repo from "@/lib/conversations/repository";
 import {
@@ -261,13 +261,13 @@ export async function getVendorRelationshipRollup(vendorRelationshipId: string):
 /** Vendor side — the vendor portal's event-grouped Messages inbox. */
 export async function getVendorConversationInbox(): Promise<{ conversations: VendorConversationSummary[]; totalUnread: number }> {
   if (!isSupabaseConfigured) return { conversations: [], totalUnread: 0 };
-  const supabase = await createClient();
+  const supabase = await createVendorClient();
   return repo.getVendorConversationInbox(supabase);
 }
 
 export async function getVendorConversation(conversationId: string): Promise<VendorConversationResult> {
   if (!isSupabaseConfigured) return { ok: false, message: "Backend not configured." };
-  const supabase = await createClient();
+  const supabase = await createVendorClient();
   const conversation = await repo.getVendorConversation(supabase, conversationId);
   if (!conversation) return { ok: false, message: "Conversation not found." };
 
@@ -306,7 +306,7 @@ export async function recoverVendorConversationId(
   deadConversationId: string,
 ): Promise<string | null> {
   if (!isSupabaseConfigured) return null;
-  const supabase = await createClient();
+  const supabase = await createVendorClient();
 
   const { data: note } = await supabase
     .from("vendor_notifications")
@@ -352,7 +352,7 @@ export async function sendVendorConversationMessage(
 ): Promise<SendMessageResult> {
   if (!isSupabaseConfigured) return { ok: false, message: "Backend not configured." };
   if (!body.trim() && !hasAttachment) return { ok: false, message: "Message can't be empty." };
-  const supabase = await createClient();
+  const supabase = await createVendorClient();
   const trimmed = body.trim();
   const result = await repo.sendVendorConversationMessage(supabase, conversationId, trimmed, hasAttachment);
   if (!result.ok) return { ok: false, message: result.error ?? "Could not send message." };
@@ -375,7 +375,7 @@ export async function addVendorConversationMessageAttachment(
   file: { url: string; name: string; size?: number | null; mimeType?: string | null },
 ): Promise<{ ok: boolean; message?: string }> {
   if (!isSupabaseConfigured) return { ok: false, message: "Backend not configured." };
-  const supabase = await createClient();
+  const supabase = await createVendorClient();
   const result = await repo.addVendorConversationMessageAttachment(supabase, messageId, file);
   if (!result.ok) return { ok: false, message: result.error ?? "Could not attach file." };
   return { ok: true };

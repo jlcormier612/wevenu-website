@@ -9,7 +9,7 @@ import {
   User, X,
 } from "lucide-react";
 
-import { signOut } from "@/app/auth/actions";
+import { signOutVendor } from "@/app/auth/portal-session-actions";
 import { getVendorEventVenueIdAction } from "@/app/vendor/(workspace)/events/actions";
 import { FeedbackSheet } from "@/components/feedback/feedback-sheet";
 import { ThemeToggle } from "@/components/providers/theme-toggle";
@@ -258,7 +258,7 @@ function SidebarContent({
           Switch workspace
         </Link>
         <FeedbackSheet surface="vendor" relatedVenueId={relatedVenueId} />
-        <form action={signOut}>
+        <form action={signOutVendor}>
           <button
             type="submit"
             className="flex w-full items-center gap-3 rounded-sm px-3 py-2.5 text-[0.95rem] tracking-wide text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"

@@ -17,7 +17,7 @@
  * Partnerships in line with that pattern instead of leaving a second copy
  * of an already-fixed bug. See supabase/migrations/20261170000000_vendor_venue_first_dashboard.sql.
  */
-import { createClient } from "@/integrations/supabase/server";
+import { createVendorClient as createClient } from "@/integrations/supabase/server";
 import { isSupabaseConfigured } from "@/lib/env";
 import { getVendorUser } from "@/lib/vendor-auth/service";
 import type { VendorActionResult, VendorActiveVenueContext, VendorPartnership } from "@/lib/vendors/types";

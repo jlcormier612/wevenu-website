@@ -94,5 +94,5 @@ export const MORE_INFO_CTA = {
 export const LOGIN_LINKS = [
   { href: `${PRODUCT_APP_URL}/login`, label: "Venue", external: true },
   { href: `${PRODUCT_APP_URL}/client/login`, label: "Client", external: true },
-  { href: `${PRODUCT_APP_URL}/login`, label: "Vendor", external: true },
+  { href: `${PRODUCT_APP_URL}/vendor/login`, label: "Vendor", external: true },
 ] as const;

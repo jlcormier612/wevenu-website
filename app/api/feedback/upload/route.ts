@@ -9,7 +9,7 @@
 import { randomUUID } from "crypto";
 import { NextResponse } from "next/server";
 import { createClient as createServiceClient } from "@supabase/supabase-js";
-import { createClient } from "@/integrations/supabase/server";
+import { createClient, createVendorClient } from "@/integrations/supabase/server";
 import { resolveImageFile } from "@/lib/storage";
 import {
   FEEDBACK_SCREENSHOTS_BUCKET,
@@ -28,13 +28,23 @@ function serviceClient() {
 
 export async function POST(request: Request) {
   try {
-    const auth = await createClient();
-    const { data: { user } } = await auth.auth.getUser();
+    const vendorAuth = await createVendorClient();
+    const venueAuth = await createClient();
+    const [{ data: { user: vendorUserSession } }, { data: { user: venueUserSession } }] =
+      await Promise.all([
+        vendorAuth.auth.getUser(),
+        venueAuth.auth.getUser(),
+      ]);
+
+    const form = await request.formData();
+    const surfaceHint = String(form.get("surface") ?? "");
+    const preferVendor = surfaceHint === "vendor" || Boolean(vendorUserSession);
+    const auth = preferVendor && vendorUserSession ? vendorAuth : venueAuth;
+    const user = preferVendor && vendorUserSession ? vendorUserSession : venueUserSession;
     if (!user) {
       return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
     }
 
-    const form = await request.formData();
     const file = form.get("file") as File | null;
     if (!file) {
       return NextResponse.json({ ok: false, error: "No file." }, { status: 400 });

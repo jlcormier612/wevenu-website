@@ -9,9 +9,7 @@ import { ClaimButton } from "@/components/vendor-app/claim-button";
 import { Button } from "@/components/ui/button";
 
 /**
- * Claim UI when a browser session already exists on /vendor/accept.
- * Prevents silently attaching a vendor profile to a venue (or other) login
- * without the user understanding they are linking portals on one identity.
+ * Claim UI when a vendor-scoped session already exists on /vendor/accept.
  */
 export function VendorAcceptAuthedPanel({
   token,
@@ -43,12 +41,13 @@ export function VendorAcceptAuthedPanel({
     return (
       <div className="space-y-4">
         <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-3 text-sm text-foreground space-y-2">
-          <p className="font-medium">Wrong account for this invitation</p>
+          <p className="font-medium">Wrong vendor account for this invitation</p>
           <p className="text-muted-foreground">
-            You&apos;re signed in as <strong className="text-foreground">{sessionEmail}</strong>, but
-            this invitation was sent to <strong className="text-foreground">{inviteEmail}</strong>.
-            Sign out and continue with the invited email so this vendor profile is not linked to the
-            wrong Hello to Cheers login.
+            You&apos;re signed into the vendor portal as{" "}
+            <strong className="text-foreground">{sessionEmail}</strong>, but this invitation was
+            sent to <strong className="text-foreground">{inviteEmail}</strong>. Sign out of the
+            vendor session and continue with the invited email. Your venue session (if any) stays
+            signed in.
           </p>
         </div>
         <Button
@@ -64,7 +63,7 @@ export function VendorAcceptAuthedPanel({
               Switching…
             </>
           ) : (
-            "Sign out and use the invited email"
+            "Sign out vendor session and continue"
           )}
         </Button>
       </div>
@@ -75,14 +74,11 @@ export function VendorAcceptAuthedPanel({
     <div className="space-y-4">
       <div className="rounded-lg border border-border bg-muted/40 px-3 py-3 text-sm text-foreground space-y-2">
         <p>
-          Signed in as{" "}
-          <strong>{sessionEmail ?? "your Hello to Cheers account"}</strong>.
+          Vendor session: <strong>{sessionEmail ?? "your vendor account"}</strong>
         </p>
         <p className="text-muted-foreground">
-          Claiming links this vendor profile to the same login. If you also use this email for a
-          venue workspace, one browser session can only be in one portal at a time — use{" "}
-          <span className="text-foreground">Choose a workspace</span> after sign-in, or a separate
-          browser profile to keep venue and vendor open together while testing.
+          Claiming links this profile to the vendor sign-in above. A venue workspace signed in
+          elsewhere in this browser is not affected.
         </p>
       </div>
       <ClaimButton token={token} />
@@ -92,7 +88,7 @@ export function VendorAcceptAuthedPanel({
         disabled={pending}
         className="w-full text-center text-sm text-muted-foreground hover:text-foreground transition-colors"
       >
-        {pending ? "Signing out…" : "Use a different account"}
+        {pending ? "Signing out…" : "Use a different vendor account"}
       </button>
     </div>
   );

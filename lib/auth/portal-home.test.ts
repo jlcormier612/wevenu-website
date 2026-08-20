@@ -119,7 +119,7 @@ describe("loginRedirectWithNext", () => {
   it("preserves vendor deep links after sign-in", () => {
     assert.equal(
       loginRedirectWithNext("/vendor/dashboard", ""),
-      "/login?next=%2Fvendor%2Fdashboard",
+      "/vendor/login?next=%2Fvendor%2Fdashboard",
     );
   });
 

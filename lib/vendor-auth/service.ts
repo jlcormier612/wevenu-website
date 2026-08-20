@@ -6,7 +6,7 @@
  *   - claimVendorProfile()   — claims a vendor profile via claim_token
  *   - getActorContext()      — resolves actor type for routing
  */
-import { createClient } from "@/integrations/supabase/server";
+import { createVendorClient as createClient } from "@/integrations/supabase/server";
 import { createAdminClient } from "@/integrations/supabase/admin";
 import { isSupabaseConfigured } from "@/lib/env";
 import { recordEngagementEvent } from "@/lib/activation/service";

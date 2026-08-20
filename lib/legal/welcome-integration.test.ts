@@ -313,6 +313,7 @@ describe("legal middleware decisions", () => {
       "/legal/privacy_policy",
       "/api/legal/welcome",
       "/vendor/accept",
+      "/vendor/login",
       "/workspaces",
       "/p/abc",
     ]) {

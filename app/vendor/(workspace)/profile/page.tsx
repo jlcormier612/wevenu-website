@@ -21,7 +21,7 @@ export default async function VendorProfilePage() {
     getVendorPackages(vendorUser.vendorId),
     getVendorFaqs(vendorUser.vendorId),
     getVendorAvailability(vendorUser.vendorId, now.getFullYear(), now.getMonth() + 1),
-    listLegalAcceptancesForCurrentUser(),
+    listLegalAcceptancesForCurrentUser("vendor"),
   ]);
   if (!profile) redirect("/login");
 

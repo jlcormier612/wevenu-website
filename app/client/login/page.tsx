@@ -11,7 +11,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { createClient } from "@/integrations/supabase/server";
+import { createClientPortalAuthClient } from "@/integrations/supabase/server";
 import { getMyPortalUrl } from "@/lib/client-auth/service";
 import { isSupabaseConfigured } from "@/lib/env";
 
@@ -20,19 +20,13 @@ export const metadata: Metadata = { title: "Sign In — Hello to Cheers" };
 export const dynamic = "force-dynamic";
 
 /**
- * Couple / client portal login. If this browser already has a client-linked
- * session, continue into that portal instead of the venue app.
+ * Couple / client portal login. Uses the client auth cookie jar so a venue
+ * session in the same browser stays intact.
  */
 export default async function ClientLoginPage() {
   if (isSupabaseConfigured) {
-    const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (user) {
-      const portalUrl = await getMyPortalUrl();
-      if (portalUrl) redirect(portalUrl);
-    }
+    const portalUrl = await getMyPortalUrl();
+    if (portalUrl) redirect(portalUrl);
   }
 
   return (
@@ -57,8 +51,12 @@ export default async function ClientLoginPage() {
               </Link>
               {" · "}
               Vendors?{" "}
-              <Link href="/login?next=%2Fvendor%2Fdashboard" className="text-primary hover:underline">
+              <Link href="/vendor/login" className="text-primary hover:underline">
                 Vendor sign in
+              </Link>
+              {" · "}
+              <Link href="/workspaces" className="text-primary hover:underline">
+                Switch workspace
               </Link>
             </p>
           </CardContent>

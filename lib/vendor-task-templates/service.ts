@@ -2,7 +2,7 @@
  * Vendor task template packs — named lists of items applied into event-scoped
  * vendor_tasks. Server-only.
  */
-import { createClient } from "@/integrations/supabase/server";
+import { createVendorClient as createClient } from "@/integrations/supabase/server";
 import { isSupabaseConfigured } from "@/lib/env";
 import { offsetDate } from "@/lib/playbooks/due-dates";
 import { parseDaysOffsetInput } from "@/lib/vendor-task-templates/presets";

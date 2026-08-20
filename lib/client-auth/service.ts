@@ -9,7 +9,7 @@
  *     client_user_id = auth.uid()): accept an invitation, sign in, manage
  *     their own password/sessions, and grant/revoke temporary support access.
  */
-import { createClient } from "@/integrations/supabase/server";
+import { createClient, createClientPortalAuthClient } from "@/integrations/supabase/server";
 import { createAdminClient } from "@/integrations/supabase/admin";
 import { isSupabaseConfigured } from "@/lib/env";
 import { getCurrentVenue } from "@/lib/venue/service";
@@ -221,9 +221,8 @@ async function createAndSignInAccount(email: string, password: string): Promise<
     return { ok: false, error: createErr.message };
   }
 
-  const supabase = await createClient();
-  // Drop a mismatched browser session (e.g. venue staff testing an invite)
-  // before signing into the invited couple account.
+  // Client auth cookies only — never replace a venue or vendor session.
+  const supabase = await createClientPortalAuthClient();
   const {
     data: { user: existing },
   } = await supabase.auth.getUser();
@@ -281,7 +280,7 @@ export async function acceptClientInvitation(
   const signIn = await createAndSignInAccount(resolved.email, password);
   if (!signIn.ok) return { ok: false, error: signIn.error };
 
-  const supabase = await createClient();
+  const supabase = await createClientPortalAuthClient();
   const { data, error } = await supabase.rpc("accept_client_invitation", { p_token: token });
   if (error) return { ok: false, error: error.message };
   if (!data || (data as { ok?: boolean }).ok === false) {
@@ -316,7 +315,7 @@ export async function acceptParticipantInvitation(
   const signIn = await createAndSignInAccount(resolved.email, password);
   if (!signIn.ok) return { ok: false, error: signIn.error };
 
-  const supabase = await createClient();
+  const supabase = await createClientPortalAuthClient();
   const { data, error } = await supabase.rpc("accept_couple_participant_invitation", { p_token: token });
   if (error) return { ok: false, error: error.message };
   if (!data || (data as { ok?: boolean }).ok === false) {
@@ -337,7 +336,7 @@ export async function acceptParticipantInvitation(
 
 export async function signInClient(email: string, password: string): Promise<ClientAuthResult> {
   if (!isSupabaseConfigured) return { ok: false, error: "Backend not configured." };
-  const supabase = await createClient();
+  const supabase = await createClientPortalAuthClient();
   const { error } = await supabase.auth.signInWithPassword({ email, password });
   if (error) return { ok: false, error: error.message };
   return { ok: true };
@@ -346,7 +345,7 @@ export async function signInClient(email: string, password: string): Promise<Cli
 /** The portal URL for whichever account (primary client or delegate) is signed in. */
 export async function getMyPortalUrl(): Promise<string | null> {
   if (!isSupabaseConfigured) return null;
-  const supabase = await createClient();
+  const supabase = await createClientPortalAuthClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return null;
   const { data } = await supabase.from("client_portal_sessions").select("access_token")
@@ -357,7 +356,7 @@ export async function getMyPortalUrl(): Promise<string | null> {
 
 export async function changeMyPassword(newPassword: string): Promise<ClientAuthResult> {
   if (!isSupabaseConfigured) return { ok: false, error: "Backend not configured." };
-  const supabase = await createClient();
+  const supabase = await createClientPortalAuthClient();
   const { error } = await supabase.auth.updateUser({ password: newPassword });
   if (error) return { ok: false, error: error.message };
   return { ok: true };
@@ -365,7 +364,7 @@ export async function changeMyPassword(newPassword: string): Promise<ClientAuthR
 
 export async function getMyAuthSessions(): Promise<AuthSessionInfo[]> {
   if (!isSupabaseConfigured) return [];
-  const supabase = await createClient();
+  const supabase = await createClientPortalAuthClient();
   const { data, error } = await supabase.rpc("get_my_auth_sessions");
   if (error) return [];
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -377,7 +376,7 @@ export async function getMyAuthSessions(): Promise<AuthSessionInfo[]> {
 
 export async function revokeMyAuthSession(sessionId: string): Promise<ClientAuthResult> {
   if (!isSupabaseConfigured) return { ok: false, error: "Backend not configured." };
-  const supabase = await createClient();
+  const supabase = await createClientPortalAuthClient();
   const { data, error } = await supabase.rpc("revoke_my_auth_session", { p_session_id: sessionId });
   if (error) return { ok: false, error: error.message };
   if (!data?.ok) return { ok: false, error: data?.error ?? "Could not revoke session." };
@@ -388,7 +387,7 @@ export async function revokeMyAuthSession(sessionId: string): Promise<ClientAuth
 
 export async function getMySupportGrants(): Promise<SupportAccessGrant[]> {
   if (!isSupabaseConfigured) return [];
-  const supabase = await createClient();
+  const supabase = await createClientPortalAuthClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return [];
   const { data } = await supabase.from("client_support_access_grants").select("*")
@@ -400,7 +399,7 @@ export async function grantSupportAccess(
   hours: number, label?: string,
 ): Promise<ClientAuthResult> {
   if (!isSupabaseConfigured) return { ok: false, error: "Backend not configured." };
-  const supabase = await createClient();
+  const supabase = await createClientPortalAuthClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { ok: false, error: "Session expired." };
 
@@ -421,7 +420,7 @@ export async function grantSupportAccess(
 
 export async function revokeSupportGrant(grantId: string): Promise<ClientAuthResult> {
   if (!isSupabaseConfigured) return { ok: false, error: "Backend not configured." };
-  const supabase = await createClient();
+  const supabase = await createClientPortalAuthClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { ok: false, error: "Session expired." };
   const { error } = await supabase.from("client_support_access_grants")

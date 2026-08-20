@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { createClient } from "@/integrations/supabase/server";
+import { createVendorClient } from "@/integrations/supabase/server";
 import { isSupabaseConfigured } from "@/lib/env";
 import { VendorAcceptAuthedPanel } from "@/components/vendor-app/vendor-accept-authed-panel";
 import { VendorAcceptUnauthPanel } from "@/components/vendor-app/vendor-accept-unauth-panel";
@@ -8,6 +8,10 @@ export const metadata: Metadata = { title: "Accept Invitation — Hello to Cheer
 
 type Props = { searchParams: Promise<{ token?: string }> };
 
+/**
+ * Vendor invitation claim. Auth state is read from the vendor cookie jar only
+ * so an existing venue session in the same browser never auto-claims.
+ */
 export default async function VendorAcceptPage({ searchParams }: Props) {
   const { token } = await searchParams;
 
@@ -15,8 +19,7 @@ export default async function VendorAcceptPage({ searchParams }: Props) {
     return <InvalidToken />;
   }
 
-  // Security-definer RPC — works pre-auth (reads vendor by claim_token)
-  const supabase = await createClient();
+  const supabase = await createVendorClient();
   const { data: vendor } = isSupabaseConfigured
     ? await supabase.rpc("get_vendor_by_claim_token", { p_token: token })
     : { data: null };

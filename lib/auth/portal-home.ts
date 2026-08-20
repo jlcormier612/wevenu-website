@@ -1,9 +1,9 @@
 /**
  * Post-auth home resolution for venue / vendor / client portals.
  *
- * All three personas share one Supabase Auth browser session (same cookies).
- * Routing must therefore pick a destination from the signed-in identity's
- * linked roles — never assume "authenticated ⇒ venue dashboard".
+ * Venue, vendor, and client each use a separate Supabase Auth cookie jar so
+ * one browser can hold independent sessions. Role resolution still matters
+ * within a single jar (e.g. multi-role on one email).
  */
 
 export type PortalRoles = {
@@ -114,10 +114,14 @@ export function loginRedirectWithNext(pathname: string, search: string): string 
     safe.startsWith("/client/login") ||
     safe.startsWith("/client/accept") ||
     safe.startsWith("/vendor/accept") ||
+    safe.startsWith("/vendor/login") ||
     safe.startsWith("/workspaces") ||
     safe.startsWith("/api/")
   ) {
     return "/login";
+  }
+  if (safe === "/vendor" || safe.startsWith("/vendor/")) {
+    return `/vendor/login?next=${encodeURIComponent(safe)}`;
   }
   return `/login?next=${encodeURIComponent(safe)}`;
 }

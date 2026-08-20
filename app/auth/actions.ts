@@ -78,11 +78,12 @@ export async function signIn(
 }
 
 /**
- * Signs the current user out and returns them to the login screen.
+ * Signs the current venue user out (venue cookie jar only) and returns them
+ * to the venue login screen. Vendor/client sessions in this browser are kept.
  */
 export async function signOut(): Promise<void> {
   if (isSupabaseConfigured) {
-    const supabase = await createClient();
+    const supabase = await createClient("venue");
     await supabase.auth.signOut();
   }
   redirect("/login");

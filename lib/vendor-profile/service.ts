@@ -2,7 +2,7 @@
  * Vendor profile service. Server-only.
  * Handles profile reads/updates for authenticated vendor users.
  */
-import { createClient } from "@/integrations/supabase/server";
+import { createVendorClient as createClient } from "@/integrations/supabase/server";
 import { isSupabaseConfigured } from "@/lib/env";
 import { getVendorUser } from "@/lib/vendor-auth/service";
 import { getVendorHealthScore } from "@/lib/vendor-health/service";

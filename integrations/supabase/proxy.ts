@@ -7,6 +7,12 @@ import {
   safeInternalNextPath as safeNextPath,
 } from "@/lib/auth/portal-home";
 import { resolveAuthenticatedHomePath } from "@/lib/auth/resolve-home";
+import {
+  cookieNameForScope,
+  isVendorAppPath,
+  supabaseProjectRef,
+  type AuthSessionScope,
+} from "@/lib/auth/session-scope";
 import { getSupabaseConfig, isSupabaseConfigured } from "@/lib/env";
 import { decideLegalProxyEnforcement } from "@/lib/legal/enforce-legal-in-proxy";
 import { shouldSkipLegalEnforcement } from "@/lib/legal/welcome-middleware";
@@ -19,6 +25,7 @@ const PUBLIC_PATHS = [
   "/client/login",   // couple/client portal login
   "/client/accept",  // primary couple invite accept (pre-auth)
   "/client/accept-participant", // delegate invite accept (pre-auth)
+  "/vendor/login",   // vendor portal login (isolated cookie jar)
   "/form",           // public venue inquiry forms - /form/{embedKey}
   "/questionnaire",  // public final details forms - /questionnaire/{accessKey}
   "/api/public",     // public API routes - /api/public/inquire, /api/public/questionnaire
@@ -170,48 +177,72 @@ export async function updateSession(
     request.nextUrl.hostname === "localhost" ||
     request.nextUrl.hostname === "127.0.0.1";
 
-  const supabase = createServerClient(url, anonKey, {
-    cookieOptions: {
-      path: "/",
-      sameSite: "lax",
-      secure: isLocalHttp ? false : undefined,
-    },
-    cookies: {
-      getAll() {
-        return request.cookies.getAll();
+  const projectRef = supabaseProjectRef(url);
+
+  function makeScopedClient(scope: AuthSessionScope) {
+    const cookieName = cookieNameForScope(scope, projectRef);
+    return createServerClient(url, anonKey, {
+      cookieOptions: {
+        path: "/",
+        sameSite: "lax",
+        secure: isLocalHttp ? false : undefined,
+        ...(cookieName ? { name: cookieName } : null),
       },
-      setAll(cookiesToSet) {
-        cookiesToSet.forEach(({ name, value }) => {
-          request.cookies.set(name, value);
-        });
-        // Preserve cookies already queued on supabaseResponse when setAll runs
-        // more than once (rapid navigations / concurrent cookie chunks).
-        const prior = supabaseResponse.cookies.getAll();
-        supabaseResponse = NextResponse.next({
-          request: { headers: requestHeaders },
-        });
-        prior.forEach((cookie) => {
-          supabaseResponse.cookies.set(cookie.name, cookie.value);
-        });
-        cookiesToSet.forEach(({ name, value, options }) => {
-          supabaseResponse.cookies.set(name, value, {
-            ...options,
-            ...(isLocalHttp ? { secure: false } : null),
+      cookies: {
+        getAll() {
+          return request.cookies.getAll();
+        },
+        setAll(cookiesToSet) {
+          cookiesToSet.forEach(({ name, value }) => {
+            request.cookies.set(name, value);
           });
-        });
+          const prior = supabaseResponse.cookies.getAll();
+          supabaseResponse = NextResponse.next({
+            request: { headers: requestHeaders },
+          });
+          prior.forEach((cookie) => {
+            supabaseResponse.cookies.set(cookie.name, cookie.value);
+          });
+          cookiesToSet.forEach(({ name, value, options }) => {
+            supabaseResponse.cookies.set(name, value, {
+              ...options,
+              ...(isLocalHttp ? { secure: false } : null),
+            });
+          });
+        },
       },
-    },
-  });
+    });
+  }
 
-  // IMPORTANT: getUser() revalidates the token with Supabase Auth. Do not
-  // insert logic between client creation and this call.
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  // Refresh venue + vendor + client cookie jars independently so one portal
+  // sign-in never collapses another.
+  const venueSupabase = makeScopedClient("venue");
+  const vendorSupabase = makeScopedClient("vendor");
+  const clientSupabase = makeScopedClient("client");
 
-  if (!user && !isPublicPath(pathname)) {
-    // Preserve the destination so vendor/client deep links are not lost to the
-    // default venue dashboard after sign-in.
+  // IMPORTANT: getUser() revalidates the token with Supabase Auth.
+  const [{ data: { user: venueUser } }, { data: { user: vendorUser } }] =
+    await Promise.all([
+      venueSupabase.auth.getUser(),
+      vendorSupabase.auth.getUser(),
+    ]);
+  // Warm the client jar (writes refreshed cookies via setAll when present).
+  await clientSupabase.auth.getUser();
+
+  const vendorPath = isVendorAppPath(pathname);
+
+  if (vendorPath && !vendorUser) {
+    const next = `${pathname}${request.nextUrl.search || ""}`;
+    const loginUrl = new URL("/vendor/login", request.nextUrl.origin);
+    const safe = safeInternalNextPath(next, request.nextUrl.origin);
+    if (safe) loginUrl.searchParams.set("next", safe);
+    return withSessionCookies(
+      supabaseResponse,
+      NextResponse.redirect(loginUrl),
+    );
+  }
+
+  if (!venueUser && !vendorPath && !isPublicPath(pathname)) {
     const loginPath = loginRedirectWithNext(
       pathname,
       request.nextUrl.search,
@@ -222,11 +253,14 @@ export async function updateSession(
     );
   }
 
+  const user = vendorPath ? vendorUser : venueUser;
+  const supabase = vendorPath ? vendorSupabase : venueSupabase;
+
   // Wevenu HQ (/admin/* and /api/admin/*) - defense in depth alongside the
   // layout-level check in app/admin/layout.tsx. See
   // docs/wevenu-hq-architecture.md section 5.
-  if (user && (pathname.startsWith("/admin") || pathname.startsWith("/api/admin"))) {
-    const { data: isAdmin } = await supabase.rpc("is_hq_admin");
+  if (venueUser && (pathname.startsWith("/admin") || pathname.startsWith("/api/admin"))) {
+    const { data: isAdmin } = await venueSupabase.rpc("is_hq_admin");
     if (!isAdmin) {
       if (pathname.startsWith("/api/admin")) {
         return withSessionCookies(
@@ -246,10 +280,9 @@ export async function updateSession(
   }
 
   // CRM Suspend / unpaid dunning hard-lock - venue staff cannot use the app.
-  // Public couple/guest surfaces stay on PUBLIC_PATHS above. Suspend screen +
-  // billing portal API remain reachable so payment can be updated.
-  if (user && !isPublicPath(pathname)) {
-    const { data: venueLock, error: venueLockError } = await supabase
+  // Vendor portal paths use a separate session and are not venue-suspended here.
+  if (venueUser && !vendorPath && !isPublicPath(pathname)) {
+    const { data: venueLock, error: venueLockError } = await venueSupabase
       .from("venues")
       .select("access_disabled, account_status")
       .maybeSingle<{
@@ -257,7 +290,6 @@ export async function updateSession(
         account_status: string | null;
       }>();
 
-    // If migration is not applied yet, the select may error - do not brick the app.
     const isLocked =
       !venueLockError &&
       Boolean(
@@ -326,10 +358,9 @@ export async function updateSession(
     }
   }
 
-  // Only redirect logged-in users away from /login - not from public couple/guest surfaces.
-  // Coordinators need to be able to preview /p/{token}, /w/{slug}, /book/{key} etc.
-  if (user && pathname === "/login") {
-    const { data: lockedVenue } = await supabase
+  // Only redirect logged-in venue users away from /login.
+  if (venueUser && pathname === "/login") {
+    const { data: lockedVenue } = await venueSupabase
       .from("venues")
       .select("access_disabled, account_status")
       .maybeSingle<{
@@ -349,13 +380,14 @@ export async function updateSession(
       );
     }
 
-    // Honor ?next= for post-auth return (e.g. vendor invitation claim).
-    // Multi-role identities land on /workspaces instead of silently dumping
-    // into the venue dashboard (which previously overrode vendor/client intent).
     const nextRaw = request.nextUrl.searchParams.get("next");
     const safeNext = safeInternalNextPath(nextRaw, request.nextUrl.origin);
-    const home = await resolveAuthenticatedHomePath(supabase, user.id, {
-      next: safeNext,
+    // Never send venue login into vendor accept — that belongs on /vendor/login.
+    const nextForVenue =
+      safeNext && safeNext.startsWith("/vendor") ? null : safeNext;
+    const home = await resolveAuthenticatedHomePath(venueSupabase, venueUser.id, {
+      next: nextForVenue,
+      prefer: "venue",
     });
     return withSessionCookies(
       supabaseResponse,

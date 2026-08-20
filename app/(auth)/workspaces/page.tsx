@@ -10,8 +10,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { createClient } from "@/integrations/supabase/server";
-import { loadPortalRoles } from "@/lib/auth/resolve-home";
+import { loadActivePortalSessions } from "@/lib/auth/resolve-home";
 import { isSupabaseConfigured } from "@/lib/env";
 
 export const metadata: Metadata = {
@@ -21,46 +20,43 @@ export const metadata: Metadata = {
 export const dynamic = "force-dynamic";
 
 /**
- * Shown when one Hello to Cheers login is linked to more than one portal
- * (venue staff, vendor, and/or client). One browser session = one auth
- * identity; this page is the explicit switch — not three parallel logins.
+ * Lists every portal session currently active in this browser (separate cookie
+ * jars for venue, vendor, and client). Prefer this over signing out when you
+ * already inhabit more than one experience.
  */
 export default async function WorkspacesPage() {
   if (!isSupabaseConfigured) redirect("/login");
 
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
+  const sessions = await loadActivePortalSessions();
+  const options: { href: string; title: string; description: string; email: string | null }[] = [];
 
-  const roles = await loadPortalRoles(supabase, user.id);
-  const options: { href: string; title: string; description: string }[] = [];
-
-  if (roles.isVenueStaff) {
+  if (sessions.venue?.roles.isVenueStaff) {
     options.push({
       href: "/dashboard",
       title: "Venue workspace",
       description: "Leads, events, planning, and Setup Hub for your venue.",
+      email: sessions.venue.email,
     });
   }
-  if (roles.isVendor) {
+  if (sessions.vendor?.roles.isVendor) {
     options.push({
       href: "/vendor/dashboard",
       title: "Vendor portal",
       description: "Your business profile, venue relationships, and event work.",
+      email: sessions.vendor.email,
     });
   }
-  if (roles.clientPortalPath) {
+  if (sessions.client?.roles.clientPortalPath) {
     options.push({
-      href: roles.clientPortalPath,
+      href: sessions.client.roles.clientPortalPath,
       title: "Client planning space",
       description: "Your couple portal for this celebration.",
+      email: sessions.client.email,
     });
   }
 
   if (options.length === 0) {
-    redirect("/setup");
+    redirect("/login");
   }
   if (options.length === 1) {
     redirect(options[0]!.href);
@@ -76,8 +72,9 @@ export default async function WorkspacesPage() {
           <CardHeader className="text-center space-y-2">
             <CardTitle>Choose a workspace</CardTitle>
             <CardDescription>
-              You&apos;re signed in as {user.email}. This account is linked to more
-              than one Hello to Cheers experience — pick where to go.
+              This browser has more than one Hello to Cheers session active.
+              Each portal keeps its own sign-in — switching here does not sign
+              the others out.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
@@ -89,10 +86,13 @@ export default async function WorkspacesPage() {
               >
                 <p className="text-sm font-semibold text-foreground">{opt.title}</p>
                 <p className="text-xs text-muted-foreground mt-0.5">{opt.description}</p>
+                {opt.email ? (
+                  <p className="text-[11px] text-muted-foreground mt-1">{opt.email}</p>
+                ) : null}
               </Link>
             ))}
             <p className="text-center text-xs text-muted-foreground pt-2">
-              To use a different email for another role, sign out first.
+              Sign out from inside a portal only ends that portal&apos;s session.
             </p>
           </CardContent>
         </Card>

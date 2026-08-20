@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/integrations/supabase/server";
+import { createClient, createVendorClient } from "@/integrations/supabase/server";
 import {
   attachmentMetaFields,
   normalizeFeedbackAttachments,
@@ -120,21 +120,7 @@ function notifyMetaFrom(
 }
 
 export async function POST(req: NextRequest) {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-
-  const {
-    type,
-    subject,
-    body,
-    rating,
-    surface: rawSurface,
-    allow_public_share: rawAllowPublicShare,
-    related_venue_id: rawRelatedVenueId,
-    attachments: rawAttachments,
-    metadata: clientMeta,
-  } = await req.json() as {
+  const bodyJson = await req.json() as {
     type: string;
     subject?: string;
     body?: string;
@@ -151,9 +137,24 @@ export async function POST(req: NextRequest) {
     };
   };
 
+  const surface: FeedbackSurface = bodyJson.surface === "vendor" ? "vendor" : "venue";
+  const supabase = surface === "vendor" ? await createVendorClient() : await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const {
+    type,
+    subject,
+    body,
+    rating,
+    allow_public_share: rawAllowPublicShare,
+    related_venue_id: rawRelatedVenueId,
+    attachments: rawAttachments,
+    metadata: clientMeta,
+  } = bodyJson;
+
   if (!type) return NextResponse.json({ error: "Missing type" }, { status: 400 });
 
-  const surface: FeedbackSurface = rawSurface === "vendor" ? "vendor" : "venue";
   // Consent only applies to NPS; ignore client true for other types.
   const allowPublicShare = type === "nps" && rawAllowPublicShare === true;
   const attachments = normalizeFeedbackAttachments(rawAttachments, type);

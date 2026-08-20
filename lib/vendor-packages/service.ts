@@ -1,7 +1,7 @@
 /**
  * Vendor packages service. Server-only.
  */
-import { createClient } from "@/integrations/supabase/server";
+import { createVendorClient as createClient } from "@/integrations/supabase/server";
 import { isSupabaseConfigured } from "@/lib/env";
 import { getVendorUser } from "@/lib/vendor-auth/service";
 import type { VendorActionResult, VendorPackage, VendorPackageInput } from "@/lib/vendors/types";

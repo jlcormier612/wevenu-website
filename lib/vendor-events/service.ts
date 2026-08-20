@@ -1,4 +1,4 @@
-import { createClient } from "@/integrations/supabase/server";
+import { createVendorClient as createClient } from "@/integrations/supabase/server";
 import { isSupabaseConfigured } from "@/lib/env";
 import { clientDisplayName } from "@/lib/clients/constants";
 import * as conversationsRepo from "@/lib/conversations/repository";
