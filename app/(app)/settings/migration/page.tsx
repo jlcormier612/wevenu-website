@@ -14,7 +14,7 @@ export default async function MigrationCenterPage() {
     <div className="space-y-6">
       <PageHeader
         title="Migration Center"
-        description="Bring your business over from another system — we'll help you recognize, check, and import it safely."
+        description="Bring your business with you from wherever it lives today — we'll recognize what we can, and guide you through the rest."
       />
       <SettingsTabs />
       <MigrationCenter sourceProfiles={sourceProfiles} />

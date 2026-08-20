@@ -25,6 +25,7 @@ import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { createClient } from "@/integrations/supabase/client";
 import {
@@ -39,6 +40,16 @@ import {
   runMigrationDedupeAction,
   startMigrationSessionAction,
 } from "@/app/(app)/settings/migration-actions";
+import {
+  MIGRATION_CENTER_INTRO,
+  SOURCE_SELECTION_LANES,
+  namedSourceProfiles,
+  sourceHistoryLabel,
+  sourceKeyForLane,
+  sourceSelectionGuidance,
+  type SourceSelectionLane,
+} from "@/lib/migration/source-selection";
+import { recognizeSource } from "@/lib/migration/source-profiles";
 import type {
   MigrationEntityType, MigrationRecord, MigrationSession, SessionResumeState, SessionSourceFile, SessionSummary, SourceKey, SourceProfile,
 } from "@/lib/migration/types";
@@ -161,7 +172,12 @@ export function MigrationCenter({ sourceProfiles }: { sourceProfiles: SourceProf
   const [loading, startLoading] = React.useTransition();
   const [starting, setStarting] = React.useState(false);
 
-  const [sourceKey, setSourceKey] = React.useState<SourceKey>("generic_csv");
+  const namedProfiles = React.useMemo(() => namedSourceProfiles(sourceProfiles), [sourceProfiles]);
+  const [lane, setLane] = React.useState<SourceSelectionLane>("another_system");
+  const [recognizedKey, setRecognizedKey] = React.useState<SourceKey>(
+    () => namedProfiles[0]?.key ?? "generic_csv",
+  );
+  const sourceKey = sourceKeyForLane(lane, recognizedKey, sourceProfiles);
   const [entityType, setEntityType] = React.useState<MigrationEntityType>("client");
   const [headers, setHeaders] = React.useState<string[]>([]);
   const [rows, setRows] = React.useState<CsvRow[]>([]);
@@ -170,6 +186,7 @@ export function MigrationCenter({ sourceProfiles }: { sourceProfiles: SourceProf
   const fileRef = React.useRef<HTMLInputElement>(null);
 
   const selectedProfile = sourceProfiles.find((p) => p.key === sourceKey) ?? sourceProfiles[0];
+  const guidance = sourceSelectionGuidance(lane, selectedProfile ?? null);
   const activeSession = sessions.find((s) => s.id === activeSessionId) ?? null;
 
   const refreshSessions = React.useCallback(() => {
@@ -213,7 +230,22 @@ export function MigrationCenter({ sourceProfiles }: { sourceProfiles: SourceProf
           if (found) auto[f.key] = found;
         }
         setMapping(auto);
-        toast.success(`Read ${results.data.length} rows from ${file.name}.`);
+
+        // Best-effort recognition only — never forces a source; venue can keep
+        // "another system" / manual mapping. Uses existing recognizeSource().
+        const detected = recognizeSource(hs);
+        if (detected && namedProfiles.some((p) => p.key === detected)) {
+          const label = namedProfiles.find((p) => p.key === detected)?.displayName ?? detected;
+          if (lane !== "recognized" || recognizedKey !== detected) {
+            setLane("recognized");
+            setRecognizedKey(detected);
+            toast.success(`This file looks like a ${label} export — we selected it for you. You can change that anytime.`);
+          } else {
+            toast.success(`Read ${results.data.length} rows from ${file.name}.`);
+          }
+        } else {
+          toast.success(`Read ${results.data.length} rows from ${file.name}.`);
+        }
       },
       error: () => toast.error("Could not read that file."),
     });
@@ -301,35 +333,72 @@ export function MigrationCenter({ sourceProfiles }: { sourceProfiles: SourceProf
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Where are you moving from?</CardTitle>
-          <CardDescription>
-            We'll recognize what we can from the file you upload — this never connects to or logs into another platform on your behalf.
-          </CardDescription>
+          <CardTitle className="text-base">{MIGRATION_CENTER_INTRO.title}</CardTitle>
+          <CardDescription>{MIGRATION_CENTER_INTRO.body}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid gap-3 sm:grid-cols-2">
+          <div className="space-y-2">
+            <p className="text-xs font-medium text-heading">Where are you moving from?</p>
+            <RadioGroup
+              value={lane}
+              onValueChange={(v) => setLane(v as SourceSelectionLane)}
+              className="gap-3"
+            >
+              {SOURCE_SELECTION_LANES.map((option) => (
+                <label
+                  key={option.id}
+                  className="flex cursor-pointer items-start gap-3 rounded-lg border border-border px-3 py-2.5 hover:bg-muted/20"
+                >
+                  <RadioGroupItem value={option.id} className="mt-0.5" />
+                  <span className="min-w-0 space-y-0.5">
+                    <span className="block text-sm font-medium text-heading">{option.label}</span>
+                    <span className="block text-xs text-muted-foreground">{option.description}</span>
+                  </span>
+                </label>
+              ))}
+            </RadioGroup>
+          </div>
+
+          {lane === "recognized" && namedProfiles.length > 0 && (
             <div className="space-y-1.5">
-              <p className="text-xs font-medium text-heading">Source</p>
-              <Select value={sourceKey} onValueChange={(v) => setSourceKey(v as SourceKey)} items={sourceProfiles.map((p) => ({ value: p.key, label: p.displayName }))}>
+              <p className="text-xs font-medium text-heading">Which system?</p>
+              <Select
+                value={recognizedKey}
+                onValueChange={(v) => setRecognizedKey(v as SourceKey)}
+                items={namedProfiles.map((p) => ({ value: p.key, label: p.displayName }))}
+              >
                 <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>{sourceProfiles.map((p) => <SelectItem key={p.key} value={p.key}>{p.displayName}</SelectItem>)}</SelectContent>
+                <SelectContent>
+                  {namedProfiles.map((p) => (
+                    <SelectItem key={p.key} value={p.key}>{p.displayName}</SelectItem>
+                  ))}
+                </SelectContent>
               </Select>
-              {selectedProfile?.historicalLimitations && (
-                <p className="text-[11px] text-muted-foreground">{selectedProfile.historicalLimitations}</p>
-              )}
+              <p className="text-[11px] text-muted-foreground">
+                Don&apos;t see yours? Choose &ldquo;Another system&rdquo; above — that path is fully supported.
+              </p>
             </div>
-            <div className="space-y-1.5">
-              <p className="text-xs font-medium text-heading">What are you bringing over?</p>
-              <Select value={entityType} onValueChange={(v) => setEntityType(v as MigrationEntityType)} items={COMMITTABLE_ENTITIES.map((e) => ({ value: e, label: ENTITY_LABEL[e] }))}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>{COMMITTABLE_ENTITIES.map((e) => <SelectItem key={e} value={e}>{ENTITY_LABEL[e]}</SelectItem>)}</SelectContent>
-              </Select>
-            </div>
+          )}
+
+          <div className="rounded-lg border border-border bg-muted/30 px-3 py-2.5">
+            <p className="text-sm font-medium text-heading">{guidance.headline}</p>
+            <p className="mt-1 text-xs text-muted-foreground leading-relaxed">{guidance.body}</p>
+          </div>
+
+          <div className="space-y-1.5">
+            <p className="text-xs font-medium text-heading">What are you bringing over?</p>
+            <Select value={entityType} onValueChange={(v) => setEntityType(v as MigrationEntityType)} items={COMMITTABLE_ENTITIES.map((e) => ({ value: e, label: ENTITY_LABEL[e] }))}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>{COMMITTABLE_ENTITIES.map((e) => <SelectItem key={e} value={e}>{ENTITY_LABEL[e]}</SelectItem>)}</SelectContent>
+            </Select>
           </div>
 
           <div className="rounded-lg border border-dashed border-border p-4">
             <input ref={fileRef} type="file" accept=".csv" onChange={handleFile} className="text-sm" />
-            <p className="mt-1 text-[11px] text-muted-foreground">CSV export from {selectedProfile?.displayName ?? "your old system"}. We'll keep a copy of this file with your migration history.</p>
+            <p className="mt-1 text-[11px] text-muted-foreground">
+              CSV export from {lane === "recognized" && selectedProfile ? selectedProfile.displayName : "your current system"}.
+              We&apos;ll keep a copy of this file with your migration history. This never connects to or logs into another platform on your behalf.
+            </p>
           </div>
 
           {headers.length > 0 && (
@@ -364,7 +433,10 @@ export function MigrationCenter({ sourceProfiles }: { sourceProfiles: SourceProf
           <CardHeader>
             <div className="flex flex-wrap items-center justify-between gap-2">
               <CardTitle className="text-base">
-                {sourceProfiles.find((p) => p.key === activeSession.sourceKey)?.displayName ?? activeSession.sourceKey}
+                {sourceHistoryLabel(
+                  sourceProfiles.find((p) => p.key === activeSession.sourceKey),
+                  activeSession.sourceKey,
+                )}
               </CardTitle>
               {resume && <StatusPill state={resume.state} session={activeSession} />}
             </div>
@@ -470,7 +542,9 @@ export function MigrationCenter({ sourceProfiles }: { sourceProfiles: SourceProf
                     className={`flex w-full items-center justify-between rounded-lg border px-3 py-2 text-left text-sm hover:bg-muted/20 ${s.id === activeSessionId ? "border-primary" : "border-border"}`}
                   >
                     <span>
-                      <span className="font-medium text-heading">{profile?.displayName ?? s.sourceKey}</span>
+                      <span className="font-medium text-heading">
+                        {sourceHistoryLabel(profile, s.sourceKey)}
+                      </span>
                       <span className="ml-2 text-xs text-muted-foreground">{new Date(s.createdAt).toLocaleDateString()}</span>
                     </span>
                     <SessionListBadge session={s} />

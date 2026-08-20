@@ -85,9 +85,9 @@ export function BringYourBusinessChoices({
         />
       </div>
       <p className="text-xs text-muted-foreground">
-        Moving from another system uses Migration Center — we&apos;ll help you
-        recognize and bring things over carefully. A spreadsheet is fine when
-        you just have a file to upload.
+        Moving from another system opens Migration Center — whether we know
+        your software by name or not, we&apos;ll help you bring things over
+        carefully. A spreadsheet is fine when you just have a file to upload.
       </p>
     </div>
   );

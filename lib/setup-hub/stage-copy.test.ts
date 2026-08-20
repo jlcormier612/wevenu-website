@@ -49,5 +49,6 @@ describe("Setup Hub stage copy", () => {
     assert.match(copy, /another system/);
     assert.match(copy, /spreadsheet/);
     assert.match(copy, /start fresh/);
+    assert.match(copy, /whether we know it by name or not/);
   });
 });
