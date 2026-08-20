@@ -264,56 +264,88 @@ function toVendorInput(n: NormalizedVendorLike): VendorInput {
   } as any;
 }
 
+const STALE_CLAIM_MS = 5 * 60 * 1000; // 5 minutes — generous relative to one record's real commit time; only reclaims an abandoned (crashed) attempt.
+
 /**
  * Commits every `validated`/`approved` record via the existing, unmodified
  * canonical create function for its entity type — always with
  * historicalImport true, since Migration Center exists specifically to
  * bring over backfilled data (docs/migration-cutover-architecture.md §B.3,
  * "quiet/historical commit mode"). `duplicate_exact` records are marked
- * skipped, not committed. Idempotent/resumable: only records still in
- * `validated`/`approved` are processed, so re-running after an interruption
- * picks up exactly where it left off — an already-`committed` record is
- * never re-created.
+ * skipped, not committed.
+ *
+ * Idempotent/resumable, at two levels: (1) across separate calls over
+ * time — only records still in `validated`/`approved` are ever selected,
+ * so re-running after an interruption picks up exactly where it left off
+ * and never re-creates an already-`committed` record; (2) across
+ * concurrent calls at the same time — a double-click, two open tabs, or a
+ * retried request racing this same session cannot create duplicate
+ * entities, because every record is atomically claimed (repo.claimRecord,
+ * a conditional `UPDATE ... WHERE claimed_at IS NULL`) immediately before
+ * its entity-creation call. If the claim fails, another request already
+ * has (or already finished) that record, and this call skips it without
+ * counting it as a failure. The guarantee comes from Postgres's own
+ * row-level update semantics, not an application-level lock — see the
+ * migration comment on migration_records.claimed_at.
  */
-export async function commitSession(client: AnyDbClient, session: MigrationSession, adminId: string | null): Promise<CommitOutcome> {
+export async function commitSession(client: AnyDbClient, session: MigrationSession, actorId: string | null): Promise<CommitOutcome> {
   await repo.updateSessionStatus(client, session.id, "committing");
+  await repo.releaseStaleClaims(client, session.id, new Date(Date.now() - STALE_CLAIM_MS).toISOString());
 
   const outcome: CommitOutcome = { committed: 0, skipped: 0, failed: 0 };
   const duplicates = await repo.listRecords(client, session.id, "duplicate_exact");
   for (const record of duplicates) {
+    // Idempotent regardless of races — marking an already-skipped row
+    // skipped again creates nothing, so this path needs no claim.
     await repo.updateRecord(client, record.id, { status: "skipped" });
     outcome.skipped++;
   }
 
   for (const entityType of COMMITTABLE_ENTITY_TYPES) {
-    const committable = [
+    const candidates = [
       ...(await repo.listRecords(client, session.id, "validated")),
       ...(await repo.listRecords(client, session.id, "approved")),
     ].filter((r) => r.targetEntityType === entityType);
-    if (committable.length === 0) continue;
+    if (candidates.length === 0) continue;
 
     const batchEntityType = entityType === "client" ? "couples" : entityType === "lead" ? "leads" : "vendors";
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const batchClient = client as any;
     const batchId = session.createdByType === "hq_staff"
-      ? await createImportBatchForVenue(batchClient, session.venueId, batchEntityType, session.sourceKey, committable.length, adminId ?? "unknown", session.engagementId, session.id)
-      : await createImportBatch(session.venueId, batchEntityType, session.sourceKey, committable.length, batchClient, session.id);
+      ? await createImportBatchForVenue(batchClient, session.venueId, batchEntityType, session.sourceKey, candidates.length, actorId ?? "unknown", session.engagementId, session.id)
+      : await createImportBatch(session.venueId, batchEntityType, session.sourceKey, candidates.length, batchClient, session.id);
 
     const createdIds: string[] = [];
-    for (const record of committable) {
-      if (!record.normalizedPayload) { outcome.failed++; continue; }
+    let claimedCount = 0;
+    for (const candidate of candidates) {
+      // The candidate list above may already be stale by the time we get
+      // here (another request may have claimed or finished it since) —
+      // the claim itself, not this list, is what's actually race-safe.
+      const record = await repo.claimRecord(client, candidate.id, actorId);
+      if (!record) continue; // lost the race (or already resolved) — not this request's to process, not a failure.
+      claimedCount++;
+
+      if (!record.normalizedPayload) {
+        await repo.updateRecord(client, record.id, { status: "needs_review", validationErrors: ["Nothing to commit — this record was never normalized."] });
+        await repo.releaseClaim(client, record.id);
+        outcome.failed++;
+        continue;
+      }
       const result = await commitOneRecord(session, entityType, record);
       if (result.ok) {
         await repo.updateRecord(client, record.id, { status: "committed", createdEntityId: result.entityId, committedAt: new Date().toISOString() });
+        await repo.releaseClaim(client, record.id);
         createdIds.push(result.entityId);
         outcome.committed++;
       } else {
         await repo.updateRecord(client, record.id, { status: "needs_review", validationErrors: [result.error] });
+        await repo.releaseClaim(client, record.id);
         outcome.failed++;
       }
     }
+    if (claimedCount === 0) continue; // every candidate here was already claimed by a concurrent request — no batch to record.
     if (createdIds.length > 0) await stampImportBatch(batchEntityType, batchId, createdIds, batchClient);
-    await finalizeImportBatch(batchId, { imported: createdIds.length, skipped: 0, errors: committable.length - createdIds.length }, batchClient);
+    await finalizeImportBatch(batchId, { imported: createdIds.length, skipped: 0, errors: claimedCount - createdIds.length }, batchClient);
   }
 
   // A session isn't simply "complete" or "failed" from this one commit
@@ -321,10 +353,13 @@ export async function commitSession(client: AnyDbClient, session: MigrationSessi
   // yet (duplicate_likely/conflict/needs_review) may still remain, exactly
   // as intended by "commit valid records, leave unresolved records
   // untouched" (docs/migration-cutover-architecture.md §B.5). Status must
-  // reflect the session's *actual current state*, not just this run.
+  // reflect the session's *actual current state*, not just this run —
+  // including records a concurrent request still has claimed, which must
+  // not read as "done" here just because this call's own work is finished.
   const allRecords = await repo.listRecords(client, session.id);
   const stillUnresolved = allRecords.filter((r) => UNRESOLVED_STATUSES.includes(r.status)).length;
-  const finalStatus = computeFinalSessionStatus(outcome, stillUnresolved);
+  const inFlight = await repo.countInFlightClaims(client, session.id);
+  const finalStatus = computeFinalSessionStatus(outcome, stillUnresolved + inFlight);
   await repo.updateSessionStatus(client, session.id, finalStatus);
   return outcome;
 }
@@ -376,7 +411,7 @@ export async function commitOwnSession(sessionId: string): Promise<{ ok: true; o
   if (isError(actor)) return actor;
   const session = await repo.getSession(actor.client, actor.venueId, sessionId);
   if (!session) return { ok: false, message: "Migration session not found." };
-  const outcome = await commitSession(actor.client, session, null);
+  const outcome = await commitSession(actor.client, session, actor.createdBy);
   return { ok: true, outcome };
 }
 

@@ -161,6 +161,68 @@ export async function updateRecord(
   await (client.from("migration_records") as any).update(row).eq("id", recordId);
 }
 
+// ---- Commit-race protection (atomic claim) ─────────────────────────────────
+// Status (validated/approved) is deliberately left untouched by claiming —
+// only claimed_at/claimed_by change — so the resumability state machine and
+// history view need no changes to understand a claimed-but-not-yet-resolved
+// record; it still reads as "pending commit."
+
+/**
+ * Attempts to atomically claim exactly one record for commit. The
+ * conditional UPDATE (`WHERE status IN (...) AND claimed_at IS NULL`) is
+ * what makes this race-safe: if two requests race for the same record,
+ * Postgres serializes the two UPDATEs — whichever commits first satisfies
+ * the WHERE clause and gets the row back; the second's WHERE clause no
+ * longer matches (claimed_at is no longer null), affects zero rows, and
+ * this returns null, telling that caller it lost the race and must not
+ * proceed. No application-level lock — the guarantee comes entirely from
+ * the database's own row-level update semantics.
+ */
+export async function claimRecord(client: AnyDbClient, recordId: string, claimedBy: string | null): Promise<MigrationRecord | null> {
+  const { data } = await client.from("migration_records")
+    .update({ claimed_at: new Date().toISOString(), claimed_by: claimedBy })
+    .eq("id", recordId)
+    .in("status", ["validated", "approved"])
+    .is("claimed_at", null)
+    .select("*")
+    .maybeSingle<Record<string, unknown>>();
+  return data ? mapRecord(data) : null;
+}
+
+/** Releases a claim after the attempt resolves (success or failure) — tidy-up, not itself part of the correctness guarantee. */
+export async function releaseClaim(client: AnyDbClient, recordId: string): Promise<void> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  await (client.from("migration_records") as any).update({ claimed_at: null, claimed_by: null }).eq("id", recordId);
+}
+
+/**
+ * Recovery from a crashed/killed process that claimed a record but never
+ * resolved it: any record still claimed, still `validated`/`approved`,
+ * older than the staleness threshold is released so a later commit
+ * attempt can retry it. Never touches a record a genuinely still-running
+ * commit legitimately holds — the threshold is generous relative to how
+ * long one record's entity-creation call actually takes.
+ */
+export async function releaseStaleClaims(client: AnyDbClient, sessionId: string, staleBeforeIso: string): Promise<void> {
+  await client.from("migration_records")
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    .update({ claimed_at: null, claimed_by: null } as any)
+    .eq("session_id", sessionId)
+    .in("status", ["validated", "approved"])
+    .not("claimed_at", "is", null)
+    .lt("claimed_at", staleBeforeIso);
+}
+
+/** Records currently claimed (genuinely in-flight, or not yet reclaimed as stale) — used so a concurrent commit's own final status computation doesn't prematurely report a session "done" while another request is still processing part of it. */
+export async function countInFlightClaims(client: AnyDbClient, sessionId: string): Promise<number> {
+  const { count } = await client.from("migration_records")
+    .select("id", { count: "exact", head: true })
+    .eq("session_id", sessionId)
+    .in("status", ["validated", "approved"])
+    .not("claimed_at", "is", null);
+  return count ?? 0;
+}
+
 export async function linkDocument(client: AnyDbClient, sessionId: string, documentId: string): Promise<void> {
   await client.from("migration_session_documents").insert({ session_id: sessionId, document_id: documentId });
 }
