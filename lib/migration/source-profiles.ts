@@ -15,23 +15,24 @@ import type { AnyDbClient } from "@/lib/lead-intake/types";
 import type { SourceAdapter, SourceKey, SourceProfile } from "@/lib/migration/types";
 import { genericCsvAdapter } from "@/lib/migration/sources/generic-csv";
 import { wevenLegacyAdapter } from "@/lib/migration/sources/weven-legacy";
+import { honeybookAdapter } from "@/lib/migration/sources/honeybook";
 
 const ADAPTERS: Record<SourceKey, SourceAdapter> = {
   generic_csv: genericCsvAdapter,
-  // The Knot / WeddingWire / Planning Pod / HoneyBook have no adapter yet —
-  // every row from those sources falls back to genericCsvAdapter's own
-  // recognition/normalization until a real column-signature profile is
-  // built for each (docs/migration-cutover-architecture.md §F, Slice 7).
-  // Selecting one of these sources today changes the venue-facing copy and
-  // history label only — it must never imply a live connection or
-  // intelligent parsing that doesn't exist yet.
+  // The Knot / WeddingWire / Planning Pod have no adapter yet — every row
+  // from those sources falls back to genericCsvAdapter's own recognition/
+  // normalization until a real column-signature profile is built for each
+  // (docs/migration-cutover-architecture.md §F, Slice 7). Selecting one of
+  // these sources today changes the venue-facing copy and history label
+  // only — it must never imply a live connection or intelligent parsing
+  // that doesn't exist yet.
   the_knot: genericCsvAdapter,
   weddingwire: genericCsvAdapter,
   planning_pod: genericCsvAdapter,
-  honeybook: genericCsvAdapter,
-  // First real source-specific adapter (see lib/migration/sources/weven-
-  // legacy.ts for exactly what's verified vs. deliberately not assumed).
+  // Real source-specific adapters (see each file's own doc comment for
+  // exactly what's verified vs. deliberately not assumed).
   weven_legacy: wevenLegacyAdapter,
+  honeybook: honeybookAdapter,
 };
 
 export function getSourceAdapter(key: SourceKey): SourceAdapter {
