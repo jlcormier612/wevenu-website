@@ -59,10 +59,38 @@ export async function disconnectConnection(client: any, venueId: string): Promis
   if (error) throw error;
 }
 
+/**
+ * Cross-venue count for unsubscribe safety. Caller must use the admin
+ * client — the session client is RLS-scoped to one venue and would always
+ * under-count, causing a naïve unsubscribe that would cut off another
+ * venue still using the same Page.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export async function countConnectedVenuesForPage(admin: any, pageId: string): Promise<number> {
+  const { count, error } = await admin.from("facebook_connections")
+    .select("venue_id", { count: "exact", head: true })
+    .eq("page_id", pageId)
+    .eq("status", "connected");
+  if (error) throw error;
+  return count ?? 0;
+}
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function setConnectionError(client: any, venueId: string, message: string): Promise<void> {
   const { error } = await client.from("facebook_connections").update({
     status: "error", last_error: message, last_error_at: new Date().toISOString(),
+  }).eq("venue_id", venueId);
+  if (error) throw error;
+}
+
+/**
+ * Records a Page-subscription failure without flipping status to `error`.
+ * OAuth is still valid; the venue should re-select the Page, not reconnect.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export async function recordLastError(client: any, venueId: string, message: string): Promise<void> {
+  const { error } = await client.from("facebook_connections").update({
+    last_error: message, last_error_at: new Date().toISOString(), last_health_check_ok: false,
   }).eq("venue_id", venueId);
   if (error) throw error;
 }

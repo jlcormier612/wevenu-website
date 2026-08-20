@@ -22,7 +22,7 @@ export async function listFacebookPagesAction() {
   return listFacebookPages();
 }
 
-export async function selectFacebookPageAction(input: { pageId: string; pageName: string; pageAccessToken: string }): Promise<FacebookActionResult> {
+export async function selectFacebookPageAction(input: { pageId: string }): Promise<FacebookActionResult> {
   const result = await selectFacebookPage(input);
   if (result.ok) revalidatePath("/settings");
   return result;
