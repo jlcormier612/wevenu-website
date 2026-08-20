@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { createClient } from "@/integrations/supabase/server";
 import { isSupabaseConfigured } from "@/lib/env";
-import { ClaimButton } from "@/components/vendor-app/claim-button";
+import { VendorAcceptAuthedPanel } from "@/components/vendor-app/vendor-accept-authed-panel";
 import { VendorAcceptUnauthPanel } from "@/components/vendor-app/vendor-accept-unauth-panel";
 
 export const metadata: Metadata = { title: "Accept Invitation — Hello to Cheers" };
@@ -33,7 +33,7 @@ export default async function VendorAcceptPage({ searchParams }: Props) {
     : [{ data: { user: null } }, { data: null }];
 
   const vendorName = vendor.businessName ?? "your business";
-  const category   = vendor.category ?? null;
+  const category = vendor.category ?? null;
   const inviteEmail =
     invitePreview && typeof invitePreview === "object" && "email" in invitePreview
       ? String((invitePreview as { email?: string }).email ?? "").trim() || null
@@ -57,12 +57,20 @@ export default async function VendorAcceptPage({ searchParams }: Props) {
             A venue would love to connect with you on Hello to Cheers. They&apos;ve added{" "}
             {vendorName} to their trusted vendor network and created a starting profile for your business.
           </p>
-          <p>Claiming your profile lets you keep your business information up to date, manage the services and packages you offer, share your availability, and build venue relationships — all in one place.</p>
+          <p>
+            Claiming your profile lets you keep your business information up to date, manage the
+            services and packages you offer, share your availability, and build venue relationships —
+            all in one place.
+          </p>
           <p>It only takes a minute to get started.</p>
         </div>
 
         {user ? (
-          <ClaimButton token={token} />
+          <VendorAcceptAuthedPanel
+            token={token}
+            sessionEmail={user.email ?? null}
+            inviteEmail={inviteEmail}
+          />
         ) : (
           <VendorAcceptUnauthPanel token={token} inviteEmail={inviteEmail} />
         )}

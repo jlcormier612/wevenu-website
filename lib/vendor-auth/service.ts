@@ -55,6 +55,16 @@ async function createAndSignInVendorAccount(
   }
 
   const supabase = await createClient();
+  const {
+    data: { user: existing },
+  } = await supabase.auth.getUser();
+  if (
+    existing?.email &&
+    existing.email.trim().toLowerCase() !== email.trim().toLowerCase()
+  ) {
+    await supabase.auth.signOut();
+  }
+
   const { error: signInErr } = await supabase.auth.signInWithPassword({ email, password });
   if (signInErr) {
     return {

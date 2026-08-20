@@ -35,15 +35,22 @@ export default async function VendorWorkspaceLayout({
 }) {
   if (!isSupabaseConfigured) redirect("/login");
 
-  const vendorUser = await getVendorUser();
-  if (!vendorUser) redirect("/login");
-
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
+  if (!user) {
+    redirect("/login?next=%2Fvendor%2Fdashboard");
+  }
 
+  const vendorUser = await getVendorUser();
+  if (!vendorUser) {
+    // Signed in but not a vendor — do not bounce to bare /login (that used to
+    // dump venue staff straight into /dashboard and look like a "hijack").
+    const { data: venueId } = await supabase.rpc("current_user_venue_id");
+    if (venueId) redirect("/workspaces");
+    redirect("/login?next=%2Fvendor%2Fdashboard");
+  }
   const [profile, pendingTaskCount, conversationInbox, home, luvExtras] = await Promise.all([
     getVendorProfile(vendorUser.vendorId),
     getPendingTaskCount(vendorUser.vendorId),

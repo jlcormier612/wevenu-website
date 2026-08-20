@@ -69,7 +69,11 @@ export default async function LoginPage({ searchParams }: Props) {
               {justActivated ? "Welcome to Hello to Cheers" : "Welcome back"}
             </CardTitle>
             <CardDescription>
-              Sign in to your venue workspace to continue.
+              {nextPath?.startsWith("/vendor")
+                ? "Sign in to continue to your vendor invitation or portal."
+                : nextPath?.startsWith("/client") || nextPath?.startsWith("/p/")
+                  ? "Sign in to continue to your planning workspace."
+                  : "Sign in to your Hello to Cheers workspace to continue."}
             </CardDescription>
           </CardHeader>
           <CardContent>

@@ -4,7 +4,7 @@ import * as React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  CalendarDays, CheckSquare, FileText, Heart,
+  ArrowLeftRight, CalendarDays, CheckSquare, FileText, Heart,
   LayoutDashboard, LogOut, Menu, MessageSquare,
   User, X,
 } from "lucide-react";
@@ -249,6 +249,14 @@ function SidebarContent({
       </nav>
 
       <div className="mt-auto shrink-0 border-t border-sidebar-border px-3 py-3 space-y-0.5">
+        <Link
+          href="/workspaces"
+          onClick={onNavigate}
+          className="flex w-full items-center gap-3 rounded-sm px-3 py-2.5 text-[0.95rem] tracking-wide text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+        >
+          <ArrowLeftRight className="h-4 w-4 shrink-0 text-sidebar-foreground/70" />
+          Switch workspace
+        </Link>
         <FeedbackSheet surface="vendor" relatedVenueId={relatedVenueId} />
         <form action={signOut}>
           <button

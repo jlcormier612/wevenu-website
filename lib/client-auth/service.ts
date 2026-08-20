@@ -222,6 +222,18 @@ async function createAndSignInAccount(email: string, password: string): Promise<
   }
 
   const supabase = await createClient();
+  // Drop a mismatched browser session (e.g. venue staff testing an invite)
+  // before signing into the invited couple account.
+  const {
+    data: { user: existing },
+  } = await supabase.auth.getUser();
+  if (
+    existing?.email &&
+    existing.email.trim().toLowerCase() !== email.trim().toLowerCase()
+  ) {
+    await supabase.auth.signOut();
+  }
+
   const { error: signInErr } = await supabase.auth.signInWithPassword({ email, password });
   if (signInErr) {
     return {
@@ -232,6 +244,20 @@ async function createAndSignInAccount(email: string, password: string): Promise<
     };
   }
   return { ok: true };
+}
+
+function accessTokenFromAcceptRpc(data: unknown): string | null {
+  if (!data || typeof data !== "object") return null;
+  const row = data as Record<string, unknown>;
+  const token = row.accessToken ?? row.access_token;
+  return typeof token === "string" && token.trim() ? token.trim() : null;
+}
+
+function clientIdFromAcceptRpc(data: unknown): string | null {
+  if (!data || typeof data !== "object") return null;
+  const row = data as Record<string, unknown>;
+  const id = row.clientId ?? row.client_id;
+  return typeof id === "string" && id.trim() ? id.trim() : null;
 }
 
 export async function acceptClientInvitation(
@@ -258,8 +284,18 @@ export async function acceptClientInvitation(
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("accept_client_invitation", { p_token: token });
   if (error) return { ok: false, error: error.message };
-  if (!data?.ok) return { ok: false, error: data?.error ?? "Invalid or expired invitation." };
-  return { ok: true, clientId: data.clientId, accessToken: data.accessToken };
+  if (!data || (data as { ok?: boolean }).ok === false) {
+    return {
+      ok: false,
+      error: (data as { error?: string } | null)?.error ?? "Invalid or expired invitation.",
+    };
+  }
+  const accessToken = accessTokenFromAcceptRpc(data);
+  const clientId = clientIdFromAcceptRpc(data);
+  if (!accessToken || !clientId) {
+    return { ok: false, error: "Invitation accepted, but the planning workspace link was missing. Try signing in." };
+  }
+  return { ok: true, clientId, accessToken };
 }
 
 export async function acceptParticipantInvitation(
@@ -283,8 +319,18 @@ export async function acceptParticipantInvitation(
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("accept_couple_participant_invitation", { p_token: token });
   if (error) return { ok: false, error: error.message };
-  if (!data?.ok) return { ok: false, error: data?.error ?? "Invalid or expired invitation." };
-  return { ok: true, clientId: data.clientId, accessToken: data.accessToken };
+  if (!data || (data as { ok?: boolean }).ok === false) {
+    return {
+      ok: false,
+      error: (data as { error?: string } | null)?.error ?? "Invalid or expired invitation.",
+    };
+  }
+  const accessToken = accessTokenFromAcceptRpc(data);
+  const clientId = clientIdFromAcceptRpc(data);
+  if (!accessToken || !clientId) {
+    return { ok: false, error: "Invitation accepted, but the planning workspace link was missing. Try signing in." };
+  }
+  return { ok: true, clientId, accessToken };
 }
 
 // ── Client-side: sign in, own account management ────────────────────────────

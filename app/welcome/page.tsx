@@ -83,8 +83,8 @@ export default async function WelcomePage({ searchParams }: Props) {
   const status = await legalAcceptanceService.requiresAcceptance(
     principal.user,
   );
-  const fallback =
-    principal.kind === "vendor" ? "/vendor/dashboard" : "/dashboard";
+  const { resolveAuthenticatedHomePath } = await import("@/lib/auth/resolve-home");
+  const fallback = await resolveAuthenticatedHomePath(supabase, user.id);
   const returnTo = safeReturnToPath(params.returnTo, { fallback });
   const documents = welcomeDocumentsFromOutstanding(status.outstanding);
 

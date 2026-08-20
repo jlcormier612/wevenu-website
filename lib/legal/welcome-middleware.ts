@@ -36,6 +36,7 @@ const LEGAL_ENFORCEMENT_SKIP_PREFIXES = [
   "/client/accept",
   "/client/accept-participant",
   "/vendor/accept",
+  "/workspaces",
   "/p",
   "/v",
 ] as const;

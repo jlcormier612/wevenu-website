@@ -69,9 +69,9 @@ export async function GET(request: Request) {
 
     const copy = copyForWelcomeContext(context);
     const documents = welcomeDocumentsFromOutstanding(status.outstanding);
+    const { resolveAuthenticatedHomePath } = await import("@/lib/auth/resolve-home");
     const returnTo = safeReturnToPath(url.searchParams.get("returnTo"), {
-      fallback:
-        principal.kind === "vendor" ? "/vendor/dashboard" : "/dashboard",
+      fallback: await resolveAuthenticatedHomePath(supabase, user.id),
       origin: url.origin,
     });
 
@@ -185,11 +185,11 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: result.message }, { status: 400 });
     }
 
+    const { resolveAuthenticatedHomePath } = await import("@/lib/auth/resolve-home");
     const returnTo = safeReturnToPath(
       typeof body.returnTo === "string" ? body.returnTo : null,
       {
-        fallback:
-          principal.kind === "vendor" ? "/vendor/dashboard" : "/dashboard",
+        fallback: await resolveAuthenticatedHomePath(supabase, user.id),
       },
     );
 

@@ -48,12 +48,22 @@ export default async function WorkspaceLayout({
 
   const venue = await getCurrentVenue();
   if (!venue) {
-    // No venue row at all (e.g. activation never finished creating one) —
-    // Setup Hub itself requires a venue to render anything and returns
-    // blank without one, so this case still goes through the wizard that
-    // can create one from scratch.
+    // No venue row — may be a vendor-only or client-only identity. Never dump
+    // those users into Venue Setup (/setup); that is the venue onboarding path.
     const vendorUser = await getVendorUser();
     if (vendorUser) redirect("/vendor/dashboard");
+
+    const { data: portalSession } = await supabase
+      .from("client_portal_sessions")
+      .select("access_token")
+      .eq("client_user_id", user.id)
+      .order("created_at", { ascending: true })
+      .limit(1)
+      .maybeSingle<{ access_token: string }>();
+    if (portalSession?.access_token) {
+      redirect(`/p/${portalSession.access_token}`);
+    }
+
     redirect("/setup");
   }
   if (!venue.setupCompleted) {

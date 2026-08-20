@@ -2,6 +2,11 @@ import { NextResponse, type NextRequest } from "next/server";
 
 import { createServerClient } from "@supabase/ssr";
 
+import {
+  loginRedirectWithNext,
+  safeInternalNextPath as safeNextPath,
+} from "@/lib/auth/portal-home";
+import { resolveAuthenticatedHomePath } from "@/lib/auth/resolve-home";
 import { getSupabaseConfig, isSupabaseConfigured } from "@/lib/env";
 import { decideLegalProxyEnforcement } from "@/lib/legal/enforce-legal-in-proxy";
 import { shouldSkipLegalEnforcement } from "@/lib/legal/welcome-middleware";
@@ -89,14 +94,11 @@ function isPublicPath(pathname: string): boolean {
  * Used for /login?next= after vendor invitation claim and similar flows.
  */
 function safeInternalNextPath(raw: string | null, origin: string): string | null {
-  if (!raw) return null;
-  const trimmed = raw.trim();
-  if (!trimmed.startsWith("/") || trimmed.startsWith("//")) return null;
+  const path = safeNextPath(raw);
+  if (!path) return null;
   try {
-    const url = new URL(trimmed, origin);
+    const url = new URL(path, origin);
     if (url.origin !== origin) return null;
-    // Never bounce back to login itself.
-    if (url.pathname === "/login") return null;
     return `${url.pathname}${url.search}${url.hash}`;
   } catch {
     return null;
@@ -208,11 +210,15 @@ export async function updateSession(
   } = await supabase.auth.getUser();
 
   if (!user && !isPublicPath(pathname)) {
-    const loginUrl = request.nextUrl.clone();
-    loginUrl.pathname = "/login";
+    // Preserve the destination so vendor/client deep links are not lost to the
+    // default venue dashboard after sign-in.
+    const loginPath = loginRedirectWithNext(
+      pathname,
+      request.nextUrl.search,
+    );
     return withSessionCookies(
       supabaseResponse,
-      NextResponse.redirect(loginUrl),
+      NextResponse.redirect(new URL(loginPath, request.nextUrl.origin)),
     );
   }
 
@@ -344,29 +350,16 @@ export async function updateSession(
     }
 
     // Honor ?next= for post-auth return (e.g. vendor invitation claim).
-    // Must stay same-origin and relative - never open a login <-> accept loop
-    // by bouncing claimers who have a session but no vendor_users row yet.
+    // Multi-role identities land on /workspaces instead of silently dumping
+    // into the venue dashboard (which previously overrode vendor/client intent).
     const nextRaw = request.nextUrl.searchParams.get("next");
     const safeNext = safeInternalNextPath(nextRaw, request.nextUrl.origin);
-    if (safeNext) {
-      return withSessionCookies(
-        supabaseResponse,
-        NextResponse.redirect(new URL(safeNext, request.nextUrl.origin)),
-      );
-    }
-
-    const { data: vu } = await supabase
-      .from("vendor_users")
-      .select("vendor_id")
-      .eq("user_id", user.id)
-      .eq("is_active", true)
-      .maybeSingle();
-    const destUrl = request.nextUrl.clone();
-    destUrl.pathname = vu ? "/vendor/dashboard" : "/dashboard";
-    destUrl.search = "";
+    const home = await resolveAuthenticatedHomePath(supabase, user.id, {
+      next: safeNext,
+    });
     return withSessionCookies(
       supabaseResponse,
-      NextResponse.redirect(destUrl),
+      NextResponse.redirect(new URL(home, request.nextUrl.origin)),
     );
   }
 
