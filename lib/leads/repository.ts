@@ -304,6 +304,7 @@ export async function insertLead(
   client: DbClient,
   venueId: string,
   input: LeadInput,
+  historicalImport = false,
 ): Promise<string> {
   // Relationship resolution and the Lead insert used to be two separate
   // network calls from here — if the second one failed for any reason, the
@@ -342,6 +343,11 @@ export async function insertLead(
       // remapped to "other" upstream, with the original text preserved here
       // rather than silently dropped.
       sourceData: input.originalSourceLabel ? { original_source_label: input.originalSourceLabel } : undefined,
+      // Migration Center — Historical Import Mode. Read inside ingest_lead()
+      // (called by create_lead_atomic) to set leads.is_historical_import,
+      // which the notify_new_lead trigger checks to suppress the venue's
+      // "New inquiry" notification for backfilled data.
+      isHistoricalImport: historicalImport,
     },
   });
   if (error) throw error;

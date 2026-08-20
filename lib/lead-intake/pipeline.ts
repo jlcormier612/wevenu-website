@@ -94,8 +94,15 @@ export async function ingestLead(opts: IngestLeadOptions): Promise<IngestOutcome
   // deliberately held until a coordinator confirms the extracted details,
   // since auto-messaging a couple from badly-parsed data is a real, distinct
   // risk a "please verify" banner alone doesn't cover.
+  //
+  // Historical Import Mode (Migration Center) is the same idea for a
+  // different reason: this "lead_created" event happened years ago, not
+  // right now, so enrolling the relationship in a live message sequence
+  // today would mean texting/emailing a real couple as though they'd just
+  // inquired. Held unconditionally, regardless of trust tier or confidence.
   const shouldAutomate =
-    opts.trustTier !== "email_parsed" || (normalized.confidenceScore ?? 100) >= LOW_CONFIDENCE_THRESHOLD;
+    !opts.historicalImport &&
+    (opts.trustTier !== "email_parsed" || (normalized.confidenceScore ?? 100) >= LOW_CONFIDENCE_THRESHOLD);
 
   if (shouldAutomate) {
     try {

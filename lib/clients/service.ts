@@ -147,6 +147,7 @@ export async function findActiveDuplicateClientForVenue(venueId: string, email: 
  */
 async function createClientCore(
   supabase: Awaited<ReturnType<typeof createClient>>, venueId: string, input: ClientInput,
+  historicalImport = false,
 ): Promise<CreateClientResult> {
   // Server-side hard block: refuse if the event date is calendar-blocked.
   if (input.eventDate) {
@@ -159,7 +160,7 @@ async function createClientCore(
       return { ok: false, message: `Cannot book this date — the calendar is blocked: "${title}". Remove the block first.` };
     }
   }
-  const clientId = await repo.insertClient(supabase, venueId, input);
+  const clientId = await repo.insertClient(supabase, venueId, input, undefined, historicalImport);
 
   void enqueueQuickBooksSync(venueId, "customer", clientId, {
     firstName: input.firstName, lastName: input.lastName,
@@ -189,17 +190,20 @@ async function createClientCore(
       })
     : null;
 
+  // Historical Import Mode (Migration Center) — a backfilled client from a
+  // competitor export should never receive a live "create your portal
+  // account" email as though they'd just booked today.
   const coupleName = clientDisplayName(input.firstName, input.lastName, input.partnerFirstName, input.partnerLastName);
-  const invitationSent = input.email.trim()
+  const invitationSent = !historicalImport && input.email.trim()
     ? (await inviteClient(clientId, input.email, coupleName)).ok
     : false;
   return { ok: true, clientId, eventId, invitationSent };
 }
 
-export async function createClient_(input: ClientInput): Promise<CreateClientResult> {
+export async function createClient_(input: ClientInput, historicalImport = false): Promise<CreateClientResult> {
   const errors = validateClientInput(input);
   if (Object.keys(errors).length > 0) return { ok: false, errors };
-  const result = await withVenue((supabase, venueId) => createClientCore(supabase, venueId, input));
+  const result = await withVenue((supabase, venueId) => createClientCore(supabase, venueId, input, historicalImport));
   return result as CreateClientResult;
 }
 
@@ -211,13 +215,13 @@ export async function createClient_(input: ClientInput): Promise<CreateClientRes
  * p_venue_id_override honors. Every write is otherwise identical to
  * self-service — same validation, same core function, same side effects.
  */
-export async function createClientForVenue(venueId: string, input: ClientInput): Promise<CreateClientResult> {
+export async function createClientForVenue(venueId: string, input: ClientInput, historicalImport = true): Promise<CreateClientResult> {
   const actor = await requireAdminUser();
   if (!actor) return { ok: false, message: "Not signed in as an HQ admin." };
   const errors = validateClientInput(input);
   if (Object.keys(errors).length > 0) return { ok: false, errors };
   const admin = createAdminClient();
-  return createClientCore(admin, venueId, input);
+  return createClientCore(admin, venueId, input, historicalImport);
 }
 
 /** Convert a won lead to a client. Pre-populates from lead data. */

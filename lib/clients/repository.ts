@@ -157,7 +157,9 @@ export async function findActiveDuplicateClient(
   return data ?? null;
 }
 
-export async function insertClient(client: DbClient, venueId: string, input: ClientInput, leadId?: string | null): Promise<string> {
+export async function insertClient(
+  client: DbClient, venueId: string, input: ClientInput, leadId?: string | null, historicalImport = false,
+): Promise<string> {
   // Program 2 Phase 2B: every Client resolves a relationship_id at create
   // time, regardless of origin. Converted-from-a-Lead clients inherit the
   // Lead's already-resolved relationship (no extra round trip); directly
@@ -197,6 +199,11 @@ export async function insertClient(client: DbClient, venueId: string, input: Cli
       receptionTime: input.receptionTime,
       rehearsalDate: input.rehearsalDate,
       internalNotes: input.internalNotes.trim(),
+      // Migration Center — Historical Import Mode. Read inside
+      // create_client_atomic() to set clients.is_historical_import —
+      // provenance, and (via createClientCore's own check) what suppresses
+      // the portal-invite email for backfilled data.
+      isHistoricalImport: historicalImport,
     },
     p_venue_id_override: venueId,
   });
