@@ -9,6 +9,7 @@ import { getLeadCaptureStageStatus, getSetupHubState } from "@/lib/setup-hub/ser
 import { getTeamMembers } from "@/lib/team/service";
 import { getTourSettings } from "@/lib/tours/service";
 import { getCurrentVenue, getSetupReadyCounts } from "@/lib/venue/service";
+import { computeOperationalReadiness } from "@/lib/operational-readiness/compute";
 
 export const metadata: Metadata = { title: "Setup" };
 export const dynamic = "force-dynamic";
@@ -19,7 +20,7 @@ export default async function SetupHubPage() {
 
   const [
     hubState, leadCapture, spaces, capacityRules, tourSettings,
-    importBatches, readyCounts, teamMembers, quickbooksConnection,
+    importBatches, readyCounts, teamMembers, quickbooksConnection, operationalReadiness,
   ] = await Promise.all([
     getSetupHubState(),
     getLeadCaptureStageStatus(),
@@ -30,6 +31,7 @@ export default async function SetupHubPage() {
     getSetupReadyCounts(venue.id),
     getTeamMembers(venue.id),
     getQuickBooksConnection(),
+    computeOperationalReadiness(venue.id),
   ]);
 
   const activeTeamCount = teamMembers.filter((m) => !m.isOwner && m.isActive && m.acceptedAt).length;
@@ -56,6 +58,7 @@ export default async function SetupHubPage() {
         activeTeamCount={activeTeamCount}
         stripeConnected={venue.stripeOnboardingStatus === "connected"}
         quickbooksConnected={quickbooksConnection?.status === "connected"}
+        operationalReadiness={operationalReadiness}
       />
     </div>
   );

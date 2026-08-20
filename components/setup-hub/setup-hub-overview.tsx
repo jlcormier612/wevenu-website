@@ -8,6 +8,7 @@ import { Check, ChevronRight, HelpCircle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { SetupReadiness } from "@/components/setup-hub/setup-readiness";
+import { OperationalReadinessCard } from "@/components/setup-hub/operational-readiness-card";
 import { StageAcknowledgeButton } from "@/components/setup-hub/stage-acknowledge-button";
 import {
   markStageReviewedAction,
@@ -17,6 +18,7 @@ import {
 import { STAGE_COPY } from "@/lib/setup-hub/stage-copy";
 import type { SetupReadyCounts } from "@/lib/venue/service";
 import type { LeadCaptureStageStatus, SetupHubState } from "@/lib/setup-hub/types";
+import type { OperationalReadiness } from "@/lib/operational-readiness/types";
 
 type StageRow = {
   key: string;
@@ -44,6 +46,7 @@ export function SetupHubOverview({
   activeTeamCount,
   stripeConnected,
   quickbooksConnected,
+  operationalReadiness,
 }: {
   venueName: string;
   ownerFirstName: string | null;
@@ -57,6 +60,7 @@ export function SetupHubOverview({
   activeTeamCount: number;
   stripeConnected: boolean;
   quickbooksConnected: boolean;
+  operationalReadiness?: OperationalReadiness | null;
 }) {
   const yourVenueDone = !!hubState?.yourVenueReviewedAt;
   const calendarDone = !!hubState?.calendarAvailabilityReviewedAt;
@@ -258,6 +262,7 @@ export function SetupHubOverview({
         readyToInviteCouples={hubState?.readyToInviteCouples ?? false}
         readyToInviteCouplesAt={hubState?.readyToInviteCouplesAt ?? null}
       />
+      <OperationalReadinessCard readiness={operationalReadiness ?? null} />
     </div>
   );
 }
