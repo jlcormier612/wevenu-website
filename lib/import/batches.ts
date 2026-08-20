@@ -45,11 +45,16 @@ export async function createImportBatch(
   sourceLabel: string | null,
   rowCount: number,
   client?: DbClient,
+  /** Migration Center — links this batch back to the migration_sessions row that produced it. Null for a plain self-service wizard run, exactly as before. */
+  migrationSessionId?: string | null,
 ): Promise<string | null> {
   try {
     const supabase = client ?? await createClient();
     const { data, error } = await supabase.from("import_batches")
-      .insert({ venue_id: venueId, entity_type: entityType, source_label: sourceLabel, row_count: rowCount, imported_by_type: "venue" })
+      .insert({
+        venue_id: venueId, entity_type: entityType, source_label: sourceLabel, row_count: rowCount,
+        imported_by_type: "venue", migration_session_id: migrationSessionId ?? null,
+      })
       .select("id").single<{ id: string }>();
     if (error) throw error;
     return data.id;
@@ -77,12 +82,15 @@ export async function createImportBatchForVenue(
   rowCount: number,
   importedByAdminId: string,
   engagementId: string | null,
+  /** Migration Center — see createImportBatch's doc comment. */
+  migrationSessionId?: string | null,
 ): Promise<string | null> {
   try {
     const { data, error } = await client.from("import_batches")
       .insert({
         venue_id: venueId, entity_type: entityType, source_label: sourceLabel, row_count: rowCount,
         imported_by_type: "hq_staff", imported_by: importedByAdminId, engagement_id: engagementId,
+        migration_session_id: migrationSessionId ?? null,
       })
       .select("id").single<{ id: string }>();
     if (error) throw error;
