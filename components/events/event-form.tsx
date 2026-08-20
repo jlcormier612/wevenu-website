@@ -223,13 +223,13 @@ export function EventForm({
                     <Select
                       value={selected[k.value]}
                       onValueChange={(v) => setSelected((p) => ({ ...p, [k.value]: v }))}
-                      items={[{ value: "", label: `No ${kindCopy.label}` }, ...options.map((t) => ({ value: t.id, label: t.name }))]}
+                      items={[{ value: "", label: `None — skip for now` }, ...options.map((t) => ({ value: t.id, label: t.name }))]}
                     >
                       <SelectTrigger className="h-8 w-44 text-sm">
                         <SelectValue placeholder={`Select…`} />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">{`No ${kindCopy.label}`}</SelectItem>
+                        <SelectItem value="">None — skip for now</SelectItem>
                         {options.map((t) => (
                           <SelectItem key={t.id} value={t.id}>
                             {t.name} <span className="text-muted-foreground">— {t.taskCount} tasks</span>

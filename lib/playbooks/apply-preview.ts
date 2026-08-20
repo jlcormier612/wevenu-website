@@ -14,24 +14,28 @@ export type ApplyPreviewMilestoneGroup = {
 export function applyPreviewKindCopy(kind: PlaybookKind): {
   label: string;
   explanation: string;
+  /** Short empty-state line on the apply row. */
+  emptyState: string;
 } {
   if (kind === "client") {
     return {
-      label: "Client Checklist",
+      label: "For your couple",
       explanation:
-        "These are the tasks your couple will work through in their planning space. After you apply, you can review and adjust the checklist for this event before sharing it with them.",
+        "Tasks are prepared for this event and remain a draft until you're ready to release them to the couple.",
+      emptyState: "No couple checklist applied yet",
     };
   }
   return {
-    label: "Venue Checklist",
+    label: "For your team",
     explanation:
-      "These are internal tasks for your venue team. They'll become active for this event as soon as you apply the checklist.",
+      "Tasks become active for your venue team immediately after applying.",
+    emptyState: "No team checklist applied yet",
   };
 }
 
 /** Short isolation note — template vs this event's copy. */
 export const APPLY_PREVIEW_ISOLATION_NOTE =
-  "Applying creates this event's own checklist. Editing the template in Library later won't change checklists you've already applied.";
+  "Applying this template creates a copy for this event. Changes you make later in your Library won't change this event's task list.";
 
 /**
  * Group template tasks under milestones for a readable preview.

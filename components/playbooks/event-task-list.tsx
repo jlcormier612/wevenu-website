@@ -686,7 +686,7 @@ export function PlaybookApplyRow({
           <div className="flex items-center gap-2">
             <span className="text-sm">{meta.emoji}</span>
             <p className="text-xs text-muted-foreground flex-1">
-              <span className="font-medium text-heading">{meta.label}:</span> {displayTitle} — not yet visible to {clientName ?? "your client"}
+              <span className="font-medium text-heading">For your couple:</span> {displayTitle} — draft, not yet visible to {clientName ?? "your couple"}
             </p>
             <Badge variant="warning" className="text-[10px] shrink-0">Draft</Badge>
           </div>
@@ -775,7 +775,7 @@ export function PlaybookApplyRow({
       <div className="flex items-center gap-2">
         <span className="text-sm">{meta.emoji}</span>
         <div className="min-w-0 flex-1">
-          <p className="text-xs text-muted-foreground">No {kindCopy.label.toLowerCase()} applied</p>
+          <p className="text-xs text-muted-foreground">{kindCopy.emptyState}</p>
           <p className="text-[11px] text-muted-foreground/90 line-clamp-2">{kindCopy.explanation}</p>
         </div>
         <Select value={selectedTemplate} onValueChange={setSelectedTemplate} items={templates.map((t) => ({ value: t.id, label: t.name }))}>

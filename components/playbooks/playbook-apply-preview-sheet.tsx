@@ -86,8 +86,8 @@ export function PlaybookApplyPreviewSheet({
       if (result.ok) {
         toast.success(
           kind === "client"
-            ? "Client checklist applied — review it here before sharing with your couple."
-            : "Venue checklist applied — it's active for your team on this event.",
+            ? "Couple checklist applied as a draft — review it here, then release when you're ready."
+            : "Team checklist applied — it's active for your venue team on this event.",
         );
         onOpenChange(false);
         onApplied?.();

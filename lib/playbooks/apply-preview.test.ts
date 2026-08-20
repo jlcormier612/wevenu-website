@@ -48,12 +48,14 @@ describe("apply preview helpers", () => {
   it("explains Client vs Venue checklists in product language", () => {
     const client = applyPreviewKindCopy("client");
     const venue = applyPreviewKindCopy("venue");
-    assert.equal(client.label, "Client Checklist");
-    assert.match(client.explanation, /couple/i);
-    assert.match(client.explanation, /before sharing/i);
-    assert.equal(venue.label, "Venue Checklist");
+    assert.equal(client.label, "For your couple");
+    assert.match(client.explanation, /draft/i);
+    assert.match(client.explanation, /release/i);
+    assert.match(client.emptyState, /couple checklist/i);
+    assert.equal(venue.label, "For your team");
     assert.match(venue.explanation, /venue team/i);
-    assert.match(venue.explanation, /as soon as you apply/i);
+    assert.match(venue.explanation, /immediately/i);
+    assert.match(venue.emptyState, /team checklist/i);
   });
 
   it("groups task titles under milestones in sort order", () => {
@@ -90,7 +92,7 @@ describe("apply preview helpers", () => {
   });
 
   it("states that applying copies onto the event without syncing later Library edits", () => {
-    assert.match(APPLY_PREVIEW_ISOLATION_NOTE.toLowerCase(), /own checklist/);
-    assert.match(APPLY_PREVIEW_ISOLATION_NOTE.toLowerCase(), /won't change/);
+    assert.match(APPLY_PREVIEW_ISOLATION_NOTE.toLowerCase(), /copy for this event/);
+    assert.match(APPLY_PREVIEW_ISOLATION_NOTE.toLowerCase(), /won't change this event's task list/);
   });
 });
