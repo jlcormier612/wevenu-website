@@ -22,7 +22,7 @@
     },
     {
       "path": "/api/facebook/sync/process",
-      "schedule": "*/5 * * * *"
+      "schedule": "*/2 * * * *"
     },
     {
       "path": "/api/facebook/reconcile/process",

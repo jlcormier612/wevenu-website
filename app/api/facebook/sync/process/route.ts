@@ -12,13 +12,13 @@ import { processFacebookLeadQueue } from "@/lib/facebook/processor";
 
 function isCronAuthorized(request: Request): boolean {
   const cronSecret = process.env.CRON_SECRET;
-  if (!cronSecret) return true;
+  if (!cronSecret) return process.env.NODE_ENV !== "production";
   return request.headers.get("authorization") === `Bearer ${cronSecret}`;
 }
 
 function isManualAuthorized(request: Request): boolean {
   const secret = process.env.FACEBOOK_SYNC_SECRET;
-  if (!secret) return true;
+  if (!secret) return process.env.NODE_ENV !== "production";
   return request.headers.get("x-facebook-sync-secret") === secret;
 }
 

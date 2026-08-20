@@ -88,12 +88,19 @@
     "StripePriceProfessional": { "Type": "String", "Default": "", "Description": "Stripe Price ID (STRIPE_PRICE_PROFESSIONAL) for the Flourish plan. Empty is a valid default until a real Price exists in the Stripe Dashboard." },
     "StripePriceProfessionalFounder": { "Type": "String", "Default": "", "Description": "Stripe Price ID (STRIPE_PRICE_PROFESSIONAL_FOUNDER), Flourish founder variant. Empty is a valid default." },
     "StripePriceWhiteGlove": { "Type": "String", "Default": "", "Description": "Stripe Price ID (STRIPE_PRICE_WHITE_GLOVE), one-time White Glove onboarding add-on. Empty is a valid default." },
-    "StripeFoundingCouponId": { "Type": "String", "Default": "", "Description": "Stripe Coupon ID (STRIPE_FOUNDING_COUPON_ID), applies to Gather only. Empty is a valid default." }
+    "StripeFoundingCouponId": { "Type": "String", "Default": "", "Description": "Stripe Coupon ID (STRIPE_FOUNDING_COUPON_ID), applies to Gather only. Empty is a valid default." },
+    "CronSecret": {
+      "Type": "String",
+      "NoEcho": true,
+      "Default": "",
+      "Description": "Bearer token for venue-app cron routes (CRON_SECRET). EventBridge sends Authorization: Bearer <this>. Leave empty to skip creating the Facebook Lead Ads schedules; webhook after() still processes leads immediately. Populate in the stack parameter (NoEcho) — do not commit the value."
+    }
   },
 
   "Conditions": {
     "HasCertificate": { "Fn::Not": [{ "Fn::Equals": [{ "Ref": "CertificateArn" }, ""] }] },
-    "IsProduction": { "Fn::Equals": [{ "Ref": "EnvironmentName" }, "production"] }
+    "IsProduction": { "Fn::Equals": [{ "Ref": "EnvironmentName" }, "production"] },
+    "HasCronSecret": { "Fn::Not": [{ "Fn::Equals": [{ "Ref": "CronSecret" }, ""] }] }
   },
 
   "Resources": {
@@ -214,6 +221,7 @@
                 { "Ref": "StripeConnectSecrets" },
                 { "Ref": "StripeSaasSecrets" },
                 { "Ref": "QuickBooksSecrets" },
+                { "Ref": "FacebookSecrets" },
                 { "Ref": "AnthropicApiKeySecret" },
                 { "Ref": "ResendWebhookSecretSecret" }
               ]
@@ -297,6 +305,14 @@
         "SecretString": "{\"QUICKBOOKS_CLIENT_ID\":\"CHANGE_ME\",\"QUICKBOOKS_CLIENT_SECRET\":\"CHANGE_ME\"}"
       }
     },
+    "FacebookSecrets": {
+      "Type": "AWS::SecretsManager::Secret",
+      "Properties": {
+        "Name": { "Fn::Sub": "htc/${EnvironmentName}/facebook" },
+        "Description": "Venue app Meta Lead Ads keys. FACEBOOK_APP_ID is the same app id as NEXT_PUBLIC_FACEBOOK_APP_ID (not a secret, stored here so the OAuth callback can read FACEBOOK_APP_ID at runtime). FACEBOOK_APP_SECRET signs webhooks and exchanges tokens. FACEBOOK_WEBHOOK_VERIFY_TOKEN is the hub.verify_token string configured on the Meta app webhook. FACEBOOK_SYNC_SECRET gates manual POST /api/facebook/sync/process. Empty strings are intentional until the Meta app is configured — do not put real values in this template.",
+        "SecretString": "{\"FACEBOOK_APP_ID\":\"\",\"FACEBOOK_APP_SECRET\":\"\",\"FACEBOOK_WEBHOOK_VERIFY_TOKEN\":\"\",\"FACEBOOK_SYNC_SECRET\":\"\"}"
+      }
+    },
 
     "VenueAppTaskDefinition": {
       "Type": "AWS::ECS::TaskDefinition",
@@ -320,7 +336,9 @@
             { "Name": "NEXT_PUBLIC_SUPABASE_ANON_KEY", "Value": { "Ref": "SupabaseAnonKey" } },
             { "Name": "FROM_EMAIL", "Value": { "Ref": "FromEmailAddress" } },
             { "Name": "RESEND_INBOUND_ADDRESS", "Value": { "Ref": "ResendInboundAddress" } },
-            { "Name": "QUICKBOOKS_ENVIRONMENT", "Value": { "Fn::If": ["IsProduction", "production", "sandbox"] } }
+            { "Name": "QUICKBOOKS_ENVIRONMENT", "Value": { "Fn::If": ["IsProduction", "production", "sandbox"] } },
+            { "Name": "CRON_SECRET", "Value": { "Ref": "CronSecret" } },
+            { "Name": "NEXT_PUBLIC_APP_URL", "Value": { "Fn::Sub": "https://${VenueAppHostname}" } }
           ],
           "Secrets": [
             { "Name": "SUPABASE_SERVICE_ROLE_KEY", "ValueFrom": { "Fn::Sub": "${SupabaseServiceRoleKeySecret}:value::" } },
@@ -330,6 +348,10 @@
             { "Name": "STRIPE_WEBHOOK_SECRET", "ValueFrom": { "Fn::Sub": "${StripeConnectSecrets}:STRIPE_WEBHOOK_SECRET::" } },
             { "Name": "QUICKBOOKS_CLIENT_ID", "ValueFrom": { "Fn::Sub": "${QuickBooksSecrets}:QUICKBOOKS_CLIENT_ID::" } },
             { "Name": "QUICKBOOKS_CLIENT_SECRET", "ValueFrom": { "Fn::Sub": "${QuickBooksSecrets}:QUICKBOOKS_CLIENT_SECRET::" } },
+            { "Name": "FACEBOOK_APP_ID", "ValueFrom": { "Fn::Sub": "${FacebookSecrets}:FACEBOOK_APP_ID::" } },
+            { "Name": "FACEBOOK_APP_SECRET", "ValueFrom": { "Fn::Sub": "${FacebookSecrets}:FACEBOOK_APP_SECRET::" } },
+            { "Name": "FACEBOOK_WEBHOOK_VERIFY_TOKEN", "ValueFrom": { "Fn::Sub": "${FacebookSecrets}:FACEBOOK_WEBHOOK_VERIFY_TOKEN::" } },
+            { "Name": "FACEBOOK_SYNC_SECRET", "ValueFrom": { "Fn::Sub": "${FacebookSecrets}:FACEBOOK_SYNC_SECRET::" } },
             { "Name": "ANTHROPIC_API_KEY", "ValueFrom": { "Fn::Sub": "${AnthropicApiKeySecret}:value::" } },
             { "Name": "RESEND_WEBHOOK_SECRET", "ValueFrom": { "Fn::Sub": "${ResendWebhookSecretSecret}:value::" } }
           ],
@@ -593,6 +615,97 @@
         },
         "LoadBalancers": [{ "ContainerName": "workspace", "ContainerPort": 3000, "TargetGroupArn": { "Ref": "WorkspaceTargetGroup" } }],
         "HealthCheckGracePeriodSeconds": 120
+      }
+    },
+
+    "FacebookLeadCronRole": {
+      "Type": "AWS::IAM::Role",
+      "Condition": "HasCronSecret",
+      "Properties": {
+        "RoleName": { "Fn::Sub": "htc-${EnvironmentName}-facebook-lead-cron" },
+        "AssumeRolePolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [{ "Effect": "Allow", "Principal": { "Service": "events.amazonaws.com" }, "Action": "sts:AssumeRole" }]
+        },
+        "Policies": [{
+          "PolicyName": "InvokeFacebookLeadApiDestinations",
+          "PolicyDocument": {
+            "Version": "2012-10-17",
+            "Statement": [{
+              "Effect": "Allow",
+              "Action": "events:InvokeApiDestination",
+              "Resource": "*"
+            }]
+          }
+        }]
+      }
+    },
+    "FacebookLeadCronConnection": {
+      "Type": "AWS::Events::Connection",
+      "Condition": "HasCronSecret",
+      "Properties": {
+        "Name": { "Fn::Sub": "htc-${EnvironmentName}-facebook-lead-cron" },
+        "AuthorizationType": "API_KEY",
+        "AuthParameters": {
+          "ApiKeyAuthParameters": {
+            "ApiKeyName": "Authorization",
+            "ApiKeyValue": { "Fn::Sub": "Bearer ${CronSecret}" }
+          }
+        }
+      }
+    },
+    "FacebookLeadSyncApiDestination": {
+      "Type": "AWS::Events::ApiDestination",
+      "Condition": "HasCronSecret",
+      "Properties": {
+        "Name": { "Fn::Sub": "htc-${EnvironmentName}-facebook-lead-sync" },
+        "ConnectionArn": { "Fn::GetAtt": ["FacebookLeadCronConnection", "Arn"] },
+        "InvocationEndpoint": { "Fn::Sub": "https://${VenueAppHostname}/api/facebook/sync/process" },
+        "HttpMethod": "GET",
+        "InvocationRateLimitPerSecond": 10
+      }
+    },
+    "FacebookLeadReconcileApiDestination": {
+      "Type": "AWS::Events::ApiDestination",
+      "Condition": "HasCronSecret",
+      "Properties": {
+        "Name": { "Fn::Sub": "htc-${EnvironmentName}-facebook-lead-reconcile" },
+        "ConnectionArn": { "Fn::GetAtt": ["FacebookLeadCronConnection", "Arn"] },
+        "InvocationEndpoint": { "Fn::Sub": "https://${VenueAppHostname}/api/facebook/reconcile/process" },
+        "HttpMethod": "GET",
+        "InvocationRateLimitPerSecond": 1
+      }
+    },
+    "FacebookLeadSyncRule": {
+      "Type": "AWS::Events::Rule",
+      "Condition": "HasCronSecret",
+      "DependsOn": ["VenueAppService"],
+      "Properties": {
+        "Name": { "Fn::Sub": "htc-${EnvironmentName}-facebook-lead-sync" },
+        "Description": "Process facebook_lead_queue every 2 minutes (Lead Ads webhook after() is the fast path; this is the retry/crash backstop).",
+        "ScheduleExpression": "rate(2 minutes)",
+        "State": "ENABLED",
+        "Targets": [{
+          "Id": "FacebookLeadSync",
+          "Arn": { "Fn::GetAtt": ["FacebookLeadSyncApiDestination", "Arn"] },
+          "RoleArn": { "Fn::GetAtt": ["FacebookLeadCronRole", "Arn"] }
+        }]
+      }
+    },
+    "FacebookLeadReconcileRule": {
+      "Type": "AWS::Events::Rule",
+      "Condition": "HasCronSecret",
+      "DependsOn": ["VenueAppService"],
+      "Properties": {
+        "Name": { "Fn::Sub": "htc-${EnvironmentName}-facebook-lead-reconcile" },
+        "Description": "Hourly Meta Lead Ads reconciliation poll for missed webhook deliveries.",
+        "ScheduleExpression": "rate(1 hour)",
+        "State": "ENABLED",
+        "Targets": [{
+          "Id": "FacebookLeadReconcile",
+          "Arn": { "Fn::GetAtt": ["FacebookLeadReconcileApiDestination", "Arn"] },
+          "RoleArn": { "Fn::GetAtt": ["FacebookLeadCronRole", "Arn"] }
+        }]
       }
     }
   },

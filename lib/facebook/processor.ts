@@ -2,23 +2,55 @@
  * Facebook Lead Ads queue processor. Mirrors lib/quickbooks/processor.ts's
  * shape exactly: admin client, atomic claim, connection-level circuit
  * breaker, dispatch, backoff/dead-letter on failure.
+ *
+ * Instant Forms on Facebook and Instagram both arrive as Page `leadgen`
+ * events. Placement is taken from Meta's `platform` field on the lead
+ * object (`ig` vs `fb`), not guessed from the Page having Instagram linked.
  */
 import { createAdminClient } from "@/integrations/supabase/admin";
 import * as repo from "@/lib/facebook/repository";
 import { computeNextAttemptAt, MAX_ATTEMPTS } from "@/lib/facebook/backoff";
 import { facebookFetch } from "@/lib/facebook/client";
-import { mapFacebookFieldData } from "@/lib/facebook/lead-mapping";
+import {
+  LEADGEN_FETCH_FIELDS_MINIMAL,
+  META_INTAKE_SOURCE,
+  type GraphLeadPayload,
+  leadgenFetchPath,
+  mapGraphLeadToIntake,
+} from "@/lib/facebook/lead-mapping";
 import { ingestLead } from "@/lib/lead-intake/pipeline";
 
 const BATCH_SIZE = 50;
 
-type FieldDataResponse = { field_data?: { name: string; values: string[] }[]; error?: { message?: string } };
-
 export type ProcessResult = { processed: number; succeeded: number; failedRetrying: number; deadLettered: number; skipped: number };
+
+async function fetchGraphLead(venueId: string, leadgenId: string): Promise<
+  | { ok: true; data: GraphLeadPayload }
+  | { ok: false; error: string; retryable: boolean }
+> {
+  const full = await facebookFetch(venueId, leadgenFetchPath(leadgenId));
+  if (full.ok) {
+    const data = await full.response.json() as GraphLeadPayload;
+    return { ok: true, data };
+  }
+  // Ads metadata fields can 400 without ads_read; field_data still works
+  // with leads_retrieval. Retry the minimal set before treating as failure.
+  if (!full.retryable) {
+    const minimal = await facebookFetch(venueId, leadgenFetchPath(leadgenId, LEADGEN_FETCH_FIELDS_MINIMAL));
+    if (minimal.ok) {
+      const data = await minimal.response.json() as GraphLeadPayload;
+      return { ok: true, data };
+    }
+    return minimal;
+  }
+  return full;
+}
 
 export async function processFacebookLeadQueue(): Promise<ProcessResult> {
   const admin = createAdminClient();
   const result: ProcessResult = { processed: 0, succeeded: 0, failedRetrying: 0, deadLettered: 0, skipped: 0 };
+
+  await repo.reclaimStaleProcessing(admin);
 
   const batch = await repo.getDueBatch(admin, BATCH_SIZE);
 
@@ -34,14 +66,14 @@ export async function processFacebookLeadQueue(): Promise<ProcessResult> {
       continue;
     }
 
-    const fetchResult = await facebookFetch(item.venue_id, `/${item.leadgen_id}?fields=field_data`);
+    const fetchResult = await fetchGraphLead(item.venue_id, item.leadgen_id);
     if (!fetchResult.ok) {
       await handleFailure(admin, item, fetchResult.error, fetchResult.retryable);
       if (!fetchResult.retryable || item.attempt_count + 1 >= item.max_attempts) result.deadLettered++; else result.failedRetrying++;
       continue;
     }
 
-    const data = await fetchResult.response.json() as FieldDataResponse;
+    const data = fetchResult.data;
     if (!data.field_data) {
       // A 404-shaped "lead no longer exists" (the submitter deleted their
       // own lead on Meta's side before we processed it) surfaces as a
@@ -52,19 +84,23 @@ export async function processFacebookLeadQueue(): Promise<ProcessResult> {
       continue;
     }
 
-    const normalized = mapFacebookFieldData(data.field_data);
+    const mapped = mapGraphLeadToIntake(data, {
+      leadgenId: item.leadgen_id,
+      formId: item.form_id,
+      pageId: item.page_id,
+    });
     const outcome = await ingestLead({
       supabase: admin,
       venueId: item.venue_id,
-      source: "facebook_lead_ads",
+      source: META_INTAKE_SOURCE,
       trustTier: "webhook",
       rawPayload: data,
-      input: normalized,
+      input: mapped.input,
       externalRef: item.leadgen_id,
       create: async (n) => {
         const { data: rpcData, error } = await admin.rpc("ingest_lead", {
           p_venue_id: item.venue_id,
-          p_source: "facebook_lead_ads",
+          p_source: mapped.leadSource,
           p_input: {
             firstName: n.firstName, lastName: n.lastName, email: n.email, phone: n.phone,
             eventType: n.eventType, eventDate: n.eventDate, guestCount: n.guestCount, sourceData: n.sourceData,
