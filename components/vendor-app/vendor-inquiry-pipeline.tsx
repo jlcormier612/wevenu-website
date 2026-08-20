@@ -8,7 +8,7 @@ import { useTransition } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { INQUIRY_STATUSES, ACTIVE_INQUIRY_STATUSES, INQUIRY_STATUS_VARIANT } from "@/lib/vendors/constants";
-import { createVendorInquiryAction } from "@/app/vendor/inquiries/actions";
+import { createVendorInquiryAction } from "@/app/vendor/(workspace)/inquiries/actions";
 import type { VendorInquiry, InquiryStatus } from "@/lib/vendors/types";
 
 function formatDate(iso: string | null): string {

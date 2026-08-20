@@ -24,12 +24,23 @@ export function buildVendorInviteHtml({
           Invitation from ${escapeHtml(venueName)}
         </p>
         <h1 style="margin:0 0 24px;font-size:24px;font-weight:700;color:#111827;line-height:1.3">
-          You're invited to manage <br>${escapeHtml(vendorName)} on Hello to Cheers
+          ${escapeHtml(venueName)} would love to connect with you on Hello to Cheers
         </h1>
         ${message ? `<p style="margin:0 0 24px;font-size:15px;color:#374151;line-height:1.6">${escapeHtml(message)}</p>` : ""}
+        <p style="margin:0 0 16px;font-size:15px;color:#374151;line-height:1.6">
+          They've added ${escapeHtml(vendorName)} to their trusted vendor network and created a starting profile for your business.
+        </p>
+        <p style="margin:0 0 8px;font-size:15px;color:#374151;line-height:1.6">
+          Claiming your profile lets you:
+        </p>
+        <ul style="margin:0 0 24px;padding-left:20px;font-size:15px;color:#374151;line-height:1.7">
+          <li>Keep your business information up to date</li>
+          <li>Manage the services and packages you offer</li>
+          <li>Share your availability with venues you work with</li>
+          <li>Build and manage your venue relationships — all in one place</li>
+        </ul>
         <p style="margin:0 0 24px;font-size:15px;color:#374151;line-height:1.6">
-          ${escapeHtml(venueName)} has set up a vendor profile for ${escapeHtml(vendorName)} on Hello to Cheers.
-          Claim it to manage your business profile, service packages, availability, and venue relationships — all in one place.
+          It only takes a minute to get started.
         </p>
         <p style="margin:0 0 24px;font-size:15px;color:#374151;line-height:1.6">
           By accepting this invitation, you will be asked to review and accept the applicable Hello to Cheers Terms and Privacy Policy before accessing your workspace.
@@ -64,10 +75,17 @@ export function buildVendorInviteText({
   acceptUrl:  string;
 }): string {
   return [
-    `You're invited to manage ${vendorName} on Hello to Cheers`,
+    `${venueName} would love to connect with you on Hello to Cheers`,
     "",
-    `${venueName} has set up a vendor profile for ${vendorName} on Hello to Cheers.`,
-    "Claim it to manage your profile, packages, availability, and venue relationships.",
+    `They've added ${vendorName} to their trusted vendor network and created a starting profile for your business.`,
+    "",
+    "Claiming your profile lets you:",
+    "- Keep your business information up to date",
+    "- Manage the services and packages you offer",
+    "- Share your availability with venues you work with",
+    "- Build and manage your venue relationships — all in one place",
+    "",
+    "It only takes a minute to get started.",
     "",
     "By accepting this invitation, you will be asked to review and accept the applicable Hello to Cheers Terms and Privacy Policy before accessing your workspace.",
     "",

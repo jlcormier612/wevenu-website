@@ -8,7 +8,7 @@ import { toast } from "sonner";
 import {
   addVendorConversationMessageAttachmentAction,
   sendVendorConversationMessageAction,
-} from "@/app/vendor/messages/actions";
+} from "@/app/vendor/(workspace)/messages/actions";
 import { Button } from "@/components/ui/button";
 import type { VendorConversationMessage } from "@/lib/conversations/types";
 import {

@@ -46,7 +46,7 @@ export async function sendVendorInvite(
 
   const result = await sendEmail({
     to: vendor.email,
-    subject: `You're invited to manage ${vendor.business_name} on Hello to Cheers`,
+    subject: `${venueName} would love to connect with you on Hello to Cheers`,
     text: buildVendorInviteText({ vendorName: vendor.business_name, venueName, acceptUrl }),
     html: buildVendorInviteHtml({ vendorName: vendor.business_name, venueName, acceptUrl }),
   });

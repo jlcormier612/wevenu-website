@@ -25,7 +25,7 @@ import {
   toggleVendorTaskTemplateAction,
   updateVendorTaskTemplateAction,
   updateVendorTaskTemplateItemAction,
-} from "@/app/vendor/task-templates/actions";
+} from "@/app/vendor/(workspace)/task-templates/actions";
 import { EVENT_TYPES, eventTypeLabel } from "@/lib/leads/constants";
 import { uploadVendorFile } from "@/lib/vendor-documents/upload-client";
 import { VendorRelativeDuePicker } from "@/components/vendor-app/vendor-relative-due-picker";

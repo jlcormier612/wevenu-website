@@ -52,9 +52,13 @@ export default async function VendorAcceptPage({ searchParams }: Props) {
           )}
         </div>
 
-        <div className="rounded-lg border border-border bg-muted/40 p-4 text-sm text-foreground leading-relaxed">
-          A venue has set up this profile for your business on Hello to Cheers. Claim it to manage your
-          profile, service packages, availability, and venue relationships — all in one place.
+        <div className="rounded-lg border border-border bg-muted/40 p-4 text-sm text-foreground leading-relaxed space-y-3">
+          <p>
+            A venue would love to connect with you on Hello to Cheers. They&apos;ve added{" "}
+            {vendorName} to their trusted vendor network and created a starting profile for your business.
+          </p>
+          <p>Claiming your profile lets you keep your business information up to date, manage the services and packages you offer, share your availability, and build venue relationships — all in one place.</p>
+          <p>It only takes a minute to get started.</p>
         </div>
 
         {user ? (

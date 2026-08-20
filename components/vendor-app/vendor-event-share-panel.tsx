@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { FileText, Loader2, Plus, Upload } from "lucide-react";
 import { toast } from "sonner";
 
-import { shareVendorDocumentToEventAction } from "@/app/vendor/documents/actions";
+import { shareVendorDocumentToEventAction } from "@/app/vendor/(workspace)/documents/actions";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";

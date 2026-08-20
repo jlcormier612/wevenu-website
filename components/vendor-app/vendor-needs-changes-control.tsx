@@ -5,7 +5,7 @@ import { useTransition } from "react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
-import { returnPersonalTaskAction } from "@/app/vendor/events/actions";
+import { returnPersonalTaskAction } from "@/app/vendor/(workspace)/events/actions";
 
 /**
  * Phase 2 Needs Changes — vendor returns an acked vendor_confirm task to the couple.
