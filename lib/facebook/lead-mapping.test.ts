@@ -127,7 +127,7 @@ describe("B2 processor wiring", () => {
   });
 
   it("queue rows are unique per venue + leadgen_id across all statuses", () => {
-    const sql = readFileSync(resolve("supabase/migrations/20261300000000_facebook_lead_queue_idempotency.sql"), "utf8");
+    const sql = readFileSync(resolve("supabase/migrations/20261302000000_facebook_lead_queue_idempotency.sql"), "utf8");
     assert.match(sql, /facebook_lead_queue_venue_leadgen/);
     assert.match(sql, /unique \(venue_id, leadgen_id\)/);
   });
