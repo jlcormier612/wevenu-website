@@ -16,10 +16,8 @@ export type SourceKey =
   | "planning_pod"
   | "honeybook"
   | "weven_legacy"
-  // Registered in code only for this phase (lib/migration/sources/
-  // tripleseat.ts) — deliberately no source_profiles DB row yet, per this
-  // slice's explicit "no schema changes" boundary. Not yet selectable in
-  // the live product until a later, separate migration adds that row.
+  // Adapter: lib/migration/sources/tripleseat.ts (file-based Phase 1).
+  // source_profiles row: 20261305000000_source_profiles_tripleseat.sql.
   | "tripleseat";
 
 export type SourceProfile = {

@@ -100,3 +100,29 @@ describe("Migration Center source selection", () => {
     );
   });
 });
+
+describe("Migration Center source selection — Tripleseat, once its source_profiles row exists", () => {
+  const WITH_TRIPLESEAT: SourceProfile[] = [
+    profile({ key: "generic_csv", displayName: "CSV / Spreadsheet", hasKnownParser: true }),
+    profile({ key: "tripleseat", displayName: "Tripleseat", whiteGloveRecommended: true, hasKnownParser: true }),
+  ];
+
+  it("appears among the named, selectable systems — not the generic catch-all", () => {
+    assert.deepEqual(
+      namedSourceProfiles(WITH_TRIPLESEAT).map((p) => p.key),
+      ["tripleseat"],
+    );
+  });
+
+  it("is recognized as a real adapter, not a generic fallback", () => {
+    assert.equal(hasSourceSpecificAcceleration("tripleseat"), true);
+  });
+
+  it("gets the stronger recognized-source guidance copy, same as any other real adapter", () => {
+    const guidance = sourceSelectionGuidance(
+      "recognized",
+      WITH_TRIPLESEAT.find((p) => p.key === "tripleseat")!,
+    );
+    assert.match(guidance.body, /recognize and organize/i);
+  });
+});
