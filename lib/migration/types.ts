@@ -154,3 +154,18 @@ export type CommitOutcome = {
   skipped: number;
   failed: number;
 };
+
+/** Slice 1 (file retention) — an original uploaded file, as attached to a session. */
+export type SessionSourceFile = {
+  documentId: string; fileName: string; fileSize: number | null; mimeType: string | null;
+  storageUrl: string; uploadedAt: string;
+};
+
+/** Slice 2 (resumability) — which step the UI should resume a session into, computed from its actual current record-level state, never a raw status value alone. */
+export type SessionResumeState =
+  | "needs_processing"   // rows uploaded, dedupe hasn't run (or didn't finish) yet
+  | "needs_review"       // dedupe has run; at least one record needs a human decision
+  | "ready_to_commit"    // dedupe has run; nothing needs review, nothing committed yet
+  | "partially_done"     // some records committed, some still need review
+  | "done"               // every record is committed, skipped, or rejected — nothing left to do
+  | "empty";             // no records at all yet (shouldn't normally be reachable from the UI)

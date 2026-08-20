@@ -3,7 +3,10 @@
 import { revalidatePath } from "next/cache";
 import {
   addRowsToOwnSession,
+  attachSourceFileToOwnSession,
   commitOwnSession,
+  getOwnSessionResumeState,
+  getOwnSessionSourceFiles,
   getOwnSessionSummary,
   listSessionsForCurrentVenue,
   reviewOwnRecord,
@@ -72,4 +75,21 @@ export async function commitMigrationSessionAction(sessionId: string) {
     revalidatePath("/vendors");
   }
   return result;
+}
+
+export async function attachMigrationSourceFileAction(
+  sessionId: string,
+  file: { fileName: string; fileSize: number; mimeType: string; storagePath: string; storageUrl: string },
+) {
+  const result = await attachSourceFileToOwnSession(sessionId, file);
+  if (result.ok) revalidatePath("/settings/migration");
+  return result;
+}
+
+export async function getMigrationSessionSourceFilesAction(sessionId: string) {
+  return getOwnSessionSourceFiles(sessionId);
+}
+
+export async function getMigrationSessionResumeStateAction(sessionId: string) {
+  return getOwnSessionResumeState(sessionId);
 }

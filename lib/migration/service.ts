@@ -27,6 +27,7 @@ import type { LeadInput } from "@/lib/leads/types";
 import type { VendorInput } from "@/lib/vendors/types";
 
 import * as repo from "@/lib/migration/repository";
+import * as documentsRepo from "@/lib/documents/repository";
 import { dedupe } from "@/lib/migration/dedupe";
 import { getSourceAdapter } from "@/lib/migration/source-profiles";
 import { createImportBatch, createImportBatchForVenue, finalizeImportBatch, stampImportBatch } from "@/lib/import/batches";
@@ -39,6 +40,8 @@ import type {
   NormalizedLeadLike,
   NormalizedVendorLike,
   RecordStatus,
+  SessionResumeState,
+  SessionSourceFile,
   SessionSummary,
   SourceKey,
   SourceRow,
@@ -204,6 +207,30 @@ export async function getSessionSummary(client: AnyDbClient, session: MigrationS
 // ---- commit ---------------------------------------------------------------------
 
 const COMMITTABLE_ENTITY_TYPES: MigrationEntityType[] = ["client", "lead", "vendor"];
+/** A record in any of these statuses still needs an explicit human decision before it can commit or be counted as done. */
+const UNRESOLVED_STATUSES: RecordStatus[] = ["duplicate_likely", "conflict", "needs_review"];
+
+/**
+ * A session isn't simply "complete" or "failed" from one commit attempt's
+ * outcome alone — records the venue hasn't made a decision on yet
+ * (duplicate_likely/conflict/needs_review) may still remain, exactly as
+ * intended by "commit valid records, leave unresolved records untouched"
+ * (docs/migration-cutover-architecture.md §B.5). Pure and exported
+ * specifically so this decision table is directly testable without a
+ * database.
+ */
+export function computeFinalSessionStatus(outcome: CommitOutcome, stillUnresolvedCount: number): MigrationSession["status"] {
+  if (stillUnresolvedCount > 0) {
+    // Something was actually committed/skipped just now, but real work
+    // remains — partial, not done. Nothing was committable at all (this
+    // commit was a no-op against an unreviewed session) — leave it exactly
+    // where the venue left it, ready for review, not silently advanced.
+    return outcome.committed > 0 || outcome.skipped > 0 ? "partially_committed" : "ready_for_review";
+  }
+  if (outcome.committed === 0 && outcome.failed > 0) return "failed";
+  if (outcome.failed > 0) return "partially_committed";
+  return "committed";
+}
 
 function toClientInput(n: NormalizedClientLike): ClientInput {
   return {
@@ -289,9 +316,15 @@ export async function commitSession(client: AnyDbClient, session: MigrationSessi
     await finalizeImportBatch(batchId, { imported: createdIds.length, skipped: 0, errors: committable.length - createdIds.length }, batchClient);
   }
 
-  const finalStatus = outcome.failed > 0 && outcome.committed > 0 ? "partially_committed"
-    : outcome.failed > 0 && outcome.committed === 0 ? "failed"
-    : "committed";
+  // A session isn't simply "complete" or "failed" from this one commit
+  // attempt's outcome alone — records the venue hasn't made a decision on
+  // yet (duplicate_likely/conflict/needs_review) may still remain, exactly
+  // as intended by "commit valid records, leave unresolved records
+  // untouched" (docs/migration-cutover-architecture.md §B.5). Status must
+  // reflect the session's *actual current state*, not just this run.
+  const allRecords = await repo.listRecords(client, session.id);
+  const stillUnresolved = allRecords.filter((r) => UNRESOLVED_STATUSES.includes(r.status)).length;
+  const finalStatus = computeFinalSessionStatus(outcome, stillUnresolved);
   await repo.updateSessionStatus(client, session.id, finalStatus);
   return outcome;
 }
@@ -345,6 +378,99 @@ export async function commitOwnSession(sessionId: string): Promise<{ ok: true; o
   if (!session) return { ok: false, message: "Migration session not found." };
   const outcome = await commitSession(actor.client, session, null);
   return { ok: true, outcome };
+}
+
+// ---- Slice 1: original file retention (docs/migration-cutover-architecture.md
+//      §B.2) — the file is saved as an ordinary venue-level `documents` row
+//      (reusing the existing storage/document architecture wholesale, not a
+//      parallel one) and linked to its session via migration_session_documents.
+
+/**
+ * Saves an already-uploaded-to-storage file's metadata as a venue-level
+ * document (tagged `migration_source`) and links it to the session in one
+ * step. The actual storage upload happens client-side first (same
+ * mechanism components/document-workspace/upload-button.tsx already uses —
+ * the `documents` bucket, an unguessable `migration/{sessionId}/{docId}.
+ * {ext}` path) — this only ever touches metadata + the join row.
+ */
+export async function attachSourceFileToOwnSession(
+  sessionId: string,
+  file: { fileName: string; fileSize: number; mimeType: string; storagePath: string; storageUrl: string },
+): Promise<{ ok: true; documentId: string } | { ok: false; message: string }> {
+  const actor = await resolveVenueActor();
+  if (isError(actor)) return actor;
+  const session = await repo.getSession(actor.client, actor.venueId, sessionId);
+  if (!session) return { ok: false, message: "Migration session not found." };
+
+  const documentId = await documentsRepo.insertVenueDocument(actor.client, actor.venueId, {
+    name: file.fileName, category: "other", notes: "", tags: "migration_source",
+    expiresAt: "", fileName: file.fileName, fileSize: file.fileSize, mimeType: file.mimeType,
+    storagePath: file.storagePath, storageUrl: file.storageUrl,
+  });
+  await repo.linkDocument(actor.client, sessionId, documentId);
+  return { ok: true, documentId };
+}
+
+export async function getOwnSessionSourceFiles(sessionId: string): Promise<SessionSourceFile[]> {
+  const actor = await resolveVenueActor();
+  if (isError(actor)) return [];
+  const session = await repo.getSession(actor.client, actor.venueId, sessionId);
+  if (!session) return [];
+  const documentIds = await repo.listSessionDocumentIds(actor.client, sessionId);
+  if (documentIds.length === 0) return [];
+  const { data } = await actor.client.from("documents")
+    .select("id, file_name, file_size, mime_type, storage_url, created_at")
+    .in("id", documentIds)
+    .eq("venue_id", actor.venueId); // defense in depth — belt-and-suspenders alongside the venue-scoped session lookup above
+  return ((data ?? []) as Record<string, unknown>[]).map((r) => ({
+    documentId: r.id as string,
+    fileName: r.file_name as string,
+    fileSize: (r.file_size ?? null) as number | null,
+    mimeType: (r.mime_type ?? null) as string | null,
+    storageUrl: r.storage_url as string,
+    uploadedAt: r.created_at as string,
+  }));
+}
+
+// ---- Slice 2: resumability — what step should the UI resume into ─────────
+
+/**
+ * Pure decision table, exported specifically so it's directly testable:
+ * given a session's record-status counts, which step should the UI resume
+ * into. `parsed`/`normalized` counting as "still processing" is what makes
+ * an interruption between addRows and runDedupe (e.g. a network drop, a
+ * closed tab) correctly resumable — the rows themselves are already
+ * durably persisted as migration_records; only the dedupe pass, not the
+ * upload, needs to run again.
+ */
+export function computeSessionResumeState(counts: SessionSummary["counts"]): SessionResumeState {
+  const total = Object.values(counts).reduce((a, b) => a + b, 0);
+  const unresolved = counts.duplicate_likely + counts.conflict + counts.needs_review;
+  const settled = counts.committed + counts.skipped + counts.rejected; // no further action possible on these
+  const pendingCommit = counts.validated + counts.approved; // dedupe-clean or explicitly approved, not yet actually written
+
+  if (total === 0) return "empty";
+  if (counts.parsed > 0 || counts.normalized > 0) return "needs_processing";
+
+  if (settled === 0) {
+    // Nothing has actually been committed/skipped yet — the whole session
+    // is still in review, even when some records are also already clean
+    // and ready (the realistic, common case: most rows are fine, a few
+    // need a look). Unresolved work takes priority in what's shown.
+    return unresolved > 0 ? "needs_review" : "ready_to_commit";
+  }
+  // Something has already been committed/skipped — partial unless every
+  // remaining record has also been settled.
+  return unresolved > 0 || pendingCommit > 0 ? "partially_done" : "done";
+}
+
+export async function getOwnSessionResumeState(sessionId: string): Promise<{ state: SessionResumeState; summary: SessionSummary } | null> {
+  const actor = await resolveVenueActor();
+  if (isError(actor)) return null;
+  const session = await repo.getSession(actor.client, actor.venueId, sessionId);
+  if (!session) return null;
+  const summary = await getSessionSummary(actor.client, session);
+  return { state: computeSessionResumeState(summary.counts), summary };
 }
 
 async function commitOneRecord(
