@@ -37,10 +37,12 @@ const LIGHT_THEME_VARS = {
   "--ring": "var(--heritage-sage)",
 } as CSSProperties;
 
-type Props = { searchParams: Promise<{ next?: string }> };
+type Props = { searchParams: Promise<{ next?: string; activated?: string }> };
 
 export default async function LoginPage({ searchParams }: Props) {
-  const { next } = await searchParams;
+  const { next, activated } = await searchParams;
+  const justActivated = activated === "1";
+  const nextPath = next || (justActivated ? "/setup-hub" : undefined);
 
   return (
     <main
@@ -63,13 +65,15 @@ export default async function LoginPage({ searchParams }: Props) {
 
         <Card>
           <CardHeader className="space-y-1 text-center">
-            <CardTitle className="text-xl">Welcome back</CardTitle>
+            <CardTitle className="text-xl">
+              {justActivated ? "Welcome to Hello to Cheers" : "Welcome back"}
+            </CardTitle>
             <CardDescription>
               Sign in to your venue workspace to continue.
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <LoginForm next={next} />
+            <LoginForm next={nextPath} />
           </CardContent>
         </Card>
 

@@ -64,6 +64,17 @@ describe("welcome-integration role + context mapping", () => {
     );
   });
 
+  it("infers venue signup for first-time owners on Setup Hub", () => {
+    assert.equal(
+      inferWelcomeContext({
+        userType: "venue_owner",
+        pathname: "/setup-hub",
+        hasPriorAcceptance: false,
+      }),
+      "venueSignup",
+    );
+  });
+
   it("infers couple / vendor invitation on first visit", () => {
     assert.equal(
       inferWelcomeContext({
@@ -278,6 +289,19 @@ describe("legal middleware decisions", () => {
     if (decision.action !== "redirect_welcome") return;
     assert.match(decision.welcomePath, /context=venueSignup/);
     assert.equal(decision.returnTo, "/setup");
+  });
+
+  it("preserves Setup Hub as returnTo for first-time venue owners", () => {
+    const decision = evaluateLegalMiddleware({
+      pathname: "/setup-hub",
+      search: "",
+      requiresAcceptance: true,
+      context: "venueSignup",
+    });
+    assert.equal(decision.action, "redirect_welcome");
+    if (decision.action !== "redirect_welcome") return;
+    assert.equal(decision.returnTo, "/setup-hub");
+    assert.match(decision.welcomePath, /context=venueSignup/);
   });
 
   it("does not redirect loop on welcome or public legal paths", () => {

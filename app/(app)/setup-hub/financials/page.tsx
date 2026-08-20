@@ -8,10 +8,9 @@ export const metadata: Metadata = { title: "Financials — Setup" };
 export const dynamic = "force-dynamic";
 
 /**
- * Continuous Setup Experience — wires the existing PostSetupFinancial
- * screen (previously built for the pre-workspace wizard's one-time
- * post-creation step, imported nowhere) into Setup Hub as a reachable
- * stage. Reused exactly as-is, no changes to its own logic or copy.
+ * Continuous Setup Experience — wires PostSetupFinancial into Setup Hub
+ * as a reachable stage. Next returns to /setup-hub (graduation lives on
+ * Ready to Invite Couples, not this screen).
  */
 export default async function SetupHubFinancialsPage() {
   const venue = await getCurrentVenue();

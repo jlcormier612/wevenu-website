@@ -1,10 +1,11 @@
 import Link from "next/link";
 
+import { productAppBaseUrl } from "@shared/email";
 import { getEnrollmentByActivationToken } from "@shared/product-account";
 
 import { ActivateAccountForm } from "@/components/activate/activate-account-form";
 
-export const metadata = { title: "Activate account" };
+export const metadata = { title: "Let's get you started" };
 
 function ActivationErrorPanel({
   title,
@@ -25,13 +26,7 @@ function ActivationErrorPanel({
         </p>
         {showLogin ? (
           <Link
-            href={
-              (
-                process.env.NEXT_PUBLIC_PRODUCT_APP_URL?.trim() ||
-                process.env.NEXT_PUBLIC_APP_URL?.trim() ||
-                "http://localhost:3000"
-              ).replace(/\/$/, "") + "/login"
-            }
+            href={`${productAppBaseUrl()}/login`}
             className="mt-6 inline-block text-sm text-[var(--heritage-sage)] underline-offset-4 hover:underline"
           >
             Go to sign in →
@@ -74,7 +69,11 @@ export default async function ActivateAccountPage({
   if (lookup.reason !== "valid") {
     if (lookup.reason === "already_activated") {
       return (
-        <ActivationErrorPanel title="Already activated" message={ALREADY_ACTIVATED_MESSAGE} showLogin />
+        <ActivationErrorPanel
+          title="Already activated"
+          message={ALREADY_ACTIVATED_MESSAGE}
+          showLogin
+        />
       );
     }
     return <ActivationErrorPanel title="Link expired" message={EXPIRED_MESSAGE} />;
@@ -97,10 +96,14 @@ export default async function ActivateAccountPage({
       <div className="ws-panel ws-enter w-full max-w-md p-8 md:p-10">
         <p className="ws-eyebrow">Hello to Cheers</p>
         <h1 className="mt-3 font-heading text-4xl tracking-tight">
-          Activate account
+          Let&apos;s get you started
         </h1>
         <p className="mt-3 text-[1.05rem] leading-relaxed ws-muted">
-          Create a password for {venueName} to open Hello to Cheers.
+          Your Hello to Cheers experience is waiting for you.
+        </p>
+        <p className="mt-5 text-sm leading-relaxed ws-muted">
+          Create your password below, and we&apos;ll get everything ready for
+          your first visit.
         </p>
         <ActivateAccountForm token={token} email={email} venueName={venueName} />
       </div>

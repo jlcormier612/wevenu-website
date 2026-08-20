@@ -124,8 +124,11 @@ export function ActivateAccountForm({
         disabled={pending || !legalAccepted}
         className="w-full rounded-sm bg-[var(--forest-sage)] px-4 py-3 text-sm font-medium text-[var(--true-white)] transition-colors duration-200 hover:bg-[var(--heritage-sage)] disabled:opacity-60 motion-reduce:transition-none"
       >
-        {pending ? "Activating…" : "Continue"}
+        {pending ? "Activating…" : "Let's go"}
       </button>
+      <p className="text-center text-xs leading-relaxed ws-muted">
+        We&apos;ll start with a few simple details about your venue.
+      </p>
     </form>
   );
 }

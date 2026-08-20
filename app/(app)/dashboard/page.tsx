@@ -84,7 +84,10 @@ export default async function DashboardPage({ searchParams }: Props) {
         </Button>
       </div>
 
-      <DashboardLuvIntro show={data.showLuvIntro} />
+      <DashboardLuvIntro
+        show={data.showLuvIntro}
+        setupHref={data.onboarding.show ? "#getting-started" : "/setup-hub"}
+      />
       {data.onboarding.show && (
         <GettingStartedCard onboarding={data.onboarding} milestone={milestone} venueName={data.venueName} />
       )}

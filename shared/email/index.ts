@@ -24,7 +24,12 @@ export {
   type SendRelationshipEmailInput,
 } from "./send";
 export { sendEnrollmentProductEmails, sendWelcomeHomeEmail, sendReactivationEmail, type EnrollmentEmailContext } from "./enrollment";
-export { activationUrlFromToken, activationBaseUrl } from "./templates/helpers";
+export {
+  activationUrlFromToken,
+  activationBaseUrl,
+  productAppBaseUrl,
+  productPostActivationLoginUrl,
+} from "./templates/helpers";
 export {
   getEmailTemplate,
   listEmailTemplates,

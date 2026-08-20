@@ -2,19 +2,11 @@
 
 import { redirect } from "next/navigation";
 
+import { productPostActivationLoginUrl } from "@shared/email";
 import { activateVenueAccount } from "@shared/product-account";
 import { completeAccountActivation } from "@shared/relationships";
 
 import { completeVenueActivateLegalViaProduct } from "@/lib/legal/product-legal";
-
-function productLoginUrl(): string {
-  const base = (
-    process.env.NEXT_PUBLIC_PRODUCT_APP_URL?.trim() ||
-    process.env.NEXT_PUBLIC_APP_URL?.trim() ||
-    "http://localhost:3000"
-  ).replace(/\/$/, "");
-  return `${base}/login`;
-}
 
 export async function activateAccountAction(
   _prev: { error?: string } | null,
@@ -81,5 +73,5 @@ export async function activateAccountAction(
     console.error("[activate] local relationship activation threw after real account succeeded", error);
   }
 
-  redirect(`${productLoginUrl()}?activated=1`);
+  redirect(productPostActivationLoginUrl());
 }

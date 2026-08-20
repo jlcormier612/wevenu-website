@@ -1,19 +1,11 @@
 import { NextResponse } from "next/server";
 
+import { productPostActivationLoginUrl } from "@shared/email";
 import { completeAccountActivation, lookupActivationToken } from "@shared/relationships";
 import { recordOwnerActivationCredential } from "@shared/product-sync";
 
 import { completeVenueActivateLegalViaProduct } from "@/lib/legal/product-legal";
 import { hashPassword } from "@/lib/program4/password";
-
-function productLoginUrl(): string {
-  const base = (
-    process.env.NEXT_PUBLIC_PRODUCT_APP_URL?.trim() ||
-    process.env.NEXT_PUBLIC_APP_URL?.trim() ||
-    "http://localhost:3000"
-  ).replace(/\/$/, "");
-  return `${base}/login`;
-}
 
 /**
  * Public activation API — token lookup (GET) and password submit (POST).
@@ -133,7 +125,7 @@ export async function POST(
 
   return NextResponse.json({
     ok: true,
-    loginUrl: `${productLoginUrl()}?activated=1`,
+    loginUrl: productPostActivationLoginUrl(),
     venueName: result.relationship.venue.name,
   });
 }

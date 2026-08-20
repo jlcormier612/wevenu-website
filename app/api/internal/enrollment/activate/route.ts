@@ -26,10 +26,10 @@ export const runtime = "nodejs";
  *   3. Set the real password via the Admin API (never touches product
  *      tables — auth.users remains the only place a credential lives).
  *   4. Call the atomic activate_venue_enrollment() Postgres function,
- *      which creates the venues row and marks the enrollment activated
- *      in one transaction, and is itself idempotent (already-activated
- *      returns the existing venueId rather than erroring or
- *      double-creating) — so a retried request from the caller is safe.
+ *      which creates the venues row, upserts the owner venue_staff row,
+ *      and marks the enrollment activated in one transaction. Idempotent
+ *      on retry (already-activated returns the existing venueId and
+ *      repairs a missing owner staff row).
  *
  * Body: { token, password }
  */
@@ -90,17 +90,18 @@ export async function POST(request: Request) {
       );
     }
 
-    // Already activated — return the existing venue idempotently rather
-    // than re-running user/venue creation (retry-safe).
-    if (enrollment.status === "activated" && enrollment.venue_id) {
-      return NextResponse.json({ ok: true, venueId: enrollment.venue_id, alreadyActivated: true });
-    }
-
     const userId = await resolveUserIdForEmail(enrollment.owner_email);
 
+    // Password updates stay retry-safe: an already-activated owner who
+    // re-submits the form gets a working credential again. Venue creation
+    // itself stays idempotent inside activate_venue_enrollment().
     const { error: pwErr } = await admin.auth.admin.updateUserById(userId, { password });
     if (pwErr) throw pwErr;
 
+    // Always call the RPC — including on already-activated retries — so
+    // the owner venue_staff row is upserted/repaired. Older activations
+    // created the venues row without that staff row; Setup Hub and
+    // current_user_role() expect it.
     const { data: result, error: activateErr } = await admin
       .rpc("activate_venue_enrollment", {
         p_activation_token: token,
