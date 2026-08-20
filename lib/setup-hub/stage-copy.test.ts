@@ -43,4 +43,11 @@ describe("Setup Hub stage copy", () => {
     assert.equal(STAGE_COPY["client-experience"].helpHref, undefined);
     assert.equal(STAGE_COPY["your-team"].helpHref, undefined);
   });
+
+  it("describes Bring Your Business as a three-way choice, not CSV-only", () => {
+    const copy = STAGE_COPY["bring-your-business"].whatToDo.toLowerCase();
+    assert.match(copy, /another system/);
+    assert.match(copy, /spreadsheet/);
+    assert.match(copy, /start fresh/);
+  });
 });

@@ -7,12 +7,12 @@ import { Check, ChevronRight, HelpCircle } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
+import { BringYourBusinessChoices } from "@/components/setup-hub/bring-your-business-choices";
 import { SetupReadiness } from "@/components/setup-hub/setup-readiness";
 import { OperationalReadinessCard } from "@/components/setup-hub/operational-readiness-card";
 import { StageAcknowledgeButton } from "@/components/setup-hub/stage-acknowledge-button";
 import {
   markStageReviewedAction,
-  setBringYourBusinessManualAction,
   setYourTeamSoloAction,
 } from "@/app/(app)/setup-hub/actions";
 import { STAGE_COPY } from "@/lib/setup-hub/stage-copy";
@@ -23,14 +23,16 @@ import type { OperationalReadiness } from "@/lib/operational-readiness/types";
 type StageRow = {
   key: string;
   title: string;
-  href: string;
-  hrefLabel: string;
+  href?: string;
+  hrefLabel?: string;
   /** null = no self-declared/objective signal available yet. */
   status: "complete" | "in_progress" | "not_started" | null;
   detail: string;
   required: boolean;
   /** Rendered next to the primary link when the venue hasn't already completed the stage another way. */
   action?: React.ReactNode;
+  /** When set, replaces the default single primary link + action row. */
+  customActions?: React.ReactNode;
 };
 
 export function SetupHubOverview({
@@ -76,6 +78,9 @@ export function SetupHubOverview({
   const yourTeamDone = activeTeamCount > 0 || yourTeamSolo;
   const financialsReviewed = !!hubState?.financialsReviewedAt;
 
+  // Bring Your Business sits early (right after Your Venue) so a venue
+  // switching systems sees that choice before spending time rebuilding by hand.
+  // Order is guidance only — stages stay revisitable in any sequence.
   const stages: StageRow[] = [
     {
       key: "your-venue",
@@ -93,6 +98,24 @@ export function SetupHubOverview({
       ) : undefined,
     },
     {
+      key: "bring-your-business",
+      title: "Bring Your Business",
+      status: bringYourBusinessDone ? "complete" : "not_started",
+      detail: hasImportedData
+        ? "Your existing data has been brought in."
+        : bringYourBusinessManual
+          ? "You're starting fresh and adding things yourself — that's the plan."
+          : "Nothing brought in yet.",
+      required: true,
+      customActions: (
+        <BringYourBusinessChoices
+          done={bringYourBusinessDone}
+          hasImportedData={hasImportedData}
+          manualConfirmed={bringYourBusinessManual}
+        />
+      ),
+    },
+    {
       key: "calendar-availability",
       title: "Calendar & Availability",
       href: "/settings/availability",
@@ -104,25 +127,6 @@ export function SetupHubOverview({
         <StageAcknowledgeButton
           action={() => markStageReviewedAction("calendar-availability")}
           label="I've thought this through"
-        />
-      ) : undefined,
-    },
-    {
-      key: "bring-your-business",
-      title: "Bring Your Business",
-      href: "/settings/import",
-      hrefLabel: "Import",
-      status: bringYourBusinessDone ? "complete" : "not_started",
-      detail: hasImportedData
-        ? "Your existing data has been brought in."
-        : bringYourBusinessManual
-          ? "You're adding things yourself, one at a time — that's the plan."
-          : "Nothing brought in yet.",
-      required: true,
-      action: !bringYourBusinessDone ? (
-        <StageAcknowledgeButton
-          action={setBringYourBusinessManualAction}
-          label="I'll add things myself"
         />
       ) : undefined,
     },
@@ -204,9 +208,16 @@ export function SetupHubOverview({
 
   return (
     <div className="space-y-6">
-      <p className="text-sm text-muted-foreground">
-        {ownerFirstName ? `${ownerFirstName}, here` : "Here"}&apos;s everything involved in getting {venueName} set up. Work through these in any order, come back as often as you like — nothing is final until you say so.
-      </p>
+      <div className="space-y-2">
+        <p className="text-sm text-muted-foreground">
+          {ownerFirstName ? `${ownerFirstName}, here` : "Here"}&apos;s everything involved in getting {venueName} set up. Work through these in any order, come back as often as you like — nothing is final until you say so.
+        </p>
+        {!bringYourBusinessDone ? (
+          <p className="text-sm text-muted-foreground">
+            Already have information in another system? Bringing it over first may save you time before you build everything by hand.
+          </p>
+        ) : null}
+      </div>
       <div className="space-y-3">
         {stages.map((s) => {
           const copy = STAGE_COPY[s.key];
@@ -231,25 +242,31 @@ export function SetupHubOverview({
                       </div>
                     )}
                     <p className="text-xs text-muted-foreground">{s.detail}</p>
-                    <div className="flex flex-wrap items-center gap-3 pt-1">
-                      <Link
-                        href={s.href}
-                        className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
-                      >
-                        {s.hrefLabel}
-                        <ChevronRight className="h-3 w-3" />
-                      </Link>
-                      {s.action}
-                      {copy?.helpHref && copy.helpTitle && (
-                        <Link
-                          href={copy.helpHref}
-                          className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground hover:underline"
-                        >
-                          <HelpCircle className="h-3 w-3" />
-                          {copy.helpTitle}
-                        </Link>
-                      )}
-                    </div>
+                    {s.customActions ? (
+                      s.customActions
+                    ) : (
+                      <div className="flex flex-wrap items-center gap-3 pt-1">
+                        {s.href && s.hrefLabel ? (
+                          <Link
+                            href={s.href}
+                            className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
+                          >
+                            {s.hrefLabel}
+                            <ChevronRight className="h-3 w-3" />
+                          </Link>
+                        ) : null}
+                        {s.action}
+                        {copy?.helpHref && copy.helpTitle && (
+                          <Link
+                            href={copy.helpHref}
+                            className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground hover:underline"
+                          >
+                            <HelpCircle className="h-3 w-3" />
+                            {copy.helpTitle}
+                          </Link>
+                        )}
+                      </div>
+                    )}
                   </div>
                 </div>
               </CardContent>
