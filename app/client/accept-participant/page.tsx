@@ -65,8 +65,14 @@ export default async function AcceptParticipantPage({ searchParams }: Props) {
       <Card>
         <CardHeader className="text-center">
           <CardTitle>Hi {invitation.firstName}</CardTitle>
-          <CardDescription>
-            {invitation.coupleName} invited you to help plan their celebration with {invitation.venueName}.
+          <CardDescription className="space-y-2 text-left sm:text-center">
+            <span className="block">
+              {invitation.coupleName} invited you to help plan their celebration with{" "}
+              <strong className="font-medium text-foreground">{invitation.venueName}</strong>.
+            </span>
+            <span className="block text-muted-foreground">
+              Create your account to join their private planning space on Hello to Cheers.
+            </span>
           </CardDescription>
         </CardHeader>
         <CardContent>

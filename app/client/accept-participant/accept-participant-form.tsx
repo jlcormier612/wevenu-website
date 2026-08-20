@@ -27,9 +27,20 @@ export function AcceptParticipantForm({ token, email }: { token: string; email: 
   return (
     <form action={formAction} className="space-y-4">
       <input type="hidden" name="token" value={token} />
+      <input type="hidden" name="email" value={email} />
       <div className="space-y-2">
         <Label htmlFor="email">Email</Label>
-        <Input id="email" name="email" type="email" value={email} readOnly disabled />
+        <Input
+          id="email"
+          type="email"
+          value={email}
+          readOnly
+          aria-readonly="true"
+          className="bg-muted/50 text-muted-foreground"
+        />
+        <p className="text-[11px] text-muted-foreground">
+          This is the address you were invited with — it can&apos;t be changed here.
+        </p>
       </div>
       <div className="space-y-2">
         <Label htmlFor="password">Password</Label>

@@ -63,14 +63,30 @@ export default async function ClientAcceptPage({ searchParams }: Props) {
   return (
     <Shell>
       <Card>
-        <CardHeader className="text-center">
+        <CardHeader className="text-center space-y-3">
           <CardTitle>Welcome, {invitation.coupleName}</CardTitle>
-          <CardDescription>
-            {invitation.venueName} invited you to create your own account for your planning workspace.
+          <CardDescription className="space-y-2 text-left sm:text-center">
+            <span className="block">
+              <strong className="font-medium text-foreground">{invitation.venueName}</strong> invited you to join your private planning space.
+            </span>
+            <span className="block text-muted-foreground">
+              Hello to Cheers is where you&apos;ll keep the important details of your celebration together — from planning tasks and venue information to the things your team shares with you along the way.
+            </span>
+            <span className="block text-muted-foreground">
+              Create your account to get started.
+            </span>
           </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-4">
           <AcceptClientForm token={token} email={invitation.email} />
+          <p className="text-center text-xs text-muted-foreground">
+            Already have a Hello to Cheers account with this email? Enter the
+            password you already use above — or{" "}
+            <Link href="/client/login" className="text-primary hover:underline">
+              sign in
+            </Link>
+            {" "}to an existing workspace.
+          </p>
         </CardContent>
       </Card>
     </Shell>

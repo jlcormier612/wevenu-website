@@ -14,6 +14,7 @@ import { createAdminClient } from "@/integrations/supabase/admin";
 import { isSupabaseConfigured } from "@/lib/env";
 import { getCurrentVenue } from "@/lib/venue/service";
 import { sendEmail } from "@/lib/email/send";
+import { resolveInvitationAccountEmail } from "@/lib/client-auth/resolve-invitation-email";
 import type {
   ClientInvitation, ClientAuthResult, AcceptClientInvitationResult,
   AuthSessionInfo, SupportAccessGrant,
@@ -66,26 +67,38 @@ async function sendClientInviteEmail(
     text: [
       `Hi ${coupleName},`,
       "",
-      `${venueName} has invited you to create your own account for your wedding planning workspace.`,
+      `${venueName} invited you to join your private planning space on Hello to Cheers.`,
       "",
-      "By accepting this invitation, you will be asked to review and accept the applicable Hello to Cheers Terms and Privacy Policy before accessing your workspace.",
+      "Hello to Cheers is where you'll keep the important details of your celebration together — planning tasks, venue information, and the things your team shares with you along the way.",
       "",
-      "Create your account here:",
+      "Create your account to get started:",
       acceptUrl,
+      "",
+      "By accepting, you'll be asked to review the Hello to Cheers Terms and Privacy Policy before entering your workspace.",
       "",
       "This link is personal to you — please don't share it.",
       "",
       venueName,
     ].join("\n"),
     html: [
-      `<p>Hi ${coupleName},</p>`,
-      `<p>${venueName} has invited you to create your own account for your wedding planning workspace.</p>`,
-      `<p>By accepting this invitation, you will be asked to review and accept the applicable Hello to Cheers Terms and Privacy Policy before accessing your workspace.</p>`,
+      `<p>Hi ${escapeHtml(coupleName)},</p>`,
+      `<p><strong>${escapeHtml(venueName)}</strong> invited you to join your private planning space on Hello to Cheers.</p>`,
+      `<p>Hello to Cheers is where you'll keep the important details of your celebration together — planning tasks, venue information, and the things your team shares with you along the way.</p>`,
+      `<p>Create your account to get started.</p>`,
       `<p><a href="${acceptUrl}" style="background:${primaryColor};color:#fff;padding:10px 20px;border-radius:8px;text-decoration:none;display:inline-block;">Create Your Account</a></p>`,
+      `<p style="color:#888;font-size:12px;">By accepting, you'll be asked to review the Hello to Cheers Terms and Privacy Policy before entering your workspace.</p>`,
       `<p style="color:#888;font-size:12px;">This link is personal to you — please don't share it.</p>`,
-      `<p style="color:#888;font-size:12px;">${venueName}</p>`,
+      `<p style="color:#888;font-size:12px;">${escapeHtml(venueName)}</p>`,
     ].join(""),
   });
+}
+
+function escapeHtml(s: string): string {
+  return s
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
 }
 
 export async function inviteClient(
@@ -225,7 +238,21 @@ export async function acceptClientInvitation(
   token: string, email: string, password: string,
 ): Promise<AcceptClientInvitationResult> {
   if (!isSupabaseConfigured) return { ok: false, error: "Backend not configured." };
-  const signIn = await createAndSignInAccount(email, password);
+
+  // Invitation email is authoritative. A disabled <input> does not submit,
+  // which previously left `email` empty and failed auth createUser with
+  // "Cannot create a user without either an email or phone".
+  const invitation = await peekClientInvitation(token);
+  if (!invitation || invitation.status !== "pending" || invitation.expired) {
+    return { ok: false, error: "Invalid or expired invitation." };
+  }
+  const resolved = resolveInvitationAccountEmail({
+    invitationEmail: invitation.email,
+    submittedEmail: email,
+  });
+  if (!resolved.ok) return { ok: false, error: resolved.error };
+
+  const signIn = await createAndSignInAccount(resolved.email, password);
   if (!signIn.ok) return { ok: false, error: signIn.error };
 
   const supabase = await createClient();
@@ -239,7 +266,18 @@ export async function acceptParticipantInvitation(
   token: string, email: string, password: string,
 ): Promise<AcceptClientInvitationResult> {
   if (!isSupabaseConfigured) return { ok: false, error: "Backend not configured." };
-  const signIn = await createAndSignInAccount(email, password);
+
+  const invitation = await peekParticipantInvitation(token);
+  if (!invitation || invitation.inviteStatus !== "pending") {
+    return { ok: false, error: "Invalid or expired invitation." };
+  }
+  const resolved = resolveInvitationAccountEmail({
+    invitationEmail: invitation.email,
+    submittedEmail: email,
+  });
+  if (!resolved.ok) return { ok: false, error: resolved.error };
+
+  const signIn = await createAndSignInAccount(resolved.email, password);
   if (!signIn.ok) return { ok: false, error: signIn.error };
 
   const supabase = await createClient();

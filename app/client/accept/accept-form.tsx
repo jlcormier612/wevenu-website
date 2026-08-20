@@ -27,9 +27,22 @@ export function AcceptClientForm({ token, email }: { token: string; email: strin
   return (
     <form action={formAction} className="space-y-4">
       <input type="hidden" name="token" value={token} />
+      {/* Hidden submit copy — a disabled input is omitted from FormData, which
+          previously dropped the invite email before auth createUser. */}
+      <input type="hidden" name="email" value={email} />
       <div className="space-y-2">
         <Label htmlFor="email">Email</Label>
-        <Input id="email" name="email" type="email" value={email} readOnly disabled />
+        <Input
+          id="email"
+          type="email"
+          value={email}
+          readOnly
+          aria-readonly="true"
+          className="bg-muted/50 text-muted-foreground"
+        />
+        <p className="text-[11px] text-muted-foreground">
+          This is the address your venue invited — it can&apos;t be changed here.
+        </p>
       </div>
       <div className="space-y-2">
         <Label htmlFor="password">Password</Label>
