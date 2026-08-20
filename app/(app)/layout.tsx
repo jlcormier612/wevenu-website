@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { WorkspaceShell } from "@/components/shell/workspace-shell";
 import { createClient } from "@/integrations/supabase/server";
 import { isSupabaseConfigured } from "@/lib/env";
+import { isPreGraduationAllowedPath } from "@/lib/setup-hub/pre-graduation-paths";
 import { isVenueReadyToInviteCouples } from "@/lib/setup-hub/service";
 import { getVendorUser } from "@/lib/vendor-auth/service";
 import { getCurrentVenue } from "@/lib/venue/service";
@@ -68,11 +69,12 @@ export default async function WorkspaceLayout({
     if (!ready) {
       const vendorUser = await getVendorUser();
       if (vendorUser) redirect("/vendor/dashboard");
-      // /setup-hub itself lives inside this same (app) group, so without this
-      // check every request for it would re-enter this branch and redirect
-      // to itself in a loop. Everything else under (app) still bounces to it.
+      // Allow Setup Hub plus the destinations its stages actually link to
+      // (Settings, Library, Help — including Import / Migration Center).
+      // Operational areas (dashboard, leads, clients, …) still bounce here
+      // until Ready to Invite Couples. See lib/setup-hub/pre-graduation-paths.ts.
       const pathname = (await headers()).get("x-pathname") ?? "";
-      if (!pathname.startsWith("/setup-hub")) {
+      if (!isPreGraduationAllowedPath(pathname)) {
         redirect("/setup-hub");
       }
     }
