@@ -183,14 +183,14 @@ begin
       using errcode = '40001';
   end if;
 
-  delete from public.htc_crm_support_inbox_items;
-  delete from public.htc_crm_tasks;
-  delete from public.htc_crm_notifications;
-  delete from public.htc_crm_subscriptions;
-  delete from public.htc_crm_walkthroughs;
-  delete from public.htc_crm_communications;
-  delete from public.htc_crm_timeline_events;
-  delete from public.htc_crm_relationships;
+  delete from public.htc_crm_support_inbox_items where true;
+  delete from public.htc_crm_tasks where true;
+  delete from public.htc_crm_notifications where true;
+  delete from public.htc_crm_subscriptions where true;
+  delete from public.htc_crm_walkthroughs where true;
+  delete from public.htc_crm_communications where true;
+  delete from public.htc_crm_timeline_events where true;
+  delete from public.htc_crm_relationships where true;
 
   insert into public.htc_crm_relationships (
     id, owner_email, stripe_customer_id, stripe_subscription_id,
