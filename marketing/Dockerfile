@@ -22,6 +22,8 @@ WORKDIR /repo
 COPY --from=deps /repo/marketing/node_modules ./marketing/node_modules
 COPY shared ./shared
 COPY marketing ./marketing
+# shared/ imports resolve walking up from shared/ → /repo/node_modules
+RUN npm install --prefix /repo --no-save --omit=dev @supabase/supabase-js@2.112.3
 WORKDIR /repo/marketing
 
 ARG NEXT_PUBLIC_MARKETING_URL
