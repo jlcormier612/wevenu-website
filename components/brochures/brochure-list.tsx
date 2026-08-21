@@ -12,6 +12,7 @@ import {
 import { LIBRARY_LABELS, archiveToggleLabel } from "@/components/library/labels";
 import { LibraryArchivedSection } from "@/components/library/library-archived-section";
 import { LibraryAssetCard } from "@/components/library/library-asset-card";
+import { LibraryDeleteConfirmDialog } from "@/components/library/library-delete-confirm-dialog";
 import { partitionArchived } from "@/components/library/partition-archived";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -66,6 +67,8 @@ function BrochureCard({ brochure, archivedView }: { brochure: Brochure; archived
   const router = useRouter();
   const [pendingId, setPendingId] = React.useState<string | null>(null);
   const pending = pendingId === brochure.id;
+  const [deleting, setDeleting] = React.useState(false);
+  const [deletePending, setDeletePending] = React.useState(false);
 
   async function handleArchiveToggle() {
     setPendingId(brochure.id);
@@ -83,16 +86,21 @@ function BrochureCard({ brochure, archivedView }: { brochure: Brochure; archived
     else toast.error(result.message ?? "Could not duplicate brochure.");
   }
 
-  async function handleDelete() {
-    if (!confirm(`Delete "${brochure.name}"? This can't be undone.`)) return;
-    setPendingId(brochure.id);
+  async function handleDeleteConfirmed() {
+    setDeletePending(true);
     const result = await deleteBrochureAction(brochure.id);
-    setPendingId(null);
-    if (result.ok) toast.success("Brochure deleted.");
-    else toast.error(result.message ?? "Could not delete brochure.");
+    setDeletePending(false);
+    if (result.ok) {
+      toast.success("Brochure deleted.");
+      setDeleting(false);
+      router.refresh();
+    } else {
+      toast.error(result.message ?? "Could not delete brochure.");
+    }
   }
 
   return (
+    <>
     <LibraryAssetCard
       layout="row"
       title={brochure.name}
@@ -131,13 +139,22 @@ function BrochureCard({ brochure, archivedView }: { brochure: Brochure; archived
         {
           id: "delete",
           label: LIBRARY_LABELS.delete,
-          onClick: handleDelete,
+          onClick: () => setDeleting(true),
           destructive: true,
           separatorBefore: true,
           icon: <Trash2 className="mr-2 h-3.5 w-3.5" />,
         },
       ]}
     />
+    <LibraryDeleteConfirmDialog
+      open={deleting}
+      itemName={brochure.name}
+      itemLabel="brochure"
+      pending={deletePending}
+      onConfirm={handleDeleteConfirmed}
+      onCancel={() => setDeleting(false)}
+    />
+    </>
   );
 }
 

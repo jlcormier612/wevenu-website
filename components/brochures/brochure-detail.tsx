@@ -8,6 +8,7 @@ import { toast } from "sonner";
 
 import { deleteBrochureAction, sendBrochureToLeadAction, updateBrochureAction } from "@/app/(app)/library/brochures/actions";
 import { BusinessAssetHeader } from "@/components/business-assets/asset-header";
+import { LibraryDeleteConfirmDialog } from "@/components/library/library-delete-confirm-dialog";
 import { LibrarySaveStatus } from "@/components/library/library-save-status";
 import { librarySavedToastMessage, useLibraryUnsavedGuard } from "@/components/library/use-library-unsaved-guard";
 import { ActivityTimeline } from "@/components/leads/activity-timeline";
@@ -72,6 +73,7 @@ export function BrochureDetail({ brochure, leads }: { brochure: BrochureWithActi
   const [dirty, setDirty] = React.useState(false);
   const [saving, startSave] = React.useTransition();
   const [deleting, startDelete] = React.useTransition();
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = React.useState(false);
   const { confirmLeave } = useLibraryUnsavedGuard(dirty);
 
   function markDirty<T>(setter: (v: T) => void) {
@@ -86,12 +88,11 @@ export function BrochureDetail({ brochure, leads }: { brochure: BrochureWithActi
     });
   }
 
-  function handleDelete() {
-    if (!confirm(`Delete "${brochure.name}"? This can't be undone.`)) return;
+  function handleDeleteConfirmed() {
     startDelete(async () => {
       const result = await deleteBrochureAction(brochure.id);
       if (result.ok) { toast.success("Brochure deleted."); router.push("/library/brochures"); }
-      else toast.error(result.message ?? "Could not delete.");
+      else { toast.error(result.message ?? "Could not delete."); setConfirmDeleteOpen(false); }
     });
   }
 
@@ -180,10 +181,18 @@ export function BrochureDetail({ brochure, leads }: { brochure: BrochureWithActi
       )}
 
       <div className="flex justify-end">
-        <Button type="button" variant="ghost" size="sm" className="text-muted-foreground hover:text-destructive" disabled={deleting} onClick={handleDelete}>
+        <Button type="button" variant="ghost" size="sm" className="text-muted-foreground hover:text-destructive" disabled={deleting} onClick={() => setConfirmDeleteOpen(true)}>
           {deleting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Delete Brochure"}
         </Button>
       </div>
+      <LibraryDeleteConfirmDialog
+        open={confirmDeleteOpen}
+        itemName={brochure.name}
+        itemLabel="brochure"
+        pending={deleting}
+        onConfirm={handleDeleteConfirmed}
+        onCancel={() => setConfirmDeleteOpen(false)}
+      />
     </div>
   );
 }

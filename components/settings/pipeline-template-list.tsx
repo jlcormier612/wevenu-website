@@ -21,6 +21,7 @@ import { toast } from "sonner";
 import {
   deletePipelineTemplateAction, duplicatePipelineTemplateAction, setPipelineTemplateActiveAction,
 } from "@/app/(app)/library/pipeline-templates/actions";
+import { LibraryDeleteConfirmDialog } from "@/components/library/library-delete-confirm-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -33,6 +34,8 @@ export function PipelineTemplateList({ initialTemplates }: { initialTemplates: P
   const router = useRouter();
   const [templates, setTemplates] = React.useState(initialTemplates);
   const [pendingId, setPendingId] = React.useState<string | null>(null);
+  const [deleting, setDeleting] = React.useState<PipelineTemplate | null>(null);
+  const [deletePending, setDeletePending] = React.useState(false);
 
   async function handleToggleArchived(t: PipelineTemplate) {
     setPendingId(t.id);
@@ -50,13 +53,18 @@ export function PipelineTemplateList({ initialTemplates }: { initialTemplates: P
     else toast.error(result.message ?? "Could not duplicate template.");
   }
 
-  async function handleDelete(t: PipelineTemplate) {
-    if (!confirm(`Delete "${t.name}"? This can't be undone.`)) return;
-    setPendingId(t.id);
-    const result = await deletePipelineTemplateAction(t.id);
-    setPendingId(null);
-    if (result.ok) { toast.success("Pipeline template deleted."); setTemplates((p) => p.filter((x) => x.id !== t.id)); }
-    else toast.error(result.message ?? "Could not delete template.");
+  async function handleDeleteConfirmed() {
+    if (!deleting) return;
+    setDeletePending(true);
+    const result = await deletePipelineTemplateAction(deleting.id);
+    setDeletePending(false);
+    if (result.ok) {
+      toast.success("Pipeline template deleted.");
+      setTemplates((p) => p.filter((x) => x.id !== deleting.id));
+      setDeleting(null);
+    } else {
+      toast.error(result.message ?? "Could not delete template.");
+    }
   }
 
   return (
@@ -83,7 +91,7 @@ export function PipelineTemplateList({ initialTemplates }: { initialTemplates: P
                       {t.isActive ? <Archive className="mr-2 h-3.5 w-3.5" /> : <ArchiveRestore className="mr-2 h-3.5 w-3.5" />}
                       {t.isActive ? "Archive" : "Restore"}
                     </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => handleDelete(t)} className="text-destructive focus:text-destructive">
+                    <DropdownMenuItem onClick={() => setDeleting(t)} className="text-destructive focus:text-destructive">
                       <Trash2 className="mr-2 h-3.5 w-3.5" /> Delete
                     </DropdownMenuItem>
                   </DropdownMenuContent>
@@ -99,6 +107,14 @@ export function PipelineTemplateList({ initialTemplates }: { initialTemplates: P
           </CardContent>
         </Card>
       ))}
+      <LibraryDeleteConfirmDialog
+        open={!!deleting}
+        itemName={deleting?.name ?? ""}
+        itemLabel="pipeline template"
+        pending={deletePending}
+        onConfirm={handleDeleteConfirmed}
+        onCancel={() => setDeleting(null)}
+      />
     </div>
   );
 }

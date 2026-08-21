@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { Trash2 } from "lucide-react";
 
 import { createArticleAction, deleteArticleAction, updateArticleAction } from "@/app/admin/success-library/actions";
+import { LibraryDeleteConfirmDialog } from "@/components/library/library-delete-confirm-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -40,6 +41,7 @@ export function SuccessLibraryForm({ article }: { article?: SuccessLibraryArticl
   const [relatedFeatures, setRelatedFeatures] = React.useState<RelatedFeatureLink[]>(article?.relatedFeatures ?? []);
   const [linkedGapKeys, setLinkedGapKeys] = React.useState<string[]>(article?.linkedGapKeys ?? []);
   const [status, setStatus] = React.useState<"draft" | "published">(article?.status ?? "draft");
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = React.useState(false);
 
   function handleTitleChange(v: string) {
     setTitle(v);
@@ -80,9 +82,8 @@ export function SuccessLibraryForm({ article }: { article?: SuccessLibraryArticl
     });
   }
 
-  function handleDelete() {
+  function handleDeleteConfirmed() {
     if (!article) return;
-    if (!confirm(`Delete "${article.title}"? This can't be undone.`)) return;
     startTransition(async () => {
       const result = await deleteArticleAction(article.id);
       if (result.ok) {
@@ -90,6 +91,7 @@ export function SuccessLibraryForm({ article }: { article?: SuccessLibraryArticl
         router.push("/admin/success-library");
       } else {
         toast.error(result.message ?? "Could not delete this article.");
+        setConfirmDeleteOpen(false);
       }
     });
   }
@@ -174,7 +176,7 @@ export function SuccessLibraryForm({ article }: { article?: SuccessLibraryArticl
       <div className="flex items-center justify-between pt-2 border-t">
         <div className="flex items-center gap-2">
           {article && (
-            <Button type="button" variant="ghost" className="text-destructive" onClick={handleDelete} disabled={pending}>
+            <Button type="button" variant="ghost" className="text-destructive" onClick={() => setConfirmDeleteOpen(true)} disabled={pending}>
               <Trash2 className="h-4 w-4 mr-1" /> Delete
             </Button>
           )}
@@ -186,6 +188,16 @@ export function SuccessLibraryForm({ article }: { article?: SuccessLibraryArticl
           </Button>
         </div>
       </div>
+      {article && (
+        <LibraryDeleteConfirmDialog
+          open={confirmDeleteOpen}
+          itemName={article.title}
+          itemLabel="article"
+          pending={pending}
+          onConfirm={handleDeleteConfirmed}
+          onCancel={() => setConfirmDeleteOpen(false)}
+        />
+      )}
     </div>
   );
 }
