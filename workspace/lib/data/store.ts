@@ -44,8 +44,9 @@ function teamMembersFromProgram4(): TeamMember[] {
 /**
  * Workspace data layer — Phase 2 + Program 3 overlays.
  *
- * Reads the shared live JSONL store (written by marketing) on every call.
- * Falls back to Phase 1 seed when the live store is empty, unless USE_SEED_DATA=false.
+ * Reads the shared durable CRM store (Postgres htc_crm_* via @shared/relationships)
+ * on every call after warmLiveStore(). Falls back to Phase 1 seed when the live
+ * store is empty, unless USE_SEED_DATA=false (sandbox/production should disable seed).
  *
  * Program 3 patches (status moves, local timeline/comms/tasks) merge on top.
  */

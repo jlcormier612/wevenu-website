@@ -364,6 +364,8 @@
             { "Name": "EMAIL_REPLY_TO", "Value": { "Ref": "EmailReplyTo" } },
             { "Name": "PRODUCT_API_BASE_URL", "Value": { "Fn::Sub": "https://${VenueAppHostname}" } },
             { "Name": "WORKSPACE_URL", "Value": { "Fn::Sub": "https://${WorkspaceHostname}" } },
+            { "Name": "SUPABASE_URL", "Value": { "Ref": "SupabaseUrl" } },
+            { "Name": "NEXT_PUBLIC_SUPABASE_URL", "Value": { "Ref": "SupabaseUrl" } },
             { "Name": "STRIPE_GATHER_PRICE_ID", "Value": { "Ref": "StripePriceStarter" } },
             { "Name": "STRIPE_PRICE_STARTER", "Value": { "Ref": "StripePriceStarter" } },
             { "Name": "STRIPE_PRICE_STARTER_FOUNDER", "Value": { "Ref": "StripePriceStarterFounder" } },
@@ -379,6 +381,7 @@
           "Secrets": [
             { "Name": "RESEND_API_KEY", "ValueFrom": { "Fn::Sub": "${ResendApiKeySecret}:value::" } },
             { "Name": "PRODUCT_SYNC_API_KEY", "ValueFrom": { "Fn::Sub": "${ProductSyncApiKeySecret}:value::" } },
+            { "Name": "SUPABASE_SERVICE_ROLE_KEY", "ValueFrom": { "Fn::Sub": "${SupabaseServiceRoleKeySecret}:value::" } },
             { "Name": "STRIPE_SECRET_KEY", "ValueFrom": { "Fn::Sub": "${StripeSaasSecrets}:STRIPE_SECRET_KEY::" } },
             { "Name": "STRIPE_WEBHOOK_SECRET", "ValueFrom": { "Fn::Sub": "${StripeSaasSecrets}:STRIPE_WEBHOOK_SECRET::" } }
           ],
@@ -410,11 +413,15 @@
           "Environment": [
             { "Name": "NODE_ENV", "Value": "production" },
             { "Name": "EMAIL_FROM", "Value": { "Ref": "FromEmailAddress" } },
-            { "Name": "PRODUCT_API_BASE_URL", "Value": { "Fn::Sub": "https://${VenueAppHostname}" } }
+            { "Name": "PRODUCT_API_BASE_URL", "Value": { "Fn::Sub": "https://${VenueAppHostname}" } },
+            { "Name": "SUPABASE_URL", "Value": { "Ref": "SupabaseUrl" } },
+            { "Name": "NEXT_PUBLIC_SUPABASE_URL", "Value": { "Ref": "SupabaseUrl" } },
+            { "Name": "USE_SEED_DATA", "Value": "false" }
           ],
           "Secrets": [
             { "Name": "RESEND_API_KEY", "ValueFrom": { "Fn::Sub": "${ResendApiKeySecret}:value::" } },
-            { "Name": "PRODUCT_SYNC_API_KEY", "ValueFrom": { "Fn::Sub": "${ProductSyncApiKeySecret}:value::" } }
+            { "Name": "PRODUCT_SYNC_API_KEY", "ValueFrom": { "Fn::Sub": "${ProductSyncApiKeySecret}:value::" } },
+            { "Name": "SUPABASE_SERVICE_ROLE_KEY", "ValueFrom": { "Fn::Sub": "${SupabaseServiceRoleKeySecret}:value::" } }
           ],
           "LogConfiguration": {
             "LogDriver": "awslogs",

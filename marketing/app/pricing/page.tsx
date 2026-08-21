@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 
 import { PricingExperience } from "@/components/marketing/pricing-experience";
-import { getEnrollmentConfig } from "@/lib/marketing/enrollment";
+import { getEnrollmentConfigAsync } from "@/lib/marketing/enrollment";
 
 export const metadata: Metadata = {
   title: "Pricing",
@@ -17,7 +17,7 @@ export default async function PricingPage({
   searchParams: PricingSearchParams;
 }) {
   const params = await searchParams;
-  const enrollment = getEnrollmentConfig();
+  const enrollment = await getEnrollmentConfigAsync();
   return (
     <PricingExperience canceled={params.canceled === "1"} enrollment={enrollment} />
   );

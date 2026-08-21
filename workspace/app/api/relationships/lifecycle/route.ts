@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { sendRelationshipEmail, sendWelcomeHomeEmail, sendReactivationEmail, activationUrlFromToken } from "@shared/email";
+import { upsertVenueEnrollment } from "@shared/product-account";
 import {
   createManualSubscription,
   launchWhiteGloveWorkspace,
@@ -311,21 +312,51 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: launched.message }, { status: 400 });
       }
 
+      const rel = launched.relationship;
+      const ownerEmail = rel.owner.email?.trim();
+      if (!ownerEmail || !launched.activationToken) {
+        return NextResponse.json(
+          {
+            error:
+              "Could not persist the real activation record (missing owner email or activation token). Try Launch Workspace again.",
+          },
+          { status: 500 },
+        );
+      }
+
+      // Durable product SoT BEFORE Welcome Home — no email without venue_enrollments token.
+      const bridged = await upsertVenueEnrollment({
+        stripeCheckoutSessionId: rel.stripeCheckoutSessionId ?? null,
+        stripeCustomerId: rel.stripeCustomerId ?? null,
+        stripeSubscriptionId: rel.stripeSubscriptionId ?? null,
+        venueName: rel.venue.name,
+        ownerEmail,
+        plan: rel.planId !== "none" ? rel.planId : rel.planName,
+        onboardingType: "white_glove",
+        activationToken: launched.activationToken,
+      });
+      if (!bridged.ok) {
+        return NextResponse.json(
+          {
+            error:
+              "Could not persist the real activation record. Try Launch Workspace again.",
+            detail: bridged.error,
+          },
+          { status: 500 },
+        );
+      }
+
       await enqueueProductSync(relationshipId, "white_glove.launch_workspace");
 
-      const activateUrl = launched.activationToken
-        ? activationUrlFromToken(launched.activationToken)
-        : `${marketingBaseUrl()}/product`;
+      const activateUrl = activationUrlFromToken(launched.activationToken);
 
-      if (launched.relationship.owner.email) {
-        await sendWelcomeHomeEmail({
-          relationshipId,
-          customerEmail: launched.relationship.owner.email,
-          venueName: launched.relationship.venue.name,
-          firstName: launched.relationship.owner.firstName,
-          activateUrl,
-        });
-      }
+      await sendWelcomeHomeEmail({
+        relationshipId,
+        customerEmail: ownerEmail,
+        venueName: rel.venue.name,
+        firstName: rel.owner.firstName,
+        activateUrl,
+      });
 
       return NextResponse.json({
         ok: true,

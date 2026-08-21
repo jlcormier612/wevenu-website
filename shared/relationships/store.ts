@@ -1,19 +1,21 @@
-import { existsSync, readFileSync } from "fs";
-import { mkdir, readFile, rename, unlink, writeFile } from "fs/promises";
-import path from "path";
+/**
+ * Shared Relationship store — Postgres (durable) with optional file fallback.
+ *
+ * When SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY are set (marketing / workspace
+ * ECS), the store uses htc_crm_* tables via htc_crm_load_store /
+ * htc_crm_replace_store. Set HTC_CRM_STORE=file to force JSONL for local smoke.
+ *
+ * Cross-task safety: optimistic version on htc_crm_store_meta with retries.
+ */
 
-import { getRelationshipsDataDir, STORE_FILES } from "./paths";
-import type {
-  Communication,
-  LiveRelationshipStore,
-  Notification,
-  Relationship,
-  RelationshipTask,
-  Subscription,
-  SupportInboxItem,
-  TimelineEvent,
-  Walkthrough,
-} from "./types";
+import { createCrmAdminClient, usePostgresCrmStore } from "./pg-client";
+import {
+  loadFileStore,
+  loadFileStoreSync,
+  saveFileStore,
+  withFileStore,
+} from "./store-file";
+import type { LiveRelationshipStore } from "./types";
 
 const EMPTY_STORE: LiveRelationshipStore = {
   relationships: [],
@@ -26,139 +28,131 @@ const EMPTY_STORE: LiveRelationshipStore = {
   supportInboxItems: [],
 };
 
-async function ensureDataDir(): Promise<string> {
-  const dir = getRelationshipsDataDir();
-  await mkdir(dir, { recursive: true });
-  return dir;
+const MAX_OPTIMISTIC_RETRIES = 8;
+
+/** Process-local snapshot so sync callers see the latest durable load/save. */
+let memoryCache: LiveRelationshipStore | null = null;
+let memoryVersion: number | null = null;
+let warmInFlight: Promise<LiveRelationshipStore> | null = null;
+let mutationChain: Promise<void> = Promise.resolve();
+
+function normalizeStore(raw: LiveRelationshipStore | null | undefined): LiveRelationshipStore {
+  const store = raw ? structuredClone(raw) : emptyLiveStore();
+  if (!store.tasks) store.tasks = [];
+  if (!store.supportInboxItems) store.supportInboxItems = [];
+  return store;
 }
 
-function readJsonlSync<T>(filePath: string): T[] {
-  try {
-    if (!existsSync(filePath)) return [];
-    const raw = readFileSync(filePath, "utf8");
-    return raw
-      .split("\n")
-      .map((line) => line.trim())
-      .filter(Boolean)
-      .map((line) => JSON.parse(line) as T);
-  } catch {
-    return [];
+function setCache(store: LiveRelationshipStore, version?: number | null): LiveRelationshipStore {
+  memoryCache = normalizeStore(store);
+  if (typeof version === "number") memoryVersion = version;
+  return normalizeStore(memoryCache);
+}
+
+export function emptyLiveStore(): LiveRelationshipStore {
+  return structuredClone(EMPTY_STORE);
+}
+
+type LoadedPostgres = { store: LiveRelationshipStore; version: number };
+
+function isVersionConflict(error: { message?: string; code?: string } | null): boolean {
+  if (!error) return false;
+  const msg = error.message ?? "";
+  return (
+    error.code === "40001" ||
+    msg.includes("htc_crm_version_conflict") ||
+    msg.includes("40001")
+  );
+}
+
+async function loadPostgresStore(): Promise<LoadedPostgres> {
+  const admin = createCrmAdminClient();
+  const { data, error } = await admin.rpc("htc_crm_load_store");
+  if (error) {
+    throw new Error(`htc_crm_load_store failed: ${error.message}`);
   }
-}
-
-async function readJsonl<T>(filePath: string): Promise<T[]> {
-  try {
-    const raw = await readFile(filePath, "utf8");
-    return raw
-      .split("\n")
-      .map((line) => line.trim())
-      .filter(Boolean)
-      .map((line) => JSON.parse(line) as T);
-  } catch {
-    return [];
+  const payload = data as { version?: number; store?: LiveRelationshipStore } | LiveRelationshipStore;
+  // Backward-compatible if an older RPC still returns the bare store.
+  if (payload && typeof payload === "object" && "store" in payload) {
+    return {
+      version: typeof payload.version === "number" ? payload.version : 0,
+      store: normalizeStore(payload.store),
+    };
   }
+  return { version: 0, store: normalizeStore(payload as LiveRelationshipStore) };
 }
 
-async function writeJsonlAtomic(filePath: string, rows: unknown[]): Promise<void> {
-  const dir = path.dirname(filePath);
-  await mkdir(dir, { recursive: true });
-  const tmp = `${filePath}.${process.pid}.${Date.now()}.tmp`;
-  const body = rows.length ? `${rows.map((row) => JSON.stringify(row)).join("\n")}\n` : "";
-  await writeFile(tmp, body, "utf8");
-  await rename(tmp, filePath);
-}
-
-async function withFileLock<T>(fn: () => Promise<T>): Promise<T> {
-  const dir = await ensureDataDir();
-  const lockPath = path.join(dir, "store.lock");
-  const started = Date.now();
-
-  while (true) {
-    try {
-      await writeFile(lockPath, `${process.pid}\n${Date.now()}`, { flag: "wx" });
-      break;
-    } catch {
-      if (Date.now() - started > 8_000) {
-        try {
-          await unlink(lockPath);
-        } catch {
-          /* ignore */
-        }
-        if (Date.now() - started > 12_000) {
-          throw new Error("Timed out waiting for relationships store lock.");
-        }
-      }
-      await new Promise((resolve) => setTimeout(resolve, 40));
-    }
+async function savePostgresStore(
+  store: LiveRelationshipStore,
+  expectedVersion: number | null,
+): Promise<number> {
+  const normalized = normalizeStore(store);
+  const admin = createCrmAdminClient();
+  const { data, error } = await admin.rpc("htc_crm_replace_store", {
+    p_store: normalized,
+    p_expected_version: expectedVersion,
+  });
+  if (error) {
+    const err = new Error(`htc_crm_replace_store failed: ${error.message}`) as Error & {
+      code?: string;
+    };
+    err.code = error.code;
+    throw err;
   }
+  const next =
+    typeof data === "number"
+      ? data
+      : typeof data === "string"
+        ? Number(data)
+        : (expectedVersion ?? 0) + 1;
+  setCache(normalized, next);
+  return next;
+}
 
-  try {
-    return await fn();
-  } finally {
-    await unlink(lockPath).catch(() => undefined);
+/** Ensure the in-memory cache matches Postgres (call from app layouts). */
+export async function warmLiveStore(): Promise<LiveRelationshipStore> {
+  if (!usePostgresCrmStore()) {
+    const store = await loadFileStore();
+    return setCache(store, null);
   }
+  if (memoryCache) {
+    return normalizeStore(memoryCache);
+  }
+  if (!warmInFlight) {
+    warmInFlight = loadPostgresStore()
+      .then(({ store, version }) => setCache(store, version))
+      .finally(() => {
+        warmInFlight = null;
+      });
+  }
+  return warmInFlight;
 }
 
-function readStoreFromDir(dir: string): LiveRelationshipStore {
-  return {
-    relationships: readJsonlSync<Relationship>(path.join(dir, STORE_FILES.relationships)),
-    timelineEvents: readJsonlSync<TimelineEvent>(path.join(dir, STORE_FILES.timelineEvents)),
-    communications: readJsonlSync<Communication>(path.join(dir, STORE_FILES.communications)),
-    walkthroughs: readJsonlSync<Walkthrough>(path.join(dir, STORE_FILES.walkthroughs)),
-    subscriptions: readJsonlSync<Subscription>(path.join(dir, STORE_FILES.subscriptions)),
-    notifications: readJsonlSync<Notification>(path.join(dir, STORE_FILES.notifications)),
-    tasks: readJsonlSync<RelationshipTask>(path.join(dir, STORE_FILES.tasks)),
-    supportInboxItems: readJsonlSync<SupportInboxItem>(
-      path.join(dir, STORE_FILES.supportInboxItems),
-    ),
-  };
-}
-
-/** Sync load for workspace Server Components. */
+/** Sync load for workspace Server Components / founder capacity. */
 export function loadLiveStoreSync(): LiveRelationshipStore {
-  const dir = getRelationshipsDataDir();
-  if (!existsSync(dir)) {
+  if (memoryCache) {
+    return normalizeStore(memoryCache);
+  }
+  if (usePostgresCrmStore()) {
+    // Cache not warmed yet — return empty rather than reading a stale file
+    // mirror. Callers should await warmLiveStore() in layouts / route handlers.
     return emptyLiveStore();
   }
-  return readStoreFromDir(dir);
+  return loadFileStoreSync();
 }
 
 export async function loadLiveStore(): Promise<LiveRelationshipStore> {
-  const dir = await ensureDataDir();
-  const [
-    relationships,
-    timelineEvents,
-    communications,
-    walkthroughs,
-    subscriptions,
-    notifications,
-    tasks,
-    supportInboxItems,
-  ] = await Promise.all([
-    readJsonl<Relationship>(path.join(dir, STORE_FILES.relationships)),
-    readJsonl<TimelineEvent>(path.join(dir, STORE_FILES.timelineEvents)),
-    readJsonl<Communication>(path.join(dir, STORE_FILES.communications)),
-    readJsonl<Walkthrough>(path.join(dir, STORE_FILES.walkthroughs)),
-    readJsonl<Subscription>(path.join(dir, STORE_FILES.subscriptions)),
-    readJsonl<Notification>(path.join(dir, STORE_FILES.notifications)),
-    readJsonl<RelationshipTask>(path.join(dir, STORE_FILES.tasks)),
-    readJsonl<SupportInboxItem>(path.join(dir, STORE_FILES.supportInboxItems)),
-  ]);
-
-  return {
-    relationships,
-    timelineEvents,
-    communications,
-    walkthroughs,
-    subscriptions,
-    notifications,
-    tasks,
-    supportInboxItems,
-  };
+  if (usePostgresCrmStore()) {
+    const { store, version } = await loadPostgresStore();
+    return setCache(store, version);
+  }
+  const store = await loadFileStore();
+  return setCache(store, null);
 }
 
 export async function hasLiveRelationships(): Promise<boolean> {
-  return loadLiveStoreSync().relationships.length > 0;
+  const store = await loadLiveStore();
+  return store.relationships.length > 0;
 }
 
 export function hasLiveRelationshipsSync(): boolean {
@@ -167,19 +161,26 @@ export function hasLiveRelationshipsSync(): boolean {
 
 /** Replace the entire live store (used by service mutations under lock). */
 export async function saveLiveStore(store: LiveRelationshipStore): Promise<void> {
-  const dir = await ensureDataDir();
-  if (!store.tasks) store.tasks = [];
-  if (!store.supportInboxItems) store.supportInboxItems = [];
-  await Promise.all([
-    writeJsonlAtomic(path.join(dir, STORE_FILES.relationships), store.relationships),
-    writeJsonlAtomic(path.join(dir, STORE_FILES.timelineEvents), store.timelineEvents),
-    writeJsonlAtomic(path.join(dir, STORE_FILES.communications), store.communications),
-    writeJsonlAtomic(path.join(dir, STORE_FILES.walkthroughs), store.walkthroughs),
-    writeJsonlAtomic(path.join(dir, STORE_FILES.subscriptions), store.subscriptions),
-    writeJsonlAtomic(path.join(dir, STORE_FILES.notifications), store.notifications),
-    writeJsonlAtomic(path.join(dir, STORE_FILES.tasks), store.tasks),
-    writeJsonlAtomic(path.join(dir, STORE_FILES.supportInboxItems), store.supportInboxItems),
-  ]);
+  if (usePostgresCrmStore()) {
+    let version = memoryVersion;
+    for (let attempt = 0; attempt < MAX_OPTIMISTIC_RETRIES; attempt++) {
+      try {
+        if (version === null) {
+          const loaded = await loadPostgresStore();
+          version = loaded.version;
+        }
+        await savePostgresStore(store, version);
+        return;
+      } catch (error) {
+        if (!isVersionConflict(error as { message?: string; code?: string })) throw error;
+        const loaded = await loadPostgresStore();
+        version = loaded.version;
+      }
+    }
+    throw new Error("htc_crm_replace_store: exhausted optimistic retries");
+  }
+  await saveFileStore(store);
+  setCache(store, null);
 }
 
 /**
@@ -189,14 +190,37 @@ export async function saveLiveStore(store: LiveRelationshipStore): Promise<void>
 export async function withLiveStore<T>(
   mutate: (store: LiveRelationshipStore) => T | Promise<T>,
 ): Promise<{ result: T; store: LiveRelationshipStore }> {
-  return withFileLock(async () => {
-    const store = await loadLiveStore();
-    const result = await mutate(store);
-    await saveLiveStore(store);
-    return { result, store };
-  });
-}
+  if (!usePostgresCrmStore()) {
+    const out = await withFileStore(mutate);
+    setCache(out.store, null);
+    return out;
+  }
 
-export function emptyLiveStore(): LiveRelationshipStore {
-  return structuredClone(EMPTY_STORE);
+  let resolveNext!: () => void;
+  const gate = new Promise<void>((resolve) => {
+    resolveNext = resolve;
+  });
+  const previous = mutationChain;
+  mutationChain = previous.then(() => gate);
+
+  try {
+    await previous;
+    let lastError: unknown;
+    for (let attempt = 0; attempt < MAX_OPTIMISTIC_RETRIES; attempt++) {
+      const { store, version } = await loadPostgresStore();
+      const result = await mutate(store);
+      try {
+        await savePostgresStore(store, version);
+        return { result, store: normalizeStore(store) };
+      } catch (error) {
+        lastError = error;
+        if (!isVersionConflict(error as { message?: string; code?: string })) throw error;
+      }
+    }
+    throw lastError instanceof Error
+      ? lastError
+      : new Error("htc_crm withLiveStore: exhausted optimistic retries");
+  } finally {
+    resolveNext();
+  }
 }
