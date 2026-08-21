@@ -10,13 +10,14 @@
 import * as React from "react";
 
 import { useRouter } from "next/navigation";
-import { Archive, ArchiveRestore, BookPlus, Copy, Loader2 } from "lucide-react";
+import { Archive, ArchiveRestore, BookPlus, Copy, Loader2, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 import {
   addQuestionnaireStarterAgainAction,
   applyQuestionnaireTemplateAction,
   createQuestionnaireTemplateAction,
+  deleteQuestionnaireTemplateAction,
   duplicateQuestionnaireTemplateAction,
   provisionMissingQuestionnaireStartersAction,
   setQuestionnaireTemplateArchivedAction,
@@ -24,6 +25,7 @@ import {
 import { LIBRARY_LABELS, archiveToggleLabel } from "@/components/library/labels";
 import { LibraryArchivedSection } from "@/components/library/library-archived-section";
 import { LibraryAssetCard } from "@/components/library/library-asset-card";
+import { LibraryDeleteConfirmDialog } from "@/components/library/library-delete-confirm-dialog";
 import { partitionArchived } from "@/components/library/partition-archived";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -284,10 +286,12 @@ function TemplateCard({
   template,
   events,
   archivedView,
+  onDelete,
 }: {
   template: QuestionnaireTemplate;
   events: QuestionnaireEventOption[];
   archivedView?: boolean;
+  onDelete: () => void;
 }) {
   const [pending, startTransition] = React.useTransition();
   const [useOpen, setUseOpen] = React.useState(false);
@@ -377,6 +381,14 @@ function TemplateCard({
               ? <ArchiveRestore className="mr-2 h-3.5 w-3.5" />
               : <Archive className="mr-2 h-3.5 w-3.5" />,
           },
+          {
+            id: "delete",
+            label: LIBRARY_LABELS.delete,
+            onClick: onDelete,
+            destructive: true,
+            separatorBefore: true,
+            icon: <Trash2 className="mr-2 h-3.5 w-3.5" />,
+          },
         ]}
       />
       {!archivedView && useOpen && (
@@ -400,7 +412,24 @@ export function QuestionnaireTemplateList({
   missingStarterKeys?: string[];
   events?: QuestionnaireEventOption[];
 }) {
+  const router = useRouter();
   const { active, archived } = partitionArchived(templates, (t) => t.isArchived);
+  const [deleting, setDeleting] = React.useState<QuestionnaireTemplate | null>(null);
+  const [deletePending, setDeletePending] = React.useState(false);
+
+  async function handleDeleteConfirmed() {
+    if (!deleting) return;
+    setDeletePending(true);
+    const result = await deleteQuestionnaireTemplateAction(deleting.id);
+    setDeletePending(false);
+    if (result.ok) {
+      toast.success("Questionnaire deleted.");
+      setDeleting(null);
+      router.refresh();
+    } else {
+      toast.error(result.message ?? "Could not delete questionnaire.");
+    }
+  }
 
   return (
     <div className="space-y-4">
@@ -422,19 +451,28 @@ export function QuestionnaireTemplateList({
           ) : (
             <div className="space-y-2">
               {active.map((t) => (
-                <TemplateCard key={t.id} template={t} events={events} />
+                <TemplateCard key={t.id} template={t} events={events} onDelete={() => setDeleting(t)} />
               ))}
             </div>
           )}
           <LibraryArchivedSection count={archived.length}>
             <div className="space-y-2">
               {archived.map((t) => (
-                <TemplateCard key={t.id} template={t} events={events} archivedView />
+                <TemplateCard key={t.id} template={t} events={events} archivedView onDelete={() => setDeleting(t)} />
               ))}
             </div>
           </LibraryArchivedSection>
         </>
       )}
+      <LibraryDeleteConfirmDialog
+        open={!!deleting}
+        itemName={deleting?.name ?? ""}
+        itemLabel="questionnaire"
+        consequenceNote="Questionnaires already sent or in progress on an event are unaffected."
+        pending={deletePending}
+        onConfirm={handleDeleteConfirmed}
+        onCancel={() => setDeleting(null)}
+      />
     </div>
   );
 }

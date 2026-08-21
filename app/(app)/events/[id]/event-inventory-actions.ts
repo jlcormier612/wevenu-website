@@ -4,12 +4,12 @@ import { revalidatePath } from "next/cache";
 
 import {
   addItem, addTemplateItem, addToEventOrder, createTemplate, deleteTemplate,
-  ensureEventInventory, finalizeEventInventory, removeItem, removeTemplateItem,
+  ensureEventInventory, finalizeEventInventory, getTemplate, removeItem, removeTemplateItem,
   reopenEventInventory, setTemplateArchived, shareEventInventory, updateItem, updateTemplateItem,
 } from "@/lib/event-inventory/service";
 import type {
   AddItemResult, AddTemplateItemResult, AddToEventOrderResult, CreateTemplateResult, EnsureEventInventoryResult,
-  EventInventoryActionResult, InventoryItemInput,
+  EventInventoryActionResult, InventoryItemInput, InventoryTemplateWithItems,
 } from "@/lib/event-inventory/types";
 
 function revalidateEvent(eventId: string) {
@@ -80,6 +80,11 @@ export async function setInventoryTemplateArchivedAction(id: string, isArchived:
   const result = await setTemplateArchived(id, isArchived);
   if (result.ok) revalidatePath("/library/inventory-templates");
   return result;
+}
+
+/** Read-only fetch for the Library's Preview sheet — items only, no edit side-effects. */
+export async function getInventoryTemplateDetailAction(id: string): Promise<InventoryTemplateWithItems | null> {
+  return getTemplate(id);
 }
 
 export async function addInventoryTemplateStarterAgainAction(

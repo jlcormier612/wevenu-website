@@ -13,22 +13,24 @@
 import * as React from "react";
 
 import { useRouter } from "next/navigation";
-import { Loader2, MoreHorizontal, Sparkles } from "lucide-react";
+import { Sparkles, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 import {
-  duplicateTemplateAction, renameTemplateAction,
+  deleteTemplateAction, duplicateTemplateAction, renameTemplateAction,
   setTemplateArchivedAction, setTemplateDefaultAction,
 } from "@/app/(app)/playbooks/actions";
-import { LIBRARY_LABELS } from "@/components/library/labels";
+import { LIBRARY_LABELS, archiveToggleLabel } from "@/components/library/labels";
 import { LibraryArchivedSection } from "@/components/library/library-archived-section";
+import { LibraryAssetCard } from "@/components/library/library-asset-card";
+import { LibraryDeleteConfirmDialog } from "@/components/library/library-delete-confirm-dialog";
 import { partitionArchived } from "@/components/library/partition-archived";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { PlaybookApplyPreviewSheet } from "@/components/playbooks/playbook-apply-preview-sheet";
 import { PlaybookStarterPicker } from "@/components/playbooks/playbook-starter-picker";
 import { EVENT_TYPES, eventTypeLabel, formatRelative } from "@/lib/leads/constants";
 import { PLAYBOOK_KINDS, playbookKindLabel } from "@/lib/playbooks/constants";
@@ -57,8 +59,80 @@ function sortTemplates(templates: PlaybookTemplateWithStats[], sort: SortKey): P
   });
 }
 
+export type PlaybookEventOption = { id: string; name: string; eventDate: string };
+
+type UseStep = "pick" | "apply";
+
+function UsePlaybookFlow({
+  template,
+  events,
+  open,
+  onOpenChange,
+}: {
+  template: PlaybookTemplateWithStats | null;
+  events: PlaybookEventOption[];
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}) {
+  const [q, setQ] = React.useState("");
+  const [step, setStep] = React.useState<UseStep>("pick");
+  const [selected, setSelected] = React.useState<PlaybookEventOption | null>(null);
+
+  React.useEffect(() => {
+    if (open) { setStep("pick"); setSelected(null); setQ(""); }
+  }, [open]);
+
+  const filtered = events.filter((e) => !q.trim() || e.name.toLowerCase().includes(q.trim().toLowerCase()));
+
+  if (step === "apply" && selected && template) {
+    return (
+      <PlaybookApplyPreviewSheet
+        open={open}
+        onOpenChange={onOpenChange}
+        templateId={template.id}
+        kind={template.kind}
+        eventId={selected.id}
+        eventDate={selected.eventDate}
+        canApply
+      />
+    );
+  }
+
+  return (
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent side="right" className="w-full sm:max-w-lg overflow-y-auto">
+        <SheetHeader className="mb-4">
+          <SheetTitle>{LIBRARY_LABELS.useTemplate}</SheetTitle>
+          <p className="text-sm text-muted-foreground">
+            Choose an event. You&apos;ll see what&apos;s included before applying &ldquo;{template?.name}&rdquo;.
+          </p>
+        </SheetHeader>
+        <Input placeholder="Search events…" value={q} onChange={(e) => setQ(e.target.value)} className="mb-3" />
+        {filtered.length === 0 ? (
+          <p className="text-sm text-muted-foreground py-8 text-center">No events found.</p>
+        ) : (
+          <ul className="space-y-1">
+            {filtered.map((ev) => (
+              <li key={ev.id}>
+                <button
+                  type="button"
+                  onClick={() => { setSelected(ev); setStep("apply"); }}
+                  className="w-full rounded-md border border-border px-3 py-2.5 text-left hover:bg-muted/40"
+                >
+                  <p className="text-sm font-medium text-heading">{ev.name}</p>
+                  <p className="text-xs text-muted-foreground">{ev.eventDate}</p>
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </SheetContent>
+    </Sheet>
+  );
+}
+
 function TemplateCard({
-  template, busy, onRename, onDuplicate, onSetDefault, onArchiveToggle, archivedView,
+  template, busy, onRename, onDuplicate, onSetDefault, onArchiveToggle, onDelete, onPreview, onUse, archivedView,
 }: {
   template: PlaybookTemplateWithStats;
   busy: boolean;
@@ -66,79 +140,66 @@ function TemplateCard({
   onDuplicate: () => void;
   onSetDefault: () => void;
   onArchiveToggle: () => void;
+  onDelete: () => void;
+  onPreview: () => void;
+  onUse: () => void;
   archivedView?: boolean;
 }) {
-  const router = useRouter();
   const eventType = template.eventType ? eventTypeLabel(template.eventType) : "All event types";
 
+  const primaryActions = archivedView
+    ? [
+        { id: "preview", label: LIBRARY_LABELS.preview, onClick: onPreview, emphasis: "preview" as const },
+        { id: "restore", label: LIBRARY_LABELS.restore, onClick: onArchiveToggle, emphasis: "edit" as const, disabled: busy },
+      ]
+    : [
+        { id: "preview", label: LIBRARY_LABELS.preview, onClick: onPreview, emphasis: "preview" as const },
+        { id: "edit", label: LIBRARY_LABELS.edit, href: `/library/playbooks/${template.id}`, emphasis: "edit" as const },
+        { id: "use", label: LIBRARY_LABELS.useTemplate, onClick: onUse, emphasis: "use" as const },
+      ];
+
   return (
-    <div
-      role="link"
-      tabIndex={0}
-      onClick={() => router.push(`/library/playbooks/${template.id}`)}
-      onKeyDown={(e) => { if (e.key === "Enter") router.push(`/library/playbooks/${template.id}`); }}
-      className={`group flex cursor-pointer flex-col gap-2 rounded-xl border border-border bg-card p-4 transition-colors hover:border-primary/40 hover:bg-muted/20 ${template.isArchived ? "opacity-60" : ""}`}
-    >
-      <div className="flex items-start justify-between gap-2">
-        <p className="min-w-0 truncate text-sm font-medium text-heading">{template.name}</p>
-        {!archivedView && (
-          <div onClick={(e) => e.stopPropagation()} className="flex shrink-0 items-center gap-1">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="h-7 px-2 text-xs"
-              onClick={() => router.push(`/library/playbooks/${template.id}`)}
-            >
-              Open
-            </Button>
-            <DropdownMenu>
-              <DropdownMenuTrigger render={<Button variant="ghost" size="icon" className="h-7 w-7" disabled={busy} />}>
-                {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <MoreHorizontal className="h-3.5 w-3.5" />}
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => router.push(`/library/playbooks/${template.id}`)}>Edit</DropdownMenuItem>
-                <DropdownMenuItem onClick={onDuplicate}>Duplicate</DropdownMenuItem>
-                <DropdownMenuItem onClick={onRename}>Rename</DropdownMenuItem>
-                {!template.isArchived && !template.isDefault && (
-                  <DropdownMenuItem onClick={onSetDefault}>Set as Default</DropdownMenuItem>
-                )}
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={onArchiveToggle}>{template.isArchived ? "Restore" : "Archive"}</DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-        )}
-      </div>
-
-      <div className="flex flex-wrap items-center gap-1.5">
-        <Badge variant="outline" className="text-[10px]">{eventType}</Badge>
-        <Badge variant="accent" className="text-[10px]">{playbookKindLabel(template.kind)}</Badge>
-        {template.isDefault && <Badge variant="muted" className="text-[10px]">Default</Badge>}
-        {template.isArchived && <Badge variant="muted" className="text-[10px]">Archived</Badge>}
-      </div>
-
-      <p className="mt-auto text-xs text-muted-foreground">
-        {template.taskCount} task{template.taskCount !== 1 ? "s" : ""} · Updated {formatRelative(template.updatedAt)}
-      </p>
-      {archivedView && (
-        <div className="pt-1" onClick={(e) => e.stopPropagation()}>
-          <Button type="button" size="sm" variant="outline" onClick={onArchiveToggle} disabled={busy}>
-            {LIBRARY_LABELS.restore}
-          </Button>
-        </div>
-      )}
-    </div>
+    <LibraryAssetCard
+      layout="grid"
+      title={template.name}
+      isArchived={template.isArchived}
+      badges={
+        <>
+          <Badge variant="outline" className="text-[10px]">{eventType}</Badge>
+          <Badge variant="accent" className="text-[10px]">{playbookKindLabel(template.kind)}</Badge>
+          {template.isDefault && <Badge variant="muted" className="text-[10px]">Default</Badge>}
+        </>
+      }
+      meta={`${template.taskCount} task${template.taskCount !== 1 ? "s" : ""} · Updated ${formatRelative(template.updatedAt)}`}
+      primaryActions={primaryActions}
+      overflowPending={busy}
+      overflowItems={archivedView ? [] : [
+        { id: "duplicate", label: LIBRARY_LABELS.duplicate, onClick: onDuplicate },
+        { id: "rename", label: "Rename", onClick: onRename },
+        ...(!template.isDefault ? [{ id: "default", label: "Set as Default", onClick: onSetDefault }] : []),
+        { id: "archive", label: archiveToggleLabel(template.isArchived), onClick: onArchiveToggle, separatorBefore: true },
+        {
+          id: "delete", label: LIBRARY_LABELS.delete, onClick: onDelete, destructive: true,
+          icon: <Trash2 className="mr-2 h-3.5 w-3.5" />,
+        },
+      ]}
+    />
   );
 }
 
-export function PlaybooksSection({ initialTemplates }: { initialTemplates: PlaybookTemplateWithStats[] }) {
+export function PlaybooksSection({
+  initialTemplates, events = [],
+}: { initialTemplates: PlaybookTemplateWithStats[]; events?: PlaybookEventOption[] }) {
   const router = useRouter();
   const [templates, setTemplates] = React.useState(initialTemplates);
   const [busyId, setBusyId] = React.useState<string | null>(null);
   const [eventTypeFilter, setEventTypeFilter] = React.useState<EventTypeFilter>("all");
   const [kindFilter, setKindFilter] = React.useState<KindFilter>("all");
   const [sort, setSort] = React.useState<SortKey>("updated");
+  const [previewing, setPreviewing] = React.useState<PlaybookTemplateWithStats | null>(null);
+  const [using, setUsing] = React.useState<PlaybookTemplateWithStats | null>(null);
+  const [deleting, setDeleting] = React.useState<PlaybookTemplateWithStats | null>(null);
+  const [deletePending, setDeletePending] = React.useState(false);
 
   async function withBusy(id: string, fn: () => Promise<{ ok: boolean; message?: string }>) {
     setBusyId(id);
@@ -146,6 +207,20 @@ export function PlaybooksSection({ initialTemplates }: { initialTemplates: Playb
     setBusyId(null);
     if (!result.ok) toast.error(result.message ?? "Something went wrong.");
     return result;
+  }
+
+  async function handleDeleteConfirmed() {
+    if (!deleting) return;
+    setDeletePending(true);
+    const result = await deleteTemplateAction(deleting.id);
+    setDeletePending(false);
+    if (result.ok) {
+      toast.success("Template deleted.");
+      setTemplates((p) => p.filter((t) => t.id !== deleting.id));
+      setDeleting(null);
+    } else {
+      toast.error(result.message ?? "Could not delete template.");
+    }
   }
 
   async function handleDuplicate(id: string, name: string) {
@@ -257,6 +332,9 @@ export function PlaybooksSection({ initialTemplates }: { initialTemplates: Playb
                     onDuplicate={() => handleDuplicate(t.id, t.name)}
                     onSetDefault={() => handleSetDefault(t.id, t)}
                     onArchiveToggle={() => handleArchiveToggle(t.id, t.isArchived)}
+                    onDelete={() => setDeleting(t)}
+                    onPreview={() => setPreviewing(t)}
+                    onUse={() => setUsing(t)}
                   />
                 ))}
               </div>
@@ -270,6 +348,9 @@ export function PlaybooksSection({ initialTemplates }: { initialTemplates: Playb
                     onDuplicate={() => handleDuplicate(t.id, t.name)}
                     onSetDefault={() => handleSetDefault(t.id, t)}
                     onArchiveToggle={() => handleArchiveToggle(t.id, t.isArchived)}
+                    onDelete={() => setDeleting(t)}
+                    onPreview={() => setPreviewing(t)}
+                    onUse={() => setUsing(t)}
                   />
                 ))}
               </div>
@@ -282,6 +363,31 @@ export function PlaybooksSection({ initialTemplates }: { initialTemplates: Playb
         <PlaybookStarterPicker existingTemplates={templates.filter((t) => !t.isArchived)} compact />
         <PlaybookStarterPicker existingTemplates={templates.filter((t) => !t.isArchived)} compact variant="import" />
       </div>
+
+      {previewing && (
+        <PlaybookApplyPreviewSheet
+          open={!!previewing}
+          onOpenChange={(o) => { if (!o) setPreviewing(null); }}
+          templateId={previewing.id}
+          kind={previewing.kind}
+          canApply={false}
+        />
+      )}
+      <UsePlaybookFlow
+        template={using}
+        events={events}
+        open={!!using}
+        onOpenChange={(o) => { if (!o) setUsing(null); }}
+      />
+      <LibraryDeleteConfirmDialog
+        open={!!deleting}
+        itemName={deleting?.name ?? ""}
+        itemLabel="template"
+        consequenceNote="Checklists already applied to events are unaffected."
+        pending={deletePending}
+        onConfirm={handleDeleteConfirmed}
+        onCancel={() => setDeleting(null)}
+      />
     </div>
   );
 }

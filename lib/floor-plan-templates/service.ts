@@ -92,6 +92,11 @@ export async function setTemplateArchived_(id: string, isArchived: boolean): Pro
   return result as FloorPlanTemplateActionResult;
 }
 
+export async function deleteTemplate_(id: string): Promise<FloorPlanTemplateActionResult> {
+  const result = await withVenue(async (supabase, venueId) => repo.deleteTemplate(supabase, venueId, id));
+  return result as FloorPlanTemplateActionResult;
+}
+
 export async function duplicateTemplate(sourceTemplateId: string, newName: string, isDefault?: boolean): Promise<CreateFloorPlanTemplateResult> {
   if (!newName.trim()) return { ok: false, message: "Template name is required." };
   const result = await withVenue(async (supabase, venueId) => {

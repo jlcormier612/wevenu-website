@@ -10,21 +10,25 @@ import * as React from "react";
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { BookPlus, Eye, Loader2, MoreHorizontal, Sparkles } from "lucide-react";
+import { BookPlus, Loader2, Sparkles, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { addTimelineStarterAgainAction } from "@/app/(app)/library/timeline-templates/actions";
+import { applyTimelineTemplateAction } from "@/app/(app)/timeline-templates/booking-actions";
 import {
-  duplicateTemplateAction, renameTemplateAction, setTemplateArchivedAction, setTemplateDefaultAction,
+  deleteTemplateAction, duplicateTemplateAction, renameTemplateAction, setTemplateArchivedAction, setTemplateDefaultAction,
 } from "@/app/(app)/timeline-templates/actions";
-import { LIBRARY_LABELS } from "@/components/library/labels";
+import { LIBRARY_LABELS, archiveToggleLabel } from "@/components/library/labels";
 import { LibraryArchivedSection } from "@/components/library/library-archived-section";
+import { LibraryAssetCard } from "@/components/library/library-asset-card";
+import { LibraryDeleteConfirmDialog } from "@/components/library/library-delete-confirm-dialog";
 import { partitionArchived } from "@/components/library/partition-archived";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { TimelineTemplateStarterPicker } from "@/components/timeline-templates/timeline-template-starter-picker";
 import type { VenueSpace } from "@/lib/availability/types";
@@ -117,6 +121,114 @@ function TemplatePreviewSheet({
   );
 }
 
+export type TimelineEventOption = {
+  id: string;
+  name: string;
+  eventDate: string;
+  startTime: string | null;
+};
+
+type UseStep = "pick" | "confirm";
+
+function UseTimelineSheet({
+  template,
+  events,
+  open,
+  onOpenChange,
+}: {
+  template: TimelineTemplateWithStats | null;
+  events: TimelineEventOption[];
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}) {
+  const router = useRouter();
+  const [q, setQ] = React.useState("");
+  const [step, setStep] = React.useState<UseStep>("pick");
+  const [selected, setSelected] = React.useState<TimelineEventOption | null>(null);
+  const [pending, startTransition] = React.useTransition();
+
+  React.useEffect(() => {
+    if (open) { setStep("pick"); setSelected(null); setQ(""); }
+  }, [open]);
+
+  const filtered = events.filter((e) => !q.trim() || e.name.toLowerCase().includes(q.trim().toLowerCase()));
+
+  function apply() {
+    if (!selected || !template) return;
+    startTransition(async () => {
+      const result = await applyTimelineTemplateAction(selected.id, template.id, selected.startTime);
+      if (result.ok) {
+        toast.success("Timeline items added to the event.");
+        router.push(`/events/${selected.id}#timeline`);
+        onOpenChange(false);
+      } else {
+        toast.error(result.message ?? "Could not apply timeline.");
+      }
+    });
+  }
+
+  return (
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent side="right" className="w-full sm:max-w-lg overflow-y-auto">
+        <SheetHeader className="mb-4">
+          <SheetTitle>{LIBRARY_LABELS.useTimeline}</SheetTitle>
+          {step === "pick" ? (
+            <p className="text-sm text-muted-foreground">
+              Choose an event. This adds &ldquo;{template?.name}&rdquo;&apos;s activities to that
+              event&apos;s Timeline — it does not send or notify anyone.
+            </p>
+          ) : (
+            <p className="text-sm text-muted-foreground">Confirm before adding these activities.</p>
+          )}
+        </SheetHeader>
+
+        {step === "pick" ? (
+          <>
+            <Input placeholder="Search events…" value={q} onChange={(e) => setQ(e.target.value)} className="mb-3" />
+            {filtered.length === 0 ? (
+              <p className="text-sm text-muted-foreground py-8 text-center">No events found.</p>
+            ) : (
+              <ul className="space-y-1">
+                {filtered.map((ev) => (
+                  <li key={ev.id}>
+                    <button
+                      type="button"
+                      disabled={pending}
+                      onClick={() => { setSelected(ev); setStep("confirm"); }}
+                      className="w-full rounded-md border border-border px-3 py-2.5 text-left hover:bg-muted/40 disabled:opacity-50"
+                    >
+                      <p className="text-sm font-medium text-heading">{ev.name}</p>
+                      <p className="text-xs text-muted-foreground">{ev.eventDate}</p>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </>
+        ) : selected && template && (
+          <div className="space-y-4">
+            <div className="rounded-md border border-border bg-muted/30 p-4 space-y-2 text-sm">
+              <p><span className="text-muted-foreground">Template</span> · {template.name}</p>
+              <p><span className="text-muted-foreground">Event</span> · {selected.name}</p>
+            </div>
+            <ul className="list-disc space-y-1.5 pl-5 text-sm text-muted-foreground">
+              <li>Adds this template&apos;s activities to the event&apos;s Timeline.</li>
+              <li>If the Timeline already has items, these are added alongside them.</li>
+              <li>Does not send email, SMS, or portal notifications.</li>
+            </ul>
+            <div className="flex justify-end gap-2 pt-2">
+              <Button type="button" variant="outline" disabled={pending} onClick={() => setStep("pick")}>Back</Button>
+              <Button type="button" disabled={pending} onClick={apply}>
+                {pending ? <><Loader2 className="mr-1.5 h-4 w-4 animate-spin" />Adding…</> : LIBRARY_LABELS.useTimeline}
+              </Button>
+            </div>
+          </div>
+        )}
+      </SheetContent>
+    </Sheet>
+  );
+}
+
 function StarterMenu({ missingKeys }: { missingKeys: TimelineStarterMasterKey[] }) {
   const router = useRouter();
   const [pending, startTransition] = React.useTransition();
@@ -152,7 +264,7 @@ function StarterMenu({ missingKeys }: { missingKeys: TimelineStarterMasterKey[] 
 }
 
 function TemplateCard({
-  template, busy, onRename, onDuplicate, onSetDefault, onArchiveToggle, onPreview, archivedView,
+  template, busy, onRename, onDuplicate, onSetDefault, onArchiveToggle, onDelete, onPreview, onUse, archivedView,
 }: {
   template: TimelineTemplateWithStats;
   busy: boolean;
@@ -160,50 +272,51 @@ function TemplateCard({
   onDuplicate: () => void;
   onSetDefault: () => void;
   onArchiveToggle: () => void;
+  onDelete: () => void;
   onPreview: () => void;
+  onUse: () => void;
   archivedView?: boolean;
 }) {
-  const router = useRouter();
   const eventType = template.eventType ? eventTypeLabel(template.eventType) : "Any event type";
 
+  const primaryActions = archivedView
+    ? [
+        { id: "preview", label: LIBRARY_LABELS.preview, onClick: onPreview, emphasis: "preview" as const },
+        { id: "restore", label: LIBRARY_LABELS.restore, onClick: onArchiveToggle, emphasis: "edit" as const, disabled: busy },
+      ]
+    : [
+        { id: "preview", label: LIBRARY_LABELS.preview, onClick: onPreview, emphasis: "preview" as const },
+        { id: "edit", label: LIBRARY_LABELS.edit, href: `/library/timeline-templates/${template.id}`, emphasis: "edit" as const },
+        { id: "use", label: LIBRARY_LABELS.useTimeline, onClick: onUse, emphasis: "use" as const },
+      ];
+
   return (
-    <div
-      className={`group flex flex-col gap-2 rounded-sm border border-border bg-card p-4 transition-colors ${template.isArchived ? "opacity-60" : ""}`}
+    <LibraryAssetCard
+      layout="grid"
+      title={template.name}
+      isStarter={Boolean(template.sourceMasterKey)}
+      isArchived={template.isArchived}
+      badges={
+        <>
+          <Badge variant="outline" className="text-[10px]">{eventType}</Badge>
+          {template.spaceName && <Badge variant="accent" className="text-[10px]">{template.spaceName}</Badge>}
+          {template.isDefault && <Badge variant="muted" className="text-[10px]">Default</Badge>}
+        </>
+      }
+      meta={`${template.itemCount} item${template.itemCount !== 1 ? "s" : ""} · Updated ${formatRelative(template.updatedAt)}`}
+      primaryActions={primaryActions}
+      overflowPending={busy}
+      overflowItems={archivedView ? [] : [
+        { id: "duplicate", label: LIBRARY_LABELS.duplicate, onClick: onDuplicate },
+        { id: "rename", label: "Rename", onClick: onRename },
+        ...(!template.isDefault ? [{ id: "default", label: "Set as Default", onClick: onSetDefault }] : []),
+        { id: "archive", label: LIBRARY_LABELS.archive, onClick: onArchiveToggle, separatorBefore: true },
+        {
+          id: "delete", label: LIBRARY_LABELS.delete, onClick: onDelete, destructive: true,
+          icon: <Trash2 className="mr-2 h-3.5 w-3.5" />,
+        },
+      ]}
     >
-      <div className="flex items-start justify-between gap-2">
-        <p className="min-w-0 truncate text-sm font-medium text-heading">{template.name}</p>
-        {!archivedView && (
-          <div className="shrink-0">
-            <DropdownMenu>
-              <DropdownMenuTrigger render={<Button variant="ghost" size="icon" className="h-7 w-7" disabled={busy} />}>
-                {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <MoreHorizontal className="h-3.5 w-3.5" />}
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={onPreview}><Eye className="mr-2 h-3.5 w-3.5" />Preview</DropdownMenuItem>
-                <DropdownMenuItem onClick={() => router.push(`/library/timeline-templates/${template.id}`)}>Edit</DropdownMenuItem>
-                <DropdownMenuItem onClick={onDuplicate}>Duplicate</DropdownMenuItem>
-                <DropdownMenuItem onClick={onRename}>Rename</DropdownMenuItem>
-                {!template.isArchived && !template.isDefault && (
-                  <DropdownMenuItem onClick={onSetDefault}>Set as Default</DropdownMenuItem>
-                )}
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={onArchiveToggle}>{template.isArchived ? "Restore" : "Archive"}</DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-        )}
-      </div>
-
-      <div className="flex flex-wrap items-center gap-1.5">
-        <Badge variant="outline" className="text-[10px]">{eventType}</Badge>
-        {template.spaceName && <Badge variant="accent" className="text-[10px]">{template.spaceName}</Badge>}
-        {template.sourceMasterKey && !template.isArchived && (
-          <Badge variant="muted" className="text-[10px]">Starter</Badge>
-        )}
-        {template.isDefault && <Badge variant="muted" className="text-[10px]">Default</Badge>}
-        {template.isArchived && <Badge variant="muted" className="text-[10px]">Archived</Badge>}
-      </div>
-
       {template.previewItems.length > 0 && (
         <ul className="space-y-0.5 text-xs text-muted-foreground">
           {template.previewItems.slice(0, 3).map((item, i) => (
@@ -214,37 +327,24 @@ function TemplateCard({
           )}
         </ul>
       )}
-
-      <p className="mt-auto text-xs text-muted-foreground">
-        {template.itemCount} item{template.itemCount !== 1 ? "s" : ""} · Updated {formatRelative(template.updatedAt)}
-      </p>
-
-      <div className="flex flex-wrap items-center gap-2 pt-1">
-        <Button type="button" size="sm" variant="ghost" onClick={onPreview}>{LIBRARY_LABELS.preview}</Button>
-        {archivedView ? (
-          <Button type="button" size="sm" variant="outline" onClick={onArchiveToggle} disabled={busy}>
-            {LIBRARY_LABELS.restore}
-          </Button>
-        ) : (
-          <Button type="button" size="sm" variant="outline" render={<Link href={`/library/timeline-templates/${template.id}`} />}>
-            {LIBRARY_LABELS.edit}
-          </Button>
-        )}
-      </div>
-    </div>
+    </LibraryAssetCard>
   );
 }
 
 export function TimelineTemplatesSection({
-  initialTemplates, spaces, missingStarterKeys = [],
+  initialTemplates, spaces, missingStarterKeys = [], events = [],
 }: {
   initialTemplates: TimelineTemplateWithStats[];
   spaces: VenueSpace[];
   missingStarterKeys?: TimelineStarterMasterKey[];
+  events?: TimelineEventOption[];
 }) {
   const [templates, setTemplates] = React.useState(initialTemplates);
   const [busyId, setBusyId] = React.useState<string | null>(null);
   const [previewing, setPreviewing] = React.useState<TimelineTemplateWithStats | null>(null);
+  const [using, setUsing] = React.useState<TimelineTemplateWithStats | null>(null);
+  const [deleting, setDeleting] = React.useState<TimelineTemplateWithStats | null>(null);
+  const [deletePending, setDeletePending] = React.useState(false);
   const router = useRouter();
 
   React.useEffect(() => { setTemplates(initialTemplates); }, [initialTemplates]);
@@ -291,6 +391,20 @@ export function TimelineTemplatesSection({
     }
   }
 
+  async function handleDeleteConfirmed() {
+    if (!deleting) return;
+    setDeletePending(true);
+    const result = await deleteTemplateAction(deleting.id);
+    setDeletePending(false);
+    if (result.ok) {
+      toast.success("Template deleted.");
+      setTemplates((p) => p.filter((t) => t.id !== deleting.id));
+      setDeleting(null);
+    } else {
+      toast.error(result.message ?? "Could not delete template.");
+    }
+  }
+
   const sorted = React.useMemo(() => sortTemplates(templates), [templates]);
   const { active, archived } = React.useMemo(
     () => partitionArchived(sorted, (t) => t.isArchived),
@@ -320,6 +434,8 @@ export function TimelineTemplatesSection({
         onDuplicate={() => handleDuplicate(t.id, t.name)}
         onSetDefault={() => handleSetDefault(t.id, t)}
         onArchiveToggle={() => handleArchiveToggle(t.id, t.isArchived)}
+        onDelete={() => setDeleting(t)}
+        onUse={() => setUsing(t)}
       />
     );
   }
@@ -349,6 +465,20 @@ export function TimelineTemplatesSection({
         template={previewing}
         open={!!previewing}
         onOpenChange={(o) => { if (!o) setPreviewing(null); }}
+      />
+      <UseTimelineSheet
+        template={using}
+        events={events}
+        open={!!using}
+        onOpenChange={(o) => { if (!o) setUsing(null); }}
+      />
+      <LibraryDeleteConfirmDialog
+        open={!!deleting}
+        itemName={deleting?.name ?? ""}
+        itemLabel="template"
+        pending={deletePending}
+        onConfirm={handleDeleteConfirmed}
+        onCancel={() => setDeleting(null)}
       />
     </div>
   );

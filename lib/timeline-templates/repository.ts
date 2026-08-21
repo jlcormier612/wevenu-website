@@ -134,6 +134,20 @@ export async function setTemplateArchived(client: DbClient, venueId: string, id:
   if (error) throw error;
 }
 
+/** Hard delete. RLS already gates this to Owner/Manager (timeline_templates_delete_gate,
+ * 20261260000000) — a zero-row result here means that gate rejected the request, not
+ * that the template didn't exist. Applying a template only ever copies its items onto a
+ * booking's own Timeline (see lib/timeline-templates/apply.ts's own comment) — there is
+ * no ongoing FK back to the template, so deleting it never touches events already built from it. */
+export async function deleteTemplate(client: DbClient, venueId: string, id: string): Promise<{ ok: true } | { ok: false; message: string }> {
+  const { data, error } = await client.from("timeline_templates").delete().eq("id", id).eq("venue_id", venueId).select("id");
+  if (error) throw error;
+  if (!data || data.length === 0) {
+    return { ok: false, message: "Only an Owner or Manager can delete this template." };
+  }
+  return { ok: true };
+}
+
 /** Clone a template's items into a brand-new template — same event type and space as the source. */
 export async function duplicateTemplateInto(client: DbClient, venueId: string, sourceTemplateId: string, newName: string): Promise<string> {
   const source = await getTemplate(client, venueId, sourceTemplateId);

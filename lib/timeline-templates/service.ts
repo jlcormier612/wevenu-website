@@ -82,6 +82,11 @@ export async function setTemplateArchived_(id: string, isArchived: boolean): Pro
   return result as TimelineTemplateActionResult;
 }
 
+export async function deleteTemplate_(id: string): Promise<TimelineTemplateActionResult> {
+  const result = await withVenue(async (c, venueId) => repo.deleteTemplate(c, venueId, id));
+  return result as TimelineTemplateActionResult;
+}
+
 export async function duplicateTemplate(sourceTemplateId: string, newName: string): Promise<CreateTimelineTemplateResult> {
   if (!newName.trim()) return { ok: false, message: "Template name is required." };
   const result = await withVenue(async (c, venueId) => {

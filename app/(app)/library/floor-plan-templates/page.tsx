@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { PageHeader } from "@/components/shell/module-placeholder";
 import { FloorPlanTemplatesSection } from "@/components/floor-plan-templates/floor-plan-templates-section";
 import { getSpaces } from "@/lib/availability/service";
+import { getEvents } from "@/lib/events/service";
 import { ensureFloorPlanStartersForCurrentVenue } from "@/lib/floor-plan-templates/provision";
 import { getTemplatesForLibrary } from "@/lib/floor-plan-templates/service";
 import { getCurrentVenue } from "@/lib/venue/service";
@@ -11,14 +12,21 @@ export const metadata: Metadata = { title: "Floor Plan Templates" };
 
 export default async function FloorPlanTemplatesPage() {
   await ensureFloorPlanStartersForCurrentVenue();
-  const [templates, spaces, venue] = await Promise.all([getTemplatesForLibrary(), getSpaces(), getCurrentVenue()]);
+  const [templates, spaces, venue, events] = await Promise.all([
+    getTemplatesForLibrary(), getSpaces(), getCurrentVenue(), getEvents(),
+  ]);
   return (
     <div className="space-y-6">
       <PageHeader
         title="Floor Plan Templates"
         description="Reusable room layouts a venue builds once and applies to any booking."
       />
-      <FloorPlanTemplatesSection initialTemplates={templates} spaces={spaces} venueId={venue?.id ?? ""} />
+      <FloorPlanTemplatesSection
+        initialTemplates={templates}
+        spaces={spaces}
+        venueId={venue?.id ?? ""}
+        events={events.map((e) => ({ id: e.id, name: e.name, eventDate: e.eventDate }))}
+      />
     </div>
   );
 }

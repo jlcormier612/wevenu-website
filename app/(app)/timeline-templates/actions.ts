@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 
 import {
-  addItem, createTemplate, createTemplateFromImport, deleteItem_, duplicateTemplate,
+  addItem, createTemplate, createTemplateFromImport, deleteItem_, deleteTemplate_, duplicateTemplate,
   renameTemplate_, reorderItems_, setTemplateArchived_, setTemplateDefault_, updateItem_,
 } from "@/lib/timeline-templates/service";
 import type {
@@ -30,6 +30,12 @@ export async function setTemplateDefaultAction(id: string): Promise<TimelineTemp
 
 export async function setTemplateArchivedAction(id: string, isArchived: boolean): Promise<TimelineTemplateActionResult> {
   const result = await setTemplateArchived_(id, isArchived);
+  if (result.ok) revalidatePath("/library/timeline-templates");
+  return result;
+}
+
+export async function deleteTemplateAction(id: string): Promise<TimelineTemplateActionResult> {
+  const result = await deleteTemplate_(id);
   if (result.ok) revalidatePath("/library/timeline-templates");
   return result;
 }

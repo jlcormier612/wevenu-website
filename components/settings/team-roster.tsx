@@ -25,6 +25,7 @@ import {
   removeTeamMemberAction,
   updateTeamMemberRoleAction,
 } from "@/app/(app)/settings/team/actions";
+import { LibraryDeleteConfirmDialog } from "@/components/library/library-delete-confirm-dialog";
 
 interface Props {
   initialMembers: StaffMember[];
@@ -60,6 +61,8 @@ export function TeamRoster({ initialMembers, venueId: _venueId }: Props) {
   const [email, setEmail] = React.useState("");
   const [role, setRole] = React.useState<StaffRole>("coordinator");
   const [busy, setBusy] = React.useState(false);
+  const [removing, setRemoving] = React.useState<{ id: string; name: string; isPending: boolean } | null>(null);
+  const [removePending, setRemovePending] = React.useState(false);
 
   const accepted  = members.filter((m) => m.acceptedAt);
   const pending   = members.filter((m) => !m.acceptedAt);
@@ -102,11 +105,15 @@ export function TeamRoster({ initialMembers, venueId: _venueId }: Props) {
     }
   }
 
-  async function handleRemove(staffId: string, memberName: string) {
-    const result = await removeTeamMemberAction(staffId);
+  async function handleRemoveConfirmed() {
+    if (!removing) return;
+    setRemovePending(true);
+    const result = await removeTeamMemberAction(removing.id);
+    setRemovePending(false);
     if (result.ok) {
-      setMembers((prev) => prev.filter((m) => m.id !== staffId));
-      toast.success(`${memberName} removed from team`);
+      setMembers((prev) => prev.filter((m) => m.id !== removing.id));
+      toast.success(removing.isPending ? `Invitation to ${removing.name} canceled` : `${removing.name} removed from team`);
+      setRemoving(null);
     } else {
       toast.error(result.error ?? "Failed to remove member");
     }
@@ -165,7 +172,7 @@ export function TeamRoster({ initialMembers, venueId: _venueId }: Props) {
                       ))}
                     <DropdownMenuItem
                       className="text-destructive focus:text-destructive"
-                      onClick={() => handleRemove(member.id, member.name)}
+                      onClick={() => setRemoving({ id: member.id, name: member.name, isPending: false })}
                     >
                       <Trash2 className="mr-2 h-3.5 w-3.5" />
                       Remove
@@ -205,7 +212,7 @@ export function TeamRoster({ initialMembers, venueId: _venueId }: Props) {
                 variant="ghost"
                 size="icon"
                 className="h-8 w-8 shrink-0"
-                onClick={() => handleRemove(member.id, member.name)}
+                onClick={() => setRemoving({ id: member.id, name: member.name, isPending: true })}
               >
                 <Trash2 className="h-3.5 w-3.5 text-muted-foreground" />
               </Button>
@@ -262,6 +269,23 @@ export function TeamRoster({ initialMembers, venueId: _venueId }: Props) {
           {busy ? "Sending…" : "Send Invitation"}
         </Button>
       </form>
+
+      <LibraryDeleteConfirmDialog
+        open={!!removing}
+        itemName={removing?.name ?? ""}
+        itemLabel={removing?.isPending ? "invitation" : "team member"}
+        actionVerb={removing?.isPending ? "Cancel" : "Remove"}
+        pendingLabel={removing?.isPending ? "Canceling…" : "Removing…"}
+        title={removing?.isPending
+          ? <>Cancel the invitation to &ldquo;{removing.name}&rdquo;?</>
+          : <>Remove &ldquo;{removing?.name}&rdquo; from the team?</>}
+        description={removing?.isPending
+          ? "They won't be able to accept this invitation. You can invite them again anytime."
+          : "They'll immediately lose access to this venue's workspace. You can invite them back anytime — this doesn't delete their history or activity on past events."}
+        pending={removePending}
+        onConfirm={handleRemoveConfirmed}
+        onCancel={() => setRemoving(null)}
+      />
     </div>
   );
 }
