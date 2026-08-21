@@ -53,16 +53,20 @@ function newId(prefix: string) {
   return `${prefix}_${randomUUID().replace(/-/g, "").slice(0, 12)}`;
 }
 
-function verifyQuerySecret(request: NextRequest): boolean {
-  const secret = process.env.RESEND_WEBHOOK_SECRET?.trim();
-  if (!secret) return true;
-  return request.nextUrl.searchParams.get("secret") === secret;
+function webhookSecrets(): string[] {
+  const raw = process.env.RESEND_WEBHOOK_SECRET?.trim() ?? "";
+  if (!raw) return [];
+  return raw.split(",").map((s) => s.trim()).filter(Boolean);
 }
 
-function verifySvixSignature(body: string, headers: Headers): boolean {
-  const secret = process.env.RESEND_WEBHOOK_SECRET?.trim();
-  if (!secret) return true;
+function verifyQuerySecret(request: NextRequest): boolean {
+  const secrets = webhookSecrets();
+  if (secrets.length === 0) return true;
+  const provided = request.nextUrl.searchParams.get("secret");
+  return Boolean(provided && secrets.includes(provided));
+}
 
+function verifySvixSignature(body: string, headers: Headers, secret: string): boolean {
   const svixId = headers.get("svix-id") ?? "";
   const svixTimestamp = headers.get("svix-timestamp") ?? "";
   const svixSignature = headers.get("svix-signature") ?? "";
@@ -82,8 +86,8 @@ function verifySvixSignature(body: string, headers: Headers): boolean {
 }
 
 function authorize(request: NextRequest, rawBody: string): boolean {
-  const secret = process.env.RESEND_WEBHOOK_SECRET?.trim();
-  if (!secret) return true;
+  const secrets = webhookSecrets();
+  if (secrets.length === 0) return true;
 
   if (verifyQuerySecret(request)) return true;
 
@@ -91,7 +95,7 @@ function authorize(request: NextRequest, rawBody: string): boolean {
     request.headers.get("svix-id") ||
     request.headers.get("svix-signature")
   ) {
-    return verifySvixSignature(rawBody, request.headers);
+    return secrets.some((secret) => verifySvixSignature(rawBody, request.headers, secret));
   }
 
   // Dev-only unsigned simulation when NODE_ENV is not production.

@@ -34,7 +34,7 @@ function buildFacebookConnectUrl(venueId: string): string | null {
   return `https://www.facebook.com/dialog/oauth?${params}`;
 }
 
-type Page = { id: string; name: string; accessToken: string };
+type Page = { id: string; name: string };
 type Form = { id: string; name: string };
 
 function PageFormPicker({ onDone }: { onDone: () => void }) {
@@ -53,7 +53,7 @@ function PageFormPicker({ onDone }: { onDone: () => void }) {
 
   function choosePage(page: Page) {
     startTransition(async () => {
-      const result = await selectFacebookPageAction({ pageId: page.id, pageName: page.name, pageAccessToken: page.accessToken });
+      const result = await selectFacebookPageAction({ pageId: page.id });
       if (!result.ok) { toast.error(result.message ?? "Could not select this Page."); return; }
       const formsResult = await listFacebookLeadFormsAction();
       if (formsResult.ok) { setForms(formsResult.forms); setStep("form"); }
@@ -227,7 +227,18 @@ export function FacebookConnectSection({
                 )}
               </div>
             ) : (
-              <PageFormPicker onDone={() => setShowPicker(false)} />
+              <>
+                {needsPageSelection && connection?.lastError ? (
+                  <div className="flex items-start gap-3 rounded-lg border border-destructive/25 bg-destructive/5 p-4">
+                    <AlertTriangle className="h-5 w-5 shrink-0 text-destructive mt-0.5" />
+                    <div className="space-y-0.5">
+                      <p className="text-sm font-medium text-foreground">This Page is not subscribed to lead notifications yet.</p>
+                      <p className="text-xs text-muted-foreground">{connection.lastError}</p>
+                    </div>
+                  </div>
+                ) : null}
+                <PageFormPicker onDone={() => setShowPicker(false)} />
+              </>
             )}
           </div>
         ) : isError ? (

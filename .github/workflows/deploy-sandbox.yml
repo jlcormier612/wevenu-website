@@ -207,6 +207,7 @@ jobs:
               SupabaseUrl="${{ vars.NEXT_PUBLIC_SUPABASE_URL }}" \
               SupabaseAnonKey="${{ vars.NEXT_PUBLIC_SUPABASE_ANON_KEY }}" \
               ResendInboundAddress="${{ vars.RESEND_INBOUND_ADDRESS }}" \
+              CronSecret="${{ secrets.CRON_SECRET }}" \
               StripePriceStarter=price_1U42LNErUqJH7nktdpRin9ev \
               StripePriceGrowing=price_1U5rfoErUqJH7nkts2RnCCtg \
               StripePriceGrowingFounder=price_1U5rfoErUqJH7nktxJONRlCq \

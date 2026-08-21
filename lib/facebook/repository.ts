@@ -1,4 +1,5 @@
 import type { FacebookConnection, FacebookLeadForm, FacebookLeadLogEntry } from "@/lib/facebook/types";
+import { STALE_PROCESSING_MS } from "@/lib/facebook/lead-mapping";
 
 type ConnectionRow = {
   venue_id: string; page_id: string | null; page_name: string | null; status: FacebookConnection["status"];
@@ -59,10 +60,38 @@ export async function disconnectConnection(client: any, venueId: string): Promis
   if (error) throw error;
 }
 
+/**
+ * Cross-venue count for unsubscribe safety. Caller must use the admin
+ * client — the session client is RLS-scoped to one venue and would always
+ * under-count, causing a naïve unsubscribe that would cut off another
+ * venue still using the same Page.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export async function countConnectedVenuesForPage(admin: any, pageId: string): Promise<number> {
+  const { count, error } = await admin.from("facebook_connections")
+    .select("venue_id", { count: "exact", head: true })
+    .eq("page_id", pageId)
+    .eq("status", "connected");
+  if (error) throw error;
+  return count ?? 0;
+}
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function setConnectionError(client: any, venueId: string, message: string): Promise<void> {
   const { error } = await client.from("facebook_connections").update({
     status: "error", last_error: message, last_error_at: new Date().toISOString(),
+  }).eq("venue_id", venueId);
+  if (error) throw error;
+}
+
+/**
+ * Records a Page-subscription failure without flipping status to `error`.
+ * OAuth is still valid; the venue should re-select the Page, not reconnect.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export async function recordLastError(client: any, venueId: string, message: string): Promise<void> {
+  const { error } = await client.from("facebook_connections").update({
+    last_error: message, last_error_at: new Date().toISOString(), last_health_check_ok: false,
   }).eq("venue_id", venueId);
   if (error) throw error;
 }
@@ -105,14 +134,32 @@ export async function setFormEnabled(client: any, venueId: string, formId: strin
 export type FacebookQueueRow = {
   id: string; venue_id: string; leadgen_id: string; form_id: string; page_id: string;
   status: string; attempt_count: number; max_attempts: number;
+  last_attempted_at?: string | null;
 };
 
+/**
+ * Idempotent enqueue. Unique (venue_id, leadgen_id) covers every status —
+ * a Meta redelivery after success is a no-op, not a second pending row.
+ */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function enqueueLead(client: any, input: { venueId: string; leadgenId: string; formId: string; pageId: string }): Promise<void> {
   const { error } = await client.from("facebook_lead_queue").upsert({
     venue_id: input.venueId, leadgen_id: input.leadgenId, form_id: input.formId, page_id: input.pageId,
     status: "pending", next_attempt_at: new Date().toISOString(),
   }, { onConflict: "venue_id,leadgen_id", ignoreDuplicates: true });
+  if (error) throw error;
+}
+
+/** Worker crash recovery — processing rows older than 5 minutes go back on the retry path. */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export async function reclaimStaleProcessing(client: any, staleMs = STALE_PROCESSING_MS): Promise<void> {
+  const cutoff = new Date(Date.now() - staleMs).toISOString();
+  const { error } = await client.from("facebook_lead_queue").update({
+    status: "failed_retrying",
+    next_attempt_at: new Date().toISOString(),
+    last_error: "Worker interrupted before completion — retrying.",
+    last_error_at: new Date().toISOString(),
+  }).eq("status", "processing").or(`last_attempted_at.is.null,last_attempted_at.lt.${cutoff}`);
   if (error) throw error;
 }
 

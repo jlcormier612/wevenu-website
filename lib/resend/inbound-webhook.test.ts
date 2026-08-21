@@ -5,6 +5,8 @@ import { describe, it } from "node:test";
 import {
   findHeaderValue,
   htmlToText,
+  parseResendWebhookSecrets,
+  verifyResendWebhookSecrets,
   verifySvixSignature,
   type SvixHeaders,
 } from "@/lib/resend/inbound-webhook";
@@ -83,5 +85,32 @@ describe("findHeaderValue", () => {
 describe("htmlToText", () => {
   it("strips tags for the no-text-part fallback", () => {
     assert.equal(htmlToText("<p>Hello <strong>world</strong></p>"), "Hello world");
+  });
+});
+
+describe("parseResendWebhookSecrets / verifyResendWebhookSecrets", () => {
+  const id = "msg_multi";
+  const timestamp = "1755000000";
+  const body = JSON.stringify({ type: "email.received", data: { email_id: "e2" } });
+  const other = "whsec_b3RoZXItc2VjcmV0LWtleS0xMjM="; // base64("other-secret-key-123")
+
+  it("splits comma-separated secrets and ignores blanks", () => {
+    assert.deepEqual(parseResendWebhookSecrets(` ${SECRET}, ${other} , `), [SECRET, other]);
+    assert.deepEqual(parseResendWebhookSecrets(""), []);
+    assert.deepEqual(parseResendWebhookSecrets(null), []);
+  });
+
+  it("is open when no secrets are configured", () => {
+    assert.equal(verifyResendWebhookSecrets(body, { id: null, timestamp: null, signature: null }, ""), true);
+  });
+
+  it("accepts a signature that matches any configured secret", () => {
+    const headers: SvixHeaders = { id, timestamp, signature: sign(id, timestamp, body, other) };
+    assert.equal(verifyResendWebhookSecrets(body, headers, `${SECRET},${other}`), true);
+  });
+
+  it("rejects when none of the configured secrets match", () => {
+    const headers: SvixHeaders = { id, timestamp, signature: sign(id, timestamp, body, other) };
+    assert.equal(verifyResendWebhookSecrets(body, headers, SECRET), false);
   });
 });

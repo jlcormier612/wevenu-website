@@ -4,11 +4,19 @@
  * is only ever used for CSRF verification in the callback, same
  * convention as lib/quickbooks/service.ts.
  */
+import { createAdminClient } from "@/integrations/supabase/admin";
 import { createClient } from "@/integrations/supabase/server";
 import { isSupabaseConfigured } from "@/lib/env";
 import { getCurrentVenue } from "@/lib/venue/service";
 import * as repo from "@/lib/facebook/repository";
 import { facebookGraphApiBaseUrl } from "@/lib/facebook/config";
+import {
+  resolveOwnedPage,
+  shouldUnsubscribePage,
+  shouldUnsubscribePreviousPage,
+  subscribePageToLeadgen,
+  unsubscribePageFromLeadgen,
+} from "@/lib/facebook/page-subscription";
 import type { FacebookActionResult, FacebookConnection, FacebookLeadForm, FacebookLeadLogEntry } from "@/lib/facebook/types";
 
 export async function getFacebookConnection(): Promise<FacebookConnection | null> {
@@ -45,7 +53,7 @@ export async function connectFacebookAccount(input: { userAccessToken: string; e
 }
 
 /** Step 1 of the picker (docs/facebook-lead-ads-architecture.md §3) — fetch every Page the authorizing user manages. */
-export async function listFacebookPages(): Promise<{ ok: true; pages: { id: string; name: string; accessToken: string }[] } | { ok: false; message: string }> {
+export async function listFacebookPages(): Promise<{ ok: true; pages: { id: string; name: string }[] } | { ok: false; message: string }> {
   if (!isSupabaseConfigured) return { ok: false, message: "Backend not configured." };
   const venue = await getCurrentVenue();
   if (!venue) return { ok: false, message: "Session expired." };
@@ -53,19 +61,65 @@ export async function listFacebookPages(): Promise<{ ok: true; pages: { id: stri
   const connection = await repo.getConnectionWithTokens(supabase, venue.id);
   if (!connection) return { ok: false, message: "Not connected to Facebook." };
 
-  const res = await fetch(`${facebookGraphApiBaseUrl()}/me/accounts?access_token=${encodeURIComponent(connection.userAccessToken)}`);
-  const data = await res.json().catch(() => null) as { data?: { id: string; name: string; access_token: string }[]; error?: { message?: string } } | null;
-  if (!res.ok || !data?.data) return { ok: false, message: data?.error?.message ?? "Could not fetch Facebook Pages." };
-  return { ok: true, pages: data.data.map((p) => ({ id: p.id, name: p.name, accessToken: p.access_token })) };
+  const pages = await fetchManagedPages(connection.userAccessToken);
+  if (!pages.ok) return pages;
+  return { ok: true, pages: pages.accounts.map((p) => ({ id: p.id, name: p.name })) };
 }
 
-/** Step 1 confirm — persist the selected Page (Meta returns a Page-scoped token as part of /me/accounts, no separate exchange needed). */
-export async function selectFacebookPage(input: { pageId: string; pageName: string; pageAccessToken: string }): Promise<FacebookActionResult> {
+async function fetchManagedPages(
+  userAccessToken: string,
+): Promise<{ ok: true; accounts: { id: string; name: string; accessToken: string }[] } | { ok: false; message: string }> {
+  const res = await fetch(`${facebookGraphApiBaseUrl()}/me/accounts?access_token=${encodeURIComponent(userAccessToken)}`);
+  const data = await res.json().catch(() => null) as { data?: { id: string; name: string; access_token: string }[]; error?: { message?: string } } | null;
+  if (!res.ok || !data?.data) return { ok: false, message: data?.error?.message ?? "Could not fetch Facebook Pages." };
+  return { ok: true, accounts: data.data.map((p) => ({ id: p.id, name: p.name, accessToken: p.access_token })) };
+}
+
+/**
+ * Step 1 confirm — subscribe the Page to leadgen webhooks, then persist
+ * it as connected. Connection is not "active" until Meta accepts the
+ * Page subscription; storing the Page token alone does not deliver leads.
+ *
+ * Page identity is resolved server-side from /me/accounts. The browser
+ * only sends pageId — never a Page access token.
+ */
+export async function selectFacebookPage(input: { pageId: string }): Promise<FacebookActionResult> {
   if (!isSupabaseConfigured) return { ok: false, message: "Backend not configured." };
   const venue = await getCurrentVenue();
   if (!venue) return { ok: false, message: "Session expired." };
   const supabase = await createClient();
-  await repo.setSelectedPage(supabase, venue.id, input);
+  const connection = await repo.getConnectionWithTokens(supabase, venue.id);
+  if (!connection) return { ok: false, message: "Not connected to Facebook." };
+
+  const pages = await fetchManagedPages(connection.userAccessToken);
+  if (!pages.ok) return pages;
+  const owned = resolveOwnedPage(pages.accounts, input.pageId);
+  if (!owned.ok) return owned;
+
+  const subscribed = await subscribePageToLeadgen(owned.page.id, owned.page.accessToken);
+  if (!subscribed.ok) {
+    await repo.recordLastError(supabase, venue.id, subscribed.error);
+    return {
+      ok: false,
+      message: `${subscribed.error} Lead Ads are not active until this Page is subscribed.`,
+    };
+  }
+
+  const previousPageId = connection.pageId;
+  const previousPageToken = connection.pageAccessToken;
+  await repo.setSelectedPage(supabase, venue.id, {
+    pageId: owned.page.id,
+    pageName: owned.page.name,
+    pageAccessToken: owned.page.accessToken,
+  });
+
+  if (shouldUnsubscribePreviousPage(previousPageId, owned.page.id) && previousPageId && previousPageToken) {
+    const remaining = await repo.countConnectedVenuesForPage(createAdminClient(), previousPageId);
+    if (shouldUnsubscribePage(remaining)) {
+      await unsubscribePageFromLeadgen(previousPageId, previousPageToken).catch(() => undefined);
+    }
+  }
+
   return { ok: true };
 }
 
@@ -123,6 +177,19 @@ export async function disconnectFacebookAccount(): Promise<FacebookActionResult>
   const venue = await getCurrentVenue();
   if (!venue) return { ok: false, message: "Session expired." };
   const supabase = await createClient();
+  const connection = await repo.getConnectionWithTokens(supabase, venue.id);
+  const pageId = connection?.pageId ?? null;
+  const pageAccessToken = connection?.pageAccessToken ?? null;
+
+  // Always clear local state first so this venue stops receiving leads even
+  // if Meta unsubscribe fails or must be skipped (another venue still on the Page).
   await repo.disconnectConnection(supabase, venue.id);
+
+  if (pageId && pageAccessToken) {
+    const remaining = await repo.countConnectedVenuesForPage(createAdminClient(), pageId);
+    if (shouldUnsubscribePage(remaining)) {
+      await unsubscribePageFromLeadgen(pageId, pageAccessToken).catch(() => undefined);
+    }
+  }
   return { ok: true };
 }

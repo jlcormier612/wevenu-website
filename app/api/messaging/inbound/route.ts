@@ -34,7 +34,7 @@ import {
   fetchReceivedEmailContent,
   findHeaderValue,
   htmlToText,
-  verifySvixSignature,
+  verifyResendWebhookSecrets,
   type ResendInboundWebhookEvent,
 } from "@/lib/resend/inbound-webhook";
 
@@ -56,20 +56,12 @@ export async function POST(request: NextRequest) {
   // Svix verification needs the exact raw body — parsing first would break it.
   const rawBody = await request.text();
 
-  const webhookSecret = process.env.RESEND_WEBHOOK_SECRET;
-  if (webhookSecret) {
-    const verified = verifySvixSignature(
-      rawBody,
-      {
-        id: request.headers.get("svix-id"),
-        timestamp: request.headers.get("svix-timestamp"),
-        signature: request.headers.get("svix-signature"),
-      },
-      webhookSecret,
-    );
-    if (!verified) {
-      return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
-    }
+  if (!verifyResendWebhookSecrets(rawBody, {
+    id: request.headers.get("svix-id"),
+    timestamp: request.headers.get("svix-timestamp"),
+    signature: request.headers.get("svix-signature"),
+  })) {
+    return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
   }
 
   let event: ResendInboundWebhookEvent;

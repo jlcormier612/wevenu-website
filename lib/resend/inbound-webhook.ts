@@ -67,6 +67,33 @@ export function verifySvixSignature(rawBody: string, headers: SvixHeaders, secre
   });
 }
 
+/**
+ * Resend issues a distinct Signing Secret per webhook endpoint. Venue Email
+ * Intake, venue messaging reply-threading, and (optionally) Workspace CRM
+ * inbound each get their own webhook — store them comma-separated in
+ * RESEND_WEBHOOK_SECRET so one ECS secret can authorize all of them.
+ */
+export function parseResendWebhookSecrets(raw: string | undefined | null): string[] {
+  const trimmed = raw?.trim() ?? "";
+  if (!trimmed) return [];
+  return trimmed.split(",").map((s) => s.trim()).filter(Boolean);
+}
+
+/**
+ * When RESEND_WEBHOOK_SECRET is unset/empty, returns true (open) — same
+ * posture as the venue inbound routes historically used so local/dev and
+ * pre-webhook deploys keep working. When set, any listed secret may match.
+ */
+export function verifyResendWebhookSecrets(
+  rawBody: string,
+  headers: SvixHeaders,
+  rawSecretEnv: string | undefined | null = process.env.RESEND_WEBHOOK_SECRET,
+): boolean {
+  const secrets = parseResendWebhookSecrets(rawSecretEnv);
+  if (secrets.length === 0) return true;
+  return secrets.some((secret) => verifySvixSignature(rawBody, headers, secret));
+}
+
 export type ReceivedEmailContent = {
   text: string;
   html: string;
