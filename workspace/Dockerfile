@@ -25,6 +25,8 @@ WORKDIR /repo
 COPY --from=deps /repo/workspace/node_modules ./workspace/node_modules
 COPY shared ./shared
 COPY workspace ./workspace
+# shared/ imports resolve walking up from shared/ → /repo/node_modules
+RUN npm install --prefix /repo --no-save --omit=dev @supabase/supabase-js@2.112.3
 WORKDIR /repo/workspace
 
 ARG NEXT_PUBLIC_APP_URL
