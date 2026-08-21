@@ -59,10 +59,7 @@ type ScreenId = (typeof SCREENS)[number];
 function journeyLine(name: string, persona: OnboardingPersona | null): string {
   const trimmed = name.trim();
   if (persona === "weven_returning") {
-    return `Welcome back — let's get ${trimmed} moved over and ready to welcome its next couple.`;
-  }
-  if (persona === "switching") {
-    return `Let's get ${trimmed} moved over and ready to welcome its next couple.`;
+    return `Welcome back — let's get ${trimmed} ready to welcome its next couple.`;
   }
   return `Let's get ${trimmed} ready to welcome its next couple.`;
 }
@@ -317,7 +314,7 @@ export function SetupWizard({
             />
           )}
           {step === "your-offerings" && <YourOfferingsStep goToStep={goToStep} />}
-          {step === "business-tools" && <BusinessToolsStep />}
+          {step === "business-tools" && <BusinessToolsStep goToStep={goToStep} />}
           {step === "lead-capture" && <LeadCaptureStep />}
           {step === "your-people" && <YourPeopleStep goToStep={goToStep} />}
           {step === "review" && <ReviewStep {...stepProps} />}
