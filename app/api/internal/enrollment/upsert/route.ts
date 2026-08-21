@@ -123,6 +123,37 @@ export async function POST(request: Request) {
       }
     }
 
+    // White Glove Launch Workspace may re-upsert by subscription when the
+    // checkout session id is missing on the Relationship but Stripe sub id exists.
+    if (!row && body.stripeSubscriptionId?.trim()) {
+      const subId = body.stripeSubscriptionId.trim();
+      const { data: existingSub, error: findSubErr } = await admin
+        .from("venue_enrollments")
+        .select("id, status")
+        .eq("stripe_subscription_id", subId)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (findSubErr) throw findSubErr;
+      if (existingSub) {
+        if (existingSub.status === "activated") {
+          return NextResponse.json({
+            ok: true,
+            id: existingSub.id,
+            status: existingSub.status,
+          });
+        }
+        const { data: updated, error: updErr } = await admin
+          .from("venue_enrollments")
+          .update(patch)
+          .eq("id", existingSub.id)
+          .select("id, status")
+          .single();
+        if (updErr) throw updErr;
+        row = updated;
+      }
+    }
+
     if (!row) {
       const { data: inserted, error: insErr } = await admin
         .from("venue_enrollments")

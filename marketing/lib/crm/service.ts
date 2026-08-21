@@ -45,50 +45,62 @@ export async function createVenueEnrollment(
   const existing =
     (await findEnrollmentByCheckoutSessionId(input.stripeCheckoutSessionId)) ||
     (await findEnrollmentBySubscriptionId(input.stripeSubscriptionId));
+
+  const now = new Date().toISOString();
+  const record: VenueEnrollmentRecord = existing
+    ? {
+        ...existing,
+        // Prefer fresh webhook payload for CRM sync fields that may have been
+        // missing on a partial first attempt.
+        venueName: input.venueName?.trim() || existing.venueName,
+        customerEmail: input.customerEmail?.trim() || existing.customerEmail,
+        plan: input.plan || existing.plan,
+        planName: input.planName?.trim() || existing.planName || getPlanDisplayName(input.plan),
+        foundingMember: input.foundingMember || existing.foundingMember,
+        welcomeBackRequested: input.welcomeBackRequested || existing.welcomeBackRequested,
+        onboardingType: input.onboardingType || existing.onboardingType,
+        mrrCents: input.mrrCents ?? existing.mrrCents ?? null,
+        updatedAt: now,
+      }
+    : {
+        id: randomUUID(),
+        createdAt: now,
+        updatedAt: now,
+        stripeSubscriptionId: input.stripeSubscriptionId ?? null,
+        stripeCustomerId: input.stripeCustomerId ?? null,
+        stripeCheckoutSessionId: input.stripeCheckoutSessionId ?? null,
+        venueName: input.venueName?.trim() || "Unknown venue",
+        customerEmail: input.customerEmail?.trim() || null,
+        plan: input.plan,
+        planName: input.planName?.trim() || getPlanDisplayName(input.plan),
+        foundingMember: input.foundingMember,
+        welcomeBackRequested: input.welcomeBackRequested,
+        welcomeBackVerified: input.welcomeBackRequested ? "pending" : "none",
+        onboardingType: input.onboardingType,
+        paymentStatus: input.paymentStatus ?? "successful",
+        mrrCents: input.mrrCents ?? null,
+      };
+
   if (existing) {
-    console.info("[crm] idempotent enrollment reuse", {
+    console.info("[crm] idempotent enrollment reuse — re-syncing Relationship CRM", {
       enrollmentId: existing.id,
       checkoutSessionId: existing.stripeCheckoutSessionId,
       subscriptionId: existing.stripeSubscriptionId,
     });
-    return existing;
+  } else {
+    await storeVenueEnrollment(record);
+    await notifySubscriptionEnrollment(record);
   }
 
-  const now = new Date().toISOString();
-  const record: VenueEnrollmentRecord = {
-    id: randomUUID(),
-    createdAt: now,
-    updatedAt: now,
-    stripeSubscriptionId: input.stripeSubscriptionId ?? null,
-    stripeCustomerId: input.stripeCustomerId ?? null,
-    stripeCheckoutSessionId: input.stripeCheckoutSessionId ?? null,
-    venueName: input.venueName?.trim() || "Unknown venue",
-    customerEmail: input.customerEmail?.trim() || null,
-    plan: input.plan,
-    planName: input.planName?.trim() || getPlanDisplayName(input.plan),
-    foundingMember: input.foundingMember,
-    welcomeBackRequested: input.welcomeBackRequested,
-    welcomeBackVerified: input.welcomeBackRequested ? "pending" : "none",
-    onboardingType: input.onboardingType,
-    paymentStatus: input.paymentStatus ?? "successful",
-    mrrCents: input.mrrCents ?? null,
-  };
-
-  await storeVenueEnrollment(record);
-  await notifySubscriptionEnrollment(record);
   const person = splitPersonName(input.customerName);
   const synced = await syncEnrollmentToRelationship(record, {
     firstName: person.firstName || null,
     lastName: person.lastName || null,
   });
 
-  // Order: token minted in enterOnboardingAfterPurchase → real Postgres
-  // enrollment record (docs/postgres-auth-architecture-findings.md §6) →
-  // welcome email with Activate Account link → product sync (Launch
-  // Yourself only). The Postgres bridge is what /activate/actions.ts's
-  // activate call validates against; the local Relationship record above
-  // is unchanged and keeps driving CRM/sales-ops concerns (dunning,
-  // health scoring, Luv) as it already did.
+  // Order: token minted in enterOnboardingAfterPurchase → durable Postgres
+  // venue_enrollments (product SoT) → welcome email → product sync (Launch
+  // Yourself only). Marketing no longer keeps a parallel JSONL enrollment file.
   if (synced?.relationshipId && record.customerEmail) {
     const isLaunchYourself = record.onboardingType !== "white_glove";
     const activateUrl =
@@ -107,56 +119,61 @@ export async function createVenueEnrollment(
       activationToken: isLaunchYourself ? synced.activationToken ?? null : null,
     });
     if (!bridged.ok) {
-      // Non-fatal: the local Relationship record + welcome email still
-      // proceed (unchanged from today's behavior). Logged loudly because
-      // it means activation will not be able to create a real account
-      // until this is retried/fixed — see docs/postgres-auth-architecture-findings.md.
-      console.error("[crm] Postgres enrollment bridge failed — activation will not work until resolved", {
+      // Fatal for activation: do not send Activate Account links when the
+      // durable enrollment row was not written.
+      console.error("[crm] Postgres enrollment bridge failed — refusing welcome/activate path", {
         enrollmentId: record.id,
         error: bridged.error,
       });
+      throw new Error(
+        `Could not persist venue enrollment: ${bridged.error}. Stripe webhook should retry.`,
+      );
     }
 
-    try {
-      const emailResults = await sendEnrollmentProductEmails({
-        relationshipId: synced.relationshipId,
-        customerEmail: record.customerEmail,
-        venueName: synced.venueName || record.venueName,
-        planName: record.planName || getPlanDisplayName(record.plan),
-        firstName: person.firstName || synced.firstName || null,
-        fullName: input.customerName?.trim() || null,
-        foundingMember: record.foundingMember,
-        welcomeBackRequested: record.welcomeBackRequested,
-        onboardingType: record.onboardingType,
-        implementationTimeline: whiteGloveTimelineLabel({
-          minBusinessDays: DEFAULT_WHITE_GLOVE_TIMELINE_DAYS.min,
-          maxBusinessDays: DEFAULT_WHITE_GLOVE_TIMELINE_DAYS.max,
-        }),
-        activateUrl,
-      });
-      console.info("[crm] enrollment product emails", {
-        enrollmentId: record.id,
-        relationshipId: synced.relationshipId,
-        hasActivateUrl: Boolean(activateUrl),
-        results: emailResults.map((r) => ({
-          templateId: r.templateId,
-          delivery: r.delivery,
-          ok: r.ok,
-        })),
-      });
-    } catch (error) {
-      console.error("[crm] enrollment product emails failed", record.id, error);
+    // Webhook retries must re-sync CRM + ensure enrollment, but must not
+    // re-send welcome emails or re-notify ops.
+    if (!existing) {
+      try {
+        const emailResults = await sendEnrollmentProductEmails({
+          relationshipId: synced.relationshipId,
+          customerEmail: record.customerEmail,
+          venueName: synced.venueName || record.venueName,
+          planName: record.planName || getPlanDisplayName(record.plan),
+          firstName: person.firstName || synced.firstName || null,
+          fullName: input.customerName?.trim() || null,
+          foundingMember: record.foundingMember,
+          welcomeBackRequested: record.welcomeBackRequested,
+          onboardingType: record.onboardingType,
+          implementationTimeline: whiteGloveTimelineLabel({
+            minBusinessDays: DEFAULT_WHITE_GLOVE_TIMELINE_DAYS.min,
+            maxBusinessDays: DEFAULT_WHITE_GLOVE_TIMELINE_DAYS.max,
+          }),
+          activateUrl,
+        });
+        console.info("[crm] enrollment product emails", {
+          enrollmentId: record.id,
+          relationshipId: synced.relationshipId,
+          hasActivateUrl: Boolean(activateUrl),
+          results: emailResults.map((r) => ({
+            templateId: r.templateId,
+            delivery: r.delivery,
+            ok: r.ok,
+          })),
+        });
+      } catch (error) {
+        console.error("[crm] enrollment product emails failed", record.id, error);
+      }
     }
   }
 
   // Launch Yourself: provision product access after welcome email is queued.
   // White Glove: defer until Implementation Launch Workspace.
-  if (synced?.relationshipId && record.onboardingType !== "white_glove") {
+  if (!existing && synced?.relationshipId && record.onboardingType !== "white_glove") {
     await enqueueProductSync(
       synced.relationshipId,
       "checkout.session.completed",
     );
-  } else if (synced?.relationshipId && record.onboardingType === "white_glove") {
+  } else if (!existing && synced?.relationshipId && record.onboardingType === "white_glove") {
     console.info("[crm] defer product sync for White Glove", {
       relationshipId: synced.relationshipId,
       enrollmentId: record.id,

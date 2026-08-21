@@ -1,8 +1,8 @@
 /**
  * Shared Relationship Operations — used by marketing (writes) and workspace (reads).
  *
- * Data path: RELATIONSHIPS_DATA_PATH or <repo>/shared/relationships/.data/
- * Format: JSONL files with a process-safe lock file.
+ * Durable store: Postgres htc_crm_* (SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY).
+ * File fallback: RELATIONSHIPS_DATA_PATH / HTC_CRM_STORE=file for local smoke.
  */
 
 export type * from "./types";
@@ -117,7 +117,9 @@ export {
   saveLiveStore,
   withLiveStore,
   emptyLiveStore,
+  warmLiveStore,
 } from "./store";
+export { usePostgresCrmStore, crmSupabaseConfigured } from "./pg-client";
 export {
   findOrCreateRelationship,
   updateRelationshipFields,

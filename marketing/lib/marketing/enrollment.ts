@@ -14,6 +14,7 @@ import {
   hasLiveRelationshipsSync,
   loadLiveStoreSync,
   resolveFounderSpotsRemaining,
+  warmLiveStore,
 } from "@shared/relationships";
 
 export type EnrollmentConfig = {
@@ -42,6 +43,8 @@ function parseBooleanFlag(value: string | undefined, fallback: boolean): boolean
  * Reads enrollment flags from the environment (+ live founding count when available).
  * Remaining spots prefer capacity − live founding members (auto-decrements with sales).
  * Falls back to `FOUNDER_SPOTS_REMAINING`, then full capacity.
+ *
+ * Prefer `await getEnrollmentConfigAsync()` on server pages so Postgres CRM is warm.
  */
 export function getEnrollmentConfig(): EnrollmentConfig {
   let foundingCount: number | undefined;
@@ -61,6 +64,16 @@ export function getEnrollmentConfig(): EnrollmentConfig {
       capacity: getFounderProgramCapacity(),
     }),
   };
+}
+
+/** Server-side: warm durable CRM then return enrollment config. */
+export async function getEnrollmentConfigAsync(): Promise<EnrollmentConfig> {
+  try {
+    await warmLiveStore();
+  } catch {
+    /* founder spots fall back to env */
+  }
+  return getEnrollmentConfig();
 }
 
 /** True while the Founder Program should drive public pricing display. */
