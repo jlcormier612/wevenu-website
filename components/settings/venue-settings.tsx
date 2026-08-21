@@ -282,7 +282,7 @@ export function VenueSettings({
       {/* 4b — Brand settings (primary & secondary colors) */}
       <SettingsSection
         title="Brand colors"
-        description="These colors define your venue's visual identity where Hello to Cheers presents your brand to clients and in venue-branded collateral."
+        description="Used on emails, proposals, contracts, brochures, and other materials you send to clients — not on the Hello to Cheers app screens."
         onSave={() => save(saveBrandAction)}
       >
         <BrandStep {...stepProps} />

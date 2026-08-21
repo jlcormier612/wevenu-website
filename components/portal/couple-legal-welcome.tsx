@@ -15,18 +15,23 @@ const ROSE = "#D8A7AA";
 const ROSE_DEEP = "#C17F84";
 const INK = "#5C5348";
 const MUTED = "#8A7F72";
+/** Hello to Cheers product chrome — not venue brand palette. */
+const HTC_PRIMARY = "#5D6F5D";
+const HTC_NEUTRAL = "#F7F5F1";
 
 export function CoupleLegalWelcome({
   token,
   documents,
-  venuePrimary,
-  venueNeutral,
+  venuePrimary: _venuePrimary,
+  venueNeutral: _venueNeutral,
   onAccepted,
 }: {
   token: string;
   documents: CouplePortalLegalDocumentLink[];
-  venuePrimary: string;
-  venueNeutral: string;
+  /** @deprecated Ignored — portal chrome uses HTC tokens. */
+  venuePrimary?: string;
+  /** @deprecated Ignored — portal chrome uses HTC tokens. */
+  venueNeutral?: string;
   onAccepted: () => void;
 }) {
   const [checked, setChecked] = React.useState(false);
@@ -75,7 +80,7 @@ export function CoupleLegalWelcome({
     <div
       className="flex min-h-svh flex-col items-center justify-center px-4 py-12"
       style={{
-        background: `linear-gradient(165deg, ${venueNeutral} 0%, color-mix(in srgb, ${ROSE} 18%, ${venueNeutral}) 48%, ${venueNeutral} 100%)`,
+        background: `linear-gradient(165deg, ${HTC_NEUTRAL} 0%, color-mix(in srgb, ${ROSE} 18%, ${HTC_NEUTRAL}) 48%, ${HTC_NEUTRAL} 100%)`,
       }}
     >
       <div
@@ -110,7 +115,7 @@ export function CoupleLegalWelcome({
                   target="_blank"
                   rel="noopener noreferrer"
                   className="underline underline-offset-2 transition-colors hover:opacity-80"
-                  style={{ color: venuePrimary || ROSE_DEEP }}
+                  style={{ color: HTC_PRIMARY }}
                 >
                   End User Terms
                 </a>
@@ -126,7 +131,7 @@ export function CoupleLegalWelcome({
                   target="_blank"
                   rel="noopener noreferrer"
                   className="underline underline-offset-2 transition-colors hover:opacity-80"
-                  style={{ color: venuePrimary || ROSE_DEEP }}
+                  style={{ color: HTC_PRIMARY }}
                 >
                   Privacy Policy
                 </a>
@@ -155,7 +160,7 @@ export function CoupleLegalWelcome({
             onChange={(e) => setChecked(e.target.checked)}
             disabled={pending || !docsReady}
             className="mt-0.5 size-4 shrink-0 rounded border-[#DED6CA]"
-            style={{ accentColor: venuePrimary || ROSE_DEEP }}
+            style={{ accentColor: HTC_PRIMARY }}
           />
           <span>
             I have read and agree to the End User Terms and Privacy Policy.
@@ -176,7 +181,7 @@ export function CoupleLegalWelcome({
           onClick={() => void handleContinue()}
           disabled={!checked || pending || !docsReady}
           className="mt-7 inline-flex w-full items-center justify-center gap-2 rounded-full px-5 py-3 text-sm font-medium text-white transition-opacity disabled:opacity-50"
-          style={{ background: venuePrimary || ROSE_DEEP }}
+          style={{ background: HTC_PRIMARY }}
         >
           {pending ? (
             <>
