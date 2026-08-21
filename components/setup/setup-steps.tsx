@@ -88,9 +88,9 @@ export const STEP_META: Record<
   },
   brand: {
     title: "Brand settings",
-    description: "Make the workspace feel like your venue.",
-    whatWereDoing: "Choose the colors that make this workspace feel like your venue.",
-    whyItMatters: "Your brand colors appear across your workspace and in what couples see.",
+    description: "Choose colors for the materials you share with clients.",
+    whatWereDoing: "Pick the colors used on emails, proposals, contracts, and other materials you send.",
+    whyItMatters: "These colors show up on client-facing materials you create or send — not on the Hello to Cheers app itself.",
     whatYouNeed: "Four colors — primary, secondary, accent, and neutral. You can add a logo later from Settings.",
     whatHappensNext: "Next, confirm who owns this venue and a couple of basic settings.",
   },
@@ -577,10 +577,10 @@ const COLOR_ROLES: {
   label: string;
   hint: string;
 }[] = [
-  { key: "primaryColor",   label: "Primary",   hint: "Main brand color — buttons, headers, accents" },
-  { key: "secondaryColor", label: "Secondary",  hint: "Supports the primary — sidebar, badges" },
-  { key: "accentColor",    label: "Accent",     hint: "Warm tone — highlights, cards, hover states" },
-  { key: "neutralColor",   label: "Neutral",    hint: "Background tone — page canvas, section fills" },
+  { key: "primaryColor",   label: "Primary",   hint: "Main color on emails, proposals, and contracts" },
+  { key: "secondaryColor", label: "Secondary",  hint: "Supports the primary on branded materials" },
+  { key: "accentColor",    label: "Accent",     hint: "Highlights on brochures and other printables" },
+  { key: "neutralColor",   label: "Neutral",    hint: "Soft background tone on client-facing materials" },
 ];
 
 export function BrandStep({ input, errors, set }: StepProps) {

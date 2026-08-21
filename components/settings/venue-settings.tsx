@@ -189,7 +189,7 @@ export function VenueSettings({
         <CardHeader>
           <CardTitle className="text-lg">Venue Logo</CardTitle>
           <CardDescription>
-            Shown in your workspace sidebar, on day-of sheets, and in contract headers.
+            Shown in your workspace sidebar, on the couple portal, on day-of sheets, and in contract headers.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -198,7 +198,8 @@ export function VenueSettings({
             bucket="uploads"
             path={`${venueId}/logo`}
             label="Logo"
-            hint="Square or horizontal format. PNG, SVG or JPG, up to 5 MB."
+            hint="Square format works best (it appears in a circle on the couple portal). Preview fills the frame the same way. PNG, SVG or JPG, up to 5 MB."
+            objectFit="cover"
             onUpload={async (url) => {
               set("logoUrl", url);
               await updateLogoAction(url);
@@ -229,7 +230,9 @@ export function VenueSettings({
             bucket="uploads"
             path={`${venueId}/hero`}
             label="Wedding home photo"
-            hint="Wide/landscape format. PNG or JPG, up to 5 MB."
+            hint="Wide/landscape format. Preview matches how couples see it (fills the frame). PNG or JPG, up to 5 MB."
+            aspectRatio="aspect-video w-full max-w-lg h-auto"
+            objectFit="cover"
             onUpload={async (url) => {
               set("heroImageUrl", url);
               await updateHeroImageAction(url);
@@ -279,7 +282,7 @@ export function VenueSettings({
       {/* 4b — Brand settings (primary & secondary colors) */}
       <SettingsSection
         title="Brand colors"
-        description="These colors define your venue's visual identity where Hello to Cheers presents your brand to clients and in venue-branded collateral."
+        description="Used on emails, proposals, contracts, brochures, and other materials you send to clients — not on the Hello to Cheers app screens."
         onSave={() => save(saveBrandAction)}
       >
         <BrandStep {...stepProps} />

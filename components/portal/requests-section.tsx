@@ -24,7 +24,7 @@ import type { PortalSection } from "@/lib/portal/types";
 
 const ROSE = "#D8A7AA";
 const ROSE_DEEP = "#C17F84";
-const SAGE = "var(--venue-primary)"; // Venue Brand Experience Phase 1
+const SAGE = "var(--venue-primary)"; // HTC chrome token (PortalShell → --primary)
 
 const TYPE_LABELS: Record<RequestType, string> = {
   document: "Document", approval: "Approval", information: "Information",

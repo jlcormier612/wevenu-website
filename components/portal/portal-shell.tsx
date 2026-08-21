@@ -110,16 +110,12 @@ import {
 } from "@/lib/legal/welcome-integration";
 import type { CouplePortalLegalGateStatus } from "@/lib/legal/types";
 
-// Venue Brand Experience Phase 1: SAGE/LINEN/CREAM were Hello to Cheers' own hardcoded
-// palette, now the venue's own brand via CSS custom properties injected on
-// this file's root wrapper (context.venue.*). TAUPE stays a fixed muted gray
-// deliberately — it's used here for body text/icon legibility, and a venue's
-// own "neutral" color (often near-white) isn't guaranteed safe as text color
-// the way it is as a background tint. ROSE/ROSE_DEEP are Luv's own persona
-// identity, not a venue-branding target — confirmed unchanged everywhere
-// else in the app (dashboard, Settings, draft panels).
-const SAGE = "var(--venue-primary)";
-const LINEN = "var(--venue-neutral)";
+// Portal chrome uses Hello to Cheers design tokens (see PortalShell root).
+// Legacy aliases `--venue-*` resolve to HTC tokens so existing section chrome
+// stays tokenized without venue palette theming. TAUPE stays fixed for body/
+// icon muted text. ROSE/ROSE_DEEP remain Luv's persona colors only.
+const SAGE = "var(--venue-primary)"; // → HTC --primary (heritage sage)
+const LINEN = "var(--venue-neutral)"; // → HTC --secondary (natural cream)
 const TAUPE = "#B8AEA1";
 const ROSE  = "#D8A7AA";
 const ROSE_DEEP = "#C17F84";
@@ -4667,19 +4663,17 @@ export function PortalShell({
     <div
       className="h-full flex flex-col overflow-hidden overscroll-none"
       style={{
-        background: "var(--venue-neutral)",
-        // Venue Brand Experience Phase 1 — the venue's own brand, cascading
-        // to every nested portal component via CSS custom properties, so
-        // ~16 section files can each reference var(--venue-*) in their own
-        // inline styles without needing this data threaded through props.
-        // Luv's own dusty-rose identity and every functional/status color
-        // (paid/overdue, RSVP state) are deliberately untouched — not brand
-        // targets, per the governing "a couple should remember the venue,
-        // not the software" review.
-        "--venue-primary": context.venue.primaryColor,
-        "--venue-secondary": context.venue.secondaryColor,
-        "--venue-accent": context.venue.accentColor,
-        "--venue-neutral": context.venue.neutralColor,
+        // Two-layer branding: HTC owns application chrome. Keep the legacy
+        // `--venue-*` names so portal sections stay token-driven, but bind
+        // them to Hello to Cheers design-system tokens — not venues.palette.
+        // Venue logo / name / hero imagery still render from context.venue.*
+        // identity assets. Correspondence (email, contracts, brochures, etc.)
+        // continues to use live venue colors outside this shell.
+        background: "var(--background)",
+        "--venue-primary": "var(--primary)",
+        "--venue-secondary": "var(--heading)",
+        "--venue-accent": "var(--accent)",
+        "--venue-neutral": "var(--secondary)",
       } as React.CSSProperties}
     >
 

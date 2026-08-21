@@ -127,6 +127,8 @@ export function VendorVenueHero({ initialVenue, partnerships, vendorCategory, al
       <div className="rounded-sm overflow-hidden relative" style={{
         background: venue.heroImageUrl
           ? `url(${venue.heroImageUrl}) center/cover no-repeat`
+          // KEEP: venue palette only on this identity billboard when no photo —
+          // not injected into vendor app chrome/nav.
           : `linear-gradient(155deg, ${venue.secondaryColor ?? "#4F5F4F"} 0%, ${venue.primaryColor ?? "#5D6F5D"} 100%)`,
         minHeight: "min(64vh, 560px)",
       }}>
