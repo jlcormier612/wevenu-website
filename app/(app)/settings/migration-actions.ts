@@ -18,10 +18,32 @@ import { createClient } from "@/integrations/supabase/server";
 import { getCurrentVenue } from "@/lib/venue/service";
 import { getSourceProfiles } from "@/lib/migration/source-profiles";
 import type { MigrationEntityType, SourceKey, SourceRow } from "@/lib/migration/types";
+import { proposeFieldMapping } from "@/lib/luv/import-assist";
+import type { EntityType as LuvEntityType } from "@/lib/import/types";
 
 export async function getSourceProfilesAction() {
   const supabase = await createClient();
   return getSourceProfiles(supabase);
+}
+
+// Migration Center's own entity vocabulary (client/lead/vendor) predates and
+// is slightly narrower than lib/import/types.ts's EntityType (couples/leads/
+// vendors/inventory/packages) — proposeFieldMapping already exists keyed to
+// the latter, so this is a translation, not a new AI-mapping system. Field
+// key vocabularies between the two are already near-identical (firstName/
+// lastName/email/phone/...); any key Luv proposes that Migration Center's
+// own mapping state doesn't recognize is simply dropped on merge, same as
+// any other unmapped-field suggestion.
+const LUV_ENTITY_BY_MIGRATION_ENTITY: Partial<Record<MigrationEntityType, LuvEntityType>> = {
+  client: "couples",
+  lead: "leads",
+  vendor: "vendors",
+};
+
+export async function proposeMigrationFieldMappingAction(headers: string[], entityType: MigrationEntityType) {
+  const luvEntity = LUV_ENTITY_BY_MIGRATION_ENTITY[entityType];
+  if (!luvEntity) return { ok: false as const, message: "Luv's mapping assist isn't available for this type yet." };
+  return proposeFieldMapping(headers, luvEntity);
 }
 
 export async function listMigrationSessionsAction() {

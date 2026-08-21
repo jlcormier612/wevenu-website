@@ -19,7 +19,7 @@
  */
 import * as React from "react";
 import Papa from "papaparse";
-import { AlertTriangle, CheckCircle2, Download, FileText, Loader2, Upload } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Download, FileText, Loader2, Sparkles, Upload } from "lucide-react";
 import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
@@ -36,6 +36,7 @@ import {
   getMigrationSessionResumeStateAction,
   getMigrationSessionSourceFilesAction,
   listMigrationSessionsAction,
+  proposeMigrationFieldMappingAction,
   reviewMigrationRecordAction,
   runMigrationDedupeAction,
   startMigrationSessionAction,
@@ -184,6 +185,7 @@ export function MigrationCenter({ sourceProfiles }: { sourceProfiles: SourceProf
   const [pendingFile, setPendingFile] = React.useState<File | null>(null);
   const [mapping, setMapping] = React.useState<Record<string, string>>({});
   const fileRef = React.useRef<HTMLInputElement>(null);
+  const [suggesting, startSuggest] = React.useTransition();
 
   const selectedProfile = sourceProfiles.find((p) => p.key === sourceKey) ?? sourceProfiles[0];
   const guidance = sourceSelectionGuidance(lane, selectedProfile ?? null);
@@ -248,6 +250,34 @@ export function MigrationCenter({ sourceProfiles }: { sourceProfiles: SourceProf
         }
       },
       error: () => toast.error("Could not read that file."),
+    });
+  }
+
+  // Fills in whatever the exact-label auto-match (handleFile, above) couldn't
+  // confidently resolve — an unfamiliar competitor-export header like
+  // "Bride/Groom" instead of "First Name". A proposal only: it only ever
+  // fills *unmapped* fields, never overwrites a mapping already set by the
+  // auto-match or by the coordinator. Same lib/luv/import-assist.ts function
+  // already used by the CSV Import wizard's own "Suggest with Luv" — no
+  // second AI mapping system.
+  function handleSuggestMapping() {
+    startSuggest(async () => {
+      const result = await proposeMigrationFieldMappingAction(headers, entityType);
+      if (!result.ok) {
+        toast.error(result.message);
+        return;
+      }
+      const next = { ...mapping };
+      let filled = 0;
+      for (const [key, header] of Object.entries(result.mapping)) {
+        if (!next[key] && header) { next[key] = header; filled++; }
+      }
+      if (filled === 0) {
+        toast.info("Luv didn't find any new matches beyond what's already mapped.");
+        return;
+      }
+      setMapping(next);
+      toast.success(`Luv suggested ${filled} mapping${filled === 1 ? "" : "s"} — review before continuing.`);
     });
   }
 
@@ -403,7 +433,13 @@ export function MigrationCenter({ sourceProfiles }: { sourceProfiles: SourceProf
 
           {headers.length > 0 && (
             <div className="space-y-3">
-              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Match your columns</p>
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Match your columns</p>
+                <Button type="button" variant="outline" size="sm" onClick={handleSuggestMapping} disabled={suggesting} className="shrink-0">
+                  <Sparkles className="h-3.5 w-3.5 mr-1.5" />
+                  {suggesting ? "Asking Luv…" : "Suggest with Luv"}
+                </Button>
+              </div>
               <div className="grid gap-2 sm:grid-cols-2">
                 {FIELD_KEYS_BY_ENTITY[entityType].map((f) => (
                   <div key={f.key} className="flex items-center gap-2">

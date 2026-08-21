@@ -164,7 +164,10 @@ function DocumentsUploadStep({ onDone }: { onDone: () => void }) {
         name: file.name.replace(/\.[^.]+$/, ""),
         category: "other",
         notes: "Brought over during setup.",
-        tags: "",
+        // Reliable marker for the Setup Hub "you brought over N files" nudge
+        // (client-experience stage) — a real tag to filter on, not the notes
+        // string above, which is prose, not a stable machine-readable key.
+        tags: "setup_import",
         expiresAt: "",
         fileName: file.name,
         fileSize: file.size,
@@ -390,7 +393,7 @@ export function YourOfferingsStep({ goToStep }: { goToStep?: (step: SetupStepId)
 
 // ---- Stage 4: Your Business Tools -------------------------------------------
 
-export function BusinessToolsStep() {
+export function BusinessToolsStep({ goToStep }: { goToStep?: (step: SetupStepId) => void }) {
   const counts = useSetupReadyCounts();
   const hasTools = !!counts && (counts.contractTemplates > 0 || counts.communicationTemplates > 0 || counts.playbookTemplates > 0);
 
@@ -415,15 +418,22 @@ export function BusinessToolsStep() {
           <ReadyLine count={counts.playbookTemplates} label="planning templates ready" />
         </div>
       ) : (
-        <div className="space-y-2 rounded-lg border border-border p-4">
+        <div className="space-y-3 rounded-lg border border-border p-4">
           <p className="text-sm text-foreground">
-            No templates yet — nothing to do here right now.
+            Bring over what you already use — or start fresh. Either way,
+            nothing here is required to continue.
           </p>
-          <p className="text-xs text-muted-foreground">
-            Once you&apos;re in, Contracts, Message Templates, and Planning each
-            have their own &quot;Bring your existing wording&quot; option — paste in
-            what you already use and we&apos;ll help turn it into a template.
-          </p>
+          <div className="flex flex-wrap gap-3">
+            <Button type="button" size="sm" variant="outline" onClick={() => goToStep?.("bring-your-business")}>
+              Bring my files over now
+            </Button>
+            <p className="self-center text-xs text-muted-foreground">
+              or start fresh — once you&apos;re in, Contracts, Message
+              Templates, and Planning each have their own &quot;Bring your
+              existing wording&quot; option to turn what you brought over into
+              a real template.
+            </p>
+          </div>
         </div>
       )}
     </div>

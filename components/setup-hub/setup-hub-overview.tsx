@@ -45,6 +45,7 @@ export function SetupHubOverview({
   tourSchedulingEnabled,
   hasImportedData,
   readyCounts,
+  uploadedMaterialsCount,
   activeTeamCount,
   stripeConnected,
   quickbooksConnected,
@@ -59,6 +60,8 @@ export function SetupHubOverview({
   tourSchedulingEnabled: boolean;
   hasImportedData: boolean;
   readyCounts: SetupReadyCounts;
+  /** Raw files brought over during setup (contracts/wording/checklists uploaded as-is), not yet turned into a Contract/Message Template/Playbook — the "you brought this over, now what?" nudge on Client Experience. */
+  uploadedMaterialsCount: number;
   activeTeamCount: number;
   stripeConnected: boolean;
   quickbooksConnected: boolean;
@@ -151,7 +154,10 @@ export function SetupHubOverview({
       href: "/library",
       hrefLabel: "Go to Library",
       status: clientExperienceDone ? "complete" : null,
-      detail: `${clientExperienceCount} item${clientExperienceCount === 1 ? "" : "s"} of your own across contracts, questionnaires, messages, and planning guides.`,
+      detail: `${clientExperienceCount} item${clientExperienceCount === 1 ? "" : "s"} of your own across contracts, questionnaires, messages, and planning guides.`
+        + (uploadedMaterialsCount > 0
+          ? ` You also brought over ${uploadedMaterialsCount} file${uploadedMaterialsCount === 1 ? "" : "s"} during setup — head to Library to turn the ones that matter into templates.`
+          : ""),
       required: true,
       action: !clientExperienceDone ? (
         <StageAcknowledgeButton

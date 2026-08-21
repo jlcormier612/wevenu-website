@@ -41,7 +41,7 @@ export const STAGE_COPY: Record<string, StageCopy> = {
     what: "Your existing clients, leads, and vendors — the business you already have.",
     why: "So everything you're already tracking somewhere else follows you here, instead of starting from zero.",
     whatToDo:
-      "If you're moving from another system — whether we know it by name or not — we'll help you bring it over. If you just have a spreadsheet, you can import that. Or start fresh and add things as you go — that's a real choice too.",
+      "Whether you're moving from another system — whether we know it by name or not — or just have a spreadsheet, it's the same place: we'll help you bring it over carefully. Or start fresh and add things as you go — that's a real choice too.",
     required: true,
   },
   "your-offerings": {
