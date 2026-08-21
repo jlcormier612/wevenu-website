@@ -6,6 +6,7 @@
  * imported exclusively by the application service layer.
  */
 import { createClient } from "@/integrations/supabase/server";
+import { versionedVenueAssetUrl } from "@/lib/venue/branding-assets";
 import { DAYS_OF_WEEK } from "@/lib/venue/constants";
 import type {
   BusinessHourInput,
@@ -84,8 +85,10 @@ function mapVenue(r: VenueRow): Venue {
     venueType: r.venue_type,
     capacity: r.capacity,
     timezone: r.timezone,
-    logoUrl: r.logo_url,
-    heroImageUrl: r.hero_image_url,
+    // Live SoT columns — version query so logo/hero upserts invalidate CDN/browser
+    // caches in venue shell, couple portal, and vendor hero alike.
+    logoUrl: versionedVenueAssetUrl(r.logo_url, r.updated_at),
+    heroImageUrl: versionedVenueAssetUrl(r.hero_image_url, r.updated_at),
     story: r.story,
     primaryColor: r.primary_color,
     secondaryColor: r.secondary_color,

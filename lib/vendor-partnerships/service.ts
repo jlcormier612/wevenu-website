@@ -18,8 +18,10 @@
  * of an already-fixed bug. See supabase/migrations/20261170000000_vendor_venue_first_dashboard.sql.
  */
 import { createVendorClient as createClient } from "@/integrations/supabase/server";
+import { createAdminClient } from "@/integrations/supabase/admin";
 import { isSupabaseConfigured } from "@/lib/env";
 import { getVendorUser } from "@/lib/vendor-auth/service";
+import { applyLiveVenueBrandingUrls, versionedVenueAssetUrl } from "@/lib/venue/branding-assets";
 import type { VendorActionResult, VendorActiveVenueContext, VendorPartnership } from "@/lib/vendors/types";
 
 export async function getVendorPartnerships(): Promise<VendorPartnership[]> {
@@ -31,7 +33,31 @@ export async function getVendorPartnerships(): Promise<VendorPartnership[]> {
   const { data, error } = await supabase.rpc("get_vendor_partnerships");
   if (error) return [];
   const result = data as { partnerships?: VendorPartnership[]; error?: string } | null;
-  return result?.partnerships ?? [];
+  const partnerships = result?.partnerships ?? [];
+  if (partnerships.length === 0) return partnerships;
+
+  // Live venue logos (RPC already reads venues.logo_url) — version for cache
+  // invalidation the same way as the couple portal / venue shell.
+  const admin = createAdminClient();
+  const venueIds = [...new Set(partnerships.map((p) => p.venueId).filter(Boolean))];
+  const { data: venueRows } = await admin
+    .from("venues")
+    .select("id, updated_at")
+    .in("id", venueIds);
+  const updatedAtById = new Map(
+    ((venueRows ?? []) as { id: string; updated_at: string }[]).map((r) => [
+      r.id,
+      r.updated_at,
+    ]),
+  );
+
+  return partnerships.map((p) => ({
+    ...p,
+    venueLogoUrl: versionedVenueAssetUrl(
+      p.venueLogoUrl,
+      updatedAtById.get(p.venueId) ?? null,
+    ),
+  }));
 }
 
 // Venue-First Vendor Dashboard (2026-07-24) — the active venue's
@@ -50,7 +76,18 @@ export async function getVendorActiveVenue(venueId?: string): Promise<VendorActi
   if (error) return null;
   const result = data as VendorActiveVenueContext | { error: string };
   if (!result || "error" in result) return null;
-  return result;
+
+  const admin = createAdminClient();
+  const { data: venueRow } = await admin
+    .from("venues")
+    .select("updated_at")
+    .eq("id", result.venue.id)
+    .maybeSingle<{ updated_at: string }>();
+
+  return {
+    ...result,
+    venue: applyLiveVenueBrandingUrls(result.venue, venueRow?.updated_at ?? null),
+  };
 }
 
 export async function updateVenuePromotion(

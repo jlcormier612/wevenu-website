@@ -1,6 +1,8 @@
 import { createClient } from "@/integrations/supabase/server";
+import { createAdminClient } from "@/integrations/supabase/admin";
 import { isSupabaseConfigured } from "@/lib/env";
 import { getCurrentVenue } from "@/lib/venue/service";
+import { applyLiveVenueBrandingUrls } from "@/lib/venue/branding-assets";
 import { recordEngagementEvent } from "@/lib/activation/service";
 import type { PortalContext, PortalKeyDate, PortalSession, PortalTask, PortalTaskLink, PortalTimeline, PortalTimelineEntry, PortalTimelineSection, PortalVendorTask } from "@/lib/portal/types";
 
@@ -14,8 +16,20 @@ export async function resolvePortalContext(token: string): Promise<PortalContext
   if (error || !data || (data as Record<string, unknown>).error) return null;
   const ctx = data as PortalContext;
 
-  // Fire engagement event (write-once in DB via COALESCE so this is idempotent)
+  // Live venues.* branding — never invitation/session snapshots. Version asset
+  // URLs with venues.updated_at so logo/hero upserts are visible immediately.
   if (ctx.venue?.id) {
+    const admin = createAdminClient();
+    const { data: venueRow } = await admin
+      .from("venues")
+      .select("updated_at")
+      .eq("id", ctx.venue.id)
+      .maybeSingle<{ updated_at: string }>();
+    ctx.venue = {
+      ...ctx.venue,
+      ...applyLiveVenueBrandingUrls(ctx.venue, venueRow?.updated_at ?? null),
+    };
+
     void recordEngagementEvent({
       venueId:   ctx.venue.id,
       eventType: "couple.portal_opened",

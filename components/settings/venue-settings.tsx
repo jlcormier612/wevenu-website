@@ -198,7 +198,8 @@ export function VenueSettings({
             bucket="uploads"
             path={`${venueId}/logo`}
             label="Logo"
-            hint="Square format works best (it appears in a circle on the couple portal). PNG, SVG or JPG, up to 5 MB."
+            hint="Square format works best (it appears in a circle on the couple portal). Preview fills the frame the same way. PNG, SVG or JPG, up to 5 MB."
+            objectFit="cover"
             onUpload={async (url) => {
               set("logoUrl", url);
               await updateLogoAction(url);
