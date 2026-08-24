@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, it } from "node:test";
 import {
   buildFacebookOAuthUrl,
   FACEBOOK_OAUTH_SCOPES,
+  facebookPublicAppOrigin,
 } from "@/lib/facebook/config";
 
 const ENV_KEYS = [
@@ -55,5 +56,9 @@ describe("buildFacebookOAuthUrl", () => {
       parsed.searchParams.get("redirect_uri"),
       "https://app.sandbox.hellotocheers.com/api/facebook/callback",
     );
+  });
+
+  it("facebookPublicAppOrigin uses NEXT_PUBLIC_APP_URL", () => {
+    assert.equal(facebookPublicAppOrigin(), "https://app.sandbox.hellotocheers.com");
   });
 });

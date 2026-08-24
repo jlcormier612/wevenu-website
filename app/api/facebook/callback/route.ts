@@ -6,6 +6,7 @@ import { getCurrentVenue } from "@/lib/venue/service";
 import {
   exchangeFacebookAuthorizationCode,
   exchangeFacebookLongLivedUserToken,
+  facebookPublicAppOrigin,
   facebookUsesLoginForBusiness,
 } from "@/lib/facebook/config";
 
@@ -14,6 +15,9 @@ import {
  * shape (state = venueId for CSRF, exchange code for a token, persist,
  * redirect back with a success/error param).
  *
+ * Post-OAuth browser redirects use NEXT_PUBLIC_APP_URL — never
+ * request.nextUrl.origin (ECS/ALB internal hostnames are not browser-routable).
+ *
  * Facebook Login for Business (FACEBOOK_LOGIN_CONFIG_ID): single code
  * exchange → non-expiring system-user token; no fb_exchange_token step.
  *
@@ -21,13 +25,14 @@ import {
  * long-lived user token (~60 days).
  */
 export async function GET(request: NextRequest) {
-  const { searchParams, origin } = request.nextUrl;
+  const { searchParams } = request.nextUrl;
   const code = searchParams.get("code");
   const state = searchParams.get("state");
   const error = searchParams.get("error");
   const errorDescription = searchParams.get("error_description");
 
-  const settingsUrl = new URL("/settings/integrations", origin);
+  const publicOrigin = facebookPublicAppOrigin();
+  const settingsUrl = new URL("/settings/integrations", publicOrigin);
 
   if (error) {
     settingsUrl.searchParams.set("facebook_error", errorDescription ?? error);
@@ -52,8 +57,7 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
-    const redirectUri = `${appUrl}/api/facebook/callback`;
+    const redirectUri = `${publicOrigin}/api/facebook/callback`;
 
     const initial = await exchangeFacebookAuthorizationCode(code, redirectUri);
     if (!initial.ok) {

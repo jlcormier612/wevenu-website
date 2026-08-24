@@ -49,6 +49,11 @@ export function facebookUsesLoginForBusiness(): boolean {
   return !!facebookLoginConfigId();
 }
 
+/** Public browser-facing app origin — never derive from request Host behind ALB/ECS. */
+export function facebookPublicAppOrigin(): string {
+  return (process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000").replace(/\/$/, "");
+}
+
 export type FacebookCodeExchangeResult =
   | { ok: true; accessToken: string; expiresIn: number }
   | { ok: false; message: string };
@@ -134,7 +139,7 @@ export function buildFacebookOAuthUrl(venueId: string): string | null {
     process.env.FACEBOOK_APP_ID?.trim() ||
     process.env.NEXT_PUBLIC_FACEBOOK_APP_ID?.trim() ||
     "";
-  const appUrl = (process.env.NEXT_PUBLIC_APP_URL ?? "").replace(/\/$/, "");
+  const appUrl = facebookPublicAppOrigin();
   const configId = facebookLoginConfigId();
   if (!clientId || !appUrl || !venueId.trim()) return null;
 
