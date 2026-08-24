@@ -198,7 +198,7 @@ export function FacebookConnectSection({
       }
       toast.success("Facebook disconnected.");
       // Hard navigation so a hung Page-list server action cannot leave stale UI.
-      window.location.assign("/settings/integrations");
+      window.location.assign("/settings#facebook");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Could not disconnect Facebook.");
       setDisconnecting(false);
