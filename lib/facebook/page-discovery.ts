@@ -26,16 +26,24 @@ async function graphGet<T>(
 ): Promise<{ ok: true; body: T } | { ok: false; message: string; status: number }> {
   const separator = path.includes("?") ? "&" : "?";
   const url = `${facebookGraphApiBaseUrl()}${path}${separator}access_token=${encodeURIComponent(accessToken)}`;
-  const res = await fetch(url);
-  const body = await res.json().catch(() => null) as (T & { error?: { message?: string } }) | null;
-  if (!res.ok || body?.error) {
+  try {
+    const res = await fetch(url, { signal: AbortSignal.timeout(12_000) });
+    const body = await res.json().catch(() => null) as (T & { error?: { message?: string } }) | null;
+    if (!res.ok || body?.error) {
+      return {
+        ok: false,
+        message: body?.error?.message ?? `Facebook API error ${res.status}`,
+        status: res.status,
+      };
+    }
+    return { ok: true, body: body as T };
+  } catch (err) {
     return {
       ok: false,
-      message: body?.error?.message ?? `Facebook API error ${res.status}`,
-      status: res.status,
+      message: err instanceof Error ? err.message : "Facebook API request failed.",
+      status: 0,
     };
   }
-  return { ok: true, body: body as T };
 }
 
 async function fetchAppAccessToken(): Promise<string | null> {
@@ -47,7 +55,7 @@ async function fetchAppAccessToken(): Promise<string | null> {
     client_secret: appSecret,
     grant_type: "client_credentials",
   });
-  const res = await fetch(`${FACEBOOK_TOKEN_URL}?${params}`);
+  const res = await fetch(`${FACEBOOK_TOKEN_URL}?${params}`, { signal: AbortSignal.timeout(12_000) });
   const data = await res.json().catch(() => null) as { access_token?: string } | null;
   return data?.access_token ?? null;
 }
@@ -79,7 +87,7 @@ async function fetchPagesFromGranularScopes(accessToken: string): Promise<GraphP
     `${facebookGraphApiBaseUrl()}/debug_token` +
     `?input_token=${encodeURIComponent(accessToken)}` +
     `&access_token=${encodeURIComponent(appToken)}`;
-  const res = await fetch(url);
+  const res = await fetch(url, { signal: AbortSignal.timeout(12_000) });
   const body = await res.json().catch(() => null) as {
     data?: {
       type?: string;

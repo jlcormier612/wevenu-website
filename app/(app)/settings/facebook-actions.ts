@@ -51,7 +51,14 @@ export async function setFacebookFormEnabledAction(formId: string, enabled: bool
 }
 
 export async function disconnectFacebookAction(): Promise<FacebookActionResult> {
-  const result = await disconnectFacebookAccount();
-  revalidatePath("/settings/integrations");
-  return result;
+  try {
+    const result = await disconnectFacebookAccount();
+    revalidatePath("/settings/integrations");
+    return result;
+  } catch (err) {
+    return {
+      ok: false,
+      message: err instanceof Error ? err.message : "Could not disconnect Facebook.",
+    };
+  }
 }

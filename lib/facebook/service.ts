@@ -175,9 +175,8 @@ export async function disconnectFacebookAccount(): Promise<FacebookActionResult>
   const pageId = connection?.pageId ?? null;
   const pageAccessToken = connection?.pageAccessToken ?? null;
 
-  // Always clear local state first so this venue stops receiving leads even
-  // if Meta unsubscribe fails or must be skipped (another venue still on the Page).
-  await repo.disconnectConnection(supabase, venue.id);
+  // Admin client: delete must succeed even if session RLS is flaky mid-disconnect.
+  await repo.disconnectConnection(createAdminClient(), venue.id);
 
   if (pageId && pageAccessToken) {
     const remaining = await repo.countConnectedVenuesForPage(createAdminClient(), pageId);
