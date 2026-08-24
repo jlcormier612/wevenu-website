@@ -3,17 +3,22 @@ import { type NextRequest, NextResponse } from "next/server";
 import { connectFacebookAction } from "@/app/(app)/settings/facebook-actions";
 import { isSupabaseConfigured } from "@/lib/env";
 import { getCurrentVenue } from "@/lib/venue/service";
-import { FACEBOOK_TOKEN_URL } from "@/lib/facebook/config";
+import {
+  exchangeFacebookAuthorizationCode,
+  exchangeFacebookLongLivedUserToken,
+  facebookUsesLoginForBusiness,
+} from "@/lib/facebook/config";
 
 /**
  * Facebook OAuth callback. Mirrors app/api/quickbooks/callback/route.ts's
  * shape (state = venueId for CSRF, exchange code for a token, persist,
- * redirect back with a success/error param) — with the two real
- * differences Meta's flow needs: a short-lived user token must be
- * exchanged a SECOND time for a long-lived one (Meta has no rotating
- * refresh token the way QBO does), and there's no realmId-equivalent —
- * the Page (and therefore which "account" this connection is scoped to)
- * is chosen afterward, in Settings, not during this callback.
+ * redirect back with a success/error param).
+ *
+ * Facebook Login for Business (FACEBOOK_LOGIN_CONFIG_ID): single code
+ * exchange → non-expiring system-user token; no fb_exchange_token step.
+ *
+ * Legacy scope-based Facebook Login: code → short-lived user token →
+ * long-lived user token (~60 days).
  */
 export async function GET(request: NextRequest) {
   const { searchParams, origin } = request.nextUrl;
@@ -48,34 +53,28 @@ export async function GET(request: NextRequest) {
 
   try {
     const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+    const redirectUri = `${appUrl}/api/facebook/callback`;
 
-    // Step 1: exchange the authorization code for a short-lived user token.
-    const shortLivedParams = new URLSearchParams({
-      client_id: appId, client_secret: appSecret, redirect_uri: `${appUrl}/api/facebook/callback`, code,
-    });
-    const shortLivedRes = await fetch(`${FACEBOOK_TOKEN_URL}?${shortLivedParams}`);
-    const shortLivedData = await shortLivedRes.json().catch(() => null) as { access_token?: string; error?: { message?: string } } | null;
-    if (!shortLivedRes.ok || !shortLivedData?.access_token) {
-      settingsUrl.searchParams.set("facebook_error", shortLivedData?.error?.message ?? "Token exchange failed.");
+    const initial = await exchangeFacebookAuthorizationCode(code, redirectUri);
+    if (!initial.ok) {
+      settingsUrl.searchParams.set("facebook_error", initial.message);
       return NextResponse.redirect(settingsUrl);
     }
 
-    // Step 2: exchange the short-lived token for a long-lived one (~60 days).
-    const longLivedParams = new URLSearchParams({
-      grant_type: "fb_exchange_token", client_id: appId, client_secret: appSecret,
-      fb_exchange_token: shortLivedData.access_token,
-    });
-    const longLivedRes = await fetch(`${FACEBOOK_TOKEN_URL}?${longLivedParams}`);
-    const longLivedData = await longLivedRes.json().catch(() => null) as { access_token?: string; expires_in?: number; error?: { message?: string } } | null;
-    if (!longLivedRes.ok || !longLivedData?.access_token) {
-      settingsUrl.searchParams.set("facebook_error", longLivedData?.error?.message ?? "Could not obtain a long-lived token.");
-      return NextResponse.redirect(settingsUrl);
+    let accessToken = initial.accessToken;
+    let expiresIn = initial.expiresIn;
+
+    if (!facebookUsesLoginForBusiness()) {
+      const longLived = await exchangeFacebookLongLivedUserToken(accessToken);
+      if (!longLived.ok) {
+        settingsUrl.searchParams.set("facebook_error", longLived.message);
+        return NextResponse.redirect(settingsUrl);
+      }
+      accessToken = longLived.accessToken;
+      expiresIn = longLived.expiresIn;
     }
 
-    await connectFacebookAction({
-      userAccessToken: longLivedData.access_token,
-      expiresIn: longLivedData.expires_in ?? 5_184_000, // ~60 days, Meta's typical long-lived token lifetime
-    });
+    await connectFacebookAction({ userAccessToken: accessToken, expiresIn });
 
     settingsUrl.searchParams.set("facebook_success", "1");
     return NextResponse.redirect(settingsUrl);

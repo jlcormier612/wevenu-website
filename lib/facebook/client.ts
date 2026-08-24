@@ -10,7 +10,11 @@
  * don't expire independently and need no separate refresh handling.
  */
 import { createAdminClient } from "@/integrations/supabase/admin";
-import { FACEBOOK_TOKEN_URL, facebookGraphApiBaseUrl } from "@/lib/facebook/config";
+import {
+  FACEBOOK_TOKEN_URL,
+  facebookGraphApiBaseUrl,
+  facebookUsesLoginForBusiness,
+} from "@/lib/facebook/config";
 import * as repo from "@/lib/facebook/repository";
 
 const REFRESH_BUFFER_MS = 5 * 24 * 60 * 60 * 1000; // re-extend if within 5 days of expiry
@@ -62,7 +66,8 @@ async function getValidPageToken(venueId: string): Promise<{ ok: true; pageAcces
   if (Date.now() >= expiresAt) {
     return { ok: false, error: "Facebook connection expired — please reconnect.", retryable: false };
   }
-  if (Date.now() >= expiresAt - REFRESH_BUFFER_MS) {
+  // Business Integration system user tokens do not use fb_exchange_token refresh.
+  if (!facebookUsesLoginForBusiness() && Date.now() >= expiresAt - REFRESH_BUFFER_MS) {
     const extended = await extendUserToken(venueId);
     if (!extended.ok) return { ok: false, error: extended.error, retryable: false };
     connection = await repo.getConnectionWithTokens(admin, venueId);

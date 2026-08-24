@@ -78,7 +78,7 @@
     "ResendInboundAddress": {
       "Type": "String",
       "Default": "",
-      "Description": "Venue Email Intake + Workspace CRM reply-to domain suffix (RESEND_INBOUND_ADDRESS). Per-venue forwarding becomes leads+{key}@<domain>; CRM replies use relationship+{id}@<domain>. Empty until Resend receiving + MX exist for that domain."
+      "Description": "Venue app's Email Intake Engine domain suffix (RESEND_INBOUND_ADDRESS) - the per-venue forwarding address becomes leads+{key}@<the domain part of this value>. Deliberately no MinLength: an empty value is this parameter's own correct, intentional default until a real Resend Inbound domain + MX record exist (see docs/rc-launch-validation-runbook.md) - same pattern as CertificateArn above."
     },
 
     "StripePriceStarter": { "Type": "String", "Default": "", "Description": "Stripe Price ID (marketing/, STRIPE_PRICE_STARTER) for the Gather plan. Empty is a valid default until a real Price exists in the Stripe Dashboard - same pattern as CertificateArn." },
@@ -277,7 +277,7 @@
       "Type": "AWS::SecretsManager::Secret",
       "Properties": {
         "Name": { "Fn::Sub": "htc/${EnvironmentName}/resend-webhook-secret" },
-        "Description": "Comma-separated Resend webhook Signing Secrets (whsec_…) for email.received endpoints — Email Intake, messaging inbound, and Workspace CRM inbound each have their own webhook id/secret. Empty string keeps verification open (local/dev). Populate after creating the Resend webhooks; never put a non-empty placeholder.",
+        "Description": "Placeholder is an EMPTY string, not CHANGE_ME, deliberately - both app/api/leads/email-intake/route.ts and app/api/messaging/inbound/route.ts treat an unset RESEND_WEBHOOK_SECRET as 'skip signature verification, stay open' and a set one as 'enforce Svix verification'; a non-empty placeholder would flip on enforcement with a value that can never verify anything, silently breaking both endpoints. Populate with the real Signing Secret from Resend Dashboard -> Webhooks once the endpoint is configured there - both routes now implement Svix verification identically (shared via lib/resend/inbound-webhook.ts), so this is safe to populate for both at once.",
         "SecretString": "{\"value\":\"\"}"
       }
     },
@@ -309,8 +309,8 @@
       "Type": "AWS::SecretsManager::Secret",
       "Properties": {
         "Name": { "Fn::Sub": "htc/${EnvironmentName}/facebook" },
-        "Description": "Venue app Meta Lead Ads keys. FACEBOOK_APP_ID is the same app id as NEXT_PUBLIC_FACEBOOK_APP_ID (not a secret, stored here so the OAuth callback can read FACEBOOK_APP_ID at runtime). FACEBOOK_APP_SECRET signs webhooks and exchanges tokens. FACEBOOK_WEBHOOK_VERIFY_TOKEN is the hub.verify_token string configured on the Meta app webhook. FACEBOOK_SYNC_SECRET gates manual POST /api/facebook/sync/process. Empty strings are intentional until the Meta app is configured — do not put real values in this template.",
-        "SecretString": "{\"FACEBOOK_APP_ID\":\"\",\"FACEBOOK_APP_SECRET\":\"\",\"FACEBOOK_WEBHOOK_VERIFY_TOKEN\":\"\",\"FACEBOOK_SYNC_SECRET\":\"\"}"
+        "Description": "Venue app Meta Lead Ads keys. FACEBOOK_APP_ID is the same app id as NEXT_PUBLIC_FACEBOOK_APP_ID (not a secret, stored here so the OAuth callback can read FACEBOOK_APP_ID at runtime). FACEBOOK_APP_SECRET signs webhooks and exchanges tokens. FACEBOOK_WEBHOOK_VERIFY_TOKEN is the hub.verify_token string configured on the Meta app webhook. FACEBOOK_SYNC_SECRET gates manual POST /api/facebook/sync/process. FACEBOOK_LOGIN_CONFIG_ID is the Facebook Login for Business configuration ID (OAuth config_id). Empty strings are intentional until the Meta app is configured — do not put real values in this template.",
+        "SecretString": "{\"FACEBOOK_APP_ID\":\"\",\"FACEBOOK_APP_SECRET\":\"\",\"FACEBOOK_WEBHOOK_VERIFY_TOKEN\":\"\",\"FACEBOOK_SYNC_SECRET\":\"\",\"FACEBOOK_LOGIN_CONFIG_ID\":\"\"}"
       }
     },
 
@@ -352,6 +352,7 @@
             { "Name": "FACEBOOK_APP_SECRET", "ValueFrom": { "Fn::Sub": "${FacebookSecrets}:FACEBOOK_APP_SECRET::" } },
             { "Name": "FACEBOOK_WEBHOOK_VERIFY_TOKEN", "ValueFrom": { "Fn::Sub": "${FacebookSecrets}:FACEBOOK_WEBHOOK_VERIFY_TOKEN::" } },
             { "Name": "FACEBOOK_SYNC_SECRET", "ValueFrom": { "Fn::Sub": "${FacebookSecrets}:FACEBOOK_SYNC_SECRET::" } },
+            { "Name": "FACEBOOK_LOGIN_CONFIG_ID", "ValueFrom": { "Fn::Sub": "${FacebookSecrets}:FACEBOOK_LOGIN_CONFIG_ID::" } },
             { "Name": "ANTHROPIC_API_KEY", "ValueFrom": { "Fn::Sub": "${AnthropicApiKeySecret}:value::" } },
             { "Name": "RESEND_WEBHOOK_SECRET", "ValueFrom": { "Fn::Sub": "${ResendWebhookSecretSecret}:value::" } }
           ],
@@ -438,14 +439,12 @@
             { "Name": "PRODUCT_API_BASE_URL", "Value": { "Fn::Sub": "https://${VenueAppHostname}" } },
             { "Name": "SUPABASE_URL", "Value": { "Ref": "SupabaseUrl" } },
             { "Name": "NEXT_PUBLIC_SUPABASE_URL", "Value": { "Ref": "SupabaseUrl" } },
-            { "Name": "USE_SEED_DATA", "Value": "false" },
-            { "Name": "RESEND_INBOUND_ADDRESS", "Value": { "Ref": "ResendInboundAddress" } }
+            { "Name": "USE_SEED_DATA", "Value": "false" }
           ],
           "Secrets": [
             { "Name": "RESEND_API_KEY", "ValueFrom": { "Fn::Sub": "${ResendApiKeySecret}:value::" } },
             { "Name": "PRODUCT_SYNC_API_KEY", "ValueFrom": { "Fn::Sub": "${ProductSyncApiKeySecret}:value::" } },
-            { "Name": "SUPABASE_SERVICE_ROLE_KEY", "ValueFrom": { "Fn::Sub": "${SupabaseServiceRoleKeySecret}:value::" } },
-            { "Name": "RESEND_WEBHOOK_SECRET", "ValueFrom": { "Fn::Sub": "${ResendWebhookSecretSecret}:value::" } }
+            { "Name": "SUPABASE_SERVICE_ROLE_KEY", "ValueFrom": { "Fn::Sub": "${SupabaseServiceRoleKeySecret}:value::" } }
           ],
           "LogConfiguration": {
             "LogDriver": "awslogs",

@@ -10,6 +10,10 @@
  *     webhook signature verification.
  *   FACEBOOK_WEBHOOK_VERIFY_TOKEN — the arbitrary string used in Meta's
  *     one-time hub.verify_token subscription handshake.
+ *   FACEBOOK_LOGIN_CONFIG_ID — Facebook Login for Business configuration ID
+ *     (Meta App Dashboard → Facebook Login for Business → Configurations).
+ *     When set, OAuth uses config_id instead of scope; required for Business
+ *     Login system-user access tokens (authorization code grant, no expiry).
  *   FACEBOOK_GRAPH_API_VERSION — pinned explicitly since Meta deprecates
  *     old Graph API versions on a schedule.
  */
@@ -33,11 +37,97 @@ export const FACEBOOK_OAUTH_SCOPES =
 /** @deprecated Use FACEBOOK_OAUTH_SCOPES */
 export const FACEBOOK_DEAUTHORIZE_SCOPE = FACEBOOK_OAUTH_SCOPES;
 
+/** Stored expiry for non-expiring Business Integration system user tokens. */
+export const FACEBOOK_NON_EXPIRING_TOKEN_SECONDS = 10 * 365 * 24 * 60 * 60;
+
+export function facebookLoginConfigId(): string | null {
+  const id = process.env.FACEBOOK_LOGIN_CONFIG_ID?.trim();
+  return id || null;
+}
+
+export function facebookUsesLoginForBusiness(): boolean {
+  return !!facebookLoginConfigId();
+}
+
+export type FacebookCodeExchangeResult =
+  | { ok: true; accessToken: string; expiresIn: number }
+  | { ok: false; message: string };
+
+/** Exchange an OAuth authorization code for an access token. */
+export async function exchangeFacebookAuthorizationCode(
+  code: string,
+  redirectUri: string,
+): Promise<FacebookCodeExchangeResult> {
+  const appId = process.env.FACEBOOK_APP_ID?.trim();
+  const appSecret = process.env.FACEBOOK_APP_SECRET?.trim();
+  if (!appId || !appSecret) {
+    return { ok: false, message: "Facebook is not configured." };
+  }
+
+  const params = new URLSearchParams({
+    client_id: appId,
+    client_secret: appSecret,
+    redirect_uri: redirectUri,
+    code,
+  });
+  const response = await fetch(`${FACEBOOK_TOKEN_URL}?${params}`);
+  const data = await response.json().catch(() => null) as {
+    access_token?: string;
+    expires_in?: number;
+    error?: { message?: string };
+  } | null;
+
+  if (!response.ok || !data?.access_token) {
+    return { ok: false, message: data?.error?.message ?? "Token exchange failed." };
+  }
+
+  const expiresIn = data.expires_in && data.expires_in > 0
+    ? data.expires_in
+    : facebookUsesLoginForBusiness()
+      ? FACEBOOK_NON_EXPIRING_TOKEN_SECONDS
+      : 5_184_000;
+
+  return { ok: true, accessToken: data.access_token, expiresIn };
+}
+
+/** Exchange a short-lived user token for a long-lived one (~60 days). */
+export async function exchangeFacebookLongLivedUserToken(
+  shortLivedToken: string,
+): Promise<FacebookCodeExchangeResult> {
+  const appId = process.env.FACEBOOK_APP_ID?.trim();
+  const appSecret = process.env.FACEBOOK_APP_SECRET?.trim();
+  if (!appId || !appSecret) {
+    return { ok: false, message: "Facebook is not configured." };
+  }
+
+  const params = new URLSearchParams({
+    grant_type: "fb_exchange_token",
+    client_id: appId,
+    client_secret: appSecret,
+    fb_exchange_token: shortLivedToken,
+  });
+  const response = await fetch(`${FACEBOOK_TOKEN_URL}?${params}`);
+  const data = await response.json().catch(() => null) as {
+    access_token?: string;
+    expires_in?: number;
+    error?: { message?: string };
+  } | null;
+
+  if (!response.ok || !data?.access_token) {
+    return { ok: false, message: data?.error?.message ?? "Could not obtain a long-lived token." };
+  }
+
+  return { ok: true, accessToken: data.access_token, expiresIn: data.expires_in ?? 5_184_000 };
+}
+
 /**
  * Build the Meta OAuth dialog URL. Prefers FACEBOOK_APP_ID (runtime secret /
  * ECS) then NEXT_PUBLIC_FACEBOOK_APP_ID (build-time). App ID is not secret —
  * storing it server-side lets Connect work even when a deploy omitted the
  * public build arg.
+ *
+ * When FACEBOOK_LOGIN_CONFIG_ID is set, uses Facebook Login for Business
+ * (config_id replaces scope; system-user configs also need override_default_response_type).
  */
 export function buildFacebookOAuthUrl(venueId: string): string | null {
   const clientId =
@@ -45,13 +135,22 @@ export function buildFacebookOAuthUrl(venueId: string): string | null {
     process.env.NEXT_PUBLIC_FACEBOOK_APP_ID?.trim() ||
     "";
   const appUrl = (process.env.NEXT_PUBLIC_APP_URL ?? "").replace(/\/$/, "");
+  const configId = facebookLoginConfigId();
   if (!clientId || !appUrl || !venueId.trim()) return null;
+
   const params = new URLSearchParams({
     client_id: clientId,
     response_type: "code",
     redirect_uri: `${appUrl}/api/facebook/callback`,
-    scope: FACEBOOK_OAUTH_SCOPES,
     state: venueId,
   });
+
+  if (configId) {
+    params.set("config_id", configId);
+    params.set("override_default_response_type", "true");
+  } else {
+    params.set("scope", FACEBOOK_OAUTH_SCOPES);
+  }
+
   return `${FACEBOOK_OAUTH_DIALOG_URL}?${params}`;
 }
