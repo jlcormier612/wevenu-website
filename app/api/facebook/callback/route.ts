@@ -87,7 +87,7 @@ export async function GET(request: NextRequest) {
     if (!inspection.hasPageAccess) {
       settingsUrl.searchParams.set(
         "facebook_error",
-        "Facebook authorized your profile but did not grant Page access. In Meta's dialog, choose your Business portfolio and select at least one Facebook Page before continuing.",
+        "Meta only granted public_profile — no Page access. In Meta App Dashboard: add pages_show_list, pages_manage_metadata, pages_manage_ads, and leads_retrieval under Permissions; ensure Login for Business config includes those + Pages assets. Then on facebook.com → Settings → Business Integrations, remove Hello to Cheers, connect again, and select your Business + Page (do not stop at Continue as…).",
       );
       return NextResponse.redirect(settingsUrl);
     }

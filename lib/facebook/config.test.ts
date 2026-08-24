@@ -53,6 +53,8 @@ describe("buildFacebookOAuthUrl", () => {
     assert.equal(parsed.searchParams.get("scope"), null);
     assert.equal(parsed.searchParams.get("response_type"), "code");
     assert.equal(parsed.searchParams.get("override_default_response_type"), "true");
+    assert.equal(parsed.searchParams.get("auth_type"), "rerequest");
+    assert.equal(parsed.searchParams.get("display"), "page");
     assert.equal(
       parsed.searchParams.get("redirect_uri"),
       "https://app.sandbox.hellotocheers.com/api/facebook/callback",

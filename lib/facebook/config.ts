@@ -223,6 +223,9 @@ export function buildFacebookOAuthUrl(venueId: string): string | null {
     response_type: "code",
     redirect_uri: `${appUrl}/api/facebook/callback`,
     state: venueId,
+    // Force Meta to re-prompt permissions/assets after a prior public_profile-only grant.
+    auth_type: "rerequest",
+    display: "page",
   });
 
   if (configId) {
@@ -231,6 +234,16 @@ export function buildFacebookOAuthUrl(venueId: string): string | null {
   } else {
     params.set("scope", FACEBOOK_OAUTH_SCOPES);
   }
+
+  console.error(
+    "[facebook oauth] connect_url",
+    JSON.stringify({
+      hasConfigId: !!configId,
+      configIdLast4: configId ? configId.slice(-4) : null,
+      usesScope: !configId,
+      dialog: FACEBOOK_OAUTH_DIALOG_URL,
+    }),
+  );
 
   return `${FACEBOOK_OAUTH_DIALOG_URL}?${params}`;
 }
