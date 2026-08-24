@@ -72,9 +72,13 @@ export async function exchangeFacebookAuthorizationCode(
   const params = new URLSearchParams({
     client_id: appId,
     client_secret: appSecret,
-    redirect_uri: redirectUri,
     code,
   });
+  // Business Integration system-user code exchange omits redirect_uri (Meta docs +
+  // error_subcode 36008 when it is included for config_id / response_type=code flows).
+  if (!facebookUsesLoginForBusiness()) {
+    params.set("redirect_uri", redirectUri);
+  }
   const response = await fetch(`${FACEBOOK_TOKEN_URL}?${params}`);
   const data = await response.json().catch(() => null) as {
     access_token?: string;

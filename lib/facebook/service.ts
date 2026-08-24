@@ -10,6 +10,7 @@ import { isSupabaseConfigured } from "@/lib/env";
 import { getCurrentVenue } from "@/lib/venue/service";
 import * as repo from "@/lib/facebook/repository";
 import { facebookGraphApiBaseUrl } from "@/lib/facebook/config";
+import { fetchManagedPages } from "@/lib/facebook/page-discovery";
 import {
   resolveOwnedPage,
   shouldUnsubscribePage,
@@ -64,15 +65,6 @@ export async function listFacebookPages(): Promise<{ ok: true; pages: { id: stri
   const pages = await fetchManagedPages(connection.userAccessToken);
   if (!pages.ok) return pages;
   return { ok: true, pages: pages.accounts.map((p) => ({ id: p.id, name: p.name })) };
-}
-
-async function fetchManagedPages(
-  userAccessToken: string,
-): Promise<{ ok: true; accounts: { id: string; name: string; accessToken: string }[] } | { ok: false; message: string }> {
-  const res = await fetch(`${facebookGraphApiBaseUrl()}/me/accounts?access_token=${encodeURIComponent(userAccessToken)}`);
-  const data = await res.json().catch(() => null) as { data?: { id: string; name: string; access_token: string }[]; error?: { message?: string } } | null;
-  if (!res.ok || !data?.data) return { ok: false, message: data?.error?.message ?? "Could not fetch Facebook Pages." };
-  return { ok: true, accounts: data.data.map((p) => ({ id: p.id, name: p.name, accessToken: p.access_token })) };
 }
 
 /**
