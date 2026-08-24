@@ -27,7 +27,9 @@ export function facebookGraphApiBaseUrl(): string {
 
 export const FACEBOOK_OAUTH_DIALOG_URL = "https://www.facebook.com/dialog/oauth";
 export const FACEBOOK_TOKEN_URL = "https://graph.facebook.com/oauth/access_token";
-export const FACEBOOK_OAUTH_SCOPES = "pages_show_list,pages_manage_metadata,leads_retrieval,pages_read_engagement";
+/** Meta Lead Ads use case permissions — see developers.facebook.com/docs/permissions */
+export const FACEBOOK_OAUTH_SCOPES =
+  "pages_show_list,pages_manage_metadata,pages_manage_ads,leads_retrieval,pages_read_engagement";
 /** @deprecated Use FACEBOOK_OAUTH_SCOPES */
 export const FACEBOOK_DEAUTHORIZE_SCOPE = FACEBOOK_OAUTH_SCOPES;
 
