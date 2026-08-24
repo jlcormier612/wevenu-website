@@ -38,6 +38,7 @@ import { getEmailIntakeStatus } from "@/lib/lead-intake/email-status";
 import { getEventCompletedNudgeRule } from "@/lib/automation/service";
 import { getQuickBooksConnection, getRecentQuickBooksSyncLog } from "@/lib/quickbooks/service";
 import { getFacebookConnection, getFacebookLeadForms, getRecentFacebookLog } from "@/lib/facebook/service";
+import { buildFacebookOAuthUrl } from "@/lib/facebook/config";
 // Playbooks moved to Library (/library/playbooks)
 // Pipeline Templates moved to Library (/library/pipeline-templates)
 
@@ -77,7 +78,7 @@ export default async function SettingsPage() {
       <VenueSettings initial={settings.input} venueId={settings.venueId} publicReviewUrl={venue?.publicReviewUrl ?? ""} />
       {venue && <div id="stripe"><StripeConnectSection venue={venue} /></div>}
       {venue && <QuickBooksConnectSection venueId={venue.id} connection={quickbooksConnection} syncLog={quickbooksSyncLog} />}
-      {venue && <FacebookConnectSection venueId={venue.id} connection={facebookConnection} leadForms={facebookLeadForms} recentLog={facebookLog} />}
+      {venue && <FacebookConnectSection venueId={venue.id} connection={facebookConnection} leadForms={facebookLeadForms} recentLog={facebookLog} connectUrl={buildFacebookOAuthUrl(venue.id)} />}
 
       {/* ── Import Data ────────────────────────────────────────────── */}
       <Card>

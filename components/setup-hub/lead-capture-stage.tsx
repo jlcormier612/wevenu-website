@@ -82,7 +82,7 @@ function ChannelActions({
 export function LeadCaptureStage({
   venueId, embedKey, appUrl, leadEmailAddress, emailIntakeStatus,
   tourSettings, tourWindowsCount, tourExceptionsCount,
-  facebookConnection, facebookLeadForms, facebookLog,
+  facebookConnection, facebookLeadForms, facebookLog, facebookConnectUrl,
   qrCampaigns, qrAnalytics, intakeHealth, stageStatus,
 }: {
   venueId: string;
@@ -96,6 +96,7 @@ export function LeadCaptureStage({
   facebookConnection: FacebookConnection | null;
   facebookLeadForms: FacebookLeadForm[];
   facebookLog: FacebookLeadLogEntry[];
+  facebookConnectUrl?: string | null;
   qrCampaigns: QrCampaign[];
   qrAnalytics: QrCampaignAnalytics[];
   intakeHealth: IntakeHealthSummary;
@@ -228,7 +229,7 @@ export function LeadCaptureStage({
                 </div>
                 <div>
                   <p className="text-sm font-medium text-heading mb-2">Facebook / Instagram Lead Ads</p>
-                  <FacebookConnectSection venueId={venueId} connection={facebookConnection} leadForms={facebookLeadForms} recentLog={facebookLog} />
+                  <FacebookConnectSection venueId={venueId} connection={facebookConnection} leadForms={facebookLeadForms} recentLog={facebookLog} connectUrl={facebookConnectUrl ?? null} />
                 </div>
               </CardContent>
             </Card>

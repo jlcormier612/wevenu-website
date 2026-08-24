@@ -151,11 +151,14 @@ export function FacebookConnectSection({
   connection,
   leadForms,
   recentLog,
+  connectUrl: connectUrlProp = null,
 }: {
   venueId: string;
   connection: FacebookConnection | null;
   leadForms: FacebookLeadForm[];
   recentLog: FacebookLeadLogEntry[];
+  /** Server-built OAuth URL — preferred so Connect does not depend on a client server-action round trip. */
+  connectUrl?: string | null;
 }) {
   const searchParams = useSearchParams();
   const fbSuccess = searchParams.get("facebook_success");
@@ -169,17 +172,34 @@ export function FacebookConnectSection({
     if (fbError) toast.error(`Facebook error: ${fbError}`);
   }, [fbSuccess, fbError]);
 
-  const [connectUrl, setConnectUrl] = React.useState<string | null>(null);
+  const [connectUrl, setConnectUrl] = React.useState<string | null>(connectUrlProp);
+  const [connectUrlLoading, setConnectUrlLoading] = React.useState(!connectUrlProp);
 
   React.useEffect(() => {
+    if (connectUrlProp) {
+      setConnectUrl(connectUrlProp);
+      setConnectUrlLoading(false);
+      return;
+    }
     let cancelled = false;
-    getFacebookConnectUrlAction(venueId).then((url) => {
-      if (!cancelled) setConnectUrl(url);
-    });
+    setConnectUrlLoading(true);
+    getFacebookConnectUrlAction(venueId)
+      .then((url) => {
+        if (!cancelled) {
+          setConnectUrl(url);
+          setConnectUrlLoading(false);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setConnectUrl(null);
+          setConnectUrlLoading(false);
+        }
+      });
     return () => {
       cancelled = true;
     };
-  }, [venueId]);
+  }, [venueId, connectUrlProp]);
 
   const isConfigured = !!connectUrl;
   const needsPageSelection = connection?.status === "needs_page_selection";
@@ -359,7 +379,9 @@ export function FacebookConnectSection({
           </div>
         ) : (
           <div className="space-y-3">
-            {!isConfigured ? (
+            {connectUrlLoading ? (
+              <p className="text-sm text-muted-foreground">Preparing Facebook Connect…</p>
+            ) : !isConfigured ? (
               <div className="rounded-lg border border-border bg-muted/30 p-4">
                 <p className="text-sm text-muted-foreground">
                   Facebook / Instagram Lead Ads isn&apos;t available for your account yet. Contact support to get this

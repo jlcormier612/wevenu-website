@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 
 import { PageHeader } from "@/components/shell/module-placeholder";
 import { LeadCaptureStage } from "@/components/setup-hub/lead-capture-stage";
+import { buildFacebookOAuthUrl } from "@/lib/facebook/config";
 import { getFacebookConnection, getFacebookLeadForms, getRecentFacebookLog } from "@/lib/facebook/service";
 import { getEmailIntakeStatus } from "@/lib/lead-intake/email-status";
 import { getIntakeHealthSummary } from "@/lib/lead-intake/monitoring";
@@ -58,6 +59,7 @@ export default async function LeadCaptureSetupPage() {
         facebookConnection={facebookConnection}
         facebookLeadForms={facebookLeadForms}
         facebookLog={facebookLog}
+        facebookConnectUrl={buildFacebookOAuthUrl(venue.id)}
         qrCampaigns={qrCampaigns}
         qrAnalytics={qrAnalytics}
         intakeHealth={intakeHealth}
