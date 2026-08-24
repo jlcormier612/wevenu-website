@@ -29,7 +29,7 @@ export function facebookGraphApiBaseUrl(): string {
   return `https://graph.facebook.com/${facebookGraphApiVersion()}`;
 }
 
-export const FACEBOOK_OAUTH_DIALOG_URL = "https://www.facebook.com/dialog/oauth";
+export const FACEBOOK_OAUTH_DIALOG_URL = "https://www.facebook.com/v21.0/dialog/oauth";
 export const FACEBOOK_TOKEN_URL = "https://graph.facebook.com/oauth/access_token";
 /** Meta Lead Ads use case permissions — see developers.facebook.com/docs/permissions */
 export const FACEBOOK_OAUTH_SCOPES =
@@ -125,6 +125,79 @@ export async function exchangeFacebookLongLivedUserToken(
   }
 
   return { ok: true, accessToken: data.access_token, expiresIn: data.expires_in ?? 5_184_000 };
+}
+
+export type FacebookTokenInspection =
+  | {
+      ok: true;
+      type: string;
+      scopes: string[];
+      granularPageIds: string[];
+      hasPageAccess: boolean;
+    }
+  | { ok: false; message: string };
+
+/** Inspect a freshly exchanged token (never logs the token itself). */
+export async function inspectFacebookAccessToken(accessToken: string): Promise<FacebookTokenInspection> {
+  const appId = process.env.FACEBOOK_APP_ID?.trim();
+  const appSecret = process.env.FACEBOOK_APP_SECRET?.trim();
+  if (!appId || !appSecret) return { ok: false, message: "Facebook is not configured." };
+
+  const appTokenParams = new URLSearchParams({
+    client_id: appId,
+    client_secret: appSecret,
+    grant_type: "client_credentials",
+  });
+  const appTokenRes = await fetch(`${FACEBOOK_TOKEN_URL}?${appTokenParams}`, {
+    signal: AbortSignal.timeout(12_000),
+  });
+  const appTokenData = await appTokenRes.json().catch(() => null) as { access_token?: string; error?: { message?: string } } | null;
+  if (!appTokenRes.ok || !appTokenData?.access_token) {
+    return { ok: false, message: appTokenData?.error?.message ?? "Could not inspect Facebook token." };
+  }
+
+  const url =
+    `${facebookGraphApiBaseUrl()}/debug_token` +
+    `?input_token=${encodeURIComponent(accessToken)}` +
+    `&access_token=${encodeURIComponent(appTokenData.access_token)}`;
+  const res = await fetch(url, { signal: AbortSignal.timeout(12_000) });
+  const body = await res.json().catch(() => null) as {
+    data?: {
+      type?: string;
+      scopes?: string[];
+      granular_scopes?: { scope?: string; target_ids?: (string | number)[] }[];
+    };
+    error?: { message?: string };
+  } | null;
+  if (!res.ok || body?.error || !body?.data) {
+    return { ok: false, message: body?.error?.message ?? "Could not inspect Facebook token." };
+  }
+
+  const scopes = body.data.scopes ?? [];
+  const pageIds = new Set<string>();
+  for (const entry of body.data.granular_scopes ?? []) {
+    const scope = String(entry.scope ?? "");
+    if (!scope.startsWith("pages_") && scope !== "leads_retrieval" && scope !== "pages_manage_ads") continue;
+    for (const id of entry.target_ids ?? []) pageIds.add(String(id));
+  }
+  const hasPageAccess =
+    pageIds.size > 0 ||
+    scopes.includes("pages_show_list") ||
+    scopes.includes("pages_manage_metadata") ||
+    scopes.includes("leads_retrieval");
+
+  console.error(
+    "[facebook oauth] token_inspect",
+    JSON.stringify({ type: body.data.type, scopes, granularPageCount: pageIds.size, hasPageAccess }),
+  );
+
+  return {
+    ok: true,
+    type: String(body.data.type ?? ""),
+    scopes,
+    granularPageIds: [...pageIds],
+    hasPageAccess,
+  };
 }
 
 /**

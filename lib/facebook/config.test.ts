@@ -48,6 +48,7 @@ describe("buildFacebookOAuthUrl", () => {
     const url = buildFacebookOAuthUrl("venue-123");
     assert.ok(url);
     const parsed = new URL(url!);
+    assert.equal(parsed.origin + parsed.pathname, "https://www.facebook.com/v21.0/dialog/oauth");
     assert.equal(parsed.searchParams.get("config_id"), "914008317965817");
     assert.equal(parsed.searchParams.get("scope"), null);
     assert.equal(parsed.searchParams.get("response_type"), "code");

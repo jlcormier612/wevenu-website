@@ -7,7 +7,6 @@ import { AlertTriangle, CheckCircle2, ExternalLink, Loader2, RefreshCw } from "l
 import { toast } from "sonner";
 
 import {
-  disconnectFacebookAction,
   getFacebookConnectUrlAction,
   listFacebookLeadFormsAction,
   listFacebookPagesAction,
@@ -209,15 +208,15 @@ export function FacebookConnectSection({
   async function runDisconnect() {
     setDisconnecting(true);
     try {
-      const result = await disconnectFacebookAction();
-      if (!result.ok) {
-        toast.error(result.message ?? "Could not disconnect Facebook.");
+      const res = await fetch("/api/facebook/disconnect", { method: "POST" });
+      const result = (await res.json().catch(() => null)) as { ok?: boolean; message?: string } | null;
+      if (!res.ok || !result?.ok) {
+        toast.error(result?.message ?? "Could not disconnect Facebook.");
         setDisconnecting(false);
         setConfirmDisconnect(false);
         return;
       }
       toast.success("Facebook disconnected.");
-      // Hard navigation so a hung Page-list server action cannot leave stale UI.
       window.location.assign("/settings#facebook");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Could not disconnect Facebook.");

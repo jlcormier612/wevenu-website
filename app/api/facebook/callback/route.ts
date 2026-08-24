@@ -8,6 +8,7 @@ import {
   exchangeFacebookLongLivedUserToken,
   facebookPublicAppOrigin,
   facebookUsesLoginForBusiness,
+  inspectFacebookAccessToken,
 } from "@/lib/facebook/config";
 
 /**
@@ -76,6 +77,19 @@ export async function GET(request: NextRequest) {
       }
       accessToken = longLived.accessToken;
       expiresIn = longLived.expiresIn;
+    }
+
+    const inspection = await inspectFacebookAccessToken(accessToken);
+    if (!inspection.ok) {
+      settingsUrl.searchParams.set("facebook_error", inspection.message);
+      return NextResponse.redirect(settingsUrl);
+    }
+    if (!inspection.hasPageAccess) {
+      settingsUrl.searchParams.set(
+        "facebook_error",
+        "Facebook authorized your profile but did not grant Page access. In Meta's dialog, choose your Business portfolio and select at least one Facebook Page before continuing.",
+      );
+      return NextResponse.redirect(settingsUrl);
     }
 
     await connectFacebookAction({ userAccessToken: accessToken, expiresIn });
