@@ -24,7 +24,9 @@ export async function getFacebookConnection(): Promise<FacebookConnection | null
   if (!isSupabaseConfigured) return null;
   const venue = await getCurrentVenue();
   if (!venue) return null;
-  return repo.getConnection(await createClient(), venue.id);
+  const connection = await repo.getConnection(await createClient(), venue.id);
+  if (!connection || connection.status === "disconnected") return null;
+  return connection;
 }
 
 export async function getFacebookLeadForms(): Promise<FacebookLeadForm[]> {

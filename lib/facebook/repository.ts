@@ -54,9 +54,9 @@ export async function setSelectedPage(client: any, venueId: string, input: { pag
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function disconnectConnection(client: any, venueId: string): Promise<void> {
-  const { error } = await client.from("facebook_connections").update({
-    status: "disconnected", disconnected_at: new Date().toISOString(),
-  }).eq("venue_id", venueId);
+  // Remove form selections; connection row is deleted so the next Connect is a fresh OAuth grant.
+  await client.from("facebook_lead_forms").delete().eq("venue_id", venueId);
+  const { error } = await client.from("facebook_connections").delete().eq("venue_id", venueId);
   if (error) throw error;
 }
 

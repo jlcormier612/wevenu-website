@@ -2,7 +2,7 @@
 
 import * as React from "react";
 
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import { AlertTriangle, CheckCircle2, ExternalLink, Loader2, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 
@@ -121,6 +121,7 @@ export function FacebookConnectSection({
   recentLog: FacebookLeadLogEntry[];
 }) {
   const searchParams = useSearchParams();
+  const router = useRouter();
   const fbSuccess = searchParams.get("facebook_success");
   const fbError = searchParams.get("facebook_error");
   const [disconnecting, startDisconnect] = React.useTransition();
@@ -152,10 +153,32 @@ export function FacebookConnectSection({
     if (!confirm("Disconnect Facebook Lead Ads? New leads from your ad forms will stop importing until you reconnect.")) return;
     startDisconnect(async () => {
       const result = await disconnectFacebookAction();
-      if (result.ok) toast.success("Facebook disconnected.");
-      else toast.error(result.message ?? "Could not disconnect Facebook.");
+      if (result.ok) {
+        toast.success("Facebook disconnected.");
+        setShowPicker(false);
+        router.refresh();
+      } else {
+        toast.error(result.message ?? "Could not disconnect Facebook.");
+      }
     });
   }
+
+  const disconnectButton = (
+    <Button
+      type="button"
+      variant="outline"
+      size="sm"
+      className="text-muted-foreground"
+      onClick={handleDisconnect}
+      disabled={disconnecting}
+    >
+      {disconnecting ? (
+        <><Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />Disconnecting…</>
+      ) : (
+        "Disconnect Facebook"
+      )}
+    </Button>
+  );
 
   return (
     <Card id="facebook" className="scroll-mt-20">
@@ -199,9 +222,7 @@ export function FacebookConnectSection({
                 )}
                 <div className="flex gap-2">
                   <Button type="button" variant="outline" size="sm" onClick={() => setShowPicker(true)}>Manage connected forms</Button>
-                  <Button type="button" variant="outline" size="sm" className="text-muted-foreground" onClick={handleDisconnect} disabled={disconnecting}>
-                    {disconnecting ? <><Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />Disconnecting…</> : "Disconnect Facebook"}
-                  </Button>
+                  {disconnectButton}
                 </div>
                 {recentLog.length > 0 && (
                   <div className="space-y-1.5 rounded-lg border border-border p-3">
@@ -233,6 +254,9 @@ export function FacebookConnectSection({
                   </div>
                 ) : null}
                 <PageFormPicker onDone={() => setShowPicker(false)} />
+                <div className="flex flex-wrap items-center gap-2 border-t border-border pt-3">
+                  {disconnectButton}
+                </div>
               </>
             )}
           </div>
@@ -250,6 +274,7 @@ export function FacebookConnectSection({
                 <ExternalLink className="h-3.5 w-3.5" /> Reconnect Facebook
               </a>
             )}
+            {connection && disconnectButton}
           </div>
         ) : (
           <div className="space-y-3">
