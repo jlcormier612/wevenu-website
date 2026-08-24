@@ -8,6 +8,7 @@ import { toast } from "sonner";
 
 import {
   disconnectFacebookAction,
+  getFacebookConnectUrlAction,
   listFacebookLeadFormsAction,
   listFacebookPagesAction,
   selectFacebookLeadFormsAction,
@@ -20,19 +21,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Switch } from "@/components/ui/switch";
 import type { FacebookConnection, FacebookLeadForm, FacebookLeadLogEntry } from "@/lib/facebook/types";
 
-function buildFacebookConnectUrl(venueId: string): string | null {
-  const clientId = process.env.NEXT_PUBLIC_FACEBOOK_APP_ID;
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
-  if (!clientId) return null;
-  const params = new URLSearchParams({
-    client_id: clientId,
-    response_type: "code",
-    redirect_uri: `${appUrl}/api/facebook/callback`,
-    scope: "pages_show_list,pages_manage_metadata,leads_retrieval,pages_read_engagement",
-    state: venueId,
-  });
-  return `https://www.facebook.com/dialog/oauth?${params}`;
-}
 
 type Page = { id: string; name: string };
 type Form = { id: string; name: string };
@@ -143,11 +131,18 @@ export function FacebookConnectSection({
     if (fbError) toast.error(`Facebook error: ${fbError}`);
   }, [fbSuccess, fbError]);
 
-  // Client-side OAuth exchange isn't possible for Meta from a plain link
-  // (unlike Stripe/QuickBooks's authorization-code flow, which is fine as
-  // a plain <a>) — Meta's dialog also uses a redirect-based authorization
-  // code flow, so the same plain-link pattern applies here.
-  const connectUrl = buildFacebookConnectUrl(venueId);
+  const [connectUrl, setConnectUrl] = React.useState<string | null>(null);
+
+  // Server builds OAuth URL from FACEBOOK_APP_ID (ECS) so Connect works even
+  // when NEXT_PUBLIC_FACEBOOK_APP_ID was omitted from the image build.
+  React.useEffect(() => {
+    let cancelled = false;
+    getFacebookConnectUrlAction(venueId).then((url) => {
+      if (!cancelled) setConnectUrl(url);
+    });
+    return () => { cancelled = true; };
+  }, [venueId]);
+
   const isConfigured = !!connectUrl;
   const needsPageSelection = connection?.status === "needs_page_selection";
   const isConnected = connection?.status === "connected";

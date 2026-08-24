@@ -18,6 +18,12 @@ export async function connectFacebookAction(input: { userAccessToken: string; ex
   return result;
 }
 
+/** Server-built OAuth URL — uses runtime FACEBOOK_APP_ID when public build arg is missing. */
+export async function getFacebookConnectUrlAction(venueId: string): Promise<string | null> {
+  const { buildFacebookOAuthUrl } = await import("@/lib/facebook/config");
+  return buildFacebookOAuthUrl(venueId);
+}
+
 export async function listFacebookPagesAction() {
   return listFacebookPages();
 }
