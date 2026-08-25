@@ -31,9 +31,31 @@ export function validateClientStatus(status: string): status is ClientStatus {
   return CLIENT_STATUSES.some((s) => s.value === status);
 }
 
-export function validateKeyDateInput(input: KeyDateInput): ClientErrors {
+/** "Rehearsal Dinner", "rehearsal", "Rehearsal" — anything starting with the word, case/whitespace-insensitive. */
+export function isRehearsalKeyDateLabel(label: string): boolean {
+  return /^rehearsal\b/i.test(label.trim());
+}
+
+/**
+ * clientRehearsalDate is the structured Rehearsal Date field on the client
+ * record (Client Info) — the canonical source once set. A manually-added
+ * "Rehearsal Dinner" Key Date that disagrees with it would silently create
+ * two conflicting rehearsal dates with no warning; this blocks that instead
+ * of letting it happen. Two dates that already agree are allowed through
+ * (also true when a key date is being added before the client record has a
+ * rehearsal date set — that manual entry is left alone, unchanged behavior).
+ */
+export function validateKeyDateInput(input: KeyDateInput, clientRehearsalDate?: string | null): ClientErrors {
   const errors: ClientErrors = {};
   if (!input.label.trim()) errors.label = "A label is required.";
   if (!input.date) errors.date = "A date is required.";
+  if (
+    !errors.label && !errors.date &&
+    clientRehearsalDate &&
+    isRehearsalKeyDateLabel(input.label) &&
+    input.date !== clientRehearsalDate
+  ) {
+    errors.date = `This client's Rehearsal Date is already set to ${clientRehearsalDate} in Client Info. Edit that field instead of adding a second, conflicting rehearsal date here.`;
+  }
   return errors;
 }

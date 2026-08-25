@@ -402,9 +402,15 @@ export async function deleteClientNote_(noteId: string): Promise<ClientActionRes
 // ---- key dates --------------------------------------------------------------
 
 export async function addKeyDate(clientId: string, input: KeyDateInput): Promise<ClientActionResult> {
-  const errors = validateKeyDateInput(input);
-  if (Object.keys(errors).length > 0) return { ok: false, errors, message: errors.label ?? errors.date };
+  const baseErrors = validateKeyDateInput(input);
+  if (Object.keys(baseErrors).length > 0) return { ok: false, errors: baseErrors, message: baseErrors.label ?? baseErrors.date };
   const result = await withVenue(async (supabase, venueId) => {
+    // Re-validate with the client's structured Rehearsal Date now that we
+    // have DB access, so a manually-added "Rehearsal Dinner" key date can't
+    // silently disagree with it — see validateKeyDateInput's own comment.
+    const client = await repo.getClient(supabase, venueId, clientId);
+    const errors = validateKeyDateInput(input, client?.rehearsalDate ?? null);
+    if (Object.keys(errors).length > 0) return { ok: false, errors, message: errors.label ?? errors.date } as ClientActionResult;
     await repo.insertKeyDate(supabase, venueId, clientId, input);
     await repo.insertClientActivity(supabase, venueId, clientId, "key_date_added",
       `Key date added: ${input.label}`);

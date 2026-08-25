@@ -227,6 +227,7 @@ export default async function BookingWorkspacePage({ params }: Props) {
       inventoryTemplates={inventoryTemplates}
       eventOrderTemplates={eventOrderTemplates}
       keyDates={client.keyDates}
+      clientRehearsalDate={client.rehearsalDate}
     />
   );
 }

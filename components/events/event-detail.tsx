@@ -280,6 +280,7 @@ export function EventDetail({
   readinessSummary,
   originatingLeadId = null,
   keyDates = [],
+  clientRehearsalDate = null,
 }: {
   event: EventWithDetails;
   availableVendors?: import("@/lib/vendors/types").Vendor[];
@@ -345,6 +346,8 @@ export function EventDetail({
   // Key Dates — already fetched on the Booking Workspace page via getClient();
   // mounted in Overview beside Event summary (existing KeyDatesSection).
   keyDates?: ClientKeyDate[];
+  /** The client's structured Rehearsal Date (Client Info) — passed through so KeyDatesSection can synthesize a single canonical Rehearsal entry instead of allowing a second, independently-editable one. */
+  clientRehearsalDate?: string | null;
 }) {
   const router = useRouter();
   const [statusPending, startStatus] = React.useTransition();
@@ -623,7 +626,7 @@ export function EventDetail({
             <Card>
               <CardHeader><CardTitle className="text-base">Key Dates</CardTitle></CardHeader>
               <CardContent>
-                <KeyDatesSection clientId={event.clientId!} initialKeyDates={keyDates} />
+                <KeyDatesSection clientId={event.clientId!} initialKeyDates={keyDates} clientRehearsalDate={clientRehearsalDate} />
               </CardContent>
             </Card>
           </div>

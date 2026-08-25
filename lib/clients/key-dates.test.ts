@@ -33,6 +33,38 @@ describe("validateKeyDateInput", () => {
     });
     assert.deepEqual(errors, {});
   });
+
+  it("blocks a Rehearsal Dinner key date that disagrees with the client's structured Rehearsal Date", () => {
+    const errors = validateKeyDateInput(
+      { label: "Rehearsal Dinner", date: "2026-09-01", note: "" },
+      "2026-08-30",
+    );
+    assert.match(errors.date ?? "", /already set to 2026-08-30/);
+  });
+
+  it("allows a Rehearsal Dinner key date that agrees with the client's structured Rehearsal Date", () => {
+    const errors = validateKeyDateInput(
+      { label: "Rehearsal Dinner", date: "2026-08-30", note: "" },
+      "2026-08-30",
+    );
+    assert.deepEqual(errors, {});
+  });
+
+  it("allows a Rehearsal Dinner key date when the client has no structured Rehearsal Date set", () => {
+    const errors = validateKeyDateInput(
+      { label: "Rehearsal Dinner", date: "2026-09-01", note: "" },
+      null,
+    );
+    assert.deepEqual(errors, {});
+  });
+
+  it("does not flag unrelated labels even when they disagree with the Rehearsal Date", () => {
+    const errors = validateKeyDateInput(
+      { label: "Final Guest Count Due", date: "2026-09-01", note: "" },
+      "2026-08-30",
+    );
+    assert.deepEqual(errors, {});
+  });
 });
 
 describe("deleteKeyDate rows-affected", () => {

@@ -12,9 +12,25 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { KEY_DATE_SUGGESTIONS, daysUntil, formatDate } from "@/lib/clients/constants";
 import type { ClientKeyDate, KeyDateInput } from "@/lib/clients/types";
+import { isRehearsalKeyDateLabel } from "@/lib/clients/validation";
 import { cn } from "@/lib/utils";
 
-export function KeyDatesSection({ clientId, initialKeyDates }: { clientId: string; initialKeyDates: ClientKeyDate[] }) {
+const REHEARSAL_SYNTHETIC_ID = "__rehearsal-date-from-client-info";
+
+/**
+ * clientRehearsalDate is the structured Rehearsal Date on the client record
+ * (Client Info) — the canonical source once set (see
+ * lib/clients/validation.ts's validateKeyDateInput). Rendered as a
+ * synthesized, non-deletable entry here instead of letting a second,
+ * independently-editable "Rehearsal Dinner" Key Date exist and silently
+ * drift from it. Any already-stored Key Date that's an exact duplicate
+ * (same date, "Rehearsal…" label) is hidden in favor of this one; a stored
+ * one with a genuinely different date is left visible so the conflict is
+ * seen, not silently hidden.
+ */
+export function KeyDatesSection({
+  clientId, initialKeyDates, clientRehearsalDate = null,
+}: { clientId: string; initialKeyDates: ClientKeyDate[]; clientRehearsalDate?: string | null }) {
   const router = useRouter();
   const [keyDates, setKeyDates] = React.useState(initialKeyDates);
   const [label, setLabel] = React.useState("");
@@ -22,6 +38,16 @@ export function KeyDatesSection({ clientId, initialKeyDates }: { clientId: strin
   const [note, setNote] = React.useState("");
   const [showForm, setShowForm] = React.useState(false);
   const [addPending, startAdd] = React.useTransition();
+
+  const storedDates = clientRehearsalDate
+    ? keyDates.filter((kd) => !(isRehearsalKeyDateLabel(kd.label) && kd.date === clientRehearsalDate))
+    : keyDates;
+  const displayDates = clientRehearsalDate
+    ? [...storedDates, {
+        id: REHEARSAL_SYNTHETIC_ID, venueId: "", clientId, label: "Rehearsal Dinner",
+        date: clientRehearsalDate, note: null, createdAt: "",
+      } satisfies ClientKeyDate].sort((a, b) => a.date.localeCompare(b.date))
+    : keyDates;
 
   function handleAdd() {
     if (!label.trim() || !date) return;
@@ -39,23 +65,38 @@ export function KeyDatesSection({ clientId, initialKeyDates }: { clientId: strin
     });
   }
 
+  const [deletingId, setDeletingId] = React.useState<string | null>(null);
+
+  // Deliberately not optimistic: removing kdId from state before the
+  // request resolves left a deleted-looking row stuck on screen forever
+  // when the delete was actually rejected server-side (this useState's
+  // initialKeyDates is only a starting value — router.refresh() re-renders
+  // the server parent but does not reset already-mutated client state).
+  // Waiting for a real ok/not-ok result means the row only ever disappears
+  // when it's actually gone.
   async function handleDelete(kdId: string) {
-    setKeyDates((p) => p.filter((k) => k.id !== kdId));
+    setDeletingId(kdId);
     const result = await deleteKeyDateAction(kdId);
-    if (!result.ok) { toast.error("Could not delete key date."); router.refresh(); }
+    setDeletingId(null);
+    if (result.ok) {
+      setKeyDates((p) => p.filter((k) => k.id !== kdId));
+    } else {
+      toast.error(result.message ?? "Could not delete key date.");
+    }
   }
 
   return (
     <div className="space-y-4">
-      {keyDates.length === 0 && !showForm && (
+      {displayDates.length === 0 && !showForm && (
         <p className="text-center text-sm text-muted-foreground py-4">No key dates yet. Add rehearsal, deadlines, and other milestones.</p>
       )}
       {/* Key date list */}
       <div className="space-y-2">
-        {keyDates.map((kd) => {
+        {displayDates.map((kd) => {
           const days = daysUntil(kd.date);
           const past = days < 0;
           const soon = !past && days <= 7;
+          const isSynthesizedRehearsal = kd.id === REHEARSAL_SYNTHETIC_ID;
           return (
             <div key={kd.id} className="group flex items-start gap-3 rounded-lg border border-border bg-card p-3">
               <span className={cn("flex h-8 w-8 shrink-0 items-center justify-center rounded-lg", past ? "bg-muted text-muted-foreground" : soon ? "bg-warning/15 text-warning-foreground" : "bg-accent/60 text-heading")}>
@@ -69,11 +110,16 @@ export function KeyDatesSection({ clientId, initialKeyDates }: { clientId: strin
                   {past && ` · ${Math.abs(days)} days ago`}
                 </p>
                 {kd.note && <p className="text-xs text-muted-foreground">{kd.note}</p>}
+                {isSynthesizedRehearsal && (
+                  <p className="text-xs text-muted-foreground italic">From this client&apos;s Rehearsal Date in Client Info — edit it there.</p>
+                )}
               </div>
-              <button type="button" onClick={() => handleDelete(kd.id)}
-                className="opacity-0 transition-opacity group-hover:opacity-100 text-muted-foreground hover:text-destructive" aria-label="Delete">
-                <Trash2 className="h-3.5 w-3.5" />
-              </button>
+              {!isSynthesizedRehearsal && (
+                <button type="button" onClick={() => handleDelete(kd.id)} disabled={deletingId === kd.id}
+                  className="opacity-0 transition-opacity group-hover:opacity-100 disabled:opacity-50 text-muted-foreground hover:text-destructive" aria-label="Delete">
+                  <Trash2 className="h-3.5 w-3.5" />
+                </button>
+              )}
             </div>
           );
         })}
