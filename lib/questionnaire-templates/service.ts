@@ -221,6 +221,23 @@ export async function setTemplateArchived(id: string, isArchived: boolean): Prom
   return { ok: true };
 }
 
+/** Hard delete. RLS already gates this to Owner/Manager (questionnaire_templates_delete_gate,
+ * 20261260000000) — a zero-row result here means that gate rejected the request, not that the
+ * template didn't exist. Applying a template only ever snapshots kind + fields onto the event's
+ * own working questionnaire (see this file's own header comment) — there is no ongoing FK back
+ * to the template, so deleting it never touches a questionnaire already in flight on an event. */
+export async function deleteTemplate(id: string): Promise<{ ok: true } | { ok: false; message: string }> {
+  const venue = await getCurrentVenue();
+  if (!venue) return { ok: false, message: "No venue found." };
+  const supabase = await createClient();
+  const { data, error } = await supabase.from("questionnaire_templates").delete().eq("id", id).eq("venue_id", venue.id).select("id");
+  if (error) return { ok: false, message: error.message };
+  if (!data || data.length === 0) {
+    return { ok: false, message: "Only an Owner or Manager can delete this questionnaire." };
+  }
+  return { ok: true };
+}
+
 export async function duplicateTemplate(id: string, newName: string): Promise<{ ok: true; templateId: string } | { ok: false; message: string }> {
   const source = await getTemplate(id);
   if (!source) return { ok: false, message: "Template not found." };

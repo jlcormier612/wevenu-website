@@ -8,7 +8,8 @@ import { getEmailIntakeStatus } from "@/lib/lead-intake/email-status";
 import { getIntakeHealthSummary } from "@/lib/lead-intake/monitoring";
 import { getQrCampaignAnalytics, getQrCampaigns } from "@/lib/qr-campaigns/service";
 import { getLeadCaptureStageStatus } from "@/lib/setup-hub/service";
-import { getTourAvailabilityExceptions, getTourAvailabilityWindows, getTourSettings } from "@/lib/tours/service";
+import { editorHydrationFromAvailability } from "@/lib/tours/availability-read";
+import { getTourAvailability, getTourSettings } from "@/lib/tours/service";
 import { getCurrentVenue } from "@/lib/venue/service";
 
 export const metadata: Metadata = { title: "Lead Capture — Setup" };
@@ -16,15 +17,14 @@ export const dynamic = "force-dynamic";
 
 export default async function LeadCaptureSetupPage() {
   const [
-    venue, emailIntakeStatus, tourSettings, tourWindows, tourExceptions,
+    venue, emailIntakeStatus, tourSettings, tourAvailability,
     facebookConnection, facebookLeadForms, facebookLog,
     qrCampaigns, qrAnalytics, intakeHealth, stageStatus,
   ] = await Promise.all([
     getCurrentVenue(),
     getEmailIntakeStatus(),
     getTourSettings(),
-    getTourAvailabilityWindows(),
-    getTourAvailabilityExceptions(),
+    getTourAvailability(),
     getFacebookConnection(),
     getFacebookLeadForms(),
     getRecentFacebookLog(),
@@ -35,6 +35,9 @@ export default async function LeadCaptureSetupPage() {
   ]);
 
   if (!venue) return null;
+
+  const { windows: tourWindows, exceptions: tourExceptions, loadError: tourAvailabilityLoadError } =
+    editorHydrationFromAvailability(tourAvailability);
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
   const leadEmailAddress = process.env.RESEND_INBOUND_ADDRESS
@@ -54,8 +57,9 @@ export default async function LeadCaptureSetupPage() {
         leadEmailAddress={leadEmailAddress}
         emailIntakeStatus={emailIntakeStatus}
         tourSettings={tourSettings}
-        tourWindowsCount={tourWindows.length}
-        tourExceptionsCount={tourExceptions.length}
+        tourWindows={tourWindows}
+        tourExceptions={tourExceptions}
+        tourAvailabilityLoadError={tourAvailabilityLoadError}
         facebookConnection={facebookConnection}
         facebookLeadForms={facebookLeadForms}
         facebookLog={facebookLog}

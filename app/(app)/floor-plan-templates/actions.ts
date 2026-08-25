@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 
 import {
-  addObject, clearTemplate, createTemplate, createTemplateFromPaste, deleteObject_,
+  addObject, clearTemplate, createTemplate, createTemplateFromPaste, deleteObject_, deleteTemplate_,
   duplicateTemplate, renameTemplate_, reorderObject, setBackgroundLocked, setTemplateArchived_,
   setTemplateDefault_, updateBackground, updateObject_, updateRoomSettings,
 } from "@/lib/floor-plan-templates/service";
@@ -40,6 +40,12 @@ export async function setTemplateDefaultAction(id: string): Promise<FloorPlanTem
 
 export async function setTemplateArchivedAction(id: string, isArchived: boolean): Promise<FloorPlanTemplateActionResult> {
   const result = await setTemplateArchived_(id, isArchived);
+  if (result.ok) revalidateLibrary();
+  return result;
+}
+
+export async function deleteTemplateAction(id: string): Promise<FloorPlanTemplateActionResult> {
+  const result = await deleteTemplate_(id);
   if (result.ok) revalidateLibrary();
   return result;
 }

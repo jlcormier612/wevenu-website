@@ -131,6 +131,7 @@ export async function getLead(leadId: string): Promise<LeadWithDetails | null> {
  */
 async function createLeadCore(
   supabase: Awaited<ReturnType<typeof createClient>>, venueId: string, input: LeadInput, trustTier: TrustTier,
+  historicalImport = false,
 ): Promise<CreateLeadResult> {
   // Routed through the Lead Intake pipeline (Log Attempt → Relationship
   // Resolution → Lead Creation → Automation Trigger → Assignment Hook) —
@@ -142,6 +143,7 @@ async function createLeadCore(
     venueId,
     source: input.source || "other",
     trustTier,
+    historicalImport,
     rawPayload: input,
     input: {
       firstName: input.firstName,
@@ -162,7 +164,7 @@ async function createLeadCore(
     },
     create: async () => {
       try {
-        const leadId = await repo.insertLead(supabase, venueId, input);
+        const leadId = await repo.insertLead(supabase, venueId, input, historicalImport);
         const { data: lead } = await supabase.from("leads").select("relationship_id")
           .eq("id", leadId).maybeSingle<{ relationship_id: string | null }>();
         if (!lead?.relationship_id) return { ok: false, error: "Lead created without a relationship." };
@@ -187,21 +189,31 @@ async function createLeadCore(
  * defined, but every import-created lead was silently mislabeled "manual"
  * since this always hardcoded that value regardless of caller.
  */
-export async function createLead(input: LeadInput, trustTier: TrustTier = "manual"): Promise<CreateLeadResult> {
+export async function createLead(
+  input: LeadInput, trustTier: TrustTier = "manual", historicalImport = false,
+): Promise<CreateLeadResult> {
   const errors = validateLeadInput(input);
   if (Object.keys(errors).length > 0) return { ok: false, errors };
-  const result = await withVenue((supabase, venueId) => createLeadCore(supabase, venueId, input, trustTier));
+  const result = await withVenue((supabase, venueId) => createLeadCore(supabase, venueId, input, trustTier, historicalImport));
   return result as CreateLeadResult;
 }
 
-/** White-Glove Migration (Hospitality Success Platform §2.2a step 4) — see createClientForVenue's doc comment for the pattern this mirrors. Always an import, so trustTier is fixed at "import", not a parameter. */
-export async function createLeadForVenue(venueId: string, input: LeadInput): Promise<CreateLeadResult> {
+/**
+ * White-Glove Migration (Hospitality Success Platform §2.2a step 4) — see
+ * createClientForVenue's doc comment for the pattern this mirrors. Always
+ * an import, so trustTier is fixed at "import", not a parameter.
+ * `historicalImport` (Migration Center) defaults true here — an admin
+ * importing on a venue's behalf is migrating backfilled data far more often
+ * than not; a genuinely current lead a specialist enters live should pass
+ * `false` explicitly.
+ */
+export async function createLeadForVenue(venueId: string, input: LeadInput, historicalImport = true): Promise<CreateLeadResult> {
   const actor = await requireAdminUser();
   if (!actor) return { ok: false, message: "Not signed in as an HQ admin." };
   const errors = validateLeadInput(input);
   if (Object.keys(errors).length > 0) return { ok: false, errors };
   const admin = createAdminClient();
-  return createLeadCore(admin, venueId, input, "import");
+  return createLeadCore(admin, venueId, input, "import", historicalImport);
 }
 
 // ---- update status ----------------------------------------------------------

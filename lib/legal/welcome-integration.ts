@@ -137,7 +137,7 @@ export function inferWelcomeContext(input: {
   if (input.userType === "couple") return "coupleInvitation";
   if (input.userType === "vendor") return "vendorInvitation";
   const path = input.pathname ?? "";
-  if (path === "/setup" || path.startsWith("/setup/")) return "venueSignup";
+  if (path === "/setup" || path.startsWith("/setup/") || path.startsWith("/setup-hub")) return "venueSignup";
   if (input.userType === "venue_owner") return "venueSignup";
   return "versionUpdate";
 }

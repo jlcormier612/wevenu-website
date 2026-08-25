@@ -62,6 +62,23 @@ export function activationUrlFromToken(token: string): string {
   return `${activationBaseUrl()}/activate/${encodeURIComponent(clean)}`;
 }
 
+/** Venue product-app origin for post-activation sign-in (not the workspace host). */
+export function productAppBaseUrl(): string {
+  return (
+    process.env.NEXT_PUBLIC_PRODUCT_APP_URL?.trim() ||
+    process.env.NEXT_PUBLIC_APP_URL?.trim() ||
+    "http://localhost:3000"
+  ).replace(/\/$/, "");
+}
+
+/**
+ * After password creation, send the owner to product login with a return
+ * path into Setup Hub — not a bare /login that then dumps them on Dashboard.
+ */
+export function productPostActivationLoginUrl(): string {
+  return `${productAppBaseUrl()}/login?activated=1&next=${encodeURIComponent("/setup-hub")}`;
+}
+
 export function paragraphsToHtml(paragraphs: string[]): string {
   return paragraphs
     .map(

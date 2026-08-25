@@ -9,17 +9,20 @@ import * as React from "react";
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { BookPlus, Eye, Loader2, MoreHorizontal, Sparkles } from "lucide-react";
+import { BookPlus, Loader2, Sparkles, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { addFloorPlanStarterAgainAction } from "@/app/(app)/library/floor-plan-templates/actions";
+import { applyTemplateAction } from "@/app/(app)/events/[id]/floor-plan-actions";
 import {
-  duplicateTemplateAction, renameTemplateAction, setTemplateArchivedAction, setTemplateDefaultAction,
+  deleteTemplateAction, duplicateTemplateAction, renameTemplateAction, setTemplateArchivedAction, setTemplateDefaultAction,
 } from "@/app/(app)/floor-plan-templates/actions";
 import { FloorPlanLayoutPreview } from "@/components/floor-plan/floor-plan-layout-preview";
 import { FloorPlanTemplateStarterPicker } from "@/components/floor-plan-templates/floor-plan-template-starter-picker";
 import { LIBRARY_LABELS } from "@/components/library/labels";
 import { LibraryArchivedSection } from "@/components/library/library-archived-section";
+import { LibraryAssetCard } from "@/components/library/library-asset-card";
+import { LibraryDeleteConfirmDialog } from "@/components/library/library-delete-confirm-dialog";
 import { partitionArchived } from "@/components/library/partition-archived";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -106,6 +109,113 @@ function TemplatePreviewSheet({
   );
 }
 
+export type FloorPlanEventOption = {
+  id: string;
+  name: string;
+  eventDate: string;
+};
+
+type UseStep = "pick" | "confirm";
+
+function UseFloorPlanSheet({
+  template,
+  events,
+  open,
+  onOpenChange,
+}: {
+  template: FloorPlanTemplateWithStats | null;
+  events: FloorPlanEventOption[];
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}) {
+  const router = useRouter();
+  const [q, setQ] = React.useState("");
+  const [step, setStep] = React.useState<UseStep>("pick");
+  const [selected, setSelected] = React.useState<FloorPlanEventOption | null>(null);
+  const [pending, startTransition] = React.useTransition();
+
+  React.useEffect(() => {
+    if (open) { setStep("pick"); setSelected(null); setQ(""); }
+  }, [open]);
+
+  const filtered = events.filter((e) => !q.trim() || e.name.toLowerCase().includes(q.trim().toLowerCase()));
+
+  function apply() {
+    if (!selected || !template) return;
+    startTransition(async () => {
+      const result = await applyTemplateAction(selected.id, template.id, template.name, template.spaceId ?? null);
+      if (result.ok) {
+        toast.success("Floor plan created on the event.");
+        router.push(`/events/${selected.id}/floor-plans/${result.floorPlanId}`);
+        onOpenChange(false);
+      } else {
+        toast.error(result.message ?? "Could not create floor plan.");
+      }
+    });
+  }
+
+  return (
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent side="right" className="w-full sm:max-w-lg overflow-y-auto">
+        <SheetHeader className="mb-4">
+          <SheetTitle>{LIBRARY_LABELS.useFloorPlan}</SheetTitle>
+          {step === "pick" ? (
+            <p className="text-sm text-muted-foreground">
+              Choose an event. This creates a new floor plan on that event from
+              &ldquo;{template?.name}&rdquo; — your original template is untouched.
+            </p>
+          ) : (
+            <p className="text-sm text-muted-foreground">Confirm before creating the floor plan.</p>
+          )}
+        </SheetHeader>
+
+        {step === "pick" ? (
+          <>
+            <Input placeholder="Search events…" value={q} onChange={(e) => setQ(e.target.value)} className="mb-3" />
+            {filtered.length === 0 ? (
+              <p className="text-sm text-muted-foreground py-8 text-center">No events found.</p>
+            ) : (
+              <ul className="space-y-1">
+                {filtered.map((ev) => (
+                  <li key={ev.id}>
+                    <button
+                      type="button"
+                      disabled={pending}
+                      onClick={() => { setSelected(ev); setStep("confirm"); }}
+                      className="w-full rounded-md border border-border px-3 py-2.5 text-left hover:bg-muted/40 disabled:opacity-50"
+                    >
+                      <p className="text-sm font-medium text-heading">{ev.name}</p>
+                      <p className="text-xs text-muted-foreground">{ev.eventDate}</p>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </>
+        ) : selected && template && (
+          <div className="space-y-4">
+            <div className="rounded-md border border-border bg-muted/30 p-4 space-y-2 text-sm">
+              <p><span className="text-muted-foreground">Template</span> · {template.name}</p>
+              <p><span className="text-muted-foreground">Event</span> · {selected.name}</p>
+            </div>
+            <ul className="list-disc space-y-1.5 pl-5 text-sm text-muted-foreground">
+              <li>Creates a new floor plan on the event, starting from this layout.</li>
+              <li>Your reusable template is never changed by editing the new copy.</li>
+              <li>Does not send email, SMS, or portal notifications.</li>
+            </ul>
+            <div className="flex justify-end gap-2 pt-2">
+              <Button type="button" variant="outline" disabled={pending} onClick={() => setStep("pick")}>Back</Button>
+              <Button type="button" disabled={pending} onClick={apply}>
+                {pending ? <><Loader2 className="mr-1.5 h-4 w-4 animate-spin" />Creating…</> : LIBRARY_LABELS.useFloorPlan}
+              </Button>
+            </div>
+          </div>
+        )}
+      </SheetContent>
+    </Sheet>
+  );
+}
+
 function StarterMenu({ missingKeys }: { missingKeys: FloorPlanStarterMasterKey[] }) {
   const router = useRouter();
   const [pending, startTransition] = React.useTransition();
@@ -141,7 +251,7 @@ function StarterMenu({ missingKeys }: { missingKeys: FloorPlanStarterMasterKey[]
 }
 
 function TemplateCard({
-  template, busy, onRename, onDuplicate, onSetDefault, onArchiveToggle, onPreview, archivedView,
+  template, busy, onRename, onDuplicate, onSetDefault, onArchiveToggle, onDelete, onPreview, onUse, archivedView,
 }: {
   template: FloorPlanTemplateWithStats;
   busy: boolean;
@@ -149,40 +259,51 @@ function TemplateCard({
   onDuplicate: () => void;
   onSetDefault: () => void;
   onArchiveToggle: () => void;
+  onDelete: () => void;
   onPreview: () => void;
+  onUse: () => void;
   archivedView?: boolean;
 }) {
-  const router = useRouter();
   const eventType = template.eventType ? eventTypeLabel(template.eventType) : "Any event type";
 
-  return (
-    <div
-      className={`group flex flex-col gap-2 rounded-xl border border-border bg-card p-4 transition-colors ${template.isArchived ? "opacity-60" : ""}`}
-    >
-      <div className="flex items-start justify-between gap-2">
-        <p className="min-w-0 truncate text-sm font-medium text-heading">{template.name}</p>
-        {!archivedView && (
-          <div className="shrink-0">
-            <DropdownMenu>
-              <DropdownMenuTrigger render={<Button variant="ghost" size="icon" className="h-7 w-7" disabled={busy} aria-label="Template actions" />}>
-                {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <MoreHorizontal className="h-3.5 w-3.5" />}
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={onPreview}><Eye className="mr-2 h-3.5 w-3.5" />Preview</DropdownMenuItem>
-                <DropdownMenuItem onClick={() => router.push(`/library/floor-plan-templates/${template.id}`)}>Edit</DropdownMenuItem>
-                <DropdownMenuItem onClick={onDuplicate}>Duplicate</DropdownMenuItem>
-                <DropdownMenuItem onClick={onRename}>Rename</DropdownMenuItem>
-                {!template.isArchived && !template.isDefault && (
-                  <DropdownMenuItem onClick={onSetDefault}>Set as Default</DropdownMenuItem>
-                )}
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={onArchiveToggle}>{template.isArchived ? "Restore" : "Archive"}</DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-        )}
-      </div>
+  const primaryActions = archivedView
+    ? [
+        { id: "preview", label: LIBRARY_LABELS.preview, onClick: onPreview, emphasis: "preview" as const },
+        { id: "restore", label: LIBRARY_LABELS.restore, onClick: onArchiveToggle, emphasis: "edit" as const, disabled: busy },
+      ]
+    : [
+        { id: "preview", label: LIBRARY_LABELS.preview, onClick: onPreview, emphasis: "preview" as const },
+        { id: "edit", label: LIBRARY_LABELS.edit, href: `/library/floor-plan-templates/${template.id}`, emphasis: "edit" as const },
+        { id: "use", label: LIBRARY_LABELS.useFloorPlan, onClick: onUse, emphasis: "use" as const },
+      ];
 
+  return (
+    <LibraryAssetCard
+      layout="grid"
+      title={template.name}
+      isStarter={Boolean(template.sourceMasterKey)}
+      isArchived={template.isArchived}
+      badges={
+        <>
+          <Badge variant="outline" className="text-[10px]">{eventType}</Badge>
+          {template.spaceName && <Badge variant="accent" className="text-[10px]">{template.spaceName}</Badge>}
+          {template.isDefault && <Badge variant="muted" className="text-[10px]">Default</Badge>}
+        </>
+      }
+      meta={`${template.objectCount} item${template.objectCount !== 1 ? "s" : ""} · Updated ${formatRelative(template.updatedAt)}`}
+      primaryActions={primaryActions}
+      overflowPending={busy}
+      overflowItems={archivedView ? [] : [
+        { id: "duplicate", label: LIBRARY_LABELS.duplicate, onClick: onDuplicate },
+        { id: "rename", label: "Rename", onClick: onRename },
+        ...(!template.isDefault ? [{ id: "default", label: "Set as Default", onClick: onSetDefault }] : []),
+        { id: "archive", label: LIBRARY_LABELS.archive, onClick: onArchiveToggle, separatorBefore: true },
+        {
+          id: "delete", label: LIBRARY_LABELS.delete, onClick: onDelete, destructive: true,
+          icon: <Trash2 className="mr-2 h-3.5 w-3.5" />,
+        },
+      ]}
+    >
       <div
         className="rounded-lg border border-border/60 overflow-hidden cursor-pointer"
         onClick={onPreview}
@@ -198,45 +319,21 @@ function TemplateCard({
           maxHeightClassName="max-h-28"
         />
       </div>
-
-      <div className="flex flex-wrap items-center gap-1.5">
-        <Badge variant="outline" className="text-[10px]">{eventType}</Badge>
-        {template.spaceName && <Badge variant="accent" className="text-[10px]">{template.spaceName}</Badge>}
-        {template.sourceMasterKey && !template.isArchived && (
-          <Badge variant="muted" className="text-[10px]">Starter</Badge>
-        )}
-        {template.isDefault && <Badge variant="muted" className="text-[10px]">Default</Badge>}
-        {template.isArchived && <Badge variant="muted" className="text-[10px]">Archived</Badge>}
-      </div>
-
-      <p className="mt-auto text-xs text-muted-foreground">
-        {template.objectCount} item{template.objectCount !== 1 ? "s" : ""} · Updated {formatRelative(template.updatedAt)}
-      </p>
-
-      <div className="flex flex-wrap items-center gap-2 pt-1">
-        <Button type="button" size="sm" variant="ghost" onClick={onPreview}>{LIBRARY_LABELS.preview}</Button>
-        {archivedView ? (
-          <Button type="button" size="sm" variant="outline" onClick={onArchiveToggle} disabled={busy}>
-            {LIBRARY_LABELS.restore}
-          </Button>
-        ) : (
-          <Button type="button" size="sm" variant="outline" render={<Link href={`/library/floor-plan-templates/${template.id}`} />}>
-            {LIBRARY_LABELS.edit}
-          </Button>
-        )}
-      </div>
-    </div>
+    </LibraryAssetCard>
   );
 }
 
 export function FloorPlanTemplatesSection({
-  initialTemplates, spaces, venueId,
-}: { initialTemplates: FloorPlanTemplateWithStats[]; spaces: VenueSpace[]; venueId: string }) {
+  initialTemplates, spaces, venueId, events = [],
+}: { initialTemplates: FloorPlanTemplateWithStats[]; spaces: VenueSpace[]; venueId: string; events?: FloorPlanEventOption[] }) {
   const [templates, setTemplates] = React.useState(initialTemplates);
   const [busyId, setBusyId] = React.useState<string | null>(null);
   const [search, setSearch] = React.useState("");
   const [eventTypeFilter, setEventTypeFilter] = React.useState(ANY_EVENT_TYPE);
   const [previewing, setPreviewing] = React.useState<FloorPlanTemplateWithStats | null>(null);
+  const [using, setUsing] = React.useState<FloorPlanTemplateWithStats | null>(null);
+  const [deleting, setDeleting] = React.useState<FloorPlanTemplateWithStats | null>(null);
+  const [deletePending, setDeletePending] = React.useState(false);
   const router = useRouter();
 
   React.useEffect(() => { setTemplates(initialTemplates); }, [initialTemplates]);
@@ -290,6 +387,20 @@ export function FloorPlanTemplatesSection({
     }
   }
 
+  async function handleDeleteConfirmed() {
+    if (!deleting) return;
+    setDeletePending(true);
+    const result = await deleteTemplateAction(deleting.id);
+    setDeletePending(false);
+    if (result.ok) {
+      toast.success("Template deleted.");
+      setTemplates((p) => p.filter((t) => t.id !== deleting.id));
+      setDeleting(null);
+    } else {
+      toast.error(result.message ?? "Could not delete template.");
+    }
+  }
+
   const sorted = React.useMemo(() => sortTemplates(templates), [templates]);
   const filtered = React.useMemo(() => sorted.filter((t) => {
     if (eventTypeFilter !== ANY_EVENT_TYPE && t.eventType !== eventTypeFilter) return false;
@@ -325,6 +436,8 @@ export function FloorPlanTemplatesSection({
         onDuplicate={() => handleDuplicate(t.id, t.name)}
         onSetDefault={() => handleSetDefault(t.id, t)}
         onArchiveToggle={() => handleArchiveToggle(t.id, t.isArchived)}
+        onDelete={() => setDeleting(t)}
+        onUse={() => setUsing(t)}
       />
     );
   }
@@ -379,6 +492,20 @@ export function FloorPlanTemplatesSection({
         template={previewing}
         open={!!previewing}
         onOpenChange={(o) => { if (!o) setPreviewing(null); }}
+      />
+      <UseFloorPlanSheet
+        template={using}
+        events={events}
+        open={!!using}
+        onOpenChange={(o) => { if (!o) setUsing(null); }}
+      />
+      <LibraryDeleteConfirmDialog
+        open={!!deleting}
+        itemName={deleting?.name ?? ""}
+        itemLabel="template"
+        pending={deletePending}
+        onConfirm={handleDeleteConfirmed}
+        onCancel={() => setDeleting(null)}
       />
     </div>
   );

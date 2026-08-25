@@ -15,16 +15,37 @@
 import { NextResponse } from "next/server";
 
 import { processEscalations, processReminders } from "@/lib/notifications/engine";
+import {
+  processObligationReminders,
+  processObligationTransitions,
+  processVenueNotificationEmails,
+} from "@/lib/notifications/obligation-engine";
 import type { ProcessResult } from "@/lib/notifications/types";
 
-function mergeResults(a: ProcessResult, b: ProcessResult): ProcessResult {
-  return {
-    processed: a.processed + b.processed,
-    sent: a.sent + b.sent,
-    failed: a.failed + b.failed,
-    skipped: a.skipped + b.skipped,
-    errors: [...a.errors, ...b.errors],
-  };
+function mergeResults(...results: ProcessResult[]): ProcessResult {
+  return results.reduce((acc, r) => ({
+    processed: acc.processed + r.processed,
+    sent: acc.sent + r.sent,
+    failed: acc.failed + r.failed,
+    skipped: acc.skipped + r.skipped,
+    errors: [...acc.errors, ...r.errors],
+  }), { processed: 0, sent: 0, failed: 0, skipped: 0, errors: [] });
+}
+
+/**
+ * Order matters: transitions (overdue/attention detection) run first so a
+ * payment/contract that just crossed its threshold gets its first
+ * after-due reminder created in this same tick, then reminders/venue
+ * emails run and can pick that row straight up rather than waiting a
+ * whole cycle.
+ */
+async function runAllProcessors(): Promise<ProcessResult> {
+  const transitions = await processObligationTransitions();
+  const reminders = await processReminders();
+  const obligationReminders = await processObligationReminders();
+  const escalations = await processEscalations();
+  const venueEmails = await processVenueNotificationEmails();
+  return mergeResults(transitions, reminders, obligationReminders, escalations, venueEmails);
 }
 
 function isCronAuthorized(request: Request): boolean {
@@ -46,7 +67,7 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
   try {
-    const result = mergeResults(await processReminders(), await processEscalations());
+    const result = await runAllProcessors();
     console.log(`[cron] notifications processed: ${result.sent} sent, ${result.failed} failed`);
     return NextResponse.json(result);
   } catch (err) {
@@ -62,7 +83,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
   try {
-    const result = mergeResults(await processReminders(), await processEscalations());
+    const result = await runAllProcessors();
     return NextResponse.json(result);
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";

@@ -1,63 +1,131 @@
 "use client";
 
 import * as React from "react";
-import { Bell, Mail, Smartphone, Zap } from "lucide-react";
 import { toast } from "sonner";
 import { useSyncedState } from "@/lib/hooks/use-synced-state";
 import type { NotificationPreferences } from "@/lib/notifications/preferences";
 
 type PrefKey = keyof Pick<NotificationPreferences,
   | "prefNewLead"
-  | "prefRsvpReceived"
-  | "prefTaskCompleted"
+  | "prefMessageReceived"
+  | "prefClientSubmittedInfo"
+  | "prefPaymentFailed"
+  | "prefPaymentOverdue"
+  | "prefPaymentReceived"
+  | "prefContractRequiresAttention"
+  | "prefContractSigned"
+  | "prefFinalGuestCountSubmitted"
   | "prefVendorCheckedIn"
   | "prefFeedbackReceived"
   | "prefReferralReceived"
-  | "prefMessageReceived"
 >;
 
-const PREF_ROWS: { key: PrefKey; emoji: string; label: string; desc: string }[] = [
+type PrefRow = { key: PrefKey; emoji: string; label: string; desc: string };
+
+// Visual grouping only — each row below is still independently
+// configurable; there is no bucket-level master toggle. RSVP received and
+// Task completed are deliberately absent: individual guest RSVPs and
+// routine task completions are routine, high-volume activity that belongs
+// in-app (the event's guest list, Tasks/Activity) rather than as an inbox
+// escalation — see the "Final guest count submitted" row below for the
+// meaningful guest-related milestone instead.
+const BUCKETS: { title: string; rows: PrefRow[] }[] = [
   {
-    key:   "prefNewLead",
-    emoji: "✨",
-    label: "New inquiry",
-    desc:  "A client submits an inquiry form or is added manually.",
+    title: "Leads & clients",
+    rows: [
+      {
+        key:   "prefNewLead",
+        emoji: "✨",
+        label: "New inquiry",
+        desc:  "A client submits an inquiry form or is added manually.",
+      },
+      {
+        key:   "prefMessageReceived",
+        emoji: "💬",
+        label: "New message",
+        desc:  "An inbound message arrives from a client or lead.",
+      },
+      {
+        key:   "prefClientSubmittedInfo",
+        emoji: "📋",
+        label: "Client submitted important information",
+        desc:  "A client submits their final details or planning questionnaire.",
+      },
+    ],
   },
   {
-    key:   "prefRsvpReceived",
-    emoji: "📬",
-    label: "RSVP received",
-    desc:  "A guest responds to an invitation.",
+    title: "Financials",
+    rows: [
+      {
+        key:   "prefPaymentFailed",
+        emoji: "⚠️",
+        label: "Payment failed",
+        desc:  "A client's payment doesn't go through.",
+      },
+      {
+        key:   "prefPaymentOverdue",
+        emoji: "⏰",
+        label: "Payment overdue",
+        desc:  "A scheduled payment passes its due date without being paid.",
+      },
+      {
+        key:   "prefPaymentReceived",
+        emoji: "💳",
+        label: "Payment received",
+        desc:  "A client's payment is successfully processed.",
+      },
+    ],
   },
   {
-    key:   "prefTaskCompleted",
-    emoji: "✅",
-    label: "Task completed",
-    desc:  "A client or vendor marks a task as done.",
+    title: "Bookings & planning",
+    rows: [
+      {
+        key:   "prefContractRequiresAttention",
+        emoji: "✍️",
+        label: "Contract requires attention",
+        desc:  "A contract is nearing its expiration or still needs a signature.",
+      },
+      {
+        key:   "prefContractSigned",
+        emoji: "✅",
+        label: "Contract signed",
+        desc:  "A client signs their contract.",
+      },
+      {
+        key:   "prefFinalGuestCountSubmitted",
+        emoji: "🔢",
+        label: "Final guest count submitted",
+        desc:  "A client submits their final guest count.",
+      },
+    ],
   },
   {
-    key:   "prefVendorCheckedIn",
-    emoji: "🤝",
-    label: "Vendor check-in",
-    desc:  "A vendor marks themselves as arrived on the day of an event.",
+    title: "Vendors",
+    rows: [
+      {
+        key:   "prefVendorCheckedIn",
+        emoji: "🤝",
+        label: "Vendor check-in",
+        desc:  "A vendor marks themselves as arrived on the day of an event.",
+      },
+    ],
   },
   {
-    key:   "prefFeedbackReceived",
-    emoji: "💗",
-    label: "Feedback received",
-    desc:  "A client submits their post-wedding feedback.",
-  },
-  {
-    key:   "prefReferralReceived",
-    emoji: "💍",
-    label: "Referral received",
-    desc:  "A client refers someone from their network.",
-  },
-  {
-    key:   "prefMessageReceived",
-    emoji: "💬",
-    label: "Message received",
-    desc:  "An inbound message arrives from a client or lead.",
+    title: "After the event",
+    rows: [
+      {
+        key:   "prefFeedbackReceived",
+        emoji: "💗",
+        label: "Feedback received",
+        desc:  "A client submits their post-wedding feedback.",
+      },
+      {
+        key:   "prefReferralReceived",
+        emoji: "💍",
+        label: "Referral received",
+        desc:  "A client refers someone from their network.",
+      },
+    ],
   },
 ];
 
@@ -120,57 +188,29 @@ export function NotificationPreferencesSection({
 
   return (
     <div className="space-y-6">
-      {/* In-app notification type toggles */}
-      <div>
-        <div className="flex items-center gap-2 mb-4">
-          <Bell className="h-4 w-4 text-muted-foreground" />
-          <p className="text-sm font-semibold text-heading">In-app notifications</p>
-          <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-semibold text-primary">Active</span>
-        </div>
-        <div className="divide-y divide-border rounded-sm border border-border overflow-hidden">
-          {PREF_ROWS.map(row => (
-            <div key={row.key} className="flex items-center gap-4 px-4 py-3.5 bg-card">
-              <span className="text-xl shrink-0 w-7 text-center">{row.emoji}</span>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-heading">{row.label}</p>
-                <p className="text-xs text-muted-foreground mt-0.5">{row.desc}</p>
-              </div>
-              <Toggle
-                checked={prefs[row.key]}
-                onChange={v => void handleToggle(row.key, v)}
-                disabled={saving === row.key}
-              />
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Future channels — clearly planned, not broken */}
-      <div>
-        <div className="flex items-center gap-2 mb-3">
-          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-            More channels coming
+      {BUCKETS.map(bucket => (
+        <div key={bucket.title}>
+          <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            {bucket.title}
           </p>
-          <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
-            Planned
-          </span>
+          <div className="divide-y divide-border rounded-sm border border-border overflow-hidden">
+            {bucket.rows.map(row => (
+              <div key={row.key} className="flex items-center gap-4 px-4 py-3.5 bg-card">
+                <span className="text-xl shrink-0 w-7 text-center">{row.emoji}</span>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-heading">{row.label}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">{row.desc}</p>
+                </div>
+                <Toggle
+                  checked={prefs[row.key]}
+                  onChange={v => void handleToggle(row.key, v)}
+                  disabled={saving === row.key}
+                />
+              </div>
+            ))}
+          </div>
         </div>
-        <div className="rounded-sm border border-dashed border-border bg-muted/10 px-4 py-3.5 flex flex-wrap items-center gap-x-5 gap-y-2">
-          {[
-            { icon: Mail,       label: "Email" },
-            { icon: Smartphone, label: "SMS" },
-            { icon: Zap,        label: "Push notifications" },
-          ].map(ch => (
-            <div key={ch.label} className="flex items-center gap-1.5 text-muted-foreground">
-              <ch.icon className="h-3.5 w-3.5 shrink-0" />
-              <span className="text-xs">{ch.label}</span>
-            </div>
-          ))}
-        </div>
-        <p className="mt-2 text-[11px] text-muted-foreground">
-          These channels will honor the same per-type preferences you configure above.
-        </p>
-      </div>
+      ))}
     </div>
   );
 }

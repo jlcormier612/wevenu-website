@@ -5,8 +5,7 @@ import { SetupWizard } from "@/components/setup/setup-wizard";
 import { createClient } from "@/integrations/supabase/server";
 import { isSupabaseConfigured } from "@/lib/env";
 import { isVenueReadyToInviteCouples } from "@/lib/setup-hub/service";
-import { getCurrentVenue, getVenueSettings } from "@/lib/venue/service";
-import { SETUP_STEPS, type SetupStepId } from "@/lib/venue/validation";
+import { getCurrentVenue } from "@/lib/venue/service";
 
 export const metadata: Metadata = {
   title: "Set up your venue",
@@ -54,30 +53,12 @@ export default async function SetupPage() {
     redirect("/dashboard");
   }
 
-  // Guided Setup, Phase 1 — a venue row may already exist, partially filled
-  // in, from an earlier progress-saved attempt (or an abandoned session).
-  // Resume at the step AFTER the furthest one actually completed
-  // (setup_last_step) — not "the first step that fails validation": most
-  // steps' fields are optional with real defaults (timezone, brand colors,
-  // currency), so they'd validate successfully without ever having been
-  // visited, and "first invalid step" would skip straight past Venue
-  // Details/Hours/Brand to Owner. See docs/hospitality-success-platform-
-  // implementation-plan.md §1.2.
+  // Activation already created the venues row (setup_completed stays false).
+  // Setup Hub is the first-time experience for that venue; resuming the
+  // legacy wizard here would put "You're X% set up" / "ready to welcome
+  // its next couple" language back in the path Setup Hub replaced.
   if (venue) {
-    const settings = await getVenueSettings();
-    if (settings) {
-      const lastIndex = settings.setupLastStep
-        ? SETUP_STEPS.indexOf(settings.setupLastStep as SetupStepId)
-        : -1;
-      const resumeStep: SetupStepId = SETUP_STEPS[lastIndex + 1] ?? "review";
-      return (
-        <SetupWizard
-          ownerEmail={user.email ?? ""}
-          initialInput={settings.input}
-          resumeStep={resumeStep}
-        />
-      );
-    }
+    redirect("/setup-hub");
   }
 
   return <SetupWizard ownerEmail={user.email ?? ""} />;

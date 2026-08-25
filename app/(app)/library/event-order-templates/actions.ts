@@ -6,13 +6,14 @@ import {
   addEventOrderStarterAgain,
 } from "@/lib/event-order-templates/provision";
 import {
-  addLine, addSection, createTemplate, deleteTemplate_, duplicateTemplate_,
+  addLine, addSection, createTemplate, deleteTemplate_, duplicateTemplate_, getTemplate,
   removeLine, removeSection, setTemplateArchived_, updateTemplate_,
 } from "@/lib/event-order-templates/service";
 import type { EventOrderStarterMasterKey } from "@/lib/event-order-templates/starters";
 import type {
   AddTemplateLineInput, AddTemplateLineResult, AddTemplateSectionResult,
   CreateEventOrderTemplateResult, EventOrderTemplateActionResult, EventOrderTemplateInput,
+  EventOrderTemplateWithDetails,
 } from "@/lib/event-order-templates/types";
 
 function revalidateLibrary(templateId?: string) {
@@ -73,6 +74,11 @@ export async function removeEventOrderTemplateLineAction(templateId: string, lin
   const result = await removeLine(lineId);
   if (result.ok) revalidateLibrary(templateId);
   return result;
+}
+
+/** Read-only fetch for the Library's Preview sheet — sections + lines only, no edit side-effects. */
+export async function getEventOrderTemplateDetailAction(id: string): Promise<EventOrderTemplateWithDetails | null> {
+  return getTemplate(id);
 }
 
 export async function addEventOrderStarterAgainAction(

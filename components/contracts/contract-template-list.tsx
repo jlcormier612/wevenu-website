@@ -22,6 +22,7 @@ import {
 import { LIBRARY_LABELS, archiveToggleLabel } from "@/components/library/labels";
 import { LibraryArchivedSection } from "@/components/library/library-archived-section";
 import { LibraryAssetCard } from "@/components/library/library-asset-card";
+import { LibraryDeleteConfirmDialog } from "@/components/library/library-delete-confirm-dialog";
 import { partitionArchived } from "@/components/library/partition-archived";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -78,6 +79,8 @@ export function ContractTemplateList({
   const [templates, setTemplates] = React.useState(initialTemplates);
   const [pendingId, setPendingId] = React.useState<string | null>(null);
   const [previewing, setPreviewing] = React.useState<ContractTemplate | null>(null);
+  const [deleting, setDeleting] = React.useState<ContractTemplate | null>(null);
+  const [deletePending, setDeletePending] = React.useState(false);
   const [addingStarter, startAddStarter] = React.useTransition();
 
   React.useEffect(() => { setTemplates(initialTemplates); }, [initialTemplates]);
@@ -102,13 +105,18 @@ export function ContractTemplateList({
     else toast.error(result.message ?? "Could not duplicate template.");
   }
 
-  async function handleDelete(t: ContractTemplate) {
-    if (!confirm(`Delete "${t.name}"? This can't be undone.`)) return;
-    setPendingId(t.id);
-    const result = await deleteTemplateAction(t.id);
-    setPendingId(null);
-    if (result.ok) { toast.success("Template deleted."); setTemplates((p) => p.filter((x) => x.id !== t.id)); }
-    else toast.error(result.message ?? "Could not delete template.");
+  async function handleDeleteConfirmed() {
+    if (!deleting) return;
+    setDeletePending(true);
+    const result = await deleteTemplateAction(deleting.id);
+    setDeletePending(false);
+    if (result.ok) {
+      toast.success("Template deleted.");
+      setTemplates((p) => p.filter((x) => x.id !== deleting.id));
+      setDeleting(null);
+    } else {
+      toast.error(result.message ?? "Could not delete template.");
+    }
   }
 
   function cardFor(t: ContractTemplate, archivedView: boolean) {
@@ -145,7 +153,7 @@ export function ContractTemplateList({
           {
             id: "delete",
             label: LIBRARY_LABELS.delete,
-            onClick: () => handleDelete(t),
+            onClick: () => setDeleting(t),
             destructive: true,
             separatorBefore: true,
             icon: <Trash2 className="mr-2 h-3.5 w-3.5" />,
@@ -192,6 +200,14 @@ export function ContractTemplateList({
         </div>
       </LibraryArchivedSection>
       <TemplatePreviewSheet template={previewing} open={!!previewing} onOpenChange={(o) => { if (!o) setPreviewing(null); }} />
+      <LibraryDeleteConfirmDialog
+        open={!!deleting}
+        itemName={deleting?.name ?? ""}
+        itemLabel="template"
+        pending={deletePending}
+        onConfirm={handleDeleteConfirmed}
+        onCancel={() => setDeleting(null)}
+      />
     </div>
   );
 }

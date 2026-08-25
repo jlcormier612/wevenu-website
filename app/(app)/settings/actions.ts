@@ -99,26 +99,26 @@ export async function updateStoryAction(story: string): Promise<void> {
 
 export async function updatePublicReviewUrlAction(url: string | null): Promise<{ ok: boolean; message?: string }> {
   const result = await updatePublicReviewUrl(url);
-  if (result.ok) revalidatePath("/settings");
+  if (result.ok) revalidatePath("/settings/business");
   return result;
 }
 
 export async function connectStripeAction(accountId: string): Promise<void> {
   await connectStripeAccount(accountId);
-  revalidatePath("/settings");
+  revalidatePath("/settings/integrations");
   revalidatePath("/", "layout");
 }
 
 export async function disconnectStripeAction(): Promise<StripeActionResult> {
   const result = await disconnectStripeAccount();
-  revalidatePath("/settings");
+  revalidatePath("/settings/integrations");
   revalidatePath("/", "layout");
   return result;
 }
 
 export async function updateAcceptedPaymentMethodsAction(methods: StripePaymentMethodType[]): Promise<StripeActionResult> {
   const result = await updateAcceptedPaymentMethods(methods);
-  revalidatePath("/settings");
+  revalidatePath("/settings/integrations");
   return result;
 }
 
@@ -130,18 +130,18 @@ export async function connectQuickBooksAction(input: {
   refreshTokenExpiresIn: number;
 }): Promise<QuickBooksActionResult> {
   const result = await connectQuickBooksAccount(input);
-  revalidatePath("/settings");
+  revalidatePath("/settings/integrations");
   return result;
 }
 
 export async function disconnectQuickBooksAction(): Promise<QuickBooksActionResult> {
   const result = await disconnectQuickBooksAccount();
-  revalidatePath("/settings");
+  revalidatePath("/settings/integrations");
   return result;
 }
 
 export async function retryQuickBooksSyncAction(entityType: QuickBooksEntityType, entityId: string): Promise<QuickBooksActionResult> {
   const result = await retryQuickBooksSync(entityType, entityId);
-  revalidatePath("/settings");
+  revalidatePath("/settings/integrations");
   return result;
 }

@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { WorkspaceShell } from "@/components/shell/workspace-shell";
 import { createClient } from "@/integrations/supabase/server";
 import { isSupabaseConfigured } from "@/lib/env";
+import { isPreGraduationAllowedPath } from "@/lib/setup-hub/pre-graduation-paths";
 import { isVenueReadyToInviteCouples } from "@/lib/setup-hub/service";
 import { getCurrentVenue } from "@/lib/venue/service";
 import { recordStaffActivity } from "@/lib/activation/service";
@@ -51,7 +52,7 @@ export default async function WorkspaceLayout({
       // check every request for it would re-enter this branch and redirect
       // to itself in a loop. Everything else under (app) still bounces to it.
       const pathname = (await headers()).get("x-pathname") ?? "";
-      if (!pathname.startsWith("/setup-hub")) {
+      if (!isPreGraduationAllowedPath(pathname)) {
         redirect("/setup-hub");
       }
     }

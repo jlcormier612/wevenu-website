@@ -152,6 +152,20 @@ export async function setTemplateArchived(client: DbClient, venueId: string, id:
   if (error) throw error;
 }
 
+/** Hard delete. RLS already gates this to Owner/Manager (floor_plan_templates_delete_gate,
+ * 20261260000000) — a zero-row result here means that gate rejected the request. Applying a
+ * template creates a brand-new, independent floor plan on the event (see the events/[id]/
+ * floor-plan-actions.ts applyTemplateAction) — there is no ongoing FK back to the template,
+ * so deleting it never touches floor plans already created from it. */
+export async function deleteTemplate(client: DbClient, venueId: string, id: string): Promise<{ ok: true } | { ok: false; message: string }> {
+  const { data, error } = await client.from("floor_plan_templates").delete().eq("id", id).eq("venue_id", venueId).select("id");
+  if (error) throw error;
+  if (!data || data.length === 0) {
+    return { ok: false, message: "Only an Owner or Manager can delete this template." };
+  }
+  return { ok: true };
+}
+
 /** Clone a template's objects into a brand-new template — same event type, space, and background as the source. */
 export async function duplicateTemplateInto(client: DbClient, venueId: string, sourceTemplateId: string, newName: string): Promise<string> {
   const source = await getTemplate(client, venueId, sourceTemplateId);

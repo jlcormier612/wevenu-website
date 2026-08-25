@@ -28,25 +28,25 @@ import type {
 
 export async function createSpaceAction(input: SpaceInput): Promise<CreateSpaceResult> {
   const result = await createSpace(input);
-  if (result.ok) revalidatePath("/settings");
+  if (result.ok) revalidatePath("/settings/availability");
   return result;
 }
 
 export async function updateSpaceAction(spaceId: string, input: SpaceInput): Promise<AvailabilityActionResult> {
   const result = await updateSpace_(spaceId, input);
-  if (result.ok) revalidatePath("/settings");
+  if (result.ok) revalidatePath("/settings/availability");
   return result;
 }
 
 export async function deleteSpaceAction(spaceId: string): Promise<AvailabilityActionResult> {
   const result = await deleteSpace_(spaceId);
-  if (result.ok) revalidatePath("/settings");
+  if (result.ok) revalidatePath("/settings/availability");
   return result;
 }
 
 export async function saveCapacityRulesAction(input: { maxSimultaneousEvents: number; maxSimultaneousTours: number; minTurnaroundHours: number }): Promise<AvailabilityActionResult> {
   const result = await saveCapacityRules(input);
-  if (result.ok) revalidatePath("/settings");
+  if (result.ok) revalidatePath("/settings/availability");
   return result;
 }
 

@@ -145,7 +145,7 @@ export function computeMemoryObservations(
           priority:    "low",
           message:     `${nextName} is typically your peak inquiry season — get ready.`,
           detail:      `Historically you receive around ${Math.round(nextMonth.avg)} inquiries in ${nextName}. Make sure your availability and tour slots are set.`,
-          link:        "/settings",
+          link:        "/settings/availability",
           actionLabel: "Review availability →",
         });
       }

@@ -14,6 +14,12 @@ export type StageCopy = {
   whatToDo: string;
   /** false only for Financials — the one stage that's explicitly optional. */
   required: boolean;
+  /**
+   * Existing Help & Guides article for this stage, when one has already
+   * been published. Title is the article title verbatim — never invented.
+   */
+  helpHref?: string;
+  helpTitle?: string;
 };
 
 export const STAGE_COPY: Record<string, StageCopy> = {
@@ -22,6 +28,8 @@ export const STAGE_COPY: Record<string, StageCopy> = {
     why: "This is what shows up on every email, contract, and page Hello to Cheers sends on your behalf. It's how couples and coordinators find and recognize you.",
     whatToDo: "Head to Settings and fill in what you can. Nothing here is final — you can come back and change any of it whenever you like.",
     required: true,
+    helpHref: "/help/getting-started-what-to-set-up-before-i-start",
+    helpTitle: "What should I set up before I start?",
   },
   "calendar-availability": {
     what: "Your event spaces, how many events you can host at once, and whether couples can book a tour online.",
@@ -32,7 +40,8 @@ export const STAGE_COPY: Record<string, StageCopy> = {
   "bring-your-business": {
     what: "Your existing clients, leads, and vendors — the business you already have.",
     why: "So everything you're already tracking somewhere else follows you here, instead of starting from zero.",
-    whatToDo: "Import what you have, or add things one at a time as you go. If you'd rather start fresh and enter things yourself, that's a real choice too — just tell us that's the plan.",
+    whatToDo:
+      "Whether you're moving from another system — whether we know it by name or not — or just have a spreadsheet, it's the same place: we'll help you bring it over carefully. Or start fresh and add things as you go — that's a real choice too.",
     required: true,
   },
   "your-offerings": {
@@ -40,6 +49,8 @@ export const STAGE_COPY: Record<string, StageCopy> = {
     why: "This is what a couple actually books. Without at least one package, there's nothing yet for someone to say yes to.",
     whatToDo: "We've started you off with some common examples to look at. Adjust them, replace them, or build your own — whatever fits how you actually work. If the starting examples are close enough for now, just let us know you've looked them over.",
     required: true,
+    helpHref: "/help/creating-your-first-package",
+    helpTitle: "Creating Your First Package",
   },
   "client-experience": {
     what: "The contracts, questionnaires, message templates, and planning guides you'll use with couples.",
@@ -52,6 +63,8 @@ export const STAGE_COPY: Record<string, StageCopy> = {
     why: "An inquiry that doesn't land anywhere is a couple you never hear from.",
     whatToDo: "Pick at least one way inquiries reach you — your website form, forwarded emails, or others — or tell us you'll add leads yourself for now. Either way, we'll help you make sure it's actually working.",
     required: true,
+    helpHref: "/help/how-do-i-start-collecting-inquiries-from-my-website",
+    helpTitle: "How do I start collecting inquiries from my website?",
   },
   "your-team": {
     what: "The coordinators and staff who'll work alongside you in Hello to Cheers.",
@@ -64,5 +77,7 @@ export const STAGE_COPY: Record<string, StageCopy> = {
     why: "These make collecting payments and keeping your books easier once you're up and running — but they're not something you need before you start.",
     whatToDo: "Connect these whenever it's convenient — today, next month, whenever. This is entirely optional and won't hold anything up.",
     required: false,
+    helpHref: "/help/can-couples-pay-online",
+    helpTitle: "Can couples pay online?",
   },
 };

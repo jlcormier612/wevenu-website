@@ -14,7 +14,7 @@ import type { FacebookActionResult } from "@/lib/facebook/types";
 
 export async function connectFacebookAction(input: { userAccessToken: string; expiresIn: number }): Promise<FacebookActionResult> {
   const result = await connectFacebookAccount(input);
-  revalidatePath("/settings");
+  revalidatePath("/settings/integrations");
   return result;
 }
 
@@ -30,7 +30,7 @@ export async function listFacebookPagesAction() {
 
 export async function selectFacebookPageAction(input: { pageId: string }): Promise<FacebookActionResult> {
   const result = await selectFacebookPage(input);
-  if (result.ok) revalidatePath("/settings");
+  if (result.ok) revalidatePath("/settings/integrations");
   return result;
 }
 
@@ -40,13 +40,13 @@ export async function listFacebookLeadFormsAction() {
 
 export async function selectFacebookLeadFormsAction(forms: { formId: string; formName: string }[]): Promise<FacebookActionResult> {
   const result = await selectFacebookLeadForms(forms);
-  if (result.ok) revalidatePath("/settings");
+  if (result.ok) revalidatePath("/settings/integrations");
   return result;
 }
 
 export async function setFacebookFormEnabledAction(formId: string, enabled: boolean): Promise<FacebookActionResult> {
   const result = await setFacebookFormEnabled(formId, enabled);
-  if (result.ok) revalidatePath("/settings");
+  if (result.ok) revalidatePath("/settings/integrations");
   return result;
 }
 

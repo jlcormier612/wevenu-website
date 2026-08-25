@@ -92,6 +92,18 @@ export type IngestLeadOptions = {
    * attempt-log layer, before any lead-creation logic even runs.
    */
   externalRef?: string | null;
+  /**
+   * Migration Center — Historical Import Mode. When true, this lead is
+   * backfilled data (an old inquiry from a competitor export), not a real
+   * new inquiry happening right now. Suppresses automatic message-sequence
+   * enrollment here, and is threaded by the caller into the create() RPC's
+   * own payload so `leads.is_historical_import` gets set at the same
+   * insert — that persisted column is what the `notify_new_lead` DB
+   * trigger checks to suppress the "New inquiry from X" venue notification,
+   * since a trigger can't see this TS-level option. One flag, centralized,
+   * rather than a suppression check scattered per side effect.
+   */
+  historicalImport?: boolean;
   /** The source-specific RPC call, invoked with the finalized normalized+validated input. */
   create: (normalized: NormalizedLeadInput) => Promise<CreateOutcome>;
 };

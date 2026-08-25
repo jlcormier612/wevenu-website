@@ -174,7 +174,7 @@ async function buildDigestContext(
     recentWins,
     luvObservation,
     appUrl:         APP_URL,
-    unsubscribeUrl: "/settings#notifications",
+    unsubscribeUrl: "/settings/communications#notifications",
   };
 }
 

@@ -1,7 +1,11 @@
 import assert from "node:assert/strict";
 import { afterEach, beforeEach, describe, it } from "node:test";
 
-import { activationBaseUrl, activationUrlFromToken } from "@/shared/email/templates/helpers";
+import {
+  activationBaseUrl,
+  activationUrlFromToken,
+  productPostActivationLoginUrl,
+} from "@/shared/email/templates/helpers";
 
 const ENV_KEYS = [
   "WORKSPACE_URL",
@@ -32,6 +36,19 @@ afterEach(() => {
 // then handed the customer a 404. If this priority order silently
 // reverts, activation links break again with no visible error at send
 // time — Resend still returns 200 for a link to a page that 404s.
+describe("productPostActivationLoginUrl — must land on product login then Setup Hub", () => {
+  it("uses the product-app host, not the workspace activate host", () => {
+    process.env.NEXT_PUBLIC_PRODUCT_APP_URL = "https://app.sandbox.hellotocheers.com";
+    process.env.WORKSPACE_URL = "https://workspace.sandbox.hellotocheers.com";
+    const url = productPostActivationLoginUrl();
+    assert.equal(
+      url,
+      "https://app.sandbox.hellotocheers.com/login?activated=1&next=%2Fsetup-hub",
+    );
+    assert.doesNotMatch(url, /workspace\.sandbox/);
+  });
+});
+
 describe("activationBaseUrl / activationUrlFromToken — must resolve to the workspace app", () => {
   it("prefers WORKSPACE_URL over every other candidate", () => {
     process.env.WORKSPACE_URL = "https://workspace.sandbox.hellotocheers.com";

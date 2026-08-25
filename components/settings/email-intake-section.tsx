@@ -56,14 +56,13 @@ export function EmailIntakeSection({
     setTimeout(() => setCopied(false), 2000);
   }
 
-  if (!leadEmailAddress) {
-    return (
-      <div className="rounded-lg border border-border bg-muted/30 p-4 space-y-1">
-        <p className="text-sm font-medium text-heading">Email intake</p>
-        <p className="text-xs text-muted-foreground italic">Not available in this environment yet — inbound email isn&apos;t configured platform-wide.</p>
-      </div>
-    );
-  }
+  // RESEND_INBOUND_ADDRESS is a platform-wide deployment setting, not
+  // something any venue can configure — there is no customer action that
+  // resolves this state, so the correct behavior is to not surface the
+  // card at all rather than show a venue an unactionable "not available"
+  // message. This env var must be set before launch for the feature
+  // (otherwise complete) to appear for any venue.
+  if (!leadEmailAddress) return null;
 
   return (
     <div className="rounded-lg border border-border bg-muted/30 p-4 space-y-4">

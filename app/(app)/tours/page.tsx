@@ -24,7 +24,7 @@ export default async function ToursPage() {
       <div className="flex items-center justify-between gap-4">
         <PageHeader title="Tours" description="Upcoming and past venue tour appointments." />
         {tourSettings?.tourSchedulingEnabled && (
-          <Button size="sm" variant="outline" render={<Link href="/settings#tours" />}>
+          <Button size="sm" variant="outline" render={<Link href="/settings/leads#tours" />}>
             <MapPin className="mr-1.5 h-3.5 w-3.5" /> Booking Settings
           </Button>
         )}
@@ -39,7 +39,7 @@ export default async function ToursPage() {
               Once tour scheduling is enabled and clients book a visit, their appointments will appear here.
             </p>
             {!tourSettings?.tourSchedulingEnabled && (
-              <Button size="sm" variant="outline" render={<Link href="/settings" />}>
+              <Button size="sm" variant="outline" render={<Link href="/settings/leads" />}>
                 Enable Tour Scheduling →
               </Button>
             )}

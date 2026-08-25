@@ -32,9 +32,9 @@ function getServiceClient() {
 }
 
 function getBaseUrl(): string {
-  return process.env.NEXT_PUBLIC_APP_URL ?? process.env.VERCEL_URL
-    ? `https://${process.env.VERCEL_URL}`
-    : "http://localhost:3000";
+  if (process.env.NEXT_PUBLIC_APP_URL) return process.env.NEXT_PUBLIC_APP_URL;
+  if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`;
+  return "http://localhost:3000";
 }
 
 export async function processReminders(): Promise<ProcessResult> {
@@ -46,7 +46,7 @@ export async function processReminders(): Promise<ProcessResult> {
   const { data: reminders, error } = await supabase
     .from("task_reminders")
     .select(`
-      id, venue_id, event_task_id, tour_appointment_id, reminder_type, notify_role, scheduled_for,
+      id, venue_id, event_task_id, tour_appointment_id, reminder_type, notify_role, scheduled_for, after_due_recur_interval_days,
       event_tasks (
         id, title, event_id, visibility, owner_type, status, due_date,
         event_tasks_event:events ( id, name, event_date, client_id,
@@ -203,6 +203,28 @@ export async function processReminders(): Promise<ProcessResult> {
         .update({ status: "sent", sent_at: new Date().toISOString() })
         .eq("id", reminder.id);
 
+      // Recurrence — only rows created with after_due_recur_interval_days
+      // set (couple-facing overdue task chases; see lib/playbooks/
+      // repository.ts) opt into this. Only continues while the task is
+      // still genuinely open — the same status re-check already used above
+      // to skip complete/waived tasks.
+      if (
+        reminder.after_due_recur_interval_days &&
+        !isTourReminder &&
+        task &&
+        task.status !== "complete" &&
+        task.status !== "waived"
+      ) {
+        const next = new Date();
+        next.setDate(next.getDate() + reminder.after_due_recur_interval_days);
+        await supabase.from("task_reminders").insert({
+          venue_id: reminder.venue_id, event_task_id: reminder.event_task_id,
+          reminder_type: "overdue", notify_role: role,
+          scheduled_for: next.toISOString(),
+          after_due_recur_interval_days: reminder.after_due_recur_interval_days,
+        });
+      }
+
       result.sent++;
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
@@ -303,6 +325,7 @@ type ReminderRow = {
   reminder_type: string;
   notify_role: string;
   scheduled_for: string;
+  after_due_recur_interval_days: number | null;
   event_tasks: {
     id: string; title: string; event_id: string;
     visibility: string; owner_type: string; status: string;

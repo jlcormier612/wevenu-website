@@ -19,6 +19,11 @@ import {
   completeFinalPaymentTasksBoundToLine,
 } from "@/lib/payments/final-payment-obligation";
 import { allocatePresetAmounts } from "@/lib/payments/starters";
+import {
+  cancelRemindersForPaymentLineItem,
+  createRemindersForPaymentLineItem,
+  getReminderCadence,
+} from "@/lib/notifications/obligations";
 import type {
   AddLineItemResult,
   CreateRetainerResult,
@@ -178,6 +183,10 @@ export async function createPaymentSchedule(
           await bindFinalPaymentTaskToLine(
             supabase, venueId, invoice.eventId, item.id, pi.obligationKind,
           );
+          if (dueDate) {
+            const cadence = await getReminderCadence();
+            await createRemindersForPaymentLineItem(supabase, venueId, item.id, dueDate, cadence);
+          }
         }
       }
     }
@@ -250,6 +259,10 @@ export async function addLineItem(scheduleId: string, input: LineItemInput): Pro
     await bindFinalPaymentTaskToLine(
       supabase, venueId, sch?.event_id, item.id, input.obligationKind ?? null,
     );
+    if (input.dueDate) {
+      const cadence = await getReminderCadence();
+      await createRemindersForPaymentLineItem(supabase, venueId, item.id, input.dueDate, cadence);
+    }
     return { ok: true, item } as AddLineItemResult;
   });
   return result as AddLineItemResult;
@@ -272,6 +285,7 @@ export async function markLineItemPaid(itemId: string, scheduleId: string, input
   const result = await withVenue(async (supabase, venueId) => {
     const marked = await repo.markItemPaid(supabase, venueId, itemId, input);
     if (!marked.ok) return marked as PaymentActionResult;
+    await cancelRemindersForPaymentLineItem(supabase, venueId, itemId);
     const amount = parseFloat(input.paidAmount.replace(/[$,]/g, ""));
     await repo.insertPaymentActivity(supabase, venueId, scheduleId, "payment_received",
       `Payment received: $${amount.toLocaleString()}`,

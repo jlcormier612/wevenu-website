@@ -171,6 +171,12 @@ export async function setQuestionnaireTemplateArchivedAction(id: string, isArchi
   return result;
 }
 
+export async function deleteQuestionnaireTemplateAction(id: string) {
+  const result = await templates.deleteTemplate(id);
+  if (result.ok) revalidatePath("/library/questionnaire-templates");
+  return result;
+}
+
 export async function duplicateQuestionnaireTemplateAction(id: string, newName: string) {
   const result = await templates.duplicateTemplate(id, newName);
   if (result.ok) {

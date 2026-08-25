@@ -5,6 +5,7 @@ import {
   addEventTaskContextLink, addMilestone, addPlaybookTaskAttachment, addTemplateTask, applyPlaybookToEvent, completeEventTask_,
   createStandardClientPlanningTemplate, createStandardVenueWorkflowTemplate, createTemplate, createTemplateFromImport,
   deleteMilestone, deleteTemplate_, deleteTemplateTask_, duplicateTemplate,
+  getMilestones, getTemplate, getTemplateTasks,
   releasePlaybookApplication,
   removeEventTaskContextLink, removePlaybookTaskAttachment, renameMilestone, renameTemplate_, reorderMilestone,
   setEventTaskRequest, setEventTaskStatus, setMilestoneKind, setTemplateArchived_, setTemplateDefault_, updateEventTaskAssignment, updateEventTaskDaysOffset, updateEventTaskDueDate, updateEventTaskNotes,
@@ -69,6 +70,27 @@ export async function applyPlaybookAction(eventId: string, templateId: string, e
   const result = await applyPlaybookToEvent(eventId, templateId, eventDate);
   if (result.ok) revalidatePath(`/events/${eventId}`);
   return result;
+}
+
+/** Choose → Preview → Apply: load template contents for the apply preview sheet. */
+export async function getPlaybookApplyPreviewAction(templateId: string): Promise<{
+  ok: true;
+  template: { id: string; name: string; kind: PlaybookKind };
+  milestones: PlaybookMilestone[];
+  tasks: PlaybookTask[];
+} | { ok: false; message: string }> {
+  const [template, milestones, tasks] = await Promise.all([
+    getTemplate(templateId),
+    getMilestones(templateId),
+    getTemplateTasks(templateId),
+  ]);
+  if (!template) return { ok: false, message: "That checklist template could not be found." };
+  return {
+    ok: true,
+    template: { id: template.id, name: template.name, kind: template.kind },
+    milestones,
+    tasks,
+  };
 }
 
 export async function releasePlaybookAction(eventId: string, clientId: string, coupleName: string): Promise<PlaybookActionResult> {

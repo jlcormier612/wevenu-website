@@ -32,6 +32,7 @@ import {
   completeFinalPaymentTasksBoundToLine,
 } from "@/lib/payments/final-payment-obligation";
 import { triggerAutoComplete } from "@/lib/playbooks/service";
+import { cancelRemindersForPaymentLineItem } from "@/lib/notifications/obligations";
 import { computePaymentsReadiness } from "@/lib/readiness/compute";
 import { enqueueQuickBooksSync } from "@/lib/quickbooks/queue";
 import { postPaymentFailedMessage, postPaymentReceivedReceipt } from "@/lib/stripe/notify";
@@ -74,6 +75,9 @@ export async function handlePaymentIntentSucceeded(pi: Stripe.PaymentIntent): Pr
   });
   if (!marked.ok) { console.error(`[stripe webhook] markItemPaidFromStripe failed for ${itemId}`, marked.message); return; }
   if (marked.alreadyPaid) return; // idempotent redelivery — everything below already ran once
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  await cancelRemindersForPaymentLineItem(admin as any, venueId, itemId);
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   await paymentsRepo.insertPaymentActivity(admin as any, venueId, scheduleId, "payment_received",
