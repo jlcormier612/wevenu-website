@@ -188,6 +188,22 @@ describe("unifiedTaskCompletionCounts (caption + badge)", () => {
     assert.equal(counts.total, 2);
   });
 });
+describe("event_order_shared task destination", () => {
+  it("targets the event-order section, not Home fallback", () => {
+    const presentation = venueTaskPresentation(task({
+      id: "t-event-order-shared",
+      title: "Review event order",
+      status: "pending",
+      dueDate: "",
+      autoCompleteTrigger: "event_order_shared",
+    }));
+    assert.equal(presentation.targetSection, "event-order");
+    assert.equal(presentation.targetFocus, null);
+    assert.equal(presentation.actionLabel, "Review event order");
+    assert.equal(presentation.completableHere, false);
+  });
+});
+
 describe("payment obligation reconciliation", () => {
   const yesterday = new Date();
   yesterday.setDate(yesterday.getDate() - 2);

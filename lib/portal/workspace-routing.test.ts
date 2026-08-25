@@ -64,6 +64,14 @@ describe("portal workspace hash routing", () => {
     assert.equal(formatPortalHash("floor_plans"), "floor_plans");
   });
 
+  it("accepts event-order as a deep-link section (share-email URL and event_order_shared task both target #event-order)", () => {
+    assert.deepEqual(parsePortalHash("#event-order"), {
+      section: "event-order",
+      focus: null,
+    });
+    assert.equal(formatPortalHash("event-order"), "event-order");
+  });
+
   it("formats deterministic hashes for domain targets including insurance upload", () => {
     assert.equal(formatPortalHash("guests", "finalize"), "guests/finalize");
     assert.equal(formatPortalHash("vendors", "pick"), "vendors/pick");
