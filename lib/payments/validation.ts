@@ -1,7 +1,7 @@
 /**
  * Payments validation. Pure functions.
  */
-import { isPaymentObligationKind } from "@/lib/payments/final-payment-obligation";
+import { isPaymentObligationKind } from "@/lib/payments/obligation-constants";
 import type { LineItemInput, MarkPaidInput, PaymentErrors, ScheduleInput } from "@/lib/payments/types";
 
 export function validateScheduleInput(input: ScheduleInput): PaymentErrors {

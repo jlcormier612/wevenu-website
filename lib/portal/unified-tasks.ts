@@ -24,7 +24,7 @@ import type { PortalRequestSummary } from "@/lib/requests/types";
 import type { PortalTask } from "@/lib/portal/types";
 import { selectCanonicalPaymentSchedules } from "@/lib/portal/payment-schedules";
 import type { PortalWorkspaceFocus } from "@/lib/portal/workspace-routing";
-import { FINAL_PAYMENT_OBLIGATION_TRIGGER } from "@/lib/payments/final-payment-obligation";
+import { FINAL_PAYMENT_OBLIGATION_TRIGGER } from "@/lib/payments/obligation-constants";
 
 export type UnifiedTaskKind = "venue_task" | "request" | "contract" | "payment" | "questionnaire" | "timeline";
 

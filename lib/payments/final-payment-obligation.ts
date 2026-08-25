@@ -9,25 +9,15 @@ import type { createClient } from "@/integrations/supabase/server";
 import { completeEventTask } from "@/lib/playbooks/repository";
 import type { PaymentObligationKind } from "@/lib/payments/types";
 
+export {
+  FINAL_PAYMENT_OBLIGATION_TRIGGER,
+  FINAL_PAYMENT_OBLIGATION_CELEBRATION,
+  PAYMENT_OBLIGATION_KINDS,
+  isPaymentObligationKind,
+} from "@/lib/payments/obligation-constants";
+import { FINAL_PAYMENT_OBLIGATION_TRIGGER, FINAL_PAYMENT_OBLIGATION_CELEBRATION } from "@/lib/payments/obligation-constants";
+
 type DbClient = Awaited<ReturnType<typeof createClient>>;
-
-/** Narrow playbook trigger for couple Final Payment (not payment_received). */
-export const FINAL_PAYMENT_OBLIGATION_TRIGGER = "final_payment_obligation_paid" as const;
-
-/** One-shot Luv type — distinct from paid-in-full `final_payment_received`. */
-export const FINAL_PAYMENT_OBLIGATION_CELEBRATION =
-  "final_payment_obligation_paid" as const;
-
-export const PAYMENT_OBLIGATION_KINDS: PaymentObligationKind[] = [
-  "deposit",
-  "installment",
-  "final",
-  "other",
-];
-
-export function isPaymentObligationKind(v: string | null | undefined): v is PaymentObligationKind {
-  return v === "deposit" || v === "installment" || v === "final" || v === "other";
-}
 
 /**
  * When a line with obligation_kind=final is inserted, bind the first unbound
