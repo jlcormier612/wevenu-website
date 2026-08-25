@@ -1,0 +1,25 @@
+---
+description: Never sit in long poll/wait loops for CI, deploys, builds, or other background jobs
+alwaysApply: true
+---
+
+# No long wait loops
+
+Do not block the chat waiting for something that takes minutes.
+
+**Forbidden**
+- `sleep` loops polling GitHub Actions, ECS, CloudFormation, Docker builds, or `tsc`
+- `AwaitShell` / `block_until_ms` of more than ~15s for jobs that are not your own short local command
+- “I’ll wait until it finishes” when the work is already dispatched
+
+**Required**
+- Start the job (deploy, migration, test, build).
+- Confirm it actually started (one status check, or the dispatch HTTP code + run URL).
+- Put the URL and current status in the chat report.
+- End the turn. The user should not have to interrupt a wait.
+
+**Allowed waits (short only)**
+- Local commands that normally finish in seconds (`git`, `npx tsx --test`, a single `curl`).
+- One follow-up status check if you are already unblocked and the result is immediately available.
+
+If a later turn needs the result, check once then. Do not poll in a loop in the meantime.
