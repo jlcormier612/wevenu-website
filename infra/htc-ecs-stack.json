@@ -307,10 +307,13 @@
     },
     "FacebookSecrets": {
       "Type": "AWS::SecretsManager::Secret",
+      "Metadata": {
+        "Comment": "Description and SecretString below are deliberately byte-identical to what's currently deployed (verified 2026-08-25 via `aws cloudformation get-template`) — including the literal '?' in Description where an em dash was presumably meant (a pre-existing encoding artifact in the live resource, not a typo introduced here) and deliberately NOT declaring FACEBOOK_LOGIN_CONFIG_ID in SecretString — so a stack update sees zero diff for this resource and never calls UpdateSecret on it. The real Meta app credentials (FACEBOOK_APP_ID=1703369807439893, the matching App Secret, and FACEBOOK_LOGIN_CONFIG_ID=914008317965817 — VenueAppTaskDefinition below already references all five keys) were set directly via `aws secretsmanager put-secret-value`, out-of-band from this template, exactly as this resource's own Description says real values should be set. If SecretString or Description is ever edited again, either fold the real values into this template's placeholder text first, or re-apply them via put-secret-value immediately after that deploy — otherwise the deploy silently resets them to empty strings."
+      },
       "Properties": {
         "Name": { "Fn::Sub": "htc/${EnvironmentName}/facebook" },
-        "Description": "Venue app Meta Lead Ads keys. FACEBOOK_APP_ID is the same app id as NEXT_PUBLIC_FACEBOOK_APP_ID (not a secret, stored here so the OAuth callback can read FACEBOOK_APP_ID at runtime). FACEBOOK_APP_SECRET signs webhooks and exchanges tokens. FACEBOOK_WEBHOOK_VERIFY_TOKEN is the hub.verify_token string configured on the Meta app webhook. FACEBOOK_SYNC_SECRET gates manual POST /api/facebook/sync/process. FACEBOOK_LOGIN_CONFIG_ID is the Facebook Login for Business configuration ID (OAuth config_id). Empty strings are intentional until the Meta app is configured — do not put real values in this template.",
-        "SecretString": "{\"FACEBOOK_APP_ID\":\"\",\"FACEBOOK_APP_SECRET\":\"\",\"FACEBOOK_WEBHOOK_VERIFY_TOKEN\":\"\",\"FACEBOOK_SYNC_SECRET\":\"\",\"FACEBOOK_LOGIN_CONFIG_ID\":\"\"}"
+        "Description": "Venue app Meta Lead Ads keys. FACEBOOK_APP_ID is the same app id as NEXT_PUBLIC_FACEBOOK_APP_ID (not a secret, stored here so the OAuth callback can read FACEBOOK_APP_ID at runtime). FACEBOOK_APP_SECRET signs webhooks and exchanges tokens. FACEBOOK_WEBHOOK_VERIFY_TOKEN is the hub.verify_token string configured on the Meta app webhook. FACEBOOK_SYNC_SECRET gates manual POST /api/facebook/sync/process. Empty strings are intentional until the Meta app is configured ? do not put real values in this template.",
+        "SecretString": "{\"FACEBOOK_APP_ID\":\"\",\"FACEBOOK_APP_SECRET\":\"\",\"FACEBOOK_WEBHOOK_VERIFY_TOKEN\":\"\",\"FACEBOOK_SYNC_SECRET\":\"\"}"
       }
     },
 
