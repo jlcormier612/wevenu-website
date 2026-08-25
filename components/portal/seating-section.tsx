@@ -152,9 +152,13 @@ function GuestChip({
           {guest.name}
           {guest.plusOneOfGuestId && <span className="text-[10px] text-muted-foreground ml-1">(+1)</span>}
         </div>
-        {(guest.householdName || guest.needsReassignment || tableLabel) && (
-          <div className="text-[10px] text-muted-foreground truncate">
-            {guest.needsReassignment ? "⚠ needs a new table" : tableLabel ? `Seated at ${tableLabel}` : guest.householdName}
+        {(guest.householdName || guest.needsReassignment || guest.plusOneName || tableLabel) && (
+          <div className={`text-[10px] truncate ${guest.plusOneName && !guest.needsReassignment ? "text-amber-700" : "text-muted-foreground"}`}>
+            {guest.needsReassignment
+              ? "⚠ needs a new table"
+              : guest.plusOneName
+                ? `⚠ +1 "${guest.plusOneName}" has no seat — convert them to a guest first`
+                : tableLabel ? `Seated at ${tableLabel}` : guest.householdName}
           </div>
         )}
       </div>
@@ -508,6 +512,7 @@ function GuestWorkspacePanel({
   const children = allGuests.filter((g) => g.isChild && matches(g));
   const vendorMeals = allGuests.filter((g) => g.isVendorMeal && matches(g));
   const needsReassignmentCount = unassigned.filter((g) => g.needsReassignment).length;
+  const unconvertedPlusOnesCount = allGuests.filter((g) => g.plusOneName).length;
 
   const assignedByTable = new Map<string, { label: string; guests: AnyGuest[] }>();
   for (const g of assigned) {
@@ -538,6 +543,11 @@ function GuestWorkspacePanel({
         {needsReassignmentCount > 0 && (
           <div className="mx-4 mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
             {needsReassignmentCount} guest{needsReassignmentCount === 1 ? "" : "s"} need{needsReassignmentCount === 1 ? "s" : ""} a new table — their table was removed from the Floor Plan.
+          </div>
+        )}
+        {unconvertedPlusOnesCount > 0 && (
+          <div className="mx-4 mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+            {unconvertedPlusOnesCount} plus-one{unconvertedPlusOnesCount === 1 ? "" : "s"} {unconvertedPlusOnesCount === 1 ? "has" : "have"} a name but no seat — convert them to a full guest before the floor plan can seat them.
           </div>
         )}
 

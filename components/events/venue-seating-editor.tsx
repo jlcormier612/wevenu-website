@@ -121,6 +121,12 @@ export function VenueSeatingEditor({ eventId, floorPlanId, coupleName }: {
         </Button>
       </div>
 
+      {data.stats.unconvertedPlusOnes > 0 && (
+        <div className="rounded-sm border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+          ⚠ {data.stats.unconvertedPlusOnes} plus-one{data.stats.unconvertedPlusOnes === 1 ? "" : "s"} {data.stats.unconvertedPlusOnes === 1 ? "has" : "have"} a name but no guest record — marked below with ⚠, they can&apos;t be seated until converted to a full guest.
+        </div>
+      )}
+
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="rounded-sm border border-border bg-card p-4 space-y-2">
           <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
@@ -132,6 +138,9 @@ export function VenueSeatingEditor({ eventId, floorPlanId, coupleName }: {
                 {g.name}
                 {g.accessibilityTags.length > 0 && (
                   <span className="ml-1" title={g.accessibilityTags.map(t => ACCESSIBILITY_LABELS[t] ?? t).join(", ")}>♿</span>
+                )}
+                {g.plusOneName && (
+                  <span className="ml-1 text-amber-700" title={`+1 "${g.plusOneName}" has no seat — convert them to a guest first`}>⚠ +1</span>
                 )}
               </span>
               <select
@@ -161,6 +170,9 @@ export function VenueSeatingEditor({ eventId, floorPlanId, coupleName }: {
                 <div key={g.guestId} className="flex items-center justify-between gap-2 pl-3 text-xs">
                   <span className="truncate">
                     {g.mealChoice && MEAL_EMOJI[g.mealChoice.toLowerCase()]} {g.name}
+                    {g.plusOneName && (
+                      <span className="ml-1 text-amber-700" title={`+1 "${g.plusOneName}" has no seat — convert them to a guest first`}>⚠ +1</span>
+                    )}
                   </span>
                   <button type="button" disabled={busyGuestId === g.guestId} onClick={() => remove(g.guestId)}
                     className="text-muted-foreground hover:text-destructive shrink-0">Remove</button>

@@ -439,6 +439,8 @@ export type SeatingGuest = {
   householdId: string | null;
   householdName: string | null;
   plusOneOfGuestId: string | null;
+  /** Set only while this guest's plus-one is still a typed name with no guest record of their own — cleared once converted (assign_plus_one). A non-null value means this plus-one currently occupies zero seats and never will unless converted. */
+  plusOneName: string | null;
 };
 
 /**
@@ -475,6 +477,8 @@ export type SeatingStats = {
   totalAssigned: number;
   tableCount: number;
   totalCapacity: number;
+  /** Attending guests with a typed plus-one name that's never been converted into its own guest record — each one occupies zero seats with no seat of its own. */
+  unconvertedPlusOnes: number;
 };
 
 /** Seating Experience — Phase 1. Null floorPlan means the venue hasn't shared one yet (client_access still 'hidden' on every plan). */
