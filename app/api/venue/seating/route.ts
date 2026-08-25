@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/integrations/supabase/server";
+import { seatingRpcHttpResult } from "@/lib/seating/http-result";
 
 // Venue-authenticated read for one floor plan (current_user_venue_id(),
 // no borrowed portal token) — returns the couple's live draft when this
@@ -17,5 +18,6 @@ export async function GET(request: Request) {
     p_event_id: eventId, p_floor_plan_id: floorPlanId,
   });
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json(data ?? {});
+  const result = seatingRpcHttpResult(data);
+  return NextResponse.json(result.body, { status: result.status });
 }

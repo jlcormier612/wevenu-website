@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/integrations/supabase/server";
+import { seatingRpcHttpResult } from "@/lib/seating/http-result";
 
 // Delegation-gated venue writes (Commitment Lifecycle Architecture §7) —
 // assign_guest_to_table_as_venue/remove_guest_assignment_as_venue check
@@ -14,7 +15,8 @@ export async function POST(request: Request) {
     p_floor_plan_id: floorPlanId, p_guest_id: guestId, p_table_id: tableId,
   });
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json({ ok: data });
+  const result = seatingRpcHttpResult(data);
+  return NextResponse.json(result.body, { status: result.status });
 }
 
 export async function DELETE(request: Request) {
@@ -26,5 +28,6 @@ export async function DELETE(request: Request) {
     p_floor_plan_id: floorPlanId, p_guest_id: guestId,
   });
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json({ ok: data });
+  const result = seatingRpcHttpResult(data);
+  return NextResponse.json(result.body, { status: result.status });
 }
