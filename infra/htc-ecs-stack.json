@@ -534,7 +534,7 @@
         "Name": {
           "Fn::Sub": "htc/${EnvironmentName}/stripe-connect"
         },
-        "Description": "Venue app's existing Stripe Connect keys - not part of the first E2E path, included for completeness",
+        "Description": "Venue app Stripe Connect keys. STRIPE_SECRET_KEY + STRIPE_WEBHOOK_SECRET for OAuth/webhooks. STRIPE_CLIENT_ID is the public Connect client id (same value as NEXT_PUBLIC_STRIPE_CLIENT_ID) — add this key to the live secret via put-secret-value; do not rely on CFN SecretString updates to populate it.",
         "SecretString": "{\"STRIPE_SECRET_KEY\":\"CHANGE_ME\",\"STRIPE_WEBHOOK_SECRET\":\"CHANGE_ME\"}"
       }
     },
@@ -677,6 +677,12 @@
                 "Name": "STRIPE_WEBHOOK_SECRET",
                 "ValueFrom": {
                   "Fn::Sub": "${StripeConnectSecrets}:STRIPE_WEBHOOK_SECRET::"
+                }
+              },
+              {
+                "Name": "STRIPE_CLIENT_ID",
+                "ValueFrom": {
+                  "Fn::Sub": "${StripeConnectSecrets}:STRIPE_CLIENT_ID::"
                 }
               },
               {

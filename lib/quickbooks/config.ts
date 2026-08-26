@@ -16,8 +16,14 @@
  *   QUICKBOOKS_ENVIRONMENT             — "sandbox" (default) | "production"
  */
 
+function isRealCredential(value: string | undefined): boolean {
+  const trimmed = value?.trim() ?? "";
+  return trimmed.length > 0 && trimmed !== "CHANGE_ME";
+}
+
 export function isQuickBooksConfigured(): boolean {
-  return !!(process.env.QUICKBOOKS_CLIENT_ID && process.env.QUICKBOOKS_CLIENT_SECRET);
+  return isRealCredential(process.env.QUICKBOOKS_CLIENT_ID)
+    && isRealCredential(process.env.QUICKBOOKS_CLIENT_SECRET);
 }
 
 export type QuickBooksEnvironment = "sandbox" | "production";
@@ -39,3 +45,29 @@ export const QUICKBOOKS_SCOPE = "com.intuit.quickbooks.accounting";
 
 /** "Hello to Cheers Services" placeholder Item name — see lib/quickbooks/items.ts. */
 export const QUICKBOOKS_DEFAULT_ITEM_NAME = "Hello to Cheers Services";
+
+/**
+ * Build the QuickBooks Online authorization URL.
+ * Prefers runtime QUICKBOOKS_CLIENT_ID then NEXT_PUBLIC_QUICKBOOKS_CLIENT_ID.
+ */
+export function buildQuickBooksConnectUrl(
+  venueId: string,
+  returnTo: "settings" | "onboarding" = "settings",
+): string | null {
+  const clientId =
+    process.env.QUICKBOOKS_CLIENT_ID?.trim() ||
+    process.env.NEXT_PUBLIC_QUICKBOOKS_CLIENT_ID?.trim() ||
+    "";
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+  if (!clientId || clientId === "CHANGE_ME" || !venueId.trim()) return null;
+
+  const params = new URLSearchParams({
+    client_id: clientId,
+    response_type: "code",
+    scope: QUICKBOOKS_SCOPE,
+    redirect_uri: `${appUrl}/api/quickbooks/callback`,
+    state: `${venueId}:${returnTo}`,
+  });
+
+  return `${QUICKBOOKS_AUTHORIZE_URL}?${params}`;
+}

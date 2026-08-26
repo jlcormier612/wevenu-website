@@ -8,6 +8,8 @@ import { FacebookConnectSection } from "@/components/settings/facebook-connect-s
 import { getCurrentVenue } from "@/lib/venue/service";
 import { getQuickBooksConnection, getRecentQuickBooksSyncLog } from "@/lib/quickbooks/service";
 import { getFacebookConnection, getFacebookLeadForms, getRecentFacebookLog } from "@/lib/facebook/service";
+import { buildStripeConnectUrl } from "@/lib/stripe/oauth";
+import { buildQuickBooksConnectUrl } from "@/lib/quickbooks/config";
 
 export const metadata: Metadata = { title: "Financials & Integrations — Settings" };
 
@@ -26,8 +28,8 @@ export default async function FinancialsIntegrationsSettingsPage() {
       />
       <SettingsTabs />
 
-      {venue && <div id="stripe" className="scroll-mt-20"><StripeConnectSection venue={venue} /></div>}
-      {venue && <QuickBooksConnectSection venueId={venue.id} connection={quickbooksConnection} syncLog={quickbooksSyncLog} />}
+      {venue && <div id="stripe" className="scroll-mt-20"><StripeConnectSection venue={venue} connectUrl={buildStripeConnectUrl(venue.id)} /></div>}
+      {venue && <QuickBooksConnectSection venueId={venue.id} connection={quickbooksConnection} syncLog={quickbooksSyncLog} connectUrl={buildQuickBooksConnectUrl(venue.id)} />}
       {venue && <FacebookConnectSection venueId={venue.id} connection={facebookConnection} leadForms={facebookLeadForms} recentLog={facebookLog} />}
     </div>
   );
