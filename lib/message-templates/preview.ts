@@ -14,6 +14,9 @@
 export const SAMPLE_MERGE_VALUES: Record<string, string> = {
   venue_name: "Willow Creek Estate",
   client_name: "Emily & James Carter",
+  first_name: "Sally",
+  last_name: "Sunshine",
+  full_name: "Sally Sunshine",
   coordinator_name: "Jordan Blake",
   event_date: "June 12, 2027",
   event_name: "Emily & James's Wedding",
