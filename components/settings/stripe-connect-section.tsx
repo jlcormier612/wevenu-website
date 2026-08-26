@@ -18,37 +18,25 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import type { StripePaymentMethodType, Venue } from "@/lib/venue/types";
+import { buildStripeConnectUrl } from "@/lib/stripe/oauth";
 
-/**
- * Sprint 4 — Venue Payment Processing. Mirrors buildQuickBooksConnectUrl(),
- * including the `returnTo` addition (Guided Setup §1.2, 2026-07-22) — the
- * "payments" wizard step embeds this same component, and without a
- * returnTo the callback always sent the browser to /settings, stranding
- * anyone connecting from onboarding instead of returning them to the
- * wizard step they were on.
- */
-export function buildStripeConnectUrl(venueId: string, returnTo: "settings" | "onboarding" = "settings"): string | null {
-  const clientId = process.env.NEXT_PUBLIC_STRIPE_CLIENT_ID;
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
-  if (!clientId) return null;
-
-  const params = new URLSearchParams({
-    client_id: clientId,
-    response_type: "code",
-    scope: "read_write",
-    redirect_uri: `${appUrl}/api/stripe/callback`,
-    state: `${venueId}:${returnTo}`, // CSRF: the venueId half is verified against the session's actual venue in the callback
-  });
-
-  return `https://connect.stripe.com/oauth/authorize?${params}`;
-}
+export { buildStripeConnectUrl };
 
 const PAYMENT_METHOD_OPTIONS: { value: StripePaymentMethodType; label: string; hint: string }[] = [
   { value: "card", label: "Credit/Debit Card", hint: "Confirms instantly." },
   { value: "us_bank_account", label: "ACH Bank Transfer", hint: "Lower processing fees; takes 4–5 business days to settle." },
 ];
 
-export function StripeConnectSection({ venue, returnTo = "settings" }: { venue: Venue; returnTo?: "settings" | "onboarding" }) {
+export function StripeConnectSection({
+  venue,
+  returnTo = "settings",
+  connectUrl: connectUrlProp,
+}: {
+  venue: Venue;
+  returnTo?: "settings" | "onboarding";
+  /** Server-built OAuth URL — uses runtime STRIPE_CLIENT_ID when public build arg is missing. */
+  connectUrl?: string | null;
+}) {
   const searchParams = useSearchParams();
   const stripeSuccess = searchParams.get("stripe_success");
   const stripeError = searchParams.get("stripe_error");
@@ -61,7 +49,7 @@ export function StripeConnectSection({ venue, returnTo = "settings" }: { venue: 
     if (stripeError) toast.error(`Stripe error: ${stripeError}`);
   }, [stripeSuccess, stripeError]);
 
-  const connectUrl = buildStripeConnectUrl(venue.id, returnTo);
+  const connectUrl = connectUrlProp ?? buildStripeConnectUrl(venue.id, returnTo);
   const isConfigured = !!connectUrl;
   const isConnected = venue.stripeOnboardingStatus === "connected";
   const chargesEnabled = isConnected && venue.stripeChargesEnabled;

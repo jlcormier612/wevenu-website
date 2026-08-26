@@ -23,10 +23,14 @@ export function PostSetupFinancial({
   venue,
   quickbooksConnection,
   quickbooksSyncLog,
+  stripeConnectUrl,
+  quickbooksConnectUrl,
 }: {
   venue: Venue;
   quickbooksConnection: QuickBooksConnection | null;
   quickbooksSyncLog: QuickBooksSyncLogEntry[];
+  stripeConnectUrl?: string | null;
+  quickbooksConnectUrl?: string | null;
 }) {
   const router = useRouter();
   const copy = STAGE_COPY.financials;
@@ -56,8 +60,9 @@ export function PostSetupFinancial({
         connection={quickbooksConnection}
         syncLog={quickbooksSyncLog}
         returnTo="onboarding"
+        connectUrl={quickbooksConnectUrl}
       />
-      <StripeConnectSection venue={venue} returnTo="onboarding" />
+      <StripeConnectSection venue={venue} returnTo="onboarding" connectUrl={stripeConnectUrl} />
 
       <div className="flex justify-end">
         <Button
