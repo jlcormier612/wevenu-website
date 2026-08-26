@@ -74,4 +74,22 @@ describe("Wedding Venue Agreement starter", () => {
     assert.match(merged, /Garden Hall/);
     assert.equal(merged.includes("{{"), false);
   });
+
+  it("exposes first/last/full name merge tokens from client columns", () => {
+    const data = buildMergeData({
+      venueName: "Garden Hall",
+      clientFirstName: "Ada",
+      clientLastName: "Lovelace",
+      partnerFirstName: null,
+      partnerLastName: null,
+      eventDate: "2027-06-12",
+      eventType: "wedding",
+      guestCount: 80,
+      contractTitle: "Agreement",
+    });
+    assert.equal(data.first_name, "Ada");
+    assert.equal(data.last_name, "Lovelace");
+    assert.equal(data.full_name, "Ada Lovelace");
+    assert.equal(mergeContent("Dear {{first_name}},", data), "Dear Ada,");
+  });
 });
