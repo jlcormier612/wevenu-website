@@ -99,8 +99,7 @@
 
   "Conditions": {
     "HasCertificate": { "Fn::Not": [{ "Fn::Equals": [{ "Ref": "CertificateArn" }, ""] }] },
-    "IsProduction": { "Fn::Equals": [{ "Ref": "EnvironmentName" }, "production"] },
-    "HasCronSecret": { "Fn::Not": [{ "Fn::Equals": [{ "Ref": "CronSecret" }, ""] }] }
+    "IsProduction": { "Fn::Equals": [{ "Ref": "EnvironmentName" }, "production"] }
   },
 
   "Resources": {
@@ -626,97 +625,6 @@
         },
         "LoadBalancers": [{ "ContainerName": "workspace", "ContainerPort": 3000, "TargetGroupArn": { "Ref": "WorkspaceTargetGroup" } }],
         "HealthCheckGracePeriodSeconds": 120
-      }
-    },
-
-    "FacebookLeadCronRole": {
-      "Type": "AWS::IAM::Role",
-      "Condition": "HasCronSecret",
-      "Properties": {
-        "RoleName": { "Fn::Sub": "htc-${EnvironmentName}-facebook-lead-cron" },
-        "AssumeRolePolicyDocument": {
-          "Version": "2012-10-17",
-          "Statement": [{ "Effect": "Allow", "Principal": { "Service": "events.amazonaws.com" }, "Action": "sts:AssumeRole" }]
-        },
-        "Policies": [{
-          "PolicyName": "InvokeFacebookLeadApiDestinations",
-          "PolicyDocument": {
-            "Version": "2012-10-17",
-            "Statement": [{
-              "Effect": "Allow",
-              "Action": "events:InvokeApiDestination",
-              "Resource": "*"
-            }]
-          }
-        }]
-      }
-    },
-    "FacebookLeadCronConnection": {
-      "Type": "AWS::Events::Connection",
-      "Condition": "HasCronSecret",
-      "Properties": {
-        "Name": { "Fn::Sub": "htc-${EnvironmentName}-facebook-lead-cron" },
-        "AuthorizationType": "API_KEY",
-        "AuthParameters": {
-          "ApiKeyAuthParameters": {
-            "ApiKeyName": "Authorization",
-            "ApiKeyValue": { "Fn::Sub": "Bearer ${CronSecret}" }
-          }
-        }
-      }
-    },
-    "FacebookLeadSyncApiDestination": {
-      "Type": "AWS::Events::ApiDestination",
-      "Condition": "HasCronSecret",
-      "Properties": {
-        "Name": { "Fn::Sub": "htc-${EnvironmentName}-facebook-lead-sync" },
-        "ConnectionArn": { "Fn::GetAtt": ["FacebookLeadCronConnection", "Arn"] },
-        "InvocationEndpoint": { "Fn::Sub": "https://${VenueAppHostname}/api/facebook/sync/process" },
-        "HttpMethod": "GET",
-        "InvocationRateLimitPerSecond": 10
-      }
-    },
-    "FacebookLeadReconcileApiDestination": {
-      "Type": "AWS::Events::ApiDestination",
-      "Condition": "HasCronSecret",
-      "Properties": {
-        "Name": { "Fn::Sub": "htc-${EnvironmentName}-facebook-lead-reconcile" },
-        "ConnectionArn": { "Fn::GetAtt": ["FacebookLeadCronConnection", "Arn"] },
-        "InvocationEndpoint": { "Fn::Sub": "https://${VenueAppHostname}/api/facebook/reconcile/process" },
-        "HttpMethod": "GET",
-        "InvocationRateLimitPerSecond": 1
-      }
-    },
-    "FacebookLeadSyncRule": {
-      "Type": "AWS::Events::Rule",
-      "Condition": "HasCronSecret",
-      "DependsOn": ["VenueAppService"],
-      "Properties": {
-        "Name": { "Fn::Sub": "htc-${EnvironmentName}-facebook-lead-sync" },
-        "Description": "Process facebook_lead_queue every 2 minutes (Lead Ads webhook after() is the fast path; this is the retry/crash backstop).",
-        "ScheduleExpression": "rate(2 minutes)",
-        "State": "ENABLED",
-        "Targets": [{
-          "Id": "FacebookLeadSync",
-          "Arn": { "Fn::GetAtt": ["FacebookLeadSyncApiDestination", "Arn"] },
-          "RoleArn": { "Fn::GetAtt": ["FacebookLeadCronRole", "Arn"] }
-        }]
-      }
-    },
-    "FacebookLeadReconcileRule": {
-      "Type": "AWS::Events::Rule",
-      "Condition": "HasCronSecret",
-      "DependsOn": ["VenueAppService"],
-      "Properties": {
-        "Name": { "Fn::Sub": "htc-${EnvironmentName}-facebook-lead-reconcile" },
-        "Description": "Hourly Meta Lead Ads reconciliation poll for missed webhook deliveries.",
-        "ScheduleExpression": "rate(1 hour)",
-        "State": "ENABLED",
-        "Targets": [{
-          "Id": "FacebookLeadReconcile",
-          "Arn": { "Fn::GetAtt": ["FacebookLeadReconcileApiDestination", "Arn"] },
-          "RoleArn": { "Fn::GetAtt": ["FacebookLeadCronRole", "Arn"] }
-        }]
       }
     }
   },
