@@ -32,7 +32,7 @@
 -- Every row starts has_direct_connection = false; flip it only once a real
 -- API/OAuth historical-retrieval path genuinely exists for that source.
 
-create table public.source_profiles (
+create table if not exists public.source_profiles (
   key                      text primary key,
   display_name             text not null,
   has_direct_connection    boolean not null default false,
@@ -66,13 +66,14 @@ values
 on conflict (key) do nothing;
 
 alter table public.source_profiles enable row level security;
+drop policy if exists source_profiles_read on public.source_profiles;
 create policy source_profiles_read on public.source_profiles for select using (true);
 grant select on public.source_profiles to authenticated, anon, service_role;
 
 
 -- ── 2. migration_sessions — the resumable orchestration layer ──────────────
 
-create table public.migration_sessions (
+create table if not exists public.migration_sessions (
   id                uuid primary key default gen_random_uuid(),
   venue_id          uuid not null references public.venues (id) on delete cascade,
   source_key        text not null references public.source_profiles (key),
@@ -94,11 +95,12 @@ create table public.migration_sessions (
   created_at        timestamptz not null default now()
 );
 
-create index migration_sessions_venue on public.migration_sessions (venue_id, created_at desc);
-create index migration_sessions_engagement on public.migration_sessions (engagement_id) where engagement_id is not null;
+create index if not exists migration_sessions_venue on public.migration_sessions (venue_id, created_at desc);
+create index if not exists migration_sessions_engagement on public.migration_sessions (engagement_id) where engagement_id is not null;
 
 alter table public.migration_sessions enable row level security;
 
+drop policy if exists migration_sessions_venue_all on public.migration_sessions;
 create policy migration_sessions_venue_all on public.migration_sessions
   for all using (venue_id = public.current_user_venue_id())
   with check (venue_id = public.current_user_venue_id());
@@ -106,6 +108,7 @@ create policy migration_sessions_venue_all on public.migration_sessions
 -- Additive HQ read/write, mirroring the already-proven *_hq_select pattern
 -- (Postgres OR's permissive policies — a venue user's own policy above is
 -- untouched; an HQ admin additionally passes because is_hq_admin() is true).
+drop policy if exists migration_sessions_hq_all on public.migration_sessions;
 create policy migration_sessions_hq_all on public.migration_sessions
   for all using (public.is_hq_admin())
   with check (public.is_hq_admin());
@@ -120,7 +123,7 @@ grant select, insert, update on public.migration_sessions to service_role;
 -- tags @> ARRAY['migration_artifact']. This join table is what links them
 -- to a session, so `documents` itself gains no new narrow-purpose FK.
 
-create table public.migration_session_documents (
+create table if not exists public.migration_session_documents (
   session_id   uuid not null references public.migration_sessions (id) on delete cascade,
   document_id  uuid not null references public.documents (id) on delete cascade,
   created_at   timestamptz not null default now(),
@@ -129,6 +132,7 @@ create table public.migration_session_documents (
 
 alter table public.migration_session_documents enable row level security;
 
+drop policy if exists migration_session_documents_venue_all on public.migration_session_documents;
 create policy migration_session_documents_venue_all on public.migration_session_documents
   for all using (
     exists (select 1 from public.migration_sessions s where s.id = session_id and s.venue_id = public.current_user_venue_id())
@@ -137,6 +141,7 @@ create policy migration_session_documents_venue_all on public.migration_session_
     exists (select 1 from public.migration_sessions s where s.id = session_id and s.venue_id = public.current_user_venue_id())
   );
 
+drop policy if exists migration_session_documents_hq_all on public.migration_session_documents;
 create policy migration_session_documents_hq_all on public.migration_session_documents
   for all using (public.is_hq_admin())
   with check (public.is_hq_admin());
@@ -149,7 +154,7 @@ grant select, insert, update, delete on public.migration_session_documents to se
 --       validation/dedupe → canonical entity. A staging/audit record, never
 --       a second representation of a client/lead/vendor/event/payment. ────
 
-create table public.migration_records (
+create table if not exists public.migration_records (
   id                   uuid primary key default gen_random_uuid(),
   session_id           uuid not null references public.migration_sessions (id) on delete cascade,
   venue_id             uuid not null references public.venues (id) on delete cascade,
@@ -177,8 +182,8 @@ create table public.migration_records (
 comment on column public.migration_records.created_entity_id is
   'Set only once actually committed via the existing, unmodified canonical create function (createClientCore/ingestLead/etc). This being non-null is itself the resume checkpoint for an interrupted session — no separate cursor concept needed.';
 
-create index migration_records_session on public.migration_records (session_id, status);
-create index migration_records_venue on public.migration_records (venue_id, created_at desc);
+create index if not exists migration_records_session on public.migration_records (session_id, status);
+create index if not exists migration_records_venue on public.migration_records (venue_id, created_at desc);
 -- Repeat-import short-circuit (§B.4): find a prior committed record for this
 -- venue+source with the same source-supplied record id, before falling back
 -- to name/email matching. Indexed on normalized_payload, not raw_payload —
@@ -186,15 +191,17 @@ create index migration_records_venue on public.migration_records (venue_id, crea
 -- place when a source record has a stable id, whereas raw_payload's actual
 -- id field name varies unpredictably per source. Partial index: most rows
 -- won't have one, and this must stay cheap when they don't.
-create index migration_records_source_id on public.migration_records (venue_id, (normalized_payload ->> 'sourceId'))
+create index if not exists migration_records_source_id on public.migration_records (venue_id, (normalized_payload ->> 'sourceId'))
   where normalized_payload ? 'sourceId' and status = 'committed';
 
 alter table public.migration_records enable row level security;
 
+drop policy if exists migration_records_venue_all on public.migration_records;
 create policy migration_records_venue_all on public.migration_records
   for all using (venue_id = public.current_user_venue_id())
   with check (venue_id = public.current_user_venue_id());
 
+drop policy if exists migration_records_hq_all on public.migration_records;
 create policy migration_records_hq_all on public.migration_records
   for all using (public.is_hq_admin())
   with check (public.is_hq_admin());
