@@ -62,8 +62,23 @@ describe("buildMergeData optional tokens", () => {
     assert.equal(data.venue_name, "Willow Creek");
     assert.equal(data.tour_datetime, undefined);
     assert.equal(data.payment_amount, undefined);
+    assert.equal(data.first_name, undefined);
     const body = "See you on {{tour_datetime}}";
     assert.equal(mergeContent(body, data), "See you on {{tour_datetime}}");
+  });
+
+  it("includes first/last/full name when present", () => {
+    const data = buildMergeData({
+      venueName: "Willow Creek",
+      clientName: "Emily & James Carter",
+      clientFirstName: "Emily",
+      clientLastName: "Carter",
+      coordinatorName: "Jordan",
+      eventDate: "2027-06-12",
+    });
+    assert.equal(data.first_name, "Emily");
+    assert.equal(data.last_name, "Carter");
+    assert.equal(data.full_name, "Emily Carter");
   });
 
   it("includes tour and payment when present", () => {
