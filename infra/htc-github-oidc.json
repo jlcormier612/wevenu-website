@@ -118,9 +118,9 @@
                 "Condition": { "StringEquals": { "iam:PassedToService": "ecs-tasks.amazonaws.com" } }
               },
               {
-                "Sid": "SecretsCreateOnlyNotWrite",
+                "Sid": "SecretsCreateAndUpdateMetadata",
                 "Effect": "Allow",
-                "Action": ["secretsmanager:CreateSecret", "secretsmanager:DeleteSecret", "secretsmanager:DescribeSecret", "secretsmanager:TagResource"],
+                "Action": ["secretsmanager:CreateSecret", "secretsmanager:DeleteSecret", "secretsmanager:DescribeSecret", "secretsmanager:TagResource", "secretsmanager:UpdateSecret", "secretsmanager:GetSecretValue"],
                 "Resource": [{ "Fn::Sub": "arn:aws:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:htc/sandbox/*" }]
               },
               {

@@ -181,19 +181,118 @@ jobs:
           missing=()
           [ -z "${{ vars.NEXT_PUBLIC_SUPABASE_URL }}" ] && missing+=("NEXT_PUBLIC_SUPABASE_URL")
           [ -z "${{ vars.NEXT_PUBLIC_SUPABASE_ANON_KEY }}" ] && missing+=("NEXT_PUBLIC_SUPABASE_ANON_KEY")
+          # CertificateArn must be passed explicitly: `aws cloudformation deploy`
+          # resets omitted parameters to template defaults, and CertificateArn's
+          # default is "" which flips HasCertificate off and deletes HTTPS.
+          [ -z "${{ vars.CERTIFICATE_ARN }}" ] && missing+=("CERTIFICATE_ARN")
           if [ ${#missing[@]} -gt 0 ]; then
             echo "::error::Missing required sandbox Environment variable(s), needed to deploy infra/htc-ecs-stack.json: ${missing[*]}"
             exit 1
           fi
 
+      # CFN execution role can CreateSecret but not UpdateSecret (intentional:
+      # live Meta credentials are set out-of-band via put-secret-value and must
+      # not be overwritten by empty template placeholders). Refuse any changeset
+      # that would Modify FacebookSecrets or Remove HTTPS before execute.
+      - name: Guard FacebookSecrets and HTTPS in change set
+        env:
+          REGISTRY: ${{ steps.ecr-login.outputs.registry }}
+          SHA: ${{ github.sha }}
+          STACK: ${{ vars.CFN_STACK_NAME }}
+          ROLE: ${{ vars.CFN_EXECUTION_ROLE_ARN }}
+        run: |
+          CS="deploy-guard-${SHA:0:12}-$(date +%s)"
+          aws cloudformation create-change-set \
+            --stack-name "$STACK" \
+            --change-set-name "$CS" \
+            --template-body file://infra/htc-ecs-stack.json \
+            --capabilities CAPABILITY_NAMED_IAM \
+            --role-arn "$ROLE" \
+            --change-set-type UPDATE \
+            --parameters \
+              "ParameterKey=EnvironmentName,ParameterValue=sandbox" \
+              "ParameterKey=VenueAppImage,ParameterValue=$REGISTRY/htc-sandbox-venue-app:$SHA" \
+              "ParameterKey=MarketingImage,ParameterValue=$REGISTRY/htc-sandbox-marketing:$SHA" \
+              "ParameterKey=WorkspaceImage,ParameterValue=$REGISTRY/htc-sandbox-workspace:$SHA" \
+              "ParameterKey=VenueAppHostname,ParameterValue=app.sandbox.hellotocheers.com" \
+              "ParameterKey=MarketingHostname,ParameterValue=sandbox.hellotocheers.com" \
+              "ParameterKey=WorkspaceHostname,ParameterValue=workspace.sandbox.hellotocheers.com" \
+              "ParameterKey=CertificateArn,ParameterValue=${{ vars.CERTIFICATE_ARN }}" \
+              "ParameterKey=FromEmailAddress,ParameterValue=Hello to Cheers <jennifer@hellotocheers.com>" \
+              "ParameterKey=EmailReplyTo,ParameterValue=jennifer@hellotocheers.com" \
+              "ParameterKey=SupabaseUrl,ParameterValue=${{ vars.NEXT_PUBLIC_SUPABASE_URL }}" \
+              "ParameterKey=SupabaseAnonKey,ParameterValue=${{ vars.NEXT_PUBLIC_SUPABASE_ANON_KEY }}" \
+              "ParameterKey=ResendInboundAddress,ParameterValue=${{ vars.RESEND_INBOUND_ADDRESS }}" \
+              "ParameterKey=CronSecret,ParameterValue=${{ secrets.CRON_SECRET }}" \
+              "ParameterKey=StripePriceStarter,ParameterValue=price_1U42LNErUqJH7nktdpRin9ev" \
+              "ParameterKey=StripePriceGrowing,ParameterValue=price_1U5rfoErUqJH7nkts2RnCCtg" \
+              "ParameterKey=StripePriceGrowingFounder,ParameterValue=price_1U5rfoErUqJH7nktxJONRlCq" \
+              "ParameterKey=StripePriceProfessional,ParameterValue=price_1U5rfpErUqJH7nktREPKO5zo" \
+              "ParameterKey=StripePriceProfessionalFounder,ParameterValue=price_1U5rfqErUqJH7nktQg0wIXla" \
+              "ParameterKey=StripePriceWhiteGlove,ParameterValue=price_1U5rfrErUqJH7nktV23SeLsM" \
+              "ParameterKey=StripeFoundingCouponId,ParameterValue=FOUNDING100"
+
+          for _ in $(seq 1 40); do
+            st=$(aws cloudformation describe-change-set --stack-name "$STACK" --change-set-name "$CS" --query Status --output text)
+            case "$st" in CREATE_COMPLETE|FAILED) break ;; esac
+            sleep 2
+          done
+
+          aws cloudformation describe-change-set --stack-name "$STACK" --change-set-name "$CS" --output json \
+            > /tmp/deploy-changeset.json
+          python3 -c '
+import json, sys
+d = json.load(open("/tmp/deploy-changeset.json"))
+status, reason = d.get("Status"), d.get("StatusReason") or ""
+if status == "FAILED" and "didn'\''t contain changes" in reason:
+    print("No stack changes (already current).")
+    open("/tmp/deploy-changeset-empty", "w").write("1")
+    sys.exit(0)
+if status != "CREATE_COMPLETE":
+    print(f"::error::Change set status {status}: {reason}")
+    sys.exit(1)
+changes = d.get("Changes") or []
+bad_secret = [
+    c["ResourceChange"]["LogicalResourceId"]
+    for c in changes
+    if c["ResourceChange"]["LogicalResourceId"] == "FacebookSecrets" and c["ResourceChange"].get("Action") == "Modify"
+]
+if bad_secret:
+    print("::error::Change set would modify FacebookSecrets. CFN role cannot UpdateSecret; aborting to avoid UPDATE_ROLLBACK_FAILED.")
+    sys.exit(1)
+bad_https = [
+    c["ResourceChange"]["LogicalResourceId"]
+    for c in changes
+    if c["ResourceChange"].get("Action") == "Remove"
+    and "Https" in c["ResourceChange"]["LogicalResourceId"]
+]
+if bad_https:
+    print("::error::Change set would remove HTTPS resources: " + ", ".join(bad_https))
+    sys.exit(1)
+for c in changes:
+    rc = c["ResourceChange"]
+    print(f"  {rc.get(\"Action\")} {rc.get(\"LogicalResourceId\")} {rc.get(\"ResourceType\")}")
+'
+          echo "CHANGE_SET_NAME=$CS" >> "$GITHUB_ENV"
+
       - name: Deploy htc-ecs-stack.json
         env:
           REGISTRY: ${{ steps.ecr-login.outputs.registry }}
           SHA: ${{ github.sha }}
+          STACK: ${{ vars.CFN_STACK_NAME }}
         run: |
+          if [ -n "${CHANGE_SET_NAME:-}" ] && [ ! -f /tmp/deploy-changeset-empty ]; then
+            st=$(aws cloudformation describe-change-set --stack-name "$STACK" --change-set-name "$CHANGE_SET_NAME" --query Status --output text 2>/dev/null || echo MISSING)
+            if [ "$st" = "CREATE_COMPLETE" ]; then
+              aws cloudformation execute-change-set --stack-name "$STACK" --change-set-name "$CHANGE_SET_NAME"
+              aws cloudformation wait stack-update-complete --stack-name "$STACK"
+              exit 0
+            fi
+          fi
+          # Fallback when the change set was empty (no-op) or unavailable.
           aws cloudformation deploy \
             --template-file infra/htc-ecs-stack.json \
-            --stack-name "${{ vars.CFN_STACK_NAME }}" \
+            --stack-name "$STACK" \
             --parameter-overrides \
               EnvironmentName=sandbox \
               VenueAppImage="$REGISTRY/htc-sandbox-venue-app:$SHA" \
@@ -202,6 +301,7 @@ jobs:
               VenueAppHostname=app.sandbox.hellotocheers.com \
               MarketingHostname=sandbox.hellotocheers.com \
               WorkspaceHostname=workspace.sandbox.hellotocheers.com \
+              CertificateArn="${{ vars.CERTIFICATE_ARN }}" \
               FromEmailAddress="Hello to Cheers <jennifer@hellotocheers.com>" \
               EmailReplyTo=jennifer@hellotocheers.com \
               SupabaseUrl="${{ vars.NEXT_PUBLIC_SUPABASE_URL }}" \
