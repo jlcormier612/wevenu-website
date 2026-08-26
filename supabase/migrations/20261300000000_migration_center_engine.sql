@@ -53,15 +53,15 @@ insert into public.source_profiles
   (key, display_name, has_direct_connection, forward_only, export_assisted, white_glove_recommended, supported_file_types, has_known_parser, historical_limitations)
 values
   ('generic_csv', 'CSV / Spreadsheet', false, false, true, false, '{csv,xlsx,xls}', true, null),
-  ('the_knot', 'The Knot', false, false, true, false, '{csv,xlsx,pdf,docx}',
+  ('the_knot', 'The Knot', false, false, true, false, '{csv,xlsx,pdf,docx}', false,
     'No public developer API or documented bulk export exists. Coverage depends on whatever the venue can manually export or copy from their account. New inquiries can already be forwarded by email (a separate, existing capability) — this profile covers historical data only.'),
-  ('weddingwire', 'WeddingWire', false, false, true, false, '{csv,xlsx,pdf,docx}',
+  ('weddingwire', 'WeddingWire', false, false, true, false, '{csv,xlsx,pdf,docx}', false,
     'Same platform family and same limitation as The Knot — no public API or confirmed bulk export.'),
-  ('planning_pod', 'Planning Pod', false, false, true, true, '{csv,xlsx,pdf,docx}',
+  ('planning_pod', 'Planning Pod', false, false, true, true, '{csv,xlsx,pdf,docx}', false,
     'No public developer API found. Zapier integration exists on Planning Pod''s side but is unverified for bulk historical export. No adapter built yet — recognized generically until one exists.'),
-  ('honeybook', 'HoneyBook', false, true, true, true, '{csv,xlsx,pdf,docx}',
+  ('honeybook', 'HoneyBook', false, true, true, true, '{csv,xlsx,pdf,docx}', true,
     'No public developer API. Official integration path is Zapier, with real "New Inquiry Created"/"New Client Created"/"Project Booked" triggers — but those are forward-only and cannot backfill history. Historical data is upload-only.'),
-  ('weven_legacy', 'Weven (legacy)', false, false, true, true, '{csv,xlsx,pdf,docx}',
+  ('weven_legacy', 'Weven (legacy)', false, false, true, true, '{csv,xlsx,pdf,docx}', true,
     'Weven was acquired by The Knot Worldwide in 2022 and no longer operates independently — no live account exists to connect to. Coverage depends entirely on whatever export or file a venue happened to retain from before the acquisition.')
 on conflict (key) do nothing;
 
