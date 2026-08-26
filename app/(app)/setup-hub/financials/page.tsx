@@ -28,6 +28,8 @@ export default async function SetupHubFinancialsPage() {
       venue={venue}
       quickbooksConnection={quickbooksConnection}
       quickbooksSyncLog={quickbooksSyncLog}
+      stripeConnectUrl={buildStripeConnectUrl(venue.id, "onboarding")}
+      quickbooksConnectUrl={buildQuickBooksConnectUrl(venue.id, "onboarding")}
     />
   );
 }

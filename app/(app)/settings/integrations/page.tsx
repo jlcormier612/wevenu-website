@@ -10,6 +10,8 @@ import { buildStripeConnectUrl } from "@/lib/stripe/oauth";
 import { getCurrentVenue } from "@/lib/venue/service";
 import { getQuickBooksConnection, getRecentQuickBooksSyncLog } from "@/lib/quickbooks/service";
 import { getFacebookConnection, getFacebookLeadForms, getRecentFacebookLog } from "@/lib/facebook/service";
+import { buildStripeConnectUrl } from "@/lib/stripe/oauth";
+import { buildQuickBooksConnectUrl } from "@/lib/quickbooks/config";
 
 export const metadata: Metadata = { title: "Financials & Integrations — Settings" };
 
