@@ -240,39 +240,40 @@ jobs:
 
           aws cloudformation describe-change-set --stack-name "$STACK" --change-set-name "$CS" --output json \
             > /tmp/deploy-changeset.json
-          python3 -c '
-import json, sys
-d = json.load(open("/tmp/deploy-changeset.json"))
-status, reason = d.get("Status"), d.get("StatusReason") or ""
-if status == "FAILED" and "didn'\''t contain changes" in reason:
-    print("No stack changes (already current).")
-    open("/tmp/deploy-changeset-empty", "w").write("1")
-    sys.exit(0)
-if status != "CREATE_COMPLETE":
-    print(f"::error::Change set status {status}: {reason}")
-    sys.exit(1)
-changes = d.get("Changes") or []
-bad_secret = [
-    c["ResourceChange"]["LogicalResourceId"]
-    for c in changes
-    if c["ResourceChange"]["LogicalResourceId"] == "FacebookSecrets" and c["ResourceChange"].get("Action") == "Modify"
-]
-if bad_secret:
-    print("::error::Change set would modify FacebookSecrets. CFN role cannot UpdateSecret; aborting to avoid UPDATE_ROLLBACK_FAILED.")
-    sys.exit(1)
-bad_https = [
-    c["ResourceChange"]["LogicalResourceId"]
-    for c in changes
-    if c["ResourceChange"].get("Action") == "Remove"
-    and "Https" in c["ResourceChange"]["LogicalResourceId"]
-]
-if bad_https:
-    print("::error::Change set would remove HTTPS resources: " + ", ".join(bad_https))
-    sys.exit(1)
-for c in changes:
-    rc = c["ResourceChange"]
-    print(f"  {rc.get(\"Action\")} {rc.get(\"LogicalResourceId\")} {rc.get(\"ResourceType\")}")
-'
+          python3 <<'PY'
+          import json, sys
+          d = json.load(open("/tmp/deploy-changeset.json"))
+          status, reason = d.get("Status"), d.get("StatusReason") or ""
+          if status == "FAILED" and "didn't contain changes" in reason:
+              print("No stack changes (already current).")
+              open("/tmp/deploy-changeset-empty", "w").write("1")
+              sys.exit(0)
+          if status != "CREATE_COMPLETE":
+              print(f"::error::Change set status {status}: {reason}")
+              sys.exit(1)
+          changes = d.get("Changes") or []
+          bad_secret = [
+              c["ResourceChange"]["LogicalResourceId"]
+              for c in changes
+              if c["ResourceChange"]["LogicalResourceId"] == "FacebookSecrets"
+              and c["ResourceChange"].get("Action") == "Modify"
+          ]
+          if bad_secret:
+              print("::error::Change set would modify FacebookSecrets. Aborting to avoid UPDATE_ROLLBACK_FAILED.")
+              sys.exit(1)
+          bad_https = [
+              c["ResourceChange"]["LogicalResourceId"]
+              for c in changes
+              if c["ResourceChange"].get("Action") == "Remove"
+              and "Https" in c["ResourceChange"]["LogicalResourceId"]
+          ]
+          if bad_https:
+              print("::error::Change set would remove HTTPS resources: " + ", ".join(bad_https))
+              sys.exit(1)
+          for c in changes:
+              rc = c["ResourceChange"]
+              print(f"  {rc.get('Action')} {rc.get('LogicalResourceId')} {rc.get('ResourceType')}")
+          PY
           echo "CHANGE_SET_NAME=$CS" >> "$GITHUB_ENV"
 
       - name: Deploy htc-ecs-stack.json
