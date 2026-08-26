@@ -29,7 +29,7 @@
 
 -- ── document_workspace_pins ────────────────────────────────────────────────
 
-create table public.document_workspace_pins (
+create table if not exists public.document_workspace_pins (
   id          uuid primary key default gen_random_uuid(),
   venue_id    uuid not null references public.venues (id) on delete cascade,
   doc_type    text not null check (doc_type in ('document', 'contract', 'invoice', 'floor_plan', 'questionnaire')),
@@ -39,10 +39,11 @@ create table public.document_workspace_pins (
   unique (venue_id, doc_type, doc_id)
 );
 
-create index document_workspace_pins_venue on public.document_workspace_pins (venue_id, pinned_at desc);
+create index if not exists document_workspace_pins_venue on public.document_workspace_pins (venue_id, pinned_at desc);
 
 alter table public.document_workspace_pins enable row level security;
 
+drop policy if exists document_workspace_pins_all on public.document_workspace_pins;
 create policy document_workspace_pins_all on public.document_workspace_pins
   for all
   using      (venue_id = public.current_user_venue_id())
@@ -56,7 +57,7 @@ grant select, insert, delete on public.document_workspace_pins to authenticated;
 -- "Signed" are derived from each producer's own real timestamps/status —
 -- this table only covers the three interaction types no producer tracks.
 
-create table public.document_workspace_interactions (
+create table if not exists public.document_workspace_interactions (
   id            uuid primary key default gen_random_uuid(),
   venue_id      uuid not null references public.venues (id) on delete cascade,
   doc_type      text not null check (doc_type in ('document', 'contract', 'invoice', 'floor_plan', 'questionnaire')),
@@ -66,15 +67,17 @@ create table public.document_workspace_interactions (
   occurred_at   timestamptz not null default now()
 );
 
-create index document_workspace_interactions_venue on public.document_workspace_interactions (venue_id, occurred_at desc);
-create index document_workspace_interactions_doc   on public.document_workspace_interactions (venue_id, doc_type, doc_id, occurred_at desc);
+create index if not exists document_workspace_interactions_venue on public.document_workspace_interactions (venue_id, occurred_at desc);
+create index if not exists document_workspace_interactions_doc   on public.document_workspace_interactions (venue_id, doc_type, doc_id, occurred_at desc);
 
 alter table public.document_workspace_interactions enable row level security;
 
+drop policy if exists document_workspace_interactions_select on public.document_workspace_interactions;
 create policy document_workspace_interactions_select on public.document_workspace_interactions
   for select
   using (venue_id = public.current_user_venue_id());
 
+drop policy if exists document_workspace_interactions_insert on public.document_workspace_interactions;
 create policy document_workspace_interactions_insert on public.document_workspace_interactions
   for insert
   with check (venue_id = public.current_user_venue_id());

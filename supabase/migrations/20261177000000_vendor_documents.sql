@@ -47,6 +47,7 @@ create table if not exists public.vendor_library_documents (
 create index if not exists vendor_library_documents_vendor
   on public.vendor_library_documents (vendor_id, created_at desc);
 
+drop trigger if exists vendor_library_documents_updated_at on public.vendor_library_documents;
 create trigger vendor_library_documents_updated_at
   before update on public.vendor_library_documents
   for each row execute function public.set_updated_at();
@@ -63,6 +64,7 @@ alter table public.vendor_library_documents enable row level security;
 
 -- Vendors manage their own library via RLS; venues never touch this table
 -- directly (event-shared copies live in documents).
+drop policy if exists vendor_library_documents_own on public.vendor_library_documents;
 create policy vendor_library_documents_own on public.vendor_library_documents
   for all
   using      (vendor_id = public.current_user_vendor_id())

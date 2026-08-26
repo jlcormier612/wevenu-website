@@ -74,10 +74,12 @@ create table if not exists public.venue_reminder_cadence (
 
 alter table public.venue_reminder_cadence enable row level security;
 
+drop policy if exists "venue owner reads own cadence" on public.venue_reminder_cadence;
 create policy "venue owner reads own cadence"
   on public.venue_reminder_cadence for select
   using (exists (select 1 from public.venues where id = venue_reminder_cadence.venue_id and owner_user_id = auth.uid()));
 
+drop policy if exists "venue owner updates own cadence" on public.venue_reminder_cadence;
 create policy "venue owner updates own cadence"
   on public.venue_reminder_cadence for update
   using (exists (select 1 from public.venues where id = venue_reminder_cadence.venue_id and owner_user_id = auth.uid()));
