@@ -91,6 +91,22 @@ for f in $(ls supabase/migrations/*.sql | sort); do
   # skips a file that matches the exact row already on record.
   already_tracked=$(psql "$CONN" -v ON_ERROR_STOP=1 -t -A -c \
     "select 1 from supabase_migrations.schema_migrations where version = '$version' and name = '$name';")
+  check_exit=$?
+  if [ $check_exit -ne 0 ]; then
+    # A dropped/failed connection on this check produces empty output —
+    # indistinguishable from "not tracked" unless the exit code is checked
+    # separately. Without this, a transient network blip here gets
+    # silently read as "never applied" and the file gets blindly re-run,
+    # which is exactly what happened live during this reconciliation on
+    # 20260703965000_sprint965_feedback_context.sql (a real network drop
+    # mid-run, not a tracking gap — that file was already correctly
+    # tracked). Stopping cleanly here instead: safe to just re-run the
+    # script, since nothing was applied for this file on a failed check.
+    echo "STOPPED — could not check whether $(basename "$f") (version $version, name '$name') is already tracked: the check query itself failed (exit $check_exit), most likely a dropped connection, not a real tracking gap."
+    echo "Nothing was applied for this file. Re-run the script from the top — it is safe to retry."
+    unset PGPASSWORD
+    exit 1
+  fi
   if [ -n "$already_tracked" ]; then
     echo "Skipping $(basename "$f") — version $version, name '$name' already tracked."
     continue
