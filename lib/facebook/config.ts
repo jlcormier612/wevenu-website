@@ -27,4 +27,29 @@ export function facebookGraphApiBaseUrl(): string {
 
 export const FACEBOOK_OAUTH_DIALOG_URL = "https://www.facebook.com/dialog/oauth";
 export const FACEBOOK_TOKEN_URL = "https://graph.facebook.com/oauth/access_token";
-export const FACEBOOK_DEAUTHORIZE_SCOPE = "pages_show_list,pages_manage_metadata,leads_retrieval,pages_read_engagement";
+export const FACEBOOK_OAUTH_SCOPES = "pages_show_list,pages_manage_metadata,leads_retrieval,pages_read_engagement";
+/** @deprecated Use FACEBOOK_OAUTH_SCOPES */
+export const FACEBOOK_DEAUTHORIZE_SCOPE = FACEBOOK_OAUTH_SCOPES;
+
+/**
+ * Build the Meta OAuth dialog URL. Prefers FACEBOOK_APP_ID (runtime secret /
+ * ECS) then NEXT_PUBLIC_FACEBOOK_APP_ID (build-time). App ID is not secret —
+ * storing it server-side lets Connect work even when a deploy omitted the
+ * public build arg.
+ */
+export function buildFacebookOAuthUrl(venueId: string): string | null {
+  const clientId =
+    process.env.FACEBOOK_APP_ID?.trim() ||
+    process.env.NEXT_PUBLIC_FACEBOOK_APP_ID?.trim() ||
+    "";
+  const appUrl = (process.env.NEXT_PUBLIC_APP_URL ?? "").replace(/\/$/, "");
+  if (!clientId || !appUrl || !venueId.trim()) return null;
+  const params = new URLSearchParams({
+    client_id: clientId,
+    response_type: "code",
+    redirect_uri: `${appUrl}/api/facebook/callback`,
+    scope: FACEBOOK_OAUTH_SCOPES,
+    state: venueId,
+  });
+  return `${FACEBOOK_OAUTH_DIALOG_URL}?${params}`;
+}
