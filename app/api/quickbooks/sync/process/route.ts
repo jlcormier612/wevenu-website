@@ -14,25 +14,13 @@
  */
 import { NextResponse } from "next/server";
 
+import { cronUnauthorizedResponse, isCronAuthorized, isManualSecretAuthorized } from "@/lib/auth/cron-auth";
 import { processQuickBooksSyncQueue } from "@/lib/quickbooks/processor";
-
-function isCronAuthorized(request: Request): boolean {
-  const cronSecret = process.env.CRON_SECRET;
-  if (!cronSecret) return true; // dev: no secret configured
-  const authHeader = request.headers.get("authorization");
-  return authHeader === `Bearer ${cronSecret}`;
-}
-
-function isManualAuthorized(request: Request): boolean {
-  const secret = process.env.QUICKBOOKS_SYNC_SECRET;
-  if (!secret) return true; // dev: no secret configured
-  return request.headers.get("x-quickbooks-sync-secret") === secret;
-}
 
 /** GET — cron trigger */
 export async function GET(request: Request) {
   if (!isCronAuthorized(request)) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return cronUnauthorizedResponse();
   }
   try {
     const result = await processQuickBooksSyncQueue();
@@ -47,8 +35,8 @@ export async function GET(request: Request) {
 
 /** POST — manual trigger */
 export async function POST(request: Request) {
-  if (!isManualAuthorized(request)) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!isManualSecretAuthorized(request, "x-quickbooks-sync-secret", "QUICKBOOKS_SYNC_SECRET")) {
+    return cronUnauthorizedResponse();
   }
   try {
     const result = await processQuickBooksSyncQueue();

@@ -14,6 +14,7 @@
 
 import { NextResponse } from "next/server";
 
+import { cronUnauthorizedResponse, isCronAuthorized, isManualSecretAuthorized } from "@/lib/auth/cron-auth";
 import { processEscalations, processReminders } from "@/lib/notifications/engine";
 import {
   processObligationReminders,
@@ -48,23 +49,10 @@ async function runAllProcessors(): Promise<ProcessResult> {
   return mergeResults(transitions, reminders, obligationReminders, escalations, venueEmails);
 }
 
-function isCronAuthorized(request: Request): boolean {
-  const cronSecret = process.env.CRON_SECRET;
-  if (!cronSecret) return true;  // dev: no secret configured
-  const authHeader = request.headers.get("authorization");
-  return authHeader === `Bearer ${cronSecret}`;
-}
-
-function isManualAuthorized(request: Request): boolean {
-  const secret = process.env.NOTIFICATIONS_SECRET;
-  if (!secret) return true;  // dev: no secret configured
-  return request.headers.get("x-notifications-secret") === secret;
-}
-
 /** GET — Vercel cron trigger (every 30 minutes) */
 export async function GET(request: Request) {
   if (!isCronAuthorized(request)) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return cronUnauthorizedResponse();
   }
   try {
     const result = await runAllProcessors();
@@ -79,8 +67,8 @@ export async function GET(request: Request) {
 
 /** POST — Settings UI manual trigger */
 export async function POST(request: Request) {
-  if (!isManualAuthorized(request)) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!isManualSecretAuthorized(request, "x-notifications-secret", "NOTIFICATIONS_SECRET")) {
+    return cronUnauthorizedResponse();
   }
   try {
     const result = await runAllProcessors();

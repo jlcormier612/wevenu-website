@@ -5,18 +5,12 @@
  * Authorization: Bearer {CRON_SECRET}
  */
 import { NextResponse } from "next/server";
+import { cronUnauthorizedResponse, isCronAuthorized } from "@/lib/auth/cron-auth";
 import { sendDailyDigests } from "@/lib/notifications/digest-engine";
-
-function isCronAuthorized(request: Request): boolean {
-  const cronSecret = process.env.CRON_SECRET;
-  if (!cronSecret) return true;
-  const authHeader = request.headers.get("authorization");
-  return authHeader === `Bearer ${cronSecret}`;
-}
 
 export async function GET(request: Request) {
   if (!isCronAuthorized(request)) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return cronUnauthorizedResponse();
   }
   try {
     const result = await sendDailyDigests();
@@ -31,7 +25,7 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   if (!isCronAuthorized(request)) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return cronUnauthorizedResponse();
   }
   try {
     const result = await sendDailyDigests();

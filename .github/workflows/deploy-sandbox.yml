@@ -86,6 +86,14 @@ jobs:
               NEXT_PUBLIC_PRODUCT_APP_URL=https://app.sandbox.hellotocheers.com
               NEXT_PUBLIC_SITE_URL=https://sandbox.hellotocheers.com
               NEXT_PUBLIC_WORKSPACE_URL=https://workspace.sandbox.hellotocheers.com
+          # Not a Next.js app - no NEXT_PUBLIC_* build args. Base URLs and
+          # CRON_SECRET are supplied at ECS runtime instead (see
+          # infra/htc-ecs-stack.json's SchedulerTaskDefinition), so this
+          # image is identical across environments.
+          - name: scheduler
+            dockerfile: Dockerfile.scheduler
+            repo_var: htc-sandbox-scheduler
+            build_args: ""
     steps:
       - name: Checkout
         # Full checkout, repo root - marketing/ and workspace/ both import
@@ -214,6 +222,7 @@ jobs:
               "ParameterKey=VenueAppImage,ParameterValue=$REGISTRY/htc-sandbox-venue-app:$SHA" \
               "ParameterKey=MarketingImage,ParameterValue=$REGISTRY/htc-sandbox-marketing:$SHA" \
               "ParameterKey=WorkspaceImage,ParameterValue=$REGISTRY/htc-sandbox-workspace:$SHA" \
+              "ParameterKey=SchedulerImage,ParameterValue=$REGISTRY/htc-sandbox-scheduler:$SHA" \
               "ParameterKey=VenueAppHostname,ParameterValue=app.sandbox.hellotocheers.com" \
               "ParameterKey=MarketingHostname,ParameterValue=sandbox.hellotocheers.com" \
               "ParameterKey=WorkspaceHostname,ParameterValue=workspace.sandbox.hellotocheers.com" \
@@ -224,6 +233,7 @@ jobs:
               "ParameterKey=SupabaseAnonKey,ParameterValue=${{ vars.NEXT_PUBLIC_SUPABASE_ANON_KEY }}" \
               "ParameterKey=ResendInboundAddress,ParameterValue=${{ vars.RESEND_INBOUND_ADDRESS }}" \
               "ParameterKey=CronSecret,ParameterValue=${{ secrets.CRON_SECRET }}" \
+              "ParameterKey=NotificationsSecret,ParameterValue=${{ vars.NEXT_PUBLIC_NOTIFICATIONS_SECRET }}" \
               "ParameterKey=StripePriceStarter,ParameterValue=price_1U42LNErUqJH7nktdpRin9ev" \
               "ParameterKey=StripePriceGrowing,ParameterValue=price_1U5rfoErUqJH7nkts2RnCCtg" \
               "ParameterKey=StripePriceGrowingFounder,ParameterValue=price_1U5rfoErUqJH7nktxJONRlCq" \
@@ -299,6 +309,7 @@ jobs:
               VenueAppImage="$REGISTRY/htc-sandbox-venue-app:$SHA" \
               MarketingImage="$REGISTRY/htc-sandbox-marketing:$SHA" \
               WorkspaceImage="$REGISTRY/htc-sandbox-workspace:$SHA" \
+              SchedulerImage="$REGISTRY/htc-sandbox-scheduler:$SHA" \
               VenueAppHostname=app.sandbox.hellotocheers.com \
               MarketingHostname=sandbox.hellotocheers.com \
               WorkspaceHostname=workspace.sandbox.hellotocheers.com \
@@ -309,6 +320,7 @@ jobs:
               SupabaseAnonKey="${{ vars.NEXT_PUBLIC_SUPABASE_ANON_KEY }}" \
               ResendInboundAddress="${{ vars.RESEND_INBOUND_ADDRESS }}" \
               CronSecret="${{ secrets.CRON_SECRET }}" \
+              NotificationsSecret="${{ vars.NEXT_PUBLIC_NOTIFICATIONS_SECRET }}" \
               StripePriceStarter=price_1U42LNErUqJH7nktdpRin9ev \
               StripePriceGrowing=price_1U5rfoErUqJH7nkts2RnCCtg \
               StripePriceGrowingFounder=price_1U5rfoErUqJH7nktxJONRlCq \
@@ -336,7 +348,7 @@ jobs:
         run: |
           aws ecs wait services-stable \
             --cluster htc-sandbox \
-            --services htc-sandbox-venue-app htc-sandbox-marketing htc-sandbox-workspace
+            --services htc-sandbox-venue-app htc-sandbox-marketing htc-sandbox-workspace htc-sandbox-scheduler
 
       - name: Verify ALB endpoints
         run: |

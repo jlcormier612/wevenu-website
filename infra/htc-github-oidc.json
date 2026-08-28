@@ -196,7 +196,8 @@
                 "Resource": [
                   { "Fn::Sub": "arn:aws:ecr:${AWS::Region}:${AWS::AccountId}:repository/htc-sandbox-venue-app" },
                   { "Fn::Sub": "arn:aws:ecr:${AWS::Region}:${AWS::AccountId}:repository/htc-sandbox-marketing" },
-                  { "Fn::Sub": "arn:aws:ecr:${AWS::Region}:${AWS::AccountId}:repository/htc-sandbox-workspace" }
+                  { "Fn::Sub": "arn:aws:ecr:${AWS::Region}:${AWS::AccountId}:repository/htc-sandbox-workspace" },
+                  { "Fn::Sub": "arn:aws:ecr:${AWS::Region}:${AWS::AccountId}:repository/htc-sandbox-scheduler" }
                 ]
               },
               {

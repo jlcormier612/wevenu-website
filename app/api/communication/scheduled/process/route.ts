@@ -17,24 +17,12 @@
 
 import { NextResponse } from "next/server";
 
+import { cronUnauthorizedResponse, isCronAuthorized, isManualSecretAuthorized } from "@/lib/auth/cron-auth";
 import { processDueScheduledMessages } from "@/lib/scheduled-messages/processor";
-
-function isCronAuthorized(request: Request): boolean {
-  const cronSecret = process.env.CRON_SECRET;
-  if (!cronSecret) return true;
-  const authHeader = request.headers.get("authorization");
-  return authHeader === `Bearer ${cronSecret}`;
-}
-
-function isManualAuthorized(request: Request): boolean {
-  const secret = process.env.NOTIFICATIONS_SECRET;
-  if (!secret) return true;
-  return request.headers.get("x-notifications-secret") === secret;
-}
 
 export async function GET(request: Request) {
   if (!isCronAuthorized(request)) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return cronUnauthorizedResponse();
   }
   try {
     const result = await processDueScheduledMessages();
@@ -48,8 +36,8 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  if (!isManualAuthorized(request)) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!isManualSecretAuthorized(request, "x-notifications-secret", "NOTIFICATIONS_SECRET")) {
+    return cronUnauthorizedResponse();
   }
   try {
     const result = await processDueScheduledMessages();

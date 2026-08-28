@@ -1,0 +1,34 @@
+# Scheduler — dedicated minimal ECS/Fargate service. Invokes the existing
+# authenticated cron/manual-trigger HTTP routes on their intended cadences,
+# through the existing public ALB — the same path Vercel Cron already used.
+# No Next.js, no application code: just supercronic + curl.
+#
+# Base URLs (VENUE_APP_BASE_URL, WORKSPACE_BASE_URL) and CRON_SECRET are
+# supplied at ECS runtime via environment variables (see
+# infra/htc-ecs-stack.json's SchedulerTaskDefinition) — never baked into
+# this image, so the identical image deploys unchanged to sandbox and
+# production.
+#
+#   docker build -f Dockerfile.scheduler -t htc-scheduler .
+#
+# supercronic pin: v0.2.49, linux-amd64 (matches Fargate's x86_64 default
+# CPU architecture — this stack's task definitions don't set
+# RuntimePlatform, so ECS defaults to X86_64). Checksum computed directly
+# from the binary downloaded from this exact release URL, not copied from
+# an unverified source — the aptible/supercronic project does not publish
+# a separate checksums file for this release.
+
+FROM alpine:3.20
+
+RUN apk add --no-cache curl ca-certificates \
+    && curl -fsSL -o /usr/local/bin/supercronic \
+       "https://github.com/aptible/supercronic/releases/download/v0.2.49/supercronic-linux-amd64" \
+    && echo "a53ae236602c7338aba3fbaff40bda6300eae3b9fedb8261eb06cfe3724430c1  /usr/local/bin/supercronic" | sha256sum -c - \
+    && chmod +x /usr/local/bin/supercronic
+
+WORKDIR /app
+COPY scheduler/invoke.sh /app/invoke.sh
+COPY scheduler/crontab /app/crontab
+RUN chmod +x /app/invoke.sh
+
+ENTRYPOINT ["/usr/local/bin/supercronic", "-passthrough-logs", "/app/crontab"]

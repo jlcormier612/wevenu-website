@@ -1,0 +1,24 @@
+# Scheduler crontab — supercronic syntax (standard 5-field cron).
+#
+# Cadences match vercel.json / workspace/vercel.json exactly — this file
+# does not redesign any cadence, it only relocates where each tick fires
+# from. Base URLs (VENUE_APP_BASE_URL, WORKSPACE_BASE_URL) and CRON_SECRET
+# are supplied at ECS runtime as environment variables — nothing here is
+# environment-specific, so this image is identical across sandbox and
+# production.
+#
+# Owns exactly the nine routes below. Does NOT schedule
+# /api/sequences/tick or /api/workflows/tick — both are explicitly
+# documented in their own route files as targeted-ops/local-curl only,
+# with /api/cron/automations as the preferred scheduled route covering
+# the same ground (sequences + workflows + renewals + dunning).
+
+*/30 * * * * /app/invoke.sh notifications-process "$VENUE_APP_BASE_URL/api/notifications/process"
+0 * * * *    /app/invoke.sh digest "$VENUE_APP_BASE_URL/api/digest"
+*/5 * * * *  /app/invoke.sh communication-scheduled-process "$VENUE_APP_BASE_URL/api/communication/scheduled/process"
+*/15 * * * * /app/invoke.sh automation-process "$VENUE_APP_BASE_URL/api/automation/process"
+*/5 * * * *  /app/invoke.sh quickbooks-sync-process "$VENUE_APP_BASE_URL/api/quickbooks/sync/process"
+*/2 * * * *  /app/invoke.sh facebook-sync-process "$VENUE_APP_BASE_URL/api/facebook/sync/process"
+0 * * * *    /app/invoke.sh facebook-reconcile-process "$VENUE_APP_BASE_URL/api/facebook/reconcile/process"
+0 * * * *    /app/invoke.sh saved-reports-process "$VENUE_APP_BASE_URL/api/saved-reports/process"
+*/10 * * * * /app/invoke.sh workspace-cron-automations "$WORKSPACE_BASE_URL/api/cron/automations"

@@ -38,6 +38,11 @@
       "MinLength": 1,
       "Description": "Full ECR image URI:tag for workspace/. Build+push happens outside this template (see workspace/Dockerfile)."
     },
+    "SchedulerImage": {
+      "Type": "String",
+      "MinLength": 1,
+      "Description": "Full ECR image URI:tag for the Scheduler service. Build+push happens outside this template (see Dockerfile.scheduler at repo root). No Next.js app - a minimal supercronic + curl image that invokes the existing authenticated cron routes through the ALB on their intended cadences."
+    },
     "VenueAppHostname": {
       "Type": "String",
       "Default": "app.sandbox.hellotocheers.com",
@@ -131,6 +136,12 @@
       "NoEcho": true,
       "Default": "",
       "Description": "Bearer token for venue-app cron routes (CRON_SECRET). EventBridge sends Authorization: Bearer <this>. Leave empty to skip creating the Facebook Lead Ads schedules; webhook after() still processes leads immediately. Populate in the stack parameter (NoEcho) \u2014 do not commit the value."
+    },
+    "NotificationsSecret": {
+      "Type": "String",
+      "NoEcho": true,
+      "Default": "",
+      "Description": "Server-side value for NOTIFICATIONS_SECRET, checked against the x-notifications-secret header on the Settings \"Send reminders now\" manual trigger (components/settings/notifications-section.tsx). Must be set to the same value as the NEXT_PUBLIC_NOTIFICATIONS_SECRET build-time GitHub Actions variable that page's client bundle is built with \u2014 client and server must agree, or the button starts failing. Populate in the stack parameter (NoEcho) \u2014 do not commit the value."
     }
   },
   "Conditions": {
@@ -394,6 +405,15 @@
         "RetentionInDays": 30
       }
     },
+    "SchedulerLogGroup": {
+      "Type": "AWS::Logs::LogGroup",
+      "Properties": {
+        "LogGroupName": {
+          "Fn::Sub": "/ecs/htc-${EnvironmentName}/scheduler"
+        },
+        "RetentionInDays": 30
+      }
+    },
     "EcsTaskExecutionRole": {
       "Type": "AWS::IAM::Role",
       "Properties": {
@@ -651,6 +671,12 @@
                 "Name": "CRON_SECRET",
                 "Value": {
                   "Ref": "CronSecret"
+                }
+              },
+              {
+                "Name": "NOTIFICATIONS_SECRET",
+                "Value": {
+                  "Ref": "NotificationsSecret"
                 }
               },
               {
@@ -1008,6 +1034,12 @@
               {
                 "Name": "USE_SEED_DATA",
                 "Value": "false"
+              },
+              {
+                "Name": "CRON_SECRET",
+                "Value": {
+                  "Ref": "CronSecret"
+                }
               }
             ],
             "Secrets": [
@@ -1425,6 +1457,106 @@
           }
         ],
         "HealthCheckGracePeriodSeconds": 120
+      }
+    },
+    "SchedulerTaskDefinition": {
+      "Type": "AWS::ECS::TaskDefinition",
+      "Properties": {
+        "Family": {
+          "Fn::Sub": "htc-${EnvironmentName}-scheduler"
+        },
+        "RequiresCompatibilities": [
+          "FARGATE"
+        ],
+        "NetworkMode": "awsvpc",
+        "Cpu": "256",
+        "Memory": "512",
+        "ExecutionRoleArn": {
+          "Fn::GetAtt": [
+            "EcsTaskExecutionRole",
+            "Arn"
+          ]
+        },
+        "TaskRoleArn": {
+          "Fn::GetAtt": [
+            "EcsTaskRole",
+            "Arn"
+          ]
+        },
+        "ContainerDefinitions": [
+          {
+            "Name": "scheduler",
+            "Image": {
+              "Ref": "SchedulerImage"
+            },
+            "Environment": [
+              {
+                "Name": "VENUE_APP_BASE_URL",
+                "Value": {
+                  "Fn::Sub": "https://${VenueAppHostname}"
+                }
+              },
+              {
+                "Name": "WORKSPACE_BASE_URL",
+                "Value": {
+                  "Fn::Sub": "https://${WorkspaceHostname}"
+                }
+              },
+              {
+                "Name": "CRON_SECRET",
+                "Value": {
+                  "Ref": "CronSecret"
+                }
+              }
+            ],
+            "LogConfiguration": {
+              "LogDriver": "awslogs",
+              "Options": {
+                "awslogs-group": {
+                  "Ref": "SchedulerLogGroup"
+                },
+                "awslogs-region": {
+                  "Ref": "AWS::Region"
+                },
+                "awslogs-stream-prefix": "scheduler"
+              }
+            }
+          }
+        ]
+      }
+    },
+    "SchedulerService": {
+      "Type": "AWS::ECS::Service",
+      "Properties": {
+        "ServiceName": {
+          "Fn::Sub": "htc-${EnvironmentName}-scheduler"
+        },
+        "Cluster": {
+          "Ref": "EcsCluster"
+        },
+        "TaskDefinition": {
+          "Ref": "SchedulerTaskDefinition"
+        },
+        "DesiredCount": 1,
+        "LaunchType": "FARGATE",
+        "NetworkConfiguration": {
+          "AwsvpcConfiguration": {
+            "AssignPublicIp": "ENABLED",
+            "Subnets": [
+              {
+                "Ref": "PublicSubnet1"
+              },
+              {
+                "Ref": "PublicSubnet2"
+              }
+            ],
+            "SecurityGroups": [
+              {
+                "Ref": "EcsTaskSecurityGroup"
+              }
+            ]
+          }
+        }
       }
     },
     "FacebookLeadCronRole": {
