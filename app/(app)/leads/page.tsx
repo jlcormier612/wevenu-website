@@ -5,17 +5,13 @@ import { GitBranch } from "lucide-react";
 import { LeadList } from "@/components/leads/lead-list";
 import { PageHeader } from "@/components/shell/module-placeholder";
 import { Button } from "@/components/ui/button";
-import { getLeads, getPipelineStageIdsForVenue } from "@/lib/leads/service";
-import { getActiveTemplate } from "@/lib/pipeline-templates/service";
+import { ensureStandardSalesPipelineForCurrentVenue, getLeads } from "@/lib/leads/service";
 
 export const metadata: Metadata = { title: "Leads" };
 
 export default async function LeadsPage() {
-  const [leads, activeTemplate, stageIdsByLead] = await Promise.all([
-    getLeads(),
-    getActiveTemplate(),
-    getPipelineStageIdsForVenue(),
-  ]);
+  await ensureStandardSalesPipelineForCurrentVenue();
+  const leads = await getLeads();
   return (
     <div className="space-y-6">
       <PageHeader
@@ -32,7 +28,7 @@ export default async function LeadsPage() {
           </div>
         }
       />
-      <LeadList leads={leads} pipelineStages={activeTemplate?.stages ?? []} stageIdsByLead={stageIdsByLead} />
+      <LeadList leads={leads} />
     </div>
   );
 }

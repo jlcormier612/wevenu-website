@@ -35,17 +35,19 @@ export function shouldSkipScheduledSendForPause(opts: {
   return opts.sequenceStatus === "paused";
 }
 
-/** Terminal exits always apply to active enrollments, including paused ones. */
+/** Terminal exits always apply to active enrollments, including paused ones.
+ * After cutover: Lost → exited_lost only (no new exited_cancelled).
+ * Booked → exited_booking. Legacy "won"/"cancelled" aliases accepted for safety.
+ */
 export function terminalExitStatusForLeadStatus(
   leadStatus: string,
-): "exited_lost" | "exited_cancelled" | "exited_booking" | null {
-  if (leadStatus === "lost") return "exited_lost";
-  if (leadStatus === "cancelled") return "exited_cancelled";
-  if (leadStatus === "won") return "exited_booking"; // booking path uses exited_booking
+): "exited_lost" | "exited_booking" | null {
+  if (leadStatus === "lost" || leadStatus === "cancelled") return "exited_lost";
+  if (leadStatus === "booked" || leadStatus === "won") return "exited_booking";
   return null;
 }
 
-/** Exit-before-enroll ordering for Lost/Cancelled (unchanged from P0). */
+/** Exit-before-enroll ordering for Lost (and legacy cancelled alias). */
 export function terminalExitBeforeEnrollOrder(
   status: string,
 ): Array<"exit" | "enroll"> {

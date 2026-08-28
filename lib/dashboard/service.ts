@@ -48,7 +48,7 @@ import type { Venue } from "@/lib/venue/types";
 // ---- row types for embedded selects -----------------------------------------
 
 type LeadRow = Record<string, unknown> & {
-  id: string; venue_id: string; status: string; source: string | null;
+  id: string; venue_id: string; sales_stage: string; status: string | null; source: string | null;
   first_name: string; last_name: string; email: string | null; phone: string | null;
   partner_first_name: string | null; partner_last_name: string | null;
   partner_email: string | null; event_type: string | null;
@@ -78,8 +78,9 @@ type DashActivityRow = {
 };
 
 function mapLead(r: LeadRow, tour: LeadTourInfo = EMPTY_TOUR): Lead {
+  const salesStage = (r.sales_stage ?? r.status) as Lead["salesStage"];
   return {
-    id: r.id, venueId: r.venue_id, status: r.status as Lead["status"],
+    id: r.id, venueId: r.venue_id, salesStage, status: salesStage,
     source: r.source, firstName: r.first_name, lastName: r.last_name,
     email: r.email, phone: r.phone,
     partnerFirstName: r.partner_first_name, partnerLastName: r.partner_last_name,
@@ -135,7 +136,7 @@ function mapDashClient(r: DashClientRow): DashboardClient {
   };
 }
 
-const CLOSED = new Set(["won", "lost", "cancelled"]);
+const CLOSED = new Set(["booked", "lost", "won", "cancelled"]);
 
 function attentionReason(lead: Lead, today: string): string {
   if (lead.followUpDate && lead.followUpDate < today) {
@@ -260,10 +261,11 @@ export async function getDashboardData(): Promise<DashboardData | null> {
   // ---- Needs Attention -------------------------------------------------------
   // Leads that are slipping: overdue follow-up OR stale "new" inquiry (>48h, no follow-up set)
   const needsAttentionLeads = leads.filter((l) => {
-    if (CLOSED.has(l.status)) return false;
+    const stage = l.salesStage ?? l.status;
+    if (CLOSED.has(stage)) return false;
     if (l.followUpDate && l.followUpDate < today) return true; // overdue follow-up
     if (
-      l.status === "new" &&
+      stage === "new_inquiry" &&
       !l.followUpDate &&
       new Date(l.createdAt).getTime() < twoDaysAgoMs
     )
@@ -278,7 +280,7 @@ export async function getDashboardData(): Promise<DashboardData | null> {
   // ---- Follow-ups Due --------------------------------------------------------
   // Leads with follow_up_date = today (not overdue — that goes in Needs Attention)
   const followupsDue = leads
-    .filter((l) => l.followUpDate === today && !CLOSED.has(l.status))
+    .filter((l) => l.followUpDate === today && !CLOSED.has(l.salesStage ?? l.status))
     .slice(0, 8);
 
   // ---- Upcoming Tours --------------------------------------------------------
@@ -297,7 +299,7 @@ export async function getDashboardData(): Promise<DashboardData | null> {
   const pipelineStages: PipelineStage[] = LEAD_STATUSES.map((s) => ({
     status: s.value,
     label: s.label,
-    count: leads.filter((l) => l.status === s.value).length,
+    count: leads.filter((l) => (l.salesStage ?? l.status) === s.value).length,
   }));
 
   // ---- Tasks -----------------------------------------------------------------
@@ -421,21 +423,21 @@ export async function getDashboardData(): Promise<DashboardData | null> {
 
   // Compute momentum segments from lead scores (post-refresh)
   const { data: scoredLeads } = await supabase.from("leads")
-    .select("id, first_name, last_name, status, commitment_score, responsiveness_score, interest_score, last_contacted_at")
+    .select("id, first_name, last_name, sales_stage, commitment_score, responsiveness_score, interest_score, last_contacted_at")
     .eq("venue_id", venue.id)
-    .not("status", "in", "(won,lost,cancelled)")
+    .not("sales_stage", "in", "(booked,lost)")
     .order("commitment_score", { ascending: false })
     .limit(30);
 
   const heatingUp: { leadId: string; name: string; reason: string }[] = [];
   const coolingOff: { leadId: string; name: string; reason: string }[] = [];
 
-  for (const l of (scoredLeads ?? []) as { id: string; first_name: string; last_name: string; status: string; commitment_score: number; responsiveness_score: number; interest_score: number; last_contacted_at: string | null }[]) {
+  for (const l of (scoredLeads ?? []) as { id: string; first_name: string; last_name: string; sales_stage: string; commitment_score: number; responsiveness_score: number; interest_score: number; last_contacted_at: string | null }[]) {
     const name = [l.first_name, l.last_name].filter(Boolean).join(" ");
     const daysAgo = l.last_contacted_at
       ? Math.floor((Date.now() - new Date(l.last_contacted_at).getTime()) / 86_400_000)
       : null;
-    const tier = getMomentumTier(l.commitment_score, l.responsiveness_score, l.interest_score, daysAgo, l.status);
+    const tier = getMomentumTier(l.commitment_score, l.responsiveness_score, l.interest_score, daysAgo, l.sales_stage);
     const lang = generateMomentumLanguage(l.first_name, l.commitment_score, l.responsiveness_score, l.interest_score, daysAgo);
     if (tier === "heating_up" && heatingUp.length < 4) heatingUp.push({ leadId: l.id, name, reason: lang ?? "Showing recent engagement." });
     if (tier === "cooling_off" && coolingOff.length < 4) coolingOff.push({ leadId: l.id, name, reason: lang ?? "May need a follow-up." });
@@ -452,7 +454,7 @@ export async function getDashboardData(): Promise<DashboardData | null> {
     upcomingTours,
     pipelineStages,
     totalLeads: leads.length,
-    newLeadCount: leads.filter((l) => l.status === "new").length,
+    newLeadCount: leads.filter((l) => (l.salesStage ?? l.status) === "new_inquiry").length,
     openTasks,
     openTaskCount: (tasksRes.data as DashTaskRow[]).length,
     recentActivity,

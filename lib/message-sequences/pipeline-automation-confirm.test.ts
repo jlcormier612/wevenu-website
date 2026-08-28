@@ -13,7 +13,6 @@ import {
   resolveStageMoveConfirmGate,
   wouldCreateEnrollmentForSequences,
 } from "@/lib/message-sequences/would-enroll";
-import { CANONICAL_STAGE_TO_LEAD_STATUS } from "@/lib/leads/pipeline-stage-mapping";
 import type { MergeContext } from "@/lib/message-templates/merge";
 
 const baseCtx: MergeContext = {
@@ -102,15 +101,6 @@ describe("resolveStageMoveConfirmGate", () => {
   });
 });
 
-describe("destination LeadStatus mapping used for enrollment preview", () => {
-  it("maps Pipeline canonical stages to the same LeadStatus enrollment keys as updateLeadPipelineStage", () => {
-    assert.equal(CANONICAL_STAGE_TO_LEAD_STATUS.proposal, "proposal_sent");
-    assert.equal(CANONICAL_STAGE_TO_LEAD_STATUS.booked, "won");
-    assert.equal(CANONICAL_STAGE_TO_LEAD_STATUS.lost, "lost");
-    assert.equal(CANONICAL_STAGE_TO_LEAD_STATUS.cancelled, "cancelled");
-  });
-});
-
 describe("resolved first-step preview (P1 confirm dialog only)", () => {
   it("1. no matching Automation → no confirmation (gate commit)", () => {
     assert.equal(wouldCreateEnrollmentForSequences([], new Set()), false);
@@ -173,13 +163,10 @@ describe("resolved first-step preview (P1 confirm dialog only)", () => {
     assert.equal(JSON.stringify(ctx), before);
   });
 
-  it("8. Lost/Cancelled/Booked confirmation semantics remain unchanged", () => {
+  it("8. Lost/Booked confirmation semantics remain unchanged", () => {
     assert.equal(resolveStageMoveConfirmGate(true, null), "show_confirm");
     assert.equal(resolveStageMoveConfirmGate(true, "cancel"), "abort");
     assert.equal(resolveStageMoveConfirmGate(true, "continue"), "commit");
-    assert.equal(CANONICAL_STAGE_TO_LEAD_STATUS.lost, "lost");
-    assert.equal(CANONICAL_STAGE_TO_LEAD_STATUS.cancelled, "cancelled");
-    assert.equal(CANONICAL_STAGE_TO_LEAD_STATUS.booked, "won");
   });
 
   it("unresolved merge → truthful minimal fallback (dialog must not fail)", () => {

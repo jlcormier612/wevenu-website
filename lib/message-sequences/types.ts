@@ -23,6 +23,8 @@ export type MessageSequence = {
   status: SequenceStatus;
   triggerType: SequenceTriggerType | null; // null = manual enrollment only
   triggerStage: string | null;             // only meaningful when triggerType === "lead_stage_changed"
+  /** When true, successful enrollment may move lead to enrolled_in_sequence (forward-only). Default false. */
+  updatePipelineOnEnroll: boolean;
   createdAt: string;
   updatedAt: string;
 };
@@ -49,6 +51,8 @@ export type MessageSequenceInput = {
   name: string;
   triggerType: SequenceTriggerType | null;
   triggerStage: string | null;
+  /** Default false — Move lead to Enrolled in Sequence/Workflow when enrolled. */
+  updatePipelineOnEnroll?: boolean;
   steps: SequenceStepInput[];
 };
 

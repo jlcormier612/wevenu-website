@@ -6,15 +6,16 @@ import Link from "next/link";
 import { ArrowUpDown, Search, SlidersHorizontal } from "lucide-react";
 
 import { LeadStatusBadge } from "@/components/leads/lead-status-badge";
-// Inline momentum label — avoids importing server-only scores.ts in a client component
+
 function momentumLabel(score: number, status: string): { tier: "hot" | "warm" | "growing" | "early" | "quiet" } {
-  if (status === "won") return { tier: "hot" };
+  if (status === "booked" || status === "won") return { tier: "hot" };
   if (status === "lost" || status === "cancelled") return { tier: "quiet" };
   if (score >= 70) return { tier: "hot" };
   if (score >= 45) return { tier: "warm" };
   if (score >= 20) return { tier: "growing" };
   return { tier: "early" };
 }
+
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -31,18 +32,14 @@ import {
 } from "@/components/ui/table";
 import {
   LEAD_STATUSES,
-  EVENT_TYPES,
   eventTypeLabel,
   formatDate,
   formatCurrency,
   leadDisplayName,
 } from "@/lib/leads/constants";
-import { resolvePipelineStageForLead } from "@/lib/leads/pipeline-stage-mapping";
 import type { Lead, LeadStatus } from "@/lib/leads/types";
-import type { PipelineStage } from "@/lib/pipeline-templates/types";
 
-// "all", a LeadStatus, or (when the venue has an active Pipeline Template) a pipeline_stages.id
-type FilterKey = "all" | LeadStatus | string;
+type FilterKey = "all" | LeadStatus;
 type EventTypeFilter = "all" | string;
 type SortKey = "newest" | "oldest" | "az" | "za" | "event_asc" | "event_desc" | "budget_high" | "budget_low" | "last_contacted" | "commitment_high";
 
@@ -55,7 +52,7 @@ const SORT_OPTIONS: { value: SortKey; label: string }[] = [
   { value: "event_desc",    label: "Event Date (Latest)" },
   { value: "budget_high",   label: "Budget (Highest)" },
   { value: "budget_low",    label: "Budget (Lowest)" },
-  { value: "last_contacted","label": "Last Contacted" },
+  { value: "last_contacted", label: "Last Contacted" },
   { value: "commitment_high", label: "Most Progress" },
 ];
 
@@ -71,40 +68,22 @@ function sortLeads(leads: Lead[], sort: SortKey): Lead[] {
       case "budget_low":    return (a.estimatedBudget ?? 0) - (b.estimatedBudget ?? 0);
       case "last_contacted":return (b.lastContactedAt ?? "") < (a.lastContactedAt ?? "") ? -1 : 1;
       case "commitment_high": return (b.commitmentScore ?? 0) - (a.commitmentScore ?? 0);
-      default:              return (b.inquiryDate ?? "") < (a.inquiryDate ?? "") ? -1 : 1; // newest
+      default:              return (b.inquiryDate ?? "") < (a.inquiryDate ?? "") ? -1 : 1;
     }
   });
 }
 
-export function LeadList({ leads, pipelineStages = [], stageIdsByLead = {} }: { leads: Lead[]; pipelineStages?: PipelineStage[]; stageIdsByLead?: Record<string, string | null> }) {
+export function LeadList({ leads }: { leads: Lead[] }) {
   const [query, setQuery] = React.useState("");
   const [statusFilter, setStatusFilter] = React.useState<FilterKey>("all");
   const [eventTypeFilter, setEventTypeFilter] = React.useState<EventTypeFilter>("all");
   const [sort, setSort] = React.useState<SortKey>("newest");
 
-  // Pipeline Stage mode: resolve each lead's display stage once, reusing
-  // the same pure function the detail/list badges already use. Filtering
-  // still happens on the underlying status — a pill just represents "every
-  // status that resolves to this stage" instead of one raw status value.
-  const usingPipeline = pipelineStages.length > 0;
-  const leadStageId = React.useMemo(() => {
-    if (!usingPipeline) return new Map<string, string | null>();
-    const map = new Map<string, string | null>();
-    leads.forEach((l) => {
-      const stage = resolvePipelineStageForLead(l.status, stageIdsByLead[l.id] ?? null, pipelineStages);
-      map.set(l.id, stage?.id ?? null);
-    });
-    return map;
-  }, [leads, usingPipeline, pipelineStages, stageIdsByLead]);
-
   const filtered = React.useMemo(() => {
     const q = query.toLowerCase().trim();
     const base = leads.filter((l) => {
-      if (statusFilter !== "all") {
-        if (usingPipeline) {
-          if (leadStageId.get(l.id) !== statusFilter) return false;
-        } else if (l.status !== statusFilter) return false;
-      }
+      const stage = l.salesStage ?? l.status;
+      if (statusFilter !== "all" && stage !== statusFilter) return false;
       if (eventTypeFilter !== "all" && l.eventType !== eventTypeFilter) return false;
       if (!q) return true;
       return [
@@ -113,32 +92,22 @@ export function LeadList({ leads, pipelineStages = [], stageIdsByLead = {} }: { 
       ].some((v) => v?.toLowerCase().includes(q));
     });
     return sortLeads(base, sort);
-  }, [leads, query, statusFilter, eventTypeFilter, sort, usingPipeline, leadStageId]);
+  }, [leads, query, statusFilter, eventTypeFilter, sort]);
 
-  // Count per status (from all leads, not filtered)
   const statusCounts = React.useMemo(() => {
     const map = new Map<FilterKey, number>([["all", leads.length]]);
     LEAD_STATUSES.forEach((s) => map.set(s.value, 0));
-    leads.forEach((l) => map.set(l.status, (map.get(l.status) ?? 0) + 1));
+    leads.forEach((l) => {
+      const stage = l.salesStage ?? l.status;
+      map.set(stage, (map.get(stage) ?? 0) + 1);
+    });
     return map;
   }, [leads]);
 
-  // Count per Pipeline Stage (from all leads, not filtered) — only computed when in use.
-  const stageCounts = React.useMemo(() => {
-    const map = new Map<string, number>([["all", leads.length]]);
-    pipelineStages.forEach((s) => map.set(s.id, 0));
-    leads.forEach((l) => {
-      const id = leadStageId.get(l.id);
-      if (id) map.set(id, (map.get(id) ?? 0) + 1);
-    });
-    return map;
-  }, [leads, pipelineStages, leadStageId]);
-
-  // Event types that actually appear in this lead set
   const activeEventTypes = React.useMemo(() => {
     const seen = new Map<string, number>();
     leads.forEach((l) => { if (l.eventType) seen.set(l.eventType, (seen.get(l.eventType) ?? 0) + 1); });
-    return [...seen.entries()].sort((a, b) => b[1] - a[1]); // most common first
+    return [...seen.entries()].sort((a, b) => b[1] - a[1]);
   }, [leads]);
 
   const hasActiveFilters = statusFilter !== "all" || eventTypeFilter !== "all" || query;
@@ -146,7 +115,6 @@ export function LeadList({ leads, pipelineStages = [], stageIdsByLead = {} }: { 
   return (
     <div className="space-y-4">
     <div className="space-y-3">
-      {/* Row 1: Search + Sort */}
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground pointer-events-none" />
@@ -157,7 +125,6 @@ export function LeadList({ leads, pipelineStages = [], stageIdsByLead = {} }: { 
             className="pl-9"
           />
         </div>
-        {/* Sort control — labeled so it's always legible */}
         <div className="flex items-center gap-1.5 shrink-0">
           <ArrowUpDown className="h-3.5 w-3.5 text-muted-foreground" />
           <Select value={sort} onValueChange={(v) => setSort(v as SortKey)} items={SORT_OPTIONS}>
@@ -171,76 +138,32 @@ export function LeadList({ leads, pipelineStages = [], stageIdsByLead = {} }: { 
         </div>
       </div>
 
-      {/* Row 2: Stage/status filter pills — driven by the active Pipeline
-          Template when the venue has one, so the venue never sees the raw
-          New/Contacted/Qualified/Proposal Sent vocabulary once they've set
-          one up. Filtering underneath still runs on the real status. */}
       <div className="flex flex-wrap gap-1.5 items-center">
-        <span className="text-xs text-muted-foreground font-medium mr-0.5">{usingPipeline ? "Stage:" : "Status:"}</span>
-        {usingPipeline ? (
-          <>
+        <span className="text-xs text-muted-foreground font-medium mr-0.5">Stage:</span>
+        {(["all", ...LEAD_STATUSES.map((s) => s.value)] as FilterKey[]).map((key) => {
+          const label = key === "all" ? "All" : LEAD_STATUSES.find((s) => s.value === key)?.label ?? key;
+          const count = statusCounts.get(key) ?? 0;
+          const active = statusFilter === key;
+          return (
             <button
+              key={key}
               type="button"
-              onClick={() => setStatusFilter("all")}
+              onClick={() => setStatusFilter(key)}
               className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
-                statusFilter === "all"
+                active
                   ? "border-primary bg-primary text-primary-foreground"
                   : "border-border bg-background text-muted-foreground hover:border-primary/40 hover:text-foreground"
               }`}
             >
-              All
-              <span className={`rounded-full px-1.5 py-px text-[10px] font-semibold ${statusFilter === "all" ? "bg-primary-foreground/20 text-primary-foreground" : "bg-muted text-muted-foreground"}`}>
-                {stageCounts.get("all") ?? 0}
+              {label}
+              <span className={`rounded-full px-1.5 py-px text-[10px] font-semibold ${active ? "bg-primary-foreground/20 text-primary-foreground" : "bg-muted text-muted-foreground"}`}>
+                {count}
               </span>
             </button>
-            {pipelineStages.map((s) => {
-              const count = stageCounts.get(s.id) ?? 0;
-              const active = statusFilter === s.id;
-              return (
-                <button
-                  key={s.id}
-                  type="button"
-                  onClick={() => setStatusFilter(s.id)}
-                  className="inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium transition-colors"
-                  style={active
-                    ? { borderColor: s.color, backgroundColor: s.color, color: "#fff" }
-                    : { borderColor: "var(--border)", color: s.color, backgroundColor: `${s.color}14` }}
-                >
-                  {s.name}
-                  <span className={`rounded-full px-1.5 py-px text-[10px] font-semibold ${active ? "bg-white/20 text-white" : "bg-white/40"}`}>
-                    {count}
-                  </span>
-                </button>
-              );
-            })}
-          </>
-        ) : (
-          (["all", ...LEAD_STATUSES.map((s) => s.value)] as FilterKey[]).map((key) => {
-            const label = key === "all" ? "All" : LEAD_STATUSES.find((s) => s.value === key)?.label ?? key;
-            const count = statusCounts.get(key) ?? 0;
-            const active = statusFilter === key;
-            return (
-              <button
-                key={key}
-                type="button"
-                onClick={() => setStatusFilter(key)}
-                className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
-                  active
-                    ? "border-primary bg-primary text-primary-foreground"
-                    : "border-border bg-background text-muted-foreground hover:border-primary/40 hover:text-foreground"
-                }`}
-              >
-                {label}
-                <span className={`rounded-full px-1.5 py-px text-[10px] font-semibold ${active ? "bg-primary-foreground/20 text-primary-foreground" : "bg-muted text-muted-foreground"}`}>
-                  {count}
-                </span>
-              </button>
-            );
-          })
-        )}
+          );
+        })}
       </div>
 
-      {/* Row 3: Event type filter pills (only when multiple types exist) */}
       {activeEventTypes.length > 1 && (
         <div className="flex flex-wrap gap-1.5 items-center">
           <span className="text-xs text-muted-foreground font-medium mr-0.5">
@@ -260,7 +183,6 @@ export function LeadList({ leads, pipelineStages = [], stageIdsByLead = {} }: { 
         </div>
       )}
 
-      {/* Clear filters */}
       {hasActiveFilters && (
         <button type="button" onClick={() => { setQuery(""); setStatusFilter("all"); setEventTypeFilter("all"); }}
           className="text-xs text-muted-foreground hover:text-foreground transition-colors underline-offset-2 hover:underline">
@@ -268,7 +190,6 @@ export function LeadList({ leads, pipelineStages = [], stageIdsByLead = {} }: { 
         </button>
       )}
 
-      {/* Empty state */}
       {leads.length === 0 && (
         <div className="flex flex-col items-center justify-center rounded-sm border border-dashed border-border bg-card/40 py-16 text-center">
           <p className="font-heading text-lg font-medium text-heading">No leads yet</p>
@@ -290,7 +211,6 @@ export function LeadList({ leads, pipelineStages = [], stageIdsByLead = {} }: { 
         </div>
       )}
 
-      {/* Table */}
       {filtered.length > 0 && (
         <div className="rounded-sm border border-border bg-card">
           <Table>
@@ -301,13 +221,15 @@ export function LeadList({ leads, pipelineStages = [], stageIdsByLead = {} }: { 
                 <TableHead>Date</TableHead>
                 <TableHead>Guests</TableHead>
                 <TableHead>Budget</TableHead>
-                <TableHead>Status</TableHead>
+                <TableHead>Stage</TableHead>
                 <TableHead>Received</TableHead>
                 <TableHead className="w-16" />
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filtered.map((lead) => (
+              {filtered.map((lead) => {
+                const stage = lead.salesStage ?? lead.status;
+                return (
                 <TableRow key={lead.id} className="group">
                   <TableCell className="font-medium text-foreground">
                     <Link href={`/leads/${lead.id}`} className="hover:text-primary">
@@ -335,18 +257,9 @@ export function LeadList({ leads, pipelineStages = [], stageIdsByLead = {} }: { 
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center gap-1.5">
-                      {(() => {
-                        if (pipelineStages.length === 0) return <LeadStatusBadge status={lead.status} />;
-                        const stage = resolvePipelineStageForLead(lead.status, stageIdsByLead[lead.id] ?? null, pipelineStages);
-                        if (!stage) return <LeadStatusBadge status={lead.status} />;
-                        return (
-                          <Badge style={{ backgroundColor: `${stage.color}26`, color: stage.color }}>
-                            {stage.name}
-                          </Badge>
-                        );
-                      })()}
+                      <LeadStatusBadge status={stage} />
                       {lead.commitmentScore > 0 && (() => {
-                        const { tier } = momentumLabel(lead.commitmentScore, lead.status);
+                        const { tier } = momentumLabel(lead.commitmentScore, stage);
                         const dot = tier === "hot" ? "bg-success" : tier === "warm" ? "bg-[#C7A66A]" : tier === "growing" ? "bg-primary/50" : null;
                         return dot ? <span className={`h-1.5 w-1.5 rounded-full shrink-0 ${dot}`} title={`Commitment: ${lead.commitmentScore}`} /> : null;
                       })()}
@@ -361,7 +274,8 @@ export function LeadList({ leads, pipelineStages = [], stageIdsByLead = {} }: { 
                     </Button>
                   </TableCell>
                 </TableRow>
-              ))}
+                );
+              })}
             </TableBody>
           </Table>
         </div>

@@ -19,7 +19,6 @@ import { toast } from "sonner";
 
 import { convertLeadToClientAction } from "@/app/(app)/clients/actions";
 import {
-  updateLeadPipelineStageAction,
   updateLeadStatusAction,
   wouldEnrollOnPipelineStageMoveAction,
 } from "@/app/(app)/leads/[id]/actions";
@@ -62,11 +61,11 @@ import {
   leadDisplayName,
   sourceLabel,
 } from "@/lib/leads/constants";
+import { isManuallyAssignableSalesStage, type SalesStage } from "@/lib/leads/sales-stages";
 import type { LeadWithDetails } from "@/lib/leads/types";
 import type { DateHold, VenueSpace } from "@/lib/availability/types";
 import type { Document } from "@/lib/documents/types";
 import type { LuvDraft } from "@/lib/luv/drafts";
-import type { PipelineStage } from "@/lib/pipeline-templates/types";
 
 // ---- info row (overview tab) ------------------------------------------------
 
@@ -95,7 +94,7 @@ function InfoRow({
 
 // ---- main component ---------------------------------------------------------
 
-export function LeadDetail({ lead, holds = [], spaces = [], documents = [], workspaceDocuments = [], pinnedDocumentKeys = [], recentDocumentEntries = [], luvDrafts = [], autoLuvDraft, tourAppointments = [], conversationId = null, pipelineStages = [], currentPipelineStage = null, now }: { lead: LeadWithDetails; holds?: DateHold[]; spaces?: VenueSpace[]; documents?: Document[]; workspaceDocuments?: WorkspaceDocument[]; pinnedDocumentKeys?: string[]; recentDocumentEntries?: [string, string][]; luvDrafts?: LuvDraft[]; autoLuvDraft?: string; tourAppointments?: import("@/lib/tours/types").TourAppointment[]; conversationId?: string | null; pipelineStages?: PipelineStage[]; currentPipelineStage?: PipelineStage | null; now: string }) {
+export function LeadDetail({ lead, holds = [], spaces = [], documents = [], workspaceDocuments = [], pinnedDocumentKeys = [], recentDocumentEntries = [], luvDrafts = [], autoLuvDraft, tourAppointments = [], conversationId = null, now }: { lead: LeadWithDetails; holds?: DateHold[]; spaces?: VenueSpace[]; documents?: Document[]; workspaceDocuments?: WorkspaceDocument[]; pinnedDocumentKeys?: string[]; recentDocumentEntries?: [string, string][]; luvDrafts?: LuvDraft[]; autoLuvDraft?: string; tourAppointments?: import("@/lib/tours/types").TourAppointment[]; conversationId?: string | null; now: string }) {
   // Controlled tabs — supports Luv→Messages bridge and ?luv= URL param routing
   const [activeTab, setActiveTab] = React.useState(autoLuvDraft ? "luv" : "overview");
   const [messagePrefill, setMessagePrefill] = React.useState<{ subject: string; body: string } | null>(null);
@@ -132,47 +131,17 @@ export function LeadDetail({ lead, holds = [], spaces = [], documents = [], work
 
   function handleStatusChange(status: string) {
     startStatus(async () => {
-      const result = await updateLeadStatusAction(lead.id, status);
-      if (result.ok) {
-        toast.success("Status updated.");
-        router.refresh();
-      } else {
-        toast.error(result.message ?? "Could not update status.");
-      }
-    });
-  }
-
-  // Phase 2 compatibility layer — moving a lead to a different Pipeline
-  // Stage updates leads.status underneath via the existing canonical
-  // mapping (lib/leads/pipeline-stage-mapping.ts). Only shown when the
-  // venue has an active Pipeline Template; falls back to the plain status
-  // control otherwise. Confirms before commit when the move would enroll
-  // in an Automation.
-  function commitStageChange(stageId: string) {
-    startStatus(async () => {
-      const result = await updateLeadPipelineStageAction(lead.id, stageId);
-      if (result.ok) {
-        toast.success("Stage updated.");
-        router.refresh();
-      } else {
-        toast.error(result.message ?? "Could not update stage.");
-      }
-    });
-  }
-
-  function handleStageChange(stageId: string) {
-    startStatus(async () => {
-      const check = await wouldEnrollOnPipelineStageMoveAction(lead.id, stageId);
+      const check = await wouldEnrollOnPipelineStageMoveAction(lead.id, status);
       if (!check.ok) {
         toast.error(check.message ?? "Could not check this move.");
         return;
       }
       if (check.wouldEnroll) {
-        setConfirmStageId(stageId);
+        setConfirmStageId(status);
         setConfirmPreview(check.preview);
         return;
       }
-      const result = await updateLeadPipelineStageAction(lead.id, stageId);
+      const result = await updateLeadStatusAction(lead.id, status);
       if (result.ok) {
         toast.success("Stage updated.");
         router.refresh();
@@ -181,6 +150,21 @@ export function LeadDetail({ lead, holds = [], spaces = [], documents = [], work
       }
     });
   }
+
+  function commitStageChange(stageKey: string) {
+    startStatus(async () => {
+      const result = await updateLeadStatusAction(lead.id, stageKey);
+      if (result.ok) {
+        toast.success("Stage updated.");
+        router.refresh();
+      } else {
+        toast.error(result.message ?? "Could not update stage.");
+      }
+    });
+  }
+
+  const currentStage = (lead.salesStage ?? lead.status) as SalesStage;
+  const assignableStages = LEAD_STATUSES.filter((s) => isManuallyAssignableSalesStage(s.value));
 
   const openTaskCount = lead.tasks.filter((t) => !t.completed).length;
 
@@ -262,59 +246,28 @@ export function LeadDetail({ lead, holds = [], spaces = [], documents = [], work
         </div>
 
         <div className="flex shrink-0 items-center gap-2">
-          {pipelineStages.length > 0 ? (
-            <>
-              <Badge
-                style={{ backgroundColor: `${(currentPipelineStage ?? pipelineStages[0]).color}26`, color: (currentPipelineStage ?? pipelineStages[0]).color }}
-              >
-                {(currentPipelineStage ?? pipelineStages[0]).name}
-              </Badge>
-              <DropdownMenu>
-                <DropdownMenuTrigger
-                  render={<Button variant="outline" size="sm" disabled={statusPending} />}
+          <LeadStatusBadge status={currentStage} />
+          <DropdownMenu>
+            <DropdownMenuTrigger
+              render={<Button variant="outline" size="sm" disabled={statusPending} />}
+            >
+              Change stage
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              {assignableStages.map((s) => (
+                <DropdownMenuItem
+                  key={s.value}
+                  disabled={s.value === currentStage}
+                  onClick={() => handleStatusChange(s.value)}
                 >
-                  Change stage
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  {pipelineStages.map((s) => (
-                    <DropdownMenuItem
-                      key={s.id}
-                      disabled={s.id === currentPipelineStage?.id}
-                      onClick={() => handleStageChange(s.id)}
-                    >
-                      <span className="mr-2 inline-block h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: s.color }} />
-                      {s.name}
-                    </DropdownMenuItem>
-                  ))}
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </>
-          ) : (
-            <>
-              <LeadStatusBadge status={lead.status} />
-              <DropdownMenu>
-                <DropdownMenuTrigger
-                  render={<Button variant="outline" size="sm" disabled={statusPending} />}
-                >
-                  Change status
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  {LEAD_STATUSES.map((s) => (
-                    <DropdownMenuItem
-                      key={s.value}
-                      disabled={s.value === lead.status}
-                      onClick={() => handleStatusChange(s.value)}
-                    >
-                      {s.label}
-                      <span className="ml-auto pl-4 text-xs text-muted-foreground">
-                        {s.description}
-                      </span>
-                    </DropdownMenuItem>
-                  ))}
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </>
-          )}
+                  {s.label}
+                  <span className="ml-auto pl-4 text-xs text-muted-foreground">
+                    {s.description}
+                  </span>
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
           <Button
             variant="outline"
             size="sm"
@@ -323,20 +276,17 @@ export function LeadDetail({ lead, holds = [], spaces = [], documents = [], work
             <Pencil className="mr-1 h-3.5 w-3.5" />
             Edit
           </Button>
-          {/* Convert / View Client — only on won leads */}
-          {lead.status === "won" && (
-            lead.linkedClientId ? (
-              <Button size="sm" render={<Link href={`/clients/${lead.linkedClientId}`} />}>
-                View Client →
-              </Button>
-            ) : (
-              <Button size="sm" disabled={convertPending} onClick={handleConvert}>
-                {convertPending
-                  ? <><Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />Converting…</>
-                  : <><ArrowRight className="mr-1 h-3.5 w-3.5" />Convert to Client</>}
-              </Button>
-            )
-          )}
+          {lead.linkedClientId ? (
+            <Button size="sm" render={<Link href={`/clients/${lead.linkedClientId}`} />}>
+              View Client →
+            </Button>
+          ) : currentStage !== "lost" ? (
+            <Button size="sm" disabled={convertPending} onClick={handleConvert}>
+              {convertPending
+                ? <><Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />Booking…</>
+                : <><ArrowRight className="mr-1 h-3.5 w-3.5" />Book This Lead</>}
+            </Button>
+          ) : null}
         </div>
       </div>
 

@@ -9,7 +9,6 @@ import { PageHeader } from "@/components/shell/module-placeholder";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { getEnrollments, getSequence } from "@/lib/message-sequences/service";
 import { getTemplates } from "@/lib/message-templates/service";
-import { getActiveTemplate } from "@/lib/pipeline-templates/service";
 
 type Props = { params: Promise<{ id: string }> };
 
@@ -21,18 +20,12 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function EditSeriesPage({ params }: Props) {
   const { id } = await params;
-  const [series, templates, activeTemplate] = await Promise.all([
+  const [series, templates] = await Promise.all([
     getSequence(id),
     getTemplates(),
-    getActiveTemplate(),
   ]);
   if (!series) notFound();
   const enrollments = await getEnrollments(id);
-  const pipelineStages = (activeTemplate?.stages ?? []).map((s) => ({
-    name: s.name,
-    canonicalStage: s.canonicalStage,
-    sortOrder: s.sortOrder,
-  }));
 
   return (
     <div className="space-y-6">
@@ -52,7 +45,7 @@ export default async function EditSeriesPage({ params }: Props) {
           <CardDescription>Changes to steps only affect enrollments made after you save.</CardDescription>
         </CardHeader>
         <CardContent>
-          <SeriesForm series={series} templates={templates} pipelineStages={pipelineStages} />
+          <SeriesForm series={series} templates={templates} />
         </CardContent>
       </Card>
       <Card>

@@ -12,7 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { SEQUENCE_TRIGGER_STAGES, SEQUENCE_TRIGGER_TYPES } from "@/lib/message-sequences/constants";
-import { triggerStageDisplayLabel, type StageNameLookup } from "@/lib/message-sequences/stage-labels";
+import { salesStageLabel } from "@/lib/leads/constants";
 import type {
   CreateSequenceResult, MessageSequenceInput, MessageSequenceWithSteps, SequenceErrors, SequenceStepInput,
 } from "@/lib/message-sequences/types";
@@ -25,6 +25,7 @@ function buildInitial(series?: MessageSequenceWithSteps | null): MessageSequence
     name: series?.name ?? "",
     triggerType: series?.triggerType ?? null,
     triggerStage: series?.triggerStage ?? null,
+    updatePipelineOnEnroll: series?.updatePipelineOnEnroll ?? false,
     steps: series?.steps.map((s) => ({ templateId: s.templateId, channel: s.channel, offsetDays: s.offsetDays })) ?? [],
   };
 }
@@ -36,12 +37,9 @@ function emptyStep(): SequenceStepInput {
 export function SeriesForm({
   series,
   templates,
-  pipelineStages = [],
 }: {
   series?: MessageSequenceWithSteps | null;
   templates: MessageTemplate[];
-  /** Active Pipeline Template stages for venue name display beside LeadStatus. */
-  pipelineStages?: StageNameLookup[];
 }) {
   const router = useRouter();
   const isEdit = !!series;
@@ -51,7 +49,7 @@ export function SeriesForm({
 
   const stageItems = SEQUENCE_TRIGGER_STAGES.map((s) => ({
     value: s.value,
-    label: triggerStageDisplayLabel(s.value, pipelineStages),
+    label: salesStageLabel(s.value),
   }));
 
   const set = <K extends keyof MessageSequenceInput>(key: K, v: MessageSequenceInput[K]) => {
@@ -142,6 +140,23 @@ export function SeriesForm({
           {errors.triggerStage && <p className="text-xs text-destructive">{errors.triggerStage}</p>}
         </div>
       )}
+
+      <label className="flex max-w-xl cursor-pointer items-start gap-2.5 rounded-lg border border-border bg-card/40 px-3 py-2.5">
+        <input
+          type="checkbox"
+          className="mt-0.5"
+          checked={input.updatePipelineOnEnroll === true}
+          onChange={(e) => set("updatePipelineOnEnroll", e.target.checked)}
+        />
+        <span className="space-y-0.5">
+          <span className="block text-sm font-medium text-heading">
+            Move this lead to Enrolled in Sequence/Workflow when enrolled
+          </span>
+          <span className="block text-xs text-muted-foreground">
+            Off by default. When on, a successful enrollment may move the lead forward to Enrolled in Sequence/Workflow.
+          </span>
+        </span>
+      </label>
 
       <div className="space-y-3">
         <div className="flex items-center justify-between">

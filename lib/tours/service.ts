@@ -8,7 +8,7 @@ import type { BookingResult, CoordinatorTourResult, SimpleTourResult, TourAvaila
 import type { CalendarItem } from "@/lib/calendar/types";
 import { eventTypeLabel, leadDisplayName } from "@/lib/leads/constants";
 import { sendTourConfirmation } from "@/lib/tours/communication";
-import { updateLeadStatus } from "@/lib/leads/service";
+import { advanceLeadSalesStageIfForward } from "@/lib/leads/service";
 import { ingestLead } from "@/lib/lead-intake/pipeline";
 import { recordNotificationStatus } from "@/lib/lead-intake/attempt-log";
 
@@ -456,15 +456,10 @@ export async function scheduleTourForLead(leadId: string, slotStart: string, not
 
   await sendConfirmationForResult(supabase, result.appointmentId, result.leadId, result.relationshipId, result.venueId, result.venueName, venue.primaryColor, result.scheduledAt, result.duration, result.contactEmail, result.contactName);
 
-  // "Tour Scheduled" is a real step in the Sales Pipeline — a lead that's
-  // still sitting at "new" moves to "contacted" (the canonical "tour"
-  // stage's mapped status) the moment a tour is actually on the books.
-  // Never regresses a lead already further along (qualified, proposal
-  // sent, etc.) — this only ever moves a pipeline forward.
-  const { data: leadRow } = await supabase.from("leads").select("status").eq("id", leadId).maybeSingle<{ status: string }>();
-  if (leadRow?.status === "new") {
-    await updateLeadStatus(leadId, "contacted").catch((err) => console.error("Lead stage advance on tour scheduling failed:", err));
-  }
+  // Tour Scheduled is a real Sales Pipeline stage. Forward-only — never
+  // regresses Booked/Lost or stages already past tour_scheduled.
+  await advanceLeadSalesStageIfForward(leadId, "tour_scheduled")
+    .catch((err) => console.error("Lead stage advance on tour scheduling failed:", err));
 
   return result;
 }

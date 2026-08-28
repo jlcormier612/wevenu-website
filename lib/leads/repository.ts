@@ -16,6 +16,7 @@ import type {
   RelationshipInput,
   TaskInput,
 } from "@/lib/leads/types";
+import { isSalesStage, migrateLegacyStatusToSalesStage, type SalesStage } from "@/lib/leads/sales-stages";
 
 type DbClient = Awaited<ReturnType<typeof createClient>>;
 
@@ -134,7 +135,8 @@ export async function upsertLeadTour(
 type LeadRow = {
   id: string;
   venue_id: string;
-  status: LeadStatus;
+  sales_stage: string | null;
+  status: string | null;
   source: string | null;
   first_name: string;
   last_name: string;
@@ -182,9 +184,16 @@ type TaskRow = {
   completed: boolean; completed_at: string | null; created_at: string;
 };
 
+function resolveSalesStage(r: LeadRow): SalesStage {
+  if (r.sales_stage && isSalesStage(r.sales_stage)) return r.sales_stage;
+  if (r.status) return migrateLegacyStatusToSalesStage(r.status, false);
+  return "new_inquiry";
+}
+
 function mapLead(r: LeadRow, tour: LeadTourInfo = EMPTY_TOUR): Lead {
+  const salesStage = resolveSalesStage(r);
   return {
-    id: r.id, venueId: r.venue_id, status: r.status, source: r.source,
+    id: r.id, venueId: r.venue_id, salesStage, status: salesStage, source: r.source,
     firstName: r.first_name, lastName: r.last_name, email: r.email, phone: r.phone,
     partnerFirstName: r.partner_first_name, partnerLastName: r.partner_last_name,
     partnerEmail: r.partner_email, eventType: r.event_type, eventDate: r.event_date,
@@ -231,7 +240,7 @@ export async function getLeads(
   filters?: { q?: string; status?: string },
 ): Promise<Lead[]> {
   let q = client.from("leads").select("*").eq("venue_id", venueId);
-  if (filters?.status) q = q.eq("status", filters.status);
+  if (filters?.status) q = q.eq("sales_stage", filters.status);
   if (filters?.q) {
     const term = `%${filters.q}%`;
     q = q.or(`first_name.ilike.${term},last_name.ilike.${term},email.ilike.${term},partner_first_name.ilike.${term},partner_last_name.ilike.${term}`);
@@ -370,7 +379,7 @@ export async function findActiveDuplicate(
 ): Promise<{ id: string } | null> {
   let q = client.from("leads").select("id")
     .eq("venue_id", venueId)
-    .not("status", "in", "(won,lost,cancelled)");
+    .not("sales_stage", "in", "(booked,lost)");
   const trimmedEmail = email.trim();
   q = trimmedEmail
     ? q.ilike("email", trimmedEmail)
@@ -379,18 +388,28 @@ export async function findActiveDuplicate(
   return data ?? null;
 }
 
+export async function updateLeadSalesStage(
+  client: DbClient,
+  venueId: string,
+  leadId: string,
+  salesStage: SalesStage,
+): Promise<void> {
+  const { error } = await client
+    .from("leads")
+    .update({ sales_stage: salesStage })
+    .eq("id", leadId)
+    .eq("venue_id", venueId);
+  if (error) throw error;
+}
+
+/** @deprecated Use updateLeadSalesStage */
 export async function updateLeadStatus(
   client: DbClient,
   venueId: string,
   leadId: string,
   status: LeadStatus,
 ): Promise<void> {
-  const { error } = await client
-    .from("leads")
-    .update({ status })
-    .eq("id", leadId)
-    .eq("venue_id", venueId);
-  if (error) throw error;
+  await updateLeadSalesStage(client, venueId, leadId, status);
 }
 
 // ---- notes ------------------------------------------------------------------

@@ -3,25 +3,27 @@
  * Pure data — no imports beyond the types file.
  */
 import type { ActivityType, Lead, LeadInput, LeadStatus, RelationshipInput } from "@/lib/leads/types";
+import { SALES_STAGE_META, type SalesStage } from "@/lib/leads/sales-stages";
 
 export type StatusMeta = {
-  value: LeadStatus;
+  value: SalesStage;
   label: string;
   description: string;
 };
 
-export const LEAD_STATUSES: StatusMeta[] = [
-  { value: "new",           label: "New",           description: "Inquiry just received" },
-  { value: "contacted",     label: "Contacted",     description: "Reached out to the lead" },
-  { value: "qualified",     label: "Qualified",     description: "Confirmed a good fit" },
-  { value: "proposal_sent", label: "Proposal Sent", description: "Pricing / proposal sent" },
-  { value: "won",           label: "Won",           description: "Booking confirmed" },
-  { value: "lost",          label: "Lost",          description: "Did not book" },
-  { value: "cancelled",     label: "Cancelled",     description: "Booking was cancelled" },
-];
+/** Board / filter vocabulary — authoritative Sales Pipeline stages. */
+export const LEAD_STATUSES: StatusMeta[] = SALES_STAGE_META.map((s) => ({
+  value: s.value,
+  label: s.label,
+  description: s.description,
+}));
 
-export const ACTIVE_STATUSES: LeadStatus[] = [
-  "new", "contacted", "qualified", "proposal_sent",
+export const ACTIVE_STATUSES: SalesStage[] = [
+  "new_inquiry",
+  "outreach_sent",
+  "enrolled_in_sequence",
+  "tour_scheduled",
+  "proposal_sent",
 ];
 
 export type Option = { value: string; label: string };
@@ -92,10 +94,12 @@ export function leadDisplayName(
   return partner ? `${primary} & ${partner}` : primary;
 }
 
-/** Look up a status label; falls back to the raw value. */
+/** Look up a sales-stage label; falls back to the raw value. */
 export function statusLabel(status: string): string {
   return LEAD_STATUSES.find((s) => s.value === status)?.label ?? status;
 }
+
+export { salesStageLabel } from "@/lib/leads/sales-stages";
 
 export function eventTypeLabel(value: string | null): string {
   if (!value) return "";

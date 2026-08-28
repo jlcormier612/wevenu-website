@@ -101,9 +101,9 @@ export async function getLuvObservations(
     // against tour_appointments (Program 2 Phase 1a's canonical source),
     // since the query builder can't express a NOT EXISTS join inline here.
     supabase.from("leads")
-      .select("id, first_name, last_name, partner_first_name, status, created_at")
+      .select("id, first_name, last_name, partner_first_name, sales_stage, created_at")
       .eq("venue_id", venueId)
-      .in("status", ["qualified", "proposal_sent"])
+      .in("sales_stage", ["tour_scheduled", "proposal_sent"])
       .order("created_at"),
 
     // 4: Contracts sent 3+ days ago, still awaiting signature
@@ -128,7 +128,7 @@ export async function getLuvObservations(
     supabase.from("leads")
       .select("id, first_name, last_name, partner_first_name, created_at")
       .eq("venue_id", venueId)
-      .eq("status", "new")
+      .eq("sales_stage", "new_inquiry")
       .is("follow_up_date", null)
       .lt("created_at", twoDaysAgo)
       .order("created_at"),
@@ -227,7 +227,7 @@ export async function getLuvObservations(
 
   // ── 3: Qualified leads with no tour ──────────────────────────────────────
 
-  const qualifiedLeads = (qualifiedLeadsRes.data ?? []) as { id: string; first_name: string; last_name: string; partner_first_name?: string | null; status: string; created_at: string }[];
+  const qualifiedLeads = (qualifiedLeadsRes.data ?? []) as { id: string; first_name: string; last_name: string; partner_first_name?: string | null; sales_stage: string; created_at: string }[];
   const leadsWithActiveTours = new Set<string>();
   if (qualifiedLeads.length > 0) {
     const { data: activeTours } = await supabase.from("tour_appointments")
@@ -247,7 +247,7 @@ export async function getLuvObservations(
       kind: "recommendation",
       priority: "medium",
       message: `${name} may be ready to schedule a tour.`,
-      detail: `${lead.status === "proposal_sent" ? "Proposal sent" : "Qualified"} · ${days} day${days !== 1 ? "s" : ""} in the pipeline.`,
+      detail: `${lead.sales_stage === "proposal_sent" ? "Proposal sent" : "Tour scheduled"} · ${days} day${days !== 1 ? "s" : ""} in the pipeline.`,
       link: `/leads/${lead.id}`,
       actionLabel: "View Lead →",
       recommendation: { label: "Invite them to schedule a tour", link: `/leads/${lead.id}`, type: "navigate" },
@@ -642,9 +642,9 @@ export async function getLuvObservations(
 
   // Fetch leads with high or declining commitment for momentum observations
   const { data: momentumLeads } = await supabase.from("leads")
-    .select("id, first_name, last_name, status, commitment_score, last_contacted_at, created_at")
+    .select("id, first_name, last_name, sales_stage, commitment_score, last_contacted_at, created_at")
     .eq("venue_id", venueId)
-    .not("status", "in", "(won,lost,cancelled)")
+    .not("sales_stage", "in", "(booked,lost)")
     .order("commitment_score", { ascending: false })
     .limit(20);
 
@@ -665,7 +665,7 @@ export async function getLuvObservations(
       signalsByLead.set(s.lead_id, arr);
     }
 
-    for (const lead of momentumLeads as { id: string; first_name: string; last_name: string; status: string; commitment_score: number; last_contacted_at: string | null; created_at: string }[]) {
+    for (const lead of momentumLeads as { id: string; first_name: string; last_name: string; sales_stage: string; commitment_score: number; last_contacted_at: string | null; created_at: string }[]) {
       const name = [lead.first_name, lead.last_name].filter(Boolean).join(" ");
       const leadSignals = signalsByLead.get(lead.id) ?? [];
       const interestScore = computeInterestFromSignals(leadSignals);
@@ -731,14 +731,13 @@ export async function getLuvObservations(
       map.set(s.lead_id, (map.get(s.lead_id) ?? 0) + s.signal_strength);
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    for (const lead of (momentumLeads as any[]) as { id: string; first_name: string; last_name: string; status: string; commitment_score: number; responsiveness_score: number; interest_score: number; last_contacted_at: string | null }[]) {
+    for (const lead of momentumLeads as { id: string; first_name: string; last_name: string; sales_stage: string; commitment_score: number; last_contacted_at: string | null }[]) {
       const name = [lead.first_name, lead.last_name].filter(Boolean).join(" ");
       const recent = recentByLead.get(lead.id) ?? 0;
       const prior  = priorByLead.get(lead.id) ?? 0;
       const alreadyCovered = observations.some((o) => o.id.includes(lead.id));
       if (alreadyCovered) continue;
-      if (lead.status === "won" || lead.status === "lost" || lead.status === "cancelled") continue;
+      if (lead.sales_stage === "booked" || lead.sales_stage === "lost") continue;
 
       // Significant INCREASE in signals this week
       if (recent >= 4 && prior === 0) {

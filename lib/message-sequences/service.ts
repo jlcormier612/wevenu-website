@@ -97,8 +97,12 @@ export async function enrollRelationshipManually(sequenceId: string, relationshi
     if (await repo.hasActiveEnrollment(supabase, sequenceId, relationshipId)) {
       return { ok: false, message: "Already enrolled in this series." } as EnrollResult;
     }
+    const seq = await repo.getSequenceWithSteps(supabase, venueId, sequenceId);
     const enrollmentId = await repo.insertEnrollment(supabase, venueId, sequenceId, relationshipId);
     await repo.materializeEnrollmentSteps(supabase, venueId, enrollmentId, sequenceId, relationshipId);
+    await maybeAdvanceLeadOnSequenceEnroll(
+      supabase, venueId, relationshipId, seq?.updatePipelineOnEnroll === true,
+    );
     return { ok: true, enrollmentId } as EnrollResult;
   });
   return result as EnrollResult;
@@ -162,8 +166,42 @@ export async function triggerSequencesForRelationship(
     const enrollmentId = await repo.insertEnrollment(supabase, venueId, seq.id, relationshipId);
     await repo.materializeEnrollmentSteps(supabase, venueId, enrollmentId, seq.id, relationshipId);
     enrollmentIds.push(enrollmentId);
+    await maybeAdvanceLeadOnSequenceEnroll(
+      supabase, venueId, relationshipId, seq.updatePipelineOnEnroll === true,
+    );
   }
   return enrollmentIds;
+}
+
+/**
+ * When a sequence has update_pipeline_on_enroll, move the open lead for this
+ * relationship to enrolled_in_sequence (forward-only). Does not move Booked/Lost
+ * or regress. Does not re-fire stage triggers here — avoids enrollment loops;
+ * coordinators who manually set Enrolled still get lead_stage_changed triggers.
+ */
+async function maybeAdvanceLeadOnSequenceEnroll(
+  supabase: AnyDbClient,
+  venueId: string,
+  relationshipId: string,
+  updatePipelineOnEnroll: boolean,
+): Promise<void> {
+  if (!updatePipelineOnEnroll) return;
+  const { isSalesStage, isForwardSalesStageMove } = await import("@/lib/leads/sales-stages");
+  const { data: lead } = await supabase.from("leads")
+    .select("id, sales_stage")
+    .eq("venue_id", venueId)
+    .eq("relationship_id", relationshipId)
+    .not("sales_stage", "in", "(booked,lost)")
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle<{ id: string; sales_stage: string }>();
+  if (!lead || !isSalesStage(lead.sales_stage)) return;
+  if (!isForwardSalesStageMove(lead.sales_stage, "enrolled_in_sequence")) return;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  await (supabase.from("leads") as any)
+    .update({ sales_stage: "enrolled_in_sequence" })
+    .eq("id", lead.id)
+    .eq("venue_id", venueId);
 }
 
 /**
