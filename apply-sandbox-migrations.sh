@@ -1,7 +1,7 @@
 #!/bin/bash
 set -o pipefail
 
-cd "/Users/jensmac/Library/Mobile Documents/com~apple~CloudDocs/Wevenu Website/wevenu-website" || { echo "Could not cd to the repo root — check the path."; exit 1; }
+cd "/Users/jensmac/Developer/wevenu-website" || { echo "Could not cd to the repo root — check the path."; exit 1; }
 
 if ! command -v psql >/dev/null 2>&1; then
   echo "psql not found on PATH. Install it first: brew install libpq && brew link --force libpq"
