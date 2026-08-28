@@ -1,33 +1,18 @@
 "use client";
 
-/**
- * Pipeline Templates list — Template Platform Release Readiness parity pass.
- * Brings this card grid up to the same Duplicate + Archive/Restore actions
- * Packages already has, and Playbooks/Timeline Templates/Floor Plan
- * Templates have had all along, instead of Edit being the only action here.
- * "Active"/"Inactive" is the same underlying is_active column Phase 1 (this
- * template's own foundation) already built — only the label and the actions
- * around it are new, so it reads the same as "Archive"/"Restore" everywhere
- * else in the Template Platform.
- */
-
 import * as React from "react";
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Archive, ArchiveRestore, Copy, Loader2, MoreHorizontal, Pencil, Trash2 } from "lucide-react";
+import { Archive, ArchiveRestore, Copy, Loader2, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 import {
   deletePipelineTemplateAction, duplicatePipelineTemplateAction, setPipelineTemplateActiveAction,
 } from "@/app/(app)/library/pipeline-templates/actions";
+import { LibraryAssetCard } from "@/components/library/library-asset-card";
 import { LibraryDeleteConfirmDialog } from "@/components/library/library-delete-confirm-dialog";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { LIBRARY_LABELS } from "@/components/library/labels";
 import type { PipelineTemplate } from "@/lib/pipeline-templates/types";
 
 export function PipelineTemplateList({ initialTemplates }: { initialTemplates: PipelineTemplate[] }) {
@@ -41,16 +26,20 @@ export function PipelineTemplateList({ initialTemplates }: { initialTemplates: P
     setPendingId(t.id);
     const result = await setPipelineTemplateActiveAction(t.id, !t.isActive);
     setPendingId(null);
-    if (result.ok) setTemplates((p) => p.map((x) => x.id === t.id ? { ...x, isActive: !t.isActive } : x));
-    else toast.error(result.message ?? "Could not update template.");
+    if (result.ok) {
+      setTemplates((p) => p.map((x) => x.id === t.id ? { ...x, isActive: !t.isActive } : x));
+      toast.success(t.isActive ? "Pipeline template archived." : "Pipeline template restored.");
+    } else toast.error(result.message ?? "Could not update template.");
   }
 
   async function handleDuplicate(t: PipelineTemplate) {
     setPendingId(t.id);
     const result = await duplicatePipelineTemplateAction(t.id, `${t.name} (Copy)`);
     setPendingId(null);
-    if (result.ok) { toast.success("Pipeline template duplicated."); router.push(`/library/pipeline-templates/${result.templateId}/edit`); }
-    else toast.error(result.message ?? "Could not duplicate template.");
+    if (result.ok) {
+      toast.success("Pipeline template duplicated.");
+      router.push(`/library/pipeline-templates/${result.templateId}/edit`);
+    } else toast.error(result.message ?? "Could not duplicate template.");
   }
 
   async function handleDeleteConfirmed() {
@@ -62,50 +51,65 @@ export function PipelineTemplateList({ initialTemplates }: { initialTemplates: P
       toast.success("Pipeline template deleted.");
       setTemplates((p) => p.filter((x) => x.id !== deleting.id));
       setDeleting(null);
-    } else {
-      toast.error(result.message ?? "Could not delete template.");
-    }
+    } else toast.error(result.message ?? "Could not delete template.");
   }
 
   return (
-    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+    <div className="space-y-3">
       {templates.map((t) => (
-        <Card key={t.id}>
-          <CardHeader>
-            <div className="flex items-start justify-between gap-2">
-              <CardTitle className="text-base">{t.name}</CardTitle>
-              <div className="flex shrink-0 items-center gap-1">
-                {!t.isActive && <Badge variant="muted" className="text-[10px]">Archived</Badge>}
-                <DropdownMenu>
-                  <DropdownMenuTrigger render={<Button variant="ghost" size="icon-sm" aria-label="Pipeline template options" />}>
-                    {pendingId === t.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <MoreHorizontal className="h-3.5 w-3.5" />}
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem render={<Link href={`/library/pipeline-templates/${t.id}/edit`} />}>
-                      <Pencil className="mr-2 h-3.5 w-3.5" /> Edit
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => handleDuplicate(t)}>
-                      <Copy className="mr-2 h-3.5 w-3.5" /> Duplicate
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => handleToggleArchived(t)}>
-                      {t.isActive ? <Archive className="mr-2 h-3.5 w-3.5" /> : <ArchiveRestore className="mr-2 h-3.5 w-3.5" />}
-                      {t.isActive ? "Archive" : "Restore"}
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => setDeleting(t)} className="text-destructive focus:text-destructive">
-                      <Trash2 className="mr-2 h-3.5 w-3.5" /> Delete
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
-            </div>
-            {t.description && <CardDescription>{t.description}</CardDescription>}
-          </CardHeader>
-          <CardContent>
-            <Button size="sm" variant="outline" render={<Link href={`/library/pipeline-templates/${t.id}/edit`} />}>
-              Edit
-            </Button>
-          </CardContent>
-        </Card>
+        <LibraryAssetCard
+          key={t.id}
+          layout="row"
+          title={t.name}
+          description={t.description}
+          meta={t.isActive ? "Active pipeline" : "Archived pipeline"}
+          isArchived={!t.isActive}
+          primaryActions={t.isActive
+            ? [
+                { id: "preview", label: LIBRARY_LABELS.preview, href: `/library/pipeline-templates/${t.id}/preview`, emphasis: "preview" },
+                { id: "edit", label: LIBRARY_LABELS.edit, href: `/library/pipeline-templates/${t.id}/edit`, emphasis: "edit" },
+              ]
+            : [
+                { id: "preview", label: LIBRARY_LABELS.preview, href: `/library/pipeline-templates/${t.id}/preview`, emphasis: "preview" },
+                { id: "restore", label: LIBRARY_LABELS.restore, onClick: () => handleToggleArchived(t), emphasis: "edit", disabled: pendingId === t.id },
+              ]}
+          overflowPending={pendingId === t.id}
+          overflowItems={t.isActive ? [
+            {
+              id: "duplicate",
+              label: LIBRARY_LABELS.duplicate,
+              onClick: () => handleDuplicate(t),
+              icon: <Copy className="mr-2 h-3.5 w-3.5" />,
+            },
+            {
+              id: "archive",
+              label: LIBRARY_LABELS.archive,
+              onClick: () => handleToggleArchived(t),
+              icon: <Archive className="mr-2 h-3.5 w-3.5" />,
+            },
+            {
+              id: "delete",
+              label: LIBRARY_LABELS.delete,
+              onClick: () => setDeleting(t),
+              destructive: true,
+              icon: <Trash2 className="mr-2 h-3.5 w-3.5" />,
+            },
+          ] : [
+            {
+              id: "restore",
+              label: LIBRARY_LABELS.restore,
+              onClick: () => handleToggleArchived(t),
+              icon: <ArchiveRestore className="mr-2 h-3.5 w-3.5" />,
+            },
+            {
+              id: "delete",
+              label: LIBRARY_LABELS.delete,
+              onClick: () => setDeleting(t),
+              destructive: true,
+              icon: <Trash2 className="mr-2 h-3.5 w-3.5" />,
+            },
+          ]}
+        />
       ))}
       <LibraryDeleteConfirmDialog
         open={!!deleting}
