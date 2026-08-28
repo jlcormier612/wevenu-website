@@ -2,7 +2,6 @@
 
 import * as React from "react";
 
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Archive, ArchiveRestore, Copy, Loader2, Trash2 } from "lucide-react";
 import { toast } from "sonner";
