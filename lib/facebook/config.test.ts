@@ -21,7 +21,7 @@ describe("buildFacebookOAuthUrl", () => {
     for (const key of ENV_KEYS) {
       prior[key] = process.env[key];
     }
-    process.env.FACEBOOK_APP_ID = "900113146501841";
+    process.env.FACEBOOK_APP_ID = "1703369807439893";
     process.env.NEXT_PUBLIC_APP_URL = "https://app.sandbox.hellotocheers.com";
     delete process.env.FACEBOOK_LOGIN_CONFIG_ID;
   });

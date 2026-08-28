@@ -293,8 +293,8 @@
       "Type": "AWS::SecretsManager::Secret",
       "Properties": {
         "Name": { "Fn::Sub": "htc/${EnvironmentName}/stripe-connect" },
-        "Description": "Venue app's existing Stripe Connect keys - not part of the first E2E path, included for completeness",
-        "SecretString": "{\"STRIPE_SECRET_KEY\":\"CHANGE_ME\",\"STRIPE_WEBHOOK_SECRET\":\"CHANGE_ME\"}"
+        "Description": "Venue app Stripe Connect keys. STRIPE_SECRET_KEY + STRIPE_WEBHOOK_SECRET for Connect OAuth/webhooks. STRIPE_CLIENT_ID is the public Connect client id (same value as NEXT_PUBLIC_STRIPE_CLIENT_ID) stored here so Settings can build the authorize URL at runtime even when a deploy omitted the public build arg.",
+        "SecretString": "{\"STRIPE_SECRET_KEY\":\"CHANGE_ME\",\"STRIPE_WEBHOOK_SECRET\":\"CHANGE_ME\",\"STRIPE_CLIENT_ID\":\"\"}"
       }
     },
     "QuickBooksSecrets": {
@@ -346,6 +346,7 @@
             { "Name": "PRODUCT_SYNC_API_KEY", "ValueFrom": { "Fn::Sub": "${ProductSyncApiKeySecret}:value::" } },
             { "Name": "STRIPE_SECRET_KEY", "ValueFrom": { "Fn::Sub": "${StripeConnectSecrets}:STRIPE_SECRET_KEY::" } },
             { "Name": "STRIPE_WEBHOOK_SECRET", "ValueFrom": { "Fn::Sub": "${StripeConnectSecrets}:STRIPE_WEBHOOK_SECRET::" } },
+            { "Name": "STRIPE_CLIENT_ID", "ValueFrom": { "Fn::Sub": "${StripeConnectSecrets}:STRIPE_CLIENT_ID::" } },
             { "Name": "QUICKBOOKS_CLIENT_ID", "ValueFrom": { "Fn::Sub": "${QuickBooksSecrets}:QUICKBOOKS_CLIENT_ID::" } },
             { "Name": "QUICKBOOKS_CLIENT_SECRET", "ValueFrom": { "Fn::Sub": "${QuickBooksSecrets}:QUICKBOOKS_CLIENT_SECRET::" } },
             { "Name": "FACEBOOK_APP_ID", "ValueFrom": { "Fn::Sub": "${FacebookSecrets}:FACEBOOK_APP_ID::" } },

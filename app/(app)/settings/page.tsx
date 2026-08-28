@@ -39,6 +39,8 @@ import { getEventCompletedNudgeRule } from "@/lib/automation/service";
 import { getQuickBooksConnection, getRecentQuickBooksSyncLog } from "@/lib/quickbooks/service";
 import { getFacebookConnection, getFacebookLeadForms, getRecentFacebookLog } from "@/lib/facebook/service";
 import { buildFacebookOAuthUrl } from "@/lib/facebook/config";
+import { buildStripeConnectUrl } from "@/lib/stripe/oauth";
+import { buildQuickBooksConnectUrl } from "@/lib/quickbooks/config";
 // Playbooks moved to Library (/library/playbooks)
 // Pipeline Templates moved to Library (/library/pipeline-templates)
 
@@ -76,8 +78,8 @@ export default async function SettingsPage() {
         description="Edit your venue information, hours, brand, and preferences."
       />
       <VenueSettings initial={settings.input} venueId={settings.venueId} publicReviewUrl={venue?.publicReviewUrl ?? ""} />
-      {venue && <div id="stripe"><StripeConnectSection venue={venue} /></div>}
-      {venue && <QuickBooksConnectSection venueId={venue.id} connection={quickbooksConnection} syncLog={quickbooksSyncLog} />}
+      {venue && <div id="stripe"><StripeConnectSection venue={venue} connectUrl={buildStripeConnectUrl(venue.id)} /></div>}
+      {venue && <QuickBooksConnectSection venueId={venue.id} connection={quickbooksConnection} syncLog={quickbooksSyncLog} connectUrl={buildQuickBooksConnectUrl(venue.id)} />}
       {venue && <FacebookConnectSection venueId={venue.id} connection={facebookConnection} leadForms={facebookLeadForms} recentLog={facebookLog} connectUrl={buildFacebookOAuthUrl(venue.id)} />}
 
       {/* ── Import Data ────────────────────────────────────────────── */}
