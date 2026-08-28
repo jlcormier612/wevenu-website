@@ -5,6 +5,8 @@ import { SettingsTabs } from "@/components/settings/settings-tabs";
 import { StripeConnectSection } from "@/components/settings/stripe-connect-section";
 import { QuickBooksConnectSection } from "@/components/settings/quickbooks-connect-section";
 import { FacebookConnectSection } from "@/components/settings/facebook-connect-section";
+import { buildQuickBooksConnectUrl } from "@/lib/quickbooks/config";
+import { buildStripeConnectUrl } from "@/lib/stripe/oauth";
 import { getCurrentVenue } from "@/lib/venue/service";
 import { getQuickBooksConnection, getRecentQuickBooksSyncLog } from "@/lib/quickbooks/service";
 import { getFacebookConnection, getFacebookLeadForms, getRecentFacebookLog } from "@/lib/facebook/service";
@@ -26,8 +28,8 @@ export default async function FinancialsIntegrationsSettingsPage() {
       />
       <SettingsTabs />
 
-      {venue && <div id="stripe" className="scroll-mt-20"><StripeConnectSection venue={venue} /></div>}
-      {venue && <QuickBooksConnectSection venueId={venue.id} connection={quickbooksConnection} syncLog={quickbooksSyncLog} />}
+      {venue && <div id="stripe" className="scroll-mt-20"><StripeConnectSection venue={venue} connectUrl={buildStripeConnectUrl(venue.id)} /></div>}
+      {venue && <QuickBooksConnectSection venueId={venue.id} connection={quickbooksConnection} syncLog={quickbooksSyncLog} connectUrl={buildQuickBooksConnectUrl(venue.id)} />}
       {venue && <FacebookConnectSection venueId={venue.id} connection={facebookConnection} leadForms={facebookLeadForms} recentLog={facebookLog} />}
     </div>
   );

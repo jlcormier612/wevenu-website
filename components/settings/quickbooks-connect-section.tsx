@@ -18,6 +18,9 @@ import {
 } from "@/components/ui/card";
 import type { QuickBooksConnection, QuickBooksEntityType } from "@/lib/quickbooks/types";
 import type { QuickBooksSyncLogEntry } from "@/lib/quickbooks/service";
+import { buildQuickBooksConnectUrl } from "@/lib/quickbooks/config";
+
+export { buildQuickBooksConnectUrl };
 
 const ENTITY_LABEL: Record<string, string> = {
   customer: "Customer", invoice: "Invoice", payment: "Payment", refund: "Refund",
@@ -76,35 +79,15 @@ function RecentSyncActivity({ entries }: { entries: QuickBooksSyncLogEntry[] }) 
   );
 }
 
-/**
- * Build the QuickBooks Online authorization URL. Mirrors Stripe Connect's
- * buildStripeConnectUrl() exactly, plus a `returnTo` so the callback knows
- * whether to send the user back to Settings or to the post-setup
- * onboarding Financial Setup step.
- */
-export function buildQuickBooksConnectUrl(venueId: string, returnTo: "settings" | "onboarding" = "settings"): string | null {
-  const clientId = process.env.NEXT_PUBLIC_QUICKBOOKS_CLIENT_ID;
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
-  if (!clientId) return null;
-
-  const params = new URLSearchParams({
-    client_id: clientId,
-    response_type: "code",
-    scope: "com.intuit.quickbooks.accounting",
-    redirect_uri: `${appUrl}/api/quickbooks/callback`,
-    state: `${venueId}:${returnTo}`, // CSRF: the venueId half is verified against the session's actual venue in the callback
-  });
-
-  return `https://appcenter.intuit.com/connect/oauth2?${params}`;
-}
-
 export function QuickBooksConnectSection({
-  venueId, connection, syncLog = [], returnTo = "settings",
+  venueId, connection, syncLog = [], returnTo = "settings", connectUrl: connectUrlProp,
 }: {
   venueId: string;
   connection: QuickBooksConnection | null;
   syncLog?: QuickBooksSyncLogEntry[];
   returnTo?: "settings" | "onboarding";
+  /** Server-built OAuth URL — uses runtime QUICKBOOKS_CLIENT_ID when public build arg is missing. */
+  connectUrl?: string | null;
 }) {
   const searchParams = useSearchParams();
   const qbSuccess = searchParams.get("quickbooks_success");
@@ -116,7 +99,7 @@ export function QuickBooksConnectSection({
     if (qbError) toast.error(`QuickBooks error: ${qbError}`);
   }, [qbSuccess, qbError]);
 
-  const connectUrl = buildQuickBooksConnectUrl(venueId, returnTo);
+  const connectUrl = connectUrlProp ?? buildQuickBooksConnectUrl(venueId, returnTo);
   const isConfigured = !!connectUrl;
   const isConnected = connection?.status === "connected";
   const isError = connection?.status === "error";
