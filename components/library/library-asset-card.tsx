@@ -34,11 +34,7 @@ export type LibraryAssetCardProps = {
   primaryActions?: LibraryPrimaryAction[];
   overflowItems?: LibraryOverflowItem[];
   overflowPending?: boolean;
-  /**
-   * Retained for source compatibility. Library assets now use one canonical
-   * full-width row presentation so a venue never learns a different card
-   * interaction model for a different template family.
-   */
+  /** Canonical full-width row presentation; grid remains accepted for compatibility. */
   layout?: "grid" | "row";
   className?: string;
   /** Optional whole-card navigation (prefer primary Edit when possible) */
@@ -136,7 +132,7 @@ export function LibraryAssetCard({
     ) : null;
 
   return (
-    <Card className={cn(isArchived && "opacity-60", className)}>
+    <Card className={cn("col-span-full", isArchived && "opacity-60", className)}>
       <CardContent className="flex items-center justify-between gap-4 py-4">
         {href ? (
           <Link href={href} className="min-w-0 flex-1">
