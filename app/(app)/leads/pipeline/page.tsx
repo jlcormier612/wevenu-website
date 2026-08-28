@@ -5,17 +5,13 @@ import { GitBranch } from "lucide-react";
 import { PipelineBoard } from "@/components/leads/pipeline-board";
 import { PageHeader } from "@/components/shell/module-placeholder";
 import { Button } from "@/components/ui/button";
-import { getLeads, getPipelineStageIdsForVenue } from "@/lib/leads/service";
-import { getActiveTemplate } from "@/lib/pipeline-templates/service";
+import { ensureStandardSalesPipelineForCurrentVenue, getLeads } from "@/lib/leads/service";
 
 export const metadata: Metadata = { title: "Pipeline" };
 
 export default async function PipelinePage() {
-  const [leads, activeTemplate, stageIdsByLead] = await Promise.all([
-    getLeads(),
-    getActiveTemplate(),
-    getPipelineStageIdsForVenue(),
-  ]);
+  await ensureStandardSalesPipelineForCurrentVenue();
+  const leads = await getLeads();
 
   return (
     <div className="space-y-6">
@@ -32,19 +28,7 @@ export default async function PipelinePage() {
         }
       />
 
-      {!activeTemplate || activeTemplate.stages.length === 0 ? (
-        <div className="flex flex-col items-center justify-center rounded-sm border border-dashed border-border bg-card/40 py-16 text-center">
-          <p className="font-heading text-lg font-medium text-heading">No active Pipeline Template</p>
-          <p className="mt-1 mb-4 text-sm text-muted-foreground">
-            Set one up to see your leads as a board.
-          </p>
-          <Button variant="outline" render={<Link href="/library/pipeline-templates" />}>
-            Manage Pipeline Templates
-          </Button>
-        </div>
-      ) : (
-        <PipelineBoard leads={leads} stages={activeTemplate.stages} stageIdsByLead={stageIdsByLead} />
-      )}
+      <PipelineBoard leads={leads} />
     </div>
   );
 }

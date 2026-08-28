@@ -13,7 +13,7 @@ export function getMomentumTier(
   daysSinceContact: number | null,
   status: string,
 ): MomentumTier {
-  if (status === "won" || status === "lost" || status === "cancelled") return "neutral";
+  if (status === "booked" || status === "won" || status === "lost" || status === "cancelled") return "neutral";
   if (interest >= 40 || (responsiveness >= 50 && commitment >= 10)) return "heating_up";
   if (commitment >= 25 && daysSinceContact !== null && daysSinceContact >= 14) return "cooling_off";
   return "neutral";

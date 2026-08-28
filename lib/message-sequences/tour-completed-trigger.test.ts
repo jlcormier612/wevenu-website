@@ -59,8 +59,9 @@ describe("Tour Completed does not alter existing triggers/exits", () => {
 
   it("Lost/Cancelled/Booking exit reasons remain unchanged", () => {
     assert.equal(terminalExitStatusForLeadStatus("lost"), "exited_lost");
-    assert.equal(terminalExitStatusForLeadStatus("cancelled"), "exited_cancelled");
+    assert.equal(terminalExitStatusForLeadStatus("cancelled"), "exited_lost");
     assert.equal(terminalExitStatusForLeadStatus("won"), "exited_booking");
+    assert.equal(terminalExitStatusForLeadStatus("booked"), "exited_booking");
     // Pause does not change exit status mapping
     const paused = applyEnrollmentPause({ status: "active", pausedAt: null }, "2026-08-12T00:00:00Z");
     assert.equal(paused.status, "active");

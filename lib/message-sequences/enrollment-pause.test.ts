@@ -67,12 +67,13 @@ describe("per-enrollment pause / resume (P1)", () => {
     assert.equal(terminalExitStatusForLeadStatus("lost"), "exited_lost");
   });
 
-  it("9. paused Cancelled enrollment exits as exited_cancelled", () => {
-    assert.equal(terminalExitStatusForLeadStatus("cancelled"), "exited_cancelled");
+  it("9. cancelled alias exits as exited_lost (no new exited_cancelled)", () => {
+    assert.equal(terminalExitStatusForLeadStatus("cancelled"), "exited_lost");
   });
 
   it("10. paused Booked enrollment exits through existing booking exit", () => {
     assert.equal(terminalExitStatusForLeadStatus("won"), "exited_booking");
+    assert.equal(terminalExitStatusForLeadStatus("booked"), "exited_booking");
   });
 
   it("11. pausing one enrollment does not pause another in the same Automation", () => {

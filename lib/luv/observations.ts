@@ -101,9 +101,9 @@ export async function getLuvObservations(
     // against tour_appointments (Program 2 Phase 1a's canonical source),
     // since the query builder can't express a NOT EXISTS join inline here.
     supabase.from("leads")
-      .select("id, first_name, last_name, partner_first_name, status, created_at")
+      .select("id, first_name, last_name, partner_first_name, sales_stage, created_at")
       .eq("venue_id", venueId)
-      .in("status", ["qualified", "proposal_sent"])
+      .in("sales_stage", ["tour_scheduled", "proposal_sent"])
       .order("created_at"),
 
     // 4: Contracts sent 3+ days ago, still awaiting signature
@@ -128,7 +128,7 @@ export async function getLuvObservations(
     supabase.from("leads")
       .select("id, first_name, last_name, partner_first_name, created_at")
       .eq("venue_id", venueId)
-      .eq("status", "new")
+      .eq("sales_stage", "new_inquiry")
       .is("follow_up_date", null)
       .lt("created_at", twoDaysAgo)
       .order("created_at"),
@@ -642,9 +642,9 @@ export async function getLuvObservations(
 
   // Fetch leads with high or declining commitment for momentum observations
   const { data: momentumLeads } = await supabase.from("leads")
-    .select("id, first_name, last_name, status, commitment_score, last_contacted_at, created_at")
+    .select("id, first_name, last_name, sales_stage, commitment_score, last_contacted_at, created_at")
     .eq("venue_id", venueId)
-    .not("status", "in", "(won,lost,cancelled)")
+    .not("sales_stage", "in", "(booked,lost)")
     .order("commitment_score", { ascending: false })
     .limit(20);
 
@@ -738,7 +738,7 @@ export async function getLuvObservations(
       const prior  = priorByLead.get(lead.id) ?? 0;
       const alreadyCovered = observations.some((o) => o.id.includes(lead.id));
       if (alreadyCovered) continue;
-      if (lead.status === "won" || lead.status === "lost" || lead.status === "cancelled") continue;
+      if (lead.status === "booked" || lead.status === "won" || lead.status === "lost" || lead.status === "cancelled") continue;
 
       // Significant INCREASE in signals this week
       if (recent >= 4 && prior === 0) {

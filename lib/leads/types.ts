@@ -3,18 +3,15 @@
  * Pure types — no framework or database imports.
  */
 
-export type LeadStatus =
-  | "new"
-  | "contacted"
-  | "qualified"
-  | "proposal_sent"
-  | "won"
-  | "lost"
-  | "cancelled";
+import type { SalesStage } from "@/lib/leads/sales-stages";
+
+/** @deprecated Use SalesStage — leads.status is retired as lifecycle truth. */
+export type LeadStatus = SalesStage;
 
 export type ActivityType =
   | "lead_created"
   | "status_changed"
+  | "sales_stage_changed"
   | "note_added"
   | "note_updated"
   | "task_created"
@@ -28,7 +25,13 @@ export type ActivityType =
 export type Lead = {
   id: string;
   venueId: string;
-  status: LeadStatus;
+  /** Authoritative Sales Pipeline stage (seven fixed stages). */
+  salesStage: SalesStage;
+  /**
+   * @deprecated Alias of salesStage for transitional call sites.
+   * Prefer salesStage.
+   */
+  status: SalesStage;
   source: string | null;
   firstName: string;
   lastName: string;

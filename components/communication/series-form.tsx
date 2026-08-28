@@ -25,6 +25,7 @@ function buildInitial(series?: MessageSequenceWithSteps | null): MessageSequence
     name: series?.name ?? "",
     triggerType: series?.triggerType ?? null,
     triggerStage: series?.triggerStage ?? null,
+    updatePipelineOnEnroll: series?.updatePipelineOnEnroll ?? false,
     steps: series?.steps.map((s) => ({ templateId: s.templateId, channel: s.channel, offsetDays: s.offsetDays })) ?? [],
   };
 }
@@ -142,6 +143,23 @@ export function SeriesForm({
           {errors.triggerStage && <p className="text-xs text-destructive">{errors.triggerStage}</p>}
         </div>
       )}
+
+      <label className="flex max-w-xl cursor-pointer items-start gap-2.5 rounded-lg border border-border bg-card/40 px-3 py-2.5">
+        <input
+          type="checkbox"
+          className="mt-0.5"
+          checked={input.updatePipelineOnEnroll === true}
+          onChange={(e) => set("updatePipelineOnEnroll", e.target.checked)}
+        />
+        <span className="space-y-0.5">
+          <span className="block text-sm font-medium text-heading">
+            Move this lead to Enrolled in Sequence/Workflow when enrolled
+          </span>
+          <span className="block text-xs text-muted-foreground">
+            Off by default. When on, a successful enrollment may move the lead forward to Enrolled in Sequence/Workflow.
+          </span>
+        </span>
+      </label>
 
       <div className="space-y-3">
         <div className="flex items-center justify-between">

@@ -47,9 +47,15 @@ export async function computeLeadCommitmentScore(
 ): Promise<number> {
   // Fetch lead + check for linked client
   const { data: lead } = await supabase.from("leads")
-    .select("status, id")
-    .eq("id", leadId).eq("venue_id", venueId).maybeSingle<{ status: string }>();
+    .select("sales_stage, status, id")
+    .eq("id", leadId).eq("venue_id", venueId)
+    .maybeSingle<{ sales_stage: string | null; status: string | null }>();
   if (!lead) return 0;
+
+  const { isSalesStage, salesStageToLegacyScoreKey } = await import("@/lib/leads/sales-stages");
+  const stageKey = lead.sales_stage && isSalesStage(lead.sales_stage)
+    ? salesStageToLegacyScoreKey(lead.sales_stage)
+    : (lead.status ?? "new");
 
   // Program 2 Phase 1a: tour_appointments is the canonical source, regardless
   // of whether the tour was booked publicly or scheduled manually — reading
@@ -105,7 +111,7 @@ export async function computeLeadCommitmentScore(
   }
 
   // Compute score
-  let score = STATUS_POINTS[lead.status] ?? 0;
+  let score = STATUS_POINTS[stageKey] ?? 0;
   if (tour.tourDate) score += 10;
   if (tour.tourCompleted) score += 15;
   if (contractStatus === "sent")   score += 10;
@@ -124,7 +130,7 @@ export async function refreshLeadScores(
 ): Promise<void> {
   const { data: leads } = await supabase.from("leads")
     .select("id").eq("venue_id", venueId)
-    .not("status", "in", "(lost,cancelled)");
+    .not("sales_stage", "in", "(lost)");
 
   if (!leads?.length) return;
 
@@ -167,7 +173,7 @@ export function momentumLabel(score: number, status: string): {
   label: string;
   tier: "hot" | "warm" | "growing" | "early" | "quiet";
 } {
-  if (status === "won") return { label: "Booked", tier: "hot" };
+  if (status === "booked" || status === "won") return { label: "Booked", tier: "hot" };
   if (status === "lost" || status === "cancelled") return { label: "Closed", tier: "quiet" };
   if (score >= 70) return { label: "Strong momentum", tier: "hot" };
   if (score >= 45) return { label: "Progressing", tier: "warm" };
@@ -299,7 +305,7 @@ export async function refreshAllLeadScores(
 ): Promise<void> {
   const { data: leads } = await supabase.from("leads")
     .select("id").eq("venue_id", venueId)
-    .not("status", "in", "(lost,cancelled)");
+    .not("sales_stage", "in", "(lost)");
   if (!leads?.length) return;
 
   const BATCH = 5; // smaller batch since we run 3 score queries per lead

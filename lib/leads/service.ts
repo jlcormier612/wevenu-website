@@ -14,7 +14,6 @@ import type {
   Lead,
   LeadActionResult,
   LeadInput,
-  LeadStatus,
   LeadWithDetails,
   RelationshipInput,
   TaskInput,
@@ -30,10 +29,16 @@ import {
   triggerSequencesForRelationship,
   wouldEnrollOnStageChange,
 } from "@/lib/message-sequences/service";
-import { CANONICAL_STAGE_TO_LEAD_STATUS } from "@/lib/leads/pipeline-stage-mapping";
-import type { CanonicalStage } from "@/lib/pipeline-templates/types";
+import {
+  isForwardSalesStageMove,
+  isManuallyAssignableSalesStage,
+  isSalesStage,
+  type SalesStage,
+} from "@/lib/leads/sales-stages";
 import { ingestLead } from "@/lib/lead-intake/pipeline";
 import type { RawIntakeInput, TrustTier } from "@/lib/lead-intake/types";
+import { previewAutomationMessage } from "@/lib/message-sequences/confirm-preview";
+import type { AutomationMessagePreview } from "@/lib/message-sequences/confirm-preview";
 
 /** Shared auth + venue guard. Returns a typed error if anything is missing. */
 async function withVenue<T>(
@@ -216,20 +221,26 @@ export async function createLeadForVenue(venueId: string, input: LeadInput, hist
   return createLeadCore(admin, venueId, input, "import", historicalImport);
 }
 
-// ---- update status ----------------------------------------------------------
+// ---- update sales stage -----------------------------------------------------
 
-export async function updateLeadStatus(
+export async function updateLeadSalesStage(
   leadId: string,
-  status: string,
+  stage: string,
+  opts?: { allowBooked?: boolean },
 ): Promise<LeadActionResult> {
-  if (!validateStatus(status))
-    return { ok: false, message: `"${status}" is not a valid status.` };
-  const result = await withVenue(async (supabase, venueId) => {
-    await repo.updateLeadStatus(supabase, venueId, leadId, status as LeadStatus);
-    // Activity is logged by the DB trigger (log_lead_status_changed).
+  if (!validateStatus(stage) || !isSalesStage(stage))
+    return { ok: false, message: `"${stage}" is not a valid sales stage.` };
+  if (stage === "booked" && !opts?.allowBooked) {
+    return { ok: false, message: "Booked is only set by converting the lead with Book This Lead." };
+  }
+  if (!opts?.allowBooked && !isManuallyAssignableSalesStage(stage)) {
+    return { ok: false, message: "That stage cannot be set manually." };
+  }
 
-    // Fire tour_converted signal when a lead with a tour moves to won
-    if (status === "won") {
+  const result = await withVenue(async (supabase, venueId) => {
+    await repo.updateLeadSalesStage(supabase, venueId, leadId, stage);
+
+    if (stage === "booked") {
       const { data: tour } = await supabase
         .from("tour_appointments")
         .select("id")
@@ -246,24 +257,28 @@ export async function updateLeadStatus(
       }
     }
 
-    // Rule-based Series enrollment (§3.2) — must never block a status change.
-    // Terminal Lost/Cancelled: exit existing active enrollments FIRST, then
-    // fire the stage-change trigger so a purpose-built Lost/Cancelled
-    // Automation can enroll without being immediately exited.
     const { data: lead } = await supabase.from("leads").select("relationship_id")
       .eq("id", leadId).maybeSingle<{ relationship_id: string | null }>();
     if (lead?.relationship_id) {
-      if (status === "lost" || status === "cancelled") {
-        const exitReason = status === "lost" ? "exited_lost" : "exited_cancelled";
+      if (stage === "lost") {
         try {
           await exitActiveEnrollmentsForRelationship(
-            supabase, venueId, lead.relationship_id, exitReason,
+            supabase, venueId, lead.relationship_id, "exited_lost",
           );
         } catch (e) {
-          console.error(`Series exit (${exitReason}) failed:`, e);
+          console.error("Series exit (exited_lost) failed:", e);
         }
       }
-      void triggerSequencesForRelationship(supabase, venueId, lead.relationship_id, "lead_stage_changed", status)
+      if (stage === "booked") {
+        try {
+          await exitActiveEnrollmentsForRelationship(
+            supabase, venueId, lead.relationship_id, "exited_booking",
+          );
+        } catch (e) {
+          console.error("Series exit (exited_booking) failed:", e);
+        }
+      }
+      void triggerSequencesForRelationship(supabase, venueId, lead.relationship_id, "lead_stage_changed", stage)
         .catch((e) => console.error("Series enrollment (lead_stage_changed) failed:", e));
     }
 
@@ -272,146 +287,75 @@ export async function updateLeadStatus(
   return result as LeadActionResult;
 }
 
-// ---- Pipeline Stage (Phase 2 compatibility layer) ----------------------------
-// leads.status stays the enforced field everywhere else (analytics,
-// Automated Series, scoring, the status-change activity trigger — none of
-// that is touched here). pipeline_stage_id is purely additive: explicit
-// when a coordinator sets it, otherwise derived from status for display.
-
-/** Raw pipeline_stage_id for one lead — null if never explicitly set. Does not touch getLead/getLeads. */
-export async function getLeadPipelineStageId(leadId: string): Promise<string | null> {
-  if (!isSupabaseConfigured) return null;
-  const venue = await getCurrentVenue();
-  if (!venue) return null;
-  const supabase = await createClient();
-  const { data } = await supabase.from("leads").select("pipeline_stage_id")
-    .eq("id", leadId).eq("venue_id", venue.id).maybeSingle<{ pipeline_stage_id: string | null }>();
-  return data?.pipeline_stage_id ?? null;
-}
-
-/** pipeline_stage_id for every lead in the venue, keyed by lead id — for the list page's per-row display. */
-export async function getPipelineStageIdsForVenue(): Promise<Record<string, string | null>> {
-  if (!isSupabaseConfigured) return {};
-  const venue = await getCurrentVenue();
-  if (!venue) return {};
-  const supabase = await createClient();
-  const { data } = await supabase.from("leads").select("id, pipeline_stage_id").eq("venue_id", venue.id);
-  const map: Record<string, string | null> = {};
-  for (const row of (data ?? []) as { id: string; pipeline_stage_id: string | null }[]) map[row.id] = row.pipeline_stage_id;
-  return map;
+/** @deprecated Prefer updateLeadSalesStage */
+export async function updateLeadStatus(
+  leadId: string,
+  status: string,
+): Promise<LeadActionResult> {
+  return updateLeadSalesStage(leadId, status);
 }
 
 /**
- * A coordinator picked a Pipeline Stage. Maps its canonical stage to a real
- * leads.status value and writes that through the existing, completely
- * unchanged updateLeadStatus() — every side effect it already has (activity
- * trigger, tour_converted signal, Automated Series enrollment) fires
- * exactly as it does today. pipeline_stage_id is then set as a second,
- * separate write, purely for "which exact stage" display fidelity.
+ * Forward-only auto stage advance (tour booked, sequence enroll, etc.).
+ * Never moves backward; never overrides Booked/Lost.
  */
-export async function updateLeadPipelineStage(leadId: string, stageId: string): Promise<LeadActionResult> {
+export async function advanceLeadSalesStageIfForward(
+  leadId: string,
+  target: SalesStage,
+): Promise<LeadActionResult> {
   const result = await withVenue(async (supabase, venueId) => {
-    const { data: stage } = await supabase.from("pipeline_stages").select("canonical_stage")
-      .eq("id", stageId).eq("venue_id", venueId).maybeSingle<{ canonical_stage: CanonicalStage }>();
-    if (!stage) return { ok: false, message: "That pipeline stage no longer exists." } as LeadActionResult;
-
-    const mappedStatus = CANONICAL_STAGE_TO_LEAD_STATUS[stage.canonical_stage];
-    const statusResult = await updateLeadStatus(leadId, mappedStatus);
-    if (!statusResult.ok) return statusResult;
-
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { error } = await (supabase.from("leads") as any)
-      .update({ pipeline_stage_id: stageId }).eq("id", leadId).eq("venue_id", venueId);
-    if (error) return { ok: false, message: "Status updated, but could not save the exact stage." } as LeadActionResult;
-
-    return { ok: true } as LeadActionResult;
+    const { data: row } = await supabase.from("leads").select("sales_stage")
+      .eq("id", leadId).eq("venue_id", venueId)
+      .maybeSingle<{ sales_stage: string | null }>();
+    if (!row?.sales_stage || !isSalesStage(row.sales_stage)) {
+      return { ok: false, message: "Lead not found." } as LeadActionResult;
+    }
+    if (!isForwardSalesStageMove(row.sales_stage, target)) {
+      return { ok: true } as LeadActionResult;
+    }
+    return updateLeadSalesStage(leadId, target, { allowBooked: target === "booked" });
   });
   return result as LeadActionResult;
 }
 
-/**
- * Preview only — does this Pipeline stage move create a new Automation
- * enrollment? Uses the same stage→LeadStatus mapping and the same
- * lead_stage_changed matching as updateLeadPipelineStage / updateLeadStatus.
- * When enrollment would occur, also resolves the first step's message via the
- * same merge path as Scheduled Sends (informational only — never writes).
- */
-export async function wouldEnrollOnPipelineStageMove(
-  leadId: string,
-  stageId: string,
-): Promise<
-  | {
-      ok: true;
-      wouldEnroll: boolean;
-      preview: import("@/lib/message-sequences/confirm-preview").AutomationMessagePreview | null;
-    }
-  | { ok: false; message: string }
-> {
-  if (!isSupabaseConfigured) return { ok: false, message: "Backend not configured." };
-  const venue = await getCurrentVenue();
-  if (!venue) return { ok: false, message: "No venue found. Complete setup first." };
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return { ok: false, message: "Session expired. Please sign in again." };
-
-  const { data: stage } = await supabase.from("pipeline_stages").select("canonical_stage")
-    .eq("id", stageId).eq("venue_id", venue.id).maybeSingle<{ canonical_stage: CanonicalStage }>();
-  if (!stage) return { ok: false, message: "That pipeline stage no longer exists." };
-
-  const mappedStatus = CANONICAL_STAGE_TO_LEAD_STATUS[stage.canonical_stage];
-  const { data: lead } = await supabase.from("leads").select("relationship_id")
-    .eq("id", leadId).eq("venue_id", venue.id).maybeSingle<{ relationship_id: string | null }>();
-  if (!lead?.relationship_id) return { ok: true, wouldEnroll: false, preview: null };
-
-  const match = await wouldEnrollOnStageChange(
-    supabase, venue.id, lead.relationship_id, mappedStatus,
-  );
-  if (!match.wouldEnroll || !match.sequenceId) {
-    return { ok: true, wouldEnroll: false, preview: null };
-  }
-
-  const preview = await loadFirstStepPreview(
-    supabase, venue.id, lead.relationship_id, match.sequenceId,
-  );
-  return { ok: true, wouldEnroll: true, preview };
+/** Board / detail: move to a sales stage key (not a pipeline_templates stage id). */
+export async function updateLeadPipelineStage(leadId: string, stageKey: string): Promise<LeadActionResult> {
+  return updateLeadSalesStage(leadId, stageKey);
 }
 
-async function loadFirstStepPreview(
-  supabase: Awaited<ReturnType<typeof createClient>>,
-  venueId: string,
-  relationshipId: string,
-  sequenceId: string,
-): Promise<import("@/lib/message-sequences/confirm-preview").AutomationMessagePreview> {
-  const { resolveFirstStepPreview, AUTOMATION_PREVIEW_UNAVAILABLE } = await import(
-    "@/lib/message-sequences/confirm-preview"
-  );
-  const { getMergeContextForRelationship } = await import("@/lib/scheduled-messages/repository");
-
-  const { data: step } = await supabase.from("sequence_steps")
-    .select("template_id, channel")
-    .eq("sequence_id", sequenceId)
-    .order("sort_order")
-    .limit(1)
-    .maybeSingle<{ template_id: string; channel: "email" | "sms" }>();
-
-  if (!step) {
-    return { ok: false, fallback: AUTOMATION_PREVIEW_UNAVAILABLE };
+export async function wouldEnrollOnPipelineStageMove(
+  leadId: string,
+  stageKey: string,
+): Promise<
+  | { ok: true; wouldEnroll: boolean; preview: AutomationMessagePreview | null }
+  | { ok: false; message: string }
+> {
+  if (!isSalesStage(stageKey)) return { ok: false, message: "Invalid sales stage." };
+  const venue = await getCurrentVenue();
+  if (!venue) return { ok: false, message: "No venue found." };
+  const supabase = await createClient();
+  const { data: lead } = await supabase.from("leads").select("relationship_id")
+    .eq("id", leadId).eq("venue_id", venue.id)
+    .maybeSingle<{ relationship_id: string | null }>();
+  if (!lead?.relationship_id) return { ok: true, wouldEnroll: false, preview: null };
+  const check = await wouldEnrollOnStageChange(supabase, venue.id, lead.relationship_id, stageKey);
+  let preview: AutomationMessagePreview | null = null;
+  if (check.wouldEnroll && check.sequenceId) {
+    preview = await previewAutomationMessage(supabase, venue.id, check.sequenceId, leadId);
   }
+  return { ok: true, wouldEnroll: check.wouldEnroll, preview };
+}
 
-  const { data: template } = await supabase.from("message_templates")
-    .select("email_subject, email_body, sms_body")
-    .eq("id", step.template_id)
-    .maybeSingle<{ email_subject: string | null; email_body: string | null; sms_body: string | null }>();
-
-  const mergeContext = await getMergeContextForRelationship(supabase, venueId, relationshipId);
-
-  return resolveFirstStepPreview({
-    channel: step.channel,
-    emailSubject: template?.email_subject ?? null,
-    emailBody: template?.email_body ?? null,
-    smsBody: template?.sms_body ?? null,
-    mergeContext,
-  });
+/**
+ * Ensure Standard Sales Pipeline library record exists (idempotent).
+ * Does not control live Board stages.
+ */
+export async function ensureStandardSalesPipelineForCurrentVenue(): Promise<void> {
+  if (!isSupabaseConfigured) return;
+  const venue = await getCurrentVenue();
+  if (!venue) return;
+  const supabase = await createClient();
+  await supabase.rpc("ensure_standard_sales_pipeline", { p_venue_id: venue.id });
 }
 
 // ---- notes ------------------------------------------------------------------

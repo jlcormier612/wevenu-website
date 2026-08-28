@@ -11,16 +11,18 @@ import { LEAD_STATUSES } from "@/lib/leads/constants";
 import type { CanonicalStage } from "@/lib/pipeline-templates/types";
 
 describe("SEQUENCE_TRIGGER_STAGES (P0-1)", () => {
-  it("includes all 7 LeadStatus values", () => {
+  it("includes all 7 sales stage values", () => {
     const values = SEQUENCE_TRIGGER_STAGES.map((s) => s.value);
     assert.deepEqual(values, LEAD_STATUSES.map((s) => s.value));
     assert.equal(values.length, 7);
-    assert.ok(values.includes("won"));
+    assert.ok(values.includes("booked"));
     assert.ok(values.includes("lost"));
-    assert.ok(values.includes("cancelled"));
+    assert.ok(values.includes("new_inquiry"));
+    assert.ok(!values.includes("cancelled"));
+    assert.ok(!values.includes("won"));
   });
 
-  it("validation accepts each LeadStatus as triggerStage", () => {
+  it("validation accepts each sales stage as triggerStage", () => {
     for (const status of LEAD_STATUSES) {
       const errors = validateSequenceInput({
         name: "Test",

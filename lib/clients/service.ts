@@ -25,6 +25,7 @@ import { clientDisplayName } from "@/lib/clients/constants";
 import { getEventIdForClient, insertEvent } from "@/lib/events/repository";
 import { inviteClient } from "@/lib/client-auth/service";
 import type { Lead } from "@/lib/leads/types";
+import { updateLeadSalesStage } from "@/lib/leads/service";
 import { getCurrentVenue } from "@/lib/venue/service";
 import { exitEnrollmentsForBooking } from "@/lib/message-sequences/service";
 
@@ -274,6 +275,7 @@ export async function convertLeadToClient(lead: Lead): Promise<CreateClientResul
     const { data: existingClient } = await supabase.from("clients")
       .select("id").eq("lead_id", lead.id).eq("venue_id", venueId).maybeSingle<{ id: string }>();
     if (existingClient) {
+      await updateLeadSalesStage(lead.id, "booked", { allowBooked: true });
       return { ok: true, clientId: existingClient.id, eventId: null } as CreateClientResult;
     }
     let clientId: string;
@@ -327,6 +329,8 @@ export async function convertLeadToClient(lead: Lead): Promise<CreateClientResul
     await (supabase.from("documents") as any)
       .update(eventId ? { lead_id: null, event_id: eventId } : { lead_id: null, client_id: clientId })
       .eq("lead_id", lead.id).eq("venue_id", venueId);
+
+    await updateLeadSalesStage(lead.id, "booked", { allowBooked: true });
 
     return { ok: true, clientId, eventId } as CreateClientResult;
   });

@@ -19,6 +19,7 @@ type AnyDbClient = DbClient | ReturnType<typeof createAdminClient>;
 type SequenceRow = {
   id: string; venue_id: string; name: string; status: MessageSequence["status"];
   trigger_type: MessageSequence["triggerType"]; trigger_stage: string | null;
+  update_pipeline_on_enroll?: boolean | null;
   created_at: string; updated_at: string;
 };
 type StepRow = {
@@ -30,6 +31,7 @@ function mapSequence(r: SequenceRow): MessageSequence {
   return {
     id: r.id, venueId: r.venue_id, name: r.name, status: r.status,
     triggerType: r.trigger_type, triggerStage: r.trigger_stage,
+    updatePipelineOnEnroll: r.update_pipeline_on_enroll === true,
     createdAt: r.created_at, updatedAt: r.updated_at,
   };
 }
@@ -66,6 +68,7 @@ export async function insertSequence(client: DbClient, venueId: string, input: M
     .insert({
       venue_id: venueId, name: input.name.trim(),
       trigger_type: input.triggerType, trigger_stage: input.triggerType === "lead_stage_changed" ? input.triggerStage : null,
+      update_pipeline_on_enroll: input.updatePipelineOnEnroll === true,
     })
     .select("id").single<{ id: string }>();
   if (error) throw error;
@@ -85,6 +88,7 @@ export async function updateSequence(client: DbClient, venueId: string, id: stri
     .update({
       name: input.name.trim(),
       trigger_type: input.triggerType, trigger_stage: input.triggerType === "lead_stage_changed" ? input.triggerStage : null,
+      update_pipeline_on_enroll: input.updatePipelineOnEnroll === true,
     })
     .eq("id", id).eq("venue_id", venueId);
   if (error) throw error;
