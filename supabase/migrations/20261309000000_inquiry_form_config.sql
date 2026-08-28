@@ -43,11 +43,15 @@ create table if not exists public.inquiry_form_questions (
 create index if not exists inquiry_form_questions_venue_sort
   on public.inquiry_form_questions (venue_id, sort_order, created_at);
 
+drop trigger if exists inquiry_form_questions_updated_at on public.inquiry_form_questions;
+
 create trigger inquiry_form_questions_updated_at
   before update on public.inquiry_form_questions
   for each row execute function public.set_updated_at();
 
 alter table public.inquiry_form_questions enable row level security;
+
+drop policy if exists inquiry_form_questions_all on public.inquiry_form_questions;
 
 create policy inquiry_form_questions_all on public.inquiry_form_questions
   using (venue_id = public.current_user_venue_id())
@@ -210,6 +214,12 @@ $$;
 grant execute on function public.get_public_inquiry_form(text) to anon, authenticated;
 
 -- Extend embed-key branding lookup with address for confirmations.
+-- The new address_line1 column changes this function's RETURNS TABLE shape,
+-- which create or replace function cannot do in place (Postgres error:
+-- "cannot change return type of existing function" — hit live during the
+-- first sandbox apply attempt). Drop first, same as book_tour below.
+drop function if exists public.get_venue_by_embed_key(text);
+
 create or replace function public.get_venue_by_embed_key(p_key text)
 returns table (
   id              uuid,
