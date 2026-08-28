@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 
 import { PageHeader } from "@/components/shell/module-placeholder";
 import { QrCampaignList } from "@/components/qr-campaigns/qr-campaign-list";
+import { QrStarterExamples } from "@/components/qr-campaigns/qr-starter-examples";
 import { getQrCampaignAnalytics, getQrCampaigns } from "@/lib/qr-campaigns/service";
 
 export const metadata: Metadata = { title: "QR Campaigns" };
@@ -18,6 +19,7 @@ export default async function QrCampaignsPage() {
         title="QR Campaigns"
         description="Generate a QR code for a bridal show, brochure, or front-gate sign — every scan can become a lead automatically."
       />
+      <QrStarterExamples hasCampaigns={campaigns.length > 0} />
       <QrCampaignList
         initialCampaigns={campaigns}
         analytics={analytics}
