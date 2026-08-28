@@ -1,8 +1,42 @@
 # Facebook Lead Ads scheduled sync/reconciliation — restoration plan
 
-**Status:** Prepared for review. **Do not deploy** during active sandbox product testing on `origin/main` / `5b246b4`.
+**Status: RETIRED (2026-08-28).** This EventBridge restoration will not be pursued. It is superseded — not
+blocked — by the Scheduler ECS service, which now runs both routes at the identical cadences this plan
+specified and has done so successfully since deploy:
 
-## Background
+- `*/2 * * * *` → `GET /api/facebook/sync/process` (`scheduler/crontab`, job `facebook-sync-process`)
+- `0 * * * *` → `GET /api/facebook/reconcile/process` (`scheduler/crontab`, job `facebook-reconcile-process`)
+
+Verified live via `/ecs/htc-sandbox/scheduler` CloudWatch logs: both jobs fire on schedule and return
+`http_status=200` — the sync job every 2 minutes, the reconcile job hourly, with no failures observed
+across several hours of continuous operation.
+
+Restoring the EventBridge Connection/ApiDestination/Rule resources below would duplicate this coverage
+via a second, independent scheduling mechanism for the same two endpoints at the same cadence, while
+still carrying the unresolved IAM gap documented below (`iam:CreateServiceLinkedRole`) and the added
+EventBridge/Connection operational complexity. There is no remaining reason to pursue it.
+
+**Do not deploy this plan.** `infra/htc-ecs-stack.json` no longer contains any of the six `FacebookLead*`
+resources or the `HasCronSecret` condition (removed in `d80116d`, confirmed absent on current `main`) —
+restoring them would require re-adding this entire diff from scratch, not just unblocking IAM.
+
+The rest of this document is kept as historical record of the investigation (root cause, IAM gaps found,
+hardened design) in case Scheduler is ever retired and a cron backstop is needed again by some other
+mechanism. Treat everything below as inactive.
+
+## Known remaining artifact — not touched by the retirement cleanup
+
+`infra/htc-github-oidc.json`'s `htc-sandbox-cfn-execution` role still carries three IAM statements added
+for this restoration and never rolled back: `GetRolePolicy`/`ListRolePolicies` added to
+`IamRoleManagementScopedToHtcSandboxRoles`, `PassHtcSandboxRolesToEventBridge`, and
+`EventBridgeFacebookLeadCron` (the `events:CreateConnection`/`PutRule`/etc. statement). These are now
+dormant — nothing in the deployed `infra/htc-ecs-stack.json` creates any resource that would exercise
+them — but removing them means editing and manually redeploying the OIDC/IAM template outside the normal
+`deploy-sandbox.yml` pipeline, which is an IAM permission change on a live role. That was explicitly out
+of scope for this retirement pass. If this is ever cleaned up, it's a separate, deliberate, manually-
+reviewed IAM change — not something to fold into an unrelated deploy.
+
+## Background (historical)
 
 Commit `82f83fd` removed six CloudFormation resources that scheduled:
 
