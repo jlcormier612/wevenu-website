@@ -19,7 +19,7 @@ export default async function QrCampaignsPage() {
         title="QR Campaigns"
         description="Generate a QR code for a bridal show, brochure, or front-gate sign — every scan can become a lead automatically."
       />
-      <QrStarterExamples hasCampaigns={campaigns.length > 0} />
+      <QrStarterExamples hasCampaigns={campaigns.some((c) => c.status === "active")} />
       <QrCampaignList
         initialCampaigns={campaigns}
         analytics={analytics}
