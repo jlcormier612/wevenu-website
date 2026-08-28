@@ -104,8 +104,15 @@
               {
                 "Sid": "IamRoleManagementScopedToHtcSandboxRoles",
                 "Effect": "Allow",
-                "Action": ["iam:CreateRole", "iam:DeleteRole", "iam:GetRole", "iam:PutRolePolicy", "iam:DeleteRolePolicy", "iam:AttachRolePolicy", "iam:DetachRolePolicy", "iam:TagRole"],
+                "Action": ["iam:CreateRole", "iam:DeleteRole", "iam:GetRole", "iam:GetRolePolicy", "iam:ListRolePolicies", "iam:PutRolePolicy", "iam:DeleteRolePolicy", "iam:AttachRolePolicy", "iam:DetachRolePolicy", "iam:TagRole"],
                 "Resource": [{ "Fn::Sub": "arn:aws:iam::${AWS::AccountId}:role/htc-sandbox-*" }]
+              },
+              {
+                "Sid": "PassHtcSandboxRolesToEventBridge",
+                "Effect": "Allow",
+                "Action": "iam:PassRole",
+                "Resource": [{ "Fn::Sub": "arn:aws:iam::${AWS::AccountId}:role/htc-sandbox-*" }],
+                "Condition": { "StringEquals": { "iam:PassedToService": "events.amazonaws.com" } }
               },
               {
                 "Sid": "PassOnlyTheEcsTaskRolesThisStackCreates",
@@ -128,6 +135,21 @@
                 "Effect": "Allow",
                 "Action": ["ecr:CreateRepository", "ecr:DeleteRepository", "ecr:DescribeRepositories", "ecr:TagResource"],
                 "Resource": [{ "Fn::Sub": "arn:aws:ecr:${AWS::Region}:${AWS::AccountId}:repository/htc-sandbox-*" }]
+              },
+              {
+                "Sid": "EventBridgeFacebookLeadCron",
+                "Effect": "Allow",
+                "Action": [
+                  "events:CreateConnection", "events:UpdateConnection", "events:DeleteConnection", "events:DescribeConnection",
+                  "events:CreateApiDestination", "events:UpdateApiDestination", "events:DeleteApiDestination", "events:DescribeApiDestination",
+                  "events:PutRule", "events:DeleteRule", "events:DescribeRule", "events:EnableRule", "events:DisableRule",
+                  "events:PutTargets", "events:RemoveTargets", "events:ListTargetsByRule", "events:TagResource"
+                ],
+                "Resource": [
+                  { "Fn::Sub": "arn:aws:events:${AWS::Region}:${AWS::AccountId}:connection/htc-sandbox-*" },
+                  { "Fn::Sub": "arn:aws:events:${AWS::Region}:${AWS::AccountId}:api-destination/htc-sandbox-*" },
+                  { "Fn::Sub": "arn:aws:events:${AWS::Region}:${AWS::AccountId}:rule/htc-sandbox-*" }
+                ]
               }
             ]
           }
