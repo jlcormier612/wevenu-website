@@ -11,7 +11,7 @@ import {
 } from "@/app/(app)/settings/inquiry-form-actions";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { STANDARD_FIELD_LABELS } from "@/lib/inquiry-form/constants";
+import { PUBLIC_INQUIRY_EVENT_TYPES, STANDARD_FIELD_LABELS } from "@/lib/inquiry-form/constants";
 import type {
   FieldVisibility,
   InquiryEventDateMode,
@@ -55,19 +55,32 @@ function toDraft(q: InquiryFormQuestion): DraftQuestion {
 export function InquiryFormConfigSection({
   initialEventDateMode,
   initialFields,
+  initialAcceptedEventTypes,
   initialQuestions,
 }: {
   initialEventDateMode: InquiryEventDateMode;
   initialFields: InquiryFormFieldsConfig;
+  initialAcceptedEventTypes: string[];
   initialQuestions: InquiryFormQuestion[];
 }) {
   const [eventDateMode, setEventDateMode] = React.useState(initialEventDateMode);
   const [fields, setFields] = React.useState(initialFields);
+  const [acceptedEventTypes, setAcceptedEventTypes] = React.useState(initialAcceptedEventTypes);
   const [questions, setQuestions] = React.useState<DraftQuestion[]>(initialQuestions.map(toDraft));
   const [saving, startSave] = React.useTransition();
 
   function setFieldVisibility(key: StandardFieldKey, visibility: FieldVisibility) {
     setFields((prev) => ({ ...prev, [key]: visibility }));
+  }
+
+  function toggleEventType(value: string, checked: boolean) {
+    setAcceptedEventTypes((prev) => {
+      if (checked) return prev.includes(value) ? prev : [...prev, value];
+      // Never allow unchecking the last remaining type — mirrors the
+      // database's own non-empty constraint on this column.
+      if (prev.length <= 1) return prev;
+      return prev.filter((v) => v !== value);
+    });
   }
 
   function addQuestion() {
@@ -87,6 +100,7 @@ export function InquiryFormConfigSection({
       const settingsResult = await updateInquiryFormSettingsAction({
         inquiryEventDateMode: eventDateMode,
         inquiryFormFields: fields,
+        acceptedEventTypes,
       });
       if (!settingsResult.ok) {
         toast.error("Could not save inquiry form settings.");
@@ -145,6 +159,26 @@ export function InquiryFormConfigSection({
               <span className="text-xs text-muted-foreground">Prospects can request the date they prefer. Availability is not shown.</span>
             </span>
           </label>
+        </div>
+      </div>
+
+      <div className="space-y-3">
+        <p className="text-sm font-medium text-heading">Event types you accept</p>
+        <p className="text-xs text-muted-foreground">
+          Choose which event types appear in the Event Type dropdown on your public inquiry and Schedule Tour form. At least one must stay selected.
+        </p>
+        <div className="space-y-2">
+          {PUBLIC_INQUIRY_EVENT_TYPES.map((t) => (
+            <label key={t.value} className="flex items-center gap-3 rounded-lg border border-border px-3 py-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={acceptedEventTypes.includes(t.value)}
+                onChange={(e) => toggleEventType(t.value, e.target.checked)}
+                disabled={acceptedEventTypes.length === 1 && acceptedEventTypes.includes(t.value)}
+              />
+              <span className="text-sm text-heading">{t.label}</span>
+            </label>
+          ))}
         </div>
       </div>
 

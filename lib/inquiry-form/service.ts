@@ -2,13 +2,28 @@ import { createClient } from "@/integrations/supabase/server";
 import { createAdminClient } from "@/integrations/supabase/admin";
 import { isSupabaseConfigured } from "@/lib/env";
 import { getCurrentVenue } from "@/lib/venue/service";
-import { DEFAULT_INQUIRY_FORM_FIELDS } from "@/lib/inquiry-form/constants";
+import { DEFAULT_INQUIRY_FORM_FIELDS, PUBLIC_INQUIRY_EVENT_TYPES } from "@/lib/inquiry-form/constants";
 import type {
   InquiryFormFieldsConfig,
   InquiryFormQuestion,
   InquiryFormSettings,
   PublicInquiryFormConfig,
 } from "@/lib/inquiry-form/types";
+
+const ALL_PUBLIC_EVENT_TYPES = PUBLIC_INQUIRY_EVENT_TYPES.map((t) => t.value);
+
+/**
+ * Validate against the canonical vocabulary and fall back to "all" when
+ * unset/empty/invalid — matches the DB column's own non-empty default, and
+ * keeps the public form showing every option (today's behavior) rather than
+ * an empty dropdown if this ever reads a database that predates the
+ * accepted_inquiry_event_types migration.
+ */
+function parseAcceptedEventTypes(raw: unknown): string[] {
+  if (!Array.isArray(raw)) return [...ALL_PUBLIC_EVENT_TYPES];
+  const valid = raw.filter((v): v is string => ALL_PUBLIC_EVENT_TYPES.includes(v as (typeof ALL_PUBLIC_EVENT_TYPES)[number]));
+  return valid.length > 0 ? valid : [...ALL_PUBLIC_EVENT_TYPES];
+}
 
 type DbQuestionRow = {
   id: string;
@@ -65,6 +80,7 @@ export async function getPublicInquiryFormConfig(embedKey: string): Promise<Publ
     tourEmbedKey: (payload.tourEmbedKey as string | null) ?? null,
     inquiryEventDateMode: payload.inquiryEventDateMode === "choose_available" ? "choose_available" : "request_preferred",
     inquiryFormFields: parseFieldsConfig(payload.inquiryFormFields),
+    acceptedEventTypes: parseAcceptedEventTypes(payload.acceptedEventTypes),
     customQuestions: ((payload.customQuestions as DbQuestionRow[]) ?? []).map(mapQuestion),
   };
 }
@@ -75,9 +91,9 @@ export async function getInquiryFormSettings(): Promise<InquiryFormSettings | nu
   const supabase = await createClient();
   const { data: row } = await supabase
     .from("venues")
-    .select("inquiry_event_date_mode, inquiry_form_fields")
+    .select("inquiry_event_date_mode, inquiry_form_fields, accepted_inquiry_event_types")
     .eq("id", venue.id)
-    .maybeSingle<{ inquiry_event_date_mode: string; inquiry_form_fields: unknown }>();
+    .maybeSingle<{ inquiry_event_date_mode: string; inquiry_form_fields: unknown; accepted_inquiry_event_types: unknown }>();
   const { data: questions } = await supabase
     .from("inquiry_form_questions")
     .select("id, question_text, question_type, required, options, sort_order")
@@ -87,12 +103,13 @@ export async function getInquiryFormSettings(): Promise<InquiryFormSettings | nu
   return {
     inquiryEventDateMode: row?.inquiry_event_date_mode === "choose_available" ? "choose_available" : "request_preferred",
     inquiryFormFields: parseFieldsConfig(row?.inquiry_form_fields),
+    acceptedEventTypes: parseAcceptedEventTypes(row?.accepted_inquiry_event_types),
     customQuestions: ((questions ?? []) as DbQuestionRow[]).map(mapQuestion),
   };
 }
 
 export async function updateInquiryFormSettings(
-  patch: Partial<Pick<InquiryFormSettings, "inquiryEventDateMode" | "inquiryFormFields">>,
+  patch: Partial<Pick<InquiryFormSettings, "inquiryEventDateMode" | "inquiryFormFields" | "acceptedEventTypes">>,
 ): Promise<{ ok: boolean }> {
   const venue = await getCurrentVenue();
   if (!venue || !isSupabaseConfigured) return { ok: false };
@@ -100,6 +117,10 @@ export async function updateInquiryFormSettings(
   const update: Record<string, unknown> = {};
   if (patch.inquiryEventDateMode) update.inquiry_event_date_mode = patch.inquiryEventDateMode;
   if (patch.inquiryFormFields) update.inquiry_form_fields = patch.inquiryFormFields;
+  if (patch.acceptedEventTypes) {
+    const valid = parseAcceptedEventTypes(patch.acceptedEventTypes);
+    update.accepted_inquiry_event_types = valid;
+  }
   if (Object.keys(update).length === 0) return { ok: true };
   const { error } = await supabase.from("venues").update(update).eq("id", venue.id);
   return { ok: !error };

@@ -48,12 +48,16 @@ export type PublicInquiryFormConfig = {
   tourEmbedKey: string | null;
   inquiryEventDateMode: InquiryEventDateMode;
   inquiryFormFields: InquiryFormFieldsConfig;
+  /** Subset of PUBLIC_INQUIRY_EVENT_TYPES this venue accepts. Never empty. */
+  acceptedEventTypes: string[];
   customQuestions: InquiryFormQuestion[];
 };
 
 export type InquiryFormSettings = {
   inquiryEventDateMode: InquiryEventDateMode;
   inquiryFormFields: InquiryFormFieldsConfig;
+  /** Subset of PUBLIC_INQUIRY_EVENT_TYPES this venue accepts. Never empty. */
+  acceptedEventTypes: string[];
   customQuestions: InquiryFormQuestion[];
 };
 

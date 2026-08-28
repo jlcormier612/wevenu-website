@@ -75,6 +75,7 @@ export function WebsiteFormsSection({
           <InquiryFormConfigSection
             initialEventDateMode={inquiryFormSettings.inquiryEventDateMode}
             initialFields={inquiryFormSettings.inquiryFormFields}
+            initialAcceptedEventTypes={inquiryFormSettings.acceptedEventTypes}
             initialQuestions={inquiryFormSettings.customQuestions}
           />
         </div>

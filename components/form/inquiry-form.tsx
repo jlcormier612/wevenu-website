@@ -243,8 +243,9 @@ export function InquiryForm({
   config: PublicInquiryFormConfig;
   initialMode?: InquiryMode | null;
 }) {
-  const { venue, inquiryFormFields: fields, inquiryEventDateMode, customQuestions, tourSchedulingEnabled, tourEmbedKey } = config;
+  const { venue, inquiryFormFields: fields, inquiryEventDateMode, customQuestions, tourSchedulingEnabled, tourEmbedKey, acceptedEventTypes } = config;
   const primary = venue.primaryColor || "#5D6F5D";
+  const eventTypeOptions = PUBLIC_INQUIRY_EVENT_TYPES.filter((t) => acceptedEventTypes.includes(t.value));
 
   const [mode, setMode] = React.useState<InquiryMode | null>(() => {
     if (initialMode) return initialMode;
@@ -544,7 +545,7 @@ export function InquiryForm({
                 <label className="block text-sm font-medium text-gray-700">Event type *</label>
                 <select required value={eventType} onChange={(e) => setEventType(e.target.value)} className={`${inputClass} bg-white`}>
                   <option value="">Select event type</option>
-                  {PUBLIC_INQUIRY_EVENT_TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
+                  {eventTypeOptions.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
                 </select>
                 {fieldErrors.eventType && <p className="text-xs text-red-600">{fieldErrors.eventType}</p>}
               </div>

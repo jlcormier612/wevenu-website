@@ -17,6 +17,7 @@ function revalidateInquiryFormSurfaces() {
 export async function updateInquiryFormSettingsAction(patch: {
   inquiryEventDateMode?: InquiryEventDateMode;
   inquiryFormFields?: InquiryFormFieldsConfig;
+  acceptedEventTypes?: string[];
 }): Promise<{ ok: boolean }> {
   const result = await updateInquiryFormSettings(patch);
   if (result.ok) revalidateInquiryFormSurfaces();
