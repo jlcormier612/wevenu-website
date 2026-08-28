@@ -1,26 +1,12 @@
 /**
  * POST /api/public/inquire
- *
- * Public endpoint for venue inquiry form submissions — the "direct" Source
- * Adapter into the Lead Intake pipeline (lib/lead-intake/pipeline.ts).
- * No authentication required. Protected by:
- *   - Honeypot field (checked client-side + here as backup)
- *   - Rate limiting (lib/lead-intake/rate-limit.ts, applied inside the pipeline)
- *   - SECURITY DEFINER function validates the embed_key
- *
- * After creating the lead:
- *   1. Sends a confirmation email to the inquirer (if Resend is configured)
- *   2. Sends a notification email to the venue coordinator
- * Both outcomes are recorded onto the lead_intake_attempts row so a failed
- * send is no longer invisible.
- *
- * Returns: { ok: true, referenceCode: "ABC12345" }
  */
 
 import { type NextRequest, NextResponse } from "next/server";
 
 import { createClient } from "@/integrations/supabase/server";
 import { sendEmail } from "@/lib/email/send";
+import { INQUIRY_API_ERRORS } from "@/lib/inquiry-form/constants";
 import { ingestLead } from "@/lib/lead-intake/pipeline";
 import { recordNotificationStatus } from "@/lib/lead-intake/attempt-log";
 
@@ -44,28 +30,31 @@ export async function POST(request: NextRequest) {
     message: inquiryMessage,
     sourceData,
     turnstileToken,
-    __hp,  // server-side honeypot check (form uses 'website_url')
+    __hp,
   } = body as Record<string, unknown>;
 
-  // Honeypot: if any hidden field is filled, it's a bot
   if (__hp) return NextResponse.json({ ok: false, message: "Validation failed." }, { status: 400 });
   if (!embedKey || !firstName || !lastName || !email) {
     return NextResponse.json({ ok: false, message: "Required fields are missing." }, { status: 400 });
+  }
+  if (!eventType || !String(eventType).trim()) {
+    return NextResponse.json({ ok: false, error: "event_type_required", message: INQUIRY_API_ERRORS.event_type_required }, { status: 400 });
   }
 
   const supabase = await createClient();
   const ipAddress = clientIp(request);
 
-  // Venue resolution happens up front (not inside create_public_lead) so
-  // the pipeline can log/rate-limit against a known venue_id before the
-  // RPC call — the RPC still re-validates the embed_key itself regardless
-  // of this lookup, so nothing about its own security is weakened.
   const { data: venueRows } = await supabase.rpc("get_venue_by_embed_key", { p_key: String(embedKey) });
   const venue = venueRows?.[0] as { id: string; name: string; email: string | null } | undefined;
 
   if (!venue) {
     return NextResponse.json({ ok: false, message: "Invalid form key." }, { status: 400 });
   }
+
+  const mergedSourceData = {
+    ...(typeof sourceData === "object" && sourceData ? sourceData : {}),
+    inquiry_mode: "request_information",
+  };
 
   const outcome = await ingestLead({
     supabase,
@@ -81,12 +70,12 @@ export async function POST(request: NextRequest) {
       email: String(email),
       phone: phone ? String(phone) : null,
       partnerFirstName: partnerFirst ? String(partnerFirst) : null,
-      eventType: eventType ? String(eventType) : null,
+      eventType: String(eventType),
       eventDate: eventDate ? String(eventDate) : null,
       guestCount: guestCount ? Number(guestCount) : null,
       estimatedBudget: estimatedBudget ? Number(estimatedBudget) : null,
       inquiryMessage: inquiryMessage ? String(inquiryMessage) : null,
-      sourceData: (sourceData ?? {}) as Record<string, unknown>,
+      sourceData: mergedSourceData as Record<string, unknown>,
     },
     create: async (normalized) => {
       const { data, error } = await supabase.rpc("create_public_lead", {
@@ -105,9 +94,10 @@ export async function POST(request: NextRequest) {
         p_message:          normalized.inquiryMessage ?? "",
         p_source_data:      normalized.sourceData,
       });
-      if (error || !data?.ok) return { ok: false, error: data?.error ?? error?.message ?? "Could not submit inquiry." };
-      // create_public_lead doesn't return relationshipId directly — a cheap
-      // follow-up read, same as every other RPC-returns-just-an-id path.
+      if (error || !data?.ok) {
+        const errKey = (data?.error as string | undefined) ?? error?.message;
+        return { ok: false, error: INQUIRY_API_ERRORS[errKey ?? ""] ?? errKey ?? "Could not submit inquiry." };
+      }
       const { data: leadRow } = await supabase.from("leads").select("relationship_id")
         .eq("id", data.lead_id).maybeSingle<{ relationship_id: string | null }>();
       if (!leadRow?.relationship_id) return { ok: false, error: "Lead created without a relationship." };
@@ -124,34 +114,25 @@ export async function POST(request: NextRequest) {
   });
 
   if (!outcome.ok) {
-    return NextResponse.json({ ok: false, message: outcome.error }, { status: 400 });
+    const msg = typeof outcome.error === "string" ? outcome.error : "Could not submit inquiry.";
+    return NextResponse.json({ ok: false, message: msg, error: msg }, { status: 400 });
   }
 
-  const refCode = outcome.leadId.slice(0, 8).toUpperCase();
   const inquirerName = `${firstName} ${lastName}`;
   const inquirerEmail = String(email);
-
-  // --- Acknowledgement emails (non-blocking — don't fail the request if email fails) ---
   const fromEmail = process.env.FROM_EMAIL ?? null;
 
-  // 1. Confirmation email to the inquirer
   if (fromEmail) {
     sendEmail({
       to: inquirerEmail,
-      subject: `We received your inquiry — ${refCode}`,
+      subject: `We received your inquiry — ${venue.name}`,
       text: [
-        `Hi ${firstName},`,
+        firstName ? `Thank you, ${firstName}!` : "Thank you!",
         "",
-        `Thank you for reaching out! We've received your inquiry and will be in touch shortly.`,
+        `We've received your inquiry for ${venue.name}.`,
         "",
-        `Your reference number: ${refCode}`,
-        "",
-        eventType ? `Event type: ${String(eventType).replace(/_/g, " ")}` : null,
-        eventDate ? `Event date: ${new Date(String(eventDate) + "T12:00:00").toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}` : null,
-        guestCount ? `Guest count: ${guestCount}` : null,
-        "",
-        "We look forward to speaking with you.",
-      ].filter(Boolean).join("\n"),
+        "We'll be in touch soon.",
+      ].join("\n"),
       replyTo: fromEmail,
     }).then(
       (result) => recordNotificationStatus(supabase, outcome.attemptId, result.ok ? "sent" : "failed"),
@@ -161,10 +142,6 @@ export async function POST(request: NextRequest) {
     void recordNotificationStatus(supabase, outcome.attemptId, "skipped");
   }
 
-  // 2. Notification to the venue coordinator — the one that matters most
-  // for "did the venue actually find out about this lead," so its outcome
-  // is what lead_intake_attempts.notification_status ultimately reflects
-  // (this write happens after the confirmation email's, above).
   if (fromEmail && venue.email) {
     sendEmail({
       to: venue.email,
@@ -176,13 +153,12 @@ export async function POST(request: NextRequest) {
         `Email: ${inquirerEmail}`,
         phone ? `Phone: ${phone}` : null,
         partnerFirst ? `Partner: ${partnerFirst} ${partnerLast ?? ""}`.trim() : null,
-        eventType ? `Event type: ${String(eventType ?? "").replace(/_/g, " ")}` : null,
-        eventDate ? `Event date: ${eventDate}` : null,
+        eventType ? `Event type: ${String(eventType)}` : null,
+        eventDate ? `Preferred event date: ${eventDate}` : null,
         guestCount ? `Guests: ${guestCount}` : null,
         estimatedBudget ? `Budget: $${Number(estimatedBudget).toLocaleString()}` : null,
         inquiryMessage ? `\nMessage:\n${inquiryMessage}` : null,
         "",
-        `Reference: ${refCode}`,
         `View in Hello to Cheers: ${process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"}/leads`,
       ].filter(Boolean).join("\n"),
     }).then(
@@ -191,5 +167,5 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  return NextResponse.json({ ok: true, referenceCode: refCode });
+  return NextResponse.json({ ok: true });
 }

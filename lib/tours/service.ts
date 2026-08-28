@@ -96,17 +96,20 @@ export async function getTourSlots(key: string, startDate: string, endDate: stri
 }
 
 const TOUR_BOOK_ERRORS: Record<string, string> = {
-  slot_taken: "This slot was just booked. Please choose another time.",
+  slot_taken: "That time is no longer available. Please choose another time.",
+  slot_unavailable: "That time is no longer available. Please choose another time.",
   slot_too_soon: "Please choose a time at least 24 hours from now.",
   slot_too_far: "This slot is too far in the future.",
   invalid_key: "This booking link is not valid.",
+  event_type_required: "Event type is required.",
+  date_unavailable: "That date is no longer available. Please choose another date.",
 };
 
 export async function bookTour(
   key: string,
   slotStart: string,
   fields: { firstName: string; lastName: string; partnerName: string; email: string; phone: string; eventType: string; eventDate: string; guestCount: number | null; notes: string },
-  opts?: { turnstileToken?: string | null; ipAddress?: string | null; qrCampaignId?: string | null },
+  opts?: { turnstileToken?: string | null; ipAddress?: string | null; qrCampaignId?: string | null; sourceData?: Record<string, unknown> },
 ): Promise<BookingResult> {
   if (!isSupabaseConfigured) return { ok: false, error: "Backend not configured." };
 
@@ -167,6 +170,10 @@ export async function bookTour(
         p_event_type: normalized.eventType ?? "", p_event_date: normalized.eventDate,
         p_guest_count: normalized.guestCount, p_notes: normalized.inquiryMessage ?? "",
         p_qr_campaign_id: opts?.qrCampaignId ?? null,
+        p_source_data: {
+          ...(opts?.sourceData ?? {}),
+          custom_answers: (opts?.sourceData?.custom_answers as Record<string, unknown> | undefined) ?? undefined,
+        },
       });
       if (error) return { ok: false, error: error.message };
       const d = data as Record<string, unknown>;
@@ -235,6 +242,10 @@ export async function bookTour(
     venueId,
     intakeAttemptId: outcome.attemptId,
     venueEmail: apptRow?.venues?.email ?? null,
+    venuePhone: confirmedBooking.venuePhone as string | null | undefined,
+    addressLine1: confirmedBooking.addressLine1 as string | null | undefined,
+    city: confirmedBooking.city as string | null | undefined,
+    stateRegion: confirmedBooking.stateRegion as string | null | undefined,
     contactEmail,
     contactName,
     contactPhone: apptRow?.contact_phone ?? fields.phone,

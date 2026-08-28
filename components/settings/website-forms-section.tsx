@@ -7,8 +7,10 @@ import Link from "next/link";
 import { Check, ChevronDown, Copy, ExternalLink } from "lucide-react";
 
 import { EmailIntakeSection } from "@/components/settings/email-intake-section";
+import { InquiryFormConfigSection } from "@/components/settings/inquiry-form-config-section";
 import { Button } from "@/components/ui/button";
 import type { EmailIntakeStatus } from "@/lib/lead-intake/email-status";
+import type { InquiryFormSettings } from "@/lib/inquiry-form/types";
 
 const WEBSITE_BUILDER_STEPS: { name: string; steps: string[] }[] = [
   { name: "Squarespace", steps: ["Edit the page → click the + where you want the form", "Choose Code → paste the embed code → Save"] },
@@ -21,12 +23,14 @@ export function WebsiteFormsSection({
   appUrl,
   leadEmailAddress,
   emailIntakeStatus,
+  inquiryFormSettings = null,
 }: {
   embedKey: string;
   appUrl: string;
   /** null when RESEND_INBOUND_ADDRESS isn't configured platform-wide. */
   leadEmailAddress: string | null;
   emailIntakeStatus: EmailIntakeStatus | null;
+  inquiryFormSettings?: InquiryFormSettings | null;
 }) {
   const formUrl = `${appUrl}/form/${embedKey}`;
   const iframeCode = `<iframe\n  src="${formUrl}"\n  width="100%"\n  height="700"\n  frameborder="0"\n  title="Venue Inquiry Form"\n></iframe>`;
@@ -61,6 +65,20 @@ export function WebsiteFormsSection({
           </Button>
         </div>
       </div>
+
+      {inquiryFormSettings && (
+        <div className="rounded-lg border border-border bg-muted/30 p-4 space-y-3">
+          <div className="space-y-1">
+            <p className="text-sm font-medium text-heading">Inquiry form fields</p>
+            <p className="text-xs text-muted-foreground">Control which fields appear on your public inquiry form and how preferred event dates work.</p>
+          </div>
+          <InquiryFormConfigSection
+            initialEventDateMode={inquiryFormSettings.inquiryEventDateMode}
+            initialFields={inquiryFormSettings.inquiryFormFields}
+            initialQuestions={inquiryFormSettings.customQuestions}
+          />
+        </div>
+      )}
 
       <div className="rounded-lg border border-border bg-muted/30 p-4 space-y-3">
         <div className="space-y-1">

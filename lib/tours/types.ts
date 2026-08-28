@@ -104,6 +104,10 @@ export type BookingResult = {
   scheduledAt?: string;
   venueName?: string;
   venueEmail?: string | null;
+  venuePhone?: string | null;
+  addressLine1?: string | null;
+  city?: string | null;
+  stateRegion?: string | null;
   venueId?: string;
   contactEmail?: string;
   contactName?: string;

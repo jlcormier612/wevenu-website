@@ -15,13 +15,14 @@ import {
 import { getCurrentVenue } from "@/lib/venue/service";
 import { getIntakeHealthSummary } from "@/lib/lead-intake/monitoring";
 import { getEmailIntakeStatus } from "@/lib/lead-intake/email-status";
+import { getInquiryFormSettings } from "@/lib/inquiry-form/service";
 import { getTourSettings } from "@/lib/tours/service";
 
 export const metadata: Metadata = { title: "Leads & Booking — Settings" };
 
 export default async function LeadsBookingSettingsPage() {
-  const [venue, intakeHealth, emailIntakeStatus, tourSettings] = await Promise.all([
-    getCurrentVenue(), getIntakeHealthSummary(), getEmailIntakeStatus(), getTourSettings(),
+  const [venue, intakeHealth, emailIntakeStatus, tourSettings, inquiryFormSettings] = await Promise.all([
+    getCurrentVenue(), getIntakeHealthSummary(), getEmailIntakeStatus(), getTourSettings(), getInquiryFormSettings(),
   ]);
 
   return (
@@ -50,6 +51,7 @@ export default async function LeadsBookingSettingsPage() {
                   : null
               }
               emailIntakeStatus={emailIntakeStatus}
+              inquiryFormSettings={inquiryFormSettings}
             />
           </CardContent>
         </Card>
