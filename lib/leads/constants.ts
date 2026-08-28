@@ -99,7 +99,12 @@ export function statusLabel(status: string): string {
 
 export function eventTypeLabel(value: string | null): string {
   if (!value) return "";
-  return EVENT_TYPES.find((e) => e.value === value)?.label ?? value;
+  const publicLabels: Record<string, string> = {
+    corporate_event: "Corporate Event",
+    social_event: "Social Event",
+    birthday_milestone: "Birthday / Milestone",
+  };
+  return EVENT_TYPES.find((e) => e.value === value)?.label ?? publicLabels[value] ?? value;
 }
 
 /** Intake/registry keys that are not offered on the manual New Lead picker. */

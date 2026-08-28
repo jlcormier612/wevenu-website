@@ -421,7 +421,7 @@ export function LeadDetail({ lead, holds = [], spaces = [], documents = [], work
               </CardHeader>
               <CardContent className="space-y-3">
                 <InfoRow icon={Calendar} label="Event type" value={eventTypeLabel(lead.eventType)} />
-                <InfoRow icon={Calendar} label="Event date" value={formatDate(lead.eventDate)} />
+                <InfoRow icon={Calendar} label="Preferred event date" value={formatDate(lead.eventDate)} />
                 <InfoRow
                   icon={Users}
                   label="Guest count"
@@ -440,6 +440,21 @@ export function LeadDetail({ lead, holds = [], spaces = [], documents = [], work
                       <p className="whitespace-pre-wrap text-sm text-foreground">
                         {lead.inquiryMessage}
                       </p>
+                    </div>
+                  </>
+                )}
+                {Array.isArray(lead.sourceData?.custom_answers) && (lead.sourceData.custom_answers as Array<{ questionText?: string; answer?: string | string[] }>).length > 0 && (
+                  <>
+                    <Separator />
+                    <div className="space-y-3">
+                      {(lead.sourceData.custom_answers as Array<{ questionText?: string; answer?: string | string[] }>).map((entry, idx) => (
+                        <div key={idx}>
+                          <Label className="mb-1 text-xs text-muted-foreground">{entry.questionText ?? "Custom question"}</Label>
+                          <p className="whitespace-pre-wrap text-sm text-foreground">
+                            {Array.isArray(entry.answer) ? entry.answer.join(", ") : entry.answer}
+                          </p>
+                        </div>
+                      ))}
                     </div>
                   </>
                 )}

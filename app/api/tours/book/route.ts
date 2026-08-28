@@ -11,14 +11,14 @@ type BookPayload = {
   email: string; phone: string; eventType: string;
   eventDate: string; guestCount: number | null; notes: string;
   turnstileToken?: string | null;
-  /** QR Lead Capture attribution — set when the booking page was reached via /qr/{code} (app/qr/[code]/route.ts). */
   qrCampaignId?: string | null;
+  sourceData?: Record<string, unknown>;
 };
 
 export async function POST(request: Request) {
   try {
     const body = (await request.json()) as BookPayload;
-    if (!body.key || !body.slotStart || !body.firstName || !body.email) {
+    if (!body.key || !body.slotStart || !body.firstName || !body.email || !body.eventType?.trim()) {
       return NextResponse.json({ ok: false, error: "Missing required fields." }, { status: 400 });
     }
     const forwardedFor = request.headers.get("x-forwarded-for");
@@ -27,7 +27,7 @@ export async function POST(request: Request) {
       firstName: body.firstName, lastName: body.lastName, partnerName: body.partnerName ?? "",
       email: body.email, phone: body.phone ?? "", eventType: body.eventType ?? "",
       eventDate: body.eventDate ?? "", guestCount: body.guestCount ?? null, notes: body.notes ?? "",
-    }, { turnstileToken: body.turnstileToken ?? null, ipAddress, qrCampaignId: body.qrCampaignId ?? null });
+    }, { turnstileToken: body.turnstileToken ?? null, ipAddress, qrCampaignId: body.qrCampaignId ?? null, sourceData: body.sourceData ?? {} });
 
     if (result.ok && result.appointmentId) {
       // The couple's confirmation email is sent inside bookTour() itself now
