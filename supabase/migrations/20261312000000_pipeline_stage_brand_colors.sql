@@ -21,6 +21,12 @@ end
 from ranked r
 where r.id = s.id;
 
+-- Drop-then-add so a retry after an interrupted apply cannot fail on an
+-- already-present constraint; the apply script records tracking rows only
+-- after a file's SQL succeeds, so a mid-run drop leaves this file re-runnable.
+alter table public.pipeline_stages
+  drop constraint if exists pipeline_stages_brand_color_check;
+
 alter table public.pipeline_stages
   add constraint pipeline_stages_brand_color_check
   check (color in (
