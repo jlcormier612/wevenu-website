@@ -22,6 +22,14 @@ export { mergeContent, extractTokens, type MergeData } from "@/lib/shared-merge/
 export type MergeContext = {
   venueName: string;
   clientName: string;
+  /**
+   * Recipient's separate first/last name, when the underlying record has
+   * them (clients/leads). Omit rather than derive by splitting clientName —
+   * a couple's clientName can be "Emily & James Carter" and is never a
+   * valid source for a single person's first/last name.
+   */
+  clientFirstName?: string | null;
+  clientLastName?: string | null;
   coordinatorName: string;
   eventDate: string | null;  // ISO "YYYY-MM-DD"
   /** Work Package D5E — share dialogs; optional on scheduled sends. */
@@ -73,6 +81,15 @@ export function buildMergeData(ctx: MergeContext): MergeData {
     days_until_event:  daysUntil(ctx.eventDate),
   };
 
+  if (ctx.clientFirstName) {
+    data.first_name = ctx.clientFirstName;
+  }
+  if (ctx.clientLastName) {
+    data.last_name = ctx.clientLastName;
+  }
+  if (ctx.clientFirstName && ctx.clientLastName) {
+    data.full_name = `${ctx.clientFirstName} ${ctx.clientLastName}`;
+  }
   if (ctx.eventName != null && ctx.eventName !== "") {
     data.event_name = ctx.eventName;
   }

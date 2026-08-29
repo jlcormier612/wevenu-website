@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 
+import { PlanningStarterExamples } from "@/components/playbooks/planning-starter-examples";
 import { PageHeader } from "@/components/shell/module-placeholder";
 import { PlaybooksSection } from "@/components/settings/playbooks-section";
 import { getEvents } from "@/lib/events/service";
@@ -15,6 +16,7 @@ export default async function PlaybooksLibraryPage() {
         title="Planning Templates"
         description="Reusable checklists you refine once, then apply to each event. Preview any template to see what's inside — applying always creates that event's own editable copy."
       />
+      <PlanningStarterExamples templates={templates} />
       <PlaybooksSection
         initialTemplates={templates}
         events={events.map((e) => ({ id: e.id, name: e.name, eventDate: e.eventDate }))}
