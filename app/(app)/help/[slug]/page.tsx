@@ -3,6 +3,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 
+import { IntegrationSetupGuideView } from "@/components/help/integration-setup-guide";
+import { getIntegrationSetupGuide } from "@/lib/help-guides/integration-setup-guides";
 import { HELP_GUIDES_HOME_HREF, HELP_GUIDES_TITLE } from "@/lib/help-guides/areas";
 import { getPublishedArticleBySlug } from "@/lib/success-library/service";
 
@@ -25,6 +27,9 @@ function Section({ title, body }: { title: string; body: string }) {
 
 export default async function HelpGuideArticlePage({ params }: Props) {
   const { slug } = await params;
+  const guide = getIntegrationSetupGuide(slug);
+  if (guide) return <IntegrationSetupGuideView guide={guide} />;
+
   const article = await getPublishedArticleBySlug(slug);
   if (!article) notFound();
 
