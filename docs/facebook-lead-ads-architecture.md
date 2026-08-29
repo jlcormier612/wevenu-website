@@ -167,3 +167,92 @@ Mirrors `QuickBooksConnectSection` almost exactly: connection status badge (`Not
 3. **Field-mapping heuristic (§6)** — recommend best-effort named-field recognition + `sourceData` fallback, matching the email extractor's philosophy, rather than requiring a venue to manually map every custom question before first use; confirm, or specify a required manual-mapping step instead.
 4. **`IngestLeadOptions`/`externalRef` pipeline extension (§6)** — this is a small, real change to shared pipeline code (not Facebook-specific), needed for genuine idempotency; confirm this is in scope for this integration's implementation rather than a separate pre-req ticket.
 5. **Instagram**: Meta's Lead Ads product covers both Facebook and Instagram lead forms through the same Page-connected API — this design already covers both without extra work, since Instagram Lead Ads forms surface through the same `leadgen_forms` endpoint once a Page with a linked Instagram account is selected. No separate decision needed, just confirming this is understood as already included.
+
+---
+
+## 11. Implemented state model and outstanding acceptance test (2026-08-29)
+
+Added after the first real end-to-end venue connection in sandbox. §8 above is the
+original pre-implementation design; this section records what actually shipped and what
+is still unverified.
+
+### 11.1 The connection has three stages, not two
+
+Authorizing Meta grants nothing on its own. A Page must be bound, and then at least one
+Lead Ads form must be enabled. Both ingestion paths independently require an **enabled**
+`facebook_lead_forms` row for the incoming `form_id`:
+
+- `app/api/facebook/webhook/route.ts` filters on `.eq("form_id", formId).eq("is_enabled", true)`
+  and silently `continue`s when there is no match — the lead is dropped, not deferred.
+- `lib/facebook/reconcile.ts` only iterates forms where `is_enabled = true`, so the hourly
+  backstop cannot recover it either.
+
+A Page-bound connection with zero enabled forms therefore delivers **exactly zero leads**.
+This gating is intentional and was not changed. What was wrong was the UI: it showed a
+green `Connected` badge and the copy "New leads from your enabled forms sync
+automatically" in precisely that state — a false green light that would silently lose
+leads.
+
+### 11.2 Derived UI state
+
+`lib/facebook/ui-state.ts` is now the single source of truth, covered by
+`lib/facebook/ui-state.test.ts`. The connection's own `status` column must never drive the
+green badge on its own.
+
+| State | Condition | Badge |
+| --- | --- | --- |
+| `not_connected` | no row, or `status = 'disconnected'` | `Not connected` (muted) |
+| `needs_page_selection` | `status = 'needs_page_selection'` | `Action needed` (warning) |
+| `needs_forms` | `status = 'connected'`, zero enabled forms | `Action needed` (warning) |
+| `delivering` | `status = 'connected'`, ≥1 enabled form | `Connected` (success) |
+| `error` | `status = 'error'` | `Reconnect required` (destructive) |
+
+This mirrors the Stripe card's existing connected-vs-`charges_enabled` split
+(`components/settings/stripe-connect-section.tsx`), which already distinguished "linked"
+from "actually capable". Facebook is deliberately **not** modelled as a binary integration
+like Stripe Connect or QuickBooks.
+
+### 11.3 Instagram requires no separate connection
+
+The intended and implemented architecture is:
+
+    Meta account → Facebook Page → Lead Ads (Facebook + Instagram placements) → Hello to Cheers
+
+Instagram Lead Ads surface through the same Page `leadgen` webhook and the same
+`leadgen_forms` endpoint once a Page with a linked Instagram account is selected. Do **not**
+add a separate "Connect Instagram" button unless a distinct Instagram authorization is
+later proven necessary for a different capability.
+
+Page-level `leadgen` subscription is automatic: `selectFacebookPage` calls
+`subscribePageToLeadgen` and refuses to save the Page if the subscription fails. Do not
+introduce manual webhook configuration in the Meta App Dashboard.
+
+### 11.4 Outstanding acceptance test — NOT yet verified
+
+The Facebook-placement path has not been exercised end to end either, but the
+Instagram-placement claim in §10.5 is the one asserted without evidence. Neither should be
+described as verified until this passes:
+
+1. Create a Lead Ads form on the connected Page with an **Instagram** placement.
+2. Submit a real lead through the Instagram placement.
+3. Confirm Meta delivers a `leadgen` webhook to `/api/facebook/webhook`.
+4. Confirm a `facebook_lead_queue` row is created and claimed.
+5. Confirm `facebook_lead_log` records `outcome = 'succeeded'`.
+6. Confirm a Lead appears in Hello to Cheers with `lead_sources` = `facebook_lead_ads`,
+   and that `externalRef` idempotency prevents a duplicate on webhook redelivery.
+
+Until then, customer-facing guidance may say Instagram leads flow through the connected
+Page setup, but must not state it as verified.
+
+### 11.5 Verified live in sandbox (read-only checks, 2026-08-29)
+
+- All five `FACEBOOK_*` values are populated in `htc/sandbox/facebook` and mounted into the
+  running `htc-sandbox-venue-app` task.
+- `/api/facebook/webhook` is reachable unauthenticated and returns `403` to a bad
+  `hub.verify_token` — it is correctly on `PUBLIC_PATHS` and is not being redirected to
+  `/login`.
+- The Scheduler ECS service fires `facebook-sync-process` every 2 minutes and
+  `facebook-reconcile-process` hourly, both returning `http_status=200` with real JSON
+  bodies. The retired EventBridge restoration (§ `docs/infra/facebook-lead-cron-restoration-plan.md`)
+  remains correctly retired; the replacement demonstrably works.
+- Graph API `v21.0` (the pinned default) is still served by Meta.

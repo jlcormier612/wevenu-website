@@ -5,6 +5,7 @@
  */
 import { createClient } from "@/integrations/supabase/server";
 import { isSupabaseConfigured } from "@/lib/env";
+import { getIntegrationSetupGuide, INTEGRATION_SETUP_GUIDES } from "@/lib/help-guides/integration-setup-guides";
 import { HELP_GUIDE_AREAS } from "@/lib/help-guides/areas";
 import { requireAdminUser } from "@/lib/hq/crm-service";
 import type {
@@ -30,32 +31,72 @@ function mapArticle(r: ArticleRow): SuccessLibraryArticle {
   };
 }
 
+function mapIntegrationGuide(slug: string): SuccessLibraryArticle | null {
+  const guide = getIntegrationSetupGuide(slug);
+  if (!guide) return null;
+  const steps = guide.steps
+    .map((step) => [
+      `STEP ${step.number}: ${step.title}`,
+      step.doThis,
+      `CHECKPOINT: ${step.lookFor}`,
+      step.dontDo ? `DO NOT: ${step.dontDo}` : null,
+      step.tip ? `TIP: ${step.tip}` : null,
+    ].filter(Boolean).join("\n"))
+    .join("\n\n");
+
+  return {
+    id: `static-${guide.slug}`,
+    slug: guide.slug,
+    title: guide.title,
+    goalCategory: guide.category,
+    whyItMatters: guide.whyItMatters,
+    whenToUse: `${guide.intro}\n\nTime: ${guide.time}\n\nBefore you begin:\n${guide.prerequisites.map((item) => `• ${item}`).join("\n")}`,
+    bestPractices: `${steps}\n\nWHEN YOU'RE DONE:\n${guide.completion}`,
+    commonMistakes: guide.troubleshooting.map((item) => `• ${item}`).join("\n"),
+    relatedFeatures: guide.relatedFeatures,
+    linkedGapKeys: [],
+    status: "published",
+    version: 1,
+    createdAt: "2026-08-29T00:00:00.000Z",
+    updatedAt: "2026-08-29T00:00:00.000Z",
+  };
+}
+
 const SELECT_COLUMNS = "id, slug, title, goal_category, why_it_matters, when_to_use, best_practices, common_mistakes, related_features, linked_gap_keys, status, version, created_at, updated_at";
 
 // ---- venue-facing reads (published only, via RLS) --------------------------
 
 /**
- * All 12 Help & Guides areas in IA order, including empty categories.
+ * All Help & Guides areas in IA order, including empty categories.
  * Articles whose goal_category is outside the taxonomy still appear under
  * that label at the end (legacy safety) so nothing becomes undiscoverable.
  */
 export async function getPublishedCategories(): Promise<SuccessLibraryCategory[]> {
-  if (!isSupabaseConfigured) {
-    return HELP_GUIDE_AREAS.map((a) => ({ category: a.category, description: a.description, articles: [] }));
-  }
-  const supabase = await createClient();
-  const { data } = await supabase.from("success_library_articles")
-    .select("slug, title, goal_category")
-    .eq("status", "published")
-    .order("title");
-  const rows = (data ?? []) as { slug: string; title: string; goal_category: string }[];
-
   const byCategory = new Map<string, { slug: string; title: string }[]>();
-  for (const r of rows) {
-    const list = byCategory.get(r.goal_category) ?? [];
-    list.push({ slug: r.slug, title: r.title });
-    byCategory.set(r.goal_category, list);
+
+  if (isSupabaseConfigured) {
+    const supabase = await createClient();
+    const { data } = await supabase.from("success_library_articles")
+      .select("slug, title, goal_category")
+      .eq("status", "published")
+      .order("title");
+    const rows = (data ?? []) as { slug: string; title: string; goal_category: string }[];
+    for (const r of rows) {
+      const list = byCategory.get(r.goal_category) ?? [];
+      list.push({ slug: r.slug, title: r.title });
+      byCategory.set(r.goal_category, list);
+    }
   }
+
+  // Integration setup is foundational enough to be available even before HQ
+  // has authored the rest of the Help & Guides library. If an article with the
+  // same slug is later published in the canonical store, the DB article wins.
+  const venueGuides = byCategory.get("Your Venue") ?? [];
+  const existingSlugs = new Set(venueGuides.map((a) => a.slug));
+  for (const guide of INTEGRATION_SETUP_GUIDES) {
+    if (!existingSlugs.has(guide.slug)) venueGuides.push({ slug: guide.slug, title: guide.title });
+  }
+  byCategory.set("Your Venue", venueGuides.sort((a, b) => a.title.localeCompare(b.title)));
 
   const known = new Set(HELP_GUIDE_AREAS.map((a) => a.category));
   const areas: SuccessLibraryCategory[] = HELP_GUIDE_AREAS.map((a) => ({
@@ -72,11 +113,13 @@ export async function getPublishedCategories(): Promise<SuccessLibraryCategory[]
 }
 
 export async function getPublishedArticleBySlug(slug: string): Promise<SuccessLibraryArticle | null> {
-  if (!isSupabaseConfigured) return null;
-  const supabase = await createClient();
-  const { data } = await supabase.from("success_library_articles")
-    .select(SELECT_COLUMNS).eq("slug", slug).eq("status", "published").maybeSingle<ArticleRow>();
-  return data ? mapArticle(data) : null;
+  if (isSupabaseConfigured) {
+    const supabase = await createClient();
+    const { data } = await supabase.from("success_library_articles")
+      .select(SELECT_COLUMNS).eq("slug", slug).eq("status", "published").maybeSingle<ArticleRow>();
+    if (data) return mapArticle(data);
+  }
+  return mapIntegrationGuide(slug);
 }
 
 /** Guided Setup §4.2 — one published article per gap key, for the Getting Started card's secondary "read more" link. Never the primary CTA — see the plan's "Luv is a companion, not documentation" rule. */
