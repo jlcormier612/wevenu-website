@@ -1,7 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server";
 
 import { connectStripeAction } from "@/app/(app)/settings/actions";
-import { isSupabaseConfigured } from "@/lib/env";
+import { isSupabaseConfigured, publicAppOrigin } from "@/lib/env";
 import { getCurrentVenue } from "@/lib/venue/service";
 
 /**
@@ -19,18 +19,23 @@ import { getCurrentVenue } from "@/lib/venue/service";
  *     /setup-hub/financials when connecting from Setup Hub Financials — with
  *     a success or error param.
  *
+ * Post-OAuth browser redirects use NEXT_PUBLIC_APP_URL via publicAppOrigin()
+ * — never request.nextUrl.origin (ECS/ALB internal hostnames are not
+ * browser-routable), matching app/api/facebook/callback/route.ts.
+ *
  * Requires:
  *   STRIPE_SECRET_KEY      — server-only Stripe secret key
- *   NEXT_PUBLIC_APP_URL    — the public origin (for the redirect URI)
+ *   NEXT_PUBLIC_APP_URL    — the public origin (redirect URI + return redirect)
  */
 export async function GET(request: NextRequest) {
-  const { searchParams, origin } = request.nextUrl;
+  const { searchParams } = request.nextUrl;
   const code = searchParams.get("code");
   const state = searchParams.get("state");
   const error = searchParams.get("error");
   const errorDescription = searchParams.get("error_description");
 
   const [stateVenueId, stateReturnTo] = (state ?? "").split(":");
+  const origin = publicAppOrigin();
   const destinationUrl = stateReturnTo === "onboarding"
     ? new URL("/setup-hub/financials", origin)
     : new URL("/settings/integrations", origin);
