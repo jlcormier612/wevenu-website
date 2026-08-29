@@ -32,6 +32,20 @@ export const isSupabaseConfigured = Boolean(
 );
 
 /**
+ * The browser-routable origin for this deployment, with any trailing slash
+ * removed.
+ *
+ * Server-side redirects that send a *browser* somewhere must use this and
+ * never `request.nextUrl.origin`: behind the ALB that resolves to the ECS
+ * task's private address (e.g. ip-10-20-0-34.ec2.internal:3000), which the
+ * browser cannot resolve. OAuth callbacks are the case that matters, since
+ * they hand control back to the user after an external redirect.
+ */
+export function publicAppOrigin(): string {
+  return (process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000").replace(/\/$/, "");
+}
+
+/**
  * Returns the validated Supabase config or throws. Call only after confirming
  * `isSupabaseConfigured` (or where a missing config is genuinely fatal).
  */

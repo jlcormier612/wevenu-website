@@ -17,6 +17,9 @@
  *   FACEBOOK_GRAPH_API_VERSION — pinned explicitly since Meta deprecates
  *     old Graph API versions on a schedule.
  */
+
+import { publicAppOrigin } from "@/lib/env";
+
 export function isFacebookConfigured(): boolean {
   return !!(process.env.FACEBOOK_APP_ID && process.env.FACEBOOK_APP_SECRET);
 }
@@ -51,7 +54,7 @@ export function facebookUsesLoginForBusiness(): boolean {
 
 /** Public browser-facing app origin — never derive from request Host behind ALB/ECS. */
 export function facebookPublicAppOrigin(): string {
-  return (process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000").replace(/\/$/, "");
+  return publicAppOrigin();
 }
 
 export type FacebookCodeExchangeResult =
