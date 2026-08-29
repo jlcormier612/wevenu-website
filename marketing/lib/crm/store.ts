@@ -31,6 +31,8 @@ type EnrollmentRow = {
   stripe_checkout_session_id: string | null;
   venue_name: string;
   owner_email: string;
+  owner_first_name: string | null;
+  owner_last_name: string | null;
   plan: string | null;
   onboarding_type: string;
   status: string;
@@ -46,6 +48,8 @@ function rowToRecord(row: EnrollmentRow): VenueEnrollmentRecord {
     stripeCheckoutSessionId: row.stripe_checkout_session_id,
     venueName: row.venue_name,
     customerEmail: row.owner_email,
+    customerFirstName: row.owner_first_name,
+    customerLastName: row.owner_last_name,
     plan: row.plan || "none",
     planName: null,
     // Founding / welcome-back live on the Relationship CRM row; enrollment
@@ -71,7 +75,7 @@ export async function listVenueEnrollments(): Promise<VenueEnrollmentRecord[]> {
   const { data, error } = await admin
     .from("venue_enrollments")
     .select(
-      "id, created_at, updated_at, stripe_subscription_id, stripe_customer_id, stripe_checkout_session_id, venue_name, owner_email, plan, onboarding_type, status",
+      "id, created_at, updated_at, stripe_subscription_id, stripe_customer_id, stripe_checkout_session_id, venue_name, owner_email, owner_first_name, owner_last_name, plan, onboarding_type, status",
     )
     .order("created_at", { ascending: true });
   if (error) throw new Error(error.message);
@@ -88,7 +92,7 @@ export async function findEnrollmentByCheckoutSessionId(
   const { data, error } = await admin
     .from("venue_enrollments")
     .select(
-      "id, created_at, updated_at, stripe_subscription_id, stripe_customer_id, stripe_checkout_session_id, venue_name, owner_email, plan, onboarding_type, status",
+      "id, created_at, updated_at, stripe_subscription_id, stripe_customer_id, stripe_checkout_session_id, venue_name, owner_email, owner_first_name, owner_last_name, plan, onboarding_type, status",
     )
     .eq("stripe_checkout_session_id", id)
     .maybeSingle();
@@ -106,7 +110,7 @@ export async function findEnrollmentBySubscriptionId(
   const { data, error } = await admin
     .from("venue_enrollments")
     .select(
-      "id, created_at, updated_at, stripe_subscription_id, stripe_customer_id, stripe_checkout_session_id, venue_name, owner_email, plan, onboarding_type, status",
+      "id, created_at, updated_at, stripe_subscription_id, stripe_customer_id, stripe_checkout_session_id, venue_name, owner_email, owner_first_name, owner_last_name, plan, onboarding_type, status",
     )
     .eq("stripe_subscription_id", id)
     .order("created_at", { ascending: false })
