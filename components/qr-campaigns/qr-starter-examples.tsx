@@ -42,7 +42,7 @@ export function QrStarterExamples({ hasCampaigns }: { hasCampaigns: boolean }) {
   const [pending, setPending] = React.useState<string | null>(null);
   if (hasCampaigns) return null;
 
-  async function useStarter(starter: typeof STARTERS[number]) {
+  async function create(starter: typeof STARTERS[number]) {
     setPending(starter.id);
     const result = await createQrCampaignAction({
       name: starter.name,
@@ -76,7 +76,7 @@ export function QrStarterExamples({ hasCampaigns }: { hasCampaigns: boolean }) {
           primaryActions={[{
             id: `use-${starter.id}`,
             label: pending === starter.id ? "Creating…" : "Use this starter",
-            onClick: () => useStarter(starter),
+            onClick: () => create(starter),
             emphasis: "use",
             disabled: pending !== null,
           }]}
