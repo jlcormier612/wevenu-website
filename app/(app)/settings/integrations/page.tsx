@@ -57,7 +57,7 @@ export default async function FinancialsIntegrationsSettingsPage() {
       )}
 
       {venue && (
-        <div className="space-y-2">
+        <div id="facebook" className="scroll-mt-20 space-y-2">
           <FacebookConnectSection venueId={venue.id} connection={facebookConnection} leadForms={facebookLeadForms} recentLog={facebookLog} />
           <div className="px-1"><SetupGuideLink href="/help/connect-facebook-instagram-lead-ads" /></div>
         </div>
