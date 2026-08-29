@@ -88,9 +88,6 @@ export default async function DashboardPage({ searchParams }: Props) {
         show={data.showLuvIntro}
         setupHref={data.onboarding.show ? "#getting-started" : "/setup-hub"}
       />
-      {data.onboarding.show && (
-        <GettingStartedCard onboarding={data.onboarding} milestone={milestone} venueName={data.venueName} />
-      )}
       {data.showDigestCallout && <DigestCallout />}
 
       {/* 1. Morning Briefing — Critical + Needs Attention Today + today's
@@ -188,6 +185,23 @@ export default async function DashboardPage({ searchParams }: Props) {
           <QuickAction href="/calendar" icon={CalendarClock} label="Calendar" />
         </div>
       </section>
+
+      {/* Getting Started — onboarding, not operational, so it sits after the
+          five operational sections rather than ahead of them. docs/dashboard-
+          luv-experience-architecture.md §6 classifies this row "n/a —
+          onboarding, not operational" and lists it last in the permanent
+          structure, and names Today's Attention "the one section the Dashboard
+          exists for." The Phase 1 reconstruction kept this card explicitly
+          because it does "not compete for 'what matters today' attention"
+          (docs/venue-dashboard-reconstruction-phase1.md §6) but left its old
+          placement untouched, so on the reduced six-section Dashboard it
+          pushed Morning Briefing and Today's Attention below the fold. Still
+          disappears entirely at 100% via data.onboarding.show. */}
+      {data.onboarding.show && (
+        <section>
+          <GettingStartedCard onboarding={data.onboarding} milestone={milestone} venueName={data.venueName} />
+        </section>
+      )}
 
       {/* Luv entry point — at most one observation, one recommendation, one
           action. No placeholder AI: renders nothing if Luv has nothing to say. */}

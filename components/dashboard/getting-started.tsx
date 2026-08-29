@@ -81,7 +81,7 @@ export function GettingStartedCard({
 
         <div className="flex items-end justify-between gap-4">
           <div>
-            <p className="font-heading text-3xl font-semibold text-heading">
+            <p className="font-heading text-xl font-semibold text-heading">
               You&apos;re {pct}% set up
             </p>
             <p className="mt-0.5 text-[0.95rem] text-muted-foreground">
@@ -132,8 +132,16 @@ export function GettingStartedCard({
           </div>
         )}
 
-        {/* Steps — 2-column grid */}
-        <ul className="grid gap-x-6 gap-y-3 sm:grid-cols-2">
+        {/* Steps — collapsed by default. The full checklist is what made this
+            card tall enough to fill the Dashboard's first screen; the progress
+            line, Luv nudge, and next-step CTA above/below stay visible, so
+            nothing actionable is hidden. Opened automatically while a
+            milestone is being celebrated. */}
+        <details className="pt-1" open={Boolean(milestoneCopy)}>
+          <summary className="cursor-pointer text-xs font-medium text-muted-foreground hover:text-foreground">
+            Setup steps ({onboarding.completedCount} of {onboarding.totalSteps} done)
+          </summary>
+          <ul className="mt-3 grid gap-x-6 gap-y-3 sm:grid-cols-2">
           {onboarding.steps.map((step) => (
             <li key={step.id} className="flex items-start gap-2.5">
               <span
@@ -185,7 +193,8 @@ export function GettingStartedCard({
               </div>
             </li>
           ))}
-        </ul>
+          </ul>
+        </details>
       </CardContent>
 
       <CardFooter className="flex items-center justify-between gap-4 pt-2">
