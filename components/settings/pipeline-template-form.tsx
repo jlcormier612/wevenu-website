@@ -3,18 +3,17 @@
 import * as React from "react";
 
 import { useRouter } from "next/navigation";
-import { GripVertical, Loader2, Trash2 } from "lucide-react";
+import { Check, GripVertical, Loader2, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { createPipelineTemplateAction, updatePipelineTemplateAction } from "@/app/(app)/library/pipeline-templates/actions";
 import { Button } from "@/components/ui/button";
-import { ColorPickerTrigger } from "@/components/ui/color-picker";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
-import { CANONICAL_STAGES, DEFAULT_STAGE_COLOR } from "@/lib/pipeline-templates/constants";
+import { CANONICAL_STAGES, DEFAULT_STAGE_COLOR, PIPELINE_STAGE_COLORS } from "@/lib/pipeline-templates/constants";
 import type {
   PipelineTemplateErrors, PipelineTemplateInput, PipelineTemplateWithStages, PipelineStageInput,
 } from "@/lib/pipeline-templates/types";
@@ -62,9 +61,6 @@ export function PipelineTemplateForm({ template }: { template?: PipelineTemplate
     setInput((p) => ({ ...p, stages: p.stages.filter((_, i) => i !== index) }));
   }
 
-  // ── Native HTML5 drag-and-drop reorder — no external library, same
-  // primitives already used for file drop zones elsewhere in this codebase,
-  // just applied to reordering an array instead of accepting a file. ──
   function handleDragStart(index: number) {
     dragIndex.current = index;
   }
@@ -127,7 +123,10 @@ export function PipelineTemplateForm({ template }: { template?: PipelineTemplate
 
       <div className="space-y-3">
         <div className="flex items-center justify-between">
-          <p className="text-sm font-semibold text-heading">Stages</p>
+          <div>
+            <p className="text-sm font-semibold text-heading">Stages</p>
+            <p className="text-xs text-muted-foreground">Use the Hello to Cheers palette to keep the pipeline visually consistent.</p>
+          </div>
           <Button type="button" size="sm" variant="outline" onClick={addStage}>+ Add Stage</Button>
         </div>
         {errors.stages && <p className="text-xs text-destructive">{errors.stages}</p>}
@@ -161,7 +160,26 @@ export function PipelineTemplateForm({ template }: { template?: PipelineTemplate
 
                 <div className="space-y-1.5">
                   <Label className="text-xs">Color</Label>
-                  <ColorPickerTrigger value={stage.color} onChange={(hex) => updateStage(i, { color: hex })} />
+                  <div className="flex items-center gap-1.5" role="radiogroup" aria-label={`${stage.name || `Stage ${i + 1}`} color`}>
+                    {PIPELINE_STAGE_COLORS.map((color) => {
+                      const selected = stage.color.toUpperCase() === color.value;
+                      return (
+                        <button
+                          key={color.value}
+                          type="button"
+                          title={color.label}
+                          aria-label={color.label}
+                          aria-checked={selected}
+                          role="radio"
+                          onClick={() => updateStage(i, { color: color.value })}
+                          className={`relative h-7 w-7 rounded-full border-2 transition-transform hover:scale-105 ${selected ? "border-heading ring-2 ring-border ring-offset-1" : "border-white/80"}`}
+                          style={{ backgroundColor: color.value }}
+                        >
+                          {selected && <Check className="absolute inset-0 m-auto h-3.5 w-3.5 text-white drop-shadow" />}
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
 
                 <div className="flex-1 space-y-1.5 sm:min-w-40">
