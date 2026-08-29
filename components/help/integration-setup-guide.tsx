@@ -1,10 +1,10 @@
 import Link from "next/link";
 import { ArrowLeft, CheckCircle2, CircleAlert, Clock3, ExternalLink } from "lucide-react";
 
-import type { IntegrationSetupGuide } from "@/lib/help-guides/integration-setup-guides";
+import type { SetupGuide } from "@/lib/help-guides/setup-guides";
 import { HELP_GUIDES_HOME_HREF, HELP_GUIDES_TITLE } from "@/lib/help-guides/areas";
 
-export function IntegrationSetupGuideView({ guide }: { guide: IntegrationSetupGuide }) {
+export function IntegrationSetupGuideView({ guide }: { guide: SetupGuide }) {
   return (
     <div className="max-w-3xl space-y-7">
       <Link
@@ -16,7 +16,7 @@ export function IntegrationSetupGuideView({ guide }: { guide: IntegrationSetupGu
       </Link>
 
       <header className="space-y-3">
-        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary">Your Venue · Setup Guide</p>
+        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary">{guide.category} · Setup Guide</p>
         <h1 className="text-2xl font-bold tracking-tight text-foreground">{guide.title}</h1>
         <p className="max-w-2xl text-sm leading-6 text-muted-foreground">{guide.intro}</p>
         <div className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-3 py-1.5 text-xs font-medium text-foreground">
@@ -41,7 +41,7 @@ export function IntegrationSetupGuideView({ guide }: { guide: IntegrationSetupGu
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">Follow these steps</p>
           <h2 id="setup-steps" className="mt-1 text-lg font-semibold text-foreground">
-            We'll tell you exactly what to click.
+            We'll tell you exactly what to do and what you should see next.
           </h2>
         </div>
 
@@ -91,12 +91,16 @@ export function IntegrationSetupGuideView({ guide }: { guide: IntegrationSetupGu
         </div>
       </section>
 
-      <section className="rounded-xl border border-primary/20 bg-primary/5 p-5 space-y-2">
+      <section className="rounded-xl border border-primary/20 bg-primary/5 p-5 space-y-3">
         <p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary">You're done</p>
         <h2 className="text-lg font-semibold text-foreground">{guide.completion}</h2>
-        <p className="text-sm leading-6 text-muted-foreground">
-          Go back to Financials &amp; Integrations and make sure the integration shows <strong className="text-foreground">Connected</strong> before you leave this page.
-        </p>
+        <Link
+          href={guide.returnHref}
+          className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3.5 py-2 text-sm font-medium text-primary-foreground hover:opacity-90 transition-opacity"
+        >
+          {guide.returnLabel}
+          <ExternalLink className="h-3.5 w-3.5" aria-hidden />
+        </Link>
       </section>
 
       <section className="space-y-3">
@@ -120,7 +124,7 @@ export function IntegrationSetupGuideView({ guide }: { guide: IntegrationSetupGu
             <Link
               key={feature.href}
               href={feature.href}
-              className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3.5 py-2 text-sm font-medium text-primary-foreground hover:opacity-90 transition-opacity"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-card px-3.5 py-2 text-sm font-medium text-foreground hover:bg-muted/40 transition-colors"
             >
               {feature.label}
               <ExternalLink className="h-3.5 w-3.5" aria-hidden />

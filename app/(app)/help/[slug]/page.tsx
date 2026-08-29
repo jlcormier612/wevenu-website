@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 
 import { IntegrationSetupGuideView } from "@/components/help/integration-setup-guide";
-import { getIntegrationSetupGuide } from "@/lib/help-guides/integration-setup-guides";
+import { getSetupGuide } from "@/lib/help-guides/setup-guides";
 import { HELP_GUIDES_HOME_HREF, HELP_GUIDES_TITLE } from "@/lib/help-guides/areas";
 import { getPublishedArticleBySlug } from "@/lib/success-library/service";
 
@@ -12,6 +12,8 @@ type Props = { params: Promise<{ slug: string }> };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
+  const guide = getSetupGuide(slug);
+  if (guide) return { title: `${guide.title} — ${HELP_GUIDES_TITLE}` };
   const article = await getPublishedArticleBySlug(slug);
   return { title: article ? `${article.title} — ${HELP_GUIDES_TITLE}` : HELP_GUIDES_TITLE };
 }
@@ -27,7 +29,7 @@ function Section({ title, body }: { title: string; body: string }) {
 
 export default async function HelpGuideArticlePage({ params }: Props) {
   const { slug } = await params;
-  const guide = getIntegrationSetupGuide(slug);
+  const guide = getSetupGuide(slug);
   if (guide) return <IntegrationSetupGuideView guide={guide} />;
 
   const article = await getPublishedArticleBySlug(slug);
