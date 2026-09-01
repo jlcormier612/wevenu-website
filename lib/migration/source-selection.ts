@@ -1,18 +1,21 @@
 /**
  * Migration Center — venue-facing source selection (UX only).
  *
- * Does not change adapters, sessions, or DB profiles. Partitions the existing
- * `source_profiles` list so "another system" / "I'm not sure" are first-class
- * lanes that resolve to `generic_csv`, while named profiles remain available
- * for venues whose software we already list.
+ * Does not change adapters, sessions, or DB profiles. The only systems with
+ * real source-specific import handling today are HoneyBook and Tripleseat
+ * (file recognition + name normalization; no live/API/OAuth connection).
+ * Weven, The Knot, WeddingWire, and Planning Pod remain in `source_profiles`
+ * for history/attribution and fall through to generic CSV — they must not
+ * appear here as "recognized" systems.
  *
  * Principle: source-specific adapters are accelerators, not membership tiers.
  */
-import { genericCsvAdapter } from "@/lib/migration/sources/generic-csv";
-import { getSourceAdapter } from "@/lib/migration/source-profiles";
 import type { SourceKey, SourceProfile } from "@/lib/migration/types";
 
-export type SourceSelectionLane = "recognized" | "another_system" | "not_sure";
+export type SourceSelectionLane = "honeybook" | "tripleseat" | "another_system" | "not_sure";
+
+/** Keys whose adapters actually do source-specific recognition/normalization. */
+export const SOURCE_SPECIFIC_KEYS: readonly SourceKey[] = ["honeybook", "tripleseat"];
 
 export const SOURCE_SELECTION_LANES: {
   id: SourceSelectionLane;
@@ -20,54 +23,53 @@ export const SOURCE_SELECTION_LANES: {
   description: string;
 }[] = [
   {
-    id: "recognized",
-    label: "A system we recognize",
-    description:
-      "If you see your software below, choose it — we may be able to organize your export more specifically.",
+    id: "honeybook",
+    label: "HoneyBook",
+    description: "We recognize HoneyBook exports and can organize your data automatically.",
+  },
+  {
+    id: "tripleseat",
+    label: "Tripleseat",
+    description: "We recognize Tripleseat exports and can organize your data automatically.",
   },
   {
     id: "another_system",
     label: "Another system",
     description:
-      "Event Temple, Aisle Planner, Perfect Venue, Eventbrite, another CRM — or anything else. You can still bring your business over.",
+      "Using a different CRM or venue platform? No problem. Export your data as a CSV and we'll help you match it to Hello to Cheers.",
   },
   {
     id: "not_sure",
     label: "I'm not sure",
-    description:
-      "We'll start with a guided upload and column matching. A simple spreadsheet works too.",
+    description: "We'll guide you through the easiest way to bring your information over.",
   },
 ];
 
-/** Named profiles shown under "A system we recognize" — excludes the generic CSV catch-all. */
+/** True only for HoneyBook and Tripleseat — not Weven, The Knot, or generic CSV. */
+export function hasSourceSpecificAcceleration(key: SourceKey): boolean {
+  return (SOURCE_SPECIFIC_KEYS as readonly string[]).includes(key);
+}
+
+/** Named profiles shown as first-class radios — only real adapters, never the generic catch-all. */
 export function namedSourceProfiles(profiles: SourceProfile[]): SourceProfile[] {
-  return profiles.filter((p) => p.key !== "generic_csv" && p.isEnabled);
+  return profiles.filter((p) => p.isEnabled && hasSourceSpecificAcceleration(p.key));
 }
 
 export function genericSourceProfile(profiles: SourceProfile[]): SourceProfile | null {
   return profiles.find((p) => p.key === "generic_csv") ?? null;
 }
 
-/** True when the TS registry has a real adapter (not the generic CSV fallback). */
-export function hasSourceSpecificAcceleration(key: SourceKey): boolean {
-  if (key === "generic_csv") return false;
-  return getSourceAdapter(key) !== genericCsvAdapter;
+/** Map a visible selection to the session `source_key` used by the existing engine. */
+export function sourceKeyForLane(lane: SourceSelectionLane): SourceKey {
+  if (lane === "honeybook") return "honeybook";
+  if (lane === "tripleseat") return "tripleseat";
+  return "generic_csv";
 }
 
-/** Map a selection lane to the session `source_key` used by the existing engine. */
-export function sourceKeyForLane(
-  lane: SourceSelectionLane,
-  recognizedKey: SourceKey | null,
-  profiles: SourceProfile[],
-): SourceKey {
-  if (lane === "another_system" || lane === "not_sure") {
-    return "generic_csv";
-  }
-  if (recognizedKey && namedSourceProfiles(profiles).some((p) => p.key === recognizedKey)) {
-    return recognizedKey;
-  }
-  const first = namedSourceProfiles(profiles)[0];
-  return first?.key ?? "generic_csv";
+/** If file recognition hits a real adapter, select that radio; otherwise leave the venue's choice. */
+export function laneForRecognizedSource(key: SourceKey): SourceSelectionLane | null {
+  if (key === "honeybook" || key === "tripleseat") return key;
+  return null;
 }
 
 /**
@@ -82,7 +84,7 @@ export function sourceSelectionGuidance(
     return {
       headline: "We'll guide you from here",
       body:
-        "If you can export clients, leads, or vendors as a CSV from wherever you keep them today, upload it below and match the columns. If you only have a simple spreadsheet, Spreadsheet import in Setup Hub works the same careful way. Either path is a real migration — not a workaround.",
+        "If you can export clients, leads, or vendors as a CSV from wherever you keep them today, upload it below and match the columns. If you only have a simple spreadsheet, that works too. Either path is a real migration — not a workaround.",
     };
   }
 
@@ -94,25 +96,17 @@ export function sourceSelectionGuidance(
     };
   }
 
-  if (hasSourceSpecificAcceleration(profile.key)) {
-    return {
-      headline: `Moving from ${profile.displayName}`,
-      body:
-        "Upload an export from this system. We may recognize and organize columns automatically — you can always adjust the mapping before we import.",
-    };
-  }
-
   return {
     headline: `Moving from ${profile.displayName}`,
     body:
-      "Upload an export from this system. We'll guide you through matching columns and reviewing duplicates — the same careful path every venue uses.",
+      "Upload an export from this system. We may recognize and organize columns automatically — you can always adjust the mapping before we import. This never connects to or logs into another platform on your behalf.",
   };
 }
 
 export const MIGRATION_CENTER_INTRO = {
   title: "Bring your business with you",
   body:
-    "Some systems let us recognize and organize your information more specifically. If yours isn't listed, you can still bring your data with you — we'll guide you through the best way to move it.",
+    "Moving from another system? Choose it below and we'll give you the best way to bring your information into Hello to Cheers. If you don't see your system, that's okay — you can still import your data from a CSV or spreadsheet.",
 } as const;
 
 /** History / session label — generic_csv is a first-class path, not a lesser tier. */

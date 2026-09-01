@@ -44,6 +44,7 @@ import {
 import {
   MIGRATION_CENTER_INTRO,
   SOURCE_SELECTION_LANES,
+  laneForRecognizedSource,
   namedSourceProfiles,
   sourceHistoryLabel,
   sourceKeyForLane,
@@ -52,7 +53,7 @@ import {
 } from "@/lib/migration/source-selection";
 import { recognizeSource } from "@/lib/migration/source-profiles";
 import type {
-  MigrationEntityType, MigrationRecord, MigrationSession, SessionResumeState, SessionSourceFile, SessionSummary, SourceKey, SourceProfile,
+  MigrationEntityType, MigrationRecord, MigrationSession, SessionResumeState, SessionSourceFile, SessionSummary, SourceProfile,
 } from "@/lib/migration/types";
 
 type CsvRow = Record<string, string>;
@@ -175,10 +176,7 @@ export function MigrationCenter({ sourceProfiles }: { sourceProfiles: SourceProf
 
   const namedProfiles = React.useMemo(() => namedSourceProfiles(sourceProfiles), [sourceProfiles]);
   const [lane, setLane] = React.useState<SourceSelectionLane>("another_system");
-  const [recognizedKey, setRecognizedKey] = React.useState<SourceKey>(
-    () => namedProfiles[0]?.key ?? "generic_csv",
-  );
-  const sourceKey = sourceKeyForLane(lane, recognizedKey, sourceProfiles);
+  const sourceKey = sourceKeyForLane(lane);
   const [entityType, setEntityType] = React.useState<MigrationEntityType>("client");
   const [headers, setHeaders] = React.useState<string[]>([]);
   const [rows, setRows] = React.useState<CsvRow[]>([]);
@@ -236,11 +234,11 @@ export function MigrationCenter({ sourceProfiles }: { sourceProfiles: SourceProf
         // Best-effort recognition only — never forces a source; venue can keep
         // "another system" / manual mapping. Uses existing recognizeSource().
         const detected = recognizeSource(hs);
-        if (detected && namedProfiles.some((p) => p.key === detected)) {
+        const detectedLane = detected ? laneForRecognizedSource(detected) : null;
+        if (detectedLane && namedProfiles.some((p) => p.key === detected)) {
           const label = namedProfiles.find((p) => p.key === detected)?.displayName ?? detected;
-          if (lane !== "recognized" || recognizedKey !== detected) {
-            setLane("recognized");
-            setRecognizedKey(detected);
+          if (lane !== detectedLane) {
+            setLane(detectedLane);
             toast.success(`This file looks like a ${label} export — we selected it for you. You can change that anytime.`);
           } else {
             toast.success(`Read ${results.data.length} rows from ${file.name}.`);
@@ -389,27 +387,6 @@ export function MigrationCenter({ sourceProfiles }: { sourceProfiles: SourceProf
             </RadioGroup>
           </div>
 
-          {lane === "recognized" && namedProfiles.length > 0 && (
-            <div className="space-y-1.5">
-              <p className="text-xs font-medium text-heading">Which system?</p>
-              <Select
-                value={recognizedKey}
-                onValueChange={(v) => setRecognizedKey(v as SourceKey)}
-                items={namedProfiles.map((p) => ({ value: p.key, label: p.displayName }))}
-              >
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {namedProfiles.map((p) => (
-                    <SelectItem key={p.key} value={p.key}>{p.displayName}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <p className="text-[11px] text-muted-foreground">
-                Don&apos;t see yours? Choose &ldquo;Another system&rdquo; above — that path is fully supported.
-              </p>
-            </div>
-          )}
-
           <div className="rounded-lg border border-border bg-muted/30 px-3 py-2.5">
             <p className="text-sm font-medium text-heading">{guidance.headline}</p>
             <p className="mt-1 text-xs text-muted-foreground leading-relaxed">{guidance.body}</p>
@@ -426,7 +403,7 @@ export function MigrationCenter({ sourceProfiles }: { sourceProfiles: SourceProf
           <div className="rounded-lg border border-dashed border-border p-4">
             <input ref={fileRef} type="file" accept=".csv" onChange={handleFile} className="text-sm" />
             <p className="mt-1 text-[11px] text-muted-foreground">
-              CSV export from {lane === "recognized" && selectedProfile ? selectedProfile.displayName : "your current system"}.
+              CSV export from {lane === "honeybook" || lane === "tripleseat" ? selectedProfile.displayName : "your current system"}.
               We&apos;ll keep a copy of this file with your migration history. This never connects to or logs into another platform on your behalf.
             </p>
           </div>
