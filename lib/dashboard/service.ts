@@ -30,6 +30,7 @@ import { LEAD_STATUSES } from "@/lib/leads/constants";
 import type { Lead } from "@/lib/leads/types";
 import { getCurrentToursForLeads, EMPTY_TOUR, type LeadTourInfo } from "@/lib/leads/repository";
 import { getCurrentVenue } from "@/lib/venue/service";
+import { venueToday } from "@/lib/venue/timezone";
 import type {
   ActivityItem,
   AttentionLead,
@@ -166,7 +167,11 @@ export async function getDashboardData(): Promise<DashboardData | null> {
   if (!venue.setupCompleted && !readyToInviteCouples) return null;
   const supabase = await createClient();
 
-  const today = new Date().toISOString().slice(0, 10);
+  // Venue-local calendar day, not UTC. Today's Focus vs Upcoming partitions
+  // on this string, so an Eastern venue checking the dashboard after 8pm
+  // must still see "today" as today — not tomorrow, which is what a UTC
+  // slice of Date.now() would report.
+  const today = venueToday(venue.timezone);
   const twoDaysAgoMs = Date.now() - 48 * 60 * 60 * 1000;
   const twoWeeksOut = new Date(Date.now() + 14 * 86_400_000).toISOString().slice(0, 10);
   const sixtyDaysOut = new Date(Date.now() + 60 * 86_400_000).toISOString().slice(0, 10);
@@ -175,7 +180,7 @@ export async function getDashboardData(): Promise<DashboardData | null> {
   // Auto-mark overdue (non-fatal — don't block dashboard load on failure)
   void supabase.rpc("mark_overdue_payments", { p_venue_id: venue.id });
 
-  const [leadsRes, tasksRes, activityRes, clientsRes, keyDatesRes, eventsRes, paymentsRes, staffRes] = await Promise.all([
+  const [leadsRes, tasksRes, activityRes, clientsRes, keyDatesRes, eventsRes, paymentsRes, staffRes, upcomingEventCountRes] = await Promise.all([
     supabase
       .from("leads")
       .select("*")
@@ -244,6 +249,17 @@ export async function getDashboardData(): Promise<DashboardData | null> {
       .eq("venue_id", venue.id)
       .eq("is_owner", true)
       .maybeSingle<{ full_name: string }>(),
+
+    // A true count over the same window the upcomingEvents list uses. The
+    // list is capped at 8 rows for rendering, so its .length is a page size,
+    // not a total — the Business Snapshot tile needs the real number.
+    supabase
+      .from("events")
+      .select("id", { count: "exact", head: true })
+      .eq("venue_id", venue.id)
+      .neq("status", "cancelled")
+      .gte("event_date", today)
+      .lte("event_date", sixtyDaysOut),
   ]);
 
   if (leadsRes.error) throw leadsRes.error;
@@ -454,6 +470,7 @@ export async function getDashboardData(): Promise<DashboardData | null> {
     upcomingTours,
     pipelineStages,
     totalLeads: leads.length,
+    activeLeadCount: leads.filter((l) => !CLOSED.has(l.salesStage ?? l.status)).length,
     newLeadCount: leads.filter((l) => (l.salesStage ?? l.status) === "new_inquiry").length,
     openTasks,
     openTaskCount: (tasksRes.data as DashTaskRow[]).length,
@@ -461,6 +478,7 @@ export async function getDashboardData(): Promise<DashboardData | null> {
     overduePayments,
     upcomingPayments,
     upcomingEvents,
+    upcomingEventCount: upcomingEventCountRes.count ?? upcomingEvents.length,
     recentBookings,
     upcomingKeyDates,
     totalClients: clients.length,

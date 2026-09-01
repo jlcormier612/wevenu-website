@@ -127,6 +127,13 @@ export type DashboardData = {
   upcomingTours: Lead[];
   pipelineStages: PipelineStage[];
   totalLeads: number;
+  /**
+   * Leads still in play — every lead whose stage is not booked/lost/won/
+   * cancelled. Distinct from totalLeads, which counts every lead ever
+   * created: the Dashboard's pipeline tile read totalLeads and so kept
+   * counting closed leads as pipeline.
+   */
+  activeLeadCount: number;
   newLeadCount: number;
   openTasks: TaskItem[];
   openTaskCount: number;
@@ -135,8 +142,10 @@ export type DashboardData = {
   overduePayments: DashboardPayment[];
   upcomingPayments: DashboardPayment[];
   // ---- booked clients + events ----
-  /** Upcoming events from the events table (canonical source). */
+  /** Upcoming events from the events table (canonical source). Capped at 8 rows for rendering. */
   upcomingEvents: DashboardEvent[];
+  /** True count of events in the same next-60-days window — upcomingEvents.length is a page size, not a total. */
+  upcomingEventCount: number;
   /** Recently booked clients (by booking date, from the clients table). */
   recentBookings: DashboardClient[];
   upcomingKeyDates: DashboardKeyDate[];

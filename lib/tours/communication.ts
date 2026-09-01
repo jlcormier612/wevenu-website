@@ -42,12 +42,22 @@ export type TourConfirmationParams = {
   primaryColor?: string | null;
   scheduledAt: string;
   durationMinutes: number;
+  /** IANA zone for the printed date/time. Defaults to Eastern if omitted. */
+  timezone?: string | null;
 };
+
+function formatTourWhen(scheduledAt: string, timezone?: string | null): { dateStr: string; timeStr: string } {
+  const timeZone = timezone || "America/New_York";
+  const d = new Date(scheduledAt);
+  return {
+    dateStr: d.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric", timeZone }),
+    timeStr: d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", timeZone }),
+  };
+}
 
 function buildConfirmationContent(params: TourConfirmationParams): { subject: string; text: string; html: string } {
   const tourDate = new Date(params.scheduledAt);
-  const dateStr = tourDate.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" });
-  const timeStr = tourDate.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+  const { dateStr, timeStr } = formatTourWhen(params.scheduledAt, params.timezone);
   const name = params.contactName?.split(/[\s&]+/)[0] ?? "there";
 
   const dtStart = tourDate.toISOString().replace(/[-:]/g, "").replace(/\.\d{3}Z$/, "Z");
@@ -84,6 +94,56 @@ function buildConfirmationContent(params: TourConfirmationParams): { subject: st
   ].join("\n");
 
   return { subject: `Tour confirmed — ${dateStr} at ${params.venueName}`, text, html };
+}
+
+export type TourConfirmationRequestParams = {
+  venueId: string;
+  relationshipId: string | null;
+  contactEmail: string | null;
+  contactName: string | null;
+  venueName: string;
+  primaryColor?: string | null;
+  scheduledAt: string;
+  durationMinutes: number;
+  /** tour_appointments.confirm_token — the public confirm link's only credential. */
+  confirmToken: string;
+  timezone?: string | null;
+};
+
+function buildConfirmationRequestContent(params: TourConfirmationRequestParams): { subject: string; text: string; html: string } {
+  const { dateStr, timeStr } = formatTourWhen(params.scheduledAt, params.timezone);
+  const name = params.contactName?.split(/[\s&]+/)[0] ?? "there";
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://app.wevenu.com";
+  const confirmUrl = `${baseUrl}/confirm/${params.confirmToken}`;
+
+  const text = [
+    `Hi ${name},`,
+    "",
+    `Please confirm your upcoming ${params.durationMinutes}-minute tour at ${params.venueName}:`,
+    "",
+    `📅 ${dateStr}`,
+    `🕐 ${timeStr}`,
+    `📍 ${params.venueName}`,
+    "",
+    `Confirm your tour: ${confirmUrl}`,
+    "",
+    "If you need to reschedule or have questions, just reply to this email.",
+  ].join("\n");
+
+  const html = [
+    `<p>Hi ${name},</p>`,
+    `<p>Please confirm your upcoming <strong>${params.durationMinutes}-minute tour</strong> at <strong>${params.venueName}</strong>.</p>`,
+    `<table style="border:1px solid #E5E0D9;border-radius:12px;padding:16px 20px;margin:16px 0;border-spacing:0">`,
+    `  <tr><td style="padding:4px 0;font-size:14px">📅 <strong>${dateStr}</strong></td></tr>`,
+    `  <tr><td style="padding:4px 0;font-size:14px">🕐 <strong>${timeStr}</strong></td></tr>`,
+    `  <tr><td style="padding:4px 0;font-size:14px">📍 ${params.venueName}</td></tr>`,
+    `</table>`,
+    `<p style="margin-top:16px"><a href="${confirmUrl}" style="background:${params.primaryColor ?? "#5D6F5D"};color:#fff;padding:10px 20px;border-radius:8px;text-decoration:none;display:inline-block;font-size:14px">Confirm my tour</a></p>`,
+    `<p style="color:#888;font-size:13px;margin-top:24px">If you need to reschedule, just reply to this email.</p>`,
+    `<p style="color:#888;font-size:12px">${params.venueName}</p>`,
+  ].join("\n");
+
+  return { subject: `Please confirm your tour — ${dateStr} at ${params.venueName}`, text, html };
 }
 
 async function findOrCreateConversation(client: AdminClient, venueId: string, relationshipId: string): Promise<string | null> {
@@ -137,4 +197,50 @@ export async function sendTourConfirmation(params: TourConfirmationParams): Prom
     status,
     failure_reason: failureReason,
   });
+}
+
+/**
+ * Send Confirmation Request — a deliberate, explicit action (not a side
+ * effect of booking/rescheduling), so unlike sendTourConfirmation this
+ * returns whether the send actually worked rather than being purely
+ * fire-and-forget: a coordinator who clicks "Send Confirmation Request"
+ * should learn immediately if it failed, same as any other explicit send
+ * action in this app. The record of the attempt still lands in
+ * conversation_messages either way — same durable-history pattern as every
+ * other prospect-facing email here — so relationship history is accurate
+ * regardless of delivery outcome.
+ */
+export async function sendTourConfirmationRequest(params: TourConfirmationRequestParams): Promise<{ ok: boolean; message?: string }> {
+  if (!params.contactEmail) return { ok: false, message: "This tour has no contact email on file." };
+
+  const supabase = createAdminClient();
+  const { subject, text, html } = buildConfirmationRequestContent(params);
+
+  const emailResult = await sendEmail({ to: params.contactEmail, subject, text, html });
+  const providerId = emailResult.ok && emailResult.method === "resend" ? emailResult.providerId : undefined;
+  const status = emailResult.ok && (emailResult.method === "resend" || emailResult.method === "disabled") ? "accepted" : "failed";
+  const failureReason = !emailResult.ok ? emailResult.message
+    : emailResult.method === "mailto" ? "Email isn't fully configured for this venue yet."
+    : null;
+
+  if (params.relationshipId) {
+    const conversationId = await findOrCreateConversation(supabase, params.venueId, params.relationshipId);
+    if (conversationId) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await (supabase.from("conversation_messages") as any).insert({
+        conversation_id: conversationId,
+        venue_id: params.venueId,
+        sender_type: "system",
+        channel: "email",
+        body: text,
+        body_html: html,
+        provider_id: providerId ?? null,
+        status,
+        failure_reason: failureReason,
+      });
+    }
+  }
+
+  if (status !== "accepted") return { ok: false, message: failureReason ?? "Could not send the confirmation request." };
+  return { ok: true };
 }

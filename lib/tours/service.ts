@@ -2,12 +2,12 @@ import { createClient } from "@/integrations/supabase/server";
 import { createAdminClient } from "@/integrations/supabase/admin";
 import { isSupabaseConfigured } from "@/lib/env";
 import { getCurrentVenue } from "@/lib/venue/service";
-import { getVenueTimezone, utcToVenueLocalParts } from "@/lib/venue/timezone";
+import { getVenueTimezone, utcToVenueLocalParts, venueLocalToUtcIso } from "@/lib/venue/timezone";
 import { parseCoordinatorTourAvailability, type TourAvailabilityLoad } from "@/lib/tours/availability-read";
 import type { BookingResult, CoordinatorTourResult, SimpleTourResult, TourAvailabilityException, TourAvailabilityExceptionInput, TourAvailabilityWindow, TourAvailabilityWindowInput, TourSettings, TourSlot, TourVenueInfo } from "@/lib/tours/types";
 import type { CalendarItem } from "@/lib/calendar/types";
 import { eventTypeLabel, leadDisplayName } from "@/lib/leads/constants";
-import { sendTourConfirmation } from "@/lib/tours/communication";
+import { sendTourConfirmation, sendTourConfirmationRequest } from "@/lib/tours/communication";
 import { advanceLeadSalesStageIfForward } from "@/lib/leads/service";
 import { ingestLead } from "@/lib/lead-intake/pipeline";
 import { recordNotificationStatus } from "@/lib/lead-intake/attempt-log";
@@ -27,16 +27,24 @@ export async function getTourCalendarEntries(
   venueId: string,
   start: string,
   end: string,
+  timezone?: string | null,
 ): Promise<CalendarItem[]> {
-  const [{ data }, timezone] = await Promise.all([
-    client.from("tour_appointments")
+  const tz = timezone === undefined ? await getVenueTimezone(client, venueId) : timezone;
+  // The window is venue-local calendar dates. A naive `${start}T00:00:00`
+  // filter is UTC on ECS, so an Eastern 11pm tour on the last day of the
+  // month (03:00Z the next day) would vanish from that month's Calendar.
+  const windowStart = venueLocalToUtcIso(start, "00:00", tz);
+  const [ey, em, ed] = end.split("-").map(Number);
+  const next = new Date(Date.UTC(ey, em - 1, ed + 1));
+  const nextIso = `${next.getUTCFullYear()}-${String(next.getUTCMonth() + 1).padStart(2, "0")}-${String(next.getUTCDate()).padStart(2, "0")}`;
+  const windowEnd = venueLocalToUtcIso(nextIso, "00:00", tz);
+
+  const { data } = await client.from("tour_appointments")
       .select("id, scheduled_at, lead_id, event_type, leads(first_name, last_name, partner_first_name)")
       .eq("venue_id", venueId)
       .not("status", "in", "(cancelled,completed,no_show)")
-      .gte("scheduled_at", `${start}T00:00:00`)
-      .lte("scheduled_at", `${end}T23:59:59`),
-    getVenueTimezone(client, venueId),
-  ]);
+      .gte("scheduled_at", windowStart)
+      .lt("scheduled_at", windowEnd);
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return ((data ?? []) as any[]).map((t) => {
@@ -48,7 +56,7 @@ export async function getTourCalendarEntries(
     // if extracted directly — a tour booked for 10:00 America/New_York
     // correctly stores as 14:00 UTC; displaying "14:00" without converting
     // back was the actual bug.
-    const { date, time } = utcToVenueLocalParts(t.scheduled_at as string, timezone);
+    const { date, time } = utcToVenueLocalParts(t.scheduled_at as string, tz);
     return {
       id: `tour-${t.id}`,
       type: "tour",
@@ -127,10 +135,10 @@ export async function bookTour(
   // the RPC call — book_tour still independently re-validates the key.
   const { data: venueRow } = await admin
     .from("venues")
-    .select("id")
+    .select("id, timezone")
     .eq("tour_embed_key", key)
     .eq("tour_scheduling_enabled", true)
-    .maybeSingle<{ id: string }>();
+    .maybeSingle<{ id: string; timezone: string | null }>();
 
   if (!venueRow) {
     return { ok: false, error: TOUR_BOOK_ERRORS.invalid_key };
@@ -226,6 +234,7 @@ export async function bookTour(
   void sendTourConfirmation({
     venueId, leadId, relationshipId, contactEmail, contactName,
     venueName, primaryColor: apptRow?.venues?.primary_color ?? null, scheduledAt, durationMinutes: duration,
+    timezone: venueRow.timezone,
   }).then(
     () => recordNotificationStatus(admin, outcome.attemptId, "sent"),
     (err) => { console.error("sendTourConfirmation failed:", err); void recordNotificationStatus(admin, outcome.attemptId, "failed"); },
@@ -393,7 +402,7 @@ export async function getTourAppointmentsForLead(leadId: string): Promise<import
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function mapAppointment(r: any): import("@/lib/tours/types").TourAppointment {
-  return { id: r.id, venueId: r.venue_id, leadId: r.lead_id ?? null, scheduledAt: r.scheduled_at, durationMinutes: r.duration_minutes, status: r.status, contactName: r.contact_name ?? null, contactEmail: r.contact_email ?? null, contactPhone: r.contact_phone ?? null, eventType: r.event_type ?? null, eventDate: r.event_date ?? null, guestCount: r.guest_count ?? null, notes: r.notes ?? null, assignedTo: r.assigned_to ?? null, confirmedAt: r.confirmed_at ?? null, completedAt: r.completed_at ?? null, followUpSentAt: r.follow_up_sent_at ?? null, outcome: r.outcome ?? null, cancellationReason: r.cancellation_reason ?? null, createdAt: r.created_at };
+  return { id: r.id, venueId: r.venue_id, leadId: r.lead_id ?? null, scheduledAt: r.scheduled_at, durationMinutes: r.duration_minutes, status: r.status, contactName: r.contact_name ?? null, contactEmail: r.contact_email ?? null, contactPhone: r.contact_phone ?? null, eventType: r.event_type ?? null, eventDate: r.event_date ?? null, guestCount: r.guest_count ?? null, notes: r.notes ?? null, assignedTo: r.assigned_to ?? null, confirmedAt: r.confirmed_at ?? null, completedAt: r.completed_at ?? null, followUpSentAt: r.follow_up_sent_at ?? null, outcome: r.outcome ?? null, cancellationReason: r.cancellation_reason ?? null, createdAt: r.created_at, confirmationRequestedAt: r.confirmation_requested_at ?? null, confirmationSource: r.confirmation_source ?? null };
 }
 
 // ── Coordinator Tour Scheduling — schedule/reschedule/cancel from a Lead -------
@@ -424,9 +433,9 @@ const TOUR_RPC_ERRORS: Record<string, string> = {
   invalid_status: "That's not a valid tour status.",
 };
 
-async function sendConfirmationForResult(supabase: DbClient, appointmentId: string, leadId: string, relationshipId: string | null, venueId: string, venueName: string, primaryColor: string | null, scheduledAt: string, duration: number, contactEmail: string | null, contactName: string | null) {
+async function sendConfirmationForResult(supabase: DbClient, appointmentId: string, leadId: string, relationshipId: string | null, venueId: string, venueName: string, primaryColor: string | null, scheduledAt: string, duration: number, contactEmail: string | null, contactName: string | null, timezone?: string | null) {
   void sendTourConfirmation({
-    venueId, leadId, relationshipId, contactEmail, contactName, venueName, primaryColor, scheduledAt, durationMinutes: duration,
+    venueId, leadId, relationshipId, contactEmail, contactName, venueName, primaryColor, scheduledAt, durationMinutes: duration, timezone,
   }).catch((err) => console.error("sendTourConfirmation failed:", err));
 }
 
@@ -454,7 +463,7 @@ export async function scheduleTourForLead(leadId: string, slotStart: string, not
     contactPhone: (d.contactPhone as string | null) ?? null,
   };
 
-  await sendConfirmationForResult(supabase, result.appointmentId, result.leadId, result.relationshipId, result.venueId, result.venueName, venue.primaryColor, result.scheduledAt, result.duration, result.contactEmail, result.contactName);
+  await sendConfirmationForResult(supabase, result.appointmentId, result.leadId, result.relationshipId, result.venueId, result.venueName, venue.primaryColor, result.scheduledAt, result.duration, result.contactEmail, result.contactName, venue.timezone);
 
   // Tour Scheduled is a real Sales Pipeline stage. Forward-only — never
   // regresses Booked/Lost or stages already past tour_scheduled.
@@ -496,7 +505,7 @@ export async function rescheduleTour(appointmentId: string, newSlotStart: string
     result.relationshipId = leadRow?.relationship_id ?? null;
   }
 
-  await sendConfirmationForResult(supabase, result.appointmentId, result.leadId, result.relationshipId, result.venueId, result.venueName, venue.primaryColor, result.scheduledAt, result.duration, result.contactEmail, result.contactName);
+  await sendConfirmationForResult(supabase, result.appointmentId, result.leadId, result.relationshipId, result.venueId, result.venueName, venue.primaryColor, result.scheduledAt, result.duration, result.contactEmail, result.contactName, venue.timezone);
 
   return result;
 }
@@ -537,10 +546,26 @@ export async function updateTourStatus(
 
   const patch: Record<string, unknown> = { status, updated_at: new Date().toISOString() };
   if (status === "cancelled") patch.cancellation_reason = reason?.trim() || null;
+  // A manual status change must never itself send customer communication —
+  // this is the one and only place confirmation_source ever becomes
+  // 'manual'. The other path, 'prospect_link', can only be set by
+  // confirm_tour_by_token(), never from here.
+  const becameConfirmed = status === "confirmed" && appt.status !== "confirmed";
+  if (becameConfirmed) {
+    patch.confirmed_at = new Date().toISOString();
+    patch.confirmation_source = "manual";
+  }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { error } = await (supabase.from("tour_appointments") as any).update(patch).eq("id", appointmentId).eq("venue_id", venue.id);
   if (error) return { ok: false, error: error.message };
+
+  if (becameConfirmed && appt.lead_id) {
+    void supabase.from("lead_activities").insert({
+      venue_id: venue.id, lead_id: appt.lead_id, type: "tour_confirmed", title: "Tour confirmed",
+      description: `Tour for ${appt.contact_name ?? "the prospect"} marked confirmed manually.`,
+    }).then(null, () => {});
+  }
 
   if (status === "cancelled" || status === "no_show") {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -578,6 +603,97 @@ export async function updateTourStatus(
   }
 
   return { ok: true };
+}
+
+/**
+ * Send Confirmation Request — a distinct, explicit action from Mark as
+ * Confirmed. This never changes status; it only records that a request went
+ * out (confirmation_requested_at) and sends the email. Status only becomes
+ * Confirmed when the prospect clicks their link (confirm_tour_by_token) or
+ * a staff member explicitly marks it (updateTourStatus, above).
+ */
+export async function requestTourConfirmation(appointmentId: string): Promise<SimpleTourResult> {
+  if (!isSupabaseConfigured) return { ok: false, error: "Backend not configured." };
+  const venue = await getCurrentVenue();
+  if (!venue) return { ok: false, error: "Session expired." };
+  const supabase = await createClient();
+
+  const { data: appt } = await supabase.from("tour_appointments")
+    .select("status, lead_id, contact_name, contact_email, scheduled_at, duration_minutes, confirm_token")
+    .eq("id", appointmentId).eq("venue_id", venue.id)
+    .maybeSingle<{ status: string; lead_id: string | null; contact_name: string | null; contact_email: string | null; scheduled_at: string; duration_minutes: number; confirm_token: string }>();
+  if (!appt) return { ok: false, error: "This tour could not be found." };
+  if (appt.status !== "scheduled") return { ok: false, error: "Only a Scheduled tour can have a confirmation request sent." };
+
+  let relationshipId: string | null = null;
+  if (appt.lead_id) {
+    const { data: lead } = await supabase.from("leads").select("relationship_id").eq("id", appt.lead_id).maybeSingle<{ relationship_id: string | null }>();
+    relationshipId = lead?.relationship_id ?? null;
+  }
+
+  const sendResult = await sendTourConfirmationRequest({
+    venueId: venue.id, relationshipId, contactEmail: appt.contact_email, contactName: appt.contact_name,
+    venueName: venue.name, primaryColor: venue.primaryColor, scheduledAt: appt.scheduled_at,
+    durationMinutes: appt.duration_minutes, confirmToken: appt.confirm_token, timezone: venue.timezone,
+  });
+  if (!sendResult.ok) return { ok: false, error: sendResult.message ?? "Could not send the confirmation request." };
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  await (supabase.from("tour_appointments") as any)
+    .update({ confirmation_requested_at: new Date().toISOString() })
+    .eq("id", appointmentId).eq("venue_id", venue.id);
+
+  if (appt.lead_id) {
+    void supabase.from("lead_activities").insert({
+      venue_id: venue.id, lead_id: appt.lead_id, type: "tour_confirmation_requested", title: "Confirmation request sent",
+      description: `Sent a tour confirmation request to ${appt.contact_name ?? "the prospect"}.`,
+    }).then(null, () => {});
+  }
+
+  return { ok: true };
+}
+
+// ── Public confirmation link (no auth) ----------------------------------------
+
+export type PublicTourByToken = {
+  status: "scheduled" | "confirmed" | "completed" | "cancelled" | "no_show";
+  scheduledAt: string;
+  durationMinutes: number;
+  contactName: string | null;
+  venueName: string;
+  primaryColor: string;
+  logoUrl: string | null;
+  timezone: string | null;
+};
+
+export async function getTourByConfirmToken(token: string): Promise<PublicTourByToken | null> {
+  if (!isSupabaseConfigured) return null;
+  const supabase = await createClient();
+  const { data } = await supabase.rpc("get_tour_by_confirm_token", { p_token: token });
+  if (!data || (data as Record<string, unknown>).error) return null;
+  const d = data as Record<string, unknown>;
+  return {
+    status: d.status as PublicTourByToken["status"],
+    scheduledAt: d.scheduledAt as string,
+    durationMinutes: d.durationMinutes as number,
+    contactName: (d.contactName as string | null) ?? null,
+    venueName: d.venueName as string,
+    primaryColor: d.primaryColor as string,
+    logoUrl: (d.logoUrl as string | null) ?? null,
+    timezone: (d.timezone as string | null) ?? null,
+  };
+}
+
+export async function confirmTourByToken(token: string): Promise<{ ok: boolean; error?: string; alreadyConfirmed?: boolean }> {
+  if (!isSupabaseConfigured) return { ok: false, error: "Backend not configured." };
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("confirm_tour_by_token", { p_token: token });
+  if (error) return { ok: false, error: error.message };
+  const d = data as Record<string, unknown>;
+  if (!d?.ok) {
+    return { ok: false, error: d?.error === "not_confirmable" ? "This tour is no longer available to confirm." : "This confirmation link isn't valid." };
+  }
+  return { ok: true, alreadyConfirmed: Boolean(d.alreadyConfirmed) };
 }
 
 export async function updateTourOutcome(

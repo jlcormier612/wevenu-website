@@ -73,6 +73,30 @@ export function classifyDashboardItems(data: DashboardData): ClassifiedItem[] {
     });
   }
 
+  // ── Leads domain: follow-ups scheduled for today ──────────────────────
+  // getDashboardData() has always computed this feed and nothing rendered
+  // it, so a follow-up the owner deliberately scheduled for today stayed
+  // invisible until the next morning, when it reappeared here as an overdue
+  // item via data.needsAttention. The two feeds partition cleanly by
+  // definition (followUpDate < today vs. === today, and the stale-inquiry
+  // branch requires no follow-up date at all), but they are deduplicated by
+  // lead id anyway so a change to either rule can't start double-listing.
+  const alreadyAttentioned = new Set(data.needsAttention.map((l) => l.id));
+  for (const lead of data.followupsDue) {
+    if (alreadyAttentioned.has(lead.id)) continue;
+    items.push({
+      id: `followup-${lead.id}`,
+      priority: "needs_attention_today",
+      domain: "Leads",
+      label: leadDisplayName(lead.firstName, lead.lastName, lead.partnerFirstName, lead.partnerLastName),
+      detail: lead.nextActionText ?? "Follow-up scheduled for today",
+      href: `/leads/${lead.id}`,
+      rightLabel: "Today",
+      rightSeverity: "warning",
+      sortDate: today,
+    });
+  }
+
   // ── Tasks domain: overdue tasks (Critical — a missed commitment) ──────
   for (const task of data.openTasks) {
     if (!isOverdue(task.dueDate)) continue;
@@ -140,13 +164,24 @@ export function classifyDashboardItems(data: DashboardData): ClassifiedItem[] {
   return items;
 }
 
-/** Merges every domain's future-dated Facts into one Upcoming list (architecture doc §6's own instruction: "one component," never four). */
-export function classifyUpcomingItems(data: DashboardData): ClassifiedItem[] {
+/**
+ * Every domain's date-driven Facts, merged into one stream (architecture doc
+ * §6's own instruction: "one component," never four).
+ *
+ * Deliberately NOT exported. Callers take either the today-dated slice or the
+ * strictly-future slice, which is what keeps a single fact from being rendered
+ * by two Dashboard sections at once: "what needs attention now" and "what is
+ * coming later" partition this list rather than overlapping on it.
+ */
+function classifyDatedItems(data: DashboardData): ClassifiedItem[] {
   const today = data.todayIso;
   const items: ClassifiedItem[] = [];
 
   for (const lead of data.upcomingTours) {
-    if (lead.tourDate === today) continue; // today's tours already surfaced in Today's Attention
+    // Today's tours are already published as actionable work by
+    // classifyDashboardItems, under a different id — excluded here so a tour
+    // happening today cannot arrive in the same section twice.
+    if (lead.tourDate === today) continue;
     items.push({
       id: `up-tour-${lead.id}`,
       priority: "upcoming",
@@ -201,6 +236,24 @@ export function classifyUpcomingItems(data: DashboardData): ClassifiedItem[] {
   return items.sort((a, b) => (a.sortDate ?? "9999").localeCompare(b.sortDate ?? "9999"));
 }
 
+/**
+ * The forward-looking slice: strictly later than today.
+ *
+ * Anything landing today is today's business and belongs to Today's Focus, so
+ * Upcoming no longer restates it. Previously only today's *tours* were held
+ * back, which left today's events, payments and key dates appearing in both
+ * sections at once.
+ */
+export function classifyUpcomingItems(data: DashboardData): ClassifiedItem[] {
+  const today = data.todayIso;
+  return classifyDatedItems(data).filter((i) => i.sortDate != null && i.sortDate > today);
+}
+
+/** The today-dated slice, which Today's Focus folds in alongside actionable work. */
+export function classifyTodayDatedItems(data: DashboardData): ClassifiedItem[] {
+  return classifyDatedItems(data).filter((i) => i.sortDate === data.todayIso);
+}
+
 const PRIORITY_RANK: Record<Priority, number> = { critical: 0, needs_attention_today: 1, upcoming: 2, informational: 3 };
 
 /** Priority first, then date proximity — the exact ordering rule architecture doc §5/§10 already specifies (never alphabetical, never insertion order). */
@@ -212,10 +265,20 @@ export function sortByPriority(items: ClassifiedItem[]): ClassifiedItem[] {
   });
 }
 
-/** Morning Briefing: Critical + Needs Attention Today + anything Upcoming that falls specifically today — nothing historical, nothing informational, per this phase's own §1 rule. */
+/**
+ * Today's Focus: Critical + Needs Attention Today + anything dated
+ * specifically today — nothing historical, nothing informational, per this
+ * phase's own §1 rule.
+ *
+ * Returns the full classified set rather than a fixed five. This section used
+ * to sit above a separate Today's Attention list that rendered the same
+ * classification ten deep, so the briefing could truncate safely — whatever it
+ * cut was still on screen directly below. Now that Today's Focus is the only
+ * place actionable work appears, truncating here would drop work off the
+ * Dashboard entirely, so the caller slices for display and reports the overflow.
+ */
 export function classifyBriefingItems(data: DashboardData): ClassifiedItem[] {
-  const today = data.todayIso;
-  const attention = sortByPriority(classifyDashboardItems(data));
-  const upcomingToday = classifyUpcomingItems(data).filter((i) => i.sortDate === today);
-  return sortByPriority([...attention, ...upcomingToday]).slice(0, 5);
+  const attention = classifyDashboardItems(data);
+  const datedToday = classifyTodayDatedItems(data);
+  return sortByPriority([...attention, ...datedToday]);
 }

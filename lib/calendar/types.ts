@@ -24,7 +24,13 @@ export type CalendarItem = {
   date: string;        // ISO "YYYY-MM-DD"
   title: string;
   subtitle: string | null;
-  time: string | null; // "HH:MM" if known
+  time: string | null; // "HH:MM" start, if known
+  /**
+   * "HH:MM" end, for items that have a real finish time (manual Schedule
+   * Items today). Null for all-day items and for every system-generated
+   * type that only carries a start.
+   */
+  endTime?: string | null;
   link: string;        // route to navigate to on click
   rawId?: string;      // underlying DB record id for actionable types (e.g. calendar_block)
   // Passthrough metadata (Calendar Integration Phase 3) — every mapping
@@ -56,6 +62,31 @@ export type CalendarItem = {
   // manualType is a Bookings type (wedding_event_booking/private_event).
   // Null/undefined for every other item, including every other manualType.
   convertedLeadId?: string | null;
+  /**
+   * "Related to" — the display name of the Lead/Client a manual Schedule Item
+   * is about. The ids themselves reuse the existing leadId-free passthrough
+   * fields above (clientId) plus leadId here, so filtering/linking works the
+   * same way it does for every other item type.
+   */
+  leadId?: string | null;
+  relatedName?: string | null;
+};
+
+/**
+ * The year range the Calendar accepts from a URL and offers in its month/year
+ * picker. Lives here, in the one calendar module with no server imports, so
+ * the client picker and the server-side param validation share one definition
+ * — a year reachable in the UI is always a year the resolver honours.
+ */
+export const CALENDAR_MIN_YEAR = 2020;
+export const CALENDAR_MAX_YEAR = 2040;
+
+/** One selectable target for a Schedule Item's optional "Related to" link. */
+export type ScheduleRelationOption = {
+  kind: "lead" | "client";
+  id: string;
+  name: string;
+  eventDate: string | null;
 };
 
 export type CalendarData = {

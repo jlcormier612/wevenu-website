@@ -43,7 +43,7 @@ export default async function TeamDataSettingsPage() {
           <CardTitle className="text-base">Team &amp; Permissions</CardTitle>
           <CardDescription>
             Manage who has access to your venue and what they can see and do.
-            Only the owner can invite or remove members.
+            Owners and Managers can invite or remove members.
           </CardDescription>
         </CardHeader>
         <CardContent>

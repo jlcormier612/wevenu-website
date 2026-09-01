@@ -25,6 +25,7 @@ import type {
 } from "@/lib/leads/types";
 import {
   getCoordinatorTourSlots,
+  requestTourConfirmation,
   rescheduleTour,
   scheduleTourForLead,
   updateTourStatus,
@@ -193,6 +194,13 @@ export async function updateTourStatusAction(
   reason?: string,
 ): Promise<SimpleTourResult> {
   const result = await updateTourStatus(appointmentId, status, reason);
+  if (result.ok) revalidateLead(leadId);
+  return result;
+}
+
+/** Send Confirmation Request — distinct from Mark as Confirmed (updateTourStatusAction above). Never changes status by itself. */
+export async function requestTourConfirmationAction(appointmentId: string, leadId: string): Promise<SimpleTourResult> {
+  const result = await requestTourConfirmation(appointmentId);
   if (result.ok) revalidateLead(leadId);
   return result;
 }

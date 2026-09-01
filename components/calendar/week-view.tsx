@@ -30,12 +30,16 @@ function toIso(d: Date): string {
 }
 
 export function WeekView({
-  weekStart, items, today,
+  weekStart, items, today, onEditBlock, onDeleteBlock, deletingId, deletePending,
 }: {
   /** ISO date of this week's Sunday. */
   weekStart: string;
   items: CalendarItem[];
   today: string;
+  onEditBlock?: (blockId: string) => void;
+  onDeleteBlock?: (blockId: string) => void;
+  deletingId?: string | null;
+  deletePending?: boolean;
 }) {
   const router = useRouter();
   const { filters, setFilters, filteredItems, presentTypes, staffOptions, spaceOptions } = useCalendarFilters(items, "week");
@@ -113,7 +117,11 @@ export function WeekView({
                     <Icon className="mt-0.5 h-3 w-3 shrink-0" style={{ color: meta.dotColor }} />
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-[11px] font-medium text-foreground">{item.title}</p>
-                      <p className="text-[10px] text-muted-foreground">{item.time ? formatTime(item.time) : "All day"}</p>
+                      <p className="text-[10px] text-muted-foreground">
+                        {item.time
+                          ? (item.endTime ? `${formatTime(item.time)} – ${formatTime(item.endTime)}` : formatTime(item.time))
+                          : "All day"}
+                      </p>
                     </div>
                   </Link>
                 );
@@ -128,7 +136,13 @@ export function WeekView({
         <div className="space-y-2">
           <p className="text-sm font-medium text-heading">This week, in full</p>
           <div className="space-y-2">
-            {days.flatMap((d) => d.dayItems).map((item) => <ItemRow key={item.id} item={item} showDate />)}
+            {days.flatMap((d) => d.dayItems).map((item) => (
+              <ItemRow
+                key={item.id} item={item} showDate
+                onEditBlock={onEditBlock} onDeleteBlock={onDeleteBlock}
+                deleting={!!deletePending && deletingId === item.rawId}
+              />
+            ))}
           </div>
         </div>
       )}

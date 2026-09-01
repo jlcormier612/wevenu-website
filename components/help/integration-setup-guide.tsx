@@ -26,7 +26,7 @@ export function IntegrationSetupGuideView({ guide }: { guide: SetupGuide }) {
       </header>
 
       <section className="rounded-xl border border-border bg-card p-5 shadow-sm space-y-3">
-        <h2 className="text-sm font-semibold text-foreground">Before you begin</h2>
+        <h2 className="text-sm font-semibold text-foreground">{guide.prerequisitesHeading ?? "What you should have to begin"}</h2>
         <ul className="space-y-2">
           {guide.prerequisites.map((item) => (
             <li key={item} className="flex items-start gap-2.5 text-sm text-muted-foreground">
@@ -47,7 +47,11 @@ export function IntegrationSetupGuideView({ guide }: { guide: SetupGuide }) {
 
         <div className="space-y-4">
           {guide.steps.map((step) => (
-            <article key={step.number} className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
+            <article
+              key={step.number}
+              id={step.anchor}
+              className={`overflow-hidden rounded-xl border border-border bg-card shadow-sm${step.anchor ? " scroll-mt-20" : ""}`}
+            >
               <div className="flex items-start gap-3 border-b border-border bg-muted/25 px-5 py-4">
                 <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary text-sm font-bold text-primary-foreground">
                   {step.number}

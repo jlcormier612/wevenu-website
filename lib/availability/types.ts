@@ -52,7 +52,16 @@ export type BlockReason =
   | "staff_training"
   | "other";
 
-export type RecurrenceRule = "none" | "daily" | "weekly" | "annual";
+/**
+ * The frequency half of a recurrence. The "every N" multiplier lives
+ * separately in recurrenceInterval, and the stop condition in
+ * recurrenceEndsOn / recurrenceCount — so "every 2 weeks, 10 times" is
+ * expressible without a new rule value for every combination.
+ */
+export type RecurrenceRule = "none" | "daily" | "weekly" | "monthly" | "annual";
+
+/** How a repeating schedule item stops: on a date, after N occurrences, or not at all. */
+export type RecurrenceEndMode = "never" | "on_date" | "after_count";
 
 // Calendar Manual Type Redesign — a manual entry is one of these types;
 // "Blocked Time" replaces the old single-purpose "Block" concept as just
@@ -97,6 +106,14 @@ export type CalendarBlock = {
   notes: string | null;
   recurrenceRule: RecurrenceRule;
   recurrenceEndsOn: string | null;
+  /** The "every N" multiplier for recurrenceRule. Always >= 1. */
+  recurrenceInterval: number;
+  /** Stop after this many occurrences. Mutually exclusive with recurrenceEndsOn. */
+  recurrenceCount: number | null;
+  /** Optional "Related to" — the Lead this item is about. Mutually exclusive with clientId. */
+  leadId: string | null;
+  /** Optional "Related to" — the booked Client this item is about. Mutually exclusive with leadId. */
+  clientId: string | null;
   createdAt: string;
   // Calendar Booking Placeholder — meaningful only when type is one of
   // BOOKING_SCHEDULE_TYPES; null for every other manual schedule type.
@@ -167,6 +184,13 @@ export type CalendarBlockInput = {
   notes: string;
   recurrenceRule: RecurrenceRule;
   recurrenceEndsOn: string | null;
+  /** "Every N" multiplier. Omitted/invalid values are normalized to 1 server-side. */
+  recurrenceInterval?: number;
+  /** Stop after N occurrences. Ignored when recurrenceEndsOn is set. */
+  recurrenceCount?: number | null;
+  /** Optional "Related to". At most one of these is persisted. */
+  leadId?: string | null;
+  clientId?: string | null;
   /** Only meaningful when type is one of BOOKING_SCHEDULE_TYPES; ignored otherwise. */
   eventType: string;
   clientName: string;

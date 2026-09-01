@@ -19,7 +19,17 @@ import { activePerspectiveId, applyPerspectiveLinkOverrides } from "@/components
 import { useCalendarFilters } from "@/components/calendar/use-calendar-filters";
 import type { CalendarItem } from "@/lib/calendar/types";
 
-export function DayView({ date, items, today }: { date: string; items: CalendarItem[]; today: string }) {
+export function DayView({
+  date, items, today, onEditBlock, onDeleteBlock, deletingId, deletePending,
+}: {
+  date: string;
+  items: CalendarItem[];
+  today: string;
+  onEditBlock?: (blockId: string) => void;
+  onDeleteBlock?: (blockId: string) => void;
+  deletingId?: string | null;
+  deletePending?: boolean;
+}) {
   const router = useRouter();
   const { filters, setFilters, filteredItems, presentTypes, staffOptions, spaceOptions } = useCalendarFilters(items, "day");
   const displayItems = applyPerspectiveLinkOverrides(filteredItems, activePerspectiveId(filters));
@@ -62,7 +72,13 @@ export function DayView({ date, items, today }: { date: string; items: CalendarI
         <p className="text-sm text-muted-foreground py-12 text-center">Nothing scheduled.</p>
       ) : (
         <div className="space-y-2 max-w-2xl">
-          {dayItems.map((item) => <ItemRow key={item.id} item={item} />)}
+          {dayItems.map((item) => (
+            <ItemRow
+              key={item.id} item={item}
+              onEditBlock={onEditBlock} onDeleteBlock={onDeleteBlock}
+              deleting={!!deletePending && deletingId === item.rawId}
+            />
+          ))}
         </div>
       )}
     </div>

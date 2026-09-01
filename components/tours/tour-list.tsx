@@ -79,9 +79,33 @@ function TourRow({ appt, onStatusChange }: { appt: TourAppointment; onStatusChan
         body: JSON.stringify({ appointmentId: appt.id, status: newStatus }),
       });
       const data = await res.json() as { ok: boolean; error?: string };
-      if (data.ok) { onStatusChange(appt.id, newStatus as TourAppointment["status"]); toast.success("Status updated."); }
-      else toast.error(data.error ?? "Could not update status.");
+      if (data.ok) {
+        onStatusChange(appt.id, newStatus as TourAppointment["status"]);
+        toast.success(newStatus === "confirmed" ? "Tour marked confirmed." : "Status updated.");
+      } else toast.error(data.error ?? "Could not update status.");
     } catch { toast.error("Could not update status."); }
+    finally { setUpdating(false); }
+  }
+
+  // Confirmed is reached only through an explicit action (Send Confirmation
+  // Request / Mark as Confirmed below), never a free-pick dropdown value —
+  // same shape as this codebase's own precedent for Booked in the Sales
+  // Pipeline, where a status with real meaning gets a dedicated action
+  // instead of being one more option in a generic Select.
+  async function handleMarkConfirmed() { await handleStatus("confirmed"); }
+
+  async function handleRequestConfirmation() {
+    setUpdating(true);
+    try {
+      const res = await fetch(`/api/tours/confirmation-request`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ appointmentId: appt.id }),
+      });
+      const data = await res.json() as { ok: boolean; error?: string };
+      if (data.ok) toast.success("Confirmation request sent.");
+      else toast.error(data.error ?? "Could not send the confirmation request.");
+    } catch { toast.error("Could not send the confirmation request."); }
     finally { setUpdating(false); }
   }
 
@@ -113,16 +137,28 @@ function TourRow({ appt, onStatusChange }: { appt: TourAppointment; onStatusChan
         {updating ? (
           <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
         ) : (
-          <Select value={appt.status} onValueChange={handleStatus} items={STATUS_LABELS}>
-            <SelectTrigger className="h-7 w-32 text-xs"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="scheduled">Scheduled</SelectItem>
-              <SelectItem value="confirmed">Confirmed</SelectItem>
-              <SelectItem value="completed">Completed</SelectItem>
-              <SelectItem value="cancelled">Cancelled</SelectItem>
-              <SelectItem value="no_show">No Show</SelectItem>
-            </SelectContent>
-          </Select>
+          <>
+            {appt.status === "scheduled" && (
+              <>
+                <Button variant="ghost" size="sm" className="h-7 text-xs px-2" onClick={() => void handleRequestConfirmation()}>
+                  Send Confirmation Request
+                </Button>
+                <Button variant="ghost" size="sm" className="h-7 text-xs px-2" onClick={() => void handleMarkConfirmed()}>
+                  Mark as Confirmed
+                </Button>
+              </>
+            )}
+            {/* Confirmed is never a free-pick option here — see handleMarkConfirmed above. */}
+            <Select value={appt.status} onValueChange={handleStatus} items={STATUS_LABELS}>
+              <SelectTrigger className="h-7 w-32 text-xs"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="scheduled">Scheduled</SelectItem>
+                <SelectItem value="completed">Completed</SelectItem>
+                <SelectItem value="cancelled">Cancelled</SelectItem>
+                <SelectItem value="no_show">No Show</SelectItem>
+              </SelectContent>
+            </Select>
+          </>
         )}
         {appt.leadId && (
           <Button size="sm" variant="ghost" className="h-7 w-7 p-0" render={<Link href={`/leads/${appt.leadId}`} />}>

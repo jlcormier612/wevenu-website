@@ -16,7 +16,7 @@ import { CalendarClock, ChevronLeft, ChevronRight, Clock, Loader2 } from "lucide
 import { toast } from "sonner";
 
 import {
-  getCoordinatorTourSlotsAction, rescheduleTourAction, scheduleTourAction, updateTourStatusAction,
+  getCoordinatorTourSlotsAction, requestTourConfirmationAction, rescheduleTourAction, scheduleTourAction, updateTourStatusAction,
 } from "@/app/(app)/leads/[id]/actions";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -230,7 +230,15 @@ function AppointmentRow({ appt, leadId, now, onReschedule, onChanged }: { appt: 
     setPending(true);
     const result = await updateTourStatusAction(appt.id, leadId, status, reason);
     setPending(false);
-    if (result.ok) { toast.success("Tour updated."); onChanged(); }
+    if (result.ok) { toast.success(status === "confirmed" ? "Tour marked confirmed." : "Tour updated."); onChanged(); }
+    else toast.error(result.error);
+  }
+
+  async function sendConfirmationRequest() {
+    setPending(true);
+    const result = await requestTourConfirmationAction(appt.id, leadId);
+    setPending(false);
+    if (result.ok) { toast.success("Confirmation request sent."); onChanged(); }
     else toast.error(result.error);
   }
 
@@ -246,6 +254,11 @@ function AppointmentRow({ appt, leadId, now, onReschedule, onChanged }: { appt: 
         {appt.status === "cancelled" && appt.cancellationReason && (
           <p className="text-xs text-muted-foreground mt-0.5">Reason: {appt.cancellationReason}</p>
         )}
+        {appt.status === "scheduled" && appt.confirmationRequestedAt && (
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Confirmation requested {new Date(appt.confirmationRequestedAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })} — awaiting reply
+          </p>
+        )}
       </div>
       <div className="flex items-center gap-1.5 flex-wrap">
         <span className={`text-[11px] font-semibold px-2 py-1 rounded-full ${meta.className}`}>{meta.label}</span>
@@ -253,7 +266,10 @@ function AppointmentRow({ appt, leadId, now, onReschedule, onChanged }: { appt: 
           <>
             <Button variant="ghost" size="sm" disabled={pending} onClick={() => onReschedule(appt.id)}>Reschedule</Button>
             {appt.status === "scheduled" && (
-              <Button variant="ghost" size="sm" disabled={pending} onClick={() => void setStatus("confirmed")}>Confirm</Button>
+              <>
+                <Button variant="ghost" size="sm" disabled={pending} onClick={() => void sendConfirmationRequest()}>Send Confirmation Request</Button>
+                <Button variant="ghost" size="sm" disabled={pending} onClick={() => void setStatus("confirmed")}>Mark as Confirmed</Button>
+              </>
             )}
             {isPast && (
               <>

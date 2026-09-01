@@ -23,6 +23,18 @@ export async function getVenueTimezone(client: any, venueId: string): Promise<st
   return (data as { timezone: string | null } | null)?.timezone ?? null;
 }
 
+/**
+ * Today's calendar date at the venue, as "YYYY-MM-DD".
+ *
+ * `new Date().toISOString().slice(0, 10)` answers "what day is it in UTC,"
+ * which on a UTC-deployed server is a different day from the venue's own for
+ * part of every evening. Anything that decides today vs. upcoming vs. overdue
+ * has to ask the venue's clock, not the process's.
+ */
+export function venueToday(timezone: string | null, now: Date = new Date()): string {
+  return utcToVenueLocalParts(now.toISOString(), timezone).date;
+}
+
 /** A stored UTC instant, resolved to the venue's own local date/time for display. */
 export function utcToVenueLocalParts(isoTimestamp: string, timezone: string | null): { date: string; time: string } {
   const tz = timezone || DEFAULT_TIMEZONE;

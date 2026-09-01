@@ -8,7 +8,9 @@
  * months a given window actually touches and merging the results.
  */
 import { getCalendarData } from "@/lib/calendar/service";
-import type { CalendarItem } from "@/lib/calendar/types";
+import { CALENDAR_MAX_YEAR, CALENDAR_MIN_YEAR, type CalendarItem } from "@/lib/calendar/types";
+import { getCurrentVenue } from "@/lib/venue/service";
+import { venueToday } from "@/lib/venue/timezone";
 
 export type ViewMode = "month" | "week" | "day" | "agenda";
 
@@ -38,18 +40,26 @@ function monthOf(dateIso: string): { year: number; month: number } {
   return { year: y, month: m };
 }
 
-function safeYearMonth(yearParam: string | undefined, monthParam: string | undefined, now: Date): { year: number; month: number } {
-  const year = Number(yearParam ?? now.getFullYear());
-  const month = Number(monthParam ?? now.getMonth() + 1);
+/** Defaults come from the venue's own today, so an out-of-range param can't fall back to the server's month. */
+function safeYearMonth(yearParam: string | undefined, monthParam: string | undefined, todayIso: string): { year: number; month: number } {
+  const [defaultYear, defaultMonth] = todayIso.split("-").map(Number);
+  const year = Number(yearParam ?? defaultYear);
+  const month = Number(monthParam ?? defaultMonth);
   return {
-    year: Number.isFinite(year) && year >= 2020 && year <= 2040 ? year : now.getFullYear(),
-    month: Number.isFinite(month) && month >= 1 && month <= 12 ? month : now.getMonth() + 1,
+    year: Number.isFinite(year) && year >= CALENDAR_MIN_YEAR && year <= CALENDAR_MAX_YEAR ? year : defaultYear,
+    month: Number.isFinite(month) && month >= 1 && month <= 12 ? month : defaultMonth,
   };
 }
 
 export async function resolveCalendarView(params: CalendarViewParams) {
   const now = new Date();
-  const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+  // "Today" is the venue's calendar day, not the server's. This drove which
+  // cell the Calendar highlights and which day it opens on, so on a
+  // UTC-deployed server an Eastern venue could open the Calendar in the
+  // evening and land on tomorrow. getCurrentVenue() is request-cached, so
+  // this adds no query to a render that already resolves the venue.
+  const venue = await getCurrentVenue();
+  const today = venueToday(venue?.timezone ?? null, now);
   const view: ViewMode = (["month", "week", "day", "agenda"] as const).includes(params.view as ViewMode) ? (params.view as ViewMode) : "month";
 
   let items: CalendarItem[];
@@ -89,7 +99,7 @@ export async function resolveCalendarView(params: CalendarViewParams) {
     const data = await getCalendarData(dy, dm);
     items = data.items;
   } else if (view === "agenda") {
-    ({ year: safeYear, month: safeMonth } = safeYearMonth(params.year, params.month, now));
+    ({ year: safeYear, month: safeMonth } = safeYearMonth(params.year, params.month, today));
     // Rolling ~60-day upcoming window: current month plus next.
     const data1 = await getCalendarData(safeYear, safeMonth);
     const nextMonth = safeMonth === 12 ? 1 : safeMonth + 1;
@@ -97,7 +107,7 @@ export async function resolveCalendarView(params: CalendarViewParams) {
     const data2 = await getCalendarData(nextYear, nextMonth);
     items = mergeItems(data1.items, data2.items);
   } else {
-    ({ year: safeYear, month: safeMonth } = safeYearMonth(params.year, params.month, now));
+    ({ year: safeYear, month: safeMonth } = safeYearMonth(params.year, params.month, today));
     const data = await getCalendarData(safeYear, safeMonth);
     items = data.items;
   }

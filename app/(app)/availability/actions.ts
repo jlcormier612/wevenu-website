@@ -11,14 +11,17 @@ import {
   deleteBlock_,
   deleteHold_,
   deleteSpace_,
+  getBlock,
   markBlockConverted_,
   releaseHold,
   saveCapacityRules,
+  updateBlock_,
   updateSpace_,
 } from "@/lib/availability/service";
 import type {
   AvailabilityActionResult,
   AvailabilityStatus,
+  CalendarBlock,
   CalendarBlockInput,
   CreateHoldResult,
   CreateSpaceResult,
@@ -78,6 +81,17 @@ export async function createBlockAction(input: CalendarBlockInput): Promise<{ ok
   const result = await createBlock(input);
   if (result.ok) revalidatePath("/calendar");
   return result;
+}
+
+export async function updateBlockAction(blockId: string, input: CalendarBlockInput): Promise<AvailabilityActionResult> {
+  const result = await updateBlock_(blockId, input);
+  if (result.ok) revalidatePath("/calendar");
+  return result;
+}
+
+/** Loads one schedule item so the Calendar edit form can open pre-filled. Venue-scoped by getBlock itself. */
+export async function getBlockAction(blockId: string): Promise<CalendarBlock | null> {
+  return getBlock(blockId);
 }
 
 export async function deleteBlockAction(blockId: string): Promise<AvailabilityActionResult> {

@@ -12,10 +12,14 @@ import Link from "next/link";
 import {
   Ban, CalendarClock, CalendarDays, Clock, ClipboardList, DollarSign,
   FileClock, FileSignature, Footprints, GanttChart, Handshake, ListTodo, MapPin,
-  MoreHorizontal, Phone, Star, Trash2, User, Users, Utensils,
+  MoreHorizontal, Pencil, Phone, Star, Trash2, User, Users, Utensils,
 } from "lucide-react";
 
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
 import type { CalendarItem, CalendarItemType } from "@/lib/calendar/types";
+import { CALENDAR_MAX_YEAR, CALENDAR_MIN_YEAR } from "@/lib/calendar/types";
 import { isBookingPlaceholder } from "@/lib/availability/types";
 import type { ManualScheduleType } from "@/lib/availability/types";
 import { activePerspectiveId, PERSPECTIVES } from "@/components/calendar/perspectives";
@@ -98,10 +102,12 @@ export function formatTime(hhmm: string | null): string {
 // delete affordance for the one editable type (calendar_block).
 
 export function ItemRow({
-  item, onDeleteBlock, deleting, showDate,
+  item, onDeleteBlock, onEditBlock, deleting, showDate,
 }: {
   item: CalendarItem;
   onDeleteBlock?: (blockId: string) => void;
+  /** Manual Schedule Items are the one editable type; omitted on read-only surfaces (print, Booking Schedule). */
+  onEditBlock?: (blockId: string) => void;
   deleting?: boolean;
   /** Agenda/Booking Schedule span many days — show each row's own date. */
   showDate?: boolean;
@@ -135,9 +141,13 @@ export function ItemRow({
               {new Date(item.date + "T12:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric" })}
             </span>
           )}
+          {/* A start with no end read as a point in time even when the item
+              genuinely occupied 09:00-17:00, so an end time is shown as a
+              range whenever the item carries one. */}
           {item.time && (
             <span className="flex items-center gap-0.5 text-xs text-muted-foreground">
-              <Clock className="h-3 w-3" />{formatTime(item.time)}
+              <Clock className="h-3 w-3" />
+              {item.endTime ? `${formatTime(item.time)} – ${formatTime(item.endTime)}` : formatTime(item.time)}
             </span>
           )}
         </div>
@@ -158,7 +168,7 @@ export function ItemRow({
     </>
   );
 
-  if (isBlock && !isConverted && item.rawId && onDeleteBlock) {
+  if (isBlock && !isConverted && item.rawId && (onDeleteBlock || onEditBlock)) {
     return (
       <div className="flex items-start gap-3 rounded-lg border border-border bg-card p-3">
         {inner}
@@ -171,15 +181,33 @@ export function ItemRow({
               Convert to Booking
             </Link>
           )}
-          <button
-            type="button"
-            onClick={() => onDeleteBlock(item.rawId!)}
-            disabled={deleting}
-            className="shrink-0 rounded p-1 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
-            title="Delete schedule item"
-          >
-            <Trash2 className="h-3.5 w-3.5" />
-          </button>
+          {/* Until now a manual item could only be created or deleted, so
+              correcting a typo or a time meant deleting and re-entering it —
+              losing the item's own history and any relationship set on it. */}
+          {onEditBlock && (
+            <button
+              type="button"
+              onClick={() => onEditBlock(item.rawId!)}
+              disabled={deleting}
+              className="shrink-0 rounded p-1 text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors"
+              title="Edit schedule item"
+              aria-label="Edit schedule item"
+            >
+              <Pencil className="h-3.5 w-3.5" />
+            </button>
+          )}
+          {onDeleteBlock && (
+            <button
+              type="button"
+              onClick={() => onDeleteBlock(item.rawId!)}
+              disabled={deleting}
+              className="shrink-0 rounded p-1 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+              title="Delete schedule item"
+              aria-label="Delete schedule item"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+            </button>
+          )}
         </div>
       </div>
     );
@@ -322,6 +350,62 @@ export function PerspectiveSwitcher({
           {p.label}
         </button>
       ))}
+    </div>
+  );
+}
+
+const MONTH_NAMES = [
+  "January", "February", "March", "April", "May", "June",
+  "July", "August", "September", "October", "November", "December",
+];
+
+const YEAR_OPTIONS = Array.from(
+  { length: CALENDAR_MAX_YEAR - CALENDAR_MIN_YEAR + 1 },
+  (_, i) => CALENDAR_MIN_YEAR + i,
+);
+
+/**
+ * Jump straight to a distant month/year instead of walking there one
+ * chevron-click at a time. The year range is the same constant the server
+ * param validator uses, so every year offered here is one the resolver honours.
+ */
+export function MonthYearPicker({
+  year, month, onChange,
+}: {
+  year: number;
+  month: number;
+  onChange: (year: number, month: number) => void;
+}) {
+  return (
+    <div className="flex items-center gap-1.5">
+      <Select
+        value={String(month)}
+        onValueChange={(v) => onChange(year, Number(v))}
+        items={Object.fromEntries(MONTH_NAMES.map((m, i) => [String(i + 1), m]))}
+      >
+        <SelectTrigger className="h-9 w-[9.5rem]" aria-label="Month">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          {MONTH_NAMES.map((m, i) => (
+            <SelectItem key={m} value={String(i + 1)}>{m}</SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+      <Select
+        value={String(year)}
+        onValueChange={(v) => onChange(Number(v), month)}
+        items={Object.fromEntries(YEAR_OPTIONS.map((y) => [String(y), String(y)]))}
+      >
+        <SelectTrigger className="h-9 w-[6rem]" aria-label="Year">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          {YEAR_OPTIONS.map((y) => (
+            <SelectItem key={y} value={String(y)}>{y}</SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
     </div>
   );
 }

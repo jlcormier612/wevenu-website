@@ -15,20 +15,24 @@ import { useRouter } from "next/navigation";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { FilterBar, ItemRow, PerspectiveSwitcher } from "@/components/calendar/calendar-shared";
+import { FilterBar, ItemRow, MonthYearPicker, PerspectiveSwitcher } from "@/components/calendar/calendar-shared";
 import { activePerspectiveId, applyPerspectiveLinkOverrides } from "@/components/calendar/perspectives";
 import { useCalendarFilters } from "@/components/calendar/use-calendar-filters";
 import type { CalendarItem } from "@/lib/calendar/types";
 import { cn } from "@/lib/utils";
 
-const MONTH_NAMES = [
-  "January", "February", "March", "April", "May", "June",
-  "July", "August", "September", "October", "November", "December",
-];
-
 export function AgendaView({
-  items, today, year, month,
-}: { items: CalendarItem[]; today: string; year: number; month: number }) {
+  items, today, year, month, onEditBlock, onDeleteBlock, deletingId, deletePending,
+}: {
+  items: CalendarItem[];
+  today: string;
+  year: number;
+  month: number;
+  onEditBlock?: (blockId: string) => void;
+  onDeleteBlock?: (blockId: string) => void;
+  deletingId?: string | null;
+  deletePending?: boolean;
+}) {
   const router = useRouter();
   const { filters, setFilters, filteredItems, presentTypes, staffOptions, spaceOptions } = useCalendarFilters(items, "agenda");
   const displayItems = applyPerspectiveLinkOverrides(filteredItems, activePerspectiveId(filters));
@@ -45,8 +49,8 @@ export function AgendaView({
     router.push(`/calendar?view=agenda&year=${newYear}&month=${newMonth}`);
   }
 
-  const now = new Date();
-  const isCurrentWindow = year === now.getFullYear() && month === now.getMonth() + 1;
+  const [todayYear, todayMonth] = today.split("-").map(Number);
+  const isCurrentWindow = year === todayYear && month === todayMonth;
 
   const upcoming = displayItems.filter((i) => i.date >= today);
   const byDate = React.useMemo(() => {
@@ -65,15 +69,17 @@ export function AgendaView({
           <Button type="button" variant="outline" size="icon" onClick={() => navigate(-1)} aria-label="Previous month">
             <ChevronLeft className="h-4 w-4" />
           </Button>
-          <h2 className="font-heading text-lg font-medium text-heading min-w-[160px] text-center">
-            {MONTH_NAMES[month - 1]} {year}
-          </h2>
+          <MonthYearPicker
+            year={year}
+            month={month}
+            onChange={(y, m) => router.push(`/calendar?view=agenda&year=${y}&month=${m}`)}
+          />
           <Button type="button" variant="outline" size="icon" onClick={() => navigate(1)} aria-label="Next month">
             <ChevronRight className="h-4 w-4" />
           </Button>
         </div>
         {!isCurrentWindow && (
-          <Button type="button" variant="ghost" size="sm" onClick={() => router.push(`/calendar?view=agenda&year=${now.getFullYear()}&month=${now.getMonth() + 1}`)}>
+          <Button type="button" variant="ghost" size="sm" onClick={() => router.push(`/calendar?view=agenda&year=${todayYear}&month=${todayMonth}`)}>
             Today
           </Button>
         )}
@@ -97,7 +103,13 @@ export function AgendaView({
                   {date === today ? `Today — ${label}` : label}
                 </p>
                 <div className="space-y-2">
-                  {dateItems.map((item) => <ItemRow key={item.id} item={item} />)}
+                  {dateItems.map((item) => (
+                    <ItemRow
+                      key={item.id} item={item}
+                      onEditBlock={onEditBlock} onDeleteBlock={onDeleteBlock}
+                      deleting={!!deletePending && deletingId === item.rawId}
+                    />
+                  ))}
                 </div>
               </div>
             );

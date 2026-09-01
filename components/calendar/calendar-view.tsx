@@ -10,7 +10,7 @@ import {
   Plus,
 } from "lucide-react";
 
-import { createBlockAction, deleteBlockAction } from "@/app/(app)/availability/actions";
+import { createBlockAction, deleteBlockAction, getBlockAction, updateBlockAction } from "@/app/(app)/availability/actions";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -18,15 +18,15 @@ import { Label } from "@/components/ui/label";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { Separator } from "@/components/ui/separator";
 import { BLOCK_REASONS, MANUAL_SCHEDULE_TYPE_OPTIONS } from "@/lib/availability/constants";
 import { MANUAL_SCHEDULE_TYPE_GROUPS, isBookingPlaceholder } from "@/lib/availability/types";
-import type { ManualScheduleType } from "@/lib/availability/types";
+import type { ManualScheduleType, RecurrenceEndMode, RecurrenceRule } from "@/lib/availability/types";
 import { EVENT_TYPES } from "@/lib/leads/constants";
 import { toast } from "sonner";
-import type { CalendarItem, CalendarItemType } from "@/lib/calendar/types";
+import { describeRecurrence } from "@/lib/calendar/recurrence";
+import type { CalendarItem, CalendarItemType, ScheduleRelationOption } from "@/lib/calendar/types";
 import { cn } from "@/lib/utils";
-import { FilterBar, formatTime, ItemRow, MANUAL_TYPE_META, PerspectiveSwitcher, resolveItemMeta, TYPE_META } from "@/components/calendar/calendar-shared";
+import { FilterBar, formatTime, ItemRow, MANUAL_TYPE_META, MonthYearPicker, PerspectiveSwitcher, resolveItemMeta, TYPE_META } from "@/components/calendar/calendar-shared";
 import { activePerspectiveId, applyPerspectiveLinkOverrides } from "@/components/calendar/perspectives";
 import { useCalendarFilters } from "@/components/calendar/use-calendar-filters";
 import { WeekView } from "@/components/calendar/week-view";
@@ -71,6 +71,28 @@ function ViewSwitcher({ current, onChange }: { current: "month" | "week" | "day"
     </div>
   );
 }
+
+// Recurrence vocabulary. The four presets are the ones the form has always
+// offered; "custom" is a UI mode, not a stored rule — what gets persisted is
+// always a real frequency plus an interval.
+const RECURRENCE_CUSTOM = "custom";
+const RECURRENCE_PRESETS: Record<string, string> = {
+  none: "Does not repeat",
+  daily: "Every day",
+  weekly: "Every week (same day)",
+  monthly: "Every month (same date)",
+  annual: "Every year (same date)",
+  [RECURRENCE_CUSTOM]: "Custom…",
+};
+const RECURRENCE_UNITS: Record<string, string> = {
+  daily: "days", weekly: "weeks", monthly: "months", annual: "years",
+};
+const RECURRENCE_END_MODES: Record<string, string> = {
+  never: "Never", on_date: "On a date", after_count: "After a number of times",
+};
+
+/** Sentinel for "no relationship" — Select cannot hold an empty-string value. */
+const NO_RELATION = "__none__";
 
 // ---- Calendar grid ----------------------------------------------------------
 
@@ -174,24 +196,16 @@ function CalendarGrid({
 
 // ---- Day detail panel -------------------------------------------------------
 
-function DayDetail({ date, items, onBlockDeleted }: { date: string | null; items: CalendarItem[]; onBlockDeleted: () => void }) {
-  const [deletingId, setDeletingId] = React.useState<string | null>(null);
-  const [deletePending, startDelete] = React.useTransition();
-
-  function handleDeleteBlock(blockId: string) {
-    setDeletingId(blockId);
-    startDelete(async () => {
-      const result = await deleteBlockAction(blockId);
-      if (result.ok) {
-        toast.success("Schedule item removed.");
-        onBlockDeleted();
-      } else {
-        toast.error("Could not remove schedule item.");
-      }
-      setDeletingId(null);
-    });
-  }
-
+function DayDetail({
+  date, items, onDeleteBlock, onEditBlock, deletingId, deletePending,
+}: {
+  date: string | null;
+  items: CalendarItem[];
+  onDeleteBlock: (blockId: string) => void;
+  onEditBlock?: (blockId: string) => void;
+  deletingId: string | null;
+  deletePending: boolean;
+}) {
   if (!date) {
     return (
       <div className="flex flex-col items-center justify-center py-12 text-center">
@@ -216,7 +230,7 @@ function DayDetail({ date, items, onBlockDeleted }: { date: string | null; items
         <div className="space-y-2">
           {dateItems.map((item) => (
             <ItemRow
-              key={item.id} item={item} onDeleteBlock={handleDeleteBlock}
+              key={item.id} item={item} onDeleteBlock={onDeleteBlock} onEditBlock={onEditBlock}
               deleting={deletePending && deletingId === item.rawId}
             />
           ))}
@@ -270,6 +284,7 @@ export function CalendarView({
   dayDate,
   items,
   today,
+  relationOptions = [],
 }: {
   view?: "month" | "week" | "day" | "agenda";
   year: number;
@@ -278,6 +293,8 @@ export function CalendarView({
   dayDate?: string;
   items: CalendarItem[];
   today: string;
+  /** Leads/Clients a Schedule Item can be "Related to". Empty is a valid state (a brand-new venue). */
+  relationOptions?: ScheduleRelationOption[];
 }) {
   const router = useRouter();
   const { filters, setFilters, filteredItems, presentTypes, staffOptions, spaceOptions } = useCalendarFilters(items, "month");
@@ -296,8 +313,22 @@ export function CalendarView({
   const [blockIsAllDay, setBlockIsAllDay] = React.useState(true);
   const [blockStartTime, setBlockStartTime] = React.useState("09:00");
   const [blockEndTime, setBlockEndTime] = React.useState("17:00");
-  const [blockRecurrence, setBlockRecurrence] = React.useState<string>("none");
+  // Recurrence is now frequency + interval + one end condition, rather than a
+  // fixed four-item list. The simple presets still map onto interval 1, so
+  // "Every week" is unchanged for anyone who never opens Custom.
+  const [blockRecurrence, setBlockRecurrence] = React.useState<RecurrenceRule>("none");
+  const [blockRecurrenceCustom, setBlockRecurrenceCustom] = React.useState(false);
+  const [blockRecurrenceInterval, setBlockRecurrenceInterval] = React.useState("1");
+  const [blockRecurrenceEndMode, setBlockRecurrenceEndMode] = React.useState<RecurrenceEndMode>("never");
   const [blockRecurrenceEnd, setBlockRecurrenceEnd] = React.useState("");
+  const [blockRecurrenceCount, setBlockRecurrenceCount] = React.useState("10");
+  // "Related to" — one picker over both Leads and Clients, stored as
+  // "lead:<id>" / "client:<id>" so a single <Select> can span both without a
+  // second control (same composite-value idiom as Timeline's Related Items).
+  const [blockRelatedTo, setBlockRelatedTo] = React.useState("");
+  // Set while editing an existing item; null while creating a new one.
+  const [editingBlockId, setEditingBlockId] = React.useState<string | null>(null);
+  const [loadingBlock, setLoadingBlock] = React.useState(false);
   // Calendar Booking Placeholder — only read/sent when blockType is a
   // Bookings type (isBookingPlaceholder); every other Schedule Item leaves
   // these untouched and unsent.
@@ -306,41 +337,141 @@ export function CalendarView({
   const [blockGuestCount, setBlockGuestCount] = React.useState("");
   const [blockEstimatedRevenue, setBlockEstimatedRevenue] = React.useState("");
   const [blockPending, startBlock] = React.useTransition();
+  const [deletingId, setDeletingId] = React.useState<string | null>(null);
+  const [deletePending, startDelete] = React.useTransition();
+  const formRef = React.useRef<HTMLDivElement>(null);
 
-  function resetBlockForm() {
-    setBlockTitle(""); setBlockType("tour"); setBlockReason("other"); setBlockStart(today); setBlockEnd(today);
-    setBlockIsAllDay(true); setBlockStartTime("09:00"); setBlockEndTime("17:00");
-    setBlockRecurrence("none"); setBlockRecurrenceEnd("");
-    setBlockEventType("wedding"); setBlockClientName(""); setBlockGuestCount(""); setBlockEstimatedRevenue("");
+  function defaultFormDate() {
+    if (view === "day") return dayDate || today;
+    if (selectedDate) return selectedDate;
+    return today;
   }
 
-  function handleAddBlock() {
+  function resetBlockForm() {
+    const date = defaultFormDate();
+    setBlockTitle(""); setBlockType("tour"); setBlockReason("other"); setBlockStart(date); setBlockEnd(date);
+    setBlockIsAllDay(true); setBlockStartTime("09:00"); setBlockEndTime("17:00");
+    setBlockRecurrence("none"); setBlockRecurrenceCustom(false); setBlockRecurrenceInterval("1");
+    setBlockRecurrenceEndMode("never"); setBlockRecurrenceEnd(""); setBlockRecurrenceCount("10");
+    setBlockRelatedTo("");
+    setBlockEventType("wedding"); setBlockClientName(""); setBlockGuestCount(""); setBlockEstimatedRevenue("");
+    setEditingBlockId(null);
+  }
+
+  /** The recurrence half of the payload, shared by create and update. */
+  function recurrencePayload() {
+    const repeats = blockRecurrence !== "none";
+    const endsOn = repeats && blockRecurrenceEndMode === "on_date" && blockRecurrenceEnd ? blockRecurrenceEnd : null;
+    const count = repeats && blockRecurrenceEndMode === "after_count" && blockRecurrenceCount
+      ? Math.max(1, parseInt(blockRecurrenceCount, 10) || 1)
+      : null;
+    return {
+      recurrenceRule: blockRecurrence,
+      recurrenceEndsOn: endsOn,
+      recurrenceCount: endsOn ? null : count,
+      recurrenceInterval: repeats ? Math.max(1, parseInt(blockRecurrenceInterval, 10) || 1) : 1,
+    };
+  }
+
+  function blockPayload() {
+    const [relKind, relId] = blockRelatedTo ? blockRelatedTo.split(/:(.+)/) : ["", ""];
+    return {
+      title: blockTitle.trim(),
+      type: blockType,
+      reason: blockType === "blocked_time" ? (blockReason as import("@/lib/availability/types").BlockReason) : null,
+      startDate: blockStart,
+      endDate: blockEnd || blockStart,
+      isAllDay: blockIsAllDay,
+      startTime: blockIsAllDay ? "" : blockStartTime,
+      endTime: blockIsAllDay ? "" : blockEndTime,
+      notes: "",
+      ...recurrencePayload(),
+      leadId: relKind === "lead" ? relId : null,
+      clientId: relKind === "client" ? relId : null,
+      eventType: blockEventType,
+      clientName: blockClientName,
+      guestCount: blockGuestCount,
+      estimatedRevenue: blockEstimatedRevenue,
+    };
+  }
+
+  function handleDeleteBlock(blockId: string) {
+    setDeletingId(blockId);
+    startDelete(async () => {
+      const result = await deleteBlockAction(blockId);
+      if (result.ok) {
+        toast.success("Schedule item removed.");
+        router.refresh();
+      } else {
+        toast.error("Could not remove schedule item.");
+      }
+      setDeletingId(null);
+    });
+  }
+
+  /** Opens the form pre-filled from an existing item. */
+  function handleEditBlock(blockId: string) {
+    setLoadingBlock(true);
+    setShowBlockForm(true);
+    setEditingBlockId(blockId);
+    requestAnimationFrame(() => formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }));
+    void (async () => {
+      const block = await getBlockAction(blockId);
+      setLoadingBlock(false);
+      if (!block) {
+        toast.error("Could not load that schedule item.");
+        setShowBlockForm(false);
+        setEditingBlockId(null);
+        return;
+      }
+      setBlockTitle(block.title);
+      setBlockType(block.type);
+      setBlockReason(block.reason ?? "other");
+      setBlockStart(block.startDate);
+      setBlockEnd(block.endDate);
+      setBlockIsAllDay(block.isAllDay);
+      setBlockStartTime(block.startTime ?? "09:00");
+      setBlockEndTime(block.endTime ?? "17:00");
+      setBlockRecurrence(block.recurrenceRule);
+      setBlockRecurrenceInterval(String(block.recurrenceInterval || 1));
+      // Anything that isn't a plain every-one series opens with Custom already
+      // expanded — otherwise editing a "every 2 weeks" item would show it as
+      // "Every week" and quietly rewrite the interval on save.
+      setBlockRecurrenceCustom(
+        block.recurrenceRule !== "none" && (block.recurrenceInterval > 1 || block.recurrenceCount != null),
+      );
+      setBlockRecurrenceEndMode(
+        block.recurrenceEndsOn ? "on_date" : block.recurrenceCount != null ? "after_count" : "never",
+      );
+      setBlockRecurrenceEnd(block.recurrenceEndsOn ?? "");
+      setBlockRecurrenceCount(String(block.recurrenceCount ?? 10));
+      setBlockRelatedTo(block.leadId ? `lead:${block.leadId}` : block.clientId ? `client:${block.clientId}` : "");
+      setBlockEventType(block.eventType ?? "wedding");
+      setBlockClientName(block.clientName ?? "");
+      setBlockGuestCount(block.guestCount != null ? String(block.guestCount) : "");
+      setBlockEstimatedRevenue(block.estimatedRevenue != null ? String(block.estimatedRevenue) : "");
+    })();
+  }
+
+  function handleSaveBlock() {
     if (!blockTitle.trim() || !blockStart) return;
     startBlock(async () => {
-      const result = await createBlockAction({
-        title: blockTitle.trim(),
-        type: blockType,
-        reason: blockType === "blocked_time" ? (blockReason as import("@/lib/availability/types").BlockReason) : null,
-        startDate: blockStart,
-        endDate: blockEnd || blockStart,
-        isAllDay: blockIsAllDay,
-        startTime: blockIsAllDay ? "" : blockStartTime,
-        endTime: blockIsAllDay ? "" : blockEndTime,
-        notes: "",
-        recurrenceRule: blockRecurrence as import("@/lib/availability/types").RecurrenceRule,
-        recurrenceEndsOn: blockRecurrence !== "none" && blockRecurrenceEnd ? blockRecurrenceEnd : null,
-        eventType: blockEventType,
-        clientName: blockClientName,
-        guestCount: blockGuestCount,
-        estimatedRevenue: blockEstimatedRevenue,
-      });
+      const payload = blockPayload();
+      const result = editingBlockId
+        ? await updateBlockAction(editingBlockId, payload)
+        : await createBlockAction(payload);
       if (result.ok) {
-        toast.success(isBookingPlaceholder(blockType) ? "Date booked." : "Schedule item added.");
+        toast.success(
+          editingBlockId ? "Schedule item updated."
+            : isBookingPlaceholder(blockType) ? "Date booked."
+            : "Schedule item added.",
+        );
         setShowBlockForm(false);
         resetBlockForm();
         router.refresh();
       } else {
-        toast.error("ok" in result && !result.ok ? result.message ?? "Could not add schedule item." : "Could not add schedule item.");
+        const fallback = editingBlockId ? "Could not update schedule item." : "Could not add schedule item.";
+        toast.error("message" in result && result.message ? result.message : fallback);
       }
     });
   }
@@ -353,9 +484,27 @@ export function CalendarView({
     router.push(`/calendar?year=${newYear}&month=${newMonth}`);
   }
 
-  const monthLabel = `${MONTH_NAMES[month - 1]} ${year}`;
-  const isCurrentMonth =
-    year === new Date().getFullYear() && month === new Date().getMonth() + 1;
+  // `today` is the venue's own calendar day (resolved server-side), so this
+  // stays correct for a venue whose date differs from the browser's.
+  const [todayYear, todayMonth] = today.split("-").map(Number);
+  const isCurrentMonth = year === todayYear && month === todayMonth;
+
+  const relationGroups = React.useMemo(() => [
+    { label: "Leads", options: relationOptions.filter((o) => o.kind === "lead") },
+    { label: "Clients", options: relationOptions.filter((o) => o.kind === "client") },
+  ], [relationOptions]);
+
+  const relationSelectItems = React.useMemo(() => ({
+    [NO_RELATION]: "Not related to anyone",
+    ...Object.fromEntries(relationOptions.map((o) => [`${o.kind}:${o.id}`, o.name])),
+  }), [relationOptions]);
+
+  const recurrenceSummary = describeRecurrence({
+    rule: blockRecurrence,
+    interval: Math.max(1, parseInt(blockRecurrenceInterval, 10) || 1),
+    endsOn: blockRecurrenceEndMode === "on_date" ? (blockRecurrenceEnd || null) : null,
+    count: blockRecurrenceEndMode === "after_count" ? (parseInt(blockRecurrenceCount, 10) || null) : null,
+  });
 
   function switchView(next: "month" | "week" | "day" | "agenda") {
     if (next === "week") router.push(`/calendar?view=week&weekStart=${selectedDate || today}`);
@@ -407,11 +556,11 @@ export function CalendarView({
           router.push(`/calendar?view=agenda&year=${newYear}&month=${newMonth}`);
         }
       } else if (e.key.toLowerCase() === "t") {
-        const now = new Date();
-        if (view === "week") router.push(`/calendar?view=week&weekStart=${toIso(now)}`);
-        else if (view === "day") router.push(`/calendar?view=day&date=${toIso(now)}`);
-        else if (view === "agenda") router.push(`/calendar?view=agenda&year=${now.getFullYear()}&month=${now.getMonth() + 1}`);
-        else router.push(`/calendar?year=${now.getFullYear()}&month=${now.getMonth() + 1}`);
+        const [ty, tm] = today.split("-").map(Number);
+        if (view === "week") router.push(`/calendar?view=week&weekStart=${today}`);
+        else if (view === "day") router.push(`/calendar?view=day&date=${today}`);
+        else if (view === "agenda") router.push(`/calendar?view=agenda&year=${ty}&month=${tm}`);
+        else router.push(`/calendar?year=${ty}&month=${tm}`);
       } else if (["1", "2", "3", "4"].includes(e.key)) {
         const map = { "1": "month", "2": "week", "3": "day", "4": "agenda" } as const;
         switchView(map[e.key as "1" | "2" | "3" | "4"]);
@@ -421,51 +570,32 @@ export function CalendarView({
     document.addEventListener("keydown", onKeyDown);
     return () => document.removeEventListener("keydown", onKeyDown);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [view, year, month, weekStart, dayDate]);
+  }, [view, year, month, weekStart, dayDate, today]);
 
   return (
     <div className="space-y-5">
-      <ViewSwitcher current={view} onChange={switchView} />
-
-      {view === "week" && <WeekView weekStart={weekStart || today} items={items} today={today} />}
-      {view === "day" && <DayView date={dayDate || today} items={items} today={today} />}
-      {view === "agenda" && <AgendaView items={items} today={today} year={year} month={month} />}
-
-      {view === "month" && (
-      <>
-      {/* Month navigation */}
-      <div className="flex items-center justify-between gap-4">
-        <div className="flex items-center gap-2">
-          <Button type="button" variant="outline" size="icon" onClick={() => navigate(-1)} aria-label="Previous month">
-            <ChevronLeft className="h-4 w-4" />
-          </Button>
-          <h2 className="font-heading text-xl font-medium text-heading min-w-[160px] text-center">
-            {monthLabel}
-          </h2>
-          <Button type="button" variant="outline" size="icon" onClick={() => navigate(1)} aria-label="Next month">
-            <ChevronRight className="h-4 w-4" />
-          </Button>
-        </div>
-        {!isCurrentMonth && (
-          <Button type="button" variant="ghost" size="sm"
-            onClick={() => {
-              const now = new Date();
-              router.push(`/calendar?year=${now.getFullYear()}&month=${now.getMonth() + 1}`);
-            }}>
-            Today
-          </Button>
-        )}
-        <Button type="button" variant="outline" size="sm" onClick={() => setShowBlockForm(!showBlockForm)}>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <ViewSwitcher current={view} onChange={switchView} />
+        <Button
+          type="button" variant="outline" size="sm"
+          onClick={() => {
+            if (showBlockForm) { setShowBlockForm(false); resetBlockForm(); }
+            else { resetBlockForm(); setShowBlockForm(true); }
+          }}
+        >
           <Plus className="mr-1 h-3.5 w-3.5" /> Add Schedule Item
         </Button>
       </div>
 
-      {/* Add Schedule Item inline form (Calendar Manual Type Redesign —
-          "Block" is now one type among several, not the primary concept;
-          neutral styling, not the old alarm-red treatment). */}
+      {/* Add/Edit Schedule Item — lives above every view so Edit from Week/
+          Day/Agenda can open it without bouncing the coordinator back to
+          Month. Manual items used to be create-or-delete only. */}
       {showBlockForm && (
-        <div className="rounded-sm border border-border bg-muted/20 p-4 space-y-3">
-          <p className="text-sm font-medium text-heading">Add Schedule Item</p>
+        <div ref={formRef} className="rounded-sm border border-border bg-muted/20 p-4 space-y-3">
+          <p className="text-sm font-medium text-heading">
+            {editingBlockId ? "Edit Schedule Item" : "Add Schedule Item"}
+          </p>
+          {loadingBlock && <p className="text-xs text-muted-foreground">Loading…</p>}
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="space-y-1.5">
               <Label className="text-xs">Schedule Item *</Label>
@@ -529,6 +659,41 @@ export function CalendarView({
               <Label className="text-xs">End date</Label>
               <Input type="date" value={blockEnd} onChange={(e) => setBlockEnd(e.target.value)} min={blockStart} />
             </div>
+            {/* "Related to" — one picker spanning Leads and Clients. Optional
+                by design: a maintenance window or a personal appointment is
+                about nobody, and forcing a link would invent a relationship.
+                When set, it also becomes the item's destination, so a
+                coordinator can click a Walkthrough straight through to the
+                couple it's for instead of landing back on the Calendar. */}
+            <div className="space-y-1.5 sm:col-span-2">
+              <Label className="text-xs">
+                Related to <span className="font-normal text-muted-foreground">(optional)</span>
+              </Label>
+              <Select
+                value={blockRelatedTo || NO_RELATION}
+                onValueChange={(v) => setBlockRelatedTo(v === NO_RELATION ? "" : v)}
+                items={relationSelectItems}
+              >
+                <SelectTrigger><SelectValue placeholder="Not related to anyone" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={NO_RELATION}>Not related to anyone</SelectItem>
+                  {relationGroups.map((group) => (
+                    <React.Fragment key={group.label}>
+                      {group.options.length > 0 && (
+                        <div className="px-2 pt-2 pb-1 text-[0.6875rem] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+                          {group.label}
+                        </div>
+                      )}
+                      {group.options.map((o) => (
+                        <SelectItem key={`${o.kind}:${o.id}`} value={`${o.kind}:${o.id}`}>
+                          {o.name}{o.eventDate ? ` · ${o.eventDate}` : ""}
+                        </SelectItem>
+                      ))}
+                    </React.Fragment>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
             {isBookingPlaceholder(blockType) && (
               <>
                 <div className="space-y-1.5">
@@ -573,40 +738,164 @@ export function CalendarView({
             </div>
           )}
 
-          {/* Recurrence */}
-          <div className="grid gap-3 sm:grid-cols-2">
-            <div className="space-y-1.5">
-              <Label className="text-xs">Repeat</Label>
-              <Select
-                value={blockRecurrence}
-                onValueChange={setBlockRecurrence}
-                items={{ none: "Does not repeat", daily: "Every day", weekly: "Every week (same day)", annual: "Every year (same date)" }}
-              >
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">Does not repeat</SelectItem>
-                  <SelectItem value="daily">Every day</SelectItem>
-                  <SelectItem value="weekly">Every week (same day)</SelectItem>
-                  <SelectItem value="annual">Every year (same date)</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            {blockRecurrence !== "none" && (
+          {/* Recurrence — presets plus a Custom mode. The presets are the same
+              four the form has always offered and still mean interval 1;
+              Custom exposes the interval and the end condition (a date, a
+              number of occurrences, or never) that the model now supports. */}
+          <div className="space-y-3">
+            <div className="grid gap-3 sm:grid-cols-2">
               <div className="space-y-1.5">
-                <Label className="text-xs">Repeat until (optional)</Label>
-                <Input type="date" value={blockRecurrenceEnd} onChange={(e) => setBlockRecurrenceEnd(e.target.value)} min={blockStart} placeholder="No end date" />
+                <Label className="text-xs">Repeat</Label>
+                <Select
+                  value={blockRecurrenceCustom ? RECURRENCE_CUSTOM : blockRecurrence}
+                  onValueChange={(v) => {
+                    if (v === RECURRENCE_CUSTOM) {
+                      setBlockRecurrenceCustom(true);
+                      // Custom needs a real frequency to modify; a series that
+                      // repeats "never, every 2" is meaningless.
+                      if (blockRecurrence === "none") setBlockRecurrence("weekly");
+                      return;
+                    }
+                    setBlockRecurrenceCustom(false);
+                    setBlockRecurrence(v as RecurrenceRule);
+                    setBlockRecurrenceInterval("1");
+                    if (v === "none") { setBlockRecurrenceEndMode("never"); setBlockRecurrenceEnd(""); }
+                  }}
+                  items={RECURRENCE_PRESETS}
+                >
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {Object.entries(RECURRENCE_PRESETS).map(([value, label]) => (
+                      <SelectItem key={value} value={value}>{label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
+
+              {blockRecurrenceCustom && (
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Every</Label>
+                  <div className="flex items-center gap-2">
+                    <Input
+                      type="number" min="1" max="365" className="w-20"
+                      value={blockRecurrenceInterval}
+                      onChange={(e) => setBlockRecurrenceInterval(e.target.value)}
+                      aria-label="Repeat interval"
+                    />
+                    <Select
+                      value={blockRecurrence === "none" ? "weekly" : blockRecurrence}
+                      onValueChange={(v) => setBlockRecurrence(v as RecurrenceRule)}
+                      items={RECURRENCE_UNITS}
+                    >
+                      <SelectTrigger className="flex-1" aria-label="Repeat unit"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        {Object.entries(RECURRENCE_UNITS).map(([value, label]) => (
+                          <SelectItem key={value} value={value}>{label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {blockRecurrence !== "none" && (
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Ends</Label>
+                  <Select
+                    value={blockRecurrenceEndMode}
+                    onValueChange={(v) => setBlockRecurrenceEndMode(v as RecurrenceEndMode)}
+                    items={RECURRENCE_END_MODES}
+                  >
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {Object.entries(RECURRENCE_END_MODES).map(([value, label]) => (
+                        <SelectItem key={value} value={value}>{label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                {blockRecurrenceEndMode === "on_date" && (
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Repeat until</Label>
+                    <Input type="date" value={blockRecurrenceEnd} onChange={(e) => setBlockRecurrenceEnd(e.target.value)} min={blockStart} />
+                  </div>
+                )}
+                {blockRecurrenceEndMode === "after_count" && (
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Number of times</Label>
+                    <Input
+                      type="number" min="1" max="500"
+                      value={blockRecurrenceCount}
+                      onChange={(e) => setBlockRecurrenceCount(e.target.value)}
+                    />
+                  </div>
+                )}
+              </div>
+            )}
+
+            {blockRecurrence !== "none" && (
+              <p className="text-xs text-muted-foreground">{recurrenceSummary}</p>
             )}
           </div>
 
           <div className="flex items-center justify-end gap-2">
             <Button type="button" variant="ghost" size="sm" onClick={() => { setShowBlockForm(false); resetBlockForm(); }} disabled={blockPending}>Cancel</Button>
-            <Button type="button" size="sm" disabled={!blockTitle.trim() || !blockStart || blockPending} onClick={handleAddBlock}>
-              {blockPending ? "Adding…" : "Add Schedule Item"}
+            <Button type="button" size="sm" disabled={!blockTitle.trim() || !blockStart || blockPending || loadingBlock} onClick={handleSaveBlock}>
+              {blockPending
+                ? (editingBlockId ? "Saving…" : "Adding…")
+                : (editingBlockId ? "Save Changes" : "Add Schedule Item")}
             </Button>
           </div>
         </div>
       )}
+
+      {view === "week" && (
+        <WeekView
+          weekStart={weekStart || today} items={items} today={today}
+          onEditBlock={handleEditBlock} onDeleteBlock={handleDeleteBlock}
+          deletingId={deletingId} deletePending={deletePending}
+        />
+      )}
+      {view === "day" && (
+        <DayView
+          date={dayDate || today} items={items} today={today}
+          onEditBlock={handleEditBlock} onDeleteBlock={handleDeleteBlock}
+          deletingId={deletingId} deletePending={deletePending}
+        />
+      )}
+      {view === "agenda" && (
+        <AgendaView
+          items={items} today={today} year={year} month={month}
+          onEditBlock={handleEditBlock} onDeleteBlock={handleDeleteBlock}
+          deletingId={deletingId} deletePending={deletePending}
+        />
+      )}
+
+      {view === "month" && (
+      <>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-2">
+          <Button type="button" variant="outline" size="icon" onClick={() => navigate(-1)} aria-label="Previous month">
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+          <MonthYearPicker
+            year={year}
+            month={month}
+            onChange={(y, m) => router.push(`/calendar?year=${y}&month=${m}`)}
+          />
+          <Button type="button" variant="outline" size="icon" onClick={() => navigate(1)} aria-label="Next month">
+            <ChevronRight className="h-4 w-4" />
+          </Button>
+        </div>
+        {!isCurrentMonth && (
+          <Button type="button" variant="ghost" size="sm"
+            onClick={() => router.push(`/calendar?year=${todayYear}&month=${todayMonth}`)}>
+            Today
+          </Button>
+        )}
+      </div>
 
       {/* Legend */}
       <Legend />
@@ -632,7 +921,14 @@ export function CalendarView({
             <CardTitle className="text-base">Schedule</CardTitle>
           </CardHeader>
           <CardContent>
-            <DayDetail date={selectedDate || null} items={displayItems} onBlockDeleted={() => router.refresh()} />
+            <DayDetail
+              date={selectedDate || null}
+              items={displayItems}
+              onDeleteBlock={handleDeleteBlock}
+              onEditBlock={handleEditBlock}
+              deletingId={deletingId}
+              deletePending={deletePending}
+            />
           </CardContent>
         </Card>
       </div>

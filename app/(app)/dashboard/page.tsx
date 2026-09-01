@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import Link from "next/link";
 import {
-  AlertTriangle, CalendarClock, ChevronRight, FilePlus, MessageSquarePlus,
+  CalendarClock, ChevronRight, FilePlus, MessageSquarePlus,
   PartyPopper, Receipt, UserPlus, CalendarPlus, ClipboardList,
 } from "lucide-react";
 
@@ -17,12 +17,11 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getDashboardData } from "@/lib/dashboard/service";
 import {
-  classifyBriefingItems, classifyDashboardItems, classifyUpcomingItems, sortByPriority,
+  classifyBriefingItems, classifyUpcomingItems,
 } from "@/lib/dashboard-system/decision-engine";
 import type { ClassifiedItem, Priority } from "@/lib/dashboard-system/decision-engine";
-import { getVenueHealth } from "@/lib/metrics/health";
-import { getBookingsThisMonth } from "@/lib/metrics/booking";
-import { getOutstandingBalance, getGrossBookedRevenue } from "@/lib/metrics/revenue";
+import { selectLuvDashboardEntry } from "@/lib/dashboard-system/luv-entry";
+import { getOutstandingBalance } from "@/lib/metrics/revenue";
 
 export const metadata: Metadata = { title: "Dashboard" };
 
@@ -37,12 +36,27 @@ const PRIORITY_SEVERITY: Record<Priority, "critical" | "warning" | undefined> = 
 
 /**
  * Venue Dashboard Reconstruction, Phase 1 — replaces the prior 21-widget
- * assembly with the five certified sections from docs/dashboard-component-
+ * assembly with the certified sections from docs/dashboard-component-
  * system-architecture.md + docs/dashboard-luv-experience-architecture.md:
- * Morning Briefing, Today's Attention, Upcoming, Business Snapshot, Quick
- * Actions — plus one minimal Luv entry point and Reports navigation,
- * exactly as scoped. See docs/venue-dashboard-reconstruction-phase1.md
- * for the full before/after comparison and what moved where.
+ * Today's Focus, Upcoming, Business Snapshot, Quick Actions — plus one
+ * minimal Luv entry point and Reports navigation, exactly as scoped. See
+ * docs/venue-dashboard-reconstruction-phase1.md for the full before/after
+ * comparison and what moved where.
+ *
+ * Deduplication pass: Morning Briefing and Today's Attention rendered the same
+ * classification twice, so the two collapsed into Today's Focus. Each section
+ * now has exactly one job — Today's Focus is what needs attention now, Upcoming
+ * is strictly what comes later, and Luv interprets rather than re-lists.
+ *
+ * Information-architecture pass: the Dashboard is the operational front door
+ * ("what do I need to know or do right now?"), not a set of miniature Reports/
+ * Calendar/Tasks/Payments panels — those pages stay the systems of record. So
+ * Luv moved up beneath the list it interprets, and Business Snapshot dropped
+ * from six tiles to three operational ones (Active Leads, Payments to Watch,
+ * Upcoming Events). Bookings/Revenue were Reports excerpts linking straight to
+ * Reports; Venue Health showed a context-free number off a computation with a
+ * known data-quality problem. Neither metric was deleted — only removed from
+ * this surface.
  */
 export default async function DashboardPage({ searchParams }: Props) {
   const [data, { milestone }] = await Promise.all([getDashboardData(), searchParams]);
@@ -56,22 +70,21 @@ export default async function DashboardPage({ searchParams }: Props) {
   }
 
   // ── Decision Engine: classify + prioritize (see lib/dashboard-system/decision-engine.ts) ──
-  const briefingItems = classifyBriefingItems(data);
-  const allAttentionItems = sortByPriority(classifyDashboardItems(data));
-  const attentionItems = allAttentionItems.slice(0, 10);
+  // One classification, one section. Today's Focus owns everything actionable
+  // now (including anything dated today); Upcoming owns strictly later dates.
+  const allFocusItems = classifyBriefingItems(data);
+  const focusItems = allFocusItems.slice(0, 10);
   const upcomingItems = classifyUpcomingItems(data).slice(0, 10);
 
   // ── Business Snapshot (canonical metrics only — lib/metrics/registry.ts) ──
-  const [venueHealth, bookingsThisMonth, outstandingBalance, grossRevenue] = await Promise.all([
-    getVenueHealth().catch(() => null),
-    getBookingsThisMonth().catch(() => []),
-    getOutstandingBalance().catch(() => null),
-    getGrossBookedRevenue().catch(() => null),
-  ]);
+  const outstandingBalance = await getOutstandingBalance().catch(() => null);
 
-  // ── Luv entry point: at most one observation, one recommendation, one action ──
-  const topObservation = data.luvObservations[0] ?? data.insightObservations[0] ?? null;
-  const topRecommendation = data.recommendations[0] ?? null;
+  // ── Luv entry point: interpretation, not a second copy of Today's Focus ──
+  const luvEntry = selectLuvDashboardEntry({
+    focusItems,
+    observations: [...data.luvObservations, ...data.insightObservations],
+    recommendations: data.recommendations,
+  });
 
   return (
     <div className="space-y-8">
@@ -90,14 +103,19 @@ export default async function DashboardPage({ searchParams }: Props) {
       />
       {data.showDigestCallout && <DigestCallout />}
 
-      {/* 1. Morning Briefing — Critical + Needs Attention Today + today's
-          Upcoming only, nothing historical or informational, max 5. */}
+      {/* 1. Today's Focus — the one section for work that needs attention now:
+          Critical + Needs Attention Today + anything dated today. Previously
+          this rendered as Morning Briefing above a separate Today's Attention
+          list built from the same classification, so the two sections restated
+          each other; Today's Attention is gone and this one carries the whole
+          set, reporting overflow rather than silently truncating at five. */}
       <section>
         <AttentionList
           icon={<CalendarClock className="h-4 w-4 text-primary" />}
-          title="Morning Briefing"
+          title="Today's Focus"
           description="What matters today, in order."
-          items={briefingItems}
+          headerRight={allFocusItems.length > focusItems.length ? <span className="text-xs text-muted-foreground">{focusItems.length} of {allFocusItems.length}</span> : undefined}
+          items={focusItems}
           getKey={(i) => i.id}
           emptyState={
             <p className="py-6 text-center text-sm text-muted-foreground">
@@ -108,27 +126,42 @@ export default async function DashboardPage({ searchParams }: Props) {
         />
       </section>
 
-      {/* 2. Today's Attention — actionable work only, max 10, sorted by
-          Decision Engine priority. */}
-      <section>
-        <AttentionList
-          icon={<AlertTriangle className="h-4 w-4 text-destructive" />}
-          title="Today's Attention"
-          description="Everything that needs a decision or an action right now."
-          headerRight={allAttentionItems.length > 0 ? <span className="text-xs text-muted-foreground">{attentionItems.length} of {allAttentionItems.length}</span> : undefined}
-          items={attentionItems}
-          getKey={(i) => i.id}
-          emptyState={
-            <p className="py-6 text-center text-sm text-muted-foreground">
-              Nothing needs your attention. Great place to be.
-            </p>
-          }
-          renderRow={(item) => <ClassifiedRow item={item} />}
-        />
-      </section>
+      {/* 2. Luv — directly beneath Today's Focus, because Luv's job is to
+          interpret that list, and an interpretation separated from what it
+          interprets reads as an unrelated aside. One interpretation and one
+          offered next step, never a second enumeration: lib/dashboard-system/
+          luv-entry.ts drops any observation whose subject is already a
+          visible Today's Focus row and falls back to an aggregate read of
+          that list. No placeholder AI — renders nothing if Luv has nothing
+          to add beyond what is already on screen. */}
+      {luvEntry && (
+        <section>
+          <Card className="border-rose-200/40" style={{ background: "color-mix(in oklch, var(--destructive) 2%, var(--card))" }}>
+            <CardHeader className="pb-2">
+              <CardTitle className="flex items-center gap-2 text-sm">
+                <span aria-hidden>💗</span> Luv
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2 pt-0">
+              <p className="text-sm text-foreground">{luvEntry.message}</p>
+              {luvEntry.suggestion && (
+                <p className="text-sm text-muted-foreground">{luvEntry.suggestion}</p>
+              )}
+              <Link
+                href={luvEntry.actionHref}
+                className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
+              >
+                {luvEntry.actionLabel}
+                <ChevronRight className="h-3 w-3" />
+              </Link>
+            </CardContent>
+          </Card>
+        </section>
+      )}
 
       {/* 3. Upcoming — one merged component: tours, events, payments, key
-          dates, calendar milestones. Never four separate widgets. */}
+          dates, calendar milestones. Never four separate widgets. Strictly
+          later than today, so it cannot repeat a Today's Focus row. */}
       <section>
         <AttentionList
           icon={<CalendarClock className="h-4 w-4 text-muted-foreground" />}
@@ -145,29 +178,44 @@ export default async function DashboardPage({ searchParams }: Props) {
         />
       </section>
 
-      {/* 4. Business Snapshot — canonical Stat Tiles only, no charts, no trend analysis. */}
+      {/* 4. Business Snapshot — three operational tiles, each with one clear
+          definition and one destination that is the system of record for it.
+          Bookings/Revenue moved out entirely: both were miniature Reports
+          that linked straight to /reporting, which is where that question
+          gets answered properly. Venue Health also moved out — it rendered a
+          bare 0-100 number with none of the tier/strengths/gaps context that
+          makes it interpretable, and its underlying computation still scores
+          pipeline activity off the deprecated leads.status column. The
+          score itself (lib/metrics/health.ts, compute_venue_health_score())
+          is untouched and can return once that data-quality issue is fixed. */}
       <section>
         <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-muted-foreground">Business Snapshot</p>
-        <StatTileGrid className="sm:grid-cols-3 lg:grid-cols-6">
-          {/* Work Package R2 — this tile previously linked to /analytics, which
-              never actually rendered Venue Health anywhere (confirmed by
-              reading every /analytics card — that page showed Client/Relationship
-              Health, a different canonical metric). Left unlinked rather than
-              pointed at a redirect that lands somewhere equally unrelated. */}
-          {/* Work Package D8 — Bookings is scoped "this month" while Revenue
-              sat right next to it with no window at all (all-time under the
-              hood), so a venue owner could easily misread them as covering
-              the same period. Each figure's own time scope is a deliberate,
-              already-certified choice (a balance has no period to begin
-              with; all-time revenue is the more useful permanent snapshot
-              vs. a resetting monthly figure) — the fix is making the scope
-              visible via `sub`, not changing which window any metric uses. */}
-          <StatTile layout="label-top" label="Venue Health" value={venueHealth ? `${venueHealth.score}` : "—"} className="rounded-xl border bg-card p-3" />
-          <StatTile layout="label-top" label="Bookings" sub="This month" value={bookingsThisMonth.length} className="rounded-xl border bg-card p-3" href="/reporting/bookings" />
-          <StatTile layout="label-top" label="Revenue" sub="All time" value={grossRevenue != null ? formatCurrencyShort(grossRevenue) : "—"} className="rounded-xl border bg-card p-3" href="/reporting/revenue" />
-          <StatTile layout="label-top" label="Pipeline" value={data.totalLeads} className="rounded-xl border bg-card p-3" href="/leads" />
-          <StatTile layout="label-top" label="Outstanding" sub="Current balance" value={outstandingBalance != null ? formatCurrencyShort(outstandingBalance) : "—"} severity={outstandingBalance && outstandingBalance > 0 ? "warning" : undefined} className="rounded-xl border bg-card p-3" href="/payments" />
-          <StatTile layout="label-top" label="Upcoming Events" value={data.upcomingEvents.length} className="rounded-xl border bg-card p-3" href="/events" />
+        <StatTileGrid className="sm:grid-cols-3">
+          {/* Active Leads, not "Pipeline": the old tile read data.totalLeads,
+              every lead ever created including booked/lost/won/cancelled, and
+              labelled it Pipeline. This counts only leads still in play. */}
+          <StatTile
+            layout="label-top" label="Active Leads" sub="Still in play"
+            value={data.activeLeadCount}
+            className="rounded-xl border bg-card p-3" href="/leads"
+          />
+          {/* Payments to Watch is the canonical Outstanding Balance metric
+              (Gross Booked Revenue − Payments Collected, lib/metrics/
+              registry.ts) under an operational name. Deliberately NOT
+              data.overduePayments, which counts raw overdue line items — a
+              second, differently-scoped answer to "what is outstanding" with
+              no shared id to dedupe against the first. One definition only. */}
+          <StatTile
+            layout="label-top" label="Payments to Watch" sub="Outstanding balance"
+            value={outstandingBalance != null ? formatCurrencyShort(outstandingBalance) : "—"}
+            severity={outstandingBalance && outstandingBalance > 0 ? "warning" : undefined}
+            className="rounded-xl border bg-card p-3" href="/payments"
+          />
+          <StatTile
+            layout="label-top" label="Upcoming Events" sub="Next 60 days"
+            value={data.upcomingEventCount}
+            className="rounded-xl border bg-card p-3" href="/events"
+          />
         </StatTileGrid>
       </section>
 
@@ -187,48 +235,19 @@ export default async function DashboardPage({ searchParams }: Props) {
       </section>
 
       {/* Getting Started — onboarding, not operational, so it sits after the
-          five operational sections rather than ahead of them. docs/dashboard-
+          operational sections rather than ahead of them. docs/dashboard-
           luv-experience-architecture.md §6 classifies this row "n/a —
           onboarding, not operational" and lists it last in the permanent
-          structure, and names Today's Attention "the one section the Dashboard
-          exists for." The Phase 1 reconstruction kept this card explicitly
-          because it does "not compete for 'what matters today' attention"
-          (docs/venue-dashboard-reconstruction-phase1.md §6) but left its old
-          placement untouched, so on the reduced six-section Dashboard it
-          pushed Morning Briefing and Today's Attention below the fold. Still
-          disappears entirely at 100% via data.onboarding.show. */}
+          structure, naming the actionable-work section "the one section the
+          Dashboard exists for" — Today's Focus, since the deduplication pass.
+          The Phase 1 reconstruction kept this card explicitly because it does
+          "not compete for 'what matters today' attention" (docs/venue-
+          dashboard-reconstruction-phase1.md §6) but left its old placement
+          untouched, where it pushed the operational sections below the fold.
+          Still disappears entirely at 100% via data.onboarding.show. */}
       {data.onboarding.show && (
         <section>
           <GettingStartedCard onboarding={data.onboarding} milestone={milestone} venueName={data.venueName} />
-        </section>
-      )}
-
-      {/* Luv entry point — at most one observation, one recommendation, one
-          action. No placeholder AI: renders nothing if Luv has nothing to say. */}
-      {(topObservation || topRecommendation) && (
-        <section>
-          <Card className="border-rose-200/40" style={{ background: "color-mix(in oklch, var(--destructive) 2%, var(--card))" }}>
-            <CardHeader className="pb-2">
-              <CardTitle className="flex items-center gap-2 text-sm">
-                <span aria-hidden>💗</span> Luv
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2 pt-0">
-              {topObservation && (
-                <p className="text-sm text-foreground">{topObservation.message}</p>
-              )}
-              {topRecommendation && (
-                <p className="text-sm text-muted-foreground">{topRecommendation.title}</p>
-              )}
-              <Link
-                href={topRecommendation?.ctas[0]?.type === "navigate" ? topRecommendation.ctas[0].target : (topObservation?.link ?? "/leads")}
-                className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
-              >
-                {topRecommendation?.ctas[0]?.label ?? topObservation?.actionLabel ?? "View"}
-                <ChevronRight className="h-3 w-3" />
-              </Link>
-            </CardContent>
-          </Card>
         </section>
       )}
 
@@ -258,7 +277,7 @@ function QuickAction({ href, icon: Icon, label }: { href: string; icon: React.El
   );
 }
 
-/** Shared row renderer for all three Attention List instances above — one visual treatment for every classified item, reading `severity` from the Decision Engine's own priority assignment, never inventing its own urgency styling (architecture doc §7). */
+/** Shared row renderer for both Attention List instances above — one visual treatment for every classified item, reading `severity` from the Decision Engine's own priority assignment, never inventing its own urgency styling (architecture doc §7). */
 function ClassifiedRow({ item }: { item: ClassifiedItem }): ReactNode {
   const severity = item.rightSeverity ?? PRIORITY_SEVERITY[item.priority];
   const colorClass = severity === "critical" ? "text-destructive" : severity === "warning" ? "text-warning-foreground" : "text-muted-foreground";

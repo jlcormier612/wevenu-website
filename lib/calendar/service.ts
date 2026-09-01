@@ -11,13 +11,15 @@
  */
 import { createClient } from "@/integrations/supabase/server";
 import { isSupabaseConfigured } from "@/lib/env";
-import type { CalendarData, CalendarItem } from "@/lib/calendar/types";
+import type { CalendarData, CalendarItem, ScheduleRelationOption } from "@/lib/calendar/types";
 import { getCurrentVenue } from "@/lib/venue/service";
+import { venueToday } from "@/lib/venue/timezone";
 import { eventTypeLabel, formatCurrency } from "@/lib/leads/constants";
 import { getTourCalendarEntries } from "@/lib/tours/service";
 import { blockReasonLabel } from "@/lib/availability/constants";
 import { isBookingPlaceholder } from "@/lib/availability/types";
-import type { ManualScheduleType } from "@/lib/availability/types";
+import type { ManualScheduleType, RecurrenceRule } from "@/lib/availability/types";
+import { durationInDays, expandOccurrenceStarts, occurrenceDates } from "@/lib/calendar/recurrence";
 
 // Calendar Booking Placeholder — the same "is this date available" answer
 // a real Event's own subtitle would carry, built from whatever the
@@ -28,6 +30,52 @@ function bookingPlaceholderSubtitle(guestCount: number | null, estimatedRevenue:
   if (estimatedRevenue != null) parts.push(formatCurrency(Number(estimatedRevenue)));
   if (convertedLeadId) parts.push("→ Lead");
   return parts.length > 0 ? parts.join(" · ") : "Booked";
+}
+
+/**
+ * The Leads and Clients a manual Schedule Item can be "Related to".
+ *
+ * Two small venue-scoped reads rather than a new relationship table: this
+ * codebase already anchors calendar-adjacent records straight at leads/clients
+ * by FK (date_holds.lead_id, events.client_id, requests.client_id), and an
+ * optional association does not justify a parallel structure.
+ */
+export async function getScheduleRelationOptions(): Promise<ScheduleRelationOption[]> {
+  if (!isSupabaseConfigured) return [];
+  const venue = await getCurrentVenue();
+  if (!venue) return [];
+  const supabase = await createClient();
+
+  const [leadsRes, clientsRes] = await Promise.all([
+    supabase.from("leads")
+      .select("id, first_name, last_name, partner_first_name, event_date")
+      .eq("venue_id", venue.id)
+      .not("status", "in", "(won,lost,cancelled)")
+      .order("created_at", { ascending: false })
+      .limit(200),
+    supabase.from("clients")
+      .select("id, first_name, last_name, partner_first_name, event_date")
+      .eq("venue_id", venue.id)
+      .neq("status", "cancelled")
+      .order("created_at", { ascending: false })
+      .limit(200),
+  ]);
+
+  type RelationRow = {
+    id: string; first_name: string; last_name: string;
+    partner_first_name: string | null; event_date: string | null;
+  };
+  const name = (r: RelationRow) =>
+    [r.first_name, r.last_name].filter(Boolean).join(" ") + (r.partner_first_name ? ` & ${r.partner_first_name}` : "");
+
+  return [
+    ...((leadsRes.data ?? []) as unknown as RelationRow[]).map((r) => ({
+      kind: "lead" as const, id: r.id, name: name(r), eventDate: r.event_date ?? null,
+    })),
+    ...((clientsRes.data ?? []) as unknown as RelationRow[]).map((r) => ({
+      kind: "client" as const, id: r.id, name: name(r), eventDate: r.event_date ?? null,
+    })),
+  ];
 }
 
 export async function getCalendarData(
@@ -42,7 +90,10 @@ export async function getCalendarData(
   const start = `${year}-${String(month).padStart(2, "0")}-01`;
   const lastDay = new Date(year, month, 0).getDate();
   const end = `${year}-${String(month).padStart(2, "0")}-${String(lastDay).padStart(2, "0")}`;
-  const todayIso = new Date().toISOString().slice(0, 10);
+  // The venue's own today, not the server's — on a UTC-deployed server the
+  // two differ for part of every evening, which is exactly when a coordinator
+  // is most likely to be checking whether something is overdue.
+  const todayIso = venueToday(venue.timezone);
 
   // Ten parallel queries across existing tables, plus tours' own projection
   const [
@@ -61,7 +112,7 @@ export async function getCalendarData(
     // read the legacy leads.tour_date field directly and silently never
     // reflected publicly-booked tours; tour_appointments is now the single
     // canonical source regardless of how the tour was scheduled).
-    getTourCalendarEntries(supabase, venue.id, start, end),
+    getTourCalendarEntries(supabase, venue.id, start, end, venue.timezone),
 
     // 3. Follow-up dates (from leads)
     supabase.from("leads")
@@ -101,7 +152,7 @@ export async function getCalendarData(
 
     // 7. Calendar blocks — non-recurring blocks overlapping month, plus all active recurring blocks
     supabase.from("calendar_blocks")
-      .select("id, title, type, reason, start_date, end_date, is_all_day, start_time, end_time, recurrence_rule, recurrence_ends_on, event_type, client_name, guest_count, estimated_revenue, converted_lead_id")
+      .select("id, title, type, reason, start_date, end_date, is_all_day, start_time, end_time, recurrence_rule, recurrence_ends_on, recurrence_interval, recurrence_count, lead_id, client_id, leads(first_name, last_name), clients(first_name, last_name), event_type, client_name, guest_count, estimated_revenue, converted_lead_id")
       .eq("venue_id", venue.id)
       .or(`and(start_date.lte.${end},end_date.gte.${start},recurrence_rule.eq.none),and(recurrence_rule.neq.none,or(recurrence_ends_on.is.null,recurrence_ends_on.gte.${start}))`),
 
@@ -250,80 +301,76 @@ export async function getCalendarData(
     });
   }
 
-  // Calendar blocks — expand into individual day entries, handling recurrence
+  // Calendar blocks — expand into individual day entries, handling recurrence.
+  // The rules themselves live in lib/calendar/recurrence.ts (pure, unit-tested,
+  // and free of the server-timezone dependency the previous inline version had).
   const seenBlockDates = new Set<string>();
   for (const b of (blocksRes.data ?? []) as any[]) {
-    const rule: string = b.recurrence_rule ?? "none";
-    const origStart = new Date(b.start_date + "T12:00:00");
-    const origEnd   = new Date(b.end_date   + "T12:00:00");
-    const durationMs = origEnd.getTime() - origStart.getTime();
-    const recurrenceEndD = b.recurrence_ends_on ? new Date(b.recurrence_ends_on + "T23:59:59") : null;
-    const monthStartD = new Date(start + "T00:00:00");
-    const monthEndD   = new Date(end   + "T23:59:59");
-    const blockTime   = b.is_all_day ? null : (b.start_time?.slice(0, 5) ?? null);
+    const duration = durationInDays(b.start_date, b.end_date);
+    const blockTime = b.is_all_day ? null : (b.start_time?.slice(0, 5) ?? null);
+    const blockEndTime = b.is_all_day ? null : (b.end_time?.slice(0, 5) ?? null);
 
-    const occurrenceStarts: Date[] = [];
+    // "Related to" — the Lead/Client this item is about, resolved to a name
+    // and a real destination. Without it, every manual item linked back to
+    // /calendar, i.e. to itself.
+    const relatedLeadName = b.leads
+      ? [b.leads.first_name, b.leads.last_name].filter(Boolean).join(" ")
+      : null;
+    const relatedClientName = b.clients
+      ? [b.clients.first_name, b.clients.last_name].filter(Boolean).join(" ")
+      : null;
+    const relatedName = relatedLeadName ?? relatedClientName;
+    const relatedHref = b.lead_id ? `/leads/${b.lead_id}` : b.client_id ? `/clients/${b.client_id}` : null;
 
-    if (rule === "none") {
-      occurrenceStarts.push(new Date(origStart));
-    } else if (rule === "daily") {
-      let cur = new Date(origStart);
-      while (cur <= monthEndD && (!recurrenceEndD || cur <= recurrenceEndD)) {
-        const occEnd = new Date(cur.getTime() + durationMs);
-        if (occEnd >= monthStartD) occurrenceStarts.push(new Date(cur));
-        cur.setDate(cur.getDate() + 1);
-      }
-    } else if (rule === "weekly") {
-      let cur = new Date(origStart);
-      while (cur <= monthEndD && (!recurrenceEndD || cur <= recurrenceEndD)) {
-        const occEnd = new Date(cur.getTime() + durationMs);
-        if (occEnd >= monthStartD) occurrenceStarts.push(new Date(cur));
-        cur.setDate(cur.getDate() + 7);
-      }
-    } else if (rule === "annual") {
-      for (let y = monthStartD.getFullYear() - 1; y <= monthEndD.getFullYear() + 1; y++) {
-        const occStart = new Date(y, origStart.getMonth(), origStart.getDate(), 12);
-        if (occStart < origStart) continue;
-        if (recurrenceEndD && occStart > recurrenceEndD) continue;
-        const occEnd = new Date(occStart.getTime() + durationMs);
-        if (occEnd >= monthStartD && occStart <= monthEndD) occurrenceStarts.push(occStart);
-      }
-    }
+    const occurrenceStarts = expandOccurrenceStarts(
+      b.start_date,
+      {
+        rule: (b.recurrence_rule ?? "none") as RecurrenceRule,
+        interval: b.recurrence_interval ?? 1,
+        endsOn: b.recurrence_ends_on ?? null,
+        count: b.recurrence_count ?? null,
+      },
+      start,
+      end,
+      duration,
+    );
 
     for (const occStart of occurrenceStarts) {
-      const occEnd = new Date(occStart.getTime() + durationMs);
-      let cursor = new Date(occStart);
-      while (cursor <= occEnd) {
-        const dateStr = cursor.toISOString().slice(0, 10);
+      for (const dateStr of occurrenceDates(occStart, duration)) {
         const key = `${b.id}-${dateStr}`;
-        if (dateStr >= start && dateStr <= end && !seenBlockDates.has(key)) {
-          seenBlockDates.add(key);
-          items.push({
-            id: `block-${key}`,
-            type: "calendar_block",
-            date: dateStr,
-            title: b.title,
-            // The manual type itself (Tour, Walkthrough, etc.) is already
-            // conveyed by icon/color/label once rendered — reason is only
-            // ever a Blocked Time sub-classification, and guest count/
-            // revenue are the Booking placeholder's own equivalent, so
-            // those are the only two things worth a subtitle here.
-            subtitle: b.type === "blocked_time" && b.reason
-              ? blockReasonLabel(b.reason)
-              : isBookingPlaceholder(b.type as ManualScheduleType)
-                ? bookingPlaceholderSubtitle(b.guest_count, b.estimated_revenue, b.converted_lead_id)
-                : null,
-            time: blockTime,
-            // Once converted, the placeholder's own real destination is the
-            // Lead it became — the one case a calendar_block item routes
-            // anywhere other than back to Calendar itself.
-            link: b.converted_lead_id ? `/leads/${b.converted_lead_id}` : "/calendar",
-            rawId: b.id,
-            manualType: b.type ?? "blocked_time",
-            convertedLeadId: b.converted_lead_id ?? null,
-          });
-        }
-        cursor.setDate(cursor.getDate() + 1);
+        if (dateStr < start || dateStr > end || seenBlockDates.has(key)) continue;
+        seenBlockDates.add(key);
+        items.push({
+          id: `block-${key}`,
+          type: "calendar_block",
+          date: dateStr,
+          title: b.title,
+          // The manual type itself (Tour, Walkthrough, etc.) is already
+          // conveyed by icon/color/label once rendered — reason is only
+          // ever a Blocked Time sub-classification, and guest count/
+          // revenue are the Booking placeholder's own equivalent, so
+          // those plus the "Related to" name are what a subtitle carries.
+          subtitle: b.type === "blocked_time" && b.reason
+            ? blockReasonLabel(b.reason)
+            : isBookingPlaceholder(b.type as ManualScheduleType)
+              ? bookingPlaceholderSubtitle(b.guest_count, b.estimated_revenue, b.converted_lead_id)
+              : relatedName,
+          time: blockTime,
+          endTime: blockEndTime,
+          // Once converted, the placeholder's own real destination is the
+          // Lead it became; otherwise a "Related to" link is the item's
+          // destination. Only a genuinely unattached item routes back to
+          // Calendar itself.
+          link: b.converted_lead_id
+            ? `/leads/${b.converted_lead_id}`
+            : relatedHref ?? "/calendar",
+          rawId: b.id,
+          manualType: b.type ?? "blocked_time",
+          convertedLeadId: b.converted_lead_id ?? null,
+          leadId: b.lead_id ?? null,
+          clientId: b.client_id ?? null,
+          relatedName,
+        });
       }
     }
   }

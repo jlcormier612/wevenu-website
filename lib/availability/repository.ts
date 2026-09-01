@@ -20,12 +20,12 @@ type DbClient = Awaited<ReturnType<typeof createClient>>;
 type SpaceRow = { id: string; venue_id: string; name: string; description: string | null; capacity: number | null; is_active: boolean; sort_order: number; created_at: string; updated_at: string; };
 type RulesRow = { id: string; venue_id: string; max_simultaneous_events: number; max_simultaneous_tours: number; min_turnaround_hours: number; created_at: string; updated_at: string; };
 type HoldRow = { id: string; venue_id: string; lead_id: string | null; space_id: string | null; title: string; hold_date: string; start_time: string | null; end_time: string | null; status: DateHold["status"]; expires_at: string | null; notes: string | null; created_at: string; updated_at: string; leads?: { first_name: string; last_name: string } | null; venue_spaces?: { name: string } | null; };
-type BlockRow = { id: string; venue_id: string; title: string; type: CalendarBlock["type"]; reason: CalendarBlock["reason"]; start_date: string; end_date: string; is_all_day: boolean; start_time: string | null; end_time: string | null; notes: string | null; recurrence_rule: string; recurrence_ends_on: string | null; created_at: string; event_type: string | null; client_name: string | null; guest_count: number | null; estimated_revenue: number | string | null; converted_lead_id: string | null; };
+type BlockRow = { id: string; venue_id: string; title: string; type: CalendarBlock["type"]; reason: CalendarBlock["reason"]; start_date: string; end_date: string; is_all_day: boolean; start_time: string | null; end_time: string | null; notes: string | null; recurrence_rule: string; recurrence_ends_on: string | null; recurrence_interval: number | null; recurrence_count: number | null; lead_id: string | null; client_id: string | null; created_at: string; event_type: string | null; client_name: string | null; guest_count: number | null; estimated_revenue: number | string | null; converted_lead_id: string | null; };
 
 const mapSpace = (r: SpaceRow): VenueSpace => ({ id: r.id, venueId: r.venue_id, name: r.name, description: r.description, capacity: r.capacity, isActive: r.is_active, sortOrder: r.sort_order, createdAt: r.created_at, updatedAt: r.updated_at });
 const mapRules = (r: RulesRow): VenueCapacityRules => ({ id: r.id, venueId: r.venue_id, maxSimultaneousEvents: r.max_simultaneous_events, maxSimultaneousTours: r.max_simultaneous_tours, minTurnaroundHours: Number(r.min_turnaround_hours), createdAt: r.created_at, updatedAt: r.updated_at });
 const mapHold = (r: HoldRow): DateHold => ({ id: r.id, venueId: r.venue_id, leadId: r.lead_id, spaceId: r.space_id, title: r.title, holdDate: r.hold_date, startTime: r.start_time?.slice(0, 5) ?? null, endTime: r.end_time?.slice(0, 5) ?? null, status: r.status, expiresAt: r.expires_at, notes: r.notes, createdAt: r.created_at, updatedAt: r.updated_at, leadName: r.leads ? `${r.leads.first_name} ${r.leads.last_name}` : null, spaceName: r.venue_spaces?.name ?? null });
-const mapBlock = (r: BlockRow): CalendarBlock => ({ id: r.id, venueId: r.venue_id, title: r.title, type: r.type, reason: r.reason, startDate: r.start_date, endDate: r.end_date, isAllDay: r.is_all_day, startTime: r.start_time?.slice(0, 5) ?? null, endTime: r.end_time?.slice(0, 5) ?? null, notes: r.notes, recurrenceRule: (r.recurrence_rule ?? "none") as CalendarBlock["recurrenceRule"], recurrenceEndsOn: r.recurrence_ends_on ?? null, createdAt: r.created_at, eventType: r.event_type, clientName: r.client_name, guestCount: r.guest_count, estimatedRevenue: r.estimated_revenue != null ? Number(r.estimated_revenue) : null, convertedLeadId: r.converted_lead_id });
+const mapBlock = (r: BlockRow): CalendarBlock => ({ id: r.id, venueId: r.venue_id, title: r.title, type: r.type, reason: r.reason, startDate: r.start_date, endDate: r.end_date, isAllDay: r.is_all_day, startTime: r.start_time?.slice(0, 5) ?? null, endTime: r.end_time?.slice(0, 5) ?? null, notes: r.notes, recurrenceRule: (r.recurrence_rule ?? "none") as CalendarBlock["recurrenceRule"], recurrenceEndsOn: r.recurrence_ends_on ?? null, recurrenceInterval: r.recurrence_interval ?? 1, recurrenceCount: r.recurrence_count ?? null, leadId: r.lead_id ?? null, clientId: r.client_id ?? null, createdAt: r.created_at, eventType: r.event_type, clientName: r.client_name, guestCount: r.guest_count, estimatedRevenue: r.estimated_revenue != null ? Number(r.estimated_revenue) : null, convertedLeadId: r.converted_lead_id });
 
 // ---- Spaces ------------------------------------------------------------------
 
@@ -127,29 +127,60 @@ export async function getBlocksForDates(client: DbClient, venueId: string, start
   return (data as BlockRow[]).map(mapBlock);
 }
 
-export async function insertBlock(client: DbClient, venueId: string, input: CalendarBlockInput): Promise<string> {
+/**
+ * The full column set for a manual Schedule Item, shared by insert and update
+ * so an edit can never persist a different shape than a create — the two
+ * drifting apart is exactly how "edit quietly drops a field" bugs happen.
+ */
+function blockColumns(input: CalendarBlockInput) {
   const isBooking = BOOKING_SCHEDULE_TYPES.includes(input.type);
+  const repeats = !!input.recurrenceRule && input.recurrenceRule !== "none";
+  // A date end and a count end are mutually exclusive (DB constraint
+  // calendar_blocks_recurrence_end_one_of); the date wins when a caller
+  // somehow supplies both, matching the form, which only ever sends one.
+  const endsOn = repeats && input.recurrenceEndsOn ? input.recurrenceEndsOn : null;
+  return {
+    title: input.title.trim(), type: input.type,
+    // reason only means something for Blocked Time — every other manual
+    // type has no sub-reason concept.
+    reason: input.type === "blocked_time" ? input.reason : null,
+    start_date: input.startDate, end_date: input.endDate || input.startDate, is_all_day: input.isAllDay,
+    start_time: (!input.isAllDay && input.startTime) ? input.startTime : null,
+    end_time: (!input.isAllDay && input.endTime) ? input.endTime : null,
+    notes: input.notes.trim() || null,
+    recurrence_rule: input.recurrenceRule ?? "none",
+    recurrence_ends_on: endsOn,
+    recurrence_interval: repeats ? Math.max(1, Math.trunc(input.recurrenceInterval ?? 1)) : 1,
+    recurrence_count: repeats && !endsOn && input.recurrenceCount ? Math.max(1, Math.trunc(input.recurrenceCount)) : null,
+    // "Related to" — at most one anchor, enforced in the DB too. A Client
+    // link wins only when no Lead was chosen; the form is a single picker,
+    // so in practice exactly one of these is ever populated.
+    lead_id: input.leadId || null,
+    client_id: input.leadId ? null : (input.clientId || null),
+    // Calendar Booking Placeholder fields — only ever set for the two
+    // Bookings types; every other manual type leaves them all null.
+    event_type: isBooking ? (input.eventType.trim() || null) : null,
+    client_name: isBooking ? (input.clientName.trim() || null) : null,
+    guest_count: isBooking && input.guestCount.trim() ? parseInt(input.guestCount, 10) : null,
+    estimated_revenue: isBooking && input.estimatedRevenue.trim() ? Number(input.estimatedRevenue.replace(/[$,]/g, "")) : null,
+  };
+}
+
+export async function insertBlock(client: DbClient, venueId: string, input: CalendarBlockInput): Promise<string> {
   const { data, error } = await client.from("calendar_blocks")
-    .insert({
-      venue_id: venueId, title: input.title.trim(), type: input.type,
-      // reason only means something for Blocked Time — every other manual
-      // type has no sub-reason concept.
-      reason: input.type === "blocked_time" ? input.reason : null,
-      start_date: input.startDate, end_date: input.endDate || input.startDate, is_all_day: input.isAllDay,
-      start_time: (!input.isAllDay && input.startTime) ? input.startTime : null,
-      end_time: (!input.isAllDay && input.endTime) ? input.endTime : null,
-      notes: input.notes.trim() || null, recurrence_rule: input.recurrenceRule ?? "none",
-      recurrence_ends_on: (input.recurrenceRule && input.recurrenceRule !== "none" && input.recurrenceEndsOn) ? input.recurrenceEndsOn : null,
-      // Calendar Booking Placeholder fields — only ever set for the two
-      // Bookings types; every other manual type leaves them all null.
-      event_type: isBooking ? (input.eventType.trim() || null) : null,
-      client_name: isBooking ? (input.clientName.trim() || null) : null,
-      guest_count: isBooking && input.guestCount.trim() ? parseInt(input.guestCount, 10) : null,
-      estimated_revenue: isBooking && input.estimatedRevenue.trim() ? Number(input.estimatedRevenue.replace(/[$,]/g, "")) : null,
-    })
+    .insert({ venue_id: venueId, ...blockColumns(input) })
     .select("id").single<{ id: string }>();
   if (error) throw error;
   return data.id;
+}
+
+export async function updateBlock(client: DbClient, venueId: string, blockId: string, input: CalendarBlockInput): Promise<void> {
+  // venue_id is never in the update payload and is re-asserted in the filter —
+  // an edit must not be able to move a schedule item to another venue.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error } = await (client.from("calendar_blocks") as any)
+    .update(blockColumns(input)).eq("id", blockId).eq("venue_id", venueId);
+  if (error) throw error;
 }
 
 export async function deleteBlock(client: DbClient, venueId: string, blockId: string): Promise<void> {

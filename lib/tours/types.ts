@@ -93,6 +93,11 @@ export type TourAppointment = {
   outcome: TourOutcome | null;
   cancellationReason: string | null;
   createdAt: string;
+  // Tour confirmation — status vs. communication are separate concepts.
+  /** When a confirmation request was last sent. Does not itself mean the tour is confirmed. */
+  confirmationRequestedAt: string | null;
+  /** How the tour became Confirmed. Null until confirmed. */
+  confirmationSource: "manual" | "prospect_link" | null;
 };
 
 export type BookingResult = {

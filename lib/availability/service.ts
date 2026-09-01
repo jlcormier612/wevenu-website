@@ -142,14 +142,40 @@ export async function getBlock(blockId: string): Promise<CalendarBlock | null> {
   return repo.getBlock(await createClient(), venue.id, blockId);
 }
 
+function validateBlockTimes(input: CalendarBlockInput): AvailabilityActionResult | null {
+  if (input.isAllDay) return null;
+  if (!input.startTime || !input.endTime) {
+    return { ok: false, message: "Start and end times are required unless the item is all day." };
+  }
+  const endDate = input.endDate || input.startDate;
+  if (input.startDate === endDate && input.endTime <= input.startTime) {
+    return { ok: false, message: "End time must be after start time." };
+  }
+  return null;
+}
+
 export async function createBlock(input: CalendarBlockInput): Promise<{ ok: true; blockId: string } | AvailabilityActionResult> {
   if (!input.title.trim()) return { ok: false, message: "Title is required." };
   if (!input.startDate) return { ok: false, message: "Start date is required." };
+  const timeError = validateBlockTimes(input);
+  if (timeError) return timeError;
   const result = await withVenue(async (supabase, venueId) => {
     const blockId = await repo.insertBlock(supabase, venueId, input);
     return { ok: true, blockId };
   });
   return result as { ok: true; blockId: string } | AvailabilityActionResult;
+}
+
+export async function updateBlock_(blockId: string, input: CalendarBlockInput): Promise<AvailabilityActionResult> {
+  if (!input.title.trim()) return { ok: false, message: "Title is required." };
+  if (!input.startDate) return { ok: false, message: "Start date is required." };
+  const timeError = validateBlockTimes(input);
+  if (timeError) return timeError;
+  const result = await withVenue(async (supabase, venueId) => {
+    await repo.updateBlock(supabase, venueId, blockId, input);
+    return { ok: true } as AvailabilityActionResult;
+  });
+  return result as AvailabilityActionResult;
 }
 
 export async function deleteBlock_(blockId: string): Promise<AvailabilityActionResult> {

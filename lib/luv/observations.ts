@@ -20,6 +20,7 @@
  */
 
 import { createClient } from "@/integrations/supabase/server";
+import { getVenueTimezone } from "@/lib/venue/timezone";
 import type { LuvBriefingItem, LuvObservation } from "@/lib/luv/types";
 import type { LuvSettings } from "@/lib/luv/settings";
 import { computeInterestFromSignals } from "@/lib/leads/signals";
@@ -44,6 +45,24 @@ function inDays(iso: string): string {
 /** How many days ago (absolute). */
 function daysAgo(iso: string): number {
   return Math.floor((Date.now() - new Date(iso).getTime()) / 86_400_000);
+}
+
+/**
+ * Render a stored UTC instant as the venue reads it off its own wall clock.
+ *
+ * Formatting a `timestamptz` with a bare `toLocaleTimeString` uses the
+ * *process* timezone, which is UTC on ECS — so a tour booked for 11:00
+ * America/New_York (stored correctly as 15:00Z) was reported to the venue as
+ * "3:00 PM". Same instant, wrong clock. lib/venue/timezone.ts exists for
+ * exactly this and the read path in lib/leads/repository.ts already uses it,
+ * which is why the Dashboard row said 11:00 while Luv said 3:00 PM.
+ */
+function venueLocalLabel(iso: string, timezone: string | null, opts: Intl.DateTimeFormatOptions): string {
+  try {
+    return new Intl.DateTimeFormat("en-US", { timeZone: timezone || "America/New_York", ...opts }).format(new Date(iso));
+  } catch {
+    return new Intl.DateTimeFormat("en-US", { timeZone: "UTC", ...opts }).format(new Date(iso));
+  }
 }
 
 export async function getLuvObservations(
@@ -77,6 +96,7 @@ export async function getLuvObservations(
     upcomingToursRes,
     completedNoFollowUpRes,
     noShowRes,
+    venueTimezone,
   ] = await Promise.all([
     // 1+2: Events within 21 days (not cancelled)
     supabase.from("events")
@@ -176,6 +196,11 @@ export async function getLuvObservations(
       .eq("status", "no_show")
       .gte("scheduled_at", new Date(Date.now() - 3 * 86_400_000).toISOString())
       .order("scheduled_at", { ascending: false }),
+
+    // 13: The venue's own timezone. tour_appointments.scheduled_at is a
+    // timestamptz, so rendering it without this reports the *server's* wall
+    // clock — UTC in every deployment — rather than the venue's.
+    getVenueTimezone(supabase, venueId),
   ]);
 
   // ── 1 & 2: Events approaching — grouped coordinator briefing ─────────────
@@ -620,14 +645,16 @@ export async function getLuvObservations(
   for (const tour of (upcomingToursRes.data ?? []) as { id: string; scheduled_at: string; contact_name: string | null; duration_minutes: number; lead_id: string | null }[]) {
     const tourDate = new Date(tour.scheduled_at);
     const du = Math.ceil((tourDate.getTime() - Date.now()) / 86_400_000);
-    const timeStr = tourDate.toLocaleString("en-US", { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+    const timeStr = venueLocalLabel(tour.scheduled_at, venueTimezone, {
+      weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit",
+    });
     const name = tour.contact_name ?? "A prospective client";
     observations.push({
       id: `tour-upcoming-${tour.id}`,
       kind: "fact",
       priority: du === 0 ? "high" : "medium",
       message: du === 0
-        ? `${name} has a tour today at ${tourDate.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}.`
+        ? `${name} has a tour today at ${venueLocalLabel(tour.scheduled_at, venueTimezone, { hour: "numeric", minute: "2-digit" })}.`
         : `${name} has a tour scheduled for ${timeStr}.`,
       detail: `${tour.duration_minutes}-minute tour. ${du === 0 ? "Make sure everything is ready." : `In ${du} day${du !== 1 ? "s" : ""}.`}`,
       link: tour.lead_id ? `/leads/${tour.lead_id}` : "/leads",

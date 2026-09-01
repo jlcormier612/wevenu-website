@@ -45,21 +45,21 @@ export default async function FinancialsIntegrationsSettingsPage() {
       {venue && (
         <div id="stripe" className="scroll-mt-20 space-y-2">
           <StripeConnectSection venue={venue} connectUrl={buildStripeConnectUrl(venue.id)} />
-          <div className="px-1"><SetupGuideLink href="/help/connect-stripe" /></div>
+          <div className="px-1"><SetupGuideLink href="/help/setup-financials#stripe" /></div>
         </div>
       )}
 
       {venue && (
         <div id="quickbooks" className="scroll-mt-20 space-y-2">
           <QuickBooksConnectSection venueId={venue.id} connection={quickbooksConnection} syncLog={quickbooksSyncLog} connectUrl={buildQuickBooksConnectUrl(venue.id)} />
-          <div className="px-1"><SetupGuideLink href="/help/connect-quickbooks" /></div>
+          <div className="px-1"><SetupGuideLink href="/help/setup-financials#quickbooks" /></div>
         </div>
       )}
 
       {venue && (
         <div id="facebook" className="scroll-mt-20 space-y-2">
           <FacebookConnectSection venueId={venue.id} connection={facebookConnection} leadForms={facebookLeadForms} recentLog={facebookLog} />
-          <div className="px-1"><SetupGuideLink href="/help/connect-facebook-instagram-lead-ads" /></div>
+          <div className="px-1"><SetupGuideLink href="/help/setup-lead-capture#facebook" /></div>
         </div>
       )}
     </div>

@@ -19,9 +19,6 @@ const EXPECTED_SLUGS = [
   "setup-lead-capture",
   "setup-your-team",
   "setup-financials",
-  "connect-stripe",
-  "connect-quickbooks",
-  "connect-facebook-instagram-lead-ads",
 ];
 
 describe("setup guide library", () => {
@@ -67,44 +64,59 @@ describe("setup guide library", () => {
     }
   });
 
-  it("keeps INTEGRATION_SETUP_GUIDES to the three integrations the Help fallback depends on", () => {
-    assert.deepEqual(INTEGRATION_SETUP_GUIDES.map((g) => g.slug), [
-      "connect-stripe",
-      "connect-quickbooks",
-      "connect-facebook-instagram-lead-ads",
-    ]);
-    assert.ok(getIntegrationSetupGuide("connect-stripe"));
-    // Setup-area guides are reachable via getSetupGuide but must not leak into the
-    // integration list that lib/success-library/service.ts appends to Your Venue.
+  // The 3 standalone integration guides (Connect Stripe, Connect QuickBooks,
+  // Connect Facebook & Instagram) were merged into setup-financials and
+  // setup-lead-capture so each topic has exactly one authoritative home. That
+  // makes INTEGRATION_SETUP_GUIDES (slugs starting with "connect-") empty by
+  // design now — lib/success-library/service.ts's fallback still runs, it just
+  // has nothing left to add, which is intentional, not a regression.
+  it("has no standalone connect-* guides left — their content lives in setup-financials and setup-lead-capture", () => {
+    assert.deepEqual(INTEGRATION_SETUP_GUIDES, []);
+    assert.equal(getIntegrationSetupGuide("connect-stripe"), null);
+    assert.equal(getIntegrationSetupGuide("connect-quickbooks"), null);
+    assert.equal(getIntegrationSetupGuide("connect-facebook-instagram-lead-ads"), null);
     assert.equal(getIntegrationSetupGuide("setup-your-venue"), null);
+  });
+
+  it("merges Stripe, QuickBooks, and Facebook/Instagram detail into the two hub guides with real deep-link anchors", () => {
+    const financials = getSetupGuide("setup-financials")!;
+    const leadCapture = getSetupGuide("setup-lead-capture")!;
+    assert.ok(financials.steps.some((s) => s.anchor === "stripe"), "setup-financials must anchor a Stripe step");
+    assert.ok(financials.steps.some((s) => s.anchor === "quickbooks"), "setup-financials must anchor a QuickBooks step");
+    assert.ok(leadCapture.steps.some((s) => s.anchor === "facebook"), "setup-lead-capture must anchor a Facebook step");
+    // Every anchor must actually be unique within its guide, or the deep link is ambiguous.
+    for (const guide of [financials, leadCapture]) {
+      const anchors = guide.steps.map((s) => s.anchor).filter(Boolean);
+      assert.equal(new Set(anchors).size, anchors.length, `${guide.slug} has a duplicate step anchor`);
+    }
   });
 });
 
 describe("guide links used elsewhere in the app resolve", () => {
-  it("every setup guide link on the integrations settings page exists", () => {
+  it("every setup guide link on the integrations settings page exists, including its anchor", () => {
     const source = readFileSync(resolve("app/(app)/settings/integrations/page.tsx"), "utf8");
-    const hrefs = [...source.matchAll(/href="\/help\/([a-z0-9-]+)"/g)].map((m) => m[1]);
-    assert.ok(hrefs.length >= 3, "integrations page should link Stripe, QuickBooks and Facebook guides");
-    for (const slug of hrefs) {
-      assert.ok(getSetupGuide(slug), `integrations page links /help/${slug}, which does not exist`);
+    const hrefs = [...source.matchAll(/href="\/help\/([a-z0-9-]+)(?:#([a-z0-9-]+))?"/g)].map((m) => ({ slug: m[1], anchor: m[2] }));
+    assert.ok(hrefs.length >= 3, "integrations page should link Stripe, QuickBooks and Facebook guide content");
+    for (const { slug, anchor } of hrefs) {
+      const guide = getSetupGuide(slug);
+      assert.ok(guide, `integrations page links /help/${slug}, which does not exist`);
+      if (anchor) {
+        assert.ok(
+          guide!.steps.some((s) => s.anchor === anchor),
+          `integrations page links /help/${slug}#${anchor}, but no step in that guide has anchor "${anchor}"`,
+        );
+      }
     }
   });
 
   // A guide that sends the owner to #facebook and lands them at the top of the
-  // page is the same class of problem as a dead link.
-  it("every #anchor a guide points at exists on the integrations page", () => {
+  // page is the same class of problem as a dead link — same check, reversed:
+  // the integrations page now links OUT to anchored guide sections (setup-financials
+  // #stripe/#quickbooks, setup-lead-capture #facebook), not the other way around.
+  it("every #stripe / #quickbooks / #facebook anchor on the integrations page still exists on that page", () => {
     const source = readFileSync(resolve("app/(app)/settings/integrations/page.tsx"), "utf8");
-    const anchors = new Set(
-      SETUP_GUIDES.flatMap((g) => [g.returnHref, ...g.relatedFeatures.map((f) => f.href)])
-        .filter((href) => href.startsWith("/settings/integrations#"))
-        .map((href) => href.split("#")[1]),
-    );
-    assert.ok(anchors.size >= 3, "Stripe, QuickBooks and Facebook guides should deep-link");
-    for (const anchor of anchors) {
-      assert.ok(
-        source.includes(`id="${anchor}"`),
-        `guides link to /settings/integrations#${anchor} but no id="${anchor}" exists on that page`,
-      );
+    for (const id of ["stripe", "quickbooks", "facebook"]) {
+      assert.ok(source.includes(`id="${id}"`), `integrations page is missing id="${id}"`);
     }
   });
 
@@ -121,19 +133,17 @@ describe("guide links used elsewhere in the app resolve", () => {
   });
 });
 
-// The Facebook guide carries the one dependency that silently drops leads when a
-// venue misses it, so this content is load-bearing rather than editorial.
-describe("Facebook & Instagram guide keeps its critical guidance", () => {
-  const guide = getSetupGuide("connect-facebook-instagram-lead-ads");
+// The Facebook section carries the one dependency that silently drops leads when a
+// venue misses it, so this content is load-bearing rather than editorial. It now
+// lives inside setup-lead-capture (merged from the retired connect-facebook-instagram-
+// lead-ads guide) — checked against the full guide text rather than specific
+// top-level fields, since setup-lead-capture covers multiple channels and this
+// guidance lives in its Facebook-specific steps, not in the guide's overall intro.
+describe("Facebook & Instagram guidance keeps its critical warnings", () => {
+  const guide = getSetupGuide("setup-lead-capture");
 
   it("exists", () => {
     assert.ok(guide);
-  });
-
-  it("states that a connected Page alone is not enough without an enabled form", () => {
-    assert.match(guide!.whyItMatters, /Page connection alone is not enough/i);
-    assert.match(guide!.whyItMatters, /at least one Lead Ads form must be enabled/i);
-    assert.match(guide!.completion, /at least one Lead Ads form is enabled/i);
   });
 
   it("warns that a Page with zero enabled forms silently receives nothing", () => {
