@@ -310,7 +310,7 @@ export function CalendarView({
   const [blockReason, setBlockReason] = React.useState<string>("other");
   const [blockStart, setBlockStart] = React.useState(today);
   const [blockEnd, setBlockEnd] = React.useState(today);
-  const [blockIsAllDay, setBlockIsAllDay] = React.useState(true);
+  const [blockIsAllDay, setBlockIsAllDay] = React.useState(false);
   const [blockStartTime, setBlockStartTime] = React.useState("09:00");
   const [blockEndTime, setBlockEndTime] = React.useState("17:00");
   // Recurrence is now frequency + interval + one end condition, rather than a
@@ -350,7 +350,7 @@ export function CalendarView({
   function resetBlockForm() {
     const date = defaultFormDate();
     setBlockTitle(""); setBlockType("tour"); setBlockReason("other"); setBlockStart(date); setBlockEnd(date);
-    setBlockIsAllDay(true); setBlockStartTime("09:00"); setBlockEndTime("17:00");
+    setBlockIsAllDay(false); setBlockStartTime("09:00"); setBlockEndTime("17:00");
     setBlockRecurrence("none"); setBlockRecurrenceCustom(false); setBlockRecurrenceInterval("1");
     setBlockRecurrenceEndMode("never"); setBlockRecurrenceEnd(""); setBlockRecurrenceCount("10");
     setBlockRelatedTo("");
@@ -455,6 +455,7 @@ export function CalendarView({
 
   function handleSaveBlock() {
     if (!blockTitle.trim() || !blockStart) return;
+    if (!blockIsAllDay && (!blockStartTime || !blockEndTime)) return;
     startBlock(async () => {
       const payload = blockPayload();
       const result = editingBlockId
@@ -659,6 +660,43 @@ export function CalendarView({
               <Label className="text-xs">End date</Label>
               <Input type="date" value={blockEnd} onChange={(e) => setBlockEnd(e.target.value)} min={blockStart} />
             </div>
+            <div className="space-y-1.5 sm:col-span-2">
+              <label className="flex items-center gap-2 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={blockIsAllDay}
+                  onChange={(e) => setBlockIsAllDay(e.target.checked)}
+                  className="h-4 w-4 rounded border-border"
+                />
+                <span className="text-xs text-foreground">All day</span>
+              </label>
+            </div>
+            {!blockIsAllDay && (
+              <>
+                <div className="space-y-1.5">
+                  <Label className="text-xs" htmlFor="schedule-start-time">Start time *</Label>
+                  <Input
+                    id="schedule-start-time"
+                    type="time"
+                    required
+                    value={blockStartTime}
+                    onChange={(e) => setBlockStartTime(e.target.value)}
+                    className="min-w-[9rem]"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs" htmlFor="schedule-end-time">End time *</Label>
+                  <Input
+                    id="schedule-end-time"
+                    type="time"
+                    required
+                    value={blockEndTime}
+                    onChange={(e) => setBlockEndTime(e.target.value)}
+                    className="min-w-[9rem]"
+                  />
+                </div>
+              </>
+            )}
             {/* "Related to" — one picker spanning Leads and Clients. Optional
                 by design: a maintenance window or a personal appointment is
                 about nobody, and forcing a link would invent a relationship.
@@ -715,27 +753,6 @@ export function CalendarView({
             <p className="text-xs text-muted-foreground">
               This reserves the date without creating a Lead yet — enough to say &quot;booked&quot; today. You can convert it to a real Lead whenever you&apos;re ready, with nothing to retype.
             </p>
-          )}
-
-          {/* All-day toggle + time inputs */}
-          <div className="flex items-center gap-3">
-            <label className="flex items-center gap-2 cursor-pointer select-none">
-              <input type="checkbox" checked={blockIsAllDay} onChange={(e) => setBlockIsAllDay(e.target.checked)}
-                className="h-4 w-4 rounded border-border accent-primary" />
-              <span className="text-xs text-foreground">All day</span>
-            </label>
-          </div>
-          {!blockIsAllDay && (
-            <div className="grid gap-3 sm:grid-cols-2">
-              <div className="space-y-1.5">
-                <Label className="text-xs">Start time</Label>
-                <Input type="time" value={blockStartTime} onChange={(e) => setBlockStartTime(e.target.value)} />
-              </div>
-              <div className="space-y-1.5">
-                <Label className="text-xs">End time</Label>
-                <Input type="time" value={blockEndTime} onChange={(e) => setBlockEndTime(e.target.value)} />
-              </div>
-            </div>
           )}
 
           {/* Recurrence — presets plus a Custom mode. The presets are the same
@@ -842,7 +859,7 @@ export function CalendarView({
 
           <div className="flex items-center justify-end gap-2">
             <Button type="button" variant="ghost" size="sm" onClick={() => { setShowBlockForm(false); resetBlockForm(); }} disabled={blockPending}>Cancel</Button>
-            <Button type="button" size="sm" disabled={!blockTitle.trim() || !blockStart || blockPending || loadingBlock} onClick={handleSaveBlock}>
+            <Button type="button" size="sm" disabled={!blockTitle.trim() || !blockStart || blockPending || loadingBlock || (!blockIsAllDay && (!blockStartTime || !blockEndTime))} onClick={handleSaveBlock}>
               {blockPending
                 ? (editingBlockId ? "Saving…" : "Adding…")
                 : (editingBlockId ? "Save Changes" : "Add Schedule Item")}

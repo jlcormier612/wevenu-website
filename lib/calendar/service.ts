@@ -20,6 +20,7 @@ import { blockReasonLabel } from "@/lib/availability/constants";
 import { isBookingPlaceholder } from "@/lib/availability/types";
 import type { ManualScheduleType, RecurrenceRule } from "@/lib/availability/types";
 import { durationInDays, expandOccurrenceStarts, occurrenceDates } from "@/lib/calendar/recurrence";
+import { displayScheduleItemTimes } from "@/lib/calendar/schedule-item-times";
 
 // Calendar Booking Placeholder — the same "is this date available" answer
 // a real Event's own subtitle would carry, built from whatever the
@@ -307,8 +308,11 @@ export async function getCalendarData(
   const seenBlockDates = new Set<string>();
   for (const b of (blocksRes.data ?? []) as any[]) {
     const duration = durationInDays(b.start_date, b.end_date);
-    const blockTime = b.is_all_day ? null : (b.start_time?.slice(0, 5) ?? null);
-    const blockEndTime = b.is_all_day ? null : (b.end_time?.slice(0, 5) ?? null);
+    const { time: blockTime, endTime: blockEndTime } = displayScheduleItemTimes(
+      Boolean(b.is_all_day),
+      b.start_time,
+      b.end_time,
+    );
 
     // "Related to" — the Lead/Client this item is about, resolved to a name
     // and a real destination. Without it, every manual item linked back to

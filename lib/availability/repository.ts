@@ -3,6 +3,7 @@
  */
 import { createClient } from "@/integrations/supabase/server";
 import { BOOKING_SCHEDULE_TYPES } from "@/lib/availability/types";
+import { persistScheduleItemTimes } from "@/lib/calendar/schedule-item-times";
 import type {
   AvailabilityStatus,
   CalendarBlock,
@@ -145,8 +146,7 @@ function blockColumns(input: CalendarBlockInput) {
     // type has no sub-reason concept.
     reason: input.type === "blocked_time" ? input.reason : null,
     start_date: input.startDate, end_date: input.endDate || input.startDate, is_all_day: input.isAllDay,
-    start_time: (!input.isAllDay && input.startTime) ? input.startTime : null,
-    end_time: (!input.isAllDay && input.endTime) ? input.endTime : null,
+    ...persistScheduleItemTimes(input.isAllDay, input.startTime, input.endTime),
     notes: input.notes.trim() || null,
     recurrence_rule: input.recurrenceRule ?? "none",
     recurrence_ends_on: endsOn,
