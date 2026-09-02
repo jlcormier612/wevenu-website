@@ -24,13 +24,13 @@
  * Configure in Resend Dashboard → Webhooks → Add Endpoint → point to this URL.
  */
 
-import { createHmac } from "node:crypto";
 import { type NextRequest, NextResponse } from "next/server";
 
 import { createAdminClient } from "@/integrations/supabase/admin";
 import { logSignalEvent } from "@/lib/leads/signals";
 import { shouldAdvanceStatus } from "@/lib/communication/status";
 import { translateEmailFailure } from "@/lib/communication/failure-messages";
+import { verifyResendWebhookSecrets } from "@/lib/resend/inbound-webhook";
 
 type ResendWebhookPayload = {
   type: string;
@@ -44,25 +44,6 @@ type ResendWebhookPayload = {
     created_at?: string;
   };
 };
-
-function verifySignature(body: string, headers: Headers): boolean {
-  const secret = process.env.RESEND_WEBHOOK_SECRET;
-  if (!secret) return true; // Skip verification in development
-
-  const svixId = headers.get("svix-id") ?? "";
-  const svixTimestamp = headers.get("svix-timestamp") ?? "";
-  const svixSignature = headers.get("svix-signature") ?? "";
-  if (!svixId || !svixTimestamp || !svixSignature) return false;
-
-  // Verify timestamp is within 5 minutes to prevent replay attacks
-  const ts = parseInt(svixTimestamp, 10);
-  if (Math.abs(Date.now() / 1000 - ts) > 300) return false;
-
-  const toSign = `${svixId}.${svixTimestamp}.${body}`;
-  const expected = createHmac("sha256", secret).update(toSign).digest("base64");
-  const signatures = svixSignature.split(" ").map((s) => s.replace(/^v1,/, ""));
-  return signatures.some((sig) => sig === expected);
-}
 
 const EVENT_TO_STATUS: Record<string, string> = {
   "email.sent":      "accepted",
@@ -95,7 +76,14 @@ async function findLeadIdForConversationMessage(supabase: AdminClient, conversat
 export async function POST(request: NextRequest) {
   const body = await request.text();
 
-  if (!verifySignature(body, request.headers)) {
+  // Same Svix verification as inbound (whsec_ base64 decode + comma-separated
+  // secrets). The previous local HMAC used the raw whsec_ string as the key,
+  // which can never match Resend's signatures once RESEND_WEBHOOK_SECRET is set.
+  if (!verifyResendWebhookSecrets(body, {
+    id: request.headers.get("svix-id"),
+    timestamp: request.headers.get("svix-timestamp"),
+    signature: request.headers.get("svix-signature"),
+  })) {
     return NextResponse.json({ error: "Invalid signature." }, { status: 401 });
   }
 
