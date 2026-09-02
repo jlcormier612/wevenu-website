@@ -10,7 +10,7 @@ export function DashboardLuvIntro({
   setupHref,
 }: {
   show: boolean;
-  /** Legacy Getting Started card when it actually renders; Setup Hub otherwise. */
+  /** Setup Hub — Getting Started no longer lives on the Dashboard. */
   setupHref: string;
 }) {
   const [dismissed, setDismissed] = React.useState(false);

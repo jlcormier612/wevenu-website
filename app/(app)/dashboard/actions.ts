@@ -9,8 +9,9 @@ import { createClient } from "@/integrations/supabase/server";
 import { isSupabaseConfigured } from "@/lib/env";
 
 /**
- * Server action: permanently dismiss the Getting Started card for this venue.
- * Called from the form in the GettingStartedCard component.
+ * Server action: permanently dismiss the legacy Getting Started onboarding
+ * flag. The Dashboard no longer renders that card (Your Next Steps replaced
+ * it); this remains so the venue flag can still be cleared if needed.
  */
 export async function dismissOnboardingAction(): Promise<void> {
   await dismissOnboarding();

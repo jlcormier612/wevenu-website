@@ -5,6 +5,7 @@
 import type { Lead } from "@/lib/leads/types";
 import type { LuvBriefing } from "@/lib/luv/briefing-types";
 import type { ClientListFilterKey } from "@/lib/clients/list-filters";
+import type { VenueNextStep } from "@/lib/dashboard/venue-next-steps";
 
 /** Lead with a computed "why it needs attention" reason string. */
 export type AttentionLead = Lead & {
@@ -120,6 +121,8 @@ export type DashboardData = {
   venueName: string;
   ownerFirstName: string | null;
   todayIso: string;
+  /** Venue Home queue — things that need attention next. Empty hides the card. */
+  nextSteps: VenueNextStep[];
   onboarding: OnboardingStatus;
   briefing: LuvBriefing;
   // ---- pipeline (leads) ----

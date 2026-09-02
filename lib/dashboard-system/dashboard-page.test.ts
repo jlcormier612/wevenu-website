@@ -36,10 +36,13 @@ describe("Dashboard page information architecture", () => {
     assert.doesNotMatch(page, /value=\{.*overduePayments/);
   });
 
-  it("keeps Quick Actions, Getting Started, and Reports", () => {
+  it("keeps Quick Actions, Your Next Steps, and Reports", () => {
     assert.match(page, /Quick Actions/);
-    assert.match(page, /GettingStartedCard/);
+    assert.match(page, /YourNextStepsCard/);
+    assert.match(page, /data\.nextSteps\.length > 0/);
     assert.match(page, /href="\/reporting"/);
+    assert.doesNotMatch(page, /GettingStartedCard/);
+    assert.doesNotMatch(page, /data\.onboarding\.show &&/);
   });
 });
 
@@ -48,5 +51,16 @@ describe("Dashboard Upcoming is the Clients Upcoming population", () => {
     assert.match(service, /getClientListFilterCounts/);
     assert.match(service, /upcomingEventCount: clientListCounts\.upcoming/);
     assert.doesNotMatch(service, /upcomingEventCountRes/);
+  });
+});
+
+describe("Dashboard Your Next Steps", () => {
+  it("resolves the venue queue from event_tasks and portal lifecycle, not activation copy", () => {
+    assert.match(service, /resolveVenueNextSteps/);
+    assert.match(service, /nextSteps,/);
+    assert.match(service, /from\("event_tasks"\)/);
+    assert.match(service, /from\("client_invitations"\)/);
+    assert.match(service, /from\("client_portal_sessions"\)/);
+    assert.doesNotMatch(service, /Build momentum/);
   });
 });

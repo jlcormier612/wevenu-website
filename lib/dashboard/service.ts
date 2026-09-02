@@ -32,6 +32,9 @@ import { getCurrentToursForLeads, EMPTY_TOUR, type LeadTourInfo } from "@/lib/le
 import { getCurrentVenue } from "@/lib/venue/service";
 import { venueToday } from "@/lib/venue/timezone";
 import { getClientListFilterCounts } from "@/lib/clients/service";
+import { clientDisplayName } from "@/lib/clients/constants";
+import { leadDisplayName } from "@/lib/leads/constants";
+import { resolveVenueNextSteps } from "@/lib/dashboard/venue-next-steps";
 import type {
   ActivityItem,
   AttentionLead,
@@ -181,7 +184,7 @@ export async function getDashboardData(): Promise<DashboardData | null> {
   // Auto-mark overdue (non-fatal — don't block dashboard load on failure)
   void supabase.rpc("mark_overdue_payments", { p_venue_id: venue.id });
 
-  const [leadsRes, tasksRes, activityRes, clientsRes, keyDatesRes, eventsRes, paymentsRes, staffRes, clientListCounts] = await Promise.all([
+  const [leadsRes, tasksRes, activityRes, clientsRes, keyDatesRes, eventsRes, paymentsRes, staffRes, clientListCounts, invitationsRes, portalSessionsRes, eventTasksRes, contractsRes] = await Promise.all([
     supabase
       .from("leads")
       .select("*")
@@ -255,6 +258,39 @@ export async function getDashboardData(): Promise<DashboardData | null> {
     // Upcoming is every future-or-today non-cancelled booked client — not
     // a 60-day events-table window and not a confirmed-only subset.
     getClientListFilterCounts(),
+
+    // Your Next Steps — portal lifecycle (invite vs unopened is one item per client)
+    supabase
+      .from("client_invitations")
+      .select("client_id, status, created_at")
+      .eq("venue_id", venue.id)
+      .order("created_at", { ascending: false }),
+
+    supabase
+      .from("client_portal_sessions")
+      .select("client_id, last_accessed_at")
+      .eq("venue_id", venue.id),
+
+    // Same open-task population as Task Center (pending/overdue/blocked, live events)
+    supabase
+      .from("event_tasks")
+      .select(`
+        id, title, status, due_date, owner_type, event_id,
+        events (
+          id, name, status,
+          clients ( first_name, last_name, partner_first_name, partner_last_name )
+        )
+      `)
+      .eq("venue_id", venue.id)
+      .in("status", ["pending", "overdue", "blocked"])
+      .not("events.status", "in", "(cancelled,complete)")
+      .order("due_date", { ascending: true }),
+
+    supabase
+      .from("contracts")
+      .select("id, title, status, clients(first_name, last_name, partner_first_name, partner_last_name)")
+      .eq("venue_id", venue.id)
+      .in("status", ["draft", "sent"]),
   ]);
 
   if (leadsRes.error) throw leadsRes.error;
@@ -290,9 +326,10 @@ export async function getDashboardData(): Promise<DashboardData | null> {
 
   // ---- Follow-ups Due --------------------------------------------------------
   // Leads with follow_up_date = today (not overdue — that goes in Needs Attention)
-  const followupsDue = leads
-    .filter((l) => l.followUpDate === today && !CLOSED.has(l.salesStage ?? l.status))
-    .slice(0, 8);
+  const followupsDueAll = leads.filter(
+    (l) => l.followUpDate === today && !CLOSED.has(l.salesStage ?? l.status),
+  );
+  const followupsDue = followupsDueAll.slice(0, 8);
 
   // ---- Upcoming Tours --------------------------------------------------------
   const upcomingTours = leads
@@ -391,6 +428,129 @@ export async function getDashboardData(): Promise<DashboardData | null> {
   const overduePayments = allPaymentItems.filter((r) => r.status === "overdue" || (r.due_date < today && r.status === "pending")).map(mapDashPayment);
   const upcomingPayments = allPaymentItems.filter((r) => r.due_date >= today && r.status === "pending").slice(0, 8).map(mapDashPayment);
 
+  // ---- Your Next Steps (non-fatal extras; empty queue if a source fails) -----
+  type InvDashRow = { client_id: string; status: string; created_at: string };
+  const latestInvitation = new Map<string, InvDashRow>();
+  for (const row of (invitationsRes.error ? [] : (invitationsRes.data ?? [])) as InvDashRow[]) {
+    if (!latestInvitation.has(row.client_id)) latestInvitation.set(row.client_id, row);
+  }
+  const portalOpened = new Set(
+    ((portalSessionsRes.error ? [] : (portalSessionsRes.data ?? [])) as { client_id: string; last_accessed_at: string | null }[])
+      .filter((s) => s.last_accessed_at != null)
+      .map((s) => s.client_id),
+  );
+
+  type EventTaskDashRow = {
+    id: string;
+    title: string;
+    status: string;
+    due_date: string | null;
+    owner_type: string;
+    event_id: string;
+    events: {
+      id: string;
+      name: string;
+      status: string;
+      clients: {
+        first_name: string;
+        last_name: string;
+        partner_first_name: string | null;
+        partner_last_name: string | null;
+      } | null;
+    } | null;
+  };
+  const ownerType = (raw: string): "coordinator" | "team" | "couple" | "vendor" => {
+    if (raw === "team" || raw === "couple" || raw === "vendor") return raw;
+    return "coordinator";
+  };
+  const venueTasks = ((eventTasksRes.error ? [] : (eventTasksRes.data ?? [])) as unknown as EventTaskDashRow[]).map((t) => {
+    const couple = t.events?.clients;
+    return {
+      id: t.id,
+      title: t.title,
+      dueDate: t.due_date,
+      eventId: t.event_id,
+      eventName: t.events?.name ?? null,
+      clientName: couple
+        ? clientDisplayName(
+            couple.first_name,
+            couple.last_name,
+            couple.partner_first_name,
+            couple.partner_last_name,
+          )
+        : null,
+      ownerType: ownerType(t.owner_type),
+      status: t.status,
+    };
+  });
+
+  type ContractDashRow = {
+    id: string;
+    title: string;
+    status: string;
+    clients: {
+      first_name: string;
+      last_name: string;
+      partner_first_name: string | null;
+      partner_last_name: string | null;
+    } | null;
+  };
+  const nextStepContracts = ((contractsRes.error ? [] : (contractsRes.data ?? [])) as unknown as ContractDashRow[])
+    .filter((c) => c.status === "draft" || c.status === "sent")
+    .map((c) => ({
+      id: c.id,
+      title: c.title,
+      status: c.status as "draft" | "sent",
+      clientName: c.clients
+        ? clientDisplayName(
+            c.clients.first_name,
+            c.clients.last_name,
+            c.clients.partner_first_name,
+            c.clients.partner_last_name,
+          )
+        : null,
+    }));
+
+  const leadFollowUps = [
+    ...needsAttentionLeads.map((l) => ({
+      id: l.id,
+      name: leadDisplayName(l.firstName, l.lastName, l.partnerFirstName, l.partnerLastName),
+      followUpDate: l.followUpDate,
+      isOverdue: !!(l.followUpDate && l.followUpDate < today) || !l.followUpDate,
+    })),
+    ...followupsDueAll.map((l) => ({
+      id: l.id,
+      name: leadDisplayName(l.firstName, l.lastName, l.partnerFirstName, l.partnerLastName),
+      followUpDate: l.followUpDate,
+      isOverdue: false,
+    })),
+  ];
+
+  const nextSteps = resolveVenueNextSteps({
+    today,
+    clients: clients.map((c) => {
+      const inv = latestInvitation.get(c.id);
+      return {
+        id: c.id,
+        status: c.status,
+        name: clientDisplayName(c.firstName, c.lastName, c.partnerFirstName, c.partnerLastName),
+        invitationSent: !!inv && (inv.status === "pending" || inv.status === "accepted"),
+        portalOpened: portalOpened.has(c.id),
+      };
+    }),
+    venueTasks,
+    leadFollowUps,
+    contracts: nextStepContracts,
+    payments: overduePayments.map((p) => ({
+      id: p.id,
+      scheduleId: p.scheduleId,
+      label: p.label,
+      dueDate: p.dueDate,
+      isOverdue: p.isOverdue,
+      clientName: p.clientName,
+    })),
+  }).visible;
+
   // Extract first name from "Jordan Rivera" → "Jordan"
   const ownerFullName = staffRes.data?.full_name ?? null;
   const ownerFirstName = ownerFullName ? ownerFullName.split(" ")[0] : null;
@@ -458,6 +618,7 @@ export async function getDashboardData(): Promise<DashboardData | null> {
     venueName: venue.name,
     ownerFirstName,
     todayIso: today,
+    nextSteps,
     onboarding: await buildGuidedSetupChecklist(venue, activationScore, readyToInviteCouples),
     briefing,
     needsAttention,

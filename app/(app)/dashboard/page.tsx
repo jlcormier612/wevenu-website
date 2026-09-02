@@ -9,7 +9,7 @@ import {
 import { Greeting } from "@/components/dashboard/greeting";
 import { MilestoneToast } from "@/components/dashboard/milestone-toast";
 import { DashboardLuvIntro } from "@/components/dashboard/luv-intro";
-import { GettingStartedCard } from "@/components/dashboard/getting-started";
+import { YourNextStepsCard } from "@/components/dashboard/getting-started";
 import { DigestCallout } from "@/components/dashboard/digest-callout";
 import { AttentionList } from "@/components/dashboard-system/attention-list";
 import { StatTile, StatTileGrid } from "@/components/dashboard-system/stat-tile";
@@ -60,7 +60,7 @@ const PRIORITY_SEVERITY: Record<Priority, "critical" | "warning" | undefined> = 
  * this surface.
  */
 export default async function DashboardPage({ searchParams }: Props) {
-  const [data, { milestone }] = await Promise.all([getDashboardData(), searchParams]);
+  const [data] = await Promise.all([getDashboardData(), searchParams]);
 
   if (!data) {
     return (
@@ -100,7 +100,7 @@ export default async function DashboardPage({ searchParams }: Props) {
 
       <DashboardLuvIntro
         show={data.showLuvIntro}
-        setupHref={data.onboarding.show ? "#getting-started" : "/setup-hub"}
+        setupHref={data.onboarding.show ? "/setup-hub" : "/setup-hub"}
       />
       {data.showDigestCallout && <DigestCallout />}
 
@@ -157,6 +157,15 @@ export default async function DashboardPage({ searchParams }: Props) {
               </Link>
             </CardContent>
           </Card>
+        </section>
+      )}
+
+      {/* Your Next Steps — operational queue, not onboarding. Shown whenever
+          there is something that needs attention next. Never gated on
+          onboarding.show / onboardingDismissed. */}
+      {data.nextSteps.length > 0 && (
+        <section id="your-next-steps">
+          <YourNextStepsCard items={data.nextSteps} today={data.todayIso} />
         </section>
       )}
 
@@ -237,23 +246,6 @@ export default async function DashboardPage({ searchParams }: Props) {
           <QuickAction href="/calendar" icon={CalendarClock} label="Calendar" />
         </div>
       </section>
-
-      {/* Getting Started — onboarding, not operational, so it sits after the
-          operational sections rather than ahead of them. docs/dashboard-
-          luv-experience-architecture.md §6 classifies this row "n/a —
-          onboarding, not operational" and lists it last in the permanent
-          structure, naming the actionable-work section "the one section the
-          Dashboard exists for" — Today's Focus, since the deduplication pass.
-          The Phase 1 reconstruction kept this card explicitly because it does
-          "not compete for 'what matters today' attention" (docs/venue-
-          dashboard-reconstruction-phase1.md §6) but left its old placement
-          untouched, where it pushed the operational sections below the fold.
-          Still disappears entirely at 100% via data.onboarding.show. */}
-      {data.onboarding.show && (
-        <section>
-          <GettingStartedCard onboarding={data.onboarding} milestone={milestone} venueName={data.venueName} />
-        </section>
-      )}
 
       {/* Reports — navigation only, no report content on the Dashboard. */}
       <section>
