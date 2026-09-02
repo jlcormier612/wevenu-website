@@ -421,7 +421,11 @@ jobs:
           check_secret "htc/sandbox/stripe-saas" ".STRIPE_SECRET_KEY" "Stripe SaaS secret key"
           check_secret "htc/sandbox/stripe-connect" ".STRIPE_SECRET_KEY" "Stripe Connect secret key"
           check_secret "htc/sandbox/quickbooks" ".QUICKBOOKS_CLIENT_ID" "QuickBooks client ID"
-          echo "All 6 expected secrets exist. Any '::warning::' above means that specific capability (not the deploy itself) won't work until the real value is set - see the Sandbox infra report for which ones are required vs. deferrable."
+          # Platform SMS — required launch communication dependency (not deferrable).
+          check_secret "htc/sandbox/twilio" ".TWILIO_ACCOUNT_SID" "Twilio Account SID"
+          check_secret "htc/sandbox/twilio" ".TWILIO_AUTH_TOKEN" "Twilio Auth Token"
+          check_secret "htc/sandbox/twilio" ".TWILIO_MESSAGING_SERVICE_SID" "Twilio Messaging Service SID"
+          echo "Expected secrets checked (including Twilio SMS). Any '::warning::' above means that specific capability (not the deploy itself) won't work until the real value is set."
 
       - name: Verify Sandbox database readiness (optional)
         # Runs scripts/verify-sandbox-database.sh against the real project
