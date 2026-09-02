@@ -43,8 +43,14 @@ export function translateSmsFailure(raw: string): string {
   if (s.includes("21610") || s.includes("unsubscribed") || s.includes("opted out")) {
     return "This client has opted out of text messages.";
   }
-  if (s.includes("isn't configured") || s.includes("not configured")) {
-    return "Texting isn't set up for this venue yet.";
+  if (
+    s.includes("isn't configured")
+    || s.includes("not configured")
+    || s.includes("isn't set up")
+    || s.includes("isn't available")
+    || s.includes("communication health")
+  ) {
+    return "Texting isn't set up yet. Open Communication Health to see why.";
   }
   if (s.includes("no phone number") || s.includes("no phone")) {
     return "There's no phone number on file for this client.";

@@ -42,7 +42,7 @@ function isConfigured(): boolean {
 export async function sendSms(payload: SmsPayload): Promise<SmsSendResult> {
   const mode = getCommunicationMode();
   if (mode === "disabled") {
-    return { ok: true, providerId: "disabled" };
+    return { ok: false, message: "Sending is turned off in this environment." };
   }
 
   const accountSid = process.env.TWILIO_ACCOUNT_SID;
@@ -51,7 +51,7 @@ export async function sendSms(payload: SmsPayload): Promise<SmsSendResult> {
   const fromNumber = process.env.TWILIO_FROM_NUMBER;
 
   if (!accountSid || !authToken || !(messagingServiceSid || fromNumber)) {
-    return { ok: false, message: "Texting isn't configured for this venue yet — add Twilio credentials to enable it." };
+    return { ok: false, message: "Texting isn't set up yet. Open Communication Health to see why." };
   }
   if (!payload.to.trim()) {
     return { ok: false, message: "No phone number on file to text." };
@@ -61,10 +61,14 @@ export async function sendSms(payload: SmsPayload): Promise<SmsSendResult> {
   let sandboxRedirectedFrom: string | undefined;
   if (mode === "sandbox") {
     const sandboxTo = sandboxPhoneRecipient();
-    if (sandboxTo) {
-      sandboxRedirectedFrom = payload.to;
-      recipient = sandboxTo;
+    if (!sandboxTo) {
+      return {
+        ok: false,
+        message: "This environment isn't ready to send — the message was not delivered to a real recipient.",
+      };
     }
+    sandboxRedirectedFrom = payload.to;
+    recipient = sandboxTo;
   }
 
   const params = new URLSearchParams({

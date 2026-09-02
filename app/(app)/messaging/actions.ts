@@ -5,7 +5,7 @@ import { revalidatePath } from "next/cache";
 import { sendMessage } from "@/lib/messaging/service";
 import type { ComposeInput, MessageEntityType, SendResult } from "@/lib/messaging/types";
 import * as conversations from "@/lib/conversations/service";
-import type { ConversationDetail, ConversationSummary, SendMessageResult } from "@/lib/conversations/types";
+import type { ConversationComposeContext, ConversationDetail, ConversationSendPreview, ConversationSummary, SendMessageResult } from "@/lib/conversations/types";
 import { getActiveEnrollmentsForRelationship } from "@/lib/message-sequences/service";
 import type { SequenceEnrollment } from "@/lib/message-sequences/types";
 import { getTemplates } from "@/lib/message-templates/service";
@@ -49,6 +49,20 @@ export async function getConversationInboxAction(): Promise<{ conversations: Con
 
 export async function getConversationAction(conversationId: string): Promise<ConversationDetail | null> {
   return conversations.getConversation(conversationId);
+}
+
+export async function getConversationComposeContextAction(
+  conversationId: string,
+): Promise<ConversationComposeContext | null> {
+  return conversations.getConversationComposeContext(conversationId);
+}
+
+export async function previewConversationSendAction(
+  conversationId: string,
+  body: string,
+  emailSubject?: string,
+): Promise<ConversationSendPreview> {
+  return conversations.previewConversationSend(conversationId, body, emailSubject);
 }
 
 export async function sendConversationMessageAction(

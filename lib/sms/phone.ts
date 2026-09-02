@@ -20,3 +20,14 @@ export function toE164(phone: string): string | null {
   if (digits.length === 11 && digits.startsWith("1")) return `+${digits}`;
   return null;
 }
+
+/** Venue-facing display of a stored number, using the same E.164 rules as send. */
+export function formatPhoneDisplay(phone: string): string {
+  const e164 = toE164(phone);
+  if (!e164) return phone.trim();
+  const digits = phoneDigits(e164);
+  if (digits.length === 11 && digits.startsWith("1")) {
+    return `(${digits.slice(1, 4)}) ${digits.slice(4, 7)}-${digits.slice(7)}`;
+  }
+  return e164;
+}

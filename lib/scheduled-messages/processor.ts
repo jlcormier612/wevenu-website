@@ -18,7 +18,7 @@ import { sendEmail } from "@/lib/email/send";
 import { wrapConversationMessageHtml } from "@/lib/email/conversation-brand";
 import { sendSms } from "@/lib/sms/send";
 import { toE164 } from "@/lib/sms/phone";
-import { translateEmailFailure, translateSmsFailure } from "@/lib/communication/failure-messages";
+import { acceptOutboundEmail, acceptOutboundSms } from "@/lib/conversations/delivery-result";
 import { resolveForCustomerSend } from "@/lib/message-templates/merge";
 import { isEnrollmentSequencePaused, maybeCompleteEnrollmentAfterSend } from "@/lib/message-sequences/repository";
 import * as repo from "@/lib/scheduled-messages/repository";
@@ -68,16 +68,25 @@ async function processOne(supabase: ReturnType<typeof createAdminClient>, msg: S
       primaryColor: venue?.primary_color ?? "#5D6F5D",
     };
     const html = wrapConversationMessageHtml(brand, resolved.body);
-    const result = await sendEmail({ to: contact.email, subject: resolved.subject, text: resolved.body, html });
-    if (!result.ok) return { ok: false, error: translateEmailFailure(result.message) };
-    providerId = result.providerId;
+    const conversationId = await findOrCreateConversation(supabase, msg.venueId, msg.relationshipId);
+    const result = await sendEmail({
+      to: contact.email,
+      subject: resolved.subject,
+      text: resolved.body,
+      html,
+      threadId: conversationId ?? undefined,
+    });
+    const accepted = acceptOutboundEmail(result);
+    if (!accepted.ok) return { ok: false, error: accepted.message };
+    providerId = accepted.providerId;
   } else {
     if (!contact.phone) return { ok: false, error: "No phone number on file for this contact." };
     const e164 = toE164(contact.phone);
     if (!e164) return { ok: false, error: "The phone number on file isn't valid." };
     const result = await sendSms({ to: e164, body: resolved.body });
-    if (!result.ok) return { ok: false, error: translateSmsFailure(result.message) };
-    providerId = result.providerId;
+    const accepted = acceptOutboundSms(result);
+    if (!accepted.ok) return { ok: false, error: accepted.message };
+    providerId = accepted.providerId;
   }
 
   const conversationId = await findOrCreateConversation(supabase, msg.venueId, msg.relationshipId);

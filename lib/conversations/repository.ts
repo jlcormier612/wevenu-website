@@ -12,6 +12,7 @@
 import { createClient } from "@/integrations/supabase/server";
 import type {
   ConversationDetail,
+  ConversationKind,
   ConversationMessage,
   ConversationMessagePreview,
   ConversationSummary,
@@ -259,6 +260,75 @@ export async function getConversationRecipientEmail(
   const { data: relationship } = await client.from("venue_customer_relationships")
     .select("email").eq("id", convo.relationship_id).maybeSingle<{ email: string | null }>();
   return relationship?.email ?? null;
+}
+
+function coupleDisplayName(row: {
+  first_name: string | null;
+  last_name: string | null;
+  partner_first_name: string | null;
+} | null): string | null {
+  if (!row?.first_name) return null;
+  const primary = [row.first_name, row.last_name].filter(Boolean).join(" ");
+  return row.partner_first_name ? `${primary} & ${row.partner_first_name}` : primary;
+}
+
+export async function getConversationComposeFacts(
+  client: DbClient,
+  conversationId: string,
+): Promise<{
+  displayName: string | null;
+  conversationKind: ConversationKind | null;
+  recipientEmail: string | null;
+  recipientPhone: string | null;
+} | null> {
+  const { data: convo } = await client.from("conversations")
+    .select("conversation_kind, relationship_id, event_vendor_assignment_id")
+    .eq("id", conversationId)
+    .maybeSingle<{
+      conversation_kind: ConversationKind | null;
+      relationship_id: string | null;
+      event_vendor_assignment_id: string | null;
+    }>();
+  if (!convo) return null;
+
+  const [recipientEmail, recipientPhone] = await Promise.all([
+    getConversationRecipientEmail(client, conversationId),
+    getConversationRecipientPhone(client, conversationId),
+  ]);
+
+  let displayName: string | null = null;
+  if (convo.event_vendor_assignment_id) {
+    const { data } = await client.from("event_vendor_assignments")
+      .select("vendors(business_name)")
+      .eq("id", convo.event_vendor_assignment_id)
+      .maybeSingle<{ vendors: { business_name: string | null } | { business_name: string | null }[] | null }>();
+    const vendor = Array.isArray(data?.vendors) ? data.vendors[0] : data?.vendors;
+    displayName = vendor?.business_name ?? null;
+  } else if (convo.relationship_id) {
+    const { data: booked } = await client.from("clients")
+      .select("first_name, last_name, partner_first_name")
+      .eq("relationship_id", convo.relationship_id)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle<{ first_name: string | null; last_name: string | null; partner_first_name: string | null }>();
+    displayName = coupleDisplayName(booked);
+    if (!displayName) {
+      const { data: lead } = await client.from("leads")
+        .select("first_name, last_name, partner_first_name")
+        .eq("relationship_id", convo.relationship_id)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle<{ first_name: string | null; last_name: string | null; partner_first_name: string | null }>();
+      displayName = coupleDisplayName(lead);
+    }
+  }
+
+  return {
+    displayName,
+    conversationKind: convo.conversation_kind,
+    recipientEmail,
+    recipientPhone,
+  };
 }
 
 /**

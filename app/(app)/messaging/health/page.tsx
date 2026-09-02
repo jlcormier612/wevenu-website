@@ -23,7 +23,7 @@ export default async function CommunicationHealthPage() {
     <div className="space-y-6">
       <div>
         <h1 className="font-heading text-2xl font-medium text-heading">Communication Health</h1>
-        <p className="text-sm text-muted-foreground">Whether your emails and texts are actually reaching your leads and clients.</p>
+        <p className="text-sm text-muted-foreground">Whether your emails and texts are actually reaching your leads and clients. Email and texting are set up for Hello to Cheers as a platform — not in venue Settings. Your venue contact email and phone are used for test messages and for how couples reach you.</p>
       </div>
 
       {/* Overall Communication Health — a different question from the history below:

@@ -17,6 +17,7 @@ import { isEmailConfigured, sendEmail } from "@/lib/email/send";
 import { isSmsConfigured, sendSms } from "@/lib/sms/send";
 import { toE164 } from "@/lib/sms/phone";
 import { getCurrentVenue } from "@/lib/venue/service";
+import { acceptOutboundEmail, acceptOutboundSms } from "@/lib/conversations/delivery-result";
 
 export type ReadinessState = "ready" | "not_ready" | "untested";
 
@@ -59,12 +60,16 @@ export async function getCommunicationReadiness(): Promise<CommunicationReadines
     {
       key: "email", label: "Email configured",
       state: emailConfigured ? "ready" : "not_ready",
-      detail: emailConfigured ? "Ready to send." : "Not set up yet — contact support to finish setup.",
+      detail: emailConfigured
+        ? "Ready to send. Email is set up for Hello to Cheers — you don't configure it in venue Settings."
+        : "Not ready yet. Email sending is set up for Hello to Cheers as a platform, not per venue. Contact support if this still shows as not ready.",
     },
     {
       key: "sms", label: "Texting configured",
       state: smsConfigured ? "ready" : "not_ready",
-      detail: smsConfigured ? "Ready to send." : "Not set up yet — contact support to finish setup.",
+      detail: smsConfigured
+        ? "Ready to send. Texting is set up for Hello to Cheers — you don't configure it in venue Settings."
+        : "Not ready yet. Texting is set up for Hello to Cheers as a platform, not per venue. Contact support if this still shows as not ready.",
     },
     {
       key: "reply_routing", label: "Reply routing working",
@@ -127,8 +132,8 @@ export async function sendTestEmail(): Promise<TestSendResult> {
     subject: "Hello to Cheers test message",
     text: `This is a test message from Hello to Cheers to confirm email is working for ${venue.name}. If you received this, email is set up correctly.`,
   });
-  if (!result.ok) return { ok: false, message: result.message };
-  if (result.method === "mailto") return { ok: false, message: "Email isn't fully configured for this venue yet." };
+  const accepted = acceptOutboundEmail(result);
+  if (!accepted.ok) return { ok: false, message: accepted.message };
 
   const client = await createClient();
   await client.from("venues").update({ communication_test_email_at: new Date().toISOString() }).eq("id", venue.id);
@@ -145,7 +150,8 @@ export async function sendTestSms(): Promise<TestSendResult> {
     to: e164,
     body: `This is a test message from Hello to Cheers to confirm texting is working for ${venue.name}. If you received this, texting is set up correctly.`,
   });
-  if (!result.ok) return { ok: false, message: result.message };
+  const accepted = acceptOutboundSms(result);
+  if (!accepted.ok) return { ok: false, message: accepted.message };
 
   const client = await createClient();
   await client.from("venues").update({ communication_test_sms_at: new Date().toISOString() }).eq("id", venue.id);

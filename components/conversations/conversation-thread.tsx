@@ -13,20 +13,23 @@
 import * as React from "react";
 import Link from "next/link";
 import {
-  ArrowLeft, Bot, Calendar, CheckCircle2, Clock, FileText, ListTodo, Mail, MessageSquare, Paperclip, Phone, RotateCcw, Send, Smartphone, StickyNote, User, Voicemail, Workflow, X,
+  ArrowLeft, Bot, Calendar, CheckCircle2, Clock, FileText, ListTodo, Mail, MessageSquare, Phone, RotateCcw, Send, Smartphone, StickyNote, User, Voicemail, Workflow, X,
 } from "lucide-react";
 import { toast } from "sonner";
 
 import {
-  addConversationMessageAttachmentAction, cancelScheduledMessageAction, getActiveEnrollmentsForConversationAction, getComposeTemplatesAction, getConversationAction,
-  getScheduledForConversationAction, scheduleMessageAction, sendConversationMessageAction, setConversationAssignedStaffAction,
+  cancelScheduledMessageAction, getActiveEnrollmentsForConversationAction, getConversationAction,
+  getScheduledForConversationAction, setConversationAssignedStaffAction,
 } from "@/app/(app)/messaging/actions";
-import { addTaskAction } from "@/app/(app)/leads/[id]/actions";
+import {
+  addTaskAction,
+} from "@/app/(app)/leads/[id]/actions";
 import { createRequestAction } from "@/app/(app)/requests/actions";
+import { ConversationCompose } from "@/components/conversations/conversation-compose";
 import { MessageTimelinePopover } from "@/components/messaging/message-timeline-popover";
+import { SENDABLE_CHANNEL_LABEL } from "@/lib/conversations/channels";
 import type { ConversationChannel, ConversationMessage, ConversationSummary } from "@/lib/conversations/types";
 import type { SequenceEnrollment } from "@/lib/message-sequences/types";
-import type { MessageTemplate } from "@/lib/message-templates/types";
 import type { ScheduledMessage } from "@/lib/scheduled-messages/types";
 import type { StaffMember } from "@/lib/team/types";
 
@@ -227,15 +230,6 @@ function ScheduledRow({ msg, onCancel }: { msg: ScheduledMessage; onCancel: (id:
   );
 }
 
-// datetime-local wants "YYYY-MM-DDTHH:mm" in the browser's local time — a
-// sensible default one hour out, never a time already in the past.
-function defaultScheduleValue(): string {
-  const d = new Date(Date.now() + 60 * 60 * 1000);
-  d.setSeconds(0, 0);
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
-}
-
 const NO_ASSIGNEE = "__none__";
 
 export function ConversationThread({
@@ -262,26 +256,9 @@ export function ConversationThread({
   initialSubject?: string;
 }) {
   const [messages, setMessages] = React.useState<ConversationMessage[] | null>(null);
-  const [body, setBody] = React.useState(initialBody ?? "");
-  const [emailSubject, setEmailSubject] = React.useState(initialSubject ?? "");
-  const [channel, setChannel] = React.useState<ConversationChannel>(initialSubject ? "email" : "portal");
-  const [sending, setSending] = React.useState(false);
   const bottomRef = React.useRef<HTMLDivElement>(null);
-
-  // RC2 — attachment upload state. The file is uploaded once picked (not on
-  // send) so the compose bar can show upload progress/errors immediately;
-  // it's attached to the message row only after the message itself sends.
-  const [pendingFile, setPendingFile] = React.useState<File | null>(null);
-  const [uploadingFile, setUploadingFile] = React.useState(false);
-  const fileInputRef = React.useRef<HTMLInputElement>(null);
-
-  const [templates, setTemplates] = React.useState<MessageTemplate[]>([]);
-  const [templateId, setTemplateId] = React.useState("");
-
   const [scheduled, setScheduled] = React.useState<ScheduledMessage[]>([]);
-  const [schedulePanelOpen, setSchedulePanelOpen] = React.useState(false);
-  const [scheduledFor, setScheduledFor] = React.useState(defaultScheduleValue);
-  const [scheduling, setScheduling] = React.useState(false);
+  const [prefill, setPrefill] = React.useState<{ body: string; channel: ConversationChannel; nonce: number } | null>(null);
 
   // RC2, Milestone 4 — "Create Request" from this Conversation. source_id
   // is the conversation's id (not one specific message), so the Request's
@@ -315,110 +292,29 @@ export function ConversationThread({
     setScheduled(await getScheduledForConversationAction(conversationId));
   }, [conversationId]);
 
-  React.useEffect(() => { void load(); void loadScheduled(); }, [load, loadScheduled]);
-  React.useEffect(() => { void getComposeTemplatesAction().then(setTemplates); }, []);
+  React.useEffect(() => {
+    let cancelled = false;
+    void getConversationAction(conversationId).then((detail) => {
+      if (!cancelled) setMessages(detail?.messages ?? []);
+    });
+    void getScheduledForConversationAction(conversationId).then((next) => {
+      if (!cancelled) setScheduled(next);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [conversationId]);
   React.useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages?.length]);
-
-  // Templates are Email/SMS content, not a "portal" or "internal note"
-  // concept — only offered (and only used to prefill) for those two
-  // channels, matching how the Message Template Library itself is scoped.
-  const templatesForChannel = templates.filter((t) =>
-    channel === "email" ? !!t.emailBody : channel === "sms" ? !!t.smsBody : false);
-
-  function applyTemplate(id: string) {
-    setTemplateId(id);
-    const t = templates.find((tpl) => tpl.id === id);
-    if (!t) return;
-    if (channel === "email") {
-      setBody(t.emailBody ?? "");
-      setEmailSubject(t.emailSubject ?? "");
-    } else if (channel === "sms") {
-      setBody(t.smsBody ?? "");
-    }
-  }
-
-  function handleFilePick(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    e.target.value = ""; // allow picking the same file again after removing it
-    if (!file) return;
-    if (file.size > 20 * 1024 * 1024) {
-      toast.error("File exceeds 20 MB limit.");
-      return;
-    }
-    setPendingFile(file);
-  }
-
-  async function send() {
-    const text = body.trim();
-    if ((!text && !pendingFile) || sending || uploadingFile) return;
-    if (channel === "email" && !emailSubject.trim()) {
-      toast.error("An email needs a subject line.");
-      return;
-    }
-    if (pendingFile && channel !== "portal" && channel !== "internal_note") {
-      toast.error("Attachments can only be sent on Portal or Internal Note messages right now.");
-      return;
-    }
-    setSending(true);
-
-    // Upload first — a message is only created once the file is confirmed
-    // safely stored, so a failed upload never leaves a dangling empty
-    // "attachment-only" message behind.
-    let uploaded: { url: string; name: string; size: number; mimeType: string } | null = null;
-    if (pendingFile) {
-      setUploadingFile(true);
-      try {
-        const form = new FormData();
-        form.append("file", pendingFile);
-        form.append("conversationId", conversationId);
-        const res = await fetch("/api/conversations/upload", { method: "POST", body: form });
-        const data = await res.json() as { ok: boolean; url?: string; file_name?: string; file_size?: number; mime_type?: string; error?: string };
-        if (!data.ok || !data.url) {
-          toast.error(data.error ?? "Upload failed.");
-          setSending(false);
-          setUploadingFile(false);
-          return;
-        }
-        uploaded = { url: data.url, name: data.file_name ?? pendingFile.name, size: data.file_size ?? pendingFile.size, mimeType: data.mime_type ?? pendingFile.type };
-      } catch {
-        toast.error("Upload failed.");
-        setSending(false);
-        setUploadingFile(false);
-        return;
-      }
-      setUploadingFile(false);
-    }
-
-    // Real sends (email, sms) can genuinely fail — don't clear the draft or
-    // pretend success until the result is known, unlike the old DB-only-write
-    // path where every channel here trivially "succeeded" (2026-07-11; email
-    // corrected 2026-07-14 — it looked real but wasn't, see product-backlog.md).
-    const result = await sendConversationMessageAction(conversationId, text, channel, emailSubject, !!uploaded);
-    if (result.ok) {
-      if (uploaded) {
-        await addConversationMessageAttachmentAction(result.messageId, uploaded);
-      }
-      setBody("");
-      setEmailSubject("");
-      setTemplateId("");
-      setPendingFile(null);
-      await load();
-    } else {
-      toast.error(result.message ?? "Could not send message.");
-    }
-    setSending(false);
-  }
 
   // Communication Trust Experience, Phase 5 — loads a failed message back
   // into the compose box (same or an alternate channel) rather than
   // silently re-sending; the coordinator reviews and hits Send themselves.
   function prefillFromFailed(text: string, targetChannel: ConversationChannel) {
-    setChannel(targetChannel);
-    setBody(text);
-    if (targetChannel !== "email") setEmailSubject("");
-    toast.info(targetChannel === channel ? "Loaded back into the compose box — review and send." : `Loaded into the compose box as ${CHANNEL_META[targetChannel].label} — review and send.`);
+    setPrefill({ body: text, channel: targetChannel, nonce: Date.now() });
+    const label = SENDABLE_CHANNEL_LABEL[targetChannel as keyof typeof SENDABLE_CHANNEL_LABEL] ?? CHANNEL_META[targetChannel].label;
+    toast.info(`Loaded into the compose box as ${label} — review and send.`);
   }
 
   async function createFollowUpTask(msg: ConversationMessage) {
@@ -453,23 +349,6 @@ export function ConversationThread({
     }
   }
 
-  async function confirmSchedule() {
-    const text = body.trim();
-    if (!text || scheduling) return;
-    if (channel !== "email" && channel !== "sms") return; // Scheduled Sends is Email/SMS only — §5.1
-    setScheduling(true);
-    const iso = new Date(scheduledFor).toISOString();
-    const result = await scheduleMessageAction(conversationId, templateId || null, channel, emailSubject, text, iso);
-    if (result.ok) {
-      toast.success(`Scheduled for ${formatScheduledFor(iso)}.`);
-      setBody(""); setEmailSubject(""); setTemplateId(""); setSchedulePanelOpen(false);
-      await loadScheduled();
-    } else {
-      toast.error(result.message ?? "Could not schedule this message.");
-    }
-    setScheduling(false);
-  }
-
   async function cancelScheduled(id: string) {
     if (!confirm("Cancel this scheduled message?")) return;
     const result = await cancelScheduledMessageAction(id);
@@ -485,10 +364,8 @@ export function ConversationThread({
     else grouped.push({ label, msgs: [m] });
   }
 
-  const canSchedule = channel === "email" || channel === "sms";
-
   return (
-    <div className="flex h-full min-h-0 flex-col">
+    <div className="flex h-full min-h-0 flex-1 flex-col">
       {showHeader && (
         <div className="shrink-0 border-b border-border/60">
           <div className="flex items-center gap-2 px-4 py-3">
@@ -568,7 +445,7 @@ export function ConversationThread({
         </div>
       )}
 
-      <div className="min-h-0 flex-1 overflow-y-auto px-4 py-3">
+      <div className="min-h-[8rem] flex-1 overflow-y-auto px-4 py-3">
         {messages === null ? (
           <p className="text-xs text-muted-foreground">Loading…</p>
         ) : messages.length === 0 ? (
@@ -622,120 +499,14 @@ export function ConversationThread({
         </div>
       )}
 
-      <div className="shrink-0 space-y-2 border-t border-border/60 p-3">
-        {templatesForChannel.length > 0 && (
-          <select
-            aria-label="Use a template"
-            value={templateId}
-            onChange={(e) => applyTemplate(e.target.value)}
-            className="h-8 w-full rounded-lg border border-border bg-background px-2 text-xs"
-          >
-            <option value="">Use a template…</option>
-            {templatesForChannel.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
-          </select>
-        )}
-
-        {channel === "email" && (
-          <input
-            type="text"
-            value={emailSubject}
-            onChange={(e) => setEmailSubject(e.target.value)}
-            placeholder="Subject"
-            className="h-8 w-full rounded-lg border border-border bg-background px-2 text-sm"
-          />
-        )}
-
-        {schedulePanelOpen && (
-          <div className="space-y-2 rounded-lg border border-dashed border-border bg-muted/30 p-2.5">
-            <div className="flex items-center gap-2">
-              <input
-                type="datetime-local"
-                value={scheduledFor}
-                onChange={(e) => setScheduledFor(e.target.value)}
-                className="h-8 flex-1 rounded-lg border border-border bg-background px-2 text-xs"
-              />
-              <button type="button" onClick={() => void confirmSchedule()} disabled={!body.trim() || scheduling}
-                className="h-8 shrink-0 rounded-lg bg-primary px-3 text-xs font-medium text-primary-foreground disabled:opacity-40">
-                {scheduling ? "Scheduling…" : "Confirm"}
-              </button>
-              <button type="button" onClick={() => setSchedulePanelOpen(false)}
-                className="h-8 shrink-0 rounded-lg px-2 text-xs text-muted-foreground hover:text-foreground">
-                Cancel
-              </button>
-            </div>
-          </div>
-        )}
-
-        {pendingFile && (
-          <div className="flex items-center gap-2 rounded-lg border border-dashed border-border bg-muted/30 px-2.5 py-1.5">
-            <Paperclip className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-            <span className="min-w-0 flex-1 truncate text-xs text-heading">{pendingFile.name}</span>
-            {uploadingFile ? (
-              <span className="shrink-0 text-[10px] text-muted-foreground">Uploading…</span>
-            ) : (
-              <button type="button" onClick={() => setPendingFile(null)} aria-label="Remove attachment"
-                className="shrink-0 rounded p-0.5 text-muted-foreground hover:text-destructive">
-                <X className="h-3.5 w-3.5" />
-              </button>
-            )}
-          </div>
-        )}
-
-        <div className="flex items-end gap-2">
-          <select
-            aria-label="Channel"
-            value={channel}
-            onChange={(e) => { setChannel(e.target.value as ConversationChannel); setTemplateId(""); }}
-            className="h-9 rounded-lg border border-border bg-background px-2 text-xs"
-          >
-            {(Object.keys(CHANNEL_META) as ConversationChannel[]).map((c) => (
-              <option key={c} value={c}>{CHANNEL_META[c].label}</option>
-            ))}
-          </select>
-          <textarea
-            value={body}
-            onChange={(e) => setBody(e.target.value)}
-            onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); void send(); } }}
-            placeholder="Type a message…"
-            rows={1}
-            className="flex-1 resize-none rounded-lg border border-border bg-background px-3 py-2 text-sm"
-          />
-          <input ref={fileInputRef} type="file" onChange={handleFilePick} className="hidden" />
-          {(channel === "portal" || channel === "internal_note") && (
-            <button
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              aria-label="Attach a file"
-              title="Attach a file"
-              className="h-9 w-9 shrink-0 rounded-lg border border-border text-muted-foreground hover:text-foreground flex items-center justify-center"
-            >
-              <Paperclip className="h-4 w-4" />
-            </button>
-          )}
-          {canSchedule && (
-            <button
-              type="button"
-              onClick={() => setSchedulePanelOpen((p) => !p)}
-              aria-label="Schedule for later"
-              title="Schedule for later"
-              className={`h-9 w-9 shrink-0 rounded-lg border flex items-center justify-center ${
-                schedulePanelOpen ? "border-primary text-primary bg-primary/10" : "border-border text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              <Clock className="h-4 w-4" />
-            </button>
-          )}
-          <button
-            type="button"
-            onClick={() => void send()}
-            disabled={(!body.trim() && !pendingFile) || sending || uploadingFile || (channel === "email" && !emailSubject.trim())}
-            aria-label="Send"
-            className="h-9 w-9 shrink-0 rounded-lg bg-primary text-primary-foreground flex items-center justify-center disabled:opacity-40"
-          >
-            <Send className="h-4 w-4" />
-          </button>
-        </div>
-      </div>
+      <ConversationCompose
+        conversationId={conversationId}
+        initialBody={initialBody}
+        initialSubject={initialSubject}
+        prefill={prefill}
+        onSent={load}
+        onScheduled={loadScheduled}
+      />
     </div>
   );
 }

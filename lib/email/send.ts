@@ -37,7 +37,7 @@ export function isEmailConfigured(): boolean {
 export async function sendEmail(payload: EmailPayload): Promise<SendResult> {
   const mode = getCommunicationMode();
   if (mode === "disabled") {
-    return { ok: true, method: "disabled" };
+    return { ok: false, message: "Sending is turned off in this environment." };
   }
 
   const apiKey = process.env.RESEND_API_KEY;
@@ -47,13 +47,14 @@ export async function sendEmail(payload: EmailPayload): Promise<SendResult> {
   let sandboxRedirectedFrom: string | undefined;
   if (mode === "sandbox") {
     const sandboxTo = sandboxEmailRecipient();
-    if (sandboxTo) {
-      sandboxRedirectedFrom = payload.to;
-      recipient = sandboxTo;
+    if (!sandboxTo) {
+      return {
+        ok: false,
+        message: "This environment isn't ready to send — the message was not delivered to a real recipient.",
+      };
     }
-    // No COMMUNICATION_SANDBOX_EMAIL configured — falls through and sends
-    // to the real recipient anyway rather than silently no-op'ing; sandbox
-    // mode without a redirect target isn't a safe substitute for "real".
+    sandboxRedirectedFrom = payload.to;
+    recipient = sandboxTo;
   }
 
   // --- Resend API path ---

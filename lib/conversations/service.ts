@@ -20,7 +20,9 @@ import {
 import { dismissOrphanMessageNotificationsForConversation } from "@/lib/vendor-notifications/reconcile-message-notifications";
 import { getVendorEvents } from "@/lib/vendor-events/service";
 import type {
+  ConversationComposeContext,
   ConversationDetail,
+  ConversationSendPreview,
   ConversationSummary,
   PortalConversationResult,
   PortalCoupleVendorConversationResult,
@@ -30,12 +32,14 @@ import type {
   VendorConversationSummary,
   VendorRollupConversation,
 } from "@/lib/conversations/types";
-import { sendSms } from "@/lib/sms/send";
-import { toE164 } from "@/lib/sms/phone";
-import { sendEmail } from "@/lib/email/send";
+import { isSendableChannel } from "@/lib/conversations/channels";
+import { acceptOutboundEmail, acceptOutboundSms } from "@/lib/conversations/delivery-result";
+import { getCommunicationMode } from "@/lib/communication/mode";
+import { sendSms, isSmsConfigured } from "@/lib/sms/send";
+import { formatPhoneDisplay, toE164 } from "@/lib/sms/phone";
+import { isEmailConfigured, sendEmail } from "@/lib/email/send";
 import { wrapConversationMessageHtml } from "@/lib/email/conversation-brand";
-import { translateEmailFailure, translateSmsFailure } from "@/lib/communication/failure-messages";
-import { extractTokens, resolveForCustomerSend } from "@/lib/message-templates/merge";
+import { extractTokens, mergeContent, resolveForCustomerSend, assertCustomerSafeMergedContent, buildMergeData } from "@/lib/message-templates/merge";
 import { getMergeContextForRelationship } from "@/lib/scheduled-messages/repository";
 import { getCurrentStaffMember } from "@/lib/team/service";
 import { getCurrentVenue } from "@/lib/venue/service";
@@ -52,6 +56,83 @@ export async function getConversation(conversationId: string): Promise<Conversat
   return repo.getConversation(supabase, conversationId);
 }
 
+export async function getConversationComposeContext(
+  conversationId: string,
+): Promise<ConversationComposeContext | null> {
+  if (!isSupabaseConfigured) return null;
+  const supabase = await createClient();
+  const facts = await repo.getConversationComposeFacts(supabase, conversationId);
+  if (!facts) return null;
+  const mode = getCommunicationMode();
+  const sendingDisabled = mode === "disabled";
+  return {
+    displayName: facts.displayName,
+    conversationKind: facts.conversationKind,
+    recipientEmail: facts.recipientEmail,
+    recipientPhone: facts.recipientPhone,
+    recipientPhoneDisplay: facts.recipientPhone ? formatPhoneDisplay(facts.recipientPhone) : null,
+    emailReady: !sendingDisabled && isEmailConfigured(),
+    smsReady: !sendingDisabled && isSmsConfigured(),
+    sendingDisabled,
+  };
+}
+
+export async function previewConversationSend(
+  conversationId: string,
+  body: string,
+  emailSubject?: string,
+): Promise<ConversationSendPreview> {
+  const trimmed = body;
+  const subject = emailSubject ?? "";
+  const empty: ConversationSendPreview = {
+    body: trimmed,
+    subject,
+    html: wrapConversationMessageHtml({ name: "Your venue", logoUrl: null, primaryColor: "#5D6F5D" }, trimmed),
+    unresolvedMessage: null,
+  };
+  if (!isSupabaseConfigured) return empty;
+  const supabase = await createClient();
+  const [venue, relationshipId] = await Promise.all([
+    getCurrentVenue(),
+    repo.getRelationshipIdForConversation(supabase, conversationId),
+  ]);
+  const brand = {
+    name: venue?.name ?? "Your venue",
+    logoUrl: venue?.logoUrl ?? null,
+    primaryColor: venue?.primaryColor ?? "#5D6F5D",
+  };
+  if (!venue || !relationshipId || (extractTokens(trimmed).length === 0 && extractTokens(subject).length === 0)) {
+    return {
+      body: trimmed,
+      subject,
+      html: wrapConversationMessageHtml(brand, trimmed),
+      unresolvedMessage: null,
+    };
+  }
+  const staff = await getCurrentStaffMember(venue.id);
+  const ctx = await getMergeContextForRelationship(supabase, venue.id, relationshipId, {
+    coordinatorName: staff?.name ?? null,
+  });
+  if (!ctx) {
+    return {
+      body: trimmed,
+      subject,
+      html: wrapConversationMessageHtml(brand, trimmed),
+      unresolvedMessage: "This message still has fill-in details that need a client conversation context before sending.",
+    };
+  }
+  const mergeData = buildMergeData(ctx);
+  const resolvedBody = mergeContent(trimmed, mergeData);
+  const resolvedSubject = subject ? mergeContent(subject, mergeData) : "";
+  const safe = assertCustomerSafeMergedContent(resolvedBody, resolvedSubject || null);
+  return {
+    body: resolvedBody,
+    subject: resolvedSubject,
+    html: wrapConversationMessageHtml(brand, resolvedBody),
+    unresolvedMessage: safe.ok ? null : safe.message,
+  };
+}
+
 export async function sendConversationMessage(
   conversationId: string,
   body: string,
@@ -60,6 +141,9 @@ export async function sendConversationMessage(
   hasAttachment = false,
 ): Promise<SendMessageResult> {
   if (!isSupabaseConfigured) return { ok: false, message: "Backend not configured." };
+  if (!isSendableChannel(channel)) {
+    return { ok: false, message: "That isn't a sendable message type." };
+  }
   // An attachment-only message ("here's the floor plan," no text) is only
   // meaningful on record-only channels — email/SMS attachments aren't
   // actually delivered by either provider integration in this pass, so an
@@ -130,8 +214,9 @@ export async function sendConversationMessage(
       return { ok: false, message: "This client has no phone number on file — add one to their record to send a text." };
     }
     const smsResult = await sendSms({ to: e164, body: trimmed });
-    if (!smsResult.ok) return { ok: false, message: translateSmsFailure(smsResult.message) };
-    providerId = smsResult.providerId;
+    const accepted = acceptOutboundSms(smsResult);
+    if (!accepted.ok) return { ok: false, message: accepted.message };
+    providerId = accepted.providerId;
     status = "accepted";
   } else if (channel === "email") {
     if (!subject) {
@@ -151,9 +236,16 @@ export async function sendConversationMessage(
       primaryColor: venue?.primaryColor ?? "#5D6F5D",
     };
     const html = wrapConversationMessageHtml(brand, trimmed);
-    const emailResult = await sendEmail({ to: email, subject, text: trimmed, html });
-    if (!emailResult.ok) return { ok: false, message: translateEmailFailure(emailResult.message) };
-    providerId = emailResult.providerId;
+    const emailResult = await sendEmail({
+      to: email,
+      subject,
+      text: trimmed,
+      html,
+      threadId: conversationId,
+    });
+    const accepted = acceptOutboundEmail(emailResult);
+    if (!accepted.ok) return { ok: false, message: accepted.message };
+    providerId = accepted.providerId;
     status = "accepted";
   }
 

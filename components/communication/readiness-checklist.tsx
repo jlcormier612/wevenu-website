@@ -62,6 +62,9 @@ export function ReadinessChecklist({ initial }: { initial: CommunicationReadines
             {readiness.allReady ? "Communication Ready" : "Communication Readiness"}
           </h2>
         </div>
+        <p className="text-xs text-muted-foreground">
+          Email and texting readiness is shown here before you send from Inbox. Portal messages and internal notes do not need this checklist.
+        </p>
       </CardHeader>
       <CardContent className="pt-0 space-y-4">
         <ul className="space-y-2">

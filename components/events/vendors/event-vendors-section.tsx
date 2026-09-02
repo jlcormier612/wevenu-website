@@ -341,7 +341,7 @@ export function EventVendorsSection({
                   main inbox and Relationship tab use; a vendor conversation is
                   read/written no differently than any other Conversation. */}
               {openThreadId === a.id && a.conversationId && (
-                <div className="min-h-0 overflow-hidden rounded-lg border border-border" style={{ height: 420 }}>
+                <div className="flex min-h-[min(70svh,40rem)] flex-col overflow-hidden rounded-lg border border-border">
                   <ConversationThread conversationId={a.conversationId} showHeader={false} />
                 </div>
               )}

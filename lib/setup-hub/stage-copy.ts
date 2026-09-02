@@ -48,7 +48,7 @@ export const STAGE_COPY: Record<string, StageCopy> = {
   "client-experience": {
     what: "The contracts, questionnaires, message templates, and planning guides you'll use with couples.",
     why: "This is what a couple experiences while working with you — how you ask for the right details, what you send them, and how their planning stays organized.",
-    whatToDo: "We've started you off with some common examples in your Library. Look them over and make them yours, or build your own from scratch. If the starting examples work for you as-is, just let us know you've looked them over.",
+    whatToDo: "We've started you off with some common examples in your Library. Look them over and make them yours, or build your own from scratch. If the starting examples work for you as-is, just let us know you've looked them over. When you're ready to send real messages, open Inbox → Communication Health — Email and texting are platform-level, not something you configure in venue Settings.",
     required: true,
     helpHref: "/help/setup-client-experience",
     helpTitle: "Walk me through this setup",

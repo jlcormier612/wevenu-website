@@ -33,7 +33,7 @@ export function RelationshipConversationTab({
     );
   }
   return (
-    <div className="min-h-0 overflow-hidden rounded-sm border border-border bg-card" style={{ height: 520 }}>
+    <div className="flex min-h-[min(70svh,44rem)] flex-col overflow-hidden rounded-sm border border-border bg-card">
       <ConversationThread
         conversationId={conversationId} showHeader={false}
         initialBody={initialBody} initialSubject={initialSubject}

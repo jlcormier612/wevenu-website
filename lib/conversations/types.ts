@@ -94,6 +94,25 @@ export type PortalConversationResult =
 /** Pairwise conversation kinds. couple_vendor is assignment-anchored too. */
 export type ConversationKind = "venue_couple" | "venue_vendor" | "couple_vendor";
 
+/** What the composer needs to show destination and channel readiness. */
+export type ConversationComposeContext = {
+  displayName: string | null;
+  conversationKind: ConversationKind | null;
+  recipientEmail: string | null;
+  recipientPhone: string | null;
+  recipientPhoneDisplay: string | null;
+  emailReady: boolean;
+  smsReady: boolean;
+  sendingDisabled: boolean;
+};
+
+export type ConversationSendPreview = {
+  body: string;
+  subject: string;
+  html: string;
+  unresolvedMessage: string | null;
+};
+
 /** One event-anchored vendor conversation, as seen from the venue side's rollup. */
 export type VendorRollupConversation = {
   conversationId: string;

@@ -16,6 +16,7 @@ const EXPECTED_SLUGS = [
   "setup-calendar-availability",
   "setup-your-offerings",
   "setup-client-experience",
+  "setup-communication",
   "setup-lead-capture",
   "setup-your-team",
   "setup-financials",
@@ -130,6 +131,33 @@ describe("guide links used elsewhere in the app resolve", () => {
     const source = readFileSync(resolve("app/(app)/help/page.tsx"), "utf8");
     assert.match(source, /SETUP_GUIDES/);
     assert.match(source, /\/help\/\$\{guide\.slug\}/);
+  });
+});
+
+describe("Communication setup guide", () => {
+  const guide = getSetupGuide("setup-communication");
+
+  it("exists and describes the four sendable channels", () => {
+    assert.ok(guide);
+    const text = JSON.stringify(guide);
+    assert.match(text, /Email/);
+    assert.match(text, /SMS/);
+    assert.match(text, /Portal message/);
+    assert.match(text, /Internal note/);
+  });
+
+  it("does not document Voicemail, Push, or Phone call as send actions", () => {
+    const text = JSON.stringify(guide);
+    assert.doesNotMatch(text, /Voicemail/);
+    assert.doesNotMatch(text, /Phone call/);
+    assert.doesNotMatch(text, /\bPush\b/);
+  });
+
+  it("says Email and texting are platform-level, not venue Settings", () => {
+    const text = JSON.stringify(guide);
+    assert.match(text, /platform/i);
+    assert.match(text, /venue Settings/);
+    assert.match(text, /Communication Health/);
   });
 });
 

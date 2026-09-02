@@ -210,8 +210,8 @@ export function ConversationInbox({ teamMembers = [] }: { teamMembers?: StaffMem
         </select>
       </div>
 
-      <div className="rounded-sm border border-border bg-card overflow-hidden" style={{ height: "calc(100vh - 320px)" }}>
-        <div className="flex h-full">
+      <div className="flex h-[calc(100svh-16rem)] min-h-[32rem] overflow-hidden rounded-sm border border-border bg-card">
+        <div className="flex h-full w-full min-h-0">
           <div className={`w-full md:w-80 shrink-0 border-r border-border/60 overflow-y-auto ${activeId ? "hidden md:block" : ""}`}>
             {items === null ? (
               <p className="p-4 text-xs text-muted-foreground">Loading…</p>
@@ -225,10 +225,10 @@ export function ConversationInbox({ teamMembers = [] }: { teamMembers?: StaffMem
               ))
             )}
           </div>
-          <div className={`flex-1 flex ${activeId ? "" : "hidden md:flex md:items-center md:justify-center"}`}>
+          <div className={`flex min-h-0 min-w-0 flex-1 ${activeId ? "" : "hidden md:flex md:items-center md:justify-center"}`}>
             {activeId ? (
               <>
-                <div className="flex-1 min-w-0">
+                <div className="flex h-full min-h-0 min-w-0 flex-1 flex-col">
                   <ConversationThread
                     key={activeId}
                     conversationId={activeId} onBack={() => setActiveId(null)}
