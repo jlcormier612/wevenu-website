@@ -129,25 +129,29 @@ export function StatTile({
   // sites that never had one.
   const tintClass = cn(config?.cardTint, active && "border-primary ring-1 ring-primary/40 bg-primary/5");
 
+  // h-full so a tile in a CSS grid row stretches to the tallest sibling.
+  // Without it, the grid cell grows but the bordered surface stays content-
+  // sized — Business Snapshot's Upcoming tile (no `sub`) looked shorter than
+  // Active Leads / Payments to Watch even though they share one row.
   const content =
     layout === "icon" ? (
-      <Card className={cn("transition-colors", tintClass, className)}>
+      <Card className={cn("h-full transition-colors", tintClass, className)}>
         <CardContent className="p-4">{body}</CardContent>
       </Card>
     ) : (
-      <div className={cn("transition-colors", tintClass, className)}>{body}</div>
+      <div className={cn("h-full transition-colors", tintClass, className)}>{body}</div>
     );
 
   if (href) {
     return (
-      <Link href={href} className="block">
+      <Link href={href} className="block h-full">
         {content}
       </Link>
     );
   }
   if (onClick) {
     return (
-      <button type="button" onClick={onClick} className="block w-full text-left">
+      <button type="button" onClick={onClick} className="block h-full w-full text-left">
         {content}
       </button>
     );
@@ -157,5 +161,9 @@ export function StatTile({
 }
 
 export function StatTileGrid({ children, className }: { children: ReactNode; className?: string }) {
-  return <div className={cn("grid grid-cols-2 gap-3 sm:grid-cols-4", className)}>{children}</div>;
+  return (
+    <div className={cn("grid grid-cols-2 items-stretch gap-3 sm:grid-cols-4 [&>*]:h-full", className)}>
+      {children}
+    </div>
+  );
 }
