@@ -21,6 +21,7 @@ import { isBookingPlaceholder } from "@/lib/availability/types";
 import type { ManualScheduleType, RecurrenceRule } from "@/lib/availability/types";
 import { durationInDays, expandOccurrenceStarts, occurrenceDates } from "@/lib/calendar/recurrence";
 import { displayScheduleItemTimes } from "@/lib/calendar/schedule-item-times";
+import { toScheduleRelationOption, type ScheduleRelationRow } from "@/lib/calendar/schedule-relation-search";
 
 // Calendar Booking Placeholder — the same "is this date available" answer
 // a real Event's own subtitle would carry, built from whatever the
@@ -33,50 +34,72 @@ function bookingPlaceholderSubtitle(guestCount: number | null, estimatedRevenue:
   return parts.length > 0 ? parts.join(" · ") : "Booked";
 }
 
+const SCHEDULE_RELATION_ROW_COLUMNS =
+  "id, first_name, last_name, partner_first_name, partner_last_name, email, event_type, event_date";
+
 /**
- * The Leads and Clients a manual Schedule Item can be "Related to".
- *
- * Two small venue-scoped reads rather than a new relationship table: this
- * codebase already anchors calendar-adjacent records straight at leads/clients
- * by FK (date_holds.lead_id, events.client_id, requests.client_id), and an
- * optional association does not justify a parallel structure.
+ * The Leads and Clients a manual Schedule Item can be "Related to" — search,
+ * not a preload. A venue with hundreds of relationships would make an
+ * unbounded list unusable, so this is name/email search (the same
+ * first/last/partner/email `.or(ilike...)` shape already established by
+ * lib/leads/repository.ts and lib/clients/repository.ts's own search
+ * filters — see lib/calendar/schedule-relation-search.ts for the tested
+ * matching contract this query is written to satisfy), capped per group,
+ * against the existing leads/clients tables rather than a new relationship
+ * table: this codebase already anchors calendar-adjacent records straight at
+ * leads/clients by FK (date_holds.lead_id, events.client_id,
+ * requests.client_id), and an optional association does not justify a
+ * parallel structure.
  */
-export async function getScheduleRelationOptions(): Promise<ScheduleRelationOption[]> {
-  if (!isSupabaseConfigured) return [];
+export async function searchScheduleRelationOptions(query: string): Promise<ScheduleRelationOption[]> {
+  const q = query.trim();
+  if (!isSupabaseConfigured || !q) return [];
   const venue = await getCurrentVenue();
   if (!venue) return [];
   const supabase = await createClient();
+  const pattern = `%${q}%`;
+  const orClause = `first_name.ilike.${pattern},last_name.ilike.${pattern},email.ilike.${pattern},partner_first_name.ilike.${pattern},partner_last_name.ilike.${pattern}`;
 
   const [leadsRes, clientsRes] = await Promise.all([
     supabase.from("leads")
-      .select("id, first_name, last_name, partner_first_name, event_date")
+      .select(SCHEDULE_RELATION_ROW_COLUMNS)
       .eq("venue_id", venue.id)
       .not("status", "in", "(won,lost,cancelled)")
+      .or(orClause)
       .order("created_at", { ascending: false })
-      .limit(200),
+      .limit(8),
     supabase.from("clients")
-      .select("id, first_name, last_name, partner_first_name, event_date")
+      .select(SCHEDULE_RELATION_ROW_COLUMNS)
       .eq("venue_id", venue.id)
       .neq("status", "cancelled")
+      .or(orClause)
       .order("created_at", { ascending: false })
-      .limit(200),
+      .limit(8),
   ]);
 
-  type RelationRow = {
-    id: string; first_name: string; last_name: string;
-    partner_first_name: string | null; event_date: string | null;
-  };
-  const name = (r: RelationRow) =>
-    [r.first_name, r.last_name].filter(Boolean).join(" ") + (r.partner_first_name ? ` & ${r.partner_first_name}` : "");
-
   return [
-    ...((leadsRes.data ?? []) as unknown as RelationRow[]).map((r) => ({
-      kind: "lead" as const, id: r.id, name: name(r), eventDate: r.event_date ?? null,
-    })),
-    ...((clientsRes.data ?? []) as unknown as RelationRow[]).map((r) => ({
-      kind: "client" as const, id: r.id, name: name(r), eventDate: r.event_date ?? null,
-    })),
+    ...((leadsRes.data ?? []) as unknown as ScheduleRelationRow[]).map((r) => toScheduleRelationOption("lead", r)),
+    ...((clientsRes.data ?? []) as unknown as ScheduleRelationRow[]).map((r) => toScheduleRelationOption("client", r)),
   ];
+}
+
+/**
+ * Resolves one Lead or Client into its display option — used to pre-populate
+ * "Related to" (editing a Schedule Item that already has a leadId/clientId)
+ * without re-searching or ever loading the full list.
+ */
+export async function getScheduleRelationOption(kind: "lead" | "client", id: string): Promise<ScheduleRelationOption | null> {
+  if (!isSupabaseConfigured) return null;
+  const venue = await getCurrentVenue();
+  if (!venue) return null;
+  const supabase = await createClient();
+  const table = kind === "lead" ? "leads" : "clients";
+  const { data } = await supabase.from(table)
+    .select(SCHEDULE_RELATION_ROW_COLUMNS)
+    .eq("venue_id", venue.id)
+    .eq("id", id)
+    .maybeSingle<ScheduleRelationRow>();
+  return data ? toScheduleRelationOption(kind, data) : null;
 }
 
 export async function getCalendarData(
@@ -151,9 +174,13 @@ export async function getCalendarData(
       .gte("hold_date", start)
       .lte("hold_date", end),
 
-    // 7. Calendar blocks — non-recurring blocks overlapping month, plus all active recurring blocks
+    // 7. Calendar blocks — non-recurring blocks overlapping month, plus all active recurring blocks.
+    // calendar_blocks has two FKs to leads (lead_id — "Related to" — and
+    // converted_lead_id, a separate concept read as a raw id below, never
+    // embedded), so the leads(...) embed must name which one it means or
+    // PostgREST rejects the whole query as ambiguous (PGRST201).
     supabase.from("calendar_blocks")
-      .select("id, title, type, reason, start_date, end_date, is_all_day, start_time, end_time, recurrence_rule, recurrence_ends_on, recurrence_interval, recurrence_count, lead_id, client_id, leads(first_name, last_name), clients(first_name, last_name), event_type, client_name, guest_count, estimated_revenue, converted_lead_id")
+      .select("id, title, type, reason, start_date, end_date, is_all_day, start_time, end_time, recurrence_rule, recurrence_ends_on, recurrence_interval, recurrence_count, lead_id, client_id, leads!calendar_blocks_lead_id_fkey(first_name, last_name), clients(first_name, last_name), event_type, client_name, guest_count, estimated_revenue, converted_lead_id")
       .eq("venue_id", venue.id)
       .or(`and(start_date.lte.${end},end_date.gte.${start},recurrence_rule.eq.none),and(recurrence_rule.neq.none,or(recurrence_ends_on.is.null,recurrence_ends_on.gte.${start}))`),
 

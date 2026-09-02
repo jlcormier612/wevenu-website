@@ -28,6 +28,8 @@ import type {
   DateHoldInput,
   SpaceInput,
 } from "@/lib/availability/types";
+import { getScheduleRelationOption, searchScheduleRelationOptions } from "@/lib/calendar/service";
+import type { ScheduleRelationOption } from "@/lib/calendar/types";
 
 export async function createSpaceAction(input: SpaceInput): Promise<CreateSpaceResult> {
   const result = await createSpace(input);
@@ -104,6 +106,16 @@ export async function markScheduleItemConvertedAction(blockId: string, leadId: s
   const result = await markBlockConverted_(blockId, leadId);
   if (result.ok) revalidatePath("/calendar");
   return result;
+}
+
+/** Calendar "Related to" search — a venue with hundreds of leads/clients gets a query, never the whole list. */
+export async function searchScheduleRelationOptionsAction(query: string): Promise<ScheduleRelationOption[]> {
+  return searchScheduleRelationOptions(query);
+}
+
+/** Resolves one Lead/Client so an existing "Related to" link can pre-populate with full context, no re-search. */
+export async function getScheduleRelationOptionAction(kind: "lead" | "client", id: string): Promise<ScheduleRelationOption | null> {
+  return getScheduleRelationOption(kind, id);
 }
 
 export async function checkAvailabilityAction(opts: {

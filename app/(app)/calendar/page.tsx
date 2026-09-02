@@ -4,7 +4,6 @@ import { Printer } from "lucide-react";
 
 import { CalendarView } from "@/components/calendar/calendar-view";
 import { PageHeader } from "@/components/shell/module-placeholder";
-import { getScheduleRelationOptions } from "@/lib/calendar/service";
 import { resolveCalendarView, type CalendarViewParams } from "@/lib/calendar/view-data";
 
 export const metadata: Metadata = { title: "Calendar" };
@@ -21,10 +20,7 @@ type Props = { searchParams: Promise<CalendarViewParams> };
  */
 export default async function CalendarPage({ searchParams }: Props) {
   const params = await searchParams;
-  const [{ view, year, month, weekStart, dayDate, items, today }, relationOptions] = await Promise.all([
-    resolveCalendarView(params),
-    getScheduleRelationOptions(),
-  ]);
+  const { view, year, month, weekStart, dayDate, items, today } = await resolveCalendarView(params);
 
   const printHref = `/calendar/print?view=${view}&year=${year}&month=${month}&weekStart=${weekStart}&date=${dayDate}`;
 
@@ -51,7 +47,6 @@ export default async function CalendarPage({ searchParams }: Props) {
         dayDate={dayDate}
         items={items}
         today={today}
-        relationOptions={relationOptions}
       />
     </div>
   );

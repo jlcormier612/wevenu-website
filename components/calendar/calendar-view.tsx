@@ -10,7 +10,7 @@ import {
   Plus,
 } from "lucide-react";
 
-import { createBlockAction, deleteBlockAction, getBlockAction, updateBlockAction } from "@/app/(app)/availability/actions";
+import { createBlockAction, deleteBlockAction, getBlockAction, getScheduleRelationOptionAction, updateBlockAction } from "@/app/(app)/availability/actions";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -28,6 +28,7 @@ import type { CalendarItem, CalendarItemType, ScheduleRelationOption } from "@/l
 import { cn } from "@/lib/utils";
 import { FilterBar, formatTime, ItemRow, MANUAL_TYPE_META, MonthYearPicker, PerspectiveSwitcher, resolveItemMeta, TYPE_META } from "@/components/calendar/calendar-shared";
 import { activePerspectiveId, applyPerspectiveLinkOverrides } from "@/components/calendar/perspectives";
+import { ScheduleRelationPicker } from "@/components/calendar/schedule-relation-picker";
 import { useCalendarFilters } from "@/components/calendar/use-calendar-filters";
 import { WeekView } from "@/components/calendar/week-view";
 import { DayView } from "@/components/calendar/day-view";
@@ -91,8 +92,6 @@ const RECURRENCE_END_MODES: Record<string, string> = {
   never: "Never", on_date: "On a date", after_count: "After a number of times",
 };
 
-/** Sentinel for "no relationship" — Select cannot hold an empty-string value. */
-const NO_RELATION = "__none__";
 
 // ---- Calendar grid ----------------------------------------------------------
 
@@ -284,7 +283,6 @@ export function CalendarView({
   dayDate,
   items,
   today,
-  relationOptions = [],
 }: {
   view?: "month" | "week" | "day" | "agenda";
   year: number;
@@ -293,8 +291,6 @@ export function CalendarView({
   dayDate?: string;
   items: CalendarItem[];
   today: string;
-  /** Leads/Clients a Schedule Item can be "Related to". Empty is a valid state (a brand-new venue). */
-  relationOptions?: ScheduleRelationOption[];
 }) {
   const router = useRouter();
   const { filters, setFilters, filteredItems, presentTypes, staffOptions, spaceOptions } = useCalendarFilters(items, "month");
@@ -322,10 +318,11 @@ export function CalendarView({
   const [blockRecurrenceEndMode, setBlockRecurrenceEndMode] = React.useState<RecurrenceEndMode>("never");
   const [blockRecurrenceEnd, setBlockRecurrenceEnd] = React.useState("");
   const [blockRecurrenceCount, setBlockRecurrenceCount] = React.useState("10");
-  // "Related to" — one picker over both Leads and Clients, stored as
-  // "lead:<id>" / "client:<id>" so a single <Select> can span both without a
-  // second control (same composite-value idiom as Timeline's Related Items).
-  const [blockRelatedTo, setBlockRelatedTo] = React.useState("");
+  // "Related to" — one searchable picker over both Leads and Clients
+  // (Calendar Related-To Search Scalability). Holds the full selected
+  // option (not just its id) so the field can display its name/subtitle
+  // without a second lookup; blockPayload() below reads .kind/.id off it.
+  const [blockRelatedTo, setBlockRelatedTo] = React.useState<ScheduleRelationOption | null>(null);
   // Set while editing an existing item; null while creating a new one.
   const [editingBlockId, setEditingBlockId] = React.useState<string | null>(null);
   const [loadingBlock, setLoadingBlock] = React.useState(false);
@@ -353,7 +350,7 @@ export function CalendarView({
     setBlockIsAllDay(false); setBlockStartTime("09:00"); setBlockEndTime("17:00");
     setBlockRecurrence("none"); setBlockRecurrenceCustom(false); setBlockRecurrenceInterval("1");
     setBlockRecurrenceEndMode("never"); setBlockRecurrenceEnd(""); setBlockRecurrenceCount("10");
-    setBlockRelatedTo("");
+    setBlockRelatedTo(null);
     setBlockEventType("wedding"); setBlockClientName(""); setBlockGuestCount(""); setBlockEstimatedRevenue("");
     setEditingBlockId(null);
   }
@@ -374,7 +371,6 @@ export function CalendarView({
   }
 
   function blockPayload() {
-    const [relKind, relId] = blockRelatedTo ? blockRelatedTo.split(/:(.+)/) : ["", ""];
     return {
       title: blockTitle.trim(),
       type: blockType,
@@ -386,8 +382,8 @@ export function CalendarView({
       endTime: blockIsAllDay ? "" : blockEndTime,
       notes: "",
       ...recurrencePayload(),
-      leadId: relKind === "lead" ? relId : null,
-      clientId: relKind === "client" ? relId : null,
+      leadId: blockRelatedTo?.kind === "lead" ? blockRelatedTo.id : null,
+      clientId: blockRelatedTo?.kind === "client" ? blockRelatedTo.id : null,
       eventType: blockEventType,
       clientName: blockClientName,
       guestCount: blockGuestCount,
@@ -445,7 +441,16 @@ export function CalendarView({
       );
       setBlockRecurrenceEnd(block.recurrenceEndsOn ?? "");
       setBlockRecurrenceCount(String(block.recurrenceCount ?? 10));
-      setBlockRelatedTo(block.leadId ? `lead:${block.leadId}` : block.clientId ? `client:${block.clientId}` : "");
+      // Pre-populate "Related to" with full display context (name + subtitle)
+      // rather than just the bare id — the picker no longer preloads every
+      // Lead/Client, so this one relationship is resolved on its own.
+      if (block.leadId) {
+        setBlockRelatedTo(await getScheduleRelationOptionAction("lead", block.leadId));
+      } else if (block.clientId) {
+        setBlockRelatedTo(await getScheduleRelationOptionAction("client", block.clientId));
+      } else {
+        setBlockRelatedTo(null);
+      }
       setBlockEventType(block.eventType ?? "wedding");
       setBlockClientName(block.clientName ?? "");
       setBlockGuestCount(block.guestCount != null ? String(block.guestCount) : "");
@@ -489,16 +494,6 @@ export function CalendarView({
   // stays correct for a venue whose date differs from the browser's.
   const [todayYear, todayMonth] = today.split("-").map(Number);
   const isCurrentMonth = year === todayYear && month === todayMonth;
-
-  const relationGroups = React.useMemo(() => [
-    { label: "Leads", options: relationOptions.filter((o) => o.kind === "lead") },
-    { label: "Clients", options: relationOptions.filter((o) => o.kind === "client") },
-  ], [relationOptions]);
-
-  const relationSelectItems = React.useMemo(() => ({
-    [NO_RELATION]: "Not related to anyone",
-    ...Object.fromEntries(relationOptions.map((o) => [`${o.kind}:${o.id}`, o.name])),
-  }), [relationOptions]);
 
   const recurrenceSummary = describeRecurrence({
     rule: blockRecurrence,
@@ -707,30 +702,7 @@ export function CalendarView({
               <Label className="text-xs">
                 Related to <span className="font-normal text-muted-foreground">(optional)</span>
               </Label>
-              <Select
-                value={blockRelatedTo || NO_RELATION}
-                onValueChange={(v) => setBlockRelatedTo(v === NO_RELATION ? "" : v)}
-                items={relationSelectItems}
-              >
-                <SelectTrigger><SelectValue placeholder="Not related to anyone" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value={NO_RELATION}>Not related to anyone</SelectItem>
-                  {relationGroups.map((group) => (
-                    <React.Fragment key={group.label}>
-                      {group.options.length > 0 && (
-                        <div className="px-2 pt-2 pb-1 text-[0.6875rem] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
-                          {group.label}
-                        </div>
-                      )}
-                      {group.options.map((o) => (
-                        <SelectItem key={`${o.kind}:${o.id}`} value={`${o.kind}:${o.id}`}>
-                          {o.name}{o.eventDate ? ` · ${o.eventDate}` : ""}
-                        </SelectItem>
-                      ))}
-                    </React.Fragment>
-                  ))}
-                </SelectContent>
-              </Select>
+              <ScheduleRelationPicker value={blockRelatedTo} onChange={setBlockRelatedTo} />
             </div>
             {isBookingPlaceholder(blockType) && (
               <>

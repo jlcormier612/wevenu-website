@@ -86,6 +86,7 @@ export type ScheduleRelationOption = {
   kind: "lead" | "client";
   id: string;
   name: string;
+  eventType: string | null;
   eventDate: string | null;
 };
 
