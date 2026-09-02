@@ -3,6 +3,7 @@
 import * as React from "react";
 
 import Link from "next/link";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Search } from "lucide-react";
 
 import { ClientStatusBadge } from "@/components/clients/client-status-badge";
@@ -23,6 +24,14 @@ import {
   eventTypeLabel,
   formatDate,
 } from "@/lib/clients/constants";
+import {
+  CLIENT_LIST_FILTERS,
+  clientMatchesListFilter,
+  countClientListFilters,
+  parseClientListFilter,
+  weddingWeekEnd,
+  type ClientListFilterKey,
+} from "@/lib/clients/list-filters";
 import type { Client } from "@/lib/clients/types";
 
 // Client Workspace list-page UX pass — the chips used to be the record's
@@ -32,17 +41,7 @@ import type { Client } from "@/lib/clients/types";
 // already on the Client object (plus one attention-flag set fetched once
 // for the whole page — see lib/clients/service.ts's getClientAttentionFlags)
 // — no new backend state, no new columns.
-type FilterKey = "all" | "upcoming" | "wedding_week" | "needs_attention" | "past" | "cancelled";
 type SortKey = "event_asc" | "event_desc" | "az" | "za" | "newest";
-
-const FILTERS: { key: FilterKey; label: string }[] = [
-  { key: "all", label: "All" },
-  { key: "upcoming", label: "Upcoming" },
-  { key: "wedding_week", label: "Wedding Week" },
-  { key: "needs_attention", label: "Needs Attention" },
-  { key: "past", label: "Past" },
-  { key: "cancelled", label: "Cancelled" },
-];
 
 const SORT_OPTIONS: { value: SortKey; label: string }[] = [
   { value: "event_asc",  label: "Event Date (Soonest)" },
@@ -59,45 +58,56 @@ const SORT_OPTIONS: { value: SortKey; label: string }[] = [
 // owner who prefers the full list.
 const FILTER_STORAGE_KEY = "wevenu-clients-filter";
 
-function loadSavedFilter(): FilterKey | null {
+function loadSavedFilter(): ClientListFilterKey | null {
   if (typeof window === "undefined") return null;
   try {
-    return (window.localStorage.getItem(FILTER_STORAGE_KEY) as FilterKey) || null;
+    return parseClientListFilter(window.localStorage.getItem(FILTER_STORAGE_KEY));
   } catch {
     return null;
   }
 }
 
+function persistFilter(next: ClientListFilterKey) {
+  try { window.localStorage.setItem(FILTER_STORAGE_KEY, next); } catch { /* ignore */ }
+}
+
 export function ClientList({ clients, attentionClientIds = new Set(), today }: { clients: Client[]; attentionClientIds?: Set<string>; today: string }) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const urlFilter = parseClientListFilter(searchParams.get("filter"));
   const [query, setQuery] = React.useState("");
-  const [filter, setFilterState] = React.useState<FilterKey>(() => loadSavedFilter() ?? "upcoming");
+  const [storedFilter, setStoredFilter] = React.useState<ClientListFilterKey>(() => loadSavedFilter() ?? "upcoming");
   const [sort, setSort] = React.useState<SortKey>("event_asc");
+  const filter = urlFilter ?? storedFilter;
 
-  const setFilter = React.useCallback((next: FilterKey) => {
-    setFilterState(next);
-    if (typeof window !== "undefined") {
-      try { window.localStorage.setItem(FILTER_STORAGE_KEY, next); } catch { /* ignore */ }
-    }
-  }, []);
+  // URL is the source of truth while present (Dashboard deep-link). Persist
+  // it for the next visit without copying it into React state — filter is
+  // already `urlFilter ?? storedFilter`.
+  React.useEffect(() => {
+    if (!urlFilter) return;
+    persistFilter(urlFilter);
+  }, [urlFilter]);
 
-  // Computed once server-side and passed down — see app/(app)/clients/page.tsx.
-  const weekOut = React.useMemo(() => new Date(new Date(today + "T00:00:00Z").getTime() + 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10), [today]);
+  const setFilter = React.useCallback((next: ClientListFilterKey) => {
+    setStoredFilter(next);
+    persistFilter(next);
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("filter", next);
+    router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+  }, [pathname, router, searchParams]);
 
-  const matchesFilter = React.useCallback((c: Client, key: FilterKey): boolean => {
-    switch (key) {
-      case "all":             return c.status !== "cancelled";
-      case "upcoming":        return c.status !== "cancelled" && !!c.eventDate && c.eventDate >= today;
-      case "wedding_week":    return c.status !== "cancelled" && !!c.eventDate && c.eventDate >= today && c.eventDate <= weekOut;
-      case "needs_attention": return c.status !== "cancelled" && attentionClientIds.has(c.id);
-      case "past":            return c.status !== "cancelled" && !!c.eventDate && c.eventDate < today;
-      case "cancelled":       return c.status === "cancelled";
-    }
-  }, [today, weekOut, attentionClientIds]);
+  // Venue-local today, passed from the server — same string the Dashboard count uses.
+  const weekOut = React.useMemo(() => weddingWeekEnd(today), [today]);
+  const filterCtx = React.useMemo(
+    () => ({ today, weekOut, attentionClientIds }),
+    [today, weekOut, attentionClientIds],
+  );
 
   const filtered = React.useMemo(() => {
     const q = query.toLowerCase().trim();
     const base = clients.filter((c) => {
-      if (!matchesFilter(c, filter)) return false;
+      if (!clientMatchesListFilter(c, filter, filterCtx)) return false;
       if (!q) return true;
       return [c.firstName, c.lastName, c.partnerFirstName, c.partnerLastName, c.email, c.eventType]
         .some((v) => v?.toLowerCase().includes(q));
@@ -111,13 +121,9 @@ export function ClientList({ clients, attentionClientIds = new Set(), today }: {
         default:           return (a.eventDate ?? "9999") < (b.eventDate ?? "9999") ? -1 : 1;
       }
     });
-  }, [clients, query, filter, sort, matchesFilter]);
+  }, [clients, query, filter, sort, filterCtx]);
 
-  const counts = React.useMemo(() => {
-    const m = new Map<FilterKey, number>();
-    FILTERS.forEach(({ key }) => m.set(key, clients.filter((c) => matchesFilter(c, key)).length));
-    return m;
-  }, [clients, matchesFilter]);
+  const counts = React.useMemo(() => countClientListFilters(clients, filterCtx), [clients, filterCtx]);
 
   // "What kind of day am I walking into?" is now answered by the filter
   // pills themselves — they already carry counts and already act as the
@@ -153,8 +159,8 @@ export function ClientList({ clients, attentionClientIds = new Set(), today }: {
       </div>
       {/* Operational view pills — what to look at, not what stage a record is in */}
       <div className="flex flex-wrap gap-1.5">
-        {FILTERS.map(({ key, label }) => {
-          const count = counts.get(key) ?? 0;
+        {CLIENT_LIST_FILTERS.map(({ key, label }) => {
+          const count = counts[key];
           const active = filter === key;
           return (
             <button key={key} type="button" onClick={() => setFilter(key)}

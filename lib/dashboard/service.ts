@@ -31,6 +31,7 @@ import type { Lead } from "@/lib/leads/types";
 import { getCurrentToursForLeads, EMPTY_TOUR, type LeadTourInfo } from "@/lib/leads/repository";
 import { getCurrentVenue } from "@/lib/venue/service";
 import { venueToday } from "@/lib/venue/timezone";
+import { getClientListFilterCounts } from "@/lib/clients/service";
 import type {
   ActivityItem,
   AttentionLead,
@@ -180,7 +181,7 @@ export async function getDashboardData(): Promise<DashboardData | null> {
   // Auto-mark overdue (non-fatal — don't block dashboard load on failure)
   void supabase.rpc("mark_overdue_payments", { p_venue_id: venue.id });
 
-  const [leadsRes, tasksRes, activityRes, clientsRes, keyDatesRes, eventsRes, paymentsRes, staffRes, upcomingEventCountRes] = await Promise.all([
+  const [leadsRes, tasksRes, activityRes, clientsRes, keyDatesRes, eventsRes, paymentsRes, staffRes, clientListCounts] = await Promise.all([
     supabase
       .from("leads")
       .select("*")
@@ -250,16 +251,10 @@ export async function getDashboardData(): Promise<DashboardData | null> {
       .eq("is_owner", true)
       .maybeSingle<{ full_name: string }>(),
 
-    // A true count over the same window the upcomingEvents list uses. The
-    // list is capped at 8 rows for rendering, so its .length is a page size,
-    // not a total — the Business Snapshot tile needs the real number.
-    supabase
-      .from("events")
-      .select("id", { count: "exact", head: true })
-      .eq("venue_id", venue.id)
-      .neq("status", "cancelled")
-      .gte("event_date", today)
-      .lte("event_date", sixtyDaysOut),
+    // Same Clients operational-view counts the Clients page pills use.
+    // Upcoming is every future-or-today non-cancelled booked client — not
+    // a 60-day events-table window and not a confirmed-only subset.
+    getClientListFilterCounts(),
   ]);
 
   if (leadsRes.error) throw leadsRes.error;
@@ -478,7 +473,8 @@ export async function getDashboardData(): Promise<DashboardData | null> {
     overduePayments,
     upcomingPayments,
     upcomingEvents,
-    upcomingEventCount: upcomingEventCountRes.count ?? upcomingEvents.length,
+    upcomingEventCount: clientListCounts.upcoming,
+    clientListCounts,
     recentBookings,
     upcomingKeyDates,
     totalClients: clients.length,

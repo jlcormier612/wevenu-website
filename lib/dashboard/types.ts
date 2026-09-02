@@ -4,6 +4,7 @@
  */
 import type { Lead } from "@/lib/leads/types";
 import type { LuvBriefing } from "@/lib/luv/briefing-types";
+import type { ClientListFilterKey } from "@/lib/clients/list-filters";
 
 /** Lead with a computed "why it needs attention" reason string. */
 export type AttentionLead = Lead & {
@@ -144,8 +145,10 @@ export type DashboardData = {
   // ---- booked clients + events ----
   /** Upcoming events from the events table (canonical source). Capped at 8 rows for rendering. */
   upcomingEvents: DashboardEvent[];
-  /** True count of events in the same next-60-days window — upcomingEvents.length is a page size, not a total. */
+  /** True count of Clients → Upcoming — same population as that filter, not a 60-day events window. */
   upcomingEventCount: number;
+  /** Counts for every Clients operational view the Dashboard metrics link into. */
+  clientListCounts: Record<ClientListFilterKey, number>;
   /** Recently booked clients (by booking date, from the clients table). */
   recentBookings: DashboardClient[];
   upcomingKeyDates: DashboardKeyDate[];

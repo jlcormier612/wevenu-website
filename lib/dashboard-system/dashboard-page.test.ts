@@ -4,6 +4,7 @@ import { resolve } from "node:path";
 import { describe, it } from "node:test";
 
 const page = readFileSync(resolve("app/(app)/dashboard/page.tsx"), "utf8");
+const service = readFileSync(resolve("lib/dashboard/service.ts"), "utf8");
 
 describe("Dashboard page information architecture", () => {
   it("renders Today's Focus and does not keep Morning Briefing or Today's Attention", () => {
@@ -22,7 +23,10 @@ describe("Dashboard page information architecture", () => {
   it("uses the three operational snapshot tiles and not Venue Health", () => {
     assert.match(page, /label="Active Leads"/);
     assert.match(page, /label="Payments to Watch"/);
-    assert.match(page, /label="Upcoming Events"/);
+    assert.match(page, /label="Upcoming"/);
+    assert.match(page, /clientListFilterHref\("upcoming"\)/);
+    assert.doesNotMatch(page, /Next 60 days/);
+    assert.doesNotMatch(page, /label="Upcoming Events"/);
     assert.doesNotMatch(page, /label="Venue Health"/);
     assert.doesNotMatch(page, /getVenueHealth/);
   });
@@ -36,5 +40,13 @@ describe("Dashboard page information architecture", () => {
     assert.match(page, /Quick Actions/);
     assert.match(page, /GettingStartedCard/);
     assert.match(page, /href="\/reporting"/);
+  });
+});
+
+describe("Dashboard Upcoming is the Clients Upcoming population", () => {
+  it("counts through getClientListFilterCounts, not a 60-day events query", () => {
+    assert.match(service, /getClientListFilterCounts/);
+    assert.match(service, /upcomingEventCount: clientListCounts\.upcoming/);
+    assert.doesNotMatch(service, /upcomingEventCountRes/);
   });
 });

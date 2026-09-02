@@ -22,7 +22,13 @@ import {
   validateKeyDateInput,
 } from "@/lib/clients/validation";
 import { clientDisplayName } from "@/lib/clients/constants";
+import {
+  countClientListFilters,
+  weddingWeekEnd,
+  type ClientListFilterKey,
+} from "@/lib/clients/list-filters";
 import { getEventIdForClient, insertEvent } from "@/lib/events/repository";
+import { venueToday } from "@/lib/venue/timezone";
 import { inviteClient } from "@/lib/client-auth/service";
 import type { Lead } from "@/lib/leads/types";
 import { updateLeadSalesStage } from "@/lib/leads/service";
@@ -109,6 +115,36 @@ export async function getClientAttentionFlags(): Promise<Set<string>> {
   const venue = await getCurrentVenue();
   if (!venue) return new Set();
   return repo.getClientAttentionFlags(await createClient(), venue.id);
+}
+
+const EMPTY_CLIENT_LIST_COUNTS: Record<ClientListFilterKey, number> = {
+  all: 0,
+  upcoming: 0,
+  wedding_week: 0,
+  needs_attention: 0,
+  past: 0,
+  cancelled: 0,
+};
+
+/**
+ * Server-side counts for the Clients operational views. Dashboard tiles that
+ * navigate to those views must use this — not a second, dashboard-only query.
+ */
+export async function getClientListFilterCounts(): Promise<Record<ClientListFilterKey, number>> {
+  if (!isSupabaseConfigured) return EMPTY_CLIENT_LIST_COUNTS;
+  const venue = await getCurrentVenue();
+  if (!venue) return EMPTY_CLIENT_LIST_COUNTS;
+  const supabase = await createClient();
+  const [clients, attentionClientIds] = await Promise.all([
+    repo.getClients(supabase, venue.id),
+    repo.getClientAttentionFlags(supabase, venue.id),
+  ]);
+  const today = venueToday(venue.timezone);
+  return countClientListFilters(clients, {
+    today,
+    weekOut: weddingWeekEnd(today),
+    attentionClientIds,
+  });
 }
 
 export async function getClient(clientId: string): Promise<ClientWithDetails | null> {

@@ -16,6 +16,7 @@ import { StatTile, StatTileGrid } from "@/components/dashboard-system/stat-tile"
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getDashboardData } from "@/lib/dashboard/service";
+import { clientListFilterHref } from "@/lib/clients/list-filters";
 import {
   classifyBriefingItems, classifyUpcomingItems,
 } from "@/lib/dashboard-system/decision-engine";
@@ -53,7 +54,7 @@ const PRIORITY_SEVERITY: Record<Priority, "critical" | "warning" | undefined> = 
  * Calendar/Tasks/Payments panels — those pages stay the systems of record. So
  * Luv moved up beneath the list it interprets, and Business Snapshot dropped
  * from six tiles to three operational ones (Active Leads, Payments to Watch,
- * Upcoming Events). Bookings/Revenue were Reports excerpts linking straight to
+ * Upcoming). Bookings/Revenue were Reports excerpts linking straight to
  * Reports; Venue Health showed a context-free number off a computation with a
  * known data-quality problem. Neither metric was deleted — only removed from
  * this surface.
@@ -211,10 +212,13 @@ export default async function DashboardPage({ searchParams }: Props) {
             severity={outstandingBalance && outstandingBalance > 0 ? "warning" : undefined}
             className="rounded-xl border bg-card p-3" href="/payments"
           />
+          {/* Upcoming uses the Clients → Upcoming population — booked
+              clients with an event date on/after today, not cancelled.
+              Not a 60-day events-table window and not confirmed-only. */}
           <StatTile
-            layout="label-top" label="Upcoming Events" sub="Next 60 days"
-            value={data.upcomingEventCount}
-            className="rounded-xl border bg-card p-3" href="/events"
+            layout="label-top" label="Upcoming"
+            value={data.clientListCounts.upcoming}
+            className="rounded-xl border bg-card p-3" href={clientListFilterHref("upcoming")}
           />
         </StatTileGrid>
       </section>

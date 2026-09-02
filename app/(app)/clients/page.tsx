@@ -1,19 +1,23 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { Suspense } from "react";
 
 import { ClientList } from "@/components/clients/client-list";
 import { PageHeader } from "@/components/shell/module-placeholder";
 import { Button } from "@/components/ui/button";
 import { getClientAttentionFlags, getClients } from "@/lib/clients/service";
+import { getCurrentVenue } from "@/lib/venue/service";
+import { venueToday } from "@/lib/venue/timezone";
 
 export const metadata: Metadata = { title: "Clients" };
 
 export default async function ClientsPage() {
-  const [clients, attentionClientIds] = await Promise.all([
+  const [clients, attentionClientIds, venue] = await Promise.all([
     getClients(),
     getClientAttentionFlags(),
+    getCurrentVenue(),
   ]);
-  const today = new Date().toISOString().slice(0, 10);
+  const today = venueToday(venue?.timezone ?? null);
   return (
     <div className="space-y-6">
       <PageHeader
@@ -26,7 +30,9 @@ export default async function ClientsPage() {
           </div>
         }
       />
-      <ClientList clients={clients} attentionClientIds={attentionClientIds} today={today} />
+      <Suspense fallback={null}>
+        <ClientList clients={clients} attentionClientIds={attentionClientIds} today={today} />
+      </Suspense>
     </div>
   );
 }
