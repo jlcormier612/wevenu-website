@@ -1,6 +1,7 @@
 /**
  * Clients application service. Server-only.
  */
+import { isPastEventDate } from "@/lib/migration/historical-record";
 import { occupancyFailureFromUnknown, calendarBlockFailureFromUnknown } from "@/lib/availability/event-occupancy";
 import {
   coveringCalendarBlockTitle,
@@ -86,7 +87,8 @@ async function autoCreateEvent(
 }
 
 function datedEventFromClient(
-  input: Pick<ClientInput, "firstName" | "lastName" | "partnerFirstName" | "partnerLastName" | "eventType" | "eventDate" | "endDate" | "guestCount" | "ceremonyTime" | "spaceId">,
+  input: Pick<ClientInput, "firstName" | "lastName" | "partnerFirstName" | "partnerLastName" | "eventType" | "eventDate" | "endDate" | "guestCount" | "ceremonyTime" | "receptionTime" | "setupTime" | "teardownTime" | "spaceId">,
+  asHistoricalRecord = false,
 ): repo.DatedEventWrite {
   const coupleName = clientDisplayName(input.firstName, input.lastName, input.partnerFirstName, input.partnerLastName);
   const typeLabel = input.eventType?.replace(/_/g, " ") || "Event";
@@ -96,8 +98,12 @@ function datedEventFromClient(
     eventDate: input.eventDate,
     eventEndDate: input.endDate,
     startTime: input.ceremonyTime,
+    endTime: input.receptionTime,
+    setupTime: input.setupTime,
+    teardownTime: input.teardownTime,
     guestCount: input.guestCount,
     spaceId: input.spaceId,
+    status: asHistoricalRecord ? "complete" : null,
   };
 }
 
@@ -240,9 +246,15 @@ export async function findActiveDuplicateClientForVenue(venueId: string, email: 
 async function createClientCore(
   supabase: Awaited<ReturnType<typeof createClient>>, venueId: string, input: ClientInput,
   historicalImport = false,
+  importAsHistoricalRecord = false,
 ): Promise<CreateClientResult> {
+  const asHistorical = importAsHistoricalRecord && isPastEventDate(input.eventDate);
+  if (importAsHistoricalRecord && input.eventDate && !asHistorical) {
+    return { ok: false, message: "Only past Events can be imported as historical records. Future bookings still follow availability." };
+  }
   // Server-side hard block: refuse if the event date is calendar-blocked.
-  if (input.eventDate) {
+  // Historical reviewed records skip this — they land as Event status complete.
+  if (input.eventDate && !asHistorical) {
     const title = await coveringClientEventBlockTitle(supabase, venueId, input);
     if (title) {
       return { ok: false, message: `Cannot book this date — the calendar is blocked: "${title}". Remove the block first.` };
@@ -253,7 +265,7 @@ async function createClientCore(
   if (input.eventDate) {
     try {
       const row = await repo.insertClientWithDatedEvent(
-        supabase, venueId, input, datedEventFromClient(input), undefined, historicalImport,
+        supabase, venueId, input, datedEventFromClient(input, asHistorical), undefined, historicalImport,
       );
       clientId = row.clientId;
       eventId = row.eventId;
@@ -287,10 +299,10 @@ async function createClientCore(
   return { ok: true, clientId, eventId, invitationSent: false };
 }
 
-export async function createClient_(input: ClientInput, historicalImport = false): Promise<CreateClientResult> {
+export async function createClient_(input: ClientInput, historicalImport = false, importAsHistoricalRecord = false): Promise<CreateClientResult> {
   const errors = validateClientInput(input);
   if (Object.keys(errors).length > 0) return { ok: false, errors };
-  const result = await withVenue((supabase, venueId) => createClientCore(supabase, venueId, input, historicalImport));
+  const result = await withVenue((supabase, venueId) => createClientCore(supabase, venueId, input, historicalImport, importAsHistoricalRecord));
   return result as CreateClientResult;
 }
 
@@ -302,13 +314,13 @@ export async function createClient_(input: ClientInput, historicalImport = false
  * p_venue_id_override honors. Every write is otherwise identical to
  * self-service — same validation, same core function, same side effects.
  */
-export async function createClientForVenue(venueId: string, input: ClientInput, historicalImport = true): Promise<CreateClientResult> {
+export async function createClientForVenue(venueId: string, input: ClientInput, historicalImport = true, importAsHistoricalRecord = false): Promise<CreateClientResult> {
   const actor = await requireAdminUser();
   if (!actor) return { ok: false, message: "Not signed in as an HQ admin." };
   const errors = validateClientInput(input);
   if (Object.keys(errors).length > 0) return { ok: false, errors };
   const admin = createAdminClient();
-  return createClientCore(admin, venueId, input, historicalImport);
+  return createClientCore(admin, venueId, input, historicalImport, importAsHistoricalRecord);
 }
 
 /** Convert a won lead to a client. Pre-populates from lead data. */
@@ -338,6 +350,8 @@ export async function convertLeadToClient(lead: Lead, opts?: { spaceId?: string 
     guestCount: lead.guestCount != null ? String(lead.guestCount) : "",
     ceremonyTime: "",
     receptionTime: "",
+    setupTime: "",
+    teardownTime: "",
     rehearsalDate: "",
     internalNotes: "",
     spaceId: opts?.spaceId ?? "",

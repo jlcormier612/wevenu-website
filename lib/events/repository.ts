@@ -194,9 +194,11 @@ function throwIfOccupancyDenied(error: unknown): never | void {
   if (blocked) throw new CalendarBlockWriteError(blocked.message);
 }
 
-export async function insertEvent(client: DbClient, venueId: string, input: EventInput): Promise<string> {
+export async function insertEvent(client: DbClient, venueId: string, input: EventInput, opts?: { status?: EventStatus }): Promise<string> {
+  const row = toEventRow(venueId, input);
+  if (opts?.status) row.status = opts.status;
   const { data, error } = await client.from("events")
-    .insert(toEventRow(venueId, input))
+    .insert(row)
     .select("id").single<{ id: string }>();
   if (error) {
     throwIfOccupancyDenied(error);

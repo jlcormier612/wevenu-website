@@ -41,9 +41,9 @@ export async function getTourCalendarEntries(
   const windowEnd = venueLocalToUtcIso(nextIso, "00:00", tz);
 
   const { data } = await client.from("tour_appointments")
-      .select("id, scheduled_at, lead_id, event_type, leads(first_name, last_name, partner_first_name)")
+      .select("id, scheduled_at, status, lead_id, event_type, leads(first_name, last_name, partner_first_name)")
       .eq("venue_id", venueId)
-      .not("status", "in", "(cancelled,completed,no_show)")
+      .not("status", "in", "(cancelled,no_show)")
       .gte("scheduled_at", windowStart)
       .lt("scheduled_at", windowEnd);
 
@@ -63,7 +63,9 @@ export async function getTourCalendarEntries(
       type: "tour",
       date,
       title: `Venue Tour — ${name}`,
-      subtitle: t.event_type ? eventTypeLabel(t.event_type) : null,
+      subtitle: [t.status === "completed" ? "Completed" : null, t.event_type ? eventTypeLabel(t.event_type) : null]
+        .filter(Boolean)
+        .join(" · ") || null,
       time,
       link: t.lead_id ? `/leads/${t.lead_id}` : "/tours",
     };

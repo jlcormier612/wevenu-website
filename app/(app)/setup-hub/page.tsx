@@ -66,6 +66,7 @@ export default async function SetupHubPage() {
         stripeConnected={venue.stripeOnboardingStatus === "connected"}
         quickbooksConnected={quickbooksConnection?.status === "connected"}
         operationalReadiness={operationalReadiness}
+        maxSimultaneousEvents={capacityRules?.maxSimultaneousEvents ?? null}
       />
     </div>
   );

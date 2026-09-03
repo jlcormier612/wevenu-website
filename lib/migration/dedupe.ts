@@ -147,5 +147,11 @@ export async function dedupe(
   if (entityType === "client") return dedupeClientLike(client, venueId, normalized as NormalizedClientLike);
   if (entityType === "lead") return dedupeLeadLike(client, venueId, normalized as NormalizedClientLike);
   if (entityType === "vendor") return dedupeVendor(client, venueId, normalized as NormalizedVendorLike);
+  // Operational rows: sourceId short-circuit only (no fuzzy merge).
+  const sourceId = (normalized as { sourceId?: string | null }).sourceId;
+  const bySource = await findBySourceId(client, venueId, sourceId);
+  if (bySource?.createdEntityId) {
+    return { matchType: "exact", matchedEntityId: bySource.createdEntityId, matchConfidence: 100 };
+  }
   return NO_MATCH;
 }

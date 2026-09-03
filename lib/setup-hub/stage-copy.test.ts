@@ -47,11 +47,10 @@ describe("Setup Hub stage copy", () => {
     assert.equal(STAGE_COPY.financials.helpHref, "/help/setup-financials");
   });
 
-  it("describes Bring Your Business as a three-way choice, not CSV-only", () => {
+  it("describes Bring Your Business as cutover after Calendar foundations", () => {
     const copy = STAGE_COPY["bring-your-business"].whatToDo.toLowerCase();
-    assert.match(copy, /another system/);
-    assert.match(copy, /spreadsheet/);
+    assert.match(copy, /calendar & availability/);
     assert.match(copy, /start fresh/);
-    assert.match(copy, /whether we know it by name or not/);
+    assert.match(copy, /bring your business|migration|move/i);
   });
 });

@@ -17,6 +17,8 @@ import { createAdminClient } from "@/integrations/supabase/admin";
 import { requireAdminUser } from "@/lib/hq/crm-service";
 import { getOnboardingEngagement } from "@/lib/hq/onboarding-service";
 import { createClientForVenue, findActiveDuplicateClientForVenue } from "@/lib/clients/service";
+import { resolveSpaceId } from "@/lib/migration/resolve-refs";
+import { evaluateCutoverPrerequisites } from "@/lib/setup-hub/bring-your-business";
 import { createLeadForVenue, findActiveDuplicateLeadForVenue, leadIdentityKey, leadInputToRawIntake } from "@/lib/leads/service";
 import { logDuplicateBatchRejection } from "@/lib/lead-intake/pipeline";
 import { createVendorForVenue, findActiveDuplicateVendorForVenue } from "@/lib/vendors/service";
@@ -53,11 +55,25 @@ export async function importCouplesForVenueAction(venueId: string, rows: ClientI
   const createdIds: string[] = [];
   const admin = createAdminClient();
   const batchId = await createImportBatchForVenue(admin, venueId, "couples", sourceLabel ?? null, rows.length, actor.userId, await engagementIdFor(venueId));
+  const [{ count: spacesCount }, { data: rules }] = await Promise.all([
+    admin.from("venue_spaces").select("id", { count: "exact", head: true }).eq("venue_id", venueId).eq("is_active", true),
+    admin.from("venue_capacity_rules").select("max_simultaneous_events").eq("venue_id", venueId)
+      .maybeSingle<{ max_simultaneous_events: number }>(),
+  ]);
+  const cutover = evaluateCutoverPrerequisites({
+    spacesCount: spacesCount ?? 0,
+    hasCapacityRules: !!rules,
+    maxSimultaneousEvents: rules?.max_simultaneous_events ?? 1,
+  });
 
   for (let i = 0; i < rows.length; i++) {
     const row = rows[i];
     if (!row.firstName?.trim() || !row.lastName?.trim()) {
       errors.push({ row: i + 1, message: "Missing required fields: first name, last name", kind: "skipped" });
+      continue;
+    }
+    if (!cutover.readyForDatedEvents && row.eventDate?.trim()) {
+      errors.push({ row: i + 1, message: cutover.message ?? "Add Event Spaces before importing dated Events.", kind: "error" });
       continue;
     }
     try {
@@ -70,7 +86,18 @@ export async function importCouplesForVenueAction(venueId: string, rows: ClientI
       // Duplicate check failing must never block a legitimate import.
     }
     try {
-      const result = await createClientForVenue(venueId, row);
+      const raw = row.spaceId.trim();
+      let input = row;
+      if (raw) {
+        const uuidLike = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(raw);
+        const resolved = await resolveSpaceId(admin, venueId, uuidLike ? raw : null, uuidLike ? null : raw);
+        if (!resolved.ok) {
+          errors.push({ row: i + 1, message: resolved.error, kind: "error" });
+          continue;
+        }
+        input = { ...row, spaceId: resolved.spaceId ?? "" };
+      }
+      const result = await createClientForVenue(venueId, input);
       if (result.ok) {
         createdIds.push(result.clientId);
       } else {

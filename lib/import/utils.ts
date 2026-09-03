@@ -71,13 +71,18 @@ export function rowToClientInput(row: CsvRow, mapping: FieldMapping): ClientInpu
     partnerEmail:     "",
     eventType:        val(row, mapping, "eventType"),
     eventDate:        val(row, mapping, "eventDate"),
-    endDate:          "",
+    endDate:          val(row, mapping, "endDate"),
     guestCount:       val(row, mapping, "guestCount"),
-    ceremonyTime:     "",
-    receptionTime:    "",
+    ceremonyTime:     val(row, mapping, "ceremonyTime"),
+    receptionTime:    val(row, mapping, "receptionTime"),
+    setupTime:        val(row, mapping, "setupTime"),
+    teardownTime:     val(row, mapping, "teardownTime"),
     rehearsalDate:    "",
     internalNotes:    val(row, mapping, "internalNotes"),
-    spaceId:          "",
+    // Space UUID mapping is resolved at commit when Import Wizard gains
+    // space-name resolution; spaceName is preserved via notes for now only
+    // if callers pass spaceId through a dedicated mapping key.
+    spaceId:          val(row, mapping, "spaceId") || val(row, mapping, "spaceName"),
   };
 }
 
@@ -178,7 +183,9 @@ const TEMPLATE_SAMPLE_VALUES: Record<EntityType, Record<string, string>> = {
     firstName: "Emma", lastName: "Johnson",
     partnerFirstName: "James", partnerLastName: "Smith",
     email: "emma.johnson@example.com", phone: "555-0142",
-    eventDate: "2027-06-12", eventType: "Wedding", guestCount: "120",
+    eventDate: "2027-06-12", endDate: "2027-06-12", eventType: "Wedding", guestCount: "120",
+    ceremonyTime: "16:00", receptionTime: "22:00", setupTime: "14:00", teardownTime: "23:00",
+    spaceName: "Ballroom",
     internalNotes: "Prefers weekend tours",
   },
   leads: {

@@ -50,7 +50,7 @@ function applyPhase3(): void {
   applySql(RECURRENCE);
 }
 
-function withSchemaLock<T>(fn: () => T): T {
+function acquireSchemaLock(): void {
   const dir = join(tmpdir(), "wevenu-k7-avail-schema.lock");
   const started = Date.now();
   while (true) {
@@ -62,10 +62,27 @@ function withSchemaLock<T>(fn: () => T): T {
       spawnSync("sleep", ["0.2"]);
     }
   }
+}
+
+function releaseSchemaLock(): void {
+  try { rmdirSync(join(tmpdir(), "wevenu-k7-avail-schema.lock")); } catch { /* ignore */ }
+}
+
+function withSchemaLock<T>(fn: () => T): T {
+  acquireSchemaLock();
   try {
     return fn();
   } finally {
-    try { rmdirSync(dir); } catch { /* ignore */ }
+    releaseSchemaLock();
+  }
+}
+
+async function withSchemaLockAsync<T>(fn: () => Promise<T>): Promise<T> {
+  acquireSchemaLock();
+  try {
+    return await fn();
+  } finally {
+    releaseSchemaLock();
   }
 }
 
@@ -114,7 +131,8 @@ describe("event write enforcement live database", () => {
       t.skip("local Postgres is not running");
       return;
     }
-    withSchemaLock(() => { applyPhase3(); });
+    await withSchemaLockAsync(async () => {
+    applyPhase3();
 
     const venueId = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeee2";
     const ownerId = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeee3";
@@ -200,6 +218,7 @@ describe("event write enforcement live database", () => {
         delete from auth.users where id = '${ownerId}';
       `]);
     }
+    });
   });
 
   it("two concurrent Events cannot both pass a 12-hour turnaround gap", async (t: TestContext) => {
@@ -207,7 +226,8 @@ describe("event write enforcement live database", () => {
       t.skip("local Postgres is not running");
       return;
     }
-    withSchemaLock(() => { applyPhase3(); });
+    await withSchemaLockAsync(async () => {
+    applyPhase3();
 
     const venueId = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeee40";
     const ownerId = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeee41";
@@ -257,5 +277,6 @@ describe("event write enforcement live database", () => {
         delete from auth.users where id = '${ownerId}';
       `]);
     }
+    });
   });
 });

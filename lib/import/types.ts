@@ -14,8 +14,14 @@ export const COUPLE_FIELDS: ImportFieldDef[] = [
   { key: "email",            label: "Email",                   required: false },
   { key: "phone",            label: "Phone",                   required: false },
   { key: "eventDate",        label: "Event Date (YYYY-MM-DD)", required: false },
+  { key: "endDate",          label: "Event End Date (YYYY-MM-DD)", required: false },
   { key: "eventType",        label: "Event Type",              required: false },
   { key: "guestCount",       label: "Guest Count",             required: false },
+  { key: "ceremonyTime",     label: "Start Time (HH:MM)",      required: false },
+  { key: "receptionTime",    label: "End Time (HH:MM)",        required: false },
+  { key: "setupTime",        label: "Setup Time (HH:MM)",      required: false },
+  { key: "teardownTime",     label: "Teardown Time (HH:MM)",   required: false },
+  { key: "spaceName",        label: "Event Space Name",        required: false },
   { key: "internalNotes",    label: "Notes",                   required: false },
 ];
 

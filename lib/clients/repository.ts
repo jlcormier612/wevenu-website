@@ -223,6 +223,8 @@ export type DatedEventWrite = {
   teardownTime?: string | null;
   guestCount?: string | null;
   spaceId?: string | null;
+  /** Reviewed historical record only — past Events with status complete. */
+  status?: "complete" | null;
 };
 
 /** Client + dated Event in one Postgres transaction (occupancy trigger on insert). */
@@ -247,6 +249,7 @@ export async function insertClientWithDatedEvent(
       teardownTime: event.teardownTime ?? "",
       guestCount: event.guestCount ?? "",
       spaceId: event.spaceId ?? "",
+      status: event.status === "complete" ? "complete" : "",
     },
     p_venue_id_override: venueId,
   });

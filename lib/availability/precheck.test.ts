@@ -365,9 +365,24 @@ describe("availability pre-check (Phase 5)", () => {
     assert.equal(closing.conflicts.some((c) => c.type === "calendar_blocked"), true);
   });
 
-  it("Tour capacity is an error when the interval is full, including completed occupancy", () => {
+  it("Tour capacity is an error when live occupancy is full; completed tours do not consume capacity", () => {
     const ten = Date.parse("2099-06-15T10:00:00Z");
-    const status = buildAvailabilityConflicts(
+    const liveFull = buildAvailabilityConflicts(
+      { date: "2099-06-15", type: "tour", tourScheduledAtMs: ten, tourDurationMinutes: 60 },
+      {
+        calendarBlocks: [],
+        holdCount: 0,
+        rules: null,
+        events: [],
+        activeSpaceIds: [],
+        allSpaceIds: [],
+        tours: [{ id: "t1", status: "scheduled", scheduledAtMs: ten, durationMinutes: 60 }],
+      },
+    );
+    assert.equal(liveFull.available, false);
+    assert.equal(liveFull.conflicts.some((c) => c.type === "tour_capacity_full" && c.severity === "error"), true);
+
+    const historical = buildAvailabilityConflicts(
       { date: "2099-06-15", type: "tour", tourScheduledAtMs: ten, tourDurationMinutes: 60 },
       {
         calendarBlocks: [],
@@ -379,8 +394,7 @@ describe("availability pre-check (Phase 5)", () => {
         tours: [{ id: "t1", status: "completed", scheduledAtMs: ten, durationMinutes: 60 }],
       },
     );
-    assert.equal(status.available, false);
-    assert.equal(status.conflicts.some((c) => c.type === "tour_capacity_full" && c.severity === "error"), true);
+    assert.equal(historical.conflicts.some((c) => c.type === "tour_capacity_full"), false);
   });
 
   it("simultaneous venue with no spaces surfaces no_spaces as a hard pre-check error", () => {

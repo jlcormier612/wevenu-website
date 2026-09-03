@@ -8,6 +8,8 @@ This is a snapshot, not a history — it reflects the platform as of the date be
 
 **Correction, 2026-08-11 (Release Readiness Reconciliation):** the Stripe row below was stale — Sprint 4 (`docs/venue-payment-processing-report.md`, same date as this snapshot) built and live-verified the full Card + ACH Stripe Connect pipeline; only a live-credential round-trip confirmation remains. Corrected in place per this document's own "overwritten, not appended to" convention. No other row in this snapshot was re-verified as part of that pass.
 
+**Correction, 2026-09-03 (Bring Your Business cutover):** operational CRM/calendar cutover is implemented (Migration Center + `20261323000000_bring_business_cutover.sql`). Active future-event contract/financial cutover remains launch-critical and open — see What remains.
+
 ---
 
 ## What is complete
@@ -44,17 +46,25 @@ Verified — either live-database-tested this engagement, or confirmed via direc
 
 ## What remains
 
-Nothing on the platform is currently known-unbuilt except the one item below, which is a deliberate future initiative, not an oversight.
-
 | Item | Type | Why it's not done |
 |---|---|---|
 | Real Stripe payment collection — live-credential round-trip confirmation | Deferred, built | Built and verified short of live credentials (Sprint 4 — OAuth, Hosted Checkout, webhook idempotency, refunds — see `docs/venue-payment-processing-report.md`). Same shape as the QuickBooks row above: blocked on a live Stripe test-mode account (`STRIPE_SECRET_KEY`, `STRIPE_PUBLISHABLE_KEY`, `STRIPE_WEBHOOK_SECRET`) this environment doesn't have, not on further engineering |
 | Real QuickBooks sync confirmation | Deferred, built | Blocked on a live Intuit sandbox app/credentials this environment doesn't have. Every other piece (OAuth, queue, error handling, idempotency queries, manual re-sync) is built and verified against real Intuit rejections — see `docs/quickbooks-integration-completion.md` |
 | QuickBooks advanced sync (Chart of Accounts, tax codes, product sync, inbound webhooks, conflict handling) | Deferred, designed | Explicitly out of launch scope from the start. Full design in `docs/quickbooks-online-architecture.md` |
 | iCal/webcal calendar sync | Deferred | Genuinely unbuilt; not previously scoped as a Trust Risk item |
+| 🔴 Launch-critical — Active Future Event Contract & Financial Cutover | Open, existing HTC model | Operational migration (clients, Events, tours, holds, blocks, packages catalog) is implemented. **Business-material migration is in progress:** a venue cannot yet reconstruct contracted amount, amount paid, amount remaining, remaining due dates, or a live operable agreement for a future booked Event. Preserving a signed PDF as a `documents` artifact (`category=contract`) is not an HTC Contract (`contracts.status` is produced by HTC send/sign, not by attaching a file) and does not create invoices or payment schedules. Smart Import (PDF extraction → proposed commitments → human review → commit) is the **strategic automation path**, not a substitute for this item and not launched. Existing canonical writes already support a trustworthy manual reconstruction: Event Order (`ensureEventOrder` + `addLineFromPackage` / custom lines, copy-at-commitment), Invoice (`createInvoice` + lines, send freeze), Payment Schedule (`createPaymentSchedule` requires the invoice; custom lines + `markLineItemPaid` with method such as `other` for money collected outside HTC). No new financial model is required; a Migration Center **reviewed commit** onto those existing objects is. |
 | Lead-to-team-member assignment | Deferred | `resolveLeadOwner()` is an explicit no-op stub — the pipeline stage exists, the routing logic behind it doesn't |
 | `lib/notifications/engine.ts`'s tour-reminder emails bypass Conversations | Deferred, disclosed | Sends directly via Resend; a coordinator has no record of it in the couple's thread. Named in RC2's final report, not yet actioned |
 | `lead_notes`/`client_notes`/`event_notes` vs. Conversation `internal_note` overlap | Deferred, disclosed | Real future consolidation candidate, not a defect — these are single-party notes, a different shape than a conversation |
+
+### Cutover posture (2026-09-03)
+
+| Layer | Status |
+|---|---|
+| Operational migration (CRM + Calendar + tours/holds/blocks + catalog packages/vendors) | Substantially complete |
+| Business-material migration (Event Order / live commitments on imported Events) | In progress — no import path yet |
+| Active financial cutover (invoice, schedule, historical paid, remaining obligations, operable signed agreement) | Open — launch-critical |
+| Smart Import automation | Strategic path after the reviewed financial commit exists; not a deferral of the item above |
 
 ## What's verified
 

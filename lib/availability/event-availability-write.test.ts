@@ -66,7 +66,8 @@ describe("Phase 3 write-path seams", () => {
   });
 
   it("Event create/edit/status writes go through table INSERT/UPDATE (trigger), not a standalone assert RPC", () => {
-    assert.match(eventsRepo, /\.insert\(toEventRow/);
+    assert.match(eventsRepo, /const row = toEventRow\(/);
+    assert.match(eventsRepo, /\.insert\(row\)/);
     assert.match(eventsRepo, /\.update\(toEventRow/);
     assert.match(eventsRepo, /\.update\(\{ status \}\)/);
     assert.doesNotMatch(eventsRepo, /assert_event_availability/);

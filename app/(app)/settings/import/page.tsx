@@ -4,6 +4,8 @@ import { Suspense } from "react";
 import { ImportWizard } from "@/components/settings/import-wizard";
 import { ImportHealthWidget } from "@/components/settings/import-health-widget";
 import type { EntityType } from "@/lib/import/types";
+import { getSpaces, getCapacityRules } from "@/lib/availability/service";
+import { evaluateCutoverPrerequisites } from "@/lib/setup-hub/bring-your-business";
 
 export const metadata: Metadata = { title: "Import Data — Settings" };
 
@@ -20,6 +22,13 @@ export default async function ImportPage({
   const initialEntity: EntityType | undefined =
     rawType && VALID_TYPES.has(rawType as EntityType) ? (rawType as EntityType) : undefined;
 
+  const [spaces, capacityRules] = await Promise.all([getSpaces(), getCapacityRules()]);
+  const cutover = evaluateCutoverPrerequisites({
+    spacesCount: spaces.length,
+    hasCapacityRules: capacityRules != null,
+    maxSimultaneousEvents: capacityRules?.maxSimultaneousEvents ?? null,
+  });
+
   return (
     <div className="space-y-6 max-w-3xl">
       <div>
@@ -31,7 +40,7 @@ export default async function ImportPage({
       <Suspense fallback={null}>
         <ImportHealthWidget />
       </Suspense>
-      <ImportWizard initialEntity={initialEntity} />
+      <ImportWizard initialEntity={initialEntity} cutover={cutover} />
     </div>
   );
 }

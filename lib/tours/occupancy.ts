@@ -7,8 +7,9 @@
  * competing write-path.
  *
  * Tours are not Events. Capacity is venue_capacity_rules.max_simultaneous_tours
- * only. Occupancy truth is tour_appointments with status distinct from
- * cancelled. Interval overlap is duration-based; touching endpoints do not
+ * only. Occupancy truth is tour_appointments with status scheduled or
+ * confirmed (completed / no_show / cancelled do not consume live capacity).
+ * Interval overlap is duration-based; touching endpoints do not
  * overlap. Buffer is a slot-generation step, not an overlap widening.
  *
  * Event conflict uses Phase 2 event_operational_window on each protected
@@ -82,7 +83,7 @@ export function tourIntervalsOverlap(a: TourInterval, b: TourInterval): boolean 
 }
 
 export function occupyingTour(status: string): boolean {
-  return status !== "cancelled";
+  return status === "scheduled" || status === "confirmed";
 }
 
 export function evaluateTourCapacity(input: {

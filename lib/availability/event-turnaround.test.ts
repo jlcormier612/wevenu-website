@@ -49,7 +49,8 @@ describe("Event turnaround write-path seams", () => {
   });
 
   it("Event create/edit/Book This Lead/Direct Add still go through events writes", () => {
-    assert.match(eventsRepo, /\.insert\(toEventRow/);
+    assert.match(eventsRepo, /const row = toEventRow\(/);
+    assert.match(eventsRepo, /\.insert\(row\)/);
     assert.match(eventsRepo, /\.update\(toEventRow/);
     assert.match(eventsRepo, /\.update\(\{ status \}\)/);
     assert.match(clientsRepo, /create_client_and_event_with_availability/);

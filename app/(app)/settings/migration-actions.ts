@@ -82,7 +82,7 @@ export async function runMigrationDedupeAction(sessionId: string) {
   return result;
 }
 
-export async function reviewMigrationRecordAction(sessionId: string, recordId: string, decision: "approve" | "reject") {
+export async function reviewMigrationRecordAction(sessionId: string, recordId: string, decision: "approve" | "reject" | "approve_historical") {
   const result = await reviewOwnRecord(sessionId, recordId, decision);
   if (result.ok) revalidatePath("/settings/migration");
   return result;

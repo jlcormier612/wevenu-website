@@ -33,7 +33,18 @@ export type SourceProfile = {
   isEnabled: boolean;
 };
 
-export type MigrationEntityType = "client" | "lead" | "vendor" | "event" | "payment" | "document";
+export type MigrationEntityType =
+  | "client"
+  | "lead"
+  | "vendor"
+  | "event"
+  | "payment"
+  | "document"
+  | "calendar_block"
+  | "date_hold"
+  | "tour"
+  | "package"
+  | "key_date";
 
 export type SessionStatus =
   | "uploaded"
@@ -110,8 +121,20 @@ export type NormalizedClientLike = {
   email?: string | null;
   phone?: string | null;
   eventDate?: string | null;
+  /** Inclusive end day (multi-day Events). */
+  endDate?: string | null;
   eventType?: string | null;
   guestCount?: string | null;
+  /** Maps to ClientInput.ceremonyTime → Event.startTime. */
+  startTime?: string | null;
+  /** Maps to ClientInput.receptionTime → Event.endTime. */
+  endTime?: string | null;
+  setupTime?: string | null;
+  teardownTime?: string | null;
+  /** Resolved UUID when known; otherwise resolve spaceName at commit. */
+  spaceId?: string | null;
+  /** Source space label for review/mapping when UUID is not in the export. */
+  spaceName?: string | null;
   notes?: string | null;
   /** The source's own record id, if the export includes one — the repeat-import short-circuit key (§B.4). */
   sourceId?: string | null;
@@ -131,6 +154,79 @@ export type NormalizedVendorLike = {
 export type NormalizedLeadLike = NormalizedClientLike & {
   inquiryMessage?: string | null;
   estimatedBudget?: string | null;
+};
+
+export type NormalizedCalendarBlockLike = {
+  title: string;
+  type: string;
+  reason?: string | null;
+  startDate: string;
+  endDate?: string | null;
+  isAllDay?: boolean | null;
+  startTime?: string | null;
+  endTime?: string | null;
+  notes?: string | null;
+  recurrenceRule?: string | null;
+  recurrenceEndsOn?: string | null;
+  recurrenceInterval?: string | null;
+  recurrenceCount?: string | null;
+  sourceId?: string | null;
+};
+
+export type NormalizedDateHoldLike = {
+  title: string;
+  holdDate: string;
+  startTime?: string | null;
+  endTime?: string | null;
+  expiresAt?: string | null;
+  notes?: string | null;
+  leadEmail?: string | null;
+  leadId?: string | null;
+  spaceId?: string | null;
+  spaceName?: string | null;
+  sourceId?: string | null;
+};
+
+export type NormalizedTourLike = {
+  scheduledAt: string;
+  notes?: string | null;
+  leadEmail?: string | null;
+  leadId?: string | null;
+  sourceId?: string | null;
+};
+
+export type NormalizedPackageLike = {
+  name: string;
+  description?: string | null;
+  basePrice?: string | null;
+  category?: string | null;
+  sourceId?: string | null;
+};
+
+export type NormalizedEventLike = {
+  name: string;
+  eventDate: string;
+  eventEndDate?: string | null;
+  eventType?: string | null;
+  startTime?: string | null;
+  endTime?: string | null;
+  setupTime?: string | null;
+  teardownTime?: string | null;
+  guestCount?: string | null;
+  clientEmail?: string | null;
+  clientId?: string | null;
+  spaceId?: string | null;
+  spaceName?: string | null;
+  sourceId?: string | null;
+};
+
+export type NormalizedKeyDateLike = {
+  label: string;
+  date: string;
+  note?: string | null;
+  clientEmail?: string | null;
+  clientId?: string | null;
+  sourceId?: string | null;
 };
 
 export type NormalizationResult =

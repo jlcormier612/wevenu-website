@@ -30,9 +30,9 @@ export const STAGE_COPY: Record<string, StageCopy> = {
     helpTitle: "Walk me through this setup",
   },
   "bring-your-business": {
-    what: "Your existing clients, leads, and vendors — the business you already have.",
-    why: "So everything you're already tracking somewhere else follows you here, instead of starting from zero.",
-    whatToDo: "Whether you're moving from another system — whether we know it by name or not — or just have a spreadsheet, it's the same place: we'll help you bring it over carefully. Or start fresh and add things as you go — that's a real choice too.",
+    what: "Your existing clients, calendar, tours, holds, vendors, and packages — the business you already run.",
+    why: "So Hello to Cheers opens as a functioning venue, not an empty shell you rebuild by hand.",
+    whatToDo: "First set Calendar & Availability (spaces, capacity, tour windows). Then open Bring Your Business — we'll help you move clients and calendar commitments carefully, with review before anything goes live. Or start fresh and add things as you go.",
     required: true,
     helpHref: "/help/setup-bring-your-business",
     helpTitle: "Walk me through this setup",

@@ -16,6 +16,7 @@ import {
   setYourTeamSoloAction,
 } from "@/app/(app)/setup-hub/actions";
 import { STAGE_COPY } from "@/lib/setup-hub/stage-copy";
+import { evaluateCutoverPrerequisites } from "@/lib/setup-hub/bring-your-business";
 import type { SetupReadyCounts } from "@/lib/venue/service";
 import type { LeadCaptureStageStatus, SetupHubState } from "@/lib/setup-hub/types";
 import type { OperationalReadiness } from "@/lib/operational-readiness/types";
@@ -50,6 +51,7 @@ export function SetupHubOverview({
   stripeConnected,
   quickbooksConnected,
   operationalReadiness,
+  maxSimultaneousEvents,
 }: {
   venueName: string;
   ownerFirstName: string | null;
@@ -66,11 +68,17 @@ export function SetupHubOverview({
   stripeConnected: boolean;
   quickbooksConnected: boolean;
   operationalReadiness?: OperationalReadiness | null;
+  maxSimultaneousEvents?: number | null;
 }) {
   const yourVenueDone = !!hubState?.yourVenueReviewedAt;
   const calendarDone = !!hubState?.calendarAvailabilityReviewedAt;
   const bringYourBusinessManual = !!hubState?.bringYourBusinessManualConfirmedAt;
   const bringYourBusinessDone = hasImportedData || bringYourBusinessManual;
+  const calendarReadyHint = evaluateCutoverPrerequisites({
+    spacesCount,
+    hasCapacityRules,
+    maxSimultaneousEvents,
+  }).message;
   const offeringsCount = readyCounts.packages + readyCounts.inventory;
   const offeringsDone = offeringsCount > 0 || !!hubState?.yourOfferingsReviewedAt;
   const clientExperienceCount =
@@ -81,9 +89,9 @@ export function SetupHubOverview({
   const yourTeamDone = activeTeamCount > 0 || yourTeamSolo;
   const financialsReviewed = !!hubState?.financialsReviewedAt;
 
-  // Bring Your Business sits early (right after Your Venue) so a venue
-  // switching systems sees that choice before spending time rebuilding by hand.
-  // Order is guidance only — stages stay revisitable in any sequence.
+  // Order: identity → calendar foundations → cutover → offerings → experience.
+  // Dated Event import needs spaces/capacity configured first (availability
+  // enforcement); BYB after Calendar & Availability makes that sequence explicit.
   const stages: StageRow[] = [
     {
       key: "your-venue",
@@ -97,6 +105,21 @@ export function SetupHubOverview({
         <StageAcknowledgeButton
           action={() => markStageReviewedAction("your-venue")}
           label="This looks good for now"
+        />
+      ) : undefined,
+    },
+    {
+      key: "calendar-availability",
+      title: "Calendar & Availability",
+      href: "/settings/availability",
+      hrefLabel: "Go to Settings",
+      status: calendarDone ? "complete" : null,
+      detail: `${spacesCount} space${spacesCount === 1 ? "" : "s"} added · Scheduling capacity ${hasCapacityRules ? "set" : "using the defaults"} · Online tour booking ${tourSchedulingEnabled ? "on" : "off"}.`,
+      required: true,
+      action: !calendarDone ? (
+        <StageAcknowledgeButton
+          action={() => markStageReviewedAction("calendar-availability")}
+          label="I've thought this through"
         />
       ) : undefined,
     },
@@ -115,23 +138,9 @@ export function SetupHubOverview({
           done={bringYourBusinessDone}
           hasImportedData={hasImportedData}
           manualConfirmed={bringYourBusinessManual}
+          calendarReadyHint={calendarReadyHint}
         />
       ),
-    },
-    {
-      key: "calendar-availability",
-      title: "Calendar & Availability",
-      href: "/settings/availability",
-      hrefLabel: "Go to Settings",
-      status: calendarDone ? "complete" : null,
-      detail: `${spacesCount} space${spacesCount === 1 ? "" : "s"} added · Scheduling capacity ${hasCapacityRules ? "set" : "using the defaults"} · Online tour booking ${tourSchedulingEnabled ? "on" : "off"}.`,
-      required: true,
-      action: !calendarDone ? (
-        <StageAcknowledgeButton
-          action={() => markStageReviewedAction("calendar-availability")}
-          label="I've thought this through"
-        />
-      ) : undefined,
     },
     {
       key: "your-offerings",

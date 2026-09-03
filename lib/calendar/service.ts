@@ -258,7 +258,9 @@ export async function getCalendarData(
         type: "event",
         date,
         title: cn ?? e.name,
-        subtitle: e.event_type ? eventTypeLabel(e.event_type) : null,
+        subtitle: [e.status === "complete" ? "Completed" : null, e.event_type ? eventTypeLabel(e.event_type) : null]
+          .filter(Boolean)
+          .join(" · ") || null,
         time: e.start_time?.slice(0, 5) ?? null,
         link: `/events/${e.id}`,
         eventId: e.id,

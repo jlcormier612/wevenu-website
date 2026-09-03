@@ -88,6 +88,10 @@ export type ClientInput = {
   guestCount: string;
   ceremonyTime: string;
   receptionTime: string;
+  /** Operational setup start (HH:MM); used by Event creation when present. */
+  setupTime: string;
+  /** Operational teardown end (HH:MM); used by Event creation when present. */
+  teardownTime: string;
   rehearsalDate: string;
   internalNotes: string;
   spaceId: string;

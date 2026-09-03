@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 
 import { createClient_, findActiveDuplicateClient } from "@/lib/clients/service";
+import { resolveSpaceId } from "@/lib/migration/resolve-refs";
 import { DISPLAY_SHAPES } from "@/components/floor-plan/floor-plan-shapes";
 import { createImportBatch, finalizeImportBatch, getImportBatches, rollbackImportBatch, stampImportBatch, type RollbackResult } from "@/lib/import/batches";
 import { extractDocxText, extractPdfText, parseExcelFile } from "@/lib/import/file-parsing";
@@ -15,12 +16,26 @@ import { createPackage, findActiveDuplicatePackage } from "@/lib/packages/servic
 import { createVendor, findActiveDuplicateVendor } from "@/lib/vendors/service";
 import { getCurrentVenue } from "@/lib/venue/service";
 import { createClient } from "@/integrations/supabase/server";
+import { getSpaces, getCapacityRules } from "@/lib/availability/service";
+import { evaluateCutoverPrerequisites } from "@/lib/setup-hub/bring-your-business";
 import type { ClientInput } from "@/lib/clients/types";
 import type { InventoryItemInput, InventoryShape } from "@/lib/inventory/types";
 import type { LeadInput } from "@/lib/leads/types";
 import type { PackageInput } from "@/lib/packages/types";
 import type { VendorInput } from "@/lib/vendors/types";
 import type { EntityType, ImportBatch, ImportResult } from "@/lib/import/types";
+
+async function withResolvedSpace(input: ClientInput): Promise<{ ok: true; input: ClientInput } | { ok: false; message: string }> {
+  const raw = input.spaceId.trim();
+  if (!raw) return { ok: true, input };
+  const venue = await getCurrentVenue();
+  if (!venue) return { ok: false, message: "No venue found." };
+  const supabase = await createClient();
+  const uuidLike = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(raw);
+  const resolved = await resolveSpaceId(supabase, venue.id, uuidLike ? raw : null, uuidLike ? null : raw);
+  if (!resolved.ok) return { ok: false, message: resolved.error };
+  return { ok: true, input: { ...input, spaceId: resolved.spaceId ?? "" } };
+}
 
 export async function getImportBatchesAction(entityType?: EntityType): Promise<ImportBatch[]> {
   return getImportBatches(entityType);
@@ -98,11 +113,22 @@ export async function importCouplesAction(rows: ClientInput[], sourceLabel?: str
   const createdIds: string[] = [];
   const venue = await getCurrentVenue();
   const batchId = venue ? await createImportBatch(venue.id, "couples", sourceLabel ?? null, rows.length) : null;
+  const spaces = await getSpaces();
+  const capacityRules = await getCapacityRules();
+  const cutover = evaluateCutoverPrerequisites({
+    spacesCount: spaces.length,
+    hasCapacityRules: capacityRules != null,
+    maxSimultaneousEvents: capacityRules?.maxSimultaneousEvents ?? null,
+  });
 
   for (let i = 0; i < rows.length; i++) {
     const row = rows[i];
     if (!row.firstName?.trim() || !row.lastName?.trim()) {
       errors.push({ row: i + 1, message: "Missing required fields: first name, last name", kind: "skipped" });
+      continue;
+    }
+    if (!cutover.readyForDatedEvents && row.eventDate?.trim()) {
+      errors.push({ row: i + 1, message: cutover.message ?? "Add Event Spaces before importing dated Events.", kind: "error" });
       continue;
     }
     try {
@@ -115,7 +141,12 @@ export async function importCouplesAction(rows: ClientInput[], sourceLabel?: str
       // Duplicate check failing must never block a legitimate import.
     }
     try {
-      const result = await createClient_(row);
+      const spaced = await withResolvedSpace(row);
+      if (!spaced.ok) {
+        errors.push({ row: i + 1, message: spaced.message, kind: "error" });
+        continue;
+      }
+      const result = await createClient_(spaced.input);
       if (result.ok) {
         createdIds.push(result.clientId);
       } else {

@@ -66,13 +66,24 @@ const NEXT_STEP: Record<EntityType, { cta: string; href: string; detail: string 
 
 // ── Step 0: Entity selector ───────────────────────────────────────────────────
 
-function StepEntitySelect({ onSelect }: { onSelect: (e: EntityType) => void }) {
+function StepEntitySelect({
+  onSelect,
+  datedEventsMessage,
+}: {
+  onSelect: (e: EntityType) => void;
+  datedEventsMessage?: string | null;
+}) {
   return (
     <div className="space-y-4">
       <div>
         <h2 className="text-base font-semibold text-foreground">What are you importing?</h2>
         <p className="text-sm text-muted-foreground mt-1">Choose the type of data in your CSV file.</p>
       </div>
+      {datedEventsMessage ? (
+        <p className="text-xs text-amber-800 dark:text-amber-200">
+          {datedEventsMessage} Clients without an event date can still be imported.
+        </p>
+      ) : null}
       <div className="grid gap-3 sm:grid-cols-3">
         {(["couples", "leads", "vendors", "inventory", "packages"] as EntityType[]).map((e) => (
           <button
@@ -711,6 +722,7 @@ export function ImportWizard({
   sourceLabel,
   embedded,
   onDone,
+  cutover,
 }: {
   initialEntity?: EntityType;
   venueId?: string;
@@ -719,6 +731,7 @@ export function ImportWizard({
   /** Rendered inside the onboarding wizard rather than /settings/import — suppresses outbound "go look at your data" links in favor of handing control back to the wizard. */
   embedded?: boolean;
   onDone?: () => void;
+  cutover?: { readyForDatedEvents: boolean; message: string | null };
 }) {
   const [step, setStep]         = React.useState<number>(initialEntity ? 1 : 0);
   const [entity, setEntity]     = React.useState<EntityType | null>(initialEntity ?? null);
@@ -836,13 +849,19 @@ export function ImportWizard({
 
   const totalSteps = 4; // 0 = entity select, 1-4 = upload/map/preview/results (entity select is outside progress)
   const showProgress = step > 0;
+  const datedEventsMessage = cutover && !cutover.readyForDatedEvents ? cutover.message : null;
 
   return (
     <div className="rounded-xl border border-border bg-card p-6">
       {showProgress && <ProgressBar step={step} total={totalSteps} />}
+      {datedEventsMessage && entity === "couples" ? (
+        <p className="mb-4 text-xs text-amber-800 dark:text-amber-200">
+          {datedEventsMessage} Clients without an event date can still be imported.
+        </p>
+      ) : null}
 
       {step === 0 && (
-        <StepEntitySelect onSelect={handleEntitySelect} />
+        <StepEntitySelect onSelect={handleEntitySelect} datedEventsMessage={datedEventsMessage} />
       )}
 
       {step === 1 && entity && (

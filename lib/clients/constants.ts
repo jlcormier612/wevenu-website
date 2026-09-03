@@ -60,6 +60,8 @@ export function createInitialClientInput(source?: Client | null): ClientInput {
     guestCount: source?.guestCount != null ? String(source.guestCount) : "",
     ceremonyTime: source?.ceremonyTime ?? "",
     receptionTime: source?.receptionTime ?? "",
+    setupTime: "",
+    teardownTime: "",
     rehearsalDate: source?.rehearsalDate ?? "",
     internalNotes: source?.internalNotes ?? "",
     spaceId: "",

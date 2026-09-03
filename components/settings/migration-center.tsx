@@ -18,6 +18,7 @@
  * blank slate and never a re-upload prompt.
  */
 import * as React from "react";
+import Link from "next/link";
 import Papa from "papaparse";
 import { AlertTriangle, CheckCircle2, Download, FileText, Loader2, Sparkles, Upload } from "lucide-react";
 import { toast } from "sonner";
@@ -41,6 +42,7 @@ import {
   runMigrationDedupeAction,
   startMigrationSessionAction,
 } from "@/app/(app)/settings/migration-actions";
+import { isHistoricalRecordEligibleError, isLiveAvailabilityConflictError, HISTORICAL_RECORD_ELIGIBLE, HISTORICAL_RECORD_LABEL } from "@/lib/migration/historical-record";
 import {
   MIGRATION_CENTER_INTRO,
   SOURCE_SELECTION_LANES,
@@ -55,23 +57,28 @@ import { recognizeSource } from "@/lib/migration/source-profiles";
 import type {
   MigrationEntityType, MigrationRecord, MigrationSession, SessionResumeState, SessionSourceFile, SessionSummary, SourceProfile,
 } from "@/lib/migration/types";
+import type { CutoverPrerequisite } from "@/lib/setup-hub/bring-your-business";
+import { BRING_YOUR_BUSINESS_ROUTES } from "@/lib/setup-hub/bring-your-business";
 
 type CsvRow = Record<string, string>;
 
 const ENTITY_LABEL: Record<MigrationEntityType, string> = {
-  client: "Clients (booked couples)", lead: "Leads (open inquiries)", vendor: "Vendors",
-  event: "Events", payment: "Payments", document: "Documents",
+  client: "Clients (booked couples)",
+  lead: "Leads (open inquiries)",
+  vendor: "Vendors",
+  event: "Events (standalone)",
+  payment: "Payments",
+  document: "Documents",
+  calendar_block: "Calendar blocks (incl. recurring)",
+  date_hold: "Date holds",
+  tour: "Tours / appointments",
+  package: "Packages",
+  key_date: "Key dates",
 };
-const COMMITTABLE_ENTITIES: MigrationEntityType[] = ["client", "lead", "vendor"];
+const COMMITTABLE_ENTITIES: MigrationEntityType[] = [
+  "calendar_block", "date_hold", "client", "lead", "vendor", "package", "event", "tour", "key_date",
+];
 
-// "name" (a single combined-name column) is a separate, optional slot from
-// firstName/lastName — some sources (verified for HoneyBook's contacts
-// export) only have one name column, not two. Mapping a column here lets
-// a source adapter with real split logic (see lib/migration/sources/
-// honeybook.ts) do a best-effort split; a source with no such logic
-// simply reuses genericCsvAdapter's own "missing a first and last name"
-// rejection, exactly as before this slot existed. Source-agnostic by
-// design — any future adapter can read row.name the same way.
 const FIELD_KEYS_BY_ENTITY: Record<MigrationEntityType, { key: string; label: string; required: boolean }[]> = {
   client: [
     { key: "firstName", label: "First name", required: true },
@@ -82,8 +89,15 @@ const FIELD_KEYS_BY_ENTITY: Record<MigrationEntityType, { key: string; label: st
     { key: "email", label: "Email", required: false },
     { key: "phone", label: "Phone", required: false },
     { key: "eventDate", label: "Event date (YYYY-MM-DD)", required: false },
+    { key: "endDate", label: "Event end date (YYYY-MM-DD)", required: false },
     { key: "eventType", label: "Event type", required: false },
     { key: "guestCount", label: "Guest count", required: false },
+    { key: "startTime", label: "Start time (HH:MM)", required: false },
+    { key: "endTime", label: "End time (HH:MM)", required: false },
+    { key: "setupTime", label: "Setup time (HH:MM)", required: false },
+    { key: "teardownTime", label: "Teardown time (HH:MM)", required: false },
+    { key: "spaceName", label: "Event space name", required: false },
+    { key: "spaceId", label: "Event space id (if you have it)", required: false },
     { key: "internalNotes", label: "Notes", required: false },
     { key: "sourceId", label: "Their own record ID (if the export has one)", required: false },
   ],
@@ -94,6 +108,7 @@ const FIELD_KEYS_BY_ENTITY: Record<MigrationEntityType, { key: string; label: st
     { key: "email", label: "Email", required: false },
     { key: "phone", label: "Phone", required: false },
     { key: "eventDate", label: "Event date (YYYY-MM-DD)", required: false },
+    { key: "endDate", label: "Event end date (YYYY-MM-DD)", required: false },
     { key: "eventType", label: "Event type", required: false },
     { key: "estimatedBudget", label: "Budget", required: false },
     { key: "inquiryMessage", label: "Inquiry notes", required: false },
@@ -109,7 +124,68 @@ const FIELD_KEYS_BY_ENTITY: Record<MigrationEntityType, { key: string; label: st
     { key: "notes", label: "Notes", required: false },
     { key: "sourceId", label: "Their own record ID (if the export has one)", required: false },
   ],
-  event: [], payment: [], document: [],
+  calendar_block: [
+    { key: "title", label: "Title", required: true },
+    { key: "type", label: "Type (blocked_time, tour, personal_appointment, …)", required: false },
+    { key: "startDate", label: "Start date (YYYY-MM-DD)", required: true },
+    { key: "endDate", label: "End date (YYYY-MM-DD)", required: false },
+    { key: "isAllDay", label: "All day? (yes/no)", required: false },
+    { key: "startTime", label: "Start time (HH:MM)", required: false },
+    { key: "endTime", label: "End time (HH:MM)", required: false },
+    { key: "recurrenceRule", label: "Recurrence (none/daily/weekly/monthly/annual)", required: false },
+    { key: "recurrenceEndsOn", label: "Recurrence ends on (YYYY-MM-DD)", required: false },
+    { key: "recurrenceInterval", label: "Every N (interval)", required: false },
+    { key: "recurrenceCount", label: "Stop after N occurrences", required: false },
+    { key: "notes", label: "Notes", required: false },
+    { key: "sourceId", label: "Their own record ID", required: false },
+  ],
+  date_hold: [
+    { key: "title", label: "Title", required: true },
+    { key: "holdDate", label: "Hold date (YYYY-MM-DD)", required: true },
+    { key: "startTime", label: "Start time", required: false },
+    { key: "endTime", label: "End time", required: false },
+    { key: "leadEmail", label: "Lead email", required: false },
+    { key: "spaceName", label: "Event space name", required: false },
+    { key: "expiresAt", label: "Expires at", required: false },
+    { key: "notes", label: "Notes", required: false },
+    { key: "sourceId", label: "Their own record ID", required: false },
+  ],
+  tour: [
+    { key: "scheduledAt", label: "Scheduled at (ISO or YYYY-MM-DD HH:MM)", required: true },
+    { key: "leadEmail", label: "Lead email", required: true },
+    { key: "notes", label: "Notes", required: false },
+    { key: "sourceId", label: "Their own record ID", required: false },
+  ],
+  package: [
+    { key: "name", label: "Package name", required: true },
+    { key: "description", label: "Description", required: false },
+    { key: "basePrice", label: "Base price", required: false },
+    { key: "category", label: "Category", required: false },
+    { key: "sourceId", label: "Their own record ID", required: false },
+  ],
+  event: [
+    { key: "name", label: "Event name", required: true },
+    { key: "eventDate", label: "Event date", required: true },
+    { key: "eventEndDate", label: "Event end date", required: false },
+    { key: "clientEmail", label: "Client email", required: true },
+    { key: "startTime", label: "Start time", required: false },
+    { key: "endTime", label: "End time", required: false },
+    { key: "setupTime", label: "Setup time", required: false },
+    { key: "teardownTime", label: "Teardown time", required: false },
+    { key: "spaceName", label: "Event space name", required: false },
+    { key: "guestCount", label: "Guest count", required: false },
+    { key: "eventType", label: "Event type", required: false },
+    { key: "sourceId", label: "Their own record ID", required: false },
+  ],
+  key_date: [
+    { key: "label", label: "Label", required: true },
+    { key: "date", label: "Date", required: true },
+    { key: "clientEmail", label: "Client email", required: true },
+    { key: "note", label: "Note", required: false },
+    { key: "sourceId", label: "Their own record ID", required: false },
+  ],
+  payment: [],
+  document: [],
 };
 
 const NEEDS_DECISION_STATUSES = ["duplicate_likely", "conflict", "needs_review"] as const;
@@ -165,7 +241,13 @@ function outcomeSentence(summary: SessionSummary): string {
   return parts.join(" · ");
 }
 
-export function MigrationCenter({ sourceProfiles }: { sourceProfiles: SourceProfile[] }) {
+export function MigrationCenter({
+  sourceProfiles,
+  cutover,
+}: {
+  sourceProfiles: SourceProfile[];
+  cutover: CutoverPrerequisite;
+}) {
   const [sessions, setSessions] = React.useState<MigrationSession[]>([]);
   const [activeSessionId, setActiveSessionId] = React.useState<string | null>(null);
   const [resume, setResume] = React.useState<{ state: SessionResumeState; summary: SessionSummary } | null>(null);
@@ -303,6 +385,10 @@ export function MigrationCenter({ sourceProfiles }: { sourceProfiles: SourceProf
   }
 
   async function handleStartAndUpload() {
+    if (eventImportBlocked) {
+      toast.error(cutover.message ?? "Add Event Spaces before importing dated Events.");
+      return;
+    }
     if (rows.length === 0) { toast.error("Choose a file first."); return; }
     setStarting(true);
     try {
@@ -337,7 +423,7 @@ export function MigrationCenter({ sourceProfiles }: { sourceProfiles: SourceProf
     });
   }
 
-  function handleDecision(sessionId: string, recordId: string, decision: "approve" | "reject") {
+  function handleDecision(sessionId: string, recordId: string, decision: "approve" | "reject" | "approve_historical") {
     startLoading(async () => {
       const result = await reviewMigrationRecordAction(sessionId, recordId, decision);
       if (result.ok) openSession(sessionId);
@@ -356,6 +442,8 @@ export function MigrationCenter({ sourceProfiles }: { sourceProfiles: SourceProf
   }
 
   const pendingCommitCount = resume ? resume.summary.counts.validated + resume.summary.counts.approved : 0;
+  const datedEventsBlocked = !cutover.readyForDatedEvents && (entityType === "event" || entityType === "client");
+  const eventImportBlocked = !cutover.readyForDatedEvents && entityType === "event";
 
   return (
     <div className="space-y-6">
@@ -400,8 +488,18 @@ export function MigrationCenter({ sourceProfiles }: { sourceProfiles: SourceProf
             </Select>
           </div>
 
+          {datedEventsBlocked && cutover.message ? (
+            <div className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2.5 text-xs text-amber-950 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-100">
+              {cutover.message}{" "}
+              <Link href={BRING_YOUR_BUSINESS_ROUTES.calendarAvailability} className="font-medium underline">
+                Open Calendar & Availability
+              </Link>
+              {entityType === "client" ? " You can still import clients that do not have an event date." : null}
+            </div>
+          ) : null}
+
           <div className="rounded-lg border border-dashed border-border p-4">
-            <input ref={fileRef} type="file" accept=".csv" onChange={handleFile} className="text-sm" />
+            <input ref={fileRef} type="file" accept=".csv" onChange={handleFile} className="text-sm" disabled={eventImportBlocked} />
             <p className="mt-1 text-[11px] text-muted-foreground">
               CSV export from {lane === "honeybook" || lane === "tripleseat" ? selectedProfile.displayName : "your current system"}.
               We&apos;ll keep a copy of this file with your migration history. This never connects to or logs into another platform on your behalf.
@@ -432,7 +530,7 @@ export function MigrationCenter({ sourceProfiles }: { sourceProfiles: SourceProf
                 ))}
               </div>
               <div className="flex justify-end">
-                <Button size="sm" onClick={handleStartAndUpload} disabled={starting}>
+                <Button size="sm" onClick={handleStartAndUpload} disabled={starting || eventImportBlocked}>
                   {starting ? <><Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />Working…</> : <><Upload className="mr-1.5 h-3.5 w-3.5" />Bring in {rows.length} row{rows.length === 1 ? "" : "s"}</>}
                 </Button>
               </div>
@@ -490,28 +588,37 @@ export function MigrationCenter({ sourceProfiles }: { sourceProfiles: SourceProf
             {(resume?.state === "needs_review" || resume?.state === "partially_done") && decisionRecords.length > 0 && (
               <div className="space-y-2">
                 <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Needs your decision</p>
-                {decisionRecords.map((r) => (
+                {decisionRecords.map((r) => {
+                  const historical = isHistoricalRecordEligibleError(r.validationErrors);
+                  const liveConflict = isLiveAvailabilityConflictError(r.validationErrors);
+                  const displayError = (r.validationErrors?.[0] ?? "").replace(`${HISTORICAL_RECORD_ELIGIBLE}: `, "");
+                  return (
                   <div key={r.id} className="flex items-center justify-between gap-3 rounded-lg border border-border px-3 py-2">
                     <div className="min-w-0">
                       <p className="truncate text-sm font-medium text-heading">
-                        {String(r.normalizedPayload?.firstName ?? r.normalizedPayload?.businessName ?? r.sourceRowRef ?? "Record")}{" "}
+                        {String(r.normalizedPayload?.firstName ?? r.normalizedPayload?.businessName ?? r.normalizedPayload?.name ?? r.normalizedPayload?.title ?? r.sourceRowRef ?? "Record")}{" "}
                         {String(r.normalizedPayload?.lastName ?? "")}
                       </p>
                       <div className="mt-0.5 flex items-center gap-2">
                         <StatusBadge status={r.status} />
-                        {r.validationErrors?.[0] && <span className="text-[11px] text-muted-foreground">{r.validationErrors[0]}</span>}
+                        {displayError && <span className="text-[11px] text-muted-foreground">{displayError}</span>}
                       </div>
                     </div>
-                    {r.status !== "needs_review" ? (
-                      <div className="flex shrink-0 gap-2">
-                        <Button size="sm" variant="outline" onClick={() => handleDecision(activeSession.id, r.id, "reject")} disabled={loading}>Skip</Button>
+                    <div className="flex shrink-0 items-center gap-2">
+                      <Button size="sm" variant="outline" onClick={() => handleDecision(activeSession.id, r.id, "reject")} disabled={loading}>Skip</Button>
+                      {historical ? (
+                        <Button size="sm" onClick={() => handleDecision(activeSession.id, r.id, "approve_historical")} disabled={loading}>
+                          {HISTORICAL_RECORD_LABEL}
+                        </Button>
+                      ) : r.status !== "needs_review" && !liveConflict ? (
                         <Button size="sm" onClick={() => handleDecision(activeSession.id, r.id, "approve")} disabled={loading}>Import anyway</Button>
-                      </div>
-                    ) : (
-                      <AlertTriangle className="h-4 w-4 shrink-0 text-amber-500" />
-                    )}
+                      ) : (
+                        <AlertTriangle className="h-4 w-4 shrink-0 text-amber-500" />
+                      )}
+                    </div>
                   </div>
-                ))}
+                  );
+                })}
               </div>
             )}
 
