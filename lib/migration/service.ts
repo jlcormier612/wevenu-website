@@ -48,6 +48,7 @@ import type {
   NormalizedClientLike,
   NormalizedDateHoldLike,
   NormalizedEventLike,
+  NormalizedDocumentLike,
   NormalizedKeyDateLike,
   NormalizedLeadLike,
   NormalizedPackageLike,
@@ -61,6 +62,23 @@ import type {
   SourceRow,
 } from "@/lib/migration/types";
 import type { EntityType } from "@/lib/import/types";
+import {
+  commitActiveCommitment,
+  type NormalizedActiveCommitment,
+} from "@/lib/migration/active-commitment";
+import {
+  commitOperationalGuest,
+  type NormalizedGuestListEntry,
+} from "@/lib/migration/operational-guest";
+import {
+  commitEventVendorAssignmentQuietly,
+  type NormalizedEventVendorAssignment,
+} from "@/lib/migration/event-vendor-assignment";
+import {
+  commitOperationalTimelineEntry,
+  type NormalizedTimelineEntry,
+} from "@/lib/migration/operational-timeline";
+import type { DocumentCategory } from "@/lib/documents/types";
 
 type AnyDbClient = Awaited<ReturnType<typeof createClient>> | ReturnType<typeof createAdminClient>;
 
@@ -227,6 +245,7 @@ export async function getSessionSummary(client: AnyDbClient, session: MigrationS
 
 const COMMITTABLE_ENTITY_TYPES: MigrationEntityType[] = [
   "calendar_block", "date_hold", "vendor", "lead", "client", "package", "event", "tour", "key_date",
+  "document", "active_commitment", "guest_list", "event_vendor_assignment", "timeline_entry",
 ];
 
 const BATCH_ENTITY: Partial<Record<MigrationEntityType, EntityType>> = {
@@ -677,6 +696,77 @@ async function commitOneRecord(
         note: n.note ?? "",
       });
       return { ok: true, entityId: kd.id };
+    }
+    if (entityType === "document") {
+      const n = record.normalizedPayload as unknown as NormalizedDocumentLike;
+      const entityScope = n.entityType === "client" ? "client" : "event";
+      let entityId = n.eventId ?? "";
+      let clientId: string | null = null;
+      if (entityScope === "client" || !entityId) {
+        const clientRef = await resolveClientIdByEmail(client, session.venueId, n.clientId, n.clientEmail);
+        if (!clientRef.ok) return clientRef;
+        clientId = clientRef.clientId;
+      }
+      if (entityScope === "event") {
+        if (!entityId) {
+          if (!n.eventDate || !clientId) {
+            return { ok: false, error: "Event documents need eventId, or client email plus eventDate." };
+          }
+          const { data: events, error } = await client.from("events")
+            .select("id")
+            .eq("venue_id", session.venueId)
+            .eq("client_id", clientId)
+            .eq("event_date", n.eventDate)
+            .limit(2);
+          if (error) throw error;
+          if (!events?.length) return { ok: false, error: "No Event found for that client and date." };
+          if (events.length > 1) return { ok: false, error: "Multiple Events match — set eventId explicitly." };
+          entityId = (events[0] as { id: string }).id;
+        }
+      } else {
+        entityId = clientId!;
+      }
+      const documentId = await documentsRepo.insertDocument(client, session.venueId, {
+        entityType: entityScope,
+        entityId,
+        name: n.name || n.fileName,
+        fileName: n.fileName,
+        fileSize: n.fileSize ? Number(n.fileSize) : 0,
+        mimeType: n.mimeType ?? "application/octet-stream",
+        storagePath: n.storagePath,
+        storageUrl: n.storageUrl,
+        category: (n.category as DocumentCategory) || "other",
+        notes: n.notes?.trim()
+          || "Imported via Bring Your Business — real HTC document on this record.",
+        tags: "migration",
+        expiresAt: "",
+      });
+      return { ok: true, entityId: documentId };
+    }
+    if (entityType === "active_commitment") {
+      const n = record.normalizedPayload as unknown as NormalizedActiveCommitment;
+      const result = await commitActiveCommitment(client, session.venueId, n);
+      if (!result.ok) return { ok: false, error: result.error };
+      return { ok: true, entityId: result.eventId };
+    }
+    if (entityType === "guest_list") {
+      const n = record.normalizedPayload as unknown as NormalizedGuestListEntry;
+      const result = await commitOperationalGuest(client, session.venueId, n);
+      if (!result.ok) return { ok: false, error: result.error };
+      return { ok: true, entityId: result.guestId };
+    }
+    if (entityType === "event_vendor_assignment") {
+      const n = record.normalizedPayload as unknown as NormalizedEventVendorAssignment;
+      const result = await commitEventVendorAssignmentQuietly(client, session.venueId, n);
+      if (!result.ok) return { ok: false, error: result.error };
+      return { ok: true, entityId: result.assignmentId };
+    }
+    if (entityType === "timeline_entry") {
+      const n = record.normalizedPayload as unknown as NormalizedTimelineEntry;
+      const result = await commitOperationalTimelineEntry(client, session.venueId, n);
+      if (!result.ok) return { ok: false, error: result.error };
+      // B-skip still completes the record so the session can finish cleanly.
+      return { ok: true, entityId: result.entryId ?? `timeline-skipped:${result.eventId}` };
     }
     return { ok: false, error: `Committing "${entityType}" records isn't supported yet.` };
   } catch (err) {

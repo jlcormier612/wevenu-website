@@ -99,13 +99,21 @@ function ContractCard({ doc }: { doc: CoupleDocument }) {
             )}
           </div>
           <div className="flex items-center gap-3 mt-0.5 text-[11px] text-muted-foreground">
-            {doc.signedAt ? <span>Signed {fmtDate(doc.signedAt)}</span> : <span>Sent {fmtDate(doc.createdAt)}</span>}
+            {doc.signedAt ? <span>Signed {fmtDate(doc.signedAt)}</span> : <span>Shared {fmtDate(doc.createdAt)}</span>}
           </div>
         </div>
-        <button type="button" onClick={() => setExpanded((v) => !v)}
-          className="text-xs text-[var(--venue-primary)] hover:underline shrink-0">
-          {expanded ? "Hide" : "Review"}
-        </button>
+        <div className="flex shrink-0 items-center gap-2">
+          {doc.fileUrl && (
+            <a href={doc.fileUrl} target="_blank" rel="noopener noreferrer"
+              className="text-xs font-semibold text-[var(--venue-primary)] hover:opacity-80 transition-opacity">
+              Open ↗
+            </a>
+          )}
+          <button type="button" onClick={() => setExpanded((v) => !v)}
+            className="text-xs text-[var(--venue-primary)] hover:underline">
+            {expanded ? "Hide" : "Review"}
+          </button>
+        </div>
       </div>
       {expanded && doc.content && (
         <div className="px-3 pb-3 border-t border-border/40 pt-3">

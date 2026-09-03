@@ -90,3 +90,52 @@ export async function resolveLeadIdByEmail(
   if (rows.length > 1) return { ok: false, error: `More than one lead has email "${email.trim()}" — use a lead id.` };
   return { ok: true, leadId: rows[0].id };
 }
+
+/**
+ * Resolve a Client+Event pair for active-business imports (guests, assignments,
+ * timeline, financials). Prefer explicit eventId; else client email + eventDate.
+ */
+export async function resolveEventForMigration(
+  client: AnyDbClient,
+  venueId: string,
+  refs: {
+    eventId?: string | null;
+    clientId?: string | null;
+    clientEmail?: string | null;
+    eventDate?: string | null;
+  },
+): Promise<{ ok: true; eventId: string; clientId: string; eventDate: string | null } | { ok: false; error: string }> {
+  if (refs.eventId?.trim()) {
+    const { data, error } = await client.from("events")
+      .select("id, client_id, event_date, status")
+      .eq("id", refs.eventId.trim())
+      .eq("venue_id", venueId)
+      .maybeSingle<{ id: string; client_id: string | null; event_date: string | null; status: string }>();
+    if (error) throw error;
+    if (!data) return { ok: false, error: "Event not found for this venue." };
+    if (!data.client_id) return { ok: false, error: "Event has no client — attach a client before importing active business data." };
+    return { ok: true, eventId: data.id, clientId: data.client_id, eventDate: data.event_date };
+  }
+
+  const clientRef = await resolveClientIdByEmail(client, venueId, refs.clientId, refs.clientEmail);
+  if (!clientRef.ok) return clientRef;
+  if (!refs.eventDate?.trim()) {
+    return { ok: false, error: "Provide eventDate when resolving by client, or set eventId." };
+  }
+
+  const { data: events, error } = await client.from("events")
+    .select("id, client_id, event_date")
+    .eq("venue_id", venueId)
+    .eq("client_id", clientRef.clientId)
+    .eq("event_date", refs.eventDate.trim())
+    .order("created_at", { ascending: true });
+  if (error) throw error;
+  if (!events?.length) {
+    return { ok: false, error: "No Event found for that client and date. Import the Event first." };
+  }
+  if (events.length > 1) {
+    return { ok: false, error: "Multiple Events match that client and date — set eventId explicitly." };
+  }
+  const ev = events[0] as { id: string; client_id: string; event_date: string | null };
+  return { ok: true, eventId: ev.id, clientId: ev.client_id, eventDate: ev.event_date };
+}

@@ -57,6 +57,25 @@ function withSchemaLock<T>(fn: () => T): T {
   }
 }
 
+async function withSchemaLockAsync<T>(fn: () => Promise<T>): Promise<T> {
+  const dir = join(tmpdir(), "wevenu-k7-avail-schema.lock");
+  const started = Date.now();
+  while (true) {
+    try {
+      mkdirSync(dir);
+      break;
+    } catch {
+      if (Date.now() - started > 90_000) throw new Error("timed out waiting for k7 availability schema lock");
+      await new Promise((r) => setTimeout(r, 200));
+    }
+  }
+  try {
+    return await fn();
+  } finally {
+    try { rmdirSync(dir); } catch { /* ignore */ }
+  }
+}
+
 function localDbAvailable(): boolean {
   const probe = psql(["-c", "select 1"], { timeoutMs: 3000 });
   return probe.status === 0;
@@ -83,69 +102,71 @@ describe("assert_event_availability live database", () => {
       return;
     }
 
-    withSchemaLock(() => { applyMigration(); });
+    await withSchemaLockAsync(async () => {
+      applyMigration();
 
-    const holder = spawn("psql", [
-      LOCAL_URL,
-      "-v", "ON_ERROR_STOP=1",
-      "-c", `
-        begin;
-        select public.assert_event_availability(
-          'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeee1'::uuid,
-          '2027-09-01'::date, null, null, null, null, null, null, null
-        );
-        select pg_sleep(20);
-        rollback;
-      `,
-    ], { stdio: ["ignore", "pipe", "pipe"] });
+      const holder = spawn("psql", [
+        LOCAL_URL,
+        "-v", "ON_ERROR_STOP=1",
+        "-c", `
+          begin;
+          select public.assert_event_availability(
+            'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeee1'::uuid,
+            '2027-09-01'::date, null, null, null, null, null, null, null
+          );
+          select pg_sleep(20);
+          rollback;
+        `,
+      ], { stdio: ["ignore", "pipe", "pipe"] });
 
-    const lockSql = `
-      select count(*)::int
-      from pg_locks
-      where locktype = 'advisory'
-        and granted
-        and classid = hashtext('aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeee1')
-        and objid = hashtext('2027-09-01');
-    `;
-    const waitStarted = Date.now();
-    let held = false;
-    while (Date.now() - waitStarted < 5000) {
-      const probe = psql(["-qAt", "-c", lockSql], { timeoutMs: 3000 });
-      if (probe.status === 0 && Number.parseInt(probe.stdout.trim(), 10) >= 1) {
-        held = true;
-        break;
+      const lockSql = `
+        select count(*)::int
+        from pg_locks
+        where locktype = 'advisory'
+          and granted
+          and classid = hashtext('aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeee1')
+          and objid = hashtext('2027-09-01');
+      `;
+      const waitStarted = Date.now();
+      let held = false;
+      while (Date.now() - waitStarted < 5000) {
+        const probe = psql(["-qAt", "-c", lockSql], { timeoutMs: 3000 });
+        if (probe.status === 0 && Number.parseInt(probe.stdout.trim(), 10) >= 1) {
+          held = true;
+          break;
+        }
+        await new Promise((r) => setTimeout(r, 50));
       }
-      await new Promise((r) => setTimeout(r, 50));
-    }
-    assert.ok(held, "lock holder never published a venue-day advisory lock");
+      assert.ok(held, "lock holder never published a venue-day advisory lock");
 
-    const waiter = psql([
-      "-c", `
-        set lock_timeout = '2s';
-        select public.assert_event_availability(
-          'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeee1'::uuid,
-          '2027-09-01'::date, null, null, null, null, null, null, null
-        );
-      `,
-    ], { timeoutMs: 8000 });
+      const waiter = psql([
+        "-c", `
+          set lock_timeout = '2s';
+          select public.assert_event_availability(
+            'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeee1'::uuid,
+            '2027-09-01'::date, null, null, null, null, null, null, null
+          );
+        `,
+      ], { timeoutMs: 8000 });
 
-    holder.kill("SIGTERM");
-    await new Promise<void>((resolveWait) => {
-      if (holder.exitCode != null) {
-        resolveWait();
-        return;
-      }
-      holder.once("exit", () => resolveWait());
-      setTimeout(() => {
-        holder.kill("SIGKILL");
-        resolveWait();
-      }, 2000);
+      holder.kill("SIGTERM");
+      await new Promise<void>((resolveWait) => {
+        if (holder.exitCode != null) {
+          resolveWait();
+          return;
+        }
+        holder.once("exit", () => resolveWait());
+        setTimeout(() => {
+          holder.kill("SIGKILL");
+          resolveWait();
+        }, 2000);
+      });
+
+      const output = `${waiter.stdout}\n${waiter.stderr}`;
+      assert.ok(
+        waiter.status !== 0 && /lock timeout|canceling statement due to lock timeout/i.test(output),
+        `second session must wait on the venue-day advisory lock, got status=${waiter.status} output=${output}`,
+      );
     });
-
-    const output = `${waiter.stdout}\n${waiter.stderr}`;
-    assert.ok(
-      waiter.status !== 0 && /lock timeout|canceling statement due to lock timeout/i.test(output),
-      `second session must wait on the venue-day advisory lock, got status=${waiter.status} output=${output}`,
-    );
   });
 });

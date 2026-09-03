@@ -33,15 +33,20 @@ import {
   addMigrationRowsAction,
   attachMigrationSourceFileAction,
   commitMigrationSessionAction,
+  commitReviewedActiveCommitmentAction,
   getMigrationSessionRecordsAction,
   getMigrationSessionResumeStateAction,
   getMigrationSessionSourceFilesAction,
   listMigrationSessionsAction,
+  proposeActiveCommitmentFromFileAction,
+  proposeActiveCommitmentFromTextAction,
   proposeMigrationFieldMappingAction,
   reviewMigrationRecordAction,
   runMigrationDedupeAction,
   startMigrationSessionAction,
 } from "@/app/(app)/settings/migration-actions";
+import { ActiveCommitmentReview } from "@/components/settings/active-commitment-review";
+import type { NormalizedActiveCommitment } from "@/lib/migration/active-commitment";
 import { isHistoricalRecordEligibleError, isLiveAvailabilityConflictError, HISTORICAL_RECORD_ELIGIBLE, HISTORICAL_RECORD_LABEL } from "@/lib/migration/historical-record";
 import {
   MIGRATION_CENTER_INTRO,
@@ -67,16 +72,21 @@ const ENTITY_LABEL: Record<MigrationEntityType, string> = {
   lead: "Leads (open inquiries)",
   vendor: "Vendors",
   event: "Events (standalone)",
-  payment: "Payments",
-  document: "Documents",
+  payment: "Payments (use Active commitment)",
+  document: "Documents (contracts & files on Events/Clients)",
   calendar_block: "Calendar blocks (incl. recurring)",
   date_hold: "Date holds",
   tour: "Tours / appointments",
   package: "Packages",
   key_date: "Key dates",
+  active_commitment: "Active commitment (Event Order, invoice, payments, signed agreement)",
+  guest_list: "Guest list (operational couple guests on an active Event)",
+  event_vendor_assignment: "Event vendor assignments (photographer, caterer, …)",
+  timeline_entry: "Timeline entries (near-event / finalized day-of)",
 };
 const COMMITTABLE_ENTITIES: MigrationEntityType[] = [
   "calendar_block", "date_hold", "client", "lead", "vendor", "package", "event", "tour", "key_date",
+  "document", "active_commitment", "guest_list", "event_vendor_assignment", "timeline_entry",
 ];
 
 const FIELD_KEYS_BY_ENTITY: Record<MigrationEntityType, { key: string; label: string; required: boolean }[]> = {
@@ -185,7 +195,85 @@ const FIELD_KEYS_BY_ENTITY: Record<MigrationEntityType, { key: string; label: st
     { key: "sourceId", label: "Their own record ID", required: false },
   ],
   payment: [],
-  document: [],
+  document: [
+    { key: "name", label: "Document name", required: true },
+    { key: "fileName", label: "File name", required: true },
+    { key: "storagePath", label: "Storage path (from upload)", required: true },
+    { key: "storageUrl", label: "Storage URL (from upload)", required: true },
+    { key: "category", label: "Category (contract, insurance, …)", required: false },
+    { key: "entityType", label: "Attach to (event or client)", required: false },
+    { key: "eventId", label: "Event id", required: false },
+    { key: "clientEmail", label: "Client email", required: false },
+    { key: "eventDate", label: "Event date (with client email)", required: false },
+    { key: "notes", label: "Notes", required: false },
+    { key: "sourceId", label: "Their own record ID", required: false },
+  ],
+  active_commitment: [
+    { key: "clientEmail", label: "Client email", required: true },
+    { key: "eventDate", label: "Event date (YYYY-MM-DD)", required: true },
+    { key: "eventId", label: "Event id (optional if email+date unique)", required: false },
+    { key: "contractedTotal", label: "Contracted total", required: true },
+    { key: "packageName", label: "Package / commitment name", required: true },
+    { key: "paidAmount", label: "Already paid amount", required: false },
+    { key: "paidDate", label: "Paid date", required: false },
+    { key: "paidMethod", label: "Paid method (other, check, …)", required: false },
+    { key: "remainingAmount1", label: "Remaining payment 1 amount", required: false },
+    { key: "remainingDueDate1", label: "Remaining payment 1 due date", required: false },
+    { key: "remainingAmount2", label: "Remaining payment 2 amount", required: false },
+    { key: "remainingDueDate2", label: "Remaining payment 2 due date", required: false },
+    { key: "scheduleLinesJson", label: "Full schedule JSON (overrides paid/remaining columns)", required: false },
+    { key: "contractTitle", label: "Externally executed agreement title", required: false },
+    { key: "contractSignedAt", label: "Signed date (outside HTC)", required: false },
+    { key: "shareSignedAgreementWithCouple", label: "Share with couple? (yes/no)", required: false },
+    { key: "documentFileName", label: "Signed PDF file name", required: false },
+    { key: "documentStoragePath", label: "Signed PDF storage path", required: false },
+    { key: "documentStorageUrl", label: "Signed PDF storage URL", required: false },
+    { key: "sourceId", label: "Their own record ID", required: false },
+  ],
+  guest_list: [
+    { key: "clientEmail", label: "Client email (for Event resolution)", required: true },
+    { key: "eventDate", label: "Event date (YYYY-MM-DD)", required: true },
+    { key: "eventId", label: "Event id (optional)", required: false },
+    { key: "firstName", label: "Guest first name", required: true },
+    { key: "lastName", label: "Guest last name", required: false },
+    { key: "guestEmail", label: "Guest email", required: false },
+    { key: "phone", label: "Guest phone", required: false },
+    { key: "household", label: "Household name", required: false },
+    { key: "rsvpStatus", label: "RSVP (pending/attending/declined/maybe)", required: false },
+    { key: "mealChoice", label: "Meal choice", required: false },
+    { key: "dietaryRestrictions", label: "Dietary notes", required: false },
+    { key: "isChild", label: "Child? (yes/no)", required: false },
+    { key: "isWeddingParty", label: "Wedding party? (yes/no)", required: false },
+    { key: "sourceId", label: "Their own record ID", required: false },
+  ],
+  event_vendor_assignment: [
+    { key: "clientEmail", label: "Client email (for Event resolution)", required: true },
+    { key: "eventDate", label: "Event date (YYYY-MM-DD)", required: true },
+    { key: "eventId", label: "Event id (optional)", required: false },
+    { key: "vendorBusinessName", label: "Vendor business name", required: true },
+    { key: "vendorId", label: "Vendor id (if already in HTC)", required: false },
+    { key: "category", label: "Category (photographer, florist, …)", required: false },
+    { key: "vendorEmail", label: "Vendor email", required: false },
+    { key: "arrivalTime", label: "Arrival time (HH:MM)", required: false },
+    { key: "setupLocation", label: "Setup location", required: false },
+    { key: "loadInNotes", label: "Load-in notes", required: false },
+    { key: "agreedFee", label: "Agreed fee", required: false },
+    { key: "paymentStatus", label: "Payment status (pending/paid)", required: false },
+    { key: "sourceId", label: "Their own record ID", required: false },
+  ],
+  timeline_entry: [
+    { key: "clientEmail", label: "Client email (for Event resolution)", required: true },
+    { key: "eventDate", label: "Event date (YYYY-MM-DD)", required: true },
+    { key: "eventId", label: "Event id (optional)", required: false },
+    { key: "title", label: "Timeline item title", required: true },
+    { key: "entryTime", label: "Start time (HH:MM)", required: false },
+    { key: "dayOffset", label: "Day offset (0 = event day)", required: false },
+    { key: "audiences", label: "Audiences (venue,vendors,wedding_party)", required: false },
+    { key: "lockState", label: "Lock state (locked/editable)", required: false },
+    { key: "timelineFinalized", label: "Finalized day-of timeline? (yes/no)", required: false },
+    { key: "forceImport", label: "Force import even if >21 days? (yes/no)", required: false },
+    { key: "sourceId", label: "Their own record ID", required: false },
+  ],
 };
 
 const NEEDS_DECISION_STATUSES = ["duplicate_likely", "conflict", "needs_review"] as const;
@@ -266,6 +354,11 @@ export function MigrationCenter({
   const [mapping, setMapping] = React.useState<Record<string, string>>({});
   const fileRef = React.useRef<HTMLInputElement>(null);
   const [suggesting, startSuggest] = React.useTransition();
+  const [smartText, setSmartText] = React.useState("");
+  const [smartNotes, setSmartNotes] = React.useState<string[]>([]);
+  const [smartWorking, setSmartWorking] = React.useState(false);
+  const [commitmentDraft, setCommitmentDraft] = React.useState<NormalizedActiveCommitment | null>(null);
+  const smartFileRef = React.useRef<HTMLInputElement>(null);
 
   const selectedProfile = sourceProfiles.find((p) => p.key === sourceKey) ?? sourceProfiles[0];
   const guidance = sourceSelectionGuidance(lane, selectedProfile ?? null);
@@ -441,6 +534,72 @@ export function MigrationCenter({
     });
   }
 
+  async function handleSmartActiveCommitmentFromText() {
+    if (!smartText.trim()) {
+      toast.error("Paste the contract or booking text first, or upload a PDF/DOCX.");
+      return;
+    }
+    setSmartWorking(true);
+    try {
+      const extracted = await proposeActiveCommitmentFromTextAction(smartText);
+      if (!extracted.ok) {
+        toast.error(extracted.message);
+        return;
+      }
+      setSmartNotes(extracted.confidenceNotes);
+      setCommitmentDraft(extracted.proposal);
+      setEntityType("active_commitment");
+      toast.success("Proposal ready — review every number before importing.");
+    } finally {
+      setSmartWorking(false);
+    }
+  }
+
+  async function handleSmartActiveCommitmentFromFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setSmartWorking(true);
+    try {
+      const formData = new FormData();
+      formData.set("file", file);
+      const extracted = await proposeActiveCommitmentFromFileAction(formData);
+      if (!extracted.ok) {
+        toast.error(extracted.message);
+        return;
+      }
+      setSmartNotes(extracted.confidenceNotes);
+      setCommitmentDraft(extracted.proposal);
+      setEntityType("active_commitment");
+      toast.success("Original file retained. Review the proposed commitment before importing.");
+    } finally {
+      setSmartWorking(false);
+      if (smartFileRef.current) smartFileRef.current.value = "";
+    }
+  }
+
+  async function handleConfirmActiveCommitment() {
+    if (!commitmentDraft) return;
+    setSmartWorking(true);
+    try {
+      const result = await commitReviewedActiveCommitmentAction(sourceKey, commitmentDraft);
+      if (!result.ok) {
+        toast.error("message" in result ? result.message : "Could not import this commitment.");
+        return;
+      }
+      toast.success(
+        result.outcome.committed > 0
+          ? "Active commitment imported into Hello to Cheers."
+          : `Imported ${result.outcome.committed}, skipped ${result.outcome.skipped}${result.outcome.failed ? `, ${result.outcome.failed} need another look` : ""}.`,
+      );
+      setCommitmentDraft(null);
+      setSmartNotes([]);
+      setSmartText("");
+      refreshSessions();
+    } finally {
+      setSmartWorking(false);
+    }
+  }
+
   const pendingCommitCount = resume ? resume.summary.counts.validated + resume.summary.counts.approved : 0;
   const datedEventsBlocked = !cutover.readyForDatedEvents && (entityType === "event" || entityType === "client");
   const eventImportBlocked = !cutover.readyForDatedEvents && entityType === "event";
@@ -487,6 +646,50 @@ export function MigrationCenter({
               <SelectContent>{COMMITTABLE_ENTITIES.map((e) => <SelectItem key={e} value={e}>{ENTITY_LABEL[e]}</SelectItem>)}</SelectContent>
             </Select>
           </div>
+
+          {entityType === "active_commitment" ? (
+            <div className="space-y-3 rounded-lg border border-border bg-muted/20 px-3 py-3">
+              <div className="space-y-1">
+                <p className="text-sm font-medium text-heading">Smart Import — active booked Event</p>
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  Upload the signed PDF/DOCX (preferred) or paste booking text. Hello to Cheers extracts a proposal,
+                  retains the original file, and shows a full financial review before anything is created.
+                  Import the Client and Event first when they are not already in HTC.
+                </p>
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <input
+                  ref={smartFileRef}
+                  type="file"
+                  accept=".pdf,.docx,.txt,.md,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain"
+                  onChange={handleSmartActiveCommitmentFromFile}
+                  className="text-sm"
+                  disabled={smartWorking}
+                />
+              </div>
+              <textarea
+                value={smartText}
+                onChange={(e) => setSmartText(e.target.value)}
+                rows={5}
+                className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
+                placeholder="Or paste contract / booking text here…"
+              />
+              <Button type="button" variant="outline" onClick={handleSmartActiveCommitmentFromText} disabled={smartWorking || starting}>
+                {smartWorking ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
+                Propose from pasted text
+              </Button>
+              {commitmentDraft ? (
+                <ActiveCommitmentReview
+                  proposal={commitmentDraft}
+                  confidenceNotes={smartNotes}
+                  onChange={setCommitmentDraft}
+                  onConfirm={handleConfirmActiveCommitment}
+                  onCancel={() => { setCommitmentDraft(null); setSmartNotes([]); }}
+                  confirming={smartWorking}
+                />
+              ) : null}
+            </div>
+          ) : null}
 
           {datedEventsBlocked && cutover.message ? (
             <div className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2.5 text-xs text-amber-950 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-100">

@@ -1,5 +1,5 @@
 import { Badge, type BadgeVariant } from "@/components/ui/badge";
-import type { ContractStatus } from "@/lib/contracts/types";
+import type { Contract, ContractStatus } from "@/lib/contracts/types";
 
 const STATUS_VARIANT: Record<ContractStatus, BadgeVariant> = {
   draft:     "muted",
@@ -17,10 +17,19 @@ const STATUS_LABEL: Record<ContractStatus, string> = {
   expired:   "Expired",
 };
 
-export function ContractStatusBadge({ status }: { status: ContractStatus }) {
+export function ContractStatusBadge({
+  status,
+  executionOrigin,
+}: {
+  status: ContractStatus;
+  executionOrigin?: Contract["executionOrigin"];
+}) {
+  const label = status === "signed" && executionOrigin === "external"
+    ? "Signed outside HTC"
+    : STATUS_LABEL[status];
   return (
     <Badge variant={STATUS_VARIANT[status]}>
-      {STATUS_LABEL[status]}
+      {label}
     </Badge>
   );
 }

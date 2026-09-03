@@ -169,6 +169,7 @@ export function computeRequestsReadiness(requests: Request[]): ReadinessSection 
 export function computeContractsReadiness(contracts: Contract[]): ReadinessSection {
   const signed = contracts.filter((c) => c.status === "signed").length;
   const sent = contracts.filter((c) => c.status === "sent").length;
+  const externalSigned = contracts.some((c) => c.status === "signed" && c.executionOrigin === "external");
 
   let status: ReadinessStatus;
   if (contracts.length === 0) status = "not_started";
@@ -179,7 +180,7 @@ export function computeContractsReadiness(contracts: Contract[]): ReadinessSecti
   const detail = contracts.length === 0
     ? "No contract yet."
     : signed === contracts.length
-      ? "Contract signed."
+      ? (externalSigned ? "Signed outside HTC." : "Contract signed.")
       : sent > 0
         ? "Sent — awaiting signature."
         : "Drafted — not yet sent.";

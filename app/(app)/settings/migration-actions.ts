@@ -115,3 +115,88 @@ export async function getMigrationSessionSourceFilesAction(sessionId: string) {
 export async function getMigrationSessionResumeStateAction(sessionId: string) {
   return getOwnSessionResumeState(sessionId);
 }
+
+export async function proposeActiveCommitmentFromTextAction(rawText: string) {
+  const { proposeActiveCommitmentFromDocument } = await import("@/lib/migration/smart-extract");
+  return proposeActiveCommitmentFromDocument(rawText);
+}
+
+/**
+ * PDF/DOCX (or txt/md) → extract text with existing Import parsers → retain
+ * the original file in the documents bucket → Smart Import proposal for review.
+ */
+export async function proposeActiveCommitmentFromFileAction(formData: FormData) {
+  const file = formData.get("file");
+  if (!(file instanceof File)) return { ok: false as const, message: "No file received." };
+
+  const venue = await getCurrentVenue();
+  if (!venue) return { ok: false as const, message: "No venue found." };
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { ok: false as const, message: "Session expired." };
+
+  const buffer = Buffer.from(await file.arrayBuffer());
+  const { extractTextFromCommitmentFile, proposeActiveCommitmentFromDocument } = await import("@/lib/migration/smart-extract");
+  const extracted = await extractTextFromCommitmentFile(buffer, file.name);
+  if (!extracted.ok) return extracted;
+
+  const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
+  const storagePath = `${venue.id}/migration/active-commitment/${crypto.randomUUID()}-${safeName}`;
+  const { error: uploadError } = await supabase.storage.from("documents").upload(storagePath, buffer, {
+    upsert: false,
+    contentType: file.type || "application/octet-stream",
+  });
+  if (uploadError) {
+    return { ok: false as const, message: uploadError.message || "Could not retain the original file." };
+  }
+  const { data: urlData } = supabase.storage.from("documents").getPublicUrl(storagePath);
+
+  const retainedDocument = {
+    name: file.name.replace(/\.[^.]+$/, "") || file.name,
+    fileName: file.name,
+    storagePath,
+    storageUrl: urlData.publicUrl,
+    mimeType: file.type || "application/octet-stream",
+    fileSize: file.size,
+    category: "contract" as const,
+    notes: "Original signed agreement retained from Smart Import.",
+    entityType: "event" as const,
+  };
+
+  return proposeActiveCommitmentFromDocument(extracted.text, retainedDocument);
+}
+
+/**
+ * After human review: start a session, add the corrected commitment row,
+ * dedupe, and commit through the same Migration Center engine.
+ */
+export async function commitReviewedActiveCommitmentAction(
+  sourceKey: SourceKey,
+  proposal: import("@/lib/migration/active-commitment").NormalizedActiveCommitment,
+) {
+  const { activeCommitmentProposalToSourceRow } = await import("@/lib/migration/proposal-to-row");
+  const { validateActiveCommitment } = await import("@/lib/migration/active-commitment");
+  const validationError = validateActiveCommitment(proposal);
+  if (validationError) return { ok: false as const, message: validationError };
+
+  const started = await startSelfServiceSession(sourceKey);
+  if (!started.ok) return started;
+
+  const row = activeCommitmentProposalToSourceRow(proposal);
+  const added = await addRowsToOwnSession(started.session.id, "active_commitment", [row]);
+  if (!added.ok) return { ok: false as const, message: added.message };
+
+  const deduped = await runDedupeForOwnSession(started.session.id);
+  if (!deduped.ok) return deduped;
+
+  const committed = await commitOwnSession(started.session.id);
+  if (committed.ok) {
+    revalidatePath("/settings/migration");
+    revalidatePath("/clients");
+    revalidatePath("/events");
+    revalidatePath("/contracts");
+    revalidatePath("/invoices");
+    revalidatePath("/payments");
+  }
+  return committed;
+}

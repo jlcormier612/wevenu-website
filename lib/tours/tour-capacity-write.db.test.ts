@@ -62,6 +62,25 @@ function withSchemaLock<T>(fn: () => T): T {
   }
 }
 
+async function withSchemaLockAsync<T>(fn: () => Promise<T>): Promise<T> {
+  const dir = join(tmpdir(), "wevenu-k7-avail-schema.lock");
+  const started = Date.now();
+  while (true) {
+    try {
+      mkdirSync(dir);
+      break;
+    } catch {
+      if (Date.now() - started > 90_000) throw new Error("timed out waiting for k7 availability schema lock");
+      await new Promise((r) => setTimeout(r, 200));
+    }
+  }
+  try {
+    return await fn();
+  } finally {
+    try { rmdirSync(dir); } catch { /* ignore */ }
+  }
+}
+
 function applyTourMigrations(): void {
   applySql(PHASE2);
   applySql(PHASE3);
@@ -139,40 +158,41 @@ describe("tour capacity live database", () => {
       t.skip("local Postgres is not running");
       return;
     }
-    withSchemaLock(() => { applyTourMigrations(); });
+    await withSchemaLockAsync(async () => {
+      applyTourMigrations();
+      const venueId = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeee20";
+      const ownerId = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeee21";
+      setupVenue(venueId, ownerId, "k7-phase4-race@example.test");
 
-    const venueId = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeee20";
-    const ownerId = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeee21";
-    setupVenue(venueId, ownerId, "k7-phase4-race@example.test");
-
-    try {
-      const [first, second] = await Promise.all([
-        runPsql(`
-          insert into public.tour_appointments (venue_id, scheduled_at, duration_minutes, status, contact_name)
-          values ('${venueId}', '2099-06-15 10:00:00+00', 60, 'scheduled', 'RaceA');
-        `),
-        runPsql(`
-          insert into public.tour_appointments (venue_id, scheduled_at, duration_minutes, status, contact_name)
-          values ('${venueId}', '2099-06-15 10:00:00+00', 60, 'scheduled', 'RaceB');
-        `),
-      ]);
-      const count = psql(["-qAt", "-c", `
-        select count(*)::int from public.tour_appointments
-        where venue_id = '${venueId}' and status is distinct from 'cancelled';
-      `]);
-      assert.equal(count.status, 0, count.stderr);
-      assert.equal(
-        Number.parseInt(count.stdout.trim(), 10),
-        1,
-        `concurrent bookings must not exceed max=1, got ${count.stdout}; a=${first.status} ${first.stderr} b=${second.status} ${second.stderr}`,
-      );
-      assert.ok(
-        (first.status === 0) !== (second.status === 0),
-        `exactly one concurrent insert should succeed, got a=${first.status} b=${second.status}`,
-      );
-    } finally {
-      cleanupVenue(venueId, ownerId);
-    }
+      try {
+        const [first, second] = await Promise.all([
+          runPsql(`
+            insert into public.tour_appointments (venue_id, scheduled_at, duration_minutes, status, contact_name)
+            values ('${venueId}', '2099-06-15 10:00:00+00', 60, 'scheduled', 'RaceA');
+          `),
+          runPsql(`
+            insert into public.tour_appointments (venue_id, scheduled_at, duration_minutes, status, contact_name)
+            values ('${venueId}', '2099-06-15 10:00:00+00', 60, 'scheduled', 'RaceB');
+          `),
+        ]);
+        const count = psql(["-qAt", "-c", `
+          select count(*)::int from public.tour_appointments
+          where venue_id = '${venueId}' and status is distinct from 'cancelled';
+        `]);
+        assert.equal(count.status, 0, count.stderr);
+        assert.equal(
+          Number.parseInt(count.stdout.trim(), 10),
+          1,
+          `concurrent bookings must not exceed max=1, got ${count.stdout}; a=${first.status} ${first.stderr} b=${second.status} ${second.stderr}`,
+        );
+        assert.ok(
+          (first.status === 0) !== (second.status === 0),
+          `exactly one concurrent insert should succeed, got a=${first.status} b=${second.status}`,
+        );
+      } finally {
+        cleanupVenue(venueId, ownerId);
+      }
+    });
   });
 
   it("two concurrent reschedules cannot exceed capacity", async (t: TestContext) => {
@@ -180,60 +200,61 @@ describe("tour capacity live database", () => {
       t.skip("local Postgres is not running");
       return;
     }
-    withSchemaLock(() => { applyTourMigrations(); });
-
-    const venueId = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeee16";
-    const ownerId = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeee17";
-    const tourA = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeee18";
-    const tourB = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeee19";
-    setupVenue(venueId, ownerId, "k7-phase4-resched@example.test");
-    const seed = psql(["-c", `
-      insert into public.tour_appointments (id, venue_id, scheduled_at, duration_minutes, status, contact_name)
-      values
-        ('${tourA}', '${venueId}', '2099-06-15 10:00:00+00', 60, 'scheduled', 'A'),
-        ('${tourB}', '${venueId}', '2099-06-15 14:00:00+00', 60, 'scheduled', 'B');
-    `]);
-    assert.equal(seed.status, 0, seed.stderr || seed.stdout);
-
-    try {
-      const [first, second] = await Promise.all([
-        runPsql(`
-          update public.tour_appointments
-             set scheduled_at = '2099-06-15 12:00:00+00'
-           where id = '${tourA}';
-        `),
-        runPsql(`
-          update public.tour_appointments
-             set scheduled_at = '2099-06-15 12:00:00+00'
-           where id = '${tourB}';
-        `),
-      ]);
-      const noon = psql(["-qAt", "-c", `
-        select count(*)::int from public.tour_appointments
-        where venue_id = '${venueId}'
-          and status is distinct from 'cancelled'
-          and scheduled_at = '2099-06-15 12:00:00+00';
+    await withSchemaLockAsync(async () => {
+      applyTourMigrations();
+      const venueId = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeee16";
+      const ownerId = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeee17";
+      const tourA = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeee18";
+      const tourB = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeee19";
+      setupVenue(venueId, ownerId, "k7-phase4-resched@example.test");
+      const seed = psql(["-c", `
+        insert into public.tour_appointments (id, venue_id, scheduled_at, duration_minutes, status, contact_name)
+        values
+          ('${tourA}', '${venueId}', '2099-06-15 10:00:00+00', 60, 'scheduled', 'A'),
+          ('${tourB}', '${venueId}', '2099-06-15 14:00:00+00', 60, 'scheduled', 'B');
       `]);
-      assert.equal(noon.status, 0, noon.stderr);
-      assert.equal(
-        Number.parseInt(noon.stdout.trim(), 10),
-        1,
-        `concurrent reschedules must not exceed max=1 at 12:00, got ${noon.stdout}; a=${first.status} ${first.stderr} b=${second.status} ${second.stderr}`,
-      );
-      assert.ok(
-        (first.status === 0) !== (second.status === 0),
-        `exactly one concurrent reschedule should succeed, got a=${first.status} b=${second.status}`,
-      );
-      const loser = first.status === 0 ? tourB : tourA;
-      const leftover = psql(["-qAt", "-c", `
-        select scheduled_at at time zone 'UTC' from public.tour_appointments where id = '${loser}';
-      `]);
-      assert.ok(
-        /10:00:00|14:00:00/.test(leftover.stdout),
-        `losing reschedule must leave the original time, got ${leftover.stdout}`,
-      );
-    } finally {
-      cleanupVenue(venueId, ownerId);
-    }
+      assert.equal(seed.status, 0, seed.stderr || seed.stdout);
+
+      try {
+        const [first, second] = await Promise.all([
+          runPsql(`
+            update public.tour_appointments
+               set scheduled_at = '2099-06-15 12:00:00+00'
+             where id = '${tourA}';
+          `),
+          runPsql(`
+            update public.tour_appointments
+               set scheduled_at = '2099-06-15 12:00:00+00'
+             where id = '${tourB}';
+          `),
+        ]);
+        const noon = psql(["-qAt", "-c", `
+          select count(*)::int from public.tour_appointments
+          where venue_id = '${venueId}'
+            and status is distinct from 'cancelled'
+            and scheduled_at = '2099-06-15 12:00:00+00';
+        `]);
+        assert.equal(noon.status, 0, noon.stderr);
+        assert.equal(
+          Number.parseInt(noon.stdout.trim(), 10),
+          1,
+          `concurrent reschedules must not exceed max=1 at 12:00, got ${noon.stdout}; a=${first.status} ${first.stderr} b=${second.status} ${second.stderr}`,
+        );
+        assert.ok(
+          (first.status === 0) !== (second.status === 0),
+          `exactly one concurrent reschedule should succeed, got a=${first.status} b=${second.status}`,
+        );
+        const loser = first.status === 0 ? tourB : tourA;
+        const leftover = psql(["-qAt", "-c", `
+          select scheduled_at at time zone 'UTC' from public.tour_appointments where id = '${loser}';
+        `]);
+        assert.ok(
+          /10:00:00|14:00:00/.test(leftover.stdout),
+          `losing reschedule must leave the original time, got ${leftover.stdout}`,
+        );
+      } finally {
+        cleanupVenue(venueId, ownerId);
+      }
+    });
   });
 });

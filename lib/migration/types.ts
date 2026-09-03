@@ -44,7 +44,15 @@ export type MigrationEntityType =
   | "date_hold"
   | "tour"
   | "package"
-  | "key_date";
+  | "key_date"
+  /** Event Order + Invoice + Payment Schedule + optional external contract/docs. */
+  | "active_commitment"
+  /** Operational couple_guests for an active/future Event. */
+  | "guest_list"
+  /** Event ↔ Vendor assignment on an active/future Event. */
+  | "event_vendor_assignment"
+  /** Venue-owned timeline_entries when proximity/finalized/force says import. */
+  | "timeline_entry";
 
 export type SessionStatus =
   | "uploaded"
@@ -226,6 +234,24 @@ export type NormalizedKeyDateLike = {
   note?: string | null;
   clientEmail?: string | null;
   clientId?: string | null;
+  sourceId?: string | null;
+};
+
+/** Real HTC documents row on an event or client — not a migration-only artifact. */
+export type NormalizedDocumentLike = {
+  name: string;
+  fileName: string;
+  storagePath: string;
+  storageUrl: string;
+  mimeType?: string | null;
+  fileSize?: string | null;
+  category?: string | null;
+  notes?: string | null;
+  entityType?: "event" | "client";
+  eventId?: string | null;
+  clientEmail?: string | null;
+  clientId?: string | null;
+  eventDate?: string | null;
   sourceId?: string | null;
 };
 

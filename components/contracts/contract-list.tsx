@@ -105,7 +105,7 @@ export function ContractList({ contracts }: { contracts: Contract[] }) {
                   <TableCell className="text-sm text-muted-foreground">
                     {contract.eventDate ? formatContractDate(contract.eventDate) : "—"}
                   </TableCell>
-                  <TableCell><ContractStatusBadge status={contract.status} /></TableCell>
+                  <TableCell><ContractStatusBadge status={contract.status} executionOrigin={contract.executionOrigin} /></TableCell>
                   <TableCell className="text-sm text-muted-foreground">
                     {formatContractDate(contract.createdAt.slice(0, 10))}
                   </TableCell>

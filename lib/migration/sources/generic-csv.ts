@@ -12,6 +12,7 @@ import type {
   NormalizedCalendarBlockLike,
   NormalizedClientLike,
   NormalizedDateHoldLike,
+  NormalizedDocumentLike,
   NormalizedEventLike,
   NormalizedKeyDateLike,
   NormalizedLeadLike,
@@ -21,6 +22,8 @@ import type {
   SourceAdapter,
   SourceRow,
 } from "@/lib/migration/types";
+import type { NormalizedActiveCommitment, ActiveCommitmentScheduleLine } from "@/lib/migration/active-commitment";
+import { validateActiveCommitment } from "@/lib/migration/active-commitment";
 import { MANUAL_SCHEDULE_TYPES, type ManualScheduleType, type RecurrenceRule } from "@/lib/availability/types";
 
 function str(row: SourceRow, key: string): string | null {
@@ -249,10 +252,213 @@ function normalizeRow(row: SourceRow, entityType: MigrationEntityType): Normaliz
   }
 
   if (entityType === "payment") {
-    return { ok: false, error: "Payments are not reconstructed automatically. Preserve signed documents as artifacts; remaining balances and future contractual obligations still need evaluation." };
+    return {
+      ok: false,
+      error: "Use Active commitment (Event Order, invoice, and payment plan) — standalone payment rows are not imported alone.",
+    };
   }
   if (entityType === "document") {
-    return { ok: false, error: "Attach signed contracts and files as migration artifacts. They are historical records, not live contracts or payment plans." };
+    const fileName = str(row, "fileName") ?? str(row, "name");
+    const storagePath = str(row, "storagePath");
+    const storageUrl = str(row, "storageUrl");
+    if (!fileName || !storagePath || !storageUrl) {
+      return { ok: false, error: "Documents need a file name plus storagePath and storageUrl from an uploaded file." };
+    }
+    const entityTypeRaw = (str(row, "entityType") ?? "event").toLowerCase();
+    const entityScope: "event" | "client" = entityTypeRaw === "client" ? "client" : "event";
+    const normalized: NormalizedDocumentLike = {
+      name: str(row, "name") ?? fileName,
+      fileName,
+      storagePath,
+      storageUrl,
+      mimeType: str(row, "mimeType"),
+      fileSize: str(row, "fileSize"),
+      category: str(row, "category") ?? "contract",
+      notes: str(row, "notes") ?? str(row, "note"),
+      entityType: entityScope,
+      eventId: str(row, "eventId"),
+      clientEmail: str(row, "clientEmail") ?? str(row, "email"),
+      clientId: str(row, "clientId"),
+      eventDate: str(row, "eventDate"),
+      sourceId: str(row, "sourceId") ?? str(row, "id") ?? str(row, "recordId"),
+    };
+    return { ok: true, entityType, normalized };
+  }
+
+  if (entityType === "active_commitment") {
+    const contractedTotal = str(row, "contractedTotal") ?? str(row, "total") ?? str(row, "contractTotal");
+    if (!contractedTotal) {
+      return { ok: false, error: "Active commitments need a contractedTotal." };
+    }
+
+    const scheduleLines: ActiveCommitmentScheduleLine[] = [];
+    const paidAmount = str(row, "paidAmount") ?? str(row, "amountPaid");
+    if (paidAmount) {
+      scheduleLines.push({
+        label: str(row, "paidLabel") ?? "Deposit (already paid)",
+        amount: paidAmount,
+        dueDate: str(row, "paidDate") ?? str(row, "paidDueDate"),
+        obligationKind: "deposit",
+        alreadyPaid: true,
+        paidDate: str(row, "paidDate"),
+        paymentMethod: str(row, "paidMethod") ?? "other",
+        referenceNumber: str(row, "paidReference"),
+      });
+    }
+    for (const n of [1, 2, 3, 4] as const) {
+      const amount = str(row, `remainingAmount${n}`) ?? str(row, `dueAmount${n}`);
+      if (!amount) continue;
+      scheduleLines.push({
+        label: str(row, `remainingLabel${n}`) ?? str(row, `dueLabel${n}`) ?? `Payment ${n}`,
+        amount,
+        dueDate: str(row, `remainingDueDate${n}`) ?? str(row, `dueDate${n}`),
+        obligationKind: n === 4 ? "final" : "installment",
+        alreadyPaid: false,
+      });
+    }
+    // Optional JSON override for full schedule fidelity.
+    const scheduleJson = str(row, "scheduleLinesJson");
+    if (scheduleJson) {
+      try {
+        const parsed = JSON.parse(scheduleJson) as ActiveCommitmentScheduleLine[];
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          scheduleLines.length = 0;
+          scheduleLines.push(...parsed);
+        }
+      } catch {
+        return { ok: false, error: "scheduleLinesJson must be valid JSON." };
+      }
+    }
+
+    const normalized: NormalizedActiveCommitment = {
+      eventId: str(row, "eventId"),
+      clientEmail: str(row, "clientEmail") ?? str(row, "email"),
+      clientId: str(row, "clientId"),
+      eventDate: str(row, "eventDate"),
+      contractedTotal,
+      packageName: str(row, "packageName") ?? str(row, "package"),
+      scheduleLines,
+      invoiceNotes: str(row, "invoiceNotes") ?? str(row, "notes"),
+      scheduleTitle: str(row, "scheduleTitle") ?? "Payment plan",
+      contractTitle: str(row, "contractTitle"),
+      contractContent: str(row, "contractContent"),
+      contractSignedAt: str(row, "contractSignedAt") ?? str(row, "signedAt"),
+      contractSignerName: str(row, "contractSignerName") ?? str(row, "signerName"),
+      shareSignedAgreementWithCouple: ["yes", "true", "1"].includes(
+        (str(row, "shareSignedAgreementWithCouple") ?? "").toLowerCase(),
+      ),
+      sourceId: str(row, "sourceId") ?? str(row, "id") ?? str(row, "recordId"),
+    };
+
+    const linesJson = str(row, "linesJson");
+    if (linesJson) {
+      try {
+        const parsed = JSON.parse(linesJson) as NormalizedActiveCommitment["lines"];
+        if (Array.isArray(parsed) && parsed.length > 0) normalized.lines = parsed;
+      } catch {
+        return { ok: false, error: "linesJson must be valid JSON." };
+      }
+    }
+
+    if (str(row, "documentStorageUrl") && str(row, "documentStoragePath") && str(row, "documentFileName")) {
+      normalized.documents = [{
+        name: str(row, "documentName") ?? str(row, "documentFileName")!,
+        fileName: str(row, "documentFileName")!,
+        storagePath: str(row, "documentStoragePath")!,
+        storageUrl: str(row, "documentStorageUrl")!,
+        mimeType: str(row, "documentMimeType") ?? "application/pdf",
+        category: "contract",
+        notes: "Original signed agreement from the prior system.",
+        entityType: "event",
+      }];
+    }
+
+    const validationError = validateActiveCommitment(normalized);
+    if (validationError) {
+      return { ok: false, error: validationError };
+    }
+    return { ok: true, entityType, normalized: normalized as unknown as Record<string, unknown> };
+  }
+
+  if (entityType === "guest_list") {
+    const firstName = str(row, "firstName") ?? str(row, "guestFirstName");
+    if (!firstName) return { ok: false, error: "Guest rows need a firstName." };
+    const bool = (v: string | null | undefined) => ["yes", "true", "1"].includes((v ?? "").toLowerCase());
+    const normalized = {
+      eventId: str(row, "eventId"),
+      clientEmail: str(row, "clientEmail"),
+      clientId: str(row, "clientId"),
+      eventDate: str(row, "eventDate"),
+      firstName,
+      lastName: str(row, "lastName") ?? str(row, "guestLastName"),
+      email: str(row, "guestEmail"),
+      phone: str(row, "phone") ?? str(row, "guestPhone"),
+      household: str(row, "household") ?? str(row, "householdName"),
+      rsvpStatus: str(row, "rsvpStatus") ?? str(row, "rsvp"),
+      mealChoice: str(row, "mealChoice"),
+      dietaryRestrictions: str(row, "dietaryRestrictions") ?? str(row, "dietary"),
+      isChild: bool(str(row, "isChild")),
+      isWeddingParty: bool(str(row, "isWeddingParty")),
+      notes: str(row, "notes"),
+      sourceId: str(row, "sourceId") ?? str(row, "id") ?? str(row, "recordId"),
+    };
+    return { ok: true, entityType, normalized };
+  }
+
+  if (entityType === "event_vendor_assignment") {
+    const vendorBusinessName = str(row, "vendorBusinessName") ?? str(row, "businessName");
+    const vendorId = str(row, "vendorId");
+    if (!vendorBusinessName && !vendorId) {
+      return { ok: false, error: "Assignments need vendorBusinessName or vendorId." };
+    }
+    const paymentRaw = (str(row, "paymentStatus") ?? "").toLowerCase();
+    const normalized = {
+      eventId: str(row, "eventId"),
+      clientEmail: str(row, "clientEmail") ?? str(row, "email"),
+      clientId: str(row, "clientId"),
+      eventDate: str(row, "eventDate"),
+      vendorId,
+      vendorBusinessName,
+      category: str(row, "category"),
+      contactName: str(row, "contactName"),
+      email: str(row, "vendorEmail") ?? str(row, "email"),
+      phone: str(row, "phone"),
+      arrivalTime: str(row, "arrivalTime"),
+      setupLocation: str(row, "setupLocation"),
+      loadInNotes: str(row, "loadInNotes"),
+      notes: str(row, "notes"),
+      agreedFee: str(row, "agreedFee"),
+      paymentStatus: paymentRaw === "paid" ? "paid" as const : paymentRaw === "pending" ? "pending" as const : null,
+      sourceId: str(row, "sourceId") ?? str(row, "id") ?? str(row, "recordId"),
+    };
+    if (str(row, "clientEmail")) normalized.clientEmail = str(row, "clientEmail");
+    return { ok: true, entityType, normalized };
+  }
+
+  if (entityType === "timeline_entry") {
+    const title = str(row, "title");
+    if (!title) return { ok: false, error: "Timeline rows need a title." };
+    const bool = (v: string | null | undefined) => ["yes", "true", "1"].includes((v ?? "").toLowerCase());
+    const normalized = {
+      eventId: str(row, "eventId"),
+      clientEmail: str(row, "clientEmail") ?? str(row, "email"),
+      clientId: str(row, "clientId"),
+      eventDate: str(row, "eventDate"),
+      title,
+      description: str(row, "description"),
+      notes: str(row, "notes"),
+      entryTime: str(row, "entryTime") ?? str(row, "startTime"),
+      endTime: str(row, "endTime"),
+      dayOffset: str(row, "dayOffset"),
+      audiences: str(row, "audiences"),
+      status: str(row, "status"),
+      lockState: str(row, "lockState"),
+      timelineFinalized: bool(str(row, "timelineFinalized")) || bool(str(row, "finalized")),
+      forceImport: bool(str(row, "forceImport")),
+      sortOrder: str(row, "sortOrder"),
+      sourceId: str(row, "sourceId") ?? str(row, "id") ?? str(row, "recordId"),
+    };
+    return { ok: true, entityType, normalized };
   }
 
   return { ok: false, error: `Generic CSV import does not yet support "${entityType}" records.` };

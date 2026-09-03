@@ -213,7 +213,10 @@ export async function getContractByToken(token: string): Promise<(Contract & {
   } | null;
 }) | null> {
   if (!isSupabaseConfigured) return null;
-  return repo.getContractByToken(await createClient(), token);
+  const contract = await repo.getContractByToken(await createClient(), token);
+  // Externally executed agreements are not opened for HTC e-sign.
+  if (contract?.executionOrigin === "external") return null;
+  return contract;
 }
 
 /**
@@ -656,6 +659,12 @@ export async function sendContract(id: string, customMessage?: string): Promise<
   const result = await withVenue(async (supabase, venueId) => {
     const contract = await repo.getContract(supabase, venueId, id);
     if (!contract) return { ok: false, message: "Contract not found." } as ContractActionResult;
+    if (contract.executionOrigin === "external") {
+      return {
+        ok: false,
+        message: "This agreement was executed outside Hello to Cheers. It cannot be sent for HTC e-signature — attach the original signed file as a document instead.",
+      } as ContractActionResult;
+    }
 
     const venueSigner = (contract.signers ?? []).find((s) => s.signerType === "venue");
     if (!venueSigner?.signedAt) {

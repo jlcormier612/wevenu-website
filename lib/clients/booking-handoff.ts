@@ -7,7 +7,7 @@
  * model; this checklist only shows that review's summary.
  */
 
-import type { ContractStatus } from "@/lib/contracts/types";
+import type { ContractExecutionOrigin, ContractStatus } from "@/lib/contracts/types";
 import type { PlaybookKind } from "@/lib/playbooks/types";
 
 export type BookingHandoffPlaybook = {
@@ -19,6 +19,7 @@ export type BookingHandoffPlaybook = {
 export type BookingHandoffContract = {
   id: string;
   status: ContractStatus;
+  executionOrigin?: ContractExecutionOrigin;
 };
 
 export type BookingHandoffInput = {

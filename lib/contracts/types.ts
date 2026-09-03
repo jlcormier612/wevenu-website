@@ -8,6 +8,9 @@ export type { ContractBrandingSnapshot };
 
 export type ContractStatus = "draft" | "sent" | "signed" | "cancelled" | "expired";
 
+/** Where the binding agreement was executed. external = outside HTC e-sign. */
+export type ContractExecutionOrigin = "htc" | "external";
+
 export type ContractTemplate = {
   id: string;
   venueId: string;
@@ -33,6 +36,8 @@ export type Contract = {
   title: string;
   content: string; // rendered (tokens already resolved)
   status: ContractStatus;
+  /** htc = Hello to Cheers e-sign; external = recorded as executed elsewhere. */
+  executionOrigin: ContractExecutionOrigin;
   signToken: string;
   signerName: string | null;
   signedAt: string | null;

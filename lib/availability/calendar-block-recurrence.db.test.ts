@@ -61,6 +61,25 @@ function withSchemaLock<T>(fn: () => T): T {
   }
 }
 
+async function withSchemaLockAsync<T>(fn: () => Promise<T>): Promise<T> {
+  const dir = join(tmpdir(), "wevenu-k7-avail-schema.lock");
+  const started = Date.now();
+  while (true) {
+    try {
+      mkdirSync(dir);
+      break;
+    } catch {
+      if (Date.now() - started > 90_000) throw new Error("timed out waiting for k7 availability schema lock");
+      await new Promise((r) => setTimeout(r, 200));
+    }
+  }
+  try {
+    return await fn();
+  } finally {
+    try { rmdirSync(dir); } catch { /* ignore */ }
+  }
+}
+
 function applyRecurrenceMigrations(): void {
   applySql(PHASE2);
   applySql(PHASE3);
@@ -89,96 +108,101 @@ describe("recurring calendar_blocks live database", () => {
       t.skip("local Postgres is not running");
       return;
     }
-    withSchemaLock(() => { applyRecurrenceMigrations(); });
+    // Hold the schema lock across apply + concurrency. Releasing after apply
+    // alone lets parallel availability tests rewrite events_enforce_availability
+    // mid-flight and falsely pass the Event insert (seen under full npm test).
+    await withSchemaLockAsync(async () => {
+      applyRecurrenceMigrations();
 
-    const venueId = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeecb";
-    const ownerId = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeecc";
-    const setup = psql(["-c", `
-      delete from public.venues where id = '${venueId}';
-      delete from auth.users where id = '${ownerId}';
-      insert into auth.users (
-        instance_id, id, aud, role, email, encrypted_password,
-        email_confirmed_at, raw_app_meta_data, raw_user_meta_data,
-        created_at, updated_at, confirmation_token, email_change,
-        email_change_token_new, recovery_token
-      ) values (
-        '00000000-0000-0000-0000-000000000000', '${ownerId}', 'authenticated', 'authenticated',
-        'k7-recur-lock@example.test', crypt('not-a-login', gen_salt('bf')),
-        now(), '{"provider":"email","providers":["email"]}', '{}',
-        now(), now(), '', '', '', ''
-      );
-      insert into public.venues (id, owner_user_id, name)
-      values ('${venueId}', '${ownerId}', 'K7 Recurring Lock Venue');
-    `]);
-    assert.equal(setup.status, 0, setup.stderr || setup.stdout);
-
-    try {
-      const holder = spawn("psql", [
-        LOCAL_URL, "-v", "ON_ERROR_STOP=1", "-c", `
-          begin;
-          insert into public.calendar_blocks (
-            venue_id, title, type, start_date, end_date, is_all_day, start_time, end_time,
-            recurrence_rule, recurrence_interval
-          ) values (
-            '${venueId}', 'Every Sunday 9-5', 'blocked_time', '2099-06-14', '2099-06-14',
-            false, '09:00', '17:00', 'weekly', 1
-          );
-          select pg_sleep(20);
-          rollback;
-        `,
-      ], { stdio: ["ignore", "pipe", "pipe"] });
-
-      const lockSql = `
-        select count(*)::int
-        from pg_locks
-        where locktype = 'advisory'
-          and granted
-          and classid = hashtext('${venueId}')
-          and objid = hashtext('calendar-blocks');
-      `;
-      const waitStarted = Date.now();
-      let held = false;
-      while (Date.now() - waitStarted < 5000) {
-        const probe = psql(["-qAt", "-c", lockSql], { timeoutMs: 3000 });
-        if (probe.status === 0 && Number.parseInt(probe.stdout.trim(), 10) >= 1) {
-          held = true;
-          break;
-        }
-        await new Promise((r) => setTimeout(r, 50));
-      }
-      assert.ok(held, "calendar_blocks insert never published the venue calendar-blocks advisory lock");
-
-      const waiter = psql([
-        "-c", `
-          set lock_timeout = '2s';
-          insert into public.events (venue_id, name, event_date, start_time, end_time, status)
-          values ('${venueId}', 'Later Sunday', '2099-06-28', '10:00', '12:00', 'draft');
-        `,
-      ], { timeoutMs: 8000 });
-
-      holder.kill("SIGTERM");
-      await new Promise<void>((resolveWait) => {
-        if (holder.exitCode != null) {
-          resolveWait();
-          return;
-        }
-        holder.once("exit", () => resolveWait());
-        setTimeout(() => {
-          holder.kill("SIGKILL");
-          resolveWait();
-        }, 2000);
-      });
-
-      const output = `${waiter.stdout}\n${waiter.stderr}`;
-      assert.ok(
-        waiter.status !== 0 && /lock timeout|canceling statement due to lock timeout|calendar is blocked/i.test(output),
-        `Event insert on a later Sunday must not sneak past an in-flight recurring block, got status=${waiter.status} output=${output}`,
-      );
-    } finally {
-      psql(["-c", `
+      const venueId = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeecb";
+      const ownerId = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeecc";
+      const setup = psql(["-c", `
         delete from public.venues where id = '${venueId}';
         delete from auth.users where id = '${ownerId}';
+        insert into auth.users (
+          instance_id, id, aud, role, email, encrypted_password,
+          email_confirmed_at, raw_app_meta_data, raw_user_meta_data,
+          created_at, updated_at, confirmation_token, email_change,
+          email_change_token_new, recovery_token
+        ) values (
+          '00000000-0000-0000-0000-000000000000', '${ownerId}', 'authenticated', 'authenticated',
+          'k7-recur-lock@example.test', crypt('not-a-login', gen_salt('bf')),
+          now(), '{"provider":"email","providers":["email"]}', '{}',
+          now(), now(), '', '', '', ''
+        );
+        insert into public.venues (id, owner_user_id, name)
+        values ('${venueId}', '${ownerId}', 'K7 Recurring Lock Venue');
       `]);
-    }
+      assert.equal(setup.status, 0, setup.stderr || setup.stdout);
+
+      try {
+        const holder = spawn("psql", [
+          LOCAL_URL, "-v", "ON_ERROR_STOP=1", "-c", `
+            begin;
+            insert into public.calendar_blocks (
+              venue_id, title, type, start_date, end_date, is_all_day, start_time, end_time,
+              recurrence_rule, recurrence_interval
+            ) values (
+              '${venueId}', 'Every Sunday 9-5', 'blocked_time', '2099-06-14', '2099-06-14',
+              false, '09:00', '17:00', 'weekly', 1
+            );
+            select pg_sleep(20);
+            rollback;
+          `,
+        ], { stdio: ["ignore", "pipe", "pipe"] });
+
+        const lockSql = `
+          select count(*)::int
+          from pg_locks
+          where locktype = 'advisory'
+            and granted
+            and classid = hashtext('${venueId}')
+            and objid = hashtext('calendar-blocks');
+        `;
+        const waitStarted = Date.now();
+        let held = false;
+        while (Date.now() - waitStarted < 5000) {
+          const probe = psql(["-qAt", "-c", lockSql], { timeoutMs: 3000 });
+          if (probe.status === 0 && Number.parseInt(probe.stdout.trim(), 10) >= 1) {
+            held = true;
+            break;
+          }
+          await new Promise((r) => setTimeout(r, 50));
+        }
+        assert.ok(held, "calendar_blocks insert never published the venue calendar-blocks advisory lock");
+
+        const waiter = psql([
+          "-c", `
+            set lock_timeout = '2s';
+            insert into public.events (venue_id, name, event_date, start_time, end_time, status)
+            values ('${venueId}', 'Later Sunday', '2099-06-28', '10:00', '12:00', 'draft');
+          `,
+        ], { timeoutMs: 8000 });
+
+        holder.kill("SIGTERM");
+        await new Promise<void>((resolveWait) => {
+          if (holder.exitCode != null) {
+            resolveWait();
+            return;
+          }
+          holder.once("exit", () => resolveWait());
+          setTimeout(() => {
+            holder.kill("SIGKILL");
+            resolveWait();
+          }, 2000);
+        });
+
+        const output = `${waiter.stdout}\n${waiter.stderr}`;
+        assert.ok(
+          waiter.status !== 0 && /lock timeout|canceling statement due to lock timeout|calendar is blocked/i.test(output),
+          `Event insert on a later Sunday must not sneak past an in-flight recurring block, got status=${waiter.status} output=${output}`,
+        );
+      } finally {
+        psql(["-c", `
+          delete from public.venues where id = '${venueId}';
+          delete from auth.users where id = '${ownerId}';
+        `]);
+      }
+    });
   });
 });

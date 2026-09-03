@@ -51,7 +51,7 @@ export default async function BookedPage({ params, searchParams }: Props) {
 
   const clientContracts = contracts
     .filter((c) => c.clientId === client.id)
-    .map((c) => ({ id: c.id, status: c.status }));
+    .map((c) => ({ id: c.id, status: c.status, executionOrigin: c.executionOrigin }));
   const clientSchedules = schedules
     .filter((s) => s.clientId === client.id)
     .map((s) => ({ id: s.id, title: s.title }));

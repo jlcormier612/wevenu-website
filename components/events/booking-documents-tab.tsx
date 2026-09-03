@@ -115,12 +115,13 @@ function SentRequestedSection({ contracts, questionnaire }: { contracts: Contrac
             <div className="min-w-0">
               <p className="truncate text-sm font-medium text-foreground">{c.title}</p>
               <p className="text-xs text-muted-foreground">
-                Sent {formatSentDate(c.sentAt)}
-                {c.signedAt && ` · Signed ${formatSentDate(c.signedAt)}`}
+                {c.executionOrigin === "external"
+                  ? `Signed outside HTC${c.signedAt ? ` · ${formatSentDate(c.signedAt)}` : ""}`
+                  : `Sent ${formatSentDate(c.sentAt)}${c.signedAt ? ` · Signed ${formatSentDate(c.signedAt)}` : ""}`}
               </p>
             </div>
             <div className="flex shrink-0 items-center gap-2">
-              <ContractStatusBadge status={c.status} />
+              <ContractStatusBadge status={c.status} executionOrigin={c.executionOrigin} />
               {c.status === "draft" ? (
                 <Button size="sm" variant="outline" disabled={sendingContract} onClick={() => handleSendContract(c.id)}>
                   {sendingContract ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Send"}

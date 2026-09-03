@@ -10,11 +10,12 @@
 import { CONTRACT_STATUS_LABEL, pickContract } from "@/lib/clients/booking-handoff";
 import { STATUS_LABEL } from "@/lib/payments/constants";
 import type { PaymentItemStatus, PaymentObligationKind } from "@/lib/payments/types";
-import type { ContractStatus } from "@/lib/contracts/types";
+import type { ContractExecutionOrigin, ContractStatus } from "@/lib/contracts/types";
 
 export type FinancialReadinessContract = {
   id: string;
   status: ContractStatus;
+  executionOrigin?: ContractExecutionOrigin;
 };
 
 export type FinancialReadinessSchedule = {
@@ -62,13 +63,15 @@ function contractRow(contracts: FinancialReadinessContract[]): FinancialReadines
   }
   const active = contract.status === "draft" || contract.status === "sent" || contract.status === "signed";
   const detail =
-    contract.status === "signed"
-      ? "Signed"
-      : contract.status === "sent"
-        ? "Sent — awaiting signature"
-        : contract.status === "draft"
-          ? "Draft — not yet sent"
-          : CONTRACT_STATUS_LABEL[contract.status];
+    contract.status === "signed" && contract.executionOrigin === "external"
+      ? "Signed outside HTC"
+      : contract.status === "signed"
+        ? "Signed"
+        : contract.status === "sent"
+          ? "Sent — awaiting signature"
+          : contract.status === "draft"
+            ? "Draft — not yet sent"
+            : CONTRACT_STATUS_LABEL[contract.status];
   return {
     key: "contract",
     label: "Contract",

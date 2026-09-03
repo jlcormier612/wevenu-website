@@ -46,6 +46,15 @@ describe("buildFinancialReadiness", () => {
     assert.match(model.summary, /Signed/);
   });
 
+  it("labels externally executed agreements as signed outside HTC", () => {
+    const model = buildFinancialReadiness({
+      contracts: [{ id: "c1", status: "signed", executionOrigin: "external" }],
+      paymentSchedules: [],
+      paymentLines: [],
+    });
+    assert.equal(model.rows.find((r) => r.key === "contract")?.detail, "Signed outside HTC");
+  });
+
   it("shows a payment plan as on file without inferring paid", () => {
     const model = buildFinancialReadiness({
       contracts: [],

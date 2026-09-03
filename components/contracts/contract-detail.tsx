@@ -216,6 +216,11 @@ export function ContractDetail({ contract, finalized, venueName }: { contract: C
 
   return (
     <div className="space-y-6">
+      {contract.executionOrigin === "external" ? (
+        <div className="rounded-lg border border-border bg-muted/30 px-3 py-2.5 text-sm text-muted-foreground">
+          This agreement was executed outside Hello to Cheers. It is recorded as signed for operations, but Hello to Cheers did not collect e-signatures for it. Use the attached Event document as the original signed file.
+        </div>
+      ) : null}
       <BusinessAssetHeader
         backHref="/contracts"
         backLabel="Contracts"
@@ -223,7 +228,7 @@ export function ContractDetail({ contract, finalized, venueName }: { contract: C
         title={contract.title}
         status={
           <div className="flex items-center gap-1.5 flex-wrap">
-            <ContractStatusBadge status={contract.status} />
+            <ContractStatusBadge status={contract.status} executionOrigin={contract.executionOrigin} />
             <Badge variant="outline">{uiState.label}</Badge>
             {finalized && (
               <Badge variant="success"><Lock className="mr-1 h-3 w-3" />Finalized</Badge>

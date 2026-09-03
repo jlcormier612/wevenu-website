@@ -24,6 +24,7 @@ type TemplateRow = {
 type ContractRow = {
   id: string; venue_id: string; client_id: string | null; event_id: string | null;
   template_id: string | null; title: string; content: string; status: Contract["status"];
+  execution_origin?: Contract["executionOrigin"] | null;
   sign_token: string; signer_name: string | null; signed_at: string | null;
   sent_at: string | null; expires_at: string | null; created_at: string; updated_at: string;
   amends_contract_id: string | null;
@@ -74,6 +75,7 @@ function mapContract(r: ContractRow): Contract {
   return {
     id: r.id, venueId: r.venue_id, clientId: r.client_id, eventId: r.event_id,
     templateId: r.template_id, title: r.title, content: r.content, status: r.status,
+    executionOrigin: r.execution_origin === "external" ? "external" : "htc",
     signToken: r.sign_token, signerName: r.signer_name, signedAt: r.signed_at,
     sentAt: r.sent_at, expiresAt: r.expires_at, createdAt: r.created_at, updatedAt: r.updated_at,
     amendsContractId: r.amends_contract_id ?? null,
