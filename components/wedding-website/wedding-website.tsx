@@ -6,6 +6,7 @@ import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
 import type { PublicWebsite, WebsiteTheme } from "@/lib/wedding-website/types";
+import { hostedHeroOccasionLabel, resolveExperienceProfile } from "@/lib/event-experience";
 import {
   midnightSupportGridColumn,
   pickMidnightSupportColumns,
@@ -1823,6 +1824,7 @@ export function Hero({ site, tc, editMode = false, onSectionClick }: {
   const eventEndDate = site.event?.eventEndDate;
   const eventDateLabel = eventDate ? formatEventDateRange(eventDate, eventEndDate) : null;
   const du = eventDate ? daysUntil(eventDate) : null;
+  const occasionEyebrow = hostedHeroOccasionLabel(resolveExperienceProfile(site.event?.eventType));
 
   // Hero background — the couple's own cover photo always wins when set.
   // venues.hero_image_url (Coastal Premium Art-Direction Proof Pass,
@@ -1866,7 +1868,7 @@ export function Hero({ site, tc, editMode = false, onSectionClick }: {
     const invitationBody = (
       <div className="max-w-sm mx-auto px-8 py-14 text-center" style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
         <p style={{ fontFamily: tc.bodyFont, fontSize: "0.6rem", letterSpacing: "0.45em", textTransform: "uppercase", color: tc.textMuted, fontWeight: 400 }}>
-          {site.event?.eventType?.replace(/_/g, " ") ?? "Wedding"}
+          {occasionEyebrow}
         </p>
         <h1 style={{ fontFamily: tc.headingFont, fontSize: "clamp(2.2rem, 6cqw, 3.8rem)", fontWeight: 400, lineHeight: 1.1, color: tc.text, letterSpacing: "0.03em" }}>
           {content.home?.title ?? coupleName}
@@ -1955,7 +1957,7 @@ export function Hero({ site, tc, editMode = false, onSectionClick }: {
     // Wildflower — not dead-center, not full left editorial: shifted type mass.
     <div className="relative z-10 max-w-xl w-[78%] text-left" style={{ color: heroTextColor, marginLeft: "4%", marginRight: "auto", alignSelf: "flex-start" }}>
       <p className="text-xs font-semibold uppercase tracking-[0.3em] opacity-70 mb-4">
-        {site.event?.eventType?.replace(/_/g, " ") ?? "Wedding"}
+        {occasionEyebrow}
       </p>
       <h1 style={{
         fontFamily: tc.headingFont,
@@ -1984,7 +1986,7 @@ export function Hero({ site, tc, editMode = false, onSectionClick }: {
   const titleBlockCenter = tc.sectionRoles ? (
     <div className="relative z-10 max-w-3xl mx-auto text-center" style={{ color: heroTextColor }}>
       <p className="text-xs font-semibold uppercase tracking-[0.3em] opacity-70 mb-5">
-        {site.event?.eventType?.replace(/_/g, " ") ?? "Wedding"}
+        {occasionEyebrow}
       </p>
       {content.home?.subtitle && (
         <p className="text-base @min-[768px]/wedding:text-lg italic opacity-80 mb-4" style={{ fontFamily: tc.headingFont }}>
@@ -2015,7 +2017,7 @@ export function Hero({ site, tc, editMode = false, onSectionClick }: {
   ) : (
     <div className="relative z-10 space-y-5 max-w-3xl mx-auto text-center" style={{ color: heroTextColor }}>
       <p className="text-xs font-semibold uppercase tracking-[0.3em] opacity-70">
-        {site.event?.eventType?.replace(/_/g, " ") ?? "Wedding"}
+        {occasionEyebrow}
       </p>
       <h1 style={{
         fontFamily: tc.headingFont,

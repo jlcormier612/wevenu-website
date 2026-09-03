@@ -12,6 +12,16 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/integrations/supabase/server";
 import {
+  checkLuvAskRateLimit,
+  isLuvAskQuestionTooLong,
+  luvAskClientIp,
+} from "@/lib/luv/ask-guard";
+import {
+  getLuvSettingsForVenueId,
+  isLuvDraftingEnabled,
+  luvAskVoiceInstruction,
+} from "@/lib/luv/settings";
+import {
   projectGuideForAudience,
   type VenueGuideRaw,
 } from "@/lib/venue-guide/audience";
@@ -46,7 +56,7 @@ function hasContent(v: string | null | undefined): boolean {
   return typeof v === "string" && v.trim().length > 0;
 }
 
-function buildContext(info: VenueInfo, venueName: string): string {
+function buildContext(info: VenueInfo, venueName: string, voiceInstruction: string): string {
   const parts: string[] = [];
 
   parts.push(
@@ -73,7 +83,7 @@ function buildContext(info: VenueInfo, venueName: string): string {
     ``,
     `RULES:`,
     `- Only use the information provided below. If something isn't covered, say so honestly and suggest they ask their coordinator directly.`,
-    `- Keep answers warm and personal — you're a trusted friend helping them plan, not a help desk.`,
+    `- ${voiceInstruction}`,
     `- When you reference information from a specific section, set guideSection accordingly so couples can explore further.`,
     `- Never make up information about the venue.`,
     `- Never reference vendor-only setup, load-in, or dock details — those are outside this couple-facing guide.`,
@@ -155,12 +165,19 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "missing_token_or_question" }, { status: 400 });
   }
 
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) {
+  if (isLuvAskQuestionTooLong(question)) {
     return NextResponse.json({
-      answer: "Luv isn't configured yet — ask your venue coordinator directly.",
+      answer: "That's a bit too long — try a shorter question.",
       guideSection: null,
-    });
+    }, { status: 400 });
+  }
+
+  const rate = checkLuvAskRateLimit({ token, ip: luvAskClientIp(request) });
+  if (!rate.allowed) {
+    return NextResponse.json({
+      answer: "Luv needs a short break — please try again in a few minutes.",
+      guideSection: null,
+    }, { status: 429 });
   }
 
   const supabase = await createClient();
@@ -173,6 +190,31 @@ export async function POST(request: Request) {
     (venueInfo ?? null) as VenueGuideRaw | null,
     "clients",
   );
+
+  const { data: portalCtx } = await supabase.rpc("get_portal_context", { p_token: token });
+  const venueId = (portalCtx as { venue?: { id?: string } } | null)?.venue?.id;
+  if (!venueId) {
+    return NextResponse.json({
+      answer: "Luv isn't configured yet — ask your venue coordinator directly.",
+      guideSection: null,
+    });
+  }
+
+  const settings = await getLuvSettingsForVenueId(venueId);
+  if (!isLuvDraftingEnabled(settings)) {
+    return NextResponse.json({
+      answer: "Luv isn't configured yet — ask your venue coordinator directly.",
+      guideSection: null,
+    });
+  }
+
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  if (!apiKey) {
+    return NextResponse.json({
+      answer: "Luv isn't configured yet — ask your venue coordinator directly.",
+      guideSection: null,
+    });
+  }
 
   const venueName = "your venue";
 
@@ -190,7 +232,7 @@ export async function POST(request: Request) {
     hotelBlocks:          (projected?.hotelBlocks ?? []) as VenueInfo["hotelBlocks"],
   };
 
-  const systemPrompt = buildContext(info, venueName);
+  const systemPrompt = buildContext(info, venueName, luvAskVoiceInstruction(settings.preferredTone));
 
   try {
     const res = await fetch("https://api.anthropic.com/v1/messages", {
@@ -206,6 +248,7 @@ export async function POST(request: Request) {
         system:     systemPrompt,
         messages:   [{ role: "user", content: `Question from the couple: "${question.trim()}"` }],
       }),
+      signal: AbortSignal.timeout(25_000),
     });
 
     if (!res.ok) {

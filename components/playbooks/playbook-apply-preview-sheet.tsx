@@ -22,9 +22,11 @@ import {
 import {
   APPLY_PREVIEW_ISOLATION_NOTE,
   applyPreviewKindCopy,
+  formatTemplateReminder,
   groupTasksForApplyPreview,
   type ApplyPreviewMilestoneGroup,
 } from "@/lib/playbooks/apply-preview";
+import { formatShortDaysOffset } from "@/lib/playbooks/due-dates";
 import type { PlaybookKind } from "@/lib/playbooks/types";
 
 export function PlaybookApplyPreviewSheet({
@@ -142,11 +144,20 @@ export function PlaybookApplyPreviewSheet({
                         {g.milestoneName}
                       </p>
                       <ul className="space-y-1 rounded-lg border border-border bg-muted/20 px-3 py-2">
-                        {g.taskTitles.map((title, i) => (
-                          <li key={`${g.milestoneId}-${i}`} className="text-sm text-foreground">
-                            {title}
-                          </li>
-                        ))}
+                        {g.tasks.map((task, i) => {
+                          const reminder = formatTemplateReminder(task.reminderBeforeDays);
+                          return (
+                            <li key={`${g.milestoneId}-${i}`} className="text-sm text-foreground">
+                              <span>{task.title}</span>
+                              <span className="ml-2 text-xs text-muted-foreground">
+                                {formatShortDaysOffset(task.daysOffset)}
+                              </span>
+                              {reminder && (
+                                <span className="ml-2 block text-[11px] text-muted-foreground">{reminder}</span>
+                              )}
+                            </li>
+                          );
+                        })}
                       </ul>
                     </div>
                   ))}

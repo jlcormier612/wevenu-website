@@ -1,6 +1,7 @@
 import { createClient } from "@/integrations/supabase/server";
 import { createAdminClient } from "@/integrations/supabase/admin";
 import { isSupabaseConfigured } from "@/lib/env";
+import { resolveExperienceProfileForClientEvent } from "@/lib/event-experience";
 import { getCurrentVenue } from "@/lib/venue/service";
 import { applyLiveVenueBrandingUrls } from "@/lib/venue/branding-assets";
 import { recordEngagementEvent } from "@/lib/activation/service";
@@ -14,7 +15,7 @@ export async function resolvePortalContext(token: string): Promise<PortalContext
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("get_portal_context", { p_token: token });
   if (error || !data || (data as Record<string, unknown>).error) return null;
-  const ctx = data as PortalContext;
+  const ctx = attachExperienceProfile(data as Omit<PortalContext, "experienceProfile">);
 
   // Live venues.* branding — never invitation/session snapshots. Version asset
   // URLs with venues.updated_at so logo/hero upserts are visible immediately.
@@ -40,6 +41,18 @@ export async function resolvePortalContext(token: string): Promise<PortalContext
   }
 
   return ctx;
+}
+
+function attachExperienceProfile(
+  ctx: Omit<PortalContext, "experienceProfile">,
+): PortalContext {
+  return {
+    ...ctx,
+    experienceProfile: resolveExperienceProfileForClientEvent(
+      ctx.event?.eventType,
+      ctx.client?.eventType,
+    ),
+  };
 }
 
 export async function resolvePortalTasks(token: string): Promise<PortalTask[]> {

@@ -1,11 +1,12 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { NextResponse } from "next/server";
 import { createClient } from "@/integrations/supabase/server";
+import { getLuvSettings, isLuvDraftingEnabled, luvToneInstruction } from "@/lib/luv/settings";
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
-const SYSTEM = (venueName: string) =>
-  `You are Luv, the built-in AI assistant for ${venueName}, a wedding venue. Write warm, professional content on behalf of the venue team. Begin your response immediately with the first section header — no preamble, no sign-off. Use [Couple Name], [Coordinator Name], [Their Wedding Date or Season], and [Venue Name] as placeholders where relevant.`;
+const SYSTEM = (venueName: string, toneInstruction: string) =>
+  `You are Luv, the built-in AI assistant for ${venueName}, a wedding venue. Write warm, professional content on behalf of the venue team. ${toneInstruction} Begin your response immediately with the first section header — no preamble, no sign-off. Use [Couple Name], [Coordinator Name], [Their Wedding Date or Season], and [Venue Name] as placeholders where relevant.`;
 
 function buildPrompt(action: string, context: Record<string, unknown>, venueName: string): string {
   switch (action) {
@@ -65,14 +66,6 @@ Package recommendations: 2–3 specific package or offering suggestions that ten
 }
 
 export async function POST(request: Request) {
-  if (!process.env.ANTHROPIC_API_KEY) {
-    console.error("[luv/draft] ANTHROPIC_API_KEY is not configured");
-    return NextResponse.json(
-      { error: "AI drafting is not configured. Please contact support." },
-      { status: 500 }
-    );
-  }
-
   const { action, context } = (await request.json()) as {
     action:  string;
     context: Record<string, unknown>;
@@ -85,14 +78,30 @@ export async function POST(request: Request) {
     .single();
 
   const venueName = venueData?.name ?? "your venue";
-  const prompt    = buildPrompt(action, context, venueName);
+  const settings = await getLuvSettings();
+  if (!isLuvDraftingEnabled(settings)) {
+    return NextResponse.json(
+      { error: "AI drafting is not configured. Please contact support." },
+      { status: 500 }
+    );
+  }
+
+  if (!process.env.ANTHROPIC_API_KEY) {
+    console.error("[luv/draft] ANTHROPIC_API_KEY is not configured");
+    return NextResponse.json(
+      { error: "AI drafting is not configured. Please contact support." },
+      { status: 500 }
+    );
+  }
+
+  const prompt = buildPrompt(action, context, venueName);
 
   try {
     const stream = client.messages.stream(
       {
         model:      "claude-haiku-4-5-20251001",
         max_tokens: 800,
-        system:     SYSTEM(venueName),
+        system:     SYSTEM(venueName, luvToneInstruction(settings.preferredTone)),
         messages:   [{ role: "user", content: prompt }],
       },
       { timeout: 25_000 },
@@ -102,8 +111,10 @@ export async function POST(request: Request) {
       headers: { "Content-Type": "text/plain; charset=utf-8" },
     });
   } catch (err) {
-    const message = err instanceof Error ? err.message : "Failed to generate draft";
-    console.error("[luv/draft] Generation failed:", message);
-    return NextResponse.json({ error: message }, { status: 502 });
+    console.error("[luv/draft] Generation failed:", err);
+    return NextResponse.json(
+      { error: "Failed to generate draft" },
+      { status: 502 }
+    );
   }
 }

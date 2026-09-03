@@ -101,6 +101,18 @@ function escapeHtml(s: string): string {
     .replace(/"/g, "&quot;");
 }
 
+/**
+ * Whether inviteClient should insert and send. Pending or accepted means
+ * the client already has an active invitation — do not create another.
+ * Revoked (or none) may send a new invitation. Pure; no new state machine.
+ */
+export function shouldSendClientInvitation(
+  existing: { status: ClientInvitation["status"] } | null,
+): boolean {
+  if (!existing) return true;
+  return existing.status !== "pending" && existing.status !== "accepted";
+}
+
 export async function inviteClient(
   clientId: string, email: string, coupleName: string,
 ): Promise<ClientAuthResult> {
@@ -110,6 +122,9 @@ export async function inviteClient(
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { ok: false, error: "Session expired." };
+
+  const existing = await getClientInvitation(clientId);
+  if (!shouldSendClientInvitation(existing)) return { ok: true };
 
   const { data, error } = await supabase.from("client_invitations").insert({
     venue_id: venue.id, client_id: clientId,

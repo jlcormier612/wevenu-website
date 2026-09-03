@@ -251,7 +251,7 @@ export type EventPlaybookApplication = {
 };
 
 export type PlaybookActionResult =
-  | { ok: true }
+  | { ok: true; message?: string }
   | { ok: false; message?: string };
 
 export type CreatePlaybookResult =

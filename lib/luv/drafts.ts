@@ -11,6 +11,7 @@
 
 import { createClient } from "@/integrations/supabase/server";
 import { isSupabaseConfigured } from "@/lib/env";
+import { getLuvSettings, isLuvDraftingEnabled, luvToneInstruction } from "@/lib/luv/settings";
 import { getCurrentVenue } from "@/lib/venue/service";
 import type { Lead } from "@/lib/leads/types";
 
@@ -45,12 +46,6 @@ function mapDraft(r: DraftRow): LuvDraft {
 
 // ---- Prompt builder --------------------------------------------------------
 
-const TONE_INSTRUCTION: Record<string, string> = {
-  warm:         "Write in a warm, friendly, personal tone — like a real person at a boutique venue who genuinely cares.",
-  professional: "Write in a professional, polished, and respectful tone appropriate for a business context.",
-  formal:       "Write in a formal, precise tone — best for corporate clients or high-profile events.",
-};
-
 function buildFollowUpPrompt(lead: Lead, venueName: string, ownerName: string | null, tone = "warm"): string {
   const coupleName = [lead.firstName, lead.partnerFirstName].filter(Boolean).join(" and ");
   const daysSinceContact = lead.lastContactedAt
@@ -75,7 +70,7 @@ ${daysSinceInquiry != null ? `- Days since initial inquiry: ${daysSinceInquiry}`
 ${daysSinceContact != null ? `- Days since last contact: ${daysSinceContact}` : ""}
 ${lead.inquiryMessage ? `- Their original message: "${lead.inquiryMessage}"` : ""}
 
-**Tone:** ${TONE_INSTRUCTION[tone] ?? TONE_INSTRUCTION.warm}
+**Tone:** ${luvToneInstruction(tone)}
 
 **How to write this email:**
 - Address them by first name(s) — like you know them a little
@@ -103,19 +98,28 @@ async function callClaude(prompt: string): Promise<string> {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) throw new Error("ANTHROPIC_API_KEY is not configured.");
 
-  const res = await fetch("https://api.anthropic.com/v1/messages", {
-    method: "POST",
-    headers: {
-      "x-api-key": apiKey,
-      "anthropic-version": "2023-06-01",
-      "content-type": "application/json",
-    },
-    body: JSON.stringify({
-      model: "claude-sonnet-4-6",
-      max_tokens: 1024,
-      messages: [{ role: "user", content: prompt }],
-    }),
-  });
+  let res: Response;
+  try {
+    res = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: {
+        "x-api-key": apiKey,
+        "anthropic-version": "2023-06-01",
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "claude-sonnet-4-6",
+        max_tokens: 1024,
+        messages: [{ role: "user", content: prompt }],
+      }),
+      signal: AbortSignal.timeout(25_000),
+    });
+  } catch (err) {
+    if (err instanceof Error && (err.name === "TimeoutError" || err.name === "AbortError")) {
+      throw new Error("Draft generation failed.");
+    }
+    throw err;
+  }
 
   if (!res.ok) {
     const err = await res.text();
@@ -144,12 +148,18 @@ export async function generateFollowUpDraft(lead: Lead): Promise<
   { ok: true; draft: LuvDraft } | { ok: false; message: string }
 > {
   if (!isSupabaseConfigured) return { ok: false, message: "Backend not configured." };
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) return { ok: false, message: "Luv drafts are not enabled. Add ANTHROPIC_API_KEY to enable." };
 
   try {
     const venue = await getCurrentVenue();
     if (!venue) return { ok: false, message: "No venue found." };
+
+    const settings = await getLuvSettings();
+    if (!isLuvDraftingEnabled(settings)) {
+      return { ok: false, message: "Luv drafting is disabled in Settings." };
+    }
+
+    const apiKey = process.env.ANTHROPIC_API_KEY;
+    if (!apiKey) return { ok: false, message: "Luv drafts are not enabled. Add ANTHROPIC_API_KEY to enable." };
 
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
@@ -160,10 +170,7 @@ export async function generateFollowUpDraft(lead: Lead): Promise<
       .select("full_name").eq("venue_id", venue.id).eq("is_owner", true).maybeSingle<{ full_name: string }>();
     const ownerName = staff?.full_name?.split(" ")[0] ?? null;
 
-    const { data: luvSettingsRow } = await supabase.from("luv_settings")
-      .select("preferred_tone, drafting_enabled").eq("venue_id", venue.id).maybeSingle<{ preferred_tone: string; drafting_enabled: boolean }>();
-    if (luvSettingsRow?.drafting_enabled === false) return { ok: false, message: "Luv drafting is disabled in Settings." };
-    const prompt = buildFollowUpPrompt(lead, venue.name, ownerName, luvSettingsRow?.preferred_tone ?? "warm");
+    const prompt = buildFollowUpPrompt(lead, venue.name, ownerName, settings.preferredTone);
     const raw = await callClaude(prompt);
     const { subject, body } = parseEmailDraft(raw);
 

@@ -29,7 +29,6 @@ import {
 } from "@/lib/clients/list-filters";
 import { getEventIdForClient, insertEvent } from "@/lib/events/repository";
 import { venueToday } from "@/lib/venue/timezone";
-import { inviteClient } from "@/lib/client-auth/service";
 import type { Lead } from "@/lib/leads/types";
 import { updateLeadSalesStage } from "@/lib/leads/service";
 import { getCurrentVenue } from "@/lib/venue/service";
@@ -179,8 +178,8 @@ export async function findActiveDuplicateClientForVenue(venueId: string, email: 
  * Extracted so White-Glove imports (`createClientForVenue`, Hospitality
  * Success Platform §2.2a) run through the exact same engine self-service
  * does — calendar-block check, QuickBooks sync, stop-on-booking, auto-event
- * creation, and the portal invitation email — rather than a second,
- * drifting implementation.
+ * creation — rather than a second, drifting implementation.
+ * Client invitation is sent at Client Planning release, not at create.
  */
 async function createClientCore(
   supabase: Awaited<ReturnType<typeof createClient>>, venueId: string, input: ClientInput,
@@ -227,14 +226,10 @@ async function createClientCore(
       })
     : null;
 
-  // Historical Import Mode (Migration Center) — a backfilled client from a
-  // competitor export should never receive a live "create your portal
-  // account" email as though they'd just booked today.
-  const coupleName = clientDisplayName(input.firstName, input.lastName, input.partnerFirstName, input.partnerLastName);
-  const invitationSent = !historicalImport && input.email.trim()
-    ? (await inviteClient(clientId, input.email, coupleName)).ok
-    : false;
-  return { ok: true, clientId, eventId, invitationSent };
+  // Invitation is sent when Client Planning is explicitly released, not at
+  // create. Historical imports still skip live side effects at insert-time
+  // via insertClient(..., historicalImport).
+  return { ok: true, clientId, eventId, invitationSent: false };
 }
 
 export async function createClient_(input: ClientInput, historicalImport = false): Promise<CreateClientResult> {
@@ -372,11 +367,10 @@ export async function convertLeadToClient(lead: Lead): Promise<CreateClientResul
   });
   const r = result as CreateClientResult;
   if (!r.ok) return r;
-  const coupleName = clientDisplayName(lead.firstName, lead.lastName, lead.partnerFirstName, lead.partnerLastName);
-  const invitationSent = input.email.trim()
-    ? (await inviteClient(r.clientId, input.email, coupleName)).ok
-    : false;
-  return { ok: true, clientId: r.clientId, eventId: r.eventId, invitationSent };
+  // Invitation is sent when Client Planning is explicitly released, not at
+  // Book This Lead. Keep invitationSent on the result shape so existing
+  // callers stay typed; it is always false here.
+  return { ok: true, clientId: r.clientId, eventId: r.eventId, invitationSent: false };
 }
 
 // ---- update -----------------------------------------------------------------

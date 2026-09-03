@@ -4,11 +4,24 @@
  */
 import type { PlaybookKind, PlaybookMilestone, PlaybookTask } from "@/lib/playbooks/types";
 
+export type ApplyPreviewTaskLine = {
+  title: string;
+  daysOffset: number;
+  reminderBeforeDays: number[] | null;
+};
+
 export type ApplyPreviewMilestoneGroup = {
   milestoneId: string;
   milestoneName: string;
   taskTitles: string[];
+  tasks: ApplyPreviewTaskLine[];
 };
+
+/** Template-authored reminder offsets only — does not invent the apply-time default. */
+export function formatTemplateReminder(reminderBeforeDays: number[] | null): string | null {
+  if (!reminderBeforeDays || reminderBeforeDays.length === 0) return null;
+  return `Reminders: ${reminderBeforeDays.join(", ")} days before due`;
+}
 
 /** Product language for the two checklist kinds at apply time. */
 export function applyPreviewKindCopy(kind: PlaybookKind): {
@@ -47,32 +60,42 @@ export function groupTasksForApplyPreview(
 ): ApplyPreviewMilestoneGroup[] {
   const sortedMilestones = [...milestones].sort((a, b) => a.sortOrder - b.sortOrder);
   const sortedTasks = [...tasks].sort((a, b) => a.sortOrder - b.sortOrder);
-  const byMilestone = new Map<string, string[]>();
+  const byMilestone = new Map<string, ApplyPreviewTaskLine[]>();
 
   for (const m of sortedMilestones) {
     byMilestone.set(m.id, []);
   }
 
-  const orphanTitles: string[] = [];
+  const orphanTasks: ApplyPreviewTaskLine[] = [];
   for (const t of sortedTasks) {
+    const line: ApplyPreviewTaskLine = {
+      title: t.title,
+      daysOffset: t.daysOffset,
+      reminderBeforeDays: t.reminderBeforeDays,
+    };
     const list = byMilestone.get(t.milestoneId);
-    if (list) list.push(t.title);
-    else orphanTitles.push(t.title);
+    if (list) list.push(line);
+    else orphanTasks.push(line);
   }
 
   const groups: ApplyPreviewMilestoneGroup[] = sortedMilestones
-    .map((m) => ({
-      milestoneId: m.id,
-      milestoneName: m.name,
-      taskTitles: byMilestone.get(m.id) ?? [],
-    }))
-    .filter((g) => g.taskTitles.length > 0);
+    .map((m) => {
+      const tasks = byMilestone.get(m.id) ?? [];
+      return {
+        milestoneId: m.id,
+        milestoneName: m.name,
+        taskTitles: tasks.map((task) => task.title),
+        tasks,
+      };
+    })
+    .filter((g) => g.tasks.length > 0);
 
-  if (orphanTitles.length > 0) {
+  if (orphanTasks.length > 0) {
     groups.push({
       milestoneId: "__other__",
       milestoneName: "Other",
-      taskTitles: orphanTitles,
+      taskTitles: orphanTasks.map((task) => task.title),
+      tasks: orphanTasks,
     });
   }
 

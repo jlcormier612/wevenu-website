@@ -4,13 +4,22 @@ import * as React from "react";
 
 import Link from "next/link";
 
+import { CommunicationsReviewPanel } from "@/components/clients/communications-review-panel";
+import { EventExperienceReviewPanel } from "@/components/clients/event-experience-review-panel";
+import { FinancialReadinessPanel } from "@/components/clients/financial-readiness-panel";
+import { PreparePlanningPanel } from "@/components/clients/prepare-planning-panel";
 import { Button } from "@/components/ui/button";
+import type { BookingHandoffModel } from "@/lib/clients/booking-handoff";
+import type { CommunicationsReviewModel } from "@/lib/clients/communications-review";
+import type { EventExperienceReviewModel } from "@/lib/clients/event-experience-review";
+import type { FinancialReadinessModel } from "@/lib/clients/financial-readiness";
 import {
   clientDisplayName,
   eventTypeLabel,
   formatDate,
 } from "@/lib/clients/constants";
 import type { Client } from "@/lib/clients/types";
+import type { EventPlaybookApplication, PlaybookTemplate } from "@/lib/playbooks/types";
 
 // ---- Confetti ---------------------------------------------------------------
 
@@ -75,47 +84,41 @@ function Confetti() {
   );
 }
 
-// ---- Workspace checklist ----------------------------------------------------
-
-const WORKSPACE_ITEMS = [
-  { key: "event",   label: "Event workspace created" },
-  { key: "portal",  label: "Client invited to their workspace" },
-  { key: "website", label: "Wedding website ready" },
-  { key: "tools",   label: "Planning tools ready" },
-] as const;
-
-function WorkspaceChecklist({ eventId, invited }: { eventId?: string | null; invited?: boolean }) {
-  const active: Record<string, boolean> = {
-    event:   !!eventId,
-    portal:  !!invited,
-    website: !!invited,
-    tools:   !!eventId,
-  };
-
+function PrepareChecklist({ handoff }: { handoff: BookingHandoffModel }) {
   return (
     <div
       className="rounded-sm border px-6 py-5 text-left"
       style={{ borderColor: "#D8A7AA40", background: "#FDF8F8" }}
     >
       <p className="mb-4 text-xs font-medium uppercase tracking-widest" style={{ color: "#9ca3af" }}>
-        Workspace Ready
+        {handoff.prepareHeading}
       </p>
       <ul className="space-y-2.5">
-        {WORKSPACE_ITEMS.map(({ key, label }) => (
-          <li key={key} className="flex items-center gap-3 text-sm">
+        {handoff.items.map((item) => (
+          <li key={item.key} className="flex items-start gap-3 text-sm">
             <span
-              className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-xs font-semibold"
+              className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-xs font-semibold"
               style={
-                active[key]
+                item.complete
                   ? { background: "#D8A7AA20", color: "#5A3235" }
                   : { background: "transparent", color: "#9ca3af" }
               }
             >
-              {active[key] ? "✓" : "·"}
+              {item.complete ? "✓" : "○"}
             </span>
-            <span style={{ color: active[key] ? "#3D2F30" : "#9ca3af" }}>
-              {label}
-            </span>
+            <div className="min-w-0 flex-1">
+              <p style={{ color: item.complete ? "#3D2F30" : "#9ca3af" }}>
+                {item.label}
+              </p>
+              <p className="text-xs text-muted-foreground">{item.detail}</p>
+            </div>
+            <Link
+              href={item.href}
+              className="shrink-0 text-xs font-medium underline-offset-2 hover:underline"
+              style={{ color: "#5A3235" }}
+            >
+              {item.actionLabel}
+            </Link>
           </li>
         ))}
       </ul>
@@ -123,16 +126,28 @@ function WorkspaceChecklist({ eventId, invited }: { eventId?: string | null; inv
   );
 }
 
-// ---- Celebration ------------------------------------------------------------
-
 export function BookingCelebration({
   client,
   eventId,
-  invited,
+  eventDate,
+  eventType,
+  templates,
+  applications,
+  handoff,
+  financial,
+  communications,
+  experience,
 }: {
   client: Client;
   eventId?: string | null;
-  invited?: boolean;
+  eventDate?: string | null;
+  eventType?: string | null;
+  templates: PlaybookTemplate[];
+  applications: EventPlaybookApplication[];
+  handoff: BookingHandoffModel;
+  financial: FinancialReadinessModel;
+  communications: CommunicationsReviewModel;
+  experience: EventExperienceReviewModel;
 }) {
   const displayName = clientDisplayName(
     client.firstName,
@@ -149,33 +164,27 @@ export function BookingCelebration({
       : null,
   ].filter(Boolean);
 
-  const hasWorkspace = !!eventId || !!invited;
-
   return (
     <div className="relative flex min-h-[80vh] flex-col items-center justify-center px-4 py-16 text-center">
       <Confetti />
 
-      {/* Content — above confetti */}
-      <div className="relative z-30 mx-auto max-w-lg space-y-8">
-        {/* Celebration mark */}
+      <div className="relative z-30 mx-auto max-w-xl space-y-8">
         <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-success/10 text-5xl select-none">
           🎉
         </div>
 
-        {/* Headline */}
         <div className="space-y-3">
           <p className="text-sm font-medium uppercase tracking-widest text-muted-foreground">
-            Congratulations
+            {handoff.eyebrow}
           </p>
           <h1 className="font-heading text-4xl font-medium tracking-tight text-heading sm:text-5xl">
             {displayName}
           </h1>
           <p className="text-xl text-muted-foreground">
-            {hasWorkspace ? "have been added. Their workspace is ready." : "are officially booked."}
+            {handoff.bookingLine}
           </p>
         </div>
 
-        {/* Event summary */}
         {details.length > 0 && (
           <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-sm text-foreground">
             {details.map((d, i) => (
@@ -187,42 +196,44 @@ export function BookingCelebration({
           </div>
         )}
 
-        {/* Workspace checklist */}
-        {hasWorkspace && (
-          <WorkspaceChecklist eventId={eventId} invited={invited} />
-        )}
+        <PrepareChecklist handoff={handoff} />
 
-        {/* Divider + tagline */}
+        <PreparePlanningPanel
+          eventId={eventId ?? null}
+          eventDate={eventDate ?? null}
+          eventType={eventType ?? client.eventType}
+          templates={templates}
+          applications={applications}
+        />
+
+        <FinancialReadinessPanel financial={financial} />
+
+        <EventExperienceReviewPanel experience={experience} />
+
+        <CommunicationsReviewPanel communications={communications} />
+
         <div className="space-y-3 border-t border-border pt-6">
           <p className="text-sm italic text-muted-foreground">
-            {hasWorkspace
-              ? "You entered them once. An entire wedding workspace appeared."
-              : "Thank you for helping another client begin their story."}
+            {handoff.tagline}
           </p>
         </div>
 
-        {/* Actions */}
         <div className="flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
+          <Button render={<Link href={handoff.primaryHref} />}>
+            {handoff.primaryLabel}
+          </Button>
           {eventId && (
-            <Button render={<Link href={`/events/${eventId}`} />}>
+            <Button variant="outline" render={<Link href={`/events/${eventId}`} />}>
               Open Event
             </Button>
           )}
           <Button
-            variant={hasWorkspace ? "ghost" : "default"}
+            variant="ghost"
             render={<Link href={`/clients/${client.id}`} />}
-            className={hasWorkspace ? "text-muted-foreground" : undefined}
+            className="text-muted-foreground"
           >
-            {hasWorkspace ? "Continue to Client" : "View Client"}
+            View Client
           </Button>
-          {!hasWorkspace && (
-            <Button
-              variant="outline"
-              render={<Link href={`/clients/${client.id}/edit`} />}
-            >
-              Start Planning
-            </Button>
-          )}
           <Button
             variant="ghost"
             render={<Link href="/dashboard" />}

@@ -252,8 +252,9 @@ export async function applyPlaybookToEvent(eventId: string, templateId: string, 
 /** The deliberate second step for Client Planning (Draft → Release,
  *  2026-07-10): makes the checklist visible in the couple portal and starts
  *  its reminders. Also makes sure a portal link actually exists for this
- *  client — releasing with no link would leave "View Client Portal" pointing
- *  at nothing, and most clients already have one from booking anyway. */
+ *  client. Phase 3: after a successful release, send the existing client
+ *  invitation if an email is on file. Invitation failure does not roll
+ *  back the release. */
 export async function releasePlaybookApplication(eventId: string, clientId: string, coupleName: string): Promise<PlaybookActionResult> {
   const result = await withVenue(async (c, venueId) => {
     const released = await repo.releasePlaybookApplication(c, venueId, eventId);
@@ -270,7 +271,37 @@ export async function releasePlaybookApplication(eventId: string, clientId: stri
     const sessions = await getPortalSessions(clientId);
     if (sessions.length === 0) await createPortalSession(clientId, coupleName);
 
-    return { ok: true } as PlaybookActionResult;
+    const { getClient } = await import("@/lib/clients/service");
+    const { inviteClient } = await import("@/lib/client-auth/service");
+    const client = await getClient(clientId);
+    const email = client?.email?.trim() ?? "";
+    if (!email) {
+      return {
+        ok: true,
+        message: "Client Planning released. No invitation sent — no client email on file.",
+      } as PlaybookActionResult;
+    }
+
+    try {
+      const invited = await inviteClient(clientId, email, coupleName);
+      if (!invited.ok) {
+        console.error("[release] inviteClient failed after release:", invited.error);
+        return {
+          ok: true,
+          message: "Client Planning released. The invitation could not be sent — invite them from the Client page.",
+        } as PlaybookActionResult;
+      }
+      return {
+        ok: true,
+        message: "Client Planning released. Their invitation has been sent.",
+      } as PlaybookActionResult;
+    } catch (e) {
+      console.error("[release] inviteClient threw after release:", e instanceof Error ? e.message : e);
+      return {
+        ok: true,
+        message: "Client Planning released. The invitation could not be sent — invite them from the Client page.",
+      } as PlaybookActionResult;
+    }
   });
   return result as PlaybookActionResult;
 }

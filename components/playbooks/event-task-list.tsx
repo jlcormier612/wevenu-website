@@ -659,10 +659,10 @@ export function PlaybookApplyRow({
   function handleRelease() {
     if (!clientId) return;
     const label = clientName ?? "your client";
-    if (!confirm(`Release Client Planning to ${label}? They'll be able to see and complete these tasks, and reminders will start going out.`)) return;
+    if (!confirm(`Release Client Planning to ${label}? They'll be able to see and complete these tasks, reminders will start going out, and they'll receive their invitation email if an email address is on file.`)) return;
     startRelease(async () => {
       const result = await releasePlaybookAction(eventId, clientId, clientName ?? "");
-      if (result.ok) { toast.success("Client Planning released."); onApplied(); }
+      if (result.ok) { toast.success(result.message ?? "Client Planning released."); onApplied(); }
       else toast.error(result.message ?? "Could not release checklist.");
     });
   }

@@ -3,6 +3,11 @@ import { notFound } from "next/navigation";
 
 import { RsvpPage } from "@/components/wedding-website/rsvp-page";
 import { createClient } from "@/integrations/supabase/server";
+import {
+  resolveExperienceProfile,
+  rsvpDocumentDescription,
+  rsvpDocumentTitle,
+} from "@/lib/event-experience";
 
 type Props = { params: Promise<{ token: string }> };
 
@@ -16,9 +21,11 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const d = data as Record<string, unknown>;
   const couple = d.couple as { firstName: string; partnerFirstName?: string } | undefined;
   const coupleName = [couple?.firstName, couple?.partnerFirstName].filter(Boolean).join(" & ");
+  const event = d.event as { eventType?: string | null } | null | undefined;
+  const experienceProfile = resolveExperienceProfile(event?.eventType);
   return {
-    title: { absolute: `RSVP — ${coupleName}'s Wedding` },
-    description: `Submit your RSVP for ${coupleName}'s wedding.`,
+    title: { absolute: rsvpDocumentTitle(coupleName, experienceProfile) },
+    description: rsvpDocumentDescription(coupleName, experienceProfile),
   };
 }
 

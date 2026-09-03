@@ -55,29 +55,17 @@ export function LuvSettingsSection({ initialSettings }: { initialSettings: LuvSe
         <div className="flex items-center justify-between gap-4">
           <div>
             <Label className="text-sm font-medium text-heading">Drafting assistance</Label>
-            <p className="text-xs text-muted-foreground mt-0.5">Enable the "Ask Luv to draft" button on lead and client records.</p>
+            <p className="text-xs text-muted-foreground mt-0.5">Allow Luv to generate AI-assisted content for this venue. Luv never sends messages on its own.</p>
           </div>
           <Switch checked={settings.draftingEnabled} onCheckedChange={(v) => set("draftingEnabled", v)} />
         </div>
       </div>
 
-      {/* Autonomy level */}
       <div className="space-y-2">
-        <Label className="text-sm font-medium text-heading">Autonomy level</Label>
-        <p className="text-xs text-muted-foreground">How much Luv can do before a coordinator reviews.</p>
-        <div className="grid gap-2 sm:grid-cols-2 mt-2">
-          <OptionButton
-            value="suggest_only" current={settings.autonomyLevel}
-            onChange={(v) => set("autonomyLevel", v)}
-            label="Suggest only"
-            description="Luv notices and highlights — no drafting until you ask." />
-          <OptionButton
-            value="draft_for_review" current={settings.autonomyLevel}
-            onChange={(v) => set("autonomyLevel", v)}
-            label="Draft for review"
-            description="Luv drafts content. You review, edit, and send it yourself." />
-        </div>
-        <p className="text-[10px] text-muted-foreground italic">Auto-draft coming in a future update.</p>
+        <Label className="text-sm font-medium text-heading">How Luv works</Label>
+        <p className="text-sm text-muted-foreground">
+          Luv drafts and suggests. Your team reviews and sends. Luv never sends messages on its own.
+        </p>
       </div>
 
       {/* Preferred tone */}

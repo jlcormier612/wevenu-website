@@ -84,6 +84,7 @@ import {
   resolveWebsiteLaunch,
   type WeddingLaunchModel,
 } from "@/lib/portal/your-wedding";
+import { homeLaunchHeading, homeLaunchPrompt } from "@/lib/event-experience";
 import { resolveLuvHomeSuggestion } from "@/lib/portal/luv-suggestions";
 import { resolveHomeMemories } from "@/lib/portal/memories";
 import {
@@ -1883,6 +1884,7 @@ function OverviewSection({
         todoCount={todoCount}
         profile={profile}
         accessLevel={accessLevel}
+        experienceProfile={context.experienceProfile}
         onNavigate={onNavigate}
       />
 
@@ -5776,9 +5778,10 @@ function LuvDailyCard({
   );
 }
 
-function YourWeddingSection({ token, guestStats, todoCount, profile, accessLevel = "couple", onNavigate }: {
+function YourWeddingSection({ token, guestStats, todoCount, profile, accessLevel = "couple", experienceProfile, onNavigate }: {
   token: string; guestStats: GuestStats | null; todoCount: number; profile: CoupleProfile | null;
   accessLevel?: PortalContext["accessLevel"];
+  experienceProfile: PortalContext["experienceProfile"];
   onNavigate: (s: PortalSection) => void;
 }) {
   const showBudget = accessLevel !== "view_only";
@@ -5790,10 +5793,10 @@ function YourWeddingSection({ token, guestStats, todoCount, profile, accessLevel
           className="text-[10px] font-semibold uppercase tracking-widest"
           style={{ color: SAGE }}
         >
-          Your Wedding
+          {homeLaunchHeading(experienceProfile)}
         </h2>
         <p className="text-[11px] text-muted-foreground mt-1 leading-snug">
-          What would you like to work on for your wedding?
+          {homeLaunchPrompt(experienceProfile)}
         </p>
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">

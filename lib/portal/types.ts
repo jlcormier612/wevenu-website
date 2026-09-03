@@ -1,3 +1,4 @@
+import type { ExperienceProfileDefinition } from "@/lib/event-experience";
 import type { DisplayShape } from "@/lib/floor-plans/types";
 
 // Portal context returned by get_portal_context()
@@ -5,6 +6,12 @@ export type PortalContext = {
   sessionId: string;
   accessLevel: "couple" | "planning" | "financial" | "view_only";
   label: string;         // "Emily & James", "Dad (Jim)" — human-readable session name
+  /**
+   * Presentation family for this session's Event Experience.
+   * Resolved in TypeScript from event.eventType ?? client.eventType.
+   * Not returned by get_portal_context itself.
+   */
+  experienceProfile: ExperienceProfileDefinition;
   client: {
     id: string;
     firstName: string;

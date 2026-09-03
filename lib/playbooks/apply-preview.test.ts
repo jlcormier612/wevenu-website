@@ -4,6 +4,7 @@ import { describe, it } from "node:test";
 import {
   APPLY_PREVIEW_ISOLATION_NOTE,
   applyPreviewKindCopy,
+  formatTemplateReminder,
   groupTasksForApplyPreview,
 } from "@/lib/playbooks/apply-preview";
 import type { PlaybookMilestone, PlaybookTask } from "@/lib/playbooks/types";
@@ -76,6 +77,8 @@ describe("apply preview helpers", () => {
         { name: "Final stretch", titles: ["Confirm guest count"] },
       ],
     );
+    assert.equal(groups[0]?.tasks[0]?.daysOffset, -30);
+    assert.equal(groups[0]?.tasks[1]?.title, "Book hotel block");
   });
 
   it("places tasks with a missing milestone under Other", () => {
@@ -89,10 +92,17 @@ describe("apply preview helpers", () => {
     assert.equal(groups.length, 2);
     assert.equal(groups[1]?.milestoneName, "Other");
     assert.deepEqual(groups[1]?.taskTitles, ["Orphan task"]);
+    assert.equal(groups[1]?.tasks[0]?.title, "Orphan task");
   });
 
   it("states that applying copies onto the event without syncing later Library edits", () => {
     assert.match(APPLY_PREVIEW_ISOLATION_NOTE.toLowerCase(), /copy for this event/);
     assert.match(APPLY_PREVIEW_ISOLATION_NOTE.toLowerCase(), /won't change this event's task list/);
+  });
+
+  it("formats reminder offsets from the template only — does not invent a default", () => {
+    assert.equal(formatTemplateReminder(null), null);
+    assert.equal(formatTemplateReminder([]), null);
+    assert.equal(formatTemplateReminder([7, 3, 1]), "Reminders: 7, 3, 1 days before due");
   });
 });

@@ -162,10 +162,12 @@ export function offsetForDirection(days: number, direction: DueDateDirection): n
 // or organization name on a Client (see docs/product-backlog.md), so
 // non-couple event types fall back to the event's own name rather than
 // fabricating an organization field that doesn't exist.
-const COUPLE_EVENT_TYPES = new Set(["wedding", "elopement", "engagement_party", "anniversary"]);
+// Anniversary is its own experience profile and is not grouped with Wedding
+// for this title helper.
+const WEDDING_PLANNING_TITLE_EVENT_TYPES = new Set(["wedding", "elopement", "engagement_party"]);
 
 export function formatClientPlanningTitle(eventName: string, clientName: string | null, eventType: string | null): string {
-  if (eventType && COUPLE_EVENT_TYPES.has(eventType) && clientName) {
+  if (eventType && WEDDING_PLANNING_TITLE_EVENT_TYPES.has(eventType) && clientName) {
     return `${clientName}'s Planning`;
   }
   return `${eventName} Planning`;

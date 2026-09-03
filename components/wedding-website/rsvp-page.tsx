@@ -15,6 +15,11 @@ import { Check, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
 import type { RsvpContext } from "@/app/rsvp/[token]/page";
+import {
+  resolveExperienceProfile,
+  rsvpWebsiteInlineLabel,
+  rsvpWebsiteVisitLabel,
+} from "@/lib/event-experience";
 import type { RsvpQuestion } from "@/lib/portal/types";
 
 function formatDate(iso: string): string {
@@ -128,6 +133,7 @@ export function RsvpPage({ context, rsvpToken, readOnly = false }: { context: Rs
   const { guest, couple, event, venue, websiteSlug, accentColor, mealOptions = [], questions = [], guestAnswers = [], householdMembers = [] } = context;
   const color      = accentColor ?? "#5D6F5D";
   const coupleName = [couple.firstName, couple.partnerFirstName].filter(Boolean).join(" & ");
+  const experienceProfile = resolveExperienceProfile(event?.eventType);
 
   // Meal choice has its own first-class catalog now (Guest Experience —
   // Phase 3) — every other custom question the couple built stays here.
@@ -246,7 +252,7 @@ export function RsvpPage({ context, rsvpToken, readOnly = false }: { context: Rs
                 <Link href={`/w/${websiteSlug}`}
                   className="block mt-4 text-sm font-medium underline-offset-2 hover:underline"
                   style={{ color }}>
-                  Visit {coupleName}'s wedding website →
+                  {rsvpWebsiteVisitLabel(coupleName, experienceProfile)}
                 </Link>
               )}
             </div>
@@ -401,7 +407,7 @@ export function RsvpPage({ context, rsvpToken, readOnly = false }: { context: Rs
 
               {websiteSlug && (
                 <p className="text-center text-xs text-[#999]">
-                  View the <Link href={`/w/${websiteSlug}`} className="underline">wedding website</Link> for event details and schedule.
+                  View the <Link href={`/w/${websiteSlug}`} className="underline">{rsvpWebsiteInlineLabel(experienceProfile)}</Link> for event details and schedule.
                 </p>
               )}
             </div>

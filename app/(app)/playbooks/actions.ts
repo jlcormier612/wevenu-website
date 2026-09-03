@@ -68,7 +68,10 @@ export async function deleteTemplateTaskAction(taskId: string): Promise<Playbook
 
 export async function applyPlaybookAction(eventId: string, templateId: string, eventDate: string): Promise<PlaybookActionResult> {
   const result = await applyPlaybookToEvent(eventId, templateId, eventDate);
-  if (result.ok) revalidatePath(`/events/${eventId}`);
+  if (result.ok) {
+    revalidatePath(`/events/${eventId}`);
+    revalidatePath("/clients");
+  }
   return result;
 }
 
@@ -95,7 +98,10 @@ export async function getPlaybookApplyPreviewAction(templateId: string): Promise
 
 export async function releasePlaybookAction(eventId: string, clientId: string, coupleName: string): Promise<PlaybookActionResult> {
   const result = await releasePlaybookApplication(eventId, clientId, coupleName);
-  if (result.ok) revalidatePath(`/events/${eventId}`);
+  if (result.ok) {
+    revalidatePath(`/events/${eventId}`);
+    revalidatePath("/clients");
+  }
   return result;
 }
 

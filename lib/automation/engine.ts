@@ -77,10 +77,9 @@ export async function processAutomationEvents(): Promise<ProcessResult> {
   const client = getServiceClient();
   const result: ProcessResult = {
     evaluated: 0, executed: 0, skipped: 0, failed: 0,
-    // Runs unconditionally, before any rule is even loaded — this must
-    // never be reachable only through the "rules.length === 0 → return
-    // early" branch below, since a venue with zero configured Automation
-    // Rules is exactly the case this guarantee exists to still cover.
+    // Phase 2: Booking.Confirmed no longer silently applies default
+    // playbooks. This slot stays on the sweep result so cron logs and
+    // ProcessResult stay stable; the function is a no-op.
     systemGuarantees: await applyDefaultPlaybooksForConfirmedBookings(),
   };
 
