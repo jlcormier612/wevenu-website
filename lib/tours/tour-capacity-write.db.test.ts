@@ -13,6 +13,7 @@ const PHASE4 = resolve("supabase/migrations/20261318000000_tour_capacity_enforce
 const TURNAROUND = resolve("supabase/migrations/20261319000000_event_turnaround_enforcement.sql");
 const CORRECTION = resolve("supabase/migrations/20261320000000_availability_correction_pass.sql");
 const RECURRENCE = resolve("supabase/migrations/20261321000000_calendar_block_recurrence_coverage.sql");
+const ATOMICITY = resolve("supabase/migrations/20261322000000_tour_booking_atomicity.sql");
 const CASES = resolve("lib/tours/tour-capacity-write.db.sql");
 
 function psql(args: string[], extra?: { timeoutMs?: number }): { status: number | null; stdout: string; stderr: string } {
@@ -68,6 +69,7 @@ function applyTourMigrations(): void {
   applySql(TURNAROUND);
   applySql(CORRECTION);
   applySql(RECURRENCE);
+  applySql(ATOMICITY);
 }
 
 function runPsql(sql: string): Promise<{ status: number | null; stdout: string; stderr: string }> {

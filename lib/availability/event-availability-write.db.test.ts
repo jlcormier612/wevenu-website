@@ -13,6 +13,7 @@ const TURNAROUND = resolve("supabase/migrations/20261319000000_event_turnaround_
 const CORRECTION = resolve("supabase/migrations/20261320000000_availability_correction_pass.sql");
 const RECURRENCE = resolve("supabase/migrations/20261321000000_calendar_block_recurrence_coverage.sql");
 const CASES = resolve("lib/availability/event-availability-write.db.sql");
+const DIRECT_ADD = resolve("lib/availability/direct-add-transactional.db.sql");
 
 function psql(args: string[], extra?: { timeoutMs?: number }): { status: number | null; stdout: string; stderr: string } {
   const result = spawnSync("psql", [LOCAL_URL, "-v", "ON_ERROR_STOP=1", ...args], {
@@ -90,6 +91,19 @@ describe("event write enforcement live database", () => {
     withSchemaLock(() => {
       applyPhase3();
       const cases = readFileSync(CASES, "utf8");
+      const run = psql(["-c", `begin;\n${cases}\nrollback;`]);
+      assert.equal(run.status, 0, run.stderr || run.stdout);
+    });
+  });
+
+  it("Direct Add Client+Event refusal leaves no Client under authenticated JWT context", (t: TestContext) => {
+    if (!localDbAvailable()) {
+      t.skip("local Postgres is not running");
+      return;
+    }
+    withSchemaLock(() => {
+      applyPhase3();
+      const cases = readFileSync(DIRECT_ADD, "utf8");
       const run = psql(["-c", `begin;\n${cases}\nrollback;`]);
       assert.equal(run.status, 0, run.stderr || run.stdout);
     });
