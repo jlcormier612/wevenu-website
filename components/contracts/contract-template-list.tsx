@@ -6,7 +6,6 @@
 
 import * as React from "react";
 
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   Archive, ArchiveRestore, BookPlus, Copy, Loader2, Pencil, Trash2,
@@ -26,47 +25,8 @@ import { LibraryDeleteConfirmDialog } from "@/components/library/library-delete-
 import { partitionArchived } from "@/components/library/partition-archived";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { formatRelative } from "@/lib/leads/constants";
 import type { ContractTemplate } from "@/lib/contracts/types";
-
-function TemplatePreviewSheet({
-  template, open, onOpenChange,
-}: { template: ContractTemplate | null; open: boolean; onOpenChange: (open: boolean) => void }) {
-  return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="right" className="w-full sm:max-w-lg overflow-y-auto">
-        <SheetHeader className="mb-2">
-          <SheetTitle>{template?.name}</SheetTitle>
-          <div className="flex items-center gap-2 flex-wrap text-xs text-muted-foreground">
-            <span>Contract Template</span>
-            {template?.sourceMasterKey && <Badge variant="muted">Starter</Badge>}
-            {template?.isDefault && <Badge variant="default">Default</Badge>}
-            {template && <span>· Updated {formatRelative(template.updatedAt)}</span>}
-          </div>
-        </SheetHeader>
-        {template && (
-          <div className="px-4 pb-6 space-y-4">
-            {template.description && <p className="text-sm text-muted-foreground">{template.description}</p>}
-            <div className="rounded-lg border border-border bg-background p-4 font-sans text-sm text-foreground whitespace-pre-wrap leading-relaxed max-h-[60vh] overflow-y-auto">
-              {template.content}
-            </div>
-            <div className="flex flex-wrap gap-2">
-              <Button size="sm" variant="outline" render={<Link href={`/contracts/templates/${template.id}/edit`} />}>
-                {LIBRARY_LABELS.edit}
-              </Button>
-              {!template.isArchived && (
-                <Button size="sm" render={<Link href={`/contracts/new?templateId=${template.id}`} />}>
-                  {LIBRARY_LABELS.useTemplate}
-                </Button>
-              )}
-            </div>
-          </div>
-        )}
-      </SheetContent>
-    </Sheet>
-  );
-}
 
 export function ContractTemplateList({
   initialTemplates,
@@ -78,7 +38,6 @@ export function ContractTemplateList({
   const router = useRouter();
   const [templates, setTemplates] = React.useState(initialTemplates);
   const [pendingId, setPendingId] = React.useState<string | null>(null);
-  const [previewing, setPreviewing] = React.useState<ContractTemplate | null>(null);
   const [deleting, setDeleting] = React.useState<ContractTemplate | null>(null);
   const [deletePending, setDeletePending] = React.useState(false);
   const [addingStarter, startAddStarter] = React.useTransition();
@@ -132,11 +91,11 @@ export function ContractTemplateList({
         badges={t.isDefault ? <Badge variant="default" className="text-[10px]">Default</Badge> : undefined}
         primaryActions={archivedView
           ? [
-              { id: "preview", label: LIBRARY_LABELS.preview, onClick: () => setPreviewing(t), emphasis: "preview" },
+              { id: "preview", label: LIBRARY_LABELS.preview, href: `/contracts/templates/${t.id}/preview`, emphasis: "preview" },
               { id: "restore", label: LIBRARY_LABELS.restore, onClick: () => handleToggleArchived(t), emphasis: "edit" },
             ]
           : [
-              { id: "preview", label: LIBRARY_LABELS.preview, onClick: () => setPreviewing(t), emphasis: "preview" },
+              { id: "preview", label: LIBRARY_LABELS.preview, href: `/contracts/templates/${t.id}/preview`, emphasis: "preview" },
               { id: "edit", label: LIBRARY_LABELS.edit, href: `/contracts/templates/${t.id}/edit`, emphasis: "edit" },
               { id: "use", label: LIBRARY_LABELS.useTemplate, href: `/contracts/new?templateId=${t.id}`, emphasis: "use" },
             ]}
@@ -188,18 +147,17 @@ export function ContractTemplateList({
           </Button>
         )}
       </div>
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="space-y-2">
         {active.map((t) => cardFor(t, false))}
       </div>
       {active.length === 0 && (
         <p className="text-sm text-muted-foreground py-6 text-center">No active contract templates.</p>
       )}
       <LibraryArchivedSection count={archived.length}>
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="space-y-2">
           {archived.map((t) => cardFor(t, true))}
         </div>
       </LibraryArchivedSection>
-      <TemplatePreviewSheet template={previewing} open={!!previewing} onOpenChange={(o) => { if (!o) setPreviewing(null); }} />
       <LibraryDeleteConfirmDialog
         open={!!deleting}
         itemName={deleting?.name ?? ""}

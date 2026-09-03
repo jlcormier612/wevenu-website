@@ -132,7 +132,7 @@ function UsePlaybookFlow({
 }
 
 function TemplateCard({
-  template, busy, onRename, onDuplicate, onSetDefault, onArchiveToggle, onDelete, onPreview, onUse, archivedView,
+  template, busy, onRename, onDuplicate, onSetDefault, onArchiveToggle, onDelete, onUse, archivedView,
 }: {
   template: PlaybookTemplateWithStats;
   busy: boolean;
@@ -141,7 +141,6 @@ function TemplateCard({
   onSetDefault: () => void;
   onArchiveToggle: () => void;
   onDelete: () => void;
-  onPreview: () => void;
   onUse: () => void;
   archivedView?: boolean;
 }) {
@@ -149,18 +148,18 @@ function TemplateCard({
 
   const primaryActions = archivedView
     ? [
-        { id: "preview", label: LIBRARY_LABELS.preview, onClick: onPreview, emphasis: "preview" as const },
+        { id: "preview", label: LIBRARY_LABELS.preview, href: `/library/playbooks/${template.id}/preview`, emphasis: "preview" as const },
         { id: "restore", label: LIBRARY_LABELS.restore, onClick: onArchiveToggle, emphasis: "edit" as const, disabled: busy },
       ]
     : [
-        { id: "preview", label: LIBRARY_LABELS.preview, onClick: onPreview, emphasis: "preview" as const },
+        { id: "preview", label: LIBRARY_LABELS.preview, href: `/library/playbooks/${template.id}/preview`, emphasis: "preview" as const },
         { id: "edit", label: LIBRARY_LABELS.edit, href: `/library/playbooks/${template.id}`, emphasis: "edit" as const },
         { id: "use", label: LIBRARY_LABELS.useTemplate, onClick: onUse, emphasis: "use" as const },
       ];
 
   return (
     <LibraryAssetCard
-      layout="grid"
+      layout="row"
       title={template.name}
       isArchived={template.isArchived}
       badges={
@@ -196,7 +195,6 @@ export function PlaybooksSection({
   const [eventTypeFilter, setEventTypeFilter] = React.useState<EventTypeFilter>("all");
   const [kindFilter, setKindFilter] = React.useState<KindFilter>("all");
   const [sort, setSort] = React.useState<SortKey>("updated");
-  const [previewing, setPreviewing] = React.useState<PlaybookTemplateWithStats | null>(null);
   const [using, setUsing] = React.useState<PlaybookTemplateWithStats | null>(null);
   const [deleting, setDeleting] = React.useState<PlaybookTemplateWithStats | null>(null);
   const [deletePending, setDeletePending] = React.useState(false);
@@ -324,7 +322,7 @@ export function PlaybooksSection({
             {active.length === 0 ? (
               <p className="py-8 text-center text-sm text-muted-foreground">No active templates match these filters.</p>
             ) : (
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              <div className="space-y-2">
                 {active.map((t) => (
                   <TemplateCard
                     key={t.id} template={t} busy={busyId === t.id}
@@ -333,14 +331,13 @@ export function PlaybooksSection({
                     onSetDefault={() => handleSetDefault(t.id, t)}
                     onArchiveToggle={() => handleArchiveToggle(t.id, t.isArchived)}
                     onDelete={() => setDeleting(t)}
-                    onPreview={() => setPreviewing(t)}
                     onUse={() => setUsing(t)}
                   />
                 ))}
               </div>
             )}
             <LibraryArchivedSection count={archived.length}>
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              <div className="space-y-2">
                 {archived.map((t) => (
                   <TemplateCard
                     key={t.id} template={t} busy={busyId === t.id} archivedView
@@ -349,7 +346,6 @@ export function PlaybooksSection({
                     onSetDefault={() => handleSetDefault(t.id, t)}
                     onArchiveToggle={() => handleArchiveToggle(t.id, t.isArchived)}
                     onDelete={() => setDeleting(t)}
-                    onPreview={() => setPreviewing(t)}
                     onUse={() => setUsing(t)}
                   />
                 ))}
@@ -364,15 +360,6 @@ export function PlaybooksSection({
         <PlaybookStarterPicker existingTemplates={templates.filter((t) => !t.isArchived)} compact variant="import" />
       </div>
 
-      {previewing && (
-        <PlaybookApplyPreviewSheet
-          open={!!previewing}
-          onOpenChange={(o) => { if (!o) setPreviewing(null); }}
-          templateId={previewing.id}
-          kind={previewing.kind}
-          canApply={false}
-        />
-      )}
       <UsePlaybookFlow
         template={using}
         events={events}

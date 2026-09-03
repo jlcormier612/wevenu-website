@@ -129,7 +129,7 @@ export function MessageTemplateList({ initialTemplates }: { initialTemplates: Me
       <p className="text-xs text-muted-foreground">
         Editing a template never sends a message. Send from Messaging after you review the draft.
       </p>
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="space-y-2">
         {active.map((t) => cardFor(t, false))}
       </div>
       {active.length === 0 && (
@@ -142,7 +142,7 @@ export function MessageTemplateList({ initialTemplates }: { initialTemplates: Me
         </p>
       )}
       <LibraryArchivedSection count={archived.length}>
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="space-y-2">
           {archived.map((t) => cardFor(t, true))}
         </div>
       </LibraryArchivedSection>

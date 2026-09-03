@@ -10,7 +10,7 @@ import { toast } from "sonner";
 import {
   addEventOrderStarterAgainAction,
   createEventOrderTemplateAction, deleteEventOrderTemplateAction,
-  duplicateEventOrderTemplateAction, getEventOrderTemplateDetailAction, setEventOrderTemplateArchivedAction,
+  duplicateEventOrderTemplateAction, setEventOrderTemplateArchivedAction,
 } from "@/app/(app)/library/event-order-templates/actions";
 import { ensureEventOrderAction } from "@/app/(app)/events/[id]/event-order-actions";
 import { LIBRARY_LABELS, archiveToggleLabel } from "@/components/library/labels";
@@ -28,7 +28,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sh
 import { Textarea } from "@/components/ui/textarea";
 import { formatRelative } from "@/lib/leads/constants";
 import { EVENT_ORDER_STARTER_MASTERS, type EventOrderStarterMasterKey } from "@/lib/event-order-templates/starters";
-import type { EventOrderTemplate, EventOrderTemplateWithDetails } from "@/lib/event-order-templates/types";
+import type { EventOrderTemplate } from "@/lib/event-order-templates/types";
 
 function NewTemplateSheet() {
   const router = useRouter();
@@ -115,75 +115,6 @@ function StarterMenu({ missingKeys }: { missingKeys: EventOrderStarterMasterKey[
 
 export type EventOrderEventOption = { id: string; name: string; eventDate: string };
 
-function TemplatePreviewSheet({
-  templateId,
-  templateName,
-  open,
-  onOpenChange,
-}: {
-  templateId: string | null;
-  templateName: string;
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-}) {
-  const [detail, setDetail] = React.useState<EventOrderTemplateWithDetails | null>(null);
-  const [loading, setLoading] = React.useState(false);
-
-  React.useEffect(() => {
-    if (!open || !templateId) { setDetail(null); return; }
-    setLoading(true);
-    getEventOrderTemplateDetailAction(templateId).then((d) => { setDetail(d); setLoading(false); });
-  }, [open, templateId]);
-
-  const sections = detail ? [...detail.sections].sort((a, b) => a.sortOrder - b.sortOrder) : [];
-  const unsectioned = detail ? detail.lines.filter((l) => !l.sectionId).sort((a, b) => a.sortOrder - b.sortOrder) : [];
-
-  return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="right" className="w-full sm:max-w-lg overflow-y-auto">
-        <SheetHeader className="mb-2">
-          <SheetTitle>{templateName}</SheetTitle>
-          <p className="text-xs text-muted-foreground">Event Order Template</p>
-        </SheetHeader>
-        <div className="px-4 pb-6 space-y-4">
-          {loading ? (
-            <p className="text-sm text-muted-foreground">Loading…</p>
-          ) : !detail || (sections.length === 0 && unsectioned.length === 0) ? (
-            <p className="text-sm text-muted-foreground">No sections or lines yet.</p>
-          ) : (
-            <div className="space-y-4 max-h-[60vh] overflow-y-auto rounded-lg border border-border bg-background p-4">
-              {sections.map((s) => {
-                const lines = detail.lines.filter((l) => l.sectionId === s.id).sort((a, b) => a.sortOrder - b.sortOrder);
-                return (
-                  <div key={s.id} className="space-y-1.5">
-                    <p className="text-xs font-medium text-heading">{s.name}</p>
-                    <ul className="space-y-1">
-                      {lines.map((l) => (
-                        <li key={l.id} className="text-sm text-foreground">· {l.description}</li>
-                      ))}
-                    </ul>
-                  </div>
-                );
-              })}
-              {unsectioned.length > 0 && (
-                <ul className="space-y-1">
-                  {unsectioned.map((l) => (
-                    <li key={l.id} className="text-sm text-foreground">· {l.description}</li>
-                  ))}
-                </ul>
-              )}
-            </div>
-          )}
-          <div className="flex flex-wrap gap-2">
-            <Button size="sm" variant="outline" render={<Link href={`/library/event-order-templates/${templateId}`} />}>
-              Open editor
-            </Button>
-          </div>
-        </div>
-      </SheetContent>
-    </Sheet>
-  );
-}
 
 type UseStep = "pick" | "confirm";
 
@@ -287,11 +218,10 @@ function UseEventOrderSheet({
 }
 
 function TemplateCard({
-  template, archivedView, onPreview, onUse, onDelete,
+  template, archivedView, onUse, onDelete,
 }: {
   template: EventOrderTemplate;
   archivedView?: boolean;
-  onPreview: () => void;
   onUse: () => void;
   onDelete: () => void;
 }) {
@@ -325,11 +255,11 @@ function TemplateCard({
       isArchived={template.isArchived}
       primaryActions={archivedView
         ? [
-            { id: "preview", label: LIBRARY_LABELS.preview, onClick: onPreview, emphasis: "preview" },
+            { id: "preview", label: LIBRARY_LABELS.preview, href: `/library/event-order-templates/${template.id}/preview`, emphasis: "preview" },
             { id: "restore", label: LIBRARY_LABELS.restore, onClick: handleArchiveToggle, emphasis: "edit" },
           ]
         : [
-            { id: "preview", label: LIBRARY_LABELS.preview, onClick: onPreview, emphasis: "preview" },
+            { id: "preview", label: LIBRARY_LABELS.preview, href: `/library/event-order-templates/${template.id}/preview`, emphasis: "preview" },
             { id: "edit", label: LIBRARY_LABELS.edit, href: `/library/event-order-templates/${template.id}`, emphasis: "edit" },
             { id: "use", label: LIBRARY_LABELS.useTemplate, onClick: onUse, emphasis: "use" },
           ]}
@@ -365,7 +295,6 @@ export function EventOrderTemplateList({
   events?: EventOrderEventOption[];
 }) {
   const { active, archived } = partitionArchived(templates, (t) => t.isArchived);
-  const [previewing, setPreviewing] = React.useState<EventOrderTemplate | null>(null);
   const [using, setUsing] = React.useState<EventOrderTemplate | null>(null);
   const [deleting, setDeleting] = React.useState<EventOrderTemplate | null>(null);
   const [deletePending, setDeletePending] = React.useState(false);
@@ -387,7 +316,6 @@ export function EventOrderTemplateList({
     return (
       <TemplateCard
         key={t.id} template={t} archivedView={archivedView}
-        onPreview={() => setPreviewing(t)}
         onUse={() => setUsing(t)}
         onDelete={() => setDeleting(t)}
       />
@@ -420,12 +348,6 @@ export function EventOrderTemplateList({
           {archived.map((t) => renderCard(t, true))}
         </div>
       </LibraryArchivedSection>
-      <TemplatePreviewSheet
-        templateId={previewing?.id ?? null}
-        templateName={previewing?.name ?? ""}
-        open={!!previewing}
-        onOpenChange={(o) => { if (!o) setPreviewing(null); }}
-      />
       <UseEventOrderSheet
         template={using}
         events={events}

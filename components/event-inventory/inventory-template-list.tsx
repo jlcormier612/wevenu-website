@@ -2,7 +2,6 @@
 
 import * as React from "react";
 
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Archive, ArchiveRestore, BookPlus, Loader2, Trash2 } from "lucide-react";
 import { toast } from "sonner";
@@ -12,7 +11,6 @@ import {
   createInventoryTemplateAction,
   deleteInventoryTemplateAction,
   ensureEventInventoryAction,
-  getInventoryTemplateDetailAction,
   setInventoryTemplateArchivedAction,
 } from "@/app/(app)/events/[id]/event-inventory-actions";
 import { LIBRARY_LABELS, archiveToggleLabel } from "@/components/library/labels";
@@ -27,7 +25,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Textarea } from "@/components/ui/textarea";
-import type { InventoryTemplate, InventoryTemplateWithItems } from "@/lib/event-inventory/types";
+import type { InventoryTemplate } from "@/lib/event-inventory/types";
 import { INVENTORY_TEMPLATE_STARTER_MASTERS, type InventoryTemplateStarterKey } from "@/lib/inventory/starters";
 import { formatRelative } from "@/lib/leads/constants";
 
@@ -109,57 +107,6 @@ function StarterMenu({ missingKeys }: { missingKeys: InventoryTemplateStarterKey
   );
 }
 
-function TemplatePreviewSheet({
-  templateId,
-  templateName,
-  open,
-  onOpenChange,
-}: {
-  templateId: string | null;
-  templateName: string;
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-}) {
-  const [detail, setDetail] = React.useState<InventoryTemplateWithItems | null>(null);
-  const [loading, setLoading] = React.useState(false);
-
-  React.useEffect(() => {
-    if (!open || !templateId) { setDetail(null); return; }
-    setLoading(true);
-    getInventoryTemplateDetailAction(templateId).then((d) => { setDetail(d); setLoading(false); });
-  }, [open, templateId]);
-
-  return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="right" className="w-full sm:max-w-lg overflow-y-auto">
-        <SheetHeader className="mb-2">
-          <SheetTitle>{templateName}</SheetTitle>
-          <p className="text-xs text-muted-foreground">Inventory Template</p>
-        </SheetHeader>
-        <div className="px-4 pb-6 space-y-4">
-          {loading ? (
-            <p className="text-sm text-muted-foreground">Loading…</p>
-          ) : !detail || detail.items.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No items yet.</p>
-          ) : (
-            <ul className="space-y-1 max-h-[60vh] overflow-y-auto rounded-lg border border-border bg-background p-4">
-              {detail.items.map((item) => (
-                <li key={item.id} className="text-sm text-foreground">
-                  · {item.name} <span className="text-muted-foreground">× {item.quantity}</span>
-                </li>
-              ))}
-            </ul>
-          )}
-          <div className="flex flex-wrap gap-2">
-            <Button size="sm" variant="outline" render={<Link href={`/library/inventory-templates/${templateId}`} />}>
-              Open editor
-            </Button>
-          </div>
-        </div>
-      </SheetContent>
-    </Sheet>
-  );
-}
 
 type UseStep = "pick" | "confirm";
 
@@ -263,11 +210,10 @@ function UseInventoryTemplateSheet({
 }
 
 function TemplateCard({
-  template, archivedView, onPreview, onUse, onDelete,
+  template, archivedView, onUse, onDelete,
 }: {
   template: InventoryTemplate;
   archivedView?: boolean;
-  onPreview: () => void;
   onUse: () => void;
   onDelete: () => void;
 }) {
@@ -290,11 +236,11 @@ function TemplateCard({
       isArchived={template.isArchived}
       primaryActions={archivedView
         ? [
-            { id: "preview", label: LIBRARY_LABELS.preview, onClick: onPreview, emphasis: "preview" },
+            { id: "preview", label: LIBRARY_LABELS.preview, href: `/library/inventory-templates/${template.id}/preview`, emphasis: "preview" },
             { id: "restore", label: LIBRARY_LABELS.restore, onClick: toggleArchive, emphasis: "edit" },
           ]
         : [
-            { id: "preview", label: LIBRARY_LABELS.preview, onClick: onPreview, emphasis: "preview" },
+            { id: "preview", label: LIBRARY_LABELS.preview, href: `/library/inventory-templates/${template.id}/preview`, emphasis: "preview" },
             { id: "edit", label: LIBRARY_LABELS.edit, href: `/library/inventory-templates/${template.id}`, emphasis: "edit" },
             { id: "use", label: LIBRARY_LABELS.useTemplate, onClick: onUse, emphasis: "use" },
           ]}
@@ -331,7 +277,6 @@ export function InventoryTemplateList({
   events?: { id: string; name: string; eventDate: string }[];
 }) {
   const { active, archived } = partitionArchived(templates, (t) => t.isArchived);
-  const [previewing, setPreviewing] = React.useState<InventoryTemplate | null>(null);
   const [using, setUsing] = React.useState<InventoryTemplate | null>(null);
   const [deleting, setDeleting] = React.useState<InventoryTemplate | null>(null);
   const [deletePending, setDeletePending] = React.useState(false);
@@ -353,7 +298,6 @@ export function InventoryTemplateList({
     return (
       <TemplateCard
         key={t.id} template={t} archivedView={archivedView}
-        onPreview={() => setPreviewing(t)}
         onUse={() => setUsing(t)}
         onDelete={() => setDeleting(t)}
       />
@@ -390,12 +334,6 @@ export function InventoryTemplateList({
           </LibraryArchivedSection>
         </>
       )}
-      <TemplatePreviewSheet
-        templateId={previewing?.id ?? null}
-        templateName={previewing?.name ?? ""}
-        open={!!previewing}
-        onOpenChange={(o) => { if (!o) setPreviewing(null); }}
-      />
       <UseInventoryTemplateSheet
         template={using}
         events={events}

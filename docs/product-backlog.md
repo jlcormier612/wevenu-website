@@ -210,6 +210,20 @@ Each entry: **Feature**, **Problem**, **Opportunity**, **Suggested Direction**, 
 
 ---
 
+## Package — "Use" Commitment Semantics
+
+**Discovered:** 2026-09-03, during the Template UX Consistency pass (bringing every template library onto the Questionnaire library/preview pattern).
+
+**Problem:** Every other template surface (Questionnaires, Contracts, Timeline, Floor Plan, Event Order, Playbooks, Inventory) has a real, defined "Use" commitment — a specific backend action with a known effect (e.g. "Use Template" on a Contract creates a draft contract; "Use Questionnaire" creates a draft questionnaire on an event). Packages has none. `LIBRARY_LABELS.usePackage` already exists in the shared label vocabulary (`components/library/labels.ts`), but nothing defines what committing a Package actually does — the label was named ahead of the decision, not after it.
+
+**Opportunity:** A real "Use Package" action would make Packages behave consistently with every other template surface a venue browses, and would close the one visible asymmetry left after the Template UX Consistency pass (every other card shows Preview | Edit | Use; Packages shows only Preview | Edit).
+
+**Suggested Direction:** Not decided, and per the Catalog vs. Commitment principle should not be guessed from the existing label alone. Candidate meanings raised and left open: attach the package to a proposal, select it during booking, copy its line items into an Event Order, or apply it to an existing event. Whichever is chosen, the fix is additive (a new primary action + its backend call) — no change needed to the Package data model or the Library card itself.
+
+**Dependencies:** None blocking. Purely a missing product decision, not a missing capability.
+
+---
+
 ## How to use this
 
 Add an entry whenever implementation surfaces a real opportunity that isn't part of the work at hand. Keep entries here until they're either scoped into an actual approved phase (move the detail into that phase's design doc, remove it from here) or explicitly declined (leave a one-line note why, don't delete the history).

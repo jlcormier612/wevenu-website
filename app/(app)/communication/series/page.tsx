@@ -1,29 +1,17 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
+import { SeriesList } from "@/components/communication/series-list";
 import { PageHeader } from "@/components/shell/module-placeholder";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { SEQUENCE_TRIGGER_TYPES } from "@/lib/message-sequences/constants";
 import { ensureStarterAutomationsForCurrentVenue } from "@/lib/message-sequences/provision";
 import { getSequences } from "@/lib/message-sequences/service";
-import { salesStageLabel } from "@/lib/leads/constants";
 
 export const metadata: Metadata = { title: "Automations" };
 
 export default async function SeriesPage() {
   await ensureStarterAutomationsForCurrentVenue();
   const series = await getSequences();
-
-  function triggerSummary(triggerType: string | null, triggerStage: string | null): string {
-    if (!triggerType) return "Manual only";
-    const typeLabel = SEQUENCE_TRIGGER_TYPES.find((t) => t.value === triggerType)?.label ?? triggerType;
-    if (triggerType === "lead_stage_changed" && triggerStage) {
-      return `${typeLabel} · ${salesStageLabel(triggerStage)}`;
-    }
-    return typeLabel;
-  }
 
   return (
     <div className="space-y-6">
@@ -44,26 +32,7 @@ export default async function SeriesPage() {
           <Button render={<Link href="/communication/series/new" />}>+ New Automation</Button>
         </div>
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {series.map((s) => (
-            <Card key={s.id}>
-              <CardHeader>
-                <div className="flex items-start justify-between gap-2">
-                  <CardTitle className="text-base">{s.name}</CardTitle>
-                  <Badge variant={s.status === "active" ? "success" : "muted"} className="text-[10px]">
-                    {s.status === "active" ? "Active" : "Paused"}
-                  </Badge>
-                </div>
-                <CardDescription>{triggerSummary(s.triggerType, s.triggerStage)}</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <Button size="sm" variant="outline" render={<Link href={`/communication/series/${s.id}/edit`} />}>
-                  Edit
-                </Button>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+        <SeriesList initialSeries={series} />
       )}
     </div>
   );

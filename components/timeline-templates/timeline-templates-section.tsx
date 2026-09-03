@@ -8,7 +8,6 @@
 
 import * as React from "react";
 
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { BookPlus, Loader2, Sparkles, Trash2 } from "lucide-react";
 import { toast } from "sonner";
@@ -34,12 +33,7 @@ import { TimelineTemplateStarterPicker } from "@/components/timeline-templates/t
 import type { VenueSpace } from "@/lib/availability/types";
 import { eventTypeLabel, formatRelative } from "@/lib/leads/constants";
 import {
-  formatStarterTimelineDayLabel,
-  groupTimelineItemsByDay,
-} from "@/lib/timeline-templates/constants";
-import {
   TIMELINE_STARTER_MASTERS,
-  getTimelineStarterMaster,
   type TimelineStarterMasterKey,
 } from "@/lib/timeline-templates/starters";
 import type { TimelineTemplateWithStats } from "@/lib/timeline-templates/types";
@@ -51,75 +45,6 @@ function sortTemplates(templates: TimelineTemplateWithStats[]): TimelineTemplate
   });
 }
 
-function TemplatePreviewSheet({
-  template,
-  open,
-  onOpenChange,
-}: {
-  template: TimelineTemplateWithStats | null;
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-}) {
-  const master = template?.sourceMasterKey
-    ? getTimelineStarterMaster(template.sourceMasterKey)
-    : undefined;
-  const groups = template
-    ? groupTimelineItemsByDay(template.previewItems)
-    : [];
-  const multiDay = groups.length > 1;
-
-  return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="right" className="w-full sm:max-w-lg overflow-y-auto">
-        <SheetHeader className="mb-2">
-          <SheetTitle>{template?.name}</SheetTitle>
-          <div className="flex items-center gap-2 flex-wrap text-xs text-muted-foreground">
-            <span>Timeline Template</span>
-            {template?.sourceMasterKey && <Badge variant="muted">Starter</Badge>}
-            {template && <span>· {template.itemCount} {template.itemCount === 1 ? "activity" : "activities"}</span>}
-          </div>
-        </SheetHeader>
-        {template && (
-          <div className="px-4 pb-6 space-y-4">
-            {(master?.description ?? null) && (
-              <p className="text-sm text-muted-foreground">{master?.description}</p>
-            )}
-            <p className="text-xs text-muted-foreground">
-              Activities and sequence only — add times on the Working Timeline after you apply this template.
-            </p>
-            {groups.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No activities yet.</p>
-            ) : (
-              <div className="space-y-4 max-h-[60vh] overflow-y-auto rounded-lg border border-border bg-background p-4">
-                {groups.map((group) => (
-                  <div key={group.dayOffset} className="space-y-1.5">
-                    {multiDay && (
-                      <p className="text-xs font-medium text-heading">
-                        {formatStarterTimelineDayLabel(group.dayOffset, template.sourceMasterKey)}
-                      </p>
-                    )}
-                    <ul className="space-y-1">
-                      {group.items.map((item, i) => (
-                        <li key={`${group.dayOffset}-${i}`} className="text-sm text-foreground">
-                          · {item.title}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                ))}
-              </div>
-            )}
-            <div className="flex flex-wrap gap-2">
-              <Button size="sm" variant="outline" render={<Link href={`/library/timeline-templates/${template.id}`} />}>
-                Open editor
-              </Button>
-            </div>
-          </div>
-        )}
-      </SheetContent>
-    </Sheet>
-  );
-}
 
 export type TimelineEventOption = {
   id: string;
@@ -264,7 +189,7 @@ function StarterMenu({ missingKeys }: { missingKeys: TimelineStarterMasterKey[] 
 }
 
 function TemplateCard({
-  template, busy, onRename, onDuplicate, onSetDefault, onArchiveToggle, onDelete, onPreview, onUse, archivedView,
+  template, busy, onRename, onDuplicate, onSetDefault, onArchiveToggle, onDelete, onUse, archivedView,
 }: {
   template: TimelineTemplateWithStats;
   busy: boolean;
@@ -273,7 +198,6 @@ function TemplateCard({
   onSetDefault: () => void;
   onArchiveToggle: () => void;
   onDelete: () => void;
-  onPreview: () => void;
   onUse: () => void;
   archivedView?: boolean;
 }) {
@@ -281,18 +205,18 @@ function TemplateCard({
 
   const primaryActions = archivedView
     ? [
-        { id: "preview", label: LIBRARY_LABELS.preview, onClick: onPreview, emphasis: "preview" as const },
+        { id: "preview", label: LIBRARY_LABELS.preview, href: `/library/timeline-templates/${template.id}/preview`, emphasis: "preview" as const },
         { id: "restore", label: LIBRARY_LABELS.restore, onClick: onArchiveToggle, emphasis: "edit" as const, disabled: busy },
       ]
     : [
-        { id: "preview", label: LIBRARY_LABELS.preview, onClick: onPreview, emphasis: "preview" as const },
+        { id: "preview", label: LIBRARY_LABELS.preview, href: `/library/timeline-templates/${template.id}/preview`, emphasis: "preview" as const },
         { id: "edit", label: LIBRARY_LABELS.edit, href: `/library/timeline-templates/${template.id}`, emphasis: "edit" as const },
         { id: "use", label: LIBRARY_LABELS.useTimeline, onClick: onUse, emphasis: "use" as const },
       ];
 
   return (
     <LibraryAssetCard
-      layout="grid"
+      layout="row"
       title={template.name}
       isStarter={Boolean(template.sourceMasterKey)}
       isArchived={template.isArchived}
@@ -341,7 +265,6 @@ export function TimelineTemplatesSection({
 }) {
   const [templates, setTemplates] = React.useState(initialTemplates);
   const [busyId, setBusyId] = React.useState<string | null>(null);
-  const [previewing, setPreviewing] = React.useState<TimelineTemplateWithStats | null>(null);
   const [using, setUsing] = React.useState<TimelineTemplateWithStats | null>(null);
   const [deleting, setDeleting] = React.useState<TimelineTemplateWithStats | null>(null);
   const [deletePending, setDeletePending] = React.useState(false);
@@ -429,7 +352,6 @@ export function TimelineTemplatesSection({
     return (
       <TemplateCard
         key={t.id} template={t} busy={busyId === t.id} archivedView={archivedView}
-        onPreview={() => setPreviewing(t)}
         onRename={() => handleRename(t.id, t.name)}
         onDuplicate={() => handleDuplicate(t.id, t.name)}
         onSetDefault={() => handleSetDefault(t.id, t)}
@@ -452,20 +374,15 @@ export function TimelineTemplatesSection({
       {active.length === 0 ? (
         <p className="text-sm text-muted-foreground py-8 text-center">No active timeline templates.</p>
       ) : (
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="space-y-2">
           {active.map((t) => renderCard(t, false))}
         </div>
       )}
       <LibraryArchivedSection count={archived.length}>
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="space-y-2">
           {archived.map((t) => renderCard(t, true))}
         </div>
       </LibraryArchivedSection>
-      <TemplatePreviewSheet
-        template={previewing}
-        open={!!previewing}
-        onOpenChange={(o) => { if (!o) setPreviewing(null); }}
-      />
       <UseTimelineSheet
         template={using}
         events={events}

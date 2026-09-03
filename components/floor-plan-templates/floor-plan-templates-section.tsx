@@ -36,7 +36,6 @@ import type { VenueSpace } from "@/lib/availability/types";
 import { EVENT_TYPES, eventTypeLabel, formatRelative } from "@/lib/leads/constants";
 import {
   FLOOR_PLAN_STARTER_MASTERS,
-  getFloorPlanStarterMaster,
   type FloorPlanStarterMasterKey,
 } from "@/lib/floor-plan-templates/starters";
 import type { FloorPlanTemplateWithStats } from "@/lib/floor-plan-templates/types";
@@ -50,64 +49,6 @@ function sortTemplates(templates: FloorPlanTemplateWithStats[]): FloorPlanTempla
   });
 }
 
-function TemplatePreviewSheet({
-  template,
-  open,
-  onOpenChange,
-}: {
-  template: FloorPlanTemplateWithStats | null;
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-}) {
-  const master = template?.sourceMasterKey
-    ? getFloorPlanStarterMaster(template.sourceMasterKey)
-    : undefined;
-
-  return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="right" className="w-full sm:max-w-xl overflow-y-auto">
-        <SheetHeader className="mb-2">
-          <SheetTitle>{template?.name}</SheetTitle>
-          <div className="flex items-center gap-2 flex-wrap text-xs text-muted-foreground">
-            <span>Floor Plan Template</span>
-            {template?.sourceMasterKey && <Badge variant="muted">Starter</Badge>}
-            {template && (
-              <span>
-                · {template.objectCount} {template.objectCount === 1 ? "element" : "elements"}
-              </span>
-            )}
-          </div>
-        </SheetHeader>
-        {template && (
-          <div className="px-4 pb-6 space-y-4">
-            {(master?.description ?? null) && (
-              <p className="text-sm text-muted-foreground">{master?.description}</p>
-            )}
-            <p className="text-xs text-muted-foreground">
-              Illustrative starting layout — resize the room to your real space on your copy after you open the editor.
-            </p>
-            <div className="rounded-lg border border-border overflow-hidden">
-              <FloorPlanLayoutPreview
-                planName={template.name}
-                roomWidthFt={template.roomWidthFt}
-                roomDepthFt={template.roomDepthFt}
-                backgroundImageUrl={template.backgroundImageUrl}
-                backgroundImageOpacity={template.backgroundImageOpacity}
-                objects={template.previewObjects}
-                maxHeightClassName="max-h-[55vh]"
-              />
-            </div>
-            <div className="flex flex-wrap gap-2">
-              <Button size="sm" variant="outline" render={<Link href={`/library/floor-plan-templates/${template.id}`} />}>
-                Open editor
-              </Button>
-            </div>
-          </div>
-        )}
-      </SheetContent>
-    </Sheet>
-  );
-}
 
 export type FloorPlanEventOption = {
   id: string;
@@ -251,7 +192,7 @@ function StarterMenu({ missingKeys }: { missingKeys: FloorPlanStarterMasterKey[]
 }
 
 function TemplateCard({
-  template, busy, onRename, onDuplicate, onSetDefault, onArchiveToggle, onDelete, onPreview, onUse, archivedView,
+  template, busy, onRename, onDuplicate, onSetDefault, onArchiveToggle, onDelete, onUse, archivedView,
 }: {
   template: FloorPlanTemplateWithStats;
   busy: boolean;
@@ -260,26 +201,26 @@ function TemplateCard({
   onSetDefault: () => void;
   onArchiveToggle: () => void;
   onDelete: () => void;
-  onPreview: () => void;
   onUse: () => void;
   archivedView?: boolean;
 }) {
   const eventType = template.eventType ? eventTypeLabel(template.eventType) : "Any event type";
+  const previewHref = `/library/floor-plan-templates/${template.id}/preview`;
 
   const primaryActions = archivedView
     ? [
-        { id: "preview", label: LIBRARY_LABELS.preview, onClick: onPreview, emphasis: "preview" as const },
+        { id: "preview", label: LIBRARY_LABELS.preview, href: previewHref, emphasis: "preview" as const },
         { id: "restore", label: LIBRARY_LABELS.restore, onClick: onArchiveToggle, emphasis: "edit" as const, disabled: busy },
       ]
     : [
-        { id: "preview", label: LIBRARY_LABELS.preview, onClick: onPreview, emphasis: "preview" as const },
+        { id: "preview", label: LIBRARY_LABELS.preview, href: previewHref, emphasis: "preview" as const },
         { id: "edit", label: LIBRARY_LABELS.edit, href: `/library/floor-plan-templates/${template.id}`, emphasis: "edit" as const },
         { id: "use", label: LIBRARY_LABELS.useFloorPlan, onClick: onUse, emphasis: "use" as const },
       ];
 
   return (
     <LibraryAssetCard
-      layout="grid"
+      layout="row"
       title={template.name}
       isStarter={Boolean(template.sourceMasterKey)}
       isArchived={template.isArchived}
@@ -304,9 +245,10 @@ function TemplateCard({
         },
       ]}
     >
-      <div
-        className="rounded-lg border border-border/60 overflow-hidden cursor-pointer"
-        onClick={onPreview}
+      <Link
+        href={previewHref}
+        className="block rounded-lg border border-border/60 overflow-hidden"
+        onClick={(e) => e.stopPropagation()}
       >
         <FloorPlanLayoutPreview
           planName={template.name}
@@ -318,7 +260,7 @@ function TemplateCard({
           className="overflow-hidden bg-[#F7F5F1] p-1"
           maxHeightClassName="max-h-28"
         />
-      </div>
+      </Link>
     </LibraryAssetCard>
   );
 }
@@ -330,7 +272,6 @@ export function FloorPlanTemplatesSection({
   const [busyId, setBusyId] = React.useState<string | null>(null);
   const [search, setSearch] = React.useState("");
   const [eventTypeFilter, setEventTypeFilter] = React.useState(ANY_EVENT_TYPE);
-  const [previewing, setPreviewing] = React.useState<FloorPlanTemplateWithStats | null>(null);
   const [using, setUsing] = React.useState<FloorPlanTemplateWithStats | null>(null);
   const [deleting, setDeleting] = React.useState<FloorPlanTemplateWithStats | null>(null);
   const [deletePending, setDeletePending] = React.useState(false);
@@ -431,7 +372,6 @@ export function FloorPlanTemplatesSection({
     return (
       <TemplateCard
         key={t.id} template={t} busy={busyId === t.id} archivedView={archivedView}
-        onPreview={() => setPreviewing(t)}
         onRename={() => handleRename(t.id, t.name)}
         onDuplicate={() => handleDuplicate(t.id, t.name)}
         onSetDefault={() => handleSetDefault(t.id, t)}
@@ -479,20 +419,15 @@ export function FloorPlanTemplatesSection({
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="space-y-2">
           {filteredActive.map((t) => renderCard(t, false))}
         </div>
       )}
       <LibraryArchivedSection count={filteredArchived.length}>
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="space-y-2">
           {filteredArchived.map((t) => renderCard(t, true))}
         </div>
       </LibraryArchivedSection>
-      <TemplatePreviewSheet
-        template={previewing}
-        open={!!previewing}
-        onOpenChange={(o) => { if (!o) setPreviewing(null); }}
-      />
       <UseFloorPlanSheet
         template={using}
         events={events}
