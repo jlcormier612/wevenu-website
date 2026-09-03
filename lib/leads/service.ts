@@ -8,6 +8,8 @@ import { createClient } from "@/integrations/supabase/server";
 import { createAdminClient } from "@/integrations/supabase/admin";
 import { isSupabaseConfigured } from "@/lib/env";
 import * as repo from "@/lib/leads/repository";
+import { LeadTourWriteError, TOUR_TIME_REQUIRED } from "@/lib/leads/relationship-tour";
+import { tourCapacityFailureFromUnknown } from "@/lib/tours/occupancy";
 import { requireAdminUser } from "@/lib/hq/crm-service";
 import type {
   CreateLeadResult,
@@ -470,9 +472,23 @@ export async function updateRelationshipFields(
   activityHints: { tourScheduled?: boolean; followUpSet?: boolean; contactedSet?: boolean },
 ): Promise<LeadActionResult> {
   const result = await withVenue(async (supabase, venueId) => {
-    await repo.updateRelationshipFields(supabase, venueId, leadId, input);
+    try {
+      await repo.updateRelationshipFields(supabase, venueId, leadId, input);
+    } catch (err) {
+      if (err instanceof LeadTourWriteError) {
+        return { ok: false, message: err.message || TOUR_TIME_REQUIRED } as LeadActionResult;
+      }
+      const fail = tourCapacityFailureFromUnknown(err);
+      if (fail) {
+        return {
+          ok: false,
+          message: "That time is no longer available. Please choose another time.",
+        } as LeadActionResult;
+      }
+      throw err;
+    }
     // Log specific meaningful events rather than a generic "updated".
-    if (activityHints.tourScheduled && input.tourDate) {
+    if (activityHints.tourScheduled && input.tourDate && input.tourTime) {
       const { formatDate } = await import("@/lib/leads/constants");
       await repo.insertActivity(supabase, venueId, leadId, "tour_scheduled",
         `Tour scheduled for ${formatDate(input.tourDate)}`);

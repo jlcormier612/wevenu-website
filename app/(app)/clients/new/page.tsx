@@ -3,10 +3,13 @@ import type { Metadata } from "next";
 import { ClientForm } from "@/components/clients/client-form";
 import { PageHeader } from "@/components/shell/module-placeholder";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { getSpaces, getCapacityRules } from "@/lib/availability/service";
+import { effectiveMaxSimultaneousEvents } from "@/lib/availability/event-occupancy";
 
 export const metadata: Metadata = { title: "New Client" };
 
-export default function NewClientPage() {
+export default async function NewClientPage() {
+  const [spaces, capacityRules] = await Promise.all([getSpaces(), getCapacityRules()]);
   return (
     <div className="space-y-6">
       <PageHeader
@@ -21,7 +24,7 @@ export default function NewClientPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <ClientForm />
+          <ClientForm spaces={spaces} maxSimultaneousEvents={effectiveMaxSimultaneousEvents(capacityRules)} />
         </CardContent>
       </Card>
     </div>

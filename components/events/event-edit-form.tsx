@@ -11,7 +11,7 @@ import { eventInputFromVenueEvent } from "@/lib/events/constants";
 import type { EventErrors, EventInput, VenueEvent } from "@/lib/events/types";
 import type { VenueSpace } from "@/lib/availability/types";
 
-export function EventEditForm({ event, spaces = [] }: { event: VenueEvent; spaces?: VenueSpace[] }) {
+export function EventEditForm({ event, spaces = [], maxSimultaneousEvents = 1 }: { event: VenueEvent; spaces?: VenueSpace[]; maxSimultaneousEvents?: number }) {
   const router = useRouter();
   const [input, setInput] = React.useState<EventInput>(() => eventInputFromVenueEvent(event));
   const [errors, setErrors] = React.useState<EventErrors>({});
@@ -31,5 +31,5 @@ export function EventEditForm({ event, spaces = [] }: { event: VenueEvent; space
     });
   }
 
-  return <EventFormFields input={input} errors={errors} set={set} onSubmit={handleSubmit} pending={pending} submitLabel="Save changes" spaces={spaces} existingEventId={event.id} />;
+  return <EventFormFields input={input} errors={errors} set={set} onSubmit={handleSubmit} pending={pending} submitLabel="Save changes" spaces={spaces} existingEventId={event.id} maxSimultaneousEvents={maxSimultaneousEvents} />;
 }

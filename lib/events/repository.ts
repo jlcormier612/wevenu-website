@@ -13,6 +13,7 @@ import type {
   VenueEvent,
 } from "@/lib/events/types";
 
+import { OccupancyWriteError, occupancyFailureFromUnknown, CalendarBlockWriteError, calendarBlockFailureFromUnknown } from "@/lib/availability/event-occupancy";
 import { getFloorPlansByEvent } from "@/lib/floor-plans/repository";
 import { getTimelineEntries } from "@/lib/timeline/repository";
 import { getEventVendorAssignments } from "@/lib/vendors/repository";
@@ -186,62 +187,21 @@ function toEventRow(venueId: string, input: EventInput): Record<string, unknown>
   };
 }
 
-/**
- * TR-B1 (Trust Risk Register): hard, server-side double-booking check for
- * the path a coordinator actually uses every day (manual event create/
- * edit) — previously only the public tour-booking widget had a real
- * conflict guard; this path had none at all beyond a client-side,
- * ignorable, date-only "advisory" warning. Compares the full
- * setup-through-teardown window (not just the ceremony start/end) against
- * every other non-cancelled event in the same space on the same date, so
- * back-to-back bookings that would actually overlap on setup/teardown are
- * still caught. Returns a conflict only for a genuine time overlap in the
- * same space — never a false positive for two non-overlapping events in
- * the same room on the same day.
- */
-export async function checkEventSpaceConflict(
-  client: DbClient,
-  venueId: string,
-  input: EventInput,
-  excludeEventId?: string,
-): Promise<{ conflict: boolean; message?: string }> {
-  if (!input.spaceId) return { conflict: false };
-
-  let q = client
-    .from("events")
-    .select("id, name, start_time, end_time, setup_time, teardown_time")
-    .eq("venue_id", venueId)
-    .eq("space_id", input.spaceId)
-    .eq("event_date", input.eventDate)
-    .not("status", "in", "(cancelled)");
-  if (excludeEventId) q = q.neq("id", excludeEventId);
-  const { data, error } = await q;
-  if (error) throw error;
-
-  const windowStart = input.setupTime || input.startTime || "00:00";
-  const windowEnd = input.teardownTime || input.endTime || "23:59";
-
-  for (const row of (data ?? []) as { id: string; name: string; start_time: string | null; end_time: string | null; setup_time: string | null; teardown_time: string | null }[]) {
-    const otherStart = row.setup_time || row.start_time || "00:00";
-    const otherEnd = row.teardown_time || row.end_time || "23:59";
-    // Standard interval overlap on "HH:MM" strings — lexicographic compare
-    // is safe since they're zero-padded and same-length.
-    const overlaps = windowStart < otherEnd && otherStart < windowEnd;
-    if (overlaps) {
-      return {
-        conflict: true,
-        message: `This space is already booked for "${row.name}" at an overlapping time on this date.`,
-      };
-    }
-  }
-  return { conflict: false };
+function throwIfOccupancyDenied(error: unknown): never | void {
+  const fail = occupancyFailureFromUnknown(error);
+  if (fail) throw new OccupancyWriteError(fail.code, fail.message);
+  const blocked = calendarBlockFailureFromUnknown(error);
+  if (blocked) throw new CalendarBlockWriteError(blocked.message);
 }
 
 export async function insertEvent(client: DbClient, venueId: string, input: EventInput): Promise<string> {
   const { data, error } = await client.from("events")
     .insert(toEventRow(venueId, input))
     .select("id").single<{ id: string }>();
-  if (error) throw error;
+  if (error) {
+    throwIfOccupancyDenied(error);
+    throw error;
+  }
   return data.id;
 }
 
@@ -249,12 +209,18 @@ export async function updateEvent(client: DbClient, venueId: string, eventId: st
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { error } = await (client.from("events") as any)
     .update(toEventRow(venueId, input)).eq("id", eventId).eq("venue_id", venueId);
-  if (error) throw error;
+  if (error) {
+    throwIfOccupancyDenied(error);
+    throw error;
+  }
 }
 
 export async function updateEventStatus(client: DbClient, venueId: string, eventId: string, status: EventStatus): Promise<void> {
   const { error } = await client.from("events").update({ status }).eq("id", eventId).eq("venue_id", venueId);
-  if (error) throw error;
+  if (error) {
+    throwIfOccupancyDenied(error);
+    throw error;
+  }
 }
 
 // ---- notes ------------------------------------------------------------------

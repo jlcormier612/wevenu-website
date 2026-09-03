@@ -3,7 +3,8 @@ import type { Metadata } from "next";
 import { EventForm } from "@/components/events/event-form";
 import { PageHeader } from "@/components/shell/module-placeholder";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { getSpaces } from "@/lib/availability/service";
+import { getSpaces, getCapacityRules } from "@/lib/availability/service";
+import { effectiveMaxSimultaneousEvents } from "@/lib/availability/event-occupancy";
 import { clientDisplayName } from "@/lib/clients/constants";
 import { getClient } from "@/lib/clients/service";
 import { createInitialEventInput } from "@/lib/events/constants";
@@ -15,7 +16,7 @@ type Props = { searchParams: Promise<{ clientId?: string }> };
 
 export default async function NewEventPage({ searchParams }: Props) {
   const { clientId } = await searchParams;
-  const [spaces, allTemplates] = await Promise.all([getSpaces(), getTemplatesForLibrary()]);
+  const [spaces, allTemplates, capacityRules] = await Promise.all([getSpaces(), getTemplatesForLibrary(), getCapacityRules()]);
   // Archived templates aren't valid choices for a brand-new event — same
   // exclusion the old getTemplates() applied by default.
   const playbookTemplates = allTemplates.filter((t) => !t.isArchived);
@@ -52,7 +53,7 @@ export default async function NewEventPage({ searchParams }: Props) {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <EventForm initial={prefill} spaces={spaces} playbookTemplates={playbookTemplates} />
+          <EventForm initial={prefill} spaces={spaces} playbookTemplates={playbookTemplates} maxSimultaneousEvents={effectiveMaxSimultaneousEvents(capacityRules)} />
         </CardContent>
       </Card>
     </div>

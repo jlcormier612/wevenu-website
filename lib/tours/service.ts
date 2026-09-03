@@ -4,6 +4,7 @@ import { isSupabaseConfigured } from "@/lib/env";
 import { getCurrentVenue } from "@/lib/venue/service";
 import { getVenueTimezone, utcToVenueLocalParts, venueLocalToUtcIso } from "@/lib/venue/timezone";
 import { parseCoordinatorTourAvailability, type TourAvailabilityLoad } from "@/lib/tours/availability-read";
+import { tourCapacityFailureFromUnknown } from "@/lib/tours/occupancy";
 import type { BookingResult, CoordinatorTourResult, SimpleTourResult, TourAvailabilityException, TourAvailabilityExceptionInput, TourAvailabilityWindow, TourAvailabilityWindowInput, TourSettings, TourSlot, TourVenueInfo } from "@/lib/tours/types";
 import type { CalendarItem } from "@/lib/calendar/types";
 import { eventTypeLabel, leadDisplayName } from "@/lib/leads/constants";
@@ -183,7 +184,10 @@ export async function bookTour(
           custom_answers: (opts?.sourceData?.custom_answers as Record<string, unknown> | undefined) ?? undefined,
         },
       });
-      if (error) return { ok: false, error: error.message };
+      if (error) {
+        const fail = tourCapacityFailureFromUnknown(error);
+        return { ok: false, error: fail ? TOUR_BOOK_ERRORS.slot_unavailable : error.message };
+      }
       const d = data as Record<string, unknown>;
       if (!d?.ok) {
         return { ok: false, error: TOUR_BOOK_ERRORS[d?.error as string] ?? "Could not book this slot. Please try again." };
@@ -445,7 +449,10 @@ export async function scheduleTourForLead(leadId: string, slotStart: string, not
   if (!venue) return { ok: false, error: "Session expired." };
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("book_tour_for_lead", { p_lead_id: leadId, p_slot_start: slotStart, p_notes: notes ?? null });
-  if (error) return { ok: false, error: error.message };
+  if (error) {
+    const fail = tourCapacityFailureFromUnknown(error);
+    return { ok: false, error: fail ? TOUR_RPC_ERRORS.slot_taken : error.message };
+  }
   const d = data as Record<string, unknown>;
   if (!d?.ok) return { ok: false, error: TOUR_RPC_ERRORS[d?.error as string] ?? "Could not schedule this tour." };
 
@@ -479,7 +486,10 @@ export async function rescheduleTour(appointmentId: string, newSlotStart: string
   if (!venue) return { ok: false, error: "Session expired." };
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("reschedule_tour", { p_appointment_id: appointmentId, p_new_slot_start: newSlotStart });
-  if (error) return { ok: false, error: error.message };
+  if (error) {
+    const fail = tourCapacityFailureFromUnknown(error);
+    return { ok: false, error: fail ? TOUR_RPC_ERRORS.slot_taken : error.message };
+  }
   const d = data as Record<string, unknown>;
   if (!d?.ok) return { ok: false, error: TOUR_RPC_ERRORS[d?.error as string] ?? "Could not reschedule this tour." };
 
@@ -558,7 +568,10 @@ export async function updateTourStatus(
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { error } = await (supabase.from("tour_appointments") as any).update(patch).eq("id", appointmentId).eq("venue_id", venue.id);
-  if (error) return { ok: false, error: error.message };
+  if (error) {
+    const fail = tourCapacityFailureFromUnknown(error);
+    return { ok: false, error: fail ? TOUR_RPC_ERRORS.slot_taken : error.message };
+  }
 
   if (becameConfirmed && appt.lead_id) {
     void supabase.from("lead_activities").insert({

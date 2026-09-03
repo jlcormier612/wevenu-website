@@ -1,6 +1,7 @@
 /**
  * Events application service. Server-only.
  */
+import { occupancyFailureFromUnknown, calendarBlockFailureFromUnknown } from "@/lib/availability/event-occupancy";
 import { createClient } from "@/integrations/supabase/server";
 import { isSupabaseConfigured } from "@/lib/env";
 import * as repo from "@/lib/events/repository";
@@ -18,6 +19,19 @@ import { validateEventInput, validateEventStatus, validateTeamMemberInput } from
 import { normalizeEventEndDate } from "@/lib/events/constants";
 import { syncEventVendorAvailability } from "@/lib/vendor-availability/sync";
 import { getCurrentVenue } from "@/lib/venue/service";
+
+function occupancyActionFailure(err: unknown): EventActionResult | CreateEventResult | null {
+  const fail = occupancyFailureFromUnknown(err);
+  if (fail) {
+    const errors = fail.code === "missing_space" || fail.code === "invalid_space" || fail.code === "no_spaces"
+      ? { spaceId: fail.message }
+      : undefined;
+    return { ok: false, message: fail.message, code: fail.code, errors };
+  }
+  const blocked = calendarBlockFailureFromUnknown(err);
+  if (blocked) return { ok: false, message: blocked.message };
+  return null;
+}
 
 async function withVenue<T>(
   fn: (supabase: Awaited<ReturnType<typeof createClient>>, venueId: string) => Promise<T>,
@@ -60,11 +74,14 @@ export async function createEvent(input: EventInput): Promise<CreateEventResult>
   const errors = validateEventInput(input);
   if (Object.keys(errors).length > 0) return { ok: false, errors };
   const result = await withVenue(async (supabase, venueId) => {
-    // TR-B1: hard double-booking guard — see lib/events/repository.ts
-    const conflict = await repo.checkEventSpaceConflict(supabase, venueId, input);
-    if (conflict.conflict) return { ok: false, message: conflict.message } as CreateEventResult;
-    const eventId = await repo.insertEvent(supabase, venueId, input);
-    return { ok: true, eventId } as CreateEventResult;
+    try {
+      const eventId = await repo.insertEvent(supabase, venueId, input);
+      return { ok: true, eventId } as CreateEventResult;
+    } catch (err) {
+      const fail = occupancyActionFailure(err);
+      if (fail) return fail as CreateEventResult;
+      throw err;
+    }
   });
   return result as CreateEventResult;
 }
@@ -75,12 +92,14 @@ export async function updateEvent_(eventId: string, input: EventInput): Promise<
   const errors = validateEventInput(input);
   if (Object.keys(errors).length > 0) return { ok: false, errors };
   const result = await withVenue(async (supabase, venueId) => {
-    // TR-B1: hard double-booking guard — see lib/events/repository.ts
-    const conflict = await repo.checkEventSpaceConflict(supabase, venueId, input, eventId);
-    if (conflict.conflict) return { ok: false, message: conflict.message } as EventActionResult;
-
     const before = await repo.getEvent(supabase, venueId, eventId);
-    await repo.updateEvent(supabase, venueId, eventId, input);
+    try {
+      await repo.updateEvent(supabase, venueId, eventId, input);
+    } catch (err) {
+      const fail = occupancyActionFailure(err);
+      if (fail) return fail as EventActionResult;
+      throw err;
+    }
     await repo.insertEventActivity(supabase, venueId, eventId, "event_updated", "Event details updated");
 
     // Product Decisions (2026-07-08): relative due dates stay synchronized
@@ -115,7 +134,13 @@ export async function updateEventStatus_(eventId: string, status: string): Promi
   if (!validateEventStatus(status)) return { ok: false, message: `"${status}" is not a valid status.` };
   const result = await withVenue(async (supabase, venueId) => {
     const before = await repo.getEvent(supabase, venueId, eventId);
-    await repo.updateEventStatus(supabase, venueId, eventId, status as EventStatus);
+    try {
+      await repo.updateEventStatus(supabase, venueId, eventId, status as EventStatus);
+    } catch (err) {
+      const fail = occupancyActionFailure(err);
+      if (fail) return fail as EventActionResult;
+      throw err;
+    }
     // Cancel frees Booked days; restoring a cancelled event re-books them.
     if (before && before.status !== status) {
       await syncEventVendorAvailability(eventId, {

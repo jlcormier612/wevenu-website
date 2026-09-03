@@ -120,8 +120,11 @@ export async function getScheduleRelationOptionAction(kind: "lead" | "client", i
 
 export async function checkAvailabilityAction(opts: {
   date: string;
+  endDate?: string;
   startTime?: string;
   endTime?: string;
+  setupTime?: string;
+  teardownTime?: string;
   spaceId?: string;
   type: "event" | "tour";
   excludeId?: string;

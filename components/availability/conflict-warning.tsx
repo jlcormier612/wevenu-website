@@ -3,7 +3,7 @@
 import * as React from "react";
 import { AlertTriangle, CalendarX, Ban } from "lucide-react";
 import { checkAvailabilityAction } from "@/app/(app)/availability/actions";
-import type { AvailabilityStatus, ConflictItem } from "@/lib/availability/types";
+import type { AvailabilityStatus, ConflictItem, ConflictType } from "@/lib/availability/types";
 
 function ConflictRow({ conflict }: { conflict: ConflictItem }) {
   if (conflict.severity === "error") {
@@ -22,14 +22,55 @@ function ConflictRow({ conflict }: { conflict: ConflictItem }) {
   );
 }
 
+function conflictFooter(kind: "event" | "tour", conflicts: ConflictItem[]): string {
+  const errors = conflicts.filter((c) => c.severity === "error");
+  if (errors.length === 0) return "You can still proceed — this is advisory only.";
+  const types = new Set<ConflictType>(errors.map((c) => c.type));
+  if (kind === "event") {
+    if (types.size === 1 && types.has("calendar_blocked")) {
+      return "Remove this block from the Calendar before creating an event on this date.";
+    }
+    if (types.has("event_turnaround")) {
+      return "Allow the required turnaround after the previous event before this one starts.";
+    }
+    return "This event cannot be saved until the conflict is resolved.";
+  }
+  if (types.has("tour_event_overlap")) {
+    return "Choose a time that does not overlap the Event's setup-to-teardown window.";
+  }
+  if (types.has("tour_outside_window")) {
+    return "Choose a time within the venue's tour hours.";
+  }
+  if (types.has("calendar_blocked")) {
+    return "This tour time is blocked on the Calendar.";
+  }
+  if (types.has("tour_exception")) {
+    return "Tours are not offered on this date.";
+  }
+  if (types.has("tour_capacity_full")) {
+    return "Choose a different time — this slot is at tour capacity.";
+  }
+  return "This time is not available.";
+}
+
 export function ConflictWarning({
   date,
+  endDate,
+  startTime,
+  endTime,
+  setupTime,
+  teardownTime,
   spaceId,
   type,
   excludeId,
   onStatusChange,
 }: {
   date: string;
+  endDate?: string;
+  startTime?: string;
+  endTime?: string;
+  setupTime?: string;
+  teardownTime?: string;
   spaceId?: string;
   type: "event" | "tour";
   excludeId?: string;
@@ -48,19 +89,29 @@ export function ConflictWarning({
 
     if (timerRef.current) clearTimeout(timerRef.current);
     timerRef.current = setTimeout(async () => {
-      const result = await checkAvailabilityAction({ date, spaceId: spaceId || undefined, type, excludeId });
+      const result = await checkAvailabilityAction({
+        date,
+        endDate: endDate || undefined,
+        startTime: startTime || undefined,
+        endTime: endTime || undefined,
+        setupTime: setupTime || undefined,
+        teardownTime: teardownTime || undefined,
+        spaceId: spaceId || undefined,
+        type,
+        excludeId,
+      });
       setStatus(result);
-      onStatusChange?.(result.conflicts.some(c => c.severity === "error"));
+      onStatusChange?.(result.conflicts.some((c) => c.severity === "error"));
     }, 400);
 
     return () => { if (timerRef.current) clearTimeout(timerRef.current); };
-  }, [date, spaceId, type, excludeId]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [date, endDate, startTime, endTime, setupTime, teardownTime, spaceId, type, excludeId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!status || status.conflicts.length === 0) return null;
 
-  const hasError = status.conflicts.some(c => c.severity === "error");
-  const errors   = status.conflicts.filter(c => c.severity === "error");
-  const warnings = status.conflicts.filter(c => c.severity === "warning");
+  const hasError = status.conflicts.some((c) => c.severity === "error");
+  const errors = status.conflicts.filter((c) => c.severity === "error");
+  const warnings = status.conflicts.filter((c) => c.severity === "warning");
 
   return (
     <div className={[
@@ -77,13 +128,11 @@ export function ConflictWarning({
         </p>
       </div>
       <div className="space-y-1">
-        {errors.map((c, i)   => <ConflictRow key={`e${i}`} conflict={c} />)}
+        {errors.map((c, i) => <ConflictRow key={`e${i}`} conflict={c} />)}
         {warnings.map((c, i) => <ConflictRow key={`w${i}`} conflict={c} />)}
       </div>
       <p className={["text-xs", hasError ? "text-destructive/80" : "text-muted-foreground"].join(" ")}>
-        {hasError
-          ? "Remove this block from the Calendar before creating an event on this date."
-          : "You can still proceed — this is advisory only."}
+        {conflictFooter(type, status.conflicts)}
       </p>
     </div>
   );

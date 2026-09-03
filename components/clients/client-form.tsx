@@ -8,6 +8,8 @@ import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { createClientAction } from "@/app/(app)/clients/actions";
+import { ConflictWarning } from "@/components/availability/conflict-warning";
+import { EventSpaceField } from "@/components/availability/event-space-field";
 import { Field } from "@/components/setup/field";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -23,6 +25,7 @@ import {
   formatDate,
 } from "@/lib/clients/constants";
 import type { ClientErrors, ClientInput } from "@/lib/clients/types";
+import type { VenueSpace } from "@/lib/availability/types";
 
 /**
  * Commitment Alignment Sprint (docs/commitment-lifecycle-architecture.md
@@ -44,7 +47,13 @@ function ManagedOnEventField({ label, value, eventId }: { label: string; value: 
   );
 }
 
-export function ClientForm() {
+export function ClientForm({
+  spaces = [],
+  maxSimultaneousEvents = 1,
+}: {
+  spaces?: VenueSpace[];
+  maxSimultaneousEvents?: number;
+}) {
   const router = useRouter();
   const [input, setInput] = React.useState<ClientInput>(() => createInitialClientInput());
   const [errors, setErrors] = React.useState<ClientErrors>({});
@@ -71,11 +80,12 @@ export function ClientForm() {
     });
   }
 
-  return <ClientFormFields input={input} errors={errors} set={set} onSubmit={handleSubmit} pending={pending} />;
+  return <ClientFormFields input={input} errors={errors} set={set} onSubmit={handleSubmit} pending={pending} spaces={spaces} maxSimultaneousEvents={maxSimultaneousEvents} />;
 }
 
 export function ClientFormFields({
   input, errors, set, onSubmit, pending, submitLabel = "Save client", linkedEventId = null,
+  spaces = [], maxSimultaneousEvents = 1,
 }: {
   input: ClientInput;
   errors: ClientErrors;
@@ -84,8 +94,12 @@ export function ClientFormFields({
   pending: boolean;
   submitLabel?: string;
   linkedEventId?: string | null;
+  spaces?: VenueSpace[];
+  maxSimultaneousEvents?: number;
 }) {
   const router = useRouter();
+  const [dateBlocked, setDateBlocked] = React.useState(false);
+  const spacesRequired = maxSimultaneousEvents >= 2 && !linkedEventId;
 
   return (
     <div className="space-y-6">
@@ -147,6 +161,27 @@ export function ClientFormFields({
             </Field>
           )}
         </div>
+        {!linkedEventId && (
+          <>
+            <EventSpaceField
+              value={input.spaceId}
+              onChange={(v) => set("spaceId", v)}
+              spaces={spaces}
+              spacesRequired={spacesRequired}
+              error={errors.spaceId}
+            />
+            {input.eventDate && (
+              <ConflictWarning
+                date={input.eventDate}
+                endDate={input.endDate || undefined}
+                startTime={input.ceremonyTime || undefined}
+                spaceId={input.spaceId || undefined}
+                type="event"
+                onStatusChange={setDateBlocked}
+              />
+            )}
+          </>
+        )}
         <div className="grid gap-4 sm:grid-cols-2">
           <Field label="Ceremony time" htmlFor="ct">
             <Input id="ct" type="time" value={input.ceremonyTime} onChange={(e) => set("ceremonyTime", e.target.value)} />
@@ -175,7 +210,8 @@ export function ClientFormFields({
 
       <div className="flex items-center justify-end gap-3">
         <Button type="button" variant="outline" onClick={() => router.back()} disabled={pending}>Cancel</Button>
-        <Button type="button" onClick={onSubmit} disabled={pending}>
+        <Button type="button" onClick={onSubmit} disabled={pending || dateBlocked}
+          title={dateBlocked ? "This date is unavailable." : undefined}>
           {pending ? <><Loader2 className="mr-1 h-4 w-4 animate-spin" />Saving…</> : submitLabel}
         </Button>
       </div>

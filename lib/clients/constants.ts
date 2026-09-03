@@ -62,6 +62,7 @@ export function createInitialClientInput(source?: Client | null): ClientInput {
     receptionTime: source?.receptionTime ?? "",
     rehearsalDate: source?.rehearsalDate ?? "",
     internalNotes: source?.internalNotes ?? "",
+    spaceId: "",
   };
 }
 

@@ -129,10 +129,15 @@ export type CalendarBlock = {
 
 export type ConflictType =
   | "event_capacity_full"  // max simultaneous events reached
+  | "event_occupancy"      // space required / no spaces / invalid space
   | "tour_capacity_full"   // max simultaneous tours reached
+  | "tour_event_overlap"   // Tour interval overlaps an Event operational window
+  | "tour_outside_window"  // Tour duration does not fit a weekly availability window
+  | "tour_exception"       // tour_availability_exceptions closed this date
   | "calendar_blocked"     // administrative block on this date
   | "space_booked"         // the specific space is already taken
-  | "hold_exists";         // an active date hold exists
+  | "hold_exists"         // an active date hold exists
+  | "event_turnaround";    // min_turnaround_hours not satisfied
 
 export type ConflictItem = {
   type: ConflictType;

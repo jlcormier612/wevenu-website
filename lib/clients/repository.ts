@@ -1,6 +1,7 @@
 /**
  * Clients data access layer. Server-only.
  */
+import { occupancyFailureFromUnknown, OccupancyWriteError, calendarBlockFailureFromUnknown, CalendarBlockWriteError } from "@/lib/availability/event-occupancy";
 import { createClient } from "@/integrations/supabase/server";
 import type {
   Client,
@@ -157,6 +158,28 @@ export async function findActiveDuplicateClient(
   return data ?? null;
 }
 
+function clientAtomicPayload(input: ClientInput, leadId?: string | null, historicalImport = false) {
+  return {
+    leadId: leadId || null,
+    firstName: input.firstName.trim(),
+    lastName: input.lastName.trim(),
+    email: input.email.trim(),
+    phone: input.phone.trim(),
+    partnerFirstName: input.partnerFirstName.trim(),
+    partnerLastName: input.partnerLastName.trim(),
+    partnerEmail: input.partnerEmail.trim(),
+    eventType: input.eventType,
+    eventDate: input.eventDate,
+    endDate: input.endDate,
+    guestCount: input.guestCount,
+    ceremonyTime: input.ceremonyTime,
+    receptionTime: input.receptionTime,
+    rehearsalDate: input.rehearsalDate,
+    internalNotes: input.internalNotes.trim(),
+    isHistoricalImport: historicalImport,
+  };
+}
+
 export async function insertClient(
   client: DbClient, venueId: string, input: ClientInput, leadId?: string | null, historicalImport = false,
 ): Promise<string> {
@@ -182,33 +205,63 @@ export async function insertClient(
   // lets a white-glove staff action call this exact same function, with
   // an admin client and this venueId, and land in the right venue.
   const { data, error } = await client.rpc("create_client_atomic", {
-    payload: {
-      leadId: leadId || null,
-      firstName: input.firstName.trim(),
-      lastName: input.lastName.trim(),
-      email: input.email.trim(),
-      phone: input.phone.trim(),
-      partnerFirstName: input.partnerFirstName.trim(),
-      partnerLastName: input.partnerLastName.trim(),
-      partnerEmail: input.partnerEmail.trim(),
-      eventType: input.eventType,
-      eventDate: input.eventDate,
-      endDate: input.endDate,
-      guestCount: input.guestCount,
-      ceremonyTime: input.ceremonyTime,
-      receptionTime: input.receptionTime,
-      rehearsalDate: input.rehearsalDate,
-      internalNotes: input.internalNotes.trim(),
-      // Migration Center — Historical Import Mode. Read inside
-      // create_client_atomic() to set clients.is_historical_import —
-      // provenance, and (via createClientCore's own check) what suppresses
-      // the portal-invite email for backfilled data.
-      isHistoricalImport: historicalImport,
-    },
+    payload: clientAtomicPayload(input, leadId, historicalImport),
     p_venue_id_override: venueId,
   });
   if (error) throw error;
   return data as string;
+}
+
+export type DatedEventWrite = {
+  name: string;
+  eventType?: string | null;
+  eventDate: string;
+  eventEndDate?: string | null;
+  startTime?: string | null;
+  endTime?: string | null;
+  setupTime?: string | null;
+  teardownTime?: string | null;
+  guestCount?: string | null;
+  spaceId?: string | null;
+};
+
+/** Client + dated Event in one Postgres transaction (occupancy trigger on insert). */
+export async function insertClientWithDatedEvent(
+  client: DbClient,
+  venueId: string,
+  input: ClientInput,
+  event: DatedEventWrite,
+  leadId?: string | null,
+  historicalImport = false,
+): Promise<{ clientId: string; eventId: string }> {
+  const { data, error } = await client.rpc("create_client_and_event_with_availability", {
+    payload: clientAtomicPayload(input, leadId, historicalImport),
+    p_event: {
+      name: event.name,
+      eventType: event.eventType ?? "",
+      eventDate: event.eventDate,
+      eventEndDate: event.eventEndDate ?? "",
+      startTime: event.startTime ?? "",
+      endTime: event.endTime ?? "",
+      setupTime: event.setupTime ?? "",
+      teardownTime: event.teardownTime ?? "",
+      guestCount: event.guestCount ?? "",
+      spaceId: event.spaceId ?? "",
+    },
+    p_venue_id_override: venueId,
+  });
+  if (error) {
+    const fail = occupancyFailureFromUnknown(error);
+    if (fail) throw new OccupancyWriteError(fail.code, fail.message);
+    const blocked = calendarBlockFailureFromUnknown(error);
+    if (blocked) throw new CalendarBlockWriteError(blocked.message);
+    throw error;
+  }
+  const row = data as { ok?: boolean; client_id?: string; event_id?: string } | null;
+  if (!row || row.ok !== true || !row.client_id || !row.event_id) {
+    throw new Error("create_client_and_event_with_availability returned an unexpected payload.");
+  }
+  return { clientId: row.client_id, eventId: row.event_id };
 }
 
 export async function updateClientInfo(client: DbClient, venueId: string, clientId: string, input: ClientInput): Promise<void> {

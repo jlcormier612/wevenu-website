@@ -55,17 +55,17 @@ export function CapacityRulesSection({ initialRules }: { initialRules: VenueCapa
         value={maxEvents}
         onChange={setMaxEvents}
         label="Maximum simultaneous events"
-        hint="How many events can take place at your venue at the same time. Most venues select 1."
+        hint="How many events can occupy the venue at the same time. 1 is a simple venue. 2 or more requires Event Spaces for overlapping events."
       />
       <CountSelect
         value={maxTours}
         onChange={setMaxTours}
         label="Maximum simultaneous tours"
-        hint="How many venue tours / site visits can run at the same time. Depends on your coordinator capacity."
+        hint="How many venue tours / site visits can run at the same time. Enforced when a tour is booked. Depends on your coordinator capacity."
       />
       <div className="space-y-1.5">
         <Label className="text-sm font-medium text-heading">Minimum turnaround between events (hours)</Label>
-        <p className="text-xs text-muted-foreground">Buffer time required between events for setup and teardown. Set to 0 if events can be back-to-back.</p>
+        <p className="text-xs text-muted-foreground">Enforced when an event is booked. Hours required between one event&apos;s operational end (including teardown) and the next event&apos;s operational start (including setup). Simple venues apply this venue-wide; overlapping-event venues apply it per Event Space. Set to 0 if events can be back-to-back.</p>
         <Input
           type="number"
           value={turnaround}

@@ -4,6 +4,8 @@
  * Maps snake_case rows to camelCase domain types. Server-only.
  */
 import { createClient } from "@/integrations/supabase/server";
+import { LeadTourWriteError, resolveLeadTourWrite } from "@/lib/leads/relationship-tour";
+import { TourCapacityWriteError, tourCapacityFailureFromUnknown } from "@/lib/tours/occupancy";
 import { getVenueTimezone, utcToVenueLocalParts, venueLocalToUtcIso } from "@/lib/venue/timezone";
 import type {
   Lead,
@@ -86,10 +88,9 @@ export async function getCurrentToursForLeads(client: DbClient, venueId: string,
 
 /**
  * Create or update the lead's tour appointment from the relationship-card
- * form. Clearing the date cancels the existing appointment rather than
- * deleting history. This is the only write path for manually-scheduled
- * tours — the public booking widget's book_tour() RPC writes the same
- * table directly.
+ * form. A scheduled Tour requires both date and time — date-only is refused,
+ * never stored as a fabricated noon timestamp. Clearing the date cancels the
+ * existing appointment rather than deleting history.
  */
 export async function upsertLeadTour(
   client: DbClient,
@@ -102,7 +103,11 @@ export async function upsertLeadTour(
     .neq("status", "cancelled")
     .order("scheduled_at", { ascending: false }).limit(1).maybeSingle<{ id: string }>();
 
-  if (!input.tourDate.trim()) {
+  const decision = resolveLeadTourWrite(input);
+  if (decision.action === "reject") {
+    throw new LeadTourWriteError(decision.message);
+  }
+  if (decision.action === "clear") {
     if (existing) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       await (client.from("tour_appointments") as any).update({ status: "cancelled" }).eq("id", existing.id);
@@ -110,23 +115,41 @@ export async function upsertLeadTour(
     return;
   }
 
-  const timezone = await getVenueTimezone(client, venueId);
-  const scheduledAt = venueLocalToUtcIso(input.tourDate, input.tourTime || "12:00", timezone);
+  const { data: venueRow } = await client.from("venues")
+    .select("timezone, tour_duration_minutes")
+    .eq("id", venueId)
+    .maybeSingle<{ timezone: string | null; tour_duration_minutes: number | null }>();
+  const timezone = venueRow?.timezone ?? null;
+  const durationMinutes = Number(venueRow?.tour_duration_minutes);
+  if (!Number.isFinite(durationMinutes) || durationMinutes <= 0) {
+    throw new Error("This venue does not have a tour duration configured.");
+  }
+  const scheduledAt = venueLocalToUtcIso(decision.tourDate, decision.tourTime, timezone);
   const status = input.tourCompleted ? "completed" : "scheduled";
   const completedAt = input.tourCompleted ? new Date().toISOString() : null;
 
   if (existing) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { error } = await (client.from("tour_appointments") as any).update({
-      scheduled_at: scheduledAt, status, notes: input.tourNotes.trim() || null, completed_at: completedAt,
+      scheduled_at: scheduledAt, duration_minutes: durationMinutes, status,
+      notes: input.tourNotes.trim() || null, completed_at: completedAt,
     }).eq("id", existing.id);
-    if (error) throw error;
+    if (error) {
+      const fail = tourCapacityFailureFromUnknown(error);
+      if (fail) throw new TourCapacityWriteError(fail.code, fail.message);
+      throw error;
+    }
   } else {
     const { error } = await client.from("tour_appointments").insert({
-      venue_id: venueId, lead_id: leadId, scheduled_at: scheduledAt, status,
+      venue_id: venueId, lead_id: leadId, scheduled_at: scheduledAt,
+      duration_minutes: durationMinutes, status,
       notes: input.tourNotes.trim() || null, completed_at: completedAt,
     });
-    if (error) throw error;
+    if (error) {
+      const fail = tourCapacityFailureFromUnknown(error);
+      if (fail) throw new TourCapacityWriteError(fail.code, fail.message);
+      throw error;
+    }
   }
 }
 
@@ -561,6 +584,11 @@ export async function updateRelationshipFields(
   leadId: string,
   input: RelationshipInput,
 ): Promise<void> {
+  const tourDecision = resolveLeadTourWrite(input);
+  if (tourDecision.action === "reject") {
+    throw new LeadTourWriteError(tourDecision.message);
+  }
+
   const { error } = await client
     .from("leads")
     .update({

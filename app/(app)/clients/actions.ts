@@ -12,8 +12,8 @@ export async function createClientAction(input: ClientInput): Promise<CreateClie
   return result;
 }
 
-export async function convertLeadToClientAction(lead: Lead): Promise<CreateClientResult> {
-  const result = await convertLeadToClient(lead);
+export async function convertLeadToClientAction(lead: Lead, spaceId?: string): Promise<CreateClientResult> {
+  const result = await convertLeadToClient(lead, { spaceId });
   if (result.ok) { revalidatePath("/clients"); revalidatePath(`/leads/${lead.id}`); }
   return result;
 }

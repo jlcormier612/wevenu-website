@@ -18,6 +18,7 @@ import {
 import { toast } from "sonner";
 
 import { convertLeadToClientAction } from "@/app/(app)/clients/actions";
+import { EventSpaceField } from "@/components/availability/event-space-field";
 import {
   updateLeadStatusAction,
   wouldEnrollOnPipelineStageMoveAction,
@@ -94,7 +95,7 @@ function InfoRow({
 
 // ---- main component ---------------------------------------------------------
 
-export function LeadDetail({ lead, holds = [], spaces = [], documents = [], workspaceDocuments = [], pinnedDocumentKeys = [], recentDocumentEntries = [], luvDrafts = [], autoLuvDraft, tourAppointments = [], conversationId = null, now }: { lead: LeadWithDetails; holds?: DateHold[]; spaces?: VenueSpace[]; documents?: Document[]; workspaceDocuments?: WorkspaceDocument[]; pinnedDocumentKeys?: string[]; recentDocumentEntries?: [string, string][]; luvDrafts?: LuvDraft[]; autoLuvDraft?: string; tourAppointments?: import("@/lib/tours/types").TourAppointment[]; conversationId?: string | null; now: string }) {
+export function LeadDetail({ lead, holds = [], spaces = [], maxSimultaneousEvents = 1, documents = [], workspaceDocuments = [], pinnedDocumentKeys = [], recentDocumentEntries = [], luvDrafts = [], autoLuvDraft, tourAppointments = [], conversationId = null, now }: { lead: LeadWithDetails; holds?: DateHold[]; spaces?: VenueSpace[]; maxSimultaneousEvents?: number; documents?: Document[]; workspaceDocuments?: WorkspaceDocument[]; pinnedDocumentKeys?: string[]; recentDocumentEntries?: [string, string][]; luvDrafts?: LuvDraft[]; autoLuvDraft?: string; tourAppointments?: import("@/lib/tours/types").TourAppointment[]; conversationId?: string | null; now: string }) {
   // Controlled tabs — supports Luv→Messages bridge and ?luv= URL param routing
   const [activeTab, setActiveTab] = React.useState(autoLuvDraft ? "luv" : "overview");
   const [messagePrefill, setMessagePrefill] = React.useState<{ subject: string; body: string } | null>(null);
@@ -108,10 +109,17 @@ export function LeadDetail({ lead, holds = [], spaces = [], documents = [], work
   const [convertPending, startConvert] = React.useTransition();
   const [confirmStageId, setConfirmStageId] = React.useState<string | null>(null);
   const [confirmPreview, setConfirmPreview] = React.useState<import("@/lib/message-sequences/confirm-preview").AutomationMessagePreview | null>(null);
+  const [bookingSpaceId, setBookingSpaceId] = React.useState("");
+  const spacesRequired = maxSimultaneousEvents >= 2 && !!lead.eventDate && !lead.linkedClientId;
+  const convertBlocked = spacesRequired && spaces.filter((s) => s.isActive).length === 0;
 
   function handleConvert() {
+    if (spacesRequired && !bookingSpaceId && spaces.filter((s) => s.isActive).length > 0) {
+      toast.error("Assign an Event Space before booking.");
+      return;
+    }
     startConvert(async () => {
-      const result = await convertLeadToClientAction(lead);
+      const result = await convertLeadToClientAction(lead, bookingSpaceId || undefined);
       if (result.ok) {
         const params = new URLSearchParams();
         if (result.eventId) params.set("eventId", result.eventId);
@@ -245,7 +253,18 @@ export function LeadDetail({ lead, holds = [], spaces = [], documents = [], work
           </div>
         </div>
 
-        <div className="flex shrink-0 items-center gap-2">
+        <div className="flex shrink-0 flex-col items-end gap-2">
+          {spacesRequired && (
+            <div className="w-full min-w-56">
+              <EventSpaceField
+                value={bookingSpaceId}
+                onChange={setBookingSpaceId}
+                spaces={spaces}
+                spacesRequired
+              />
+            </div>
+          )}
+          <div className="flex shrink-0 items-center gap-2">
           <LeadStatusBadge status={currentStage} />
           <DropdownMenu>
             <DropdownMenuTrigger
@@ -281,12 +300,14 @@ export function LeadDetail({ lead, holds = [], spaces = [], documents = [], work
               View Client →
             </Button>
           ) : currentStage !== "lost" ? (
-            <Button size="sm" disabled={convertPending} onClick={handleConvert}>
+            <Button size="sm" disabled={convertPending || convertBlocked} onClick={handleConvert}
+              title={convertBlocked ? "Add an Event Space in Availability settings before booking." : undefined}>
               {convertPending
                 ? <><Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />Booking…</>
                 : <><ArrowRight className="mr-1 h-3.5 w-3.5" />Book This Lead</>}
             </Button>
           ) : null}
+        </div>
         </div>
       </div>
 

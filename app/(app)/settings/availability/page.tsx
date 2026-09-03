@@ -52,8 +52,7 @@ export default async function AvailabilityCapacitySettingsPage() {
         <CardHeader>
           <CardTitle className="text-base">Scheduling Capacity</CardTitle>
           <CardDescription>
-            Configure your venue{"'"}s operating limits. The system will warn when
-            these thresholds are approached.
+            Event and tour simultaneous limits and event turnaround are enforced when booking. A missing simultaneous setting is treated as 1 — never unlimited. Turnaround of 0 means events may be back-to-back.
           </CardDescription>
         </CardHeader>
         <CardContent>

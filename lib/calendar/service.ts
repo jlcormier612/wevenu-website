@@ -20,6 +20,7 @@ import { blockReasonLabel } from "@/lib/availability/constants";
 import { isBookingPlaceholder } from "@/lib/availability/types";
 import type { ManualScheduleType, RecurrenceRule } from "@/lib/availability/types";
 import { durationInDays, expandOccurrenceStarts, occurrenceDates } from "@/lib/calendar/recurrence";
+import { calendarDatesForProtectedEvent } from "@/lib/calendar/event-display";
 import { displayScheduleItemTimes } from "@/lib/calendar/schedule-item-times";
 import { toScheduleRelationOption, type ScheduleRelationRow } from "@/lib/calendar/schedule-relation-search";
 
@@ -126,16 +127,21 @@ export async function getCalendarData(
   ] = await Promise.all([
     // 1. Booked events
     supabase.from("events")
-      .select("id, name, event_date, start_time, event_type, status, client_id, space_id, clients(first_name, last_name), venue_spaces(name)")
+      .select("id, name, event_date, event_end_date, start_time, event_type, status, client_id, space_id, clients(first_name, last_name), venue_spaces(name)")
       .eq("venue_id", venue.id)
       .neq("status", "cancelled")
-      .gte("event_date", start)
-      .lte("event_date", end),
+      .lte("event_date", end)
+      .or(`event_end_date.gte.${start},and(event_end_date.is.null,event_date.gte.${start})`),
 
     // 2. Venue tours — tours' own calendar projection (TR-B4: this used to
     // read the legacy leads.tour_date field directly and silently never
     // reflected publicly-booked tours; tour_appointments is now the single
     // canonical source regardless of how the tour was scheduled).
+    //
+    // Event → Tour conflict is operational-window overlap, enforced by
+    // `_is_tour_slot_blocked` / slot generation — not by Calendar. Calendar
+    // is a view and can show a Tour next to an Event on the same date when
+    // their intervals do not overlap, or when the Tour was booked first.
     getTourCalendarEntries(supabase, venue.id, start, end, venue.timezone),
 
     // 3. Follow-up dates (from leads)
@@ -241,22 +247,26 @@ export async function getCalendarData(
 
   const items: CalendarItem[] = [];
 
-  // Events
+  // Events — one item per protected day in the visible range (Calendar is a
+  // view; occupancy still uses event_date through coalesce(event_end_date)).
   for (const e of (eventsRes.data ?? []) as any[]) {
     const cn = e.clients ? `${e.clients.first_name} ${e.clients.last_name}` : null;
-    items.push({
-      id: `event-${e.id}`,
-      type: "event",
-      date: e.event_date,
-      title: cn ?? e.name,
-      subtitle: e.event_type ? eventTypeLabel(e.event_type) : null,
-      time: e.start_time?.slice(0, 5) ?? null,
-      link: `/events/${e.id}`,
-      eventId: e.id,
-      clientId: e.client_id ?? null,
-      spaceId: e.space_id ?? null,
-      spaceName: e.venue_spaces?.name ?? null,
-    });
+    const dates = calendarDatesForProtectedEvent(e.event_date, e.event_end_date ?? null, start, end);
+    for (const date of dates) {
+      items.push({
+        id: `event-${e.id}-${date}`,
+        type: "event",
+        date,
+        title: cn ?? e.name,
+        subtitle: e.event_type ? eventTypeLabel(e.event_type) : null,
+        time: e.start_time?.slice(0, 5) ?? null,
+        link: `/events/${e.id}`,
+        eventId: e.id,
+        clientId: e.client_id ?? null,
+        spaceId: e.space_id ?? null,
+        spaceName: e.venue_spaces?.name ?? null,
+      });
+    }
   }
 
   // Tours — already-built CalendarItems from tours' own projection

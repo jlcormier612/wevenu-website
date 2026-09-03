@@ -4,6 +4,8 @@
  * different relationship phase, not a relabeled lead.
  */
 
+import type { OccupancyCode } from "@/lib/availability/event-occupancy";
+
 export type ClientStatus = "planning" | "confirmed" | "complete" | "cancelled";
 
 export type Client = {
@@ -88,6 +90,7 @@ export type ClientInput = {
   receptionTime: string;
   rehearsalDate: string;
   internalNotes: string;
+  spaceId: string;
 };
 
 export type KeyDateInput = {
@@ -104,4 +107,4 @@ export type ClientActionResult =
 
 export type CreateClientResult =
   | { ok: true; clientId: string; eventId: string | null; invitationSent: boolean }
-  | { ok: false; errors?: ClientErrors; message?: string };
+  | { ok: false; errors?: ClientErrors; message?: string; code?: OccupancyCode };

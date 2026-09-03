@@ -1,6 +1,12 @@
 /**
  * Clients application service. Server-only.
  */
+import { occupancyFailureFromUnknown, calendarBlockFailureFromUnknown } from "@/lib/availability/event-occupancy";
+import {
+  coveringCalendarBlockTitle,
+  eventCoverageInterval,
+  mapCalendarBlockRow,
+} from "@/lib/availability/calendar-block-coverage";
 import { createClient } from "@/integrations/supabase/server";
 import { createAdminClient } from "@/integrations/supabase/admin";
 import { isSupabaseConfigured } from "@/lib/env";
@@ -55,6 +61,7 @@ async function autoCreateEvent(
     guestCount?: string | null;
     startTime?: string | null;
     endTime?: string | null;
+    spaceId?: string | null;
   },
 ): Promise<string> {
   // Guard against duplicate events if someone edits the client or re-runs conversion
@@ -74,8 +81,57 @@ async function autoCreateEvent(
     teardownTime: "",
     guestCount: opts.guestCount ?? "",
     clientId,
-    spaceId: "",
+    spaceId: opts.spaceId ?? "",
   });
+}
+
+function datedEventFromClient(
+  input: Pick<ClientInput, "firstName" | "lastName" | "partnerFirstName" | "partnerLastName" | "eventType" | "eventDate" | "endDate" | "guestCount" | "ceremonyTime" | "spaceId">,
+): repo.DatedEventWrite {
+  const coupleName = clientDisplayName(input.firstName, input.lastName, input.partnerFirstName, input.partnerLastName);
+  const typeLabel = input.eventType?.replace(/_/g, " ") || "Event";
+  return {
+    name: `${coupleName} — ${typeLabel}`,
+    eventType: input.eventType,
+    eventDate: input.eventDate,
+    eventEndDate: input.endDate,
+    startTime: input.ceremonyTime,
+    guestCount: input.guestCount,
+    spaceId: input.spaceId,
+  };
+}
+
+function occupancyClientFailure(err: unknown): CreateClientResult | null {
+  const fail = occupancyFailureFromUnknown(err);
+  if (fail) {
+    const errors = fail.code === "missing_space" || fail.code === "invalid_space" || fail.code === "no_spaces"
+      ? { spaceId: fail.message }
+      : undefined;
+    return { ok: false, message: fail.message, code: fail.code, errors };
+  }
+  const blocked = calendarBlockFailureFromUnknown(err);
+  if (blocked) return { ok: false, message: blocked.message };
+  return null;
+}
+
+async function coveringClientEventBlockTitle(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  venueId: string,
+  input: { eventDate: string; endDate?: string | null; ceremonyTime?: string | null },
+): Promise<string | null> {
+  const interval = eventCoverageInterval({
+    eventDate: input.eventDate,
+    eventEndDate: input.endDate,
+    startTime: input.ceremonyTime,
+  });
+  const { data: blocks } = await supabase.from("calendar_blocks")
+    .select("title, type, start_date, end_date, is_all_day, start_time, end_time, recurrence_rule, recurrence_interval, recurrence_ends_on, recurrence_count")
+    .eq("venue_id", venueId)
+    .lte("start_date", interval.rangeEnd);
+  return coveringCalendarBlockTitle(
+    ((blocks ?? []) as Parameters<typeof mapCalendarBlockRow>[0][]).map(mapCalendarBlockRow),
+    interval,
+  );
 }
 
 async function withVenue<T>(
@@ -187,16 +243,29 @@ async function createClientCore(
 ): Promise<CreateClientResult> {
   // Server-side hard block: refuse if the event date is calendar-blocked.
   if (input.eventDate) {
-    const { data: blocks } = await supabase.from("calendar_blocks")
-      .select("title").eq("venue_id", venueId)
-      .lte("start_date", input.eventDate).gte("end_date", input.eventDate)
-      .limit(1);
-    if (blocks && blocks.length > 0) {
-      const title = (blocks[0] as { title: string }).title;
+    const title = await coveringClientEventBlockTitle(supabase, venueId, input);
+    if (title) {
       return { ok: false, message: `Cannot book this date — the calendar is blocked: "${title}". Remove the block first.` };
     }
   }
-  const clientId = await repo.insertClient(supabase, venueId, input, undefined, historicalImport);
+  let clientId: string;
+  let eventId: string | null;
+  if (input.eventDate) {
+    try {
+      const row = await repo.insertClientWithDatedEvent(
+        supabase, venueId, input, datedEventFromClient(input), undefined, historicalImport,
+      );
+      clientId = row.clientId;
+      eventId = row.eventId;
+    } catch (err) {
+      const fail = occupancyClientFailure(err);
+      if (fail) return fail;
+      throw err;
+    }
+  } else {
+    clientId = await repo.insertClient(supabase, venueId, input, undefined, historicalImport);
+    eventId = null;
+  }
 
   void enqueueQuickBooksSync(venueId, "customer", clientId, {
     firstName: input.firstName, lastName: input.lastName,
@@ -211,20 +280,6 @@ async function createClientCore(
     void exitEnrollmentsForBooking(supabase, venueId, newClient.relationship_id)
       .catch((e) => console.error("Series exit-on-booking failed:", e));
   }
-
-  const eventId = input.eventDate
-    ? await autoCreateEvent(supabase, venueId, clientId, {
-        firstName: input.firstName,
-        lastName: input.lastName,
-        partnerFirstName: input.partnerFirstName,
-        partnerLastName: input.partnerLastName,
-        eventDate: input.eventDate,
-        eventEndDate: input.endDate,
-        eventType: input.eventType,
-        guestCount: input.guestCount,
-        startTime: input.ceremonyTime,
-      })
-    : null;
 
   // Invitation is sent when Client Planning is explicitly released, not at
   // create. Historical imports still skip live side effects at insert-time
@@ -268,7 +323,7 @@ async function convertLeadHolds(venueId: string, leadId: string, supabase: Param
   if (error) console.error("Could not convert holds:", error.message);
 }
 
-export async function convertLeadToClient(lead: Lead): Promise<CreateClientResult> {
+export async function convertLeadToClient(lead: Lead, opts?: { spaceId?: string }): Promise<CreateClientResult> {
   const input: ClientInput = {
     firstName: lead.firstName,
     lastName: lead.lastName,
@@ -285,16 +340,13 @@ export async function convertLeadToClient(lead: Lead): Promise<CreateClientResul
     receptionTime: "",
     rehearsalDate: "",
     internalNotes: "",
+    spaceId: opts?.spaceId ?? "",
   };
   const result = await withVenue(async (supabase, venueId) => {
     // Server-side hard block: refuse if the lead's event date is calendar-blocked.
     if (input.eventDate) {
-      const { data: blocks } = await supabase.from("calendar_blocks")
-        .select("title").eq("venue_id", venueId)
-        .lte("start_date", input.eventDate).gte("end_date", input.eventDate)
-        .limit(1);
-      if (blocks && blocks.length > 0) {
-        const title = (blocks[0] as { title: string }).title;
+      const title = await coveringClientEventBlockTitle(supabase, venueId, input);
+      if (title) {
         return { ok: false, message: `Cannot convert this lead — their event date is blocked: "${title}". Remove the block first, or update the event date.` } as CreateClientResult;
       }
     }
@@ -306,20 +358,55 @@ export async function convertLeadToClient(lead: Lead): Promise<CreateClientResul
     const { data: existingClient } = await supabase.from("clients")
       .select("id").eq("lead_id", lead.id).eq("venue_id", venueId).maybeSingle<{ id: string }>();
     if (existingClient) {
+      let eventId = await getEventIdForClient(supabase, venueId, existingClient.id);
+      if (!eventId && input.eventDate) {
+        try {
+          eventId = await autoCreateEvent(supabase, venueId, existingClient.id, {
+            firstName: lead.firstName,
+            lastName: lead.lastName,
+            partnerFirstName: lead.partnerFirstName,
+            partnerLastName: lead.partnerLastName,
+            eventDate: input.eventDate,
+            eventEndDate: input.endDate,
+            eventType: input.eventType,
+            guestCount: input.guestCount,
+            startTime: input.ceremonyTime,
+            spaceId: input.spaceId,
+          });
+        } catch (err) {
+          const fail = occupancyClientFailure(err);
+          if (fail) return fail;
+          throw err;
+        }
+      }
       await updateLeadSalesStage(lead.id, "booked", { allowBooked: true });
-      return { ok: true, clientId: existingClient.id, eventId: null } as CreateClientResult;
+      return { ok: true, clientId: existingClient.id, eventId, invitationSent: false } as CreateClientResult;
     }
     let clientId: string;
+    let eventId: string | null = null;
     try {
-      clientId = await repo.insertClient(supabase, venueId, input, lead.id);
+      if (input.eventDate) {
+        const row = await repo.insertClientWithDatedEvent(
+          supabase, venueId, input, datedEventFromClient(input), lead.id,
+        );
+        clientId = row.clientId;
+        eventId = row.eventId;
+      } else {
+        clientId = await repo.insertClient(supabase, venueId, input, lead.id);
+      }
     } catch (err) {
+      const occupancy = occupancyClientFailure(err);
+      if (occupancy) return occupancy;
       // The true race: two near-simultaneous conversions both passed the
       // pre-check above before either had committed. clients_lead_id_unique
       // is the actual guarantee — Postgres unique_violation is 23505.
       if (err && typeof err === "object" && "code" in err && (err as { code: string }).code === "23505") {
         const { data: raceClient } = await supabase.from("clients")
           .select("id").eq("lead_id", lead.id).eq("venue_id", venueId).maybeSingle<{ id: string }>();
-        if (raceClient) return { ok: true, clientId: raceClient.id, eventId: null } as CreateClientResult;
+        if (raceClient) {
+          const raceEventId = await getEventIdForClient(supabase, venueId, raceClient.id);
+          return { ok: true, clientId: raceClient.id, eventId: raceEventId, invitationSent: false } as CreateClientResult;
+        }
       }
       throw err;
     }
@@ -334,18 +421,6 @@ export async function convertLeadToClient(lead: Lead): Promise<CreateClientResul
       void exitEnrollmentsForBooking(supabase, venueId, newClient.relationship_id)
         .catch((e) => console.error("Series exit-on-booking failed:", e));
     }
-    const eventId = input.eventDate
-      ? await autoCreateEvent(supabase, venueId, clientId, {
-          firstName: lead.firstName,
-          lastName: lead.lastName,
-          partnerFirstName: lead.partnerFirstName,
-          partnerLastName: lead.partnerLastName,
-          eventDate: input.eventDate,
-          eventEndDate: input.endDate,
-          eventType: input.eventType,
-          guestCount: input.guestCount,
-        })
-      : null;
 
     // Sales → Booking Journey walkthrough — a document uploaded to the Lead
     // (a signed proposal, inspiration photos, anything) kept lead_id

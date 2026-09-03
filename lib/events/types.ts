@@ -9,6 +9,8 @@
  * Named VenueEvent to avoid conflict with the DOM Event type.
  */
 
+import type { OccupancyCode } from "@/lib/availability/event-occupancy";
+
 export type EventStatus =
   | "draft"
   | "confirmed"
@@ -113,8 +115,8 @@ export type EventErrors = Record<string, string>;
 
 export type EventActionResult =
   | { ok: true }
-  | { ok: false; errors?: EventErrors; message?: string };
+  | { ok: false; errors?: EventErrors; message?: string; code?: OccupancyCode };
 
 export type CreateEventResult =
   | { ok: true; eventId: string }
-  | { ok: false; errors?: EventErrors; message?: string };
+  | { ok: false; errors?: EventErrors; message?: string; code?: OccupancyCode };

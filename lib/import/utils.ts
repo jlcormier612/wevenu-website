@@ -77,6 +77,7 @@ export function rowToClientInput(row: CsvRow, mapping: FieldMapping): ClientInpu
     receptionTime:    "",
     rehearsalDate:    "",
     internalNotes:    val(row, mapping, "internalNotes"),
+    spaceId:          "",
   };
 }
 

@@ -108,7 +108,7 @@ export function VenueSpacesSection({ initialSpaces }: { initialSpaces: VenueSpac
   return (
     <div className="space-y-3">
       {spaces.length === 0 && !showAdd && (
-        <p className="text-sm text-muted-foreground py-2">No spaces defined. Add your event spaces to enable space-based scheduling.</p>
+        <p className="text-sm text-muted-foreground py-2">No Event Spaces yet. Venues that host more than one event at the same time must add at least one Event Space before overlapping events can be booked.</p>
       )}
       <div className="space-y-2">
         {spaces.map((space) =>

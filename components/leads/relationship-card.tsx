@@ -90,6 +90,7 @@ export function RelationshipCard({
   // way it already does for event creation, not just show an ignorable
   // advisory (Scheduling Release Readiness Phase 1).
   const [tourDateBlocked, setTourDateBlocked] = React.useState(false);
+  const tourDateOnly = Boolean(input.tourDate.trim() && !input.tourTime.trim());
   const [nextActionMode, setNextActionMode] = React.useState<"preset" | "custom">(() =>
     (NEXT_ACTION_PRESETS as readonly string[]).includes(lead.nextActionText ?? "") || !lead.nextActionText
       ? "preset"
@@ -109,9 +110,13 @@ export function RelationshipCard({
   }
 
   function handleSave() {
+    if (input.tourDate.trim() && !input.tourTime.trim()) {
+      toast.error("A tour time is required to schedule a venue tour.");
+      return;
+    }
     startTransition(async () => {
       const hints = {
-        tourScheduled: input.tourDate !== prev.current.tourDate && !!input.tourDate,
+        tourScheduled: input.tourDate !== prev.current.tourDate && !!input.tourDate && !!input.tourTime.trim(),
         followUpSet: input.followUpDate !== prev.current.followUpDate && !!input.followUpDate,
         contactedSet: input.lastContactedAt !== prev.current.lastContactedAt && !!input.lastContactedAt,
       };
@@ -151,7 +156,7 @@ export function RelationshipCard({
               <Button type="button" variant="ghost" size="sm" onClick={handleCancel} disabled={pending}>
                 Cancel
               </Button>
-              <Button type="button" size="sm" disabled={pending || tourDateBlocked} onClick={handleSave}>
+              <Button type="button" size="sm" disabled={pending || tourDateBlocked || tourDateOnly} onClick={handleSave}>
                 {pending ? <><Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />Saving…</> : "Save"}
               </Button>
             </div>
@@ -265,7 +270,7 @@ export function RelationshipCard({
                     onChange={(e) => set("tourDate", e.target.value)}
                   />
                 </EditRow>
-                <EditRow label="Tour time">
+                <EditRow label={input.tourDate ? "Tour time *" : "Tour time"}>
                   <Input
                     type="time"
                     value={input.tourTime}
@@ -273,8 +278,11 @@ export function RelationshipCard({
                   />
                 </EditRow>
               </div>
-              {input.tourDate && !input.tourCompleted && (
-                <ConflictWarning date={input.tourDate} type="tour" excludeId={lead.id} onStatusChange={setTourDateBlocked} />
+              {tourDateOnly ? (
+                <p className="text-xs text-destructive">A tour time is required to schedule a venue tour. Clear the date to remove a scheduled tour.</p>
+              ) : null}
+              {input.tourDate && input.tourTime && !input.tourCompleted && (
+                <ConflictWarning date={input.tourDate} startTime={input.tourTime} type="tour" excludeId={lead.id} onStatusChange={setTourDateBlocked} />
               )}
               <div className="flex items-center gap-2">
                 <Switch

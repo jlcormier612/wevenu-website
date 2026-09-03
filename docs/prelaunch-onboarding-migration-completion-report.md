@@ -63,7 +63,7 @@ Pre-existing, unchanged, verified live in this pass: each of the five domains ch
 
 Named directly in the product, not silently absent:
 
-- **Events/bookings** — no CSV import path. No existing dedup function, and the real double-booking conflict guard (`checkEventSpaceConflict`) is untested territory for bulk historical import. The People & Business stage says so explicitly and points at normal event creation post-setup.
+- **Events/bookings** — no CSV import path. No existing dedup function. Dated Event writes are occupancy-trigger-enforced (`events_enforce_availability`); bulk historical import of Events remains out of scope. The People & Business stage says so explicitly and points at normal event creation post-setup.
 - **Contract templates, communication templates, playbook/timeline templates** — no CSV row-import exists for any of these (contract templates have no import mechanism at all; the other three have an existing, separate, non-CSV Luv-assisted "paste your existing wording" flow). The Business Tools stage names this directly and points at where those existing flows live, rather than building a new, redundant, unproven CSV path under time pressure.
 - **Attaching an *existing* global vendor profile to a new venue relationship** rather than creating a new one — no reusable function exists for this in the current codebase; every vendor-creation path (import or manual) makes a new global vendor row. Documented in the audit, not built.
 - **Word/PDF/other original documents** are saved as-is via the existing Documents system (new "Bring your files" step, Part 8) — never silently converted into a contract, template, or package.

@@ -13,6 +13,7 @@ import { applyPreviewKindCopy } from "@/lib/playbooks/apply-preview";
 import { PLAYBOOK_KINDS } from "@/lib/playbooks/constants";
 import type { PlaybookKind, PlaybookTemplateWithStats } from "@/lib/playbooks/types";
 import { ConflictWarning } from "@/components/availability/conflict-warning";
+import { EventSpaceField } from "@/components/availability/event-space-field";
 import { Field } from "@/components/setup/field";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -20,14 +21,13 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
-import { eventInputFromVenueEvent } from "@/lib/events/constants";
-import type { EventErrors, EventInput, VenueEvent } from "@/lib/events/types";
+import type { EventErrors, EventInput } from "@/lib/events/types";
 import { EVENT_TYPES } from "@/lib/leads/constants";
 import type { VenueSpace } from "@/lib/availability/types";
 
 export function EventFormFields({
   input, errors, set, onSubmit, pending, submitLabel = "Create event",
-  spaces = [], existingEventId,
+  spaces = [], existingEventId, maxSimultaneousEvents = 1,
 }: {
   input: EventInput;
   errors: EventErrors;
@@ -37,9 +37,11 @@ export function EventFormFields({
   submitLabel?: string;
   spaces?: VenueSpace[];
   existingEventId?: string; // exclude self when editing
+  maxSimultaneousEvents?: number;
 }) {
   const router = useRouter();
   const [dateBlocked, setDateBlocked] = React.useState(false);
+  const spacesRequired = maxSimultaneousEvents >= 2;
   return (
     <div className="space-y-6">
       <Field label="Event name" htmlFor="en" required error={errors.name}>
@@ -62,7 +64,7 @@ export function EventFormFields({
         label="End date"
         htmlFor="eed"
         error={errors.eventEndDate}
-        hint="Optional — leave blank for a single-day event."
+        hint="Optional — leave blank for a single-day event. Each day from start through end is occupied."
       >
         <Input
           id="eed"
@@ -75,36 +77,23 @@ export function EventFormFields({
       </Field>
 
       {/* Space assignment + availability check */}
-      {spaces.length > 0 && (
-        <Field label="Event space" htmlFor="sp" hint="Optional — assign this event to a specific space.">
-          <Select
-            value={input.spaceId}
-            onValueChange={(v) => set("spaceId", v)}
-            items={[
-              { value: "", label: "No specific space" },
-              ...spaces.filter((s) => s.isActive).map((s) => ({
-                value: s.id,
-                label: `${s.name}${s.capacity != null ? ` — ${s.capacity.toLocaleString()} guests` : ""}`,
-              })),
-            ]}
-          >
-            <SelectTrigger id="sp"><SelectValue placeholder="No specific space" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="">No specific space</SelectItem>
-              {spaces.filter((s) => s.isActive).map((s) => (
-                <SelectItem key={s.id} value={s.id}>
-                  {s.name}{s.capacity != null ? ` — ${s.capacity.toLocaleString()} guests` : ""}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </Field>
-      )}
+      <EventSpaceField
+        value={input.spaceId}
+        onChange={(v) => set("spaceId", v)}
+        spaces={spaces}
+        spacesRequired={spacesRequired}
+        error={errors.spaceId}
+      />
 
       {/* Availability conflict advisory — hard block disables save */}
       {input.eventDate && (
         <ConflictWarning
           date={input.eventDate}
+          endDate={input.eventEndDate || undefined}
+          startTime={input.startTime || undefined}
+          endTime={input.endTime || undefined}
+          setupTime={input.setupTime || undefined}
+          teardownTime={input.teardownTime || undefined}
           spaceId={input.spaceId || undefined}
           type="event"
           excludeId={existingEventId}
@@ -138,7 +127,7 @@ export function EventFormFields({
       <div className="flex items-center justify-end gap-3">
         <Button type="button" variant="outline" onClick={() => router.back()} disabled={pending}>Cancel</Button>
         <Button type="button" onClick={onSubmit} disabled={pending || dateBlocked}
-          title={dateBlocked ? "Remove the calendar block before saving." : undefined}>
+          title={dateBlocked ? "This date is unavailable." : undefined}>
           {pending ? <><Loader2 className="mr-1 h-4 w-4 animate-spin" />Saving…</> : submitLabel}
         </Button>
       </div>
@@ -147,11 +136,12 @@ export function EventFormFields({
 }
 
 export function EventForm({
-  initial, spaces = [], playbookTemplates = [],
+  initial, spaces = [], playbookTemplates = [], maxSimultaneousEvents = 1,
 }: {
   initial: EventInput;
   spaces?: VenueSpace[];
   playbookTemplates?: PlaybookTemplateWithStats[];
+  maxSimultaneousEvents?: number;
 }) {
   const router = useRouter();
   const [input, setInput] = React.useState<EventInput>(initial);
@@ -201,7 +191,7 @@ export function EventForm({
 
   return (
     <div className="space-y-6">
-      <EventFormFields input={input} errors={errors} set={set} onSubmit={handleSubmit} pending={pending} spaces={spaces} />
+      <EventFormFields input={input} errors={errors} set={set} onSubmit={handleSubmit} pending={pending} spaces={spaces} maxSimultaneousEvents={maxSimultaneousEvents} />
       {playbookTemplates.length > 0 && (
         <div className="rounded-sm border border-border bg-muted/30 p-4 space-y-3">
           <p className="text-sm font-medium text-heading">Starting checklists (optional)</p>

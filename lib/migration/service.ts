@@ -240,6 +240,7 @@ function toClientInput(n: NormalizedClientLike): ClientInput {
     eventType: n.eventType ?? "", eventDate: n.eventDate ?? "", endDate: "",
     guestCount: n.guestCount ?? "", ceremonyTime: "", receptionTime: "", rehearsalDate: "",
     internalNotes: n.notes ?? "",
+    spaceId: "",
   };
 }
 

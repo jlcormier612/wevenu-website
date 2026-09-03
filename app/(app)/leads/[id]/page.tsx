@@ -2,7 +2,8 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
 import { LeadDetail } from "@/components/leads/lead-detail";
-import { getHolds, getSpaces } from "@/lib/availability/service";
+import { getHolds, getSpaces, getCapacityRules } from "@/lib/availability/service";
+import { effectiveMaxSimultaneousEvents } from "@/lib/availability/event-occupancy";
 import { getDocuments } from "@/lib/documents/service";
 import { getPinnedDocumentKeys, getRecentInteractionMap, getVenueWorkspaceDocuments } from "@/lib/document-workspace/service";
 import { getDraftsForLead } from "@/lib/luv/drafts";
@@ -30,10 +31,11 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 export default async function LeadDetailPage({ params, searchParams }: Props) {
   const { id } = await params;
   const { luv: autoLuvDraft } = await searchParams;
-  const [lead, holds, spaces, documents, workspaceDocuments, pinnedKeys, recentMap, luvDrafts, tourAppointments] = await Promise.all([
+  const [lead, holds, spaces, capacityRules, documents, workspaceDocuments, pinnedKeys, recentMap, luvDrafts, tourAppointments] = await Promise.all([
     getLead(id),
     getHolds({ leadId: id }),
     getSpaces(),
+    getCapacityRules(),
     getDocuments("lead", id),
     getVenueWorkspaceDocuments({ leadId: id }),
     getPinnedDocumentKeys(),
@@ -55,6 +57,7 @@ export default async function LeadDetailPage({ params, searchParams }: Props) {
       now={now}
       holds={holds}
       spaces={spaces}
+      maxSimultaneousEvents={effectiveMaxSimultaneousEvents(capacityRules)}
       documents={documents}
       workspaceDocuments={workspaceDocuments}
       pinnedDocumentKeys={[...pinnedKeys]}

@@ -191,8 +191,11 @@ export async function markBlockConverted_(blockId: string, leadId: string): Prom
 
 export async function checkAvailability(opts: {
   date: string;
+  endDate?: string;
   startTime?: string;
   endTime?: string;
+  setupTime?: string;
+  teardownTime?: string;
   spaceId?: string;
   type: "event" | "tour";
   excludeId?: string;
@@ -200,5 +203,8 @@ export async function checkAvailability(opts: {
   if (!isSupabaseConfigured) return { available: true, conflicts: [] };
   const venue = await getCurrentVenue();
   if (!venue) return { available: true, conflicts: [] };
-  return repo.checkAvailability(await createClient(), venue.id, opts);
+  return repo.checkAvailability(await createClient(), venue.id, {
+    ...opts,
+    timezone: venue.timezone,
+  });
 }
