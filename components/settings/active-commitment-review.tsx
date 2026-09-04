@@ -10,8 +10,8 @@
 import * as React from "react";
 
 import { Button } from "@/components/ui/button";
-import type { NormalizedActiveCommitment, ActiveCommitmentScheduleLine } from "@/lib/migration/active-commitment";
-import { summarizeCommitmentForReview } from "@/lib/migration/active-commitment";
+import type { NormalizedActiveCommitment, ActiveCommitmentScheduleLine } from "@/lib/migration/active-commitment-model";
+import { summarizeCommitmentForReview } from "@/lib/migration/active-commitment-model";
 
 function moneyLabel(n: number): string {
   return `$${n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;

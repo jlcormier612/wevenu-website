@@ -48,7 +48,7 @@ import {
 } from "@/app/(app)/settings/migration-actions";
 import { ActiveCommitmentReview } from "@/components/settings/active-commitment-review";
 import { FloorPlanMigrationImport } from "@/components/settings/floor-plan-migration-import";
-import type { NormalizedActiveCommitment } from "@/lib/migration/active-commitment";
+import type { NormalizedActiveCommitment } from "@/lib/migration/active-commitment-model";
 import { isHistoricalRecordEligibleError, isLiveAvailabilityConflictError, HISTORICAL_RECORD_ELIGIBLE, HISTORICAL_RECORD_LABEL } from "@/lib/migration/historical-record";
 import { formatSessionOutcomeSentence } from "@/lib/migration/session-accounting";
 import {

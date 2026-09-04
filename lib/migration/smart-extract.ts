@@ -7,8 +7,8 @@
  * documents bucket and attached on commit as a real Event document.
  */
 
-import type { NormalizedActiveCommitment, ActiveCommitmentScheduleLine, ActiveCommitmentDocument } from "@/lib/migration/active-commitment";
-import { validateActiveCommitment } from "@/lib/migration/active-commitment";
+import type { NormalizedActiveCommitment, ActiveCommitmentScheduleLine, ActiveCommitmentDocument } from "@/lib/migration/active-commitment-model";
+import { validateActiveCommitment } from "@/lib/migration/active-commitment-model";
 import { extractDocxText, extractPdfText } from "@/lib/import/file-parsing";
 
 export type SmartActiveCommitmentProposal =

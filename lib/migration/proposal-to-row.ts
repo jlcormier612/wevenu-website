@@ -3,7 +3,7 @@
  * as SourceRows the generic CSV adapter normalizes and commits.
  */
 
-import type { NormalizedActiveCommitment } from "@/lib/migration/active-commitment";
+import type { NormalizedActiveCommitment } from "@/lib/migration/active-commitment-model";
 import type { SourceRow } from "@/lib/migration/types";
 
 export function activeCommitmentProposalToSourceRow(proposal: NormalizedActiveCommitment): SourceRow {

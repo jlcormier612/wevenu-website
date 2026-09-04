@@ -22,8 +22,8 @@ import type {
   SourceAdapter,
   SourceRow,
 } from "@/lib/migration/types";
-import type { NormalizedActiveCommitment, ActiveCommitmentScheduleLine } from "@/lib/migration/active-commitment";
-import { validateActiveCommitment } from "@/lib/migration/active-commitment";
+import type { NormalizedActiveCommitment, ActiveCommitmentScheduleLine } from "@/lib/migration/active-commitment-model";
+import { validateActiveCommitment } from "@/lib/migration/active-commitment-model";
 import { MANUAL_SCHEDULE_TYPES, type ManualScheduleType, type RecurrenceRule } from "@/lib/availability/types";
 
 function str(row: SourceRow, key: string): string | null {
