@@ -3,6 +3,12 @@
  */
 import { createClient } from "@/integrations/supabase/server";
 import { isSupabaseConfigured } from "@/lib/env";
+import {
+  canDeleteFloorPlanRows,
+  canEditFloorPlans,
+  FLOOR_PLAN_EDIT_DENIED,
+  FLOOR_PLAN_TEMPLATE_DELETE_DENIED,
+} from "@/lib/floor-plans/authorize";
 import * as repo from "@/lib/floor-plan-templates/repository";
 import { parsePastedLayout } from "@/lib/floor-plan-templates/paste-parse";
 import type {
@@ -16,9 +22,9 @@ import type {
 import type {
   AddObjectInput, FloorPlanActionResult, ReorderDirection, UpdateObjectInput, UpdateRoomSettingsInput,
 } from "@/lib/floor-plans/types";
-import { getCurrentVenue } from "@/lib/venue/service";
+import { getCurrentUserRole, getCurrentVenue } from "@/lib/venue/service";
 
-async function withVenue<T>(
+async function withVenueSession<T>(
   fn: (supabase: Awaited<ReturnType<typeof createClient>>, venueId: string) => Promise<T>,
 ): Promise<T | FloorPlanTemplateActionResult> {
   if (!isSupabaseConfigured) return { ok: false, message: "Backend not configured." };
@@ -28,6 +34,30 @@ async function withVenue<T>(
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { ok: false, message: "Session expired." };
   return fn(supabase, venue.id);
+}
+
+async function withVenueEditor<T>(
+  fn: (supabase: Awaited<ReturnType<typeof createClient>>, venueId: string) => Promise<T>,
+): Promise<T | FloorPlanTemplateActionResult> {
+  return withVenueSession(async (supabase, venueId) => {
+    const role = await getCurrentUserRole();
+    if (!canEditFloorPlans(role)) {
+      return { ok: false, message: FLOOR_PLAN_EDIT_DENIED } as T;
+    }
+    return fn(supabase, venueId);
+  });
+}
+
+async function withVenueTemplateDeleter<T>(
+  fn: (supabase: Awaited<ReturnType<typeof createClient>>, venueId: string) => Promise<T>,
+): Promise<T | FloorPlanTemplateActionResult> {
+  return withVenueSession(async (supabase, venueId) => {
+    const role = await getCurrentUserRole();
+    if (!canDeleteFloorPlanRows(role)) {
+      return { ok: false, message: FLOOR_PLAN_TEMPLATE_DELETE_DENIED } as T;
+    }
+    return fn(supabase, venueId);
+  });
 }
 
 // ---- Templates ---------------------------------------------------------------
@@ -57,7 +87,7 @@ export async function getTemplatesForLibrary(): Promise<FloorPlanTemplateWithSta
 
 export async function createTemplate(name: string, eventType: string | null, spaceId: string | null, isDefault?: boolean): Promise<CreateFloorPlanTemplateResult> {
   if (!name.trim()) return { ok: false, message: "Template name is required." };
-  const result = await withVenue(async (supabase, venueId) => {
+  const result = await withVenueEditor(async (supabase, venueId) => {
     const templateId = await repo.insertTemplate(supabase, venueId, name, eventType, spaceId);
     if (isDefault) await repo.setTemplateDefault(supabase, venueId, templateId, eventType, spaceId);
     return { ok: true, templateId } as CreateFloorPlanTemplateResult;
@@ -67,7 +97,7 @@ export async function createTemplate(name: string, eventType: string | null, spa
 
 export async function renameTemplate_(id: string, name: string): Promise<FloorPlanTemplateActionResult> {
   if (!name.trim()) return { ok: false, message: "Template name is required." };
-  const result = await withVenue(async (supabase, venueId) => {
+  const result = await withVenueEditor(async (supabase, venueId) => {
     await repo.renameTemplate(supabase, venueId, id, name);
     return { ok: true } as FloorPlanTemplateActionResult;
   });
@@ -75,7 +105,7 @@ export async function renameTemplate_(id: string, name: string): Promise<FloorPl
 }
 
 export async function setTemplateDefault_(id: string): Promise<FloorPlanTemplateActionResult> {
-  const result = await withVenue(async (supabase, venueId) => {
+  const result = await withVenueEditor(async (supabase, venueId) => {
     const template = await repo.getTemplate(supabase, venueId, id);
     if (!template) return { ok: false, message: "Template not found." } as FloorPlanTemplateActionResult;
     await repo.setTemplateDefault(supabase, venueId, id, template.eventType, template.spaceId);
@@ -85,7 +115,7 @@ export async function setTemplateDefault_(id: string): Promise<FloorPlanTemplate
 }
 
 export async function setTemplateArchived_(id: string, isArchived: boolean): Promise<FloorPlanTemplateActionResult> {
-  const result = await withVenue(async (supabase, venueId) => {
+  const result = await withVenueEditor(async (supabase, venueId) => {
     await repo.setTemplateArchived(supabase, venueId, id, isArchived);
     return { ok: true } as FloorPlanTemplateActionResult;
   });
@@ -93,13 +123,15 @@ export async function setTemplateArchived_(id: string, isArchived: boolean): Pro
 }
 
 export async function deleteTemplate_(id: string): Promise<FloorPlanTemplateActionResult> {
-  const result = await withVenue(async (supabase, venueId) => repo.deleteTemplate(supabase, venueId, id));
+  const result = await withVenueTemplateDeleter(async (supabase, venueId) =>
+    repo.deleteTemplate(supabase, venueId, id),
+  );
   return result as FloorPlanTemplateActionResult;
 }
 
 export async function duplicateTemplate(sourceTemplateId: string, newName: string, isDefault?: boolean): Promise<CreateFloorPlanTemplateResult> {
   if (!newName.trim()) return { ok: false, message: "Template name is required." };
-  const result = await withVenue(async (supabase, venueId) => {
+  const result = await withVenueEditor(async (supabase, venueId) => {
     const templateId = await repo.duplicateTemplateInto(supabase, venueId, sourceTemplateId, newName);
     if (isDefault) {
       const template = await repo.getTemplate(supabase, venueId, templateId);
@@ -117,7 +149,7 @@ export async function createTemplateFromPaste(
   const items = parsePastedLayout(rawText);
   if (items.length === 0) return { ok: false, message: "There's no text to work with — paste your layout first." };
 
-  const result = await withVenue(async (supabase, venueId) => {
+  const result = await withVenueEditor(async (supabase, venueId) => {
     const templateId = await repo.insertTemplate(supabase, venueId, name, eventType, spaceId);
     for (const item of items) {
       await repo.insertObject(supabase, venueId, templateId, item);
@@ -138,7 +170,7 @@ export async function getObjects(templateId: string): Promise<FloorPlanTemplateO
 }
 
 export async function addObject(templateId: string, input: AddObjectInput): Promise<{ ok: true; object: FloorPlanTemplateObject } | FloorPlanActionResult> {
-  const result = await withVenue(async (supabase, venueId) => {
+  const result = await withVenueEditor(async (supabase, venueId) => {
     const object = await repo.insertObject(supabase, venueId, templateId, input);
     return { ok: true, object };
   });
@@ -146,7 +178,7 @@ export async function addObject(templateId: string, input: AddObjectInput): Prom
 }
 
 export async function updateObject_(objId: string, input: UpdateObjectInput): Promise<FloorPlanTemplateActionResult> {
-  const result = await withVenue(async (supabase, venueId) => {
+  const result = await withVenueEditor(async (supabase, venueId) => {
     await repo.updateObject(supabase, venueId, objId, input);
     return { ok: true } as FloorPlanTemplateActionResult;
   });
@@ -154,7 +186,7 @@ export async function updateObject_(objId: string, input: UpdateObjectInput): Pr
 }
 
 export async function deleteObject_(objId: string): Promise<FloorPlanTemplateActionResult> {
-  const result = await withVenue(async (supabase, venueId) => {
+  const result = await withVenueEditor(async (supabase, venueId) => {
     await repo.deleteObject(supabase, venueId, objId);
     return { ok: true } as FloorPlanTemplateActionResult;
   });
@@ -162,7 +194,7 @@ export async function deleteObject_(objId: string): Promise<FloorPlanTemplateAct
 }
 
 export async function clearTemplate(templateId: string): Promise<FloorPlanTemplateActionResult> {
-  const result = await withVenue(async (supabase, venueId) => {
+  const result = await withVenueEditor(async (supabase, venueId) => {
     await repo.clearObjects(supabase, venueId, templateId);
     return { ok: true } as FloorPlanTemplateActionResult;
   });
@@ -170,7 +202,7 @@ export async function clearTemplate(templateId: string): Promise<FloorPlanTempla
 }
 
 export async function updateBackground(templateId: string, url: string | null, opacity: number): Promise<FloorPlanTemplateActionResult> {
-  const result = await withVenue(async (supabase, venueId) => {
+  const result = await withVenueEditor(async (supabase, venueId) => {
     await repo.updateBackground(supabase, venueId, templateId, url, opacity);
     return { ok: true } as FloorPlanTemplateActionResult;
   });
@@ -178,7 +210,7 @@ export async function updateBackground(templateId: string, url: string | null, o
 }
 
 export async function setBackgroundLocked(templateId: string, locked: boolean): Promise<FloorPlanTemplateActionResult> {
-  const result = await withVenue(async (supabase, venueId) => {
+  const result = await withVenueEditor(async (supabase, venueId) => {
     await repo.setBackgroundLocked(supabase, venueId, templateId, locked);
     return { ok: true } as FloorPlanTemplateActionResult;
   });
@@ -187,7 +219,7 @@ export async function setBackgroundLocked(templateId: string, locked: boolean): 
 
 export async function updateRoomSettings(templateId: string, input: UpdateRoomSettingsInput): Promise<FloorPlanTemplateActionResult> {
   if (input.roomWidthFt <= 0 || input.roomDepthFt <= 0) return { ok: false, message: "Room dimensions must be greater than zero." };
-  const result = await withVenue(async (supabase, venueId) => {
+  const result = await withVenueEditor(async (supabase, venueId) => {
     await repo.updateRoomSettings(supabase, venueId, templateId, input);
     return { ok: true } as FloorPlanTemplateActionResult;
   });
@@ -195,7 +227,7 @@ export async function updateRoomSettings(templateId: string, input: UpdateRoomSe
 }
 
 export async function reorderObject(templateId: string, objId: string, direction: ReorderDirection): Promise<FloorPlanTemplateActionResult> {
-  const result = await withVenue(async (supabase, venueId) => {
+  const result = await withVenueEditor(async (supabase, venueId) => {
     await repo.reorderObject(supabase, venueId, templateId, objId, direction);
     return { ok: true } as FloorPlanTemplateActionResult;
   });

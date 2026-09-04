@@ -6,8 +6,10 @@ import { FloorPlanEditor } from "@/components/floor-plan/floor-plan-editor";
 import { FloorPlanFinalizeControl } from "@/components/floor-plan/floor-plan-finalize-control";
 import { FloorPlanReconciliationBanner } from "@/components/floor-plan/floor-plan-reconciliation-banner";
 import { getEvent } from "@/lib/events/service";
+import { canEditFloorPlans } from "@/lib/floor-plans/authorize";
 import { getFloorPlan, getFloorPlanReconciliation } from "@/lib/floor-plans/service";
 import { getCategories, getFloorPlanEligibleItems, getUsageForEvent } from "@/lib/inventory/service";
+import { getCurrentUserRole } from "@/lib/venue/service";
 
 type Props = { params: Promise<{ id: string; planId: string }> };
 
@@ -25,11 +27,12 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
  */
 export default async function FloorPlanEditorPage({ params }: Props) {
   const { id, planId } = await params;
-  const [event, plan, inventoryItems, inventoryCategories, inventoryUsage, reconciliation] = await Promise.all([
+  const [event, plan, inventoryItems, inventoryCategories, inventoryUsage, reconciliation, role] = await Promise.all([
     getEvent(id), getFloorPlan(planId), getFloorPlanEligibleItems(), getCategories(), getUsageForEvent(id),
-    getFloorPlanReconciliation(planId),
+    getFloorPlanReconciliation(planId), getCurrentUserRole(),
   ]);
   if (!event || !plan || plan.eventId !== id) notFound();
+  const canEdit = canEditFloorPlans(role);
 
   return (
     <div className="space-y-6 max-w-5xl mx-auto">
@@ -41,7 +44,7 @@ export default async function FloorPlanEditorPage({ params }: Props) {
         status={null}
         lastUpdated={new Date(plan.updatedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
         relationship={event.clientId ? { name: event.name, href: `/clients/${event.clientId}` } : { name: event.name }}
-        primaryAction={<FloorPlanFinalizeControl planId={plan.id} eventId={event.id} finalizedAt={plan.finalizedAt} />}
+        primaryAction={canEdit ? <FloorPlanFinalizeControl planId={plan.id} eventId={event.id} finalizedAt={plan.finalizedAt} /> : null}
       />
       <FloorPlanReconciliationBanner reconciliation={reconciliation} />
       <FloorPlanEditor
@@ -52,6 +55,7 @@ export default async function FloorPlanEditorPage({ params }: Props) {
         inventoryItems={inventoryItems}
         inventoryCategories={inventoryCategories}
         inventoryUsage={inventoryUsage}
+        readOnly={!canEdit}
       />
     </div>
   );

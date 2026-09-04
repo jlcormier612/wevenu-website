@@ -3,6 +3,12 @@
  */
 import { createClient } from "@/integrations/supabase/server";
 import { isSupabaseConfigured } from "@/lib/env";
+import {
+  canDeleteFloorPlanRows,
+  canEditFloorPlans,
+  FLOOR_PLAN_DELETE_DENIED,
+  FLOOR_PLAN_EDIT_DENIED,
+} from "@/lib/floor-plans/authorize";
 import * as repo from "@/lib/floor-plans/repository";
 import * as templatesRepo from "@/lib/floor-plan-templates/repository";
 import type {
@@ -18,10 +24,10 @@ import type {
   VendorFloorPlanDetail,
   VendorFloorPlanSummary,
 } from "@/lib/floor-plans/types";
-import { getCurrentVenue } from "@/lib/venue/service";
+import { getCurrentUserRole, getCurrentVenue } from "@/lib/venue/service";
 import { triggerAutoComplete } from "@/lib/playbooks/service";
 
-async function withVenue<T>(
+async function withVenueSession<T>(
   fn: (supabase: Awaited<ReturnType<typeof createClient>>, venueId: string) => Promise<T>,
 ): Promise<T | FloorPlanActionResult> {
   if (!isSupabaseConfigured) return { ok: false, message: "Backend not configured." };
@@ -31,6 +37,32 @@ async function withVenue<T>(
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { ok: false, message: "Session expired." };
   return fn(supabase, venue.id);
+}
+
+/** Owner / Manager / Coordinator — create & edit (not plan-row delete). */
+async function withVenueEditor<T>(
+  fn: (supabase: Awaited<ReturnType<typeof createClient>>, venueId: string) => Promise<T>,
+): Promise<T | FloorPlanActionResult> {
+  return withVenueSession(async (supabase, venueId) => {
+    const role = await getCurrentUserRole();
+    if (!canEditFloorPlans(role)) {
+      return { ok: false, message: FLOOR_PLAN_EDIT_DENIED } as T;
+    }
+    return fn(supabase, venueId);
+  });
+}
+
+/** Owner / Manager — delete floor_plans rows. */
+async function withVenuePlanDeleter<T>(
+  fn: (supabase: Awaited<ReturnType<typeof createClient>>, venueId: string) => Promise<T>,
+): Promise<T | FloorPlanActionResult> {
+  return withVenueSession(async (supabase, venueId) => {
+    const role = await getCurrentUserRole();
+    if (!canDeleteFloorPlanRows(role)) {
+      return { ok: false, message: FLOOR_PLAN_DELETE_DENIED } as T;
+    }
+    return fn(supabase, venueId);
+  });
 }
 
 /** The Booking Floor Plan Workspace's card grid — every floor plan this booking owns. */
@@ -58,7 +90,7 @@ export async function getAllFloorPlans(): Promise<FloorPlan[]> {
 /** "Blank Floor Plan" — a booking may hold many; each gets its own name and optional venue space. */
 export async function createFloorPlan(eventId: string, name = "Floor Plan", spaceId: string | null = null): Promise<CreateFloorPlanResult> {
   if (!name.trim()) return { ok: false, message: "Floor plan name is required." };
-  const result = await withVenue(async (supabase, venueId) => {
+  const result = await withVenueEditor(async (supabase, venueId) => {
     const floorPlanId = await repo.createFloorPlan(supabase, venueId, eventId, name.trim(), spaceId);
     await triggerAutoComplete(supabase, venueId, eventId, "floor_plan_created", "floor_plan", floorPlanId);
     return { ok: true, floorPlanId } as CreateFloorPlanResult;
@@ -75,7 +107,7 @@ export async function createFloorPlan(eventId: string, name = "Floor Plan", spac
  */
 export async function applyTemplate(eventId: string, templateId: string, name: string, spaceId: string | null): Promise<CreateFloorPlanResult> {
   if (!name.trim()) return { ok: false, message: "Floor plan name is required." };
-  const result = await withVenue(async (supabase, venueId) => {
+  const result = await withVenueEditor(async (supabase, venueId) => {
     const template = await templatesRepo.getTemplate(supabase, venueId, templateId);
     if (!template) return { ok: false, message: "Template not found." } as CreateFloorPlanResult;
     const objects = await templatesRepo.getObjects(supabase, venueId, templateId);
@@ -98,7 +130,7 @@ export async function applyTemplate(eventId: string, templateId: string, name: s
 /** "Duplicate Existing Floor Plan" — clone another floor plan already on this booking. Never touches the source. */
 export async function duplicateFloorPlan(eventId: string, sourceFloorPlanId: string, name: string, spaceId: string | null): Promise<CreateFloorPlanResult> {
   if (!name.trim()) return { ok: false, message: "Floor plan name is required." };
-  const result = await withVenue(async (supabase, venueId) => {
+  const result = await withVenueEditor(async (supabase, venueId) => {
     const floorPlanId = await repo.duplicateFloorPlanInto(supabase, venueId, eventId, sourceFloorPlanId, name, spaceId);
     await triggerAutoComplete(supabase, venueId, eventId, "floor_plan_created", "floor_plan", floorPlanId);
     return { ok: true, floorPlanId } as CreateFloorPlanResult;
@@ -109,7 +141,7 @@ export async function duplicateFloorPlan(eventId: string, sourceFloorPlanId: str
 export async function updateBackground(
   planId: string, url: string | null, opacity: number,
 ): Promise<FloorPlanActionResult> {
-  const result = await withVenue(async (supabase, venueId) => {
+  const result = await withVenueEditor(async (supabase, venueId) => {
     await repo.updateFloorPlanBackground(supabase, venueId, planId, url, opacity);
     return { ok: true } as FloorPlanActionResult;
   });
@@ -117,7 +149,7 @@ export async function updateBackground(
 }
 
 export async function setBackgroundLocked(planId: string, locked: boolean): Promise<FloorPlanActionResult> {
-  const result = await withVenue(async (supabase, venueId) => {
+  const result = await withVenueEditor(async (supabase, venueId) => {
     await repo.setFloorPlanBackgroundLocked(supabase, venueId, planId, locked);
     return { ok: true } as FloorPlanActionResult;
   });
@@ -125,7 +157,7 @@ export async function setBackgroundLocked(planId: string, locked: boolean): Prom
 }
 
 export async function setClientAccess(planId: string, clientAccess: FloorPlan["clientAccess"]): Promise<FloorPlanActionResult> {
-  const result = await withVenue(async (supabase, venueId) => {
+  const result = await withVenueEditor(async (supabase, venueId) => {
     await repo.setFloorPlanClientAccess(supabase, venueId, planId, clientAccess);
     return { ok: true } as FloorPlanActionResult;
   });
@@ -134,7 +166,7 @@ export async function setClientAccess(planId: string, clientAccess: FloorPlan["c
 
 /** Sprint 1 — Vendor Event Assets: share (or unshare) this Floor Plan with vendors assigned to the event. */
 export async function setVendorAccess(planId: string, sharedWithVendors: boolean): Promise<FloorPlanActionResult> {
-  const result = await withVenue(async (supabase, venueId) => {
+  const result = await withVenueEditor(async (supabase, venueId) => {
     await repo.setFloorPlanVendorAccess(supabase, venueId, planId, sharedWithVendors);
     return { ok: true } as FloorPlanActionResult;
   });
@@ -143,7 +175,7 @@ export async function setVendorAccess(planId: string, sharedWithVendors: boolean
 
 /** Phase 1 — Share Floor Plan (couple layout view). Not Enable Seating. */
 export async function setCoupleShare(planId: string, sharedWithCouple: boolean): Promise<FloorPlanActionResult> {
-  const result = await withVenue(async (supabase, venueId) => {
+  const result = await withVenueEditor(async (supabase, venueId) => {
     await repo.setFloorPlanCoupleShare(supabase, venueId, planId, sharedWithCouple);
     return { ok: true } as FloorPlanActionResult;
   });
@@ -154,7 +186,7 @@ export async function setCoupleShare(planId: string, sharedWithCouple: boolean):
 export async function setOperationalFloorPlan(
   eventId: string, floorPlanId: string | null,
 ): Promise<FloorPlanActionResult> {
-  const result = await withVenue(async (supabase, venueId) => {
+  const result = await withVenueEditor(async (supabase, venueId) => {
     await repo.setEventOperationalFloorPlan(supabase, venueId, eventId, floorPlanId);
     return { ok: true } as FloorPlanActionResult;
   });
@@ -175,7 +207,7 @@ export async function getVendorFloorPlan(planId: string): Promise<VendorFloorPla
 
 /** Phase 4 — the print-ready checkpoint. Never gates editing; reversible. */
 export async function setFinalized(planId: string, finalized: boolean): Promise<FloorPlanActionResult> {
-  const result = await withVenue(async (supabase, venueId) => {
+  const result = await withVenueEditor(async (supabase, venueId) => {
     await repo.setFloorPlanFinalized(supabase, venueId, planId, finalized);
     return { ok: true } as FloorPlanActionResult;
   });
@@ -192,7 +224,7 @@ export async function getFloorPlanReconciliation(planId: string): Promise<FloorP
 
 export async function updateRoomSettings(planId: string, input: UpdateRoomSettingsInput): Promise<FloorPlanActionResult> {
   if (input.roomWidthFt <= 0 || input.roomDepthFt <= 0) return { ok: false, message: "Room dimensions must be greater than zero." };
-  const result = await withVenue(async (supabase, venueId) => {
+  const result = await withVenueEditor(async (supabase, venueId) => {
     await repo.updateFloorPlanRoomSettings(supabase, venueId, planId, input);
     return { ok: true } as FloorPlanActionResult;
   });
@@ -200,7 +232,7 @@ export async function updateRoomSettings(planId: string, input: UpdateRoomSettin
 }
 
 export async function reorderObject(planId: string, objId: string, direction: ReorderDirection): Promise<FloorPlanActionResult> {
-  const result = await withVenue(async (supabase, venueId) => {
+  const result = await withVenueEditor(async (supabase, venueId) => {
     await repo.reorderObject(supabase, venueId, planId, objId, direction);
     return { ok: true } as FloorPlanActionResult;
   });
@@ -208,7 +240,7 @@ export async function reorderObject(planId: string, objId: string, direction: Re
 }
 
 export async function updateNotes(planId: string, notes: string): Promise<FloorPlanActionResult> {
-  const result = await withVenue(async (supabase, venueId) => {
+  const result = await withVenueEditor(async (supabase, venueId) => {
     await repo.updateFloorPlanNotes(supabase, venueId, planId, notes);
     return { ok: true } as FloorPlanActionResult;
   });
@@ -217,7 +249,7 @@ export async function updateNotes(planId: string, notes: string): Promise<FloorP
 
 export async function renameFloorPlan(planId: string, name: string): Promise<FloorPlanActionResult> {
   if (!name.trim()) return { ok: false, message: "Name is required." };
-  const result = await withVenue(async (supabase, venueId) => {
+  const result = await withVenueEditor(async (supabase, venueId) => {
     await repo.renameFloorPlan(supabase, venueId, planId, name.trim());
     return { ok: true } as FloorPlanActionResult;
   });
@@ -225,7 +257,7 @@ export async function renameFloorPlan(planId: string, name: string): Promise<Flo
 }
 
 export async function deleteFloorPlan(planId: string): Promise<FloorPlanActionResult> {
-  const result = await withVenue(async (supabase, venueId) => {
+  const result = await withVenuePlanDeleter(async (supabase, venueId) => {
     const outcome = await repo.deleteFloorPlan(supabase, venueId, planId);
     if (!outcome.ok) return { ok: false, message: outcome.message } as FloorPlanActionResult;
     return { ok: true } as FloorPlanActionResult;
@@ -236,7 +268,7 @@ export async function deleteFloorPlan(planId: string): Promise<FloorPlanActionRe
 export async function addObject(
   planId: string, input: AddObjectInput,
 ): Promise<{ ok: true; object: import("@/lib/floor-plans/types").FloorPlanObject } | FloorPlanActionResult> {
-  const result = await withVenue(async (supabase, venueId) => {
+  const result = await withVenueEditor(async (supabase, venueId) => {
     const object = await repo.insertObject(supabase, venueId, planId, input);
     return { ok: true, object };
   });
@@ -246,7 +278,7 @@ export async function addObject(
 export async function updateObject_(
   objId: string, input: UpdateObjectInput,
 ): Promise<FloorPlanActionResult> {
-  const result = await withVenue(async (supabase, venueId) => {
+  const result = await withVenueEditor(async (supabase, venueId) => {
     await repo.updateObject(supabase, venueId, objId, input);
     return { ok: true } as FloorPlanActionResult;
   });
@@ -254,7 +286,7 @@ export async function updateObject_(
 }
 
 export async function deleteObject_(objId: string): Promise<FloorPlanActionResult> {
-  const result = await withVenue(async (supabase, venueId) => {
+  const result = await withVenueEditor(async (supabase, venueId) => {
     const outcome = await repo.deleteObject(supabase, venueId, objId);
     if (!outcome.ok) return { ok: false, message: outcome.message } as FloorPlanActionResult;
     return { ok: true } as FloorPlanActionResult;
@@ -263,7 +295,7 @@ export async function deleteObject_(objId: string): Promise<FloorPlanActionResul
 }
 
 export async function clearFloorPlan(planId: string): Promise<FloorPlanActionResult> {
-  const result = await withVenue(async (supabase, venueId) => {
+  const result = await withVenueEditor(async (supabase, venueId) => {
     const outcome = await repo.clearAllObjects(supabase, venueId, planId);
     if (!outcome.ok) return { ok: false, message: outcome.message } as FloorPlanActionResult;
     return { ok: true } as FloorPlanActionResult;

@@ -4,16 +4,20 @@ import { PageHeader } from "@/components/shell/module-placeholder";
 import { FloorPlanTemplatesSection } from "@/components/floor-plan-templates/floor-plan-templates-section";
 import { getSpaces } from "@/lib/availability/service";
 import { getEvents } from "@/lib/events/service";
+import {
+  canDeleteFloorPlanRows,
+  canEditFloorPlans,
+} from "@/lib/floor-plans/authorize";
 import { ensureFloorPlanStartersForCurrentVenue } from "@/lib/floor-plan-templates/provision";
 import { getTemplatesForLibrary } from "@/lib/floor-plan-templates/service";
-import { getCurrentVenue } from "@/lib/venue/service";
+import { getCurrentUserRole, getCurrentVenue } from "@/lib/venue/service";
 
 export const metadata: Metadata = { title: "Floor Plan Templates" };
 
 export default async function FloorPlanTemplatesPage() {
   await ensureFloorPlanStartersForCurrentVenue();
-  const [templates, spaces, venue, events] = await Promise.all([
-    getTemplatesForLibrary(), getSpaces(), getCurrentVenue(), getEvents(),
+  const [templates, spaces, venue, events, role] = await Promise.all([
+    getTemplatesForLibrary(), getSpaces(), getCurrentVenue(), getEvents(), getCurrentUserRole(),
   ]);
   return (
     <div className="space-y-6">
@@ -26,6 +30,8 @@ export default async function FloorPlanTemplatesPage() {
         spaces={spaces}
         venueId={venue?.id ?? ""}
         events={events.map((e) => ({ id: e.id, name: e.name, eventDate: e.eventDate }))}
+        canEdit={canEditFloorPlans(role)}
+        canDelete={canDeleteFloorPlanRows(role)}
       />
     </div>
   );

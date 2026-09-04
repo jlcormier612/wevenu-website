@@ -3,15 +3,19 @@
  */
 import { createClient } from "@/integrations/supabase/server";
 import { isSupabaseConfigured } from "@/lib/env";
+import {
+  canEditFloorPlans,
+  FLOOR_PLAN_EDIT_DENIED,
+} from "@/lib/floor-plans/authorize";
 import * as repo from "@/lib/floor-plan-offers/repository";
 import type {
   EventFloorPlanOfferWithTemplate,
   UpsertEventFloorPlanOfferInput,
 } from "@/lib/floor-plan-offers/types";
 import type { FloorPlanActionResult } from "@/lib/floor-plans/types";
-import { getCurrentVenue } from "@/lib/venue/service";
+import { getCurrentUserRole, getCurrentVenue } from "@/lib/venue/service";
 
-async function withVenue<T>(
+async function withVenueEditor<T>(
   fn: (supabase: Awaited<ReturnType<typeof createClient>>, venueId: string) => Promise<T>,
 ): Promise<T | FloorPlanActionResult> {
   if (!isSupabaseConfigured) return { ok: false, message: "Backend not configured." };
@@ -20,6 +24,10 @@ async function withVenue<T>(
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { ok: false, message: "Session expired." };
+  const role = await getCurrentUserRole();
+  if (!canEditFloorPlans(role)) {
+    return { ok: false, message: FLOOR_PLAN_EDIT_DENIED };
+  }
   return fn(supabase, venue.id);
 }
 
@@ -35,7 +43,7 @@ export async function upsertEventFloorPlanOffer(
   input: UpsertEventFloorPlanOfferInput,
 ): Promise<{ ok: true; offerId: string } | FloorPlanActionResult> {
   if (!input.templateId) return { ok: false, message: "Template is required." };
-  const result = await withVenue(async (supabase, venueId) => {
+  const result = await withVenueEditor(async (supabase, venueId) => {
     const offerId = await repo.upsertOffer(supabase, venueId, eventId, input);
     return { ok: true as const, offerId };
   });
@@ -51,7 +59,7 @@ export async function updateEventFloorPlanOffer(
     coupleBlurb?: string | null;
   },
 ): Promise<FloorPlanActionResult> {
-  const result = await withVenue(async (supabase, venueId) => {
+  const result = await withVenueEditor(async (supabase, venueId) => {
     await repo.updateOffer(supabase, venueId, offerId, patch);
     return { ok: true } as FloorPlanActionResult;
   });
@@ -60,7 +68,7 @@ export async function updateEventFloorPlanOffer(
 
 /** Withdraw from chooser — does not clear selection or delete event clone. */
 export async function withdrawEventFloorPlanOffer(offerId: string): Promise<FloorPlanActionResult> {
-  const result = await withVenue(async (supabase, venueId) => {
+  const result = await withVenueEditor(async (supabase, venueId) => {
     await repo.withdrawOffer(supabase, venueId, offerId);
     return { ok: true } as FloorPlanActionResult;
   });
@@ -68,7 +76,7 @@ export async function withdrawEventFloorPlanOffer(offerId: string): Promise<Floo
 }
 
 export async function deleteEventFloorPlanOffer(offerId: string): Promise<FloorPlanActionResult> {
-  const result = await withVenue(async (supabase, venueId) => {
+  const result = await withVenueEditor(async (supabase, venueId) => {
     await repo.deleteOffer(supabase, venueId, offerId);
     return { ok: true } as FloorPlanActionResult;
   });

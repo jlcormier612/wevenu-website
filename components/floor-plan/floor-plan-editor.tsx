@@ -585,6 +585,7 @@ export function FloorPlanEditor({
   inventoryItems = [],
   inventoryCategories = [],
   inventoryUsage = [],
+  readOnly = false,
 }: {
   initialPlan: FloorPlanCanvasPlan | null;
   eventId?: string;
@@ -613,6 +614,8 @@ export function FloorPlanEditor({
    * aren't tied to a booking's real inventory commitments.
    */
   inventoryUsage?: InventoryUsage[];
+  /** Staff view-only — no canvas mutations. */
+  readOnly?: boolean;
 }) {
   const boundActions: FloorPlanEditorActions = actions ?? {
     create: () => createFloorPlanAction(eventId!),
@@ -781,6 +784,10 @@ export function FloorPlanEditor({
 
   // --- Pointer events ---
   function handleSvgPointerDown(e: React.PointerEvent<SVGSVGElement>) {
+    if (readOnly) {
+      setInteraction({ kind: "pan", startClient: { x: e.clientX, y: e.clientY }, origPan: pan, moved: false });
+      return;
+    }
     if (mode === "add") {
       if (!plan) return;
       const pos = toCanvas(e.clientX, e.clientY);
@@ -818,7 +825,7 @@ export function FloorPlanEditor({
   }
 
   function handleObjectPointerDown(e: React.PointerEvent, id: string) {
-    if (mode === "add") return;
+    if (readOnly || mode === "add") return;
     setSelectedId(id);
     const obj = objects.find((o) => o.id === id);
     if (!obj || obj.locked) return;
@@ -827,6 +834,7 @@ export function FloorPlanEditor({
   }
 
   function handleResizeStart(e: React.PointerEvent, id: string, corner: Corner) {
+    if (readOnly) return;
     const obj = objects.find((o) => o.id === id);
     if (!obj || obj.locked) return;
     setSelectedId(id);
@@ -834,6 +842,7 @@ export function FloorPlanEditor({
   }
 
   function handleRotateStart(e: React.PointerEvent, id: string) {
+    if (readOnly) return;
     const obj = objects.find((o) => o.id === id);
     if (!obj || obj.locked) return;
     setSelectedId(id);
@@ -1066,11 +1075,15 @@ export function FloorPlanEditor({
       <div className="flex flex-col items-center justify-center py-16 text-center">
         <p className="font-heading text-lg font-medium text-heading">No floor plan yet</p>
         <p className="mt-1 mb-4 text-sm text-muted-foreground">
-          Create a floor plan to visualize the event layout.
+          {readOnly
+            ? "Ask an Owner, Manager, or Coordinator to create a floor plan."
+            : "Create a floor plan to visualize the event layout."}
         </p>
-        <Button type="button" onClick={handleCreate} disabled={creating}>
-          {creating ? <><Loader2 className="mr-1 h-4 w-4 animate-spin" />Creating…</> : "Create Floor Plan"}
-        </Button>
+        {!readOnly && (
+          <Button type="button" onClick={handleCreate} disabled={creating}>
+            {creating ? <><Loader2 className="mr-1 h-4 w-4 animate-spin" />Creating…</> : "Create Floor Plan"}
+          </Button>
+        )}
       </div>
     );
   }
@@ -1084,11 +1097,19 @@ export function FloorPlanEditor({
   return (
     <TooltipProvider>
     <div className="space-y-4">
-      <div className="flex items-center justify-between gap-2">
-        <p className="text-xs text-muted-foreground">Changes save automatically as you edit.</p>
-        <LibrarySaveStatus status={saveUi.status} model="autosave" />
-      </div>
+      {readOnly ? (
+        <p className="rounded-lg border border-border bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
+          View-only — you can look at this layout, but only an Owner, Manager, or Coordinator can edit it.
+        </p>
+      ) : (
+        <div className="flex items-center justify-between gap-2">
+          <p className="text-xs text-muted-foreground">Changes save automatically as you edit.</p>
+          <LibrarySaveStatus status={saveUi.status} model="autosave" />
+        </div>
+      )}
       {/* Palette: category chips */}
+      {!readOnly && (
+      <>
       <div className="flex flex-wrap items-center gap-1.5">
         {categoriesWithItems.map((cat) => (
           <button
@@ -1162,16 +1183,19 @@ export function FloorPlanEditor({
           </Tooltip>
         </div>
       )}
+      </>
+      )}
 
       {/* Canvas tools */}
-      <div className="flex flex-wrap items-center gap-1.5">
+      <div className={cn("flex flex-wrap items-center gap-1.5", readOnly && "opacity-90")}>
+        {!readOnly && (
         <button type="button" onClick={() => { setMode("select"); setAddSource(null); }}
           className={cn("rounded-lg border px-2.5 py-1 text-xs font-medium transition-colors",
             mode === "select" ? "border-primary bg-primary/10 text-primary" : "border-border bg-background text-muted-foreground hover:text-foreground")}>
           Select
         </button>
-
-        <Separator orientation="vertical" className="h-6 mx-0.5" />
+        )}
+        {!readOnly && <Separator orientation="vertical" className="h-6 mx-0.5" />}
 
         <Tooltip>
           <TooltipTrigger render={
@@ -1255,6 +1279,7 @@ export function FloorPlanEditor({
         {/* Background image upload — a photo or sketch of the real room, traced
             underneath the layout so placement matches actual walls, doors, and
             fixed features. Not saved as an inventory object; purely a visual guide. */}
+        {!readOnly && (
         <label
           title="Upload a photo or sketch of the room to trace your layout over — it's a visual guide only, not a Floor Plan object."
           className={cn(
@@ -1265,6 +1290,7 @@ export function FloorPlanEditor({
           {plan.backgroundImageUrl ? "Change Background Image" : "Add Background Image"}
           <input type="file" accept="image/*" className="sr-only" onChange={handleBackgroundUpload} disabled={plan.backgroundLocked} />
         </label>
+        )}
 
         {plan.backgroundImageUrl && (
           <>

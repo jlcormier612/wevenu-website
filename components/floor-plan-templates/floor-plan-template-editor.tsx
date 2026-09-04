@@ -19,9 +19,11 @@ import type { InventoryCategory, InventoryItem } from "@/lib/inventory/types";
 
 export function FloorPlanTemplateEditor({
   templateId, venueId, initialPlan, inventoryItems = [], inventoryCategories = [],
+  readOnly = false,
 }: {
   templateId: string; venueId: string; initialPlan: FloorPlanCanvasPlan;
   inventoryItems?: InventoryItem[]; inventoryCategories?: InventoryCategory[];
+  readOnly?: boolean;
 }) {
   const actions: FloorPlanEditorActions = {
     // Never invoked — the template row always exists before this page can
@@ -45,6 +47,7 @@ export function FloorPlanTemplateEditor({
       showPrint={false}
       inventoryItems={inventoryItems}
       inventoryCategories={inventoryCategories}
+      readOnly={readOnly}
     />
   );
 }

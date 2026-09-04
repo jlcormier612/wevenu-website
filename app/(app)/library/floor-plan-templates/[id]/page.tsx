@@ -6,11 +6,12 @@ import { ArrowLeft } from "lucide-react";
 import { FloorPlanTemplateEditor } from "@/components/floor-plan-templates/floor-plan-template-editor";
 import { Badge } from "@/components/ui/badge";
 import { getSpaces } from "@/lib/availability/service";
+import { canEditFloorPlans } from "@/lib/floor-plans/authorize";
 import { eventTypeLabel } from "@/lib/leads/constants";
 import { getObjects, getTemplate } from "@/lib/floor-plan-templates/service";
 import { getFloorPlanStarterMaster } from "@/lib/floor-plan-templates/starters";
 import { getCategories, getFloorPlanEligibleItems } from "@/lib/inventory/service";
-import { getCurrentVenue } from "@/lib/venue/service";
+import { getCurrentUserRole, getCurrentVenue } from "@/lib/venue/service";
 
 type Props = { params: Promise<{ id: string }> };
 
@@ -22,8 +23,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function FloorPlanTemplateEditorPage({ params }: Props) {
   const { id } = await params;
-  const [template, objects, spaces, venue, inventoryItems, inventoryCategories] = await Promise.all([
+  const [template, objects, spaces, venue, inventoryItems, inventoryCategories, role] = await Promise.all([
     getTemplate(id), getObjects(id), getSpaces(), getCurrentVenue(), getFloorPlanEligibleItems(), getCategories(),
+    getCurrentUserRole(),
   ]);
   if (!template || !venue) notFound();
 
@@ -56,6 +58,7 @@ export default async function FloorPlanTemplateEditorPage({ params }: Props) {
         initialPlan={{ ...template, objects }}
         inventoryItems={inventoryItems}
         inventoryCategories={inventoryCategories}
+        readOnly={!canEditFloorPlans(role)}
       />
     </div>
   );

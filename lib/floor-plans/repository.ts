@@ -494,8 +494,8 @@ export async function updateObject(
 
 /**
  * Release Readiness Reconciliation remediation: `floor_plan_objects_delete_gate`
- * restricts DELETE to Owner/Manager at the RLS layer, same fix shape as
- * deleteFloorPlan above.
+ * allows Owner/Manager/Coordinator at the RLS layer (Staff cannot delete
+ * objects). `.select("id")` surfaces a blocked/missing delete.
  */
 export async function deleteObject(
   client: DbClient, venueId: string, objId: string,
@@ -504,7 +504,7 @@ export async function deleteObject(
     .delete().eq("id", objId).eq("venue_id", venueId).select("id");
   if (error) throw error;
   if (!data || data.length === 0) {
-    return { ok: false, message: "Only an Owner or Manager can delete this object." };
+    return { ok: false, message: "You don't have permission to remove objects from this floor plan." };
   }
   return { ok: true };
 }
@@ -557,7 +557,7 @@ export async function clearAllObjects(
     .delete().eq("floor_plan_id", planId).eq("venue_id", venueId).select("id");
   if (error) throw error;
   if (!deleted || deleted.length < before.length) {
-    return { ok: false, message: "Only an Owner or Manager can clear this floor plan." };
+    return { ok: false, message: "You don't have permission to clear this floor plan." };
   }
   return { ok: true };
 }

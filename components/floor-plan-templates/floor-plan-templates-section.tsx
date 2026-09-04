@@ -193,6 +193,7 @@ function StarterMenu({ missingKeys }: { missingKeys: FloorPlanStarterMasterKey[]
 
 function TemplateCard({
   template, busy, onRename, onDuplicate, onSetDefault, onArchiveToggle, onDelete, onUse, archivedView,
+  canEdit = true, canDelete = true,
 }: {
   template: FloorPlanTemplateWithStats;
   busy: boolean;
@@ -203,6 +204,8 @@ function TemplateCard({
   onDelete: () => void;
   onUse: () => void;
   archivedView?: boolean;
+  canEdit?: boolean;
+  canDelete?: boolean;
 }) {
   const eventType = template.eventType ? eventTypeLabel(template.eventType) : "Any event type";
   const previewHref = `/library/floor-plan-templates/${template.id}/preview`;
@@ -210,12 +213,35 @@ function TemplateCard({
   const primaryActions = archivedView
     ? [
         { id: "preview", label: LIBRARY_LABELS.preview, href: previewHref, emphasis: "preview" as const },
-        { id: "restore", label: LIBRARY_LABELS.restore, onClick: onArchiveToggle, emphasis: "edit" as const, disabled: busy },
+        ...(canEdit
+          ? [{ id: "restore", label: LIBRARY_LABELS.restore, onClick: onArchiveToggle, emphasis: "edit" as const, disabled: busy }]
+          : []),
       ]
     : [
         { id: "preview", label: LIBRARY_LABELS.preview, href: previewHref, emphasis: "preview" as const },
-        { id: "edit", label: LIBRARY_LABELS.edit, href: `/library/floor-plan-templates/${template.id}`, emphasis: "edit" as const },
+        ...(canEdit
+          ? [{ id: "edit", label: LIBRARY_LABELS.edit, href: `/library/floor-plan-templates/${template.id}`, emphasis: "edit" as const }]
+          : []),
         { id: "use", label: LIBRARY_LABELS.useFloorPlan, onClick: onUse, emphasis: "use" as const },
+      ];
+
+  const overflowItems = archivedView
+    ? []
+    : [
+        ...(canEdit
+          ? [
+              { id: "duplicate", label: LIBRARY_LABELS.duplicate, onClick: onDuplicate },
+              { id: "rename", label: "Rename", onClick: onRename },
+              ...(!template.isDefault ? [{ id: "default", label: "Set as Default", onClick: onSetDefault }] : []),
+              { id: "archive", label: LIBRARY_LABELS.archive, onClick: onArchiveToggle, separatorBefore: true },
+            ]
+          : []),
+        ...(canDelete
+          ? [{
+              id: "delete", label: LIBRARY_LABELS.delete, onClick: onDelete, destructive: true,
+              icon: <Trash2 className="mr-2 h-3.5 w-3.5" />,
+            }]
+          : []),
       ];
 
   return (
@@ -234,16 +260,7 @@ function TemplateCard({
       meta={`${template.objectCount} item${template.objectCount !== 1 ? "s" : ""} · Updated ${formatRelative(template.updatedAt)}`}
       primaryActions={primaryActions}
       overflowPending={busy}
-      overflowItems={archivedView ? [] : [
-        { id: "duplicate", label: LIBRARY_LABELS.duplicate, onClick: onDuplicate },
-        { id: "rename", label: "Rename", onClick: onRename },
-        ...(!template.isDefault ? [{ id: "default", label: "Set as Default", onClick: onSetDefault }] : []),
-        { id: "archive", label: LIBRARY_LABELS.archive, onClick: onArchiveToggle, separatorBefore: true },
-        {
-          id: "delete", label: LIBRARY_LABELS.delete, onClick: onDelete, destructive: true,
-          icon: <Trash2 className="mr-2 h-3.5 w-3.5" />,
-        },
-      ]}
+      overflowItems={overflowItems}
     >
       <Link
         href={previewHref}
@@ -267,7 +284,15 @@ function TemplateCard({
 
 export function FloorPlanTemplatesSection({
   initialTemplates, spaces, venueId, events = [],
-}: { initialTemplates: FloorPlanTemplateWithStats[]; spaces: VenueSpace[]; venueId: string; events?: FloorPlanEventOption[] }) {
+  canEdit = true, canDelete = true,
+}: {
+  initialTemplates: FloorPlanTemplateWithStats[];
+  spaces: VenueSpace[];
+  venueId: string;
+  events?: FloorPlanEventOption[];
+  canEdit?: boolean;
+  canDelete?: boolean;
+}) {
   const [templates, setTemplates] = React.useState(initialTemplates);
   const [busyId, setBusyId] = React.useState<string | null>(null);
   const [search, setSearch] = React.useState("");
@@ -360,10 +385,12 @@ export function FloorPlanTemplatesSection({
         <Sparkles className="h-8 w-8 text-muted-foreground mx-auto" />
         <p className="text-sm font-medium text-heading">No floor plan templates yet</p>
         <p className="text-xs text-muted-foreground">Reusable room layouts a venue builds once and applies to any booking.</p>
-        <div className="flex justify-center gap-2 pt-1 flex-wrap">
-          <StarterMenu missingKeys={missingStarterKeys} />
-          <FloorPlanTemplateStarterPicker existingTemplates={activeTemplates} spaces={spaces} venueId={venueId} />
-        </div>
+        {canEdit && (
+          <div className="flex justify-center gap-2 pt-1 flex-wrap">
+            <StarterMenu missingKeys={missingStarterKeys} />
+            <FloorPlanTemplateStarterPicker existingTemplates={activeTemplates} spaces={spaces} venueId={venueId} />
+          </div>
+        )}
       </div>
     );
   }
@@ -372,6 +399,8 @@ export function FloorPlanTemplatesSection({
     return (
       <TemplateCard
         key={t.id} template={t} busy={busyId === t.id} archivedView={archivedView}
+        canEdit={canEdit}
+        canDelete={canDelete}
         onRename={() => handleRename(t.id, t.name)}
         onDuplicate={() => handleDuplicate(t.id, t.name)}
         onSetDefault={() => handleSetDefault(t.id, t)}
@@ -405,8 +434,12 @@ export function FloorPlanTemplatesSection({
           </Select>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <StarterMenu missingKeys={missingStarterKeys} />
-          <FloorPlanTemplateStarterPicker existingTemplates={activeTemplates} spaces={spaces} venueId={venueId} />
+          {canEdit && (
+            <>
+              <StarterMenu missingKeys={missingStarterKeys} />
+              <FloorPlanTemplateStarterPicker existingTemplates={activeTemplates} spaces={spaces} venueId={venueId} />
+            </>
+          )}
         </div>
       </div>
       <p className="text-xs text-muted-foreground">

@@ -10,7 +10,8 @@ export type StripeOnboardingStatus = "not_started" | "pending" | "connected";
 /** Kept as an allowed-values array, not one flag per method — scales to any future Stripe-supported method without a schema change. */
 export type StripePaymentMethodType = "card" | "us_bank_account";
 
-export type StaffRole = "owner" | "manager" | "staff";
+/** Canonical venue staff roles — keep in sync with `lib/team/types.ts`. */
+export type StaffRole = "owner" | "manager" | "coordinator" | "staff";
 
 /**
  * Captured once, right alongside the venue name — drives which of three

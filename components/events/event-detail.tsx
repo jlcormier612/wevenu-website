@@ -267,6 +267,8 @@ export function EventDetail({
   floorPlanOffers = [],
   spaces = [],
   inventoryUsage = [],
+  floorPlanCanEdit = true,
+  floorPlanCanDelete = true,
   teamMembers = [],
   eventOrderEnabled = false,
   eventOrder = null,
@@ -323,6 +325,9 @@ export function EventDetail({
   floorPlanOffers?: EventFloorPlanOfferWithTemplate[];
   spaces?: VenueSpace[];
   inventoryUsage?: import("@/lib/inventory/types").InventoryUsage[];
+  /** Floor plan permissions — Staff view-only; Coordinator cannot delete plans. */
+  floorPlanCanEdit?: boolean;
+  floorPlanCanDelete?: boolean;
   teamMembers?: import("@/lib/team/types").StaffMember[];
   // Booking Financial Architecture Phase 2 — gated by venues.event_order_enabled.
   eventOrderEnabled?: boolean;
@@ -761,6 +766,8 @@ export function EventDetail({
                 operationalFloorPlanId={event.operationalFloorPlanId}
                 coupleSelectedFloorPlanId={event.coupleSelectedFloorPlanId}
                 inventoryUsage={inventoryUsage}
+                canEdit={floorPlanCanEdit}
+                canDelete={floorPlanCanDelete}
               />
             </CardContent>
           </Card>

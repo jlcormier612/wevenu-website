@@ -37,7 +37,11 @@ import {
 } from "@/lib/timeline/service";
 import { getTemplatesForLibrary as getTimelineTemplatesForLibrary } from "@/lib/timeline-templates/service";
 import { createClient } from "@/integrations/supabase/server";
-import { getCurrentVenue } from "@/lib/venue/service";
+import { getCurrentUserRole, getCurrentVenue } from "@/lib/venue/service";
+import {
+  canDeleteFloorPlanRows,
+  canEditFloorPlans,
+} from "@/lib/floor-plans/authorize";
 import { getEventRecommendations } from "@/lib/vendor-recommendations/service";
 import { getVendors } from "@/lib/vendors/service";
 import { getEventOrder } from "@/lib/event-orders/service";
@@ -104,6 +108,9 @@ export default async function BookingWorkspacePage({ params }: Props) {
     getEventInventory(eventId), getInventoryTemplates(), getInventoryItems(),
   ]);
   if (!event) notFound();
+  const staffRole = await getCurrentUserRole();
+  const floorPlanCanEdit = canEditFloorPlans(staffRole);
+  const floorPlanCanDelete = canDeleteFloorPlanRows(staffRole);
   // D5D — additive templates + activity logs for each working form.
   const questionnaire = questionnaires.find((q) => q.kind === "final_details") ?? questionnaires[0] ?? null;
   const [questionnaireTemplates, activityLists] = await Promise.all([
@@ -214,6 +221,8 @@ export default async function BookingWorkspacePage({ params }: Props) {
       contractTemplates={contractTemplates} contracts={contracts}
       floorPlanTemplates={floorPlanTemplates} spaces={spaces}
       floorPlanOffers={floorPlanOffers}
+      floorPlanCanEdit={floorPlanCanEdit}
+      floorPlanCanDelete={floorPlanCanDelete}
       inventoryUsage={inventoryUsage}
       teamMembers={teamMembers}
       requestsByTaskId={requestsByTaskId}

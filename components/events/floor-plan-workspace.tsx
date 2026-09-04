@@ -205,10 +205,11 @@ function ShareWithVendorsToggle({ eventId, plan }: { eventId: string; plan: Floo
 }
 
 function FloorPlanCard({
-  eventId, plan, spaces, busy, isOperational, isCoupleSelected, onRename, onDelete,
+  eventId, plan, spaces, busy, isOperational, isCoupleSelected, canEdit, canDelete, onRename, onDelete,
 }: {
   eventId: string; plan: FloorPlan; spaces: VenueSpace[]; busy: boolean;
   isOperational: boolean; isCoupleSelected: boolean;
+  canEdit: boolean; canDelete: boolean;
   onRename: () => void; onDelete: () => void;
 }) {
   return (
@@ -218,17 +219,19 @@ function FloorPlanCard({
     >
       <div className="flex items-start justify-between gap-2">
         <p className="min-w-0 truncate text-sm font-medium text-heading">{plan.name}</p>
-        <div onClick={(e) => { e.preventDefault(); e.stopPropagation(); }} className="shrink-0">
-          <DropdownMenu>
-            <DropdownMenuTrigger render={<Button variant="ghost" size="icon" className="h-7 w-7" disabled={busy} aria-label="Floor plan actions" />}>
-              {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <MoreHorizontal className="h-3.5 w-3.5" />}
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={onRename}>Rename</DropdownMenuItem>
-              <DropdownMenuItem onClick={onDelete} className="text-destructive">Delete</DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
+        {(canEdit || canDelete) && (
+          <div onClick={(e) => { e.preventDefault(); e.stopPropagation(); }} className="shrink-0">
+            <DropdownMenu>
+              <DropdownMenuTrigger render={<Button variant="ghost" size="icon" className="h-7 w-7" disabled={busy} aria-label="Floor plan actions" />}>
+                {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <MoreHorizontal className="h-3.5 w-3.5" />}
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                {canEdit && <DropdownMenuItem onClick={onRename}>Rename</DropdownMenuItem>}
+                {canDelete && <DropdownMenuItem onClick={onDelete} className="text-destructive">Delete</DropdownMenuItem>}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        )}
       </div>
       <p className="text-xs text-muted-foreground">{spaceName(spaces, plan.spaceId) ?? "No space assigned"}</p>
       {(isOperational || isCoupleSelected) && (
@@ -245,12 +248,14 @@ function FloorPlanCard({
           )}
         </div>
       )}
-      <div className="flex flex-wrap gap-1.5" onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}>
-        <ShareFloorPlanToggle eventId={eventId} plan={plan} />
-        <ShareForSeatingToggle eventId={eventId} plan={plan} />
-        <ShareWithVendorsToggle eventId={eventId} plan={plan} />
-        <SetOperationalToggle eventId={eventId} plan={plan} isOperational={isOperational} />
-      </div>
+      {canEdit && (
+        <div className="flex flex-wrap gap-1.5" onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}>
+          <ShareFloorPlanToggle eventId={eventId} plan={plan} />
+          <ShareForSeatingToggle eventId={eventId} plan={plan} />
+          <ShareWithVendorsToggle eventId={eventId} plan={plan} />
+          <SetOperationalToggle eventId={eventId} plan={plan} isOperational={isOperational} />
+        </div>
+      )}
     </Link>
   );
 }
@@ -394,6 +399,7 @@ function OfferLayoutsPanel({
 export function FloorPlanWorkspace({
   eventId, floorPlans, templates, offers = [], spaces, eventSpaceId,
   operationalFloorPlanId = null, coupleSelectedFloorPlanId = null, inventoryUsage = [],
+  canEdit = true, canDelete = true,
 }: {
   eventId: string;
   floorPlans: FloorPlan[];
@@ -407,6 +413,10 @@ export function FloorPlanWorkspace({
   coupleSelectedFloorPlanId?: string | null;
   /** Reporting only (Inventory Foundation task) — never blocks or reserves anything. */
   inventoryUsage?: InventoryUsage[];
+  /** Owner/Manager/Coordinator — create, edit, share. Staff: false. */
+  canEdit?: boolean;
+  /** Owner/Manager only — delete plan rows. */
+  canDelete?: boolean;
 }) {
   const router = useRouter();
   const [open, setOpen] = React.useState(false);
@@ -496,11 +506,17 @@ export function FloorPlanWorkspace({
 
   return (
     <div className="space-y-4">
-      <div className="flex justify-end">
-        <Button type="button" onClick={() => { reset(); setOpen(true); }}>+ New Floor Plan</Button>
-      </div>
+      {canEdit ? (
+        <div className="flex justify-end">
+          <Button type="button" onClick={() => { reset(); setOpen(true); }}>+ New Floor Plan</Button>
+        </div>
+      ) : (
+        <p className="text-xs text-muted-foreground">
+          View-only — ask an Owner, Manager, or Coordinator to create or edit floor plans.
+        </p>
+      )}
 
-      <OfferLayoutsPanel eventId={eventId} templates={templates} offers={offers} />
+      {canEdit && <OfferLayoutsPanel eventId={eventId} templates={templates} offers={offers} />}
 
       {sharedPlans.length > 1 && (
         <div className="rounded-lg border border-warning/40 bg-warning/10 px-3 py-2 text-xs text-warning-foreground">
@@ -523,6 +539,8 @@ export function FloorPlanWorkspace({
               busy={busyPlanId === plan.id}
               isOperational={operationalFloorPlanId === plan.id}
               isCoupleSelected={coupleSelectedFloorPlanId === plan.id}
+              canEdit={canEdit}
+              canDelete={canDelete}
               onRename={() => handleRenamePlan(plan)}
               onDelete={() => handleDeletePlan(plan)}
             />
