@@ -2,9 +2,36 @@
 -- Canonical event-type vocabulary for public inquiry + CRM.
 -- Expands venues.accepted_inquiry_event_types beyond the prior five public
 -- keys, remaps legacy aliases, and enforces accepted types on public submit.
+--
+-- Order matters: drop the old check before remapping aliases, otherwise
+-- writing 'corporate' / 'birthday' fails venues_accepted_inquiry_event_types_check
+-- while the constraint still only allows legacy keys.
 -- ============================================================================
 
--- ---- 1. Remap legacy accepted-type arrays on venues -------------------------
+-- ---- 1. Widen check constraint to full canonical vocabulary -----------------
+
+alter table public.venues
+  drop constraint if exists venues_accepted_inquiry_event_types_check;
+
+alter table public.venues
+  alter column accepted_inquiry_event_types
+  set default array['wedding','corporate','social_event','birthday','other']::text[];
+
+alter table public.venues
+  add constraint venues_accepted_inquiry_event_types_check
+  check (
+    accepted_inquiry_event_types <@ array[
+      'wedding','elopement','engagement_party','rehearsal_dinner','reception',
+      'corporate','social_event','birthday','anniversary','shower','gala',
+      'retreat','celebration_of_life','quinceanera','other'
+    ]::text[]
+    and array_length(accepted_inquiry_event_types, 1) > 0
+  );
+
+comment on column public.venues.accepted_inquiry_event_types is
+  'Subset of the canonical HTC event-type vocabulary this venue accepts on public Inquiry / Schedule Tour forms. Defaults to wedding, corporate, social_event, birthday, other; venues may add or remove any canonical values (never empty).';
+
+-- ---- 2. Remap legacy accepted-type arrays on venues -------------------------
 
 update public.venues
 set accepted_inquiry_event_types = (
@@ -46,29 +73,6 @@ set event_type = case event_type
   else event_type
 end
 where event_type in ('corporate_event', 'birthday_milestone');
-
--- ---- 2. Widen check constraint to full canonical vocabulary -----------------
-
-alter table public.venues
-  drop constraint if exists venues_accepted_inquiry_event_types_check;
-
-alter table public.venues
-  alter column accepted_inquiry_event_types
-  set default array['wedding','corporate','social_event','birthday','other']::text[];
-
-alter table public.venues
-  add constraint venues_accepted_inquiry_event_types_check
-  check (
-    accepted_inquiry_event_types <@ array[
-      'wedding','elopement','engagement_party','rehearsal_dinner','reception',
-      'corporate','social_event','birthday','anniversary','shower','gala',
-      'retreat','celebration_of_life','quinceanera','other'
-    ]::text[]
-    and array_length(accepted_inquiry_event_types, 1) > 0
-  );
-
-comment on column public.venues.accepted_inquiry_event_types is
-  'Subset of the canonical HTC event-type vocabulary this venue accepts on public Inquiry / Schedule Tour forms. Defaults to wedding, corporate, social_event, birthday, other; venues may add or remove any canonical values (never empty).';
 
 -- ---- 3. Normalize + accept-check helpers ------------------------------------
 
