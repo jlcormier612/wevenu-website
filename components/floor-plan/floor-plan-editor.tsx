@@ -56,6 +56,7 @@ import {
   deleteObjectAction,
   reorderObjectAction,
   setBackgroundLockedAction,
+  attachFloorPlanBackgroundAction,
   updateBackgroundAction,
   updateNotesAction,
   updateObjectAction,
@@ -68,7 +69,8 @@ import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { createClient } from "@/integrations/supabase/client";
+import { prepareFloorPlanSourceUpload } from "@/lib/floor-plans/client-background-upload";
+import { backgroundClearPatch } from "@/lib/floor-plans/background-document";
 import {
   DISPLAY_SHAPES, DISPLAY_SHAPE_LABELS, DISPLAY_SHAPE_STYLE, FloorPlanShapeSvg,
 } from "@/components/floor-plan/floor-plan-shapes";
@@ -623,7 +625,10 @@ export function FloorPlanEditor({
     updateObject: (objId, input) => updateObjectAction(objId, input),
     deleteObject: (objId) => deleteObjectAction(objId, eventId!),
     reorderObject: (planId, objId, direction) => reorderObjectAction(planId, objId, eventId!, direction),
-    updateBackground: (planId, url, opacity) => updateBackgroundAction(planId, eventId!, url, opacity),
+    updateBackground: (planId, url, opacity, backgroundDocumentId) =>
+      updateBackgroundAction(planId, eventId!, url, opacity, backgroundDocumentId),
+    attachBackgroundDocument: (planId, payload) =>
+      attachFloorPlanBackgroundAction(planId, eventId!, payload),
     setBackgroundLocked: (planId, locked) => setBackgroundLockedAction(planId, eventId!, locked),
     updateRoomSettings: (planId, input) => updateRoomSettingsAction(planId, eventId!, input),
     clear: (planId) => clearFloorPlanAction(planId, eventId!),
@@ -980,68 +985,113 @@ export function FloorPlanEditor({
     });
   }
 
-  // --- Background image upload ---
+  // --- Floor plan file upload (Document SoR + renderable background) ---
   async function handleBackgroundUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file || !plan) return;
     setUploading(true);
     try {
-      const supabase = createClient();
-      const ext = file.name.split(".").pop() ?? "jpg";
-      const path = `${venueId}/${plan.id}/background.${ext}`;
-      const { error: uploadError } = await supabase.storage
-        .from("floor-plans")
-        .upload(path, file, { upsert: true, contentType: file.type });
-      if (uploadError) throw uploadError;
-      const { data: { publicUrl } } = supabase.storage.from("floor-plans").getPublicUrl(path);
-      const result = await boundActions.updateBackground(plan.id, publicUrl, plan.backgroundImageOpacity);
+      const prepared = await prepareFloorPlanSourceUpload({ venueId, planId: plan.id, file });
+      const opacity = plan.backgroundImageOpacity || 0.25;
+      const payload = {
+        name: prepared.displayName,
+        fileName: prepared.fileName,
+        fileSize: prepared.fileSize,
+        mimeType: prepared.mimeType,
+        storagePath: prepared.storagePath,
+        storageUrl: prepared.storageUrl,
+        renderableImageUrl: prepared.renderableImageUrl,
+        opacity,
+      };
+
+      let result: { ok: boolean; message?: string; documentId?: string };
+      if (boundActions.attachBackgroundDocument) {
+        result = await boundActions.attachBackgroundDocument(plan.id, payload);
+      } else if (eventId) {
+        result = await attachFloorPlanBackgroundAction(plan.id, eventId, payload);
+      } else {
+        throw new Error("Missing floor plan context.");
+      }
+
       if (result.ok) {
-        setPlan((prev) => prev ? { ...prev, backgroundImageUrl: publicUrl } : prev);
-        toast.success("Background image updated.");
+        setPlan((prev) => prev ? {
+          ...prev,
+          backgroundImageUrl: prepared.renderableImageUrl,
+          backgroundDocumentId: result.documentId ?? prev.backgroundDocumentId ?? null,
+        } : prev);
+        toast.success("Floor plan uploaded.");
+      } else {
+        toast.error(result.message ?? "Could not save your floor plan.");
       }
     } catch (err) {
-      toast.error("Upload failed. Check your Supabase Storage configuration.");
+      toast.error(err instanceof Error ? err.message : "Upload failed.");
       console.error(err);
     } finally {
       setUploading(false);
+      e.target.value = "";
     }
+  }
+
+  async function persistMeta(run: () => Promise<{ ok: boolean; message?: string }>) {
+    saveUi.markSaving();
+    const result = await run();
+    if (!result.ok) {
+      saveUi.markError();
+      toast.error(result.message ?? "Unable to save changes. Please try again.");
+      return false;
+    }
+    saveUi.markSaved();
+    return true;
   }
 
   async function handleRemoveBackground() {
     if (!plan) return;
-    const result = await boundActions.updateBackground(plan.id, null, 0.25);
-    if (result.ok) setPlan((prev) => prev ? { ...prev, backgroundImageUrl: null } : prev);
+    const clear = backgroundClearPatch();
+    const result = await persistMeta(() =>
+      boundActions.updateBackground(plan.id, clear.backgroundImageUrl, clear.backgroundImageOpacity, clear.backgroundDocumentId),
+    );
+    if (result) {
+      setPlan((prev) => prev ? {
+        ...prev,
+        backgroundImageUrl: null,
+        backgroundDocumentId: null,
+      } : prev);
+    }
   }
 
   async function handleOpacityChange(opacity: number) {
     if (!plan) return;
     setPlan((prev) => prev ? { ...prev, backgroundImageOpacity: opacity } : prev);
-    void boundActions.updateBackground(plan.id, plan.backgroundImageUrl, opacity);
+    await persistMeta(() => boundActions.updateBackground(plan.id, plan.backgroundImageUrl, opacity));
   }
 
   async function handleToggleBackgroundLock() {
     if (!plan) return;
     const locked = !plan.backgroundLocked;
     setPlan((prev) => prev ? { ...prev, backgroundLocked: locked } : prev);
-    await boundActions.setBackgroundLocked(plan.id, locked);
+    await persistMeta(() => boundActions.setBackgroundLocked(plan.id, locked));
   }
 
   async function handleRoomSizeChange(widthFt: number, depthFt: number) {
     if (!plan) return;
     setPlan((prev) => prev ? { ...prev, roomWidthFt: widthFt, roomDepthFt: depthFt } : prev);
-    await boundActions.updateRoomSettings(plan.id, { roomWidthFt: widthFt, roomDepthFt: depthFt, measurementUnit: plan.measurementUnit });
+    await persistMeta(() =>
+      boundActions.updateRoomSettings(plan.id, { roomWidthFt: widthFt, roomDepthFt: depthFt, measurementUnit: plan.measurementUnit }),
+    );
   }
 
   async function handleUnitChange(unit: MeasurementUnit) {
     if (!plan) return;
     setPlan((prev) => prev ? { ...prev, measurementUnit: unit } : prev);
-    await boundActions.updateRoomSettings(plan.id, { roomWidthFt: plan.roomWidthFt, roomDepthFt: plan.roomDepthFt, measurementUnit: unit });
+    await persistMeta(() =>
+      boundActions.updateRoomSettings(plan.id, { roomWidthFt: plan.roomWidthFt, roomDepthFt: plan.roomDepthFt, measurementUnit: unit }),
+    );
   }
 
   async function handleNotesChange(notes: string) {
     if (!plan || !boundActions.updateNotes) return;
     setPlan((prev) => prev ? { ...prev, notes } : prev);
-    await boundActions.updateNotes(plan.id, notes);
+    await persistMeta(() => boundActions.updateNotes!(plan.id, notes));
   }
 
   async function handleClear() {
@@ -1276,19 +1326,17 @@ export function FloorPlanEditor({
 
         <Separator orientation="vertical" className="h-6 mx-0.5" />
 
-        {/* Background image upload — a photo or sketch of the real room, traced
-            underneath the layout so placement matches actual walls, doors, and
-            fixed features. Not saved as an inventory object; purely a visual guide. */}
+        {/* Floor plan file — original saved as a Document; canvas uses a renderable image. */}
         {!readOnly && (
         <label
-          title="Upload a photo or sketch of the room to trace your layout over — it's a visual guide only, not a Floor Plan object."
+          title="Upload your floor plan (PDF or image). We keep your original file and show it on the canvas."
           className={cn(
             "flex cursor-pointer items-center gap-1 rounded-lg border border-border bg-background px-2.5 py-1 text-xs font-medium text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground",
             (uploading || plan.backgroundLocked) && "opacity-50 pointer-events-none",
           )}>
           {uploading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ImageIcon className="h-3.5 w-3.5" />}
-          {plan.backgroundImageUrl ? "Change Background Image" : "Add Background Image"}
-          <input type="file" accept="image/*" className="sr-only" onChange={handleBackgroundUpload} disabled={plan.backgroundLocked} />
+          {plan.backgroundImageUrl ? "Replace Floor Plan" : "Upload Floor Plan"}
+          <input type="file" accept="image/*,application/pdf" className="sr-only" onChange={handleBackgroundUpload} disabled={plan.backgroundLocked} />
         </label>
         )}
 
@@ -1296,27 +1344,29 @@ export function FloorPlanEditor({
           <>
             <input type="range" min={0} max={1} step={0.05} value={plan.backgroundImageOpacity}
               onChange={(e) => handleOpacityChange(Number(e.target.value))}
-              disabled={plan.backgroundLocked} className="w-20" title="Background image opacity" />
+              disabled={plan.backgroundLocked || readOnly} className="w-20" title="Floor plan opacity" />
+            {!readOnly && (
             <Tooltip>
               <TooltipTrigger render={
                 <button type="button" onClick={handleToggleBackgroundLock}
                   className="rounded-lg border border-border bg-background px-2 py-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
-                  aria-label={plan.backgroundLocked ? "Unlock background image" : "Lock background image"}>
+                  aria-label={plan.backgroundLocked ? "Unlock floor plan" : "Lock floor plan"}>
                   {plan.backgroundLocked ? <Lock className="h-3.5 w-3.5" /> : <Unlock className="h-3.5 w-3.5" />}
                 </button>
               } />
-              <TooltipContent>{plan.backgroundLocked ? "Unlock background image (allow moving/removing it)" : "Lock background image in place"}</TooltipContent>
+              <TooltipContent>{plan.backgroundLocked ? "Unlock floor plan (allow moving/removing it)" : "Lock floor plan in place"}</TooltipContent>
             </Tooltip>
-            {!plan.backgroundLocked && (
+            )}
+            {!readOnly && !plan.backgroundLocked && (
               <Tooltip>
                 <TooltipTrigger render={
                   <button type="button" onClick={handleRemoveBackground}
                     className="rounded-lg border border-border bg-background px-2 py-1 text-xs text-muted-foreground hover:text-destructive transition-colors"
-                    aria-label="Remove background image">
+                    aria-label="Remove floor plan">
                     <X className="h-3.5 w-3.5" />
                   </button>
                 } />
-                <TooltipContent>Remove background image</TooltipContent>
+                <TooltipContent>Remove floor plan</TooltipContent>
               </Tooltip>
             )}
           </>

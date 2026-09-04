@@ -10,6 +10,8 @@ export type FloorPlanTemplate = {
   isArchived: boolean;
   /** Hello to Cheers master key (FP-01 / FP-02) when provisioned from a starter. */
   sourceMasterKey: string | null;
+  /** Source-of-record Document for the uploaded floor-plan file (Phase 2). Null on legacy URL-only templates. */
+  backgroundDocumentId: string | null;
   backgroundImageUrl: string | null;
   backgroundImageOpacity: number;
   backgroundLocked: boolean;

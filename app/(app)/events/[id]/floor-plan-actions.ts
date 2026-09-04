@@ -19,6 +19,7 @@ import {
   setFinalized,
   setOperationalFloorPlan,
   setVendorAccess,
+  attachBackgroundDocument,
   updateBackground,
   updateNotes,
   updateObject_,
@@ -73,8 +74,28 @@ export async function duplicateFloorPlanAction(
 
 export async function updateBackgroundAction(
   planId: string, eventId: string, url: string | null, opacity: number,
+  backgroundDocumentId?: string | null,
 ): Promise<FloorPlanActionResult> {
-  const result = await updateBackground(planId, url, opacity);
+  const result = await updateBackground(planId, url, opacity, backgroundDocumentId);
+  if (result.ok) revalidateEvent(eventId);
+  return result;
+}
+
+export async function attachFloorPlanBackgroundAction(
+  planId: string,
+  eventId: string,
+  payload: {
+    name: string;
+    fileName: string;
+    fileSize: number;
+    mimeType: string;
+    storagePath: string;
+    storageUrl: string;
+    renderableImageUrl: string;
+    opacity: number;
+  },
+): Promise<FloorPlanActionResult & { documentId?: string }> {
+  const result = await attachBackgroundDocument(planId, eventId, payload);
   if (result.ok) revalidateEvent(eventId);
   return result;
 }

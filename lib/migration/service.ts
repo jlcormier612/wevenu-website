@@ -8,7 +8,7 @@
 import { createClient } from "@/integrations/supabase/server";
 import { createAdminClient } from "@/integrations/supabase/admin";
 import { requireAdminUser } from "@/lib/hq/crm-service";
-import { getCurrentVenue } from "@/lib/venue/service";
+import { getCurrentVenue, getCurrentUserRole } from "@/lib/venue/service";
 import { isSupabaseConfigured } from "@/lib/env";
 
 import { createClientForVenue, createClient_ } from "@/lib/clients/service";
@@ -32,10 +32,20 @@ import {
   isPastEventDate,
 } from "@/lib/migration/historical-record";
 import { evaluateCutoverPrerequisites } from "@/lib/setup-hub/bring-your-business";
+import { commitFloorPlanImport } from "@/lib/migration/floor-plan-commit";
+import {
+  buildNormalizedFloorPlanImport,
+  evaluateFloorPlanMatch,
+  type FloorPlanMatchCandidate,
+} from "@/lib/migration/floor-plan-import";
+import {
+  canEditFloorPlans,
+  FLOOR_PLAN_EDIT_DENIED,
+} from "@/lib/floor-plans/authorize";
 
 import * as repo from "@/lib/migration/repository";
 import * as documentsRepo from "@/lib/documents/repository";
-import { dedupe } from "@/lib/migration/dedupe";
+import { dedupe, findBySourceId } from "@/lib/migration/dedupe";
 import { getSourceAdapter } from "@/lib/migration/source-profiles";
 import { createImportBatch, createImportBatchForVenue, finalizeImportBatch, stampImportBatch } from "@/lib/import/batches";
 import { resolveClientIdByEmail, resolveLeadIdByEmail, resolveSpaceId } from "@/lib/migration/resolve-refs";
@@ -76,6 +86,7 @@ import {
 } from "@/lib/migration/event-vendor-assignment";
 import {
   commitOperationalTimelineEntry,
+  timelineNotImportedMessage,
   type NormalizedTimelineEntry,
 } from "@/lib/migration/operational-timeline";
 import type { DocumentCategory } from "@/lib/documents/types";
@@ -158,8 +169,44 @@ export async function addRows(
 
 export async function runDedupe(client: AnyDbClient, session: MigrationSession): Promise<void> {
   const normalized = await repo.listRecords(client, session.id, "normalized");
+  const floorPlanCatalog = normalized.some((r) => r.targetEntityType === "floor_plan")
+    ? await loadFloorPlanMatchCatalog(client, session.venueId)
+    : null;
+
   for (const record of normalized) {
     if (!record.normalizedPayload) continue;
+
+    if (record.targetEntityType === "floor_plan" && floorPlanCatalog) {
+      const bySource = await findBySourceId(
+        client,
+        session.venueId,
+        (record.normalizedPayload as { sourceId?: string | null }).sourceId,
+      );
+      if (bySource?.createdEntityId) {
+        await repo.updateRecord(client, record.id, {
+          status: "duplicate_exact",
+          matchType: "exact",
+          matchedEntityId: bySource.createdEntityId,
+          matchConfidence: 100,
+        });
+        continue;
+      }
+      const built = buildNormalizedFloorPlanImport(
+        record.normalizedPayload as Parameters<typeof buildNormalizedFloorPlanImport>[0],
+      );
+      const outcome = evaluateFloorPlanMatch(built, floorPlanCatalog.spaces, floorPlanCatalog.events);
+      const nextPayload = { ...built, ...outcome.patch };
+      await repo.updateRecord(client, record.id, {
+        status: outcome.status,
+        matchType: outcome.matchType,
+        matchedEntityId: outcome.matchedEntityId,
+        matchConfidence: outcome.matchConfidence,
+        normalizedPayload: nextPayload as unknown as Record<string, unknown>,
+        validationErrors: outcome.validationErrors,
+      });
+      continue;
+    }
+
     const result = await dedupe(client, session.venueId, record.targetEntityType, record.normalizedPayload);
     if (result.matchType === "exact") {
       await repo.updateRecord(client, record.id, {
@@ -176,6 +223,23 @@ export async function runDedupe(client: AnyDbClient, session: MigrationSession):
     }
   }
   await repo.updateSessionStatus(client, session.id, "ready_for_review");
+}
+
+async function loadFloorPlanMatchCatalog(
+  client: AnyDbClient,
+  venueId: string,
+): Promise<{ spaces: FloorPlanMatchCandidate[]; events: FloorPlanMatchCandidate[] }> {
+  const [{ data: spaceRows }, { data: eventRows }] = await Promise.all([
+    client.from("venue_spaces").select("id, name").eq("venue_id", venueId).order("name"),
+    client.from("events").select("id, name, event_date").eq("venue_id", venueId)
+      .order("event_date", { ascending: false }).limit(500),
+  ]);
+  return {
+    spaces: ((spaceRows ?? []) as { id: string; name: string }[]).map((s) => ({ id: s.id, name: s.name })),
+    events: ((eventRows ?? []) as { id: string; name: string; event_date: string | null }[]).map((e) => ({
+      id: e.id, name: e.name, eventDate: e.event_date,
+    })),
+  };
 }
 
 export async function reviewRecord(
@@ -246,6 +310,7 @@ export async function getSessionSummary(client: AnyDbClient, session: MigrationS
 const COMMITTABLE_ENTITY_TYPES: MigrationEntityType[] = [
   "calendar_block", "date_hold", "vendor", "lead", "client", "package", "event", "tour", "key_date",
   "document", "active_commitment", "guest_list", "event_vendor_assignment", "timeline_entry",
+  "floor_plan",
 ];
 
 const BATCH_ENTITY: Partial<Record<MigrationEntityType, EntityType>> = {
@@ -382,6 +447,10 @@ export async function addRowsToOwnSession(
     const blocked = await datedEventImportBlockedMessage(actor.client, actor.venueId);
     if (blocked) return { ok: false, message: blocked };
   }
+  if (entityType === "floor_plan") {
+    const role = await getCurrentUserRole();
+    if (!canEditFloorPlans(role)) return { ok: false, message: FLOOR_PLAN_EDIT_DENIED };
+  }
   const result = await addRows(actor.client, session, entityType, rows);
   return { ok: true, ...result };
 }
@@ -415,11 +484,78 @@ export async function reviewOwnRecord(
   return { ok: true };
 }
 
+/**
+ * Floor Plan Phase 3 — resolve an ambiguous import: set scope / Space / Event,
+ * re-evaluate match, and either validate or keep needs_review.
+ */
+export async function resolveFloorPlanImportRecord(
+  sessionId: string,
+  recordId: string,
+  patch: {
+    scope?: "space_master" | "event_specific" | "general_reference";
+    spaceId?: string | null;
+    spaceName?: string | null;
+    eventId?: string | null;
+    eventName?: string | null;
+    eventDate?: string | null;
+    name?: string | null;
+  },
+): Promise<{ ok: true } | { ok: false; message: string }> {
+  const actor = await resolveVenueActor();
+  if (isError(actor)) return actor;
+  const role = await getCurrentUserRole();
+  if (!canEditFloorPlans(role)) return { ok: false, message: FLOOR_PLAN_EDIT_DENIED };
+
+  const session = await repo.getSession(actor.client, actor.venueId, sessionId);
+  if (!session) return { ok: false, message: "Migration session not found." };
+  const records = await repo.listRecords(actor.client, sessionId);
+  const record = records.find((r) => r.id === recordId);
+  if (!record || record.targetEntityType !== "floor_plan") {
+    return { ok: false, message: "Floor plan import record not found." };
+  }
+  if (!record.normalizedPayload) {
+    return { ok: false, message: "Nothing to resolve — this file was never normalized." };
+  }
+
+  const merged = buildNormalizedFloorPlanImport({
+    ...(record.normalizedPayload as Parameters<typeof buildNormalizedFloorPlanImport>[0]),
+    ...patch,
+  });
+  const catalog = await loadFloorPlanMatchCatalog(actor.client, actor.venueId);
+  const outcome = evaluateFloorPlanMatch(merged, catalog.spaces, catalog.events);
+  const nextPayload = { ...merged, ...outcome.patch };
+  await repo.updateRecord(actor.client, recordId, {
+    status: outcome.status === "validated" ? "approved" : "needs_review",
+    matchType: outcome.matchType,
+    matchedEntityId: outcome.matchedEntityId,
+    matchConfidence: outcome.matchConfidence,
+    normalizedPayload: nextPayload as unknown as Record<string, unknown>,
+    validationErrors: outcome.validationErrors,
+    reviewedBy: actor.createdBy ?? undefined,
+    reviewedAt: new Date().toISOString(),
+  });
+  return { ok: true };
+}
+
+export async function getFloorPlanImportCatalog(): Promise<{
+  spaces: FloorPlanMatchCandidate[];
+  events: FloorPlanMatchCandidate[];
+}> {
+  const actor = await resolveVenueActor();
+  if (isError(actor)) return { spaces: [], events: [] };
+  return loadFloorPlanMatchCatalog(actor.client, actor.venueId);
+}
+
 export async function commitOwnSession(sessionId: string): Promise<{ ok: true; outcome: CommitOutcome } | { ok: false; message: string }> {
   const actor = await resolveVenueActor();
   if (isError(actor)) return actor;
   const session = await repo.getSession(actor.client, actor.venueId, sessionId);
   if (!session) return { ok: false, message: "Migration session not found." };
+  const summary = await getSessionSummary(actor.client, session);
+  if (summary.byEntityType.floor_plan) {
+    const role = await getCurrentUserRole();
+    if (!canEditFloorPlans(role)) return { ok: false, message: FLOOR_PLAN_EDIT_DENIED };
+  }
   const outcome = await commitSession(actor.client, session, actor.createdBy);
   return { ok: true, outcome };
 }
@@ -765,8 +901,16 @@ async function commitOneRecord(
       const n = record.normalizedPayload as unknown as NormalizedTimelineEntry;
       const result = await commitOperationalTimelineEntry(client, session.venueId, n);
       if (!result.ok) return { ok: false, error: result.error };
-      // B-skip still completes the record so the session can finish cleanly.
-      return { ok: true, entityId: result.entryId ?? `timeline-skipped:${result.eventId}` };
+      if (result.skipped) {
+        return {
+          ok: false,
+          error: timelineNotImportedMessage(result.skipReason ?? "This timeline wasn't brought over yet."),
+        };
+      }
+      return { ok: true, entityId: result.entryId! };
+    }
+    if (entityType === "floor_plan") {
+      return commitFloorPlanImport(client, session.venueId, record.normalizedPayload ?? {});
     }
     return { ok: false, error: `Committing "${entityType}" records isn't supported yet.` };
   } catch (err) {

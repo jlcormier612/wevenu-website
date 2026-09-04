@@ -10,6 +10,10 @@
 -- tour occupancy. Future Tours still enforce capacity and calendar blocks.
 -- ============================================================================
 
+-- Idempotent vocabulary assertion: always the full current entity set so
+-- local/db-test re-application of this foundational cutover file never
+-- narrows the check after later migrations (guest_list, timeline_entry,
+-- floor_plan, …) have expanded it.
 do $$
 begin
   if to_regclass('public.migration_records') is null then
@@ -21,7 +25,12 @@ begin
     add constraint migration_records_target_entity_type_check
     check (target_entity_type in (
       'client', 'lead', 'vendor', 'event', 'payment', 'document',
-      'calendar_block', 'date_hold', 'tour', 'package', 'key_date'
+      'calendar_block', 'date_hold', 'tour', 'package', 'key_date',
+      'active_commitment',
+      'guest_list',
+      'event_vendor_assignment',
+      'timeline_entry',
+      'floor_plan'
     ));
 end;
 $$;

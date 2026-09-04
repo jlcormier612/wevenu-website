@@ -52,7 +52,9 @@ export type MigrationEntityType =
   /** Event ↔ Vendor assignment on an active/future Event. */
   | "event_vendor_assignment"
   /** Venue-owned timeline_entries when proximity/finalized/force says import. */
-  | "timeline_entry";
+  | "timeline_entry"
+  /** Floor plan source files (Document SoR + optional Space template / Event plan). */
+  | "floor_plan";
 
 export type SessionStatus =
   | "uploaded"
@@ -253,6 +255,28 @@ export type NormalizedDocumentLike = {
   clientId?: string | null;
   eventDate?: string | null;
   sourceId?: string | null;
+};
+
+/**
+ * Floor Plan Phase 3 — batch import of original floor-plan files.
+ * See lib/migration/floor-plan-import.ts for matching / reconciliation rules.
+ */
+export type NormalizedFloorPlanLike = {
+  name: string;
+  fileName: string;
+  storagePath: string;
+  storageUrl: string;
+  renderableImageUrl?: string | null;
+  mimeType?: string | null;
+  fileSize?: string | null;
+  scope: "space_master" | "event_specific" | "general_reference";
+  spaceId?: string | null;
+  spaceName?: string | null;
+  eventId?: string | null;
+  eventName?: string | null;
+  eventDate?: string | null;
+  sourceId?: string | null;
+  notes?: string | null;
 };
 
 export type NormalizationResult =

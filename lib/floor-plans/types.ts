@@ -52,6 +52,8 @@ export type FloorPlan = {
   sharedWithCouple: boolean;
   // Phase 2 — template this event plan was cloned from (provenance snapshot).
   sourceTemplateId: string | null;
+  /** Source-of-record Document for the uploaded floor-plan file (Phase 2). Null on legacy URL-only plans. */
+  backgroundDocumentId: string | null;
   backgroundImageUrl: string | null;
   backgroundImageOpacity: number;
   backgroundLocked: boolean;
@@ -220,6 +222,8 @@ export type FloorPlanCanvasObject = {
 export type FloorPlanCanvasPlan = {
   id: string;
   name: string;
+  /** Source-of-record Document id when the upload was document-backed (Phase 2). */
+  backgroundDocumentId?: string | null;
   backgroundImageUrl: string | null;
   backgroundImageOpacity: number;
   backgroundLocked: boolean;
@@ -244,7 +248,34 @@ export type FloorPlanEditorActions = {
   updateObject: (objId: string, input: UpdateObjectInput) => Promise<FloorPlanActionResult>;
   deleteObject: (objId: string) => Promise<FloorPlanActionResult>;
   reorderObject: (planId: string, objId: string, direction: ReorderDirection) => Promise<FloorPlanActionResult>;
-  updateBackground: (planId: string, url: string | null, opacity: number) => Promise<FloorPlanActionResult>;
+  /**
+   * Persist the editor render URL + opacity. Pass `backgroundDocumentId` when
+   * attaching/clearing the source Document (`undefined` leaves the FK unchanged —
+   * opacity-only updates).
+   */
+  updateBackground: (
+    planId: string,
+    url: string | null,
+    opacity: number,
+    backgroundDocumentId?: string | null,
+  ) => Promise<FloorPlanActionResult>;
+  /**
+   * Phase 2 — create the canonical Document from an already-uploaded original
+   * file and link it as this plan's source of record.
+   */
+  attachBackgroundDocument?: (
+    planId: string,
+    payload: {
+      name: string;
+      fileName: string;
+      fileSize: number;
+      mimeType: string;
+      storagePath: string;
+      storageUrl: string;
+      renderableImageUrl: string;
+      opacity: number;
+    },
+  ) => Promise<FloorPlanActionResult & { documentId?: string }>;
   setBackgroundLocked: (planId: string, locked: boolean) => Promise<FloorPlanActionResult>;
   updateRoomSettings: (planId: string, input: UpdateRoomSettingsInput) => Promise<FloorPlanActionResult>;
   clear: (planId: string) => Promise<FloorPlanActionResult>;

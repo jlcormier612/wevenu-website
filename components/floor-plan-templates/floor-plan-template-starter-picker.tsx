@@ -2,10 +2,11 @@
 
 /**
  * The "+ New Floor Plan Template" menu — Blank, Duplicate an existing
- * template, Upload a background image, or Paste a text layout (Floor Plan
- * Template Library task). Upload/Paste both create the template first, then
- * populate it (a background image, or parsed objects) — no AI/Luv involved
- * for Paste, see lib/floor-plan-templates/paste-parse.ts.
+ * template, Upload an existing floor plan (PDF/image), or Paste a text
+ * layout (Floor Plan Template Library task). Upload/Paste both create the
+ * template first, then populate it (document-backed floor plan file, or
+ * parsed objects) — no AI/Luv involved for Paste, see
+ * lib/floor-plan-templates/paste-parse.ts.
  */
 
 import * as React from "react";
@@ -15,7 +16,8 @@ import { ChevronDown, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
 import {
-  createTemplateAction, createTemplateFromPasteAction, duplicateTemplateAction, updateTemplateBackgroundAction,
+  attachTemplateBackgroundAction,
+  createTemplateAction, createTemplateFromPasteAction, duplicateTemplateAction,
 } from "@/app/(app)/floor-plan-templates/actions";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -27,7 +29,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Textarea } from "@/components/ui/textarea";
-import { createClient } from "@/integrations/supabase/client";
+import { prepareFloorPlanSourceUpload } from "@/lib/floor-plans/client-background-upload";
 import type { VenueSpace } from "@/lib/availability/types";
 import { EVENT_TYPES } from "@/lib/leads/constants";
 import type { FloorPlanTemplate } from "@/lib/floor-plan-templates/types";
@@ -153,16 +155,26 @@ export function FloorPlanTemplateStarterPicker({
       const created = await createTemplateAction(name.trim(), eventType === ANY_EVENT_TYPE ? null : eventType, spaceId === NO_SPACE ? null : spaceId, isDefault);
       if (!created.ok) { toast.error(created.message ?? "Could not create template."); return; }
       try {
-        const supabase = createClient();
-        const ext = file.name.split(".").pop() ?? "jpg";
-        const path = `${venueId}/${created.templateId}/background.${ext}`;
-        const { error: uploadError } = await supabase.storage.from("floor-plans").upload(path, file, { upsert: true, contentType: file.type });
-        if (uploadError) throw uploadError;
-        const { data: { publicUrl } } = supabase.storage.from("floor-plans").getPublicUrl(path);
-        await updateTemplateBackgroundAction(created.templateId, publicUrl, 0.5);
-        toast.success("Floor plan uploaded.");
+        const prepared = await prepareFloorPlanSourceUpload({
+          venueId, planId: created.templateId, file,
+        });
+        const attached = await attachTemplateBackgroundAction(created.templateId, {
+          name: prepared.displayName || name.trim(),
+          fileName: prepared.fileName,
+          fileSize: prepared.fileSize,
+          mimeType: prepared.mimeType,
+          storagePath: prepared.storagePath,
+          storageUrl: prepared.storageUrl,
+          renderableImageUrl: prepared.renderableImageUrl,
+          opacity: 0.5,
+        });
+        if (!attached.ok) {
+          toast.error(attached.message ?? "Template created, but the floor plan file could not be linked — you can upload it from inside the editor.");
+        } else {
+          toast.success("Floor plan uploaded.");
+        }
       } catch {
-        toast.error("Template created, but the image upload failed — you can set a background from inside the editor.");
+        toast.error("Template created, but the file upload failed — you can upload your floor plan from inside the editor.");
       }
       goToEditor(created.templateId);
     });
@@ -249,9 +261,9 @@ export function FloorPlanTemplateStarterPicker({
               {flow === "upload" && (
                 <div className="space-y-4">
                   <div className="space-y-1.5">
-                    <Label className="text-xs">Image</Label>
+                    <Label className="text-xs">Floor plan file</Label>
                     <input
-                      type="file" accept="image/*" onChange={handleFileChange}
+                      type="file" accept="image/*,application/pdf" onChange={handleFileChange}
                       className="block w-full text-sm text-muted-foreground file:mr-3 file:rounded-md file:border-0 file:bg-muted file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-foreground"
                     />
                     {file && <p className="text-xs text-muted-foreground">Selected {file.name}</p>}

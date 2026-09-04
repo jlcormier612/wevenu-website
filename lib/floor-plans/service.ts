@@ -113,8 +113,12 @@ export async function applyTemplate(eventId: string, templateId: string, name: s
     const objects = await templatesRepo.getObjects(supabase, venueId, templateId);
 
     const floorPlanId = await repo.createFloorPlan(supabase, venueId, eventId, name.trim(), spaceId, templateId);
-    if (template.backgroundImageUrl) {
-      await repo.updateFloorPlanBackground(supabase, venueId, floorPlanId, template.backgroundImageUrl, template.backgroundImageOpacity);
+    if (template.backgroundImageUrl || template.backgroundDocumentId) {
+      await repo.updateFloorPlanBackground(
+        supabase, venueId, floorPlanId,
+        template.backgroundImageUrl, template.backgroundImageOpacity,
+        template.backgroundDocumentId,
+      );
     }
     await repo.updateFloorPlanRoomSettings(supabase, venueId, floorPlanId, {
       roomWidthFt: template.roomWidthFt, roomDepthFt: template.roomDepthFt, measurementUnit: template.measurementUnit,
@@ -140,12 +144,56 @@ export async function duplicateFloorPlan(eventId: string, sourceFloorPlanId: str
 
 export async function updateBackground(
   planId: string, url: string | null, opacity: number,
+  backgroundDocumentId?: string | null,
 ): Promise<FloorPlanActionResult> {
   const result = await withVenueEditor(async (supabase, venueId) => {
-    await repo.updateFloorPlanBackground(supabase, venueId, planId, url, opacity);
+    await repo.updateFloorPlanBackground(supabase, venueId, planId, url, opacity, backgroundDocumentId);
     return { ok: true } as FloorPlanActionResult;
   });
   return result as FloorPlanActionResult;
+}
+
+/**
+ * Phase 2 — attach an already-uploaded Document (original file) and the
+ * renderable background URL (same file for images; floor-plans derivative for PDF).
+ */
+export async function attachBackgroundDocument(
+  planId: string,
+  eventId: string,
+  payload: {
+    name: string;
+    fileName: string;
+    fileSize: number;
+    mimeType: string;
+    storagePath: string;
+    storageUrl: string;
+    renderableImageUrl: string;
+    opacity: number;
+  },
+): Promise<FloorPlanActionResult & { documentId?: string }> {
+  const result = await withVenueEditor(async (supabase, venueId) => {
+    const documentsRepo = await import("@/lib/documents/repository");
+    const documentId = await documentsRepo.insertDocument(supabase, venueId, {
+      entityType: "event",
+      entityId: eventId,
+      name: payload.name,
+      category: "floor_plan",
+      notes: "",
+      tags: "",
+      expiresAt: "",
+      fileName: payload.fileName,
+      fileSize: payload.fileSize,
+      mimeType: payload.mimeType,
+      storagePath: payload.storagePath,
+      storageUrl: payload.storageUrl,
+    });
+    await repo.updateFloorPlanBackground(
+      supabase, venueId, planId,
+      payload.renderableImageUrl, payload.opacity, documentId,
+    );
+    return { ok: true, documentId } as FloorPlanActionResult & { documentId: string };
+  });
+  return result as FloorPlanActionResult & { documentId?: string };
 }
 
 export async function setBackgroundLocked(planId: string, locked: boolean): Promise<FloorPlanActionResult> {

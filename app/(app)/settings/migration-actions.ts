@@ -5,11 +5,13 @@ import {
   addRowsToOwnSession,
   attachSourceFileToOwnSession,
   commitOwnSession,
+  getFloorPlanImportCatalog,
   getOwnSessionResumeState,
   getOwnSessionSourceFiles,
   getOwnSessionSummary,
   listSessionsForCurrentVenue,
   reviewOwnRecord,
+  resolveFloorPlanImportRecord,
   runDedupeForOwnSession,
   startSelfServiceSession,
 } from "@/lib/migration/service";
@@ -95,9 +97,36 @@ export async function commitMigrationSessionAction(sessionId: string) {
     revalidatePath("/clients");
     revalidatePath("/leads");
     revalidatePath("/vendors");
+    revalidatePath("/documents");
+    revalidatePath("/library/floor-plan-templates");
   }
   return result;
 }
+
+
+export async function getFloorPlanImportCatalogAction() {
+  return getFloorPlanImportCatalog();
+}
+
+export async function resolveFloorPlanImportRecordAction(
+  sessionId: string,
+  recordId: string,
+  patch: {
+    scope?: "space_master" | "event_specific" | "general_reference";
+    spaceId?: string | null;
+    spaceName?: string | null;
+    eventId?: string | null;
+    eventName?: string | null;
+    eventDate?: string | null;
+    name?: string | null;
+  },
+) {
+  const result = await resolveFloorPlanImportRecord(sessionId, recordId, patch);
+  if (result.ok) revalidatePath("/settings/migration");
+  return result;
+}
+
+
 
 export async function attachMigrationSourceFileAction(
   sessionId: string,

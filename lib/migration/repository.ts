@@ -178,6 +178,32 @@ export async function updateRecord(
  * proceed. No application-level lock — the guarantee comes entirely from
  * the database's own row-level update semantics.
  */
+export async function getRecord(
+  client: AnyDbClient, sessionId: string, recordId: string,
+): Promise<MigrationRecord | null> {
+  const { data } = await client.from("migration_records").select("*")
+    .eq("id", recordId).eq("session_id", sessionId)
+    .maybeSingle<Record<string, unknown>>();
+  return data ? mapRecord(data) : null;
+}
+
+/**
+ * Claim a durable unresolved row (availability conflict / needs_review) so
+ * Try again can re-run the canonical commit path without racing another retry.
+ */
+export async function claimUnresolvedRecord(
+  client: AnyDbClient, recordId: string, claimedBy: string | null,
+): Promise<MigrationRecord | null> {
+  const { data } = await client.from("migration_records")
+    .update({ claimed_at: new Date().toISOString(), claimed_by: claimedBy })
+    .eq("id", recordId)
+    .in("status", ["needs_review", "conflict"])
+    .is("claimed_at", null)
+    .select("*")
+    .maybeSingle<Record<string, unknown>>();
+  return data ? mapRecord(data) : null;
+}
+
 export async function claimRecord(client: AnyDbClient, recordId: string, claimedBy: string | null): Promise<MigrationRecord | null> {
   const { data } = await client.from("migration_records")
     .update({ claimed_at: new Date().toISOString(), claimed_by: claimedBy })

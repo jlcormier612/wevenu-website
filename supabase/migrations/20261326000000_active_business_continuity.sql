@@ -18,7 +18,8 @@ begin
       'active_commitment',
       'guest_list',
       'event_vendor_assignment',
-      'timeline_entry'
+      'timeline_entry',
+      'floor_plan'
     ));
 end;
 $$;

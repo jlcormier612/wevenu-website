@@ -29,6 +29,7 @@ type PlanRow = {
   shared_with_vendors: boolean;
   shared_with_couple: boolean;
   source_template_id: string | null;
+  background_document_id: string | null;
   background_image_url: string | null; background_image_opacity: number; background_locked: boolean;
   room_width_ft: number; room_depth_ft: number; measurement_unit: MeasurementUnit;
   finalized_at: string | null;
@@ -51,6 +52,7 @@ const mapPlan = (r: PlanRow): FloorPlan => ({
   sharedWithVendors: r.shared_with_vendors,
   sharedWithCouple: Boolean(r.shared_with_couple),
   sourceTemplateId: r.source_template_id ?? null,
+  backgroundDocumentId: r.background_document_id ?? null,
   backgroundImageUrl: r.background_image_url,
   backgroundImageOpacity: Number(r.background_image_opacity),
   backgroundLocked: r.background_locked,
@@ -141,6 +143,7 @@ export async function duplicateFloorPlanInto(
   const { data, error } = await client.from("floor_plans").insert({
     venue_id: venueId, event_id: eventId, name: name.trim(), space_id: spaceId,
     background_image_url: source.backgroundImageUrl, background_image_opacity: source.backgroundImageOpacity,
+    background_document_id: source.backgroundDocumentId,
     room_width_ft: source.roomWidthFt, room_depth_ft: source.roomDepthFt, measurement_unit: source.measurementUnit,
   }).select("id").single<{ id: string }>();
   if (error) throw error;
@@ -153,11 +156,17 @@ export async function duplicateFloorPlanInto(
 export async function updateFloorPlanBackground(
   client: DbClient, venueId: string, planId: string,
   url: string | null, opacity: number,
+  backgroundDocumentId?: string | null,
 ): Promise<void> {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { error } = await (client.from("floor_plans") as any).update({
+  const update: Record<string, unknown> = {
     background_image_url: url, background_image_opacity: opacity,
-  }).eq("id", planId).eq("venue_id", venueId);
+  };
+  if (backgroundDocumentId !== undefined) {
+    update.background_document_id = backgroundDocumentId;
+  }
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error } = await (client.from("floor_plans") as any).update(update)
+    .eq("id", planId).eq("venue_id", venueId);
   if (error) throw error;
 }
 

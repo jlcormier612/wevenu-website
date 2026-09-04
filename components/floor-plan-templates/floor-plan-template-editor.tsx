@@ -10,7 +10,7 @@
 
 import { FloorPlanEditor } from "@/components/floor-plan/floor-plan-editor";
 import {
-  addTemplateObjectAction, clearTemplateAction, deleteTemplateObjectAction,
+  addTemplateObjectAction, attachTemplateBackgroundAction, clearTemplateAction, deleteTemplateObjectAction,
   reorderTemplateObjectAction, setTemplateBackgroundLockedAction,
   updateTemplateBackgroundAction, updateTemplateObjectAction, updateTemplateRoomSettingsAction,
 } from "@/app/(app)/floor-plan-templates/actions";
@@ -33,7 +33,10 @@ export function FloorPlanTemplateEditor({
     updateObject: (objId, input) => updateTemplateObjectAction(objId, input),
     deleteObject: (objId) => deleteTemplateObjectAction(objId, templateId),
     reorderObject: (planId, objId, direction) => reorderTemplateObjectAction(planId, objId, direction),
-    updateBackground: (planId, url, opacity) => updateTemplateBackgroundAction(planId, url, opacity),
+    updateBackground: (planId, url, opacity, backgroundDocumentId) =>
+      updateTemplateBackgroundAction(planId, url, opacity, backgroundDocumentId),
+    attachBackgroundDocument: (planId, payload) =>
+      attachTemplateBackgroundAction(planId, payload),
     setBackgroundLocked: (planId, locked) => setTemplateBackgroundLockedAction(planId, locked),
     updateRoomSettings: (planId, input) => updateTemplateRoomSettingsAction(planId, input),
     clear: (planId) => clearTemplateAction(planId),

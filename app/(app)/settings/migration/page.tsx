@@ -7,14 +7,16 @@ import { SetupGuideLink } from "@/components/help/setup-guide-link";
 import { getSourceProfilesAction } from "@/app/(app)/settings/migration-actions";
 import { getSpaces, getCapacityRules } from "@/lib/availability/service";
 import { evaluateCutoverPrerequisites } from "@/lib/setup-hub/bring-your-business";
+import { getCurrentVenue } from "@/lib/venue/service";
 
 export const metadata: Metadata = { title: "Migration Center — Settings" };
 
 export default async function MigrationCenterPage() {
-  const [sourceProfiles, spaces, capacityRules] = await Promise.all([
+  const [sourceProfiles, spaces, capacityRules, venue] = await Promise.all([
     getSourceProfilesAction(),
     getSpaces(),
     getCapacityRules(),
+    getCurrentVenue(),
   ]);
   const cutover = evaluateCutoverPrerequisites({
     spacesCount: spaces.length,
@@ -30,7 +32,11 @@ export default async function MigrationCenterPage() {
       />
       <SetupGuideLink href="/help/setup-bring-your-business" label="New to this? Walk through it step by step" />
       <SettingsTabs />
-      <MigrationCenter sourceProfiles={sourceProfiles} cutover={cutover} />
+      <MigrationCenter
+        sourceProfiles={sourceProfiles}
+        cutover={cutover}
+        venueId={venue?.id ?? ""}
+      />
     </div>
   );
 }

@@ -5,7 +5,7 @@ import { revalidatePath } from "next/cache";
 import {
   addObject, clearTemplate, createTemplate, createTemplateFromPaste, deleteObject_, deleteTemplate_,
   duplicateTemplate, renameTemplate_, reorderObject, setBackgroundLocked, setTemplateArchived_,
-  setTemplateDefault_, updateBackground, updateObject_, updateRoomSettings,
+  setTemplateDefault_, attachBackgroundDocument, updateBackground, updateObject_, updateRoomSettings,
 } from "@/lib/floor-plan-templates/service";
 import type {
   CreateFloorPlanTemplateResult, FloorPlanTemplateActionResult, FloorPlanTemplateObject, ImportFloorPlanTemplateResult,
@@ -96,8 +96,27 @@ export async function clearTemplateAction(templateId: string): Promise<FloorPlan
 
 export async function updateTemplateBackgroundAction(
   templateId: string, url: string | null, opacity: number,
+  backgroundDocumentId?: string | null,
 ): Promise<FloorPlanActionResult> {
-  const result = await updateBackground(templateId, url, opacity);
+  const result = await updateBackground(templateId, url, opacity, backgroundDocumentId);
+  if (result.ok) revalidatePath(`/library/floor-plan-templates/${templateId}`);
+  return result;
+}
+
+export async function attachTemplateBackgroundAction(
+  templateId: string,
+  payload: {
+    name: string;
+    fileName: string;
+    fileSize: number;
+    mimeType: string;
+    storagePath: string;
+    storageUrl: string;
+    renderableImageUrl: string;
+    opacity: number;
+  },
+): Promise<FloorPlanActionResult & { documentId?: string }> {
+  const result = await attachBackgroundDocument(templateId, payload);
   if (result.ok) revalidatePath(`/library/floor-plan-templates/${templateId}`);
   return result;
 }

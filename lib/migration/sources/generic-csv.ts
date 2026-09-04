@@ -461,6 +461,38 @@ function normalizeRow(row: SourceRow, entityType: MigrationEntityType): Normaliz
     return { ok: true, entityType, normalized };
   }
 
+  if (entityType === "floor_plan") {
+    const fileName = str(row, "fileName") ?? str(row, "name");
+    const storagePath = str(row, "storagePath");
+    const storageUrl = str(row, "storageUrl");
+    if (!fileName || !storagePath || !storageUrl) {
+      return { ok: false, error: "Floor plans need a file name plus storagePath and storageUrl from an uploaded file." };
+    }
+    const scopeRaw = (str(row, "scope") ?? "general_reference").toLowerCase();
+    const scope =
+      scopeRaw === "space_master" || scopeRaw === "event_specific" || scopeRaw === "general_reference"
+        ? scopeRaw
+        : "general_reference";
+    const normalized = {
+      name: str(row, "name") ?? fileName,
+      fileName,
+      storagePath,
+      storageUrl,
+      renderableImageUrl: str(row, "renderableImageUrl"),
+      mimeType: str(row, "mimeType"),
+      fileSize: str(row, "fileSize"),
+      scope,
+      spaceId: str(row, "spaceId"),
+      spaceName: str(row, "spaceName"),
+      eventId: str(row, "eventId"),
+      eventName: str(row, "eventName"),
+      eventDate: str(row, "eventDate"),
+      sourceId: str(row, "sourceId") ?? storagePath,
+      notes: str(row, "notes"),
+    };
+    return { ok: true, entityType, normalized };
+  }
+
   return { ok: false, error: `Generic CSV import does not yet support "${entityType}" records.` };
 }
 

@@ -46,6 +46,7 @@ import {
   startMigrationSessionAction,
 } from "@/app/(app)/settings/migration-actions";
 import { ActiveCommitmentReview } from "@/components/settings/active-commitment-review";
+import { FloorPlanMigrationImport } from "@/components/settings/floor-plan-migration-import";
 import type { NormalizedActiveCommitment } from "@/lib/migration/active-commitment";
 import { isHistoricalRecordEligibleError, isLiveAvailabilityConflictError, HISTORICAL_RECORD_ELIGIBLE, HISTORICAL_RECORD_LABEL } from "@/lib/migration/historical-record";
 import {
@@ -83,10 +84,12 @@ const ENTITY_LABEL: Record<MigrationEntityType, string> = {
   guest_list: "Guest list (operational couple guests on an active Event)",
   event_vendor_assignment: "Event vendor assignments (photographer, caterer, …)",
   timeline_entry: "Timeline entries (near-event / finalized day-of)",
+  floor_plan: "Floor plans (Space masters, event layouts, reference files)",
 };
 const COMMITTABLE_ENTITIES: MigrationEntityType[] = [
   "calendar_block", "date_hold", "client", "lead", "vendor", "package", "event", "tour", "key_date",
   "document", "active_commitment", "guest_list", "event_vendor_assignment", "timeline_entry",
+  "floor_plan",
 ];
 
 const FIELD_KEYS_BY_ENTITY: Record<MigrationEntityType, { key: string; label: string; required: boolean }[]> = {
@@ -274,6 +277,19 @@ const FIELD_KEYS_BY_ENTITY: Record<MigrationEntityType, { key: string; label: st
     { key: "forceImport", label: "Force import even if >21 days? (yes/no)", required: false },
     { key: "sourceId", label: "Their own record ID", required: false },
   ],
+  floor_plan: [
+    { key: "fileName", label: "File name", required: true },
+    { key: "storagePath", label: "Storage path (from upload)", required: true },
+    { key: "storageUrl", label: "Storage URL (from upload)", required: true },
+    { key: "renderableImageUrl", label: "Editor preview URL (image or PDF page-1)", required: false },
+    { key: "scope", label: "Scope (space_master / event_specific / general_reference)", required: true },
+    { key: "spaceId", label: "Space id", required: false },
+    { key: "spaceName", label: "Space name", required: false },
+    { key: "eventId", label: "Event id", required: false },
+    { key: "eventName", label: "Event name", required: false },
+    { key: "eventDate", label: "Event date (YYYY-MM-DD)", required: false },
+    { key: "sourceId", label: "Stable source id", required: false },
+  ],
 };
 
 const NEEDS_DECISION_STATUSES = ["duplicate_likely", "conflict", "needs_review"] as const;
@@ -329,12 +345,49 @@ function outcomeSentence(summary: SessionSummary): string {
   return parts.join(" · ");
 }
 
+function recordHeadline(r: MigrationRecord): string {
+  const p = r.normalizedPayload ?? {};
+  const name =
+    [p.firstName, p.lastName].filter(Boolean).join(" ")
+    || String(p.businessName ?? p.name ?? p.title ?? "").trim()
+    || r.sourceRowRef
+    || "Record";
+  const date = String(p.eventDate ?? p.holdDate ?? p.startDate ?? "").trim();
+
+  if (r.targetEntityType === "floor_plan") {
+    const scope = String(p.scope ?? "");
+    if (scope === "space_master") {
+      const space = String(p.spaceName ?? "").trim();
+      return space
+        ? `${name} · Floor plan → Space ${space}`
+        : `${name} · Floor plan → Space`;
+    }
+    if (scope === "event_specific") {
+      const event = String(p.eventName ?? "").trim();
+      if (event && date) return `${name} · Floor plan → Event · ${event} · ${date}`;
+      if (event) return `${name} · Floor plan → Event · ${event}`;
+      if (date) return `${name} · Floor plan → Event · ${date}`;
+      return `${name} · Floor plan → Event`;
+    }
+    if (scope === "general_reference") {
+      return `${name} · Floor plan · Reference document`;
+    }
+    return `${name} · Floor plan`;
+  }
+
+  const entity = r.targetEntityType.replace(/_/g, " ");
+  if (date) return `${name} · ${entity} · ${date}`;
+  return `${name} · ${entity}`;
+}
+
 export function MigrationCenter({
   sourceProfiles,
   cutover,
+  venueId,
 }: {
   sourceProfiles: SourceProfile[];
   cutover: CutoverPrerequisite;
+  venueId: string;
 }) {
   const [sessions, setSessions] = React.useState<MigrationSession[]>([]);
   const [activeSessionId, setActiveSessionId] = React.useState<string | null>(null);
@@ -791,7 +844,7 @@ export function MigrationCenter({
             {(resume?.state === "needs_review" || resume?.state === "partially_done") && decisionRecords.length > 0 && (
               <div className="space-y-2">
                 <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Needs your decision</p>
-                {decisionRecords.map((r) => {
+                {decisionRecords.filter((r) => r.targetEntityType !== "floor_plan").map((r) => {
                   const historical = isHistoricalRecordEligibleError(r.validationErrors);
                   const liveConflict = isLiveAvailabilityConflictError(r.validationErrors);
                   const displayError = (r.validationErrors?.[0] ?? "").replace(`${HISTORICAL_RECORD_ELIGIBLE}: `, "");
@@ -799,8 +852,7 @@ export function MigrationCenter({
                   <div key={r.id} className="flex items-center justify-between gap-3 rounded-lg border border-border px-3 py-2">
                     <div className="min-w-0">
                       <p className="truncate text-sm font-medium text-heading">
-                        {String(r.normalizedPayload?.firstName ?? r.normalizedPayload?.businessName ?? r.normalizedPayload?.name ?? r.normalizedPayload?.title ?? r.sourceRowRef ?? "Record")}{" "}
-                        {String(r.normalizedPayload?.lastName ?? "")}
+                        {recordHeadline(r)}
                       </p>
                       <div className="mt-0.5 flex items-center gap-2">
                         <StatusBadge status={r.status} />
@@ -844,6 +896,20 @@ export function MigrationCenter({
           </CardContent>
         </Card>
       )}
+
+      {venueId ? (
+        <FloorPlanMigrationImport
+          venueId={venueId}
+          sourceKey={sourceKey}
+          onSessionReady={(id) => {
+            setActiveSessionId(id);
+            openSession(id);
+            refreshSessions();
+          }}
+          activeSessionId={activeSessionId}
+          floorPlanRecords={decisionRecords.filter((r) => r.targetEntityType === "floor_plan")}
+        />
+      ) : null}
 
       <Card>
         <CardHeader>

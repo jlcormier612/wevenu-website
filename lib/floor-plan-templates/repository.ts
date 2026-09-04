@@ -14,6 +14,7 @@ type DbClient = Awaited<ReturnType<typeof createClient>>;
 type TemplateRow = {
   id: string; venue_id: string; name: string; event_type: string | null; space_id: string | null;
   is_default: boolean; is_archived: boolean; source_master_key: string | null;
+  background_document_id: string | null;
   background_image_url: string | null; background_image_opacity: number; background_locked: boolean;
   room_width_ft: number; room_depth_ft: number; measurement_unit: MeasurementUnit;
   created_at: string; updated_at: string;
@@ -32,6 +33,7 @@ type ObjRow = {
 const mapTemplate = (r: TemplateRow): FloorPlanTemplate => ({
   id: r.id, venueId: r.venue_id, name: r.name, eventType: r.event_type, spaceId: r.space_id,
   isDefault: r.is_default, isArchived: r.is_archived, sourceMasterKey: r.source_master_key ?? null,
+  backgroundDocumentId: r.background_document_id ?? null,
   backgroundImageUrl: r.background_image_url, backgroundImageOpacity: Number(r.background_image_opacity),
   backgroundLocked: r.background_locked,
   roomWidthFt: Number(r.room_width_ft), roomDepthFt: Number(r.room_depth_ft), measurementUnit: r.measurement_unit,
@@ -174,6 +176,7 @@ export async function duplicateTemplateInto(client: DbClient, venueId: string, s
   const { data, error } = await client.from("floor_plan_templates").insert({
     venue_id: venueId, name: newName.trim(), event_type: source.eventType, space_id: source.spaceId,
     background_image_url: source.backgroundImageUrl, background_image_opacity: source.backgroundImageOpacity,
+    background_document_id: source.backgroundDocumentId,
     room_width_ft: source.roomWidthFt, room_depth_ft: source.roomDepthFt, measurement_unit: source.measurementUnit,
   }).select("id").single<{ id: string }>();
   if (error) throw error;
@@ -259,10 +262,20 @@ export async function clearObjects(client: DbClient, venueId: string, templateId
   if (error) throw error;
 }
 
-export async function updateBackground(client: DbClient, venueId: string, templateId: string, url: string | null, opacity: number): Promise<void> {
+export async function updateBackground(
+  client: DbClient, venueId: string, templateId: string,
+  url: string | null, opacity: number,
+  backgroundDocumentId?: string | null,
+): Promise<void> {
+  const update: Record<string, unknown> = {
+    background_image_url: url, background_image_opacity: opacity,
+  };
+  if (backgroundDocumentId !== undefined) {
+    update.background_document_id = backgroundDocumentId;
+  }
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { error } = await (client.from("floor_plan_templates") as any)
-    .update({ background_image_url: url, background_image_opacity: opacity })
+    .update(update)
     .eq("id", templateId).eq("venue_id", venueId);
   if (error) throw error;
 }

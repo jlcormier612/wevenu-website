@@ -38,6 +38,25 @@ export type TimelineDecision =
   | { import: true; reason: "within_proximity" | "finalized" | "forced" }
   | { import: false; reason: "not_operational" };
 
+/**
+ * Sentinel for a genuinely-not-imported timeline row (proximity/finalized/
+ * force rule declined it). Never treated as success — commitOneRecord
+ * routes it to needs_review like any other unresolved record, and the
+ * Migration Center UI uses this marker to offer "Bring Timeline Over"
+ * instead of a plain retry. Mirrors the historical-record sentinel pattern
+ * (lib/migration/historical-record.ts) — one review-message convention,
+ * not a second state system.
+ */
+export const TIMELINE_NOT_IMPORTED = "timeline_not_imported";
+
+export function timelineNotImportedMessage(reason: string): string {
+  return `${TIMELINE_NOT_IMPORTED}: ${reason}`;
+}
+
+export function isTimelineNotImportedError(errors: string[] | null | undefined): boolean {
+  return (errors ?? []).some((e) => e.includes(TIMELINE_NOT_IMPORTED));
+}
+
 export function shouldImportOperationalTimeline(opts: {
   eventDate: string | null;
   timelineFinalized?: boolean;
@@ -134,11 +153,14 @@ export async function commitOperationalTimelineEntry(
     forceImport: !!n.forceImport,
   });
   if (!decision.import) {
+    const skipReason = !resolved.eventDate
+      ? "This event doesn't have a date yet, so its timeline can't be scheduled. Add the event date, then bring the timeline over."
+      : `This event is more than ${TIMELINE_PROXIMITY_DAYS} days away and its timeline isn't finalized yet. We left it out for now so you can choose whether to bring it into Hello to Cheers.`;
     return {
       ok: true,
       entryId: null,
       skipped: true,
-      skipReason: "Event is more than 21 days out and timeline is not finalized — recreate in HTC when ready.",
+      skipReason,
       eventId: resolved.eventId,
     };
   }

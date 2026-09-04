@@ -48,7 +48,11 @@ begin
     check (target_entity_type in (
       'client', 'lead', 'vendor', 'event', 'payment', 'document',
       'calendar_block', 'date_hold', 'tour', 'package', 'key_date',
-      'active_commitment'
+      'active_commitment',
+      'guest_list',
+      'event_vendor_assignment',
+      'timeline_entry',
+      'floor_plan'
     ));
 end;
 $$;

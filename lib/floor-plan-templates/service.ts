@@ -201,12 +201,55 @@ export async function clearTemplate(templateId: string): Promise<FloorPlanTempla
   return result as FloorPlanTemplateActionResult;
 }
 
-export async function updateBackground(templateId: string, url: string | null, opacity: number): Promise<FloorPlanTemplateActionResult> {
+export async function updateBackground(
+  templateId: string, url: string | null, opacity: number,
+  backgroundDocumentId?: string | null,
+): Promise<FloorPlanTemplateActionResult> {
   const result = await withVenueEditor(async (supabase, venueId) => {
-    await repo.updateBackground(supabase, venueId, templateId, url, opacity);
+    await repo.updateBackground(supabase, venueId, templateId, url, opacity, backgroundDocumentId);
     return { ok: true } as FloorPlanTemplateActionResult;
   });
   return result as FloorPlanTemplateActionResult;
+}
+
+/**
+ * Phase 2 — attach an already-uploaded venue Document + renderable background
+ * for a reusable master / Space template.
+ */
+export async function attachBackgroundDocument(
+  templateId: string,
+  payload: {
+    name: string;
+    fileName: string;
+    fileSize: number;
+    mimeType: string;
+    storagePath: string;
+    storageUrl: string;
+    renderableImageUrl: string;
+    opacity: number;
+  },
+): Promise<FloorPlanTemplateActionResult & { documentId?: string }> {
+  const result = await withVenueEditor(async (supabase, venueId) => {
+    const documentsRepo = await import("@/lib/documents/repository");
+    const documentId = await documentsRepo.insertVenueDocument(supabase, venueId, {
+      name: payload.name,
+      category: "floor_plan",
+      notes: "",
+      tags: "",
+      expiresAt: "",
+      fileName: payload.fileName,
+      fileSize: payload.fileSize,
+      mimeType: payload.mimeType,
+      storagePath: payload.storagePath,
+      storageUrl: payload.storageUrl,
+    });
+    await repo.updateBackground(
+      supabase, venueId, templateId,
+      payload.renderableImageUrl, payload.opacity, documentId,
+    );
+    return { ok: true, documentId } as FloorPlanTemplateActionResult & { documentId: string };
+  });
+  return result as FloorPlanTemplateActionResult & { documentId?: string };
 }
 
 export async function setBackgroundLocked(templateId: string, locked: boolean): Promise<FloorPlanTemplateActionResult> {
