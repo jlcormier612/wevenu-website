@@ -29,6 +29,7 @@ import {
   runDedupe,
 } from "@/lib/migration/service";
 import { formatSessionOutcomeSentence } from "@/lib/migration/session-accounting";
+import { applyLocalMigrationFiles } from "@/lib/test/apply-local-migrations";
 import { withLocalDbSchemaLock } from "@/lib/test/local-db-schema-lock";
 
 const LOCAL_DB = process.env.HTC_LOCAL_DATABASE_URL
@@ -56,13 +57,10 @@ function localReady(): boolean {
 }
 
 function applySchemaPatches(): void {
-  for (const file of [MIGRATION_BG_DOC, MIGRATION_ENTITY]) {
-    const run = spawnSync("psql", [LOCAL_DB, "-v", "ON_ERROR_STOP=1", "-f", file], {
-      encoding: "utf8",
-      timeout: 30_000,
-    });
-    assert.equal(run.status, 0, `${file}: ${run.stderr || run.stdout}`);
-  }
+  applyLocalMigrationFiles([MIGRATION_BG_DOC, MIGRATION_ENTITY], {
+    dbUrl: LOCAL_DB,
+    alreadyHoldingLock: true,
+  });
 }
 
 function adminClient(): SupabaseClient {

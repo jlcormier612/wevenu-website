@@ -49,6 +49,7 @@ import { ActiveCommitmentReview } from "@/components/settings/active-commitment-
 import { FloorPlanMigrationImport } from "@/components/settings/floor-plan-migration-import";
 import type { NormalizedActiveCommitment } from "@/lib/migration/active-commitment";
 import { isHistoricalRecordEligibleError, isLiveAvailabilityConflictError, HISTORICAL_RECORD_ELIGIBLE, HISTORICAL_RECORD_LABEL } from "@/lib/migration/historical-record";
+import { formatSessionOutcomeSentence } from "@/lib/migration/session-accounting";
 import {
   MIGRATION_CENTER_INTRO,
   SOURCE_SELECTION_LANES,
@@ -325,8 +326,8 @@ function StatusBadge({ status }: { status: string }) {
     duplicate_likely: { label: "Possible duplicate", variant: "warning" },
     conflict: { label: "Needs a decision", variant: "warning" },
     needs_review: { label: "Couldn't read this row", variant: "destructive" },
-    rejected: { label: "Skipped", variant: "outline" },
-    skipped: { label: "Skipped", variant: "outline" },
+    rejected: { label: "Intentionally excluded", variant: "outline" },
+    skipped: { label: "Already in Hello to Cheers", variant: "outline" },
   };
   const m = map[status] ?? { label: status, variant: "outline" as const };
   return <Badge variant={m.variant}>{m.label}</Badge>;
@@ -334,15 +335,7 @@ function StatusBadge({ status }: { status: string }) {
 
 /** Plain-language outcome sentence for a summary's counts — the "did everything make it in?" answer. */
 function outcomeSentence(summary: SessionSummary): string {
-  const c = summary.counts;
-  const parts: string[] = [];
-  if (c.committed > 0) parts.push(`${c.committed} imported`);
-  if (c.duplicate_exact + c.skipped > 0) parts.push(`${c.duplicate_exact + c.skipped} already in Hello to Cheers`);
-  const needsAttention = c.duplicate_likely + c.conflict + c.needs_review;
-  if (needsAttention > 0) parts.push(`${needsAttention} need${needsAttention === 1 ? "s" : ""} your attention`);
-  if (c.rejected > 0) parts.push(`${c.rejected} skipped by you`);
-  if (parts.length === 0) return "Nothing recognized yet.";
-  return parts.join(" · ");
+  return formatSessionOutcomeSentence(summary.counts);
 }
 
 function recordHeadline(r: MigrationRecord): string {

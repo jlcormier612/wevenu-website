@@ -11,6 +11,8 @@ import { describe, it, type TestContext } from "node:test";
 import { commitOperationalGuest } from "@/lib/migration/operational-guest";
 import { commitEventVendorAssignmentQuietly } from "@/lib/migration/event-vendor-assignment";
 import { commitOperationalTimelineEntry } from "@/lib/migration/operational-timeline";
+import { applyLocalMigrationFiles } from "@/lib/test/apply-local-migrations";
+import { withLocalDbSchemaLock } from "@/lib/test/local-db-schema-lock";
 
 const LOCAL_DB = process.env.HTC_LOCAL_DATABASE_URL
   ?? "postgresql://postgres:postgres@127.0.0.1:54322/postgres";
@@ -24,6 +26,7 @@ const MIGRATIONS = [
   resolve("supabase/migrations/20261324000000_active_financial_cutover.sql"),
   resolve("supabase/migrations/20261325000000_active_commitment_portal_share.sql"),
   resolve("supabase/migrations/20261326000000_active_business_continuity.sql"),
+  resolve("supabase/migrations/20261328000000_event_booked_at.sql"),
 ];
 
 function psql(sql: string): { status: number | null; stdout: string; stderr: string } {
@@ -39,13 +42,7 @@ function localReady(): boolean {
 }
 
 function applyMigrations(): void {
-  for (const file of MIGRATIONS) {
-    const run = spawnSync("psql", [LOCAL_DB, "-v", "ON_ERROR_STOP=1", "-f", file], {
-      encoding: "utf8",
-      timeout: 30_000,
-    });
-    assert.equal(run.status, 0, `${file}: ${run.stderr || run.stdout}`);
-  }
+  applyLocalMigrationFiles(MIGRATIONS, { dbUrl: LOCAL_DB, alreadyHoldingLock: true });
 }
 
 function adminClient(): SupabaseClient {
@@ -60,6 +57,7 @@ describe("Smith Wedding operational continuity (guests, vendors, timeline)", () 
       t.skip("local Postgres is not running");
       return;
     }
+    await withLocalDbSchemaLock(async () => {
     applyMigrations();
     const supabase = adminClient();
 
@@ -264,5 +262,6 @@ describe("Smith Wedding operational continuity (guests, vendors, timeline)", () 
     }
 
     psql(`delete from public.venues where id = '${venueId}'; delete from auth.users where id = '${ownerId}';`);
+    });
   });
 });

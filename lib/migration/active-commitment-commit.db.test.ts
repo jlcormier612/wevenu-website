@@ -18,6 +18,8 @@ import {
 } from "@/lib/migration/active-commitment";
 import { shareExternallyExecutedAgreementWithCouple } from "@/lib/contracts/external-share";
 import { extractTextFromCommitmentFile } from "@/lib/migration/smart-extract";
+import { applyLocalMigrationFiles } from "@/lib/test/apply-local-migrations";
+import { withLocalDbSchemaLock } from "@/lib/test/local-db-schema-lock";
 
 const LOCAL_DB = process.env.HTC_LOCAL_DATABASE_URL
   ?? "postgresql://postgres:postgres@127.0.0.1:54322/postgres";
@@ -30,6 +32,7 @@ const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY
 
 const MIGRATION_PORTAL = resolve("supabase/migrations/20261325000000_active_commitment_portal_share.sql");
 const MIGRATION = resolve("supabase/migrations/20261324000000_active_financial_cutover.sql");
+const MIGRATION_BOOKED_AT = resolve("supabase/migrations/20261328000000_event_booked_at.sql");
 
 function psql(sql: string): { status: number | null; stdout: string; stderr: string } {
   const result = spawnSync("psql", [LOCAL_DB, "-v", "ON_ERROR_STOP=1", "-c", sql], {
@@ -45,13 +48,10 @@ function localReady(): boolean {
 }
 
 function applyMigration(): void {
-  for (const file of [MIGRATION, MIGRATION_PORTAL]) {
-    const run = spawnSync("psql", [LOCAL_DB, "-v", "ON_ERROR_STOP=1", "-f", file], {
-      encoding: "utf8",
-      timeout: 30_000,
-    });
-    assert.equal(run.status, 0, `${file}: ${run.stderr || run.stdout}`);
-  }
+  applyLocalMigrationFiles([MIGRATION, MIGRATION_PORTAL, MIGRATION_BOOKED_AT], {
+    dbUrl: LOCAL_DB,
+    alreadyHoldingLock: true,
+  });
 }
 
 function adminClient(): SupabaseClient {
@@ -109,6 +109,7 @@ describe("Smith Wedding full-stack commit + portal acceptance", () => {
       t.skip("local Postgres is not running");
       return;
     }
+    await withLocalDbSchemaLock(async () => {
     applyMigration();
     const supabase = adminClient();
 
@@ -222,6 +223,12 @@ describe("Smith Wedding full-stack commit + portal acceptance", () => {
     assert.ifError(order.error);
     assert.equal((order.data as { status: string }).status, "open");
     assert.equal((order.data as { shared_at: string | null }).shared_at, null);
+
+    const eventBooked = await supabase.from("events")
+      .select("booked_at").eq("id", eventId).single();
+    assert.ifError(eventBooked.error);
+    // contractSignedAt alone must not become booked_at
+    assert.equal((eventBooked.data as { booked_at: string | null }).booked_at, null);
 
     const { data: lines } = await supabase.from("event_order_lines")
       .select("description, amount").eq("event_order_id", committed.eventOrderId);
@@ -374,6 +381,7 @@ describe("Smith Wedding full-stack commit + portal acceptance", () => {
 
     // Cleanup fixture venue
     psql(`delete from public.venues where id = '${venueId}'; delete from auth.users where id = '${ownerId}';`);
+    });
   });
 });
 

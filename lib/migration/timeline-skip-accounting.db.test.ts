@@ -16,6 +16,7 @@ import { describe, it, type TestContext } from "node:test";
 import { commitSession, computeFinalSessionStatus, computeSessionResumeState } from "@/lib/migration/service";
 import * as repo from "@/lib/migration/repository";
 import { isTimelineNotImportedError } from "@/lib/migration/operational-timeline";
+import { applyLocalMigrationFiles } from "@/lib/test/apply-local-migrations";
 import { withLocalDbSchemaLock } from "@/lib/test/local-db-schema-lock";
 
 const LOCAL_DB = process.env.HTC_LOCAL_DATABASE_URL
@@ -46,13 +47,7 @@ function localReady(): boolean {
 }
 
 function applyMigrations(): void {
-  for (const file of MIGRATIONS) {
-    const run = spawnSync("psql", [LOCAL_DB, "-v", "ON_ERROR_STOP=1", "-f", file], {
-      encoding: "utf8",
-      timeout: 30_000,
-    });
-    assert.equal(run.status, 0, `${file}: ${run.stderr || run.stdout}`);
-  }
+  applyLocalMigrationFiles(MIGRATIONS, { dbUrl: LOCAL_DB, alreadyHoldingLock: true });
 }
 
 function adminClient(): SupabaseClient {
