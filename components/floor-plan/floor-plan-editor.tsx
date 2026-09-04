@@ -83,6 +83,14 @@ import type {
   MeasurementUnit,
   ObjectType,
 } from "@/lib/floor-plans/types";
+import { FloorPlanCapacityBanner } from "@/components/floor-plan/floor-plan-capacity-banner";
+import { isSeatingTableType } from "@/lib/floor-plans/capacity";
+import {
+  floorPlanKeyboardTargetIsTextEntry,
+  floorPlanNudgeStep,
+  isFloorPlanNudgeKey,
+  nudgeFloorPlanPosition,
+} from "@/lib/floor-plans/keyboard-nudge";
 import type { InventoryCategory, InventoryItem, InventoryUsage } from "@/lib/inventory/types";
 import { cn } from "@/lib/utils";
 
@@ -169,7 +177,8 @@ function SvgObject({
   const hw = obj.width / 2;
   const hh = obj.height / 2;
   const fontSize = Math.max(9, Math.min(14, obj.width / 6));
-  const handleSize = 9;
+  // Slightly larger than desktop-default so tablet/touch selection stays usable.
+  const handleSize = 14;
 
   return (
     <g
@@ -202,12 +211,20 @@ function SvgObject({
           fill={fill} stroke={style.stroke} strokeWidth={selected ? 2.5 : 1.5} />
       )}
 
-      {/* Label */}
+      {/* Label (+ seat count on tables so capacity is visible without opening properties) */}
       {(obj.label || meta.defaultLabel) && obj.objectType !== "text_label" && (
-        <text x={obj.x} y={obj.y} textAnchor="middle" dominantBaseline="middle"
+        <text x={obj.x} y={obj.y - (isSeatingTableType(obj.objectType) && obj.capacity != null ? fontSize * 0.35 : 0)}
+          textAnchor="middle" dominantBaseline="middle"
           fontSize={fontSize} fill={style.textFill} fontFamily="sans-serif"
           style={{ userSelect: "none", pointerEvents: "none" }}>
           {obj.label ?? ""}
+        </text>
+      )}
+      {isSeatingTableType(obj.objectType) && obj.capacity != null && (
+        <text x={obj.x} y={obj.y + fontSize * 0.75} textAnchor="middle" dominantBaseline="middle"
+          fontSize={Math.max(8, fontSize * 0.75)} fill={style.textFill} fontFamily="sans-serif" opacity={0.85}
+          style={{ userSelect: "none", pointerEvents: "none" }}>
+          {obj.capacity} seats
         </text>
       )}
 
@@ -587,6 +604,9 @@ export function FloorPlanEditor({
   inventoryItems = [],
   inventoryCategories = [],
   inventoryUsage = [],
+  guestCount = null,
+  spaceCapacity = null,
+  spaceName = null,
   readOnly = false,
 }: {
   initialPlan: FloorPlanCanvasPlan | null;
@@ -616,6 +636,11 @@ export function FloorPlanEditor({
    * aren't tied to a booking's real inventory commitments.
    */
   inventoryUsage?: InventoryUsage[];
+  /** Event guest count — drives seating-capacity intelligence (informational). */
+  guestCount?: number | null;
+  /** Space capacity for the plan's Space — informational room limit. */
+  spaceCapacity?: number | null;
+  spaceName?: string | null;
   /** Staff view-only — no canvas mutations. */
   readOnly?: boolean;
 }) {
@@ -1105,19 +1130,44 @@ export function FloorPlanEditor({
   // --- Keyboard shortcuts ---
   React.useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
-      const tag = (document.activeElement?.tagName ?? "").toLowerCase();
-      if (tag === "input" || tag === "textarea" || tag === "select") return;
+      const tag = document.activeElement?.tagName ?? "";
+      if (floorPlanKeyboardTargetIsTextEntry(tag)) return;
       if (e.key === "Escape") {
         setMode("select"); setAddSource(null); setSelectedId(null);
-      } else if ((e.key === "Delete" || e.key === "Backspace") && selectedId) {
+        return;
+      }
+      if ((e.key === "Delete" || e.key === "Backspace") && selectedId) {
         const obj = objects.find((o) => o.id === selectedId);
         if (obj && !obj.locked) void handleDelete(selectedId);
+        return;
+      }
+      if (
+        !readOnly
+        && selectedId
+        && !interaction
+        && isFloorPlanNudgeKey(e.key)
+      ) {
+        const obj = objects.find((o) => o.id === selectedId);
+        if (!obj || obj.locked) return;
+        e.preventDefault();
+        const step = floorPlanNudgeStep(gridUnit, e.shiftKey);
+        const next = nudgeFloorPlanPosition({
+          x: obj.x,
+          y: obj.y,
+          key: e.key,
+          step,
+          canvasWidth,
+          canvasHeight,
+        });
+        if (next.x === obj.x && next.y === obj.y) return;
+        setObjects((prev) => prev.map((o) => (o.id === selectedId ? { ...o, ...next } : o)));
+        void persistObjectUpdate(selectedId, { x: next.x, y: next.y });
       }
     }
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedId, objects]);
+  }, [selectedId, objects, readOnly, interaction, gridUnit, canvasWidth, canvasHeight]);
 
   // Empty state (no floor plan yet)
   if (!plan) {
@@ -1452,6 +1502,16 @@ export function FloorPlanEditor({
         )}
       </div>
 
+      {/* Seating capacity vs guest count / Space — informational, never blocks */}
+      {eventId && (
+        <FloorPlanCapacityBanner
+          objects={objects}
+          guestCount={guestCount}
+          spaceCapacity={spaceCapacity}
+          spaceName={spaceName}
+        />
+      )}
+
       {/* Inventory Usage (Requirement 2) — informational only, never blocks placement */}
       {liveUsage.length > 0 && (
         <div className="rounded-xl border border-border bg-muted/20 p-4 space-y-2">
@@ -1490,7 +1550,7 @@ export function FloorPlanEditor({
       {/* Keyboard shortcut hint */}
       <p className="text-xs text-muted-foreground">
         Room: {formatRoomSize(plan.roomWidthFt, plan.measurementUnit)} × {formatRoomSize(plan.roomDepthFt, plan.measurementUnit)}
-        {" · "}Tip: click an object to select, drag to move, use the handles to resize/rotate. Drag empty canvas to pan. Delete/Backspace removes the selection.
+        {" · "}Tip: click an object to select, drag to move, use the handles to resize/rotate. Arrow keys nudge by one grid step (Shift+Arrow for five). Drag empty canvas to pan. Delete/Backspace removes the selection.
       </p>
     </div>
     </TooltipProvider>

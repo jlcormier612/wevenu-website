@@ -5,6 +5,7 @@ import { BusinessAssetHeader } from "@/components/business-assets/asset-header";
 import { FloorPlanEditor } from "@/components/floor-plan/floor-plan-editor";
 import { FloorPlanFinalizeControl } from "@/components/floor-plan/floor-plan-finalize-control";
 import { FloorPlanReconciliationBanner } from "@/components/floor-plan/floor-plan-reconciliation-banner";
+import { getSpaces } from "@/lib/availability/service";
 import { getEvent } from "@/lib/events/service";
 import { canEditFloorPlans } from "@/lib/floor-plans/authorize";
 import { getFloorPlan, getFloorPlanReconciliation } from "@/lib/floor-plans/service";
@@ -27,12 +28,19 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
  */
 export default async function FloorPlanEditorPage({ params }: Props) {
   const { id, planId } = await params;
-  const [event, plan, inventoryItems, inventoryCategories, inventoryUsage, reconciliation, role] = await Promise.all([
-    getEvent(id), getFloorPlan(planId), getFloorPlanEligibleItems(), getCategories(), getUsageForEvent(id),
-    getFloorPlanReconciliation(planId), getCurrentUserRole(),
+  const [event, plan, inventoryItems, inventoryCategories, inventoryUsage, reconciliation, role, spaces] = await Promise.all([
+    getEvent(id),
+    getFloorPlan(planId),
+    getFloorPlanEligibleItems(),
+    getCategories(),
+    getUsageForEvent(id),
+    getFloorPlanReconciliation(planId),
+    getCurrentUserRole(),
+    getSpaces(),
   ]);
   if (!event || !plan || plan.eventId !== id) notFound();
   const canEdit = canEditFloorPlans(role);
+  const planSpace = spaces.find((s) => s.id === (plan.spaceId ?? event.spaceId)) ?? null;
 
   return (
     <div className="space-y-6 max-w-5xl mx-auto">
@@ -52,6 +60,9 @@ export default async function FloorPlanEditorPage({ params }: Props) {
         eventId={event.id}
         eventName={event.name}
         venueId={event.venueId}
+        guestCount={event.guestCount}
+        spaceCapacity={planSpace?.capacity ?? null}
+        spaceName={planSpace?.name ?? null}
         inventoryItems={inventoryItems}
         inventoryCategories={inventoryCategories}
         inventoryUsage={inventoryUsage}

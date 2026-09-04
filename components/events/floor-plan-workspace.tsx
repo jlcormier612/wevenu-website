@@ -234,8 +234,13 @@ function FloorPlanCard({
         )}
       </div>
       <p className="text-xs text-muted-foreground">{spaceName(spaces, plan.spaceId) ?? "No space assigned"}</p>
-      {(isOperational || isCoupleSelected) && (
+      {(isOperational || isCoupleSelected || plan.finalizedAt) && (
         <div className="flex flex-wrap gap-1">
+          {plan.finalizedAt && (
+            <span className="text-[10px] font-medium px-2 py-0.5 rounded-full border border-accent/40 bg-accent/10 text-accent-foreground">
+              Ready
+            </span>
+          )}
           {isCoupleSelected && (
             <span className="text-[10px] font-medium px-2 py-0.5 rounded-full border border-border text-muted-foreground">
               Couple selected
@@ -506,6 +511,13 @@ export function FloorPlanWorkspace({
 
   return (
     <div className="space-y-4">
+      <p className="text-sm text-muted-foreground">
+        Build the venue&apos;s working layouts for this booking — Ceremony, Reception, rain backup, and more.
+        Mark one as <span className="font-medium text-foreground">Operational</span> for day-of setup;
+        the couple&apos;s chosen layout (if they pick from offered templates) stays separate and never
+        silently becomes operational.
+      </p>
+
       {canEdit ? (
         <div className="flex justify-end">
           <Button type="button" onClick={() => { reset(); setOpen(true); }}>+ New Floor Plan</Button>
@@ -527,9 +539,17 @@ export function FloorPlanWorkspace({
       )}
 
       {floorPlans.length === 0 ? (
-        <div className="flex flex-col items-center justify-center gap-1 rounded-sm border border-dashed border-border py-12 text-center">
-          <p className="text-sm font-medium text-heading">No Working Floor Plans yet</p>
-          <p className="text-xs text-muted-foreground">Apply a Floor Plan Template, duplicate another plan on this booking, or start from a blank room.</p>
+        <div className="flex flex-col items-center justify-center gap-2 rounded-sm border border-dashed border-border py-12 px-4 text-center">
+          <p className="text-sm font-medium text-heading">No floor plans for this booking yet</p>
+          <p className="max-w-md text-xs text-muted-foreground">
+            Apply a reusable template from your Library, duplicate another plan on this booking, or start blank.
+            Original floor-plan files you import in Migration Center land as Documents and can back a layout here.
+          </p>
+          {canEdit && (
+            <Button type="button" size="sm" className="mt-2" onClick={() => { reset(); setOpen(true); }}>
+              + New Floor Plan
+            </Button>
+          )}
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
