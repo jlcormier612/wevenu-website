@@ -13,6 +13,8 @@ FROM node:22-alpine AS deps
 WORKDIR /app
 COPY package.json package-lock.json ./
 COPY patches ./patches
+# postinstall runs copy-pdf-worker.mjs — must exist before npm ci
+COPY scripts/copy-pdf-worker.mjs ./scripts/copy-pdf-worker.mjs
 RUN npm ci
 
 FROM node:22-alpine AS builder
