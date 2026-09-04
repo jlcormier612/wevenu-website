@@ -481,6 +481,7 @@ export async function reviewOwnRecord(
   if (!session) return { ok: false, message: "Migration session not found." };
   const reviewed = await reviewRecord(actor.client, recordId, decision, actor.createdBy);
   if (!reviewed.ok) return { ok: false, message: reviewed.error };
+  await reconcileSessionStatusIfSettled(actor.client, session);
   return { ok: true };
 }
 
@@ -614,11 +615,32 @@ export function computeSessionResumeState(counts: SessionSummary["counts"]): Ses
   return unresolved > 0 || pendingCommit > 0 ? "partially_done" : "done";
 }
 
+/**
+ * When every record is settled (imported, already-in-HTC, or intentionally
+ * excluded) without a commit pass, History still keyed off session.status
+ * and could show “Needs your attention”. Advance to committed so the list
+ * badge matches the resume “Complete” truth — including exclusion-only
+ * sessions where nothing was imported.
+ */
+export async function reconcileSessionStatusIfSettled(
+  client: AnyDbClient,
+  session: MigrationSession,
+): Promise<MigrationSession> {
+  if (session.status === "abandoned" || session.status === "failed" || session.status === "committed") {
+    return session;
+  }
+  const summary = await getSessionSummary(client, session);
+  if (computeSessionResumeState(summary.counts) !== "done") return session;
+  await repo.updateSessionStatus(client, session.id, "committed");
+  return { ...session, status: "committed" };
+}
+
 export async function getOwnSessionResumeState(sessionId: string): Promise<{ state: SessionResumeState; summary: SessionSummary } | null> {
   const actor = await resolveVenueActor();
   if (isError(actor)) return null;
-  const session = await repo.getSession(actor.client, actor.venueId, sessionId);
+  let session = await repo.getSession(actor.client, actor.venueId, sessionId);
   if (!session) return null;
+  session = await reconcileSessionStatusIfSettled(actor.client, session);
   const summary = await getSessionSummary(actor.client, session);
   return { state: computeSessionResumeState(summary.counts), summary };
 }

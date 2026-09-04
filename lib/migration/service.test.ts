@@ -94,4 +94,16 @@ describe("computeFinalSessionStatus / computeSessionResumeState — Scenario D: 
     assert.equal(computeSessionResumeState(c), "done");
     assert.equal(computeFinalSessionStatus(outcome({ committed: 50 }), 0), "committed");
   });
+
+  it("intentional exclusion only (rejected, nothing left pending) is done — History must not stay Needs attention", () => {
+    const c = counts({ rejected: 1 });
+    assert.equal(computeSessionResumeState(c), "done");
+    // Empty commit outcome with nothing unresolved advances to committed so
+    // SessionListBadge shows Complete after Don't import settles the session.
+    assert.equal(computeFinalSessionStatus(outcome({}), 0), "committed");
+  });
+
+  it("imported + intentionally excluded together is done", () => {
+    assert.equal(computeSessionResumeState(counts({ committed: 5, rejected: 1 })), "done");
+  });
 });

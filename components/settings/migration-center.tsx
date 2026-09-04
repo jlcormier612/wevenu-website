@@ -431,6 +431,9 @@ export function MigrationCenter({
       } else {
         setDecisionRecords([]);
       }
+      // Resume may have advanced a settled session (e.g. Don't import only) to
+      // committed — refresh History so the badge matches Complete.
+      setSessions(await listMigrationSessionsAction());
     });
   }, []);
 
