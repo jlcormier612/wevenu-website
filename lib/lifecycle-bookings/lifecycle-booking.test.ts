@@ -29,7 +29,7 @@ describe("Lifecycle booking schema", () => {
     assert.match(migration, /leads\.first_booked_at/);
     assert.match(migration, /clients\.lifecycle_booked_at/);
     assert.match(migration, /lifecycle_booking_origin/);
-    assert.match(migration, /pipeline.*direct.*import/s);
+    assert.match(migration, /origin text not null check \(origin in \('pipeline', 'direct', 'import'\)\)/);
   });
 
   it("does not redefine events.booked_at", () => {

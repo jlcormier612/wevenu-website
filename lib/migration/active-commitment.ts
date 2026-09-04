@@ -183,11 +183,13 @@ export async function commitActiveCommitment(
 
   const resolved = await resolveEventId(client, venueId, n);
   if (!resolved.ok) return resolved;
+  const resolvedClientId = resolved.clientId;
+  const resolvedEventId = resolved.eventId;
 
   // Explicit historical payment-timing date only — never reinterpret contractSignedAt
   // as events.booked_at, and never treat this as lifecycle Booking.
   if (n.bookedAt?.trim()) {
-    await ensureEventBookedAt(client, venueId, resolved.eventId, n.bookedAt.trim().slice(0, 10));
+    await ensureEventBookedAt(client, venueId, resolvedEventId, n.bookedAt.trim().slice(0, 10));
   }
 
   async function recordImportLifecycleIfMarked(): Promise<void> {
@@ -195,7 +197,7 @@ export async function commitActiveCommitment(
     const { recordLifecycleBooking } = await import("@/lib/lifecycle-bookings/service");
     const recorded = await recordLifecycleBooking(client, {
       venueId,
-      clientId: resolved.clientId,
+      clientId: resolvedClientId,
       origin: "import",
       occurredAt: n.lifecycleBookedAt?.trim() || null,
       actorUserId: opts?.actorUserId ?? null,
@@ -204,11 +206,11 @@ export async function commitActiveCommitment(
     if (!recorded.ok) console.error("Import lifecycle booking failed:", recorded.message);
   }
 
-  const existingOrder = await eventOrdersRepo.getEventOrderByEvent(client, venueId, resolved.eventId);
+  const existingOrder = await eventOrdersRepo.getEventOrderByEvent(client, venueId, resolvedEventId);
   const { data: existingInvoices } = await client.from("invoices")
     .select("id")
     .eq("venue_id", venueId)
-    .eq("event_id", resolved.eventId)
+    .eq("event_id", resolvedEventId)
     .neq("status", "void")
     .limit(1);
   const existingInvoiceId = (existingInvoices?.[0] as { id: string } | undefined)?.id ?? null;
