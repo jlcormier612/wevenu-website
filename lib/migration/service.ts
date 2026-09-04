@@ -32,6 +32,8 @@ import {
   isPastEventDate,
 } from "@/lib/migration/historical-record";
 import { evaluateCutoverPrerequisites } from "@/lib/setup-hub/bring-your-business";
+import { getVenueTimezone, venueLocalToUtcIso } from "@/lib/venue/timezone";
+import { resolveMigrationTourScheduledAt } from "@/lib/migration/tour-datetime";
 import { commitFloorPlanImport } from "@/lib/migration/floor-plan-commit";
 import {
   buildNormalizedFloorPlanImport,
@@ -936,10 +938,19 @@ async function commitOneRecord(
       const n = record.normalizedPayload as unknown as NormalizedTourLike;
       const lead = await resolveLeadIdByEmail(client, session.venueId, n.leadId, n.leadEmail);
       if (!lead.ok) return lead;
+      // Never hand an ambiguous/malformed date to the RPC's own past-vs-future
+      // check — a bare "YYYY-MM-DD HH:MM" resolved in the wrong timezone can
+      // silently flip which side of "now" a tour lands on. This does not
+      // change what "historical" means (still book_tour_for_migration's own
+      // p_slot_start < now()) — only ensures the instant it compares against
+      // is the one the source data actually meant.
+      const tz = await getVenueTimezone(client, session.venueId);
+      const resolved = resolveMigrationTourScheduledAt(n.scheduledAt, tz, venueLocalToUtcIso);
+      if (!resolved.ok) return { ok: false, error: resolved.error };
       const { data, error } = await client.rpc("book_tour_for_migration", {
         p_venue_id: session.venueId,
         p_lead_id: lead.leadId,
-        p_slot_start: n.scheduledAt,
+        p_slot_start: resolved.iso,
         p_notes: n.notes ?? null,
       });
       if (error) return { ok: false, error: occupancyCommitError(error) ?? error.message };
@@ -947,7 +958,10 @@ async function commitOneRecord(
       if (!d?.ok) {
         const code = d?.error as string;
         if (code === "slot_taken") {
-          return { ok: false, error: "This tour time conflicts with existing capacity or a calendar block. Resolve the conflict, then retry — the booking was not changed." };
+          // Phrasing matches LIVE_AVAILABILITY_CONFLICT (historical-record.ts)
+          // so this can never be waved through the "Import anyway" path the
+          // way a real availability conflict can't for events/spaces.
+          return { ok: false, error: "This tour time is not available — it conflicts with existing capacity or a calendar block. Resolve the conflict, then retry — the booking was not changed." };
         }
         return { ok: false, error: `Could not import tour (${code ?? "unknown"}).` };
       }
