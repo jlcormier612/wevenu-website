@@ -344,6 +344,11 @@ function normalizeRow(row: SourceRow, entityType: MigrationEntityType): Normaliz
       contractContent: str(row, "contractContent"),
       contractSignedAt: str(row, "contractSignedAt") ?? str(row, "signedAt"),
       contractSignerName: str(row, "contractSignerName") ?? str(row, "signerName"),
+      bookedAt: str(row, "bookedAt"),
+      markAsAlreadyBooked: ["yes", "true", "1"].includes(
+        (str(row, "markAsAlreadyBooked") ?? "").toLowerCase(),
+      ),
+      lifecycleBookedAt: str(row, "lifecycleBookedAt"),
       shareSignedAgreementWithCouple: ["yes", "true", "1"].includes(
         (str(row, "shareSignedAgreementWithCouple") ?? "").toLowerCase(),
       ),

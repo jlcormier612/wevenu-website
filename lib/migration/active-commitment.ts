@@ -154,6 +154,8 @@ export type CommitActiveCommitmentOptions = {
    * Never set in production Migration Center commits.
    */
   failAfter?: "event_order" | "invoice" | "schedule" | "payments" | "contract" | "document";
+  /** Optional actor for lifecycle booking history when Mark as already booked. */
+  actorUserId?: string | null;
 };
 
 async function failAfterHook(
@@ -182,9 +184,24 @@ export async function commitActiveCommitment(
   const resolved = await resolveEventId(client, venueId, n);
   if (!resolved.ok) return resolved;
 
-  // Explicit historical booking date only — never reinterpret contractSignedAt as booked_at.
+  // Explicit historical payment-timing date only — never reinterpret contractSignedAt
+  // as events.booked_at, and never treat this as lifecycle Booking.
   if (n.bookedAt?.trim()) {
     await ensureEventBookedAt(client, venueId, resolved.eventId, n.bookedAt.trim().slice(0, 10));
+  }
+
+  async function recordImportLifecycleIfMarked(): Promise<void> {
+    if (!n.markAsAlreadyBooked) return;
+    const { recordLifecycleBooking } = await import("@/lib/lifecycle-bookings/service");
+    const recorded = await recordLifecycleBooking(client, {
+      venueId,
+      clientId: resolved.clientId,
+      origin: "import",
+      occurredAt: n.lifecycleBookedAt?.trim() || null,
+      actorUserId: opts?.actorUserId ?? null,
+      metadata: { source: "active_commitment_mark_as_already_booked" },
+    });
+    if (!recorded.ok) console.error("Import lifecycle booking failed:", recorded.message);
   }
 
   const existingOrder = await eventOrdersRepo.getEventOrderByEvent(client, venueId, resolved.eventId);
@@ -204,6 +221,8 @@ export async function commitActiveCommitment(
         .select("id").eq("venue_id", venueId).eq("event_id", resolved.eventId)
         .eq("execution_origin", "external").eq("status", "signed").limit(1)
         .maybeSingle<{ id: string }>();
+      // Lifecycle mark is independent of financial idempotency — safe to retry.
+      await recordImportLifecycleIfMarked();
       return {
         ok: true,
         eventId: resolved.eventId,
@@ -431,6 +450,8 @@ export async function commitActiveCommitment(
       });
       if (!shared.ok) throw new Error(shared.message);
     }
+
+    await recordImportLifecycleIfMarked();
 
     return {
       ok: true,

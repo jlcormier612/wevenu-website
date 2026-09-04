@@ -104,7 +104,8 @@ describe("Payment timing — migration booked_at", () => {
     // Invariant lives on the NormalizedActiveCommitment type (client-safe model)
     // and is restated at the ensureEventBookedAt call site in the commit module.
     assert.match(modelSrc, /never derive booked_at from the signed date/i);
-    assert.match(commitSrc, /never reinterpret contractSignedAt as booked_at/i);
+    assert.match(commitSrc, /never reinterpret contractSignedAt/i);
+    assert.match(commitSrc, /never treat this as lifecycle Booking/i);
   });
 });
 

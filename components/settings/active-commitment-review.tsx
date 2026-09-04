@@ -206,6 +206,50 @@ export function ActiveCommitmentReview({
         </p>
       </div>
 
+      <div className="space-y-2 rounded-md border border-border px-3 py-2">
+        <label className="flex items-start gap-2 text-sm text-heading">
+          <input
+            type="checkbox"
+            className="mt-1"
+            checked={!!proposal.markAsAlreadyBooked}
+            onChange={(e) => patch({
+              markAsAlreadyBooked: e.target.checked,
+              lifecycleBookedAt: e.target.checked ? proposal.lifecycleBookedAt : null,
+            })}
+          />
+          <span>
+            <span className="font-medium">Mark as already booked</span>
+            <span className="mt-0.5 block text-xs text-muted-foreground">
+              Records a lifecycle Booking (Imported) in Reporting. Optional — never inferred from
+              the contract or payments. Separate from the payment-plan booking date below.
+            </span>
+          </span>
+        </label>
+        {proposal.markAsAlreadyBooked ? (
+          <label className="block space-y-1 pl-6 text-xs">
+            <span className="font-medium text-heading">Historical booking date (optional)</span>
+            <input
+              className="w-full rounded-md border border-border bg-background px-2 py-1.5 text-sm"
+              value={proposal.lifecycleBookedAt ?? ""}
+              onChange={(e) => patch({ lifecycleBookedAt: e.target.value || null })}
+              placeholder="YYYY-MM-DD — leave blank to use today"
+            />
+            <span className="block text-muted-foreground">
+              Do not copy the contract signed date unless that is truly when they were booked.
+            </span>
+          </label>
+        ) : null}
+        <label className="block space-y-1 text-xs">
+          <span className="font-medium text-heading">Payment-plan booking date (events.booked_at)</span>
+          <input
+            className="w-full rounded-md border border-border bg-background px-2 py-1.5 text-sm"
+            value={proposal.bookedAt ?? ""}
+            onChange={(e) => patch({ bookedAt: e.target.value || null })}
+            placeholder="YYYY-MM-DD — only for At booking due dates"
+          />
+        </label>
+      </div>
+
       <label className="flex items-start gap-2 rounded-md border border-border px-3 py-2 text-sm text-heading">
         <input
           type="checkbox"

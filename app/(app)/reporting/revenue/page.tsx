@@ -63,14 +63,14 @@ export default async function RevenueReportPage({ searchParams }: Props) {
 
   return (
     <div className="space-y-6">
-      <ReportHeader title="Revenue" description="See what you've booked, collected, and still have outstanding." />
+      <ReportHeader title="Revenue" description="Financial reality — contracted value, collected cash, and outstanding balances among Financially Committed clients." />
       <DateRangeControl current={range.preset} label={range.label} />
 
       <ComparisonCardGrid>
         <ComparisonCard
           label="Gross Booked Revenue" value={grossRevenue ?? 0} previousValue={prevGrossRevenue}
           comparisonLabel={range.comparisonLabel} polarity="up-good" format={formatMoney}
-          sub="Total contracted value of booked events."
+          sub="Contracted value among Financially Committed clients."
         />
         <ComparisonCard
           label="Payments Collected" value={paymentsCollected ?? 0} previousValue={prevPaymentsCollected}
@@ -81,12 +81,13 @@ export default async function RevenueReportPage({ searchParams }: Props) {
         <ComparisonCard
           label="Outstanding Balance" value={outstanding ?? 0} previousValue={prevOutstanding}
           comparisonLabel={range.comparisonLabel} polarity="up-bad" format={formatMoney}
-          sub="Booked revenue not yet collected. Click to see who owes what."
+          sub="Financially Committed revenue not yet collected. Click to see who owes what."
           href={hrefWith(params, { detail: "outstanding" })}
         />
         <ComparisonCard
-          label="Average Booking Value" value={avgValue ?? 0} previousValue={prevAvgValue}
+          label="Avg. Committed Value" value={avgValue ?? 0} previousValue={prevAvgValue}
           comparisonLabel={range.comparisonLabel} polarity="up-good" format={formatMoney}
+          sub="Among Financially Committed — not lifecycle Bookings."
         />
       </ComparisonCardGrid>
 
@@ -135,7 +136,7 @@ export default async function RevenueReportPage({ searchParams }: Props) {
       <Card>
         <CardHeader>
           <CardTitle className="text-base">Revenue Trend</CardTitle>
-          <CardDescription>Gross Booked Revenue by month, based on when each event was booked.</CardDescription>
+          <CardDescription>Gross Booked Revenue by month, based on when each client became Financially Committed (signed contract + first scheduled payment collected) — not the lifecycle booking date.</CardDescription>
         </CardHeader>
         <CardContent>
           {!hasAnyRevenue ? (

@@ -1,12 +1,11 @@
 /**
- * Reporting & Analytics — Canonical Metric Implementation.
+ * Reporting — Financially Committed read layer.
  *
- * Canonical Booking (§2 of the brief): a Contract fully executed (signed)
- * AND the required initial payment collected. Implemented in SQL as the
- * `canonical_bookings` view (20261221000000_canonical_metrics_foundation.sql)
- * — this module is a thin, typed read layer over it. No business logic
- * lives here; the view is the one place "what counts as a Booking" is
- * decided.
+ * `canonical_bookings` = signed contract AND lowest-sort-order payment line
+ * paid. This is NOT Lifecycle Booking (see lib/metrics/lifecycle-booking.ts).
+ *
+ * booked_at on this view = later of signed_at and deposit-proxy paid_at —
+ * distinct from leads.first_booked_at and events.booked_at.
  */
 
 import { createClient } from "@/integrations/supabase/server";

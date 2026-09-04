@@ -259,6 +259,11 @@ async function createClientCore(
   supabase: Awaited<ReturnType<typeof createClient>>, venueId: string, input: ClientInput,
   historicalImport = false,
   importAsHistoricalRecord = false,
+  lifecycleOpts?: {
+    markAsAlreadyBooked?: boolean;
+    lifecycleBookedAt?: string | null;
+    actorUserId?: string | null;
+  },
 ): Promise<CreateClientResult> {
   const asHistorical = importAsHistoricalRecord && isPastEventDate(input.eventDate);
   if (importAsHistoricalRecord && input.eventDate && !asHistorical) {
@@ -281,7 +286,8 @@ async function createClientCore(
       );
       clientId = row.clientId;
       eventId = row.eventId;
-      // Direct Add of a dated future booking IS the booking commitment moment.
+      // Direct Add of a dated future booking IS the booking commitment moment
+      // for payment timing (events.booked_at) — distinct from lifecycle Booking.
       // Historical past-event imports do not invent a booking date.
       if (!asHistorical) {
         await stampBookingDateIfNeeded(supabase, venueId, eventId);
@@ -310,16 +316,54 @@ async function createClientCore(
       .catch((e) => console.error("Series exit-on-booking failed:", e));
   }
 
+  // Lifecycle Booking (distinct from events.booked_at payment timing):
+  // - Normal Direct Add with a dated Event → origin=direct
+  // - Explicit migration mark → origin=import (optional historical date)
+  // - Never infer from contract/payment alone
+  const { recordLifecycleBooking } = await import("@/lib/lifecycle-bookings/service");
+  if (lifecycleOpts?.markAsAlreadyBooked) {
+    const recorded = await recordLifecycleBooking(supabase, {
+      venueId,
+      clientId,
+      origin: "import",
+      occurredAt: lifecycleOpts.lifecycleBookedAt ?? null,
+      actorUserId: lifecycleOpts.actorUserId ?? null,
+      metadata: { source: "migration_mark_as_already_booked" },
+    });
+    if (!recorded.ok) console.error("Import lifecycle booking failed:", recorded.message);
+  } else if (!historicalImport && !asHistorical && eventId) {
+    const { data: { user } } = await supabase.auth.getUser();
+    const recorded = await recordLifecycleBooking(supabase, {
+      venueId,
+      clientId,
+      origin: "direct",
+      actorUserId: user?.id ?? lifecycleOpts?.actorUserId ?? null,
+      metadata: { source: "direct_add" },
+    });
+    if (!recorded.ok) console.error("Direct lifecycle booking failed:", recorded.message);
+  }
+
   // Invitation is sent when Client Planning is explicitly released, not at
   // create. Historical imports still skip live side effects at insert-time
   // via insertClient(..., historicalImport).
   return { ok: true, clientId, eventId, invitationSent: false };
 }
 
-export async function createClient_(input: ClientInput, historicalImport = false, importAsHistoricalRecord = false): Promise<CreateClientResult> {
+export async function createClient_(
+  input: ClientInput,
+  historicalImport = false,
+  importAsHistoricalRecord = false,
+  lifecycleOpts?: { markAsAlreadyBooked?: boolean; lifecycleBookedAt?: string | null },
+): Promise<CreateClientResult> {
   const errors = validateClientInput(input);
   if (Object.keys(errors).length > 0) return { ok: false, errors };
-  const result = await withVenue((supabase, venueId) => createClientCore(supabase, venueId, input, historicalImport, importAsHistoricalRecord));
+  const result = await withVenue(async (supabase, venueId) => {
+    const { data: { user } } = await supabase.auth.getUser();
+    return createClientCore(supabase, venueId, input, historicalImport, importAsHistoricalRecord, {
+      ...lifecycleOpts,
+      actorUserId: user?.id ?? null,
+    });
+  });
   return result as CreateClientResult;
 }
 
@@ -331,13 +375,22 @@ export async function createClient_(input: ClientInput, historicalImport = false
  * p_venue_id_override honors. Every write is otherwise identical to
  * self-service — same validation, same core function, same side effects.
  */
-export async function createClientForVenue(venueId: string, input: ClientInput, historicalImport = true, importAsHistoricalRecord = false): Promise<CreateClientResult> {
+export async function createClientForVenue(
+  venueId: string,
+  input: ClientInput,
+  historicalImport = true,
+  importAsHistoricalRecord = false,
+  lifecycleOpts?: { markAsAlreadyBooked?: boolean; lifecycleBookedAt?: string | null },
+): Promise<CreateClientResult> {
   const actor = await requireAdminUser();
   if (!actor) return { ok: false, message: "Not signed in as an HQ admin." };
   const errors = validateClientInput(input);
   if (Object.keys(errors).length > 0) return { ok: false, errors };
   const admin = createAdminClient();
-  return createClientCore(admin, venueId, input, historicalImport, importAsHistoricalRecord);
+  return createClientCore(admin, venueId, input, historicalImport, importAsHistoricalRecord, {
+    ...lifecycleOpts,
+    actorUserId: actor.userId,
+  });
 }
 
 /** Convert a won lead to a client. Pre-populates from lead data. */
@@ -410,7 +463,7 @@ export async function convertLeadToClient(lead: Lead, opts?: { spaceId?: string 
           throw err;
         }
       }
-      await updateLeadSalesStage(lead.id, "booked", { allowBooked: true });
+      await updateLeadSalesStage(lead.id, "booked", { allowBooked: true, clientId: existingClient.id });
       await stampBookingDateIfNeeded(supabase, venueId, eventId);
       return { ok: true, clientId: existingClient.id, eventId, invitationSent: false } as CreateClientResult;
     }
@@ -439,6 +492,7 @@ export async function convertLeadToClient(lead: Lead, opts?: { spaceId?: string 
         if (raceClient) {
           const raceEventId = await getEventIdForClient(supabase, venueId, raceClient.id);
           await stampBookingDateIfNeeded(supabase, venueId, raceEventId);
+          await updateLeadSalesStage(lead.id, "booked", { allowBooked: true, clientId: raceClient.id });
           return { ok: true, clientId: raceClient.id, eventId: raceEventId, invitationSent: false } as CreateClientResult;
         }
       }
@@ -470,7 +524,7 @@ export async function convertLeadToClient(lead: Lead, opts?: { spaceId?: string 
       .update(eventId ? { lead_id: null, event_id: eventId } : { lead_id: null, client_id: clientId })
       .eq("lead_id", lead.id).eq("venue_id", venueId);
 
-    await updateLeadSalesStage(lead.id, "booked", { allowBooked: true });
+    await updateLeadSalesStage(lead.id, "booked", { allowBooked: true, clientId });
 
     return { ok: true, clientId, eventId } as CreateClientResult;
   });

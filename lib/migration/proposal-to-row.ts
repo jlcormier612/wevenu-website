@@ -22,6 +22,8 @@ export function activeCommitmentProposalToSourceRow(proposal: NormalizedActiveCo
     contractSignedAt: proposal.contractSignedAt ?? null,
     contractSignerName: proposal.contractSignerName ?? null,
     bookedAt: proposal.bookedAt ?? null,
+    markAsAlreadyBooked: proposal.markAsAlreadyBooked ? "yes" : "no",
+    lifecycleBookedAt: proposal.lifecycleBookedAt ?? null,
     shareSignedAgreementWithCouple: proposal.shareSignedAgreementWithCouple ? "yes" : "no",
     documentName: doc?.name ?? null,
     documentFileName: doc?.fileName ?? null,

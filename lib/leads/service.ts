@@ -228,7 +228,7 @@ export async function createLeadForVenue(venueId: string, input: LeadInput, hist
 export async function updateLeadSalesStage(
   leadId: string,
   stage: string,
-  opts?: { allowBooked?: boolean },
+  opts?: { allowBooked?: boolean; clientId?: string | null },
 ): Promise<LeadActionResult> {
   if (!validateStatus(stage) || !isSalesStage(stage))
     return { ok: false, message: `"${stage}" is not a valid sales stage.` };
@@ -240,9 +240,39 @@ export async function updateLeadSalesStage(
   }
 
   const result = await withVenue(async (supabase, venueId) => {
+    const { data: before } = await supabase.from("leads").select("sales_stage")
+      .eq("id", leadId).eq("venue_id", venueId)
+      .maybeSingle<{ sales_stage: string | null }>();
+    const previousStage = before?.sales_stage ?? null;
+
     await repo.updateLeadSalesStage(supabase, venueId, leadId, stage);
 
     if (stage === "booked") {
+      // Idempotent: already Booked → do not emit another lifecycle event.
+      // Booked → Lost → Booked emits rebooked via recordLifecycleBooking.
+      if (previousStage !== "booked") {
+        const { data: { user } } = await supabase.auth.getUser();
+        let clientId = opts?.clientId ?? null;
+        if (!clientId) {
+          const { data: linked } = await supabase.from("clients").select("id")
+            .eq("lead_id", leadId).eq("venue_id", venueId)
+            .maybeSingle<{ id: string }>();
+          clientId = linked?.id ?? null;
+        }
+        const { recordLifecycleBooking } = await import("@/lib/lifecycle-bookings/service");
+        const recorded = await recordLifecycleBooking(supabase, {
+          venueId,
+          leadId,
+          clientId,
+          origin: "pipeline",
+          actorUserId: user?.id ?? null,
+          previousSalesStage: previousStage,
+        });
+        if (!recorded.ok) {
+          console.error("Lifecycle booking record failed:", recorded.message);
+        }
+      }
+
       const { data: tour } = await supabase
         .from("tour_appointments")
         .select("id")
